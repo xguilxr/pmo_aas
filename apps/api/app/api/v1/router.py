@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     project_requests,
     projects,
     superadmin,
+    superadmin_panel,
     tasks,
 )
 
@@ -34,6 +35,7 @@ api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
 api_router.include_router(tasks.router)
 api_router.include_router(superadmin.router)
+api_router.include_router(superadmin_panel.router)
 
 
 @api_router.get("/ping", tags=["meta"])
