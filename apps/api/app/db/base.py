@@ -22,5 +22,6 @@ class TimestampMixin:
     )
 
 
-def new_uuid() -> UUID:
-    return uuid4()
+def new_uuid() -> str:
+    """Return a new UUID as string (cross-dialect friendly)."""
+    return str(uuid4())
