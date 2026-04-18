@@ -1,6 +1,13 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import admin_roles, admin_users, auth, organizations, superadmin
+from app.api.v1.endpoints import (
+    admin_roles,
+    admin_users,
+    auth,
+    organizations,
+    project_requests,
+    superadmin,
+)
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
@@ -8,6 +15,7 @@ api_router.include_router(admin_users.router)
 api_router.include_router(admin_roles.router)
 api_router.include_router(organizations.router)
 api_router.include_router(organizations.programs_router)
+api_router.include_router(project_requests.router)
 api_router.include_router(superadmin.router)
 
 
