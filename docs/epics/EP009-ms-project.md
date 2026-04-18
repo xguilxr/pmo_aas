@@ -1,0 +1,207 @@
+# EP009 — Integración con Microsoft Project
+
+| Campo | Valor |
+|---|---|
+| **ID** | EP009 |
+| **Prioridad** | Alta |
+| **Dependencias** | EP005 |
+| **Módulo** | `tasks`, `msproject` |
+| **Estado** | MVP |
+
+## Objetivo de negocio
+
+Eliminar el ping-pong de archivos MS Project entre PMs: importar `.xml`, `.xlsx`, `.mpp`, mostrar Gantt interactivo en la app, y permitir gestión manual de tareas sin depender de MS Project standalone.
+
+---
+
+## Decisiones técnicas
+
+| Tema | Decisión | Rationale |
+|---|---|---|
+| Parser principal | **MPXJ** (Java) | Única lib open-source que lee `.mpp` binario + `.xml`/`.xlsx` |
+| Visualización | **frappe-gantt** (MVP) → **dhtmlx-gantt** (post-MVP) | frappe liviano < 30 KB; dhtmlx para drag&drop avanzado |
+| Formatos MVP | `.xml` y `.xlsx` | No requieren Java runtime |
+| Formatos post-MVP | `.mpp` | Requiere Java sidecar en Railway |
+| Backend de parsing | **Worker job** (Celery) | Parsing puede tardar >30 s en proyectos grandes |
+
+---
+
+## US-047 — Importar archivo MS Project (XML/XLSX)
+
+**Como** PM
+**Quiero** subir un `.xml` o `.xlsx` exportado de MS Project
+**Para** tener las tareas en la app.
+
+**Criterios de aceptación:**
+- [ ] `POST /api/v1/projects/{id}/tasks/import` (multipart).
+- [ ] Formatos aceptados MVP: `application/xml` (MSP XML), `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
+- [ ] Max 50 MB.
+- [ ] Response 202 + `job_id`.
+- [ ] Worker parsea y extrae: `name`, `wbs`, `start_date`, `end_date`, `duration_days`, `progress`, `is_milestone`, `predecessors` (con tipo FS/SS/FF/SF y lag), `resource_names`, `notes`.
+- [ ] **Vista previa** antes de confirmar: tabla con las tareas, checkboxes para excluir, alertas por errores.
+- [ ] `POST /api/v1/projects/{id}/tasks/import/{job_id}/confirm` aplica import con selección.
+- [ ] Re-import permitido: `--strategy=merge|replace`. `merge` matchea por `external_id` o `wbs`.
+- [ ] Mapeo de recursos → users del tenant por nombre (fuzzy match ≥ 0.85); UI permite corregir mapping.
+- [ ] Log: tareas importadas / ignoradas / errores, visible en detalle del job.
+
+**Test Cases:**
+- `TC-126` (unit) — Parser extrae correctamente deps FS/SS/FF/SF con lag.
+- `TC-127` (integration) — XML con 500 tareas → todas importadas.
+- `TC-128` (integration) — Archivo corrupto → 422 con mensaje claro.
+- `TC-129` (integration) — Re-import con `merge` actualiza existing.
+- `TC-130` (E2E) — UI preview → exclude 2 tareas → confirm → sólo 498 creadas.
+
+---
+
+## US-048 — Importar .mpp nativo (post-MVP)
+
+**Como** PM
+**Quiero** subir directamente `.mpp`
+**Para** no tener que exportar a XML manualmente.
+
+**Criterios:**
+- [ ] Requiere Java 21 runtime en worker (sidecar).
+- [ ] Parsing via MPXJ subprocess.
+- [ ] Mismo flujo que US-047.
+- [ ] Marcado como feature-flag `msp_native_import`.
+
+(Post-MVP — no se entrega en v1.0.)
+
+---
+
+## US-049 — Visualizar Gantt
+
+**Como** PM
+**Quiero** ver las tareas como Gantt en la página del proyecto
+**Para** entender cronograma y dependencias.
+
+**Criterios de aceptación:**
+- [ ] Ruta `/projects/{id}/gantt`.
+- [ ] Vista con:
+  - Columna izquierda: jerarquía expandible (WBS, nombre, responsable, % avance).
+  - Área derecha: barras horizontales en timeline.
+  - Flechas entre tareas según dependencias (FS/SS/FF/SF diferenciadas visualmente).
+  - Hitos como diamantes (♦).
+  - Línea "hoy" marcada.
+- [ ] Colores por estado: azul (en progreso), verde (completada), rojo (retrasada vs plan), gris (no iniciada).
+- [ ] Barra interna de avance (%).
+- [ ] Zoom: día / semana / mes / trimestre.
+- [ ] Tooltip al hover con todos los detalles.
+- [ ] Click en tarea abre drawer con edición.
+- [ ] Drag&drop para reagendar — **post-MVP**.
+- [ ] Performance: render fluido con 500 tareas.
+
+**Test Cases:**
+- `TC-131` (E2E) — Gantt renderiza con 200 tareas en < 2 s.
+- `TC-132` (E2E) — Zoom funciona en 4 niveles.
+- `TC-133` (E2E) — Tooltip muestra dependencias.
+
+---
+
+## US-050 — Gestión manual de tareas
+
+**Como** PM
+**Quiero** CRUD manual de tareas sin importar MS Project
+**Para** proyectos ad-hoc.
+
+**Campos:**
+
+| Campo | Notas |
+|---|---|
+| `name` | ✅ |
+| `description` | |
+| `wbs` | auto-sugerido por jerarquía |
+| `parent_id` | tarea padre |
+| `start_date`, `end_date` | |
+| `duration_days` | calculado si hay fechas |
+| `progress` | 0-100 |
+| `is_milestone` | bool |
+| `owner_id` | |
+| `priority` | 1-5 |
+| `status` | `not_started`/`in_progress`/`completed`/`on_hold` |
+| `dependencies` | array `{predecessor_id, type, lag_days}` |
+
+**Criterios:**
+- [ ] `POST /api/v1/projects/{id}/tasks`.
+- [ ] `PATCH /api/v1/tasks/{id}`.
+- [ ] Dependencias validadas: no ciclos, no self-reference.
+- [ ] `progress` del padre se recalcula: promedio ponderado de hijos por duración.
+- [ ] Cambios reflejados en Gantt en tiempo real (React Query invalidate).
+- [ ] Ordenamiento por WBS / `start_date` / `priority`.
+- [ ] Delete: marca soft; Gantt oculta, drawer muestra "archivada".
+
+**Test Cases:**
+- `TC-134` (unit) — Detección de ciclos en dependencias.
+- `TC-135` (integration) — Progreso padre se recalcula al actualizar hijo.
+- `TC-136` (integration) — Dependency type FS respeta `start = predecessor.end + lag`.
+
+---
+
+## US-051 — Recalcular cronograma
+
+**Como** PM
+**Quiero** recalcular fechas automáticamente según dependencias
+**Para** impactar cambios en cascada.
+
+**Criterios:**
+- [ ] `POST /api/v1/projects/{id}/tasks/recalculate`.
+- [ ] Motor simple **CPM** (Critical Path Method):
+  - Forward pass: early start/finish.
+  - Backward pass: late start/finish.
+  - Marcar tareas críticas (slack = 0).
+- [ ] Output incluye `critical_path_ids[]`.
+- [ ] Tareas críticas se pintan con borde rojo en Gantt.
+- [ ] Job puede correr en background para proyectos grandes.
+
+**Test Cases:**
+- `TC-137` (unit) — CPM en proyecto de ejemplo conocido → camino crítico correcto.
+- `TC-138` (integration) — Mover fecha → ruta crítica recalculada.
+
+---
+
+## US-052 — Exportar a MS Project (.xml)
+
+**Como** PM
+**Quiero** exportar tareas a `.xml` compatible
+**Para** compartir con stakeholders que usan MS Project.
+
+**Criterios:**
+- [ ] `GET /api/v1/projects/{id}/tasks/export?format=xml` → devuelve archivo MSP XML.
+- [ ] Conserva: jerarquía WBS, deps con tipo y lag, recursos, fechas, avance.
+
+**Test Cases:**
+- `TC-139` (integration) — XML exportado puede abrirse en MS Project sin errores (validación XSD).
+
+---
+
+## Notas técnicas
+
+- **Librería Python para XML**: `openpyxl` (xlsx) + parser XML custom (pequeño, controlado).
+- **Librería Java para .mpp** (post-MVP): MPXJ en sidecar. Invocado vía subprocess con `mpxj-cli`.
+- **frappe-gantt** wrapper en client component. Ver [`packages/ui/src/gantt/`](../packages/ui/src/gantt/).
+- **Performance**: con 1000 tareas, generar Gantt en web con data en memoria + virtualización (sólo dibujar barras visibles).
+
+### Endpoints
+```
+POST   /api/v1/projects/{id}/tasks/import
+POST   /api/v1/projects/{id}/tasks/import/{job_id}/confirm
+GET    /api/v1/projects/{id}/tasks
+POST   /api/v1/projects/{id}/tasks
+GET    /api/v1/tasks/{id}
+PATCH  /api/v1/tasks/{id}
+DELETE /api/v1/tasks/{id}
+POST   /api/v1/tasks/{id}/dependencies
+DELETE /api/v1/task-dependencies/{id}
+POST   /api/v1/projects/{id}/tasks/recalculate
+GET    /api/v1/projects/{id}/tasks/export
+```
+
+---
+
+## Definition of Done
+
+- [ ] Import XML/XLSX funcional end-to-end con preview.
+- [ ] Gantt interactivo con 500 tareas sin lag (p95 < 2 s).
+- [ ] CRUD manual y CPM recalculando en <500 ms para 200 tareas.
+- [ ] Export XML valida XSD MSP.
+- [ ] Drag&drop queda documentado pero no implementado en v1.0 (feature-flag off).
