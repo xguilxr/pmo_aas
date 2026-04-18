@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     admin_roles,
     admin_users,
     auth,
+    dashboard,
     organizations,
     project_requests,
     superadmin,
@@ -16,6 +17,7 @@ api_router.include_router(admin_roles.router)
 api_router.include_router(organizations.router)
 api_router.include_router(organizations.programs_router)
 api_router.include_router(project_requests.router)
+api_router.include_router(dashboard.router)
 api_router.include_router(superadmin.router)
 
 
