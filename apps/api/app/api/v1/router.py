@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     admin_users,
     auth,
     dashboard,
+    modules,
     organizations,
     project_requests,
     projects,
@@ -19,6 +20,12 @@ api_router.include_router(organizations.router)
 api_router.include_router(organizations.programs_router)
 api_router.include_router(project_requests.router)
 api_router.include_router(projects.router)
+api_router.include_router(modules.risks_router)
+api_router.include_router(modules.issues_router)
+api_router.include_router(modules.chg_router)
+api_router.include_router(modules.docs_router)
+api_router.include_router(modules.lessons_router)
+api_router.include_router(modules.minutes_router)
 api_router.include_router(dashboard.router)
 api_router.include_router(superadmin.router)
 
