@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     project_requests,
     projects,
     superadmin,
+    tasks,
 )
 
 api_router = APIRouter()
@@ -31,6 +32,7 @@ api_router.include_router(modules.lessons_router)
 api_router.include_router(modules.minutes_router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
+api_router.include_router(tasks.router)
 api_router.include_router(superadmin.router)
 
 
