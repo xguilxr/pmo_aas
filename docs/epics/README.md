@@ -20,8 +20,9 @@ Cada épica es un archivo autosuficiente con:
 | [EP005](./EP005-projects.md) | Gestión de proyectos | MVP | EP001, EP002, EP003 |
 | [EP006](./EP006-project-modules.md) | 6 módulos del proyecto (risks/issues/changes/docs/lessons/minutes) | MVP | EP005 |
 | [EP007](./EP007-admin.md) | Panel de administración | MVP | EP001, EP002 |
-| [EP008](./EP008-ai.md) | IA: minutas y reportes | MVP | EP005, EP006 |
+| [EP008](./EP008-ai.md) | IA: minutas y reportes (cascada Ollama→Gemini→Claude) | MVP | EP005, EP006 |
 | [EP009](./EP009-ms-project.md) | Integración con Microsoft Project | MVP | EP005 |
+| [EP010](./EP010-superadmin-panel.md) | Panel de Super Admin platform-wide | MVP | EP001, EP002 |
 
 ---
 

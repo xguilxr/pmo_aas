@@ -2,67 +2,101 @@
 
 **ID:** `DOC-AI`
 
-Documentación de cómo integramos IA generativa en la plataforma: selección de modelo, setup local, fallback cloud, prompts.
+Documentación de cómo integramos IA generativa en la plataforma: selección de
+modelo, cascada de proveedores, hosting local, prompts.
 
 ## Archivos
 
-- [`local-model-setup.md`](./local-model-setup.md) — Ollama, hardware, modelos recomendados, integración con Railway
-- [`prompts-catalog.md`](./prompts-catalog.md) — Prompts versionados para minutas y reportes
-- (futuro) `fine-tuning.md` — si llegamos a afinar
+- [`local-model-setup.md`](./local-model-setup.md) — Ollama, hardware, modelos, home-host con Cloudflare Tunnel, Railway GPU.
+- [`gemini-setup.md`](./gemini-setup.md) — Segundo proveedor gratuito (Gemini 1.5 Flash).
+- [`prompts-catalog.md`](./prompts-catalog.md) — Prompts versionados para minutas y reportes.
+- (futuro) `fine-tuning.md` — si llegamos a afinar.
 
-## Estrategia
+---
 
-Usamos IA **solo** para dos tareas concretas del MVP:
+## Estrategia — cascada de 3 proveedores
 
-1. **Redacción de minutas** a partir de transcripciones.
-2. **Generación de reportes de avance** con datos del proyecto.
+Ver ADR-007. Orden de prioridad por default:
 
-En ambas, la IA produce un **borrador estructurado** que el humano revisa y aprueba. Nunca auto-envía nada.
+| # | Proveedor | Privacidad | Costo | Calidad | Cuándo se usa |
+|---|---|---|---|---|---|
+| 1 | **Ollama local** (default) | ⭐⭐⭐⭐⭐ | **$0/token** | ⭐⭐⭐⭐ | Siempre que esté healthy |
+| 2 | **Gemini 1.5 Flash** (free tier) | ⭐⭐ | **$0** (1M tok/día) | ⭐⭐⭐⭐ | Si Ollama down/lento o tenant lo prefiere |
+| 3 | **Claude Sonnet 4.6** | ⭐⭐ | ~$0.02/minuta | ⭐⭐⭐⭐⭐ | Solo si tenant lo activa + aporta API key |
 
-## Modos soportados
+La cascada se ejecuta **por request**: el `AIProviderCascade` intenta #1, si
+falla (timeout, error, unhealthy) pasa a #2, y así. La política por tenant
+puede desactivar cualquier proveedor.
 
-| Modo | Cuándo | Ventaja | Desventaja |
-|---|---|---|---|
-| `ollama` (local) | Default / tenants con datos sensibles | $0 por token, privado, sin límite | Requiere hardware dedicado, latencia variable |
-| `claude` (cloud) | Tenants que prefieren calidad | Muy alta calidad, rápido | Coste por token, data sale del perímetro |
-| `disabled` | Tenants que no quieren IA | — | — |
+```python
+# apps/api/app/ai/cascade.py (pseudo)
+class AIProviderCascade(AIProvider):
+    def __init__(self, tenant_settings):
+        self.providers = build_chain(tenant_settings.ai.providers)
 
-Configurado por tenant en `tenants.settings.ai`.
+    async def generate_minute(self, transcript, ctx, lang):
+        last_err = None
+        for p in self.providers:
+            if not p.healthy(): continue
+            try:
+                return await p.generate_minute(transcript, ctx, lang)
+            except ProviderError as e:
+                last_err = e; log.warning(f"{p.name} failed, cascading: {e}")
+        raise AIUnavailable(last_err)
+```
 
-## Contrato técnico (agnóstico)
+## Modos soportados por tenant
 
-El módulo `apps/api/app/ai/` expone una interfaz única:
+| Modo | Providers habilitados | Recomendado para |
+|---|---|---|
+| `private_only` | ollama | Tenants con data sensible o compliance estricto |
+| `private_first` (default) | ollama → gemini → claude? | MVP / mayoría de tenants |
+| `cloud_first` | gemini → claude | Tenants sin preferencia de privacidad |
+| `claude_only` | claude | Tenants que traen su API key y quieren máxima calidad |
+| `disabled` | — | IA apagada |
+
+Configurado por tenant en `tenants.settings.ai.mode` + `tenants.settings.ai.providers`.
+
+## Contrato técnico
 
 ```python
 class AIProvider(Protocol):
+    name: str
     async def generate_minute(self, transcript: str, context: ProjectContext, lang: str) -> MinuteDraft: ...
     async def generate_report(self, project_data: ProjectSnapshot, style: str, lang: str) -> ReportDraft: ...
+    def healthy(self) -> bool: ...
 
 class OllamaProvider(AIProvider): ...
+class GeminiProvider(AIProvider): ...
 class ClaudeProvider(AIProvider): ...
+class AIProviderCascade(AIProvider): ...
 ```
-
-El worker selecciona el provider según `tenant.settings.ai.mode` y falla elegantemente si no disponible.
 
 ## Validación de outputs
 
-- Todo output del modelo se **parsea como JSON** contra un Pydantic schema.
+- Todo output se **parsea como JSON** contra un Pydantic schema.
 - Si falla: 1 reintento con prompt corregido explicitando el formato.
 - Si falla otra vez: job `failed`, usuario ve mensaje claro + opción de reintentar manual.
+- Métrica por provider: `ai_retries_total{provider, kind}`.
 
 ## Privacy-first
 
-- Ningún prompt incluye PII más allá de nombres y correos (lo imprescindible).
-- El admin del tenant autoriza explícitamente el modo Claude; se muestra banner.
-- Logs de IA no guardan el texto completo — solo hash + metadata. El texto vive en `ai_jobs.output` con acceso restringido.
+- **Ollama no envía data fuera** por construcción.
+- **Gemini**: Google procesa el texto. El admin del tenant debe aceptarlo
+  explícitamente (banner en `/admin/ai`). No se usa para entrenamiento si se
+  marca `user_data_use=opt_out` (disponible en Gemini API).
+- **Claude**: igual que Gemini. Anthropic no entrena con inputs de API por
+  default, pero el admin debe activarlo explícitamente.
+- Logs de IA no guardan el texto completo — solo `hash + metadata`. El texto
+  vive en `ai_jobs.output` con acceso restringido por RLS.
 
 ## Observabilidad
 
 Métricas capturadas por job:
-- Modelo usado
-- Tokens in / out
-- Duración
-- Éxito / Fallo (tipo de error)
-- Tenant / Project / User
+- `ai_request_duration_seconds{provider, model, kind}`
+- `ai_tokens_total{provider, direction=in|out}`
+- `ai_failures_total{provider, error_type}`
+- `ai_cascade_fallback_total{from, to}`
 
-Dashboard en `/admin/ai` para consumo del admin.
+Dashboard en `/admin/ai` con consumo del mes, tokens top projects, health de
+cada provider.

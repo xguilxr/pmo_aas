@@ -61,8 +61,10 @@ passlib[bcrypt]==1.7.*
 python-multipart==0.0.*
 httpx==0.27.*
 slowapi==0.1.9
-sentry-sdk[fastapi]==2.14.*
-celery[redis]==5.4.*         # alternativa a BullMQ si 100% Python
+sentry-sdk[fastapi]==2.14.*  # apunta a GlitchTip self-hosted (compatible)
+google-generativeai==0.8.*   # Gemini free tier (2.º fallback)
+anthropic==0.39.*            # Claude (3.º fallback, opcional por tenant)
+celery[redis]==5.4.*
 ```
 
 **Por qué:**
@@ -111,12 +113,22 @@ Detalles en [`security-multitenant.md`](./security-multitenant.md).
 
 ---
 
-## IA — Ollama (local) + Claude (fallback)
+## IA — Ollama (default) → Gemini free (2.º) → Claude (3.º premium)
 
-- **Ollama** expuesto en container separado en Railway (si hardware lo permite) o externo auto-hosteado.
-- Modelo por defecto: `qwen2.5:7b-instruct-q4_K_M`.
-- Fallback: **Claude Sonnet 4.6** vía Anthropic SDK con prompt caching.
-- Detalles en [`../ai/`](../ai/).
+Prioridad declarada en orden estricto:
+
+1. **Ollama local** — privacidad total, cero costo por token, modelo
+   `qwen2.5:7b-instruct-q4_K_M` default. Hosting: home-host con Cloudflare
+   Tunnel, VPS con GPU, o Railway GPU cuando esté disponible.
+2. **Google Gemini 1.5 Flash** — free tier **1M tokens/día**, 15 RPM. Útil
+   cuando Ollama está caído, sobrecargado, o para tenants sin infra de IA
+   pero que aceptan enviar data a Google.
+3. **Claude Sonnet 4.6** — solo si el tenant lo activa explícitamente y
+   provee API key. Mejor calidad; coste por token real.
+
+El `AIProvider` es polimórfico y el runtime escoge en cascada: intenta
+primario, si falla o está deshabilitado pasa al siguiente. Ver
+[`../ai/`](../ai/).
 
 ---
 
@@ -128,15 +140,21 @@ Detalles en [`security-multitenant.md`](./security-multitenant.md).
 
 ---
 
-## Observabilidad
+## Observabilidad (stack $0)
 
-| Herramienta | Para qué |
-|---|---|
-| **Sentry** | Errores del frontend + backend, traces (p95, p99) |
-| **Railway Metrics** | CPU, memoria, red por servicio |
-| **OpenTelemetry** (opcional) | Exportar traces a Tempo/Grafana si crecemos |
-| **UptimeRobot** | `/health` cada 60 s, alertas a Slack |
-| **Audit log** (tabla) | Forense y compliance |
+Ver ADR-011 actualizado. Todo lo siguiente es **free** o self-hosted:
+
+| Herramienta | Para qué | Costo |
+|---|---|---|
+| **GlitchTip** (self-hosted en Railway) | Errores FE + BE, compatible con Sentry-SDK | ~$5/mes container |
+| **Railway Logs** | Logs centralizados por servicio (ya incluido) | $0 |
+| **Railway Metrics** | CPU, memoria, red | $0 |
+| **UptimeRobot Free** | `/health` cada 5 min, 50 monitors, alertas email/Slack | $0 |
+| **BetterStack Logs Free** (alternativa) | 1GB/mes, 3 días retención | $0 |
+| **Audit log** (tabla propia) | Forense y compliance (negocio) | $0 |
+
+Si crecemos y necesitamos tracing distribuido, **OpenTelemetry → Grafana
+Cloud Free** (10k series, 50GB logs, 14d retención) cubre sin costo.
 
 ---
 
@@ -174,9 +192,12 @@ Detalles en [`security-multitenant.md`](./security-multitenant.md).
 | Postgres Pro | 20 |
 | Redis | 5 |
 | Volume 20 GB | 5 |
-| Sentry Team | 26 |
-| Ollama host (GPU externa o self-hosted) | 0-50 |
-| Resend (emails) | 20 |
-| **Total** | **~$116-166** |
+| GlitchTip container (observabilidad) | 5 |
+| UptimeRobot Free | 0 |
+| Ollama host — ver ADR-007 (home / VPS / $0) | 0-50 |
+| Gemini free tier | 0 |
+| Resend (emails, 3k free) | 0-20 |
+| **Total** | **~$75-145** |
 
-A Claude API se le presupuesta ~$50/mes adicional para fallback (estimado 20M tokens/mes con cache hit 70%).
+Claude API se presupuesta solo si un tenant lo activa explícitamente — el
+coste se puede repercutir a ese tenant en su plan.

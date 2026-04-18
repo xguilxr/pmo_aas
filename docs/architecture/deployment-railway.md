@@ -32,7 +32,12 @@ flowchart LR
 | `worker` | `apps/api` (start command diferente) | Nixpacks (Python 3.12) | Sí |
 | `postgres` | Plugin | PostgreSQL 16 | No (persistente) |
 | `redis` | Plugin | Redis 7 | No |
-| `ollama` | Docker | GPU si disponible | Manual |
+| `glitchtip` | Docker | GlitchTip (Sentry-compatible OSS) | Manual |
+| `ollama` | Docker o externo | GPU si disponible — ver abajo | Manual |
+
+> **Desarrollo local:** no requiere Docker en Windows. Ver
+> [`../setup-dev.md`](../setup-dev.md) — rutas A (nativo), B (Railway dev
+> services) o C (Docker en macOS/Linux).
 
 ---
 
@@ -102,8 +107,8 @@ numReplicas = 2
 |---|---|---|
 | `DATABASE_URL` | Plugin postgres | API + Worker |
 | `REDIS_URL` | Plugin redis | API + Worker |
-| `SENTRY_DSN_API` | Manual | API |
-| `SENTRY_DSN_WEB` | Manual | Web |
+| `GLITCHTIP_DSN_API` | GlitchTip service | API (Sentry-SDK compatible) |
+| `GLITCHTIP_DSN_WEB` | GlitchTip service | Web |
 | `NODE_ENV` / `PYTHON_ENV` | `production` | — |
 
 ### API / Worker
@@ -115,10 +120,12 @@ numReplicas = 2
 | `ACCESS_TOKEN_TTL_SEC` | `3600` | 1 h |
 | `REFRESH_TOKEN_TTL_SEC` | `2592000` | 30 d |
 | `BCRYPT_ROUNDS` | `12` | |
-| `AI_MODE` | `ollama` / `claude` / `disabled` | |
-| `OLLAMA_BASE_URL` | `https://ollama.internal:11434` | |
+| `AI_MODE` | `ollama` / `gemini` / `claude` / `disabled` | prioridad: ollama → gemini → claude |
+| `OLLAMA_BASE_URL` | `https://ollama.pmoaas.com:11434` | externo con Cloudflare Tunnel preferido |
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct-q4_K_M` | |
-| `ANTHROPIC_API_KEY` | `sk-ant-…` | Fallback |
+| `GEMINI_API_KEY` | `AIza…` | Free tier 2.º fallback |
+| `GEMINI_MODEL` | `gemini-1.5-flash` | 1M tokens/día gratis |
+| `ANTHROPIC_API_KEY` | `sk-ant-…` | Fallback 3.º (premium) |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | |
 | `RESEND_API_KEY` | `re_…` | Emails |
 | `STORAGE_PATH` | `/data/uploads` | Railway Volume |
@@ -129,7 +136,7 @@ numReplicas = 2
 | Variable | Ejemplo |
 |---|---|
 | `NEXT_PUBLIC_API_URL` | `https://api.pmoaas.com` |
-| `NEXT_PUBLIC_SENTRY_DSN` | `https://…` |
+| `NEXT_PUBLIC_GLITCHTIP_DSN` | `https://…@glitchtip.pmoaas.com/2` |
 | `NEXTAUTH_URL` | `https://app.pmoaas.com` |
 | `NEXTAUTH_SECRET` | `<rotate>` |
 
@@ -281,5 +288,34 @@ Monitoreo externo con **UptimeRobot** cada 60 s, alertas → Slack.
 | Staging (single replica) | 30 |
 | Production (2× api, 1× worker, 2× web) | 90 |
 | Plugins (Postgres + Redis) | 25 |
-| Ollama self-hosted (VPS con GPU o Railway GPU) | 40-80 |
-| **Total** | **~$185-225** |
+| GlitchTip container (0.5 vCPU / 512MB) | 5 |
+| Ollama — ver sección 11 | 0-80 |
+| **Total** | **~$150-225** |
+
+---
+
+## 11. Hosting del modelo local (Ollama)
+
+Detalle completo en [`../ai/local-model-setup.md`](../ai/local-model-setup.md).
+Resumen de opciones y cuándo usar cada una:
+
+| Opción | Costo/mes | Latencia | Cuándo usar |
+|---|---:|---|---|
+| **Home-host** (tu Mac Studio / PC gamer) | $0 | 20-60 tok/s | MVP / un solo tenant / cero costo cloud |
+| Cloudflare Tunnel al home-host | $0 | +30-80ms | Segura exposición del home-host sin abrir puertos |
+| Railway GPU (rolling) | ~$40-80 | ~40 tok/s | Cuando RW lo habilite; paridad total |
+| VPS Hetzner GEX44 (L4 24GB) | €250 | 50-100 tok/s | Varios tenants, GPU dedicada |
+| OVH Advance-2 (A4000) | €220 | 40-80 tok/s | Alternativa europea |
+| **Gemini 1.5 Flash** (sin hostear nada) | **$0** free tier | ~200ms API | 2.º fallback, cuando Ollama no está o está lento |
+
+### Estrategia recomendada para MVP personal
+
+1. **Desarrollo:** Ollama nativo en tu máquina local (ver `setup-dev.md`).
+2. **Staging / demos:** **Gemini 1.5 Flash** gratis — no hosteamos nada, solo
+   API key. El PMO completo funciona con su free tier (15 RPM, 1M tokens/día).
+3. **Producción temprana:** decide con los primeros tenants reales:
+   - Tenant quiere privacidad absoluta → Ollama home-host + Cloudflare Tunnel.
+   - Tenant no quiere IA → `AI_MODE=disabled`.
+   - Tenant quiere máxima calidad → Claude Sonnet con su propia API key.
+
+Esto implica **$0 de costo de IA** hasta que tengas un tenant pagando.

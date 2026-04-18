@@ -100,6 +100,20 @@ docker exec -it pmoaas-ollama-1 ollama pull qwen2.5:7b-instruct-q4_K_M
 
 ## 3. Hosting en producción
 
+> **TL;DR** — Para el MVP personal, arranca con **home-host + Cloudflare
+> Tunnel**. Cuesta $0 y es lo más rápido de poner en marcha. Solo escalamos
+> a VPS con GPU cuando haya ingresos. Si hay caídas, la cascada pasa auto a
+> Gemini (ver ADR-007).
+
+### Decision matrix
+
+| Hardware disponible | Recomendación |
+|---|---|
+| Mac Studio M2 Ultra / Mac Mini M4 en casa | **Home-host** (opción C) — mejor costo/calidad |
+| PC gamer con RTX 3060+ 24/7 | **Home-host** con Ollama Linux/Windows |
+| Laptop que apagas de noche | **NO host producción** — usa solo Gemini (grátis) hasta tener infra dedicada |
+| Nada propio | Gemini free tier en MVP, VPS cuando tenga ingresos |
+
 ### Opción A — Railway GPU (cuando esté disponible)
 
 Railway está rolling out GPU compute. Si está accesible, crear servicio `ollama`:
@@ -170,13 +184,91 @@ server {
 
 Railway se conecta con `OLLAMA_BASE_URL=https://ollama.pmoaas.com` + `OLLAMA_AUTH_USER/PASS`.
 
-### Opción C — Self-hosted en Mac Studio (tu propia infra)
+### Opción C — Home-host con Cloudflare Tunnel (recomendado MVP personal)
 
-Si tienes Mac Studio M2 Ultra (>= 64 GB) en oficina:
-- Ollama nativo + túnel con **Cloudflare Tunnel** (`cloudflared`).
-- Sin abrir puertos al mundo, solo auth por service token.
+**Hardware apto:** Mac Studio / Mac Mini M2+ con 32-64GB, PC con GPU NVIDIA
+12GB+ VRAM.
 
-Esta opción es ideal si tienes hardware en casa/oficina y quieres cero coste cloud.
+**Ventajas:**
+- $0 mes a mes (sin contar electricidad y tu hardware ya comprado).
+- Privacidad total — la data jamás sale a terceros.
+- Puedes usar modelos más grandes (14B-32B en Mac Studio) que ningún free
+  tier te da.
+
+**Topología:**
+
+```mermaid
+flowchart LR
+  Railway_API[Railway<br/>api / worker]
+  CF[Cloudflare<br/>Edge + Access]
+  Tunnel[cloudflared<br/>en home]
+  Ollama[Ollama nativo<br/>localhost:11434]
+
+  Railway_API -->|HTTPS + CF Access JWT| CF
+  CF -.tunnel.-> Tunnel
+  Tunnel --> Ollama
+```
+
+**Setup paso a paso (una hora):**
+
+1. **Instala Ollama nativo** en el Mac/PC de casa. No uses Docker (pierdes
+   aceleración GPU fácilmente).
+   ```bash
+   # Mac
+   brew install ollama
+   ollama serve &    # se arranca a login vía launchd
+   ollama pull qwen2.5:7b-instruct-q4_K_M
+   ```
+
+2. **Crea el túnel Cloudflare** (requiere dominio en Cloudflare):
+   - Dashboard Cloudflare → **Zero Trust** → Networks → Tunnels → Create.
+   - Nombre: `pmoaas-ollama`. Copia el token.
+   - En tu máquina:
+     ```bash
+     brew install cloudflared  # o el instalador Windows/Linux
+     cloudflared service install eyJh...   # token del paso anterior
+     ```
+   - En la config del túnel: **Public hostname** `ollama.pmoaas.com` →
+     Service: `http://localhost:11434`.
+
+3. **Protege con Cloudflare Access** (zero trust):
+   - Zero Trust → Access → Applications → Add application → Self-hosted.
+   - Domain: `ollama.pmoaas.com`.
+   - Policy: `Include` → **Service Auth** → Service Token (crea uno: nombre
+     `railway-api`, copia `CF-Access-Client-Id` y `CF-Access-Client-Secret`).
+
+4. **Configura Railway** variables del servicio `api`:
+   ```
+   OLLAMA_BASE_URL=https://ollama.pmoaas.com
+   CF_ACCESS_CLIENT_ID=<id del paso 3>
+   CF_ACCESS_CLIENT_SECRET=<secret del paso 3>
+   ```
+
+5. **Cliente HTTP** con headers de Access:
+   ```python
+   # apps/api/app/ai/providers/ollama.py
+   headers = {
+       "CF-Access-Client-Id": settings.CF_ACCESS_CLIENT_ID,
+       "CF-Access-Client-Secret": settings.CF_ACCESS_CLIENT_SECRET,
+   }
+   async with httpx.AsyncClient(headers=headers, timeout=180) as c:
+       r = await c.post(f"{settings.OLLAMA_BASE_URL}/api/generate", json=payload)
+   ```
+
+6. **Healthcheck:** `GET /api/tags` vía Railway cada 60s. Si falla 3×,
+   cascada pasa a Gemini (ADR-007).
+
+**Buenas prácticas home-host:**
+
+- Fuente de alimentación con UPS pequeño (evita shutdowns).
+- Bloquea apagado por inactividad en macOS: `sudo pmset -a sleep 0 disksleep 0`.
+- Monitor básico: `logrotate` + script cron que valide `ollama list` cada 5 min
+  y reinicia si fallo (systemd en Linux, `launchd` en macOS).
+- Backup incremental del volumen `~/.ollama` a un NAS/disco externo.
+- Documenta en wiki interno: quién tiene acceso físico, qué hacer si se cae.
+
+Esta opción es ideal si tienes hardware en casa/oficina y quieres cero coste
+cloud.
 
 ---
 

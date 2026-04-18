@@ -37,7 +37,10 @@ Toda la documentación técnica y de producto vive en [`docs/`](./docs). Arranca
 | IA | [`docs/ai/`](./docs/ai/) | Setup de modelo local, prompts, fallback |
 | ADRs | [`docs/adr/`](./docs/adr/) | Decisiones arquitectónicas registradas |
 | Glosario | [`docs/glossary.md`](./docs/glossary.md) | Términos de negocio ES/EN |
-| Propuestas | [`docs/agents-skills-proposals.md`](./docs/agents-skills-proposals.md) | Nuevos agentes y skills para la librería |
+| Plan de construcción | [`docs/construction-plan.md`](./docs/construction-plan.md) | Carriles de trabajo (Claude / usuario) y cronograma |
+| Agentes / Skills | [`docs/agents-skills-proposals.md`](./docs/agents-skills-proposals.md) | Uso de claudio-enterprises + complementos PMO |
+| Propuestas genéricas | [`docs/agents-skills-generic-proposals.md`](./docs/agents-skills-generic-proposals.md) | Agentes/skills reutilizables para tu plugin |
+| Setup local | [`docs/setup-dev.md`](./docs/setup-dev.md) | Instalación detallada (Windows sin Docker) |
 
 ---
 
@@ -49,11 +52,12 @@ Toda la documentación técnica y de producto vive en [`docs/`](./docs). Arranca
 | Backend | **FastAPI 0.115** + Python 3.12 + Pydantic v2 | Tipado, performance, OpenAPI auto |
 | BD | **PostgreSQL 16** (Railway) + Prisma/SQLAlchemy 2.0 | JSONB, RLS para multi-tenant |
 | Auth | JWT + refresh tokens + bcrypt | Standard, sin vendor lock |
-| IA local | **Ollama** + Qwen 2.5 (7B/14B) | Privacidad, sin coste por token |
-| IA fallback | Anthropic Claude Sonnet 4.6 | Para cargas de razonamiento complejo |
+| IA local | **Ollama** + Qwen 2.5 (7B/14B) | Privacidad, sin coste por token — **default** |
+| IA gratis (2.º) | **Google Gemini 1.5 Flash** (free tier) | 15 RPM / 1M tokens/día sin costo |
+| IA premium (3.º) | **Anthropic Claude Sonnet 4.6** | Opcional por tenant para cargas complejas |
 | MS Project | **MPXJ** (Java 21) + **frappe-gantt** | Abre .mpp/.xml/.xlsx nativo |
-| Jobs | **Railway Cron** + **BullMQ** (Redis) | Reportes programados, reindex |
-| Observabilidad | **Sentry** + **Railway Metrics** + OpenTelemetry | Errores, p95, traces |
+| Jobs | **Celery** (Python) + Redis | Reportes programados, generación IA async |
+| Observabilidad | **GlitchTip** self-hosted + Railway Logs + **UptimeRobot** free | Errores + traces + uptime sin costo extra |
 
 Detalles completos en [`docs/architecture/stack.md`](./docs/architecture/stack.md).
 
@@ -61,26 +65,60 @@ Detalles completos en [`docs/architecture/stack.md`](./docs/architecture/stack.m
 
 ## Quickstart local
 
-```bash
-# 1. Clonar
-git clone git@github.com:xguilxr/pmo_aas.git && cd pmo_aas
+**Sin Docker obligatorio.** Elige tu ruta según tu SO. Detalles en [`docs/setup-dev.md`](./docs/setup-dev.md).
 
-# 2. Servicios (Postgres + Redis + Ollama)
-docker compose up -d
+### Ruta A — Windows nativo (recomendado si ya tuviste problemas con Docker)
 
-# 3. Backend
-cd apps/api && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && alembic upgrade head
+```powershell
+# Prerequisitos (una vez):
+#   - Node 20 LTS      https://nodejs.org
+#   - Python 3.12      https://www.python.org
+#   - PostgreSQL 16    https://www.postgresql.org/download/windows  (o Railway dev DB)
+#   - Redis            Memurai (https://www.memurai.com) o WSL/Ubuntu
+#   - Ollama           https://ollama.com/download/windows
+#   - pnpm             corepack enable; corepack prepare pnpm@latest --activate
+
+git clone git@github.com:xguilxr/pmo_aas.git; cd pmo_aas
+pnpm install
+cp .env.example .env   # rellena DATABASE_URL, REDIS_URL, JWT_SECRET, etc.
+
+# Backend
+cd apps\api
+py -3.12 -m venv .venv; .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+alembic upgrade head
 uvicorn app.main:app --reload --port 8080
 
-# 4. Frontend
-cd apps/web && pnpm install && pnpm dev   # http://localhost:3000
+# Frontend (otra consola)
+cd apps\web
+pnpm dev                          # http://localhost:3000
 
-# 5. Modelo de IA (una sola vez)
+# Modelo IA (una vez, en otra consola)
 ollama pull qwen2.5:7b-instruct-q4_K_M
 ```
 
-Guía completa en [`docs/architecture/deployment-railway.md`](./docs/architecture/deployment-railway.md).
+### Ruta B — Dev services en Railway (cero instalación local pesada)
+
+Crea un entorno `dev` en Railway con los plugins Postgres y Redis, copia las
+`DATABASE_URL` / `REDIS_URL` a tu `.env`, y corre frontend y backend en local.
+Ollama lo pones local (free) o en otro VPS. Guía paso a paso en
+[`docs/construction-plan.md`](./docs/construction-plan.md).
+
+### Ruta C — macOS / Linux con Docker (si quieres todo contenido)
+
+```bash
+git clone git@github.com:xguilxr/pmo_aas.git && cd pmo_aas
+docker compose up -d postgres redis    # solo Postgres + Redis
+pnpm install
+cd apps/api && python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && alembic upgrade head
+uvicorn app.main:app --reload --port 8080 &
+cd ../web && pnpm dev
+```
+
+Ollama se instala **nativo** en el host (más rápido que en container y sin
+fricción de GPU passthrough). Guía de despliegue productivo en
+[`docs/architecture/deployment-railway.md`](./docs/architecture/deployment-railway.md).
 
 ---
 

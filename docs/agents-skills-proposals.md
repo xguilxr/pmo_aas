@@ -1,319 +1,285 @@
-# Propuestas de Agentes y Skills (para la librería)
+# Agentes y Skills — PMO-aaS
 
 **ID:** `DOC-AGENTS-SKILLS`
 
-Ideas de agentes y skills específicos al desarrollo y operación de PMO-aaS. Se proponen para agregar a tu librería de Claude Code. Cada propuesta incluye nombre, problema que resuelve, trigger, descripción y ejemplo.
+Este documento tiene tres secciones:
+
+1. Agentes y skills de tu plugin **`claudio-enterprises`** que vamos a usar
+   en este proyecto.
+2. Agentes y skills **específicos de PMO-aaS** que complementan el plugin
+   (no son reutilizables genéricamente).
+3. Cómo adoptarlos y mantenerlos.
+
+> Las propuestas **genéricas** reutilizables (que deberían vivir en tu plugin
+> para todos tus proyectos) están en
+> [`agents-skills-generic-proposals.md`](./agents-skills-generic-proposals.md).
 
 ---
 
-## 1. Agentes propuestos
+## 1. Desde `claudio-enterprises` — lo que vamos a usar
 
-### `pmo-schema-guardian`
+Estos son agentes/skills que asumimos que tu plugin ya expone, porque
+aparecen típicamente en plugins enterprise y encajan directo con los flujos
+de PMO-aaS. **Confírmame cuáles existen y te ajusto la tabla** — si alguno
+no está, lo movemos a la sección 2 o a propuestas genéricas.
 
-**Resuelve:** Inconsistencia entre `models.py` (SQLAlchemy), `schemas.py` (Pydantic) y cliente TS (`packages/sdk`). Cuando alguien edita uno de los 3, los otros 2 quedan desincronizados.
+### 1.1. Agentes
 
-**Cuándo usar:** PR que toca `app/models/*.py`, `app/schemas/*.py` o `alembic/versions/*.py`.
+| Agente | Uso en PMO-aaS | Cuándo invocarlo |
+|---|---|---|
+| `code-reviewer` (u equivalente) | Review PRs con criterios firmes | Antes de pedirme review manual, revisa de forma automática y me deja comentarios focalizados |
+| `explorer` / `codebase-scout` | Exploración rápida del monorepo | Arranque de cada sesión para ubicar archivos nuevos |
+| `planner` / `architect` | Plan detallado antes de implementar épicas grandes | Pre-EP006 (módulos), EP008 (IA), EP010 (Super Admin) |
+| `documenter` / `docs-writer` | Mantener `docs/` coherente con el código | Tras cada PR que modifica BD, prompts o endpoints |
+| `test-writer` | Generar tests unit/integration con patrones del repo | Cada nueva US, para arrancar con el shell de tests |
+| `security-auditor` | Escaneo de OWASP top 10 + secrets | Pre-release, antes de deploy a production |
 
-**Descripción:**
+### 1.2. Skills
+
+| Skill | Uso en PMO-aaS | Cuándo |
+|---|---|---|
+| `init` | Setup inicial del repo | Ya invocado al arranque del proyecto |
+| `review` | Review estructurado de PRs | Antes de merge a `main` |
+| `security-review` | Escaneo antes de release | Gate obligatorio pre-tag |
+| `simplify` | Detectar refactors y duplicación | Tras completar un módulo grande (EP006) |
+| `loop` | Monitoreo continuo de PRs / CI | Durante hot-development para auto-responder a fallos CI |
+| `fewer-permission-prompts` | Optimizar DX | Cuando agregue nuevos agentes propios |
+
+> **Acción pendiente para ti:** cuando abras la próxima sesión, corre
+> `/agents` y `/help` para listar todo lo que `claudio-enterprises` expone y
+> sustituye los nombres aquí por los reales.
+
+---
+
+## 2. Complementos específicos de PMO-aaS
+
+Estos agentes/skills **no son reutilizables** — son específicos del dominio
+PMO (multi-tenant, folios, 6 módulos de proyecto, prompts de IA, MPXJ, etc.).
+Viven en `.claude/agents/` y `.claude/skills/` de este repo, no en el plugin.
+
+### 2.1. Agentes
+
+#### `pmo-schema-guardian`
+
+**Resuelve:** inconsistencia entre `models.py` (SQLAlchemy), `schemas.py`
+(Pydantic) y cliente TS (`packages/sdk`). Cuando alguien edita uno de los 3,
+los otros 2 quedan desincronizados.
+
+**Trigger:** PR que toca `app/models/*.py`, `app/schemas/*.py` o
+`alembic/versions/*.py`; también `/pmo-schema-check`.
+
 ```
-Agente que valida consistencia cross-capa del modelo de datos:
+Valida consistencia cross-capa:
 1. Parsea models SQLAlchemy, schemas Pydantic, OpenAPI spec.
-2. Detecta drift: campo en model ausente en schema, tipo distinto, nullability divergente.
-3. Sugiere parches concretos (o auto-aplica con --fix).
+2. Detecta drift: campo en model ausente en schema, tipo distinto,
+   nullability divergente.
+3. Sugiere parches concretos (o aplica con --fix).
 4. Valida migraciones alembic contra estado actual de la BD.
-5. Genera nuevamente el cliente TS si el OpenAPI cambió.
+5. Regenera cliente TS si OpenAPI cambió.
 ```
 
-**Tools:** Read, Grep, Bash (para `alembic current`, `openapi-typescript`), Edit.
-
-**Trigger:** automático en pre-commit + disponible como `/pmo-schema-check`.
+**Tools:** Read, Grep, Bash (`alembic current`, `openapi-typescript`), Edit.
 
 ---
 
-### `pmo-tenant-isolation-auditor`
+#### `pmo-tenant-isolation-auditor`
 
-**Resuelve:** Olvidarse de aplicar `tenant_id` filter o RLS en endpoints / queries / workers.
+**Resuelve:** olvidar `tenant_id` filter / RLS en endpoints, queries, workers
+o paths de filesystem.
 
-**Cuándo usar:** cualquier PR que agrega endpoint FastAPI, query SQLAlchemy, worker task, o toca el filesystem de uploads.
+**Trigger:** PR que agrega endpoint FastAPI, query SQLAlchemy, worker task
+o toca el FS de uploads; también `/tenant-audit`.
 
-**Descripción:**
 ```
-Escanea el diff buscando:
+Escanea diff buscando:
 - Rutas sin Depends(get_current_tenant) o get_superadmin_user.
 - Queries sin filter(tenant_id == ...) cuando el modelo es tenant-scoped.
-- Paths de archivos que no incluyen {tenant_slug}.
+- Paths de archivos sin {tenant_slug}.
 - Redis keys sin tenant_id.
 - Logs/traces sin tag tenant_id.
-Reporta en forma de checklist con file:line y sugiere fix.
+Reporta checklist file:line con fix sugerido.
 Sugiere agregar TC-MT-* si no existe para el flujo.
 ```
 
-**Tools:** Grep, Read, WebFetch (para consultar docs internas), Edit.
-
-**Trigger:** automático en PR opening + `/tenant-audit`.
+**Tools:** Grep, Read, Edit.
 
 ---
 
-### `pmo-epic-synthesizer`
+#### `pmo-superadmin-guardrail` (nuevo — EP010)
 
-**Resuelve:** Al agregar o modificar una épica, mantener coherencia con US, TC, OpenAPI, schema de BD.
+**Resuelve:** evitar que rutas de `/superadmin/*` filtren a usuarios
+regulares, y que acciones platform-wide se auditen con `scope=platform`.
 
-**Descripción:**
+**Trigger:** PR que toca `app/api/v1/superadmin/*` o
+`app/frontend/app/superadmin/*`.
+
 ```
-Dado un cambio en docs/epics/EP*.md, sincroniza:
-- Agrega/actualiza user stories referenciadas.
-- Crea placeholders de test cases en test-matrix.
-- Sugiere migraciones alembic si menciona campos nuevos.
-- Actualiza glossary si aparecen términos nuevos.
-Verifica que todas las US tengan al menos 1 TC y que los IDs sean únicos.
-```
-
-**Tools:** Read, Edit, Grep.
-
----
-
-### `pmo-prompt-evaluator`
-
-**Resuelve:** Cambios en prompts de IA pueden degradar calidad silenciosamente.
-
-**Descripción:**
-```
-Cuando cambia docs/ai/prompts-catalog.md o app/ai/prompts/*.py:
-1. Ejecuta golden dataset contra nuevo prompt con Ollama y/o Claude.
-2. Compara outputs con baseline (similitud semántica + schema válido + campos completos).
-3. Reporta regresiones o mejoras.
-4. Sugiere nueva versión del prompt (incrementar .vN) si cambio sustancial.
-```
-
-**Tools:** Bash (pytest tests/ai), Read, Write.
-
----
-
-### `pmo-design-system-enforcer`
-
-**Resuelve:** Colores hardcodeados, spacing arbitrario, iconos mezclados, animaciones inconsistentes.
-
-**Descripción:**
-```
-Revisa archivos .tsx del PR:
-- Rechaza hex/rgb/hsl fuera de globals.css.
-- Rechaza arbitrary values en Tailwind (text-[15px], p-[13px]) sin comment de excepción.
-- Detecta mix de icon libraries (Lucide + Material).
-- Detecta animaciones > 400ms o sin respeto a prefers-reduced-motion.
-- Verifica uso de componentes de packages/ui en vez de divs crudos.
+Para cada endpoint nuevo en /superadmin:
+- Verifica Depends(get_superadmin_user) presente.
+- Verifica que no tiene Depends(get_current_tenant) (no se mezcla alcance).
+- Verifica que cada mutación agrega audit_log con scope=platform.
+- Bloquea si expone datos cross-tenant sin filtro explícito de scope.
 ```
 
 **Tools:** Read, Grep, Edit.
 
 ---
 
-### `pmo-railway-deployer`
+#### `pmo-ai-cascade-tester`
 
-**Resuelve:** Deploy a Railway requiere configurar variables, healthchecks, volumes correctamente.
+**Resuelve:** asegurar que la cascada Ollama → Gemini → Claude funciona
+correctamente cuando se cambian providers, timeouts o prompts.
 
-**Descripción:**
+**Trigger:** cambios en `app/ai/providers/*`, `app/ai/cascade.py`,
+`docs/ai/prompts-catalog.md`.
+
 ```
-Valida:
-- railway.toml en cada app tiene healthcheck configurado.
-- Variables requeridas documentadas en docs/architecture/deployment-railway.md están todas definidas.
-- Volúmenes montados.
-- No hay secretos hardcoded.
-- Alembic upgrade incluido en build command.
-Sugiere railway.json para nuevo environment de preview.
+1. Ejecuta suite de fixtures contra cada provider con mocks.
+2. Simula escenarios: Ollama down, Gemini 429, Claude sin API key.
+3. Verifica que métrica `ai_cascade_fallback_total` se incrementa correcto.
+4. Compara calidad (similitud semántica) entre providers para el mismo prompt.
+5. Alerta si una nueva versión de prompt degrada calidad vs baseline.
 ```
 
-**Tools:** Read, Bash (railway CLI), Grep.
+**Tools:** Bash (pytest), Read, Edit.
 
 ---
 
-## 2. Skills propuestas
+#### `pmo-design-system-enforcer`
 
-### `pmo-seed-demo`
+Ver definición previa — sin cambios. Detecta colores hardcoded, valores
+arbitrarios Tailwind, mezcla de icon libs y animaciones fuera de tokens.
 
-**Propósito:** Poblar una instancia local con datos realistas para demos, tests manuales, screenshots.
-
-**Trigger:** `/pmo-seed-demo` o palabras "seed demo data", "llenar BD con ejemplo".
-
-**Descripción:**
-```
-Crea:
-- 2 tenants: "Acme Corp" y "Globex S.A." con slugs apropiados.
-- 3 organizaciones por tenant.
-- 2 programas por org.
-- 12 proyectos distribuidos con variedad de fases y salud.
-- Para cada proyecto: 5-20 riesgos, 3-10 incidencias, 2 cambios, 4 docs, 3 lecciones, 2 minutas.
-- 1 Super Admin global (credenciales mostradas).
-- 4 users por tenant con roles variados.
-Idempotente: no duplica si ya existe.
-Imprime credenciales al final con emails de bienvenida formateados.
-```
+**Tools:** Read, Grep, Edit.
 
 ---
 
-### `pmo-generate-module`
+#### `pmo-railway-deployer`
 
-**Propósito:** Scaffolding de un módulo nuevo siguiendo el patrón de los 6 existentes.
+Ver definición previa — sin cambios respecto a la v1, con 2 ajustes:
+- Ahora también valida variables `GEMINI_API_KEY`, `GLITCHTIP_DSN_*` y
+  `CF_ACCESS_CLIENT_ID/SECRET` (home-host Ollama).
+- Ya no valida `SENTRY_*`.
 
-**Trigger:** `/pmo-generate-module <nombre>` — por ejemplo `/pmo-generate-module budgets`.
-
-**Descripción:**
-```
-Dado un nombre de módulo nuevo:
-1. Genera SQLAlchemy model con tenant_id, folio, soft delete.
-2. Alembic migration.
-3. Pydantic schemas (Create/Update/Out).
-4. FastAPI router (CRUD + filtros + history).
-5. Config declarativa del ModuleShell en frontend.
-6. Tests stubs (unit + integration + TC-MT-*).
-7. Entrada en test-matrix.
-8. Actualiza glossary.
-Todo siguiendo convenciones del proyecto (prefijo folio, RLS, audit_log).
-```
+**Tools:** Read, Bash (`railway CLI`), Grep.
 
 ---
 
-### `pmo-migration-safe`
+#### `pmo-epic-synthesizer`
 
-**Propósito:** Guiar creación de migraciones Alembic que no pierdan datos ni causen downtime.
+Ver definición previa — sin cambios. Mantiene coherencia épicas ↔ US ↔ TC ↔
+glossary ↔ migrations.
 
-**Trigger:** `/pmo-migrate <descripción>` o menciones de "alembic", "migración".
-
-**Descripción:**
-```
-Crea migración alembic siguiendo reglas:
-- NUNCA DROP COLUMN en un solo PR (flujo en 2 pasos).
-- ALTER con default backfill si la tabla es grande (> 100k rows): usar NOT NULL con DEFAULT en PR 1 y remover default en PR 2.
-- Agrega índices CONCURRENTLY si la tabla es hot.
-- Tests que corren `upgrade()` y `downgrade()` sobre Postgres real (testcontainers).
-- Documenta en comment del migration file el por qué.
-Bloquea si detecta operación destructiva sin escape explícito.
-```
+**Tools:** Read, Edit, Grep.
 
 ---
 
-### `pmo-release-notes`
+#### `pmo-prompt-evaluator`
 
-**Propósito:** Generar changelog desde PRs merged entre releases.
+Ver definición previa — actualizado para ejecutar golden dataset también
+contra **Gemini**, no solo Ollama y Claude.
 
-**Trigger:** `/pmo-release` antes de tag.
-
-**Descripción:**
-```
-Dados los commits desde último tag:
-1. Clasifica: feat, fix, chore, docs, perf, refactor.
-2. Agrupa por épica (detectando referencias EP-XXX en commits/PRs).
-3. Genera release notes en formato Markdown:
-   ## v1.2.0 — 2026-04-30
-   ### ✨ Nuevas features
-   - EP008: Soporte para modelo local con Ollama (#123)
-   ### 🐛 Correcciones
-   ...
-4. Actualiza CHANGELOG.md.
-5. Crea draft release en GitHub.
-```
+**Tools:** Bash, Read, Write.
 
 ---
 
-### `pmo-plan-vs-actual-explorer`
+### 2.2. Skills
 
-**Propósito:** Permitir hacer queries en BD rápidamente para investigar desviaciones.
+#### `pmo-seed-demo`
 
-**Trigger:** "¿por qué el proyecto X está en rojo?", "muestra plan vs real de …".
+Sin cambios. Poblar BD con 2 tenants, orgs, programas, proyectos, riesgos,
+issues, changes, docs, lessons, minutas, super admin, users — idempotente.
 
-**Descripción:**
+#### `pmo-generate-module`
+
+Sin cambios. Scaffolding de módulo siguiendo patrón de los 6 existentes
+(model, migration, schemas, router, ModuleShell config, tests, test-matrix,
+glossary).
+
+#### `pmo-migration-safe`
+
+Sin cambios. Guía creación de Alembic seguras (no DROP COLUMN en un PR,
+backfill con default, índices CONCURRENTLY, tests upgrade/downgrade con
+testcontainers).
+
+#### `pmo-release-notes`
+
+Sin cambios. Changelog desde PRs merged entre tags, clasificado por épica.
+
+#### `pmo-plan-vs-actual-explorer`
+
+Sin cambios. Queries read-only sobre la BD para investigar desviaciones de
+proyectos y explicar en lenguaje natural.
+
+#### `pmo-ai-cost-estimator`
+
+Ampliado: ahora también muestra costo en **Gemini** (free tier vs paid) y
+en **Claude** con prompt caching, más el costo de infra home-host (amortizado).
+
+#### `pmo-openapi-diff`
+
+Sin cambios. Muestra cambios de API entre SHAs, clasifica breaking vs
+non-breaking.
+
+#### `pmo-superadmin-runbook` (nuevo — EP010)
+
+**Propósito:** ejecutar runbooks de Super Admin (eliminar tenant, exportar,
+toggle maintenance mode) con validaciones y logs.
+
+**Trigger:** `/pmo-superadmin <runbook> <args>`.
+
 ```
-Usa un ReadOnlyDB MCP (o conexión directa con rol read-only) para:
-1. Query project por folio o nombre.
-2. Calcular desviaciones (fecha, presupuesto, avance).
-3. Listar top riesgos y AIDs críticas.
-4. Explicar en lenguaje natural qué está impactando.
-5. Sugerir acciones (con prefijo "Sugerencia:" para que humano evalúe).
-Nunca escribe. Solo lectura.
+Runbooks disponibles:
+- delete-tenant <slug>      → valida, exporta, programa 24h, confirma.
+- export-tenant <slug>      → ZIP firmado con SHA256.
+- toggle-maintenance <on|off> → confirma, audita.
+- rotate-secret <scope>     → genera nuevo, rota con zero-downtime.
 ```
 
 ---
 
-### `pmo-ai-cost-estimator`
+## 3. Adopción y mantenimiento
 
-**Propósito:** Estimar costo mensual de IA según tamaño de tenant.
+### 3.1. Cómo adoptar los específicos de PMO
 
-**Trigger:** `/pmo-ai-cost <num_projects> <meetings_per_month>`.
+1. Crear archivo `.claude/agents/pmo-<nombre>.md` con el prompt del agente.
+2. Crear archivo `.claude/skills/pmo-<nombre>.md` con el prompt del skill.
+3. Commit como `chore(claude): add <nombre> agent`.
+4. Probar con un par de invocaciones reales.
+5. Iterar el prompt si genera ruido.
 
-**Descripción:**
-```
-Dado número de proyectos y minutas/reportes/mes esperados, calcula:
-- Tokens estimados con Ollama (y tiempo GPU).
-- Costo con Claude (con prompt caching).
-- Comparativa visual.
-- Recomendación de modo según volumen y sensibilidad.
-```
+### 3.2. Cuándo promover uno a `claudio-enterprises`
 
----
+Si un agente/skill aquí empieza a ser útil en otros proyectos (ej.
+`tenant-isolation-auditor` en cualquier SaaS multi-tenant), generalízalo
+y muévelo al plugin. Deja aquí un shim que lo invoque con config PMO.
 
-### `pmo-openapi-diff`
+### 3.3. Priorización MVP
 
-**Propósito:** Mostrar cambios en el API entre dos SHAs/branches para avisar consumers.
-
-**Trigger:** `/pmo-api-diff <base>` en PR.
-
-**Descripción:**
-```
-Compara OpenAPI spec de base vs HEAD:
-- Endpoints agregados / removidos / renombrados.
-- Parámetros cambios.
-- Schemas cambios (campos agregados/removidos, tipos).
-- Clasifica breaking vs non-breaking.
-- Genera comentario estructurado en el PR con lista.
-```
-
----
-
-## 3. Agentes ya existentes que usamos mucho
-
-Confirmación de cuáles de los actuales son más valiosos en este proyecto:
-
-- **Explore** — fundamental para onboarding/exploración rápida.
-- **Plan** — para definir estrategia de features grandes.
-- **Agent general-purpose** — tareas multi-step.
-- **claude-code-guide** — dudas sobre config de Claude Code.
-
----
-
-## 4. Skills de Claude Code que queremos habilitar/explorar
-
-De las ya disponibles:
-
-- **simplify** — revisión de changes para reuso/calidad.
-- **review** — review de PRs.
-- **security-review** — obligatorio antes de cada release.
-- **init** — ya usado para setup inicial.
-- **fewer-permission-prompts** — para optimizar DX del equipo.
-- **loop** — para monitoreo continuo de PRs / deploys.
-
----
-
-## 5. Cómo agregar estas propuestas a tu librería
-
-1. Crear archivo `.claude/agents/pmo-schema-guardian.md` (o nombre respectivo) con el prompt y tools.
-2. Crear `.claude/skills/pmo-seed-demo.md` para skills.
-3. Probar cada uno con un par de invocaciones.
-4. Iterar: si produce ruido, refinar el prompt.
-5. Compartir con equipo vía el repo.
-
-Documentación oficial de Claude Code sobre agents/skills: su CLI `/help` o `/agents` lista los disponibles; doc en `claude-code-guide` vía este sistema.
-
----
-
-## Priorización sugerida
-
-| Priority | Propuesta | Por qué ahora |
+| P | Propuesta | Por qué ahora |
 |---|---|---|
-| P0 | `pmo-tenant-isolation-auditor` | Seguridad crítica, aplica desde día 1 |
+| P0 | `pmo-tenant-isolation-auditor` | Seguridad crítica desde día 1 |
+| P0 | `pmo-superadmin-guardrail` | Evita leaks en EP010 |
 | P0 | `pmo-seed-demo` | Necesario para desarrollo diario |
-| P1 | `pmo-schema-guardian` | Previene bugs comunes de cross-capa |
-| P1 | `pmo-generate-module` | Acelera desarrollo de módulos post-MVP |
-| P2 | `pmo-prompt-evaluator` | Útil cuando IA se vuelva crítica |
-| P2 | `pmo-migration-safe` | Cuando tengamos BD con datos reales |
-| P3 | `pmo-release-notes` | Post-MVP, cuando haya releases frecuentes |
+| P1 | `pmo-schema-guardian` | Previene bugs cross-capa frecuentes |
+| P1 | `pmo-ai-cascade-tester` | Garantiza que Gemini fallback funciona |
+| P1 | `pmo-generate-module` | Acelera post-MVP |
+| P2 | `pmo-prompt-evaluator` | Cuando prompts cambien frecuentemente |
+| P2 | `pmo-migration-safe` | Cuando haya datos reales |
+| P3 | `pmo-release-notes` | Post-MVP con releases recurrentes |
 | P3 | `pmo-design-system-enforcer` | Post-MVP |
-| P3 | `pmo-openapi-diff` | Cuando tengamos consumers externos |
+| P3 | `pmo-openapi-diff` | Cuando haya consumidores externos |
+| P3 | `pmo-superadmin-runbook` | Post-MVP si creces a >10 tenants |
+
+---
+
+## 4. Documentación oficial
+
+- Claude Code docs: usa el agente `claude-code-guide` (disponible en sesión)
+  para cualquier duda de configuración.
+- Agentes: `.claude/agents/*.md` — el frontmatter define nombre, descripción,
+  tools disponibles, modelo.
+- Skills: `.claude/skills/*.md` — lo mismo, pero son procedimientos de
+  texto que el modelo ejecuta paso a paso.
+
+Próximos pasos concretos están en [`construction-plan.md`](./construction-plan.md).

@@ -164,29 +164,52 @@ Necesitamos workers para IA (minutas/reportes), import MS Project, envío masivo
 
 ---
 
-## ADR-007 — Ollama local como motor IA default
+## ADR-007 — Cascada de proveedores IA: Ollama → Gemini → Claude
 
 **Estado:** ✅ Aceptada — 2026-04-18
 **Contexto:**
-PMO maneja datos sensibles (presupuestos, estrategia, personal). Queremos opción "zero data egress".
+PMO maneja datos sensibles (presupuestos, estrategia, personal). Criterios en
+orden: (1) **privacidad**, (2) **coste cercano a cero** en MVP personal,
+(3) calidad suficiente para minutas/reportes estructurados, (4) disponibilidad
+en horas de uso intenso.
 
 **Decisión:**
-**Ollama + Qwen 2.5 7B** como default. **Claude Sonnet 4.6** como fallback opcional por tenant.
+Adoptar **cascada de tres proveedores** con orden estricto de prioridad y
+política por tenant:
+
+1. **Ollama local** (default global) con `qwen2.5:7b-instruct-q4_K_M`.
+   Hospedado en tu hardware (home-host via Cloudflare Tunnel), VPS con GPU,
+   o Railway GPU cuando esté disponible.
+2. **Google Gemini 1.5 Flash** como **2.º fallback gratuito** — free tier
+   1M tokens/día, 15 RPM. Suficiente para un MVP con <10 tenants activos.
+3. **Claude Sonnet 4.6** como **3.º fallback premium** — solo si el tenant
+   lo activa explícitamente y aporta API key. Mejor calidad para cargas
+   complejas.
+
+Política por tenant en `tenants.settings.ai.providers`: array ordenado.
+Runtime intenta primero el primero disponible; si falla/timeout, pasa al
+siguiente.
 
 **Consecuencias positivas:**
-- Privacidad: datos nunca salen.
-- Costo fijo, no por token.
-- Tenants pueden elegir según su política.
+- **Costo $0** en MVP personal (Ollama home + Gemini free tier).
+- Privacidad por default (data no sale si Ollama responde).
+- Resiliencia: si home-host cae, Gemini cubre automático.
+- Tenant puede desactivar Gemini/Claude si su política lo prohíbe.
 
 **Consecuencias negativas:**
-- Requiere hardware GPU o Mac con buen chip.
-- Calidad ligeramente inferior a Claude, pero suficiente para minutas/reportes estructurados.
-- Latencia variable según carga.
+- Código del provider tiene complejidad adicional (cascada + métricas).
+  Mitigación: abstraer en `AIProviderCascade` con tests del fallback.
+- Gemini free tier tiene **rate limit 15 RPM** — si se satura, cola de jobs
+  se ralentiza. Mitigación: backoff + alerta a admin.
+- Para ir a producción real con un tenant sensible, idealmente home-host
+  Ollama con SLA interno (monitoreo + auto-restart).
 
-**Alternativas:**
-- Solo Claude: pierde clientes con compliance strict.
-- Solo Ollama: pierde uso en cargas difíciles.
-- llama.cpp server custom: más control, pero Ollama lo usa debajo y es más plug-and-play.
+**Alternativas evaluadas:**
+- Solo Claude: coste alto, pierde clientes con compliance estricto.
+- Solo Ollama: sin fallback si hardware cae.
+- Ollama + Claude (sin Gemini): Claude cuesta real; Gemini cubre el hueco gratis.
+- OpenAI gpt-4o-mini: buena calidad pero sin free tier real y menos alineado
+  con nuestra política ("0 data egress preferido").
 
 ---
 
@@ -258,23 +281,50 @@ Todas las strings en archivos de mensajes, no hardcoded. CI rule bloquea strings
 
 ---
 
-## ADR-011 — Sentry para observabilidad unificada
+## ADR-011 — GlitchTip self-hosted para observabilidad (reemplaza Sentry)
 
-**Estado:** ✅ Aceptada — 2026-04-18
+**Estado:** ✅ Aceptada — 2026-04-18 (reemplaza propuesta previa de Sentry pago)
 **Contexto:**
-Necesitamos errores + performance + traces. Alternativas: Sentry, Datadog, Grafana Stack, New Relic.
+Necesitamos errores + performance (p95) + trazas con tags `tenant_id`,
+`user_id`, `api_version`. Sentry cloud (plan Team $26/mes) no encaja en el
+presupuesto personal del MVP. Alternativas evaluadas:
+
+- **GlitchTip** — OSS compatible con Sentry SDK (mismos DSN, mismo protocolo).
+- **Sentry OSS self-hosted** — potente pero ~2GB RAM mín., complejidad alta
+  (Kafka, Zookeeper, ClickHouse).
+- **BetterStack Telemetry Free** — 1GB logs/mes, 3d retención; sin errores como
+  primer ciudadano.
+- **Grafana Cloud Free** — 10k series, 50GB logs, 14d; requiere instrumentar
+  OpenTelemetry desde cero.
+- **Axiom Free** — 500GB ingest/mes; bueno para logs pero no para errores.
+- **Solo Railway Logs + UptimeRobot** — gratis total, pero sin stack trace
+  agregado ni dashboard de errores.
 
 **Decisión:**
-**Sentry** (plan Team, $26/mes) cubre frontend + backend con un SDK por cada lado. Tags `tenant_id`, `user_id`, `api_version`.
+**GlitchTip** como servicio adicional en Railway (~$5/mes de compute, $0 de
+licencia). Usamos `sentry-sdk` (Python) y `@sentry/nextjs` (Next) **sin
+cambios** — GlitchTip implementa el protocolo wire de Sentry. Complementamos
+con:
+- **Railway Logs** (incluido) para logs.
+- **UptimeRobot Free** (50 monitors) para uptime externo.
+- Tabla interna `audit_log` para forense de negocio.
 
-**Consecuencias:**
-- Correlación errores frontend ↔ backend con trace_id.
-- Dashboard único para equipo.
-- Release tracking auto.
+**Consecuencias positivas:**
+- Costo: **~$5/mes** vs $26 de Sentry cloud.
+- Datos **nuestros** (compliance, GDPR más sencillo).
+- Migrar a Sentry cloud luego = cambiar DSN (sin refactor).
+- Suficiente para volumen MVP (hasta ~50k eventos/día).
 
-**Alternativas:**
-- Grafana+Prometheus+Loki+Tempo: más control, mucho setup.
-- Datadog: caro para volumen que tenemos.
+**Consecuencias negativas:**
+- Operamos una pieza más (upgrades, backups de la DB de GlitchTip).
+- GlitchTip no tiene tracing distribuido completo (solo performance simple).
+  Mitigación: si lo necesitamos, OTel → Grafana Cloud Free.
+- Sin release health nativo tipo Sentry SaaS; se puede simular.
+
+**Alternativas descartadas:**
+- Sentry cloud: fuera de presupuesto personal.
+- Sentry OSS self-hosted: overkill para MVP.
+- Grafana Cloud Free: buena opción post-MVP cuando tracing importe.
 
 ---
 
@@ -296,6 +346,74 @@ Implementado con secuencia Postgres por `(tenant_id, kind, year)`.
 **Alternativas:**
 - UUID short (`base62`): menos legible.
 - Hashids: reversible si filtra el salt.
+
+---
+
+## ADR-013 — Dev local sin Docker obligatorio
+
+**Estado:** ✅ Aceptada — 2026-04-18
+**Contexto:**
+El owner desarrolla en Windows y ha tenido fricción recurrente con Docker
+Desktop (consumo RAM de VMMEM, WSL2 lento, ocasionales licencias empresariales
+ausentes). Forzar Docker bloquea el setup inicial.
+
+**Decisión:**
+Ofrecer **tres rutas de setup** documentadas en `docs/setup-dev.md`:
+- **Ruta A:** Windows nativo — Postgres installer + Memurai (Redis) + Ollama
+  instalador + Python + Node. Cero Docker.
+- **Ruta B:** Railway dev services — Postgres/Redis en Railway vía plugin;
+  dev corre local contra esas URLs. Ideal si se trabaja desde varias máquinas.
+- **Ruta C:** macOS/Linux con Docker — para quien prefiere contenedores de
+  infra. Ollama siempre nativo (GPU passthrough).
+
+Testcontainers (usado en tests de integración) sigue necesitando Docker, pero
+solo al correr `pytest -m integration` — desarrollo día a día no lo exige.
+
+**Consecuencias positivas:**
+- Onboarding en Windows sin bloqueadores.
+- Ollama nativo siempre gana en rendimiento vs Docker (sin GPU passthrough issues).
+- Ruta B acerca dev a producción (mismos managed services).
+
+**Consecuencias negativas:**
+- 3 rutas documentadas = 3× superficie de soporte. Mitigación: las rutas
+  comparten `.env.example` y comandos de app son idénticos.
+
+**Alternativas:**
+- Docker forzoso: fuente conocida de fricción del owner.
+- Dev containers (VS Code): buena DX pero aún requiere Docker.
+
+---
+
+## ADR-014 — Home-host Ollama vía Cloudflare Tunnel (opcional)
+
+**Estado:** ✅ Aceptada — 2026-04-18
+**Contexto:**
+Railway aún no ofrece GPU uniformemente; VPS con GPU cuesta €220+/mes. El
+owner puede disponer de hardware en casa/oficina (Mac Studio, PC con GPU NVIDIA).
+
+**Decisión:**
+Soportar **home-hosting de Ollama** como primera opción económica en producción:
+- Servidor local con Ollama nativo.
+- **Cloudflare Tunnel** (`cloudflared`) expone `ollama.pmoaas.com` sin abrir
+  puertos en el router; auth por service token de Cloudflare Access.
+- Railway `api/worker` apunta a ese FQDN con `OLLAMA_BASE_URL` + headers de
+  auth de Cloudflare.
+- Health check detecta caída y cascada pasa a Gemini automáticamente (ver ADR-007).
+
+**Consecuencias positivas:**
+- **$0/mes** de hosting GPU.
+- Cero ingreso de data a terceros (end-to-end bajo nuestro control).
+- Hardware ya amortizado se reutiliza.
+
+**Consecuencias negativas:**
+- Uptime dependiente de tu conexión/energía. Mitigación: cascada a Gemini.
+- Si te mueves o el hardware muere, hay que repensar. Mitigación: VPS con GPU
+  es el plan B ya documentado.
+- Latencia +30-80ms por el túnel vs Railway same-region.
+
+**Alternativas:**
+- Railway GPU tier: depende de disponibilidad; reevaluar en 3 meses.
+- VPS GPU Hetzner/OVH: €220-250/mes — evaluar cuando haya ingresos.
 
 ---
 

@@ -14,7 +14,10 @@ Automatizar dos tareas que consumen horas de los PM:
 1. **Redactar minutas** desde transcripciones de reuniones (Zoom/Teams/Meet).
 2. **Generar reportes de avance** periódicos con IA que luego el PM revisa y envía.
 
-Modelo preferido: **Ollama local** (sin coste por token, privacidad). Fallback: **Claude**.
+**Cascada de proveedores (ver ADR-007):**
+1. **Ollama local** — default, privacidad, $0/token.
+2. **Gemini 1.5 Flash** — 2.º fallback gratuito (1M tok/día free).
+3. **Claude Sonnet 4.6** — 3.º premium, solo si tenant lo activa.
 
 Ver setup técnico en [`../ai/`](../ai/).
 
@@ -117,24 +120,37 @@ sequenceDiagram
 
 ---
 
-## US-045 — Configuración del motor de IA
+## US-045 — Configuración del motor de IA (cascada)
 
 **Como** Administrador
-**Quiero** configurar qué motor de IA usa mi tenant
-**Para** decidir entre privacidad (local) y potencia (cloud).
+**Quiero** configurar qué motores de IA usa mi tenant y en qué orden
+**Para** balancear privacidad, costo y disponibilidad.
 
 **Criterios de aceptación:**
-- [ ] Panel en `/admin/ai` con opciones: `Ollama local` / `Claude API` / `Deshabilitado`.
-- [ ] Para Ollama: campo `base_url` + `model` + `timeout_sec`.
-- [ ] Para Claude: `api_key` (masked), `model` (default `claude-sonnet-4-6`), `max_tokens`, `temperature`.
-- [ ] Botón "Probar conexión" → envía prompt de prueba y mide latencia.
-- [ ] Indicador de estado en header: verde (online), amarillo (lento > 5 s), rojo (down).
-- [ ] Guardar settings en `tenants.settings.ai` (JSONB, con API key cifrada en reposo).
+- [ ] Panel en `/admin/ai` con **toggle y orden** de 3 proveedores:
+      `Ollama` / `Gemini` / `Claude` / `Deshabilitado`.
+- [ ] UI drag-and-drop para reordenar la cascada.
+- [ ] Por proveedor:
+  - **Ollama:** `base_url`, `model`, `timeout_sec`, headers de auth opcionales
+    (Cloudflare Access).
+  - **Gemini:** `api_key` (usar global de plataforma por default, o propia);
+    `model` (default `gemini-1.5-flash`).
+  - **Claude:** `api_key` (masked), `model` (default `claude-sonnet-4-6`),
+    `max_tokens`, `temperature`.
+- [ ] Botón "Probar conexión" por proveedor → envía prompt de prueba y mide
+      latencia.
+- [ ] Indicador de estado por proveedor: verde/amarillo/rojo.
+- [ ] Banner de privacidad al activar Gemini/Claude (data sale del perímetro).
+- [ ] Guardar en `tenants.settings.ai` (JSONB, API keys cifradas en reposo con
+      Fernet + key rotation).
 
 **Test Cases:**
 - `TC-121` (integration) — Probar conexión Ollama 200 → "online".
 - `TC-122` (integration) — Guardar Claude key → cifrada en BD, response enmascara.
 - `TC-123` (E2E) — Deshabilitar IA → UI oculta botones "Generar con IA".
+- `TC-121b` (integration) — Ollama down → 2.ª llamada usa Gemini; métrica `ai_cascade_fallback_total{from=ollama,to=gemini}` incrementa.
+- `TC-121c` (integration) — Gemini rate-limit 429 → 3.ª llamada usa Claude si habilitado.
+- `TC-121d` (E2E) — Admin reordena providers, cambia default global → próxima minuta usa el nuevo orden.
 
 ---
 
@@ -199,9 +215,11 @@ POST /api/v1/admin/ai-settings/test
 ## Definition of Done
 
 - [ ] Ollama con Qwen 2.5 7B probado end-to-end.
-- [ ] Fallback a Claude configurable por tenant.
+- [ ] **Gemini 1.5 Flash integrado como 2.º proveedor** con rate limit handling.
+- [ ] Cascada Ollama → Gemini → Claude configurable y probada end-to-end con
+      provider caído y con rate-limit 429.
 - [ ] Schema validation de outputs garantizada.
-- [ ] Métricas de tokens y duración guardadas por job.
+- [ ] Métricas de tokens, duración, y `ai_cascade_fallback_total` guardadas.
 - [ ] UI con editor tipo Notion para revisar y ajustar.
 - [ ] `TC-MT-008` verde: un worker no procesa archivos de otro tenant.
 - [ ] Documentación de prompts versionada en `docs/ai/`.

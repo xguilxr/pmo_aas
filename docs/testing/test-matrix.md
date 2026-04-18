@@ -173,6 +173,9 @@ Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mante
 | TC-119 | US-044 | e2e | Envío llega (mailcatcher) | 🟡 |
 | TC-120 | US-044 | int | Duplicar reporte | 🟡 |
 | TC-121 | US-045 | int | Probar conexión Ollama | 🟡 |
+| TC-121b | US-045 | int | Cascade Ollama→Gemini tras fallo | 🟡 |
+| TC-121c | US-045 | int | Cascade Gemini→Claude tras 429 | 🟡 |
+| TC-121d | US-045 | e2e | Admin reordena cascada en UI | 🟡 |
 | TC-122 | US-045 | int | Claude key cifrada + enmascarada | 🟡 |
 | TC-123 | US-045 | e2e | Deshabilitar IA oculta botones | 🟡 |
 | TC-124 | US-046 | int | Agregados de tokens/costos | 🟡 |
@@ -197,6 +200,38 @@ Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mante
 | TC-138 | US-051 | int | Move date → recalc ruta crítica | 🟡 |
 | TC-139 | US-052 | int | Export XML válido vs XSD | 🟡 |
 
+## Épica EP010 — Panel Super Admin
+
+| TC | US | Tipo | Descripción | Estado |
+|---|---|---|---|---|
+| TC-140 | US-053 | int | KPI cards reflejan count exacto | 🟡 |
+| TC-141 | US-053 | e2e | Dashboard < 1.5s con 50 tenants | 🟡 |
+| TC-142 | US-053 | int | Actividad filtrada a `scope=platform` | 🟡 |
+| TC-143 | US-054 | int | Filtros combinados devuelven count exacto | 🟡 |
+| TC-144 | US-054 | e2e | Join inline redirige con admin role | 🟡 |
+| TC-145 | US-054 | int | Export CSV 500 tenants < 5s | 🟡 |
+| TC-146 | US-055 | int | `include=` granular devuelve solo esas keys | 🟡 |
+| TC-147 | US-055 | e2e | Tabs lazy-load | 🟡 |
+| TC-148 | US-055 | int | Tenant inexistente → 404 sin filtrar info | 🟡 |
+| TC-149 | US-056 | e2e | Wizard happy path → login admin ok | 🟡 |
+| TC-150 | US-056 | e2e | Slug duplicado → inline error | 🟡 |
+| TC-151 | US-056 | int | Falla en paso 3 → rollback total | 🟡 |
+| TC-152 | US-057 | int | Filtros combinados logs platform-wide | 🟡 |
+| TC-153 | US-057 | int | SSE emite en < 2s | 🟡 |
+| TC-154 | US-057 | int | Export CSV UTF-8 íntegro | 🟡 |
+| TC-155 | US-058 | int | Motivo vacío → 400 | 🟡 |
+| TC-156 | US-058 | int | Audit log con `impersonated_by_superadmin_id` | 🟡 |
+| TC-157 | US-058 | e2e | Banner persistente en impersonation | 🟡 |
+| TC-158 | US-059 | int | Slug mal → 400, no programa delete | 🟡 |
+| TC-159 | US-059 | int | Cancel dentro de 24h → job cancelado | 🟡 |
+| TC-160 | US-059 | int | Hard delete → tablas del tenant vacías | 🟡 |
+| TC-161 | US-059 | e2e | Export ZIP con estructura correcta | 🟡 |
+| TC-162 | US-060 | int | Ollama > 3s → tarjeta unhealthy | 🟡 |
+| TC-163 | US-060 | int | Gemini RPM casi saturado → tarjeta amarilla | 🟡 |
+| TC-164 | US-061 | int | Maintenance mode → writes 503 | 🟡 |
+| TC-165 | US-061 | int | `defaults.ai_mode` hereda a nuevos tenants | 🟡 |
+| TC-166 | US-061 | e2e | Diff antes/después en UI | 🟡 |
+
 ## Multi-tenant isolation (transversal)
 
 | TC | Descripción | Estado |
@@ -210,6 +245,6 @@ Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mante
 | TC-MT-007 | Uploads aislados por slug | 🟡 |
 | TC-MT-008 | Jobs IA no procesan archivos cruzados | 🟡 |
 
-**Total TCs:** 139 + 8 MT = **147**
+**Total TCs:** 139 (EP001–EP009) + 27 (EP010) + 3 (cascada IA EP008) + 8 MT = **177**
 
 Ver detalle de TC-MT-* en [`multi-tenant-isolation.md`](./multi-tenant-isolation.md).
