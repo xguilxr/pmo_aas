@@ -106,8 +106,9 @@ Railway expone automáticamente las variables `DATABASE_URL` y `REDIS_URL` inter
 
 ## Paso 6 — Primera migración y seed
 
-La primera vez, Railway corre `alembic upgrade head` en el buildCommand (ver `apps/api/railway.toml`),
-y si `SEED_ON_STARTUP=true` el `api` creará:
+En cada deploy el `api` corre `alembic upgrade head` como parte del `startCommand`
+(antes de levantar uvicorn), así que la DB siempre queda en sync con el código.
+Si `SEED_ON_STARTUP=true` el `api` además creará:
 
 - Tenant demo `acme`
 - Super admin global con password temporal (visible solo en logs del primer arranque)
