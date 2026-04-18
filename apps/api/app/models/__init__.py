@@ -3,6 +3,7 @@ from app.models.audit import AuditLog  # noqa: F401
 from app.models.auth import RefreshToken  # noqa: F401
 from app.models.organization import Organization, Program  # noqa: F401
 from app.models.project import Project  # noqa: F401
+from app.models.project_member import ProjectMember  # noqa: F401
 from app.models.project_request import FolioSequence, ProjectRequest  # noqa: F401
 from app.models.role import Role, UserRole  # noqa: F401
 from app.models.tenant import Tenant  # noqa: F401
