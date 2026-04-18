@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     admin_panel,
     admin_roles,
     admin_users,
+    ai,
     auth,
     dashboard,
     modules,
@@ -29,6 +30,7 @@ api_router.include_router(modules.docs_router)
 api_router.include_router(modules.lessons_router)
 api_router.include_router(modules.minutes_router)
 api_router.include_router(dashboard.router)
+api_router.include_router(ai.router)
 api_router.include_router(superadmin.router)
 
 
