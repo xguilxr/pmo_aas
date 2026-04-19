@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ function resolveErrorMessage(err: unknown): string {
   return "No se pudo iniciar sesión. Intenta nuevamente.";
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
@@ -157,5 +157,19 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[var(--color-app)]">
+          <div className="text-sm text-[var(--color-tertiary)]">Cargando…</div>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
