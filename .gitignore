@@ -5,6 +5,10 @@ dist/
 build/
 .turbo/
 coverage/
+next-env.d.ts
+*.tsbuildinfo
+package-lock.json
+yarn.lock
 htmlcov/
 .venv/
 venv/
