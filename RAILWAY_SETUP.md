@@ -1,8 +1,7 @@
 # Setup en Railway (sin local, sin Linux)
 
-Guía paso-a-paso para desplegar PMO-aaS 100% en Railway usando solo el navegador.
-Todo el código de este repo está configurado para que Railway lo construya con Nixpacks
-automáticamente al detectar los `railway.toml` por servicio.
+Guía optimizada con **Shared Variables** para minimizar el esfuerzo de configuración.
+Todas las variables comunes se definen **una sola vez** al nivel del project y se heredan.
 
 ---
 
@@ -10,186 +9,225 @@ automáticamente al detectar los `railway.toml` por servicio.
 
 1. Cuenta en **Railway** (plan Hobby o Pro): https://railway.app
 2. Cuenta en **GitHub** con acceso a `xguilxr/pmo_aas`.
-3. (Opcional) Cuenta gratis en **Google AI Studio** para la key de Gemini: https://aistudio.google.com/apikey
-4. (Opcional) Cuenta en **Resend** para envío de emails (3k emails/mes free): https://resend.com
 
-No necesitas Docker, Node, Python ni WSL en tu máquina. Todo sucede en Railway.
+No necesitas Docker, Node, Python ni WSL. Todo sucede en Railway.
 
 ---
 
-## Paso 1 — Crear el proyecto en Railway
+## Paso 1 — Crear el project en Railway
 
-1. Entra a https://railway.app/new.
-2. **"Deploy from GitHub repo"** → autoriza GitHub si no lo has hecho → selecciona `xguilxr/pmo_aas`.
-3. Railway crea un **Project** vacío. Renómbralo a `pmo-aas` (Settings → Name).
-4. Crea dos **Environments** dentro del mismo project:
-   - `production` (default)
-   - `staging` (botón `+ New Environment` → Duplicate from production cuando quieras promover).
+1. https://railway.app/new → **Deploy from GitHub repo** → `xguilxr/pmo_aas`.
+2. Renombra el project a `pmo-aas` (Settings → Name).
+3. (Opcional) Crea dos **Environments**: `production` y `staging`.
 
 ---
 
-## Paso 2 — Agregar los plugins (Postgres + Redis)
+## Paso 2 — Agregar los plugins
 
 En la vista del project:
 
-1. **`+ Create`** → `Database` → `Add PostgreSQL`. Nombre: `postgres`.
-2. **`+ Create`** → `Database` → `Add Redis`. Nombre: `redis`.
+1. **`+ Create`** → `Database` → `Add PostgreSQL`. Nombre: `Postgres`.
+2. **`+ Create`** → `Database` → `Add Redis`. Nombre: `Redis`.
 
-Railway expone automáticamente las variables `DATABASE_URL` y `REDIS_URL` internas al proyecto.
-
-> Tip: en el plugin Postgres, abre la pestaña `Data` → `Query` para ejecutar SQL sin herramientas locales.
+Railway expone automáticamente `DATABASE_URL` y `REDIS_URL` como variables del plugin.
 
 ---
 
-## Paso 3 — Crear el servicio `api` (FastAPI)
+## Paso 3 — Crear los 3 servicios
 
-1. **`+ Create`** → `GitHub Repo` → selecciona `xguilxr/pmo_aas` de nuevo.
-2. En el servicio nuevo, pestaña **Settings**:
-   - **Service Name**: `api`
-   - **Root Directory**: `apps/api`
-   - **Watch Paths**: `apps/api/**`
-   - **Branch**: `main` para production / `claude/railway-setup-epics-gsKld` para la rama actual de desarrollo
-3. Railway detectará `apps/api/railway.toml` y `apps/api/nixpacks.toml` automáticamente.
-4. Pestaña **Variables** → clic `+ New Variable` y agrega:
+Railway al importar el repo creó un servicio default. Bórralo y crea estos 3 desde cero (más limpio):
 
-   | Nombre | Valor |
-   |---|---|
-   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference) |
-   | `REDIS_URL` | `${{Redis.REDIS_URL}}` (reference) |
-   | `JWT_SECRET` | genera 32 bytes aleatorios (Railway → `+ New` → `Generate`) |
-   | `JWT_REFRESH_SECRET` | idem |
-   | `ACCESS_TOKEN_TTL_SEC` | `3600` |
-   | `REFRESH_TOKEN_TTL_SEC` | `2592000` |
-   | `BCRYPT_ROUNDS` | `12` |
-   | `AI_MODE` | `disabled` (para arranque; `gemini` después) |
-   | `ALLOWED_ORIGINS` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` |
-   | `PYTHON_ENV` | `production` |
-   | `LOG_LEVEL` | `INFO` |
-   | `SEED_ON_STARTUP` | `true` (solo primera vez, luego `false`) |
+### Servicio `api`
 
-5. Pestaña **Settings** → **Networking** → **Generate Domain**. Copia el dominio, lo usarás en el frontend.
+- **`+ Create`** → `GitHub Repo` → `xguilxr/pmo_aas`
+- Settings → **Service Name**: `api`
+- Settings → **Root Directory**: `apps/api`
+- Settings → **Watch Paths**: `apps/api/**`
+- Settings → **Branch**: `claude/railway-setup-epics-gsKld` (o `main` cuando mergees)
 
----
+### Servicio `worker`
 
-## Paso 4 — Crear el servicio `worker` (Celery)
+- **`+ Create`** → `GitHub Repo` → `xguilxr/pmo_aas`
+- Settings → **Service Name**: `worker`
+- Settings → **Root Directory**: `apps/api`
+- Settings → **Config file path**: `worker.railway.toml` ← importante
+- Settings → **Watch Paths**: `apps/api/**`
 
-1. **`+ Create`** → `GitHub Repo` → `xguilxr/pmo_aas`.
-2. Settings:
-   - **Service Name**: `worker`
-   - **Root Directory**: `apps/api`
-   - **Config file path**: `worker.railway.toml`  ← importante, así usa start command distinto
-   - **Watch Paths**: `apps/api/**`
-3. Variables: copia **las mismas** que `api` (Railway permite `Copy from` en el menú de variables).
-4. **No** generes dominio (el worker no expone HTTP).
+### Servicio `web`
+
+- **`+ Create`** → `GitHub Repo` → `xguilxr/pmo_aas`
+- Settings → **Service Name**: `web`
+- Settings → **Root Directory**: `apps/web`
+- Settings → **Watch Paths**: `apps/web/**`, `packages/**`
 
 ---
 
-## Paso 5 — Crear el servicio `web` (Next.js)
+## Paso 4 — Shared Variables (al nivel del project)
 
-1. **`+ Create`** → `GitHub Repo` → `xguilxr/pmo_aas`.
-2. Settings:
-   - **Service Name**: `web`
-   - **Root Directory**: `apps/web`
-   - **Watch Paths**: `apps/web/**`, `packages/**`
-3. Variables:
+**Esto es el atajo clave.** En lugar de copiar variables a cada servicio, las pones una vez aquí y Railway las inyecta en los 3.
 
-   | Nombre | Valor |
-   |---|---|
-   | `NEXT_PUBLIC_API_URL` | `https://${{api.RAILWAY_PUBLIC_DOMAIN}}` |
-   | `NEXTAUTH_URL` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` |
-   | `NEXTAUTH_SECRET` | generado random 32 bytes |
-   | `NODE_ENV` | `production` |
+1. Click en el **nombre del project** (arriba-izquierda, no un servicio).
+2. Pestaña **Variables**.
+3. Clic `+ New Variable` → pega esta lista completa:
 
-4. Settings → Networking → **Generate Domain**.
+### Shared Variables — copia-pega
 
----
+| Variable | Valor | Notas |
+|---|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Reference al plugin |
+| `REDIS_URL` | `${{Redis.REDIS_URL}}` | Reference al plugin |
+| `JWT_SECRET` | → click **Generate** | 32 bytes random |
+| `JWT_REFRESH_SECRET` | → click **Generate** | 32 bytes random |
+| `ACCESS_TOKEN_TTL_SEC` | `3600` | 1 hora |
+| `REFRESH_TOKEN_TTL_SEC` | `2592000` | 30 días |
+| `BCRYPT_ROUNDS` | `12` | |
+| `PYTHON_ENV` | `production` | |
+| `LOG_LEVEL` | `INFO` | |
+| `AI_MODE` | `disabled` | Después cambias a `gemini` o `ollama` |
+| `STORAGE_PATH` | `/data/uploads` | Volume mount (post-MVP) |
 
-## Paso 6 — Primera migración y seed
+> **Tip:** Railway tiene un botón "Raw Editor" en la pestaña Variables que te deja pegar
+> varios `KEY=value` a la vez. Úsalo para ir rápido.
 
-En cada deploy el `api` corre `alembic upgrade head` como parte del `startCommand`
-(antes de levantar uvicorn), así que la DB siempre queda en sync con el código.
-Si `SEED_ON_STARTUP=true` el `api` además creará en el primer arranque:
-
-- **Tenant `acme`** (Acme PMO Demo, MXN) con 4 roles sistema y un admin inicial.
-- **Tenant `globex`** (Globex Industries, USD) con 4 roles sistema y un admin inicial.
-- **Super admin global** (platform-wide, sin tenant).
-
-Cada usuario se crea con `must_change_password=true` y una contraseña temporal
-aleatoria que aparece **una sola vez** en los logs del primer deploy.
-
-**Dónde ver las credenciales del primer arranque:**
-Servicio `api` → pestaña **Deploy Logs** → busca el banner:
-
-```
-========================================================================
-[seed] CREDENCIALES INICIALES — cópialas AHORA, no se vuelven a mostrar
-========================================================================
-  admin tenant=acme        email=admin@acme.pmoaas.local    temp_password=...
-  admin tenant=globex      email=admin@globex.pmoaas.local  temp_password=...
-  superadmin global        email=superadmin@pmoaas.local    temp_password=...
-========================================================================
-```
-
-Copia los 3 passwords, haz login con cada uno y cámbialos. Luego pon
-`SEED_ON_STARTUP=false` y redeploy (si el seed vuelve a correr, detecta que
-los users ya existen y no hace nada).
+Estas 11 variables las heredan `api`, `worker` y `web` automáticamente (web ignora las
+que no usa, sin error).
 
 ---
 
-## Paso 7 — Verificación
+## Paso 5 — Variables específicas por servicio
 
-Una vez que `api` y `web` estén en estado **Success** (verde):
+Solo aquí agregas lo que es **único** de cada servicio.
 
-1. Abre `https://<api-domain>/health` → debe responder `{"status":"ok",...}`.
-2. Abre `https://<api-domain>/docs` → Swagger UI con todos los endpoints.
-3. Abre `https://<web-domain>/` → landing de login.
+### Servicio `api` → pestaña Variables → `+ New Variable`
+
+| Variable | Valor |
+|---|---|
+| `ALLOWED_ORIGINS` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` |
+| `SEED_ON_STARTUP` | `true` (solo primera vez; después `false`) |
+
+### Servicio `worker` → pestaña Variables
+
+**Ninguna.** Las shared variables ya le bastan para operar Celery + DB + Redis.
+
+### Servicio `web` → pestaña Variables → `+ New Variable`
+
+| Variable | Valor |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | `https://${{api.RAILWAY_PUBLIC_DOMAIN}}` |
+| `NEXTAUTH_URL` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` |
+| `NEXTAUTH_SECRET` | → click **Generate** |
+| `NODE_ENV` | `production` |
 
 ---
 
-## Paso 8 — Auto-deploy desde GitHub
+## Paso 6 — Generar dominios públicos
 
-Railway ya queda enlazado: cada push a la rama configurada re-despliega.
+- `api` → Settings → **Networking** → `Generate Domain`
+- `web` → Settings → **Networking** → `Generate Domain`
+- `worker` → **NO** lleva dominio (no expone HTTP).
 
-Branches recomendadas:
-- `main` → production
-- `claude/railway-setup-epics-gsKld` → desarrollo activo (puedes conectarla al environment `staging`)
+---
 
-Para promover staging → production: Railway UI → Deployments → botón **Promote**.
+## Paso 7 — Primer deploy
+
+Railway ya auto-deployó al guardar variables. Espera a que los 3 servicios salgan en verde.
+
+### Qué verificar inmediatamente
+
+1. **`api`** → pestaña **Deploy Logs** → busca este banner:
+
+   ```
+   ========================================================================
+   [seed] CREDENCIALES INICIALES — cópialas AHORA, no se vuelven a mostrar
+   ========================================================================
+     admin tenant=acme      email=admin@acme.pmoaas.local     temp_password=Xyz...
+     admin tenant=globex    email=admin@globex.pmoaas.local   temp_password=Abc...
+     superadmin global      email=superadmin@pmoaas.local     temp_password=Def...
+   ========================================================================
+   ```
+
+   **Copia los 3 passwords a tu gestor de passwords. No se vuelven a mostrar.**
+
+2. `https://<api-domain>/health` → debe devolver `{"status":"ok",...}`.
+3. `https://<api-domain>/docs` → Swagger UI con todos los endpoints.
+4. `https://<web-domain>/api/health` → `{"ok":true, "api_ok":true, ...}`.
+5. Test login: `POST /api/v1/auth/login` con:
+   ```json
+   { "identifier": "superadmin@pmoaas.local", "password": "<el temp>" }
+   ```
+   Debes recibir `access_token` + `user.must_change_password=true`.
+
+---
+
+## Paso 8 — Apagar el seed
+
+Después de confirmar login y cambiar passwords:
+
+1. Servicio `api` → Variables → edita `SEED_ON_STARTUP` → cambia a `false` → Save.
+2. Railway auto-redeploya. Ya no ejecutará el seed en futuros arranques.
+
+> Si por error dejas `SEED_ON_STARTUP=true`, no pasa nada: el seed detecta que los
+> users ya existen y no hace nada (es idempotente).
 
 ---
 
 ## Paso 9 — Dominios personalizados (opcional)
 
-Cuando compres `pmoaas.com` en Cloudflare/otro registrador:
+Cuando compres `pmoaas.com`:
 
-1. Servicio `web` → Settings → Networking → `+ Custom Domain` → `app.pmoaas.com`.
-2. Servicio `api` → `+ Custom Domain` → `api.pmoaas.com`.
-3. Railway te da un CNAME que debes agregar en tu DNS. TLS lo emite automático.
-4. Actualiza las variables `NEXT_PUBLIC_API_URL`, `NEXTAUTH_URL` y `ALLOWED_ORIGINS` a los nuevos dominios.
+1. `web` → Settings → Networking → `+ Custom Domain` → `app.pmoaas.com`.
+2. `api` → `+ Custom Domain` → `api.pmoaas.com`.
+3. Copia el CNAME que Railway te da → pégalo en tu DNS (Cloudflare, etc.).
+4. Actualiza las shared/service variables para reflejar los nuevos dominios.
+
+---
+
+## Paso 10 — Auto-deploy desde GitHub
+
+Ya está configurado. Cada push a la rama conectada re-despliega el servicio cuyo
+`Watch Paths` matchea los archivos cambiados.
+
+Branches recomendadas:
+- `main` → production (apúntalo cuando hagas merge)
+- `claude/railway-setup-epics-gsKld` → desarrollo activo (rama actual)
 
 ---
 
 ## Troubleshooting
 
-| Problema | Causa probable | Solución |
+| Problema | Causa | Fix |
 |---|---|---|
-| `api` falla con `relation "users" does not exist` | La migración no corrió | Revisa logs de build, ejecuta el Redeploy del servicio |
-| `web` da error CORS | `ALLOWED_ORIGINS` no incluye el dominio del web | Actualiza la variable en `api` y redeploy |
-| `Connection refused` a Redis/Postgres | Falta la reference variable | Pon `${{Postgres.DATABASE_URL}}` exactamente así, no el valor copiado |
-| Build de Next.js OOM | Memoria insuficiente | Sube el plan del servicio `web` a 1 GB |
-| Logs del seed no muestran superadmin | El seed ya corrió antes | Conéctate al Postgres plugin: `SELECT email FROM users WHERE is_superadmin=true;` |
+| `api` no aparece | Servicio no conectado al repo | Settings → Source → selecciona el repo |
+| `relation "users" does not exist` | Migración no corrió | Logs del startCommand; revisa `DATABASE_URL` |
+| `web` healthcheck timeout | — | Ya no pasa: el health devuelve 200 sin depender del api |
+| CORS error en browser | `ALLOWED_ORIGINS` no incluye el web domain | En `api` Variables, verifica que sea `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` |
+| Connection refused a DB | Falta la reference | Variable debe ser `${{Postgres.DATABASE_URL}}` exactamente |
+| Seed no mostró credenciales | Users ya existen | Conéctate al Postgres → `SELECT email FROM users;` |
+| Login dice "credenciales inválidas" | El temp_password ya caducó o `must_change_password` | Resetea desde otro admin o vuelve a correr seed con DB vacía |
 
 ---
 
-## Costos esperados
+## Costos esperados (plan Hobby)
 
-| Servicio | USD/mes (Railway Hobby) |
+| Servicio | USD/mes |
 |---|---:|
 | `api` (512 MB) | ~$5 |
 | `worker` (512 MB) | ~$5 |
 | `web` (1 GB) | ~$10 |
-| `postgres` | ~$5 (plan starter) |
-| `redis` | ~$5 |
-| **Total** | **~$30/mes** |
+| Postgres | ~$5 |
+| Redis | ~$5 |
+| **Total** | **~$30** |
 
-Escala solo si necesitas producción real con varios tenants.
+---
+
+## Resumen del esfuerzo
+
+| Paso | Variables a definir | Tiempo |
+|---|---:|---|
+| Shared (proyecto) | 11 | 3 min |
+| `api` específicas | 2 | 30 s |
+| `worker` específicas | 0 | 0 |
+| `web` específicas | 4 | 1 min |
+| **Total** | **17 variables** | **~5 min** |
+
+vs. el enfoque antiguo de copiar ~12 variables a cada servicio (~36 definiciones).
