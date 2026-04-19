@@ -205,48 +205,72 @@ async def _ensure_superadmin(db: AsyncSession) -> tuple[User, str | None]:
 
 async def run_initial_seed() -> None:
     async with SessionLocal() as db:
-        created_credentials: list[tuple[str, str, str]] = []  # (label, email, pwd)
+        # Postgres advisory lock evita que múltiples workers de uvicorn corran el seed
+        # al mismo tiempo (race condition → IntegrityError "duplicate key" en tenants).
+        # Si otro worker ya lo tiene, este lo omite silenciosamente.
+        is_pg = db.bind.dialect.name == "postgresql"
+        lock_key = 918273645  # arbitrario, consistente entre workers
+        if is_pg:
+            from sqlalchemy import text
 
-        for t_def in DEMO_TENANTS:
-            tenant, tenant_created = await _ensure_tenant(
-                db, slug=t_def["slug"], name=t_def["name"], settings=t_def["settings"]
-            )
-            if tenant_created:
-                logger.info("[seed] tenant created: %s", tenant.slug)
+            got = (
+                await db.execute(text(f"SELECT pg_try_advisory_lock({lock_key})"))
+            ).scalar_one()
+            if not got:
+                logger.info("[seed] skipped: otro worker tiene el lock")
+                return
 
-            roles = await _ensure_system_roles(db, tenant)
+        try:
+            created_credentials: list[tuple[str, str, str]] = []  # (label, email, pwd)
 
-            admin_def = t_def["admin"]
-            admin_user, admin_pwd = await _ensure_tenant_admin(
-                db,
-                tenant=tenant,
-                username=admin_def["username"],
-                email=admin_def["email"],
-                full_name=admin_def["full_name"],
-                admin_role=roles["Administrador"],
-            )
-            if admin_pwd is not None:
-                created_credentials.append(
-                    (f"admin tenant={tenant.slug}", admin_user.email, admin_pwd)
+            for t_def in DEMO_TENANTS:
+                tenant, tenant_created = await _ensure_tenant(
+                    db, slug=t_def["slug"], name=t_def["name"], settings=t_def["settings"]
                 )
+                if tenant_created:
+                    logger.info("[seed] tenant created: %s", tenant.slug)
 
-        super_user, super_pwd = await _ensure_superadmin(db)
-        if super_pwd is not None:
-            created_credentials.append(("superadmin global", super_user.email, super_pwd))
+                roles = await _ensure_system_roles(db, tenant)
 
-        await db.commit()
+                admin_def = t_def["admin"]
+                admin_user, admin_pwd = await _ensure_tenant_admin(
+                    db,
+                    tenant=tenant,
+                    username=admin_def["username"],
+                    email=admin_def["email"],
+                    full_name=admin_def["full_name"],
+                    admin_role=roles["Administrador"],
+                )
+                if admin_pwd is not None:
+                    created_credentials.append(
+                        (f"admin tenant={tenant.slug}", admin_user.email, admin_pwd)
+                    )
 
-        if not created_credentials:
-            logger.info("[seed] skipped: ya existen usuarios fundacionales")
-            return
+            super_user, super_pwd = await _ensure_superadmin(db)
+            if super_pwd is not None:
+                created_credentials.append(("superadmin global", super_user.email, super_pwd))
 
-        banner = "\n" + "=" * 72 + "\n"
-        banner += "[seed] CREDENCIALES INICIALES — cópialas AHORA, no se vuelven a mostrar\n"
-        banner += "=" * 72 + "\n"
-        for label, email, pwd in created_credentials:
-            banner += f"  {label:<24} email={email}  temp_password={pwd}\n"
-        banner += "=" * 72 + "\n"
-        banner += "Despues de copiar, pon SEED_ON_STARTUP=false y redeploy.\n"
-        banner += "En el primer login, te forzará a cambiar la contraseña.\n"
-        banner += "=" * 72
-        logger.warning(banner)
+            await db.commit()
+
+            if not created_credentials:
+                logger.info("[seed] skipped: ya existen usuarios fundacionales")
+                return
+
+            banner = "\n" + "=" * 72 + "\n"
+            banner += "[seed] CREDENCIALES INICIALES — cópialas AHORA, no se vuelven a mostrar\n"
+            banner += "=" * 72 + "\n"
+            for label, email, pwd in created_credentials:
+                banner += f"  {label:<24} email={email}  temp_password={pwd}\n"
+            banner += "=" * 72 + "\n"
+            banner += "Despues de copiar, pon SEED_ON_STARTUP=false y redeploy.\n"
+            banner += "En el primer login, te forzará a cambiar la contraseña.\n"
+            banner += "=" * 72
+            logger.warning(banner)
+        finally:
+            if is_pg:
+                from sqlalchemy import text
+
+                try:
+                    await db.execute(text(f"SELECT pg_advisory_unlock({lock_key})"))
+                except Exception:
+                    pass
