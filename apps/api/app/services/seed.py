@@ -1,10 +1,14 @@
 """Bootstrap seed. Crea 2 tenants demo (acme, globex) con sus roles sistema
-y un admin por tenant, más un superadmin global. Idempotente."""
+y un admin por tenant, más un superadmin global. Idempotente y race-safe:
+cada INSERT corre dentro de un SAVEPOINT; si otro worker se adelantó y viola
+una unique constraint, se hace rollback del savepoint y se relee el registro
+existente."""
 import logging
 import secrets
 import string
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
@@ -115,9 +119,16 @@ async def _ensure_tenant(db: AsyncSession, *, slug: str, name: str, settings: di
     existing = (await db.execute(select(Tenant).where(Tenant.slug == slug))).scalar_one_or_none()
     if existing is not None:
         return existing, False
-    tenant = Tenant(slug=slug, name=name, is_active=True, settings=settings)
-    db.add(tenant)
-    await db.flush()
+    try:
+        async with db.begin_nested():
+            tenant = Tenant(slug=slug, name=name, is_active=True, settings=settings)
+            db.add(tenant)
+            await db.flush()
+    except IntegrityError:
+        existing = (
+            await db.execute(select(Tenant).where(Tenant.slug == slug))
+        ).scalar_one()
+        return existing, False
     return tenant, True
 
 
@@ -129,19 +140,29 @@ async def _ensure_system_roles(db: AsyncSession, tenant: Tenant) -> dict[str, Ro
                 select(Role).where(Role.tenant_id == tenant.id, Role.name == role_def["name"])
             )
         ).scalar_one_or_none()
-        if existing is None:
-            r = Role(
-                tenant_id=tenant.id,
-                name=role_def["name"],
-                description=role_def["description"],
-                permissions=role_def["permissions"],
-                is_system=True,
-            )
-            db.add(r)
-            await db.flush()
-            out[role_def["name"]] = r
-        else:
+        if existing is not None:
             out[role_def["name"]] = existing
+            continue
+        try:
+            async with db.begin_nested():
+                r = Role(
+                    tenant_id=tenant.id,
+                    name=role_def["name"],
+                    description=role_def["description"],
+                    permissions=role_def["permissions"],
+                    is_system=True,
+                )
+                db.add(r)
+                await db.flush()
+            out[role_def["name"]] = r
+        except IntegrityError:
+            out[role_def["name"]] = (
+                await db.execute(
+                    select(Role).where(
+                        Role.tenant_id == tenant.id, Role.name == role_def["name"]
+                    )
+                )
+            ).scalar_one()
     return out
 
 
@@ -163,20 +184,30 @@ async def _ensure_tenant_admin(
     if existing is not None:
         return existing, None
     pwd = _random_password()
-    user = User(
-        tenant_id=tenant.id,
-        username=username,
-        email=email.lower(),
-        full_name=full_name,
-        password_hash=hash_password(pwd),
-        is_active=True,
-        is_superadmin=False,
-        must_change_password=True,
-        locale="es-MX",
-    )
-    db.add(user)
-    await db.flush()
-    db.add(UserRole(user_id=user.id, role_id=admin_role.id))
+    try:
+        async with db.begin_nested():
+            user = User(
+                tenant_id=tenant.id,
+                username=username,
+                email=email.lower(),
+                full_name=full_name,
+                password_hash=hash_password(pwd),
+                is_active=True,
+                is_superadmin=False,
+                must_change_password=True,
+                locale="es-MX",
+            )
+            db.add(user)
+            await db.flush()
+            db.add(UserRole(user_id=user.id, role_id=admin_role.id))
+            await db.flush()
+    except IntegrityError:
+        existing = (
+            await db.execute(
+                select(User).where(User.tenant_id == tenant.id, User.username == username)
+            )
+        ).scalar_one()
+        return existing, None
     return user, pwd
 
 
@@ -187,90 +218,76 @@ async def _ensure_superadmin(db: AsyncSession) -> tuple[User, str | None]:
     if existing is not None:
         return existing, None
     pwd = _random_password(24)
-    user = User(
-        tenant_id=None,
-        username="superadmin",
-        email="superadmin@pmoaas.local",
-        password_hash=hash_password(pwd),
-        full_name="Platform Super Admin",
-        is_active=True,
-        is_superadmin=True,
-        must_change_password=True,
-        locale="es-MX",
-    )
-    db.add(user)
-    await db.flush()
+    try:
+        async with db.begin_nested():
+            user = User(
+                tenant_id=None,
+                username="superadmin",
+                email="superadmin@pmoaas.local",
+                password_hash=hash_password(pwd),
+                full_name="Platform Super Admin",
+                is_active=True,
+                is_superadmin=True,
+                must_change_password=True,
+                locale="es-MX",
+            )
+            db.add(user)
+            await db.flush()
+    except IntegrityError:
+        existing = (
+            await db.execute(select(User).where(User.is_superadmin.is_(True)))
+        ).scalar_one()
+        return existing, None
     return user, pwd
 
 
 async def run_initial_seed() -> None:
+    # Cada _ensure_* usa SAVEPOINT + catch IntegrityError para ser race-safe
+    # ante múltiples workers de uvicorn arrancando en paralelo. No se requiere
+    # un advisory lock externo: si otro worker se adelantó, se relee el registro.
     async with SessionLocal() as db:
-        # Postgres advisory lock evita que múltiples workers de uvicorn corran el seed
-        # al mismo tiempo (race condition → IntegrityError "duplicate key" en tenants).
-        # Si otro worker ya lo tiene, este lo omite silenciosamente.
-        is_pg = db.bind.dialect.name == "postgresql"
-        lock_key = 918273645  # arbitrario, consistente entre workers
-        if is_pg:
-            from sqlalchemy import text
+        created_credentials: list[tuple[str, str, str]] = []  # (label, email, pwd)
 
-            got = (
-                await db.execute(text(f"SELECT pg_try_advisory_lock({lock_key})"))
-            ).scalar_one()
-            if not got:
-                logger.info("[seed] skipped: otro worker tiene el lock")
-                return
+        for t_def in DEMO_TENANTS:
+            tenant, tenant_created = await _ensure_tenant(
+                db, slug=t_def["slug"], name=t_def["name"], settings=t_def["settings"]
+            )
+            if tenant_created:
+                logger.info("[seed] tenant created: %s", tenant.slug)
 
-        try:
-            created_credentials: list[tuple[str, str, str]] = []  # (label, email, pwd)
+            roles = await _ensure_system_roles(db, tenant)
 
-            for t_def in DEMO_TENANTS:
-                tenant, tenant_created = await _ensure_tenant(
-                    db, slug=t_def["slug"], name=t_def["name"], settings=t_def["settings"]
+            admin_def = t_def["admin"]
+            admin_user, admin_pwd = await _ensure_tenant_admin(
+                db,
+                tenant=tenant,
+                username=admin_def["username"],
+                email=admin_def["email"],
+                full_name=admin_def["full_name"],
+                admin_role=roles["Administrador"],
+            )
+            if admin_pwd is not None:
+                created_credentials.append(
+                    (f"admin tenant={tenant.slug}", admin_user.email, admin_pwd)
                 )
-                if tenant_created:
-                    logger.info("[seed] tenant created: %s", tenant.slug)
 
-                roles = await _ensure_system_roles(db, tenant)
+        super_user, super_pwd = await _ensure_superadmin(db)
+        if super_pwd is not None:
+            created_credentials.append(("superadmin global", super_user.email, super_pwd))
 
-                admin_def = t_def["admin"]
-                admin_user, admin_pwd = await _ensure_tenant_admin(
-                    db,
-                    tenant=tenant,
-                    username=admin_def["username"],
-                    email=admin_def["email"],
-                    full_name=admin_def["full_name"],
-                    admin_role=roles["Administrador"],
-                )
-                if admin_pwd is not None:
-                    created_credentials.append(
-                        (f"admin tenant={tenant.slug}", admin_user.email, admin_pwd)
-                    )
+        await db.commit()
 
-            super_user, super_pwd = await _ensure_superadmin(db)
-            if super_pwd is not None:
-                created_credentials.append(("superadmin global", super_user.email, super_pwd))
+        if not created_credentials:
+            logger.info("[seed] skipped: ya existen usuarios fundacionales")
+            return
 
-            await db.commit()
-
-            if not created_credentials:
-                logger.info("[seed] skipped: ya existen usuarios fundacionales")
-                return
-
-            banner = "\n" + "=" * 72 + "\n"
-            banner += "[seed] CREDENCIALES INICIALES — cópialas AHORA, no se vuelven a mostrar\n"
-            banner += "=" * 72 + "\n"
-            for label, email, pwd in created_credentials:
-                banner += f"  {label:<24} email={email}  temp_password={pwd}\n"
-            banner += "=" * 72 + "\n"
-            banner += "Despues de copiar, pon SEED_ON_STARTUP=false y redeploy.\n"
-            banner += "En el primer login, te forzará a cambiar la contraseña.\n"
-            banner += "=" * 72
-            logger.warning(banner)
-        finally:
-            if is_pg:
-                from sqlalchemy import text
-
-                try:
-                    await db.execute(text(f"SELECT pg_advisory_unlock({lock_key})"))
-                except Exception:
-                    pass
+        banner = "\n" + "=" * 72 + "\n"
+        banner += "[seed] CREDENCIALES INICIALES — cópialas AHORA, no se vuelven a mostrar\n"
+        banner += "=" * 72 + "\n"
+        for label, email, pwd in created_credentials:
+            banner += f"  {label:<24} email={email}  temp_password={pwd}\n"
+        banner += "=" * 72 + "\n"
+        banner += "Despues de copiar, pon SEED_ON_STARTUP=false y redeploy.\n"
+        banner += "En el primer login, te forzará a cambiar la contraseña.\n"
+        banner += "=" * 72
+        logger.warning(banner)
