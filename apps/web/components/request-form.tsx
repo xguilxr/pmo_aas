@@ -1,0 +1,670 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { CheckCircle2, FileText, Plus, Trash2 } from "lucide-react";
+
+import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { ApiError } from "@/lib/api";
+import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import {
+  createRequest,
+  type ProjectRequest,
+  type ProjectRequestCreateBody,
+  type RequestAttachment,
+} from "@/lib/api/requests";
+import { cn } from "@/lib/cn";
+
+type Draft = {
+  title: string;
+  description: string;
+  objective: string;
+  organization_id: string;
+  business_unit: string;
+  department: string;
+  sponsor: string;
+  benefits: string;
+  budget: string;
+  scope: string;
+  attachments: RequestAttachment[];
+};
+
+const EMPTY: Draft = {
+  title: "",
+  description: "",
+  objective: "",
+  organization_id: "",
+  business_unit: "",
+  department: "",
+  sponsor: "",
+  benefits: "",
+  budget: "",
+  scope: "",
+  attachments: [],
+};
+
+const DRAFT_KEY = "pmoaas.requests.draft";
+const AUTOSAVE_MS = 30_000;
+
+const STEPS = [
+  { id: "basics", label: "Básicos" },
+  { id: "scope", label: "Alcance" },
+  { id: "attachments", label: "Adjuntos" },
+  { id: "review", label: "Revisar" },
+] as const;
+
+type StepId = (typeof STEPS)[number]["id"];
+
+function currency(v: string): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
+}
+
+function loadDraft(): Draft | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(DRAFT_KEY);
+  if (!raw) return null;
+  try {
+    return { ...EMPTY, ...(JSON.parse(raw) as Draft) };
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(d: Draft) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+}
+
+function clearDraft() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(DRAFT_KEY);
+}
+
+export function RequestForm() {
+  const router = useRouter();
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [step, setStep] = useState<StepId>("basics");
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [autosavedAt, setAutosavedAt] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const prev = loadDraft();
+    if (prev) setDraft(prev);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    listOrganizations({ is_active: true })
+      .then((r) => {
+        if (!cancelled) setOrgs(r);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingOrgs(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveDraft(draft);
+  }, [draft, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = setInterval(() => {
+      saveDraft(draft);
+      setAutosavedAt(new Date());
+    }, AUTOSAVE_MS);
+    return () => clearInterval(t);
+  }, [draft, hydrated]);
+
+  const canSubmit = useMemo(() => validateAll(draft).ok, [draft]);
+
+  function setField<K extends keyof Draft>(k: K, v: Draft[K]) {
+    setDraft((d) => ({ ...d, [k]: v }));
+    setFieldErrors((e) => {
+      if (!e[k as string]) return e;
+      const next = { ...e };
+      delete next[k as string];
+      return next;
+    });
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const result = validateAll(draft);
+    if (!result.ok) {
+      setFieldErrors(result.errors);
+      const firstStep = firstStepWithError(result.errors);
+      if (firstStep) setStep(firstStep);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const body: ProjectRequestCreateBody = {
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        objective: draft.objective.trim(),
+        organization_id: draft.organization_id,
+        business_unit: draft.business_unit.trim(),
+        department: draft.department.trim(),
+        sponsor: draft.sponsor.trim(),
+        benefits: draft.benefits.trim(),
+        budget: Number(draft.budget),
+        scope: draft.scope.trim(),
+        attachments: draft.attachments,
+      };
+      const created: ProjectRequest = await createRequest(body);
+      clearDraft();
+      router.replace(`/admin/requests/${created.id}?created=1`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo crear la solicitud");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function goNext() {
+    const idx = STEPS.findIndex((s) => s.id === step);
+    if (idx < STEPS.length - 1) setStep(STEPS[idx + 1].id);
+  }
+
+  function goBack() {
+    const idx = STEPS.findIndex((s) => s.id === step);
+    if (idx > 0) setStep(STEPS[idx - 1].id);
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      className="space-y-5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]"
+    >
+      <ol className="flex flex-wrap gap-2" aria-label="Pasos del formulario">
+        {STEPS.map((s, idx) => {
+          const current = s.id === step;
+          const done = STEPS.findIndex((x) => x.id === step) > idx;
+          return (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => setStep(s.id)}
+                aria-current={current ? "step" : undefined}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-1.5 text-sm transition-colors",
+                  current
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : done
+                      ? "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
+                      : "border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                )}
+              >
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-[11px] font-semibold">
+                  {done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : idx + 1}
+                </span>
+                {s.label}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      {autosavedAt ? (
+        <p className="text-xs text-[var(--color-tertiary)]">
+          Guardado automático · {autosavedAt.toLocaleTimeString("es-MX")}
+        </p>
+      ) : null}
+
+      {step === "basics" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Título" htmlFor="title" error={fieldErrors.title} required full>
+            <Input
+              id="title"
+              value={draft.title}
+              onChange={(e) => setField("title", e.target.value)}
+              maxLength={200}
+              required
+            />
+          </Field>
+          <Field label="Sponsor" htmlFor="sponsor" error={fieldErrors.sponsor} required>
+            <Input
+              id="sponsor"
+              value={draft.sponsor}
+              onChange={(e) => setField("sponsor", e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Organización" htmlFor="org" error={fieldErrors.organization_id} required>
+            <Select
+              id="org"
+              value={draft.organization_id}
+              onChange={(e) => setField("organization_id", e.target.value)}
+              disabled={loadingOrgs}
+              required
+            >
+              <option value="">Selecciona…</option>
+              {orgs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Unidad de negocio" htmlFor="bu" error={fieldErrors.business_unit} required>
+            <Input
+              id="bu"
+              value={draft.business_unit}
+              onChange={(e) => setField("business_unit", e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Departamento" htmlFor="dept" error={fieldErrors.department} required>
+            <Input
+              id="dept"
+              value={draft.department}
+              onChange={(e) => setField("department", e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label="Presupuesto (MXN)"
+            htmlFor="budget"
+            error={fieldErrors.budget}
+            required
+            help={draft.budget ? currency(draft.budget) : "Ej: 1250000.00"}
+          >
+            <Input
+              id="budget"
+              type="number"
+              min={0}
+              step="0.01"
+              inputMode="decimal"
+              value={draft.budget}
+              onChange={(e) => setField("budget", e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label="Descripción"
+            htmlFor="desc"
+            error={fieldErrors.description}
+            required
+            full
+          >
+            <Textarea
+              id="desc"
+              rows={3}
+              value={draft.description}
+              onChange={(e) => setField("description", e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label="Objetivo"
+            htmlFor="obj"
+            error={fieldErrors.objective}
+            required
+            full
+          >
+            <Textarea
+              id="obj"
+              rows={3}
+              value={draft.objective}
+              onChange={(e) => setField("objective", e.target.value)}
+              required
+            />
+          </Field>
+        </div>
+      ) : null}
+
+      {step === "scope" ? (
+        <div className="grid gap-4">
+          <Field label="Alcance" htmlFor="scope" error={fieldErrors.scope} required>
+            <Textarea
+              id="scope"
+              rows={5}
+              value={draft.scope}
+              onChange={(e) => setField("scope", e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label="Beneficios esperados"
+            htmlFor="benefits"
+            error={fieldErrors.benefits}
+            required
+          >
+            <Textarea
+              id="benefits"
+              rows={4}
+              value={draft.benefits}
+              onChange={(e) => setField("benefits", e.target.value)}
+              required
+            />
+          </Field>
+        </div>
+      ) : null}
+
+      {step === "attachments" ? (
+        <AttachmentsEditor
+          value={draft.attachments}
+          onChange={(next) => setField("attachments", next)}
+        />
+      ) : null}
+
+      {step === "review" ? (
+        <ReviewPane draft={draft} orgs={orgs} onEdit={(id) => setStep(id)} />
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)] pt-4">
+        <Button type="button" variant="ghost" onClick={() => router.push("/admin/requests")}>
+          Cancelar
+        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={step === "basics"}
+            onClick={goBack}
+          >
+            Atrás
+          </Button>
+          {step !== "review" ? (
+            <Button type="button" onClick={goNext}>
+              Siguiente
+            </Button>
+          ) : (
+            <Button type="submit" loading={saving} disabled={!canSubmit}>
+              Enviar solicitud
+            </Button>
+          )}
+        </div>
+      </div>
+    </form>
+  );
+}
+
+type FieldProps = {
+  label: string;
+  htmlFor: string;
+  error?: string;
+  children: React.ReactNode;
+  required?: boolean;
+  full?: boolean;
+  help?: string;
+};
+
+function Field({ label, htmlFor, error, children, required, full, help }: FieldProps) {
+  return (
+    <div className={cn(full ? "sm:col-span-2" : undefined)}>
+      <label
+        htmlFor={htmlFor}
+        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+      >
+        {label} {required ? <span className="text-[var(--color-danger-fg)]">*</span> : null}
+      </label>
+      {children}
+      {error ? (
+        <p className="mt-1 text-xs text-[var(--color-danger-fg)]">{error}</p>
+      ) : help ? (
+        <p className="mt-1 text-xs text-[var(--color-tertiary)]">{help}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function AttachmentsEditor({
+  value,
+  onChange,
+}: {
+  value: RequestAttachment[];
+  onChange: (next: RequestAttachment[]) => void;
+}) {
+  const [filename, setFilename] = useState("");
+  const [url, setUrl] = useState("");
+
+  function add() {
+    const trimmedName = filename.trim();
+    const trimmedUrl = url.trim();
+    if (!trimmedName || !trimmedUrl) return;
+    onChange([
+      ...value,
+      { filename: trimmedName, url: trimmedUrl, size: 0, mime: guessMime(trimmedName) },
+    ]);
+    setFilename("");
+    setUrl("");
+  }
+
+  function remove(idx: number) {
+    onChange(value.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[var(--color-tertiary)]">
+        Agrega enlaces a documentos de soporte (cotización, one-pager, etc.). Opcional.
+      </p>
+
+      {value.length > 0 ? (
+        <ul className="divide-y divide-[var(--border-subtle)] rounded-[var(--radius-md)] border border-[var(--border-default)]">
+          {value.map((a, i) => (
+            <li key={`${a.filename}-${i}`} className="flex items-center gap-3 px-3 py-2">
+              <FileText className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-[var(--color-primary)]">
+                  {a.filename}
+                </div>
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="truncate text-xs text-[var(--color-tertiary)] hover:underline"
+                >
+                  {a.url}
+                </a>
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => remove(i)}>
+                <Trash2 className="h-4 w-4" aria-hidden />
+                Quitar
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] px-4 py-6 text-center text-sm text-[var(--color-tertiary)]">
+          Sin adjuntos.
+        </p>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
+        <Input
+          placeholder="Nombre de archivo"
+          value={filename}
+          onChange={(e) => setFilename(e.target.value)}
+        />
+        <Input
+          placeholder="https://…"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={add}
+          disabled={!filename.trim() || !url.trim()}
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          Agregar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewPane({
+  draft,
+  orgs,
+  onEdit,
+}: {
+  draft: Draft;
+  orgs: Organization[];
+  onEdit: (step: StepId) => void;
+}) {
+  const orgName = orgs.find((o) => o.id === draft.organization_id)?.name ?? "—";
+  return (
+    <div className="space-y-4">
+      <Section title="Básicos" onEdit={() => onEdit("basics")}>
+        <Row k="Título" v={draft.title} />
+        <Row k="Sponsor" v={draft.sponsor} />
+        <Row k="Organización" v={orgName} />
+        <Row k="Unidad de negocio" v={draft.business_unit} />
+        <Row k="Departamento" v={draft.department} />
+        <Row k="Presupuesto" v={draft.budget ? currency(draft.budget) : "—"} />
+        <Row k="Descripción" v={draft.description} multiline />
+        <Row k="Objetivo" v={draft.objective} multiline />
+      </Section>
+      <Section title="Alcance" onEdit={() => onEdit("scope")}>
+        <Row k="Alcance" v={draft.scope} multiline />
+        <Row k="Beneficios" v={draft.benefits} multiline />
+      </Section>
+      <Section title="Adjuntos" onEdit={() => onEdit("attachments")}>
+        {draft.attachments.length ? (
+          <ul className="list-disc pl-4 text-sm text-[var(--color-secondary)]">
+            {draft.attachments.map((a, i) => (
+              <li key={i}>
+                {a.filename} —{" "}
+                <a href={a.url} className="hover:underline" target="_blank" rel="noreferrer noopener">
+                  {a.url}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-[var(--color-tertiary)]">Sin adjuntos.</p>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+  onEdit,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onEdit: () => void;
+}) {
+  return (
+    <section className="rounded-[var(--radius-md)] border border-[var(--border-default)]">
+      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-2">
+        <h3 className="text-sm font-semibold text-[var(--color-primary)]">{title}</h3>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="text-xs font-medium text-[var(--color-accent)] hover:underline"
+        >
+          Editar
+        </button>
+      </header>
+      <div className="space-y-2 px-4 py-3 text-sm">{children}</div>
+    </section>
+  );
+}
+
+function Row({ k, v, multiline }: { k: string; v: string; multiline?: boolean }) {
+  return (
+    <div className={cn("grid gap-1", multiline ? "" : "sm:grid-cols-[180px_1fr]")}>
+      <span className="text-xs uppercase tracking-wide text-[var(--color-tertiary)]">{k}</span>
+      <span
+        className={cn(
+          "text-[var(--color-primary)]",
+          multiline ? "whitespace-pre-wrap" : "truncate",
+        )}
+      >
+        {v || "—"}
+      </span>
+    </div>
+  );
+}
+
+function guessMime(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    pdf: "application/pdf",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+  };
+  return map[ext] ?? "application/octet-stream";
+}
+
+function validateAll(d: Draft): { ok: boolean; errors: Record<string, string> } {
+  const e: Record<string, string> = {};
+  const required: (keyof Draft)[] = [
+    "title",
+    "description",
+    "objective",
+    "organization_id",
+    "business_unit",
+    "department",
+    "sponsor",
+    "benefits",
+    "scope",
+  ];
+  for (const k of required) {
+    const v = d[k];
+    if (typeof v !== "string" || v.trim().length < 3) {
+      if (k === "organization_id") e[k] = "Selecciona una organización";
+      else e[k] = "Obligatorio (mínimo 3 caracteres)";
+    }
+  }
+  const budget = Number(d.budget);
+  if (!d.budget || !Number.isFinite(budget) || budget < 0) {
+    e.budget = "Presupuesto no válido";
+  }
+  return { ok: Object.keys(e).length === 0, errors: e };
+}
+
+function firstStepWithError(errs: Record<string, string>): StepId | null {
+  const byStep: Record<StepId, (keyof Draft)[]> = {
+    basics: [
+      "title",
+      "description",
+      "objective",
+      "organization_id",
+      "business_unit",
+      "department",
+      "sponsor",
+      "budget",
+    ],
+    scope: ["scope", "benefits"],
+    attachments: [],
+    review: [],
+  };
+  for (const s of STEPS) {
+    if (byStep[s.id].some((k) => errs[k as string])) return s.id;
+  }
+  return null;
+}
