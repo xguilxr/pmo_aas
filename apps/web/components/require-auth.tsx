@@ -29,6 +29,14 @@ export function RequireAuth({ children, allowMustChangePassword = false }: Props
     setReady(true);
   }, [router, allowMustChangePassword]);
 
+  useEffect(() => {
+    function handleUnauthorized() {
+      router.replace("/login");
+    }
+    window.addEventListener("pmoaas:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("pmoaas:unauthorized", handleUnauthorized);
+  }, [router]);
+
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center">

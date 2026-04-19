@@ -79,6 +79,9 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestOptions =
   if (!res.ok) {
     if (res.status === 401 && auth) {
       clearAccessToken();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("pmoaas:unauthorized"));
+      }
     }
     const envelope = extractErrorEnvelope(data, res.status);
     throw new ApiError(res.status, envelope.code, envelope.detail, envelope.fields);

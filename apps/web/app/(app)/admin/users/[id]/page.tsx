@@ -1,0 +1,503 @@
+"use client";
+
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  ArrowLeft,
+  Copy,
+  KeyRound,
+  Lock,
+  ShieldOff,
+  UserX,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { ApiError } from "@/lib/api";
+import {
+  deleteUser,
+  getUser,
+  listRoles,
+  resetUserPassword,
+  unlockUser,
+  updateUser,
+  type AdminRole,
+  type AdminUser,
+} from "@/lib/api/admin";
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "Nunca";
+  try {
+    return new Date(iso).toLocaleString("es-MX", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+type Notice =
+  | { kind: "success"; message: string }
+  | { kind: "danger"; message: string }
+  | null;
+
+function UserDetail() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const userId = params.id;
+
+  const [user, setUser] = useState<AdminUser | null>(null);
+  const [roles, setRoles] = useState<AdminRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [roleIds, setRoleIds] = useState<string[]>([]);
+
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<Notice>(
+    searchParams.get("created") === "1"
+      ? { kind: "success", message: "Usuario creado correctamente" }
+      : null,
+  );
+
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetTemp, setResetTemp] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([getUser(userId), listRoles()])
+      .then(([u, r]) => {
+        if (cancelled) return;
+        setUser(u);
+        setRoles(r);
+        setFullName(u.full_name);
+        setEmail(u.email);
+        setIsActive(u.is_active);
+        const ids = r.filter((role) => u.roles.includes(role.name)).map((role) => role.id);
+        setRoleIds(ids);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err instanceof ApiError ? err.message : "No se pudo cargar el usuario");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const emailValid = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), [email]);
+  const dirty = useMemo(() => {
+    if (!user) return false;
+    if (fullName.trim() !== user.full_name) return true;
+    if (email.trim().toLowerCase() !== user.email.toLowerCase()) return true;
+    if (isActive !== user.is_active) return true;
+    const currentIds = roles.filter((r) => user.roles.includes(r.name)).map((r) => r.id).sort();
+    const nextIds = [...roleIds].sort();
+    if (currentIds.length !== nextIds.length) return true;
+    return currentIds.some((id, i) => id !== nextIds[i]);
+  }, [user, roles, fullName, email, isActive, roleIds]);
+
+  function toggleRole(id: string, checked: boolean) {
+    setRoleIds((prev) => (checked ? [...prev, id] : prev.filter((r) => r !== id)));
+  }
+
+  async function handleSave(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!user || !dirty || !emailValid || fullName.trim().length < 2) return;
+    setSaving(true);
+    setNotice(null);
+    try {
+      const updated = await updateUser(user.id, {
+        full_name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        is_active: isActive,
+        role_ids: roleIds,
+      });
+      setUser(updated);
+      setIsActive(updated.is_active);
+      setNotice({ kind: "success", message: "Cambios guardados" });
+    } catch (err) {
+      setNotice({
+        kind: "danger",
+        message: err instanceof ApiError ? err.message : "No se pudieron guardar los cambios",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!user) return;
+    setResetting(true);
+    try {
+      const res = await resetUserPassword(user.id);
+      setResetTemp(res.temp_password);
+      setUser({ ...user, must_change_password: true });
+    } catch (err) {
+      setResetOpen(false);
+      setNotice({
+        kind: "danger",
+        message:
+          err instanceof ApiError ? err.message : "No se pudo resetear la contraseña",
+      });
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  async function handleUnlock() {
+    if (!user) return;
+    setUnlocking(true);
+    setNotice(null);
+    try {
+      await unlockUser(user.id);
+      setNotice({ kind: "success", message: "Cuenta desbloqueada" });
+    } catch (err) {
+      setNotice({
+        kind: "danger",
+        message: err instanceof ApiError ? err.message : "No se pudo desbloquear la cuenta",
+      });
+    } finally {
+      setUnlocking(false);
+    }
+  }
+
+  async function handleDeactivate() {
+    if (!user) return;
+    setDeactivating(true);
+    setNotice(null);
+    try {
+      await deleteUser(user.id);
+      router.replace("/admin/users");
+    } catch (err) {
+      setConfirmDelete(false);
+      setNotice({
+        kind: "danger",
+        message: err instanceof ApiError ? err.message : "No se pudo desactivar el usuario",
+      });
+      setDeactivating(false);
+    }
+  }
+
+  function copyTempPassword() {
+    if (!resetTemp) return;
+    void navigator.clipboard?.writeText(resetTemp);
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Link
+          href="/admin/users"
+          className="inline-flex items-center gap-1 text-sm text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Volver a usuarios
+        </Link>
+        <Banner variant="danger">{loadError}</Banner>
+      </div>
+    );
+  }
+
+  if (loading || !user) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div>
+        <Link
+          href="/admin/users"
+          className="inline-flex items-center gap-1 text-sm text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Volver a usuarios
+        </Link>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">{user.full_name}</h1>
+            <p className="text-sm text-[var(--color-tertiary)]">
+              {user.username} · {user.email}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {user.is_active ? (
+              <Badge variant="success">Activo</Badge>
+            ) : (
+              <Badge variant="danger">Inactivo</Badge>
+            )}
+            {user.must_change_password ? <Badge variant="warning">Cambio pendiente</Badge> : null}
+            <Badge>Último ingreso: {formatDate(user.last_login)}</Badge>
+          </div>
+        </div>
+      </div>
+
+      {notice ? (
+        <Banner variant={notice.kind === "success" ? "success" : "danger"}>
+          {notice.message}
+        </Banner>
+      ) : null}
+
+      <form
+        onSubmit={handleSave}
+        noValidate
+        className="space-y-5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="full_name" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+              Nombre completo
+            </label>
+            <Input
+              id="full_name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              disabled={saving}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+              Correo
+            </label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={saving}
+              invalid={email.length > 0 && !emailValid}
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">Roles</p>
+          {roles.length === 0 ? (
+            <p className="text-xs text-[var(--color-tertiary)]">
+              No hay roles disponibles. Crea uno en{" "}
+              <Link href="/admin/roles" className="underline">
+                Roles
+              </Link>
+              .
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {roles.map((r) => {
+                const checked = roleIds.includes(r.id);
+                return (
+                  <label
+                    key={r.id}
+                    className="flex cursor-pointer items-start gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] p-3 hover:bg-[var(--color-subtle)]"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onChange={(e) => toggleRole(r.id, e.target.checked)}
+                      disabled={saving}
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-[var(--color-primary)]">
+                        {r.name}
+                      </div>
+                      {r.description ? (
+                        <div className="text-xs text-[var(--color-tertiary)]">{r.description}</div>
+                      ) : null}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <Switch
+          id="is_active"
+          checked={isActive}
+          onChange={setIsActive}
+          disabled={saving}
+          label="Cuenta activa"
+        />
+
+        <div className="flex justify-end gap-2 border-t border-[var(--border-default)] pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={saving || !dirty}
+            onClick={() => {
+              setFullName(user.full_name);
+              setEmail(user.email);
+              setIsActive(user.is_active);
+              setRoleIds(roles.filter((r) => user.roles.includes(r.name)).map((r) => r.id));
+            }}
+          >
+            Descartar
+          </Button>
+          <Button type="submit" loading={saving} disabled={!dirty || !emailValid}>
+            Guardar cambios
+          </Button>
+        </div>
+      </form>
+
+      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+        <header>
+          <h2 className="text-base font-semibold text-[var(--color-primary)]">Acciones</h2>
+          <p className="text-xs text-[var(--color-tertiary)]">
+            Resetear, desbloquear o desactivar esta cuenta.
+          </p>
+        </header>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setResetTemp(null);
+              setResetOpen(true);
+            }}
+          >
+            <KeyRound className="h-4 w-4" aria-hidden />
+            Resetear contraseña
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleUnlock}
+            loading={unlocking}
+          >
+            <Lock className="h-4 w-4" aria-hidden />
+            Desbloquear
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => setConfirmDelete(true)}
+            disabled={!user.is_active}
+          >
+            {user.is_active ? (
+              <>
+                <UserX className="h-4 w-4" aria-hidden />
+                Desactivar
+              </>
+            ) : (
+              <>
+                <ShieldOff className="h-4 w-4" aria-hidden />
+                Inactivo
+              </>
+            )}
+          </Button>
+        </div>
+      </section>
+
+      <Modal
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        title={resetTemp ? "Contraseña temporal" : "Resetear contraseña"}
+        description={
+          resetTemp
+            ? "Cópiala ahora. No se volverá a mostrar."
+            : "Se generará una contraseña temporal y se forzará el cambio en el próximo ingreso."
+        }
+        footer={
+          resetTemp ? (
+            <Button onClick={() => setResetOpen(false)}>Cerrar</Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => setResetOpen(false)} disabled={resetting}>
+                Cancelar
+              </Button>
+              <Button onClick={handleResetPassword} loading={resetting}>
+                Generar
+              </Button>
+            </>
+          )
+        }
+      >
+        {resetTemp ? (
+          <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-subtle)] p-3">
+            <code className="flex-1 break-all font-mono text-sm">{resetTemp}</code>
+            <button
+              type="button"
+              onClick={copyTempPassword}
+              aria-label="Copiar"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-secondary)] hover:bg-[var(--color-muted)]"
+            >
+              <Copy className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--color-secondary)]">
+            ¿Confirmas resetear la contraseña de <strong>{user.full_name}</strong>?
+          </p>
+        )}
+      </Modal>
+
+      <Modal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Desactivar usuario"
+        description="La cuenta queda inactiva (soft delete). Se puede reactivar editando el switch."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deactivating}
+            >
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleDeactivate} loading={deactivating}>
+              Desactivar
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--color-secondary)]">
+          ¿Confirmas desactivar a <strong>{user.full_name}</strong>?
+        </p>
+      </Modal>
+    </div>
+  );
+}
+
+export default function UserDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-2xl space-y-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      }
+    >
+      <UserDetail />
+    </Suspense>
+  );
+}

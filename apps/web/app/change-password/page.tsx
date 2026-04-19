@@ -10,6 +10,7 @@ import { RequireAuth } from "@/components/require-auth";
 import { ApiError } from "@/lib/api";
 import { clearSession, getStoredUser } from "@/lib/auth-storage";
 import { changePassword } from "@/lib/auth";
+import { checkPasswordPolicy } from "@/lib/password";
 
 const POLICY_ERRORS: Record<string, string> = {
   password_too_short: "Debe tener al menos 12 caracteres",
@@ -17,18 +18,6 @@ const POLICY_ERRORS: Record<string, string> = {
   password_missing_digit: "Debe incluir al menos un dígito",
   password_missing_symbol: "Debe incluir al menos un símbolo",
 };
-
-type PolicyCheck = { label: string; ok: boolean };
-
-function checkPolicy(pwd: string): PolicyCheck[] {
-  const symbols = /[!@#$%^&*()\-_=+[\]{};:,.<>/?|`~'"\\]/;
-  return [
-    { label: "Al menos 12 caracteres", ok: pwd.length >= 12 },
-    { label: "Una letra mayúscula", ok: /[A-Z]/.test(pwd) },
-    { label: "Un dígito", ok: /\d/.test(pwd) },
-    { label: "Un símbolo", ok: symbols.test(pwd) },
-  ];
-}
 
 function ChangePasswordForm() {
   const router = useRouter();
@@ -40,7 +29,7 @@ function ChangePasswordForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const checks = useMemo(() => checkPolicy(next), [next]);
+  const checks = useMemo(() => checkPasswordPolicy(next), [next]);
   const policyOk = checks.every((c) => c.ok);
   const matches = next.length > 0 && next === confirm;
   const canSubmit = current.length > 0 && policyOk && matches && next !== current;
