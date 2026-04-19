@@ -1,0 +1,83 @@
+import { apiFetch } from "@/lib/api";
+
+export type Tenant = {
+  id: string;
+  slug: string;
+  name: string;
+  is_active: boolean;
+  user_count: number;
+  project_count: number;
+};
+
+export type TenantProvisionBody = {
+  name: string;
+  slug: string;
+  admin_email: string;
+  admin_full_name: string;
+  admin_username?: string | null;
+  admin_password?: string | null;
+};
+
+export type TenantProvisionResponse = {
+  tenant_id: string;
+  slug: string;
+  admin_user_id: string;
+  admin_password: string;
+};
+
+export type TenantDetail = {
+  tenant: { id: string; slug: string; name: string; is_active: boolean };
+  users: { id: string; username: string; email: string; is_active: boolean }[];
+  organizations: { id: string; name: string; is_active: boolean }[];
+  programs: { id: string; name: string; organization_id: string }[];
+};
+
+export type JoinAsAdminResponse = {
+  access_token: string;
+  active_tenant_id: string;
+  tenant_slug: string;
+};
+
+function qs(params: Record<string, unknown>): string {
+  const usp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    usp.set(k, String(v));
+  }
+  const s = usp.toString();
+  return s ? `?${s}` : "";
+}
+
+export function provisionTenant(body: TenantProvisionBody): Promise<TenantProvisionResponse> {
+  return apiFetch<TenantProvisionResponse>("/api/v1/superadmin/provision", {
+    method: "POST",
+    body,
+  });
+}
+
+export function listTenants(includeInactive = false): Promise<Tenant[]> {
+  return apiFetch<Tenant[]>(
+    `/api/v1/superadmin/tenants${qs({ include_inactive: includeInactive || undefined })}`,
+  );
+}
+
+export function getTenantDetail(id: string): Promise<TenantDetail> {
+  return apiFetch<TenantDetail>(`/api/v1/superadmin/tenants/${id}/detail`);
+}
+
+export function softDeleteTenant(id: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/superadmin/tenants/${id}`, { method: "DELETE" });
+}
+
+export function hardDeleteTenant(id: string, confirmSlug: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/superadmin/tenants/${id}/permanent${qs({ confirm_slug: confirmSlug })}`,
+    { method: "DELETE" },
+  );
+}
+
+export function joinAsAdmin(id: string): Promise<JoinAsAdminResponse> {
+  return apiFetch<JoinAsAdminResponse>(`/api/v1/superadmin/tenants/${id}/join-as-admin`, {
+    method: "POST",
+  });
+}

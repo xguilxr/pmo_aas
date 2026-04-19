@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import {
+  Building2,
   LayoutDashboard,
   LogOut,
   Menu,
+  ServerCog,
   ShieldCheck,
   Users,
   X,
@@ -32,6 +34,12 @@ const NAV: NavItem[] = [
     match: (p) => p === "/dashboard",
   },
   {
+    href: "/admin/organizations",
+    label: "Organizaciones",
+    icon: <Building2 className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/admin/organizations"),
+  },
+  {
     href: "/admin/users",
     label: "Usuarios",
     icon: <Users className="h-4 w-4" aria-hidden />,
@@ -42,6 +50,15 @@ const NAV: NavItem[] = [
     label: "Roles y permisos",
     icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
     match: (p) => p.startsWith("/admin/roles"),
+  },
+];
+
+const SUPERADMIN_NAV: NavItem[] = [
+  {
+    href: "/superadmin/tenants",
+    label: "Tenants",
+    icon: <ServerCog className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/superadmin/tenants"),
   },
 ];
 
@@ -88,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        <nav className="flex-1 px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">
             {NAV.map((item) => {
               const active = item.match(pathname);
@@ -111,6 +128,35 @@ export function AppShell({ children }: { children: ReactNode }) {
               );
             })}
           </ul>
+          {user?.is_superadmin ? (
+            <>
+              <div className="mt-5 px-3 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-tertiary)]">
+                Super Admin
+              </div>
+              <ul className="mt-1 space-y-1">
+                {SUPERADMIN_NAV.map((item) => {
+                  const active = item.match(pathname);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors",
+                          active
+                            ? "bg-[var(--color-subtle)] text-[var(--color-primary)] font-medium"
+                            : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]",
+                        )}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : null}
         </nav>
         <div className="border-t border-[var(--border-default)] px-3 py-3">
           <div className="px-2 pb-2">
