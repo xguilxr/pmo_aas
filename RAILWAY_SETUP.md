@@ -108,15 +108,31 @@ Railway expone automáticamente las variables `DATABASE_URL` y `REDIS_URL` inter
 
 En cada deploy el `api` corre `alembic upgrade head` como parte del `startCommand`
 (antes de levantar uvicorn), así que la DB siempre queda en sync con el código.
-Si `SEED_ON_STARTUP=true` el `api` además creará:
+Si `SEED_ON_STARTUP=true` el `api` además creará en el primer arranque:
 
-- Tenant demo `acme`
-- Super admin global con password temporal (visible solo en logs del primer arranque)
-- Roles de sistema (`Administrador`, `PMO Manager`, `Project Manager`, `Viewer`)
+- **Tenant `acme`** (Acme PMO Demo, MXN) con 4 roles sistema y un admin inicial.
+- **Tenant `globex`** (Globex Industries, USD) con 4 roles sistema y un admin inicial.
+- **Super admin global** (platform-wide, sin tenant).
 
-**Dónde ver el password del superadmin la primera vez:**
-Servicio `api` → pestaña **Deploy Logs** → busca la línea `[seed] superadmin created: email=...  temp_password=...`
-Copia el password, haz login y cámbialo. Luego pon `SEED_ON_STARTUP=false`.
+Cada usuario se crea con `must_change_password=true` y una contraseña temporal
+aleatoria que aparece **una sola vez** en los logs del primer deploy.
+
+**Dónde ver las credenciales del primer arranque:**
+Servicio `api` → pestaña **Deploy Logs** → busca el banner:
+
+```
+========================================================================
+[seed] CREDENCIALES INICIALES — cópialas AHORA, no se vuelven a mostrar
+========================================================================
+  admin tenant=acme        email=admin@acme.pmoaas.local    temp_password=...
+  admin tenant=globex      email=admin@globex.pmoaas.local  temp_password=...
+  superadmin global        email=superadmin@pmoaas.local    temp_password=...
+========================================================================
+```
+
+Copia los 3 passwords, haz login con cada uno y cámbialos. Luego pon
+`SEED_ON_STARTUP=false` y redeploy (si el seed vuelve a correr, detecta que
+los users ya existen y no hace nada).
 
 ---
 
