@@ -7,7 +7,14 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-040 — Formato estandarizado + export de Minuta IA
+— Sin US activa —
+
+Bloque 10 (EP014 — issue #18) completo: 4 US implementadas
+(US-NEW-037..040). Infra PDF + Avance + Seguimiento + Minuta export.
+
+Siguientes en orden:
+  Bloque 11 — EP011 Notificaciones (POST-MVP)
+  Bloque 12 — EP012 Instalación productivo Hostgator MySQL
 ```
 
 ---
@@ -16,9 +23,9 @@ US-NEW-040 — Formato estandarizado + export de Minuta IA
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-040 | EP014 | Formato estandarizado + export de Minuta IA | Bloque 10 |
-| 2 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 11 |
-| 3 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 11 |
+| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 11 |
+| 2 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 11 |
+| 3 | US-NEW-029 | EP012 | Compatibilidad MySQL del código (dialect-agnostic) | Bloque 12 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -65,6 +72,7 @@ US-NEW-040 — Formato estandarizado + export de Minuta IA
 | US-NEW-037 | Infra compartida de exportación a PDF (WeasyPrint) | `feat(api): US-NEW-037 — infra de exportación a PDF con WeasyPrint + Jinja2` | 2026-04-20 |
 | US-NEW-038 | Reporte de Avance de Proyecto (Python, BD, PDF) | `feat(api,web): US-NEW-038 — reporte de avance ejecutable sin IA` | 2026-04-20 |
 | US-NEW-039 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | `feat(api,web): US-NEW-039 — reporte de seguimiento por responsable` | 2026-04-20 |
+| US-NEW-040 | Formato estandarizado + export de Minuta IA (.pdf/.docx/.md/.txt) | `feat(api,web): US-NEW-040 — export estandarizado de minuta` | 2026-04-20 |
 
 ---
 
@@ -129,7 +137,7 @@ US-NEW-040 — Formato estandarizado + export de Minuta IA
 - [x] US-NEW-037 — Infra compartida de exportación a PDF (WeasyPrint) ✅
 - [x] US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF) ✅
 - [x] US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF) ✅
-- [ ] US-NEW-040 — Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA
+- [x] US-NEW-040 — Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA ✅
 
 ### Bloque 11 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center

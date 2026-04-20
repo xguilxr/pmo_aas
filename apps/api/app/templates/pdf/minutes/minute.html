@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ title }}</h1>
+
+<h2>Datos de la sesión</h2>
+<dl class="kv small">
+  <dt>Sesión</dt><dd>{{ session_number or "—" }}</dd>
+  <dt>Fecha</dt><dd>{{ meeting_date or "—" }}</dd>
+  <dt>Duración</dt><dd>{{ duration or "—" }}</dd>
+  <dt>Proyecto</dt><dd>{{ project_name or "—" }} {% if project_folio %}<span class="muted">({{ project_folio }})</span>{% endif %}</dd>
+</dl>
+
+<h3>Participantes</h3>
+{% if participants %}
+<ul class="small">
+  {% for p in participants %}
+    <li>{{ p.name }}{% if p.role %} <span class="muted">({{ p.role }})</span>{% endif %}</li>
+  {% endfor %}
+</ul>
+{% else %}<p class="empty">Sin participantes registrados.</p>{% endif %}
+
+<h2>Resumen e Hitos</h2>
+{% if summary_topics %}
+<ol>
+  {% for t in summary_topics %}
+    <li>
+      <strong>{{ t.topic }}</strong>
+      {% if t.notes %}<div class="small muted">{{ t.notes }}</div>{% endif %}
+    </li>
+  {% endfor %}
+</ol>
+{% else %}<p class="empty">Sin resumen capturado.</p>{% endif %}
+
+<h2>RAID</h2>
+
+{% if risks %}
+<h3>Riesgos</h3>
+<table>
+  <thead><tr><th>Descripción</th><th>Responsable</th><th class="right">Severidad</th></tr></thead>
+  <tbody>
+    {% for r in risks %}
+      <tr><td>{{ r.description }}</td><td>{{ r.owner }}</td><td class="nums right">{{ r.severity or "—" }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if raid_groups %}
+<h3>Acciones — agrupadas por responsable / área</h3>
+{% for g in raid_groups %}
+  <h4 style="margin:.8em 0 .2em; font-size:10pt;">{{ g.owner }}</h4>
+  <table>
+    <thead><tr><th>Descripción</th><th class="right">Compromiso</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for row in g.rows %}
+        <tr><td>{{ row.description }}</td><td class="small right">{{ row.due_date or "—" }}</td><td class="small">{{ row.status }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endfor %}
+{% endif %}
+
+{% if issues %}
+<h3>Incidentes</h3>
+<table>
+  <thead><tr><th>Descripción</th><th>Responsable</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for i in issues %}
+      <tr><td>{{ i.description }}</td><td>{{ i.owner }}</td><td class="small">{{ i.status }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if decisions %}
+<h3>Decisiones</h3>
+<table>
+  <thead><tr><th>Descripción</th><th>Responsable</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for d in decisions %}
+      <tr><td>{{ d.description }}</td><td>{{ d.owner }}</td><td class="small">{{ d.status }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if not risks and not raid_groups and not issues and not decisions %}
+<p class="empty">Sin elementos RAID registrados.</p>
+{% endif %}
+
+<h2>Notas adicionales</h2>
+<p>{{ additional_notes or "—" }}</p>
+
+{% endblock %}

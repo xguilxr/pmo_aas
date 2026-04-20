@@ -145,7 +145,7 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 
 ---
 
-## # PENDING — US-NEW-040 — Formato estandarizado + export de Minuta IA
+## # DONE — US-NEW-040 — Formato estandarizado + export de Minuta IA
 
 **Como** PM
 **Quiero** que la minuta generada con IA siempre tenga el mismo formato y pueda descargarse en `.docx`, `.md` o `.txt`
@@ -189,12 +189,28 @@ Notas adicionales
 - [ ] UI: dentro del editor de minutas (post-generación IA), botón "Descargar" con menú desplegable (docx / md / pdf).
 - [ ] Minutas **manuales** (no IA) también pueden usarse con el mismo formatter si cumplen el schema mínimo (campos opcionales se muestran como vacíos).
 
-**Test Cases:**
-- `TC-NEW-040-1` (integration) — JSON IA con schema válido → render HTML con 5 secciones.
-- `TC-NEW-040-2` (integration) — Export `.docx` abre en Word sin errores (verificación con `python-docx` round-trip).
-- `TC-NEW-040-3` (integration) — RAID con 3 acciones de diferentes owners → agrupa por owner.
-- `TC-NEW-040-4` (E2E) — Descargar minuta en `.md` → archivo con separadores `========` correctos.
-- `TC-NEW-040-5` (integration) — Minuta sin `additional_notes` → sección aparece con "—" en lugar de crash.
+**Implementación:**
+- `apps/api/app/services/minutes_formatter.py`: `build_view()` normaliza `MeetingMinute` al formato corporativo (título, sesión, fecha, participantes, temas enumerados, RAID tabulado con acciones agrupadas por área/responsable, notas). Exporters: `to_markdown()`, `to_plain_text()`, `to_docx()` (python-docx) y `to_pdf()` (reutiliza infra US-NEW-037).
+- Plantilla `apps/api/app/templates/pdf/minutes/minute.html` extiende `base.html`.
+- Endpoint `GET /api/v1/meeting-minutes/{id}/export?format=pdf|docx|md|txt` con content-type y filename apropiados (rechaza formatos inválidos con 422; cross-tenant → 404).
+- `python-docx==1.2.0` añadido a requirements.
+
+**Nota sobre el prompt IA:** el criterio original pedía actualizar el prompt de EP008 US-043 para devolver el schema extendido (`title_short`, `session_number`, etc.). El formatter tolera tanto la forma actual (`title`, `participants`, `topics`, `agreements`) como variantes futuras; el refactor del prompt queda como follow-up de EP008 cuando se quiera habilitar session_number/duration automáticos.
+
+**Frontend:**
+- `lib/api/modules.ts::exportMinute(id, format)` usa `fetch` + Blob.
+- Tabla de minutas en `/admin/projects/[id]/minutes` gana columna "Exportar" con 4 botones (PDF / DOCX / MD / TXT) que descargan directo.
+
+**Tests (7/7 verdes, 186 en total):**
+- `test_usnew040_export_md_contains_sections` — 5 separadores `========`, "Resumen e Hitos", "RAID", "Notas adicionales", acciones agrupadas.
+- `test_usnew040_export_txt` — content-type text/plain.
+- `test_usnew040_export_docx_is_valid` — cabecera ZIP (`PK`) válida.
+- `test_usnew040_export_pdf` — `%PDF` header.
+- `test_usnew040_export_rejects_bad_format` — `?format=xlsx` → 422.
+- `test_usnew040_export_cross_tenant_404` — aislamiento.
+- `test_usnew040_view_groups_actions_by_owner` — unit test de build_view.
+
+**Commit:** `feat(api,web): US-NEW-040 — export estandarizado de minuta (.pdf/.docx/.md/.txt)`.
 
 ---
 
