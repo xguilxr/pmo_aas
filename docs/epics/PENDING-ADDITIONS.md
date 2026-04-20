@@ -124,7 +124,15 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-011 — Project Charter: tabla + generación al aprobar
+### # INTEGRATED — US-NEW-012 — Project Charter: tabla + generación al aprobar
+
+**Estado de integración:** INTEGRATED en EP003 (US-NEW-012, ver archivo
+  del epic para detalles y tests). PDF nativo queda como follow-up;
+  endpoint devuelve HTML imprimible on-demand.
+
+---
+
+### # ORIGINAL — US-NEW-011 (referencia histórica) — Project Charter: tabla + generación al aprobar
 
 **Como** PMO Manager
 **Quiero** que al aprobar una solicitud se genere automáticamente un Project Charter

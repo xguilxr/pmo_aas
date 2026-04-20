@@ -330,3 +330,161 @@ async def test_usnew011_bu_dept_fk_happy_path(client, db_session):
     data = r.json()
     assert data["business_unit_id"] == bu["id"]
     assert data["department_id"] == dept["id"]
+
+
+# ============================================================================
+# US-NEW-012 — Project Charter
+# ============================================================================
+
+
+async def _approve_and_create_project(client, auth, org_id, *, req_overrides=None):
+    """Helper: crea solicitud → aprueba → crea proyecto → retorna payload."""
+    body = _request_body(org_id, **(req_overrides or {}))
+    r = await client.post("/api/v1/project-requests", json=body, headers=auth["_authz"])
+    assert r.status_code == 201, r.text
+    req_id = r.json()["id"]
+    a = await client.post(
+        f"/api/v1/project-requests/{req_id}/review",
+        json={"decision": "approve"},
+        headers=auth["_authz"],
+    )
+    assert a.status_code == 200
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    pm_id = me.json()["id"]
+    cp = await client.post(
+        f"/api/v1/project-requests/{req_id}/create-project",
+        json={"pm_id": pm_id},
+        headers=auth["_authz"],
+    )
+    assert cp.status_code == 200, cp.text
+    return cp.json()
+
+
+# TC-NEW-019: aprobar solicitud → charter creado con datos correctos
+@pytest.mark.asyncio
+async def test_tcnew019_charter_auto_generated(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    result = await _approve_and_create_project(
+        client, auth, org_id,
+        req_overrides={
+            "key_people": "Juan, María",
+            "objective": "Implementar X",
+            "scope": "Alcance detallado",
+            "benefits": "Beneficios detallados",
+        },
+    )
+    assert "charter_id" in result
+
+    r = await client.get(
+        f"/api/v1/projects/{result['project_id']}/charter", headers=auth["_authz"]
+    )
+    assert r.status_code == 200, r.text
+    ch = r.json()
+    assert ch["sponsor"] == "CMO"
+    assert ch["sponsor_email"] == "cmo@acme.example.com"
+    assert ch["objective"] == "Implementar X"
+    assert ch["scope"] == "Alcance detallado"
+    assert ch["benefits"] == "Beneficios detallados"
+    assert ch["key_people"] == "Juan, María"
+    # Líderes vacíos para completar después
+    assert ch["business_leader"] is None
+    assert ch["tech_leader"] is None
+
+
+# TC-NEW-020: sección 4 refleja datos del proyecto
+@pytest.mark.asyncio
+async def test_tcnew020_section4_derived_from_project(client, db_session):
+    from datetime import date
+    from app.models.project import Project
+    from sqlalchemy import select
+
+    _, auth, org_id = await _setup(client, db_session)
+    result = await _approve_and_create_project(client, auth, org_id)
+    pid = result["project_id"]
+
+    # Mutar proyecto directo en BD y verificar que sección 4 refleja
+    project = (
+        await db_session.execute(select(Project).where(Project.id == pid))
+    ).scalar_one()
+    project.phase = "execution"
+    project.health_status = "yellow"
+    project.progress = 42
+    project.start_date = date(2026, 5, 1)
+    await db_session.commit()
+
+    r = await client.get(f"/api/v1/projects/{pid}/charter", headers=auth["_authz"])
+    s4 = r.json()["section_4"]
+    assert s4["phase"] == "execution"
+    assert s4["health_status"] == "yellow"
+    assert s4["progress"] == 42
+    assert s4["start_date"] == "2026-05-01"
+
+
+# TC-NEW-021: PDF (HTML imprimible) on-demand
+@pytest.mark.asyncio
+async def test_tcnew021_charter_pdf_printable(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    result = await _approve_and_create_project(client, auth, org_id)
+    r = await client.get(
+        f"/api/v1/projects/{result['project_id']}/charter/pdf",
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    body = r.text
+    assert "Project Charter" in body
+    assert "Información general" in body
+    assert "Stakeholders" in body
+    assert "Gestión" in body
+
+
+# PATCH charter: edita secciones 1-3
+@pytest.mark.asyncio
+async def test_charter_patch_edits_sections_1_to_3(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    result = await _approve_and_create_project(client, auth, org_id)
+    pid = result["project_id"]
+
+    r = await client.patch(
+        f"/api/v1/projects/{pid}/charter",
+        json={
+            "business_leader": "Ana García",
+            "business_leader_email": "ana@acme.example.com",
+            "tech_leader": "Luis Ruiz",
+            "tech_leader_email": "luis@acme.example.com",
+            "project_type": "innovation",
+            "priority": 2,
+            "restrictions": "Plazo 6 meses",
+            "risks_summary": "Top 3 riesgos",
+        },
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["business_leader"] == "Ana García"
+    assert data["business_leader_email"] == "ana@acme.example.com"
+    assert data["project_type"] == "innovation"
+    assert data["priority"] == 2
+    assert data["restrictions"] == "Plazo 6 meses"
+
+
+# Charter no existe → 404 para proyectos creados antes de US-NEW-012
+@pytest.mark.asyncio
+async def test_charter_404_when_missing(client, db_session):
+    from app.db.base import new_uuid
+    from app.models.project import Project
+
+    t, auth, org_id = await _setup(client, db_session)
+    orphan = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PRJ-ORPH",
+        name="Sin charter",
+        phase="planning",
+    )
+    db_session.add(orphan)
+    await db_session.commit()
+
+    r = await client.get(f"/api/v1/projects/{orphan.id}/charter", headers=auth["_authz"])
+    assert r.status_code == 404

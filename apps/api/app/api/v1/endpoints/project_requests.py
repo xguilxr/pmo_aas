@@ -270,6 +270,7 @@ async def create_project_from_request(
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.project import Project  # import diferido
+    from app.models.project_charter import ProjectCharter
 
     tenant_id = _tenant(cu)
     pr = (
@@ -292,6 +293,8 @@ async def create_project_from_request(
     project = Project(
         tenant_id=tenant_id,
         organization_id=pr.organization_id,
+        business_unit_id=pr.business_unit_id,
+        department_id=pr.department_id,
         folio=folio,
         name=pr.title,
         description=pr.description,
@@ -304,10 +307,47 @@ async def create_project_from_request(
     db.add(project)
     await db.flush()
     pr.project_id = project.id
+
+    # Auto-crear Charter pre-llenado desde solicitud (US-NEW-012).
+    # Líder de negocio y líder técnico quedan en blanco para completar.
+    charter = ProjectCharter(
+        tenant_id=tenant_id,
+        project_id=project.id,
+        request_id=pr.id,
+        project_name=project.name,
+        description=pr.description,
+        organization_id=pr.organization_id,
+        business_unit_id=pr.business_unit_id,
+        department_id=pr.department_id,
+        sponsor=pr.sponsor,
+        sponsor_email=pr.sponsor_email,
+        pm_id=str(body.pm_id),
+        project_type=None,
+        priority=None,
+        objective=pr.objective,
+        scope=pr.scope,
+        key_people=pr.key_people,
+        benefits=pr.benefits,
+        restrictions=None,
+        risks_summary=None,
+        created_by=cu.id,
+    )
+    db.add(charter)
+    await db.flush()
+
     await write_audit(
         db, action="project.created_from_request", module="projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(project.id),
-        details={"request_id": str(pr.id), "folio": folio},
+        details={
+            "request_id": str(pr.id),
+            "folio": folio,
+            "charter_id": str(charter.id),
+        },
     )
     await db.commit()
-    return {"project_id": str(project.id), "folio": folio, "idempotent": False}
+    return {
+        "project_id": str(project.id),
+        "folio": folio,
+        "charter_id": str(charter.id),
+        "idempotent": False,
+    }

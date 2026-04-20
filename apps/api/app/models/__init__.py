@@ -17,6 +17,7 @@ from app.models.organization import (  # noqa: F401
     Program,
 )
 from app.models.project import Project  # noqa: F401
+from app.models.project_charter import ProjectCharter  # noqa: F401
 from app.models.project_member import ProjectMember  # noqa: F401
 from app.models.project_request import FolioSequence, ProjectRequest  # noqa: F401
 from app.models.role import Role, UserRole  # noqa: F401
