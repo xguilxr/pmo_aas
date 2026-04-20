@@ -6,11 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowRightLeft,
+  BarChart3,
   CircleDollarSign,
   ClipboardList,
   FileText,
   GitPullRequest,
   Lightbulb,
+  ListTree,
   MessageSquare,
   Pencil,
   Shield,
@@ -65,6 +67,8 @@ const MODULE_TOOLBAR: { key: keyof ProjectDetail["module_counts"] | string; labe
   { key: "documents", label: "Documentos", href: (id) => `/admin/projects/${id}/documents`, icon: <FileText className="h-4 w-4" aria-hidden /> },
   { key: "lessons", label: "Lecciones", href: (id) => `/admin/projects/${id}/lessons`, icon: <Lightbulb className="h-4 w-4" aria-hidden /> },
   { key: "minutes", label: "Minutas", href: (id) => `/admin/projects/${id}/minutes`, icon: <MessageSquare className="h-4 w-4" aria-hidden /> },
+  { key: "tasks", label: "Tareas", href: (id) => `/admin/projects/${id}/tasks`, icon: <ListTree className="h-4 w-4" aria-hidden /> },
+  { key: "gantt", label: "Gantt", href: (id) => `/admin/projects/${id}/gantt`, icon: <BarChart3 className="h-4 w-4" aria-hidden /> },
   { key: "ai_minutes", label: "Minuta IA", href: (id) => `/admin/projects/${id}/ai-minutes/new`, icon: <Sparkles className="h-4 w-4" aria-hidden /> },
   { key: "reports", label: "Reporte IA", href: (id) => `/admin/projects/${id}/reports`, icon: <Sparkles className="h-4 w-4" aria-hidden /> },
 ];
