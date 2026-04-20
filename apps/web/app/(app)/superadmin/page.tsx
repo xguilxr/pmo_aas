@@ -11,6 +11,7 @@ import {
   Users as UsersIcon,
 } from "lucide-react";
 
+import { SuperadminHealthSection } from "@/components/superadmin-health-section";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,12 +80,6 @@ export default function SuperadminHomePage() {
             className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 font-medium text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
           >
             Logs
-          </Link>
-          <Link
-            href="/superadmin/health"
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 font-medium text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
-          >
-            Health
           </Link>
         </div>
       </header>
@@ -205,6 +200,8 @@ export default function SuperadminHomePage() {
           </ul>
         </article>
       </section>
+
+      <SuperadminHealthSection />
     </div>
   );
 }

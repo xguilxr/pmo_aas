@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_permission
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
-from app.models.organization import Organization
+from app.models.organization import BusinessUnit, Department, Organization
 from app.models.project_request import ProjectRequest
 from app.schemas.project_request import (
     CreateProjectFromRequest,
@@ -46,6 +46,43 @@ async def create_request(
     ).scalar_one_or_none()
     if org is None:
         raise business_rule("La organización no existe en tu tenant")
+
+    # Validar FKs BU/Depto si vienen (US-NEW-011).
+    if body.business_unit_id is not None:
+        bu = (
+            await db.execute(
+                select(BusinessUnit).where(
+                    BusinessUnit.id == str(body.business_unit_id),
+                    BusinessUnit.tenant_id == tenant_id,
+                    BusinessUnit.organization_id == str(body.organization_id),
+                    BusinessUnit.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if bu is None:
+            raise business_rule(
+                "La unidad de negocio no pertenece a la organización indicada"
+            )
+    if body.department_id is not None:
+        dept = (
+            await db.execute(
+                select(Department).where(
+                    Department.id == str(body.department_id),
+                    Department.tenant_id == tenant_id,
+                    Department.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if dept is None:
+            raise business_rule("El departamento no existe o no pertenece al tenant")
+        if (
+            body.business_unit_id is not None
+            and str(dept.business_unit_id) != str(body.business_unit_id)
+        ):
+            raise business_rule(
+                "El departamento no pertenece a la unidad de negocio indicada"
+            )
+
     folio = await next_folio(db, tenant_id=tenant_id, prefix="SOL")
     pr = ProjectRequest(
         tenant_id=tenant_id,
@@ -56,10 +93,23 @@ async def create_request(
         organization_id=str(body.organization_id),
         business_unit=body.business_unit,
         department=body.department,
+        business_unit_id=(
+            str(body.business_unit_id) if body.business_unit_id else None
+        ),
+        department_id=str(body.department_id) if body.department_id else None,
         sponsor=body.sponsor,
+        sponsor_email=str(body.sponsor_email),
         benefits=body.benefits,
         budget=body.budget,
         scope=body.scope,
+        entregables=body.entregables,
+        key_people=body.key_people,
+        if_not_done=body.if_not_done,
+        observations=body.observations,
+        requester_name=body.requester_name or cu.user.full_name,
+        requester_email=(
+            str(body.requester_email) if body.requester_email else cu.user.email
+        ),
         requested_by=cu.id,
         requested_at=datetime.now(UTC),
         status="in_review",
@@ -219,7 +269,9 @@ async def create_project_from_request(
     cu: CurrentUser = Depends(require_permission("admin.projects", "create")),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.models.modules import Document
     from app.models.project import Project  # import diferido
+    from app.models.project_charter import ProjectCharter
 
     tenant_id = _tenant(cu)
     pr = (
@@ -242,6 +294,8 @@ async def create_project_from_request(
     project = Project(
         tenant_id=tenant_id,
         organization_id=pr.organization_id,
+        business_unit_id=pr.business_unit_id,
+        department_id=pr.department_id,
         folio=folio,
         name=pr.title,
         description=pr.description,
@@ -254,10 +308,71 @@ async def create_project_from_request(
     db.add(project)
     await db.flush()
     pr.project_id = project.id
+
+    # Auto-crear Charter pre-llenado desde solicitud (US-NEW-012).
+    # Líder de negocio y líder técnico quedan en blanco para completar.
+    charter = ProjectCharter(
+        tenant_id=tenant_id,
+        project_id=project.id,
+        request_id=pr.id,
+        project_name=project.name,
+        description=pr.description,
+        organization_id=pr.organization_id,
+        business_unit_id=pr.business_unit_id,
+        department_id=pr.department_id,
+        sponsor=pr.sponsor,
+        sponsor_email=pr.sponsor_email,
+        pm_id=str(body.pm_id),
+        project_type=None,
+        priority=None,
+        objective=pr.objective,
+        scope=pr.scope,
+        key_people=pr.key_people,
+        benefits=pr.benefits,
+        restrictions=None,
+        risks_summary=None,
+        created_by=cu.id,
+    )
+    db.add(charter)
+    await db.flush()
+
+    # Registrar el charter como Document del proyecto (US-NEW-013).
+    # El archivo se genera on-demand desde /charter/pdf — aquí guardamos
+    # una referencia interna para que aparezca en el módulo Documentos.
+    doc_folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
+    charter_doc = Document(
+        tenant_id=tenant_id,
+        project_id=project.id,
+        folio=doc_folio,
+        title=f"Project Charter — {project.name}",
+        description="Documento fundacional del proyecto, generado al aprobar.",
+        status="current",
+        category="charter",
+        file_url=f"/api/v1/projects/{project.id}/charter/pdf",
+        mime_type="text/html",
+        is_current=True,
+        uploaded_by=cu.id,
+        uploaded_at=datetime.now(UTC),
+        created_by=cu.id,
+    )
+    db.add(charter_doc)
+    await db.flush()
+
     await write_audit(
         db, action="project.created_from_request", module="projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(project.id),
-        details={"request_id": str(pr.id), "folio": folio},
+        details={
+            "request_id": str(pr.id),
+            "folio": folio,
+            "charter_id": str(charter.id),
+            "charter_doc_id": str(charter_doc.id),
+        },
     )
     await db.commit()
-    return {"project_id": str(project.id), "folio": folio, "idempotent": False}
+    return {
+        "project_id": str(project.id),
+        "folio": folio,
+        "charter_id": str(charter.id),
+        "charter_doc_id": str(charter_doc.id),
+        "idempotent": False,
+    }

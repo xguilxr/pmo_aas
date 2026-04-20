@@ -260,3 +260,99 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 - [ ] Audit log cubre las 7 acciones anteriores.
 - [ ] Seed inicial crea roles sistema: `Administrador`, `PMO Manager`, `Project Manager`, `Viewer`.
 - [ ] Runbook "crear primer superadmin" en `docs/` interno.
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-007 — Toggle dark/light mode en dropdown de usuario
+
+**Como** usuario autenticado
+**Quiero** cambiar entre modo oscuro y claro desde el menú de usuario
+**Para** elegir mi preferencia visual.
+
+**Criterios de aceptación:**
+- [x] Dropdown de usuario incluye radio group con 3 opciones (Claro / Oscuro / Sistema) + iconos Sun/Moon/Monitor.
+- [x] Default: `prefers-color-scheme` del sistema.
+- [x] Preferencia guardada en `users.preferences JSON → { "theme": "dark"|"light"|"system" }`.
+- [x] Cambio aplica inmediatamente sin reload, sin FOUT (script inline en `<head>`).
+- [x] `GET /api/v1/users/me/preferences` y `PATCH /api/v1/users/me/preferences`.
+- [x] Cliente TS en `lib/api/users.ts` + `ThemeProvider`.
+
+**Test Cases:**
+- `TC-NEW-013` (integration) — Preferencia persiste entre sesiones ✅
+- `TC-NEW-013b` (integration) — theme inválido → 422 ✅
+
+**Estado de integración:** DONE (US-NEW-007).
+
+---
+
+### US-NEW-008 — Toggle de idioma en dropdown de usuario
+
+**Como** usuario autenticado
+**Quiero** cambiar el idioma de la interfaz entre Español y English
+**Para** operar en mi idioma preferido.
+
+**Criterios de aceptación:**
+- [x] Dropdown de usuario incluye selector de idioma con banderas 🇲🇽/🇺🇸.
+- [x] Preferencia guardada en `users.preferences.locale` (reutiliza `PATCH /users/me/preferences`).
+- [x] Cambio actualiza `<html lang>` y persiste en `localStorage`.
+- [x] También escribe `users.locale` para compatibilidad con código existente.
+- [x] Cliente: `LocaleProvider` con hook `useLocale()`.
+
+**Notas:**
+- La traducción visible del UI (strings) queda fuera del alcance de esta US;
+  esta US solo persiste la preferencia y la expone globalmente. El i18n
+  routing completo (Next.js `[locale]` segments) es post-MVP.
+
+**Estado de integración:** DONE (US-NEW-008).
+
+---
+
+### US-NEW-009 — Página administrar cuenta (perfil + cambiar password)
+
+**Como** usuario autenticado
+**Quiero** editar mis datos personales y cambiar mi contraseña
+**Para** mantener mi perfil actualizado.
+
+**Criterios de aceptación:**
+- [x] Opción "Administrar cuenta" en dropdown de usuario → navega a `/account`.
+- [x] Página con dos secciones:
+  - **Detalles personales**: `full_name` editable, `email` readonly (cambio requiere verificación, post-MVP).
+  - **Cambiar contraseña**: current + new + confirm (mismos criterios que US-004).
+- [x] `GET /api/v1/users/me` — obtener perfil.
+- [x] `PATCH /api/v1/users/me` — actualizar `full_name` (audit log).
+- [x] Al guardar, actualiza `StoredUser` en localStorage → topbar muestra nuevo nombre sin reload.
+- [ ] Upload de avatar (PNG/JPG ≤ 2 MB): pospuesto a iteración siguiente (requiere infra de upload).
+- [ ] `phone` opcional: pospuesto (agregar columna a users).
+
+**Test Cases:**
+- `TC-NEW-015` (integration) — PATCH /users/me actualiza full_name ✅
+- `TC-NEW-015b` (integration) — full_name < 2 chars → 422 ✅
+
+**Estado de integración:** DONE (US-NEW-009), con avatar/phone como trabajo
+de seguimiento.
+
+### US-NEW-010 — Color chrome #182e4e + Senior PMO como admin
+
+**Como** desarrollador
+**Quiero** el color de chrome correcto y Senior PMO con capacidades admin
+**Para** cumplir DEC-005 y DEC-006.
+
+**Criterios de aceptación:**
+- [x] Variable CSS `--chrome-bg` = `#182e4e` en `globals.css` (DEC-006).
+- [x] Variables derivadas (`--chrome-border`, `--chrome-hover`, `--chrome-active`)
+  recalibradas al nuevo matiz.
+- [x] `docs/design-system/style.md` actualizado al nuevo color.
+- [x] Rol `PMO Manager` en seed incluye todos los permisos `admin.*` que
+  tiene `Administrador` (DEC-005).
+- [x] `CurrentUser.is_admin_equivalent` disponible como helper.
+- [x] Middleware existente (`require_permission`) sigue funcionando sin
+  cambios — Senior PMO pasa por tener los permisos `admin.*` en su rol.
+
+**Test Cases:**
+- `TC-NEW-017` (E2E) — Chrome #182e4e visible en light y dark mode ✅ (CSS).
+- `TC-NEW-018` (integration) — Senior PMO accede a `/admin/users` ✅.
+- `is_admin_equivalent` helper cubierto por test unitario ✅.
+
+**Estado de integración:** DONE (US-NEW-010).

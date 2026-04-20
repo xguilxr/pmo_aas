@@ -2,7 +2,20 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, LogIn, Pause, Play, ServerCog, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  ChevronRight,
+  FolderKanban,
+  LogIn,
+  Network,
+  Pause,
+  Play,
+  ServerCog,
+  Trash2,
+  Users,
+  Workflow,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -218,6 +231,8 @@ export default function TenantDetailPage() {
         <StatCard label="Organizaciones" value={organizations.length} />
         <StatCard label="Programas" value={programs.length} />
       </section>
+
+      <HierarchyOverview detail={data} />
 
       <section className="grid gap-5 lg:grid-cols-2">
         <DetailList
@@ -517,3 +532,40 @@ function DetailList({
   );
 }
 
+
+function HierarchyOverview({ detail }: { detail: TenantDetail }) {
+  const h = detail.hierarchy;
+  const nodes = [
+    { icon: <Building2 className="h-4 w-4" aria-hidden />, label: "Orgs", value: h.organization_count },
+    { icon: <Workflow className="h-4 w-4" aria-hidden />, label: "BUs", value: h.business_unit_count },
+    { icon: <Users className="h-4 w-4" aria-hidden />, label: "Deptos", value: h.department_count },
+    { icon: <Network className="h-4 w-4" aria-hidden />, label: "Programas", value: h.program_count },
+    { icon: <FolderKanban className="h-4 w-4" aria-hidden />, label: "Proyectos", value: h.project_count },
+  ];
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+        Jerarquía (overview)
+      </h2>
+      <ol className="flex flex-wrap items-center gap-1.5 text-sm">
+        {nodes.map((n, i) => (
+          <li key={n.label} className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-subtle)] px-2.5 py-1.5">
+              <span className="text-[var(--color-tertiary)]">{n.icon}</span>
+              <span className="text-[var(--color-tertiary)]">{n.label}</span>
+              <span className="font-semibold tabular-nums text-[var(--color-primary)]">
+                {n.value}
+              </span>
+            </span>
+            {i < nodes.length - 1 ? (
+              <ChevronRight
+                className="h-3.5 w-3.5 text-[var(--color-tertiary)]"
+                aria-hidden
+              />
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}

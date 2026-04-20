@@ -224,3 +224,61 @@ GET    /api/v1/projects/{id}/export
 - [ ] Transiciones de fase cubiertas por state machine con tests.
 - [ ] Export PDF con layout limpio (coincide con design system).
 - [ ] Permisos verificados por tests (`TC-MT-002` para reads de módulos de otro tenant).
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+
+**Como** PM
+**Quiero** ver la lista de tareas y el Gantt en una misma vista
+**Para** navegar planeación sin saltar entre pestañas.
+
+**Criterios de aceptación:**
+- [x] Ruta `/admin/projects/{id}/plan` con layout unificado.
+- [x] Toggle `Lista / Dividida / Gantt` persistido en URL (`?view=list|gantt`).
+- [x] Default = "Dividida" (lista arriba, Gantt abajo).
+- [x] En "Lista" se muestra tabla read-only con link "Abrir editor
+  completo" → `/tasks` (edición detallada sin refactorizar).
+- [x] Pestaña "Gantt" separada eliminada del sidebar.
+- [x] `/gantt` continúa funcionando como redirect permanente a
+  `/plan?view=gantt`.
+
+**Estado de integración:** DONE (US-NEW-016).
+
+---
+
+### US-NEW-018 — Módulo Área/Organigrama del proyecto
+
+**Como** PM
+**Quiero** registrar áreas y actores del proyecto (stakeholders sin
+cuenta en la plataforma)
+**Para** referenciarlos en tareas, RAIDs y minutas.
+
+**Criterios de aceptación:**
+- [x] Migración Alembic `20260420_0013`: tabla `project_areas`.
+- [x] Modelo `ProjectArea` (DEC-009: no son usuarios del sistema).
+- [x] CRUD endpoints:
+  - `GET /projects/{id}/areas?q=&type=&is_active=`
+  - `POST /projects/{id}/areas`
+  - `GET /project-areas/{id}`
+  - `PATCH /project-areas/{id}`
+  - `DELETE /project-areas/{id}`
+- [x] Validación de email en `contact_email` (EmailStr).
+- [x] Tipo: `area | actor | team`.
+- [x] Filtrado por tipo en listado.
+- [x] Aislamiento multi-tenant verificado (404 en proyecto ajeno).
+- [x] Página frontend `/admin/projects/{id}/areas` con CRUD completo
+  (modal de crear/editar + confirmación de eliminar + búsqueda +
+  filtro por tipo).
+- [x] Entrada "Áreas" en el sidebar de módulos del proyecto.
+
+**Test Cases:**
+- `TC-NEW-025` — CRUD completo ✅
+- `test_areas_invalid_email` → 422 ✅
+- `test_areas_filter_by_type` ✅
+- `test_areas_scoped_to_project` ✅
+- `test_areas_multitenant_isolation` ✅
+
+**Estado de integración:** DONE (US-NEW-018).

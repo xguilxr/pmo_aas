@@ -154,3 +154,87 @@ async def test_force_close_project(client, db_session):
     )
     assert fc.status_code == 200
     assert fc.json()["phase"] == "closed"
+
+
+# ============================================================================
+# US-NEW-023 — Gestión de Tenant (admin panel)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_usnew023_get_tenant_info_with_stats(client, db_session):
+    from decimal import Decimal
+    from app.models.project import Project
+
+    t, auth, _ = await _admin(client, db_session, slug="tenant23")
+    # seed: una org + 2 proyectos
+    r = await client.post(
+        "/api/v1/organizations", json={"name": "OrgX"}, headers=auth["_authz"],
+    )
+    org_id = r.json()["id"]
+    for i in range(2):
+        db_session.add(
+            Project(
+                tenant_id=str(t.id),
+                organization_id=org_id,
+                folio=f"P23-{i+1}",
+                name=f"P{i+1}",
+                phase="planning",
+                budget=Decimal("100"),
+            )
+        )
+    await db_session.commit()
+
+    info = await client.get("/api/v1/admin/tenant", headers=auth["_authz"])
+    assert info.status_code == 200, info.text
+    data = info.json()
+    assert data["slug"] == "tenant23"
+    assert data["name"] == "tenant23"
+    assert data["plan"] == "mvp"  # default cuando no hay plan en settings
+    assert data["stats"]["active_users"] >= 1
+    assert data["stats"]["total_organizations"] == 1
+    assert data["stats"]["total_projects"] == 2
+    assert "storage_bytes" in data["stats"]
+
+
+@pytest.mark.asyncio
+async def test_usnew023_patch_tenant_name_and_logo(client, db_session):
+    _, auth, _ = await _admin(client, db_session, slug="t23b")
+    r = await client.patch(
+        "/api/v1/admin/tenant",
+        json={
+            "name": "Acme Updated",
+            "logo_url": "https://cdn.example.com/logo.png",
+        },
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["name"] == "Acme Updated"
+    assert r.json()["logo_url"] == "https://cdn.example.com/logo.png"
+    # Slug no cambia
+    assert r.json()["slug"] == "t23b"
+
+
+@pytest.mark.asyncio
+async def test_usnew023_patch_ignores_slug(client, db_session):
+    _, auth, _ = await _admin(client, db_session, slug="t23c")
+    r = await client.patch(
+        "/api/v1/admin/tenant",
+        json={"slug": "otro-slug", "name": "Nuevo nombre"},
+        headers=auth["_authz"],
+    )
+    # el schema ignora slug (no está en TenantInfoUpdate); nombre sí aplica
+    assert r.status_code == 200
+    assert r.json()["slug"] == "t23c"
+    assert r.json()["name"] == "Nuevo nombre"
+
+
+@pytest.mark.asyncio
+async def test_usnew023_patch_name_too_short(client, db_session):
+    _, auth, _ = await _admin(client, db_session, slug="t23d")
+    r = await client.patch(
+        "/api/v1/admin/tenant",
+        json={"name": "X"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422

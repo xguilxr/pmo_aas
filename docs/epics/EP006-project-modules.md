@@ -231,3 +231,121 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 - [ ] Componente `<ModuleShell>` usado por los 6 → 0 duplicación visual.
 - [ ] Matriz P×I de riesgos accesible con tooltips.
 - [ ] Alerta visual de AIDs vencidas.
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-019 — Consolidar RAID (vista unificada)
+
+**Como** PM
+**Quiero** ver Riesgos + Acciones + Incidentes + Decisiones juntos
+**Para** revisar el estado completo sin saltar entre módulos.
+
+**Criterios de aceptación (DEC-007):**
+- [x] Nueva ruta `/admin/projects/{id}/raid` con 4 sub-tabs R/A/I/D.
+- [x] Tab persistido en URL como `?tab=risks|actions|incidents|decisions`.
+- [x] Counters por categoría visibles en el header de cada tab.
+- [x] Riesgos: tabla `risks`.
+- [x] Acciones: tabla `issues WHERE type='action'`.
+- [x] Incidentes: tabla `issues WHERE type='issue'` (label UI = "Incidente").
+- [x] Decisiones: tabla `issues WHERE type='decision'`.
+- [x] Export RAID → CSV con 4 secciones (un archivo); el XLSX con 4
+  sheets queda como follow-up.
+- [x] Sidebar: "Riesgos" + "AIDs" reemplazados por una sola entrada
+  "RAID" (los enlaces legacy siguen funcionando).
+- [x] `ISSUE_TYPE_LABEL['issue']` actualizado de "Incidencia" a
+  "Incidente" (DEC-007).
+
+**Estado de integración:** DONE (US-NEW-019). Export XLSX nativo queda
+como follow-up; CSV cubre el caso de uso principal.
+
+---
+
+### US-NEW-020 — Categorías de documentos actualizadas
+
+**Criterios de aceptación:**
+- [x] Campo `category` en documentos acepta los 9 valores:
+  `charter | plan | raid_export | transcript | minute | report | lesson |
+  contract | other`.
+- [x] `GET /projects/{id}/documents?category=` filtra por categoría.
+- [x] `PATCH /api/v1/documents/{id}` permite actualizar title /
+  description / category sin subir un archivo nuevo.
+- [x] El charter al crearse queda como `category='charter'`
+  (ya implementado en US-NEW-013).
+- [x] Category inválida → 422 (pydantic Literal).
+
+**Test Cases:**
+- `test_usnew020_accepts_new_categories` — 9 categorías válidas ✅
+- `test_usnew020_rejects_invalid_category` → 422 ✅
+- `test_usnew020_filter_by_category` ✅
+- `test_usnew020_patch_document_category` ✅
+
+**Estado de integración:** DONE (US-NEW-020).
+
+---
+
+### US-NEW-021 — Consolidar pestañas de Minutas en 1
+
+**Criterios de aceptación:**
+- [x] Entrada separada "Minuta IA" eliminada del sidebar.
+- [x] Pestaña única "Minutas" ahora incluye:
+  - Listado de minutas pasadas (ya existía).
+  - Botón "Nueva minuta" → modal de registro manual (ya existía).
+  - Botón "Generar con IA" → navega a `/ai-minutes/new` (flujo de IA).
+- [x] Regex del nodo sidebar `mod-minutes` ahora matchea también
+  `/ai-minutes/*` para mantener el nodo activo durante el flujo IA.
+- [x] La minuta generada con IA entra al mismo flujo de revisión/edición
+  (ya estaba persistiendo en la misma tabla `meeting_minutes`).
+
+**Cambios de componente:**
+- `ModuleShell` admite nuevo prop opcional `headerExtras` para renderizar
+  acciones adicionales junto al botón "Nuevo" (aplicable a cualquier
+  módulo). La página Minutas lo usa para el CTA "Generar con IA".
+
+**Estado de integración:** DONE (US-NEW-021).
+
+---
+
+### US-NEW-022 — Módulo Reportes dentro del proyecto
+
+**Como** PM
+**Quiero** generar y gestionar reportes de estado del proyecto
+**Para** comunicar avance a stakeholders periódicamente.
+
+**Criterios de aceptación:**
+- [x] Migración Alembic `20260420_0014`: `reports.period` (String(16)).
+- [x] `Report.period` en el ORM (nullable).
+- [x] CRUD endpoints dedicados en `reports.py`:
+  - `GET /projects/{id}/reports?status=&period=&limit=`
+  - `POST /projects/{id}/reports` (crea borrador manual; secciones
+    pre-llenadas por default).
+  - `GET /reports/{id}`
+  - `PATCH /reports/{id}` (título, periodo, destinatarios, secciones —
+    rechaza si el reporte ya fue enviado).
+  - `DELETE /reports/{id}` (solo borradores).
+- [x] Periodicidades: `daily | weekly | monthly` (Literal pydantic).
+- [x] Secciones default sugeridas: resumen_ejecutivo, avance_plan,
+  acciones_pendientes, decisiones_requeridas, riesgos_top.
+- [x] "Generar con IA" reutiliza endpoint EP008 existente
+  (`POST /ai/projects/{id}/reports/draft`).
+- [x] Frontend `/admin/projects/{id}/reports`:
+  - Listado con fecha de creación, periodo, estado, destinatarios.
+  - Badge "IA" para generados con IA.
+  - Botón "Nuevo reporte" → modal (título, periodo, destinatarios).
+  - Botón "Generar con IA" → crea borrador vía AI y abre editor.
+  - Editor: periodo, destinatarios, asunto, 5 secciones tipo Notion
+    editables. Guardar / Enviar / Eliminar.
+  - Reportes enviados quedan read-only.
+  - Modo editor accesible vía `?report={id}` (deep-link).
+
+**Test Cases:**
+- `test_usnew022_create_and_list_reports` ✅
+- `test_usnew022_patch_report_sections` ✅
+- `test_usnew022_invalid_period_rejected` → 422 ✅
+- `test_usnew022_filter_by_period` ✅
+- `test_usnew022_delete_draft` ✅
+
+**Estado de integración:** DONE (US-NEW-022). Caso de uso "lunes de
+persecución" queda como flow de UI a futuro (requiere KPIs específicos
+de acciones vencidas en el editor).

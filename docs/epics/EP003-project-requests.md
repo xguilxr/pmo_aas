@@ -177,3 +177,98 @@ GET    /api/v1/project-requests/{id}/attachments/{attId}/download
 - [ ] Notificaciones in-app + email configuradas.
 - [ ] E2E: crear → aprobar → convertir a proyecto sin errores.
 - [ ] 95%+ cobertura en servicios de transición de estado.
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-011 — Campos adicionales en solicitud + FK BU/Depto
+
+**Como** solicitante
+**Quiero** capturar contactos (sponsor_email, solicitante) y detalles extra
+(entregables, personas clave, if_not_done, observaciones)
+**Para** que los revisores tengan contexto completo y FK reales a BU/Depto.
+
+**Criterios de aceptación:**
+- [x] Migración Alembic `20260420_0011`: columnas `requester_name`,
+  `requester_email`, `sponsor_email`, `key_people`, `if_not_done`,
+  `observations`, `entregables`.
+- [x] `business_unit_id` y `department_id` validados contra tenant+org
+  (422 si no pertenecen o cruzan BU).
+- [x] Campos text legacy (`business_unit`, `department`) se mantienen en
+  paralelo hasta migración de datos (fase 2).
+- [x] `sponsor_email` obligatorio y validado como email.
+- [x] Defaults: si `requester_name`/`requester_email` no vienen, se toma
+  `user.full_name` / `user.email`.
+- [x] Formulario multi-step actualizado con todos los nuevos campos y
+  validación client-side (regex de email).
+- [x] Sidebar: "Solicitudes" movido a top-level (fuera de Organizaciones).
+
+**Test Cases:**
+- `test_usnew011_full_payload` — crea con todos los campos ✅
+- `test_usnew011_sponsor_email_invalid` — 422 con email mal formado ✅
+- `test_usnew011_requester_defaults` — defaults al user autenticado ✅
+- `test_usnew011_bu_fk_mismatch` — BU fuera del tenant → 422 ✅
+- `test_usnew011_dept_in_wrong_bu` — depto no pertenece a BU → 422 ✅
+- `test_usnew011_bu_dept_fk_happy_path` — FKs correctas → 201 ✅
+
+**Estado de integración:** DONE (US-NEW-011). Charter (US-NEW-012) siguiente.
+
+---
+
+### US-NEW-012 — Project Charter: tabla + generación al aprobar
+
+**Como** PMO Manager
+**Quiero** que al aprobar una solicitud se genere automáticamente un
+Project Charter
+**Para** tener el documento fundacional del proyecto listo.
+
+**Criterios de aceptación:**
+- [x] Migración Alembic `20260420_0012`: tabla `project_charters` con
+  secciones 1-3 estructuradas.
+- [x] Al ejecutar `POST /project-requests/{id}/create-project` se crea un
+  charter pre-llenado desde la solicitud y el proyecto.
+- [x] Sección 2: `sponsor`, `sponsor_email`, `pm_id` heredados; líderes
+  (negocio + técnico) quedan en blanco para completar.
+- [x] Sección 4 (Gestión) se deriva dinámicamente desde `projects` al
+  consultar (DEC-008).
+- [x] `GET /api/v1/projects/{id}/charter` devuelve el charter completo.
+- [x] `PATCH /api/v1/projects/{id}/charter` edita secciones 1-3 (valida
+  FKs BU/Depto).
+- [x] `GET /api/v1/projects/{id}/charter/pdf` devuelve HTML imprimible
+  (generado on-demand). Renderer PDF nativo queda como follow-up; el
+  navegador puede imprimir esta vista para obtener el PDF.
+- [x] El proyecto generado hereda `business_unit_id` y `department_id` de
+  la solicitud.
+
+**Test Cases:**
+- `TC-NEW-019` — charter auto-creado con datos correctos ✅
+- `TC-NEW-020` — sección 4 refleja datos actuales del proyecto ✅
+- `TC-NEW-021` — HTML imprimible contiene las 4 secciones ✅
+- `test_charter_patch_edits_sections_1_to_3` ✅
+- `test_charter_404_when_missing` ✅
+
+**Estado de integración:** DONE (US-NEW-012).
+
+---
+
+### US-NEW-013 — Charter aparece como documento del proyecto
+
+**Como** PM
+**Quiero** ver el Project Charter listado en el módulo de Documentos del
+proyecto
+**Para** acceder a él desde el mismo lugar que el resto de entregables.
+
+**Criterios de aceptación:**
+- [x] Al crear el proyecto desde la solicitud, además del charter
+  estructurado se registra un `Document` con `category='charter'`.
+- [x] `Document.file_url` apunta a `/api/v1/projects/{id}/charter/pdf`
+  (HTML imprimible on-demand, no se almacena archivo).
+- [x] `mime_type='text/html'`, `is_current=true`.
+- [x] Folio secuencial con prefijo `DOC-` por tenant.
+- [x] Respuesta del endpoint `create-project` incluye `charter_doc_id`.
+
+**Test Cases:**
+- `TC-NEW-022` — charter aparece como documento con category='charter' ✅
+
+**Estado de integración:** DONE (US-NEW-013).

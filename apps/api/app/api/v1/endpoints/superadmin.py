@@ -101,21 +101,73 @@ async def list_tenants(
     cu: CurrentUser = Depends(get_superadmin),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.models.organization import Organization
+    from app.models.project import Project
+
     stmt = select(Tenant)
     if not include_inactive:
         stmt = stmt.where(Tenant.is_active.is_(True))
     tenants = (await db.execute(stmt.order_by(Tenant.slug))).scalars().all()
+    if not tenants:
+        return []
+
+    tenant_ids = [t.id for t in tenants]
+
+    # Counts por tenant en batch (US-NEW-025).
+    def grouped(stmt):
+        return {str(tid): int(n) for tid, n in stmt}
+
+    users_rows = (
+        await db.execute(
+            select(User.tenant_id, func.count(User.id))
+            .where(User.tenant_id.in_(tenant_ids))
+            .group_by(User.tenant_id)
+        )
+    ).all()
+    user_counts = grouped(users_rows)
+
+    orgs_rows = (
+        await db.execute(
+            select(Organization.tenant_id, func.count(Organization.id))
+            .where(Organization.tenant_id.in_(tenant_ids))
+            .group_by(Organization.tenant_id)
+        )
+    ).all()
+    org_counts = grouped(orgs_rows)
+
+    progs_rows = (
+        await db.execute(
+            select(Program.tenant_id, func.count(Program.id))
+            .where(Program.tenant_id.in_(tenant_ids))
+            .group_by(Program.tenant_id)
+        )
+    ).all()
+    program_counts = grouped(progs_rows)
+
+    projs_rows = (
+        await db.execute(
+            select(Project.tenant_id, func.count(Project.id))
+            .where(
+                Project.tenant_id.in_(tenant_ids), Project.deleted_at.is_(None)
+            )
+            .group_by(Project.tenant_id)
+        )
+    ).all()
+    project_counts = grouped(projs_rows)
 
     out: list[TenantRead] = []
     for t in tenants:
-        user_count = (
-            await db.execute(select(func.count(User.id)).where(User.tenant_id == t.id))
-        ).scalar_one()
-        project_count = 0  # EP005 introducirá el modelo projects
+        tid = str(t.id)
         out.append(
             TenantRead(
-                id=t.id, slug=t.slug, name=t.name, is_active=t.is_active,
-                user_count=user_count, project_count=project_count,
+                id=t.id,
+                slug=t.slug,
+                name=t.name,
+                is_active=t.is_active,
+                user_count=user_counts.get(tid, 0),
+                organization_count=org_counts.get(tid, 0),
+                program_count=program_counts.get(tid, 0),
+                project_count=project_counts.get(tid, 0),
             )
         )
     return out
@@ -149,11 +201,44 @@ async def tenant_detail(
             select(Program.id, Program.name, Program.organization_id).where(Program.tenant_id == t.id)
         )
     ).all()
+    # Jerarquía: counts globales por tenant (US-NEW-025).
+    from app.models.organization import BusinessUnit, Department
+    from app.models.project import Project
+
+    bu_count = (
+        await db.execute(
+            select(func.count(BusinessUnit.id)).where(
+                BusinessUnit.tenant_id == t.id, BusinessUnit.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one() or 0
+    dept_count = (
+        await db.execute(
+            select(func.count(Department.id)).where(
+                Department.tenant_id == t.id, Department.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one() or 0
+    project_count = (
+        await db.execute(
+            select(func.count(Project.id)).where(
+                Project.tenant_id == t.id, Project.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one() or 0
+
     return {
         "tenant": {"id": str(t.id), "slug": t.slug, "name": t.name, "is_active": t.is_active},
         "users": [{"id": str(r.id), "username": r.username, "email": r.email, "is_active": r.is_active} for r in users],
         "organizations": [{"id": str(r.id), "name": r.name, "is_active": r.is_active} for r in orgs],
         "programs": [{"id": str(r.id), "name": r.name, "organization_id": str(r.organization_id)} for r in programs],
+        "hierarchy": {
+            "organization_count": len(orgs),
+            "business_unit_count": int(bu_count),
+            "department_count": int(dept_count),
+            "program_count": len(programs),
+            "project_count": int(project_count),
+        },
     }
 
 

@@ -282,3 +282,191 @@ async def test_tc022_filter_inactive(client, db_session):
     r = await client.get("/api/v1/admin/users?is_active=false", headers=auth["_authz"])
     assert r.status_code == 200
     assert all(not i["is_active"] for i in r.json()["items"])
+
+
+# ============================================================================
+# US-NEW-007 — Toggle dark/light (preferencias de usuario)
+# ============================================================================
+
+
+# TC-NEW-013: preferencia persiste entre sesiones
+@pytest.mark.asyncio
+async def test_tcnew013_preferences_persist(client, db_session):
+    t = await create_tenant(db_session)
+    await create_user(
+        db_session, tenant=t, username="pu", email="pu@acme.example.com",
+        password="Str0ng-Pu-1!",
+    )
+    auth = await login(client, "pu", "Str0ng-Pu-1!")
+
+    # default
+    r = await client.get("/api/v1/users/me/preferences", headers=auth["_authz"])
+    assert r.status_code == 200
+    assert r.json()["theme"] == "system"
+
+    # set dark
+    r2 = await client.patch(
+        "/api/v1/users/me/preferences",
+        json={"theme": "dark"},
+        headers=auth["_authz"],
+    )
+    assert r2.status_code == 200 and r2.json()["theme"] == "dark"
+
+    # nuevo login → debe persistir
+    auth2 = await login(client, "pu", "Str0ng-Pu-1!")
+    r3 = await client.get("/api/v1/users/me/preferences", headers=auth2["_authz"])
+    assert r3.json()["theme"] == "dark"
+
+
+# validación: theme inválido → 422
+@pytest.mark.asyncio
+async def test_preferences_invalid_theme(client, db_session):
+    t = await create_tenant(db_session)
+    await create_user(
+        db_session, tenant=t, username="pinv", email="pinv@acme.example.com",
+        password="Str0ng-Pinv-1!",
+    )
+    auth = await login(client, "pinv", "Str0ng-Pinv-1!")
+    r = await client.patch(
+        "/api/v1/users/me/preferences",
+        json={"theme": "neon"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422
+
+
+# locale update propaga a users.locale
+@pytest.mark.asyncio
+async def test_preferences_locale_updates_locale_column(client, db_session):
+    from sqlalchemy import select
+    from app.models.user import User
+
+    t = await create_tenant(db_session)
+    u = await create_user(
+        db_session, tenant=t, username="pl", email="pl@acme.example.com",
+        password="Str0ng-Pl-1!",
+    )
+    auth = await login(client, "pl", "Str0ng-Pl-1!")
+    r = await client.patch(
+        "/api/v1/users/me/preferences",
+        json={"locale": "en-US"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200 and r.json()["locale"] == "en-US"
+    await db_session.refresh(u)
+    fresh = (await db_session.execute(select(User).where(User.id == u.id))).scalar_one()
+    assert fresh.locale == "en-US"
+
+
+# ============================================================================
+# US-NEW-010 — Senior PMO como admin (DEC-005)
+# ============================================================================
+
+
+# TC-NEW-018: Senior PMO (rol PMO Manager con admin.*) accede a /admin/users
+@pytest.mark.asyncio
+async def test_tcnew018_senior_pmo_can_access_admin(client, db_session):
+    from app.models.role import Role
+
+    t = await create_tenant(db_session, slug="srpmo", name="SrPmo")
+    # Crear rol "PMO Manager" con admin.* permissions (mismo shape que en seed)
+    pmo_senior = Role(
+        tenant_id=t.id,
+        name="PMO Manager",
+        description="Senior PMO / Admin-eq",
+        is_system=True,
+        permissions={
+            "admin.users": ["read", "create", "update", "delete"],
+            "admin.roles": ["read", "create", "update", "delete"],
+            "admin.organizations": ["read", "create", "update", "delete"],
+            "admin.projects": ["read"],
+            "admin.requests": ["read", "approve"],
+            "projects": ["read", "create", "update", "approve"],
+            "dashboard": ["read"],
+        },
+    )
+    db_session.add(pmo_senior)
+    await db_session.flush()
+    await create_user(
+        db_session, tenant=t, username="senior", email="senior@srpmo.example.com",
+        password="Str0ng-Sr-1!", roles=[pmo_senior],
+    )
+    auth = await login(client, "senior", "Str0ng-Sr-1!")
+    # /admin/users list debe responder 200
+    r = await client.get("/api/v1/admin/users", headers=auth["_authz"])
+    assert r.status_code == 200, r.text
+
+
+# CurrentUser.is_admin_equivalent detecta roles con admin.*
+@pytest.mark.asyncio
+async def test_is_admin_equivalent_helper(client, db_session):
+    from app.api.deps import CurrentUser
+
+    # solo Viewer (sin admin.*)
+    cu_viewer = CurrentUser(
+        user=type("U", (), {"is_superadmin": False})(),
+        tenant_ids=[],
+        active_tenant_id=None,
+        roles=["Viewer"],
+        permissions={"projects": {"read"}, "dashboard": {"read"}},
+    )
+    assert cu_viewer.is_admin_equivalent is False
+
+    # Administrador
+    cu_admin = CurrentUser(
+        user=type("U", (), {"is_superadmin": False})(),
+        tenant_ids=[], active_tenant_id=None,
+        roles=["Administrador"], permissions={},
+    )
+    assert cu_admin.is_admin_equivalent is True
+
+    # Senior PMO por permisos admin.*
+    cu_sr = CurrentUser(
+        user=type("U", (), {"is_superadmin": False})(),
+        tenant_ids=[], active_tenant_id=None,
+        roles=["PMO Manager"],
+        permissions={"admin.users": {"read"}, "dashboard": {"read"}},
+    )
+    assert cu_sr.is_admin_equivalent is True
+
+
+# ============================================================================
+# US-NEW-009 — Perfil personal via PATCH /users/me
+# ============================================================================
+
+
+# TC-NEW-015: editar nombre → se refleja en el perfil
+@pytest.mark.asyncio
+async def test_tcnew015_update_full_name(client, db_session):
+    t = await create_tenant(db_session, slug="acmen", name="Acme")
+    await create_user(
+        db_session, tenant=t, username="juan",
+        email="juan@acmen.example.com", password="Str0ng-Juan-1!",
+        full_name="Juan Pérez",
+    )
+    auth = await login(client, "juan", "Str0ng-Juan-1!")
+    r = await client.patch(
+        "/api/v1/users/me",
+        json={"full_name": "Juan P. López"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200 and r.json()["full_name"] == "Juan P. López"
+
+    # GET refleja el cambio
+    g = await client.get("/api/v1/users/me", headers=auth["_authz"])
+    assert g.json()["full_name"] == "Juan P. López"
+
+
+# full_name muy corto → 422
+@pytest.mark.asyncio
+async def test_update_full_name_too_short(client, db_session):
+    t = await create_tenant(db_session, slug="vshort", name="VS")
+    await create_user(
+        db_session, tenant=t, username="u",
+        email="u@vshort.example.com", password="Str0ng-Vs-1!",
+    )
+    auth = await login(client, "u", "Str0ng-Vs-1!")
+    r = await client.patch(
+        "/api/v1/users/me", json={"full_name": "X"}, headers=auth["_authz"]
+    )
+    assert r.status_code == 422

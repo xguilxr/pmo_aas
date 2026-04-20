@@ -184,3 +184,161 @@ async def test_tc067_filters_combine(client, db_session):
     )
     assert r.status_code == 200
     assert all(p["type"] == "innovation" and p["phase"] == "planning" for p in r.json())
+
+
+# ============================================================================
+# US-NEW-018 — Módulo Áreas/Organigrama del proyecto
+# ============================================================================
+
+
+async def _create_project(client, auth, org_id, pm_id) -> str:
+    r = await client.post(
+        "/api/v1/projects", json=_project_body(org_id, pm_id), headers=auth["_authz"]
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+# TC-NEW-025: CRUD completo
+@pytest.mark.asyncio
+async def test_tcnew025_areas_crud(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    pid = await _create_project(client, auth, org_id, me.json()["id"])
+
+    # Create
+    r = await client.post(
+        f"/api/v1/projects/{pid}/areas",
+        json={
+            "name": "Recursos Humanos",
+            "type": "area",
+            "description": "Área de RH",
+            "contact_name": "María López",
+            "contact_email": "maria@acme.example.com",
+        },
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 201, r.text
+    area_id = r.json()["id"]
+
+    # Read (list + single)
+    lst = await client.get(
+        f"/api/v1/projects/{pid}/areas", headers=auth["_authz"]
+    )
+    assert lst.status_code == 200 and len(lst.json()) == 1
+
+    g = await client.get(
+        f"/api/v1/project-areas/{area_id}", headers=auth["_authz"]
+    )
+    assert g.status_code == 200 and g.json()["contact_email"] == "maria@acme.example.com"
+
+    # Update
+    p = await client.patch(
+        f"/api/v1/project-areas/{area_id}",
+        json={"description": "RH actualizada", "type": "team"},
+        headers=auth["_authz"],
+    )
+    assert p.status_code == 200
+    assert p.json()["description"] == "RH actualizada"
+    assert p.json()["type"] == "team"
+
+    # Delete
+    d = await client.delete(
+        f"/api/v1/project-areas/{area_id}", headers=auth["_authz"]
+    )
+    assert d.status_code == 204
+    lst2 = await client.get(
+        f"/api/v1/projects/{pid}/areas", headers=auth["_authz"]
+    )
+    assert len(lst2.json()) == 0
+
+
+# Email inválido → 422
+@pytest.mark.asyncio
+async def test_areas_invalid_email(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    pid = await _create_project(client, auth, org_id, me.json()["id"])
+    r = await client.post(
+        f"/api/v1/projects/{pid}/areas",
+        json={"name": "A", "contact_email": "nope"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422
+
+
+# Filtrado por tipo
+@pytest.mark.asyncio
+async def test_areas_filter_by_type(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    pid = await _create_project(client, auth, org_id, me.json()["id"])
+
+    await client.post(
+        f"/api/v1/projects/{pid}/areas",
+        json={"name": "Finanzas", "type": "area"},
+        headers=auth["_authz"],
+    )
+    await client.post(
+        f"/api/v1/projects/{pid}/areas",
+        json={"name": "Juan Ruiz", "type": "actor"},
+        headers=auth["_authz"],
+    )
+    await client.post(
+        f"/api/v1/projects/{pid}/areas",
+        json={"name": "Squad Alpha", "type": "team"},
+        headers=auth["_authz"],
+    )
+
+    r = await client.get(
+        f"/api/v1/projects/{pid}/areas?type=actor", headers=auth["_authz"]
+    )
+    items = r.json()
+    assert len(items) == 1
+    assert items[0]["type"] == "actor"
+
+
+# Áreas de otro proyecto NO aparecen
+@pytest.mark.asyncio
+async def test_areas_scoped_to_project(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    pid_a = await _create_project(client, auth, org_id, me.json()["id"])
+    pid_b = (
+        await client.post(
+            "/api/v1/projects",
+            json=_project_body(org_id, me.json()["id"], name="Beta"),
+            headers=auth["_authz"],
+        )
+    ).json()["id"]
+
+    await client.post(
+        f"/api/v1/projects/{pid_a}/areas",
+        json={"name": "Solo A"},
+        headers=auth["_authz"],
+    )
+    r = await client.get(
+        f"/api/v1/projects/{pid_b}/areas", headers=auth["_authz"]
+    )
+    assert r.json() == []
+
+
+# Multi-tenant: usuario de otro tenant → 404 en proyecto ajeno
+@pytest.mark.asyncio
+async def test_areas_multitenant_isolation(client, db_session):
+    _, auth_a, org_a = await _setup(client, db_session)
+    me_a = await client.get("/api/v1/auth/me", headers=auth_a["_authz"])
+    pid_a = await _create_project(client, auth_a, org_a, me_a.json()["id"])
+
+    t_b = await create_tenant(db_session, slug="tb", name="Tb")
+    role_b = await create_admin_role(db_session, t_b)
+    await create_user(
+        db_session, tenant=t_b, username="admin_b", email="admin@tb.example.com",
+        password="Str0ng-B-1!", roles=[role_b],
+    )
+    auth_b = await login(client, "admin_b", "Str0ng-B-1!")
+
+    r = await client.get(
+        f"/api/v1/projects/{pid_a}/areas", headers=auth_b["_authz"]
+    )
+    assert r.status_code == 404

@@ -24,7 +24,9 @@
 
 **Test Cases:**
 - `TC-NEW-012` (E2E) — Toggle cambia tema inmediatamente.
-- `TC-NEW-013` (integration) — Preferencia persiste entre sesiones.
+- `TC-NEW-013` (integration) — Preferencia persiste entre sesiones ✅
+
+**Estado de integración:** INTEGRATED en EP001 (US-NEW-007).
 
 ---
 
@@ -44,6 +46,8 @@
 **Test Cases:**
 - `TC-NEW-014` (E2E) — Cambio de idioma actualiza UI sin reload completo.
 
+**Estado de integración:** INTEGRATED en EP001 (US-NEW-008, traducción UI diferida a post-MVP).
+
 ---
 
 ### # PENDING — US-NEW-009 — Página de administrar cuenta (perfil + cambiar password)
@@ -62,8 +66,11 @@
 - [ ] Cambio de email requiere verificación (post-MVP).
 
 **Test Cases:**
-- `TC-NEW-015` (E2E) — Editar nombre → se refleja en topbar sin reload.
-- `TC-NEW-016` (integration) — Upload avatar → URL guardada y servida correctamente.
+- `TC-NEW-015` (E2E) — Editar nombre → se refleja en topbar sin reload ✅
+- `TC-NEW-016` (integration) — Upload avatar → URL guardada y servida correctamente (PENDIENTE: infra de upload)
+
+**Estado de integración:** INTEGRATED parcial en EP001 (US-NEW-009). Avatar
+upload y `phone` pendientes en iteración siguiente.
 
 ---
 
@@ -81,16 +88,24 @@
 - [ ] Seed actualiza rol `PMO Manager` con el flag correspondiente.
 
 **Test Cases:**
-- `TC-NEW-017` (E2E) — Chrome muestra `#182e4e` en light y dark mode.
-- `TC-NEW-018` (integration) — Senior PMO puede acceder a `/admin/users`.
+- `TC-NEW-017` (E2E) — Chrome muestra `#182e4e` en light y dark mode ✅
+- `TC-NEW-018` (integration) — Senior PMO puede acceder a `/admin/users` ✅
 
-**Estado de integración:** # PENDING en EP001
+**Estado de integración:** INTEGRATED en EP001 (US-NEW-010).
 
 ---
 
 ## EP003-project-requests.md — Agregar a US-015 y nueva US
 
-### # PENDING — Campos adicionales en US-015 (agregar a criterios de aceptación)
+### # INTEGRATED — Campos adicionales en US-015 (integrado como US-NEW-011)
+
+**Estado de integración:** INTEGRATED en EP003 (US-NEW-011, ver archivo
+  del epic para detalles y tests). Los campos text legacy `business_unit`/
+  `department` se mantienen hasta migración de datos (fase 2).
+
+---
+
+### # PENDING — Campos adicionales en US-015 (CRITERIOS ORIGINALES, ahora en US-NEW-011)
 
 Campos adicionales al formulario de solicitud:
 
@@ -109,7 +124,15 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-011 — Project Charter: tabla + generación al aprobar
+### # INTEGRATED — US-NEW-012 — Project Charter: tabla + generación al aprobar
+
+**Estado de integración:** INTEGRATED en EP003 (US-NEW-012, ver archivo
+  del epic para detalles y tests). PDF nativo queda como follow-up;
+  endpoint devuelve HTML imprimible on-demand.
+
+---
+
+### # ORIGINAL — US-NEW-011 (referencia histórica) — Project Charter: tabla + generación al aprobar
 
 **Como** PMO Manager
 **Quiero** que al aprobar una solicitud se genere automáticamente un Project Charter
@@ -137,7 +160,14 @@ Campos adicionales al formulario de solicitud:
 
 ## EP004-dashboard.md — Agregar user stories
 
-### # PENDING — US-NEW-014 — Filtro de organización en dashboard
+### # INTEGRATED — US-NEW-014 — Filtro de organización en dashboard
+
+**Estado de integración:** INTEGRATED en EP004 (US-NEW-014). Backend
+  expone `organization_id` en `/dashboard/kpis` y `/dashboard/charts`.
+
+---
+
+### # PENDING (referencia histórica) — US-NEW-014 — Filtro de organización en dashboard
 
 **Criterios de aceptación:**
 - [ ] Filtro por organización en la parte superior del dashboard, default vacío (sin filtro).
@@ -147,7 +177,18 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-BUG-002 — Fix distorsión en gráficas de barra
+### # INTEGRATED — US-BUG-002 — Fix distorsión en gráficas de barra
+
+**Estado de integración:** INTEGRATED en EP004. Gráficas de barra ahora:
+  - Usan viewBox 300×100 con `preserveAspectRatio="xMidYMid meet"`
+    (ya no `"none"`, evita distorsión horizontal).
+  - Contenedor con `aspect-ratio: 3/1` (responsive sin deformar).
+  - Grid horizontal con 4 ticks + labels del eje Y.
+  - Labels de categorías con truncamiento automático según ancho de barra.
+
+---
+
+### # PENDING (referencia) — US-BUG-002 — Fix distorsión en gráficas de barra
 
 **Criterios de aceptación:**
 - [ ] Labels de categorías en eje X no se cortan ni se superponen.
@@ -157,7 +198,20 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-015 — KPIs respetan jerarquía de roles
+### # INTEGRATED — US-NEW-015 — KPIs respetan jerarquía de roles
+
+**Estado de integración:** INTEGRATED en EP004. Helper `scoped_project_ids`
+  aplicado a `/kpis`, `/charts` y `/plan-vs-actual`:
+  - Admin-equivalente (via `is_admin_equivalent`): sin restricción.
+  - Project Manager / resto de roles: sólo proyectos donde es `pm_id` o
+    está en `project_members`.
+  - Lista vacía → endpoints devuelven ceros (no error).
+  La granularidad "Program Manager ve su programa" queda para US futura
+  (requiere tabla program_managers o equivalente).
+
+---
+
+### # PENDING (referencia) — US-NEW-015 — KPIs respetan jerarquía de roles
 
 **Criterios de aceptación:**
 - [ ] Admin / Senior PMO: ven todos los KPIs del tenant. Filtros disponibles: org, programa, PM asignado.
@@ -167,7 +221,20 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-BUG-003 — Fix layout Plan vs Real
+### # INTEGRATED — US-BUG-003 — Fix layout Plan vs Real
+
+**Estado de integración:** INTEGRATED en EP004 (US-BUG-003).
+  - Header de Plan vs Real con filtros Org + Fase + botón Exportar en la
+    misma fila horizontal (ya era así; verificado).
+  - Tabla con nueva columna "PM asignado":
+    - Celda vacía ("—") si no hay PM.
+    - Link al perfil del PM (`/admin/users/{id}`) si hay nombre.
+  - Backend `/plan-vs-actual` devuelve `pm_id` y `pm_name`.
+  - CSV export incluye columna `pm_name`.
+
+---
+
+### # PENDING (referencia) — US-BUG-003 — Fix layout Plan vs Real
 
 **Criterios de aceptación:**
 - [ ] Filtro "Organizaciones" y filtro "Fases" al mismo nivel horizontal (misma fila, no uno encima del otro).
@@ -181,7 +248,19 @@ Campos adicionales al formulario de solicitud:
 
 ## EP005-projects.md — Agregar user stories
 
-### # PENDING — US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+### # INTEGRATED — US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+
+**Estado de integración:** INTEGRATED en EP005 (US-NEW-016).
+  - Nueva ruta `/admin/projects/{id}/plan` con toggle Lista/Dividida/Gantt.
+  - URL refleja modo con `?view=list|gantt` (default = split).
+  - Sidebar: "Tareas" + "Gantt" reemplazadas por "Plan".
+  - `/gantt` es ahora redirect permanente a `/plan?view=gantt` (compat).
+  - Link "Abrir editor completo" desde la lista al editor detallado
+    (`/tasks`) para edición avanzada.
+
+---
+
+### # PENDING (referencia) — US-NEW-016
 
 **Criterios de aceptación:**
 - [ ] Pestaña "Plan" en el detalle del proyecto contiene: lista de tareas (izquierda) + Gantt (derecha/abajo).
@@ -203,7 +282,16 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-018 — Módulo Área/Organigrama del proyecto
+### # INTEGRATED — US-NEW-018 — Módulo Área/Organigrama del proyecto
+
+**Estado de integración:** INTEGRATED en EP005 (US-NEW-018). CRUD completo
+  backend + UI en `/admin/projects/{id}/areas`. Los areas son referenciables
+  como texto — la integración con tareas/RAIDs/minutas como selector visual
+  queda para sus US respectivas.
+
+---
+
+### # PENDING (referencia) — US-NEW-018
 
 **Como** PM
 **Quiero** registrar actores y áreas involucradas en el proyecto
@@ -228,7 +316,14 @@ Campos adicionales al formulario de solicitud:
 
 ## EP006-project-modules.md — Agregar user stories
 
-### # PENDING — US-NEW-019 — Consolidar RAID (vista unificada)
+### # INTEGRATED — US-NEW-019 — Consolidar RAID (vista unificada)
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-019). XLSX con
+  4 sheets queda como follow-up; CSV cumple el caso de uso.
+
+---
+
+### # PENDING (referencia) — US-NEW-019
 
 **Criterios de aceptación:**
 - [ ] Tab "RAID" en el detalle del proyecto que muestra 4 sub-tabs: Riesgos (R) | Acciones (A) | Incidentes (I) | Decisiones (D).
@@ -241,7 +336,21 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-020 — Categorías de documentos actualizadas
+### # INTEGRATED — US-NEW-020 — Categorías de documentos actualizadas
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-020).
+  - Enum extendido: charter | plan | raid_export | transcript | minute |
+    report | lesson | contract | other.
+  - Filtro `?category=` en el GET de documents.
+  - PATCH `/api/v1/documents/{id}` para retaggar sin subir archivo.
+  - Charter ya se guarda como `category='charter'` (US-NEW-013).
+  - RAID export → `raid_export` y minutas → `minute` se usarán desde UI
+    cuando las flows específicas lo expongan (sin cambios de schema
+    adicionales).
+
+---
+
+### # PENDING (referencia) — US-NEW-020
 
 **Criterios de aceptación:**
 - [ ] Campo `category` en documentos acepta: `charter` | `plan` | `raid_export` | `transcript` | `minute` | `report` | `lesson` | `contract` | `other`.
@@ -251,7 +360,14 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-021 — Consolidar pestañas de Minutas en 1
+### # INTEGRATED — US-NEW-021 — Consolidar pestañas de Minutas en 1
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-021). Sidebar
+  unificado; CTA "Generar con IA" dentro de la pestaña Minutas.
+
+---
+
+### # PENDING (referencia) — US-NEW-021
 
 **Criterios de aceptación:**
 - [ ] Si actualmente hay 2 pestañas separadas para minutas (ej: "Minutas" y "Minuta IA"), unificarlas en 1.
@@ -260,7 +376,14 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-022 — Módulo Reportes dentro del proyecto
+### # INTEGRATED — US-NEW-022 — Módulo Reportes dentro del proyecto
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-022). CRUD manual
+  + reutilización del generador IA + editor con secciones editables.
+
+---
+
+### # PENDING (referencia) — US-NEW-022
 
 **Como** PM
 **Quiero** generar y gestionar reportes del proyecto
@@ -286,7 +409,13 @@ Campos adicionales al formulario de solicitud:
 
 ## EP007-admin.md — Agregar user stories
 
-### # PENDING — US-NEW-023 — Gestión de Tenant (acciones propuestas)
+### # INTEGRATED — US-NEW-023 — Gestión de Tenant (acciones propuestas)
+
+**Estado de integración:** INTEGRATED en EP007 (US-NEW-023).
+
+---
+
+### # PENDING (referencia) — US-NEW-023
 
 **Propuesta de acciones disponibles para Admin/Senior PMO en su propio tenant:**
 
@@ -304,7 +433,14 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+### # INTEGRATED — US-NEW-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+
+**Estado de integración:** INTEGRATED en EP007 (US-NEW-024). Tree inline
+  con CRUD de BU/Depto + botón "Ver proyectos".
+
+---
+
+### # PENDING (referencia) — US-NEW-024
 
 **Criterios de aceptación:**
 - [ ] En `/admin/organizations`, expandir US-039 para incluir gestión de BUs y Deptos.
@@ -320,7 +456,15 @@ Campos adicionales al formulario de solicitud:
 
 ## EP010-superadmin-panel.md — Agregar a user stories existentes
 
-### # PENDING — Fix en US-053 y US-055 (iconos y jerarquía en paneles de tenant)
+### # INTEGRATED — US-NEW-025 — Iconos + jerarquía en paneles de tenant
+
+**Estado de integración:** INTEGRATED en EP010 (US-NEW-025). Backend
+  expone 4 counts por tenant + `hierarchy` en drill-down. UI con
+  iconos y status dot.
+
+---
+
+### # PENDING (referencia) — Fix en US-053 y US-055 (iconos y jerarquía en paneles de tenant)
 
 **Criterios de aceptación (adicionales):**
 - [ ] Cards de tenant en lista y en drill-down muestran iconos por categoría:
@@ -333,7 +477,13 @@ Campos adicionales al formulario de solicitud:
   - Org count → BU count → Depto count → Programa count → Proyecto count.
 - [ ] Indicador activo/inactivo: punto verde (activo) / rojo (inactivo) visible en cada card de tenant.
 
-### # PENDING — Fix en dashboard US-053 (Visión General = Tenants + Health)
+### # INTEGRATED — US-NEW-026 — Visión General = Tenants + Health
+
+**Estado de integración:** INTEGRATED en EP010 (US-NEW-026).
+
+---
+
+### # PENDING (referencia) — Fix en dashboard US-053 (Visión General = Tenants + Health)
 
 **Criterios de aceptación (adicionales):**
 - [ ] Página principal `/superadmin` combina: KPI de tenants + widget de Health de sistemas.

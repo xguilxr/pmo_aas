@@ -224,3 +224,221 @@ async def test_tc097_minute_generated_by_ai(client, db_session):
     )
     assert r.status_code == 201
     assert r.json()["generated_by_ai"] is True
+
+
+# ============================================================================
+# US-NEW-020 — Categorías de documentos actualizadas
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_usnew020_accepts_new_categories(client, db_session):
+    """Todas las categorías nuevas son aceptadas por la API."""
+    _, auth, proj_id = await _setup(client, db_session)
+    new_cats = [
+        "charter", "plan", "raid_export", "transcript", "minute",
+        "report", "lesson", "contract", "other",
+    ]
+    for cat in new_cats:
+        r = await client.post(
+            f"/api/v1/projects/{proj_id}/documents",
+            json={
+                "title": f"Doc {cat}",
+                "category": cat,
+                "file_url": f"https://example.com/{cat}.pdf",
+                "mime_type": "application/pdf",
+                "size_bytes": 1000,
+            },
+            headers=auth["_authz"],
+        )
+        assert r.status_code == 201, f"{cat}: {r.text}"
+        assert r.json()["category"] == cat
+
+
+@pytest.mark.asyncio
+async def test_usnew020_rejects_invalid_category(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    r = await client.post(
+        f"/api/v1/projects/{proj_id}/documents",
+        json={
+            "title": "Invalid cat",
+            "category": "bogus_category",
+            "file_url": "https://example.com/x.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 1000,
+        },
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_usnew020_filter_by_category(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    await client.post(
+        f"/api/v1/projects/{proj_id}/documents",
+        json={
+            "title": "Charter doc", "category": "charter",
+            "file_url": "https://x/a.pdf", "mime_type": "application/pdf",
+            "size_bytes": 100,
+        },
+        headers=auth["_authz"],
+    )
+    await client.post(
+        f"/api/v1/projects/{proj_id}/documents",
+        json={
+            "title": "Report doc", "category": "report",
+            "file_url": "https://x/b.pdf", "mime_type": "application/pdf",
+            "size_bytes": 100,
+        },
+        headers=auth["_authz"],
+    )
+    r = await client.get(
+        f"/api/v1/projects/{proj_id}/documents?category=charter",
+        headers=auth["_authz"],
+    )
+    items = r.json()
+    assert len(items) == 1
+    assert items[0]["category"] == "charter"
+
+
+@pytest.mark.asyncio
+async def test_usnew020_patch_document_category(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    r = await client.post(
+        f"/api/v1/projects/{proj_id}/documents",
+        json={
+            "title": "To retag", "category": "other",
+            "file_url": "https://x/c.pdf", "mime_type": "application/pdf",
+            "size_bytes": 100,
+        },
+        headers=auth["_authz"],
+    )
+    doc_id = r.json()["id"]
+    p = await client.patch(
+        f"/api/v1/documents/{doc_id}",
+        json={"category": "raid_export", "description": "RAID export Q2"},
+        headers=auth["_authz"],
+    )
+    assert p.status_code == 200, p.text
+    assert p.json()["category"] == "raid_export"
+    assert p.json()["description"] == "RAID export Q2"
+
+
+# ============================================================================
+# US-NEW-022 — Módulo Reportes dentro del proyecto
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_usnew022_create_and_list_reports(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    # Crear 2 reportes
+    r1 = await client.post(
+        f"/api/v1/projects/{proj_id}/reports",
+        json={
+            "period": "weekly",
+            "recipients": ["a@x.com", "b@x.com"],
+        },
+        headers=auth["_authz"],
+    )
+    assert r1.status_code == 201, r1.text
+    body1 = r1.json()
+    assert body1["period"] == "weekly"
+    assert body1["status"] == "draft"
+    assert body1["generated_by_ai"] is False
+    # Secciones pre-llenadas por default
+    assert set(body1["sections"].keys()) == {
+        "resumen_ejecutivo",
+        "avance_plan",
+        "acciones_pendientes",
+        "decisiones_requeridas",
+        "riesgos_top",
+    }
+
+    r2 = await client.post(
+        f"/api/v1/projects/{proj_id}/reports",
+        json={"period": "monthly", "title": "Reporte mensual mayo"},
+        headers=auth["_authz"],
+    )
+    assert r2.status_code == 201
+
+    lst = await client.get(
+        f"/api/v1/projects/{proj_id}/reports", headers=auth["_authz"]
+    )
+    assert lst.status_code == 200 and len(lst.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_usnew022_patch_report_sections(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    r = await client.post(
+        f"/api/v1/projects/{proj_id}/reports",
+        json={"period": "weekly"},
+        headers=auth["_authz"],
+    )
+    rid = r.json()["id"]
+    p = await client.patch(
+        f"/api/v1/reports/{rid}",
+        json={
+            "sections": {
+                "resumen_ejecutivo": "Avance al 45%",
+                "riesgos_top": "Riesgo de proveedor X",
+            },
+            "recipients": ["pm@x.com"],
+        },
+        headers=auth["_authz"],
+    )
+    assert p.status_code == 200, p.text
+    body = p.json()
+    assert body["sections"]["resumen_ejecutivo"] == "Avance al 45%"
+    assert body["recipients"] == ["pm@x.com"]
+
+
+@pytest.mark.asyncio
+async def test_usnew022_invalid_period_rejected(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    r = await client.post(
+        f"/api/v1/projects/{proj_id}/reports",
+        json={"period": "yearly"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_usnew022_filter_by_period(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    await client.post(
+        f"/api/v1/projects/{proj_id}/reports",
+        json={"period": "daily"}, headers=auth["_authz"],
+    )
+    await client.post(
+        f"/api/v1/projects/{proj_id}/reports",
+        json={"period": "weekly"}, headers=auth["_authz"],
+    )
+    r = await client.get(
+        f"/api/v1/projects/{proj_id}/reports?period=weekly",
+        headers=auth["_authz"],
+    )
+    items = r.json()
+    assert len(items) == 1
+    assert items[0]["period"] == "weekly"
+
+
+@pytest.mark.asyncio
+async def test_usnew022_delete_draft(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    r = await client.post(
+        f"/api/v1/projects/{proj_id}/reports",
+        json={"period": "weekly"}, headers=auth["_authz"],
+    )
+    rid = r.json()["id"]
+    d = await client.delete(
+        f"/api/v1/reports/{rid}", headers=auth["_authz"]
+    )
+    assert d.status_code == 204
+    g = await client.get(
+        f"/api/v1/reports/{rid}", headers=auth["_authz"]
+    )
+    assert g.status_code == 404

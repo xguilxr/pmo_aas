@@ -199,3 +199,393 @@ async def test_tcmt001_isolation_orgs(client, db_session):
     assert r.status_code == 200
     names = [o["name"] for o in r.json()]
     assert "OrgInA" not in names
+
+
+# ==============================================================================
+# US-NEW-003 — CRUD Business Units
+# ==============================================================================
+
+
+async def _create_org(client, auth, name="OrgRoot"):
+    r = await client.post("/api/v1/organizations", json={"name": name}, headers=auth["_authz"])
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+# TC-NEW-003: nombre BU duplicado en misma org → 409
+@pytest.mark.asyncio
+async def test_tcnew003_bu_duplicate_name(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+
+    r1 = await client.post(
+        f"/api/v1/organizations/{org_id}/business-units",
+        json={"name": "Comercial"},
+        headers=auth["_authz"],
+    )
+    assert r1.status_code == 201, r1.text
+    r2 = await client.post(
+        f"/api/v1/organizations/{org_id}/business-units",
+        json={"name": "Comercial"},
+        headers=auth["_authz"],
+    )
+    assert r2.status_code == 409
+
+
+# TC-NEW-005: listar BUs filtradas por org
+@pytest.mark.asyncio
+async def test_tcnew005_list_bus_by_org(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_a = await _create_org(client, auth, name="OrgAlpha")
+    org_b = await _create_org(client, auth, name="OrgBeta")
+
+    await client.post(
+        f"/api/v1/organizations/{org_a}/business-units",
+        json={"name": "BU-Alpha-1"},
+        headers=auth["_authz"],
+    )
+    await client.post(
+        f"/api/v1/organizations/{org_b}/business-units",
+        json={"name": "BU-Beta-1"},
+        headers=auth["_authz"],
+    )
+
+    r = await client.get(
+        f"/api/v1/organizations/{org_a}/business-units", headers=auth["_authz"]
+    )
+    assert r.status_code == 200
+    names = [b["name"] for b in r.json()]
+    assert names == ["BU-Alpha-1"]
+
+
+# BU patch + nombre duplicado al editar
+@pytest.mark.asyncio
+async def test_bu_update_and_conflict(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+    bu1 = (
+        await client.post(
+            f"/api/v1/organizations/{org_id}/business-units",
+            json={"name": "Finanzas"},
+            headers=auth["_authz"],
+        )
+    ).json()
+    bu2 = (
+        await client.post(
+            f"/api/v1/organizations/{org_id}/business-units",
+            json={"name": "Operaciones"},
+            headers=auth["_authz"],
+        )
+    ).json()
+
+    # Edición OK
+    r = await client.patch(
+        f"/api/v1/business-units/{bu1['id']}",
+        json={"description": "Área de finanzas"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200
+    assert r.json()["description"] == "Área de finanzas"
+
+    # Renombrar a uno existente → 409
+    r2 = await client.patch(
+        f"/api/v1/business-units/{bu1['id']}",
+        json={"name": bu2["name"]},
+        headers=auth["_authz"],
+    )
+    assert r2.status_code == 409
+
+
+# Soft-delete BU sin departamentos
+@pytest.mark.asyncio
+async def test_bu_soft_delete_no_depts(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+    bu = (
+        await client.post(
+            f"/api/v1/organizations/{org_id}/business-units",
+            json={"name": "RRHH"},
+            headers=auth["_authz"],
+        )
+    ).json()
+    r = await client.delete(
+        f"/api/v1/business-units/{bu['id']}", headers=auth["_authz"]
+    )
+    assert r.status_code == 204
+    g = await client.get(
+        f"/api/v1/business-units/{bu['id']}", headers=auth["_authz"]
+    )
+    # post-soft-delete, ya no listable como activo
+    assert g.status_code == 404
+
+
+# Aislamiento multi-tenant en BUs
+@pytest.mark.asyncio
+async def test_bu_tenant_isolation(client, db_session):
+    _, auth_a = await _admin_setup(client, db_session, slug="bu_t_a")
+    _, auth_b = await _admin_setup(client, db_session, slug="bu_t_b")
+    org_a = await _create_org(client, auth_a, name="OrgEnA")
+    await client.post(
+        f"/api/v1/organizations/{org_a}/business-units",
+        json={"name": "BUDeA"},
+        headers=auth_a["_authz"],
+    )
+    # Tenant B no puede ver la BU de A ni la org
+    r = await client.get(
+        f"/api/v1/organizations/{org_a}/business-units", headers=auth_b["_authz"]
+    )
+    assert r.status_code == 404
+
+
+# ==============================================================================
+# US-NEW-004 — CRUD Departments
+# ==============================================================================
+
+
+async def _create_bu(client, auth, org_id, name):
+    r = await client.post(
+        f"/api/v1/organizations/{org_id}/business-units",
+        json={"name": name},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+# TC-NEW-006: nombre Depto duplicado en misma BU → 409
+@pytest.mark.asyncio
+async def test_tcnew006_dept_duplicate_name(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+    bu_id = await _create_bu(client, auth, org_id, "Comercial")
+
+    r1 = await client.post(
+        f"/api/v1/business-units/{bu_id}/departments",
+        json={"name": "Ventas"},
+        headers=auth["_authz"],
+    )
+    assert r1.status_code == 201, r1.text
+    r2 = await client.post(
+        f"/api/v1/business-units/{bu_id}/departments",
+        json={"name": "Ventas"},
+        headers=auth["_authz"],
+    )
+    assert r2.status_code == 409
+
+
+# Listar deptos filtrados por BU
+@pytest.mark.asyncio
+async def test_list_depts_by_bu(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+    bu_a = await _create_bu(client, auth, org_id, "BU-A")
+    bu_b = await _create_bu(client, auth, org_id, "BU-B")
+
+    await client.post(
+        f"/api/v1/business-units/{bu_a}/departments",
+        json={"name": "Dept-A1"}, headers=auth["_authz"],
+    )
+    await client.post(
+        f"/api/v1/business-units/{bu_b}/departments",
+        json={"name": "Dept-B1"}, headers=auth["_authz"],
+    )
+    r = await client.get(
+        f"/api/v1/business-units/{bu_a}/departments", headers=auth["_authz"]
+    )
+    assert r.status_code == 200
+    names = [d["name"] for d in r.json()]
+    assert names == ["Dept-A1"]
+
+
+# PATCH de depto y rename conflict
+@pytest.mark.asyncio
+async def test_dept_update_and_rename_conflict(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+    bu_id = await _create_bu(client, auth, org_id, "BU1")
+    d1 = (
+        await client.post(
+            f"/api/v1/business-units/{bu_id}/departments",
+            json={"name": "Uno"}, headers=auth["_authz"],
+        )
+    ).json()
+    d2 = (
+        await client.post(
+            f"/api/v1/business-units/{bu_id}/departments",
+            json={"name": "Dos"}, headers=auth["_authz"],
+        )
+    ).json()
+
+    r = await client.patch(
+        f"/api/v1/departments/{d1['id']}",
+        json={"description": "desc"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200 and r.json()["description"] == "desc"
+
+    r2 = await client.patch(
+        f"/api/v1/departments/{d1['id']}",
+        json={"name": d2["name"]},
+        headers=auth["_authz"],
+    )
+    assert r2.status_code == 409
+
+
+# TC-NEW-007: soft-delete depto con programa activo → 422
+@pytest.mark.asyncio
+async def test_tcnew007_dept_delete_with_active_program(client, db_session):
+    from app.models.organization import Program
+    from app.db.base import new_uuid
+
+    t, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+    bu_id = await _create_bu(client, auth, org_id, "BU")
+    dept = (
+        await client.post(
+            f"/api/v1/business-units/{bu_id}/departments",
+            json={"name": "DeptoConProg"},
+            headers=auth["_authz"],
+        )
+    ).json()
+
+    prog = Program(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        department_id=dept["id"],
+        name="ProgDelDept",
+        is_active=True,
+    )
+    db_session.add(prog)
+    await db_session.commit()
+
+    # Sin force → 422
+    r = await client.delete(
+        f"/api/v1/departments/{dept['id']}", headers=auth["_authz"]
+    )
+    assert r.status_code == 422
+    # Con force → 204
+    r2 = await client.delete(
+        f"/api/v1/departments/{dept['id']}?force=true", headers=auth["_authz"]
+    )
+    assert r2.status_code == 204
+
+
+# ==============================================================================
+# US-NEW-006 — Vista paneles de organizaciones (métricas)
+# ==============================================================================
+
+
+# TC-NEW-010: métricas de card coinciden con queries directas
+@pytest.mark.asyncio
+async def test_tcnew010_org_panels_metrics(client, db_session):
+    from app.db.base import new_uuid
+    from app.models.organization import Program
+    from app.models.project import Project
+
+    t, auth = await _admin_setup(client, db_session)
+
+    # Org con: 2 BUs, 1 depto en BU-A, 1 programa, 2 proyectos (1 green, 1 red)
+    org_id = await _create_org(client, auth, name="OrgConMetricas")
+    bu_a = await _create_bu(client, auth, org_id, "BU-A")
+    await _create_bu(client, auth, org_id, "BU-B")
+    await client.post(
+        f"/api/v1/business-units/{bu_a}/departments",
+        json={"name": "Dept-1"},
+        headers=auth["_authz"],
+    )
+
+    prog = Program(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        name="Prog-1",
+        is_active=True,
+    )
+    db_session.add(prog)
+    p1 = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-000001",
+        name="P1",
+        phase="execution",
+        health_status="green",
+    )
+    p2 = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-000002",
+        name="P2",
+        phase="planning",
+        health_status="red",
+    )
+    db_session.add_all([p1, p2])
+    await db_session.commit()
+
+    r = await client.get("/api/v1/organizations/panels", headers=auth["_authz"])
+    assert r.status_code == 200, r.text
+    panels = r.json()
+    card = next(c for c in panels if c["name"] == "OrgConMetricas")
+    assert card["business_unit_count"] == 2
+    assert card["department_count"] == 1
+    assert card["program_count"] == 1
+    assert card["active_project_count"] == 2
+    assert card["portfolio_health"] == {"green": 1, "yellow": 0, "red": 1}
+
+
+# Panels excluye proyectos cerrados del conteo activo
+@pytest.mark.asyncio
+async def test_org_panels_exclude_closed(client, db_session):
+    from app.db.base import new_uuid
+    from app.models.project import Project
+
+    t, auth = await _admin_setup(client, db_session, slug="closedtest")
+    org_id = await _create_org(client, auth, name="OrgCerrados")
+    p_closed = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-C1",
+        name="Cerrado",
+        phase="closed",
+        health_status="green",
+    )
+    p_open = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-O1",
+        name="Abierto",
+        phase="execution",
+        health_status="yellow",
+    )
+    db_session.add_all([p_closed, p_open])
+    await db_session.commit()
+    r = await client.get("/api/v1/organizations/panels", headers=auth["_authz"])
+    card = next(c for c in r.json() if c["name"] == "OrgCerrados")
+    assert card["active_project_count"] == 1
+    assert card["portfolio_health"]["yellow"] == 1
+
+
+# Soft-delete sin hijos
+@pytest.mark.asyncio
+async def test_dept_soft_delete(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    org_id = await _create_org(client, auth)
+    bu_id = await _create_bu(client, auth, org_id, "BU")
+    d = (
+        await client.post(
+            f"/api/v1/business-units/{bu_id}/departments",
+            json={"name": "Legal"}, headers=auth["_authz"],
+        )
+    ).json()
+    r = await client.delete(
+        f"/api/v1/departments/{d['id']}", headers=auth["_authz"]
+    )
+    assert r.status_code == 204
+    g = await client.get(
+        f"/api/v1/departments/{d['id']}", headers=auth["_authz"]
+    )
+    assert g.status_code == 404

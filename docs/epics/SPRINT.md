@@ -7,12 +7,17 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-002
-Epic: EP002-org-hierarchy.md
-Título: Tablas business_units y departments + FK en programs/projects
-Tipo: Backend — migración de BD + modelos
-Commit esperado: "feat(org): US-NEW-002 — tablas BU y departments con FK"
-Precondición: Revisar DB-CHANGES.md sección EP002 antes de iniciar
+— Sin US activa —
+
+Bloques 1-8 (EP001, EP002, EP003, EP004, EP005, EP006, EP007, EP010)
+completos en esta rama (26 US implementadas).
+
+Bloques 9 y 10 (EP011 Notifications y EP012 Migración MySQL) están
+marcados como POST-MVP en el índice del README — se trabajan en sprint
+posterior cuando el MVP esté listo para release.
+
+US-NEW-017 (tabs inline en detalle de proyecto) quedó diferida
+intencionalmente — ver commit de US-NEW-016.
 ```
 
 ---
@@ -21,9 +26,9 @@ Precondición: Revisar DB-CHANGES.md sección EP002 antes de iniciar
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-003 | EP002 | CRUD Business Units — API endpoints | Backend |
-| 2 | US-NEW-004 | EP002 | CRUD Departments — API endpoints | Backend |
-| 3 | US-NEW-005 | EP002 | Sidebar con organizaciones para nav rápida | Frontend |
+| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center | POST-MVP |
+| 2 | US-NEW-028 | EP011 | Email notifications via Resend | POST-MVP |
+| 3 | US-NEW-029 | EP012 | Plan de migración MySQL | POST-MVP |
 
 ---
 
@@ -32,54 +37,81 @@ Precondición: Revisar DB-CHANGES.md sección EP002 antes de iniciar
 | US | Título | Commit | Fecha |
 |---|---|---|---|
 | US-NEW-001 | Setup inicial — análisis de gaps v1→v2 | `docs: gap analysis v2` | 2026-04-20 |
+| US-NEW-002 | Tablas business_units + departments + FKs | `feat(org): US-NEW-002 — tablas BU y departments con FK` | 2026-04-20 |
+| US-NEW-003 | CRUD Business Units API | `feat(org): US-NEW-003 — CRUD Business Units API` | 2026-04-20 |
+| US-NEW-004 | CRUD Departments API | `feat(org): US-NEW-004 — CRUD Departments API` | 2026-04-20 |
+| US-NEW-005 | Sidebar org tree nav (Frontend) | `feat(web): US-NEW-005 — sidebar org tree nav` | 2026-04-20 |
+| US-NEW-006 | Vista paneles de organizaciones (cards + métricas) | `feat(web): US-NEW-006 — paneles de organizaciones` | 2026-04-20 |
+| US-BUG-001 | Fix 404 en página de Programas | `fix(web): US-BUG-001 — crea /admin/programs` | 2026-04-20 |
+| US-NEW-007 | Toggle dark/light mode en dropdown usuario | `feat(web): US-NEW-007 — toggle dark/light en user dropdown` | 2026-04-20 |
+| US-NEW-008 | Toggle de idioma (ES/EN) en dropdown usuario | `feat(web): US-NEW-008 — toggle idioma en user dropdown` | 2026-04-20 |
+| US-NEW-010 | Color chrome #182e4e + Senior PMO como admin | `feat(auth): US-NEW-010 — chrome #182e4e + Senior PMO admin` | 2026-04-20 |
+| US-NEW-009 | Página /account (perfil + cambiar password) | `feat(web): US-NEW-009 — página /account perfil + password` | 2026-04-20 |
+| US-NEW-011 | Campos adicionales en solicitud + FK BU/Depto | `feat(requests): US-NEW-011 — campos adicionales en solicitud` | 2026-04-20 |
+| US-NEW-012 | Project Charter: tabla + generación al aprobar | `feat(requests): US-NEW-012 — project_charters + auto-gen` | 2026-04-20 |
+| US-NEW-013 | Charter aparece como documento del proyecto | `feat(requests): US-NEW-013 — charter como documento` | 2026-04-20 |
+| US-NEW-014 | Filtro de organización en dashboard | `feat(dashboard): US-NEW-014 — filtro organización` | 2026-04-20 |
+| US-BUG-002 | Fix distorsión en gráficas de barra | `fix(dashboard): US-BUG-002 — distorsión gráficas barra` | 2026-04-20 |
+| US-NEW-015 | KPIs respetan jerarquía de roles | `feat(dashboard): US-NEW-015 — KPIs respetan jerarquía roles` | 2026-04-20 |
+| US-BUG-003 | Fix layout Plan vs Real + columna PM | `fix(dashboard): US-BUG-003 — layout Plan vs Real` | 2026-04-20 |
+| US-NEW-016 | Unificar Plan + Gantt en una pestaña | `feat(projects): US-NEW-016 — unificar plan + gantt` | 2026-04-20 |
+| US-NEW-018 | Módulo Áreas/Organigrama del proyecto | `feat(projects): US-NEW-018 — módulo áreas del proyecto` | 2026-04-20 |
+| US-NEW-019 | Consolidar RAID (vista unificada) | `feat(projects): US-NEW-019 — consolidar RAID` | 2026-04-20 |
+| US-NEW-020 | Categorías de documentos actualizadas | `feat(projects): US-NEW-020 — categorías de documentos` | 2026-04-20 |
+| US-NEW-021 | Consolidar pestañas de Minutas | `feat(projects): US-NEW-021 — consolidar minutas` | 2026-04-20 |
+| US-NEW-022 | Módulo Reportes dentro del proyecto | `feat(projects): US-NEW-022 — módulo reportes` | 2026-04-20 |
+| US-NEW-023 | Gestión de Tenant (info + stats + editar) | `feat(admin): US-NEW-023 — gestión de tenant` | 2026-04-20 |
+| US-NEW-024 | Gestión jerarquía org (BU + Depto) en Admin | `feat(admin): US-NEW-024 — jerarquía org en admin` | 2026-04-20 |
+| US-NEW-025 | Iconos en paneles de tenant + jerarquía | `feat(superadmin): US-NEW-025 — iconos en paneles` | 2026-04-20 |
+| US-NEW-026 | Visión General = Tenants + Health unificados | `feat(superadmin): US-NEW-026 — visión general unificada` | 2026-04-20 |
 
 ---
 
 ## 📋 Backlog ordenado por prioridad
 
 ### Bloque 1 — Jerarquía org (EP002) — BLOQUEANTE para todo lo demás
-- [ ] US-NEW-002 — Migración BD: tablas BU + Depto + FKs
-- [ ] US-NEW-003 — CRUD Business Units (API)
-- [ ] US-NEW-004 — CRUD Departments (API)
-- [ ] US-NEW-005 — Sidebar org nav (Frontend)
-- [ ] US-NEW-006 — Vista paneles de organizaciones (Frontend)
-- [ ] US-BUG-001 — Fix 404 en Programas
+- [x] US-NEW-002 — Migración BD: tablas BU + Depto + FKs ✅
+- [x] US-NEW-003 — CRUD Business Units (API) ✅
+- [x] US-NEW-004 — CRUD Departments (API) ✅
+- [x] US-NEW-005 — Sidebar org nav (Frontend) ✅
+- [x] US-NEW-006 — Vista paneles de organizaciones (Frontend) ✅
+- [x] US-BUG-001 — Fix 404 en Programas ✅
 
 ### Bloque 2 — Topbar y UX base (EP001)
-- [ ] US-NEW-007 — Toggle dark/light en dropdown usuario
-- [ ] US-NEW-008 — Toggle idioma en dropdown usuario
-- [ ] US-NEW-009 — Página administrar cuenta (perfil + cambiar password)
-- [ ] US-NEW-010 — Color chrome #182e4e + Senior PMO = admin
+- [x] US-NEW-007 — Toggle dark/light en dropdown usuario ✅
+- [x] US-NEW-008 — Toggle idioma en dropdown usuario ✅
+- [x] US-NEW-009 — Página administrar cuenta (perfil + cambiar password) ✅
+- [x] US-NEW-010 — Color chrome #182e4e + Senior PMO = admin ✅
 
 ### Bloque 3 — Project Charter (EP003)
-- [ ] US-NEW-011 — Campos adicionales en solicitud (correos, personas clave, etc.)
-- [ ] US-NEW-012 — Project Charter: tabla + generación al aprobar
-- [ ] US-NEW-013 — Charter aparece como documento en el proyecto
+- [x] US-NEW-011 — Campos adicionales en solicitud (correos, personas clave, etc.) ✅
+- [x] US-NEW-012 — Project Charter: tabla + generación al aprobar ✅
+- [x] US-NEW-013 — Charter aparece como documento en el proyecto ✅
 
 ### Bloque 4 — Dashboard fixes (EP004)
-- [ ] US-BUG-002 — Fix distorsión gráficas de barra
-- [ ] US-NEW-014 — Filtro organización en dashboard
-- [ ] US-NEW-015 — KPIs respetan jerarquía de roles
-- [ ] US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM)
+- [x] US-BUG-002 — Fix distorsión gráficas de barra ✅
+- [x] US-NEW-014 — Filtro organización en dashboard ✅
+- [x] US-NEW-015 — KPIs respetan jerarquía de roles ✅
+- [x] US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM) ✅
 
 ### Bloque 5 — Proyecto detalle (EP005)
-- [ ] US-NEW-016 — Unificar Plan + Gantt en una pestaña
+- [x] US-NEW-016 — Unificar Plan + Gantt en una pestaña ✅
 - [ ] US-NEW-017 — Tabs inline (sin cambio de página) para módulos del proyecto
-- [ ] US-NEW-018 — Módulo Área/Organigrama del proyecto
+- [x] US-NEW-018 — Módulo Área/Organigrama del proyecto ✅
 
 ### Bloque 6 — RAID y módulos (EP006)
-- [ ] US-NEW-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones)
-- [ ] US-NEW-020 — Categorías de documentos actualizadas
-- [ ] US-NEW-021 — Consolidar pestañas de Minutas en 1
-- [ ] US-NEW-022 — Módulo Reportes dentro del proyecto
+- [x] US-NEW-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones) ✅
+- [x] US-NEW-020 — Categorías de documentos actualizadas ✅
+- [x] US-NEW-021 — Consolidar pestañas de Minutas en 1 ✅
+- [x] US-NEW-022 — Módulo Reportes dentro del proyecto ✅
 
 ### Bloque 7 — Admin (EP007)
-- [ ] US-NEW-023 — Gestión de tenant (propuesta de acciones)
-- [ ] US-NEW-024 — Gestión jerarquía org completa (BU + Depto)
+- [x] US-NEW-023 — Gestión de tenant (propuesta de acciones) ✅
+- [x] US-NEW-024 — Gestión jerarquía org completa (BU + Depto) ✅
 
 ### Bloque 8 — SuperAdmin (EP010)
-- [ ] US-NEW-025 — Iconos en paneles de tenant
-- [ ] US-NEW-026 — Visión General = Tenants + Health unidos
+- [x] US-NEW-025 — Iconos en paneles de tenant ✅
+- [x] US-NEW-026 — Visión General = Tenants + Health unidos ✅
 
 ### Bloque 9 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center

@@ -12,7 +12,9 @@ from app.api.deps import CurrentUser, require_permission
 from app.core.errors import forbidden
 from app.db.session import get_db
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
+from app.models.user import User
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -27,28 +29,99 @@ async def _count(db: AsyncSession, stmt) -> int:
     return (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one() or 0
 
 
+async def scoped_project_ids(
+    cu: CurrentUser,
+    db: AsyncSession,
+    tenant_id: UUID,
+    organization_id: UUID | None = None,
+) -> list[str] | None:
+    """Devuelve IDs de proyectos visibles al usuario según jerarquía de roles
+    (US-NEW-015). `None` significa "sin restricción" (admin-equivalente: ve
+    todo el tenant filtrable por org).
+
+    Reglas:
+      - Admin-equivalente (is_admin_equivalent = True, incluye Administrador y
+        Senior PMO via DEC-005): ve todo el tenant. Aplica filtro por `org`
+        si se pasa.
+      - Project Manager / resto de roles: sólo proyectos donde es `pm_id`
+        o está en `project_members`.
+    """
+    if cu.is_admin_equivalent:
+        return None  # sin restricción adicional
+
+    user_id = str(cu.id)
+    # Proyectos donde es PM asignado
+    pm_stmt = select(Project.id).where(
+        Project.tenant_id == tenant_id,
+        Project.deleted_at.is_(None),
+        Project.pm_id == user_id,
+    )
+    if organization_id:
+        pm_stmt = pm_stmt.where(Project.organization_id == str(organization_id))
+    pm_ids = (await db.execute(pm_stmt)).scalars().all()
+
+    # Proyectos donde es miembro (cualquier rol)
+    mem_stmt = (
+        select(Project.id)
+        .join(ProjectMember, ProjectMember.project_id == Project.id)
+        .where(
+            Project.tenant_id == tenant_id,
+            Project.deleted_at.is_(None),
+            ProjectMember.user_id == user_id,
+        )
+    )
+    if organization_id:
+        mem_stmt = mem_stmt.where(Project.organization_id == str(organization_id))
+    member_ids = (await db.execute(mem_stmt)).scalars().all()
+
+    combined = {str(i) for i in pm_ids} | {str(i) for i in member_ids}
+    # Devolver lista; vacía = ningún proyecto visible
+    return list(combined)
+
+
 @router.get("/kpis")
 async def kpis(
+    organization_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("dashboard", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
     active_phases = ["planning", "execution", "support"]
 
+    # Scoping por jerarquía (US-NEW-015): None = sin restricción (admin),
+    # lista = sólo esos project_ids. Lista vacía = ningún proyecto visible.
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
+    role_restricted = role_ids is not None
+
+    def scoped_projects():
+        stmt = select(Project.id).where(
+            Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+        )
+        if organization_id:
+            stmt = stmt.where(Project.organization_id == str(organization_id))
+        if role_restricted:
+            stmt = stmt.where(Project.id.in_(role_ids or ["__none__"]))
+        return stmt
+
+    # IDs de proyectos del scope actual para filtrar módulos
+    scoped_ids_rows = (await db.execute(scoped_projects())).scalars().all()
+    scoped_ids = [str(i) for i in scoped_ids_rows]
+
     active_projects = await _count(
         db,
-        select(Project.id).where(
-            Project.tenant_id == tenant_id,
-            Project.phase.in_(active_phases),
-            Project.deleted_at.is_(None),
-        ),
+        scoped_projects().where(Project.phase.in_(active_phases)),
     )
-    requests_in_review = await _count(
-        db,
-        select(ProjectRequest.id).where(
-            ProjectRequest.tenant_id == tenant_id, ProjectRequest.status == "in_review"
-        ),
+    req_stmt = select(ProjectRequest.id).where(
+        ProjectRequest.tenant_id == tenant_id, ProjectRequest.status == "in_review"
     )
+    if organization_id:
+        req_stmt = req_stmt.where(
+            ProjectRequest.organization_id == str(organization_id)
+        )
+    # Solicitudes: a los no-admins se les muestran solo las que ellos crearon
+    if role_restricted:
+        req_stmt = req_stmt.where(ProjectRequest.requested_by == str(cu.id))
+    requests_in_review = await _count(db, req_stmt)
 
     # Conteos de módulos — se calculan si existen las tablas (EP006). Defaults seguros.
     open_risks = 0
@@ -58,47 +131,73 @@ async def kpis(
     try:
         from app.models.modules import ChangeRequest, Issue, Risk  # type: ignore
 
+        def scope_risks(stmt):
+            if organization_id and scoped_ids:
+                return stmt.where(Risk.project_id.in_(scoped_ids))
+            if organization_id and not scoped_ids:
+                return stmt.where(Risk.project_id.in_(["__none__"]))  # vacío
+            return stmt
+
         open_risks = await _count(
             db,
-            select(Risk.id).where(Risk.tenant_id == tenant_id, Risk.status != "closed"),
+            scope_risks(
+                select(Risk.id).where(Risk.tenant_id == tenant_id, Risk.status != "closed")
+            ),
         )
         severe_risks = await _count(
             db,
-            select(Risk.id).where(
-                Risk.tenant_id == tenant_id, Risk.status != "closed", Risk.severity >= 13
+            scope_risks(
+                select(Risk.id).where(
+                    Risk.tenant_id == tenant_id,
+                    Risk.status != "closed",
+                    Risk.severity >= 13,
+                )
             ),
         )
-        change_requests_in_review = await _count(
-            db,
-            select(ChangeRequest.id).where(
-                ChangeRequest.tenant_id == tenant_id, ChangeRequest.status == "in_review"
-            ),
+
+        cr_stmt = select(ChangeRequest.id).where(
+            ChangeRequest.tenant_id == tenant_id,
+            ChangeRequest.status == "in_review",
         )
-        open_issues = await _count(
-            db,
-            select(Issue.id).where(
-                Issue.tenant_id == tenant_id, Issue.status.in_(["open", "in_progress"])
-            ),
+        if organization_id:
+            cr_stmt = cr_stmt.where(
+                ChangeRequest.project_id.in_(scoped_ids or ["__none__"])
+            )
+        change_requests_in_review = await _count(db, cr_stmt)
+
+        iss_stmt = select(Issue.id).where(
+            Issue.tenant_id == tenant_id,
+            Issue.status.in_(["open", "in_progress"]),
         )
+        if organization_id:
+            iss_stmt = iss_stmt.where(Issue.project_id.in_(scoped_ids or ["__none__"]))
+        open_issues = await _count(db, iss_stmt)
     except Exception:
         pass
 
-    budget_total: Decimal | None = (
-        await db.execute(
-            select(func.coalesce(func.sum(Project.budget), 0)).where(
-                Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
-            )
+    budget_stmt = select(func.coalesce(func.sum(Project.budget), 0)).where(
+        Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+    )
+    if organization_id:
+        budget_stmt = budget_stmt.where(
+            Project.organization_id == str(organization_id)
         )
-    ).scalar_one()
-    progress_avg = (
-        await db.execute(
-            select(func.coalesce(func.avg(Project.progress), 0)).where(
-                Project.tenant_id == tenant_id,
-                Project.phase.in_(active_phases),
-                Project.deleted_at.is_(None),
-            )
+    if role_restricted:
+        budget_stmt = budget_stmt.where(Project.id.in_(role_ids or ["__none__"]))
+    budget_total: Decimal | None = (await db.execute(budget_stmt)).scalar_one()
+
+    progress_stmt = select(func.coalesce(func.avg(Project.progress), 0)).where(
+        Project.tenant_id == tenant_id,
+        Project.phase.in_(active_phases),
+        Project.deleted_at.is_(None),
+    )
+    if organization_id:
+        progress_stmt = progress_stmt.where(
+            Project.organization_id == str(organization_id)
         )
-    ).scalar_one()
+    if role_restricted:
+        progress_stmt = progress_stmt.where(Project.id.in_(role_ids or ["__none__"]))
+    progress_avg = (await db.execute(progress_stmt)).scalar_one()
 
     return {
         "active_projects": active_projects,
@@ -114,15 +213,25 @@ async def kpis(
 
 @router.get("/charts")
 async def charts(
+    organization_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("dashboard", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
+
+    def scoped_where():
+        base = [Project.tenant_id == tenant_id, Project.deleted_at.is_(None)]
+        if organization_id:
+            base.append(Project.organization_id == str(organization_id))
+        if role_ids is not None:
+            base.append(Project.id.in_(role_ids or ["__none__"]))
+        return base
 
     rows = (
         await db.execute(
             select(Project.phase, func.count(Project.id))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.phase)
         )
     ).all()
@@ -131,7 +240,7 @@ async def charts(
     rows = (
         await db.execute(
             select(Project.phase, func.coalesce(func.avg(Project.progress), 0))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.phase)
         )
     ).all()
@@ -140,7 +249,7 @@ async def charts(
     rows = (
         await db.execute(
             select(Project.type, func.coalesce(func.sum(Project.budget), 0))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.type)
         )
     ).all()
@@ -149,7 +258,7 @@ async def charts(
     rows = (
         await db.execute(
             select(Project.health_status, func.count(Project.id))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.health_status)
         )
     ).all()
@@ -180,13 +289,30 @@ async def plan_vs_actual(
     if phase:
         stmt = stmt.where(Project.phase == phase)
 
+    # Scoping por jerarquía (US-NEW-015): Project Managers ven sólo lo suyo.
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
+    if role_ids is not None:
+        stmt = stmt.where(Project.id.in_(role_ids or ["__none__"]))
+
     # Orden: rojo primero
     health_order = {"red": 0, "yellow": 1, "green": 2}
     projects = (await db.execute(stmt)).scalars().all()
     projects.sort(key=lambda p: health_order.get(p.health_status, 99))
 
+    # Pre-cargar nombres de PM (US-BUG-003: columna PM Asignado).
+    pm_ids = sorted({p.pm_id for p in projects if p.pm_id})
+    pm_names: dict[str, str] = {}
+    if pm_ids:
+        rows = (
+            await db.execute(
+                select(User.id, User.full_name).where(User.id.in_(pm_ids))
+            )
+        ).all()
+        pm_names = {str(i): n for i, n in rows}
+
     out = []
     for p in projects:
+        pm_id = str(p.pm_id) if p.pm_id else None
         out.append(
             {
                 "project_id": str(p.id),
@@ -198,6 +324,8 @@ async def plan_vs_actual(
                 "progress_plan": _plan_progress_for(p),
                 "progress_actual": int(p.progress or 0),
                 "health": p.health_status,
+                "pm_id": pm_id,
+                "pm_name": pm_names.get(pm_id) if pm_id else None,
             }
         )
     return out
@@ -231,13 +359,13 @@ async def plan_vs_actual_csv(
     writer = csv.DictWriter(
         buf,
         fieldnames=[
-            "folio", "name", "end_date", "budget_plan", "budget_actual",
-            "progress_plan", "progress_actual", "health",
+            "folio", "name", "pm_name", "end_date", "budget_plan",
+            "budget_actual", "progress_plan", "progress_actual", "health",
         ],
     )
     writer.writeheader()
     for row in data:
-        writer.writerow({k: row[k] for k in writer.fieldnames})
+        writer.writerow({k: row.get(k, "") or "" for k in writer.fieldnames})
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),

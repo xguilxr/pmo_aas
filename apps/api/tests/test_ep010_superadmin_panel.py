@@ -119,3 +119,78 @@ async def test_health_endpoint(client, db_session):
     assert r.status_code == 200
     body = r.json()
     assert body["db"] is True
+
+
+# ============================================================================
+# US-NEW-025 — Iconos en paneles de tenant (backend counts)
+# ============================================================================
+
+
+import pytest as _pytest  # noqa: E402 — evitar colisión si ya importado
+
+
+@_pytest.mark.asyncio
+async def test_usnew025_list_tenants_returns_full_counts(client, db_session):
+    from decimal import Decimal
+    from app.models.project import Project
+    from app.models.organization import Organization, Program
+    from tests.factories import create_tenant, create_user
+
+    t = await create_tenant(db_session, slug="sa25a", name="SA25a")
+    org = Organization(tenant_id=t.id, name="Org A")
+    db_session.add(org)
+    await db_session.flush()
+    db_session.add(Program(tenant_id=t.id, organization_id=org.id, name="Prog 1"))
+    db_session.add(
+        Project(
+            tenant_id=t.id, organization_id=org.id, folio="PRJ25-1",
+            name="P1", phase="planning", budget=Decimal("100"),
+        )
+    )
+    await create_user(
+        db_session, tenant=None, username="root25",
+        email="root25@pmoaas.example.com",
+        password="Str0ng-R-1!", is_superadmin=True,
+    )
+    from tests.factories import login
+
+    auth = await login(client, "root25", "Str0ng-R-1!")
+    r = await client.get("/api/v1/superadmin/tenants", headers=auth["_authz"])
+    assert r.status_code == 200, r.text
+    row = next(x for x in r.json() if x["slug"] == "sa25a")
+    assert row["organization_count"] == 1
+    assert row["program_count"] == 1
+    assert row["project_count"] == 1
+
+
+@_pytest.mark.asyncio
+async def test_usnew025_tenant_detail_has_hierarchy(client, db_session):
+    from app.models.organization import BusinessUnit, Department, Organization
+
+    from tests.factories import create_tenant, create_user, login
+
+    t = await create_tenant(db_session, slug="sa25b", name="SA25b")
+    org = Organization(tenant_id=t.id, name="Org B")
+    db_session.add(org)
+    await db_session.flush()
+    bu = BusinessUnit(tenant_id=t.id, organization_id=org.id, name="BU B")
+    db_session.add(bu)
+    await db_session.flush()
+    db_session.add(Department(tenant_id=t.id, business_unit_id=bu.id, name="Dept B"))
+    await db_session.commit()
+
+    await create_user(
+        db_session, tenant=None, username="root25b",
+        email="root25b@pmoaas.example.com",
+        password="Str0ng-R-1!", is_superadmin=True,
+    )
+    auth = await login(client, "root25b", "Str0ng-R-1!")
+    r = await client.get(
+        f"/api/v1/superadmin/tenants/{t.id}/detail", headers=auth["_authz"]
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert "hierarchy" in data
+    assert data["hierarchy"]["organization_count"] == 1
+    assert data["hierarchy"]["business_unit_count"] == 1
+    assert data["hierarchy"]["department_count"] == 1

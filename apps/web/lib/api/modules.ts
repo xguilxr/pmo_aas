@@ -132,9 +132,10 @@ export function addIssueComment(id: string, body: { text: string }): Promise<Iss
   return apiFetch<Issue>(`/api/v1/issues/${id}/comments`, { method: "POST", body });
 }
 
+// DEC-007: el tipo 'issue' en backend representa "Incidente" en UI (I de RAID).
 export const ISSUE_TYPE_LABEL: Record<IssueType, string> = {
   action: "Acción",
-  issue: "Incidencia",
+  issue: "Incidente",
   decision: "Decisión",
 };
 

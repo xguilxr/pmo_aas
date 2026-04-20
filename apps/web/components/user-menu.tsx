@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Monitor,
+  Moon,
+  Sun,
+  UserCircle,
+} from "lucide-react";
 
+import { useLocale, type Locale } from "@/components/locale-provider";
+import { useTheme } from "@/components/theme-provider";
 import { logout } from "@/lib/auth";
 import { type StoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -24,6 +34,8 @@ function initials(user: StoredUser | null): string {
 
 export function UserMenu({ user, variant = "chrome" }: Props) {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const { locale, setLocale } = useLocale();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -131,7 +143,94 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
               </div>
             ) : null}
           </div>
+          <div className="border-b border-[var(--border-subtle)] px-3 py-2">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+              Idioma
+            </div>
+            <div
+              role="radiogroup"
+              aria-label="Idioma de la interfaz"
+              className="grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5"
+            >
+              {(
+                [
+                  { v: "es-MX", flag: "🇲🇽", label: "Español" },
+                  { v: "en-US", flag: "🇺🇸", label: "English" },
+                ] as const
+              ).map((opt) => {
+                const active = locale === (opt.v as Locale);
+                return (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setLocale(opt.v as Locale)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1 rounded-[var(--radius-sm)] px-2 py-1.5 text-[11px] font-medium transition-colors",
+                      active
+                        ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                    )}
+                    title={opt.label}
+                  >
+                    <span aria-hidden>{opt.flag}</span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="border-b border-[var(--border-subtle)] px-3 py-2">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+              Tema
+            </div>
+            <div
+              role="radiogroup"
+              aria-label="Tema de la interfaz"
+              className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5"
+            >
+              {(
+                [
+                  { v: "light", icon: Sun, label: "Claro" },
+                  { v: "dark", icon: Moon, label: "Oscuro" },
+                  { v: "system", icon: Monitor, label: "Sistema" },
+                ] as const
+              ).map((opt) => {
+                const Icon = opt.icon;
+                const active = theme === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setTheme(opt.v)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1 rounded-[var(--radius-sm)] px-2 py-1.5 text-[11px] font-medium transition-colors",
+                      active
+                        ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                    )}
+                    title={opt.label}
+                  >
+                    <Icon className="h-3 w-3" aria-hidden />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="p-1">
+            <Link
+              href="/account"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-left text-[13px] text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
+            >
+              <UserCircle className="h-3.5 w-3.5" aria-hidden />
+              Administrar cuenta
+            </Link>
             <button
               type="button"
               role="menuitem"

@@ -148,3 +148,83 @@ GET /api/v1/dashboard/plan-vs-actual/export.csv
 - [ ] Todos los permisos de visibilidad verificados por tests (TC-MT-001).
 - [ ] Modo oscuro consistente con design system.
 - [ ] Accesibilidad: gráficos tienen tabla HTML alternativa (`<table>` oculta visualmente pero leíble por screen reader).
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-014 — Filtro de organización en dashboard
+
+**Como** Admin / PMO Manager
+**Quiero** filtrar todo el dashboard (KPIs, gráficas, Plan vs Real) por
+una organización específica
+**Para** enfocarme en el portafolio de un cliente.
+
+**Criterios de aceptación:**
+- [x] Filtro por organización visible en la parte superior del dashboard.
+- [x] Default vacío (sin filtro → muestra todo el tenant).
+- [x] Al seleccionar una org, KPIs, gráficos y Plan vs Real se filtran
+  simultáneamente.
+- [x] Estado del filtro sincronizado con la URL (`/dashboard?org_id=...`).
+- [x] Botón "Limpiar" regresa a vista completa.
+- [x] Backend: endpoints `/dashboard/kpis` y `/dashboard/charts` aceptan
+  `organization_id` opcional; `/plan-vs-actual` ya lo aceptaba.
+
+**Tests:**
+- `test_usnew014_kpis_filtered_by_org` — KPIs se filtran correctamente ✅
+- `test_usnew014_charts_filtered_by_org` — charts se filtran ✅
+
+**Estado de integración:** DONE (US-NEW-014).
+
+---
+
+### US-NEW-015 — KPIs respetan jerarquía de roles
+
+**Como** usuario según su rol
+**Quiero** ver sólo los KPIs relevantes a mi scope
+**Para** enfocarme en los datos que me corresponden.
+
+**Criterios de aceptación:**
+- [x] Helper `scoped_project_ids(cu, db, tenant_id, org_id)` en
+  `dashboard.py`: devuelve lista de project_ids visibles o `None` si
+  admin-equivalente.
+- [x] Admin / Senior PMO: sin restricción (via `is_admin_equivalent`).
+- [x] Project Manager y otros roles: proyectos donde es `pm_id` o está en
+  `project_members`.
+- [x] Aplica a `/dashboard/kpis`, `/dashboard/charts` y
+  `/dashboard/plan-vs-actual`.
+- [x] Solicitudes (in_review) para no-admin: sólo las que el usuario creó.
+- [x] Usuario sin proyectos asignados → conteos en 0, sin error.
+
+**Test Cases:**
+- Admin ve todo ✅
+- PM ve sólo proyectos donde es pm_id ✅
+- PM ve sólo proyectos donde es miembro ✅
+- Usuario sin asignaciones → 0 ✅
+- Charts y Plan-vs-Real respetan scoping ✅
+
+**Notas:**
+- La granularidad "Program Manager ve su programa + PMs bajo él" queda
+  pendiente para una US posterior (requiere modelar ownership de
+  programas, hoy no existe en el schema).
+
+**Estado de integración:** DONE (US-NEW-015).
+
+---
+
+### US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM)
+
+**Criterios de aceptación:**
+- [x] Filtros Organización + Fases al mismo nivel horizontal que el
+  botón "Exportar CSV" (ya estaba, verificado).
+- [x] Tabla con columna nueva "PM asignado":
+  - Celda vacía ("—") si el proyecto no tiene `pm_id`.
+  - Link clickeable al perfil (`/admin/users/{id}`) cuando hay nombre.
+- [x] Backend `/dashboard/plan-vs-actual` devuelve `pm_id` + `pm_name`
+  (precargados con un solo SELECT IN).
+- [x] CSV export incluye columna `pm_name`.
+
+**Test Cases:**
+- `test_usbug003_pm_name_in_plan_vs_actual` — pm_id y pm_name presentes ✅
+
+**Estado de integración:** DONE (US-BUG-003).

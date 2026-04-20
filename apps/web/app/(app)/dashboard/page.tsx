@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   AlertOctagon,
   AlertTriangle,
@@ -74,7 +75,31 @@ function toEntries<T>(obj: Record<string, T>): [string, T][] {
 }
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardInner />
+    </Suspense>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-48" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardInner() {
   const user = getStoredUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const orgFromUrl = searchParams.get("org_id") ?? "";
 
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [charts, setCharts] = useState<ChartsData | null>(null);
@@ -83,34 +108,24 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
-  const [orgFilter, setOrgFilter] = useState("");
+  const [orgFilter, setOrgFilter] = useState(orgFromUrl);
   const [phaseFilter, setPhaseFilter] = useState("");
 
   const [rows, setRows] = useState<PlanVsActualRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(true);
 
+  // Sincronizar cambio de filtro con URL (US-NEW-014: estado del filtro en URL).
+  function changeOrgFilter(next: string) {
+    setOrgFilter(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next) params.set("org_id", next);
+    else params.delete("org_id");
+    const qs = params.toString();
+    router.replace(qs ? `/dashboard?${qs}` : "/dashboard");
+  }
+
   useEffect(() => {
     let cancelled = false;
-    getDashboardKpis()
-      .then((r) => {
-        if (!cancelled) setKpis(r);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "No se pudo cargar el tablero");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingKpis(false);
-      });
-    getDashboardCharts()
-      .then((r) => {
-        if (!cancelled) setCharts(r);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoadingCharts(false);
-      });
     listOrganizations({ is_active: true })
       .then((r) => {
         if (!cancelled) setOrgs(r);
@@ -120,6 +135,39 @@ export default function DashboardPage() {
       cancelled = true;
     };
   }, []);
+
+  // KPIs + Charts se refetchean al cambiar el filtro de organización.
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingKpis(true);
+    setLoadingCharts(true);
+    const filter = { organization_id: orgFilter || undefined };
+    getDashboardKpis(filter)
+      .then((r) => {
+        if (!cancelled) setKpis(r);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(
+            err instanceof ApiError ? err.message : "No se pudo cargar el tablero",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingKpis(false);
+      });
+    getDashboardCharts(filter)
+      .then((r) => {
+        if (!cancelled) setCharts(r);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingCharts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -184,13 +232,50 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-          Tablero, {user?.full_name || user?.username || "usuario"}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-          KPIs, salud del portafolio y Plan vs Real.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+            Tablero, {user?.full_name || user?.username || "usuario"}
+          </h1>
+          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+            KPIs, salud del portafolio y Plan vs Real.
+            {orgFilter
+              ? ` · Filtrando por: ${orgs.find((o) => o.id === orgFilter)?.name ?? "organización"}`
+              : ""}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor="org-filter"
+            className="text-xs font-medium text-[var(--color-tertiary)]"
+          >
+            Organización
+          </label>
+          <Select
+            id="org-filter"
+            value={orgFilter}
+            onChange={(e) => changeOrgFilter(e.target.value)}
+            aria-label="Filtrar por organización"
+            className="min-w-[220px]"
+          >
+            <option value="">Todas las organizaciones</option>
+            {orgs.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </Select>
+          {orgFilter ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => changeOrgFilter("")}
+            >
+              Limpiar
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
@@ -310,7 +395,7 @@ export default function DashboardPage() {
             <Select
               aria-label="Filtrar por organización"
               value={orgFilter}
-              onChange={(e) => setOrgFilter(e.target.value)}
+              onChange={(e) => changeOrgFilter(e.target.value)}
               className="h-9"
             >
               <option value="">Todas las organizaciones</option>
@@ -350,6 +435,7 @@ export default function DashboardPage() {
             <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Proyecto</th>
+                <th className="px-4 py-3 font-medium">PM asignado</th>
                 <th className="px-4 py-3 font-medium">Fin plan</th>
                 <th className="px-4 py-3 font-medium">Presupuesto plan</th>
                 <th className="px-4 py-3 font-medium">Presupuesto real</th>
@@ -362,7 +448,7 @@ export default function DashboardPage() {
               {loadingRows ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="border-b border-[var(--border-subtle)]">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <Skeleton className="h-4 w-24" />
                       </td>
@@ -383,6 +469,18 @@ export default function DashboardPage() {
                         {r.name}
                       </Link>
                       <div className="text-xs text-[var(--color-tertiary)]">{r.folio}</div>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--color-secondary)]">
+                      {r.pm_id && r.pm_name ? (
+                        <Link
+                          href={`/admin/users/${r.pm_id}`}
+                          className="text-[var(--color-primary)] hover:underline"
+                        >
+                          {r.pm_name}
+                        </Link>
+                      ) : (
+                        <span className="text-[var(--color-tertiary)]">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)]">
                       {r.end_date ? new Date(r.end_date).toLocaleDateString("es-MX") : "—"}
@@ -414,7 +512,7 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
+                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
                     No hay proyectos que coincidan con los filtros.
                   </td>
                 </tr>

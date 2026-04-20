@@ -1,0 +1,473 @@
+"use client";
+
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Download,
+  GitCommit,
+  Shield,
+  TriangleAlert,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Banner } from "@/components/ui/banner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ApiError } from "@/lib/api";
+import {
+  ISSUE_TYPE_LABEL,
+  RISK_STATUS_LABEL,
+  listIssues,
+  listRisks,
+  type Issue,
+  type IssueType,
+  type Risk,
+} from "@/lib/api/modules";
+import { cn } from "@/lib/cn";
+
+type Tab = "risks" | "actions" | "incidents" | "decisions";
+
+const TABS: { id: Tab; letter: string; label: string; color: string }[] = [
+  { id: "risks", letter: "R", label: "Riesgos", color: "var(--color-danger-fg)" },
+  { id: "actions", letter: "A", label: "Acciones", color: "var(--color-info-fg)" },
+  { id: "incidents", letter: "I", label: "Incidentes", color: "var(--color-warning-fg)" },
+  { id: "decisions", letter: "D", label: "Decisiones", color: "var(--color-success-fg)" },
+];
+
+// Per DEC-007: en backend los tipos son action/issue/decision.
+// En UI etiquetamos 'issue' como "Incidente" (I de RAID).
+const INCIDENT_LABEL = "Incidente";
+
+function tabFromParam(v: string | null): Tab {
+  if (v === "risks" || v === "actions" || v === "incidents" || v === "decisions")
+    return v;
+  return "risks";
+}
+
+function RaidInner() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Tab>(tabFromParam(searchParams.get("tab")));
+
+  const [risks, setRisks] = useState<Risk[]>([]);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  function setTabAndUrl(next: Tab) {
+    setTab(next);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", next);
+    router.replace(`/admin/projects/${id}/raid?${params.toString()}`);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    Promise.all([listRisks(id), listIssues(id)])
+      .then(([r, i]) => {
+        if (cancelled) return;
+        setRisks(r);
+        setIssues(i);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.message : "Error al cargar RAID");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const actions = useMemo(() => issues.filter((i) => i.type === "action"), [issues]);
+  const incidents = useMemo(() => issues.filter((i) => i.type === "issue"), [issues]);
+  const decisions = useMemo(() => issues.filter((i) => i.type === "decision"), [issues]);
+
+  const counts: Record<Tab, number> = {
+    risks: risks.length,
+    actions: actions.length,
+    incidents: incidents.length,
+    decisions: decisions.length,
+  };
+
+  // Export RAID: CSV unificado con 4 secciones (el XLSX nativo queda como
+  // follow-up; CSV cumple el uso práctico y se abre en Excel directo).
+  function buildCsv(): string {
+    const esc = (v: unknown) => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines: string[] = [];
+    lines.push("# Riesgos");
+    lines.push("folio;title;status;probability;impact;severity;owner;due_date");
+    for (const r of risks) {
+      lines.push(
+        [
+          r.folio,
+          r.title,
+          r.status,
+          r.probability ?? "",
+          r.impact ?? "",
+          r.severity ?? "",
+          r.owner_id ?? "",
+          r.due_date ?? "",
+        ]
+          .map(esc)
+          .join(";"),
+      );
+    }
+    for (const [section, items] of [
+      ["Acciones", actions],
+      ["Incidentes", incidents],
+      ["Decisiones", decisions],
+    ] as const) {
+      lines.push("");
+      lines.push(`# ${section}`);
+      lines.push("folio;title;status;priority;owner;committed_date;resolution");
+      for (const it of items) {
+        lines.push(
+          [
+            it.folio,
+            it.title,
+            it.status,
+            it.priority ?? "",
+            it.owner_id ?? "",
+            it.committed_date ?? "",
+            it.resolution ?? "",
+          ]
+            .map(esc)
+            .join(";"),
+        );
+      }
+    }
+    return lines.join("\n");
+  }
+
+  function downloadCsv() {
+    const csv = buildCsv();
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `raid-${id}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <nav className="text-[11px] text-[var(--text-tertiary)]">
+            <Link href="/admin/projects" className="hover:underline">
+              Proyectos
+            </Link>
+            <span className="mx-1">/</span>
+            <Link href={`/admin/projects/${id}`} className="hover:underline">
+              Detalle
+            </Link>
+            <span className="mx-1">/</span>
+            <span>RAID</span>
+          </nav>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            RAID
+          </h1>
+          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
+            Vista consolidada: Riesgos · Acciones · Incidentes · Decisiones.
+            Click en una fila abre el módulo correspondiente para editar.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={downloadCsv}
+          className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+        >
+          <Download className="h-4 w-4" aria-hidden />
+          Exportar RAID (CSV)
+        </button>
+      </header>
+
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      <div
+        role="tablist"
+        aria-label="Secciones RAID"
+        className="flex flex-wrap gap-2"
+      >
+        {TABS.map((t) => {
+          const active = t.id === tab;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTabAndUrl(t.id)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-sm transition-colors",
+                active
+                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                  : "border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+              )}
+            >
+              <span
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+                style={{
+                  backgroundColor: active ? "var(--color-inverse)" : t.color,
+                  color: active ? t.color : "var(--color-inverse)",
+                }}
+                aria-hidden
+              >
+                {t.letter}
+              </span>
+              <span>{t.label}</span>
+              <Badge variant={active ? "neutral" : "neutral"}>
+                {loading ? "…" : counts[t.id]}
+              </Badge>
+            </button>
+          );
+        })}
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      ) : tab === "risks" ? (
+        <RisksSection rows={risks} projectId={id} />
+      ) : (
+        <IssuesSection
+          rows={
+            tab === "actions"
+              ? actions
+              : tab === "incidents"
+                ? incidents
+                : decisions
+          }
+          projectId={id}
+          sectionLabel={
+            tab === "actions"
+              ? "Acciones"
+              : tab === "incidents"
+                ? "Incidentes"
+                : "Decisiones"
+          }
+          issueType={
+            tab === "actions" ? "action" : tab === "incidents" ? "issue" : "decision"
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
+        Sin riesgos registrados.{" "}
+        <Link
+          href={`/admin/projects/${projectId}/risks`}
+          className="text-[var(--color-accent)] hover:underline"
+        >
+          Crear el primero →
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
+        <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
+          <TriangleAlert className="h-4 w-4" aria-hidden /> Riesgos
+        </h2>
+        <Link
+          href={`/admin/projects/${projectId}/risks`}
+          className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
+        >
+          Abrir módulo <ArrowUpRight className="h-3 w-3" aria-hidden />
+        </Link>
+      </header>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+            <tr>
+              <th className="px-3 py-2 font-medium">Folio</th>
+              <th className="px-3 py-2 font-medium">Título</th>
+              <th className="px-3 py-2 font-medium">Severidad</th>
+              <th className="px-3 py-2 font-medium">Estado</th>
+              <th className="px-3 py-2 font-medium">Fecha límite</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.id}
+                className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+              >
+                <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
+                  {r.folio}
+                </td>
+                <td className="px-3 py-2">
+                  <Link
+                    href={`/admin/projects/${projectId}/risks`}
+                    className="text-[var(--color-primary)] hover:underline"
+                  >
+                    {r.title}
+                  </Link>
+                </td>
+                <td className="px-3 py-2">
+                  <SeverityBadge severity={r.severity} />
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {RISK_STATUS_LABEL[r.status] ?? r.status}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {r.due_date ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function IssuesSection({
+  rows,
+  projectId,
+  sectionLabel,
+  issueType,
+}: {
+  rows: Issue[];
+  projectId: string;
+  sectionLabel: string;
+  issueType: IssueType;
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
+        Sin {sectionLabel.toLowerCase()} registradas.{" "}
+        <Link
+          href={`/admin/projects/${projectId}/issues?type=${issueType}`}
+          className="text-[var(--color-accent)] hover:underline"
+        >
+          Abrir módulo →
+        </Link>
+      </div>
+    );
+  }
+  const Icon =
+    issueType === "action" ? GitCommit : issueType === "decision" ? CheckCircle2 : AlertTriangle;
+  const displayLabel =
+    issueType === "issue" ? INCIDENT_LABEL : ISSUE_TYPE_LABEL[issueType];
+  return (
+    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
+        <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
+          <Icon className="h-4 w-4" aria-hidden /> {sectionLabel}
+        </h2>
+        <Link
+          href={`/admin/projects/${projectId}/issues?type=${issueType}`}
+          className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
+        >
+          Abrir módulo <ArrowUpRight className="h-3 w-3" aria-hidden />
+        </Link>
+      </header>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+            <tr>
+              <th className="px-3 py-2 font-medium">Folio</th>
+              <th className="px-3 py-2 font-medium">Título</th>
+              <th className="px-3 py-2 font-medium">Tipo</th>
+              <th className="px-3 py-2 font-medium">Prioridad</th>
+              <th className="px-3 py-2 font-medium">Estado</th>
+              <th className="px-3 py-2 font-medium">Compromiso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((it) => (
+              <tr
+                key={it.id}
+                className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+              >
+                <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
+                  {it.folio}
+                </td>
+                <td className="px-3 py-2">
+                  <Link
+                    href={`/admin/projects/${projectId}/issues?type=${issueType}`}
+                    className="text-[var(--color-primary)] hover:underline"
+                  >
+                    {it.title}
+                  </Link>
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {displayLabel}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.priority ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.status}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.committed_date ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function SeverityBadge({ severity }: { severity: number | null }) {
+  if (severity === null) return <span className="text-xs">—</span>;
+  const tone =
+    severity >= 13
+      ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
+      : severity >= 6
+        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
+        : "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        tone,
+      )}
+    >
+      {severity}
+    </span>
+  );
+}
+
+export default function RaidPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8">
+          <Skeleton className="h-10 w-48" />
+        </div>
+      }
+    >
+      <RaidInner />
+    </Suspense>
+  );
+}

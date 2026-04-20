@@ -7,9 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_permission
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.db.session import get_db
-from app.models.organization import Organization, Program
+from app.models.organization import BusinessUnit, Department, Organization, Program
+from app.models.project import Project
 from app.schemas.organization import (
+    BusinessUnitCreate,
+    BusinessUnitRead,
+    BusinessUnitUpdate,
+    DepartmentCreate,
+    DepartmentRead,
+    DepartmentUpdate,
     OrganizationCreate,
+    OrganizationPanel,
+    OrganizationPanelHealth,
     OrganizationRead,
     OrganizationUpdate,
     ProgramCreate,
@@ -25,6 +34,115 @@ def _ensure_tenant(cu: CurrentUser) -> UUID:
     if cu.user.tenant_id is None:
         raise forbidden(detail="Acción no disponible para super admin sin tenant activo")
     return cu.user.tenant_id
+
+
+@router.get("/panels", response_model=list[OrganizationPanel])
+async def list_org_panels(
+    q: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Listado de organizaciones con métricas agregadas (US-NEW-006).
+
+    Ejecuta queries paralelas de counts por organización para evitar N+1.
+    """
+    tenant_id = _ensure_tenant(cu)
+    base = select(Organization).where(Organization.tenant_id == tenant_id)
+    if q:
+        base = base.where(func.lower(Organization.name).like(f"%{q.lower()}%"))
+    if is_active is not None:
+        base = base.where(Organization.is_active == is_active)
+    orgs = (await db.execute(base.order_by(Organization.name))).scalars().all()
+    if not orgs:
+        return []
+
+    org_ids = [o.id for o in orgs]
+
+    bu_counts_rows = (
+        await db.execute(
+            select(BusinessUnit.organization_id, func.count(BusinessUnit.id))
+            .where(
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.organization_id.in_(org_ids),
+                BusinessUnit.deleted_at.is_(None),
+                BusinessUnit.is_active.is_(True),
+            )
+            .group_by(BusinessUnit.organization_id)
+        )
+    ).all()
+    bu_counts: dict[str, int] = {str(o): n for o, n in bu_counts_rows}
+
+    dept_counts_rows = (
+        await db.execute(
+            select(BusinessUnit.organization_id, func.count(Department.id))
+            .join(Department, Department.business_unit_id == BusinessUnit.id)
+            .where(
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.organization_id.in_(org_ids),
+                Department.deleted_at.is_(None),
+                Department.is_active.is_(True),
+            )
+            .group_by(BusinessUnit.organization_id)
+        )
+    ).all()
+    dept_counts: dict[str, int] = {str(o): n for o, n in dept_counts_rows}
+
+    prog_counts_rows = (
+        await db.execute(
+            select(Program.organization_id, func.count(Program.id))
+            .where(
+                Program.tenant_id == tenant_id,
+                Program.organization_id.in_(org_ids),
+                Program.is_active.is_(True),
+            )
+            .group_by(Program.organization_id)
+        )
+    ).all()
+    prog_counts: dict[str, int] = {str(o): n for o, n in prog_counts_rows}
+
+    proj_rows = (
+        await db.execute(
+            select(
+                Project.organization_id, Project.health_status, func.count(Project.id)
+            )
+            .where(
+                Project.tenant_id == tenant_id,
+                Project.organization_id.in_(org_ids),
+                Project.deleted_at.is_(None),
+                Project.phase != "closed",
+            )
+            .group_by(Project.organization_id, Project.health_status)
+        )
+    ).all()
+    active_projects: dict[str, int] = {}
+    health_map: dict[str, dict[str, int]] = {}
+    for org_id, health, n in proj_rows:
+        k = str(org_id)
+        active_projects[k] = active_projects.get(k, 0) + int(n)
+        hm = health_map.setdefault(k, {"green": 0, "yellow": 0, "red": 0})
+        if health in hm:
+            hm[health] += int(n)
+
+    panels: list[OrganizationPanel] = []
+    for o in orgs:
+        oid = str(o.id)
+        panels.append(
+            OrganizationPanel(
+                id=o.id,
+                name=o.name,
+                logo_url=o.logo_url,
+                industry=o.industry,
+                country=o.country,
+                is_active=o.is_active,
+                business_unit_count=bu_counts.get(oid, 0),
+                department_count=dept_counts.get(oid, 0),
+                program_count=prog_counts.get(oid, 0),
+                active_project_count=active_projects.get(oid, 0),
+                portfolio_health=OrganizationPanelHealth(**health_map.get(oid, {})),
+            )
+        )
+    return panels
 
 
 @router.get("", response_model=list[OrganizationRead])
@@ -232,6 +350,457 @@ async def delete_program(
     await write_audit(
         db, action="program.delete", module="organizations",
         user_id=cu.id, tenant_id=tenant_id, entity_type="program", entity_id=str(prog.id),
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)
+
+
+# -- Business Units (US-NEW-003) ----
+business_units_router = APIRouter(tags=["business-units"])
+
+
+def _bu_active_filter(stmt):
+    return stmt.where(BusinessUnit.deleted_at.is_(None))
+
+
+def _get_org_or_404(db_result):
+    org = db_result.scalar_one_or_none()
+    if org is None:
+        raise not_found("Organización")
+    return org
+
+
+@business_units_router.post(
+    "/organizations/{org_id}/business-units",
+    response_model=BusinessUnitRead,
+    status_code=201,
+)
+async def create_business_unit(
+    org_id: UUID,
+    body: BusinessUnitCreate,
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    org = _get_org_or_404(
+        await db.execute(
+            select(Organization).where(
+                Organization.id == str(org_id), Organization.tenant_id == tenant_id
+            )
+        )
+    )
+    existing = (
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.organization_id == org.id,
+                BusinessUnit.name == body.name,
+                BusinessUnit.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise conflict("Unidad de negocio con ese nombre ya existe en la organización")
+    bu = BusinessUnit(
+        tenant_id=tenant_id,
+        organization_id=str(org.id),
+        created_by=str(cu.id),
+        **body.model_dump(),
+    )
+    db.add(bu)
+    await db.flush()
+    await write_audit(
+        db, action="business_unit.create", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit", entity_id=str(bu.id),
+        details={"name": body.name, "organization_id": str(org.id)},
+    )
+    await db.commit()
+    return BusinessUnitRead.model_validate(bu)
+
+
+@business_units_router.get(
+    "/organizations/{org_id}/business-units",
+    response_model=list[BusinessUnitRead],
+)
+async def list_business_units(
+    org_id: UUID,
+    q: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    _get_org_or_404(
+        await db.execute(
+            select(Organization).where(
+                Organization.id == str(org_id), Organization.tenant_id == tenant_id
+            )
+        )
+    )
+    stmt = _bu_active_filter(
+        select(BusinessUnit).where(
+            BusinessUnit.tenant_id == tenant_id,
+            BusinessUnit.organization_id == str(org_id),
+        )
+    )
+    if q:
+        stmt = stmt.where(func.lower(BusinessUnit.name).like(f"%{q.lower()}%"))
+    if is_active is not None:
+        stmt = stmt.where(BusinessUnit.is_active == is_active)
+    rows = (await db.execute(stmt.order_by(BusinessUnit.name))).scalars().all()
+    return [BusinessUnitRead.model_validate(b) for b in rows]
+
+
+@business_units_router.get(
+    "/business-units/{bu_id}", response_model=BusinessUnitRead
+)
+async def get_business_unit(
+    bu_id: UUID,
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    bu = (
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.id == str(bu_id),
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if bu is None:
+        raise not_found("Unidad de negocio")
+    return BusinessUnitRead.model_validate(bu)
+
+
+@business_units_router.patch(
+    "/business-units/{bu_id}", response_model=BusinessUnitRead
+)
+async def update_business_unit(
+    bu_id: UUID,
+    body: BusinessUnitUpdate,
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    bu = (
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.id == str(bu_id),
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if bu is None:
+        raise not_found("Unidad de negocio")
+    new_name = body.name
+    if new_name and new_name != bu.name:
+        clash = (
+            await db.execute(
+                select(BusinessUnit).where(
+                    BusinessUnit.tenant_id == tenant_id,
+                    BusinessUnit.organization_id == bu.organization_id,
+                    BusinessUnit.name == new_name,
+                    BusinessUnit.id != bu.id,
+                    BusinessUnit.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if clash is not None:
+            raise conflict("Unidad de negocio con ese nombre ya existe en la organización")
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(bu, field, value)
+    await write_audit(
+        db, action="business_unit.update", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit", entity_id=str(bu.id),
+    )
+    await db.commit()
+    return BusinessUnitRead.model_validate(bu)
+
+
+@business_units_router.delete("/business-units/{bu_id}", status_code=204)
+async def delete_business_unit(
+    bu_id: UUID,
+    force: bool = Query(default=False),
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    bu = (
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.id == str(bu_id),
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if bu is None:
+        raise not_found("Unidad de negocio")
+    active_depts = (
+        await db.execute(
+            select(Department.id, Department.name).where(
+                Department.tenant_id == tenant_id,
+                Department.business_unit_id == bu.id,
+                Department.deleted_at.is_(None),
+                Department.is_active.is_(True),
+            )
+        )
+    ).all()
+    if active_depts and not force:
+        raise business_rule(
+            "La unidad de negocio tiene departamentos activos. "
+            "Use force=true para soft-delete con cascada lógica.",
+            code="BU_HAS_ACTIVE_DEPARTMENTS",
+        )
+    bu.is_active = False
+    from datetime import datetime, timezone
+
+    bu.deleted_at = datetime.now(timezone.utc)
+    if force:
+        for dept_id, _ in active_depts:
+            dept = (
+                await db.execute(select(Department).where(Department.id == dept_id))
+            ).scalar_one()
+            dept.is_active = False
+            dept.deleted_at = bu.deleted_at
+    await write_audit(
+        db, action="business_unit.delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit", entity_id=str(bu.id),
+        details={"force": force, "cascaded_departments": [d for _, d in active_depts]},
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)
+
+
+# -- Departments (US-NEW-004) ----
+departments_router = APIRouter(tags=["departments"])
+
+
+def _get_bu_or_404(db_result):
+    bu = db_result.scalar_one_or_none()
+    if bu is None:
+        raise not_found("Unidad de negocio")
+    return bu
+
+
+@departments_router.post(
+    "/business-units/{bu_id}/departments",
+    response_model=DepartmentRead,
+    status_code=201,
+)
+async def create_department(
+    bu_id: UUID,
+    body: DepartmentCreate,
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    bu = _get_bu_or_404(
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.id == str(bu_id),
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.deleted_at.is_(None),
+            )
+        )
+    )
+    existing = (
+        await db.execute(
+            select(Department).where(
+                Department.tenant_id == tenant_id,
+                Department.business_unit_id == bu.id,
+                Department.name == body.name,
+                Department.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise conflict("Departamento con ese nombre ya existe en la unidad de negocio")
+    dept = Department(
+        tenant_id=tenant_id,
+        business_unit_id=str(bu.id),
+        created_by=str(cu.id),
+        **body.model_dump(),
+    )
+    db.add(dept)
+    await db.flush()
+    await write_audit(
+        db, action="department.create", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="department", entity_id=str(dept.id),
+        details={"name": body.name, "business_unit_id": str(bu.id)},
+    )
+    await db.commit()
+    return DepartmentRead.model_validate(dept)
+
+
+@departments_router.get(
+    "/business-units/{bu_id}/departments",
+    response_model=list[DepartmentRead],
+)
+async def list_departments(
+    bu_id: UUID,
+    q: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    _get_bu_or_404(
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.id == str(bu_id),
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.deleted_at.is_(None),
+            )
+        )
+    )
+    stmt = select(Department).where(
+        Department.tenant_id == tenant_id,
+        Department.business_unit_id == str(bu_id),
+        Department.deleted_at.is_(None),
+    )
+    if q:
+        stmt = stmt.where(func.lower(Department.name).like(f"%{q.lower()}%"))
+    if is_active is not None:
+        stmt = stmt.where(Department.is_active == is_active)
+    rows = (await db.execute(stmt.order_by(Department.name))).scalars().all()
+    return [DepartmentRead.model_validate(d) for d in rows]
+
+
+@departments_router.get(
+    "/departments/{dept_id}", response_model=DepartmentRead
+)
+async def get_department(
+    dept_id: UUID,
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    dept = (
+        await db.execute(
+            select(Department).where(
+                Department.id == str(dept_id),
+                Department.tenant_id == tenant_id,
+                Department.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if dept is None:
+        raise not_found("Departamento")
+    return DepartmentRead.model_validate(dept)
+
+
+@departments_router.patch(
+    "/departments/{dept_id}", response_model=DepartmentRead
+)
+async def update_department(
+    dept_id: UUID,
+    body: DepartmentUpdate,
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    dept = (
+        await db.execute(
+            select(Department).where(
+                Department.id == str(dept_id),
+                Department.tenant_id == tenant_id,
+                Department.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if dept is None:
+        raise not_found("Departamento")
+    new_name = body.name
+    if new_name and new_name != dept.name:
+        clash = (
+            await db.execute(
+                select(Department).where(
+                    Department.tenant_id == tenant_id,
+                    Department.business_unit_id == dept.business_unit_id,
+                    Department.name == new_name,
+                    Department.id != dept.id,
+                    Department.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if clash is not None:
+            raise conflict("Departamento con ese nombre ya existe en la unidad de negocio")
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(dept, field, value)
+    await write_audit(
+        db, action="department.update", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="department", entity_id=str(dept.id),
+    )
+    await db.commit()
+    return DepartmentRead.model_validate(dept)
+
+
+@departments_router.delete("/departments/{dept_id}", status_code=204)
+async def delete_department(
+    dept_id: UUID,
+    force: bool = Query(default=False),
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    dept = (
+        await db.execute(
+            select(Department).where(
+                Department.id == str(dept_id),
+                Department.tenant_id == tenant_id,
+                Department.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if dept is None:
+        raise not_found("Departamento")
+
+    active_programs = (
+        await db.execute(
+            select(func.count(Program.id)).where(
+                Program.tenant_id == tenant_id,
+                Program.department_id == dept.id,
+                Program.is_active.is_(True),
+            )
+        )
+    ).scalar_one()
+    active_projects = (
+        await db.execute(
+            select(func.count(Project.id)).where(
+                Project.tenant_id == tenant_id,
+                Project.department_id == dept.id,
+                Project.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one()
+    if (active_programs or active_projects) and not force:
+        raise business_rule(
+            "El departamento tiene programas o proyectos activos. "
+            f"Programas: {active_programs}, Proyectos: {active_projects}. "
+            "Use force=true para soft-delete.",
+            code="DEPT_HAS_ACTIVE_CHILDREN",
+        )
+
+    from datetime import datetime, timezone
+
+    dept.is_active = False
+    dept.deleted_at = datetime.now(timezone.utc)
+    await write_audit(
+        db, action="department.delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="department", entity_id=str(dept.id),
+        details={
+            "force": force,
+            "active_programs": active_programs,
+            "active_projects": active_projects,
+        },
     )
     await db.commit()
     from fastapi.responses import Response

@@ -115,3 +115,41 @@ export function bulkDeactivateUsers(userIds: string[]): Promise<{ affected: numb
     body: { user_ids: userIds },
   });
 }
+
+/* ===== Tenant info + stats (US-NEW-023) ===== */
+export type TenantStats = {
+  active_users: number;
+  total_users: number;
+  total_organizations: number;
+  total_projects: number;
+  storage_bytes: number;
+};
+
+export type TenantInfo = {
+  id: string;
+  slug: string;
+  name: string;
+  logo_url: string | null;
+  is_active: boolean;
+  plan: string;
+  settings: TenantSettings;
+  stats: TenantStats;
+};
+
+export type TenantInfoPatch = {
+  name?: string;
+  logo_url?: string | null;
+};
+
+export function getTenantInfo(): Promise<TenantInfo> {
+  return apiFetch<TenantInfo>("/api/v1/admin/tenant");
+}
+
+export function updateTenantInfo(
+  body: TenantInfoPatch,
+): Promise<Pick<TenantInfo, "id" | "slug" | "name" | "logo_url">> {
+  return apiFetch<Pick<TenantInfo, "id" | "slug" | "name" | "logo_url">>(
+    "/api/v1/admin/tenant",
+    { method: "PATCH", body },
+  );
+}

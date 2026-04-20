@@ -42,8 +42,19 @@ SYSTEM_ROLES = [
     },
     {
         "name": "PMO Manager",
-        "description": "Gestor de portafolio.",
+        "description": (
+            "Gestor senior de portafolio. Admin-equivalente (DEC-005): "
+            "tiene las mismas capacidades administrativas que el rol "
+            "Administrador dentro del tenant."
+        ),
         "permissions": {
+            # admin.* (equivalente a Administrador, DEC-005 / US-NEW-010)
+            "admin.users": ["read", "create", "update", "delete"],
+            "admin.roles": ["read", "create", "update", "delete"],
+            "admin.organizations": ["read", "create", "update", "delete"],
+            "admin.projects": ["read", "create", "update", "delete"],
+            "admin.requests": ["read", "create", "update", "delete", "approve"],
+            # módulos operativos
             "projects": ["read", "create", "update", "approve"],
             "risks": ["read", "create", "update"],
             "issues": ["read", "create", "update"],
@@ -52,7 +63,7 @@ SYSTEM_ROLES = [
             "lessons": ["read", "create"],
             "minutes": ["read", "create"],
             "dashboard": ["read"],
-            "admin.requests": ["read", "approve"],
+            "ai.generate": ["create"],
         },
     },
     {

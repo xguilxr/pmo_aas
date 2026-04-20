@@ -35,6 +35,74 @@ class OrganizationRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OrganizationPanelHealth(BaseModel):
+    green: int = 0
+    yellow: int = 0
+    red: int = 0
+
+
+class OrganizationPanel(BaseModel):
+    id: UUID
+    name: str
+    logo_url: str | None
+    industry: str | None
+    country: str | None
+    is_active: bool
+    business_unit_count: int = 0
+    department_count: int = 0
+    program_count: int = 0
+    active_project_count: int = 0
+    portfolio_health: OrganizationPanelHealth = Field(
+        default_factory=OrganizationPanelHealth
+    )
+
+    model_config = {"from_attributes": True}
+
+
+class BusinessUnitCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    description: str | None = None
+    is_active: bool = True
+
+
+class BusinessUnitUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    description: str | None = None
+    is_active: bool | None = None
+
+
+class BusinessUnitRead(BaseModel):
+    id: UUID
+    organization_id: UUID
+    name: str
+    description: str | None
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
+class DepartmentCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    description: str | None = None
+    is_active: bool = True
+
+
+class DepartmentUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    description: str | None = None
+    is_active: bool | None = None
+
+
+class DepartmentRead(BaseModel):
+    id: UUID
+    business_unit_id: UUID
+    name: str
+    description: str | None
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
 class ProgramCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     organization_id: UUID
@@ -89,6 +157,8 @@ class TenantRead(BaseModel):
     name: str
     is_active: bool
     user_count: int = 0
+    organization_count: int = 0
+    program_count: int = 0
     project_count: int = 0
 
     model_config = {"from_attributes": True}

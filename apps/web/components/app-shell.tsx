@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Activity,
   BarChart3,
   Building2,
   ChevronRight,
@@ -31,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 
+import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -57,18 +57,12 @@ function projectModuleHref(pathname: string, slug: string): string {
 function buildNav(pathname: string): NavItem[] {
   const projectModules: NavItem[] = [
     {
-      id: "mod-risks",
-      label: "Riesgos",
-      icon: <TriangleAlert className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "risks"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/risks/.test(p),
-    },
-    {
-      id: "mod-issues",
-      label: "AIDs",
+      id: "mod-raid",
+      label: "RAID",
       icon: <Shield className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "issues"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/issues/.test(p),
+      href: projectModuleHref(pathname, "raid"),
+      match: (p) =>
+        /^\/admin\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
     },
     {
       id: "mod-changes",
@@ -96,28 +90,23 @@ function buildNav(pathname: string): NavItem[] {
       label: "Minutas",
       icon: <MessageSquare className="h-4 w-4" aria-hidden />,
       href: projectModuleHref(pathname, "minutes"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/minutes(?!\/ai)/.test(p),
+      match: (p) =>
+        /^\/admin\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
     },
     {
-      id: "mod-tasks",
-      label: "Tareas",
+      id: "mod-plan",
+      label: "Plan",
       icon: <ListTree className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "tasks"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/tasks/.test(p),
+      href: projectModuleHref(pathname, "plan"),
+      match: (p) =>
+        /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
     },
     {
-      id: "mod-gantt",
-      label: "Gantt",
-      icon: <BarChart3 className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "gantt"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/gantt/.test(p),
-    },
-    {
-      id: "mod-ai-minutes",
-      label: "Minuta IA",
-      icon: <Sparkles className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "ai-minutes/new"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/ai-minutes/.test(p),
+      id: "mod-areas",
+      label: "Áreas",
+      icon: <Users className="h-4 w-4" aria-hidden />,
+      href: projectModuleHref(pathname, "areas"),
+      match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
     },
     {
       id: "mod-reports",
@@ -137,19 +126,19 @@ function buildNav(pathname: string): NavItem[] {
       match: (p) => p === "/dashboard",
     },
     {
+      id: "requests",
+      label: "Solicitudes",
+      icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+      href: "/admin/requests",
+      match: (p) => p.startsWith("/admin/requests"),
+    },
+    {
       id: "organizations",
       label: "Organizaciones",
       icon: <Building2 className="h-4 w-4" aria-hidden />,
       href: "/admin/organizations",
       match: (p) => p.startsWith("/admin/organizations"),
       children: [
-        {
-          id: "requests",
-          label: "Solicitudes",
-          icon: <ClipboardList className="h-4 w-4" aria-hidden />,
-          href: "/admin/requests",
-          match: (p) => p.startsWith("/admin/requests"),
-        },
         {
           id: "programs",
           label: "Programas",
@@ -168,7 +157,7 @@ function buildNav(pathname: string): NavItem[] {
               id: "project-modules",
               label: "Módulos de Proyectos",
               icon: <Layers className="h-4 w-4" aria-hidden />,
-              match: (p) => /^\/admin\/projects\/[^/]+\/(risks|issues|changes|documents|lessons|minutes|tasks|gantt|ai-minutes|reports)/.test(p),
+              match: (p) => /^\/admin\/projects\/[^/]+\/(raid|risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|areas|ai-minutes|reports)/.test(p),
               children: projectModules,
             },
           ],
@@ -184,8 +173,16 @@ function buildNav(pathname: string): NavItem[] {
         p.startsWith("/admin/users") ||
         p.startsWith("/admin/roles") ||
         p.startsWith("/admin/audit-logs") ||
-        p.startsWith("/admin/settings"),
+        p.startsWith("/admin/settings") ||
+        p.startsWith("/admin/tenant"),
       children: [
+        {
+          id: "tenant-info",
+          label: "Mi tenant",
+          icon: <Building2 className="h-4 w-4" aria-hidden />,
+          href: "/admin/tenant",
+          match: (p) => p.startsWith("/admin/tenant"),
+        },
         {
           id: "tenant-panel",
           label: "Panel del Tenant",
@@ -247,13 +244,6 @@ const SUPERADMIN_NAV: NavItem[] = [
     icon: <ScrollText className="h-4 w-4" aria-hidden />,
     href: "/superadmin/logs",
     match: (p) => p.startsWith("/superadmin/logs"),
-  },
-  {
-    id: "sa-health",
-    label: "Health",
-    icon: <Activity className="h-4 w-4" aria-hidden />,
-    href: "/superadmin/health",
-    match: (p) => p.startsWith("/superadmin/health"),
   },
 ];
 
@@ -419,6 +409,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             expanded={expanded}
             toggle={toggle}
           />
+          {user && !user.is_superadmin ? (
+            <OrgTreeNav onNavigate={close} />
+          ) : null}
           {user?.is_superadmin ? (
             <>
               <div className="mt-5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]/80">
