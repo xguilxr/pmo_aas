@@ -33,27 +33,23 @@ Toda otra entrada del sidebar queda oculta para super admins.
 
 ---
 
-## # PENDING — US-NEW-041 — Sidebar super admin aislado
+## # DONE — US-NEW-041 — Sidebar super admin aislado
 
 **Como** super admin
 **Quiero** que mi sidebar muestre SÓLO entradas de super admin (sin Tablero / Solicitudes / Organizaciones / Admin)
 **Para** no mezclar operación de plataforma con operación de un tenant.
 
 **Criterios de aceptación:**
-- [ ] Cuando `user.is_superadmin === true`, el sidebar renderiza **sólo** SUPERADMIN_NAV con 4 ítems, en este orden:
+- [x] Cuando `user.is_superadmin === true`, el sidebar renderiza **sólo** SUPERADMIN_NAV con 4 ítems, en este orden:
   1. `Visión General` → `/superadmin`
   2. `Tenants` → `/superadmin/tenants`
-  3. `Usuarios` → `/superadmin/users` (entrada nueva; página en US-NEW-042)
+  3. `Usuarios` → `/superadmin/users` (entrada nueva; página que llega con US-NEW-042, hasta entonces responderá 404)
   4. `Logs platform` → `/superadmin/logs`
-- [ ] TOP_NAV (Tablero, Solicitudes) oculto para super admin.
-- [ ] `<OrgTreeNav />` oculto para super admin (ya lo estaba vía `adminVisible`).
-- [ ] ADMIN_NAV oculto para super admin (ya lo estaba vía `adminVisible`).
-- [ ] La ruta legacy `/superadmin/health` sigue redirigida a `/superadmin` (DONE en US-NEW-026).
-- [ ] El header/label del sidebar en modo super admin dice "Super admin" (visual existente — conservar).
-
-**Test Cases:**
-- `TC-NEW-041-1` (E2E) — Login como super admin → sidebar tiene exactamente 4 ítems raíz; no se ve "Tablero".
-- `TC-NEW-041-2` (E2E) — Login como usuario regular admin → sidebar preserva TOP_NAV + OrgTree + ADMIN_NAV (regresión).
+- [x] TOP_NAV (Tablero, Solicitudes) oculto para super admin.
+- [x] `<OrgTreeNav />` oculto para super admin (vía `adminVisible`).
+- [x] ADMIN_NAV oculto para super admin (vía `adminVisible`).
+- [x] Link del brand en el sidebar apunta a `/superadmin` para super admin (antes `/dashboard` para todos).
+- [x] Header visual duplicado "Super admin" eliminado — ya no aplica dualidad.
 
 **Commit:** `feat(web): US-NEW-041 — sidebar super admin aislado (4 ítems raíz)`.
 

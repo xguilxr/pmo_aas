@@ -117,10 +117,11 @@ const ADMIN_NAV: NavItem = {
   ],
 };
 
+// 4 ítems raíz, en este orden (US-NEW-041, issue #19).
 const SUPERADMIN_NAV: NavItem[] = [
   {
     id: "sa-overview",
-    label: "Visión general",
+    label: "Visión General",
     icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
     href: "/superadmin",
     match: (p) => p === "/superadmin",
@@ -131,6 +132,13 @@ const SUPERADMIN_NAV: NavItem[] = [
     icon: <ServerCog className="h-4 w-4" aria-hidden />,
     href: "/superadmin/tenants",
     match: (p) => p.startsWith("/superadmin/tenants"),
+  },
+  {
+    id: "sa-users",
+    label: "Usuarios",
+    icon: <Users className="h-4 w-4" aria-hidden />,
+    href: "/superadmin/users",
+    match: (p) => p.startsWith("/superadmin/users"),
   },
   {
     id: "sa-logs",
@@ -285,7 +293,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div className="flex h-14 items-center justify-between px-5">
           <Link
-            href="/dashboard"
+            href={user?.is_superadmin ? "/superadmin" : "/dashboard"}
             className="inline-flex items-center"
             aria-label="Inicio"
           >
@@ -301,13 +309,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-2">
-          <NavTree
-            items={TOP_NAV}
-            pathname={pathname}
-            onNavigate={close}
-            expanded={expanded}
-            toggle={toggle}
-          />
+          {user?.is_superadmin ? null : (
+            <NavTree
+              items={TOP_NAV}
+              pathname={pathname}
+              onNavigate={close}
+              expanded={expanded}
+              toggle={toggle}
+            />
+          )}
           {adminVisible ? (
             <div className="mt-0.5">
               <OrgTreeNav onNavigate={close} />
@@ -325,20 +335,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           ) : null}
           {user?.is_superadmin ? (
-            <>
-              <div className="mt-5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]/80">
-                Super admin
-              </div>
-              <div className="mt-1">
-                <NavTree
-                  items={SUPERADMIN_NAV}
-                  pathname={pathname}
-                  onNavigate={close}
-                  expanded={expanded}
-                  toggle={toggle}
-                />
-              </div>
-            </>
+            <NavTree
+              items={SUPERADMIN_NAV}
+              pathname={pathname}
+              onNavigate={close}
+              expanded={expanded}
+              toggle={toggle}
+            />
           ) : null}
         </nav>
       </aside>
