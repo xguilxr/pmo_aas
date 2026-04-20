@@ -70,9 +70,24 @@ Layout root:
 ### Sidebar
 
 - Logo tenant arriba.
-- Navegación principal (Dashboard, Proyectos, Solicitudes, Admin).
-- Secciones colapsables.
+- Navegación principal en árbol con dropdowns anidados (hasta 3 niveles):
+  1. **Tablero** — enlace directo a `/dashboard`.
+  2. **Organizaciones** (dropdown, enlace a `/admin/organizations`).
+     - Solicitudes — `/admin/requests`.
+     - Programas — `/admin/programs`.
+     - Proyectos (sub-dropdown, enlace a `/admin/projects`).
+       - Módulos de Proyectos (sub-grupo) — contiene todos los módulos: Riesgos, AIDs, Cambios, Documentos, Lecciones, Minutas, Tareas, Gantt, Minuta IA, Reporte IA. Los módulos apuntan al proyecto activo cuando la ruta es `/admin/projects/:id/...`; de lo contrario regresan al listado `/admin/projects`.
+  3. **Admin** (dropdown).
+     - Panel del Tenant — `/admin/supervision` (anteriormente "Supervisión").
+     - Usuarios — `/admin/users`.
+     - Roles — `/admin/roles`.
+     - Auditoría — `/admin/audit-logs`.
+     - Configuración — `/admin/settings`.
+- Super admin: sección adicional sólo visible para `is_superadmin` (Visión general, Tenants, Logs platform, Health).
+- Los grupos con `href` + `children` actúan como link **y** toggle: clic en el label navega, clic en el chevron (derecha) expande/colapsa.
+- Auto-expand: al cargar o navegar, se expanden las ramas que contienen la ruta activa.
 - Item activo con pill de fondo (no border).
+- Cada nivel de anidación agrega `0.75rem` de indent al padding-left.
 - Acrylic/vibrancy background.
 
 ### Breadcrumb
