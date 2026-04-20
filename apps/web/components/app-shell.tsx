@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import {
   Building2,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -32,6 +33,12 @@ const NAV: NavItem[] = [
     label: "Tablero",
     icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
     match: (p) => p === "/dashboard",
+  },
+  {
+    href: "/admin/requests",
+    label: "Solicitudes",
+    icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/admin/requests"),
   },
   {
     href: "/admin/organizations",
