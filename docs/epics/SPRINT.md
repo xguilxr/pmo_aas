@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-002
+US: US-NEW-003
 Epic: EP002-org-hierarchy.md
-Título: Tablas business_units y departments + FK en programs/projects
-Tipo: Backend — migración de BD + modelos
-Commit esperado: "feat(org): US-NEW-002 — tablas BU y departments con FK"
-Precondición: Revisar DB-CHANGES.md sección EP002 antes de iniciar
+Título: CRUD Business Units — API endpoints
+Tipo: Backend — endpoints REST + permisos + tests
+Commit esperado: "feat(org): US-NEW-003 — CRUD Business Units API"
+Precondición: US-NEW-002 DONE (modelos + migración existen)
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: Revisar DB-CHANGES.md sección EP002 antes de iniciar
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-003 | EP002 | CRUD Business Units — API endpoints | Backend |
-| 2 | US-NEW-004 | EP002 | CRUD Departments — API endpoints | Backend |
-| 3 | US-NEW-005 | EP002 | Sidebar con organizaciones para nav rápida | Frontend |
+| 1 | US-NEW-004 | EP002 | CRUD Departments — API endpoints | Backend |
+| 2 | US-NEW-005 | EP002 | Sidebar con organizaciones para nav rápida | Frontend |
+| 3 | US-NEW-006 | EP002 | Vista paneles de organizaciones (cards) | Frontend |
 
 ---
 
@@ -32,13 +32,14 @@ Precondición: Revisar DB-CHANGES.md sección EP002 antes de iniciar
 | US | Título | Commit | Fecha |
 |---|---|---|---|
 | US-NEW-001 | Setup inicial — análisis de gaps v1→v2 | `docs: gap analysis v2` | 2026-04-20 |
+| US-NEW-002 | Tablas business_units + departments + FKs | `feat(org): US-NEW-002 — tablas BU y departments con FK` | 2026-04-20 |
 
 ---
 
 ## 📋 Backlog ordenado por prioridad
 
 ### Bloque 1 — Jerarquía org (EP002) — BLOQUEANTE para todo lo demás
-- [ ] US-NEW-002 — Migración BD: tablas BU + Depto + FKs
+- [x] US-NEW-002 — Migración BD: tablas BU + Depto + FKs ✅
 - [ ] US-NEW-003 — CRUD Business Units (API)
 - [ ] US-NEW-004 — CRUD Departments (API)
 - [ ] US-NEW-005 — Sidebar org nav (Frontend)

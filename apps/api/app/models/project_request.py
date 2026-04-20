@@ -27,6 +27,12 @@ class ProjectRequest(Base, TimestampMixin):
     )
     business_unit: Mapped[str] = mapped_column(String(200), nullable=False)
     department: Mapped[str] = mapped_column(String(200), nullable=False)
+    business_unit_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("business_units.id")
+    )
+    department_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("departments.id")
+    )
     sponsor: Mapped[str] = mapped_column(String(200), nullable=False)
     benefits: Mapped[str] = mapped_column(String(5000), nullable=False)
     budget: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
