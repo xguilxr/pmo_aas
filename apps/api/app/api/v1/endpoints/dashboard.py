@@ -29,26 +29,37 @@ async def _count(db: AsyncSession, stmt) -> int:
 
 @router.get("/kpis")
 async def kpis(
+    organization_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("dashboard", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
     active_phases = ["planning", "execution", "support"]
 
+    def scoped_projects():
+        stmt = select(Project.id).where(
+            Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+        )
+        if organization_id:
+            stmt = stmt.where(Project.organization_id == str(organization_id))
+        return stmt
+
+    # IDs de proyectos del scope actual para filtrar módulos
+    scoped_ids_rows = (await db.execute(scoped_projects())).scalars().all()
+    scoped_ids = [str(i) for i in scoped_ids_rows]
+
     active_projects = await _count(
         db,
-        select(Project.id).where(
-            Project.tenant_id == tenant_id,
-            Project.phase.in_(active_phases),
-            Project.deleted_at.is_(None),
-        ),
+        scoped_projects().where(Project.phase.in_(active_phases)),
     )
-    requests_in_review = await _count(
-        db,
-        select(ProjectRequest.id).where(
-            ProjectRequest.tenant_id == tenant_id, ProjectRequest.status == "in_review"
-        ),
+    req_stmt = select(ProjectRequest.id).where(
+        ProjectRequest.tenant_id == tenant_id, ProjectRequest.status == "in_review"
     )
+    if organization_id:
+        req_stmt = req_stmt.where(
+            ProjectRequest.organization_id == str(organization_id)
+        )
+    requests_in_review = await _count(db, req_stmt)
 
     # Conteos de módulos — se calculan si existen las tablas (EP006). Defaults seguros.
     open_risks = 0
@@ -58,47 +69,69 @@ async def kpis(
     try:
         from app.models.modules import ChangeRequest, Issue, Risk  # type: ignore
 
+        def scope_risks(stmt):
+            if organization_id and scoped_ids:
+                return stmt.where(Risk.project_id.in_(scoped_ids))
+            if organization_id and not scoped_ids:
+                return stmt.where(Risk.project_id.in_(["__none__"]))  # vacío
+            return stmt
+
         open_risks = await _count(
             db,
-            select(Risk.id).where(Risk.tenant_id == tenant_id, Risk.status != "closed"),
+            scope_risks(
+                select(Risk.id).where(Risk.tenant_id == tenant_id, Risk.status != "closed")
+            ),
         )
         severe_risks = await _count(
             db,
-            select(Risk.id).where(
-                Risk.tenant_id == tenant_id, Risk.status != "closed", Risk.severity >= 13
+            scope_risks(
+                select(Risk.id).where(
+                    Risk.tenant_id == tenant_id,
+                    Risk.status != "closed",
+                    Risk.severity >= 13,
+                )
             ),
         )
-        change_requests_in_review = await _count(
-            db,
-            select(ChangeRequest.id).where(
-                ChangeRequest.tenant_id == tenant_id, ChangeRequest.status == "in_review"
-            ),
+
+        cr_stmt = select(ChangeRequest.id).where(
+            ChangeRequest.tenant_id == tenant_id,
+            ChangeRequest.status == "in_review",
         )
-        open_issues = await _count(
-            db,
-            select(Issue.id).where(
-                Issue.tenant_id == tenant_id, Issue.status.in_(["open", "in_progress"])
-            ),
+        if organization_id:
+            cr_stmt = cr_stmt.where(
+                ChangeRequest.project_id.in_(scoped_ids or ["__none__"])
+            )
+        change_requests_in_review = await _count(db, cr_stmt)
+
+        iss_stmt = select(Issue.id).where(
+            Issue.tenant_id == tenant_id,
+            Issue.status.in_(["open", "in_progress"]),
         )
+        if organization_id:
+            iss_stmt = iss_stmt.where(Issue.project_id.in_(scoped_ids or ["__none__"]))
+        open_issues = await _count(db, iss_stmt)
     except Exception:
         pass
 
-    budget_total: Decimal | None = (
-        await db.execute(
-            select(func.coalesce(func.sum(Project.budget), 0)).where(
-                Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
-            )
+    budget_stmt = select(func.coalesce(func.sum(Project.budget), 0)).where(
+        Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+    )
+    if organization_id:
+        budget_stmt = budget_stmt.where(
+            Project.organization_id == str(organization_id)
         )
-    ).scalar_one()
-    progress_avg = (
-        await db.execute(
-            select(func.coalesce(func.avg(Project.progress), 0)).where(
-                Project.tenant_id == tenant_id,
-                Project.phase.in_(active_phases),
-                Project.deleted_at.is_(None),
-            )
+    budget_total: Decimal | None = (await db.execute(budget_stmt)).scalar_one()
+
+    progress_stmt = select(func.coalesce(func.avg(Project.progress), 0)).where(
+        Project.tenant_id == tenant_id,
+        Project.phase.in_(active_phases),
+        Project.deleted_at.is_(None),
+    )
+    if organization_id:
+        progress_stmt = progress_stmt.where(
+            Project.organization_id == str(organization_id)
         )
-    ).scalar_one()
+    progress_avg = (await db.execute(progress_stmt)).scalar_one()
 
     return {
         "active_projects": active_projects,
@@ -114,15 +147,22 @@ async def kpis(
 
 @router.get("/charts")
 async def charts(
+    organization_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("dashboard", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
 
+    def scoped_where():
+        base = [Project.tenant_id == tenant_id, Project.deleted_at.is_(None)]
+        if organization_id:
+            base.append(Project.organization_id == str(organization_id))
+        return base
+
     rows = (
         await db.execute(
             select(Project.phase, func.count(Project.id))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.phase)
         )
     ).all()
@@ -131,7 +171,7 @@ async def charts(
     rows = (
         await db.execute(
             select(Project.phase, func.coalesce(func.avg(Project.progress), 0))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.phase)
         )
     ).all()
@@ -140,7 +180,7 @@ async def charts(
     rows = (
         await db.execute(
             select(Project.type, func.coalesce(func.sum(Project.budget), 0))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.type)
         )
     ).all()
@@ -149,7 +189,7 @@ async def charts(
     rows = (
         await db.execute(
             select(Project.health_status, func.count(Project.id))
-            .where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
+            .where(*scoped_where())
             .group_by(Project.health_status)
         )
     ).all()

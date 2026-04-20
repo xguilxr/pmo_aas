@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-014
+US: US-BUG-002
 Epic: EP004-dashboard.md
-Título: Filtro de organización en dashboard
-Tipo: Frontend + Backend (si aplica) — filtro por org_id
-Commit esperado: "feat(dashboard): US-NEW-014 — filtro organización"
-Precondición: dashboard existente + listado de orgs.
+Título: Fix distorsión en gráficas de barra
+Tipo: Frontend — ResponsiveContainer + escala correcta
+Commit esperado: "fix(dashboard): US-BUG-002 — distorsión gráficas barra"
+Precondición: dashboard-charts.tsx existente.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: dashboard existente + listado de orgs.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-BUG-002 | EP004 | Fix distorsión gráficas de barra | Frontend |
-| 2 | US-NEW-015 | EP004 | KPIs respetan jerarquía de roles | Backend |
-| 3 | US-BUG-003 | EP004 | Fix layout Plan vs Real | Frontend |
+| 1 | US-NEW-015 | EP004 | KPIs respetan jerarquía de roles | Backend |
+| 2 | US-BUG-003 | EP004 | Fix layout Plan vs Real | Frontend |
+| 3 | US-NEW-016 | EP005 | Unificar Plan + Gantt en una pestaña | Frontend |
 
 ---
 
@@ -45,6 +45,7 @@ Precondición: dashboard existente + listado de orgs.
 | US-NEW-011 | Campos adicionales en solicitud + FK BU/Depto | `feat(requests): US-NEW-011 — campos adicionales en solicitud` | 2026-04-20 |
 | US-NEW-012 | Project Charter: tabla + generación al aprobar | `feat(requests): US-NEW-012 — project_charters + auto-gen` | 2026-04-20 |
 | US-NEW-013 | Charter aparece como documento del proyecto | `feat(requests): US-NEW-013 — charter como documento` | 2026-04-20 |
+| US-NEW-014 | Filtro de organización en dashboard | `feat(dashboard): US-NEW-014 — filtro organización` | 2026-04-20 |
 
 ---
 
@@ -71,7 +72,7 @@ Precondición: dashboard existente + listado de orgs.
 
 ### Bloque 4 — Dashboard fixes (EP004)
 - [ ] US-BUG-002 — Fix distorsión gráficas de barra
-- [ ] US-NEW-014 — Filtro organización en dashboard
+- [x] US-NEW-014 — Filtro organización en dashboard ✅
 - [ ] US-NEW-015 — KPIs respetan jerarquía de roles
 - [ ] US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM)
 

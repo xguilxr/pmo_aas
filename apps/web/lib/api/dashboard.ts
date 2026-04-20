@@ -46,12 +46,18 @@ function qs(params: Record<string, unknown>): string {
   return s ? `?${s}` : "";
 }
 
-export function getDashboardKpis(): Promise<DashboardKpis> {
-  return apiFetch<DashboardKpis>("/api/v1/dashboard/kpis");
+export type DashboardFilter = { organization_id?: string };
+
+export function getDashboardKpis(
+  params: DashboardFilter = {},
+): Promise<DashboardKpis> {
+  return apiFetch<DashboardKpis>(`/api/v1/dashboard/kpis${qs(params)}`);
 }
 
-export function getDashboardCharts(): Promise<DashboardCharts> {
-  return apiFetch<DashboardCharts>("/api/v1/dashboard/charts");
+export function getDashboardCharts(
+  params: DashboardFilter = {},
+): Promise<DashboardCharts> {
+  return apiFetch<DashboardCharts>(`/api/v1/dashboard/charts${qs(params)}`);
 }
 
 export function getPlanVsActual(

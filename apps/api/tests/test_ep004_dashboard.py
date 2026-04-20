@@ -127,3 +127,73 @@ async def test_dashboard_tenant_isolation(client, db_session):
     assert rk.status_code == 200
     assert rk.json()["active_projects"] == 0
     assert rk.json()["budget_total"] == 0.0
+
+
+# ============================================================================
+# US-NEW-014 — Filtro de organización en dashboard
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_usnew014_kpis_filtered_by_org(client, db_session):
+    """Dos orgs con proyectos distintos: filtro por org devuelve sólo los suyos."""
+    t, auth, org_a = await _setup(client, db_session)
+    # Segunda org dentro del mismo tenant
+    rb = await client.post(
+        "/api/v1/organizations", json={"name": "OrgBeta"}, headers=auth["_authz"]
+    )
+    org_b = rb.json()["id"]
+
+    await _seed_projects(db_session, str(t.id), org_a)
+    # Proyecto adicional en org B
+    other = Project(
+        tenant_id=str(t.id),
+        organization_id=org_b,
+        folio="PRJ-2026-099",
+        name="Beta-1",
+        phase="execution",
+        health_status="green",
+        budget=Decimal("700000"),
+        progress=20,
+        type="innovation",
+    )
+    db_session.add(other)
+    await db_session.commit()
+
+    # Sin filtro: 4 activos (3 de A + 1 de B) y budget total suma ambos
+    r_all = await client.get("/api/v1/dashboard/kpis", headers=auth["_authz"])
+    all_kpis = r_all.json()
+    assert all_kpis["active_projects"] == 4
+
+    # Filtro por org_a: 3 activos (excluye el closed y el de org B)
+    r_a = await client.get(
+        f"/api/v1/dashboard/kpis?organization_id={org_a}", headers=auth["_authz"]
+    )
+    kpis_a = r_a.json()
+    assert kpis_a["active_projects"] == 3
+    # Budget total del filtro ≠ total sin filtro
+    assert kpis_a["budget_total"] != all_kpis["budget_total"]
+
+    # Filtro por org_b: 1 solo proyecto
+    r_b = await client.get(
+        f"/api/v1/dashboard/kpis?organization_id={org_b}", headers=auth["_authz"]
+    )
+    assert r_b.json()["active_projects"] == 1
+
+
+@pytest.mark.asyncio
+async def test_usnew014_charts_filtered_by_org(client, db_session):
+    t, auth, org_a = await _setup(client, db_session)
+    rb = await client.post(
+        "/api/v1/organizations", json={"name": "OrgBeta"}, headers=auth["_authz"]
+    )
+    org_b = rb.json()["id"]
+    await _seed_projects(db_session, str(t.id), org_a)
+
+    r = await client.get(
+        f"/api/v1/dashboard/charts?organization_id={org_b}", headers=auth["_authz"]
+    )
+    assert r.status_code == 200
+    data = r.json()
+    # OrgB no tiene proyectos → conteos vacíos
+    assert data["projects_by_phase"] == {}

@@ -148,3 +148,30 @@ GET /api/v1/dashboard/plan-vs-actual/export.csv
 - [ ] Todos los permisos de visibilidad verificados por tests (TC-MT-001).
 - [ ] Modo oscuro consistente con design system.
 - [ ] Accesibilidad: gráficos tienen tabla HTML alternativa (`<table>` oculta visualmente pero leíble por screen reader).
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-014 — Filtro de organización en dashboard
+
+**Como** Admin / PMO Manager
+**Quiero** filtrar todo el dashboard (KPIs, gráficas, Plan vs Real) por
+una organización específica
+**Para** enfocarme en el portafolio de un cliente.
+
+**Criterios de aceptación:**
+- [x] Filtro por organización visible en la parte superior del dashboard.
+- [x] Default vacío (sin filtro → muestra todo el tenant).
+- [x] Al seleccionar una org, KPIs, gráficos y Plan vs Real se filtran
+  simultáneamente.
+- [x] Estado del filtro sincronizado con la URL (`/dashboard?org_id=...`).
+- [x] Botón "Limpiar" regresa a vista completa.
+- [x] Backend: endpoints `/dashboard/kpis` y `/dashboard/charts` aceptan
+  `organization_id` opcional; `/plan-vs-actual` ya lo aceptaba.
+
+**Tests:**
+- `test_usnew014_kpis_filtered_by_org` — KPIs se filtran correctamente ✅
+- `test_usnew014_charts_filtered_by_org` — charts se filtran ✅
+
+**Estado de integración:** DONE (US-NEW-014).

@@ -160,7 +160,14 @@ Campos adicionales al formulario de solicitud:
 
 ## EP004-dashboard.md — Agregar user stories
 
-### # PENDING — US-NEW-014 — Filtro de organización en dashboard
+### # INTEGRATED — US-NEW-014 — Filtro de organización en dashboard
+
+**Estado de integración:** INTEGRATED en EP004 (US-NEW-014). Backend
+  expone `organization_id` en `/dashboard/kpis` y `/dashboard/charts`.
+
+---
+
+### # PENDING (referencia histórica) — US-NEW-014 — Filtro de organización en dashboard
 
 **Criterios de aceptación:**
 - [ ] Filtro por organización en la parte superior del dashboard, default vacío (sin filtro).
