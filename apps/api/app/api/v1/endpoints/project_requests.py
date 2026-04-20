@@ -269,6 +269,7 @@ async def create_project_from_request(
     cu: CurrentUser = Depends(require_permission("admin.projects", "create")),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.models.modules import Document
     from app.models.project import Project  # import diferido
     from app.models.project_charter import ProjectCharter
 
@@ -335,6 +336,28 @@ async def create_project_from_request(
     db.add(charter)
     await db.flush()
 
+    # Registrar el charter como Document del proyecto (US-NEW-013).
+    # El archivo se genera on-demand desde /charter/pdf — aquí guardamos
+    # una referencia interna para que aparezca en el módulo Documentos.
+    doc_folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
+    charter_doc = Document(
+        tenant_id=tenant_id,
+        project_id=project.id,
+        folio=doc_folio,
+        title=f"Project Charter — {project.name}",
+        description="Documento fundacional del proyecto, generado al aprobar.",
+        status="current",
+        category="charter",
+        file_url=f"/api/v1/projects/{project.id}/charter/pdf",
+        mime_type="text/html",
+        is_current=True,
+        uploaded_by=cu.id,
+        uploaded_at=datetime.now(UTC),
+        created_by=cu.id,
+    )
+    db.add(charter_doc)
+    await db.flush()
+
     await write_audit(
         db, action="project.created_from_request", module="projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(project.id),
@@ -342,6 +365,7 @@ async def create_project_from_request(
             "request_id": str(pr.id),
             "folio": folio,
             "charter_id": str(charter.id),
+            "charter_doc_id": str(charter_doc.id),
         },
     )
     await db.commit()
@@ -349,5 +373,6 @@ async def create_project_from_request(
         "project_id": str(project.id),
         "folio": folio,
         "charter_id": str(charter.id),
+        "charter_doc_id": str(charter_doc.id),
         "idempotent": False,
     }

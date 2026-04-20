@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-013
-Epic: EP003-project-requests.md
-Título: Charter aparece como documento en el proyecto
-Tipo: Backend — registrar charter como Document automático
-Commit esperado: "feat(requests): US-NEW-013 — charter como documento"
-Precondición: US-NEW-012 DONE.
+US: US-NEW-014
+Epic: EP004-dashboard.md
+Título: Filtro de organización en dashboard
+Tipo: Frontend + Backend (si aplica) — filtro por org_id
+Commit esperado: "feat(dashboard): US-NEW-014 — filtro organización"
+Precondición: dashboard existente + listado de orgs.
 ```
 
 ---
@@ -22,8 +22,8 @@ Precondición: US-NEW-012 DONE.
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
 | 1 | US-BUG-002 | EP004 | Fix distorsión gráficas de barra | Frontend |
-| 2 | US-NEW-014 | EP004 | Filtro de organización en dashboard | Frontend |
-| 3 | US-NEW-015 | EP004 | KPIs respetan jerarquía de roles | Backend |
+| 2 | US-NEW-015 | EP004 | KPIs respetan jerarquía de roles | Backend |
+| 3 | US-BUG-003 | EP004 | Fix layout Plan vs Real | Frontend |
 
 ---
 
@@ -44,6 +44,7 @@ Precondición: US-NEW-012 DONE.
 | US-NEW-009 | Página /account (perfil + cambiar password) | `feat(web): US-NEW-009 — página /account perfil + password` | 2026-04-20 |
 | US-NEW-011 | Campos adicionales en solicitud + FK BU/Depto | `feat(requests): US-NEW-011 — campos adicionales en solicitud` | 2026-04-20 |
 | US-NEW-012 | Project Charter: tabla + generación al aprobar | `feat(requests): US-NEW-012 — project_charters + auto-gen` | 2026-04-20 |
+| US-NEW-013 | Charter aparece como documento del proyecto | `feat(requests): US-NEW-013 — charter como documento` | 2026-04-20 |
 
 ---
 
@@ -66,7 +67,7 @@ Precondición: US-NEW-012 DONE.
 ### Bloque 3 — Project Charter (EP003)
 - [x] US-NEW-011 — Campos adicionales en solicitud (correos, personas clave, etc.) ✅
 - [x] US-NEW-012 — Project Charter: tabla + generación al aprobar ✅
-- [ ] US-NEW-013 — Charter aparece como documento en el proyecto
+- [x] US-NEW-013 — Charter aparece como documento en el proyecto ✅
 
 ### Bloque 4 — Dashboard fixes (EP004)
 - [ ] US-BUG-002 — Fix distorsión gráficas de barra

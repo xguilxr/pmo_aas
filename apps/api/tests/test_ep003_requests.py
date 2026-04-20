@@ -488,3 +488,34 @@ async def test_charter_404_when_missing(client, db_session):
 
     r = await client.get(f"/api/v1/projects/{orphan.id}/charter", headers=auth["_authz"])
     assert r.status_code == 404
+
+
+# ============================================================================
+# US-NEW-013 — Charter como documento del proyecto
+# ============================================================================
+
+
+# TC-NEW-022: al crear proyecto, charter se registra como Document
+@pytest.mark.asyncio
+async def test_tcnew022_charter_appears_as_document(client, db_session):
+    from sqlalchemy import select
+    from app.models.modules import Document
+
+    _, auth, org_id = await _setup(client, db_session)
+    result = await _approve_and_create_project(client, auth, org_id)
+    pid = result["project_id"]
+    assert "charter_doc_id" in result
+
+    rows = (
+        await db_session.execute(
+            select(Document).where(
+                Document.project_id == pid, Document.category == "charter"
+            )
+        )
+    ).scalars().all()
+    assert len(rows) == 1
+    doc = rows[0]
+    assert doc.title.startswith("Project Charter")
+    assert doc.file_url == f"/api/v1/projects/{pid}/charter/pdf"
+    assert doc.mime_type == "text/html"
+    assert doc.is_current is True

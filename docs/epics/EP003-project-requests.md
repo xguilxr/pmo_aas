@@ -249,3 +249,26 @@ Project Charter
 - `test_charter_404_when_missing` ✅
 
 **Estado de integración:** DONE (US-NEW-012).
+
+---
+
+### US-NEW-013 — Charter aparece como documento del proyecto
+
+**Como** PM
+**Quiero** ver el Project Charter listado en el módulo de Documentos del
+proyecto
+**Para** acceder a él desde el mismo lugar que el resto de entregables.
+
+**Criterios de aceptación:**
+- [x] Al crear el proyecto desde la solicitud, además del charter
+  estructurado se registra un `Document` con `category='charter'`.
+- [x] `Document.file_url` apunta a `/api/v1/projects/{id}/charter/pdf`
+  (HTML imprimible on-demand, no se almacena archivo).
+- [x] `mime_type='text/html'`, `is_current=true`.
+- [x] Folio secuencial con prefijo `DOC-` por tenant.
+- [x] Respuesta del endpoint `create-project` incluye `charter_doc_id`.
+
+**Test Cases:**
+- `TC-NEW-022` — charter aparece como documento con category='charter' ✅
+
+**Estado de integración:** DONE (US-NEW-013).
