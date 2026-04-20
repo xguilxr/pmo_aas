@@ -209,12 +209,37 @@ EP010 ya tiene sus tablas en el archivo original.
 
 ---
 
-## EP012 — Migración MySQL (planificar al final)
-Ver EP012-db-migration.md para el plan completo.
-Impactos principales:
+## EP012 — Instalación productivo Hostgator MySQL (fresh install)
+Ver EP012-db-migration.md para el plan completo (reestructurado 2026-04-20).
+Staging se queda en Railway Postgres; productivo arranca fresco en Hostgator MySQL.
+
+Impactos principales del lado de schema / código:
 - RLS de PostgreSQL no existe en MySQL → implementar filtros en ORM
-- `gen_random_uuid()` → `UUID()` en MySQL
-- `citext` → `VARCHAR COLLATE utf8mb4_unicode_ci`
-- `pg_trgm` (fuzzy search) → `FULLTEXT INDEX` en MySQL
-- `GENERATED ALWAYS AS ... STORED` → trigger o columna calculada en app
-- Alembic funciona con MySQL, solo cambiar dialect
+- `gen_random_uuid()` → generar UUIDs en Python (callable default) — dialect-agnostic
+- `citext` → `VARCHAR(255) COLLATE utf8mb4_unicode_ci` (MySQL) / `citext` (PG)
+- `pg_trgm` (fuzzy search) → `FULLTEXT INDEX` en MySQL, `LIKE` en volumen bajo
+- `GENERATED ALWAYS AS ... STORED` → calcular en app layer (ej. severity)
+- Folios secuenciales → tabla `sequences` + `SELECT ... FOR UPDATE`
+- Alembic soporta ambos dialectos; migraciones se re-expresan con `variant()` cuando haga falta
+
+---
+
+## EP014 — Entregables operativos (reportes Python + formato minuta)
+
+### Modificar tabla: `reports`
+```sql
+ALTER TABLE reports ADD COLUMN generator VARCHAR(32) DEFAULT 'manual';
+    -- 'manual' | 'ai' | 'avance' | 'seguimiento'
+ALTER TABLE reports ADD COLUMN cut_off_date DATE;
+```
+
+Sin cambios nuevos para minutas: el formato estandarizado (US-NEW-040) es
+puro post-procesamiento sobre la tabla `meeting_minutes` existente.
+
+---
+
+## EP013 — Refactor de navegación (issue #17)
+
+Sin cambios nuevos de schema. `tenants.logo_url` ya existe (US-NEW-023). Si el
+storage físico del logo requiere un campo adicional (`logo_storage_path`), se
+agrega como parte de la migración de US-NEW-031 con su propio archivo Alembic.

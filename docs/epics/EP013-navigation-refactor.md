@@ -1,0 +1,242 @@
+# EP013 — Refactor de navegación (sidebar + admin + tabs inline)
+
+| Campo | Valor |
+|---|---|
+| **ID** | EP013 |
+| **Prioridad** | Alta — bloque 9 del sprint (antes de POST-MVP) |
+| **Dependencias** | EP001, EP002, EP005, EP006, EP007, EP010 completos |
+| **Módulo** | `web.nav`, `admin`, `projects.detail`, `superadmin` |
+| **Estado** | # PENDING |
+| **Versión objetivo** | v1.1 |
+| **Issue origen** | [#17 — Mejora de barra de navegación de tenants](https://github.com/xguilxr/pmo_aas/issues/17) |
+
+## Objetivo de negocio
+
+El sidebar hoy mezcla dos árboles de organización (jerarquía administrativa y drill-down real) y obliga a navegar a páginas separadas para cada módulo del proyecto. Esto confunde al usuario y rompe la expectativa de que "entrar a un proyecto" es una sola pantalla.
+
+La refactor consolida la navegación en:
+
+- **Sidebar principal (todos los usuarios):** drill-down real Organización → Programa → Proyecto. Dentro del proyecto, los módulos son tabs, no entradas del sidebar.
+- **Sidebar Admin (admin / senior PMO):** un solo lugar para gestión de tenant, jerarquía org, usuarios/roles y auditoría. Sin página "Configuración" separada.
+
+## Alcance propuesto
+
+### Sidebar principal (drill-down real)
+
+```
+Logo/Home (usa logo del tenant si está cargado)
+├─ Tablero
+├─ Solicitudes
+├─ Organizaciones
+│   ├─ Org A                  → panel de recursos de la org
+│   │   ├─ Programa 1         → resumen del programa (KPIs + proyectos)
+│   │   │   └─ Proyecto X     → detalle del proyecto con tabs inline
+│   │   └─ Programa 2
+│   └─ Org B
+└─ Admin (solo admin/senior PMO)
+    ├─ Gestión de Tenant      (fusiona Mi Tenant + Panel del Tenant)
+    ├─ Gestión de Organizaciones  (BUs + Deptos inline, una sola página)
+    ├─ Gestión de Usuarios y Roles
+    │   ├─ Usuarios
+    │   └─ Roles
+    └─ Auditoría
+```
+
+Se **elimina**:
+
+- La segunda sección "Organizaciones" del sidebar que sólo mostraba jerarquía administrativa (queda sólo en `/admin/organizations`).
+- La entrada de sidebar "Módulos de proyecto" (los módulos viven como tabs del detalle de proyecto).
+- La entrada de sidebar "Configuración" (se integra en Gestión de Tenant).
+
+### DEC-XXX a registrar en DECISIONS.md al cierre del bloque
+
+- **DEC-011** — Sidebar principal expone drill-down real; sidebar admin expone jerarquía administrativa. No se duplican.
+- **DEC-012** — Los módulos del proyecto viven como tabs dentro de `/admin/projects/{id}` (no como rutas separadas en el sidebar global). Las rutas individuales actuales quedan como deep-link para compatibilidad.
+- **DEC-013** — "Mi Tenant" y "Panel del Tenant" se consolidan en una sola página bajo `Admin → Gestión de Tenant`.
+
+---
+
+## # PENDING — US-NEW-031 — Upload y display del logo del tenant en chrome
+
+**Como** admin / senior PMO
+**Quiero** subir el logo de mi tenant y que se muestre en el topbar (reemplazando el texto `PMO•aaS`)
+**Para** que la app refleje la marca de mi organización.
+
+**Criterios de aceptación:**
+- [ ] `PATCH /api/v1/admin/tenant` acepta `logo_url` (endpoint ya existe en US-NEW-023; añadir upload si no lo tiene).
+- [ ] Endpoint `POST /api/v1/admin/tenant/logo` (multipart):
+  - Acepta PNG / JPG / SVG / WEBP ≤ 2 MB (reusar criterios EP002 US-022).
+  - Guarda en `/data/uploads/tenants/{slug}/logo.{ext}`.
+  - Devuelve `logo_url` firmada (o pública según dónde se sirva).
+- [ ] Endpoint `GET /api/v1/me/tenant-branding` devuelve `{ tenant_name, logo_url | null, primary_color }` — se consume desde topbar.
+- [ ] Topbar: cuando `logo_url` existe, muestra imagen (alt = nombre del tenant). Si no, fallback al texto `PMO•aaS`.
+- [ ] Click en el logo/home → navega a `/` (tablero).
+- [ ] Al editar el logo en `/admin/tenant`, el topbar refleja el cambio sin reload completo (revalidate).
+
+**Test Cases:**
+- `TC-NEW-031-1` (integration) — PATCH `/admin/tenant/logo` > 2MB → 413.
+- `TC-NEW-031-2` (integration) — Logo de tenant A no visible desde sesión de tenant B (aislamiento).
+- `TC-NEW-031-3` (E2E) — Subir logo → recargar topbar → imagen visible.
+
+---
+
+## # PENDING — US-NEW-032 — Restructurar sidebar principal (drill-down real)
+
+**Como** usuario autenticado
+**Quiero** que el sidebar principal me muestre Organizaciones → Programas → Proyectos reales, sin duplicar la jerarquía administrativa
+**Para** navegar a mi proyecto en pocos clicks.
+
+**Criterios de aceptación:**
+- [ ] Sidebar principal expone sólo: `Tablero`, `Solicitudes`, `Organizaciones`, `Admin` (si aplica).
+- [ ] Bajo "Organizaciones" aparece la lista de orgs reales del tenant con chevron para expandir.
+- [ ] Expandir org → lista de programas (reales) de esa org.
+- [ ] Expandir programa → lista de proyectos (reales) de ese programa.
+- [ ] Click en la hoja de cada nivel navega a la página correspondiente:
+  - Organización → `/admin/organizations/{id}/panel` (recursos reales, ver US-NEW-033).
+  - Programa → `/admin/programs/{id}` (resumen, ver US-NEW-034).
+  - Proyecto → `/admin/projects/{id}` (detalle con tabs inline, ver US-NEW-035).
+- [ ] Se **elimina** del sidebar la sección duplicada de "Organizaciones (jerarquía administrativa)" — esa vive sólo en `/admin/organizations`.
+- [ ] Se **elimina** del sidebar la sección "Módulos de proyecto" (sus ítems se vuelven tabs dentro del proyecto).
+- [ ] Data inicial: endpoint `GET /api/v1/me/nav-tree?depth=3` devuelve el árbol con counts por nodo (cacheado 60s).
+
+**Test Cases:**
+- `TC-NEW-032-1` (integration) — `/me/nav-tree` respeta permisos (PM sólo ve sus proyectos).
+- `TC-NEW-032-2` (E2E) — Expandir org → programa → proyecto → detalle en ≤ 3 clicks.
+- `TC-NEW-032-3` (E2E) — Usuario no-admin no ve entrada "Admin".
+
+---
+
+## # PENDING — US-NEW-033 — Panel de organización → página de recursos reales (fix bug)
+
+**Como** usuario
+**Quiero** que al seleccionar el panel de una organización me lleve a una página con sus recursos reales (BUs, Deptos, Programas, Usuarios, Proyectos), no a la pantalla de "editar organización" del admin
+**Para** explorar el estado de la org sin privilegios de admin.
+
+**Bug actual:** `/admin/organizations/{id}` lleva a editar (sólo admin). Los usuarios no-admin no tienen vista de consulta.
+
+**Criterios de aceptación:**
+- [ ] Nueva ruta pública-para-el-tenant `/organizations/{id}` (o `/admin/organizations/{id}/panel` según arquitectura) con permiso `organizations:read` (cualquier usuario del tenant que tenga acceso a la org vía sus proyectos).
+- [ ] Secciones en la página:
+  - Header: nombre, logo (si tiene), descripción, link a "Editar" sólo visible para admin.
+  - BUs: lista/tree.
+  - Departamentos: lista/tree.
+  - Programas: tabla (folio, nombre, #proyectos activos, PM del programa).
+  - Usuarios: lista de usuarios con rol en esta org (read-only).
+  - Proyectos: tabla resumida (mismos filtros que US-024 pero pre-filtrada por `organization_id`).
+- [ ] Botón "Editar organización" sólo visible para admin / senior PMO → lleva a `/admin/organizations/{id}/edit`.
+- [ ] Endpoint `GET /api/v1/organizations/{id}/panel` devuelve todo en un solo response (lazy por sección opcional con `?include=`).
+
+**Test Cases:**
+- `TC-NEW-033-1` (integration) — Usuario no-admin accede a `/organizations/{id}` → 200 con sólo campos read-only.
+- `TC-NEW-033-2` (integration) — Usuario de otro tenant → 404.
+- `TC-NEW-033-3` (E2E) — Admin ve botón "Editar"; PM no lo ve.
+
+---
+
+## # PENDING — US-NEW-034 — Página resumen de programa
+
+**Como** usuario con acceso al programa
+**Quiero** una página de resumen del programa con KPIs y lista de proyectos
+**Para** evaluar su estado sin entrar a cada proyecto.
+
+**Criterios de aceptación:**
+- [ ] Ruta `/admin/programs/{id}` con:
+  - Header: nombre, org, PM del programa (si aplica), fase agregada, salud agregada.
+  - KPIs: #proyectos totales, #activos, #en riesgo (health ≠ green), #cerrados, presupuesto plan vs real agregado.
+  - Gráfica de status de proyectos (donut: green/yellow/red).
+  - Lista de riesgos top (severidad ≥ 13) a través de todos los proyectos del programa.
+  - Tabla de proyectos del programa (mismo formato que US-024, sin filtro de programa).
+- [ ] Endpoint `GET /api/v1/programs/{id}/summary` con agregados.
+- [ ] Permiso `programs:read` — cualquier usuario con acceso al programa.
+- [ ] Enlazada desde sidebar (US-NEW-032).
+
+**Test Cases:**
+- `TC-NEW-034-1` (integration) — Summary agrega counts correctos con 5 proyectos seed.
+- `TC-NEW-034-2` (integration) — Presupuesto plan/real suma presupuestos de proyectos activos.
+- `TC-NEW-034-3` (E2E) — Click en fila de proyecto abre su detalle.
+
+---
+
+## # PENDING — US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017)
+
+**Como** PM
+**Quiero** que los módulos del proyecto (Charter, Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/admin/projects/{id}`, no páginas separadas
+**Para** no perder contexto al moverme entre módulos.
+
+> Esta US **supersede** la US-NEW-017 original (que queda marcada como obsoleta).
+
+**Criterios de aceptación:**
+- [ ] Detalle del proyecto `/admin/projects/{id}` renderiza una barra de tabs con el orden:
+  `Resumen | Equipo | Charter | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios | Actividad`.
+- [ ] Tab activa persistida como `?tab=<key>` en la URL (deep-linkable).
+- [ ] Click en tab cambia panel inferior sin navegar a otra página.
+- [ ] Tab activa resaltada visualmente (estilo design system).
+- [ ] Si el ancho es insuficiente: scroll horizontal en la barra (o dropdown "más" al final).
+- [ ] Las rutas legacy `/admin/projects/{id}/plan`, `/raid`, `/areas`, `/minutes`, `/reports`, etc. **siguen funcionando** como redirect permanente a `/admin/projects/{id}?tab=<key>`.
+- [ ] La entrada de sidebar "Módulos de proyecto" queda eliminada (ver US-NEW-032).
+
+**Test Cases:**
+- `TC-NEW-035-1` (E2E) — Todas las tabs cargan su contenido sin recarga completa.
+- `TC-NEW-035-2` (E2E) — Deep-link `?tab=raid` abre la tab RAID activa.
+- `TC-NEW-035-3` (E2E) — `/admin/projects/{id}/plan` redirige a `/admin/projects/{id}?tab=plan`.
+
+---
+
+## # PENDING — US-NEW-036 — Restructurar sidebar Admin
+
+**Como** admin / senior PMO
+**Quiero** que el sidebar Admin tenga sólo 4 entradas lógicas, sin duplicación
+**Para** no navegar entre "Mi Tenant" y "Panel del Tenant" que muestran info repetida.
+
+**Criterios de aceptación:**
+- [ ] Sidebar Admin:
+  - `Gestión de Tenant` (fusiona "Mi Tenant" + "Panel del Tenant" + "Configuración"). Una sola página con tabs internos: `Información | Branding | Configuración | Uso & Stats`.
+  - `Gestión de Organizaciones` (BUs, Deptos y programas en una sola página con selector de org; no sub-páginas — ver criterio US-NEW-024 ya implementado, ampliar si hace falta).
+  - `Gestión de Usuarios y Roles`
+    - `Usuarios`
+    - `Roles`
+  - `Auditoría`
+- [ ] Se **elimina** del sidebar la entrada "Configuración" como ítem independiente.
+- [ ] Se **elimina** la entrada duplicada "Mi Tenant" o "Panel del Tenant" (queda sólo "Gestión de Tenant").
+- [ ] Ruta consolidada: `/admin/tenant` con tabs internos. Rutas legacy `/admin/my-tenant`, `/admin/tenant/panel`, `/admin/settings` redirigen a `/admin/tenant?tab=<info|branding|config|stats>`.
+- [ ] La validación de acceso sigue la regla DEC-005 (admin + senior PMO).
+
+**Test Cases:**
+- `TC-NEW-036-1` (integration) — `/admin/settings` → 301 a `/admin/tenant?tab=config`.
+- `TC-NEW-036-2` (E2E) — Sidebar admin muestra exactamente 4 ítems raíz.
+- `TC-NEW-036-3` (E2E) — Usuario con rol "Project Manager" (no senior) no ve el sidebar Admin.
+
+---
+
+## Endpoints nuevos o modificados
+
+```
+# Tenant branding
+POST   /api/v1/admin/tenant/logo              (upload multipart)   [US-NEW-031]
+GET    /api/v1/me/tenant-branding             (consumido por topbar)
+
+# Nav tree del sidebar principal
+GET    /api/v1/me/nav-tree?depth=3                                  [US-NEW-032]
+
+# Organización panel (read-only)
+GET    /api/v1/organizations/{id}/panel                             [US-NEW-033]
+
+# Programa summary
+GET    /api/v1/programs/{id}/summary                                [US-NEW-034]
+```
+
+## Cambios de schema
+
+Ninguno nuevo. `tenants.logo_url` ya existe (US-NEW-023). Si falta el campo de upload físico, añadirlo como parte de US-NEW-031 con su propia migración.
+
+---
+
+## Definition of Done
+
+- [ ] Sidebar principal muestra drill-down real; no hay duplicados con jerarquía administrativa.
+- [ ] Sidebar Admin con 4 ítems raíz; sin entrada "Configuración" independiente.
+- [ ] Detalle de proyecto usa tabs inline; rutas legacy redirigen.
+- [ ] Logo del tenant se muestra en topbar cuando está configurado.
+- [ ] US-NEW-017 marcada como superseded por US-NEW-035.
+- [ ] DEC-011, DEC-012, DEC-013 registrados en DECISIONS.md.
+- [ ] Tests E2E verdes para navegación completa (3 clicks hasta un proyecto).

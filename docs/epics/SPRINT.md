@@ -9,15 +9,19 @@
 ```
 — Sin US activa —
 
-Bloques 1-8 (EP001, EP002, EP003, EP004, EP005, EP006, EP007, EP010)
-completos en esta rama (26 US implementadas).
+Bloques 1-8 (EP001–EP007, EP010) completos en esta rama
+(26 US implementadas).
 
-Bloques 9 y 10 (EP011 Notifications y EP012 Migración MySQL) están
-marcados como POST-MVP en el índice del README — se trabajan en sprint
-posterior cuando el MVP esté listo para release.
+Siguen pendientes por orden:
+  Bloque 9  — EP013 Refactor de navegación (issue #17)
+  Bloque 10 — EP014 Entregables operativos (issue #18)
+  Bloque 11 — EP011 Notificaciones (POST-MVP)
+  Bloque 12 — EP012 Instalación productivo Hostgator MySQL
 
-US-NEW-017 (tabs inline en detalle de proyecto) quedó diferida
-intencionalmente — ver commit de US-NEW-016.
+Nota sobre US-NEW-017 (tabs inline, diferida en US-NEW-016):
+sus dependencias están DONE pero el issue #17 pide un alcance más
+amplio que la reemplaza (ver US-NEW-035 en EP013). US-NEW-017 queda
+marcada como **superseded** — se implementa como parte del bloque 9.
 ```
 
 ---
@@ -26,9 +30,11 @@ intencionalmente — ver commit de US-NEW-016.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center | POST-MVP |
-| 2 | US-NEW-028 | EP011 | Email notifications via Resend | POST-MVP |
-| 3 | US-NEW-029 | EP012 | Plan de migración MySQL | POST-MVP |
+| 1 | US-NEW-031 | EP013 | Upload y display del logo del tenant en chrome | Bloque 9 |
+| 2 | US-NEW-032 | EP013 | Restructurar sidebar principal (drill-down real) | Bloque 9 |
+| 3 | US-NEW-033 | EP013 | Panel de organización → página de recursos reales | Bloque 9 |
+
+> Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
 ---
 
@@ -96,7 +102,7 @@ intencionalmente — ver commit de US-NEW-016.
 
 ### Bloque 5 — Proyecto detalle (EP005)
 - [x] US-NEW-016 — Unificar Plan + Gantt en una pestaña ✅
-- [ ] US-NEW-017 — Tabs inline (sin cambio de página) para módulos del proyecto
+- [~] US-NEW-017 — Tabs inline para módulos del proyecto → **SUPERSEDED** por US-NEW-035 (EP013, bloque 9)
 - [x] US-NEW-018 — Módulo Área/Organigrama del proyecto ✅
 
 ### Bloque 6 — RAID y módulos (EP006)
@@ -113,13 +119,34 @@ intencionalmente — ver commit de US-NEW-016.
 - [x] US-NEW-025 — Iconos en paneles de tenant ✅
 - [x] US-NEW-026 — Visión General = Tenants + Health unidos ✅
 
-### Bloque 9 — Notificaciones (EP011) — POST-MVP
+---
+
+### Bloque 9 — Refactor de navegación (EP013) — issue #17
+**Orden de ejecución** (1 US por commit, en este orden):
+- [ ] US-NEW-031 — Upload y display del logo del tenant en chrome
+- [ ] US-NEW-032 — Restructurar sidebar principal (drill-down real; quitar "Módulos de proyecto" y duplicado de Organizaciones)
+- [ ] US-NEW-033 — Panel de organización → página de recursos reales (fix bug + enhancement)
+- [ ] US-NEW-034 — Página resumen de programa (KPIs + lista de proyectos)
+- [ ] US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017)
+- [ ] US-NEW-036 — Restructurar sidebar Admin (fusionar Mi Tenant + Panel + Configuración; 4 ítems raíz)
+
+### Bloque 10 — Entregables operativos (EP014) — issue #18
+- [ ] US-NEW-037 — Infra compartida de exportación a PDF (WeasyPrint)
+- [ ] US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF)
+- [ ] US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
+- [ ] US-NEW-040 — Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA
+
+### Bloque 11 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center
 - [ ] US-NEW-028 — Email notifications via Resend
 
-### Bloque 10 — Migración BD (EP012) — AL FINAL
-- [ ] US-NEW-029 — Plan de migración + compatibilidad MySQL
-- [ ] US-NEW-030 — Ejecución migración zero-downtime
+### Bloque 12 — Instalación productivo Hostgator MySQL (EP012) — release v1.0
+- [ ] US-NEW-029 — Compatibilidad MySQL del código (dialect-agnostic; reemplazar PG-específicos)
+- [ ] US-NEW-030 — Setup Hostgator MySQL + pipeline de deploy productivo (fresh install)
+
+> EP012 **no es migración desde un productivo previo**: staging se queda en
+> Railway Postgres y productivo arranca directamente como instalación
+> fresca en Hostgator MySQL. Ver DEC-017/018/019 en EP012 y DECISIONS.md.
 
 ---
 
