@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_permission
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
-from app.models.organization import Organization
+from app.models.organization import BusinessUnit, Department, Organization
 from app.models.project_request import ProjectRequest
 from app.schemas.project_request import (
     CreateProjectFromRequest,
@@ -46,6 +46,43 @@ async def create_request(
     ).scalar_one_or_none()
     if org is None:
         raise business_rule("La organización no existe en tu tenant")
+
+    # Validar FKs BU/Depto si vienen (US-NEW-011).
+    if body.business_unit_id is not None:
+        bu = (
+            await db.execute(
+                select(BusinessUnit).where(
+                    BusinessUnit.id == str(body.business_unit_id),
+                    BusinessUnit.tenant_id == tenant_id,
+                    BusinessUnit.organization_id == str(body.organization_id),
+                    BusinessUnit.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if bu is None:
+            raise business_rule(
+                "La unidad de negocio no pertenece a la organización indicada"
+            )
+    if body.department_id is not None:
+        dept = (
+            await db.execute(
+                select(Department).where(
+                    Department.id == str(body.department_id),
+                    Department.tenant_id == tenant_id,
+                    Department.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if dept is None:
+            raise business_rule("El departamento no existe o no pertenece al tenant")
+        if (
+            body.business_unit_id is not None
+            and str(dept.business_unit_id) != str(body.business_unit_id)
+        ):
+            raise business_rule(
+                "El departamento no pertenece a la unidad de negocio indicada"
+            )
+
     folio = await next_folio(db, tenant_id=tenant_id, prefix="SOL")
     pr = ProjectRequest(
         tenant_id=tenant_id,
@@ -56,10 +93,23 @@ async def create_request(
         organization_id=str(body.organization_id),
         business_unit=body.business_unit,
         department=body.department,
+        business_unit_id=(
+            str(body.business_unit_id) if body.business_unit_id else None
+        ),
+        department_id=str(body.department_id) if body.department_id else None,
         sponsor=body.sponsor,
+        sponsor_email=str(body.sponsor_email),
         benefits=body.benefits,
         budget=body.budget,
         scope=body.scope,
+        entregables=body.entregables,
+        key_people=body.key_people,
+        if_not_done=body.if_not_done,
+        observations=body.observations,
+        requester_name=body.requester_name or cu.user.full_name,
+        requester_email=(
+            str(body.requester_email) if body.requester_email else cu.user.email
+        ),
         requested_by=cu.id,
         requested_at=datetime.now(UTC),
         status="in_review",

@@ -138,19 +138,19 @@ function buildNav(pathname: string): NavItem[] {
       match: (p) => p === "/dashboard",
     },
     {
+      id: "requests",
+      label: "Solicitudes",
+      icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+      href: "/admin/requests",
+      match: (p) => p.startsWith("/admin/requests"),
+    },
+    {
       id: "organizations",
       label: "Organizaciones",
       icon: <Building2 className="h-4 w-4" aria-hidden />,
       href: "/admin/organizations",
       match: (p) => p.startsWith("/admin/organizations"),
       children: [
-        {
-          id: "requests",
-          label: "Solicitudes",
-          icon: <ClipboardList className="h-4 w-4" aria-hidden />,
-          href: "/admin/requests",
-          match: (p) => p.startsWith("/admin/requests"),
-        },
         {
           id: "programs",
           label: "Programas",

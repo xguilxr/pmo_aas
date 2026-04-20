@@ -27,9 +27,16 @@ type Draft = {
   business_unit: string;
   department: string;
   sponsor: string;
+  sponsor_email: string;
   benefits: string;
   budget: string;
   scope: string;
+  entregables: string;
+  key_people: string;
+  if_not_done: string;
+  observations: string;
+  requester_name: string;
+  requester_email: string;
   attachments: RequestAttachment[];
 };
 
@@ -41,9 +48,16 @@ const EMPTY: Draft = {
   business_unit: "",
   department: "",
   sponsor: "",
+  sponsor_email: "",
   benefits: "",
   budget: "",
   scope: "",
+  entregables: "",
+  key_people: "",
+  if_not_done: "",
+  observations: "",
+  requester_name: "",
+  requester_email: "",
   attachments: [],
 };
 
@@ -165,9 +179,16 @@ export function RequestForm() {
         business_unit: draft.business_unit.trim(),
         department: draft.department.trim(),
         sponsor: draft.sponsor.trim(),
+        sponsor_email: draft.sponsor_email.trim(),
         benefits: draft.benefits.trim(),
         budget: Number(draft.budget),
         scope: draft.scope.trim(),
+        entregables: draft.entregables.trim() || null,
+        key_people: draft.key_people.trim() || null,
+        if_not_done: draft.if_not_done.trim() || null,
+        observations: draft.observations.trim() || null,
+        requester_name: draft.requester_name.trim() || null,
+        requester_email: draft.requester_email.trim() || null,
         attachments: draft.attachments,
       };
       const created: ProjectRequest = await createRequest(body);
@@ -249,6 +270,45 @@ export function RequestForm() {
               value={draft.sponsor}
               onChange={(e) => setField("sponsor", e.target.value)}
               required
+            />
+          </Field>
+          <Field
+            label="Email del sponsor"
+            htmlFor="sponsor_email"
+            error={fieldErrors.sponsor_email}
+            required
+          >
+            <Input
+              id="sponsor_email"
+              type="email"
+              value={draft.sponsor_email}
+              onChange={(e) => setField("sponsor_email", e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label="Solicitante (nombre)"
+            htmlFor="requester_name"
+            error={fieldErrors.requester_name}
+            help="Opcional — si se deja vacío se usa tu nombre"
+          >
+            <Input
+              id="requester_name"
+              value={draft.requester_name}
+              onChange={(e) => setField("requester_name", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Solicitante (email)"
+            htmlFor="requester_email"
+            error={fieldErrors.requester_email}
+            help="Opcional — si se deja vacío se usa tu correo"
+          >
+            <Input
+              id="requester_email"
+              type="email"
+              value={draft.requester_email}
+              onChange={(e) => setField("requester_email", e.target.value)}
             />
           </Field>
           <Field label="Organización" htmlFor="org" error={fieldErrors.organization_id} required>
@@ -346,6 +406,19 @@ export function RequestForm() {
             />
           </Field>
           <Field
+            label="Entregables"
+            htmlFor="entregables"
+            error={fieldErrors.entregables}
+            help="Qué productos concretos se entregan (opcional, complementa Alcance)"
+          >
+            <Textarea
+              id="entregables"
+              rows={3}
+              value={draft.entregables}
+              onChange={(e) => setField("entregables", e.target.value)}
+            />
+          </Field>
+          <Field
             label="Beneficios esperados"
             htmlFor="benefits"
             error={fieldErrors.benefits}
@@ -357,6 +430,42 @@ export function RequestForm() {
               value={draft.benefits}
               onChange={(e) => setField("benefits", e.target.value)}
               required
+            />
+          </Field>
+          <Field
+            label="Personas clave"
+            htmlFor="key_people"
+            help="Stakeholders relevantes (opcional)"
+          >
+            <Textarea
+              id="key_people"
+              rows={2}
+              value={draft.key_people}
+              onChange={(e) => setField("key_people", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="¿Qué pasa si no se hace?"
+            htmlFor="if_not_done"
+            help="Impacto de no ejecutar el proyecto (opcional)"
+          >
+            <Textarea
+              id="if_not_done"
+              rows={3}
+              value={draft.if_not_done}
+              onChange={(e) => setField("if_not_done", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Observaciones"
+            htmlFor="observations"
+            help="Notas adicionales para el revisor (opcional)"
+          >
+            <Textarea
+              id="observations"
+              rows={2}
+              value={draft.observations}
+              onChange={(e) => setField("observations", e.target.value)}
             />
           </Field>
         </div>
@@ -533,6 +642,9 @@ function ReviewPane({
       <Section title="Básicos" onEdit={() => onEdit("basics")}>
         <Row k="Título" v={draft.title} />
         <Row k="Sponsor" v={draft.sponsor} />
+        <Row k="Email sponsor" v={draft.sponsor_email} />
+        <Row k="Solicitante" v={draft.requester_name || "(tu usuario)"} />
+        <Row k="Email solicitante" v={draft.requester_email || "(tu correo)"} />
         <Row k="Organización" v={orgName} />
         <Row k="Unidad de negocio" v={draft.business_unit} />
         <Row k="Departamento" v={draft.department} />
@@ -542,7 +654,11 @@ function ReviewPane({
       </Section>
       <Section title="Alcance" onEdit={() => onEdit("scope")}>
         <Row k="Alcance" v={draft.scope} multiline />
+        <Row k="Entregables" v={draft.entregables} multiline />
         <Row k="Beneficios" v={draft.benefits} multiline />
+        <Row k="Personas clave" v={draft.key_people} multiline />
+        <Row k="Si no se hace" v={draft.if_not_done} multiline />
+        <Row k="Observaciones" v={draft.observations} multiline />
       </Section>
       <Section title="Adjuntos" onEdit={() => onEdit("attachments")}>
         {draft.attachments.length ? (
@@ -644,6 +760,13 @@ function validateAll(d: Draft): { ok: boolean; errors: Record<string, string> } 
   if (!d.budget || !Number.isFinite(budget) || budget < 0) {
     e.budget = "Presupuesto no válido";
   }
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!d.sponsor_email.trim() || !emailRe.test(d.sponsor_email.trim())) {
+    e.sponsor_email = "Email del sponsor no es válido";
+  }
+  if (d.requester_email.trim() && !emailRe.test(d.requester_email.trim())) {
+    e.requester_email = "Email no válido";
+  }
   return { ok: Object.keys(e).length === 0, errors: e };
 }
 
@@ -657,9 +780,19 @@ function firstStepWithError(errs: Record<string, string>): StepId | null {
       "business_unit",
       "department",
       "sponsor",
+      "sponsor_email",
+      "requester_name",
+      "requester_email",
       "budget",
     ],
-    scope: ["scope", "benefits"],
+    scope: [
+      "scope",
+      "benefits",
+      "entregables",
+      "key_people",
+      "if_not_done",
+      "observations",
+    ],
     attachments: [],
     review: [],
   };

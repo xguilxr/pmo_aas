@@ -177,3 +177,39 @@ GET    /api/v1/project-requests/{id}/attachments/{attId}/download
 - [ ] Notificaciones in-app + email configuradas.
 - [ ] E2E: crear → aprobar → convertir a proyecto sin errores.
 - [ ] 95%+ cobertura en servicios de transición de estado.
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-011 — Campos adicionales en solicitud + FK BU/Depto
+
+**Como** solicitante
+**Quiero** capturar contactos (sponsor_email, solicitante) y detalles extra
+(entregables, personas clave, if_not_done, observaciones)
+**Para** que los revisores tengan contexto completo y FK reales a BU/Depto.
+
+**Criterios de aceptación:**
+- [x] Migración Alembic `20260420_0011`: columnas `requester_name`,
+  `requester_email`, `sponsor_email`, `key_people`, `if_not_done`,
+  `observations`, `entregables`.
+- [x] `business_unit_id` y `department_id` validados contra tenant+org
+  (422 si no pertenecen o cruzan BU).
+- [x] Campos text legacy (`business_unit`, `department`) se mantienen en
+  paralelo hasta migración de datos (fase 2).
+- [x] `sponsor_email` obligatorio y validado como email.
+- [x] Defaults: si `requester_name`/`requester_email` no vienen, se toma
+  `user.full_name` / `user.email`.
+- [x] Formulario multi-step actualizado con todos los nuevos campos y
+  validación client-side (regex de email).
+- [x] Sidebar: "Solicitudes" movido a top-level (fuera de Organizaciones).
+
+**Test Cases:**
+- `test_usnew011_full_payload` — crea con todos los campos ✅
+- `test_usnew011_sponsor_email_invalid` — 422 con email mal formado ✅
+- `test_usnew011_requester_defaults` — defaults al user autenticado ✅
+- `test_usnew011_bu_fk_mismatch` — BU fuera del tenant → 422 ✅
+- `test_usnew011_dept_in_wrong_bu` — depto no pertenece a BU → 422 ✅
+- `test_usnew011_bu_dept_fk_happy_path` — FKs correctas → 201 ✅
+
+**Estado de integración:** DONE (US-NEW-011). Charter (US-NEW-012) siguiente.

@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-011
+US: US-NEW-012
 Epic: EP003-project-requests.md
-Título: Campos adicionales en solicitud + BU/Depto como FK
-Tipo: Backend + Frontend — formulario + schema + validación
-Commit esperado: "feat(requests): US-NEW-011 — campos adicionales en solicitud"
-Precondición: US-NEW-002 DONE (BU/Depto FKs disponibles en project_requests).
+Título: Project Charter: tabla + generación al aprobar
+Tipo: Backend — nueva tabla, endpoints, generación automática
+Commit esperado: "feat(requests): US-NEW-012 — project_charters + auto-gen"
+Precondición: US-NEW-011 DONE; ver DB-CHANGES.md sección EP003.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: US-NEW-002 DONE (BU/Depto FKs disponibles en project_requests).
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-012 | EP003 | Project Charter: tabla + generación | Backend |
-| 2 | US-NEW-013 | EP003 | Charter como documento en el proyecto | Backend |
-| 3 | US-BUG-002 | EP004 | Fix distorsión gráficas de barra | Frontend |
+| 1 | US-NEW-013 | EP003 | Charter como documento en el proyecto | Backend |
+| 2 | US-BUG-002 | EP004 | Fix distorsión gráficas de barra | Frontend |
+| 3 | US-NEW-014 | EP004 | Filtro de organización en dashboard | Frontend |
 
 ---
 
@@ -42,6 +42,7 @@ Precondición: US-NEW-002 DONE (BU/Depto FKs disponibles en project_requests).
 | US-NEW-008 | Toggle de idioma (ES/EN) en dropdown usuario | `feat(web): US-NEW-008 — toggle idioma en user dropdown` | 2026-04-20 |
 | US-NEW-010 | Color chrome #182e4e + Senior PMO como admin | `feat(auth): US-NEW-010 — chrome #182e4e + Senior PMO admin` | 2026-04-20 |
 | US-NEW-009 | Página /account (perfil + cambiar password) | `feat(web): US-NEW-009 — página /account perfil + password` | 2026-04-20 |
+| US-NEW-011 | Campos adicionales en solicitud + FK BU/Depto | `feat(requests): US-NEW-011 — campos adicionales en solicitud` | 2026-04-20 |
 
 ---
 
@@ -62,7 +63,7 @@ Precondición: US-NEW-002 DONE (BU/Depto FKs disponibles en project_requests).
 - [x] US-NEW-010 — Color chrome #182e4e + Senior PMO = admin ✅
 
 ### Bloque 3 — Project Charter (EP003)
-- [ ] US-NEW-011 — Campos adicionales en solicitud (correos, personas clave, etc.)
+- [x] US-NEW-011 — Campos adicionales en solicitud (correos, personas clave, etc.) ✅
 - [ ] US-NEW-012 — Project Charter: tabla + generación al aprobar
 - [ ] US-NEW-013 — Charter aparece como documento en el proyecto
 

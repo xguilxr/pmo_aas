@@ -97,7 +97,15 @@ upload y `phone` pendientes en iteración siguiente.
 
 ## EP003-project-requests.md — Agregar a US-015 y nueva US
 
-### # PENDING — Campos adicionales en US-015 (agregar a criterios de aceptación)
+### # INTEGRATED — Campos adicionales en US-015 (integrado como US-NEW-011)
+
+**Estado de integración:** INTEGRATED en EP003 (US-NEW-011, ver archivo
+  del epic para detalles y tests). Los campos text legacy `business_unit`/
+  `department` se mantienen hasta migración de datos (fase 2).
+
+---
+
+### # PENDING — Campos adicionales en US-015 (CRITERIOS ORIGINALES, ahora en US-NEW-011)
 
 Campos adicionales al formulario de solicitud:
 
