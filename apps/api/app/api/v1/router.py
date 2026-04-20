@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    admin_ai,
     admin_panel,
     admin_roles,
     admin_users,
@@ -27,6 +28,7 @@ api_router.include_router(users.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_roles.router)
 api_router.include_router(admin_panel.router)
+api_router.include_router(admin_ai.router)
 api_router.include_router(branding.router)
 api_router.include_router(organizations.router)
 api_router.include_router(organizations.programs_router)

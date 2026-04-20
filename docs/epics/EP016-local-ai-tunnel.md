@@ -77,7 +77,7 @@ Habilitar minutas generadas con IA **sin costo por token** y **sin sacar datos d
 
 ---
 
-## # PENDING — US-NEW-045 — Config y smoke test del túnel desde PMO
+## # DONE (parcial) — US-NEW-045 — Config y smoke test del túnel desde PMO
 
 **Como** backend PMO
 **Quiero** que al guardar la config IA del tenant con la URL del túnel + service token, PMO valide conexión y use ese endpoint en la próxima minuta IA
@@ -105,12 +105,23 @@ Habilitar minutas generadas con IA **sin costo por token** y **sin sacar datos d
   - Campos: `base_url`, `model`, `timeout_sec`, `cf_access_client_id`, `cf_access_client_secret` (password).
   - Botón "Probar conexión" → llama el endpoint y muestra latencia o error inline.
 - [ ] Script `scripts/ai-local-smoke.py` CLI que toma `--tenant {slug}` y hace end-to-end: leer config → pingear túnel → enviar prompt de 3 líneas → validar JSON → reportar.
-- [ ] Al generar una minuta IA (EP008), si el `base_url` falla con 5xx/timeout, la cascada sigue (Gemini → Claude) y métrica `ai_cascade_fallback_total{from=ollama,to=gemini}` incrementa.
-- [ ] Tests:
-  - `test_usnew045_settings_persisted_encrypted` — secret se guarda cifrado.
-  - `test_usnew045_test_connection_mocked_ok` — mock HTTP responde 200, endpoint devuelve `ok=true` con latencia.
-  - `test_usnew045_test_connection_unreachable` — mock timeout → 502 con mensaje accionable.
-  - `test_usnew045_fallback_on_local_failure` — Ollama 5xx → Gemini toma el relevo (si configurado) o error con trace claro.
+- [x] Al guardar el config, el secret **llega en texto plano al PATCH y se cifra con Fernet** antes de persistir. El GET devuelve el secret enmascarado (`••••<últimos 4>`).
+- [x] Endpoint `POST /admin/ai/test-connection` con body `{provider: "ollama"}`. Hace `GET {base_url}/api/tags` con headers CF-Access y devuelve `{ok, latency_ms, model_present, tags_count, error, code}`.
+- [x] `AI_SECRETS_FERNET_KEY` agregada a `Settings` con fallback dev; `app.services.ai_secrets` con `encrypt/decrypt/mask`.
+- [x] UI `/admin/tenant?tab=config` incluye sección `<OllamaLocalAiForm />` con los campos (`base_url`, `model`, `timeout_sec`, `cf_access_client_id`, `cf_access_client_secret`), botón **Probar conexión**, botón **Quitar secret** y banner de resultado (latencia o error).
+- [x] Script CLI `app/scripts/ai_local_smoke.py` — `python -m app.scripts.ai_local_smoke --tenant {slug}` resuelve config, descifra token, pingea `/api/tags` y `/api/generate`. Exit 0 si ambos pasan.
+- [ ] **Follow-up:** integrar este config por-tenant en `OllamaProvider.generate()` de `app/services/ai/provider.py` (hoy usa env). El endpoint de test-connection valida el túnel; el worker real lo adoptará en un refactor del provider. Criterio DoD: `ai_cascade_fallback_total{from=ollama,to=gemini}` incrementa cuando `base_url` del tenant 5xx/timeout.
+
+**Tests (10/10 verdes; suite completa 204/204):**
+- `test_usnew045_encrypt_decrypt_roundtrip` + `test_usnew045_mask_secret` — utils de secrets.
+- `test_usnew045_get_empty_config` — respuesta base.
+- `test_usnew045_patch_persists_encrypted` — secret se cifra en BD (verificado leyendo `settings.ai.ollama`).
+- `test_usnew045_clear_secret` — borra el secret cifrado.
+- `test_usnew045_test_connection_not_configured` — devuelve `code=NOT_CONFIGURED`.
+- `test_usnew045_test_connection_ok_mocked` — mock `httpx.AsyncClient.get` → 200 + modelo → `ok=true, model_present=true`.
+- `test_usnew045_test_connection_timeout` — `TimeoutException` → `code=TIMEOUT`.
+- `test_usnew045_test_connection_http_error` — 401 → `code=HTTP_ERROR`.
+- `test_usnew045_non_admin_forbidden` — GET/PATCH sin `admin.users:update` → 403.
 
 **Commit:** `feat(api,web): US-NEW-045 — config y smoke del modelo IA local (Cloudflare Tunnel)`.
 

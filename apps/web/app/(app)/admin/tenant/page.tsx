@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { OllamaLocalAiForm } from "@/components/ollama-local-ai-form";
 import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { TenantSettingsForm } from "@/components/tenant-settings-form";
 import { Badge } from "@/components/ui/badge";
@@ -410,7 +411,10 @@ function TenantAdminPageInner() {
           </form>
         </section>
       ) : activeTab === "config" ? (
-        <TenantSettingsForm />
+        <>
+          <TenantSettingsForm />
+          <OllamaLocalAiForm />
+        </>
       ) : (
         <>
           <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">

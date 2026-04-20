@@ -7,7 +7,15 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-045 — Config + smoke test del túnel (EP016)
+— Sin US activa —
+
+Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local)
+completos. Siguientes en orden:
+  Bloque 13 — EP011 Notificaciones (POST-MVP)
+  Bloque 14 — EP012 Instalación productivo Hostgator MySQL
+
+Follow-up pendiente en EP016 US-NEW-045: refactorizar OllamaProvider
+para consumir la config por-tenant en el worker IA (hoy usa env).
 ```
 
 ---
@@ -16,9 +24,9 @@ US-NEW-045 — Config + smoke test del túnel (EP016)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-045 | EP016 | Config + smoke test del túnel | Bloque 12 |
-| 2 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 13 |
-| 3 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 13 |
+| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 13 |
+| 2 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 13 |
+| 3 | US-NEW-029 | EP012 | Compatibilidad MySQL del código (dialect-agnostic) | Bloque 14 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -70,6 +78,7 @@ US-NEW-045 — Config + smoke test del túnel (EP016)
 | US-NEW-042 | Página `/superadmin/users` cross-tenant | `feat(api,web): US-NEW-042 — /superadmin/users cross-tenant` | 2026-04-20 |
 | US-NEW-043 | Visión General con Health al top | `feat(web): US-NEW-043 — health al top en visión general del superadmin` | 2026-04-20 |
 | US-NEW-044 | Runbook Ollama + Cloudflare Tunnel + nssm | `docs(ai): US-NEW-044 — runbook Ollama + Cloudflare Tunnel + nssm` | 2026-04-20 |
+| US-NEW-045 | Config + smoke test del túnel + secrets cifrados | `feat(api,web): US-NEW-045 — config y smoke del modelo IA local (Cloudflare Tunnel)` | 2026-04-20 |
 
 ---
 
@@ -143,7 +152,8 @@ US-NEW-045 — Config + smoke test del túnel (EP016)
 
 ### Bloque 12 — Modelo IA local (EP016) — Ollama + Cloudflare Tunnel + nssm
 - [x] US-NEW-044 — Runbook `docs/ai/local-ollama-setup.md` paso a paso ✅
-- [ ] US-NEW-045 — Config por-tenant + smoke test del túnel + fallback a cascada
+- [x] US-NEW-045 — Config por-tenant + smoke test del túnel + secrets cifrados ✅
+  *(follow-up: integrar config en `OllamaProvider.generate()` del worker EP008 para que `ai_cascade_fallback_total` incremente cuando el túnel falle)*
 
 ### Bloque 13 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center
