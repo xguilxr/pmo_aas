@@ -24,7 +24,9 @@
 
 **Test Cases:**
 - `TC-NEW-012` (E2E) — Toggle cambia tema inmediatamente.
-- `TC-NEW-013` (integration) — Preferencia persiste entre sesiones.
+- `TC-NEW-013` (integration) — Preferencia persiste entre sesiones ✅
+
+**Estado de integración:** INTEGRATED en EP001 (US-NEW-007).
 
 ---
 

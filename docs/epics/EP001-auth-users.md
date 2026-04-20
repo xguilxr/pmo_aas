@@ -260,3 +260,38 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 - [ ] Audit log cubre las 7 acciones anteriores.
 - [ ] Seed inicial crea roles sistema: `Administrador`, `PMO Manager`, `Project Manager`, `Viewer`.
 - [ ] Runbook "crear primer superadmin" en `docs/` interno.
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-007 — Toggle dark/light mode en dropdown de usuario
+
+**Como** usuario autenticado
+**Quiero** cambiar entre modo oscuro y claro desde el menú de usuario
+**Para** elegir mi preferencia visual.
+
+**Criterios de aceptación:**
+- [x] Dropdown de usuario incluye radio group con 3 opciones (Claro / Oscuro / Sistema) + iconos Sun/Moon/Monitor.
+- [x] Default: `prefers-color-scheme` del sistema.
+- [x] Preferencia guardada en `users.preferences JSON → { "theme": "dark"|"light"|"system" }`.
+- [x] Cambio aplica inmediatamente sin reload, sin FOUT (script inline en `<head>`).
+- [x] `GET /api/v1/users/me/preferences` y `PATCH /api/v1/users/me/preferences`.
+- [x] Cliente TS en `lib/api/users.ts` + `ThemeProvider`.
+
+**Test Cases:**
+- `TC-NEW-013` (integration) — Preferencia persiste entre sesiones ✅
+- `TC-NEW-013b` (integration) — theme inválido → 422 ✅
+
+**Estado de integración:** DONE (US-NEW-007).
+
+---
+
+### US-NEW-008 — # PENDING — Toggle de idioma en dropdown de usuario
+*(ver PENDING-ADDITIONS.md para criterios completos)*
+
+### US-NEW-009 — # PENDING — Página administrar cuenta (perfil + cambiar password)
+*(ver PENDING-ADDITIONS.md)*
+
+### US-NEW-010 — # PENDING — Color chrome #182e4e + Senior PMO como admin
+*(ver PENDING-ADDITIONS.md, DEC-005 y DEC-006)*

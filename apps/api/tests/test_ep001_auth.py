@@ -282,3 +282,77 @@ async def test_tc022_filter_inactive(client, db_session):
     r = await client.get("/api/v1/admin/users?is_active=false", headers=auth["_authz"])
     assert r.status_code == 200
     assert all(not i["is_active"] for i in r.json()["items"])
+
+
+# ============================================================================
+# US-NEW-007 — Toggle dark/light (preferencias de usuario)
+# ============================================================================
+
+
+# TC-NEW-013: preferencia persiste entre sesiones
+@pytest.mark.asyncio
+async def test_tcnew013_preferences_persist(client, db_session):
+    t = await create_tenant(db_session)
+    await create_user(
+        db_session, tenant=t, username="pu", email="pu@acme.example.com",
+        password="Str0ng-Pu-1!",
+    )
+    auth = await login(client, "pu", "Str0ng-Pu-1!")
+
+    # default
+    r = await client.get("/api/v1/users/me/preferences", headers=auth["_authz"])
+    assert r.status_code == 200
+    assert r.json()["theme"] == "system"
+
+    # set dark
+    r2 = await client.patch(
+        "/api/v1/users/me/preferences",
+        json={"theme": "dark"},
+        headers=auth["_authz"],
+    )
+    assert r2.status_code == 200 and r2.json()["theme"] == "dark"
+
+    # nuevo login → debe persistir
+    auth2 = await login(client, "pu", "Str0ng-Pu-1!")
+    r3 = await client.get("/api/v1/users/me/preferences", headers=auth2["_authz"])
+    assert r3.json()["theme"] == "dark"
+
+
+# validación: theme inválido → 422
+@pytest.mark.asyncio
+async def test_preferences_invalid_theme(client, db_session):
+    t = await create_tenant(db_session)
+    await create_user(
+        db_session, tenant=t, username="pinv", email="pinv@acme.example.com",
+        password="Str0ng-Pinv-1!",
+    )
+    auth = await login(client, "pinv", "Str0ng-Pinv-1!")
+    r = await client.patch(
+        "/api/v1/users/me/preferences",
+        json={"theme": "neon"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422
+
+
+# locale update propaga a users.locale
+@pytest.mark.asyncio
+async def test_preferences_locale_updates_locale_column(client, db_session):
+    from sqlalchemy import select
+    from app.models.user import User
+
+    t = await create_tenant(db_session)
+    u = await create_user(
+        db_session, tenant=t, username="pl", email="pl@acme.example.com",
+        password="Str0ng-Pl-1!",
+    )
+    auth = await login(client, "pl", "Str0ng-Pl-1!")
+    r = await client.patch(
+        "/api/v1/users/me/preferences",
+        json={"locale": "en-US"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200 and r.json()["locale"] == "en-US"
+    await db_session.refresh(u)
+    fresh = (await db_session.execute(select(User).where(User.id == u.id))).scalar_one()
+    assert fresh.locale == "en-US"

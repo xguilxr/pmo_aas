@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, Monitor, Moon, Sun } from "lucide-react";
 
+import { useTheme } from "@/components/theme-provider";
 import { logout } from "@/lib/auth";
 import { type StoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -24,6 +25,7 @@ function initials(user: StoredUser | null): string {
 
 export function UserMenu({ user, variant = "chrome" }: Props) {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -130,6 +132,46 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
                 ))}
               </div>
             ) : null}
+          </div>
+          <div className="border-b border-[var(--border-subtle)] px-3 py-2">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+              Tema
+            </div>
+            <div
+              role="radiogroup"
+              aria-label="Tema de la interfaz"
+              className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5"
+            >
+              {(
+                [
+                  { v: "light", icon: Sun, label: "Claro" },
+                  { v: "dark", icon: Moon, label: "Oscuro" },
+                  { v: "system", icon: Monitor, label: "Sistema" },
+                ] as const
+              ).map((opt) => {
+                const Icon = opt.icon;
+                const active = theme === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setTheme(opt.v)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1 rounded-[var(--radius-sm)] px-2 py-1.5 text-[11px] font-medium transition-colors",
+                      active
+                        ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                    )}
+                    title={opt.label}
+                  >
+                    <Icon className="h-3 w-3" aria-hidden />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="p-1">
             <button
