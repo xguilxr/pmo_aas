@@ -3,7 +3,7 @@
 Complementa al draft-con-IA existente en `/ai/projects/{id}/reports/draft`
 (EP008) con CRUD manual y un listado paginable por proyecto.
 """
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -19,6 +19,8 @@ from app.db.session import get_db
 from app.models.ai import Report
 from app.models.project import Project
 from app.services.audit import write_audit
+from app.services.operational_reports import build_avance_context
+from app.services.pdf_renderer import render_pdf
 
 router = APIRouter(tags=["reports"])
 
@@ -78,6 +80,8 @@ class ReportRead(BaseModel):
     recipients: list[str]
     sections: dict
     generated_by_ai: bool
+    generator: str = "manual"
+    cut_off_date: date | None = None
     created_at: datetime
     sent_at: datetime | None
 
@@ -212,6 +216,108 @@ async def update_report(
     )
     await db.commit()
     return ReportRead.model_validate(rep)
+
+
+# ---- EP014 US-NEW-038/039: reportes ejecutables sin IA ----
+
+class AvanceGenerate(BaseModel):
+    cut_off_date: date | None = None
+
+
+def _pdf_response(pdf: bytes, filename: str) -> Response:
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def _tenant_name(db: AsyncSession, tenant_id: UUID) -> str | None:
+    from app.models.tenant import Tenant
+
+    return (
+        await db.execute(select(Tenant.name).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+
+
+@router.post("/projects/{project_id}/reports/avance")
+async def generate_avance_report(
+    project_id: UUID,
+    body: AvanceGenerate | None = None,
+    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Genera Reporte de Avance (Python, sin IA). Devuelve el PDF y guarda
+    un row en `reports` con generator='avance' + snapshot del contexto."""
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
+
+    context = await build_avance_context(db, tenant_id, project.id, cut_off)
+    context["tenant_name"] = await _tenant_name(db, tenant_id)
+
+    pdf = render_pdf("reports/avance.html", context)
+
+    rep = Report(
+        tenant_id=str(tenant_id),
+        project_id=str(project.id),
+        title=f"Reporte de Avance — {project.folio} — {cut_off.isoformat()}",
+        period=None,
+        generator="avance",
+        cut_off_date=cut_off,
+        sections=context,
+        recipients=[],
+        status="draft",
+        generated_by_ai=False,
+        created_by=cu.id,
+    )
+    db.add(rep)
+    await db.flush()
+    await write_audit(
+        db,
+        action="report.generate.avance",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="report",
+        entity_id=str(rep.id),
+        details={"cut_off_date": cut_off.isoformat()},
+    )
+    await db.commit()
+
+    filename = f"Reporte_Avance_{project.folio}_{cut_off.isoformat()}.pdf"
+    return _pdf_response(pdf, filename)
+
+
+@router.get("/reports/{report_id}/avance/download")
+async def download_avance_report(
+    report_id: UUID,
+    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-descarga un Reporte de Avance previamente generado (usa
+    contexto persistido en `sections`)."""
+    tenant_id = _tenant(cu)
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(report_id),
+                Report.tenant_id == str(tenant_id),
+                Report.generator == "avance",
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte")
+    ctx = dict(rep.sections or {})
+    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    pdf = render_pdf("reports/avance.html", ctx)
+    project = await _get_project(db, tenant_id, UUID(rep.project_id))
+    filename = (
+        f"Reporte_Avance_{project.folio}_"
+        f"{(rep.cut_off_date.isoformat() if rep.cut_off_date else 'snapshot')}.pdf"
+    )
+    return _pdf_response(pdf, filename)
 
 
 @router.delete("/reports/{report_id}", status_code=204)

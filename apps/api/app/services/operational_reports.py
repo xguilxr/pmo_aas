@@ -1,0 +1,244 @@
+"""Armadores de contexto para reportes ejecutables sin IA (EP014).
+
+Por ahora:
+- `build_avance_context`: Reporte de Avance de Proyecto (US-NEW-038).
+
+`build_seguimiento_context` se agrega en US-NEW-039.
+"""
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta, timezone
+from typing import Any
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.errors import not_found
+from app.models.modules import ChangeRequest, Issue, Risk
+from app.models.organization import Organization, Program
+from app.models.project import Project
+from app.models.task import Task
+from app.models.user import User
+
+
+async def _get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
+    row = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(project_id),
+                Project.tenant_id == str(tenant_id),
+                Project.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise not_found("Proyecto")
+    return row
+
+
+async def _user(db: AsyncSession, user_id: UUID | None) -> dict[str, str | None] | None:
+    if user_id is None:
+        return None
+    row = (
+        await db.execute(
+            select(User.full_name, User.email).where(User.id == str(user_id))
+        )
+    ).first()
+    if row is None:
+        return None
+    return {"full_name": row[0], "email": row[1]}
+
+
+async def build_avance_context(
+    db: AsyncSession,
+    tenant_id: UUID,
+    project_id: UUID,
+    cut_off_date: date,
+) -> dict[str, Any]:
+    """Contexto para Reporte de Avance (sin IA)."""
+    project = await _get_project(db, tenant_id, project_id)
+
+    org = (
+        await db.execute(
+            select(Organization.name).where(Organization.id == project.organization_id)
+        )
+    ).scalar_one_or_none()
+    prog = None
+    if project.program_id:
+        prog = (
+            await db.execute(
+                select(Program.name).where(Program.id == project.program_id)
+            )
+        ).scalar_one_or_none()
+    pm = await _user(db, project.pm_id)
+
+    # Tareas
+    all_tasks = (
+        await db.execute(
+            select(Task).where(Task.project_id == str(project_id))
+        )
+    ).scalars().all()
+    total_tasks = len(all_tasks)
+    done = sum(1 for t in all_tasks if t.status == "done" or (t.progress or 0) >= 100)
+    in_progress = sum(1 for t in all_tasks if t.status == "in_progress")
+    not_started = sum(1 for t in all_tasks if t.status == "not_started")
+    avg_progress = (
+        int(round(sum((t.progress or 0) for t in all_tasks) / total_tasks))
+        if total_tasks > 0
+        else 0
+    )
+
+    # Hitos
+    milestones = [t for t in all_tasks if t.is_milestone]
+    period_start = cut_off_date - timedelta(days=14)
+    milestones_done = sorted(
+        [
+            t
+            for t in milestones
+            if (t.status == "done" or (t.progress or 0) >= 100)
+            and t.end_date is not None
+            and period_start <= t.end_date <= cut_off_date
+        ],
+        key=lambda t: t.end_date or date.min,
+    )
+    milestones_upcoming = sorted(
+        [
+            t
+            for t in milestones
+            if t.status != "done" and (t.progress or 0) < 100 and t.end_date is not None and t.end_date >= cut_off_date
+        ],
+        key=lambda t: t.end_date or date.max,
+    )[:10]
+
+    # Riesgos top
+    risk_rows = (
+        await db.execute(
+            select(Risk)
+            .where(
+                Risk.tenant_id == str(tenant_id),
+                Risk.project_id == str(project_id),
+                Risk.deleted_at.is_(None),
+                Risk.status.notin_(["closed", "materialized"]),
+            )
+            .order_by(Risk.severity.desc().nullslast() if hasattr(Risk.severity, "nullslast") else Risk.severity.desc())
+            .limit(5)
+        )
+    ).scalars().all()
+
+    # AIDs abiertas
+    aid_rows = (
+        await db.execute(
+            select(Issue)
+            .where(
+                Issue.tenant_id == str(tenant_id),
+                Issue.project_id == str(project_id),
+                Issue.deleted_at.is_(None),
+                Issue.status.notin_(["resolved", "closed"]),
+            )
+            .order_by(Issue.priority.desc().nullslast() if hasattr(Issue.priority, "nullslast") else Issue.priority.desc())
+            .limit(15)
+        )
+    ).scalars().all()
+    # Resolver nombres de owners
+    owner_ids = {i.owner_id for i in aid_rows if i.owner_id}
+    owner_map: dict[str, str] = {}
+    if owner_ids:
+        rows = (
+            await db.execute(
+                select(User.id, User.full_name).where(User.id.in_(owner_ids))
+            )
+        ).all()
+        owner_map = {str(uid): (name or "—") for uid, name in rows}
+
+    # Cambios en revisión
+    changes_in_review = (
+        await db.execute(
+            select(ChangeRequest).where(
+                ChangeRequest.tenant_id == str(tenant_id),
+                ChangeRequest.project_id == str(project_id),
+                ChangeRequest.deleted_at.is_(None),
+                ChangeRequest.status == "in_review",
+            )
+        )
+    ).scalars().all()
+
+    return {
+        "title": f"Reporte de Avance — {project.folio}",
+        "cut_off_date": cut_off_date.isoformat(),
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "project": {
+            "id": str(project.id),
+            "folio": project.folio,
+            "name": project.name,
+            "description": project.description,
+            "phase": project.phase,
+            "health_status": project.health_status,
+            "type": project.type,
+            "priority": project.priority,
+            "organization_name": org,
+            "program_name": prog,
+            "pm_name": pm["full_name"] if pm else None,
+            "pm_email": pm["email"] if pm else None,
+            "sponsor": project.sponsor,
+            "start_date": project.start_date.isoformat() if project.start_date else None,
+            "end_date": project.end_date.isoformat() if project.end_date else None,
+            "budget": float(project.budget or 0),
+            "actual_budget": float(project.actual_budget or 0),
+            "progress": project.progress or 0,
+        },
+        "plan": {
+            "total_tasks": total_tasks,
+            "done": done,
+            "in_progress": in_progress,
+            "not_started": not_started,
+            "avg_progress": avg_progress,
+        },
+        "milestones_done": [
+            {
+                "name": t.name,
+                "end_date": t.end_date.isoformat() if t.end_date else None,
+                "progress": t.progress or 0,
+            }
+            for t in milestones_done
+        ],
+        "milestones_upcoming": [
+            {
+                "name": t.name,
+                "end_date": t.end_date.isoformat() if t.end_date else None,
+                "progress": t.progress or 0,
+            }
+            for t in milestones_upcoming
+        ],
+        "top_risks": [
+            {
+                "folio": r.folio,
+                "title": r.title,
+                "severity": r.severity,
+                "status": r.status,
+                "probability": r.probability,
+                "impact": r.impact,
+                "mitigation_strategy": r.mitigation_strategy,
+            }
+            for r in risk_rows
+        ],
+        "open_aids": [
+            {
+                "folio": i.folio,
+                "title": i.title,
+                "type": i.type,
+                "status": i.status,
+                "priority": i.priority,
+                "committed_date": i.committed_date.isoformat() if i.committed_date else None,
+                "owner_name": owner_map.get(str(i.owner_id), "—") if i.owner_id else "—",
+                "overdue": bool(
+                    i.committed_date
+                    and i.committed_date < cut_off_date
+                    and i.status not in ("resolved", "closed")
+                ),
+            }
+            for i in aid_rows
+        ],
+        "changes_in_review": len(changes_in_review),
+    }
+

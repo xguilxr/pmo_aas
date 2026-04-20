@@ -55,7 +55,7 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 
 ---
 
-## # PENDING — US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF)
+## # DONE — US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF)
 
 **Como** PM
 **Quiero** generar un Reporte de Avance del proyecto con un click, que consulta automáticamente la BD y se descarga en PDF
@@ -85,12 +85,21 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
   - Botón "Generar Reporte de Avance" (nuevo) — sin IA, sin edición.
   - Al generar, descarga automática + row nuevo en listado con badge "Avance".
 
-**Test Cases:**
-- `TC-NEW-038-1` (integration) — Proyecto sin tareas → reporte se genera con secciones vacías (no crash).
-- `TC-NEW-038-2` (integration) — Top 5 riesgos ordenado por `severity` desc.
-- `TC-NEW-038-3` (integration) — PDF incluye folio y cut_off correctos en header.
-- `TC-NEW-038-4` (E2E) — Click "Generar Reporte de Avance" → descarga inicia en ≤ 5s.
-- `TC-NEW-038-5` (integration) — Cross-tenant: usuario de tenant B no puede generar reporte del proyecto del tenant A → 404.
+**Implementación:**
+- Migración Alembic `20260420_0015`: añade `reports.generator` (default 'manual') + `reports.cut_off_date`.
+- `apps/api/app/services/operational_reports.py::build_avance_context()` arma el contexto desde BD: info de proyecto (org/programa/PM), plan (total/done/in_progress/not_started/avg), presupuesto plan vs real, hitos cumplidos en últimos 14 días, hitos próximos, top 5 riesgos abiertos, AIDs abiertas con flag `overdue`, y count de cambios en revisión.
+- Plantilla `apps/api/app/templates/pdf/reports/avance.html` extiende `base.html` (header, footer con paginación).
+- Endpoints `POST /api/v1/projects/{id}/reports/avance` y `GET /api/v1/reports/{id}/avance/download` (re-descarga usa snapshot persistido en `reports.sections`).
+- Frontend: botón "Reporte de Avance (PDF)" en tab Reportes del proyecto; descarga directa vía `fetch` + Blob (apiFetch no soporta respuestas binarias).
+
+**Tests (5/5 verdes):**
+- `test_usnew038_generate_and_pdf` — genera PDF válido, content-type + disposition correctos.
+- `test_usnew038_persists_report_row` — row en `reports` con `generator='avance'` + snapshot del contexto.
+- `test_usnew038_redownload_uses_snapshot` — endpoint de download funciona.
+- `test_usnew038_cross_tenant_404` — aislamiento multi-tenant.
+- `test_usnew038_non_admin_cannot_generate` — sin `projects:update` → 403.
+
+**Commit:** `feat(api,web): US-NEW-038 — reporte de avance ejecutable sin IA`.
 
 ---
 

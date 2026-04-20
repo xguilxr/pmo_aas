@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, new_uuid
@@ -39,4 +39,6 @@ class Report(Base, TimestampMixin):
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     generated_by_ai: Mapped[bool] = mapped_column(default=False)
+    generator: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
+    cut_off_date: Mapped[date | None] = mapped_column(Date)
     created_by: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
