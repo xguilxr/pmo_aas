@@ -282,3 +282,25 @@ como follow-up; CSV cubre el caso de uso principal.
 - `test_usnew020_patch_document_category` ✅
 
 **Estado de integración:** DONE (US-NEW-020).
+
+---
+
+### US-NEW-021 — Consolidar pestañas de Minutas en 1
+
+**Criterios de aceptación:**
+- [x] Entrada separada "Minuta IA" eliminada del sidebar.
+- [x] Pestaña única "Minutas" ahora incluye:
+  - Listado de minutas pasadas (ya existía).
+  - Botón "Nueva minuta" → modal de registro manual (ya existía).
+  - Botón "Generar con IA" → navega a `/ai-minutes/new` (flujo de IA).
+- [x] Regex del nodo sidebar `mod-minutes` ahora matchea también
+  `/ai-minutes/*` para mantener el nodo activo durante el flujo IA.
+- [x] La minuta generada con IA entra al mismo flujo de revisión/edición
+  (ya estaba persistiendo en la misma tabla `meeting_minutes`).
+
+**Cambios de componente:**
+- `ModuleShell` admite nuevo prop opcional `headerExtras` para renderizar
+  acciones adicionales junto al botón "Nuevo" (aplicable a cualquier
+  módulo). La página Minutas lo usa para el CTA "Generar con IA".
+
+**Estado de integración:** DONE (US-NEW-021).

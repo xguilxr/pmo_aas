@@ -91,7 +91,8 @@ function buildNav(pathname: string): NavItem[] {
       label: "Minutas",
       icon: <MessageSquare className="h-4 w-4" aria-hidden />,
       href: projectModuleHref(pathname, "minutes"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/minutes(?!\/ai)/.test(p),
+      match: (p) =>
+        /^\/admin\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
     },
     {
       id: "mod-plan",
@@ -107,13 +108,6 @@ function buildNav(pathname: string): NavItem[] {
       icon: <Users className="h-4 w-4" aria-hidden />,
       href: projectModuleHref(pathname, "areas"),
       match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
-    },
-    {
-      id: "mod-ai-minutes",
-      label: "Minuta IA",
-      icon: <Sparkles className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "ai-minutes/new"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/ai-minutes/.test(p),
     },
     {
       id: "mod-reports",

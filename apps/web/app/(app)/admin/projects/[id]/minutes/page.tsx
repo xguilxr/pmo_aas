@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MessageSquare, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,13 @@ export default function MinutesPage() {
       records={rows}
       loading={loading}
       error={error}
+      headerExtras={
+        <Link href={`/admin/projects/${id}/ai-minutes/new`}>
+          <Button variant="secondary">
+            <Sparkles className="h-4 w-4" aria-hidden /> Generar con IA
+          </Button>
+        </Link>
+      }
       newButtonLabel="Nueva minuta"
       newModalTitle="Registrar minuta"
       newModalOpen={open}

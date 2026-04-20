@@ -360,7 +360,14 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-021 — Consolidar pestañas de Minutas en 1
+### # INTEGRATED — US-NEW-021 — Consolidar pestañas de Minutas en 1
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-021). Sidebar
+  unificado; CTA "Generar con IA" dentro de la pestaña Minutas.
+
+---
+
+### # PENDING (referencia) — US-NEW-021
 
 **Criterios de aceptación:**
 - [ ] Si actualmente hay 2 pestañas separadas para minutas (ej: "Minutas" y "Minuta IA"), unificarlas en 1.

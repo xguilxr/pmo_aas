@@ -28,6 +28,8 @@ type Props<T extends { id: string; folio: string }> = {
   setNewModalOpen?: (open: boolean) => void;
   emptyLabel?: string;
   footer?: ReactNode;
+  /** Acciones adicionales al lado del botón "Nuevo" (ej. "Generar con IA"). */
+  headerExtras?: ReactNode;
 };
 
 export function ModuleShell<T extends { id: string; folio: string }>({
@@ -49,6 +51,7 @@ export function ModuleShell<T extends { id: string; folio: string }>({
   setNewModalOpen: setNewModalOpenProp,
   emptyLabel = "Sin registros.",
   footer,
+  headerExtras,
 }: Props<T>) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = newModalOpenProp ?? internalOpen;
@@ -93,11 +96,14 @@ export function ModuleShell<T extends { id: string; folio: string }>({
               ) : null}
             </div>
           </div>
-          {newModalForm ? (
-            <Button onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4" aria-hidden /> {newButtonLabel}
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {headerExtras}
+            {newModalForm ? (
+              <Button onClick={() => setOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden /> {newButtonLabel}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </header>
 

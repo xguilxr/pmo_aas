@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-021
+US: US-NEW-022
 Epic: EP006-project-modules.md
-Título: Consolidar pestañas de Minutas en 1
-Tipo: Frontend — unificar /minutes con botón "Generar con IA"
-Commit esperado: "feat(projects): US-NEW-021 — consolidar minutas"
-Precondición: /minutes y /ai-minutes existen.
+Título: Módulo Reportes dentro del proyecto
+Tipo: Backend + Frontend — tabla reports ya existe, UI pendiente
+Commit esperado: "feat(projects): US-NEW-022 — módulo reportes"
+Precondición: tabla reports existe (EP008).
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: /minutes y /ai-minutes existen.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-022 | EP006 | Módulo Reportes dentro del proyecto | Backend+FE |
-| 2 | US-NEW-023 | EP007 | Gestión de Tenant (acciones) | Frontend |
-| 3 | US-NEW-024 | EP007 | Gestión jerarquía org completa | Frontend |
+| 1 | US-NEW-023 | EP007 | Gestión de Tenant (acciones) | Frontend |
+| 2 | US-NEW-024 | EP007 | Gestión jerarquía org completa | Frontend |
+| 3 | US-NEW-025 | EP010 | Iconos en paneles de tenant | Frontend |
 
 ---
 
@@ -53,6 +53,7 @@ Precondición: /minutes y /ai-minutes existen.
 | US-NEW-018 | Módulo Áreas/Organigrama del proyecto | `feat(projects): US-NEW-018 — módulo áreas del proyecto` | 2026-04-20 |
 | US-NEW-019 | Consolidar RAID (vista unificada) | `feat(projects): US-NEW-019 — consolidar RAID` | 2026-04-20 |
 | US-NEW-020 | Categorías de documentos actualizadas | `feat(projects): US-NEW-020 — categorías de documentos` | 2026-04-20 |
+| US-NEW-021 | Consolidar pestañas de Minutas | `feat(projects): US-NEW-021 — consolidar minutas` | 2026-04-20 |
 
 ---
 
@@ -91,7 +92,7 @@ Precondición: /minutes y /ai-minutes existen.
 ### Bloque 6 — RAID y módulos (EP006)
 - [x] US-NEW-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones) ✅
 - [x] US-NEW-020 — Categorías de documentos actualizadas ✅
-- [ ] US-NEW-021 — Consolidar pestañas de Minutas en 1
+- [x] US-NEW-021 — Consolidar pestañas de Minutas en 1 ✅
 - [ ] US-NEW-022 — Módulo Reportes dentro del proyecto
 
 ### Bloque 7 — Admin (EP007)
