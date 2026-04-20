@@ -287,8 +287,27 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 
 ---
 
-### US-NEW-008 — # PENDING — Toggle de idioma en dropdown de usuario
-*(ver PENDING-ADDITIONS.md para criterios completos)*
+### US-NEW-008 — Toggle de idioma en dropdown de usuario
+
+**Como** usuario autenticado
+**Quiero** cambiar el idioma de la interfaz entre Español y English
+**Para** operar en mi idioma preferido.
+
+**Criterios de aceptación:**
+- [x] Dropdown de usuario incluye selector de idioma con banderas 🇲🇽/🇺🇸.
+- [x] Preferencia guardada en `users.preferences.locale` (reutiliza `PATCH /users/me/preferences`).
+- [x] Cambio actualiza `<html lang>` y persiste en `localStorage`.
+- [x] También escribe `users.locale` para compatibilidad con código existente.
+- [x] Cliente: `LocaleProvider` con hook `useLocale()`.
+
+**Notas:**
+- La traducción visible del UI (strings) queda fuera del alcance de esta US;
+  esta US solo persiste la preferencia y la expone globalmente. El i18n
+  routing completo (Next.js `[locale]` segments) es post-MVP.
+
+**Estado de integración:** DONE (US-NEW-008).
+
+---
 
 ### US-NEW-009 — # PENDING — Página administrar cuenta (perfil + cambiar password)
 *(ver PENDING-ADDITIONS.md)*

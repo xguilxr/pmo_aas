@@ -46,6 +46,8 @@
 **Test Cases:**
 - `TC-NEW-014` (E2E) — Cambio de idioma actualiza UI sin reload completo.
 
+**Estado de integración:** INTEGRATED en EP001 (US-NEW-008, traducción UI diferida a post-MVP).
+
 ---
 
 ### # PENDING — US-NEW-009 — Página de administrar cuenta (perfil + cambiar password)

@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-008
+US: US-NEW-010
 Epic: EP001-auth-users.md
-Título: Toggle de idioma en dropdown de usuario (ES/EN)
-Tipo: Frontend — selector locale reutilizando users.preferences
-Commit esperado: "feat(web): US-NEW-008 — toggle idioma en user dropdown"
-Precondición: US-NEW-007 DONE (ThemeProvider + preferences API ya expone locale).
+Título: Color chrome #182e4e + Senior PMO como admin
+Tipo: Mixed — CSS + backend middleware roles
+Commit esperado: "feat(auth): US-NEW-010 — chrome #182e4e + Senior PMO admin"
+Precondición: DEC-005 y DEC-006 vigentes.
 ```
 
 ---
@@ -22,8 +22,8 @@ Precondición: US-NEW-007 DONE (ThemeProvider + preferences API ya expone locale
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
 | 1 | US-NEW-009 | EP001 | Página administrar cuenta | Frontend |
-| 2 | US-NEW-010 | EP001 | Color chrome #182e4e + Senior PMO admin | Mixed |
-| 3 | US-NEW-011 | EP003 | Campos adicionales en solicitud | Backend + Frontend |
+| 2 | US-NEW-011 | EP003 | Campos adicionales en solicitud | Backend + Frontend |
+| 3 | US-NEW-012 | EP003 | Project Charter: tabla + generación | Backend |
 
 ---
 
@@ -39,6 +39,7 @@ Precondición: US-NEW-007 DONE (ThemeProvider + preferences API ya expone locale
 | US-NEW-006 | Vista paneles de organizaciones (cards + métricas) | `feat(web): US-NEW-006 — paneles de organizaciones` | 2026-04-20 |
 | US-BUG-001 | Fix 404 en página de Programas | `fix(web): US-BUG-001 — crea /admin/programs` | 2026-04-20 |
 | US-NEW-007 | Toggle dark/light mode en dropdown usuario | `feat(web): US-NEW-007 — toggle dark/light en user dropdown` | 2026-04-20 |
+| US-NEW-008 | Toggle de idioma (ES/EN) en dropdown usuario | `feat(web): US-NEW-008 — toggle idioma en user dropdown` | 2026-04-20 |
 
 ---
 
@@ -54,7 +55,7 @@ Precondición: US-NEW-007 DONE (ThemeProvider + preferences API ya expone locale
 
 ### Bloque 2 — Topbar y UX base (EP001)
 - [x] US-NEW-007 — Toggle dark/light en dropdown usuario ✅
-- [ ] US-NEW-008 — Toggle idioma en dropdown usuario
+- [x] US-NEW-008 — Toggle idioma en dropdown usuario ✅
 - [ ] US-NEW-009 — Página administrar cuenta (perfil + cambiar password)
 - [ ] US-NEW-010 — Color chrome #182e4e + Senior PMO = admin
 

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, LogOut, Monitor, Moon, Sun } from "lucide-react";
 
+import { useLocale, type Locale } from "@/components/locale-provider";
 import { useTheme } from "@/components/theme-provider";
 import { logout } from "@/lib/auth";
 import { type StoredUser } from "@/lib/auth-storage";
@@ -26,6 +27,7 @@ function initials(user: StoredUser | null): string {
 export function UserMenu({ user, variant = "chrome" }: Props) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { locale, setLocale } = useLocale();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -132,6 +134,44 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
                 ))}
               </div>
             ) : null}
+          </div>
+          <div className="border-b border-[var(--border-subtle)] px-3 py-2">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+              Idioma
+            </div>
+            <div
+              role="radiogroup"
+              aria-label="Idioma de la interfaz"
+              className="grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5"
+            >
+              {(
+                [
+                  { v: "es-MX", flag: "🇲🇽", label: "Español" },
+                  { v: "en-US", flag: "🇺🇸", label: "English" },
+                ] as const
+              ).map((opt) => {
+                const active = locale === (opt.v as Locale);
+                return (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setLocale(opt.v as Locale)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1 rounded-[var(--radius-sm)] px-2 py-1.5 text-[11px] font-medium transition-colors",
+                      active
+                        ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                    )}
+                    title={opt.label}
+                  >
+                    <span aria-hidden>{opt.flag}</span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="border-b border-[var(--border-subtle)] px-3 py-2">
             <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
