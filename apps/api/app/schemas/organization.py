@@ -35,6 +35,28 @@ class OrganizationRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BusinessUnitCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    description: str | None = None
+    is_active: bool = True
+
+
+class BusinessUnitUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    description: str | None = None
+    is_active: bool | None = None
+
+
+class BusinessUnitRead(BaseModel):
+    id: UUID
+    organization_id: UUID
+    name: str
+    description: str | None
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
 class ProgramCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     organization_id: UUID

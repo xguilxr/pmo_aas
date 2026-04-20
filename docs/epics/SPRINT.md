@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-003
+US: US-NEW-004
 Epic: EP002-org-hierarchy.md
-Título: CRUD Business Units — API endpoints
+Título: CRUD Departments — API endpoints
 Tipo: Backend — endpoints REST + permisos + tests
-Commit esperado: "feat(org): US-NEW-003 — CRUD Business Units API"
-Precondición: US-NEW-002 DONE (modelos + migración existen)
+Commit esperado: "feat(org): US-NEW-004 — CRUD Departments API"
+Precondición: US-NEW-003 DONE (BU API existe)
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: US-NEW-002 DONE (modelos + migración existen)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-004 | EP002 | CRUD Departments — API endpoints | Backend |
-| 2 | US-NEW-005 | EP002 | Sidebar con organizaciones para nav rápida | Frontend |
-| 3 | US-NEW-006 | EP002 | Vista paneles de organizaciones (cards) | Frontend |
+| 1 | US-NEW-005 | EP002 | Sidebar con organizaciones para nav rápida | Frontend |
+| 2 | US-NEW-006 | EP002 | Vista paneles de organizaciones (cards) | Frontend |
+| 3 | US-BUG-001 | EP002 | Fix 404 en página de Programas | Frontend |
 
 ---
 
@@ -33,6 +33,7 @@ Precondición: US-NEW-002 DONE (modelos + migración existen)
 |---|---|---|---|
 | US-NEW-001 | Setup inicial — análisis de gaps v1→v2 | `docs: gap analysis v2` | 2026-04-20 |
 | US-NEW-002 | Tablas business_units + departments + FKs | `feat(org): US-NEW-002 — tablas BU y departments con FK` | 2026-04-20 |
+| US-NEW-003 | CRUD Business Units API | `feat(org): US-NEW-003 — CRUD Business Units API` | 2026-04-20 |
 
 ---
 
@@ -40,7 +41,7 @@ Precondición: US-NEW-002 DONE (modelos + migración existen)
 
 ### Bloque 1 — Jerarquía org (EP002) — BLOQUEANTE para todo lo demás
 - [x] US-NEW-002 — Migración BD: tablas BU + Depto + FKs ✅
-- [ ] US-NEW-003 — CRUD Business Units (API)
+- [x] US-NEW-003 — CRUD Business Units (API) ✅
 - [ ] US-NEW-004 — CRUD Departments (API)
 - [ ] US-NEW-005 — Sidebar org nav (Frontend)
 - [ ] US-NEW-006 — Vista paneles de organizaciones (Frontend)
