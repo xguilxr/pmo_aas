@@ -7,15 +7,15 @@
 ## 🔴 IN-PROGRESS
 
 ```
-— Sin US activa —
-
-Bloque 10 (EP014 — issue #18) completo: 4 US implementadas
-(US-NEW-037..040). Infra PDF + Avance + Seguimiento + Minuta export.
-
-Siguientes en orden:
-  Bloque 11 — EP011 Notificaciones (POST-MVP)
-  Bloque 12 — EP012 Instalación productivo Hostgator MySQL
+US-NEW-041 — Sidebar super admin aislado (EP015, issue #19)
 ```
+
+Dos bloques nuevos insertados antes de POST-MVP:
+  Bloque 11 — EP015 Refactor nav super admin (issue #19)
+  Bloque 12 — EP016 Modelo IA local (Ollama + Cloudflare Tunnel + nssm)
+
+Bloques 13 (EP011 Notificaciones) y 14 (EP012 productivo) se mueven
+después de estos.
 
 ---
 
@@ -23,9 +23,9 @@ Siguientes en orden:
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 11 |
-| 2 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 11 |
-| 3 | US-NEW-029 | EP012 | Compatibilidad MySQL del código (dialect-agnostic) | Bloque 12 |
+| 1 | US-NEW-041 | EP015 | Sidebar super admin aislado (4 ítems raíz) | Bloque 11 |
+| 2 | US-NEW-042 | EP015 | `/superadmin/users` cross-tenant | Bloque 11 |
+| 3 | US-NEW-043 | EP015 | Visión General con Health al top | Bloque 11 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -139,11 +139,20 @@ Siguientes en orden:
 - [x] US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF) ✅
 - [x] US-NEW-040 — Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA ✅
 
-### Bloque 11 — Notificaciones (EP011) — POST-MVP
+### Bloque 11 — Refactor nav super admin (EP015) — issue #19
+- [ ] US-NEW-041 — Sidebar super admin aislado (4 ítems raíz)
+- [ ] US-NEW-042 — Página `/superadmin/users` cross-tenant (lista + edición)
+- [ ] US-NEW-043 — Visión General con Health al top
+
+### Bloque 12 — Modelo IA local (EP016) — Ollama + Cloudflare Tunnel + nssm
+- [ ] US-NEW-044 — Runbook `docs/ai/local-ollama-setup.md` paso a paso
+- [ ] US-NEW-045 — Config por-tenant + smoke test del túnel + fallback a cascada
+
+### Bloque 13 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center
 - [ ] US-NEW-028 — Email notifications via Resend
 
-### Bloque 12 — Instalación productivo Hostgator MySQL (EP012) — release v1.0
+### Bloque 14 — Instalación productivo Hostgator MySQL (EP012) — release v1.0
 - [ ] US-NEW-029 — Compatibilidad MySQL del código (dialect-agnostic; reemplazar PG-específicos)
 - [ ] US-NEW-030 — Setup Hostgator MySQL + pipeline de deploy productivo (fresh install)
 

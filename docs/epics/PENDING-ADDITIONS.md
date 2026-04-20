@@ -550,3 +550,30 @@ Hostgator MySQL + compatibilidad dialect-agnostic del código"**:
 
 **Staging se queda en Railway Postgres**; productivo es instalación fresca. DEC-017,
 DEC-018, DEC-019 a registrar.
+
+---
+
+## EP015-superadmin-nav-refactor.md — Bloque 11 (issue #19)
+
+Documento completo en [`EP015-superadmin-nav-refactor.md`](./EP015-superadmin-nav-refactor.md).
+
+| US | Título | Estado |
+|---|---|---|
+| US-NEW-041 | Sidebar super admin aislado (4 ítems raíz) | # PENDING |
+| US-NEW-042 | Página `/superadmin/users` cross-tenant | # PENDING |
+| US-NEW-043 | Visión General con Health al top | # PENDING |
+
+DEC-020/021/022 a registrar.
+
+---
+
+## EP016-local-ai-tunnel.md — Bloque 12 (modelo IA local)
+
+Documento completo en [`EP016-local-ai-tunnel.md`](./EP016-local-ai-tunnel.md). Uso: runbook operativo + config por-tenant para conectar el worker EP008 a un Ollama local expuesto vía Cloudflare Tunnel.
+
+| US | Título | Estado |
+|---|---|---|
+| US-NEW-044 | Runbook `docs/ai/local-ollama-setup.md` paso a paso | # PENDING |
+| US-NEW-045 | Config + smoke test del túnel + fallback a cascada | # PENDING |
+
+DEC-023/024/025 a registrar. Alimenta EP014 US-NEW-040 (minuta estandarizada) con un proveedor IA privado y sin costo por token.

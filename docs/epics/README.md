@@ -24,6 +24,8 @@
 | [EP012](./EP012-db-migration.md) | Instalación productivo Hostgator MySQL (code-compat + fresh install) | POST-MVP / release v1.0 | 🆕 NUEVA | Todas |
 | [EP013](./EP013-navigation-refactor.md) | Refactor de navegación (sidebar + admin + tabs inline) — issue #17 | v1.1 | 🆕 NUEVA | EP001, EP002, EP005, EP006, EP007, EP010 |
 | [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 | 🆕 NUEVA | EP005, EP006, EP008 |
+| [EP015](./EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 | 🆕 NUEVA | EP010 |
+| [EP016](./EP016-local-ai-tunnel.md) | Modelo IA local (Ollama + Cloudflare Tunnel + nssm) | v1.1 | 🆕 NUEVA | EP008, EP014 |
 
 ---
 
@@ -102,8 +104,10 @@ Los bloques 1-8 están DONE. Lo que queda, en orden:
 |---|---|---|---|
 | **9** | EP013 | #17 | Refactor de navegación: sidebar principal con drill-down real, sidebar admin consolidado, logo del tenant en chrome, tabs inline en detalle de proyecto (supersede US-NEW-017) |
 | **10** | EP014 | #18 | Reportes operativos Python sin IA (Avance + Seguimiento) con PDF descargable; formato estandarizado + export de Minuta IA (.docx/.md/.txt/.pdf) |
-| **11** | EP011 | — | Notificaciones (POST-MVP): tabla + in-app center + email via Resend |
-| **12** | EP012 | — | Instalación productivo Hostgator MySQL (fresh install). Staging sigue en Railway Postgres |
+| **11** | EP015 | #19 | Refactor sidebar super admin (4 ítems raíz), nueva página `/superadmin/users` cross-tenant, Health al top en Visión General |
+| **12** | EP016 | — | Modelo IA local: runbook Ollama + Cloudflare Tunnel + nssm, config por-tenant y smoke test del endpoint |
+| **13** | EP011 | — | Notificaciones (POST-MVP): tabla + in-app center + email via Resend |
+| **14** | EP012 | — | Instalación productivo Hostgator MySQL (fresh install). Staging sigue en Railway Postgres |
 
 ### Ajustes clave respecto a la versión anterior del roadmap
 - **US-NEW-017** (tabs inline) queda **superseded** por US-NEW-035 (EP013). Sus dependencias están DONE, se construye como parte del bloque 9.
