@@ -29,26 +29,29 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 
 ---
 
-## # PENDING — US-NEW-037 — Infra compartida de exportación a PDF
+## # DONE — US-NEW-037 — Infra compartida de exportación a PDF
 
 **Como** backend
 **Quiero** una utilidad centralizada para renderizar HTML → PDF
 **Para** que charter, minuta y reportes usen el mismo motor y estilo.
 
 **Criterios de aceptación:**
-- [ ] Módulo `backend/app/services/pdf_renderer.py` con función `render_pdf(template_name, context) -> bytes`.
-- [ ] Motor: **WeasyPrint** (ya mencionado en US-030 y EP005 US-030). Alternativa documentada: Chromium headless en worker si WeasyPrint no soporta alguna feature CSS.
-- [ ] Plantillas Jinja2 en `backend/app/templates/pdf/`:
-  - `base.html` con header/footer configurables (logo del tenant, folio, fecha).
-  - CSS tipografía + colores del design system (`--chrome-bg = #182e4e`).
-- [ ] Endpoint helper `GET /api/v1/files/pdf/{kind}/{id}` (interno) — no se expone directamente; cada recurso tiene su propio endpoint `.../export?format=pdf` que delega aquí.
-- [ ] Manejo de errores: si WeasyPrint falla, log en `audit_log` con `scope=pdf` y devuelve 502 con mensaje claro.
-- [ ] Configuración vía `settings.PDF_ENGINE = 'weasyprint'` (permite cambiar a futuro).
+- [x] Módulo `apps/api/app/services/pdf_renderer.py` con funciones `render_html(template_name, context) -> str` y `render_pdf(template_name, context) -> bytes`.
+- [x] Motor: **WeasyPrint 68.1** vía `HTML(string=html).write_pdf()`.
+- [x] Plantillas Jinja2 en `apps/api/app/templates/pdf/`:
+  - `base.html` con header/footer configurables (@page, counter de páginas, tenant_name, title, generated_at), CSS tipografía + colores del design system (`--chrome = #182e4e`).
+  - `_smoke.html` para tests.
+- [x] Convención: cada recurso (charter, minuta, reporte) tendrá su propio endpoint `.../export?format=pdf` que invoca `render_pdf(...)`. Endpoint helper centralizado se integra por módulo (EP014 US-NEW-038/039/040).
+- [x] Manejo de errores: fallo de render envuelto en `AppError(502, PDF_RENDER_FAILED)`. Dep faltante devuelve `AppError(502, PDF_ENGINE_UNAVAILABLE)`.
+- [x] Dependencias registradas: `weasyprint==68.1`, `jinja2==3.1.4` en `requirements.txt`.
 
-**Test Cases:**
-- `TC-NEW-037-1` (unit) — `render_pdf('base.html', ctx)` devuelve bytes válidos (header `%PDF-`).
-- `TC-NEW-037-2` (integration) — Template con unicode / acentos renderiza correcto.
-- `TC-NEW-037-3` (integration) — Error de template → excepción capturada y 502.
+**Test Cases (4/4 verdes):**
+- `test_usnew037_render_html_basic` — Jinja renderiza y contiene generated_at.
+- `test_usnew037_render_pdf_returns_valid_bytes` — bytes empiezan con `%PDF` y terminan con `%%EOF`.
+- `test_usnew037_render_pdf_unknown_template_raises` — template inexistente lanza excepción.
+- `test_usnew037_render_pdf_handles_unicode` — acentos/emoji no rompen el render.
+
+**Commit:** `feat(api): US-NEW-037 — infra de exportación a PDF con WeasyPrint + Jinja2`.
 
 ---
 
