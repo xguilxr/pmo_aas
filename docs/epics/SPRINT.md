@@ -7,7 +7,7 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-044 — Runbook docs/ai/local-ollama-setup.md (EP016)
+US-NEW-045 — Config + smoke test del túnel (EP016)
 ```
 
 ---
@@ -16,9 +16,9 @@ US-NEW-044 — Runbook docs/ai/local-ollama-setup.md (EP016)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-044 | EP016 | Runbook `docs/ai/local-ollama-setup.md` | Bloque 12 |
-| 2 | US-NEW-045 | EP016 | Config + smoke test del túnel | Bloque 12 |
-| 3 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 13 |
+| 1 | US-NEW-045 | EP016 | Config + smoke test del túnel | Bloque 12 |
+| 2 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 13 |
+| 3 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 13 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -69,6 +69,7 @@ US-NEW-044 — Runbook docs/ai/local-ollama-setup.md (EP016)
 | US-NEW-041 | Sidebar super admin aislado (4 ítems raíz) | `feat(web): US-NEW-041 — sidebar super admin aislado (4 ítems raíz)` | 2026-04-20 |
 | US-NEW-042 | Página `/superadmin/users` cross-tenant | `feat(api,web): US-NEW-042 — /superadmin/users cross-tenant` | 2026-04-20 |
 | US-NEW-043 | Visión General con Health al top | `feat(web): US-NEW-043 — health al top en visión general del superadmin` | 2026-04-20 |
+| US-NEW-044 | Runbook Ollama + Cloudflare Tunnel + nssm | `docs(ai): US-NEW-044 — runbook Ollama + Cloudflare Tunnel + nssm` | 2026-04-20 |
 
 ---
 
@@ -141,7 +142,7 @@ US-NEW-044 — Runbook docs/ai/local-ollama-setup.md (EP016)
 - [x] US-NEW-043 — Visión General con Health al top ✅
 
 ### Bloque 12 — Modelo IA local (EP016) — Ollama + Cloudflare Tunnel + nssm
-- [ ] US-NEW-044 — Runbook `docs/ai/local-ollama-setup.md` paso a paso
+- [x] US-NEW-044 — Runbook `docs/ai/local-ollama-setup.md` paso a paso ✅
 - [ ] US-NEW-045 — Config por-tenant + smoke test del túnel + fallback a cascada
 
 ### Bloque 13 — Notificaciones (EP011) — POST-MVP

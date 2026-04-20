@@ -30,7 +30,7 @@ Habilitar minutas generadas con IA **sin costo por token** y **sin sacar datos d
 
 ---
 
-## # PENDING — US-NEW-044 — Runbook `local-ollama-setup.md`
+## # DONE — US-NEW-044 — Runbook `local-ollama-setup.md`
 
 **Como** owner/operador
 **Quiero** un paso-a-paso para instalar y exponer Ollama localmente
@@ -70,6 +70,8 @@ Habilitar minutas generadas con IA **sin costo por token** y **sin sacar datos d
 
 **Test Cases:**
 - N/A (runbook). Verificación manual: el owner ejecuta el runbook paso a paso en una PC limpia y llega al smoke test en verde.
+
+**Archivo:** [`docs/ai/local-ollama-setup.md`](../ai/local-ollama-setup.md) — incluye topología ASCII, 10 pasos ejecutables, troubleshooting tabular y rollback.
 
 **Commit:** `docs(ai): US-NEW-044 — runbook Ollama + Cloudflare Tunnel + nssm`.
 
