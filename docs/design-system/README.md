@@ -56,7 +56,7 @@ Para detalle de módulos (riesgo, incidencia, doc): **drawer desde la derecha**,
 
 ### 4. Sidebar translúcido
 
-Como el Finder: lista vertical con acrylic/vibrancy. Items con icono + label, estado activo con pill de fondo sutil (no un border).
+Como el Finder: lista vertical con acrylic/vibrancy. Items con icono + label, estado activo con pill de fondo sutil (no un border). Los grupos se organizan en dropdowns anidados (Tablero · Organizaciones · Admin) con toggle por chevron y auto-expand según la ruta activa. Ver `components.md § Sidebar` para el mapa completo.
 
 ### 5. Controles táctiles estilo iOS/macOS
 

@@ -102,27 +102,69 @@
 
 ---
 
-## US-026: Panel de administración de proyectos
+## US-026: Panel del Tenant (supervisión global de proyectos)
 
 **Épica:** EP-007
 **Prioridad:** Media
 **Estimación:** S
 
 **Como** administrador del sistema
-**Quiero** tener una vista administrativa de todos los proyectos del sistema
+**Quiero** tener una vista administrativa de todos los proyectos del tenant
 **Para** supervisar y gestionar el portafolio completo sin restricción de permisos
 
 ### Criterios de aceptación
+- [ ] Ruta `/admin/supervision`, expuesta en el sidebar bajo **Admin → Panel del Tenant** (reemplaza el label "Supervisión").
 - [ ] Vista de todos los proyectos del sistema (sin filtro de permisos)
 - [ ] Acciones masivas: cambiar estado, reasignar PM (futuro)
 - [ ] Indicadores: total de proyectos, por estado, por organización
 - [ ] Acceso exclusivo para rol Administrador
 
 ### Casos de prueba
-| ID      | Escenario                            | Pasos                                                  | Resultado esperado                                    |
-|---------|--------------------------------------|--------------------------------------------------------|-------------------------------------------------------|
-| TC-122  | Ver todos los proyectos como admin   | 1. Admin > Proyectos                                   | Todos los proyectos del sistema, sin restricción       |
-| TC-123  | Acceso como no-admin                 | 1. Login como PM 2. Intentar acceder a Admin > Proyectos | Acceso denegado                                       |
+| ID      | Escenario                                   | Pasos                                                         | Resultado esperado                                    |
+|---------|---------------------------------------------|---------------------------------------------------------------|-------------------------------------------------------|
+| TC-122  | Ver todos los proyectos como admin          | 1. Admin → Panel del Tenant                                   | Todos los proyectos del sistema, sin restricción       |
+| TC-123  | Acceso como no-admin                        | 1. Login como PM 2. Intentar acceder a Admin → Panel del Tenant | Acceso denegado                                       |
+
+### Defectos/Bugs
+| ID      | Descripción | Severidad | Estado  | Relacionado a |
+|---------|-------------|-----------|---------|---------------|
+| —       | —           | —         | —       | —             |
+
+---
+
+## US-030: Navegación jerárquica del sidebar
+
+**Épica:** EP-007
+**Prioridad:** Media
+**Estimación:** S
+
+**Como** usuario autenticado (cualquier rol)
+**Quiero** un sidebar organizado en grupos colapsables con dropdowns anidados
+**Para** escanear rápido las áreas de la app y reducir la fricción de navegación
+
+### Criterios de aceptación
+- [ ] Sidebar con tres grupos top-level en este orden:
+  1. **Tablero** (`/dashboard`).
+  2. **Organizaciones** (dropdown, label navega a `/admin/organizations`):
+     - Solicitudes → `/admin/requests`.
+     - Programas → `/admin/programs`.
+     - Proyectos (sub-dropdown, label navega a `/admin/projects`):
+       - **Módulos de Proyectos** con: Riesgos, AIDs, Cambios, Documentos, Lecciones, Minutas, Tareas, Gantt, Minuta IA, Reporte IA.
+  3. **Admin** (dropdown): Panel del Tenant, Usuarios, Roles, Auditoría, Configuración.
+- [ ] Grupos con `href` + `children` son link + toggle: el label navega y el chevron (derecha) expande/colapsa.
+- [ ] Auto-expand: al cambiar `pathname`, las ramas que contienen la ruta activa se expanden.
+- [ ] Los módulos de proyecto resuelven su `href` al proyecto actual cuando la URL calza `/admin/projects/:id/...`; de lo contrario caen al listado.
+- [ ] Sección **Super admin** (Visión general, Tenants, Logs, Health) sólo visible cuando `user.is_superadmin`.
+- [ ] Accesibilidad: chevrones con `aria-expanded` y `aria-label` ("Expandir/Colapsar <grupo>"); navegación completa por teclado.
+
+### Casos de prueba
+| ID      | Escenario                                                   | Pasos                                                                       | Resultado esperado                                                                                  |
+|---------|-------------------------------------------------------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| TC-130  | Auto-expand de rama activa                                  | 1. Entrar a `/admin/users`                                                  | Grupo _Admin_ expandido, _Usuarios_ activo; el resto colapsado                                      |
+| TC-131  | Anidación profunda activa                                   | 1. Entrar a `/admin/projects/:id/risks`                                     | Organizaciones → Proyectos → Módulos de Proyectos expandidos, _Riesgos_ activo                      |
+| TC-132  | Label vs. chevron en grupo con href                         | 1. Clic en "Organizaciones" 2. Clic en chevron                              | Label navega a `/admin/organizations` + expande; chevron sólo expande/colapsa                       |
+| TC-133  | Módulos sin proyecto activo                                 | 1. Estar en `/admin/organizations` 2. Expandir Proyectos → Módulos 3. Clic _Tareas_ | Redirige a `/admin/projects` (fallback)                                                             |
+| TC-134  | Sidebar de super admin                                      | 1. Login como super admin                                                   | Aparece sección "Super admin" con Visión general, Tenants, Logs, Health                              |
 
 ### Defectos/Bugs
 | ID      | Descripción | Severidad | Estado  | Relacionado a |

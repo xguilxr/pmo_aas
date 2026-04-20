@@ -100,7 +100,7 @@ export default function SupervisionPage() {
         </span>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            Supervisión de proyectos
+            Panel del Tenant
           </h1>
           <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
             Vista global del tenant: todos los proyectos sin filtro de membresía. Uso restringido a

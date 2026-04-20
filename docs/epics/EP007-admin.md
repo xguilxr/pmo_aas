@@ -74,13 +74,14 @@ Centralizar en un panel único la gestión de usuarios, roles, organizaciones y 
 
 ---
 
-## US-040 — Panel de administración de proyectos (supervisión)
+## US-040 — Panel del Tenant (supervisión global de proyectos)
 
 **Como** Administrador
 **Quiero** ver **todos** los proyectos del tenant sin filtro de miembro
 **Para** supervisión global.
 
 **Criterios de aceptación:**
+- [ ] Ruta `/admin/supervision` (label en sidebar: **"Panel del Tenant"**, bajo el dropdown _Admin_).
 - [ ] Endpoint especial `GET /api/v1/admin/projects` — bypass filtro `is_member`.
 - [ ] Solo accesible con permiso `admin.projects:read`.
 - [ ] Métricas globales: total, por estado, por organización, desviaciones.
@@ -133,6 +134,42 @@ Centralizar en un panel único la gestión de usuarios, roles, organizaciones y 
 
 ---
 
+## US-043 — Navegación jerárquica del sidebar
+
+**Como** usuario autenticado (cualquier rol)
+**Quiero** un sidebar organizado en grupos colapsables con dropdowns anidados
+**Para** escanear rápido las áreas de la app y reducir la fricción de navegación.
+
+**Criterios de aceptación:**
+- [ ] El sidebar expone **tres grupos top-level** en este orden:
+  1. **Tablero** — link directo a `/dashboard`.
+  2. **Organizaciones** (dropdown; el label navega a `/admin/organizations`):
+     - Solicitudes → `/admin/requests`.
+     - Programas → `/admin/programs`.
+     - Proyectos (sub-dropdown; label navega a `/admin/projects`):
+       - **Módulos de Proyectos** (sub-grupo expandible) con: Riesgos, AIDs, Cambios, Documentos, Lecciones, Minutas, Tareas, Gantt, Minuta IA, Reporte IA.
+  3. **Admin** (dropdown):
+     - **Panel del Tenant** → `/admin/supervision` (reemplaza el label "Supervisión").
+     - Usuarios → `/admin/users`.
+     - Roles → `/admin/roles`.
+     - Auditoría → `/admin/audit-logs`.
+     - Configuración → `/admin/settings`.
+- [ ] Los grupos con `href` + `children` actúan como **link + toggle**: clic en el label navega, clic en el chevron (lado derecho) expande/colapsa.
+- [ ] **Auto-expand**: al montar el shell o al cambiar `pathname`, las ramas que contienen la ruta activa se expanden automáticamente.
+- [ ] Los ítems bajo _Módulos de Proyectos_ resuelven su `href` contra el proyecto en curso cuando la URL calza `/admin/projects/:id/...`; en caso contrario caen al listado `/admin/projects`.
+- [ ] El estado activo usa pill de fondo (`--chrome-active`) sin border; cada nivel de anidación agrega `0.75rem` de indent.
+- [ ] La sección **Super admin** (Visión general, Tenants, Logs platform, Health) sólo se renderiza si `user.is_superadmin === true` y queda por fuera del árbol principal.
+- [ ] Los chevrones tienen `aria-expanded` y labels `aria-label="Expandir/Colapsar <grupo>"`.
+
+**Test Cases:**
+- `TC-112` (e2e) — Al entrar a `/admin/users`, el grupo _Admin_ aparece expandido y _Usuarios_ activo; el resto colapsado.
+- `TC-113` (e2e) — Al entrar a `/admin/projects/:id/risks`, quedan abiertos _Organizaciones → Proyectos → Módulos de Proyectos_ con _Riesgos_ activo.
+- `TC-114` (e2e) — Clic en el label "Organizaciones" navega a `/admin/organizations` **y** expande el grupo; clic en el chevron sólo expande.
+- `TC-115` (unit) — `buildNav(pathname)` devuelve hrefs de módulos apuntando al proyecto en curso cuando `pathname` incluye `/admin/projects/:id`.
+- `TC-116` (a11y) — Navegación completa con teclado (Tab + Enter sobre chevron) respeta focus ring y `aria-expanded` cambia de estado.
+
+---
+
 ## Notas técnicas
 
 - Panel admin es una ruta protegida `/admin` en Next.js con `middleware.ts` que verifica permiso.
@@ -165,7 +202,7 @@ GET    /api/v1/admin/audit-logs/export.csv
 
 ## Definition of Done
 
-- [ ] Panel accesible en `/admin` con navegación lateral: Users, Roles, Orgs, Projects, Settings, Logs.
+- [ ] Panel accesible en `/admin` con sidebar de dropdowns anidados (ver US-043): _Admin_ agrupa Panel del Tenant, Usuarios, Roles, Auditoría, Configuración; _Organizaciones_ agrupa Solicitudes, Programas y Proyectos → Módulos.
 - [ ] Bulk actions probadas con 100 elementos sin degradar performance.
 - [ ] TC-MT-005 (admin A no gestiona B) y TC-MT-006 (logs aislados) verdes.
 - [ ] UI elegante con tablas densas estilo macOS Finder (ver design system).
