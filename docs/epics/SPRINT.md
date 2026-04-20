@@ -7,7 +7,7 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
+US-NEW-040 — Formato estandarizado + export de Minuta IA
 ```
 
 ---
@@ -16,9 +16,9 @@ US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-039 | EP014 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | Bloque 10 |
-| 2 | US-NEW-040 | EP014 | Formato estandarizado + export de Minuta IA | Bloque 10 |
-| 3 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 11 |
+| 1 | US-NEW-040 | EP014 | Formato estandarizado + export de Minuta IA | Bloque 10 |
+| 2 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 11 |
+| 3 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 11 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -64,6 +64,7 @@ US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
 | US-NEW-036 | Restructurar sidebar Admin (4 ítems raíz) | `feat(web): US-NEW-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed` | 2026-04-20 |
 | US-NEW-037 | Infra compartida de exportación a PDF (WeasyPrint) | `feat(api): US-NEW-037 — infra de exportación a PDF con WeasyPrint + Jinja2` | 2026-04-20 |
 | US-NEW-038 | Reporte de Avance de Proyecto (Python, BD, PDF) | `feat(api,web): US-NEW-038 — reporte de avance ejecutable sin IA` | 2026-04-20 |
+| US-NEW-039 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | `feat(api,web): US-NEW-039 — reporte de seguimiento por responsable` | 2026-04-20 |
 
 ---
 
@@ -127,7 +128,7 @@ US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
 ### Bloque 10 — Entregables operativos (EP014) — issue #18
 - [x] US-NEW-037 — Infra compartida de exportación a PDF (WeasyPrint) ✅
 - [x] US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF) ✅
-- [ ] US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
+- [x] US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF) ✅
 - [ ] US-NEW-040 — Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA
 
 ### Bloque 11 — Notificaciones (EP011) — POST-MVP

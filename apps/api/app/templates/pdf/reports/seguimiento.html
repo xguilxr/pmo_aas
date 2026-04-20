@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Reporte de Seguimiento</h1>
+<p class="meta">
+  {{ project.folio }} · {{ project.name }} · Corte {{ cut_off_date }}
+  · Ventana ± {{ window_days }} días
+</p>
+
+<h2>Resumen</h2>
+<table>
+  <thead><tr>
+    <th>Vencidas</th><th>En curso</th><th>Próximas</th><th class="right">Total</th>
+  </tr></thead>
+  <tbody><tr>
+    <td class="nums">{{ counts.overdue }}</td>
+    <td class="nums">{{ counts.in_progress }}</td>
+    <td class="nums">{{ counts.upcoming }}</td>
+    <td class="nums right">{{ counts.total }}</td>
+  </tr></tbody>
+</table>
+
+{% macro render_group(title, groups, show_overdue) %}
+<h2>{{ title }}</h2>
+{% if groups %}
+  {% for g in groups %}
+    <h3>{{ g.owner_name }} <span class="muted small">({{ g.rows|length }})</span></h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Folio</th><th>Origen</th><th>Actividad</th>
+          <th>Status</th><th class="right">Compromiso</th>
+          {% if show_overdue %}<th class="right">Días vencidos</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for it in g.rows %}
+        <tr>
+          <td class="small">{{ it.folio or "—" }}</td>
+          <td class="small">{{ "Tarea" if it.source == "task" else "Acción" }}</td>
+          <td>{{ it.title }}</td>
+          <td class="small">{{ it.status }}</td>
+          <td class="small right">{{ it.due_date or "—" }}</td>
+          {% if show_overdue %}
+            <td class="small right">
+              {% if it.overdue_days > 0 %}
+                <span class="pill red">{{ it.overdue_days }}d</span>
+              {% else %}—{% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+{% else %}
+  <p class="empty">Sin elementos en esta categoría.</p>
+{% endif %}
+{% endmacro %}
+
+{{ render_group("Actividades vencidas", groups_overdue, true) }}
+{{ render_group("Actividades en curso", groups_in_progress, false) }}
+{{ render_group("Actividades próximas", groups_upcoming, false) }}
+
+{% endblock %}

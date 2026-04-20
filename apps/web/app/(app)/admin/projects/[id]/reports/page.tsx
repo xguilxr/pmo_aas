@@ -30,6 +30,7 @@ import {
   createReport,
   deleteReport,
   generateAvanceReport,
+  generateSeguimientoReport,
   getReport,
   listReports,
   updateReport,
@@ -139,6 +140,7 @@ function ReportsInner() {
         </div>
         <div className="flex flex-wrap gap-2">
           <GenerateAvanceButton projectId={id} onDone={() => void refresh()} />
+          <GenerateSeguimientoButton projectId={id} onDone={() => void refresh()} />
           <GenerateWithAIButton projectId={id} onCreated={openReport} />
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" aria-hidden /> Nuevo reporte
@@ -404,6 +406,46 @@ function GenerateAvanceButton({
         loading={working}
       >
         <Download className="h-4 w-4" aria-hidden /> Reporte de Avance (PDF)
+      </Button>
+      {error ? (
+        <span className="text-[11px] text-[var(--color-danger-fg)]">{error}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function GenerateSeguimientoButton({
+  projectId,
+  onDone,
+}: {
+  projectId: string;
+  onDone: () => void;
+}) {
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function generate() {
+    setWorking(true);
+    setError(null);
+    try {
+      await generateSeguimientoReport(projectId);
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al generar reporte");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={generate}
+        loading={working}
+      >
+        <Download className="h-4 w-4" aria-hidden /> Reporte de Seguimiento (PDF)
       </Button>
       {error ? (
         <span className="text-[11px] text-[var(--color-danger-fg)]">{error}</span>

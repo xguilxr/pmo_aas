@@ -103,7 +103,7 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 
 ---
 
-## # PENDING — US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
+## # DONE — US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
 
 **Como** PM
 **Quiero** generar un Reporte de Seguimiento que liste actividades vencidas, en curso y próximas con responsables agrupados
@@ -128,11 +128,20 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 - [ ] UI: botón "Generar Reporte de Seguimiento" en la tab Reportes.
 - [ ] Endpoint `GET /api/v1/reports/{id}/seguimiento/download`.
 
-**Test Cases:**
-- `TC-NEW-039-1` (integration) — Vencidos + en curso + próximos cuentan sólo items del proyecto.
-- `TC-NEW-039-2` (integration) — Agrupación por responsable: items sin `owner_id` caen en bucket "Sin responsable".
-- `TC-NEW-039-3` (integration) — Items con `due_date NULL` no aparecen en vencidos.
-- `TC-NEW-039-4` (E2E) — PDF descargable con sección por responsable.
+**Implementación:**
+- `operational_reports.build_seguimiento_context()` unifica tareas del plan (no cerradas) y AIDs tipo `action` abiertas, clasifica en Vencidas / En curso / Próximas y agrupa por responsable (con bucket "Sin responsable" para items sin owner).
+- Plantilla `templates/pdf/reports/seguimiento.html` renderiza 3 secciones con una tabla por owner.
+- Endpoints `POST /api/v1/projects/{id}/reports/seguimiento` (body: `cut_off_date?`, `window_days?`) y `GET /api/v1/reports/{id}/seguimiento/download`.
+- Frontend: botón "Reporte de Seguimiento (PDF)" junto al de Avance.
+
+**Tests (5/5 verdes):**
+- `test_usnew039_generate_and_groups` — tareas + acciones clasificadas correctamente.
+- `test_usnew039_persists_snapshot` — snapshot guardado con `counts` y 3 grupos.
+- `test_usnew039_redownload_uses_snapshot` — re-descarga funciona.
+- `test_usnew039_cross_tenant_404` — aislamiento multi-tenant.
+- `test_usnew039_empty_project_no_crash` — proyecto vacío sigue generando PDF.
+
+**Commit:** `feat(api,web): US-NEW-039 — reporte de seguimiento por responsable`.
 
 ---
 

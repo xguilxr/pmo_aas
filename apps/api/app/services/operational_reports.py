@@ -1,9 +1,8 @@
 """Armadores de contexto para reportes ejecutables sin IA (EP014).
 
-Por ahora:
 - `build_avance_context`: Reporte de Avance de Proyecto (US-NEW-038).
-
-`build_seguimiento_context` se agrega en US-NEW-039.
+- `build_seguimiento_context`: Reporte de Seguimiento de Actividades
+  agrupadas por responsable (US-NEW-039).
 """
 from __future__ import annotations
 
@@ -242,3 +241,138 @@ async def build_avance_context(
         "changes_in_review": len(changes_in_review),
     }
 
+
+async def build_seguimiento_context(
+    db: AsyncSession,
+    tenant_id: UUID,
+    project_id: UUID,
+    cut_off_date: date,
+    window_days: int = 14,
+) -> dict[str, Any]:
+    """Contexto para Reporte de Seguimiento (acciones por responsable).
+
+    Unifica tareas del plan (no cerradas) y AIDs tipo `action` abiertas,
+    y las reparte en: vencidas, en curso (dentro de la ventana anterior)
+    y próximas (dentro de la ventana siguiente). Dentro de cada bucket
+    agrupa por responsable.
+    """
+    project = await _get_project(db, tenant_id, project_id)
+    window_end = cut_off_date + timedelta(days=window_days)
+    window_start = cut_off_date - timedelta(days=window_days)
+
+    pm = await _user(db, project.pm_id)
+
+    task_rows = (
+        await db.execute(
+            select(Task).where(
+                Task.project_id == str(project_id),
+                Task.status.notin_(["done", "cancelled"]),
+            )
+        )
+    ).scalars().all()
+    action_rows = (
+        await db.execute(
+            select(Issue).where(
+                Issue.tenant_id == str(tenant_id),
+                Issue.project_id == str(project_id),
+                Issue.deleted_at.is_(None),
+                Issue.type == "action",
+                Issue.status.notin_(["resolved", "closed"]),
+            )
+        )
+    ).scalars().all()
+
+    owner_ids: set = {t.owner_id for t in task_rows if t.owner_id}
+    owner_ids |= {a.owner_id for a in action_rows if a.owner_id}
+    owner_map: dict[str, str] = {"unassigned": "Sin responsable"}
+    if owner_ids:
+        rows = (
+            await db.execute(
+                select(User.id, User.full_name).where(User.id.in_(owner_ids))
+            )
+        ).all()
+        for uid, name in rows:
+            owner_map[str(uid)] = name or "—"
+
+    items: list[dict[str, Any]] = []
+    for t in task_rows:
+        due = t.end_date
+        items.append({
+            "source": "task",
+            "folio": t.wbs,
+            "title": t.name,
+            "status": t.status,
+            "due_date": due.isoformat() if due else None,
+            "owner_key": str(t.owner_id) if t.owner_id else "unassigned",
+            "progress": t.progress or 0,
+            "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
+        })
+    for a in action_rows:
+        due = a.committed_date
+        items.append({
+            "source": "action",
+            "folio": a.folio,
+            "title": a.title,
+            "status": a.status,
+            "due_date": due.isoformat() if due else None,
+            "owner_key": str(a.owner_id) if a.owner_id else "unassigned",
+            "progress": None,
+            "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
+        })
+
+    overdue = [i for i in items if i["due_date"] and i["overdue_days"] > 0]
+    in_progress = [
+        i
+        for i in items
+        if i["due_date"]
+        and window_start.isoformat() <= i["due_date"] <= cut_off_date.isoformat()
+        and i["overdue_days"] == 0
+    ]
+    upcoming = [
+        i
+        for i in items
+        if i["due_date"]
+        and cut_off_date.isoformat() < i["due_date"] <= window_end.isoformat()
+    ]
+
+    def group(arr: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        buckets: dict[str, list[dict[str, Any]]] = {}
+        for it in arr:
+            buckets.setdefault(it["owner_key"], []).append(it)
+        return [
+            {
+                "owner_name": owner_map.get(k, "—"),
+                "owner_key": k,
+                "rows": sorted(
+                    v, key=lambda x: (x["due_date"] or "", x["title"] or "")
+                ),
+            }
+            for k, v in sorted(
+                buckets.items(),
+                key=lambda kv: (kv[0] == "unassigned", owner_map.get(kv[0], "")),
+            )
+        ]
+
+    return {
+        "title": f"Reporte de Seguimiento — {project.folio}",
+        "cut_off_date": cut_off_date.isoformat(),
+        "window_days": window_days,
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "project": {
+            "id": str(project.id),
+            "folio": project.folio,
+            "name": project.name,
+            "phase": project.phase,
+            "health_status": project.health_status,
+            "pm_name": pm["full_name"] if pm else None,
+        },
+        "counts": {
+            "overdue": len(overdue),
+            "in_progress": len(in_progress),
+            "upcoming": len(upcoming),
+            "total": len(overdue) + len(in_progress) + len(upcoming),
+        },
+        "groups_overdue": group(overdue),
+        "groups_in_progress": group(in_progress),
+        "groups_upcoming": group(upcoming),
+    }

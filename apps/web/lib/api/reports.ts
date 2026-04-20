@@ -159,3 +159,24 @@ export function downloadAvanceReport(reportId: string): Promise<void> {
     "GET",
   );
 }
+
+/** US-NEW-039: genera Reporte de Seguimiento y descarga el PDF. */
+export function generateSeguimientoReport(
+  projectId: string,
+  cutOffDate?: string,
+  windowDays = 14,
+): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/projects/${projectId}/reports/seguimiento`,
+    { cut_off_date: cutOffDate ?? null, window_days: windowDays },
+    "POST",
+  );
+}
+
+export function downloadSeguimientoReport(reportId: string): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/reports/${reportId}/seguimiento/download`,
+    undefined,
+    "GET",
+  );
+}

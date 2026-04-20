@@ -19,7 +19,10 @@ from app.db.session import get_db
 from app.models.ai import Report
 from app.models.project import Project
 from app.services.audit import write_audit
-from app.services.operational_reports import build_avance_context
+from app.services.operational_reports import (
+    build_avance_context,
+    build_seguimiento_context,
+)
 from app.services.pdf_renderer import render_pdf
 
 router = APIRouter(tags=["reports"])
@@ -224,6 +227,11 @@ class AvanceGenerate(BaseModel):
     cut_off_date: date | None = None
 
 
+class SeguimientoGenerate(BaseModel):
+    cut_off_date: date | None = None
+    window_days: int = Field(default=14, ge=1, le=90)
+
+
 def _pdf_response(pdf: bytes, filename: str) -> Response:
     return Response(
         content=pdf,
@@ -315,6 +323,85 @@ async def download_avance_report(
     project = await _get_project(db, tenant_id, UUID(rep.project_id))
     filename = (
         f"Reporte_Avance_{project.folio}_"
+        f"{(rep.cut_off_date.isoformat() if rep.cut_off_date else 'snapshot')}.pdf"
+    )
+    return _pdf_response(pdf, filename)
+
+
+@router.post("/projects/{project_id}/reports/seguimiento")
+async def generate_seguimiento_report(
+    project_id: UUID,
+    body: SeguimientoGenerate | None = None,
+    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reporte de Seguimiento (Python, sin IA). Ver US-NEW-039."""
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
+    window_days = (body.window_days if body else 14) or 14
+
+    context = await build_seguimiento_context(
+        db, tenant_id, project.id, cut_off, window_days=window_days,
+    )
+    context["tenant_name"] = await _tenant_name(db, tenant_id)
+    pdf = render_pdf("reports/seguimiento.html", context)
+
+    rep = Report(
+        tenant_id=str(tenant_id),
+        project_id=str(project.id),
+        title=f"Reporte de Seguimiento — {project.folio} — {cut_off.isoformat()}",
+        period=None,
+        generator="seguimiento",
+        cut_off_date=cut_off,
+        sections=context,
+        recipients=[],
+        status="draft",
+        generated_by_ai=False,
+        created_by=cu.id,
+    )
+    db.add(rep)
+    await db.flush()
+    await write_audit(
+        db,
+        action="report.generate.seguimiento",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="report",
+        entity_id=str(rep.id),
+        details={"cut_off_date": cut_off.isoformat(), "window_days": window_days},
+    )
+    await db.commit()
+
+    filename = f"Reporte_Seguimiento_{project.folio}_{cut_off.isoformat()}.pdf"
+    return _pdf_response(pdf, filename)
+
+
+@router.get("/reports/{report_id}/seguimiento/download")
+async def download_seguimiento_report(
+    report_id: UUID,
+    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _tenant(cu)
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(report_id),
+                Report.tenant_id == str(tenant_id),
+                Report.generator == "seguimiento",
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte")
+    ctx = dict(rep.sections or {})
+    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    pdf = render_pdf("reports/seguimiento.html", ctx)
+    project = await _get_project(db, tenant_id, UUID(rep.project_id))
+    filename = (
+        f"Reporte_Seguimiento_{project.folio}_"
         f"{(rep.cut_off_date.isoformat() if rep.cut_off_date else 'snapshot')}.pdf"
     )
     return _pdf_response(pdf, filename)
