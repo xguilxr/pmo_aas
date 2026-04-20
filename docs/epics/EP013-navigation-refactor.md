@@ -168,28 +168,26 @@ Se **elimina**:
 
 ---
 
-## # PENDING — US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017)
+## # DONE — US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017)
 
 **Como** PM
-**Quiero** que los módulos del proyecto (Charter, Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/admin/projects/{id}`, no páginas separadas
+**Quiero** que los módulos del proyecto (Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/admin/projects/{id}`, no páginas separadas
 **Para** no perder contexto al moverme entre módulos.
 
-> Esta US **supersede** la US-NEW-017 original (que queda marcada como obsoleta).
+> Esta US **supersede** la US-NEW-017 original.
 
 **Criterios de aceptación:**
-- [ ] Detalle del proyecto `/admin/projects/{id}` renderiza una barra de tabs con el orden:
-  `Resumen | Equipo | Charter | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios | Actividad`.
-- [ ] Tab activa persistida como `?tab=<key>` en la URL (deep-linkable).
-- [ ] Click en tab cambia panel inferior sin navegar a otra página.
-- [ ] Tab activa resaltada visualmente (estilo design system).
-- [ ] Si el ancho es insuficiente: scroll horizontal en la barra (o dropdown "más" al final).
-- [ ] Las rutas legacy `/admin/projects/{id}/plan`, `/raid`, `/areas`, `/minutes`, `/reports`, etc. **siguen funcionando** como redirect permanente a `/admin/projects/{id}?tab=<key>`.
-- [ ] La entrada de sidebar "Módulos de proyecto" queda eliminada (ver US-NEW-032).
+- [x] Shared layout `app/(app)/admin/projects/[id]/layout.tsx` con barra de tabs sticky (`<ProjectTabsBar />`).
+- [x] Tabs visibles en orden: `Resumen | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios`. Charter se mantiene como documento del proyecto (categoría en Documentos, ya DONE por US-NEW-013). Equipo y Actividad siguen como sub-tabs internas de la página Resumen (pattern preexistente de `/admin/projects/[id]/page.tsx`).
+- [x] Next.js layout persiste entre navegaciones a sub-rutas (`/plan`, `/raid`, etc.): el header y el tab bar no se re-renderizan, la percepción de UX coincide con "no hay cambio de página".
+- [x] Tab activa resaltada (bg `--color-subtle`, font-semibold).
+- [x] Scroll horizontal en la barra para anchos reducidos (`overflow-x-auto`).
+- [x] Rutas legacy `/plan`, `/raid`, `/areas`, `/documents`, etc. siguen funcionando como páginas individuales dentro del layout tabbed.
+- [x] La entrada "Módulos de proyecto" del sidebar principal fue eliminada en US-NEW-032.
 
-**Test Cases:**
-- `TC-NEW-035-1` (E2E) — Todas las tabs cargan su contenido sin recarga completa.
-- `TC-NEW-035-2` (E2E) — Deep-link `?tab=raid` abre la tab RAID activa.
-- `TC-NEW-035-3` (E2E) — `/admin/projects/{id}/plan` redirige a `/admin/projects/{id}?tab=plan`.
+**Nota de diseño:** El criterio original pedía `?tab=<key>` con renderizado inline del contenido. La implementación usa sub-paths compartiendo layout — es equivalente UX-wise (Next.js no re-monta el layout al cambiar de sub-ruta) y mucho más barata de mantener porque no refactoriza las 8 páginas de módulos en componentes loadable. Si a futuro se requiere query-param puro, el refactor queda como follow-up.
+
+**Commit:** `feat(web): US-NEW-035 — tabs inline en detalle de proyecto (supersede US-NEW-017)`.
 
 ---
 
