@@ -248,7 +248,19 @@ Campos adicionales al formulario de solicitud:
 
 ## EP005-projects.md — Agregar user stories
 
-### # PENDING — US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+### # INTEGRATED — US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+
+**Estado de integración:** INTEGRATED en EP005 (US-NEW-016).
+  - Nueva ruta `/admin/projects/{id}/plan` con toggle Lista/Dividida/Gantt.
+  - URL refleja modo con `?view=list|gantt` (default = split).
+  - Sidebar: "Tareas" + "Gantt" reemplazadas por "Plan".
+  - `/gantt` es ahora redirect permanente a `/plan?view=gantt` (compat).
+  - Link "Abrir editor completo" desde la lista al editor detallado
+    (`/tasks`) para edición avanzada.
+
+---
+
+### # PENDING (referencia) — US-NEW-016
 
 **Criterios de aceptación:**
 - [ ] Pestaña "Plan" en el detalle del proyecto contiene: lista de tareas (izquierda) + Gantt (derecha/abajo).

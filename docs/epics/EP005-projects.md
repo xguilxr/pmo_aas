@@ -224,3 +224,25 @@ GET    /api/v1/projects/{id}/export
 - [ ] Transiciones de fase cubiertas por state machine con tests.
 - [ ] Export PDF con layout limpio (coincide con design system).
 - [ ] Permisos verificados por tests (`TC-MT-002` para reads de módulos de otro tenant).
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+
+**Como** PM
+**Quiero** ver la lista de tareas y el Gantt en una misma vista
+**Para** navegar planeación sin saltar entre pestañas.
+
+**Criterios de aceptación:**
+- [x] Ruta `/admin/projects/{id}/plan` con layout unificado.
+- [x] Toggle `Lista / Dividida / Gantt` persistido en URL (`?view=list|gantt`).
+- [x] Default = "Dividida" (lista arriba, Gantt abajo).
+- [x] En "Lista" se muestra tabla read-only con link "Abrir editor
+  completo" → `/tasks` (edición detallada sin refactorizar).
+- [x] Pestaña "Gantt" separada eliminada del sidebar.
+- [x] `/gantt` continúa funcionando como redirect permanente a
+  `/plan?view=gantt`.
+
+**Estado de integración:** DONE (US-NEW-016).

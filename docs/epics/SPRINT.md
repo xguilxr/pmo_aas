@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-016
+US: US-NEW-018
 Epic: EP005-projects.md
-Título: Unificar Plan + Gantt en una sola pestaña
-Tipo: Frontend — combinar /plan y /gantt con toggle
-Commit esperado: "feat(projects): US-NEW-016 — unificar plan + gantt"
-Precondición: páginas /tasks y /gantt existen.
+Título: Módulo Área/Organigrama del proyecto
+Tipo: Backend + Frontend — CRUD project_areas
+Commit esperado: "feat(projects): US-NEW-018 — módulo áreas del proyecto"
+Precondición: ver DB-CHANGES.md sección EP005.
 ```
 
 ---
@@ -21,9 +21,13 @@ Precondición: páginas /tasks y /gantt existen.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-017 | EP005 | Tabs inline para módulos del proyecto | Frontend |
-| 2 | US-NEW-018 | EP005 | Módulo Área/Organigrama del proyecto | Backend+FE |
-| 3 | US-NEW-019 | EP006 | Consolidar RAID (vista unificada) | Frontend |
+| 1 | US-NEW-017 | EP005 | Tabs inline para módulos del proyecto | Frontend (diferida) |
+| 2 | US-NEW-019 | EP006 | Consolidar RAID (vista unificada) | Frontend |
+| 3 | US-NEW-020 | EP006 | Categorías de documentos actualizadas | Backend |
+
+> **Nota:** US-NEW-017 (tabs inline) implica refactor grande del shell
+> de detalle de proyecto; se difiere hasta que el módulo de áreas esté
+> completo para evitar cambios concurrentes en esas rutas.
 
 ---
 
@@ -49,6 +53,7 @@ Precondición: páginas /tasks y /gantt existen.
 | US-BUG-002 | Fix distorsión en gráficas de barra | `fix(dashboard): US-BUG-002 — distorsión gráficas barra` | 2026-04-20 |
 | US-NEW-015 | KPIs respetan jerarquía de roles | `feat(dashboard): US-NEW-015 — KPIs respetan jerarquía roles` | 2026-04-20 |
 | US-BUG-003 | Fix layout Plan vs Real + columna PM | `fix(dashboard): US-BUG-003 — layout Plan vs Real` | 2026-04-20 |
+| US-NEW-016 | Unificar Plan + Gantt en una pestaña | `feat(projects): US-NEW-016 — unificar plan + gantt` | 2026-04-20 |
 
 ---
 
@@ -80,7 +85,7 @@ Precondición: páginas /tasks y /gantt existen.
 - [x] US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM) ✅
 
 ### Bloque 5 — Proyecto detalle (EP005)
-- [ ] US-NEW-016 — Unificar Plan + Gantt en una pestaña
+- [x] US-NEW-016 — Unificar Plan + Gantt en una pestaña ✅
 - [ ] US-NEW-017 — Tabs inline (sin cambio de página) para módulos del proyecto
 - [ ] US-NEW-018 — Módulo Área/Organigrama del proyecto
 

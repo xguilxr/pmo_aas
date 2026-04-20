@@ -100,18 +100,12 @@ function buildNav(pathname: string): NavItem[] {
       match: (p) => /^\/admin\/projects\/[^/]+\/minutes(?!\/ai)/.test(p),
     },
     {
-      id: "mod-tasks",
-      label: "Tareas",
+      id: "mod-plan",
+      label: "Plan",
       icon: <ListTree className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "tasks"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/tasks/.test(p),
-    },
-    {
-      id: "mod-gantt",
-      label: "Gantt",
-      icon: <BarChart3 className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "gantt"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/gantt/.test(p),
+      href: projectModuleHref(pathname, "plan"),
+      match: (p) =>
+        /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
     },
     {
       id: "mod-ai-minutes",
@@ -169,7 +163,7 @@ function buildNav(pathname: string): NavItem[] {
               id: "project-modules",
               label: "Módulos de Proyectos",
               icon: <Layers className="h-4 w-4" aria-hidden />,
-              match: (p) => /^\/admin\/projects\/[^/]+\/(risks|issues|changes|documents|lessons|minutes|tasks|gantt|ai-minutes|reports)/.test(p),
+              match: (p) => /^\/admin\/projects\/[^/]+\/(risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|ai-minutes|reports)/.test(p),
               children: projectModules,
             },
           ],
