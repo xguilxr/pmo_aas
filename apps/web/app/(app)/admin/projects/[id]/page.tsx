@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Pencil,
   Shield,
+  Sparkles,
   TriangleAlert,
   UserMinus,
   UserPlus,
@@ -64,6 +65,8 @@ const MODULE_TOOLBAR: { key: keyof ProjectDetail["module_counts"] | string; labe
   { key: "documents", label: "Documentos", href: (id) => `/admin/projects/${id}/documents`, icon: <FileText className="h-4 w-4" aria-hidden /> },
   { key: "lessons", label: "Lecciones", href: (id) => `/admin/projects/${id}/lessons`, icon: <Lightbulb className="h-4 w-4" aria-hidden /> },
   { key: "minutes", label: "Minutas", href: (id) => `/admin/projects/${id}/minutes`, icon: <MessageSquare className="h-4 w-4" aria-hidden /> },
+  { key: "ai_minutes", label: "Minuta IA", href: (id) => `/admin/projects/${id}/ai-minutes/new`, icon: <Sparkles className="h-4 w-4" aria-hidden /> },
+  { key: "reports", label: "Reporte IA", href: (id) => `/admin/projects/${id}/reports`, icon: <Sparkles className="h-4 w-4" aria-hidden /> },
 ];
 
 function formatMxn(v: string | number | null): string {
