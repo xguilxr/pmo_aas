@@ -351,3 +351,35 @@ async def test_usnew015_plan_vs_actual_respects_role(client, db_session):
     rows = r.json()
     assert len(rows) == 1
     assert rows[0]["folio"] == projects[0].folio
+
+
+# ============================================================================
+# US-BUG-003 — columna PM Asignado en Plan vs Real
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_usbug003_pm_name_in_plan_vs_actual(client, db_session):
+    """/plan-vs-actual devuelve pm_id y pm_name para cada proyecto."""
+    t, auth, org_id = await _setup(client, db_session)
+    projects = await _seed_projects(db_session, str(t.id), org_id)
+
+    pm = await create_user(
+        db_session, tenant=t, username="pm_asignado",
+        email="pma@acme.example.com", password="Str0ng-Pma-1!",
+        full_name="Pedro García",
+    )
+    projects[0].pm_id = str(pm.id)
+    await db_session.commit()
+
+    r = await client.get("/api/v1/dashboard/plan-vs-actual", headers=auth["_authz"])
+    assert r.status_code == 200
+    data = r.json()
+    with_pm = next(row for row in data if row["folio"] == projects[0].folio)
+    assert with_pm["pm_id"] == str(pm.id)
+    assert with_pm["pm_name"] == "Pedro García"
+
+    # Proyecto sin PM → pm_id None y pm_name None
+    no_pm = next(row for row in data if row["folio"] == projects[1].folio)
+    assert no_pm["pm_id"] is None
+    assert no_pm["pm_name"] is None

@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-BUG-003
-Epic: EP004-dashboard.md
-Título: Fix layout Plan vs Real (filtros horizontales + columna PM)
-Tipo: Frontend — reorganizar filtros y agregar columna PM asignado
-Commit esperado: "fix(dashboard): US-BUG-003 — layout Plan vs Real"
-Precondición: Plan vs Real ya existe.
+US: US-NEW-016
+Epic: EP005-projects.md
+Título: Unificar Plan + Gantt en una sola pestaña
+Tipo: Frontend — combinar /plan y /gantt con toggle
+Commit esperado: "feat(projects): US-NEW-016 — unificar plan + gantt"
+Precondición: páginas /tasks y /gantt existen.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: Plan vs Real ya existe.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-016 | EP005 | Unificar Plan + Gantt en una pestaña | Frontend |
-| 2 | US-NEW-017 | EP005 | Tabs inline para módulos del proyecto | Frontend |
-| 3 | US-NEW-018 | EP005 | Módulo Área/Organigrama del proyecto | Backend+FE |
+| 1 | US-NEW-017 | EP005 | Tabs inline para módulos del proyecto | Frontend |
+| 2 | US-NEW-018 | EP005 | Módulo Área/Organigrama del proyecto | Backend+FE |
+| 3 | US-NEW-019 | EP006 | Consolidar RAID (vista unificada) | Frontend |
 
 ---
 
@@ -48,6 +48,7 @@ Precondición: Plan vs Real ya existe.
 | US-NEW-014 | Filtro de organización en dashboard | `feat(dashboard): US-NEW-014 — filtro organización` | 2026-04-20 |
 | US-BUG-002 | Fix distorsión en gráficas de barra | `fix(dashboard): US-BUG-002 — distorsión gráficas barra` | 2026-04-20 |
 | US-NEW-015 | KPIs respetan jerarquía de roles | `feat(dashboard): US-NEW-015 — KPIs respetan jerarquía roles` | 2026-04-20 |
+| US-BUG-003 | Fix layout Plan vs Real + columna PM | `fix(dashboard): US-BUG-003 — layout Plan vs Real` | 2026-04-20 |
 
 ---
 
@@ -76,7 +77,7 @@ Precondición: Plan vs Real ya existe.
 - [x] US-BUG-002 — Fix distorsión gráficas de barra ✅
 - [x] US-NEW-014 — Filtro organización en dashboard ✅
 - [x] US-NEW-015 — KPIs respetan jerarquía de roles ✅
-- [ ] US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM)
+- [x] US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM) ✅
 
 ### Bloque 5 — Proyecto detalle (EP005)
 - [ ] US-NEW-016 — Unificar Plan + Gantt en una pestaña

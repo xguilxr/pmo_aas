@@ -209,3 +209,22 @@ una organización específica
   programas, hoy no existe en el schema).
 
 **Estado de integración:** DONE (US-NEW-015).
+
+---
+
+### US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM)
+
+**Criterios de aceptación:**
+- [x] Filtros Organización + Fases al mismo nivel horizontal que el
+  botón "Exportar CSV" (ya estaba, verificado).
+- [x] Tabla con columna nueva "PM asignado":
+  - Celda vacía ("—") si el proyecto no tiene `pm_id`.
+  - Link clickeable al perfil (`/admin/users/{id}`) cuando hay nombre.
+- [x] Backend `/dashboard/plan-vs-actual` devuelve `pm_id` + `pm_name`
+  (precargados con un solo SELECT IN).
+- [x] CSV export incluye columna `pm_name`.
+
+**Test Cases:**
+- `test_usbug003_pm_name_in_plan_vs_actual` — pm_id y pm_name presentes ✅
+
+**Estado de integración:** DONE (US-BUG-003).

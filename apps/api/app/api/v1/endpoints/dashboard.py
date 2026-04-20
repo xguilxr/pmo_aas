@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
+from app.models.user import User
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -298,8 +299,20 @@ async def plan_vs_actual(
     projects = (await db.execute(stmt)).scalars().all()
     projects.sort(key=lambda p: health_order.get(p.health_status, 99))
 
+    # Pre-cargar nombres de PM (US-BUG-003: columna PM Asignado).
+    pm_ids = sorted({p.pm_id for p in projects if p.pm_id})
+    pm_names: dict[str, str] = {}
+    if pm_ids:
+        rows = (
+            await db.execute(
+                select(User.id, User.full_name).where(User.id.in_(pm_ids))
+            )
+        ).all()
+        pm_names = {str(i): n for i, n in rows}
+
     out = []
     for p in projects:
+        pm_id = str(p.pm_id) if p.pm_id else None
         out.append(
             {
                 "project_id": str(p.id),
@@ -311,6 +324,8 @@ async def plan_vs_actual(
                 "progress_plan": _plan_progress_for(p),
                 "progress_actual": int(p.progress or 0),
                 "health": p.health_status,
+                "pm_id": pm_id,
+                "pm_name": pm_names.get(pm_id) if pm_id else None,
             }
         )
     return out
@@ -344,13 +359,13 @@ async def plan_vs_actual_csv(
     writer = csv.DictWriter(
         buf,
         fieldnames=[
-            "folio", "name", "end_date", "budget_plan", "budget_actual",
-            "progress_plan", "progress_actual", "health",
+            "folio", "name", "pm_name", "end_date", "budget_plan",
+            "budget_actual", "progress_plan", "progress_actual", "health",
         ],
     )
     writer.writeheader()
     for row in data:
-        writer.writerow({k: row[k] for k in writer.fieldnames})
+        writer.writerow({k: row.get(k, "") or "" for k in writer.fieldnames})
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),

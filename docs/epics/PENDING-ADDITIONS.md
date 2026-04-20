@@ -221,7 +221,20 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-BUG-003 — Fix layout Plan vs Real
+### # INTEGRATED — US-BUG-003 — Fix layout Plan vs Real
+
+**Estado de integración:** INTEGRATED en EP004 (US-BUG-003).
+  - Header de Plan vs Real con filtros Org + Fase + botón Exportar en la
+    misma fila horizontal (ya era así; verificado).
+  - Tabla con nueva columna "PM asignado":
+    - Celda vacía ("—") si no hay PM.
+    - Link al perfil del PM (`/admin/users/{id}`) si hay nombre.
+  - Backend `/plan-vs-actual` devuelve `pm_id` y `pm_name`.
+  - CSV export incluye columna `pm_name`.
+
+---
+
+### # PENDING (referencia) — US-BUG-003 — Fix layout Plan vs Real
 
 **Criterios de aceptación:**
 - [ ] Filtro "Organizaciones" y filtro "Fases" al mismo nivel horizontal (misma fila, no uno encima del otro).

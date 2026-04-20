@@ -28,6 +28,8 @@ export type PlanVsActualRow = {
   progress_plan: number;
   progress_actual: number;
   health: string | null;
+  pm_id: string | null;
+  pm_name: string | null;
 };
 
 export type PlanVsActualParams = {

@@ -435,6 +435,7 @@ function DashboardInner() {
             <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Proyecto</th>
+                <th className="px-4 py-3 font-medium">PM asignado</th>
                 <th className="px-4 py-3 font-medium">Fin plan</th>
                 <th className="px-4 py-3 font-medium">Presupuesto plan</th>
                 <th className="px-4 py-3 font-medium">Presupuesto real</th>
@@ -447,7 +448,7 @@ function DashboardInner() {
               {loadingRows ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="border-b border-[var(--border-subtle)]">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <Skeleton className="h-4 w-24" />
                       </td>
@@ -468,6 +469,18 @@ function DashboardInner() {
                         {r.name}
                       </Link>
                       <div className="text-xs text-[var(--color-tertiary)]">{r.folio}</div>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--color-secondary)]">
+                      {r.pm_id && r.pm_name ? (
+                        <Link
+                          href={`/admin/users/${r.pm_id}`}
+                          className="text-[var(--color-primary)] hover:underline"
+                        >
+                          {r.pm_name}
+                        </Link>
+                      ) : (
+                        <span className="text-[var(--color-tertiary)]">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)]">
                       {r.end_date ? new Date(r.end_date).toLocaleDateString("es-MX") : "—"}
@@ -499,7 +512,7 @@ function DashboardInner() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
+                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
                     No hay proyectos que coincidan con los filtros.
                   </td>
                 </tr>
