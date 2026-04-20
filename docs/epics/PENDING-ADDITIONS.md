@@ -1,0 +1,343 @@
+# PENDING-ADDITIONS.md — Adiciones pendientes a épicas existentes
+
+> Este archivo documenta las user stories `# PENDING` que se deben agregar a cada épica existente.
+> Claude Code: al trabajar en un epic, agrega estas US al archivo correspondiente antes de implementar.
+> Una vez integradas al epic, marcar como INTEGRATED aquí.
+
+---
+
+## EP001-auth-users.md — Agregar al final
+
+### # PENDING — US-NEW-007 — Toggle dark/light mode en dropdown de usuario
+
+**Como** usuario autenticado
+**Quiero** cambiar entre modo oscuro y claro desde el menú de usuario
+**Para** elegir mi preferencia visual.
+
+**Criterios de aceptación:**
+- [ ] Dropdown de usuario (US-013) incluye toggle dark/light con iconos de luna (🌙) y sol (☀️).
+- [ ] Iconos SVG simples, sin emoji.
+- [ ] El toggle usa `prefers-color-scheme` como default, sobreescribible.
+- [ ] Preferencia guardada en `users.preferences JSONB → { "theme": "dark"|"light"|"system" }`.
+- [ ] Cambio aplica inmediatamente sin reload.
+- [ ] `PATCH /api/v1/users/me/preferences` — actualiza preferencia.
+
+**Test Cases:**
+- `TC-NEW-012` (E2E) — Toggle cambia tema inmediatamente.
+- `TC-NEW-013` (integration) — Preferencia persiste entre sesiones.
+
+---
+
+### # PENDING — US-NEW-008 — Toggle de idioma en dropdown de usuario
+
+**Como** usuario autenticado
+**Quiero** cambiar el idioma de la interfaz
+**Para** operar en mi idioma preferido.
+
+**Criterios de aceptación:**
+- [ ] Dropdown de usuario incluye selector de idioma: 🇲🇽 Español / 🇺🇸 English.
+- [ ] Idiomas disponibles configurables por tenant en `tenants.settings.available_locales`.
+- [ ] Default: idioma del tenant.
+- [ ] Preferencia en `users.preferences JSONB → { "locale": "es-MX"|"en-US" }`.
+- [ ] Cambio aplica inmediatamente (Next.js i18n router).
+
+**Test Cases:**
+- `TC-NEW-014` (E2E) — Cambio de idioma actualiza UI sin reload completo.
+
+---
+
+### # PENDING — US-NEW-009 — Página de administrar cuenta (perfil + cambiar password)
+
+**Como** usuario autenticado
+**Quiero** editar mis datos personales y cambiar mi contraseña
+**Para** mantener mi perfil actualizado.
+
+**Criterios de aceptación:**
+- [ ] Opción "Administrar cuenta" en dropdown de usuario → navega a `/account`.
+- [ ] Página con dos secciones:
+  - **Detalles personales**: `full_name`, `email` (readonly si SSO), `avatar` (upload), `phone` (opcional).
+  - **Cambiar contraseña**: current + new + confirm (mismos criterios que US-004).
+- [ ] `PATCH /api/v1/users/me` — actualizar perfil.
+- [ ] Upload avatar: PNG/JPG ≤ 2MB, guardado en `/data/uploads/tenants/{slug}/avatars/{user_id}.{ext}`.
+- [ ] Cambio de email requiere verificación (post-MVP).
+
+**Test Cases:**
+- `TC-NEW-015` (E2E) — Editar nombre → se refleja en topbar sin reload.
+- `TC-NEW-016` (integration) — Upload avatar → URL guardada y servida correctamente.
+
+---
+
+### # PENDING — US-NEW-010 — Color chrome #182e4e + Senior PMO como admin
+
+**Como** desarrollador
+**Quiero** aplicar el color correcto al chrome de la app y configurar Senior PMO como admin-equivalent
+**Para** cumplir los requerimientos de diseño y acceso.
+
+**Criterios de aceptación:**
+- [ ] Variable CSS `--chrome-bg` = `#182e4e` en `design-system/style.md` y globals.css.
+- [ ] Sidebar y topbar usan `--chrome-bg`.
+- [ ] Middleware de rutas `/admin` acepta: rol `Administrador` OR rol `PMO Manager` con flag `is_senior = true`.
+- [ ] Alternativa: permiso `is_admin_equivalent` en el JWT para ambos roles.
+- [ ] Seed actualiza rol `PMO Manager` con el flag correspondiente.
+
+**Test Cases:**
+- `TC-NEW-017` (E2E) — Chrome muestra `#182e4e` en light y dark mode.
+- `TC-NEW-018` (integration) — Senior PMO puede acceder a `/admin/users`.
+
+**Estado de integración:** # PENDING en EP001
+
+---
+
+## EP003-project-requests.md — Agregar a US-015 y nueva US
+
+### # PENDING — Campos adicionales en US-015 (agregar a criterios de aceptación)
+
+Campos adicionales al formulario de solicitud:
+
+| Campo | Tipo | Obligatorio | Notas |
+|---|---|---|---|
+| `requester_name` | text | ✅ | Default: `user.full_name`, editable |
+| `requester_email` | email | ✅ | Default: `user.email`, editable |
+| `sponsor_email` | email | ✅ | |
+| `key_people` | text | opcional | Personas clave del proyecto |
+| `if_not_done` | text | opcional | ¿Qué sucede si no se hace? |
+| `observations` | text | opcional | Observaciones adicionales |
+| `entregables` | text | ✅ | Renombrar/complementar campo `scope` |
+
+- [ ] `business_unit_id` y `department_id` son FK reales (no texto libre) — requiere EP002 completado.
+- [ ] Solicitudes accesibles desde menú principal, NO anidadas bajo organización.
+
+---
+
+### # PENDING — US-NEW-011 — Project Charter: tabla + generación al aprobar
+
+**Como** PMO Manager
+**Quiero** que al aprobar una solicitud se genere automáticamente un Project Charter
+**Para** tener el documento fundacional del proyecto listo.
+
+**Criterios de aceptación:**
+- [ ] Al ejecutar `POST /project-requests/{id}/create-project`, además del proyecto se crea `project_charter`.
+- [ ] Charter se pre-llena desde datos de la solicitud (ver DB-CHANGES.md sección EP003 para campos).
+- [ ] Sección 1 (Info General): desde solicitud + proyecto creado.
+- [ ] Sección 2 (Stakeholders): sponsor, sponsor_email, pm_id; lider_negocio y lider_tecnico quedan en blanco para completar.
+- [ ] Sección 3 (Clasificación): desde solicitud.
+- [ ] Sección 4 (Datos de Gestión): sincronizados dinámicamente desde `projects` al consultar.
+- [ ] `GET /api/v1/projects/{id}/charter` — devuelve el charter completo.
+- [ ] `PATCH /api/v1/projects/{id}/charter` — permite editar campos de secciones 1-3.
+- [ ] `GET /api/v1/projects/{id}/charter/pdf` — genera PDF del charter on-demand.
+
+**Test Cases:**
+- `TC-NEW-019` (integration) — Aprobar solicitud → charter creado con datos correctos.
+- `TC-NEW-020` (integration) — Sección 4 refleja datos actuales del proyecto.
+- `TC-NEW-021` (E2E) — PDF del charter descargable con layout limpio.
+
+**Estado de integración:** # PENDING en EP003
+
+---
+
+## EP004-dashboard.md — Agregar user stories
+
+### # PENDING — US-NEW-014 — Filtro de organización en dashboard
+
+**Criterios de aceptación:**
+- [ ] Filtro por organización en la parte superior del dashboard, default vacío (sin filtro).
+- [ ] Al seleccionar una org, todos los KPIs, gráficos y Plan vs Real se filtran por esa org.
+- [ ] Estado del filtro en URL (`?org_id=...`).
+- [ ] "Limpiar filtro" regresa a vista completa.
+
+---
+
+### # PENDING — US-BUG-002 — Fix distorsión en gráficas de barra
+
+**Criterios de aceptación:**
+- [ ] Labels de categorías en eje X no se cortan ni se superponen.
+- [ ] Valores numéricos en eje Y tienen escala correcta.
+- [ ] Usar `<ResponsiveContainer>` de Recharts con `aspect` ratio apropiado.
+- [ ] Verificar en mobile, tablet y desktop.
+
+---
+
+### # PENDING — US-NEW-015 — KPIs respetan jerarquía de roles
+
+**Criterios de aceptación:**
+- [ ] Admin / Senior PMO: ven todos los KPIs del tenant. Filtros disponibles: org, programa, PM asignado.
+- [ ] Program Manager: ven KPIs a nivel de sus programas y PMs asignados bajo ellos.
+- [ ] Project Manager: solo ven KPIs de sus proyectos asignados.
+- [ ] Lógica en `GET /api/v1/dashboard/kpis` según rol del usuario en sesión.
+
+---
+
+### # PENDING — US-BUG-003 — Fix layout Plan vs Real
+
+**Criterios de aceptación:**
+- [ ] Filtro "Organizaciones" y filtro "Fases" al mismo nivel horizontal (misma fila, no uno encima del otro).
+- [ ] Botón "Exportar" en la misma fila horizontal que los filtros.
+- [ ] Tabla agrega columna "PM Asignado" — si no hay PM, celda vacía.
+- [ ] Columna PM muestra `full_name` del PM, clickeable al perfil.
+
+**Estado de integración:** # PENDING en EP004
+
+---
+
+## EP005-projects.md — Agregar user stories
+
+### # PENDING — US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+
+**Criterios de aceptación:**
+- [ ] Pestaña "Plan" en el detalle del proyecto contiene: lista de tareas (izquierda) + Gantt (derecha/abajo).
+- [ ] Toggle para mostrar solo lista, solo Gantt, o vista dividida.
+- [ ] Eliminar pestaña "Gantt" separada.
+- [ ] URL: `/projects/{id}/plan`.
+
+---
+
+### # PENDING — US-NEW-017 — Tabs inline para módulos del proyecto (sin cambio de página)
+
+**Criterios de aceptación:**
+- [ ] Los botones actuales (Riesgos, AIDs, Cambios, Documentos, Lecciones, Minutas, Reportes) se convierten en tabs/pestañas en la misma página del proyecto.
+- [ ] Click en tab actualiza el panel inferior de la página, NO navega a una URL diferente.
+- [ ] URL puede reflejar tab activa como query param: `/projects/{id}?tab=risks`.
+- [ ] Tab activa resaltada visualmente.
+- [ ] Agregar tabs: Charter, RAID, Plan, Cambios, Áreas, Documentos, Minutas, Reportes.
+- [ ] Tabs que exceden el ancho usan scroll horizontal o dropdown "más".
+
+---
+
+### # PENDING — US-NEW-018 — Módulo Área/Organigrama del proyecto
+
+**Como** PM
+**Quiero** registrar actores y áreas involucradas en el proyecto
+**Para** referenciarlos en tareas, RAIDs y minutas sin que deban tener acceso a la plataforma.
+
+**Criterios de aceptación:**
+- [ ] Tab "Áreas" en el detalle del proyecto.
+- [ ] CRUD de `project_areas`: nombre, tipo (área/actor/equipo), descripción, contacto (nombre + email).
+- [ ] Las áreas aparecen como opción en: asignación de tareas (campo `area_reference`), minutas (participantes externos), RAIDs (owner_name).
+- [ ] `GET /api/v1/projects/{id}/areas`.
+- [ ] `POST /api/v1/projects/{id}/areas`.
+- [ ] `PATCH /api/v1/project-areas/{id}`.
+- [ ] `DELETE /api/v1/project-areas/{id}`.
+
+**Test Cases:**
+- `TC-NEW-025` (integration) — CRUD completo de areas.
+- `TC-NEW-026` (E2E) — Área creada aparece en selector de participantes de minuta.
+
+**Estado de integración:** # PENDING en EP005
+
+---
+
+## EP006-project-modules.md — Agregar user stories
+
+### # PENDING — US-NEW-019 — Consolidar RAID (vista unificada)
+
+**Criterios de aceptación:**
+- [ ] Tab "RAID" en el detalle del proyecto que muestra 4 sub-tabs: Riesgos (R) | Acciones (A) | Incidentes (I) | Decisiones (D).
+- [ ] Riesgos: tabla `risks`.
+- [ ] Acciones: tabla `issues WHERE type='action'`.
+- [ ] Incidentes: tabla `issues WHERE type='issue'` (renombrar `type` valor a 'incident' — ver DECISIONS.md DEC-007).
+- [ ] Decisiones: tabla `issues WHERE type='decision'`.
+- [ ] Vista summary del RAID: contador por categoría en el header del tab.
+- [ ] Export RAID: XLSX con 4 sheets (una por letra), descargable.
+
+---
+
+### # PENDING — US-NEW-020 — Categorías de documentos actualizadas
+
+**Criterios de aceptación:**
+- [ ] Campo `category` en documentos acepta: `charter` | `plan` | `raid_export` | `transcript` | `minute` | `report` | `lesson` | `contract` | `other`.
+- [ ] Al generar charter → se guarda copia PDF en documentos con `category='charter'`.
+- [ ] Export RAID → se guarda en documentos con `category='raid_export'`.
+- [ ] Minutas generadas → referencia en documentos con `category='minute'`.
+
+---
+
+### # PENDING — US-NEW-021 — Consolidar pestañas de Minutas en 1
+
+**Criterios de aceptación:**
+- [ ] Si actualmente hay 2 pestañas separadas para minutas (ej: "Minutas" y "Minuta IA"), unificarlas en 1.
+- [ ] La pestaña única "Minutas" tiene: listado de minutas pasadas + botón "Nueva minuta" (manual) + botón "Generar con IA" (si IA habilitada).
+- [ ] La minuta generada con IA entra al mismo flujo de revisión/edición que la manual.
+
+---
+
+### # PENDING — US-NEW-022 — Módulo Reportes dentro del proyecto
+
+**Como** PM
+**Quiero** generar y gestionar reportes del proyecto
+**Para** comunicar avance a stakeholders periódicamente.
+
+**Criterios de aceptación:**
+- [ ] Tab "Reportes" en el detalle del proyecto.
+- [ ] Listado de reportes pasados con: fecha, periodo (semanal/mensual), estado (borrador/enviado), destinatarios.
+- [ ] Botón "Nuevo Reporte" → formulario con: periodo, destinatarios, include_pdf toggle.
+- [ ] "Generar con IA" → invoca EP008 `POST /projects/{id}/reports/draft`.
+- [ ] Reporte manual: editor tipo Notion con secciones predefinidas.
+- [ ] Secciones sugeridas: Resumen Ejecutivo, Avance del Plan, Acciones Pendientes, Decisiones Requeridas, Riesgos Top.
+- [ ] Periodicidades: diario, semanal, mensual.
+- [ ] Caso de uso "lunes de persecución": reporte semanal que lista acciones que el PM debe perseguir esa semana.
+
+**Test Cases:**
+- `TC-NEW-027` (E2E) — Crear reporte manual → guardar → enviar.
+- `TC-NEW-028` (integration) — Reporte incluye top acciones vencidas ordenadas por fecha compromiso.
+
+**Estado de integración:** # PENDING en EP006
+
+---
+
+## EP007-admin.md — Agregar user stories
+
+### # PENDING — US-NEW-023 — Gestión de Tenant (acciones propuestas)
+
+**Propuesta de acciones disponibles para Admin/Senior PMO en su propio tenant:**
+
+**Criterios de aceptación:**
+- [ ] Sección "Mi Tenant" en `/admin/tenant`:
+  - Información del tenant: nombre, logo, slug (readonly).
+  - Configuración (ya en US-041): idioma, moneda, timezone, IA, etc.
+  - Plan actual (readonly, con link a "Contactar soporte").
+  - Estadísticas del tenant: usuarios activos, proyectos, storage usado.
+- [ ] Acciones disponibles:
+  - Editar nombre y logo del tenant.
+  - Cambiar configuraciones (US-041 existente).
+  - Ver uso de storage.
+  - *(NO incluir: eliminar tenant, cambiar slug — solo superadmin)*.
+
+---
+
+### # PENDING — US-NEW-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+
+**Criterios de aceptación:**
+- [ ] En `/admin/organizations`, expandir US-039 para incluir gestión de BUs y Deptos.
+- [ ] Vista de tree: Org → BUs → Deptos con acciones inline (editar, desactivar).
+- [ ] Formulario de edición de org incluye sección colapsable de BUs y Deptos.
+- [ ] Crear/editar/desactivar BU desde el panel admin (llama a endpoints de EP002).
+- [ ] Crear/editar/desactivar Depto desde el panel admin (llama a endpoints de EP002).
+- [ ] Botón "Ver proyectos de esta org" en el panel.
+
+**Estado de integración:** # PENDING en EP007
+
+---
+
+## EP010-superadmin-panel.md — Agregar a user stories existentes
+
+### # PENDING — Fix en US-053 y US-055 (iconos y jerarquía en paneles de tenant)
+
+**Criterios de aceptación (adicionales):**
+- [ ] Cards de tenant en lista y en drill-down muestran iconos por categoría:
+  - 🏢 Organizaciones (count)
+  - 👥 Usuarios (count)
+  - 📋 Programas (count)
+  - 📁 Proyectos (count)
+- [ ] Iconos SVG simples del design system, no emoji.
+- [ ] En drill-down del tenant, sección Overview muestra la jerarquía:
+  - Org count → BU count → Depto count → Programa count → Proyecto count.
+- [ ] Indicador activo/inactivo: punto verde (activo) / rojo (inactivo) visible en cada card de tenant.
+
+### # PENDING — Fix en dashboard US-053 (Visión General = Tenants + Health)
+
+**Criterios de aceptación (adicionales):**
+- [ ] Página principal `/superadmin` combina: KPI de tenants + widget de Health de sistemas.
+- [ ] No son páginas separadas; Health aparece como sección inferior del dashboard principal.
+- [ ] Esto reemplaza tener "Visión General" y "Health" como rutas separadas (si así estaba antes).
+
+**Estado de integración:** # PENDING en EP010
