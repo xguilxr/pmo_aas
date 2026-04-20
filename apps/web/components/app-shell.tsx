@@ -6,10 +6,13 @@ import { useState, type ReactNode } from "react";
 import {
   Building2,
   ClipboardList,
+  Cog,
+  Eye,
   FolderKanban,
   LayoutDashboard,
   LogOut,
   Menu,
+  ScrollText,
   ServerCog,
   ShieldCheck,
   Users,
@@ -63,6 +66,27 @@ const NAV: NavItem[] = [
     label: "Roles y permisos",
     icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
     match: (p) => p.startsWith("/admin/roles"),
+  },
+];
+
+const ADMIN_NAV: NavItem[] = [
+  {
+    href: "/admin/supervision",
+    label: "Supervisión",
+    icon: <Eye className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/admin/supervision"),
+  },
+  {
+    href: "/admin/audit-logs",
+    label: "Auditoría",
+    icon: <ScrollText className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/admin/audit-logs"),
+  },
+  {
+    href: "/admin/settings",
+    label: "Configuración",
+    icon: <Cog className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/admin/settings"),
   },
 ];
 
@@ -126,6 +150,31 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-2 py-2">
           <ul className="space-y-0.5">
             {NAV.map((item) => {
+              const active = item.match(pathname);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "flex h-9 items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 text-[13px] transition-colors",
+                      active
+                        ? "bg-[var(--chrome-active)] font-semibold text-[var(--chrome-text)]"
+                        : "text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)]",
+                    )}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]/80">
+            Admin
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {ADMIN_NAV.map((item) => {
               const active = item.match(pathname);
               return (
                 <li key={item.href}>
