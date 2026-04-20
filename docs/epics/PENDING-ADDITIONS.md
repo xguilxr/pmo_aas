@@ -477,7 +477,13 @@ Campos adicionales al formulario de solicitud:
   - Org count → BU count → Depto count → Programa count → Proyecto count.
 - [ ] Indicador activo/inactivo: punto verde (activo) / rojo (inactivo) visible en cada card de tenant.
 
-### # PENDING — Fix en dashboard US-053 (Visión General = Tenants + Health)
+### # INTEGRATED — US-NEW-026 — Visión General = Tenants + Health
+
+**Estado de integración:** INTEGRATED en EP010 (US-NEW-026).
+
+---
+
+### # PENDING (referencia) — Fix en dashboard US-053 (Visión General = Tenants + Health)
 
 **Criterios de aceptación (adicionales):**
 - [ ] Página principal `/superadmin` combina: KPI de tenants + widget de Health de sistemas.

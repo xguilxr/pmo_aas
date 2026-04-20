@@ -7,12 +7,17 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-026
-Epic: EP010-superadmin-panel.md
-Título: Visión General = Tenants + Health (página unificada)
-Tipo: Frontend — combinar /superadmin con widget Health
-Commit esperado: "feat(superadmin): US-NEW-026 — visión general unificada"
-Precondición: /superadmin y /superadmin/health existen.
+— Sin US activa —
+
+Bloques 1-8 (EP001, EP002, EP003, EP004, EP005, EP006, EP007, EP010)
+completos en esta rama (26 US implementadas).
+
+Bloques 9 y 10 (EP011 Notifications y EP012 Migración MySQL) están
+marcados como POST-MVP en el índice del README — se trabajan en sprint
+posterior cuando el MVP esté listo para release.
+
+US-NEW-017 (tabs inline en detalle de proyecto) quedó diferida
+intencionalmente — ver commit de US-NEW-016.
 ```
 
 ---
@@ -58,6 +63,7 @@ Precondición: /superadmin y /superadmin/health existen.
 | US-NEW-023 | Gestión de Tenant (info + stats + editar) | `feat(admin): US-NEW-023 — gestión de tenant` | 2026-04-20 |
 | US-NEW-024 | Gestión jerarquía org (BU + Depto) en Admin | `feat(admin): US-NEW-024 — jerarquía org en admin` | 2026-04-20 |
 | US-NEW-025 | Iconos en paneles de tenant + jerarquía | `feat(superadmin): US-NEW-025 — iconos en paneles` | 2026-04-20 |
+| US-NEW-026 | Visión General = Tenants + Health unificados | `feat(superadmin): US-NEW-026 — visión general unificada` | 2026-04-20 |
 
 ---
 
@@ -105,7 +111,7 @@ Precondición: /superadmin y /superadmin/health existen.
 
 ### Bloque 8 — SuperAdmin (EP010)
 - [x] US-NEW-025 — Iconos en paneles de tenant ✅
-- [ ] US-NEW-026 — Visión General = Tenants + Health unidos
+- [x] US-NEW-026 — Visión General = Tenants + Health unidos ✅
 
 ### Bloque 9 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center

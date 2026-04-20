@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Activity,
   BarChart3,
   Building2,
   ChevronRight,
@@ -245,13 +244,6 @@ const SUPERADMIN_NAV: NavItem[] = [
     icon: <ScrollText className="h-4 w-4" aria-hidden />,
     href: "/superadmin/logs",
     match: (p) => p.startsWith("/superadmin/logs"),
-  },
-  {
-    id: "sa-health",
-    label: "Health",
-    icon: <Activity className="h-4 w-4" aria-hidden />,
-    href: "/superadmin/health",
-    match: (p) => p.startsWith("/superadmin/health"),
   },
 ];
 

@@ -376,3 +376,20 @@ PATCH  /api/v1/superadmin/settings
 - `test_usnew025_tenant_detail_has_hierarchy` ✅
 
 **Estado de integración:** DONE (US-NEW-025).
+
+---
+
+### US-NEW-026 — Visión General = Tenants + Health unificados
+
+**Criterios de aceptación:**
+- [x] `/superadmin` (Visión general) ahora incluye, además de KPIs,
+  Actividad reciente y Top tenants, una sección "Health de plataforma"
+  con los cards de API, DB, Worker, Redis, IA providers, Storage.
+- [x] La sección Health auto-refresh cada 15s.
+- [x] La ruta separada `/superadmin/health` queda como redirect
+  permanente a `/superadmin` (preserva bookmarks).
+- [x] Entrada "Health" eliminada del sidebar super admin.
+- [x] Link "Health" eliminado del header de /superadmin.
+- [x] Nuevo componente reutilizable `SuperadminHealthSection`.
+
+**Estado de integración:** DONE (US-NEW-026).
