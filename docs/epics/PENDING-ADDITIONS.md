@@ -85,10 +85,10 @@
 - [ ] Seed actualiza rol `PMO Manager` con el flag correspondiente.
 
 **Test Cases:**
-- `TC-NEW-017` (E2E) — Chrome muestra `#182e4e` en light y dark mode.
-- `TC-NEW-018` (integration) — Senior PMO puede acceder a `/admin/users`.
+- `TC-NEW-017` (E2E) — Chrome muestra `#182e4e` en light y dark mode ✅
+- `TC-NEW-018` (integration) — Senior PMO puede acceder a `/admin/users` ✅
 
-**Estado de integración:** # PENDING en EP001
+**Estado de integración:** INTEGRATED en EP001 (US-NEW-010).
 
 ---
 

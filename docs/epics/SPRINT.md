@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-010
+US: US-NEW-009
 Epic: EP001-auth-users.md
-Título: Color chrome #182e4e + Senior PMO como admin
-Tipo: Mixed — CSS + backend middleware roles
-Commit esperado: "feat(auth): US-NEW-010 — chrome #182e4e + Senior PMO admin"
-Precondición: DEC-005 y DEC-006 vigentes.
+Título: Página administrar cuenta (perfil + cambiar password)
+Tipo: Frontend — /account con dos secciones
+Commit esperado: "feat(web): US-NEW-009 — página /account perfil + password"
+Precondición: endpoints `/auth/change-password` y `/users/me/preferences` existen.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: DEC-005 y DEC-006 vigentes.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-009 | EP001 | Página administrar cuenta | Frontend |
-| 2 | US-NEW-011 | EP003 | Campos adicionales en solicitud | Backend + Frontend |
-| 3 | US-NEW-012 | EP003 | Project Charter: tabla + generación | Backend |
+| 1 | US-NEW-011 | EP003 | Campos adicionales en solicitud | Backend + Frontend |
+| 2 | US-NEW-012 | EP003 | Project Charter: tabla + generación | Backend |
+| 3 | US-NEW-013 | EP003 | Charter como documento en el proyecto | Backend |
 
 ---
 
@@ -40,6 +40,7 @@ Precondición: DEC-005 y DEC-006 vigentes.
 | US-BUG-001 | Fix 404 en página de Programas | `fix(web): US-BUG-001 — crea /admin/programs` | 2026-04-20 |
 | US-NEW-007 | Toggle dark/light mode en dropdown usuario | `feat(web): US-NEW-007 — toggle dark/light en user dropdown` | 2026-04-20 |
 | US-NEW-008 | Toggle de idioma (ES/EN) en dropdown usuario | `feat(web): US-NEW-008 — toggle idioma en user dropdown` | 2026-04-20 |
+| US-NEW-010 | Color chrome #182e4e + Senior PMO como admin | `feat(auth): US-NEW-010 — chrome #182e4e + Senior PMO admin` | 2026-04-20 |
 
 ---
 
@@ -57,7 +58,7 @@ Precondición: DEC-005 y DEC-006 vigentes.
 - [x] US-NEW-007 — Toggle dark/light en dropdown usuario ✅
 - [x] US-NEW-008 — Toggle idioma en dropdown usuario ✅
 - [ ] US-NEW-009 — Página administrar cuenta (perfil + cambiar password)
-- [ ] US-NEW-010 — Color chrome #182e4e + Senior PMO = admin
+- [x] US-NEW-010 — Color chrome #182e4e + Senior PMO = admin ✅
 
 ### Bloque 3 — Project Charter (EP003)
 - [ ] US-NEW-011 — Campos adicionales en solicitud (correos, personas clave, etc.)

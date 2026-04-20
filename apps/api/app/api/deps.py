@@ -39,6 +39,20 @@ class CurrentUser:
             return True
         return action in self.permissions.get(module, set())
 
+    @property
+    def is_admin_equivalent(self) -> bool:
+        """True si el usuario tiene capacidades administrativas (DEC-005).
+
+        Incluye superadmin, rol `Administrador`, y cualquier rol cuyo JSON
+        de permisos declare al menos un módulo `admin.*`. Esto cubre al
+        `PMO Manager` senior (ver seed) sin requerir columnas nuevas.
+        """
+        if self.is_superadmin:
+            return True
+        if "Administrador" in self.roles:
+            return True
+        return any(k.startswith("admin.") for k in self.permissions.keys())
+
 
 async def get_current_user(
     request: Request,

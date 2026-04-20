@@ -356,3 +356,75 @@ async def test_preferences_locale_updates_locale_column(client, db_session):
     await db_session.refresh(u)
     fresh = (await db_session.execute(select(User).where(User.id == u.id))).scalar_one()
     assert fresh.locale == "en-US"
+
+
+# ============================================================================
+# US-NEW-010 — Senior PMO como admin (DEC-005)
+# ============================================================================
+
+
+# TC-NEW-018: Senior PMO (rol PMO Manager con admin.*) accede a /admin/users
+@pytest.mark.asyncio
+async def test_tcnew018_senior_pmo_can_access_admin(client, db_session):
+    from app.models.role import Role
+
+    t = await create_tenant(db_session, slug="srpmo", name="SrPmo")
+    # Crear rol "PMO Manager" con admin.* permissions (mismo shape que en seed)
+    pmo_senior = Role(
+        tenant_id=t.id,
+        name="PMO Manager",
+        description="Senior PMO / Admin-eq",
+        is_system=True,
+        permissions={
+            "admin.users": ["read", "create", "update", "delete"],
+            "admin.roles": ["read", "create", "update", "delete"],
+            "admin.organizations": ["read", "create", "update", "delete"],
+            "admin.projects": ["read"],
+            "admin.requests": ["read", "approve"],
+            "projects": ["read", "create", "update", "approve"],
+            "dashboard": ["read"],
+        },
+    )
+    db_session.add(pmo_senior)
+    await db_session.flush()
+    await create_user(
+        db_session, tenant=t, username="senior", email="senior@srpmo.example.com",
+        password="Str0ng-Sr-1!", roles=[pmo_senior],
+    )
+    auth = await login(client, "senior", "Str0ng-Sr-1!")
+    # /admin/users list debe responder 200
+    r = await client.get("/api/v1/admin/users", headers=auth["_authz"])
+    assert r.status_code == 200, r.text
+
+
+# CurrentUser.is_admin_equivalent detecta roles con admin.*
+@pytest.mark.asyncio
+async def test_is_admin_equivalent_helper(client, db_session):
+    from app.api.deps import CurrentUser
+
+    # solo Viewer (sin admin.*)
+    cu_viewer = CurrentUser(
+        user=type("U", (), {"is_superadmin": False})(),
+        tenant_ids=[],
+        active_tenant_id=None,
+        roles=["Viewer"],
+        permissions={"projects": {"read"}, "dashboard": {"read"}},
+    )
+    assert cu_viewer.is_admin_equivalent is False
+
+    # Administrador
+    cu_admin = CurrentUser(
+        user=type("U", (), {"is_superadmin": False})(),
+        tenant_ids=[], active_tenant_id=None,
+        roles=["Administrador"], permissions={},
+    )
+    assert cu_admin.is_admin_equivalent is True
+
+    # Senior PMO por permisos admin.*
+    cu_sr = CurrentUser(
+        user=type("U", (), {"is_superadmin": False})(),
+        tenant_ids=[], active_tenant_id=None,
+        roles=["PMO Manager"],
+        permissions={"admin.users": {"read"}, "dashboard": {"read"}},
+    )
+    assert cu_sr.is_admin_equivalent is True

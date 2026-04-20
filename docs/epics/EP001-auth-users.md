@@ -312,5 +312,26 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 ### US-NEW-009 — # PENDING — Página administrar cuenta (perfil + cambiar password)
 *(ver PENDING-ADDITIONS.md)*
 
-### US-NEW-010 — # PENDING — Color chrome #182e4e + Senior PMO como admin
-*(ver PENDING-ADDITIONS.md, DEC-005 y DEC-006)*
+### US-NEW-010 — Color chrome #182e4e + Senior PMO como admin
+
+**Como** desarrollador
+**Quiero** el color de chrome correcto y Senior PMO con capacidades admin
+**Para** cumplir DEC-005 y DEC-006.
+
+**Criterios de aceptación:**
+- [x] Variable CSS `--chrome-bg` = `#182e4e` en `globals.css` (DEC-006).
+- [x] Variables derivadas (`--chrome-border`, `--chrome-hover`, `--chrome-active`)
+  recalibradas al nuevo matiz.
+- [x] `docs/design-system/style.md` actualizado al nuevo color.
+- [x] Rol `PMO Manager` en seed incluye todos los permisos `admin.*` que
+  tiene `Administrador` (DEC-005).
+- [x] `CurrentUser.is_admin_equivalent` disponible como helper.
+- [x] Middleware existente (`require_permission`) sigue funcionando sin
+  cambios — Senior PMO pasa por tener los permisos `admin.*` en su rol.
+
+**Test Cases:**
+- `TC-NEW-017` (E2E) — Chrome #182e4e visible en light y dark mode ✅ (CSS).
+- `TC-NEW-018` (integration) — Senior PMO accede a `/admin/users` ✅.
+- `is_admin_equivalent` helper cubierto por test unitario ✅.
+
+**Estado de integración:** DONE (US-NEW-010).

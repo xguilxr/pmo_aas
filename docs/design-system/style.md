@@ -86,14 +86,14 @@ Todos comparten `L≈88%` (fondo) / `L≈45%` (texto) / `L≈70%` (borde) y `C�
 
   --focus-ring:     oklch(55% 0.15 240);
 
-  /* Chrome (sidebar + topbar) — AZUL MARINO #0E164F (fuente de verdad) */
-  --chrome-bg:             #0E164F;
-  --chrome-bg-translucent: color-mix(in oklab, #0E164F 92%, transparent);
-  --chrome-border:         #0A1140;
+  /* Chrome (sidebar + topbar) — NAVY #182e4e (DEC-006, fuente de verdad) */
+  --chrome-bg:             #182e4e;
+  --chrome-bg-translucent: color-mix(in oklab, #182e4e 92%, transparent);
+  --chrome-border:         #10203a;
   --chrome-text:           #F0F3FF;
   --chrome-text-muted:     #A7B0D9;
-  --chrome-hover:          #1A2465;
-  --chrome-active:         #0A1140;
+  --chrome-hover:          #24406a;
+  --chrome-active:         #10203a;
 
   --chrome-soft-bg:     oklch(97% 0.012 240);
   --chrome-soft-border: oklch(90% 0.018 240);
@@ -212,7 +212,7 @@ Tamaños `sm` (h-8) · `md` (h-9) · `lg` (h-10).
 - `tabular-nums` en números.
 
 ### Sidebar
-- Chrome azul marino sólido (`--chrome-bg = #0E164F`).
+- Chrome azul marino sólido (`--chrome-bg = #182e4e`).
 - Items `h-9`, icono 16px, gap 10px.
 - Activo: fondo `chrome-active` + weight 600.
 - **Sin footer con datos de usuario.** La identidad del usuario y la acción
@@ -342,8 +342,8 @@ Texto meta       → text-tertiary   (neutral-500)
 Botón primario   → bg-neutral-800 / text-inverse
 Focus ring       → oklch(55% 0.15 240)
 
-Sidebar          → chrome-bg (#0E164F)
-Topbar           → chrome-bg (#0E164F)
+Sidebar          → chrome-bg (#182e4e)
+Topbar           → chrome-bg (#182e4e)
 User dropdown    → top-right del topbar
 Radius input     → rounded-md (8px)
 Radius card      → rounded-lg (12px)
