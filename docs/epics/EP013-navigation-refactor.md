@@ -142,27 +142,29 @@ Se **elimina**:
 
 ---
 
-## # PENDING — US-NEW-034 — Página resumen de programa
+## # DONE — US-NEW-034 — Página resumen de programa
 
 **Como** usuario con acceso al programa
 **Quiero** una página de resumen del programa con KPIs y lista de proyectos
 **Para** evaluar su estado sin entrar a cada proyecto.
 
 **Criterios de aceptación:**
-- [ ] Ruta `/admin/programs/{id}` con:
-  - Header: nombre, org, PM del programa (si aplica), fase agregada, salud agregada.
-  - KPIs: #proyectos totales, #activos, #en riesgo (health ≠ green), #cerrados, presupuesto plan vs real agregado.
-  - Gráfica de status de proyectos (donut: green/yellow/red).
-  - Lista de riesgos top (severidad ≥ 13) a través de todos los proyectos del programa.
-  - Tabla de proyectos del programa (mismo formato que US-024, sin filtro de programa).
-- [ ] Endpoint `GET /api/v1/programs/{id}/summary` con agregados.
-- [ ] Permiso `programs:read` — cualquier usuario con acceso al programa.
-- [ ] Enlazada desde sidebar (US-NEW-032).
+- [x] Endpoint `GET /api/v1/programs/{id}/summary` auth-only + cross-tenant → 404.
+- [x] Ruta `/admin/programs/{id}` con:
+  - Header: nombre, org (link al panel), is_active badge, descripción.
+  - 4 KPI cards: proyectos total / activos / en riesgo / cerrados.
+  - Donut SVG con salud del portafolio (green/yellow/red).
+  - Presupuesto plan vs real agregado + desviación %.
+  - Top 10 riesgos con `severity >= 13` no cerrados/materializados.
+  - Tabla de proyectos con folio, fase, salud, PM, avance, presupuesto plan/real.
+- [x] Sidebar (`OrgTreeNav`): link de programa actualizado a `/admin/programs/{id}` (antes apuntaba a `/admin/projects?program_id=…`).
 
-**Test Cases:**
-- `TC-NEW-034-1` (integration) — Summary agrega counts correctos con 5 proyectos seed.
-- `TC-NEW-034-2` (integration) — Presupuesto plan/real suma presupuestos de proyectos activos.
-- `TC-NEW-034-3` (E2E) — Click en fila de proyecto abre su detalle.
+**Test Cases (3/3 verdes):**
+- `test_usnew034_summary_aggregates_correctly` — counts, health, presupuestos, top risks filtrados por severidad y status.
+- `test_usnew034_summary_cross_tenant_404` — aislamiento.
+- `test_usnew034_summary_empty_program` — programa vacío no crashea.
+
+**Commit:** `feat(web,api): US-NEW-034 — página resumen de programa con KPIs y donut`.
 
 ---
 

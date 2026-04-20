@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_current_user, require_permission
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.db.session import get_db
+from app.models.modules import Risk
 from app.models.organization import BusinessUnit, Department, Organization, Program
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -31,6 +32,9 @@ from app.schemas.organization import (
     OrganizationUpdate,
     ProgramCreate,
     ProgramRead,
+    ProgramSummary,
+    ProgramSummaryProject,
+    ProgramSummaryRisk,
     ProgramUpdate,
 )
 from app.services.audit import write_audit
@@ -494,6 +498,128 @@ async def create_program(
     )
     await db.commit()
     return ProgramRead.model_validate(prog)
+
+
+@programs_router.get("/{program_id}/summary", response_model=ProgramSummary)
+async def program_summary(
+    program_id: UUID,
+    cu: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resumen agregado del programa (US-NEW-034).
+
+    Auth-only; cross-tenant → 404. Devuelve info del programa + agregados
+    (counts por fase y salud, presupuestos), lista de proyectos y top 10
+    riesgos con severidad >= 13.
+    """
+    tenant_id = _ensure_tenant(cu)
+    prog = (
+        await db.execute(
+            select(Program).where(
+                Program.id == str(program_id), Program.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if prog is None:
+        raise not_found("Programa")
+    org = (
+        await db.execute(
+            select(Organization).where(Organization.id == prog.organization_id)
+        )
+    ).scalar_one_or_none()
+
+    projects = (
+        await db.execute(
+            select(Project).where(
+                Project.tenant_id == tenant_id,
+                Project.program_id == str(program_id),
+                Project.deleted_at.is_(None),
+            ).order_by(Project.name)
+        )
+    ).scalars().all()
+    pm_ids = {p.pm_id for p in projects if p.pm_id}
+    pm_rows = (
+        await db.execute(
+            select(User.id, User.full_name).where(User.id.in_(pm_ids))
+        )
+    ).all() if pm_ids else []
+    pm_map = {str(uid): name for uid, name in pm_rows}
+
+    total = len(projects)
+    active = sum(1 for p in projects if p.phase != "closed")
+    closed = sum(1 for p in projects if p.phase == "closed")
+    at_risk = sum(1 for p in projects if p.health_status != "green" and p.phase != "closed")
+    health_counts = {"green": 0, "yellow": 0, "red": 0}
+    for p in projects:
+        if p.phase == "closed":
+            continue
+        if p.health_status in health_counts:
+            health_counts[p.health_status] += 1
+    budget_planned = float(sum((p.budget or 0) for p in projects))
+    budget_actual = float(sum((p.actual_budget or 0) for p in projects))
+
+    project_ids = [p.id for p in projects]
+    top_risks: list[ProgramSummaryRisk] = []
+    if project_ids:
+        risk_rows = (
+            await db.execute(
+                select(Risk).where(
+                    Risk.tenant_id == tenant_id,
+                    Risk.project_id.in_(project_ids),
+                    Risk.deleted_at.is_(None),
+                    Risk.severity.isnot(None),
+                    Risk.severity >= 13,
+                    Risk.status.notin_(["closed", "materialized"]),
+                ).order_by(Risk.severity.desc()).limit(10)
+            )
+        ).scalars().all()
+        proj_name_map = {p.id: p.name for p in projects}
+        top_risks = [
+            ProgramSummaryRisk(
+                id=r.id,
+                project_id=r.project_id,
+                project_name=proj_name_map.get(r.project_id),
+                folio=r.folio,
+                title=r.title,
+                severity=r.severity,
+                status=r.status,
+            )
+            for r in risk_rows
+        ]
+
+    return ProgramSummary(
+        id=prog.id,
+        name=prog.name,
+        description=prog.description,
+        organization_id=prog.organization_id,
+        organization_name=org.name if org else None,
+        is_active=prog.is_active,
+        start_date=prog.start_date,
+        end_date=prog.end_date,
+        project_total=total,
+        project_active=active,
+        project_at_risk=at_risk,
+        project_closed=closed,
+        health=OrganizationPanelHealth(**health_counts),
+        budget_planned=budget_planned,
+        budget_actual=budget_actual,
+        projects=[
+            ProgramSummaryProject(
+                id=p.id,
+                folio=p.folio,
+                name=p.name,
+                phase=p.phase,
+                health_status=p.health_status,
+                pm_id=p.pm_id,
+                pm_name=pm_map.get(str(p.pm_id)) if p.pm_id else None,
+                progress=p.progress or 0,
+                budget=float(p.budget or 0),
+                actual_budget=float(p.actual_budget or 0),
+            )
+            for p in projects
+        ],
+        top_risks=top_risks,
+    )
 
 
 @programs_router.patch("/{program_id}", response_model=ProgramRead)

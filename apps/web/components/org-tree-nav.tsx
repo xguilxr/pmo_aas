@@ -360,7 +360,7 @@ function ProgramsList({
               depth={depth}
               icon={<Network className="h-3.5 w-3.5" aria-hidden />}
               label={prog.name}
-              href={`/admin/projects?program_id=${prog.id}`}
+              href={`/admin/programs/${prog.id}`}
               active={false}
               hasChildren
               isOpen={open}

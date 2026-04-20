@@ -193,6 +193,51 @@ class ProgramRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---- US-NEW-034: Program summary ----
+
+class ProgramSummaryProject(BaseModel):
+    id: UUID
+    folio: str | None
+    name: str
+    phase: str | None
+    health_status: str | None
+    pm_id: UUID | None
+    pm_name: str | None = None
+    progress: int = 0
+    budget: float = 0
+    actual_budget: float = 0
+
+
+class ProgramSummaryRisk(BaseModel):
+    id: UUID
+    project_id: UUID
+    project_name: str | None = None
+    folio: str | None
+    title: str
+    severity: int | None
+    status: str
+
+
+class ProgramSummary(BaseModel):
+    id: UUID
+    name: str
+    description: str | None
+    organization_id: UUID
+    organization_name: str | None = None
+    is_active: bool
+    start_date: date | None
+    end_date: date | None
+    project_total: int = 0
+    project_active: int = 0
+    project_at_risk: int = 0
+    project_closed: int = 0
+    health: OrganizationPanelHealth = Field(default_factory=OrganizationPanelHealth)
+    budget_planned: float = 0
+    budget_actual: float = 0
+    projects: list[ProgramSummaryProject] = Field(default_factory=list)
+    top_risks: list[ProgramSummaryRisk] = Field(default_factory=list)
+
+
 class TenantProvisionRequest(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     slug: str = Field(min_length=2, max_length=64, pattern=r"^[a-z0-9\-]+$")

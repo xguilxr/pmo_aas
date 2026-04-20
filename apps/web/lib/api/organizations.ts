@@ -185,6 +185,53 @@ export function listPrograms(params: ListProgramsParams = {}): Promise<Program[]
   return apiFetch<Program[]>(`/api/v1/programs${qs(params)}`);
 }
 
+export type ProgramSummaryProject = {
+  id: string;
+  folio: string | null;
+  name: string;
+  phase: string | null;
+  health_status: string | null;
+  pm_id: string | null;
+  pm_name: string | null;
+  progress: number;
+  budget: number;
+  actual_budget: number;
+};
+
+export type ProgramSummaryRisk = {
+  id: string;
+  project_id: string;
+  project_name: string | null;
+  folio: string | null;
+  title: string;
+  severity: number | null;
+  status: string;
+};
+
+export type ProgramSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  organization_id: string;
+  organization_name: string | null;
+  is_active: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  project_total: number;
+  project_active: number;
+  project_at_risk: number;
+  project_closed: number;
+  health: OrganizationPanelHealth;
+  budget_planned: number;
+  budget_actual: number;
+  projects: ProgramSummaryProject[];
+  top_risks: ProgramSummaryRisk[];
+};
+
+export function getProgramSummary(id: string): Promise<ProgramSummary> {
+  return apiFetch<ProgramSummary>(`/api/v1/programs/${id}/summary`);
+}
+
 export function createProgram(body: ProgramCreateBody): Promise<Program> {
   return apiFetch<Program>("/api/v1/programs", { method: "POST", body });
 }
