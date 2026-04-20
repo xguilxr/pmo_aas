@@ -471,6 +471,104 @@ async def test_tcnew007_dept_delete_with_active_program(client, db_session):
     assert r2.status_code == 204
 
 
+# ==============================================================================
+# US-NEW-006 — Vista paneles de organizaciones (métricas)
+# ==============================================================================
+
+
+# TC-NEW-010: métricas de card coinciden con queries directas
+@pytest.mark.asyncio
+async def test_tcnew010_org_panels_metrics(client, db_session):
+    from app.db.base import new_uuid
+    from app.models.organization import Program
+    from app.models.project import Project
+
+    t, auth = await _admin_setup(client, db_session)
+
+    # Org con: 2 BUs, 1 depto en BU-A, 1 programa, 2 proyectos (1 green, 1 red)
+    org_id = await _create_org(client, auth, name="OrgConMetricas")
+    bu_a = await _create_bu(client, auth, org_id, "BU-A")
+    await _create_bu(client, auth, org_id, "BU-B")
+    await client.post(
+        f"/api/v1/business-units/{bu_a}/departments",
+        json={"name": "Dept-1"},
+        headers=auth["_authz"],
+    )
+
+    prog = Program(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        name="Prog-1",
+        is_active=True,
+    )
+    db_session.add(prog)
+    p1 = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-000001",
+        name="P1",
+        phase="execution",
+        health_status="green",
+    )
+    p2 = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-000002",
+        name="P2",
+        phase="planning",
+        health_status="red",
+    )
+    db_session.add_all([p1, p2])
+    await db_session.commit()
+
+    r = await client.get("/api/v1/organizations/panels", headers=auth["_authz"])
+    assert r.status_code == 200, r.text
+    panels = r.json()
+    card = next(c for c in panels if c["name"] == "OrgConMetricas")
+    assert card["business_unit_count"] == 2
+    assert card["department_count"] == 1
+    assert card["program_count"] == 1
+    assert card["active_project_count"] == 2
+    assert card["portfolio_health"] == {"green": 1, "yellow": 0, "red": 1}
+
+
+# Panels excluye proyectos cerrados del conteo activo
+@pytest.mark.asyncio
+async def test_org_panels_exclude_closed(client, db_session):
+    from app.db.base import new_uuid
+    from app.models.project import Project
+
+    t, auth = await _admin_setup(client, db_session, slug="closedtest")
+    org_id = await _create_org(client, auth, name="OrgCerrados")
+    p_closed = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-C1",
+        name="Cerrado",
+        phase="closed",
+        health_status="green",
+    )
+    p_open = Project(
+        id=new_uuid(),
+        tenant_id=t.id,
+        organization_id=org_id,
+        folio="PMO-O1",
+        name="Abierto",
+        phase="execution",
+        health_status="yellow",
+    )
+    db_session.add_all([p_closed, p_open])
+    await db_session.commit()
+    r = await client.get("/api/v1/organizations/panels", headers=auth["_authz"])
+    card = next(c for c in r.json() if c["name"] == "OrgCerrados")
+    assert card["active_project_count"] == 1
+    assert card["portfolio_health"]["yellow"] == 1
+
+
 # Soft-delete sin hijos
 @pytest.mark.asyncio
 async def test_dept_soft_delete(client, db_session):

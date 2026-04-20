@@ -17,6 +17,8 @@ from app.schemas.organization import (
     DepartmentRead,
     DepartmentUpdate,
     OrganizationCreate,
+    OrganizationPanel,
+    OrganizationPanelHealth,
     OrganizationRead,
     OrganizationUpdate,
     ProgramCreate,
@@ -32,6 +34,115 @@ def _ensure_tenant(cu: CurrentUser) -> UUID:
     if cu.user.tenant_id is None:
         raise forbidden(detail="Acción no disponible para super admin sin tenant activo")
     return cu.user.tenant_id
+
+
+@router.get("/panels", response_model=list[OrganizationPanel])
+async def list_org_panels(
+    q: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Listado de organizaciones con métricas agregadas (US-NEW-006).
+
+    Ejecuta queries paralelas de counts por organización para evitar N+1.
+    """
+    tenant_id = _ensure_tenant(cu)
+    base = select(Organization).where(Organization.tenant_id == tenant_id)
+    if q:
+        base = base.where(func.lower(Organization.name).like(f"%{q.lower()}%"))
+    if is_active is not None:
+        base = base.where(Organization.is_active == is_active)
+    orgs = (await db.execute(base.order_by(Organization.name))).scalars().all()
+    if not orgs:
+        return []
+
+    org_ids = [o.id for o in orgs]
+
+    bu_counts_rows = (
+        await db.execute(
+            select(BusinessUnit.organization_id, func.count(BusinessUnit.id))
+            .where(
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.organization_id.in_(org_ids),
+                BusinessUnit.deleted_at.is_(None),
+                BusinessUnit.is_active.is_(True),
+            )
+            .group_by(BusinessUnit.organization_id)
+        )
+    ).all()
+    bu_counts: dict[str, int] = {str(o): n for o, n in bu_counts_rows}
+
+    dept_counts_rows = (
+        await db.execute(
+            select(BusinessUnit.organization_id, func.count(Department.id))
+            .join(Department, Department.business_unit_id == BusinessUnit.id)
+            .where(
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.organization_id.in_(org_ids),
+                Department.deleted_at.is_(None),
+                Department.is_active.is_(True),
+            )
+            .group_by(BusinessUnit.organization_id)
+        )
+    ).all()
+    dept_counts: dict[str, int] = {str(o): n for o, n in dept_counts_rows}
+
+    prog_counts_rows = (
+        await db.execute(
+            select(Program.organization_id, func.count(Program.id))
+            .where(
+                Program.tenant_id == tenant_id,
+                Program.organization_id.in_(org_ids),
+                Program.is_active.is_(True),
+            )
+            .group_by(Program.organization_id)
+        )
+    ).all()
+    prog_counts: dict[str, int] = {str(o): n for o, n in prog_counts_rows}
+
+    proj_rows = (
+        await db.execute(
+            select(
+                Project.organization_id, Project.health_status, func.count(Project.id)
+            )
+            .where(
+                Project.tenant_id == tenant_id,
+                Project.organization_id.in_(org_ids),
+                Project.deleted_at.is_(None),
+                Project.phase != "closed",
+            )
+            .group_by(Project.organization_id, Project.health_status)
+        )
+    ).all()
+    active_projects: dict[str, int] = {}
+    health_map: dict[str, dict[str, int]] = {}
+    for org_id, health, n in proj_rows:
+        k = str(org_id)
+        active_projects[k] = active_projects.get(k, 0) + int(n)
+        hm = health_map.setdefault(k, {"green": 0, "yellow": 0, "red": 0})
+        if health in hm:
+            hm[health] += int(n)
+
+    panels: list[OrganizationPanel] = []
+    for o in orgs:
+        oid = str(o.id)
+        panels.append(
+            OrganizationPanel(
+                id=o.id,
+                name=o.name,
+                logo_url=o.logo_url,
+                industry=o.industry,
+                country=o.country,
+                is_active=o.is_active,
+                business_unit_count=bu_counts.get(oid, 0),
+                department_count=dept_counts.get(oid, 0),
+                program_count=prog_counts.get(oid, 0),
+                active_project_count=active_projects.get(oid, 0),
+                portfolio_health=OrganizationPanelHealth(**health_map.get(oid, {})),
+            )
+        )
+    return panels
 
 
 @router.get("", response_model=list[OrganizationRead])

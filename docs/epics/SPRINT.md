@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-006
+US: US-BUG-001
 Epic: EP002-org-hierarchy.md
-Título: Vista de organizaciones como paneles informativos (cards)
-Tipo: Frontend — grid de cards con métricas por org
-Commit esperado: "feat(web): US-NEW-006 — paneles de organizaciones"
-Precondición: US-NEW-005 DONE (sidebar tree existe)
+Título: Fix 404 en página de Programas
+Tipo: Frontend — investigar ruta /admin/programs
+Commit esperado: "fix(web): US-BUG-001 — ruta /admin/programs 404"
+Precondición: Ruta está referenciada en sidebar; verificar si existe.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: US-NEW-005 DONE (sidebar tree existe)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-BUG-001 | EP002 | Fix 404 en página de Programas | Frontend |
-| 2 | US-NEW-007 | EP001 | Toggle dark/light en dropdown usuario | Frontend |
-| 3 | US-NEW-008 | EP001 | Toggle idioma en dropdown usuario | Frontend |
+| 1 | US-NEW-007 | EP001 | Toggle dark/light en dropdown usuario | Frontend |
+| 2 | US-NEW-008 | EP001 | Toggle idioma en dropdown usuario | Frontend |
+| 3 | US-NEW-009 | EP001 | Página administrar cuenta | Frontend |
 
 ---
 
@@ -36,6 +36,7 @@ Precondición: US-NEW-005 DONE (sidebar tree existe)
 | US-NEW-003 | CRUD Business Units API | `feat(org): US-NEW-003 — CRUD Business Units API` | 2026-04-20 |
 | US-NEW-004 | CRUD Departments API | `feat(org): US-NEW-004 — CRUD Departments API` | 2026-04-20 |
 | US-NEW-005 | Sidebar org tree nav (Frontend) | `feat(web): US-NEW-005 — sidebar org tree nav` | 2026-04-20 |
+| US-NEW-006 | Vista paneles de organizaciones (cards + métricas) | `feat(web): US-NEW-006 — paneles de organizaciones` | 2026-04-20 |
 
 ---
 
@@ -46,7 +47,7 @@ Precondición: US-NEW-005 DONE (sidebar tree existe)
 - [x] US-NEW-003 — CRUD Business Units (API) ✅
 - [x] US-NEW-004 — CRUD Departments (API) ✅
 - [x] US-NEW-005 — Sidebar org nav (Frontend) ✅
-- [ ] US-NEW-006 — Vista paneles de organizaciones (Frontend)
+- [x] US-NEW-006 — Vista paneles de organizaciones (Frontend) ✅
 - [ ] US-BUG-001 — Fix 404 en Programas
 
 ### Bloque 2 — Topbar y UX base (EP001)

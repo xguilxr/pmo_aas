@@ -41,6 +41,32 @@ export function listOrganizations(params: ListOrgsParams = {}): Promise<Organiza
   return apiFetch<Organization[]>(`/api/v1/organizations${qs(params)}`);
 }
 
+export type OrganizationPanelHealth = {
+  green: number;
+  yellow: number;
+  red: number;
+};
+
+export type OrganizationPanel = {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  industry: string | null;
+  country: string | null;
+  is_active: boolean;
+  business_unit_count: number;
+  department_count: number;
+  program_count: number;
+  active_project_count: number;
+  portfolio_health: OrganizationPanelHealth;
+};
+
+export function listOrganizationPanels(
+  params: ListOrgsParams = {},
+): Promise<OrganizationPanel[]> {
+  return apiFetch<OrganizationPanel[]>(`/api/v1/organizations/panels${qs(params)}`);
+}
+
 export function getOrganization(id: string): Promise<Organization> {
   return apiFetch<Organization>(`/api/v1/organizations/${id}`);
 }
