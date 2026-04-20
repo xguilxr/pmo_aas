@@ -4,28 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  BarChart3,
   Building2,
   ChevronRight,
   ClipboardList,
   Cog,
   Eye,
-  FileText,
-  FolderKanban,
-  GitPullRequest,
   LayoutDashboard,
-  Layers,
-  Lightbulb,
-  ListTree,
   Menu,
-  MessageSquare,
-  Network,
   ScrollText,
   ServerCog,
-  Shield,
   ShieldCheck,
-  Sparkles,
-  TriangleAlert,
   Users,
   X,
 } from "lucide-react";
@@ -45,184 +33,82 @@ type NavItem = {
   children?: NavItem[];
 };
 
-const PROJECT_ID_RE = /^\/admin\/projects\/([^/]+)(?:\/|$)/;
+const TOP_NAV: NavItem[] = [
+  {
+    id: "dashboard",
+    label: "Tablero",
+    icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
+    href: "/dashboard",
+    match: (p) => p === "/dashboard",
+  },
+  {
+    id: "requests",
+    label: "Solicitudes",
+    icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+    href: "/admin/requests",
+    match: (p) => p.startsWith("/admin/requests"),
+  },
+];
 
-function projectModuleHref(pathname: string, slug: string): string {
-  const m = PROJECT_ID_RE.exec(pathname);
-  if (m && m[1] !== "new") {
-    return `/admin/projects/${m[1]}/${slug}`;
-  }
-  return "/admin/projects";
-}
-
-function buildNav(pathname: string): NavItem[] {
-  const projectModules: NavItem[] = [
+// Admin-only. El drill-down real (Organizaciones → Programas → Proyectos) va
+// aparte — ver `<OrgTreeNav />` en el sidebar; la jerarquía administrativa
+// (BUs/Deptos) vive bajo "Gestión de organizaciones" dentro de Admin.
+const ADMIN_NAV: NavItem = {
+  id: "admin",
+  label: "Admin",
+  icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+  match: (p) =>
+    p.startsWith("/admin/supervision") ||
+    p.startsWith("/admin/users") ||
+    p.startsWith("/admin/roles") ||
+    p.startsWith("/admin/audit-logs") ||
+    p.startsWith("/admin/settings") ||
+    p.startsWith("/admin/tenant"),
+  children: [
     {
-      id: "mod-raid",
-      label: "RAID",
-      icon: <Shield className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "raid"),
-      match: (p) =>
-        /^\/admin\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
-    },
-    {
-      id: "mod-changes",
-      label: "Cambios",
-      icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "changes"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/changes/.test(p),
-    },
-    {
-      id: "mod-documents",
-      label: "Documentos",
-      icon: <FileText className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "documents"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/documents/.test(p),
-    },
-    {
-      id: "mod-lessons",
-      label: "Lecciones",
-      icon: <Lightbulb className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "lessons"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/lessons/.test(p),
-    },
-    {
-      id: "mod-minutes",
-      label: "Minutas",
-      icon: <MessageSquare className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "minutes"),
-      match: (p) =>
-        /^\/admin\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
-    },
-    {
-      id: "mod-plan",
-      label: "Plan",
-      icon: <ListTree className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "plan"),
-      match: (p) =>
-        /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
-    },
-    {
-      id: "mod-areas",
-      label: "Áreas",
-      icon: <Users className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "areas"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
-    },
-    {
-      id: "mod-reports",
-      label: "Reporte IA",
-      icon: <Sparkles className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "reports"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/reports/.test(p),
-    },
-  ];
-
-  return [
-    {
-      id: "dashboard",
-      label: "Tablero",
-      icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
-      href: "/dashboard",
-      match: (p) => p === "/dashboard",
-    },
-    {
-      id: "requests",
-      label: "Solicitudes",
-      icon: <ClipboardList className="h-4 w-4" aria-hidden />,
-      href: "/admin/requests",
-      match: (p) => p.startsWith("/admin/requests"),
-    },
-    {
-      id: "organizations",
-      label: "Organizaciones",
+      id: "tenant-info",
+      label: "Mi tenant",
       icon: <Building2 className="h-4 w-4" aria-hidden />,
-      href: "/admin/organizations",
-      match: (p) => p.startsWith("/admin/organizations"),
-      children: [
-        {
-          id: "programs",
-          label: "Programas",
-          icon: <Network className="h-4 w-4" aria-hidden />,
-          href: "/admin/programs",
-          match: (p) => p.startsWith("/admin/programs"),
-        },
-        {
-          id: "projects",
-          label: "Proyectos",
-          icon: <FolderKanban className="h-4 w-4" aria-hidden />,
-          href: "/admin/projects",
-          match: (p) => p.startsWith("/admin/projects"),
-          children: [
-            {
-              id: "project-modules",
-              label: "Módulos de Proyectos",
-              icon: <Layers className="h-4 w-4" aria-hidden />,
-              match: (p) => /^\/admin\/projects\/[^/]+\/(raid|risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|areas|ai-minutes|reports)/.test(p),
-              children: projectModules,
-            },
-          ],
-        },
-      ],
+      href: "/admin/tenant",
+      match: (p) => p.startsWith("/admin/tenant"),
     },
     {
-      id: "admin",
-      label: "Admin",
-      icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
-      match: (p) =>
-        p.startsWith("/admin/supervision") ||
-        p.startsWith("/admin/users") ||
-        p.startsWith("/admin/roles") ||
-        p.startsWith("/admin/audit-logs") ||
-        p.startsWith("/admin/settings") ||
-        p.startsWith("/admin/tenant"),
-      children: [
-        {
-          id: "tenant-info",
-          label: "Mi tenant",
-          icon: <Building2 className="h-4 w-4" aria-hidden />,
-          href: "/admin/tenant",
-          match: (p) => p.startsWith("/admin/tenant"),
-        },
-        {
-          id: "tenant-panel",
-          label: "Panel del Tenant",
-          icon: <Eye className="h-4 w-4" aria-hidden />,
-          href: "/admin/supervision",
-          match: (p) => p.startsWith("/admin/supervision"),
-        },
-        {
-          id: "users",
-          label: "Usuarios",
-          icon: <Users className="h-4 w-4" aria-hidden />,
-          href: "/admin/users",
-          match: (p) => p.startsWith("/admin/users"),
-        },
-        {
-          id: "roles",
-          label: "Roles",
-          icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
-          href: "/admin/roles",
-          match: (p) => p.startsWith("/admin/roles"),
-        },
-        {
-          id: "audit",
-          label: "Auditoría",
-          icon: <ScrollText className="h-4 w-4" aria-hidden />,
-          href: "/admin/audit-logs",
-          match: (p) => p.startsWith("/admin/audit-logs"),
-        },
-        {
-          id: "settings",
-          label: "Configuración",
-          icon: <Cog className="h-4 w-4" aria-hidden />,
-          href: "/admin/settings",
-          match: (p) => p.startsWith("/admin/settings"),
-        },
-      ],
+      id: "tenant-panel",
+      label: "Panel del Tenant",
+      icon: <Eye className="h-4 w-4" aria-hidden />,
+      href: "/admin/supervision",
+      match: (p) => p.startsWith("/admin/supervision"),
     },
-  ];
-}
+    {
+      id: "users",
+      label: "Usuarios",
+      icon: <Users className="h-4 w-4" aria-hidden />,
+      href: "/admin/users",
+      match: (p) => p.startsWith("/admin/users"),
+    },
+    {
+      id: "roles",
+      label: "Roles",
+      icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+      href: "/admin/roles",
+      match: (p) => p.startsWith("/admin/roles"),
+    },
+    {
+      id: "audit",
+      label: "Auditoría",
+      icon: <ScrollText className="h-4 w-4" aria-hidden />,
+      href: "/admin/audit-logs",
+      match: (p) => p.startsWith("/admin/audit-logs"),
+    },
+    {
+      id: "settings",
+      label: "Configuración",
+      icon: <Cog className="h-4 w-4" aria-hidden />,
+      href: "/admin/settings",
+      match: (p) => p.startsWith("/admin/settings"),
+    },
+  ],
+};
 
 const SUPERADMIN_NAV: NavItem[] = [
   {
@@ -349,16 +235,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const close = () => setOpen(false);
 
-  const nav = useMemo(() => buildNav(pathname), [pathname]);
+  const adminVisible = useMemo(
+    () => Boolean(user && !user.is_superadmin),
+    [user],
+  );
 
   useEffect(() => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      collectExpandedIds(nav, pathname, next);
+      collectExpandedIds(TOP_NAV, pathname, next);
+      if (adminVisible) collectExpandedIds([ADMIN_NAV], pathname, next);
       collectExpandedIds(SUPERADMIN_NAV, pathname, next);
       return next;
     });
-  }, [pathname, nav]);
+  }, [pathname, adminVisible]);
 
   const toggle = (id: string) =>
     setExpanded((prev) => {
@@ -405,14 +295,27 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-2">
           <NavTree
-            items={nav}
+            items={TOP_NAV}
             pathname={pathname}
             onNavigate={close}
             expanded={expanded}
             toggle={toggle}
           />
-          {user && !user.is_superadmin ? (
-            <OrgTreeNav onNavigate={close} />
+          {adminVisible ? (
+            <div className="mt-0.5">
+              <OrgTreeNav onNavigate={close} />
+            </div>
+          ) : null}
+          {adminVisible ? (
+            <div className="mt-0.5">
+              <NavTree
+                items={[ADMIN_NAV]}
+                pathname={pathname}
+                onNavigate={close}
+                expanded={expanded}
+                toggle={toggle}
+              />
+            </div>
           ) : null}
           {user?.is_superadmin ? (
             <>

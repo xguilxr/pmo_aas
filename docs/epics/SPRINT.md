@@ -7,7 +7,7 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-032 — Restructurar sidebar principal (drill-down real)
+US-NEW-033 — Panel de organización → página de recursos reales
 ```
 
 ---
@@ -16,9 +16,9 @@ US-NEW-032 — Restructurar sidebar principal (drill-down real)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-032 | EP013 | Restructurar sidebar principal (drill-down real) | Bloque 9 |
-| 2 | US-NEW-033 | EP013 | Panel de organización → página de recursos reales | Bloque 9 |
-| 3 | US-NEW-034 | EP013 | Página resumen de programa | Bloque 9 |
+| 1 | US-NEW-033 | EP013 | Panel de organización → página de recursos reales | Bloque 9 |
+| 2 | US-NEW-034 | EP013 | Página resumen de programa | Bloque 9 |
+| 3 | US-NEW-035 | EP013 | Tabs inline en detalle de proyecto (supersede US-NEW-017) | Bloque 9 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -57,6 +57,7 @@ US-NEW-032 — Restructurar sidebar principal (drill-down real)
 | US-NEW-025 | Iconos en paneles de tenant + jerarquía | `feat(superadmin): US-NEW-025 — iconos en paneles` | 2026-04-20 |
 | US-NEW-026 | Visión General = Tenants + Health unificados | `feat(superadmin): US-NEW-026 — visión general unificada` | 2026-04-20 |
 | US-NEW-031 | Upload y display del logo del tenant en chrome | `feat(branding): US-NEW-031 — upload y display del logo del tenant en chrome` | 2026-04-20 |
+| US-NEW-032 | Restructurar sidebar principal (drill-down real) | `feat(web): US-NEW-032 — sidebar drill-down real; elimina duplicado y módulos de proyecto` | 2026-04-20 |
 
 ---
 
@@ -111,7 +112,7 @@ US-NEW-032 — Restructurar sidebar principal (drill-down real)
 ### Bloque 9 — Refactor de navegación (EP013) — issue #17
 **Orden de ejecución** (1 US por commit, en este orden):
 - [x] US-NEW-031 — Upload y display del logo del tenant en chrome ✅
-- [ ] US-NEW-032 — Restructurar sidebar principal (drill-down real; quitar "Módulos de proyecto" y duplicado de Organizaciones)
+- [x] US-NEW-032 — Restructurar sidebar principal (drill-down real; quitar "Módulos de proyecto" y duplicado de Organizaciones) ✅
 - [ ] US-NEW-033 — Panel de organización → página de recursos reales (fix bug + enhancement)
 - [ ] US-NEW-034 — Página resumen de programa (KPIs + lista de proyectos)
 - [ ] US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017)

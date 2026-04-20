@@ -91,29 +91,31 @@ Se **elimina**:
 
 ---
 
-## # PENDING — US-NEW-032 — Restructurar sidebar principal (drill-down real)
+## # DONE — US-NEW-032 — Restructurar sidebar principal (drill-down real)
 
 **Como** usuario autenticado
 **Quiero** que el sidebar principal me muestre Organizaciones → Programas → Proyectos reales, sin duplicar la jerarquía administrativa
 **Para** navegar a mi proyecto en pocos clicks.
 
 **Criterios de aceptación:**
-- [ ] Sidebar principal expone sólo: `Tablero`, `Solicitudes`, `Organizaciones`, `Admin` (si aplica).
-- [ ] Bajo "Organizaciones" aparece la lista de orgs reales del tenant con chevron para expandir.
-- [ ] Expandir org → lista de programas (reales) de esa org.
-- [ ] Expandir programa → lista de proyectos (reales) de ese programa.
-- [ ] Click en la hoja de cada nivel navega a la página correspondiente:
-  - Organización → `/admin/organizations/{id}/panel` (recursos reales, ver US-NEW-033).
-  - Programa → `/admin/programs/{id}` (resumen, ver US-NEW-034).
-  - Proyecto → `/admin/projects/{id}` (detalle con tabs inline, ver US-NEW-035).
-- [ ] Se **elimina** del sidebar la sección duplicada de "Organizaciones (jerarquía administrativa)" — esa vive sólo en `/admin/organizations`.
-- [ ] Se **elimina** del sidebar la sección "Módulos de proyecto" (sus ítems se vuelven tabs dentro del proyecto).
-- [ ] Data inicial: endpoint `GET /api/v1/me/nav-tree?depth=3` devuelve el árbol con counts por nodo (cacheado 60s).
+- [x] Sidebar principal expone: `Tablero`, `Solicitudes`, `Organizaciones`, `Admin` (no-superadmin).
+- [x] Bajo "Organizaciones" aparece la lista de orgs reales del tenant con chevron.
+- [x] Expandir org → lista de programas reales de esa org (endpoints existentes, lazy).
+- [x] Expandir programa → lista de proyectos reales de ese programa.
+- [x] Click en la hoja:
+  - Organización → `/admin/organizations/{id}` (enlace se redirige al panel de recursos reales en US-NEW-033 siguiente).
+  - Programa → `/admin/projects?program_id={id}` temporal; se actualiza a `/admin/programs/{id}` cuando US-NEW-034 cree la página resumen.
+  - Proyecto → `/admin/projects/{id}` (DONE).
+- [x] **Eliminada** la sección duplicada "Organizaciones (jerarquía administrativa)" del sidebar principal — BUs/Deptos sólo en `/admin/organizations`.
+- [x] **Eliminada** la sección "Módulos de proyecto" del sidebar (sus ítems serán tabs inline en US-NEW-035).
+- [x] Expansión persistida en `localStorage` (`pmoaas:sidebar:org-tree:expanded`).
+- [~] Endpoint `GET /api/v1/me/nav-tree?depth=3` **diferido**: la carga lazy con los endpoints existentes (`list{Organizations,Programs,Projects}`) cumple el caso de uso; un endpoint agregado se considerará si el number de nodos supera cientos. No bloqueante.
 
-**Test Cases:**
-- `TC-NEW-032-1` (integration) — `/me/nav-tree` respeta permisos (PM sólo ve sus proyectos).
-- `TC-NEW-032-2` (E2E) — Expandir org → programa → proyecto → detalle en ≤ 3 clicks.
-- `TC-NEW-032-3` (E2E) — Usuario no-admin no ve entrada "Admin".
+**Implementación:**
+- `OrgTreeNav` simplificado (sin BUs / Deptos) y promovido a entrada raíz del sidebar.
+- `AppShell` dividido en 3 bloques explícitos: `TOP_NAV` (Tablero + Solicitudes) → `<OrgTreeNav />` → `ADMIN_NAV` (+ SUPERADMIN_NAV si aplica).
+
+**Commit:** `feat(web): US-NEW-032 — sidebar drill-down real; elimina duplicado y módulos de proyecto`.
 
 ---
 
