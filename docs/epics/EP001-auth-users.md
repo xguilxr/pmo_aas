@@ -174,6 +174,40 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 ---
 
+### US-013 — Menú de usuario en el topbar
+
+**Como** usuario autenticado
+**Quiero** ver mi identidad y cerrar sesión desde cualquier pantalla
+**Para** controlar mi sesión sin abandonar el contexto actual.
+
+**Criterios de aceptación:**
+- [ ] El chrome (sidebar + topbar) usa el azul marino `#0E164F` definido en
+      `docs/design-system/style.md`.
+- [ ] El sidebar **no** contiene footer con datos del usuario; su única
+      función es navegación.
+- [ ] En la esquina superior derecha del topbar vive un componente
+      `UserMenu`:
+  - **Trigger**: avatar (iniciales derivadas de `full_name` / `username` /
+    `email`) + nombre truncado + chevron. Altura 36 px, radius `md`.
+  - **Dropdown** (256 px de ancho): avatar 36 px, nombre completo, email,
+    chips con roles visibles o badge "Super admin" cuando aplica, separador
+    y botón `Cerrar sesión`.
+- [ ] Cerrar sesión invoca `POST /api/v1/auth/logout`, limpia `localStorage`
+      (`access_token`, `user`, `active_tenant_id`) y redirige a `/login`.
+- [ ] El dropdown se cierra con click fuera, tecla `Esc` o al seleccionar
+      una opción.
+- [ ] Accesibilidad: `aria-haspopup="menu"`, `aria-expanded`, `role="menu"`
+      y `role="menuitem"` en las opciones; focus visible.
+
+**Test Cases:**
+- `TC-023` (E2E) — Click en avatar abre dropdown con nombre/email/roles.
+- `TC-024` (E2E) — Click en "Cerrar sesión" limpia token y redirige a `/login`.
+- `TC-025` (E2E) — `Esc` cierra el dropdown; click afuera lo cierra.
+- `TC-026` (unit) — Iniciales se calculan a partir de `full_name` (primeras
+  dos palabras, en mayúsculas).
+
+---
+
 ## Notas técnicas
 
 ### Modelos de BD involucrados
