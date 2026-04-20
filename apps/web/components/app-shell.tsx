@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import {
+  Activity,
   Building2,
   ClipboardList,
   Cog,
@@ -92,10 +93,28 @@ const ADMIN_NAV: NavItem[] = [
 
 const SUPERADMIN_NAV: NavItem[] = [
   {
+    href: "/superadmin",
+    label: "Visión general",
+    icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
+    match: (p) => p === "/superadmin",
+  },
+  {
     href: "/superadmin/tenants",
     label: "Tenants",
     icon: <ServerCog className="h-4 w-4" aria-hidden />,
     match: (p) => p.startsWith("/superadmin/tenants"),
+  },
+  {
+    href: "/superadmin/logs",
+    label: "Logs platform",
+    icon: <ScrollText className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/superadmin/logs"),
+  },
+  {
+    href: "/superadmin/health",
+    label: "Health",
+    icon: <Activity className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/superadmin/health"),
   },
 ];
 
