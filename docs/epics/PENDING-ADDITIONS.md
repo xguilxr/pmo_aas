@@ -66,8 +66,11 @@
 - [ ] Cambio de email requiere verificación (post-MVP).
 
 **Test Cases:**
-- `TC-NEW-015` (E2E) — Editar nombre → se refleja en topbar sin reload.
-- `TC-NEW-016` (integration) — Upload avatar → URL guardada y servida correctamente.
+- `TC-NEW-015` (E2E) — Editar nombre → se refleja en topbar sin reload ✅
+- `TC-NEW-016` (integration) — Upload avatar → URL guardada y servida correctamente (PENDIENTE: infra de upload)
+
+**Estado de integración:** INTEGRATED parcial en EP001 (US-NEW-009). Avatar
+upload y `phone` pendientes en iteración siguiente.
 
 ---
 

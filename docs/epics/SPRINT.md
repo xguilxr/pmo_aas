@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-009
-Epic: EP001-auth-users.md
-Título: Página administrar cuenta (perfil + cambiar password)
-Tipo: Frontend — /account con dos secciones
-Commit esperado: "feat(web): US-NEW-009 — página /account perfil + password"
-Precondición: endpoints `/auth/change-password` y `/users/me/preferences` existen.
+US: US-NEW-011
+Epic: EP003-project-requests.md
+Título: Campos adicionales en solicitud + BU/Depto como FK
+Tipo: Backend + Frontend — formulario + schema + validación
+Commit esperado: "feat(requests): US-NEW-011 — campos adicionales en solicitud"
+Precondición: US-NEW-002 DONE (BU/Depto FKs disponibles en project_requests).
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: endpoints `/auth/change-password` y `/users/me/preferences` exist
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-011 | EP003 | Campos adicionales en solicitud | Backend + Frontend |
-| 2 | US-NEW-012 | EP003 | Project Charter: tabla + generación | Backend |
-| 3 | US-NEW-013 | EP003 | Charter como documento en el proyecto | Backend |
+| 1 | US-NEW-012 | EP003 | Project Charter: tabla + generación | Backend |
+| 2 | US-NEW-013 | EP003 | Charter como documento en el proyecto | Backend |
+| 3 | US-BUG-002 | EP004 | Fix distorsión gráficas de barra | Frontend |
 
 ---
 
@@ -41,6 +41,7 @@ Precondición: endpoints `/auth/change-password` y `/users/me/preferences` exist
 | US-NEW-007 | Toggle dark/light mode en dropdown usuario | `feat(web): US-NEW-007 — toggle dark/light en user dropdown` | 2026-04-20 |
 | US-NEW-008 | Toggle de idioma (ES/EN) en dropdown usuario | `feat(web): US-NEW-008 — toggle idioma en user dropdown` | 2026-04-20 |
 | US-NEW-010 | Color chrome #182e4e + Senior PMO como admin | `feat(auth): US-NEW-010 — chrome #182e4e + Senior PMO admin` | 2026-04-20 |
+| US-NEW-009 | Página /account (perfil + cambiar password) | `feat(web): US-NEW-009 — página /account perfil + password` | 2026-04-20 |
 
 ---
 
@@ -57,7 +58,7 @@ Precondición: endpoints `/auth/change-password` y `/users/me/preferences` exist
 ### Bloque 2 — Topbar y UX base (EP001)
 - [x] US-NEW-007 — Toggle dark/light en dropdown usuario ✅
 - [x] US-NEW-008 — Toggle idioma en dropdown usuario ✅
-- [ ] US-NEW-009 — Página administrar cuenta (perfil + cambiar password)
+- [x] US-NEW-009 — Página administrar cuenta (perfil + cambiar password) ✅
 - [x] US-NEW-010 — Color chrome #182e4e + Senior PMO = admin ✅
 
 ### Bloque 3 — Project Charter (EP003)

@@ -21,3 +21,21 @@ export function updateMyPreferences(
     body,
   });
 }
+
+export type MyProfile = {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  avatar_url: string | null;
+};
+
+export type MyProfilePatch = { full_name?: string };
+
+export function getMyProfile(): Promise<MyProfile> {
+  return apiFetch<MyProfile>("/api/v1/users/me");
+}
+
+export function updateMyProfile(body: MyProfilePatch): Promise<MyProfile> {
+  return apiFetch<MyProfile>("/api/v1/users/me", { method: "PATCH", body });
+}

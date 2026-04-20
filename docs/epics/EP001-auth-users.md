@@ -309,8 +309,29 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 
 ---
 
-### US-NEW-009 — # PENDING — Página administrar cuenta (perfil + cambiar password)
-*(ver PENDING-ADDITIONS.md)*
+### US-NEW-009 — Página administrar cuenta (perfil + cambiar password)
+
+**Como** usuario autenticado
+**Quiero** editar mis datos personales y cambiar mi contraseña
+**Para** mantener mi perfil actualizado.
+
+**Criterios de aceptación:**
+- [x] Opción "Administrar cuenta" en dropdown de usuario → navega a `/account`.
+- [x] Página con dos secciones:
+  - **Detalles personales**: `full_name` editable, `email` readonly (cambio requiere verificación, post-MVP).
+  - **Cambiar contraseña**: current + new + confirm (mismos criterios que US-004).
+- [x] `GET /api/v1/users/me` — obtener perfil.
+- [x] `PATCH /api/v1/users/me` — actualizar `full_name` (audit log).
+- [x] Al guardar, actualiza `StoredUser` en localStorage → topbar muestra nuevo nombre sin reload.
+- [ ] Upload de avatar (PNG/JPG ≤ 2 MB): pospuesto a iteración siguiente (requiere infra de upload).
+- [ ] `phone` opcional: pospuesto (agregar columna a users).
+
+**Test Cases:**
+- `TC-NEW-015` (integration) — PATCH /users/me actualiza full_name ✅
+- `TC-NEW-015b` (integration) — full_name < 2 chars → 422 ✅
+
+**Estado de integración:** DONE (US-NEW-009), con avatar/phone como trabajo
+de seguimiento.
 
 ### US-NEW-010 — Color chrome #182e4e + Senior PMO como admin
 

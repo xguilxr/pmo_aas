@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Monitor, Moon, Sun } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Monitor,
+  Moon,
+  Sun,
+  UserCircle,
+} from "lucide-react";
 
 import { useLocale, type Locale } from "@/components/locale-provider";
 import { useTheme } from "@/components/theme-provider";
@@ -214,6 +222,15 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
             </div>
           </div>
           <div className="p-1">
+            <Link
+              href="/account"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-left text-[13px] text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
+            >
+              <UserCircle className="h-3.5 w-3.5" aria-hidden />
+              Administrar cuenta
+            </Link>
             <button
               type="button"
               role="menuitem"

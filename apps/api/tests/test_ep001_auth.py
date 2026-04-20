@@ -428,3 +428,45 @@ async def test_is_admin_equivalent_helper(client, db_session):
         permissions={"admin.users": {"read"}, "dashboard": {"read"}},
     )
     assert cu_sr.is_admin_equivalent is True
+
+
+# ============================================================================
+# US-NEW-009 — Perfil personal via PATCH /users/me
+# ============================================================================
+
+
+# TC-NEW-015: editar nombre → se refleja en el perfil
+@pytest.mark.asyncio
+async def test_tcnew015_update_full_name(client, db_session):
+    t = await create_tenant(db_session, slug="acmen", name="Acme")
+    await create_user(
+        db_session, tenant=t, username="juan",
+        email="juan@acmen.example.com", password="Str0ng-Juan-1!",
+        full_name="Juan Pérez",
+    )
+    auth = await login(client, "juan", "Str0ng-Juan-1!")
+    r = await client.patch(
+        "/api/v1/users/me",
+        json={"full_name": "Juan P. López"},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200 and r.json()["full_name"] == "Juan P. López"
+
+    # GET refleja el cambio
+    g = await client.get("/api/v1/users/me", headers=auth["_authz"])
+    assert g.json()["full_name"] == "Juan P. López"
+
+
+# full_name muy corto → 422
+@pytest.mark.asyncio
+async def test_update_full_name_too_short(client, db_session):
+    t = await create_tenant(db_session, slug="vshort", name="VS")
+    await create_user(
+        db_session, tenant=t, username="u",
+        email="u@vshort.example.com", password="Str0ng-Vs-1!",
+    )
+    auth = await login(client, "u", "Str0ng-Vs-1!")
+    r = await client.patch(
+        "/api/v1/users/me", json={"full_name": "X"}, headers=auth["_authz"]
+    )
+    assert r.status_code == 422
