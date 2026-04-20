@@ -206,3 +206,36 @@ GET    /api/v1/admin/audit-logs/export.csv
 - [ ] Bulk actions probadas con 100 elementos sin degradar performance.
 - [ ] TC-MT-005 (admin A no gestiona B) y TC-MT-006 (logs aislados) verdes.
 - [ ] UI elegante con tablas densas estilo macOS Finder (ver design system).
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-023 — Gestión de Tenant (acciones propuestas)
+
+**Como** Admin / Senior PMO
+**Quiero** un panel para ver y editar la información de mi tenant
+**Para** mantener identidad y conocer uso sin depender de super admin.
+
+**Criterios de aceptación:**
+- [x] `GET /api/v1/admin/tenant` devuelve: id, slug, name, logo_url,
+  is_active, plan, settings y stats (active_users, total_users,
+  total_organizations, total_projects, storage_bytes).
+- [x] `PATCH /api/v1/admin/tenant` permite actualizar `name` y `logo_url`.
+  Rechaza nombres < 2 caracteres. Ignora `slug` silenciosamente
+  (solo super admin lo cambia).
+- [x] Página `/admin/tenant`:
+  - Tarjeta con logo, nombre (editable), slug (readonly).
+  - Tarjeta de plan actual con link "Contactar soporte".
+  - Stats: usuarios activos, organizaciones, proyectos, storage humano.
+  - Link a `/admin/settings` para idioma, moneda, timezone, IA.
+- [x] Storage calculado sumando `documents.size_bytes` current.
+- [x] Entrada "Mi tenant" agregada al nodo Admin del sidebar.
+
+**Test Cases:**
+- `test_usnew023_get_tenant_info_with_stats` ✅
+- `test_usnew023_patch_tenant_name_and_logo` ✅
+- `test_usnew023_patch_ignores_slug` ✅
+- `test_usnew023_patch_name_too_short` → 422 ✅
+
+**Estado de integración:** DONE (US-NEW-023).

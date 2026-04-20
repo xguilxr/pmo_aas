@@ -409,7 +409,13 @@ Campos adicionales al formulario de solicitud:
 
 ## EP007-admin.md — Agregar user stories
 
-### # PENDING — US-NEW-023 — Gestión de Tenant (acciones propuestas)
+### # INTEGRATED — US-NEW-023 — Gestión de Tenant (acciones propuestas)
+
+**Estado de integración:** INTEGRATED en EP007 (US-NEW-023).
+
+---
+
+### # PENDING (referencia) — US-NEW-023
 
 **Propuesta de acciones disponibles para Admin/Senior PMO en su propio tenant:**
 

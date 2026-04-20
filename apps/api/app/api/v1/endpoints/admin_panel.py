@@ -254,6 +254,141 @@ async def admin_force_close(
     return {"ok": True, "phase": p.phase}
 
 
+# ---- Tenant info + stats (US-NEW-023) ----
+class TenantInfoUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    logo_url: str | None = Field(default=None, max_length=500)
+
+
+@router.get("/tenant")
+async def get_tenant_info(
+    cu: CurrentUser = Depends(require_permission("admin.users", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Info + stats del tenant actual (US-NEW-023).
+
+    Devuelve identidad del tenant, settings (reexportados), plan y
+    estadísticas agregadas (usuarios activos, proyectos, storage).
+    """
+    tenant_id = _tenant(cu)
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        raise not_found("Tenant")
+
+    active_users = (
+        await db.execute(
+            select(func.count(User.id)).where(
+                User.tenant_id == str(tenant_id), User.is_active.is_(True)
+            )
+        )
+    ).scalar_one() or 0
+    total_users = (
+        await db.execute(
+            select(func.count(User.id)).where(User.tenant_id == str(tenant_id))
+        )
+    ).scalar_one() or 0
+    total_projects = (
+        await db.execute(
+            select(func.count(Project.id)).where(
+                Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one() or 0
+    total_orgs = (
+        await db.execute(
+            select(func.count(Organization.id)).where(
+                Organization.tenant_id == str(tenant_id)
+            )
+        )
+    ).scalar_one() or 0
+
+    # Storage: suma de `documents.size_bytes` actuales (deleted_at IS NULL).
+    # Import diferido para no forzar el módulo si no existe.
+    try:
+        from app.models.modules import Document  # type: ignore
+
+        storage_bytes = (
+            await db.execute(
+                select(func.coalesce(func.sum(Document.size_bytes), 0)).where(
+                    Document.tenant_id == str(tenant_id),
+                    Document.deleted_at.is_(None),
+                    Document.is_current.is_(True),
+                )
+            )
+        ).scalar_one() or 0
+    except Exception:
+        storage_bytes = 0
+
+    # Plan: por ahora se guarda en settings.plan (string libre); si no
+    # está, devolvemos "mvp" como default.
+    plan = (t.settings or {}).get("plan") or "mvp"
+
+    return {
+        "id": str(t.id),
+        "slug": t.slug,
+        "name": t.name,
+        "logo_url": t.logo_url,
+        "is_active": t.is_active,
+        "plan": plan,
+        "settings": t.settings or {},
+        "stats": {
+            "active_users": int(active_users),
+            "total_users": int(total_users),
+            "total_organizations": int(total_orgs),
+            "total_projects": int(total_projects),
+            "storage_bytes": int(storage_bytes),
+        },
+    }
+
+
+@router.patch("/tenant")
+async def update_tenant_info(
+    body: TenantInfoUpdate,
+    cu: CurrentUser = Depends(require_permission("admin.users", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Actualiza nombre y/o logo del tenant (US-NEW-023).
+
+    Slug, plan y eliminación son exclusivos de super admin y se hacen
+    desde el panel superadmin.
+    """
+    tenant_id = _tenant(cu)
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        raise not_found("Tenant")
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        return {
+            "id": str(t.id),
+            "slug": t.slug,
+            "name": t.name,
+            "logo_url": t.logo_url,
+        }
+    for field, value in updates.items():
+        setattr(t, field, value)
+    await write_audit(
+        db,
+        action="tenant.info.update",
+        module="admin",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="tenant",
+        entity_id=str(t.id),
+        details={"fields": list(updates.keys())},
+    )
+    await db.commit()
+    return {
+        "id": str(t.id),
+        "slug": t.slug,
+        "name": t.name,
+        "logo_url": t.logo_url,
+    }
+
+
 # ---- Tenant settings ----
 class TenantSettingsUpdate(BaseModel):
     locale: str | None = None

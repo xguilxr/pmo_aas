@@ -174,8 +174,16 @@ function buildNav(pathname: string): NavItem[] {
         p.startsWith("/admin/users") ||
         p.startsWith("/admin/roles") ||
         p.startsWith("/admin/audit-logs") ||
-        p.startsWith("/admin/settings"),
+        p.startsWith("/admin/settings") ||
+        p.startsWith("/admin/tenant"),
       children: [
+        {
+          id: "tenant-info",
+          label: "Mi tenant",
+          icon: <Building2 className="h-4 w-4" aria-hidden />,
+          href: "/admin/tenant",
+          match: (p) => p.startsWith("/admin/tenant"),
+        },
         {
           id: "tenant-panel",
           label: "Panel del Tenant",
