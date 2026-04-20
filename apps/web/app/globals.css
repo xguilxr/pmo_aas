@@ -1,52 +1,60 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
+  /* Escala neutra — warm, hue 80, low chroma */
   --color-neutral-0: oklch(100% 0 0);
-  --color-neutral-50: oklch(98.4% 0.002 247);
-  --color-neutral-100: oklch(96.5% 0.003 247);
-  --color-neutral-200: oklch(92.4% 0.005 247);
-  --color-neutral-300: oklch(86.5% 0.008 247);
-  --color-neutral-400: oklch(70.5% 0.012 247);
-  --color-neutral-500: oklch(56.2% 0.014 247);
-  --color-neutral-600: oklch(45.8% 0.014 247);
-  --color-neutral-700: oklch(36.4% 0.012 247);
-  --color-neutral-800: oklch(26.2% 0.010 247);
-  --color-neutral-900: oklch(18.5% 0.008 247);
-  --color-neutral-950: oklch(12.0% 0.006 247);
+  --color-neutral-50: oklch(98.5% 0.003 80);
+  --color-neutral-100: oklch(96.8% 0.004 80);
+  --color-neutral-200: oklch(92.5% 0.005 80);
+  --color-neutral-300: oklch(87% 0.006 80);
+  --color-neutral-400: oklch(70% 0.008 80);
+  --color-neutral-500: oklch(55% 0.009 80);
+  --color-neutral-600: oklch(42% 0.009 80);
+  --color-neutral-700: oklch(30% 0.008 80);
+  --color-neutral-800: oklch(20% 0.006 80);
+  --color-neutral-900: oklch(12% 0.004 80);
+  --color-neutral-950: oklch(7% 0.003 80);
 
-  --color-app: oklch(98.4% 0.002 247);
-  --color-surface: oklch(100% 0 0);
-  --color-subtle: oklch(96.5% 0.003 247);
-  --color-muted: oklch(92.4% 0.005 247);
-  --color-primary: oklch(18.5% 0.008 247);
-  --color-secondary: oklch(36.4% 0.012 247);
-  --color-tertiary: oklch(56.2% 0.014 247);
-  --color-disabled: oklch(70.5% 0.012 247);
-  --color-inverse: oklch(100% 0 0);
+  /* Semánticos (nuevos nombres) */
+  --color-bg-app: var(--color-neutral-50);
+  --color-bg-surface: var(--color-neutral-0);
+  --color-bg-subtle: var(--color-neutral-100);
+  --color-bg-muted: var(--color-neutral-200);
+
+  /* Aliases retrocompat para código que ya usa --color-app / --color-surface / etc. */
+  --color-app: var(--color-neutral-50);
+  --color-surface: var(--color-neutral-0);
+  --color-subtle: var(--color-neutral-100);
+  --color-muted: var(--color-neutral-200);
+  --color-primary: var(--color-neutral-800);
+  --color-secondary: var(--color-neutral-600);
+  --color-tertiary: var(--color-neutral-500);
+  --color-disabled: var(--color-neutral-400);
+  --color-inverse: var(--color-neutral-0);
 
   --color-accent: oklch(55% 0.15 240);
   --color-accent-hover: oklch(50% 0.16 240);
-  --color-accent-fg: oklch(100% 0 0);
+  --color-accent-fg: var(--color-neutral-0);
 
-  --color-success-bg: oklch(96% 0.04 145);
-  --color-success-border: oklch(78% 0.10 145);
-  --color-success-fg: oklch(38% 0.10 145);
+  --color-success-bg: oklch(94% 0.05 155);
+  --color-success-border: oklch(82% 0.09 155);
+  --color-success-fg: oklch(42% 0.11 155);
 
-  --color-warning-bg: oklch(97% 0.05 80);
-  --color-warning-border: oklch(82% 0.12 80);
-  --color-warning-fg: oklch(42% 0.12 65);
+  --color-warning-bg: oklch(95% 0.06 85);
+  --color-warning-border: oklch(84% 0.11 85);
+  --color-warning-fg: oklch(45% 0.13 85);
 
-  --color-danger-bg: oklch(96% 0.03 25);
-  --color-danger-border: oklch(78% 0.12 25);
-  --color-danger-fg: oklch(44% 0.16 25);
+  --color-danger-bg: oklch(94% 0.04 25);
+  --color-danger-border: oklch(82% 0.08 25);
+  --color-danger-fg: oklch(48% 0.13 25);
 
-  --color-info-bg: oklch(96% 0.03 240);
-  --color-info-border: oklch(80% 0.09 240);
-  --color-info-fg: oklch(42% 0.13 240);
+  --color-info-bg: oklch(94% 0.04 240);
+  --color-info-border: oklch(82% 0.08 240);
+  --color-info-fg: oklch(46% 0.12 240);
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -54,18 +62,91 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-2xl: 20px;
+  --radius-window: 14px;
+  --radius-modal: 16px;
 
   --shadow-xs: 0 1px 2px 0 oklch(0% 0 0 / 0.04);
-  --shadow-sm: 0 1px 3px 0 oklch(0% 0 0 / 0.06), 0 1px 2px -1px oklch(0% 0 0 / 0.06);
-  --shadow-md: 0 4px 8px -2px oklch(0% 0 0 / 0.08), 0 2px 4px -2px oklch(0% 0 0 / 0.05);
-  --shadow-lg: 0 12px 20px -6px oklch(0% 0 0 / 0.10), 0 4px 8px -4px oklch(0% 0 0 / 0.06);
+  --shadow-sm: 0 1px 3px 0 oklch(0% 0 0 / 0.06), 0 1px 2px -1px oklch(0% 0 0 / 0.04);
+  --shadow-md: 0 4px 8px -2px oklch(0% 0 0 / 0.06), 0 2px 4px -2px oklch(0% 0 0 / 0.04);
+  --shadow-lg: 0 10px 20px -5px oklch(0% 0 0 / 0.08), 0 4px 8px -4px oklch(0% 0 0 / 0.04);
+  --shadow-optical-sm: 0 1px 2px oklch(0% 0 0 / 0.04), 0 2px 8px -2px oklch(0% 0 0 / 0.06);
+  --shadow-optical-md: 0 2px 4px oklch(0% 0 0 / 0.04), 0 8px 24px -4px oklch(0% 0 0 / 0.08),
+    0 16px 40px -8px oklch(0% 0 0 / 0.06);
 }
 
 :root {
   --focus-ring: oklch(55% 0.15 240);
-  --border-subtle: oklch(96.5% 0.003 247);
-  --border-default: oklch(92.4% 0.005 247);
-  --border-strong: oklch(86.5% 0.008 247);
+  --border-subtle: var(--color-neutral-200);
+  --border-default: var(--color-neutral-300);
+  --border-strong: var(--color-neutral-400);
+
+  --text-primary: var(--color-neutral-800);
+  --text-secondary: var(--color-neutral-600);
+  --text-tertiary: var(--color-neutral-500);
+
+  /* Chrome azul (sidebar + topbar translúcido) */
+  --chrome-bg: oklch(42% 0.13 255);
+  --chrome-bg-translucent: oklch(42% 0.13 255 / 0.92);
+  --chrome-border: oklch(36% 0.14 255);
+  --chrome-text: oklch(96% 0.02 255);
+  --chrome-text-muted: oklch(82% 0.04 255);
+  --chrome-hover: oklch(48% 0.13 255);
+  --chrome-active: oklch(36% 0.14 255);
+
+  --chrome-soft-bg: oklch(97% 0.012 240);
+  --chrome-soft-border: oklch(90% 0.018 240);
+  --chrome-soft-text: oklch(36% 0.025 240);
+
+  --material-thin: oklch(100% 0 0 / 0.72);
+  --material-regular: oklch(100% 0 0 / 0.85);
+  --material-thick: oklch(100% 0 0 / 0.94);
+}
+
+.dark,
+[data-theme="dark"] {
+  --color-app: oklch(22% 0.008 250);
+  --color-surface: oklch(26% 0.009 250);
+  --color-subtle: oklch(30% 0.010 250);
+  --color-muted: oklch(34% 0.011 250);
+  --color-primary: oklch(97% 0.004 250);
+  --color-secondary: oklch(82% 0.008 250);
+  --color-tertiary: oklch(68% 0.010 250);
+  --color-disabled: oklch(52% 0.010 250);
+  --color-inverse: oklch(22% 0.008 250);
+
+  --border-subtle: oklch(32% 0.010 250);
+  --border-default: oklch(40% 0.012 250);
+  --border-strong: oklch(50% 0.013 250);
+
+  --text-primary: oklch(97% 0.004 250);
+  --text-secondary: oklch(82% 0.008 250);
+  --text-tertiary: oklch(68% 0.010 250);
+
+  --chrome-bg: oklch(32% 0.10 255);
+  --chrome-bg-translucent: oklch(32% 0.10 255 / 0.92);
+  --chrome-border: oklch(26% 0.10 255);
+  --chrome-hover: oklch(38% 0.11 255);
+  --chrome-active: oklch(26% 0.10 255);
+
+  --color-success-bg: oklch(30% 0.06 155);
+  --color-success-border: oklch(42% 0.09 155);
+  --color-success-fg: oklch(82% 0.12 155);
+
+  --color-warning-bg: oklch(30% 0.07 85);
+  --color-warning-border: oklch(44% 0.11 85);
+  --color-warning-fg: oklch(84% 0.13 85);
+
+  --color-danger-bg: oklch(30% 0.05 25);
+  --color-danger-border: oklch(42% 0.10 25);
+  --color-danger-fg: oklch(80% 0.13 25);
+
+  --color-info-bg: oklch(30% 0.05 240);
+  --color-info-border: oklch(42% 0.10 240);
+  --color-info-fg: oklch(82% 0.12 240);
+
+  --material-thin: oklch(20% 0.006 80 / 0.72);
+  --material-regular: oklch(18% 0.005 80 / 0.85);
+  --material-thick: oklch(15% 0.004 80 / 0.94);
 }
 
 * {
@@ -82,9 +163,11 @@ body {
   background-color: var(--color-app);
   color: var(--color-primary);
   font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  text-wrap: pretty;
 }
 
 *:focus-visible {
@@ -101,5 +184,21 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Utilidades de motion consistentes */
+.motion-enter {
+  animation: motion-enter 200ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes motion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

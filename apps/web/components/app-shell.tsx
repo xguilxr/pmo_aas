@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import {
   Building2,
   ClipboardList,
+  FolderKanban,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -15,7 +16,6 @@ import {
   X,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -39,6 +39,12 @@ const NAV: NavItem[] = [
     label: "Solicitudes",
     icon: <ClipboardList className="h-4 w-4" aria-hidden />,
     match: (p) => p.startsWith("/admin/requests"),
+  },
+  {
+    href: "/admin/projects",
+    label: "Proyectos",
+    icon: <FolderKanban className="h-4 w-4" aria-hidden />,
+    match: (p) => p.startsWith("/admin/projects"),
   },
   {
     href: "/admin/organizations",
@@ -95,25 +101,30 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-[var(--border-default)] bg-[var(--color-surface)] transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-[var(--chrome-border)] transition-transform lg:static lg:translate-x-0",
+          "bg-[var(--chrome-bg-translucent)] backdrop-blur-xl backdrop-saturate-150",
           open ? "translate-x-0" : "-translate-x-full",
         )}
+        style={{ WebkitBackdropFilter: "saturate(140%) blur(20px)" }}
       >
         <div className="flex h-14 items-center justify-between px-5">
-          <Link href="/dashboard" className="text-base font-semibold text-[var(--color-primary)]">
-            PMO-aaS
+          <Link
+            href="/dashboard"
+            className="text-[15px] font-semibold tracking-tight text-[var(--chrome-text)]"
+          >
+            PMO · aaS
           </Link>
           <button
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Cerrar menú"
-            className="lg:hidden inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)]"
+            className="lg:hidden inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)]"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="space-y-1">
+        <nav className="flex-1 overflow-y-auto px-2 py-2">
+          <ul className="space-y-0.5">
             {NAV.map((item) => {
               const active = item.match(pathname);
               return (
@@ -122,10 +133,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors",
+                      "flex h-9 items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 text-[13px] transition-colors",
                       active
-                        ? "bg-[var(--color-subtle)] text-[var(--color-primary)] font-medium"
-                        : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]",
+                        ? "bg-[var(--chrome-active)] font-semibold text-[var(--chrome-text)]"
+                        : "text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)]",
                     )}
                   >
                     {item.icon}
@@ -137,10 +148,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </ul>
           {user?.is_superadmin ? (
             <>
-              <div className="mt-5 px-3 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-tertiary)]">
-                Super Admin
+              <div className="mt-5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]/80">
+                Super admin
               </div>
-              <ul className="mt-1 space-y-1">
+              <ul className="mt-1 space-y-0.5">
                 {SUPERADMIN_NAV.map((item) => {
                   const active = item.match(pathname);
                   return (
@@ -149,10 +160,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                         href={item.href}
                         onClick={() => setOpen(false)}
                         className={cn(
-                          "flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors",
+                          "flex h-9 items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 text-[13px] transition-colors",
                           active
-                            ? "bg-[var(--color-subtle)] text-[var(--color-primary)] font-medium"
-                            : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]",
+                            ? "bg-[var(--chrome-active)] font-semibold text-[var(--chrome-text)]"
+                            : "text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)]",
                         )}
                       >
                         {item.icon}
@@ -165,28 +176,42 @@ export function AppShell({ children }: { children: ReactNode }) {
             </>
           ) : null}
         </nav>
-        <div className="border-t border-[var(--border-default)] px-3 py-3">
-          <div className="px-2 pb-2">
-            <p className="truncate text-sm font-medium text-[var(--color-primary)]">
-              {user?.full_name || user?.username || "—"}
-            </p>
-            <p className="truncate text-xs text-[var(--color-tertiary)]">{user?.email ?? ""}</p>
+        <div className="m-3 rounded-[var(--radius-lg)] border border-[var(--chrome-border)] bg-[var(--chrome-active)]/60 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] bg-[var(--chrome-text)] text-[11px] font-bold text-[var(--chrome-bg)]">
+              {(user?.full_name || user?.username || "U")
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((p) => p.charAt(0).toUpperCase())
+                .join("")}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold text-[var(--chrome-text)]">
+                {user?.full_name || user?.username || "—"}
+              </p>
+              <p className="truncate text-[11px] text-[var(--chrome-text-muted)]">
+                {user?.email ?? ""}
+              </p>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
+          <button
+            type="button"
             onClick={handleLogout}
-            loading={signingOut}
+            disabled={signingOut}
+            className="mt-2 inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 text-[12px] font-medium text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)] disabled:opacity-60"
           >
-            <LogOut className="h-4 w-4" aria-hidden />
+            {signingOut ? (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <LogOut className="h-3.5 w-3.5" aria-hidden />
+            )}
             Cerrar sesión
-          </Button>
+          </button>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center gap-2 border-b border-[var(--border-default)] bg-[var(--color-surface)] px-4 lg:px-6">
+        <header className="flex h-14 items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--color-surface)] px-4 lg:px-6">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -195,7 +220,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Menu className="h-5 w-5" aria-hidden />
           </button>
-          <div className="text-sm text-[var(--color-tertiary)]">PMO-aaS</div>
+          <div className="text-[13px] text-[var(--color-tertiary)]">PMO · aaS</div>
         </header>
         <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
       </div>
