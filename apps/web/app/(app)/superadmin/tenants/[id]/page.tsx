@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, LogIn, ServerCog, Trash2 } from "lucide-react";
+import { AlertTriangle, LogIn, Pause, Play, ServerCog, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -19,6 +19,12 @@ import {
   softDeleteTenant,
   type TenantDetail,
 } from "@/lib/api/superadmin";
+import {
+  freezeTenant,
+  getTenantFullDetail,
+  unfreezeTenant,
+  type TenantFullDetail,
+} from "@/lib/api/superadmin-panel";
 import {
   setAccessToken,
   setActiveTenantId,
@@ -40,6 +46,12 @@ export default function TenantDetailPage() {
   const [busy, setBusy] = useState(false);
   const [joining, setJoining] = useState(false);
 
+  type FullTab = "projects" | "logs" | "ai";
+  const [fullTab, setFullTab] = useState<FullTab>("projects");
+  const [fullData, setFullData] = useState<TenantFullDetail | null>(null);
+  const [fullLoading, setFullLoading] = useState(false);
+  const [frozen, setFrozen] = useState<boolean | null>(null);
+
   async function refresh() {
     setLoading(true);
     setError(null);
@@ -57,6 +69,38 @@ export default function TenantDetailPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
+
+  useEffect(() => {
+    setFullLoading(true);
+    getTenantFullDetail(params.id, "projects,logs,ai")
+      .then((d) => {
+        setFullData(d);
+        const settings = d.tenant.settings as Record<string, unknown>;
+        setFrozen(Boolean(settings?.frozen));
+      })
+      .catch(() => setFullData(null))
+      .finally(() => setFullLoading(false));
+  }, [params.id]);
+
+  async function toggleFreeze() {
+    if (!data) return;
+    setBusy(true);
+    try {
+      if (frozen) {
+        await unfreezeTenant(data.tenant.id);
+        setFrozen(false);
+        setNotice("Tenant descongelado");
+      } else {
+        await freezeTenant(data.tenant.id);
+        setFrozen(true);
+        setNotice("Tenant congelado (modo solo lectura)");
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo cambiar el estado");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleSoftDelete() {
     if (!data) return;
@@ -149,6 +193,10 @@ export default function TenantDetailPage() {
             <LogIn className="h-4 w-4" aria-hidden />
             Unirme como admin
           </Button>
+          <Button variant="secondary" onClick={toggleFreeze} disabled={busy || frozen === null}>
+            {frozen ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
+            {frozen ? "Descongelar" : "Congelar"}
+          </Button>
           {tenant.is_active ? (
             <Button variant="danger" onClick={() => setConfirmSoft(true)}>
               <Trash2 className="h-4 w-4" aria-hidden />
@@ -202,6 +250,101 @@ export default function TenantDetailPage() {
           }))}
           emptyLabel="Sin programas"
         />
+      </section>
+
+      <section className="space-y-3">
+        <nav role="tablist" className="flex items-center gap-1 border-b border-[var(--border-subtle)]">
+          {(
+            [
+              { id: "projects" as const, label: "Proyectos" },
+              { id: "logs" as const, label: "Logs" },
+              { id: "ai" as const, label: "Jobs IA" },
+            ]
+          ).map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              type="button"
+              aria-selected={fullTab === t.id}
+              onClick={() => setFullTab(t.id)}
+              className={`-mb-px h-9 border-b-2 px-3 text-[13px] font-medium ${
+                fullTab === t.id
+                  ? "border-[var(--text-primary)] text-[var(--text-primary)]"
+                  : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
+          {fullLoading ? (
+            <div className="space-y-2 p-5">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+          ) : fullTab === "projects" ? (
+            <FullTable
+              head={["Folio", "Nombre", "Fase", "Salud"]}
+              rows={(fullData?.projects ?? []).map((p) => [
+                <span key={p.id} className="font-mono text-[11px]">
+                  {p.folio}
+                </span>,
+                p.name,
+                <Badge key={`${p.id}-phase`}>{p.phase}</Badge>,
+                <span key={`${p.id}-h`} className="text-[12px]">
+                  {p.health_status}
+                </span>,
+              ])}
+              empty="Sin proyectos."
+            />
+          ) : fullTab === "logs" ? (
+            <FullTable
+              head={["Cuándo", "Acción", "Módulo", "Entidad"]}
+              rows={(fullData?.logs ?? []).map((l) => [
+                <span key={l.id} className="font-mono text-[11px]">
+                  {l.occurred_at ? new Date(l.occurred_at).toLocaleString("es-MX") : "—"}
+                </span>,
+                <Badge key={`${l.id}-a`}>{l.action}</Badge>,
+                <span key={`${l.id}-m`} className="text-[12px]">
+                  {l.module ?? "—"}
+                </span>,
+                <span key={`${l.id}-e`} className="font-mono text-[11px]">
+                  {l.entity_type ?? "—"}
+                  {l.entity_id ? ` · ${l.entity_id.slice(0, 8)}` : ""}
+                </span>,
+              ])}
+              empty="Sin logs registrados."
+            />
+          ) : (
+            <FullTable
+              head={["Cuándo", "Tipo", "Status", "Modelo", "Tokens"]}
+              rows={(fullData?.ai_jobs ?? []).map((j) => [
+                <span key={j.id} className="font-mono text-[11px]">
+                  {j.created_at ? new Date(j.created_at).toLocaleString("es-MX") : "—"}
+                </span>,
+                <Badge key={`${j.id}-k`}>{j.kind}</Badge>,
+                <Badge
+                  key={`${j.id}-s`}
+                  variant={
+                    j.status === "succeeded" ? "success" : j.status === "failed" ? "danger" : "info"
+                  }
+                >
+                  {j.status}
+                </Badge>,
+                <span key={`${j.id}-m`} className="text-[12px]">
+                  {j.model_used ?? "—"}
+                </span>,
+                <span key={`${j.id}-t`} className="tabular-nums text-[12px]">
+                  {(j.tokens_in ?? 0) + (j.tokens_out ?? 0)}
+                </span>,
+              ])}
+              empty="Sin jobs de IA."
+            />
+          )}
+        </div>
       </section>
 
       <Modal
@@ -269,6 +412,54 @@ export default function TenantDetailPage() {
           />
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function FullTable({
+  head,
+  rows,
+  empty,
+}: {
+  head: string[];
+  rows: React.ReactNode[][];
+  empty: string;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[13px]">
+        <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
+          <tr>
+            {head.map((h) => (
+              <th key={h} className="h-10 px-4 font-medium">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td
+                colSpan={head.length}
+                className="px-4 py-10 text-center text-[var(--text-tertiary)]"
+              >
+                {empty}
+              </td>
+            </tr>
+          ) : (
+            rows.map((cells, i) => (
+              <tr key={i} className="border-b border-[var(--border-subtle)]">
+                {cells.map((c, j) => (
+                  <td key={j} className="px-4 py-2">
+                    {c}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
