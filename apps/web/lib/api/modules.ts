@@ -1,4 +1,5 @@
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
 
 function qs(params: Record<string, unknown>): string {
   const usp = new URLSearchParams();
@@ -377,4 +378,53 @@ export function convertAgreement(
     `/api/v1/meeting-minutes/${minuteId}/convert-agreement`,
     { method: "POST", body: { agreement_index: agreementIndex } },
   );
+}
+
+export type MinuteExportFormat = "pdf" | "docx" | "md" | "txt";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+/**
+ * US-NEW-040: descarga la minuta en el formato seleccionado. Usa fetch
+ * directo + Blob porque apiFetch sólo maneja JSON.
+ */
+export async function exportMinute(
+  minuteId: string,
+  format: MinuteExportFormat,
+): Promise<void> {
+  if (!API_URL) {
+    throw new ApiError(0, "NETWORK_ERROR", "NEXT_PUBLIC_API_URL no está configurada");
+  }
+  const base = API_URL.replace(/\/+$/, "");
+  const token = getAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(
+    `${base}/api/v1/meeting-minutes/${minuteId}/export?format=${format}`,
+    { method: "GET", headers, credentials: "include" },
+  );
+  if (!res.ok) {
+    let detail = `Error ${res.status}`;
+    let code = "UNKNOWN";
+    try {
+      const data = (await res.json()) as {
+        detail?: { detail?: string; code?: string };
+      };
+      detail = data.detail?.detail ?? detail;
+      code = data.detail?.code ?? code;
+    } catch {
+      /* noop */
+    }
+    throw new ApiError(res.status, code, detail);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? `minuta.${format}`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }

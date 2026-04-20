@@ -1,4 +1,5 @@
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
 
 export type ReportPeriod = "daily" | "weekly" | "monthly";
 export type ReportStatus = "draft" | "sent";
@@ -84,3 +85,98 @@ export const PERIOD_LABEL: Record<ReportPeriod, string> = {
   weekly: "Semanal",
   monthly: "Mensual",
 };
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+function apiBase(): string {
+  if (!API_URL) {
+    throw new ApiError(0, "NETWORK_ERROR", "NEXT_PUBLIC_API_URL no está configurada");
+  }
+  return API_URL.replace(/\/+$/, "");
+}
+
+/**
+ * Descarga un PDF desde un endpoint del backend. Lanza ApiError para
+ * respuestas no 2xx y dispara la descarga en el browser en caso de éxito.
+ */
+async function downloadPdfFromEndpoint(
+  path: string,
+  body: unknown | undefined,
+  method: "GET" | "POST",
+): Promise<void> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { Accept: "application/pdf" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+
+  const res = await fetch(`${apiBase()}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    let detail = `Error ${res.status}`;
+    let code = "UNKNOWN";
+    try {
+      const data = (await res.json()) as { detail?: { detail?: string; code?: string } };
+      detail = data.detail?.detail ?? detail;
+      code = data.detail?.code ?? code;
+    } catch {
+      /* noop */
+    }
+    throw new ApiError(res.status, code, detail);
+  }
+
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? "reporte.pdf";
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** US-NEW-038: genera Reporte de Avance y descarga el PDF resultante. */
+export function generateAvanceReport(
+  projectId: string,
+  cutOffDate?: string,
+): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/projects/${projectId}/reports/avance`,
+    { cut_off_date: cutOffDate ?? null },
+    "POST",
+  );
+}
+
+export function downloadAvanceReport(reportId: string): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/reports/${reportId}/avance/download`,
+    undefined,
+    "GET",
+  );
+}
+
+/** US-NEW-039: genera Reporte de Seguimiento y descarga el PDF. */
+export function generateSeguimientoReport(
+  projectId: string,
+  cutOffDate?: string,
+  windowDays = 14,
+): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/projects/${projectId}/reports/seguimiento`,
+    { cut_off_date: cutOffDate ?? null, window_days: windowDays },
+    "POST",
+  );
+}
+
+export function downloadSeguimientoReport(reportId: string): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/reports/${reportId}/seguimiento/download`,
+    undefined,
+    "GET",
+  );
+}

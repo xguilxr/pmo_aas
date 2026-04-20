@@ -615,6 +615,86 @@ async def list_minutes(
     return [MeetingMinuteRead.model_validate(m) for m in rows]
 
 
+@minutes_router.get("/meeting-minutes/{minute_id}/export")
+async def export_minute(
+    minute_id: UUID,
+    format: str = Query(default="pdf", pattern="^(pdf|docx|md|txt)$"),
+    cu: CurrentUser = Depends(require_permission("minutes", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Exporta la minuta en el formato estandarizado (US-NEW-040).
+
+    Formatos soportados: `pdf` (WeasyPrint), `docx` (python-docx),
+    `md`, `txt`. Las acciones del RAID vienen agrupadas por área /
+    responsable.
+    """
+    from fastapi.responses import Response
+
+    from app.models.tenant import Tenant
+    from app.services.minutes_formatter import (
+        build_view,
+        to_docx,
+        to_markdown,
+        to_pdf,
+        to_plain_text,
+    )
+
+    tenant_id = _tenant(cu)
+    m = (
+        await db.execute(
+            select(MeetingMinute).where(
+                MeetingMinute.id == str(minute_id),
+                MeetingMinute.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if m is None:
+        raise not_found("Minuta")
+    project = (
+        await db.execute(select(Project).where(Project.id == str(m.project_id)))
+    ).scalar_one_or_none()
+    view = build_view(m, project)
+
+    base_name = (
+        f"Minuta_{project.folio if project else 'MIN'}_"
+        f"{(project and project.folio) or 'proyecto'}_{(m.meeting_date.date().isoformat() if m.meeting_date else 'fecha')}"
+    )
+
+    if format == "md":
+        data = to_markdown(view).encode("utf-8")
+        return Response(
+            content=data,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{base_name}.md"'},
+        )
+    if format == "txt":
+        data = to_plain_text(view).encode("utf-8")
+        return Response(
+            content=data,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{base_name}.txt"'},
+        )
+    if format == "docx":
+        data = to_docx(view)
+        return Response(
+            content=data,
+            media_type=(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ),
+            headers={"Content-Disposition": f'attachment; filename="{base_name}.docx"'},
+        )
+    # pdf
+    tenant_name = (
+        await db.execute(select(Tenant.name).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    data = to_pdf(view, tenant_name=tenant_name)
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{base_name}.pdf"'},
+    )
+
+
 @minutes_router.post("/meeting-minutes/{minute_id}/convert-agreement")
 async def convert_agreement_to_issue(
     minute_id: UUID,

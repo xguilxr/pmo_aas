@@ -4,32 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  BarChart3,
   Building2,
   ChevronRight,
   ClipboardList,
-  Cog,
-  Eye,
-  FileText,
-  FolderKanban,
-  GitPullRequest,
   LayoutDashboard,
-  Layers,
-  Lightbulb,
-  ListTree,
   Menu,
-  MessageSquare,
   Network,
   ScrollText,
   ServerCog,
-  Shield,
   ShieldCheck,
-  Sparkles,
-  TriangleAlert,
   Users,
   X,
 } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
 import { getStoredUser } from "@/lib/auth-storage";
@@ -44,152 +32,65 @@ type NavItem = {
   children?: NavItem[];
 };
 
-const PROJECT_ID_RE = /^\/admin\/projects\/([^/]+)(?:\/|$)/;
+const TOP_NAV: NavItem[] = [
+  {
+    id: "dashboard",
+    label: "Tablero",
+    icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
+    href: "/dashboard",
+    match: (p) => p === "/dashboard",
+  },
+  {
+    id: "requests",
+    label: "Solicitudes",
+    icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+    href: "/admin/requests",
+    match: (p) => p.startsWith("/admin/requests"),
+  },
+];
 
-function projectModuleHref(pathname: string, slug: string): string {
-  const m = PROJECT_ID_RE.exec(pathname);
-  if (m && m[1] !== "new") {
-    return `/admin/projects/${m[1]}/${slug}`;
-  }
-  return "/admin/projects";
-}
-
-function buildNav(pathname: string): NavItem[] {
-  const projectModules: NavItem[] = [
+// Admin-only. Sidebar con 4 ítems raíz (US-NEW-036 / issue #17).
+// "Gestión de Tenant" fusiona "Mi tenant" + "Panel del Tenant" + "Configuración"
+// con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
+// El drill-down real (Organizaciones → Programas → Proyectos) vive en el
+// sidebar principal vía <OrgTreeNav />.
+const ADMIN_NAV: NavItem = {
+  id: "admin",
+  label: "Admin",
+  icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+  match: (p) =>
+    p.startsWith("/admin/supervision") ||
+    p.startsWith("/admin/users") ||
+    p.startsWith("/admin/roles") ||
+    p.startsWith("/admin/audit-logs") ||
+    p.startsWith("/admin/settings") ||
+    p.startsWith("/admin/tenant") ||
+    p.startsWith("/admin/organizations"),
+  children: [
     {
-      id: "mod-raid",
-      label: "RAID",
-      icon: <Shield className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "raid"),
-      match: (p) =>
-        /^\/admin\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
-    },
-    {
-      id: "mod-changes",
-      label: "Cambios",
-      icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "changes"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/changes/.test(p),
-    },
-    {
-      id: "mod-documents",
-      label: "Documentos",
-      icon: <FileText className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "documents"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/documents/.test(p),
-    },
-    {
-      id: "mod-lessons",
-      label: "Lecciones",
-      icon: <Lightbulb className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "lessons"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/lessons/.test(p),
-    },
-    {
-      id: "mod-minutes",
-      label: "Minutas",
-      icon: <MessageSquare className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "minutes"),
-      match: (p) =>
-        /^\/admin\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
-    },
-    {
-      id: "mod-plan",
-      label: "Plan",
-      icon: <ListTree className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "plan"),
-      match: (p) =>
-        /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
-    },
-    {
-      id: "mod-areas",
-      label: "Áreas",
-      icon: <Users className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "areas"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
-    },
-    {
-      id: "mod-reports",
-      label: "Reporte IA",
-      icon: <Sparkles className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "reports"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/reports/.test(p),
-    },
-  ];
-
-  return [
-    {
-      id: "dashboard",
-      label: "Tablero",
-      icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
-      href: "/dashboard",
-      match: (p) => p === "/dashboard",
-    },
-    {
-      id: "requests",
-      label: "Solicitudes",
-      icon: <ClipboardList className="h-4 w-4" aria-hidden />,
-      href: "/admin/requests",
-      match: (p) => p.startsWith("/admin/requests"),
-    },
-    {
-      id: "organizations",
-      label: "Organizaciones",
+      id: "tenant-mgmt",
+      label: "Gestión de Tenant",
       icon: <Building2 className="h-4 w-4" aria-hidden />,
-      href: "/admin/organizations",
-      match: (p) => p.startsWith("/admin/organizations"),
-      children: [
-        {
-          id: "programs",
-          label: "Programas",
-          icon: <Network className="h-4 w-4" aria-hidden />,
-          href: "/admin/programs",
-          match: (p) => p.startsWith("/admin/programs"),
-        },
-        {
-          id: "projects",
-          label: "Proyectos",
-          icon: <FolderKanban className="h-4 w-4" aria-hidden />,
-          href: "/admin/projects",
-          match: (p) => p.startsWith("/admin/projects"),
-          children: [
-            {
-              id: "project-modules",
-              label: "Módulos de Proyectos",
-              icon: <Layers className="h-4 w-4" aria-hidden />,
-              match: (p) => /^\/admin\/projects\/[^/]+\/(raid|risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|areas|ai-minutes|reports)/.test(p),
-              children: projectModules,
-            },
-          ],
-        },
-      ],
+      href: "/admin/tenant",
+      match: (p) =>
+        p.startsWith("/admin/tenant") ||
+        p.startsWith("/admin/supervision") ||
+        p.startsWith("/admin/settings"),
     },
     {
-      id: "admin",
-      label: "Admin",
-      icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+      id: "orgs-mgmt",
+      label: "Gestión de Organizaciones",
+      icon: <Network className="h-4 w-4" aria-hidden />,
+      href: "/admin/organizations",
       match: (p) =>
-        p.startsWith("/admin/supervision") ||
-        p.startsWith("/admin/users") ||
-        p.startsWith("/admin/roles") ||
-        p.startsWith("/admin/audit-logs") ||
-        p.startsWith("/admin/settings") ||
-        p.startsWith("/admin/tenant"),
+        p.startsWith("/admin/organizations") && !p.includes("/panel"),
+    },
+    {
+      id: "users-roles",
+      label: "Usuarios y Roles",
+      icon: <Users className="h-4 w-4" aria-hidden />,
+      match: (p) => p.startsWith("/admin/users") || p.startsWith("/admin/roles"),
       children: [
-        {
-          id: "tenant-info",
-          label: "Mi tenant",
-          icon: <Building2 className="h-4 w-4" aria-hidden />,
-          href: "/admin/tenant",
-          match: (p) => p.startsWith("/admin/tenant"),
-        },
-        {
-          id: "tenant-panel",
-          label: "Panel del Tenant",
-          icon: <Eye className="h-4 w-4" aria-hidden />,
-          href: "/admin/supervision",
-          match: (p) => p.startsWith("/admin/supervision"),
-        },
         {
           id: "users",
           label: "Usuarios",
@@ -204,29 +105,23 @@ function buildNav(pathname: string): NavItem[] {
           href: "/admin/roles",
           match: (p) => p.startsWith("/admin/roles"),
         },
-        {
-          id: "audit",
-          label: "Auditoría",
-          icon: <ScrollText className="h-4 w-4" aria-hidden />,
-          href: "/admin/audit-logs",
-          match: (p) => p.startsWith("/admin/audit-logs"),
-        },
-        {
-          id: "settings",
-          label: "Configuración",
-          icon: <Cog className="h-4 w-4" aria-hidden />,
-          href: "/admin/settings",
-          match: (p) => p.startsWith("/admin/settings"),
-        },
       ],
     },
-  ];
-}
+    {
+      id: "audit",
+      label: "Auditoría",
+      icon: <ScrollText className="h-4 w-4" aria-hidden />,
+      href: "/admin/audit-logs",
+      match: (p) => p.startsWith("/admin/audit-logs"),
+    },
+  ],
+};
 
+// 4 ítems raíz, en este orden (US-NEW-041, issue #19).
 const SUPERADMIN_NAV: NavItem[] = [
   {
     id: "sa-overview",
-    label: "Visión general",
+    label: "Visión General",
     icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
     href: "/superadmin",
     match: (p) => p === "/superadmin",
@@ -237,6 +132,13 @@ const SUPERADMIN_NAV: NavItem[] = [
     icon: <ServerCog className="h-4 w-4" aria-hidden />,
     href: "/superadmin/tenants",
     match: (p) => p.startsWith("/superadmin/tenants"),
+  },
+  {
+    id: "sa-users",
+    label: "Usuarios",
+    icon: <Users className="h-4 w-4" aria-hidden />,
+    href: "/superadmin/users",
+    match: (p) => p.startsWith("/superadmin/users"),
   },
   {
     id: "sa-logs",
@@ -348,16 +250,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const close = () => setOpen(false);
 
-  const nav = useMemo(() => buildNav(pathname), [pathname]);
+  const adminVisible = useMemo(
+    () => Boolean(user && !user.is_superadmin),
+    [user],
+  );
 
   useEffect(() => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      collectExpandedIds(nav, pathname, next);
+      collectExpandedIds(TOP_NAV, pathname, next);
+      if (adminVisible) collectExpandedIds([ADMIN_NAV], pathname, next);
       collectExpandedIds(SUPERADMIN_NAV, pathname, next);
       return next;
     });
-  }, [pathname, nav]);
+  }, [pathname, adminVisible]);
 
   const toggle = (id: string) =>
     setExpanded((prev) => {
@@ -387,10 +293,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div className="flex h-14 items-center justify-between px-5">
           <Link
-            href="/dashboard"
-            className="text-[15px] font-semibold tracking-tight text-[var(--chrome-text)]"
+            href={user?.is_superadmin ? "/superadmin" : "/dashboard"}
+            className="inline-flex items-center"
+            aria-label="Inicio"
           >
-            PMO · aaS
+            <BrandMark variant="sidebar" />
           </Link>
           <button
             type="button"
@@ -402,31 +309,39 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-2">
-          <NavTree
-            items={nav}
-            pathname={pathname}
-            onNavigate={close}
-            expanded={expanded}
-            toggle={toggle}
-          />
-          {user && !user.is_superadmin ? (
-            <OrgTreeNav onNavigate={close} />
+          {user?.is_superadmin ? null : (
+            <NavTree
+              items={TOP_NAV}
+              pathname={pathname}
+              onNavigate={close}
+              expanded={expanded}
+              toggle={toggle}
+            />
+          )}
+          {adminVisible ? (
+            <div className="mt-0.5">
+              <OrgTreeNav onNavigate={close} />
+            </div>
+          ) : null}
+          {adminVisible ? (
+            <div className="mt-0.5">
+              <NavTree
+                items={[ADMIN_NAV]}
+                pathname={pathname}
+                onNavigate={close}
+                expanded={expanded}
+                toggle={toggle}
+              />
+            </div>
           ) : null}
           {user?.is_superadmin ? (
-            <>
-              <div className="mt-5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]/80">
-                Super admin
-              </div>
-              <div className="mt-1">
-                <NavTree
-                  items={SUPERADMIN_NAV}
-                  pathname={pathname}
-                  onNavigate={close}
-                  expanded={expanded}
-                  toggle={toggle}
-                />
-              </div>
-            </>
+            <NavTree
+              items={SUPERADMIN_NAV}
+              pathname={pathname}
+              onNavigate={close}
+              expanded={expanded}
+              toggle={toggle}
+            />
           ) : null}
         </nav>
       </aside>
@@ -442,8 +357,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Menu className="h-5 w-5" aria-hidden />
             </button>
-            <div className="text-[13px] font-medium text-[var(--chrome-text-muted)]">
-              PMO · aaS
+            <div className="inline-flex items-center">
+              <BrandMark variant="topbar" />
             </div>
           </div>
           <UserMenu user={user} variant="chrome" />

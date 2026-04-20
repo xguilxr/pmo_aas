@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
     ACCOUNT_LOCK_MINUTES: int = 15
 
+    # EP016 US-NEW-045: cifrado de secretos IA por-tenant.
+    # Default dev (32 bytes urlsafe-b64). En productivo DEBE sobrescribirse
+    # con un valor generado por `Fernet.generate_key()` y guardado en el
+    # vault del entorno.
+    AI_SECRETS_FERNET_KEY: str = "dev-ai-secrets-fernet-key-change-me-0000="
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]

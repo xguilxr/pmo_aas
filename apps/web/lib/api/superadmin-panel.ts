@@ -168,3 +168,72 @@ export function unfreezeTenant(id: string): Promise<{ ok: boolean; frozen: boole
     { method: "POST" },
   );
 }
+
+// ---- US-NEW-042: Usuarios cross-tenant ----
+
+export type SuperadminUserRow = {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string | null;
+  is_active: boolean;
+  is_superadmin: boolean;
+  tenant_id: string | null;
+  tenant_slug: string | null;
+  tenant_name: string | null;
+  roles: string[];
+  created_at: string | null;
+  last_login_at: string | null;
+};
+
+export type ListSuperadminUsersParams = {
+  q?: string;
+  tenant_id?: string;
+  is_active?: boolean;
+  is_superadmin?: boolean;
+  role_name?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ListSuperadminUsersResult = {
+  items: SuperadminUserRow[];
+  page: number;
+  limit: number;
+  count: number;
+};
+
+export function listSuperadminUsers(
+  params: ListSuperadminUsersParams = {},
+): Promise<ListSuperadminUsersResult> {
+  return apiFetch<ListSuperadminUsersResult>(
+    `/api/v1/superadmin/users${qs(params)}`,
+  );
+}
+
+export type SuperadminUserUpdate = {
+  full_name?: string;
+  email?: string;
+  username?: string;
+  is_active?: boolean;
+};
+
+export function updateSuperadminUser(
+  id: string,
+  body: SuperadminUserUpdate,
+): Promise<Pick<SuperadminUserRow, "id" | "username" | "email" | "full_name" | "is_active">> {
+  return apiFetch(`/api/v1/superadmin/users/${id}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function toggleSuperadminUserActive(
+  id: string,
+  reason: string,
+): Promise<{ id: string; is_active: boolean }> {
+  return apiFetch(`/api/v1/superadmin/users/${id}/toggle-active`, {
+    method: "POST",
+    body: { reason },
+  });
+}

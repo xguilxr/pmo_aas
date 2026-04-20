@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Download, MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,11 @@ import { ModuleShell } from "@/components/module-shell";
 import { ApiError } from "@/lib/api";
 import {
   createMinute,
+  exportMinute,
   listMinutes,
   type MeetingMinute,
   type MinuteAgreement,
+  type MinuteExportFormat,
   type MinuteParticipant,
   type MinuteTopic,
 } from "@/lib/api/modules";
@@ -243,6 +245,11 @@ export default function MinutesPage() {
           render: (r) =>
             r.generated_by_ai ? <Badge variant="info">IA</Badge> : <span>—</span>,
         },
+        {
+          key: "export",
+          label: "Exportar",
+          render: (r) => <ExportMinuteButtons minuteId={r.id} />,
+        },
       ]}
     />
   );
@@ -297,5 +304,54 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">{label}</span>
       {children}
     </label>
+  );
+}
+
+const EXPORT_FORMATS: Array<{ key: MinuteExportFormat; label: string }> = [
+  { key: "pdf", label: "PDF" },
+  { key: "docx", label: "DOCX" },
+  { key: "md", label: "MD" },
+  { key: "txt", label: "TXT" },
+];
+
+function ExportMinuteButtons({ minuteId }: { minuteId: string }) {
+  const [busy, setBusy] = useState<MinuteExportFormat | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download(format: MinuteExportFormat) {
+    setBusy(format);
+    setError(null);
+    try {
+      await exportMinute(minuteId, format);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al exportar");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {EXPORT_FORMATS.map((f) => (
+        <button
+          key={f.key}
+          type="button"
+          onClick={() => void download(f.key)}
+          disabled={busy !== null}
+          className="inline-flex h-7 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[11px] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)] disabled:opacity-60"
+          aria-label={`Descargar minuta en ${f.label}`}
+        >
+          {busy === f.key ? (
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)]" />
+          ) : (
+            <Download className="h-3 w-3" aria-hidden />
+          )}
+          {f.label}
+        </button>
+      ))}
+      {error ? (
+        <span className="text-[10px] text-[var(--color-danger-fg)]">{error}</span>
+      ) : null}
+    </div>
   );
 }

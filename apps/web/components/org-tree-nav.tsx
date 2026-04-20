@@ -8,17 +8,11 @@ import {
   ChevronRight,
   FolderKanban,
   Network,
-  Users,
-  Workflow,
 } from "lucide-react";
 
 import {
-  type BusinessUnit,
-  type Department,
   type Organization,
   type Program,
-  listBusinessUnits,
-  listDepartments,
   listOrganizations,
   listPrograms,
 } from "@/lib/api/organizations";
@@ -29,18 +23,15 @@ import { cn } from "@/lib/cn";
 const STORAGE_KEY = "pmoaas:sidebar:org-tree:expanded";
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
-
 type LoadedRecord<T> = { state: LoadState; items: T[]; error?: string };
 
 type Maps = {
-  bus: Record<string, LoadedRecord<BusinessUnit>>; // by orgId
-  depts: Record<string, LoadedRecord<Department>>; // by buId
-  programs: Record<string, LoadedRecord<Program>>; // by deptId or orgId
+  programs: Record<string, LoadedRecord<Program>>; // by orgId
   projects: Record<string, LoadedRecord<Project>>; // by programId
 };
 
 function emptyMaps(): Maps {
-  return { bus: {}, depts: {}, programs: {}, projects: {} };
+  return { programs: {}, projects: {} };
 }
 
 function loadExpanded(): Set<string> {
@@ -64,9 +55,10 @@ function saveExpanded(s: Set<string>): void {
   }
 }
 
-function rowClass(active: boolean): string {
+function rowClass(active: boolean, top: boolean): string {
   return cn(
-    "flex h-8 items-center gap-2 rounded-[var(--radius-md)] pr-1.5 text-[12.5px] transition-colors",
+    "flex items-center gap-2 rounded-[var(--radius-md)] pr-1.5 transition-colors",
+    top ? "h-9 text-[13px]" : "h-8 text-[12.5px]",
     active
       ? "bg-[var(--chrome-active)] font-semibold text-[var(--chrome-text)]"
       : "text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)]",
@@ -83,6 +75,7 @@ function NodeRow({
   isOpen,
   onToggle,
   depth,
+  top = false,
 }: {
   href?: string;
   onNavigate: () => void;
@@ -93,10 +86,11 @@ function NodeRow({
   isOpen: boolean;
   onToggle: () => void;
   depth: number;
+  top?: boolean;
 }) {
-  const indent = { paddingLeft: `${0.5 + depth * 0.7}rem` };
+  const indent = { paddingLeft: `${(top ? 0.625 : 0.5) + depth * 0.75}rem` };
   return (
-    <div className={rowClass(active)} style={indent}>
+    <div className={rowClass(active, top)} style={indent}>
       {href ? (
         <Link
           href={href}
@@ -125,7 +119,7 @@ function NodeRow({
           className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)]"
         >
           <ChevronRight
-            className={cn("h-3 w-3 transition-transform", isOpen && "rotate-90")}
+            className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")}
             aria-hidden
           />
         </button>
@@ -135,7 +129,7 @@ function NodeRow({
 }
 
 function PlaceholderRow({ depth, text }: { depth: number; text: string }) {
-  const indent = { paddingLeft: `${0.5 + depth * 0.7}rem` };
+  const indent = { paddingLeft: `${0.5 + depth * 0.75}rem` };
   return (
     <div
       className="text-[11.5px] italic text-[var(--chrome-text-muted)]/70 py-1"
@@ -146,6 +140,11 @@ function PlaceholderRow({ depth, text }: { depth: number; text: string }) {
   );
 }
 
+/**
+ * Drill-down real del tenant en el sidebar principal (US-NEW-032):
+ * Organizaciones → Programas → Proyectos. La jerarquía administrativa
+ * (BUs / Departamentos) vive sólo bajo `/admin/organizations`, no aquí.
+ */
 export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
   const [orgs, setOrgs] = useState<LoadedRecord<Organization>>({
@@ -155,7 +154,6 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   const [maps, setMaps] = useState<Maps>(() => emptyMaps());
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
-  // Hidratar expandidos desde localStorage en cliente
   useEffect(() => {
     setExpanded(loadExpanded());
   }, []);
@@ -164,7 +162,6 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
     saveExpanded(expanded);
   }, [expanded]);
 
-  // Carga inicial de orgs cuando se expande la sección
   const loadOrgs = useCallback(async () => {
     setOrgs((s) => (s.state === "loading" ? s : { ...s, state: "loading" }));
     try {
@@ -177,6 +174,10 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   }, []);
 
   const sectionOpen = expanded.has("__orgs__");
+  const sectionActive =
+    pathname.startsWith("/admin/organizations") ||
+    pathname.startsWith("/admin/programs") ||
+    pathname.startsWith("/admin/projects");
 
   useEffect(() => {
     if (sectionOpen && orgs.state === "idle") {
@@ -193,75 +194,23 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
     });
   }, []);
 
-  const ensureBus = useCallback(async (orgId: string) => {
-    setMaps((m) => {
-      const cur = m.bus[orgId];
-      if (cur && cur.state !== "idle") return m;
-      return { ...m, bus: { ...m.bus, [orgId]: { state: "loading", items: [] } } };
-    });
-    try {
-      const items = await listBusinessUnits(orgId, { is_active: true });
-      setMaps((m) => ({
-        ...m,
-        bus: { ...m.bus, [orgId]: { state: "loaded", items } },
-      }));
-    } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Error";
-      setMaps((m) => ({
-        ...m,
-        bus: { ...m.bus, [orgId]: { state: "error", items: [], error: msg } },
-      }));
-    }
-  }, []);
-
-  const ensureDepts = useCallback(async (buId: string) => {
-    setMaps((m) => {
-      const cur = m.depts[buId];
-      if (cur && cur.state !== "idle") return m;
-      return {
-        ...m,
-        depts: { ...m.depts, [buId]: { state: "loading", items: [] } },
-      };
-    });
-    try {
-      const items = await listDepartments(buId, { is_active: true });
-      setMaps((m) => ({
-        ...m,
-        depts: { ...m.depts, [buId]: { state: "loaded", items } },
-      }));
-    } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Error";
-      setMaps((m) => ({
-        ...m,
-        depts: { ...m.depts, [buId]: { state: "error", items: [], error: msg } },
-      }));
-    }
-  }, []);
-
   const ensureProgramsByOrg = useCallback(async (orgId: string) => {
-    const key = `org:${orgId}`;
     setMaps((m) => {
-      const cur = m.programs[key];
+      const cur = m.programs[orgId];
       if (cur && cur.state !== "idle") return m;
-      return {
-        ...m,
-        programs: { ...m.programs, [key]: { state: "loading", items: [] } },
-      };
+      return { ...m, programs: { ...m.programs, [orgId]: { state: "loading", items: [] } } };
     });
     try {
       const items = await listPrograms({ organization_id: orgId, is_active: true });
       setMaps((m) => ({
         ...m,
-        programs: { ...m.programs, [key]: { state: "loaded", items } },
+        programs: { ...m.programs, [orgId]: { state: "loaded", items } },
       }));
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Error";
       setMaps((m) => ({
         ...m,
-        programs: {
-          ...m.programs,
-          [key]: { state: "error", items: [], error: msg },
-        },
+        programs: { ...m.programs, [orgId]: { state: "error", items: [], error: msg } },
       }));
     }
   }, []);
@@ -272,68 +221,39 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
       if (cur && cur.state !== "idle") return m;
       return {
         ...m,
-        projects: {
-          ...m.projects,
-          [programId]: { state: "loading", items: [] },
-        },
+        projects: { ...m.projects, [programId]: { state: "loading", items: [] } },
       };
     });
     try {
       const items = await listProjects({ program_id: programId, limit: 100 });
       setMaps((m) => ({
         ...m,
-        projects: {
-          ...m.projects,
-          [programId]: { state: "loaded", items },
-        },
+        projects: { ...m.projects, [programId]: { state: "loaded", items } },
       }));
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Error";
       setMaps((m) => ({
         ...m,
-        projects: {
-          ...m.projects,
-          [programId]: { state: "error", items: [], error: msg },
-        },
+        projects: { ...m.projects, [programId]: { state: "error", items: [], error: msg } },
       }));
     }
   }, []);
 
-  // Disparadores lazy según expanded ids
   useEffect(() => {
     if (orgs.state !== "loaded") return;
     for (const org of orgs.items) {
       const orgKey = `org:${org.id}`;
-      if (expanded.has(orgKey)) {
-        if (!maps.bus[org.id]) void ensureBus(org.id);
-        const progKey = `org-progs:${org.id}`;
-        if (expanded.has(progKey) && !maps.programs[`org:${org.id}`]) {
-          void ensureProgramsByOrg(org.id);
-        }
-        const bus = maps.bus[org.id]?.items ?? [];
-        for (const bu of bus) {
-          if (expanded.has(`bu:${bu.id}`) && !maps.depts[bu.id]) {
-            void ensureDepts(bu.id);
-          }
-        }
-        const programs = maps.programs[`org:${org.id}`]?.items ?? [];
-        for (const prog of programs) {
-          if (expanded.has(`prog:${prog.id}`) && !maps.projects[prog.id]) {
-            void ensureProjects(prog.id);
-          }
+      if (expanded.has(orgKey) && !maps.programs[org.id]) {
+        void ensureProgramsByOrg(org.id);
+      }
+      const programs = maps.programs[org.id]?.items ?? [];
+      for (const prog of programs) {
+        if (expanded.has(`prog:${prog.id}`) && !maps.projects[prog.id]) {
+          void ensureProjects(prog.id);
         }
       }
     }
-  }, [
-    expanded,
-    orgs.state,
-    orgs.items,
-    maps,
-    ensureBus,
-    ensureDepts,
-    ensureProgramsByOrg,
-    ensureProjects,
-  ]);
+  }, [expanded, orgs.state, orgs.items, maps, ensureProgramsByOrg, ensureProjects]);
 
   const isProjectActive = useMemo(
     () => (id: string) => pathname.startsWith(`/admin/projects/${id}`),
@@ -341,19 +261,21 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   );
 
   return (
-    <div className="mt-3">
+    <div>
       <NodeRow
         depth={0}
+        top
         icon={<Building2 className="h-4 w-4" aria-hidden />}
         label="Organizaciones"
-        active={false}
+        active={sectionActive && !sectionOpen}
         hasChildren
         isOpen={sectionOpen}
         onToggle={() => toggle("__orgs__")}
+        href="/admin/organizations"
         onNavigate={onNavigate}
       />
       {sectionOpen ? (
-        <div>
+        <div className="mt-0.5">
           {orgs.state === "loading" ? (
             <PlaceholderRow depth={1} text="Cargando…" />
           ) : null}
@@ -366,112 +288,30 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
           {orgs.items.map((org) => {
             const orgKey = `org:${org.id}`;
             const orgOpen = expanded.has(orgKey);
-            const buRec = maps.bus[org.id];
-            const progRec = maps.programs[`org:${org.id}`];
-            const orgProgKey = `org-progs:${org.id}`;
-            const orgProgsOpen = expanded.has(orgProgKey);
-
+            const progRec = maps.programs[org.id];
             return (
               <div key={org.id}>
                 <NodeRow
                   depth={1}
                   icon={<Building2 className="h-3.5 w-3.5" aria-hidden />}
                   label={org.name}
-                  href={`/admin/organizations/${org.id}`}
-                  active={pathname === `/admin/organizations/${org.id}`}
+                  href={`/admin/organizations/${org.id}/panel`}
+                  active={pathname.startsWith(`/admin/organizations/${org.id}/panel`)}
                   hasChildren
                   isOpen={orgOpen}
                   onToggle={() => toggle(orgKey)}
                   onNavigate={onNavigate}
                 />
                 {orgOpen ? (
-                  <div>
-                    {/* Programas directos al org */}
-                    <NodeRow
-                      depth={2}
-                      icon={<Network className="h-3.5 w-3.5" aria-hidden />}
-                      label="Programas"
-                      active={false}
-                      hasChildren
-                      isOpen={orgProgsOpen}
-                      onToggle={() => toggle(orgProgKey)}
-                      onNavigate={onNavigate}
-                    />
-                    {orgProgsOpen ? (
-                      <ProgramsList
-                        rec={progRec}
-                        depth={3}
-                        expanded={expanded}
-                        toggle={toggle}
-                        projectsMap={maps.projects}
-                        isProjectActive={isProjectActive}
-                        onNavigate={onNavigate}
-                      />
-                    ) : null}
-
-                    {/* Unidades de negocio */}
-                    {buRec?.state === "loading" ? (
-                      <PlaceholderRow depth={2} text="Cargando BUs…" />
-                    ) : null}
-                    {buRec?.state === "error" ? (
-                      <PlaceholderRow
-                        depth={2}
-                        text={`Error: ${buRec.error ?? ""}`}
-                      />
-                    ) : null}
-                    {(buRec?.items ?? []).map((bu) => {
-                      const buKey = `bu:${bu.id}`;
-                      const buOpen = expanded.has(buKey);
-                      const deptRec = maps.depts[bu.id];
-                      return (
-                        <div key={bu.id}>
-                          <NodeRow
-                            depth={2}
-                            icon={<Workflow className="h-3.5 w-3.5" aria-hidden />}
-                            label={bu.name}
-                            active={false}
-                            hasChildren
-                            isOpen={buOpen}
-                            onToggle={() => toggle(buKey)}
-                            onNavigate={onNavigate}
-                          />
-                          {buOpen ? (
-                            <div>
-                              {deptRec?.state === "loading" ? (
-                                <PlaceholderRow depth={3} text="Cargando deptos…" />
-                              ) : null}
-                              {deptRec?.state === "error" ? (
-                                <PlaceholderRow
-                                  depth={3}
-                                  text={`Error: ${deptRec.error ?? ""}`}
-                                />
-                              ) : null}
-                              {(deptRec?.items ?? []).map((dept) => (
-                                <NodeRow
-                                  key={dept.id}
-                                  depth={3}
-                                  icon={<Users className="h-3.5 w-3.5" aria-hidden />}
-                                  label={dept.name}
-                                  active={false}
-                                  hasChildren={false}
-                                  isOpen={false}
-                                  onToggle={() => undefined}
-                                  onNavigate={onNavigate}
-                                />
-                              ))}
-                              {deptRec?.state === "loaded" &&
-                              deptRec.items.length === 0 ? (
-                                <PlaceholderRow depth={3} text="Sin departamentos" />
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                    {buRec?.state === "loaded" && buRec.items.length === 0 ? (
-                      <PlaceholderRow depth={2} text="Sin unidades de negocio" />
-                    ) : null}
-                  </div>
+                  <ProgramsList
+                    rec={progRec}
+                    depth={2}
+                    expanded={expanded}
+                    toggle={toggle}
+                    projectsMap={maps.projects}
+                    isProjectActive={isProjectActive}
+                    onNavigate={onNavigate}
+                  />
                 ) : null}
               </div>
             );
@@ -520,7 +360,7 @@ function ProgramsList({
               depth={depth}
               icon={<Network className="h-3.5 w-3.5" aria-hidden />}
               label={prog.name}
-              href={`/admin/projects?program_id=${prog.id}`}
+              href={`/admin/programs/${prog.id}`}
               active={false}
               hasChildren
               isOpen={open}
@@ -552,8 +392,7 @@ function ProgramsList({
                     onNavigate={onNavigate}
                   />
                 ))}
-                {projects?.state === "loaded" &&
-                projects.items.length === 0 ? (
+                {projects?.state === "loaded" && projects.items.length === 0 ? (
                   <PlaceholderRow depth={depth + 1} text="Sin proyectos" />
                 ) : null}
               </>

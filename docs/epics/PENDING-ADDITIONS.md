@@ -270,9 +270,15 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-017 — Tabs inline para módulos del proyecto (sin cambio de página)
+### # SUPERSEDED — US-NEW-017 — Tabs inline para módulos del proyecto (sin cambio de página)
 
-**Criterios de aceptación:**
+**Estado:** SUPERSEDED por US-NEW-035 en EP013 (bloque 9 del sprint, issue #17).
+Sus dependencias (US-NEW-016, 018, 019, 020, 021, 022) están DONE, pero el issue #17
+pide un alcance más amplio que la absorbe: quitar "Módulos de proyecto" del sidebar
+y consolidar todos los módulos como tabs inline. La implementación ocurre en
+US-NEW-035.
+
+**Criterios originales (referencia histórica):**
 - [ ] Los botones actuales (Riesgos, AIDs, Cambios, Documentos, Lecciones, Minutas, Reportes) se convierten en tabs/pestañas en la misma página del proyecto.
 - [ ] Click en tab actualiza el panel inferior de la página, NO navega a una URL diferente.
 - [ ] URL puede reflejar tab activa como query param: `/projects/{id}?tab=risks`.
@@ -491,3 +497,83 @@ Campos adicionales al formulario de solicitud:
 - [ ] Esto reemplaza tener "Visión General" y "Health" como rutas separadas (si así estaba antes).
 
 **Estado de integración:** # PENDING en EP010
+
+---
+
+## EP013-navigation-refactor.md — Bloque 9 (issue #17)
+
+Documento completo con criterios de aceptación y test cases en
+[`EP013-navigation-refactor.md`](./EP013-navigation-refactor.md). Resumen:
+
+| US | Título | Estado |
+|---|---|---|
+| US-NEW-031 | Upload y display del logo del tenant en chrome | # PENDING |
+| US-NEW-032 | Restructurar sidebar principal (drill-down real) | # PENDING |
+| US-NEW-033 | Panel de organización → página de recursos reales (fix bug) | # PENDING |
+| US-NEW-034 | Página resumen de programa (KPIs + proyectos) | # PENDING |
+| US-NEW-035 | Tabs inline en detalle de proyecto (supersede US-NEW-017) | # PENDING |
+| US-NEW-036 | Restructurar sidebar Admin (4 ítems raíz; fusionar Mi Tenant + Panel + Configuración) | # PENDING |
+
+Decisiones a registrar en DECISIONS.md al cierre: DEC-011, DEC-012, DEC-013.
+
+---
+
+## EP014-operational-deliverables.md — Bloque 10 (issue #18)
+
+Documento completo en [`EP014-operational-deliverables.md`](./EP014-operational-deliverables.md).
+Resumen:
+
+| US | Título | Estado |
+|---|---|---|
+| US-NEW-037 | Infra compartida de exportación a PDF (WeasyPrint) | # PENDING |
+| US-NEW-038 | Reporte de Avance de Proyecto (Python, BD, PDF) | # PENDING |
+| US-NEW-039 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | # PENDING |
+| US-NEW-040 | Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA | # PENDING |
+
+**Criterio explícito del usuario:** los reportes **no dependen de IA** — son Python
++ Jinja2 sobre datos de la BD. La IA sigue siendo opcional para el módulo
+"reporte narrativo" (EP006/EP008); los de este bloque son motor separado.
+
+Decisiones a registrar: DEC-014, DEC-015, DEC-016.
+
+---
+
+## EP012-db-migration.md — Bloque 12 (reestructurado)
+
+La épica cambia de "migración zero-downtime" a **"instalación productivo en
+Hostgator MySQL + compatibilidad dialect-agnostic del código"**:
+
+| US | Título | Estado |
+|---|---|---|
+| US-NEW-029 | Compatibilidad MySQL del código (reemplazar PG-específicos) | # PENDING |
+| US-NEW-030 | Setup Hostgator MySQL + pipeline de deploy productivo (fresh install) | # PENDING |
+
+**Staging se queda en Railway Postgres**; productivo es instalación fresca. DEC-017,
+DEC-018, DEC-019 a registrar.
+
+---
+
+## EP015-superadmin-nav-refactor.md — Bloque 11 (issue #19)
+
+Documento completo en [`EP015-superadmin-nav-refactor.md`](./EP015-superadmin-nav-refactor.md).
+
+| US | Título | Estado |
+|---|---|---|
+| US-NEW-041 | Sidebar super admin aislado (4 ítems raíz) | # PENDING |
+| US-NEW-042 | Página `/superadmin/users` cross-tenant | # PENDING |
+| US-NEW-043 | Visión General con Health al top | # PENDING |
+
+DEC-020/021/022 a registrar.
+
+---
+
+## EP016-local-ai-tunnel.md — Bloque 12 (modelo IA local)
+
+Documento completo en [`EP016-local-ai-tunnel.md`](./EP016-local-ai-tunnel.md). Uso: runbook operativo + config por-tenant para conectar el worker EP008 a un Ollama local expuesto vía Cloudflare Tunnel.
+
+| US | Título | Estado |
+|---|---|---|
+| US-NEW-044 | Runbook `docs/ai/local-ollama-setup.md` paso a paso | # PENDING |
+| US-NEW-045 | Config + smoke test del túnel + fallback a cascada | # PENDING |
+
+DEC-023/024/025 a registrar. Alimenta EP014 US-NEW-040 (minuta estandarizada) con un proveedor IA privado y sin costo por token.

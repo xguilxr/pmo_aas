@@ -9,15 +9,13 @@
 ```
 — Sin US activa —
 
-Bloques 1-8 (EP001, EP002, EP003, EP004, EP005, EP006, EP007, EP010)
-completos en esta rama (26 US implementadas).
+Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local)
+completos. Siguientes en orden:
+  Bloque 13 — EP011 Notificaciones (POST-MVP)
+  Bloque 14 — EP012 Instalación productivo Hostgator MySQL
 
-Bloques 9 y 10 (EP011 Notifications y EP012 Migración MySQL) están
-marcados como POST-MVP en el índice del README — se trabajan en sprint
-posterior cuando el MVP esté listo para release.
-
-US-NEW-017 (tabs inline en detalle de proyecto) quedó diferida
-intencionalmente — ver commit de US-NEW-016.
+Follow-up pendiente en EP016 US-NEW-045: refactorizar OllamaProvider
+para consumir la config por-tenant en el worker IA (hoy usa env).
 ```
 
 ---
@@ -26,9 +24,11 @@ intencionalmente — ver commit de US-NEW-016.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center | POST-MVP |
-| 2 | US-NEW-028 | EP011 | Email notifications via Resend | POST-MVP |
-| 3 | US-NEW-029 | EP012 | Plan de migración MySQL | POST-MVP |
+| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 13 |
+| 2 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 13 |
+| 3 | US-NEW-029 | EP012 | Compatibilidad MySQL del código (dialect-agnostic) | Bloque 14 |
+
+> Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
 ---
 
@@ -64,6 +64,21 @@ intencionalmente — ver commit de US-NEW-016.
 | US-NEW-024 | Gestión jerarquía org (BU + Depto) en Admin | `feat(admin): US-NEW-024 — jerarquía org en admin` | 2026-04-20 |
 | US-NEW-025 | Iconos en paneles de tenant + jerarquía | `feat(superadmin): US-NEW-025 — iconos en paneles` | 2026-04-20 |
 | US-NEW-026 | Visión General = Tenants + Health unificados | `feat(superadmin): US-NEW-026 — visión general unificada` | 2026-04-20 |
+| US-NEW-031 | Upload y display del logo del tenant en chrome | `feat(branding): US-NEW-031 — upload y display del logo del tenant en chrome` | 2026-04-20 |
+| US-NEW-032 | Restructurar sidebar principal (drill-down real) | `feat(web): US-NEW-032 — sidebar drill-down real; elimina duplicado y módulos de proyecto` | 2026-04-20 |
+| US-NEW-033 | Panel de organización → página de recursos reales | `feat(web,api): US-NEW-033 — panel de organización con recursos reales` | 2026-04-20 |
+| US-NEW-034 | Página resumen de programa | `feat(web,api): US-NEW-034 — página resumen de programa con KPIs y donut` | 2026-04-20 |
+| US-NEW-035 | Tabs inline en detalle de proyecto (supersede US-NEW-017) | `feat(web): US-NEW-035 — tabs inline en detalle de proyecto (supersede US-NEW-017)` | 2026-04-20 |
+| US-NEW-036 | Restructurar sidebar Admin (4 ítems raíz) | `feat(web): US-NEW-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed` | 2026-04-20 |
+| US-NEW-037 | Infra compartida de exportación a PDF (WeasyPrint) | `feat(api): US-NEW-037 — infra de exportación a PDF con WeasyPrint + Jinja2` | 2026-04-20 |
+| US-NEW-038 | Reporte de Avance de Proyecto (Python, BD, PDF) | `feat(api,web): US-NEW-038 — reporte de avance ejecutable sin IA` | 2026-04-20 |
+| US-NEW-039 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | `feat(api,web): US-NEW-039 — reporte de seguimiento por responsable` | 2026-04-20 |
+| US-NEW-040 | Formato estandarizado + export de Minuta IA (.pdf/.docx/.md/.txt) | `feat(api,web): US-NEW-040 — export estandarizado de minuta` | 2026-04-20 |
+| US-NEW-041 | Sidebar super admin aislado (4 ítems raíz) | `feat(web): US-NEW-041 — sidebar super admin aislado (4 ítems raíz)` | 2026-04-20 |
+| US-NEW-042 | Página `/superadmin/users` cross-tenant | `feat(api,web): US-NEW-042 — /superadmin/users cross-tenant` | 2026-04-20 |
+| US-NEW-043 | Visión General con Health al top | `feat(web): US-NEW-043 — health al top en visión general del superadmin` | 2026-04-20 |
+| US-NEW-044 | Runbook Ollama + Cloudflare Tunnel + nssm | `docs(ai): US-NEW-044 — runbook Ollama + Cloudflare Tunnel + nssm` | 2026-04-20 |
+| US-NEW-045 | Config + smoke test del túnel + secrets cifrados | `feat(api,web): US-NEW-045 — config y smoke del modelo IA local (Cloudflare Tunnel)` | 2026-04-20 |
 
 ---
 
@@ -96,7 +111,7 @@ intencionalmente — ver commit de US-NEW-016.
 
 ### Bloque 5 — Proyecto detalle (EP005)
 - [x] US-NEW-016 — Unificar Plan + Gantt en una pestaña ✅
-- [ ] US-NEW-017 — Tabs inline (sin cambio de página) para módulos del proyecto
+- [~] US-NEW-017 — Tabs inline para módulos del proyecto → **SUPERSEDED** por US-NEW-035 (EP013, bloque 9)
 - [x] US-NEW-018 — Módulo Área/Organigrama del proyecto ✅
 
 ### Bloque 6 — RAID y módulos (EP006)
@@ -113,13 +128,44 @@ intencionalmente — ver commit de US-NEW-016.
 - [x] US-NEW-025 — Iconos en paneles de tenant ✅
 - [x] US-NEW-026 — Visión General = Tenants + Health unidos ✅
 
-### Bloque 9 — Notificaciones (EP011) — POST-MVP
+---
+
+### Bloque 9 — Refactor de navegación (EP013) — issue #17
+**Orden de ejecución** (1 US por commit, en este orden):
+- [x] US-NEW-031 — Upload y display del logo del tenant en chrome ✅
+- [x] US-NEW-032 — Restructurar sidebar principal (drill-down real; quitar "Módulos de proyecto" y duplicado de Organizaciones) ✅
+- [x] US-NEW-033 — Panel de organización → página de recursos reales (fix bug + enhancement) ✅
+- [x] US-NEW-034 — Página resumen de programa (KPIs + lista de proyectos) ✅
+- [x] US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017) ✅
+- [x] US-NEW-036 — Restructurar sidebar Admin (fusionar Mi Tenant + Panel + Configuración; 4 ítems raíz) ✅
+
+### Bloque 10 — Entregables operativos (EP014) — issue #18
+- [x] US-NEW-037 — Infra compartida de exportación a PDF (WeasyPrint) ✅
+- [x] US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF) ✅
+- [x] US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF) ✅
+- [x] US-NEW-040 — Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA ✅
+
+### Bloque 11 — Refactor nav super admin (EP015) — issue #19
+- [x] US-NEW-041 — Sidebar super admin aislado (4 ítems raíz) ✅
+- [x] US-NEW-042 — Página `/superadmin/users` cross-tenant (lista + edición) ✅
+- [x] US-NEW-043 — Visión General con Health al top ✅
+
+### Bloque 12 — Modelo IA local (EP016) — Ollama + Cloudflare Tunnel + nssm
+- [x] US-NEW-044 — Runbook `docs/ai/local-ollama-setup.md` paso a paso ✅
+- [x] US-NEW-045 — Config por-tenant + smoke test del túnel + secrets cifrados ✅
+  *(follow-up: integrar config en `OllamaProvider.generate()` del worker EP008 para que `ai_cascade_fallback_total` incremente cuando el túnel falle)*
+
+### Bloque 13 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center
 - [ ] US-NEW-028 — Email notifications via Resend
 
-### Bloque 10 — Migración BD (EP012) — AL FINAL
-- [ ] US-NEW-029 — Plan de migración + compatibilidad MySQL
-- [ ] US-NEW-030 — Ejecución migración zero-downtime
+### Bloque 14 — Instalación productivo Hostgator MySQL (EP012) — release v1.0
+- [ ] US-NEW-029 — Compatibilidad MySQL del código (dialect-agnostic; reemplazar PG-específicos)
+- [ ] US-NEW-030 — Setup Hostgator MySQL + pipeline de deploy productivo (fresh install)
+
+> EP012 **no es migración desde un productivo previo**: staging se queda en
+> Railway Postgres y productivo arranca directamente como instalación
+> fresca en Hostgator MySQL. Ver DEC-017/018/019 en EP012 y DECISIONS.md.
 
 ---
 
