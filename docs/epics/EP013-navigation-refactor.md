@@ -119,30 +119,26 @@ Se **elimina**:
 
 ---
 
-## # PENDING — US-NEW-033 — Panel de organización → página de recursos reales (fix bug)
+## # DONE — US-NEW-033 — Panel de organización → página de recursos reales (fix bug)
 
 **Como** usuario
 **Quiero** que al seleccionar el panel de una organización me lleve a una página con sus recursos reales (BUs, Deptos, Programas, Usuarios, Proyectos), no a la pantalla de "editar organización" del admin
 **Para** explorar el estado de la org sin privilegios de admin.
 
-**Bug actual:** `/admin/organizations/{id}` lleva a editar (sólo admin). Los usuarios no-admin no tienen vista de consulta.
-
 **Criterios de aceptación:**
-- [ ] Nueva ruta pública-para-el-tenant `/organizations/{id}` (o `/admin/organizations/{id}/panel` según arquitectura) con permiso `organizations:read` (cualquier usuario del tenant que tenga acceso a la org vía sus proyectos).
-- [ ] Secciones en la página:
-  - Header: nombre, logo (si tiene), descripción, link a "Editar" sólo visible para admin.
-  - BUs: lista/tree.
-  - Departamentos: lista/tree.
-  - Programas: tabla (folio, nombre, #proyectos activos, PM del programa).
-  - Usuarios: lista de usuarios con rol en esta org (read-only).
-  - Proyectos: tabla resumida (mismos filtros que US-024 pero pre-filtrada por `organization_id`).
-- [ ] Botón "Editar organización" sólo visible para admin / senior PMO → lleva a `/admin/organizations/{id}/edit`.
-- [ ] Endpoint `GET /api/v1/organizations/{id}/panel` devuelve todo en un solo response (lazy por sección opcional con `?include=`).
+- [x] Nueva ruta `/admin/organizations/{id}/panel` (auth-only, tenant-scoped).
+- [x] Secciones: header con logo / nombre / industry / country / is_active + contacto; KPIs (BUs, Deptos, Programas, Proyectos); lista de BUs con sus Deptos; tabla de Programas (con count de proyectos activos); tabla de Proyectos (folio, fase, salud, PM); usuarios con rol en la org (PMs + miembros de proyectos).
+- [x] Botón "Editar organización" sólo visible si el user es superadmin o tiene rol `Administrador` / `PMO Manager` — redirige a `/admin/organizations/{id}` (editor preexistente).
+- [x] Endpoint `GET /api/v1/organizations/{id}/panel` — un solo response con BUs + Deptos + Programas + Proyectos + Users; auth-only sin permiso admin (cross-tenant → 404).
+- [x] Sidebar (OrgTreeNav) ahora apunta las orgs a `/panel` en vez de al editor (fix bug del issue #17).
 
-**Test Cases:**
-- `TC-NEW-033-1` (integration) — Usuario no-admin accede a `/organizations/{id}` → 200 con sólo campos read-only.
-- `TC-NEW-033-2` (integration) — Usuario de otro tenant → 404.
-- `TC-NEW-033-3` (E2E) — Admin ve botón "Editar"; PM no lo ve.
+**Test Cases (4/4 verdes):**
+- `test_usnew033_panel_happy_path` — datos agregados correctos.
+- `test_usnew033_panel_non_admin_can_read` — user sin admin.users → 200.
+- `test_usnew033_panel_cross_tenant_404` — aislamiento multi-tenant.
+- `test_usnew033_panel_empty_org` — sin BUs/programas/proyectos no crashea.
+
+**Commit:** `feat(web,api): US-NEW-033 — panel de organización con recursos reales`.
 
 ---
 

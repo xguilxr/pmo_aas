@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, get_current_user, require_permission
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.db.session import get_db
 from app.models.organization import BusinessUnit, Department, Organization, Program
 from app.models.project import Project
+from app.models.project_member import ProjectMember
+from app.models.user import User
 from app.schemas.organization import (
     BusinessUnitCreate,
     BusinessUnitRead,
@@ -18,7 +20,13 @@ from app.schemas.organization import (
     DepartmentUpdate,
     OrganizationCreate,
     OrganizationPanel,
+    OrganizationPanelDetail,
     OrganizationPanelHealth,
+    OrgPanelBusinessUnit,
+    OrgPanelDepartment,
+    OrgPanelProgram,
+    OrgPanelProject,
+    OrgPanelUser,
     OrganizationRead,
     OrganizationUpdate,
     ProgramCreate,
@@ -204,6 +212,187 @@ async def get_org(
     if org is None:
         raise not_found("Organización")
     return OrganizationRead.model_validate(org)
+
+
+@router.get("/{org_id}/panel", response_model=OrganizationPanelDetail)
+async def get_org_panel(
+    org_id: UUID,
+    cu: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Panel read-only de recursos reales de la organización (US-NEW-033).
+
+    Cualquier usuario autenticado del tenant puede verlo. Cross-tenant → 404.
+    El botón "Editar" en la UI se muestra sólo a admins; esta API no hace
+    esa distinción — expone todo como data, y la edición vive en otros
+    endpoints con permisos más estrictos.
+    """
+    tenant_id = _ensure_tenant(cu)
+    org = (
+        await db.execute(
+            select(Organization).where(
+                Organization.id == str(org_id),
+                Organization.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if org is None:
+        raise not_found("Organización")
+
+    bus = (
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.organization_id == str(org_id),
+                BusinessUnit.deleted_at.is_(None),
+            ).order_by(BusinessUnit.name)
+        )
+    ).scalars().all()
+    bu_ids = [bu.id for bu in bus]
+    depts_rows = (
+        await db.execute(
+            select(Department).where(
+                Department.tenant_id == tenant_id,
+                Department.business_unit_id.in_(bu_ids) if bu_ids else Department.id.is_(None),
+                Department.deleted_at.is_(None),
+            ).order_by(Department.name)
+        )
+    ).scalars().all()
+    depts_by_bu: dict[str, list[Department]] = {}
+    for d in depts_rows:
+        depts_by_bu.setdefault(str(d.business_unit_id), []).append(d)
+
+    programs = (
+        await db.execute(
+            select(Program).where(
+                Program.tenant_id == tenant_id,
+                Program.organization_id == str(org_id),
+            ).order_by(Program.name)
+        )
+    ).scalars().all()
+    # Count active projects per program
+    prog_ids = [p.id for p in programs]
+    prog_proj_counts: dict[str, int] = {}
+    if prog_ids:
+        rows = (
+            await db.execute(
+                select(Project.program_id, func.count(Project.id))
+                .where(
+                    Project.tenant_id == tenant_id,
+                    Project.program_id.in_(prog_ids),
+                    Project.deleted_at.is_(None),
+                    Project.phase != "closed",
+                )
+                .group_by(Project.program_id)
+            )
+        ).all()
+        prog_proj_counts = {str(pid): int(n) for pid, n in rows}
+
+    projects = (
+        await db.execute(
+            select(Project).where(
+                Project.tenant_id == tenant_id,
+                Project.organization_id == str(org_id),
+                Project.deleted_at.is_(None),
+            ).order_by(Project.name)
+        )
+    ).scalars().all()
+    pm_ids = {p.pm_id for p in projects if p.pm_id}
+    pm_rows = (
+        await db.execute(
+            select(User.id, User.full_name, User.email).where(User.id.in_(pm_ids))
+        )
+    ).all() if pm_ids else []
+    pm_map: dict[str, tuple[str | None, str | None]] = {
+        str(uid): (name, email) for uid, name, email in pm_rows
+    }
+
+    # Users: PMs + project members de cualquier proyecto de la org
+    user_role: dict[str, str] = {}
+    for p in projects:
+        if p.pm_id:
+            user_role[str(p.pm_id)] = "pm"
+    project_ids = [p.id for p in projects]
+    if project_ids:
+        member_rows = (
+            await db.execute(
+                select(ProjectMember.user_id, ProjectMember.role_in_project)
+                .where(ProjectMember.project_id.in_(project_ids))
+            )
+        ).all()
+        for uid, rip in member_rows:
+            key = str(uid)
+            if key not in user_role:
+                user_role[key] = rip or "team"
+    users_list: list[OrgPanelUser] = []
+    if user_role:
+        rows = (
+            await db.execute(
+                select(User.id, User.full_name, User.email).where(
+                    User.id.in_(list(user_role.keys()))
+                )
+            )
+        ).all()
+        rows_sorted = sorted(rows, key=lambda r: (r[1] or r[2] or "").lower())
+        users_list = [
+            OrgPanelUser(
+                id=r[0], full_name=r[1], email=r[2], role=user_role[str(r[0])],
+            )
+            for r in rows_sorted
+        ]
+
+    return OrganizationPanelDetail(
+        id=org.id,
+        name=org.name,
+        reason_social=org.reason_social,
+        industry=org.industry,
+        country=org.country,
+        contact_email=org.contact_email,
+        logo_url=org.logo_url,
+        is_active=org.is_active,
+        business_units=[
+            OrgPanelBusinessUnit(
+                id=bu.id,
+                name=bu.name,
+                description=bu.description,
+                is_active=bu.is_active,
+                departments=[
+                    OrgPanelDepartment(
+                        id=d.id,
+                        business_unit_id=d.business_unit_id,
+                        name=d.name,
+                        is_active=d.is_active,
+                    )
+                    for d in depts_by_bu.get(str(bu.id), [])
+                ],
+            )
+            for bu in bus
+        ],
+        programs=[
+            OrgPanelProgram(
+                id=p.id,
+                name=p.name,
+                description=p.description,
+                is_active=p.is_active,
+                active_project_count=prog_proj_counts.get(str(p.id), 0),
+            )
+            for p in programs
+        ],
+        projects=[
+            OrgPanelProject(
+                id=p.id,
+                folio=p.folio,
+                name=p.name,
+                phase=p.phase,
+                health_status=p.health_status,
+                program_id=p.program_id,
+                pm_id=p.pm_id,
+                pm_name=pm_map.get(str(p.pm_id), (None, None))[0] if p.pm_id else None,
+            )
+            for p in projects
+        ],
+        users=users_list,
+    )
 
 
 @router.patch("/{org_id}", response_model=OrganizationRead)

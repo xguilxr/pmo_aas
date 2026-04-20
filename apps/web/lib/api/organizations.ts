@@ -71,6 +71,66 @@ export function getOrganization(id: string): Promise<Organization> {
   return apiFetch<Organization>(`/api/v1/organizations/${id}`);
 }
 
+export type OrgPanelDepartment = {
+  id: string;
+  business_unit_id: string;
+  name: string;
+  is_active: boolean;
+};
+
+export type OrgPanelBusinessUnit = {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  departments: OrgPanelDepartment[];
+};
+
+export type OrgPanelProgram = {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  active_project_count: number;
+};
+
+export type OrgPanelProject = {
+  id: string;
+  folio: string | null;
+  name: string;
+  phase: string | null;
+  health_status: string | null;
+  program_id: string | null;
+  pm_id: string | null;
+  pm_name: string | null;
+};
+
+export type OrgPanelUser = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string;
+};
+
+export type OrganizationPanelDetail = {
+  id: string;
+  name: string;
+  reason_social: string | null;
+  industry: string | null;
+  country: string | null;
+  contact_email: string | null;
+  logo_url: string | null;
+  is_active: boolean;
+  business_units: OrgPanelBusinessUnit[];
+  programs: OrgPanelProgram[];
+  projects: OrgPanelProject[];
+  users: OrgPanelUser[];
+};
+
+export function getOrganizationPanel(id: string): Promise<OrganizationPanelDetail> {
+  return apiFetch<OrganizationPanelDetail>(`/api/v1/organizations/${id}/panel`);
+}
+
 export function createOrganization(body: OrganizationCreateBody): Promise<Organization> {
   return apiFetch<Organization>("/api/v1/organizations", { method: "POST", body });
 }

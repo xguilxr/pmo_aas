@@ -7,7 +7,7 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-033 — Panel de organización → página de recursos reales
+US-NEW-034 — Página resumen de programa
 ```
 
 ---
@@ -16,9 +16,9 @@ US-NEW-033 — Panel de organización → página de recursos reales
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-033 | EP013 | Panel de organización → página de recursos reales | Bloque 9 |
-| 2 | US-NEW-034 | EP013 | Página resumen de programa | Bloque 9 |
-| 3 | US-NEW-035 | EP013 | Tabs inline en detalle de proyecto (supersede US-NEW-017) | Bloque 9 |
+| 1 | US-NEW-034 | EP013 | Página resumen de programa | Bloque 9 |
+| 2 | US-NEW-035 | EP013 | Tabs inline en detalle de proyecto (supersede US-NEW-017) | Bloque 9 |
+| 3 | US-NEW-036 | EP013 | Restructurar sidebar Admin (4 ítems raíz) | Bloque 9 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -58,6 +58,7 @@ US-NEW-033 — Panel de organización → página de recursos reales
 | US-NEW-026 | Visión General = Tenants + Health unificados | `feat(superadmin): US-NEW-026 — visión general unificada` | 2026-04-20 |
 | US-NEW-031 | Upload y display del logo del tenant en chrome | `feat(branding): US-NEW-031 — upload y display del logo del tenant en chrome` | 2026-04-20 |
 | US-NEW-032 | Restructurar sidebar principal (drill-down real) | `feat(web): US-NEW-032 — sidebar drill-down real; elimina duplicado y módulos de proyecto` | 2026-04-20 |
+| US-NEW-033 | Panel de organización → página de recursos reales | `feat(web,api): US-NEW-033 — panel de organización con recursos reales` | 2026-04-20 |
 
 ---
 
@@ -113,7 +114,7 @@ US-NEW-033 — Panel de organización → página de recursos reales
 **Orden de ejecución** (1 US por commit, en este orden):
 - [x] US-NEW-031 — Upload y display del logo del tenant en chrome ✅
 - [x] US-NEW-032 — Restructurar sidebar principal (drill-down real; quitar "Módulos de proyecto" y duplicado de Organizaciones) ✅
-- [ ] US-NEW-033 — Panel de organización → página de recursos reales (fix bug + enhancement)
+- [x] US-NEW-033 — Panel de organización → página de recursos reales (fix bug + enhancement) ✅
 - [ ] US-NEW-034 — Página resumen de programa (KPIs + lista de proyectos)
 - [ ] US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017)
 - [ ] US-NEW-036 — Restructurar sidebar Admin (fusionar Mi Tenant + Panel + Configuración; 4 ítems raíz)

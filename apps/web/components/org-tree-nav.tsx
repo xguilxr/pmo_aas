@@ -295,8 +295,8 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
                   depth={1}
                   icon={<Building2 className="h-3.5 w-3.5" aria-hidden />}
                   label={org.name}
-                  href={`/admin/organizations/${org.id}`}
-                  active={pathname === `/admin/organizations/${org.id}`}
+                  href={`/admin/organizations/${org.id}/panel`}
+                  active={pathname.startsWith(`/admin/organizations/${org.id}/panel`)}
                   hasChildren
                   isOpen={orgOpen}
                   onToggle={() => toggle(orgKey)}

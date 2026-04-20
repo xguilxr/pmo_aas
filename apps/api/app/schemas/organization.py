@@ -59,6 +59,64 @@ class OrganizationPanel(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---- US-NEW-033: Detalle de recursos reales por organización ----
+
+class OrgPanelDepartment(BaseModel):
+    id: UUID
+    business_unit_id: UUID
+    name: str
+    is_active: bool
+
+
+class OrgPanelBusinessUnit(BaseModel):
+    id: UUID
+    name: str
+    description: str | None = None
+    is_active: bool
+    departments: list[OrgPanelDepartment] = Field(default_factory=list)
+
+
+class OrgPanelProgram(BaseModel):
+    id: UUID
+    name: str
+    description: str | None = None
+    is_active: bool
+    active_project_count: int = 0
+
+
+class OrgPanelProject(BaseModel):
+    id: UUID
+    folio: str | None
+    name: str
+    phase: str | None
+    health_status: str | None
+    program_id: UUID | None
+    pm_id: UUID | None
+    pm_name: str | None = None
+
+
+class OrgPanelUser(BaseModel):
+    id: UUID
+    full_name: str | None
+    email: str | None
+    role: str  # role in the org panel context: "pm" | "team" | "viewer"
+
+
+class OrganizationPanelDetail(BaseModel):
+    id: UUID
+    name: str
+    reason_social: str | None = None
+    industry: str | None = None
+    country: str | None = None
+    contact_email: str | None = None
+    logo_url: str | None = None
+    is_active: bool
+    business_units: list[OrgPanelBusinessUnit] = Field(default_factory=list)
+    programs: list[OrgPanelProgram] = Field(default_factory=list)
+    projects: list[OrgPanelProject] = Field(default_factory=list)
+    users: list[OrgPanelUser] = Field(default_factory=list)
+
+
 class BusinessUnitCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     description: str | None = None
