@@ -55,7 +55,7 @@ Toda otra entrada del sidebar queda oculta para super admins.
 
 ---
 
-## # PENDING — US-NEW-042 — Página `/superadmin/users` cross-tenant
+## # DONE — US-NEW-042 — Página `/superadmin/users` cross-tenant
 
 **Como** super admin
 **Quiero** listar y editar usuarios de **todos** los tenants en una sola pantalla
@@ -79,12 +79,21 @@ Toda otra entrada del sidebar queda oculta para super admins.
   - Acción inline "Editar" (abre drawer / modal con form).
   - Acción inline "Desactivar" con confirmación + motivo.
 
-**Test Cases:**
-- `TC-NEW-042-1` (integration) — Usuario no-superadmin → 403 al endpoint.
-- `TC-NEW-042-2` (integration) — Filtro `tenant_id` sólo devuelve usuarios de ese tenant.
-- `TC-NEW-042-3` (integration) — PATCH a otro super admin → 403.
-- `TC-NEW-042-4` (integration) — Toggle is_active crea entrada de audit_log con scope=platform.
-- `TC-NEW-042-5` (E2E) — Edición → tabla refresca sin recarga completa.
+**Tests (8/8 verdes):**
+- `test_usnew042_list_requires_superadmin` — 403 a no-superadmin.
+- `test_usnew042_list_cross_tenant` — lista usuarios de todos los tenants.
+- `test_usnew042_filter_by_tenant` — filtro por `tenant_id`.
+- `test_usnew042_search_q_matches_email_username` — fuzzy search.
+- `test_usnew042_patch_user` — update ok.
+- `test_usnew042_patch_other_superadmin_forbidden` — 403 a otro super admin.
+- `test_usnew042_toggle_active_audits` — 2 toggles → 2 rows de audit.
+- `test_usnew042_cannot_deactivate_self` — auto-desactivación → 422.
+
+**Implementación:**
+- `GET /api/v1/superadmin/users` con filtros `q`, `tenant_id`, `is_active`, `is_superadmin`, `role_name`, paginación. Resuelve `tenant_{slug,name}` y roles en un mini JOIN para evitar N+1.
+- `PATCH /api/v1/superadmin/users/{id}` — `full_name`, `email`, `username`, `is_active`. 403 si target es otro super admin.
+- `POST /api/v1/superadmin/users/{id}/toggle-active` con `reason` obligatorio. Auditado con `scope=platform`.
+- Frontend `/superadmin/users`: tabla con search (debounce 300 ms), filtro activos/inactivos, modales para editar y toggle con motivo.
 
 **Commit:** `feat(api,web): US-NEW-042 — /superadmin/users cross-tenant`.
 

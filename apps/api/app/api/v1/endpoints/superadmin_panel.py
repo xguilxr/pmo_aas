@@ -12,6 +12,7 @@ from app.models.ai import AIJob
 from app.models.audit import AuditLog
 from app.models.organization import Organization
 from app.models.project import Project
+from app.models.role import Role, UserRole
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.audit import write_audit
@@ -278,6 +279,195 @@ async def platform_health(
         db_ok = False
     # Redis skip in tests (sin conexión real)
     return {"db": db_ok, "api": True, "time": datetime.now(UTC).isoformat()}
+
+
+# ---- EP015 US-NEW-042: Usuarios cross-tenant ----
+
+from pydantic import BaseModel, EmailStr, Field  # noqa: E402
+from app.core.errors import business_rule, forbidden  # noqa: E402
+
+
+class SuperadminUserUpdate(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=200)
+    email: EmailStr | None = None
+    username: str | None = Field(default=None, min_length=2, max_length=64)
+    is_active: bool | None = None
+
+
+class SuperadminUserToggle(BaseModel):
+    reason: str = Field(min_length=5, max_length=500)
+
+
+@router.get("/users")
+async def list_all_users(
+    q: str | None = Query(default=None),
+    tenant_id: UUID | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    is_superadmin: bool | None = Query(default=None),
+    role_name: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=50, ge=1, le=200),
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Listado cross-tenant de usuarios con filtros (US-NEW-042)."""
+    stmt = select(User)
+    if q:
+        like = f"%{q.lower()}%"
+        stmt = stmt.where(
+            or_(
+                func.lower(User.username).like(like),
+                func.lower(User.email).like(like),
+                func.lower(func.coalesce(User.full_name, "")).like(like),
+            )
+        )
+    if tenant_id:
+        stmt = stmt.where(User.tenant_id == str(tenant_id))
+    if is_active is not None:
+        stmt = stmt.where(User.is_active.is_(is_active))
+    if is_superadmin is not None:
+        stmt = stmt.where(User.is_superadmin.is_(is_superadmin))
+    if role_name:
+        stmt = (
+            stmt.join(UserRole, UserRole.user_id == User.id)
+            .join(Role, Role.id == UserRole.role_id)
+            .where(Role.name == role_name)
+        )
+    rows = (
+        await db.execute(
+            stmt.order_by(User.created_at.desc()).offset((page - 1) * limit).limit(limit)
+        )
+    ).scalars().all()
+
+    tenant_ids = {u.tenant_id for u in rows if u.tenant_id}
+    tenants_map: dict[str, tuple[str, str]] = {}
+    if tenant_ids:
+        trows = (
+            await db.execute(
+                select(Tenant.id, Tenant.slug, Tenant.name).where(Tenant.id.in_(tenant_ids))
+            )
+        ).all()
+        tenants_map = {str(tid): (slug, name) for tid, slug, name in trows}
+
+    user_ids = [u.id for u in rows]
+    roles_by_user: dict[str, list[str]] = {}
+    if user_ids:
+        role_rows = (
+            await db.execute(
+                select(UserRole.user_id, Role.name)
+                .join(Role, Role.id == UserRole.role_id)
+                .where(UserRole.user_id.in_(user_ids))
+            )
+        ).all()
+        for uid, rname in role_rows:
+            roles_by_user.setdefault(str(uid), []).append(rname)
+
+    return {
+        "items": [
+            {
+                "id": str(u.id),
+                "username": u.username,
+                "email": u.email,
+                "full_name": u.full_name,
+                "is_active": u.is_active,
+                "is_superadmin": u.is_superadmin,
+                "tenant_id": str(u.tenant_id) if u.tenant_id else None,
+                "tenant_slug": tenants_map.get(str(u.tenant_id), (None, None))[0]
+                    if u.tenant_id else None,
+                "tenant_name": tenants_map.get(str(u.tenant_id), (None, None))[1]
+                    if u.tenant_id else None,
+                "roles": roles_by_user.get(str(u.id), []),
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+                "last_login_at": u.last_login.isoformat() if getattr(u, "last_login", None) else None,
+            }
+            for u in rows
+        ],
+        "page": page,
+        "limit": limit,
+        "count": len(rows),
+    }
+
+
+async def _load_user(db: AsyncSession, user_id: UUID) -> User:
+    u = (
+        await db.execute(select(User).where(User.id == str(user_id)))
+    ).scalar_one_or_none()
+    if u is None:
+        raise not_found("Usuario")
+    return u
+
+
+def _protect_other_superadmin(target: User, actor: CurrentUser) -> None:
+    """No permitir modificar a OTRO super admin desde este endpoint."""
+    if target.is_superadmin and str(target.id) != str(actor.id):
+        raise forbidden(
+            code="FORBIDDEN",
+            detail="No se puede modificar a otro super admin desde este panel",
+        )
+
+
+@router.patch("/users/{user_id}")
+async def update_user_as_superadmin(
+    user_id: UUID,
+    body: SuperadminUserUpdate,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Actualiza datos básicos de un usuario (US-NEW-042)."""
+    target = await _load_user(db, user_id)
+    _protect_other_superadmin(target, cu)
+    data = body.model_dump(exclude_unset=True)
+    # EmailStr → str
+    if "email" in data and data["email"] is not None:
+        data["email"] = str(data["email"]).lower()
+    if "username" in data and data["username"] is not None:
+        data["username"] = data["username"].lower()
+    for field, value in data.items():
+        setattr(target, field, value)
+    await write_audit(
+        db,
+        action="user.superadmin_update",
+        module="superadmin",
+        user_id=cu.id,
+        tenant_id=target.tenant_id,
+        entity_type="user",
+        entity_id=str(target.id),
+        details={"fields": list(data.keys())},
+    )
+    await db.commit()
+    return {
+        "id": str(target.id),
+        "username": target.username,
+        "email": target.email,
+        "full_name": target.full_name,
+        "is_active": target.is_active,
+    }
+
+
+@router.post("/users/{user_id}/toggle-active")
+async def toggle_user_active(
+    user_id: UUID,
+    body: SuperadminUserToggle,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    target = await _load_user(db, user_id)
+    _protect_other_superadmin(target, cu)
+    if str(target.id) == str(cu.id):
+        raise business_rule("No puedes desactivar tu propia cuenta")
+    target.is_active = not target.is_active
+    await write_audit(
+        db,
+        action="user.superadmin_toggle_active",
+        module="superadmin",
+        user_id=cu.id,
+        tenant_id=target.tenant_id,
+        entity_type="user",
+        entity_id=str(target.id),
+        details={"reason": body.reason, "is_active": target.is_active},
+    )
+    await db.commit()
+    return {"id": str(target.id), "is_active": target.is_active}
 
 
 @router.post("/tenants/{tenant_id}/freeze")

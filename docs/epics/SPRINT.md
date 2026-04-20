@@ -7,7 +7,7 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-042 — /superadmin/users cross-tenant (EP015, issue #19)
+US-NEW-043 — Visión General con Health al top (EP015)
 ```
 
 ---
@@ -16,9 +16,9 @@ US-NEW-042 — /superadmin/users cross-tenant (EP015, issue #19)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-042 | EP015 | `/superadmin/users` cross-tenant | Bloque 11 |
-| 2 | US-NEW-043 | EP015 | Visión General con Health al top | Bloque 11 |
-| 3 | US-NEW-044 | EP016 | Runbook `docs/ai/local-ollama-setup.md` | Bloque 12 |
+| 1 | US-NEW-043 | EP015 | Visión General con Health al top | Bloque 11 |
+| 2 | US-NEW-044 | EP016 | Runbook `docs/ai/local-ollama-setup.md` | Bloque 12 |
+| 3 | US-NEW-045 | EP016 | Config + smoke test del túnel | Bloque 12 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -67,6 +67,7 @@ US-NEW-042 — /superadmin/users cross-tenant (EP015, issue #19)
 | US-NEW-039 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | `feat(api,web): US-NEW-039 — reporte de seguimiento por responsable` | 2026-04-20 |
 | US-NEW-040 | Formato estandarizado + export de Minuta IA (.pdf/.docx/.md/.txt) | `feat(api,web): US-NEW-040 — export estandarizado de minuta` | 2026-04-20 |
 | US-NEW-041 | Sidebar super admin aislado (4 ítems raíz) | `feat(web): US-NEW-041 — sidebar super admin aislado (4 ítems raíz)` | 2026-04-20 |
+| US-NEW-042 | Página `/superadmin/users` cross-tenant | `feat(api,web): US-NEW-042 — /superadmin/users cross-tenant` | 2026-04-20 |
 
 ---
 
@@ -135,7 +136,7 @@ US-NEW-042 — /superadmin/users cross-tenant (EP015, issue #19)
 
 ### Bloque 11 — Refactor nav super admin (EP015) — issue #19
 - [x] US-NEW-041 — Sidebar super admin aislado (4 ítems raíz) ✅
-- [ ] US-NEW-042 — Página `/superadmin/users` cross-tenant (lista + edición)
+- [x] US-NEW-042 — Página `/superadmin/users` cross-tenant (lista + edición) ✅
 - [ ] US-NEW-043 — Visión General con Health al top
 
 ### Bloque 12 — Modelo IA local (EP016) — Ollama + Cloudflare Tunnel + nssm
