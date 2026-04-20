@@ -175,3 +175,37 @@ una organización específica
 - `test_usnew014_charts_filtered_by_org` — charts se filtran ✅
 
 **Estado de integración:** DONE (US-NEW-014).
+
+---
+
+### US-NEW-015 — KPIs respetan jerarquía de roles
+
+**Como** usuario según su rol
+**Quiero** ver sólo los KPIs relevantes a mi scope
+**Para** enfocarme en los datos que me corresponden.
+
+**Criterios de aceptación:**
+- [x] Helper `scoped_project_ids(cu, db, tenant_id, org_id)` en
+  `dashboard.py`: devuelve lista de project_ids visibles o `None` si
+  admin-equivalente.
+- [x] Admin / Senior PMO: sin restricción (via `is_admin_equivalent`).
+- [x] Project Manager y otros roles: proyectos donde es `pm_id` o está en
+  `project_members`.
+- [x] Aplica a `/dashboard/kpis`, `/dashboard/charts` y
+  `/dashboard/plan-vs-actual`.
+- [x] Solicitudes (in_review) para no-admin: sólo las que el usuario creó.
+- [x] Usuario sin proyectos asignados → conteos en 0, sin error.
+
+**Test Cases:**
+- Admin ve todo ✅
+- PM ve sólo proyectos donde es pm_id ✅
+- PM ve sólo proyectos donde es miembro ✅
+- Usuario sin asignaciones → 0 ✅
+- Charts y Plan-vs-Real respetan scoping ✅
+
+**Notas:**
+- La granularidad "Program Manager ve su programa + PMs bajo él" queda
+  pendiente para una US posterior (requiere modelar ownership de
+  programas, hoy no existe en el schema).
+
+**Estado de integración:** DONE (US-NEW-015).

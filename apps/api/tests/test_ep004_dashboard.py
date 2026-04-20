@@ -197,3 +197,157 @@ async def test_usnew014_charts_filtered_by_org(client, db_session):
     data = r.json()
     # OrgB no tiene proyectos → conteos vacíos
     assert data["projects_by_phase"] == {}
+
+
+# ============================================================================
+# US-NEW-015 — KPIs respetan jerarquía de roles
+# ============================================================================
+
+
+async def _pm_role(db_session, tenant) -> "Role":
+    from app.models.role import Role
+    r = Role(
+        tenant_id=tenant.id,
+        name="Project Manager",
+        description="PM",
+        is_system=True,
+        permissions={
+            "projects": ["read", "update"],
+            "dashboard": ["read"],
+        },
+    )
+    db_session.add(r)
+    await db_session.flush()
+    return r
+
+
+@pytest.mark.asyncio
+async def test_usnew015_admin_sees_all(client, db_session):
+    """Admin-equivalente ve todos los proyectos del tenant."""
+    t, auth, org_id = await _setup(client, db_session)
+    await _seed_projects(db_session, str(t.id), org_id)
+
+    r = await client.get("/api/v1/dashboard/kpis", headers=auth["_authz"])
+    assert r.status_code == 200
+    # _seed_projects crea 4 proyectos, 3 activos
+    assert r.json()["active_projects"] == 3
+
+
+@pytest.mark.asyncio
+async def test_usnew015_pm_sees_only_assigned_projects(client, db_session):
+    """Project Manager ve solo proyectos donde es pm_id o member."""
+    from sqlalchemy import select as sa_select
+    from app.models.project import Project
+
+    t, _admin_auth, org_id = await _setup(client, db_session)
+    projects = await _seed_projects(db_session, str(t.id), org_id)
+
+    pm_role = await _pm_role(db_session, t)
+    pm_user = await create_user(
+        db_session, tenant=t, username="pmuser",
+        email="pm@acme.example.com", password="Str0ng-Pm-1!",
+        roles=[pm_role],
+    )
+    # Asignar al PM sólo al primer proyecto (phase=planning → activo)
+    projects[0].pm_id = str(pm_user.id)
+    await db_session.commit()
+
+    auth = await login(client, "pmuser", "Str0ng-Pm-1!")
+    r = await client.get("/api/v1/dashboard/kpis", headers=auth["_authz"])
+    assert r.status_code == 200
+    # Sólo 1 proyecto activo (el que le asignaron) vs 3 que ve el admin
+    assert r.json()["active_projects"] == 1
+    # Budget total sólo del proyecto asignado
+    assert r.json()["budget_total"] == 100000.0
+
+
+@pytest.mark.asyncio
+async def test_usnew015_pm_sees_member_projects(client, db_session):
+    """Project Manager también ve proyectos donde es miembro, no sólo pm_id."""
+    from app.models.project_member import ProjectMember
+
+    t, _admin_auth, org_id = await _setup(client, db_session)
+    projects = await _seed_projects(db_session, str(t.id), org_id)
+
+    pm_role = await _pm_role(db_session, t)
+    pm_user = await create_user(
+        db_session, tenant=t, username="member1",
+        email="mem1@acme.example.com", password="Str0ng-M1-1!",
+        roles=[pm_role],
+    )
+    # Sólo como miembro del segundo proyecto (no pm)
+    db_session.add(
+        ProjectMember(
+            project_id=projects[1].id,
+            user_id=str(pm_user.id),
+            role_in_project="team",
+        )
+    )
+    await db_session.commit()
+    auth = await login(client, "member1", "Str0ng-M1-1!")
+
+    r = await client.get("/api/v1/dashboard/kpis", headers=auth["_authz"])
+    assert r.status_code == 200
+    assert r.json()["active_projects"] == 1
+
+
+@pytest.mark.asyncio
+async def test_usnew015_pm_without_projects_sees_zero(client, db_session):
+    """Un PM sin proyectos asignados ve ceros."""
+    t, _admin_auth, org_id = await _setup(client, db_session)
+    await _seed_projects(db_session, str(t.id), org_id)
+
+    pm_role = await _pm_role(db_session, t)
+    await create_user(
+        db_session, tenant=t, username="orphan",
+        email="orphan@acme.example.com", password="Str0ng-Or-1!",
+        roles=[pm_role],
+    )
+    auth = await login(client, "orphan", "Str0ng-Or-1!")
+    r = await client.get("/api/v1/dashboard/kpis", headers=auth["_authz"])
+    assert r.status_code == 200
+    assert r.json()["active_projects"] == 0
+    assert r.json()["budget_total"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_usnew015_charts_respect_role(client, db_session):
+    t, _admin_auth, org_id = await _setup(client, db_session)
+    projects = await _seed_projects(db_session, str(t.id), org_id)
+
+    pm_role = await _pm_role(db_session, t)
+    pm_user = await create_user(
+        db_session, tenant=t, username="cpm",
+        email="cpm@acme.example.com", password="Str0ng-Cpm-1!",
+        roles=[pm_role],
+    )
+    projects[0].pm_id = str(pm_user.id)
+    await db_session.commit()
+
+    auth = await login(client, "cpm", "Str0ng-Cpm-1!")
+    r = await client.get("/api/v1/dashboard/charts", headers=auth["_authz"])
+    data = r.json()
+    # Sólo 1 proyecto (phase=planning)
+    assert data["projects_by_phase"] == {"planning": 1}
+
+
+@pytest.mark.asyncio
+async def test_usnew015_plan_vs_actual_respects_role(client, db_session):
+    t, _admin_auth, org_id = await _setup(client, db_session)
+    projects = await _seed_projects(db_session, str(t.id), org_id)
+
+    pm_role = await _pm_role(db_session, t)
+    pm_user = await create_user(
+        db_session, tenant=t, username="pvapm",
+        email="pva@acme.example.com", password="Str0ng-Pva-1!",
+        roles=[pm_role],
+    )
+    projects[0].pm_id = str(pm_user.id)
+    await db_session.commit()
+
+    auth = await login(client, "pvapm", "Str0ng-Pva-1!")
+    r = await client.get("/api/v1/dashboard/plan-vs-actual", headers=auth["_authz"])
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 1
+    assert rows[0]["folio"] == projects[0].folio

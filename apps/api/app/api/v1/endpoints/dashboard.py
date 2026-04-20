@@ -12,6 +12,7 @@ from app.api.deps import CurrentUser, require_permission
 from app.core.errors import forbidden
 from app.db.session import get_db
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -27,6 +28,56 @@ async def _count(db: AsyncSession, stmt) -> int:
     return (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one() or 0
 
 
+async def scoped_project_ids(
+    cu: CurrentUser,
+    db: AsyncSession,
+    tenant_id: UUID,
+    organization_id: UUID | None = None,
+) -> list[str] | None:
+    """Devuelve IDs de proyectos visibles al usuario según jerarquía de roles
+    (US-NEW-015). `None` significa "sin restricción" (admin-equivalente: ve
+    todo el tenant filtrable por org).
+
+    Reglas:
+      - Admin-equivalente (is_admin_equivalent = True, incluye Administrador y
+        Senior PMO via DEC-005): ve todo el tenant. Aplica filtro por `org`
+        si se pasa.
+      - Project Manager / resto de roles: sólo proyectos donde es `pm_id`
+        o está en `project_members`.
+    """
+    if cu.is_admin_equivalent:
+        return None  # sin restricción adicional
+
+    user_id = str(cu.id)
+    # Proyectos donde es PM asignado
+    pm_stmt = select(Project.id).where(
+        Project.tenant_id == tenant_id,
+        Project.deleted_at.is_(None),
+        Project.pm_id == user_id,
+    )
+    if organization_id:
+        pm_stmt = pm_stmt.where(Project.organization_id == str(organization_id))
+    pm_ids = (await db.execute(pm_stmt)).scalars().all()
+
+    # Proyectos donde es miembro (cualquier rol)
+    mem_stmt = (
+        select(Project.id)
+        .join(ProjectMember, ProjectMember.project_id == Project.id)
+        .where(
+            Project.tenant_id == tenant_id,
+            Project.deleted_at.is_(None),
+            ProjectMember.user_id == user_id,
+        )
+    )
+    if organization_id:
+        mem_stmt = mem_stmt.where(Project.organization_id == str(organization_id))
+    member_ids = (await db.execute(mem_stmt)).scalars().all()
+
+    combined = {str(i) for i in pm_ids} | {str(i) for i in member_ids}
+    # Devolver lista; vacía = ningún proyecto visible
+    return list(combined)
+
+
 @router.get("/kpis")
 async def kpis(
     organization_id: UUID | None = Query(default=None),
@@ -36,12 +87,19 @@ async def kpis(
     tenant_id = _tenant(cu)
     active_phases = ["planning", "execution", "support"]
 
+    # Scoping por jerarquía (US-NEW-015): None = sin restricción (admin),
+    # lista = sólo esos project_ids. Lista vacía = ningún proyecto visible.
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
+    role_restricted = role_ids is not None
+
     def scoped_projects():
         stmt = select(Project.id).where(
             Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
         )
         if organization_id:
             stmt = stmt.where(Project.organization_id == str(organization_id))
+        if role_restricted:
+            stmt = stmt.where(Project.id.in_(role_ids or ["__none__"]))
         return stmt
 
     # IDs de proyectos del scope actual para filtrar módulos
@@ -59,6 +117,9 @@ async def kpis(
         req_stmt = req_stmt.where(
             ProjectRequest.organization_id == str(organization_id)
         )
+    # Solicitudes: a los no-admins se les muestran solo las que ellos crearon
+    if role_restricted:
+        req_stmt = req_stmt.where(ProjectRequest.requested_by == str(cu.id))
     requests_in_review = await _count(db, req_stmt)
 
     # Conteos de módulos — se calculan si existen las tablas (EP006). Defaults seguros.
@@ -120,6 +181,8 @@ async def kpis(
         budget_stmt = budget_stmt.where(
             Project.organization_id == str(organization_id)
         )
+    if role_restricted:
+        budget_stmt = budget_stmt.where(Project.id.in_(role_ids or ["__none__"]))
     budget_total: Decimal | None = (await db.execute(budget_stmt)).scalar_one()
 
     progress_stmt = select(func.coalesce(func.avg(Project.progress), 0)).where(
@@ -131,6 +194,8 @@ async def kpis(
         progress_stmt = progress_stmt.where(
             Project.organization_id == str(organization_id)
         )
+    if role_restricted:
+        progress_stmt = progress_stmt.where(Project.id.in_(role_ids or ["__none__"]))
     progress_avg = (await db.execute(progress_stmt)).scalar_one()
 
     return {
@@ -152,11 +217,14 @@ async def charts(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
 
     def scoped_where():
         base = [Project.tenant_id == tenant_id, Project.deleted_at.is_(None)]
         if organization_id:
             base.append(Project.organization_id == str(organization_id))
+        if role_ids is not None:
+            base.append(Project.id.in_(role_ids or ["__none__"]))
         return base
 
     rows = (
@@ -219,6 +287,11 @@ async def plan_vs_actual(
         stmt = stmt.where(Project.program_id == str(program_id))
     if phase:
         stmt = stmt.where(Project.phase == phase)
+
+    # Scoping por jerarquía (US-NEW-015): Project Managers ven sólo lo suyo.
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
+    if role_ids is not None:
+        stmt = stmt.where(Project.id.in_(role_ids or ["__none__"]))
 
     # Orden: rojo primero
     health_order = {"red": 0, "yellow": 1, "green": 2}

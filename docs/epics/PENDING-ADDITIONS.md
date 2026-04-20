@@ -198,7 +198,20 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-015 — KPIs respetan jerarquía de roles
+### # INTEGRATED — US-NEW-015 — KPIs respetan jerarquía de roles
+
+**Estado de integración:** INTEGRATED en EP004. Helper `scoped_project_ids`
+  aplicado a `/kpis`, `/charts` y `/plan-vs-actual`:
+  - Admin-equivalente (via `is_admin_equivalent`): sin restricción.
+  - Project Manager / resto de roles: sólo proyectos donde es `pm_id` o
+    está en `project_members`.
+  - Lista vacía → endpoints devuelven ceros (no error).
+  La granularidad "Program Manager ve su programa" queda para US futura
+  (requiere tabla program_managers o equivalente).
+
+---
+
+### # PENDING (referencia) — US-NEW-015 — KPIs respetan jerarquía de roles
 
 **Criterios de aceptación:**
 - [ ] Admin / Senior PMO: ven todos los KPIs del tenant. Filtros disponibles: org, programa, PM asignado.
