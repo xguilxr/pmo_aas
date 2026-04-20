@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-019
+US: US-NEW-020
 Epic: EP006-project-modules.md
-Título: Consolidar RAID (vista unificada con sub-tabs)
-Tipo: Frontend — página única con 4 sub-tabs
-Commit esperado: "feat(projects): US-NEW-019 — consolidar RAID"
-Precondición: tablas risks + issues existen (DEC-007).
+Título: Categorías de documentos actualizadas
+Tipo: Backend — validación de category enum + docs
+Commit esperado: "feat(projects): US-NEW-020 — categorías de documentos"
+Precondición: tabla documents existe; category ya es string libre.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: tablas risks + issues existen (DEC-007).
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-020 | EP006 | Categorías de documentos actualizadas | Backend |
-| 2 | US-NEW-021 | EP006 | Consolidar pestañas de Minutas | Frontend |
-| 3 | US-NEW-022 | EP006 | Módulo Reportes dentro del proyecto | Backend+FE |
+| 1 | US-NEW-021 | EP006 | Consolidar pestañas de Minutas | Frontend |
+| 2 | US-NEW-022 | EP006 | Módulo Reportes dentro del proyecto | Backend+FE |
+| 3 | US-NEW-023 | EP007 | Gestión de Tenant (acciones) | Frontend |
 
 ---
 
@@ -51,6 +51,7 @@ Precondición: tablas risks + issues existen (DEC-007).
 | US-BUG-003 | Fix layout Plan vs Real + columna PM | `fix(dashboard): US-BUG-003 — layout Plan vs Real` | 2026-04-20 |
 | US-NEW-016 | Unificar Plan + Gantt en una pestaña | `feat(projects): US-NEW-016 — unificar plan + gantt` | 2026-04-20 |
 | US-NEW-018 | Módulo Áreas/Organigrama del proyecto | `feat(projects): US-NEW-018 — módulo áreas del proyecto` | 2026-04-20 |
+| US-NEW-019 | Consolidar RAID (vista unificada) | `feat(projects): US-NEW-019 — consolidar RAID` | 2026-04-20 |
 
 ---
 
@@ -87,7 +88,7 @@ Precondición: tablas risks + issues existen (DEC-007).
 - [x] US-NEW-018 — Módulo Área/Organigrama del proyecto ✅
 
 ### Bloque 6 — RAID y módulos (EP006)
-- [ ] US-NEW-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones)
+- [x] US-NEW-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones) ✅
 - [ ] US-NEW-020 — Categorías de documentos actualizadas
 - [ ] US-NEW-021 — Consolidar pestañas de Minutas en 1
 - [ ] US-NEW-022 — Módulo Reportes dentro del proyecto

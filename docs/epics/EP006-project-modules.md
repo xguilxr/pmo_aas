@@ -231,3 +231,31 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 - [ ] Componente `<ModuleShell>` usado por los 6 → 0 duplicación visual.
 - [ ] Matriz P×I de riesgos accesible con tooltips.
 - [ ] Alerta visual de AIDs vencidas.
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-019 — Consolidar RAID (vista unificada)
+
+**Como** PM
+**Quiero** ver Riesgos + Acciones + Incidentes + Decisiones juntos
+**Para** revisar el estado completo sin saltar entre módulos.
+
+**Criterios de aceptación (DEC-007):**
+- [x] Nueva ruta `/admin/projects/{id}/raid` con 4 sub-tabs R/A/I/D.
+- [x] Tab persistido en URL como `?tab=risks|actions|incidents|decisions`.
+- [x] Counters por categoría visibles en el header de cada tab.
+- [x] Riesgos: tabla `risks`.
+- [x] Acciones: tabla `issues WHERE type='action'`.
+- [x] Incidentes: tabla `issues WHERE type='issue'` (label UI = "Incidente").
+- [x] Decisiones: tabla `issues WHERE type='decision'`.
+- [x] Export RAID → CSV con 4 secciones (un archivo); el XLSX con 4
+  sheets queda como follow-up.
+- [x] Sidebar: "Riesgos" + "AIDs" reemplazados por una sola entrada
+  "RAID" (los enlaces legacy siguen funcionando).
+- [x] `ISSUE_TYPE_LABEL['issue']` actualizado de "Incidencia" a
+  "Incidente" (DEC-007).
+
+**Estado de integración:** DONE (US-NEW-019). Export XLSX nativo queda
+como follow-up; CSV cubre el caso de uso principal.

@@ -316,7 +316,14 @@ Campos adicionales al formulario de solicitud:
 
 ## EP006-project-modules.md — Agregar user stories
 
-### # PENDING — US-NEW-019 — Consolidar RAID (vista unificada)
+### # INTEGRATED — US-NEW-019 — Consolidar RAID (vista unificada)
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-019). XLSX con
+  4 sheets queda como follow-up; CSV cumple el caso de uso.
+
+---
+
+### # PENDING (referencia) — US-NEW-019
 
 **Criterios de aceptación:**
 - [ ] Tab "RAID" en el detalle del proyecto que muestra 4 sub-tabs: Riesgos (R) | Acciones (A) | Incidentes (I) | Decisiones (D).

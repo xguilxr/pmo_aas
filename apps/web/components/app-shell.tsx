@@ -58,18 +58,12 @@ function projectModuleHref(pathname: string, slug: string): string {
 function buildNav(pathname: string): NavItem[] {
   const projectModules: NavItem[] = [
     {
-      id: "mod-risks",
-      label: "Riesgos",
-      icon: <TriangleAlert className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "risks"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/risks/.test(p),
-    },
-    {
-      id: "mod-issues",
-      label: "AIDs",
+      id: "mod-raid",
+      label: "RAID",
       icon: <Shield className="h-4 w-4" aria-hidden />,
-      href: projectModuleHref(pathname, "issues"),
-      match: (p) => /^\/admin\/projects\/[^/]+\/issues/.test(p),
+      href: projectModuleHref(pathname, "raid"),
+      match: (p) =>
+        /^\/admin\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
     },
     {
       id: "mod-changes",
@@ -170,7 +164,7 @@ function buildNav(pathname: string): NavItem[] {
               id: "project-modules",
               label: "Módulos de Proyectos",
               icon: <Layers className="h-4 w-4" aria-hidden />,
-              match: (p) => /^\/admin\/projects\/[^/]+\/(risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|areas|ai-minutes|reports)/.test(p),
+              match: (p) => /^\/admin\/projects\/[^/]+\/(raid|risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|areas|ai-minutes|reports)/.test(p),
               children: projectModules,
             },
           ],
