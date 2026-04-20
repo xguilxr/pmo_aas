@@ -108,6 +108,13 @@ function buildNav(pathname: string): NavItem[] {
         /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
     },
     {
+      id: "mod-areas",
+      label: "Áreas",
+      icon: <Users className="h-4 w-4" aria-hidden />,
+      href: projectModuleHref(pathname, "areas"),
+      match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
+    },
+    {
       id: "mod-ai-minutes",
       label: "Minuta IA",
       icon: <Sparkles className="h-4 w-4" aria-hidden />,
@@ -163,7 +170,7 @@ function buildNav(pathname: string): NavItem[] {
               id: "project-modules",
               label: "Módulos de Proyectos",
               icon: <Layers className="h-4 w-4" aria-hidden />,
-              match: (p) => /^\/admin\/projects\/[^/]+\/(risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|ai-minutes|reports)/.test(p),
+              match: (p) => /^\/admin\/projects\/[^/]+\/(risks|issues|changes|documents|lessons|minutes|plan|tasks|gantt|areas|ai-minutes|reports)/.test(p),
               children: projectModules,
             },
           ],

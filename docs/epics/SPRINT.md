@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-018
-Epic: EP005-projects.md
-Título: Módulo Área/Organigrama del proyecto
-Tipo: Backend + Frontend — CRUD project_areas
-Commit esperado: "feat(projects): US-NEW-018 — módulo áreas del proyecto"
-Precondición: ver DB-CHANGES.md sección EP005.
+US: US-NEW-019
+Epic: EP006-project-modules.md
+Título: Consolidar RAID (vista unificada con sub-tabs)
+Tipo: Frontend — página única con 4 sub-tabs
+Commit esperado: "feat(projects): US-NEW-019 — consolidar RAID"
+Precondición: tablas risks + issues existen (DEC-007).
 ```
 
 ---
@@ -21,13 +21,9 @@ Precondición: ver DB-CHANGES.md sección EP005.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-017 | EP005 | Tabs inline para módulos del proyecto | Frontend (diferida) |
-| 2 | US-NEW-019 | EP006 | Consolidar RAID (vista unificada) | Frontend |
-| 3 | US-NEW-020 | EP006 | Categorías de documentos actualizadas | Backend |
-
-> **Nota:** US-NEW-017 (tabs inline) implica refactor grande del shell
-> de detalle de proyecto; se difiere hasta que el módulo de áreas esté
-> completo para evitar cambios concurrentes en esas rutas.
+| 1 | US-NEW-020 | EP006 | Categorías de documentos actualizadas | Backend |
+| 2 | US-NEW-021 | EP006 | Consolidar pestañas de Minutas | Frontend |
+| 3 | US-NEW-022 | EP006 | Módulo Reportes dentro del proyecto | Backend+FE |
 
 ---
 
@@ -54,6 +50,7 @@ Precondición: ver DB-CHANGES.md sección EP005.
 | US-NEW-015 | KPIs respetan jerarquía de roles | `feat(dashboard): US-NEW-015 — KPIs respetan jerarquía roles` | 2026-04-20 |
 | US-BUG-003 | Fix layout Plan vs Real + columna PM | `fix(dashboard): US-BUG-003 — layout Plan vs Real` | 2026-04-20 |
 | US-NEW-016 | Unificar Plan + Gantt en una pestaña | `feat(projects): US-NEW-016 — unificar plan + gantt` | 2026-04-20 |
+| US-NEW-018 | Módulo Áreas/Organigrama del proyecto | `feat(projects): US-NEW-018 — módulo áreas del proyecto` | 2026-04-20 |
 
 ---
 
@@ -87,7 +84,7 @@ Precondición: ver DB-CHANGES.md sección EP005.
 ### Bloque 5 — Proyecto detalle (EP005)
 - [x] US-NEW-016 — Unificar Plan + Gantt en una pestaña ✅
 - [ ] US-NEW-017 — Tabs inline (sin cambio de página) para módulos del proyecto
-- [ ] US-NEW-018 — Módulo Área/Organigrama del proyecto
+- [x] US-NEW-018 — Módulo Área/Organigrama del proyecto ✅
 
 ### Bloque 6 — RAID y módulos (EP006)
 - [ ] US-NEW-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones)

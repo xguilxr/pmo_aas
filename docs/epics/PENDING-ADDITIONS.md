@@ -282,7 +282,16 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-018 — Módulo Área/Organigrama del proyecto
+### # INTEGRATED — US-NEW-018 — Módulo Área/Organigrama del proyecto
+
+**Estado de integración:** INTEGRATED en EP005 (US-NEW-018). CRUD completo
+  backend + UI en `/admin/projects/{id}/areas`. Los areas son referenciables
+  como texto — la integración con tareas/RAIDs/minutas como selector visual
+  queda para sus US respectivas.
+
+---
+
+### # PENDING (referencia) — US-NEW-018
 
 **Como** PM
 **Quiero** registrar actores y áreas involucradas en el proyecto
