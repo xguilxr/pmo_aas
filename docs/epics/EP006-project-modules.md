@@ -304,3 +304,48 @@ como follow-up; CSV cubre el caso de uso principal.
   módulo). La página Minutas lo usa para el CTA "Generar con IA".
 
 **Estado de integración:** DONE (US-NEW-021).
+
+---
+
+### US-NEW-022 — Módulo Reportes dentro del proyecto
+
+**Como** PM
+**Quiero** generar y gestionar reportes de estado del proyecto
+**Para** comunicar avance a stakeholders periódicamente.
+
+**Criterios de aceptación:**
+- [x] Migración Alembic `20260420_0014`: `reports.period` (String(16)).
+- [x] `Report.period` en el ORM (nullable).
+- [x] CRUD endpoints dedicados en `reports.py`:
+  - `GET /projects/{id}/reports?status=&period=&limit=`
+  - `POST /projects/{id}/reports` (crea borrador manual; secciones
+    pre-llenadas por default).
+  - `GET /reports/{id}`
+  - `PATCH /reports/{id}` (título, periodo, destinatarios, secciones —
+    rechaza si el reporte ya fue enviado).
+  - `DELETE /reports/{id}` (solo borradores).
+- [x] Periodicidades: `daily | weekly | monthly` (Literal pydantic).
+- [x] Secciones default sugeridas: resumen_ejecutivo, avance_plan,
+  acciones_pendientes, decisiones_requeridas, riesgos_top.
+- [x] "Generar con IA" reutiliza endpoint EP008 existente
+  (`POST /ai/projects/{id}/reports/draft`).
+- [x] Frontend `/admin/projects/{id}/reports`:
+  - Listado con fecha de creación, periodo, estado, destinatarios.
+  - Badge "IA" para generados con IA.
+  - Botón "Nuevo reporte" → modal (título, periodo, destinatarios).
+  - Botón "Generar con IA" → crea borrador vía AI y abre editor.
+  - Editor: periodo, destinatarios, asunto, 5 secciones tipo Notion
+    editables. Guardar / Enviar / Eliminar.
+  - Reportes enviados quedan read-only.
+  - Modo editor accesible vía `?report={id}` (deep-link).
+
+**Test Cases:**
+- `test_usnew022_create_and_list_reports` ✅
+- `test_usnew022_patch_report_sections` ✅
+- `test_usnew022_invalid_period_rejected` → 422 ✅
+- `test_usnew022_filter_by_period` ✅
+- `test_usnew022_delete_draft` ✅
+
+**Estado de integración:** DONE (US-NEW-022). Caso de uso "lunes de
+persecución" queda como flow de UI a futuro (requiere KPIs específicos
+de acciones vencidas en el editor).

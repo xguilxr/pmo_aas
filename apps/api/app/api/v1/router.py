@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     project_charters,
     project_requests,
     projects,
+    reports,
     superadmin,
     superadmin_panel,
     tasks,
@@ -33,6 +34,7 @@ api_router.include_router(project_requests.router)
 api_router.include_router(projects.router)
 api_router.include_router(project_charters.router)
 api_router.include_router(project_areas.router)
+api_router.include_router(reports.router)
 api_router.include_router(modules.risks_router)
 api_router.include_router(modules.issues_router)
 api_router.include_router(modules.chg_router)

@@ -35,6 +35,7 @@ class Report(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     sections: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    period: Mapped[str | None] = mapped_column(String(16))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     generated_by_ai: Mapped[bool] = mapped_column(default=False)

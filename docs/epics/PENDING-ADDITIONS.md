@@ -376,7 +376,14 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-022 — Módulo Reportes dentro del proyecto
+### # INTEGRATED — US-NEW-022 — Módulo Reportes dentro del proyecto
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-022). CRUD manual
+  + reutilización del generador IA + editor con secciones editables.
+
+---
+
+### # PENDING (referencia) — US-NEW-022
 
 **Como** PM
 **Quiero** generar y gestionar reportes del proyecto
