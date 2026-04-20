@@ -1,0 +1,154 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, LogOut } from "lucide-react";
+
+import { logout } from "@/lib/auth";
+import { type StoredUser } from "@/lib/auth-storage";
+import { cn } from "@/lib/cn";
+
+type Props = {
+  user: StoredUser | null;
+  variant?: "chrome" | "surface";
+};
+
+function initials(user: StoredUser | null): string {
+  const source = user?.full_name || user?.username || user?.email || "U";
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join("");
+}
+
+export function UserMenu({ user, variant = "chrome" }: Props) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  async function handleLogout() {
+    setSigningOut(true);
+    try {
+      await logout();
+      router.replace("/login");
+    } finally {
+      setSigningOut(false);
+      setOpen(false);
+    }
+  }
+
+  const triggerColors =
+    variant === "chrome"
+      ? "text-[var(--chrome-text)] hover:bg-[var(--chrome-hover)] border-transparent"
+      : "text-[var(--text-primary)] hover:bg-[var(--color-subtle)] border-[var(--border-subtle)]";
+
+  const avatarBg =
+    variant === "chrome"
+      ? "bg-[var(--chrome-text)] text-[var(--chrome-bg)]"
+      : "bg-[var(--text-primary)] text-[var(--color-inverse)]";
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          "inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border px-1.5 pr-2 text-[12px] font-medium transition-colors",
+          triggerColors,
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[11px] font-bold",
+            avatarBg,
+          )}
+        >
+          {initials(user)}
+        </span>
+        <span className="hidden max-w-[120px] truncate sm:inline">
+          {user?.full_name || user?.username || "Sesión"}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden />
+      </button>
+
+      {open ? (
+        <div
+          role="menu"
+          className="motion-enter absolute right-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] shadow-[var(--shadow-optical-md)]"
+        >
+          <div className="border-b border-[var(--border-subtle)] px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden
+                className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--text-primary)] text-[13px] font-bold text-[var(--color-inverse)]"
+              >
+                {initials(user)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">
+                  {user?.full_name || user?.username || "—"}
+                </p>
+                <p className="truncate text-[11px] text-[var(--text-tertiary)]">
+                  {user?.email ?? ""}
+                </p>
+              </div>
+            </div>
+            {user?.is_superadmin ? (
+              <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-info-bg)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-info-fg)]">
+                Super admin
+              </p>
+            ) : user?.roles?.length ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {user.roles.slice(0, 3).map((r) => (
+                  <span
+                    key={r}
+                    className="rounded-full bg-[var(--color-subtle)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]"
+                  >
+                    {r}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className="p-1">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleLogout}
+              disabled={signingOut}
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-left text-[13px] text-[var(--text-primary)] hover:bg-[var(--color-subtle)] disabled:opacity-60"
+            >
+              {signingOut ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <LogOut className="h-3.5 w-3.5" aria-hidden />
+              )}
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

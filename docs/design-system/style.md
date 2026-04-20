@@ -86,14 +86,14 @@ Todos comparten `L≈88%` (fondo) / `L≈45%` (texto) / `L≈70%` (borde) y `C�
 
   --focus-ring:     oklch(55% 0.15 240);
 
-  /* Chrome (sidebar + topbar) — AZUL FUERTE */
-  --chrome-bg:             oklch(42% 0.13 255);
-  --chrome-bg-translucent: oklch(42% 0.13 255 / 0.88);
-  --chrome-border:         oklch(36% 0.14 255);
-  --chrome-text:           oklch(96% 0.02 255);
-  --chrome-text-muted:     oklch(82% 0.04 255);
-  --chrome-hover:          oklch(48% 0.13 255);
-  --chrome-active:         oklch(36% 0.14 255);
+  /* Chrome (sidebar + topbar) — AZUL MARINO #0E164F (fuente de verdad) */
+  --chrome-bg:             #0E164F;
+  --chrome-bg-translucent: color-mix(in oklab, #0E164F 92%, transparent);
+  --chrome-border:         #0A1140;
+  --chrome-text:           #F0F3FF;
+  --chrome-text-muted:     #A7B0D9;
+  --chrome-hover:          #1A2465;
+  --chrome-active:         #0A1140;
 
   --chrome-soft-bg:     oklch(97% 0.012 240);
   --chrome-soft-border: oklch(90% 0.018 240);
@@ -212,12 +212,26 @@ Tamaños `sm` (h-8) · `md` (h-9) · `lg` (h-10).
 - `tabular-nums` en números.
 
 ### Sidebar
-- Chrome azul fuerte translúcido (`--chrome-bg-translucent`).
+- Chrome azul marino sólido (`--chrome-bg = #0E164F`).
 - Items `h-9`, icono 16px, gap 10px.
 - Activo: fondo `chrome-active` + weight 600.
+- **Sin footer con datos de usuario.** La identidad del usuario y la acción
+  de cerrar sesión viven en el menú del topbar (ver abajo).
 
 ### Topbar
-- 56px, fondo surface, acciones a la derecha, 1 primario.
+- 56px, **mismo fondo chrome azul marino** que el sidebar; borde inferior
+  `chrome-border`.
+- Izquierda: botón hamburguesa (móvil) + marca.
+- Derecha: **UserMenu** (avatar con iniciales + nombre truncado + chevron) que
+  al abrir despliega un menú flotante con:
+  - Avatar grande, nombre completo, email, chips de roles o badge
+    "Super admin".
+  - Acción única `Cerrar sesión` (logout API + limpieza de `localStorage` +
+    redirect a `/login`).
+- Dropdown se cierra con click fuera, `Esc`, o selección.
+- Ancho del menú 256px, radius `lg`, shadow óptica media, animación
+  `motion-enter` (200 ms ease-out, translate 4px + fade).
+- Posición absoluta `right-0 top-[calc(100%+6px)]`, `z-50`.
 
 ### Tabs
 - Subrayado inferior (nunca pills para nav principal).
@@ -328,7 +342,9 @@ Texto meta       → text-tertiary   (neutral-500)
 Botón primario   → bg-neutral-800 / text-inverse
 Focus ring       → oklch(55% 0.15 240)
 
-Sidebar          → chrome-bg-translucent
+Sidebar          → chrome-bg (#0E164F)
+Topbar           → chrome-bg (#0E164F)
+User dropdown    → top-right del topbar
 Radius input     → rounded-md (8px)
 Radius card      → rounded-lg (12px)
 Padding card     → p-5 (20px)

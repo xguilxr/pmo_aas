@@ -84,14 +84,14 @@
   --text-secondary: var(--color-neutral-600);
   --text-tertiary: var(--color-neutral-500);
 
-  /* Chrome azul (sidebar + topbar translúcido) */
-  --chrome-bg: oklch(42% 0.13 255);
-  --chrome-bg-translucent: oklch(42% 0.13 255 / 0.92);
-  --chrome-border: oklch(36% 0.14 255);
-  --chrome-text: oklch(96% 0.02 255);
-  --chrome-text-muted: oklch(82% 0.04 255);
-  --chrome-hover: oklch(48% 0.13 255);
-  --chrome-active: oklch(36% 0.14 255);
+  /* Chrome azul marino #0E164F (sidebar + topbar) */
+  --chrome-bg: #0E164F;
+  --chrome-bg-translucent: color-mix(in oklab, #0E164F 92%, transparent);
+  --chrome-border: #0A1140;
+  --chrome-text: #F0F3FF;
+  --chrome-text-muted: #A7B0D9;
+  --chrome-hover: #1A2465;
+  --chrome-active: #0A1140;
 
   --chrome-soft-bg: oklch(97% 0.012 240);
   --chrome-soft-border: oklch(90% 0.018 240);
@@ -122,11 +122,12 @@
   --text-secondary: oklch(82% 0.008 250);
   --text-tertiary: oklch(68% 0.010 250);
 
-  --chrome-bg: oklch(32% 0.10 255);
-  --chrome-bg-translucent: oklch(32% 0.10 255 / 0.92);
-  --chrome-border: oklch(26% 0.10 255);
-  --chrome-hover: oklch(38% 0.11 255);
-  --chrome-active: oklch(26% 0.10 255);
+  /* Chrome navy en dark: un poco más oscuro */
+  --chrome-bg: #080D35;
+  --chrome-bg-translucent: color-mix(in oklab, #080D35 92%, transparent);
+  --chrome-border: #05082A;
+  --chrome-hover: #131B5C;
+  --chrome-active: #05082A;
 
   --color-success-bg: oklch(30% 0.06 155);
   --color-success-border: oklch(42% 0.09 155);
