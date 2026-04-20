@@ -23,6 +23,7 @@ from app.schemas.modules import (
     ChangeRequestUpdate,
     DocumentCreate,
     DocumentRead,
+    DocumentUpdate,
     IssueComment,
     IssueCreate,
     IssueRead,
@@ -434,6 +435,7 @@ async def upload_document(
 async def list_documents(
     project_id: UUID,
     include_versions: bool = Query(default=False),
+    category: str | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("documents", "read")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -444,8 +446,45 @@ async def list_documents(
     )
     if not include_versions:
         stmt = stmt.where(Document.is_current.is_(True))
+    if category:
+        stmt = stmt.where(Document.category == category)
     rows = (await db.execute(stmt.order_by(Document.created_at.desc()))).scalars().all()
     return [DocumentRead.model_validate(d) for d in rows]
+
+
+@docs_router.patch("/documents/{doc_id}", response_model=DocumentRead)
+async def update_document(
+    doc_id: UUID,
+    body: DocumentUpdate,
+    cu: CurrentUser = Depends(require_permission("documents", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Actualiza metadata (title/description/category) sin tocar el archivo."""
+    tenant_id = _tenant(cu)
+    d = (
+        await db.execute(
+            select(Document).where(
+                Document.id == str(doc_id),
+                Document.tenant_id == str(tenant_id),
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if d is None:
+        raise not_found("Documento")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(d, field, value)
+    await write_audit(
+        db,
+        action="document.update",
+        module="documents",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="document",
+        entity_id=str(d.id),
+    )
+    await db.commit()
+    return DocumentRead.model_validate(d)
 
 
 # ========== LESSONS ==========

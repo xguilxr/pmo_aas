@@ -259,3 +259,26 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 
 **Estado de integración:** DONE (US-NEW-019). Export XLSX nativo queda
 como follow-up; CSV cubre el caso de uso principal.
+
+---
+
+### US-NEW-020 — Categorías de documentos actualizadas
+
+**Criterios de aceptación:**
+- [x] Campo `category` en documentos acepta los 9 valores:
+  `charter | plan | raid_export | transcript | minute | report | lesson |
+  contract | other`.
+- [x] `GET /projects/{id}/documents?category=` filtra por categoría.
+- [x] `PATCH /api/v1/documents/{id}` permite actualizar title /
+  description / category sin subir un archivo nuevo.
+- [x] El charter al crearse queda como `category='charter'`
+  (ya implementado en US-NEW-013).
+- [x] Category inválida → 422 (pydantic Literal).
+
+**Test Cases:**
+- `test_usnew020_accepts_new_categories` — 9 categorías válidas ✅
+- `test_usnew020_rejects_invalid_category` → 422 ✅
+- `test_usnew020_filter_by_category` ✅
+- `test_usnew020_patch_document_category` ✅
+
+**Estado de integración:** DONE (US-NEW-020).

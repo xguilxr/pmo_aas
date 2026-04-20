@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-020
+US: US-NEW-021
 Epic: EP006-project-modules.md
-Título: Categorías de documentos actualizadas
-Tipo: Backend — validación de category enum + docs
-Commit esperado: "feat(projects): US-NEW-020 — categorías de documentos"
-Precondición: tabla documents existe; category ya es string libre.
+Título: Consolidar pestañas de Minutas en 1
+Tipo: Frontend — unificar /minutes con botón "Generar con IA"
+Commit esperado: "feat(projects): US-NEW-021 — consolidar minutas"
+Precondición: /minutes y /ai-minutes existen.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: tabla documents existe; category ya es string libre.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-021 | EP006 | Consolidar pestañas de Minutas | Frontend |
-| 2 | US-NEW-022 | EP006 | Módulo Reportes dentro del proyecto | Backend+FE |
-| 3 | US-NEW-023 | EP007 | Gestión de Tenant (acciones) | Frontend |
+| 1 | US-NEW-022 | EP006 | Módulo Reportes dentro del proyecto | Backend+FE |
+| 2 | US-NEW-023 | EP007 | Gestión de Tenant (acciones) | Frontend |
+| 3 | US-NEW-024 | EP007 | Gestión jerarquía org completa | Frontend |
 
 ---
 
@@ -52,6 +52,7 @@ Precondición: tabla documents existe; category ya es string libre.
 | US-NEW-016 | Unificar Plan + Gantt en una pestaña | `feat(projects): US-NEW-016 — unificar plan + gantt` | 2026-04-20 |
 | US-NEW-018 | Módulo Áreas/Organigrama del proyecto | `feat(projects): US-NEW-018 — módulo áreas del proyecto` | 2026-04-20 |
 | US-NEW-019 | Consolidar RAID (vista unificada) | `feat(projects): US-NEW-019 — consolidar RAID` | 2026-04-20 |
+| US-NEW-020 | Categorías de documentos actualizadas | `feat(projects): US-NEW-020 — categorías de documentos` | 2026-04-20 |
 
 ---
 
@@ -89,7 +90,7 @@ Precondición: tabla documents existe; category ya es string libre.
 
 ### Bloque 6 — RAID y módulos (EP006)
 - [x] US-NEW-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones) ✅
-- [ ] US-NEW-020 — Categorías de documentos actualizadas
+- [x] US-NEW-020 — Categorías de documentos actualizadas ✅
 - [ ] US-NEW-021 — Consolidar pestañas de Minutas en 1
 - [ ] US-NEW-022 — Módulo Reportes dentro del proyecto
 

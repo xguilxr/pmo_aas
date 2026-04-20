@@ -127,13 +127,46 @@ class ChangeRequestRead(BaseModel):
 
 
 # ---------- Documents ----------
+# US-NEW-020: categorías extendidas — el charter, export RAID, transcripts
+# y minutas ahora tienen su propia clasificación para filtrado y UI.
+DocumentCategory = Literal[
+    "charter",
+    "plan",
+    "raid_export",
+    "transcript",
+    "minute",
+    "report",
+    "lesson",
+    "contract",
+    "other",
+]
+
+DOCUMENT_CATEGORIES: tuple[str, ...] = (
+    "charter",
+    "plan",
+    "raid_export",
+    "transcript",
+    "minute",
+    "report",
+    "lesson",
+    "contract",
+    "other",
+)
+
+
 class DocumentCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     description: str | None = None
-    category: Literal["plan", "report", "contract", "other"] | None = "other"
+    category: DocumentCategory | None = "other"
     file_url: str
     mime_type: str
     size_bytes: int = Field(ge=0)
+
+
+class DocumentUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=200)
+    description: str | None = None
+    category: DocumentCategory | None = None
 
 
 class DocumentRead(BaseModel):

@@ -336,7 +336,21 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-020 — Categorías de documentos actualizadas
+### # INTEGRATED — US-NEW-020 — Categorías de documentos actualizadas
+
+**Estado de integración:** INTEGRATED en EP006 (US-NEW-020).
+  - Enum extendido: charter | plan | raid_export | transcript | minute |
+    report | lesson | contract | other.
+  - Filtro `?category=` en el GET de documents.
+  - PATCH `/api/v1/documents/{id}` para retaggar sin subir archivo.
+  - Charter ya se guarda como `category='charter'` (US-NEW-013).
+  - RAID export → `raid_export` y minutas → `minute` se usarán desde UI
+    cuando las flows específicas lo expongan (sin cambios de schema
+    adicionales).
+
+---
+
+### # PENDING (referencia) — US-NEW-020
 
 **Criterios de aceptación:**
 - [ ] Campo `category` en documentos acepta: `charter` | `plan` | `raid_export` | `transcript` | `minute` | `report` | `lesson` | `contract` | `other`.
