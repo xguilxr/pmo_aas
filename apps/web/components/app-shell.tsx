@@ -7,10 +7,9 @@ import {
   Building2,
   ChevronRight,
   ClipboardList,
-  Cog,
-  Eye,
   LayoutDashboard,
   Menu,
+  Network,
   ScrollText,
   ServerCog,
   ShieldCheck,
@@ -50,9 +49,11 @@ const TOP_NAV: NavItem[] = [
   },
 ];
 
-// Admin-only. El drill-down real (Organizaciones → Programas → Proyectos) va
-// aparte — ver `<OrgTreeNav />` en el sidebar; la jerarquía administrativa
-// (BUs/Deptos) vive bajo "Gestión de organizaciones" dentro de Admin.
+// Admin-only. Sidebar con 4 ítems raíz (US-NEW-036 / issue #17).
+// "Gestión de Tenant" fusiona "Mi tenant" + "Panel del Tenant" + "Configuración"
+// con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
+// El drill-down real (Organizaciones → Programas → Proyectos) vive en el
+// sidebar principal vía <OrgTreeNav />.
 const ADMIN_NAV: NavItem = {
   id: "admin",
   label: "Admin",
@@ -63,35 +64,48 @@ const ADMIN_NAV: NavItem = {
     p.startsWith("/admin/roles") ||
     p.startsWith("/admin/audit-logs") ||
     p.startsWith("/admin/settings") ||
-    p.startsWith("/admin/tenant"),
+    p.startsWith("/admin/tenant") ||
+    p.startsWith("/admin/organizations"),
   children: [
     {
-      id: "tenant-info",
-      label: "Mi tenant",
+      id: "tenant-mgmt",
+      label: "Gestión de Tenant",
       icon: <Building2 className="h-4 w-4" aria-hidden />,
       href: "/admin/tenant",
-      match: (p) => p.startsWith("/admin/tenant"),
+      match: (p) =>
+        p.startsWith("/admin/tenant") ||
+        p.startsWith("/admin/supervision") ||
+        p.startsWith("/admin/settings"),
     },
     {
-      id: "tenant-panel",
-      label: "Panel del Tenant",
-      icon: <Eye className="h-4 w-4" aria-hidden />,
-      href: "/admin/supervision",
-      match: (p) => p.startsWith("/admin/supervision"),
+      id: "orgs-mgmt",
+      label: "Gestión de Organizaciones",
+      icon: <Network className="h-4 w-4" aria-hidden />,
+      href: "/admin/organizations",
+      match: (p) =>
+        p.startsWith("/admin/organizations") && !p.includes("/panel"),
     },
     {
-      id: "users",
-      label: "Usuarios",
+      id: "users-roles",
+      label: "Usuarios y Roles",
       icon: <Users className="h-4 w-4" aria-hidden />,
-      href: "/admin/users",
-      match: (p) => p.startsWith("/admin/users"),
-    },
-    {
-      id: "roles",
-      label: "Roles",
-      icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
-      href: "/admin/roles",
-      match: (p) => p.startsWith("/admin/roles"),
+      match: (p) => p.startsWith("/admin/users") || p.startsWith("/admin/roles"),
+      children: [
+        {
+          id: "users",
+          label: "Usuarios",
+          icon: <Users className="h-4 w-4" aria-hidden />,
+          href: "/admin/users",
+          match: (p) => p.startsWith("/admin/users"),
+        },
+        {
+          id: "roles",
+          label: "Roles",
+          icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+          href: "/admin/roles",
+          match: (p) => p.startsWith("/admin/roles"),
+        },
+      ],
     },
     {
       id: "audit",
@@ -99,13 +113,6 @@ const ADMIN_NAV: NavItem = {
       icon: <ScrollText className="h-4 w-4" aria-hidden />,
       href: "/admin/audit-logs",
       match: (p) => p.startsWith("/admin/audit-logs"),
-    },
-    {
-      id: "settings",
-      label: "Configuración",
-      icon: <Cog className="h-4 w-4" aria-hidden />,
-      href: "/admin/settings",
-      match: (p) => p.startsWith("/admin/settings"),
     },
   ],
 };

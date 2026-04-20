@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import {
+  BarChart3,
   Building2,
   Cog,
   FolderKanban,
   HardDrive,
   LifeBuoy,
+  Palette,
   Pencil,
   Trash2,
   Upload,
@@ -15,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useTenantBranding } from "@/components/tenant-branding-provider";
+import { TenantSettingsForm } from "@/components/tenant-settings-form";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -31,6 +35,16 @@ import {
   resolveLogoUrl,
   uploadTenantLogo,
 } from "@/lib/api/branding";
+import { cn } from "@/lib/cn";
+
+type TenantTab = "info" | "branding" | "config" | "stats";
+const TAB_KEYS: TenantTab[] = ["info", "branding", "config", "stats"];
+const TAB_LABELS: Record<TenantTab, { label: string; icon: React.ReactNode }> = {
+  info: { label: "Información", icon: <Building2 className="h-4 w-4" aria-hidden /> },
+  branding: { label: "Branding", icon: <Palette className="h-4 w-4" aria-hidden /> },
+  config: { label: "Configuración", icon: <Cog className="h-4 w-4" aria-hidden /> },
+  stats: { label: "Uso & Stats", icon: <BarChart3 className="h-4 w-4" aria-hidden /> },
+};
 
 function bytesToHuman(bytes: number): string {
   if (!bytes) return "0 B";
@@ -66,7 +80,17 @@ function StatCard({
   );
 }
 
-export default function TenantAdminPage() {
+function TenantAdminPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const activeTab: TenantTab = TAB_KEYS.includes(rawTab as TenantTab)
+    ? (rawTab as TenantTab)
+    : "info";
+  const setActiveTab = (t: TenantTab) => {
+    router.replace(`/admin/tenant?tab=${t}`);
+  };
+
   const [info, setInfo] = useState<TenantInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,27 +189,48 @@ export default function TenantAdminPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-          Mi tenant
+          Gestión de Tenant
         </h1>
         <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-          Información del tenant, plan actual y estadísticas. La configuración
-          detallada (idioma, moneda, timezone, IA) está en{" "}
-          <Link
-            href="/admin/settings"
-            className="text-[var(--color-accent)] hover:underline"
-          >
-            Configuración
-          </Link>
-          .
+          Información, branding, configuración y uso del tenant en una sola vista.
         </p>
       </header>
+
+      <nav
+        aria-label="Secciones del tenant"
+        className="-mx-4 border-b border-[var(--border-default)] px-4 lg:-mx-8 lg:px-8"
+      >
+        <ul className="flex gap-1 overflow-x-auto">
+          {TAB_KEYS.map((k) => {
+            const active = activeTab === k;
+            return (
+              <li key={k}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab(k)}
+                  className={cn(
+                    "inline-flex h-10 items-center gap-1.5 border-b-2 px-4 text-sm transition-colors",
+                    active
+                      ? "border-[var(--color-accent)] font-semibold text-[var(--color-primary)]"
+                      : "border-transparent text-[var(--color-tertiary)] hover:text-[var(--color-primary)]",
+                  )}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {TAB_LABELS[k].icon}
+                  {TAB_LABELS[k].label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
-      {loading ? (
+      {loading || !info ? (
         <Skeleton className="h-48 w-full" />
-      ) : info ? (
+      ) : activeTab === "info" ? (
         <>
           <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -218,7 +263,7 @@ export default function TenantAdminPage() {
               </div>
               {!editing ? (
                 <Button variant="secondary" onClick={() => setEditing(true)}>
-                  <Pencil className="h-4 w-4" aria-hidden /> Editar
+                  <Pencil className="h-4 w-4" aria-hidden /> Editar nombre
                 </Button>
               ) : null}
             </div>
@@ -240,55 +285,7 @@ export default function TenantAdminPage() {
                     maxLength={200}
                     required
                   />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="logo"
-                    className="block text-sm font-medium text-[var(--color-secondary)]"
-                  >
-                    Logo del tenant
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      id="logo-file"
-                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                      onChange={onLogoFileChange}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => fileInputRef.current?.click()}
-                      loading={uploadingLogo}
-                    >
-                      <Upload className="h-4 w-4" aria-hidden />
-                      Subir archivo
-                    </Button>
-                    {info.logo_url ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={onRemoveLogo}
-                        disabled={uploadingLogo}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                        Quitar
-                      </Button>
-                    ) : null}
-                  </div>
-                  <p className="text-xs text-[var(--color-tertiary)]">
-                    PNG, JPG, SVG o WEBP hasta 2 MB. También puedes pegar una URL externa:
-                  </p>
-                  <Input
-                    id="logo"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    maxLength={500}
-                    placeholder="https://cdn.example.com/logo.png"
-                  />
-                  <p className="text-xs text-[var(--color-tertiary)]">
+                  <p className="mt-1 text-xs text-[var(--color-tertiary)]">
                     El slug no puede modificarse desde aquí (solo super admin).
                   </p>
                 </div>
@@ -299,7 +296,6 @@ export default function TenantAdminPage() {
                     onClick={() => {
                       setEditing(false);
                       setName(info.name);
-                      setLogoUrl(info.logo_url ?? "");
                     }}
                   >
                     Cancelar
@@ -331,7 +327,104 @@ export default function TenantAdminPage() {
               </a>
             </div>
           </section>
-
+        </>
+      ) : activeTab === "branding" ? (
+        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)] space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
+              {info.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={resolveLogoUrl(info.logo_url) ?? ""}
+                  alt=""
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <Building2 className="h-10 w-10" aria-hidden />
+              )}
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+                Logo del tenant
+              </h2>
+              <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                PNG, JPG, SVG o WEBP hasta 2 MB. También puedes pegar una URL externa.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              id="logo-file"
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              onChange={onLogoFileChange}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              loading={uploadingLogo}
+            >
+              <Upload className="h-4 w-4" aria-hidden />
+              Subir archivo
+            </Button>
+            {info.logo_url ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onRemoveLogo}
+                disabled={uploadingLogo}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                Quitar
+              </Button>
+            ) : null}
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save(e);
+            }}
+            className="space-y-2"
+          >
+            <label
+              htmlFor="logo"
+              className="block text-xs font-medium text-[var(--color-secondary)]"
+            >
+              URL externa del logo
+            </label>
+            <Input
+              id="logo"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              maxLength={500}
+              placeholder="https://cdn.example.com/logo.png"
+            />
+            <div className="flex justify-end">
+              <Button type="submit" loading={saving} disabled={(logoUrl || null) === (info.logo_url ?? null)}>
+                Guardar URL
+              </Button>
+            </div>
+          </form>
+        </section>
+      ) : activeTab === "config" ? (
+        <TenantSettingsForm />
+      ) : (
+        <>
+          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                  Plan actual
+                </h2>
+                <p className="mt-1 text-2xl font-semibold capitalize text-[var(--color-primary)]">
+                  {info.plan}
+                </p>
+              </div>
+            </div>
+          </section>
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               icon={<Users className="h-4 w-4" aria-hidden />}
@@ -354,23 +447,16 @@ export default function TenantAdminPage() {
               value={bytesToHuman(info.stats.storage_bytes)}
             />
           </section>
-
-          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
-              <Cog className="h-4 w-4" aria-hidden /> Configuración rápida
-            </div>
-            <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-              Idioma, moneda, timezone, IA y color primario se ajustan en la
-              pantalla dedicada.
-            </p>
-            <div className="mt-3">
-              <Link href="/admin/settings">
-                <Button variant="secondary">Abrir configuración</Button>
-              </Link>
-            </div>
-          </section>
         </>
-      ) : null}
+      )}
     </div>
+  );
+}
+
+export default function TenantAdminPage() {
+  return (
+    <Suspense fallback={<div className="h-96" />}>
+      <TenantAdminPageInner />
+    </Suspense>
   );
 }

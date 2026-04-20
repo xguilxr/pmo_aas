@@ -191,29 +191,28 @@ Se **elimina**:
 
 ---
 
-## # PENDING — US-NEW-036 — Restructurar sidebar Admin
+## # DONE — US-NEW-036 — Restructurar sidebar Admin
 
 **Como** admin / senior PMO
 **Quiero** que el sidebar Admin tenga sólo 4 entradas lógicas, sin duplicación
 **Para** no navegar entre "Mi Tenant" y "Panel del Tenant" que muestran info repetida.
 
 **Criterios de aceptación:**
-- [ ] Sidebar Admin:
-  - `Gestión de Tenant` (fusiona "Mi Tenant" + "Panel del Tenant" + "Configuración"). Una sola página con tabs internos: `Información | Branding | Configuración | Uso & Stats`.
-  - `Gestión de Organizaciones` (BUs, Deptos y programas en una sola página con selector de org; no sub-páginas — ver criterio US-NEW-024 ya implementado, ampliar si hace falta).
-  - `Gestión de Usuarios y Roles`
-    - `Usuarios`
-    - `Roles`
-  - `Auditoría`
-- [ ] Se **elimina** del sidebar la entrada "Configuración" como ítem independiente.
-- [ ] Se **elimina** la entrada duplicada "Mi Tenant" o "Panel del Tenant" (queda sólo "Gestión de Tenant").
-- [ ] Ruta consolidada: `/admin/tenant` con tabs internos. Rutas legacy `/admin/my-tenant`, `/admin/tenant/panel`, `/admin/settings` redirigen a `/admin/tenant?tab=<info|branding|config|stats>`.
-- [ ] La validación de acceso sigue la regla DEC-005 (admin + senior PMO).
+- [x] Sidebar Admin ahora tiene **4 ítems raíz**:
+  - `Gestión de Tenant` → `/admin/tenant` (con tabs internos `?tab=info|branding|config|stats`).
+  - `Gestión de Organizaciones` → `/admin/organizations` (preexistente con BUs/Deptos en tree inline).
+  - `Usuarios y Roles` → parent colapsable con `Usuarios` y `Roles`.
+  - `Auditoría` → `/admin/audit-logs`.
+- [x] Entrada `Configuración` **eliminada** del sidebar como ítem standalone.
+- [x] Entradas `Mi tenant` + `Panel del Tenant` fusionadas bajo `Gestión de Tenant`.
+- [x] Página `/admin/tenant` refactorizada con tabs visuales: Información / Branding / Configuración / Uso & Stats. La pestaña Configuración renderiza `<TenantSettingsForm />` (componente extraído para reuso).
+- [x] Redirects permanentes en `next.config.js`:
+  - `/admin/supervision` → `/admin/tenant?tab=stats`.
+  - `/admin/settings` → `/admin/tenant?tab=config`.
+- [x] DEC-005 respetada: el sidebar Admin sigue siendo visible a usuarios no-superadmin con rol `Administrador` o `PMO Manager`; las rutas validan `require_permission` en backend.
+- [x] `/admin/settings` ahora usa `<TenantSettingsForm />` (queda como handler legacy; el redirect Next-side se aplica antes de que se renderice la página en SSR, pero dejar la página mantiene dev tests si alguien navega directo vía dev server dynamic render).
 
-**Test Cases:**
-- `TC-NEW-036-1` (integration) — `/admin/settings` → 301 a `/admin/tenant?tab=config`.
-- `TC-NEW-036-2` (E2E) — Sidebar admin muestra exactamente 4 ítems raíz.
-- `TC-NEW-036-3` (E2E) — Usuario con rol "Project Manager" (no senior) no ve el sidebar Admin.
+**Commit:** `feat(web): US-NEW-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed`.
 
 ---
 

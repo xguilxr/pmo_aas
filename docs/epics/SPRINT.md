@@ -7,7 +7,15 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-NEW-036 — Restructurar sidebar Admin (4 ítems raíz)
+— Sin US activa —
+
+Bloque 9 (EP013 refactor de navegación) completo: 6 US implementadas
+(US-NEW-031..036). El bloque cubre el issue #17 completo.
+
+Siguientes en orden:
+  Bloque 10 — EP014 Entregables operativos (issue #18)
+  Bloque 11 — EP011 Notificaciones (POST-MVP)
+  Bloque 12 — EP012 Instalación productivo Hostgator MySQL
 ```
 
 ---
@@ -16,9 +24,9 @@ US-NEW-036 — Restructurar sidebar Admin (4 ítems raíz)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-036 | EP013 | Restructurar sidebar Admin (4 ítems raíz) | Bloque 9 |
-| 2 | US-NEW-037 | EP014 | Infra compartida de exportación a PDF (WeasyPrint) | Bloque 10 |
-| 3 | US-NEW-038 | EP014 | Reporte de Avance de Proyecto (Python, BD, PDF) | Bloque 10 |
+| 1 | US-NEW-037 | EP014 | Infra compartida de exportación a PDF (WeasyPrint) | Bloque 10 |
+| 2 | US-NEW-038 | EP014 | Reporte de Avance de Proyecto (Python, BD, PDF) | Bloque 10 |
+| 3 | US-NEW-039 | EP014 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | Bloque 10 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -61,6 +69,7 @@ US-NEW-036 — Restructurar sidebar Admin (4 ítems raíz)
 | US-NEW-033 | Panel de organización → página de recursos reales | `feat(web,api): US-NEW-033 — panel de organización con recursos reales` | 2026-04-20 |
 | US-NEW-034 | Página resumen de programa | `feat(web,api): US-NEW-034 — página resumen de programa con KPIs y donut` | 2026-04-20 |
 | US-NEW-035 | Tabs inline en detalle de proyecto (supersede US-NEW-017) | `feat(web): US-NEW-035 — tabs inline en detalle de proyecto (supersede US-NEW-017)` | 2026-04-20 |
+| US-NEW-036 | Restructurar sidebar Admin (4 ítems raíz) | `feat(web): US-NEW-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed` | 2026-04-20 |
 
 ---
 
@@ -119,7 +128,7 @@ US-NEW-036 — Restructurar sidebar Admin (4 ítems raíz)
 - [x] US-NEW-033 — Panel de organización → página de recursos reales (fix bug + enhancement) ✅
 - [x] US-NEW-034 — Página resumen de programa (KPIs + lista de proyectos) ✅
 - [x] US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017) ✅
-- [ ] US-NEW-036 — Restructurar sidebar Admin (fusionar Mi Tenant + Panel + Configuración; 4 ítems raíz)
+- [x] US-NEW-036 — Restructurar sidebar Admin (fusionar Mi Tenant + Panel + Configuración; 4 ítems raíz) ✅
 
 ### Bloque 10 — Entregables operativos (EP014) — issue #18
 - [ ] US-NEW-037 — Infra compartida de exportación a PDF (WeasyPrint)
