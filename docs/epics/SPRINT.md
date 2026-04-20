@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-BUG-001
-Epic: EP002-org-hierarchy.md
-Título: Fix 404 en página de Programas
-Tipo: Frontend — investigar ruta /admin/programs
-Commit esperado: "fix(web): US-BUG-001 — ruta /admin/programs 404"
-Precondición: Ruta está referenciada en sidebar; verificar si existe.
+US: US-NEW-007
+Epic: EP001-auth-users.md
+Título: Toggle dark/light mode en dropdown de usuario
+Tipo: Frontend — preferencias, toggle UI
+Commit esperado: "feat(web): US-NEW-007 — toggle dark/light en user dropdown"
+Precondición: Ver PENDING-ADDITIONS.md para criterios completos.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: Ruta está referenciada en sidebar; verificar si existe.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-007 | EP001 | Toggle dark/light en dropdown usuario | Frontend |
-| 2 | US-NEW-008 | EP001 | Toggle idioma en dropdown usuario | Frontend |
-| 3 | US-NEW-009 | EP001 | Página administrar cuenta | Frontend |
+| 1 | US-NEW-008 | EP001 | Toggle idioma en dropdown usuario | Frontend |
+| 2 | US-NEW-009 | EP001 | Página administrar cuenta | Frontend |
+| 3 | US-NEW-010 | EP001 | Color chrome #182e4e + Senior PMO admin | Mixed |
 
 ---
 
@@ -37,6 +37,7 @@ Precondición: Ruta está referenciada en sidebar; verificar si existe.
 | US-NEW-004 | CRUD Departments API | `feat(org): US-NEW-004 — CRUD Departments API` | 2026-04-20 |
 | US-NEW-005 | Sidebar org tree nav (Frontend) | `feat(web): US-NEW-005 — sidebar org tree nav` | 2026-04-20 |
 | US-NEW-006 | Vista paneles de organizaciones (cards + métricas) | `feat(web): US-NEW-006 — paneles de organizaciones` | 2026-04-20 |
+| US-BUG-001 | Fix 404 en página de Programas | `fix(web): US-BUG-001 — crea /admin/programs` | 2026-04-20 |
 
 ---
 
@@ -48,7 +49,7 @@ Precondición: Ruta está referenciada en sidebar; verificar si existe.
 - [x] US-NEW-004 — CRUD Departments (API) ✅
 - [x] US-NEW-005 — Sidebar org nav (Frontend) ✅
 - [x] US-NEW-006 — Vista paneles de organizaciones (Frontend) ✅
-- [ ] US-BUG-001 — Fix 404 en Programas
+- [x] US-BUG-001 — Fix 404 en Programas ✅
 
 ### Bloque 2 — Topbar y UX base (EP001)
 - [ ] US-NEW-007 — Toggle dark/light en dropdown usuario
