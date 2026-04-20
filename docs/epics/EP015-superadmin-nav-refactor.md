@@ -99,7 +99,7 @@ Toda otra entrada del sidebar queda oculta para super admins.
 
 ---
 
-## # PENDING — US-NEW-043 — Visión General con Health al top
+## # DONE — US-NEW-043 — Visión General con Health al top
 
 **Como** super admin
 **Quiero** ver el Health de la plataforma **inmediatamente** al abrir `/superadmin`, antes que KPIs y tenants
