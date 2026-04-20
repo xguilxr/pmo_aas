@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-005
+US: US-NEW-006
 Epic: EP002-org-hierarchy.md
-Título: Sidebar con organizaciones para navegación rápida
-Tipo: Frontend — árbol expandible Org→BU→Depto→Programa→Proyecto
-Commit esperado: "feat(web): US-NEW-005 — sidebar org tree nav"
-Precondición: US-NEW-002/003/004 DONE (API expuesta)
+Título: Vista de organizaciones como paneles informativos (cards)
+Tipo: Frontend — grid de cards con métricas por org
+Commit esperado: "feat(web): US-NEW-006 — paneles de organizaciones"
+Precondición: US-NEW-005 DONE (sidebar tree existe)
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: US-NEW-002/003/004 DONE (API expuesta)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-006 | EP002 | Vista paneles de organizaciones (cards) | Frontend |
-| 2 | US-BUG-001 | EP002 | Fix 404 en página de Programas | Frontend |
-| 3 | US-NEW-007 | EP001 | Toggle dark/light en dropdown usuario | Frontend |
+| 1 | US-BUG-001 | EP002 | Fix 404 en página de Programas | Frontend |
+| 2 | US-NEW-007 | EP001 | Toggle dark/light en dropdown usuario | Frontend |
+| 3 | US-NEW-008 | EP001 | Toggle idioma en dropdown usuario | Frontend |
 
 ---
 
@@ -35,6 +35,7 @@ Precondición: US-NEW-002/003/004 DONE (API expuesta)
 | US-NEW-002 | Tablas business_units + departments + FKs | `feat(org): US-NEW-002 — tablas BU y departments con FK` | 2026-04-20 |
 | US-NEW-003 | CRUD Business Units API | `feat(org): US-NEW-003 — CRUD Business Units API` | 2026-04-20 |
 | US-NEW-004 | CRUD Departments API | `feat(org): US-NEW-004 — CRUD Departments API` | 2026-04-20 |
+| US-NEW-005 | Sidebar org tree nav (Frontend) | `feat(web): US-NEW-005 — sidebar org tree nav` | 2026-04-20 |
 
 ---
 
@@ -44,7 +45,7 @@ Precondición: US-NEW-002/003/004 DONE (API expuesta)
 - [x] US-NEW-002 — Migración BD: tablas BU + Depto + FKs ✅
 - [x] US-NEW-003 — CRUD Business Units (API) ✅
 - [x] US-NEW-004 — CRUD Departments (API) ✅
-- [ ] US-NEW-005 — Sidebar org nav (Frontend)
+- [x] US-NEW-005 — Sidebar org nav (Frontend) ✅
 - [ ] US-NEW-006 — Vista paneles de organizaciones (Frontend)
 - [ ] US-BUG-001 — Fix 404 en Programas
 

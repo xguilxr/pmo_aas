@@ -31,6 +31,7 @@ import {
   X,
 } from "lucide-react";
 
+import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -419,6 +420,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             expanded={expanded}
             toggle={toggle}
           />
+          {user && !user.is_superadmin ? (
+            <OrgTreeNav onNavigate={close} />
+          ) : null}
           {user?.is_superadmin ? (
             <>
               <div className="mt-5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]/80">
