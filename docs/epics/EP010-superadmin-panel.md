@@ -349,3 +349,30 @@ PATCH  /api/v1/superadmin/settings
 - [ ] Runbook "eliminar tenant" documentado con screenshots.
 - [ ] Dashboard carga < 1.5s con dataset de 50 tenants y 10k users.
 - [ ] Al menos 1 E2E por US-056, US-058, US-059 (los flujos críticos).
+
+---
+
+## # PENDING — User Stories nuevas
+
+### US-NEW-025 — Iconos en paneles de tenant + indicador activo
+
+**Criterios de aceptación:**
+- [x] Backend `GET /superadmin/tenants` ahora devuelve 4 counts por
+  tenant (`user_count`, `organization_count`, `program_count`,
+  `project_count`) en un solo SELECT por recurso (batch).
+- [x] Backend `GET /superadmin/tenants/{id}/detail` incluye objeto
+  `hierarchy` con counts de organizations, business_units, departments,
+  programs y projects.
+- [x] Cards de tenant en lista muestran:
+  - Icono `Building2` para Orgs, `Users` para Usuarios,
+    `Network` para Programas, `FolderKanban` para Proyectos.
+  - Indicador activo/inactivo: punto verde (activo) / rojo (inactivo)
+    junto al nombre, + badge "Inactivo" cuando aplica.
+- [x] Drill-down del tenant muestra nueva sección "Jerarquía (overview)":
+  Orgs → BUs → Deptos → Programas → Proyectos con chevrons entre nodos.
+
+**Test Cases:**
+- `test_usnew025_list_tenants_returns_full_counts` ✅
+- `test_usnew025_tenant_detail_has_hierarchy` ✅
+
+**Estado de integración:** DONE (US-NEW-025).

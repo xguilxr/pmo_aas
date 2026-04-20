@@ -456,7 +456,15 @@ Campos adicionales al formulario de solicitud:
 
 ## EP010-superadmin-panel.md — Agregar a user stories existentes
 
-### # PENDING — Fix en US-053 y US-055 (iconos y jerarquía en paneles de tenant)
+### # INTEGRATED — US-NEW-025 — Iconos + jerarquía en paneles de tenant
+
+**Estado de integración:** INTEGRATED en EP010 (US-NEW-025). Backend
+  expone 4 counts por tenant + `hierarchy` en drill-down. UI con
+  iconos y status dot.
+
+---
+
+### # PENDING (referencia) — Fix en US-053 y US-055 (iconos y jerarquía en paneles de tenant)
 
 **Criterios de aceptación (adicionales):**
 - [ ] Cards de tenant en lista y en drill-down muestran iconos por categoría:

@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-025
+US: US-NEW-026
 Epic: EP010-superadmin-panel.md
-Título: Iconos en paneles de tenant + indicador activo
-Tipo: Frontend — cards de tenant con iconos por categoría
-Commit esperado: "feat(superadmin): US-NEW-025 — iconos en paneles"
-Precondición: /superadmin/tenants ya existe.
+Título: Visión General = Tenants + Health (página unificada)
+Tipo: Frontend — combinar /superadmin con widget Health
+Commit esperado: "feat(superadmin): US-NEW-026 — visión general unificada"
+Precondición: /superadmin y /superadmin/health existen.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: /superadmin/tenants ya existe.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-026 | EP010 | Visión General = Tenants + Health | Frontend |
-| 2 | US-NEW-027 | EP011 | Tabla notifications + in-app center | POST-MVP |
-| 3 | US-NEW-028 | EP011 | Email notifications via Resend | POST-MVP |
+| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center | POST-MVP |
+| 2 | US-NEW-028 | EP011 | Email notifications via Resend | POST-MVP |
+| 3 | US-NEW-029 | EP012 | Plan de migración MySQL | POST-MVP |
 
 ---
 
@@ -57,6 +57,7 @@ Precondición: /superadmin/tenants ya existe.
 | US-NEW-022 | Módulo Reportes dentro del proyecto | `feat(projects): US-NEW-022 — módulo reportes` | 2026-04-20 |
 | US-NEW-023 | Gestión de Tenant (info + stats + editar) | `feat(admin): US-NEW-023 — gestión de tenant` | 2026-04-20 |
 | US-NEW-024 | Gestión jerarquía org (BU + Depto) en Admin | `feat(admin): US-NEW-024 — jerarquía org en admin` | 2026-04-20 |
+| US-NEW-025 | Iconos en paneles de tenant + jerarquía | `feat(superadmin): US-NEW-025 — iconos en paneles` | 2026-04-20 |
 
 ---
 
@@ -103,7 +104,7 @@ Precondición: /superadmin/tenants ya existe.
 - [x] US-NEW-024 — Gestión jerarquía org completa (BU + Depto) ✅
 
 ### Bloque 8 — SuperAdmin (EP010)
-- [ ] US-NEW-025 — Iconos en paneles de tenant
+- [x] US-NEW-025 — Iconos en paneles de tenant ✅
 - [ ] US-NEW-026 — Visión General = Tenants + Health unidos
 
 ### Bloque 9 — Notificaciones (EP011) — POST-MVP

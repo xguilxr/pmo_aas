@@ -157,6 +157,8 @@ class TenantRead(BaseModel):
     name: str
     is_active: bool
     user_count: int = 0
+    organization_count: int = 0
+    program_count: int = 0
     project_count: int = 0
 
     model_config = {"from_attributes": True}

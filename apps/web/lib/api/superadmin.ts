@@ -6,6 +6,16 @@ export type Tenant = {
   name: string;
   is_active: boolean;
   user_count: number;
+  organization_count: number;
+  program_count: number;
+  project_count: number;
+};
+
+export type TenantHierarchy = {
+  organization_count: number;
+  business_unit_count: number;
+  department_count: number;
+  program_count: number;
   project_count: number;
 };
 
@@ -30,6 +40,7 @@ export type TenantDetail = {
   users: { id: string; username: string; email: string; is_active: boolean }[];
   organizations: { id: string; name: string; is_active: boolean }[];
   programs: { id: string; name: string; organization_id: string }[];
+  hierarchy: TenantHierarchy;
 };
 
 export type JoinAsAdminResponse = {
