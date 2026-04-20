@@ -177,7 +177,18 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-BUG-002 — Fix distorsión en gráficas de barra
+### # INTEGRATED — US-BUG-002 — Fix distorsión en gráficas de barra
+
+**Estado de integración:** INTEGRATED en EP004. Gráficas de barra ahora:
+  - Usan viewBox 300×100 con `preserveAspectRatio="xMidYMid meet"`
+    (ya no `"none"`, evita distorsión horizontal).
+  - Contenedor con `aspect-ratio: 3/1` (responsive sin deformar).
+  - Grid horizontal con 4 ticks + labels del eje Y.
+  - Labels de categorías con truncamiento automático según ancho de barra.
+
+---
+
+### # PENDING (referencia) — US-BUG-002 — Fix distorsión en gráficas de barra
 
 **Criterios de aceptación:**
 - [ ] Labels de categorías en eje X no se cortan ni se superponen.

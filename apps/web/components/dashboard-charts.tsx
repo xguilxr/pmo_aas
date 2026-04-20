@@ -86,6 +86,8 @@ export function Bars({
   valueFormat,
 }: {
   data: Datum[];
+  /** Altura objetivo en px para fallback; el contenedor usa aspect-ratio
+   *  para evitar distorsión (US-BUG-002). */
   height?: number;
   ariaLabel: string;
   valueFormat?: (n: number) => string;
@@ -96,59 +98,103 @@ export function Bars({
     return <EmptyCanvas size={height} label="Sin datos" />;
   }
 
-  const barArea = height - 40;
-  const barWidth = 100 / Math.max(1, data.length);
+  // Coordenadas internas: usamos un viewBox con proporción fija 3:1
+  // y preserveAspectRatio "xMidYMid meet" — así las barras no se estiran
+  // horizontalmente cuando cambia el ancho del contenedor.
+  const VB_W = 300;
+  const VB_H = 100;
+  const axisY = VB_H - 16;
+  const barArea = axisY - 4;
+  const barWidth = VB_W / Math.max(1, data.length);
+
+  // Ticks (horizontales) para el eje Y — 4 niveles.
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    frac: f,
+    value: max * f,
+    y: axisY - f * (barArea - 4),
+  }));
 
   return (
-    <svg
-      width="100%"
-      height={height}
-      viewBox={`0 0 100 ${height}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label={ariaLabel}
+    <div
+      className="w-full"
+      style={{ aspectRatio: `${VB_W} / ${VB_H}`, minHeight: height / 2 }}
     >
-      <line
-        x1={0}
-        y1={barArea}
-        x2={100}
-        y2={barArea}
-        stroke="var(--border-default)"
-        strokeWidth={0.5}
-      />
-      {data.map((d, i) => {
-        const h = (d.value / max) * (barArea - 8);
-        const x = i * barWidth + barWidth * 0.15;
-        const w = barWidth * 0.7;
-        const y = barArea - h;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={w} height={h} fill={d.color} rx={1}>
-              <title>{`${d.label}: ${valueFormat ? valueFormat(d.value) : d.value}`}</title>
-            </rect>
-            <text
-              x={x + w / 2}
-              y={barArea + 10}
-              textAnchor="middle"
-              fontSize="4"
-              fill="var(--color-tertiary)"
-            >
-              {d.label}
-            </text>
-            <text
-              x={x + w / 2}
-              y={y - 2}
-              textAnchor="middle"
-              fontSize="4"
-              fill="var(--color-secondary)"
-            >
-              {valueFormat ? valueFormat(d.value) : d.value}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label={ariaLabel}
+      >
+        {/* Grid horizontal */}
+        {ticks.map((t) => (
+          <line
+            key={t.frac}
+            x1={24}
+            y1={t.y}
+            x2={VB_W}
+            y2={t.y}
+            stroke="var(--border-subtle)"
+            strokeWidth={0.4}
+            strokeDasharray={t.frac === 0 ? undefined : "2,2"}
+          />
+        ))}
+        {/* Etiquetas eje Y */}
+        {ticks.map((t) => (
+          <text
+            key={`lbl-${t.frac}`}
+            x={20}
+            y={t.y + 1.2}
+            textAnchor="end"
+            fontSize="3"
+            fill="var(--color-tertiary)"
+          >
+            {valueFormat ? valueFormat(t.value) : Math.round(t.value)}
+          </text>
+        ))}
+
+        {data.map((d, i) => {
+          const h = (d.value / max) * (barArea - 4);
+          const gap = barWidth * 0.2;
+          const x = 24 + i * ((VB_W - 24) / data.length) + gap / 2;
+          const w = (VB_W - 24) / data.length - gap;
+          const y = axisY - h;
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={w} height={h} fill={d.color} rx={1}>
+                <title>{`${d.label}: ${valueFormat ? valueFormat(d.value) : d.value}`}</title>
+              </rect>
+              <text
+                x={x + w / 2}
+                y={axisY + 6}
+                textAnchor="middle"
+                fontSize="3.2"
+                fill="var(--color-tertiary)"
+              >
+                {truncateLabel(d.label, Math.max(6, Math.floor(w / 1.8)))}
+              </text>
+              <text
+                x={x + w / 2}
+                y={Math.max(y - 1, 4)}
+                textAnchor="middle"
+                fontSize="3.2"
+                fontWeight={600}
+                fill="var(--color-secondary)"
+              >
+                {valueFormat ? valueFormat(d.value) : d.value}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
+}
+
+function truncateLabel(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, Math.max(1, max - 1)) + "…";
 }
 
 export function Legend({ data }: { data: Datum[] }) {
