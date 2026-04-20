@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
 import { getStoredUser } from "@/lib/auth-storage";
@@ -388,9 +389,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex h-14 items-center justify-between px-5">
           <Link
             href="/dashboard"
-            className="text-[15px] font-semibold tracking-tight text-[var(--chrome-text)]"
+            className="inline-flex items-center"
+            aria-label="Inicio"
           >
-            PMO · aaS
+            <BrandMark variant="sidebar" />
           </Link>
           <button
             type="button"
@@ -442,8 +444,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Menu className="h-5 w-5" aria-hidden />
             </button>
-            <div className="text-[13px] font-medium text-[var(--chrome-text-muted)]">
-              PMO · aaS
+            <div className="inline-flex items-center">
+              <BrandMark variant="topbar" />
             </div>
           </div>
           <UserMenu user={user} variant="chrome" />

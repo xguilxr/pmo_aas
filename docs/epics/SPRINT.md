@@ -7,21 +7,7 @@
 ## 🔴 IN-PROGRESS
 
 ```
-— Sin US activa —
-
-Bloques 1-8 (EP001–EP007, EP010) completos en esta rama
-(26 US implementadas).
-
-Siguen pendientes por orden:
-  Bloque 9  — EP013 Refactor de navegación (issue #17)
-  Bloque 10 — EP014 Entregables operativos (issue #18)
-  Bloque 11 — EP011 Notificaciones (POST-MVP)
-  Bloque 12 — EP012 Instalación productivo Hostgator MySQL
-
-Nota sobre US-NEW-017 (tabs inline, diferida en US-NEW-016):
-sus dependencias están DONE pero el issue #17 pide un alcance más
-amplio que la reemplaza (ver US-NEW-035 en EP013). US-NEW-017 queda
-marcada como **superseded** — se implementa como parte del bloque 9.
+US-NEW-032 — Restructurar sidebar principal (drill-down real)
 ```
 
 ---
@@ -30,9 +16,9 @@ marcada como **superseded** — se implementa como parte del bloque 9.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-031 | EP013 | Upload y display del logo del tenant en chrome | Bloque 9 |
-| 2 | US-NEW-032 | EP013 | Restructurar sidebar principal (drill-down real) | Bloque 9 |
-| 3 | US-NEW-033 | EP013 | Panel de organización → página de recursos reales | Bloque 9 |
+| 1 | US-NEW-032 | EP013 | Restructurar sidebar principal (drill-down real) | Bloque 9 |
+| 2 | US-NEW-033 | EP013 | Panel de organización → página de recursos reales | Bloque 9 |
+| 3 | US-NEW-034 | EP013 | Página resumen de programa | Bloque 9 |
 
 > Backlog completo del bloque 9 al 12 está listado abajo, en orden.
 
@@ -70,6 +56,7 @@ marcada como **superseded** — se implementa como parte del bloque 9.
 | US-NEW-024 | Gestión jerarquía org (BU + Depto) en Admin | `feat(admin): US-NEW-024 — jerarquía org en admin` | 2026-04-20 |
 | US-NEW-025 | Iconos en paneles de tenant + jerarquía | `feat(superadmin): US-NEW-025 — iconos en paneles` | 2026-04-20 |
 | US-NEW-026 | Visión General = Tenants + Health unificados | `feat(superadmin): US-NEW-026 — visión general unificada` | 2026-04-20 |
+| US-NEW-031 | Upload y display del logo del tenant en chrome | `feat(branding): US-NEW-031 — upload y display del logo del tenant en chrome` | 2026-04-20 |
 
 ---
 
@@ -123,7 +110,7 @@ marcada como **superseded** — se implementa como parte del bloque 9.
 
 ### Bloque 9 — Refactor de navegación (EP013) — issue #17
 **Orden de ejecución** (1 US por commit, en este orden):
-- [ ] US-NEW-031 — Upload y display del logo del tenant en chrome
+- [x] US-NEW-031 — Upload y display del logo del tenant en chrome ✅
 - [ ] US-NEW-032 — Restructurar sidebar principal (drill-down real; quitar "Módulos de proyecto" y duplicado de Organizaciones)
 - [ ] US-NEW-033 — Panel de organización → página de recursos reales (fix bug + enhancement)
 - [ ] US-NEW-034 — Página resumen de programa (KPIs + lista de proyectos)

@@ -56,27 +56,38 @@ Se **elimina**:
 
 ---
 
-## # PENDING — US-NEW-031 — Upload y display del logo del tenant en chrome
+## # DONE — US-NEW-031 — Upload y display del logo del tenant en chrome
 
 **Como** admin / senior PMO
 **Quiero** subir el logo de mi tenant y que se muestre en el topbar (reemplazando el texto `PMO•aaS`)
 **Para** que la app refleje la marca de mi organización.
 
 **Criterios de aceptación:**
-- [ ] `PATCH /api/v1/admin/tenant` acepta `logo_url` (endpoint ya existe en US-NEW-023; añadir upload si no lo tiene).
-- [ ] Endpoint `POST /api/v1/admin/tenant/logo` (multipart):
-  - Acepta PNG / JPG / SVG / WEBP ≤ 2 MB (reusar criterios EP002 US-022).
-  - Guarda en `/data/uploads/tenants/{slug}/logo.{ext}`.
-  - Devuelve `logo_url` firmada (o pública según dónde se sirva).
-- [ ] Endpoint `GET /api/v1/me/tenant-branding` devuelve `{ tenant_name, logo_url | null, primary_color }` — se consume desde topbar.
-- [ ] Topbar: cuando `logo_url` existe, muestra imagen (alt = nombre del tenant). Si no, fallback al texto `PMO•aaS`.
-- [ ] Click en el logo/home → navega a `/` (tablero).
-- [ ] Al editar el logo en `/admin/tenant`, el topbar refleja el cambio sin reload completo (revalidate).
+- [x] `PATCH /api/v1/admin/tenant` sigue aceptando `logo_url` como URL string (US-NEW-023).
+- [x] Endpoint `POST /api/v1/admin/tenant/logo` (multipart):
+  - Acepta PNG / JPG / SVG / WEBP ≤ 2 MB.
+  - Guarda en `{STORAGE_PATH}/tenants/{tenant_id}/logo.{ext}`.
+  - Reemplaza variantes previas (otra extensión) al subir.
+  - Actualiza `tenants.logo_url` al endpoint interno de serving.
+- [x] Endpoint `DELETE /api/v1/admin/tenant/logo` para quitar logo local.
+- [x] Endpoint `GET /api/v1/branding/tenants/{tenant_id}/logo` sirve el archivo (auth requerida; 404 si el user no es de ese tenant y no es superadmin).
+- [x] Endpoint `GET /api/v1/me/tenant-branding` devuelve `{tenant_id, tenant_name, tenant_slug, logo_url, primary_color}` — consumido por el topbar.
+- [x] `BrandMark` (frontend): cuando `logo_url` existe, muestra `<img>` con `alt=tenant_name`; si no, fallback `"PMO · aaS"`.
+- [x] `TenantBrandingProvider` con caché en `localStorage` + refresh explícito tras upload/edición en `/admin/tenant`.
+- [x] Click en el logo/home → navega a `/dashboard`.
+- [x] `/admin/tenant` acepta archivo (botón "Subir archivo") o URL externa — el cambio se refleja en el topbar sin reload completo via `refreshBranding()`.
 
-**Test Cases:**
-- `TC-NEW-031-1` (integration) — PATCH `/admin/tenant/logo` > 2MB → 413.
-- `TC-NEW-031-2` (integration) — Logo de tenant A no visible desde sesión de tenant B (aislamiento).
-- `TC-NEW-031-3` (E2E) — Subir logo → recargar topbar → imagen visible.
+**Test Cases (8/8 verdes):**
+- `test_usnew031_upload_png_sets_logo_url` — happy path upload + serve.
+- `test_usnew031_upload_rejects_oversized` — > 2 MB → 413.
+- `test_usnew031_upload_rejects_bad_mime` — MIME no permitido → 400.
+- `test_usnew031_non_admin_cannot_upload` — usuario sin `admin.users:update` → 403.
+- `test_usnew031_cross_tenant_serve_blocked` — admin de tenant A intentando pedir logo de tenant B → 404.
+- `test_usnew031_delete_logo` — DELETE quita archivo y limpia `logo_url`.
+- `test_usnew031_me_tenant_branding` — endpoint devuelve data correcta antes y después de upload.
+- `test_usnew031_overwrite_replaces_old_extension` — subir WEBP tras PNG deja un solo archivo en disco.
+
+**Commit:** `feat(branding): US-NEW-031 — upload y display del logo del tenant en chrome`.
 
 ---
 

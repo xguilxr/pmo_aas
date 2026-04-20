@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     admin_users,
     ai,
     auth,
+    branding,
     dashboard,
     modules,
     organizations,
@@ -26,6 +27,7 @@ api_router.include_router(users.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_roles.router)
 api_router.include_router(admin_panel.router)
+api_router.include_router(branding.router)
 api_router.include_router(organizations.router)
 api_router.include_router(organizations.programs_router)
 api_router.include_router(organizations.business_units_router)

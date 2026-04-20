@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Building2,
   Cog,
@@ -9,9 +9,12 @@ import {
   HardDrive,
   LifeBuoy,
   Pencil,
+  Trash2,
+  Upload,
   Users,
 } from "lucide-react";
 
+import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -23,6 +26,11 @@ import {
   updateTenantInfo,
   type TenantInfo,
 } from "@/lib/api/admin-panel";
+import {
+  deleteTenantLogo,
+  resolveLogoUrl,
+  uploadTenantLogo,
+} from "@/lib/api/branding";
 
 function bytesToHuman(bytes: number): string {
   if (!bytes) return "0 B";
@@ -67,6 +75,9 @@ export default function TenantAdminPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { refresh: refreshBranding } = useTenantBranding();
 
   async function refresh() {
     setLoading(true);
@@ -87,6 +98,44 @@ export default function TenantAdminPage() {
     void refresh();
   }, []);
 
+  async function onLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !info) return;
+    setUploadingLogo(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const r = await uploadTenantLogo(file);
+      setInfo({ ...info, logo_url: r.logo_url });
+      setLogoUrl(r.logo_url);
+      await refreshBranding();
+      setNotice("Logo actualizado.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al subir logo");
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function onRemoveLogo() {
+    if (!info) return;
+    setUploadingLogo(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const r = await deleteTenantLogo();
+      setInfo({ ...info, logo_url: r.logo_url });
+      setLogoUrl(r.logo_url ?? "");
+      await refreshBranding();
+      setNotice("Logo eliminado.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al eliminar logo");
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!info) return;
@@ -103,6 +152,7 @@ export default function TenantAdminPage() {
       });
       setInfo({ ...info, ...updated });
       setEditing(false);
+      await refreshBranding();
       setNotice("Tenant actualizado.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
@@ -144,9 +194,9 @@ export default function TenantAdminPage() {
                   {info.logo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={info.logo_url}
+                      src={resolveLogoUrl(info.logo_url) ?? ""}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   ) : (
                     <Building2 className="h-8 w-8" aria-hidden />
@@ -191,13 +241,46 @@ export default function TenantAdminPage() {
                     required
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <label
                     htmlFor="logo"
-                    className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                    className="block text-sm font-medium text-[var(--color-secondary)]"
                   >
-                    URL del logo
+                    Logo del tenant
                   </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      id="logo-file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      onChange={onLogoFileChange}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => fileInputRef.current?.click()}
+                      loading={uploadingLogo}
+                    >
+                      <Upload className="h-4 w-4" aria-hidden />
+                      Subir archivo
+                    </Button>
+                    {info.logo_url ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={onRemoveLogo}
+                        disabled={uploadingLogo}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                        Quitar
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-[var(--color-tertiary)]">
+                    PNG, JPG, SVG o WEBP hasta 2 MB. También puedes pegar una URL externa:
+                  </p>
                   <Input
                     id="logo"
                     value={logoUrl}
@@ -205,7 +288,7 @@ export default function TenantAdminPage() {
                     maxLength={500}
                     placeholder="https://cdn.example.com/logo.png"
                   />
-                  <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                  <p className="text-xs text-[var(--color-tertiary)]">
                     El slug no puede modificarse desde aquí (solo super admin).
                   </p>
                 </div>
