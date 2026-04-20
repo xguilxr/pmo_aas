@@ -7,12 +7,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US: US-NEW-024
-Epic: EP007-admin.md
-Título: Gestión jerarquía org completa (BU + Depto) en Admin
-Tipo: Frontend — tree inline Org → BUs → Deptos + acciones
-Commit esperado: "feat(admin): US-NEW-024 — jerarquía org en admin"
-Precondición: CRUD de BU y Depto ya existe (US-NEW-003/004).
+US: US-NEW-025
+Epic: EP010-superadmin-panel.md
+Título: Iconos en paneles de tenant + indicador activo
+Tipo: Frontend — cards de tenant con iconos por categoría
+Commit esperado: "feat(superadmin): US-NEW-025 — iconos en paneles"
+Precondición: /superadmin/tenants ya existe.
 ```
 
 ---
@@ -21,9 +21,9 @@ Precondición: CRUD de BU y Depto ya existe (US-NEW-003/004).
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-025 | EP010 | Iconos en paneles de tenant | Frontend |
-| 2 | US-NEW-026 | EP010 | Visión General = Tenants + Health | Frontend |
-| 3 | US-NEW-027 | EP011 | Tabla notifications + in-app center | POST-MVP |
+| 1 | US-NEW-026 | EP010 | Visión General = Tenants + Health | Frontend |
+| 2 | US-NEW-027 | EP011 | Tabla notifications + in-app center | POST-MVP |
+| 3 | US-NEW-028 | EP011 | Email notifications via Resend | POST-MVP |
 
 ---
 
@@ -56,6 +56,7 @@ Precondición: CRUD de BU y Depto ya existe (US-NEW-003/004).
 | US-NEW-021 | Consolidar pestañas de Minutas | `feat(projects): US-NEW-021 — consolidar minutas` | 2026-04-20 |
 | US-NEW-022 | Módulo Reportes dentro del proyecto | `feat(projects): US-NEW-022 — módulo reportes` | 2026-04-20 |
 | US-NEW-023 | Gestión de Tenant (info + stats + editar) | `feat(admin): US-NEW-023 — gestión de tenant` | 2026-04-20 |
+| US-NEW-024 | Gestión jerarquía org (BU + Depto) en Admin | `feat(admin): US-NEW-024 — jerarquía org en admin` | 2026-04-20 |
 
 ---
 
@@ -99,7 +100,7 @@ Precondición: CRUD de BU y Depto ya existe (US-NEW-003/004).
 
 ### Bloque 7 — Admin (EP007)
 - [x] US-NEW-023 — Gestión de tenant (propuesta de acciones) ✅
-- [ ] US-NEW-024 — Gestión jerarquía org completa (BU + Depto)
+- [x] US-NEW-024 — Gestión jerarquía org completa (BU + Depto) ✅
 
 ### Bloque 8 — SuperAdmin (EP010)
 - [ ] US-NEW-025 — Iconos en paneles de tenant

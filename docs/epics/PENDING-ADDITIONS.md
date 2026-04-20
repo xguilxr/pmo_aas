@@ -433,7 +433,14 @@ Campos adicionales al formulario de solicitud:
 
 ---
 
-### # PENDING — US-NEW-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+### # INTEGRATED — US-NEW-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+
+**Estado de integración:** INTEGRATED en EP007 (US-NEW-024). Tree inline
+  con CRUD de BU/Depto + botón "Ver proyectos".
+
+---
+
+### # PENDING (referencia) — US-NEW-024
 
 **Criterios de aceptación:**
 - [ ] En `/admin/organizations`, expandir US-039 para incluir gestión de BUs y Deptos.

@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Building2, Trash2 } from "lucide-react";
 
 import { OrganizationForm } from "@/components/organization-form";
+import { OrgHierarchySection } from "@/components/org-hierarchy-section";
 import { ProgramsSection } from "@/components/programs-section";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -131,6 +132,8 @@ function OrganizationDetailInner() {
           setNotice(null);
         }}
       />
+
+      <OrgHierarchySection orgId={org.id} />
 
       <ProgramsSection organizationId={org.id} />
 

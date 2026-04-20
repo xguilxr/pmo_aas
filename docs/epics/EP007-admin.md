@@ -239,3 +239,28 @@ GET    /api/v1/admin/audit-logs/export.csv
 - `test_usnew023_patch_name_too_short` → 422 ✅
 
 **Estado de integración:** DONE (US-NEW-023).
+
+---
+
+### US-NEW-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+
+**Criterios de aceptación:**
+- [x] En `/admin/organizations/{id}`, debajo del formulario de edición
+  de la org, se muestra sección "Jerarquía: unidades de negocio y
+  departamentos" con tree expandible.
+- [x] Tree Org → BUs → Deptos con acciones inline por fila:
+  - "Nuevo departamento" (solo en filas de BU).
+  - "Editar" (abre modal de nombre + descripción).
+  - "Desactivar" (modal con toggle `force` para cascada).
+- [x] Botón "Nueva BU" en el header de la sección.
+- [x] Botón "Ver proyectos" en el header de la sección → filtra
+  `/admin/projects?organization_id={id}`.
+- [x] Deptos se cargan lazy al expandir la BU.
+- [x] Reutiliza los endpoints existentes (US-NEW-003/004); sin cambios
+  de backend.
+
+**Notas:**
+- Modal de desactivar muestra el mensaje `BU_HAS_ACTIVE_DEPARTMENTS` o
+  `DEPT_HAS_ACTIVE_CHILDREN` cuando aplica, sugiriendo el toggle force.
+
+**Estado de integración:** DONE (US-NEW-024).
