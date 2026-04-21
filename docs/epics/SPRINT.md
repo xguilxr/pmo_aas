@@ -11,36 +11,36 @@
 
 **Estado al 2026-04-21 (owner):** productivo v1.0 corre en Railway con
 tier superior; el costo marginal se cubre con licencias cobradas.
-**EP012 (migración a MySQL HostGator) queda CANCELADO por DEC-013** —
-no se invierte más en él. DEC-002 y la parte "reabrir a v1.1" de
-DEC-012 quedan revocadas.
+EP012 (migración a MySQL HostGator) CANCELADO por DEC-013. DEC-002 y
+la parte "reabrir a v1.1" de DEC-012 quedan revocadas.
 
-Bloque 13 (hotfixes operativos) cerrado el 2026-04-21: US-BUG-004 deja
-documentado el troubleshooting de redeploy en Railway (el toggle
-operativo lo aplica el owner del project), y US-BUG-005 arregla el
-flash de TOP_NAV en primer paint del sidebar super admin.
+Bloques 13 (hotfixes), 14 (EP016 v2 Tailscale) y 15 (DNS + landing)
+cerrados el 2026-04-21.
 
-Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local vía CF
-Tunnel) ya estaban completos. EP016 sigue REABIERTO por pivote
-arquitectónico a Tailscale (ver DEC-011 + ADR-015, 2026-04-21).
-US-NEW-044/045 permanecen SUPERSEDED.
+**Pruebas masivas desbloqueadas.** Todo lo que Claude podía ejecutar
+en el repo está mergeado. Los pasos restantes son manuales del owner:
 
-**Ruta directa a pruebas masivas (owner 2026-04-21):**
-  Bloque 14 — EP016 v2 Tailscale (US-NEW-046/047/048) → habilita IA
-  Bloque 15 — DNS productivo + landing (US-NEW-049/050)
-  → una vez cerrados 14 + 15, arranca pruebas masivas en Railway prod.
+1. Tailscale en PC Windows (docs/ai/local-ollama-setup.md).
+2. TS_AUTHKEY en Railway Shared Variables + ACL tag:railway-worker.
+3. DNS Cloudflare para pmo-aas.com (docs/infra/dns-routing.md).
+4. Subir landing/ a public_html/ en HostGator (landing/README.md).
+5. Cleanup CF Tunnel previo (opcional — ver runbook §10).
 
-Después de pruebas masivas (POST-MVP, no bloquean v1.0):
-  Bloque 16 — EP011 Notificaciones in-app + email
+POST-MVP, no bloquean v1.0 ni pruebas masivas:
+  Bloque 16 — EP011 Notificaciones in-app + email (US-NEW-027/028).
 
 Bloque 17 (EP012 MySQL HostGator): ❌ CANCELADO por DEC-013.
 
 Follow-ups arrastrados:
-- Refactorizar OllamaProvider.generate() para consumir la config
-  por-tenant en el worker IA (hoy usa env). Se cubre como parte del DoD
-  de US-NEW-048.
 - Harness Playwright no instalado: el test e2e superadmin-sidebar
-  quedó fuera de US-BUG-005; reabrir cuando se introduzca el framework.
+  quedó fuera de US-BUG-005.
+- Exportador Prometheus: el log estructurado ai_cascade_fallback
+  está listo, falta el exporter que lo convierta en métrica
+  ai_cascade_fallback_total{from,to}.
+- El botón "Probar conexión" del formulario OllamaLocalAiForm corre
+  desde api (no en tailnet) y siempre fallará; la UI ya lo explica.
+  Para validar realmente el canal, el owner dispara una minuta IA
+  desde el worker y observa los logs.
 ```
 
 ---
@@ -49,13 +49,14 @@ Follow-ups arrastrados:
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-046 | EP016 | Runbook `local-ollama-setup.md` reescrito a Tailscale | Bloque 14 |
-| 2 | US-NEW-047 | EP016 | Refactor config + test-connection Tailscale (quita CF-Access) | Bloque 14 |
-| 3 | US-NEW-048 | EP016 | Sidecar Tailscale en worker Railway | Bloque 14 |
-| 4 | US-NEW-049 | infra | DNS productivo pmo-aas.com (Cloudflare + Railway + HostGator) | Bloque 15 |
-| 5 | US-NEW-050 | infra | Landing estático www.pmo-aas.com en HostGator | Bloque 15 |
+| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center | Bloque 16 (POST-MVP) |
+| 2 | US-NEW-028 | EP011 | Email notifications via Resend | Bloque 16 (POST-MVP) |
+| — | — | — | — | — |
+| — | — | — | — | — |
+| — | — | — | — | — |
 
-> Backlog completo abajo, reordenado.
+> Nada queda en cola para v1.0 / pruebas masivas. Las dos filas con US
+> son POST-MVP y no bloquean el release.
 
 ---
 
@@ -108,6 +109,11 @@ Follow-ups arrastrados:
 | US-NEW-045 | Config + smoke test del túnel + secrets cifrados | `feat(api,web): US-NEW-045 — config y smoke del modelo IA local (Cloudflare Tunnel)` | 2026-04-20 |
 | US-BUG-004 | Railway no redeploy tras PR #20 — troubleshooting documentado | `fix(infra): US-BUG-004 — Railway auto-deploy troubleshooting tras PR #20` | 2026-04-21 |
 | US-BUG-005 | Sidebar super admin respeta user.is_superadmin en first paint | `fix(web): US-BUG-005 — sidebar super admin respeta user.is_superadmin en first paint` | 2026-04-21 |
+| US-NEW-046 | Runbook Ollama + Tailscale (reemplaza CF Tunnel) | `docs(ai): US-NEW-046 — runbook Ollama + Tailscale (reemplaza CF Tunnel)` | 2026-04-21 |
+| US-NEW-047 | Refactor config Ollama a Tailscale (quita CF-Access) | `feat(api,web): US-NEW-047 — refactor config Ollama a Tailscale (quita CF-Access)` | 2026-04-21 |
+| US-NEW-048 | Sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider | `feat(worker): US-NEW-048 — sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider` | 2026-04-21 |
+| US-NEW-049 | DNS routing pmo-aas.com (Railway + HostGator) | `docs(infra): US-NEW-049 — DNS routing pmo-aas.com (Railway + HostGator)` | 2026-04-21 |
+| US-NEW-050 | Landing estático www.pmo-aas.com en HostGator | `feat(landing): US-NEW-050 — landing estático www.pmo-aas.com en HostGator` | 2026-04-21 |
 
 ---
 
@@ -239,36 +245,37 @@ Follow-ups arrastrados:
        y que Usuarios SÍ aparece.
   - **Commit:** `fix(web): US-BUG-005 — sidebar super admin respeta user.is_superadmin en first paint`.
 
-### Bloque 14 — EP016 v2: Ollama local vía Tailscale (reabre EP016)
+### Bloque 14 — EP016 v2: Ollama local vía Tailscale (reabre EP016) ✅ CERRADO 2026-04-21
 
-> Reemplaza el canal CF Tunnel + Cloudflare Access por Tailscale tailnet
+> Reemplazó el canal CF Tunnel + Cloudflare Access por Tailscale tailnet
 > privado. Ver ADR-015 + DEC-011. US-NEW-044/045 quedan SUPERSEDED.
 
-- [ ] US-NEW-046 — Reescribir `docs/ai/local-ollama-setup.md` para flujo Tailscale (ver EP016 sección US-NEW-046)
-- [ ] US-NEW-047 — Refactor `OllamaLocalAiForm` + endpoint `test-connection` sin CF-Access (ver EP016)
-- [ ] US-NEW-048 — Dockerfile worker Railway con sidecar `tailscaled` + `TS_AUTHKEY` (ver EP016)
-- [ ] **Cleanup paralelo (owner, manual)**: borrar tunnel `pmoaas-ollama` de Cloudflare, retirar CNAME `ollama.*`, revocar Service Tokens. Documentado en US-NEW-046 sección "rollback CF Tunnel".
+- [x] US-NEW-046 — Runbook `docs/ai/local-ollama-setup.md` reescrito para Tailscale ✅
+- [x] US-NEW-047 — `OllamaLocalAiForm` + endpoint `test-connection` sin CF-Access ✅
+- [x] US-NEW-048 — Dockerfile worker Railway con sidecar `tailscaled` + `TS_AUTHKEY`; OllamaProvider consume config por-tenant ✅
+- [ ] **Cleanup paralelo (owner, manual)**: borrar tunnel `pmoaas-ollama` de Cloudflare, retirar CNAME `ollama.*`, revocar Service Tokens. Documentado en `docs/ai/local-ollama-setup.md` §10 "Rollback CF Tunnel".
 
-### Bloque 15 — Landing y DNS productivo (Cloudflare + Railway + HostGator)
+### Bloque 15 — Landing y DNS productivo (Cloudflare + Railway + HostGator) ✅ CERRADO 2026-04-21
 
-> Finalizar el routing del dominio `pmo-aas.com` antes de release v1.0.
-> Separado de EP016 porque no toca Ollama. Ver DEC-012.
+> Finaliza el routing del dominio `pmo-aas.com`. Ver DEC-012 y runbook
+> `docs/infra/dns-routing.md`.
 
-- [ ] **US-NEW-049 — Configurar DNS productivo en Cloudflare**
-  - Apex `pmo-aas.com` → redirect 301 a `app.pmo-aas.com` (page rule o CNAME flattening).
-  - `app.pmo-aas.com` → CNAME al Railway web service (DNS only, nube gris).
-  - `api.pmo-aas.com` → CNAME al Railway api service (DNS only, nube gris).
-  - `www.pmo-aas.com` → A/CNAME a HostGator IP (proxied, nube naranja, Full SSL).
-  - Verificar TLS Railway auto-provisiona cert para `app.*` y `api.*`.
-  - Documentar en nuevo `docs/infra/dns-routing.md`.
-  - **Commit:** `docs(infra): US-NEW-049 — DNS routing pmo-aas.com (Railway + HostGator)`.
+- [x] **US-NEW-049 — Configurar DNS productivo en Cloudflare** ✅
+  - Runbook `docs/infra/dns-routing.md` con plan completo: apex 301,
+    CNAME `app.*`/`api.*` DNS only, CNAME `www` Proxied + Full strict,
+    cleanup de `ollama.*`, verificación con dig/curl y rollback.
+  - **Pendiente operador (owner):** aplicar los registros en el
+    dashboard Cloudflare y agregar Custom Domain a cada servicio
+    Railway.
 
-- [ ] **US-NEW-050 — Landing estático en HostGator**
-  - Subir HTML/CSS mínimo a `public_html/` de HostGator vía FTP/cPanel.
-  - Contenido: marca PMO-aaS, 1-liner, CTA a `app.pmo-aas.com/login`.
-  - Sin conexión a BD — es solo marketing.
-  - Verificar `https://www.pmo-aas.com` sirve con TLS Cloudflare Full.
-  - **Commit:** `feat(landing): US-NEW-050 — landing estático www.pmo-aas.com en HostGator`.
+- [x] **US-NEW-050 — Landing estático en HostGator** ✅
+  - Directorio `landing/` con `index.html`, `assets/styles.css` y
+    `assets/favicon.svg`. HTML/CSS vanilla alineado al chrome
+    `#182e4e`; sin JS framework ni llamadas al API.
+  - `landing/README.md` documenta el deploy a cPanel (File Manager o
+    FTP) y el smoke test post-deploy.
+  - **Pendiente operador (owner):** subir el contenido de `landing/`
+    a `public_html/` en HostGator.
 
 ### Bloque 16 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center
