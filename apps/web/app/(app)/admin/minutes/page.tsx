@@ -13,15 +13,17 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
-import { type MeetingMinute } from "@/lib/api/modules";
-import { listTenantMinutes } from "@/lib/api/tenant-cross";
+import {
+  listTenantMinutes,
+  type TenantMinute,
+} from "@/lib/api/tenant-cross";
 
 export default function TenantMinutesPage() {
   const [filter, setFilter] = useState<TenantCrossFilterValue>({});
-  const [rows, setRows] = useState<MeetingMinute[]>([]);
+  const [rows, setRows] = useState<TenantMinute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<MeetingMinute | null>(null);
+  const [preview, setPreview] = useState<TenantMinute | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,9 +122,13 @@ export default function TenantMinutesPage() {
                   <td className="px-3 py-2">
                     <Link
                       href={`/admin/projects/${r.project_id}`}
-                      className="font-mono text-xs text-[var(--color-accent)] hover:underline"
+                      className="text-xs text-[var(--color-accent)] hover:underline"
+                      title={r.project_name}
                     >
-                      {r.project_id.slice(0, 8)}…
+                      <span className="font-mono">{r.project_folio}</span>
+                      <span className="ml-1 text-[var(--color-secondary)]">
+                        — {r.project_name}
+                      </span>
                     </Link>
                   </td>
                 </tr>
@@ -141,7 +147,10 @@ export default function TenantMinutesPage() {
           preview
             ? [
                 { label: "ID", value: preview.id, mono: true },
-                { label: "Proyecto", value: preview.project_id, mono: true },
+                {
+                  label: "Proyecto",
+                  value: `${preview.project_folio} — ${preview.project_name}`,
+                },
                 {
                   label: "Fecha",
                   value: new Date(preview.meeting_date).toLocaleDateString("es-MX"),

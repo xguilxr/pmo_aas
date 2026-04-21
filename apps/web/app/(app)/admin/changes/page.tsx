@@ -14,8 +14,10 @@ import { Banner } from "@/components/ui/banner";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
-import { type ChangeRequest } from "@/lib/api/modules";
-import { listTenantChanges } from "@/lib/api/tenant-cross";
+import {
+  listTenantChanges,
+  type TenantChange,
+} from "@/lib/api/tenant-cross";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Todos los estados" },
@@ -32,10 +34,10 @@ function TenantChangesInner() {
   // ENH-009: ?status=in_review llega desde el KPI "Cambios en revisión"
   // del dashboard para abrir la vista con el filtro pre-aplicado.
   const [status, setStatus] = useState(searchParams.get("status") ?? "");
-  const [rows, setRows] = useState<ChangeRequest[]>([]);
+  const [rows, setRows] = useState<TenantChange[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<ChangeRequest | null>(null);
+  const [preview, setPreview] = useState<TenantChange | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,9 +151,13 @@ function TenantChangesInner() {
                   <td className="px-3 py-2">
                     <Link
                       href={`/admin/projects/${r.project_id}`}
-                      className="font-mono text-xs text-[var(--color-accent)] hover:underline"
+                      className="text-xs text-[var(--color-accent)] hover:underline"
+                      title={r.project_name}
                     >
-                      {r.project_id.slice(0, 8)}…
+                      <span className="font-mono">{r.project_folio}</span>
+                      <span className="ml-1 text-[var(--color-secondary)]">
+                        — {r.project_name}
+                      </span>
                     </Link>
                   </td>
                 </tr>
@@ -170,7 +176,10 @@ function TenantChangesInner() {
           preview
             ? [
                 { label: "ID", value: preview.id, mono: true },
-                { label: "Proyecto", value: preview.project_id, mono: true },
+                {
+                  label: "Proyecto",
+                  value: `${preview.project_folio} — ${preview.project_name}`,
+                },
                 { label: "Tipo", value: preview.type ?? "—" },
                 { label: "Estado", value: preview.status },
                 { label: "Impacto", value: preview.impact ?? "—" },

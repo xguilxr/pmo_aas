@@ -5,11 +5,15 @@ Los endpoints existentes en `modules.py` y `reports.py` son project-scoped
 con filtros por organization_id, program_id y project_id, para las
 páginas `/admin/raid`, `/admin/changes`, `/admin/minutes` y
 `/admin/reports`.
+
+ENH-010: cada item del JSON incluye `project_folio` y `project_name`
+para que la UI muestre el proyecto legible (no solo el UUID).
 """
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_permission
@@ -48,11 +52,12 @@ def _project_scope(
     program_id: UUID | None,
     project_id: UUID | None,
 ):
-    """Aplica filtros cruzados (tenant, org, programa, proyecto) usando el
-    join implícito con `Project`."""
-    stmt = stmt.join(Project, Project.id == project_model_rel).where(
-        Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
-    )
+    """Aplica filtros cruzados (tenant, org, programa, proyecto) +
+    selecciona `Project.folio` y `Project.name` para enriquecer la
+    respuesta (ENH-010)."""
+    stmt = stmt.add_columns(Project.folio, Project.name).join(
+        Project, Project.id == project_model_rel
+    ).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
     if organization_id is not None:
         stmt = stmt.where(Project.organization_id == str(organization_id))
     if program_id is not None:
@@ -62,14 +67,21 @@ def _project_scope(
     return stmt
 
 
-@router.get("/risks", response_model=list[RiskRead])
+def _enrich(item_read: Any, folio: str, name: str) -> dict:
+    data = item_read.model_dump(mode="json")
+    data["project_folio"] = folio
+    data["project_name"] = name
+    return data
+
+
+@router.get("/risks")
 async def list_tenant_risks(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("risks", "read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[dict]:
     tenant_id = _tenant(cu)
     stmt = select(Risk).where(Risk.deleted_at.is_(None))
     stmt = _project_scope(
@@ -77,11 +89,11 @@ async def list_tenant_risks(
     )
     rows = (
         await db.execute(stmt.order_by(Risk.severity.desc().nullslast()))
-    ).scalars().all()
-    return [RiskRead.model_validate(r) for r in rows]
+    ).all()
+    return [_enrich(RiskRead.model_validate(r), folio, name) for r, folio, name in rows]
 
 
-@router.get("/issues", response_model=list[IssueRead])
+@router.get("/issues")
 async def list_tenant_issues(
     type: str | None = Query(default=None, description="action|issue|decision"),
     organization_id: UUID | None = Query(default=None),
@@ -89,7 +101,7 @@ async def list_tenant_issues(
     project_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("issues", "read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[dict]:
     tenant_id = _tenant(cu)
     stmt = select(Issue).where(Issue.deleted_at.is_(None))
     stmt = _project_scope(
@@ -97,13 +109,11 @@ async def list_tenant_issues(
     )
     if type:
         stmt = stmt.where(Issue.type == type)
-    rows = (
-        await db.execute(stmt.order_by(Issue.created_at.desc()))
-    ).scalars().all()
-    return [IssueRead.model_validate(r) for r in rows]
+    rows = (await db.execute(stmt.order_by(Issue.created_at.desc()))).all()
+    return [_enrich(IssueRead.model_validate(r), folio, name) for r, folio, name in rows]
 
 
-@router.get("/change-requests", response_model=list[ChangeRequestRead])
+@router.get("/change-requests")
 async def list_tenant_changes(
     status: str | None = Query(default=None),
     organization_id: UUID | None = Query(default=None),
@@ -111,7 +121,7 @@ async def list_tenant_changes(
     project_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("change_requests", "read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[dict]:
     tenant_id = _tenant(cu)
     stmt = select(ChangeRequest).where(ChangeRequest.deleted_at.is_(None))
     stmt = _project_scope(
@@ -124,20 +134,21 @@ async def list_tenant_changes(
     )
     if status:
         stmt = stmt.where(ChangeRequest.status == status)
-    rows = (
-        await db.execute(stmt.order_by(ChangeRequest.created_at.desc()))
-    ).scalars().all()
-    return [ChangeRequestRead.model_validate(r) for r in rows]
+    rows = (await db.execute(stmt.order_by(ChangeRequest.created_at.desc()))).all()
+    return [
+        _enrich(ChangeRequestRead.model_validate(r), folio, name)
+        for r, folio, name in rows
+    ]
 
 
-@router.get("/meeting-minutes", response_model=list[MeetingMinuteRead])
+@router.get("/meeting-minutes")
 async def list_tenant_minutes(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("minutes", "read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[dict]:
     tenant_id = _tenant(cu)
     stmt = select(MeetingMinute)
     stmt = _project_scope(
@@ -148,26 +159,27 @@ async def list_tenant_minutes(
         program_id,
         project_id,
     )
-    rows = (
-        await db.execute(stmt.order_by(MeetingMinute.meeting_date.desc()))
-    ).scalars().all()
-    return [MeetingMinuteRead.model_validate(r) for r in rows]
+    rows = (await db.execute(stmt.order_by(MeetingMinute.meeting_date.desc()))).all()
+    return [
+        _enrich(MeetingMinuteRead.model_validate(r), folio, name)
+        for r, folio, name in rows
+    ]
 
 
-@router.get("/reports", response_model=list[ReportRead])
+@router.get("/reports")
 async def list_tenant_reports(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("reports", "read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[dict]:
     tenant_id = _tenant(cu)
     stmt = select(Report)
     stmt = _project_scope(
         stmt, Report.project_id, tenant_id, organization_id, program_id, project_id
     )
-    rows = (
-        await db.execute(stmt.order_by(Report.created_at.desc()))
-    ).scalars().all()
-    return [ReportRead.model_validate(r) for r in rows]
+    rows = (await db.execute(stmt.order_by(Report.created_at.desc()))).all()
+    return [
+        _enrich(ReportRead.model_validate(r), folio, name) for r, folio, name in rows
+    ]

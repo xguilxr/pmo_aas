@@ -18,13 +18,13 @@ import { ApiError } from "@/lib/api";
 import {
   ISSUE_TYPE_LABEL,
   RISK_STATUS_LABEL,
-  type Issue,
   type IssueType,
-  type Risk,
 } from "@/lib/api/modules";
 import {
   listTenantIssues,
   listTenantRisks,
+  type TenantIssue,
+  type TenantRisk,
 } from "@/lib/api/tenant-cross";
 
 type Kind = "risks" | "actions" | "issues" | "decisions";
@@ -50,12 +50,12 @@ function TenantRaidInner() {
   const severityMin = Number(searchParams.get("severity_min") ?? "") || null;
   const [kind, setKind] = useState<Kind>(parseKind(searchParams.get("kind")));
   const [filter, setFilter] = useState<TenantCrossFilterValue>({});
-  const [risks, setRisks] = useState<Risk[]>([]);
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [risks, setRisks] = useState<TenantRisk[]>([]);
+  const [issues, setIssues] = useState<TenantIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [previewRisk, setPreviewRisk] = useState<Risk | null>(null);
-  const [previewIssue, setPreviewIssue] = useState<Issue | null>(null);
+  const [previewRisk, setPreviewRisk] = useState<TenantRisk | null>(null);
+  const [previewIssue, setPreviewIssue] = useState<TenantIssue | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,7 +164,10 @@ function TenantRaidInner() {
           previewRisk
             ? [
                 { label: "ID", value: previewRisk.id, mono: true },
-                { label: "Proyecto", value: previewRisk.project_id, mono: true },
+                {
+                  label: "Proyecto",
+                  value: `${previewRisk.project_folio} — ${previewRisk.project_name}`,
+                },
                 { label: "Severidad", value: previewRisk.severity ?? "—" },
                 {
                   label: "Estado",
@@ -186,7 +189,10 @@ function TenantRaidInner() {
           previewIssue
             ? [
                 { label: "ID", value: previewIssue.id, mono: true },
-                { label: "Proyecto", value: previewIssue.project_id, mono: true },
+                {
+                  label: "Proyecto",
+                  value: `${previewIssue.project_folio} — ${previewIssue.project_name}`,
+                },
                 { label: "Tipo", value: ISSUE_TYPE_LABEL[previewIssue.type] ?? previewIssue.type },
                 { label: "Prioridad", value: previewIssue.priority ?? "—" },
                 { label: "Estado", value: previewIssue.status },
@@ -204,8 +210,8 @@ function RiskTable({
   rows,
   onPreview,
 }: {
-  rows: Risk[];
-  onPreview: (r: Risk) => void;
+  rows: TenantRisk[];
+  onPreview: (r: TenantRisk) => void;
 }) {
   return (
     <table className="w-full text-sm">
@@ -254,9 +260,13 @@ function RiskTable({
             <td className="px-3 py-2">
               <Link
                 href={`/admin/projects/${r.project_id}`}
-                className="font-mono text-xs text-[var(--color-accent)] hover:underline"
+                className="text-xs text-[var(--color-accent)] hover:underline"
+                title={r.project_name}
               >
-                {r.project_id.slice(0, 8)}…
+                <span className="font-mono">{r.project_folio}</span>
+                <span className="ml-1 text-[var(--color-secondary)]">
+                  — {r.project_name}
+                </span>
               </Link>
             </td>
           </tr>
@@ -271,9 +281,9 @@ function IssueTable({
   kind,
   onPreview,
 }: {
-  rows: Issue[];
+  rows: TenantIssue[];
   kind: Kind;
-  onPreview: (r: Issue) => void;
+  onPreview: (r: TenantIssue) => void;
 }) {
   const typeLabel = useMemo(
     () =>
@@ -325,9 +335,13 @@ function IssueTable({
             <td className="px-3 py-2">
               <Link
                 href={`/admin/projects/${r.project_id}`}
-                className="font-mono text-xs text-[var(--color-accent)] hover:underline"
+                className="text-xs text-[var(--color-accent)] hover:underline"
+                title={r.project_name}
               >
-                {r.project_id.slice(0, 8)}…
+                <span className="font-mono">{r.project_folio}</span>
+                <span className="ml-1 text-[var(--color-secondary)]">
+                  — {r.project_name}
+                </span>
               </Link>
             </td>
           </tr>

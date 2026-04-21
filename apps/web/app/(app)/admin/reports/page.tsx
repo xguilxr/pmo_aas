@@ -109,9 +109,13 @@ export default function TenantReportsPage() {
                   <td className="px-3 py-2">
                     <Link
                       href={`/admin/projects/${r.project_id}`}
-                      className="font-mono text-xs text-[var(--color-accent)] hover:underline"
+                      className="text-xs text-[var(--color-accent)] hover:underline"
+                      title={r.project_name}
                     >
-                      {r.project_id.slice(0, 8)}…
+                      <span className="font-mono">{r.project_folio}</span>
+                      <span className="ml-1 text-[var(--color-secondary)]">
+                        — {r.project_name}
+                      </span>
                     </Link>
                   </td>
                 </tr>
