@@ -113,6 +113,12 @@ async def _run_minute(
         async with db_session() as db:
             ollama_cfg = await _tenant_ollama_cfg(db, tenant_id)
 
+        logger.info(
+            "minute task start job=%s tenant=%s ollama_cfg=%s",
+            job_id, tenant_id,
+            {"base_url": ollama_cfg.get("base_url"), "model": ollama_cfg.get("model")}
+            if ollama_cfg else None,
+        )
         chunks = chunk_text(transcript)
         collected: list[dict] = []
         model_used = "unknown"
