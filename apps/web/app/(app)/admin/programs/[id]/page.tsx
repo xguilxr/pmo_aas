@@ -128,7 +128,7 @@ export default function ProgramSummaryPage() {
           { href: "/admin/organizations", label: "Organizaciones" },
           data.organization_name
             ? {
-                href: `/admin/organizations/${data.organization_id}/panel`,
+                href: `/admin/organizations/${data.organization_id}`,
                 label: data.organization_name,
               }
             : { label: "Organización" },
