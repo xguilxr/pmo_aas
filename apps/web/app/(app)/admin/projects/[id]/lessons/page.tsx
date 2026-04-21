@@ -2,8 +2,9 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Lightbulb } from "lucide-react";
+import { Eye, Lightbulb } from "lucide-react";
 
+import { ItemPreviewModal } from "@/components/item-preview-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ export default function LessonsPage() {
   const [rows, setRows] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Lesson | null>(null);
 
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -93,6 +95,7 @@ export default function LessonsPage() {
   }
 
   return (
+    <>
     <ModuleShell<Lesson>
       projectId={id}
       title="Lecciones aprendidas"
@@ -172,6 +175,24 @@ export default function LessonsPage() {
       )}
       columns={[
         {
+          key: "eye",
+          label: "",
+          render: (r) => (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreview(r);
+              }}
+              aria-label={`Preview ${r.title}`}
+              title="Vista rápida"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+            >
+              <Eye className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ),
+        },
+        {
           key: "title",
           label: "Lección",
           render: (r) => (
@@ -224,6 +245,37 @@ export default function LessonsPage() {
         },
       ]}
     />
+    <ItemPreviewModal
+      open={preview !== null}
+      onClose={() => setPreview(null)}
+      title={preview?.title ?? ""}
+      subtitle={preview?.folio}
+      fields={
+        preview
+          ? [
+              { label: "ID", value: preview.id, mono: true },
+              { label: "Folio", value: preview.folio, mono: true },
+              {
+                label: "Categoría",
+                value: preview.category
+                  ? LESSON_CATEGORY_LABEL[preview.category]
+                  : "—",
+              },
+              { label: "Fase", value: preview.phase ?? "—" },
+              {
+                label: "Tags",
+                value: preview.tags.length ? preview.tags.join(", ") : "—",
+              },
+              {
+                label: "Recomendación",
+                value: preview.recommendation ?? "—",
+              },
+            ]
+          : []
+      }
+      description={preview?.description ?? null}
+    />
+    </>
   );
 }
 

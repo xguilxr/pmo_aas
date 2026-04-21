@@ -8,11 +8,13 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Download,
+  Eye,
   GitCommit,
   Shield,
   TriangleAlert,
 } from "lucide-react";
 
+import { ItemPreviewModal } from "@/components/item-preview-modal";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -356,6 +358,7 @@ function RiskMatrix({ rows }: { rows: Risk[] }) {
 }
 
 function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) {
+  const [preview, setPreview] = useState<Risk | null>(null);
   return (
     <div className="space-y-5">
       <RiskMatrix rows={rows} />
@@ -386,6 +389,7 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
             <table className="w-full text-sm">
               <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
                 <tr>
+                  <th className="w-10 px-3 py-2" aria-label="Preview" />
                   <th className="px-3 py-2 font-medium">Folio</th>
                   <th className="px-3 py-2 font-medium">Título</th>
                   <th className="px-3 py-2 font-medium">Severidad</th>
@@ -399,6 +403,17 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
                     key={r.id}
                     className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
                   >
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => setPreview(r)}
+                        aria-label={`Preview ${r.title}`}
+                        title="Vista rápida"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+                      >
+                        <Eye className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
                       {r.folio}
                     </td>
@@ -426,6 +441,32 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
           </div>
         </section>
       )}
+      <ItemPreviewModal
+        open={preview !== null}
+        onClose={() => setPreview(null)}
+        title={preview?.title ?? ""}
+        subtitle={preview?.folio}
+        fields={
+          preview
+            ? [
+                { label: "ID", value: preview.id, mono: true },
+                { label: "Folio", value: preview.folio, mono: true },
+                { label: "Severidad", value: preview.severity ?? "—" },
+                {
+                  label: "P × I",
+                  value: `${preview.probability ?? "—"} × ${preview.impact ?? "—"}`,
+                },
+                {
+                  label: "Estado",
+                  value: RISK_STATUS_LABEL[preview.status] ?? preview.status,
+                },
+                { label: "Fecha límite", value: preview.due_date ?? "—" },
+                { label: "Asignado", value: preview.owner_id ?? "—", mono: true },
+              ]
+            : []
+        }
+        description={preview?.description ?? null}
+      />
     </div>
   );
 }
@@ -441,6 +482,7 @@ function IssuesSection({
   sectionLabel: string;
   issueType: IssueType;
 }) {
+  const [preview, setPreview] = useState<Issue | null>(null);
   if (rows.length === 0) {
     return (
       <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
@@ -475,6 +517,7 @@ function IssuesSection({
         <table className="w-full text-sm">
           <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
             <tr>
+              <th className="w-10 px-3 py-2" aria-label="Preview" />
               <th className="px-3 py-2 font-medium">Folio</th>
               <th className="px-3 py-2 font-medium">Título</th>
               <th className="px-3 py-2 font-medium">Tipo</th>
@@ -489,6 +532,17 @@ function IssuesSection({
                 key={it.id}
                 className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
               >
+                <td className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreview(it)}
+                    aria-label={`Preview ${it.title}`}
+                    title="Vista rápida"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+                  >
+                    <Eye className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </td>
                 <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
                   {it.folio}
                 </td>
@@ -517,6 +571,27 @@ function IssuesSection({
           </tbody>
         </table>
       </div>
+      <ItemPreviewModal
+        open={preview !== null}
+        onClose={() => setPreview(null)}
+        title={preview?.title ?? ""}
+        subtitle={preview?.folio}
+        fields={
+          preview
+            ? [
+                { label: "ID", value: preview.id, mono: true },
+                { label: "Folio", value: preview.folio, mono: true },
+                { label: "Tipo", value: displayLabel },
+                { label: "Prioridad", value: preview.priority ?? "—" },
+                { label: "Estado", value: preview.status },
+                { label: "Compromiso", value: preview.committed_date ?? "—" },
+                { label: "Asignado", value: preview.owner_id ?? "—", mono: true },
+                { label: "Resolución", value: preview.resolution ?? "—" },
+              ]
+            : []
+        }
+        description={preview?.description ?? null}
+      />
     </section>
   );
 }
