@@ -205,6 +205,45 @@ Branches recomendadas:
 | Seed no mostró credenciales | Users ya existen | Conéctate al Postgres → `SELECT email FROM users;` |
 | Login dice "credenciales inválidas" | El temp_password ya caducó o `must_change_password` | Resetea desde otro admin o vuelve a correr seed con DB vacía |
 
+### Caso: Railway no redeploya tras merge a `main` (US-BUG-004)
+
+Síntoma: se mergeó un PR a `main` (ej. PR #20, commit `62b16f8` tocando
+`apps/api/**`) y los servicios `api`/`worker`/`web` no redeployaron
+automáticamente. El deploy listado en cada servicio siguió apuntando al
+commit anterior.
+
+Causas verificadas por orden de probabilidad:
+
+1. **Auto-Deploy apagado en el servicio.** Settings → Deploy → toggle
+   **Auto-Deploy** en OFF. Railway ignora los webhooks de push.
+2. **Branch conectada ≠ `main`.** Al crear el servicio se dejó apuntando a
+   la rama de desarrollo (ej. `claude/railway-setup-epics-gsKld`) y nunca
+   se repuntó a `main` tras el merge.
+3. **Watch Paths no matchean.** Si el servicio tiene Watch Paths estrictos
+   que no incluyen los archivos del PR, Railway skipea el deploy.
+4. **Railway tardó en sincronizar el webhook.** Raro, pero sucede cuando
+   GitHub o Railway están degradados. Se auto-resuelve en <10 min.
+
+Checklist de fix (aplicar en este orden a cada servicio `api`, `worker`, `web`):
+
+1. Railway UI → project `pmo-aas` → abrir servicio.
+2. Settings → **Source** → **Branch**: confirmar que es `main`.
+3. Settings → **Deploy** → **Auto-Deploy**: toggle ON.
+4. Settings → **Deploy** → **Watch Paths**: confirmar contra §3 de esta
+   guía (`apps/api/**` para `api`/`worker`; `apps/web/**`, `packages/**`
+   para `web`).
+5. Deployments → botón **Deploy** → **Redeploy latest commit** para forzar
+   un deploy al HEAD de `main`. Alternativa: push de un commit vacío
+   (`git commit --allow-empty -m "chore: trigger redeploy"`).
+6. Verificar el deploy:
+   - `api` logs deben mostrar seed idempotente + migrations aplicadas.
+   - `GET /health` del `api` responde `{"status":"ok",...}`.
+   - `GET /api/health` del `web` responde `{"ok":true, "api_ok":true, ...}`.
+
+Prevención: al mergear a `main` por primera vez desde una rama de
+desarrollo, recorrer los 3 servicios y validar puntos 2–4 de arriba antes
+de cerrar el ticket.
+
 ---
 
 ## Costos esperados (plan Hobby)
