@@ -172,14 +172,19 @@ async def generate_with_cascade(
     *,
     system: str | None = None,
     tenant_ollama_config: dict | None = None,
+    ai_mode_override: str | None = None,
 ) -> AIResult:
     """Intenta en orden: configured primary → gemini → disabled stub.
 
     US-048: `tenant_ollama_config`, si se pasa, se inyecta solo al
     `OllamaProvider` para que use el endpoint tailnet del tenant en vez
     del env global. Los demás providers ignoran el parámetro.
+
+    US-054: `ai_mode_override` permite al worker Celery pasar el modo
+    efectivo resuelto desde `platform_ai_settings` (superadmin) en vez
+    de leer `settings.AI_MODE` del env. Si es None, cae al env.
     """
-    mode = settings.AI_MODE
+    mode = ai_mode_override or settings.AI_MODE
     if mode == "disabled":
         return await _PROVIDERS["disabled"].generate(prompt, system=system)
 

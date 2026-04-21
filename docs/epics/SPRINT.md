@@ -9,11 +9,13 @@
 ```
 — Sin US activa —
 
-US-051 cerrada 2026-04-21: el flujo de minutas + reportes ahora
-despacha a Celery worker (que tiene sidecar tailscaled). El endpoint
-devuelve 202 + job_id; la UI hace polling a GET /ai/jobs/{id} con
-backoff. Con AI_MODE=ollama en Railway la cascada corre desde el
-worker y sí alcanza ollama-host.<tailnet>.ts.net.
+Último cierre (2026-04-21): Bloque 22 — ENH-011 y US-054 completadas.
+ENH-011 agrega `AI_TIMEOUT_S` como env válida en OllamaProvider (el
+valor que el owner había puesto en Railway ya toma efecto). US-054
+agrega tabla `platform_ai_settings` + endpoints superadmin + UI en
+/superadmin/ai para sobreescribir AI_MODE/base_url/model/timeout sin
+redeploy. Orden de prioridad del provider:
+  tenant override > platform defaults > env var.
 ```
 
 ---
@@ -132,6 +134,8 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 | BUG-007 | WeasyPrint libs nativas en Dockerfile (cierra 502 de Reporte Avance) | `fix(infra): BUG-007 — libs WeasyPrint en Dockerfile` | 2026-04-21 |
 | US-027 | Notificaciones in-app (tabla + API + bell + página) | `feat(api,web): US-027 — notifications in-app` | 2026-04-21 |
 | US-028 | Email notifications vía Resend + preferencias + runbook | `feat(api,web,docs): US-028 — email via Resend + preferencias + runbook` | 2026-04-21 |
+| ENH-011 | `AI_TIMEOUT_S` env leído en OllamaProvider (antes hardcoded a 120s) | `feat(ai): ENH-011 — leer AI_TIMEOUT_S de env en OllamaProvider` | 2026-04-21 |
+| US-054 | Config de AI a nivel de plataforma (superadmin): tabla `platform_ai_settings` + endpoints + UI | `feat(ai,superadmin): US-054 — platform_ai_settings editable por superadmin` | 2026-04-21 |
 
 ---
 
@@ -367,6 +371,35 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 22. [x] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56 ✅ 800150e
 23. [x] **US-053** — Preview "ojito" estilo Jira en tablas — #57 ✅ 3ae0088
 24. [x] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 ✅ 427b995 (Bloque 18)
+
+---
+
+### Bloque 22 — Tuning config IA (post-pruebas prod 2026-04-21) ✅ CERRADO
+
+> Durante las pruebas del flujo de minutas IA el owner detectó que (1)
+> `AI_TIMEOUT_S` no estaba wireado al código — seteado en Railway, inerte
+> — y (2) no existe forma de cambiar el modelo base de plataforma sin
+> tocar env vars (requiere redeploy). Este bloque ataca ambos.
+
+- [x] **ENH-011** — `AI_TIMEOUT_S` env consumido en `OllamaProvider` como
+  fallback del httpx timeout total (antes hardcoded 120s). Orden del
+  timeout: `tenant.timeout_sec > AI_TIMEOUT_S env > 120s default`.
+  3 tests nuevos mockeando httpx. Issue #68, commit 68ab075.
+
+- [x] **US-054** — Config de AI a nivel de plataforma:
+  - Nueva tabla singleton `platform_ai_settings` (migración
+    `20260421_0017`, 1 row con id='default' seedeada en upgrade).
+  - Endpoints `GET/PATCH /api/v1/superadmin/ai/defaults` (solo
+    superadmin, con audit log `superadmin.ai.defaults.update`).
+  - Página UI `/superadmin/ai` con formulario (AI_MODE, Ollama
+    base_url/model, AI_TIMEOUT_S) + snapshot read-only de env vars.
+  - Provider consume el orden: tenant override → platform defaults →
+    env. Implementado en `app/services/ai/platform_config.py`
+    (`resolve_ollama_config`, `resolve_ai_mode`) consumido desde
+    `app/workers/tasks/ai.py::_tenant_ollama_cfg`.
+  - Secrets (GEMINI_API_KEY, ANTHROPIC_API_KEY) quedan fuera de BD —
+    siguen en env para evitar almacenarlos sin cifrado.
+  - 5 tests nuevos (`test_us054_platform_ai.py`). Issue #69.
 
 ---
 

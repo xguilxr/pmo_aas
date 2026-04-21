@@ -18,6 +18,7 @@ import {
   ServerCog,
   Shield,
   ShieldCheck,
+  Sparkles,
   Users,
   X,
 } from "lucide-react";
@@ -183,6 +184,13 @@ const SUPERADMIN_NAV: NavItem[] = [
     icon: <Users className="h-4 w-4" aria-hidden />,
     href: "/superadmin/users",
     match: (p) => p.startsWith("/superadmin/users"),
+  },
+  {
+    id: "sa-ai",
+    label: "IA",
+    icon: <Sparkles className="h-4 w-4" aria-hidden />,
+    href: "/superadmin/ai",
+    match: (p) => p.startsWith("/superadmin/ai"),
   },
   {
     id: "sa-logs",

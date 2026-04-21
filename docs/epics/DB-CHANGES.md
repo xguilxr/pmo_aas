@@ -32,6 +32,8 @@
 | 0013 | `20260420_0013_project_areas.py` | EP005 | Tabla `project_areas` (actores/áreas sin login) |
 | 0014 | `20260420_0014_reports_period.py` | EP014 | Columnas de período en `reports` |
 | 0015 | `20260420_0015_reports_generator_cut_off.py` | EP014 | `reports.generator` + `reports.cut_off_date` |
+| 0016 | `20260421_0016_notifications.py` | EP011 | Tabla `notifications` (US-027) |
+| 0017 | `20260421_0017_platform_ai_settings.py` | EP008/EP010 | Tabla singleton `platform_ai_settings` con 1 row seed `id='default'` — defaults de plataforma editables por superadmin (US-054) |
 
 ---
 

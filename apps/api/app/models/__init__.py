@@ -16,6 +16,7 @@ from app.models.organization import (  # noqa: F401
     Organization,
     Program,
 )
+from app.models.platform_settings import PlatformAISettings  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.project_area import ProjectArea  # noqa: F401
 from app.models.project_charter import ProjectCharter  # noqa: F401
