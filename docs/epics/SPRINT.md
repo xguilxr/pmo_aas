@@ -9,6 +9,12 @@
 ```
 — Sin US activa —
 
+**Estado al 2026-04-21 (owner):** productivo v1.0 corre en Railway con
+tier superior; el costo marginal se cubre con licencias cobradas.
+**EP012 (migración a MySQL HostGator) queda CANCELADO por DEC-013** —
+no se invierte más en él. DEC-002 y la parte "reabrir a v1.1" de
+DEC-012 quedan revocadas.
+
 Bloque 13 (hotfixes operativos) cerrado el 2026-04-21: US-BUG-004 deja
 documentado el troubleshooting de redeploy en Railway (el toggle
 operativo lo aplica el owner del project), y US-BUG-005 arregla el
@@ -19,11 +25,15 @@ Tunnel) ya estaban completos. EP016 sigue REABIERTO por pivote
 arquitectónico a Tailscale (ver DEC-011 + ADR-015, 2026-04-21).
 US-NEW-044/045 permanecen SUPERSEDED.
 
-Siguientes bloques priorizados:
-  Bloque 14 — EP016 v2 (Tailscale): US-NEW-046/047/048
-  Bloque 15 — Landing y DNS productivo (Railway + HostGator www)
-  Bloque 16 — EP011 Notificaciones (POST-MVP)
-  Bloque 17 — EP012 MySQL HostGator (POST-v1.0, reescopado per DEC-012)
+**Ruta directa a pruebas masivas (owner 2026-04-21):**
+  Bloque 14 — EP016 v2 Tailscale (US-NEW-046/047/048) → habilita IA
+  Bloque 15 — DNS productivo + landing (US-NEW-049/050)
+  → una vez cerrados 14 + 15, arranca pruebas masivas en Railway prod.
+
+Después de pruebas masivas (POST-MVP, no bloquean v1.0):
+  Bloque 16 — EP011 Notificaciones in-app + email
+
+Bloque 17 (EP012 MySQL HostGator): ❌ CANCELADO por DEC-013.
 
 Follow-ups arrastrados:
 - Refactorizar OllamaProvider.generate() para consumir la config
@@ -264,21 +274,16 @@ Follow-ups arrastrados:
 - [ ] US-NEW-027 — Tabla notifications + in-app center
 - [ ] US-NEW-028 — Email notifications via Resend
 
-### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — POST-v1.0
+### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
 
-> **Reescopado (2026-04-21, ver DEC-012).** La migración de Postgres a
-> MySQL HostGator queda **fuera de v1.0** por:
-> (a) Railway Hobby no da IP estática para whitelist remoto MySQL.
-> (b) Exposición de puerto MySQL en shared hosting es riesgo operacional.
-> (c) Queries con JSONB operators, GENERATED columns y citext requieren rework significativo.
-> (d) HostGator shared no iguala backups Railway Pro.
->
-> Productivo v1.0 corre en **Railway Postgres**. Se reevalúa a v1.1 si
-> los blockers se resuelven con infra dedicada (VPS + RDS MySQL, no
-> shared hosting).
+> **CANCELADO (2026-04-21, ver DEC-013).** El owner subió el tier de
+> Railway y productivo v1.0/v1.x corre íntegramente en Railway Postgres.
+> El costo incremental se cubre con licencias cobradas. No hay plan
+> futuro de migrar a MySQL; EP012 se conserva solo como referencia
+> histórica.
 
-- [ ] US-NEW-029 — (POST-v1.1) Compatibilidad MySQL del código — audit queries JSONB/GENERATED/citext + plan de reescritura
-- [ ] US-NEW-030 — (POST-v1.1) Setup MySQL productivo — requiere infra dedicada (VPS + IP estática), NO HostGator shared
+- [x] ~~US-NEW-029~~ — ❌ CANCELADA (DEC-013)
+- [x] ~~US-NEW-030~~ — ❌ CANCELADA (DEC-013)
 
 ---
 

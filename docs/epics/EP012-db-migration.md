@@ -1,13 +1,32 @@
 # EP012 — Instalación productivo en Hostgator MySQL (code-compat + fresh install)
 
+> **⚠️ EPIC CANCELADO — 2026-04-21 (ver DEC-013).**
+>
+> El owner subió el tier de Railway y productivo v1.0 corre íntegramente
+> en Railway Postgres. Ya **no se planea** migrar la BD a MySQL
+> HostGator: los blockers técnicos (JSONB, GENERATED, citext, RLS,
+> ausencia de IP estática en Railway Hobby) dejan de ser relevantes, y
+> el costo incremental del upgrade de Railway se cubre con las
+> licencias cobradas a clientes.
+>
+> Este archivo se conserva como **referencia histórica** del análisis
+> PG↔MySQL que se hizo; no se va a ejecutar. HostGator sigue sirviendo
+> únicamente el landing estático `www.pmo-aas.com` (ver DEC-012).
+>
+> **Supersede:** DEC-002 y DEC-012 (la parte de "reabrir a v1.1 si los
+> blockers se resuelven") quedan revocadas por DEC-013.
+>
+> Si en el futuro se necesita cambiar el proveedor de BD, el plan B de
+> DEC-013 es Supabase/Neon (ambos Postgres, sin rework del código).
+
 | Campo | Valor |
 |---|---|
 | **ID** | EP012 |
-| **Prioridad** | POST-MVP — último bloque antes del release v1.0 |
-| **Dependencias** | Todas las épicas de producto (EP001–EP011, EP013, EP014) estables en staging |
+| **Prioridad** | ❌ CANCELLED (DEC-013, 2026-04-21) |
+| **Dependencias** | — (ya no aplica) |
 | **Módulo** | `infrastructure`, `database`, `deploy` |
-| **Estado** | # PENDING |
-| **Versión objetivo** | v1.0 productivo |
+| **Estado** | ❌ CANCELLED |
+| **Versión objetivo** | — (no se ejecuta) |
 
 ## Objetivo de negocio
 
@@ -61,7 +80,10 @@ Este inventario lo materializa **US-NEW-029**.
 
 ---
 
-## # PENDING — US-NEW-029 — Compatibilidad MySQL del código (dialect-agnostic)
+## ❌ CANCELLED — US-NEW-029 — Compatibilidad MySQL del código (dialect-agnostic)
+
+> Cancelada por DEC-013 (2026-04-21). El código se mantiene Postgres-only
+> en Railway; no se invierte en hacerlo dialect-agnostic.
 
 **Como** desarrollador
 **Quiero** que el backend corra idéntico en PostgreSQL (staging) y en MySQL 8 (productivo)
@@ -93,7 +115,11 @@ Este inventario lo materializa **US-NEW-029**.
 
 ---
 
-## # PENDING — US-NEW-030 — Setup Hostgator MySQL + pipeline de deploy productivo (fresh install)
+## ❌ CANCELLED — US-NEW-030 — Setup Hostgator MySQL + pipeline de deploy productivo (fresh install)
+
+> Cancelada por DEC-013 (2026-04-21). Productivo corre en Railway, no en
+> HostGator MySQL. El pipeline CI/CD productivo se mantiene contra
+> Railway (auto-deploy por push a `main`).
 
 **Como** ops
 **Quiero** aprovisionar Hostgator MySQL, pipeline de CI/CD productivo y runbook de instalación
