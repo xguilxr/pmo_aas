@@ -28,12 +28,12 @@ Toda otra entrada del sidebar queda oculta para super admins.
 ## DEC a registrar en DECISIONS.md al cierre del bloque
 
 - **DEC-020** — El sidebar del super admin es **exclusivo**: no muestra TOP_NAV (Tablero, Solicitudes) ni OrgTreeNav ni ADMIN_NAV. El super admin entra a un tenant vía "Join as admin" (US-058) si necesita operar ahí.
-- **DEC-021** — La página `/superadmin` ("Visión General") renderiza Health de la plataforma como primera sección (sobre KPIs / Tenants / Actividad). Antes de US-NEW-026 estaban en rutas separadas; ahora Health va arriba por criticidad operativa.
+- **DEC-021** — La página `/superadmin` ("Visión General") renderiza Health de la plataforma como primera sección (sobre KPIs / Tenants / Actividad). Antes de US-026 estaban en rutas separadas; ahora Health va arriba por criticidad operativa.
 - **DEC-022** — `/superadmin/users` es cross-tenant y permite a super admin modificar: activar/desactivar, cambiar rol (si el rol existe en el tenant destino), forzar reset de password, impersonar. Cada acción se audita con `scope=platform`.
 
 ---
 
-## # DONE — US-NEW-041 — Sidebar super admin aislado
+## # DONE — US-041 — Sidebar super admin aislado
 
 **Como** super admin
 **Quiero** que mi sidebar muestre SÓLO entradas de super admin (sin Tablero / Solicitudes / Organizaciones / Admin)
@@ -43,7 +43,7 @@ Toda otra entrada del sidebar queda oculta para super admins.
 - [x] Cuando `user.is_superadmin === true`, el sidebar renderiza **sólo** SUPERADMIN_NAV con 4 ítems, en este orden:
   1. `Visión General` → `/superadmin`
   2. `Tenants` → `/superadmin/tenants`
-  3. `Usuarios` → `/superadmin/users` (entrada nueva; página que llega con US-NEW-042, hasta entonces responderá 404)
+  3. `Usuarios` → `/superadmin/users` (entrada nueva; página que llega con US-042, hasta entonces responderá 404)
   4. `Logs platform` → `/superadmin/logs`
 - [x] TOP_NAV (Tablero, Solicitudes) oculto para super admin.
 - [x] `<OrgTreeNav />` oculto para super admin (vía `adminVisible`).
@@ -51,11 +51,11 @@ Toda otra entrada del sidebar queda oculta para super admins.
 - [x] Link del brand en el sidebar apunta a `/superadmin` para super admin (antes `/dashboard` para todos).
 - [x] Header visual duplicado "Super admin" eliminado — ya no aplica dualidad.
 
-**Commit:** `feat(web): US-NEW-041 — sidebar super admin aislado (4 ítems raíz)`.
+**Commit:** `feat(web): US-041 — sidebar super admin aislado (4 ítems raíz)`.
 
 ---
 
-## # DONE — US-NEW-042 — Página `/superadmin/users` cross-tenant
+## # DONE — US-042 — Página `/superadmin/users` cross-tenant
 
 **Como** super admin
 **Quiero** listar y editar usuarios de **todos** los tenants en una sola pantalla
@@ -95,18 +95,18 @@ Toda otra entrada del sidebar queda oculta para super admins.
 - `POST /api/v1/superadmin/users/{id}/toggle-active` con `reason` obligatorio. Auditado con `scope=platform`.
 - Frontend `/superadmin/users`: tabla con search (debounce 300 ms), filtro activos/inactivos, modales para editar y toggle con motivo.
 
-**Commit:** `feat(api,web): US-NEW-042 — /superadmin/users cross-tenant`.
+**Commit:** `feat(api,web): US-042 — /superadmin/users cross-tenant`.
 
 ---
 
-## # DONE — US-NEW-043 — Visión General con Health al top
+## # DONE — US-043 — Visión General con Health al top
 
 **Como** super admin
 **Quiero** ver el Health de la plataforma **inmediatamente** al abrir `/superadmin`, antes que KPIs y tenants
 **Para** detectar problemas de infra antes de revisar métricas comerciales.
 
 **Criterios de aceptación:**
-- [ ] En `/superadmin`, la sección de Health (`<SuperadminHealthSection />`, existente de US-NEW-026) se mueve al **primer bloque después del breadcrumb/título**.
+- [ ] En `/superadmin`, la sección de Health (`<SuperadminHealthSection />`, existente de US-026) se mueve al **primer bloque después del breadcrumb/título**.
 - [ ] Orden final de secciones: `Health → KPIs → Top tenants → Actividad reciente`.
 - [ ] No se rompe el auto-refresh de Health cada 15 s.
 - [ ] Breadcrumb / título conservan el copy actual ("Visión general").
@@ -115,15 +115,15 @@ Toda otra entrada del sidebar queda oculta para super admins.
 - `TC-NEW-043-1` (E2E) — `/superadmin` renderiza Health antes que KPIs.
 - `TC-NEW-043-2` (regresión) — Health sigue refrescándose cada 15 s.
 
-**Commit:** `feat(web): US-NEW-043 — health al top en visión general del superadmin`.
+**Commit:** `feat(web): US-043 — health al top en visión general del superadmin`.
 
 ---
 
 ## Endpoints nuevos
 
 ```
-GET    /api/v1/superadmin/users               (US-NEW-042)
-PATCH  /api/v1/superadmin/users/{id}          (US-NEW-042)
+GET    /api/v1/superadmin/users               (US-042)
+PATCH  /api/v1/superadmin/users/{id}          (US-042)
 POST   /api/v1/superadmin/users/{id}/toggle-active
 ```
 
@@ -135,8 +135,8 @@ Ninguno. Tablas `users`, `tenants`, `user_roles` ya tienen todo lo necesario.
 
 ## Definition of Done
 
-- [ ] Super admin sólo ve 4 ítems en sidebar (US-NEW-041).
-- [ ] Página `/superadmin/users` funcional con filtros, edición y toggle activo (US-NEW-042).
-- [ ] Health al top de Visión General (US-NEW-043).
+- [ ] Super admin sólo ve 4 ítems en sidebar (US-041).
+- [ ] Página `/superadmin/users` funcional con filtros, edición y toggle activo (US-042).
+- [ ] Health al top de Visión General (US-043).
 - [ ] Regresión: admin regular sigue viendo TOP_NAV + OrgTree + ADMIN_NAV sin cambios.
 - [ ] DEC-020, DEC-021, DEC-022 registrados en DECISIONS.md.

@@ -19,17 +19,17 @@ El usuario pide **dos flujos operativos concretos** que hoy no existen:
    - Reporte de Seguimiento de Actividades
 2. **Formato estandarizado de Minuta IA** — cuando la minuta se genera con IA (EP008), debe devolverse en un layout fijo y exportable a `.docx` / `.txt` / `.md`.
 
-El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/IA editable tipo Notion". Esta épica agrega un **segundo motor** de reportes (Python templated) para casos operativos recurrentes y un **postprocesamiento** de minuta IA para alinearla al formato corporativo.
+El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA editable tipo Notion". Esta épica agrega un **segundo motor** de reportes (Python templated) para casos operativos recurrentes y un **postprocesamiento** de minuta IA para alinearla al formato corporativo.
 
 ## DEC a registrar en DECISIONS.md al cierre del bloque
 
 - **DEC-014** — Reportes operativos (Avance, Seguimiento) se generan con Python + plantillas Jinja2; no pasan por IA. La IA sigue siendo opcional en el módulo de Reportes (EP006 / EP008) para reportes narrativos.
 - **DEC-015** — WeasyPrint es el motor oficial de PDF (ya mencionado en US-030); se valida como infra compartida para todos los exports (charter, minutas, reportes).
-- **DEC-016** — Minuta IA devuelve siempre la misma estructura post-procesada (ver US-NEW-040) y expone endpoints de export `.docx` / `.md` / `.txt`.
+- **DEC-016** — Minuta IA devuelve siempre la misma estructura post-procesada (ver US-040) y expone endpoints de export `.docx` / `.md` / `.txt`.
 
 ---
 
-## # DONE — US-NEW-037 — Infra compartida de exportación a PDF
+## # DONE — US-037 — Infra compartida de exportación a PDF
 
 **Como** backend
 **Quiero** una utilidad centralizada para renderizar HTML → PDF
@@ -41,7 +41,7 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 - [x] Plantillas Jinja2 en `apps/api/app/templates/pdf/`:
   - `base.html` con header/footer configurables (@page, counter de páginas, tenant_name, title, generated_at), CSS tipografía + colores del design system (`--chrome = #182e4e`).
   - `_smoke.html` para tests.
-- [x] Convención: cada recurso (charter, minuta, reporte) tendrá su propio endpoint `.../export?format=pdf` que invoca `render_pdf(...)`. Endpoint helper centralizado se integra por módulo (EP014 US-NEW-038/039/040).
+- [x] Convención: cada recurso (charter, minuta, reporte) tendrá su propio endpoint `.../export?format=pdf` que invoca `render_pdf(...)`. Endpoint helper centralizado se integra por módulo (EP014 US-038/039/040).
 - [x] Manejo de errores: fallo de render envuelto en `AppError(502, PDF_RENDER_FAILED)`. Dep faltante devuelve `AppError(502, PDF_ENGINE_UNAVAILABLE)`.
 - [x] Dependencias registradas: `weasyprint==68.1`, `jinja2==3.1.4` en `requirements.txt`.
 
@@ -51,11 +51,11 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 - `test_usnew037_render_pdf_unknown_template_raises` — template inexistente lanza excepción.
 - `test_usnew037_render_pdf_handles_unicode` — acentos/emoji no rompen el render.
 
-**Commit:** `feat(api): US-NEW-037 — infra de exportación a PDF con WeasyPrint + Jinja2`.
+**Commit:** `feat(api): US-037 — infra de exportación a PDF con WeasyPrint + Jinja2`.
 
 ---
 
-## # DONE — US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF)
+## # DONE — US-038 — Reporte de Avance de Proyecto (Python, BD, PDF)
 
 **Como** PM
 **Quiero** generar un Reporte de Avance del proyecto con un click, que consulta automáticamente la BD y se descarga en PDF
@@ -99,11 +99,11 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 - `test_usnew038_cross_tenant_404` — aislamiento multi-tenant.
 - `test_usnew038_non_admin_cannot_generate` — sin `projects:update` → 403.
 
-**Commit:** `feat(api,web): US-NEW-038 — reporte de avance ejecutable sin IA`.
+**Commit:** `feat(api,web): US-038 — reporte de avance ejecutable sin IA`.
 
 ---
 
-## # DONE — US-NEW-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
+## # DONE — US-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF)
 
 **Como** PM
 **Quiero** generar un Reporte de Seguimiento que liste actividades vencidas, en curso y próximas con responsables agrupados
@@ -141,11 +141,11 @@ El módulo de Reportes existente (US-NEW-022) cubre el caso de reporte "manual/I
 - `test_usnew039_cross_tenant_404` — aislamiento multi-tenant.
 - `test_usnew039_empty_project_no_crash` — proyecto vacío sigue generando PDF.
 
-**Commit:** `feat(api,web): US-NEW-039 — reporte de seguimiento por responsable`.
+**Commit:** `feat(api,web): US-039 — reporte de seguimiento por responsable`.
 
 ---
 
-## # DONE — US-NEW-040 — Formato estandarizado + export de Minuta IA
+## # DONE — US-040 — Formato estandarizado + export de Minuta IA
 
 **Como** PM
 **Quiero** que la minuta generada con IA siempre tenga el mismo formato y pueda descargarse en `.docx`, `.md` o `.txt`
@@ -184,13 +184,13 @@ Notas adicionales
   - Export `.docx` (usa `python-docx`; plantilla con estilo corporativo).
 - [ ] Acciones del RAID se **agrupan por area o responsable** en el render (criterio explícito del issue).
 - [ ] Endpoints:
-  - `GET /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf` — PDF reutiliza US-NEW-037.
+  - `GET /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf` — PDF reutiliza US-037.
   - Si `format=pdf`, filename: `Minuta_{proyecto_folio}_{fecha}.pdf`; igual para los demás.
 - [ ] UI: dentro del editor de minutas (post-generación IA), botón "Descargar" con menú desplegable (docx / md / pdf).
 - [ ] Minutas **manuales** (no IA) también pueden usarse con el mismo formatter si cumplen el schema mínimo (campos opcionales se muestran como vacíos).
 
 **Implementación:**
-- `apps/api/app/services/minutes_formatter.py`: `build_view()` normaliza `MeetingMinute` al formato corporativo (título, sesión, fecha, participantes, temas enumerados, RAID tabulado con acciones agrupadas por área/responsable, notas). Exporters: `to_markdown()`, `to_plain_text()`, `to_docx()` (python-docx) y `to_pdf()` (reutiliza infra US-NEW-037).
+- `apps/api/app/services/minutes_formatter.py`: `build_view()` normaliza `MeetingMinute` al formato corporativo (título, sesión, fecha, participantes, temas enumerados, RAID tabulado con acciones agrupadas por área/responsable, notas). Exporters: `to_markdown()`, `to_plain_text()`, `to_docx()` (python-docx) y `to_pdf()` (reutiliza infra US-037).
 - Plantilla `apps/api/app/templates/pdf/minutes/minute.html` extiende `base.html`.
 - Endpoint `GET /api/v1/meeting-minutes/{id}/export?format=pdf|docx|md|txt` con content-type y filename apropiados (rechaza formatos inválidos con 422; cross-tenant → 404).
 - `python-docx==1.2.0` añadido a requirements.
@@ -210,18 +210,18 @@ Notas adicionales
 - `test_usnew040_export_cross_tenant_404` — aislamiento.
 - `test_usnew040_view_groups_actions_by_owner` — unit test de build_view.
 
-**Commit:** `feat(api,web): US-NEW-040 — export estandarizado de minuta (.pdf/.docx/.md/.txt)`.
+**Commit:** `feat(api,web): US-040 — export estandarizado de minuta (.pdf/.docx/.md/.txt)`.
 
 ---
 
 ## Endpoints nuevos
 
 ```
-POST /api/v1/projects/{id}/reports/avance                         [US-NEW-038]
-POST /api/v1/projects/{id}/reports/seguimiento                    [US-NEW-039]
-GET  /api/v1/reports/{id}/avance/download                         [US-NEW-038]
-GET  /api/v1/reports/{id}/seguimiento/download                    [US-NEW-039]
-GET  /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf   [US-NEW-040]
+POST /api/v1/projects/{id}/reports/avance                         [US-038]
+POST /api/v1/projects/{id}/reports/seguimiento                    [US-039]
+GET  /api/v1/reports/{id}/avance/download                         [US-038]
+GET  /api/v1/reports/{id}/seguimiento/download                    [US-039]
+GET  /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf   [US-040]
 ```
 
 ## Cambios de schema
@@ -231,7 +231,7 @@ Aplicados en dos migraciones sobre la tabla `reports`:
 - [`20260420_0014_reports_period.py`](../../apps/api/alembic/versions/20260420_0014_reports_period.py) — columnas de período.
 - [`20260420_0015_reports_generator_cut_off.py`](../../apps/api/alembic/versions/20260420_0015_reports_generator_cut_off.py) — `generator` (`'manual' | 'ai' | 'avance' | 'seguimiento'`) + `cut_off_date`.
 
-US-NEW-040 (formato estandarizado de minuta IA) es post-procesamiento
+US-040 (formato estandarizado de minuta IA) es post-procesamiento
 sobre `meeting_minutes`; no toca BD. Ver
 [`DB-CHANGES.md` §EP014](./DB-CHANGES.md#ep014--entregables-operativos).
 
@@ -244,9 +244,9 @@ sobre `meeting_minutes`; no toca BD. Ver
 
 ## Definition of Done
 
-- [ ] Infra PDF compartida funcional (US-NEW-037).
-- [ ] 2 reportes Python ejecutables, sin IA, descargables en PDF (US-NEW-038, 039).
-- [ ] Minuta IA con formato estandarizado + 4 formatos de export (US-NEW-040).
+- [ ] Infra PDF compartida funcional (US-037).
+- [ ] 2 reportes Python ejecutables, sin IA, descargables en PDF (US-038, 039).
+- [ ] Minuta IA con formato estandarizado + 4 formatos de export (US-040).
 - [ ] Documentos generados quedan en `documents` con `category` correcta para trazabilidad.
 - [ ] Tests unit + integration + al menos 1 E2E por US.
 - [ ] DEC-014, DEC-015, DEC-016 registrados en DECISIONS.md.

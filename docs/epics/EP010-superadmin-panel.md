@@ -344,7 +344,7 @@ PATCH  /api/v1/superadmin/settings
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-025 — Iconos en paneles de tenant + indicador activo
+### US-025 — Iconos en paneles de tenant + indicador activo
 
 **Criterios de aceptación:**
 - [x] Backend `GET /superadmin/tenants` ahora devuelve 4 counts por
@@ -365,11 +365,11 @@ PATCH  /api/v1/superadmin/settings
 - `test_usnew025_list_tenants_returns_full_counts` ✅
 - `test_usnew025_tenant_detail_has_hierarchy` ✅
 
-**Estado de integración:** DONE (US-NEW-025).
+**Estado de integración:** DONE (US-025).
 
 ---
 
-### US-NEW-026 — Visión General = Tenants + Health unificados
+### US-026 — Visión General = Tenants + Health unificados
 
 **Criterios de aceptación:**
 - [x] `/superadmin` (Visión general) ahora incluye, además de KPIs,
@@ -382,4 +382,4 @@ PATCH  /api/v1/superadmin/settings
 - [x] Link "Health" eliminado del header de /superadmin.
 - [x] Nuevo componente reutilizable `SuperadminHealthSection`.
 
-**Estado de integración:** DONE (US-NEW-026).
+**Estado de integración:** DONE (US-026).

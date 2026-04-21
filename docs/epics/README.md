@@ -102,7 +102,7 @@ Los bloques 1-8 están DONE. Lo que queda, en orden:
 
 | Bloque | Epic | Issue origen | Alcance resumido |
 |---|---|---|---|
-| **9** | EP013 | #17 | Refactor de navegación: sidebar principal con drill-down real, sidebar admin consolidado, logo del tenant en chrome, tabs inline en detalle de proyecto (supersede US-NEW-017) |
+| **9** | EP013 | #17 | Refactor de navegación: sidebar principal con drill-down real, sidebar admin consolidado, logo del tenant en chrome, tabs inline en detalle de proyecto (supersede US-017) |
 | **10** | EP014 | #18 | Reportes operativos Python sin IA (Avance + Seguimiento) con PDF descargable; formato estandarizado + export de Minuta IA (.docx/.md/.txt/.pdf) |
 | **11** | EP015 | #19 | Refactor sidebar super admin (4 ítems raíz), nueva página `/superadmin/users` cross-tenant, Health al top en Visión General |
 | **12** | EP016 | — | Modelo IA local: runbook Ollama + Cloudflare Tunnel + nssm, config por-tenant y smoke test del endpoint |
@@ -110,6 +110,6 @@ Los bloques 1-8 están DONE. Lo que queda, en orden:
 | **14** | EP012 | — | Instalación productivo Hostgator MySQL (fresh install). Staging sigue en Railway Postgres |
 
 ### Ajustes clave respecto a la versión anterior del roadmap
-- **US-NEW-017** (tabs inline) queda **superseded** por US-NEW-035 (EP013). Sus dependencias están DONE, se construye como parte del bloque 9.
+- **US-017** (tabs inline) queda **superseded** por US-035 (EP013). Sus dependencias están DONE, se construye como parte del bloque 9.
 - **EP012** ya no es "migración zero-downtime PG→MySQL". Es **fresh install** productivo en Hostgator MySQL + compatibilidad dialect-agnostic del código. Staging se queda en Railway Postgres (DEC-017/018/019).
 - Issues **#17** y **#18** quedan incorporados antes de los bloques POST-MVP previos.

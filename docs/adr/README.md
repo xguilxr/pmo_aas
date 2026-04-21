@@ -483,18 +483,18 @@ PC Windows (tailscaled service)          Railway worker (sidecar tailscaled)
   si escala lo justifica o si TS sube precios.
 - **Container worker más pesado**: +15 MB por `tailscaled` en la imagen,
   y un wrapper shell (`start.sh`) en vez de CMD limpio. Mitigación:
-  documentado en US-NEW-048; template reutilizable.
+  documentado en US-048; template reutilizable.
 - **Pérdida de hostname bonito**: sin `ollama.pmo-aas.com`. Mitigación:
   endpoint es privado, nunca lo ven humanos; no aporta valor estético.
 - **Troubleshooting multi-host**: fallas requieren revisar 3 lados
   (Tailscale admin, worker log, Ollama log). Mitigación: smoke test CLI
-  (US-NEW-047) corre end-to-end y reporta dónde rompe.
+  (US-047) corre end-to-end y reporta dónde rompe.
 
 **Impacto en el stack:**
 - **ADR-014**: marcada Reemplazada.
 - **ADR-007** (cascada IA): sin cambio. Ollama sigue tier-1.
-- **EP016**: US-NEW-044 (runbook CF) y US-NEW-045 (config CF-Access)
-  quedan SUPERSEDED; nuevas US-NEW-046/047/048 cubren el reemplazo.
+- **EP016**: US-044 (runbook CF) y US-045 (config CF-Access)
+  quedan SUPERSEDED; nuevas US-046/047/048 cubren el reemplazo.
 - **Dominio `pmo-aas.com`**: conserva apex + `app.*` + `api.*` +
   `www.*` en Cloudflare. Solo se retira `ollama.*`.
 
@@ -514,7 +514,7 @@ PC Windows (tailscaled service)          Railway worker (sidecar tailscaled)
 **Referencias:**
 - <https://tailscale.com/kb/1017/install>
 - <https://tailscale.com/kb/1282/docker> (sidecar en containers)
-- Runbook nuevo: `docs/ai/local-ollama-setup.md` reescrito en US-NEW-046.
+- Runbook nuevo: `docs/ai/local-ollama-setup.md` reescrito en US-046.
 
 ---
 

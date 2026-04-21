@@ -100,7 +100,7 @@ La jerarquía es configurable por Admin del tenant o Senior PMO. BU y Departamen
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-002 — Migración BD: tablas business_units y departments ✅ DONE
+### US-002 — Migración BD: tablas business_units y departments ✅ DONE
 
 Implementada en la migración Alembic
 [`20260420_0009_business_units_departments.py`](../../apps/api/alembic/versions/20260420_0009_business_units_departments.py).
@@ -123,7 +123,7 @@ Ver detalle del shape en
 
 ---
 
-### US-NEW-003 — CRUD Business Units (API)
+### US-003 — CRUD Business Units (API)
 
 **Como** Administrador / Senior PMO
 **Quiero** crear, editar y desactivar unidades de negocio dentro de una organización
@@ -145,7 +145,7 @@ Ver detalle del shape en
 
 ---
 
-### US-NEW-004 — CRUD Departments (API)
+### US-004 — CRUD Departments (API)
 
 **Como** Administrador / Senior PMO
 **Quiero** crear, editar y desactivar departamentos dentro de una unidad de negocio
@@ -165,7 +165,7 @@ Ver detalle del shape en
 
 ---
 
-### US-NEW-005 — Sidebar con organizaciones del tenant para nav rápida
+### US-005 — Sidebar con organizaciones del tenant para nav rápida
 
 **Como** usuario autenticado
 **Quiero** ver las organizaciones del tenant en el sidebar con árbol expandible
@@ -186,7 +186,7 @@ Ver detalle del shape en
 
 ---
 
-### US-NEW-006 — Vista de organizaciones como paneles informativos
+### US-006 — Vista de organizaciones como paneles informativos
 
 **Como** Administrador / PMO Manager
 **Quiero** ver cada organización como un panel con métricas
@@ -205,7 +205,7 @@ Ver detalle del shape en
 
 ---
 
-### US-BUG-001 — Fix 404 en página de Programas
+### BUG-001 — Fix 404 en página de Programas
 
 **Como** usuario
 **Quiero** que la página de programas cargue correctamente

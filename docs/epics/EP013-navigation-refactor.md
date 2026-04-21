@@ -56,14 +56,14 @@ Se **elimina**:
 
 ---
 
-## # DONE — US-NEW-031 — Upload y display del logo del tenant en chrome
+## # DONE — US-031 — Upload y display del logo del tenant en chrome
 
 **Como** admin / senior PMO
 **Quiero** subir el logo de mi tenant y que se muestre en el topbar (reemplazando el texto `PMO•aaS`)
 **Para** que la app refleje la marca de mi organización.
 
 **Criterios de aceptación:**
-- [x] `PATCH /api/v1/admin/tenant` sigue aceptando `logo_url` como URL string (US-NEW-023).
+- [x] `PATCH /api/v1/admin/tenant` sigue aceptando `logo_url` como URL string (US-023).
 - [x] Endpoint `POST /api/v1/admin/tenant/logo` (multipart):
   - Acepta PNG / JPG / SVG / WEBP ≤ 2 MB.
   - Guarda en `{STORAGE_PATH}/tenants/{tenant_id}/logo.{ext}`.
@@ -87,11 +87,11 @@ Se **elimina**:
 - `test_usnew031_me_tenant_branding` — endpoint devuelve data correcta antes y después de upload.
 - `test_usnew031_overwrite_replaces_old_extension` — subir WEBP tras PNG deja un solo archivo en disco.
 
-**Commit:** `feat(branding): US-NEW-031 — upload y display del logo del tenant en chrome`.
+**Commit:** `feat(branding): US-031 — upload y display del logo del tenant en chrome`.
 
 ---
 
-## # DONE — US-NEW-032 — Restructurar sidebar principal (drill-down real)
+## # DONE — US-032 — Restructurar sidebar principal (drill-down real)
 
 **Como** usuario autenticado
 **Quiero** que el sidebar principal me muestre Organizaciones → Programas → Proyectos reales, sin duplicar la jerarquía administrativa
@@ -103,11 +103,11 @@ Se **elimina**:
 - [x] Expandir org → lista de programas reales de esa org (endpoints existentes, lazy).
 - [x] Expandir programa → lista de proyectos reales de ese programa.
 - [x] Click en la hoja:
-  - Organización → `/admin/organizations/{id}` (enlace se redirige al panel de recursos reales en US-NEW-033 siguiente).
-  - Programa → `/admin/projects?program_id={id}` temporal; se actualiza a `/admin/programs/{id}` cuando US-NEW-034 cree la página resumen.
+  - Organización → `/admin/organizations/{id}` (enlace se redirige al panel de recursos reales en US-033 siguiente).
+  - Programa → `/admin/projects?program_id={id}` temporal; se actualiza a `/admin/programs/{id}` cuando US-034 cree la página resumen.
   - Proyecto → `/admin/projects/{id}` (DONE).
 - [x] **Eliminada** la sección duplicada "Organizaciones (jerarquía administrativa)" del sidebar principal — BUs/Deptos sólo en `/admin/organizations`.
-- [x] **Eliminada** la sección "Módulos de proyecto" del sidebar (sus ítems serán tabs inline en US-NEW-035).
+- [x] **Eliminada** la sección "Módulos de proyecto" del sidebar (sus ítems serán tabs inline en US-035).
 - [x] Expansión persistida en `localStorage` (`pmoaas:sidebar:org-tree:expanded`).
 - [~] Endpoint `GET /api/v1/me/nav-tree?depth=3` **diferido**: la carga lazy con los endpoints existentes (`list{Organizations,Programs,Projects}`) cumple el caso de uso; un endpoint agregado se considerará si el number de nodos supera cientos. No bloqueante.
 
@@ -115,11 +115,11 @@ Se **elimina**:
 - `OrgTreeNav` simplificado (sin BUs / Deptos) y promovido a entrada raíz del sidebar.
 - `AppShell` dividido en 3 bloques explícitos: `TOP_NAV` (Tablero + Solicitudes) → `<OrgTreeNav />` → `ADMIN_NAV` (+ SUPERADMIN_NAV si aplica).
 
-**Commit:** `feat(web): US-NEW-032 — sidebar drill-down real; elimina duplicado y módulos de proyecto`.
+**Commit:** `feat(web): US-032 — sidebar drill-down real; elimina duplicado y módulos de proyecto`.
 
 ---
 
-## # DONE — US-NEW-033 — Panel de organización → página de recursos reales (fix bug)
+## # DONE — US-033 — Panel de organización → página de recursos reales (fix bug)
 
 **Como** usuario
 **Quiero** que al seleccionar el panel de una organización me lleve a una página con sus recursos reales (BUs, Deptos, Programas, Usuarios, Proyectos), no a la pantalla de "editar organización" del admin
@@ -138,11 +138,11 @@ Se **elimina**:
 - `test_usnew033_panel_cross_tenant_404` — aislamiento multi-tenant.
 - `test_usnew033_panel_empty_org` — sin BUs/programas/proyectos no crashea.
 
-**Commit:** `feat(web,api): US-NEW-033 — panel de organización con recursos reales`.
+**Commit:** `feat(web,api): US-033 — panel de organización con recursos reales`.
 
 ---
 
-## # DONE — US-NEW-034 — Página resumen de programa
+## # DONE — US-034 — Página resumen de programa
 
 **Como** usuario con acceso al programa
 **Quiero** una página de resumen del programa con KPIs y lista de proyectos
@@ -164,34 +164,34 @@ Se **elimina**:
 - `test_usnew034_summary_cross_tenant_404` — aislamiento.
 - `test_usnew034_summary_empty_program` — programa vacío no crashea.
 
-**Commit:** `feat(web,api): US-NEW-034 — página resumen de programa con KPIs y donut`.
+**Commit:** `feat(web,api): US-034 — página resumen de programa con KPIs y donut`.
 
 ---
 
-## # DONE — US-NEW-035 — Tabs inline en detalle de proyecto (supersede US-NEW-017)
+## # DONE — US-035 — Tabs inline en detalle de proyecto (supersede US-017)
 
 **Como** PM
 **Quiero** que los módulos del proyecto (Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/admin/projects/{id}`, no páginas separadas
 **Para** no perder contexto al moverme entre módulos.
 
-> Esta US **supersede** la US-NEW-017 original.
+> Esta US **supersede** la US-017 original.
 
 **Criterios de aceptación:**
 - [x] Shared layout `app/(app)/admin/projects/[id]/layout.tsx` con barra de tabs sticky (`<ProjectTabsBar />`).
-- [x] Tabs visibles en orden: `Resumen | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios`. Charter se mantiene como documento del proyecto (categoría en Documentos, ya DONE por US-NEW-013). Equipo y Actividad siguen como sub-tabs internas de la página Resumen (pattern preexistente de `/admin/projects/[id]/page.tsx`).
+- [x] Tabs visibles en orden: `Resumen | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios`. Charter se mantiene como documento del proyecto (categoría en Documentos, ya DONE por US-013). Equipo y Actividad siguen como sub-tabs internas de la página Resumen (pattern preexistente de `/admin/projects/[id]/page.tsx`).
 - [x] Next.js layout persiste entre navegaciones a sub-rutas (`/plan`, `/raid`, etc.): el header y el tab bar no se re-renderizan, la percepción de UX coincide con "no hay cambio de página".
 - [x] Tab activa resaltada (bg `--color-subtle`, font-semibold).
 - [x] Scroll horizontal en la barra para anchos reducidos (`overflow-x-auto`).
 - [x] Rutas legacy `/plan`, `/raid`, `/areas`, `/documents`, etc. siguen funcionando como páginas individuales dentro del layout tabbed.
-- [x] La entrada "Módulos de proyecto" del sidebar principal fue eliminada en US-NEW-032.
+- [x] La entrada "Módulos de proyecto" del sidebar principal fue eliminada en US-032.
 
 **Nota de diseño:** El criterio original pedía `?tab=<key>` con renderizado inline del contenido. La implementación usa sub-paths compartiendo layout — es equivalente UX-wise (Next.js no re-monta el layout al cambiar de sub-ruta) y mucho más barata de mantener porque no refactoriza las 8 páginas de módulos en componentes loadable. Si a futuro se requiere query-param puro, el refactor queda como follow-up.
 
-**Commit:** `feat(web): US-NEW-035 — tabs inline en detalle de proyecto (supersede US-NEW-017)`.
+**Commit:** `feat(web): US-035 — tabs inline en detalle de proyecto (supersede US-017)`.
 
 ---
 
-## # DONE — US-NEW-036 — Restructurar sidebar Admin
+## # DONE — US-036 — Restructurar sidebar Admin
 
 **Como** admin / senior PMO
 **Quiero** que el sidebar Admin tenga sólo 4 entradas lógicas, sin duplicación
@@ -212,7 +212,7 @@ Se **elimina**:
 - [x] DEC-005 respetada: el sidebar Admin sigue siendo visible a usuarios no-superadmin con rol `Administrador` o `PMO Manager`; las rutas validan `require_permission` en backend.
 - [x] `/admin/settings` ahora usa `<TenantSettingsForm />` (queda como handler legacy; el redirect Next-side se aplica antes de que se renderice la página en SSR, pero dejar la página mantiene dev tests si alguien navega directo vía dev server dynamic render).
 
-**Commit:** `feat(web): US-NEW-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed`.
+**Commit:** `feat(web): US-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed`.
 
 ---
 
@@ -220,22 +220,22 @@ Se **elimina**:
 
 ```
 # Tenant branding
-POST   /api/v1/admin/tenant/logo              (upload multipart)   [US-NEW-031]
+POST   /api/v1/admin/tenant/logo              (upload multipart)   [US-031]
 GET    /api/v1/me/tenant-branding             (consumido por topbar)
 
 # Nav tree del sidebar principal
-GET    /api/v1/me/nav-tree?depth=3                                  [US-NEW-032]
+GET    /api/v1/me/nav-tree?depth=3                                  [US-032]
 
 # Organización panel (read-only)
-GET    /api/v1/organizations/{id}/panel                             [US-NEW-033]
+GET    /api/v1/organizations/{id}/panel                             [US-033]
 
 # Programa summary
-GET    /api/v1/programs/{id}/summary                                [US-NEW-034]
+GET    /api/v1/programs/{id}/summary                                [US-034]
 ```
 
 ## Cambios de schema
 
-Ninguno. US-NEW-031 (upload de logo) reusa `tenants.logo_url` + el
+Ninguno. US-031 (upload de logo) reusa `tenants.logo_url` + el
 storage local ya existente; no se agregó migración. Resto del refactor
 es puramente UI.
 
@@ -247,6 +247,6 @@ es puramente UI.
 - [ ] Sidebar Admin con 4 ítems raíz; sin entrada "Configuración" independiente.
 - [ ] Detalle de proyecto usa tabs inline; rutas legacy redirigen.
 - [ ] Logo del tenant se muestra en topbar cuando está configurado.
-- [ ] US-NEW-017 marcada como superseded por US-NEW-035.
+- [ ] US-017 marcada como superseded por US-035.
 - [ ] DEC-011, DEC-012, DEC-013 registrados en DECISIONS.md.
 - [ ] Tests E2E verdes para navegación completa (3 clicks hasta un proyecto).
