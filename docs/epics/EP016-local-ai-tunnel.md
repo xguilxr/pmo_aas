@@ -287,7 +287,11 @@ PC Windows (tailscaled service, nssm)          Railway worker (sidecar tailscale
 
 ## Cambios de schema
 
-Ninguno estructural. `tenants.settings.ai.ollama` pierde la rama `auth.*` (migración lógica en app, no en BD). `AI_SECRETS_FERNET_KEY` se marca deprecado.
+Ninguno. `tenants.settings.ai.ollama` (JSONB) queda con shape `{base_url,
+model, timeout_sec}` tras US-NEW-047; los secrets CF-Access previos se
+archivan bajo `auth_legacy.*` al primer PATCH — todo en app layer, sin
+migración SQL. `AI_SECRETS_FERNET_KEY` se marcó DEPRECATED en
+`app/core/config.py`.
 
 ---
 

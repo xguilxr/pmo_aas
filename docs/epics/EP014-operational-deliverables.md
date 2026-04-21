@@ -226,16 +226,14 @@ GET  /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf   [US-NEW-040]
 
 ## Cambios de schema
 
-Mínimos. Aprovechar `reports` existente:
+Aplicados en dos migraciones sobre la tabla `reports`:
 
-```sql
--- Tipificar el reporte ejecutable
-ALTER TABLE reports ADD COLUMN generator TEXT DEFAULT 'manual';
-    -- 'manual' | 'ai' | 'avance' | 'seguimiento'
-ALTER TABLE reports ADD COLUMN cut_off_date DATE;          -- para avance/seguimiento
-```
+- [`20260420_0014_reports_period.py`](../../apps/api/alembic/versions/20260420_0014_reports_period.py) — columnas de período.
+- [`20260420_0015_reports_generator_cut_off.py`](../../apps/api/alembic/versions/20260420_0015_reports_generator_cut_off.py) — `generator` (`'manual' | 'ai' | 'avance' | 'seguimiento'`) + `cut_off_date`.
 
-Agregar a `DB-CHANGES.md` bajo nueva sección **EP014**.
+US-NEW-040 (formato estandarizado de minuta IA) es post-procesamiento
+sobre `meeting_minutes`; no toca BD. Ver
+[`DB-CHANGES.md` §EP014](./DB-CHANGES.md#ep014--entregables-operativos).
 
 ## Dependencias técnicas
 

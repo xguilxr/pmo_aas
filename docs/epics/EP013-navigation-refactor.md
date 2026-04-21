@@ -235,7 +235,9 @@ GET    /api/v1/programs/{id}/summary                                [US-NEW-034]
 
 ## Cambios de schema
 
-Ninguno nuevo. `tenants.logo_url` ya existe (US-NEW-023). Si falta el campo de upload físico, añadirlo como parte de US-NEW-031 con su propia migración.
+Ninguno. US-NEW-031 (upload de logo) reusa `tenants.logo_url` + el
+storage local ya existente; no se agregó migración. Resto del refactor
+es puramente UI.
 
 ---
 

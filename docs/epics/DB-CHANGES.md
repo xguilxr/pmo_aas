@@ -1,197 +1,121 @@
 # DB-CHANGES.md — Cambios de schema por epic
 
-> Claude Code debe leer este archivo antes de implementar cualquier US que toque la BD.
-> Convención: una migración Alembic por US. Nunca combinar múltiples cambios estructurales en un solo archivo.
+> **Política activa (2026-04-21):**
+> - Productivo v1.0 corre en **Railway Postgres** (DEC-013). No hay plan
+>   de migrar a otro motor.
+> - Una migración Alembic por US; nunca combinar múltiples cambios
+>   estructurales en un solo archivo.
+> - Este archivo **no es la fuente de verdad del schema**. Solo indexa
+>   qué epic disparó qué migración y lo pendiente de BD para POST-MVP.
+>   El schema vigente se describe en
+>   [`docs/architecture/database.md`](../architecture/database.md) y se
+>   materializa en `apps/api/alembic/versions/*.py`.
 
 ---
 
-## EP002 — Jerarquía Org (CAMBIO MAYOR — BLOQUEANTE)
+## Migraciones aplicadas (v1.0)
 
-### Nueva tabla: `business_units`
-```sql
-CREATE TABLE business_units (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id),
-    organization_id uuid NOT NULL REFERENCES organizations(id),
-    name text NOT NULL,
-    description text,
-    is_active bool DEFAULT true,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now(),
-    deleted_at timestamptz,
-    created_by uuid REFERENCES users(id),
-    UNIQUE(tenant_id, organization_id, name)
-);
-CREATE INDEX idx_bu_org ON business_units(organization_id) WHERE deleted_at IS NULL;
-```
-
-### Nueva tabla: `departments`
-```sql
-CREATE TABLE departments (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id),
-    business_unit_id uuid NOT NULL REFERENCES business_units(id),
-    name text NOT NULL,
-    description text,
-    is_active bool DEFAULT true,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now(),
-    deleted_at timestamptz,
-    created_by uuid REFERENCES users(id),
-    UNIQUE(tenant_id, business_unit_id, name)
-);
-CREATE INDEX idx_dept_bu ON departments(business_unit_id) WHERE deleted_at IS NULL;
-```
-
-### Modificar tabla: `programs`
-```sql
--- PASO 1: Agregar columna nullable
-ALTER TABLE programs ADD COLUMN department_id uuid REFERENCES departments(id);
--- PASO 2: (post-migración de datos) hacer NOT NULL si aplica
--- NOTA: programs puede colgar de org directamente O de department
--- Decisión: department_id nullable, al menos uno de (organization_id, department_id) debe estar presente
--- organization_id se conserva para compatibilidad y para orgs sin BU/Depto configurado
-```
-
-### Modificar tabla: `projects`
-```sql
--- Agregar referencia opcional a department (cuando no pasa por programa)
-ALTER TABLE projects ADD COLUMN department_id uuid REFERENCES departments(id);
-ALTER TABLE projects ADD COLUMN business_unit_id uuid REFERENCES business_units(id);
--- Ambas nullable — se llenan desde la cadena del programa si existe
-```
-
-### Modificar tabla: `project_requests`
-```sql
--- business_unit y department pasan de text libre a FK real
-ALTER TABLE project_requests ADD COLUMN business_unit_id uuid REFERENCES business_units(id);
-ALTER TABLE project_requests ADD COLUMN department_id uuid REFERENCES departments(id);
--- Mantener columnas text antiguas como deprecated hasta migración de datos
--- ALTER TABLE project_requests DROP COLUMN business_unit; -- PENDIENTE, fase 2
--- ALTER TABLE project_requests DROP COLUMN department;    -- PENDIENTE, fase 2
-```
+| # | Archivo | Epic | Contenido |
+|---|---|---|---|
+| 0001 | `20260101_0001_initial.py` | EP001 | Tablas base: `tenants`, `users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `organizations`, `audit_logs`, `refresh_tokens` |
+| 0002 | `20260101_0002_org_program.py` | EP001 / EP002 | Tabla `programs` + FKs a `organizations` |
+| 0003 | `20260101_0003_project_requests.py` | EP003 | Tabla `project_requests` (shape inicial) |
+| 0004 | `20260101_0004_projects.py` | EP005 | Tabla `projects` + índices |
+| 0005 | `20260101_0005_project_members.py` | EP005 | Tabla `project_members` |
+| 0006 | `20260101_0006_modules.py` | EP006 | Tablas `risks`, `issues`, `documents`, `meeting_minutes`, `lessons_learned` |
+| 0007 | `20260101_0007_ai_and_reports.py` | EP008 | Tablas `ai_jobs`, `reports` |
+| 0008 | `20260101_0008_tasks.py` | EP005 | Tabla `tasks` (plan del proyecto) |
+| 0009 | `20260420_0009_business_units_departments.py` | EP002 | Tablas `business_units`, `departments` + FKs en `programs`, `projects`, `project_requests` (ver §EP002) |
+| 0010 | `20260420_0010_users_preferences.py` | EP001 | Columnas de preferencias en `users` (tema, idioma) |
+| 0011 | `20260420_0011_project_requests_extra_fields.py` | EP003 | Columnas adicionales de solicitud (ver §EP003) |
+| 0012 | `20260420_0012_project_charters.py` | EP003 | Tabla `project_charters` (ver §EP003) |
+| 0013 | `20260420_0013_project_areas.py` | EP005 | Tabla `project_areas` (actores/áreas sin login) |
+| 0014 | `20260420_0014_reports_period.py` | EP014 | Columnas de período en `reports` |
+| 0015 | `20260420_0015_reports_generator_cut_off.py` | EP014 | `reports.generator` + `reports.cut_off_date` |
 
 ---
 
-## EP003 — Project Requests + Charter
+## EP001 — Auth / usuarios
 
-### Modificar tabla: `project_requests`
-```sql
-ALTER TABLE project_requests ADD COLUMN requester_name text;      -- default: user.full_name
-ALTER TABLE project_requests ADD COLUMN requester_email citext;   -- default: user.email
-ALTER TABLE project_requests ADD COLUMN sponsor_email citext;
-ALTER TABLE project_requests ADD COLUMN key_people text;          -- texto libre, lista de nombres
-ALTER TABLE project_requests ADD COLUMN if_not_done text;         -- "¿Qué pasa si no se hace?"
-ALTER TABLE project_requests ADD COLUMN observations text;
-ALTER TABLE project_requests ADD COLUMN entregables text;         -- renombrar scope o complementar
-```
+Schema cubierto por migraciones **0001** + **0010**.
 
-### Nueva tabla: `project_charters`
-```sql
-CREATE TABLE project_charters (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id),
-    project_id uuid NOT NULL REFERENCES projects(id) UNIQUE,
-    request_id uuid REFERENCES project_requests(id),
+## EP002 — Jerarquía org
 
-    -- Sección 1: Información General (se llena desde proyecto/solicitud)
-    project_name text NOT NULL,
-    description text,
-    organization_id uuid REFERENCES organizations(id),
-    business_unit_id uuid REFERENCES business_units(id),
-    department_id uuid REFERENCES departments(id),
+Migración **0009** (`20260420_0009_business_units_departments.py`):
 
-    -- Sección 2: Stakeholders
-    sponsor text,
-    sponsor_email citext,
-    business_leader text,
-    business_leader_email citext,
-    tech_leader text,
-    tech_leader_email citext,
-    pm_id uuid REFERENCES users(id),
+- Crea `business_units(id, tenant_id, organization_id, name, …)` y
+  `departments(id, tenant_id, business_unit_id, name, …)`.
+- Agrega `programs.department_id` (nullable — un programa puede colgar
+  directo de la organización o de un departamento).
+- Agrega `projects.department_id` y `projects.business_unit_id`
+  (nullable — se llenan desde la cadena del programa cuando aplica).
+- Agrega `project_requests.business_unit_id` y
+  `project_requests.department_id` como FK.
 
-    -- Sección 3: Clasificación
-    project_type text,
-    priority smallint,
-    objective text,
-    restrictions text,
-    risks_summary text,
-    scope text,
-    key_people text,
-    benefits text,
+Los campos legacy `project_requests.business_unit` y
+`project_requests.department` (texto libre) se conservaron por
+retro-compatibilidad; pueden dropearse cuando se valide que ningún
+tenant productivo los lee.
 
-    -- Sección 4: Datos de Gestión (se actualiza dinámicamente desde el proyecto)
-    start_date date,
-    estimated_end_date date,
-    phase text,
-    health_status text,
-    progress smallint,
-    planned_progress smallint,
-    assigned_budget numeric(14,2),
-    used_budget numeric(14,2),
-    assigned_hours numeric(10,2),
-    consumed_hours numeric(10,2),
+## EP003 — Solicitudes y Project Charter
 
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now(),
-    created_by uuid REFERENCES users(id)
-);
-```
+Migración **0011** (`project_requests_extra_fields`): añade
+`requester_name`, `requester_email`, `sponsor_email`, `key_people`,
+`if_not_done`, `observations`, `entregables`.
 
----
+Migración **0012** (`project_charters`): crea tabla completa con las 4
+secciones (información general, stakeholders, clasificación, datos de
+gestión). Los campos de gestión se sincronizan dinámicamente desde
+`projects` por el servicio `app.services.charters`, no por trigger SQL
+(DEC-008).
 
-## EP005 — Projects
+## EP005 — Proyectos
 
-### Nueva tabla: `project_areas`
-```sql
--- Actores y áreas del proyecto (sin acceso a plataforma, solo referenciables)
-CREATE TABLE project_areas (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id),
-    project_id uuid NOT NULL REFERENCES projects(id),
-    name text NOT NULL,
-    type text DEFAULT 'area',   -- 'area' | 'actor' | 'team'
-    description text,
-    contact_name text,
-    contact_email citext,
-    is_active bool DEFAULT true,
-    created_at timestamptz DEFAULT now(),
-    created_by uuid REFERENCES users(id)
-);
-CREATE INDEX idx_project_areas_project ON project_areas(project_id);
-```
+Schema cubierto por **0004** + **0005** + **0008** + **0013**.
 
----
+Migración **0013** (`project_areas`): actores y áreas del proyecto sin
+cuenta en la plataforma (DEC-009). Campo `type` acepta
+`'area'|'actor'|'team'`.
 
 ## EP006 — RAID consolidado
 
-### Modificar tabla: `issues`
-```sql
--- Actualmente type = 'action'|'issue'|'decision'
--- Agregar 'incident' para completar RAID
--- El tipo 'action' = Acciones, 'issue' = Incidentes, 'decision' = Decisiones
--- RAID = Risks (tabla risks) + Actions + Incidents + Decisions (tabla issues con type)
--- No requiere cambio de schema, solo validar que type acepta los 4 valores
--- Documentar: RAID se construye combinando risks + issues con sus types
-```
+**Sin migración nueva.** RAID es una **vista** sobre `risks` + `issues`
+(DEC-007): Risks de la tabla `risks`, y Actions/Incidents/Decisions de
+la tabla `issues` discriminados por `issues.type ∈
+{'action','incident','decision'}`. El validator se hace en el modelo,
+no en BD.
 
----
+## EP007 — Admin
 
-## EP011 — Notificaciones
+Sin schema nuevo. Toda la funcionalidad reutiliza tablas existentes
+(`tenants`, `users`, `roles`, `audit_logs`, `business_units`,
+`departments`).
 
-### Nueva tabla: `notifications`
+## EP008 — IA
+
+Schema cubierto por migración **0007** (`ai_jobs`, `reports`).
+
+## EP010 — Super admin panel
+
+Sin schema nuevo. `users.is_superadmin` ya existe desde
+`20260101_0001_initial.py`; el panel reusa `tenants` + `users` + `audit_logs`
+cross-tenant.
+
+## EP011 — Notificaciones (POST-MVP)
+
+**Migración pendiente** para US-NEW-027. Plan de shape:
+
 ```sql
 CREATE TABLE notifications (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id uuid NOT NULL REFERENCES tenants(id),
     user_id uuid NOT NULL REFERENCES users(id),
-    type text NOT NULL,         -- 'request_approved'|'request_rejected'|'pm_assigned'|
-                                --  'aid_overdue'|'comment_added'|'phase_changed'|etc.
+    type text NOT NULL,  -- 'request_approved'|'pm_assigned'|'aid_overdue'|'comment_added'|…
     title text NOT NULL,
     body text,
-    entity_type text,           -- 'project'|'risk'|'request'|etc.
+    entity_type text,    -- 'project'|'risk'|'request'|…
     entity_id uuid,
-    link text,                  -- URL relativa a la que navegar al click
+    link text,           -- URL relativa al destino
     is_read bool DEFAULT false,
     read_at timestamptz,
     created_at timestamptz DEFAULT now()
@@ -201,45 +125,33 @@ CREATE INDEX idx_notif_user_unread ON notifications(user_id, is_read, created_at
 CREATE INDEX idx_notif_tenant ON notifications(tenant_id, created_at DESC);
 ```
 
----
+US-NEW-028 (email via Resend) no requiere schema adicional; la cola sale
+del `notifications.type` leído por un worker Celery.
 
-## EP010 / EP007 — Sin cambios de BD nuevos
-Los cambios de EP007 (gestión de tenant/org) usan tablas existentes.
-EP010 ya tiene sus tablas en el archivo original.
+## EP013 / EP015 — Refactor navegación
 
----
+Sin migraciones nuevas. `tenants.logo_url` ya existía; US-NEW-031 reusa
+el campo + el storage local.
 
-## EP012 — Instalación productivo Hostgator MySQL (fresh install)
-Ver EP012-db-migration.md para el plan completo (reestructurado 2026-04-20).
-Staging se queda en Railway Postgres; productivo arranca fresco en Hostgator MySQL.
+## EP014 — Entregables operativos
 
-Impactos principales del lado de schema / código:
-- RLS de PostgreSQL no existe en MySQL → implementar filtros en ORM
-- `gen_random_uuid()` → generar UUIDs en Python (callable default) — dialect-agnostic
-- `citext` → `VARCHAR(255) COLLATE utf8mb4_unicode_ci` (MySQL) / `citext` (PG)
-- `pg_trgm` (fuzzy search) → `FULLTEXT INDEX` en MySQL, `LIKE` en volumen bajo
-- `GENERATED ALWAYS AS ... STORED` → calcular en app layer (ej. severity)
-- Folios secuenciales → tabla `sequences` + `SELECT ... FOR UPDATE`
-- Alembic soporta ambos dialectos; migraciones se re-expresan con `variant()` cuando haga falta
+Migraciones **0014** (`reports_period`) + **0015**
+(`reports_generator_cut_off`): añaden `reports.generator` (`'manual' |
+'ai' | 'avance' | 'seguimiento'`) y `reports.cut_off_date` + columnas de
+período. US-NEW-040 (formato estandarizado de minuta IA) es
+post-procesamiento sobre `meeting_minutes`; no toca BD.
 
----
+## EP016 — IA local (Ollama vía Tailscale)
 
-## EP014 — Entregables operativos (reportes Python + formato minuta)
-
-### Modificar tabla: `reports`
-```sql
-ALTER TABLE reports ADD COLUMN generator VARCHAR(32) DEFAULT 'manual';
-    -- 'manual' | 'ai' | 'avance' | 'seguimiento'
-ALTER TABLE reports ADD COLUMN cut_off_date DATE;
-```
-
-Sin cambios nuevos para minutas: el formato estandarizado (US-NEW-040) es
-puro post-procesamiento sobre la tabla `meeting_minutes` existente.
+Sin schema nuevo. La config del endpoint vive en
+`tenants.settings.ai.ollama` (JSONB) — `{base_url, model, timeout_sec}`
+tras US-NEW-047. Secrets CF-Access legacy, si existieran, quedan
+archivados bajo `tenants.settings.ai.ollama.auth_legacy.*` (no borrados
+para auditoría).
 
 ---
 
-## EP013 — Refactor de navegación (issue #17)
+## EP012 — ❌ CANCELADO
 
-Sin cambios nuevos de schema. `tenants.logo_url` ya existe (US-NEW-023). Si el
-storage físico del logo requiere un campo adicional (`logo_storage_path`), se
-agrega como parte de la migración de US-NEW-031 con su propio archivo Alembic.
+Ver `docs/archive/cancelled-epics/EP012-db-migration.md` y **DEC-013**.
+No hay trabajo de BD pendiente por esta épica.

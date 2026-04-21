@@ -284,36 +284,26 @@ configuración global.
 ## Notas técnicas
 
 ### Modelos involucrados
-- `tenants`, `users`, `roles`, `audit_log`, `platform_settings` (nueva tabla),
-  `impersonation_sessions` (nueva tabla para US-058).
 
-### Nuevas tablas
-```sql
-CREATE TABLE platform_settings (
-    key TEXT PRIMARY KEY,
-    value JSONB NOT NULL,
-    updated_by UUID REFERENCES users(id),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
+El panel super admin entregado en v1.0 opera **solo con tablas
+existentes**: `tenants`, `users`, `roles`, `audit_logs`. No se crearon
+migraciones propias de EP010.
 
-CREATE TABLE impersonation_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    superadmin_id UUID NOT NULL REFERENCES users(id),
-    tenant_id UUID NOT NULL REFERENCES tenants(id),
-    reason TEXT NOT NULL,
-    started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    ended_at TIMESTAMPTZ
-);
+Las tablas que el diseño original preveía como nuevas (`platform_settings`,
+`impersonation_sessions`, `tenant_delete_schedule`) quedaron **fuera de
+alcance** para v1.0:
 
-CREATE TABLE tenant_delete_schedule (
-    tenant_id UUID PRIMARY KEY REFERENCES tenants(id),
-    scheduled_at TIMESTAMPTZ NOT NULL,
-    scheduled_by UUID NOT NULL REFERENCES users(id),
-    confirmation_slug TEXT NOT NULL,
-    canceled_at TIMESTAMPTZ
-);
-```
+- **`platform_settings`**: los settings cross-tenant necesarios para el
+  MVP (logo del tenant, config IA) se guardan en `tenants.settings`
+  JSONB; no hubo demanda real de un store global.
+- **`impersonation_sessions`**: el super admin navega cross-tenant sin
+  "convertirse" en admin del otro tenant; el patrón join-as-admin no se
+  implementó para v1.0.
+- **`tenant_delete_schedule`**: el soft-delete de tenant es inmediato
+  (`tenants.is_active = false`); no hay delayed-delete con
+  confirmation_slug.
+
+Estas tablas se reabren si aparece necesidad real POST-MVP.
 
 ### Endpoints nuevos (complementan los de EP002)
 ```
