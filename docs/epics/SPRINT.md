@@ -9,26 +9,35 @@
 ```
 — Sin US activa —
 
-Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local)
-completos. Siguientes en orden:
-  Bloque 13 — EP011 Notificaciones (POST-MVP)
-  Bloque 14 — EP012 Instalación productivo Hostgator MySQL
+Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local vía CF
+Tunnel) completos. EP016 se REABRE por pivote arquitectónico a Tailscale
+(ver DEC-011 + ADR-015, 2026-04-21). US-NEW-044/045 quedan SUPERSEDED.
 
-Follow-up pendiente en EP016 US-NEW-045: refactorizar OllamaProvider
-para consumir la config por-tenant en el worker IA (hoy usa env).
+Nuevos bloques priorizados:
+  Bloque 13 — Hotfixes operativos (Railway deploy + sidebar super admin)
+  Bloque 14 — EP016 v2 (Tailscale): US-NEW-046/047/048
+  Bloque 15 — Landing y DNS productivo (Railway + HostGator www)
+  Bloque 16 — EP011 Notificaciones (POST-MVP, antes bloque 13)
+  Bloque 17 — EP012 MySQL HostGator (POST-v1.0, reescopado per DEC-012)
+
+Follow-up arrastrado: refactorizar OllamaProvider.generate() para
+consumir la config por-tenant en el worker IA (hoy usa env). Se cubre
+como parte del DoD de US-NEW-048.
 ```
 
 ---
 
-## ⏳ QUEUE (próximas 3)
+## ⏳ QUEUE (próximas 5)
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-027 | EP011 | Tabla notifications + in-app center (POST-MVP) | Bloque 13 |
-| 2 | US-NEW-028 | EP011 | Email notifications via Resend (POST-MVP) | Bloque 13 |
-| 3 | US-NEW-029 | EP012 | Compatibilidad MySQL del código (dialect-agnostic) | Bloque 14 |
+| 1 | US-BUG-004 | infra | Railway no redeploy tras PR #20 — verificar + forzar | Bloque 13 |
+| 2 | US-BUG-005 | EP015 | Sidebar super admin: state stale / hidratación post-US-041/043 | Bloque 13 |
+| 3 | US-NEW-046 | EP016 | Runbook `local-ollama-setup.md` reescrito a Tailscale | Bloque 14 |
+| 4 | US-NEW-047 | EP016 | Refactor config + test-connection Tailscale (quita CF-Access) | Bloque 14 |
+| 5 | US-NEW-048 | EP016 | Sidecar Tailscale en worker Railway | Bloque 14 |
 
-> Backlog completo del bloque 9 al 12 está listado abajo, en orden.
+> Backlog completo abajo, reordenado.
 
 ---
 
@@ -155,17 +164,105 @@ para consumir la config por-tenant en el worker IA (hoy usa env).
 - [x] US-NEW-045 — Config por-tenant + smoke test del túnel + secrets cifrados ✅
   *(follow-up: integrar config en `OllamaProvider.generate()` del worker EP008 para que `ai_cascade_fallback_total` incremente cuando el túnel falle)*
 
-### Bloque 13 — Notificaciones (EP011) — POST-MVP
+### Bloque 13 — Hotfixes operativos (reabre tras PR #20)
+
+> **Contexto (2026-04-21):** el PR #20 mergeó a `main` con 6 US (NEW-041
+> hasta NEW-045). El owner reportó dos síntomas que no se detectaron en CI:
+> (a) Railway no redeployó los servicios al mergear; (b) el sidebar super
+> admin no se ve como esperaba (probable state stale en `getStoredUser()`).
+
+- [ ] **US-BUG-004 — Railway no redeploy tras PR #20**
+  - **Diagnóstico inicial** (agente 2026-04-21): el commit `62b16f8`
+    (US-NEW-045) SÍ toca `apps/api/**`, así que los servicios `api` +
+    `worker` deberían haber redeployado per watch path.
+  - **Hipótesis ordenadas**:
+    1. (80%) Railway auto-deploy apagado, o rama conectada ≠ `main`.
+    2. (15%) Watch path del servicio mal configurado (ver si incluye `apps/api/**`).
+    3. (5%) Railway sincronizó tarde y no se verificó.
+  - **Acción (1 sesión)**:
+    1. Login Railway UI → project `pmo-aas` → cada servicio `api`/`worker`/`web`:
+       - Settings → **Branch** debe ser `main`.
+       - Settings → **Watch Paths** match con RAILWAY_SETUP.md §3.
+       - Settings → **Auto-Deploy** toggle ON.
+    2. Trigger manual: **Deployments → Deploy** (o push commit vacío).
+    3. Verificar logs del deploy: seed idempotente, migrations al día, health endpoints verdes.
+    4. Documentar hallazgo en `RAILWAY_SETUP.md` → sección "Troubleshooting" con el caso.
+  - **Commit:** `fix(infra): US-BUG-004 — Railway auto-deploy restablecido tras PR #20`.
+
+- [ ] **US-BUG-005 — Sidebar super admin no renderiza como esperado**
+  - **Diagnóstico inicial** (agente 2026-04-21): US-NEW-041
+    (`918be73`) modificó `apps/web/components/app-shell.tsx` para:
+    - Renderizar `TOP_NAV` solo cuando `!user?.is_superadmin`.
+    - Apuntar BrandMark a `/superadmin` si el user es superadmin.
+    - Agregar ítem "Usuarios" a `SUPERADMIN_NAV`.
+  - **Hipótesis**: `getStoredUser()` en `apps/web/lib/auth-storage.ts`
+    devuelve `null` o user stale durante SSR o en la primera hidratación
+    cliente. Si `user?.is_superadmin` es `undefined` en primer render, el
+    sidebar muestra TOP_NAV incorrectamente y solo se arregla tras un
+    refresh.
+  - **Acción (1 sesión)**:
+    1. Login como super admin en deploy `main` actual; capturar DOM en
+       first paint vs hydrated.
+    2. Revisar `apps/web/lib/auth-storage.ts` — `getStoredUser()` ¿lee
+       localStorage de forma síncrona? ¿Manda fallback durante SSR?
+    3. Si es race, envolver el componente de navegación en `useEffect` +
+       `useState` con loading skeleton; **o** leer user desde un
+       `UserProvider` que ya existe (verificar).
+    4. Agregar test Playwright (`apps/web/e2e/superadmin-sidebar.spec.ts`):
+       login como superadmin → verificar que Tablero/Solicitudes NO aparecen
+       y que Usuarios SÍ aparece.
+  - **Commit:** `fix(web): US-BUG-005 — sidebar super admin respeta user.is_superadmin en first paint`.
+
+### Bloque 14 — EP016 v2: Ollama local vía Tailscale (reabre EP016)
+
+> Reemplaza el canal CF Tunnel + Cloudflare Access por Tailscale tailnet
+> privado. Ver ADR-015 + DEC-011. US-NEW-044/045 quedan SUPERSEDED.
+
+- [ ] US-NEW-046 — Reescribir `docs/ai/local-ollama-setup.md` para flujo Tailscale (ver EP016 sección US-NEW-046)
+- [ ] US-NEW-047 — Refactor `OllamaLocalAiForm` + endpoint `test-connection` sin CF-Access (ver EP016)
+- [ ] US-NEW-048 — Dockerfile worker Railway con sidecar `tailscaled` + `TS_AUTHKEY` (ver EP016)
+- [ ] **Cleanup paralelo (owner, manual)**: borrar tunnel `pmoaas-ollama` de Cloudflare, retirar CNAME `ollama.*`, revocar Service Tokens. Documentado en US-NEW-046 sección "rollback CF Tunnel".
+
+### Bloque 15 — Landing y DNS productivo (Cloudflare + Railway + HostGator)
+
+> Finalizar el routing del dominio `pmo-aas.com` antes de release v1.0.
+> Separado de EP016 porque no toca Ollama. Ver DEC-012.
+
+- [ ] **US-NEW-049 — Configurar DNS productivo en Cloudflare**
+  - Apex `pmo-aas.com` → redirect 301 a `app.pmo-aas.com` (page rule o CNAME flattening).
+  - `app.pmo-aas.com` → CNAME al Railway web service (DNS only, nube gris).
+  - `api.pmo-aas.com` → CNAME al Railway api service (DNS only, nube gris).
+  - `www.pmo-aas.com` → A/CNAME a HostGator IP (proxied, nube naranja, Full SSL).
+  - Verificar TLS Railway auto-provisiona cert para `app.*` y `api.*`.
+  - Documentar en nuevo `docs/infra/dns-routing.md`.
+  - **Commit:** `docs(infra): US-NEW-049 — DNS routing pmo-aas.com (Railway + HostGator)`.
+
+- [ ] **US-NEW-050 — Landing estático en HostGator**
+  - Subir HTML/CSS mínimo a `public_html/` de HostGator vía FTP/cPanel.
+  - Contenido: marca PMO-aaS, 1-liner, CTA a `app.pmo-aas.com/login`.
+  - Sin conexión a BD — es solo marketing.
+  - Verificar `https://www.pmo-aas.com` sirve con TLS Cloudflare Full.
+  - **Commit:** `feat(landing): US-NEW-050 — landing estático www.pmo-aas.com en HostGator`.
+
+### Bloque 16 — Notificaciones (EP011) — POST-MVP
 - [ ] US-NEW-027 — Tabla notifications + in-app center
 - [ ] US-NEW-028 — Email notifications via Resend
 
-### Bloque 14 — Instalación productivo Hostgator MySQL (EP012) — release v1.0
-- [ ] US-NEW-029 — Compatibilidad MySQL del código (dialect-agnostic; reemplazar PG-específicos)
-- [ ] US-NEW-030 — Setup Hostgator MySQL + pipeline de deploy productivo (fresh install)
+### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — POST-v1.0
 
-> EP012 **no es migración desde un productivo previo**: staging se queda en
-> Railway Postgres y productivo arranca directamente como instalación
-> fresca en Hostgator MySQL. Ver DEC-017/018/019 en EP012 y DECISIONS.md.
+> **Reescopado (2026-04-21, ver DEC-012).** La migración de Postgres a
+> MySQL HostGator queda **fuera de v1.0** por:
+> (a) Railway Hobby no da IP estática para whitelist remoto MySQL.
+> (b) Exposición de puerto MySQL en shared hosting es riesgo operacional.
+> (c) Queries con JSONB operators, GENERATED columns y citext requieren rework significativo.
+> (d) HostGator shared no iguala backups Railway Pro.
+>
+> Productivo v1.0 corre en **Railway Postgres**. Se reevalúa a v1.1 si
+> los blockers se resuelven con infra dedicada (VPS + RDS MySQL, no
+> shared hosting).
+
+- [ ] US-NEW-029 — (POST-v1.1) Compatibilidad MySQL del código — audit queries JSONB/GENERATED/citext + plan de reescritura
+- [ ] US-NEW-030 — (POST-v1.1) Setup MySQL productivo — requiere infra dedicada (VPS + IP estática), NO HostGator shared
 
 ---
 
