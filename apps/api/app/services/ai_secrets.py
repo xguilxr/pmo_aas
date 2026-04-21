@@ -1,7 +1,15 @@
-"""Cifrado de secretos IA por-tenant (EP016 US-NEW-045).
+"""Cifrado de secretos IA por-tenant (DEPRECATED US-NEW-047).
 
-Encapsula Fernet para cifrar / descifrar strings cortos (service tokens
-de Cloudflare Access, API keys). La key viene de `settings.AI_SECRETS_FERNET_KEY`.
+Historia:
+- EP016 US-NEW-045 (2026-04-20): utilidades Fernet para cifrar el
+  `CF-Access-Client-Secret` del tenant antes de persistirlo en
+  `tenants.settings.ai.ollama.cf_access_client_secret_encrypted`.
+- US-NEW-047 (2026-04-21): DEPRECATED. El pivote a Tailscale (DEC-011)
+  elimina el header CF-Access. Este módulo se mantiene para que tenants
+  con secrets legacy archivados en `auth_legacy.*` puedan aún
+  descifrarlos si se requiere consulta. No se invoca desde flujos
+  nuevos. Remover junto con `AI_SECRETS_FERNET_KEY` cuando todos los
+  tenants productivos tengan `auth_legacy` purgado.
 """
 from __future__ import annotations
 

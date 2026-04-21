@@ -1,13 +1,17 @@
-"""Smoke del endpoint Ollama local del tenant (EP016 US-NEW-045).
+"""Smoke del endpoint Ollama local del tenant (EP016 US-NEW-047).
 
 Uso:
     python -m app.scripts.ai_local_smoke --tenant {slug} [--prompt "..."]
 
-Resuelve la config `settings.ai.ollama` del tenant, descifra el Service
-Token de Cloudflare Access, arma un request con los headers CF-Access y
-verifica:
+Resuelve la config `settings.ai.ollama` del tenant y verifica:
   1. `/api/tags` responde 200 y contiene el modelo configurado.
   2. `/api/generate` con un prompt corto responde en ≤ timeout_sec.
+
+Historia:
+- US-NEW-045 (2026-04-20): versión original con headers CF-Access
+  (Cloudflare Tunnel).
+- US-NEW-047 (2026-04-21): pivote a Tailscale — se eliminan los headers
+  CF-Access. El canal es tailnet privado y no requiere auth.
 
 Retorna exit code 0 si todo pasa, 1 si falla.
 """
@@ -24,7 +28,6 @@ from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.models.tenant import Tenant
-from app.services.ai_secrets import decrypt_secret
 
 
 DEFAULT_PROMPT = (
@@ -50,18 +53,12 @@ async def _load_config(slug: str) -> dict[str, Any]:
 async def _run(cfg: dict[str, Any], prompt: str) -> int:
     base = str(cfg["base_url"]).rstrip("/")
     headers: dict[str, str] = {"Accept": "application/json"}
-    if cfg.get("cf_access_client_id"):
-        headers["CF-Access-Client-Id"] = cfg["cf_access_client_id"]
-    secret = decrypt_secret(cfg.get("cf_access_client_secret_encrypted"))
-    if secret:
-        headers["CF-Access-Client-Secret"] = secret
     timeout = float(cfg.get("timeout_sec") or 60)
 
     print(f"=> base_url     = {base}")
     print(f"=> model        = {cfg.get('model') or '(no configurado)'}")
     print(f"=> timeout_sec  = {int(timeout)}")
-    print(f"=> cf_access_id = {cfg.get('cf_access_client_id') or '-'}")
-    print(f"=> secret       = {'sí' if secret else 'no'}")
+    print("=> channel      = tailnet (sin auth headers)")
 
     async with httpx.AsyncClient(timeout=timeout, headers=headers) as c:
         # 1. tags

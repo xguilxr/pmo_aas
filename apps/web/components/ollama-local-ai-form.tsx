@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Bot, CheckCircle2, Eye, EyeOff, Play, Trash2, XCircle } from "lucide-react";
+import { Bot, CheckCircle2, Play, XCircle } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,12 @@ import {
 } from "@/lib/api/admin-ai";
 
 /**
- * Sección de config del proveedor IA local (Ollama vía Cloudflare Tunnel).
- * Vive embebida en /admin/tenant?tab=config (US-NEW-045, EP016).
+ * Sección de config del proveedor IA local (Ollama vía Tailscale tailnet).
+ * Vive embebida en /admin/tenant?tab=config.
+ *
+ * Historia:
+ * - US-NEW-045: versión original con Cloudflare Tunnel + CF-Access token.
+ * - US-NEW-047: pivote a Tailscale; se eliminan los campos CF-Access.
  */
 export function OllamaLocalAiForm() {
   const [cfg, setCfg] = useState<OllamaConfigRead | null>(null);
@@ -32,9 +36,6 @@ export function OllamaLocalAiForm() {
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
   const [timeoutSec, setTimeoutSec] = useState<number>(60);
-  const [clientId, setClientId] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
-  const [showSecret, setShowSecret] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -45,8 +46,6 @@ export function OllamaLocalAiForm() {
       setBaseUrl(data.base_url ?? "");
       setModel(data.model ?? "");
       setTimeoutSec(data.timeout_sec);
-      setClientId(data.cf_access_client_id ?? "");
-      setClientSecret("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo cargar la config IA");
     } finally {
@@ -68,31 +67,12 @@ export function OllamaLocalAiForm() {
         base_url: baseUrl || undefined,
         model: model || undefined,
         timeout_sec: timeoutSec,
-        cf_access_client_id: clientId || undefined,
-        cf_access_client_secret: clientSecret || undefined,
       };
       const data = await updateOllamaConfig(body);
       setCfg(data);
-      setClientSecret("");
       setNotice("Configuración IA guardada");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function onClearSecret() {
-    setSaving(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const data = await updateOllamaConfig({ clear_secret: true });
-      setCfg(data);
-      setClientSecret("");
-      setNotice("Service token eliminado");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al limpiar secret");
     } finally {
       setSaving(false);
     }
@@ -132,7 +112,7 @@ export function OllamaLocalAiForm() {
           </h2>
         </div>
         <p className="text-xs text-[var(--color-tertiary)]">
-          Cloudflare Tunnel + Service Token · ver{" "}
+          Tailscale tailnet privado · ver{" "}
           <a
             href="/docs/ai/local-ollama-setup"
             className="text-[var(--color-accent)] hover:underline"
@@ -144,16 +124,26 @@ export function OllamaLocalAiForm() {
         </p>
       </header>
 
+      <p className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 py-2 text-xs text-[var(--color-tertiary)]">
+        Este endpoint debe ser accesible desde el <strong>worker de Railway</strong>
+        {" "}vía tailnet Tailscale (hostname MagicDNS{" "}
+        <code>ollama-host.&lt;tu-tailnet&gt;.ts.net:11434</code>). El botón
+        &quot;Probar conexión&quot; corre desde el servicio <code>api</code>,
+        que típicamente NO está en el tailnet — un fallo aquí no implica que
+        el worker no pueda alcanzarlo. La verificación real se hace al procesar
+        la primera minuta IA.
+      </p>
+
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
       <form onSubmit={save} className="space-y-3">
-        <Field label="Base URL del túnel">
+        <Field label="Base URL del endpoint Ollama (tailnet)">
           <Input
             type="url"
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="https://ollama.tu-dominio.com"
+            placeholder="http://ollama-host.<tu-tailnet>.ts.net:11434"
           />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -174,60 +164,17 @@ export function OllamaLocalAiForm() {
             />
           </Field>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="CF-Access-Client-Id">
-            <Input
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              placeholder="abc123...cloudflareaccess"
-            />
-          </Field>
-          <Field label="CF-Access-Client-Secret">
-            <div className="flex items-center gap-1">
-              <Input
-                type={showSecret ? "text" : "password"}
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                placeholder={
-                  cfg.cf_access_client_secret_masked
-                    ? `Actual: ${cfg.cf_access_client_secret_masked}`
-                    : "Pega el secret para actualizar"
-                }
-              />
-              <button
-                type="button"
-                onClick={() => setShowSecret(!showSecret)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-default)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)]"
-                aria-label={showSecret ? "Ocultar" : "Mostrar"}
-              >
-                {showSecret ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
-              </button>
-            </div>
-          </Field>
-        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-3">
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onTest}
-              loading={testing}
-              disabled={!cfg.configured && !baseUrl}
-            >
-              <Play className="h-4 w-4" aria-hidden /> Probar conexión
-            </Button>
-            {cfg.cf_access_client_secret_masked ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={onClearSecret}
-                disabled={saving}
-              >
-                <Trash2 className="h-4 w-4" aria-hidden /> Quitar secret
-              </Button>
-            ) : null}
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onTest}
+            loading={testing}
+            disabled={!cfg.configured && !baseUrl}
+          >
+            <Play className="h-4 w-4" aria-hidden /> Probar conexión
+          </Button>
           <Button type="submit" loading={saving}>
             Guardar
           </Button>
