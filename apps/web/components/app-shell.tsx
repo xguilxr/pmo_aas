@@ -377,7 +377,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Menu className="h-5 w-5" aria-hidden />
             </button>
             <div className="inline-flex items-center">
-              <BrandMark variant="topbar" />
+              <span className="text-[13px] font-medium tracking-tight text-[var(--chrome-text-muted)]">
+                PMO · aaS
+              </span>
             </div>
           </div>
           <UserMenu user={user} variant="chrome" />
