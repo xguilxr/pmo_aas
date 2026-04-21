@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api";
 import {
   getPlatformAIDefaults,
   updatePlatformAIDefaults,
+  type PlatformAIDefaultsPatch,
   type PlatformAIDefaultsRead,
 } from "@/lib/api/superadmin-ai";
 import { getStoredUser } from "@/lib/auth-storage";
@@ -76,8 +77,11 @@ export default function SuperadminAIPage() {
     setError(null);
     setNotice(null);
     try {
-      const body = {
-        ai_mode: aiMode === "" ? null : (aiMode as ModeValue),
+      const body: PlatformAIDefaultsPatch = {
+        ai_mode:
+          aiMode === ""
+            ? null
+            : (aiMode as Exclude<ModeValue, "">),
         ollama_base_url: baseUrl.trim() === "" ? null : baseUrl.trim(),
         ollama_model: model.trim() === "" ? null : model.trim(),
         ai_timeout_sec: timeoutSec.trim() === "" ? null : Number(timeoutSec),
