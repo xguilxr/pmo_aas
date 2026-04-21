@@ -315,7 +315,6 @@ function DashboardInner() {
           value={kpis?.change_requests_in_review ?? 0}
           loading={loadingKpis}
           icon={<GitPullRequest className="h-4 w-4" aria-hidden />}
-          href="/changes"
         />
         <KpiCard
           label="AIDs abiertos"
