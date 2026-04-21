@@ -266,7 +266,7 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
         depth={0}
         top
         icon={<Building2 className="h-4 w-4" aria-hidden />}
-        label="Organizaciones"
+        label="PMO"
         active={sectionActive && !sectionOpen}
         hasChildren
         isOpen={sectionOpen}
