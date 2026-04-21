@@ -483,7 +483,7 @@ export function RequestForm() {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)] pt-4">
-        <Button type="button" variant="ghost" onClick={() => router.push("/admin/requests")}>
+        <Button type="button" variant="danger" onClick={() => router.push("/admin/requests")}>
           Cancelar
         </Button>
         <div className="flex gap-2">

@@ -27,7 +27,10 @@ function resolveErrorMessage(err: unknown): string {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/dashboard";
+  // Si el user ya tiene un ?redirect=... respeta ese valor. Si no, la
+  // landing por default se decide post-login según is_superadmin
+  // (BUG-021): superadmin → /superadmin; resto → /dashboard.
+  const explicitRedirect = searchParams.get("redirect");
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -37,9 +40,9 @@ function LoginForm() {
 
   useEffect(() => {
     if (getAccessToken()) {
-      router.replace(redirectTo);
+      router.replace(explicitRedirect || "/dashboard");
     }
-  }, [router, redirectTo]);
+  }, [router, explicitRedirect]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,9 +53,12 @@ function LoginForm() {
       const res = await login(identifier.trim(), password);
       if (res.user.must_change_password) {
         router.replace("/change-password");
-      } else {
-        router.replace(redirectTo);
+        return;
       }
+      const landing =
+        explicitRedirect ||
+        (res.user.is_superadmin ? "/superadmin" : "/dashboard");
+      router.replace(landing);
     } catch (err) {
       setError(resolveErrorMessage(err));
       setSubmitting(false);

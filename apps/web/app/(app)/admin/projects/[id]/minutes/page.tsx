@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Download, MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Download, Eye, MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
 
+import { ItemPreviewModal } from "@/components/item-preview-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default function MinutesPage() {
   const [rows, setRows] = useState<MeetingMinute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<MeetingMinute | null>(null);
 
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -83,6 +85,7 @@ export default function MinutesPage() {
   }
 
   return (
+    <>
     <ModuleShell<MeetingMinute>
       projectId={id}
       title="Minutas"
@@ -222,6 +225,24 @@ export default function MinutesPage() {
       )}
       columns={[
         {
+          key: "eye",
+          label: "",
+          render: (r) => (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreview(r);
+              }}
+              aria-label={`Preview ${r.title}`}
+              title="Vista rápida"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+            >
+              <Eye className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ),
+        },
+        {
           key: "title",
           label: "Minuta",
           render: (r) => (
@@ -252,6 +273,37 @@ export default function MinutesPage() {
         },
       ]}
     />
+    <ItemPreviewModal
+      open={preview !== null}
+      onClose={() => setPreview(null)}
+      title={preview?.title ?? ""}
+      subtitle={preview?.folio}
+      fields={
+        preview
+          ? [
+              { label: "ID", value: preview.id, mono: true },
+              { label: "Folio", value: preview.folio, mono: true },
+              {
+                label: "Fecha",
+                value: new Date(preview.meeting_date).toLocaleDateString("es-MX"),
+              },
+              { label: "Participantes", value: preview.participants.length },
+              { label: "Temas", value: preview.topics.length },
+              { label: "Acuerdos", value: preview.agreements.length },
+              {
+                label: "Origen",
+                value: preview.generated_by_ai ? "IA" : "Manual",
+              },
+            ]
+          : []
+      }
+      description={
+        preview
+          ? preview.topics.map((t) => `• ${t.title}`).join("\n") || null
+          : null
+      }
+    />
+    </>
   );
 }
 

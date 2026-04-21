@@ -7,17 +7,23 @@ import {
   Building2,
   ChevronRight,
   ClipboardList,
+  FileText,
+  FolderKanban,
+  GitPullRequest,
   LayoutDashboard,
   Menu,
+  MessageSquare,
   Network,
   ScrollText,
   ServerCog,
+  Shield,
   ShieldCheck,
   Users,
   X,
 } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { NotificationBell } from "@/components/notification-bell";
 import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
 import { getStoredUser, type StoredUser } from "@/lib/auth-storage";
@@ -32,6 +38,9 @@ type NavItem = {
   children?: NavItem[];
 };
 
+// US-052: sidebar top-nav extendido con vistas cross-tenant. El orden
+// refleja el flujo del PMO: de resumen (Tablero) a ingreso (Solicitudes)
+// a ejecución (Proyectos) a gobernanza (RAID/Cambios/Minutas/Reportes).
 const TOP_NAV: NavItem[] = [
   {
     id: "dashboard",
@@ -46,6 +55,41 @@ const TOP_NAV: NavItem[] = [
     icon: <ClipboardList className="h-4 w-4" aria-hidden />,
     href: "/admin/requests",
     match: (p) => p.startsWith("/admin/requests"),
+  },
+  {
+    id: "projects",
+    label: "Proyectos",
+    icon: <FolderKanban className="h-4 w-4" aria-hidden />,
+    href: "/admin/projects",
+    match: (p) => p.startsWith("/admin/projects"),
+  },
+  {
+    id: "raid",
+    label: "RAID",
+    icon: <Shield className="h-4 w-4" aria-hidden />,
+    href: "/admin/raid",
+    match: (p) => p.startsWith("/admin/raid"),
+  },
+  {
+    id: "changes",
+    label: "Cambios",
+    icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
+    href: "/admin/changes",
+    match: (p) => p.startsWith("/admin/changes"),
+  },
+  {
+    id: "minutes",
+    label: "Minutas",
+    icon: <MessageSquare className="h-4 w-4" aria-hidden />,
+    href: "/admin/minutes",
+    match: (p) => p === "/admin/minutes" || p.startsWith("/admin/minutes/"),
+  },
+  {
+    id: "reports",
+    label: "Reportes",
+    icon: <FileText className="h-4 w-4" aria-hidden />,
+    href: "/admin/reports",
+    match: (p) => p === "/admin/reports" || p.startsWith("/admin/reports/"),
   },
 ];
 
@@ -377,10 +421,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Menu className="h-5 w-5" aria-hidden />
             </button>
             <div className="inline-flex items-center">
-              <BrandMark variant="topbar" />
+              <span className="text-[13px] font-medium tracking-tight text-[var(--chrome-text-muted)]">
+                PMO · aaS
+              </span>
             </div>
           </div>
-          <UserMenu user={user} variant="chrome" />
+          <div className="flex items-center gap-1">
+            {userReady && user ? <NotificationBell /> : null}
+            <UserMenu user={user} variant="chrome" />
+          </div>
         </header>
         <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
       </div>

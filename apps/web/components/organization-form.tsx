@@ -83,6 +83,8 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
       };
       if (mode === "create") {
         const created = await createOrganization(payload);
+        // BUG-019: tras crear, lleva al resumen con flag ?created=1.
+        // La edición vive ahora en /admin/organizations/[id]/edit.
         router.replace(`/admin/organizations/${created.id}?created=1`);
       } else if (initial) {
         const updated = await updateOrganization(initial.id, payload);

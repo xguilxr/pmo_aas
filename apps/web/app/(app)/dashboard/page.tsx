@@ -302,7 +302,7 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<AlertTriangle className="h-4 w-4" aria-hidden />}
           tone="warning"
-          href="/risks"
+          href="/admin/raid?kind=risks"
         />
         <KpiCard
           label="Riesgos severos"
@@ -310,21 +310,21 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<AlertOctagon className="h-4 w-4" aria-hidden />}
           tone="danger"
-          href="/risks?severity_min=13"
+          href="/admin/raid?kind=risks&severity_min=13"
         />
         <KpiCard
           label="Cambios en revisión"
           value={kpis?.change_requests_in_review ?? 0}
           loading={loadingKpis}
           icon={<GitPullRequest className="h-4 w-4" aria-hidden />}
-          href="/changes"
+          href="/admin/changes?status=in_review"
         />
         <KpiCard
           label="AIDs abiertos"
           value={kpis?.open_issues ?? 0}
           loading={loadingKpis}
           icon={<FileWarning className="h-4 w-4" aria-hidden />}
-          href="/issues"
+          href="/admin/raid?kind=issues"
         />
         <KpiCard
           label="Presupuesto total"
@@ -386,12 +386,12 @@ function DashboardInner() {
         aria-label="Plan vs Real"
         className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
       >
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-default)] p-4">
+        <header className="flex flex-col gap-3 border-b border-[var(--border-default)] p-4 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
             <h2 className="text-base font-semibold text-[var(--color-primary)]">Plan vs Real</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2">
             <Select
               aria-label="Filtrar por organización"
               value={orgFilter}

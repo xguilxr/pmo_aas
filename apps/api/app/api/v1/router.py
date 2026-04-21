@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     branding,
     dashboard,
     modules,
+    notifications,
     organizations,
     project_areas,
     project_charters,
@@ -19,6 +20,7 @@ from app.api.v1.endpoints import (
     superadmin,
     superadmin_panel,
     tasks,
+    tenant_cross,
     users,
 )
 
@@ -45,11 +47,13 @@ api_router.include_router(modules.chg_router)
 api_router.include_router(modules.docs_router)
 api_router.include_router(modules.lessons_router)
 api_router.include_router(modules.minutes_router)
+api_router.include_router(notifications.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
 api_router.include_router(tasks.router)
 api_router.include_router(superadmin.router)
 api_router.include_router(superadmin_panel.router)
+api_router.include_router(tenant_cross.router)
 
 
 @api_router.get("/ping", tags=["meta"])

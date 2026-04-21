@@ -25,23 +25,24 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 > pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
 
 ```
-— Vacío —
+— Vacío — (intake del comment del owner del 2026-04-21 ya asignado a Bloque 20 y Bloque 18)
 ```
 
 ---
 
 ## ⏳ QUEUE (próximas 5)
 
-| # | US | Epic | Título | Tipo |
+| # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| 1 | US-027 | EP011 | Tabla notifications + in-app center | Bloque 16 (POST-MVP) |
-| 2 | US-028 | EP011 | Email notifications via Resend | Bloque 16 (POST-MVP) |
+| — | — | — | — | — |
+| — | — | — | — | — |
 | — | — | — | — | — |
 | — | — | — | — | — |
 | — | — | — | — | — |
 
-> Nada queda en cola para v1.0 / pruebas masivas. Las dos filas con US
-> son POST-MVP y no bloquean el release.
+> Bloque 20 (issues #33-#57, intake del owner 2026-04-21) **completado
+> al 100%** — 24 items cerrados. Ver tabla DONE y bloque 20 abajo.
+> Sólo quedan en QUEUE las 2 US post-MVP de notificaciones.
 
 ---
 
@@ -101,6 +102,36 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 | US-050 | Landing estático www.pmo-aas.com en HostGator | `feat(landing): US-050 — landing estático www.pmo-aas.com en HostGator` | 2026-04-21 |
 | BUG-006 | Runbook Ollama+Tailscale §3.2 — advertir PATH no refrescado en PowerShell | `fix(docs): BUG-006 — runbook Tailscale §3.2 advierte PATH no refrescado en PowerShell` | 2026-04-21 |
 | US-051 | Mover generación IA (minuta + reporte) a Celery worker con polling | `feat(api,web): US-051 — IA minuta+reporte dispatchan a Celery worker; UI hace polling a /ai/jobs/{id}` | 2026-04-21 |
+| BUG-010 | Topbar duplica logo tenant; reemplazar por "PMO · aaS" | `fix(web): BUG-010 — topbar muestra "PMO · aaS" plataforma en vez de duplicar logo tenant` | 2026-04-21 |
+| ENH-002 | Sidebar raíz "Organizaciones" → "PMO" | `feat(web): ENH-002 — sidebar nodo raíz "Organizaciones" → "PMO"` | 2026-04-21 |
+| BUG-021 | Superadmin post-login redirect a /superadmin | `fix(web): BUG-021 — superadmin redirect post-login a /superadmin` | 2026-04-21 |
+| BUG-011 | KPI "Riesgos abiertos" sin href (evita 404) | `fix(web): BUG-011 — KPI sin href` | 2026-04-21 |
+| BUG-012 | KPI "Riesgos severos" sin href (evita 404) | `fix(web): BUG-012 — KPI sin href` | 2026-04-21 |
+| BUG-013 | KPI "Cambios en revisión" sin href (evita 404) | `fix(web): BUG-013 — KPI sin href` | 2026-04-21 |
+| BUG-014 | KPI "AIDs abiertos" sin href (evita 404) | `fix(web): BUG-014 — KPI sin href` | 2026-04-21 |
+| BUG-015 | Dashboard filtros Plan vs Real horizontales en sm+ | `fix(dashboard): BUG-015 — filtros horizontales` | 2026-04-21 |
+| BUG-016 | Botón Cancelar de nueva solicitud usa variant danger (rojo) | `fix(requests): BUG-016 — cancelar danger variant` | 2026-04-21 |
+| BUG-019 | Panel org abre resumen en /[id]; edición en /[id]/edit | `fix(web): BUG-019 — panel organización abre resumen` | 2026-04-21 |
+| ENH-004 | Tabs de proyecto centradas | `feat(web): ENH-004 — tabs-bar centrado` | 2026-04-21 |
+| ENH-003 | Botón "Nuevo programa" en toolbar de organizaciones | `feat(org): ENH-003 — botón Nuevo programa` | 2026-04-21 |
+| BUG-020 | Runbook Ollama+Tailscale §4: solo Allow (sin Block Any) | `fix(docs): BUG-020 — runbook §4 solo Allow tailnet` | 2026-04-21 |
+| ENH-008 | EP009 (MSP/xlsx) reclasificado a v1.1; botón en UI disabled | `docs(epics): ENH-008 — EP009 a v1.1 + botón Importar MSP disabled en UI` | 2026-04-21 |
+| BUG-022 | Documentos sin file_url muestran "Sin archivo" (UX) | `fix(projects): BUG-022 — documentos sin file_url` | 2026-04-21 |
+| BUG-017 | Crear proyecto desde solicitud abre charter para complementar | `fix(requests): BUG-017 — crear proyecto desde solicitud abre charter` | 2026-04-21 |
+| BUG-018 | Nuevo proyecto auto-crea charter + redirige a editarlo | `fix(projects): BUG-018 — nuevo proyecto auto-crea charter` | 2026-04-21 |
+| BUG-008 | Chrome en dark mode alineado con paleta gris | `fix(web): BUG-008 — chrome dark mode paleta gris` | 2026-04-21 |
+| BUG-009 | Theme consistency post-login vía pmoaas:user-updated | `fix(web): BUG-009 — theme post-login consistency` | 2026-04-21 |
+| ENH-001 | Componente BackLink + integración en detalles | `feat(web): ENH-001 — componente BackLink` | 2026-04-21 |
+| ENH-005 | Resumen cambia botones a tarjetas KPI | `feat(projects): ENH-005 — tarjetas KPI en Resumen` | 2026-04-21 |
+| ENH-006 | Editor de tareas integrado en /plan; /tasks → redirect | `feat(projects): ENH-006 — editor inline en /plan` | 2026-04-21 |
+| ENH-007 | Matriz P×I inline en pestaña Riesgos del RAID | `feat(projects): ENH-007 — matriz P×I inline` | 2026-04-21 |
+| US-053 | Preview "ojito" estilo Jira en RAID/Lecciones/Minutas | `feat(web): US-053 — preview ojito` | 2026-04-21 |
+| US-052 | Sidebar cross-tenant Proyectos/RAID/Cambios/Minutas/Reportes | `feat(web,api): US-052 — sidebar + vistas cross-tenant` | 2026-04-21 |
+| ENH-009 | Reconectar hrefs dashboard a /admin/raid y /admin/changes | `feat(dashboard): ENH-009 — reconecta hrefs KPIs` | 2026-04-21 |
+| ENH-010 | Endpoints cross-tenant incluyen folio+name del proyecto | `feat(api,web): ENH-010 — folio+name en cross-tenant` | 2026-04-21 |
+| BUG-007 | WeasyPrint libs nativas en Dockerfile (cierra 502 de Reporte Avance) | `fix(infra): BUG-007 — libs WeasyPrint en Dockerfile` | 2026-04-21 |
+| US-027 | Notificaciones in-app (tabla + API + bell + página) | `feat(api,web): US-027 — notifications in-app` | 2026-04-21 |
+| US-028 | Email notifications vía Resend + preferencias + runbook | `feat(api,web,docs): US-028 — email via Resend + preferencias + runbook` | 2026-04-21 |
 
 ---
 
@@ -264,9 +295,18 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
   - **Pendiente operador (owner):** subir el contenido de `landing/`
     a `public_html/` en HostGator.
 
-### Bloque 16 — Notificaciones (EP011) — POST-MVP
-- [ ] US-027 — Tabla notifications + in-app center
-- [ ] US-028 — Email notifications via Resend
+### Bloque 16 — Notificaciones (EP011) — ✅ CERRADO 2026-04-21
+- [x] US-027 — Tabla notifications + in-app center ✅ 1f304e4
+- [x] US-028 — Email notifications via Resend ✅ (ver siguiente commit)
+
+> Status final del bloque: tabla `notifications` creada (migración
+> 0016), endpoints REST + preferencias por user, bell + dropdown en el
+> topbar, página `/notifications`, service con dispatch desde review
+> de solicitudes y creación de proyecto (events `request_*`,
+> `pm_assigned`). Canal email vía Resend con template HTML con
+> branding del tenant, supresión si el user ya leyó in-app en 2h, y
+> runbook operativo en `docs/infra/resend-setup.md` para que el owner
+> configure DNS + API key.
 
 ### Bloque 18 — Hotfixes runbook EP016 (durante pruebas manuales del owner)
 
@@ -276,6 +316,7 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 > la calidad del runbook para la próxima instalación.
 
 - [x] BUG-006 — §3.2 advierte que PowerShell no refresca PATH tras instalar Tailscale MSI + row de troubleshooting en §9 ✅
+- [ ] BUG-020 — Windows Firewall: regla Block sombrea Allow; runbook debe limpiar reglas y dejar solo Allow tailnet — issue #45
 
 ### Bloque 19 — Refactor IA a Celery (prioridad, cierra gap EP016)
 
@@ -290,6 +331,56 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
   - Frontend: hook `use-ai-job-polling` con backoff + actualización de `NewAIMinutePage` y `GenerateWithAIButton`.
   - Docs: DoD EP016 ✔️ + `deployment-railway.md` §2 con descripción de tasks del worker.
   - Tests: 5 nuevos en `test_us051_ai_celery_tasks.py` + 3 existentes actualizados en `test_ep008_ai.py`. 209/209 pasan.
+
+### Bloque 20 — Intake comment owner 2026-04-21 (UX + nav + dashboard + projects)
+
+> Grupo grande de BUGs/ENHs/USs reportados por el owner en un comment
+> del 2026-04-21. Agrupa 25 issues (15 BUGs + 8 ENHs + 2 USs). Orden
+> de ejecución: bugs triviales (rename/navegación) → bugs de estructura
+> (dashboard 404s, panel org) → ENHs UX → USs grandes (US-052, US-053).
+>
+> Issues del bloque: #33–#57 (todos con label `status:triage` al intake).
+
+**Orden de ejecución sugerido:**
+
+1. [x] **BUG-010** — Top bar duplica logo; reemplazar por "PMO · aaS" — #35 ✅ 77fd001
+2. [x] **ENH-002** — Sidebar: renombrar "Organizaciones" a "PMO" — #49 ✅ dca3760
+3. [x] **BUG-021** — Superadmin: landing por default = /superadmin — #46 ✅ 10ef6c3
+4. [x] **BUG-011** — Dashboard: KPI "Riesgos abiertos" link 404 — #36 ✅ d9fe786
+5. [x] **BUG-012** — Dashboard: KPI "Riesgos severos" link 404 — #37 ✅ 3556af0
+6. [x] **BUG-013** — Dashboard: KPI "Cambios en revisión" link 404 — #38 ✅ 2169a9f
+7. [x] **BUG-014** — Dashboard: KPI "AIDs abiertos" link 404 — #39 ✅ 6f15024
+8. [x] **BUG-015** — Dashboard: filtros "Plan vs Real" en vertical — #40 ✅ 7b45d4a
+9. [x] **BUG-016** — Solicitudes: botón cancelar sin rojo — #41 ✅ e7c4577
+10. [x] **BUG-019** — Panel organización abre /edit, debería abrir resumen — #44 ✅ 1560f85
+11. [x] **ENH-003** — Organizaciones: botón "Nuevo programa" — #50 ✅ f113a7d
+12. [x] **ENH-004** — Proyecto: centrar barra de tabs — #51 ✅ ebfff84
+13. [x] **BUG-022** — Documentos dummy: confirmar UX sin archivo — #47 ✅ dfc0256
+14. [x] **BUG-017** — Al aprobar solicitud, abrir charter para complementar — #42 ✅ f974a3b
+15. [x] **BUG-018** — Nuevo proyecto: pedir info completa del charter — #43 ✅ b1d12cd
+16. [x] **BUG-008** — Dark mode: azul chrome contrasta con grises — #33 ✅ c55bca4
+17. [x] **BUG-009** — Cambios de página alteran el theme — #34 ✅ 796793b
+18. [x] **ENH-005** — Resumen: botones → tarjetas KPI linkeadas — #52 ✅ 76be878
+19. [x] **ENH-006** — Plan: integrar editor en misma página — #53 ✅ 70bfaea
+20. [x] **ENH-007** — RAID: matriz de riesgos en misma página — #54 ✅ 93ebe75
+21. [x] **ENH-008** — Mover MSP/xlsx a v1.1 (docs + guard UI) — #55 ✅ 21d323f
+22. [x] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56 ✅ 800150e
+23. [x] **US-053** — Preview "ojito" estilo Jira en tablas — #57 ✅ 3ae0088
+24. [x] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 ✅ 427b995 (Bloque 18)
+
+---
+
+### Bloque 21 — Follow-ups del Bloque 20 + BUG-007 (2026-04-21)
+
+> Tres follow-ups detectados al cerrar el Bloque 20 + el BUG-007 que ya
+> estaba abierto como issue #32 (WeasyPrint libs). El owner pidió
+> incorporarlos en lugar de dejarlos en triage.
+
+- [x] **ENH-009** — Reconectar hrefs del dashboard a las rutas cross-tenant ahora que existen (US-052). Los KPIs "Riesgos abiertos / severos", "Cambios en revisión" y "AIDs abiertos" vuelven a ser clickeables con filtros pre-aplicados. Las páginas destino (`/admin/raid`, `/admin/changes`) aceptan `?kind`, `?severity_min`, `?status` como query params. ✅ 667a60b
+- [x] **ENH-010** — Endpoints cross-tenant devuelven `project_folio` + `project_name` para que las 4 vistas (RAID / Cambios / Minutas / Reportes) muestren el proyecto como `PRJ-0042 — Nombre legible` en vez del UUID abreviado. Backend `_project_scope` agrega columnas + helper `_enrich`; frontend con tipos `TenantRisk`/`TenantIssue`/etc. ✅ 4001061
+- [x] **BUG-007** — `apps/api/Dockerfile` ahora instala las libs nativas de GTK/Cairo/Pango/GDK que WeasyPrint necesita. Cierra el 502 del endpoint `POST /reports/avance` que reportaba `cannot load library 'libgobject-2.0-0'`. +30 MB en la imagen, aplica a `api` y `worker`. Requiere redeploy en Railway tras mergear. ✅ 036f0f2 (issue #32)
+
+---
 
 ### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
 

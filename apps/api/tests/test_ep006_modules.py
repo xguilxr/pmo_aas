@@ -298,8 +298,11 @@ async def test_us020_filter_by_category(client, db_session):
         headers=auth["_authz"],
     )
     items = r.json()
-    assert len(items) == 1
-    assert items[0]["category"] == "charter"
+    # BUG-018: al crear el proyecto auto-se genera un Document charter
+    # con el charter del proyecto; luego el test agrega otro charter
+    # manual → total 2.
+    assert len(items) == 2
+    assert all(d["category"] == "charter" for d in items)
 
 
 @pytest.mark.asyncio

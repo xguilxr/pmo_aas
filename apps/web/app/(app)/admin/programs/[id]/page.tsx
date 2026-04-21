@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AlertTriangle, FolderKanban, Network, TrendingUp } from "lucide-react";
 
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -123,18 +124,27 @@ export default function ProgramSummaryPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <Breadcrumb
-        items={[
-          { href: "/admin/organizations", label: "Organizaciones" },
-          data.organization_name
-            ? {
-                href: `/admin/organizations/${data.organization_id}/panel`,
-                label: data.organization_name,
-              }
-            : { label: "Organización" },
-          { label: data.name },
-        ]}
-      />
+      <div className="flex items-center gap-2">
+        <BackLink
+          fallbackHref={
+            data.organization_id
+              ? `/admin/organizations/${data.organization_id}`
+              : "/admin/organizations"
+          }
+        />
+        <Breadcrumb
+          items={[
+            { href: "/admin/organizations", label: "Organizaciones" },
+            data.organization_name
+              ? {
+                  href: `/admin/organizations/${data.organization_id}`,
+                  label: data.organization_name,
+                }
+              : { label: "Organización" },
+            { label: data.name },
+          ]}
+        />
+      </div>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">

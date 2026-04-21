@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, ExternalLink, Info, XCircle } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  Info,
+  XCircle,
+} from "lucide-react";
 
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -177,14 +185,11 @@ export default function RequestDetailPage() {
     try {
       const out = await createProjectFromRequest(request.id, { pm_id: pmId });
       setCreateModal(false);
-      router.push(`/admin/requests/${request.id}?converted=1`);
-      setNotice({
-        kind: "success",
-        message: out.idempotent
-          ? "El proyecto ya estaba creado para esta solicitud."
-          : `Proyecto creado (${out.folio ?? out.project_id}).`,
-      });
-      await reload();
+      // BUG-017: tras aprobar + crear proyecto, abrir el charter para
+      // complementar información que la solicitud no captura
+      // (stakeholders extra, prioridad, riesgos, etc.). Si el proyecto
+      // ya existía (idempotent), aún así es útil abrir el charter.
+      router.push(`/admin/projects/${out.project_id}/charter?created=1`);
     } catch (err) {
       setNotice({
         kind: "danger",
@@ -220,13 +225,16 @@ export default function RequestDetailPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="space-y-2">
-        <nav className="text-xs text-[var(--color-tertiary)]">
-          <Link href="/admin/requests" className="hover:underline">
-            Solicitudes
-          </Link>
-          <span className="mx-1">/</span>
-          <span>{request.folio}</span>
-        </nav>
+        <div className="flex items-center gap-2">
+          <BackLink fallbackHref="/admin/requests" />
+          <nav className="text-xs text-[var(--color-tertiary)]">
+            <Link href="/admin/requests" className="hover:underline">
+              Solicitudes
+            </Link>
+            <span className="mx-1">/</span>
+            <span>{request.folio}</span>
+          </nav>
+        </div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -274,13 +282,22 @@ export default function RequestDetailPage() {
               </Button>
             ) : null}
             {request.project_id ? (
-              <Link
-                href={`/admin/projects/${request.project_id}`}
-                className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-accent)] hover:underline"
-              >
-                Ver proyecto
-                <ExternalLink className="h-4 w-4" aria-hidden />
-              </Link>
+              <>
+                <Link
+                  href={`/admin/projects/${request.project_id}/charter`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-accent)] hover:underline"
+                >
+                  Editar charter
+                  <FileText className="h-4 w-4" aria-hidden />
+                </Link>
+                <Link
+                  href={`/admin/projects/${request.project_id}`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-accent)] hover:underline"
+                >
+                  Ver proyecto
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                </Link>
+              </>
             ) : null}
           </div>
         </div>

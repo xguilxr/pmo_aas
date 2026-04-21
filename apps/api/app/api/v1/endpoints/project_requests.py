@@ -231,6 +231,36 @@ async def review_request(
         user_id=cu.id, tenant_id=tenant_id, entity_type="project_request", entity_id=str(pr.id),
         details={"comment": body.comment},
     )
+
+    # US-027/028: notificar al solicitante del resultado de la revisión.
+    # Si no hay `requested_by` (p. ej. solicitudes importadas) no hacemos
+    # nada — la notificación requiere user_id.
+    if pr.requested_by:
+        from app.services.notifications import (
+            REQUEST_APPROVED,
+            REQUEST_NEEDS_INFO,
+            REQUEST_REJECTED,
+            enqueue_notification,
+        )
+
+        type_map = {
+            "approve": (REQUEST_APPROVED, "Solicitud aprobada"),
+            "reject": (REQUEST_REJECTED, "Solicitud rechazada"),
+            "needs_info": (REQUEST_NEEDS_INFO, "Solicitud requiere información"),
+        }
+        ntype, title = type_map[body.decision]
+        await enqueue_notification(
+            db,
+            tenant_id=tenant_id,
+            user_id=pr.requested_by,
+            type=ntype,
+            title=f"{title}: {pr.title}",
+            body=body.comment,
+            entity_type="project_request",
+            entity_id=str(pr.id),
+            link=f"/admin/requests/{pr.id}",
+        )
+
     await db.commit()
     return ProjectRequestRead.model_validate(pr)
 
@@ -368,6 +398,22 @@ async def create_project_from_request(
             "charter_doc_id": str(charter_doc.id),
         },
     )
+
+    # US-027/028: notificar al PM asignado.
+    from app.services.notifications import PM_ASSIGNED, enqueue_notification
+
+    await enqueue_notification(
+        db,
+        tenant_id=tenant_id,
+        user_id=str(body.pm_id),
+        type=PM_ASSIGNED,
+        title=f"Te asignaron como PM de {project.name}",
+        body=f"Folio {folio}. Complementa el Project Charter antes de arrancar.",
+        entity_type="project",
+        entity_id=str(project.id),
+        link=f"/admin/projects/{project.id}/charter",
+    )
+
     await db.commit()
     return {
         "project_id": str(project.id),

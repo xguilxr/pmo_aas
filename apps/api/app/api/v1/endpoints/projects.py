@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -7,8 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_permission
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
+from app.models.modules import Document
 from app.models.organization import Organization
 from app.models.project import Project
+from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.schemas.project import (
@@ -125,10 +128,73 @@ async def create_project(
     await db.flush()
 
     db.add(ProjectMember(project_id=project.id, user_id=str(body.pm_id), role_in_project="pm"))
+
+    # BUG-018: autocrear charter + documento con la info que llega del form.
+    # Los campos no capturados (stakeholders extra, prioridad, alcance,
+    # beneficios, restricciones, riesgos) se complementan en la UI del
+    # charter (secciones 1-3). Mismo patrón que create_project_from_request.
+    charter = ProjectCharter(
+        tenant_id=tenant_id,
+        project_id=project.id,
+        request_id=None,
+        project_name=project.name,
+        description=project.description,
+        organization_id=project.organization_id,
+        sponsor=project.sponsor,
+        pm_id=str(body.pm_id),
+        project_type=project.type,
+        priority=project.priority,
+        created_by=cu.id,
+    )
+    db.add(charter)
+    await db.flush()
+
+    doc_folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
+    charter_doc = Document(
+        tenant_id=tenant_id,
+        project_id=project.id,
+        folio=doc_folio,
+        title=f"Project Charter — {project.name}",
+        description="Documento fundacional del proyecto, generado al crear.",
+        status="current",
+        category="charter",
+        file_url=f"/api/v1/projects/{project.id}/charter/pdf",
+        mime_type="text/html",
+        is_current=True,
+        uploaded_by=cu.id,
+        uploaded_at=datetime.now(UTC),
+        created_by=cu.id,
+    )
+    db.add(charter_doc)
+    await db.flush()
+
     await write_audit(
         db, action="project.create", module="projects", user_id=cu.id, tenant_id=tenant_id,
-        entity_type="project", entity_id=str(project.id), details={"folio": folio},
+        entity_type="project", entity_id=str(project.id),
+        details={
+            "folio": folio,
+            "charter_id": str(charter.id),
+            "charter_doc_id": str(charter_doc.id),
+        },
     )
+
+    # US-027/028: notificar PM asignado al crear el proyecto. No si el PM
+    # es quien lo creó (sería self-notification ruidosa).
+    if str(body.pm_id) != cu.id:
+        from app.services.notifications import PM_ASSIGNED, enqueue_notification
+
+        await enqueue_notification(
+            db,
+            tenant_id=tenant_id,
+            user_id=str(body.pm_id),
+            type=PM_ASSIGNED,
+            title=f"Te asignaron como PM de {project.name}",
+            body=f"Folio {folio}. Complementa el Project Charter antes de arrancar.",
+            entity_type="project",
+            entity_id=str(project.id),
+            link=f"/admin/projects/{project.id}/charter",
+        )
+
     await db.commit()
     return ProjectRead.model_validate(project)
 

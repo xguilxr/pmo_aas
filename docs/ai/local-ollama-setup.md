@@ -226,34 +226,49 @@ Ollama quedó en `0.0.0.0:11434`. Restringe el puerto para que solo el
 tailnet pueda llegar (defensa en profundidad: aunque el router no haga
 port-forward, bloqueamos por si se activa Wi-Fi pública).
 
-PowerShell admin:
+> **⚠️ BUG-020 (2026-04-21):** la versión anterior de este runbook
+> creaba **dos** reglas (`Allow tailnet only` + `Block non-tailnet`).
+> Windows Firewall evalúa **todas las reglas aplicables** y si hay un
+> Block que matchea, Block gana — incluyendo el tráfico tailnet que el
+> Allow intentaba permitir. Síntoma: `ConnectTimeout` desde el peer
+> Tailscale con el puerto escuchando y DNS OK. El fix es crear **solo**
+> la regla Allow y dejar que el default "block inbound unless allowed"
+> de Windows Firewall cubra el resto.
+
+PowerShell admin — primero limpia reglas previas (idempotente):
 
 ```powershell
+# Limpia cualquier regla Ollama* previa que pueda shadow-blockear
+Get-NetFirewallRule -DisplayName "Ollama*" -ErrorAction SilentlyContinue |
+  Remove-NetFirewallRule
+
+# Única regla: permite solo desde el rango CGNAT del tailnet
 New-NetFirewallRule `
-  -DisplayName "Ollama (tailnet only)" `
+  -DisplayName "Ollama allow tailnet" `
   -Direction Inbound `
   -LocalPort 11434 `
   -Protocol TCP `
   -Action Allow `
   -RemoteAddress 100.64.0.0/10
-
-# Opcional: bloquea el resto por si otra regla default lo permite
-New-NetFirewallRule `
-  -DisplayName "Ollama (block non-tailnet)" `
-  -Direction Inbound `
-  -LocalPort 11434 `
-  -Protocol TCP `
-  -Action Block `
-  -RemoteAddress Any
 ```
 
 `100.64.0.0/10` es el rango CGNAT que Tailscale usa para el tailnet —
 cubre todos los peers.
 
+Por qué **no** crear una regla Block complementaria:
+
+- El default de Windows Firewall para inbound es "deny unless allowed".
+  Con la regla Allow restringida al tailnet, cualquier IP fuera de ese
+  rango ya queda bloqueada por default — no hace falta una regla Block.
+- Si se agrega `-Action Block -RemoteAddress Any`, esa regla **también**
+  hace match con tráfico tailnet (Any incluye 100.64.x.x) y Block gana
+  sobre Allow en reglas con Action conflictivo para el mismo port/protocol.
+
 Verifica:
 
 ```powershell
 Get-NetFirewallRule -DisplayName "Ollama*" | Format-Table DisplayName, Enabled, Direction, Action
+# Debe aparecer exactamente 1 regla: "Ollama allow tailnet" / Allow / Inbound
 ```
 
 ---
@@ -378,6 +393,7 @@ en Railway (ver US-048 / RAILWAY_SETUP.md).
 | `tailscale ip -4` vacío | Servicio `Tailscale` detenido | `Start-Service Tailscale` |
 | Otro device del tailnet no resuelve `ollama-host.*.ts.net` | MagicDNS deshabilitado en el tailnet | Admin console → **DNS → Enable MagicDNS** |
 | `curl http://100.x.y.z:11434` desde peer da timeout | Windows Firewall tira el paquete / Ollama solo en `127.0.0.1` | Paso 2.5 + paso 4 |
+| `ConnectTimeout` desde el worker a Ollama con `netstat` mostrando `0.0.0.0:11434 LISTENING` y `dig` / resolución DNS OK (BUG-020) | Existen 2 reglas Windows Firewall "Ollama*": una Allow tailnet + una Block Any. Block gana porque Any incluye 100.64.x.x. | `Get-NetFirewallRule -DisplayName "Ollama*" \| Remove-NetFirewallRule` y recrear solo la Allow (§4). Nunca dejar una regla Block cubriendo el mismo puerto. |
 | `curl http://ollama-host.*.ts.net` resuelve pero conecta a 127.0.0.1 | El peer origen tiene `accept-dns=false` y resolvió localmente | `tailscale up --accept-dns=true` en el peer origen |
 | `401` / `403` al probar desde el worker | — | Ya no aplica: sin CF-Access no hay auth. Si ves un 403, revisa que no haya un proxy intermedio (no debería haberlo) |
 | `tailscale ping ollama-host` alto (> 200 ms) | DERP relay en vez de ruta directa | Revisa NAT del router; considera habilitar UPnP o configurar port forwarding de Tailscale (opcional) |
@@ -415,8 +431,8 @@ nssm stop TailscaledService 2>$null; nssm remove TailscaledService confirm 2>$nu
 #    - Admin console → Machines → ollama-host → menú → "Delete"
 
 # 6. Revertir firewall rules
-Remove-NetFirewallRule -DisplayName "Ollama (tailnet only)"
-Remove-NetFirewallRule -DisplayName "Ollama (block non-tailnet)"
+Get-NetFirewallRule -DisplayName "Ollama*" -ErrorAction SilentlyContinue |
+  Remove-NetFirewallRule
 
 # 7. Restaurar Ollama a localhost
 [System.Environment]::SetEnvironmentVariable("OLLAMA_HOST", $null, "User")

@@ -3,19 +3,25 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { BarChart3, ExternalLink, ListTree, Rows3 } from "lucide-react";
+import { BarChart3, ListTree, Plus, Rows3, Trash2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ApiError } from "@/lib/api";
 import {
   TASK_STATUS_LABEL,
+  createTask,
+  deleteTask,
   getGantt,
   listTasks,
   type GanttData,
   type Task,
+  type TaskStatus,
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
 
@@ -55,7 +61,15 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function TaskList({ tasks, loading }: { tasks: Task[]; loading: boolean }) {
+function TaskList({
+  tasks,
+  loading,
+  onDelete,
+}: {
+  tasks: Task[];
+  loading: boolean;
+  onDelete?: (t: Task) => void;
+}) {
   if (loading) {
     return (
       <div className="space-y-2 p-4">
@@ -83,6 +97,7 @@ function TaskList({ tasks, loading }: { tasks: Task[]; loading: boolean }) {
             <th className="px-3 py-2 font-medium">Fin</th>
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
+            {onDelete ? <th className="w-10 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
         <tbody>
@@ -112,6 +127,19 @@ function TaskList({ tasks, loading }: { tasks: Task[]; loading: boolean }) {
               <td className="px-3 py-2">
                 <StatusBadge status={t.status} />
               </td>
+              {onDelete ? (
+                <td className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => onDelete(t)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
+                    aria-label={`Eliminar ${t.name}`}
+                    title="Eliminar"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
@@ -133,6 +161,21 @@ function PlanInner() {
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ENH-006: editor de tareas inline (crear + eliminar) sin depender de
+  // una página extra /tasks.
+  const [newOpen, setNewOpen] = useState(false);
+  const [newForm, setNewForm] = useState({
+    name: "",
+    wbs: "",
+    start_date: "",
+    end_date: "",
+    duration_days: "",
+    progress: "0",
+    is_milestone: false,
+    status: "not_started" as TaskStatus,
+  });
+  const [creating, setCreating] = useState(false);
+
   function setModeAndUrl(next: Mode) {
     setMode(next);
     const params = new URLSearchParams(searchParams.toString());
@@ -144,38 +187,74 @@ function PlanInner() {
     );
   }
 
-  useEffect(() => {
-    let cancelled = false;
+  async function loadTasksAndGantt() {
     setLoadingTasks(true);
-    listTasks(id)
-      .then((rows) => {
-        if (!cancelled) setTasks(rows);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(
-            err instanceof ApiError ? err.message : "No se pudieron cargar las tareas",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTasks(false);
-      });
     setLoadingGantt(true);
-    getGantt(id)
-      .then((d) => {
-        if (!cancelled) setGantt(d);
-      })
-      .catch(() => {
-        /* el Gantt falla silencioso; el error del listado cubre el caso */
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingGantt(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const rows = await listTasks(id);
+      setTasks(rows);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudieron cargar las tareas");
+    } finally {
+      setLoadingTasks(false);
+    }
+    try {
+      const d = await getGantt(id);
+      setGantt(d);
+    } catch {
+      /* el Gantt falla silencioso; el error del listado cubre el caso */
+    } finally {
+      setLoadingGantt(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadTasksAndGantt();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function submitNewTask() {
+    setCreating(true);
+    setError(null);
+    try {
+      await createTask(id, {
+        name: newForm.name,
+        wbs: newForm.wbs || null,
+        start_date: newForm.start_date || null,
+        end_date: newForm.end_date || null,
+        duration_days: newForm.duration_days ? Number(newForm.duration_days) : null,
+        progress: Number(newForm.progress) || 0,
+        is_milestone: newForm.is_milestone,
+        status: newForm.status,
+      });
+      setNewOpen(false);
+      setNewForm({
+        name: "",
+        wbs: "",
+        start_date: "",
+        end_date: "",
+        duration_days: "",
+        progress: "0",
+        is_milestone: false,
+        status: "not_started",
+      });
+      await loadTasksAndGantt();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo crear la tarea");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleDeleteTask(t: Task) {
+    if (!window.confirm(`Eliminar tarea "${t.name}"?`)) return;
+    try {
+      await deleteTask(t.id);
+      await loadTasksAndGantt();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo eliminar la tarea");
+    }
+  }
 
   const listBlock = useMemo(
     () => (
@@ -187,17 +266,20 @@ function PlanInner() {
               Lista de tareas
             </h2>
           </div>
-          <Link
-            href={`/admin/projects/${id}/tasks`}
-            className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setNewOpen(true)}
+            aria-label="Nueva tarea"
           >
-            Abrir editor completo
-            <ExternalLink className="h-3 w-3" aria-hidden />
-          </Link>
+            <Plus className="h-4 w-4" aria-hidden />
+            Nueva tarea
+          </Button>
         </header>
-        <TaskList tasks={tasks} loading={loadingTasks} />
+        <TaskList tasks={tasks} loading={loadingTasks} onDelete={handleDeleteTask} />
       </section>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tasks, loadingTasks, id],
   );
 
@@ -296,6 +378,102 @@ function PlanInner() {
           {ganttBlock}
         </div>
       )}
+
+      <Modal
+        open={newOpen}
+        onClose={() => setNewOpen(false)}
+        title="Nueva tarea"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setNewOpen(false)} disabled={creating}>
+              Cancelar
+            </Button>
+            <Button onClick={submitNewTask} loading={creating} disabled={!newForm.name.trim()}>
+              Crear
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Nombre *
+            </span>
+            <Input
+              value={newForm.name}
+              onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
+              required
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">WBS</span>
+            <Input
+              value={newForm.wbs}
+              onChange={(e) => setNewForm({ ...newForm, wbs: e.target.value })}
+              placeholder="1.2.3"
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Estado
+            </span>
+            <Select
+              value={newForm.status}
+              onChange={(e) =>
+                setNewForm({ ...newForm, status: e.target.value as TaskStatus })
+              }
+            >
+              {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
+                <option key={k} value={k}>
+                  {TASK_STATUS_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Inicio
+            </span>
+            <Input
+              type="date"
+              value={newForm.start_date}
+              onChange={(e) => setNewForm({ ...newForm, start_date: e.target.value })}
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Fin
+            </span>
+            <Input
+              type="date"
+              value={newForm.end_date}
+              onChange={(e) => setNewForm({ ...newForm, end_date: e.target.value })}
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Avance (0-100)
+            </span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={newForm.progress}
+              onChange={(e) => setNewForm({ ...newForm, progress: e.target.value })}
+            />
+          </label>
+          <label className="inline-flex items-center gap-2 self-end">
+            <input
+              type="checkbox"
+              checked={newForm.is_milestone}
+              onChange={(e) =>
+                setNewForm({ ...newForm, is_milestone: e.target.checked })
+              }
+            />
+            <span className="text-xs text-[var(--color-secondary)]">Hito</span>
+          </label>
+        </div>
+      </Modal>
     </div>
   );
 }

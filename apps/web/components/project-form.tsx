@@ -92,7 +92,11 @@ export function ProjectForm({ mode, initial }: Props) {
           budget: budget ? Number(budget) : null,
         };
         const p = await createProject(body);
-        router.replace(`/admin/projects/${p.id}?created=1`);
+        // BUG-018: el nuevo proyecto ya tiene charter; mandamos al form
+        // de charter para que el usuario complemente la información que
+        // el form básico no pide (stakeholders extra, alcance, beneficios,
+        // restricciones, riesgos).
+        router.replace(`/admin/projects/${p.id}/charter?created=1`);
       } else if (initial) {
         const updated = await updateProject(initial.id, {
           name: name.trim(),
