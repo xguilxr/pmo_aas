@@ -159,7 +159,35 @@ netstat -ano | Select-String "11434"
 
 ### 3.2 Login y alta del hostname
 
-Abre PowerShell **como administrador**:
+> **Antes de ejecutar `tailscale up`:** el MSI deja el binario en
+> `C:\Program Files\Tailscale\` y agrega esa ruta al PATH **del
+> sistema**, pero las ventanas de PowerShell que estaban abiertas
+> **antes** del install **no** recogen el cambio — siguen operando con
+> el PATH de su sesión inicial. Si intentas el comando en una terminal
+> vieja obtendrás `tailscale : The term 'tailscale' is not recognized`.
+>
+> Para evitarlo:
+>
+> 1. Verifica que el binario y el servicio existen (PowerShell normal):
+>    ```powershell
+>    Test-Path "C:\Program Files\Tailscale\tailscale.exe"  # True
+>    Get-Service Tailscale                                  # Running / Stopped
+>    ```
+>    Si `Test-Path` devuelve `False`, reinstala el MSI. Si el servicio
+>    está `Stopped`, `Start-Service Tailscale` (admin).
+> 2. **Cierra y vuelve a abrir** PowerShell **como administrador** —
+>    así la nueva sesión hereda el PATH actualizado.
+>
+> Alternativas si no quieres cerrar la sesión:
+>
+> - Usar la ruta completa: `& "C:\Program Files\Tailscale\tailscale.exe" up --hostname=ollama-host`.
+> - Refrescar el PATH en la sesión actual:
+>   ```powershell
+>   $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+>   ```
+
+En la PowerShell **como administrador** (recién abierta o con PATH
+refrescado):
 
 ```powershell
 tailscale up --hostname=ollama-host
@@ -345,6 +373,7 @@ en Railway (ver US-048 / RAILWAY_SETUP.md).
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
+| `tailscale : The term 'tailscale' is not recognized` en PowerShell tras instalar MSI | PATH del sistema no refrescado en la sesión actual de PowerShell | Cerrar y reabrir PowerShell (admin); o usar ruta completa `& "C:\Program Files\Tailscale\tailscale.exe" up ...`; o refrescar PATH con `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` |
 | `tailscale status` no lista peers | No hiciste login o el device está logged out | `tailscale up` + flujo de browser |
 | `tailscale ip -4` vacío | Servicio `Tailscale` detenido | `Start-Service Tailscale` |
 | Otro device del tailnet no resuelve `ollama-host.*.ts.net` | MagicDNS deshabilitado en el tailnet | Admin console → **DNS → Enable MagicDNS** |

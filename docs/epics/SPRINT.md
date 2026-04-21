@@ -126,6 +126,7 @@ Follow-ups arrastrados:
 | US-048 | Sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider | `feat(worker): US-048 — sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider` | 2026-04-21 |
 | US-049 | DNS routing pmo-aas.com (Railway + HostGator) | `docs(infra): US-049 — DNS routing pmo-aas.com (Railway + HostGator)` | 2026-04-21 |
 | US-050 | Landing estático www.pmo-aas.com en HostGator | `feat(landing): US-050 — landing estático www.pmo-aas.com en HostGator` | 2026-04-21 |
+| BUG-006 | Runbook Ollama+Tailscale §3.2 — advertir PATH no refrescado en PowerShell | `fix(docs): BUG-006 — runbook Tailscale §3.2 advierte PATH no refrescado en PowerShell` | 2026-04-21 |
 
 ---
 
@@ -292,6 +293,15 @@ Follow-ups arrastrados:
 ### Bloque 16 — Notificaciones (EP011) — POST-MVP
 - [ ] US-027 — Tabla notifications + in-app center
 - [ ] US-028 — Email notifications via Resend
+
+### Bloque 18 — Hotfixes runbook EP016 (durante pruebas manuales del owner)
+
+> Bugs y ajustes al runbook `docs/ai/local-ollama-setup.md` detectados
+> cuando el owner ejecuta el procedimiento en PC real. Se abren como
+> hotfix siguiendo el patrón del Bloque 13. No bloquean v1.0; aumentan
+> la calidad del runbook para la próxima instalación.
+
+- [x] BUG-006 — §3.2 advierte que PowerShell no refresca PATH tras instalar Tailscale MSI + row de troubleshooting en §9 ✅
 
 ### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
 
