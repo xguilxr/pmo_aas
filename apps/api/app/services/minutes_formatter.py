@@ -1,4 +1,4 @@
-"""Formateador estandarizado de Minuta (US-NEW-040, EP014).
+"""Formateador estandarizado de Minuta (US-040, EP014).
 
 Convierte una MeetingMinute en el formato corporativo:
 

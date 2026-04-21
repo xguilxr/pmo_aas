@@ -96,7 +96,7 @@ const TABS: ProjectTab[] = [
 ];
 
 /**
- * Barra de tabs del detalle de proyecto (US-NEW-035 / supersede US-NEW-017).
+ * Barra de tabs del detalle de proyecto (US-035 / supersede US-017).
  * Se renderiza como parte del layout del proyecto, de modo que persiste
  * cruzando las sub-rutas de módulos: el usuario cambia de módulo sin
  * perder el header ni el contexto visual.

@@ -55,7 +55,7 @@ async def list_org_panels(
     cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Listado de organizaciones con métricas agregadas (US-NEW-006).
+    """Listado de organizaciones con métricas agregadas (US-006).
 
     Ejecuta queries paralelas de counts por organización para evitar N+1.
     """
@@ -224,7 +224,7 @@ async def get_org_panel(
     cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Panel read-only de recursos reales de la organización (US-NEW-033).
+    """Panel read-only de recursos reales de la organización (US-033).
 
     Cualquier usuario autenticado del tenant puede verlo. Cross-tenant → 404.
     El botón "Editar" en la UI se muestra sólo a admins; esta API no hace
@@ -506,7 +506,7 @@ async def program_summary(
     cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Resumen agregado del programa (US-NEW-034).
+    """Resumen agregado del programa (US-034).
 
     Auth-only; cross-tenant → 404. Devuelve info del programa + agregados
     (counts por fase y salud, presupuestos), lista de proyectos y top 10
@@ -672,7 +672,7 @@ async def delete_program(
     return Response(status_code=204)
 
 
-# -- Business Units (US-NEW-003) ----
+# -- Business Units (US-003) ----
 business_units_router = APIRouter(tags=["business-units"])
 
 
@@ -894,7 +894,7 @@ async def delete_business_unit(
     return Response(status_code=204)
 
 
-# -- Departments (US-NEW-004) ----
+# -- Departments (US-004) ----
 departments_router = APIRouter(tags=["departments"])
 
 

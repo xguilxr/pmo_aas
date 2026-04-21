@@ -202,7 +202,7 @@ async def test_tcmt001_isolation_orgs(client, db_session):
 
 
 # ==============================================================================
-# US-NEW-003 — CRUD Business Units
+# US-003 — CRUD Business Units
 # ==============================================================================
 
 
@@ -338,7 +338,7 @@ async def test_bu_tenant_isolation(client, db_session):
 
 
 # ==============================================================================
-# US-NEW-004 — CRUD Departments
+# US-004 — CRUD Departments
 # ==============================================================================
 
 
@@ -472,7 +472,7 @@ async def test_tcnew007_dept_delete_with_active_program(client, db_session):
 
 
 # ==============================================================================
-# US-NEW-006 — Vista paneles de organizaciones (métricas)
+# US-006 — Vista paneles de organizaciones (métricas)
 # ==============================================================================
 
 

@@ -127,7 +127,7 @@ class ChangeRequestRead(BaseModel):
 
 
 # ---------- Documents ----------
-# US-NEW-020: categorías extendidas — el charter, export RAID, transcripts
+# US-020: categorías extendidas — el charter, export RAID, transcripts
 # y minutas ahora tienen su propia clasificación para filtrado y UI.
 DocumentCategory = Literal[
     "charter",

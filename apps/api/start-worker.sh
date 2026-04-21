@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# US-NEW-048 — Wrapper del worker Celery con sidecar Tailscale.
+# US-048 — Wrapper del worker Celery con sidecar Tailscale.
 #
 # Flujo:
 #  1. Arranca `tailscaled` en user-space networking (Railway NO da /dev/net/tun).

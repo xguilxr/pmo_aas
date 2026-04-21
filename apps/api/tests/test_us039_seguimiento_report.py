@@ -1,4 +1,4 @@
-"""US-NEW-039 — Reporte de Seguimiento de Actividades."""
+"""US-039 — Reporte de Seguimiento de Actividades."""
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -43,7 +43,7 @@ async def _seed_project(db_session, tenant, folio="SP-0001"):
 
 
 @pytest.mark.asyncio
-async def test_usnew039_generate_and_groups(client, db_session):
+async def test_us039_generate_and_groups(client, db_session):
     t, auth = await _admin(client, db_session)
     p = await _seed_project(db_session, t)
     cut = date(2026, 4, 20)
@@ -100,7 +100,7 @@ async def test_usnew039_generate_and_groups(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew039_persists_snapshot(client, db_session):
+async def test_us039_persists_snapshot(client, db_session):
     t, auth = await _admin(client, db_session, slug="seg-b")
     p = await _seed_project(db_session, t, folio="SP-0002")
 
@@ -129,7 +129,7 @@ async def test_usnew039_persists_snapshot(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew039_redownload_uses_snapshot(client, db_session):
+async def test_us039_redownload_uses_snapshot(client, db_session):
     t, auth = await _admin(client, db_session, slug="seg-c")
     p = await _seed_project(db_session, t, folio="SP-0003")
 
@@ -157,7 +157,7 @@ async def test_usnew039_redownload_uses_snapshot(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew039_cross_tenant_404(client, db_session):
+async def test_us039_cross_tenant_404(client, db_session):
     t_a, auth_a = await _admin(client, db_session, slug="seg-ta")
     _, auth_b = await _admin(client, db_session, slug="seg-tb")
     p = await _seed_project(db_session, t_a, folio="SP-AAA")
@@ -168,7 +168,7 @@ async def test_usnew039_cross_tenant_404(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew039_empty_project_no_crash(client, db_session):
+async def test_us039_empty_project_no_crash(client, db_session):
     t, auth = await _admin(client, db_session, slug="seg-empty")
     p = await _seed_project(db_session, t, folio="SP-E")
     r = await client.post(

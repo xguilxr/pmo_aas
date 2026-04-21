@@ -103,7 +103,7 @@ cross-tenant.
 
 ## EP011 — Notificaciones (POST-MVP)
 
-**Migración pendiente** para US-NEW-027. Plan de shape:
+**Migración pendiente** para US-027. Plan de shape:
 
 ```sql
 CREATE TABLE notifications (
@@ -125,12 +125,12 @@ CREATE INDEX idx_notif_user_unread ON notifications(user_id, is_read, created_at
 CREATE INDEX idx_notif_tenant ON notifications(tenant_id, created_at DESC);
 ```
 
-US-NEW-028 (email via Resend) no requiere schema adicional; la cola sale
+US-028 (email via Resend) no requiere schema adicional; la cola sale
 del `notifications.type` leído por un worker Celery.
 
 ## EP013 / EP015 — Refactor navegación
 
-Sin migraciones nuevas. `tenants.logo_url` ya existía; US-NEW-031 reusa
+Sin migraciones nuevas. `tenants.logo_url` ya existía; US-031 reusa
 el campo + el storage local.
 
 ## EP014 — Entregables operativos
@@ -138,14 +138,14 @@ el campo + el storage local.
 Migraciones **0014** (`reports_period`) + **0015**
 (`reports_generator_cut_off`): añaden `reports.generator` (`'manual' |
 'ai' | 'avance' | 'seguimiento'`) y `reports.cut_off_date` + columnas de
-período. US-NEW-040 (formato estandarizado de minuta IA) es
+período. US-040 (formato estandarizado de minuta IA) es
 post-procesamiento sobre `meeting_minutes`; no toca BD.
 
 ## EP016 — IA local (Ollama vía Tailscale)
 
 Sin schema nuevo. La config del endpoint vive en
 `tenants.settings.ai.ollama` (JSONB) — `{base_url, model, timeout_sec}`
-tras US-NEW-047. Secrets CF-Access legacy, si existieran, quedan
+tras US-047. Secrets CF-Access legacy, si existieran, quedan
 archivados bajo `tenants.settings.ai.ollama.auth_legacy.*` (no borrados
 para auditoría).
 

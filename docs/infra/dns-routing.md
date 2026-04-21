@@ -1,7 +1,7 @@
 # DNS routing productivo — `pmo-aas.com`
 
 **ID:** `DOC-INFRA-DNS`
-**Alcance:** EP016 US-NEW-049 / Bloque 15 del sprint
+**Alcance:** EP016 US-049 / Bloque 15 del sprint
 **Referencias:** DEC-012 (BD en Railway, landing en HostGator), DEC-011
 (Tailscale reemplaza CF Tunnel — subdominio `ollama.*` retirado).
 

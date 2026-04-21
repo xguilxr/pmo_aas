@@ -622,7 +622,7 @@ async def export_minute(
     cu: CurrentUser = Depends(require_permission("minutes", "read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Exporta la minuta en el formato estandarizado (US-NEW-040).
+    """Exporta la minuta en el formato estandarizado (US-040).
 
     Formatos soportados: `pdf` (WeasyPrint), `docx` (python-docx),
     `md`, `txt`. Las acciones del RAID vienen agrupadas por área /

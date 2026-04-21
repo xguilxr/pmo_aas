@@ -36,7 +36,7 @@ async def scoped_project_ids(
     organization_id: UUID | None = None,
 ) -> list[str] | None:
     """Devuelve IDs de proyectos visibles al usuario según jerarquía de roles
-    (US-NEW-015). `None` significa "sin restricción" (admin-equivalente: ve
+    (US-015). `None` significa "sin restricción" (admin-equivalente: ve
     todo el tenant filtrable por org).
 
     Reglas:
@@ -88,7 +88,7 @@ async def kpis(
     tenant_id = _tenant(cu)
     active_phases = ["planning", "execution", "support"]
 
-    # Scoping por jerarquía (US-NEW-015): None = sin restricción (admin),
+    # Scoping por jerarquía (US-015): None = sin restricción (admin),
     # lista = sólo esos project_ids. Lista vacía = ningún proyecto visible.
     role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
     role_restricted = role_ids is not None
@@ -289,7 +289,7 @@ async def plan_vs_actual(
     if phase:
         stmt = stmt.where(Project.phase == phase)
 
-    # Scoping por jerarquía (US-NEW-015): Project Managers ven sólo lo suyo.
+    # Scoping por jerarquía (US-015): Project Managers ven sólo lo suyo.
     role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
     if role_ids is not None:
         stmt = stmt.where(Project.id.in_(role_ids or ["__none__"]))
@@ -299,7 +299,7 @@ async def plan_vs_actual(
     projects = (await db.execute(stmt)).scalars().all()
     projects.sort(key=lambda p: health_order.get(p.health_status, 99))
 
-    # Pre-cargar nombres de PM (US-BUG-003: columna PM Asignado).
+    # Pre-cargar nombres de PM (BUG-003: columna PM Asignado).
     pm_ids = sorted({p.pm_id for p in projects if p.pm_id})
     pm_names: dict[str, str] = {}
     if pm_ids:

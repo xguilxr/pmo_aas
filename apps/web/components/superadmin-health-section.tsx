@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/superadmin-panel";
 
 /**
- * Sección de Health reutilizable (US-NEW-026).
+ * Sección de Health reutilizable (US-026).
  *
  * Muestra un grid de HealthCard con estado API/DB/etc. Refresca cada 15s.
  */

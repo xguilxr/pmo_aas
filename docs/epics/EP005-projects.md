@@ -229,7 +229,7 @@ GET    /api/v1/projects/{id}/export
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-016 — Unificar Plan + Gantt en una sola pestaña
+### US-016 — Unificar Plan + Gantt en una sola pestaña
 
 **Como** PM
 **Quiero** ver la lista de tareas y el Gantt en una misma vista
@@ -245,11 +245,11 @@ GET    /api/v1/projects/{id}/export
 - [x] `/gantt` continúa funcionando como redirect permanente a
   `/plan?view=gantt`.
 
-**Estado de integración:** DONE (US-NEW-016).
+**Estado de integración:** DONE (US-016).
 
 ---
 
-### US-NEW-018 — Módulo Área/Organigrama del proyecto
+### US-018 — Módulo Área/Organigrama del proyecto
 
 **Como** PM
 **Quiero** registrar áreas y actores del proyecto (stakeholders sin
@@ -281,4 +281,4 @@ cuenta en la plataforma)
 - `test_areas_scoped_to_project` ✅
 - `test_areas_multitenant_isolation` ✅
 
-**Estado de integración:** DONE (US-NEW-018).
+**Estado de integración:** DONE (US-018).

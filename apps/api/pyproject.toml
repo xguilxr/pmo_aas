@@ -9,7 +9,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
-    "legacy: tests de comportamiento deprecado que se conservan como referencia (ver US-NEW-047)",
+    "legacy: tests de comportamiento deprecado que se conservan como referencia (ver US-047)",
 ]
 
 [tool.ruff]

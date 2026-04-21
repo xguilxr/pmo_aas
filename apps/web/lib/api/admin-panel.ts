@@ -116,7 +116,7 @@ export function bulkDeactivateUsers(userIds: string[]): Promise<{ affected: numb
   });
 }
 
-/* ===== Tenant info + stats (US-NEW-023) ===== */
+/* ===== Tenant info + stats (US-023) ===== */
 export type TenantStats = {
   active_users: number;
   total_users: number;

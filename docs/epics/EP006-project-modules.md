@@ -236,7 +236,7 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-019 — Consolidar RAID (vista unificada)
+### US-019 — Consolidar RAID (vista unificada)
 
 **Como** PM
 **Quiero** ver Riesgos + Acciones + Incidentes + Decisiones juntos
@@ -257,12 +257,12 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 - [x] `ISSUE_TYPE_LABEL['issue']` actualizado de "Incidencia" a
   "Incidente" (DEC-007).
 
-**Estado de integración:** DONE (US-NEW-019). Export XLSX nativo queda
+**Estado de integración:** DONE (US-019). Export XLSX nativo queda
 como follow-up; CSV cubre el caso de uso principal.
 
 ---
 
-### US-NEW-020 — Categorías de documentos actualizadas
+### US-020 — Categorías de documentos actualizadas
 
 **Criterios de aceptación:**
 - [x] Campo `category` en documentos acepta los 9 valores:
@@ -272,7 +272,7 @@ como follow-up; CSV cubre el caso de uso principal.
 - [x] `PATCH /api/v1/documents/{id}` permite actualizar title /
   description / category sin subir un archivo nuevo.
 - [x] El charter al crearse queda como `category='charter'`
-  (ya implementado en US-NEW-013).
+  (ya implementado en US-013).
 - [x] Category inválida → 422 (pydantic Literal).
 
 **Test Cases:**
@@ -281,11 +281,11 @@ como follow-up; CSV cubre el caso de uso principal.
 - `test_usnew020_filter_by_category` ✅
 - `test_usnew020_patch_document_category` ✅
 
-**Estado de integración:** DONE (US-NEW-020).
+**Estado de integración:** DONE (US-020).
 
 ---
 
-### US-NEW-021 — Consolidar pestañas de Minutas en 1
+### US-021 — Consolidar pestañas de Minutas en 1
 
 **Criterios de aceptación:**
 - [x] Entrada separada "Minuta IA" eliminada del sidebar.
@@ -303,11 +303,11 @@ como follow-up; CSV cubre el caso de uso principal.
   acciones adicionales junto al botón "Nuevo" (aplicable a cualquier
   módulo). La página Minutas lo usa para el CTA "Generar con IA".
 
-**Estado de integración:** DONE (US-NEW-021).
+**Estado de integración:** DONE (US-021).
 
 ---
 
-### US-NEW-022 — Módulo Reportes dentro del proyecto
+### US-022 — Módulo Reportes dentro del proyecto
 
 **Como** PM
 **Quiero** generar y gestionar reportes de estado del proyecto
@@ -346,6 +346,6 @@ como follow-up; CSV cubre el caso de uso principal.
 - `test_usnew022_filter_by_period` ✅
 - `test_usnew022_delete_draft` ✅
 
-**Estado de integración:** DONE (US-NEW-022). Caso de uso "lunes de
+**Estado de integración:** DONE (US-022). Caso de uso "lunes de
 persecución" queda como flow de UI a futuro (requiere KPIs específicos
 de acciones vencidas en el editor).

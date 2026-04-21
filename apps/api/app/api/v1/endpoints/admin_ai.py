@@ -1,9 +1,9 @@
 """Config y smoke de proveedores IA por-tenant.
 
 Historia:
-- US-NEW-045 (2026-04-20): versión inicial con Cloudflare Tunnel +
+- US-045 (2026-04-20): versión inicial con Cloudflare Tunnel +
   Service Token (CF-Access-Client-Id / CF-Access-Client-Secret).
-- US-NEW-047 (2026-04-21): pivote a Tailscale — se eliminan los campos
+- US-047 (2026-04-21): pivote a Tailscale — se eliminan los campos
   CF-Access. La config por-tenant pasa a `{base_url, model, timeout_sec}`.
   El canal PC→worker se asegura por tailnet WireGuard (ver EP016 +
   DEC-011). Los secrets Fernet legacy en BD se ignoran al leer y no se
@@ -52,7 +52,7 @@ class OllamaConfigRead(BaseModel):
 
 
 class OllamaConfigPatch(BaseModel):
-    # US-NEW-047: AnyHttpUrl acepta http://host.ts.net:11434 (MagicDNS
+    # US-047: AnyHttpUrl acepta http://host.ts.net:11434 (MagicDNS
     # tailnet) además de https. HttpUrl v2 validaba esquema y host;
     # AnyHttpUrl es el correcto para endpoints LAN/tailnet privados.
     base_url: AnyHttpUrl | None = None
@@ -97,7 +97,7 @@ async def update_ollama_config(
     ai_settings = dict(merged_settings.get("ai") or {})
     ollama_cfg = dict(ai_settings.get("ollama") or {})
 
-    # US-NEW-047: si el tenant tenía claves CF-Access legacy, las archivamos
+    # US-047: si el tenant tenía claves CF-Access legacy, las archivamos
     # bajo `auth_legacy` una sola vez (no se borran para auditoría) y dejamos
     # la rama activa limpia.
     legacy_keys = [
@@ -171,7 +171,7 @@ async def test_ai_connection(
     if not base_url:
         return TestConnectionResult(ok=False, error="base_url no configurado", code="NOT_CONFIGURED")
 
-    # US-NEW-047: canal Tailscale no requiere headers de auth. El request es
+    # US-047: canal Tailscale no requiere headers de auth. El request es
     # un GET plano al endpoint privado del tailnet.
     headers: dict[str, str] = {"Accept": "application/json"}
 

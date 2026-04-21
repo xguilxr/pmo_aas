@@ -1,8 +1,8 @@
 """Armadores de contexto para reportes ejecutables sin IA (EP014).
 
-- `build_avance_context`: Reporte de Avance de Proyecto (US-NEW-038).
+- `build_avance_context`: Reporte de Avance de Proyecto (US-038).
 - `build_seguimiento_context`: Reporte de Seguimiento de Actividades
-  agrupadas por responsable (US-NEW-039).
+  agrupadas por responsable (US-039).
 """
 from __future__ import annotations
 

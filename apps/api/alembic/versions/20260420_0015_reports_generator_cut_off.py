@@ -1,4 +1,4 @@
-"""reports.generator + reports.cut_off_date (EP014 — US-NEW-038/039)
+"""reports.generator + reports.cut_off_date (EP014 — US-038/039)
 
 Revision ID: 20260420_0015
 Revises: 20260420_0014

@@ -1,6 +1,6 @@
 # Railway config del servicio `api`.
 #
-# US-NEW-048 (2026-04-21): unifica builder a Dockerfile (compartido con
+# US-048 (2026-04-21): unifica builder a Dockerfile (compartido con
 # el worker). El servicio `api` NO arranca tailscaled — el CMD default
 # del Dockerfile ejecuta uvicorn directamente. Tailscale queda instalado
 # en la imagen pero inactivo para este servicio.

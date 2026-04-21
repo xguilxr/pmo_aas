@@ -1,4 +1,4 @@
-"""CRUD de áreas/actores del proyecto (US-NEW-018, EP005)."""
+"""CRUD de áreas/actores del proyecto (US-018, EP005)."""
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query

@@ -1,4 +1,4 @@
-"""Schemas del Project Charter (US-NEW-012, EP003).
+"""Schemas del Project Charter (US-012, EP003).
 
 El charter se compone de 4 secciones:
 - 1: Info general (nombre, descripción, org/BU/depto)

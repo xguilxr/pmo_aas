@@ -1,4 +1,4 @@
-"""project_requests: campos adicionales (US-NEW-011, EP003)
+"""project_requests: campos adicionales (US-011, EP003)
 
 Revision ID: 20260420_0011
 Revises: 20260420_0010

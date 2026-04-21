@@ -15,7 +15,7 @@ from app.db.base import Base, new_uuid
 
 
 class ProjectCharter(Base):
-    """Charter fundacional del proyecto (US-NEW-012, DEC-008).
+    """Charter fundacional del proyecto (US-012, DEC-008).
 
     Sección 4 (Gestión) se deriva al vuelo desde `projects` en el endpoint
     GET; esta tabla guarda únicamente las secciones 1-3 estructuradas.

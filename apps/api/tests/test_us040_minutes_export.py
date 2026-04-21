@@ -1,4 +1,4 @@
-"""US-NEW-040 — Formato estandarizado + export de Minuta IA."""
+"""US-040 — Formato estandarizado + export de Minuta IA."""
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -77,7 +77,7 @@ async def _seed_minute(db_session, tenant, *, folio="MIN-0001", project_folio="P
 
 
 @pytest.mark.asyncio
-async def test_usnew040_export_md_contains_sections(client, db_session):
+async def test_us040_export_md_contains_sections(client, db_session):
     t, auth = await _admin(client, db_session)
     m, _ = await _seed_minute(db_session, t)
     await db_session.commit()
@@ -100,7 +100,7 @@ async def test_usnew040_export_md_contains_sections(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew040_export_txt(client, db_session):
+async def test_us040_export_txt(client, db_session):
     t, auth = await _admin(client, db_session, slug="min-b")
     m, _ = await _seed_minute(db_session, t, folio="MIN-0002", project_folio="P-MIN2")
     await db_session.commit()
@@ -114,7 +114,7 @@ async def test_usnew040_export_txt(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew040_export_docx_is_valid(client, db_session):
+async def test_us040_export_docx_is_valid(client, db_session):
     t, auth = await _admin(client, db_session, slug="min-c")
     m, _ = await _seed_minute(db_session, t, folio="MIN-0003", project_folio="P-MIN3")
     await db_session.commit()
@@ -129,7 +129,7 @@ async def test_usnew040_export_docx_is_valid(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew040_export_pdf(client, db_session):
+async def test_us040_export_pdf(client, db_session):
     t, auth = await _admin(client, db_session, slug="min-d")
     m, _ = await _seed_minute(db_session, t, folio="MIN-0004", project_folio="P-MIN4")
     await db_session.commit()
@@ -143,7 +143,7 @@ async def test_usnew040_export_pdf(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew040_export_rejects_bad_format(client, db_session):
+async def test_us040_export_rejects_bad_format(client, db_session):
     t, auth = await _admin(client, db_session, slug="min-e")
     m, _ = await _seed_minute(db_session, t, folio="MIN-0005", project_folio="P-MIN5")
     await db_session.commit()
@@ -156,7 +156,7 @@ async def test_usnew040_export_rejects_bad_format(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew040_export_cross_tenant_404(client, db_session):
+async def test_us040_export_cross_tenant_404(client, db_session):
     t_a, auth_a = await _admin(client, db_session, slug="min-ta")
     _, auth_b = await _admin(client, db_session, slug="min-tb")
     m, _ = await _seed_minute(db_session, t_a, folio="MIN-X", project_folio="P-X")
@@ -168,7 +168,7 @@ async def test_usnew040_export_cross_tenant_404(client, db_session):
     assert r.status_code == 404
 
 
-def test_usnew040_view_groups_actions_by_owner(db_session):
+def test_us040_view_groups_actions_by_owner(db_session):
     """Test unitario: build_view agrupa acciones por owner/área."""
     from app.services.minutes_formatter import build_view
 

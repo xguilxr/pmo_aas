@@ -31,7 +31,7 @@ Mantener a los usuarios informados sobre eventos relevantes sin que tengan que r
 
 ---
 
-## # PENDING — US-NEW-027 — Tabla notifications + in-app notification center
+## # PENDING — US-027 — Tabla notifications + in-app notification center
 
 **Como** usuario autenticado
 **Quiero** ver mis notificaciones en un panel dentro del topbar
@@ -58,7 +58,7 @@ Mantener a los usuarios informados sobre eventos relevantes sin que tengan que r
 
 ---
 
-## # PENDING — US-NEW-028 — Email notifications via Resend
+## # PENDING — US-028 — Email notifications via Resend
 
 **Como** usuario
 **Quiero** recibir emails para eventos críticos

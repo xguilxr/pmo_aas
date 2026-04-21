@@ -1,4 +1,4 @@
-"""Smoke del endpoint Ollama local del tenant (EP016 US-NEW-047).
+"""Smoke del endpoint Ollama local del tenant (EP016 US-047).
 
 Uso:
     python -m app.scripts.ai_local_smoke --tenant {slug} [--prompt "..."]
@@ -8,9 +8,9 @@ Resuelve la config `settings.ai.ollama` del tenant y verifica:
   2. `/api/generate` con un prompt corto responde en ≤ timeout_sec.
 
 Historia:
-- US-NEW-045 (2026-04-20): versión original con headers CF-Access
+- US-045 (2026-04-20): versión original con headers CF-Access
   (Cloudflare Tunnel).
-- US-NEW-047 (2026-04-21): pivote a Tailscale — se eliminan los headers
+- US-047 (2026-04-21): pivote a Tailscale — se eliminan los headers
   CF-Access. El canal es tailnet privado y no requiere auth.
 
 Retorna exit code 0 si todo pasa, 1 si falla.

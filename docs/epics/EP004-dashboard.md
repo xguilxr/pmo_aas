@@ -153,7 +153,7 @@ GET /api/v1/dashboard/plan-vs-actual/export.csv
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-014 — Filtro de organización en dashboard
+### US-014 — Filtro de organización en dashboard
 
 **Como** Admin / PMO Manager
 **Quiero** filtrar todo el dashboard (KPIs, gráficas, Plan vs Real) por
@@ -174,11 +174,11 @@ una organización específica
 - `test_usnew014_kpis_filtered_by_org` — KPIs se filtran correctamente ✅
 - `test_usnew014_charts_filtered_by_org` — charts se filtran ✅
 
-**Estado de integración:** DONE (US-NEW-014).
+**Estado de integración:** DONE (US-014).
 
 ---
 
-### US-NEW-015 — KPIs respetan jerarquía de roles
+### US-015 — KPIs respetan jerarquía de roles
 
 **Como** usuario según su rol
 **Quiero** ver sólo los KPIs relevantes a mi scope
@@ -208,11 +208,11 @@ una organización específica
   pendiente para una US posterior (requiere modelar ownership de
   programas, hoy no existe en el schema).
 
-**Estado de integración:** DONE (US-NEW-015).
+**Estado de integración:** DONE (US-015).
 
 ---
 
-### US-BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM)
+### BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM)
 
 **Criterios de aceptación:**
 - [x] Filtros Organización + Fases al mismo nivel horizontal que el
@@ -227,4 +227,4 @@ una organización específica
 **Test Cases:**
 - `test_usbug003_pm_name_in_plan_vs_actual` — pm_id y pm_name presentes ✅
 
-**Estado de integración:** DONE (US-BUG-003).
+**Estado de integración:** DONE (BUG-003).

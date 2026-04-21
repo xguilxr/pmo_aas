@@ -8,7 +8,7 @@ from fastapi import UploadFile, status
 from app.core.config import settings
 from app.core.errors import AppError, validation_error
 
-MAX_LOGO_BYTES = 2 * 1024 * 1024  # 2 MB — criterio US-NEW-031
+MAX_LOGO_BYTES = 2 * 1024 * 1024  # 2 MB — criterio US-031
 
 # MIME -> extensión canónica
 ALLOWED_LOGO_MIMES: dict[str, str] = {

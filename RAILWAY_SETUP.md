@@ -53,7 +53,7 @@ Railway al importar el repo creó un servicio default. Bórralo y crea estos 3 d
 - Settings → **Config file path**: `worker.railway.toml` ← importante
 - Settings → **Watch Paths**: `apps/api/**`
 
-> **US-NEW-048 (2026-04-21):** el servicio `worker` corre con sidecar
+> **US-048 (2026-04-21):** el servicio `worker` corre con sidecar
 > Tailscale. El Dockerfile compartido de `apps/api` instala `tailscaled`
 > y el wrapper `start-worker.sh` (referenciado por `startCommand` en
 > `worker.railway.toml`) arranca el daemon en user-space antes de
@@ -91,7 +91,7 @@ Railway al importar el repo creó un servicio default. Bórralo y crea estos 3 d
 | `LOG_LEVEL` | `INFO` | |
 | `AI_MODE` | `disabled` | Después cambias a `gemini` o `ollama` |
 | `STORAGE_PATH` | `/data/uploads` | Volume mount (post-MVP) |
-| `TS_AUTHKEY` | `tskey-auth-…` | **Solo consumido por el worker** (US-NEW-048). Generar en Tailscale admin console con Reusable + Ephemeral + tag `tag:railway-worker`. Rotar cada 90 días — anotar en calendar |
+| `TS_AUTHKEY` | `tskey-auth-…` | **Solo consumido por el worker** (US-048). Generar en Tailscale admin console con Reusable + Ephemeral + tag `tag:railway-worker`. Rotar cada 90 días — anotar en calendar |
 | `TS_HOSTNAME` | `railway-worker` | Opcional. Default del `start-worker.sh` |
 
 > **Tip:** Railway tiene un botón "Raw Editor" en la pestaña Variables que te deja pegar
@@ -201,7 +201,7 @@ Branches recomendadas:
 
 ---
 
-## Servicio `worker` — sidecar Tailscale (US-NEW-048)
+## Servicio `worker` — sidecar Tailscale (US-048)
 
 El worker se une al tailnet privado del owner para consumir el endpoint
 Ollama local de cada tenant (`settings.ai.ollama.base_url =
@@ -220,14 +220,14 @@ http://ollama-host.<tailnet>.ts.net:11434`). Ver runbook:
    - `exec` a Celery. Si `tailscaled` muere, el container muere también
      y Railway lo reinicia.
 3. MagicDNS resuelve `ollama-host.<tailnet>.ts.net` dentro del tailnet.
-4. `OllamaProvider.generate()` (US-NEW-048) lee
+4. `OllamaProvider.generate()` (US-048) lee
    `tenants.settings.ai.ollama.{base_url, model, timeout_sec}` y hace el
    request HTTP directo — sin headers de auth.
 
 ### Requisitos previos
 
 1. **Runbook del owner ejecutado**: Ollama + Tailscale en la PC Windows
-   (US-NEW-046). La PC aparece como `ollama-host` en
+   (US-046). La PC aparece como `ollama-host` en
    <https://login.tailscale.com/admin/machines>.
 2. **ACL con tag `tag:railway-worker`**:
    <https://login.tailscale.com/admin/acls> → agregar
@@ -299,7 +299,7 @@ worker al procesar una minuta.
 | Seed no mostró credenciales | Users ya existen | Conéctate al Postgres → `SELECT email FROM users;` |
 | Login dice "credenciales inválidas" | El temp_password ya caducó o `must_change_password` | Resetea desde otro admin o vuelve a correr seed con DB vacía |
 
-### Caso: Railway no redeploya tras merge a `main` (US-BUG-004)
+### Caso: Railway no redeploya tras merge a `main` (BUG-004)
 
 Síntoma: se mergeó un PR a `main` (ej. PR #20, commit `62b16f8` tocando
 `apps/api/**`) y los servicios `api`/`worker`/`web` no redeployaron

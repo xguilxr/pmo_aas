@@ -1,4 +1,4 @@
-"""Project Charter endpoints (US-NEW-012 / US-NEW-013).
+"""Project Charter endpoints (US-012 / US-013).
 
 GET  /projects/{id}/charter         — lee el charter con sección 4 derivada.
 PATCH /projects/{id}/charter        — edita secciones 1–3.

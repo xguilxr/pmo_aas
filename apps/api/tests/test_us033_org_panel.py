@@ -1,4 +1,4 @@
-"""US-NEW-033 — Panel de organización con recursos reales."""
+"""US-033 — Panel de organización con recursos reales."""
 import pytest
 
 from tests.factories import create_admin_role, create_tenant, create_user, login
@@ -25,7 +25,7 @@ async def _member(client, db_session, tenant, username="member"):
 
 
 @pytest.mark.asyncio
-async def test_usnew033_panel_happy_path(client, db_session):
+async def test_us033_panel_happy_path(client, db_session):
     _, auth = await _admin(client, db_session, slug="panel-a")
 
     org = await client.post(
@@ -95,7 +95,7 @@ async def test_usnew033_panel_happy_path(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew033_panel_non_admin_can_read(client, db_session):
+async def test_us033_panel_non_admin_can_read(client, db_session):
     tenant, admin_auth = await _admin(client, db_session, slug="panel-b")
     user_auth = await _member(client, db_session, tenant)
 
@@ -116,7 +116,7 @@ async def test_usnew033_panel_non_admin_can_read(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew033_panel_cross_tenant_404(client, db_session):
+async def test_us033_panel_cross_tenant_404(client, db_session):
     _, auth_a = await _admin(client, db_session, slug="panel-c")
     _, auth_b = await _admin(client, db_session, slug="panel-d")
 
@@ -135,7 +135,7 @@ async def test_usnew033_panel_cross_tenant_404(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew033_panel_empty_org(client, db_session):
+async def test_us033_panel_empty_org(client, db_session):
     _, auth = await _admin(client, db_session, slug="panel-e")
     org = await client.post(
         "/api/v1/organizations",

@@ -1,4 +1,4 @@
-"""Tenant branding endpoints (US-NEW-031).
+"""Tenant branding endpoints (US-031).
 
 Upload + serve del logo del tenant para el chrome (topbar/sidebar).
 """

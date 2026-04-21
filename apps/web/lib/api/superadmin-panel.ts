@@ -169,7 +169,7 @@ export function unfreezeTenant(id: string): Promise<{ ok: boolean; frozen: boole
   );
 }
 
-// ---- US-NEW-042: Usuarios cross-tenant ----
+// ---- US-042: Usuarios cross-tenant ----
 
 export type SuperadminUserRow = {
   id: string;

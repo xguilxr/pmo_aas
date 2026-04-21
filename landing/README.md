@@ -1,6 +1,6 @@
 # PMO-aaS — landing `www.pmo-aas.com`
 
-**US-NEW-050** · Bloque 15 del sprint · DEC-012 (HostGator solo landing).
+**US-050** · Bloque 15 del sprint · DEC-012 (HostGator solo landing).
 
 Sitio estático de marketing que se sirve desde HostGator en
 `https://www.pmo-aas.com`. No tiene conexión a BD ni llamadas al API:
@@ -86,7 +86,7 @@ En el browser:
 1. `https://www.pmo-aas.com/` → landing visible.
 2. Click en "Iniciar sesión" → redirige a `https://app.pmo-aas.com/login`.
 3. `https://pmo-aas.com/` (apex) → 301 a `https://app.pmo-aas.com/`
-   (cubierto por la Redirect Rule del Bloque 15 US-NEW-049).
+   (cubierto por la Redirect Rule del Bloque 15 US-049).
 
 ---
 

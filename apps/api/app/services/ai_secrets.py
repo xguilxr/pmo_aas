@@ -1,10 +1,10 @@
-"""Cifrado de secretos IA por-tenant (DEPRECATED US-NEW-047).
+"""Cifrado de secretos IA por-tenant (DEPRECATED US-047).
 
 Historia:
-- EP016 US-NEW-045 (2026-04-20): utilidades Fernet para cifrar el
+- EP016 US-045 (2026-04-20): utilidades Fernet para cifrar el
   `CF-Access-Client-Secret` del tenant antes de persistirlo en
   `tenants.settings.ai.ollama.cf_access_client_secret_encrypted`.
-- US-NEW-047 (2026-04-21): DEPRECATED. El pivote a Tailscale (DEC-011)
+- US-047 (2026-04-21): DEPRECATED. El pivote a Tailscale (DEC-011)
   elimina el header CF-Access. Este módulo se mantiene para que tenants
   con secrets legacy archivados en `auth_legacy.*` puedan aún
   descifrarlos si se requiere consulta. No se invoca desde flujos

@@ -20,7 +20,7 @@ class ProjectRequestCreate(BaseModel):
     organization_id: UUID
     business_unit: str = Field(min_length=1, max_length=200)
     department: str = Field(min_length=1, max_length=200)
-    # FKs reales (US-NEW-011): opcionales hasta migrar datos legacy
+    # FKs reales (US-011): opcionales hasta migrar datos legacy
     business_unit_id: UUID | None = None
     department_id: UUID | None = None
     sponsor: str = Field(min_length=1, max_length=200)

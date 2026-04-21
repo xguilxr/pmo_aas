@@ -1,4 +1,4 @@
-"""US-NEW-038 — Reporte de Avance de Proyecto (Python, BD, PDF)."""
+"""US-038 — Reporte de Avance de Proyecto (Python, BD, PDF)."""
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -46,7 +46,7 @@ async def _seed_project(db_session, tenant, *, folio="P-0001"):
 
 
 @pytest.mark.asyncio
-async def test_usnew038_generate_and_pdf(client, db_session):
+async def test_us038_generate_and_pdf(client, db_session):
     t, auth = await _admin(client, db_session)
     p = await _seed_project(db_session, t)
     cut = date(2026, 4, 20)
@@ -127,7 +127,7 @@ async def test_usnew038_generate_and_pdf(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew038_persists_report_row(client, db_session):
+async def test_us038_persists_report_row(client, db_session):
     t, auth = await _admin(client, db_session, slug="avance-b")
     p = await _seed_project(db_session, t, folio="P-0002")
 
@@ -156,7 +156,7 @@ async def test_usnew038_persists_report_row(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew038_redownload_uses_snapshot(client, db_session):
+async def test_us038_redownload_uses_snapshot(client, db_session):
     t, auth = await _admin(client, db_session, slug="avance-c")
     p = await _seed_project(db_session, t, folio="P-0003")
 
@@ -187,7 +187,7 @@ async def test_usnew038_redownload_uses_snapshot(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew038_cross_tenant_404(client, db_session):
+async def test_us038_cross_tenant_404(client, db_session):
     t_a, auth_a = await _admin(client, db_session, slug="avance-ta")
     t_b, auth_b = await _admin(client, db_session, slug="avance-tb")
     p = await _seed_project(db_session, t_a, folio="P-AAA")
@@ -199,7 +199,7 @@ async def test_usnew038_cross_tenant_404(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew038_non_admin_cannot_generate(client, db_session):
+async def test_us038_non_admin_cannot_generate(client, db_session):
     t, auth = await _admin(client, db_session, slug="avance-d")
     p = await _seed_project(db_session, t, folio="P-0004")
     # user sin projects:update

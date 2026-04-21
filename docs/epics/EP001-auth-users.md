@@ -265,7 +265,7 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-007 — Toggle dark/light mode en dropdown de usuario
+### US-007 — Toggle dark/light mode en dropdown de usuario
 
 **Como** usuario autenticado
 **Quiero** cambiar entre modo oscuro y claro desde el menú de usuario
@@ -283,11 +283,11 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 - `TC-NEW-013` (integration) — Preferencia persiste entre sesiones ✅
 - `TC-NEW-013b` (integration) — theme inválido → 422 ✅
 
-**Estado de integración:** DONE (US-NEW-007).
+**Estado de integración:** DONE (US-007).
 
 ---
 
-### US-NEW-008 — Toggle de idioma en dropdown de usuario
+### US-008 — Toggle de idioma en dropdown de usuario
 
 **Como** usuario autenticado
 **Quiero** cambiar el idioma de la interfaz entre Español y English
@@ -305,11 +305,11 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
   esta US solo persiste la preferencia y la expone globalmente. El i18n
   routing completo (Next.js `[locale]` segments) es post-MVP.
 
-**Estado de integración:** DONE (US-NEW-008).
+**Estado de integración:** DONE (US-008).
 
 ---
 
-### US-NEW-009 — Página administrar cuenta (perfil + cambiar password)
+### US-009 — Página administrar cuenta (perfil + cambiar password)
 
 **Como** usuario autenticado
 **Quiero** editar mis datos personales y cambiar mi contraseña
@@ -330,10 +330,10 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 - `TC-NEW-015` (integration) — PATCH /users/me actualiza full_name ✅
 - `TC-NEW-015b` (integration) — full_name < 2 chars → 422 ✅
 
-**Estado de integración:** DONE (US-NEW-009), con avatar/phone como trabajo
+**Estado de integración:** DONE (US-009), con avatar/phone como trabajo
 de seguimiento.
 
-### US-NEW-010 — Color chrome #182e4e + Senior PMO como admin
+### US-010 — Color chrome #182e4e + Senior PMO como admin
 
 **Como** desarrollador
 **Quiero** el color de chrome correcto y Senior PMO con capacidades admin
@@ -355,4 +355,4 @@ de seguimiento.
 - `TC-NEW-018` (integration) — Senior PMO accede a `/admin/users` ✅.
 - `is_admin_equivalent` helper cubierto por test unitario ✅.
 
-**Estado de integración:** DONE (US-NEW-010).
+**Estado de integración:** DONE (US-010).

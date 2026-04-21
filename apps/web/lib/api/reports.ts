@@ -140,7 +140,7 @@ async function downloadPdfFromEndpoint(
   URL.revokeObjectURL(url);
 }
 
-/** US-NEW-038: genera Reporte de Avance y descarga el PDF resultante. */
+/** US-038: genera Reporte de Avance y descarga el PDF resultante. */
 export function generateAvanceReport(
   projectId: string,
   cutOffDate?: string,
@@ -160,7 +160,7 @@ export function downloadAvanceReport(reportId: string): Promise<void> {
   );
 }
 
-/** US-NEW-039: genera Reporte de Seguimiento y descarga el PDF. */
+/** US-039: genera Reporte de Seguimiento y descarga el PDF. */
 export function generateSeguimientoReport(
   projectId: string,
   cutOffDate?: string,

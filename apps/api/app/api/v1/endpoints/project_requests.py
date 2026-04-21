@@ -47,7 +47,7 @@ async def create_request(
     if org is None:
         raise business_rule("La organización no existe en tu tenant")
 
-    # Validar FKs BU/Depto si vienen (US-NEW-011).
+    # Validar FKs BU/Depto si vienen (US-011).
     if body.business_unit_id is not None:
         bu = (
             await db.execute(
@@ -309,7 +309,7 @@ async def create_project_from_request(
     await db.flush()
     pr.project_id = project.id
 
-    # Auto-crear Charter pre-llenado desde solicitud (US-NEW-012).
+    # Auto-crear Charter pre-llenado desde solicitud (US-012).
     # Líder de negocio y líder técnico quedan en blanco para completar.
     charter = ProjectCharter(
         tenant_id=tenant_id,
@@ -336,7 +336,7 @@ async def create_project_from_request(
     db.add(charter)
     await db.flush()
 
-    # Registrar el charter como Document del proyecto (US-NEW-013).
+    # Registrar el charter como Document del proyecto (US-013).
     # El archivo se genera on-demand desde /charter/pdf — aquí guardamos
     # una referencia interna para que aparezca en el módulo Documentos.
     doc_folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")

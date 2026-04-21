@@ -8,7 +8,7 @@ from app.db.base import Base, new_uuid
 
 
 class ProjectArea(Base):
-    """Áreas/actores/equipos del proyecto (US-NEW-018, DEC-009).
+    """Áreas/actores/equipos del proyecto (US-018, DEC-009).
 
     No son usuarios del sistema — se referencian como texto en tareas,
     RAIDs y minutas para registrar stakeholders sin cuenta.

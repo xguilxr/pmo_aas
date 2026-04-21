@@ -157,12 +157,12 @@ async def test_force_close_project(client, db_session):
 
 
 # ============================================================================
-# US-NEW-023 — Gestión de Tenant (admin panel)
+# US-023 — Gestión de Tenant (admin panel)
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_usnew023_get_tenant_info_with_stats(client, db_session):
+async def test_us023_get_tenant_info_with_stats(client, db_session):
     from decimal import Decimal
     from app.models.project import Project
 
@@ -198,7 +198,7 @@ async def test_usnew023_get_tenant_info_with_stats(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew023_patch_tenant_name_and_logo(client, db_session):
+async def test_us023_patch_tenant_name_and_logo(client, db_session):
     _, auth, _ = await _admin(client, db_session, slug="t23b")
     r = await client.patch(
         "/api/v1/admin/tenant",
@@ -216,7 +216,7 @@ async def test_usnew023_patch_tenant_name_and_logo(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew023_patch_ignores_slug(client, db_session):
+async def test_us023_patch_ignores_slug(client, db_session):
     _, auth, _ = await _admin(client, db_session, slug="t23c")
     r = await client.patch(
         "/api/v1/admin/tenant",
@@ -230,7 +230,7 @@ async def test_usnew023_patch_ignores_slug(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew023_patch_name_too_short(client, db_session):
+async def test_us023_patch_name_too_short(client, db_session):
     _, auth, _ = await _admin(client, db_session, slug="t23d")
     r = await client.patch(
         "/api/v1/admin/tenant",

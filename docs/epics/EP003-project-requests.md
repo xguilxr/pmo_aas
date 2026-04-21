@@ -182,7 +182,7 @@ GET    /api/v1/project-requests/{id}/attachments/{attId}/download
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-011 — Campos adicionales en solicitud + FK BU/Depto
+### US-011 — Campos adicionales en solicitud + FK BU/Depto
 
 **Como** solicitante
 **Quiero** capturar contactos (sponsor_email, solicitante) y detalles extra
@@ -212,11 +212,11 @@ GET    /api/v1/project-requests/{id}/attachments/{attId}/download
 - `test_usnew011_dept_in_wrong_bu` — depto no pertenece a BU → 422 ✅
 - `test_usnew011_bu_dept_fk_happy_path` — FKs correctas → 201 ✅
 
-**Estado de integración:** DONE (US-NEW-011). Charter (US-NEW-012) siguiente.
+**Estado de integración:** DONE (US-011). Charter (US-012) siguiente.
 
 ---
 
-### US-NEW-012 — Project Charter: tabla + generación al aprobar
+### US-012 — Project Charter: tabla + generación al aprobar
 
 **Como** PMO Manager
 **Quiero** que al aprobar una solicitud se genere automáticamente un
@@ -248,11 +248,11 @@ Project Charter
 - `test_charter_patch_edits_sections_1_to_3` ✅
 - `test_charter_404_when_missing` ✅
 
-**Estado de integración:** DONE (US-NEW-012).
+**Estado de integración:** DONE (US-012).
 
 ---
 
-### US-NEW-013 — Charter aparece como documento del proyecto
+### US-013 — Charter aparece como documento del proyecto
 
 **Como** PM
 **Quiero** ver el Project Charter listado en el módulo de Documentos del
@@ -271,4 +271,4 @@ proyecto
 **Test Cases:**
 - `TC-NEW-022` — charter aparece como documento con category='charter' ✅
 
-**Estado de integración:** DONE (US-NEW-013).
+**Estado de integración:** DONE (US-013).

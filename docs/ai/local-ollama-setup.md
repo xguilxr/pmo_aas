@@ -1,7 +1,7 @@
 # Runbook — Ollama local + Tailscale (Windows)
 
 **ID:** `DOC-AI-LOCAL-OLLAMA`
-**Alcance:** EP016 — US-NEW-046 (reemplaza US-NEW-044)
+**Alcance:** EP016 — US-046 (reemplaza US-044)
 **Dependencias:** [DOC-AI-LOCAL](./local-model-setup.md) (elección de modelo)
 
 Este runbook documenta cómo montar Ollama en una PC Windows y exponerlo
@@ -11,8 +11,8 @@ Token que rotar y el firewall del router del owner no necesita abrir
 ningún puerto.
 
 Reemplaza al runbook previo que usaba Cloudflare Tunnel + Cloudflare
-Access (`docs(ai): US-NEW-044`). La versión CF queda en historial de git
-(commit de US-NEW-044) por si se requiere consulta; el diseño actual es
+Access (`docs(ai): US-044`). La versión CF queda en historial de git
+(commit de US-044) por si se requiere consulta; el diseño actual es
 Tailscale por DEC-011 (ver `docs/epics/DECISIONS.md`).
 
 > Tiempo estimado: **~20 min** si Ollama ya está instalado y hay cuenta
@@ -45,9 +45,9 @@ Propiedades:
   se resuelve dentro del tailnet. Tráfico prefiere rutas directas (NAT
   traversal); si falla, DERP relay cifrado.
 - **Worker Railway**: corre `tailscaled` en user-space (Railway no da
-  `/dev/net/tun`) como sidecar antes de `celery`. Ver US-NEW-048.
+  `/dev/net/tun`) como sidecar antes de `celery`. Ver US-048.
 - **PMO config por-tenant**: `base_url = http://ollama-host.<tailnet>.ts.net:11434`.
-  No se guardan credenciales ni headers de auth (US-NEW-047 eliminó el
+  No se guardan credenciales ni headers de auth (US-047 eliminó el
   flujo CF-Access).
 
 ---
@@ -178,7 +178,7 @@ tailscale status --json | ConvertFrom-Json | Select-Object -ExpandProperty Magic
 ```
 
 > Si piensas correr también el worker en el mismo tailnet
-> (recomendado, ver US-NEW-048), **no cambies de tailnet** entre devices.
+> (recomendado, ver US-048), **no cambies de tailnet** entre devices.
 
 ---
 
@@ -223,7 +223,7 @@ Get-NetFirewallRule -DisplayName "Ollama*" | Format-Table DisplayName, Enabled, 
 ## 5. Smoke test desde otro device del tailnet
 
 Desde otro peer del tailnet (tu laptop secundaria, celular con Tailscale
-iOS, o el propio worker de Railway después de US-NEW-048):
+iOS, o el propio worker de Railway después de US-048):
 
 ```bash
 # Por IP tailnet:
@@ -273,7 +273,7 @@ nssm start TailscaledService
 
 ## 7. Generar `TS_AUTHKEY` para el worker de Railway
 
-El worker de Railway (US-NEW-048) necesita unirse al tailnet sin
+El worker de Railway (US-048) necesita unirse al tailnet sin
 intervención humana. Tailscale soporta **auth keys** reutilizables.
 
 1. Abrir <https://login.tailscale.com/admin/settings/keys>.
@@ -302,13 +302,13 @@ intervención humana. Tailscale soporta **auth keys** reutilizables.
 > Sin eso, `tailscale up --authkey=...` falla con "tag not allowed".
 
 El valor de la auth key se guarda como **Shared Variable** `TS_AUTHKEY`
-en Railway (ver US-NEW-048 / RAILWAY_SETUP.md).
+en Railway (ver US-048 / RAILWAY_SETUP.md).
 
 ---
 
 ## 8. Registrar el endpoint en PMO (por-tenant)
 
-> El formulario y endpoint de test-connection quedan en US-NEW-047.
+> El formulario y endpoint de test-connection quedan en US-047.
 > Esta sección asume ese refactor aplicado (ya no hay campos
 > CF-Access).
 
@@ -321,7 +321,7 @@ en Railway (ver US-NEW-048 / RAILWAY_SETUP.md).
   - `model` = `qwen2.5:7b-instruct-q4_K_M`.
   - `timeout_sec` = `60`.
 - Click **Probar conexión**.
-  - **Si el worker ya tiene el sidecar Tailscale arriba (US-NEW-048)**:
+  - **Si el worker ya tiene el sidecar Tailscale arriba (US-048)**:
     devuelve latencia en ms y `model_present=true`.
   - **Si el worker aún no tiene sidecar**: el endpoint corre desde `api`
     (que NO está en el tailnet) y va a fallar con timeout/unreachable.
@@ -343,7 +343,7 @@ en Railway (ver US-NEW-048 / RAILWAY_SETUP.md).
 | `401` / `403` al probar desde el worker | — | Ya no aplica: sin CF-Access no hay auth. Si ves un 403, revisa que no haya un proxy intermedio (no debería haberlo) |
 | `tailscale ping ollama-host` alto (> 200 ms) | DERP relay en vez de ruta directa | Revisa NAT del router; considera habilitar UPnP o configurar port forwarding de Tailscale (opcional) |
 | Ollama 500 al generar | RAM insuficiente / modelo corrupto | `ollama list`; `ollama pull qwen2.5:7b-instruct-q4_K_M`; revisar memoria libre |
-| El PMO cae a Gemini/Claude constantemente | Timeout al resolver MagicDNS desde el worker | `tailscale status` dentro del container del worker; `timeout_sec` más alto; ver US-NEW-048 |
+| El PMO cae a Gemini/Claude constantemente | Timeout al resolver MagicDNS desde el worker | `tailscale status` dentro del container del worker; `timeout_sec` más alto; ver US-048 |
 
 ### Logs útiles
 
@@ -388,7 +388,7 @@ Remove-NetFirewallRule -DisplayName "Ollama (block non-tailnet)"
 
 ### Rollback de CF Tunnel (desde el runbook anterior)
 
-Si habías ejecutado el runbook US-NEW-044 antes de este pivote, limpia
+Si habías ejecutado el runbook US-044 antes de este pivote, limpia
 los artefactos CF para evitar costos/confusión:
 
 ```powershell
@@ -425,9 +425,9 @@ parte del cleanup documentado en el Bloque 14 de SPRINT.md.
       generado y guardado en password manager.
 - [ ] Tag `tag:railway-worker` definido en ACL del tailnet.
 - [ ] Config en `/admin/tenant?tab=config` con `base_url` MagicDNS
-      guardado (después de US-NEW-047).
+      guardado (después de US-047).
 - [ ] Worker de Railway con sidecar `tailscaled` resuelve el hostname
-      (US-NEW-048 — dependencia aparte).
+      (US-048 — dependencia aparte).
 - [ ] Cleanup de CF Tunnel ejecutado (si aplica).
 
 ---
@@ -442,5 +442,5 @@ parte del cleanup documentado en el Bloque 14 de SPRINT.md.
 - nssm — <https://nssm.cc/usage>
 - Runbook relacionado (elección de modelo) — [DOC-AI-LOCAL](./local-model-setup.md)
 - Epic de integración — [EP016](../epics/EP016-local-ai-tunnel.md)
-- Post-procesamiento de minuta — [EP014 US-NEW-040](../epics/EP014-operational-deliverables.md)
-- Sidecar Tailscale en el worker — US-NEW-048 (pendiente en EP016)
+- Post-procesamiento de minuta — [EP014 US-040](../epics/EP014-operational-deliverables.md)
+- Sidecar Tailscale en el worker — US-048 (pendiente en EP016)

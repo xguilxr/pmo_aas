@@ -211,7 +211,7 @@ GET    /api/v1/admin/audit-logs/export.csv
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-023 — Gestión de Tenant (acciones propuestas)
+### US-023 — Gestión de Tenant (acciones propuestas)
 
 **Como** Admin / Senior PMO
 **Quiero** un panel para ver y editar la información de mi tenant
@@ -238,11 +238,11 @@ GET    /api/v1/admin/audit-logs/export.csv
 - `test_usnew023_patch_ignores_slug` ✅
 - `test_usnew023_patch_name_too_short` → 422 ✅
 
-**Estado de integración:** DONE (US-NEW-023).
+**Estado de integración:** DONE (US-023).
 
 ---
 
-### US-NEW-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+### US-024 — Gestión jerarquía org completa (BU + Depto) en Admin
 
 **Criterios de aceptación:**
 - [x] En `/admin/organizations/{id}`, debajo del formulario de edición
@@ -256,11 +256,11 @@ GET    /api/v1/admin/audit-logs/export.csv
 - [x] Botón "Ver proyectos" en el header de la sección → filtra
   `/admin/projects?organization_id={id}`.
 - [x] Deptos se cargan lazy al expandir la BU.
-- [x] Reutiliza los endpoints existentes (US-NEW-003/004); sin cambios
+- [x] Reutiliza los endpoints existentes (US-003/004); sin cambios
   de backend.
 
 **Notas:**
 - Modal de desactivar muestra el mensaje `BU_HAS_ACTIVE_DEPARTMENTS` o
   `DEPT_HAS_ACTIVE_CHILDREN` cuando aplica, sugiriendo el toggle force.
 
-**Estado de integración:** DONE (US-NEW-024).
+**Estado de integración:** DONE (US-024).

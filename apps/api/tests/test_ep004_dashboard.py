@@ -130,12 +130,12 @@ async def test_dashboard_tenant_isolation(client, db_session):
 
 
 # ============================================================================
-# US-NEW-014 — Filtro de organización en dashboard
+# US-014 — Filtro de organización en dashboard
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_usnew014_kpis_filtered_by_org(client, db_session):
+async def test_us014_kpis_filtered_by_org(client, db_session):
     """Dos orgs con proyectos distintos: filtro por org devuelve sólo los suyos."""
     t, auth, org_a = await _setup(client, db_session)
     # Segunda org dentro del mismo tenant
@@ -182,7 +182,7 @@ async def test_usnew014_kpis_filtered_by_org(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew014_charts_filtered_by_org(client, db_session):
+async def test_us014_charts_filtered_by_org(client, db_session):
     t, auth, org_a = await _setup(client, db_session)
     rb = await client.post(
         "/api/v1/organizations", json={"name": "OrgBeta"}, headers=auth["_authz"]
@@ -200,7 +200,7 @@ async def test_usnew014_charts_filtered_by_org(client, db_session):
 
 
 # ============================================================================
-# US-NEW-015 — KPIs respetan jerarquía de roles
+# US-015 — KPIs respetan jerarquía de roles
 # ============================================================================
 
 
@@ -222,7 +222,7 @@ async def _pm_role(db_session, tenant) -> "Role":
 
 
 @pytest.mark.asyncio
-async def test_usnew015_admin_sees_all(client, db_session):
+async def test_us015_admin_sees_all(client, db_session):
     """Admin-equivalente ve todos los proyectos del tenant."""
     t, auth, org_id = await _setup(client, db_session)
     await _seed_projects(db_session, str(t.id), org_id)
@@ -234,7 +234,7 @@ async def test_usnew015_admin_sees_all(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew015_pm_sees_only_assigned_projects(client, db_session):
+async def test_us015_pm_sees_only_assigned_projects(client, db_session):
     """Project Manager ve solo proyectos donde es pm_id o member."""
     from sqlalchemy import select as sa_select
     from app.models.project import Project
@@ -262,7 +262,7 @@ async def test_usnew015_pm_sees_only_assigned_projects(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew015_pm_sees_member_projects(client, db_session):
+async def test_us015_pm_sees_member_projects(client, db_session):
     """Project Manager también ve proyectos donde es miembro, no sólo pm_id."""
     from app.models.project_member import ProjectMember
 
@@ -292,7 +292,7 @@ async def test_usnew015_pm_sees_member_projects(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew015_pm_without_projects_sees_zero(client, db_session):
+async def test_us015_pm_without_projects_sees_zero(client, db_session):
     """Un PM sin proyectos asignados ve ceros."""
     t, _admin_auth, org_id = await _setup(client, db_session)
     await _seed_projects(db_session, str(t.id), org_id)
@@ -311,7 +311,7 @@ async def test_usnew015_pm_without_projects_sees_zero(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew015_charts_respect_role(client, db_session):
+async def test_us015_charts_respect_role(client, db_session):
     t, _admin_auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)
 
@@ -332,7 +332,7 @@ async def test_usnew015_charts_respect_role(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew015_plan_vs_actual_respects_role(client, db_session):
+async def test_us015_plan_vs_actual_respects_role(client, db_session):
     t, _admin_auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)
 
@@ -354,12 +354,12 @@ async def test_usnew015_plan_vs_actual_respects_role(client, db_session):
 
 
 # ============================================================================
-# US-BUG-003 — columna PM Asignado en Plan vs Real
+# BUG-003 — columna PM Asignado en Plan vs Real
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_usbug003_pm_name_in_plan_vs_actual(client, db_session):
+async def test_bug003_pm_name_in_plan_vs_actual(client, db_session):
     """/plan-vs-actual devuelve pm_id y pm_name para cada proyecto."""
     t, auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)

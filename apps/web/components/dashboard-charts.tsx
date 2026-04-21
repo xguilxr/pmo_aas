@@ -87,7 +87,7 @@ export function Bars({
 }: {
   data: Datum[];
   /** Altura objetivo en px para fallback; el contenedor usa aspect-ratio
-   *  para evitar distorsión (US-BUG-002). */
+   *  para evitar distorsión (BUG-002). */
   height?: number;
   ariaLabel: string;
   valueFormat?: (n: number) => string;

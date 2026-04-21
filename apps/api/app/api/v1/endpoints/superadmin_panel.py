@@ -281,7 +281,7 @@ async def platform_health(
     return {"db": db_ok, "api": True, "time": datetime.now(UTC).isoformat()}
 
 
-# ---- EP015 US-NEW-042: Usuarios cross-tenant ----
+# ---- EP015 US-042: Usuarios cross-tenant ----
 
 from pydantic import BaseModel, EmailStr, Field  # noqa: E402
 from app.core.errors import business_rule, forbidden  # noqa: E402
@@ -310,7 +310,7 @@ async def list_all_users(
     cu: CurrentUser = Depends(get_superadmin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Listado cross-tenant de usuarios con filtros (US-NEW-042)."""
+    """Listado cross-tenant de usuarios con filtros (US-042)."""
     stmt = select(User)
     if q:
         like = f"%{q.lower()}%"
@@ -413,7 +413,7 @@ async def update_user_as_superadmin(
     cu: CurrentUser = Depends(get_superadmin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Actualiza datos básicos de un usuario (US-NEW-042)."""
+    """Actualiza datos básicos de un usuario (US-042)."""
     target = await _load_user(db, user_id)
     _protect_other_superadmin(target, cu)
     data = body.model_dump(exclude_unset=True)
