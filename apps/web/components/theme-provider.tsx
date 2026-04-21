@@ -76,24 +76,40 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mql.removeEventListener("change", handler);
   }, [theme]);
 
-  // Sincronizar con el backend (si hay sesión)
+  // Sincronizar con el backend. BUG-009: además de sincronizar al mount,
+  // re-intentar cuando el user cambia (login/logout emite
+  // "pmoaas:user-updated"). Sin esto, el theme del backend no llegaba a
+  // aplicarse hasta que el usuario hiciera un full reload post-login, lo
+  // que desde la perspectiva del usuario se veía como "cambios de página
+  // generan cambio de theme".
   useEffect(() => {
-    if (!hasSession()) return;
     let cancelled = false;
-    getMyPreferences()
-      .then((prefs) => {
-        if (cancelled) return;
-        if (prefs.theme !== readStoredTheme()) {
-          window.localStorage.setItem(STORAGE_KEY, prefs.theme);
-          setThemeState(prefs.theme);
-          setResolved(applyTheme(prefs.theme));
-        }
-      })
-      .catch(() => {
-        /* silencioso: si 401, no forzamos nada */
-      });
+
+    const sync = () => {
+      if (!hasSession()) return;
+      getMyPreferences()
+        .then((prefs) => {
+          if (cancelled) return;
+          if (prefs.theme !== readStoredTheme()) {
+            window.localStorage.setItem(STORAGE_KEY, prefs.theme);
+            setThemeState(prefs.theme);
+            setResolved(applyTheme(prefs.theme));
+          }
+        })
+        .catch(() => {
+          /* silencioso: si 401, no forzamos nada */
+        });
+    };
+
+    sync();
+    if (typeof window !== "undefined") {
+      window.addEventListener("pmoaas:user-updated", sync);
+    }
     return () => {
       cancelled = true;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("pmoaas:user-updated", sync);
+      }
     };
   }, []);
 

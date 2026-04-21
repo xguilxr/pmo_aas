@@ -43,14 +43,24 @@ export function getStoredUser(): StoredUser | null {
   }
 }
 
+function emitUserUpdated(): void {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new CustomEvent("pmoaas:user-updated"));
+}
+
 export function setStoredUser(user: StoredUser): void {
   if (!isBrowser()) return;
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  // BUG-009: emitir "pmoaas:user-updated" para que los providers que
+  // dependen del user (theme, branding, app-shell) se re-sincronicen
+  // sin esperar a un full reload.
+  emitUserUpdated();
 }
 
 export function clearStoredUser(): void {
   if (!isBrowser()) return;
   window.localStorage.removeItem(USER_KEY);
+  emitUserUpdated();
 }
 
 export function getActiveTenantId(): string | null {
