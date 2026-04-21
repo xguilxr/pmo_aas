@@ -16,16 +16,28 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Dependencias runtime + Tailscale
+# Dependencias runtime + Tailscale + WeasyPrint native libs (BUG-007).
 # - curl + ca-certificates: para descargar y validar TLS
 # - iptables: requerido por tailscaled aun con --tun=userspace-networking
 #   (usa netfilter para algunas decisiones internas)
+# - libpango/libcairo/libgdk-pixbuf/libharfbuzz/fonts-dejavu: WeasyPrint
+#   carga estas libs nativas via cffi en runtime. Sin ellas, el import
+#   falla con `OSError: cannot load library 'libgobject-2.0-0'` y el
+#   reporte PDF devuelve 502 (ver BUG-007). La imagen slim no las incluye
+#   por default; agregan ~30 MB.
 # - build deps de psycopg/cffi quedan fuera; requirements.txt usa wheels.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
         iptables \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        libharfbuzz0b \
+        libcairo2 \
+        libgdk-pixbuf-2.0-0 \
+        fonts-dejavu-core \
+        shared-mime-info \
     && curl -fsSL https://tailscale.com/install.sh | sh \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
