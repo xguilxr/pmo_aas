@@ -9,38 +9,11 @@
 ```
 — Sin US activa —
 
-**Estado al 2026-04-21 (owner):** productivo v1.0 corre en Railway con
-tier superior; el costo marginal se cubre con licencias cobradas.
-EP012 (migración a MySQL HostGator) CANCELADO por DEC-013. DEC-002 y
-la parte "reabrir a v1.1" de DEC-012 quedan revocadas.
-
-Bloques 13 (hotfixes), 14 (EP016 v2 Tailscale) y 15 (DNS + landing)
-cerrados el 2026-04-21.
-
-**Pruebas masivas desbloqueadas.** Todo lo que Claude podía ejecutar
-en el repo está mergeado. Los pasos restantes son manuales del owner:
-
-1. Tailscale en PC Windows (docs/ai/local-ollama-setup.md).
-2. TS_AUTHKEY en Railway Shared Variables + ACL tag:railway-worker.
-3. DNS Cloudflare para pmo-aas.com (docs/infra/dns-routing.md).
-4. Subir landing/ a public_html/ en HostGator (landing/README.md).
-5. Cleanup CF Tunnel previo (opcional — ver runbook §10).
-
-POST-MVP, no bloquean v1.0 ni pruebas masivas:
-  Bloque 16 — EP011 Notificaciones in-app + email (US-027/028).
-
-Bloque 17 (EP012 MySQL HostGator): ❌ CANCELADO por DEC-013.
-
-Follow-ups arrastrados:
-- Harness Playwright no instalado: el test e2e superadmin-sidebar
-  quedó fuera de BUG-005.
-- Exportador Prometheus: el log estructurado ai_cascade_fallback
-  está listo, falta el exporter que lo convierta en métrica
-  ai_cascade_fallback_total{from,to}.
-- El botón "Probar conexión" del formulario OllamaLocalAiForm corre
-  desde api (no en tailnet) y siempre fallará; la UI ya lo explica.
-  Para validar realmente el canal, el owner dispara una minuta IA
-  desde el worker y observa los logs.
+US-051 cerrada 2026-04-21: el flujo de minutas + reportes ahora
+despacha a Celery worker (que tiene sidecar tailscaled). El endpoint
+devuelve 202 + job_id; la UI hace polling a GET /ai/jobs/{id} con
+backoff. Con AI_MODE=ollama en Railway la cascada corre desde el
+worker y sí alcanza ollama-host.<tailnet>.ts.net.
 ```
 
 ---
@@ -127,6 +100,7 @@ Follow-ups arrastrados:
 | US-049 | DNS routing pmo-aas.com (Railway + HostGator) | `docs(infra): US-049 — DNS routing pmo-aas.com (Railway + HostGator)` | 2026-04-21 |
 | US-050 | Landing estático www.pmo-aas.com en HostGator | `feat(landing): US-050 — landing estático www.pmo-aas.com en HostGator` | 2026-04-21 |
 | BUG-006 | Runbook Ollama+Tailscale §3.2 — advertir PATH no refrescado en PowerShell | `fix(docs): BUG-006 — runbook Tailscale §3.2 advierte PATH no refrescado en PowerShell` | 2026-04-21 |
+| US-051 | Mover generación IA (minuta + reporte) a Celery worker con polling | `feat(api,web): US-051 — IA minuta+reporte dispatchan a Celery worker; UI hace polling a /ai/jobs/{id}` | 2026-04-21 |
 
 ---
 
@@ -302,6 +276,20 @@ Follow-ups arrastrados:
 > la calidad del runbook para la próxima instalación.
 
 - [x] BUG-006 — §3.2 advierte que PowerShell no refresca PATH tras instalar Tailscale MSI + row de troubleshooting en §9 ✅
+
+### Bloque 19 — Refactor IA a Celery (prioridad, cierra gap EP016)
+
+> Gap arquitectónico descubierto al probar minutas en prod: el endpoint
+> `POST /ai/minutes` corre en `api` (sin Tailscale) en vez de dispatchar
+> a `worker` (con Tailscale). El DoD del EP016 lo tenía listado como
+> follow-up pendiente. Sin este refactor, Ollama local NUNCA se usa en
+> producción — la cascada cae directo a Gemini/Claude.
+
+- [x] **US-051 — Mover generación IA (minuta + reporte) a Celery worker** — issue #28 ✅
+  - Backend: tasks Celery (`app/workers/tasks/ai.py`) + endpoints devuelven 202 con job_id.
+  - Frontend: hook `use-ai-job-polling` con backoff + actualización de `NewAIMinutePage` y `GenerateWithAIButton`.
+  - Docs: DoD EP016 ✔️ + `deployment-railway.md` §2 con descripción de tasks del worker.
+  - Tests: 5 nuevos en `test_us051_ai_celery_tasks.py` + 3 existentes actualizados en `test_ep008_ai.py`. 209/209 pasan.
 
 ### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
 

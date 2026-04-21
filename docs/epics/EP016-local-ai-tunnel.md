@@ -310,7 +310,7 @@ migración SQL. `AI_SECRETS_FERNET_KEY` se marcó DEPRECATED en
 - [ ] Config IA tenant simplificada: solo `{base_url, model, timeout_sec}` (US-047).
 - [ ] `POST /admin/ai/test-connection` funciona sin headers CF-Access (US-047).
 - [ ] Worker Railway tiene sidecar `tailscaled` y resuelve hostname tailnet (US-048).
-- [ ] `OllamaProvider.generate()` usa config por-tenant y cae a Gemini/Claude cuando el tailnet está caído (follow-up de US-048).
+- [x] `OllamaProvider.generate()` usa config por-tenant y cae a Gemini/Claude cuando el tailnet está caído (follow-up de US-048 — cerrado por **US-051**: los endpoints `POST /ai/minutes` y `POST /ai/projects/{id}/reports/draft` dispatchan a Celery worker que tiene el sidecar tailscaled, así la cascada Ollama→Gemini→Claude corre donde puede alcanzar `ollama-host.<tailnet>.ts.net`).
 - [ ] Al menos una minuta IA de prueba generada contra Ollama (vía tailnet) + post-procesada con el formatter EP014 US-040 (PDF/MD en `/data/test-artifacts/`).
 - [ ] `RAILWAY_SETUP.md` actualizado con sección sidecar Tailscale.
 - [ ] DEC-011 y DEC-012 registradas en DECISIONS.md ✅ (hechas 2026-04-21).

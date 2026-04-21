@@ -26,7 +26,7 @@ celery_app = Celery(
     "pmoaas",
     broker=_broker,
     backend=_backend or None,
-    include=[],
+    include=["app.workers.tasks.ai"],
 )
 celery_app.conf.task_serializer = "json"
 celery_app.conf.result_serializer = "json"
