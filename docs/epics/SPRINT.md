@@ -25,23 +25,24 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 > pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
 
 ```
-— Vacío —
+— Vacío — (intake del comment del owner del 2026-04-21 ya asignado a Bloque 20 y Bloque 18)
 ```
 
 ---
 
 ## ⏳ QUEUE (próximas 5)
 
-| # | US | Epic | Título | Tipo |
+| # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| 1 | US-027 | EP011 | Tabla notifications + in-app center | Bloque 16 (POST-MVP) |
-| 2 | US-028 | EP011 | Email notifications via Resend | Bloque 16 (POST-MVP) |
-| — | — | — | — | — |
-| — | — | — | — | — |
-| — | — | — | — | — |
+| 1 | BUG-010 | EP001 | Top bar duplica logo; reemplazar por "PMO · aaS" | Bloque 20 |
+| 2 | ENH-002 | EP013 | Sidebar: renombrar "Organizaciones" a "PMO" | Bloque 20 |
+| 3 | BUG-021 | EP015 | Superadmin: landing por default = /superadmin | Bloque 20 |
+| 4 | BUG-011 | EP004 | Dashboard: KPI "Riesgos abiertos" linkea a 404 | Bloque 20 |
+| 5 | BUG-012 | EP004 | Dashboard: KPI "Riesgos severos" linkea a 404 | Bloque 20 |
 
-> Nada queda en cola para v1.0 / pruebas masivas. Las dos filas con US
-> son POST-MVP y no bloquean el release.
+> Bloque 20 (issues #33-#57) agrupa el intake del comment del owner
+> del 2026-04-21. Orden completo en el listado del bloque más abajo.
+> US-027/028 (Bloque 16, POST-MVP) quedan detrás del Bloque 20.
 
 ---
 
@@ -276,6 +277,7 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 > la calidad del runbook para la próxima instalación.
 
 - [x] BUG-006 — §3.2 advierte que PowerShell no refresca PATH tras instalar Tailscale MSI + row de troubleshooting en §9 ✅
+- [ ] BUG-020 — Windows Firewall: regla Block sombrea Allow; runbook debe limpiar reglas y dejar solo Allow tailnet — issue #45
 
 ### Bloque 19 — Refactor IA a Celery (prioridad, cierra gap EP016)
 
@@ -290,6 +292,44 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
   - Frontend: hook `use-ai-job-polling` con backoff + actualización de `NewAIMinutePage` y `GenerateWithAIButton`.
   - Docs: DoD EP016 ✔️ + `deployment-railway.md` §2 con descripción de tasks del worker.
   - Tests: 5 nuevos en `test_us051_ai_celery_tasks.py` + 3 existentes actualizados en `test_ep008_ai.py`. 209/209 pasan.
+
+### Bloque 20 — Intake comment owner 2026-04-21 (UX + nav + dashboard + projects)
+
+> Grupo grande de BUGs/ENHs/USs reportados por el owner en un comment
+> del 2026-04-21. Agrupa 25 issues (15 BUGs + 8 ENHs + 2 USs). Orden
+> de ejecución: bugs triviales (rename/navegación) → bugs de estructura
+> (dashboard 404s, panel org) → ENHs UX → USs grandes (US-052, US-053).
+>
+> Issues del bloque: #33–#57 (todos con label `status:triage` al intake).
+
+**Orden de ejecución sugerido:**
+
+1. [ ] **BUG-010** — Top bar duplica logo; reemplazar por "PMO · aaS" — #35
+2. [ ] **ENH-002** — Sidebar: renombrar "Organizaciones" a "PMO" — #49
+3. [ ] **BUG-021** — Superadmin: landing por default = /superadmin — #46
+4. [ ] **BUG-011** — Dashboard: KPI "Riesgos abiertos" link 404 — #36
+5. [ ] **BUG-012** — Dashboard: KPI "Riesgos severos" link 404 — #37
+6. [ ] **BUG-013** — Dashboard: KPI "Cambios en revisión" link 404 — #38
+7. [ ] **BUG-014** — Dashboard: KPI "AIDs abiertos" link 404 — #39
+8. [ ] **BUG-015** — Dashboard: filtros "Plan vs Real" en vertical — #40
+9. [ ] **BUG-016** — Solicitudes: botón cancelar sin rojo — #41
+10. [ ] **BUG-019** — Panel organización abre /edit, debería abrir resumen — #44
+11. [ ] **ENH-003** — Organizaciones: botón "Nuevo programa" — #50
+12. [ ] **ENH-004** — Proyecto: centrar barra de tabs — #51
+13. [ ] **BUG-022** — Documentos dummy: confirmar UX sin archivo — #47
+14. [ ] **BUG-017** — Al aprobar solicitud, abrir charter para complementar — #42
+15. [ ] **BUG-018** — Nuevo proyecto: pedir info completa del charter — #43
+16. [ ] **BUG-008** — Dark mode: azul chrome contrasta con grises — #33
+17. [ ] **BUG-009** — Cambios de página alteran el theme — #34
+18. [ ] **ENH-005** — Resumen: botones → tarjetas KPI linkeadas — #52
+19. [ ] **ENH-006** — Plan: integrar editor en misma página — #53
+20. [ ] **ENH-007** — RAID: matriz de riesgos en misma página — #54
+21. [ ] **ENH-008** — Mover MSP/xlsx a v1.1 (docs + guard UI) — #55
+22. [ ] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56
+23. [ ] **US-053** — Preview "ojito" estilo Jira en tablas — #57
+24. [ ] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 (también listado en Bloque 18)
+
+---
 
 ### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
 
