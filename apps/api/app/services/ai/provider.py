@@ -70,17 +70,20 @@ class OllamaProvider:
         if system:
             payload["system"] = system
         timeout = httpx.Timeout(timeout_total, connect=5.0)
-        async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as c:
-            r = await c.post("/api/generate", json=payload)
-            r.raise_for_status()
-            data = r.json()
-            return AIResult(
-                text=data.get("response", ""),
-                model=f"ollama:{model}",
-                tokens_in=data.get("prompt_eval_count", 0),
-                tokens_out=data.get("eval_count", 0),
-                duration_ms=int((data.get("total_duration", 0) or 0) / 1_000_000),
-            )
+        try:
+            async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as c:
+                r = await c.post("/api/generate", json=payload)
+                r.raise_for_status()
+                data = r.json()
+                return AIResult(
+                    text=data.get("response", ""),
+                    model=f"ollama:{model}",
+                    tokens_in=data.get("prompt_eval_count", 0),
+                    tokens_out=data.get("eval_count", 0),
+                    duration_ms=int((data.get("total_duration", 0) or 0) / 1_000_000),
+                )
+        except Exception as exc:
+            raise RuntimeError(f"ollama@{base_url} model={model}: {type(exc).__name__}: {exc}") from exc
 
 
 class GeminiProvider:
@@ -198,10 +201,11 @@ async def generate_with_cascade(
         except Exception as exc:  # noqa: BLE001
             last_err = exc
             next_name = cascade[idx + 1] if idx + 1 < len(cascade) else None
-            # Log estructurado para que un futuro exporter Prometheus
-            # derive la métrica `ai_cascade_fallback_total{from,to}`.
+            # Mensaje con razón visible en logs estándar; extras para el
+            # futuro exporter Prometheus ai_cascade_fallback_total{from,to}.
             logger.warning(
-                "ai_cascade_fallback",
+                "ai_cascade_fallback from=%s to=%s err=%s: %s",
+                name, next_name, type(exc).__name__, str(exc)[:200],
                 extra={
                     "ai_provider_from": name,
                     "ai_provider_to": next_name,
