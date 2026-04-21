@@ -1,8 +1,8 @@
-"""US-NEW-047 — Config y smoke del proveedor IA local (Tailscale).
+"""US-047 — Config y smoke del proveedor IA local (Tailscale).
 
 Historia:
-- US-NEW-045 (2026-04-20): cobertura original con CF-Access headers.
-- US-NEW-047 (2026-04-21): refactor a Tailscale. Se eliminan los tests
+- US-045 (2026-04-20): cobertura original con CF-Access headers.
+- US-047 (2026-04-21): refactor a Tailscale. Se eliminan los tests
   de persistencia de `cf_access_client_secret_encrypted`. Los de
   encrypt/decrypt/mask quedan con marker `legacy` porque el módulo
   sigue existiendo solo para leer secrets archivados (ver
@@ -33,11 +33,11 @@ async def _admin(client, db_session, slug="ai-a"):
 
 @pytest.mark.legacy
 def test_legacy_fernet_roundtrip():
-    """Encrypt/decrypt roundtrip — legacy flujo CF-Access (US-NEW-045).
+    """Encrypt/decrypt roundtrip — legacy flujo CF-Access (US-045).
 
     Se mantiene para que `auth_legacy.*` de tenants con secrets archivados
     se pueda seguir descifrando si se requiere consulta. No se usa en el
-    flujo Tailscale (US-NEW-047+).
+    flujo Tailscale (US-047+).
     """
     plain = "super-secret-token-abc123"
     enc = encrypt_secret(plain)
@@ -54,7 +54,7 @@ def test_legacy_mask_secret():
 
 
 @pytest.mark.asyncio
-async def test_usnew047_get_empty_config(client, db_session):
+async def test_us047_get_empty_config(client, db_session):
     _, auth = await _admin(client, db_session)
     r = await client.get("/api/v1/admin/ai/ollama", headers=auth["_authz"])
     assert r.status_code == 200, r.text
@@ -67,7 +67,7 @@ async def test_usnew047_get_empty_config(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew047_patch_persists_tailscale_config(client, db_session):
+async def test_us047_patch_persists_tailscale_config(client, db_session):
     t, auth = await _admin(client, db_session, slug="ai-b")
     r = await client.patch(
         "/api/v1/admin/ai/ollama",
@@ -97,7 +97,7 @@ async def test_usnew047_patch_persists_tailscale_config(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew047_patch_archives_legacy_cf_access(client, db_session):
+async def test_us047_patch_archives_legacy_cf_access(client, db_session):
     """Si el tenant tiene config CF-Access legacy en BD, el PATCH la archiva
     bajo `auth_legacy.*` y deja limpia la rama activa."""
     t, auth = await _admin(client, db_session, slug="ai-legacy")
@@ -134,7 +134,7 @@ async def test_usnew047_patch_archives_legacy_cf_access(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew047_test_connection_not_configured(client, db_session):
+async def test_us047_test_connection_not_configured(client, db_session):
     _, auth = await _admin(client, db_session, slug="ai-d")
     r = await client.post(
         "/api/v1/admin/ai/test-connection",
@@ -148,7 +148,7 @@ async def test_usnew047_test_connection_not_configured(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew047_test_connection_ok_no_auth_headers(client, db_session):
+async def test_us047_test_connection_ok_no_auth_headers(client, db_session):
     """El GET /api/tags del test-connection NO debe mandar headers CF-Access."""
     _, auth = await _admin(client, db_session, slug="ai-e")
     await client.patch(
@@ -199,7 +199,7 @@ async def test_usnew047_test_connection_ok_no_auth_headers(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew047_test_connection_timeout(client, db_session):
+async def test_us047_test_connection_timeout(client, db_session):
     _, auth = await _admin(client, db_session, slug="ai-f")
     await client.patch(
         "/api/v1/admin/ai/ollama",
@@ -223,7 +223,7 @@ async def test_usnew047_test_connection_timeout(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew047_test_connection_http_error(client, db_session):
+async def test_us047_test_connection_http_error(client, db_session):
     _, auth = await _admin(client, db_session, slug="ai-g")
     await client.patch(
         "/api/v1/admin/ai/ollama",
@@ -254,7 +254,7 @@ async def test_usnew047_test_connection_http_error(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew047_non_admin_forbidden(client, db_session):
+async def test_us047_non_admin_forbidden(client, db_session):
     tenant, _auth_admin = await _admin(client, db_session, slug="ai-rbac")
     await create_user(
         db_session, tenant=tenant, username="member",

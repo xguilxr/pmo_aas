@@ -4,7 +4,7 @@ Revision ID: 20260420_0010
 Revises: 20260420_0009
 Create Date: 2026-04-20 00:10:00
 
-US-NEW-007 (EP001): preferences por usuario para tema (dark/light/system).
+US-007 (EP001): preferences por usuario para tema (dark/light/system).
 Columna genérica JSON que también albergará otras preferencias a futuro.
 """
 from typing import Sequence, Union

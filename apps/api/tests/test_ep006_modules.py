@@ -227,12 +227,12 @@ async def test_tc097_minute_generated_by_ai(client, db_session):
 
 
 # ============================================================================
-# US-NEW-020 — Categorías de documentos actualizadas
+# US-020 — Categorías de documentos actualizadas
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_usnew020_accepts_new_categories(client, db_session):
+async def test_us020_accepts_new_categories(client, db_session):
     """Todas las categorías nuevas son aceptadas por la API."""
     _, auth, proj_id = await _setup(client, db_session)
     new_cats = [
@@ -256,7 +256,7 @@ async def test_usnew020_accepts_new_categories(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew020_rejects_invalid_category(client, db_session):
+async def test_us020_rejects_invalid_category(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/documents",
@@ -273,7 +273,7 @@ async def test_usnew020_rejects_invalid_category(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew020_filter_by_category(client, db_session):
+async def test_us020_filter_by_category(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     await client.post(
         f"/api/v1/projects/{proj_id}/documents",
@@ -303,7 +303,7 @@ async def test_usnew020_filter_by_category(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew020_patch_document_category(client, db_session):
+async def test_us020_patch_document_category(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/documents",
@@ -326,12 +326,12 @@ async def test_usnew020_patch_document_category(client, db_session):
 
 
 # ============================================================================
-# US-NEW-022 — Módulo Reportes dentro del proyecto
+# US-022 — Módulo Reportes dentro del proyecto
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_usnew022_create_and_list_reports(client, db_session):
+async def test_us022_create_and_list_reports(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     # Crear 2 reportes
     r1 = await client.post(
@@ -370,7 +370,7 @@ async def test_usnew022_create_and_list_reports(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew022_patch_report_sections(client, db_session):
+async def test_us022_patch_report_sections(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/reports",
@@ -396,7 +396,7 @@ async def test_usnew022_patch_report_sections(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew022_invalid_period_rejected(client, db_session):
+async def test_us022_invalid_period_rejected(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/reports",
@@ -407,7 +407,7 @@ async def test_usnew022_invalid_period_rejected(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew022_filter_by_period(client, db_session):
+async def test_us022_filter_by_period(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     await client.post(
         f"/api/v1/projects/{proj_id}/reports",
@@ -427,7 +427,7 @@ async def test_usnew022_filter_by_period(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew022_delete_draft(client, db_session):
+async def test_us022_delete_draft(client, db_session):
     _, auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/reports",

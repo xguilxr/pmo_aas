@@ -385,7 +385,7 @@ export type MinuteExportFormat = "pdf" | "docx" | "md" | "txt";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 /**
- * US-NEW-040: descarga la minuta en el formato seleccionado. Usa fetch
+ * US-040: descarga la minuta en el formato seleccionado. Usa fetch
  * directo + Blob porque apiFetch sólo maneja JSON.
  */
 export async function exportMinute(

@@ -7,7 +7,7 @@ import { TenantSettingsForm } from "@/components/tenant-settings-form";
 /**
  * Ruta legacy — se mantiene para compatibilidad con links existentes.
  * El sidebar ahora la sirve integrada como tab "Configuración" bajo
- * `/admin/tenant?tab=config` (US-NEW-036).
+ * `/admin/tenant?tab=config` (US-036).
  */
 export default function SettingsPage() {
   return (

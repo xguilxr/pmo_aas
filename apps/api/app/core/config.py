@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
     ACCOUNT_LOCK_MINUTES: int = 15
 
-    # DEPRECATED US-NEW-047 (2026-04-21): Cifrado de secretos IA por-tenant.
-    # Se introdujo en US-NEW-045 para guardar el CF-Access-Client-Secret del
+    # DEPRECATED US-047 (2026-04-21): Cifrado de secretos IA por-tenant.
+    # Se introdujo en US-045 para guardar el CF-Access-Client-Secret del
     # tenant. El pivote a Tailscale (DEC-011) elimina la necesidad de
     # secrets — el canal se asegura por tailnet privado. La key se mantiene
     # únicamente para que `decrypt_secret()` pueda leer valores legacy

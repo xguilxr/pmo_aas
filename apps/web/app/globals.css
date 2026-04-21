@@ -84,7 +84,7 @@
   --text-secondary: var(--color-neutral-600);
   --text-tertiary: var(--color-neutral-500);
 
-  /* Chrome navy #182e4e (DEC-006, US-NEW-010) — sidebar + topbar */
+  /* Chrome navy #182e4e (DEC-006, US-010) — sidebar + topbar */
   --chrome-bg: #182e4e;
   --chrome-bg-translucent: color-mix(in oklab, #182e4e 92%, transparent);
   --chrome-border: #10203a;

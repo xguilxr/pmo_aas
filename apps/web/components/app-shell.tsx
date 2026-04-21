@@ -49,7 +49,7 @@ const TOP_NAV: NavItem[] = [
   },
 ];
 
-// Admin-only. Sidebar con 4 ítems raíz (US-NEW-036 / issue #17).
+// Admin-only. Sidebar con 4 ítems raíz (US-036 / issue #17).
 // "Gestión de Tenant" fusiona "Mi tenant" + "Panel del Tenant" + "Configuración"
 // con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
 // El drill-down real (Organizaciones → Programas → Proyectos) vive en el
@@ -117,7 +117,7 @@ const ADMIN_NAV: NavItem = {
   ],
 };
 
-// 4 ítems raíz, en este orden (US-NEW-041, issue #19).
+// 4 ítems raíz, en este orden (US-041, issue #19).
 const SUPERADMIN_NAV: NavItem[] = [
   {
     id: "sa-overview",
@@ -245,7 +245,7 @@ function NavTree({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  // US-BUG-005: leer user en useEffect evita que el primer render (SSR y
+  // BUG-005: leer user en useEffect evita que el primer render (SSR y
   // primera hidratación cliente) muestre TOP_NAV para un superadmin antes
   // de leer localStorage. El flag `userReady` distingue "aún no leído" de
   // "leído y es null" para no flashear la navegación equivocada.

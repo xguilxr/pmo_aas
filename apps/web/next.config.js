@@ -4,7 +4,7 @@ const nextConfig = {
   poweredByHeader: false,
   async redirects() {
     return [
-      // US-NEW-036: "Mi tenant" / "Panel del Tenant" / "Configuración" se
+      // US-036: "Mi tenant" / "Panel del Tenant" / "Configuración" se
       // consolidan en /admin/tenant con tabs internos.
       {
         source: "/admin/supervision",

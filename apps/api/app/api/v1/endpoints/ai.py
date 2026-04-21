@@ -39,7 +39,7 @@ def _tenant(cu: CurrentUser) -> UUID:
 
 
 async def _tenant_ollama_config(db: AsyncSession, tenant_id: UUID) -> dict | None:
-    """US-NEW-048: devuelve la config Ollama por-tenant si tiene base_url.
+    """US-048: devuelve la config Ollama por-tenant si tiene base_url.
 
     Si no está configurada (o tenant no existe), devuelve None y la
     cascada cae a los env globales del worker.

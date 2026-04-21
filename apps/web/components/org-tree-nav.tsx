@@ -141,7 +141,7 @@ function PlaceholderRow({ depth, text }: { depth: number; text: string }) {
 }
 
 /**
- * Drill-down real del tenant en el sidebar principal (US-NEW-032):
+ * Drill-down real del tenant en el sidebar principal (US-032):
  * Organizaciones → Programas → Proyectos. La jerarquía administrativa
  * (BUs / Departamentos) vive sólo bajo `/admin/organizations`, no aquí.
  */

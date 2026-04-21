@@ -1,4 +1,4 @@
-"""project_charters — tabla del Charter (US-NEW-012, EP003)
+"""project_charters — tabla del Charter (US-012, EP003)
 
 Revision ID: 20260420_0012
 Revises: 20260420_0011

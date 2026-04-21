@@ -1,4 +1,4 @@
-"""Project Reports — CRUD y listado (US-NEW-022, EP006).
+"""Project Reports — CRUD y listado (US-022, EP006).
 
 Complementa al draft-con-IA existente en `/ai/projects/{id}/reports/draft`
 (EP008) con CRUD manual y un listado paginable por proyecto.
@@ -128,7 +128,7 @@ async def create_report(
     db: AsyncSession = Depends(get_db),
 ):
     """Crea un reporte manual (borrador). Secciones pre-llenadas con las
-    sugeridas en US-NEW-022 si no se envían."""
+    sugeridas en US-022 si no se envían."""
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
 
@@ -221,7 +221,7 @@ async def update_report(
     return ReportRead.model_validate(rep)
 
 
-# ---- EP014 US-NEW-038/039: reportes ejecutables sin IA ----
+# ---- EP014 US-038/039: reportes ejecutables sin IA ----
 
 class AvanceGenerate(BaseModel):
     cut_off_date: date | None = None
@@ -335,7 +335,7 @@ async def generate_seguimiento_report(
     cu: CurrentUser = Depends(require_permission("projects", "update")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Reporte de Seguimiento (Python, sin IA). Ver US-NEW-039."""
+    """Reporte de Seguimiento (Python, sin IA). Ver US-039."""
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
     cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()

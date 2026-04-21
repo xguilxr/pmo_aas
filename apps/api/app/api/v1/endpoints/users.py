@@ -1,7 +1,7 @@
 """Endpoints self-service para el usuario autenticado (`/users/me/...`).
 
-US-NEW-007: preferencia de tema (dark/light/system).
-US-NEW-009: perfil personal (full_name) + preferencias.
+US-007: preferencia de tema (dark/light/system).
+US-009: perfil personal (full_name) + preferencias.
 """
 from typing import Literal
 

@@ -1,4 +1,4 @@
-"""reports.period — periodicidad (US-NEW-022, EP006)
+"""reports.period — periodicidad (US-022, EP006)
 
 Revision ID: 20260420_0014
 Revises: 20260420_0013

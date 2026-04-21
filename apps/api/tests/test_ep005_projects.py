@@ -187,7 +187,7 @@ async def test_tc067_filters_combine(client, db_session):
 
 
 # ============================================================================
-# US-NEW-018 — Módulo Áreas/Organigrama del proyecto
+# US-018 — Módulo Áreas/Organigrama del proyecto
 # ============================================================================
 
 

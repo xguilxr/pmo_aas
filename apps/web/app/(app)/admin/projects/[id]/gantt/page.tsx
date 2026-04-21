@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * US-NEW-016: la pestaña Gantt se unificó con Plan.
+ * US-016: la pestaña Gantt se unificó con Plan.
  * Esta ruta queda como redirect permanente a `/plan?view=gantt`
  * para no romper enlaces/bookmarks existentes.
  */

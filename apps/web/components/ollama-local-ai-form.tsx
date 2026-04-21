@@ -21,8 +21,8 @@ import {
  * Vive embebida en /admin/tenant?tab=config.
  *
  * Historia:
- * - US-NEW-045: versión original con Cloudflare Tunnel + CF-Access token.
- * - US-NEW-047: pivote a Tailscale; se eliminan los campos CF-Access.
+ * - US-045: versión original con Cloudflare Tunnel + CF-Access token.
+ * - US-047: pivote a Tailscale; se eliminan los campos CF-Access.
  */
 export function OllamaLocalAiForm() {
   const [cfg, setCfg] = useState<OllamaConfigRead | null>(null);

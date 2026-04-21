@@ -254,7 +254,7 @@ async def admin_force_close(
     return {"ok": True, "phase": p.phase}
 
 
-# ---- Tenant info + stats (US-NEW-023) ----
+# ---- Tenant info + stats (US-023) ----
 class TenantInfoUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=200)
     logo_url: str | None = Field(default=None, max_length=500)
@@ -265,7 +265,7 @@ async def get_tenant_info(
     cu: CurrentUser = Depends(require_permission("admin.users", "read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Info + stats del tenant actual (US-NEW-023).
+    """Info + stats del tenant actual (US-023).
 
     Devuelve identidad del tenant, settings (reexportados), plan y
     estadísticas agregadas (usuarios activos, proyectos, storage).
@@ -349,7 +349,7 @@ async def update_tenant_info(
     cu: CurrentUser = Depends(require_permission("admin.users", "update")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Actualiza nombre y/o logo del tenant (US-NEW-023).
+    """Actualiza nombre y/o logo del tenant (US-023).
 
     Slug, plan y eliminación son exclusivos de super admin y se hacen
     desde el panel superadmin.

@@ -1,4 +1,4 @@
-"""project_areas — actores/áreas del proyecto (US-NEW-018, EP005)
+"""project_areas — actores/áreas del proyecto (US-018, EP005)
 
 Revision ID: 20260420_0013
 Revises: 20260420_0012

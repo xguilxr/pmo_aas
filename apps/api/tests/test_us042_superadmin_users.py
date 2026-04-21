@@ -1,4 +1,4 @@
-"""US-NEW-042 — Usuarios cross-tenant en panel super admin."""
+"""US-042 — Usuarios cross-tenant en panel super admin."""
 import pytest
 
 from app.models.audit import AuditLog
@@ -31,14 +31,14 @@ async def _regular_admin(client, db_session, slug="acme"):
 
 
 @pytest.mark.asyncio
-async def test_usnew042_list_requires_superadmin(client, db_session):
+async def test_us042_list_requires_superadmin(client, db_session):
     _, auth, _ = await _regular_admin(client, db_session, slug="reg-a")
     r = await client.get("/api/v1/superadmin/users", headers=auth["_authz"])
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_usnew042_list_cross_tenant(client, db_session):
+async def test_us042_list_cross_tenant(client, db_session):
     _, sa_auth = await _superadmin(client, db_session)
 
     t_a = await create_tenant(db_session, slug="tuser-a", name="A")
@@ -57,7 +57,7 @@ async def test_usnew042_list_cross_tenant(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew042_filter_by_tenant(client, db_session):
+async def test_us042_filter_by_tenant(client, db_session):
     _, sa_auth = await _superadmin(client, db_session)
 
     t_a = await create_tenant(db_session, slug="ften-a", name="A")
@@ -75,7 +75,7 @@ async def test_usnew042_filter_by_tenant(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew042_search_q_matches_email_username(client, db_session):
+async def test_us042_search_q_matches_email_username(client, db_session):
     _, sa_auth = await _superadmin(client, db_session)
 
     t = await create_tenant(db_session, slug="qsearch", name="Q")
@@ -87,7 +87,7 @@ async def test_usnew042_search_q_matches_email_username(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew042_patch_user(client, db_session):
+async def test_us042_patch_user(client, db_session):
     _, sa_auth = await _superadmin(client, db_session)
 
     t = await create_tenant(db_session, slug="patch-t", name="P")
@@ -105,7 +105,7 @@ async def test_usnew042_patch_user(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew042_patch_other_superadmin_forbidden(client, db_session):
+async def test_us042_patch_other_superadmin_forbidden(client, db_session):
     _, sa_auth = await _superadmin(client, db_session)
 
     t = await create_tenant(db_session, slug="sa2-t", name="S")
@@ -124,7 +124,7 @@ async def test_usnew042_patch_other_superadmin_forbidden(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew042_toggle_active_audits(client, db_session):
+async def test_us042_toggle_active_audits(client, db_session):
     _, sa_auth = await _superadmin(client, db_session)
 
     t = await create_tenant(db_session, slug="toggle-t", name="T")
@@ -162,7 +162,7 @@ async def test_usnew042_toggle_active_audits(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew042_cannot_deactivate_self(client, db_session):
+async def test_us042_cannot_deactivate_self(client, db_session):
     _, sa_auth = await _superadmin(client, db_session)
     me = (await client.get("/api/v1/auth/me", headers=sa_auth["_authz"])).json()
     r = await client.post(

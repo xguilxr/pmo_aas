@@ -48,7 +48,7 @@ SYSTEM_ROLES = [
             "Administrador dentro del tenant."
         ),
         "permissions": {
-            # admin.* (equivalente a Administrador, DEC-005 / US-NEW-010)
+            # admin.* (equivalente a Administrador, DEC-005 / US-010)
             "admin.users": ["read", "create", "update", "delete"],
             "admin.roles": ["read", "create", "update", "delete"],
             "admin.organizations": ["read", "create", "update", "delete"],

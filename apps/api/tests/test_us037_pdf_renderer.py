@@ -1,10 +1,10 @@
-"""US-NEW-037 — Infra compartida de exportación a PDF."""
+"""US-037 — Infra compartida de exportación a PDF."""
 import pytest
 
 from app.services.pdf_renderer import render_html, render_pdf
 
 
-def test_usnew037_render_html_basic():
+def test_us037_render_html_basic():
     html = render_html("_smoke.html", {
         "title": "Hola",
         "subtitle": "Subtítulo",
@@ -18,7 +18,7 @@ def test_usnew037_render_html_basic():
     assert "UTC" in html
 
 
-def test_usnew037_render_pdf_returns_valid_bytes():
+def test_us037_render_pdf_returns_valid_bytes():
     pdf = render_pdf("_smoke.html", {
         "title": "Reporte de prueba",
         "subtitle": "Generado por test",
@@ -31,7 +31,7 @@ def test_usnew037_render_pdf_returns_valid_bytes():
     assert b"%%EOF" in pdf[-64:]
 
 
-def test_usnew037_render_pdf_unknown_template_raises():
+def test_us037_render_pdf_unknown_template_raises():
     from app.core.errors import AppError
 
     with pytest.raises(Exception) as excinfo:
@@ -40,7 +40,7 @@ def test_usnew037_render_pdf_unknown_template_raises():
     assert excinfo.value is not None
 
 
-def test_usnew037_render_pdf_handles_unicode():
+def test_us037_render_pdf_handles_unicode():
     pdf = render_pdf("_smoke.html", {
         "title": "Área — Programación",
         "subtitle": "Emoji: ✅ ⚠️",

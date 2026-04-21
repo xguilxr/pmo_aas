@@ -53,7 +53,7 @@ class OllamaProvider:
     ) -> AIResult:
         """Llama a Ollama.
 
-        US-NEW-048: si `override` trae `base_url`/`model`/`timeout_sec` del
+        US-048: si `override` trae `base_url`/`model`/`timeout_sec` del
         tenant (leídos desde `tenants.settings.ai.ollama`), se usan para
         este call; en caso contrario cae a los env `OLLAMA_BASE_URL` /
         `OLLAMA_MODEL`. Esto permite que cada tenant apunte a su propio
@@ -168,7 +168,7 @@ async def generate_with_cascade(
 ) -> AIResult:
     """Intenta en orden: configured primary → gemini → disabled stub.
 
-    US-NEW-048: `tenant_ollama_config`, si se pasa, se inyecta solo al
+    US-048: `tenant_ollama_config`, si se pasa, se inyecta solo al
     `OllamaProvider` para que use el endpoint tailnet del tenant en vez
     del env global. Los demás providers ignoran el parámetro.
     """

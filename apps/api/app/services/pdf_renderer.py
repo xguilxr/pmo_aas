@@ -1,4 +1,4 @@
-"""Infra compartida para render HTML → PDF (US-NEW-037).
+"""Infra compartida para render HTML → PDF (US-037).
 
 Motor oficial: WeasyPrint. Plantillas Jinja2 en `app/templates/pdf/`.
 Llamar `render_pdf(template_name, context)` devuelve `bytes` con el

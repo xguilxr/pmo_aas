@@ -1,4 +1,4 @@
-"""US-NEW-031 — Upload y display del logo del tenant en chrome."""
+"""US-031 — Upload y display del logo del tenant en chrome."""
 from __future__ import annotations
 
 import io
@@ -45,7 +45,7 @@ def _cleanup(tenant_id: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_usnew031_upload_png_sets_logo_url(client, db_session):
+async def test_us031_upload_png_sets_logo_url(client, db_session):
     t, auth = await _admin(client, db_session, slug="logo-ok")
     try:
         r = await client.post(
@@ -70,7 +70,7 @@ async def test_usnew031_upload_png_sets_logo_url(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew031_upload_rejects_oversized(client, db_session):
+async def test_us031_upload_rejects_oversized(client, db_session):
     t, auth = await _admin(client, db_session, slug="logo-big")
     try:
         huge = b"\x89PNG\r\n\x1a\n" + b"0" * (2 * 1024 * 1024 + 10)
@@ -85,7 +85,7 @@ async def test_usnew031_upload_rejects_oversized(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew031_upload_rejects_bad_mime(client, db_session):
+async def test_us031_upload_rejects_bad_mime(client, db_session):
     t, auth = await _admin(client, db_session, slug="logo-exe")
     try:
         r = await client.post(
@@ -99,7 +99,7 @@ async def test_usnew031_upload_rejects_bad_mime(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew031_non_admin_cannot_upload(client, db_session):
+async def test_us031_non_admin_cannot_upload(client, db_session):
     t, admin_auth = await _admin(client, db_session, slug="logo-rbac")
     user_auth = await _non_admin(client, db_session, t)
     r = await client.post(
@@ -111,7 +111,7 @@ async def test_usnew031_non_admin_cannot_upload(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew031_cross_tenant_serve_blocked(client, db_session):
+async def test_us031_cross_tenant_serve_blocked(client, db_session):
     t_a, auth_a = await _admin(client, db_session, slug="logo-a")
     t_b, _ = await _admin(client, db_session, slug="logo-b")
     try:
@@ -132,7 +132,7 @@ async def test_usnew031_cross_tenant_serve_blocked(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew031_delete_logo(client, db_session):
+async def test_us031_delete_logo(client, db_session):
     t, auth = await _admin(client, db_session, slug="logo-del")
     try:
         await client.post(
@@ -154,7 +154,7 @@ async def test_usnew031_delete_logo(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew031_me_tenant_branding(client, db_session):
+async def test_us031_me_tenant_branding(client, db_session):
     t, auth = await _admin(client, db_session, slug="branding-me")
     try:
         r = await client.get("/api/v1/me/tenant-branding", headers=auth["_authz"])
@@ -176,7 +176,7 @@ async def test_usnew031_me_tenant_branding(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew031_overwrite_replaces_old_extension(client, db_session):
+async def test_us031_overwrite_replaces_old_extension(client, db_session):
     """Subir un WEBP después de un PNG debe dejar solo un archivo en disco."""
     t, auth = await _admin(client, db_session, slug="logo-swap")
     try:

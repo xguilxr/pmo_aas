@@ -1,4 +1,4 @@
-# Dockerfile común para api + worker (US-NEW-048).
+# Dockerfile común para api + worker (US-048).
 #
 # El servicio `api` lo consume sin necesitar Tailscale (CMD = uvicorn).
 # El servicio `worker` sobrescribe el CMD con start-worker.sh, que

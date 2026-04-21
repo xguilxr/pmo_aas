@@ -113,7 +113,7 @@ async def list_tenants(
 
     tenant_ids = [t.id for t in tenants]
 
-    # Counts por tenant en batch (US-NEW-025).
+    # Counts por tenant en batch (US-025).
     def grouped(stmt):
         return {str(tid): int(n) for tid, n in stmt}
 
@@ -201,7 +201,7 @@ async def tenant_detail(
             select(Program.id, Program.name, Program.organization_id).where(Program.tenant_id == t.id)
         )
     ).all()
-    # Jerarquía: counts globales por tenant (US-NEW-025).
+    # Jerarquía: counts globales por tenant (US-025).
     from app.models.organization import BusinessUnit, Department
     from app.models.project import Project
 

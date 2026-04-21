@@ -285,7 +285,7 @@ async def test_tc022_filter_inactive(client, db_session):
 
 
 # ============================================================================
-# US-NEW-007 — Toggle dark/light (preferencias de usuario)
+# US-007 — Toggle dark/light (preferencias de usuario)
 # ============================================================================
 
 
@@ -359,7 +359,7 @@ async def test_preferences_locale_updates_locale_column(client, db_session):
 
 
 # ============================================================================
-# US-NEW-010 — Senior PMO como admin (DEC-005)
+# US-010 — Senior PMO como admin (DEC-005)
 # ============================================================================
 
 
@@ -431,7 +431,7 @@ async def test_is_admin_equivalent_helper(client, db_session):
 
 
 # ============================================================================
-# US-NEW-009 — Perfil personal via PATCH /users/me
+# US-009 — Perfil personal via PATCH /users/me
 # ============================================================================
 
 

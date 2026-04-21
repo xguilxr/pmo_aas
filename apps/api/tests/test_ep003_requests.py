@@ -207,13 +207,13 @@ async def test_tc055_cannot_edit_approved(client, db_session):
 
 
 # ============================================================================
-# US-NEW-011 — Campos adicionales en solicitud
+# US-011 — Campos adicionales en solicitud
 # ============================================================================
 
 
 # Full payload con nuevos campos
 @pytest.mark.asyncio
-async def test_usnew011_full_payload(client, db_session):
+async def test_us011_full_payload(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
     body = _request_body(
         org_id,
@@ -238,7 +238,7 @@ async def test_usnew011_full_payload(client, db_session):
 
 # sponsor_email es obligatorio y debe ser email válido
 @pytest.mark.asyncio
-async def test_usnew011_sponsor_email_invalid(client, db_session):
+async def test_us011_sponsor_email_invalid(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
     body = _request_body(org_id, sponsor_email="no-es-email")
     r = await client.post("/api/v1/project-requests", json=body, headers=auth["_authz"])
@@ -247,7 +247,7 @@ async def test_usnew011_sponsor_email_invalid(client, db_session):
 
 # requester defaults → user.full_name / user.email si no se envían
 @pytest.mark.asyncio
-async def test_usnew011_requester_defaults(client, db_session):
+async def test_us011_requester_defaults(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
     body = _request_body(org_id)  # sin requester_*
     r = await client.post("/api/v1/project-requests", json=body, headers=auth["_authz"])
@@ -260,7 +260,7 @@ async def test_usnew011_requester_defaults(client, db_session):
 
 # FK business_unit_id inválida → 422 business_rule
 @pytest.mark.asyncio
-async def test_usnew011_bu_fk_mismatch(client, db_session):
+async def test_us011_bu_fk_mismatch(client, db_session):
     import uuid
 
     _, auth, org_id = await _setup(client, db_session)
@@ -271,7 +271,7 @@ async def test_usnew011_bu_fk_mismatch(client, db_session):
 
 # Depto no pertenece a la BU indicada → 422
 @pytest.mark.asyncio
-async def test_usnew011_dept_in_wrong_bu(client, db_session):
+async def test_us011_dept_in_wrong_bu(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
 
     # Crear dos BUs y un depto en cada una
@@ -306,7 +306,7 @@ async def test_usnew011_dept_in_wrong_bu(client, db_session):
 
 # FKs correctas → 201 + persistidas en el registro
 @pytest.mark.asyncio
-async def test_usnew011_bu_dept_fk_happy_path(client, db_session):
+async def test_us011_bu_dept_fk_happy_path(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
 
     bu = (
@@ -333,7 +333,7 @@ async def test_usnew011_bu_dept_fk_happy_path(client, db_session):
 
 
 # ============================================================================
-# US-NEW-012 — Project Charter
+# US-012 — Project Charter
 # ============================================================================
 
 
@@ -468,7 +468,7 @@ async def test_charter_patch_edits_sections_1_to_3(client, db_session):
     assert data["restrictions"] == "Plazo 6 meses"
 
 
-# Charter no existe → 404 para proyectos creados antes de US-NEW-012
+# Charter no existe → 404 para proyectos creados antes de US-012
 @pytest.mark.asyncio
 async def test_charter_404_when_missing(client, db_session):
     from app.db.base import new_uuid
@@ -491,7 +491,7 @@ async def test_charter_404_when_missing(client, db_session):
 
 
 # ============================================================================
-# US-NEW-013 — Charter como documento del proyecto
+# US-013 — Charter como documento del proyecto
 # ============================================================================
 
 

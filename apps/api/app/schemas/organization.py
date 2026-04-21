@@ -59,7 +59,7 @@ class OrganizationPanel(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ---- US-NEW-033: Detalle de recursos reales por organización ----
+# ---- US-033: Detalle de recursos reales por organización ----
 
 class OrgPanelDepartment(BaseModel):
     id: UUID
@@ -193,7 +193,7 @@ class ProgramRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ---- US-NEW-034: Program summary ----
+# ---- US-034: Program summary ----
 
 class ProgramSummaryProject(BaseModel):
     id: UUID

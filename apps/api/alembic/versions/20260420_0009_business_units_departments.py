@@ -4,7 +4,7 @@ Revision ID: 20260420_0009
 Revises: 20260101_0008
 Create Date: 2026-04-20 00:00:00
 
-US-NEW-002 (EP002): Jerarquía Org → BU → Departamento → Programa → Proyecto.
+US-002 (EP002): Jerarquía Org → BU → Departamento → Programa → Proyecto.
 
 Notas:
 - IDs como String(36) para portabilidad PG/MySQL (ver EP012 / DEC-002).

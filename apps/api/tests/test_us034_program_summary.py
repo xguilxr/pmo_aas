@@ -1,4 +1,4 @@
-"""US-NEW-034 — Resumen de programa."""
+"""US-034 — Resumen de programa."""
 from decimal import Decimal
 
 import pytest
@@ -22,7 +22,7 @@ async def _admin(client, db_session, slug):
 
 
 @pytest.mark.asyncio
-async def test_usnew034_summary_aggregates_correctly(client, db_session):
+async def test_us034_summary_aggregates_correctly(client, db_session):
     t, auth = await _admin(client, db_session, slug="summary-a")
     me = (await client.get("/api/v1/auth/me", headers=auth["_authz"])).json()
 
@@ -111,7 +111,7 @@ async def test_usnew034_summary_aggregates_correctly(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew034_summary_cross_tenant_404(client, db_session):
+async def test_us034_summary_cross_tenant_404(client, db_session):
     t_a, auth_a = await _admin(client, db_session, slug="summary-b")
     _, auth_b = await _admin(client, db_session, slug="summary-c")
 
@@ -131,7 +131,7 @@ async def test_usnew034_summary_cross_tenant_404(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_usnew034_summary_empty_program(client, db_session):
+async def test_us034_summary_empty_program(client, db_session):
     t, auth = await _admin(client, db_session, slug="summary-d")
     org = Organization(tenant_id=t.id, name="Org-D", is_active=True)
     db_session.add(org)

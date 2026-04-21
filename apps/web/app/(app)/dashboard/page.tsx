@@ -114,7 +114,7 @@ function DashboardInner() {
   const [rows, setRows] = useState<PlanVsActualRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(true);
 
-  // Sincronizar cambio de filtro con URL (US-NEW-014: estado del filtro en URL).
+  // Sincronizar cambio de filtro con URL (US-014: estado del filtro en URL).
   function changeOrgFilter(next: string) {
     setOrgFilter(next);
     const params = new URLSearchParams(searchParams.toString());

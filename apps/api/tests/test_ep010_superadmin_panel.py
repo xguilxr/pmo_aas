@@ -122,7 +122,7 @@ async def test_health_endpoint(client, db_session):
 
 
 # ============================================================================
-# US-NEW-025 — Iconos en paneles de tenant (backend counts)
+# US-025 — Iconos en paneles de tenant (backend counts)
 # ============================================================================
 
 
@@ -130,7 +130,7 @@ import pytest as _pytest  # noqa: E402 — evitar colisión si ya importado
 
 
 @_pytest.mark.asyncio
-async def test_usnew025_list_tenants_returns_full_counts(client, db_session):
+async def test_us025_list_tenants_returns_full_counts(client, db_session):
     from decimal import Decimal
     from app.models.project import Project
     from app.models.organization import Organization, Program
@@ -164,7 +164,7 @@ async def test_usnew025_list_tenants_returns_full_counts(client, db_session):
 
 
 @_pytest.mark.asyncio
-async def test_usnew025_tenant_detail_has_hierarchy(client, db_session):
+async def test_us025_tenant_detail_has_hierarchy(client, db_session):
     from app.models.organization import BusinessUnit, Department, Organization
 
     from tests.factories import create_tenant, create_user, login
