@@ -321,7 +321,6 @@ function DashboardInner() {
           value={kpis?.open_issues ?? 0}
           loading={loadingKpis}
           icon={<FileWarning className="h-4 w-4" aria-hidden />}
-          href="/issues"
         />
         <KpiCard
           label="Presupuesto total"
