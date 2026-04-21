@@ -13,6 +13,7 @@ import {
   Workflow,
 } from "lucide-react";
 
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -120,12 +121,15 @@ export default function OrganizationPanelPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <Breadcrumb
-        items={[
-          { href: "/admin/organizations", label: "Organizaciones" },
-          { label: data.name },
-        ]}
-      />
+      <div className="flex items-center gap-2">
+        <BackLink fallbackHref="/admin/organizations" />
+        <Breadcrumb
+          items={[
+            { href: "/admin/organizations", label: "Organizaciones" },
+            { label: data.name },
+          ]}
+        />
+      </div>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">

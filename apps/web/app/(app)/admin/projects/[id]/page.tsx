@@ -23,6 +23,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -243,13 +244,16 @@ export default function ProjectDetailPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <header className="space-y-3">
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/admin/projects" className="hover:underline">
-            Proyectos
-          </Link>
-          <span className="mx-1">/</span>
-          <span>{project.folio}</span>
-        </nav>
+        <div className="flex items-center gap-2">
+          <BackLink fallbackHref="/admin/projects" />
+          <nav className="text-[11px] text-[var(--text-tertiary)]">
+            <Link href="/admin/projects" className="hover:underline">
+              Proyectos
+            </Link>
+            <span className="mx-1">/</span>
+            <span>{project.folio}</span>
+          </nav>
+        </div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">

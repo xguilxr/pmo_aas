@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, FileText, Save } from "lucide-react";
 
+import { BackLink } from "@/components/back-link";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,20 +140,23 @@ export default function ProjectCharterEditPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <nav className="text-xs text-[var(--color-tertiary)]">
-        <Link href="/admin/projects" className="hover:underline">
-          Proyectos
-        </Link>
-        <span className="mx-1">/</span>
-        <Link
-          href={`/admin/projects/${charter.project_id}`}
-          className="hover:underline"
-        >
-          {charter.project_name}
-        </Link>
-        <span className="mx-1">/</span>
-        <span>Project Charter</span>
-      </nav>
+      <div className="flex items-center gap-2">
+        <BackLink fallbackHref={`/admin/projects/${charter.project_id}`} />
+        <nav className="text-xs text-[var(--color-tertiary)]">
+          <Link href="/admin/projects" className="hover:underline">
+            Proyectos
+          </Link>
+          <span className="mx-1">/</span>
+          <Link
+            href={`/admin/projects/${charter.project_id}`}
+            className="hover:underline"
+          >
+            {charter.project_name}
+          </Link>
+          <span className="mx-1">/</span>
+          <span>Project Charter</span>
+        </nav>
+      </div>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">

@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -224,13 +225,16 @@ export default function RequestDetailPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="space-y-2">
-        <nav className="text-xs text-[var(--color-tertiary)]">
-          <Link href="/admin/requests" className="hover:underline">
-            Solicitudes
-          </Link>
-          <span className="mx-1">/</span>
-          <span>{request.folio}</span>
-        </nav>
+        <div className="flex items-center gap-2">
+          <BackLink fallbackHref="/admin/requests" />
+          <nav className="text-xs text-[var(--color-tertiary)]">
+            <Link href="/admin/requests" className="hover:underline">
+              Solicitudes
+            </Link>
+            <span className="mx-1">/</span>
+            <span>{request.folio}</span>
+          </nav>
+        </div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
