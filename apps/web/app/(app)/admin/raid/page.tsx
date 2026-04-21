@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Eye, Shield } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
@@ -35,8 +36,19 @@ const KIND_LABEL: Record<Kind, string> = {
   decisions: "Decisiones",
 };
 
-export default function TenantRaidPage() {
-  const [kind, setKind] = useState<Kind>("risks");
+function parseKind(v: string | null): Kind {
+  return v === "actions" || v === "issues" || v === "decisions" || v === "risks"
+    ? v
+    : "risks";
+}
+
+function TenantRaidInner() {
+  const searchParams = useSearchParams();
+  // ENH-009: el KPI del dashboard puede landear directo en un kind
+  // específico vía ?kind=... (risks|actions|issues|decisions).
+  // severity_min permite el caso "Riesgos severos".
+  const severityMin = Number(searchParams.get("severity_min") ?? "") || null;
+  const [kind, setKind] = useState<Kind>(parseKind(searchParams.get("kind")));
   const [filter, setFilter] = useState<TenantCrossFilterValue>({});
   const [risks, setRisks] = useState<Risk[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -79,7 +91,13 @@ export default function TenantRaidPage() {
     };
   }, [kind, filter]);
 
-  const rows = kind === "risks" ? risks : issues;
+  // ENH-009: cuando el link trae ?severity_min=N (típicamente 13 para
+  // "Riesgos severos" desde el dashboard), filtramos client-side.
+  const visibleRisks = useMemo(
+    () => (severityMin ? risks.filter((r) => (r.severity ?? 0) >= severityMin) : risks),
+    [risks, severityMin],
+  );
+  const rows = kind === "risks" ? visibleRisks : issues;
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
@@ -131,7 +149,7 @@ export default function TenantRaidPage() {
             Sin registros para los filtros actuales.
           </div>
         ) : kind === "risks" ? (
-          <RiskTable rows={risks} onPreview={setPreviewRisk} />
+          <RiskTable rows={visibleRisks} onPreview={setPreviewRisk} />
         ) : (
           <IssueTable rows={issues} kind={kind} onPreview={setPreviewIssue} />
         )}
@@ -316,5 +334,13 @@ function IssueTable({
         ))}
       </tbody>
     </table>
+  );
+}
+
+export default function TenantRaidPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-[var(--color-tertiary)]">Cargando…</div>}>
+      <TenantRaidInner />
+    </Suspense>
   );
 }

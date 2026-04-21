@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { Eye, GitPullRequest } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
@@ -25,9 +26,12 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "Rechazado" },
 ];
 
-export default function TenantChangesPage() {
+function TenantChangesInner() {
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState<TenantCrossFilterValue>({});
-  const [status, setStatus] = useState("");
+  // ENH-009: ?status=in_review llega desde el KPI "Cambios en revisión"
+  // del dashboard para abrir la vista con el filtro pre-aplicado.
+  const [status, setStatus] = useState(searchParams.get("status") ?? "");
   const [rows, setRows] = useState<ChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,5 +180,13 @@ export default function TenantChangesPage() {
         description={preview?.description ?? null}
       />
     </div>
+  );
+}
+
+export default function TenantChangesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-[var(--color-tertiary)]">Cargando…</div>}>
+      <TenantChangesInner />
+    </Suspense>
   );
 }

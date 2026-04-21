@@ -302,6 +302,7 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<AlertTriangle className="h-4 w-4" aria-hidden />}
           tone="warning"
+          href="/admin/raid?kind=risks"
         />
         <KpiCard
           label="Riesgos severos"
@@ -309,18 +310,21 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<AlertOctagon className="h-4 w-4" aria-hidden />}
           tone="danger"
+          href="/admin/raid?kind=risks&severity_min=13"
         />
         <KpiCard
           label="Cambios en revisión"
           value={kpis?.change_requests_in_review ?? 0}
           loading={loadingKpis}
           icon={<GitPullRequest className="h-4 w-4" aria-hidden />}
+          href="/admin/changes?status=in_review"
         />
         <KpiCard
           label="AIDs abiertos"
           value={kpis?.open_issues ?? 0}
           loading={loadingKpis}
           icon={<FileWarning className="h-4 w-4" aria-hidden />}
+          href="/admin/raid?kind=issues"
         />
         <KpiCard
           label="Presupuesto total"
