@@ -84,3 +84,21 @@
 - `www.pmo-aas.com` → A/CNAME HostGator (proxy naranja, Full SSL).
 - `pmo-aas.com` (apex) → redirect 301 a `app.pmo-aas.com` (o CNAME flattening).
 - `ollama.pmo-aas.com` → **retirado** (ver DEC-011).
+
+## DEC-013 — Productivo v1.0 corre 100% en Railway; EP012 (MySQL HostGator) CANCELADO
+**Fecha:** 2026-04-21
+**Decisión:** Productivo v1.0 (y v1.x) corren íntegramente en **Railway**, incluyendo BD Postgres. El owner sube el tier del plan Railway (Hobby → Pro u otro con más recursos) y absorbe el costo marginal con las licencias cobradas a clientes. **EP012 (migración a MySQL HostGator) queda CANCELADO**, no deprioritizado: no hay plan futuro de mover la BD a MySQL. HostGator sigue sirviendo únicamente el landing estático `www.pmo-aas.com` (ver DEC-012).
+**Rationale:**
+- El tier superior de Railway cubre compute + Postgres con backups automáticos y throughput suficiente para cargas esperadas del MVP + primeros clientes.
+- El costo incremental del upgrade se cubre con el ingreso de licencias → no hay presión económica para migrar a shared hosting.
+- Los blockers técnicos de EP012 (JSONB, GENERATED, citext, RLS, ausencia de IP estática Railway Hobby) ya no se invierten en resolver — el valor del negocio está en entregar features y arrancar pruebas masivas, no en migrar infra.
+- Mantener un solo dialecto (Postgres) elimina deuda técnica permanente: no hay que mantener el código dialect-agnostic ni duplicar CI matrix.
+**Supersede:**
+- **DEC-002** (migración PG→MySQL al final del roadmap) queda totalmente revocada.
+- **DEC-012** se refuerza: la parte de "MySQL HostGator pasa a v1.1+ solo si los blockers se resuelven" también se revoca. No se reabre.
+**Afecta:**
+- EP012 se marca `CANCELLED` en `docs/epics/EP012-db-migration.md`; US-NEW-029/030 se cierran como CANCELADAS (no se ejecutarán).
+- SPRINT.md: se elimina Bloque 17 de la lista de bloques priorizados.
+- Roadmap antes de v1.0 productivo / pruebas masivas: solo queda terminar Bloque 14 (EP016 v2 Tailscale para habilitar IA) y Bloque 15 (DNS + landing).
+**Alternativa descartada:** VPS dedicado con MySQL — complejidad operativa alta para un beneficio nulo vs Railway Postgres en escala MVP/v1.
+**Plan B:** Si Railway sube precios de forma insostenible en el futuro, re-evaluar Supabase o Neon (ambos Postgres, sin rework de código).

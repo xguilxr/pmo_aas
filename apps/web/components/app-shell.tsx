@@ -20,7 +20,7 @@ import {
 import { BrandMark } from "@/components/brand-mark";
 import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
-import { getStoredUser } from "@/lib/auth-storage";
+import { getStoredUser, type StoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 
 type NavItem = {
@@ -245,10 +245,29 @@ function NavTree({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const user = getStoredUser();
+  // US-BUG-005: leer user en useEffect evita que el primer render (SSR y
+  // primera hidratación cliente) muestre TOP_NAV para un superadmin antes
+  // de leer localStorage. El flag `userReady` distingue "aún no leído" de
+  // "leído y es null" para no flashear la navegación equivocada.
+  const [user, setUser] = useState<StoredUser | null>(null);
+  const [userReady, setUserReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+    setUserReady(true);
+    function refresh() {
+      setUser(getStoredUser());
+    }
+    window.addEventListener("storage", refresh);
+    window.addEventListener("pmoaas:user-updated", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("pmoaas:user-updated", refresh);
+    };
+  }, []);
 
   const adminVisible = useMemo(
     () => Boolean(user && !user.is_superadmin),
@@ -309,7 +328,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-2">
-          {user?.is_superadmin ? null : (
+          {userReady && !user?.is_superadmin ? (
             <NavTree
               items={TOP_NAV}
               pathname={pathname}
@@ -317,7 +336,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               expanded={expanded}
               toggle={toggle}
             />
-          )}
+          ) : null}
           {adminVisible ? (
             <div className="mt-0.5">
               <OrgTreeNav onNavigate={close} />
@@ -334,7 +353,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             </div>
           ) : null}
-          {user?.is_superadmin ? (
+          {userReady && user?.is_superadmin ? (
             <NavTree
               items={SUPERADMIN_NAV}
               pathname={pathname}
