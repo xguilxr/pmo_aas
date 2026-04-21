@@ -382,12 +382,12 @@ function DashboardInner() {
         aria-label="Plan vs Real"
         className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
       >
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-default)] p-4">
+        <header className="flex flex-col gap-3 border-b border-[var(--border-default)] p-4 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
             <h2 className="text-base font-semibold text-[var(--color-primary)]">Plan vs Real</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2">
             <Select
               aria-label="Filtrar por organización"
               value={orgFilter}
