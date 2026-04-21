@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { generateMinute, type AIMinutePayload } from "@/lib/api/ai";
+import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
 export default function NewAIMinutePage() {
   const { id } = useParams<{ id: string }>();
@@ -21,11 +22,32 @@ export default function NewAIMinutePage() {
   const [title, setTitle] = useState("Minuta (IA)");
   const [language, setLanguage] = useState<"" | "es" | "en">("");
   const [transcript, setTranscript] = useState("");
-  const [generating, setGenerating] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [savingRequested, setSavingRequested] = useState(false);
   const [result, setResult] = useState<AIMinutePayload | null>(null);
   const [savedMinuteId, setSavedMinuteId] = useState<string | null>(null);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const polling = useAIJobPolling({
+    jobId,
+    enabled: !!jobId,
+    onSuccess: (job) => {
+      const payload = (job.output ?? null) as (AIMinutePayload & { minute_id?: string | null }) | null;
+      if (payload) {
+        setResult(payload);
+        setSavedMinuteId(payload.minute_id ?? null);
+      }
+      setModelUsed(job.model);
+      if (savingRequested && payload?.minute_id) {
+        router.replace(`/admin/projects/${id}/minutes?created=1`);
+      }
+    },
+    onError: (job) => {
+      setError(job.error || "La generación falló");
+    },
+  });
 
   async function onFile(file: File) {
     if (file.size > 5 * 1024 * 1024) {
@@ -41,8 +63,12 @@ export default function NewAIMinutePage() {
       setError("La transcripción es demasiado corta");
       return;
     }
-    setGenerating(true);
+    setDispatching(true);
     setError(null);
+    setResult(null);
+    setSavedMinuteId(null);
+    setModelUsed(null);
+    setSavingRequested(save);
     try {
       const res = await generateMinute({
         project_id: id,
@@ -51,18 +77,21 @@ export default function NewAIMinutePage() {
         save_as_minute: save,
         title: title.trim() || "Minuta (IA)",
       });
-      setResult(res.output);
-      setSavedMinuteId(res.minute_id);
-      setModelUsed(res.model);
-      if (save && res.minute_id) {
-        router.replace(`/admin/projects/${id}/minutes?created=1`);
-      }
+      setJobId(res.job_id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo generar la minuta");
+      setError(err instanceof ApiError ? err.message : "No se pudo despachar el job");
     } finally {
-      setGenerating(false);
+      setDispatching(false);
     }
   }
+
+  const generating = dispatching || polling.isPolling;
+  const statusLabel =
+    polling.status === "queued"
+      ? "En cola..."
+      : polling.status === "running"
+      ? "Generando minuta..."
+      : null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -87,12 +116,19 @@ export default function NewAIMinutePage() {
           Minuta con IA
         </h1>
         <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-          Pega la transcripción (o sube un .txt). La cascada usa Ollama → Gemini → Claude según la
-          configuración del tenant. Max 5 MB.
+          Pega la transcripción (o sube un .txt). El worker procesa la cascada Ollama → Gemini →
+          Claude según la configuración del tenant. Max 5 MB.
         </p>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
+      {polling.error ? <Banner variant="danger">{polling.error}</Banner> : null}
+
+      {statusLabel ? (
+        <Banner variant="info">
+          {statusLabel} (job {jobId?.slice(0, 8)}…)
+        </Banner>
+      ) : null}
 
       <section className="grid gap-4 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-3">
@@ -134,7 +170,7 @@ export default function NewAIMinutePage() {
             Cómo se genera
           </p>
           <ol className="space-y-2 text-[13px] text-[var(--text-secondary)]">
-            <li>1. Se trocea la transcripción con overlap.</li>
+            <li>1. El worker trocea la transcripción con overlap.</li>
             <li>2. Cada chunk alimenta al LLM en cascada.</li>
             <li>3. Los objetos JSON se fusionan y validan.</li>
             <li>4. Puedes guardar como minuta o descartar.</li>

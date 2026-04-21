@@ -8,29 +8,34 @@ export type AIMinutePayload = {
   decisions: { description: string; rationale?: string }[];
   next_steps: { action: string; owner?: string; due_date?: string }[];
   risks_blockers: { description: string }[];
+  minute_id?: string | null;
 };
 
-export type GenerateMinuteResult = {
+export type AIJobStatus = "queued" | "running" | "succeeded" | "failed";
+
+export type DispatchResult = {
   job_id: string;
-  status: string;
-  model: string;
-  output: AIMinutePayload;
-  minute_id: string | null;
+  status: AIJobStatus;
 };
 
+/**
+ * US-051: dispatch a Celery. Devuelve 202 con {job_id, status}.
+ * La UI debe hacer polling con `pollAIJob` (o el hook `useAIJobPolling`)
+ * hasta status=succeeded|failed.
+ */
 export function generateMinute(body: {
   project_id: string;
   transcript: string;
   language?: string;
   save_as_minute?: boolean;
   title?: string;
-}): Promise<GenerateMinuteResult> {
-  return apiFetch<GenerateMinuteResult>("/api/v1/ai/minutes", { method: "POST", body });
+}): Promise<DispatchResult> {
+  return apiFetch<DispatchResult>("/api/v1/ai/minutes", { method: "POST", body });
 }
 
 export type AIJobRead = {
   id: string;
-  status: string;
+  status: AIJobStatus;
   model: string | null;
   tokens_in: number | null;
   tokens_out: number | null;
@@ -51,17 +56,16 @@ export type ReportSections = {
   budget_status?: Record<string, unknown>;
 };
 
-export type ReportDraftResult = {
+export type ReportJobOutput = {
   report_id: string;
   sections: ReportSections;
-  model: string;
 };
 
 export function draftReport(
   projectId: string,
   body: { recipients?: string[] } = {},
-): Promise<ReportDraftResult> {
-  return apiFetch<ReportDraftResult>(
+): Promise<DispatchResult> {
+  return apiFetch<DispatchResult>(
     `/api/v1/ai/projects/${projectId}/reports/draft`,
     { method: "POST", body },
   );

@@ -84,6 +84,21 @@ healthcheckPath = ""   # worker no expone HTTP
 numReplicas = 1
 ```
 
+**Tasks procesadas por el worker (US-051):**
+
+- `ai.generate_minute` — dispatchada por `POST /ai/minutes`. Ejecuta
+  la cascada Ollama → Gemini → Claude y persiste el resultado en
+  `ai_jobs`. Si `save_as_minute=true`, crea también la fila en
+  `meeting_minutes`.
+- `ai.draft_report` — dispatchada por `POST /ai/projects/{id}/reports/draft`.
+  Análoga, persiste en `reports`.
+
+El worker es el único servicio que tiene el sidecar Tailscale activo
+(`start-worker.sh` + `TS_AUTHKEY`) — por eso todas las llamadas a
+Ollama local salen desde ahí, no desde `api`. La UI consume el
+resultado vía polling a `GET /ai/jobs/{id}` (ver hook
+`lib/hooks/use-ai-job-polling.ts` en el frontend).
+
 ### `apps/web/railway.toml`
 
 ```toml

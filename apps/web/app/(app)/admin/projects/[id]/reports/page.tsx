@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { draftReport, sendReport } from "@/lib/api/ai";
+import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 import {
   PERIOD_LABEL,
   SECTION_LABELS,
@@ -341,21 +342,42 @@ function GenerateWithAIButton({
   projectId: string;
   onCreated: (reportId: string) => void;
 }) {
-  const [working, setWorking] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const polling = useAIJobPolling({
+    jobId,
+    enabled: !!jobId,
+    onSuccess: (job) => {
+      const payload = (job.output ?? null) as { report_id?: string } | null;
+      if (payload?.report_id) {
+        onCreated(payload.report_id);
+      } else {
+        setError("El worker no devolvió report_id");
+      }
+      setJobId(null);
+    },
+    onError: (job) => {
+      setError(job.error || "La generación falló");
+      setJobId(null);
+    },
+  });
+
   async function generate() {
-    setWorking(true);
+    setDispatching(true);
     setError(null);
     try {
       const r = await draftReport(projectId, {});
-      onCreated(r.report_id);
+      setJobId(r.job_id);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al generar con IA");
     } finally {
-      setWorking(false);
+      setDispatching(false);
     }
   }
+
+  const working = dispatching || polling.isPolling;
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -367,8 +389,16 @@ function GenerateWithAIButton({
       >
         <Sparkles className="h-4 w-4" aria-hidden /> Generar con IA
       </Button>
+      {polling.isPolling ? (
+        <span className="text-[11px] text-[var(--text-tertiary)]">
+          {polling.status === "queued" ? "En cola..." : "Generando..."}
+        </span>
+      ) : null}
       {error ? (
         <span className="text-[11px] text-[var(--color-danger-fg)]">{error}</span>
+      ) : null}
+      {polling.error ? (
+        <span className="text-[11px] text-[var(--color-danger-fg)]">{polling.error}</span>
       ) : null}
     </div>
   );

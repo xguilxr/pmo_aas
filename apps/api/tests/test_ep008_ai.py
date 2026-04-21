@@ -33,9 +33,18 @@ def test_tc112_chunk_overlap():
         assert chunks[i][-100:] in chunks[i + 1] or chunks[i + 1].startswith(chunks[i][-400:-100])
 
 
-# TC-113 stub (AI disabled by default) devuelve JSON válido vía parser fallback
+# TC-113 (US-051 refactor) dispatch devuelve 202 + job_id queued
 @pytest.mark.asyncio
-async def test_tc113_generate_minute_stub(client, db_session):
+async def test_tc113_generate_minute_dispatches(client, db_session, monkeypatch):
+    from app.workers.tasks import ai as ai_tasks
+
+    captured: dict = {}
+
+    def fake_delay(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(ai_tasks.generate_minute_task, "delay", fake_delay)
+
     _, auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         "/api/v1/ai/minutes",
@@ -47,13 +56,14 @@ async def test_tc113_generate_minute_stub(client, db_session):
         },
         headers=auth["_authz"],
     )
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text
     body = r.json()
-    assert body["status"] == "succeeded"
-    assert body["model"]
-    assert "output" in body
-    # Minuta guardada
-    assert body["minute_id"]
+    assert body["status"] == "queued"
+    assert body["job_id"]
+    assert captured["job_id"] == body["job_id"]
+    assert captured["tenant_id"]
+    assert captured["project_id"] == proj_id
+    assert captured["save_as_minute"] is True
 
 
 # TC-116 transcript > 5 MB → 413
@@ -69,11 +79,19 @@ async def test_tc116_transcript_too_large(client, db_session):
     assert r.status_code == 413
 
 
-# TC-117 draft report incluye top_risks
+# TC-117 (US-051) draft report dispatch + ejecución task produce report
 @pytest.mark.asyncio
-async def test_tc117_draft_report_includes_risks(client, db_session):
+async def test_tc117_draft_report_dispatches_and_runs(client, db_session, monkeypatch):
+    from app.workers.tasks import ai as ai_tasks
+
+    captured: dict = {}
+
+    def fake_delay(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(ai_tasks.draft_report_task, "delay", fake_delay)
+
     _, auth, proj_id = await _setup(client, db_session)
-    # crear riesgos variados
     for p, i in [(5, 5), (3, 2), (4, 4)]:
         await client.post(
             f"/api/v1/projects/{proj_id}/risks",
@@ -85,19 +103,43 @@ async def test_tc117_draft_report_includes_risks(client, db_session):
         json={"recipients": ["stakeholder@acme.example.com"]},
         headers=auth["_authz"],
     )
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text
     body = r.json()
-    assert body["report_id"]
+    assert body["status"] == "queued"
+    job_id = body["job_id"]
+
+    # ejecuta la task con los args que capturamos
+    await ai_tasks._run_report(**captured)
+
+    j = await client.get(f"/api/v1/ai/jobs/{job_id}", headers=auth["_authz"])
+    assert j.status_code == 200
+    assert j.json()["status"] == "succeeded"
+    assert j.json()["output"]["report_id"]
+
+
+async def _draft_and_run(client, auth, proj_id, monkeypatch):
+    """Dispatch + ejecución sincrónica de la task. Devuelve report_id."""
+    from app.workers.tasks import ai as ai_tasks
+    captured: dict = {}
+    monkeypatch.setattr(
+        ai_tasks.draft_report_task, "delay", lambda **k: captured.update(k),
+    )
+    r = await client.post(
+        f"/api/v1/ai/projects/{proj_id}/reports/draft", json={}, headers=auth["_authz"],
+    )
+    assert r.status_code == 202
+    await ai_tasks._run_report(**captured)
+    j = await client.get(
+        f"/api/v1/ai/jobs/{r.json()['job_id']}", headers=auth["_authz"],
+    )
+    return j.json()["output"]["report_id"]
 
 
 # TC-118 send sin recipients
 @pytest.mark.asyncio
-async def test_tc118_send_empty_recipients(client, db_session):
+async def test_tc118_send_empty_recipients(client, db_session, monkeypatch):
     _, auth, proj_id = await _setup(client, db_session)
-    draft = await client.post(
-        f"/api/v1/ai/projects/{proj_id}/reports/draft", json={}, headers=auth["_authz"]
-    )
-    rep_id = draft.json()["report_id"]
+    rep_id = await _draft_and_run(client, auth, proj_id, monkeypatch)
     r = await client.post(
         f"/api/v1/ai/reports/{rep_id}/send",
         json={"recipients": []},
@@ -106,14 +148,11 @@ async def test_tc118_send_empty_recipients(client, db_session):
     assert r.status_code == 422
 
 
-# TC-120 duplicar reporte previo (nuestro flujo: draft nuevo reutiliza data actual)
+# TC-120 send ok
 @pytest.mark.asyncio
-async def test_tc120_send_ok(client, db_session):
+async def test_tc120_send_ok(client, db_session, monkeypatch):
     _, auth, proj_id = await _setup(client, db_session)
-    draft = await client.post(
-        f"/api/v1/ai/projects/{proj_id}/reports/draft", json={}, headers=auth["_authz"]
-    )
-    rep_id = draft.json()["report_id"]
+    rep_id = await _draft_and_run(client, auth, proj_id, monkeypatch)
     s = await client.post(
         f"/api/v1/ai/reports/{rep_id}/send",
         json={"recipients": ["a@b.com"]},

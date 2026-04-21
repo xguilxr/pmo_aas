@@ -7,21 +7,13 @@
 ## 🔴 IN-PROGRESS
 
 ```
-US-051 — Mover generación IA (minuta + reporte) a Celery worker con polling
-  Epic: EP016 (follow-up de US-048)
-  Branch: claude/fix-tailscale-command-0VPWN (reusa la branch activa)
-  Issue: #28
+— Sin US activa —
 
-**Contexto (2026-04-21):** al completar la instalación manual de
-Tailscale + Ollama y probar el flujo de minutas en prod, el endpoint
-`POST /ai/minutes` devolvió `[AI disabled — mock]`. Análisis descubrió
-que (1) AI_MODE estaba en disabled, y (2) aunque se cambie a ollama,
-el endpoint corre sincrónicamente en el servicio `api` que NO tiene
-tailscaled → nunca alcanza Ollama. El diseño EP016/US-048 implicaba
-que el worker (con Tailscale) procesara la AI, pero ese dispatch
-nunca se implementó (celery_app.py:29 tiene include=[]).
-
-Esta US cierra ese gap: dispatch a Celery, polling en frontend.
+US-051 cerrada 2026-04-21: el flujo de minutas + reportes ahora
+despacha a Celery worker (que tiene sidecar tailscaled). El endpoint
+devuelve 202 + job_id; la UI hace polling a GET /ai/jobs/{id} con
+backoff. Con AI_MODE=ollama en Railway la cascada corre desde el
+worker y sí alcanza ollama-host.<tailnet>.ts.net.
 ```
 
 ---
@@ -108,6 +100,7 @@ Esta US cierra ese gap: dispatch a Celery, polling en frontend.
 | US-049 | DNS routing pmo-aas.com (Railway + HostGator) | `docs(infra): US-049 — DNS routing pmo-aas.com (Railway + HostGator)` | 2026-04-21 |
 | US-050 | Landing estático www.pmo-aas.com en HostGator | `feat(landing): US-050 — landing estático www.pmo-aas.com en HostGator` | 2026-04-21 |
 | BUG-006 | Runbook Ollama+Tailscale §3.2 — advertir PATH no refrescado en PowerShell | `fix(docs): BUG-006 — runbook Tailscale §3.2 advierte PATH no refrescado en PowerShell` | 2026-04-21 |
+| US-051 | Mover generación IA (minuta + reporte) a Celery worker con polling | `feat(api,web): US-051 — IA minuta+reporte dispatchan a Celery worker; UI hace polling a /ai/jobs/{id}` | 2026-04-21 |
 
 ---
 
@@ -292,12 +285,11 @@ Esta US cierra ese gap: dispatch a Celery, polling en frontend.
 > follow-up pendiente. Sin este refactor, Ollama local NUNCA se usa en
 > producción — la cascada cae directo a Gemini/Claude.
 
-- [ ] **US-051 — Mover generación IA (minuta + reporte) a Celery worker** — issue #28
-  - Backend: tasks Celery + endpoints devuelven 202 con job_id.
-  - Frontend: hook de polling con backoff + actualización de `NewAIMinutePage`.
-  - Docs: DoD EP016 + deployment-railway.
-  - Tests: unit + integration (Celery eager).
-  - Estimado: 1 sesión grande (11-14 archivos).
+- [x] **US-051 — Mover generación IA (minuta + reporte) a Celery worker** — issue #28 ✅
+  - Backend: tasks Celery (`app/workers/tasks/ai.py`) + endpoints devuelven 202 con job_id.
+  - Frontend: hook `use-ai-job-polling` con backoff + actualización de `NewAIMinutePage` y `GenerateWithAIButton`.
+  - Docs: DoD EP016 ✔️ + `deployment-railway.md` §2 con descripción de tasks del worker.
+  - Tests: 5 nuevos en `test_us051_ai_celery_tasks.py` + 3 existentes actualizados en `test_ep008_ai.py`. 209/209 pasan.
 
 ### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
 
