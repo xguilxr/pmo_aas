@@ -177,6 +177,24 @@ async def create_project(
             "charter_doc_id": str(charter_doc.id),
         },
     )
+
+    # US-027/028: notificar PM asignado al crear el proyecto. No si el PM
+    # es quien lo creó (sería self-notification ruidosa).
+    if str(body.pm_id) != cu.id:
+        from app.services.notifications import PM_ASSIGNED, enqueue_notification
+
+        await enqueue_notification(
+            db,
+            tenant_id=tenant_id,
+            user_id=str(body.pm_id),
+            type=PM_ASSIGNED,
+            title=f"Te asignaron como PM de {project.name}",
+            body=f"Folio {folio}. Complementa el Project Charter antes de arrancar.",
+            entity_type="project",
+            entity_id=str(project.id),
+            link=f"/admin/projects/{project.id}/charter",
+        )
+
     await db.commit()
     return ProjectRead.model_validate(project)
 

@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
     ACCOUNT_LOCK_MINUTES: int = 15
 
+    # US-028: email delivery via Resend. Sin API key el canal email
+    # queda deshabilitado y las notificaciones viven solo in-app.
+    RESEND_API_KEY: str = ""
+    RESEND_FROM: str = ""  # ej. "PMO·aaS <no-reply@pmo-aas.com>"
+    APP_BASE_URL: str = "https://app.pmo-aas.com"  # usado en CTA y unsubscribe links
+
     # DEPRECATED US-047 (2026-04-21): Cifrado de secretos IA por-tenant.
     # Se introdujo en US-045 para guardar el CF-Access-Client-Secret del
     # tenant. El pivote a Tailscale (DEC-011) elimina la necesidad de

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { NotificationBell } from "@/components/notification-bell";
 import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
 import { getStoredUser, type StoredUser } from "@/lib/auth-storage";
@@ -425,7 +426,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
             </div>
           </div>
-          <UserMenu user={user} variant="chrome" />
+          <div className="flex items-center gap-1">
+            {userReady && user ? <NotificationBell /> : null}
+            <UserMenu user={user} variant="chrome" />
+          </div>
         </header>
         <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
       </div>

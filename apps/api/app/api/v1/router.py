@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     branding,
     dashboard,
     modules,
+    notifications,
     organizations,
     project_areas,
     project_charters,
@@ -46,6 +47,7 @@ api_router.include_router(modules.chg_router)
 api_router.include_router(modules.docs_router)
 api_router.include_router(modules.lessons_router)
 api_router.include_router(modules.minutes_router)
+api_router.include_router(notifications.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
 api_router.include_router(tasks.router)
