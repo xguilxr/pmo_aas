@@ -22,6 +22,7 @@ from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
 from app.models.tenant import Tenant
+from app.services.ai.platform_config import resolve_ai_mode, resolve_ollama_config
 from app.services.ai.prompts import MINUTE_SYSTEM, REPORT_SYSTEM
 from app.services.ai.provider import chunk_text, generate_with_cascade
 from app.services.audit import write_audit
@@ -57,15 +58,21 @@ def _parse_json_strict(s: str) -> dict | None:
 
 
 async def _tenant_ollama_cfg(db, tenant_id: str) -> dict | None:
+    """US-054: merge tenant override → platform defaults → env.
+
+    Antes (US-048) solo leía `tenants.settings.ai.ollama`; si el tenant no
+    tenía config, devolvía None y el provider caía al env directo.
+    Ahora `resolve_ollama_config()` incluye los defaults editables por
+    superadmin en `platform_ai_settings`, permitiendo a la plataforma
+    tener un modelo "base" sin tocar env vars.
+    """
     t = (
         await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     ).scalar_one_or_none()
-    if t is None:
-        return None
-    cfg = dict(((t.settings or {}).get("ai") or {}).get("ollama") or {})
-    if not cfg.get("base_url"):
-        return None
-    return cfg
+    tenant_cfg = None
+    if t is not None:
+        tenant_cfg = dict(((t.settings or {}).get("ai") or {}).get("ollama") or {})
+    return await resolve_ollama_config(db, tenant_cfg)
 
 
 async def _mark_running(db, job_id: str) -> AIJob | None:
@@ -112,10 +119,11 @@ async def _run_minute(
     try:
         async with db_session() as db:
             ollama_cfg = await _tenant_ollama_cfg(db, tenant_id)
+            ai_mode = await resolve_ai_mode(db)
 
         logger.info(
-            "minute task start job=%s tenant=%s ollama_cfg=%s",
-            job_id, tenant_id,
+            "minute task start job=%s tenant=%s ai_mode=%s ollama_cfg=%s",
+            job_id, tenant_id, ai_mode,
             {"base_url": ollama_cfg.get("base_url"), "model": ollama_cfg.get("model")}
             if ollama_cfg else None,
         )
@@ -127,6 +135,7 @@ async def _run_minute(
         for ch in chunks:
             res = await generate_with_cascade(
                 ch, system=MINUTE_SYSTEM, tenant_ollama_config=ollama_cfg,
+                ai_mode_override=ai_mode,
             )
             model_used = res.model
             total_in += res.tokens_in
@@ -237,10 +246,12 @@ async def _run_report(
             }
             project_folio = p.folio
             ollama_cfg = await _tenant_ollama_cfg(db, tenant_id)
+            ai_mode = await resolve_ai_mode(db)
 
         prompt = json.dumps(context, ensure_ascii=False)
         res = await generate_with_cascade(
             prompt, system=REPORT_SYSTEM, tenant_ollama_config=ollama_cfg,
+            ai_mode_override=ai_mode,
         )
         sections = _parse_json_strict(res.text) or {
             "executive_summary": res.text[:1500],

@@ -58,13 +58,17 @@ class OllamaProvider:
         este call; en caso contrario cae a los env `OLLAMA_BASE_URL` /
         `OLLAMA_MODEL`. Esto permite que cada tenant apunte a su propio
         endpoint tailnet sin tocar env del worker.
+
+        ENH-011: el fallback del timeout total de httpx ahora viene de
+        `settings.AI_TIMEOUT_S` (default 120s). Antes estaba hardcoded.
+        Orden de prioridad: override tenant > env AI_TIMEOUT_S > 120s.
         """
         import httpx
 
         ov = override or {}
         base_url = str(ov.get("base_url") or settings.OLLAMA_BASE_URL).rstrip("/")
         model = str(ov.get("model") or settings.OLLAMA_MODEL)
-        timeout_total = float(ov.get("timeout_sec") or 120.0)
+        timeout_total = float(ov.get("timeout_sec") or settings.AI_TIMEOUT_S)
 
         payload = {"model": model, "prompt": prompt, "stream": False}
         if system:
@@ -168,14 +172,19 @@ async def generate_with_cascade(
     *,
     system: str | None = None,
     tenant_ollama_config: dict | None = None,
+    ai_mode_override: str | None = None,
 ) -> AIResult:
     """Intenta en orden: configured primary → gemini → disabled stub.
 
     US-048: `tenant_ollama_config`, si se pasa, se inyecta solo al
     `OllamaProvider` para que use el endpoint tailnet del tenant en vez
     del env global. Los demás providers ignoran el parámetro.
+
+    US-054: `ai_mode_override` permite al worker Celery pasar el modo
+    efectivo resuelto desde `platform_ai_settings` (superadmin) en vez
+    de leer `settings.AI_MODE` del env. Si es None, cae al env.
     """
-    mode = settings.AI_MODE
+    mode = ai_mode_override or settings.AI_MODE
     if mode == "disabled":
         return await _PROVIDERS["disabled"].generate(prompt, system=system)
 

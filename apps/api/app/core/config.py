@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     AI_MODE: Literal["ollama", "gemini", "claude", "disabled"] = "disabled"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5:7b-instruct-q4_K_M"
+    # ENH-011: fallback del httpx timeout total de OllamaProvider cuando el
+    # tenant no configuró `settings.ai.ollama.timeout_sec`. Transcripts
+    # largas (1h de reunión) pueden tardar >2min en un 7B local — por eso
+    # el default es generoso y el env se puede subir sin bound rígido.
+    AI_TIMEOUT_S: int = 120
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
     ANTHROPIC_API_KEY: str = ""
