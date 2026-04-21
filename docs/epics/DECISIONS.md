@@ -10,11 +10,11 @@
 **Rationale:** Claude Code puede leer MD del repo directamente. GitHub Issues da visibilidad y búsqueda.  
 **Alternativa descartada:** Solo Notion (Claude Code no tiene acceso directo).
 
-## DEC-002 — Migración PostgreSQL → MySQL al final del roadmap
-**Fecha:** 2026-04-20  
-**Decisión:** EP012 es la última épica. Todo el desarrollo v1 usa PostgreSQL.  
-**Rationale:** No bloquear desarrollo actual. Migrar cuando el producto esté estable.  
-**Riesgo:** Algunas features de PG (RLS, pg_trgm, uuid v7) necesitan equivalentes en MySQL.
+## DEC-002 — ❌ SUPERSEDED por DEC-013
+**Fecha original:** 2026-04-20
+**Revocada:** 2026-04-21 (ver DEC-013).
+**Decisión original:** EP012 era la última épica para migrar a MySQL al final del roadmap.
+**Estado actual:** EP012 queda CANCELADO. Productivo v1.0 corre en Railway Postgres sin plan de migrar. El archivo original del epic se conserva en `docs/archive/cancelled-epics/EP012-db-migration.md`.
 
 ## DEC-003 — Jerarquía org con tablas separadas (no JSONB)
 **Fecha:** 2026-04-20  

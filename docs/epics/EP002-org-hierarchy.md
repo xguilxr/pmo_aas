@@ -100,26 +100,26 @@ La jerarquía es configurable por Admin del tenant o Senior PMO. BU y Departamen
 
 ## # PENDING — User Stories nuevas
 
-### US-NEW-002 — Migración BD: tablas business_units y departments
-*(ver DB-CHANGES.md para SQL completo)*
+### US-NEW-002 — Migración BD: tablas business_units y departments ✅ DONE
 
-**Como** desarrollador
-**Quiero** tener las tablas `business_units` y `departments` con sus FK
-**Para** soportar la jerarquía completa.
+Implementada en la migración Alembic
+[`20260420_0009_business_units_departments.py`](../../apps/api/alembic/versions/20260420_0009_business_units_departments.py).
+Ver detalle del shape en
+[`DB-CHANGES.md` §EP002](./DB-CHANGES.md#ep002--jerarquía-org).
 
-**Criterios de aceptación:**
-- [ ] Migración Alembic: crear `business_units` con FK a `organizations`.
-- [ ] Migración Alembic: crear `departments` con FK a `business_units`.
-- [ ] `programs.department_id` nullable, FK a `departments`.
-- [ ] `projects.business_unit_id` y `projects.department_id` nullable.
-- [ ] `project_requests.business_unit_id` y `project_requests.department_id` nullable (FK reales).
-- [ ] RLS habilitado en las dos tablas nuevas.
-- [ ] Índices según DB-CHANGES.md.
-- [ ] `alembic downgrade` funciona.
+**Resultado:**
+- `business_units(id, tenant_id, organization_id, name, …)` +
+  `departments(id, tenant_id, business_unit_id, name, …)`.
+- FKs nullable en `programs.department_id`, `projects.department_id`,
+  `projects.business_unit_id`,
+  `project_requests.{business_unit_id, department_id}`.
+- Índices parciales por `deleted_at IS NULL`.
+- Aislamiento multi-tenant por filtro `tenant_id` en el ORM + helpers
+  de repositorio (no por RLS — ver DEC-003).
 
-**Test Cases:**
-- `TC-NEW-001` (unit) — Migración up/down sin errores.
-- `TC-NEW-002` (integration) — RLS: user de tenant A no ve BUs de tenant B.
+**Test Cases cubiertos:**
+- `TC-NEW-001` (unit) — Migración up/down.
+- `TC-NEW-002` (integration) — Filtro `tenant_id` impide cross-tenant.
 
 ---
 
