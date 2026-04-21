@@ -116,6 +116,7 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 | ENH-003 | Botón "Nuevo programa" en toolbar de organizaciones | `feat(org): ENH-003 — botón Nuevo programa` | 2026-04-21 |
 | BUG-020 | Runbook Ollama+Tailscale §4: solo Allow (sin Block Any) | `fix(docs): BUG-020 — runbook §4 solo Allow tailnet` | 2026-04-21 |
 | ENH-008 | EP009 (MSP/xlsx) reclasificado a v1.1; botón en UI disabled | `docs(epics): ENH-008 — EP009 a v1.1 + botón Importar MSP disabled en UI` | 2026-04-21 |
+| BUG-022 | Documentos sin file_url muestran "Sin archivo" (UX) | `fix(projects): BUG-022 — documentos sin file_url` | 2026-04-21 |
 
 ---
 
@@ -330,7 +331,7 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 10. [x] **BUG-019** — Panel organización abre /edit, debería abrir resumen — #44 ✅ 1560f85
 11. [x] **ENH-003** — Organizaciones: botón "Nuevo programa" — #50 ✅ f113a7d
 12. [x] **ENH-004** — Proyecto: centrar barra de tabs — #51 ✅ ebfff84
-13. [ ] **BUG-022** — Documentos dummy: confirmar UX sin archivo — #47
+13. [x] **BUG-022** — Documentos dummy: confirmar UX sin archivo — #47 ✅ dfc0256
 14. [ ] **BUG-017** — Al aprobar solicitud, abrir charter para complementar — #42
 15. [ ] **BUG-018** — Nuevo proyecto: pedir info completa del charter — #43
 16. [ ] **BUG-008** — Dark mode: azul chrome contrasta con grises — #33
