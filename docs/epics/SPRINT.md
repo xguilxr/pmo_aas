@@ -11,24 +11,39 @@
 
 **Estado al 2026-04-21 (owner):** productivo v1.0 corre en Railway con
 tier superior; el costo marginal se cubre con licencias cobradas.
-**EP012 (migración a MySQL HostGator) queda CANCELADO por DEC-013** —
-no se invierte más en él. DEC-002 y la parte "reabrir a v1.1" de
-DEC-012 quedan revocadas.
+EP012 (migración a MySQL HostGator) CANCELADO por DEC-013. DEC-002 y
+la parte "reabrir a v1.1" de DEC-012 quedan revocadas.
 
-Bloque 13 (hotfixes operativos) cerrado el 2026-04-21: US-BUG-004 deja
-documentado el troubleshooting de redeploy en Railway (el toggle
-operativo lo aplica el owner del project), y US-BUG-005 arregla el
-flash de TOP_NAV en primer paint del sidebar super admin.
+Bloque 13 (hotfixes operativos) cerrado el 2026-04-21:
+- US-BUG-004 documentó el troubleshooting de redeploy en Railway.
+- US-BUG-005 arregla el flash de TOP_NAV en primer paint del sidebar
+  super admin.
 
-Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local vía CF
-Tunnel) ya estaban completos. EP016 sigue REABIERTO por pivote
-arquitectónico a Tailscale (ver DEC-011 + ADR-015, 2026-04-21).
-US-NEW-044/045 permanecen SUPERSEDED.
+Bloque 14 (EP016 v2 — Ollama local vía Tailscale) cerrado el
+2026-04-21:
+- US-NEW-046 reescribe docs/ai/local-ollama-setup.md para flujo
+  Tailscale (Windows + MagicDNS + firewall por 100.64.0.0/10 +
+  TS_AUTHKEY reusable/ephemeral con tag:railway-worker + cleanup del
+  CF Tunnel previo).
+- US-NEW-047 elimina los campos CF-Access del formulario
+  OllamaLocalAiForm, del endpoint POST /api/v1/admin/ai/test-connection
+  y del script ai_local_smoke.py. Schema reducido a {base_url, model,
+  timeout_sec}. AI_SECRETS_FERNET_KEY queda DEPRECATED. Legacy
+  secrets archivados en settings.ai.ollama.auth_legacy.*. Tests
+  renombrados a test_usnew047_* con @pytest.mark.legacy para los de
+  Fernet.
+- US-NEW-048 agrega Dockerfile común api+worker con tailscaled,
+  wrapper start-worker.sh (user-space networking → celery) y cierra
+  el follow-up de EP016: OllamaProvider.generate consume
+  {base_url, model, timeout_sec} del tenant; generate_with_cascade
+  emite log estructurado ai_cascade_fallback con tags from/to para
+  derivar la métrica Prometheus en el futuro.
 
-**Ruta directa a pruebas masivas (owner 2026-04-21):**
-  Bloque 14 — EP016 v2 Tailscale (US-NEW-046/047/048) → habilita IA
+Bloques 11 y 12 originales siguen cerrados; US-NEW-044/045 quedan
+SUPERSEDED por el Bloque 14.
+
+**Ruta directa a pruebas masivas (pendiente):**
   Bloque 15 — DNS productivo + landing (US-NEW-049/050)
-  → una vez cerrados 14 + 15, arranca pruebas masivas en Railway prod.
 
 Después de pruebas masivas (POST-MVP, no bloquean v1.0):
   Bloque 16 — EP011 Notificaciones in-app + email
@@ -36,11 +51,14 @@ Después de pruebas masivas (POST-MVP, no bloquean v1.0):
 Bloque 17 (EP012 MySQL HostGator): ❌ CANCELADO por DEC-013.
 
 Follow-ups arrastrados:
-- Refactorizar OllamaProvider.generate() para consumir la config
-  por-tenant en el worker IA (hoy usa env). Se cubre como parte del DoD
-  de US-NEW-048.
 - Harness Playwright no instalado: el test e2e superadmin-sidebar
   quedó fuera de US-BUG-005; reabrir cuando se introduzca el framework.
+- Cleanup manual de CF Tunnel (tunnel pmoaas-ollama, CNAME ollama.*,
+  Service Tokens): documentado en docs/ai/local-ollama-setup.md
+  §10 "Rollback de CF Tunnel"; ejecuta el owner.
+- Exportador Prometheus: el log estructurado ai_cascade_fallback
+  está listo, falta el exporter que lo convierta en métrica
+  `ai_cascade_fallback_total{from,to}`.
 ```
 
 ---
@@ -49,11 +67,11 @@ Follow-ups arrastrados:
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-NEW-046 | EP016 | Runbook `local-ollama-setup.md` reescrito a Tailscale | Bloque 14 |
-| 2 | US-NEW-047 | EP016 | Refactor config + test-connection Tailscale (quita CF-Access) | Bloque 14 |
-| 3 | US-NEW-048 | EP016 | Sidecar Tailscale en worker Railway | Bloque 14 |
-| 4 | US-NEW-049 | infra | DNS productivo pmo-aas.com (Cloudflare + Railway + HostGator) | Bloque 15 |
-| 5 | US-NEW-050 | infra | Landing estático www.pmo-aas.com en HostGator | Bloque 15 |
+| 1 | US-NEW-049 | infra | DNS productivo pmo-aas.com (Cloudflare + Railway + HostGator) | Bloque 15 |
+| 2 | US-NEW-050 | infra | Landing estático www.pmo-aas.com en HostGator | Bloque 15 |
+| 3 | US-NEW-027 | EP011 | Tabla notifications + in-app center | Bloque 16 (POST-MVP) |
+| 4 | US-NEW-028 | EP011 | Email notifications via Resend | Bloque 16 (POST-MVP) |
+| — | — | — | — | — |
 
 > Backlog completo abajo, reordenado.
 
@@ -108,6 +126,9 @@ Follow-ups arrastrados:
 | US-NEW-045 | Config + smoke test del túnel + secrets cifrados | `feat(api,web): US-NEW-045 — config y smoke del modelo IA local (Cloudflare Tunnel)` | 2026-04-20 |
 | US-BUG-004 | Railway no redeploy tras PR #20 — troubleshooting documentado | `fix(infra): US-BUG-004 — Railway auto-deploy troubleshooting tras PR #20` | 2026-04-21 |
 | US-BUG-005 | Sidebar super admin respeta user.is_superadmin en first paint | `fix(web): US-BUG-005 — sidebar super admin respeta user.is_superadmin en first paint` | 2026-04-21 |
+| US-NEW-046 | Runbook Ollama + Tailscale (reemplaza CF Tunnel) | `docs(ai): US-NEW-046 — runbook Ollama + Tailscale (reemplaza CF Tunnel)` | 2026-04-21 |
+| US-NEW-047 | Refactor config Ollama a Tailscale (quita CF-Access) | `feat(api,web): US-NEW-047 — refactor config Ollama a Tailscale (quita CF-Access)` | 2026-04-21 |
+| US-NEW-048 | Sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider | `feat(worker): US-NEW-048 — sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider` | 2026-04-21 |
 
 ---
 
@@ -239,15 +260,15 @@ Follow-ups arrastrados:
        y que Usuarios SÍ aparece.
   - **Commit:** `fix(web): US-BUG-005 — sidebar super admin respeta user.is_superadmin en first paint`.
 
-### Bloque 14 — EP016 v2: Ollama local vía Tailscale (reabre EP016)
+### Bloque 14 — EP016 v2: Ollama local vía Tailscale (reabre EP016) ✅ CERRADO 2026-04-21
 
-> Reemplaza el canal CF Tunnel + Cloudflare Access por Tailscale tailnet
+> Reemplazó el canal CF Tunnel + Cloudflare Access por Tailscale tailnet
 > privado. Ver ADR-015 + DEC-011. US-NEW-044/045 quedan SUPERSEDED.
 
-- [ ] US-NEW-046 — Reescribir `docs/ai/local-ollama-setup.md` para flujo Tailscale (ver EP016 sección US-NEW-046)
-- [ ] US-NEW-047 — Refactor `OllamaLocalAiForm` + endpoint `test-connection` sin CF-Access (ver EP016)
-- [ ] US-NEW-048 — Dockerfile worker Railway con sidecar `tailscaled` + `TS_AUTHKEY` (ver EP016)
-- [ ] **Cleanup paralelo (owner, manual)**: borrar tunnel `pmoaas-ollama` de Cloudflare, retirar CNAME `ollama.*`, revocar Service Tokens. Documentado en US-NEW-046 sección "rollback CF Tunnel".
+- [x] US-NEW-046 — Runbook `docs/ai/local-ollama-setup.md` reescrito para Tailscale ✅
+- [x] US-NEW-047 — `OllamaLocalAiForm` + endpoint `test-connection` sin CF-Access ✅
+- [x] US-NEW-048 — Dockerfile worker Railway con sidecar `tailscaled` + `TS_AUTHKEY`; OllamaProvider consume config por-tenant ✅
+- [ ] **Cleanup paralelo (owner, manual)**: borrar tunnel `pmoaas-ollama` de Cloudflare, retirar CNAME `ollama.*`, revocar Service Tokens. Documentado en `docs/ai/local-ollama-setup.md` §10 "Rollback CF Tunnel".
 
 ### Bloque 15 — Landing y DNS productivo (Cloudflare + Railway + HostGator)
 
