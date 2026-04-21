@@ -249,7 +249,7 @@ function PlanInner() {
   async function handleDeleteTask(t: Task) {
     if (!window.confirm(`Eliminar tarea "${t.name}"?`)) return;
     try {
-      await deleteTask(id, t.id);
+      await deleteTask(t.id);
       await loadTasksAndGantt();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo eliminar la tarea");

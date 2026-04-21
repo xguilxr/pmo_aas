@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser
+from app.api.deps import CurrentUser, get_current_user
 from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.models.notification import Notification
@@ -36,7 +36,7 @@ async def list_notifications(
     is_read: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
-    cu: CurrentUser = Depends(),
+    cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Notification).where(*_scope(cu))
@@ -49,7 +49,7 @@ async def list_notifications(
 
 @router.get("/unread-count", response_model=UnreadCount)
 async def unread_count(
-    cu: CurrentUser = Depends(),
+    cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = (
@@ -64,7 +64,7 @@ async def unread_count(
 @router.post("/{notification_id}/read", response_model=NotificationRead)
 async def mark_read(
     notification_id: UUID,
-    cu: CurrentUser = Depends(),
+    cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     n = (
@@ -83,7 +83,7 @@ async def mark_read(
 
 @router.post("/read-all")
 async def mark_all_read(
-    cu: CurrentUser = Depends(),
+    cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_cond, user_cond = _scope(cu)
@@ -99,7 +99,7 @@ async def mark_all_read(
 
 @router.get("/preferences", response_model=NotificationPreferencesOut)
 async def get_preferences(
-    cu: CurrentUser = Depends(),
+    cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     user = (await db.execute(select(User).where(User.id == cu.id))).scalar_one()
@@ -113,7 +113,7 @@ async def get_preferences(
 @router.patch("/preferences", response_model=NotificationPreferencesOut)
 async def update_preferences(
     body: NotificationPreferencesIn,
-    cu: CurrentUser = Depends(),
+    cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     user = (await db.execute(select(User).where(User.id == cu.id))).scalar_one()
