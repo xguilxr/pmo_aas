@@ -34,15 +34,15 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 
 | # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| 1 | BUG-010 | EP001 | Top bar duplica logo; reemplazar por "PMO · aaS" | Bloque 20 |
-| 2 | ENH-002 | EP013 | Sidebar: renombrar "Organizaciones" a "PMO" | Bloque 20 |
-| 3 | BUG-021 | EP015 | Superadmin: landing por default = /superadmin | Bloque 20 |
-| 4 | BUG-011 | EP004 | Dashboard: KPI "Riesgos abiertos" linkea a 404 | Bloque 20 |
-| 5 | BUG-012 | EP004 | Dashboard: KPI "Riesgos severos" linkea a 404 | Bloque 20 |
+| 1 | US-027 | EP011 | Tabla notifications + in-app center | Bloque 16 (POST-MVP) |
+| 2 | US-028 | EP011 | Email notifications via Resend | Bloque 16 (POST-MVP) |
+| — | — | — | — | — |
+| — | — | — | — | — |
+| — | — | — | — | — |
 
-> Bloque 20 (issues #33-#57) agrupa el intake del comment del owner
-> del 2026-04-21. Orden completo en el listado del bloque más abajo.
-> US-027/028 (Bloque 16, POST-MVP) quedan detrás del Bloque 20.
+> Bloque 20 (issues #33-#57, intake del owner 2026-04-21) **completado
+> al 100%** — 24 items cerrados. Ver tabla DONE y bloque 20 abajo.
+> Sólo quedan en QUEUE las 2 US post-MVP de notificaciones.
 
 ---
 
@@ -118,6 +118,15 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 | ENH-008 | EP009 (MSP/xlsx) reclasificado a v1.1; botón en UI disabled | `docs(epics): ENH-008 — EP009 a v1.1 + botón Importar MSP disabled en UI` | 2026-04-21 |
 | BUG-022 | Documentos sin file_url muestran "Sin archivo" (UX) | `fix(projects): BUG-022 — documentos sin file_url` | 2026-04-21 |
 | BUG-017 | Crear proyecto desde solicitud abre charter para complementar | `fix(requests): BUG-017 — crear proyecto desde solicitud abre charter` | 2026-04-21 |
+| BUG-018 | Nuevo proyecto auto-crea charter + redirige a editarlo | `fix(projects): BUG-018 — nuevo proyecto auto-crea charter` | 2026-04-21 |
+| BUG-008 | Chrome en dark mode alineado con paleta gris | `fix(web): BUG-008 — chrome dark mode paleta gris` | 2026-04-21 |
+| BUG-009 | Theme consistency post-login vía pmoaas:user-updated | `fix(web): BUG-009 — theme post-login consistency` | 2026-04-21 |
+| ENH-001 | Componente BackLink + integración en detalles | `feat(web): ENH-001 — componente BackLink` | 2026-04-21 |
+| ENH-005 | Resumen cambia botones a tarjetas KPI | `feat(projects): ENH-005 — tarjetas KPI en Resumen` | 2026-04-21 |
+| ENH-006 | Editor de tareas integrado en /plan; /tasks → redirect | `feat(projects): ENH-006 — editor inline en /plan` | 2026-04-21 |
+| ENH-007 | Matriz P×I inline en pestaña Riesgos del RAID | `feat(projects): ENH-007 — matriz P×I inline` | 2026-04-21 |
+| US-053 | Preview "ojito" estilo Jira en RAID/Lecciones/Minutas | `feat(web): US-053 — preview ojito` | 2026-04-21 |
+| US-052 | Sidebar cross-tenant Proyectos/RAID/Cambios/Minutas/Reportes | `feat(web,api): US-052 — sidebar + vistas cross-tenant` | 2026-04-21 |
 
 ---
 
@@ -334,15 +343,15 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 12. [x] **ENH-004** — Proyecto: centrar barra de tabs — #51 ✅ ebfff84
 13. [x] **BUG-022** — Documentos dummy: confirmar UX sin archivo — #47 ✅ dfc0256
 14. [x] **BUG-017** — Al aprobar solicitud, abrir charter para complementar — #42 ✅ f974a3b
-15. [ ] **BUG-018** — Nuevo proyecto: pedir info completa del charter — #43
-16. [ ] **BUG-008** — Dark mode: azul chrome contrasta con grises — #33
-17. [ ] **BUG-009** — Cambios de página alteran el theme — #34
-18. [ ] **ENH-005** — Resumen: botones → tarjetas KPI linkeadas — #52
-19. [ ] **ENH-006** — Plan: integrar editor en misma página — #53
-20. [ ] **ENH-007** — RAID: matriz de riesgos en misma página — #54
-21. [x] **ENH-008** — Mover MSP/xlsx a v1.1 (docs + guard UI) — #55 ✅ (ver siguiente commit)
-22. [ ] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56
-23. [ ] **US-053** — Preview "ojito" estilo Jira en tablas — #57
+15. [x] **BUG-018** — Nuevo proyecto: pedir info completa del charter — #43 ✅ b1d12cd
+16. [x] **BUG-008** — Dark mode: azul chrome contrasta con grises — #33 ✅ c55bca4
+17. [x] **BUG-009** — Cambios de página alteran el theme — #34 ✅ 796793b
+18. [x] **ENH-005** — Resumen: botones → tarjetas KPI linkeadas — #52 ✅ 76be878
+19. [x] **ENH-006** — Plan: integrar editor en misma página — #53 ✅ 70bfaea
+20. [x] **ENH-007** — RAID: matriz de riesgos en misma página — #54 ✅ 93ebe75
+21. [x] **ENH-008** — Mover MSP/xlsx a v1.1 (docs + guard UI) — #55 ✅ 21d323f
+22. [x] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56 ✅ 800150e
+23. [x] **US-053** — Preview "ojito" estilo Jira en tablas — #57 ✅ 3ae0088
 24. [x] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 ✅ 427b995 (Bloque 18)
 
 ---
