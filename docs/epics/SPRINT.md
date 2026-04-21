@@ -7,40 +7,21 @@
 ## 🔴 IN-PROGRESS
 
 ```
-— Sin US activa —
+US-051 — Mover generación IA (minuta + reporte) a Celery worker con polling
+  Epic: EP016 (follow-up de US-048)
+  Branch: claude/fix-tailscale-command-0VPWN (reusa la branch activa)
+  Issue: #28
 
-**Estado al 2026-04-21 (owner):** productivo v1.0 corre en Railway con
-tier superior; el costo marginal se cubre con licencias cobradas.
-EP012 (migración a MySQL HostGator) CANCELADO por DEC-013. DEC-002 y
-la parte "reabrir a v1.1" de DEC-012 quedan revocadas.
+**Contexto (2026-04-21):** al completar la instalación manual de
+Tailscale + Ollama y probar el flujo de minutas en prod, el endpoint
+`POST /ai/minutes` devolvió `[AI disabled — mock]`. Análisis descubrió
+que (1) AI_MODE estaba en disabled, y (2) aunque se cambie a ollama,
+el endpoint corre sincrónicamente en el servicio `api` que NO tiene
+tailscaled → nunca alcanza Ollama. El diseño EP016/US-048 implicaba
+que el worker (con Tailscale) procesara la AI, pero ese dispatch
+nunca se implementó (celery_app.py:29 tiene include=[]).
 
-Bloques 13 (hotfixes), 14 (EP016 v2 Tailscale) y 15 (DNS + landing)
-cerrados el 2026-04-21.
-
-**Pruebas masivas desbloqueadas.** Todo lo que Claude podía ejecutar
-en el repo está mergeado. Los pasos restantes son manuales del owner:
-
-1. Tailscale en PC Windows (docs/ai/local-ollama-setup.md).
-2. TS_AUTHKEY en Railway Shared Variables + ACL tag:railway-worker.
-3. DNS Cloudflare para pmo-aas.com (docs/infra/dns-routing.md).
-4. Subir landing/ a public_html/ en HostGator (landing/README.md).
-5. Cleanup CF Tunnel previo (opcional — ver runbook §10).
-
-POST-MVP, no bloquean v1.0 ni pruebas masivas:
-  Bloque 16 — EP011 Notificaciones in-app + email (US-027/028).
-
-Bloque 17 (EP012 MySQL HostGator): ❌ CANCELADO por DEC-013.
-
-Follow-ups arrastrados:
-- Harness Playwright no instalado: el test e2e superadmin-sidebar
-  quedó fuera de BUG-005.
-- Exportador Prometheus: el log estructurado ai_cascade_fallback
-  está listo, falta el exporter que lo convierta en métrica
-  ai_cascade_fallback_total{from,to}.
-- El botón "Probar conexión" del formulario OllamaLocalAiForm corre
-  desde api (no en tailnet) y siempre fallará; la UI ya lo explica.
-  Para validar realmente el canal, el owner dispara una minuta IA
-  desde el worker y observa los logs.
+Esta US cierra ese gap: dispatch a Celery, polling en frontend.
 ```
 
 ---
@@ -302,6 +283,21 @@ Follow-ups arrastrados:
 > la calidad del runbook para la próxima instalación.
 
 - [x] BUG-006 — §3.2 advierte que PowerShell no refresca PATH tras instalar Tailscale MSI + row de troubleshooting en §9 ✅
+
+### Bloque 19 — Refactor IA a Celery (prioridad, cierra gap EP016)
+
+> Gap arquitectónico descubierto al probar minutas en prod: el endpoint
+> `POST /ai/minutes` corre en `api` (sin Tailscale) en vez de dispatchar
+> a `worker` (con Tailscale). El DoD del EP016 lo tenía listado como
+> follow-up pendiente. Sin este refactor, Ollama local NUNCA se usa en
+> producción — la cascada cae directo a Gemini/Claude.
+
+- [ ] **US-051 — Mover generación IA (minuta + reporte) a Celery worker** — issue #28
+  - Backend: tasks Celery + endpoints devuelven 202 con job_id.
+  - Frontend: hook de polling con backoff + actualización de `NewAIMinutePage`.
+  - Docs: DoD EP016 + deployment-railway.
+  - Tests: unit + integration (Celery eager).
+  - Estimado: 1 sesión grande (11-14 archivos).
 
 ### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
 
