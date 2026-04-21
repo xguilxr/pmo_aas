@@ -215,12 +215,20 @@ export default function OrganizationsListPage() {
             programas y proyectos.
           </p>
         </div>
-        <Link href="/admin/organizations/new">
-          <Button>
-            <Plus className="h-4 w-4" aria-hidden />
-            Nueva organización
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/programs">
+            <Button variant="secondary">
+              <Network className="h-4 w-4" aria-hidden />
+              Nuevo programa
+            </Button>
+          </Link>
+          <Link href="/admin/organizations/new">
+            <Button>
+              <Plus className="h-4 w-4" aria-hidden />
+              Nueva organización
+            </Button>
+          </Link>
+        </div>
       </header>
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
