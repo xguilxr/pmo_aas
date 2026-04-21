@@ -170,8 +170,14 @@ export default function TasksPage() {
               <BarChart3 className="h-4 w-4" aria-hidden /> Ver Gantt
             </Button>
           </Link>
-          <Button variant="secondary" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4" aria-hidden /> Importar MSP
+          {/* ENH-008: EP009 MSP import pasa a v1.1 (post-MVP) */}
+          <Button
+            variant="secondary"
+            disabled
+            title="Disponible en v1.1"
+            aria-label="Importar MSP — disponible en v1.1"
+          >
+            <Upload className="h-4 w-4" aria-hidden /> Importar MSP (v1.1)
           </Button>
           <Button onClick={() => setNewOpen(true)}>
             <Plus className="h-4 w-4" aria-hidden /> Nueva tarea

@@ -102,6 +102,20 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 | US-050 | Landing estático www.pmo-aas.com en HostGator | `feat(landing): US-050 — landing estático www.pmo-aas.com en HostGator` | 2026-04-21 |
 | BUG-006 | Runbook Ollama+Tailscale §3.2 — advertir PATH no refrescado en PowerShell | `fix(docs): BUG-006 — runbook Tailscale §3.2 advierte PATH no refrescado en PowerShell` | 2026-04-21 |
 | US-051 | Mover generación IA (minuta + reporte) a Celery worker con polling | `feat(api,web): US-051 — IA minuta+reporte dispatchan a Celery worker; UI hace polling a /ai/jobs/{id}` | 2026-04-21 |
+| BUG-010 | Topbar duplica logo tenant; reemplazar por "PMO · aaS" | `fix(web): BUG-010 — topbar muestra "PMO · aaS" plataforma en vez de duplicar logo tenant` | 2026-04-21 |
+| ENH-002 | Sidebar raíz "Organizaciones" → "PMO" | `feat(web): ENH-002 — sidebar nodo raíz "Organizaciones" → "PMO"` | 2026-04-21 |
+| BUG-021 | Superadmin post-login redirect a /superadmin | `fix(web): BUG-021 — superadmin redirect post-login a /superadmin` | 2026-04-21 |
+| BUG-011 | KPI "Riesgos abiertos" sin href (evita 404) | `fix(web): BUG-011 — KPI sin href` | 2026-04-21 |
+| BUG-012 | KPI "Riesgos severos" sin href (evita 404) | `fix(web): BUG-012 — KPI sin href` | 2026-04-21 |
+| BUG-013 | KPI "Cambios en revisión" sin href (evita 404) | `fix(web): BUG-013 — KPI sin href` | 2026-04-21 |
+| BUG-014 | KPI "AIDs abiertos" sin href (evita 404) | `fix(web): BUG-014 — KPI sin href` | 2026-04-21 |
+| BUG-015 | Dashboard filtros Plan vs Real horizontales en sm+ | `fix(dashboard): BUG-015 — filtros horizontales` | 2026-04-21 |
+| BUG-016 | Botón Cancelar de nueva solicitud usa variant danger (rojo) | `fix(requests): BUG-016 — cancelar danger variant` | 2026-04-21 |
+| BUG-019 | Panel org abre resumen en /[id]; edición en /[id]/edit | `fix(web): BUG-019 — panel organización abre resumen` | 2026-04-21 |
+| ENH-004 | Tabs de proyecto centradas | `feat(web): ENH-004 — tabs-bar centrado` | 2026-04-21 |
+| ENH-003 | Botón "Nuevo programa" en toolbar de organizaciones | `feat(org): ENH-003 — botón Nuevo programa` | 2026-04-21 |
+| BUG-020 | Runbook Ollama+Tailscale §4: solo Allow (sin Block Any) | `fix(docs): BUG-020 — runbook §4 solo Allow tailnet` | 2026-04-21 |
+| ENH-008 | EP009 (MSP/xlsx) reclasificado a v1.1; botón en UI disabled | `docs(epics): ENH-008 — EP009 a v1.1 + botón Importar MSP disabled en UI` | 2026-04-21 |
 
 ---
 
@@ -304,18 +318,18 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 
 **Orden de ejecución sugerido:**
 
-1. [ ] **BUG-010** — Top bar duplica logo; reemplazar por "PMO · aaS" — #35
-2. [ ] **ENH-002** — Sidebar: renombrar "Organizaciones" a "PMO" — #49
-3. [ ] **BUG-021** — Superadmin: landing por default = /superadmin — #46
-4. [ ] **BUG-011** — Dashboard: KPI "Riesgos abiertos" link 404 — #36
-5. [ ] **BUG-012** — Dashboard: KPI "Riesgos severos" link 404 — #37
-6. [ ] **BUG-013** — Dashboard: KPI "Cambios en revisión" link 404 — #38
-7. [ ] **BUG-014** — Dashboard: KPI "AIDs abiertos" link 404 — #39
-8. [ ] **BUG-015** — Dashboard: filtros "Plan vs Real" en vertical — #40
-9. [ ] **BUG-016** — Solicitudes: botón cancelar sin rojo — #41
-10. [ ] **BUG-019** — Panel organización abre /edit, debería abrir resumen — #44
-11. [ ] **ENH-003** — Organizaciones: botón "Nuevo programa" — #50
-12. [ ] **ENH-004** — Proyecto: centrar barra de tabs — #51
+1. [x] **BUG-010** — Top bar duplica logo; reemplazar por "PMO · aaS" — #35 ✅ 77fd001
+2. [x] **ENH-002** — Sidebar: renombrar "Organizaciones" a "PMO" — #49 ✅ dca3760
+3. [x] **BUG-021** — Superadmin: landing por default = /superadmin — #46 ✅ 10ef6c3
+4. [x] **BUG-011** — Dashboard: KPI "Riesgos abiertos" link 404 — #36 ✅ d9fe786
+5. [x] **BUG-012** — Dashboard: KPI "Riesgos severos" link 404 — #37 ✅ 3556af0
+6. [x] **BUG-013** — Dashboard: KPI "Cambios en revisión" link 404 — #38 ✅ 2169a9f
+7. [x] **BUG-014** — Dashboard: KPI "AIDs abiertos" link 404 — #39 ✅ 6f15024
+8. [x] **BUG-015** — Dashboard: filtros "Plan vs Real" en vertical — #40 ✅ 7b45d4a
+9. [x] **BUG-016** — Solicitudes: botón cancelar sin rojo — #41 ✅ e7c4577
+10. [x] **BUG-019** — Panel organización abre /edit, debería abrir resumen — #44 ✅ 1560f85
+11. [x] **ENH-003** — Organizaciones: botón "Nuevo programa" — #50 ✅ f113a7d
+12. [x] **ENH-004** — Proyecto: centrar barra de tabs — #51 ✅ ebfff84
 13. [ ] **BUG-022** — Documentos dummy: confirmar UX sin archivo — #47
 14. [ ] **BUG-017** — Al aprobar solicitud, abrir charter para complementar — #42
 15. [ ] **BUG-018** — Nuevo proyecto: pedir info completa del charter — #43
@@ -324,10 +338,10 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 18. [ ] **ENH-005** — Resumen: botones → tarjetas KPI linkeadas — #52
 19. [ ] **ENH-006** — Plan: integrar editor en misma página — #53
 20. [ ] **ENH-007** — RAID: matriz de riesgos en misma página — #54
-21. [ ] **ENH-008** — Mover MSP/xlsx a v1.1 (docs + guard UI) — #55
+21. [x] **ENH-008** — Mover MSP/xlsx a v1.1 (docs + guard UI) — #55 ✅ (ver siguiente commit)
 22. [ ] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56
 23. [ ] **US-053** — Preview "ojito" estilo Jira en tablas — #57
-24. [ ] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 (también listado en Bloque 18)
+24. [x] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 ✅ 427b995 (Bloque 18)
 
 ---
 

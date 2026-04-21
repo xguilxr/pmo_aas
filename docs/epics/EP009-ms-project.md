@@ -3,10 +3,21 @@
 | Campo | Valor |
 |---|---|
 | **ID** | EP009 |
-| **Prioridad** | Alta |
+| **Prioridad** | Media (v1.1) |
 | **Dependencias** | EP005 |
 | **Módulo** | `tasks`, `msproject` |
-| **Estado** | MVP |
+| **Estado** | **POST-MVP / v1.1** (ENH-008, 2026-04-21) |
+
+> **ENH-008 (2026-04-21):** el owner decidió mover la integración MS
+> Project (.mpp / .xml / .xlsx) a **v1.1**. No entra en el MVP v1.0.
+> Razón: el MVP prioriza flujos nativos del PMO-aaS (RAID, minutas IA,
+> reportes) sobre interoperabilidad con herramientas externas. MSP
+> requiere MPXJ (Java) o parsing complejo de XLSX; el costo no se
+> justifica para v1.0.
+>
+> Cualquier US de este epic queda fuera del sprint v1.0. En la UI del
+> Plan, los botones "Importar MSP / Exportar XLSX" (si existen) deben
+> ocultarse o mostrar un aviso "Disponible en v1.1".
 
 ## Objetivo de negocio
 
