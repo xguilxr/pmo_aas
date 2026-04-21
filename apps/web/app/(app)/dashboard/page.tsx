@@ -309,7 +309,6 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<AlertOctagon className="h-4 w-4" aria-hidden />}
           tone="danger"
-          href="/risks?severity_min=13"
         />
         <KpiCard
           label="Cambios en revisión"
