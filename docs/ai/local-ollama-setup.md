@@ -106,9 +106,19 @@ opciones según hardware.
 ### 2.4 Smoke test local
 
 ```powershell
-curl -X POST http://localhost:11434/api/generate `
-  -H "Content-Type: application/json" `
-  -d '{"model":"qwen2.5:7b-instruct-q4_K_M","prompt":"Responde OK","stream":false}'
+$body = @{
+  model  = "qwen2.5:7b-instruct-q4_K_M"
+  prompt = "Responde OK"
+  stream = $false
+} | ConvertTo-Json -Depth 5
+
+$response = Invoke-RestMethod `
+  -Uri "http://localhost:11434/api/generate" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
+
+$response
 ```
 
 Debe regresar JSON con `"response": "OK"` en < 5 s.
