@@ -302,7 +302,6 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<AlertTriangle className="h-4 w-4" aria-hidden />}
           tone="warning"
-          href="/risks"
         />
         <KpiCard
           label="Riesgos severos"
