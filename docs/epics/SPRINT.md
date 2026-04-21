@@ -45,6 +45,18 @@ Follow-ups arrastrados:
 
 ---
 
+## 📥 INBOX / TRIAGE
+
+> Issues recién creados que todavía no han sido asignados a un Bloque.
+> El owner (o Claude por propuesta) decide a qué bloque entran antes de
+> pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
+
+```
+— Vacío —
+```
+
+---
+
 ## ⏳ QUEUE (próximas 5)
 
 | # | US | Epic | Título | Tipo |
