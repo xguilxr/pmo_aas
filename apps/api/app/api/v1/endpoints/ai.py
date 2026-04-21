@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
+from app.models.tenant import Tenant
 from app.services.ai.prompts import MINUTE_SYSTEM, REPORT_SYSTEM
 from app.services.ai.provider import chunk_text, generate_with_cascade
 from app.services.audit import write_audit
@@ -35,6 +36,23 @@ def _tenant(cu: CurrentUser) -> UUID:
     if cu.user.tenant_id is None:
         raise forbidden()
     return cu.user.tenant_id
+
+
+async def _tenant_ollama_config(db: AsyncSession, tenant_id: UUID) -> dict | None:
+    """US-NEW-048: devuelve la config Ollama por-tenant si tiene base_url.
+
+    Si no está configurada (o tenant no existe), devuelve None y la
+    cascada cae a los env globales del worker.
+    """
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        return None
+    cfg = dict(((t.settings or {}).get("ai") or {}).get("ollama") or {})
+    if not cfg.get("base_url"):
+        return None
+    return cfg
 
 
 def _parse_json_strict(s: str) -> dict | None:
@@ -83,13 +101,16 @@ async def generate_minute(
     await db.flush()
 
     started = datetime.now(UTC)
+    ollama_cfg = await _tenant_ollama_config(db, tenant_id)
     chunks = chunk_text(body.transcript)
     collected: list[dict] = []
     model_used = "unknown"
     total_in = 0
     total_out = 0
     for ch in chunks:
-        res = await generate_with_cascade(ch, system=MINUTE_SYSTEM)
+        res = await generate_with_cascade(
+            ch, system=MINUTE_SYSTEM, tenant_ollama_config=ollama_cfg,
+        )
         model_used = res.model
         total_in += res.tokens_in
         total_out += res.tokens_out
@@ -188,7 +209,10 @@ async def draft_report(
     }
 
     prompt = json.dumps(context, ensure_ascii=False)
-    res = await generate_with_cascade(prompt, system=REPORT_SYSTEM)
+    ollama_cfg = await _tenant_ollama_config(db, tenant_id)
+    res = await generate_with_cascade(
+        prompt, system=REPORT_SYSTEM, tenant_ollama_config=ollama_cfg,
+    )
     sections = _parse_json_strict(res.text) or {
         "executive_summary": res.text[:1500],
         "achievements": [],

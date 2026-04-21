@@ -44,20 +44,39 @@ class DisabledProvider:
 class OllamaProvider:
     name = "ollama"
 
-    async def generate(self, prompt: str, *, system: str | None = None) -> AIResult:
+    async def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        override: dict | None = None,
+    ) -> AIResult:
+        """Llama a Ollama.
+
+        US-NEW-048: si `override` trae `base_url`/`model`/`timeout_sec` del
+        tenant (leídos desde `tenants.settings.ai.ollama`), se usan para
+        este call; en caso contrario cae a los env `OLLAMA_BASE_URL` /
+        `OLLAMA_MODEL`. Esto permite que cada tenant apunte a su propio
+        endpoint tailnet sin tocar env del worker.
+        """
         import httpx
 
-        payload = {"model": settings.OLLAMA_MODEL, "prompt": prompt, "stream": False}
+        ov = override or {}
+        base_url = str(ov.get("base_url") or settings.OLLAMA_BASE_URL).rstrip("/")
+        model = str(ov.get("model") or settings.OLLAMA_MODEL)
+        timeout_total = float(ov.get("timeout_sec") or 120.0)
+
+        payload = {"model": model, "prompt": prompt, "stream": False}
         if system:
             payload["system"] = system
-        timeout = httpx.Timeout(120.0, connect=5.0)
-        async with httpx.AsyncClient(base_url=settings.OLLAMA_BASE_URL, timeout=timeout) as c:
+        timeout = httpx.Timeout(timeout_total, connect=5.0)
+        async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as c:
             r = await c.post("/api/generate", json=payload)
             r.raise_for_status()
             data = r.json()
             return AIResult(
                 text=data.get("response", ""),
-                model=f"ollama:{settings.OLLAMA_MODEL}",
+                model=f"ollama:{model}",
                 tokens_in=data.get("prompt_eval_count", 0),
                 tokens_out=data.get("eval_count", 0),
                 duration_ms=int((data.get("total_duration", 0) or 0) / 1_000_000),
@@ -141,10 +160,17 @@ _PROVIDERS: dict[str, AIProvider] = {
 }
 
 
-async def generate_with_cascade(prompt: str, *, system: str | None = None) -> AIResult:
+async def generate_with_cascade(
+    prompt: str,
+    *,
+    system: str | None = None,
+    tenant_ollama_config: dict | None = None,
+) -> AIResult:
     """Intenta en orden: configured primary → gemini → disabled stub.
 
-    Se puede inyectar un proveedor custom (por tenant) más adelante.
+    US-NEW-048: `tenant_ollama_config`, si se pasa, se inyecta solo al
+    `OllamaProvider` para que use el endpoint tailnet del tenant en vez
+    del env global. Los demás providers ignoran el parámetro.
     """
     mode = settings.AI_MODE
     if mode == "disabled":
@@ -161,13 +187,27 @@ async def generate_with_cascade(prompt: str, *, system: str | None = None) -> AI
         cascade = ["disabled"]
 
     last_err: Exception | None = None
-    for name in cascade:
+    for idx, name in enumerate(cascade):
         prov = _PROVIDERS[name]
         try:
+            if name == "ollama" and tenant_ollama_config:
+                return await prov.generate(
+                    prompt, system=system, override=tenant_ollama_config,
+                )
             return await prov.generate(prompt, system=system)
         except Exception as exc:  # noqa: BLE001
             last_err = exc
-            logger.warning("ai provider %s failed: %s", name, exc)
+            next_name = cascade[idx + 1] if idx + 1 < len(cascade) else None
+            # Log estructurado para que un futuro exporter Prometheus
+            # derive la métrica `ai_cascade_fallback_total{from,to}`.
+            logger.warning(
+                "ai_cascade_fallback",
+                extra={
+                    "ai_provider_from": name,
+                    "ai_provider_to": next_name,
+                    "ai_cascade_error": str(exc)[:200],
+                },
+            )
             continue
     raise RuntimeError(f"all ai providers failed: {last_err}")
 
