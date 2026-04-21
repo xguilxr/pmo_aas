@@ -386,7 +386,7 @@ solo al correr `pytest -m integration` — desarrollo día a día no lo exige.
 
 ## ADR-014 — Home-host Ollama vía Cloudflare Tunnel (opcional)
 
-**Estado:** ✅ Aceptada — 2026-04-18
+**Estado:** 🔄 Reemplazada por ADR-015 — 2026-04-21
 **Contexto:**
 Railway aún no ofrece GPU uniformemente; VPS con GPU cuesta €220+/mes. El
 owner puede disponer de hardware en casa/oficina (Mac Studio, PC con GPU NVIDIA).
@@ -414,6 +414,107 @@ Soportar **home-hosting de Ollama** como primera opción económica en producci�
 **Alternativas:**
 - Railway GPU tier: depende de disponibilidad; reevaluar en 3 meses.
 - VPS GPU Hetzner/OVH: €220-250/mes — evaluar cuando haya ingresos.
+
+---
+
+## ADR-015 — Tailscale reemplaza Cloudflare Tunnel + Access para Ollama local
+
+**Estado:** ✅ Aceptada — 2026-04-21 (reemplaza ADR-014)
+**Contexto:**
+ADR-014 definió **Cloudflare Tunnel + Cloudflare Access (Service Token)**
+como canal para exponer Ollama local al backend PMO. El intento real de
+despliegue destapó tres fricciones operacionales serias:
+
+1. **Complejidad de Cloudflare One UI**: la migración a "Cloudflare One"
+   fragmenta Access Controls, Policies y Login Methods. El flujo
+   "Application + Service Auth policy + Service Token" tiene bugs de
+   estado (dropdown `Select...` vacío al guardar) y la UI cambia entre
+   sesiones. Documentar un runbook reproducible es frágil.
+2. **403 silenciosos por managed rulesets**: aun con Access correcto,
+   el **AI bot blocking ruleset** de Cloudflare (managed, default-on) y
+   Bot Fight Mode interceptan requests con UA no-browser (curl, httpx)
+   devolviendo 403 sin evento visible en Security → Events. Requiere
+   custom Skip rules por hostname — y aun así persisten 403 residuales.
+3. **Exposición pública innecesaria**: el endpoint `ollama.pmo-aas.com`
+   es un API privado que solo debe ver el worker de Railway. Publicarlo
+   en internet (aunque con token) aumenta la superficie: fuga de secret
+   → acceso directo a inferencia no facturable, scrapers dedicados,
+   correlación con el dominio productivo.
+
+**Decisión:**
+Reemplazar CF Tunnel + Access con **Tailscale** (tailnet privado,
+WireGuard-based). Topología:
+
+```
+PC Windows (tailscaled service)          Railway worker (sidecar tailscaled)
+ └─ Ollama 0.0.0.0:11434                   └─ http://ollama-host.<tailnet>.ts.net:11434
+ └─ tailnet IP 100.x.y.z                             │
+                 └──── tailnet WireGuard ───────────┘
+```
+
+- PC local: instala Tailscale (MSI), `tailscale up --hostname=ollama-host`.
+- Ollama: `OLLAMA_HOST=0.0.0.0:11434` para aceptar conexiones tailnet.
+- Windows Firewall opcional: permite inbound 11434 solo desde
+  `100.64.0.0/10`.
+- Railway `worker`: Dockerfile custom con `tailscaled` en user-space
+  networking; `start.sh` arranca `tailscaled` con `TS_AUTHKEY` (ephemeral
+  reusable key) antes de `exec celery`.
+- Config por-tenant (`tenants.settings.ai.ollama.base_url`) pasa a
+  `http://ollama-host.<tenant>.ts.net:11434` o IP tailnet directa. Sin
+  headers de auth.
+
+**Consecuencias positivas:**
+- **Cero exposición pública**: Ollama deja de tener hostname en internet.
+  Subdominio `ollama.pmo-aas.com` se retira.
+- **Setup reproducible**: 2 comandos en Windows + 1 sidecar en Dockerfile.
+  Sin policies, sin WAF bypass, sin managed rulesets peleándose.
+- **Auth nativa de red**: Tailscale admin console centraliza device
+  approval, key rotation, ACLs. Revocación de laptop = 1 click.
+- **Free tier suficiente**: 100 dispositivos, 3 usuarios gratis. Hobby
+  tier cubre MVP.
+- **Latencia competitiva**: WireGuard direct path cuando NAT lo permite
+  (30-60ms); DERP relay comparable al tunnel CF cuando no (60-90ms).
+- **Observabilidad**: admin.tailscale.com da ping, last-seen,
+  connection type (DERP vs direct). Mejor que logs de cloudflared.
+
+**Consecuencias negativas:**
+- **Dependencia de Tailscale Inc**: nuevo SaaS en el stack crítico.
+  Mitigación: `tailscaled` es OSS; self-host con **Headscale** es plan B
+  si escala lo justifica o si TS sube precios.
+- **Container worker más pesado**: +15 MB por `tailscaled` en la imagen,
+  y un wrapper shell (`start.sh`) en vez de CMD limpio. Mitigación:
+  documentado en US-NEW-048; template reutilizable.
+- **Pérdida de hostname bonito**: sin `ollama.pmo-aas.com`. Mitigación:
+  endpoint es privado, nunca lo ven humanos; no aporta valor estético.
+- **Troubleshooting multi-host**: fallas requieren revisar 3 lados
+  (Tailscale admin, worker log, Ollama log). Mitigación: smoke test CLI
+  (US-NEW-047) corre end-to-end y reporta dónde rompe.
+
+**Impacto en el stack:**
+- **ADR-014**: marcada Reemplazada.
+- **ADR-007** (cascada IA): sin cambio. Ollama sigue tier-1.
+- **EP016**: US-NEW-044 (runbook CF) y US-NEW-045 (config CF-Access)
+  quedan SUPERSEDED; nuevas US-NEW-046/047/048 cubren el reemplazo.
+- **Dominio `pmo-aas.com`**: conserva apex + `app.*` + `api.*` +
+  `www.*` en Cloudflare. Solo se retira `ollama.*`.
+
+**Alternativas evaluadas:**
+- **CF Tunnel + Access (status quo, ADR-014)**: bloqueado en prod por
+  403 del AI bot ruleset; setup frágil; exposición innecesaria.
+- **CF Tunnel sin Access + Basic Auth via Caddy local**: recicla el
+  tunnel pero mantiene exposición pública. Cambia un problema por otro.
+- **ngrok (paid tier con custom domain)**: similar a CF Tunnel, peor
+  precio ($8-10/mes) y mismo modelo de exposición pública.
+- **Reverse SSH a VPS bastión**: requiere VPS ($5/mes) + bastión mantenido.
+  Más fricción sin ganancia.
+- **Tailscale Funnel**: expone tailnet a internet — mismo antipattern.
+- **WireGuard manual**: viable pero sin admin console, sin device
+  approval, sin MagicDNS. Fricción ops significativa.
+
+**Referencias:**
+- <https://tailscale.com/kb/1017/install>
+- <https://tailscale.com/kb/1282/docker> (sidecar en containers)
+- Runbook nuevo: `docs/ai/local-ollama-setup.md` reescrito en US-NEW-046.
 
 ---
 
