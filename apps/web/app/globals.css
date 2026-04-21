@@ -122,12 +122,18 @@
   --text-secondary: oklch(82% 0.008 250);
   --text-tertiary: oklch(68% 0.010 250);
 
-  /* Chrome navy en dark: un poco más oscuro */
-  --chrome-bg: #080D35;
-  --chrome-bg-translucent: color-mix(in oklab, #080D35 92%, transparent);
-  --chrome-border: #05082A;
-  --chrome-hover: #131B5C;
-  --chrome-active: #05082A;
+  /* BUG-008: chrome en dark mode se alinea con la paleta gris del theme
+     oscuro. Antes era navy #080D35 que creaba contraste fuerte contra
+     los grises del app shell. Ahora es gris-con-tinte-azul 250, más
+     oscuro que --color-app para seguir diferenciando chrome del
+     contenido sin chocar. */
+  --chrome-bg: oklch(17% 0.008 250);
+  --chrome-bg-translucent: color-mix(in oklab, oklch(17% 0.008 250) 92%, transparent);
+  --chrome-border: oklch(13% 0.008 250);
+  --chrome-text: oklch(97% 0.004 250);
+  --chrome-text-muted: oklch(70% 0.010 250);
+  --chrome-hover: oklch(26% 0.010 250);
+  --chrome-active: oklch(13% 0.008 250);
 
   --color-success-bg: oklch(30% 0.06 155);
   --color-success-border: oklch(42% 0.09 155);
