@@ -9,20 +9,28 @@
 ```
 — Sin US activa —
 
-Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local vía CF
-Tunnel) completos. EP016 se REABRE por pivote arquitectónico a Tailscale
-(ver DEC-011 + ADR-015, 2026-04-21). US-NEW-044/045 quedan SUPERSEDED.
+Bloque 13 (hotfixes operativos) cerrado el 2026-04-21: US-BUG-004 deja
+documentado el troubleshooting de redeploy en Railway (el toggle
+operativo lo aplica el owner del project), y US-BUG-005 arregla el
+flash de TOP_NAV en primer paint del sidebar super admin.
 
-Nuevos bloques priorizados:
-  Bloque 13 — Hotfixes operativos (Railway deploy + sidebar super admin)
+Bloques 11 (EP015 nav superadmin) y 12 (EP016 modelo IA local vía CF
+Tunnel) ya estaban completos. EP016 sigue REABIERTO por pivote
+arquitectónico a Tailscale (ver DEC-011 + ADR-015, 2026-04-21).
+US-NEW-044/045 permanecen SUPERSEDED.
+
+Siguientes bloques priorizados:
   Bloque 14 — EP016 v2 (Tailscale): US-NEW-046/047/048
   Bloque 15 — Landing y DNS productivo (Railway + HostGator www)
-  Bloque 16 — EP011 Notificaciones (POST-MVP, antes bloque 13)
+  Bloque 16 — EP011 Notificaciones (POST-MVP)
   Bloque 17 — EP012 MySQL HostGator (POST-v1.0, reescopado per DEC-012)
 
-Follow-up arrastrado: refactorizar OllamaProvider.generate() para
-consumir la config por-tenant en el worker IA (hoy usa env). Se cubre
-como parte del DoD de US-NEW-048.
+Follow-ups arrastrados:
+- Refactorizar OllamaProvider.generate() para consumir la config
+  por-tenant en el worker IA (hoy usa env). Se cubre como parte del DoD
+  de US-NEW-048.
+- Harness Playwright no instalado: el test e2e superadmin-sidebar
+  quedó fuera de US-BUG-005; reabrir cuando se introduzca el framework.
 ```
 
 ---
@@ -31,11 +39,11 @@ como parte del DoD de US-NEW-048.
 
 | # | US | Epic | Título | Tipo |
 |---|---|---|---|---|
-| 1 | US-BUG-004 | infra | Railway no redeploy tras PR #20 — verificar + forzar | Bloque 13 |
-| 2 | US-BUG-005 | EP015 | Sidebar super admin: state stale / hidratación post-US-041/043 | Bloque 13 |
-| 3 | US-NEW-046 | EP016 | Runbook `local-ollama-setup.md` reescrito a Tailscale | Bloque 14 |
-| 4 | US-NEW-047 | EP016 | Refactor config + test-connection Tailscale (quita CF-Access) | Bloque 14 |
-| 5 | US-NEW-048 | EP016 | Sidecar Tailscale en worker Railway | Bloque 14 |
+| 1 | US-NEW-046 | EP016 | Runbook `local-ollama-setup.md` reescrito a Tailscale | Bloque 14 |
+| 2 | US-NEW-047 | EP016 | Refactor config + test-connection Tailscale (quita CF-Access) | Bloque 14 |
+| 3 | US-NEW-048 | EP016 | Sidecar Tailscale en worker Railway | Bloque 14 |
+| 4 | US-NEW-049 | infra | DNS productivo pmo-aas.com (Cloudflare + Railway + HostGator) | Bloque 15 |
+| 5 | US-NEW-050 | infra | Landing estático www.pmo-aas.com en HostGator | Bloque 15 |
 
 > Backlog completo abajo, reordenado.
 
@@ -88,6 +96,8 @@ como parte del DoD de US-NEW-048.
 | US-NEW-043 | Visión General con Health al top | `feat(web): US-NEW-043 — health al top en visión general del superadmin` | 2026-04-20 |
 | US-NEW-044 | Runbook Ollama + Cloudflare Tunnel + nssm | `docs(ai): US-NEW-044 — runbook Ollama + Cloudflare Tunnel + nssm` | 2026-04-20 |
 | US-NEW-045 | Config + smoke test del túnel + secrets cifrados | `feat(api,web): US-NEW-045 — config y smoke del modelo IA local (Cloudflare Tunnel)` | 2026-04-20 |
+| US-BUG-004 | Railway no redeploy tras PR #20 — troubleshooting documentado | `fix(infra): US-BUG-004 — Railway auto-deploy troubleshooting tras PR #20` | 2026-04-21 |
+| US-BUG-005 | Sidebar super admin respeta user.is_superadmin en first paint | `fix(web): US-BUG-005 — sidebar super admin respeta user.is_superadmin en first paint` | 2026-04-21 |
 
 ---
 
@@ -164,14 +174,20 @@ como parte del DoD de US-NEW-048.
 - [x] US-NEW-045 — Config por-tenant + smoke test del túnel + secrets cifrados ✅
   *(follow-up: integrar config en `OllamaProvider.generate()` del worker EP008 para que `ai_cascade_fallback_total` incremente cuando el túnel falle)*
 
-### Bloque 13 — Hotfixes operativos (reabre tras PR #20)
+### Bloque 13 — Hotfixes operativos (reabre tras PR #20) ✅ CERRADO 2026-04-21
 
 > **Contexto (2026-04-21):** el PR #20 mergeó a `main` con 6 US (NEW-041
 > hasta NEW-045). El owner reportó dos síntomas que no se detectaron en CI:
 > (a) Railway no redeployó los servicios al mergear; (b) el sidebar super
 > admin no se ve como esperaba (probable state stale en `getStoredUser()`).
+>
+> Resolución: US-BUG-004 dejó documentado el troubleshooting en
+> `RAILWAY_SETUP.md` (el toggle operativo lo aplica el owner del
+> project). US-BUG-005 movió la lectura de `getStoredUser()` a
+> `useEffect` con flag `userReady`, evitando el flash de TOP_NAV en
+> primer paint para superadmins.
 
-- [ ] **US-BUG-004 — Railway no redeploy tras PR #20**
+- [x] **US-BUG-004 — Railway no redeploy tras PR #20** ✅
   - **Diagnóstico inicial** (agente 2026-04-21): el commit `62b16f8`
     (US-NEW-045) SÍ toca `apps/api/**`, así que los servicios `api` +
     `worker` deberían haber redeployado per watch path.
@@ -189,7 +205,7 @@ como parte del DoD de US-NEW-048.
     4. Documentar hallazgo en `RAILWAY_SETUP.md` → sección "Troubleshooting" con el caso.
   - **Commit:** `fix(infra): US-BUG-004 — Railway auto-deploy restablecido tras PR #20`.
 
-- [ ] **US-BUG-005 — Sidebar super admin no renderiza como esperado**
+- [x] **US-BUG-005 — Sidebar super admin no renderiza como esperado** ✅
   - **Diagnóstico inicial** (agente 2026-04-21): US-NEW-041
     (`918be73`) modificó `apps/web/components/app-shell.tsx` para:
     - Renderizar `TOP_NAV` solo cuando `!user?.is_superadmin`.
