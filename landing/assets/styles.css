@@ -1,0 +1,296 @@
+/* PMO-aaS landing — estilos mínimos, sin dependencias.
+   Paleta alineada con el chrome de la app (DEC-006, --chrome-bg #182e4e). */
+
+:root {
+  --chrome-bg: #182e4e;
+  --chrome-bg-deep: #0f1f37;
+  --chrome-accent: #4a7fd4;
+  --text-primary: #0b1220;
+  --text-secondary: #3a4658;
+  --text-tertiary: #6b7a90;
+  --text-inverse: #f6f8fb;
+  --surface: #ffffff;
+  --surface-soft: #f3f6fb;
+  --border-subtle: #dce3ee;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(10, 22, 44, 0.06), 0 2px 6px rgba(10, 22, 44, 0.04);
+  --shadow-md: 0 12px 32px rgba(10, 22, 44, 0.12);
+  --max-w: 1120px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  color: var(--text-primary);
+  background: var(--surface);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+/* ---------- topbar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--chrome-bg);
+  color: var(--text-inverse);
+}
+
+.brand-name {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.topbar-actions {
+  display: inline-flex;
+  gap: 10px;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: transform 0.1s ease, background-color 0.15s ease,
+    color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--chrome-bg);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  background: var(--chrome-bg-deep);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.btn-ghost:hover {
+  background: var(--surface-soft);
+}
+
+.btn-arrow {
+  transition: transform 0.15s ease;
+}
+
+.btn-primary:hover .btn-arrow {
+  transform: translateX(3px);
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  padding: 48px 24px 56px;
+  text-align: center;
+  background: radial-gradient(
+      1200px 400px at 50% -10%,
+      rgba(24, 46, 78, 0.08),
+      transparent 60%
+    ),
+    var(--surface);
+}
+
+.hero-inner {
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  margin: 0 0 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chrome-accent);
+}
+
+.hero h1 {
+  margin: 0 0 18px;
+  font-size: clamp(28px, 4.4vw, 44px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.hero-break {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .hero-break {
+    display: inline;
+  }
+}
+
+.hero-lead {
+  margin: 0 auto 28px;
+  max-width: 620px;
+  font-size: clamp(15px, 2.2vw, 18px);
+  color: var(--text-secondary);
+}
+
+.hero-cta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ---------- features ---------- */
+
+.features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  max-width: var(--max-w);
+  margin: 8px auto 64px;
+  padding: 0 24px;
+}
+
+@media (min-width: 760px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+.feature {
+  background: var(--surface-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px 20px;
+}
+
+.feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--chrome-bg);
+  color: var(--text-inverse);
+  margin-bottom: 12px;
+}
+
+.feature h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.feature p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ---------- footer ---------- */
+
+.footer {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface);
+}
+
+.footer-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 22px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.footer-copy {
+  margin: 0;
+}
+
+.footer-links {
+  margin: 0;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.footer-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn-arrow {
+    transition: none;
+  }
+  .btn-primary:hover {
+    transform: none;
+  }
+}
