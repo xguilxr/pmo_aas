@@ -224,7 +224,12 @@ export default function DocumentsPage() {
                 Abrir <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               </a>
             ) : (
-              "—"
+              <span
+                className="text-[12px] italic text-[var(--color-tertiary)]"
+                title="Este documento no tiene archivo adjunto. Sube un archivo para poder abrirlo."
+              >
+                Sin archivo
+              </span>
             ),
         },
       ]}
