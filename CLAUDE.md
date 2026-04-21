@@ -28,7 +28,7 @@ lista anterior. El contexto es finito.
 |---|---|---|---|
 | `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-054** |
 | `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-023** |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-009** |
+| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-011** |
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
 | `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` | — |
 | `ADR-###` | Architecture Decision Record | Ver `docs/adr/` | — |

@@ -127,6 +127,9 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 | ENH-007 | Matriz P×I inline en pestaña Riesgos del RAID | `feat(projects): ENH-007 — matriz P×I inline` | 2026-04-21 |
 | US-053 | Preview "ojito" estilo Jira en RAID/Lecciones/Minutas | `feat(web): US-053 — preview ojito` | 2026-04-21 |
 | US-052 | Sidebar cross-tenant Proyectos/RAID/Cambios/Minutas/Reportes | `feat(web,api): US-052 — sidebar + vistas cross-tenant` | 2026-04-21 |
+| ENH-009 | Reconectar hrefs dashboard a /admin/raid y /admin/changes | `feat(dashboard): ENH-009 — reconecta hrefs KPIs` | 2026-04-21 |
+| ENH-010 | Endpoints cross-tenant incluyen folio+name del proyecto | `feat(api,web): ENH-010 — folio+name en cross-tenant` | 2026-04-21 |
+| BUG-007 | WeasyPrint libs nativas en Dockerfile (cierra 502 de Reporte Avance) | `fix(infra): BUG-007 — libs WeasyPrint en Dockerfile` | 2026-04-21 |
 
 ---
 
@@ -353,6 +356,18 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 22. [x] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56 ✅ 800150e
 23. [x] **US-053** — Preview "ojito" estilo Jira en tablas — #57 ✅ 3ae0088
 24. [x] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 ✅ 427b995 (Bloque 18)
+
+---
+
+### Bloque 21 — Follow-ups del Bloque 20 + BUG-007 (2026-04-21)
+
+> Tres follow-ups detectados al cerrar el Bloque 20 + el BUG-007 que ya
+> estaba abierto como issue #32 (WeasyPrint libs). El owner pidió
+> incorporarlos en lugar de dejarlos en triage.
+
+- [x] **ENH-009** — Reconectar hrefs del dashboard a las rutas cross-tenant ahora que existen (US-052). Los KPIs "Riesgos abiertos / severos", "Cambios en revisión" y "AIDs abiertos" vuelven a ser clickeables con filtros pre-aplicados. Las páginas destino (`/admin/raid`, `/admin/changes`) aceptan `?kind`, `?severity_min`, `?status` como query params. ✅ 667a60b
+- [x] **ENH-010** — Endpoints cross-tenant devuelven `project_folio` + `project_name` para que las 4 vistas (RAID / Cambios / Minutas / Reportes) muestren el proyecto como `PRJ-0042 — Nombre legible` en vez del UUID abreviado. Backend `_project_scope` agrega columnas + helper `_enrich`; frontend con tipos `TenantRisk`/`TenantIssue`/etc. ✅ 4001061
+- [x] **BUG-007** — `apps/api/Dockerfile` ahora instala las libs nativas de GTK/Cairo/Pango/GDK que WeasyPrint necesita. Cierra el 502 del endpoint `POST /reports/avance` que reportaba `cannot load library 'libgobject-2.0-0'`. +30 MB en la imagen, aplica a `api` y `worker`. Requiere redeploy en Railway tras mergear. ✅ 036f0f2 (issue #32)
 
 ---
 
