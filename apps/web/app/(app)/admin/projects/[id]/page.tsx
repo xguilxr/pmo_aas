@@ -61,17 +61,26 @@ const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
   closed: [],
 };
 
-const MODULE_TOOLBAR: { key: keyof ProjectDetail["module_counts"] | string; label: string; href: (id: string) => string; icon: React.ReactNode }[] = [
-  { key: "risks", label: "Riesgos", href: (id) => `/admin/projects/${id}/risks`, icon: <TriangleAlert className="h-4 w-4" aria-hidden /> },
-  { key: "issues", label: "AIDs", href: (id) => `/admin/projects/${id}/issues`, icon: <Shield className="h-4 w-4" aria-hidden /> },
-  { key: "change_requests", label: "Cambios", href: (id) => `/admin/projects/${id}/changes`, icon: <GitPullRequest className="h-4 w-4" aria-hidden /> },
-  { key: "documents", label: "Documentos", href: (id) => `/admin/projects/${id}/documents`, icon: <FileText className="h-4 w-4" aria-hidden /> },
-  { key: "lessons", label: "Lecciones", href: (id) => `/admin/projects/${id}/lessons`, icon: <Lightbulb className="h-4 w-4" aria-hidden /> },
-  { key: "minutes", label: "Minutas", href: (id) => `/admin/projects/${id}/minutes`, icon: <MessageSquare className="h-4 w-4" aria-hidden /> },
-  { key: "tasks", label: "Tareas", href: (id) => `/admin/projects/${id}/tasks`, icon: <ListTree className="h-4 w-4" aria-hidden /> },
-  { key: "gantt", label: "Gantt", href: (id) => `/admin/projects/${id}/gantt`, icon: <BarChart3 className="h-4 w-4" aria-hidden /> },
-  { key: "ai_minutes", label: "Minuta IA", href: (id) => `/admin/projects/${id}/ai-minutes/new`, icon: <Sparkles className="h-4 w-4" aria-hidden /> },
-  { key: "reports", label: "Reporte IA", href: (id) => `/admin/projects/${id}/reports`, icon: <Sparkles className="h-4 w-4" aria-hidden /> },
+// ENH-005: Resumen del proyecto muestra KPIs linkeados a cada módulo
+// en vez de una barra de botones. Los items con count tienen métrica;
+// los action-only (Tareas, Gantt, Minuta IA, Reporte IA) no.
+const MODULE_KPIS: {
+  key: keyof ProjectDetail["module_counts"] | string;
+  label: string;
+  href: (id: string) => string;
+  icon: React.ReactNode;
+  hasCount: boolean;
+}[] = [
+  { key: "risks", label: "Riesgos", href: (id) => `/admin/projects/${id}/risks`, icon: <TriangleAlert className="h-4 w-4" aria-hidden />, hasCount: true },
+  { key: "issues", label: "AIDs", href: (id) => `/admin/projects/${id}/issues`, icon: <Shield className="h-4 w-4" aria-hidden />, hasCount: true },
+  { key: "change_requests", label: "Cambios", href: (id) => `/admin/projects/${id}/changes`, icon: <GitPullRequest className="h-4 w-4" aria-hidden />, hasCount: true },
+  { key: "documents", label: "Documentos", href: (id) => `/admin/projects/${id}/documents`, icon: <FileText className="h-4 w-4" aria-hidden />, hasCount: true },
+  { key: "lessons", label: "Lecciones", href: (id) => `/admin/projects/${id}/lessons`, icon: <Lightbulb className="h-4 w-4" aria-hidden />, hasCount: true },
+  { key: "minutes", label: "Minutas", href: (id) => `/admin/projects/${id}/minutes`, icon: <MessageSquare className="h-4 w-4" aria-hidden />, hasCount: true },
+  { key: "tasks", label: "Tareas", href: (id) => `/admin/projects/${id}/tasks`, icon: <ListTree className="h-4 w-4" aria-hidden />, hasCount: false },
+  { key: "gantt", label: "Gantt", href: (id) => `/admin/projects/${id}/gantt`, icon: <BarChart3 className="h-4 w-4" aria-hidden />, hasCount: false },
+  { key: "ai_minutes", label: "Minuta IA", href: (id) => `/admin/projects/${id}/ai-minutes/new`, icon: <Sparkles className="h-4 w-4" aria-hidden />, hasCount: false },
+  { key: "reports", label: "Reporte IA", href: (id) => `/admin/projects/${id}/reports`, icon: <Sparkles className="h-4 w-4" aria-hidden />, hasCount: false },
 ];
 
 function formatMxn(v: string | number | null): string {
@@ -302,23 +311,39 @@ export default function ProjectDetailPage() {
 
       <section
         aria-label="Módulos del proyecto"
-        className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-3"
+        className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5"
       >
-        <div className="flex flex-wrap gap-2">
-          {MODULE_TOOLBAR.map((m) => (
+        {MODULE_KPIS.map((m) => {
+          const count = m.hasCount
+            ? project.module_counts[m.key as string] ?? 0
+            : null;
+          return (
             <Link
               key={m.key}
               href={m.href(project.id)}
-              className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--text-secondary)] hover:border-[var(--border-default)] hover:text-[var(--text-primary)]"
+              className="group flex h-full flex-col gap-1 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)]"
             >
-              <span className="text-[var(--text-tertiary)]">{m.icon}</span>
-              {m.label}
-              <span className="ml-1 rounded-full bg-[var(--color-subtle)] px-1.5 text-[11px] tabular-nums text-[var(--text-secondary)]">
-                {project.module_counts[m.key as string] ?? 0}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+                  {m.label}
+                </span>
+                <span className="text-[var(--color-tertiary)]">{m.icon}</span>
+              </div>
+              {count !== null ? (
+                <span className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
+                  {count}
+                </span>
+              ) : (
+                <span className="text-sm font-medium text-[var(--color-secondary)]">
+                  Abrir
+                </span>
+              )}
+              <span className="text-[11px] text-[var(--color-tertiary)] group-hover:text-[var(--color-secondary)]">
+                Ver detalle →
               </span>
             </Link>
-          ))}
-        </div>
+          );
+        })}
       </section>
 
       <nav role="tablist" className="flex items-center gap-1 border-b border-[var(--border-subtle)]">
