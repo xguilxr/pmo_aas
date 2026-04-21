@@ -58,13 +58,17 @@ class OllamaProvider:
         este call; en caso contrario cae a los env `OLLAMA_BASE_URL` /
         `OLLAMA_MODEL`. Esto permite que cada tenant apunte a su propio
         endpoint tailnet sin tocar env del worker.
+
+        ENH-011: el fallback del timeout total de httpx ahora viene de
+        `settings.AI_TIMEOUT_S` (default 120s). Antes estaba hardcoded.
+        Orden de prioridad: override tenant > env AI_TIMEOUT_S > 120s.
         """
         import httpx
 
         ov = override or {}
         base_url = str(ov.get("base_url") or settings.OLLAMA_BASE_URL).rstrip("/")
         model = str(ov.get("model") or settings.OLLAMA_MODEL)
-        timeout_total = float(ov.get("timeout_sec") or 120.0)
+        timeout_total = float(ov.get("timeout_sec") or settings.AI_TIMEOUT_S)
 
         payload = {"model": model, "prompt": prompt, "stream": False}
         if system:
