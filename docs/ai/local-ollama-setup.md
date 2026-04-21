@@ -1,40 +1,54 @@
-# Runbook — Ollama local + Cloudflare Tunnel + nssm (Windows)
+# Runbook — Ollama local + Tailscale (Windows)
 
 **ID:** `DOC-AI-LOCAL-OLLAMA`
-**Alcance:** EP016 — US-NEW-044
+**Alcance:** EP016 — US-NEW-046 (reemplaza US-NEW-044)
 **Dependencias:** [DOC-AI-LOCAL](./local-model-setup.md) (elección de modelo)
 
-Este runbook documenta **paso a paso** cómo montar Ollama en una PC Windows,
-exponerlo al backend PMO productivo vía un Cloudflare Tunnel autenticado con
-Service Token, y persistirlo como servicio de Windows con `nssm`. Ideal para
-el host local del owner corriendo 24/7 y alimentando las minutas del EP014
-US-NEW-040 sin costo por token y sin sacar transcripciones del perímetro.
+Este runbook documenta cómo montar Ollama en una PC Windows y exponerlo
+al worker de Railway a través de un **tailnet privado de Tailscale**. El
+canal es WireGuard end-to-end: no hay endpoint público, no hay Service
+Token que rotar y el firewall del router del owner no necesita abrir
+ningún puerto.
 
-> Tiempo estimado: **~30 min** con la red estable y un dominio Cloudflare ya
-> administrado.
+Reemplaza al runbook previo que usaba Cloudflare Tunnel + Cloudflare
+Access (`docs(ai): US-NEW-044`). La versión CF queda en historial de git
+(commit de US-NEW-044) por si se requiere consulta; el diseño actual es
+Tailscale por DEC-011 (ver `docs/epics/DECISIONS.md`).
+
+> Tiempo estimado: **~20 min** si Ollama ya está instalado y hay cuenta
+> Tailscale; ~35 min desde cero.
 
 ---
 
 ## 0. Topología
 
 ```
-+------------------+           +-----------------+          +------------------+
-|  PC local        |           | Cloudflare Edge |          |  Backend PMO     |
-|  (Windows)       |           | (Zero Trust)    |          |  (Railway/HG)    |
-|                  |           |                 |          |                  |
-|  Ollama          |<--tunnel--| ollama.tu.do    |<--https--| worker EP008     |
-|  127.0.0.1:11434 |   cloudflared (HTTPS)      |          |                  |
-|  (nssm service)  |           | CF-Access-*     |          |                  |
-+------------------+           +-----------------+          +------------------+
++--------------------------+                     +---------------------------+
+|  PC local (Windows)      |                     |  Railway worker           |
+|  hostname: ollama-host   |                     |  hostname: railway-worker |
+|                          |                     |                           |
+|  Ollama 0.0.0.0:11434    |                     |  celery + sidecar         |
+|  tailscaled (service)    |                     |  tailscaled --tun=        |
+|  tailnet IP 100.x.y.z    |<==== WireGuard ====>|    userspace-networking   |
+|                          |   (NAT traversal    |  hostname MagicDNS:       |
+|  Firewall: 11434 inbound |    o DERP relay)    |    ollama-host.<tailnet>  |
+|  solo 100.64.0.0/10      |                     |    .ts.net:11434          |
++--------------------------+                     +---------------------------+
 ```
 
-- **PC local**: Ollama escucha en `localhost:11434` (sin exponer puerto al
-  router).
-- **cloudflared**: corre como servicio (vía `nssm`), abre un túnel
-  outbound-only hasta Cloudflare Edge y publica `https://ollama.tu-dominio`.
-- **Cloudflare Access**: exige un **Service Token** (Client-Id + Secret) en
-  cada request; sin ese token → 401. Protege el endpoint contra terceros.
-- **Backend PMO**: incluye los dos headers al llamar al túnel desde el worker.
+Propiedades:
+
+- **PC local**: Ollama en `0.0.0.0:11434` (no `127.0.0.1`), pero el
+  Windows Firewall limita el puerto a la subnet tailnet `100.64.0.0/10`.
+  No hay exposición al internet público.
+- **Tailscale**: tailnet privado WireGuard. El MagicDNS `ollama-host.<tailnet>.ts.net`
+  se resuelve dentro del tailnet. Tráfico prefiere rutas directas (NAT
+  traversal); si falla, DERP relay cifrado.
+- **Worker Railway**: corre `tailscaled` en user-space (Railway no da
+  `/dev/net/tun`) como sidecar antes de `celery`. Ver US-NEW-048.
+- **PMO config por-tenant**: `base_url = http://ollama-host.<tailnet>.ts.net:11434`.
+  No se guardan credenciales ni headers de auth (US-NEW-047 eliminó el
+  flujo CF-Access).
 
 ---
 
@@ -45,35 +59,39 @@ US-NEW-040 sin costo por token y sin sacar transcripciones del perímetro.
 | SO | Windows 10 x64 / Windows 11 |
 | RAM | 16 GB (8 GB libre para Ollama + 7B Q4) |
 | Disco libre | 15 GB |
-| Conexión | 20 Mbps symmetric estable (el túnel no hace streaming pesado, pero los transcripts pueden pesar) |
-| Dominio Cloudflare | Administrado desde dashboard; plan Free es suficiente |
+| Conexión | 20 Mbps estable (Tailscale usa WireGuard UDP; no necesita ancho simétrico) |
+| Cuenta Tailscale | Free tier alcanza (100 devices, 3 users) |
 | Acceso | Windows con permisos de admin para instalar servicios |
-| Herramientas | PowerShell 5.1+ (viene con Windows), 7-Zip opcional |
+| Herramientas | PowerShell 5.1+ |
 
-**Dependencias que instalamos** en los pasos siguientes:
+**Dependencias que se instalan en este runbook:**
 
 - `Ollama` (motor de inferencia local).
-- `cloudflared` (cliente de Cloudflare Tunnel).
-- `nssm` (Non-Sucking Service Manager).
+- `Tailscale for Windows` (tailnet privado).
+- `nssm` (opcional, para arranque pre-login de `tailscaled` si se
+  requiere que el tailnet esté vivo antes de que el owner inicie sesión).
 
 ---
 
 ## 2. Instalar Ollama y jalar el modelo
 
+Si ya lo hiciste en el runbook anterior, salta al paso 3 — solo revisa
+el **2.5** para reabrir Ollama al tailnet.
+
 ### 2.1 Descargar e instalar
 
 - URL: <https://ollama.com/download/OllamaSetup.exe>.
 - Ejecutar el MSI con privilegios de admin.
-- Al finalizar, Ollama deja un ícono en system tray y el binario disponible en
-  PowerShell como `ollama`.
+- Al finalizar, Ollama deja un ícono en system tray y el binario
+  disponible en PowerShell como `ollama`.
 
-> Alternativa (si está habilitado): `winget install Ollama.Ollama`.
+> Alternativa: `winget install Ollama.Ollama`.
 
-### 2.2 Verificar que el API está vivo
+### 2.2 Verificar que el API local responde
 
 ```powershell
 curl http://localhost:11434
-# Respuesta: "Ollama is running"
+# Respuesta esperada: "Ollama is running"
 ```
 
 ### 2.3 Descargar el modelo default MVP
@@ -82,9 +100,8 @@ curl http://localhost:11434
 ollama pull qwen2.5:7b-instruct-q4_K_M
 ```
 
-Esto baja ~4.4 GB. Ver [DOC-AI-LOCAL](./local-model-setup.md) para otros
-modelos según hardware. Para generar minutas corporativas en ES/EN, el
-`qwen2.5:7b-instruct-q4_K_M` cumple con los criterios de EP008/EP014.
+Esto baja ~4.4 GB. Ver [DOC-AI-LOCAL](./local-model-setup.md) para otras
+opciones según hardware.
 
 ### 2.4 Smoke test local
 
@@ -94,276 +111,336 @@ curl -X POST http://localhost:11434/api/generate `
   -d '{"model":"qwen2.5:7b-instruct-q4_K_M","prompt":"Responde OK","stream":false}'
 ```
 
-Debe regresar un JSON con `"response": "OK"` (o similar) en menos de 5 s.
+Debe regresar JSON con `"response": "OK"` en < 5 s.
+
+### 2.5 Exponer Ollama al tailnet (0.0.0.0 en lugar de localhost)
+
+Por default Ollama sólo escucha en `127.0.0.1:11434`. Para que lo
+alcancen otros devices del tailnet hay que abrirlo a todas las
+interfaces y reiniciarlo.
+
+En PowerShell del usuario owner (no admin):
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("OLLAMA_HOST", "0.0.0.0:11434", "User")
+```
+
+Luego:
+
+1. Botón derecho en el ícono de Ollama del system tray → **Quit Ollama**.
+2. Abrir Ollama de nuevo desde el menú Inicio (hereda la nueva env).
+
+Verifica con:
+
+```powershell
+netstat -ano | Select-String "11434"
+# Debe mostrar 0.0.0.0:11434 LISTENING
+```
 
 ---
 
-## 3. Instalar `cloudflared` y loguearte
+## 3. Instalar Tailscale en la PC local
 
-### 3.1 Descargar
+### 3.1 Descargar e instalar
 
-- Instalador Windows (64-bit):
-  <https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/install-and-setup/tunnel-guide/local/#windows>
-- Después de instalar, abre PowerShell y verifica:
+- URL oficial: <https://tailscale.com/download/windows>.
+- Ejecutar el MSI con privilegios de admin.
+- Al terminar queda en system tray.
 
-```powershell
-cloudflared --version
-```
-
-### 3.2 Login con el dominio
-
-```powershell
-cloudflared tunnel login
-```
-
-- Abre el browser → autentica con tu cuenta Cloudflare.
-- Selecciona el **dominio** que vas a usar (ej. `tu-dominio.com`).
-- Guarda un archivo `cert.pem` en `C:\Users\<user>\.cloudflared\cert.pem`.
-
----
-
-## 4. Crear el túnel y configurar ingress
-
-### 4.1 Crear túnel nombrado
-
-```powershell
-cloudflared tunnel create pmoaas-ollama
-```
-
-La salida muestra:
-- `Tunnel ID` (UUID).
-- Ruta del archivo de credenciales
-  `C:\Users\<user>\.cloudflared\<tunnel-id>.json`. **No compartir**.
-
-### 4.2 Crear `config.yml`
-
-Crea `C:\Users\<user>\.cloudflared\config.yml` con el siguiente contenido
-(reemplaza `<tunnel-id>` y el hostname):
-
-```yaml
-tunnel: <tunnel-id>
-credentials-file: C:\Users\<user>\.cloudflared\<tunnel-id>.json
-
-ingress:
-  - hostname: ollama.tu-dominio.com
-    service: http://localhost:11434
-  - service: http_status:404
-```
-
-### 4.3 Apuntar DNS al túnel
-
-```powershell
-cloudflared tunnel route dns pmoaas-ollama ollama.tu-dominio.com
-```
-
-Esto crea un registro CNAME `ollama.tu-dominio.com → <tunnel-id>.cfargotunnel.com`.
-
-### 4.4 Arranque temporal para probar
-
-```powershell
-cloudflared tunnel --config C:\Users\<user>\.cloudflared\config.yml run
-```
-
-En otra terminal, verifica desde internet:
-
-```powershell
-curl https://ollama.tu-dominio.com
-# "Ollama is running"
-```
-
-Si ves un error 1033 / DNS no propagado, espera 1-2 min y reintenta.
-
-Detén el túnel con Ctrl+C; en el siguiente paso lo dejamos como servicio.
-
----
-
-## 5. Cloudflare Access — Service Token
-
-En este punto, `https://ollama.tu-dominio.com` es **público**. Vamos a
-protegerlo con Cloudflare Access.
-
-### 5.1 Habilitar Zero Trust
-
-- Dashboard Cloudflare → Zero Trust.
-- Si es la primera vez, acepta los términos y crea el equipo.
-
-### 5.2 Crear aplicación Self-hosted
-
-- Zero Trust → **Access → Applications → Add application → Self-hosted**.
-- Application name: `PMO-aaS Ollama`.
-- Application domain: `ollama.tu-dominio.com`.
-- Session duration: 24h (o a tu gusto).
-- Siguiente.
-
-### 5.3 Policy "Service Token Only"
-
-- Policy name: `Service token`.
-- Action: **Service Auth**.
-- Configure rule: **Include → Service Token**.
-- (Creas el service token en el siguiente paso y lo seleccionas aquí, o lo
-  editas después.)
-- Guardar.
-
-### 5.4 Emitir Service Token
-
-- Zero Trust → Access → **Service Auth → Service Tokens → Create Service
-  Token**.
-- Name: `pmoaas-prod` (o por-tenant si los clientes son distintos).
-- Duration: sin vencer (para prod) o 1 año.
-- Cliente genera **Client ID** y **Client Secret**.
-- **Guarda ambos valores ahora**. El Secret **no se vuelve a mostrar**.
-
-Regresa a la policy (5.3) y selecciona el service token recién creado →
-guardar.
-
-### 5.5 Smoke test externo autenticado
-
-```powershell
-$CF_ID = "<CF-Access-Client-Id>"
-$CF_SECRET = "<CF-Access-Client-Secret>"
-
-curl -H "CF-Access-Client-Id: $CF_ID" -H "CF-Access-Client-Secret: $CF_SECRET" `
-  https://ollama.tu-dominio.com/api/tags
-```
-
-Debe regresar una lista JSON con el modelo `qwen2.5:7b-instruct-q4_K_M`.
-Sin los headers, Cloudflare debe responder `401`/página de Access.
-
----
-
-## 6. Registrar `cloudflared` como servicio con `nssm`
-
-### 6.1 Instalar nssm
-
-- Descargar desde <https://nssm.cc/download>.
-- Descomprimir a `C:\Tools\nssm\` y agregar al PATH (o usar ruta absoluta).
-
-### 6.2 Crear el servicio
+### 3.2 Login y alta del hostname
 
 Abre PowerShell **como administrador**:
 
 ```powershell
-nssm install CloudflaredOllama "C:\Program Files (x86)\cloudflared\cloudflared.exe"
-nssm set CloudflaredOllama AppParameters "tunnel --config C:\Users\<user>\.cloudflared\config.yml run"
-nssm set CloudflaredOllama AppDirectory "C:\Users\<user>\.cloudflared"
-nssm set CloudflaredOllama Start SERVICE_AUTO_START
-nssm set CloudflaredOllama Description "Cloudflare Tunnel — Ollama para PMO-aaS"
-nssm set CloudflaredOllama AppStdout "C:\Users\<user>\.cloudflared\cloudflared.out.log"
-nssm set CloudflaredOllama AppStderr "C:\Users\<user>\.cloudflared\cloudflared.err.log"
-nssm start CloudflaredOllama
+tailscale up --hostname=ollama-host
 ```
 
-Verifica con `Get-Service CloudflaredOllama` — debe estar en `Running`.
+- Se abre browser con flujo de login (GitHub / Google / Microsoft /
+  email). Autentícate con la **cuenta owner del tailnet PMO**.
+- Aprueba el device desde el browser → regresa a la terminal.
 
-### 6.3 Registrar Ollama como servicio (opcional pero recomendado)
-
-Ollama ya corre en segundo plano cuando el usuario está logueado, pero para
-que arranque con el sistema (antes de login) conviene envolverlo con `nssm`:
+Verifica:
 
 ```powershell
-nssm install OllamaService "C:\Users\<user>\AppData\Local\Programs\Ollama\ollama.exe"
-nssm set OllamaService AppParameters "serve"
-nssm set OllamaService Start SERVICE_AUTO_START
-nssm set OllamaService AppStdout "C:\Users\<user>\.ollama\ollama.out.log"
-nssm set OllamaService AppStderr "C:\Users\<user>\.ollama\ollama.err.log"
-nssm start OllamaService
+tailscale status
+# ollama-host  100.x.y.z  user@...  windows  active; direct ...
+
+tailscale ip -4
+# 100.x.y.z
 ```
 
-> Si el instalador MSI ya registró "Ollama" como servicio, omite este paso y
-> confirma con `Get-Service Ollama`.
+El hostname MagicDNS queda como `ollama-host.<tu-tailnet>.ts.net`.
+Identifícalo con:
 
-### 6.4 Validar arranque auto
+```powershell
+tailscale status --json | ConvertFrom-Json | Select-Object -ExpandProperty MagicDNSSuffix
+# tu-tailnet.ts.net
+```
 
-- Reiniciar la PC.
-- Al terminar el reinicio (aún sin login, si la PC tiene "inicio automático"),
-  ejecuta desde otra máquina el smoke test del paso 5.5 — debe seguir
-  respondiendo.
+> Si piensas correr también el worker en el mismo tailnet
+> (recomendado, ver US-NEW-048), **no cambies de tailnet** entre devices.
 
 ---
 
-## 7. Registrar la URL en PMO (por-tenant)
+## 4. Firewall — limitar 11434 al tailnet
 
-> Este paso lo cubre en profundidad **US-NEW-045** (EP016). Resumen para
-> cerrar el loop del runbook:
+Ollama quedó en `0.0.0.0:11434`. Restringe el puerto para que solo el
+tailnet pueda llegar (defensa en profundidad: aunque el router no haga
+port-forward, bloqueamos por si se activa Wi-Fi pública).
+
+PowerShell admin:
+
+```powershell
+New-NetFirewallRule `
+  -DisplayName "Ollama (tailnet only)" `
+  -Direction Inbound `
+  -LocalPort 11434 `
+  -Protocol TCP `
+  -Action Allow `
+  -RemoteAddress 100.64.0.0/10
+
+# Opcional: bloquea el resto por si otra regla default lo permite
+New-NetFirewallRule `
+  -DisplayName "Ollama (block non-tailnet)" `
+  -Direction Inbound `
+  -LocalPort 11434 `
+  -Protocol TCP `
+  -Action Block `
+  -RemoteAddress Any
+```
+
+`100.64.0.0/10` es el rango CGNAT que Tailscale usa para el tailnet —
+cubre todos los peers.
+
+Verifica:
+
+```powershell
+Get-NetFirewallRule -DisplayName "Ollama*" | Format-Table DisplayName, Enabled, Direction, Action
+```
+
+---
+
+## 5. Smoke test desde otro device del tailnet
+
+Desde otro peer del tailnet (tu laptop secundaria, celular con Tailscale
+iOS, o el propio worker de Railway después de US-NEW-048):
+
+```bash
+# Por IP tailnet:
+curl http://100.x.y.z:11434
+# "Ollama is running"
+
+# Por MagicDNS:
+curl http://ollama-host.<tu-tailnet>.ts.net:11434
+# "Ollama is running"
+
+curl http://ollama-host.<tu-tailnet>.ts.net:11434/api/tags
+# { "models": [ { "name": "qwen2.5:7b-instruct-q4_K_M", ... } ] }
+```
+
+Si falla la resolución MagicDNS: `tailscale status` en el peer origen;
+debe listar `ollama-host` como peer `active`. Si no, revisa que los dos
+devices estén en el mismo tailnet.
+
+---
+
+## 6. Registrar Tailscale como servicio con `nssm` (opcional)
+
+El instalador MSI de Tailscale ya registra un servicio Windows llamado
+`Tailscale` que arranca con el sistema. Si te funciona tal cual, **salta
+este paso**.
+
+Usa `nssm` solo si:
+
+- Necesitas logs a archivo específico.
+- Quieres que `tailscaled` arranque antes de que el usuario owner
+  inicie sesión (poco común en una PC desktop que queda prendida).
+
+```powershell
+nssm install TailscaledService "C:\Program Files\Tailscale\tailscaled.exe"
+nssm set TailscaledService AppParameters ""
+nssm set TailscaledService Start SERVICE_AUTO_START
+nssm set TailscaledService AppStdout "C:\ProgramData\Tailscale\Logs\tailscaled.out.log"
+nssm set TailscaledService AppStderr "C:\ProgramData\Tailscale\Logs\tailscaled.err.log"
+nssm start TailscaledService
+```
+
+> Conflicto: no corras el servicio MSI y el nssm al mismo tiempo.
+> Deshabilita el que no uses: `Stop-Service Tailscale; Set-Service
+> Tailscale -StartupType Disabled`.
+
+---
+
+## 7. Generar `TS_AUTHKEY` para el worker de Railway
+
+El worker de Railway (US-NEW-048) necesita unirse al tailnet sin
+intervención humana. Tailscale soporta **auth keys** reutilizables.
+
+1. Abrir <https://login.tailscale.com/admin/settings/keys>.
+2. Click **Generate auth key**.
+3. Configurar:
+   - **Reusable**: ON (el worker puede redeployarse N veces con la misma
+     key).
+   - **Ephemeral**: ON (cuando el container muere, Tailscale borra el
+     peer del admin console — evita acumular peers muertos en cada
+     redeploy).
+   - **Pre-approved**: ON (no requiere aprobar en admin cada rearranque).
+   - **Expiration**: 90 días (rota al cerrar sprint; anota en calendar).
+   - **Tags**: `tag:railway-worker` (obliga a definir ese tag en ACLs).
+4. Copiar el valor `tskey-auth-...` al password manager del owner.
+
+> **Importante:** antes de usar el tag `tag:railway-worker` hay que
+> definirlo en el archivo ACL del tailnet:
+> Admin console → **Access controls → Edit ACL** → agregar:
+> ```json
+> {
+>   "tagOwners": {
+>     "tag:railway-worker": ["autogroup:admin"]
+>   }
+> }
+> ```
+> Sin eso, `tailscale up --authkey=...` falla con "tag not allowed".
+
+El valor de la auth key se guarda como **Shared Variable** `TS_AUTHKEY`
+en Railway (ver US-NEW-048 / RAILWAY_SETUP.md).
+
+---
+
+## 8. Registrar el endpoint en PMO (por-tenant)
+
+> El formulario y endpoint de test-connection quedan en US-NEW-047.
+> Esta sección asume ese refactor aplicado (ya no hay campos
+> CF-Access).
 
 - Login al tenant con rol admin / senior PMO.
 - Navegar a `/admin/tenant?tab=config`.
-- Sección **Proveedor IA local (Ollama)** (disponible tras US-NEW-045):
-  - `base_url` = `https://ollama.tu-dominio.com`.
-  - `model` = `qwen2.5:7b-instruct-q4_K_M` (o el que descargaste).
+- Sección **Proveedor IA local (Ollama)**:
+  - `base_url` = `http://ollama-host.<tu-tailnet>.ts.net:11434`
+    - (Alternativa IP directa: `http://100.x.y.z:11434`. MagicDNS es
+      preferible porque la IP puede cambiar si reinstalas Tailscale.)
+  - `model` = `qwen2.5:7b-instruct-q4_K_M`.
   - `timeout_sec` = `60`.
-  - `CF-Access-Client-Id` = valor del paso 5.4.
-  - `CF-Access-Client-Secret` = valor del paso 5.4 (se guarda cifrado, no se
-    muestra después).
-- Click **Probar conexión**: si todo va bien, muestra latencia en ms.
-- Guardar. La próxima minuta IA del tenant usa este endpoint.
+- Click **Probar conexión**.
+  - **Si el worker ya tiene el sidecar Tailscale arriba (US-NEW-048)**:
+    devuelve latencia en ms y `model_present=true`.
+  - **Si el worker aún no tiene sidecar**: el endpoint corre desde `api`
+    (que NO está en el tailnet) y va a fallar con timeout/unreachable.
+    Es esperado; la verificación real la hace el worker al procesar una
+    minuta.
+- Guardar.
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
-| `cloudflared: connection refused` | Ollama no está arriba | `Get-Service OllamaService`; `curl http://localhost:11434` |
-| `Error 1033` al pegarle al dominio | DNS aún propagándose | Esperar 1-3 min; verificar CNAME con `nslookup ollama.tu-dominio.com` |
-| `401 Unauthorized` con service token válido | Policy no selecciona el token correcto | Re-abrir la policy en Zero Trust → Include → Service Token → seleccionar el token; guardar |
-| El servicio `CloudflaredOllama` no arranca tras reinicio | `AppDirectory` o rutas mal escritas | `nssm edit CloudflaredOllama` → revisar paths; `nssm restart CloudflaredOllama` |
-| Ollama devuelve 500 al generar | RAM insuficiente o modelo mal jalado | `ollama list`; volver a `ollama pull …`; verificar RAM libre |
-| El PMO cae a Gemini/Claude constantemente | El worker detecta timeout del túnel | Aumentar `timeout_sec` en config; revisar latencia `cf-ray` en logs |
-| Port 11434 ocupado por otra app | Otro Ollama corriendo o LM Studio | Detener el conflicto o cambiar el puerto (`OLLAMA_HOST`) y el `config.yml` |
+| `tailscale status` no lista peers | No hiciste login o el device está logged out | `tailscale up` + flujo de browser |
+| `tailscale ip -4` vacío | Servicio `Tailscale` detenido | `Start-Service Tailscale` |
+| Otro device del tailnet no resuelve `ollama-host.*.ts.net` | MagicDNS deshabilitado en el tailnet | Admin console → **DNS → Enable MagicDNS** |
+| `curl http://100.x.y.z:11434` desde peer da timeout | Windows Firewall tira el paquete / Ollama solo en `127.0.0.1` | Paso 2.5 + paso 4 |
+| `curl http://ollama-host.*.ts.net` resuelve pero conecta a 127.0.0.1 | El peer origen tiene `accept-dns=false` y resolvió localmente | `tailscale up --accept-dns=true` en el peer origen |
+| `401` / `403` al probar desde el worker | — | Ya no aplica: sin CF-Access no hay auth. Si ves un 403, revisa que no haya un proxy intermedio (no debería haberlo) |
+| `tailscale ping ollama-host` alto (> 200 ms) | DERP relay en vez de ruta directa | Revisa NAT del router; considera habilitar UPnP o configurar port forwarding de Tailscale (opcional) |
+| Ollama 500 al generar | RAM insuficiente / modelo corrupto | `ollama list`; `ollama pull qwen2.5:7b-instruct-q4_K_M`; revisar memoria libre |
+| El PMO cae a Gemini/Claude constantemente | Timeout al resolver MagicDNS desde el worker | `tailscale status` dentro del container del worker; `timeout_sec` más alto; ver US-NEW-048 |
 
 ### Logs útiles
 
-- `cloudflared`: `C:\Users\<user>\.cloudflared\cloudflared.out.log` + `.err.log`.
-- `ollama`: `C:\Users\<user>\.ollama\server.log` (o lo que expongas con nssm).
-- Cloudflare: dashboard Zero Trust → Logs → Access (requests autenticados).
+- **Tailscale Windows**: `C:\ProgramData\Tailscale\Logs\tailscaled.log`
+- **Tailscale diagnóstico**: `tailscale bugreport` (genera ID de soporte)
+- **Ollama**: `C:\Users\<user>\.ollama\server.log`
+- **Tailscale admin console**: <https://login.tailscale.com/admin/machines>
+  muestra última vez que cada peer se conectó + rutas usadas.
 
 ---
 
-## 9. Rollback / desinstalación
+## 10. Rollback / desinstalación
 
-En orden inverso (admin PowerShell):
+En orden inverso (PowerShell admin):
 
 ```powershell
-# 1. Detener y remover servicios
-nssm stop CloudflaredOllama; nssm remove CloudflaredOllama confirm
-nssm stop OllamaService;    nssm remove OllamaService confirm
+# 1. Salir del tailnet desde esta PC
+tailscale logout
 
-# 2. Borrar túnel de Cloudflare
-cloudflared tunnel delete pmoaas-ollama
+# 2. Detener servicio nssm si se creó
+nssm stop TailscaledService 2>$null; nssm remove TailscaledService confirm 2>$null
 
-# 3. Eliminar DNS record (dashboard Cloudflare) y la Access Application
+# 3. Desinstalar Tailscale (panel de Control → Programas)
 
-# 4. Desinstalar binarios
-# - Ollama: panel de Control → Programas → desinstalar
-# - cloudflared: panel de Control o borrar carpeta instalada
-# - nssm: borrar la carpeta donde se extrajo
+# 4. Revocar TS_AUTHKEY
+#    - Admin console → Settings → Keys → encontrar la key y click "Revoke"
+#    - Borrar la shared var TS_AUTHKEY de Railway
+
+# 5. Revocar device del tailnet
+#    - Admin console → Machines → ollama-host → menú → "Delete"
+
+# 6. Revertir firewall rules
+Remove-NetFirewallRule -DisplayName "Ollama (tailnet only)"
+Remove-NetFirewallRule -DisplayName "Ollama (block non-tailnet)"
+
+# 7. Restaurar Ollama a localhost
+[System.Environment]::SetEnvironmentVariable("OLLAMA_HOST", $null, "User")
+# Reabrir Ollama desde menú Inicio
+
+# 8. (Opcional) Desinstalar Ollama si no se usa
 ```
 
-Revocar el Service Token desde Zero Trust si ya no se usa.
+### Rollback de CF Tunnel (desde el runbook anterior)
+
+Si habías ejecutado el runbook US-NEW-044 antes de este pivote, limpia
+los artefactos CF para evitar costos/confusión:
+
+```powershell
+# 1. Detener y borrar el servicio cloudflared
+nssm stop CloudflaredOllama 2>$null; nssm remove CloudflaredOllama confirm 2>$null
+
+# 2. Borrar el túnel de Cloudflare
+cloudflared tunnel delete pmoaas-ollama
+
+# 3. Borrar DNS record (dashboard Cloudflare → DNS → ollama.pmo-aas.com → Delete)
+
+# 4. Borrar Cloudflare Access Application "PMO-aaS Ollama"
+
+# 5. Revocar Service Token en Zero Trust → Access → Service Auth
+
+# 6. Desinstalar cloudflared (panel de Control)
+```
+
+El owner ya ejecutó parte de este rollback manual el 2026-04-21 como
+parte del cleanup documentado en el Bloque 14 de SPRINT.md.
 
 ---
 
-## 10. Checklist final
+## 11. Checklist final
 
-- [ ] Ollama responde en `localhost:11434`.
-- [ ] Modelo `qwen2.5:7b-instruct-q4_K_M` (o equivalente) descargado.
-- [ ] `cloudflared tunnel run` pasa el smoke test desde internet.
-- [ ] Cloudflare Access exige Service Token — sin token: 401.
-- [ ] Servicio `CloudflaredOllama` corre con `nssm` y arranca tras reinicio.
-- [ ] (Opcional) Servicio `OllamaService` con nssm.
-- [ ] Config en `/admin/tenant?tab=config` con `base_url` + token guardados.
-- [ ] Generación de minuta de prueba termina en ≤ 60 s y el formatter de
-      EP014 US-NEW-040 produce el `.md` / `.docx` estandarizado.
+- [ ] Ollama responde en `0.0.0.0:11434` (no solo `127.0.0.1`).
+- [ ] Modelo `qwen2.5:7b-instruct-q4_K_M` descargado.
+- [ ] Tailscale instalado; `tailscale status` muestra `ollama-host` como
+      device `active`.
+- [ ] Firewall rules Ollama limitadas a `100.64.0.0/10`.
+- [ ] Desde otro peer del tailnet, `curl http://ollama-host.<tailnet>.ts.net:11434/api/tags`
+      devuelve la lista de modelos.
+- [ ] `TS_AUTHKEY` reusable + ephemeral + tag `tag:railway-worker`
+      generado y guardado en password manager.
+- [ ] Tag `tag:railway-worker` definido en ACL del tailnet.
+- [ ] Config en `/admin/tenant?tab=config` con `base_url` MagicDNS
+      guardado (después de US-NEW-047).
+- [ ] Worker de Railway con sidecar `tailscaled` resuelve el hostname
+      (US-NEW-048 — dependencia aparte).
+- [ ] Cleanup de CF Tunnel ejecutado (si aplica).
 
 ---
 
 ## Referencias
 
 - Ollama — <https://ollama.com/docs>
-- Cloudflare Tunnel — <https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/>
-- Cloudflare Access Service Tokens — <https://developers.cloudflare.com/cloudflare-one/identity/service-tokens/>
+- Tailscale Windows — <https://tailscale.com/kb/1022/install-windows>
+- Tailscale Docker / sidecar — <https://tailscale.com/kb/1282/docker>
+- Tailscale ACLs + tags — <https://tailscale.com/kb/1068/acl-tags>
+- Tailscale auth keys — <https://tailscale.com/kb/1085/auth-keys>
 - nssm — <https://nssm.cc/usage>
 - Runbook relacionado (elección de modelo) — [DOC-AI-LOCAL](./local-model-setup.md)
 - Epic de integración — [EP016](../epics/EP016-local-ai-tunnel.md)
 - Post-procesamiento de minuta — [EP014 US-NEW-040](../epics/EP014-operational-deliverables.md)
+- Sidecar Tailscale en el worker — US-NEW-048 (pendiente en EP016)
