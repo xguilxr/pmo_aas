@@ -34,8 +34,8 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 
 | # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| 1 | US-027 | EP011 | Tabla notifications + in-app center | Bloque 16 (POST-MVP) |
-| 2 | US-028 | EP011 | Email notifications via Resend | Bloque 16 (POST-MVP) |
+| — | — | — | — | — |
+| — | — | — | — | — |
 | — | — | — | — | — |
 | — | — | — | — | — |
 | — | — | — | — | — |
@@ -130,6 +130,8 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
 | ENH-009 | Reconectar hrefs dashboard a /admin/raid y /admin/changes | `feat(dashboard): ENH-009 — reconecta hrefs KPIs` | 2026-04-21 |
 | ENH-010 | Endpoints cross-tenant incluyen folio+name del proyecto | `feat(api,web): ENH-010 — folio+name en cross-tenant` | 2026-04-21 |
 | BUG-007 | WeasyPrint libs nativas en Dockerfile (cierra 502 de Reporte Avance) | `fix(infra): BUG-007 — libs WeasyPrint en Dockerfile` | 2026-04-21 |
+| US-027 | Notificaciones in-app (tabla + API + bell + página) | `feat(api,web): US-027 — notifications in-app` | 2026-04-21 |
+| US-028 | Email notifications vía Resend + preferencias + runbook | `feat(api,web,docs): US-028 — email via Resend + preferencias + runbook` | 2026-04-21 |
 
 ---
 
@@ -293,9 +295,18 @@ worker y sí alcanza ollama-host.<tailnet>.ts.net.
   - **Pendiente operador (owner):** subir el contenido de `landing/`
     a `public_html/` en HostGator.
 
-### Bloque 16 — Notificaciones (EP011) — POST-MVP
-- [ ] US-027 — Tabla notifications + in-app center
-- [ ] US-028 — Email notifications via Resend
+### Bloque 16 — Notificaciones (EP011) — ✅ CERRADO 2026-04-21
+- [x] US-027 — Tabla notifications + in-app center ✅ 1f304e4
+- [x] US-028 — Email notifications via Resend ✅ (ver siguiente commit)
+
+> Status final del bloque: tabla `notifications` creada (migración
+> 0016), endpoints REST + preferencias por user, bell + dropdown en el
+> topbar, página `/notifications`, service con dispatch desde review
+> de solicitudes y creación de proyecto (events `request_*`,
+> `pm_assigned`). Canal email vía Resend con template HTML con
+> branding del tenant, supresión si el user ya leyó in-app en 2h, y
+> runbook operativo en `docs/infra/resend-setup.md` para que el owner
+> configure DNS + API key.
 
 ### Bloque 18 — Hotfixes runbook EP016 (durante pruebas manuales del owner)
 

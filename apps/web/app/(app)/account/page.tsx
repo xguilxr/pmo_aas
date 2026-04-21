@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Check, KeyRound, UserCircle, X } from "lucide-react";
 
+import { NotificationPreferencesSection } from "@/components/notification-preferences-section";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -292,6 +293,7 @@ export default function AccountPage() {
       </header>
       <ProfileSection />
       <PasswordSection />
+      <NotificationPreferencesSection />
     </div>
   );
 }

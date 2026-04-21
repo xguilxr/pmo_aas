@@ -26,7 +26,7 @@ lista anterior. El contexto es finito.
 
 | Prefijo | Uso | Contador | Próximo libre |
 |---|---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-054** |
+| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-054** (US-027, US-028 completadas del Bloque 16) |
 | `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-023** |
 | `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-011** |
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
