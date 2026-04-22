@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-22 19:40 — BUG-026 (Auth: timeout inactividad 15 min)
+2026-04-22 23:58 — US-055 (Export tareas CSV/Excel opción A)
 
-Sprint 2 comenzó. Trabajando Bloque 1 (Setup).
+BUG-026 completado (77dc093). Avanzando Bloque 1.
 ```
 
 ---
@@ -70,7 +70,7 @@ Sprint 2 comenzó. Trabajando Bloque 1 (Setup).
 ## 📋 Backlog Sprint 2 (v1.1 — en ejecución)
 
 ### Bloque 1 — Sprint 2 Setup: navegación + bugs + permisos (7 items)
-- [ ] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87
+- [x] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87 ✅ 77dc093
 - [ ] US-055 — Export tareas (CSV/Excel) — Opción A: botón descarga instantánea — #71
 - [ ] ENH-012 — Sidebar: reorganizar con módulo "Módulos de Proyecto" — #72
 - [ ] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73
