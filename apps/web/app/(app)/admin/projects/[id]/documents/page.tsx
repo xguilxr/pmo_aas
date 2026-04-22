@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ExternalLink, FileText } from "lucide-react";
 
@@ -223,6 +224,14 @@ export default function DocumentsPage() {
               >
                 Abrir <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               </a>
+            ) : r.category === "charter" ? (
+              <Link
+                href={`/admin/projects/${id}/charter`}
+                className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Editar <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </Link>
             ) : (
               <span
                 className="text-[12px] italic text-[var(--color-tertiary)]"
