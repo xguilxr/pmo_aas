@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-22 23:59 — ENH-013 (Botón "Nuevo Programa" abre modal en Organizaciones)
+2026-04-22 23:59 — BUG-024 (Lógica de uploads no configurada)
 
-ENH-012 completado (e2e420f). Avanzando Bloque 1.
+ENH-013 completado (b47f19a). Avanzando Bloque 1.
 ```
 
 ---
@@ -73,7 +73,7 @@ ENH-012 completado (e2e420f). Avanzando Bloque 1.
 - [x] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87 ✅ 77dc093
 - [x] US-055 — Export tareas (CSV/Excel) — Opción A: botón descarga instantánea — #71 ✅ 023a99c
 - [x] ENH-012 — Sidebar: reorganizar con módulo "Módulos de Proyecto" — #72 ✅ e2e420f
-- [ ] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73
+- [x] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73 ✅ b47f19a
 - [x] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74 ✅ d81d036
 - [ ] BUG-024 — Lógica de uploads no configurada — #75
 - [x] BUG-025 — Rol "Reportes" sin módulo de permisos — #76 ✅ b1954c7
