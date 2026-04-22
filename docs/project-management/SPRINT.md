@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-22 23:59 — BUG-024 (Lógica de uploads no configurada)
+2026-04-22 23:59 — ENH-014 (Reportes: renombrar archivo con datetime + preview PDF)
 
-ENH-013 completado (b47f19a). Avanzando Bloque 1.
+BUG-024 completado (3cd997d). Bloque 1 DONE, iniciando Bloque 2.
 ```
 
 ---
@@ -69,13 +69,13 @@ ENH-013 completado (b47f19a). Avanzando Bloque 1.
 
 ## 📋 Backlog Sprint 2 (v1.1 — en ejecución)
 
-### Bloque 1 — Sprint 2 Setup: navegación + bugs + permisos (7 items)
+### Bloque 1 — Sprint 2 Setup: navegación + bugs + permisos (7 items) ✅ COMPLETO
 - [x] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87 ✅ 77dc093
 - [x] US-055 — Export tareas (CSV/Excel) — Opción A: botón descarga instantánea — #71 ✅ 023a99c
 - [x] ENH-012 — Sidebar: reorganizar con módulo "Módulos de Proyecto" — #72 ✅ e2e420f
 - [x] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73 ✅ b47f19a
 - [x] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74 ✅ d81d036
-- [ ] BUG-024 — Lógica de uploads no configurada — #75
+- [x] BUG-024 — Lógica de uploads no configurada — #75 ✅ 3cd997d
 - [x] BUG-025 — Rol "Reportes" sin módulo de permisos — #76 ✅ b1954c7
 
 ### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items)
