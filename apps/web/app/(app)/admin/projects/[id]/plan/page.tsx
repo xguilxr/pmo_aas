@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { BarChart3, ListTree, Plus, Rows3, Trash2 } from "lucide-react";
+import { BarChart3, Download, ListTree, Plus, Rows3, Trash2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -256,6 +256,33 @@ function PlanInner() {
     }
   }
 
+  function exportToCSV() {
+    if (tasks.length === 0) {
+      alert("No hay tareas para exportar");
+      return;
+    }
+    const headers = ["WBS", "Tarea", "Inicio", "Fin", "Duración (días)", "Avance (%)", "Es hito", "Estado"];
+    const rows = tasks.map((t) => [
+      t.wbs ?? "",
+      t.name,
+      t.start_date ?? "",
+      t.end_date ?? "",
+      t.duration_days ?? "",
+      t.progress ?? 0,
+      t.is_milestone ? "Sí" : "No",
+      TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
+    ]);
+    const csv = [
+      headers.map((h) => `"${h}"`).join(","),
+      ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `tareas-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+  }
+
   const listBlock = useMemo(
     () => (
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
@@ -266,15 +293,26 @@ function PlanInner() {
               Lista de tareas
             </h2>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setNewOpen(true)}
-            aria-label="Nueva tarea"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Nueva tarea
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={exportToCSV}
+              aria-label="Exportar a CSV"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Exportar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setNewOpen(true)}
+              aria-label="Nueva tarea"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Nueva tarea
+            </Button>
+          </div>
         </header>
         <TaskList tasks={tasks} loading={loadingTasks} onDelete={handleDeleteTask} />
       </section>
