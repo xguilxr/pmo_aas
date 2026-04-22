@@ -76,7 +76,7 @@ BUG-026 completado (77dc093). Avanzando Bloque 1.
 - [ ] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73
 - [ ] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74
 - [ ] BUG-024 — Lógica de uploads no configurada — #75
-- [ ] BUG-025 — Rol "Reportes" sin módulo de permisos — #76
+- [x] BUG-025 — Rol "Reportes" sin módulo de permisos — #76 ✅ b1954c7
 
 ### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items)
 - [ ] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77
