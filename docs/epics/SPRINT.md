@@ -7,15 +7,10 @@
 ## 🔴 IN-PROGRESS
 
 ```
-— Sin US activa —
+— Sin US activa (2026-04-22, intake Sprint 2) —
 
-Último cierre (2026-04-21): Bloque 22 — ENH-011 y US-054 completadas.
-ENH-011 agrega `AI_TIMEOUT_S` como env válida en OllamaProvider (el
-valor que el owner había puesto en Railway ya toma efecto). US-054
-agrega tabla `platform_ai_settings` + endpoints superadmin + UI en
-/superadmin/ai para sobreescribir AI_MODE/base_url/model/timeout sin
-redeploy. Orden de prioridad del provider:
-  tenant override > platform defaults > env var.
+Sprint 1 (v1.0 MVP) completado al 100% (2026-04-21). Ver SPRINT-DONE-HISTORY.md.
+Sprint 2 (v1.1) arranca 2026-04-22 con 21 issues nuevos (7 BUGs + 11 ENHs + 3 USs Sprint 2 + 4 v1.2 post-MVP).
 ```
 
 ---
@@ -32,399 +27,87 @@ redeploy. Orden de prioridad del provider:
 
 ---
 
-## ⏳ QUEUE (próximas 5)
+## ⏳ QUEUE (próximas 20 — Sprint 2)
 
 | # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| — | — | — | — | — |
-| — | — | — | — | — |
-| — | — | — | — | — |
-| — | — | — | — | — |
-| — | — | — | — | — |
+| 71 | US-055 | EP005 | Export tareas (CSV/Excel) con 3 opciones de flujo | Bloque 1 |
+| 72 | ENH-012 | EP013 | Sidebar: reorganizar con módulo "Módulos de Proyecto" | Bloque 1 |
+| 73 | ENH-013 | EP002 | Botón "Nuevo Programa" abre modal en Organizaciones | Bloque 1 |
+| 74 | BUG-023 | EP003 | Project Charter: link a editor cuando no hay archivo (404) | Bloque 1 |
+| 75 | BUG-024 | EP006 | Lógica de uploads no configurada | Bloque 1 |
+| 76 | BUG-025 | EP007 | Rol "Reportes" sin módulo de permisos | Bloque 1 |
+| 87 | BUG-026 | EP001 | Auth: timeout de inactividad a 15 minutos | Bloque 1 |
+| 77 | ENH-014 | EP014 | Reportes: renombrar archivo con datetime + preview PDF | Bloque 2 |
+| 78 | US-056 | EP014 | Calendarizar envío automático de reportes vía Resend | Bloque 2 |
+| 80 | ENH-015 | EP004 | Dashboard: expandir barra de navegación | Bloque 2 |
+| 82 | ENH-017 | EP006 | RAID: filtros en línea horizontal | Bloque 2 |
+| 81 | ENH-016 | EP003 | Solicitudes: permitir reabrir si proyecto no existe | Bloque 2 |
+| 85 | ENH-019 | EP006 | RAID: gestión avanzada consolidada en principal | Bloque 3 |
+| 84 | ENH-018 | EP006 | RAID: agregar toggle Kanban | Bloque 3 |
+| 83 | US-058 | EP006 | RAID: preview panel editable con comentarios | Bloque 3 |
+| 86 | ENH-020 | EP002 | Áreas: permitir múltiples recursos/contactos | Bloque 3 |
+| 79 | US-057 | EP008 | IA: permitir tenants conectar a su propia instancia | Bloque 4 |
+| 88 | US-059 | EP002 | v1.2 Recursos: usuarios sin roles jerárquicos | v1.2 |
+| 89 | US-060 | EP002 | v1.2 Roles: tipos usuario (Viewer/User/Admin) | v1.2 |
+| 90 | US-061 | EP002 | v1.2 Aprobaciones: jerarquía directa + permisos | v1.2 |
+| 91 | US-062 | EP002 | v1.2 Áreas/Recursos: Area Leader + recursos asignados | v1.2 |
 
-> Bloque 20 (issues #33-#57, intake del owner 2026-04-21) **completado
-> al 100%** — 24 items cerrados. Ver tabla DONE y bloque 20 abajo.
-> Sólo quedan en QUEUE las 2 US post-MVP de notificaciones.
-
----
-
-## ✅ DONE (historial reciente)
-
-| US | Título | Commit | Fecha |
-|---|---|---|---|
-| US-001 | Setup inicial — análisis de gaps v1→v2 | `docs: gap analysis v2` | 2026-04-20 |
-| US-002 | Tablas business_units + departments + FKs | `feat(org): US-002 — tablas BU y departments con FK` | 2026-04-20 |
-| US-003 | CRUD Business Units API | `feat(org): US-003 — CRUD Business Units API` | 2026-04-20 |
-| US-004 | CRUD Departments API | `feat(org): US-004 — CRUD Departments API` | 2026-04-20 |
-| US-005 | Sidebar org tree nav (Frontend) | `feat(web): US-005 — sidebar org tree nav` | 2026-04-20 |
-| US-006 | Vista paneles de organizaciones (cards + métricas) | `feat(web): US-006 — paneles de organizaciones` | 2026-04-20 |
-| BUG-001 | Fix 404 en página de Programas | `fix(web): BUG-001 — crea /admin/programs` | 2026-04-20 |
-| US-007 | Toggle dark/light mode en dropdown usuario | `feat(web): US-007 — toggle dark/light en user dropdown` | 2026-04-20 |
-| US-008 | Toggle de idioma (ES/EN) en dropdown usuario | `feat(web): US-008 — toggle idioma en user dropdown` | 2026-04-20 |
-| US-010 | Color chrome #182e4e + Senior PMO como admin | `feat(auth): US-010 — chrome #182e4e + Senior PMO admin` | 2026-04-20 |
-| US-009 | Página /account (perfil + cambiar password) | `feat(web): US-009 — página /account perfil + password` | 2026-04-20 |
-| US-011 | Campos adicionales en solicitud + FK BU/Depto | `feat(requests): US-011 — campos adicionales en solicitud` | 2026-04-20 |
-| US-012 | Project Charter: tabla + generación al aprobar | `feat(requests): US-012 — project_charters + auto-gen` | 2026-04-20 |
-| US-013 | Charter aparece como documento del proyecto | `feat(requests): US-013 — charter como documento` | 2026-04-20 |
-| US-014 | Filtro de organización en dashboard | `feat(dashboard): US-014 — filtro organización` | 2026-04-20 |
-| BUG-002 | Fix distorsión en gráficas de barra | `fix(dashboard): BUG-002 — distorsión gráficas barra` | 2026-04-20 |
-| US-015 | KPIs respetan jerarquía de roles | `feat(dashboard): US-015 — KPIs respetan jerarquía roles` | 2026-04-20 |
-| BUG-003 | Fix layout Plan vs Real + columna PM | `fix(dashboard): BUG-003 — layout Plan vs Real` | 2026-04-20 |
-| US-016 | Unificar Plan + Gantt en una pestaña | `feat(projects): US-016 — unificar plan + gantt` | 2026-04-20 |
-| US-018 | Módulo Áreas/Organigrama del proyecto | `feat(projects): US-018 — módulo áreas del proyecto` | 2026-04-20 |
-| US-019 | Consolidar RAID (vista unificada) | `feat(projects): US-019 — consolidar RAID` | 2026-04-20 |
-| US-020 | Categorías de documentos actualizadas | `feat(projects): US-020 — categorías de documentos` | 2026-04-20 |
-| US-021 | Consolidar pestañas de Minutas | `feat(projects): US-021 — consolidar minutas` | 2026-04-20 |
-| US-022 | Módulo Reportes dentro del proyecto | `feat(projects): US-022 — módulo reportes` | 2026-04-20 |
-| US-023 | Gestión de Tenant (info + stats + editar) | `feat(admin): US-023 — gestión de tenant` | 2026-04-20 |
-| US-024 | Gestión jerarquía org (BU + Depto) en Admin | `feat(admin): US-024 — jerarquía org en admin` | 2026-04-20 |
-| US-025 | Iconos en paneles de tenant + jerarquía | `feat(superadmin): US-025 — iconos en paneles` | 2026-04-20 |
-| US-026 | Visión General = Tenants + Health unificados | `feat(superadmin): US-026 — visión general unificada` | 2026-04-20 |
-| US-031 | Upload y display del logo del tenant en chrome | `feat(branding): US-031 — upload y display del logo del tenant en chrome` | 2026-04-20 |
-| US-032 | Restructurar sidebar principal (drill-down real) | `feat(web): US-032 — sidebar drill-down real; elimina duplicado y módulos de proyecto` | 2026-04-20 |
-| US-033 | Panel de organización → página de recursos reales | `feat(web,api): US-033 — panel de organización con recursos reales` | 2026-04-20 |
-| US-034 | Página resumen de programa | `feat(web,api): US-034 — página resumen de programa con KPIs y donut` | 2026-04-20 |
-| US-035 | Tabs inline en detalle de proyecto (supersede US-017) | `feat(web): US-035 — tabs inline en detalle de proyecto (supersede US-017)` | 2026-04-20 |
-| US-036 | Restructurar sidebar Admin (4 ítems raíz) | `feat(web): US-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed` | 2026-04-20 |
-| US-037 | Infra compartida de exportación a PDF (WeasyPrint) | `feat(api): US-037 — infra de exportación a PDF con WeasyPrint + Jinja2` | 2026-04-20 |
-| US-038 | Reporte de Avance de Proyecto (Python, BD, PDF) | `feat(api,web): US-038 — reporte de avance ejecutable sin IA` | 2026-04-20 |
-| US-039 | Reporte de Seguimiento de Actividades (Python, BD, PDF) | `feat(api,web): US-039 — reporte de seguimiento por responsable` | 2026-04-20 |
-| US-040 | Formato estandarizado + export de Minuta IA (.pdf/.docx/.md/.txt) | `feat(api,web): US-040 — export estandarizado de minuta` | 2026-04-20 |
-| US-041 | Sidebar super admin aislado (4 ítems raíz) | `feat(web): US-041 — sidebar super admin aislado (4 ítems raíz)` | 2026-04-20 |
-| US-042 | Página `/superadmin/users` cross-tenant | `feat(api,web): US-042 — /superadmin/users cross-tenant` | 2026-04-20 |
-| US-043 | Visión General con Health al top | `feat(web): US-043 — health al top en visión general del superadmin` | 2026-04-20 |
-| US-044 | Runbook Ollama + Cloudflare Tunnel + nssm | `docs(ai): US-044 — runbook Ollama + Cloudflare Tunnel + nssm` | 2026-04-20 |
-| US-045 | Config + smoke test del túnel + secrets cifrados | `feat(api,web): US-045 — config y smoke del modelo IA local (Cloudflare Tunnel)` | 2026-04-20 |
-| BUG-004 | Railway no redeploy tras PR #20 — troubleshooting documentado | `fix(infra): BUG-004 — Railway auto-deploy troubleshooting tras PR #20` | 2026-04-21 |
-| BUG-005 | Sidebar super admin respeta user.is_superadmin en first paint | `fix(web): BUG-005 — sidebar super admin respeta user.is_superadmin en first paint` | 2026-04-21 |
-| US-046 | Runbook Ollama + Tailscale (reemplaza CF Tunnel) | `docs(ai): US-046 — runbook Ollama + Tailscale (reemplaza CF Tunnel)` | 2026-04-21 |
-| US-047 | Refactor config Ollama a Tailscale (quita CF-Access) | `feat(api,web): US-047 — refactor config Ollama a Tailscale (quita CF-Access)` | 2026-04-21 |
-| US-048 | Sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider | `feat(worker): US-048 — sidecar Tailscale en worker Railway + config por-tenant en OllamaProvider` | 2026-04-21 |
-| US-049 | DNS routing pmo-aas.com (Railway + HostGator) | `docs(infra): US-049 — DNS routing pmo-aas.com (Railway + HostGator)` | 2026-04-21 |
-| US-050 | Landing estático www.pmo-aas.com en HostGator | `feat(landing): US-050 — landing estático www.pmo-aas.com en HostGator` | 2026-04-21 |
-| BUG-006 | Runbook Ollama+Tailscale §3.2 — advertir PATH no refrescado en PowerShell | `fix(docs): BUG-006 — runbook Tailscale §3.2 advierte PATH no refrescado en PowerShell` | 2026-04-21 |
-| US-051 | Mover generación IA (minuta + reporte) a Celery worker con polling | `feat(api,web): US-051 — IA minuta+reporte dispatchan a Celery worker; UI hace polling a /ai/jobs/{id}` | 2026-04-21 |
-| BUG-010 | Topbar duplica logo tenant; reemplazar por "PMO · aaS" | `fix(web): BUG-010 — topbar muestra "PMO · aaS" plataforma en vez de duplicar logo tenant` | 2026-04-21 |
-| ENH-002 | Sidebar raíz "Organizaciones" → "PMO" | `feat(web): ENH-002 — sidebar nodo raíz "Organizaciones" → "PMO"` | 2026-04-21 |
-| BUG-021 | Superadmin post-login redirect a /superadmin | `fix(web): BUG-021 — superadmin redirect post-login a /superadmin` | 2026-04-21 |
-| BUG-011 | KPI "Riesgos abiertos" sin href (evita 404) | `fix(web): BUG-011 — KPI sin href` | 2026-04-21 |
-| BUG-012 | KPI "Riesgos severos" sin href (evita 404) | `fix(web): BUG-012 — KPI sin href` | 2026-04-21 |
-| BUG-013 | KPI "Cambios en revisión" sin href (evita 404) | `fix(web): BUG-013 — KPI sin href` | 2026-04-21 |
-| BUG-014 | KPI "AIDs abiertos" sin href (evita 404) | `fix(web): BUG-014 — KPI sin href` | 2026-04-21 |
-| BUG-015 | Dashboard filtros Plan vs Real horizontales en sm+ | `fix(dashboard): BUG-015 — filtros horizontales` | 2026-04-21 |
-| BUG-016 | Botón Cancelar de nueva solicitud usa variant danger (rojo) | `fix(requests): BUG-016 — cancelar danger variant` | 2026-04-21 |
-| BUG-019 | Panel org abre resumen en /[id]; edición en /[id]/edit | `fix(web): BUG-019 — panel organización abre resumen` | 2026-04-21 |
-| ENH-004 | Tabs de proyecto centradas | `feat(web): ENH-004 — tabs-bar centrado` | 2026-04-21 |
-| ENH-003 | Botón "Nuevo programa" en toolbar de organizaciones | `feat(org): ENH-003 — botón Nuevo programa` | 2026-04-21 |
-| BUG-020 | Runbook Ollama+Tailscale §4: solo Allow (sin Block Any) | `fix(docs): BUG-020 — runbook §4 solo Allow tailnet` | 2026-04-21 |
-| ENH-008 | EP009 (MSP/xlsx) reclasificado a v1.1; botón en UI disabled | `docs(epics): ENH-008 — EP009 a v1.1 + botón Importar MSP disabled en UI` | 2026-04-21 |
-| BUG-022 | Documentos sin file_url muestran "Sin archivo" (UX) | `fix(projects): BUG-022 — documentos sin file_url` | 2026-04-21 |
-| BUG-017 | Crear proyecto desde solicitud abre charter para complementar | `fix(requests): BUG-017 — crear proyecto desde solicitud abre charter` | 2026-04-21 |
-| BUG-018 | Nuevo proyecto auto-crea charter + redirige a editarlo | `fix(projects): BUG-018 — nuevo proyecto auto-crea charter` | 2026-04-21 |
-| BUG-008 | Chrome en dark mode alineado con paleta gris | `fix(web): BUG-008 — chrome dark mode paleta gris` | 2026-04-21 |
-| BUG-009 | Theme consistency post-login vía pmoaas:user-updated | `fix(web): BUG-009 — theme post-login consistency` | 2026-04-21 |
-| ENH-001 | Componente BackLink + integración en detalles | `feat(web): ENH-001 — componente BackLink` | 2026-04-21 |
-| ENH-005 | Resumen cambia botones a tarjetas KPI | `feat(projects): ENH-005 — tarjetas KPI en Resumen` | 2026-04-21 |
-| ENH-006 | Editor de tareas integrado en /plan; /tasks → redirect | `feat(projects): ENH-006 — editor inline en /plan` | 2026-04-21 |
-| ENH-007 | Matriz P×I inline en pestaña Riesgos del RAID | `feat(projects): ENH-007 — matriz P×I inline` | 2026-04-21 |
-| US-053 | Preview "ojito" estilo Jira en RAID/Lecciones/Minutas | `feat(web): US-053 — preview ojito` | 2026-04-21 |
-| US-052 | Sidebar cross-tenant Proyectos/RAID/Cambios/Minutas/Reportes | `feat(web,api): US-052 — sidebar + vistas cross-tenant` | 2026-04-21 |
-| ENH-009 | Reconectar hrefs dashboard a /admin/raid y /admin/changes | `feat(dashboard): ENH-009 — reconecta hrefs KPIs` | 2026-04-21 |
-| ENH-010 | Endpoints cross-tenant incluyen folio+name del proyecto | `feat(api,web): ENH-010 — folio+name en cross-tenant` | 2026-04-21 |
-| BUG-007 | WeasyPrint libs nativas en Dockerfile (cierra 502 de Reporte Avance) | `fix(infra): BUG-007 — libs WeasyPrint en Dockerfile` | 2026-04-21 |
-| US-027 | Notificaciones in-app (tabla + API + bell + página) | `feat(api,web): US-027 — notifications in-app` | 2026-04-21 |
-| US-028 | Email notifications vía Resend + preferencias + runbook | `feat(api,web,docs): US-028 — email via Resend + preferencias + runbook` | 2026-04-21 |
-| ENH-011 | `AI_TIMEOUT_S` env leído en OllamaProvider (antes hardcoded a 120s) | `feat(ai): ENH-011 — leer AI_TIMEOUT_S de env en OllamaProvider` | 2026-04-21 |
-| US-054 | Config de AI a nivel de plataforma (superadmin): tabla `platform_ai_settings` + endpoints + UI | `feat(ai,superadmin): US-054 — platform_ai_settings editable por superadmin` | 2026-04-21 |
+> **Sprint 2 intake (2026-04-22):** 21 issues nuevos clasificados en 4 bloques + v1.2 post-MVP.
+> Bloques 1-3 para Sprint 2 v1.1 (navegación + RAID + reportes + IA).
+> Bloque 4 para IA avanzada (tenants propia instancia).
+> v1.2: 4 issues post-MVP de recursos + roles + aprobaciones.
 
 ---
 
-## 📋 Backlog ordenado por prioridad
+## ✅ DONE (historial Sprint 1)
 
-### Bloque 1 — Jerarquía org (EP002) — BLOQUEANTE para todo lo demás
-- [x] US-002 — Migración BD: tablas BU + Depto + FKs ✅
-- [x] US-003 — CRUD Business Units (API) ✅
-- [x] US-004 — CRUD Departments (API) ✅
-- [x] US-005 — Sidebar org nav (Frontend) ✅
-- [x] US-006 — Vista paneles de organizaciones (Frontend) ✅
-- [x] BUG-001 — Fix 404 en Programas ✅
+**Ver SPRINT-DONE-HISTORY.md para tabla completa de 94 items del Sprint 1 v1.0 MVP (US-001 a US-054).**
 
-### Bloque 2 — Topbar y UX base (EP001)
-- [x] US-007 — Toggle dark/light en dropdown usuario ✅
-- [x] US-008 — Toggle idioma en dropdown usuario ✅
-- [x] US-009 — Página administrar cuenta (perfil + cambiar password) ✅
-- [x] US-010 — Color chrome #182e4e + Senior PMO = admin ✅
-
-### Bloque 3 — Project Charter (EP003)
-- [x] US-011 — Campos adicionales en solicitud (correos, personas clave, etc.) ✅
-- [x] US-012 — Project Charter: tabla + generación al aprobar ✅
-- [x] US-013 — Charter aparece como documento en el proyecto ✅
-
-### Bloque 4 — Dashboard fixes (EP004)
-- [x] BUG-002 — Fix distorsión gráficas de barra ✅
-- [x] US-014 — Filtro organización en dashboard ✅
-- [x] US-015 — KPIs respetan jerarquía de roles ✅
-- [x] BUG-003 — Fix layout Plan vs Real (filtros horizontales + columna PM) ✅
-
-### Bloque 5 — Proyecto detalle (EP005)
-- [x] US-016 — Unificar Plan + Gantt en una pestaña ✅
-- [~] US-017 — Tabs inline para módulos del proyecto → **SUPERSEDED** por US-035 (EP013, bloque 9)
-- [x] US-018 — Módulo Área/Organigrama del proyecto ✅
-
-### Bloque 6 — RAID y módulos (EP006)
-- [x] US-019 — Consolidar RAID (Riesgos+Acciones+Incidentes+Decisiones) ✅
-- [x] US-020 — Categorías de documentos actualizadas ✅
-- [x] US-021 — Consolidar pestañas de Minutas en 1 ✅
-- [x] US-022 — Módulo Reportes dentro del proyecto ✅
-
-### Bloque 7 — Admin (EP007)
-- [x] US-023 — Gestión de tenant (propuesta de acciones) ✅
-- [x] US-024 — Gestión jerarquía org completa (BU + Depto) ✅
-
-### Bloque 8 — SuperAdmin (EP010)
-- [x] US-025 — Iconos en paneles de tenant ✅
-- [x] US-026 — Visión General = Tenants + Health unidos ✅
+> Sprint 1 completado 2026-04-21. 22 bloques (+ hotfixes) con all features bloqueantes de v1.0.
 
 ---
 
-### Bloque 9 — Refactor de navegación (EP013) — issue #17
-**Orden de ejecución** (1 US por commit, en este orden):
-- [x] US-031 — Upload y display del logo del tenant en chrome ✅
-- [x] US-032 — Restructurar sidebar principal (drill-down real; quitar "Módulos de proyecto" y duplicado de Organizaciones) ✅
-- [x] US-033 — Panel de organización → página de recursos reales (fix bug + enhancement) ✅
-- [x] US-034 — Página resumen de programa (KPIs + lista de proyectos) ✅
-- [x] US-035 — Tabs inline en detalle de proyecto (supersede US-017) ✅
-- [x] US-036 — Restructurar sidebar Admin (fusionar Mi Tenant + Panel + Configuración; 4 ítems raíz) ✅
+## 📋 Backlog Sprint 2 (v1.1 — en ejecución)
 
-### Bloque 10 — Entregables operativos (EP014) — issue #18
-- [x] US-037 — Infra compartida de exportación a PDF (WeasyPrint) ✅
-- [x] US-038 — Reporte de Avance de Proyecto (Python, BD, PDF) ✅
-- [x] US-039 — Reporte de Seguimiento de Actividades (Python, BD, PDF) ✅
-- [x] US-040 — Formato estandarizado + export (.docx/.md/.txt/.pdf) de Minuta IA ✅
+### Bloque 1 — Sprint 2 Setup: navegación + bugs + permisos (7 items)
+- [ ] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87
+- [ ] US-055 — Export tareas (CSV/Excel) con 3 opciones de flujo — #71
+- [ ] ENH-012 — Sidebar: reorganizar con módulo "Módulos de Proyecto" — #72
+- [ ] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73
+- [ ] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74
+- [ ] BUG-024 — Lógica de uploads no configurada — #75
+- [ ] BUG-025 — Rol "Reportes" sin módulo de permisos — #76
 
-### Bloque 11 — Refactor nav super admin (EP015) — issue #19
-- [x] US-041 — Sidebar super admin aislado (4 ítems raíz) ✅
-- [x] US-042 — Página `/superadmin/users` cross-tenant (lista + edición) ✅
-- [x] US-043 — Visión General con Health al top ✅
+### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items)
+- [ ] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77
+- [ ] US-056 — Calendarizar envío automático de reportes vía Resend — #78
+- [ ] ENH-015 — Dashboard: expandir barra de navegación — #80
+- [ ] ENH-017 — RAID: filtros en línea horizontal — #82
+- [ ] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81
 
-### Bloque 12 — Modelo IA local (EP016) — Ollama + Cloudflare Tunnel + nssm
-- [x] US-044 — Runbook `docs/ai/local-ollama-setup.md` paso a paso ✅
-- [x] US-045 — Config por-tenant + smoke test del túnel + secrets cifrados ✅
-  *(follow-up: integrar config en `OllamaProvider.generate()` del worker EP008 para que `ai_cascade_fallback_total` incremente cuando el túnel falle)*
+### Bloque 3 — Sprint 2 RAID + Áreas (4 items)
+- [ ] ENH-019 — RAID: gestión avanzada consolidada en principal — #85
+- [ ] ENH-018 — RAID: agregar toggle Kanban — #84
+- [ ] US-058 — RAID: preview panel editable con comentarios — #83
+- [ ] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86
 
-### Bloque 13 — Hotfixes operativos (reabre tras PR #20) ✅ CERRADO 2026-04-21
+### Bloque 4 — Sprint 2 IA avanzada (1 item)
+- [ ] US-057 — IA: permitir tenants conectar a su propia instancia — #79
 
-> **Contexto (2026-04-21):** el PR #20 mergeó a `main` con 6 US (NEW-041
-> hasta NEW-045). El owner reportó dos síntomas que no se detectaron en CI:
-> (a) Railway no redeployó los servicios al mergear; (b) el sidebar super
-> admin no se ve como esperaba (probable state stale en `getStoredUser()`).
->
-> Resolución: BUG-004 dejó documentado el troubleshooting en
-> `RAILWAY_SETUP.md` (el toggle operativo lo aplica el owner del
-> project). BUG-005 movió la lectura de `getStoredUser()` a
-> `useEffect` con flag `userReady`, evitando el flash de TOP_NAV en
-> primer paint para superadmins.
-
-- [x] **BUG-004 — Railway no redeploy tras PR #20** ✅
-  - **Diagnóstico inicial** (agente 2026-04-21): el commit `62b16f8`
-    (US-045) SÍ toca `apps/api/**`, así que los servicios `api` +
-    `worker` deberían haber redeployado per watch path.
-  - **Hipótesis ordenadas**:
-    1. (80%) Railway auto-deploy apagado, o rama conectada ≠ `main`.
-    2. (15%) Watch path del servicio mal configurado (ver si incluye `apps/api/**`).
-    3. (5%) Railway sincronizó tarde y no se verificó.
-  - **Acción (1 sesión)**:
-    1. Login Railway UI → project `pmo-aas` → cada servicio `api`/`worker`/`web`:
-       - Settings → **Branch** debe ser `main`.
-       - Settings → **Watch Paths** match con RAILWAY_SETUP.md §3.
-       - Settings → **Auto-Deploy** toggle ON.
-    2. Trigger manual: **Deployments → Deploy** (o push commit vacío).
-    3. Verificar logs del deploy: seed idempotente, migrations al día, health endpoints verdes.
-    4. Documentar hallazgo en `RAILWAY_SETUP.md` → sección "Troubleshooting" con el caso.
-  - **Commit:** `fix(infra): BUG-004 — Railway auto-deploy restablecido tras PR #20`.
-
-- [x] **BUG-005 — Sidebar super admin no renderiza como esperado** ✅
-  - **Diagnóstico inicial** (agente 2026-04-21): US-041
-    (`918be73`) modificó `apps/web/components/app-shell.tsx` para:
-    - Renderizar `TOP_NAV` solo cuando `!user?.is_superadmin`.
-    - Apuntar BrandMark a `/superadmin` si el user es superadmin.
-    - Agregar ítem "Usuarios" a `SUPERADMIN_NAV`.
-  - **Hipótesis**: `getStoredUser()` en `apps/web/lib/auth-storage.ts`
-    devuelve `null` o user stale durante SSR o en la primera hidratación
-    cliente. Si `user?.is_superadmin` es `undefined` en primer render, el
-    sidebar muestra TOP_NAV incorrectamente y solo se arregla tras un
-    refresh.
-  - **Acción (1 sesión)**:
-    1. Login como super admin en deploy `main` actual; capturar DOM en
-       first paint vs hydrated.
-    2. Revisar `apps/web/lib/auth-storage.ts` — `getStoredUser()` ¿lee
-       localStorage de forma síncrona? ¿Manda fallback durante SSR?
-    3. Si es race, envolver el componente de navegación en `useEffect` +
-       `useState` con loading skeleton; **o** leer user desde un
-       `UserProvider` que ya existe (verificar).
-    4. Agregar test Playwright (`apps/web/e2e/superadmin-sidebar.spec.ts`):
-       login como superadmin → verificar que Tablero/Solicitudes NO aparecen
-       y que Usuarios SÍ aparece.
-  - **Commit:** `fix(web): BUG-005 — sidebar super admin respeta user.is_superadmin en first paint`.
-
-### Bloque 14 — EP016 v2: Ollama local vía Tailscale (reabre EP016) ✅ CERRADO 2026-04-21
-
-> Reemplazó el canal CF Tunnel + Cloudflare Access por Tailscale tailnet
-> privado. Ver ADR-015 + DEC-011. US-044/045 quedan SUPERSEDED.
-
-- [x] US-046 — Runbook `docs/ai/local-ollama-setup.md` reescrito para Tailscale ✅
-- [x] US-047 — `OllamaLocalAiForm` + endpoint `test-connection` sin CF-Access ✅
-- [x] US-048 — Dockerfile worker Railway con sidecar `tailscaled` + `TS_AUTHKEY`; OllamaProvider consume config por-tenant ✅
-- [ ] **Cleanup paralelo (owner, manual)**: borrar tunnel `pmoaas-ollama` de Cloudflare, retirar CNAME `ollama.*`, revocar Service Tokens. Documentado en `docs/ai/local-ollama-setup.md` §10 "Rollback CF Tunnel".
-
-### Bloque 15 — Landing y DNS productivo (Cloudflare + Railway + HostGator) ✅ CERRADO 2026-04-21
-
-> Finaliza el routing del dominio `pmo-aas.com`. Ver DEC-012 y runbook
-> `docs/infra/dns-routing.md`.
-
-- [x] **US-049 — Configurar DNS productivo en Cloudflare** ✅
-  - Runbook `docs/infra/dns-routing.md` con plan completo: apex 301,
-    CNAME `app.*`/`api.*` DNS only, CNAME `www` Proxied + Full strict,
-    cleanup de `ollama.*`, verificación con dig/curl y rollback.
-  - **Pendiente operador (owner):** aplicar los registros en el
-    dashboard Cloudflare y agregar Custom Domain a cada servicio
-    Railway.
-
-- [x] **US-050 — Landing estático en HostGator** ✅
-  - Directorio `landing/` con `index.html`, `assets/styles.css` y
-    `assets/favicon.svg`. HTML/CSS vanilla alineado al chrome
-    `#182e4e`; sin JS framework ni llamadas al API.
-  - `landing/README.md` documenta el deploy a cPanel (File Manager o
-    FTP) y el smoke test post-deploy.
-  - **Pendiente operador (owner):** subir el contenido de `landing/`
-    a `public_html/` en HostGator.
-
-### Bloque 16 — Notificaciones (EP011) — ✅ CERRADO 2026-04-21
-- [x] US-027 — Tabla notifications + in-app center ✅ 1f304e4
-- [x] US-028 — Email notifications via Resend ✅ (ver siguiente commit)
-
-> Status final del bloque: tabla `notifications` creada (migración
-> 0016), endpoints REST + preferencias por user, bell + dropdown en el
-> topbar, página `/notifications`, service con dispatch desde review
-> de solicitudes y creación de proyecto (events `request_*`,
-> `pm_assigned`). Canal email vía Resend con template HTML con
-> branding del tenant, supresión si el user ya leyó in-app en 2h, y
-> runbook operativo en `docs/infra/resend-setup.md` para que el owner
-> configure DNS + API key.
-
-### Bloque 18 — Hotfixes runbook EP016 (durante pruebas manuales del owner)
-
-> Bugs y ajustes al runbook `docs/ai/local-ollama-setup.md` detectados
-> cuando el owner ejecuta el procedimiento en PC real. Se abren como
-> hotfix siguiendo el patrón del Bloque 13. No bloquean v1.0; aumentan
-> la calidad del runbook para la próxima instalación.
-
-- [x] BUG-006 — §3.2 advierte que PowerShell no refresca PATH tras instalar Tailscale MSI + row de troubleshooting en §9 ✅
-- [ ] BUG-020 — Windows Firewall: regla Block sombrea Allow; runbook debe limpiar reglas y dejar solo Allow tailnet — issue #45
-
-### Bloque 19 — Refactor IA a Celery (prioridad, cierra gap EP016)
-
-> Gap arquitectónico descubierto al probar minutas en prod: el endpoint
-> `POST /ai/minutes` corre en `api` (sin Tailscale) en vez de dispatchar
-> a `worker` (con Tailscale). El DoD del EP016 lo tenía listado como
-> follow-up pendiente. Sin este refactor, Ollama local NUNCA se usa en
-> producción — la cascada cae directo a Gemini/Claude.
-
-- [x] **US-051 — Mover generación IA (minuta + reporte) a Celery worker** — issue #28 ✅
-  - Backend: tasks Celery (`app/workers/tasks/ai.py`) + endpoints devuelven 202 con job_id.
-  - Frontend: hook `use-ai-job-polling` con backoff + actualización de `NewAIMinutePage` y `GenerateWithAIButton`.
-  - Docs: DoD EP016 ✔️ + `deployment-railway.md` §2 con descripción de tasks del worker.
-  - Tests: 5 nuevos en `test_us051_ai_celery_tasks.py` + 3 existentes actualizados en `test_ep008_ai.py`. 209/209 pasan.
-
-### Bloque 20 — Intake comment owner 2026-04-21 (UX + nav + dashboard + projects)
-
-> Grupo grande de BUGs/ENHs/USs reportados por el owner en un comment
-> del 2026-04-21. Agrupa 25 issues (15 BUGs + 8 ENHs + 2 USs). Orden
-> de ejecución: bugs triviales (rename/navegación) → bugs de estructura
-> (dashboard 404s, panel org) → ENHs UX → USs grandes (US-052, US-053).
->
-> Issues del bloque: #33–#57 (todos con label `status:triage` al intake).
-
-**Orden de ejecución sugerido:**
-
-1. [x] **BUG-010** — Top bar duplica logo; reemplazar por "PMO · aaS" — #35 ✅ 77fd001
-2. [x] **ENH-002** — Sidebar: renombrar "Organizaciones" a "PMO" — #49 ✅ dca3760
-3. [x] **BUG-021** — Superadmin: landing por default = /superadmin — #46 ✅ 10ef6c3
-4. [x] **BUG-011** — Dashboard: KPI "Riesgos abiertos" link 404 — #36 ✅ d9fe786
-5. [x] **BUG-012** — Dashboard: KPI "Riesgos severos" link 404 — #37 ✅ 3556af0
-6. [x] **BUG-013** — Dashboard: KPI "Cambios en revisión" link 404 — #38 ✅ 2169a9f
-7. [x] **BUG-014** — Dashboard: KPI "AIDs abiertos" link 404 — #39 ✅ 6f15024
-8. [x] **BUG-015** — Dashboard: filtros "Plan vs Real" en vertical — #40 ✅ 7b45d4a
-9. [x] **BUG-016** — Solicitudes: botón cancelar sin rojo — #41 ✅ e7c4577
-10. [x] **BUG-019** — Panel organización abre /edit, debería abrir resumen — #44 ✅ 1560f85
-11. [x] **ENH-003** — Organizaciones: botón "Nuevo programa" — #50 ✅ f113a7d
-12. [x] **ENH-004** — Proyecto: centrar barra de tabs — #51 ✅ ebfff84
-13. [x] **BUG-022** — Documentos dummy: confirmar UX sin archivo — #47 ✅ dfc0256
-14. [x] **BUG-017** — Al aprobar solicitud, abrir charter para complementar — #42 ✅ f974a3b
-15. [x] **BUG-018** — Nuevo proyecto: pedir info completa del charter — #43 ✅ b1d12cd
-16. [x] **BUG-008** — Dark mode: azul chrome contrasta con grises — #33 ✅ c55bca4
-17. [x] **BUG-009** — Cambios de página alteran el theme — #34 ✅ 796793b
-18. [x] **ENH-005** — Resumen: botones → tarjetas KPI linkeadas — #52 ✅ 76be878
-19. [x] **ENH-006** — Plan: integrar editor en misma página — #53 ✅ 70bfaea
-20. [x] **ENH-007** — RAID: matriz de riesgos en misma página — #54 ✅ 93ebe75
-21. [x] **ENH-008** — Mover MSP/xlsx a v1.1 (docs + guard UI) — #55 ✅ 21d323f
-22. [x] **US-052** — Sidebar: módulo Proyectos + páginas cross-tenant RAID/Cambios/Minutas/Reportes — #56 ✅ 800150e
-23. [x] **US-053** — Preview "ojito" estilo Jira en tablas — #57 ✅ 3ae0088
-24. [x] **BUG-020** — Minutas IA: firewall Windows sombrea Allow Tailscale — #45 ✅ 427b995 (Bloque 18)
+### Bloque v1.2 (Post-MVP — no implementar en Sprint 2)
+- [ ] US-059 — v1.2 Recursos: usuarios sin roles jerárquicos — #88
+- [ ] US-060 — v1.2 Roles: tipos usuario (Viewer/User/Admin) — #89
+- [ ] US-061 — v1.2 Aprobaciones: jerarquía directa + permisos — #90
+- [ ] US-062 — v1.2 Áreas/Recursos: Area Leader + recursos asignados — #91
 
 ---
 
-### Bloque 22 — Tuning config IA (post-pruebas prod 2026-04-21) ✅ CERRADO
-
-> Durante las pruebas del flujo de minutas IA el owner detectó que (1)
-> `AI_TIMEOUT_S` no estaba wireado al código — seteado en Railway, inerte
-> — y (2) no existe forma de cambiar el modelo base de plataforma sin
-> tocar env vars (requiere redeploy). Este bloque ataca ambos.
-
-- [x] **ENH-011** — `AI_TIMEOUT_S` env consumido en `OllamaProvider` como
-  fallback del httpx timeout total (antes hardcoded 120s). Orden del
-  timeout: `tenant.timeout_sec > AI_TIMEOUT_S env > 120s default`.
-  3 tests nuevos mockeando httpx. Issue #68, commit 68ab075.
-
-- [x] **US-054** — Config de AI a nivel de plataforma:
-  - Nueva tabla singleton `platform_ai_settings` (migración
-    `20260421_0017`, 1 row con id='default' seedeada en upgrade).
-  - Endpoints `GET/PATCH /api/v1/superadmin/ai/defaults` (solo
-    superadmin, con audit log `superadmin.ai.defaults.update`).
-  - Página UI `/superadmin/ai` con formulario (AI_MODE, Ollama
-    base_url/model, AI_TIMEOUT_S) + snapshot read-only de env vars.
-  - Provider consume el orden: tenant override → platform defaults →
-    env. Implementado en `app/services/ai/platform_config.py`
-    (`resolve_ollama_config`, `resolve_ai_mode`) consumido desde
-    `app/workers/tasks/ai.py::_tenant_ollama_cfg`.
-  - Secrets (GEMINI_API_KEY, ANTHROPIC_API_KEY) quedan fuera de BD —
-    siguen en env para evitar almacenarlos sin cifrado.
-  - 5 tests nuevos (`test_us054_platform_ai.py`). Issue #69.
-
----
-
-### Bloque 21 — Follow-ups del Bloque 20 + BUG-007 (2026-04-21)
-
-> Tres follow-ups detectados al cerrar el Bloque 20 + el BUG-007 que ya
-> estaba abierto como issue #32 (WeasyPrint libs). El owner pidió
-> incorporarlos en lugar de dejarlos en triage.
-
-- [x] **ENH-009** — Reconectar hrefs del dashboard a las rutas cross-tenant ahora que existen (US-052). Los KPIs "Riesgos abiertos / severos", "Cambios en revisión" y "AIDs abiertos" vuelven a ser clickeables con filtros pre-aplicados. Las páginas destino (`/admin/raid`, `/admin/changes`) aceptan `?kind`, `?severity_min`, `?status` como query params. ✅ 667a60b
-- [x] **ENH-010** — Endpoints cross-tenant devuelven `project_folio` + `project_name` para que las 4 vistas (RAID / Cambios / Minutas / Reportes) muestren el proyecto como `PRJ-0042 — Nombre legible` en vez del UUID abreviado. Backend `_project_scope` agrega columnas + helper `_enrich`; frontend con tipos `TenantRisk`/`TenantIssue`/etc. ✅ 4001061
-- [x] **BUG-007** — `apps/api/Dockerfile` ahora instala las libs nativas de GTK/Cairo/Pango/GDK que WeasyPrint necesita. Cierra el 502 del endpoint `POST /reports/avance` que reportaba `cannot load library 'libgobject-2.0-0'`. +30 MB en la imagen, aplica a `api` y `worker`. Requiere redeploy en Railway tras mergear. ✅ 036f0f2 (issue #32)
-
----
-
-### Bloque 17 — Instalación productivo HostGator MySQL (EP012) — ❌ CANCELADO
-
-> **CANCELADO (2026-04-21, ver DEC-013).** El owner subió el tier de
-> Railway y productivo v1.0/v1.x corre íntegramente en Railway Postgres.
-> El costo incremental se cubre con licencias cobradas. No hay plan
-> futuro de migrar a MySQL; EP012 se conserva solo como referencia
-> histórica.
-
-- [x] ~~US-029~~ — ❌ CANCELADA (DEC-013)
-- [x] ~~US-030~~ — ❌ CANCELADA (DEC-013)
+**Notas Sprint 2:**
+- Total: 21 issues nuevos (7 BUGs + 11 ENHs + 3 USs Sprint 2 + 4 v1.2).
+- Bloques 1-3: ejecución inmediata (Sprint 2 v1.1).
+- Bloque 4: IA avanzada (puede solaparse con Bloque 3).
+- Bloque v1.2: documentado pero NO ejecutar — son features para v1.2 futuro.
 
 ---
 
