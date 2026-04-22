@@ -12,6 +12,7 @@ import {
   Workflow,
 } from "lucide-react";
 
+import { ProgramModal } from "@/components/program-modal";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -169,6 +170,7 @@ export default function OrganizationsListPage() {
   const [panels, setPanels] = useState<OrganizationPanel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showProgramModal, setShowProgramModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,12 +218,10 @@ export default function OrganizationsListPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/admin/programs">
-            <Button variant="secondary">
-              <Network className="h-4 w-4" aria-hidden />
-              Nuevo programa
-            </Button>
-          </Link>
+          <Button variant="secondary" onClick={() => setShowProgramModal(true)}>
+            <Network className="h-4 w-4" aria-hidden />
+            Nuevo programa
+          </Button>
           <Link href="/admin/organizations/new">
             <Button>
               <Plus className="h-4 w-4" aria-hidden />
@@ -278,6 +278,16 @@ export default function OrganizationsListPage() {
           ))}
         </div>
       )}
+
+      <ProgramModal
+        open={showProgramModal}
+        onClose={() => setShowProgramModal(false)}
+        onSaved={async () => {
+          setShowProgramModal(false);
+          await new Promise((r) => setTimeout(r, 500));
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, Network, Plus, Search } from "lucide-react";
 
+import { ProgramModal } from "@/components/program-modal";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export default function ProgramsListPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showProgramModal, setShowProgramModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,12 +107,10 @@ export default function ProgramsListPage() {
             organización para crear un programa.
           </p>
         </div>
-        <Link href="/admin/organizations">
-          <Button variant="secondary">
-            <Plus className="h-4 w-4" aria-hidden />
-            Nuevo programa (desde organización)
-          </Button>
-        </Link>
+        <Button variant="secondary" onClick={() => setShowProgramModal(true)}>
+          <Plus className="h-4 w-4" aria-hidden />
+          Nuevo programa
+        </Button>
       </header>
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
@@ -211,6 +211,16 @@ export default function ProgramsListPage() {
           ) : null}
         </div>
       </section>
+
+      <ProgramModal
+        open={showProgramModal}
+        onClose={() => setShowProgramModal(false)}
+        onSaved={async () => {
+          setShowProgramModal(false);
+          await new Promise((r) => setTimeout(r, 500));
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
