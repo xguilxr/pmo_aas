@@ -41,7 +41,8 @@ type NavItem = {
 
 // US-052: sidebar top-nav extendido con vistas cross-tenant. El orden
 // refleja el flujo del PMO: de resumen (Tablero) a ingreso (Solicitudes)
-// a ejecución (Proyectos) a gobernanza (RAID/Cambios/Minutas/Reportes).
+// a ejecución (Proyectos) a gobernanza (Módulos de Proyecto con RAID/Cambios/Minutas/Reportes).
+// ENH-012: RAID, Cambios, Minutas y Reportes agrupados bajo "Módulos de Proyecto" (colapsable).
 const TOP_NAV: NavItem[] = [
   {
     id: "dashboard",
@@ -65,32 +66,44 @@ const TOP_NAV: NavItem[] = [
     match: (p) => p.startsWith("/admin/projects"),
   },
   {
-    id: "raid",
-    label: "RAID",
-    icon: <Shield className="h-4 w-4" aria-hidden />,
-    href: "/admin/raid",
-    match: (p) => p.startsWith("/admin/raid"),
-  },
-  {
-    id: "changes",
-    label: "Cambios",
-    icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
-    href: "/admin/changes",
-    match: (p) => p.startsWith("/admin/changes"),
-  },
-  {
-    id: "minutes",
-    label: "Minutas",
-    icon: <MessageSquare className="h-4 w-4" aria-hidden />,
-    href: "/admin/minutes",
-    match: (p) => p === "/admin/minutes" || p.startsWith("/admin/minutes/"),
-  },
-  {
-    id: "reports",
-    label: "Reportes",
-    icon: <FileText className="h-4 w-4" aria-hidden />,
-    href: "/admin/reports",
-    match: (p) => p === "/admin/reports" || p.startsWith("/admin/reports/"),
+    id: "project-modules",
+    label: "Módulos de Proyecto",
+    icon: <FolderKanban className="h-4 w-4" aria-hidden />,
+    match: (p) =>
+      p.startsWith("/admin/raid") ||
+      p.startsWith("/admin/changes") ||
+      p.startsWith("/admin/minutes") ||
+      p.startsWith("/admin/reports"),
+    children: [
+      {
+        id: "raid",
+        label: "RAID",
+        icon: <Shield className="h-4 w-4" aria-hidden />,
+        href: "/admin/raid",
+        match: (p) => p.startsWith("/admin/raid"),
+      },
+      {
+        id: "changes",
+        label: "Cambios",
+        icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
+        href: "/admin/changes",
+        match: (p) => p.startsWith("/admin/changes"),
+      },
+      {
+        id: "minutes",
+        label: "Minutas",
+        icon: <MessageSquare className="h-4 w-4" aria-hidden />,
+        href: "/admin/minutes",
+        match: (p) => p === "/admin/minutes" || p.startsWith("/admin/minutes/"),
+      },
+      {
+        id: "reports",
+        label: "Reportes",
+        icon: <FileText className="h-4 w-4" aria-hidden />,
+        href: "/admin/reports",
+        match: (p) => p === "/admin/reports" || p.startsWith("/admin/reports/"),
+      },
+    ],
   },
 ];
 
