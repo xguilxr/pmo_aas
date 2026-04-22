@@ -54,14 +54,11 @@ export default function DocumentsPage() {
     title: string;
     description: string;
     category: DocumentCategory;
-    file_url: string;
-    size_kb: string;
+    file?: File;
   }>({
     title: "",
     description: "",
     category: "other",
-    file_url: "",
-    size_kb: "",
   });
 
   async function load() {
@@ -82,19 +79,27 @@ export default function DocumentsPage() {
   }, [id]);
 
   async function submit() {
+    if (!form.file || !form.title.trim()) return;
     setSubmitting(true);
+    setError(null);
     try {
-      const size = Number(form.size_kb) * 1024 || 0;
-      const mime = guessMime(form.title);
-      await createDocument(id, {
+      const params = new URLSearchParams({
         title: form.title,
-        description: form.description || null,
+        description: form.description || "",
         category: form.category,
-        file_url: form.file_url,
-        mime_type: mime,
-        size_bytes: size,
       });
-      setForm({ title: "", description: "", category: "other", file_url: "", size_kb: "" });
+      const formData = new FormData();
+      formData.append("file", form.file);
+
+      const response = await fetch(
+        `/api/v1/projects/${id}/documents/upload?${params}`,
+        { method: "POST", body: formData }
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(response.status, "upload_failed", errorData.detail || "No se pudo subir el documento");
+      }
+      setForm({ title: "", description: "", category: "other" });
       setOpen(false);
       await load();
     } catch (err) {
@@ -119,10 +124,6 @@ export default function DocumentsPage() {
       setNewModalOpen={setOpen}
       newModalForm={() => (
         <div className="space-y-3">
-          <p className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 py-2 text-[12px] text-[var(--text-secondary)]">
-            El MVP registra la metadata y un URL al archivo. La subida directa llegará en siguientes
-            iteraciones.
-          </p>
           <Field label="Título">
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </Field>
@@ -146,21 +147,13 @@ export default function DocumentsPage() {
                 ))}
               </Select>
             </Field>
-            <Field label="Tamaño (KB)">
-              <Input
-                type="number"
-                min={0}
-                value={form.size_kb}
-                onChange={(e) => setForm({ ...form, size_kb: e.target.value })}
-              />
-            </Field>
           </div>
-          <Field label="URL del archivo">
-            <Input
-              type="url"
-              placeholder="https://…"
-              value={form.file_url}
-              onChange={(e) => setForm({ ...form, file_url: e.target.value })}
+          <Field label="Archivo">
+            <input
+              type="file"
+              accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.csv"
+              onChange={(e) => setForm({ ...form, file: e.target.files?.[0] })}
+              className="block w-full text-sm text-[var(--color-secondary)]"
             />
           </Field>
         </div>
@@ -173,9 +166,9 @@ export default function DocumentsPage() {
           <Button
             onClick={submit}
             loading={submitting}
-            disabled={!form.title.trim() || !form.file_url.trim()}
+            disabled={!form.title.trim() || !form.file}
           >
-            Registrar
+            Subir
           </Button>
         </>
       )}

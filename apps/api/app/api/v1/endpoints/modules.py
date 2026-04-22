@@ -1,7 +1,8 @@
 from datetime import UTC, date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +39,7 @@ from app.schemas.modules import (
     RiskUpdate,
 )
 from app.services.audit import write_audit
+from app.services.document_storage import save_document
 from app.services.folio import next_folio
 
 ALLOWED_DOC_MIME = {
@@ -431,6 +433,64 @@ async def upload_document(
     return DocumentRead.model_validate(d)
 
 
+@docs_router.post("/projects/{project_id}/documents/upload", response_model=DocumentRead, status_code=201)
+async def upload_document_file(
+    project_id: UUID,
+    title: str = Query(..., min_length=2, max_length=200),
+    description: str | None = Query(default=None),
+    category: str | None = Query(default="other"),
+    file: UploadFile = File(...),
+    cu: CurrentUser = Depends(require_permission("documents", "upload")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a file and create a document entry with versioning."""
+    tenant_id = _tenant(cu)
+    p = await _get_project(db, project_id, tenant_id)
+    _ensure_editable(p, allow_after_closed=True)
+
+    from app.schemas.modules import DocumentCategory
+
+    try:
+        cat = DocumentCategory(category or "other")
+    except (ValueError, KeyError):
+        cat = DocumentCategory.other
+
+    file_url, mime_type = await save_document(str(tenant_id), str(project_id), file)
+
+    existing = (
+        await db.execute(
+            select(Document).where(
+                Document.project_id == str(project_id),
+                Document.title == title,
+                Document.category == cat,
+                Document.is_current.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    version = 1
+    if existing is not None:
+        version = existing.version + 1
+        existing.is_current = False
+
+    folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
+    d = Document(
+        tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
+        title=title, description=description, category=cat,
+        file_url=file_url, mime_type=mime_type, size_bytes=file.size or 0,
+        version=version, is_current=True, uploaded_by=cu.id, uploaded_at=datetime.now(UTC),
+        status="active", created_by=cu.id,
+    )
+    db.add(d)
+    await db.flush()
+    await write_audit(
+        db, action="document.upload", module="documents",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="document",
+        entity_id=str(d.id), details={"folio": folio, "version": version},
+    )
+    await db.commit()
+    return DocumentRead.model_validate(d)
+
+
 @docs_router.get("/projects/{project_id}/documents", response_model=list[DocumentRead])
 async def list_documents(
     project_id: UUID,
@@ -485,6 +545,35 @@ async def update_document(
     )
     await db.commit()
     return DocumentRead.model_validate(d)
+
+
+@docs_router.get("/documents/{doc_id}/download")
+async def download_document(
+    doc_id: UUID,
+    cu: CurrentUser = Depends(require_permission("documents", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Download a document file."""
+    from app.services.document_storage import get_document_path
+
+    tenant_id = _tenant(cu)
+    d = (
+        await db.execute(
+            select(Document).where(
+                Document.id == str(doc_id),
+                Document.tenant_id == str(tenant_id),
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if d is None:
+        raise not_found("Documento")
+
+    file_path = get_document_path(str(tenant_id), str(d.project_id), str(d.id))
+    if file_path is None:
+        raise not_found("Archivo del documento")
+
+    return FileResponse(file_path, media_type=d.mime_type, filename=f"{d.title}")
 
 
 # ========== LESSONS ==========
