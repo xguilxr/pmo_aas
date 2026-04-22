@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-22 23:58 — US-055 (Export tareas CSV/Excel opción A)
+2026-04-22 23:59 — US-055 (Export tareas CSV/Excel opción A)
 
-BUG-026 completado (77dc093). Avanzando Bloque 1.
+BUG-023 completado (d81d036). Avanzando Bloque 1.
 ```
 
 ---
@@ -74,7 +74,7 @@ BUG-026 completado (77dc093). Avanzando Bloque 1.
 - [ ] US-055 — Export tareas (CSV/Excel) — Opción A: botón descarga instantánea — #71
 - [ ] ENH-012 — Sidebar: reorganizar con módulo "Módulos de Proyecto" — #72
 - [ ] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73
-- [ ] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74
+- [x] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74 ✅ d81d036
 - [ ] BUG-024 — Lógica de uploads no configurada — #75
 - [x] BUG-025 — Rol "Reportes" sin módulo de permisos — #76 ✅ b1954c7
 
