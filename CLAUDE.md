@@ -12,10 +12,12 @@
 Antes de tocar código o crear issues, leer en este orden:
 
 1. `CLAUDE.md` (este archivo) — reglas y mecanismo.
-2. `docs/epics/SPRINT.md` — tarea activa, QUEUE, INBOX y bloques.
+2. `docs/project-management/SPRINT.md` — tarea activa, QUEUE, INBOX y bloques.
 3. El o los archivos de epic relevantes en `docs/epics/EP0XX-*.md`.
 4. `docs/epics/DECISIONS.md` — solo si hay duda arquitectónica.
 5. `docs/epics/DB-CHANGES.md` — solo si la US toca schema.
+
+**Nota (Sprint 2+):** Desde Sprint 2 (2026-04-22), `SPRINT.md` y `SPRINT-DONE-HISTORY.md` viven en `docs/project-management/` (ver sección 6 para estructura).
 
 **No** leer código ni docs por exploración abierta si no están en la
 lista anterior. El contexto es finito.
@@ -241,15 +243,21 @@ status:triage ──▶ status:in-progress ──▶ status:fix-committed
 
 ## 6. SPRINT.md — estructura esperada
 
+Archivo vive en `docs/project-management/SPRINT.md` (desde Sprint 2).
+
 ```
 🔴 IN-PROGRESS    (la US que Claude está tocando ahora, o "Sin US activa")
 📥 INBOX / TRIAGE (issues recién creados, pendientes de asignar a bloque)
 ⏳ QUEUE          (próximas 5, en orden)
-✅ DONE           (historial reciente)
+✅ DONE           (referencia a SPRINT-DONE-HISTORY.md)
 
-📋 Backlog por prioridad
-  Bloque 1, 2, 3... (por orden histórico)
+📋 Backlog por prioridad (Sprint actual)
+  Bloque 1, 2, 3... (por orden de ejecución)
 ```
+
+**Separación de histórico (desde Sprint 2):**
+- `SPRINT.md` → solo items pendientes + bloques activos del sprint.
+- `SPRINT-DONE-HISTORY.md` → tabla DONE de sprints anteriores + detalles de bloques cerrados.
 
 Reglas:
 - Al crear un issue nuevo, se agrega a **📥 INBOX** primero.
@@ -257,7 +265,7 @@ Reglas:
   o propone **"Bloque X+1"** nuevo.
 - De ahí entra a **QUEUE** cuando le toca el turno.
 - De QUEUE → **IN-PROGRESS** cuando Claude empieza a trabajarlo.
-- De IN-PROGRESS → **DONE** cuando el commit está pusheado.
+- De IN-PROGRESS → **DONE** cuando el commit está pusheado; se registra en el archivo histórico correspondiente al sprint.
 
 ---
 
@@ -302,7 +310,7 @@ Excepciones permitidas:
   contenido a memoria) sobre `Edit` con `replace_all`.
 - Al abrir un archivo, anotar qué se necesita y descartarlo después.
 - Si el contexto se agota, commit con `wip:` y documentar dónde quedó
-  en `SPRINT.md` antes de terminar la sesión.
+  en `docs/project-management/SPRINT.md` (sección IN-PROGRESS) antes de terminar la sesión.
 
 ---
 
