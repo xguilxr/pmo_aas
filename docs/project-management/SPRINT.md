@@ -31,7 +31,7 @@ Sprint 2 (v1.1) arranca 2026-04-22 con 21 issues nuevos (7 BUGs + 11 ENHs + 3 US
 
 | # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| 71 | US-055 | EP005 | Export tareas (CSV/Excel) con 3 opciones de flujo | Bloque 1 |
+| 71 | US-055 | EP005 | Export tareas (CSV/Excel) — Opción A: botón descarga instantánea | Bloque 1 |
 | 72 | ENH-012 | EP013 | Sidebar: reorganizar con módulo "Módulos de Proyecto" | Bloque 1 |
 | 73 | ENH-013 | EP002 | Botón "Nuevo Programa" abre modal en Organizaciones | Bloque 1 |
 | 74 | BUG-023 | EP003 | Project Charter: link a editor cuando no hay archivo (404) | Bloque 1 |
@@ -47,16 +47,16 @@ Sprint 2 (v1.1) arranca 2026-04-22 con 21 issues nuevos (7 BUGs + 11 ENHs + 3 US
 | 84 | ENH-018 | EP006 | RAID: agregar toggle Kanban | Bloque 3 |
 | 83 | US-058 | EP006 | RAID: preview panel editable con comentarios | Bloque 3 |
 | 86 | ENH-020 | EP002 | Áreas: permitir múltiples recursos/contactos | Bloque 3 |
-| 79 | US-057 | EP008 | IA: permitir tenants conectar a su propia instancia | Bloque 4 |
+| 91 | US-062 | EP002 | Áreas/Recursos: Area Leader + recursos asignados (Sprint 2, no v1.2) | Bloque 3 |
+| 79 | US-057 | EP008 | IA: permitir tenants propia instancia + docs configuración + rollback | Bloque 4 |
 | 88 | US-059 | EP002 | v1.2 Recursos: usuarios sin roles jerárquicos | v1.2 |
 | 89 | US-060 | EP002 | v1.2 Roles: tipos usuario (Viewer/User/Admin) | v1.2 |
 | 90 | US-061 | EP002 | v1.2 Aprobaciones: jerarquía directa + permisos | v1.2 |
-| 91 | US-062 | EP002 | v1.2 Áreas/Recursos: Area Leader + recursos asignados | v1.2 |
 
-> **Sprint 2 intake (2026-04-22):** 21 issues nuevos clasificados en 4 bloques + v1.2 post-MVP.
+> **Sprint 2 intake (2026-04-22):** 21 issues nuevos clasificados en 4 bloques.
 > Bloques 1-3 para Sprint 2 v1.1 (navegación + RAID + reportes + IA).
 > Bloque 4 para IA avanzada (tenants propia instancia).
-> v1.2: 4 issues post-MVP de recursos + roles + aprobaciones.
+> v1.2: 3 issues post-MVP de recursos + roles + aprobaciones (US-062 movida a Bloque 3 por owner).
 
 ---
 
@@ -72,7 +72,7 @@ Sprint 2 (v1.1) arranca 2026-04-22 con 21 issues nuevos (7 BUGs + 11 ENHs + 3 US
 
 ### Bloque 1 — Sprint 2 Setup: navegación + bugs + permisos (7 items)
 - [ ] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87
-- [ ] US-055 — Export tareas (CSV/Excel) con 3 opciones de flujo — #71
+- [ ] US-055 — Export tareas (CSV/Excel) — Opción A: botón descarga instantánea — #71
 - [ ] ENH-012 — Sidebar: reorganizar con módulo "Módulos de Proyecto" — #72
 - [ ] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73
 - [ ] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74
@@ -86,14 +86,15 @@ Sprint 2 (v1.1) arranca 2026-04-22 con 21 issues nuevos (7 BUGs + 11 ENHs + 3 US
 - [ ] ENH-017 — RAID: filtros en línea horizontal — #82
 - [ ] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81
 
-### Bloque 3 — Sprint 2 RAID + Áreas (4 items)
+### Bloque 3 — Sprint 2 RAID + Áreas (5 items)
 - [ ] ENH-019 — RAID: gestión avanzada consolidada en principal — #85
 - [ ] ENH-018 — RAID: agregar toggle Kanban — #84
 - [ ] US-058 — RAID: preview panel editable con comentarios — #83
 - [ ] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86
+- [ ] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91
 
 ### Bloque 4 — Sprint 2 IA avanzada (1 item)
-- [ ] US-057 — IA: permitir tenants conectar a su propia instancia — #79
+- [ ] US-057 — IA: permitir tenants propia instancia + docs config + rollback — #79
 
 ### Bloque v1.2 (Post-MVP — no implementar en Sprint 2)
 - [ ] US-059 — v1.2 Recursos: usuarios sin roles jerárquicos — #88
@@ -104,10 +105,15 @@ Sprint 2 (v1.1) arranca 2026-04-22 con 21 issues nuevos (7 BUGs + 11 ENHs + 3 US
 ---
 
 **Notas Sprint 2:**
-- Total: 21 issues nuevos (7 BUGs + 11 ENHs + 3 USs Sprint 2 + 4 v1.2).
-- Bloques 1-3: ejecución inmediata (Sprint 2 v1.1).
-- Bloque 4: IA avanzada (puede solaparse con Bloque 3).
-- Bloque v1.2: documentado pero NO ejecutar — son features para v1.2 futuro.
+- Total: 21 issues (18 Sprint 2 v1.1 + 3 v1.2).
+  - Sprint 2: 7 BUGs + 10 ENHs + 4 USs (US-055, US-056, US-057, US-058, US-062).
+  - v1.2: US-059, US-060, US-061 (no implementar en este sprint).
+- Bloques 1-4: ejecución Sprint 2.
+  - Bloque 1: Setup (navegación, bugs, permisos).
+  - Bloque 2: Reportes + Dashboard.
+  - Bloque 3: RAID + Áreas (incluye US-062 movida del v1.2).
+  - Bloque 4: IA avanzada (tenants propia instancia + docs).
+- Bloque v1.2: documentado pero NO ejecutar.
 
 ---
 
