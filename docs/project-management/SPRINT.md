@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-22 23:59 — US-055 (Export tareas CSV/Excel opción A)
+2026-04-22 23:59 — ENH-012 (Sidebar: reorganizar con módulo "Módulos de Proyecto")
 
-BUG-023 completado (d81d036). Avanzando Bloque 1.
+US-055 completado (023a99c). Avanzando Bloque 1.
 ```
 
 ---
@@ -71,7 +71,7 @@ BUG-023 completado (d81d036). Avanzando Bloque 1.
 
 ### Bloque 1 — Sprint 2 Setup: navegación + bugs + permisos (7 items)
 - [x] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87 ✅ 77dc093
-- [ ] US-055 — Export tareas (CSV/Excel) — Opción A: botón descarga instantánea — #71
+- [x] US-055 — Export tareas (CSV/Excel) — Opción A: botón descarga instantánea — #71 ✅ 023a99c
 - [ ] ENH-012 — Sidebar: reorganizar con módulo "Módulos de Proyecto" — #72
 - [ ] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73
 - [x] BUG-023 — Project Charter: link a editor cuando no hay archivo (404) — #74 ✅ d81d036
