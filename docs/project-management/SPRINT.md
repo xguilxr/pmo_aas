@@ -7,10 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-— Sin US activa (2026-04-22, intake Sprint 2) —
+2026-04-22 19:40 — BUG-026 (Auth: timeout inactividad 15 min)
 
-Sprint 1 (v1.0 MVP) completado al 100% (2026-04-21). Ver SPRINT-DONE-HISTORY.md.
-Sprint 2 (v1.1) arranca 2026-04-22 con 21 issues nuevos (7 BUGs + 11 ENHs + 3 USs Sprint 2 + 4 v1.2 post-MVP).
+Sprint 2 comenzó. Trabajando Bloque 1 (Setup).
 ```
 
 ---
