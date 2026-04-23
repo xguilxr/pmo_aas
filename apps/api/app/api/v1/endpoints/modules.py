@@ -444,18 +444,13 @@ async def upload_document_file(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a file and create a document entry with versioning."""
+    from app.schemas.modules import DOCUMENT_CATEGORIES
+
     tenant_id = _tenant(cu)
     p = await _get_project(db, project_id, tenant_id)
     _ensure_editable(p, allow_after_closed=True)
 
-    from app.schemas.modules import DocumentCategory
-
-    try:
-        cat = DocumentCategory(category or "other")
-    except (ValueError, KeyError):
-        cat = DocumentCategory.other
-
-    file_url, mime_type = await save_document(str(tenant_id), str(project_id), file)
+    cat = category if category in DOCUMENT_CATEGORIES else "other"
 
     existing = (
         await db.execute(
@@ -476,12 +471,20 @@ async def upload_document_file(
     d = Document(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
         title=title, description=description, category=cat,
-        file_url=file_url, mime_type=mime_type, size_bytes=file.size or 0,
+        file_url="", mime_type="", size_bytes=0,
         version=version, is_current=True, uploaded_by=cu.id, uploaded_at=datetime.now(UTC),
         status="active", created_by=cu.id,
     )
     db.add(d)
     await db.flush()
+
+    file_url, mime_type = await save_document(
+        str(tenant_id), str(project_id), file, str(d.id)
+    )
+    d.file_url = file_url
+    d.mime_type = mime_type
+    d.size_bytes = file.size or 0
+
     await write_audit(
         db, action="document.upload", module="documents",
         user_id=cu.id, tenant_id=tenant_id, entity_type="document",
