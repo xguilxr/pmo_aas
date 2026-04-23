@@ -87,8 +87,8 @@ Hotfixes CI post-commit (2026-04-23):
 - [x] ENH-019 — RAID: filtros avanzados (status + severidad/prioridad) — #85 ✅ fe3b001
 - [x] ENH-018 — RAID: agregar toggle Kanban — #84 ✅ c894f12
 - [ ] US-058 — RAID: preview panel editable con comentarios — #83
-- [x] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86 ✅ (pendiente commit)
-- [x] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91 ✅ (pendiente commit)
+- [x] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86 ✅ 009c0f2
+- [x] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91 ✅ 009c0f2
 
 ### Bloque 4 — Sprint 2 IA avanzada (1 item)
 - [ ] US-057 — IA: permitir tenants propia instancia + docs config + rollback — #79
