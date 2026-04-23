@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-23 — ENH-016 (Solicitudes: permitir reabrir si proyecto no existe) — próxima
+2026-04-23 — Bloque 2 COMPLETO — próximo Bloque 3 o Bloque 4 según owner
 
-US-056, ENH-015 y ENH-017 completadas. Siguiente: ENH-016 en Bloque 2.
+US-056, ENH-015, ENH-017 y ENH-016 completadas. Bloque 2 cerrado.
 
 Hotfixes CI post-commit (2026-04-23):
 - 47d3603: DocumentCategory types en frontend (fix CI web-build type error, afecta BUG-024/BUG-023)
@@ -42,7 +42,6 @@ Hotfixes CI post-commit (2026-04-23):
 | 76 | BUG-025 | EP007 | Rol "Reportes" sin módulo de permisos | Bloque 1 |
 | 87 | BUG-026 | EP001 | Auth: timeout de inactividad a 15 minutos | Bloque 1 |
 | 77 | ENH-014 | EP014 | Reportes: renombrar archivo con datetime + preview PDF | Bloque 2 |
-| 81 | ENH-016 | EP003 | Solicitudes: permitir reabrir si proyecto no existe | Bloque 2 |
 | 85 | ENH-019 | EP006 | RAID: gestión avanzada consolidada en principal | Bloque 3 |
 | 84 | ENH-018 | EP006 | RAID: agregar toggle Kanban | Bloque 3 |
 | 83 | US-058 | EP006 | RAID: preview panel editable con comentarios | Bloque 3 |
@@ -79,12 +78,12 @@ Hotfixes CI post-commit (2026-04-23):
 - [x] BUG-024 — Lógica de uploads no configurada — #75 ✅ 3cd997d
 - [x] BUG-025 — Rol "Reportes" sin módulo de permisos — #76 ✅ b1954c7
 
-### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items)
+### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items) ✅ COMPLETO
 - [x] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77 ✅ 02cfaa6
 - [x] US-056 — Calendarizar envío automático de reportes vía Resend — #78 ✅ 51947ef
 - [x] ENH-015 — Dashboard: expandir barra de navegación — #80 ✅ 55956f9
 - [x] ENH-017 — RAID: filtros en línea horizontal — #82 ✅ 6832199
-- [ ] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81
+- [x] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81 ✅ ade6ee7
 
 ### Bloque 3 — Sprint 2 RAID + Áreas (5 items)
 - [ ] ENH-019 — RAID: gestión avanzada consolidada en principal — #85
