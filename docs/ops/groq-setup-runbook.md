@@ -54,7 +54,12 @@ Copiar el string resultante (ej. `abcDE...=`). En Railway:
    bajo el mismo proyecto, nombre "pmo-aas-backup", guardarla en el
    gestor de secretos.
 
-**Free tier (llama-3.1-70b-versatile, al 2026-04):**
+> ⚠️ **Modelo default (2026-04-23):** usamos `llama-3.3-70b-versatile`.
+> `llama-3.1-70b-versatile` fue deprecado por Groq — si aparece el error
+> `The model has been decommissioned`, cambia el campo "Modelo Groq" a
+> `llama-3.3-70b-versatile` en `/superadmin/ai`.
+
+**Free tier (llama-3.3-70b-versatile, al 2026-04):**
 - 30 requests/min (RPM)
 - 14 400 requests/día (RPD)
 - 6 000 tokens/min (TPM)
@@ -72,7 +77,7 @@ valores en `GroqUsageSummary.limit_requests_per_day` / `…tokens_per_day`
 1. Entrar a **`/superadmin/ai`** como superadmin.
 2. En la sección "IA base (Groq) — modo platform":
    - Pegar la `gsk_...` en **GROQ_API_KEY**.
-   - Confirmar/ajustar **Modelo Groq** = `llama-3.1-70b-versatile`.
+   - Confirmar/ajustar **Modelo Groq** = `llama-3.3-70b-versatile`.
 3. Click **Guardar defaults**.
 4. Click **Probar conexión**:
    - Esperado: `OK · <latencia>ms` (típicamente 300–900 ms).

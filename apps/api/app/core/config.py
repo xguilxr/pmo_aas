@@ -45,9 +45,11 @@ class Settings(BaseSettings):
     # US-057: IA base de la plataforma (modo "platform"). El api_key se lee
     # primero de `platform_ai_settings.groq_api_key_encrypted` (cifrada con
     # Fernet); si está vacía, cae a este env para dev/test. El modelo por
-    # defecto (llama-3.1-70b-versatile) balancea calidad + free tier.
+    # defecto (llama-3.3-70b-versatile) balancea calidad + free tier.
+    # NOTA 2026-04-23: llama-3.1-70b-versatile quedó descontinuado por
+    # Groq; usar 3.3 como reemplazo directo.
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     STORAGE_PATH: str = "/tmp/pmo-uploads"
 
