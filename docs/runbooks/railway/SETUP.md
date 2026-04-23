@@ -271,5 +271,6 @@ Si uno falla, Railway auto-redeploy (si está habilitado) o alertas manuales
 - DNS & custom domains: [`docs/runbooks/infra/dns-routing.md`](../infra/dns-routing.md)
 - Tailscale + worker: [`docs/runbooks/networking/tailscale-setup.md`](../networking/tailscale-setup.md)
 - Email (Resend): [`docs/runbooks/email/resend-setup.md`](../email/resend-setup.md)
-- IA setup: [`docs/runbooks/ai/`](../ai/)
-- Epic: [`docs/epics/EP016-local-ai-tunnel.md`](../../epics/EP016-local-ai-tunnel.md)
+- IA setup: [`docs/runbooks/ai/`](../ai/) — `groq-setup.md` + `byo-setup.md`
+- Epic IA actual: [`docs/epics/EP008-ai.md`](../../epics/EP008-ai.md)
+- Epic tunnel Ollama (archivada, superseded por DEC-017): [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../../archive/cancelled-epics/EP016-local-ai-tunnel.md)

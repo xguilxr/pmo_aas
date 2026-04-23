@@ -219,8 +219,12 @@ curl -I https://pmo-aas.com/login
 
 ## 5. Retirar `ollama.pmo-aas.com` (DEC-011)
 
-El pivote a Tailscale (ver `docs/ai/local-ollama-setup.md`) elimina la
-necesidad de exponer Ollama vía CF Tunnel con hostname público.
+El pivote a Tailscale (ver
+[`docs/archive/runbooks-ai-legacy/local-ollama-setup.md`](../archive/runbooks-ai-legacy/local-ollama-setup.md))
+elimina la necesidad de exponer Ollama vía CF Tunnel con hostname
+público. Desde DEC-017 (Sprint 2 v1.1) Ollama ya no es parte del
+flujo productivo — la IA de la plataforma usa Groq hosteado — pero
+este cleanup de DNS sigue siendo válido.
 
 Cleanup en Cloudflare:
 
@@ -231,7 +235,9 @@ Cleanup en Cloudflare:
    todos los tokens relacionados a `pmoaas-ollama`.
 
 El `cloudflared` local del owner se retira siguiendo el runbook
-`docs/ai/local-ollama-setup.md` §10 "Rollback CF Tunnel".
+archivado
+[`docs/archive/runbooks-ai-legacy/local-ollama-setup.md`](../archive/runbooks-ai-legacy/local-ollama-setup.md)
+§10 "Rollback CF Tunnel".
 
 ---
 

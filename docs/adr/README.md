@@ -514,7 +514,7 @@ PC Windows (tailscaled service)          Railway worker (sidecar tailscaled)
 **Referencias:**
 - <https://tailscale.com/kb/1017/install>
 - <https://tailscale.com/kb/1282/docker> (sidecar en containers)
-- Runbook nuevo: `docs/ai/local-ollama-setup.md` reescrito en US-046.
+- Runbook (archivado post-DEC-017): `docs/archive/runbooks-ai-legacy/local-ollama-setup.md` (reescrito en US-046; movido al archivo por ENH-022).
 
 ---
 

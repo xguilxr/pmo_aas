@@ -462,5 +462,5 @@ Get-NetFirewallRule -DisplayName "Ollama*" -ErrorAction SilentlyContinue |
 - Tailscale ACLs + tags — <https://tailscale.com/kb/1068/acl-tags>
 - Tailscale auth keys — <https://tailscale.com/kb/1085/auth-keys>
 - nssm — <https://nssm.cc/usage>
-- Runbook modelo local — [`docs/runbooks/ai/local-model-setup.md`](../ai/local-model-setup.md)
-- Epic de integración — [`docs/epics/EP016-local-ai-tunnel.md`](../../epics/EP016-local-ai-tunnel.md)
+- Runbook modelo local (archivado) — [`docs/archive/runbooks-ai-legacy/local-model-setup.md`](../../archive/runbooks-ai-legacy/local-model-setup.md)
+- Epic de integración (superseded por DEC-017) — [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../../archive/cancelled-epics/EP016-local-ai-tunnel.md)

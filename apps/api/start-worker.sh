@@ -4,8 +4,11 @@
 # Flujo:
 #  1. Arranca `tailscaled` en user-space networking (Railway NO da /dev/net/tun).
 #  2. Ejecuta `tailscale up` con un TS_AUTHKEY reusable + ephemeral
-#     (ver docs/ai/local-ollama-setup.md §7). El peer se llama
-#     `railway-worker` con tag `tag:railway-worker`.
+#     (ver docs/archive/runbooks-ai-legacy/local-ollama-setup.md §7 —
+#     runbook archivado post-DEC-017 porque Groq reemplazó Ollama en el
+#     flujo productivo; este script queda solo para tenants BYO legacy
+#     con Ollama propio). El peer se llama `railway-worker` con tag
+#     `tag:railway-worker`.
 #  3. `exec` a Celery — si tailscaled muere después, el container muere
 #     también y Railway lo reinicia (restartPolicy en worker.railway.toml).
 set -euo pipefail

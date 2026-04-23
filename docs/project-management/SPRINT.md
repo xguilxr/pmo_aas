@@ -107,8 +107,9 @@ Sprint 2 v1.1 cerrado 2026-04-23. 4 bloques completos + hotfix Railway.
 - [x] ENH-021 — Superadmin AI: quitar defaults editables de Ollama — #96 ✅ b70c887
 - [x] US-063 — Recuperación y cambio de contraseña con envío por correo — #95 ✅ (6 commits, af4c9c3…7222dac)
 
-### Bloque 2 — Sprint 3 Cleanup IA legacy en admin/tenant (1 item) 🔴 EN CURSO
+### Bloque 2 — Sprint 3 Cleanup IA legacy en admin/tenant (2 items) 🔴 EN CURSO
 - [ ] BUG-027 — /admin/tenant config: retirar dropdown "Modo IA" + form Ollama Tailscale + endpoint backend + runbooks archivados + runbook BYO nuevo — #100
+- [ ] ENH-022 — Housekeeping docs/ai/ (4 archivos legacy a archive) + archivar EP016 + actualizar refs cruzadas — #102
 
 ---
 
