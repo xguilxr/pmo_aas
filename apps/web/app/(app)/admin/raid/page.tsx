@@ -117,10 +117,12 @@ function TenantRaidInner() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+        {/* ENH-017: orden horizontal Tipo → Proyecto → Programa → Organización. */}
         <TenantCrossFilters
           value={filter}
           onChange={setFilter}
-          extras={
+          reverse
+          leading={
             <Select
               aria-label="Tipo"
               className="h-9 min-w-[160px]"
