@@ -150,7 +150,7 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 > de #50. Total 14 items.
 
 ### Bloque 1 — Reworks del review (8 items)
-- [x] BUG-015 — Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40 ✅ (pending SHA)
+- [x] BUG-015 — Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40 ✅ d3523bb
 - [ ] BUG-029 — Upload de Excel falla + botón "Choose file" sin styling — #105
 - [ ] ENH-003 — Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50
 - [ ] ENH-024 — Reporte: filename correcto al descargar — #106
