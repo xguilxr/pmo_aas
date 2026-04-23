@@ -156,7 +156,7 @@ async def update_defaults(
 import time  # noqa: E402
 from datetime import UTC, datetime, timedelta  # noqa: E402
 
-from sqlalchemy import func  # noqa: E402
+from sqlalchemy import case, func  # noqa: E402
 
 from app.models.ai import AIJob  # noqa: E402
 from app.models.tenant import Tenant  # noqa: E402
@@ -187,7 +187,7 @@ async def list_tenants_ai_status(
     rows = (
         await db.execute(
             select(Tenant)
-            .where(Tenant.deleted_at.is_(None))
+            .where(Tenant.is_active.is_(True))
             .order_by(Tenant.name)
         )
     ).scalars().all()
@@ -277,9 +277,7 @@ async def groq_usage(
                 func.coalesce(func.sum(AIJob.tokens_in), 0),
                 func.coalesce(func.sum(AIJob.tokens_out), 0),
                 func.coalesce(
-                    func.sum(
-                        func.case((AIJob.status == "failed", 1), else_=0)
-                    ),
+                    func.sum(case((AIJob.status == "failed", 1), else_=0)),
                     0,
                 ),
             ).where(*base_where)
