@@ -7,7 +7,8 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 3 v1.2 Bloque 1 COMPLETO + bug-fix post-deploy.
+2026-04-24 — Sprint 3 v1.2 Bloque 1 COMPLETO + bug-fix post-deploy
++ BUG-027 cleanup de IA legacy en admin/tenant.
 
 Bloque 1 (limpieza + auth self-service):
 - ENH-021 (#96): superadmin AI sin defaults Ollama. ✅ b70c887
@@ -22,6 +23,13 @@ Bug-fixes post-deploy v1.1 (2026-04-23/24):
   público + feature flag AI_BYO_ENABLED (default off) + wizard de
   conexión con 4 pasos preparado pero deshabilitado hasta que el owner
   encienda el flag en Railway.
+
+Sprint 3 v1.2 Bloque 2 — Cleanup IA legacy post-DEC-019 (en curso):
+- BUG-027 (#100): /admin/tenant?tab=config todavía mostraba dropdown
+  "Modo IA" + form Ollama Tailscale legacy (US-045/047/048). Barrido
+  completo: frontend (5 archivos), backend (1 endpoint + test),
+  docs (runbooks re-estructurados, runbook BYO nuevo,
+  legacy archivado). Branch claude/update-admin-ai-config-EyClx.
 
 Próximos candidatos: ver §Backlog v2.0 para los 3 items de overhaul
 Auth/Roles/Aprobaciones; llegan cuando el owner arme el RFC.
@@ -98,6 +106,9 @@ Sprint 2 v1.1 cerrado 2026-04-23. 4 bloques completos + hotfix Railway.
 ### Bloque 1 — Sprint 3 Limpieza post-v1.1 + Auth self-service (2 items) ✅ COMPLETO
 - [x] ENH-021 — Superadmin AI: quitar defaults editables de Ollama — #96 ✅ b70c887
 - [x] US-063 — Recuperación y cambio de contraseña con envío por correo — #95 ✅ (6 commits, af4c9c3…7222dac)
+
+### Bloque 2 — Sprint 3 Cleanup IA legacy en admin/tenant (1 item) 🔴 EN CURSO
+- [ ] BUG-027 — /admin/tenant config: retirar dropdown "Modo IA" + form Ollama Tailscale + endpoint backend + runbooks archivados + runbook BYO nuevo — #100
 
 ---
 

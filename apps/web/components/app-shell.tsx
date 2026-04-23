@@ -123,6 +123,7 @@ const ADMIN_NAV: NavItem = {
     p.startsWith("/admin/audit-logs") ||
     p.startsWith("/admin/settings") ||
     p.startsWith("/admin/tenant") ||
+    p.startsWith("/admin/ai") ||
     p.startsWith("/admin/organizations"),
   children: [
     {
@@ -134,6 +135,13 @@ const ADMIN_NAV: NavItem = {
         p.startsWith("/admin/tenant") ||
         p.startsWith("/admin/supervision") ||
         p.startsWith("/admin/settings"),
+    },
+    {
+      id: "tenant-ai",
+      label: "IA",
+      icon: <Sparkles className="h-4 w-4" aria-hidden />,
+      href: "/admin/ai",
+      match: (p) => p.startsWith("/admin/ai"),
     },
     {
       id: "orgs-mgmt",

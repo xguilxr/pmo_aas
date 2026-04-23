@@ -12,12 +12,12 @@ import {
   LifeBuoy,
   Palette,
   Pencil,
+  Sparkles,
   Trash2,
   Upload,
   Users,
 } from "lucide-react";
 
-import { OllamaLocalAiForm } from "@/components/ollama-local-ai-form";
 import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { TenantSettingsForm } from "@/components/tenant-settings-form";
 import { Badge } from "@/components/ui/badge";
@@ -413,7 +413,29 @@ function TenantAdminPageInner() {
       ) : activeTab === "config" ? (
         <>
           <TenantSettingsForm />
-          <OllamaLocalAiForm />
+          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+            <div className="flex items-center gap-2">
+              <Sparkles
+                className="h-4 w-4 text-[var(--color-accent)]"
+                aria-hidden
+              />
+              <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+                Configuración de IA
+              </h2>
+            </div>
+            <p className="mt-2 text-[13px] text-[var(--color-secondary)]">
+              La configuración de IA del tenant vive en{" "}
+              <Link
+                href="/admin/ai"
+                className="font-medium text-[var(--color-accent)] hover:underline"
+              >
+                Admin → IA
+              </Link>
+              . Ahí eliges entre <strong>Sin IA</strong>,{" "}
+              <strong>IA de la plataforma (Groq)</strong> o conectar tu
+              propio proveedor (BYO).
+            </p>
+          </section>
         </>
       ) : (
         <>
