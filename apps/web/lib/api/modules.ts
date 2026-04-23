@@ -219,7 +219,16 @@ export const CHANGE_STATUS_LABEL: Record<ChangeStatus, string> = {
 };
 
 /* ========== DOCUMENTS ========== */
-export type DocumentCategory = "plan" | "report" | "contract" | "other";
+export type DocumentCategory =
+  | "charter"
+  | "plan"
+  | "raid_export"
+  | "transcript"
+  | "minute"
+  | "report"
+  | "lesson"
+  | "contract"
+  | "other";
 
 export type ProjectDocument = {
   id: string;
@@ -260,8 +269,13 @@ export function createDocument(
 }
 
 export const DOC_CATEGORY_LABEL: Record<DocumentCategory, string> = {
+  charter: "Project Charter",
   plan: "Plan",
+  raid_export: "Export RAID",
+  transcript: "Transcripción",
+  minute: "Minuta",
   report: "Reporte",
+  lesson: "Lección",
   contract: "Contrato",
   other: "Otro",
 };
