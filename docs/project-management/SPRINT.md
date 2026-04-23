@@ -55,7 +55,7 @@ issue. Luego Claude implementa el refactor de código.
 
 > Runbook entregado en commit ca5dd0c. Código (boto3 + selector
 > backend + StreamingResponse + tests con moto) entregado en
-> commit (pending SHA). Owner termina la config R2 + redeploy →
+> commit e0f9c2e. Owner termina la config R2 + redeploy →
 > verifica end-to-end → `status:fix-committed`.
 
 ### Bloque 1 (continuación) — Reworks del review (6 items restantes)
