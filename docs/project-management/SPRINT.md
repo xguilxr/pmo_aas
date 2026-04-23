@@ -9,21 +9,26 @@
 ```
 2026-04-24 — Sprint 4 v1.3 en curso.
 
-Sprint 3 v1.2 CERRADO (merge pending). Bloque 1 Sprint 4 arrancado:
+Bloque 1 Sprint 4 — 2/8 items completos:
 - BUG-030 (#118) hotfix Groq metadata → 400. ✅ 8495dc8
 - BUG-015 (#40) rework botón CSV en dashboard. ✅ d3523bb
+- BUG-029 (#105) upload documentos funcional + styling. ✅ 3f6ac90
 
-Reshuffle post-DEC-020 (2026-04-24, mid-sprint):
-- US-059 (#88) + US-060 (#89) bajan de v2.0 a Sprint 4 Bloque 4
-  con scope reducido. DEC-020 simplifica roles a 3 fijos
-  (Admin/User/Viewer) sin jerarquías ni permisos editables.
-- US-061 (#90) cancelada — owner confirma que no se construyen
-  workflows de aprobación jerárquica. Plataforma es herramienta
-  de apoyo, no burocracia.
-- Total Sprint 4 ahora: 16 items (8+5+1+2).
+Reshuffle 2 (2026-04-24, tras revisión de runbooks Railway):
+- US-066 (#113) PROMOVIDA a prioridad inmediata (antes de
+  terminar Bloque 1). Owner reporta que los docs de Railway
+  Volume están incorrectos — Railway NO permite compartir
+  volumes entre servicios. Sin US-066 los uploads se pierden
+  en cada redeploy, bloquea el resto del testing de features.
+- Nueva estrategia: object storage S3-compatible (Cloudflare R2).
+- Runbook completo entregado en docs/runbooks/infra/uploads-
+  storage.md + SETUP.md y DEPLOYMENT.md corregidos.
+- Bloque 1 restante (ENH-003, 024, 025, 026, 027, 028) espera
+  tras US-066.
 
-Próximo item: BUG-029 (#105) upload Excel fail + botón styling.
-Esperando status:ready del owner para arrancar.
+Próximo item: US-066 (#113). Owner ejecuta el runbook §2-§5
+(bucket R2 + env vars + smoke test) y agrega status:ready al
+issue. Luego Claude implementa el refactor de código.
 ```
 
 ---
@@ -42,36 +47,43 @@ Esperando status:ready del owner para arrancar.
 
 ## ⏳ QUEUE (Sprint 4 v1.3)
 
-### Bloque 1 — Reworks del review (8 items)
+### 🔥 Priority immediate — US-066 (promovida del Bloque 2)
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 1 | BUG-015 | EP004 | Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40 |
-| 2 | BUG-029 | EP006 | Upload Excel falla + botón Choose File sin styling — #105 |
-| 3 | ENH-003 | EP002 | Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 |
-| 4 | ENH-024 | EP014 | Reporte: filename correcto al descargar — #106 |
-| 5 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework definitivo) — #107 |
-| 6 | ENH-026 | EP006 | Consolidar "Gestión Avanzada" en `/admin/raid` — #108 |
-| 7 | ENH-027 | EP006 | Panel editable RAID en `/admin/projects/[id]/raid` — #109 |
-| 8 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
+| 1 | **US-066** | EP007 | **Uploads: object storage S3-compatible (Cloudflare R2) + runbook** — #113 |
 
-### Bloque 2 — Infra + RAID robusto + fix completo charter (5 items)
+> Bloquea el resto del testing de features por-proyecto hasta que
+> Railway persista los archivos entre redeploys. Runbook entregado,
+> owner ejecuta infra + agrega `status:ready` al issue.
 
-> **Orden obligatorio:** US-066 primero (storage), luego BUG-028 (charter real usa storage).
+### Bloque 1 (continuación) — Reworks del review (6 items restantes)
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 9 | US-066 | EP007 | Uploads: Railway persistent volume + runbook — #113 |
-| 10 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud (depende US-066+BUG-029) — #104 |
-| 11 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
-| 12 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
-| 13 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
+| 2 | ENH-003 | EP002 | Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 |
+| 3 | ENH-024 | EP014 | Reporte: filename correcto al descargar — #106 |
+| 4 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework definitivo) — #107 |
+| 5 | ENH-026 | EP006 | Consolidar "Gestión Avanzada" en `/admin/raid` — #108 |
+| 6 | ENH-027 | EP006 | Panel editable RAID en `/admin/projects/[id]/raid` — #109 |
+| 7 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
+
+### Bloque 2 — RAID robusto + fix completo charter (4 items restantes)
+
+> **Orden obligatorio:** US-066 primero (ya promovida arriba), luego BUG-028 (charter real usa storage).
+
+| # | ID | Epic | Título |
+|---|---|---|---|
+| 8 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud (depende US-066+BUG-029) — #104 |
+| 9 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
+| 10 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
+| 11 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
 
 ### Bloque 3 — Import Project/Excel (1 item)
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 14 | US-067 | EP009 | Importar XLSX + MPP nativo → generar tareas — #114 |
+| 12 | US-067 | EP009 | Importar XLSX + MPP nativo → generar tareas — #114 |
 
 ### Bloque 4 — Auth simplificada post-DEC-020 (2 items)
 
@@ -82,8 +94,8 @@ Esperando status:ready del owner para arrancar.
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 15 | US-059 | EP001+EP002 | Roles simplificados: Admin / User / Viewer (reemplaza jerarquías) — #88 |
-| 16 | US-060 | EP001+EP002 | Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix BUG-025 residual) — #89 |
+| 13 | US-059 | EP001+EP002 | Roles simplificados: Admin / User / Viewer (reemplaza jerarquías) — #88 |
+| 14 | US-060 | EP001+EP002 | Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix BUG-025 residual) — #89 |
 
 ---
 
@@ -196,6 +208,17 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 ## Notas y cambios
 
+- **2026-04-24 (reshuffle #2 — US-066 promovida):** owner reporta que
+  los docs de Railway Volume (`SETUP.md` §4.1, `DEPLOYMENT.md` §4)
+  están incorrectos — Railway no permite compartir volumes entre
+  servicios. Sin storage persistente los uploads se pierden en cada
+  redeploy, bloqueando el resto del testing. **US-066 (#113)
+  promovida a prioridad inmediata** antes de seguir el Bloque 1.
+  Nueva estrategia: **object storage S3-compatible (Cloudflare R2)**,
+  cero egress fees + free tier 10 GB. Runbook completo entregado en
+  `docs/runbooks/infra/uploads-storage.md` con 12 secciones
+  (bucket + token + env vars + smoke + código + backup + rollback +
+  troubleshooting). SETUP.md y DEPLOYMENT.md corregidos.
 - **2026-04-24 (DEC-020 mid-Sprint 4):** owner redefine la plataforma
   como herramienta de apoyo/visualización — sin aprobaciones
   jerárquicas. Consecuencia: US-059 (#88) + US-060 (#89) bajan de v2.0
