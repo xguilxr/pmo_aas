@@ -94,9 +94,11 @@ async def test_us039_generate_and_groups(client, db_session):
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "application/pdf"
     assert r.content.startswith(b"%PDF")
-    assert "Reporte_Seguimiento_SP-0001_2026-04-20.pdf" in r.headers.get(
-        "content-disposition", ""
-    )
+    # ENH-014: nombre = "Reporte de Seguimiento - {project_name} - {datetime}.pdf"
+    disposition = r.headers.get("content-disposition", "")
+    assert disposition.startswith("attachment;")
+    assert "Reporte de Seguimiento - Proyecto_SP-0001 - " in disposition
+    assert ".pdf" in disposition
 
 
 @pytest.mark.asyncio
@@ -154,6 +156,40 @@ async def test_us039_redownload_uses_snapshot(client, db_session):
     )
     assert dl.status_code == 200
     assert dl.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_enh014_seguimiento_preview_inline_disposition(client, db_session):
+    """ENH-014: `?inline=true` devuelve Content-Disposition inline para preview."""
+    t, auth = await _admin(client, db_session, slug="seg-preview")
+    p = await _seed_project(db_session, t, folio="SP-0010")
+
+    gen = await client.post(
+        f"/api/v1/projects/{p.id}/reports/seguimiento", headers=auth["_authz"],
+    )
+    assert gen.status_code == 200
+
+    from sqlalchemy import select
+
+    report = (
+        await db_session.execute(
+            select(Report).where(
+                Report.tenant_id == str(t.id),
+                Report.project_id == str(p.id),
+                Report.generator == "seguimiento",
+            )
+        )
+    ).scalar_one()
+
+    dl = await client.get(
+        f"/api/v1/reports/{report.id}/seguimiento/download?inline=true",
+        headers=auth["_authz"],
+    )
+    assert dl.status_code == 200
+    assert dl.content.startswith(b"%PDF")
+    disposition = dl.headers.get("content-disposition", "")
+    assert disposition.startswith("inline;")
+    assert "Reporte de Seguimiento - Proyecto_SP-0010 - " in disposition
 
 
 @pytest.mark.asyncio

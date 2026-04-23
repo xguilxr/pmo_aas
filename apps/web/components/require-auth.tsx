@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 
 type Props = {
   children: ReactNode;
@@ -14,6 +15,7 @@ type Props = {
 export function RequireAuth({ children, allowMustChangePassword = false }: Props) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  useInactivityLogout();
 
   useEffect(() => {
     const token = getAccessToken();

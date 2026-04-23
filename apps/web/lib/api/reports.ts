@@ -6,6 +6,8 @@ export type ReportStatus = "draft" | "sent";
 
 export type ReportSections = Record<string, string>;
 
+export type ReportGenerator = "manual" | "ai" | "avance" | "seguimiento";
+
 export type Report = {
   id: string;
   project_id: string;
@@ -15,6 +17,8 @@ export type Report = {
   recipients: string[];
   sections: ReportSections;
   generated_by_ai: boolean;
+  generator?: ReportGenerator;
+  cut_off_date?: string | null;
   created_at: string;
   sent_at: string | null;
 };
@@ -96,14 +100,14 @@ function apiBase(): string {
 }
 
 /**
- * Descarga un PDF desde un endpoint del backend. Lanza ApiError para
- * respuestas no 2xx y dispara la descarga en el browser en caso de éxito.
+ * Solicita un PDF al backend. Retorna un Blob con el PDF y el filename
+ * extraído del Content-Disposition. Lanza ApiError para respuestas no 2xx.
  */
-async function downloadPdfFromEndpoint(
+async function fetchPdfFromEndpoint(
   path: string,
   body: unknown | undefined,
   method: "GET" | "POST",
-): Promise<void> {
+): Promise<{ blob: Blob; filename: string }> {
   const token = getAccessToken();
   const headers: Record<string, string> = { Accept: "application/pdf" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -130,14 +134,49 @@ async function downloadPdfFromEndpoint(
 
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
-  const match = /filename="?([^"]+)"?/.exec(disposition);
-  const filename = match?.[1] ?? "reporte.pdf";
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  const plainMatch = /filename="?([^";]+)"?/i.exec(disposition);
+  const filename = utf8Match
+    ? decodeURIComponent(utf8Match[1])
+    : (plainMatch?.[1] ?? "reporte.pdf");
+  return { blob, filename };
+}
+
+/**
+ * Descarga un PDF desde un endpoint del backend. Lanza ApiError para
+ * respuestas no 2xx y dispara la descarga en el browser en caso de éxito.
+ */
+async function downloadPdfFromEndpoint(
+  path: string,
+  body: unknown | undefined,
+  method: "GET" | "POST",
+): Promise<void> {
+  const { blob, filename } = await fetchPdfFromEndpoint(path, body, method);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * ENH-014: abre el PDF inline en una pestaña nueva para preview sin
+ * forzar descarga. Retorna sin hacer nada si la pestaña es bloqueada.
+ */
+async function previewPdfFromEndpoint(path: string): Promise<void> {
+  const { blob } = await fetchPdfFromEndpoint(path, undefined, "GET");
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) {
+    URL.revokeObjectURL(url);
+    throw new ApiError(
+      0,
+      "POPUP_BLOCKED",
+      "El navegador bloqueó la ventana. Permite pop-ups para ver el preview.",
+    );
+  }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /** US-038: genera Reporte de Avance y descarga el PDF resultante. */
@@ -178,5 +217,19 @@ export function downloadSeguimientoReport(reportId: string): Promise<void> {
     `/api/v1/reports/${reportId}/seguimiento/download`,
     undefined,
     "GET",
+  );
+}
+
+/** ENH-014: preview (inline) de un Reporte de Avance generado. */
+export function previewAvanceReport(reportId: string): Promise<void> {
+  return previewPdfFromEndpoint(
+    `/api/v1/reports/${reportId}/avance/download?inline=true`,
+  );
+}
+
+/** ENH-014: preview (inline) de un Reporte de Seguimiento generado. */
+export function previewSeguimientoReport(reportId: string): Promise<void> {
+  return previewPdfFromEndpoint(
+    `/api/v1/reports/${reportId}/seguimiento/download?inline=true`,
   );
 }
