@@ -4,9 +4,12 @@ Hasta US-054 el sistema tenía una cascada global `AI_MODE` en env.
 Desde US-057 cada tenant elige entre tres modos (`tenants.settings.ai.mode`):
 
  - `disabled`: ningún request IA (el endpoint devuelve 409).
- - `platform`: Groq (llama-3.1-70b-versatile por default) con la key
-   de la plataforma compartida, aislamiento cross-tenant por
-   `metadata.tenant_id` que Groq acepta. Scope limitado a minutas.
+ - `platform`: Groq (llama-3.3-70b-versatile por default) con la key
+   de la plataforma compartida. La trazabilidad cross-tenant vive
+   en `ai_jobs` de nuestra BD + logs estructurados del worker; NO se
+   envía al body de Groq porque Chat Completions OpenAI-compatible
+   rechaza claves desconocidas (`metadata`) con 400 (ver BUG-030).
+   Scope limitado a minutas.
  - `byo`: el tenant trae su propio proveedor (OpenAI / Claude /
    Perplexity / Gemini / Ollama tailnet) con credenciales cifradas
    en `tenants.settings.ai.byo`.
@@ -194,9 +197,14 @@ class GroqProvider:
 
     API OpenAI-compatible bajo `https://api.groq.com/openai/v1`. La key
     y el modelo se resuelven desde `platform_ai_settings` (ver
-    `platform_config.resolve_groq_config`). Cada call lleva
-    `metadata.tenant_id` + `metadata.job_id` para trazabilidad cross-
-    tenant en el dashboard de uso del superadmin.
+    `platform_config.resolve_groq_config`).
+
+    Trazabilidad cross-tenant: el dashboard de uso del superadmin la
+    deriva de `ai_jobs` (tenant_id, job_id ya persistidos en nuestra
+    BD) + logs estructurados del worker. **No** se inyecta al body del
+    request — Groq usa la API de Chat Completions OpenAI-compatible
+    que no acepta el campo `metadata` y responde 400 si viene (ver
+    BUG-030, 2026-04-23).
     """
 
     name = "groq"
@@ -220,14 +228,6 @@ class GroqProvider:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         body: dict = {"model": model, "messages": messages, "stream": False}
-        # Trazabilidad cross-tenant para el dashboard + soporte Groq.
-        metadata: dict = {}
-        if ov.get("tenant_id"):
-            metadata["tenant_id"] = ov["tenant_id"]
-        if ov.get("job_id"):
-            metadata["job_id"] = ov["job_id"]
-        if metadata:
-            body["metadata"] = metadata
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
