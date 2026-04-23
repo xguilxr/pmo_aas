@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-23 — ENH-017 (RAID: filtros en línea horizontal) — próxima
+2026-04-23 — ENH-016 (Solicitudes: permitir reabrir si proyecto no existe) — próxima
 
-US-056 y ENH-015 completadas. Siguiente: ENH-017 en Bloque 2.
+US-056, ENH-015 y ENH-017 completadas. Siguiente: ENH-016 en Bloque 2.
 
 Hotfixes CI post-commit (2026-04-23):
 - 47d3603: DocumentCategory types en frontend (fix CI web-build type error, afecta BUG-024/BUG-023)
@@ -42,7 +42,6 @@ Hotfixes CI post-commit (2026-04-23):
 | 76 | BUG-025 | EP007 | Rol "Reportes" sin módulo de permisos | Bloque 1 |
 | 87 | BUG-026 | EP001 | Auth: timeout de inactividad a 15 minutos | Bloque 1 |
 | 77 | ENH-014 | EP014 | Reportes: renombrar archivo con datetime + preview PDF | Bloque 2 |
-| 82 | ENH-017 | EP006 | RAID: filtros en línea horizontal | Bloque 2 |
 | 81 | ENH-016 | EP003 | Solicitudes: permitir reabrir si proyecto no existe | Bloque 2 |
 | 85 | ENH-019 | EP006 | RAID: gestión avanzada consolidada en principal | Bloque 3 |
 | 84 | ENH-018 | EP006 | RAID: agregar toggle Kanban | Bloque 3 |
@@ -84,7 +83,7 @@ Hotfixes CI post-commit (2026-04-23):
 - [x] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77 ✅ 02cfaa6
 - [x] US-056 — Calendarizar envío automático de reportes vía Resend — #78 ✅ 51947ef
 - [x] ENH-015 — Dashboard: expandir barra de navegación — #80 ✅ 55956f9
-- [ ] ENH-017 — RAID: filtros en línea horizontal — #82
+- [x] ENH-017 — RAID: filtros en línea horizontal — #82 ✅ 6832199
 - [ ] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81
 
 ### Bloque 3 — Sprint 2 RAID + Áreas (5 items)
