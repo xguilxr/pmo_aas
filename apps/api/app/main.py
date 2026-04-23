@@ -40,6 +40,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # ENH-024: sin esto el browser oculta Content-Disposition al JS
+    # cross-origin, y las descargas de PDF caen al fallback genérico
+    # "reporte.pdf" en vez del nombre real construido por el backend.
+    expose_headers=["Content-Disposition"],
 )
 
 
