@@ -49,3 +49,27 @@ export async function changePassword(current_password: string, new_password: str
     body: { current_password, new_password },
   });
 }
+
+/**
+ * US-063 — "Olvidé mi contraseña". Siempre resuelve sin error cuando el
+ * backend devuelve 204 (no revela si el email existe).
+ */
+export async function forgotPassword(email: string): Promise<void> {
+  await apiFetch("/api/v1/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+    auth: false,
+  });
+}
+
+/** US-063 — fija la nueva password a partir del token recibido por email. */
+export async function resetPassword(
+  token: string,
+  new_password: string,
+): Promise<void> {
+  await apiFetch("/api/v1/auth/reset-password", {
+    method: "POST",
+    body: { token, new_password },
+    auth: false,
+  });
+}

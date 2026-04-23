@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn } from "lucide-react";
@@ -155,6 +156,15 @@ function LoginForm() {
             >
               {submitting ? "Ingresando…" : "Iniciar sesión"}
             </Button>
+
+            <div className="text-center text-xs">
+              <Link
+                href="/forgot-password"
+                className="text-[var(--color-tertiary)] hover:text-[var(--color-primary)] hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </form>
         </div>
 
