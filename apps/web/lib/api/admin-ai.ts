@@ -46,12 +46,11 @@ export function testAiConnection(provider: "ollama" = "ollama"): Promise<TestCon
 
 export type TenantAIMode = "disabled" | "platform" | "byo";
 
-export type BYOProvider =
-  | "openai"
-  | "claude"
-  | "perplexity"
-  | "gemini"
-  | "ollama";
+/** Proveedores expuestos en el catálogo público de /admin/ai. Ollama
+ *  quedó fuera (follow-up US-063): tenants legacy US-048 siguen
+ *  funcionando en el worker pero la UI ya no ofrece su alta.
+ */
+export type BYOProvider = "openai" | "claude" | "perplexity" | "gemini";
 
 export type BYOConfigRead = {
   provider: BYOProvider;
@@ -71,9 +70,21 @@ export type BYOConfigIn = {
   base_url?: string | null;
 };
 
+export type BYOProviderInfo = {
+  key: BYOProvider;
+  label: string;
+  description: string;
+  api_keys_url: string;
+  docs_url: string;
+  suggested_models: string[];
+  requires_base_url: boolean;
+};
+
 export type TenantAIProviderRead = {
   mode: TenantAIMode;
   byo: BYOConfigRead | null;
+  byo_enabled: boolean;
+  byo_catalog: BYOProviderInfo[];
 };
 
 export type TenantAIProviderPatch = {
@@ -108,13 +119,12 @@ export const BYO_PROVIDER_LABEL: Record<BYOProvider, string> = {
   claude: "Anthropic (Claude)",
   perplexity: "Perplexity",
   gemini: "Google Gemini",
-  ollama: "Ollama (tailnet privado)",
 };
 
+// Fallback de modelos si el catálogo del backend no se pudo cargar.
 export const BYO_PROVIDER_MODELS: Record<BYOProvider, string[]> = {
   openai: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
-  claude: ["claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"],
+  claude: ["claude-3-5-haiku-20241022", "claude-sonnet-4-6"],
   perplexity: ["sonar", "sonar-pro"],
   gemini: ["gemini-1.5-flash", "gemini-1.5-pro"],
-  ollama: ["qwen2.5:7b-instruct-q4_K_M", "llama3.1:8b"],
 };
