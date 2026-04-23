@@ -7,11 +7,14 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-23 — Bloques 2 y 3 COMPLETOS — siguiente Bloque 4 (US-057 IA avanzada)
+2026-04-23 — Bloques 2, 3 y 4 COMPLETOS — Sprint 2 v1.1 cerrado
 
-Bloque 2: US-056, ENH-015, ENH-017, ENH-016 (cerrado).
-Bloque 3: ENH-018, ENH-019, ENH-020, US-062, US-058 (cerrado; US-058
-parcial — historial audit_log deferrado).
+Bloque 2: US-056, ENH-015, ENH-017, ENH-016.
+Bloque 3: ENH-018, ENH-019, ENH-020, US-062, US-058.
+Bloque 4: US-057 — IA multi-modo por tenant (disabled/platform/byo)
+  con Groq como IA base de la plataforma. Ver runbook en
+  docs/ops/groq-setup-runbook.md. Pendiente: owner genera
+  GROQ_API_KEY + setea FERNET_KEY en Railway antes del deploy.
 
 Hotfixes CI post-commit (2026-04-23):
 - 47d3603: DocumentCategory types en frontend (fix CI web-build type error, afecta BUG-024/BUG-023)
@@ -46,7 +49,6 @@ Hotfixes CI post-commit (2026-04-23):
 | 77 | ENH-014 | EP014 | Reportes: renombrar archivo con datetime + preview PDF | Bloque 2 |
 | 86 | ENH-020 | EP002 | Áreas: permitir múltiples recursos/contactos | Bloque 3 |
 | 91 | US-062 | EP002 | Áreas/Recursos: Area Leader + recursos asignados (Sprint 2, no v1.2) | Bloque 3 |
-| 79 | US-057 | EP008 | IA: permitir tenants propia instancia + docs configuración + rollback | Bloque 4 |
 | 88 | US-059 | EP002 | v1.2 Recursos: usuarios sin roles jerárquicos | v1.2 |
 | 89 | US-060 | EP002 | v1.2 Roles: tipos usuario (Viewer/User/Admin) | v1.2 |
 | 90 | US-061 | EP002 | v1.2 Aprobaciones: jerarquía directa + permisos | v1.2 |
@@ -91,8 +93,8 @@ Hotfixes CI post-commit (2026-04-23):
 - [x] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86 ✅ 009c0f2
 - [x] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91 ✅ 009c0f2
 
-### Bloque 4 — Sprint 2 IA avanzada (1 item)
-- [ ] US-057 — IA: permitir tenants propia instancia + docs config + rollback — #79
+### Bloque 4 — Sprint 2 IA multi-modo (1 item) ✅ COMPLETO
+- [x] US-057 — IA multi-modo por tenant: disabled / platform (Groq) / byo (owner scope ajustado) — #79 ✅ (pendiente commit)
 
 ### Bloque v1.2 (Post-MVP — no implementar en Sprint 2)
 - [ ] US-059 — v1.2 Recursos: usuarios sin roles jerárquicos — #88
