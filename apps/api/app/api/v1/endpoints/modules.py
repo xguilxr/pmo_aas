@@ -598,8 +598,17 @@ async def download_document(
     cu: CurrentUser = Depends(require_permission("documents", "read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Download a document file."""
-    from app.services.document_storage import get_document_path
+    """Download a document file.
+
+    US-066: usa `StreamingResponse` con el iterator devuelto por
+    `get_document_stream()`. Funciona igual con backend local
+    (filesystem) y con backend S3 (boto3 stream). El cliente nunca
+    sabe dónde está realmente almacenado el archivo.
+    """
+    from fastapi.responses import StreamingResponse
+    from urllib.parse import quote
+
+    from app.services.document_storage import get_document_stream
 
     tenant_id = _tenant(cu)
     d = (
@@ -614,11 +623,24 @@ async def download_document(
     if d is None:
         raise not_found("Documento")
 
-    file_path = get_document_path(str(tenant_id), str(d.project_id), str(d.id))
-    if file_path is None:
+    result = get_document_stream(str(tenant_id), str(d.project_id), str(d.id))
+    if result is None:
         raise not_found("Archivo del documento")
+    iterator, ext = result
 
-    return FileResponse(file_path, media_type=d.mime_type, filename=f"{d.title}")
+    # Filename con extensión correcta + escape RFC 5987 para acentos.
+    safe_title = quote(d.title or f"document-{d.id}")
+    filename = f"{d.title or d.id}.{ext}"
+    return StreamingResponse(
+        iterator,
+        media_type=d.mime_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{filename}"; '
+                f"filename*=UTF-8''{safe_title}.{ext}"
+            ),
+        },
+    )
 
 
 # ========== LESSONS ==========

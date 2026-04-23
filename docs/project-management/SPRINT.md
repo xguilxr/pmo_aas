@@ -51,11 +51,12 @@ issue. Luego Claude implementa el refactor de código.
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 1 | **US-066** | EP007 | **Uploads: object storage S3-compatible (Cloudflare R2) + runbook** — #113 |
+| 1 | **US-066** | EP007 | **Uploads: object storage S3-compatible (Cloudflare R2) + runbook + código** — #113 |
 
-> Bloquea el resto del testing de features por-proyecto hasta que
-> Railway persista los archivos entre redeploys. Runbook entregado,
-> owner ejecuta infra + agrega `status:ready` al issue.
+> Runbook entregado en commit ca5dd0c. Código (boto3 + selector
+> backend + StreamingResponse + tests con moto) entregado en
+> commit (pending SHA). Owner termina la config R2 + redeploy →
+> verifica end-to-end → `status:fix-committed`.
 
 ### Bloque 1 (continuación) — Reworks del review (6 items restantes)
 

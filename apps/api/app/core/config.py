@@ -60,6 +60,17 @@ class Settings(BaseSettings):
 
     STORAGE_PATH: str = "/tmp/pmo-uploads"
 
+    # US-066: backend de storage para documentos uploaded por tenants y
+    # PDFs generados por el worker. `local` usa filesystem (solo dev /
+    # branding); `s3` usa object storage S3-compatible (Cloudflare R2
+    # en prod). Ver docs/runbooks/infra/uploads-storage.md.
+    STORAGE_BACKEND: str = "local"  # "local" | "s3"
+    S3_BUCKET: str = ""
+    S3_ENDPOINT_URL: str = ""  # ej. https://<account>.r2.cloudflarestorage.com
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
+    S3_REGION: str = "auto"  # "auto" para R2; región concreta para B2/AWS
+
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
     ACCOUNT_LOCK_MINUTES: int = 15
 
