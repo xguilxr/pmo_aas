@@ -44,9 +44,10 @@ def _load(raw) -> dict:
 
 def upgrade() -> None:
     bind = op.get_bind()
-    rows = bind.execute(
-        sa.text("SELECT id, settings FROM tenants WHERE deleted_at IS NULL")
-    ).fetchall()
+    # HOTFIX 2026-04-23: mismo caso que 0021 — `tenants.deleted_at` no
+    # existe. Sin filtro: si un tenant inactivo tenía config ollama, igual
+    # se migra al shape byo (idempotente, no rompe nada).
+    rows = bind.execute(sa.text("SELECT id, settings FROM tenants")).fetchall()
     for tenant_id, settings_raw in rows:
         cfg = _load(settings_raw)
         ai = cfg.get("ai") if isinstance(cfg.get("ai"), dict) else {}
