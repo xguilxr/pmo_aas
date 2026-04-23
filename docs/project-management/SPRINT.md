@@ -83,7 +83,7 @@ Hotfixes CI post-commit (2026-04-23):
 
 ### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items)
 - [x] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77 ✅ 02cfaa6
-- [x] US-056 — Calendarizar envío automático de reportes vía Resend — #78 ✅ (pendiente commit)
+- [x] US-056 — Calendarizar envío automático de reportes vía Resend — #78 ✅ 51947ef
 - [ ] ENH-015 — Dashboard: expandir barra de navegación — #80
 - [ ] ENH-017 — RAID: filtros en línea horizontal — #82
 - [ ] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81
