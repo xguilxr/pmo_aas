@@ -44,6 +44,8 @@ class Risk(Base, _ModuleBase, TimestampMixin):
     identified_at: Mapped[date | None] = mapped_column(Date)
     due_date: Mapped[date | None] = mapped_column(Date)
     closure_note: Mapped[str | None] = mapped_column(String(5000))
+    # US-058: comentarios tipo Jira (lista de {text, author_id, created_at}).
+    comments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
 
 class Issue(Base, _ModuleBase, TimestampMixin):

@@ -9,6 +9,7 @@ import {
   ExternalLink,
   FileText,
   Info,
+  RotateCcw,
   XCircle,
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ import { getOrganization, type Organization } from "@/lib/api/organizations";
 import {
   createProjectFromRequest,
   getRequest,
+  reopenRequest,
   resubmitRequest,
   reviewRequest,
   REQUEST_STATUS_LABEL,
@@ -112,6 +114,12 @@ export default function RequestDetailPage() {
     return request.status === "approved" && !request.project_id;
   }, [request]);
 
+  // ENH-016: reabrir solo si está aprobada y aún no hay proyecto.
+  const canReopen = useMemo(() => {
+    if (!request) return false;
+    return request.status === "approved" && !request.project_id;
+  }, [request]);
+
   async function submitReview() {
     if (!reviewModal || !request) return;
     const needsComment = reviewModal === "reject" || reviewModal === "needs_info";
@@ -160,6 +168,32 @@ export default function RequestDetailPage() {
       setNotice({
         kind: "danger",
         message: err instanceof ApiError ? err.message : "No se pudo re-someter la solicitud.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleReopen() {
+    if (!request) return;
+    if (
+      !window.confirm(
+        "¿Reabrir esta solicitud? Volverá a 'En revisión' y perderá el comentario del revisor.",
+      )
+    ) {
+      return;
+    }
+    setSubmitting(true);
+    setNotice(null);
+    try {
+      await reopenRequest(request.id);
+      await reload();
+      setNotice({ kind: "success", message: "Solicitud reabierta." });
+    } catch (err) {
+      setNotice({
+        kind: "danger",
+        message:
+          err instanceof ApiError ? err.message : "No se pudo reabrir la solicitud.",
       });
     } finally {
       setSubmitting(false);
@@ -279,6 +313,17 @@ export default function RequestDetailPage() {
               <Button onClick={openCreateProject}>
                 <ArrowRight className="h-4 w-4" aria-hidden />
                 Crear proyecto
+              </Button>
+            ) : null}
+            {canReopen ? (
+              <Button
+                variant="secondary"
+                onClick={handleReopen}
+                loading={submitting}
+                title="Regresa la solicitud a 'En revisión' (sólo si aún no hay proyecto creado)"
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden />
+                Reabrir
               </Button>
             ) : null}
             {request.project_id ? (

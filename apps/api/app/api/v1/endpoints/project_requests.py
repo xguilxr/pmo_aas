@@ -292,6 +292,51 @@ async def resubmit_request(
     return ProjectRequestRead.model_validate(pr)
 
 
+@router.post("/{request_id}/reopen", response_model=ProjectRequestRead)
+async def reopen_request(
+    request_id: UUID,
+    cu: CurrentUser = Depends(require_permission("admin.requests", "approve")),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-016: reabrir una solicitud aprobada sólo si todavía no se
+    materializó un proyecto. Devuelve la solicitud a `in_review`."""
+    tenant_id = _tenant(cu)
+    pr = (
+        await db.execute(
+            select(ProjectRequest).where(
+                ProjectRequest.id == str(request_id),
+                ProjectRequest.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if pr is None:
+        raise not_found("Solicitud")
+    if pr.status != "approved":
+        raise conflict(
+            "Solo se puede reabrir una solicitud aprobada",
+            code="STATE_TRANSITION",
+        )
+    if pr.project_id:
+        raise business_rule(
+            "No se puede reabrir: ya existe un proyecto creado desde esta solicitud"
+        )
+    pr.status = "in_review"
+    pr.reviewed_by = None
+    pr.reviewed_at = None
+    pr.review_comment = None
+    await write_audit(
+        db,
+        action="project_request.reopen",
+        module="project_requests",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="project_request",
+        entity_id=str(pr.id),
+    )
+    await db.commit()
+    return ProjectRequestRead.model_validate(pr)
+
+
 @router.post("/{request_id}/create-project")
 async def create_project_from_request(
     request_id: UUID,

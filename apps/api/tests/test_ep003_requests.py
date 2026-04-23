@@ -519,3 +519,78 @@ async def test_tcnew022_charter_appears_as_document(client, db_session):
     assert doc.file_url == f"/api/v1/projects/{pid}/charter/pdf"
     assert doc.mime_type == "text/html"
     assert doc.is_current is True
+
+
+# ============================================================================
+# ENH-016 — Reabrir solicitud aprobada si proyecto no existe
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_enh016_reopen_approved_without_project(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    r = await client.post(
+        "/api/v1/project-requests",
+        json=_request_body(org_id),
+        headers=auth["_authz"],
+    )
+    req_id = r.json()["id"]
+    ap = await client.post(
+        f"/api/v1/project-requests/{req_id}/review",
+        json={"decision": "approve"},
+        headers=auth["_authz"],
+    )
+    assert ap.json()["status"] == "approved"
+
+    reopened = await client.post(
+        f"/api/v1/project-requests/{req_id}/reopen", headers=auth["_authz"]
+    )
+    assert reopened.status_code == 200, reopened.text
+    body = reopened.json()
+    assert body["status"] == "in_review"
+    assert body["reviewed_at"] is None
+    assert body["review_comment"] is None
+
+
+@pytest.mark.asyncio
+async def test_enh016_cannot_reopen_if_project_exists(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    r = await client.post(
+        "/api/v1/project-requests",
+        json=_request_body(org_id),
+        headers=auth["_authz"],
+    )
+    req_id = r.json()["id"]
+    await client.post(
+        f"/api/v1/project-requests/{req_id}/review",
+        json={"decision": "approve"},
+        headers=auth["_authz"],
+    )
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    await client.post(
+        f"/api/v1/project-requests/{req_id}/create-project",
+        json={"pm_id": me.json()["id"]},
+        headers=auth["_authz"],
+    )
+    reopened = await client.post(
+        f"/api/v1/project-requests/{req_id}/reopen", headers=auth["_authz"]
+    )
+    assert reopened.status_code == 422
+    assert "proyecto" in reopened.json()["detail"]["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_enh016_cannot_reopen_if_not_approved(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    r = await client.post(
+        "/api/v1/project-requests",
+        json=_request_body(org_id),
+        headers=auth["_authz"],
+    )
+    req_id = r.json()["id"]
+    # status=in_review (no aprobada)
+    reopened = await client.post(
+        f"/api/v1/project-requests/{req_id}/reopen", headers=auth["_authz"]
+    )
+    assert reopened.status_code == 409
+    assert reopened.json()["detail"]["code"] == "STATE_TRANSITION"

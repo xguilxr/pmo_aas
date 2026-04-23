@@ -358,7 +358,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-app)]">
+    <div className="flex h-screen overflow-hidden bg-[var(--color-app)]">
       {open ? (
         <button
           type="button"
@@ -370,7 +370,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-[var(--chrome-border)] transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex h-full w-60 flex-col border-r border-[var(--chrome-border)] transition-transform lg:static lg:translate-x-0",
           "bg-[var(--chrome-bg)]",
           open ? "translate-x-0" : "-translate-x-full",
         )}
@@ -431,7 +431,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between gap-2 border-b border-[var(--chrome-border)] bg-[var(--chrome-bg)] px-4 lg:px-6">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--chrome-border)] bg-[var(--chrome-bg)] px-4 lg:px-6">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -452,7 +452,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <UserMenu user={user} variant="chrome" />
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
+        <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

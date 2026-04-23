@@ -42,7 +42,32 @@ async def get_platform_ai_defaults(db: AsyncSession) -> dict[str, Any]:
         out["ollama_model"] = row.ollama_model
     if row.ai_timeout_sec is not None:
         out["ai_timeout_sec"] = int(row.ai_timeout_sec)
+    # US-057: Groq platform config (la key se guarda cifrada).
+    if row.groq_api_key_encrypted:
+        out["groq_api_key_encrypted"] = row.groq_api_key_encrypted
+    if row.groq_model:
+        out["groq_model"] = row.groq_model
     return out
+
+
+async def resolve_groq_config(db: AsyncSession) -> dict[str, Any] | None:
+    """US-057: resuelve la config Groq para el modo `platform`.
+
+    Orden: `platform_ai_settings.groq_api_key_encrypted` (descifrada) →
+    env `GROQ_API_KEY`. Si no hay key en ningún lado, devuelve None y
+    el caller debe fallar con un error explícito al superadmin.
+    """
+    from app.services.ai_secrets import decrypt_secret
+
+    platform = await get_platform_ai_defaults(db)
+    api_key = (
+        decrypt_secret(platform.get("groq_api_key_encrypted") or "")
+        or settings.GROQ_API_KEY
+    )
+    model = platform.get("groq_model") or settings.GROQ_MODEL
+    if not api_key:
+        return None
+    return {"api_key": api_key, "model": model}
 
 
 async def resolve_ollama_config(

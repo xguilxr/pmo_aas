@@ -22,15 +22,31 @@ from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
 from app.models.tenant import Tenant
-from app.services.ai.platform_config import resolve_ai_mode, resolve_ollama_config
+from app.services.ai.platform_config import (
+    resolve_ai_mode,
+    resolve_groq_config,
+    resolve_ollama_config,
+)
 from app.services.ai.prompts import MINUTE_SYSTEM, REPORT_SYSTEM
-from app.services.ai.provider import chunk_text, generate_with_cascade
+from app.services.ai.provider import (
+    AIResult,
+    chunk_text,
+    generate_for_tenant,
+    generate_with_cascade,
+)
+from app.services.ai.tenant_ai import TenantAIConfig, load_tenant_ai
 from app.services.audit import write_audit
 from app.services.folio import next_folio
 from app.workers.celery_app import celery_app
 from app.workers.db import db_session, run_async
 
 logger = logging.getLogger("pmoaas.ai.tasks")
+
+# US-057: reintentos internos del worker al llamar al provider. El owner
+# pidió 3 intentos para Groq sin fallback a otros proveedores — mismo
+# umbral aplica al BYO para uniformidad.
+_AI_CALL_MAX_RETRIES = 3
+_AI_CALL_BACKOFF_SEC: tuple[float, ...] = (1.0, 3.0, 8.0)
 
 _EMPTY_MINUTE = {
     "summary": "",
@@ -73,6 +89,119 @@ async def _tenant_ollama_cfg(db, tenant_id: str) -> dict | None:
     if t is not None:
         tenant_cfg = dict(((t.settings or {}).get("ai") or {}).get("ollama") or {})
     return await resolve_ollama_config(db, tenant_cfg)
+
+
+async def _alert_superadmin_platform_failure(
+    tenant_id: str, job_id: str, error: str
+) -> None:
+    """US-057: notificar al superadmin si Groq (modo plataforma) cae tras
+    los 3 reintentos. Usa el sistema de notificaciones + email de EP011.
+    Falla silenciosamente si no hay superadmins configurados — no queremos
+    que un bug en notifications tumbe al worker."""
+    try:
+        from app.models.user import User
+        from app.services.notifications import PLATFORM_AI_ALERT, enqueue_notification
+
+        async with db_session() as db:
+            superadmins = (
+                await db.execute(
+                    select(User).where(
+                        User.is_superadmin.is_(True),
+                        User.is_active.is_(True),
+                    )
+                )
+            ).scalars().all()
+            for sa in superadmins:
+                # El notif carga el tenant que falló como contexto —
+                # el superadmin puede navegar a /superadmin/ai para ver
+                # el panel con todos los tenants.
+                await enqueue_notification(
+                    db,
+                    tenant_id=tenant_id,
+                    user_id=str(sa.id),
+                    type=PLATFORM_AI_ALERT,
+                    title="Groq (IA plataforma) falló tras 3 reintentos",
+                    body=(
+                        f"Tenant {tenant_id[:8]}…, job {job_id[:8]}: "
+                        f"{error[:400]}. Revisa GROQ_API_KEY y el rate "
+                        "limit en /superadmin/ai."
+                    ),
+                    entity_type="ai_job",
+                    entity_id=job_id,
+                    link="/superadmin/ai",
+                )
+            await db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "platform_ai_alert_failed tenant=%s job=%s: %s",
+            tenant_id, job_id, exc,
+        )
+
+
+async def _call_ai_for_tenant(
+    prompt: str,
+    *,
+    system: str | None,
+    tenant_cfg: TenantAIConfig,
+    platform_groq_config: dict | None,
+    tenant_ollama_config: dict | None,
+    tenant_id: str,
+    job_id: str,
+) -> AIResult:
+    """US-057: llama al provider del tenant con 3 reintentos. Sin
+    fallback entre modos (disabled → caller debió chequear antes;
+    platform falla → alerta superadmin + error; byo falla → error)."""
+    last_err: Exception | None = None
+    for attempt in range(_AI_CALL_MAX_RETRIES):
+        try:
+            return await generate_for_tenant(
+                prompt,
+                system=system,
+                tenant_ai_mode=tenant_cfg.mode,
+                platform_groq_config=platform_groq_config,
+                byo_config=tenant_cfg.byo,
+                tenant_ollama_config=tenant_ollama_config,
+                tenant_id=tenant_id,
+                job_id=job_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            sleep_sec = _AI_CALL_BACKOFF_SEC[
+                min(attempt, len(_AI_CALL_BACKOFF_SEC) - 1)
+            ]
+            logger.warning(
+                "ai_call_retry tenant=%s job=%s mode=%s attempt=%d/%d err=%s",
+                tenant_id, job_id, tenant_cfg.mode,
+                attempt + 1, _AI_CALL_MAX_RETRIES,
+                type(exc).__name__,
+            )
+            if attempt + 1 < _AI_CALL_MAX_RETRIES:
+                import asyncio
+
+                await asyncio.sleep(sleep_sec)
+    # Agotados los reintentos. Alerta al superadmin si es modo `platform`.
+    if tenant_cfg.mode == "platform":
+        await _alert_superadmin_platform_failure(
+            tenant_id, job_id, str(last_err)[:500]
+        )
+    raise RuntimeError(
+        f"ai_call_failed mode={tenant_cfg.mode} after {_AI_CALL_MAX_RETRIES}"
+        f" retries: {last_err}"
+    )
+
+
+def _provider_from_model(model_str: str, tenant_cfg: TenantAIConfig) -> str:
+    """Extrae el nombre de provider desde AIResult.model (formato `provider:model`).
+
+    Si no viene con prefijo (disabled stub), usa el modo del tenant para
+    rellenar. Útil para popular `ai_jobs.provider` en el dashboard."""
+    if model_str and ":" in model_str:
+        return model_str.split(":", 1)[0]
+    if tenant_cfg.mode == "platform":
+        return "groq"
+    if tenant_cfg.mode == "byo" and tenant_cfg.byo:
+        return str(tenant_cfg.byo.get("provider") or "byo")
+    return "disabled"
 
 
 async def _mark_running(db, job_id: str) -> AIJob | None:
@@ -118,14 +247,20 @@ async def _run_minute(
     started = datetime.now(UTC)
     try:
         async with db_session() as db:
+            tenant_cfg = await load_tenant_ai(db, tenant_id)
             ollama_cfg = await _tenant_ollama_cfg(db, tenant_id)
-            ai_mode = await resolve_ai_mode(db)
+            platform_groq = await resolve_groq_config(db)
+
+        # US-057: el endpoint ya gateó `disabled`, pero defensivo por si
+        # la task se re-encola con un tenant que fue deshabilitado mientras
+        # tanto.
+        if tenant_cfg.mode == "disabled":
+            raise RuntimeError("ai_disabled_for_tenant")
 
         logger.info(
-            "minute task start job=%s tenant=%s ai_mode=%s ollama_cfg=%s",
-            job_id, tenant_id, ai_mode,
-            {"base_url": ollama_cfg.get("base_url"), "model": ollama_cfg.get("model")}
-            if ollama_cfg else None,
+            "minute task start job=%s tenant=%s mode=%s byo_provider=%s",
+            job_id, tenant_id, tenant_cfg.mode,
+            (tenant_cfg.byo or {}).get("provider") if tenant_cfg.byo else None,
         )
         chunks = chunk_text(transcript)
         collected: list[dict] = []
@@ -133,9 +268,14 @@ async def _run_minute(
         total_in = 0
         total_out = 0
         for ch in chunks:
-            res = await generate_with_cascade(
-                ch, system=MINUTE_SYSTEM, tenant_ollama_config=ollama_cfg,
-                ai_mode_override=ai_mode,
+            res = await _call_ai_for_tenant(
+                ch,
+                system=MINUTE_SYSTEM,
+                tenant_cfg=tenant_cfg,
+                platform_groq_config=platform_groq,
+                tenant_ollama_config=ollama_cfg,
+                tenant_id=tenant_id,
+                job_id=job_id,
             )
             model_used = res.model
             total_in += res.tokens_in
@@ -179,6 +319,7 @@ async def _run_minute(
             job.status = "succeeded"
             job.output = merged
             job.model_used = model_used
+            job.provider = _provider_from_model(model_used, tenant_cfg)
             job.tokens_in = total_in
             job.tokens_out = total_out
             job.duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
@@ -189,7 +330,8 @@ async def _run_minute(
                 user_id=requested_by, tenant_id=tenant_id,
                 entity_type="ai_job", entity_id=str(job.id),
                 details={"model": model_used, "duration_ms": job.duration_ms,
-                         "minute_id": minute_id, "language": language},
+                         "minute_id": minute_id, "language": language,
+                         "provider": job.provider, "mode": tenant_cfg.mode},
             )
             await db.commit()
     except Exception as exc:  # noqa: BLE001
@@ -245,13 +387,26 @@ async def _run_report(
                 ],
             }
             project_folio = p.folio
+            tenant_cfg = await load_tenant_ai(db, tenant_id)
             ollama_cfg = await _tenant_ollama_cfg(db, tenant_id)
-            ai_mode = await resolve_ai_mode(db)
+            platform_groq = await resolve_groq_config(db)
+
+        # US-057: reports sólo habilitados en modo `byo`. El endpoint ya
+        # gateó disabled y platform; defensivo aquí por si re-encola.
+        if tenant_cfg.mode == "disabled":
+            raise RuntimeError("ai_disabled_for_tenant")
+        if tenant_cfg.mode == "platform":
+            raise RuntimeError("platform_mode_reports_out_of_scope")
 
         prompt = json.dumps(context, ensure_ascii=False)
-        res = await generate_with_cascade(
-            prompt, system=REPORT_SYSTEM, tenant_ollama_config=ollama_cfg,
-            ai_mode_override=ai_mode,
+        res = await _call_ai_for_tenant(
+            prompt,
+            system=REPORT_SYSTEM,
+            tenant_cfg=tenant_cfg,
+            platform_groq_config=platform_groq,
+            tenant_ollama_config=ollama_cfg,
+            tenant_id=tenant_id,
+            job_id=job_id,
         )
         sections = _parse_json_strict(res.text) or {
             "executive_summary": res.text[:1500],
@@ -277,6 +432,7 @@ async def _run_report(
             job.status = "succeeded"
             job.output = {"report_id": str(rep.id), "sections": sections}
             job.model_used = res.model
+            job.provider = _provider_from_model(res.model, tenant_cfg)
             job.tokens_in = res.tokens_in
             job.tokens_out = res.tokens_out
             job.duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
@@ -286,7 +442,8 @@ async def _run_report(
                 db, action="report.draft", module="ai",
                 user_id=requested_by, tenant_id=tenant_id,
                 entity_type="report", entity_id=str(rep.id),
-                details={"model": res.model, "duration_ms": job.duration_ms},
+                details={"model": res.model, "duration_ms": job.duration_ms,
+                         "provider": job.provider, "mode": tenant_cfg.mode},
             )
             await db.commit()
     except Exception as exc:  # noqa: BLE001

@@ -14,7 +14,22 @@ Automatizar dos tareas que consumen horas de los PM:
 1. **Redactar minutas** desde transcripciones de reuniones (Zoom/Teams/Meet).
 2. **Generar reportes de avance** periódicos con IA que luego el PM revisa y envía.
 
-**Cascada de proveedores (ver ADR-007):**
+**Modo de IA por tenant (US-057 · DEC-017):** desde Sprint 2 v1.1 el
+modelo deja de ser una cascada global y pasa a ser una selección
+por-tenant configurada en `/admin/ai`:
+
+1. `disabled` — endpoint `/ai/*` responde 409. Default del opt-in.
+2. `platform` — Groq `llama-3.1-70b-versatile` con la key de
+   plataforma cifrada en BD. **Sólo minutas** (los drafts de reportes
+   IA quedan reservados a modo `byo` hasta que el owner autorice).
+3. `byo` — el admin del tenant conecta OpenAI / Claude / Perplexity /
+   Gemini / Ollama tailnet con su propia API key (cifrada con Fernet).
+
+Ver runbook operativo en
+[`docs/ops/groq-setup-runbook.md`](../ops/groq-setup-runbook.md).
+
+**Cascada legacy (US-043 original, retro-compat con tenants sin
+migrar, ver ADR-007):**
 1. **Ollama local** — default, privacidad, $0/token.
 2. **Gemini 1.5 Flash** — 2.º fallback gratuito (1M tok/día free).
 3. **Claude Sonnet 4.6** — 3.º premium, solo si tenant lo activa.

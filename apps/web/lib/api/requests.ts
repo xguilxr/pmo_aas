@@ -135,6 +135,16 @@ export function resubmitRequest(id: string): Promise<ProjectRequest> {
   });
 }
 
+/**
+ * ENH-016: reabrir una solicitud aprobada (devuelve a `in_review`). Solo
+ * disponible si aún no se creó un proyecto desde la solicitud.
+ */
+export function reopenRequest(id: string): Promise<ProjectRequest> {
+  return apiFetch<ProjectRequest>(`/api/v1/project-requests/${id}/reopen`, {
+    method: "POST",
+  });
+}
+
 export function createProjectFromRequest(
   id: string,
   body: CreateProjectFromRequestBody,

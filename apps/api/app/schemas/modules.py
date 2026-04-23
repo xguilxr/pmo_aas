@@ -48,8 +48,13 @@ class RiskRead(BaseModel):
     due_date: date | None
     status: str
     closure_note: str | None
+    comments: list = []
 
     model_config = {"from_attributes": True}
+
+
+class RiskComment(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
 
 
 # ---------- Issues ----------

@@ -81,3 +81,27 @@ async def login(client, identifier: str, password: str) -> dict:
 
 def _password(ch: str = "a") -> str:
     return f"Str0ng-Pass-{ch}{uuid4().hex[:4]}!"
+
+
+async def enable_tenant_ai(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    mode: str = "platform",
+    byo: dict | None = None,
+) -> None:
+    """US-057: helper de tests para marcar el tenant en un modo IA dado.
+
+    Los providers están stubbed en conftest (`_stub_ai_providers`), así
+    que cualquier modo != "disabled" corre con la respuesta stub sin
+    depender de API keys reales.
+    """
+    tenant_settings = dict(tenant.settings or {})
+    ai = dict(tenant_settings.get("ai") or {})
+    ai["mode"] = mode
+    if byo is not None:
+        ai["byo"] = byo
+    tenant_settings["ai"] = ai
+    tenant.settings = tenant_settings
+    await db.flush()
+    await db.commit()

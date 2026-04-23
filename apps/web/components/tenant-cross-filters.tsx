@@ -22,6 +22,18 @@ type Props = {
   onChange: (next: TenantCrossFilterValue) => void;
   /** Controles adicionales al final (p. ej. estado/tipo específico). */
   extras?: React.ReactNode;
+  /**
+   * Controles adicionales al inicio (ENH-017). Útil cuando el control
+   * principal (tipo/kind) debe ir a la izquierda antes que Proyecto /
+   * Programa / Organización.
+   */
+  leading?: React.ReactNode;
+  /**
+   * Invierte el orden visual de los tres selects a Proyecto → Programa
+   * → Organización (ENH-017). No cambia la cascada lógica (org sigue
+   * filtrando programas y proyectos cuando se selecciona).
+   */
+  reverse?: boolean;
 };
 
 /**
@@ -29,7 +41,13 @@ type Props = {
  * (US-052). Los selects se encadenan: elegir org filtra programas;
  * programa + org filtran proyectos.
  */
-export function TenantCrossFilters({ value, onChange, extras }: Props) {
+export function TenantCrossFilters({
+  value,
+  onChange,
+  extras,
+  leading,
+  reverse = false,
+}: Props) {
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -59,58 +77,78 @@ export function TenantCrossFilters({ value, onChange, extras }: Props) {
       .catch(() => setProjects([]));
   }, [value.organization_id, value.program_id]);
 
+  const organizationSelect = (
+    <Select
+      key="organization"
+      aria-label="Organización"
+      className="h-9 min-w-[180px]"
+      value={value.organization_id ?? ""}
+      onChange={(e) =>
+        onChange({
+          organization_id: e.target.value || undefined,
+          program_id: undefined,
+          project_id: undefined,
+        })
+      }
+    >
+      <option value="">Todas las organizaciones</option>
+      {orgs.map((o) => (
+        <option key={o.id} value={o.id}>
+          {o.name}
+        </option>
+      ))}
+    </Select>
+  );
+  const programSelect = (
+    <Select
+      key="program"
+      aria-label="Programa"
+      className="h-9 min-w-[180px]"
+      value={value.program_id ?? ""}
+      onChange={(e) =>
+        onChange({
+          ...value,
+          program_id: e.target.value || undefined,
+          project_id: undefined,
+        })
+      }
+      disabled={!value.organization_id}
+    >
+      <option value="">Todos los programas</option>
+      {programs.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </Select>
+  );
+  const projectSelect = (
+    <Select
+      key="project"
+      aria-label="Proyecto"
+      className="h-9 min-w-[220px]"
+      value={value.project_id ?? ""}
+      onChange={(e) =>
+        onChange({ ...value, project_id: e.target.value || undefined })
+      }
+    >
+      <option value="">Todos los proyectos</option>
+      {projects.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.folio} — {p.name}
+        </option>
+      ))}
+    </Select>
+  );
+
+  const selects = reverse
+    ? [projectSelect, programSelect, organizationSelect]
+    : [organizationSelect, programSelect, projectSelect];
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Select
-        aria-label="Organización"
-        className="h-9 min-w-[180px]"
-        value={value.organization_id ?? ""}
-        onChange={(e) =>
-          onChange({
-            organization_id: e.target.value || undefined,
-            program_id: undefined,
-            project_id: undefined,
-          })
-        }
-      >
-        <option value="">Todas las organizaciones</option>
-        {orgs.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name}
-          </option>
-        ))}
-      </Select>
-      <Select
-        aria-label="Programa"
-        className="h-9 min-w-[180px]"
-        value={value.program_id ?? ""}
-        onChange={(e) =>
-          onChange({ ...value, program_id: e.target.value || undefined, project_id: undefined })
-        }
-        disabled={!value.organization_id}
-      >
-        <option value="">Todos los programas</option>
-        {programs.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </Select>
-      <Select
-        aria-label="Proyecto"
-        className="h-9 min-w-[220px]"
-        value={value.project_id ?? ""}
-        onChange={(e) =>
-          onChange({ ...value, project_id: e.target.value || undefined })
-        }
-      >
-        <option value="">Todos los proyectos</option>
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.folio} — {p.name}
-          </option>
-        ))}
-      </Select>
+      {leading}
+      {selects}
       {extras}
     </div>
   );

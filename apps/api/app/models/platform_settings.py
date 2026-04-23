@@ -26,3 +26,7 @@ class PlatformAISettings(Base, TimestampMixin):
     ollama_base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     ollama_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
     ai_timeout_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # US-057: Groq como IA base de la plataforma (modo "platform").
+    # La api_key se guarda cifrada con Fernet (FERNET_KEY env).
+    groq_api_key_encrypted: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    groq_model: Mapped[str | None] = mapped_column(String(100), nullable=True)

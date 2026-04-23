@@ -26,10 +26,23 @@ celery_app = Celery(
     "pmoaas",
     broker=_broker,
     backend=_backend or None,
-    include=["app.workers.tasks.ai", "app.workers.tasks.notifications"],
+    include=[
+        "app.workers.tasks.ai",
+        "app.workers.tasks.notifications",
+        "app.workers.tasks.scheduled_reports",
+    ],
 )
 celery_app.conf.task_serializer = "json"
 celery_app.conf.result_serializer = "json"
 celery_app.conf.accept_content = ["json"]
 celery_app.conf.timezone = "UTC"
 celery_app.conf.broker_connection_retry_on_startup = True
+
+# Beat schedule (US-056): dispatch de reportes programados cada 5 min.
+# El beat process se lanza con `celery -A app.workers.celery_app beat`.
+celery_app.conf.beat_schedule = {
+    "scheduled-reports-dispatch-due": {
+        "task": "scheduled_reports.dispatch_due",
+        "schedule": 300.0,
+    },
+}

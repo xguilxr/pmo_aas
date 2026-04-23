@@ -72,22 +72,35 @@ Ajusta tus preferencias desde <a href="{settings.APP_BASE_URL}/account">tu cuent
 
 async def send_email_via_resend(
     *,
-    to: str,
+    to: str | list[str],
     subject: str,
     html: str,
     reply_to: str | None = None,
+    attachments: list[dict[str, str]] | None = None,
 ) -> dict[str, Any] | None:
     """POST a Resend. Devuelve el body JSON (incluye `id` del mensaje)
-    o `None` si el canal está deshabilitado."""
+    o `None` si el canal está deshabilitado.
+
+    `attachments`: lista de objetos Resend `{filename, content}` donde
+    `content` es base64 string del archivo.
+    """
     api_key = settings.RESEND_API_KEY
     if not api_key:
         log.warning("RESEND_API_KEY no configurado — email omitido: %s", subject)
         return None
     from_addr = settings.RESEND_FROM or "PMO·aaS <no-reply@pmo-aas.com>"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    payload = {"from": from_addr, "to": [to], "subject": subject, "html": html}
+    recipients = [to] if isinstance(to, str) else list(to)
+    payload: dict[str, Any] = {
+        "from": from_addr,
+        "to": recipients,
+        "subject": subject,
+        "html": html,
+    }
     if reply_to:
         payload["reply_to"] = reply_to
+    if attachments:
+        payload["attachments"] = attachments
     async with httpx.AsyncClient(timeout=10.0) as client:
         r = await client.post(RESEND_API_URL, json=payload, headers=headers)
         if r.status_code >= 300:

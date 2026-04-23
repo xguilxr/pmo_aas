@@ -1,15 +1,14 @@
-"""Cifrado de secretos IA por-tenant (DEPRECATED US-047).
+"""Cifrado de secretos IA por-tenant (reactivado en US-057).
 
 Historia:
 - EP016 US-045 (2026-04-20): utilidades Fernet para cifrar el
-  `CF-Access-Client-Secret` del tenant antes de persistirlo en
-  `tenants.settings.ai.ollama.cf_access_client_secret_encrypted`.
-- US-047 (2026-04-21): DEPRECATED. El pivote a Tailscale (DEC-011)
-  elimina el header CF-Access. Este módulo se mantiene para que tenants
-  con secrets legacy archivados en `auth_legacy.*` puedan aún
-  descifrarlos si se requiere consulta. No se invoca desde flujos
-  nuevos. Remover junto con `AI_SECRETS_FERNET_KEY` cuando todos los
-  tenants productivos tengan `auth_legacy` purgado.
+  `CF-Access-Client-Secret` del tenant antes de persistirlo.
+- US-047 (2026-04-21): deprecado tras el pivote a Tailscale (DEC-011).
+- US-057 (2026-04-23): REACTIVADO para cifrar:
+  · `platform_ai_settings.groq_api_key_encrypted` (superadmin).
+  · `tenants.settings.ai.byo.api_key_encrypted` (tenant admin).
+  Los valores legacy archivados en `auth_legacy.*` siguen legibles con
+  el mismo `decrypt_secret()` por retro-compat.
 """
 from __future__ import annotations
 

@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-1.5-flash"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
+    # US-057: IA base de la plataforma (modo "platform"). El api_key se lee
+    # primero de `platform_ai_settings.groq_api_key_encrypted` (cifrada con
+    # Fernet); si está vacía, cae a este env para dev/test. El modelo por
+    # defecto (llama-3.1-70b-versatile) balancea calidad + free tier.
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-70b-versatile"
 
     STORAGE_PATH: str = "/tmp/pmo-uploads"
 
@@ -54,14 +60,14 @@ class Settings(BaseSettings):
     RESEND_FROM: str = ""  # ej. "PMO·aaS <no-reply@pmo-aas.com>"
     APP_BASE_URL: str = "https://app.pmo-aas.com"  # usado en CTA y unsubscribe links
 
-    # DEPRECATED US-047 (2026-04-21): Cifrado de secretos IA por-tenant.
-    # Se introdujo en US-045 para guardar el CF-Access-Client-Secret del
-    # tenant. El pivote a Tailscale (DEC-011) elimina la necesidad de
-    # secrets — el canal se asegura por tailnet privado. La key se mantiene
-    # únicamente para que `decrypt_secret()` pueda leer valores legacy
-    # archivados bajo `settings.ai.ollama.auth_legacy.*`. No se escribe más
-    # desde el flujo nuevo. Remover la key cuando todos los tenants
-    # productivos tengan `auth_legacy` purgado.
+    # US-057: Fernet para cifrar API keys BYO de tenants + Groq key de
+    # plataforma. La reactivamos después de la deprecación de US-047 (CF
+    # Access); US-048 solo cifraba el auth_legacy de Ollama. Ahora se usa
+    # activamente en:
+    # - platform_ai_settings.groq_api_key_encrypted (superadmin).
+    # - tenants.settings.ai.byo.api_key_encrypted (tenant admin).
+    # En producción DEBE setearse con `python -c "from cryptography.fernet
+    # import Fernet; print(Fernet.generate_key().decode())"`.
     AI_SECRETS_FERNET_KEY: str = "dev-ai-secrets-fernet-key-change-me-0000="
 
     @property

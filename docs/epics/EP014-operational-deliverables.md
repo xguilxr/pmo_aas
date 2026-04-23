@@ -214,6 +214,65 @@ Notas adicionales
 
 ---
 
+## # DONE — US-056 — Calendarización automática de reportes vía Resend
+
+**Como** PM / admin
+**Quiero** programar el envío automático de un Reporte de Avance o
+Seguimiento a una lista de emails con cadencia diaria/semanal/mensual
+**Para** no tener que generarlo y enviarlo a mano cada periodo.
+
+**Criterios de aceptación:**
+- [x] Tabla `scheduled_reports` con: tenant_id, project_id, report_type
+  (avance/seguimiento), cadence (daily/weekly/monthly), recipients
+  (JSON), enabled, last_run_at, next_run_at.
+- [x] CRUD endpoints: `GET|POST /api/v1/projects/{id}/scheduled-reports`
+  + `PATCH|DELETE /api/v1/scheduled-reports/{id}`.
+- [x] UI en `/admin/projects/{id}/reports`: sección "Envíos automáticos
+  programados" con add/edit/toggle/delete modal.
+- [x] Celery beat schedule cada 5 min (`scheduled_reports.dispatch_due`)
+  que busca filas `enabled=true AND next_run_at <= now()` y encola una
+  task `scheduled_reports.send` por cada una.
+- [x] Worker genera el PDF (Avance o Seguimiento) con el mismo
+  `operational_reports.build_*_context` + `pdf_renderer.render_pdf`,
+  persiste un row en `reports` (status=sent, generator=avance|seguimiento)
+  y manda email vía Resend con el PDF como attachment base64.
+- [x] Audit log `scheduled_report.create|update|delete|sent`.
+- [x] Retry policy: `send_scheduled_report` con `max_retries=3` y
+  `countdown=60s` (misma política que `notifications.send_email`).
+
+**Implementación:**
+- Migración **0018** (`scheduled_reports`) — ver `DB-CHANGES.md`.
+- `app/models/scheduled_report.py` — modelo ORM.
+- `app/services/scheduled_reports.py::compute_next_run(cadence)` —
+  calcula el próximo `next_run_at` (daily=+1d, weekly=+7d, monthly=+30d).
+- `app/api/v1/endpoints/scheduled_reports.py` — CRUD con permiso
+  `projects:update` (crear/editar/eliminar) y `projects:read` (listar).
+- `app/workers/tasks/scheduled_reports.py` — `dispatch_due_scheduled_reports`
+  (beat) + `send_scheduled_report` (envía PDF vía Resend + actualiza
+  `last_run_at`/`next_run_at` + audit log).
+- `app/services/email.py::send_email_via_resend` extendido con soporte
+  para múltiples destinatarios (`to: list[str]`) y `attachments`.
+- `app/workers/celery_app.py` — include + beat schedule cada 5 min.
+- Frontend: `apps/web/lib/api/scheduled-reports.ts` + sección
+  `ScheduledReportsSection` en `/admin/projects/[id]/reports/page.tsx`.
+
+**Tests (9/9 verdes):**
+- `test_compute_next_run_cadences` — unit de cálculo de cadencia.
+- `test_us056_create_scheduled_report` — POST crea con `next_run_at`.
+- `test_us056_update_toggles_next_run` — pausar/reactivar recomputa.
+- `test_us056_delete_scheduled_report` — DELETE + list vacío.
+- `test_us056_cross_tenant_404` — aislamiento multi-tenant.
+- `test_us056_non_admin_cannot_create` — sin `projects:update` → 403.
+- `test_us056_validates_recipients_not_empty` — body vacío → 422.
+- `test_us056_worker_send_persists_report_and_updates_next_run` — el
+  worker genera PDF, llama Resend con attachment y deja snapshot.
+- `test_us056_worker_dispatch_only_due_schedules` — solo vencidos y
+  habilitados se despachan.
+
+**Commit:** `feat(api,web): US-056 — scheduled reports via Resend`.
+
+---
+
 ## Endpoints nuevos
 
 ```
@@ -222,6 +281,10 @@ POST /api/v1/projects/{id}/reports/seguimiento                    [US-039]
 GET  /api/v1/reports/{id}/avance/download                         [US-038]
 GET  /api/v1/reports/{id}/seguimiento/download                    [US-039]
 GET  /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf   [US-040]
+GET  /api/v1/projects/{id}/scheduled-reports                      [US-056]
+POST /api/v1/projects/{id}/scheduled-reports                      [US-056]
+PATCH /api/v1/scheduled-reports/{id}                              [US-056]
+DELETE /api/v1/scheduled-reports/{id}                             [US-056]
 ```
 
 ## Cambios de schema

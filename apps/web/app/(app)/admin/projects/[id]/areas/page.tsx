@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Building2, Mail, Pencil, Plus, Trash2, User, Users } from "lucide-react";
+import {
+  Building2,
+  Mail,
+  Pencil,
+  Plus,
+  Trash2,
+  User,
+  Users,
+  UserCircle2,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -14,12 +23,17 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
+import { listUsers, type AdminUser } from "@/lib/api/admin";
 import {
+  createAreaResource,
   createProjectArea,
+  deleteAreaResource,
   deleteProjectArea,
+  listAreaResources,
   listProjectAreas,
   updateProjectArea,
   type ProjectArea,
+  type ProjectAreaResource,
   type ProjectAreaType,
 } from "@/lib/api/project-areas";
 import { cn } from "@/lib/cn";
@@ -36,12 +50,19 @@ const TYPE_ICON: Record<ProjectAreaType, React.ComponentType<{ className?: strin
   team: Users,
 };
 
+function userLabel(users: AdminUser[], userId: string): string {
+  const u = users.find((x) => x.id === userId);
+  return u ? u.full_name : userId.slice(0, 8);
+}
+
 type FormState = {
   name: string;
   type: ProjectAreaType;
   description: string;
   contact_name: string;
   contact_email: string;
+  /** US-062: líder del área (user_id o "" para ninguno). */
+  area_leader_id: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -50,6 +71,7 @@ const EMPTY_FORM: FormState = {
   description: "",
   contact_name: "",
   contact_email: "",
+  area_leader_id: "",
 };
 
 export default function ProjectAreasPage() {
@@ -67,6 +89,16 @@ export default function ProjectAreasPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ProjectArea | null>(null);
+  // ENH-020 + US-062
+  const [resourcesArea, setResourcesArea] = useState<ProjectArea | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+
+  useEffect(() => {
+    // US-062: usuarios del tenant para el selector de líder + recursos internos.
+    listUsers({ is_active: true, limit: 200 })
+      .then((r) => setUsers(r.items))
+      .catch(() => setUsers([]));
+  }, []);
 
   async function refresh() {
     setLoading(true);
@@ -113,6 +145,7 @@ export default function ProjectAreasPage() {
       description: area.description ?? "",
       contact_name: area.contact_name ?? "",
       contact_email: area.contact_email ?? "",
+      area_leader_id: area.area_leader_id ?? "",
     });
     setFormError(null);
     setModalOpen(true);
@@ -138,6 +171,7 @@ export default function ProjectAreasPage() {
         description: form.description.trim() || null,
         contact_name: form.contact_name.trim() || null,
         contact_email: form.contact_email.trim() || null,
+        area_leader_id: form.area_leader_id || null,
       };
       if (editing) {
         await updateProjectArea(editing.id, payload);
@@ -246,11 +280,17 @@ export default function ProjectAreasPage() {
                     <Icon className="h-4 w-4" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-medium text-[var(--color-primary)]">
                         {a.name}
                       </span>
                       <Badge variant="neutral">{TYPE_LABEL[a.type]}</Badge>
+                      {a.area_leader_id ? (
+                        <Badge variant="info">
+                          <UserCircle2 className="mr-1 h-3 w-3" aria-hidden />
+                          {userLabel(users, a.area_leader_id)}
+                        </Badge>
+                      ) : null}
                       {!a.is_active ? <Badge variant="danger">Inactiva</Badge> : null}
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--color-tertiary)]">
@@ -270,6 +310,14 @@ export default function ProjectAreasPage() {
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setResourcesArea(a)}
+                      title="Gestionar recursos"
+                    >
+                      <Users className="h-4 w-4" aria-hidden /> Recursos
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -367,6 +415,29 @@ export default function ProjectAreasPage() {
                 }
               />
             </div>
+            {/* US-062: Líder del área (opcional, usuario del tenant). */}
+            <div className="sm:col-span-2">
+              <label
+                htmlFor="area-leader"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Líder del Área (opcional)
+              </label>
+              <Select
+                id="area-leader"
+                value={form.area_leader_id}
+                onChange={(e) =>
+                  setForm({ ...form, area_leader_id: e.target.value })
+                }
+              >
+                <option value="">Sin líder asignado</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name} ({u.email})
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
           <div>
             <label
@@ -416,6 +487,245 @@ export default function ProjectAreasPage() {
           </Button>
         </div>
       </Modal>
+
+      <AreaResourcesModal
+        area={resourcesArea}
+        users={users}
+        onClose={() => setResourcesArea(null)}
+      />
     </div>
+  );
+}
+
+/* =================== Recursos del Área (ENH-020 + US-062) =================== */
+
+function AreaResourcesModal({
+  area,
+  users,
+  onClose,
+}: {
+  area: ProjectArea | null;
+  users: AdminUser[];
+  onClose: () => void;
+}) {
+  const [resources, setResources] = useState<ProjectAreaResource[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"internal" | "external">("external");
+  const [userId, setUserId] = useState<string>("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!area) return;
+    setError(null);
+    setLoading(true);
+    listAreaResources(area.id)
+      .then(setResources)
+      .catch((err) =>
+        setError(
+          err instanceof ApiError ? err.message : "Error al cargar recursos",
+        ),
+      )
+      .finally(() => setLoading(false));
+  }, [area]);
+
+  function resetForm() {
+    setUserId("");
+    setName("");
+    setEmail("");
+    setRole("");
+  }
+
+  async function add(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!area) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (mode === "internal") {
+        if (!userId) {
+          setError("Selecciona un usuario");
+          setBusy(false);
+          return;
+        }
+        await createAreaResource(area.id, {
+          user_id: userId,
+          role: role.trim() || null,
+        });
+      } else {
+        if (name.trim().length < 2) {
+          setError("Nombre requerido (≥ 2 caracteres)");
+          setBusy(false);
+          return;
+        }
+        await createAreaResource(area.id, {
+          name: name.trim(),
+          email: email.trim() || null,
+          role: role.trim() || null,
+        });
+      }
+      resetForm();
+      const r = await listAreaResources(area.id);
+      setResources(r);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al agregar");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!area) return;
+    try {
+      await deleteAreaResource(id);
+      setResources((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al eliminar");
+    }
+  }
+
+  return (
+    <Modal
+      open={area !== null}
+      onClose={onClose}
+      title={area ? `Recursos de "${area.name}"` : "Recursos"}
+    >
+      {loading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ) : (
+        <>
+          {error ? <Banner variant="danger">{error}</Banner> : null}
+          <section className="mb-3 space-y-2">
+            {resources.length === 0 ? (
+              <p className="text-sm text-[var(--color-tertiary)]">
+                Sin recursos asignados todavía.
+              </p>
+            ) : (
+              <ul className="divide-y divide-[var(--border-subtle)] rounded-[var(--radius-md)] border border-[var(--border-default)]">
+                {resources.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex items-center gap-3 px-3 py-2 text-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-[var(--color-primary)]">
+                          {r.user_id
+                            ? userLabel(users, r.user_id)
+                            : r.name || "—"}
+                        </span>
+                        {r.user_id ? (
+                          <Badge variant="info">Interno</Badge>
+                        ) : (
+                          <Badge variant="neutral">Externo</Badge>
+                        )}
+                        {r.role ? (
+                          <Badge variant="neutral">{r.role}</Badge>
+                        ) : null}
+                      </div>
+                      {r.email ? (
+                        <div className="text-xs text-[var(--color-tertiary)]">
+                          {r.email}
+                        </div>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => remove(r.id)}
+                      aria-label="Eliminar recurso"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <form onSubmit={add} className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
+            <div className="inline-flex rounded-[8px] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-0.5">
+              <button
+                type="button"
+                onClick={() => setMode("external")}
+                aria-pressed={mode === "external"}
+                className={cn(
+                  "rounded-[6px] px-2.5 py-1 text-xs font-medium",
+                  mode === "external"
+                    ? "bg-[var(--color-surface)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)]",
+                )}
+              >
+                Externo
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("internal")}
+                aria-pressed={mode === "internal"}
+                className={cn(
+                  "rounded-[6px] px-2.5 py-1 text-xs font-medium",
+                  mode === "internal"
+                    ? "bg-[var(--color-surface)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)]",
+                )}
+              >
+                Usuario de plataforma
+              </button>
+            </div>
+            {mode === "internal" ? (
+              <Select
+                aria-label="Usuario"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+              >
+                <option value="">Selecciona usuario…</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name} ({u.email})
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input
+                  placeholder="Nombre"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  aria-label="Nombre del recurso externo"
+                />
+                <Input
+                  placeholder="Email (opcional)"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-label="Email del recurso externo"
+                />
+              </div>
+            )}
+            <Input
+              placeholder="Rol (opcional, ej. Analista, Sponsor)"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              aria-label="Rol del recurso"
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cerrar
+              </Button>
+              <Button type="submit" loading={busy}>
+                <Plus className="h-4 w-4" aria-hidden /> Agregar recurso
+              </Button>
+            </div>
+          </form>
+        </>
+      )}
+    </Modal>
   );
 }

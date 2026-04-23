@@ -79,6 +79,10 @@ async def list_tenant_risks(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
+    # ENH-019: filtros avanzados.
+    status: str | None = Query(default=None),
+    severity_min: int | None = Query(default=None, ge=1, le=25),
+    owner_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("risks", "read")),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
@@ -87,6 +91,12 @@ async def list_tenant_risks(
     stmt = _project_scope(
         stmt, Risk.project_id, tenant_id, organization_id, program_id, project_id
     )
+    if status:
+        stmt = stmt.where(Risk.status == status)
+    if severity_min is not None:
+        stmt = stmt.where(Risk.severity >= severity_min)
+    if owner_id is not None:
+        stmt = stmt.where(Risk.owner_id == str(owner_id))
     rows = (
         await db.execute(stmt.order_by(Risk.severity.desc().nullslast()))
     ).all()
@@ -99,6 +109,10 @@ async def list_tenant_issues(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
+    # ENH-019: filtros avanzados.
+    status: str | None = Query(default=None),
+    priority_min: int | None = Query(default=None, ge=1, le=5),
+    owner_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("issues", "read")),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
@@ -109,6 +123,12 @@ async def list_tenant_issues(
     )
     if type:
         stmt = stmt.where(Issue.type == type)
+    if status:
+        stmt = stmt.where(Issue.status == status)
+    if priority_min is not None:
+        stmt = stmt.where(Issue.priority >= priority_min)
+    if owner_id is not None:
+        stmt = stmt.where(Issue.owner_id == str(owner_id))
     rows = (await db.execute(stmt.order_by(Issue.created_at.desc()))).all()
     return [_enrich(IssueRead.model_validate(r), folio, name) for r, folio, name in rows]
 

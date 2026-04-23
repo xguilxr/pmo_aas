@@ -34,6 +34,11 @@
 | 0015 | `20260420_0015_reports_generator_cut_off.py` | EP014 | `reports.generator` + `reports.cut_off_date` |
 | 0016 | `20260421_0016_notifications.py` | EP011 | Tabla `notifications` (US-027) |
 | 0017 | `20260421_0017_platform_ai_settings.py` | EP008/EP010 | Tabla singleton `platform_ai_settings` con 1 row seed `id='default'` — defaults de plataforma editables por superadmin (US-054) |
+| 0018 | `20260423_0018_scheduled_reports.py` | EP014 + EP011 | Tabla `scheduled_reports` — programaciones automáticas de reportes (Avance/Seguimiento) con cadencia daily/weekly/monthly, destinatarios y `next_run_at` para dispatch por Celery beat (US-056) |
+| 0019 | `20260423_0019_project_area_resources.py` | EP002 + EP006 | `project_areas.area_leader_id` (FK → users, nullable) + tabla `project_area_resources` para soportar múltiples recursos internos (`user_id`) o externos (`name` + `email`) por área (ENH-020, US-062) |
+| 0020 | `20260423_0020_risks_comments.py` | EP006 | `risks.comments` JSON (lista de `{text, author_id, created_at}`) para soportar comentarios tipo Jira desde el panel editable (US-058) |
+| 0021 | `20260423_0021_tenant_ai_mode.py` | EP008 + EP002 | `platform_ai_settings.groq_api_key_encrypted` + `groq_model` + `ai_jobs.provider` indexado + data migration: todos los tenants existentes quedan en `settings.ai.mode = "disabled"` (opt-in, US-057) |
+| 0022 | `20260423_0022_migrate_ollama_legacy_to_byo.py` | EP008 + EP002 | Data-only: traslada `tenants.settings.ai.ollama` (US-048 legacy) al shape `settings.ai.byo = {provider: "ollama", base_url, model}` con `mode = "byo"`. Idempotente (US-057) |
 
 ---
 
@@ -142,6 +147,14 @@ Migraciones **0014** (`reports_period`) + **0015**
 'ai' | 'avance' | 'seguimiento'`) y `reports.cut_off_date` + columnas de
 período. US-040 (formato estandarizado de minuta IA) es
 post-procesamiento sobre `meeting_minutes`; no toca BD.
+
+Migración **0018** (`scheduled_reports`): tabla nueva para US-056
+(calendarización automática de envíos). Columnas: `id`, `tenant_id`,
+`project_id`, `report_type` (`'avance' | 'seguimiento'`), `cadence`
+(`'daily' | 'weekly' | 'monthly'`), `recipients` (JSON list de
+emails), `enabled`, `last_run_at`, `next_run_at`, `last_error`,
+`created_by`. Índices: `(tenant_id, project_id)` y `(enabled,
+next_run_at)` para el dispatch del beat.
 
 ## EP016 — IA local (Ollama vía Tailscale)
 

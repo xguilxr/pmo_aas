@@ -34,6 +34,7 @@ from app.schemas.modules import (
     LessonUpdate,
     MeetingMinuteCreate,
     MeetingMinuteRead,
+    RiskComment,
     RiskCreate,
     RiskRead,
     RiskUpdate,
@@ -166,6 +167,47 @@ async def update_risk(
     await write_audit(
         db, action="risk.update", module="risks", user_id=cu.id, tenant_id=tenant_id,
         entity_type="risk", entity_id=str(r.id),
+    )
+    await db.commit()
+    return RiskRead.model_validate(r)
+
+
+@risks_router.post("/risks/{risk_id}/comments", response_model=RiskRead)
+async def add_risk_comment(
+    risk_id: UUID,
+    body: RiskComment,
+    cu: CurrentUser = Depends(require_permission("risks", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-058: comentarios tipo Jira sobre un riesgo (mismo shape que
+    `issues.comments`)."""
+    tenant_id = _tenant(cu)
+    r = (
+        await db.execute(
+            select(Risk).where(
+                Risk.id == str(risk_id), Risk.tenant_id == str(tenant_id)
+            )
+        )
+    ).scalar_one_or_none()
+    if r is None:
+        raise not_found("Riesgo")
+    comments = list(r.comments or [])
+    comments.append(
+        {
+            "text": body.text,
+            "author_id": str(cu.id),
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+    )
+    r.comments = comments
+    await write_audit(
+        db,
+        action="risk.comment.add",
+        module="risks",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="risk",
+        entity_id=str(r.id),
     )
     await db.commit()
     return RiskRead.model_validate(r)

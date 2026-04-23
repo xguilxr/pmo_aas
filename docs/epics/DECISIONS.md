@@ -102,3 +102,74 @@
 - Roadmap antes de v1.0 productivo / pruebas masivas: solo queda terminar Bloque 14 (EP016 v2 Tailscale para habilitar IA) y Bloque 15 (DNS + landing).
 **Alternativa descartada:** VPS dedicado con MySQL — complejidad operativa alta para un beneficio nulo vs Railway Postgres en escala MVP/v1.
 **Plan B:** Si Railway sube precios de forma insostenible en el futuro, re-evaluar Supabase o Neon (ambos Postgres, sin rework de código).
+
+
+---
+
+## DEC-017 — IA multi-modo por tenant: disabled / platform (Groq) / byo (US-057)
+
+**Contexto:** US-057 replantea el modelo de IA del MVP. Anteriormente
+(US-048) había un sólo endpoint Ollama tailnet compartido por todos los
+tenants, con un cascade global controlado por env (`AI_MODE`). Eso
+funcionaba para pilotar, pero no escalaba a una oferta productiva
+multi-tenant donde cada cliente decide:
+
+- No usar IA en absoluto (plan barato / políticas de compliance).
+- Usar IA "included" que hostea la plataforma, sin configurar nada.
+- Traer su propio proveedor (OpenAI / Claude / Perplexity / Gemini /
+  Ollama interno) con sus credenciales y llevarse el costo a su cuenta.
+
+**Decisión:** se establecen **tres modos** como campo `mode` en
+`tenants.settings.ai`:
+
+1. `disabled` — el endpoint `/ai/*` responde 409 `AI_DISABLED`. Default
+   del migración 0021 para todos los tenants existentes (opt-in).
+2. `platform` — usa **Groq** (`llama-3.1-70b-versatile`) como proveedor
+   compartido con la `GROQ_API_KEY` de plataforma (cifrada en
+   `platform_ai_settings.groq_api_key_encrypted`). **Scope limitado a
+   minutas** para controlar el consumo en el free tier. Los draft de
+   reportes IA (EP008) **no** están disponibles en este modo — el
+   endpoint responde 409 `AI_PLATFORM_SCOPE_LIMITED`. Cada llamada
+   manda `metadata.tenant_id` + `metadata.job_id` para trazabilidad
+   cross-tenant en el dashboard del superadmin.
+3. `byo` — el admin del tenant configura un proveedor propio en
+   `/admin/ai`. Las credenciales se cifran con **Fernet**
+   (`AI_SECRETS_FERNET_KEY`, reactivada tras deprecación por US-047).
+   Proveedores BYO soportados: `openai`, `claude`, `perplexity`,
+   `gemini`, `ollama` (absorbe el flujo US-048 como sub-caso).
+
+**Reglas:**
+- **Sin fallback entre modos**. Si `platform` (Groq) falla tras 3
+  reintentos (backoff 1s/3s/8s), el job se marca `failed` y se
+  **notifica al superadmin** (tipo `platform_ai_alert`, email vía
+  Resend). No cae a proveedores externos: preservar privacidad y costo.
+- Cada cambio de `mode` requiere confirmación explícita del admin del
+  tenant (modal en UI) — puede romper jobs en vuelo.
+- `ai_jobs.provider` se rellena para alimentar el dashboard de uso
+  Groq (`/superadmin/ai`).
+
+**Supersede / afecta:**
+- **US-048** queda absorbida: el endpoint `/admin/ai/ollama` persiste
+  para retro-compat, pero la migración `20260423_0022` traslada los
+  tenants con Ollama tailnet activo al shape `byo` con
+  `provider="ollama"`. El nuevo `/admin/ai/provider` es la fuente de
+  verdad para el worker (`load_tenant_ai()`).
+- **DEC-011** (Ollama tailnet como canal IA principal) se relaja:
+  Tailscale sigue disponible para tenants que quieran Ollama BYO,
+  pero ya no es "el único camino a IA".
+
+**Alternativa descartada:**
+- Permitir fallback `byo → platform` cuando la key del tenant falle.
+  Rechazado por el owner para evitar cargar costos de plataforma si el
+  cliente no lo esperaba.
+
+**Pendientes / follow-ups:**
+- Draft de reportes IA en modo `platform`: requeriría más cuidado con
+  el consumo (los reportes son más largos que una minuta). Evaluar
+  después de medir el uso real de Groq con el dashboard.
+- Rotación automática de `GROQ_API_KEY` (hoy es manual vía
+  `/superadmin/ai`).
+- Límite de consumo por tenant en modo `platform` (cuotas por-tenant)
+  si se detecta abuso.
+
+Registrado el 2026-04-23 junto con la feature.
