@@ -30,6 +30,8 @@ type Props = {
   fields: PreviewField[];
   description?: string | null;
   footer?: ReactNode;
+  /** US-058: slot adicional para UI editable (status, comentarios, historial). */
+  extra?: ReactNode;
 };
 
 export function ItemPreviewModal({
@@ -40,6 +42,7 @@ export function ItemPreviewModal({
   fields,
   description,
   footer,
+  extra,
 }: Props) {
   if (!open) return null;
   return (
@@ -105,6 +108,7 @@ export function ItemPreviewModal({
               </p>
             </div>
           ) : null}
+          {extra}
         </div>
         <footer className="flex items-center justify-end gap-2 border-t border-[var(--border-default)] px-5 py-3">
           {footer}

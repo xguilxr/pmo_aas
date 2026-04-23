@@ -42,7 +42,6 @@ Hotfixes CI post-commit (2026-04-23):
 | 76 | BUG-025 | EP007 | Rol "Reportes" sin módulo de permisos | Bloque 1 |
 | 87 | BUG-026 | EP001 | Auth: timeout de inactividad a 15 minutos | Bloque 1 |
 | 77 | ENH-014 | EP014 | Reportes: renombrar archivo con datetime + preview PDF | Bloque 2 |
-| 83 | US-058 | EP006 | RAID: preview panel editable con comentarios | Bloque 3 |
 | 86 | ENH-020 | EP002 | Áreas: permitir múltiples recursos/contactos | Bloque 3 |
 | 91 | US-062 | EP002 | Áreas/Recursos: Area Leader + recursos asignados (Sprint 2, no v1.2) | Bloque 3 |
 | 79 | US-057 | EP008 | IA: permitir tenants propia instancia + docs configuración + rollback | Bloque 4 |
@@ -86,7 +85,7 @@ Hotfixes CI post-commit (2026-04-23):
 ### Bloque 3 — Sprint 2 RAID + Áreas (5 items)
 - [x] ENH-019 — RAID: filtros avanzados (status + severidad/prioridad) — #85 ✅ fe3b001
 - [x] ENH-018 — RAID: agregar toggle Kanban — #84 ✅ c894f12
-- [ ] US-058 — RAID: preview panel editable con comentarios — #83
+- [x] US-058 — RAID: preview panel editable con comentarios (parcial — ver issue) — #83 ✅ (pendiente commit)
 - [x] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86 ✅ 009c0f2
 - [x] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91 ✅ 009c0f2
 

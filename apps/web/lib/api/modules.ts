@@ -18,6 +18,12 @@ function qs(params: Record<string, unknown>): string {
 /* ========== RISKS ========== */
 export type RiskStatus = "identified" | "analyzing" | "mitigating" | "materialized" | "closed";
 
+export type RiskComment = {
+  text: string;
+  author_id?: string;
+  created_at?: string;
+};
+
 export type Risk = {
   id: string;
   folio: string;
@@ -34,6 +40,7 @@ export type Risk = {
   due_date: string | null;
   status: RiskStatus;
   closure_note: string | null;
+  comments: RiskComment[];
 };
 
 export type RiskCreateBody = {
@@ -67,6 +74,14 @@ export function updateRisk(id: string, body: RiskUpdateBody): Promise<Risk> {
 
 export function deleteRisk(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/risks/${id}`, { method: "DELETE" });
+}
+
+/** US-058: comentarios estilo Jira sobre un riesgo. */
+export function addRiskComment(id: string, body: { text: string }): Promise<Risk> {
+  return apiFetch<Risk>(`/api/v1/risks/${id}/comments`, {
+    method: "POST",
+    body,
+  });
 }
 
 export const RISK_STATUS_LABEL: Record<RiskStatus, string> = {
