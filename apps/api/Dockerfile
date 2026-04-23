@@ -1,14 +1,13 @@
-# Dockerfile común para api + worker (US-048).
+# Dockerfile común para api + worker.
 #
-# El servicio `api` lo consume sin necesitar Tailscale (CMD = uvicorn).
-# El servicio `worker` sobrescribe el CMD con start-worker.sh, que
-# levanta `tailscaled` en user-space antes de ejecutar Celery — así el
-# worker puede resolver `ollama-host.<tailnet>.ts.net:11434` desde
-# Railway sin exposición pública (ver EP016 / DEC-011).
-#
-# Tailscale en user-space no requiere privilegios ni /dev/net/tun, que
-# es justo lo que Railway NO da a containers. El binario de Tailscale
-# se instala con el script oficial.
+# Historia:
+# - US-048 (2026-04-21): agregó sidecar Tailscale al worker para hablar
+#   con Ollama local vía tailnet WireGuard.
+# - ENH-023 (2026-04-23, post-DEC-017): sidecar retirado. La IA pasó a
+#   Groq hosteado (modo platform) y BYO cloud; el worker ya no necesita
+#   tailnet. Se removieron `iptables` + instalación de Tailscale. El
+#   servicio `worker` sobrescribe el CMD con un celery directo vía
+#   `worker.railway.toml` (startCommand).
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -16,10 +15,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Dependencias runtime + Tailscale + WeasyPrint native libs (BUG-007).
-# - curl + ca-certificates: para descargar y validar TLS
-# - iptables: requerido por tailscaled aun con --tun=userspace-networking
-#   (usa netfilter para algunas decisiones internas)
+# Dependencias runtime + WeasyPrint native libs (BUG-007).
+# - curl + ca-certificates: wheels pip + health checks externos.
 # - libpango/libcairo/libgdk-pixbuf/libharfbuzz/fonts-dejavu: WeasyPrint
 #   carga estas libs nativas via cffi en runtime. Sin ellas, el import
 #   falla con `OSError: cannot load library 'libgobject-2.0-0'` y el
@@ -30,7 +27,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
-        iptables \
         libpango-1.0-0 \
         libpangoft2-1.0-0 \
         libharfbuzz0b \
@@ -38,7 +34,6 @@ RUN apt-get update \
         libgdk-pixbuf-2.0-0 \
         fonts-dejavu-core \
         shared-mime-info \
-    && curl -fsSL https://tailscale.com/install.sh | sh \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -48,7 +43,6 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app
-RUN chmod +x /app/start-worker.sh
 
 # Default CMD sirve para el servicio `api`. El servicio `worker` lo
 # sobrescribe vía `worker.railway.toml` (startCommand).

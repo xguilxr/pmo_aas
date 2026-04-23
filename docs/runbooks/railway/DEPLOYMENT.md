@@ -74,14 +74,15 @@ numReplicas = 2
 
 ```toml
 [deploy]
-startCommand = "bash start-worker.sh"
+startCommand = "celery -A app.workers.celery_app worker --loglevel=info --concurrency=2"
 healthcheckPath = ""
 numReplicas = 1
 ```
 
-El wrapper `start-worker.sh` levanta:
-1. Sidecar `tailscaled` (conecta al tailnet Tailscale).
-2. Worker Celery para procesar tasks de IA.
+El worker corre Celery directo — procesa tasks de IA (Groq platform o
+BYO cloud). Hasta ENH-023 tenía un wrapper `start-worker.sh` que
+levantaba un sidecar Tailscale (US-048); DEC-017 eliminó esa
+dependencia al pasar la IA a Groq hosteado.
 
 ### 2.4 apps/web/railway.toml
 
@@ -330,7 +331,7 @@ Agregale:
 | Servicio marked unhealthy | Healthcheck timeout | `railway logs --tail`, revisar logs. |
 | Build falla (Alembic error) | Migración inválida | Revisar `alembic/versions/` última, fix y re-push. |
 | CORS error en frontend | `ALLOWED_ORIGINS` no configurado | Update Railway `api` → redeploy. |
-| Memory leak en worker | Celery task holding refs | Revisar `start-worker.sh`, ajustar `--concurrency`. |
+| Memory leak en worker | Celery task holding refs | Ajustar `--concurrency` en `worker.railway.toml`. |
 | OOM en Postgres | Volumen full | `railway run --service api pg_reindex` o expand volumen. |
 
 ---

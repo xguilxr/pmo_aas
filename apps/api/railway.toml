@@ -1,9 +1,11 @@
 # Railway config del servicio `api`.
 #
-# US-048 (2026-04-21): unifica builder a Dockerfile (compartido con
-# el worker). El servicio `api` NO arranca tailscaled — el CMD default
-# del Dockerfile ejecuta uvicorn directamente. Tailscale queda instalado
-# en la imagen pero inactivo para este servicio.
+# Historia:
+# - US-048 (2026-04-21): unificó builder a Dockerfile compartido con
+#   el worker (el worker traía sidecar Tailscale).
+# - ENH-023 (2026-04-23): Tailscale retirado del Dockerfile (DEC-017
+#   eliminó la dependencia). API sigue usando el Dockerfile compartido
+#   porque WeasyPrint necesita libs nativas (BUG-007).
 
 [build]
 builder = "DOCKERFILE"

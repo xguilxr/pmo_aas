@@ -419,7 +419,13 @@ Soportar **home-hosting de Ollama** como primera opción económica en producci�
 
 ## ADR-015 — Tailscale reemplaza Cloudflare Tunnel + Access para Ollama local
 
-**Estado:** ✅ Aceptada — 2026-04-21 (reemplaza ADR-014)
+**Estado:** ⚠️ Aceptada 2026-04-21 — **Superseded por DEC-017 (ENH-023,
+2026-04-23):** Groq hosteado reemplazó Ollama local en el flujo
+productivo; el sidecar Tailscale del worker se retiró. Este ADR queda
+como historia del pivote CF Tunnel → Tailscale; la infra descrita abajo
+NO está activa en prod.
+
+**Estado original:** ✅ Aceptada — 2026-04-21 (reemplaza ADR-014)
 **Contexto:**
 ADR-014 definió **Cloudflare Tunnel + Cloudflare Access (Service Token)**
 como canal para exponer Ollama local al backend PMO. El intento real de

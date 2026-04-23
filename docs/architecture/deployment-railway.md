@@ -84,20 +84,23 @@ healthcheckPath = ""   # worker no expone HTTP
 numReplicas = 1
 ```
 
-**Tasks procesadas por el worker (US-051):**
+**Tasks procesadas por el worker (US-051 + US-057):**
 
-- `ai.generate_minute` — dispatchada por `POST /ai/minutes`. Ejecuta
-  la cascada Ollama → Gemini → Claude y persiste el resultado en
+- `ai.generate_minute` — dispatchada por `POST /ai/minutes`. Resuelve
+  el provider según el modo del tenant (`platform` → Groq, `byo` →
+  OpenAI/Claude/Gemini/Perplexity) y persiste el resultado en
   `ai_jobs`. Si `save_as_minute=true`, crea también la fila en
   `meeting_minutes`.
 - `ai.draft_report` — dispatchada por `POST /ai/projects/{id}/reports/draft`.
-  Análoga, persiste en `reports`.
+  Análoga, persiste en `reports`. Sólo disponible en modo `byo`
+  (DEC-017 limitó `platform` a minutas).
 
-El worker es el único servicio que tiene el sidecar Tailscale activo
-(`start-worker.sh` + `TS_AUTHKEY`) — por eso todas las llamadas a
-Ollama local salen desde ahí, no desde `api`. La UI consume el
-resultado vía polling a `GET /ai/jobs/{id}` (ver hook
-`lib/hooks/use-ai-job-polling.ts` en el frontend).
+El worker corre Celery directo. Hasta ENH-023 (2026-04-23) tenía un
+sidecar Tailscale (`start-worker.sh` + `TS_AUTHKEY`) para alcanzar
+Ollama local vía tailnet; DEC-017 movió la IA a Groq hosteado y el
+sidecar se retiró. La UI consume el resultado vía polling a
+`GET /ai/jobs/{id}` (ver hook `lib/hooks/use-ai-job-polling.ts` en el
+frontend).
 
 ### `apps/web/railway.toml`
 
