@@ -10,16 +10,45 @@ from app.core.errors import AppError, validation_error
 
 MAX_DOC_BYTES = 50 * 1024 * 1024  # 50 MB
 
-# MIME -> extensión canónica (whitelist: PDF, XLSX, DOCX, PPTX, PNG, JPG, CSV)
+# MIME -> extensión canónica (whitelist: PDF, XLSX, DOCX, PPTX, PNG, JPG, CSV,
+# + formatos legacy XLS/DOC/PPT). BUG-029 agrega los legacy porque algunos
+# Excel "ligeros" del owner se guardaban como .xls con MIME
+# `application/vnd.ms-excel` y caían del whitelist.
 ALLOWED_DOC_MIMES: dict[str, str] = {
     "application/pdf": "pdf",
+    # Office 2007+ (OOXML)
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    # Office 97-2003 (legacy binary)
+    "application/vnd.ms-excel": "xls",
+    "application/msword": "doc",
+    "application/vnd.ms-powerpoint": "ppt",
+    # Imágenes
     "image/png": "png",
     "image/jpeg": "jpg",
     "image/jpg": "jpg",
+    # Datos
     "text/csv": "csv",
+    "application/csv": "csv",
+    "text/plain": "txt",
+}
+
+# Fallback por extensión cuando el browser manda `application/octet-stream`
+# o vacío (caso común al arrastrar archivos desde explorer en Windows).
+_EXTENSION_FALLBACK: dict[str, str] = {
+    "pdf": "application/pdf",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xls": "application/vnd.ms-excel",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "doc": "application/msword",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "ppt": "application/vnd.ms-powerpoint",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "csv": "text/csv",
+    "txt": "text/plain",
 }
 
 
@@ -39,10 +68,24 @@ async def save_document(
     """
     content_type = (upload.content_type or "").lower()
     ext = ALLOWED_DOC_MIMES.get(content_type)
+
+    # BUG-029: fallback por extensión del filename cuando el browser
+    # manda `application/octet-stream` o vacío (drag-drop en Windows,
+    # algunas versiones de Safari).
+    if ext is None:
+        filename = (upload.filename or "").lower()
+        fname_ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
+        if fname_ext in _EXTENSION_FALLBACK:
+            content_type = _EXTENSION_FALLBACK[fname_ext]
+            ext = ALLOWED_DOC_MIMES.get(content_type)
+
     if ext is None:
         raise validation_error(
-            "Formato no permitido. Usa PDF, XLSX, DOCX, PPTX, PNG, JPG o CSV.",
-            fields={"mime": content_type},
+            "Formato no permitido. Usa PDF, XLSX, DOCX, PPTX, PNG, JPG, CSV o TXT.",
+            fields={
+                "mime": upload.content_type or "",
+                "filename": upload.filename or "",
+            },
         )
 
     data = await upload.read()
