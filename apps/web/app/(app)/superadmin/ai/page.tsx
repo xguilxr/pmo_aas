@@ -22,15 +22,14 @@ import {
 } from "@/lib/api/superadmin-ai";
 import { getStoredUser } from "@/lib/auth-storage";
 
-type ModeValue = "ollama" | "gemini" | "claude" | "disabled" | "";
-
 /**
- * US-054: config de AI a nivel de plataforma.
+ * US-054 + US-057: config de AI a nivel de plataforma.
  *
- * Superadmin puede sobrescribir AI_MODE / OLLAMA_BASE_URL / OLLAMA_MODEL /
- * AI_TIMEOUT_S sin tocar env vars ni redeploy. Los secrets (GEMINI_API_KEY,
- * ANTHROPIC_API_KEY) siguen viviendo en env para evitar guardarlos sin
- * cifrado en BD.
+ * Desde v1.1 (DEC-017) el superadmin sólo configura Groq como IA base.
+ * Los defaults de Ollama/Gemini/Claude fueron retirados: los tenants
+ * que necesitan un proveedor propio lo configuran como BYO en
+ * /admin/ai y el cascade global legacy queda archivado en env vars
+ * únicamente (por si algún entorno de dev lo necesita).
  *
  * Orden de prioridad que el provider aplica:
  *   tenant override (admin) > platform defaults (esta página) > env var
@@ -43,10 +42,6 @@ export default function SuperadminAIPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const [aiMode, setAiMode] = useState<ModeValue>("");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [model, setModel] = useState("");
-  const [timeoutSec, setTimeoutSec] = useState<string>("");
   // US-057: Groq config
   const [groqKey, setGroqKey] = useState("");
   const [groqKeyDirty, setGroqKeyDirty] = useState(false);
@@ -71,10 +66,6 @@ export default function SuperadminAIPage() {
         getGroqUsage(30).catch(() => null),
       ]);
       setData(d);
-      setAiMode((d.ai_mode as ModeValue | null) ?? "");
-      setBaseUrl(d.ollama_base_url ?? "");
-      setModel(d.ollama_model ?? "");
-      setTimeoutSec(d.ai_timeout_sec != null ? String(d.ai_timeout_sec) : "");
       setGroqModel(d.groq_model ?? "");
       setGroqKey("");
       setGroqKeyDirty(false);
@@ -127,13 +118,6 @@ export default function SuperadminAIPage() {
     setNotice(null);
     try {
       const body: PlatformAIDefaultsPatch = {
-        ai_mode:
-          aiMode === ""
-            ? null
-            : (aiMode as Exclude<ModeValue, "">),
-        ollama_base_url: baseUrl.trim() === "" ? null : baseUrl.trim(),
-        ollama_model: model.trim() === "" ? null : model.trim(),
-        ai_timeout_sec: timeoutSec.trim() === "" ? null : Number(timeoutSec),
         groq_model: groqModel.trim() === "" ? null : groqModel.trim(),
       };
       if (groqKeyDirty) {
@@ -176,63 +160,14 @@ export default function SuperadminAIPage() {
             className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
           >
             <h2 className="text-sm font-semibold text-[var(--color-primary)]">
-              Defaults editables
+              IA base de la plataforma (Groq)
             </h2>
-
-            <Field
-              label="Modo de cascada"
-              hint={`Actual env: ${data.env.ai_mode}. Dejar vacío = usar env.`}
-            >
-              <select
-                value={aiMode}
-                onChange={(e) => setAiMode(e.target.value as ModeValue)}
-                className="h-9 w-full rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--text-primary)]"
-              >
-                <option value="">— usar env ({data.env.ai_mode}) —</option>
-                <option value="ollama">ollama</option>
-                <option value="gemini">gemini</option>
-                <option value="claude">claude</option>
-                <option value="disabled">disabled</option>
-              </select>
-            </Field>
-
-            <Field
-              label="Ollama — Base URL"
-              hint={`Env: ${data.env.ollama_base_url}. Vacío = usar env.`}
-            >
-              <Input
-                type="url"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="http://ollama-host.<tailnet>.ts.net:11434"
-              />
-            </Field>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field
-                label="Ollama — Modelo"
-                hint={`Env: ${data.env.ollama_model}`}
-              >
-                <Input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="qwen2.5:7b-instruct-q4_K_M"
-                />
-              </Field>
-              <Field
-                label="AI_TIMEOUT_S (segundos)"
-                hint={`Env: ${data.env.ai_timeout_sec}s. Rango: 5–3600.`}
-              >
-                <Input
-                  type="number"
-                  min={5}
-                  max={3600}
-                  value={timeoutSec}
-                  onChange={(e) => setTimeoutSec(e.target.value)}
-                  placeholder="usar env"
-                />
-              </Field>
-            </div>
+            <p className="text-[12px] text-[var(--text-tertiary)]">
+              US-057: los tenants que elijan modo "platform" usan esta config.
+              Los defaults de Ollama (US-048) fueron retirados en v1.1 — los
+              tenants con Ollama propio lo configuran como BYO desde
+              <code>/admin/ai</code>.
+            </p>
 
             {/* US-057: Groq como IA base de la plataforma */}
             <div className="mt-2 space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-4">
@@ -490,26 +425,21 @@ export default function SuperadminAIPage() {
 
           <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--text-secondary)]">
             <h2 className="mb-2 text-sm font-semibold text-[var(--color-primary)]">
-              Snapshot de variables de entorno
+              Estado de secrets (env)
             </h2>
             <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
-              Solo lectura. Secrets se quedan en env para evitar almacenarlos sin cifrado.
+              Fallback de sólo-lectura. La fuente de verdad de Groq es la
+              config editable arriba (cifrada con Fernet). Los secrets de
+              Gemini/Anthropic ya no son editables desde esta UI — viven
+              en env y sólo se muestran aquí para diagnóstico.
             </p>
-            <dl className="grid grid-cols-[180px_1fr] gap-x-4 gap-y-1.5 font-mono text-[12px]">
-              <dt className="text-[var(--text-tertiary)]">AI_MODE</dt>
-              <dd>{data.env.ai_mode}</dd>
-              <dt className="text-[var(--text-tertiary)]">OLLAMA_BASE_URL</dt>
-              <dd>{data.env.ollama_base_url}</dd>
-              <dt className="text-[var(--text-tertiary)]">OLLAMA_MODEL</dt>
-              <dd>{data.env.ollama_model}</dd>
-              <dt className="text-[var(--text-tertiary)]">AI_TIMEOUT_S</dt>
-              <dd>{data.env.ai_timeout_sec}</dd>
-              <dt className="text-[var(--text-tertiary)]">GEMINI_API_KEY</dt>
-              <dd>{data.env.gemini_configured ? "configurado" : "vacío"}</dd>
-              <dt className="text-[var(--text-tertiary)]">ANTHROPIC_API_KEY</dt>
-              <dd>{data.env.claude_configured ? "configurado" : "vacío"}</dd>
-              <dt className="text-[var(--text-tertiary)]">GROQ_API_KEY (env)</dt>
+            <dl className="grid grid-cols-[200px_1fr] gap-x-4 gap-y-1.5 font-mono text-[12px]">
+              <dt className="text-[var(--text-tertiary)]">GROQ_API_KEY (env fallback)</dt>
               <dd>{data.env.groq_configured ? "configurado" : "vacío"}</dd>
+              <dt className="text-[var(--text-tertiary)]">GEMINI_API_KEY (legacy)</dt>
+              <dd>{data.env.gemini_configured ? "configurado" : "vacío"}</dd>
+              <dt className="text-[var(--text-tertiary)]">ANTHROPIC_API_KEY (legacy)</dt>
+              <dd>{data.env.claude_configured ? "configurado" : "vacío"}</dd>
             </dl>
           </section>
         </>
