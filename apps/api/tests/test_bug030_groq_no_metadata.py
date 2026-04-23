@@ -10,38 +10,60 @@ Este test lockea el contrato para que no vuelva a aparecer por error.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
+import httpx
 import pytest
 
 from app.services.ai.provider import GroqProvider
+
+
+class _MockResponse:
+    status_code = 200
+
+    def json(self) -> dict:
+        return {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+        }
+
+    def raise_for_status(self) -> None:
+        return None
+
+
+class _FakeAsyncClient:
+    """Fake httpx.AsyncClient: captura kwargs del `.post()` en un
+    registro compartido y devuelve un response estático."""
+
+    captures: list[dict] = []
+
+    def __init__(self, *args, **kwargs):
+        # Limpia el registro cada vez que se instancia el client — así
+        # cada test empieza sin residuos del anterior.
+        _FakeAsyncClient.captures = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def post(self, url, **kwargs):
+        _FakeAsyncClient.captures.append({"url": url, **kwargs})
+        return _MockResponse()
+
+
+def _patch_httpx():
+    # Mismo patrón que test_enh011_ai_timeout.py (patch.object con el
+    # módulo httpx ya importado) — resuelve correctamente en pytest.
+    return patch.object(httpx, "AsyncClient", _FakeAsyncClient)
 
 
 @pytest.mark.asyncio
 async def test_bug030_groq_body_does_not_include_metadata():
     """El body enviado a Groq no debe contener `metadata`, aunque el
     caller pase tenant_id/job_id en el override."""
-
-    captured_body: dict = {}
-
-    class _MockResponse:
-        status_code = 200
-
-        def json(self) -> dict:
-            return {
-                "choices": [{"message": {"content": "ok"}}],
-                "usage": {"prompt_tokens": 1, "completion_tokens": 1},
-            }
-
-        def raise_for_status(self) -> None:
-            return None
-
-    async def _fake_post(self, url, *, headers, json=None, **kwargs):  # noqa: A002
-        nonlocal captured_body
-        captured_body = json or {}
-        return _MockResponse()
-
-    with patch("httpx.AsyncClient.post", new=_fake_post):
+    with _patch_httpx():
         provider = GroqProvider()
         result = await provider.generate(
             "test prompt",
@@ -53,6 +75,9 @@ async def test_bug030_groq_body_does_not_include_metadata():
                 "job_id": "job-xyz",
             },
         )
+
+    assert _FakeAsyncClient.captures, "post() nunca se invocó"
+    captured_body = _FakeAsyncClient.captures[0].get("json") or {}
 
     assert "metadata" not in captured_body, (
         f"Groq body should not contain 'metadata' key, got: "
@@ -75,29 +100,19 @@ async def test_bug030_groq_body_fields_whitelist():
     Si alguien agrega una nueva clave al body de GroqProvider.generate,
     este test la detecta y obliga a validar que Groq la acepta (o
     documentar el cambio)."""
-
-    captured_body: dict = {}
-
-    class _MockResponse:
-        status_code = 200
-
-        def json(self) -> dict:
-            return {"choices": [{"message": {"content": ""}}], "usage": {}}
-
-        def raise_for_status(self) -> None:
-            return None
-
-    async def _fake_post(self, url, *, headers, json=None, **kwargs):  # noqa: A002
-        nonlocal captured_body
-        captured_body = json or {}
-        return _MockResponse()
-
-    with patch("httpx.AsyncClient.post", new=_fake_post):
+    with _patch_httpx():
         provider = GroqProvider()
         await provider.generate(
             "hello",
             override={"api_key": "gsk_test", "model": "llama-3.3-70b-versatile"},
         )
+
+    assert _FakeAsyncClient.captures, "post() nunca se invocó"
+    captured_body = _FakeAsyncClient.captures[0].get("json") or {}
+
+    # Sanity guard: el body no puede estar vacío, si no el test
+    # pasaría por vacuidad y no detectaría regresiones.
+    assert captured_body, "captured_body está vacío — el patch no funcionó"
 
     # Si Groq documenta más claves oficialmente soportadas, agregarlas aquí.
     allowed_keys = {"model", "messages", "stream"}
