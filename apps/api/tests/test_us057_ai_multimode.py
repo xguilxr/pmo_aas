@@ -272,14 +272,90 @@ async def test_us057_admin_provider_crud_roundtrip(client, db_session, monkeypat
 
 @pytest.mark.asyncio
 async def test_us057_admin_provider_patch_requires_byo_config(
-    client, db_session,
+    client, db_session, monkeypatch,
 ):
+    from app.core import config as cfg_mod
+
+    monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", True, raising=False)
     t, _u, auth = await _admin(client, db_session, slug="ai57-no-byo")
     r = await client.patch(
         "/api/v1/admin/ai/provider",
         json={"mode": "byo"},  # byo ausente
         headers=auth["_authz"],
     )
+    assert r.status_code == 422
+
+
+# -----------------------------------------------------------------------------
+# BYO feature-flag gate (US-063 follow-up, 2026-04-24)
+# -----------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_us057_admin_provider_byo_blocked_when_flag_off(
+    client, db_session, monkeypatch,
+):
+    """Con AI_BYO_ENABLED=False (default prod) el PATCH rechaza mode=byo."""
+    from app.core import config as cfg_mod
+
+    monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", False, raising=False)
+    t, _u, auth = await _admin(client, db_session, slug="ai57-flag-off")
+
+    r = await client.patch(
+        "/api/v1/admin/ai/provider",
+        json={
+            "mode": "byo",
+            "byo": {"provider": "openai", "api_key": "sk-xxx"},
+        },
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422
+    assert r.json()["detail"]["code"] == "BYO_NOT_ENABLED"
+
+
+@pytest.mark.asyncio
+async def test_us057_admin_provider_get_reports_flag_and_catalog(
+    client, db_session, monkeypatch,
+):
+    """GET expone byo_enabled + byo_catalog (con 4 providers allowed)."""
+    from app.core import config as cfg_mod
+
+    monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", False, raising=False)
+    t, _u, auth = await _admin(client, db_session, slug="ai57-catalog")
+    r = await client.get(
+        "/api/v1/admin/ai/provider", headers=auth["_authz"],
+    )
+    body = r.json()
+    assert body["byo_enabled"] is False
+    keys = {p["key"] for p in body["byo_catalog"]}
+    # Ollama NO debe estar en el catálogo público.
+    assert keys == {"openai", "claude", "perplexity", "gemini"}
+    # Cada entry trae los links que la UI necesita.
+    for p in body["byo_catalog"]:
+        assert p["api_keys_url"].startswith("https://")
+        assert p["docs_url"].startswith("https://")
+        assert isinstance(p["suggested_models"], list)
+
+
+@pytest.mark.asyncio
+async def test_us057_admin_provider_rejects_ollama_in_byo(
+    client, db_session, monkeypatch,
+):
+    """Aun con el flag on, mode=byo + provider=ollama es rechazado por
+    el schema Pydantic — ollama ya no es literal válido."""
+    from app.core import config as cfg_mod
+
+    monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", True, raising=False)
+    t, _u, auth = await _admin(client, db_session, slug="ai57-no-ollama")
+    r = await client.patch(
+        "/api/v1/admin/ai/provider",
+        json={
+            "mode": "byo",
+            "byo": {"provider": "ollama", "base_url": "http://localhost:11434"},
+        },
+        headers=auth["_authz"],
+    )
+    # Pydantic rechaza en el schema → 422 (FastAPI validation).
     assert r.status_code == 422
 
 
