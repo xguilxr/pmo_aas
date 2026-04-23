@@ -7,10 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_permission
-from app.core.errors import forbidden, not_found, validation_error
+from app.core.errors import conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.ai import AIJob, Report
 from app.models.project import Project
+from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.workers.tasks.ai import draft_report_task, generate_minute_task
 
@@ -52,6 +53,15 @@ async def generate_minute(
         from fastapi import HTTPException
 
         raise HTTPException(status_code=413, detail={"code": "PAYLOAD_TOO_LARGE"})
+
+    # US-057: gate modo IA del tenant. `disabled` → 409 antes de crear job.
+    cfg = await load_tenant_ai(db, tenant_id)
+    if cfg.mode == "disabled":
+        raise conflict(
+            "La IA está deshabilitada para este tenant. "
+            "Habilítala en /admin/ai (modo plataforma o BYO).",
+            code="AI_DISABLED",
+        )
 
     p = (
         await db.execute(
@@ -102,6 +112,23 @@ async def draft_report(
 ):
     """US-051: dispatch a Celery (idéntico pattern que `generate_minute`)."""
     tenant_id = _tenant(cu)
+
+    # US-057: draft report IA sólo disponible en modo `byo`. En modo
+    # `platform` Groq está limitado a minutas (scope del owner). En
+    # modo `disabled` → 409.
+    cfg = await load_tenant_ai(db, tenant_id)
+    if cfg.mode == "disabled":
+        raise conflict(
+            "La IA está deshabilitada para este tenant.",
+            code="AI_DISABLED",
+        )
+    if cfg.mode == "platform":
+        raise conflict(
+            "El modo 'plataforma' (Groq) está limitado a minutas. "
+            "Para generar reportes con IA, conecta tu propio proveedor en /admin/ai.",
+            code="AI_PLATFORM_SCOPE_LIMITED",
+        )
+
     p = (
         await db.execute(
             select(Project).where(Project.id == str(project_id), Project.tenant_id == tenant_id)

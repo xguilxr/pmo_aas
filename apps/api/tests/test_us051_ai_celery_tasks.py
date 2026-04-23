@@ -15,7 +15,13 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.factories import create_admin_role, create_tenant, create_user, login
+from tests.factories import (
+    create_admin_role,
+    create_tenant,
+    create_user,
+    enable_tenant_ai,
+    login,
+)
 
 
 async def _setup(client, db_session):
@@ -24,6 +30,13 @@ async def _setup(client, db_session):
     await create_user(
         db_session, tenant=t, username="admin", email="admin@acme.example.com",
         password="Str0ng-Admin-1!", roles=[admin_role],
+    )
+    # US-057: IA en modo `byo` + ollama (provider stubbed en conftest).
+    await enable_tenant_ai(
+        db_session,
+        t,
+        mode="byo",
+        byo={"provider": "ollama", "base_url": "http://localhost:11434", "model": "stub"},
     )
     auth = await login(client, "admin", "Str0ng-Admin-1!")
     r = await client.post("/api/v1/organizations", json={"name": "Org1"}, headers=auth["_authz"])
@@ -121,8 +134,10 @@ async def test_us051_minute_task_failure_marks_failed(
     )
     job_id = r.json()["job_id"]
 
+    # US-057: la ruta ahora va por `_call_ai_for_tenant`; reemplazo al
+    # inyector de esa función para forzar el fallo del provider.
     with patch(
-        "app.workers.tasks.ai.generate_with_cascade",
+        "app.workers.tasks.ai.generate_for_tenant",
         side_effect=RuntimeError("all providers dead"),
     ):
         await ai_tasks._run_minute(**captured)

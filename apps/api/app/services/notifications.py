@@ -33,6 +33,8 @@ RISK_HIGH = "risk_high"
 CHANGE_PENDING = "change_pending"
 MINUTE_GENERATED = "minute_generated"
 REPORT_SENT = "report_sent"
+# US-057: alerta al superadmin cuando Groq (modo plataforma) falla.
+PLATFORM_AI_ALERT = "platform_ai_alert"
 
 # Qué tipos mandan email por default cuando el user no tiene override.
 # Post-MVP puede moverse a config-per-tenant.
@@ -42,6 +44,7 @@ EMAIL_BY_DEFAULT = {
     REQUEST_NEEDS_INFO,
     PM_ASSIGNED,
     AID_OVERDUE,
+    PLATFORM_AI_ALERT,
 }
 
 # Ventana de deduplicación in-app antes de mandar email (US-028).
