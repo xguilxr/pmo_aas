@@ -7,9 +7,11 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-23 — Bloque 2 COMPLETO — próximo Bloque 3 o Bloque 4 según owner
+2026-04-23 — Bloques 2 y 3 COMPLETOS — siguiente Bloque 4 (US-057 IA avanzada)
 
-US-056, ENH-015, ENH-017 y ENH-016 completadas. Bloque 2 cerrado.
+Bloque 2: US-056, ENH-015, ENH-017, ENH-016 (cerrado).
+Bloque 3: ENH-018, ENH-019, ENH-020, US-062, US-058 (cerrado; US-058
+parcial — historial audit_log deferrado).
 
 Hotfixes CI post-commit (2026-04-23):
 - 47d3603: DocumentCategory types en frontend (fix CI web-build type error, afecta BUG-024/BUG-023)
@@ -82,10 +84,10 @@ Hotfixes CI post-commit (2026-04-23):
 - [x] ENH-017 — RAID: filtros en línea horizontal — #82 ✅ 6832199
 - [x] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81 ✅ ade6ee7
 
-### Bloque 3 — Sprint 2 RAID + Áreas (5 items)
+### Bloque 3 — Sprint 2 RAID + Áreas (5 items) ✅ COMPLETO
 - [x] ENH-019 — RAID: filtros avanzados (status + severidad/prioridad) — #85 ✅ fe3b001
 - [x] ENH-018 — RAID: agregar toggle Kanban — #84 ✅ c894f12
-- [x] US-058 — RAID: preview panel editable con comentarios (parcial — ver issue) — #83 ✅ (pendiente commit)
+- [x] US-058 — RAID: preview panel editable con comentarios (parcial — ver issue) — #83 ✅ e239caa
 - [x] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86 ✅ 009c0f2
 - [x] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91 ✅ 009c0f2
 
