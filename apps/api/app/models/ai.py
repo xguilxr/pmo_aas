@@ -24,6 +24,9 @@ class AIJob(Base, TimestampMixin):
     error: Mapped[str | None] = mapped_column(String(2000))
     requested_by: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # US-057: qué provider atendió el request, para el dashboard de uso Groq
+    # y el panel de status por tenant del superadmin.
+    provider: Mapped[str | None] = mapped_column(String(32), index=True)
 
 
 class Report(Base, TimestampMixin):
