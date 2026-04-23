@@ -2,15 +2,31 @@ import { apiFetch } from "@/lib/api";
 import type {
   ChangeRequest,
   Issue,
+  IssueStatus,
   IssueType,
   MeetingMinute,
   Risk,
+  RiskStatus,
 } from "./modules";
 
 export type TenantCrossFilter = {
   organization_id?: string;
   program_id?: string;
   project_id?: string;
+};
+
+/** ENH-019: filtros avanzados para RAID (cross-tenant). */
+export type TenantRisksFilter = TenantCrossFilter & {
+  status?: RiskStatus;
+  severity_min?: number;
+  owner_id?: string;
+};
+
+export type TenantIssuesFilter = TenantCrossFilter & {
+  type?: IssueType;
+  status?: IssueStatus;
+  priority_min?: number;
+  owner_id?: string;
 };
 
 // ENH-010: todos los endpoints cross-tenant incluyen los campos del
@@ -26,23 +42,26 @@ export type TenantIssue = WithProject<Issue>;
 export type TenantChange = WithProject<ChangeRequest>;
 export type TenantMinute = WithProject<MeetingMinute>;
 
-function toQs(filter: TenantCrossFilter & Record<string, string | undefined>): string {
+function toQs(
+  filter: Record<string, string | number | undefined | null>,
+): string {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(filter)) {
-    if (v) params.append(k, v);
+    if (v === undefined || v === null || v === "") continue;
+    params.append(k, String(v));
   }
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
 
 export function listTenantRisks(
-  filter: TenantCrossFilter = {},
+  filter: TenantRisksFilter = {},
 ): Promise<TenantRisk[]> {
   return apiFetch<TenantRisk[]>(`/api/v1/tenant/risks${toQs(filter)}`);
 }
 
 export function listTenantIssues(
-  filter: TenantCrossFilter & { type?: IssueType } = {},
+  filter: TenantIssuesFilter = {},
 ): Promise<TenantIssue[]> {
   return apiFetch<TenantIssue[]>(`/api/v1/tenant/issues${toQs(filter)}`);
 }

@@ -20,8 +20,10 @@ import {
   ISSUE_STATUS_LABEL,
   ISSUE_TYPE_LABEL,
   RISK_STATUS_LABEL,
+  type Issue,
   type IssueStatus,
   type IssueType,
+  type Risk,
   type RiskStatus,
 } from "@/lib/api/modules";
 import {
@@ -58,6 +60,10 @@ function TenantRaidInner() {
   const [view, setView] = useState<"list" | "board">(
     searchParams.get("view") === "board" ? "board" : "list",
   );
+  // ENH-019: filtros avanzados server-side (además de la cascada org/program/project).
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [severityMinFilter, setSeverityMinFilter] = useState<string>("");
+  const [priorityMinFilter, setPriorityMinFilter] = useState<string>("");
   const [risks, setRisks] = useState<TenantRisk[]>([]);
   const [issues, setIssues] = useState<TenantIssue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,21 +71,45 @@ function TenantRaidInner() {
   const [previewRisk, setPreviewRisk] = useState<TenantRisk | null>(null);
   const [previewIssue, setPreviewIssue] = useState<TenantIssue | null>(null);
 
+  // Al cambiar el Tipo se limpian los filtros de estado/severidad/prioridad
+  // para evitar combinaciones inválidas (p. ej. estado de riesgo aplicado a
+  // una Acción, cuyos estados son distintos).
+  useEffect(() => {
+    setStatusFilter("");
+    setSeverityMinFilter("");
+    setPriorityMinFilter("");
+  }, [kind]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     const issueType: IssueType | undefined =
       kind === "actions" ? "action" : kind === "decisions" ? "decision" : kind === "issues" ? "issue" : undefined;
+    const severityMinNum = Number(severityMinFilter);
+    const priorityMinNum = Number(priorityMinFilter);
     const promise =
       kind === "risks"
-        ? listTenantRisks(filter).then((r) => {
+        ? listTenantRisks({
+            ...filter,
+            status: (statusFilter || undefined) as
+              | Risk["status"]
+              | undefined,
+            severity_min: severityMinNum > 0 ? severityMinNum : undefined,
+          }).then((r) => {
             if (!cancelled) {
               setRisks(r);
               setIssues([]);
             }
           })
-        : listTenantIssues({ ...filter, type: issueType }).then((r) => {
+        : listTenantIssues({
+            ...filter,
+            type: issueType,
+            status: (statusFilter || undefined) as
+              | Issue["status"]
+              | undefined,
+            priority_min: priorityMinNum > 0 ? priorityMinNum : undefined,
+          }).then((r) => {
             if (!cancelled) {
               setIssues(r);
               setRisks([]);
@@ -97,7 +127,7 @@ function TenantRaidInner() {
     return () => {
       cancelled = true;
     };
-  }, [kind, filter]);
+  }, [kind, filter, statusFilter, severityMinFilter, priorityMinFilter]);
 
   // ENH-009: cuando el link trae ?severity_min=N (típicamente 13 para
   // "Riesgos severos" desde el dashboard), filtramos client-side.
@@ -158,7 +188,7 @@ function TenantRaidInner() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
         {/* ENH-017: orden horizontal Tipo → Proyecto → Programa → Organización. */}
         <TenantCrossFilters
           value={filter}
@@ -179,6 +209,54 @@ function TenantRaidInner() {
             </Select>
           }
         />
+        {/* ENH-019: filtros avanzados (status + severity/priority). */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            aria-label="Estado"
+            className="h-9 min-w-[160px]"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">Todos los estados</option>
+            {kind === "risks"
+              ? (Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {RISK_STATUS_LABEL[s]}
+                  </option>
+                ))
+              : (Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {ISSUE_STATUS_LABEL[s]}
+                  </option>
+                ))}
+          </Select>
+          {kind === "risks" ? (
+            <Select
+              aria-label="Severidad mínima"
+              className="h-9 min-w-[160px]"
+              value={severityMinFilter}
+              onChange={(e) => setSeverityMinFilter(e.target.value)}
+            >
+              <option value="">Cualquier severidad</option>
+              <option value="13">Alta (≥ 13)</option>
+              <option value="6">Media (≥ 6)</option>
+              <option value="1">Baja (≥ 1)</option>
+            </Select>
+          ) : (
+            <Select
+              aria-label="Prioridad mínima"
+              className="h-9 min-w-[160px]"
+              value={priorityMinFilter}
+              onChange={(e) => setPriorityMinFilter(e.target.value)}
+            >
+              <option value="">Cualquier prioridad</option>
+              <option value="4">P4+ (Alta)</option>
+              <option value="3">P3+ (Media-alta)</option>
+              <option value="2">P2+ (Media)</option>
+              <option value="1">P1+ (Todas)</option>
+            </Select>
+          )}
+        </div>
       </section>
 
       <section
