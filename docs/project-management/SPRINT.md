@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-22 23:59 — ENH-014 (Reportes: renombrar archivo con datetime + preview PDF)
+2026-04-23 — US-056 (Calendarizar envío automático de reportes vía Resend)
 
-BUG-024 completado (3cd997d). Bloque 1 DONE, iniciando Bloque 2.
+ENH-014 completado (02cfaa6). Siguiente: US-056 en Bloque 2.
 ```
 
 ---
@@ -79,7 +79,7 @@ BUG-024 completado (3cd997d). Bloque 1 DONE, iniciando Bloque 2.
 - [x] BUG-025 — Rol "Reportes" sin módulo de permisos — #76 ✅ b1954c7
 
 ### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items)
-- [ ] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77
+- [x] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77 ✅ 02cfaa6
 - [ ] US-056 — Calendarizar envío automático de reportes vía Resend — #78
 - [ ] ENH-015 — Dashboard: expandir barra de navegación — #80
 - [ ] ENH-017 — RAID: filtros en línea horizontal — #82
