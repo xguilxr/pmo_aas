@@ -23,6 +23,7 @@ from app.models.project_charter import ProjectCharter  # noqa: F401
 from app.models.project_member import ProjectMember  # noqa: F401
 from app.models.project_request import FolioSequence, ProjectRequest  # noqa: F401
 from app.models.role import Role, UserRole  # noqa: F401
+from app.models.scheduled_report import ScheduledReport  # noqa: F401
 from app.models.task import Task, TaskDependency  # noqa: F401
 from app.models.tenant import Tenant  # noqa: F401
 from app.models.user import User  # noqa: F401

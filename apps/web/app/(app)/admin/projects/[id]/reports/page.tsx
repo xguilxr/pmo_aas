@@ -5,10 +5,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
+  CalendarClock,
   Download,
   Eye,
   FileText,
   Mail,
+  Pencil,
   Plus,
   Send,
   Sparkles,
@@ -43,6 +45,17 @@ import {
   type Report,
   type ReportPeriod,
 } from "@/lib/api/reports";
+import {
+  CADENCE_LABEL,
+  REPORT_TYPE_LABEL,
+  createScheduledReport,
+  deleteScheduledReport,
+  listScheduledReports,
+  updateScheduledReport,
+  type ScheduledReport,
+  type ScheduledReportCadence,
+  type ScheduledReportType,
+} from "@/lib/api/scheduled-reports";
 import { cn } from "@/lib/cn";
 
 function fmtDate(iso: string | null | undefined): string {
@@ -291,6 +304,8 @@ function ReportsInner() {
         )}
       </section>
 
+      <ScheduledReportsSection projectId={id} />
+
       <CreateReportModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -301,6 +316,345 @@ function ReportsInner() {
         }}
       />
     </div>
+  );
+}
+
+function ScheduledReportsSection({ projectId }: { projectId: string }) {
+  const [rows, setRows] = useState<ScheduledReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<ScheduledReport | null>(null);
+
+  async function refresh() {
+    setLoading(true);
+    setError(null);
+    try {
+      setRows(await listScheduledReports(projectId));
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Error al cargar programaciones",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refresh();
+  }, [projectId]);
+
+  async function toggleEnabled(row: ScheduledReport) {
+    try {
+      await updateScheduledReport(row.id, { enabled: !row.enabled });
+      await refresh();
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Error al actualizar",
+      );
+    }
+  }
+
+  async function remove(row: ScheduledReport) {
+    if (!window.confirm("¿Eliminar esta programación?")) return;
+    try {
+      await deleteScheduledReport(row.id);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al eliminar");
+    }
+  }
+
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <CalendarClock
+            className="h-4 w-4 text-[var(--color-tertiary)]"
+            aria-hidden
+          />
+          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+            Envíos automáticos programados
+          </h2>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing(null);
+            setFormOpen(true);
+          }}
+        >
+          <Plus className="h-4 w-4" aria-hidden /> Nueva programación
+        </Button>
+      </header>
+      {error ? (
+        <div className="px-4 pt-3">
+          <Banner variant="danger">{error}</Banner>
+        </div>
+      ) : null}
+      {loading ? (
+        <div className="space-y-2 p-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-[var(--color-tertiary)]">
+          Sin programaciones aún. Crea una para enviar Reportes de Avance o
+          Seguimiento a los involucrados en una cadencia fija.
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--border-subtle)]">
+          {rows.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-subtle)]"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-medium text-[var(--color-primary)]">
+                    {REPORT_TYPE_LABEL[r.report_type]}
+                  </span>
+                  <Badge variant="neutral">{CADENCE_LABEL[r.cadence]}</Badge>
+                  {r.enabled ? (
+                    <Badge variant="success">Activa</Badge>
+                  ) : (
+                    <Badge variant="neutral">Pausada</Badge>
+                  )}
+                </div>
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--color-tertiary)]">
+                  <span className="inline-flex items-center gap-1">
+                    <Mail className="h-3 w-3" aria-hidden />
+                    {r.recipients.length} destinatarios
+                  </span>
+                  <span>Próximo: {fmtDate(r.next_run_at)}</span>
+                  <span>Último envío: {fmtDate(r.last_run_at)}</span>
+                  {r.last_error ? (
+                    <span className="text-[var(--color-danger-fg)]">
+                      {r.last_error}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleEnabled(r)}
+                  aria-label={r.enabled ? "Pausar" : "Reactivar"}
+                  title={r.enabled ? "Pausar" : "Reactivar"}
+                >
+                  {r.enabled ? "Pausar" : "Activar"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditing(r);
+                    setFormOpen(true);
+                  }}
+                  aria-label="Editar"
+                  title="Editar"
+                >
+                  <Pencil className="h-4 w-4" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove(r)}
+                  aria-label="Eliminar"
+                  title="Eliminar"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ScheduledReportForm
+        open={formOpen}
+        projectId={projectId}
+        existing={editing}
+        onClose={() => setFormOpen(false)}
+        onSaved={() => {
+          setFormOpen(false);
+          void refresh();
+        }}
+      />
+    </section>
+  );
+}
+
+function ScheduledReportForm({
+  open,
+  projectId,
+  existing,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  projectId: string;
+  existing: ScheduledReport | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [reportType, setReportType] = useState<ScheduledReportType>("avance");
+  const [cadence, setCadence] = useState<ScheduledReportCadence>("weekly");
+  const [recipients, setRecipients] = useState("");
+  const [enabled, setEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (existing) {
+      setReportType(existing.report_type);
+      setCadence(existing.cadence);
+      setRecipients(existing.recipients.join(", "));
+      setEnabled(existing.enabled);
+    } else {
+      setReportType("avance");
+      setCadence("weekly");
+      setRecipients("");
+      setEnabled(true);
+    }
+    setError(null);
+  }, [open, existing]);
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const list = recipients
+        .split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (list.length === 0) {
+        setError("Agrega al menos un destinatario");
+        setSaving(false);
+        return;
+      }
+      for (const r of list) {
+        if (!emailRe.test(r)) {
+          setError(`Email inválido: ${r}`);
+          setSaving(false);
+          return;
+        }
+      }
+      if (existing) {
+        await updateScheduledReport(existing.id, {
+          report_type: reportType,
+          cadence,
+          recipients: list,
+          enabled,
+        });
+      } else {
+        await createScheduledReport(projectId, {
+          report_type: reportType,
+          cadence,
+          recipients: list,
+          enabled,
+        });
+      }
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={existing ? "Editar programación" : "Nueva programación"}
+    >
+      <form onSubmit={submit} className="space-y-3">
+        <div>
+          <label
+            htmlFor="sched-type"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Tipo de reporte
+          </label>
+          <Select
+            id="sched-type"
+            value={reportType}
+            onChange={(e) =>
+              setReportType(e.target.value as ScheduledReportType)
+            }
+          >
+            <option value="avance">Reporte de Avance</option>
+            <option value="seguimiento">Reporte de Seguimiento</option>
+          </Select>
+        </div>
+        <div>
+          <label
+            htmlFor="sched-cadence"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Cadencia
+          </label>
+          <Select
+            id="sched-cadence"
+            value={cadence}
+            onChange={(e) =>
+              setCadence(e.target.value as ScheduledReportCadence)
+            }
+          >
+            <option value="daily">Diario</option>
+            <option value="weekly">Semanal</option>
+            <option value="monthly">Mensual</option>
+          </Select>
+        </div>
+        <div>
+          <label
+            htmlFor="sched-recipients"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Destinatarios (emails separados por coma)
+          </label>
+          <Input
+            id="sched-recipients"
+            value={recipients}
+            onChange={(e) => setRecipients(e.target.value)}
+            placeholder="pm@empresa.com, sponsor@empresa.com"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="sched-enabled"
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
+          <label
+            htmlFor="sched-enabled"
+            className="text-sm text-[var(--color-secondary)]"
+          >
+            Activa
+          </label>
+        </div>
+        {error ? <Banner variant="danger">{error}</Banner> : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={saving}>
+            {existing ? "Guardar" : "Crear"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

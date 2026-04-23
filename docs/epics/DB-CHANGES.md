@@ -34,6 +34,7 @@
 | 0015 | `20260420_0015_reports_generator_cut_off.py` | EP014 | `reports.generator` + `reports.cut_off_date` |
 | 0016 | `20260421_0016_notifications.py` | EP011 | Tabla `notifications` (US-027) |
 | 0017 | `20260421_0017_platform_ai_settings.py` | EP008/EP010 | Tabla singleton `platform_ai_settings` con 1 row seed `id='default'` — defaults de plataforma editables por superadmin (US-054) |
+| 0018 | `20260423_0018_scheduled_reports.py` | EP014 + EP011 | Tabla `scheduled_reports` — programaciones automáticas de reportes (Avance/Seguimiento) con cadencia daily/weekly/monthly, destinatarios y `next_run_at` para dispatch por Celery beat (US-056) |
 
 ---
 
@@ -142,6 +143,14 @@ Migraciones **0014** (`reports_period`) + **0015**
 'ai' | 'avance' | 'seguimiento'`) y `reports.cut_off_date` + columnas de
 período. US-040 (formato estandarizado de minuta IA) es
 post-procesamiento sobre `meeting_minutes`; no toca BD.
+
+Migración **0018** (`scheduled_reports`): tabla nueva para US-056
+(calendarización automática de envíos). Columnas: `id`, `tenant_id`,
+`project_id`, `report_type` (`'avance' | 'seguimiento'`), `cadence`
+(`'daily' | 'weekly' | 'monthly'`), `recipients` (JSON list de
+emails), `enabled`, `last_run_at`, `next_run_at`, `last_error`,
+`created_by`. Índices: `(tenant_id, project_id)` y `(enabled,
+next_run_at)` para el dispatch del beat.
 
 ## EP016 — IA local (Ollama vía Tailscale)
 
