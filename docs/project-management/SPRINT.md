@@ -7,20 +7,24 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 3 v1.2 en ejecución. Bloque 1 casi cerrado.
+2026-04-24 — Sprint 3 v1.2 Bloque 1 COMPLETO + bug-fix post-deploy.
 
 Bloque 1 (limpieza + auth self-service):
 - ENH-021 (#96): superadmin AI sin defaults Ollama. ✅ b70c887
-- US-063 (#95): password reset + change vía email. ✅ (pendiente commit
-  final de docs/sprint).
+- US-063 (#95): password reset + change vía email. ✅ (6 commits,
+  af4c9c3…16b57ff).
 
-Próximos candidatos a Sprint 3 si el owner aprueba: ver §Backlog v2.0
-para los 3 items de overhaul Auth/Roles/Aprobaciones; llegan cuando el
-owner arme el RFC.
-
-Hotfix Railway 2026-04-23:
+Bug-fixes post-deploy v1.1 (2026-04-23/24):
 - 40c4176: migraciones 0021/0022 removieron filtro `deleted_at IS NULL`
   (tenants no tiene esa columna) — Railway bloqueaba deploy.
+- 39b5fd8: default GROQ_MODEL = llama-3.3-70b-versatile (3.1 deprecado).
+- a505553 + 7b812a1 (DEC-019): /admin/ai — quitar Ollama del catálogo
+  público + feature flag AI_BYO_ENABLED (default off) + wizard de
+  conexión con 4 pasos preparado pero deshabilitado hasta que el owner
+  encienda el flag en Railway.
+
+Próximos candidatos: ver §Backlog v2.0 para los 3 items de overhaul
+Auth/Roles/Aprobaciones; llegan cuando el owner arme el RFC.
 ```
 
 ---

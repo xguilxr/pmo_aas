@@ -355,14 +355,26 @@ _PROVIDERS: dict[str, AIProvider] = {
     "disabled": DisabledProvider(),
 }
 
-# US-057: proveedores válidos para modo BYO. `ollama` absorbió US-048
-# como sub-caso (base_url = tailnet del tenant).
+# US-057 + follow-up 2026-04-24: proveedores BYO expuestos al tenant.
+# Ollama se removió del catálogo público el 2026-04-24 (decisión del
+# owner: la UI muestra OpenAI / Claude / Perplexity / Gemini). La
+# clase `OllamaProvider` sigue existiendo para atender tenants legacy
+# (US-048) cuya config ya quedó en `settings.ai.byo.provider="ollama"`;
+# el endpoint PATCH rechaza nuevos ollama vía `BYO_PROVIDERS_ALLOWED`.
 BYO_PROVIDERS: tuple[str, ...] = (
     "openai",
     "claude",
     "perplexity",
     "gemini",
-    "ollama",
+    "ollama",  # legacy: aceptado por el worker, rechazado para alta nueva
+)
+
+# Lo que la UI y el endpoint PATCH ofrecen como opciones válidas nuevas.
+BYO_PROVIDERS_ALLOWED: tuple[str, ...] = (
+    "openai",
+    "claude",
+    "perplexity",
+    "gemini",
 )
 
 

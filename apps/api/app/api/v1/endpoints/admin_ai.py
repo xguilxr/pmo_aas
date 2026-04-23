@@ -242,7 +242,9 @@ async def test_ai_connection(
 
 from datetime import UTC, datetime  # noqa: E402
 
-from app.services.ai.provider import BYO_PROVIDERS  # noqa: E402
+from app.core.config import settings  # noqa: E402
+from app.services.ai.byo_catalog import catalog_for_api  # noqa: E402
+from app.services.ai.provider import BYO_PROVIDERS_ALLOWED  # noqa: E402
 from app.services.ai.tenant_ai import VALID_MODES  # noqa: E402
 from app.services.ai_secrets import (  # noqa: E402
     encrypt_secret,
@@ -251,7 +253,10 @@ from app.services.ai_secrets import (  # noqa: E402
 
 
 class BYOConfigIn(BaseModel):
-    provider: Literal["openai", "claude", "perplexity", "gemini", "ollama"]
+    # US-063 follow-up: ollama queda fuera del Literal — para tenants
+    # legacy US-048 que ya estén en la BD, el worker sigue funcionando
+    # pero el endpoint PATCH rechaza nuevos ollama.
+    provider: Literal["openai", "claude", "perplexity", "gemini"]
     api_key: str | None = Field(
         default=None,
         description=(
@@ -277,6 +282,14 @@ class BYOConfigRead(BaseModel):
 class TenantAIProviderRead(BaseModel):
     mode: Literal["disabled", "platform", "byo"]
     byo: BYOConfigRead | None = None
+    # US-063 follow-up: feature-flag del modo BYO. Cuando está off, el
+    # wizard de conexión en la UI queda deshabilitado ("Próximamente")
+    # pero las cards con metadata de cada proveedor siguen visibles.
+    byo_enabled: bool = False
+    # Catálogo de proveedores BYO soportados con sus deep-links a la
+    # consola + modelos sugeridos. Se lee de la UI para renderizar las
+    # cards sin hardcodear URLs.
+    byo_catalog: list[dict] = []
 
 
 class TenantAIProviderPatch(BaseModel):
@@ -321,6 +334,8 @@ async def get_provider_config(
     return TenantAIProviderRead(
         mode=mode,  # type: ignore[arg-type]
         byo=_build_byo_read(byo_raw) if byo_raw else None,
+        byo_enabled=bool(settings.AI_BYO_ENABLED),
+        byo_catalog=catalog_for_api(),
     )
 
 
@@ -342,14 +357,29 @@ async def update_provider_config(
     ai["mode"] = body.mode
 
     if body.mode == "byo":
+        # US-063 follow-up: feature flag. El backend aún acepta BYO vía
+        # API (para tests y scripts), pero desde /admin/ai el wizard
+        # queda deshabilitado hasta que el owner encienda el flag.
+        if not settings.AI_BYO_ENABLED:
+            from app.core.errors import business_rule
+
+            raise business_rule(
+                "El modo BYO aún no está habilitado en esta plataforma. "
+                "Habilítalo con AI_BYO_ENABLED=1 en Railway cuando el "
+                "wizard de conexión esté listo.",
+                code="BYO_NOT_ENABLED",
+            )
         if body.byo is None:
             from app.core.errors import business_rule
 
             raise business_rule("byo requerido cuando mode='byo'")
-        if body.byo.provider not in BYO_PROVIDERS:
+        if body.byo.provider not in BYO_PROVIDERS_ALLOWED:
             from app.core.errors import business_rule
 
-            raise business_rule(f"Provider BYO inválido: {body.byo.provider}")
+            raise business_rule(
+                f"Provider BYO inválido: {body.byo.provider}",
+                code="BYO_PROVIDER_INVALID",
+            )
         existing = ai.get("byo") if isinstance(ai.get("byo"), dict) else {}
         byo: dict = {"provider": body.byo.provider}
         # Re-cifrar solo si el usuario envía api_key explícita; si no,
@@ -420,6 +450,17 @@ async def test_provider_connection(
     para Ollama). Devuelve ok/latency/error.
     """
     from app.services.ai_secrets import decrypt_secret
+
+    # Gate BYO feature flag (US-063 follow-up).
+    if not settings.AI_BYO_ENABLED:
+        return TestConnectionResult(
+            ok=False,
+            error=(
+                "BYO aún no habilitado. Activa AI_BYO_ENABLED cuando el "
+                "wizard de conexión esté listo."
+            ),
+            code="BYO_NOT_ENABLED",
+        )
 
     tenant_id = _tenant_id(cu)
     t = (

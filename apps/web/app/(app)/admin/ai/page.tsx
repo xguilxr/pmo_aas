@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
+  ExternalLink,
   KeyRound,
   Plug,
   Sparkles,
@@ -16,13 +23,11 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
-  BYO_PROVIDER_LABEL,
-  BYO_PROVIDER_MODELS,
   type BYOProvider,
+  type BYOProviderInfo,
   type TenantAIMode,
   type TenantAIProviderRead,
   getTenantAIProvider,
@@ -34,16 +39,15 @@ import { cn } from "@/lib/cn";
 const MODE_LABEL: Record<TenantAIMode, string> = {
   disabled: "Sin IA",
   platform: "IA de la plataforma (Groq)",
-  byo: "Conectar mi proveedor",
+  byo: "Conectar tu propio proveedor",
 };
 
 const MODE_DESCRIPTION: Record<TenantAIMode, string> = {
   disabled:
-    "Desactiva todas las funciones de IA. Los botones de 'Generar con IA' se ocultan.",
+    "Desactiva todas las funciones de IA. Los botones de 'Generar con IA' se ocultan. Default para tenants nuevos.",
   platform:
-    "Usa la IA que hostea la plataforma (Groq · llama-3.1-70b-versatile). Sólo minutas por ahora; el contenido del tenant nunca se comparte con otros tenants.",
-  byo:
-    "Conecta tu propia instancia de OpenAI, Claude, Perplexity, Gemini u Ollama. El costo corre por tu cuenta y puedes usar IA para minutas y reportes.",
+    "Usa la IA que hostea la plataforma (Groq · llama-3.3-70b-versatile). Por ahora sólo minutas; el contenido del tenant nunca se comparte con otros tenants.",
+  byo: "Conecta tu cuenta de OpenAI, Claude, Gemini o Perplexity. El costo corre por tu cuenta y puedes usar IA para minutas y reportes.",
 };
 
 export default function TenantAdminAIPage() {
@@ -54,22 +58,12 @@ export default function TenantAdminAIPage() {
 
   const [pendingMode, setPendingMode] = useState<TenantAIMode | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-
-  // BYO form state (solo válido cuando mode === "byo").
-  const [byoProvider, setByoProvider] = useState<BYOProvider>("openai");
-  const [byoKey, setByoKey] = useState<string>("");
-  const [byoKeyDirty, setByoKeyDirty] = useState(false);
-  const [byoModel, setByoModel] = useState<string>("");
-  const [byoBaseUrl, setByoBaseUrl] = useState<string>("");
-
-  // Test connection state.
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<
-    | { ok: boolean; latency_ms: number | null; error: string | null }
-    | null
-  >(null);
-
   const [saving, setSaving] = useState(false);
+
+  // Wizard "conectar proveedor".
+  const [wizardProvider, setWizardProvider] = useState<BYOProviderInfo | null>(
+    null,
+  );
 
   async function refresh() {
     setLoading(true);
@@ -78,11 +72,6 @@ export default function TenantAdminAIPage() {
       const d = await getTenantAIProvider();
       setData(d);
       setPendingMode(d.mode);
-      if (d.byo) {
-        setByoProvider(d.byo.provider);
-        setByoModel(d.byo.model ?? "");
-        setByoBaseUrl(d.byo.base_url ?? "");
-      }
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Error al cargar config IA",
@@ -96,50 +85,17 @@ export default function TenantAdminAIPage() {
     refresh();
   }, []);
 
-  function chooseMode(next: TenantAIMode) {
-    setPendingMode(next);
-    setNotice(null);
-    // Si cambia de modo real, abrir el modal de confirmación.
-    if (data && next !== data.mode) {
-      setConfirmOpen(true);
-    }
-  }
-
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!pendingMode) return;
-    // Si viene del form y cambia de modo, requerir confirmación primero.
-    if (data && pendingMode !== data.mode && !confirmOpen) {
-      setConfirmOpen(true);
-      return;
-    }
-    await persist();
-  }
-
-  async function persist() {
-    if (!pendingMode) return;
+  async function saveMode(next: TenantAIMode) {
+    if (!data) return;
     setSaving(true);
     setError(null);
     setNotice(null);
     try {
-      const body: Parameters<typeof updateTenantAIProvider>[0] = {
-        mode: pendingMode,
-      };
-      if (pendingMode === "byo") {
-        body.byo = {
-          provider: byoProvider,
-          // Sólo mandamos la api_key si el user la tocó (o no hay una previa).
-          api_key: byoKeyDirty ? byoKey : undefined,
-          model: byoModel || null,
-          base_url: byoBaseUrl || null,
-        };
-      }
-      const updated = await updateTenantAIProvider(body);
+      const updated = await updateTenantAIProvider({ mode: next });
       setData(updated);
-      setByoKey("");
-      setByoKeyDirty(false);
+      setPendingMode(updated.mode);
       setConfirmOpen(false);
-      setNotice("Configuración guardada.");
+      setNotice(`Modo cambiado a "${MODE_LABEL[next]}".`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
     } finally {
@@ -147,37 +103,11 @@ export default function TenantAdminAIPage() {
     }
   }
 
-  async function runTest() {
-    setTesting(true);
-    setTestResult(null);
-    setError(null);
-    try {
-      const body =
-        pendingMode === "byo"
-          ? {
-              byo: {
-                provider: byoProvider,
-                api_key: byoKeyDirty ? byoKey : undefined,
-                model: byoModel || null,
-                base_url: byoBaseUrl || null,
-              },
-            }
-          : {};
-      const r = await testTenantAIProvider(body);
-      setTestResult({
-        ok: r.ok,
-        latency_ms: r.latency_ms,
-        error: r.error,
-      });
-    } catch (err) {
-      setTestResult({
-        ok: false,
-        latency_ms: null,
-        error: err instanceof ApiError ? err.message : "Error al probar conexión",
-      });
-    } finally {
-      setTesting(false);
-    }
+  function chooseMode(next: TenantAIMode) {
+    if (!data) return;
+    setPendingMode(next);
+    if (next === data.mode) return;
+    setConfirmOpen(true);
   }
 
   if (loading || !data || !pendingMode) {
@@ -189,7 +119,6 @@ export default function TenantAdminAIPage() {
     );
   }
 
-  const modeChanged = pendingMode !== data.mode;
   const currentBadge =
     data.mode === "disabled" ? (
       <Badge variant="neutral">Sin IA</Badge>
@@ -197,7 +126,8 @@ export default function TenantAdminAIPage() {
       <Badge variant="info">Plataforma · Groq</Badge>
     ) : (
       <Badge variant="success">
-        BYO · {data.byo ? BYO_PROVIDER_LABEL[data.byo.provider] : "?"}
+        BYO
+        {data.byo ? ` · ${data.byo.provider}` : ""}
       </Badge>
     );
 
@@ -229,7 +159,9 @@ export default function TenantAdminAIPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-tertiary)]">Estado actual:</span>
+            <span className="text-xs text-[var(--color-tertiary)]">
+              Estado actual:
+            </span>
             {currentBadge}
           </div>
         </div>
@@ -238,205 +170,33 @@ export default function TenantAdminAIPage() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
-      <form onSubmit={submit} className="space-y-4">
-        <section className="space-y-2">
-          {(Object.keys(MODE_LABEL) as TenantAIMode[]).map((m) => {
-            const checked = pendingMode === m;
-            return (
-              <label
-                key={m}
-                className={cn(
-                  "flex cursor-pointer items-start gap-3 rounded-[var(--radius-xl)] border p-4 shadow-[var(--shadow-sm)] transition-colors",
-                  checked
-                    ? "border-[var(--color-accent)] bg-[var(--color-subtle)]"
-                    : "border-[var(--border-default)] bg-[var(--color-surface)]",
-                )}
-              >
-                <input
-                  type="radio"
-                  name="mode"
-                  value={m}
-                  checked={checked}
-                  onChange={() => chooseMode(m)}
-                  className="mt-1"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--color-primary)]">
-                      {MODE_LABEL[m]}
-                    </span>
-                    {m === data.mode ? (
-                      <Badge variant="neutral">Actual</Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-[13px] text-[var(--color-secondary)]">
-                    {MODE_DESCRIPTION[m]}
-                  </p>
-                </div>
-              </label>
-            );
-          })}
-        </section>
+      <section className="space-y-2">
+        <ModeCard
+          mode="disabled"
+          pending={pendingMode}
+          current={data.mode}
+          onChoose={chooseMode}
+        />
+        <ModeCard
+          mode="platform"
+          pending={pendingMode}
+          current={data.mode}
+          onChoose={chooseMode}
+        />
+        <ModeCard
+          mode="byo"
+          pending={pendingMode}
+          current={data.mode}
+          onChoose={chooseMode}
+        />
+      </section>
 
-        {pendingMode === "byo" ? (
-          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-            <div className="mb-3 flex items-center gap-2">
-              <Plug
-                className="h-4 w-4 text-[var(--color-tertiary)]"
-                aria-hidden
-              />
-              <h2 className="text-sm font-semibold text-[var(--color-primary)]">
-                Conectar proveedor
-              </h2>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="byo-provider"
-                  className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-                >
-                  Proveedor
-                </label>
-                <Select
-                  id="byo-provider"
-                  value={byoProvider}
-                  onChange={(e) =>
-                    setByoProvider(e.target.value as BYOProvider)
-                  }
-                >
-                  {(Object.keys(BYO_PROVIDER_LABEL) as BYOProvider[]).map(
-                    (p) => (
-                      <option key={p} value={p}>
-                        {BYO_PROVIDER_LABEL[p]}
-                      </option>
-                    ),
-                  )}
-                </Select>
-              </div>
-              <div>
-                <label
-                  htmlFor="byo-model"
-                  className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-                >
-                  Modelo
-                </label>
-                <Input
-                  id="byo-model"
-                  list={`byo-model-suggestions-${byoProvider}`}
-                  value={byoModel}
-                  onChange={(e) => setByoModel(e.target.value)}
-                  placeholder="Ej. gpt-4o-mini"
-                />
-                <datalist id={`byo-model-suggestions-${byoProvider}`}>
-                  {BYO_PROVIDER_MODELS[byoProvider].map((m) => (
-                    <option key={m} value={m} />
-                  ))}
-                </datalist>
-              </div>
-              {byoProvider === "ollama" || byoProvider === "openai" ? (
-                <div className="sm:col-span-2">
-                  <label
-                    htmlFor="byo-base-url"
-                    className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-                  >
-                    Base URL{byoProvider === "ollama" ? "" : " (opcional)"}
-                  </label>
-                  <Input
-                    id="byo-base-url"
-                    value={byoBaseUrl}
-                    onChange={(e) => setByoBaseUrl(e.target.value)}
-                    placeholder={
-                      byoProvider === "ollama"
-                        ? "http://host.ts.net:11434"
-                        : "https://api.openai.com/v1"
-                    }
-                  />
-                </div>
-              ) : null}
-              {byoProvider !== "ollama" ? (
-                <div className="sm:col-span-2">
-                  <label
-                    htmlFor="byo-key"
-                    className="mb-1.5 flex items-center gap-2 text-sm font-medium text-[var(--color-secondary)]"
-                  >
-                    <KeyRound className="h-3.5 w-3.5" aria-hidden />
-                    API key
-                    {data.byo?.has_api_key ? (
-                      <span className="text-[11px] font-normal text-[var(--color-tertiary)]">
-                        (actual: {data.byo.api_key_mask ?? "•••"})
-                      </span>
-                    ) : null}
-                  </label>
-                  <Input
-                    id="byo-key"
-                    type="password"
-                    value={byoKey}
-                    onChange={(e) => {
-                      setByoKey(e.target.value);
-                      setByoKeyDirty(true);
-                    }}
-                    placeholder={
-                      data.byo?.has_api_key
-                        ? "Dejar vacío para conservar la actual"
-                        : "sk-..."
-                    }
-                    autoComplete="off"
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-4 flex items-center gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={runTest}
-                loading={testing}
-              >
-                Probar conexión
-              </Button>
-              {testResult ? (
-                <span className="inline-flex items-center gap-1 text-[13px]">
-                  {testResult.ok ? (
-                    <>
-                      <CheckCircle2
-                        className="h-4 w-4 text-[var(--color-success-fg)]"
-                        aria-hidden
-                      />
-                      <span className="text-[var(--color-success-fg)]">
-                        Conexión OK
-                        {testResult.latency_ms !== null
-                          ? ` (${testResult.latency_ms} ms)`
-                          : ""}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle
-                        className="h-4 w-4 text-[var(--color-danger-fg)]"
-                        aria-hidden
-                      />
-                      <span className="text-[var(--color-danger-fg)]">
-                        {testResult.error ?? "Falló la conexión"}
-                      </span>
-                    </>
-                  )}
-                </span>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="submit"
-            loading={saving}
-            disabled={!modeChanged && pendingMode !== "byo"}
-          >
-            Guardar
-          </Button>
-        </div>
-      </form>
+      {pendingMode === "byo" ? (
+        <BYOSection
+          data={data}
+          onOpenWizard={(p) => setWizardProvider(p)}
+        />
+      ) : null}
 
       <Modal
         open={confirmOpen}
@@ -462,17 +222,626 @@ export default function TenantAdminAIPage() {
               variant="ghost"
               onClick={() => {
                 setConfirmOpen(false);
-                setPendingMode(data.mode); // revert
+                setPendingMode(data.mode);
               }}
             >
               Cancelar
             </Button>
-            <Button type="button" onClick={persist} loading={saving}>
+            <Button
+              type="button"
+              onClick={() => saveMode(pendingMode)}
+              loading={saving}
+            >
               Sí, cambiar modo
             </Button>
           </div>
         </div>
       </Modal>
+
+      {wizardProvider ? (
+        <BYOConnectWizard
+          provider={wizardProvider}
+          byoEnabled={data.byo_enabled}
+          onClose={() => setWizardProvider(null)}
+          onConnected={() => {
+            setWizardProvider(null);
+            void refresh();
+            setNotice("Proveedor conectado.");
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/* ======================= ModeCard ======================= */
+
+function ModeCard({
+  mode,
+  pending,
+  current,
+  onChoose,
+}: {
+  mode: TenantAIMode;
+  pending: TenantAIMode;
+  current: TenantAIMode;
+  onChoose: (m: TenantAIMode) => void;
+}) {
+  const checked = pending === mode;
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-start gap-3 rounded-[var(--radius-xl)] border p-4 shadow-[var(--shadow-sm)] transition-colors",
+        checked
+          ? "border-[var(--color-accent)] bg-[var(--color-subtle)]"
+          : "border-[var(--border-default)] bg-[var(--color-surface)]",
+      )}
+    >
+      <input
+        type="radio"
+        name="mode"
+        value={mode}
+        checked={checked}
+        onChange={() => onChoose(mode)}
+        className="mt-1"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-[var(--color-primary)]">
+            {MODE_LABEL[mode]}
+          </span>
+          {mode === current ? <Badge variant="neutral">Actual</Badge> : null}
+        </div>
+        <p className="mt-1 text-[13px] text-[var(--color-secondary)]">
+          {MODE_DESCRIPTION[mode]}
+        </p>
+      </div>
+    </label>
+  );
+}
+
+/* ======================= BYOSection ======================= */
+
+function BYOSection({
+  data,
+  onOpenWizard,
+}: {
+  data: TenantAIProviderRead;
+  onOpenWizard: (p: BYOProviderInfo) => void;
+}) {
+  return (
+    <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <div className="flex items-center gap-2">
+        <Plug
+          className="h-4 w-4 text-[var(--color-tertiary)]"
+          aria-hidden
+        />
+        <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+          Conectar tu proveedor
+        </h2>
+        {!data.byo_enabled ? (
+          <Badge variant="warning">Próximamente</Badge>
+        ) : null}
+      </div>
+      {!data.byo_enabled ? (
+        <p className="text-[12px] text-[var(--color-tertiary)]">
+          Estamos puliendo el asistente de conexión. El owner habilitará
+          esta opción pronto — mientras tanto puedes usar{" "}
+          <strong>IA de la plataforma (Groq)</strong>.
+        </p>
+      ) : (
+        <p className="text-[12px] text-[var(--color-tertiary)]">
+          Elige tu proveedor favorito. Te abriremos un asistente para pegar
+          la API key y probar la conexión.
+        </p>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {data.byo_catalog.map((p) => (
+          <ProviderCard
+            key={p.key}
+            info={p}
+            connected={data.byo?.provider === p.key && data.byo.has_api_key}
+            disabled={!data.byo_enabled}
+            onClick={() => onOpenWizard(p)}
+          />
+        ))}
+      </div>
+
+      {data.byo && data.byo_enabled ? (
+        <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3 text-[12px]">
+          <div className="font-medium text-[var(--color-primary)]">
+            Conexión activa
+          </div>
+          <div className="mt-1 text-[var(--color-secondary)]">
+            Proveedor: <strong>{data.byo.provider}</strong> · Modelo:{" "}
+            <strong>{data.byo.model ?? "—"}</strong> · Key:{" "}
+            <span className="font-mono">
+              {data.byo.api_key_mask ?? "sin key"}
+            </span>
+          </div>
+          {data.byo.last_test_status ? (
+            <div className="mt-1 text-[var(--color-tertiary)]">
+              Último test:{" "}
+              {data.byo.last_test_status === "ok" ? "OK" : "FAIL"} ·{" "}
+              {data.byo.last_test_at
+                ? new Date(data.byo.last_test_at).toLocaleString()
+                : "—"}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ProviderCard({
+  info,
+  connected,
+  disabled,
+  onClick,
+}: {
+  info: BYOProviderInfo;
+  connected: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-3 text-left shadow-[var(--shadow-sm)] transition-colors",
+        disabled
+          ? "cursor-not-allowed border-[var(--border-subtle)] bg-[var(--color-subtle)] opacity-70"
+          : "border-[var(--border-default)] bg-[var(--color-surface)] hover:border-[var(--color-accent)]",
+      )}
+    >
+      <div className="flex w-full items-center justify-between gap-2">
+        <span className="font-medium text-[var(--color-primary)]">
+          {info.label}
+        </span>
+        {connected ? (
+          <Badge variant="success">
+            <Check className="mr-1 h-3 w-3" aria-hidden />
+            Conectado
+          </Badge>
+        ) : disabled ? (
+          <Badge variant="neutral">Próximamente</Badge>
+        ) : (
+          <Badge variant="info">Conectar</Badge>
+        )}
+      </div>
+      <p className="text-[11px] leading-tight text-[var(--color-tertiary)]">
+        {info.description}
+      </p>
+    </button>
+  );
+}
+
+/* ======================= BYOConnectWizard ======================= */
+
+function BYOConnectWizard({
+  provider,
+  byoEnabled,
+  onClose,
+  onConnected,
+}: {
+  provider: BYOProviderInfo;
+  byoEnabled: boolean;
+  onClose: () => void;
+  onConnected: () => void;
+}) {
+  // Si el flag está off, mostramos "preview" (sólo info + cerrar) y
+  // ocultamos los demás pasos. Cuando está on, el wizard inicia en
+  // "intro".
+  type Step = "preview" | "intro" | "key" | "test" | "save";
+  const [step, setStep] = useState<Step>(byoEnabled ? "intro" : "preview");
+
+  const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState(provider.suggested_models[0] ?? "");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<
+    | { ok: boolean; latency_ms: number | null; error: string | null }
+    | null
+  >(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function runTest() {
+    setTesting(true);
+    setTestResult(null);
+    setError(null);
+    try {
+      const r = await testTenantAIProvider({
+        byo: {
+          provider: provider.key,
+          api_key: apiKey,
+          model: model || null,
+          base_url: baseUrl || null,
+        },
+      });
+      setTestResult({
+        ok: r.ok,
+        latency_ms: r.latency_ms,
+        error: r.error,
+      });
+      if (r.ok) setStep("save");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al probar");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await updateTenantAIProvider({
+        mode: "byo",
+        byo: {
+          provider: provider.key,
+          api_key: apiKey,
+          model: model || null,
+          base_url: baseUrl || null,
+        },
+      });
+      onConnected();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={`Conectar ${provider.label}`}
+    >
+      {!byoEnabled ? (
+        <WizardPreview info={provider} onClose={onClose} />
+      ) : step === "intro" ? (
+        <WizardIntro
+          info={provider}
+          onBack={onClose}
+          onNext={() => setStep("key")}
+        />
+      ) : step === "key" ? (
+        <WizardKey
+          info={provider}
+          apiKey={apiKey}
+          setApiKey={setApiKey}
+          model={model}
+          setModel={setModel}
+          baseUrl={baseUrl}
+          setBaseUrl={setBaseUrl}
+          onBack={() => setStep("intro")}
+          onNext={() => setStep("test")}
+        />
+      ) : step === "test" ? (
+        <WizardTest
+          testing={testing}
+          result={testResult}
+          onBack={() => setStep("key")}
+          onTest={runTest}
+          onNext={() => setStep("save")}
+        />
+      ) : (
+        <WizardSave
+          provider={provider}
+          model={model}
+          apiKeyPreview={apiKey.slice(-4)}
+          saving={saving}
+          error={error}
+          onBack={() => setStep("test")}
+          onSave={save}
+        />
+      )}
+    </Modal>
+  );
+}
+
+function WizardPreview({
+  info,
+  onClose,
+}: {
+  info: BYOProviderInfo;
+  onClose: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <Banner variant="info">
+        Este flujo aún no está habilitado. Estamos puliendo el asistente de
+        conexión; el owner te avisará cuando se active.
+      </Banner>
+      <p className="text-[13px] text-[var(--color-secondary)]">
+        {info.description}
+      </p>
+      <DeepLinks info={info} />
+      <div className="flex justify-end">
+        <Button variant="ghost" onClick={onClose}>
+          Cerrar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function WizardIntro({
+  info,
+  onBack,
+  onNext,
+}: {
+  info: BYOProviderInfo;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[13px] text-[var(--color-secondary)]">
+        Vamos a conectar <strong>{info.label}</strong>. En 3 pasos:
+      </p>
+      <ol className="list-inside list-decimal space-y-1 text-[13px] text-[var(--color-secondary)]">
+        <li>Generas una API key en la consola del proveedor.</li>
+        <li>La pegas aquí y elegimos el modelo.</li>
+        <li>Probamos la conexión y la guardamos cifrada.</li>
+      </ol>
+      <DeepLinks info={info} />
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onBack}>
+          Cancelar
+        </Button>
+        <Button onClick={onNext}>Continuar</Button>
+      </div>
+    </div>
+  );
+}
+
+function WizardKey({
+  info,
+  apiKey,
+  setApiKey,
+  model,
+  setModel,
+  baseUrl,
+  setBaseUrl,
+  onBack,
+  onNext,
+}: {
+  info: BYOProviderInfo;
+  apiKey: string;
+  setApiKey: (s: string) => void;
+  model: string;
+  setModel: (s: string) => void;
+  baseUrl: string;
+  setBaseUrl: (s: string) => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const canAdvance = apiKey.trim().length > 5;
+  return (
+    <div className="space-y-3">
+      <div>
+        <label
+          htmlFor="wiz-key"
+          className="mb-1.5 flex items-center gap-1 text-sm font-medium text-[var(--color-secondary)]"
+        >
+          <KeyRound className="h-3.5 w-3.5" aria-hidden />
+          API key
+        </label>
+        <Input
+          id="wiz-key"
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          autoComplete="off"
+          autoFocus
+          placeholder="Pega aquí tu API key"
+        />
+        <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+          La guardamos cifrada con Fernet. Nunca volverás a ver la key en
+          claro después de guardar.
+        </p>
+      </div>
+      <div>
+        <label
+          htmlFor="wiz-model"
+          className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+        >
+          Modelo
+        </label>
+        <Input
+          id="wiz-model"
+          list="wiz-model-suggestions"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="Ej. gpt-4o-mini"
+        />
+        <datalist id="wiz-model-suggestions">
+          {info.suggested_models.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+      </div>
+      {info.requires_base_url ? (
+        <div>
+          <label
+            htmlFor="wiz-url"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Base URL (opcional)
+          </label>
+          <Input
+            id="wiz-url"
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="https://api..."
+          />
+        </div>
+      ) : null}
+      <DeepLinks info={info} compact />
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onBack}>
+          Atrás
+        </Button>
+        <Button onClick={onNext} disabled={!canAdvance}>
+          Continuar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function WizardTest({
+  testing,
+  result,
+  onBack,
+  onTest,
+  onNext,
+}: {
+  testing: boolean;
+  result: { ok: boolean; latency_ms: number | null; error: string | null } | null;
+  onBack: () => void;
+  onTest: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[13px] text-[var(--color-secondary)]">
+        Vamos a hacer un ping mínimo al proveedor con tu key y modelo para
+        confirmar que responde.
+      </p>
+      <div className="flex items-center gap-3">
+        <Button onClick={onTest} loading={testing} variant="secondary">
+          Probar conexión
+        </Button>
+        {result ? (
+          <span className="inline-flex items-center gap-1 text-[13px]">
+            {result.ok ? (
+              <>
+                <CheckCircle2
+                  className="h-4 w-4 text-[var(--color-success-fg)]"
+                  aria-hidden
+                />
+                <span className="text-[var(--color-success-fg)]">
+                  Conexión OK
+                  {result.latency_ms !== null
+                    ? ` · ${result.latency_ms} ms`
+                    : ""}
+                </span>
+              </>
+            ) : (
+              <>
+                <XCircle
+                  className="h-4 w-4 text-[var(--color-danger-fg)]"
+                  aria-hidden
+                />
+                <span className="text-[var(--color-danger-fg)]">
+                  {result.error ?? "Falló"}
+                </span>
+              </>
+            )}
+          </span>
+        ) : null}
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onBack}>
+          Atrás
+        </Button>
+        <Button onClick={onNext} disabled={!result?.ok}>
+          Continuar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function WizardSave({
+  provider,
+  model,
+  apiKeyPreview,
+  saving,
+  error,
+  onBack,
+  onSave,
+}: {
+  provider: BYOProviderInfo;
+  model: string;
+  apiKeyPreview: string;
+  saving: boolean;
+  error: string | null;
+  onBack: () => void;
+  onSave: (e: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form onSubmit={onSave} className="space-y-3">
+      <p className="text-[13px] text-[var(--color-secondary)]">
+        Último paso: guardar la conexión. Al confirmar, cambiamos el modo del
+        tenant a <strong>BYO</strong> usando estas credenciales.
+      </p>
+      <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-1 text-[13px]">
+        <dt className="text-[var(--color-tertiary)]">Proveedor</dt>
+        <dd className="font-medium text-[var(--color-primary)]">
+          {provider.label}
+        </dd>
+        <dt className="text-[var(--color-tertiary)]">Modelo</dt>
+        <dd className="text-[var(--color-primary)]">{model || "—"}</dd>
+        <dt className="text-[var(--color-tertiary)]">Key</dt>
+        <dd className="font-mono text-[var(--color-primary)]">
+          •••{apiKeyPreview}
+        </dd>
+      </dl>
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onBack}>
+          Atrás
+        </Button>
+        <Button type="submit" loading={saving}>
+          Guardar y activar
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function DeepLinks({
+  info,
+  compact,
+}: {
+  info: BYOProviderInfo;
+  compact?: boolean;
+}): ReactNode {
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap gap-3 text-[12px]",
+        compact ? "pt-1" : "rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3",
+      )}
+    >
+      <a
+        href={info.api_keys_url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
+      >
+        Generar API key
+        <ExternalLink className="h-3 w-3" aria-hidden />
+      </a>
+      <a
+        href={info.docs_url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
+      >
+        Documentación
+        <ExternalLink className="h-3 w-3" aria-hidden />
+      </a>
     </div>
   );
 }

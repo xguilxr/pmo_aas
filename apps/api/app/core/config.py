@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     # Groq; usar 3.3 como reemplazo directo.
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # US-063-follow-up (2026-04-24): feature flag para habilitar el modo
+    # BYO (bring-your-own) en la UI /admin/ai. El backend ya soporta BYO
+    # (US-057), pero el wizard de conexión se está puliendo; hasta que
+    # el owner lo encienda (`AI_BYO_ENABLED=1`), el tenant sólo ve las
+    # opciones "Sin IA" y "IA de la plataforma (Groq)" en la UI, y el
+    # endpoint PATCH rechaza `mode="byo"` con 409 BYO_NOT_ENABLED.
+    AI_BYO_ENABLED: bool = False
 
     STORAGE_PATH: str = "/tmp/pmo-uploads"
 

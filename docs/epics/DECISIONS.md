@@ -219,3 +219,68 @@ parcial es peor que no tenerlo (confunde a admins y genera deuda
 técnica en migraciones de permisos).
 
 Registrada 2026-04-23, al cerrar Sprint 2 v1.1.
+
+
+---
+
+## DEC-019 — Catálogo BYO sin Ollama + feature flag del wizard de conexión
+
+**Contexto (2026-04-24, post-deploy v1.1):** el owner reportó que la
+UI `/admin/ai` seguía mostrando las opciones legacy (`sin definir`,
+`ollama local`, `claude`, `desactivado`) en el selector de modo IA.
+El GET/PATCH del endpoint `/admin/ai/provider` ya usaba el schema
+correcto (US-057, DEC-017), pero la UI estaba servida cacheada y
+además el catálogo BYO listaba `ollama` — un proveedor que el owner
+no quiere exponer al tenant nuevo. La decisión tiene dos partes:
+
+**Parte 1 — Catálogo público BYO sin Ollama:**
+- `BYO_PROVIDERS` mantiene `ollama` como valor aceptado por el worker
+  (para tenants legacy cuya `settings.ai.byo.provider="ollama"` ya
+  está en BD después de la migración 0022).
+- Nueva tupla `BYO_PROVIDERS_ALLOWED = ("openai", "claude",
+  "perplexity", "gemini")` define qué proveedores puede configurar
+  el tenant-admin desde la UI. El endpoint PATCH valida contra esta
+  lista (el schema Pydantic además ya no acepta `"ollama"` como
+  literal, así que la protección es doble).
+- Tenants en prod con Ollama activo (si los hay) siguen funcionando
+  pero no pueden editar su config — deben migrar a Groq/OpenAI/
+  Claude/Perplexity/Gemini.
+- Nuevo módulo `services/ai/byo_catalog.py` expone `BYO_CATALOG` con
+  metadata UX (label, descripción, `api_keys_url`, `docs_url`,
+  modelos sugeridos). Se sirve en `GET /admin/ai/provider` y la UI lo
+  renderiza como cards sin hardcodear URLs.
+
+**Parte 2 — Feature flag `AI_BYO_ENABLED` (default false):**
+- El modo BYO queda gate-ado tras el flag `AI_BYO_ENABLED`. Por
+  default (`False` en prod) el PATCH rechaza `mode="byo"` con 422
+  `BYO_NOT_ENABLED` y el POST de test con la misma señal.
+- La UI igual muestra las cards de los 4 proveedores, pero con badge
+  "Próximamente" y el wizard abre en modo "preview" (sólo info +
+  deep-links, sin guardar).
+- Cuando el owner quiera habilitar BYO en prod, setea
+  `AI_BYO_ENABLED=1` en Railway y redeploya; ningún otro cambio de
+  código requerido.
+
+**Rationale:**
+- El wizard de conexión (4 pasos: intro → key → test → save) está
+  construido pero no validado en prod con usuarios reales. El flag
+  permite entregar el código ahora (reduce el PR gigante de v2.0)
+  sin exponer un flujo a medio pulir.
+- Quitar Ollama del catálogo público refleja que la oferta para
+  tenants nuevos es siempre cloud-managed (Groq plataforma o BYO a
+  proveedor cloud). Ollama privado sigue soportado para tenants que
+  lo necesiten pero no se anuncia como opción estándar.
+
+**Afecta:**
+- SPRINT.md: este bug-fix cierra el bloque post-v1.1 sin abrir Sprint
+  3 v1.2 Bloque 2 todavía — el owner decide si arma el Bloque 2.
+- Cuando `AI_BYO_ENABLED=1` se encienda, documentar el runbook con
+  smoke test del wizard antes de invitar tenants.
+
+**Alternativa descartada:** dejar BYO completamente disponible desde
+el PATCH aunque la UI no estuviera lista. Rechazado porque algún
+usuario avanzado podría llamar al endpoint directamente, guardar
+credenciales mal cifradas o sin test, y meter inconsistencia en la
+BD.
+
+Registrada 2026-04-24 en el follow-up de US-057.
