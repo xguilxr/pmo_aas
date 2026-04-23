@@ -219,7 +219,12 @@ async def test_us057_report_endpoint_gates_platform_scope(client, db_session):
 # -----------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_us057_admin_provider_crud_roundtrip(client, db_session):
+async def test_us057_admin_provider_crud_roundtrip(client, db_session, monkeypatch):
+    # US-063 follow-up: el modo BYO queda tras feature-flag en prod;
+    # lo encendemos explícitamente para ejercitar el CRUD completo.
+    from app.core import config as cfg_mod
+
+    monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", True, raising=False)
     t, _u, auth = await _admin(client, db_session, slug="ai57-admin")
 
     # GET inicial: mode=disabled
