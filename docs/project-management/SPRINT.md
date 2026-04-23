@@ -7,18 +7,17 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-23 — Bloques 2, 3 y 4 COMPLETOS — Sprint 2 v1.1 cerrado
+2026-04-23 — Sprint 2 v1.1 CERRADO. Próximo: Sprint 3 v1.2 (arranca tras merge + deploy verde en Railway).
 
-Bloque 2: US-056, ENH-015, ENH-017, ENH-016.
-Bloque 3: ENH-018, ENH-019, ENH-020, US-062, US-058.
-Bloque 4: US-057 — IA multi-modo por tenant (disabled/platform/byo)
-  con Groq como IA base de la plataforma. Ver runbook en
-  docs/ops/groq-setup-runbook.md. Pendiente: owner genera
-  GROQ_API_KEY + setea FERNET_KEY en Railway antes del deploy.
+Hotfix Railway 2026-04-23:
+- 40c4176: migraciones 0021/0022 removieron filtro `deleted_at IS NULL`
+  (tenants no tiene esa columna) — Railway bloqueaba deploy.
 
-Hotfixes CI post-commit (2026-04-23):
-- 47d3603: DocumentCategory types en frontend (fix CI web-build type error, afecta BUG-024/BUG-023)
-- 103628d: save_document signature + DOCUMENT_CATEGORIES tuple (fix BUG-024 endpoint multipart)
+Sprint 3 v1.2 (próximo): ver §"Backlog Sprint 3" más abajo. Arranca
+  cuando el owner configure GROQ_API_KEY + FERNET_KEY y apruebe el
+  arranque.
+
+v2.0 (major overhaul, post-v1.2): 4 items diferidos — ver §"Backlog v2.0".
 ```
 
 ---
@@ -30,45 +29,29 @@ Hotfixes CI post-commit (2026-04-23):
 > pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
 
 ```
-— Vacío — (intake del comment del owner del 2026-04-21 ya asignado a Bloque 20 y Bloque 18)
+— Vacío —
 ```
 
 ---
 
-## ⏳ QUEUE (próximas 20 — Sprint 2)
+## ⏳ QUEUE (Sprint 3 v1.2)
 
 | # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| 71 | US-055 | EP005 | Export tareas (CSV/Excel) — Opción A: botón descarga instantánea | Bloque 1 |
-| 72 | ENH-012 | EP013 | Sidebar: reorganizar con módulo "Módulos de Proyecto" | Bloque 1 |
-| 73 | ENH-013 | EP002 | Botón "Nuevo Programa" abre modal en Organizaciones | Bloque 1 |
-| 74 | BUG-023 | EP003 | Project Charter: link a editor cuando no hay archivo (404) | Bloque 1 |
-| 75 | BUG-024 | EP006 | Lógica de uploads no configurada | Bloque 1 |
-| 76 | BUG-025 | EP007 | Rol "Reportes" sin módulo de permisos | Bloque 1 |
-| 87 | BUG-026 | EP001 | Auth: timeout de inactividad a 15 minutos | Bloque 1 |
-| 77 | ENH-014 | EP014 | Reportes: renombrar archivo con datetime + preview PDF | Bloque 2 |
-| 86 | ENH-020 | EP002 | Áreas: permitir múltiples recursos/contactos | Bloque 3 |
-| 91 | US-062 | EP002 | Áreas/Recursos: Area Leader + recursos asignados (Sprint 2, no v1.2) | Bloque 3 |
-| 88 | US-059 | EP002 | v1.2 Recursos: usuarios sin roles jerárquicos | v1.2 |
-| 89 | US-060 | EP002 | v1.2 Roles: tipos usuario (Viewer/User/Admin) | v1.2 |
-| 90 | US-061 | EP002 | v1.2 Aprobaciones: jerarquía directa + permisos | v1.2 |
-
-> **Sprint 2 intake (2026-04-22):** 21 issues nuevos clasificados en 4 bloques.
-> Bloques 1-3 para Sprint 2 v1.1 (navegación + RAID + reportes + IA).
-> Bloque 4 para IA avanzada (tenants propia instancia).
-> v1.2: 3 issues post-MVP de recursos + roles + aprobaciones (US-062 movida a Bloque 3 por owner).
+| 96 | ENH-021 | EP008 | Superadmin AI: quitar defaults editables de Ollama | Bloque 1 |
+| 95 | US-063 | EP001 + EP011 | Recuperación y cambio de contraseña con envío por correo | Bloque 1 |
 
 ---
 
-## ✅ DONE (historial Sprint 1)
+## ✅ DONE
 
-**Ver SPRINT-DONE-HISTORY.md para tabla completa de 94 items del Sprint 1 v1.0 MVP (US-001 a US-054).**
+**Ver `SPRINT-DONE-HISTORY.md` para el historial completo de Sprint 1 (v1.0 MVP, 94 items) y Sprint 2 (v1.1, 18 items).**
 
-> Sprint 1 completado 2026-04-21. 22 bloques (+ hotfixes) con all features bloqueantes de v1.0.
+Sprint 2 v1.1 cerrado 2026-04-23. 4 bloques completos + hotfix Railway.
 
 ---
 
-## 📋 Backlog Sprint 2 (v1.1 — en ejecución)
+## 📋 Backlog Sprint 2 (v1.1 — CERRADO)
 
 ### Bloque 1 — Sprint 2 Setup: navegación + bugs + permisos (7 items) ✅ COMPLETO
 - [x] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87 ✅ 77dc093
@@ -94,26 +77,48 @@ Hotfixes CI post-commit (2026-04-23):
 - [x] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91 ✅ 009c0f2
 
 ### Bloque 4 — Sprint 2 IA multi-modo (1 item) ✅ COMPLETO
-- [x] US-057 — IA multi-modo por tenant: disabled / platform (Groq) / byo (owner scope ajustado) — #79 ✅ (pendiente commit)
-
-### Bloque v1.2 (Post-MVP — no implementar en Sprint 2)
-- [ ] US-059 — v1.2 Recursos: usuarios sin roles jerárquicos — #88
-- [ ] US-060 — v1.2 Roles: tipos usuario (Viewer/User/Admin) — #89
-- [ ] US-061 — v1.2 Aprobaciones: jerarquía directa + permisos — #90
-- [ ] US-062 — v1.2 Áreas/Recursos: Area Leader + recursos asignados — #91
+- [x] US-057 — IA multi-modo por tenant: disabled / platform (Groq) / byo — #79 ✅ (9 commits, 8e4c385…be2a2ac; hotfix 40c4176)
 
 ---
 
-**Notas Sprint 2:**
-- Total: 21 issues (18 Sprint 2 v1.1 + 3 v1.2).
-  - Sprint 2: 7 BUGs + 10 ENHs + 4 USs (US-055, US-056, US-057, US-058, US-062).
-  - v1.2: US-059, US-060, US-061 (no implementar en este sprint).
-- Bloques 1-4: ejecución Sprint 2.
-  - Bloque 1: Setup (navegación, bugs, permisos).
-  - Bloque 2: Reportes + Dashboard.
-  - Bloque 3: RAID + Áreas (incluye US-062 movida del v1.2).
-  - Bloque 4: IA avanzada (tenants propia instancia + docs).
-- Bloque v1.2: documentado pero NO ejecutar.
+## 📋 Backlog Sprint 3 (v1.2 — próximo)
+
+> Scope reducido por decisión del owner el 2026-04-23: los 3 items
+> grandes de "roles/recursos/aprobaciones jerárquicas" (US-059,
+> US-060, US-061, US-062-duplicado) **se mueven a v2.0** — son un
+> major overhaul que no encaja en un sprint incremental. v1.2 queda
+> acotado a lo que el owner pidió tras cerrar v1.1.
+
+### Bloque 1 — Sprint 3 Limpieza post-v1.1 + Auth self-service (2 items)
+- [ ] ENH-021 — Superadmin AI: quitar defaults editables de Ollama — #96
+  - UI change ya implementada junto con el hotfix Railway; pendiente owner cierre formal del issue.
+- [ ] US-063 — Recuperación y cambio de contraseña con envío por correo — #95
+
+---
+
+## 📋 Backlog v2.0 (Major Overhaul — post-v1.2)
+
+> **Contexto (DEC-018):** estos items requieren repensar el modelo de
+> roles/permisos/áreas a nivel plataforma. No son incrementales: tocan
+> auth + multi-tenancy + UX transversal. Se ejecutan como v2.0 con su
+> propio sprint dedicado cuando v1.2 esté estable.
+
+- [ ] US-059 — Recursos: usuarios sin roles jerárquicos (replantear Auth) — #88
+- [ ] US-060 — Roles: tipos de usuario (Viewer/User/Admin) — #89
+- [ ] US-061 — Aprobaciones: jerarquía directa + permisos — #90
+- [ ] (posibles items futuros: 2FA, SSO, magic-link login)
+
+---
+
+## Notas y cambios
+
+- **2026-04-23 (post-v1.1):** owner define scope de Sprint 3 v1.2:
+  solo limpieza Ollama + password reset (ENH-021 + US-063). Los 3
+  items originales de v1.2 (#88/#89/#90) pasan a v2.0 por ser un
+  major overhaul de Auth/Roles/Aprobaciones. Ver **DEC-018**.
+- **2026-04-22 (Sprint 2 intake):** 21 issues clasificados en 4
+  bloques v1.1 + 3 items v1.2 (luego reclasificados a v2.0 el
+  2026-04-23).
 
 ---
 

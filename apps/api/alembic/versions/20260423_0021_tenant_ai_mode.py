@@ -47,9 +47,12 @@ def upgrade() -> None:
 
     # --- Data: set all existing tenants to mode='disabled' (opt-in) ---
     bind = op.get_bind()
-    rows = bind.execute(
-        sa.text("SELECT id, settings FROM tenants WHERE deleted_at IS NULL")
-    ).fetchall()
+    # HOTFIX 2026-04-23: la tabla `tenants` no tiene columna `deleted_at`
+    # (soft-delete no está implementado); la versión previa filtraba por
+    # `deleted_at IS NULL` y rompía en Postgres productivo. Sin filtro
+    # tocamos todos los tenants — los inactivos (`is_active=false`)
+    # simplemente no se usan.
+    rows = bind.execute(sa.text("SELECT id, settings FROM tenants")).fetchall()
     for tenant_id, settings in rows:
         cfg = _load_settings(settings)
         ai = cfg.get("ai") if isinstance(cfg.get("ai"), dict) else {}

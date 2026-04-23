@@ -173,3 +173,49 @@ multi-tenant donde cada cliente decide:
   si se detecta abuso.
 
 Registrado el 2026-04-23 junto con la feature.
+
+
+---
+
+## DEC-018 — Sprint 3 v1.2 acotado; Auth/Roles/Aprobaciones diferidos a v2.0
+
+**Contexto:** el intake de Sprint 2 (2026-04-22) dejó 3 items marcados
+`v1.2` — US-059 (recursos sin roles jerárquicos), US-060 (tipos de
+usuario Viewer/User/Admin), US-061 (aprobaciones jerárquicas). Al
+cerrar v1.1 (2026-04-23), el owner revisa el scope y concluye que
+esos 3 items son **un replanteo del modelo Auth + multi-tenancy**,
+no un set de enhancements incrementales: tocan permisos, relaciones
+de reporte, aprobaciones, y la UX de asignación transversalmente.
+
+Meter eso en v1.2 produciría un sprint mega-grande con regresiones
+probables. El owner también pide dos arreglos menores post-v1.1:
+
+- Quitar los defaults editables de Ollama del `/superadmin/ai` (ya no
+  se usan tras DEC-017).
+- Flujo de recuperación/cambio de contraseña con email (hoy los users
+  dependen del admin para resetear).
+
+**Decisión:** se ajusta la cartera:
+
+1. **Sprint 3 v1.2** se acota a **ENH-021** + **US-063** (ambos
+   creados en GitHub: #96 y #95). Se enfoca en cerrar loops menores
+   post-v1.1 sin abrir scope nuevo.
+2. Los 3 items originales de v1.2 (US-059 #88, US-060 #89, US-061
+   #90) y el eventual replanteo de cuentas/SSO/2FA se mueven a
+   **v2.0 — Major Overhaul**. v2.0 se planifica con un RFC dedicado
+   cuando v1.2 esté estable (no antes).
+
+**Consecuencias:**
+- SPRINT.md refleja el nuevo backlog.
+- Los issues #88, #89, #90 quedan con label `v2.0` (migrar de `v1.2`
+  cuando se re-etiqueten en GitHub).
+- v1.2 puede cerrarse en un Sprint 3 corto (~2 semanas) y dejar
+  margen para estabilizar el deploy productivo de Groq antes del
+  sprint grande.
+
+**Alternativa descartada:** meter US-059/060/061 en v1.2 con
+implementación parcial. Rechazada porque un overhaul de roles
+parcial es peor que no tenerlo (confunde a admins y genera deuda
+técnica en migraciones de permisos).
+
+Registrada 2026-04-23, al cerrar Sprint 2 v1.1.
