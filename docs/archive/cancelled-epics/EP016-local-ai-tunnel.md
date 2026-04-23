@@ -1,13 +1,49 @@
-# EP016 — Modelo IA local (Ollama + Tailscale)
+# EP016 — Modelo IA local (Ollama + Tailscale) — **SUPERSEDED**
+
+> ## ⚠️ Archivada — SUPERSEDED por DEC-017 + US-057
+>
+> **Archivada:** 2026-04-23 como parte de ENH-022.
+>
+> Esta épica describe el diseño original de IA del MVP: Ollama local
+> accesible desde Railway vía Cloudflare Tunnel (US-044/045) y luego
+> Tailscale tailnet (US-046/047/048). El canal funcionaba pero el
+> modelo de negocio pivoteó:
+>
+> - **DEC-017 (US-057, Sprint 2 v1.1):** la IA multi-modo por tenant
+>   (`disabled | platform | byo`) reemplaza la cascada global. Modo
+>   `platform` usa Groq hosteado (HTTPS público, sin tunnel). Modo
+>   `byo` deja al tenant traer su propio proveedor cloud.
+> - **DEC-019 (BUG-027):** Ollama queda fuera del catálogo BYO público.
+>   Los tenants legacy con Ollama configurado siguen funcionando en el
+>   worker, pero no se ofrece desde la UI.
+>
+> **Consecuencias para esta épica:**
+> - US-044 y US-045 ya estaban marcadas `SUPERSEDED` internamente por
+>   US-046/047.
+> - US-046, US-047 y US-048 quedan `SUPERSEDED` por DEC-017: el
+>   sidecar `tailscaled` en el worker ya no es necesario, y el runbook
+>   de Ollama + Tailscale se archivó en
+>   [`docs/archive/runbooks-ai-legacy/local-ollama-setup.md`](../runbooks-ai-legacy/local-ollama-setup.md).
+> - La DoD ya no aplica. Los cambios de infra (shared vars, Dockerfile
+>   custom, sidecar) **no se ejecutaron en prod** — Railway sigue con
+>   Nixpacks default y sin Tailscale en el worker productivo.
+>
+> **Archivo mantenido** como referencia histórica del pivote de canal
+> (CF Tunnel → Tailscale → Groq). Para el diseño vigente ver:
+> - `docs/epics/EP008-ai.md` — epic IA actualizada.
+> - `docs/epics/DECISIONS.md` — DEC-011 (Tailscale), DEC-017, DEC-019.
+> - `docs/runbooks/ai/groq-setup.md` + `byo-setup.md` — runbooks activos.
+
+---
 
 | Campo | Valor |
 |---|---|
 | **ID** | EP016 |
-| **Prioridad** | Alta — bloque 13 del sprint (reabierto) |
+| **Prioridad** | ~~Alta — bloque 13 del sprint (reabierto)~~ — SUPERSEDED |
 | **Dependencias** | EP008 (IA minutas y reportes), EP014 US-040 (formato estandarizado minuta) |
 | **Módulo** | `ai.local`, `infrastructure`, `docs/ai` |
-| **Estado** | # REOPENED — pivote de canal (CF Tunnel → Tailscale) |
-| **Versión objetivo** | v1.0 |
+| **Estado** | # SUPERSEDED por DEC-017 (Sprint 2 v1.1) |
+| **Versión objetivo** | v1.0 (nunca llegó a DoD completa; v1.1 replanteó todo) |
 | **Origen** | Requerimiento del owner: host propio con Ollama, accesible desde backend productivo en Railway, sin costos de token y sin datos fuera del perímetro. |
 
 ## Objetivo de negocio

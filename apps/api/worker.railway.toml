@@ -1,15 +1,15 @@
 # Railway config del servicio `worker`.
 #
-# US-048 (2026-04-21): pasa de Nixpacks al Dockerfile compartido de
-# apps/api (que trae sidecar Tailscale) y reemplaza startCommand por el
-# wrapper start-worker.sh que arranca tailscaled antes de Celery.
-# Requiere la Shared Variable `TS_AUTHKEY` definida a nivel project.
+# Historia:
+# - US-048 (2026-04-21): sidecar Tailscale vía `start-worker.sh`.
+# - ENH-023 (2026-04-23): sidecar retirado (DEC-017 eliminó la
+#   dependencia de tailnet). Worker arranca celery directo.
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "/app/start-worker.sh"
+startCommand = "celery -A app.workers.celery_app worker --loglevel=info --concurrency=2"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

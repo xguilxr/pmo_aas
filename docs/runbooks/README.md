@@ -15,10 +15,10 @@ de validación y troubleshooting necesario para ese servicio.
 
 ---
 
-## 📋 Checklist de Deploy v1.0 (mínimo requerido)
+## 📋 Checklist de Deploy v1.1 (mínimo requerido)
 
-Marca cada bloque conforme lo completes. **El producto está listo para produción
-cuando los 6 bloques estén ✅**.
+Marca cada bloque conforme lo completes. **El producto está listo para
+producción cuando los 5 bloques estén ✅**.
 
 ### ✅ 1. Railway — servicios, env vars, plugins
 
@@ -38,27 +38,7 @@ cuando los 6 bloques estén ✅**.
 
 ---
 
-### ✅ 2. Networking — Tailscale (opcional, legacy Ollama BYO)
-
-**Runbook activo:** [`networking/tailscale-setup.md`](./networking/tailscale-setup.md)
-
-> **Nota (DEC-017, 2026-04-22):** la plataforma ya **no requiere** Tailscale
-> para operar la IA. El modo `platform` usa Groq hosteado (HTTPS público,
-> sin tunneling). Este bloque sólo aplica si un tenant legacy sigue con
-> Ollama + Tailscale como BYO propio. Ver
-> [`docs/archive/runbooks-ai-legacy/local-ollama-setup.md`](../archive/runbooks-ai-legacy/local-ollama-setup.md)
-> para el setup original.
-
-**Tareas (sólo tenants legacy Ollama):**
-- [ ] Ollama instalado en PC local con modelo propio
-- [ ] Tailscale + ACL configurados (ver runbook archivado)
-- [ ] `TS_AUTHKEY` en Railway `worker`
-
-**Checkpoint:** Worker Railway resuelve MagicDNS y conecta a Ollama sin timeout
-
----
-
-### ✅ 3. DNS — Cloudflare + subdomios Railway + HostGator landing
+### ✅ 2. DNS — Cloudflare + subdomios Railway + HostGator landing
 
 **Runbooks:**
 - [`infra/dns-routing.md`](./infra/dns-routing.md) — Cloudflare, subdominios, apex
@@ -77,7 +57,7 @@ cuando los 6 bloques estén ✅**.
 
 ---
 
-### ✅ 4. Email — Resend + dominio verificado
+### ✅ 3. Email — Resend + dominio verificado
 
 **Runbooks:**
 - [`email/resend-setup.md`](./email/resend-setup.md) — Resend, dominios, API key
@@ -94,7 +74,7 @@ cuando los 6 bloques estén ✅**.
 
 ---
 
-### ✅ 5. IA — Groq (platform) + BYO opcional por tenant
+### ✅ 4. IA — Groq (platform) + BYO opcional por tenant
 
 **Runbooks activos:**
 - [`ai/groq-setup.md`](./ai/groq-setup.md) — **Obligatorio.** Habilitar Groq como IA base (modo `platform`).
@@ -117,7 +97,7 @@ Ollama tailnet, Gemini como fallback, Claude como fallback premium.
 
 ---
 
-### ✅ 6. Landing — HostGator
+### ✅ 5. Landing — HostGator
 
 **Runbooks:**
 - [`infra/landing-hostgator.md`](./infra/landing-hostgator.md) — subir landing estático
@@ -139,13 +119,12 @@ Ollama tailnet, Gemini como fallback, Claude como fallback premium.
 |---|---|---|
 | **Railway** | [`railway/SETUP.md`](./railway/SETUP.md) | ✅ |
 | **Railway** | [`railway/DEPLOYMENT.md`](./railway/DEPLOYMENT.md) | ✅ |
-| **Tailscale (legacy Ollama BYO)** | [`networking/tailscale-setup.md`](./networking/tailscale-setup.md) | ⚠️ legacy |
 | **Cloudflare DNS** | [`infra/dns-routing.md`](./infra/dns-routing.md) | ✅ |
 | **HostGator Landing** | [`infra/landing-hostgator.md`](./infra/landing-hostgator.md) | 📝 |
 | **Groq (IA plataforma)** | [`ai/groq-setup.md`](./ai/groq-setup.md) | ✅ |
 | **BYO (IA del tenant)** | [`ai/byo-setup.md`](./ai/byo-setup.md) | ✅ |
 | **Resend (emails)** | [`email/resend-setup.md`](./email/resend-setup.md) | ✅ |
-| **IA legacy (archivado)** | [`../archive/runbooks-ai-legacy/`](../archive/runbooks-ai-legacy/) | 📦 |
+| **IA + Tailscale legacy (archivado)** | [`../archive/runbooks-ai-legacy/`](../archive/runbooks-ai-legacy/) | 📦 |
 
 ---
 
@@ -188,14 +167,6 @@ Ollama tailnet, Gemini como fallback, Claude como fallback premium.
 
 ## ❓ Troubleshooting rápido
 
-**P:** El worker no alcanza Ollama — `connection timeout`.  
-**R:** Ver [`networking/tailscale-setup.md` §9](./networking/tailscale-setup.md#9-troubleshooting).
-- Verifica `tailscale status` dentro del worker.
-- Confirma `TS_AUTHKEY` y `TS_HOSTNAME` en Railway.
-- Revisa firewall Windows: solo 1 regla Allow para `100.64.0.0/10`.
-
----
-
 **P:** Email no se envía, solo notif in-app.  
 **R:** Ver [`email/resend-setup.md`](./email/resend-setup.md).
 - Verifica `RESEND_API_KEY` no está vacía en Railway `worker`.
@@ -233,16 +204,15 @@ Si algo no funciona tras seguir el runbook:
 1. Revisa la sección **Troubleshooting** del runbook relevante.
 2. Consulta los **logs**:
    - Railway: `railway logs --service <api|worker|web> --tail`
-   - Tailscale: `C:\ProgramData\Tailscale\Logs\tailscaled.log` (Windows)
-   - Ollama: `~/.ollama/server.log`
-3. Si persiste, documenta el error en GitHub issue con tag `v1.0-deploy`.
+   - Groq: panel en `/superadmin/ai` → sección "Uso de Groq".
+3. Si persiste, documenta el error en GitHub issue con tag `v1.1-deploy`.
 
 ---
 
 ## 📄 Referencias cruzadas
 
 - Epic IA: [`docs/epics/EP008-ai.md`](../epics/EP008-ai.md)
-- Epic deployment legacy: [`docs/epics/EP016-local-ai-tunnel.md`](../epics/EP016-local-ai-tunnel.md) (archivado tras DEC-017)
-- Decisiones arquitectónicas: [`docs/epics/DECISIONS.md`](../epics/DECISIONS.md) — **DEC-017** IA multi-modo, **DEC-019** BYO sin Ollama + feature flag, DEC-011 Tailscale (legacy), DEC-012 Railway+HostGator
+- Epic deployment legacy: [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../archive/cancelled-epics/EP016-local-ai-tunnel.md) — archivada tras DEC-017 (ENH-022 + ENH-023)
+- Decisiones arquitectónicas: [`docs/epics/DECISIONS.md`](../epics/DECISIONS.md) — **DEC-017** IA multi-modo, **DEC-019** BYO sin Ollama + feature flag, DEC-011 Tailscale (legacy, sidecar retirado en ENH-023), DEC-012 Railway+HostGator
 - Dev local: [`docs/setup-dev.md`](../setup-dev.md)
 - API conventions: [`docs/architecture/api-conventions.md`](../architecture/api-conventions.md)

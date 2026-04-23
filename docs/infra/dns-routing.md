@@ -217,21 +217,26 @@ curl -I https://pmo-aas.com/login
 
 ---
 
-## 5. Retirar `ollama.pmo-aas.com` (DEC-011)
+## 5. Retirar `ollama.pmo-aas.com` (histórico — DEC-011)
 
-El pivote a Tailscale (ver `docs/ai/local-ollama-setup.md`) elimina la
-necesidad de exponer Ollama vía CF Tunnel con hostname público.
-
-Cleanup en Cloudflare:
-
-1. DNS → encontrar el CNAME `ollama` → **Delete**.
-2. Zero Trust → **Access → Applications** → `PMO-aaS Ollama` →
-   **Delete**.
-3. Zero Trust → **Access → Service Auth → Service Tokens** → revocar
-   todos los tokens relacionados a `pmoaas-ollama`.
-
-El `cloudflared` local del owner se retira siguiendo el runbook
-`docs/ai/local-ollama-setup.md` §10 "Rollback CF Tunnel".
+> **Contexto:** el MVP expuso Ollama vía CF Tunnel (`ollama.pmo-aas.com`).
+> DEC-011 pivoteó a Tailscale y DEC-017/ENH-023 retiraron Ollama del
+> flujo productivo por completo (la IA usa Groq hosteado).
+>
+> Si todavía quedan residuos de Cloudflare/Tailscale sin limpiar, la
+> guía paso-a-paso vive ahora en
+> [`docs/archive/runbooks-ai-legacy/local-ollama-setup.md`](../archive/runbooks-ai-legacy/local-ollama-setup.md)
+> §10 "Rollback CF Tunnel" y en
+> [`tailscale-sidecar-setup.md`](../archive/runbooks-ai-legacy/tailscale-sidecar-setup.md)
+> §"Rollback".
+>
+> Checklist mínimo para el owner:
+> 1. CF DNS → borrar CNAME `ollama`.
+> 2. CF Zero Trust → borrar app `PMO-aaS Ollama` + Service Tokens
+>    `pmoaas-ollama`.
+> 3. Tailscale admin → revocar `TS_AUTHKEY` y remover peer
+>    `railway-worker`.
+> 4. Railway → eliminar env vars `TS_AUTHKEY`/`TS_HOSTNAME` del worker.
 
 ---
 

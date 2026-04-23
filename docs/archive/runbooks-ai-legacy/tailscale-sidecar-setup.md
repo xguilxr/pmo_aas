@@ -1,8 +1,33 @@
-# Runbook — Tailscale + Ollama local → Railway worker
+# Runbook — Tailscale + Ollama local → Railway worker — **ARCHIVADO**
 
-**ID:** `DOC-NETWORK-TAILSCALE`  
-**Alcance:** EP016 — US-046 (reemplaza US-044)  
-**Dependencias:** [`docs/runbooks/ai/local-model-setup.md`](../ai/local-model-setup.md) (elección de modelo)
+> ## ⚠️ Runbook archivado (ENH-023, 2026-04-23)
+>
+> Este runbook describía el **sidecar Tailscale** en el worker de
+> Railway (US-048). Tras **DEC-017** (IA multi-modo con Groq hosteado)
+> el sidecar dejó de ser necesario y se retiró en **ENH-023** (#103):
+>
+> - `apps/api/start-worker.sh` eliminado.
+> - `apps/api/Dockerfile` sin Tailscale install ni `iptables`.
+> - `apps/api/worker.railway.toml` arranca celery directo.
+> - Env vars `TS_AUTHKEY` / `TS_HOSTNAME` retirables del worker en
+>   Railway (acción manual post-merge).
+>
+> **Archivo conservado** como referencia histórica del diseño
+> CF Tunnel → Tailscale → Groq. Si un tenant legacy quiere reactivar
+> Ollama propio como BYO, este runbook sigue siendo útil — pero el
+> setup sería **en la infra del tenant**, no en el worker productivo
+> de la plataforma.
+>
+> Ver también:
+> - [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../cancelled-epics/EP016-local-ai-tunnel.md)
+> - [`docs/archive/runbooks-ai-legacy/local-ollama-setup.md`](./local-ollama-setup.md)
+> - `docs/epics/DECISIONS.md` — DEC-011 (Tailscale), DEC-017, DEC-019.
+
+---
+
+**ID:** `DOC-NETWORK-TAILSCALE` (archivado)  
+**Alcance original:** EP016 — US-046 (reemplazaba US-044)  
+**Dependencias originales:** `docs/archive/runbooks-ai-legacy/local-model-setup.md` (elección de modelo)
 
 Este runbook documenta cómo montar Ollama en una PC Windows y exponerlo
 al worker de Railway a través de un **tailnet privado de Tailscale**. El
@@ -462,5 +487,5 @@ Get-NetFirewallRule -DisplayName "Ollama*" -ErrorAction SilentlyContinue |
 - Tailscale ACLs + tags — <https://tailscale.com/kb/1068/acl-tags>
 - Tailscale auth keys — <https://tailscale.com/kb/1085/auth-keys>
 - nssm — <https://nssm.cc/usage>
-- Runbook modelo local — [`docs/runbooks/ai/local-model-setup.md`](../ai/local-model-setup.md)
-- Epic de integración — [`docs/epics/EP016-local-ai-tunnel.md`](../../epics/EP016-local-ai-tunnel.md)
+- Runbook modelo local (archivado) — [`docs/archive/runbooks-ai-legacy/local-model-setup.md`](../../archive/runbooks-ai-legacy/local-model-setup.md)
+- Epic de integración (superseded por DEC-017) — [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../../archive/cancelled-epics/EP016-local-ai-tunnel.md)

@@ -7,32 +7,20 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 3 v1.2 Bloque 1 COMPLETO + bug-fix post-deploy
-+ BUG-027 cleanup de IA legacy en admin/tenant.
+2026-04-24 — Sprint 4 v1.3 kickoff.
 
-Bloque 1 (limpieza + auth self-service):
-- ENH-021 (#96): superadmin AI sin defaults Ollama. ✅ b70c887
-- US-063 (#95): password reset + change vía email. ✅ (6 commits,
-  af4c9c3…16b57ff).
+Sprint 3 v1.2 CERRADO — Bloque 2 (BUG-027 + ENH-022 + ENH-023)
+esperando merge de la branch claude/update-admin-ai-config-EyClx.
+Post-merge + redeploy Railway limpia los warnings de tailscaled
+que el owner ve en logs.
 
-Bug-fixes post-deploy v1.1 (2026-04-23/24):
-- 40c4176: migraciones 0021/0022 removieron filtro `deleted_at IS NULL`
-  (tenants no tiene esa columna) — Railway bloqueaba deploy.
-- 39b5fd8: default GROQ_MODEL = llama-3.3-70b-versatile (3.1 deprecado).
-- a505553 + 7b812a1 (DEC-019): /admin/ai — quitar Ollama del catálogo
-  público + feature flag AI_BYO_ENABLED (default off) + wizard de
-  conexión con 4 pasos preparado pero deshabilitado hasta que el owner
-  encienda el flag en Railway.
+Sprint 4 v1.3 arranca ahora con 11 items en 3 bloques (ver QUEUE):
+- Bloque 1 (7 reworks del review 2026-04-23).
+- Bloque 2 (3 items RAID robusto + uploads persistentes).
+- Bloque 3 (1 item import XLSX + MPP).
 
-Sprint 3 v1.2 Bloque 2 — Cleanup IA legacy post-DEC-019 (en curso):
-- BUG-027 (#100): /admin/tenant?tab=config todavía mostraba dropdown
-  "Modo IA" + form Ollama Tailscale legacy (US-045/047/048). Barrido
-  completo: frontend (5 archivos), backend (1 endpoint + test),
-  docs (runbooks re-estructurados, runbook BYO nuevo,
-  legacy archivado). Branch claude/update-admin-ai-config-EyClx.
-
-Próximos candidatos: ver §Backlog v2.0 para los 3 items de overhaul
-Auth/Roles/Aprobaciones; llegan cuando el owner arme el RFC.
+Primera US en IN-PROGRESS: BUG-028 (#104) charter vacío abre
+editor en vez de URL placeholder example.local.
 ```
 
 ---
@@ -49,11 +37,21 @@ Auth/Roles/Aprobaciones; llegan cuando el owner arme el RFC.
 
 ---
 
-## ⏳ QUEUE (Sprint 3 v1.2)
+## ⏳ QUEUE (Sprint 4 v1.3)
 
 | # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| — | — | — | (Bloque 1 cerrado — aguardando intake de Bloque 2) | — |
+| 1 | BUG-028 | EP003 | Charter vacío abre URL placeholder example.local | 1 |
+| 2 | BUG-029 | EP006 | Upload Excel falla + botón Choose File sin styling | 1 |
+| 3 | ENH-024 | EP014 | Reporte: filename correcto al descargar | 1 |
+| 4 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework horizontales) | 1 |
+| 5 | ENH-026 | EP006 | Consolidar Gestión Avanzada en /admin/raid | 1 |
+| 6 | ENH-027 | EP006 | Panel editable RAID en /admin/projects/[id]/raid | 1 |
+| 7 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM | 1 |
+| 8 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento | 2 |
+| 9 | US-065 | EP006 | RAID: página dedicada por ítem (deep link) | 2 |
+| 10 | US-066 | EP007 | Uploads: Railway volume + runbook | 2 |
+| 11 | US-067 | EP009 | Importar XLSX + MPP nativo → tareas | 3 |
 
 ---
 
@@ -62,6 +60,10 @@ Auth/Roles/Aprobaciones; llegan cuando el owner arme el RFC.
 **Ver `SPRINT-DONE-HISTORY.md` para el historial completo de Sprint 1 (v1.0 MVP, 94 items) y Sprint 2 (v1.1, 18 items).**
 
 Sprint 2 v1.1 cerrado 2026-04-23. 4 bloques completos + hotfix Railway.
+
+Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
+- Bloque 1 (2 items): ENH-021 #96 + US-063 #95.
+- Bloque 2 (3 items): BUG-027 #100 + ENH-022 #102 + ENH-023 #103.
 
 ---
 
@@ -95,29 +97,51 @@ Sprint 2 v1.1 cerrado 2026-04-23. 4 bloques completos + hotfix Railway.
 
 ---
 
-## 📋 Backlog Sprint 3 (v1.2 — próximo)
-
-> Scope reducido por decisión del owner el 2026-04-23: los 3 items
-> grandes de "roles/recursos/aprobaciones jerárquicas" (US-059,
-> US-060, US-061, US-062-duplicado) **se mueven a v2.0** — son un
-> major overhaul que no encaja en un sprint incremental. v1.2 queda
-> acotado a lo que el owner pidió tras cerrar v1.1.
+## 📋 Backlog Sprint 3 (v1.2 — CERRADO)
 
 ### Bloque 1 — Sprint 3 Limpieza post-v1.1 + Auth self-service (2 items) ✅ COMPLETO
 - [x] ENH-021 — Superadmin AI: quitar defaults editables de Ollama — #96 ✅ b70c887
 - [x] US-063 — Recuperación y cambio de contraseña con envío por correo — #95 ✅ (6 commits, af4c9c3…7222dac)
 
-### Bloque 2 — Sprint 3 Cleanup IA legacy en admin/tenant (1 item) 🔴 EN CURSO
-- [ ] BUG-027 — /admin/tenant config: retirar dropdown "Modo IA" + form Ollama Tailscale + endpoint backend + runbooks archivados + runbook BYO nuevo — #100
+### Bloque 2 — Sprint 3 Cleanup IA legacy post-DEC-017 (3 items) ✅ COMPLETO (pending merge)
+- [x] BUG-027 — /admin/tenant config: retirar dropdown "Modo IA" + form Ollama Tailscale + endpoint backend + runbooks archivados + runbook BYO nuevo — #100 ✅ 1b62045
+- [x] ENH-022 — Housekeeping docs/ai/ (4 archivos legacy a archive) + archivar EP016 + actualizar refs cruzadas — #102 ✅ 6315d19
+- [x] ENH-023 — Retirar sidecar Tailscale del worker (start-worker.sh + Dockerfile custom + env vars TS_AUTHKEY/HOSTNAME + tailscale-setup.md archivado) — #103 ✅ f541171
 
 ---
 
-## 📋 Backlog v2.0 (Major Overhaul — post-v1.2)
+## 📋 Backlog Sprint 4 (v1.3 — ACTIVO)
+
+> Sprint arranca 2026-04-24 tras cerrar el review post-Sprint 2/3 con
+> el owner. Scope: **reworks del review + RAID robusto + import de
+> project/excel**. Los 3 items de v2.0 (US-059/060/061) siguen diferidos
+> por DEC-018.
+
+### Bloque 1 — Reworks del review (7 items) 🔴 EN CURSO
+- [ ] BUG-028 — Charter vacío abre URL placeholder `example.local` (DNS_PROBE fail) — #104
+- [ ] BUG-029 — Upload de Excel falla + botón "Choose file" sin styling — #105
+- [ ] ENH-024 — Reporte: filename correcto al descargar (hoy baja como "reporte" genérico) — #106
+- [ ] ENH-025 — Filtros RAID siguen apilados (rework definitivo horizontales) — #107
+- [ ] ENH-026 — Consolidar "Panel de Gestión Avanzada" RAID en `/admin/raid` — #108
+- [ ] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109
+- [ ] ENH-028 — Export tareas: Excel MPP-like + naming PLAN-{Proyecto}-{Fecha} + CSV BOM UTF-8 — #110
+
+### Bloque 2 — RAID robusto + uploads persistentes (3 items)
+- [ ] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento área/fecha/prioridad — #111
+- [ ] US-065 — RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112
+- [ ] US-066 — Uploads: Railway persistent volume + runbook de configuración — #113
+
+### Bloque 3 — Import Project/Excel (1 item)
+- [ ] US-067 — Importar XLSX + MPP nativo → generar tareas (requiere Java 21 + MPXJ en worker) — #114
+
+---
+
+## 📋 Backlog v2.0 (Major Overhaul — post-v1.3)
 
 > **Contexto (DEC-018):** estos items requieren repensar el modelo de
 > roles/permisos/áreas a nivel plataforma. No son incrementales: tocan
 > auth + multi-tenancy + UX transversal. Se ejecutan como v2.0 con su
-> propio sprint dedicado cuando v1.2 esté estable.
+> propio sprint dedicado cuando v1.3 esté estable.
 
 - [ ] US-059 — Recursos: usuarios sin roles jerárquicos (replantear Auth) — #88
 - [ ] US-060 — Roles: tipos de usuario (Viewer/User/Admin) — #89
@@ -128,6 +152,12 @@ Sprint 2 v1.1 cerrado 2026-04-23. 4 bloques completos + hotfix Railway.
 
 ## Notas y cambios
 
+- **2026-04-24 (Sprint 4 kickoff):** owner revisa Sprint 2/3 y reporta
+  7 items con `needs-rework` + pide RAID robusto (área obligatoria,
+  fechas, página dedicada, ordenamiento) + import XLSX/MPP. Se crean
+  11 issues (#104-#114) en 3 bloques. Scope completo confirmado por
+  owner (ningún corte). Import MPP requiere Java 21 + MPXJ en worker
+  (flag de riesgo dentro del issue US-067).
 - **2026-04-23 (post-v1.1):** owner define scope de Sprint 3 v1.2:
   solo limpieza Ollama + password reset (ENH-021 + US-063). Los 3
   items originales de v1.2 (#88/#89/#90) pasan a v2.0 por ser un

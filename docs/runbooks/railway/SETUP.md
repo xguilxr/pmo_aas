@@ -93,23 +93,20 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ### 3.3 Servicio `worker` (Celery)
 
-Hereda **todas** las de `api` (DATABASE_URL, REDIS_URL, AI_MODE, GEMINI_API_KEY, etc.)
-más estas específicas:
+Hereda **todas** las de `api` (DATABASE_URL, REDIS_URL, AI_SECRETS_FERNET_KEY,
+GROQ_API_KEY, etc.) más estas específicas:
 
 | Variable | Requiere | Valor ejemplo | Descripción |
 |---|---|---|---|
-| `TS_AUTHKEY` | **Sí** | `tskey-auth-…` | Auth key reutilizable Tailscale con tag `tag:railway-worker`. |
-| `TS_HOSTNAME` | **Sí** | `pmo-worker-railway` | Nombre del host en la red Tailscale. |
 | `RESEND_API_KEY` | **Sí** | `re_xxxxxxxx` | Para enviar emails. |
 | `RESEND_FROM` | **Sí** | `PMO·aaS <no-reply@pmo-aas.com>` | Sender email (dominio verificado en Resend). |
 | `APP_BASE_URL` | **Sí** | `https://app.pmo-aas.com` | Base URL para links en emails. |
 
-**Nota sobre `TS_AUTHKEY` y `TS_HOSTNAME`:**
-
-- `TS_AUTHKEY` es generada en Tailscale Admin (ver [`docs/runbooks/networking/tailscale-setup.md`](../networking/tailscale-setup.md)).
-- Debe ser **reutilizable** y **preauthorized** con tag `tag:railway-worker`.
-- `TS_HOSTNAME=pmo-worker-railway` es el nombre que el worker tendrá en MagicDNS.
-- El worker se conecta a la red Tailscale vía sidecar `start-worker.sh` (ver `apps/api/start-worker.sh`).
+> **Histórico:** hasta ENH-023 (2026-04-23) el worker requería
+> `TS_AUTHKEY` + `TS_HOSTNAME` para un sidecar Tailscale que hablaba
+> con Ollama (US-048). DEC-017 retiró ese flujo y ENH-023 borró el
+> `start-worker.sh`. Si esas env vars existen en Railway, pueden
+> eliminarse.
 
 ### 3.4 Servicio `web` (Next.js)
 
@@ -158,7 +155,7 @@ healthcheckPath = "/health"
 
 # apps/api/worker.railway.toml
 [deploy]
-startCommand = "bash start-worker.sh"  # Levanta tailscaled + celery
+startCommand = "celery -A app.workers.celery_app worker --loglevel=info --concurrency=2"
 healthcheckPath = ""  # worker no expone HTTP
 numReplicas = 1
 
@@ -240,9 +237,8 @@ Si uno falla, Railway auto-redeploy (si está habilitado) o alertas manuales
 - [ ] `DATABASE_URL` + `REDIS_URL` auto-inyectados (verificar en servicio settings).
 - [ ] `JWT_SECRET` + `JWT_REFRESH_SECRET` generados y guardados en Railway `api`.
 - [ ] `ALLOWED_ORIGINS` configurado a `https://app.pmo-aas.com,https://www.pmo-aas.com`.
-- [ ] `AI_MODE=ollama`, variables Ollama configuradas.
-- [ ] `GEMINI_API_KEY` + `ANTHROPIC_API_KEY` agregadas.
-- [ ] `TS_AUTHKEY` + `TS_HOSTNAME` configurados en `worker`.
+- [ ] `AI_SECRETS_FERNET_KEY` configurado (cifra la Groq key + BYO).
+- [ ] `GROQ_API_KEY` cargada vía `/superadmin/ai` (no se setea en env directamente).
 - [ ] `RESEND_API_KEY` + `RESEND_FROM` + `APP_BASE_URL` en `worker`.
 - [ ] `NEXTAUTH_URL` + `NEXTAUTH_SECRET` + `NEXT_PUBLIC_API_URL` en `web`.
 - [ ] Volumen `pmo-uploads` montado en `/data/uploads` en `api` y `worker`.
@@ -257,7 +253,7 @@ Si uno falla, Railway auto-redeploy (si está habilitado) o alertas manuales
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `JWT_SECRET not found` al boot de api | Variable no configurada | Generar y agregar a Railway `api`. |
-| Worker no se conecta a Ollama (timeout) | `TS_AUTHKEY` falta o inválida | Ver [`docs/runbooks/networking/tailscale-setup.md`](../networking/tailscale-setup.md) §7. |
+| Minutas IA fallan con `groq_no_api_key` | `GROQ_API_KEY` vacía en `platform_ai_settings` | Pegar en `/superadmin/ai` (no se setea en env directa). |
 | Email no se envía | `RESEND_API_KEY` vacía o dominio no verificado | Ver [`docs/runbooks/email/resend-setup.md`](../email/resend-setup.md). |
 | Frontend no alcanza backend (CORS error) | `ALLOWED_ORIGINS` no incluye dominio | Agregar a Railway `api` + redeploy. |
 | Healthcheck falla (servicio marked unhealthy) | Database / Redis sin conexión | Verificar `DATABASE_URL` + `REDIS_URL` | plugins conectados. |
@@ -269,7 +265,8 @@ Si uno falla, Railway auto-redeploy (si está habilitado) o alertas manuales
 
 - Architecture deployment: [`docs/runbooks/railway/DEPLOYMENT.md`](./DEPLOYMENT.md)
 - DNS & custom domains: [`docs/runbooks/infra/dns-routing.md`](../infra/dns-routing.md)
-- Tailscale + worker: [`docs/runbooks/networking/tailscale-setup.md`](../networking/tailscale-setup.md)
+- Tailscale sidecar (archivado post-ENH-023): [`docs/archive/runbooks-ai-legacy/tailscale-sidecar-setup.md`](../../archive/runbooks-ai-legacy/tailscale-sidecar-setup.md)
 - Email (Resend): [`docs/runbooks/email/resend-setup.md`](../email/resend-setup.md)
-- IA setup: [`docs/runbooks/ai/`](../ai/)
-- Epic: [`docs/epics/EP016-local-ai-tunnel.md`](../../epics/EP016-local-ai-tunnel.md)
+- IA setup: [`docs/runbooks/ai/`](../ai/) — `groq-setup.md` + `byo-setup.md`
+- Epic IA actual: [`docs/epics/EP008-ai.md`](../../epics/EP008-ai.md)
+- Epic tunnel Ollama (archivada, superseded por DEC-017): [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../../archive/cancelled-epics/EP016-local-ai-tunnel.md)
