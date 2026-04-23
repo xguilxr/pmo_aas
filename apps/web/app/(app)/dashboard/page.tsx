@@ -422,7 +422,7 @@ function DashboardInner() {
               href={csvHref}
               target="_blank"
               rel="noreferrer noopener"
-              className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
             >
               <Download className="h-4 w-4" aria-hidden />
               Exportar CSV
