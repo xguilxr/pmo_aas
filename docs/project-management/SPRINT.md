@@ -87,7 +87,7 @@ Hotfixes CI post-commit (2026-04-23):
 
 ### Bloque 3 — Sprint 2 RAID + Áreas (5 items)
 - [ ] ENH-019 — RAID: gestión avanzada consolidada en principal — #85
-- [ ] ENH-018 — RAID: agregar toggle Kanban — #84
+- [x] ENH-018 — RAID: agregar toggle Kanban — #84 ✅ c894f12
 - [ ] US-058 — RAID: preview panel editable con comentarios — #83
 - [ ] ENH-020 — Áreas: permitir múltiples recursos/contactos — #86
 - [ ] US-062 — Áreas/Recursos: Area Leader + recursos asignados (moved from v1.2) — #91
