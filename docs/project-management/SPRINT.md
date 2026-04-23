@@ -10,6 +10,10 @@
 2026-04-23 — US-056 (Calendarizar envío automático de reportes vía Resend)
 
 ENH-014 completado (02cfaa6). Siguiente: US-056 en Bloque 2.
+
+Hotfixes CI post-commit (2026-04-23):
+- 47d3603: DocumentCategory types en frontend (fix CI web-build type error, afecta BUG-024/BUG-023)
+- 103628d: save_document signature + DOCUMENT_CATEGORIES tuple (fix BUG-024 endpoint multipart)
 ```
 
 ---
