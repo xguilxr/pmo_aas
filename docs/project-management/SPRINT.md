@@ -170,7 +170,7 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 - [x] BUG-015 — Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40 ✅ d3523bb
 - [x] BUG-029 — Upload de Excel falla + botón "Choose file" sin styling — #105 ✅ 3f6ac90
 - [x] ENH-003 — Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 ✅ b47f19a (ya resuelto por ENH-013 Sprint 2; owner re-valida en deploy actual)
-- [x] ENH-024 — Reporte: filename correcto al descargar — #106 ✅ (pending SHA)
+- [x] ENH-024 — Reporte: filename correcto al descargar — #106 ✅ 33c043c
 - [ ] ENH-025 — Filtros RAID siguen apilados (rework definitivo horizontales) — #107
 - [ ] ENH-026 — Consolidar "Panel de Gestión Avanzada" RAID en `/admin/raid` — #108
 - [ ] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109
