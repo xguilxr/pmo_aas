@@ -216,28 +216,36 @@ Set requerido. Si falta alguna, la crea el owner (UI o gh CLI):
 | `enhancement` | #a2eeef | Tipo: mejora sobre US existente |
 | `user-story` | #7057ff | Tipo: historia nueva |
 | `EP001` … `EP016` | #0e8a16 | Epic al que pertenece |
-| `status:triage` | #fbca04 | Recién creado, pendiente de plan |
+| `status:triage` | #fbca04 | Recién creado, pendiente de aprobación del triage |
+| `status:ready` | #0e8a16 | **Owner aprobó el triage — Claude puede arrancar** |
 | `status:in-progress` | #0075ca | Claude está trabajando |
 | `status:fix-committed` | #5319e7 | Commit pusheado, esperando review del owner |
 | `status:needs-rework` | #b60205 | Owner rechazó el fix, retomar |
 | `post-mvp` | #cccccc | Fuera del scope v1.0 |
-| `v1.0` | #006b75 | Blocking release v1.0 |
+| `v1.0` / `v1.1` / `v1.2` / `v1.3` / `v2.0` | #006b75 | Release target |
 
 **Flujo de transición de status:**
 
 ```
-status:triage ──▶ status:in-progress ──▶ status:fix-committed
-                                                │
-                        ┌───────────────────────┘
-                        ▼
-               (owner verifica)
-                        │
-                ┌───────┴───────┐
-                ▼               ▼
-           [close]      status:needs-rework
-                                │
-                                └───▶ status:in-progress (reabre)
+status:triage ──▶ status:ready ──▶ status:in-progress ──▶ status:fix-committed
+                    ↑ (owner)                                    │
+                    │                                            ▼
+                    │                                    (owner verifica)
+                    │                                            │
+                    │                                    ┌───────┴───────┐
+                    │                                    ▼               ▼
+                    └──────(status:needs-rework)────────────      [close issue]
+                                                                  completed / not_planned
 ```
+
+**Gate de arranque:** Claude **no** puede empezar una US/BUG/ENH hasta que el
+issue tenga `status:ready`. La transición `triage → ready` la hace el owner
+(o por propuesta explícita del owner en el chat). Esta separación evita que
+Claude arranque con un scope que el owner todavía no ha validado.
+
+**`needs-rework`:** cuando el owner rechaza el fix, el issue vuelve a
+`status:triage` (no directo a `in-progress`). Claude reevalúa el scope con
+el owner y espera de nuevo el `status:ready` antes de tocar código.
 
 ---
 

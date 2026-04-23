@@ -7,20 +7,31 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 4 v1.3 kickoff.
+2026-04-24 — Sprint 4 v1.3 kickoff (reshuffle post-review).
 
 Sprint 3 v1.2 CERRADO — Bloque 2 (BUG-027 + ENH-022 + ENH-023)
 esperando merge de la branch claude/update-admin-ai-config-EyClx.
 Post-merge + redeploy Railway limpia los warnings de tailscaled
-que el owner ve en logs.
+que el owner ve en logs (ver #103 comment del 2026-04-24).
 
-Sprint 4 v1.3 arranca ahora con 11 items en 3 bloques (ver QUEUE):
-- Bloque 1 (7 reworks del review 2026-04-23).
-- Bloque 2 (3 items RAID robusto + uploads persistentes).
-- Bloque 3 (1 item import XLSX + MPP).
+Sprint 4 v1.3 arranca ahora con 14 items en 3 bloques (ver QUEUE):
+- Bloque 1 (8 reworks del review).
+- Bloque 2 (5 items: infra + RAID + charter fix completo + PMO org).
+- Bloque 3 (1 item: import XLSX + MPP).
 
-Primera US en IN-PROGRESS: BUG-028 (#104) charter vacío abre
-editor en vez de URL placeholder example.local.
+Cambios del reshuffle (2026-04-24):
+- BUG-028 (#104) movido de Bloque 1 → Bloque 2. Depende de
+  US-066 (storage) + BUG-029 (upload) para el fix completo
+  ("que el charter se genere como archivo real").
+- BUG-015 (#40) y ENH-003 (#50, sub-A) reintegrados al Bloque 1.
+- US-068 (#116, nueva) — página PMO de organización, sub-B de #50.
+
+Aún no hay issue en IN-PROGRESS. Claude espera status:ready del
+owner sobre cualquiera de los 14 items antes de arrancar.
+
+v2.0 queue: US-059/060/061 (#88/#89/#90) esperan que el owner
+los cierre como not_planned tras confirmar los comentarios
+documentales de 2026-04-24.
 ```
 
 ---
@@ -39,19 +50,36 @@ editor en vez de URL placeholder example.local.
 
 ## ⏳ QUEUE (Sprint 4 v1.3)
 
-| # | ID | Epic | Título | Bloque |
-|---|---|---|---|---|
-| 1 | BUG-028 | EP003 | Charter vacío abre URL placeholder example.local | 1 |
-| 2 | BUG-029 | EP006 | Upload Excel falla + botón Choose File sin styling | 1 |
-| 3 | ENH-024 | EP014 | Reporte: filename correcto al descargar | 1 |
-| 4 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework horizontales) | 1 |
-| 5 | ENH-026 | EP006 | Consolidar Gestión Avanzada en /admin/raid | 1 |
-| 6 | ENH-027 | EP006 | Panel editable RAID en /admin/projects/[id]/raid | 1 |
-| 7 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM | 1 |
-| 8 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento | 2 |
-| 9 | US-065 | EP006 | RAID: página dedicada por ítem (deep link) | 2 |
-| 10 | US-066 | EP007 | Uploads: Railway volume + runbook | 2 |
-| 11 | US-067 | EP009 | Importar XLSX + MPP nativo → tareas | 3 |
+### Bloque 1 — Reworks del review (8 items)
+
+| # | ID | Epic | Título |
+|---|---|---|---|
+| 1 | BUG-015 | EP004 | Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40 |
+| 2 | BUG-029 | EP006 | Upload Excel falla + botón Choose File sin styling — #105 |
+| 3 | ENH-003 | EP002 | Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 |
+| 4 | ENH-024 | EP014 | Reporte: filename correcto al descargar — #106 |
+| 5 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework definitivo) — #107 |
+| 6 | ENH-026 | EP006 | Consolidar "Gestión Avanzada" en `/admin/raid` — #108 |
+| 7 | ENH-027 | EP006 | Panel editable RAID en `/admin/projects/[id]/raid` — #109 |
+| 8 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
+
+### Bloque 2 — Infra + RAID robusto + fix completo charter (5 items)
+
+> **Orden obligatorio:** US-066 primero (storage), luego BUG-028 (charter real usa storage).
+
+| # | ID | Epic | Título |
+|---|---|---|---|
+| 9 | US-066 | EP007 | Uploads: Railway persistent volume + runbook — #113 |
+| 10 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud (depende US-066+BUG-029) — #104 |
+| 11 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
+| 12 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
+| 13 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
+
+### Bloque 3 — Import Project/Excel (1 item)
+
+| # | ID | Epic | Título |
+|---|---|---|---|
+| 14 | US-067 | EP009 | Importar XLSX + MPP nativo → generar tareas — #114 |
 
 ---
 
@@ -113,23 +141,33 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 ## 📋 Backlog Sprint 4 (v1.3 — ACTIVO)
 
 > Sprint arranca 2026-04-24 tras cerrar el review post-Sprint 2/3 con
-> el owner. Scope: **reworks del review + RAID robusto + import de
-> project/excel**. Los 3 items de v2.0 (US-059/060/061) siguen diferidos
-> por DEC-018.
+> el owner. Scope: **reworks del review + infra + RAID robusto + import
+> project/excel + página PMO de organización**. Los 3 items de v2.0
+> (US-059/060/061) siguen diferidos por DEC-018.
+>
+> **Reshuffle 2026-04-24:** BUG-028 movido a Bloque 2 (depende de
+> US-066 + BUG-029). #40 y #50 reintegrados. US-068 creada para sub-B
+> de #50. Total 14 items.
 
-### Bloque 1 — Reworks del review (7 items) 🔴 EN CURSO
-- [ ] BUG-028 — Charter vacío abre URL placeholder `example.local` (DNS_PROBE fail) — #104
+### Bloque 1 — Reworks del review (8 items)
+- [ ] BUG-015 — Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40
 - [ ] BUG-029 — Upload de Excel falla + botón "Choose file" sin styling — #105
-- [ ] ENH-024 — Reporte: filename correcto al descargar (hoy baja como "reporte" genérico) — #106
+- [ ] ENH-003 — Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50
+- [ ] ENH-024 — Reporte: filename correcto al descargar — #106
 - [ ] ENH-025 — Filtros RAID siguen apilados (rework definitivo horizontales) — #107
 - [ ] ENH-026 — Consolidar "Panel de Gestión Avanzada" RAID en `/admin/raid` — #108
 - [ ] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109
 - [ ] ENH-028 — Export tareas: Excel MPP-like + naming PLAN-{Proyecto}-{Fecha} + CSV BOM UTF-8 — #110
 
-### Bloque 2 — RAID robusto + uploads persistentes (3 items)
-- [ ] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento área/fecha/prioridad — #111
+### Bloque 2 — Infra + RAID robusto + PMO page (5 items)
+
+> **Orden:** US-066 → BUG-028 → US-064 → US-065 → US-068.
+
+- [ ] US-066 — Uploads: Railway persistent volume + runbook — #113
+- [ ] BUG-028 — Charter vacío: generar PDF real al aprobar solicitud — #104
+- [ ] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento — #111
 - [ ] US-065 — RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112
-- [ ] US-066 — Uploads: Railway persistent volume + runbook de configuración — #113
+- [ ] US-068 — Página PMO de organización (paneles programas + proyectos, separada de admin) — #116
 
 ### Bloque 3 — Import Project/Excel (1 item)
 - [ ] US-067 — Importar XLSX + MPP nativo → generar tareas (requiere Java 21 + MPXJ en worker) — #114
@@ -152,6 +190,23 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 ## Notas y cambios
 
+- **2026-04-24 (Sprint 4 reshuffle):** owner revisa el plan inicial
+  y pide considerar #40, #50, #103 + mover BUG-028 al Bloque 2 por
+  dependencia con US-066 + BUG-029 (charter real requiere storage
+  persistente + upload funcional). Acciones:
+  - BUG-015 #40 y ENH-003 #50 reintegrados al Bloque 1 con scope
+    clarificado en comentarios.
+  - BUG-028 #104 re-scoped a "generar PDF real del charter" + movido
+    a Bloque 2 después de US-066.
+  - Nueva US-068 #116 para sub-problema B de #50 (página PMO de
+    organización separada de admin) en Bloque 2.
+  - #103 identificado como pending-merge (no requiere issue nuevo;
+    documentado en comentario).
+  - US-060 (#89) y US-061 (#90) documentados con contexto DEC-018
+    para que owner pueda cerrarlos con `not_planned`.
+  - Introducido label `status:ready` en CLAUDE.md §5 como gate de
+    arranque: Claude espera `status:ready` antes de tocar código.
+  - Total Sprint 4: 14 items (8+5+1).
 - **2026-04-24 (Sprint 4 kickoff):** owner revisa Sprint 2/3 y reporta
   7 items con `needs-rework` + pide RAID robusto (área obligatoria,
   fechas, página dedicada, ordenamiento) + import XLSX/MPP. Se crean
