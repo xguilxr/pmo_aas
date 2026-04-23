@@ -3,8 +3,10 @@
 Complementa al draft-con-IA existente en `/ai/projects/{id}/reports/draft`
 (EP008) con CRUD manual y un listado paginable por proyecto.
 """
+import re
 from datetime import UTC, date, datetime
 from typing import Literal
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -232,11 +234,35 @@ class SeguimientoGenerate(BaseModel):
     window_days: int = Field(default=14, ge=1, le=90)
 
 
-def _pdf_response(pdf: bytes, filename: str) -> Response:
+def _sanitize_filename_part(value: str) -> str:
+    """Replace whitespace with underscore and strip forbidden filename chars."""
+    cleaned = re.sub(r"\s+", "_", value.strip())
+    cleaned = re.sub(r"[\\/:*?\"<>|]", "", cleaned)
+    return cleaned or "sin_nombre"
+
+
+def _report_filename(tipo: str, project_name: str, ts: datetime) -> str:
+    """Build filename per ENH-014: `Reporte de {Tipo} - {Nombre} - {datetime}.pdf`."""
+    safe_name = _sanitize_filename_part(project_name)
+    stamp = ts.strftime("%Y-%m-%d_%H-%M-%S")
+    return f"Reporte de {tipo} - {safe_name} - {stamp}.pdf"
+
+
+def _pdf_response(pdf: bytes, filename: str, *, inline: bool = False) -> Response:
+    disposition_type = "inline" if inline else "attachment"
+    ascii_fallback = (
+        filename.encode("ascii", "replace").decode("ascii").replace("?", "_")
+    )
+    encoded = quote(filename)
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": (
+                f'{disposition_type}; filename="{ascii_fallback}"; '
+                f"filename*=UTF-8''{encoded}"
+            )
+        },
     )
 
 
@@ -293,18 +319,20 @@ async def generate_avance_report(
     )
     await db.commit()
 
-    filename = f"Reporte_Avance_{project.folio}_{cut_off.isoformat()}.pdf"
+    filename = _report_filename("Avance", project.name, datetime.now(UTC))
     return _pdf_response(pdf, filename)
 
 
 @router.get("/reports/{report_id}/avance/download")
 async def download_avance_report(
     report_id: UUID,
+    inline: bool = Query(default=False),
     cu: CurrentUser = Depends(require_permission("projects", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     """Re-descarga un Reporte de Avance previamente generado (usa
-    contexto persistido en `sections`)."""
+    contexto persistido en `sections`). Con `?inline=true` devuelve
+    `Content-Disposition: inline` para preview en el navegador (ENH-014)."""
     tenant_id = _tenant(cu)
     rep = (
         await db.execute(
@@ -321,11 +349,9 @@ async def download_avance_report(
     ctx["tenant_name"] = await _tenant_name(db, tenant_id)
     pdf = render_pdf("reports/avance.html", ctx)
     project = await _get_project(db, tenant_id, UUID(rep.project_id))
-    filename = (
-        f"Reporte_Avance_{project.folio}_"
-        f"{(rep.cut_off_date.isoformat() if rep.cut_off_date else 'snapshot')}.pdf"
-    )
-    return _pdf_response(pdf, filename)
+    stamp = rep.created_at if rep.created_at else datetime.now(UTC)
+    filename = _report_filename("Avance", project.name, stamp)
+    return _pdf_response(pdf, filename, inline=inline)
 
 
 @router.post("/projects/{project_id}/reports/seguimiento")
@@ -374,13 +400,14 @@ async def generate_seguimiento_report(
     )
     await db.commit()
 
-    filename = f"Reporte_Seguimiento_{project.folio}_{cut_off.isoformat()}.pdf"
+    filename = _report_filename("Seguimiento", project.name, datetime.now(UTC))
     return _pdf_response(pdf, filename)
 
 
 @router.get("/reports/{report_id}/seguimiento/download")
 async def download_seguimiento_report(
     report_id: UUID,
+    inline: bool = Query(default=False),
     cu: CurrentUser = Depends(require_permission("projects", "read")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -400,11 +427,9 @@ async def download_seguimiento_report(
     ctx["tenant_name"] = await _tenant_name(db, tenant_id)
     pdf = render_pdf("reports/seguimiento.html", ctx)
     project = await _get_project(db, tenant_id, UUID(rep.project_id))
-    filename = (
-        f"Reporte_Seguimiento_{project.folio}_"
-        f"{(rep.cut_off_date.isoformat() if rep.cut_off_date else 'snapshot')}.pdf"
-    )
-    return _pdf_response(pdf, filename)
+    stamp = rep.created_at if rep.created_at else datetime.now(UTC)
+    filename = _report_filename("Seguimiento", project.name, stamp)
+    return _pdf_response(pdf, filename, inline=inline)
 
 
 @router.delete("/reports/{report_id}", status_code=204)

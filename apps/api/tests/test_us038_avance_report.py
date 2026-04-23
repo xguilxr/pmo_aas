@@ -121,9 +121,11 @@ async def test_us038_generate_and_pdf(client, db_session):
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "application/pdf"
     assert r.content.startswith(b"%PDF")
-    assert "Reporte_Avance_P-0001_2026-04-20.pdf" in r.headers.get(
-        "content-disposition", ""
-    )
+    # ENH-014: nombre = "Reporte de Avance - {project_name} - {datetime}.pdf"
+    disposition = r.headers.get("content-disposition", "")
+    assert disposition.startswith("attachment;")
+    assert "Reporte de Avance - Proyecto_P-0001 - " in disposition
+    assert disposition.rstrip().endswith(".pdf") or ".pdf" in disposition
 
 
 @pytest.mark.asyncio
@@ -184,6 +186,40 @@ async def test_us038_redownload_uses_snapshot(client, db_session):
     )
     assert dl.status_code == 200
     assert dl.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_enh014_avance_preview_inline_disposition(client, db_session):
+    """ENH-014: `?inline=true` devuelve Content-Disposition inline para preview."""
+    t, auth = await _admin(client, db_session, slug="avance-preview")
+    p = await _seed_project(db_session, t, folio="P-0010")
+
+    gen = await client.post(
+        f"/api/v1/projects/{p.id}/reports/avance", headers=auth["_authz"],
+    )
+    assert gen.status_code == 200
+
+    from sqlalchemy import select
+
+    report = (
+        await db_session.execute(
+            select(Report).where(
+                Report.tenant_id == str(t.id),
+                Report.project_id == str(p.id),
+                Report.generator == "avance",
+            )
+        )
+    ).scalar_one()
+
+    dl = await client.get(
+        f"/api/v1/reports/{report.id}/avance/download?inline=true",
+        headers=auth["_authz"],
+    )
+    assert dl.status_code == 200
+    assert dl.content.startswith(b"%PDF")
+    disposition = dl.headers.get("content-disposition", "")
+    assert disposition.startswith("inline;")
+    assert "Reporte de Avance - Proyecto_P-0010 - " in disposition
 
 
 @pytest.mark.asyncio

@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   Download,
+  Eye,
   FileText,
   Mail,
   Plus,
@@ -30,10 +31,14 @@ import {
   SECTION_LABELS,
   createReport,
   deleteReport,
+  downloadAvanceReport,
+  downloadSeguimientoReport,
   generateAvanceReport,
   generateSeguimientoReport,
   getReport,
   listReports,
+  previewAvanceReport,
+  previewSeguimientoReport,
   updateReport,
   type Report,
   type ReportPeriod,
@@ -58,6 +63,80 @@ function StatusBadge({ status }: { status: Report["status"] }) {
     <Badge variant="success">Enviado</Badge>
   ) : (
     <Badge variant="neutral">Borrador</Badge>
+  );
+}
+
+function GeneratorBadge({ generator }: { generator: Report["generator"] }) {
+  if (generator === "avance") return <Badge variant="info">Avance</Badge>;
+  if (generator === "seguimiento")
+    return <Badge variant="info">Seguimiento</Badge>;
+  return null;
+}
+
+function GeneratedReportActions({ report }: { report: Report }) {
+  const [busy, setBusy] = useState<"preview" | "download" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const isAvance = report.generator === "avance";
+  const isSeguimiento = report.generator === "seguimiento";
+  if (!isAvance && !isSeguimiento) return null;
+
+  async function run(kind: "preview" | "download") {
+    setBusy(kind);
+    setError(null);
+    try {
+      if (kind === "preview") {
+        await (isAvance
+          ? previewAvanceReport(report.id)
+          : previewSeguimientoReport(report.id));
+      } else {
+        await (isAvance
+          ? downloadAvanceReport(report.id)
+          : downloadSeguimientoReport(report.id));
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label="Preview PDF"
+        title="Preview PDF en el navegador"
+        loading={busy === "preview"}
+        disabled={busy !== null}
+        onClick={(e) => {
+          e.stopPropagation();
+          void run("preview");
+        }}
+      >
+        <Eye className="h-4 w-4" aria-hidden />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label="Descargar PDF"
+        title="Descargar PDF"
+        loading={busy === "download"}
+        disabled={busy !== null}
+        onClick={(e) => {
+          e.stopPropagation();
+          void run("download");
+        }}
+      >
+        <Download className="h-4 w-4" aria-hidden />
+      </Button>
+      {error ? (
+        <span className="text-[11px] text-[var(--color-danger-fg)]">{error}</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -182,6 +261,7 @@ function ReportsInner() {
                       {r.title}
                     </button>
                     <StatusBadge status={r.status} />
+                    <GeneratorBadge generator={r.generator} />
                     {r.generated_by_ai ? (
                       <Badge variant="info">IA</Badge>
                     ) : null}
@@ -204,6 +284,7 @@ function ReportsInner() {
                     ) : null}
                   </div>
                 </div>
+                <GeneratedReportActions report={r} />
               </li>
             ))}
           </ul>
