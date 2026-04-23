@@ -1,17 +1,11 @@
 import { apiFetch } from "@/lib/api";
 
-export type OllamaConfigRead = {
-  base_url: string | null;
-  model: string | null;
-  timeout_sec: number;
-  configured: boolean;
-};
-
-export type OllamaConfigPatch = {
-  base_url?: string;
-  model?: string;
-  timeout_sec?: number;
-};
+// ============================================================================
+// US-057 + DEC-017/019 — Selector de modo IA por tenant (disabled / platform / byo).
+// Los helpers legacy de Ollama/Tailscale (US-045, US-047, US-048) se retiraron
+// en BUG-027: el cascade IA vive en `settings.ai.{mode,byo,...}` y el único
+// flujo de alta de proveedor es el wizard BYO de /admin/ai.
+// ============================================================================
 
 export type TestConnectionResult = {
   ok: boolean;
@@ -21,28 +15,6 @@ export type TestConnectionResult = {
   error: string | null;
   code: string | null;
 };
-
-export function getOllamaConfig(): Promise<OllamaConfigRead> {
-  return apiFetch<OllamaConfigRead>("/api/v1/admin/ai/ollama");
-}
-
-export function updateOllamaConfig(body: OllamaConfigPatch): Promise<OllamaConfigRead> {
-  return apiFetch<OllamaConfigRead>("/api/v1/admin/ai/ollama", {
-    method: "PATCH",
-    body,
-  });
-}
-
-export function testAiConnection(provider: "ollama" = "ollama"): Promise<TestConnectionResult> {
-  return apiFetch<TestConnectionResult>("/api/v1/admin/ai/test-connection", {
-    method: "POST",
-    body: { provider },
-  });
-}
-
-// ============================================================================
-// US-057 — Selector de modo IA por tenant (disabled / platform / byo)
-// ============================================================================
 
 export type TenantAIMode = "disabled" | "platform" | "byo";
 

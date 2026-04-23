@@ -1,10 +1,17 @@
-# Runbooks — Guías de Setup para v1.0
+# Runbooks — Guías de Setup
 
-**Última actualización:** 2026-04-21
+**Última actualización:** 2026-04-23 (post-v1.1, BUG-027)
 
-Este directorio centraliza todos los runbooks operativos para desplegar y operar
-**PMO·aaS v1.0** en producción. Cada runbook es autónomo: contiene el checklist
+Este directorio centraliza los runbooks operativos para desplegar y operar
+**PMO·aaS** en producción. Cada runbook es autónomo: contiene el checklist
 de validación y troubleshooting necesario para ese servicio.
+
+> **Desde v1.1 (DEC-017):** la IA ya no usa cascada global (Ollama → Gemini →
+> Claude). El modelo activo es **3 modos por-tenant** — `disabled`,
+> `platform` (Groq hosteado por la plataforma), `byo` (proveedor del tenant:
+> OpenAI / Claude / Gemini / Perplexity). Los runbooks viejos de Ollama /
+> Gemini / Claude / local-model fueron archivados en
+> [`docs/archive/runbooks-ai-legacy/`](../archive/runbooks-ai-legacy/).
 
 ---
 
@@ -31,21 +38,21 @@ cuando los 6 bloques estén ✅**.
 
 ---
 
-### ✅ 2. Networking — Tailscale + Ollama local
+### ✅ 2. Networking — Tailscale (opcional, legacy Ollama BYO)
 
-**Runbooks:**
-- [`networking/tailscale-setup.md`](./networking/tailscale-setup.md) — Tailscale en PC + Railway
+**Runbook activo:** [`networking/tailscale-setup.md`](./networking/tailscale-setup.md)
 
-**Tareas:**
-- [ ] Ollama instalado en PC local, modelo `qwen2.5:7b-instruct-q4_K_M` descargado
-- [ ] Ollama expuesto a `0.0.0.0:11434` (no solo localhost)
-- [ ] Tailscale instalado en PC local con hostname `ollama-host`
-- [ ] Auth key reutilizable generada con tag `tag:railway-worker` (en Tailscale admin)
-- [ ] ACL en Tailscale permite tag `tag:railway-worker` → `tag:ollama:11434`
-- [ ] MagicDNS habilitado en tailnet
-- [ ] Firewall Windows: solo 1 regla "Ollama allow tailnet" para `100.64.0.0/10`
-- [ ] `TS_AUTHKEY` y `TS_HOSTNAME=pmo-worker-railway` en Railway `worker`
-- [ ] Desde otro device del tailnet: `curl http://ollama-host.<tailnet>.ts.net:11434` devuelve "Ollama is running"
+> **Nota (DEC-017, 2026-04-22):** la plataforma ya **no requiere** Tailscale
+> para operar la IA. El modo `platform` usa Groq hosteado (HTTPS público,
+> sin tunneling). Este bloque sólo aplica si un tenant legacy sigue con
+> Ollama + Tailscale como BYO propio. Ver
+> [`docs/archive/runbooks-ai-legacy/local-ollama-setup.md`](../archive/runbooks-ai-legacy/local-ollama-setup.md)
+> para el setup original.
+
+**Tareas (sólo tenants legacy Ollama):**
+- [ ] Ollama instalado en PC local con modelo propio
+- [ ] Tailscale + ACL configurados (ver runbook archivado)
+- [ ] `TS_AUTHKEY` en Railway `worker`
 
 **Checkpoint:** Worker Railway resuelve MagicDNS y conecta a Ollama sin timeout
 
@@ -87,23 +94,26 @@ cuando los 6 bloques estén ✅**.
 
 ---
 
-### ✅ 5. IA — Gemini + Anthropic keys
+### ✅ 5. IA — Groq (platform) + BYO opcional por tenant
 
-**Runbooks:**
-- [`ai/gemini-setup.md`](./ai/gemini-setup.md) — Google Gemini free tier
-- [`ai/claude-setup.md`](./ai/claude-setup.md) — Anthropic Claude (fallback premium)
-- [`ai/local-ollama-setup.md`](./ai/local-ollama-setup.md) — Ollama (local, prioridad 1)
+**Runbooks activos:**
+- [`ai/groq-setup.md`](./ai/groq-setup.md) — **Obligatorio.** Habilitar Groq como IA base (modo `platform`).
+- [`ai/byo-setup.md`](./ai/byo-setup.md) — Opcional por tenant: conectar OpenAI / Claude / Gemini / Perplexity.
 
-**Tareas (por orden de prioridad):**
-- [ ] Ollama local: `TS_AUTHKEY` configurada en Railway worker (ver Networking ✅ 2)
-- [ ] Gemini: API key `AIza...` generada en Google AI Studio, configurada en Railway
-- [ ] Anthropic: API key `sk-ant-...` generada en console.anthropic.com, configurada
-- [ ] `AI_MODE` en Railway api/worker = `ollama` (prioridad 1, fallback automático a Gemini → Claude)
-- [ ] Test de conexión: Admin panel → IA settings → test Ollama/Gemini/Claude
-- [ ] Cascada probada: desconectar Ollama deliberadamente, verificar fallback a Gemini
-- [ ] Minuta generada exitosamente desde la app
+**Runbooks archivados (cascada legacy, pre-DEC-017):**
+Ver [`docs/archive/runbooks-ai-legacy/`](../archive/runbooks-ai-legacy/) —
+Ollama tailnet, Gemini como fallback, Claude como fallback premium.
 
-**Checkpoint:** Minuta generada con Ollama; cascada funciona si Ollama cae
+**Tareas v1.1+:**
+- [ ] `AI_SECRETS_FERNET_KEY` en Railway (api + worker) — cifra la key de Groq y las BYO.
+- [ ] Cuenta Groq creada + `GROQ_API_KEY` pegada en `/superadmin/ai` → Guardar.
+- [ ] Modelo Groq = `llama-3.3-70b-versatile` (3.1 deprecado).
+- [ ] "Probar conexión" en `/superadmin/ai` devuelve OK.
+- [ ] `AI_BYO_ENABLED=1` en Railway **sólo cuando** quieras habilitar el wizard BYO
+      para los tenants. Default off (DEC-019).
+- [ ] Smoke test: tenant en modo `platform` genera minuta IA sin error.
+
+**Checkpoint:** `/superadmin/ai` muestra `Groq · Configurado` y dashboard de uso > 0 requests.
 
 ---
 
@@ -129,14 +139,13 @@ cuando los 6 bloques estén ✅**.
 |---|---|---|
 | **Railway** | [`railway/SETUP.md`](./railway/SETUP.md) | ✅ |
 | **Railway** | [`railway/DEPLOYMENT.md`](./railway/DEPLOYMENT.md) | ✅ |
-| **Tailscale + Ollama** | [`networking/tailscale-setup.md`](./networking/tailscale-setup.md) | ✅ |
+| **Tailscale (legacy Ollama BYO)** | [`networking/tailscale-setup.md`](./networking/tailscale-setup.md) | ⚠️ legacy |
 | **Cloudflare DNS** | [`infra/dns-routing.md`](./infra/dns-routing.md) | ✅ |
 | **HostGator Landing** | [`infra/landing-hostgator.md`](./infra/landing-hostgator.md) | 📝 |
-| **Gemini (2.º fallback)** | [`ai/gemini-setup.md`](./ai/gemini-setup.md) | ✅ |
-| **Claude (3.º fallback)** | [`ai/claude-setup.md`](./ai/claude-setup.md) | 📝 |
-| **Ollama local** | [`ai/local-ollama-setup.md`](./ai/local-ollama-setup.md) | ✅ |
-| **Modelos AI** | [`ai/local-model-setup.md`](./ai/local-model-setup.md) | ✅ |
+| **Groq (IA plataforma)** | [`ai/groq-setup.md`](./ai/groq-setup.md) | ✅ |
+| **BYO (IA del tenant)** | [`ai/byo-setup.md`](./ai/byo-setup.md) | ✅ |
 | **Resend (emails)** | [`email/resend-setup.md`](./email/resend-setup.md) | ✅ |
+| **IA legacy (archivado)** | [`../archive/runbooks-ai-legacy/`](../archive/runbooks-ai-legacy/) | 📦 |
 
 ---
 
@@ -146,21 +155,21 @@ cuando los 6 bloques estén ✅**.
    - Básico: app/api responden, dominios resuelven.
    - Tiempo estimado: **4 horas**.
 
-2. **Semana 2**: Añade Ollama + Tailscale (bloque 2) + IA keys (bloque 5).
-   - App genera minutas con Ollama local.
-   - Cascada probada.
-   - Tiempo estimado: **3 horas**.
+2. **Semana 2**: Habilita Groq como IA plataforma (bloque 5) — 20 min con
+   `ai/groq-setup.md`. Opcionalmente, habilita BYO para tenants específicos
+   con `ai/byo-setup.md`.
+   - Tiempo estimado: **30 min–1 h** (sin Ollama/Tailscale).
 
 3. **Semana 3**: Resend (bloque 4) + landing (bloque 6).
    - Emails funcionales.
    - Landing en vivo.
    - Tiempo estimado: **2 horas**.
 
-**Total estimado: ~9 horas** de trabajo si no hay inconvenientes.
+**Total estimado: ~7 horas** de trabajo si no hay inconvenientes.
 
 ---
 
-## 🔧 Stack mínimo para v1.0
+## 🔧 Stack mínimo para v1.1
 
 | Componente | Tech | Costo | Estado |
 |---|---|---|---|
@@ -169,9 +178,8 @@ cuando los 6 bloques estén ✅**.
 | DB | PostgreSQL 16 | Railway ~$15/mes | ✅ |
 | Cache | Redis 7 | Railway ~$10/mes | ✅ |
 | DNS | Cloudflare | $0 (free tier) | ✅ |
-| IA local | Ollama (home-host) | $0 | ✅ |
-| IA 2.º fallback | Gemini 1.5 Flash | $0 (free tier) | ✅ |
-| IA 3.º fallback | Claude Sonnet | $$ (pay-as-you-go) | ✅ |
+| IA plataforma | Groq (llama-3.3-70b-versatile) | $0 (free tier) | ✅ |
+| IA BYO (opcional) | OpenAI / Claude / Gemini / Perplexity | $$ (cuenta del tenant) | ✅ |
 | Email | Resend | $0 (3k/mes free) | ✅ |
 | Landing | HostGator | $$ (anual) | ✅ |
 | **Total mínimo** | — | **~$85/mes** (sin HostGator anual) | — |
@@ -204,11 +212,17 @@ cuando los 6 bloques estén ✅**.
 
 ---
 
-**P:** Minuta genera pero con latencia alta (> 10s).  
-**R:** Ver [`ai/local-ollama-setup.md` §9](./ai/local-ollama-setup.md#9-troubleshooting-común).
-- Verifica modelo cacheado: `ollama list`.
-- Revisa latencia Tailscale: `tailscale ping ollama-host` > 200ms indica DERP relay.
-- Si cascada salta a Gemini, revisa Gemini rate limit (15 RPM).
+**P:** Minuta genera pero con latencia alta (> 10s) en modo `platform` (Groq).
+**R:** Ver [`ai/groq-setup.md`](./ai/groq-setup.md).
+- Revisa `/superadmin/ai` → "Uso de Groq": si estás cerca del límite de
+  requests/tokens/día, Groq empieza a tirar 429.
+- Verifica que el modelo sigue siendo `llama-3.3-70b-versatile` (si el
+  superadmin puso un modelo que Groq deprecó, cada request devuelve error).
+
+**P:** Un tenant en modo `byo` no puede conectar su proveedor.
+**R:** Ver [`ai/byo-setup.md`](./ai/byo-setup.md) §8.
+- Confirma que el owner encendió `AI_BYO_ENABLED=1` en Railway.
+- Revisa la API key en la consola del proveedor (billing/quota/region).
 
 ---
 
@@ -227,7 +241,8 @@ Si algo no funciona tras seguir el runbook:
 
 ## 📄 Referencias cruzadas
 
-- Epic deployment: [`docs/epics/EP016-local-ai-tunnel.md`](../epics/EP016-local-ai-tunnel.md)
-- Decisiones arquitectónicas: [`docs/epics/DECISIONS.md`](../epics/DECISIONS.md) (DEC-011 Tailscale, DEC-012 Railway+HostGator)
+- Epic IA: [`docs/epics/EP008-ai.md`](../epics/EP008-ai.md)
+- Epic deployment legacy: [`docs/epics/EP016-local-ai-tunnel.md`](../epics/EP016-local-ai-tunnel.md) (archivado tras DEC-017)
+- Decisiones arquitectónicas: [`docs/epics/DECISIONS.md`](../epics/DECISIONS.md) — **DEC-017** IA multi-modo, **DEC-019** BYO sin Ollama + feature flag, DEC-011 Tailscale (legacy), DEC-012 Railway+HostGator
 - Dev local: [`docs/setup-dev.md`](../setup-dev.md)
 - API conventions: [`docs/architecture/api-conventions.md`](../architecture/api-conventions.md)

@@ -17,7 +17,6 @@ export type TenantSettings = {
   date_format?: string;
   timezone?: string;
   primary_color?: string;
-  ai_mode?: "ollama" | "claude" | "disabled";
   logo_url?: string;
 };
 

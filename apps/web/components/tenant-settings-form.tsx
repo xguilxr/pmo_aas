@@ -33,11 +33,6 @@ const TIMEZONES = [
   "Europe/Madrid",
   "UTC",
 ];
-const AI_MODES: Array<{ value: NonNullable<TenantSettings["ai_mode"]>; label: string }> = [
-  { value: "ollama", label: "Ollama (local)" },
-  { value: "claude", label: "Claude" },
-  { value: "disabled", label: "Desactivado" },
-];
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -147,24 +142,6 @@ export function TenantSettingsForm() {
               {TIMEZONES.map((tz) => (
                 <option key={tz} value={tz}>
                   {tz}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Modo IA">
-            <Select
-              value={form.ai_mode ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, ai_mode: (e.target.value as TenantSettings["ai_mode"]) || undefined })
-              }
-            >
-              <option value="">Sin definir</option>
-              {AI_MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
                 </option>
               ))}
             </Select>
