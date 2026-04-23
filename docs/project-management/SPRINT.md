@@ -7,31 +7,23 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 4 v1.3 kickoff (reshuffle post-review).
+2026-04-24 — Sprint 4 v1.3 en curso.
 
-Sprint 3 v1.2 CERRADO — Bloque 2 (BUG-027 + ENH-022 + ENH-023)
-esperando merge de la branch claude/update-admin-ai-config-EyClx.
-Post-merge + redeploy Railway limpia los warnings de tailscaled
-que el owner ve en logs (ver #103 comment del 2026-04-24).
+Sprint 3 v1.2 CERRADO (merge pending). Bloque 1 Sprint 4 arrancado:
+- BUG-030 (#118) hotfix Groq metadata → 400. ✅ 8495dc8
+- BUG-015 (#40) rework botón CSV en dashboard. ✅ d3523bb
 
-Sprint 4 v1.3 arranca ahora con 14 items en 3 bloques (ver QUEUE):
-- Bloque 1 (8 reworks del review).
-- Bloque 2 (5 items: infra + RAID + charter fix completo + PMO org).
-- Bloque 3 (1 item: import XLSX + MPP).
+Reshuffle post-DEC-020 (2026-04-24, mid-sprint):
+- US-059 (#88) + US-060 (#89) bajan de v2.0 a Sprint 4 Bloque 4
+  con scope reducido. DEC-020 simplifica roles a 3 fijos
+  (Admin/User/Viewer) sin jerarquías ni permisos editables.
+- US-061 (#90) cancelada — owner confirma que no se construyen
+  workflows de aprobación jerárquica. Plataforma es herramienta
+  de apoyo, no burocracia.
+- Total Sprint 4 ahora: 16 items (8+5+1+2).
 
-Cambios del reshuffle (2026-04-24):
-- BUG-028 (#104) movido de Bloque 1 → Bloque 2. Depende de
-  US-066 (storage) + BUG-029 (upload) para el fix completo
-  ("que el charter se genere como archivo real").
-- BUG-015 (#40) y ENH-003 (#50, sub-A) reintegrados al Bloque 1.
-- US-068 (#116, nueva) — página PMO de organización, sub-B de #50.
-
-Aún no hay issue en IN-PROGRESS. Claude espera status:ready del
-owner sobre cualquiera de los 14 items antes de arrancar.
-
-v2.0 queue: US-059/060/061 (#88/#89/#90) esperan que el owner
-los cierre como not_planned tras confirmar los comentarios
-documentales de 2026-04-24.
+Próximo item: BUG-029 (#105) upload Excel fail + botón styling.
+Esperando status:ready del owner para arrancar.
 ```
 
 ---
@@ -80,6 +72,18 @@ documentales de 2026-04-24.
 | # | ID | Epic | Título |
 |---|---|---|---|
 | 14 | US-067 | EP009 | Importar XLSX + MPP nativo → generar tareas — #114 |
+
+### Bloque 4 — Auth simplificada post-DEC-020 (2 items)
+
+> **Contexto:** DEC-020 (2026-04-24) redefine la plataforma como
+> "herramienta de apoyo y visualización", **sin aprobaciones
+> jerárquicas**. Las US-059/060 salen de v2.0 con scope reducido.
+> US-061 (#90) se cancela.
+
+| # | ID | Epic | Título |
+|---|---|---|---|
+| 15 | US-059 | EP001+EP002 | Roles simplificados: Admin / User / Viewer (reemplaza jerarquías) — #88 |
+| 16 | US-060 | EP001+EP002 | Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix BUG-025 residual) — #89 |
 
 ---
 
@@ -172,24 +176,33 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 ### Bloque 3 — Import Project/Excel (1 item)
 - [ ] US-067 — Importar XLSX + MPP nativo → generar tareas (requiere Java 21 + MPXJ en worker) — #114
 
+### Bloque 4 — Auth simplificada post-DEC-020 (2 items)
+- [ ] US-059 — Roles simplificados: Admin / User / Viewer (reemplaza jerarquías, sin aprobaciones) — #88
+- [ ] US-060 — Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix residual BUG-025) — #89
+
 ---
 
-## 📋 Backlog v2.0 (Major Overhaul — post-v1.3)
+## 📋 Backlog v2.0 (post-v1.3)
 
-> **Contexto (DEC-018):** estos items requieren repensar el modelo de
-> roles/permisos/áreas a nivel plataforma. No son incrementales: tocan
-> auth + multi-tenancy + UX transversal. Se ejecutan como v2.0 con su
-> propio sprint dedicado cuando v1.3 esté estable.
+> **Contexto (DEC-020, 2026-04-24):** los 3 items originales de v2.0
+> fueron recuperados o cancelados tras la decisión de no implementar
+> aprobaciones jerárquicas. US-059 (#88) + US-060 (#89) bajaron a
+> Sprint 4 v1.3 Bloque 4 con scope simplificado. US-061 (#90) está
+> cancelada.
 
-- [ ] US-059 — Recursos: usuarios sin roles jerárquicos (replantear Auth) — #88
-- [ ] US-060 — Roles: tipos de usuario (Viewer/User/Admin) — #89
-- [ ] US-061 — Aprobaciones: jerarquía directa + permisos — #90
 - [ ] (posibles items futuros: 2FA, SSO, magic-link login)
 
 ---
 
 ## Notas y cambios
 
+- **2026-04-24 (DEC-020 mid-Sprint 4):** owner redefine la plataforma
+  como herramienta de apoyo/visualización — sin aprobaciones
+  jerárquicas. Consecuencia: US-059 (#88) + US-060 (#89) bajan de v2.0
+  al Bloque 4 del Sprint 4 v1.3 con scope reducido (3 roles fijos:
+  Admin/User/Viewer + permisos estáticos por rol). US-061 (#90)
+  cancelada. El permiso `reports` pendiente de BUG-025 se absorbe en
+  US-060 como parte del rol `User`. Total Sprint 4: 16 items (8+5+1+2).
 - **2026-04-24 (Sprint 4 reshuffle):** owner revisa el plan inicial
   y pide considerar #40, #50, #103 + mover BUG-028 al Bloque 2 por
   dependencia con US-066 + BUG-029 (charter real requiere storage

@@ -284,3 +284,101 @@ credenciales mal cifradas o sin test, y meter inconsistencia en la
 BD.
 
 Registrada 2026-04-24 en el follow-up de US-057.
+
+
+---
+
+## DEC-020 — Plataforma sin aprobaciones jerárquicas + permisos simplificados
+
+**Contexto (2026-04-24, durante Sprint 4):** el owner aclara que PMO·aaS
+es una **herramienta de apoyo y visualización**, no un sistema de
+gestión corporativa con workflow de aprobaciones. El diseño original
+de v2.0 (US-059/060/061) planeaba un overhaul con roles jerárquicos
+(Viewer/User/Admin + `reports_to_id` + `approve_requests`). Eso agrega
+fricción innecesaria al flujo de un PM que solo quiere cargar riesgos,
+registrar minutas o distribuir tareas.
+
+La decisión redefine el modelo de permisos:
+
+**Parte 1 — Acceso libre para la mayoría de los recursos:**
+
+Todos los usuarios de la PMO pueden **crear, editar, aprobar y borrar**
+libremente los siguientes recursos:
+
+- Proyectos (`projects`)
+- Tareas (`tasks`)
+- RAID — riesgos, acciones, incidentes, decisiones
+- Documentos (`documents`)
+- Minutas (`meeting_minutes`)
+- Reportes (`reports`) — incluye el permiso `reports` hoy ausente (ver
+  BUG-025 #76, rework pendiente)
+- Áreas y recursos de proyecto (`project_areas`, `project_area_resources`)
+- Lecciones aprendidas (`lessons`)
+- Change requests, solicitudes de proyecto
+
+**Parte 2 — Recursos administrativos restringidos:**
+
+Los siguientes recursos **solo** son editables por usuarios con rol
+`Admin` (o el futuro equivalente simplificado):
+
+- **Organizaciones** (`organizations`)
+- **Programas** (`programs`)
+- **Usuarios** (`users`) — incluye alta/baja + permisos
+
+**Parte 3 — Sin aprobaciones jerárquicas:**
+
+- Los workflows de aprobación por jerarquía directa (`reports_to_id`)
+  o por rol específico (`Senior PMO aprueba solicitudes`) **no se
+  construyen**.
+- Las "aprobaciones" en la plataforma (ej. solicitudes de proyecto,
+  change requests) pueden ser ejecutadas por cualquier usuario PMO
+  con el permiso CRUD correspondiente sobre el recurso — no hay
+  jerarquía ni routing condicional.
+- El concepto "solicitud" conserva su estado (`draft`, `in_review`,
+  `approved`, `rejected`) porque tiene valor semántico (track del
+  avance), pero **quien revisa** no está restringido por rol.
+
+**Consecuencias:**
+- **US-061 (#90) CANCELADA** — aprobaciones jerárquicas + `reports_to_id`
+  quedan fuera del scope. El concepto de "aprobador específico" no
+  existe.
+- **US-059 (#88) re-scoped** — el modelo "Recursos = usuarios sin rol
+  jerárquico" se mantiene pero simplificado: máximo 2-3 tipos de rol
+  (Admin / User / Viewer opcional). No se construye granularidad por
+  nivel jerárquico.
+- **US-060 (#89) re-scoped** — permisos granulares solo para distinguir
+  **Admin** (edita organizaciones/programas/usuarios) de **User**
+  (todo lo demás libre). Incluye el permiso `reports` hoy ausente
+  (rework necesario de BUG-025).
+- **US-059 + US-060 se mueven de v2.0 → Sprint 4 v1.3 Bloque 4**
+  (después del import XLSX/MPP del Bloque 3). Con el scope reducido,
+  ya no son major overhaul y caben en el sprint actual.
+
+**Rationale:**
+- Menos pasos de navegación = más adopción. Cada check de permiso
+  por rol es una línea de backend + UI + test + edge case.
+- El usuario target es PM que conoce a su equipo — no hay necesidad
+  de enforcement técnico de jerarquía (la jerarquía vive en el
+  proceso social del cliente, no en el software).
+- Auditoría se mantiene vía `audit_logs` — quién hizo qué queda
+  trazable aunque no haya gate de aprobación.
+- Simplifica el overhaul pendiente de Auth: de un "major overhaul
+  v2.0" a una US ejecutable en el sprint actual.
+
+**Afecta:**
+- `docs/project-management/SPRINT.md` — US-059/060 suben del
+  §Backlog v2.0 a Bloque 4 del Sprint 4. US-061 se cierra
+  `not_planned`.
+- `docs/epics/EP001-auth-users.md` — agregar sección referenciando
+  DEC-020.
+- `docs/epics/EP002-org-hierarchy.md` — aclarar que la jerarquía
+  Organización → Programa → Proyecto sigue siendo estructura de
+  datos, NO estructura de permisos.
+- Issues #88, #89, #90 actualizados vía comentario.
+
+**Alternativa descartada:** construir US-061 con `reports_to_id` +
+permiso `approve_requests` y dejar la jerarquía activa. Rechazada
+porque el owner la considera un anti-patrón para su caso de uso — la
+plataforma debe ser asistiva, no burocrática.
+
+Registrada 2026-04-24 mid-Sprint 4 tras el primer hotfix BUG-030.
