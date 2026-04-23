@@ -39,6 +39,7 @@
 | 0020 | `20260423_0020_risks_comments.py` | EP006 | `risks.comments` JSON (lista de `{text, author_id, created_at}`) para soportar comentarios tipo Jira desde el panel editable (US-058) |
 | 0021 | `20260423_0021_tenant_ai_mode.py` | EP008 + EP002 | `platform_ai_settings.groq_api_key_encrypted` + `groq_model` + `ai_jobs.provider` indexado + data migration: todos los tenants existentes quedan en `settings.ai.mode = "disabled"` (opt-in, US-057) |
 | 0022 | `20260423_0022_migrate_ollama_legacy_to_byo.py` | EP008 + EP002 | Data-only: traslada `tenants.settings.ai.ollama` (US-048 legacy) al shape `settings.ai.byo = {provider: "ollama", base_url, model}` con `mode = "byo"`. Idempotente (US-057) |
+| 0023 | `20260424_0023_password_reset_tokens.py` | EP001 + EP011 | Tabla `password_reset_tokens` (`id`, `token_hash` SHA-256 del plaintext, `user_id`, `expires_at`, `used_at`, `ip_address`, `created_at`) con índice `(user_id, used_at)` para el flujo "Olvidé mi contraseña" (US-063) |
 
 ---
 

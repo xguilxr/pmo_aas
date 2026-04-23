@@ -147,14 +147,14 @@ async def test_us057_factory_platform_calls_groq(monkeypatch):
 
     async def _fake(self, prompt, *, system=None, override=None):
         calls["override"] = override
-        return AIResult(text="GROQ_OK", model="groq:llama-3.1-70b-versatile")
+        return AIResult(text="GROQ_OK", model="groq:llama-3.3-70b-versatile")
 
     monkeypatch.setattr(GroqProvider, "generate", _fake)
     res = await generate_for_tenant(
         "prompt",
         system="sys",
         tenant_ai_mode="platform",
-        platform_groq_config={"api_key": "gsk_x", "model": "llama-3.1-70b-versatile"},
+        platform_groq_config={"api_key": "gsk_x", "model": "llama-3.3-70b-versatile"},
         byo_config=None,
         tenant_id="tenant-abc",
         job_id="job-xyz",
@@ -336,7 +336,7 @@ async def test_us057_superadmin_groq_usage_aggregates(client, db_session):
             id=str(uuid4()), tenant_id=str(t.id), project_id=None,
             kind="minute_from_transcript", status="succeeded",
             input={}, output={},
-            model_used="groq:llama-3.1-70b-versatile",
+            model_used="groq:llama-3.3-70b-versatile",
             provider="groq", tokens_in=100, tokens_out=200,
             duration_ms=500, completed_at=now - timedelta(hours=i),
         ))

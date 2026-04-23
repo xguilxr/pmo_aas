@@ -22,12 +22,25 @@ from app.models.role import Role, UserRole
 from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
+    ResetPasswordRequest,
     SwitchTenantRequest,
     UserOut,
 )
 from app.services.audit import write_audit
+from app.services.notifications import (
+    PASSWORD_CHANGED,
+    PASSWORD_RESET_REQUESTED,
+    enqueue_notification,
+)
+from app.services.password_reset import (
+    TOKEN_TTL_MIN,
+    consume_reset_token,
+    issue_reset_token,
+)
+from app.services.rate_limit import check_and_increment, reset as rate_limit_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -202,6 +215,23 @@ async def change_password(
     # invalidar todos los refresh tokens del usuario
     await db.execute(update(RefreshToken).where(RefreshToken.user_id == cu.id).values(revoked=True))
     await write_audit(db, action="password_change", module="auth", user_id=cu.id, tenant_id=cu.user.tenant_id)
+    # US-063: confirmación al user ("si no fuiste tú, avisa al admin").
+    if cu.user.tenant_id is not None:
+        await enqueue_notification(
+            db,
+            tenant_id=cu.user.tenant_id,
+            user_id=cu.id,
+            type=PASSWORD_CHANGED,
+            title="Tu contraseña fue cambiada",
+            body=(
+                "Acabas de cambiar tu contraseña. Si no fuiste tú, "
+                "avisa inmediatamente al administrador del tenant."
+            ),
+            entity_type="user",
+            entity_id=str(cu.id),
+            link="/account",
+            send_email=True,
+        )
     await db.commit()
     from fastapi.responses import Response
 
@@ -239,3 +269,191 @@ def _random_password(length: int = 16) -> str:
 
     alphabet = string.ascii_letters + string.digits + "!@#$%&*"
     return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+# ============================================================================
+# US-063 — Forgot / reset password por email
+# ============================================================================
+
+# Rate-limit: 5 intentos por IP por hora en forgot; 10 en reset (para
+# tolerar el tab de reset abierto + browser autofill). Las keys viven en
+# Redis con EXPIRE de `window_sec`; si Redis está caído el check abre
+# fail-open (ver rate_limit.py).
+_FORGOT_MAX_PER_HOUR_IP = 5
+_RESET_MAX_PER_HOUR_IP = 10
+_WINDOW_SEC = 3600
+
+
+def _client_ip(req: Request) -> str:
+    # Railway + la mayoría de PaaS ponen la IP del cliente en
+    # `X-Forwarded-For`; fallback al socket.
+    fwd = req.headers.get("x-forwarded-for") or ""
+    if fwd:
+        return fwd.split(",")[0].strip()
+    if req.client and req.client.host:
+        return req.client.host
+    return "unknown"
+
+
+@router.post("/forgot-password", status_code=204)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Emite un link de reset al email **si existe un usuario activo**.
+
+    Responde siempre 204 para no revelar qué emails están registrados.
+    Si el rate-limit se excede, respondemos 204 también — el atacante no
+    distingue entre 'email no existe' y 'fue bloqueado'. El usuario
+    legítimo recibirá el email cuando la ventana se reinicie."""
+    from fastapi.responses import Response
+
+    ip = _client_ip(request)
+    ok_ip = check_and_increment(
+        f"rl:forgot:ip:{ip}",
+        max_attempts=_FORGOT_MAX_PER_HOUR_IP,
+        window_sec=_WINDOW_SEC,
+    )
+    if not ok_ip:
+        # Loggeamos pero respondemos 204 para no filtrar.
+        import logging
+
+        logging.getLogger("pmoaas.auth").warning(
+            "forgot_password rate_limit ip=%s", ip,
+        )
+        return Response(status_code=204)
+
+    email_lc = str(body.email).lower()
+    user = (
+        await db.execute(
+            select(User).where(User.email == email_lc, User.is_active.is_(True))
+        )
+    ).scalar_one_or_none()
+    if user is None:
+        # No revelamos.
+        return Response(status_code=204)
+
+    plain_token = await issue_reset_token(db, user_id=user.id, ip_address=ip)
+    reset_link = f"{settings.APP_BASE_URL.rstrip('/')}/reset?token={plain_token}"
+
+    # Notificación in-app + email (PASSWORD_RESET_REQUESTED está en
+    # EMAIL_BY_DEFAULT, así que la task Celery la manda vía Resend).
+    if user.tenant_id is not None:
+        await enqueue_notification(
+            db,
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            type=PASSWORD_RESET_REQUESTED,
+            title="Solicitud de restablecer contraseña",
+            body=(
+                f"Recibimos una solicitud para restablecer tu contraseña. "
+                f"Este link expira en {TOKEN_TTL_MIN} minutos. Si no "
+                "fuiste tú, ignora este mensaje."
+            ),
+            entity_type="user",
+            entity_id=str(user.id),
+            link=reset_link,
+            send_email=True,
+        )
+    await write_audit(
+        db,
+        action="password_reset_requested",
+        module="auth",
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        ip_address=ip,
+    )
+    await db.commit()
+    return Response(status_code=204)
+
+
+@router.post("/reset-password", status_code=204)
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Consume el token y fija la nueva contraseña.
+
+    Requiere que la nueva cumpla la política (≥ 12 chars + U + digit +
+    symbol). Al éxito: invalida todos los refresh tokens del user,
+    limpia `must_change_password` si estaba, manda email confirmando
+    y audit log."""
+    from fastapi.responses import Response
+
+    ip = _client_ip(request)
+    ok_ip = check_and_increment(
+        f"rl:reset:ip:{ip}",
+        max_attempts=_RESET_MAX_PER_HOUR_IP,
+        window_sec=_WINDOW_SEC,
+    )
+    if not ok_ip:
+        raise business_rule(
+            "Demasiados intentos. Intenta de nuevo en una hora.",
+            code="RATE_LIMITED",
+        )
+
+    policy_ok, policy_err = validate_password_policy(body.new_password)
+    if not policy_ok:
+        raise validation_error(
+            "Contraseña no cumple política", {"code": policy_err}
+        )
+
+    token_row = await consume_reset_token(db, plain=body.token)
+    if token_row is None:
+        # Mensaje genérico: el atacante no debe saber si el token existió.
+        raise business_rule(
+            "Token inválido o expirado", code="TOKEN_INVALID",
+        )
+
+    user = (
+        await db.execute(
+            select(User).where(
+                User.id == str(token_row.user_id), User.is_active.is_(True)
+            )
+        )
+    ).scalar_one_or_none()
+    if user is None:
+        raise business_rule("Usuario inactivo", code="USER_INACTIVE")
+
+    user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
+    # Invalida TODOS los refresh tokens activos del user.
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user.id)
+        .values(revoked=True)
+    )
+
+    if user.tenant_id is not None:
+        await enqueue_notification(
+            db,
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            type=PASSWORD_CHANGED,
+            title="Tu contraseña fue restablecida",
+            body=(
+                "Acabas de restablecer tu contraseña. Si no fuiste tú, "
+                "avisa inmediatamente al administrador del tenant."
+            ),
+            entity_type="user",
+            entity_id=str(user.id),
+            link="/login",
+            send_email=True,
+        )
+
+    await write_audit(
+        db,
+        action="password_reset_confirmed",
+        module="auth",
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        ip_address=ip,
+        details={"token_id": str(token_row.id)},
+    )
+    await db.commit()
+
+    # Éxito: permitimos al user reintentar login sin trabarse con la ventana.
+    rate_limit_reset(f"rl:reset:ip:{ip}")
+    return Response(status_code=204)

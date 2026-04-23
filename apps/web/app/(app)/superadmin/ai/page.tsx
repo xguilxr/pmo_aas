@@ -206,12 +206,12 @@ export default function SuperadminAIPage() {
               </Field>
               <Field
                 label="Modelo Groq"
-                hint="Por defecto: llama-3.1-70b-versatile (free tier)."
+                hint="Por defecto: llama-3.3-70b-versatile (free tier). 3.1 fue deprecado por Groq."
               >
                 <Input
                   value={groqModel}
                   onChange={(e) => setGroqModel(e.target.value)}
-                  placeholder="llama-3.1-70b-versatile"
+                  placeholder="llama-3.3-70b-versatile"
                 />
               </Field>
               <div className="flex items-center gap-3">

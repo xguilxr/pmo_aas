@@ -35,6 +35,9 @@ MINUTE_GENERATED = "minute_generated"
 REPORT_SENT = "report_sent"
 # US-057: alerta al superadmin cuando Groq (modo plataforma) falla.
 PLATFORM_AI_ALERT = "platform_ai_alert"
+# US-063: flujo de recuperación/cambio de contraseña.
+PASSWORD_RESET_REQUESTED = "password_reset_requested"
+PASSWORD_CHANGED = "password_changed"
 
 # Qué tipos mandan email por default cuando el user no tiene override.
 # Post-MVP puede moverse a config-per-tenant.
@@ -45,6 +48,8 @@ EMAIL_BY_DEFAULT = {
     PM_ASSIGNED,
     AID_OVERDUE,
     PLATFORM_AI_ALERT,
+    PASSWORD_RESET_REQUESTED,
+    PASSWORD_CHANGED,
 }
 
 # Ventana de deduplicación in-app antes de mandar email (US-028).
