@@ -7,17 +7,20 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-23 — Sprint 2 v1.1 CERRADO. Próximo: Sprint 3 v1.2 (arranca tras merge + deploy verde en Railway).
+2026-04-24 — Sprint 3 v1.2 en ejecución. Bloque 1 casi cerrado.
+
+Bloque 1 (limpieza + auth self-service):
+- ENH-021 (#96): superadmin AI sin defaults Ollama. ✅ b70c887
+- US-063 (#95): password reset + change vía email. ✅ (pendiente commit
+  final de docs/sprint).
+
+Próximos candidatos a Sprint 3 si el owner aprueba: ver §Backlog v2.0
+para los 3 items de overhaul Auth/Roles/Aprobaciones; llegan cuando el
+owner arme el RFC.
 
 Hotfix Railway 2026-04-23:
 - 40c4176: migraciones 0021/0022 removieron filtro `deleted_at IS NULL`
   (tenants no tiene esa columna) — Railway bloqueaba deploy.
-
-Sprint 3 v1.2 (próximo): ver §"Backlog Sprint 3" más abajo. Arranca
-  cuando el owner configure GROQ_API_KEY + FERNET_KEY y apruebe el
-  arranque.
-
-v2.0 (major overhaul, post-v1.2): 4 items diferidos — ver §"Backlog v2.0".
 ```
 
 ---
@@ -38,8 +41,7 @@ v2.0 (major overhaul, post-v1.2): 4 items diferidos — ver §"Backlog v2.0".
 
 | # | ID | Epic | Título | Bloque |
 |---|---|---|---|---|
-| 96 | ENH-021 | EP008 | Superadmin AI: quitar defaults editables de Ollama | Bloque 1 |
-| 95 | US-063 | EP001 + EP011 | Recuperación y cambio de contraseña con envío por correo | Bloque 1 |
+| — | — | — | (Bloque 1 cerrado — aguardando intake de Bloque 2) | — |
 
 ---
 
@@ -89,10 +91,9 @@ Sprint 2 v1.1 cerrado 2026-04-23. 4 bloques completos + hotfix Railway.
 > major overhaul que no encaja en un sprint incremental. v1.2 queda
 > acotado a lo que el owner pidió tras cerrar v1.1.
 
-### Bloque 1 — Sprint 3 Limpieza post-v1.1 + Auth self-service (2 items)
-- [ ] ENH-021 — Superadmin AI: quitar defaults editables de Ollama — #96
-  - UI change ya implementada junto con el hotfix Railway; pendiente owner cierre formal del issue.
-- [ ] US-063 — Recuperación y cambio de contraseña con envío por correo — #95
+### Bloque 1 — Sprint 3 Limpieza post-v1.1 + Auth self-service (2 items) ✅ COMPLETO
+- [x] ENH-021 — Superadmin AI: quitar defaults editables de Ollama — #96 ✅ b70c887
+- [x] US-063 — Recuperación y cambio de contraseña con envío por correo — #95 ✅ (6 commits, af4c9c3…7222dac)
 
 ---
 
