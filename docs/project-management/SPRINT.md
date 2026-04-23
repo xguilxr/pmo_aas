@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-23 — ENH-015 (Dashboard: expandir barra de navegación) — próxima
+2026-04-23 — ENH-017 (RAID: filtros en línea horizontal) — próxima
 
-US-056 completada. Siguiente: ENH-015 en Bloque 2.
+US-056 y ENH-015 completadas. Siguiente: ENH-017 en Bloque 2.
 
 Hotfixes CI post-commit (2026-04-23):
 - 47d3603: DocumentCategory types en frontend (fix CI web-build type error, afecta BUG-024/BUG-023)
@@ -42,7 +42,6 @@ Hotfixes CI post-commit (2026-04-23):
 | 76 | BUG-025 | EP007 | Rol "Reportes" sin módulo de permisos | Bloque 1 |
 | 87 | BUG-026 | EP001 | Auth: timeout de inactividad a 15 minutos | Bloque 1 |
 | 77 | ENH-014 | EP014 | Reportes: renombrar archivo con datetime + preview PDF | Bloque 2 |
-| 80 | ENH-015 | EP004 | Dashboard: expandir barra de navegación | Bloque 2 |
 | 82 | ENH-017 | EP006 | RAID: filtros en línea horizontal | Bloque 2 |
 | 81 | ENH-016 | EP003 | Solicitudes: permitir reabrir si proyecto no existe | Bloque 2 |
 | 85 | ENH-019 | EP006 | RAID: gestión avanzada consolidada en principal | Bloque 3 |
@@ -84,7 +83,7 @@ Hotfixes CI post-commit (2026-04-23):
 ### Bloque 2 — Sprint 2 Reportes + Dashboard (5 items)
 - [x] ENH-014 — Reportes: renombrar archivo con datetime + preview PDF — #77 ✅ 02cfaa6
 - [x] US-056 — Calendarizar envío automático de reportes vía Resend — #78 ✅ 51947ef
-- [ ] ENH-015 — Dashboard: expandir barra de navegación — #80
+- [x] ENH-015 — Dashboard: expandir barra de navegación — #80 ✅ 55956f9
 - [ ] ENH-017 — RAID: filtros en línea horizontal — #82
 - [ ] ENH-016 — Solicitudes: permitir reabrir si proyecto no existe — #81
 
