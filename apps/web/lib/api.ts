@@ -27,7 +27,7 @@ export class ApiError extends Error {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-function apiBase(): string {
+export function apiBase(): string {
   if (!API_URL) {
     throw new ApiError(0, "NETWORK_ERROR", "NEXT_PUBLIC_API_URL no está configurada");
   }

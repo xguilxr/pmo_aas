@@ -71,8 +71,10 @@ const MODULE_KPIS: {
   icon: React.ReactNode;
   hasCount: boolean;
 }[] = [
-  { key: "risks", label: "Riesgos", href: (id) => `/admin/projects/${id}/risks`, icon: <TriangleAlert className="h-4 w-4" aria-hidden />, hasCount: true },
-  { key: "issues", label: "AIDs", href: (id) => `/admin/projects/${id}/issues`, icon: <Shield className="h-4 w-4" aria-hidden />, hasCount: true },
+  // ENH-026: tabs Riesgos/AIDs apuntan a la vista consolidada /raid
+  // (las rutas /risks y /issues fueron consolidadas allí).
+  { key: "risks", label: "Riesgos", href: (id) => `/admin/projects/${id}/raid?tab=risks`, icon: <TriangleAlert className="h-4 w-4" aria-hidden />, hasCount: true },
+  { key: "issues", label: "AIDs", href: (id) => `/admin/projects/${id}/raid?tab=actions`, icon: <Shield className="h-4 w-4" aria-hidden />, hasCount: true },
   { key: "change_requests", label: "Cambios", href: (id) => `/admin/projects/${id}/changes`, icon: <GitPullRequest className="h-4 w-4" aria-hidden />, hasCount: true },
   { key: "documents", label: "Documentos", href: (id) => `/admin/projects/${id}/documents`, icon: <FileText className="h-4 w-4" aria-hidden />, hasCount: true },
   { key: "lessons", label: "Lecciones", href: (id) => `/admin/projects/${id}/lessons`, icon: <Lightbulb className="h-4 w-4" aria-hidden />, hasCount: true },

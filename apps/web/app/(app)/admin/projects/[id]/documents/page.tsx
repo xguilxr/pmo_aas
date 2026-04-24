@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ModuleShell } from "@/components/module-shell";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiBase } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
 import {
   DOC_CATEGORY_LABEL,
   createDocument,
@@ -91,19 +92,52 @@ export default function DocumentsPage() {
       const formData = new FormData();
       formData.append("file", form.file);
 
+      // BUG-029: usar apiBase() + Authorization header (el fetch nativo
+      // ignoraba el JWT y el backend respondía 401 → el frontend mostraba
+      // el mensaje genérico "No se pudo subir el documento").
+      const token = getAccessToken();
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const response = await fetch(
-        `/api/v1/projects/${id}/documents/upload?${params}`,
-        { method: "POST", body: formData }
+        `${apiBase()}/api/v1/projects/${id}/documents/upload?${params}`,
+        {
+          method: "POST",
+          body: formData,
+          headers,
+          credentials: "include",
+        },
       );
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new ApiError(response.status, "upload_failed", errorData.detail || "No se pudo subir el documento");
+        const errorData = await response
+          .json()
+          .catch(() => ({} as Record<string, unknown>));
+        // FastAPI serializa el error con shape `{detail: "..."}` o
+        // `{detail: {code, message, fields}}`. Capturamos el texto
+        // más descriptivo disponible en vez del fallback genérico.
+        const detail = errorData.detail as unknown;
+        const message =
+          typeof detail === "string"
+            ? detail
+            : typeof detail === "object" && detail !== null
+              ? String(
+                  (detail as Record<string, unknown>).message ??
+                    JSON.stringify(detail),
+                )
+              : `Upload falló (HTTP ${response.status})`;
+        throw new ApiError(response.status, "upload_failed", message);
       }
       setForm({ title: "", description: "", category: "other" });
       setOpen(false);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo registrar el documento");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "No se pudo registrar el documento",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -149,12 +183,32 @@ export default function DocumentsPage() {
             </Field>
           </div>
           <Field label="Archivo">
-            <input
-              type="file"
-              accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.csv"
-              onChange={(e) => setForm({ ...form, file: e.target.files?.[0] })}
-              className="block w-full text-sm text-[var(--color-secondary)]"
-            />
+            <div className="flex items-center gap-3">
+              <label className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-subtle)]">
+                <Upload className="h-4 w-4" aria-hidden />
+                {form.file ? "Cambiar archivo" : "Seleccionar archivo…"}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv"
+                  onChange={(e) =>
+                    setForm({ ...form, file: e.target.files?.[0] })
+                  }
+                  className="sr-only"
+                />
+              </label>
+              {form.file ? (
+                <span className="truncate text-sm text-[var(--color-secondary)]">
+                  {form.file.name}
+                  <span className="ml-2 text-xs text-[var(--color-tertiary)]">
+                    ({Math.round((form.file.size / 1024) * 10) / 10} KB)
+                  </span>
+                </span>
+              ) : (
+                <span className="text-sm text-[var(--color-tertiary)]">
+                  PDF, XLSX, DOCX, PPTX, PNG, JPG o CSV · máx. 50 MB
+                </span>
+              )}
+            </div>
           </Field>
         </div>
       )}

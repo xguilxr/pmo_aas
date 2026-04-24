@@ -5,7 +5,6 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowUpRight,
   CheckCircle2,
   Download,
   Eye,
@@ -15,22 +14,30 @@ import {
 } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
+import {
+  KIND_NEW_LABEL,
+  RaidCreateModal,
+  type RaidKind,
+} from "@/components/raid-create-modal";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
+  ISSUE_STATUS_LABEL,
   ISSUE_TYPE_LABEL,
   RISK_STATUS_LABEL,
   listIssues,
   listRisks,
   type Issue,
+  type IssueStatus,
   type IssueType,
   type Risk,
+  type RiskStatus,
 } from "@/lib/api/modules";
 import { cn } from "@/lib/cn";
 
-type Tab = "risks" | "actions" | "incidents" | "decisions";
+type Tab = RaidKind;
 
 const TABS: { id: Tab; letter: string; label: string; color: string }[] = [
   { id: "risks", letter: "R", label: "Riesgos", color: "var(--color-danger-fg)" },
@@ -60,6 +67,21 @@ function RaidInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ENH-026: modal de creación + filtros avanzados consolidados (antes
+  // vivían en las rutas separadas /risks y /issues, borradas en este ENH).
+  const [createOpen, setCreateOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [severityMin, setSeverityMin] = useState<number | "">("");
+  const [priorityMin, setPriorityMin] = useState<number | "">("");
+
+  // Reset filtros al cambiar de tab (los valores legales dependen del kind).
+  function switchTab(next: Tab) {
+    setTabAndUrl(next);
+    setStatusFilter("");
+    setSeverityMin("");
+    setPriorityMin("");
+  }
+
   function setTabAndUrl(next: Tab) {
     setTab(next);
     const params = new URLSearchParams(searchParams.toString());
@@ -67,7 +89,7 @@ function RaidInner() {
     router.replace(`/admin/projects/${id}/raid?${params.toString()}`);
   }
 
-  useEffect(() => {
+  function reload() {
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -88,11 +110,52 @@ function RaidInner() {
     return () => {
       cancelled = true;
     };
+  }
+
+  useEffect(() => {
+    const cleanup = reload();
+    return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const actions = useMemo(() => issues.filter((i) => i.type === "action"), [issues]);
   const incidents = useMemo(() => issues.filter((i) => i.type === "issue"), [issues]);
   const decisions = useMemo(() => issues.filter((i) => i.type === "decision"), [issues]);
+
+  // ENH-026: filtros avanzados aplicados al tab activo.
+  const filteredRisks = useMemo(() => {
+    return risks.filter((r) => {
+      if (statusFilter && r.status !== statusFilter) return false;
+      if (severityMin !== "" && (r.severity ?? 0) < Number(severityMin))
+        return false;
+      return true;
+    });
+  }, [risks, statusFilter, severityMin]);
+
+  function filterIssues(list: Issue[]): Issue[] {
+    return list.filter((it) => {
+      if (statusFilter && it.status !== statusFilter) return false;
+      if (priorityMin !== "" && (it.priority ?? 0) < Number(priorityMin))
+        return false;
+      return true;
+    });
+  }
+
+  const filteredActions = useMemo(
+    () => filterIssues(actions),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [actions, statusFilter, priorityMin],
+  );
+  const filteredIncidents = useMemo(
+    () => filterIssues(incidents),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [incidents, statusFilter, priorityMin],
+  );
+  const filteredDecisions = useMemo(
+    () => filterIssues(decisions),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [decisions, statusFilter, priorityMin],
+  );
 
   const counts: Record<Tab, number> = {
     risks: risks.length,
@@ -190,14 +253,23 @@ function RaidInner() {
             Click en una fila abre el módulo correspondiente para editar.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={downloadCsv}
-          className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
-        >
-          <Download className="h-4 w-4" aria-hidden />
-          Exportar RAID (CSV)
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-inverse)] shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-hover,var(--color-primary))]"
+          >
+            + {KIND_NEW_LABEL[tab]}
+          </button>
+          <button
+            type="button"
+            onClick={downloadCsv}
+            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Exportar RAID (CSV)
+          </button>
+        </div>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
@@ -215,7 +287,7 @@ function RaidInner() {
               type="button"
               role="tab"
               aria-selected={active}
-              onClick={() => setTabAndUrl(t.id)}
+              onClick={() => switchTab(t.id)}
               className={cn(
                 "inline-flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-sm transition-colors",
                 active
@@ -242,6 +314,63 @@ function RaidInner() {
         })}
       </div>
 
+      {/* ENH-026: filtros avanzados (status + severity/priority)
+          consolidados — antes vivían en /risks y /issues. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-[13px]">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+          Filtros
+        </span>
+        <select
+          aria-label="Estado"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+        >
+          <option value="">Todos los estados</option>
+          {tab === "risks"
+            ? (Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map((s) => (
+                <option key={s} value={s}>
+                  {RISK_STATUS_LABEL[s]}
+                </option>
+              ))
+            : (Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map((s) => (
+                <option key={s} value={s}>
+                  {ISSUE_STATUS_LABEL[s]}
+                </option>
+              ))}
+        </select>
+        {tab === "risks" ? (
+          <select
+            aria-label="Severidad mínima"
+            value={severityMin === "" ? "" : String(severityMin)}
+            onChange={(e) =>
+              setSeverityMin(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+          >
+            <option value="">Cualquier severidad</option>
+            <option value="1">Baja (≥ 1)</option>
+            <option value="6">Media (≥ 6)</option>
+            <option value="13">Alta (≥ 13)</option>
+          </select>
+        ) : (
+          <select
+            aria-label="Prioridad mínima"
+            value={priorityMin === "" ? "" : String(priorityMin)}
+            onChange={(e) =>
+              setPriorityMin(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+          >
+            <option value="">Cualquier prioridad</option>
+            <option value="1">P1+ (Crítica)</option>
+            <option value="2">P2+ (Alta)</option>
+            <option value="3">P3+ (Media)</option>
+            <option value="4">P4+ (Baja)</option>
+          </select>
+        )}
+      </div>
+
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -249,15 +378,15 @@ function RaidInner() {
           ))}
         </div>
       ) : tab === "risks" ? (
-        <RisksSection rows={risks} projectId={id} />
+        <RisksSection rows={filteredRisks} projectId={id} />
       ) : (
         <IssuesSection
           rows={
             tab === "actions"
-              ? actions
+              ? filteredActions
               : tab === "incidents"
-                ? incidents
-                : decisions
+                ? filteredIncidents
+                : filteredDecisions
           }
           projectId={id}
           sectionLabel={
@@ -272,6 +401,17 @@ function RaidInner() {
           }
         />
       )}
+
+      <RaidCreateModal
+        projectId={id}
+        kind={tab}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => {
+          setCreateOpen(false);
+          reload();
+        }}
+      />
     </div>
   );
 }
@@ -364,26 +504,15 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
       <RiskMatrix rows={rows} />
       {rows.length === 0 ? (
         <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
-          Sin riesgos registrados.{" "}
-          <Link
-            href={`/admin/projects/${projectId}/risks`}
-            className="text-[var(--color-accent)] hover:underline"
-          >
-            Crear el primero →
-          </Link>
+          Sin riesgos registrados. Usa el botón <strong>+ Nuevo riesgo</strong>
+          {" "}arriba para crear el primero.
         </div>
       ) : (
         <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-          <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
+          <header className="border-b border-[var(--border-default)] px-4 py-3">
             <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
               <TriangleAlert className="h-4 w-4" aria-hidden /> Riesgos
             </h2>
-            <Link
-              href={`/admin/projects/${projectId}/risks`}
-              className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
-            >
-              Gestión avanzada <ArrowUpRight className="h-3 w-3" aria-hidden />
-            </Link>
           </header>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -418,12 +547,9 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
                       {r.folio}
                     </td>
                     <td className="px-3 py-2">
-                      <Link
-                        href={`/admin/projects/${projectId}/risks`}
-                        className="text-[var(--color-primary)] hover:underline"
-                      >
+                      <span className="text-[var(--color-primary)]">
                         {r.title}
-                      </Link>
+                      </span>
                     </td>
                     <td className="px-3 py-2">
                       <SeverityBadge severity={r.severity} />
@@ -486,13 +612,9 @@ function IssuesSection({
   if (rows.length === 0) {
     return (
       <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
-        Sin {sectionLabel.toLowerCase()} registradas.{" "}
-        <Link
-          href={`/admin/projects/${projectId}/issues?type=${issueType}`}
-          className="text-[var(--color-accent)] hover:underline"
-        >
-          Abrir módulo →
-        </Link>
+        Sin {sectionLabel.toLowerCase()} registradas. Usa el botón{" "}
+        <strong>+ Nueva {sectionLabel.toLowerCase().replace(/s$/, "")}</strong>
+        {" "}arriba para crear la primera.
       </div>
     );
   }
@@ -502,16 +624,10 @@ function IssuesSection({
     issueType === "issue" ? INCIDENT_LABEL : ISSUE_TYPE_LABEL[issueType];
   return (
     <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
+      <header className="border-b border-[var(--border-default)] px-4 py-3">
         <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
           <Icon className="h-4 w-4" aria-hidden /> {sectionLabel}
         </h2>
-        <Link
-          href={`/admin/projects/${projectId}/issues?type=${issueType}`}
-          className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
-        >
-          Abrir módulo <ArrowUpRight className="h-3 w-3" aria-hidden />
-        </Link>
       </header>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -547,12 +663,7 @@ function IssuesSection({
                   {it.folio}
                 </td>
                 <td className="px-3 py-2">
-                  <Link
-                    href={`/admin/projects/${projectId}/issues?type=${issueType}`}
-                    className="text-[var(--color-primary)] hover:underline"
-                  >
-                    {it.title}
-                  </Link>
+                  <span className="text-[var(--color-primary)]">{it.title}</span>
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {displayLabel}

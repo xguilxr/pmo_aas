@@ -81,7 +81,7 @@ export function TenantCrossFilters({
     <Select
       key="organization"
       aria-label="Organización"
-      className="h-9 min-w-[180px]"
+      className="h-9 w-full min-w-0"
       value={value.organization_id ?? ""}
       onChange={(e) =>
         onChange({
@@ -103,7 +103,7 @@ export function TenantCrossFilters({
     <Select
       key="program"
       aria-label="Programa"
-      className="h-9 min-w-[180px]"
+      className="h-9 w-full min-w-0"
       value={value.program_id ?? ""}
       onChange={(e) =>
         onChange({
@@ -126,7 +126,7 @@ export function TenantCrossFilters({
     <Select
       key="project"
       aria-label="Proyecto"
-      className="h-9 min-w-[220px]"
+      className="h-9 w-full min-w-0"
       value={value.project_id ?? ""}
       onChange={(e) =>
         onChange({ ...value, project_id: e.target.value || undefined })
@@ -145,11 +145,24 @@ export function TenantCrossFilters({
     ? [projectSelect, programSelect, organizationSelect]
     : [organizationSelect, programSelect, projectSelect];
 
+  // ENH-025 rework definitivo: mobile stackea verticalmente (cada select
+  // en su fila), tablet hace grid 2×2, desktop (lg+) fuerza una sola
+  // fila horizontal con `flex-nowrap`. `min-w-0 flex-1` en cada select
+  // permite que se compriman sin forzar overflow ni wrap.
+  //
+  // `leading` y `extras` vienen del caller con classes propias; los
+  // envolvemos en un wrapper que aplica el layout responsivo para que
+  // no haga falta coordinar classes desde fuera.
+  const cell = "w-full min-w-0 lg:flex-1";
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {leading}
-      {selects}
-      {extras}
+    <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-2 lg:flex lg:flex-row lg:flex-nowrap lg:items-center lg:gap-2">
+      {leading ? <div className={cell}>{leading}</div> : null}
+      {selects.map((s, i) => (
+        <div key={i} className={cell}>
+          {s}
+        </div>
+      ))}
+      {extras ? <div className={cell}>{extras}</div> : null}
     </div>
   );
 }

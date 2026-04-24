@@ -160,22 +160,35 @@ railway run --service api alembic upgrade head
 
 ---
 
-## 4. Volúmenes y storage
+## 4. Storage de uploads (object storage S3-compatible)
 
-Servicio `api` + `worker` comparten volume `pmo-uploads`:
+> **Importante:** Railway Volumes no se pueden compartir entre
+> servicios, así que api + worker no pueden usar un volume montado.
+> Se usa **Cloudflare R2** (S3-compatible, free tier 10 GB,
+> zero egress). Runbook completo:
+> [`docs/runbooks/infra/uploads-storage.md`](../infra/uploads-storage.md).
+
+Estructura dentro del bucket `pmo-aas-uploads`:
 
 ```
-/data/uploads/
-├── tenants/
-│   ├── tenant-slug-1/
-│   │   ├── projects/proj-id-1.pdf
-│   │   ├── reports/rpt-id-1.pdf
-│   └── tenant-slug-2/
+s3://pmo-aas-uploads/
+└── documents/
+    └── {tenant_id}/
+        └── {project_id}/
+            ├── {doc-uuid}.pdf
+            ├── {doc-uuid}.xlsx
+            └── {doc-uuid}.docx
 ```
 
-**Backup:**
-- Railway snapshots diarios (automático, ver settings).
-- Sync semanal a Backblaze B2 (script en `scripts/backup-to-b2.py`).
+(Futuro US-066.x: namespace separado `reports/` para PDFs generados
+por el worker si se quiere rotación distinta de la de `documents/`.)
+
+**Backup y durabilidad:**
+- R2 es multi-AZ nativo — Cloudflare garantiza durabilidad 99.999999999%.
+- **Versioning**: habilitar en bucket settings para recuperar objetos
+  borrados/sobrescritos por 30 días.
+- Backup cross-region a Backblaze B2: opcional, `rclone sync`
+  nocturno a B2 bucket secundario (ver runbook §8).
 
 ---
 
@@ -340,7 +353,7 @@ Agregale:
 
 - **Múltiples regiones**: Railway multi-region deployments.
 - **Database read replicas**: Postgres read replica para queries pesadas.
-- **S3 for storage**: Reemplazar volumen Railway con S3-compatible (Backblaze, R2).
+- **S3 storage ya en uso**: Cloudflare R2 es el backend desde US-066 (Sprint 4 v1.3). Si se quiere migrar a AWS S3 puro, cambiar `S3_ENDPOINT_URL` y `S3_REGION` — el código usa boto3 y es portable.
 - **Message queue**: Escalado de worker con separate Celery broker.
 
 ---

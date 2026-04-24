@@ -80,7 +80,8 @@ Crear en Railway como **Shared Variables** — se copian a todos los servicios a
 | `GEMINI_MODEL` | No | `gemini-1.5-flash` | (default) |
 | `ANTHROPIC_API_KEY` | **Sí** | `sk-ant-…` | Anthropic (3.º fallback). |
 | `ANTHROPIC_MODEL` | No | `claude-sonnet-4-6` | (default) |
-| `STORAGE_PATH` | No | `/data/uploads` | Railway Volume (ver §4). |
+| `STORAGE_BACKEND` | **Sí** | `s3` (prod) / `local` (dev) | Backend de storage (ver §4). |
+| `S3_*` | **Sí prod** | ver §4 | 5 variables R2/B2 (ver runbook `infra/uploads-storage.md`). |
 | `LOG_LEVEL` | No | `INFO` | debug, info, warning, error. |
 
 **Cómo generar `JWT_SECRET` y `JWT_REFRESH_SECRET`:**
@@ -123,17 +124,52 @@ Hereda `NODE_ENV` + estas específicas:
 
 ## 4. Volúmenes y storage
 
-El servicio `api` y `worker` necesitan acceso al mismo directorio de uploads.
+El servicio `api` y `worker` necesitan acceso al mismo storage para
+uploads (api sube docs, worker genera PDFs de reportes).
 
-### 4.1 Crear un volumen compartido
+### 4.1 Storage S3-compatible (Cloudflare R2)
 
-Railway UI → Proyecto → **Storage** → **+ New Volume**:
-- Nombre: `pmo-uploads`
-- Mount path en `api`: `/data/uploads`
-- Mount path en `worker`: `/data/uploads`
+> **Nota importante:** Railway Volumes **NO se pueden compartir
+> entre servicios** — cada volumen se monta en un único contenedor.
+> Para el caso PMO·aaS (api + worker compartiendo archivos)
+> usamos **Cloudflare R2** (S3-compatible, 0 egress fees, 10 GB
+> free).
+>
+> **Runbook completo:** [`docs/runbooks/infra/uploads-storage.md`](../infra/uploads-storage.md).
 
-El volumen persiste entre deployments (ver `docs/runbooks/railway/DEPLOYMENT.md`
-§3 para migraciones).
+Env vars requeridas en Railway shared variables:
+
+| Variable | Valor | Descripción |
+|---|---|---|
+| `STORAGE_BACKEND` | `s3` | Enum del backend. `local` en dev, `s3` en prod. |
+| `S3_BUCKET` | `pmo-aas-uploads` | Nombre del bucket R2 (o B2). |
+| `S3_ENDPOINT_URL` | `https://<accountid>.r2.cloudflarestorage.com` | R2 endpoint (o B2 equivalente). |
+| `S3_ACCESS_KEY_ID` | `<key-id>` | API token R2. |
+| `S3_SECRET_ACCESS_KEY` | `<secret>` | API token R2. |
+| `S3_REGION` | `auto` | `auto` para R2. B2/S3 cambia. |
+
+Para dev local, usa `STORAGE_BACKEND=local` + `STORAGE_PATH=/tmp/pmo_uploads`
+(filesystem del container de dev).
+
+### 4.2 Setup step-by-step
+
+Ver runbook completo: `docs/runbooks/infra/uploads-storage.md`
+§2-§5 para los pasos detallados con screenshots:
+
+1. Crear bucket en Cloudflare R2.
+2. Generar API token con permiso Object Read & Write scoped al bucket.
+3. Pegar env vars en Railway → Deploy.
+4. Smoke test desde Railway shell con `boto3`.
+
+### 4.3 Ejemplo dev local
+
+```bash
+# .env en apps/api para dev local:
+STORAGE_BACKEND=local
+STORAGE_PATH=/tmp/pmo_uploads
+# Los archivos se guardan en disco local (no R2). Se borran al
+# reiniciar el container pero es suficiente para dev.
+```
 
 ---
 
@@ -241,7 +277,7 @@ Si uno falla, Railway auto-redeploy (si está habilitado) o alertas manuales
 - [ ] `GROQ_API_KEY` cargada vía `/superadmin/ai` (no se setea en env directamente).
 - [ ] `RESEND_API_KEY` + `RESEND_FROM` + `APP_BASE_URL` en `worker`.
 - [ ] `NEXTAUTH_URL` + `NEXTAUTH_SECRET` + `NEXT_PUBLIC_API_URL` en `web`.
-- [ ] Volumen `pmo-uploads` montado en `/data/uploads` en `api` y `worker`.
+- [ ] Bucket Cloudflare R2 `pmo-aas-uploads` creado + API token + env vars (ver `infra/uploads-storage.md`).
 - [ ] Auto-deploy ON en rama `main`.
 - [ ] Health checks respondiendo: `api /health`, `web /api/health`.
 - [ ] Custom Domains `app.pmo-aas.com` y `api.pmo-aas.com` agregados (tras DNS listo).

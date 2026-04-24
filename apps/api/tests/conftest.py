@@ -62,7 +62,13 @@ async def client(db_engine) -> AsyncIterator[AsyncClient]:
 # stub: se excluyen por nombre de archivo.
 import pytest  # noqa: E402
 
-_AI_STUB_EXCLUDE_PREFIXES = ("test_enh011_ai_timeout",)
+_AI_STUB_EXCLUDE_PREFIXES = (
+    "test_enh011_ai_timeout",
+    # BUG-030: test que mockea httpx directamente para verificar que
+    # el body enviado a Groq no contenga el campo `metadata`. No debe
+    # stubbearse el provider, si no el httpx mock nunca se llama.
+    "test_bug030_groq_no_metadata",
+)
 
 
 @pytest.fixture(autouse=True)

@@ -7,31 +7,28 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 4 v1.3 kickoff (reshuffle post-review).
+2026-04-24 — Sprint 4 v1.3 en curso.
 
-Sprint 3 v1.2 CERRADO — Bloque 2 (BUG-027 + ENH-022 + ENH-023)
-esperando merge de la branch claude/update-admin-ai-config-EyClx.
-Post-merge + redeploy Railway limpia los warnings de tailscaled
-que el owner ve en logs (ver #103 comment del 2026-04-24).
+Bloque 1 Sprint 4 — 2/8 items completos:
+- BUG-030 (#118) hotfix Groq metadata → 400. ✅ 8495dc8
+- BUG-015 (#40) rework botón CSV en dashboard. ✅ d3523bb
+- BUG-029 (#105) upload documentos funcional + styling. ✅ 3f6ac90
 
-Sprint 4 v1.3 arranca ahora con 14 items en 3 bloques (ver QUEUE):
-- Bloque 1 (8 reworks del review).
-- Bloque 2 (5 items: infra + RAID + charter fix completo + PMO org).
-- Bloque 3 (1 item: import XLSX + MPP).
+Reshuffle 2 (2026-04-24, tras revisión de runbooks Railway):
+- US-066 (#113) PROMOVIDA a prioridad inmediata (antes de
+  terminar Bloque 1). Owner reporta que los docs de Railway
+  Volume están incorrectos — Railway NO permite compartir
+  volumes entre servicios. Sin US-066 los uploads se pierden
+  en cada redeploy, bloquea el resto del testing de features.
+- Nueva estrategia: object storage S3-compatible (Cloudflare R2).
+- Runbook completo entregado en docs/runbooks/infra/uploads-
+  storage.md + SETUP.md y DEPLOYMENT.md corregidos.
+- Bloque 1 restante (ENH-003, 024, 025, 026, 027, 028) espera
+  tras US-066.
 
-Cambios del reshuffle (2026-04-24):
-- BUG-028 (#104) movido de Bloque 1 → Bloque 2. Depende de
-  US-066 (storage) + BUG-029 (upload) para el fix completo
-  ("que el charter se genere como archivo real").
-- BUG-015 (#40) y ENH-003 (#50, sub-A) reintegrados al Bloque 1.
-- US-068 (#116, nueva) — página PMO de organización, sub-B de #50.
-
-Aún no hay issue en IN-PROGRESS. Claude espera status:ready del
-owner sobre cualquiera de los 14 items antes de arrancar.
-
-v2.0 queue: US-059/060/061 (#88/#89/#90) esperan que el owner
-los cierre como not_planned tras confirmar los comentarios
-documentales de 2026-04-24.
+Próximo item: US-066 (#113). Owner ejecuta el runbook §2-§5
+(bucket R2 + env vars + smoke test) y agrega status:ready al
+issue. Luego Claude implementa el refactor de código.
 ```
 
 ---
@@ -50,36 +47,56 @@ documentales de 2026-04-24.
 
 ## ⏳ QUEUE (Sprint 4 v1.3)
 
-### Bloque 1 — Reworks del review (8 items)
+### 🔥 Priority immediate — US-066 (promovida del Bloque 2)
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 1 | BUG-015 | EP004 | Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40 |
-| 2 | BUG-029 | EP006 | Upload Excel falla + botón Choose File sin styling — #105 |
-| 3 | ENH-003 | EP002 | Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 |
-| 4 | ENH-024 | EP014 | Reporte: filename correcto al descargar — #106 |
-| 5 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework definitivo) — #107 |
-| 6 | ENH-026 | EP006 | Consolidar "Gestión Avanzada" en `/admin/raid` — #108 |
-| 7 | ENH-027 | EP006 | Panel editable RAID en `/admin/projects/[id]/raid` — #109 |
-| 8 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
+| 1 | **US-066** | EP007 | **Uploads: object storage S3-compatible (Cloudflare R2) + runbook + código** — #113 |
 
-### Bloque 2 — Infra + RAID robusto + fix completo charter (5 items)
+> Runbook entregado en commit ca5dd0c. Código (boto3 + selector
+> backend + StreamingResponse + tests con moto) entregado en
+> commit e0f9c2e. Owner termina la config R2 + redeploy →
+> verifica end-to-end → `status:fix-committed`.
 
-> **Orden obligatorio:** US-066 primero (storage), luego BUG-028 (charter real usa storage).
+### Bloque 1 (continuación) — Reworks del review (6 items restantes)
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 9 | US-066 | EP007 | Uploads: Railway persistent volume + runbook — #113 |
-| 10 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud (depende US-066+BUG-029) — #104 |
-| 11 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
-| 12 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
-| 13 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
+| 2 | ENH-003 | EP002 | Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 |
+| 3 | ENH-024 | EP014 | Reporte: filename correcto al descargar — #106 |
+| 4 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework definitivo) — #107 |
+| 5 | ENH-026 | EP006 | Consolidar "Gestión Avanzada" en `/admin/raid` — #108 |
+| 6 | ENH-027 | EP006 | Panel editable RAID en `/admin/projects/[id]/raid` — #109 |
+| 7 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
+
+### Bloque 2 — RAID robusto + fix completo charter (4 items restantes)
+
+> **Orden obligatorio:** US-066 primero (ya promovida arriba), luego BUG-028 (charter real usa storage).
+
+| # | ID | Epic | Título |
+|---|---|---|---|
+| 8 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud (depende US-066+BUG-029) — #104 |
+| 9 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
+| 10 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
+| 11 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
 
 ### Bloque 3 — Import Project/Excel (1 item)
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 14 | US-067 | EP009 | Importar XLSX + MPP nativo → generar tareas — #114 |
+| 12 | US-067 | EP009 | Importar XLSX + MPP nativo → generar tareas — #114 |
+
+### Bloque 4 — Auth simplificada post-DEC-020 (2 items)
+
+> **Contexto:** DEC-020 (2026-04-24) redefine la plataforma como
+> "herramienta de apoyo y visualización", **sin aprobaciones
+> jerárquicas**. Las US-059/060 salen de v2.0 con scope reducido.
+> US-061 (#90) se cancela.
+
+| # | ID | Epic | Título |
+|---|---|---|---|
+| 13 | US-059 | EP001+EP002 | Roles simplificados: Admin / User / Viewer (reemplaza jerarquías) — #88 |
+| 14 | US-060 | EP001+EP002 | Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix BUG-025 residual) — #89 |
 
 ---
 
@@ -150,12 +167,12 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 > de #50. Total 14 items.
 
 ### Bloque 1 — Reworks del review (8 items)
-- [ ] BUG-015 — Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40
-- [ ] BUG-029 — Upload de Excel falla + botón "Choose file" sin styling — #105
-- [ ] ENH-003 — Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50
-- [ ] ENH-024 — Reporte: filename correcto al descargar — #106
-- [ ] ENH-025 — Filtros RAID siguen apilados (rework definitivo horizontales) — #107
-- [ ] ENH-026 — Consolidar "Panel de Gestión Avanzada" RAID en `/admin/raid` — #108
+- [x] BUG-015 — Dashboard: botón "Exportar CSV" en 2 líneas (rework) — #40 ✅ d3523bb
+- [x] BUG-029 — Upload de Excel falla + botón "Choose file" sin styling — #105 ✅ 3f6ac90
+- [x] ENH-003 — Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 ✅ b47f19a (ya resuelto por ENH-013 Sprint 2; owner re-valida en deploy actual)
+- [x] ENH-024 — Reporte: filename correcto al descargar — #106 ✅ 33c043c
+- [x] ENH-025 — Filtros RAID siguen apilados (rework definitivo horizontales) — #107 ✅ ca9dc1d
+- [x] ENH-026 — Consolidar "Panel de Gestión Avanzada" RAID en `/admin/raid` — #108 ✅ 8d69623
 - [ ] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109
 - [ ] ENH-028 — Export tareas: Excel MPP-like + naming PLAN-{Proyecto}-{Fecha} + CSV BOM UTF-8 — #110
 
@@ -172,24 +189,44 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 ### Bloque 3 — Import Project/Excel (1 item)
 - [ ] US-067 — Importar XLSX + MPP nativo → generar tareas (requiere Java 21 + MPXJ en worker) — #114
 
+### Bloque 4 — Auth simplificada post-DEC-020 (2 items)
+- [ ] US-059 — Roles simplificados: Admin / User / Viewer (reemplaza jerarquías, sin aprobaciones) — #88
+- [ ] US-060 — Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix residual BUG-025) — #89
+
 ---
 
-## 📋 Backlog v2.0 (Major Overhaul — post-v1.3)
+## 📋 Backlog v2.0 (post-v1.3)
 
-> **Contexto (DEC-018):** estos items requieren repensar el modelo de
-> roles/permisos/áreas a nivel plataforma. No son incrementales: tocan
-> auth + multi-tenancy + UX transversal. Se ejecutan como v2.0 con su
-> propio sprint dedicado cuando v1.3 esté estable.
+> **Contexto (DEC-020, 2026-04-24):** los 3 items originales de v2.0
+> fueron recuperados o cancelados tras la decisión de no implementar
+> aprobaciones jerárquicas. US-059 (#88) + US-060 (#89) bajaron a
+> Sprint 4 v1.3 Bloque 4 con scope simplificado. US-061 (#90) está
+> cancelada.
 
-- [ ] US-059 — Recursos: usuarios sin roles jerárquicos (replantear Auth) — #88
-- [ ] US-060 — Roles: tipos de usuario (Viewer/User/Admin) — #89
-- [ ] US-061 — Aprobaciones: jerarquía directa + permisos — #90
 - [ ] (posibles items futuros: 2FA, SSO, magic-link login)
 
 ---
 
 ## Notas y cambios
 
+- **2026-04-24 (reshuffle #2 — US-066 promovida):** owner reporta que
+  los docs de Railway Volume (`SETUP.md` §4.1, `DEPLOYMENT.md` §4)
+  están incorrectos — Railway no permite compartir volumes entre
+  servicios. Sin storage persistente los uploads se pierden en cada
+  redeploy, bloqueando el resto del testing. **US-066 (#113)
+  promovida a prioridad inmediata** antes de seguir el Bloque 1.
+  Nueva estrategia: **object storage S3-compatible (Cloudflare R2)**,
+  cero egress fees + free tier 10 GB. Runbook completo entregado en
+  `docs/runbooks/infra/uploads-storage.md` con 12 secciones
+  (bucket + token + env vars + smoke + código + backup + rollback +
+  troubleshooting). SETUP.md y DEPLOYMENT.md corregidos.
+- **2026-04-24 (DEC-020 mid-Sprint 4):** owner redefine la plataforma
+  como herramienta de apoyo/visualización — sin aprobaciones
+  jerárquicas. Consecuencia: US-059 (#88) + US-060 (#89) bajan de v2.0
+  al Bloque 4 del Sprint 4 v1.3 con scope reducido (3 roles fijos:
+  Admin/User/Viewer + permisos estáticos por rol). US-061 (#90)
+  cancelada. El permiso `reports` pendiente de BUG-025 se absorbe en
+  US-060 como parte del rol `User`. Total Sprint 4: 16 items (8+5+1+2).
 - **2026-04-24 (Sprint 4 reshuffle):** owner revisa el plan inicial
   y pide considerar #40, #50, #103 + mover BUG-028 al Bloque 2 por
   dependencia con US-066 + BUG-029 (charter real requiere storage
