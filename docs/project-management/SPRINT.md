@@ -9,9 +9,9 @@
 ```
 2026-04-24 — Sprint 5 en curso. Branch: claude/sprint-pending-tasks-YhSdj
 
-US-069 (#122) Import MPP nativo — ✅ fix-committed (5ef2677).
-Siguiente en el orden acordado: US-075 (refactor /pmo/*) → US-070
-(wizard) — retomar en próxima sesión.
+US-075 (#128) Refactor navegación /pmo/* — sub-bloques A+C
+fix-committed (33b0c7a). Sub-bloque B (páginas informativas
+con KPIs) pendiente próxima sesión.
 
 PRs mergeados a main:
 - BUG-031 (#121)  PR #129
@@ -24,28 +24,31 @@ PRs mergeados a main:
 - US-073  (#126)  PR #140 (+ fixes CI dual runs + permissions)
 - ENH-031 (#132)  PR #141 (a5cfab1 — session engine + clean tables)
 - Docs Sprint 5   PR #137 (b6fc650)
+- US-069  (#122)  PR #143 (5ef2677 + cleanup ruff + alembic doc)
 
 Branch activa pendiente de PR:
-- US-069 (#122) — commit 5ef2677 en
-  claude/sprint-pending-tasks-YhSdj. Esperando review + merge del owner.
+- US-075 (#128) sub-bloques A+C — commit 33b0c7a en
+  claude/sprint-pending-tasks-YhSdj. Esperando review + merge.
 
-Pendientes siguientes sesiones (mega-US, 3-7 días cada una):
-- US-075 (#128) Refactor navegación /pmo/* (DEC-022) — siguiente
-- US-070 (#123) Wizard de mapeo de columnas — tras US-075
-- ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests (status:triage)
+Pendientes siguientes sesiones:
+- US-075 (#128) sub-bloque B — páginas informativas /pmo/programs/*
+  y /pmo/organizations/[id] con KPIs (~1-2 días).
+- US-070 (#123) Wizard de mapeo de columnas — tras cerrar US-075
+  (mega 4-6 días).
+- ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests
+  (status:triage — pendiente label ready del owner).
 
 Pendiente owner:
-- Revisar PR #143 de US-069 (lint y api-tests-smoke pasando tras
-  cleanup). El Dockerfile agrega ~225 MB (JRE 21 + MPXJ). Primer
-  build en Railway va a ser 3-5 min más lento — OK en test,
-  monitorear tamaño de imagen y tiempo de cold start del worker.
+- Revisar PR de US-075. Cambios: 28 page.tsx renombrados (preserva
+  historial git), 137 refs sustituidas en 40 archivos, 11 redirects
+  301 nuevos, scope de ADMIN_NAV ahora correcto (solo role_type=admin).
+- En el primer deploy: cache de Next.js se invalida por las rutas
+  nuevas. Verificar que un user con role_type=user (no admin) ya
+  NO ve el menú "Admin" (este PR cierra un bug de scope no reportado).
 
-Nota: las migraciones Alembic **son automáticas** al mergear. El
-`CMD` del `apps/api/Dockerfile` corre `alembic upgrade head` antes
-de levantar uvicorn, así que cada deploy de Railway aplica las
-migraciones nuevas al arrancar el servicio `api`. El servicio
-`worker` no corre migraciones (inicia directo con `celery`). No
-hay acción manual requerida.
+Nota: las migraciones Alembic son automáticas al mergear (CMD del
+Dockerfile corre `alembic upgrade head` antes de uvicorn). No hay
+acción manual con la DB.
 ```
 
 ---
@@ -84,8 +87,11 @@ hay acción manual requerida.
 - [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:ready` (mega 4-6 días, arranca tras US-075)
 - [x] US-071 — Plantilla vacía descargable del plan — #124 ✅ PR #135
 
-### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US)
-- [ ] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128 `status:ready` (mega 5-7 días, arranca tras US-069)
+### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US, partido en sub-bloques)
+- [~] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128
+  - [x] Sub-bloque A: mover rutas + redirects 301 (33b0c7a)
+  - [x] Sub-bloque C: sidebar OrgTreeNav + ADMIN_NAV gate (33b0c7a)
+  - [ ] Sub-bloque B: páginas informativas con KPIs (próxima sesión)
 
 ### Follow-ups detectados durante ejecución
 - [ ] ENH-034 — Diagnosticar bottleneck 38s en 9 tests (cierra CA2 <60s de ENH-031) — #142 `status:triage`
