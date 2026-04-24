@@ -22,7 +22,7 @@ import pytest
 
 from app.services.msproject import mpp_parser
 from app.services.msproject.mpp_parser import parse_mpp
-from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
+from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 CANNED_OK_JSON = json.dumps(
@@ -112,7 +112,7 @@ def test_tc069_2_corrupt_file_raises_value_error(monkeypatch):
         "run",
         lambda *a, **kw: _fake_completed(stderr=b"unsupported format", returncode=2),
     )
-    with pytest.raises(ValueError, match="corrupto|no soportada"):
+    with pytest.raises(ValueError, match=r"corrupto|no soportada"):
         parse_mpp(b"garbage")
 
 
