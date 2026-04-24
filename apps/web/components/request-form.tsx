@@ -193,7 +193,7 @@ export function RequestForm() {
       };
       const created: ProjectRequest = await createRequest(body);
       clearDraft();
-      router.replace(`/admin/requests/${created.id}?created=1`);
+      router.replace(`/pmo/requests/${created.id}?created=1`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo crear la solicitud");
     } finally {
@@ -483,7 +483,7 @@ export function RequestForm() {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)] pt-4">
-        <Button type="button" variant="danger" onClick={() => router.push("/admin/requests")}>
+        <Button type="button" variant="danger" onClick={() => router.push("/pmo/requests")}>
           Cancelar
         </Button>
         <div className="flex gap-2">

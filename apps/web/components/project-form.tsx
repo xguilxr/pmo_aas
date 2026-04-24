@@ -96,7 +96,7 @@ export function ProjectForm({ mode, initial }: Props) {
         // de charter para que el usuario complemente la información que
         // el form básico no pide (stakeholders extra, alcance, beneficios,
         // restricciones, riesgos).
-        router.replace(`/admin/projects/${p.id}/charter?created=1`);
+        router.replace(`/pmo/projects/${p.id}/charter?created=1`);
       } else if (initial) {
         const updated = await updateProject(initial.id, {
           name: name.trim(),
@@ -243,7 +243,7 @@ export function ProjectForm({ mode, initial }: Props) {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => router.push("/admin/projects")}
+          onClick={() => router.push("/pmo/projects")}
           disabled={saving}
         >
           Cancelar

@@ -27,6 +27,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { NotificationBell } from "@/components/notification-bell";
 import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { getStoredUser, type StoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 
@@ -55,64 +56,61 @@ const TOP_NAV: NavItem[] = [
     id: "requests",
     label: "Solicitudes",
     icon: <ClipboardList className="h-4 w-4" aria-hidden />,
-    href: "/admin/requests",
-    match: (p) => p.startsWith("/admin/requests"),
+    href: "/pmo/requests",
+    match: (p) => p.startsWith("/pmo/requests"),
   },
   {
     id: "projects",
     label: "Proyectos",
     icon: <FolderKanban className="h-4 w-4" aria-hidden />,
-    href: "/admin/projects",
-    match: (p) => p.startsWith("/admin/projects"),
+    href: "/pmo/projects",
+    match: (p) => p.startsWith("/pmo/projects"),
   },
   {
     id: "project-modules",
     label: "Módulos de Proyecto",
     icon: <FolderKanban className="h-4 w-4" aria-hidden />,
     match: (p) =>
-      p.startsWith("/admin/raid") ||
-      p.startsWith("/admin/changes") ||
-      p.startsWith("/admin/minutes") ||
-      p.startsWith("/admin/reports"),
+      p.startsWith("/pmo/raid") ||
+      p.startsWith("/pmo/changes") ||
+      p.startsWith("/pmo/minutes") ||
+      p.startsWith("/pmo/reports"),
     children: [
       {
         id: "raid",
         label: "RAID",
         icon: <Shield className="h-4 w-4" aria-hidden />,
-        href: "/admin/raid",
-        match: (p) => p.startsWith("/admin/raid"),
+        href: "/pmo/raid",
+        match: (p) => p.startsWith("/pmo/raid"),
       },
       {
         id: "changes",
         label: "Cambios",
         icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
-        href: "/admin/changes",
-        match: (p) => p.startsWith("/admin/changes"),
+        href: "/pmo/changes",
+        match: (p) => p.startsWith("/pmo/changes"),
       },
       {
         id: "minutes",
         label: "Minutas",
         icon: <MessageSquare className="h-4 w-4" aria-hidden />,
-        href: "/admin/minutes",
-        match: (p) => p === "/admin/minutes" || p.startsWith("/admin/minutes/"),
+        href: "/pmo/minutes",
+        match: (p) => p === "/pmo/minutes" || p.startsWith("/pmo/minutes/"),
       },
       {
         id: "reports",
         label: "Reportes",
         icon: <FileText className="h-4 w-4" aria-hidden />,
-        href: "/admin/reports",
-        match: (p) => p === "/admin/reports" || p.startsWith("/admin/reports/"),
+        href: "/pmo/reports",
+        match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
       },
     ],
   },
   // US-068: vista informativa del portafolio (separada del CRUD en /admin).
-  {
-    id: "pmo",
-    label: "PMO",
-    icon: <Building2 className="h-4 w-4" aria-hidden />,
-    href: "/pmo",
-    match: (p) => p === "/pmo" || p.startsWith("/pmo/"),
-  },
+  // US-075 (DEC-022): retirado del TOP_NAV — el portafolio se accede por
+  // el header del OrgTreeNav (entrada `PMO`). Mantener el item aquí
+  // duplicaba la entrada en el sidebar (un "PMO" en TOP_NAV + otro en
+  // OrgTreeNav).
 ];
 
 // Admin-only. Sidebar con 4 ítems raíz (US-036 / issue #17).
@@ -350,10 +348,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const adminVisible = useMemo(
+  // US-075 (DEC-022): el OrgTreeNav lo ve cualquier usuario del tenant
+  // (no solo admin). El menú ADMIN_NAV se restringe a role_type=admin
+  // (o superadmin actuando como admin del tenant).
+  const orgTreeVisible = useMemo(
     () => Boolean(user && !user.is_superadmin),
     [user],
   );
+  const { roleType } = useMyPermissions();
+  const adminVisible = orgTreeVisible && roleType === "admin";
 
   useEffect(() => {
     setExpanded((prev) => {
@@ -418,7 +421,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               toggle={toggle}
             />
           ) : null}
-          {adminVisible ? (
+          {orgTreeVisible ? (
             <div className="mt-0.5">
               <OrgTreeNav onNavigate={close} />
             </div>

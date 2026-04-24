@@ -74,11 +74,11 @@ export type AdminProjectRow = {
 };
 
 export function listAdminProjects(params: { include_inactive_orgs?: boolean } = {}): Promise<AdminProjectRow[]> {
-  return apiFetch<AdminProjectRow[]>(`/api/v1/admin/projects${qs(params)}`);
+  return apiFetch<AdminProjectRow[]>(`/api/v1/pmo/projects${qs(params)}`);
 }
 
 export function forceCloseProject(id: string, comment: string): Promise<{ ok: boolean; phase: string }> {
-  return apiFetch<{ ok: boolean; phase: string }>(`/api/v1/admin/projects/${id}/force-close`, {
+  return apiFetch<{ ok: boolean; phase: string }>(`/api/v1/pmo/projects/${id}/force-close`, {
     method: "POST",
     body: { comment },
   });

@@ -22,9 +22,9 @@ import {
 /**
  * Cuerpo editable del panel RAID (US-058 + ENH-027).
  *
- * Originalmente vivía solo en /admin/raid (vista consolidada tenant).
+ * Originalmente vivía solo en /pmo/raid (vista consolidada tenant).
  * ENH-027 extrae los componentes para reusarlos en
- * /admin/projects/[id]/raid (vista por-proyecto). Ambas páginas pasan
+ * /pmo/projects/[id]/raid (vista por-proyecto). Ambas páginas pasan
  * el mismo recurso `Risk` o `Issue` al panel y obtienen el mismo UX:
  * cambiar estado + agregar comentario, con persistencia compartida.
  *

@@ -14,7 +14,7 @@ import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 
 /**
  * ENH-026: modal unificado para crear un ítem RAID (riesgo, acción,
- * incidente o decisión) desde la vista consolidada `/admin/projects/
+ * incidente o decisión) desde la vista consolidada `/pmo/projects/
  * [id]/raid`. Reemplaza los 2 formularios separados que vivían en
  * `/risks` y `/issues` (Gestión avanzada, borradas en el mismo ENH).
  */

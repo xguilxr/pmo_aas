@@ -30,16 +30,16 @@ const TABS: ProjectTab[] = [
     id: "overview",
     label: "Resumen",
     icon: <Activity className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}`,
+    href: (id) => `/pmo/projects/${id}`,
     match: (p, id) =>
-      p === `/admin/projects/${id}` ||
+      p === `/pmo/projects/${id}` ||
       /^\/admin\/projects\/[^/]+\/edit/.test(p),
   },
   {
     id: "plan",
     label: "Plan",
     icon: <ListTree className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/plan`,
+    href: (id) => `/pmo/projects/${id}/plan`,
     match: (p) =>
       /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
   },
@@ -47,35 +47,35 @@ const TABS: ProjectTab[] = [
     id: "raid",
     label: "RAID",
     icon: <Shield className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/raid`,
+    href: (id) => `/pmo/projects/${id}/raid`,
     match: (p) => /^\/admin\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
   },
   {
     id: "areas",
     label: "Áreas",
     icon: <Users className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/areas`,
+    href: (id) => `/pmo/projects/${id}/areas`,
     match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
   },
   {
     id: "documents",
     label: "Documentos",
     icon: <FileText className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/documents`,
+    href: (id) => `/pmo/projects/${id}/documents`,
     match: (p) => /^\/admin\/projects\/[^/]+\/documents/.test(p),
   },
   {
     id: "lessons",
     label: "Lecciones",
     icon: <Lightbulb className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/lessons`,
+    href: (id) => `/pmo/projects/${id}/lessons`,
     match: (p) => /^\/admin\/projects\/[^/]+\/lessons/.test(p),
   },
   {
     id: "minutes",
     label: "Minutas",
     icon: <MessageSquare className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/minutes`,
+    href: (id) => `/pmo/projects/${id}/minutes`,
     match: (p) =>
       /^\/admin\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
   },
@@ -83,14 +83,14 @@ const TABS: ProjectTab[] = [
     id: "reports",
     label: "Reportes",
     icon: <Sparkles className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/reports`,
+    href: (id) => `/pmo/projects/${id}/reports`,
     match: (p) => /^\/admin\/projects\/[^/]+\/reports/.test(p),
   },
   {
     id: "changes",
     label: "Cambios",
     icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
-    href: (id) => `/admin/projects/${id}/changes`,
+    href: (id) => `/pmo/projects/${id}/changes`,
     match: (p) => /^\/admin\/projects\/[^/]+\/changes/.test(p),
   },
 ];

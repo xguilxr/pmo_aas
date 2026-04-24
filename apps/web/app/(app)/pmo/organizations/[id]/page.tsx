@@ -243,7 +243,7 @@ function ProjectRow({
     <tr className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
       <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
         <Link
-          href={`/admin/projects/${project.id}`}
+          href={`/pmo/projects/${project.id}`}
           className="hover:text-[var(--color-accent)] hover:underline"
         >
           {project.folio ?? "—"}
@@ -251,7 +251,7 @@ function ProjectRow({
       </td>
       <td className="px-3 py-2">
         <Link
-          href={`/admin/projects/${project.id}`}
+          href={`/pmo/projects/${project.id}`}
           className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
         >
           {project.name}
