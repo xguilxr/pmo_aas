@@ -172,6 +172,8 @@ function PlanInner() {
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exportingXlsx, setExportingXlsx] = useState(false);
+  // US-071: descarga de plantilla vacía.
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   // US-067: estado del import de XLSX/MPP.
   const [importBusy, setImportBusy] = useState(false);
   const [importStrategy, setImportStrategy] = useState<"replace" | "merge">(
@@ -584,6 +586,38 @@ function PlanInner() {
               <Download className="h-4 w-4" aria-hidden />
               Excel
             </Button>
+            {/* US-071: plantilla vacía descargable. Visible siempre,
+                incluso con plan vacío, para que el PM pueda armar el
+                plan offline y subirlo después. */}
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              loading={downloadingTemplate}
+              onClick={async () => {
+                if (downloadingTemplate) return;
+                setDownloadingTemplate(true);
+                try {
+                  const { downloadEmptyTemplate } = await import(
+                    "@/lib/plan-template"
+                  );
+                  await downloadEmptyTemplate(projectName || "proyecto");
+                } catch (err) {
+                  alert(
+                    err instanceof Error
+                      ? err.message
+                      : "No se pudo generar la plantilla",
+                  );
+                } finally {
+                  setDownloadingTemplate(false);
+                }
+              }}
+              aria-label="Descargar plantilla vacía"
+              title="Descargar XLSX vacío con las columnas que el sistema espera"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Plantilla
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -599,7 +633,16 @@ function PlanInner() {
       </section>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tasks, loadingTasks, id, exportingXlsx, projectName, importBusy, importStrategy],
+    [
+      tasks,
+      loadingTasks,
+      id,
+      exportingXlsx,
+      projectName,
+      importBusy,
+      importStrategy,
+      downloadingTemplate,
+    ],
   );
 
   const ganttBlock = useMemo(
