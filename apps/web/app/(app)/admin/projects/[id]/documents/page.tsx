@@ -260,33 +260,49 @@ export default function DocumentsPage() {
         {
           key: "link",
           label: "",
-          render: (r) =>
-            r.file_url ? (
-              <a
-                href={r.file_url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Abrir <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              </a>
-            ) : r.category === "charter" ? (
-              <Link
-                href={`/admin/projects/${id}/charter`}
-                className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Editar <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              </Link>
-            ) : (
-              <span
-                className="text-[12px] italic text-[var(--color-tertiary)]"
-                title="Este documento no tiene archivo adjunto. Sube un archivo para poder abrirlo."
-              >
-                Sin archivo
-              </span>
-            ),
+          render: (r) => {
+            // BUG-028: el charter siempre ofrece "Editar" además del
+            // "Abrir" (ir al editor en vez de sólo descargar el .docx).
+            const isCharter = r.category === "charter";
+            const parts: React.ReactNode[] = [];
+            if (r.file_url) {
+              parts.push(
+                <a
+                  key="open"
+                  href={r.file_url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Abrir <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                </a>,
+              );
+            }
+            if (isCharter) {
+              parts.push(
+                <Link
+                  key="edit"
+                  href={`/admin/projects/${id}/charter`}
+                  className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Editar <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                </Link>,
+              );
+            }
+            if (parts.length === 0) {
+              return (
+                <span
+                  className="text-[12px] italic text-[var(--color-tertiary)]"
+                  title="Este documento no tiene archivo adjunto. Sube un archivo para poder abrirlo."
+                >
+                  Sin archivo
+                </span>
+              );
+            }
+            return <div className="flex items-center gap-3">{parts}</div>;
+          },
         },
       ]}
     />

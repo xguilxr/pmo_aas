@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import forbidden, unauthorized
+from app.core.permissions import permissions_for
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.role import Role, UserRole
@@ -34,20 +35,34 @@ class CurrentUser:
     def is_superadmin(self) -> bool:
         return self.user.is_superadmin
 
+    @property
+    def role_type(self) -> str | None:
+        """US-059 — rol fijo simplificado. None para users pre-migración
+        (se resuelve por el sistema viejo)."""
+        return getattr(self.user, "role_type", None)
+
     def has(self, module: str, action: str) -> bool:
         if self.is_superadmin:
             return True
+        # US-060: si el user tiene role_type, el mapping estático manda.
+        # Esto ignora permisos custom del Role legacy — decisión
+        # explícita de DEC-020 para evitar matriz de permisos confusa.
+        rt = self.role_type
+        if rt in {"admin", "user", "viewer"}:
+            return action in permissions_for(rt).get(module, set())
+        # Fallback: users sin role_type (legacy) usan el JSON permissions.
         return action in self.permissions.get(module, set())
 
     @property
     def is_admin_equivalent(self) -> bool:
         """True si el usuario tiene capacidades administrativas (DEC-005).
 
-        Incluye superadmin, rol `Administrador`, y cualquier rol cuyo JSON
-        de permisos declare al menos un módulo `admin.*`. Esto cubre al
-        `PMO Manager` senior (ver seed) sin requerir columnas nuevas.
+        US-059: si role_type=='admin', basta con eso. Si no, cae al
+        legacy detection (rol "Administrador" + permisos admin.*).
         """
         if self.is_superadmin:
+            return True
+        if self.role_type == "admin":
             return True
         if "Administrador" in self.roles:
             return True

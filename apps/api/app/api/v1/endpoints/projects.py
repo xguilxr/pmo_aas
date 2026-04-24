@@ -23,6 +23,7 @@ from app.schemas.project import (
     ProjectUpdate,
 )
 from app.services.audit import write_audit
+from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -149,24 +150,15 @@ async def create_project(
     db.add(charter)
     await db.flush()
 
-    doc_folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
-    charter_doc = Document(
+    # BUG-028: genera el .docx real del charter y lo sube al storage (R2
+    # en prod, local en dev). El Document se crea dentro del generator.
+    charter_doc = await generate_charter_docx(
+        db,
         tenant_id=tenant_id,
-        project_id=project.id,
-        folio=doc_folio,
-        title=f"Project Charter — {project.name}",
-        description="Documento fundacional del proyecto, generado al crear.",
-        status="current",
-        category="charter",
-        file_url=f"/api/v1/projects/{project.id}/charter/pdf",
-        mime_type="text/html",
-        is_current=True,
-        uploaded_by=cu.id,
-        uploaded_at=datetime.now(UTC),
+        project=project,
+        charter=charter,
         created_by=cu.id,
     )
-    db.add(charter_doc)
-    await db.flush()
 
     await write_audit(
         db, action="project.create", module="projects", user_id=cu.id, tenant_id=tenant_id,

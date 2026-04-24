@@ -9,11 +9,11 @@ import {
   Download,
   Eye,
   GitCommit,
-  Shield,
   TriangleAlert,
 } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
+import { IssueDetailBody, RiskDetailBody } from "@/components/raid-detail-body";
 import {
   KIND_NEW_LABEL,
   RaidCreateModal,
@@ -378,7 +378,15 @@ function RaidInner() {
           ))}
         </div>
       ) : tab === "risks" ? (
-        <RisksSection rows={filteredRisks} projectId={id} />
+        <RisksSection
+          rows={filteredRisks}
+          projectId={id}
+          onRiskUpdate={(updated) =>
+            setRisks((prev) =>
+              prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+            )
+          }
+        />
       ) : (
         <IssuesSection
           rows={
@@ -398,6 +406,11 @@ function RaidInner() {
           }
           issueType={
             tab === "actions" ? "action" : tab === "incidents" ? "issue" : "decision"
+          }
+          onIssueUpdate={(updated) =>
+            setIssues((prev) =>
+              prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+            )
           }
         />
       )}
@@ -497,8 +510,17 @@ function RiskMatrix({ rows }: { rows: Risk[] }) {
   );
 }
 
-function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) {
+function RisksSection({
+  rows,
+  projectId,
+  onRiskUpdate,
+}: {
+  rows: Risk[];
+  projectId: string;
+  onRiskUpdate: (r: Partial<Risk> & { id: string }) => void;
+}) {
   const [preview, setPreview] = useState<Risk | null>(null);
+  void projectId;
   return (
     <div className="space-y-5">
       <RiskMatrix rows={rows} />
@@ -521,9 +543,11 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
                   <th className="w-10 px-3 py-2" aria-label="Preview" />
                   <th className="px-3 py-2 font-medium">Folio</th>
                   <th className="px-3 py-2 font-medium">Título</th>
+                  <th className="px-3 py-2 font-medium">Área</th>
                   <th className="px-3 py-2 font-medium">Severidad</th>
                   <th className="px-3 py-2 font-medium">Estado</th>
-                  <th className="px-3 py-2 font-medium">Fecha límite</th>
+                  <th className="px-3 py-2 font-medium">F. Creación</th>
+                  <th className="px-3 py-2 font-medium">F. Compromiso</th>
                 </tr>
               </thead>
               <tbody>
@@ -544,18 +568,32 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
                       </button>
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-                      {r.folio}
+                      <Link
+                        href={`/admin/projects/${projectId}/raid/${r.id}?type=risk`}
+                        className="hover:text-[var(--color-accent)] hover:underline"
+                      >
+                        {r.folio}
+                      </Link>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="text-[var(--color-primary)]">
+                      <Link
+                        href={`/admin/projects/${projectId}/raid/${r.id}?type=risk`}
+                        className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
+                      >
                         {r.title}
-                      </span>
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {r.area?.name ?? "—"}
                     </td>
                     <td className="px-3 py-2">
                       <SeverityBadge severity={r.severity} />
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {RISK_STATUS_LABEL[r.status] ?? r.status}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {r.identified_at ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.due_date ?? "—"}
@@ -577,21 +615,30 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
             ? [
                 { label: "ID", value: preview.id, mono: true },
                 { label: "Folio", value: preview.folio, mono: true },
+                { label: "Área", value: preview.area?.name ?? "—" },
                 { label: "Severidad", value: preview.severity ?? "—" },
                 {
                   label: "P × I",
                   value: `${preview.probability ?? "—"} × ${preview.impact ?? "—"}`,
                 },
-                {
-                  label: "Estado",
-                  value: RISK_STATUS_LABEL[preview.status] ?? preview.status,
-                },
-                { label: "Fecha límite", value: preview.due_date ?? "—" },
+                { label: "F. Creación", value: preview.identified_at ?? "—" },
+                { label: "F. Compromiso", value: preview.due_date ?? "—" },
                 { label: "Asignado", value: preview.owner_id ?? "—", mono: true },
               ]
             : []
         }
         description={preview?.description ?? null}
+        extra={
+          preview ? (
+            <RiskDetailBody
+              risk={preview}
+              onUpdated={(r) => {
+                setPreview({ ...preview, ...r });
+                onRiskUpdate(r);
+              }}
+            />
+          ) : null
+        }
       />
     </div>
   );
@@ -602,13 +649,16 @@ function IssuesSection({
   projectId,
   sectionLabel,
   issueType,
+  onIssueUpdate,
 }: {
   rows: Issue[];
   projectId: string;
   sectionLabel: string;
   issueType: IssueType;
+  onIssueUpdate: (i: Partial<Issue> & { id: string }) => void;
 }) {
   const [preview, setPreview] = useState<Issue | null>(null);
+  void projectId;
   if (rows.length === 0) {
     return (
       <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
@@ -636,10 +686,12 @@ function IssuesSection({
               <th className="w-10 px-3 py-2" aria-label="Preview" />
               <th className="px-3 py-2 font-medium">Folio</th>
               <th className="px-3 py-2 font-medium">Título</th>
+              <th className="px-3 py-2 font-medium">Área</th>
               <th className="px-3 py-2 font-medium">Tipo</th>
               <th className="px-3 py-2 font-medium">Prioridad</th>
               <th className="px-3 py-2 font-medium">Estado</th>
-              <th className="px-3 py-2 font-medium">Compromiso</th>
+              <th className="px-3 py-2 font-medium">F. Creación</th>
+              <th className="px-3 py-2 font-medium">F. Compromiso</th>
             </tr>
           </thead>
           <tbody>
@@ -660,10 +712,23 @@ function IssuesSection({
                   </button>
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-                  {it.folio}
+                  <Link
+                    href={`/admin/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
+                    className="hover:text-[var(--color-accent)] hover:underline"
+                  >
+                    {it.folio}
+                  </Link>
                 </td>
                 <td className="px-3 py-2">
-                  <span className="text-[var(--color-primary)]">{it.title}</span>
+                  <Link
+                    href={`/admin/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
+                    className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
+                  >
+                    {it.title}
+                  </Link>
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.area?.name ?? "—"}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {displayLabel}
@@ -673,6 +738,11 @@ function IssuesSection({
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.status}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.reported_at
+                    ? new Date(it.reported_at).toISOString().slice(0, 10)
+                    : "—"}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.committed_date ?? "—"}
@@ -692,9 +762,9 @@ function IssuesSection({
             ? [
                 { label: "ID", value: preview.id, mono: true },
                 { label: "Folio", value: preview.folio, mono: true },
+                { label: "Área", value: preview.area?.name ?? "—" },
                 { label: "Tipo", value: displayLabel },
                 { label: "Prioridad", value: preview.priority ?? "—" },
-                { label: "Estado", value: preview.status },
                 { label: "Compromiso", value: preview.committed_date ?? "—" },
                 { label: "Asignado", value: preview.owner_id ?? "—", mono: true },
                 { label: "Resolución", value: preview.resolution ?? "—" },
@@ -702,6 +772,17 @@ function IssuesSection({
             : []
         }
         description={preview?.description ?? null}
+        extra={
+          preview ? (
+            <IssueDetailBody
+              issue={preview}
+              onUpdated={(i) => {
+                setPreview({ ...preview, ...i });
+                onIssueUpdate(i);
+              }}
+            />
+          ) : null
+        }
       />
     </section>
   );

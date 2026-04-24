@@ -13,6 +13,7 @@ from app.models.project import Project
 from app.models.task import Task, TaskDependency
 from app.services.audit import write_audit
 from app.services.msproject.xml_parser import parse_ms_project_xml
+from app.services.xlsx_task_parser import parse_xlsx
 
 router = APIRouter(tags=["tasks"])
 
@@ -187,10 +188,17 @@ async def import_ms_project(
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no se puede importar")
 
-    if (file.content_type or "").lower() not in {
-        "application/xml", "text/xml",
-        # XLSX no implementado en MVP del parser puro-Python; se dejaría a worker MPXJ.
-    }:
+    content_type = (file.content_type or "").lower()
+    filename_lower = (file.filename or "").lower()
+    is_xlsx = (
+        content_type
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        or filename_lower.endswith(".xlsx")
+    )
+    is_xml = content_type in {"application/xml", "text/xml"} or filename_lower.endswith(
+        (".xml", ".mpx", ".mspdi")
+    )
+    if not (is_xlsx or is_xml):
         from fastapi import HTTPException
 
         raise HTTPException(status_code=415, detail={"code": "UNSUPPORTED_MEDIA_TYPE"})
@@ -201,10 +209,47 @@ async def import_ms_project(
 
         raise HTTPException(status_code=413, detail={"code": "PAYLOAD_TOO_LARGE"})
 
-    try:
-        parsed, errors = parse_ms_project_xml(data)
-    except ValueError as exc:
-        raise business_rule(f"archivo MSP inválido: {exc}")
+    errors: list[dict] = []
+    parsed: list
+    if is_xlsx:
+        # US-067: XLSX path — usa parser openpyxl con auto-detect de
+        # columnas. Shape interno: `ParsedTask` (xlsx_task_parser). Se
+        # convierte al mismo shape que el XML parser para reusar la
+        # lógica de persistencia debajo.
+        try:
+            xlsx_result = parse_xlsx(data)
+        except ValueError as exc:
+            raise business_rule(f"archivo XLSX inválido: {exc}")
+        errors = list(xlsx_result.errors)
+        # Adaptador: convierte ParsedTask → estructura mínima que el
+        # loop de persistencia espera (los campos extra del XML como
+        # predecessors son opcionales y quedan vacíos).
+        class _DepShim:
+            def __init__(self, predecessor_external_id: str, type: str, lag_days: int):
+                self.predecessor_external_id = predecessor_external_id
+                self.type = type
+                self.lag_days = lag_days
+
+        class _TaskShim:
+            def __init__(self, pt):
+                # external_id para merge: preferimos WBS si está, fallback a
+                # "row-{N}" para tener unicidad dentro del import.
+                self.external_id = pt.wbs or f"row-{pt.row_number}"
+                self.name = pt.name
+                self.wbs = pt.wbs
+                self.start_date = pt.start_date
+                self.end_date = pt.end_date
+                self.duration_days = pt.duration_days
+                self.progress = pt.progress
+                self.is_milestone = pt.is_milestone
+                self.predecessors: list = []
+
+        parsed = [_TaskShim(pt) for pt in xlsx_result.tasks]
+    else:
+        try:
+            parsed, errors = parse_ms_project_xml(data)
+        except ValueError as exc:
+            raise business_rule(f"archivo MSP inválido: {exc}")
 
     if strategy == "replace":
         await db.execute(delete(TaskDependency).where(
@@ -274,10 +319,27 @@ async def import_ms_project(
                 ))
                 dep_count += 1
 
+    source_label = "xlsx" if is_xlsx else "msproject"
+    # BUG/US-067: el campo `source` ya existía en Task para xml-MSP.
+    # Actualiza a "xlsx" para nuevos imports de Excel.
+    if is_xlsx:
+        for t in created.values():
+            t.source = "xlsx"
     await write_audit(
-        db, action="tasks.msp_import", module="tasks", user_id=cu.id, tenant_id=tenant_id,
-        entity_type="project", entity_id=str(p.id),
-        details={"count": len(parsed), "deps": dep_count, "strategy": strategy, "errors": errors},
+        db,
+        action=f"tasks.{source_label}_import",
+        module="tasks",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="project",
+        entity_id=str(p.id),
+        details={
+            "count": len(parsed),
+            "deps": dep_count,
+            "strategy": strategy,
+            "errors": errors,
+            "source": source_label,
+        },
     )
     await db.commit()
     return {
@@ -285,6 +347,7 @@ async def import_ms_project(
         "dependencies_created": dep_count,
         "errors": errors,
         "strategy": strategy,
+        "source": source_label,
     }
 
 

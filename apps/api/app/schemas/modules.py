@@ -5,6 +5,17 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+# ---------- Area embed (US-064) ----------
+class AreaMini(BaseModel):
+    """Shape minimo del área embebida en RiskRead/IssueRead para que la
+    UI no haga join aparte."""
+
+    id: UUID
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- Risks ----------
 class RiskCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
@@ -14,6 +25,8 @@ class RiskCreate(BaseModel):
     impact: int = Field(ge=1, le=5)
     mitigation_strategy: str | None = None
     owner_id: UUID | None = None
+    # US-064: area_id obligatoria en creación (422 si falta).
+    area_id: UUID
     identified_at: date | None = None
     due_date: date | None = None
     status: Literal["identified", "analyzing", "mitigating", "materialized", "closed"] = "identified"
@@ -27,6 +40,7 @@ class RiskUpdate(BaseModel):
     impact: int | None = Field(default=None, ge=1, le=5)
     mitigation_strategy: str | None = None
     owner_id: UUID | None = None
+    area_id: UUID | None = None  # US-064: permite asignar área a legacy.
     due_date: date | None = None
     status: Literal["identified", "analyzing", "mitigating", "materialized", "closed"] | None = None
     closure_note: str | None = None
@@ -44,6 +58,8 @@ class RiskRead(BaseModel):
     severity: int | None
     mitigation_strategy: str | None
     owner_id: UUID | None
+    area_id: UUID | None
+    area: AreaMini | None = None  # US-064: embebido por endpoint.
     identified_at: date | None
     due_date: date | None
     status: str
@@ -65,6 +81,7 @@ class IssueCreate(BaseModel):
     priority: int | None = Field(default=None, ge=1, le=5)
     committed_date: date | None = None
     owner_id: UUID | None = None
+    area_id: UUID  # US-064: obligatorio en creación.
     status: Literal["open", "in_progress", "resolved", "closed"] = "open"
 
 
@@ -74,6 +91,7 @@ class IssueUpdate(BaseModel):
     priority: int | None = Field(default=None, ge=1, le=5)
     committed_date: date | None = None
     owner_id: UUID | None = None
+    area_id: UUID | None = None  # US-064: permite asignar a legacy.
     status: Literal["open", "in_progress", "resolved", "closed"] | None = None
     resolution: str | None = None
 
@@ -90,6 +108,9 @@ class IssueRead(BaseModel):
     resolution: str | None
     status: str
     owner_id: UUID | None
+    area_id: UUID | None
+    area: AreaMini | None = None
+    reported_at: datetime | None = None
     comments: list = []
 
     model_config = {"from_attributes": True}

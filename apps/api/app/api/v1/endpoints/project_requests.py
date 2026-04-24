@@ -18,6 +18,7 @@ from app.schemas.project_request import (
     ReviewRequest,
 )
 from app.services.audit import write_audit
+from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
 
 router = APIRouter(prefix="/project-requests", tags=["project_requests"])
@@ -411,27 +412,16 @@ async def create_project_from_request(
     db.add(charter)
     await db.flush()
 
-    # Registrar el charter como Document del proyecto (US-013).
-    # El archivo se genera on-demand desde /charter/pdf — aquí guardamos
-    # una referencia interna para que aparezca en el módulo Documentos.
-    doc_folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
-    charter_doc = Document(
+    # BUG-028: al aprobar una solicitud, generamos el .docx real del
+    # charter y lo subimos al storage persistente (R2 en prod). El
+    # Document se crea dentro del generator.
+    charter_doc = await generate_charter_docx(
+        db,
         tenant_id=tenant_id,
-        project_id=project.id,
-        folio=doc_folio,
-        title=f"Project Charter — {project.name}",
-        description="Documento fundacional del proyecto, generado al aprobar.",
-        status="current",
-        category="charter",
-        file_url=f"/api/v1/projects/{project.id}/charter/pdf",
-        mime_type="text/html",
-        is_current=True,
-        uploaded_by=cu.id,
-        uploaded_at=datetime.now(UTC),
+        project=project,
+        charter=charter,
         created_by=cu.id,
     )
-    db.add(charter_doc)
-    await db.flush()
 
     await write_audit(
         db, action="project.created_from_request", module="projects",

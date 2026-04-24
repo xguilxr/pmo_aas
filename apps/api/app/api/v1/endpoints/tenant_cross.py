@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_permission
@@ -28,6 +28,7 @@ from app.models.modules import (
     Risk,
 )
 from app.models.project import Project
+from app.models.project_area import ProjectArea
 from app.schemas.modules import (
     ChangeRequestRead,
     IssueRead,
@@ -83,11 +84,15 @@ async def list_tenant_risks(
     status: str | None = Query(default=None),
     severity_min: int | None = Query(default=None, ge=1, le=25),
     owner_id: UUID | None = Query(default=None),
+    area_id: UUID | None = Query(default=None),  # US-064.
     cu: CurrentUser = Depends(require_permission("risks", "read")),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     tenant_id = _tenant(cu)
-    stmt = select(Risk).where(Risk.deleted_at.is_(None))
+    # US-064: outer join con ProjectArea para ordering + embed en el item.
+    stmt = select(Risk, ProjectArea).outerjoin(
+        ProjectArea, ProjectArea.id == Risk.area_id
+    ).where(Risk.deleted_at.is_(None))
     stmt = _project_scope(
         stmt, Risk.project_id, tenant_id, organization_id, program_id, project_id
     )
@@ -97,10 +102,20 @@ async def list_tenant_risks(
         stmt = stmt.where(Risk.severity >= severity_min)
     if owner_id is not None:
         stmt = stmt.where(Risk.owner_id == str(owner_id))
-    rows = (
-        await db.execute(stmt.order_by(Risk.severity.desc().nullslast()))
-    ).all()
-    return [_enrich(RiskRead.model_validate(r), folio, name) for r, folio, name in rows]
+    if area_id is not None:
+        stmt = stmt.where(Risk.area_id == str(area_id))
+    stmt = stmt.order_by(
+        case((Risk.area_id.is_(None), 1), else_=0),
+        ProjectArea.name.asc(),
+        Risk.identified_at.desc().nullslast(),
+        Risk.severity.desc().nullslast(),
+    )
+    rows = (await db.execute(stmt)).all()
+    out: list[dict] = []
+    for r, area, folio, name in rows:
+        r.area = {"id": area.id, "name": area.name} if area else None  # type: ignore[attr-defined]
+        out.append(_enrich(RiskRead.model_validate(r), folio, name))
+    return out
 
 
 @router.get("/issues")
@@ -113,11 +128,14 @@ async def list_tenant_issues(
     status: str | None = Query(default=None),
     priority_min: int | None = Query(default=None, ge=1, le=5),
     owner_id: UUID | None = Query(default=None),
+    area_id: UUID | None = Query(default=None),  # US-064.
     cu: CurrentUser = Depends(require_permission("issues", "read")),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     tenant_id = _tenant(cu)
-    stmt = select(Issue).where(Issue.deleted_at.is_(None))
+    stmt = select(Issue, ProjectArea).outerjoin(
+        ProjectArea, ProjectArea.id == Issue.area_id
+    ).where(Issue.deleted_at.is_(None))
     stmt = _project_scope(
         stmt, Issue.project_id, tenant_id, organization_id, program_id, project_id
     )
@@ -129,8 +147,20 @@ async def list_tenant_issues(
         stmt = stmt.where(Issue.priority >= priority_min)
     if owner_id is not None:
         stmt = stmt.where(Issue.owner_id == str(owner_id))
-    rows = (await db.execute(stmt.order_by(Issue.created_at.desc()))).all()
-    return [_enrich(IssueRead.model_validate(r), folio, name) for r, folio, name in rows]
+    if area_id is not None:
+        stmt = stmt.where(Issue.area_id == str(area_id))
+    stmt = stmt.order_by(
+        case((Issue.area_id.is_(None), 1), else_=0),
+        ProjectArea.name.asc(),
+        Issue.reported_at.desc(),
+        Issue.priority.desc().nullslast(),
+    )
+    rows = (await db.execute(stmt)).all()
+    out: list[dict] = []
+    for r, area, folio, name in rows:
+        r.area = {"id": area.id, "name": area.name} if area else None  # type: ignore[attr-defined]
+        out.append(_enrich(IssueRead.model_validate(r), folio, name))
+    return out
 
 
 @router.get("/change-requests")

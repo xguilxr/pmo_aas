@@ -35,7 +35,15 @@ async def _setup(client, db_session):
               "organization_id": org_id, "pm_id": me.json()["id"]},
         headers=auth["_authz"],
     )
-    return t, auth, p.json()["id"]
+    proj_id = p.json()["id"]
+    # US-064: area default para que los POST de risks/issues pasen la
+    # validación Pydantic.
+    ra = await client.post(
+        f"/api/v1/projects/{proj_id}/areas",
+        json={"name": "Default Area", "type": "area"},
+        headers=auth["_authz"],
+    )
+    return t, auth, proj_id, ra.json()["id"]
 
 
 # TC-112 chunking con overlap
@@ -60,7 +68,7 @@ async def test_tc113_generate_minute_dispatches(client, db_session, monkeypatch)
 
     monkeypatch.setattr(ai_tasks.generate_minute_task, "delay", fake_delay)
 
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, area_id = await _setup(client, db_session)
     r = await client.post(
         "/api/v1/ai/minutes",
         json={
@@ -84,7 +92,7 @@ async def test_tc113_generate_minute_dispatches(client, db_session, monkeypatch)
 # TC-116 transcript > 5 MB → 413
 @pytest.mark.asyncio
 async def test_tc116_transcript_too_large(client, db_session):
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, area_id = await _setup(client, db_session)
     huge = "a" * (5 * 1024 * 1024 + 1)
     r = await client.post(
         "/api/v1/ai/minutes",
@@ -106,11 +114,11 @@ async def test_tc117_draft_report_dispatches_and_runs(client, db_session, monkey
 
     monkeypatch.setattr(ai_tasks.draft_report_task, "delay", fake_delay)
 
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, area_id = await _setup(client, db_session)
     for p, i in [(5, 5), (3, 2), (4, 4)]:
         await client.post(
             f"/api/v1/projects/{proj_id}/risks",
-            json={"title": f"R-{p}x{i}", "probability": p, "impact": i},
+            json={"title": f"R-{p}x{i}", "probability": p, "impact": i, "area_id": area_id},
             headers=auth["_authz"],
         )
     r = await client.post(
@@ -153,7 +161,7 @@ async def _draft_and_run(client, auth, proj_id, monkeypatch):
 # TC-118 send sin recipients
 @pytest.mark.asyncio
 async def test_tc118_send_empty_recipients(client, db_session, monkeypatch):
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, area_id = await _setup(client, db_session)
     rep_id = await _draft_and_run(client, auth, proj_id, monkeypatch)
     r = await client.post(
         f"/api/v1/ai/reports/{rep_id}/send",
@@ -166,7 +174,7 @@ async def test_tc118_send_empty_recipients(client, db_session, monkeypatch):
 # TC-120 send ok
 @pytest.mark.asyncio
 async def test_tc120_send_ok(client, db_session, monkeypatch):
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, area_id = await _setup(client, db_session)
     rep_id = await _draft_and_run(client, auth, proj_id, monkeypatch)
     s = await client.post(
         f"/api/v1/ai/reports/{rep_id}/send",
