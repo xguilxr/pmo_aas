@@ -88,3 +88,66 @@ def _stub_ai_providers(monkeypatch, request):
         cls = type(provider_mod._PROVIDERS[name])
         monkeypatch.setattr(cls, "generate", _stub_generate)
     yield
+
+
+# ENH-030: mock de renderers pesados (weasyprint + python-docx) por
+# default en todo el suite. El 82% del tiempo del suite lo tomaban
+# tests que generaban PDF/DOCX real (~38s cada uno). Los tests que sí
+# necesitan ejercer el render real se marcan con `@pytest.mark.heavy`
+# (ver pyproject.toml) y corren en el job `api-tests-heavy` del CI.
+#
+# Exclusiones: tests cuyo propósito es probar directamente el renderer
+# (test_us037_pdf_renderer) ya llevan `pytestmark = pytest.mark.heavy`,
+# entonces este stub no se aplica — respetamos la semántica del marker.
+_HEAVY_RENDER_EXCLUDE_PREFIXES = (
+    "test_us037_pdf_renderer",
+)
+
+_PDF_STUB_BYTES = b"%PDF-1.4\nmock-render\n%%EOF\n"
+_DOCX_STUB_BYTES = b"PK\x03\x04mock-docx-zip"
+
+
+@pytest.fixture(autouse=True)
+def _stub_heavy_renderers(monkeypatch, request):
+    modname = request.module.__name__.rsplit(".", 1)[-1]
+    if modname.startswith(_HEAVY_RENDER_EXCLUDE_PREFIXES):
+        yield
+        return
+    # Tests con marker @pytest.mark.heavy quieren el render real.
+    if request.node.get_closest_marker("heavy") is not None:
+        yield
+        return
+
+    def _stub_render_pdf(template_name, context):  # noqa: ARG001
+        return _PDF_STUB_BYTES
+
+    def _stub_render_charter_docx(charter, project):  # noqa: ARG001
+        return _DOCX_STUB_BYTES
+
+    # Parchamos los simbolos que los endpoints importan directamente
+    # (from app.services.pdf_renderer import render_pdf), y también
+    # la función interna síncrona del charter que hace el python-docx
+    # real (_render_charter_docx). Esto evita tocar el envoltorio
+    # async `generate_charter_docx` que contiene la lógica de Document
+    # + storage, que sí queremos ejercitar.
+    import app.services.pdf_renderer as pdf_mod
+    import app.services.charter_generator as charter_mod
+
+    monkeypatch.setattr(pdf_mod, "render_pdf", _stub_render_pdf)
+    monkeypatch.setattr(
+        charter_mod, "_render_charter_docx", _stub_render_charter_docx
+    )
+    # Los endpoints importan `render_pdf` directamente al módulo:
+    # re-parchamos en los módulos consumidores para que el import
+    # anterior no se pierda (Python cachea el símbolo en el módulo
+    # importador).
+    for consumer_path in (
+        "app.api.v1.endpoints.reports",
+    ):
+        try:
+            consumer = __import__(consumer_path, fromlist=["render_pdf"])
+            if hasattr(consumer, "render_pdf"):
+                monkeypatch.setattr(consumer, "render_pdf", _stub_render_pdf)
+        except ImportError:
+            pass
+    yield

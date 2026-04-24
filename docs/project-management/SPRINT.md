@@ -9,8 +9,12 @@
 ```
 2026-04-24 — Sprint 5 kickoff.
 
-BUG-031 (#121) — admin lockout post-US-059/060. status:ready.
-  Arranca de inmediato (hotfix antes del resto del sprint).
+ENH-030 (#130) — acelerar suite + CI (~10min → <1min). status:ready.
+  Trabajando en branch claude/optimize-ci-tests-ac3u8.
+  Fases 1/2/3 entregadas en commits separados.
+
+BUG-031 (#121) — admin lockout post-US-059/060. status:fix-committed
+  (branch claude/plan-import-mapping-s6jGC, PR #129).
 
 Sprint 4 v1.3 cerrado — 14/14 items en status:fix-committed.
 Pendiente para el owner: verificar fix-committed + aplicar
@@ -33,10 +37,14 @@ migraciones 0024, 0025, 0026 en Railway antes del próximo deploy.
 
 ## ⏳ QUEUE
 
-**Sprint 5 (v1.4) — triage 2026-04-24. 8 items en 4 bloques.**
+**Sprint 5 (v1.4) — triage 2026-04-24. 9 items en 5 bloques.**
 
-### Bloque 0 — Hotfix admin lockout (1 item) 🔴 IN-PROGRESS
-- [ ] BUG-031 — Admin lockout: prefijo `admin.*` sin mapping en permissions.py — #121 `status:ready`
+### Bloque 0 — Hotfix admin lockout (1 item) ✅ fix-committed
+- [x] BUG-031 — Admin lockout: prefijo `admin.*` sin mapping en permissions.py — #121 `status:fix-committed` (branch claude/plan-import-mapping-s6jGC)
+
+### Bloque 0.5 — Infra CI rápido (1 item) 🔴 IN-PROGRESS
+- [ ] ENH-030 — Acelerar suite de tests + CI (~10min → <1min) — #130 `status:ready`
+  (branch claude/optimize-ci-tests-ac3u8; 3 commits Fase 1/2/3)
 
 ### Bloque 1 — SuperAdmin safety net (3 items)
 - [ ] US-072 — SuperAdmin: editar `role_type` de usuarios de cualquier tenant — #125 `status:triage`

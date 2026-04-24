@@ -3,6 +3,11 @@ import pytest
 
 from app.services.pdf_renderer import render_html, render_pdf
 
+# ENH-030: este archivo ejerce weasyprint/jinja real a propósito
+# (prueba del renderer). Se excluye del smoke suite y corre en el
+# job `api-tests-heavy` del CI.
+pytestmark = pytest.mark.heavy
+
 
 def test_us037_render_html_basic():
     html = render_html("_smoke.html", {
