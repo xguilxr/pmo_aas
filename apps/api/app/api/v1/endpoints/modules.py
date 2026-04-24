@@ -209,6 +209,32 @@ async def create_risk(
     return RiskRead.model_validate(r)
 
 
+@risks_router.get("/risks/{risk_id}", response_model=RiskRead)
+async def get_risk(
+    risk_id: UUID,
+    cu: CurrentUser = Depends(require_permission("risks", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-065: detalle de un riesgo para la página dedicada."""
+    tenant_id = _tenant(cu)
+    row = (
+        await db.execute(
+            select(Risk, ProjectArea)
+            .outerjoin(ProjectArea, ProjectArea.id == Risk.area_id)
+            .where(
+                Risk.id == str(risk_id),
+                Risk.tenant_id == str(tenant_id),
+                Risk.deleted_at.is_(None),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        raise not_found("Riesgo")
+    r, area = row
+    _attach_area(r, area)
+    return RiskRead.model_validate(r)
+
+
 @risks_router.patch("/risks/{risk_id}", response_model=RiskRead)
 async def update_risk(
     risk_id: UUID,
@@ -391,6 +417,32 @@ async def create_issue(
         entity_type="issue", entity_id=str(i.id), details={"folio": folio},
     )
     await db.commit()
+    _attach_area(i, area)
+    return IssueRead.model_validate(i)
+
+
+@issues_router.get("/issues/{issue_id}", response_model=IssueRead)
+async def get_issue(
+    issue_id: UUID,
+    cu: CurrentUser = Depends(require_permission("issues", "read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-065: detalle de un issue (acción/incidente/decisión)."""
+    tenant_id = _tenant(cu)
+    row = (
+        await db.execute(
+            select(Issue, ProjectArea)
+            .outerjoin(ProjectArea, ProjectArea.id == Issue.area_id)
+            .where(
+                Issue.id == str(issue_id),
+                Issue.tenant_id == str(tenant_id),
+                Issue.deleted_at.is_(None),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        raise not_found("Issue")
+    i, area = row
     _attach_area(i, area)
     return IssueRead.model_validate(i)
 

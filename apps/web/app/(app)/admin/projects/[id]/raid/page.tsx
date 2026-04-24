@@ -568,12 +568,20 @@ function RisksSection({
                       </button>
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-                      {r.folio}
+                      <Link
+                        href={`/admin/projects/${projectId}/raid/${r.id}?type=risk`}
+                        className="hover:text-[var(--color-accent)] hover:underline"
+                      >
+                        {r.folio}
+                      </Link>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="text-[var(--color-primary)]">
+                      <Link
+                        href={`/admin/projects/${projectId}/raid/${r.id}?type=risk`}
+                        className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
+                      >
                         {r.title}
-                      </span>
+                      </Link>
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.area?.name ?? "—"}
@@ -704,10 +712,20 @@ function IssuesSection({
                   </button>
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-                  {it.folio}
+                  <Link
+                    href={`/admin/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
+                    className="hover:text-[var(--color-accent)] hover:underline"
+                  >
+                    {it.folio}
+                  </Link>
                 </td>
                 <td className="px-3 py-2">
-                  <span className="text-[var(--color-primary)]">{it.title}</span>
+                  <Link
+                    href={`/admin/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
+                    className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
+                  >
+                    {it.title}
+                  </Link>
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.area?.name ?? "—"}

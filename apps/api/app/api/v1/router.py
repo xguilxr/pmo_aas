@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     auth,
     branding,
     dashboard,
+    entity_history,
     modules,
     notifications,
     organizations,
@@ -58,6 +59,7 @@ api_router.include_router(superadmin.router)
 api_router.include_router(superadmin_ai.router)
 api_router.include_router(superadmin_panel.router)
 api_router.include_router(tenant_cross.router)
+api_router.include_router(entity_history.router)
 
 
 @api_router.get("/ping", tags=["meta"])

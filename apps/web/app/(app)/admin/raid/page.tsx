@@ -404,11 +404,16 @@ function RiskTable({
               </button>
             </td>
             <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-              {r.folio}
+              <Link
+                href={`/admin/raid/risk/${r.id}`}
+                className="hover:text-[var(--color-accent)] hover:underline"
+              >
+                {r.folio}
+              </Link>
             </td>
             <td className="px-3 py-2">
               <Link
-                href={`/admin/projects/${r.project_id}/raid?tab=risks`}
+                href={`/admin/raid/risk/${r.id}`}
                 className="text-[var(--color-primary)] hover:underline"
               >
                 {r.title}
@@ -496,11 +501,16 @@ function IssueTable({
               </button>
             </td>
             <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-              {r.folio}
+              <Link
+                href={`/admin/raid/${kind === "actions" ? "action" : kind === "decisions" ? "decision" : "incident"}/${r.id}`}
+                className="hover:text-[var(--color-accent)] hover:underline"
+              >
+                {r.folio}
+              </Link>
             </td>
             <td className="px-3 py-2">
               <Link
-                href={`/admin/projects/${r.project_id}/raid?tab=${kind}`}
+                href={`/admin/raid/${kind === "actions" ? "action" : kind === "decisions" ? "decision" : "incident"}/${r.id}`}
                 className="text-[var(--color-primary)] hover:underline"
               >
                 {r.title}
