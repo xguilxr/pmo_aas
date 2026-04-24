@@ -33,7 +33,7 @@ def _tenant(cu: CurrentUser) -> UUID:
 @router.post("", response_model=ProjectRequestRead, status_code=201)
 async def create_request(
     body: ProjectRequestCreate,
-    cu: CurrentUser = Depends(require_permission("admin.requests", "create")),
+    cu: CurrentUser = Depends(require_permission("requests", "create")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -134,7 +134,7 @@ async def list_requests(
     q: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
-    cu: CurrentUser = Depends(require_permission("admin.requests", "read")),
+    cu: CurrentUser = Depends(require_permission("requests", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -155,7 +155,7 @@ async def list_requests(
 @router.get("/{request_id}", response_model=ProjectRequestRead)
 async def get_request(
     request_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.requests", "read")),
+    cu: CurrentUser = Depends(require_permission("requests", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -175,7 +175,7 @@ async def get_request(
 async def update_request(
     request_id: UUID,
     body: ProjectRequestUpdate,
-    cu: CurrentUser = Depends(require_permission("admin.requests", "update")),
+    cu: CurrentUser = Depends(require_permission("requests", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -204,7 +204,7 @@ async def update_request(
 async def review_request(
     request_id: UUID,
     body: ReviewRequest,
-    cu: CurrentUser = Depends(require_permission("admin.requests", "approve")),
+    cu: CurrentUser = Depends(require_permission("requests", "approve")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -269,7 +269,7 @@ async def review_request(
 @router.post("/{request_id}/resubmit", response_model=ProjectRequestRead)
 async def resubmit_request(
     request_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.requests", "update")),
+    cu: CurrentUser = Depends(require_permission("requests", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -296,7 +296,7 @@ async def resubmit_request(
 @router.post("/{request_id}/reopen", response_model=ProjectRequestRead)
 async def reopen_request(
     request_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.requests", "approve")),
+    cu: CurrentUser = Depends(require_permission("requests", "approve")),
     db: AsyncSession = Depends(get_db),
 ):
     """ENH-016: reabrir una solicitud aprobada sólo si todavía no se
@@ -342,7 +342,7 @@ async def reopen_request(
 async def create_project_from_request(
     request_id: UUID,
     body: CreateProjectFromRequest,
-    cu: CurrentUser = Depends(require_permission("admin.projects", "create")),
+    cu: CurrentUser = Depends(require_permission("admin", "create")),
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.modules import Document

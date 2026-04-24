@@ -9,11 +9,11 @@ from app.models.tenant import Tenant
 from app.models.user import User
 
 ADMIN_PERMS = {
-    "admin.users": ["read", "create", "update", "delete"],
-    "admin.roles": ["read", "create", "update", "delete"],
-    "admin.organizations": ["read", "create", "update", "delete"],
-    "admin.projects": ["read", "create", "update", "delete"],
-    "admin.requests": ["read", "create", "update", "delete", "approve"],
+    "users": ["read", "create", "update", "delete"],
+    "roles": ["read", "create", "update", "delete"],
+    "organizations": ["read", "create", "update", "delete"],
+    "admin": ["read", "create", "update", "delete"],
+    "requests": ["read", "create", "update", "delete", "approve"],
     "projects": ["read", "create", "update", "delete", "approve"],
     "risks": ["read", "create", "update", "delete"],
     "issues": ["read", "create", "update", "delete"],

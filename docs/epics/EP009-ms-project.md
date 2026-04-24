@@ -76,7 +76,40 @@ Eliminar el ping-pong de archivos MS Project entre PMs: importar `.xml`, `.xlsx`
 - [ ] Mismo flujo que US-047.
 - [ ] Marcado como feature-flag `msp_native_import`.
 
+**Estado (2026-04-24):** promovida a **US-069** (#122) en Sprint 5
+como MUST. Feature flag removido (always-on). Ver el issue para
+scope completo (OpenJDK 21 + MPXJ CLI en worker + runbook).
+
 (Post-MVP — no se entrega en v1.0.)
+
+---
+
+## US-067 — Import XLSX → tareas del proyecto (entregado 2026-04-24)
+
+**Estado:** DONE en Sprint 4 v1.3, commit `e9ef28b`. Parser XLSX
+síncrono con auto-detect por alias de headers ES/EN. MPP quedó como
+follow-up → promovido a **US-069** (#122) en Sprint 5.
+
+Ver `apps/api/app/services/xlsx_task_parser.py`.
+
+---
+
+## US-069 — Import MPP nativo vía MPXJ (Sprint 5)
+
+Promueve US-048 a MUST. Issue **#122**. Enchufa al wizard de US-070
+vía interfaz `ParsedTask` compartida. Requiere Dockerfile.worker
+extendido con OpenJDK 21 + `mpxj-cli`.
+
+---
+
+## US-070 — Wizard de mapeo de columnas Excel/CSV/MPP (Sprint 5)
+
+Reemplaza el flujo síncrono auto-detect actual (US-067) por un
+wizard de 4 pasos: upload → sheet selector (Excel) → preview + column
+mapping manual → confirm. Parte `/tasks/import` en `/preview` +
+`/{job_id}/confirm` con Redis como store. Agrega parser CSV nuevo.
+Issue **#123**. Cierra el preview/confirm de US-047 que nunca se
+implementó.
 
 ---
 

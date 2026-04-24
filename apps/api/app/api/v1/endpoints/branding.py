@@ -44,7 +44,7 @@ def _ext_to_mime(path_suffix: str) -> str:
 @router.post("/admin/tenant/logo")
 async def upload_tenant_logo(
     file: UploadFile = File(...),
-    cu: CurrentUser = Depends(require_permission("admin.users", "update")),
+    cu: CurrentUser = Depends(require_permission("admin", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant_id(cu)
@@ -72,7 +72,7 @@ async def upload_tenant_logo(
 
 @router.delete("/admin/tenant/logo", status_code=200)
 async def remove_tenant_logo(
-    cu: CurrentUser = Depends(require_permission("admin.users", "update")),
+    cu: CurrentUser = Depends(require_permission("admin", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant_id(cu)
