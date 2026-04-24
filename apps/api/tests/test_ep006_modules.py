@@ -103,7 +103,7 @@ async def test_tc086_overdue_issues(client, db_session):
 async def test_tc088_approve_requires_permission(client, db_session):
     from app.models.role import Role
 
-    t, auth, proj_id, area_id = await _setup(client, db_session)
+    t, auth, proj_id, _area_id = await _setup(client, db_session)
     # crear viewer role sin permiso approve
     viewer_role = Role(
         tenant_id=t.id, name="Viewer", description="",
@@ -132,7 +132,7 @@ async def test_tc088_approve_requires_permission(client, db_session):
 # TC-089 rejected → approved blocked
 @pytest.mark.asyncio
 async def test_tc089_rejected_to_approved(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/change-requests",
         json={"title": "CR", "type": "scope"},
@@ -150,7 +150,7 @@ async def test_tc089_rejected_to_approved(client, db_session):
 # TC-090 document versioning
 @pytest.mark.asyncio
 async def test_tc090_doc_versioning(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     doc = {
         "title": "plan", "category": "plan",
         "file_url": "https://r2/bucket/plan.pdf",
@@ -168,7 +168,7 @@ async def test_tc090_doc_versioning(client, db_session):
 # TC-091 MIME not whitelisted
 @pytest.mark.asyncio
 async def test_tc091_bad_mime(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/documents",
         json={"title": "bad", "file_url": "http://x",
@@ -181,7 +181,7 @@ async def test_tc091_bad_mime(client, db_session):
 # TC-094 viewer lists lessons cross-project
 @pytest.mark.asyncio
 async def test_tc094_lessons_cross_project(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     await client.post(
         f"/api/v1/projects/{proj_id}/lessons",
         json={"title": "L1", "category": "success", "tags": ["deploy"]},
@@ -196,7 +196,7 @@ async def test_tc094_lessons_cross_project(client, db_session):
 # TC-095 convert agreement to issue
 @pytest.mark.asyncio
 async def test_tc095_convert_agreement(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     mm = await client.post(
         f"/api/v1/projects/{proj_id}/meeting-minutes",
         json={
@@ -220,7 +220,7 @@ async def test_tc095_convert_agreement(client, db_session):
 # TC-097 minute flagged generated_by_ai
 @pytest.mark.asyncio
 async def test_tc097_minute_generated_by_ai(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/meeting-minutes",
         json={
@@ -242,7 +242,7 @@ async def test_tc097_minute_generated_by_ai(client, db_session):
 @pytest.mark.asyncio
 async def test_us020_accepts_new_categories(client, db_session):
     """Todas las categorías nuevas son aceptadas por la API."""
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     new_cats = [
         "charter", "plan", "raid_export", "transcript", "minute",
         "report", "lesson", "contract", "other",
@@ -265,7 +265,7 @@ async def test_us020_accepts_new_categories(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us020_rejects_invalid_category(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/documents",
         json={
@@ -282,7 +282,7 @@ async def test_us020_rejects_invalid_category(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us020_filter_by_category(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     await client.post(
         f"/api/v1/projects/{proj_id}/documents",
         json={
@@ -315,7 +315,7 @@ async def test_us020_filter_by_category(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us020_patch_document_category(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/documents",
         json={
@@ -343,7 +343,7 @@ async def test_us020_patch_document_category(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us022_create_and_list_reports(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     # Crear 2 reportes
     r1 = await client.post(
         f"/api/v1/projects/{proj_id}/reports",
@@ -382,7 +382,7 @@ async def test_us022_create_and_list_reports(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us022_patch_report_sections(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/reports",
         json={"period": "weekly"},
@@ -408,7 +408,7 @@ async def test_us022_patch_report_sections(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us022_invalid_period_rejected(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/reports",
         json={"period": "yearly"},
@@ -419,7 +419,7 @@ async def test_us022_invalid_period_rejected(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us022_filter_by_period(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     await client.post(
         f"/api/v1/projects/{proj_id}/reports",
         json={"period": "daily"}, headers=auth["_authz"],
@@ -439,7 +439,7 @@ async def test_us022_filter_by_period(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us022_delete_draft(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/reports",
         json={"period": "weekly"}, headers=auth["_authz"],

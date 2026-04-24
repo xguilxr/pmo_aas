@@ -83,7 +83,7 @@ async def build_avance_context(
     in_progress = sum(1 for t in all_tasks if t.status == "in_progress")
     not_started = sum(1 for t in all_tasks if t.status == "not_started")
     avg_progress = (
-        int(round(sum((t.progress or 0) for t in all_tasks) / total_tasks))
+        round(sum((t.progress or 0) for t in all_tasks) / total_tasks)
         if total_tasks > 0
         else 0
     )

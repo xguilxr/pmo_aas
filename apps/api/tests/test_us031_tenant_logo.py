@@ -100,7 +100,7 @@ async def test_us031_upload_rejects_bad_mime(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us031_non_admin_cannot_upload(client, db_session):
-    t, admin_auth = await _admin(client, db_session, slug="logo-rbac")
+    t, _admin_auth = await _admin(client, db_session, slug="logo-rbac")
     user_auth = await _non_admin(client, db_session, t)
     r = await client.post(
         "/api/v1/admin/tenant/logo",

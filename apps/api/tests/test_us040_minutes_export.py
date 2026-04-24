@@ -157,7 +157,7 @@ async def test_us040_export_rejects_bad_format(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us040_export_cross_tenant_404(client, db_session):
-    t_a, auth_a = await _admin(client, db_session, slug="min-ta")
+    t_a, _auth_a = await _admin(client, db_session, slug="min-ta")
     _, auth_b = await _admin(client, db_session, slug="min-tb")
     m, _ = await _seed_minute(db_session, t_a, folio="MIN-X", project_folio="P-X")
     await db_session.commit()

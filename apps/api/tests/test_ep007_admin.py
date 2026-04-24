@@ -18,7 +18,7 @@ async def _admin(client, db_session, slug="acme"):
 # TC-098 cannot deactivate self
 @pytest.mark.asyncio
 async def test_tc098_cannot_deactivate_self(client, db_session):
-    t, auth, _ = await _admin(client, db_session)
+    _t, auth, _ = await _admin(client, db_session)
     me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
     r = await client.post(
         "/api/v1/admin/users/bulk/deactivate",
@@ -31,7 +31,7 @@ async def test_tc098_cannot_deactivate_self(client, db_session):
 # TC-099 bulk assign role
 @pytest.mark.asyncio
 async def test_tc099_bulk_assign_role(client, db_session):
-    t, auth, admin_role = await _admin(client, db_session)
+    t, auth, _admin_role = await _admin(client, db_session)
     user_ids = []
     for i in range(5):
         u = await create_user(
@@ -121,8 +121,8 @@ async def test_tc108_settings_update(client, db_session):
 # TC-MT-006 audit logs isolated
 @pytest.mark.asyncio
 async def test_tcmt006_audit_isolation(client, db_session):
-    t_a, auth_a, _ = await _admin(client, db_session, slug="aa")
-    t_b, auth_b, _ = await _admin(client, db_session, slug="bb")
+    _t_a, auth_a, _ = await _admin(client, db_session, slug="aa")
+    _t_b, auth_b, _ = await _admin(client, db_session, slug="bb")
     # tenant a crea una org (genera audit)
     await client.post("/api/v1/organizations", json={"name": "OrgA"}, headers=auth_a["_authz"])
     logs_b = await client.get("/api/v1/admin/audit-logs", headers=auth_b["_authz"])

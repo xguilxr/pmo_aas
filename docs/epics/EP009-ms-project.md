@@ -100,6 +100,17 @@ Promueve US-048 a MUST. Issue **#122**. Enchufa al wizard de US-070
 vía interfaz `ParsedTask` compartida. Requiere Dockerfile.worker
 extendido con OpenJDK 21 + `mpxj-cli`.
 
+**Estado (2026-04-24):** fix-committed en Sprint 5. Implementación:
+wrapper Java propio (`apps/api/app/services/msproject/mpxj_cli/MpxjCli.java`)
+compilado en build-stage contra MPXJ **13.7.0**; JRE 21 headless
+copiado desde `eclipse-temurin:21-jre-jammy` al Dockerfile compartido
+`apps/api/Dockerfile` (no hay worker dir separado — mismo image con
+start command diferente). `parse_mpp(data)` devuelve
+`XlsxParseResult` — mismo shape que `parse_xlsx`, reusa el adaptador
+`_TaskShim` del endpoint. Tests mockean `subprocess.run` (no hay
+fixture binario .mpp en el repo). Runbook:
+`docs/runbooks/infra/mpp-import.md`.
+
 ---
 
 ## US-070 — Wizard de mapeo de columnas Excel/CSV/MPP (Sprint 5)

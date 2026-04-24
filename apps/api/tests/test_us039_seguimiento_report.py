@@ -194,7 +194,7 @@ async def test_enh014_seguimiento_preview_inline_disposition(client, db_session)
 
 @pytest.mark.asyncio
 async def test_us039_cross_tenant_404(client, db_session):
-    t_a, auth_a = await _admin(client, db_session, slug="seg-ta")
+    t_a, _auth_a = await _admin(client, db_session, slug="seg-ta")
     _, auth_b = await _admin(client, db_session, slug="seg-tb")
     p = await _seed_project(db_session, t_a, folio="SP-AAA")
     r = await client.post(

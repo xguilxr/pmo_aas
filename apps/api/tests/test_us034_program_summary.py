@@ -112,7 +112,7 @@ async def test_us034_summary_aggregates_correctly(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us034_summary_cross_tenant_404(client, db_session):
-    t_a, auth_a = await _admin(client, db_session, slug="summary-b")
+    t_a, _auth_a = await _admin(client, db_session, slug="summary-b")
     _, auth_b = await _admin(client, db_session, slug="summary-c")
 
     org = Organization(tenant_id=t_a.id, name="Org-B", is_active=True)

@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.models.project import Project
 from app.models.task import Task, TaskDependency
 from app.services.audit import write_audit
+from app.services.msproject.mpp_parser import parse_mpp
 from app.services.msproject.xml_parser import parse_ms_project_xml
 from app.services.xlsx_task_parser import parse_xlsx
 
@@ -195,10 +196,14 @@ async def import_ms_project(
         == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         or filename_lower.endswith(".xlsx")
     )
+    is_mpp = (
+        content_type in {"application/vnd.ms-project", "application/x-project"}
+        or filename_lower.endswith((".mpp", ".mpt"))
+    )
     is_xml = content_type in {"application/xml", "text/xml"} or filename_lower.endswith(
         (".xml", ".mpx", ".mspdi")
     )
-    if not (is_xlsx or is_xml):
+    if not (is_xlsx or is_mpp or is_xml):
         from fastapi import HTTPException
 
         raise HTTPException(status_code=415, detail={"code": "UNSUPPORTED_MEDIA_TYPE"})
@@ -211,24 +216,18 @@ async def import_ms_project(
 
     errors: list[dict] = []
     parsed: list
-    if is_xlsx:
-        # US-067: XLSX path — usa parser openpyxl con auto-detect de
-        # columnas. Shape interno: `ParsedTask` (xlsx_task_parser). Se
-        # convierte al mismo shape que el XML parser para reusar la
-        # lógica de persistencia debajo.
+    if is_xlsx or is_mpp:
+        # US-067 (XLSX) + US-069 (MPP): ambos parsers devuelven el mismo
+        # shape `XlsxParseResult`. El MPP viene de MPXJ subprocess; XLSX
+        # de openpyxl. Se convierten al shape que el loop de persistencia
+        # espera (los campos del XML como `predecessors` resueltos quedan
+        # vacíos — el wizard de US-070 los re-mappea).
         try:
-            xlsx_result = parse_xlsx(data)
+            xlsx_result = parse_mpp(data) if is_mpp else parse_xlsx(data)
         except ValueError as exc:
-            raise business_rule(f"archivo XLSX inválido: {exc}")
+            label = "MPP" if is_mpp else "XLSX"
+            raise business_rule(f"archivo {label} inválido: {exc}")
         errors = list(xlsx_result.errors)
-        # Adaptador: convierte ParsedTask → estructura mínima que el
-        # loop de persistencia espera (los campos extra del XML como
-        # predecessors son opcionales y quedan vacíos).
-        class _DepShim:
-            def __init__(self, predecessor_external_id: str, type: str, lag_days: int):
-                self.predecessor_external_id = predecessor_external_id
-                self.type = type
-                self.lag_days = lag_days
 
         class _TaskShim:
             def __init__(self, pt):
@@ -319,12 +318,16 @@ async def import_ms_project(
                 ))
                 dep_count += 1
 
-    source_label = "xlsx" if is_xlsx else "msproject"
-    # BUG/US-067: el campo `source` ya existía en Task para xml-MSP.
-    # Actualiza a "xlsx" para nuevos imports de Excel.
-    if is_xlsx:
+    # US-067 agregó "xlsx"; US-069 agrega "mpp" para auditoría.
+    if is_mpp:
+        source_label = "mpp"
+    elif is_xlsx:
+        source_label = "xlsx"
+    else:
+        source_label = "msproject"
+    if is_xlsx or is_mpp:
         for t in created.values():
-            t.source = "xlsx"
+            t.source = source_label
     await write_audit(
         db,
         action=f"tasks.{source_label}_import",

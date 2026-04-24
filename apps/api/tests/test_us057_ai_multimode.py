@@ -180,7 +180,7 @@ async def test_us057_factory_byo_invalid_provider_raises():
 
 @pytest.mark.asyncio
 async def test_us057_minute_endpoint_gates_disabled(client, db_session):
-    t, _u, auth = await _admin(client, db_session, slug="ai57-gate-min")
+    _t, _u, auth = await _admin(client, db_session, slug="ai57-gate-min")
     # No llamamos enable_tenant_ai — queda modo disabled por default.
     proj_id = await _project(client, auth)
     r = await client.post(
@@ -221,7 +221,7 @@ async def test_us057_admin_provider_crud_roundtrip(client, db_session, monkeypat
     from app.core import config as cfg_mod
 
     monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", True, raising=False)
-    t, _u, auth = await _admin(client, db_session, slug="ai57-admin")
+    _t, _u, auth = await _admin(client, db_session, slug="ai57-admin")
 
     # GET inicial: mode=disabled
     r = await client.get("/api/v1/admin/ai/provider", headers=auth["_authz"])
@@ -273,7 +273,7 @@ async def test_us057_admin_provider_patch_requires_byo_config(
     from app.core import config as cfg_mod
 
     monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", True, raising=False)
-    t, _u, auth = await _admin(client, db_session, slug="ai57-no-byo")
+    _t, _u, auth = await _admin(client, db_session, slug="ai57-no-byo")
     r = await client.patch(
         "/api/v1/admin/ai/provider",
         json={"mode": "byo"},  # byo ausente
@@ -295,7 +295,7 @@ async def test_us057_admin_provider_byo_blocked_when_flag_off(
     from app.core import config as cfg_mod
 
     monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", False, raising=False)
-    t, _u, auth = await _admin(client, db_session, slug="ai57-flag-off")
+    _t, _u, auth = await _admin(client, db_session, slug="ai57-flag-off")
 
     r = await client.patch(
         "/api/v1/admin/ai/provider",
@@ -317,7 +317,7 @@ async def test_us057_admin_provider_get_reports_flag_and_catalog(
     from app.core import config as cfg_mod
 
     monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", False, raising=False)
-    t, _u, auth = await _admin(client, db_session, slug="ai57-catalog")
+    _t, _u, auth = await _admin(client, db_session, slug="ai57-catalog")
     r = await client.get(
         "/api/v1/admin/ai/provider", headers=auth["_authz"],
     )
@@ -342,7 +342,7 @@ async def test_us057_admin_provider_rejects_ollama_in_byo(
     from app.core import config as cfg_mod
 
     monkeypatch.setattr(cfg_mod.settings, "AI_BYO_ENABLED", True, raising=False)
-    t, _u, auth = await _admin(client, db_session, slug="ai57-no-ollama")
+    _t, _u, auth = await _admin(client, db_session, slug="ai57-no-ollama")
     r = await client.patch(
         "/api/v1/admin/ai/provider",
         json={
@@ -448,7 +448,7 @@ async def test_us057_worker_platform_retries_and_alerts(client, db_session):
     from app.workers.tasks import ai as ai_tasks
 
     # Setup: superadmin + tenant en modo platform.
-    t, _u, auth = await _admin(client, db_session, slug="ai57-retry")
+    t, _u, _auth = await _admin(client, db_session, slug="ai57-retry")
     await enable_tenant_ai(db_session, t, mode="platform")
     await create_user(
         db_session, tenant=None,
