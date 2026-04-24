@@ -129,6 +129,112 @@ function safeParse(text: string): unknown {
   }
 }
 
+// US-070 — Wizard de mapeo de columnas (preview + confirm).
+
+export const SYSTEM_FIELDS = [
+  "name",
+  "wbs",
+  "start_date",
+  "end_date",
+  "duration_days",
+  "progress",
+  "is_milestone",
+  "predecessors",
+  "resources",
+] as const;
+
+export type SystemField = (typeof SYSTEM_FIELDS)[number];
+
+export type ImportSource = "xlsx" | "csv" | "mpp" | "xml";
+
+export type ImportPreviewResult = {
+  job_id: string;
+  source: ImportSource;
+  sheets: string[]; // [] para CSV/MPP/XML
+  sheet_used: string | null;
+  columns_detected: Partial<Record<SystemField, number>>;
+  sample_rows: (string | null)[][]; // header + hasta 10 data rows
+  task_count: number;
+  errors: { row?: number; error?: string }[];
+  ttl_seconds: number;
+  system_fields: SystemField[];
+};
+
+export type ImportConfirmResult = {
+  imported: number;
+  dependencies_created: number;
+  errors: unknown[];
+  strategy: string;
+  source: string;
+};
+
+async function rawFetch(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  const token = getAccessToken();
+  const headers = new Headers(init.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(url, { ...init, headers, credentials: "include" });
+}
+
+async function _decode<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  const data = text ? safeParse(text) : null;
+  if (!res.ok) {
+    const detail =
+      (data as { detail?: { detail?: string; code?: string } } | null)?.detail
+        ?.detail ??
+      (data as { detail?: string } | null)?.detail ??
+      `Error ${res.status}`;
+    const code =
+      (data as { detail?: { code?: string } } | null)?.detail?.code ??
+      "UNKNOWN";
+    throw new ApiError(res.status, String(code), String(detail));
+  }
+  return data as T;
+}
+
+export async function importPreview(
+  projectId: string,
+  file: File,
+  sheet?: string | null,
+): Promise<ImportPreviewResult> {
+  const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+  const form = new FormData();
+  form.append("file", file);
+  const qs = sheet ? `?sheet=${encodeURIComponent(sheet)}` : "";
+  const url = `${base}/api/v1/projects/${projectId}/tasks/import/preview${qs}`;
+  const res = await rawFetch(url, { method: "POST", body: form });
+  return _decode<ImportPreviewResult>(res);
+}
+
+export async function importConfirm(
+  projectId: string,
+  jobId: string,
+  body: {
+    mapping?: Partial<Record<SystemField, number>> | null;
+    strategy: "merge" | "replace";
+  },
+): Promise<ImportConfirmResult> {
+  return apiFetch<ImportConfirmResult>(
+    `/api/v1/projects/${projectId}/tasks/import/${jobId}/confirm`,
+    { method: "POST", body },
+  );
+}
+
+export const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
+  name: "Nombre (obligatorio)",
+  wbs: "WBS / EDT",
+  start_date: "Fecha inicio",
+  end_date: "Fecha fin",
+  duration_days: "Duración (días)",
+  progress: "% Avance",
+  is_milestone: "Es hito",
+  predecessors: "Predecesoras",
+  resources: "Recursos",
+};
+
 export const TASK_STATUS_LABEL: Record<string, string> = {
   not_started: "No iniciada",
   in_progress: "En progreso",

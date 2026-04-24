@@ -9,9 +9,9 @@
 ```
 2026-04-24 — Sprint 5 en curso. Branch: claude/sprint-pending-tasks-YhSdj
 
-US-070 (#123) Wizard de mapeo — sub-bloque A (backend)
-fix-committed. Sub-bloque B (frontend wizard UI) pendiente
-próxima sesión.
+US-070 (#123) Wizard de mapeo — ✅ COMPLETA (sub-bloques A+B
+fix-committed). Sprint 5 cerrado salvo ENH-034 (#142, follow-up
+de tests bottleneck).
 
 PRs mergeados a main:
 - BUG-031 (#121)  PR #129
@@ -82,11 +82,11 @@ acción manual con la DB.
 - [x] US-073 — SuperAdmin: overrides permisos por tenant (DEC-021) — #126 ✅ PR #140 (migración 0027)
 - [x] US-074 — SuperAdmin: cambiar email + password — #127 ✅ PR #134
 
-### Bloque 2 — Import inteligente de planes (3 items) — 3/3 en ejecución
+### Bloque 2 — Import inteligente de planes (3 items) ✅ COMPLETO
 - [x] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 + MPXJ 13.7.0) — #122 ✅ PR #143
-- [~] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123
-  - [x] Sub-bloque A: backend `/preview` + `/confirm` + Redis + CSV parser
-  - [ ] Sub-bloque B: frontend `import-wizard.tsx` + consumo (próxima sesión)
+- [x] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123
+  - [x] Sub-bloque A: backend `/preview` + `/confirm` + Redis + CSV parser (PR #146)
+  - [x] Sub-bloque B: frontend `import-wizard.tsx` + plan/page.tsx wired
 - [x] US-071 — Plantilla vacía descargable del plan — #124 ✅ PR #135
 
 ### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US completa) ✅

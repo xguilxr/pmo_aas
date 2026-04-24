@@ -122,7 +122,7 @@ mapping manual → confirm. Parte `/tasks/import` en `/preview` +
 Issue **#123**. Cierra el preview/confirm de US-047 que nunca se
 implementó.
 
-**Estado (2026-04-24):** sub-bloque A (backend) fix-committed.
+**Estado (2026-04-24):** completa (sub-bloques A + B fix-committed).
 
 - `app/services/import_job_store.py` — Redis set/get/delete con TTL
   1h (`JOB_TTL_SECONDS = 3600`). Key `import:job:{uuid}`. Fail-loud.
@@ -145,8 +145,29 @@ implementó.
 - Endpoint one-shot `POST /tasks/import` mantiene funcionalidad para
   tests viejos y uploads que no necesiten wizard.
 
-Sub-bloque B (frontend `import-wizard.tsx` + consumo del nuevo flujo
-en `/pmo/projects/[id]/plan`) queda para próxima sesión.
+**Sub-bloque B — Frontend wizard** ✅ fix-committed
+- `apps/web/lib/api/tasks.ts` extendido con `importPreview()` /
+  `importConfirm()` + tipos `ImportPreviewResult`,
+  `ImportConfirmResult`, `SystemField`, `SYSTEM_FIELD_LABELS`. La
+  función vieja `importMsProject()` se mantiene para el endpoint
+  one-shot (compat).
+- `apps/web/components/import-wizard.tsx` — modal `<Lg>` con 4
+  pasos lógicos: Upload → Sheet (skip auto si CSV/MPP/XML o si
+  Excel con 1 sola hoja) → Preview + mapping → Done.
+  - Mapping renderiza `<select>` por columna del archivo con
+    auto-detect pre-rellenado + opción `— ignorar —`.
+  - Validación inline: si no hay columna mapeada a `name` muestra
+    Banner warning y deshabilita el botón Importar.
+  - Selector de estrategia (merge/replace) integrado en el step de
+    preview, con `confirm()` antes de un replace destructivo.
+  - MPP/XML omiten el row de selectores (su shape ya viene
+    normalizado) y muestran preview informativo.
+- `app/(app)/pmo/projects/[id]/plan/page.tsx` — control inline
+  `<select strategy>` + `<input type=file>` reemplazado por un
+  botón "Importar" que abre el wizard. Removidos `importBusy`,
+  `importStrategy` y `importPlanFile()` (toda la lógica vieja
+  ~60 LoC eliminada). El callback `onImported` refresca la lista
+  vía `loadTasksAndGantt()`.
 
 ---
 
