@@ -133,7 +133,7 @@ def _build_byo_read(byo_raw: dict) -> BYOConfigRead:
 
 @router.get("/provider", response_model=TenantAIProviderRead)
 async def get_provider_config(
-    cu: CurrentUser = Depends(require_permission("admin.users", "read")),
+    cu: CurrentUser = Depends(require_permission("admin", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant_id(cu)
@@ -158,7 +158,7 @@ async def get_provider_config(
 @router.patch("/provider", response_model=TenantAIProviderRead)
 async def update_provider_config(
     body: TenantAIProviderPatch,
-    cu: CurrentUser = Depends(require_permission("admin.users", "update")),
+    cu: CurrentUser = Depends(require_permission("admin", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant_id(cu)
@@ -256,7 +256,7 @@ class ProviderTestBody(BaseModel):
 @router.post("/provider/test", response_model=TestConnectionResult)
 async def test_provider_connection(
     body: ProviderTestBody,
-    cu: CurrentUser = Depends(require_permission("admin.users", "update")),
+    cu: CurrentUser = Depends(require_permission("admin", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     """US-057: valida credenciales BYO con un ping mínimo antes de guardar.

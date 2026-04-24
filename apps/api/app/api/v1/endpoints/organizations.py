@@ -52,7 +52,7 @@ def _ensure_tenant(cu: CurrentUser) -> UUID:
 async def list_org_panels(
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     """Listado de organizaciones con métricas agregadas (US-006).
@@ -161,7 +161,7 @@ async def list_org_panels(
 async def list_orgs(
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -178,7 +178,7 @@ async def list_orgs(
 @router.post("", response_model=OrganizationRead, status_code=201)
 async def create_org(
     body: OrganizationCreate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "create")),
+    cu: CurrentUser = Depends(require_permission("organizations", "create")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -204,7 +204,7 @@ async def create_org(
 @router.get("/{org_id}", response_model=OrganizationRead)
 async def get_org(
     org_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -403,7 +403,7 @@ async def get_org_panel(
 async def update_org(
     org_id: UUID,
     body: OrganizationUpdate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    cu: CurrentUser = Depends(require_permission("organizations", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -427,7 +427,7 @@ async def update_org(
 @router.delete("/{org_id}", status_code=204)
 async def delete_org(
     org_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "delete")),
+    cu: CurrentUser = Depends(require_permission("organizations", "delete")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -457,7 +457,7 @@ programs_router = APIRouter(prefix="/programs", tags=["programs"])
 async def list_programs(
     organization_id: UUID | None = Query(default=None),
     is_active: bool | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -473,7 +473,7 @@ async def list_programs(
 @programs_router.post("", response_model=ProgramRead, status_code=201)
 async def create_program(
     body: ProgramCreate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "create")),
+    cu: CurrentUser = Depends(require_permission("organizations", "create")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -626,7 +626,7 @@ async def program_summary(
 async def update_program(
     program_id: UUID,
     body: ProgramUpdate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    cu: CurrentUser = Depends(require_permission("organizations", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -650,7 +650,7 @@ async def update_program(
 @programs_router.delete("/{program_id}", status_code=204)
 async def delete_program(
     program_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "delete")),
+    cu: CurrentUser = Depends(require_permission("organizations", "delete")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -695,7 +695,7 @@ def _get_org_or_404(db_result):
 async def create_business_unit(
     org_id: UUID,
     body: BusinessUnitCreate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    cu: CurrentUser = Depends(require_permission("organizations", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -743,7 +743,7 @@ async def list_business_units(
     org_id: UUID,
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -773,7 +773,7 @@ async def list_business_units(
 )
 async def get_business_unit(
     bu_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -797,7 +797,7 @@ async def get_business_unit(
 async def update_business_unit(
     bu_id: UUID,
     body: BusinessUnitUpdate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    cu: CurrentUser = Depends(require_permission("organizations", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -841,7 +841,7 @@ async def update_business_unit(
 async def delete_business_unit(
     bu_id: UUID,
     force: bool = Query(default=False),
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "delete")),
+    cu: CurrentUser = Depends(require_permission("organizations", "delete")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -913,7 +913,7 @@ def _get_bu_or_404(db_result):
 async def create_department(
     bu_id: UUID,
     body: DepartmentCreate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    cu: CurrentUser = Depends(require_permission("organizations", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -963,7 +963,7 @@ async def list_departments(
     bu_id: UUID,
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -994,7 +994,7 @@ async def list_departments(
 )
 async def get_department(
     dept_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "read")),
+    cu: CurrentUser = Depends(require_permission("organizations", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -1018,7 +1018,7 @@ async def get_department(
 async def update_department(
     dept_id: UUID,
     body: DepartmentUpdate,
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "update")),
+    cu: CurrentUser = Depends(require_permission("organizations", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
@@ -1062,7 +1062,7 @@ async def update_department(
 async def delete_department(
     dept_id: UUID,
     force: bool = Query(default=False),
-    cu: CurrentUser = Depends(require_permission("admin.organizations", "delete")),
+    cu: CurrentUser = Depends(require_permission("organizations", "delete")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)

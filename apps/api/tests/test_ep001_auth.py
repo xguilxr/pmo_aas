@@ -376,11 +376,11 @@ async def test_tcnew018_senior_pmo_can_access_admin(client, db_session):
         description="Senior PMO / Admin-eq",
         is_system=True,
         permissions={
-            "admin.users": ["read", "create", "update", "delete"],
-            "admin.roles": ["read", "create", "update", "delete"],
-            "admin.organizations": ["read", "create", "update", "delete"],
-            "admin.projects": ["read"],
-            "admin.requests": ["read", "approve"],
+            "users": ["read", "create", "update", "delete"],
+            "roles": ["read", "create", "update", "delete"],
+            "organizations": ["read", "create", "update", "delete"],
+            "admin": ["read"],
+            "requests": ["read", "approve"],
             "projects": ["read", "create", "update", "approve"],
             "dashboard": ["read"],
         },
@@ -425,7 +425,7 @@ async def test_is_admin_equivalent_helper(client, db_session):
         user=type("U", (), {"is_superadmin": False})(),
         tenant_ids=[], active_tenant_id=None,
         roles=["PMO Manager"],
-        permissions={"admin.users": {"read"}, "dashboard": {"read"}},
+        permissions={"users": {"read"}, "dashboard": {"read"}},
     )
     assert cu_sr.is_admin_equivalent is True
 

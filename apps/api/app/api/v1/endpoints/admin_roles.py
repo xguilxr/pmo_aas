@@ -32,7 +32,7 @@ def _validate_permissions(perms: dict[str, list[str]]) -> None:
 
 @router.get("", response_model=list[RoleRead])
 async def list_roles(
-    cu: CurrentUser = Depends(require_permission("admin.roles", "read")),
+    cu: CurrentUser = Depends(require_permission("roles", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Role)
@@ -45,7 +45,7 @@ async def list_roles(
 @router.post("", response_model=RoleRead, status_code=201)
 async def create_role(
     body: RoleCreate,
-    cu: CurrentUser = Depends(require_permission("admin.roles", "create")),
+    cu: CurrentUser = Depends(require_permission("roles", "create")),
     db: AsyncSession = Depends(get_db),
 ):
     if cu.user.tenant_id is None:
@@ -76,7 +76,7 @@ async def create_role(
 @router.get("/{role_id}", response_model=RoleRead)
 async def get_role(
     role_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.roles", "read")),
+    cu: CurrentUser = Depends(require_permission("roles", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     r = (await db.execute(select(Role).where(Role.id == str(role_id)))).scalar_one_or_none()
@@ -91,7 +91,7 @@ async def get_role(
 async def update_role(
     role_id: UUID,
     body: RoleUpdate,
-    cu: CurrentUser = Depends(require_permission("admin.roles", "update")),
+    cu: CurrentUser = Depends(require_permission("roles", "update")),
     db: AsyncSession = Depends(get_db),
 ):
     r = (await db.execute(select(Role).where(Role.id == str(role_id)))).scalar_one_or_none()
@@ -117,7 +117,7 @@ async def update_role(
 @router.delete("/{role_id}", status_code=204)
 async def delete_role(
     role_id: UUID,
-    cu: CurrentUser = Depends(require_permission("admin.roles", "delete")),
+    cu: CurrentUser = Depends(require_permission("roles", "delete")),
     db: AsyncSession = Depends(get_db),
 ):
     r = (await db.execute(select(Role).where(Role.id == str(role_id)))).scalar_one_or_none()
