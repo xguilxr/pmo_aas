@@ -8,7 +8,6 @@ coverage/
 next-env.d.ts
 *.tsbuildinfo
 package-lock.json
-pnpm-lock.yaml
 yarn.lock
 htmlcov/
 .venv/
