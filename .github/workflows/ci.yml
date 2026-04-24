@@ -1,8 +1,11 @@
 name: CI
 
 on:
+  # Solo push a main (post-merge, para api-tests-heavy + historial).
+  # Push a branches claude/** NO dispara CI porque el PR correspondiente
+  # ya lo dispara vía `pull_request` — evitamos dual runs + saves actions minutes.
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
   pull_request:
 
 # ENH-033: cancelar runs previos del mismo PR/branch al pushear.
