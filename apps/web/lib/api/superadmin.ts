@@ -122,3 +122,30 @@ export function updateUserRoleType(
     body: { role_type: roleType },
   });
 }
+
+// US-074 — superadmin self-profile.
+export type SuperadminMe = {
+  id: string;
+  email: string;
+  username: string;
+  full_name: string | null;
+  is_superadmin: boolean;
+};
+
+export type SuperadminMeUpdateBody = {
+  current_password: string;
+  email?: string;
+  full_name?: string;
+  new_password?: string;
+};
+
+export function getSuperadminMe(): Promise<SuperadminMe> {
+  return apiFetch<SuperadminMe>("/api/v1/superadmin/me");
+}
+
+export function updateSuperadminMe(body: SuperadminMeUpdateBody): Promise<SuperadminMe> {
+  return apiFetch<SuperadminMe>("/api/v1/superadmin/me", {
+    method: "PATCH",
+    body,
+  });
+}

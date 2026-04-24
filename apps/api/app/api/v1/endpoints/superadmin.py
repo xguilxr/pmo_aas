@@ -441,3 +441,122 @@ async def update_user_role_type(
         "to": body.role_type,
         "changed": True,
     }
+
+
+# ============================================================================
+# US-074 — SuperAdmin: gestionar su propio email + password
+# ============================================================================
+
+from app.core.security import verify_password  # noqa: E402
+
+
+class _SuperadminMeRead(BaseModel):
+    id: str
+    email: str
+    username: str
+    full_name: str | None = None
+    is_superadmin: bool
+
+
+class _SuperadminMeUpdate(BaseModel):
+    email: str | None = None
+    full_name: str | None = None
+    new_password: str | None = None
+    current_password: str = Field(min_length=1)
+
+
+@router.get("/me", response_model=_SuperadminMeRead)
+async def superadmin_me(
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-074: perfil del superadmin actual."""
+    u = (
+        await db.execute(select(User).where(User.id == cu.id))
+    ).scalar_one()
+    return _SuperadminMeRead(
+        id=str(u.id),
+        email=u.email,
+        username=u.username,
+        full_name=u.full_name,
+        is_superadmin=u.is_superadmin,
+    )
+
+
+@router.patch("/me", response_model=_SuperadminMeRead)
+async def superadmin_me_update(
+    body: _SuperadminMeUpdate,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-074: actualiza email/full_name/password del superadmin.
+
+    Cambios sensibles (email + password) requieren `current_password`.
+    Email único globalmente — si choca con otro user devuelve 409.
+    """
+    u = (
+        await db.execute(select(User).where(User.id == cu.id))
+    ).scalar_one()
+    if not verify_password(body.current_password, u.password_hash):
+        raise forbidden("current_password incorrecto")
+
+    diff: dict = {}
+
+    if body.full_name is not None and body.full_name != u.full_name:
+        diff["full_name"] = {"from": u.full_name, "to": body.full_name}
+        u.full_name = body.full_name
+
+    if body.email is not None and body.email != u.email:
+        new_email = body.email.strip().lower()
+        # Unicidad global (cualquier tenant + cualquier user activo).
+        clash = (
+            await db.execute(
+                select(User).where(
+                    func.lower(User.email) == new_email, User.id != u.id
+                )
+            )
+        ).scalar_one_or_none()
+        if clash is not None:
+            raise conflict("Email ya en uso por otro usuario")
+        diff["email"] = {"from": u.email, "to": new_email}
+        u.email = new_email
+
+    if body.new_password is not None:
+        if body.new_password == body.current_password:
+            raise business_rule("La nueva contraseña debe ser diferente")
+        ok, err = validate_password_policy(body.new_password)
+        if not ok:
+            raise validation_error(
+                "Contraseña no cumple política", {"code": err}
+            )
+        u.password_hash = hash_password(body.new_password)
+        diff["password"] = {"changed": True}
+
+    if not diff:
+        return _SuperadminMeRead(
+            id=str(u.id),
+            email=u.email,
+            username=u.username,
+            full_name=u.full_name,
+            is_superadmin=u.is_superadmin,
+        )
+
+    await write_audit(
+        db,
+        action="superadmin.self_update",
+        module="superadmin",
+        user_id=u.id,
+        tenant_id=u.tenant_id,
+        entity_type="user",
+        entity_id=str(u.id),
+        details=diff,
+    )
+    await db.commit()
+    await db.refresh(u)
+    return _SuperadminMeRead(
+        id=str(u.id),
+        email=u.email,
+        username=u.username,
+        full_name=u.full_name,
+        is_superadmin=u.is_superadmin,
+    )
