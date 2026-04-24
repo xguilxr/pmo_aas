@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
   listOrganizationPanels,
@@ -163,6 +164,9 @@ function OrgCard({ panel }: { panel: OrganizationPanel }) {
 }
 
 export default function OrganizationsListPage() {
+  const { canCreate } = useMyPermissions();
+  const canCreateOrg = canCreate("organizations");
+  const canCreateProgram = canCreate("programs");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 300);
   const [activeFilter, setActiveFilter] = useState<string>("all");
@@ -218,16 +222,20 @@ export default function OrganizationsListPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => setShowProgramModal(true)}>
-            <Network className="h-4 w-4" aria-hidden />
-            Nuevo programa
-          </Button>
-          <Link href="/admin/organizations/new">
-            <Button>
-              <Plus className="h-4 w-4" aria-hidden />
-              Nueva organización
+          {canCreateProgram ? (
+            <Button variant="secondary" onClick={() => setShowProgramModal(true)}>
+              <Network className="h-4 w-4" aria-hidden />
+              Nuevo programa
             </Button>
-          </Link>
+          ) : null}
+          {canCreateOrg ? (
+            <Link href="/admin/organizations/new">
+              <Button>
+                <Plus className="h-4 w-4" aria-hidden />
+                Nueva organización
+              </Button>
+            </Link>
+          ) : null}
         </div>
       </header>
 

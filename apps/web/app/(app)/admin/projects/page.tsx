@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import {
@@ -51,6 +52,8 @@ function formatMxn(n: string | number | null): string {
 
 export default function ProjectsListPage() {
   const router = useRouter();
+  const { canCreate } = useMyPermissions();
+  const permsCanCreate = canCreate("projects");
   const search = useSearchParams();
 
   const initialPhases = useMemo(() => {
@@ -179,11 +182,13 @@ export default function ProjectsListPage() {
               <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Tablero
             </button>
           </div>
-          <Link href="/admin/projects/new">
-            <Button>
-              <Plus className="h-4 w-4" aria-hidden /> Nuevo proyecto
-            </Button>
-          </Link>
+          {permsCanCreate ? (
+            <Link href="/admin/projects/new">
+              <Button>
+                <Plus className="h-4 w-4" aria-hidden /> Nuevo proyecto
+              </Button>
+            </Link>
+          ) : null}
         </div>
       </header>
 

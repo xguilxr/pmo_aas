@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
   listRoles,
@@ -43,6 +44,8 @@ function useDebounced<T>(value: T, delayMs = 300): T {
 }
 
 export default function UsersListPage() {
+  const { canCreate } = useMyPermissions();
+  const canCreateUser = canCreate("users");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 300);
   const [roleFilter, setRoleFilter] = useState<string>("");
@@ -112,12 +115,14 @@ export default function UsersListPage() {
             Da de alta, edita y administra el acceso de tu equipo.
           </p>
         </div>
-        <Link href="/admin/users/new">
-          <Button size="md">
-            <Plus className="h-4 w-4" aria-hidden />
-            Nuevo usuario
-          </Button>
-        </Link>
+        {canCreateUser ? (
+          <Link href="/admin/users/new">
+            <Button size="md">
+              <Plus className="h-4 w-4" aria-hidden />
+              Nuevo usuario
+            </Button>
+          </Link>
+        ) : null}
       </header>
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
