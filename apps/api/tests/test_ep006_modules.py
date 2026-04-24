@@ -101,7 +101,7 @@ async def test_tc086_overdue_issues(client, db_session):
 # TC-088 approve requires permission (viewer cannot)
 @pytest.mark.asyncio
 async def test_tc088_approve_requires_permission(client, db_session):
-    from app.models.role import Role, UserRole
+    from app.models.role import Role
 
     t, auth, proj_id, area_id = await _setup(client, db_session)
     # crear viewer role sin permiso approve
@@ -112,7 +112,7 @@ async def test_tc088_approve_requires_permission(client, db_session):
     )
     db_session.add(viewer_role)
     await db_session.flush()
-    viewer = await create_user(
+    await create_user(
         db_session, tenant=t, username="viewer", email="viewer@acme.example.com",
         password="Str0ng-View-1!", roles=[viewer_role],
     )

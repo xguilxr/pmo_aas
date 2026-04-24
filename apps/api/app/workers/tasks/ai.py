@@ -12,8 +12,10 @@ providers/repositorios tal cual.
 """
 from __future__ import annotations
 
+import functools
 import json
 import logging
+import operator
 from datetime import UTC, datetime
 
 from sqlalchemy import desc, select
@@ -23,7 +25,6 @@ from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
 from app.models.tenant import Tenant
 from app.services.ai.platform_config import (
-    resolve_ai_mode,
     resolve_groq_config,
     resolve_ollama_config,
 )
@@ -32,7 +33,6 @@ from app.services.ai.provider import (
     AIResult,
     chunk_text,
     generate_for_tenant,
-    generate_with_cascade,
 )
 from app.services.ai.tenant_ai import TenantAIConfig, load_tenant_ai
 from app.services.audit import write_audit
@@ -131,7 +131,7 @@ async def _alert_superadmin_platform_failure(
                     link="/superadmin/ai",
                 )
             await db.commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception(
             "platform_ai_alert_failed tenant=%s job=%s: %s",
             tenant_id, job_id, exc,
@@ -164,7 +164,7 @@ async def _call_ai_for_tenant(
                 tenant_id=tenant_id,
                 job_id=job_id,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_err = exc
             sleep_sec = _AI_CALL_BACKOFF_SEC[
                 min(attempt, len(_AI_CALL_BACKOFF_SEC) - 1)
@@ -288,12 +288,12 @@ async def _run_minute(
 
         merged = {
             "summary": "\n\n".join([c.get("summary") or "" for c in collected]).strip(),
-            "participants": sum((c.get("participants") or [] for c in collected), []),
-            "topics": sum((c.get("topics") or [] for c in collected), []),
-            "agreements": sum((c.get("agreements") or [] for c in collected), []),
-            "decisions": sum((c.get("decisions") or [] for c in collected), []),
-            "next_steps": sum((c.get("next_steps") or [] for c in collected), []),
-            "risks_blockers": sum((c.get("risks_blockers") or [] for c in collected), []),
+            "participants": functools.reduce(operator.iadd, (c.get("participants") or [] for c in collected), []),
+            "topics": functools.reduce(operator.iadd, (c.get("topics") or [] for c in collected), []),
+            "agreements": functools.reduce(operator.iadd, (c.get("agreements") or [] for c in collected), []),
+            "decisions": functools.reduce(operator.iadd, (c.get("decisions") or [] for c in collected), []),
+            "next_steps": functools.reduce(operator.iadd, (c.get("next_steps") or [] for c in collected), []),
+            "risks_blockers": functools.reduce(operator.iadd, (c.get("risks_blockers") or [] for c in collected), []),
         }
 
         async with db_session() as db:
@@ -334,7 +334,7 @@ async def _run_minute(
                          "provider": job.provider, "mode": tenant_cfg.mode},
             )
             await db.commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("minute task failed job=%s", job_id)
         async with db_session() as db:
             await _mark_failed(db, job_id, f"{type(exc).__name__}: {exc}")
@@ -446,7 +446,7 @@ async def _run_report(
                          "provider": job.provider, "mode": tenant_cfg.mode},
             )
             await db.commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("report task failed job=%s", job_id)
         async with db_session() as db:
             await _mark_failed(db, job_id, f"{type(exc).__name__}: {exc}")

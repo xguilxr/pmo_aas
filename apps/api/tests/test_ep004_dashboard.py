@@ -236,8 +236,6 @@ async def test_us015_admin_sees_all(client, db_session):
 @pytest.mark.asyncio
 async def test_us015_pm_sees_only_assigned_projects(client, db_session):
     """Project Manager ve solo proyectos donde es pm_id o member."""
-    from sqlalchemy import select as sa_select
-    from app.models.project import Project
 
     t, _admin_auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)

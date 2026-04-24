@@ -1,5 +1,5 @@
 """US-039 — Reporte de Seguimiento de Actividades."""
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -80,7 +80,7 @@ async def test_us039_generate_and_groups(client, db_session):
         Issue(
             tenant_id=str(t.id), project_id=p.id, folio="ACT-1",
             title="Acción sin owner", type="action", status="open",
-            reported_at=datetime.now(timezone.utc),
+            reported_at=datetime.now(UTC),
             committed_date=cut - timedelta(days=5),
         )
     )

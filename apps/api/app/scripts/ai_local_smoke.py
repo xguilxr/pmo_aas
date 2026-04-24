@@ -29,7 +29,6 @@ from sqlalchemy import select
 from app.db.session import SessionLocal
 from app.models.tenant import Tenant
 
-
 DEFAULT_PROMPT = (
     "Responde en una frase: ¿cuál es la capital de México? Empieza con 'OK:'"
 )

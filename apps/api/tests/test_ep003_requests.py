@@ -395,8 +395,10 @@ async def test_tcnew019_charter_auto_generated(client, db_session):
 @pytest.mark.asyncio
 async def test_tcnew020_section4_derived_from_project(client, db_session):
     from datetime import date
-    from app.models.project import Project
+
     from sqlalchemy import select
+
+    from app.models.project import Project
 
     _, auth, org_id = await _setup(client, db_session)
     result = await _approve_and_create_project(client, auth, org_id)
@@ -499,6 +501,7 @@ async def test_charter_404_when_missing(client, db_session):
 @pytest.mark.asyncio
 async def test_tcnew022_charter_appears_as_document(client, db_session):
     from sqlalchemy import select
+
     from app.models.modules import Document
 
     _, auth, org_id = await _setup(client, db_session)

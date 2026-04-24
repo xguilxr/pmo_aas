@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_permission
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
-from app.models.modules import Document
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
@@ -229,7 +228,14 @@ async def get_project(
 
     counts: dict[str, int] = {}
     try:
-        from app.models.modules import ChangeRequest, Document, Issue, Lesson, MeetingMinute, Risk  # type: ignore
+        from app.models.modules import (  # type: ignore
+            ChangeRequest,
+            Document,
+            Issue,
+            Lesson,
+            MeetingMinute,
+            Risk,
+        )
 
         for label, model in [
             ("risks", Risk), ("issues", Issue), ("change_requests", ChangeRequest),
@@ -279,7 +285,6 @@ async def delete_project(
     cu: CurrentUser = Depends(require_permission("projects", "delete")),
     db: AsyncSession = Depends(get_db),
 ):
-    from datetime import UTC, datetime
 
     tenant_id = _tenant(cu)
     p = await _get_project(db, project_id, tenant_id)
@@ -423,6 +428,6 @@ async def export_project(
     body = (
         f"Proyecto {p.folio}\n{p.name}\nFase: {p.phase}\n"
         f"Avance: {p.progress}%\nPresupuesto: {p.budget}\n"
-    ).encode("utf-8")
+    ).encode()
     return Response(content=body, media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename={p.folio}.pdf"})

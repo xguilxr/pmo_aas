@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -165,7 +165,7 @@ async def build_avance_context(
     return {
         "title": f"Reporte de Avance — {project.folio}",
         "cut_off_date": cut_off_date.isoformat(),
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "project": {
             "id": str(project.id),
             "folio": project.folio,
@@ -357,7 +357,7 @@ async def build_seguimiento_context(
         "title": f"Reporte de Seguimiento — {project.folio}",
         "cut_off_date": cut_off_date.isoformat(),
         "window_days": window_days,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "project": {
             "id": str(project.id),
             "folio": project.folio,

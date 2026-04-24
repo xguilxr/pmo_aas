@@ -193,7 +193,7 @@ async def list_tenants_ai_status(
     ).scalars().all()
     out: list[TenantAIStatusRow] = []
     for t in rows:
-        ai = dict(((t.settings or {}).get("ai") or {}))
+        ai = dict((t.settings or {}).get("ai") or {})
         mode = str(ai.get("mode") or "disabled")
         byo = ai.get("byo") if isinstance(ai.get("byo"), dict) else None
         byo_plain = decrypt_secret((byo or {}).get("api_key_encrypted") or "")
@@ -419,5 +419,5 @@ async def ping_groq(
         return GroqPingResult(ok=True, latency_ms=latency, model=cfg["model"])
     except httpx.TimeoutException:
         return GroqPingResult(ok=False, error="Timeout al conectar con Groq")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return GroqPingResult(ok=False, error=str(exc)[:200])

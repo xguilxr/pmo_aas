@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Iterable
 from xml.etree import ElementTree as ET
 
 # Namespace común en MS Project XML

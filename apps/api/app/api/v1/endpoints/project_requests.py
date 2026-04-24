@@ -345,7 +345,6 @@ async def create_project_from_request(
     cu: CurrentUser = Depends(require_permission("admin", "create")),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.models.modules import Document
     from app.models.project import Project  # import diferido
     from app.models.project_charter import ProjectCharter
 

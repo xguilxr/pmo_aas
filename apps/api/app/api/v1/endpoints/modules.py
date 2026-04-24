@@ -2,7 +2,6 @@ from datetime import UTC, date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
-from fastapi.responses import FileResponse
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +21,6 @@ from app.models.project_area import ProjectArea
 from app.schemas.modules import (
     ChangeRequestCreate,
     ChangeRequestRead,
-    ChangeRequestUpdate,
     DocumentCreate,
     DocumentRead,
     DocumentUpdate,
@@ -32,7 +30,6 @@ from app.schemas.modules import (
     IssueUpdate,
     LessonCreate,
     LessonRead,
-    LessonUpdate,
     MeetingMinuteCreate,
     MeetingMinuteRead,
     RiskComment,
@@ -780,8 +777,9 @@ async def download_document(
     (filesystem) y con backend S3 (boto3 stream). El cliente nunca
     sabe dónde está realmente almacenado el archivo.
     """
-    from fastapi.responses import StreamingResponse
     from urllib.parse import quote
+
+    from fastapi.responses import StreamingResponse
 
     from app.services.document_storage import get_document_stream
 

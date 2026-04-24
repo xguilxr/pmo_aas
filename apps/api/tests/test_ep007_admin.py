@@ -127,7 +127,7 @@ async def test_tcmt006_audit_isolation(client, db_session):
     await client.post("/api/v1/organizations", json={"name": "OrgA"}, headers=auth_a["_authz"])
     logs_b = await client.get("/api/v1/admin/audit-logs", headers=auth_b["_authz"])
     assert logs_b.status_code == 200
-    entities = [l.get("entity_id") for l in logs_b.json()]
+    [l.get("entity_id") for l in logs_b.json()]
     # No debe contener eventos del tenant A
     actions = [l["action"] for l in logs_b.json()]
     assert "organization.create" not in actions
@@ -164,6 +164,7 @@ async def test_force_close_project(client, db_session):
 @pytest.mark.asyncio
 async def test_us023_get_tenant_info_with_stats(client, db_session):
     from decimal import Decimal
+
     from app.models.project import Project
 
     t, auth, _ = await _admin(client, db_session, slug="tenant23")

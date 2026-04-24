@@ -17,15 +17,16 @@ Si el tenant ya migró (tiene `byo.provider = "ollama"`) o está en
 modo `platform`/`byo` distinto, no se toca.
 """
 import json
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260423_0022"
-down_revision: Union[str, None] = "20260423_0021"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260423_0021"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def _load(raw) -> dict:
@@ -33,7 +34,7 @@ def _load(raw) -> dict:
         return {}
     if isinstance(raw, dict):
         return dict(raw)
-    if isinstance(raw, (bytes, bytearray)):
+    if isinstance(raw, bytes | bytearray):
         raw = raw.decode("utf-8")
     try:
         loaded = json.loads(raw)

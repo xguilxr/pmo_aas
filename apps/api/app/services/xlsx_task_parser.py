@@ -20,7 +20,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from io import BytesIO
 
-
 HEADER_ALIASES: dict[str, list[str]] = {
     "name": ["nombre", "tarea", "task name", "name", "nombre de tarea"],
     "wbs": ["wbs", "edt", "codigo", "código"],
@@ -151,7 +150,7 @@ def parse_xlsx(data: bytes) -> XlsxParseResult:
     result = XlsxParseResult()
     try:
         wb = load_workbook(BytesIO(data), data_only=True, read_only=True)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise ValueError(f"archivo XLSX inválido: {exc}") from exc
 
     ws = wb.active
@@ -209,7 +208,7 @@ def parse_xlsx(data: bytes) -> XlsxParseResult:
                 else None,
             )
             result.tasks.append(task)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append({"row": offset, "error": str(exc)})
 
     return result

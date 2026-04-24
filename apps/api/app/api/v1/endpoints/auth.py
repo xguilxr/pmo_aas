@@ -40,7 +40,8 @@ from app.services.password_reset import (
     consume_reset_token,
     issue_reset_token,
 )
-from app.services.rate_limit import check_and_increment, reset as rate_limit_reset
+from app.services.rate_limit import check_and_increment
+from app.services.rate_limit import reset as rate_limit_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

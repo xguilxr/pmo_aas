@@ -8,15 +8,16 @@ Tabla singleton con defaults de AI a nivel de plataforma. Editable solo
 por superadmin. El provider la consulta entre el override del tenant y
 las env vars para decidir base_url/model/timeout.
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260421_0017"
-down_revision: Union[str, None] = "20260421_0016"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260421_0016"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

@@ -142,7 +142,7 @@ async def get_provider_config(
     ).scalar_one_or_none()
     if t is None:
         raise not_found("Tenant")
-    ai = dict(((t.settings or {}).get("ai") or {}))
+    ai = dict((t.settings or {}).get("ai") or {})
     mode = str(ai.get("mode") or "disabled")
     if mode not in VALID_MODES:
         mode = "disabled"
@@ -287,7 +287,7 @@ async def test_provider_connection(
 
     byo_in = body.byo
     if byo_in is None:
-        ai = dict(((t.settings or {}).get("ai") or {}))
+        ai = dict((t.settings or {}).get("ai") or {})
         byo_raw = ai.get("byo") if isinstance(ai.get("byo"), dict) else None
         if not byo_raw:
             return TestConnectionResult(
@@ -436,7 +436,7 @@ async def _ping_byo_provider(
         return TestConnectionResult(
             ok=False, error="Timeout al conectar", code="TIMEOUT",
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return TestConnectionResult(
             ok=False, error=str(exc)[:200], code="UNKNOWN",
         )

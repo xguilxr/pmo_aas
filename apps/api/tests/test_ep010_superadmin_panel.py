@@ -15,7 +15,7 @@ async def _make_super(client, db_session):
 # TC-140 KPIs exactos
 @pytest.mark.asyncio
 async def test_tc140_platform_dashboard_kpis(client, db_session):
-    t1 = await create_tenant(db_session, slug="t1", name="T1")
+    await create_tenant(db_session, slug="t1", name="T1")
     t2 = await create_tenant(db_session, slug="t2", name="T2")
     t2.is_active = False
     await db_session.commit()
@@ -132,8 +132,9 @@ import pytest as _pytest  # noqa: E402 — evitar colisión si ya importado
 @_pytest.mark.asyncio
 async def test_us025_list_tenants_returns_full_counts(client, db_session):
     from decimal import Decimal
-    from app.models.project import Project
+
     from app.models.organization import Organization, Program
+    from app.models.project import Project
     from tests.factories import create_tenant, create_user
 
     t = await create_tenant(db_session, slug="sa25a", name="SA25a")
@@ -166,7 +167,6 @@ async def test_us025_list_tenants_returns_full_counts(client, db_session):
 @_pytest.mark.asyncio
 async def test_us025_tenant_detail_has_hierarchy(client, db_session):
     from app.models.organization import BusinessUnit, Department, Organization
-
     from tests.factories import create_tenant, create_user, login
 
     t = await create_tenant(db_session, slug="sa25b", name="SA25b")

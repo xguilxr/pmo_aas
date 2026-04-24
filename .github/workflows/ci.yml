@@ -27,6 +27,10 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # `base: main` explícito: en push a branches que no son
+          # PR (ej. claude/**), el action necesita el ref base para
+          # hacer el diff. En PR detecta automáticamente.
+          base: main
           filters: |
             api:
               - 'apps/api/**'
