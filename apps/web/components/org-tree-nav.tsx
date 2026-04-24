@@ -174,10 +174,14 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   }, []);
 
   const sectionOpen = expanded.has("__orgs__");
+  // US-075 (DEC-022): el portafolio informativo vive bajo /pmo. El
+  // CRUD de orgs (BUs/Deptos) sigue en /admin/organizations y NO
+  // marca esta sección activa — ya está en el ADMIN_NAV.
   const sectionActive =
-    pathname.startsWith("/admin/organizations") ||
-    pathname.startsWith("/admin/programs") ||
-    pathname.startsWith("/admin/projects");
+    pathname === "/pmo" ||
+    pathname.startsWith("/pmo/organizations") ||
+    pathname.startsWith("/pmo/programs") ||
+    pathname.startsWith("/pmo/projects");
 
   useEffect(() => {
     if (sectionOpen && orgs.state === "idle") {
@@ -256,7 +260,7 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   }, [expanded, orgs.state, orgs.items, maps, ensureProgramsByOrg, ensureProjects]);
 
   const isProjectActive = useMemo(
-    () => (id: string) => pathname.startsWith(`/admin/projects/${id}`),
+    () => (id: string) => pathname.startsWith(`/pmo/projects/${id}`),
     [pathname],
   );
 
@@ -271,7 +275,7 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
         hasChildren
         isOpen={sectionOpen}
         onToggle={() => toggle("__orgs__")}
-        href="/admin/organizations"
+        href="/pmo"
         onNavigate={onNavigate}
       />
       {sectionOpen ? (
@@ -295,10 +299,10 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
                   depth={1}
                   icon={<Building2 className="h-3.5 w-3.5" aria-hidden />}
                   label={org.name}
-                  href={`/admin/organizations/${org.id}`}
+                  href={`/pmo/organizations/${org.id}`}
                   active={
-                    pathname === `/admin/organizations/${org.id}` ||
-                    pathname.startsWith(`/admin/organizations/${org.id}/`)
+                    pathname === `/pmo/organizations/${org.id}` ||
+                    pathname.startsWith(`/pmo/organizations/${org.id}/`)
                   }
                   hasChildren
                   isOpen={orgOpen}
@@ -363,7 +367,7 @@ function ProgramsList({
               depth={depth}
               icon={<Network className="h-3.5 w-3.5" aria-hidden />}
               label={prog.name}
-              href={`/admin/programs/${prog.id}`}
+              href={`/pmo/programs/${prog.id}`}
               active={false}
               hasChildren
               isOpen={open}
@@ -387,7 +391,7 @@ function ProgramsList({
                     depth={depth + 1}
                     icon={<FolderKanban className="h-3.5 w-3.5" aria-hidden />}
                     label={p.name}
-                    href={`/admin/projects/${p.id}`}
+                    href={`/pmo/projects/${p.id}`}
                     active={isProjectActive(p.id)}
                     hasChildren={false}
                     isOpen={false}

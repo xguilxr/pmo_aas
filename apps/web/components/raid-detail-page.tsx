@@ -23,8 +23,8 @@ import { cn } from "@/lib/cn";
  * US-065 — página dedicada de un ítem RAID.
  *
  * Se usa en dos rutas:
- * - `/admin/projects/[id]/raid/[raidId]` (scope proyecto).
- * - `/admin/raid/[type]/[raidId]` (vista cross-tenant).
+ * - `/pmo/projects/[id]/raid/[raidId]` (scope proyecto).
+ * - `/pmo/raid/[type]/[raidId]` (vista cross-tenant).
  *
  * Diferencia: el breadcrumb superior. El resto del layout es idéntico
  * (header + metadata + descripción + panel editable + historial).
@@ -229,7 +229,7 @@ export function RaidDetailPage({
             label="Proyecto"
             value={
               <Link
-                href={`/admin/projects/${item.project_id}`}
+                href={`/pmo/projects/${item.project_id}`}
                 className="font-mono text-[12px] text-[var(--color-accent)] hover:underline"
               >
                 {item.project_id.slice(0, 8)}…

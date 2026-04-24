@@ -147,7 +147,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/admin/projects?organization_id=${orgId}`}>
+          <Link href={`/pmo/projects?organization_id=${orgId}`}>
             <Button variant="secondary" size="sm">
               <ExternalLink className="h-4 w-4" aria-hidden />
               Ver proyectos

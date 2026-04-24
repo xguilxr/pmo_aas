@@ -65,11 +65,11 @@ export function ModuleShell<T extends { id: string; folio: string }>({
     <div className="mx-auto max-w-6xl space-y-5">
       <header className="space-y-2">
         <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/admin/projects" className="hover:underline">
+          <Link href="/pmo/projects" className="hover:underline">
             Proyectos
           </Link>
           <span className="mx-1">/</span>
-          <Link href={`/admin/projects/${projectId}`} className="hover:underline">
+          <Link href={`/pmo/projects/${projectId}`} className="hover:underline">
             Detalle
           </Link>
           <span className="mx-1">/</span>

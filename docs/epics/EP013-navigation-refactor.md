@@ -6,7 +6,7 @@
 | **Prioridad** | Alta — bloque 9 del sprint (antes de POST-MVP) |
 | **Dependencias** | EP001, EP002, EP005, EP006, EP007, EP010 completos |
 | **Módulo** | `web.nav`, `admin`, `projects.detail`, `superadmin` |
-| **Estado** | Sprint 5 (v1.4) — US-075 activa |
+| **Estado** | Sprint 5 (v1.4) — US-075 sub-bloques A+C fix-committed; B pendiente |
 | **Versión objetivo** | v1.4 |
 | **Issues** | [#17 origen](https://github.com/xguilxr/pmo_aas/issues/17), [#128 US-075 TO-BE](https://github.com/xguilxr/pmo_aas/issues/128) |
 
@@ -38,6 +38,38 @@ prefijo URL. No bloquea DEC-022; se abre ADR separado.
 
 **Blast radius alto:** ~30 page.tsx movidos + ~50 `<Link>` + backend
 perms + docs. ETA 5-7 días. Owner puede partir en sub-US si conviene.
+
+### Estado de ejecución (2026-04-24)
+
+**Sub-bloque A — Mover rutas + redirects** ✅ fix-committed
+- 7 directorios movidos via `git mv` (preserva historial git).
+- 137 referencias en 40 archivos sustituidas masivamente con `sed`.
+- 11 redirects 301 agregados a `apps/web/next.config.js` (incluye
+  `:path*` para sub-rutas y entradas literales para los listados).
+
+**Sub-bloque C — Sidebar + permisos** ✅ fix-committed
+- Item "PMO" standalone retirado del `TOP_NAV` (eliminado el
+  duplicado vs el header del `OrgTreeNav`).
+- `OrgTreeNav` header `PMO` ahora apunta a `/pmo` (antes
+  `/admin/organizations`); cada org node apunta a
+  `/pmo/organizations/${id}` (vista informativa, no editor).
+- `app-shell` separa visibility:
+  - `OrgTreeNav` visible a cualquier user del tenant
+    (`!user.is_superadmin`).
+  - `ADMIN_NAV` visible solo si `role_type === "admin"`
+    (antes era a cualquier no-superadmin — bug de scope).
+- Permisos backend ya estaban alineados (verificado via inspect):
+  `require_permission("organizations|projects", "read")` ya admite
+  user/viewer en sus mappings estáticos (DEC-020). No requirió cambios
+  en endpoints.
+
+**Sub-bloque B — Páginas informativas** ⏳ pendiente próxima sesión
+- `/pmo/programs/page.tsx` listado de programas como cards informativos
+  (mismo placeholder que el `/admin/programs/page.tsx` actual hereda).
+- `/pmo/programs/[id]/page.tsx` informativa con KPIs (hoy es informativa
+  básica de US-034; se va a extender).
+- `/pmo/organizations/[id]/page.tsx` extender con KPIs y lista de
+  proyectos (US-068 dejó la base; falta consolidar).
 
 ## Objetivo de negocio
 
