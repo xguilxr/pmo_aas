@@ -27,8 +27,16 @@ US-066 (#113) ✅ 2026-04-24:
   Queda en status:fix-committed esperando verificación
   end-to-end (upload → redeploy → download).
 
-Próximo item: Bloque 2 — BUG-028 (#104) charter PDF real
-(desbloqueado ahora que storage S3 está operativo).
+US-064 (#111) ✅ 2026-04-24:
+- RAID con área obligatoria + ordering por área + filtro.
+- Migración 0024, schemas, endpoints, frontend, 6 tests.
+- 287 tests backend pasan. ✅ 798c89f → status:fix-committed.
+
+Próximo item del Bloque 2: US-065 (#112) página dedicada.
+BUG-028 (#104) bloqueado por scope ambiguo + status:triage
+(owner decide entre scope "simple" del body vs scope "real"
+del reshuffle del SPRINT.md). US-068 (#116) también en
+status:triage.
 ```
 
 ---
@@ -52,17 +60,17 @@ Próximo item: Bloque 2 — BUG-028 (#104) charter PDF real
 > Todos los items entregados; pendiente verificación del owner para
 > mover los issues a `closed`.
 
-### Bloque 2 — RAID robusto + fix completo charter (4 items)
+### Bloque 2 — RAID robusto + fix completo charter (3 items)
 
-> US-066 (storage R2) ya desbloqueado: config lista + código en
-> `e0f9c2e`. BUG-028 arranca el bloque.
+> US-066 (storage R2) + US-064 (RAID área) cerrados. Pendientes:
+> BUG-028 sigue bloqueado por scope ambiguo + status:triage;
+> US-065 ya status:ready; US-068 en triage.
 
 | # | ID | Epic | Título |
 |---|---|---|---|
 | 1 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud — #104 |
-| 2 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
-| 3 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
-| 4 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
+| 2 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
+| 3 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
 
 ### Bloque 3 — Import Project/Excel (1 item)
 
@@ -166,7 +174,7 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 - [x] US-066 — Uploads: object storage S3-compatible (Cloudflare R2) + runbook — #113 ✅ e0f9c2e (runbook ca5dd0c)
 - [ ] BUG-028 — Charter vacío: generar PDF real al aprobar solicitud — #104
-- [x] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento — #111 ✅ PENDING_SHA
+- [x] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento — #111 ✅ 798c89f
 - [ ] US-065 — RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112
 - [ ] US-068 — Página PMO de organización (paneles programas + proyectos, separada de admin) — #116
 
