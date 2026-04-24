@@ -216,9 +216,9 @@ async def charter_printable(
         v = "" if value is None else str(value)
         return (
             "<tr>"
-            f"<th style='text-align:left;padding:6px 10px;background:#f4f6fa;"
+            "<th style='text-align:left;padding:6px 10px;background:#f4f6fa;"
             "font-weight:600;width:220px'>" + label + "</th>"
-            f"<td style='padding:6px 10px;border-bottom:1px solid #e6e8ef'>"
+            "<td style='padding:6px 10px;border-bottom:1px solid #e6e8ef'>"
             + v
             + "</td></tr>"
         )

@@ -9,15 +9,16 @@ guarda SHA-256 del token (`token_hash`); el plaintext vive únicamente
 en el email enviado. Tokens de un solo uso (`used_at`), con TTL corto
 (default 30 min — el backend fija `expires_at`).
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260424_0023"
-down_revision: Union[str, None] = "20260423_0022"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260423_0022"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

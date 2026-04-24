@@ -467,7 +467,7 @@ async def generate_with_cascade(
                     prompt, system=system, override=tenant_ollama_config,
                 )
             return await prov.generate(prompt, system=system)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_err = exc
             next_name = cascade[idx + 1] if idx + 1 < len(cascade) else None
             # Mensaje con razón visible en logs estándar; extras para el

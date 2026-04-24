@@ -235,7 +235,7 @@ async def charts(
             .group_by(Project.phase)
         )
     ).all()
-    projects_by_phase = {phase: cnt for phase, cnt in rows}
+    projects_by_phase = dict(rows)
 
     rows = (
         await db.execute(
@@ -262,7 +262,7 @@ async def charts(
             .group_by(Project.health_status)
         )
     ).all()
-    portfolio_health = {status: cnt for status, cnt in rows}
+    portfolio_health = dict(rows)
 
     return {
         "projects_by_phase": projects_by_phase,

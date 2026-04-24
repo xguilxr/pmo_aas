@@ -89,7 +89,7 @@ async def test_tc_us054_03_regular_admin_forbidden(client, db_session):
 # TC-US054-04 — resolve_ollama_config: tenant gana sobre platform.
 @pytest.mark.asyncio
 async def test_tc_us054_04_tenant_override_wins(db_session):
-    from app.models.platform_settings import PlatformAISettings, PLATFORM_SETTINGS_ID
+    from app.models.platform_settings import PLATFORM_SETTINGS_ID, PlatformAISettings
     from app.services.ai.platform_config import resolve_ollama_config
 
     row = await db_session.get(PlatformAISettings, PLATFORM_SETTINGS_ID)
@@ -116,7 +116,7 @@ async def test_tc_us054_04_tenant_override_wins(db_session):
 # TC-US054-05 — resolve_ollama_config: platform gana sobre env cuando no hay tenant.
 @pytest.mark.asyncio
 async def test_tc_us054_05_platform_beats_env(db_session):
-    from app.models.platform_settings import PlatformAISettings, PLATFORM_SETTINGS_ID
+    from app.models.platform_settings import PLATFORM_SETTINGS_ID, PlatformAISettings
     from app.services.ai.platform_config import resolve_ollama_config
 
     row = await db_session.get(PlatformAISettings, PLATFORM_SETTINGS_ID)

@@ -1,7 +1,8 @@
+from datetime import UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_permission
@@ -23,13 +24,13 @@ from app.schemas.organization import (
     OrganizationPanel,
     OrganizationPanelDetail,
     OrganizationPanelHealth,
+    OrganizationRead,
+    OrganizationUpdate,
     OrgPanelBusinessUnit,
     OrgPanelDepartment,
     OrgPanelProgram,
     OrgPanelProject,
     OrgPanelUser,
-    OrganizationRead,
-    OrganizationUpdate,
     ProgramCreate,
     ProgramRead,
     ProgramSummary,
@@ -873,9 +874,9 @@ async def delete_business_unit(
             code="BU_HAS_ACTIVE_DEPARTMENTS",
         )
     bu.is_active = False
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    bu.deleted_at = datetime.now(timezone.utc)
+    bu.deleted_at = datetime.now(UTC)
     if force:
         for dept_id, _ in active_depts:
             dept = (
@@ -1104,10 +1105,10 @@ async def delete_department(
             code="DEPT_HAS_ACTIVE_CHILDREN",
         )
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     dept.is_active = False
-    dept.deleted_at = datetime.now(timezone.utc)
+    dept.deleted_at = datetime.now(UTC)
     await write_audit(
         db, action="department.delete", module="organizations",
         user_id=cu.id, tenant_id=tenant_id, entity_type="department", entity_id=str(dept.id),

@@ -19,17 +19,14 @@ Cubre:
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-from unittest.mock import AsyncMock, patch
 
 from app.models.ai import AIJob
-from app.models.user import User
 from app.services.ai.provider import (
-    BYO_PROVIDERS,
     AIResult,
-    DisabledProvider,
     GroqProvider,
     generate_for_tenant,
 )
@@ -42,7 +39,6 @@ from tests.factories import (
     enable_tenant_ai,
     login,
 )
-
 
 # -----------------------------------------------------------------------------
 # Helpers comunes
@@ -377,7 +373,7 @@ async def test_us057_superadmin_tenants_status_lists_modes(client, db_session):
             "model": "claude-3-5-haiku-20241022",
         },
     )
-    sa = await create_user(
+    await create_user(
         db_session, tenant=None,
         username="sa_ai57", email="sa@ai57.example.com",
         password="Str0ng-Sa-1!", is_superadmin=True,
@@ -403,7 +399,7 @@ async def test_us057_superadmin_tenants_status_lists_modes(client, db_session):
 @pytest.mark.asyncio
 async def test_us057_superadmin_groq_usage_aggregates(client, db_session):
     t = await create_tenant(db_session, slug="gu", name="Gamma")
-    sa = await create_user(
+    await create_user(
         db_session, tenant=None,
         username="sa_gu", email="sa@gu.example.com",
         password="Str0ng-Sa-1!", is_superadmin=True,

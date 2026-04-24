@@ -1,5 +1,5 @@
 """US-040 — Formato estandarizado + export de Minuta IA."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -39,7 +39,7 @@ async def _seed_minute(db_session, tenant, *, folio="MIN-0001", project_folio="P
         folio=folio,
         title="Kick-off del proyecto Alpha",
         status="final",
-        meeting_date=datetime(2026, 4, 20, 15, 0, tzinfo=timezone.utc),
+        meeting_date=datetime(2026, 4, 20, 15, 0, tzinfo=UTC),
         participants=[
             {"name": "María López", "role": "Sponsor"},
             {"name": "Juan Pérez", "role": "PM"},
@@ -174,7 +174,7 @@ def test_us040_view_groups_actions_by_owner(db_session):
 
     class _Mini:
         title = "Test"
-        meeting_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        meeting_date = datetime(2026, 1, 1, tzinfo=UTC)
         participants = [{"name": "A"}]
         topics = [{"title": "t1"}]
         agreements = [

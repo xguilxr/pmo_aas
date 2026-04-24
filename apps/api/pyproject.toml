@@ -19,4 +19,30 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "RUF"]
-ignore = ["E501", "B008"]
+# ENH-032: relajamos reglas cosméticas o de refactor mayor para subir
+# el bar del lint job sin bloquear PRs en cambios no relacionados. Lo
+# que queda activo: errores reales (E9, F*), naming (N), import order
+# (I), modernización segura (UP). Reglas suprimidas tienen ticket
+# follow-up implícito si el owner quiere abordar cada categoría:
+# - A002: builtin shadowing (arg `id`, `type`, `format`) — pervasivo
+#   en endpoints/schemas; cambio masivo y poco valor.
+# - B904: raise from None/exc en handlers — refactor por archivo.
+# - E741: nombres `l`, `I`, `O` ambiguos — pocos lugares; bajo impacto.
+# - RUF002/003: caracteres Unicode "ambiguos" en docstrings/comentarios
+#   en español — los acentos son legítimos.
+# - RUF012: mutable class defaults sin ClassVar — Pydantic + SQLAlchemy
+#   tienen muchos casos válidos; ruido > señal.
+# - RUF017: O(n²) sums en listas chicas — perf irrelevante.
+# - UP038: `isinstance(x, (A, B))` vs `A | B` — menor.
+ignore = [
+    "E501",
+    "B008",
+    "A002",
+    "B904",
+    "E741",
+    "RUF002",
+    "RUF003",
+    "RUF012",
+    "RUF017",
+    "UP038",
+]

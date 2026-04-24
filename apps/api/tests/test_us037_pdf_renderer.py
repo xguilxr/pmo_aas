@@ -37,7 +37,6 @@ def test_us037_render_pdf_returns_valid_bytes():
 
 
 def test_us037_render_pdf_unknown_template_raises():
-    from app.core.errors import AppError
 
     with pytest.raises(Exception) as excinfo:
         render_pdf("__does_not_exist__.html", {"title": "x"})

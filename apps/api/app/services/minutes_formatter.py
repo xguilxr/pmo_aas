@@ -74,7 +74,7 @@ class MinuteView:
 def _format_meeting_date(value: Any) -> str:
     if value in (None, ""):
         return ""
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime | date):
         return value.isoformat()
     return str(value)[:25]
 
@@ -156,7 +156,6 @@ def build_view(minute: MeetingMinute, project: Project | None = None) -> MinuteV
         for k, v in sorted(buckets.items(), key=lambda kv: (kv[0] == "Sin responsable", kv[0].lower()))
     ]
 
-    meta = {}
     # Algunos campos estándar pueden venir dentro de `topics[0]` o
     # `attachments[0]` si la IA los incrusta ahí. Mejor leer directamente
     # de la minuta. Si existen, usarlos.

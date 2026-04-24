@@ -109,7 +109,6 @@ async def test_tc007_bad_password_increments_failed(client, db_session):
 # -- TC-008 inactive user ------------------------------------------
 @pytest.mark.asyncio
 async def test_tc008_inactive_user_403(client, db_session):
-    from app.models.user import User
 
     t = await create_tenant(db_session)
     u = await create_user(db_session, tenant=t, username="inact", email="i@acme.example.com",
@@ -339,6 +338,7 @@ async def test_preferences_invalid_theme(client, db_session):
 @pytest.mark.asyncio
 async def test_preferences_locale_updates_locale_column(client, db_session):
     from sqlalchemy import select
+
     from app.models.user import User
 
     t = await create_tenant(db_session)

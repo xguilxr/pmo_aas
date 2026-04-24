@@ -322,7 +322,7 @@ async def join_as_admin(
         tenant_ids=[str(t.id)],
         active_tenant_id=str(t.id),
         is_superadmin=True,
-        roles=cu.roles + ["Administrador"],
+        roles=[*cu.roles, "Administrador"],
     )
     return {"access_token": access, "active_tenant_id": str(t.id), "tenant_slug": t.slug}
 

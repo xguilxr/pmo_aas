@@ -14,8 +14,9 @@ storage común vía red. Object storage es el patrón estándar.
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import IO, Iterator
+from typing import IO
 
 from fastapi import UploadFile, status
 

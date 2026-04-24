@@ -1,8 +1,7 @@
 """ENH-011 — AI_TIMEOUT_S env driven timeout fallback for OllamaProvider."""
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 

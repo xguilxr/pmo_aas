@@ -18,8 +18,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.services.document_storage import (
-    ALLOWED_DOC_MIMES,
     _EXTENSION_FALLBACK,
+    ALLOWED_DOC_MIMES,
 )
 
 

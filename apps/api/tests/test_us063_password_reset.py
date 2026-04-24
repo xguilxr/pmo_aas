@@ -18,21 +18,18 @@ pasan en CI sin backend externo.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
 
 from app.models.auth import PasswordResetToken, RefreshToken
 from app.models.notification import Notification
-from app.models.user import User
 from app.services.password_reset import (
     _hash_token,
     consume_reset_token,
     issue_reset_token,
 )
 from tests.factories import create_tenant, create_user, login
-
 
 # -----------------------------------------------------------------------------
 # Unit — service password_reset

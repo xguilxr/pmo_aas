@@ -12,7 +12,6 @@ hablan con R2/B2 reales.
 """
 from __future__ import annotations
 
-import io
 from unittest.mock import AsyncMock, MagicMock
 
 import boto3
@@ -42,7 +41,7 @@ def s3_backend(monkeypatch):
 
     with mock_aws():
         # Crear bucket en el moto S3 virtual.
-        client = boto3.client(
+        boto3.client(
             "s3",
             endpoint_url="https://s3.example.com",
             aws_access_key_id="AKIAFAKE",
