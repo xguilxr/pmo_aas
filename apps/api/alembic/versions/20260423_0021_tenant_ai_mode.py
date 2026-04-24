@@ -18,15 +18,16 @@ Data migration:
   (data migration) lo traslada al nuevo shape BYO.
 """
 import json
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "20260423_0021"
-down_revision: Union[str, None] = "20260423_0020"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260423_0020"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -83,7 +84,7 @@ def _load_settings(raw) -> dict:
         return {}
     if isinstance(raw, dict):
         return dict(raw)
-    if isinstance(raw, (bytes, bytearray)):
+    if isinstance(raw, bytes | bytearray):
         raw = raw.decode("utf-8")
     try:
         loaded = json.loads(raw)

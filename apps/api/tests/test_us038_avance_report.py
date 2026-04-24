@@ -1,5 +1,5 @@
 """US-038 — Reporte de Avance de Proyecto (Python, BD, PDF)."""
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -94,13 +94,13 @@ async def test_us038_generate_and_pdf(client, db_session):
         Issue(
             tenant_id=str(t.id), project_id=p.id, folio="INC-1",
             title="Acción vencida", type="action", status="open",
-            priority=3, reported_at=datetime.now(timezone.utc),
+            priority=3, reported_at=datetime.now(UTC),
             committed_date=cut - timedelta(days=5),
         ),
         Issue(
             tenant_id=str(t.id), project_id=p.id, folio="INC-2",
             title="Acción resuelta", type="action", status="resolved",
-            reported_at=datetime.now(timezone.utc),
+            reported_at=datetime.now(UTC),
         ),
     ])
     # Cambio en revisión
@@ -108,7 +108,7 @@ async def test_us038_generate_and_pdf(client, db_session):
         ChangeRequest(
             tenant_id=str(t.id), project_id=p.id, folio="CHG-1",
             title="Cambio de alcance", type="scope", status="in_review",
-            requested_at=datetime.now(timezone.utc),
+            requested_at=datetime.now(UTC),
         )
     )
     await db_session.commit()

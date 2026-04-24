@@ -84,7 +84,7 @@ async def test_tc028_filter_programs_by_org(client, db_session):
 @pytest.mark.asyncio
 async def test_tc031_provision_tenant(client, db_session):
     # superadmin sin tenant
-    super_user = await create_user(
+    await create_user(
         db_session, tenant=None, username="root", email="root@pmoaas.example.com",
         password="Str0ng-Root-1!", is_superadmin=True,
     )
@@ -105,7 +105,7 @@ async def test_tc031_provision_tenant(client, db_session):
     assert body["admin_password"]
 
     # El admin nuevo puede hacer login
-    login_r = await client.post("/api/v1/auth/login", json={
+    await client.post("/api/v1/auth/login", json={
         "identifier": body.get("admin_email") or "admin@newco.example.com",
         "password": body["admin_password"],
     })
@@ -434,8 +434,8 @@ async def test_dept_update_and_rename_conflict(client, db_session):
 # TC-NEW-007: soft-delete depto con programa activo → 422
 @pytest.mark.asyncio
 async def test_tcnew007_dept_delete_with_active_program(client, db_session):
-    from app.models.organization import Program
     from app.db.base import new_uuid
+    from app.models.organization import Program
 
     t, auth = await _admin_setup(client, db_session)
     org_id = await _create_org(client, auth)

@@ -65,7 +65,7 @@ async def test_me_permissions_endpoint(client, db_session):
 
 @pytest.mark.asyncio
 async def test_user_role_type_blocks_admin_endpoints(client, db_session):
-    from app.models.role import Role, UserRole
+    from app.models.role import Role
 
     t = await create_tenant(db_session)
     # Rol ultra-permisivo legacy — pero el user tendrá role_type=user,

@@ -1,9 +1,8 @@
 """US-042 — Usuarios cross-tenant en panel super admin."""
 import pytest
-
-from app.models.audit import AuditLog
 from sqlalchemy import select
 
+from app.models.audit import AuditLog
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 

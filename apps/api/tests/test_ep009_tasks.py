@@ -4,7 +4,6 @@ import pytest
 from app.services.msproject.xml_parser import parse_ms_project_xml
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
-
 SIMPLE_MSP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <Project xmlns="http://schemas.microsoft.com/project">
   <Tasks>

@@ -34,7 +34,7 @@ def _get_client() -> redis.Redis | None:
         return None
     try:
         return redis.from_url(url, decode_responses=True, socket_timeout=2.0)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("redis init failed: %s", exc)
         return None
 
@@ -54,7 +54,7 @@ def check_and_increment(
         if count == 1:
             client.expire(key, window_sec)
         return int(count) <= max_attempts
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("rate_limit check failed key=%s: %s", key, exc)
         return True
 
@@ -68,5 +68,5 @@ def reset(key: str) -> None:
         return
     try:
         client.delete(key)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("rate_limit reset failed key=%s: %s", key, exc)

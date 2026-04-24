@@ -284,6 +284,7 @@ async def platform_health(
 # ---- EP015 US-042: Usuarios cross-tenant ----
 
 from pydantic import BaseModel, EmailStr, Field  # noqa: E402
+
 from app.core.errors import business_rule, forbidden  # noqa: E402
 
 

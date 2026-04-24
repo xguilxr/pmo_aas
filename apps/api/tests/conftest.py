@@ -15,9 +15,9 @@ os.environ.setdefault("BCRYPT_ROUNDS", "4")
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.config import settings  # noqa: E402
-from app.db.base import Base  # noqa: E402
-import app.models  # noqa: E402,F401
+import app.models  # noqa: F401
+from app.core.config import settings
+from app.db.base import Base
 
 
 @pytest_asyncio.fixture
@@ -118,10 +118,10 @@ def _stub_heavy_renderers(monkeypatch, request):
         yield
         return
 
-    def _stub_render_pdf(template_name, context):  # noqa: ARG001
+    def _stub_render_pdf(template_name, context):
         return _PDF_STUB_BYTES
 
-    def _stub_render_charter_docx(charter, project):  # noqa: ARG001
+    def _stub_render_charter_docx(charter, project):
         return _DOCX_STUB_BYTES
 
     # Parchamos los simbolos que los endpoints importan directamente
@@ -130,8 +130,8 @@ def _stub_heavy_renderers(monkeypatch, request):
     # real (_render_charter_docx). Esto evita tocar el envoltorio
     # async `generate_charter_docx` que contiene la lógica de Document
     # + storage, que sí queremos ejercitar.
-    import app.services.pdf_renderer as pdf_mod
     import app.services.charter_generator as charter_mod
+    import app.services.pdf_renderer as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "render_pdf", _stub_render_pdf)
     monkeypatch.setattr(

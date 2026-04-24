@@ -18,15 +18,16 @@ esos campos con la URL real `/api/v1/documents/{id}/download`.
 No borra los Document rows porque el UUID y la historia de auditoría
 deben preservarse.
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
+
 revision: str = "20260424_0025"
-down_revision: Union[str, None] = "20260424_0024"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260424_0024"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

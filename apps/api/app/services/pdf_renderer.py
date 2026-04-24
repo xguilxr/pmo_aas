@@ -7,7 +7,7 @@ documento PDF listo para servir como respuesta HTTP.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +40,7 @@ def render_html(template_name: str, context: dict[str, Any]) -> str:
     """Renderiza una plantilla Jinja2 a HTML string."""
     tpl = _env.get_template(template_name)
     ctx = {
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         **context,
     }
     return tpl.render(**ctx)

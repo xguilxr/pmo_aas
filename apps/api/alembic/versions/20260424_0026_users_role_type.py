@@ -21,15 +21,16 @@ compat y para que un admin pueda añadir permisos extra puntuales.
 `CurrentUser.has()` consulta primero `role_type` y sólo cae al JSON
 legacy si es NULL.
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
+
 revision: str = "20260424_0026"
-down_revision: Union[str, None] = "20260424_0025"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260424_0025"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

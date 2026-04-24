@@ -85,8 +85,8 @@ async def test_tc064_2_risk_with_area_embeds(client, db_session):
 # TC-064.3 — GET lista ordena por área ASC → legacy NULL al final
 @pytest.mark.asyncio
 async def test_tc064_3_list_orders_by_area(client, db_session):
+
     from app.models.modules import Risk
-    from sqlalchemy import select
 
     t, auth, proj_id = await _setup(client, db_session)
     a_z = await _area(client, auth, proj_id, "Zeta")

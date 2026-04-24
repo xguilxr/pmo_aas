@@ -56,7 +56,7 @@ async def load_tenant_ai(db: AsyncSession, tenant_id: UUID | str) -> TenantAICon
     if t is None:
         return TenantAIConfig(mode="disabled")
 
-    ai = dict(((t.settings or {}).get("ai") or {}))
+    ai = dict((t.settings or {}).get("ai") or {})
     mode = str(ai.get("mode") or "disabled").lower()
     if mode not in VALID_MODES:
         mode = "disabled"
