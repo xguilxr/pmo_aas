@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { BarChart3, Download, ListTree, Plus, Rows3, Trash2 } from "lucide-react";
+import {
+  BarChart3,
+  Download,
+  ListTree,
+  Plus,
+  Rows3,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +20,8 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiBase } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
 import { getProject } from "@/lib/api/projects";
 import {
   TASK_STATUS_LABEL,
@@ -163,6 +172,11 @@ function PlanInner() {
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exportingXlsx, setExportingXlsx] = useState(false);
+  // US-067: estado del import de XLSX/MPP.
+  const [importBusy, setImportBusy] = useState(false);
+  const [importStrategy, setImportStrategy] = useState<"replace" | "merge">(
+    "merge",
+  );
 
   // ENH-006: editor de tareas inline (crear + eliminar) sin depender de
   // una página extra /tasks.
@@ -261,6 +275,70 @@ function PlanInner() {
       await loadTasksAndGantt();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo eliminar la tarea");
+    }
+  }
+
+  // US-067: import de XLSX (MS Project nativo .mpp queda como follow-up
+  // por requerir Java + MPXJ en el worker). Endpoint ya soporta XML
+  // también; el file input acepta ambos formatos.
+  async function importPlanFile(file: File) {
+    if (importBusy) return;
+    const confirmed =
+      importStrategy === "replace"
+        ? window.confirm(
+            "Estrategia REPLACE: se eliminarán todas las tareas actuales del proyecto antes de importar. ¿Continuar?",
+          )
+        : true;
+    if (!confirmed) return;
+    setImportBusy(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const fd = new FormData();
+      fd.append("file", file);
+      const url = `${apiBase()}/api/v1/projects/${id}/tasks/import?strategy=${importStrategy}`;
+      const response = await fetch(url, {
+        method: "POST",
+        body: fd,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const detail = (data as { detail?: unknown }).detail;
+        throw new ApiError(
+          response.status,
+          "import_failed",
+          typeof detail === "string"
+            ? detail
+            : typeof detail === "object" && detail !== null
+              ? String(
+                  (detail as Record<string, unknown>).message ??
+                    JSON.stringify(detail),
+                )
+              : `Import falló (HTTP ${response.status})`,
+        );
+      }
+      const result = (await response.json()) as {
+        imported: number;
+        errors: Array<{ row?: number; error?: string }>;
+      };
+      if (result.errors && result.errors.length > 0) {
+        setError(
+          `Import parcial: ${result.imported} tareas importadas. ${result.errors.length} error(es) por fila.`,
+        );
+      }
+      await loadTasksAndGantt();
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "No se pudo importar el archivo",
+      );
+    } finally {
+      setImportBusy(false);
     }
   }
 
@@ -451,6 +529,40 @@ function PlanInner() {
             </h2>
           </div>
           <div className="flex items-center gap-2">
+            {/* US-067: import XLSX/XML. strategy inline para no meter un
+                modal más; MPP queda como follow-up al requerir worker Java. */}
+            <select
+              aria-label="Estrategia de import"
+              value={importStrategy}
+              onChange={(e) =>
+                setImportStrategy(e.target.value as "replace" | "merge")
+              }
+              className="h-9 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px]"
+              disabled={importBusy}
+            >
+              <option value="merge">Merge por WBS</option>
+              <option value="replace">Replace (reemplaza todo)</option>
+            </select>
+            <label
+              className={
+                "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-subtle)]" +
+                (importBusy ? " pointer-events-none opacity-60" : "")
+              }
+            >
+              <Upload className="h-4 w-4" aria-hidden />
+              {importBusy ? "Importando…" : "Importar"}
+              <input
+                type="file"
+                accept=".xlsx,.xml,.mpx,.mspdi"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void importPlanFile(f);
+                  e.target.value = "";
+                }}
+                className="sr-only"
+                disabled={importBusy}
+              />
+            </label>
             <Button
               type="button"
               size="sm"
@@ -487,7 +599,7 @@ function PlanInner() {
       </section>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tasks, loadingTasks, id, exportingXlsx, projectName],
+    [tasks, loadingTasks, id, exportingXlsx, projectName, importBusy, importStrategy],
   );
 
   const ganttBlock = useMemo(

@@ -29,3 +29,4 @@ python-docx==1.2.0
 # US-066: object storage S3-compatible (Cloudflare R2 en prod, moto
 # en tests). boto3 incluye botocore; ~12 MB en la imagen.
 boto3==1.35.49
+openpyxl==3.1.5
