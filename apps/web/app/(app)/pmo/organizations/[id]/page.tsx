@@ -67,6 +67,23 @@ export default function PmoOrganizationPage() {
     return map;
   }, [panel]);
 
+  const buCount = panel?.business_units.length ?? 0;
+  const deptCount = useMemo(
+    () =>
+      panel?.business_units.reduce((acc, bu) => acc + bu.departments.length, 0) ??
+      0,
+    [panel],
+  );
+  const programsActive = useMemo(
+    () => panel?.programs.filter((p) => p.is_active).length ?? 0,
+    [panel],
+  );
+  const projectsActive = useMemo(
+    () =>
+      panel?.projects.filter((p) => p.phase !== "closed").length ?? 0,
+    [panel],
+  );
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-4 p-6">
@@ -120,6 +137,21 @@ export default function PmoOrganizationPage() {
           Administrar →
         </Link>
       </header>
+
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="Business Units" value={buCount} />
+        <KpiCard label="Departamentos" value={deptCount} />
+        <KpiCard
+          label="Programas"
+          value={programsActive}
+          hint={`${panel.programs.length} total`}
+        />
+        <KpiCard
+          label="Proyectos"
+          value={projectsActive}
+          hint={`${panel.projects.length} total`}
+        />
+      </section>
 
       <section className="space-y-3">
         <div className="flex items-center gap-2">
@@ -190,6 +222,30 @@ export default function PmoOrganizationPage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+      <div className="text-xs text-[var(--color-tertiary)]">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
+        {value}
+      </div>
+      {hint ? (
+        <div className="mt-0.5 text-[11px] text-[var(--color-tertiary)]">
+          {hint}
+        </div>
+      ) : null}
     </div>
   );
 }
