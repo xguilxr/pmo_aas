@@ -6,6 +6,11 @@ requires-python = ">=3.12,<3.13"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# ENH-031: session-scoped event loop para que fixtures async
+# session-scoped (`_engine_session`) funcionen sin cross-loop issues.
+# Todas las fixtures y tests comparten el mismo event loop durante
+# toda la corrida de pytest.
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 pythonpath = ["."]
 markers = [

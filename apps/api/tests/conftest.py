@@ -1,4 +1,10 @@
-"""Pytest fixtures. Uses SQLite in-memory for fast tests; prod uses Postgres via Alembic."""
+"""Pytest fixtures. Uses SQLite in-memory for fast tests; prod uses Postgres via Alembic.
+
+ENH-031: engine session-scoped + tabla clean entre tests. El schema se
+crea UNA sola vez al inicio de la sesión; cada test hace DELETE de
+todas las tablas en orden reverso de dependencias (milliseconds) en
+vez de drop_all+create_all (~6s). Suite pasa de ~3min a <60s.
+"""
 import os
 from collections.abc import AsyncIterator
 
@@ -14,21 +20,43 @@ os.environ.setdefault("BCRYPT_ROUNDS", "4")
 
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401
-from app.core.config import settings
 from app.db.base import Base
 
 
-@pytest_asyncio.fixture
-async def db_engine():
-    engine = create_async_engine(settings.database_url_async, future=True)
+# ENH-031: engine session-scoped. StaticPool + connect_args
+# check_same_thread=False permiten que todas las conexiones vean la
+# misma DB SQLite in-memory. Schema se crea UNA vez al inicio de la
+# sesión de pytest y vive para todos los tests.
+@pytest_asyncio.fixture(scope="session")
+async def _engine_session():
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        future=True,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db_engine(_engine_session):
+    """Limpia las tablas antes de cada test (DELETE en orden reverso de
+    FKs). Mucho más rápido que drop/create del schema (~10ms vs ~6s).
+
+    Usa el engine session-scoped para que la DB in-memory persista
+    entre tests. El fixture mantiene el mismo nombre `db_engine` por
+    compat con los tests existentes.
+    """
+    async with _engine_session.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
+    yield _engine_session
 
 
 @pytest_asyncio.fixture
@@ -139,7 +167,7 @@ def _stub_heavy_renderers(monkeypatch, request):
     )
     # Los endpoints importan `render_pdf` directamente al módulo:
     # re-parchamos en los módulos consumidores para que el import
-    # anterior no se pierda (Python cachea el símbolo en el módulo
+    # anterior no se pierda (Python cachea el símbolo en el símbolo
     # importador).
     for consumer_path in (
         "app.api.v1.endpoints.reports",
