@@ -643,8 +643,11 @@ async def import_confirm(
     # normalizados por sus parsers propios).
     if body.mapping and source in ("xlsx", "csv"):
         if "name" not in body.mapping:
-            raise validation_error(
-                "El mapping debe incluir el campo obligatorio 'name'"
+            # 422 (no 400) — el body es válido sintácticamente, lo que
+            # falla es la regla de negocio "name es obligatorio".
+            raise business_rule(
+                "El mapping debe incluir el campo obligatorio 'name'",
+                code="MAPPING_MISSING_NAME",
             )
         columns_override = body.mapping
     else:
