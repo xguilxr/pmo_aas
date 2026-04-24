@@ -7,9 +7,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 4 v1.3 en curso.
+2026-04-24 — Sprint 4 v1.3 COMPLETO ✅ (14/14 items).
 
-Bloque 1 Sprint 4 — 8/8 items completos ✅:
+Bloque 1 — Reworks del review (8/8 ✅):
 - BUG-030 (#118) hotfix Groq metadata → 400. ✅ 8495dc8
 - BUG-015 (#40) rework botón CSV en dashboard. ✅ d3523bb
 - BUG-029 (#105) upload documentos funcional + styling. ✅ 3f6ac90
@@ -19,24 +19,24 @@ Bloque 1 Sprint 4 — 8/8 items completos ✅:
 - ENH-027 (#109) panel editable RAID compartido. ✅ 3001959
 - ENH-028 (#110) export Excel MPP-like + CSV BOM. ✅ f1db32a
 
-US-066 (#113) ✅ 2026-04-24:
-- Runbook R2 entregado. ✅ ca5dd0c
-- Código selector local|s3 + boto3 + StreamingResponse +
-  tests moto. ✅ e0f9c2e
-- Owner confirma config R2 lista (bucket + env vars Railway).
-  Queda en status:fix-committed esperando verificación
-  end-to-end (upload → redeploy → download).
+Bloque 2 — Infra + RAID robusto + charter + PMO (5/5 ✅):
+- US-066 (#113) uploads R2 + runbook. ✅ ca5dd0c + e0f9c2e
+- US-064 (#111) RAID área + ordering. ✅ 798c89f
+- BUG-028 (#104) charter .docx real en bucket. ✅ 342e2b3
+- US-065 (#112) RAID página dedicada + historial. ✅ 76277ac
+- US-068 (#116) página PMO de organización. ✅ 8f78d9b
 
-US-064 (#111) ✅ 2026-04-24:
-- RAID con área obligatoria + ordering por área + filtro.
-- Migración 0024, schemas, endpoints, frontend, 6 tests.
-- 287 tests backend pasan. ✅ 798c89f → status:fix-committed.
+Bloque 3 — Import Project/Excel (1/1 ✅):
+- US-067 (#114) import XLSX → tareas. ✅ e9ef28b
+  (MPP nativo queda como follow-up documentado).
 
-Próximo item del Bloque 2: US-065 (#112) página dedicada.
-BUG-028 (#104) bloqueado por scope ambiguo + status:triage
-(owner decide entre scope "simple" del body vs scope "real"
-del reshuffle del SPRINT.md). US-068 (#116) también en
-status:triage.
+Bloque 4 — Auth simplificada post-DEC-020 (2/2 ✅):
+- US-059 (#88) roles Admin/User/Viewer + backend gate. ✅ 13eca87
+- US-060 (#89) hook useMyPermissions + gate UI. ✅ 4fd19ca
+
+Pendiente para el owner: verificar cada fix-committed y cerrar
+los issues con `completed`. Aplicar migraciones 0024, 0025, 0026
+en Railway (`alembic upgrade head`) antes del próximo deploy.
 ```
 
 ---
@@ -53,42 +53,21 @@ status:triage.
 
 ---
 
-## ⏳ QUEUE (Sprint 4 v1.3)
+## ⏳ QUEUE
 
-### Bloque 1 (continuación) — Reworks del review ✅ COMPLETO
+**Sprint 4 v1.3 cerrado (2026-04-24) — 14/14 items en status:fix-committed.**
+Esperando verificación del owner para marcar issues como `completed`
+y arrancar el siguiente sprint.
+
+### Bloque 1 (Sprint 4) — Reworks del review ✅ COMPLETO
 
 > Todos los items entregados; pendiente verificación del owner para
 > mover los issues a `closed`.
 
-### Bloque 2 — RAID robusto + fix completo charter (3 items)
+### Sprint 5 — TBD
 
-> US-066 (storage R2) + US-064 (RAID área) cerrados. Pendientes:
-> BUG-028 sigue bloqueado por scope ambiguo + status:triage;
-> US-065 ya status:ready; US-068 en triage.
-
-| # | ID | Epic | Título |
-|---|---|---|---|
-| 1 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud — #104 |
-| 2 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
-| 3 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
-
-### Bloque 3 — Import Project/Excel (1 item)
-
-| # | ID | Epic | Título |
-|---|---|---|---|
-| 12 | US-067 | EP009 | Importar XLSX + MPP nativo → generar tareas — #114 |
-
-### Bloque 4 — Auth simplificada post-DEC-020 (2 items)
-
-> **Contexto:** DEC-020 (2026-04-24) redefine la plataforma como
-> "herramienta de apoyo y visualización", **sin aprobaciones
-> jerárquicas**. Las US-059/060 salen de v2.0 con scope reducido.
-> US-061 (#90) se cancela.
-
-| # | ID | Epic | Título |
-|---|---|---|---|
-| 13 | US-059 | EP001+EP002 | Roles simplificados: Admin / User / Viewer (reemplaza jerarquías) — #88 |
-| 14 | US-060 | EP001+EP002 | Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix BUG-025 residual) — #89 |
+Sin items todavía. El owner define el scope tras verificar todos los
+fix-committed del Sprint 4.
 
 ---
 
@@ -168,22 +147,20 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 - [x] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109 ✅ 3001959
 - [x] ENH-028 — Export tareas: Excel MPP-like + naming PLAN-{Proyecto}-{Fecha} + CSV BOM UTF-8 — #110 ✅ f1db32a
 
-### Bloque 2 — Infra + RAID robusto + PMO page (5 items)
-
-> **Orden:** US-066 → BUG-028 → US-064 → US-065 → US-068.
+### Bloque 2 — Infra + RAID robusto + charter + PMO (5 items) ✅ COMPLETO
 
 - [x] US-066 — Uploads: object storage S3-compatible (Cloudflare R2) + runbook — #113 ✅ e0f9c2e (runbook ca5dd0c)
-- [ ] BUG-028 — Charter vacío: generar PDF real al aprobar solicitud — #104
-- [x] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento — #111 ✅ 798c89f
-- [ ] US-065 — RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112
-- [ ] US-068 — Página PMO de organización (paneles programas + proyectos, separada de admin) — #116
+- [x] BUG-028 — Charter .docx real en bucket + editable desde documents — #104 ✅ 342e2b3
+- [x] US-064 — RAID: área obligatoria + responsable + fechas + ordenamiento — #111 ✅ 798c89f
+- [x] US-065 — RAID: página dedicada por ítem + historial — #112 ✅ 76277ac
+- [x] US-068 — Página PMO de organización separada de admin — #116 ✅ 8f78d9b
 
-### Bloque 3 — Import Project/Excel (1 item)
-- [ ] US-067 — Importar XLSX + MPP nativo → generar tareas (requiere Java 21 + MPXJ en worker) — #114
+### Bloque 3 — Import Project/Excel (1 item) ✅ COMPLETO
+- [x] US-067 — Import XLSX → tareas (MPP follow-up documentado) — #114 ✅ e9ef28b
 
-### Bloque 4 — Auth simplificada post-DEC-020 (2 items)
-- [ ] US-059 — Roles simplificados: Admin / User / Viewer (reemplaza jerarquías, sin aprobaciones) — #88
-- [ ] US-060 — Permisos fijos por rol + rol `Reportes` absorbido en `User` (fix residual BUG-025) — #89
+### Bloque 4 — Auth simplificada post-DEC-020 (2 items) ✅ COMPLETO
+- [x] US-059 — Roles Admin/User/Viewer + backend gate — #88 ✅ 13eca87
+- [x] US-060 — Hook useMyPermissions + gate UI — #89 ✅ 4fd19ca
 
 ---
 
