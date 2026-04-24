@@ -25,21 +25,18 @@ import asyncio
 import contextvars
 from collections.abc import AsyncIterator, Coroutine
 from contextlib import asynccontextmanager
-from typing import TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
-T = TypeVar("T")
-
 _task_sessionmaker_var: contextvars.ContextVar = contextvars.ContextVar(
     "pmoaas_task_sessionmaker",
 )
 
 
-def run_async(coro: Coroutine[object, object, T]) -> T:
+def run_async[T](coro: Coroutine[object, object, T]) -> T:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     engine = create_async_engine(

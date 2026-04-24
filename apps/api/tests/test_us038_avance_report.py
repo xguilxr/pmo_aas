@@ -224,8 +224,8 @@ async def test_enh014_avance_preview_inline_disposition(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us038_cross_tenant_404(client, db_session):
-    t_a, auth_a = await _admin(client, db_session, slug="avance-ta")
-    t_b, auth_b = await _admin(client, db_session, slug="avance-tb")
+    t_a, _auth_a = await _admin(client, db_session, slug="avance-ta")
+    _t_b, auth_b = await _admin(client, db_session, slug="avance-tb")
     p = await _seed_project(db_session, t_a, folio="P-AAA")
     r = await client.post(
         f"/api/v1/projects/{p.id}/reports/avance",
@@ -236,7 +236,7 @@ async def test_us038_cross_tenant_404(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us038_non_admin_cannot_generate(client, db_session):
-    t, auth = await _admin(client, db_session, slug="avance-d")
+    t, _auth = await _admin(client, db_session, slug="avance-d")
     p = await _seed_project(db_session, t, folio="P-0004")
     # user sin projects:update
     await create_user(

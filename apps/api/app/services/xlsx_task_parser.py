@@ -130,7 +130,7 @@ def _coerce_progress(v: object) -> int:
         return 0
     if 0 <= n <= 1.0 and "." in s:
         n = n * 100
-    return max(0, min(100, int(round(n))))
+    return max(0, min(100, round(n)))
 
 
 def _coerce_bool(v: object) -> bool:

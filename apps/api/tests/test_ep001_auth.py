@@ -8,7 +8,7 @@ from tests.factories import create_admin_role, create_tenant, create_user, login
 # -- TC-001 unit: password policy ---------------------------------
 def test_tc001_password_policy_rejects_weak():
     for bad in ["password123", "Aa1!", "Short1!", "nouppercase1!aa", "NOLOWER123!AA"]:
-        ok, err = validate_password_policy(bad)
+        ok, _err = validate_password_policy(bad)
         if bad in ("password123",):
             assert not ok
         # at least one of the bad samples must fail

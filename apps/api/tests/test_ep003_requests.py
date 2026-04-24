@@ -123,7 +123,7 @@ async def test_tc051_needs_info_resubmit(client, db_session):
 # TC-052 create project from approved
 @pytest.mark.asyncio
 async def test_tc052_create_project_from_request(client, db_session):
-    t, auth, org_id = await _setup(client, db_session)
+    _t, auth, org_id = await _setup(client, db_session)
     r = await client.post("/api/v1/project-requests", json=_request_body(org_id), headers=auth["_authz"])
     req_id = r.json()["id"]
     await client.post(

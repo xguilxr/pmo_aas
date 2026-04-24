@@ -68,7 +68,7 @@ async def test_tc113_generate_minute_dispatches(client, db_session, monkeypatch)
 
     monkeypatch.setattr(ai_tasks.generate_minute_task, "delay", fake_delay)
 
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     r = await client.post(
         "/api/v1/ai/minutes",
         json={
@@ -92,7 +92,7 @@ async def test_tc113_generate_minute_dispatches(client, db_session, monkeypatch)
 # TC-116 transcript > 5 MB → 413
 @pytest.mark.asyncio
 async def test_tc116_transcript_too_large(client, db_session):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     huge = "a" * (5 * 1024 * 1024 + 1)
     r = await client.post(
         "/api/v1/ai/minutes",
@@ -161,7 +161,7 @@ async def _draft_and_run(client, auth, proj_id, monkeypatch):
 # TC-118 send sin recipients
 @pytest.mark.asyncio
 async def test_tc118_send_empty_recipients(client, db_session, monkeypatch):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     rep_id = await _draft_and_run(client, auth, proj_id, monkeypatch)
     r = await client.post(
         f"/api/v1/ai/reports/{rep_id}/send",
@@ -174,7 +174,7 @@ async def test_tc118_send_empty_recipients(client, db_session, monkeypatch):
 # TC-120 send ok
 @pytest.mark.asyncio
 async def test_tc120_send_ok(client, db_session, monkeypatch):
-    _, auth, proj_id, area_id = await _setup(client, db_session)
+    _, auth, proj_id, _area_id = await _setup(client, db_session)
     rep_id = await _draft_and_run(client, auth, proj_id, monkeypatch)
     s = await client.post(
         f"/api/v1/ai/reports/{rep_id}/send",

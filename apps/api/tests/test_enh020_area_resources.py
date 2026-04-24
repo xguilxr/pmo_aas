@@ -212,7 +212,7 @@ async def test_us062_area_leader_cross_tenant_rejected(client, db_session):
 
 @pytest.mark.asyncio
 async def test_enh020_cross_tenant_resource_404(client, db_session):
-    t_a, _, auth_a = await _admin(client, db_session, slug="rsc-cross-a")
+    t_a, _, _auth_a = await _admin(client, db_session, slug="rsc-cross-a")
     _, _u_b, auth_b = await _admin(client, db_session, slug="rsc-cross-b")
     _p, area = await _project_with_area(db_session, t_a, folio="P-A17")
 
