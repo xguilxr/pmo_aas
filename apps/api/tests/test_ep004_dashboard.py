@@ -204,7 +204,7 @@ async def test_us014_charts_filtered_by_org(client, db_session):
 # ============================================================================
 
 
-async def _pm_role(db_session, tenant) -> "Role":
+async def _pm_role(db_session, tenant):
     from app.models.role import Role
     r = Role(
         tenant_id=tenant.id,
