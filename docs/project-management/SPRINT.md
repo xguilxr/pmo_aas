@@ -9,26 +9,22 @@
 ```
 2026-04-24 — Sprint 4 v1.3 en curso.
 
-Bloque 1 Sprint 4 — 2/8 items completos:
+Bloque 1 Sprint 4 — 7/8 items completos:
 - BUG-030 (#118) hotfix Groq metadata → 400. ✅ 8495dc8
 - BUG-015 (#40) rework botón CSV en dashboard. ✅ d3523bb
 - BUG-029 (#105) upload documentos funcional + styling. ✅ 3f6ac90
+- ENH-024 (#106) reporte filename CORS. ✅ 33c043c
+- ENH-025 (#107) filtros RAID en una línea. ✅ ca9dc1d
+- ENH-026 (#108) consolidar Gestión Avanzada RAID. ✅ 8d69623
+- ENH-027 (#109) panel editable RAID compartido. ✅ 3001959
 
-Reshuffle 2 (2026-04-24, tras revisión de runbooks Railway):
-- US-066 (#113) PROMOVIDA a prioridad inmediata (antes de
-  terminar Bloque 1). Owner reporta que los docs de Railway
-  Volume están incorrectos — Railway NO permite compartir
-  volumes entre servicios. Sin US-066 los uploads se pierden
-  en cada redeploy, bloquea el resto del testing de features.
-- Nueva estrategia: object storage S3-compatible (Cloudflare R2).
-- Runbook completo entregado en docs/runbooks/infra/uploads-
-  storage.md + SETUP.md y DEPLOYMENT.md corregidos.
-- Bloque 1 restante (ENH-003, 024, 025, 026, 027, 028) espera
-  tras US-066.
+Pendiente Bloque 1: ENH-028 (#110) export Excel MPP-like.
 
-Próximo item: US-066 (#113). Owner ejecuta el runbook §2-§5
-(bucket R2 + env vars + smoke test) y agrega status:ready al
-issue. Luego Claude implementa el refactor de código.
+US-066 (#113): código entregado en e0f9c2e. Bloqueado
+esperando que el owner termine la config R2 + redeploy +
+verificación end-to-end (luego marca status:fix-committed).
+
+Próximo item: ENH-028 (#110).
 ```
 
 ---
@@ -58,16 +54,11 @@ issue. Luego Claude implementa el refactor de código.
 > commit e0f9c2e. Owner termina la config R2 + redeploy →
 > verifica end-to-end → `status:fix-committed`.
 
-### Bloque 1 (continuación) — Reworks del review (6 items restantes)
+### Bloque 1 (continuación) — Reworks del review (1 item restante)
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 2 | ENH-003 | EP002 | Modal directo "Nuevo programa" en `/admin/organizations` y `/admin/programs` (sub-A) — #50 |
-| 3 | ENH-024 | EP014 | Reporte: filename correcto al descargar — #106 |
-| 4 | ENH-025 | EP006 | Filtros RAID siguen apilados (rework definitivo) — #107 |
-| 5 | ENH-026 | EP006 | Consolidar "Gestión Avanzada" en `/admin/raid` — #108 |
-| 6 | ENH-027 | EP006 | Panel editable RAID en `/admin/projects/[id]/raid` — #109 |
-| 7 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
+| 2 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
 
 ### Bloque 2 — RAID robusto + fix completo charter (4 items restantes)
 
@@ -173,7 +164,7 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 - [x] ENH-024 — Reporte: filename correcto al descargar — #106 ✅ 33c043c
 - [x] ENH-025 — Filtros RAID siguen apilados (rework definitivo horizontales) — #107 ✅ ca9dc1d
 - [x] ENH-026 — Consolidar "Panel de Gestión Avanzada" RAID en `/admin/raid` — #108 ✅ 8d69623
-- [ ] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109
+- [x] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109 ✅ 3001959
 - [ ] ENH-028 — Export tareas: Excel MPP-like + naming PLAN-{Proyecto}-{Fecha} + CSV BOM UTF-8 — #110
 
 ### Bloque 2 — Infra + RAID robusto + PMO page (5 items)
