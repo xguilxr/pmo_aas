@@ -9,8 +9,9 @@
 ```
 2026-04-24 — Sprint 5 en curso. Branch: claude/sprint-pending-tasks-YhSdj
 
-US-069 (#122) Import MPP nativo — arrancada (orden acordado con
-owner: US-069 → US-075 → US-070).
+US-069 (#122) Import MPP nativo — ✅ fix-committed (5ef2677).
+Siguiente en el orden acordado: US-075 (refactor /pmo/*) → US-070
+(wizard) — retomar en próxima sesión.
 
 PRs mergeados a main:
 - BUG-031 (#121)  PR #129
@@ -24,14 +25,20 @@ PRs mergeados a main:
 - ENH-031 (#132)  PR #141 (a5cfab1 — session engine + clean tables)
 - Docs Sprint 5   PR #137 (b6fc650)
 
+Branch activa pendiente de PR:
+- US-069 (#122) — commit 5ef2677 en
+  claude/sprint-pending-tasks-YhSdj. Esperando review + merge del owner.
+
 Pendientes siguientes sesiones (mega-US, 3-7 días cada una):
-- US-070 (#123) Wizard de mapeo de columnas — bloqueado por US-075
-  (para no reubicar el wizard después del refactor de rutas)
-- US-075 (#128) Refactor navegación /pmo/* (DEC-022)
+- US-075 (#128) Refactor navegación /pmo/* (DEC-022) — siguiente
+- US-070 (#123) Wizard de mapeo de columnas — tras US-075
 - ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests (status:triage)
 
-Pendiente owner: aplicar migraciones 0024-0027 en Railway antes del
-próximo deploy.
+Pendiente owner:
+- Aplicar migraciones 0024-0027 en Railway antes del próximo deploy.
+- Revisar PR de US-069: el Dockerfile agrega ~225 MB (JRE 21 + MPXJ).
+  Primer build en Railway va a ser 3-5 min más lento — OK en test,
+  monitorear tamaño de imagen y tiempo de cold start del worker.
 ```
 
 ---
@@ -50,7 +57,7 @@ próximo deploy.
 
 ## ⏳ QUEUE
 
-**Sprint 5 (v1.4) — 10 items en 6 bloques + 1 follow-up. 9/10 mergeados a main, 1 pendiente (US-069 en curso).**
+**Sprint 5 (v1.4) — 10 items en 6 bloques + 1 follow-up. 9/10 mergeados a main, US-069 fix-committed (PR pendiente).**
 
 ### Bloque 0 — Hotfix admin lockout (1 item) ✅ MERGEADO
 - [x] BUG-031 — Admin lockout post-US-059/060 — #121 ✅ PR #129
@@ -65,8 +72,8 @@ próximo deploy.
 - [x] US-073 — SuperAdmin: overrides permisos por tenant (DEC-021) — #126 ✅ PR #140 (migración 0027)
 - [x] US-074 — SuperAdmin: cambiar email + password — #127 ✅ PR #134
 
-### Bloque 2 — Import inteligente de planes (3 items) — 1/3 mergeado
-- [ ] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 en worker) — #122 `status:ready` 🔴 EN CURSO (mega 3-5 días)
+### Bloque 2 — Import inteligente de planes (3 items) — 2/3 fix-committed
+- [x] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 + MPXJ 13.7.0) — #122 ✅ 5ef2677 (fix-committed, esperando PR/merge)
 - [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:ready` (mega 4-6 días, arranca tras US-075)
 - [x] US-071 — Plantilla vacía descargable del plan — #124 ✅ PR #135
 
@@ -185,6 +192,24 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 ## Notas y cambios
 
+- **2026-04-24 (Sprint 5 sesión US-069):** entregada US-069 Import
+  MPP nativo (commit `5ef2677`, branch `claude/sprint-pending-tasks-YhSdj`).
+  Decisiones clave:
+  - MPXJ 13.7.0 pinned en build-stage del Dockerfile (no hay
+    `apps/worker/` separado — imagen compartida con api).
+  - Wrapper Java propio (`MpxjCli.java`) en vez de CLI de terceros
+    porque MPXJ no ships uno que emita el shape `ParsedTask`.
+  - JRE 21 headless copiado desde `eclipse-temurin:21-jre-jammy`
+    porque Debian Bookworm (base de python:3.12-slim) no trae
+    openjdk-21 en repos default.
+  - Tamaño incremental: ~225 MB (JRE 180 + MPXJ 45).
+  - Tests mockean `subprocess.run` (sin fixture binario .mpp en repo).
+  - Contrato `parse_mpp(data) -> XlsxParseResult` matchea el shape
+    del parser XLSX — reutiliza `_TaskShim` del endpoint sin
+    duplicar lógica de persistencia.
+  Orden confirmado con owner para próximas sesiones: US-075 refactor
+  `/pmo/*` → US-070 wizard (para que el wizard aterrice directo en
+  `/pmo/projects/[id]/plan`).
 - **2026-04-24 (Sprint 5 sesión ejecución):** entregados 7 items en
   ~8h (5 nuevos en sesión + BUG-031 + ENH-030 que venían). Branches
   recomendadas para mergear (orden por dependencia):
