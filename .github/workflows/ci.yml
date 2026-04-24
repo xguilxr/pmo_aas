@@ -6,7 +6,27 @@ on:
   pull_request:
 
 jobs:
-  api-tests:
+  # Gate ultra-rápido: lint como señal temprana.
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/api/requirements-dev.txt
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Install ruff
+        run: uv pip install --system ruff==0.6.9
+      - name: Ruff check
+        run: ruff check .
+
+  # Smoke de tests: excluye `@pytest.mark.heavy` para PR path rápido.
+  api-tests-smoke:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,8 +43,50 @@ jobs:
         run: uv python install 3.12
       - name: Install deps (uv)
         run: uv pip install --system -r requirements-dev.txt
-      - name: Run tests
-        run: python -m pytest -q
+      - name: Run smoke tests in parallel
+        run: python -m pytest -q -n auto -m "not heavy"
+
+  # Tests heavy (render real weasyprint/python-docx): solo en push a main.
+  api-tests-heavy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            apps/api/requirements.txt
+            apps/api/requirements-dev.txt
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Install deps (uv)
+        run: uv pip install --system -r requirements-dev.txt
+      - name: Run heavy tests
+        run: python -m pytest -q -m "heavy"
+
+  web-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - name: Install deps (pnpm)
+        run: pnpm install --frozen-lockfile
+        working-directory: .
+      - name: Typecheck
+        run: pnpm --filter @pmoaas/web exec tsc --noEmit
 
   web-build:
     runs-on: ubuntu-latest
