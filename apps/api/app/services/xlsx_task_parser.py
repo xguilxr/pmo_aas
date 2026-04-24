@@ -74,6 +74,18 @@ class XlsxParseResult:
     tasks: list[ParsedTask] = field(default_factory=list)
     errors: list[dict] = field(default_factory=list)
     columns_detected: dict[str, int] = field(default_factory=dict)
+    # US-070: hojas disponibles en el workbook. Vacío para CSV/MPP;
+    # solo el parser XLSX lo puebla. El wizard lo usa en el step 2
+    # (sheet selector) cuando hay más de una hoja.
+    sheets: list[str] = field(default_factory=list)
+    # US-070: primeras N filas crudas (incluye header) para que el
+    # wizard pueda renderizar el preview + re-mapeo de columnas antes
+    # del confirm. Cada elemento es una lista de celdas tal como vino
+    # del parser (sin coerción).
+    sample_rows: list[list[object]] = field(default_factory=list)
+    # US-070: nombre de la hoja efectivamente parseada. En Excel con
+    # varias hojas el caller puede elegir; en CSV/MPP queda None.
+    sheet_used: str | None = None
 
 
 def _norm(s: object) -> str:
@@ -138,12 +150,27 @@ def _coerce_bool(v: object) -> bool:
     return s in {"sí", "si", "yes", "true", "1", "x", "✓"}
 
 
-def parse_xlsx(data: bytes) -> XlsxParseResult:
+SAMPLE_ROW_LIMIT = 10
+
+
+def parse_xlsx(
+    data: bytes,
+    sheet: str | None = None,
+    columns_override: dict[str, int] | None = None,
+    strict: bool = True,
+) -> XlsxParseResult:
     """Parsea XLSX en-memoria y devuelve ParsedTask + errors.
 
-    Usa la primera hoja del workbook. La primera fila debe contener
-    los headers; cualquier fila con name vacío se ignora (en vez de
-    error) para tolerar filas de separador / resumen en blanco.
+    US-070: acepta `sheet` opcional para elegir hoja específica,
+    `columns_override` para mapeo manual (reemplaza totalmente la
+    auto-detección) y `strict` que controla qué pasa cuando no hay
+    columna `name`:
+
+    - `strict=True` (default): raise ValueError. Caller se rompe si
+      el archivo no tiene el header esperado.
+    - `strict=False`: devuelve `XlsxParseResult` con `tasks=[]` y
+      `sample_rows[]` poblado. Útil para el preview del wizard donde
+      el usuario va a re-mappear columnas manualmente.
     """
     from openpyxl import load_workbook
 
@@ -153,9 +180,19 @@ def parse_xlsx(data: bytes) -> XlsxParseResult:
     except Exception as exc:
         raise ValueError(f"archivo XLSX inválido: {exc}") from exc
 
-    ws = wb.active
+    result.sheets = list(wb.sheetnames)
+    if sheet is not None:
+        if sheet not in result.sheets:
+            raise ValueError(
+                f"hoja '{sheet}' no existe en el workbook (disponibles: "
+                f"{', '.join(result.sheets)})"
+            )
+        ws = wb[sheet]
+    else:
+        ws = wb.active
     if ws is None:
         raise ValueError("workbook sin hojas")
+    result.sheet_used = ws.title
 
     rows_iter = ws.iter_rows(values_only=True)
     try:
@@ -163,17 +200,43 @@ def parse_xlsx(data: bytes) -> XlsxParseResult:
     except StopIteration:
         return result
 
-    columns = _detect_headers(header_row)
+    # Sample para el wizard: header + hasta N data rows. Se guarda
+    # antes de iterar el resto para no consumir el iterator.
+    result.sample_rows.append(list(header_row))
+
+    columns = (
+        dict(columns_override)
+        if columns_override is not None
+        else _detect_headers(header_row)
+    )
     result.columns_detected = columns
     if "name" not in columns:
-        raise ValueError(
-            "No se encontró una columna 'Nombre' / 'Task Name' en la primera fila. "
-            "Asegura que la hoja tenga headers estándar en la fila 1."
-        )
+        if strict:
+            raise ValueError(
+                "Falta mapear la columna obligatoria 'Nombre'. Asegurá que la "
+                "hoja tenga headers estándar en la fila 1 o enviá un mapping "
+                "manual."
+            )
+        # Modo preview: seguimos poblando sample_rows y devolvemos el
+        # result parcial para que el wizard pueda mostrarle los headers
+        # al usuario y que mapee manualmente.
+        for row in rows_iter:
+            if row is None:
+                continue
+            if len(result.sample_rows) <= SAMPLE_ROW_LIMIT:
+                result.sample_rows.append(list(row))
+            else:
+                break
+        return result
 
     for offset, row in enumerate(rows_iter, start=2):
         if row is None:
             continue
+        # US-070: acumulá sample rows hasta el límite — antes del
+        # filtro por `name` para que el wizard pueda mostrar incluso
+        # filas que el parser actual descarta (ej. resumenes en blanco).
+        if len(result.sample_rows) <= SAMPLE_ROW_LIMIT:
+            result.sample_rows.append(list(row))
         name_cell = row[columns["name"]] if columns["name"] < len(row) else None
         name = _norm(name_cell)
         if not name:

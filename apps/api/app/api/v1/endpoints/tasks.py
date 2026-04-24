@@ -12,9 +12,17 @@ from app.db.session import get_db
 from app.models.project import Project
 from app.models.task import Task, TaskDependency
 from app.services.audit import write_audit
+from app.services.csv_task_parser import parse_csv
+from app.services.import_job_store import (
+    JOB_TTL_SECONDS,
+    create_job_id,
+    delete_preview,
+    load_preview,
+    save_preview,
+)
 from app.services.msproject.mpp_parser import parse_mpp
 from app.services.msproject.xml_parser import parse_ms_project_xml
-from app.services.xlsx_task_parser import parse_xlsx
+from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
 
 router = APIRouter(tags=["tasks"])
 
@@ -350,6 +358,394 @@ async def import_ms_project(
         "dependencies_created": dep_count,
         "errors": errors,
         "strategy": strategy,
+        "source": source_label,
+    }
+
+
+# ------------------------------------------------------------------
+# US-070 — Wizard de mapeo de columnas (preview + confirm)
+#
+# El endpoint `import_ms_project` de arriba sigue funcionando como
+# "one-shot": útil para MPP/XML que no necesitan mapeo y tests viejos
+# que lo consumen directo. El wizard nuevo para XLSX/CSV vive acá.
+#
+# Flujo:
+#   1. POST /import/preview   → parsea, guarda archivo + metadata en
+#      Redis con TTL 1h, devuelve {job_id, sheets[], sample_rows[],
+#      columns_detected{}, task_count}.
+#   2. Usuario revisa preview, eventualmente re-mappea columnas.
+#   3. POST /import/{job_id}/confirm → lee preview de Redis, re-parsea
+#      con mapping override si se envió, persiste.
+#
+# Límite de archivo para el wizard: 10 MB (vs 50 MB del endpoint viejo)
+# porque guardamos el binario en Redis codificado en base64 para poder
+# re-parsear en confirm sin persistir a disco.
+# ------------------------------------------------------------------
+
+MAX_WIZARD_FILE_MB = 10
+SYSTEM_FIELDS: list[str] = [
+    "name", "wbs", "start_date", "end_date", "duration_days",
+    "progress", "is_milestone", "predecessors", "resources",
+]
+
+
+def _detect_source(content_type: str, filename: str) -> str:
+    """Devuelve 'xlsx' | 'csv' | 'mpp' | 'xml' o lanza 415."""
+    ct = (content_type or "").lower()
+    fn = (filename or "").lower()
+    if (
+        ct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        or fn.endswith(".xlsx")
+    ):
+        return "xlsx"
+    if ct in {"text/csv", "application/csv"} or fn.endswith(".csv"):
+        return "csv"
+    if (
+        ct in {"application/vnd.ms-project", "application/x-project"}
+        or fn.endswith((".mpp", ".mpt"))
+    ):
+        return "mpp"
+    if ct in {"application/xml", "text/xml"} or fn.endswith((".xml", ".mpx", ".mspdi")):
+        return "xml"
+    from fastapi import HTTPException
+    raise HTTPException(status_code=415, detail={"code": "UNSUPPORTED_MEDIA_TYPE"})
+
+
+def _serialize_sample(rows: list[list[object]]) -> list[list[str | None]]:
+    """Convierte celdas a string (o None) para serializar a JSON sin
+    perder info. `datetime` se convierte a ISO; `None` se mantiene."""
+    out: list[list[str | None]] = []
+    for row in rows:
+        serialized: list[str | None] = []
+        for cell in row:
+            if cell is None or cell == "":
+                serialized.append(None)
+            elif isinstance(cell, (datetime, date)):
+                serialized.append(cell.isoformat())
+            else:
+                serialized.append(str(cell))
+        out.append(serialized)
+    return out
+
+
+def _parse_for_preview(
+    source: str,
+    data: bytes,
+    sheet: str | None,
+    columns_override: dict[str, int] | None = None,
+    strict: bool = True,
+) -> XlsxParseResult:
+    """Dispatch interno del parser según source. Adapta XML al shape
+    de `XlsxParseResult` para que el wizard tenga una superficie
+    uniforme. Lanza `ValueError` en errores de parseo.
+
+    `strict=False` se usa desde `/preview` para tolerar archivos con
+    headers custom (el usuario los mapea en el wizard); el `/confirm`
+    siempre usa `strict=True`.
+    """
+    if source == "xlsx":
+        return parse_xlsx(
+            data, sheet=sheet, columns_override=columns_override, strict=strict
+        )
+    if source == "csv":
+        return parse_csv(data, columns_override=columns_override, strict=strict)
+    if source == "mpp":
+        # MPP no usa mapping manual (el CLI MPXJ emite shape ya normalizado).
+        # Se respeta `columns_override` solo si el caller lo envió explícito;
+        # caso contrario el shape natural es suficiente.
+        return parse_mpp(data)
+    if source == "xml":
+        tasks_xml, errs = parse_ms_project_xml(data)
+        # Adapter: XML devuelve (ParsedTask del msproject.xml_parser, errs[]).
+        # Para homogeneizar con el shape del wizard devolvemos un
+        # `XlsxParseResult` con las tareas convertidas.
+        result = XlsxParseResult()
+        for t in tasks_xml:
+            result.tasks.append(
+                ParsedTask(
+                    row_number=int(t.external_id) if t.external_id.isdigit() else 0,
+                    name=t.name,
+                    wbs=t.wbs,
+                    start_date=t.start_date,
+                    end_date=t.end_date,
+                    duration_days=t.duration_days,
+                    progress=t.progress,
+                    is_milestone=t.is_milestone,
+                    predecessors_raw=(
+                        ",".join(d.predecessor_external_id for d in t.predecessors)
+                        or None
+                    ),
+                    resources_raw=None,
+                )
+            )
+        result.errors = [{"row": 0, "error": e} for e in errs]
+        return result
+    raise ValueError(f"source desconocido: {source}")
+
+
+@router.post("/projects/{project_id}/tasks/import/preview")
+async def import_preview(
+    project_id: UUID,
+    file: UploadFile,
+    sheet: str | None = Query(default=None),
+    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-070 step 1 — parsea el archivo, guarda en Redis y devuelve
+    metadata para renderizar el wizard.
+    """
+    import base64
+
+    from fastapi import HTTPException
+
+    tenant_id = _tenant(cu)
+    p = await _ensure_project(db, project_id, tenant_id)
+    if p.phase == "closed":
+        raise business_rule("Proyecto cerrado, no se puede importar")
+
+    filename = file.filename or ""
+    source = _detect_source(file.content_type or "", filename)
+
+    data = await file.read()
+    if not data:
+        raise business_rule("archivo vacío")
+    if len(data) > MAX_WIZARD_FILE_MB * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "code": "PAYLOAD_TOO_LARGE",
+                "max_mb": MAX_WIZARD_FILE_MB,
+                "hint": "El wizard acepta hasta 10MB. Para archivos más "
+                "grandes usá el endpoint /import directo (sin mapeo manual).",
+            },
+        )
+
+    try:
+        parse_result = _parse_for_preview(source, data, sheet=sheet, strict=False)
+    except ValueError as exc:
+        raise business_rule(f"archivo {source.upper()} inválido: {exc}")
+
+    job_id = create_job_id()
+    try:
+        save_preview(
+            job_id,
+            {
+                "file_b64": base64.b64encode(data).decode("ascii"),
+                "filename": filename,
+                "source": source,
+                "tenant_id": str(tenant_id),
+                "project_id": str(project_id),
+                "user_id": str(cu.id),
+                "sheet": sheet,
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "PREVIEW_STORE_UNAVAILABLE", "hint": str(exc)[:200]},
+        )
+
+    await write_audit(
+        db,
+        action="tasks.import_preview",
+        module="tasks",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="project",
+        entity_id=str(p.id),
+        details={
+            "job_id": job_id,
+            "source": source,
+            "filename": filename,
+            "sheet": sheet,
+            "task_count": len(parse_result.tasks),
+            "sheets": parse_result.sheets,
+        },
+    )
+    await db.commit()
+
+    return {
+        "job_id": job_id,
+        "source": source,
+        "sheets": parse_result.sheets,
+        "sheet_used": parse_result.sheet_used,
+        "columns_detected": parse_result.columns_detected,
+        "sample_rows": _serialize_sample(parse_result.sample_rows),
+        "task_count": len(parse_result.tasks),
+        "errors": parse_result.errors,
+        "ttl_seconds": JOB_TTL_SECONDS,
+        "system_fields": SYSTEM_FIELDS,
+    }
+
+
+class ImportConfirmBody(BaseModel):
+    mapping: dict[str, int] | None = Field(
+        default=None,
+        description=(
+            "Mapeo manual de `{field_sistema: col_index}`. Si ausente, se "
+            "usa el auto-detect del preview. Solo aplica a XLSX/CSV — en "
+            "MPP/XML el shape ya está normalizado."
+        ),
+    )
+    strategy: str = Field(default="replace", pattern="^(replace|merge)$")
+
+
+@router.post("/projects/{project_id}/tasks/import/{job_id}/confirm")
+async def import_confirm(
+    project_id: UUID,
+    job_id: str,
+    body: ImportConfirmBody,
+    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-070 step 2 — lee preview de Redis, aplica mapping y persiste."""
+    import base64
+
+    from fastapi import HTTPException
+
+    tenant_id = _tenant(cu)
+    p = await _ensure_project(db, project_id, tenant_id)
+    if p.phase == "closed":
+        raise business_rule("Proyecto cerrado, no se puede importar")
+
+    preview = load_preview(job_id)
+    if preview is None:
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "code": "PREVIEW_EXPIRED",
+                "hint": f"El preview expiró (TTL {JOB_TTL_SECONDS}s). "
+                "Volvé a subir el archivo.",
+            },
+        )
+
+    # Ownership check: el preview solo puede confirmarlo el mismo
+    # usuario del mismo tenant/proyecto que lo creó.
+    if (
+        preview.get("tenant_id") != str(tenant_id)
+        or preview.get("project_id") != str(project_id)
+    ):
+        raise not_found("Preview job")
+    if preview.get("user_id") != str(cu.id):
+        raise forbidden()
+
+    try:
+        data = base64.b64decode(preview["file_b64"])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "PREVIEW_DECODE_FAILED", "hint": str(exc)[:200]},
+        )
+    source = preview["source"]
+    sheet = preview.get("sheet")
+
+    # Mapping override solo aplica a XLSX/CSV (MPP/XML ya vienen
+    # normalizados por sus parsers propios).
+    if body.mapping and source in ("xlsx", "csv"):
+        if "name" not in body.mapping:
+            raise validation_error(
+                "El mapping debe incluir el campo obligatorio 'name'"
+            )
+        columns_override = body.mapping
+    else:
+        columns_override = None
+
+    try:
+        parse_result = _parse_for_preview(
+            source, data, sheet=sheet, columns_override=columns_override
+        )
+    except ValueError as exc:
+        raise business_rule(f"archivo {source.upper()} inválido al confirmar: {exc}")
+
+    errors = list(parse_result.errors)
+
+    class _TaskShim:
+        def __init__(self, pt: ParsedTask):
+            self.external_id = pt.wbs or f"row-{pt.row_number}"
+            self.name = pt.name
+            self.wbs = pt.wbs
+            self.start_date = pt.start_date
+            self.end_date = pt.end_date
+            self.duration_days = pt.duration_days
+            self.progress = pt.progress
+            self.is_milestone = pt.is_milestone
+            self.predecessors: list = []
+
+    parsed = [_TaskShim(t) for t in parse_result.tasks]
+
+    if body.strategy == "replace":
+        await db.execute(
+            delete(TaskDependency).where(
+                TaskDependency.predecessor_id.in_(
+                    select(Task.id).where(Task.project_id == p.id)
+                )
+            )
+        )
+        await db.execute(delete(Task).where(Task.project_id == p.id))
+
+    source_label = source if source != "xml" else "msproject"
+    created: dict[str, Task] = {}
+    for pt in parsed:
+        existing = None
+        if body.strategy == "merge":
+            existing = (
+                await db.execute(
+                    select(Task).where(
+                        Task.project_id == p.id, Task.external_id == pt.external_id
+                    )
+                )
+            ).scalar_one_or_none()
+        if existing is not None:
+            existing.name = pt.name
+            existing.wbs = pt.wbs
+            existing.start_date = pt.start_date
+            existing.end_date = pt.end_date
+            existing.duration_days = pt.duration_days
+            existing.progress = pt.progress
+            existing.is_milestone = pt.is_milestone
+            existing.source = source_label
+            created[pt.external_id] = existing
+        else:
+            t = Task(
+                tenant_id=str(tenant_id), project_id=str(p.id),
+                name=pt.name, wbs=pt.wbs,
+                start_date=pt.start_date, end_date=pt.end_date,
+                duration_days=pt.duration_days, progress=pt.progress,
+                is_milestone=pt.is_milestone, status="not_started",
+                source=source_label, external_id=pt.external_id,
+                imported_at=datetime.now(UTC),
+            )
+            db.add(t)
+            await db.flush()
+            created[pt.external_id] = t
+
+    # Cleanup Redis post-commit exitoso.
+    delete_preview(job_id)
+
+    await write_audit(
+        db,
+        action="tasks.import_confirm",
+        module="tasks",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="project",
+        entity_id=str(p.id),
+        details={
+            "job_id": job_id,
+            "source": source,
+            "strategy": body.strategy,
+            "count": len(parsed),
+            "mapping_override": bool(body.mapping),
+            "errors": errors,
+        },
+    )
+    await db.commit()
+
+    return {
+        "imported": len(parsed),
+        "dependencies_created": 0,
+        "errors": errors,
+        "strategy": body.strategy,
         "source": source_label,
     }
 

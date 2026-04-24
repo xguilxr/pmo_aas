@@ -122,6 +122,32 @@ mapping manual → confirm. Parte `/tasks/import` en `/preview` +
 Issue **#123**. Cierra el preview/confirm de US-047 que nunca se
 implementó.
 
+**Estado (2026-04-24):** sub-bloque A (backend) fix-committed.
+
+- `app/services/import_job_store.py` — Redis set/get/delete con TTL
+  1h (`JOB_TTL_SECONDS = 3600`). Key `import:job:{uuid}`. Fail-loud.
+- `app/services/csv_task_parser.py` — detecta delimitador `,`/`;`/`\t`
+  con `csv.Sniffer` + BOM UTF-8/16. Shape = `XlsxParseResult`.
+- `xlsx_task_parser` extendido: `sheets[]`, `sheet_used`,
+  `sample_rows[]` (10 filas para el preview), `sheet` param,
+  `columns_override` param (mapping manual), `strict` flag.
+- Endpoints nuevos en `endpoints/tasks.py`:
+  - `POST /projects/{id}/tasks/import/preview` — multipart, límite
+    10MB (vs 50MB del endpoint viejo por el storage Redis), guarda
+    el binario base64 + metadata. Devuelve `job_id, source, sheets,
+    sheet_used, columns_detected, sample_rows, task_count, errors,
+    ttl_seconds, system_fields`.
+  - `POST /projects/{id}/tasks/import/{job_id}/confirm` — body con
+    `mapping` opcional (solo xlsx/csv) y `strategy` (merge/replace).
+    Ownership enforced: distinto user/tenant/project → 404/403.
+    Preview expirado → 410. Mapping sin `name` → 422.
+- Audit logs nuevos: `tasks.import_preview` y `tasks.import_confirm`.
+- Endpoint one-shot `POST /tasks/import` mantiene funcionalidad para
+  tests viejos y uploads que no necesiten wizard.
+
+Sub-bloque B (frontend `import-wizard.tsx` + consumo del nuevo flujo
+en `/pmo/projects/[id]/plan`) queda para próxima sesión.
+
 ---
 
 ## US-049 — Visualizar Gantt
