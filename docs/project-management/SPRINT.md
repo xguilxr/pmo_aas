@@ -19,14 +19,16 @@ Bloque 1 Sprint 4 — 8/8 items completos ✅:
 - ENH-027 (#109) panel editable RAID compartido. ✅ 3001959
 - ENH-028 (#110) export Excel MPP-like + CSV BOM. ✅ f1db32a
 
-US-066 (#113): código entregado en e0f9c2e. Bloqueado
-esperando que el owner termine la config R2 + redeploy +
-verificación end-to-end (luego marca status:fix-committed).
+US-066 (#113) ✅ 2026-04-24:
+- Runbook R2 entregado. ✅ ca5dd0c
+- Código selector local|s3 + boto3 + StreamingResponse +
+  tests moto. ✅ e0f9c2e
+- Owner confirma config R2 lista (bucket + env vars Railway).
+  Queda en status:fix-committed esperando verificación
+  end-to-end (upload → redeploy → download).
 
-Próximo item: BUG-028 (#104) en Bloque 2, pero requiere
-US-066 + BUG-029 (charter real necesita storage + upload).
-Owner decide si seguimos con US-064/065/068 mientras tanto
-o esperamos a desbloquear US-066.
+Próximo item: Bloque 2 — BUG-028 (#104) charter PDF real
+(desbloqueado ahora que storage S3 está operativo).
 ```
 
 ---
@@ -45,32 +47,22 @@ o esperamos a desbloquear US-066.
 
 ## ⏳ QUEUE (Sprint 4 v1.3)
 
-### 🔥 Priority immediate — US-066 (promovida del Bloque 2)
-
-| # | ID | Epic | Título |
-|---|---|---|---|
-| 1 | **US-066** | EP007 | **Uploads: object storage S3-compatible (Cloudflare R2) + runbook + código** — #113 |
-
-> Runbook entregado en commit ca5dd0c. Código (boto3 + selector
-> backend + StreamingResponse + tests con moto) entregado en
-> commit e0f9c2e. Owner termina la config R2 + redeploy →
-> verifica end-to-end → `status:fix-committed`.
-
 ### Bloque 1 (continuación) — Reworks del review ✅ COMPLETO
 
 > Todos los items entregados; pendiente verificación del owner para
 > mover los issues a `closed`.
 
-### Bloque 2 — RAID robusto + fix completo charter (4 items restantes)
+### Bloque 2 — RAID robusto + fix completo charter (4 items)
 
-> **Orden obligatorio:** US-066 primero (ya promovida arriba), luego BUG-028 (charter real usa storage).
+> US-066 (storage R2) ya desbloqueado: config lista + código en
+> `e0f9c2e`. BUG-028 arranca el bloque.
 
 | # | ID | Epic | Título |
 |---|---|---|---|
-| 8 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud (depende US-066+BUG-029) — #104 |
-| 9 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
-| 10 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
-| 11 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
+| 1 | BUG-028 | EP003 | Charter vacío: generar PDF real al aprobar solicitud — #104 |
+| 2 | US-064 | EP006 | RAID: área + responsable + fechas + ordenamiento — #111 |
+| 3 | US-065 | EP006 | RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112 |
+| 4 | US-068 | EP002 | Página PMO de organización (paneles programas + proyectos, separada de admin) — #116 |
 
 ### Bloque 3 — Import Project/Excel (1 item)
 
@@ -172,7 +164,7 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 > **Orden:** US-066 → BUG-028 → US-064 → US-065 → US-068.
 
-- [ ] US-066 — Uploads: Railway persistent volume + runbook — #113
+- [x] US-066 — Uploads: object storage S3-compatible (Cloudflare R2) + runbook — #113 ✅ e0f9c2e (runbook ca5dd0c)
 - [ ] BUG-028 — Charter vacío: generar PDF real al aprobar solicitud — #104
 - [ ] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento — #111
 - [ ] US-065 — RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112
