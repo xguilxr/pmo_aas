@@ -5,11 +5,47 @@ on:
     branches: [main, "claude/**"]
   pull_request:
 
+# ENH-033: cancelar runs previos del mismo PR/branch al pushear.
+# En main no cancelamos (queremos historial completo post-merge).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  # Gate ultra-rápido: lint como señal temprana. Solo errores reales
-  # (sintaxis / imports indefinidos), no nits de estilo — la suite tiene
-  # backlog cosmético que se limpia como follow-up.
+  # ENH-033: job inicial que detecta qué paths cambiaron. Los demás
+  # jobs usan sus outputs para saber si deben correr. Así un PR de
+  # solo-frontend salta los jobs de api y viceversa, sin renunciar
+  # a que un PR mixto corra todo.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - '.github/workflows/**'
+            web:
+              - 'apps/web/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - '.github/workflows/**'
+            workflows:
+              - '.github/workflows/**'
+
+  # ENH-032: gate completo de ruff. Reglas seleccionadas en
+  # apps/api/pyproject.toml (E,F,I,N,UP,B,A,C4,RUF) con `ignore`
+  # documentado de las que se relajan post-cleanup masivo.
   lint:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,11 +59,13 @@ jobs:
           cache-dependency-path: apps/api/requirements-dev.txt
       - name: Install ruff
         run: pip install ruff==0.6.9
-      - name: Ruff (errors only — E9/F63/F7/F82)
-        run: ruff check --select=E9,F63,F7,F82 .
+      - name: Ruff check
+        run: ruff check .
 
   # Smoke de tests: excluye `@pytest.mark.heavy` para PR path rápido.
   api-tests-smoke:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,8 +86,9 @@ jobs:
 
   # Tests heavy (render real weasyprint/python-docx): solo en push a main.
   api-tests-heavy:
+    needs: changes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: apps/api
@@ -68,6 +107,8 @@ jobs:
         run: python -m pytest -q -m "heavy"
 
   web-typecheck:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -88,6 +129,8 @@ jobs:
         run: pnpm --filter @pmoaas/web exec tsc --noEmit
 
   web-build:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
