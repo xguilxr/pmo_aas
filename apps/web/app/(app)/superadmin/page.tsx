@@ -81,6 +81,12 @@ export default function SuperadminHomePage() {
           >
             Logs
           </Link>
+          <Link
+            href="/superadmin/me"
+            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 font-medium text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
+          >
+            Mi cuenta
+          </Link>
         </div>
       </header>
 

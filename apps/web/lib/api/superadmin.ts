@@ -92,3 +92,60 @@ export function joinAsAdmin(id: string): Promise<JoinAsAdminResponse> {
     method: "POST",
   });
 }
+
+// US-072 — gestión de role_type por superadmin.
+export type SuperadminUserRow = {
+  id: string;
+  email: string;
+  username: string;
+  full_name: string | null;
+  role_type: "admin" | "user" | "viewer" | null;
+  is_active: boolean;
+  is_superadmin: boolean;
+};
+
+export function listTenantUsers(
+  tenantId: string,
+  filters: { q?: string; role_type?: string } = {},
+): Promise<SuperadminUserRow[]> {
+  return apiFetch<SuperadminUserRow[]>(
+    `/api/v1/superadmin/tenants/${tenantId}/users${qs(filters)}`,
+  );
+}
+
+export function updateUserRoleType(
+  userId: string,
+  roleType: "admin" | "user" | "viewer",
+): Promise<{ id: string; role_type: string; from?: string | null; changed: boolean }> {
+  return apiFetch(`/api/v1/superadmin/users/${userId}/role-type`, {
+    method: "PATCH",
+    body: { role_type: roleType },
+  });
+}
+
+// US-074 — superadmin self-profile.
+export type SuperadminMe = {
+  id: string;
+  email: string;
+  username: string;
+  full_name: string | null;
+  is_superadmin: boolean;
+};
+
+export type SuperadminMeUpdateBody = {
+  current_password: string;
+  email?: string;
+  full_name?: string;
+  new_password?: string;
+};
+
+export function getSuperadminMe(): Promise<SuperadminMe> {
+  return apiFetch<SuperadminMe>("/api/v1/superadmin/me");
+}
+
+export function updateSuperadminMe(body: SuperadminMeUpdateBody): Promise<SuperadminMe> {
+  return apiFetch<SuperadminMe>("/api/v1/superadmin/me", {
+    method: "PATCH",
+    body,
+  });
+}

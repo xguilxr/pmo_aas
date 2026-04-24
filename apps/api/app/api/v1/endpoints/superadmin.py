@@ -325,3 +325,238 @@ async def join_as_admin(
         roles=cu.roles + ["Administrador"],
     )
     return {"access_token": access, "active_tenant_id": str(t.id), "tenant_slug": t.slug}
+
+
+# ============================================================================
+# US-072 — SuperAdmin: gestionar role_type de usuarios de cualquier tenant
+# ============================================================================
+# Lección de BUG-031: el sistema necesita una vía explícita para que el
+# superadmin recupere/ajuste el role_type de un usuario sin caer al psql
+# directo. Endpoints expuestos solo bajo `is_superadmin=True`.
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+
+class _SuperadminUserRow(BaseModel):
+    id: str
+    email: str
+    username: str
+    full_name: str | None = None
+    role_type: str | None = None
+    is_active: bool
+    is_superadmin: bool
+
+
+class _RoleTypeUpdate(BaseModel):
+    role_type: str = Field(pattern=r"^(admin|user|viewer)$")
+
+
+@router.get(
+    "/tenants/{tenant_id}/users",
+    response_model=list[_SuperadminUserRow],
+)
+async def list_tenant_users(
+    tenant_id: UUID,
+    q: str | None = Query(default=None),
+    role_type: str | None = Query(default=None),
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-072: lista usuarios del tenant para gestión de roles."""
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        raise not_found("Tenant")
+
+    stmt = select(User).where(User.tenant_id == str(t.id))
+    if q:
+        like = f"%{q.lower()}%"
+        stmt = stmt.where(
+            (func.lower(User.email).like(like))
+            | (func.lower(User.username).like(like))
+        )
+    if role_type:
+        if role_type not in ("admin", "user", "viewer"):
+            raise validation_error("role_type debe ser admin|user|viewer")
+        stmt = stmt.where(User.role_type == role_type)
+
+    rows = (await db.execute(stmt.order_by(User.email))).scalars().all()
+    return [
+        _SuperadminUserRow(
+            id=str(u.id),
+            email=u.email,
+            username=u.username,
+            full_name=u.full_name,
+            role_type=u.role_type,
+            is_active=u.is_active,
+            is_superadmin=u.is_superadmin,
+        )
+        for u in rows
+    ]
+
+
+@router.patch("/users/{user_id}/role-type", status_code=200)
+async def update_user_role_type(
+    user_id: UUID,
+    body: _RoleTypeUpdate,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-072: superadmin actualiza role_type de un usuario.
+
+    No permite cambiar `is_superadmin` (eso es US-074 + acción manual
+    en BD). Audit log queda con from→to para trazabilidad.
+    """
+    u = (
+        await db.execute(select(User).where(User.id == str(user_id)))
+    ).scalar_one_or_none()
+    if u is None:
+        raise not_found("User")
+
+    previous = u.role_type
+    if previous == body.role_type:
+        return {
+            "id": str(u.id),
+            "role_type": u.role_type,
+            "changed": False,
+        }
+
+    u.role_type = body.role_type
+    await write_audit(
+        db,
+        action="superadmin.user_role_type_change",
+        module="superadmin",
+        user_id=cu.id,
+        tenant_id=u.tenant_id,
+        entity_type="user",
+        entity_id=str(u.id),
+        details={"from": previous, "to": body.role_type},
+    )
+    await db.commit()
+    return {
+        "id": str(u.id),
+        "role_type": u.role_type,
+        "from": previous,
+        "to": body.role_type,
+        "changed": True,
+    }
+
+
+# ============================================================================
+# US-074 — SuperAdmin: gestionar su propio email + password
+# ============================================================================
+
+from app.core.security import verify_password  # noqa: E402
+
+
+class _SuperadminMeRead(BaseModel):
+    id: str
+    email: str
+    username: str
+    full_name: str | None = None
+    is_superadmin: bool
+
+
+class _SuperadminMeUpdate(BaseModel):
+    email: str | None = None
+    full_name: str | None = None
+    new_password: str | None = None
+    current_password: str = Field(min_length=1)
+
+
+@router.get("/me", response_model=_SuperadminMeRead)
+async def superadmin_me(
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-074: perfil del superadmin actual."""
+    u = (
+        await db.execute(select(User).where(User.id == cu.id))
+    ).scalar_one()
+    return _SuperadminMeRead(
+        id=str(u.id),
+        email=u.email,
+        username=u.username,
+        full_name=u.full_name,
+        is_superadmin=u.is_superadmin,
+    )
+
+
+@router.patch("/me", response_model=_SuperadminMeRead)
+async def superadmin_me_update(
+    body: _SuperadminMeUpdate,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-074: actualiza email/full_name/password del superadmin.
+
+    Cambios sensibles (email + password) requieren `current_password`.
+    Email único globalmente — si choca con otro user devuelve 409.
+    """
+    u = (
+        await db.execute(select(User).where(User.id == cu.id))
+    ).scalar_one()
+    if not verify_password(body.current_password, u.password_hash):
+        raise forbidden("current_password incorrecto")
+
+    diff: dict = {}
+
+    if body.full_name is not None and body.full_name != u.full_name:
+        diff["full_name"] = {"from": u.full_name, "to": body.full_name}
+        u.full_name = body.full_name
+
+    if body.email is not None and body.email != u.email:
+        new_email = body.email.strip().lower()
+        # Unicidad global (cualquier tenant + cualquier user activo).
+        clash = (
+            await db.execute(
+                select(User).where(
+                    func.lower(User.email) == new_email, User.id != u.id
+                )
+            )
+        ).scalar_one_or_none()
+        if clash is not None:
+            raise conflict("Email ya en uso por otro usuario")
+        diff["email"] = {"from": u.email, "to": new_email}
+        u.email = new_email
+
+    if body.new_password is not None:
+        if body.new_password == body.current_password:
+            raise business_rule("La nueva contraseña debe ser diferente")
+        ok, err = validate_password_policy(body.new_password)
+        if not ok:
+            raise validation_error(
+                "Contraseña no cumple política", {"code": err}
+            )
+        u.password_hash = hash_password(body.new_password)
+        diff["password"] = {"changed": True}
+
+    if not diff:
+        return _SuperadminMeRead(
+            id=str(u.id),
+            email=u.email,
+            username=u.username,
+            full_name=u.full_name,
+            is_superadmin=u.is_superadmin,
+        )
+
+    await write_audit(
+        db,
+        action="superadmin.self_update",
+        module="superadmin",
+        user_id=u.id,
+        tenant_id=u.tenant_id,
+        entity_type="user",
+        entity_id=str(u.id),
+        details=diff,
+    )
+    await db.commit()
+    await db.refresh(u)
+    return _SuperadminMeRead(
+        id=str(u.id),
+        email=u.email,
+        username=u.username,
+        full_name=u.full_name,
+        is_superadmin=u.is_superadmin,
+    )
