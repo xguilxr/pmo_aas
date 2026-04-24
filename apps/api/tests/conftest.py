@@ -118,6 +118,35 @@ def _stub_ai_providers(monkeypatch, request):
     yield
 
 
+# ENH-034: mock de Celery .delay() para `send_notification_email`.
+#
+# Causa raíz del bottleneck de 38s en 9 tests (8 en test_ep003_requests
+# + 1 en test_us063_password_reset): `enqueue_notification(...,
+# send_email=True)` llama a `send_notification_email.delay()`, que
+# en kombu/celery intenta abrir conexión TCP al broker definido en
+# `BROKER_URL` / `REDIS_URL`. En CI no hay Redis levantado, así que
+# el connect a `redis://localhost:6379/15` espera ~30s al socket
+# timeout default antes de fallar. El try/except en notifications.py
+# captura la excepción pero después de que se acumuló el retraso.
+#
+# Resultado: cada test que aprueba/rechaza request, crea proyecto, o
+# pide password reset acumula ~38s de espera en producer Celery.
+#
+# Fix: monkeypatch `.delay()` con no-op. Equivale conceptualmente a
+# `task_always_eager=True` pero más quirúrgico — no ejecuta la task
+# de email (que sería no-op igual porque RESEND_API_KEY="" en tests).
+# Aplicar autouse no afecta a tests que mockean otras tasks via su
+# propio monkeypatch (US-051 mockea ai_tasks.* directamente).
+@pytest.fixture(autouse=True)
+def _stub_celery_email_delay(monkeypatch):
+    from app.workers.tasks import notifications as notif_tasks
+
+    monkeypatch.setattr(
+        notif_tasks.send_notification_email, "delay", lambda *a, **kw: None
+    )
+    yield
+
+
 # ENH-030: mock de renderers pesados (weasyprint + python-docx) por
 # default en todo el suite. El 82% del tiempo del suite lo tomaban
 # tests que generaban PDF/DOCX real (~38s cada uno). Los tests que sí
