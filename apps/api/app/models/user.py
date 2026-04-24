@@ -31,3 +31,7 @@ class User(Base, TimestampMixin):
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     preferences: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # US-059/US-060 (DEC-020): rol simplificado fijo — reemplaza jerarquía
+    # dinámica del Role legacy. Valores: "admin" | "user" | "viewer".
+    # Nullable para coexistir con registros pre-migración (0026).
+    role_type: Mapped[str | None] = mapped_column(String(16))

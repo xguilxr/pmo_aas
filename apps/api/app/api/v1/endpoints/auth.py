@@ -243,6 +243,19 @@ async def me(cu: CurrentUser = Depends(get_current_user), db: AsyncSession = Dep
     return await _build_user_out(db, cu.user)
 
 
+@router.get("/me/permissions")
+async def my_permissions(cu: CurrentUser = Depends(get_current_user)):
+    """US-060 — expone el role_type + lista plana de permisos del user
+    actual para que el frontend pueda gate-ar botones/links."""
+    from app.core.permissions import flat_permissions
+
+    return {
+        "role_type": cu.role_type or "user",
+        "is_superadmin": cu.is_superadmin,
+        "permissions": flat_permissions(cu.role_type or "user"),
+    }
+
+
 @router.post("/switch-tenant", response_model=LoginResponse)
 async def switch_tenant(
     body: SwitchTenantRequest,
