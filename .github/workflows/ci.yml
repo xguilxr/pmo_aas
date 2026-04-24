@@ -8,6 +8,13 @@ on:
     branches: [main]
   pull_request:
 
+# ENH-033: permisos explícitos para que `dorny/paths-filter@v3` pueda
+# usar la GH REST API en PR events (compare base vs head). Sin esto,
+# el action falla con 403/404 según el tipo de PR (fork, same-repo).
+permissions:
+  contents: read
+  pull-requests: read
+
 # ENH-033: cancelar runs previos del mismo PR/branch al pushear.
 # En main no cancelamos (queremos historial completo post-merge).
 concurrency:
@@ -27,18 +34,14 @@ jobs:
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          # `paths-filter` necesita historia suficiente para hacer
-          # diff contra `base: main` en pushes a claude/** branches.
-          # En PR events usa la API de GH y no necesita profundidad.
-          fetch-depth: 0
       - uses: dorny/paths-filter@v3
         id: filter
         with:
-          # `base: main` explícito: en push a branches que no son
-          # PR (ej. claude/**), el action necesita el ref base para
-          # hacer el diff. En PR detecta automáticamente.
-          base: main
+          # Sin `base` explícito + sin `fetch-depth: 0`: en PR events
+          # `paths-filter` usa la GH REST API para comparar base vs
+          # head (necesita `pull-requests: read` permission a nivel
+          # workflow). En push a main compara contra el commit
+          # previo (HEAD^) que viene con el checkout default.
           filters: |
             api:
               - 'apps/api/**'
