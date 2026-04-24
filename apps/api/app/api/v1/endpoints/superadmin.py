@@ -325,3 +325,119 @@ async def join_as_admin(
         roles=cu.roles + ["Administrador"],
     )
     return {"access_token": access, "active_tenant_id": str(t.id), "tenant_slug": t.slug}
+
+
+# ============================================================================
+# US-072 — SuperAdmin: gestionar role_type de usuarios de cualquier tenant
+# ============================================================================
+# Lección de BUG-031: el sistema necesita una vía explícita para que el
+# superadmin recupere/ajuste el role_type de un usuario sin caer al psql
+# directo. Endpoints expuestos solo bajo `is_superadmin=True`.
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+
+class _SuperadminUserRow(BaseModel):
+    id: str
+    email: str
+    username: str
+    full_name: str | None = None
+    role_type: str | None = None
+    is_active: bool
+    is_superadmin: bool
+
+
+class _RoleTypeUpdate(BaseModel):
+    role_type: str = Field(pattern=r"^(admin|user|viewer)$")
+
+
+@router.get(
+    "/tenants/{tenant_id}/users",
+    response_model=list[_SuperadminUserRow],
+)
+async def list_tenant_users(
+    tenant_id: UUID,
+    q: str | None = Query(default=None),
+    role_type: str | None = Query(default=None),
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-072: lista usuarios del tenant para gestión de roles."""
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        raise not_found("Tenant")
+
+    stmt = select(User).where(User.tenant_id == str(t.id))
+    if q:
+        like = f"%{q.lower()}%"
+        stmt = stmt.where(
+            (func.lower(User.email).like(like))
+            | (func.lower(User.username).like(like))
+        )
+    if role_type:
+        if role_type not in ("admin", "user", "viewer"):
+            raise validation_error("role_type debe ser admin|user|viewer")
+        stmt = stmt.where(User.role_type == role_type)
+
+    rows = (await db.execute(stmt.order_by(User.email))).scalars().all()
+    return [
+        _SuperadminUserRow(
+            id=str(u.id),
+            email=u.email,
+            username=u.username,
+            full_name=u.full_name,
+            role_type=u.role_type,
+            is_active=u.is_active,
+            is_superadmin=u.is_superadmin,
+        )
+        for u in rows
+    ]
+
+
+@router.patch("/users/{user_id}/role-type", status_code=200)
+async def update_user_role_type(
+    user_id: UUID,
+    body: _RoleTypeUpdate,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-072: superadmin actualiza role_type de un usuario.
+
+    No permite cambiar `is_superadmin` (eso es US-074 + acción manual
+    en BD). Audit log queda con from→to para trazabilidad.
+    """
+    u = (
+        await db.execute(select(User).where(User.id == str(user_id)))
+    ).scalar_one_or_none()
+    if u is None:
+        raise not_found("User")
+
+    previous = u.role_type
+    if previous == body.role_type:
+        return {
+            "id": str(u.id),
+            "role_type": u.role_type,
+            "changed": False,
+        }
+
+    u.role_type = body.role_type
+    await write_audit(
+        db,
+        action="superadmin.user_role_type_change",
+        module="superadmin",
+        user_id=cu.id,
+        tenant_id=u.tenant_id,
+        entity_type="user",
+        entity_id=str(u.id),
+        details={"from": previous, "to": body.role_type},
+    )
+    await db.commit()
+    return {
+        "id": str(u.id),
+        "role_type": u.role_type,
+        "from": previous,
+        "to": body.role_type,
+        "changed": True,
+    }

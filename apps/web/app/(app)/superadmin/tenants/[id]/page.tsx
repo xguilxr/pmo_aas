@@ -232,6 +232,17 @@ export default function TenantDetailPage() {
         <StatCard label="Programas" value={programs.length} />
       </section>
 
+      <div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => router.push(`/superadmin/tenants/${tenant.id}/users`)}
+        >
+          Gestionar role_type de usuarios →
+        </Button>
+      </div>
+
       <HierarchyOverview detail={data} />
 
       <section className="grid gap-5 lg:grid-cols-2">
