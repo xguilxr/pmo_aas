@@ -10,6 +10,7 @@ from app.models.modules import (  # noqa: F401
     MeetingMinute,
     Risk,
 )
+from app.models.notification import Notification  # noqa: F401
 from app.models.organization import (  # noqa: F401
     BusinessUnit,
     Department,
