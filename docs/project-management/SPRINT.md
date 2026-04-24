@@ -35,10 +35,17 @@ Pendientes siguientes sesiones (mega-US, 3-7 días cada una):
 - ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests (status:triage)
 
 Pendiente owner:
-- Aplicar migraciones 0024-0027 en Railway antes del próximo deploy.
-- Revisar PR de US-069: el Dockerfile agrega ~225 MB (JRE 21 + MPXJ).
-  Primer build en Railway va a ser 3-5 min más lento — OK en test,
+- Revisar PR #143 de US-069 (lint y api-tests-smoke pasando tras
+  cleanup). El Dockerfile agrega ~225 MB (JRE 21 + MPXJ). Primer
+  build en Railway va a ser 3-5 min más lento — OK en test,
   monitorear tamaño de imagen y tiempo de cold start del worker.
+
+Nota: las migraciones Alembic **son automáticas** al mergear. El
+`CMD` del `apps/api/Dockerfile` corre `alembic upgrade head` antes
+de levantar uvicorn, así que cada deploy de Railway aplica las
+migraciones nuevas al arrancar el servicio `api`. El servicio
+`worker` no corre migraciones (inicia directo con `celery`). No
+hay acción manual requerida.
 ```
 
 ---
