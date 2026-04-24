@@ -543,9 +543,11 @@ function RisksSection({
                   <th className="w-10 px-3 py-2" aria-label="Preview" />
                   <th className="px-3 py-2 font-medium">Folio</th>
                   <th className="px-3 py-2 font-medium">Título</th>
+                  <th className="px-3 py-2 font-medium">Área</th>
                   <th className="px-3 py-2 font-medium">Severidad</th>
                   <th className="px-3 py-2 font-medium">Estado</th>
-                  <th className="px-3 py-2 font-medium">Fecha límite</th>
+                  <th className="px-3 py-2 font-medium">F. Creación</th>
+                  <th className="px-3 py-2 font-medium">F. Compromiso</th>
                 </tr>
               </thead>
               <tbody>
@@ -573,11 +575,17 @@ function RisksSection({
                         {r.title}
                       </span>
                     </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {r.area?.name ?? "—"}
+                    </td>
                     <td className="px-3 py-2">
                       <SeverityBadge severity={r.severity} />
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {RISK_STATUS_LABEL[r.status] ?? r.status}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {r.identified_at ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.due_date ?? "—"}
@@ -599,12 +607,14 @@ function RisksSection({
             ? [
                 { label: "ID", value: preview.id, mono: true },
                 { label: "Folio", value: preview.folio, mono: true },
+                { label: "Área", value: preview.area?.name ?? "—" },
                 { label: "Severidad", value: preview.severity ?? "—" },
                 {
                   label: "P × I",
                   value: `${preview.probability ?? "—"} × ${preview.impact ?? "—"}`,
                 },
-                { label: "Fecha límite", value: preview.due_date ?? "—" },
+                { label: "F. Creación", value: preview.identified_at ?? "—" },
+                { label: "F. Compromiso", value: preview.due_date ?? "—" },
                 { label: "Asignado", value: preview.owner_id ?? "—", mono: true },
               ]
             : []
@@ -668,10 +678,12 @@ function IssuesSection({
               <th className="w-10 px-3 py-2" aria-label="Preview" />
               <th className="px-3 py-2 font-medium">Folio</th>
               <th className="px-3 py-2 font-medium">Título</th>
+              <th className="px-3 py-2 font-medium">Área</th>
               <th className="px-3 py-2 font-medium">Tipo</th>
               <th className="px-3 py-2 font-medium">Prioridad</th>
               <th className="px-3 py-2 font-medium">Estado</th>
-              <th className="px-3 py-2 font-medium">Compromiso</th>
+              <th className="px-3 py-2 font-medium">F. Creación</th>
+              <th className="px-3 py-2 font-medium">F. Compromiso</th>
             </tr>
           </thead>
           <tbody>
@@ -698,6 +710,9 @@ function IssuesSection({
                   <span className="text-[var(--color-primary)]">{it.title}</span>
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.area?.name ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {displayLabel}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
@@ -705,6 +720,11 @@ function IssuesSection({
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.status}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.reported_at
+                    ? new Date(it.reported_at).toISOString().slice(0, 10)
+                    : "—"}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.committed_date ?? "—"}
@@ -724,6 +744,7 @@ function IssuesSection({
             ? [
                 { label: "ID", value: preview.id, mono: true },
                 { label: "Folio", value: preview.folio, mono: true },
+                { label: "Área", value: preview.area?.name ?? "—" },
                 { label: "Tipo", value: displayLabel },
                 { label: "Prioridad", value: preview.priority ?? "—" },
                 { label: "Compromiso", value: preview.committed_date ?? "—" },

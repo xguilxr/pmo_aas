@@ -166,7 +166,7 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 - [x] US-066 — Uploads: object storage S3-compatible (Cloudflare R2) + runbook — #113 ✅ e0f9c2e (runbook ca5dd0c)
 - [ ] BUG-028 — Charter vacío: generar PDF real al aprobar solicitud — #104
-- [ ] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento — #111
+- [x] US-064 — RAID: área (nullable legacy, obligatoria en nuevos) + responsable + fechas + ordenamiento — #111 ✅ PENDING_SHA
 - [ ] US-065 — RAID: página dedicada por ítem (deep link + historial + adjuntos) — #112
 - [ ] US-068 — Página PMO de organización (paneles programas + proyectos, separada de admin) — #116
 

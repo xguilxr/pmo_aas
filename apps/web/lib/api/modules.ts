@@ -24,6 +24,12 @@ export type RiskComment = {
   created_at?: string;
 };
 
+/** US-064: área mínima embebida en listas de RAID. */
+export type AreaMini = {
+  id: string;
+  name: string;
+};
+
 export type Risk = {
   id: string;
   folio: string;
@@ -36,6 +42,8 @@ export type Risk = {
   severity: number | null;
   mitigation_strategy: string | null;
   owner_id: string | null;
+  area_id: string | null;
+  area: AreaMini | null;
   identified_at: string | null;
   due_date: string | null;
   status: RiskStatus;
@@ -51,6 +59,8 @@ export type RiskCreateBody = {
   impact: number;
   mitigation_strategy?: string | null;
   owner_id?: string | null;
+  area_id: string; // US-064: obligatorio en creación.
+  identified_at?: string | null;
   due_date?: string | null;
   status?: RiskStatus;
 };
@@ -59,7 +69,13 @@ export type RiskUpdateBody = Partial<RiskCreateBody> & { closure_note?: string |
 
 export function listRisks(
   projectId: string,
-  params: { status?: RiskStatus[]; severity_min?: number; severity_max?: number; q?: string } = {},
+  params: {
+    status?: RiskStatus[];
+    severity_min?: number;
+    severity_max?: number;
+    area_id?: string;
+    q?: string;
+  } = {},
 ): Promise<Risk[]> {
   return apiFetch<Risk[]>(`/api/v1/projects/${projectId}/risks${qs(params)}`);
 }
@@ -114,6 +130,9 @@ export type Issue = {
   resolution: string | null;
   status: IssueStatus;
   owner_id: string | null;
+  area_id: string | null;
+  area: AreaMini | null;
+  reported_at: string | null;
   comments: IssueComment[];
 };
 
@@ -124,6 +143,7 @@ export type IssueCreateBody = {
   priority?: number | null;
   committed_date?: string | null;
   owner_id?: string | null;
+  area_id: string; // US-064: obligatorio en creación.
   status?: IssueStatus;
 };
 
@@ -131,7 +151,13 @@ export type IssueUpdateBody = Partial<IssueCreateBody> & { resolution?: string |
 
 export function listIssues(
   projectId: string,
-  params: { status?: IssueStatus[]; type?: IssueType[]; overdue?: boolean; q?: string } = {},
+  params: {
+    status?: IssueStatus[];
+    type?: IssueType[];
+    overdue?: boolean;
+    area_id?: string;
+    q?: string;
+  } = {},
 ): Promise<Issue[]> {
   return apiFetch<Issue[]>(`/api/v1/projects/${projectId}/issues${qs(params)}`);
 }

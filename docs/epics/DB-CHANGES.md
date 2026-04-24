@@ -157,6 +157,22 @@ emails), `enabled`, `last_run_at`, `next_run_at`, `last_error`,
 `created_by`. Índices: `(tenant_id, project_id)` y `(enabled,
 next_run_at)` para el dispatch del beat.
 
+## EP006 — RAID con área responsable (US-064)
+
+Migración **0024** (`raid_area_id`): agrega `area_id` a `risks` e
+`issues` como FK nullable a `project_areas.id` con
+`ON DELETE SET NULL`, más índice compuesto `(tenant_id, project_id,
+area_id)` para el ordenamiento de las tablas RAID.
+
+Regla de legacy: ítems previos a la migración se quedan con
+`area_id = NULL`; la obligatoriedad en creación vive a nivel de
+schema Pydantic (`422` en POST si falta), NO en la DB. Los endpoints
+GET ordenan por `CASE WHEN area_id IS NULL THEN 1 ELSE 0 END` (legacy
+al final) → `project_areas.name ASC` → `identified_at DESC` (risks) o
+`reported_at DESC` (issues) → `severity/priority DESC`. Nuevo filtro
+`?area_id=` en `/projects/{id}/risks`, `/projects/{id}/issues`,
+`/tenant/risks` y `/tenant/issues`.
+
 ## EP016 — IA local (Ollama vía Tailscale)
 
 Sin schema nuevo. La config del endpoint vive en

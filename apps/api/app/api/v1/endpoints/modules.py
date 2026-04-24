@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_permission
@@ -18,6 +18,7 @@ from app.models.modules import (
     Risk,
 )
 from app.models.project import Project
+from app.models.project_area import ProjectArea
 from app.schemas.modules import (
     ChangeRequestCreate,
     ChangeRequestRead,
@@ -81,6 +82,48 @@ def _ensure_editable(p: Project, *, allow_after_closed: bool = False) -> None:
         raise business_rule("Proyecto cerrado, no se puede escribir en este módulo")
 
 
+async def _validate_area(
+    db: AsyncSession, area_id: UUID, project_id: UUID, tenant_id: UUID
+) -> ProjectArea:
+    """US-064: el area_id debe existir, pertenecer al mismo proyecto y
+    estar activa. Si falla, 422 o 404 según el caso."""
+    area = (
+        await db.execute(
+            select(ProjectArea).where(
+                ProjectArea.id == str(area_id),
+                ProjectArea.project_id == str(project_id),
+                ProjectArea.tenant_id == str(tenant_id),
+                ProjectArea.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if area is None:
+        raise business_rule("Área no válida para este proyecto")
+    return area
+
+
+def _attach_area(item, area: ProjectArea | None) -> None:
+    """Guarda el area embebida en un atributo transitorio para que
+    *Read.model_validate la recoja automáticamente (from_attributes)."""
+    item.area = (  # type: ignore[attr-defined]
+        {"id": area.id, "name": area.name} if area else None
+    )
+
+
+async def _load_areas(
+    db: AsyncSession, area_ids: list[str]
+) -> dict[str, ProjectArea]:
+    ids = [a for a in area_ids if a]
+    if not ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(ProjectArea).where(ProjectArea.id.in_(ids))
+        )
+    ).scalars().all()
+    return {str(a.id): a for a in rows}
+
+
 # ========== RISKS ==========
 risks_router = APIRouter(tags=["risks"])
 
@@ -91,23 +134,44 @@ async def list_risks(
     status: list[str] | None = Query(default=None),
     severity_min: int | None = Query(default=None, ge=1, le=25),
     severity_max: int | None = Query(default=None, ge=1, le=25),
+    area_id: UUID | None = Query(default=None),
     q: str | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("risks", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
     await _get_project(db, project_id, tenant_id)
-    stmt = select(Risk).where(Risk.project_id == str(project_id), Risk.deleted_at.is_(None))
+    # US-064: outer join con project_areas para ordering por nombre de
+    # área (legacy NULL va al final con COALESCE a 'ZZZ').
+    stmt = (
+        select(Risk, ProjectArea)
+        .outerjoin(ProjectArea, ProjectArea.id == Risk.area_id)
+        .where(Risk.project_id == str(project_id), Risk.deleted_at.is_(None))
+    )
     if status:
         stmt = stmt.where(Risk.status.in_(status))
     if severity_min is not None:
         stmt = stmt.where(Risk.severity >= severity_min)
     if severity_max is not None:
         stmt = stmt.where(Risk.severity <= severity_max)
+    if area_id is not None:
+        stmt = stmt.where(Risk.area_id == str(area_id))
     if q:
         stmt = stmt.where(func.lower(Risk.title).like(f"%{q.lower()}%"))
-    rows = (await db.execute(stmt.order_by(Risk.severity.desc()))).scalars().all()
-    return [RiskRead.model_validate(r) for r in rows]
+    # US-064: legacy sin área va al final (CASE WHEN), luego por nombre
+    # de área ascendente, fecha descendente, severidad descendente.
+    stmt = stmt.order_by(
+        case((Risk.area_id.is_(None), 1), else_=0),
+        ProjectArea.name.asc(),
+        Risk.identified_at.desc().nullslast(),
+        Risk.severity.desc().nullslast(),
+    )
+    rows = (await db.execute(stmt)).all()
+    out: list[RiskRead] = []
+    for r, area in rows:
+        _attach_area(r, area)
+        out.append(RiskRead.model_validate(r))
+    return out
 
 
 @risks_router.post("/projects/{project_id}/risks", response_model=RiskRead, status_code=201)
@@ -120,6 +184,8 @@ async def create_risk(
     tenant_id = _tenant(cu)
     p = await _get_project(db, project_id, tenant_id)
     _ensure_editable(p)
+    # US-064: valida area antes de crear.
+    area = await _validate_area(db, body.area_id, project_id, tenant_id)
     folio = await next_folio(db, tenant_id=tenant_id, prefix="RIS")
     severity = (body.probability or 0) * (body.impact or 0)
     r = Risk(
@@ -128,6 +194,7 @@ async def create_risk(
         probability=body.probability, impact=body.impact, severity=severity,
         mitigation_strategy=body.mitigation_strategy,
         owner_id=str(body.owner_id) if body.owner_id else None,
+        area_id=str(body.area_id),
         identified_at=body.identified_at, due_date=body.due_date,
         status=body.status, created_by=cu.id,
     )
@@ -138,6 +205,7 @@ async def create_risk(
         entity_type="risk", entity_id=str(r.id), details={"folio": folio, "severity": severity},
     )
     await db.commit()
+    _attach_area(r, area)
     return RiskRead.model_validate(r)
 
 
@@ -160,6 +228,10 @@ async def update_risk(
             raise business_rule("closure_note obligatorio al cerrar/materializar")
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    # US-064: si el PATCH cambia area_id, validar pertenencia al proyecto.
+    if "area_id" in data and data["area_id"] is not None:
+        await _validate_area(db, data["area_id"], UUID(r.project_id), tenant_id)
+        data["area_id"] = str(data["area_id"])
     for k, v in data.items():
         setattr(r, k, v)
     if data.get("probability") or data.get("impact"):
@@ -169,6 +241,14 @@ async def update_risk(
         entity_type="risk", entity_id=str(r.id),
     )
     await db.commit()
+    area = None
+    if r.area_id:
+        area = (
+            await db.execute(
+                select(ProjectArea).where(ProjectArea.id == r.area_id)
+            )
+        ).scalar_one_or_none()
+    _attach_area(r, area)
     return RiskRead.model_validate(r)
 
 
@@ -210,6 +290,12 @@ async def add_risk_comment(
         entity_id=str(r.id),
     )
     await db.commit()
+    area = None
+    if r.area_id:
+        area = (
+            await db.execute(select(ProjectArea).where(ProjectArea.id == r.area_id))
+        ).scalar_one_or_none()
+    _attach_area(r, area)
     return RiskRead.model_validate(r)
 
 
@@ -240,23 +326,40 @@ async def list_issues(
     status: list[str] | None = Query(default=None),
     overdue: bool = Query(default=False),
     type: str | None = Query(default=None),
+    area_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_permission("issues", "read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
     await _get_project(db, project_id, tenant_id)
-    stmt = select(Issue).where(Issue.project_id == str(project_id), Issue.deleted_at.is_(None))
+    stmt = (
+        select(Issue, ProjectArea)
+        .outerjoin(ProjectArea, ProjectArea.id == Issue.area_id)
+        .where(Issue.project_id == str(project_id), Issue.deleted_at.is_(None))
+    )
     if status:
         stmt = stmt.where(Issue.status.in_(status))
     if type:
         stmt = stmt.where(Issue.type == type)
+    if area_id is not None:
+        stmt = stmt.where(Issue.area_id == str(area_id))
     if overdue:
         stmt = stmt.where(
             Issue.committed_date < date.today(),
             Issue.status.notin_(["resolved", "closed"]),
         )
-    rows = (await db.execute(stmt.order_by(Issue.reported_at.desc()))).scalars().all()
-    return [IssueRead.model_validate(i) for i in rows]
+    stmt = stmt.order_by(
+        case((Issue.area_id.is_(None), 1), else_=0),
+        ProjectArea.name.asc(),
+        Issue.reported_at.desc(),
+        Issue.priority.desc().nullslast(),
+    )
+    rows = (await db.execute(stmt)).all()
+    out: list[IssueRead] = []
+    for i, area in rows:
+        _attach_area(i, area)
+        out.append(IssueRead.model_validate(i))
+    return out
 
 
 @issues_router.post("/projects/{project_id}/issues", response_model=IssueRead, status_code=201)
@@ -269,12 +372,15 @@ async def create_issue(
     tenant_id = _tenant(cu)
     p = await _get_project(db, project_id, tenant_id)
     _ensure_editable(p)
+    # US-064: valida area antes de crear.
+    area = await _validate_area(db, body.area_id, project_id, tenant_id)
     folio = await next_folio(db, tenant_id=tenant_id, prefix="INC")
     i = Issue(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
         title=body.title, description=body.description, type=body.type,
         priority=body.priority, committed_date=body.committed_date,
         owner_id=str(body.owner_id) if body.owner_id else None,
+        area_id=str(body.area_id),
         status=body.status, reported_at=datetime.now(UTC),
         comments=[], created_by=cu.id,
     )
@@ -285,6 +391,7 @@ async def create_issue(
         entity_type="issue", entity_id=str(i.id), details={"folio": folio},
     )
     await db.commit()
+    _attach_area(i, area)
     return IssueRead.model_validate(i)
 
 
@@ -306,6 +413,12 @@ async def add_issue_comment(
     })
     i.comments = comments
     await db.commit()
+    area = None
+    if i.area_id:
+        area = (
+            await db.execute(select(ProjectArea).where(ProjectArea.id == i.area_id))
+        ).scalar_one_or_none()
+    _attach_area(i, area)
     return IssueRead.model_validate(i)
 
 
@@ -323,9 +436,19 @@ async def update_issue(
     data = body.model_dump(exclude_none=True)
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    # US-064: si cambia area_id en PATCH, validar pertenencia.
+    if "area_id" in data and data["area_id"] is not None:
+        await _validate_area(db, data["area_id"], UUID(i.project_id), tenant_id)
+        data["area_id"] = str(data["area_id"])
     for k, v in data.items():
         setattr(i, k, v)
     await db.commit()
+    area = None
+    if i.area_id:
+        area = (
+            await db.execute(select(ProjectArea).where(ProjectArea.id == i.area_id))
+        ).scalar_one_or_none()
+    _attach_area(i, area)
     return IssueRead.model_validate(i)
 
 

@@ -302,8 +302,10 @@ function TenantRaidInner() {
                   label: "Proyecto",
                   value: `${previewRisk.project_folio} — ${previewRisk.project_name}`,
                 },
+                { label: "Área", value: previewRisk.area?.name ?? "—" },
                 { label: "Severidad", value: previewRisk.severity ?? "—" },
-                { label: "Fecha límite", value: previewRisk.due_date ?? "—" },
+                { label: "F. Creación", value: previewRisk.identified_at ?? "—" },
+                { label: "F. Compromiso", value: previewRisk.due_date ?? "—" },
               ]
             : []
         }
@@ -338,6 +340,7 @@ function TenantRaidInner() {
                   label: "Proyecto",
                   value: `${previewIssue.project_folio} — ${previewIssue.project_name}`,
                 },
+                { label: "Área", value: previewIssue.area?.name ?? "—" },
                 { label: "Tipo", value: ISSUE_TYPE_LABEL[previewIssue.type] ?? previewIssue.type },
                 { label: "Prioridad", value: previewIssue.priority ?? "—" },
                 { label: "Compromiso", value: previewIssue.committed_date ?? "—" },
@@ -379,8 +382,11 @@ function RiskTable({
           <th className="w-10 px-3 py-2" />
           <th className="px-3 py-2 font-medium">Folio</th>
           <th className="px-3 py-2 font-medium">Título</th>
+          <th className="px-3 py-2 font-medium">Área</th>
           <th className="px-3 py-2 font-medium">Severidad</th>
           <th className="px-3 py-2 font-medium">Estado</th>
+          <th className="px-3 py-2 font-medium">F. Creación</th>
+          <th className="px-3 py-2 font-medium">F. Compromiso</th>
           <th className="px-3 py-2 font-medium">Proyecto</th>
         </tr>
       </thead>
@@ -408,6 +414,9 @@ function RiskTable({
                 {r.title}
               </Link>
             </td>
+            <td className="px-3 py-2 text-[var(--color-secondary)]">
+              {r.area?.name ?? "—"}
+            </td>
             <td className="px-3 py-2">
               <Badge variant={(r.severity ?? 0) >= 13 ? "danger" : (r.severity ?? 0) >= 6 ? "warning" : "success"}>
                 {r.severity ?? "—"}
@@ -415,6 +424,12 @@ function RiskTable({
             </td>
             <td className="px-3 py-2 text-[var(--color-secondary)]">
               {RISK_STATUS_LABEL[r.status] ?? r.status}
+            </td>
+            <td className="px-3 py-2 text-[var(--color-secondary)]">
+              {r.identified_at ?? "—"}
+            </td>
+            <td className="px-3 py-2 text-[var(--color-secondary)]">
+              {r.due_date ?? "—"}
             </td>
             <td className="px-3 py-2">
               <Link
@@ -460,8 +475,10 @@ function IssueTable({
           <th className="w-10 px-3 py-2" />
           <th className="px-3 py-2 font-medium">Folio</th>
           <th className="px-3 py-2 font-medium">Título</th>
+          <th className="px-3 py-2 font-medium">Área</th>
           <th className="px-3 py-2 font-medium">Tipo</th>
           <th className="px-3 py-2 font-medium">Estado</th>
+          <th className="px-3 py-2 font-medium">F. Compromiso</th>
           <th className="px-3 py-2 font-medium">Proyecto</th>
         </tr>
       </thead>
@@ -489,8 +506,14 @@ function IssueTable({
                 {r.title}
               </Link>
             </td>
+            <td className="px-3 py-2 text-[var(--color-secondary)]">
+              {r.area?.name ?? "—"}
+            </td>
             <td className="px-3 py-2 text-[var(--color-secondary)]">{typeLabel}</td>
             <td className="px-3 py-2 text-[var(--color-secondary)]">{r.status}</td>
+            <td className="px-3 py-2 text-[var(--color-secondary)]">
+              {r.committed_date ?? "—"}
+            </td>
             <td className="px-3 py-2">
               <Link
                 href={`/admin/projects/${r.project_id}`}
