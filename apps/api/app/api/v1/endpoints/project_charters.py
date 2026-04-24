@@ -25,6 +25,7 @@ from app.schemas.project_charter import (
     ProjectCharterUpdate,
 )
 from app.services.audit import write_audit
+from app.services.charter_generator import generate_charter_docx
 
 router = APIRouter(prefix="/projects", tags=["project_charters"])
 
@@ -175,6 +176,24 @@ async def update_charter(
         entity_type="charter",
         entity_id=str(charter.id),
     )
+    await db.flush()
+    # BUG-028: regenera el .docx y sube nueva versión al storage. Si el
+    # generador falla (p. ej. R2 down), el commit del charter sigue
+    # adelante — el doc se puede regenerar después por llamada explícita.
+    try:
+        await generate_charter_docx(
+            db,
+            tenant_id=tenant_id,
+            project=project,
+            charter=charter,
+            created_by=cu.id,
+        )
+    except Exception as exc:  # pragma: no cover - log + no fail
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "charter_regen_failed project_id=%s err=%s", project.id, exc
+        )
     await db.commit()
     await db.refresh(charter)
     await db.refresh(project)

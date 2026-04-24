@@ -296,6 +296,42 @@ async def save_document(
     return await _save_local(tenant_id, project_id, upload, document_id)
 
 
+def save_document_bytes(
+    tenant_id: str,
+    project_id: str,
+    document_id: str,
+    *,
+    data: bytes,
+    ext: str,
+    content_type: str,
+) -> tuple[str, str]:
+    """BUG-028: persiste bytes generados server-side (p. ej. charter .docx
+    generado con python-docx) sin pasar por UploadFile.
+
+    Returns: `(file_url, content_type)` — mismo contrato que `save_document`.
+    """
+    _validate_size(data)
+    if ext not in set(ALLOWED_DOC_MIMES.values()):
+        raise validation_error(
+            f"Extensión no whitelisted para storage: {ext}",
+            fields={"ext": ext},
+        )
+    key = _doc_key(tenant_id, project_id, document_id, ext)
+    if settings.STORAGE_BACKEND == "s3":
+        client = _get_s3_client()
+        client.put_object(
+            Bucket=settings.S3_BUCKET,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+        )
+    else:
+        target = _local_full_path(key)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    return f"/api/v1/documents/{document_id}/download", content_type
+
+
 def get_document_stream(
     tenant_id: str, project_id: str, document_id: str
 ) -> tuple[Iterator[bytes], str] | None:

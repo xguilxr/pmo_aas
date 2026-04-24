@@ -516,9 +516,14 @@ async def test_tcnew022_charter_appears_as_document(client, db_session):
     assert len(rows) == 1
     doc = rows[0]
     assert doc.title.startswith("Project Charter")
-    assert doc.file_url == f"/api/v1/projects/{pid}/charter/pdf"
-    assert doc.mime_type == "text/html"
+    # BUG-028: el charter ya no apunta a HTML on-demand; se genera .docx
+    # y queda en storage con URL de descarga estándar.
+    assert doc.file_url == f"/api/v1/documents/{doc.id}/download"
+    assert doc.mime_type == (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
     assert doc.is_current is True
+    assert (doc.size_bytes or 0) > 0
 
 
 # ============================================================================
