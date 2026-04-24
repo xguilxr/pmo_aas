@@ -560,3 +560,217 @@ async def superadmin_me_update(
         full_name=u.full_name,
         is_superadmin=u.is_superadmin,
     )
+
+# ============================================================================
+# US-073 — SuperAdmin: overrides de permisos por tenant (DEC-021)
+# ============================================================================
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+from app.models.tenant_permission import TenantRolePermissionOverride  # noqa: E402
+
+
+class _PermissionOverrideRow(BaseModel):
+    id: str
+    role_type: str
+    module: str
+    action: str
+    granted: bool
+    reason: str
+    updated_by_user_id: str | None = None
+
+
+class _PermissionOverrideUpsert(BaseModel):
+    role_type: str = Field(pattern=r"^(admin|user|viewer)$")
+    module: str = Field(min_length=1, max_length=64)
+    action: str = Field(min_length=1, max_length=32)
+    granted: bool
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+@router.get(
+    "/tenants/{tenant_id}/permission-overrides",
+    response_model=list[_PermissionOverrideRow],
+)
+async def list_permission_overrides(
+    tenant_id: UUID,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-073: lista overrides de permisos del tenant."""
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        raise not_found("Tenant")
+    rows = (
+        await db.execute(
+            select(TenantRolePermissionOverride)
+            .where(TenantRolePermissionOverride.tenant_id == str(t.id))
+            .order_by(
+                TenantRolePermissionOverride.role_type,
+                TenantRolePermissionOverride.module,
+                TenantRolePermissionOverride.action,
+            )
+        )
+    ).scalars().all()
+    return [
+        _PermissionOverrideRow(
+            id=str(r.id),
+            role_type=r.role_type,
+            module=r.module,
+            action=r.action,
+            granted=r.granted,
+            reason=r.reason,
+            updated_by_user_id=r.updated_by_user_id,
+        )
+        for r in rows
+    ]
+
+
+@router.put(
+    "/tenants/{tenant_id}/permission-overrides",
+    response_model=list[_PermissionOverrideRow],
+)
+async def upsert_permission_overrides(
+    tenant_id: UUID,
+    body: list[_PermissionOverrideUpsert],
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-073: upsert batch de overrides. Reemplaza por (role_type, module,
+    action). Cada item exige `reason` no vacía → audit log."""
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        raise not_found("Tenant")
+
+    diff: list[dict] = []
+    for item in body:
+        existing = (
+            await db.execute(
+                select(TenantRolePermissionOverride).where(
+                    TenantRolePermissionOverride.tenant_id == str(t.id),
+                    TenantRolePermissionOverride.role_type == item.role_type,
+                    TenantRolePermissionOverride.module == item.module,
+                    TenantRolePermissionOverride.action == item.action,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            existing.granted = item.granted
+            existing.reason = item.reason
+            existing.updated_by_user_id = str(cu.id)
+            diff.append(
+                {
+                    "op": "update",
+                    "role_type": item.role_type,
+                    "module": item.module,
+                    "action": item.action,
+                    "granted": item.granted,
+                }
+            )
+        else:
+            db.add(
+                TenantRolePermissionOverride(
+                    tenant_id=str(t.id),
+                    role_type=item.role_type,
+                    module=item.module,
+                    action=item.action,
+                    granted=item.granted,
+                    reason=item.reason,
+                    updated_by_user_id=str(cu.id),
+                )
+            )
+            diff.append(
+                {
+                    "op": "create",
+                    "role_type": item.role_type,
+                    "module": item.module,
+                    "action": item.action,
+                    "granted": item.granted,
+                }
+            )
+
+    if diff:
+        await write_audit(
+            db,
+            action="superadmin.permission_override_set",
+            module="superadmin",
+            user_id=cu.id,
+            tenant_id=str(t.id),
+            entity_type="tenant",
+            entity_id=str(t.id),
+            details={"changes": diff},
+        )
+    await db.commit()
+
+    rows = (
+        await db.execute(
+            select(TenantRolePermissionOverride)
+            .where(TenantRolePermissionOverride.tenant_id == str(t.id))
+            .order_by(
+                TenantRolePermissionOverride.role_type,
+                TenantRolePermissionOverride.module,
+                TenantRolePermissionOverride.action,
+            )
+        )
+    ).scalars().all()
+    return [
+        _PermissionOverrideRow(
+            id=str(r.id),
+            role_type=r.role_type,
+            module=r.module,
+            action=r.action,
+            granted=r.granted,
+            reason=r.reason,
+            updated_by_user_id=r.updated_by_user_id,
+        )
+        for r in rows
+    ]
+
+
+@router.delete(
+    "/tenants/{tenant_id}/permission-overrides/{override_id}",
+    status_code=204,
+)
+async def delete_permission_override(
+    tenant_id: UUID,
+    override_id: UUID,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-073: borra un override (vuelve al default del mapping)."""
+    o = (
+        await db.execute(
+            select(TenantRolePermissionOverride).where(
+                TenantRolePermissionOverride.id == str(override_id),
+                TenantRolePermissionOverride.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if o is None:
+        raise not_found("Override")
+    snapshot = {
+        "op": "delete",
+        "role_type": o.role_type,
+        "module": o.module,
+        "action": o.action,
+        "granted": o.granted,
+    }
+    await db.delete(o)
+    await write_audit(
+        db,
+        action="superadmin.permission_override_set",
+        module="superadmin",
+        user_id=cu.id,
+        tenant_id=str(tenant_id),
+        entity_type="tenant",
+        entity_id=str(tenant_id),
+        details={"changes": [snapshot]},
+    )
+    await db.commit()
+    from fastapi import Response
+
+    return Response(status_code=204)

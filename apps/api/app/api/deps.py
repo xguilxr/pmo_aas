@@ -9,6 +9,7 @@ from app.core.permissions import permissions_for
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.role import Role, UserRole
+from app.models.tenant_permission import TenantRolePermissionOverride
 from app.models.user import User
 
 
@@ -20,12 +21,18 @@ class CurrentUser:
         active_tenant_id: UUID | None,
         roles: list[str],
         permissions: dict[str, set[str]],
+        # US-073 + DEC-021: overrides de permisos por tenant aplicados
+        # sobre el mapping estático. Estructura:
+        # {role_type: {module: {action: granted_bool}}}.
+        # Se precarga al construir CurrentUser (ver get_current_user).
+        permission_overrides: dict[str, dict[str, dict[str, bool]]] | None = None,
     ) -> None:
         self.user = user
         self.tenant_ids = tenant_ids
         self.active_tenant_id = active_tenant_id
         self.roles = roles
         self.permissions = permissions
+        self.permission_overrides = permission_overrides or {}
 
     @property
     def id(self) -> UUID:
@@ -49,7 +56,18 @@ class CurrentUser:
         # explícita de DEC-020 para evitar matriz de permisos confusa.
         rt = self.role_type
         if rt in {"admin", "user", "viewer"}:
-            return action in permissions_for(rt).get(module, set())
+            base = action in permissions_for(rt).get(module, set())
+            # US-073 + DEC-021: aplicar overrides del tenant activo.
+            override = (
+                self.permission_overrides.get(rt, {})
+                .get(module, {})
+                .get(action)
+            )
+            if override is True:
+                return True
+            if override is False:
+                return False
+            return base
         # Fallback: users sin role_type (legacy) usan el JSON permissions.
         return action in self.permissions.get(module, set())
 
@@ -104,12 +122,32 @@ async def get_current_user(
 
     tenant_ids_raw = payload.get("tenant_ids", []) or []
     active_raw = payload.get("active_tenant_id")
+    active_tenant_id = UUID(active_raw) if active_raw else None
+
+    # US-073 + DEC-021: precargar overrides de permisos del tenant
+    # activo. Solo se cargan si hay active_tenant_id. La query es chica
+    # (típicamente 0 filas) y se cachea por la duración del request.
+    permission_overrides: dict[str, dict[str, dict[str, bool]]] = {}
+    if active_tenant_id is not None and not user.is_superadmin:
+        rows = (
+            await db.execute(
+                select(TenantRolePermissionOverride).where(
+                    TenantRolePermissionOverride.tenant_id == str(active_tenant_id)
+                )
+            )
+        ).scalars().all()
+        for r in rows:
+            permission_overrides.setdefault(r.role_type, {}).setdefault(
+                r.module, {}
+            )[r.action] = r.granted
+
     return CurrentUser(
         user=user,
         tenant_ids=[UUID(t) for t in tenant_ids_raw],
-        active_tenant_id=UUID(active_raw) if active_raw else None,
+        active_tenant_id=active_tenant_id,
         roles=role_names,
         permissions=perms,
+        permission_overrides=permission_overrides,
     )
 
 
