@@ -9,7 +9,7 @@
 ```
 2026-04-24 — Sprint 4 v1.3 en curso.
 
-Bloque 1 Sprint 4 — 7/8 items completos:
+Bloque 1 Sprint 4 — 8/8 items completos ✅:
 - BUG-030 (#118) hotfix Groq metadata → 400. ✅ 8495dc8
 - BUG-015 (#40) rework botón CSV en dashboard. ✅ d3523bb
 - BUG-029 (#105) upload documentos funcional + styling. ✅ 3f6ac90
@@ -17,14 +17,16 @@ Bloque 1 Sprint 4 — 7/8 items completos:
 - ENH-025 (#107) filtros RAID en una línea. ✅ ca9dc1d
 - ENH-026 (#108) consolidar Gestión Avanzada RAID. ✅ 8d69623
 - ENH-027 (#109) panel editable RAID compartido. ✅ 3001959
-
-Pendiente Bloque 1: ENH-028 (#110) export Excel MPP-like.
+- ENH-028 (#110) export Excel MPP-like + CSV BOM. ✅ f1db32a
 
 US-066 (#113): código entregado en e0f9c2e. Bloqueado
 esperando que el owner termine la config R2 + redeploy +
 verificación end-to-end (luego marca status:fix-committed).
 
-Próximo item: ENH-028 (#110).
+Próximo item: BUG-028 (#104) en Bloque 2, pero requiere
+US-066 + BUG-029 (charter real necesita storage + upload).
+Owner decide si seguimos con US-064/065/068 mientras tanto
+o esperamos a desbloquear US-066.
 ```
 
 ---
@@ -54,11 +56,10 @@ Próximo item: ENH-028 (#110).
 > commit e0f9c2e. Owner termina la config R2 + redeploy →
 > verifica end-to-end → `status:fix-committed`.
 
-### Bloque 1 (continuación) — Reworks del review (1 item restante)
+### Bloque 1 (continuación) — Reworks del review ✅ COMPLETO
 
-| # | ID | Epic | Título |
-|---|---|---|---|
-| 2 | ENH-028 | EP005 | Export tareas: Excel MPP-like + PLAN naming + CSV BOM — #110 |
+> Todos los items entregados; pendiente verificación del owner para
+> mover los issues a `closed`.
 
 ### Bloque 2 — RAID robusto + fix completo charter (4 items restantes)
 
@@ -165,7 +166,7 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 - [x] ENH-025 — Filtros RAID siguen apilados (rework definitivo horizontales) — #107 ✅ ca9dc1d
 - [x] ENH-026 — Consolidar "Panel de Gestión Avanzada" RAID en `/admin/raid` — #108 ✅ 8d69623
 - [x] ENH-027 — Panel editable RAID (US-058) debe funcionar en `/admin/projects/[id]/raid` — #109 ✅ 3001959
-- [ ] ENH-028 — Export tareas: Excel MPP-like + naming PLAN-{Proyecto}-{Fecha} + CSV BOM UTF-8 — #110
+- [x] ENH-028 — Export tareas: Excel MPP-like + naming PLAN-{Proyecto}-{Fecha} + CSV BOM UTF-8 — #110 ✅ f1db32a
 
 ### Bloque 2 — Infra + RAID robusto + PMO page (5 items)
 
