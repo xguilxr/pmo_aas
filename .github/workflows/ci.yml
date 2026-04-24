@@ -24,6 +24,11 @@ jobs:
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # `paths-filter` necesita historia suficiente para hacer
+          # diff contra `base: main` en pushes a claude/** branches.
+          # En PR events usa la API de GH y no necesita profundidad.
+          fetch-depth: 0
       - uses: dorny/paths-filter@v3
         id: filter
         with:
