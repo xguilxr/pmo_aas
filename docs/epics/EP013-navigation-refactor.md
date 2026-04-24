@@ -6,9 +6,38 @@
 | **Prioridad** | Alta — bloque 9 del sprint (antes de POST-MVP) |
 | **Dependencias** | EP001, EP002, EP005, EP006, EP007, EP010 completos |
 | **Módulo** | `web.nav`, `admin`, `projects.detail`, `superadmin` |
-| **Estado** | # PENDING |
-| **Versión objetivo** | v1.1 |
-| **Issue origen** | [#17 — Mejora de barra de navegación de tenants](https://github.com/xguilxr/pmo_aas/issues/17) |
+| **Estado** | Sprint 5 (v1.4) — US-075 activa |
+| **Versión objetivo** | v1.4 |
+| **Issues** | [#17 origen](https://github.com/xguilxr/pmo_aas/issues/17), [#128 US-075 TO-BE](https://github.com/xguilxr/pmo_aas/issues/128) |
+
+## Actualización 2026-04-24 — TO-BE del owner (Sprint 5)
+
+Owner reabrió este epic tras detectar **2 "PMO" en el sidebar**
+(uno viejo en `OrgTreeNav` apuntando a `/admin/organizations`, otro
+nuevo de US-068 apuntando a `/pmo`) + el diagnóstico de navegación
+As-Is de Claude Code. Decisión consolidada:
+
+**DEC-022** — separar namespaces de rutas:
+- `/pmo/*` — recursos de **negocio** (proyectos, solicitudes, RAID,
+  minutas, reportes, org/program informativos). Visible a cualquier
+  user del tenant.
+- `/admin/*` — recursos de **sistema** (tenant config, users, roles,
+  AI settings, audit logs). Solo admin/superadmin.
+- `/superadmin/*` — solo `is_superadmin=True`.
+
+**DEC-023 (follow-up)** — evaluar `/{tenant_slug}/pmo/...` como
+prefijo URL. No bloquea DEC-022; se abre ADR separado.
+
+**US-075 (#128)** ejecuta el refactor:
+- Mover `page.tsx` de `/admin/{projects,requests,raid,changes,minutes,reports,programs/[id]}` → `/pmo/...`.
+- Redirects 301 de rutas viejas por compat.
+- `OrgTreeNav` visible para todos los users del tenant.
+- Páginas informativas nuevas: `/pmo/programs/` listado, `/pmo/programs/[id]`.
+- Backend: permisos GET de org/program/project no requieren `admin.*`.
+- ENH-029 (fix puntual de los 2 PMO) absorbido por US-075.
+
+**Blast radius alto:** ~30 page.tsx movidos + ~50 `<Link>` + backend
+perms + docs. ETA 5-7 días. Owner puede partir en sub-US si conviene.
 
 ## Objetivo de negocio
 

@@ -382,3 +382,79 @@ porque el owner la considera un anti-patrón para su caso de uso — la
 plataforma debe ser asistiva, no burocrática.
 
 Registrada 2026-04-24 mid-Sprint 4 tras el primer hotfix BUG-030.
+
+---
+
+## DEC-021 — SuperAdmin puede override permisos por tenant (safety net)
+
+**Contexto:** DEC-020 declaró permisos estáticos por `role_type` en
+código. Bonito para simplicidad, pero elimina cualquier flexibilidad
+cuando un tenant específico necesita ajustes puntuales (dar al rol
+`user` un permiso admin-only por excepción, o quitarle al `admin` un
+permiso sensible). Además, BUG-031 expuso que sin vía de "rescue" el
+sistema puede quedar atrapado (admin lockout irrecuperable).
+
+**Decisión:** el mapping estático de DEC-020 sigue siendo la base. Se
+agrega una capa **opcional de overrides por tenant** administrada
+exclusivamente por **superadmin**:
+
+- Tabla `tenant_role_permission_overrides (tenant_id, role_type, module, action, granted, reason, updated_by, updated_at)`.
+- `CurrentUser.has(module, action)` aplica el mapping estático
+  primero y los overrides del tenant actual después. Cache por
+  request.
+- Overrides requieren `reason` obligatoria → audit log.
+- Solo superadmin (`is_superadmin=True`) puede crearlos o quitarlos.
+- Superadmin sigue bypassando todo el gate, incluidos los overrides.
+
+**Consecuencias:**
+- El mapping estático sigue siendo la fuente de verdad por defecto.
+  El 99% de los tenants no tiene overrides.
+- Overrides = safety net + flexibilidad quirúrgica.
+- Implementación en **US-073** (#126).
+
+**Alternativa descartada:** sistema completo de RBAC editable por
+admin de cada tenant. Rechazada: reintroduce la complejidad que
+DEC-020 eliminó; reserva la flexibilidad para el superadmin como caso
+de emergencia, no para uso normal.
+
+Registrada 2026-04-24 tras BUG-031.
+
+---
+
+## DEC-022 — Namespaces de rutas: `/pmo` (negocio) vs `/admin` (sistema)
+
+**Contexto:** el admin panel mezcla recursos de negocio (proyectos,
+solicitudes, RAID, minutas, reportes, organigrama informativo) con
+gestión del sistema (usuarios, roles, tenant config, AI settings,
+audit) todo bajo `/admin/*`. Esto confunde la navegación, duplica
+entradas en sidebar (hubo 2 "PMO" post-US-068) y expone rutas CRUD
+por defecto cuando muchos usuarios solo necesitan vista informativa.
+
+**Decisión:** separar los namespaces:
+
+- `/pmo/*` — recursos **de negocio**. Proyectos, solicitudes, RAID,
+  minutas, reportes, organizations/programs en modo informativo.
+  Accesible a cualquier user del tenant (permisos por operación,
+  no por ruta).
+- `/admin/*` — recursos **del sistema**. Tenant config, users, roles,
+  AI config, audit logs. Solo `role_type=admin` o `is_superadmin`.
+- `/superadmin/*` — exclusivamente `is_superadmin=True`.
+
+**Consecuencias:**
+- Refactor masivo de rutas Next.js (ver US-075 #128).
+- Rutas viejas `/admin/projects/*`, `/admin/requests/*`, `/admin/raid/*`,
+  etc. quedan como redirects 301 → `/pmo/...` por compat.
+- `OrgTreeNav` pasa a ser visible para todos los usuarios del tenant
+  (antes solo admin).
+- Permisos backend: endpoints GET de `organizations`, `programs`,
+  `projects` aceptan lectura de cualquier user del tenant.
+
+**Alternativa descartada:** seguir bajo `/admin/*` y arreglar solo
+los duplicados puntuales (hubiera sido el ENH-029 que se desechó).
+Rechazada: no salda la deuda conceptual y requiere rework cada vez
+que se agrega un recurso nuevo.
+
+**Follow-up abierto (DEC-023):** evaluar `/{tenant_slug}/...` como
+prefijo URL — no bloquea DEC-022. Tracking separado (ADR a abrir).
+
+Registrada 2026-04-24 tras BUG-031 + inspección de navegación As-Is.

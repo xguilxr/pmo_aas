@@ -229,6 +229,22 @@ GET    /api/v1/projects/{id}/export
 
 ## # PENDING — User Stories nuevas
 
+### US-071 — Plantilla vacía descargable del Plan (Sprint 5)
+
+**Como** PM sin plan previo
+**Quiero** descargar una plantilla XLSX con las columnas que el
+sistema espera
+**Para** armar el plan offline y después subirlo.
+
+Issue **#124**. Usa las 9 columnas canónicas de ENH-028 (WBS · Tarea
+· Inicio · Fin · Duración · Avance · Es hito · Estado · Responsable)
++ hoja de instrucciones con formatos válidos + data validation. Botón
+"Descargar plantilla" visible aun con plan vacío en
+`/admin/projects/[id]/plan`. Generación client-side con exceljs
+(sin backend). Estado: `status:triage`.
+
+---
+
 ### US-016 — Unificar Plan + Gantt en una sola pestaña
 
 **Como** PM

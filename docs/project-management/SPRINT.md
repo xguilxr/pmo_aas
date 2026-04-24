@@ -7,36 +7,14 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 4 v1.3 COMPLETO ✅ (14/14 items).
+2026-04-24 — Sprint 5 kickoff.
 
-Bloque 1 — Reworks del review (8/8 ✅):
-- BUG-030 (#118) hotfix Groq metadata → 400. ✅ 8495dc8
-- BUG-015 (#40) rework botón CSV en dashboard. ✅ d3523bb
-- BUG-029 (#105) upload documentos funcional + styling. ✅ 3f6ac90
-- ENH-024 (#106) reporte filename CORS. ✅ 33c043c
-- ENH-025 (#107) filtros RAID en una línea. ✅ ca9dc1d
-- ENH-026 (#108) consolidar Gestión Avanzada RAID. ✅ 8d69623
-- ENH-027 (#109) panel editable RAID compartido. ✅ 3001959
-- ENH-028 (#110) export Excel MPP-like + CSV BOM. ✅ f1db32a
+BUG-031 (#121) — admin lockout post-US-059/060. status:ready.
+  Arranca de inmediato (hotfix antes del resto del sprint).
 
-Bloque 2 — Infra + RAID robusto + charter + PMO (5/5 ✅):
-- US-066 (#113) uploads R2 + runbook. ✅ ca5dd0c + e0f9c2e
-- US-064 (#111) RAID área + ordering. ✅ 798c89f
-- BUG-028 (#104) charter .docx real en bucket. ✅ 342e2b3
-- US-065 (#112) RAID página dedicada + historial. ✅ 76277ac
-- US-068 (#116) página PMO de organización. ✅ 8f78d9b
-
-Bloque 3 — Import Project/Excel (1/1 ✅):
-- US-067 (#114) import XLSX → tareas. ✅ e9ef28b
-  (MPP nativo queda como follow-up documentado).
-
-Bloque 4 — Auth simplificada post-DEC-020 (2/2 ✅):
-- US-059 (#88) roles Admin/User/Viewer + backend gate. ✅ 13eca87
-- US-060 (#89) hook useMyPermissions + gate UI. ✅ 4fd19ca
-
-Pendiente para el owner: verificar cada fix-committed y cerrar
-los issues con `completed`. Aplicar migraciones 0024, 0025, 0026
-en Railway (`alembic upgrade head`) antes del próximo deploy.
+Sprint 4 v1.3 cerrado — 14/14 items en status:fix-committed.
+Pendiente para el owner: verificar fix-committed + aplicar
+migraciones 0024, 0025, 0026 en Railway antes del próximo deploy.
 ```
 
 ---
@@ -48,26 +26,31 @@ en Railway (`alembic upgrade head`) antes del próximo deploy.
 > pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
 
 ```
-— Vacío —
+— Vacío — (todos los nuevos issues ya en Bloques del Sprint 5)
 ```
 
 ---
 
 ## ⏳ QUEUE
 
-**Sprint 4 v1.3 cerrado (2026-04-24) — 14/14 items en status:fix-committed.**
-Esperando verificación del owner para marcar issues como `completed`
-y arrancar el siguiente sprint.
+**Sprint 5 (v1.4) — triage 2026-04-24. 8 items en 4 bloques.**
 
-### Bloque 1 (Sprint 4) — Reworks del review ✅ COMPLETO
+### Bloque 0 — Hotfix admin lockout (1 item) 🔴 IN-PROGRESS
+- [ ] BUG-031 — Admin lockout: prefijo `admin.*` sin mapping en permissions.py — #121 `status:ready`
 
-> Todos los items entregados; pendiente verificación del owner para
-> mover los issues a `closed`.
+### Bloque 1 — SuperAdmin safety net (3 items)
+- [ ] US-072 — SuperAdmin: editar `role_type` de usuarios de cualquier tenant — #125 `status:triage`
+- [ ] US-073 — SuperAdmin: overrides de permisos por tenant (DEC-021) — #126 `status:triage`
+- [ ] US-074 — SuperAdmin: cambiar email + password de cuenta superadmin — #127 `status:triage`
 
-### Sprint 5 — TBD
+### Bloque 2 — Import inteligente de planes (3 items)
+- [ ] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 en worker) — #122 `status:triage`
+- [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:triage`
+- [ ] US-071 — Plantilla vacía descargable del plan — #124 `status:triage`
 
-Sin items todavía. El owner define el scope tras verificar todos los
-fix-committed del Sprint 4.
+### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US)
+- [ ] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128 `status:triage`
+  (absorbe ENH-029; owner puede partir en sub-US si scope crece).
 
 ---
 
@@ -178,6 +161,23 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 ## Notas y cambios
 
+- **2026-04-24 (Sprint 5 kickoff):** owner reporta BUG crítico de
+  admin lockout post-Sprint 4 (todas las rutas `/admin/*` devuelven
+  "Falta permiso admin.X:read"). Diagnóstico: US-059 introdujo
+  mapping estático sin prefijo `admin.*` pero los endpoints siguen
+  exigiendo `"admin.users"`, `"admin.roles"`, etc. BUG-031 creado
+  con `status:ready` directo (hotfix P0).
+- **2026-04-24 (Sprint 5 triage):** owner aprobó 8 items para el
+  sprint distribuidos en 4 bloques:
+  - Bloque 0: BUG-031 hotfix (#121).
+  - Bloque 1 SuperAdmin safety net: US-072 (#125), US-073 (#126),
+    US-074 (#127). DEC-021 registrada (overrides permisos por tenant).
+  - Bloque 2 Import inteligente: US-069 MPP (#122), US-070 wizard de
+    mapeo (#123), US-071 plantilla vacía (#124).
+  - Bloque 3 Refactor navegación: US-075 `/pmo/*` namespace (#128).
+    DEC-022 registrada (namespaces `/pmo` negocio vs `/admin`
+    sistema). Evaluación DEC-023 (`/{tenant_slug}` prefix) queda
+    como follow-up ADR. ENH-029 absorbido por US-075.
 - **2026-04-24 (reshuffle #2 — US-066 promovida):** owner reporta que
   los docs de Railway Volume (`SETUP.md` §4.1, `DEPLOYMENT.md` §4)
   están incorrectos — Railway no permite compartir volumes entre
