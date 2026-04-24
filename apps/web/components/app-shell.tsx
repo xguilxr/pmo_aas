@@ -105,6 +105,14 @@ const TOP_NAV: NavItem[] = [
       },
     ],
   },
+  // US-068: vista informativa del portafolio (separada del CRUD en /admin).
+  {
+    id: "pmo",
+    label: "PMO",
+    icon: <Building2 className="h-4 w-4" aria-hidden />,
+    href: "/pmo",
+    match: (p) => p === "/pmo" || p.startsWith("/pmo/"),
+  },
 ];
 
 // Admin-only. Sidebar con 4 ítems raíz (US-036 / issue #17).
