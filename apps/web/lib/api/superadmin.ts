@@ -149,3 +149,50 @@ export function updateSuperadminMe(body: SuperadminMeUpdateBody): Promise<Supera
     body,
   });
 }
+
+// US-073 + DEC-021 — overrides de permisos por tenant.
+export type PermissionOverride = {
+  id: string;
+  role_type: "admin" | "user" | "viewer";
+  module: string;
+  action: string;
+  granted: boolean;
+  reason: string;
+  updated_by_user_id: string | null;
+};
+
+export type PermissionOverrideUpsert = {
+  role_type: "admin" | "user" | "viewer";
+  module: string;
+  action: string;
+  granted: boolean;
+  reason: string;
+};
+
+export function listPermissionOverrides(
+  tenantId: string,
+): Promise<PermissionOverride[]> {
+  return apiFetch<PermissionOverride[]>(
+    `/api/v1/superadmin/tenants/${tenantId}/permission-overrides`,
+  );
+}
+
+export function upsertPermissionOverrides(
+  tenantId: string,
+  body: PermissionOverrideUpsert[],
+): Promise<PermissionOverride[]> {
+  return apiFetch<PermissionOverride[]>(
+    `/api/v1/superadmin/tenants/${tenantId}/permission-overrides`,
+    { method: "PUT", body },
+  );
+}
+
+export function deletePermissionOverride(
+  tenantId: string,
+  overrideId: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/superadmin/tenants/${tenantId}/permission-overrides/${overrideId}`,
+    { method: "DELETE" },
+  );
+}
