@@ -7,7 +7,10 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 5 en curso.
+2026-04-24 — Sprint 5 en curso. Branch: claude/sprint-pending-tasks-YhSdj
+
+US-069 (#122) Import MPP nativo — arrancada (orden acordado con
+owner: US-069 → US-075 → US-070).
 
 PRs mergeados a main:
 - BUG-031 (#121)  PR #129
@@ -18,19 +21,17 @@ PRs mergeados a main:
 - ENH-032 (#133)  PR #139 (consolidado con ENH-033)
 - ENH-033 (#138)  PR #139
 - US-073  (#126)  PR #140 (+ fixes CI dual runs + permissions)
+- ENH-031 (#132)  PR #141 (a5cfab1 — session engine + clean tables)
+- Docs Sprint 5   PR #137 (b6fc650)
 
-PRs abiertos:
-- ENH-031 (#132)  PR #141  rebased sobre main con fix CI heredado
-- Docs Sprint 5   PR #137  rebased sobre main
-
-Pendientes para próximas sesiones (mega-US, 3-7 días cada una):
-- US-069 (#122) Import MPP nativo (OpenJDK 21 worker)
-- US-070 (#123) Wizard de mapeo de columnas
+Pendientes siguientes sesiones (mega-US, 3-7 días cada una):
+- US-070 (#123) Wizard de mapeo de columnas — bloqueado por US-075
+  (para no reubicar el wizard después del refactor de rutas)
 - US-075 (#128) Refactor navegación /pmo/* (DEC-022)
-- ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests
+- ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests (status:triage)
 
 Pendiente owner: aplicar migraciones 0024-0027 en Railway antes del
-próximo deploy + mergear #141 + #137 cuando CI pase.
+próximo deploy.
 ```
 
 ---
@@ -49,15 +50,15 @@ próximo deploy + mergear #141 + #137 cuando CI pase.
 
 ## ⏳ QUEUE
 
-**Sprint 5 (v1.4) — 10 items en 6 bloques + 3 follow-ups. 8/10 mergeados a main, 2 pendientes.**
+**Sprint 5 (v1.4) — 10 items en 6 bloques + 1 follow-up. 9/10 mergeados a main, 1 pendiente (US-069 en curso).**
 
 ### Bloque 0 — Hotfix admin lockout (1 item) ✅ MERGEADO
 - [x] BUG-031 — Admin lockout post-US-059/060 — #121 ✅ PR #129
 
-### Bloque 0.5 — Infra CI (3 items) — 2/3 mergeados
+### Bloque 0.5 — Infra CI (3 items) ✅ COMPLETO
 - [x] ENH-030 — Acelerar suite de tests + CI (Fase 1/2/3) — #130 ✅ PR #131
 - [x] ENH-032 + ENH-033 — Ruff cleanup + path filters + concurrency cancel — #133/#138 ✅ PR #139 (consolidados)
-- [ ] ENH-031 — Engine session-scoped + clean tables per test — #132 🟡 PR #141 abierto
+- [x] ENH-031 — Engine session-scoped + clean tables per test — #132 ✅ PR #141 (a5cfab1)
 
 ### Bloque 1 — SuperAdmin safety net (3 items) ✅ COMPLETO
 - [x] US-072 — SuperAdmin: editar `role_type` de usuarios — #125 ✅ PR #134
@@ -65,12 +66,12 @@ próximo deploy + mergear #141 + #137 cuando CI pase.
 - [x] US-074 — SuperAdmin: cambiar email + password — #127 ✅ PR #134
 
 ### Bloque 2 — Import inteligente de planes (3 items) — 1/3 mergeado
-- [ ] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 en worker) — #122 `status:triage` (mega 3-5 días)
-- [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:triage` (mega 4-6 días)
+- [ ] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 en worker) — #122 `status:ready` 🔴 EN CURSO (mega 3-5 días)
+- [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:ready` (mega 4-6 días, arranca tras US-075)
 - [x] US-071 — Plantilla vacía descargable del plan — #124 ✅ PR #135
 
 ### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US)
-- [ ] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128 `status:triage` (mega 5-7 días)
+- [ ] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128 `status:ready` (mega 5-7 días, arranca tras US-069)
 
 ### Follow-ups detectados durante ejecución
 - [ ] ENH-034 — Diagnosticar bottleneck 38s en 9 tests (cierra CA2 <60s de ENH-031) — #142 `status:triage`
