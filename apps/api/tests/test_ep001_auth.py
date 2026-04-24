@@ -425,7 +425,7 @@ async def test_is_admin_equivalent_helper(client, db_session):
         user=type("U", (), {"is_superadmin": False})(),
         tenant_ids=[], active_tenant_id=None,
         roles=["PMO Manager"],
-        permissions={"users": {"read"}, "dashboard": {"read"}},
+        permissions={"admin.users": {"read"}, "dashboard": {"read"}},
     )
     assert cu_sr.is_admin_equivalent is True
 
