@@ -9,11 +9,11 @@ import {
   Download,
   Eye,
   GitCommit,
-  Shield,
   TriangleAlert,
 } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
+import { IssueDetailBody, RiskDetailBody } from "@/components/raid-detail-body";
 import {
   KIND_NEW_LABEL,
   RaidCreateModal,
@@ -378,7 +378,15 @@ function RaidInner() {
           ))}
         </div>
       ) : tab === "risks" ? (
-        <RisksSection rows={filteredRisks} projectId={id} />
+        <RisksSection
+          rows={filteredRisks}
+          projectId={id}
+          onRiskUpdate={(updated) =>
+            setRisks((prev) =>
+              prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+            )
+          }
+        />
       ) : (
         <IssuesSection
           rows={
@@ -398,6 +406,11 @@ function RaidInner() {
           }
           issueType={
             tab === "actions" ? "action" : tab === "incidents" ? "issue" : "decision"
+          }
+          onIssueUpdate={(updated) =>
+            setIssues((prev) =>
+              prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+            )
           }
         />
       )}
@@ -497,8 +510,17 @@ function RiskMatrix({ rows }: { rows: Risk[] }) {
   );
 }
 
-function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) {
+function RisksSection({
+  rows,
+  projectId,
+  onRiskUpdate,
+}: {
+  rows: Risk[];
+  projectId: string;
+  onRiskUpdate: (r: Partial<Risk> & { id: string }) => void;
+}) {
   const [preview, setPreview] = useState<Risk | null>(null);
+  void projectId;
   return (
     <div className="space-y-5">
       <RiskMatrix rows={rows} />
@@ -582,16 +604,23 @@ function RisksSection({ rows, projectId }: { rows: Risk[]; projectId: string }) 
                   label: "P × I",
                   value: `${preview.probability ?? "—"} × ${preview.impact ?? "—"}`,
                 },
-                {
-                  label: "Estado",
-                  value: RISK_STATUS_LABEL[preview.status] ?? preview.status,
-                },
                 { label: "Fecha límite", value: preview.due_date ?? "—" },
                 { label: "Asignado", value: preview.owner_id ?? "—", mono: true },
               ]
             : []
         }
         description={preview?.description ?? null}
+        extra={
+          preview ? (
+            <RiskDetailBody
+              risk={preview}
+              onUpdated={(r) => {
+                setPreview({ ...preview, ...r });
+                onRiskUpdate(r);
+              }}
+            />
+          ) : null
+        }
       />
     </div>
   );
@@ -602,13 +631,16 @@ function IssuesSection({
   projectId,
   sectionLabel,
   issueType,
+  onIssueUpdate,
 }: {
   rows: Issue[];
   projectId: string;
   sectionLabel: string;
   issueType: IssueType;
+  onIssueUpdate: (i: Partial<Issue> & { id: string }) => void;
 }) {
   const [preview, setPreview] = useState<Issue | null>(null);
+  void projectId;
   if (rows.length === 0) {
     return (
       <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
@@ -694,7 +726,6 @@ function IssuesSection({
                 { label: "Folio", value: preview.folio, mono: true },
                 { label: "Tipo", value: displayLabel },
                 { label: "Prioridad", value: preview.priority ?? "—" },
-                { label: "Estado", value: preview.status },
                 { label: "Compromiso", value: preview.committed_date ?? "—" },
                 { label: "Asignado", value: preview.owner_id ?? "—", mono: true },
                 { label: "Resolución", value: preview.resolution ?? "—" },
@@ -702,6 +733,17 @@ function IssuesSection({
             : []
         }
         description={preview?.description ?? null}
+        extra={
+          preview ? (
+            <IssueDetailBody
+              issue={preview}
+              onUpdated={(i) => {
+                setPreview({ ...preview, ...i });
+                onIssueUpdate(i);
+              }}
+            />
+          ) : null
+        }
       />
     </section>
   );
