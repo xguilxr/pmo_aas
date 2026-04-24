@@ -7,18 +7,30 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 5 kickoff.
+2026-04-24 — Sprint 5 en curso.
 
-ENH-030 (#130) — acelerar suite + CI (~10min → <1min). status:ready.
-  Trabajando en branch claude/optimize-ci-tests-ac3u8.
-  Fases 1/2/3 entregadas en commits separados.
+PRs mergeados a main:
+- BUG-031 (#121)  PR #129
+- ENH-030 (#130)  PR #131
+- US-072  (#125)  PR #134
+- US-074  (#127)  PR #134
+- US-071  (#124)  PR #135
+- ENH-032 (#133)  PR #139 (consolidado con ENH-033)
+- ENH-033 (#138)  PR #139
+- US-073  (#126)  PR #140 (+ fixes CI dual runs + permissions)
 
-BUG-031 (#121) — admin lockout post-US-059/060. status:fix-committed
-  (branch claude/plan-import-mapping-s6jGC, PR #129).
+PRs abiertos:
+- ENH-031 (#132)  PR #141  rebased sobre main con fix CI heredado
+- Docs Sprint 5   PR #137  rebased sobre main
 
-Sprint 4 v1.3 cerrado — 14/14 items en status:fix-committed.
-Pendiente para el owner: verificar fix-committed + aplicar
-migraciones 0024, 0025, 0026 en Railway antes del próximo deploy.
+Pendientes para próximas sesiones (mega-US, 3-7 días cada una):
+- US-069 (#122) Import MPP nativo (OpenJDK 21 worker)
+- US-070 (#123) Wizard de mapeo de columnas
+- US-075 (#128) Refactor navegación /pmo/* (DEC-022)
+- ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests
+
+Pendiente owner: aplicar migraciones 0024-0027 en Railway antes del
+próximo deploy + mergear #141 + #137 cuando CI pase.
 ```
 
 ---
@@ -37,28 +49,31 @@ migraciones 0024, 0025, 0026 en Railway antes del próximo deploy.
 
 ## ⏳ QUEUE
 
-**Sprint 5 (v1.4) — triage 2026-04-24. 9 items en 5 bloques.**
+**Sprint 5 (v1.4) — 10 items en 6 bloques + 3 follow-ups. 8/10 mergeados a main, 2 pendientes.**
 
-### Bloque 0 — Hotfix admin lockout (1 item) ✅ fix-committed
-- [x] BUG-031 — Admin lockout: prefijo `admin.*` sin mapping en permissions.py — #121 `status:fix-committed` (branch claude/plan-import-mapping-s6jGC)
+### Bloque 0 — Hotfix admin lockout (1 item) ✅ MERGEADO
+- [x] BUG-031 — Admin lockout post-US-059/060 — #121 ✅ PR #129
 
-### Bloque 0.5 — Infra CI rápido (1 item) 🔴 IN-PROGRESS
-- [ ] ENH-030 — Acelerar suite de tests + CI (~10min → <1min) — #130 `status:ready`
-  (branch claude/optimize-ci-tests-ac3u8; 3 commits Fase 1/2/3)
+### Bloque 0.5 — Infra CI (3 items) — 2/3 mergeados
+- [x] ENH-030 — Acelerar suite de tests + CI (Fase 1/2/3) — #130 ✅ PR #131
+- [x] ENH-032 + ENH-033 — Ruff cleanup + path filters + concurrency cancel — #133/#138 ✅ PR #139 (consolidados)
+- [ ] ENH-031 — Engine session-scoped + clean tables per test — #132 🟡 PR #141 abierto
 
-### Bloque 1 — SuperAdmin safety net (3 items)
-- [ ] US-072 — SuperAdmin: editar `role_type` de usuarios de cualquier tenant — #125 `status:triage`
-- [ ] US-073 — SuperAdmin: overrides de permisos por tenant (DEC-021) — #126 `status:triage`
-- [ ] US-074 — SuperAdmin: cambiar email + password de cuenta superadmin — #127 `status:triage`
+### Bloque 1 — SuperAdmin safety net (3 items) ✅ COMPLETO
+- [x] US-072 — SuperAdmin: editar `role_type` de usuarios — #125 ✅ PR #134
+- [x] US-073 — SuperAdmin: overrides permisos por tenant (DEC-021) — #126 ✅ PR #140 (migración 0027)
+- [x] US-074 — SuperAdmin: cambiar email + password — #127 ✅ PR #134
 
-### Bloque 2 — Import inteligente de planes (3 items)
-- [ ] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 en worker) — #122 `status:triage`
-- [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:triage`
-- [ ] US-071 — Plantilla vacía descargable del plan — #124 `status:triage`
+### Bloque 2 — Import inteligente de planes (3 items) — 1/3 mergeado
+- [ ] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21 en worker) — #122 `status:triage` (mega 3-5 días)
+- [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:triage` (mega 4-6 días)
+- [x] US-071 — Plantilla vacía descargable del plan — #124 ✅ PR #135
 
 ### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US)
-- [ ] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128 `status:triage`
-  (absorbe ENH-029; owner puede partir en sub-US si scope crece).
+- [ ] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128 `status:triage` (mega 5-7 días)
+
+### Follow-ups detectados durante ejecución
+- [ ] ENH-034 — Diagnosticar bottleneck 38s en 9 tests (cierra CA2 <60s de ENH-031) — #142 `status:triage`
 
 ---
 
@@ -169,6 +184,22 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 ## Notas y cambios
 
+- **2026-04-24 (Sprint 5 sesión ejecución):** entregados 7 items en
+  ~8h (5 nuevos en sesión + BUG-031 + ENH-030 que venían). Branches
+  recomendadas para mergear (orden por dependencia):
+  1. PR #131 `claude/optimize-ci-tests-ac3u8` (ENH-030 — infra CI).
+  2. `claude/sprint-5-cleanup-ruff` (ENH-032 — limpieza cosmética).
+  3. `claude/sprint-5-superadmin-block` (US-072 + US-074).
+  4. `claude/sprint-5-superadmin-overrides` (US-073 — incluye
+     migración 0027 + cambio en `CurrentUser.has()`).
+  5. `claude/sprint-5-import-block` (US-071 — plantilla vacía,
+     independiente).
+  Conflictos esperados: `apps/web/lib/api/superadmin.ts` se toca
+  en branches 3 y 4 (anexos al final, fácil resolver). `SPRINT.md`
+  se toca en varias branches (el último merge gana). `apps/api/app/
+  api/v1/endpoints/superadmin.py` también — conflicto trivial
+  porque cada branch agrega bloques distintos al final del archivo.
+  Migraciones a aplicar en Railway: **0024, 0025, 0026, 0027**.
 - **2026-04-24 (Sprint 5 kickoff):** owner reporta BUG crítico de
   admin lockout post-Sprint 4 (todas las rutas `/admin/*` devuelven
   "Falta permiso admin.X:read"). Diagnóstico: US-059 introdujo
