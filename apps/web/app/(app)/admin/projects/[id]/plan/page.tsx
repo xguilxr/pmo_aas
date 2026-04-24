@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ApiError } from "@/lib/api";
+import { getProject } from "@/lib/api/projects";
 import {
   TASK_STATUS_LABEL,
   createTask,
@@ -157,9 +158,11 @@ function PlanInner() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [gantt, setGantt] = useState<GanttData | null>(null);
+  const [projectName, setProjectName] = useState<string>("");
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportingXlsx, setExportingXlsx] = useState(false);
 
   // ENH-006: editor de tareas inline (crear + eliminar) sin depender de
   // una página extra /tasks.
@@ -210,6 +213,11 @@ function PlanInner() {
 
   useEffect(() => {
     void loadTasksAndGantt();
+    // ENH-028: nombre del proyecto para el filename del export. Falla silencioso
+    // y queda con string vacío → fallback a "PROYECTO" en el nombre del archivo.
+    getProject(id)
+      .then((p) => setProjectName(p.name))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -256,12 +264,32 @@ function PlanInner() {
     }
   }
 
+  // ENH-028: filename "PLAN - {Proyecto} - {YYYY-MM-DD}". Sanitiza
+  // caracteres ilegales en filesystems comunes (Windows, macOS).
+  function buildFilename(ext: "csv" | "xlsx"): string {
+    const safeName = (projectName || "PROYECTO")
+      .replace(/[\\/:*?"<>|]/g, "")
+      .trim() || "PROYECTO";
+    const today = new Date().toISOString().slice(0, 10);
+    return `PLAN - ${safeName} - ${today}.${ext}`;
+  }
+
   function exportToCSV() {
     if (tasks.length === 0) {
       alert("No hay tareas para exportar");
       return;
     }
-    const headers = ["WBS", "Tarea", "Inicio", "Fin", "Duración (días)", "Avance (%)", "Es hito", "Estado"];
+    const headers = [
+      "WBS",
+      "Tarea",
+      "Inicio",
+      "Fin",
+      "Duración (días)",
+      "Avance (%)",
+      "Es hito",
+      "Estado",
+      "Responsable",
+    ];
     const rows = tasks.map((t) => [
       t.wbs ?? "",
       t.name,
@@ -271,16 +299,145 @@ function PlanInner() {
       t.progress ?? 0,
       t.is_milestone ? "Sí" : "No",
       TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
+      "—",
     ]);
     const csv = [
       headers.map((h) => `"${h}"`).join(","),
       ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
     ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    // ENH-028: BOM UTF-8 (﻿) para que Excel lea acentos correctamente
+    // (antes: "DuraciÃ³n", "DiseÃ±o" → ahora: "Duración", "Diseño").
+    const blob = new Blob(["﻿", csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `tareas-${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = buildFilename("csv");
     link.click();
+  }
+
+  // ENH-028: Excel MPP-like (XLSX) — colores sutiles por estado, hitos
+  // resaltados, highlight retraso ligero (celda Avance amarilla si la
+  // tarea debería estar más avanzada a hoy). Generación 100% client-side
+  // con exceljs (dynamic import para no bloatear el bundle inicial).
+  async function exportToExcel() {
+    if (tasks.length === 0) {
+      alert("No hay tareas para exportar");
+      return;
+    }
+    setExportingXlsx(true);
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "PMO aaS";
+      wb.created = new Date();
+      const ws = wb.addWorksheet("Plan", {
+        views: [{ state: "frozen", ySplit: 1 }],
+      });
+      ws.columns = [
+        { header: "WBS", key: "wbs", width: 10 },
+        { header: "Tarea", key: "name", width: 40 },
+        { header: "Inicio", key: "start", width: 12 },
+        { header: "Fin", key: "end", width: 12 },
+        { header: "Duración (días)", key: "duration", width: 14 },
+        { header: "Avance (%)", key: "progress", width: 12 },
+        { header: "Es hito", key: "milestone", width: 10 },
+        { header: "Estado", key: "status", width: 16 },
+        { header: "Responsable", key: "owner", width: 18 },
+      ];
+      // Header bold + fill gris claro.
+      const header = ws.getRow(1);
+      header.font = { bold: true, color: { argb: "FF1F2937" } };
+      header.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE5E7EB" },
+      };
+      header.alignment = { vertical: "middle", horizontal: "left" };
+      header.height = 20;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayMs = today.getTime();
+
+      // Colores sutiles MPP-like por estado (ARGB hex sin #).
+      const STATUS_FILL: Record<string, string> = {
+        completed: "FFE6F4EA",   // verde pálido
+        in_progress: "FFE3F0FF", // azul pálido
+        on_hold: "FFFFF4E5",     // ámbar pálido
+        not_started: "FFF3F4F6", // gris claro
+      };
+      const LATE_PROGRESS_FILL = "FFFFF8C5"; // amarillo suave
+
+      tasks.forEach((t, i) => {
+        const rowNum = i + 2;
+        const row = ws.addRow({
+          wbs: t.wbs ?? "",
+          name: t.name,
+          start: t.start_date ?? "",
+          end: t.end_date ?? "",
+          duration: t.duration_days ?? "",
+          progress: typeof t.progress === "number" ? t.progress / 100 : 0,
+          milestone: t.is_milestone ? "♦" : "",
+          status:
+            TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
+            t.status,
+          owner: "—",
+        });
+        // Avance como porcentaje formateado.
+        row.getCell("progress").numFmt = "0%";
+
+        // Color por estado (todas las filas no-hito).
+        const statusFill = STATUS_FILL[t.status as string];
+        if (statusFill && !t.is_milestone) {
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: statusFill },
+            };
+          });
+        }
+        // Hitos: fondo morado pálido + bold para que destaquen.
+        if (t.is_milestone) {
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFEDE9FE" },
+            };
+            cell.font = { bold: true, color: { argb: "FF5B21B6" } };
+          });
+        }
+
+        // Highlight retraso ligero: si end_date < hoy y avance < 100%,
+        // pintamos solo la celda de Avance en amarillo (no agresivo).
+        const endStr = t.end_date;
+        if (endStr && (t.progress ?? 0) < 100) {
+          const endMs = new Date(endStr).getTime();
+          if (!Number.isNaN(endMs) && endMs < todayMs) {
+            row.getCell("progress").fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: LATE_PROGRESS_FILL },
+            };
+          }
+        }
+      });
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = buildFilename("xlsx");
+      link.click();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "No se pudo generar el Excel",
+      );
+    } finally {
+      setExportingXlsx(false);
+    }
   }
 
   const listBlock = useMemo(
@@ -297,11 +454,23 @@ function PlanInner() {
             <Button
               type="button"
               size="sm"
+              variant="secondary"
               onClick={exportToCSV}
               aria-label="Exportar a CSV"
             >
               <Download className="h-4 w-4" aria-hidden />
-              Exportar
+              CSV
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={exportToExcel}
+              loading={exportingXlsx}
+              aria-label="Exportar a Excel"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Excel
             </Button>
             <Button
               type="button"
@@ -318,7 +487,7 @@ function PlanInner() {
       </section>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tasks, loadingTasks, id],
+    [tasks, loadingTasks, id, exportingXlsx, projectName],
   );
 
   const ganttBlock = useMemo(
