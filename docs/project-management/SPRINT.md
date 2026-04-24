@@ -9,9 +9,9 @@
 ```
 2026-04-24 — Sprint 5 en curso. Branch: claude/sprint-pending-tasks-YhSdj
 
-US-075 (#128) Refactor navegación /pmo/* — sub-bloques A+C
-fix-committed (33b0c7a). Sub-bloque B (páginas informativas
-con KPIs) pendiente próxima sesión.
+US-075 (#128) Refactor navegación /pmo/* — ✅ COMPLETA
+(sub-bloques A+B+C). Próximo item del plan: US-070 Wizard de
+mapeo de columnas (#123).
 
 PRs mergeados a main:
 - BUG-031 (#121)  PR #129
@@ -87,11 +87,12 @@ acción manual con la DB.
 - [ ] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 `status:ready` (mega 4-6 días, arranca tras US-075)
 - [x] US-071 — Plantilla vacía descargable del plan — #124 ✅ PR #135
 
-### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US, partido en sub-bloques)
-- [~] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128
+### Bloque 3 — Refactor navegación TO-BE (1 item — mega-US completa) ✅
+- [x] US-075 — Recursos de proyecto bajo `/pmo/*` (DEC-022) — #128
   - [x] Sub-bloque A: mover rutas + redirects 301 (33b0c7a)
   - [x] Sub-bloque C: sidebar OrgTreeNav + ADMIN_NAV gate (33b0c7a)
-  - [ ] Sub-bloque B: páginas informativas con KPIs (próxima sesión)
+  - [x] Sub-bloque B: páginas informativas (`/pmo/programs/*` cards +
+        KPIs en `/pmo/organizations/[id]`)
 
 ### Follow-ups detectados durante ejecución
 - [ ] ENH-034 — Diagnosticar bottleneck 38s en 9 tests (cierra CA2 <60s de ENH-031) — #142 `status:triage`

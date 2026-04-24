@@ -128,16 +128,16 @@ export default function ProgramSummaryPage() {
         <BackLink
           fallbackHref={
             data.organization_id
-              ? `/admin/organizations/${data.organization_id}`
-              : "/admin/organizations"
+              ? `/pmo/organizations/${data.organization_id}`
+              : "/pmo"
           }
         />
         <Breadcrumb
           items={[
-            { href: "/admin/organizations", label: "Organizaciones" },
+            { href: "/pmo", label: "Portafolio" },
             data.organization_name
               ? {
-                  href: `/admin/organizations/${data.organization_id}`,
+                  href: `/pmo/organizations/${data.organization_id}`,
                   label: data.organization_name,
                 }
               : { label: "Organización" },

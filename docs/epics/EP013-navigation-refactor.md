@@ -6,7 +6,7 @@
 | **Prioridad** | Alta — bloque 9 del sprint (antes de POST-MVP) |
 | **Dependencias** | EP001, EP002, EP005, EP006, EP007, EP010 completos |
 | **Módulo** | `web.nav`, `admin`, `projects.detail`, `superadmin` |
-| **Estado** | Sprint 5 (v1.4) — US-075 sub-bloques A+C fix-committed; B pendiente |
+| **Estado** | Sprint 5 (v1.4) — US-075 completa (sub-bloques A+B+C fix-committed) |
 | **Versión objetivo** | v1.4 |
 | **Issues** | [#17 origen](https://github.com/xguilxr/pmo_aas/issues/17), [#128 US-075 TO-BE](https://github.com/xguilxr/pmo_aas/issues/128) |
 
@@ -63,13 +63,21 @@ perms + docs. ETA 5-7 días. Owner puede partir en sub-US si conviene.
   user/viewer en sus mappings estáticos (DEC-020). No requirió cambios
   en endpoints.
 
-**Sub-bloque B — Páginas informativas** ⏳ pendiente próxima sesión
-- `/pmo/programs/page.tsx` listado de programas como cards informativos
-  (mismo placeholder que el `/admin/programs/page.tsx` actual hereda).
-- `/pmo/programs/[id]/page.tsx` informativa con KPIs (hoy es informativa
-  básica de US-034; se va a extender).
-- `/pmo/organizations/[id]/page.tsx` extender con KPIs y lista de
-  proyectos (US-068 dejó la base; falta consolidar).
+**Sub-bloque B — Páginas informativas** ✅ fix-committed
+- `/pmo/programs/page.tsx` reescrita como grid de cards informativos
+  (sin CRUD ni modal "Nuevo programa" — la creación queda en
+  `/admin/organizations/{id}`). Header breadcrumb `PMO / Programas`,
+  3 KPI cards (total/activos/inactivos) + filtros (search/org/estado).
+  Click en card → resumen `/pmo/programs/{id}` (US-034).
+- `/pmo/programs/[id]/page.tsx` — breadcrumbs + BackLink fallbacks
+  actualizados para apuntar a `/pmo/organizations/{id}` y `/pmo` en
+  vez de `/admin/organizations`. KPIs, donut y top risks ya estaban
+  completos (US-034).
+- `/pmo/organizations/[id]/page.tsx` — agregada fila de 4 KPI cards
+  arriba de la sección Programas: Business Units, Departamentos,
+  Programas activos (hint con total), Proyectos activos (hint con
+  total). Derivados de `OrganizationPanelDetail` sin requerir
+  endpoint nuevo.
 
 ## Objetivo de negocio
 
