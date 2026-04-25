@@ -9,10 +9,10 @@ Tests críticos del scope:
 - Aislamiento: tenant A no puede excluir orgs de tenant B.
 """
 import pytest
+from sqlalchemy import select
 
 from app.models.organization import Organization
 from app.models.organization_user_exclusion import OrganizationUserExclusion
-from sqlalchemy import select
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 

@@ -149,7 +149,7 @@ def test_currentuser_construye_correctamente():
     u = type("U", (), {"is_superadmin": False, "role_type": "admin"})()
     cu = CurrentUser(user=u, tenant_ids=[], active_tenant_id=None)
     assert cu.has_capability("users.manage")
-    assert not cu.has_capability("organizations.delete") is False  # admin sí
+    assert cu.has_capability("organizations.delete") is not False  # admin sí
     u2 = type("U", (), {"is_superadmin": False, "role_type": "user"})()
     cu2 = CurrentUser(user=u2, tenant_ids=[], active_tenant_id=None)
     assert not cu2.has_capability("users.manage")
