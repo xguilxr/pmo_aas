@@ -86,3 +86,37 @@ export function updateProjectCharter(
     body,
   });
 }
+
+/**
+ * US-083: descarga el charter en .docx o .pdf. El endpoint genera el
+ * archivo on-demand desde el state actual (incluso si está vacío) y
+ * lo devuelve como bytes con Content-Disposition: attachment.
+ *
+ * Hace fetch con Bearer + crea Blob URL para descargar (igual que
+ * `openDocumentForDownload` en BUG-034). Esto evita el problema del
+ * `<a href>` plain sin auth.
+ */
+export async function downloadCharter(
+  projectId: string,
+  format: "docx" | "pdf" = "docx",
+): Promise<void> {
+  const { apiBase } = await import("@/lib/api");
+  const { getAccessToken } = await import("@/lib/auth-storage");
+  const token = getAccessToken();
+  const res = await fetch(
+    `${apiBase()}/api/v1/projects/${projectId}/charter/download?format=${format}`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  );
+  if (!res.ok) {
+    throw new Error(`Falló la descarga (HTTP ${res.status})`);
+  }
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = "";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 5_000);
+}

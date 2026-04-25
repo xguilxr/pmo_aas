@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, FileText, Save } from "lucide-react";
+import { ArrowLeft, Download, FileText, Save } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Banner } from "@/components/ui/banner";
@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
+  downloadCharter,
   getProjectCharter,
   updateProjectCharter,
   type ProjectCharter,
@@ -173,12 +174,43 @@ export default function ProjectCharterEditPage() {
             </p>
           </div>
         </div>
-        <Link href={`/pmo/projects/${charter.project_id}`}>
-          <Button variant="ghost">
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Volver al proyecto
+        <div className="flex flex-wrap items-center gap-2">
+          {/* US-083: descarga directa del charter (genera on-demand). */}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              downloadCharter(charter.project_id, "docx").catch((err) =>
+                window.alert(
+                  err instanceof Error ? err.message : "No se pudo descargar",
+                ),
+              )
+            }
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Descargar DOCX
           </Button>
-        </Link>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              downloadCharter(charter.project_id, "pdf").catch((err) =>
+                window.alert(
+                  err instanceof Error ? err.message : "No se pudo descargar",
+                ),
+              )
+            }
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Descargar PDF
+          </Button>
+          <Link href={`/pmo/projects/${charter.project_id}`}>
+            <Button variant="ghost">
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Volver al proyecto
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {notice ? <Banner variant={notice.kind}>{notice.message}</Banner> : null}
