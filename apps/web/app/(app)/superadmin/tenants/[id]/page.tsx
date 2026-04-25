@@ -23,6 +23,7 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
@@ -30,6 +31,7 @@ import {
   hardDeleteTenant,
   joinAsAdmin,
   softDeleteTenant,
+  updateUserRoleType,
   type TenantDetail,
 } from "@/lib/api/superadmin";
 import {
@@ -246,15 +248,10 @@ export default function TenantDetailPage() {
       <HierarchyOverview detail={data} />
 
       <section className="grid gap-5 lg:grid-cols-2">
-        <DetailList
-          title="Usuarios"
-          items={users.map((u) => ({
-            key: u.id,
-            primary: u.username,
-            secondary: u.email,
-            badge: u.is_active ? null : "Inactivo",
-          }))}
-          emptyLabel="Sin usuarios"
+        <UsersInlineSection
+          tenantId={tenant.id}
+          users={users}
+          onChanged={refresh}
         />
         <DetailList
           title="Organizaciones"
@@ -543,6 +540,130 @@ function DetailList({
   );
 }
 
+
+type RoleType = "admin" | "user" | "viewer";
+
+/**
+ * BUG-033 — sección "Usuarios" inline con dropdown de role_type
+ * editable directamente en la página detalle del tenant. Antes el
+ * `<DetailList>` plain no exponía la opción y el owner reportó "no
+ * me da la opción de modificar el rol". El deep-link a la página
+ * /users dedicada se mantiene en el botón superior.
+ */
+function UsersInlineSection({
+  tenantId,
+  users,
+  onChanged,
+}: {
+  tenantId: string;
+  users: TenantDetail["users"];
+  onChanged: () => void;
+}) {
+  const router = useRouter();
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [pending, setPending] = useState<Record<string, RoleType>>({});
+
+  async function save(uid: string, next: RoleType, label: string) {
+    if (savingId) return;
+    if (!window.confirm(`Cambiar role_type de ${label} → ${next}?`)) return;
+    setSavingId(uid);
+    try {
+      await updateUserRoleType(uid, next);
+      setPending((m) => {
+        const { [uid]: _, ...rest } = m;
+        return rest;
+      });
+      onChanged();
+    } catch (err) {
+      alert(
+        err instanceof ApiError
+          ? err.message
+          : "No se pudo actualizar el role_type",
+      );
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--border-default)] px-4 py-3">
+        <span className="text-sm font-medium text-[var(--color-primary)]">
+          Usuarios ({users.length})
+        </span>
+        <button
+          type="button"
+          className="text-[11px] text-[var(--color-accent)] hover:underline"
+          onClick={() => router.push(`/superadmin/tenants/${tenantId}/users`)}
+        >
+          Ver tabla expandida →
+        </button>
+      </div>
+      <div className="max-h-[380px] divide-y divide-[var(--border-subtle)] overflow-y-auto">
+        {users.length === 0 ? (
+          <div className="px-4 py-6 text-center text-sm text-[var(--color-tertiary)]">
+            Sin usuarios
+          </div>
+        ) : (
+          users.map((u) => {
+            const current = (u.role_type ?? "user") as RoleType;
+            const next = pending[u.id] ?? current;
+            const dirty = pending[u.id] !== undefined && pending[u.id] !== current;
+            return (
+              <div
+                key={u.id}
+                className="flex items-center justify-between gap-2 px-4 py-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-[var(--color-primary)]">
+                      {u.username}
+                    </p>
+                    {u.is_superadmin ? (
+                      <Badge variant="warning">superadmin</Badge>
+                    ) : null}
+                    {!u.is_active ? (
+                      <Badge variant="danger">Inactivo</Badge>
+                    ) : null}
+                  </div>
+                  <p className="truncate text-xs text-[var(--color-tertiary)]">
+                    {u.email}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={next}
+                    disabled={u.is_superadmin || savingId === u.id}
+                    onChange={(e) =>
+                      setPending((m) => ({
+                        ...m,
+                        [u.id]: e.target.value as RoleType,
+                      }))
+                    }
+                    className="h-8 w-28 text-xs"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                    <option value="viewer">Viewer</option>
+                  </Select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!dirty || u.is_superadmin}
+                    loading={savingId === u.id}
+                    onClick={() => save(u.id, next, u.email)}
+                  >
+                    Guardar
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
 
 function HierarchyOverview({ detail }: { detail: TenantDetail }) {
   const h = detail.hierarchy;

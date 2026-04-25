@@ -182,9 +182,20 @@ async def tenant_detail(
     t = (await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))).scalar_one_or_none()
     if t is None:
         raise not_found("Tenant")
+    # BUG-033: incluye `role_type` y `is_superadmin` para que la sección
+    # de Usuarios en /superadmin/tenants/[id] pueda mostrar dropdown
+    # editable inline (descubre la funcionalidad sin requerir navegar
+    # al panel /users dedicado).
     users = (
         await db.execute(
-            select(User.id, User.username, User.email, User.is_active).where(User.tenant_id == t.id)
+            select(
+                User.id,
+                User.username,
+                User.email,
+                User.is_active,
+                User.role_type,
+                User.is_superadmin,
+            ).where(User.tenant_id == t.id)
         )
     ).all()
     from app.models.organization import Organization
@@ -229,7 +240,17 @@ async def tenant_detail(
 
     return {
         "tenant": {"id": str(t.id), "slug": t.slug, "name": t.name, "is_active": t.is_active},
-        "users": [{"id": str(r.id), "username": r.username, "email": r.email, "is_active": r.is_active} for r in users],
+        "users": [
+            {
+                "id": str(r.id),
+                "username": r.username,
+                "email": r.email,
+                "is_active": r.is_active,
+                "role_type": r.role_type,
+                "is_superadmin": r.is_superadmin,
+            }
+            for r in users
+        ],
         "organizations": [{"id": str(r.id), "name": r.name, "is_active": r.is_active} for r in orgs],
         "programs": [{"id": str(r.id), "name": r.name, "organization_id": str(r.organization_id)} for r in programs],
         "hierarchy": {
