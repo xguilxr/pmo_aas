@@ -360,8 +360,15 @@ async def test_tc070_6_mpp_wizard_flow(client, db_session, monkeypatch):
     ).encode()
 
     def _fake_run(*args, **kwargs):
+        # Post fix 2026-04-25: el wrapper Java escribe el JSON a un
+        # archivo de salida (cmd[5]) en vez de stdout para evitar la
+        # contaminación de logs de MPXJ/POI.
+        cmd = args[0]
+        if len(cmd) >= 6:
+            with open(cmd[5], "wb") as f:
+                f.write(canned)
         return subprocess.CompletedProcess(
-            args=args[0], returncode=0, stdout=canned, stderr=b""
+            args=cmd, returncode=0, stdout=b"", stderr=b""
         )
 
     monkeypatch.setattr(mpp_parser.subprocess, "run", _fake_run)

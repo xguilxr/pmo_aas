@@ -19,17 +19,20 @@ apps/api/app/api/v1/endpoints/tasks.py  (POST /projects/{id}/tasks/import)
         ▼ .mpp o application/vnd.ms-project
 apps/api/app/services/msproject/mpp_parser.py   (Python)
         │
-        ▼ subprocess.run(["java", "-cp", ..., "MpxjCli", tmp_path])
+        ▼ subprocess.run(["java", "-cp", ..., "MpxjCli", tmp_path, output_path])
 apps/api/app/services/msproject/mpxj_cli/MpxjCli.java   (wrapper)
         │
         ▼ net.sf.mpxj.reader.UniversalProjectReader
 /opt/mpxj/lib/*.jar   (MPXJ + deps POI/SLF4J)
 ```
 
-- El wrapper `MpxjCli` emite JSON con la misma forma que produce
-  `xlsx_task_parser.parse_xlsx` (`XlsxParseResult` + `ParsedTask`).
-  Eso permite reusar el adaptador `_TaskShim` del endpoint sin tocar
-  la lógica de persistencia.
+- El wrapper `MpxjCli` recibe 2 argumentos: `<input-file>` (.mpp) y
+  `<output-file>` (donde escribir el JSON). Escribe el JSON a archivo
+  (no a stdout) para evitar contaminación con logs que MPXJ/POI/SLF4J
+  emiten al stdout durante el read del .mpp. El JSON tiene la misma
+  forma que produce `xlsx_task_parser.parse_xlsx` (`XlsxParseResult`
+  + `ParsedTask`), reusando el adaptador `_TaskShim` del endpoint sin
+  tocar la lógica de persistencia.
 - Timeout por defecto: **60 s** (`MPP_PARSE_TIMEOUT_SECONDS`). Cuando
   se cumple, el subprocess se mata y el endpoint devuelve `422`.
 
@@ -87,12 +90,17 @@ Colocar un `.mpp` chico en `/tmp/plan.mpp` del host. Luego:
 
 ```bash
 docker run --rm -v /tmp/plan.mpp:/tmp/plan.mpp pmo-aas-api:mpp-smoke \
-    java -cp "/opt/mpxj/lib/*:/opt/mpxj/cli" MpxjCli /tmp/plan.mpp
+    sh -c 'java -cp "/opt/mpxj/lib/*:/opt/mpxj/cli" MpxjCli /tmp/plan.mpp /tmp/out.json && cat /tmp/out.json'
 ```
 
-Salida esperada (stdout): JSON `{"tasks":[{...}]}` con los campos
-`row_number`, `name`, `wbs`, `start_date`, `end_date`, `duration_days`,
-`progress`, `is_milestone`, `predecessors_raw`, `resources_raw`.
+Salida esperada en `/tmp/out.json`: JSON `{"tasks":[{...}]}` con los
+campos `row_number`, `name`, `wbs`, `start_date`, `end_date`,
+`duration_days`, `progress`, `is_milestone`, `predecessors_raw`,
+`resources_raw`.
+
+**Nota:** stdout puede contener warnings de MPXJ/POI durante el read
+(p. ej. "WARN: deprecated API"); por eso el wrapper escribe el JSON
+a archivo, no a stdout. No te preocupes por logs en stdout.
 
 Si el JSON se ve con caracteres raros (ej. `á` en vez de `á`),
 el CLI ya escribe UTF-8 explícito; revisar que el cliente/terminal no
