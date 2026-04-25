@@ -100,11 +100,16 @@ def parse_mpp(data: bytes) -> XlsxParseResult:
     with tempfile.NamedTemporaryFile(suffix=".mpp", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
+    # Archivo de salida separado: el wrapper Java escribe el JSON ahí
+    # en vez de stdout. Evita contaminación con warnings que MPXJ/POI
+    # emiten al stdout durante el parse del .mpp (ver fix de
+    # 2026-04-25: stdout daba `Extra data: line 1 column 5`).
+    output_path = tmp_path + ".out.json"
 
     try:
         try:
             proc = subprocess.run(
-                ["java", "-cp", _classpath(), "MpxjCli", tmp_path],
+                ["java", "-cp", _classpath(), "MpxjCli", tmp_path, output_path],
                 capture_output=True,
                 timeout=_timeout(),
                 check=False,
@@ -132,9 +137,17 @@ def parse_mpp(data: bytes) -> XlsxParseResult:
             )
 
         try:
-            payload = json.loads(proc.stdout.decode("utf-8"))
+            with open(output_path, encoding="utf-8") as f:
+                payload = json.load(f)
+        except FileNotFoundError as exc:
+            logger.warning(
+                "MPXJ CLI no escribió el output esperado en %s; stderr=%s",
+                output_path,
+                proc.stderr.decode("utf-8", errors="replace")[:200],
+            )
+            raise ValueError("respuesta inesperada del parser MPP") from exc
         except json.JSONDecodeError as exc:
-            logger.exception("MPXJ CLI emitió JSON inválido")
+            logger.exception("MPXJ CLI escribió JSON inválido")
             raise ValueError("respuesta inesperada del parser MPP") from exc
 
         result = XlsxParseResult()
@@ -154,3 +167,4 @@ def parse_mpp(data: bytes) -> XlsxParseResult:
         return result
     finally:
         Path(tmp_path).unlink(missing_ok=True)
+        Path(output_path).unlink(missing_ok=True)

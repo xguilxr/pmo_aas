@@ -69,11 +69,29 @@ CANNED_OK_JSON = json.dumps(
 ).encode()
 
 
-def _fake_completed(stdout: bytes = b"", stderr: bytes = b"", returncode: int = 0):
-    cp = subprocess.CompletedProcess(
-        args=["java"], returncode=returncode, stdout=stdout, stderr=stderr
-    )
-    return cp
+def _fake_run_factory(
+    *,
+    payload: bytes | None = None,
+    stderr: bytes = b"",
+    returncode: int = 0,
+):
+    """Factoría de stubs para `subprocess.run`. Si `payload` viene, lo
+    escribe al `output_path` (último arg del comando) emulando lo que
+    hace el wrapper Java real (post fix 2026-04-25). Devuelve
+    `CompletedProcess` con stdout vacío — el contrato ya no lo usa.
+    """
+
+    def _fake(*args, **kwargs):
+        cmd = args[0] if args else kwargs.get("args", [])
+        if payload is not None and len(cmd) >= 6:
+            output_path = cmd[5]
+            with open(output_path, "wb") as f:
+                f.write(payload)
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=returncode, stdout=b"", stderr=stderr
+        )
+
+    return _fake
 
 
 # TC-069.1 — happy path: JSON del CLI se mapea a ParsedTask.
@@ -82,7 +100,7 @@ def test_tc069_1_parses_tasks_from_cli_output(monkeypatch):
     monkeypatch.setattr(
         mpp_parser.subprocess,
         "run",
-        lambda *a, **kw: _fake_completed(stdout=CANNED_OK_JSON),
+        _fake_run_factory(payload=CANNED_OK_JSON),
     )
     result = parse_mpp(b"\x00FAKE_MPP_BYTES\x00")
     assert isinstance(result, XlsxParseResult)
@@ -110,7 +128,7 @@ def test_tc069_2_corrupt_file_raises_value_error(monkeypatch):
     monkeypatch.setattr(
         mpp_parser.subprocess,
         "run",
-        lambda *a, **kw: _fake_completed(stderr=b"unsupported format", returncode=2),
+        _fake_run_factory(stderr=b"unsupported format", returncode=2),
     )
     with pytest.raises(ValueError, match=r"corrupto|no soportada"):
         parse_mpp(b"garbage")
@@ -166,7 +184,7 @@ def test_tc069_5_same_shape_as_xlsx(monkeypatch):
     monkeypatch.setattr(
         mpp_parser.subprocess,
         "run",
-        lambda *a, **kw: _fake_completed(stdout=CANNED_OK_JSON),
+        _fake_run_factory(payload=CANNED_OK_JSON),
     )
     mpp_result = parse_mpp(b"\x00")
     assert type(mpp_result) is XlsxParseResult
@@ -193,7 +211,7 @@ def test_tc069_6_empty_project_raises(monkeypatch):
     monkeypatch.setattr(
         mpp_parser.subprocess,
         "run",
-        lambda *a, **kw: _fake_completed(stdout=b'{"tasks":[]}'),
+        _fake_run_factory(payload=b'{"tasks":[]}'),
     )
     with pytest.raises(ValueError, match="no contiene tareas"):
         parse_mpp(b"\x00")
@@ -239,7 +257,7 @@ async def test_tc069_7_endpoint_accepts_mpp(client, db_session, monkeypatch):
     monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/java")
     monkeypatch.setattr(
         "app.services.msproject.mpp_parser.subprocess.run",
-        lambda *a, **kw: _fake_completed(stdout=CANNED_OK_JSON),
+        _fake_run_factory(payload=CANNED_OK_JSON),
     )
     auth, proj_id = await _setup_project(client, db_session)
     files = {"file": ("plan.mpp", b"\x00MPP_BINARY", "application/vnd.ms-project")}
@@ -260,7 +278,7 @@ async def test_tc069_8_corrupt_mpp_returns_422(client, db_session, monkeypatch):
     monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/java")
     monkeypatch.setattr(
         "app.services.msproject.mpp_parser.subprocess.run",
-        lambda *a, **kw: _fake_completed(stderr=b"boom", returncode=2),
+        _fake_run_factory(stderr=b"boom", returncode=2),
     )
     auth, proj_id = await _setup_project(client, db_session)
     files = {"file": ("bad.mpp", b"garbage", "application/vnd.ms-project")}

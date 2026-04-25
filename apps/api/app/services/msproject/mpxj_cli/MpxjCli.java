@@ -33,6 +33,8 @@
  */
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.StringJoiner;
 
@@ -46,8 +48,13 @@ import net.sf.mpxj.reader.UniversalProjectReader;
 public final class MpxjCli {
 
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.err.println("usage: MpxjCli <input-file>");
+        if (args.length < 2) {
+            // Cambio de contrato (2026-04-25): segundo argumento es el path
+            // de salida donde se escribe el JSON. Antes el JSON iba a stdout
+            // pero MPXJ + sus deps (POI, SLF4J) pueden imprimir warnings
+            // a stdout durante el read del .mpp, contaminando el JSON y
+            // causando `Extra data` en el `json.loads` del consumidor Python.
+            System.err.println("usage: MpxjCli <input-file> <output-file>");
             System.exit(2);
         }
 
@@ -56,6 +63,7 @@ public final class MpxjCli {
             System.err.println("cannot read input file");
             System.exit(2);
         }
+        Path outputPath = Path.of(args[1]);
 
         ProjectFile project;
         try {
@@ -124,10 +132,17 @@ public final class MpxjCli {
         }
 
         out.append("]}");
-        // Escribir UTF-8 explícito para que el subprocess Python reciba
-        // caracteres correctos sin depender del default charset del JVM.
-        System.out.write(out.toString().getBytes(StandardCharsets.UTF_8), 0, out.length());
-        System.out.flush();
+        // Escribimos a un archivo dedicado (no a stdout) porque MPXJ y sus
+        // dependencias (POI/SLF4J/log4j) pueden emitir warnings al stdout
+        // durante el read del .mpp, contaminando el JSON. El consumidor
+        // Python recibió `Extra data: line 1 column 5 (char 4)` con la
+        // versión basada en stdout — el archivo dedicado evita la mezcla.
+        try {
+            Files.writeString(outputPath, out.toString(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            System.err.println("MpxjCli: failed to write output: " + safeMessage(e));
+            System.exit(2);
+        }
     }
 
     private static String formatPredecessors(Task task) {
