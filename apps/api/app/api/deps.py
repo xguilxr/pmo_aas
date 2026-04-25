@@ -181,6 +181,9 @@ def require_capability(name: str):
             raise forbidden(code="FORBIDDEN", detail=f"Falta capability {name}")
         return cu
 
+    # US-079: marca para que `test_permission_matrix.py` clasifique este
+    # gate sin parsear closures.
+    _checker.__pmoaas_gate__ = ("capability", name)  # type: ignore[attr-defined]
     return _checker
 
 
@@ -190,6 +193,7 @@ def require_authenticated():
     async def _checker(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         return cu
 
+    _checker.__pmoaas_gate__ = ("authenticated",)  # type: ignore[attr-defined]
     return _checker
 
 
@@ -210,6 +214,9 @@ def require_permission(module: str, action: str):
                 )
         return cu
 
+    _checker.__pmoaas_gate__ = (  # type: ignore[attr-defined]
+        ("capability", cap) if cap is not None else ("authenticated",)
+    )
     return _checker
 
 
@@ -217,3 +224,9 @@ async def get_superadmin(cu: CurrentUser = Depends(get_current_user)) -> Current
     if not cu.is_superadmin:
         raise forbidden(code="FORBIDDEN", detail="Solo super admin")
     return cu
+
+
+# Marca para `get_superadmin` y `get_current_user` (no son factory, son
+# funciones directas).
+get_superadmin.__pmoaas_gate__ = ("superadmin",)  # type: ignore[attr-defined]
+get_current_user.__pmoaas_gate__ = ("authenticated",)  # type: ignore[attr-defined]
