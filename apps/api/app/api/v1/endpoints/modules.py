@@ -817,6 +817,65 @@ async def update_document(
     return DocumentRead.model_validate(d)
 
 
+@docs_router.get("/documents/{doc_id}/download-url")
+async def get_document_download_url(
+    doc_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """BUG-034: devuelve `{ url, expires_at, mode }` para que el frontend
+    descargue el documento sin problemas de auth header en `<a href>`.
+
+    - `mode="presigned"`: URL firmada de R2/S3 (5 min expiry). El
+      frontend puede hacer `window.open(url)` directo.
+    - `mode="stream"`: backend local — el frontend debe usar el
+      endpoint `/download` con el token Bearer manual (fetch + blob).
+    """
+    from datetime import timedelta
+
+    from app.core.config import settings
+    from app.services.document_storage import get_document_presigned_url
+
+    tenant_id = _tenant(cu)
+    d = (
+        await db.execute(
+            select(Document).where(
+                Document.id == str(doc_id),
+                Document.tenant_id == str(tenant_id),
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if d is None:
+        raise not_found("Documento")
+
+    expires_in = 300
+    filename_hint = (d.title or str(d.id)).replace("/", "_")
+    if settings.STORAGE_BACKEND == "s3":
+        url = get_document_presigned_url(
+            str(tenant_id),
+            str(d.project_id),
+            str(d.id),
+            expires_in=expires_in,
+            download_filename=filename_hint,
+        )
+        if url is None:
+            raise not_found("Archivo del documento")
+        return {
+            "mode": "presigned",
+            "url": url,
+            "expires_at": (
+                datetime.now(UTC) + timedelta(seconds=expires_in)
+            ).isoformat(),
+        }
+    # Backend local: stream protegido sigue funcionando con auth header.
+    return {
+        "mode": "stream",
+        "url": f"/api/v1/documents/{d.id}/download",
+        "expires_at": None,
+    }
+
+
 @docs_router.get("/documents/{doc_id}/download")
 async def download_document(
     doc_id: UUID,
