@@ -18,6 +18,7 @@ from app.models.modules import (
 )
 from app.models.project import Project
 from app.models.project_area import ProjectArea
+from app.models.user import User
 from app.schemas.modules import (
     ChangeRequestCreate,
     ChangeRequestRead,
@@ -121,6 +122,48 @@ async def _load_areas(
     return {str(a.id): a for a in rows}
 
 
+async def _attach_comment_authors(db: AsyncSession, items: list) -> None:
+    """BUG-035: enriquece `item.comments[].author` con `{id, full_name,
+    email}` para que el frontend muestre el nombre real en vez del UUID.
+
+    Mutates `item.comments` in-place. Hace 1 SELECT batch del set único
+    de `author_id`. Items sin comments se ignoran.
+    """
+    author_ids: set[str] = set()
+    for it in items:
+        for c in it.comments or []:
+            aid = c.get("author_id") if isinstance(c, dict) else None
+            if aid:
+                author_ids.add(str(aid))
+    if not author_ids:
+        return
+    rows = (
+        await db.execute(select(User).where(User.id.in_(author_ids)))
+    ).scalars().all()
+    by_id = {str(u.id): u for u in rows}
+    for it in items:
+        new_comments = []
+        for c in it.comments or []:
+            if not isinstance(c, dict):
+                new_comments.append(c)
+                continue
+            aid = c.get("author_id")
+            user = by_id.get(str(aid)) if aid else None
+            new_comments.append({
+                **c,
+                "author": (
+                    {
+                        "id": str(user.id),
+                        "full_name": user.full_name,
+                        "email": user.email,
+                    }
+                    if user
+                    else None
+                ),
+            })
+        it.comments = new_comments
+
+
 # ========== RISKS ==========
 risks_router = APIRouter(tags=["risks"])
 
@@ -164,6 +207,8 @@ async def list_risks(
         Risk.severity.desc().nullslast(),
     )
     rows = (await db.execute(stmt)).all()
+    risks = [r for r, _ in rows]
+    await _attach_comment_authors(db, risks)
     out: list[RiskRead] = []
     for r, area in rows:
         _attach_area(r, area)
@@ -229,6 +274,7 @@ async def get_risk(
         raise not_found("Riesgo")
     r, area = row
     _attach_area(r, area)
+    await _attach_comment_authors(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -272,6 +318,7 @@ async def update_risk(
             )
         ).scalar_one_or_none()
     _attach_area(r, area)
+    await _attach_comment_authors(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -319,6 +366,7 @@ async def add_risk_comment(
             await db.execute(select(ProjectArea).where(ProjectArea.id == r.area_id))
         ).scalar_one_or_none()
     _attach_area(r, area)
+    await _attach_comment_authors(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -378,6 +426,8 @@ async def list_issues(
         Issue.priority.desc().nullslast(),
     )
     rows = (await db.execute(stmt)).all()
+    issues = [i for i, _ in rows]
+    await _attach_comment_authors(db, issues)
     out: list[IssueRead] = []
     for i, area in rows:
         _attach_area(i, area)
@@ -441,6 +491,7 @@ async def get_issue(
         raise not_found("Issue")
     i, area = row
     _attach_area(i, area)
+    await _attach_comment_authors(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -468,6 +519,7 @@ async def add_issue_comment(
             await db.execute(select(ProjectArea).where(ProjectArea.id == i.area_id))
         ).scalar_one_or_none()
     _attach_area(i, area)
+    await _attach_comment_authors(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -498,6 +550,7 @@ async def update_issue(
             await db.execute(select(ProjectArea).where(ProjectArea.id == i.area_id))
         ).scalar_one_or_none()
     _attach_area(i, area)
+    await _attach_comment_authors(db, [i])
     return IssueRead.model_validate(i)
 
 

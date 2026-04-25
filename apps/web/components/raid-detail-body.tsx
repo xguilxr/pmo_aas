@@ -33,7 +33,17 @@ import {
  * los datos directamente.
  */
 
-type Comment = { text: string; author_id?: string; created_at?: string };
+type CommentAuthor = {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+};
+type Comment = {
+  text: string;
+  author_id?: string;
+  created_at?: string;
+  author?: CommentAuthor | null;
+};
 
 function fmtCommentDate(iso: string | undefined): string {
   if (!iso) return "";
@@ -45,6 +55,17 @@ function fmtCommentDate(iso: string | undefined): string {
   } catch {
     return iso;
   }
+}
+
+function commentAuthorLabel(c: Comment): string {
+  // BUG-035: prefiere full_name → email → "Usuario eliminado" (cuando
+  // hay author_id pero el user fue borrado) → "—".
+  const a = c.author;
+  if (a) {
+    return a.full_name?.trim() || a.email?.trim() || "Usuario eliminado";
+  }
+  if (c.author_id) return "Usuario eliminado";
+  return "—";
 }
 
 export function RiskDetailBody({
@@ -264,8 +285,8 @@ function CommentsBlock({
               className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-2"
             >
               <div className="mb-0.5 flex items-center justify-between gap-2 text-[11px] text-[var(--color-tertiary)]">
-                <span className="font-mono">
-                  {c.author_id ? c.author_id.slice(0, 8) : "—"}
+                <span className="font-medium text-[var(--color-secondary)]">
+                  {commentAuthorLabel(c)}
                 </span>
                 <span>{fmtCommentDate(c.created_at)}</span>
               </div>
