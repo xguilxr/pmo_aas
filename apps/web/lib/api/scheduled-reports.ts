@@ -63,6 +63,20 @@ export function deleteScheduledReport(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/scheduled-reports/${id}`, { method: "DELETE" });
 }
 
+/** BUG-036: dispara el envío inmediato (sin esperar la cadencia). */
+export type RunNowResponse = {
+  scheduled_id: string;
+  queued_at: string;
+  note: string;
+};
+
+export function runScheduledReportNow(id: string): Promise<RunNowResponse> {
+  return apiFetch<RunNowResponse>(
+    `/api/v1/scheduled-reports/${id}/run-now`,
+    { method: "POST" },
+  );
+}
+
 export const CADENCE_LABEL: Record<ScheduledReportCadence, string> = {
   daily: "Diario",
   weekly: "Semanal",
