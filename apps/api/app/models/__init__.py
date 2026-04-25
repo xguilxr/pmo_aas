@@ -20,6 +20,7 @@ from app.models.organization import (  # noqa: F401
 from app.models.organization_user_exclusion import (  # noqa: F401
     OrganizationUserExclusion,
 )
+from app.models.permission_request import PermissionChangeRequest  # noqa: F401
 from app.models.platform_settings import PlatformAISettings  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.project_area import ProjectArea, ProjectAreaResource  # noqa: F401

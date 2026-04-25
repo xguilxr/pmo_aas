@@ -17,6 +17,7 @@ import {
   DOC_CATEGORY_LABEL,
   createDocument,
   listDocuments,
+  openDocumentForDownload,
   type DocumentCategory,
   type ProjectDocument,
 } from "@/lib/api/modules";
@@ -266,17 +267,22 @@ export default function DocumentsPage() {
             const isCharter = r.category === "charter";
             const parts: React.ReactNode[] = [];
             if (r.file_url) {
+              // BUG-034: usa /download-url (presigned R2 si está
+              // disponible, fallback a fetch+blob para backend local).
+              // El <a href> plain anterior daba 404/401 porque no
+              // mandaba Authorization: Bearer.
               parts.push(
-                <a
+                <button
                   key="open"
-                  href={r.file_url}
-                  target="_blank"
-                  rel="noreferrer noopener"
+                  type="button"
                   className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void openDocumentForDownload(r.id);
+                  }}
                 >
                   Abrir <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                </a>,
+                </button>,
               );
             }
             if (isCharter) {

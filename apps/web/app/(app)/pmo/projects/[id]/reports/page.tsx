@@ -51,6 +51,7 @@ import {
   createScheduledReport,
   deleteScheduledReport,
   listScheduledReports,
+  runScheduledReportNow,
   updateScheduledReport,
   type ScheduledReport,
   type ScheduledReportCadence,
@@ -367,6 +368,29 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
     }
   }
 
+  // BUG-036: dispara el envío inmediato sin esperar la cadencia.
+  // Útil para que el owner valide end-to-end (PDF + email) antes de
+  // confiar en el beat scheduler.
+  async function sendNow(row: ScheduledReport) {
+    if (
+      !window.confirm(
+        `Enviar el reporte ahora a ${row.recipients.length} destinatario(s)?`,
+      )
+    ) {
+      return;
+    }
+    try {
+      const r = await runScheduledReportNow(row.id);
+      window.alert(r.note);
+      // Refresh para que `last_run_at` se actualice una vez procesado.
+      setTimeout(() => void refresh(), 5_000);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Error al encolar el envío",
+      );
+    }
+  }
+
   return (
     <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-4 py-3">
@@ -439,6 +463,16 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => sendNow(r)}
+                  aria-label="Enviar ahora"
+                  title="Enviar ahora (sin esperar la cadencia)"
+                >
+                  Enviar ahora
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"

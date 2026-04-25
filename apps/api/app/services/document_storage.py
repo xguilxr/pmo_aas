@@ -357,6 +357,56 @@ def delete_document_file(
     return _delete_local(tenant_id, project_id, document_id)
 
 
+def get_document_presigned_url(
+    tenant_id: str,
+    project_id: str,
+    document_id: str,
+    *,
+    expires_in: int = 300,
+    download_filename: str | None = None,
+) -> str | None:
+    """BUG-034: devuelve presigned URL del objeto S3 (R2) para que el
+    frontend pueda hacer descarga directa sin pasar por el backend.
+
+    Resuelve el problema del `<a href>` plain que no enviaba
+    `Authorization: Bearer <token>` y daba 401/404.
+
+    Para backend `local` devuelve `None` (la UI debe seguir usando el
+    endpoint streaming protegido por auth header). Para backend `s3`
+    devuelve URL firmada con `expires_in` segundos (default 5 min).
+
+    El parámetro `download_filename` agrega `response-content-disposition`
+    para que el browser descargue con nombre legible.
+    """
+    if settings.STORAGE_BACKEND != "s3":
+        return None
+    from botocore.exceptions import ClientError
+
+    client = _get_s3_client()
+    for ext in set(ALLOWED_DOC_MIMES.values()):
+        key = _doc_key(tenant_id, project_id, document_id, ext)
+        try:
+            client.head_object(Bucket=settings.S3_BUCKET, Key=key)
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "")
+            if code in ("NoSuchKey", "404", "NotFound"):
+                continue
+            raise
+        params: dict = {"Bucket": settings.S3_BUCKET, "Key": key}
+        if download_filename:
+            from urllib.parse import quote
+
+            safe = quote(download_filename)
+            params["ResponseContentDisposition"] = (
+                f'attachment; filename="{download_filename}"; '
+                f"filename*=UTF-8''{safe}"
+            )
+        return client.generate_presigned_url(
+            "get_object", Params=params, ExpiresIn=expires_in
+        )
+    return None
+
+
 # ============================================================================
 # Compatibilidad legacy — código viejo importa estos directo.
 # ============================================================================

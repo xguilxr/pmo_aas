@@ -182,9 +182,20 @@ async def tenant_detail(
     t = (await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))).scalar_one_or_none()
     if t is None:
         raise not_found("Tenant")
+    # BUG-033: incluye `role_type` y `is_superadmin` para que la sección
+    # de Usuarios en /superadmin/tenants/[id] pueda mostrar dropdown
+    # editable inline (descubre la funcionalidad sin requerir navegar
+    # al panel /users dedicado).
     users = (
         await db.execute(
-            select(User.id, User.username, User.email, User.is_active).where(User.tenant_id == t.id)
+            select(
+                User.id,
+                User.username,
+                User.email,
+                User.is_active,
+                User.role_type,
+                User.is_superadmin,
+            ).where(User.tenant_id == t.id)
         )
     ).all()
     from app.models.organization import Organization
@@ -229,7 +240,17 @@ async def tenant_detail(
 
     return {
         "tenant": {"id": str(t.id), "slug": t.slug, "name": t.name, "is_active": t.is_active},
-        "users": [{"id": str(r.id), "username": r.username, "email": r.email, "is_active": r.is_active} for r in users],
+        "users": [
+            {
+                "id": str(r.id),
+                "username": r.username,
+                "email": r.email,
+                "is_active": r.is_active,
+                "role_type": r.role_type,
+                "is_superadmin": r.is_superadmin,
+            }
+            for r in users
+        ],
         "organizations": [{"id": str(r.id), "name": r.name, "is_active": r.is_active} for r in orgs],
         "programs": [{"id": str(r.id), "name": r.name, "organization_id": str(r.organization_id)} for r in programs],
         "hierarchy": {
@@ -463,6 +484,12 @@ class _SuperadminMeUpdate(BaseModel):
     full_name: str | None = None
     new_password: str | None = None
     current_password: str = Field(min_length=1)
+    # BUG-032: si el email destino ya está en uso por otro user
+    # (típicamente el propio owner registrado como admin de algún
+    # tenant), permite "tomar" el email renombrando al user en
+    # conflicto a `released.<ts>.<old_email>` y mover el ownership
+    # del email al superadmin. Audit log queda con la migración.
+    force_takeover_email: bool = False
 
 
 @router.get("/me", response_model=_SuperadminMeRead)
@@ -517,7 +544,34 @@ async def superadmin_me_update(
             )
         ).scalar_one_or_none()
         if clash is not None:
-            raise conflict("Email ya en uso por otro usuario")
+            if not body.force_takeover_email:
+                # BUG-032: mensaje detallado para que la UI ofrezca
+                # take-over si el owner reconoce el clash como suyo.
+                # `extra` viaja en `error.detail.extra` para el cliente.
+                raise conflict(
+                    "Email ya en uso por otro usuario",
+                    code="EMAIL_TAKEN_OFFER_TAKEOVER",
+                    fields={
+                        "clashing_user_id": str(clash.id),
+                        "clashing_user_email": clash.email,
+                        "clashing_user_username": clash.username,
+                        "clashing_user_tenant_id": (
+                            str(clash.tenant_id) if clash.tenant_id else None
+                        ),
+                    },
+                )
+            # Liberar el email del user en conflicto: renombrar a
+            # `released.<unix_ts>.<old_email>` y guardar diff.
+            from time import time as _now_ts
+
+            ts = int(_now_ts())
+            released_email = f"released.{ts}.{clash.email}"
+            diff["email_takeover"] = {
+                "released_user_id": str(clash.id),
+                "old_email": clash.email,
+                "new_released_email": released_email,
+            }
+            clash.email = released_email
         diff["email"] = {"from": u.email, "to": new_email}
         u.email = new_email
 

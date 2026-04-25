@@ -216,6 +216,66 @@ async def update_scheduled_report(
     return ScheduledReportRead.model_validate(sched)
 
 
+@router.post(
+    "/scheduled-reports/{scheduled_id}/run-now", status_code=202
+)
+async def run_scheduled_report_now(
+    scheduled_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """BUG-036: dispara el envío inmediato del reporte sin esperar la
+    cadencia. Útil para que el owner valide end-to-end (PDF + email)
+    desde la UI antes de confiar en el beat scheduler.
+
+    Devuelve 202 Accepted con `{ scheduled_id, queued_at }`. El task
+    se enqueue vía Celery; si el worker está caído, la fila queda
+    esperando y se procesará al próximo arranque.
+    """
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    tenant_id = _tenant(cu)
+    sched = (
+        await db.execute(
+            select(ScheduledReport).where(
+                ScheduledReport.id == str(scheduled_id),
+                ScheduledReport.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if sched is None:
+        raise not_found("Programación")
+
+    # Importa el task aquí (lazy) para evitar circular imports en boot.
+    from app.workers.tasks.scheduled_reports import send_scheduled_report
+
+    try:
+        send_scheduled_report.delay(str(sched.id))
+    except Exception as exc:
+        # Si el broker está caído (Redis sin conectar), reportarlo claro.
+        raise business_rule(
+            f"No se pudo encolar el envío: {exc}",
+            code="QUEUE_UNAVAILABLE",
+        ) from exc
+
+    await write_audit(
+        db,
+        action="scheduled_report.run_now",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="scheduled_report",
+        entity_id=str(sched.id),
+    )
+    await db.commit()
+    return {
+        "scheduled_id": str(sched.id),
+        "queued_at": _dt.now(UTC).isoformat(),
+        "note": "El envío se procesa en background. Verifica logs de Railway o tu inbox en 1-2 min.",
+    }
+
+
 @router.delete("/scheduled-reports/{scheduled_id}", status_code=204)
 async def delete_scheduled_report(
     scheduled_id: UUID,

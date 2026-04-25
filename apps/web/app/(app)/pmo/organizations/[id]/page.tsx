@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, FolderKanban, Network } from "lucide-react";
+import { Building2, FolderKanban, Network, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProgramModal } from "@/components/program-modal";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
   getOrganizationPanel,
@@ -23,12 +26,19 @@ import {
  * programas (cards) + lista de proyectos. Separada de
  * `/admin/organizations/[id]` (gestión CRUD). El sidebar del PMO
  * lleva aquí al click en el panel de la organización.
+ *
+ * ENH-037 — botón "Nuevo Programa" con permission gate
+ * (`programs:create`). Reutiliza `<ProgramModal>` con la organización
+ * preseleccionada y deshabilitada (estamos en su contexto).
  */
 export default function PmoOrganizationPage() {
   const { id } = useParams<{ id: string }>();
+  const { canCreate, loading: permsLoading } = useMyPermissions();
   const [panel, setPanel] = useState<OrganizationPanelDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [showProgramModal, setShowProgramModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +65,7 @@ export default function PmoOrganizationPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, reloadKey]);
 
   const projectCountByProgram = useMemo(() => {
     const map: Record<string, number> = {};
@@ -83,6 +93,8 @@ export default function PmoOrganizationPage() {
       panel?.projects.filter((p) => p.phase !== "closed").length ?? 0,
     [panel],
   );
+
+  const canCreateProgram = canCreate("programs");
 
   if (loading) {
     return (
@@ -130,12 +142,28 @@ export default function PmoOrganizationPage() {
               "Sin datos de industria"}
           </p>
         </div>
-        <Link
-          href={`/admin/organizations/${panel.id}`}
-          className="text-[12px] text-[var(--color-accent)] hover:underline"
-        >
-          Administrar →
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowProgramModal(true)}
+            disabled={!canCreateProgram || permsLoading}
+            title={
+              canCreateProgram
+                ? undefined
+                : "No tienes permiso para crear programas"
+            }
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+            Nuevo programa
+          </Button>
+          <Link
+            href={`/admin/organizations/${panel.id}`}
+            className="text-[12px] text-[var(--color-accent)] hover:underline"
+          >
+            Administrar →
+          </Link>
+        </div>
       </header>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -222,6 +250,16 @@ export default function PmoOrganizationPage() {
           </div>
         )}
       </section>
+
+      <ProgramModal
+        open={showProgramModal}
+        onClose={() => setShowProgramModal(false)}
+        onSaved={() => {
+          setShowProgramModal(false);
+          setReloadKey((k) => k + 1);
+        }}
+        initialOrgId={panel.id}
+      />
     </div>
   );
 }

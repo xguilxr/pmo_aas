@@ -309,6 +309,67 @@ export function createDocument(
   });
 }
 
+/**
+ * BUG-034: pide al backend la URL de descarga.
+ * - mode="presigned": URL firmada de R2/S3 (5 min) — abrir directo.
+ * - mode="stream": backend local — usar fetch con Bearer + Blob.
+ */
+export type DocumentDownloadInfo = {
+  mode: "presigned" | "stream";
+  url: string;
+  expires_at: string | null;
+};
+
+export function getDocumentDownloadUrl(
+  documentId: string,
+): Promise<DocumentDownloadInfo> {
+  return apiFetch<DocumentDownloadInfo>(
+    `/api/v1/documents/${documentId}/download-url`,
+  );
+}
+
+/**
+ * Helper que abre un documento: usa presigned cuando está disponible
+ * (S3/R2) o cae a fetch+blob para backend local. Maneja errores de
+ * red mostrando un alert.
+ */
+export async function openDocumentForDownload(
+  documentId: string,
+): Promise<void> {
+  try {
+    const info = await getDocumentDownloadUrl(documentId);
+    if (info.mode === "presigned") {
+      // R2/S3 ya incluye Content-Disposition en la URL firmada.
+      window.open(info.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Backend local — el endpoint /download exige Bearer. Hacemos
+    // fetch + blob para evitar el problema del <a href> sin auth.
+    const { apiBase } = await import("@/lib/api");
+    const { getAccessToken } = await import("@/lib/auth-storage");
+    const token = getAccessToken();
+    const res = await fetch(`${apiBase()}${info.url}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      throw new Error(`Falló la descarga (HTTP ${res.status})`);
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = ""; // dejar que el server controle vía Content-Disposition
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5_000);
+  } catch (err) {
+    const msg =
+      err instanceof Error ? err.message : "No se pudo abrir el documento";
+    window.alert(msg);
+  }
+}
+
 export const DOC_CATEGORY_LABEL: Record<DocumentCategory, string> = {
   charter: "Project Charter",
   plan: "Plan",

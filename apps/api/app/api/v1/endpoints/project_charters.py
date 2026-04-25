@@ -39,6 +39,10 @@ def _tenant(cu: CurrentUser) -> UUID:
 async def _get_project_and_charter(
     db: AsyncSession, tenant_id: UUID, project_id: UUID
 ) -> tuple[Project, ProjectCharter]:
+    """US-083: si el charter no existe (project legacy o pre-migración
+    0030), lo crea on-the-fly con `project.name` como project_name.
+    Garantiza que GET /charter nunca devuelve 404 para projects válidos.
+    """
     project = (
         await db.execute(
             select(Project).where(
@@ -55,7 +59,19 @@ async def _get_project_and_charter(
         )
     ).scalar_one_or_none()
     if charter is None:
-        raise not_found("Charter")
+        # Lazy auto-create: defensa contra projects sin charter (la
+        # migración 0030 los cubre, pero un project creado después
+        # podría faltar si el flow de creación no lo genera).
+        charter = ProjectCharter(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            project_name=project.name or "Proyecto sin nombre",
+            organization_id=project.organization_id,
+        )
+        db.add(charter)
+        await db.flush()
+        await db.commit()
+        await db.refresh(charter)
     return project, charter
 
 
@@ -200,16 +216,107 @@ async def update_charter(
     return _read(charter, project)
 
 
-@router.get("/{project_id}/charter/pdf", response_class=HTMLResponse)
-async def charter_printable(
+@router.get("/{project_id}/charter/download")
+async def download_charter(
     project_id: UUID,
+    format: str = "docx",
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """Devuelve HTML imprimible a PDF. Un renderer PDF nativo queda como
-    follow-up; el navegador puede imprimir esta vista (Ctrl+P) para
-    obtener el PDF on-demand."""
-    project, charter = await _get_project_and_charter(db, _tenant(cu), project_id)
+    """US-083: descarga directa del charter en .docx (default) o .pdf.
+
+    A diferencia del flujo BUG-028 (que persiste el .docx en storage),
+    este endpoint genera el archivo on-demand a partir del charter
+    actual y lo devuelve como bytes inline, evitando tener que pasar
+    por la lista de documentos.
+
+    Soporta:
+    - `format=docx` → genera con python-docx (mismo template de US-007).
+    - `format=pdf`  → reusa la vista HTML imprimible y la rendere a
+      PDF con weasyprint. Si weasyprint no está disponible (test
+      env, etc.), devuelve el HTML con header
+      `Content-Type: text/html` para que el browser ofrezca "Imprimir
+      a PDF" como fallback.
+
+    Funciona aunque el charter esté completamente vacío — la plantilla
+    deja secciones en blanco con headers visibles.
+    """
+    from io import BytesIO
+    from urllib.parse import quote
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services.charter_generator import (
+        DOCX_CONTENT_TYPE,
+        _render_charter_docx,
+    )
+
+    fmt = (format or "docx").lower()
+    if fmt not in ("docx", "pdf"):
+        from app.core.errors import business_rule
+
+        raise business_rule(
+            f"format inválido: {fmt}. Usa 'docx' o 'pdf'.",
+            code="INVALID_FORMAT",
+        )
+
+    project, charter = await _get_project_and_charter(
+        db, _tenant(cu), project_id
+    )
+
+    safe_name = (charter.project_name or project.name or "charter").replace(
+        "/", "_"
+    )
+    filename = f"Charter - {safe_name}.{fmt}"
+    safe_q = quote(filename)
+
+    if fmt == "docx":
+        data = _render_charter_docx(charter, project)
+        return StreamingResponse(
+            BytesIO(data),
+            media_type=DOCX_CONTENT_TYPE,
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{filename}"; '
+                    f"filename*=UTF-8''{safe_q}"
+                ),
+            },
+        )
+
+    # format=pdf: weasyprint sobre el HTML imprimible.
+    html = _build_printable_html(charter, project)
+    try:
+        from weasyprint import HTML  # type: ignore
+
+        pdf_bytes = HTML(string=html).write_pdf()
+        return StreamingResponse(
+            BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{filename}"; '
+                    f"filename*=UTF-8''{safe_q}"
+                ),
+            },
+        )
+    except Exception:
+        # Fallback: devuelve HTML con disposición attachment renombrado
+        # a .html. Better than 500.
+        html_filename = filename.replace(".pdf", ".html")
+        return StreamingResponse(
+            BytesIO(html.encode("utf-8")),
+            media_type="text/html",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{html_filename}"'
+                ),
+            },
+        )
+
+
+def _build_printable_html(charter: ProjectCharter, project: Project) -> str:
+    """Render del HTML imprimible. Extraído para reuso por
+    `/charter/download?format=pdf` (US-083)."""
     s4 = _build_section4(project)
 
     def row(label: str, value) -> str:
@@ -223,7 +330,7 @@ async def charter_printable(
             + "</td></tr>"
         )
 
-    html = f"""<!doctype html>
+    return f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <title>Charter — {charter.project_name}</title>
 <style>
@@ -285,4 +392,16 @@ async def charter_printable(
   </table>
 </body></html>
 """
-    return HTMLResponse(content=html)
+
+
+@router.get("/{project_id}/charter/pdf", response_class=HTMLResponse)
+async def charter_printable(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve HTML imprimible a PDF. Un renderer PDF nativo queda como
+    follow-up; el navegador puede imprimir esta vista (Ctrl+P) para
+    obtener el PDF on-demand."""
+    project, charter = await _get_project_and_charter(db, _tenant(cu), project_id)
+    return HTMLResponse(content=_build_printable_html(charter, project))

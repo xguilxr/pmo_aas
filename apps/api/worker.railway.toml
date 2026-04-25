@@ -4,12 +4,18 @@
 # - US-048 (2026-04-21): sidecar Tailscale vía `start-worker.sh`.
 # - ENH-023 (2026-04-23): sidecar retirado (DEC-017 eliminó la
 #   dependencia de tailnet). Worker arranca celery directo.
+# - BUG-036 (2026-04-25): se agrega `--beat` embebido para que las
+#   tareas periódicas (`scheduled_reports.send_due_reports`) se
+#   disparen sin necesidad de un servicio Railway adicional. La
+#   única instance del worker actúa como worker + beat scheduler.
+#   Si en el futuro se escala a >1 replica, mover beat a un servicio
+#   dedicado (ver docs/runbooks/notifications/scheduled-reports.md).
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "celery -A app.workers.celery_app worker --loglevel=info --concurrency=2"
+startCommand = "celery -A app.workers.celery_app worker --beat --loglevel=info --concurrency=2"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

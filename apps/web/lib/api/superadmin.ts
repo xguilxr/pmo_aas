@@ -37,7 +37,14 @@ export type TenantProvisionResponse = {
 
 export type TenantDetail = {
   tenant: { id: string; slug: string; name: string; is_active: boolean };
-  users: { id: string; username: string; email: string; is_active: boolean }[];
+  users: {
+    id: string;
+    username: string;
+    email: string;
+    is_active: boolean;
+    role_type: "admin" | "user" | "viewer" | null;
+    is_superadmin: boolean;
+  }[];
   organizations: { id: string; name: string; is_active: boolean }[];
   programs: { id: string; name: string; organization_id: string }[];
   hierarchy: TenantHierarchy;
@@ -137,6 +144,10 @@ export type SuperadminMeUpdateBody = {
   email?: string;
   full_name?: string;
   new_password?: string;
+  // BUG-032: si el endpoint devuelve 409 con
+  // code=EMAIL_TAKEN_OFFER_TAKEOVER, la UI ofrece reintentar con
+  // este flag en true → libera el email del user en clash.
+  force_takeover_email?: boolean;
 };
 
 export function getSuperadminMe(): Promise<SuperadminMe> {

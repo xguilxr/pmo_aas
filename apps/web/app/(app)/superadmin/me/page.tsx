@@ -15,6 +15,13 @@ import {
   type SuperadminMe,
 } from "@/lib/api/superadmin";
 
+type EmailClashInfo = {
+  user_id: string;
+  email: string;
+  username: string;
+  tenant_id: string | null;
+};
+
 export default function SuperadminMePage() {
   const me = getStoredUser();
   const [profile, setProfile] = useState<SuperadminMe | null>(null);
@@ -22,6 +29,10 @@ export default function SuperadminMePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // BUG-032: cuando el backend devuelve 409 con code=EMAIL_TAKEN_OFFER_TAKEOVER,
+  // guardamos el clash + ofrecemos botón para reintentar con
+  // force_takeover_email=true.
+  const [emailClash, setEmailClash] = useState<EmailClashInfo | null>(null);
 
   // Editable fields.
   const [email, setEmail] = useState("");
@@ -58,11 +69,10 @@ export default function SuperadminMePage() {
     };
   }, []);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (saving) return;
+  async function submit(forceTakeoverEmail = false) {
     setError(null);
     setNotice(null);
+    setEmailClash(null);
 
     if (newPassword && newPassword !== newPasswordConfirm) {
       setError("La nueva contraseña y su confirmación no coinciden.");
@@ -82,8 +92,8 @@ export default function SuperadminMePage() {
       if (profile && fullName !== (profile.full_name ?? ""))
         body.full_name = fullName.trim();
       if (newPassword) body.new_password = newPassword;
+      if (forceTakeoverEmail) body.force_takeover_email = true;
 
-      // Si nada cambió, no llamamos.
       if (
         body.email === undefined &&
         body.full_name === undefined &&
@@ -101,17 +111,52 @@ export default function SuperadminMePage() {
       setNewPassword("");
       setNewPasswordConfirm("");
       setNotice(
-        body.email
-          ? "Perfil actualizado. La próxima vez logueate con el email nuevo."
-          : "Perfil actualizado.",
+        forceTakeoverEmail
+          ? "Email tomado. El user en conflicto fue renombrado a `released.<ts>.<old>` para liberarlo. Logueate con el email nuevo."
+          : body.email
+            ? "Perfil actualizado. La próxima vez logueate con el email nuevo."
+            : "Perfil actualizado.",
       );
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "No se pudo actualizar el perfil",
-      );
+      if (err instanceof ApiError && err.code === "EMAIL_TAKEN_OFFER_TAKEOVER") {
+        const f = err.fields;
+        setEmailClash({
+          user_id: String(f.clashing_user_id ?? ""),
+          email: String(f.clashing_user_email ?? ""),
+          username: String(f.clashing_user_username ?? ""),
+          tenant_id: f.clashing_user_tenant_id
+            ? String(f.clashing_user_tenant_id)
+            : null,
+        });
+        setError(
+          "Ese email ya está en uso por otro usuario. Si reconoces el conflicto, puedes liberarlo abajo.",
+        );
+      } else {
+        setError(
+          err instanceof ApiError ? err.message : "No se pudo actualizar el perfil",
+        );
+      }
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (saving) return;
+    await submit(false);
+  }
+
+  async function handleTakeoverEmail() {
+    if (saving) return;
+    if (
+      !window.confirm(
+        `Confirmar take-over: el usuario ${emailClash?.username} (${emailClash?.email}) será renombrado a "released.<ts>.<email>" para liberar el email. Esto NO borra al usuario, pero deberá actualizar su email para volver a iniciar sesión. ¿Continuar?`,
+      )
+    ) {
+      return;
+    }
+    await submit(true);
   }
 
   if (me && !me.is_superadmin) {
@@ -226,6 +271,54 @@ export default function SuperadminMePage() {
           <Button type="submit" loading={saving} disabled={saving}>
             Guardar cambios
           </Button>
+
+          {emailClash ? (
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] p-4">
+              <p className="text-sm font-medium text-[var(--color-warning-fg)]">
+                Conflicto de email detectado
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-secondary)]">
+                El email <code>{email}</code> ya está en uso por el usuario{" "}
+                <strong>{emailClash.username}</strong> (
+                <code>{emailClash.email}</code>
+                {emailClash.tenant_id ? (
+                  <>
+                    {" "}
+                    · tenant <code>{emailClash.tenant_id}</code>
+                  </>
+                ) : (
+                  " · sin tenant"
+                )}
+                ).
+              </p>
+              <p className="mt-2 text-xs text-[var(--color-secondary)]">
+                Si reconoces el conflicto y quieres tomar el email, podemos
+                renombrar al user en conflicto a{" "}
+                <code>released.{"<timestamp>"}.{emailClash.email}</code> para
+                liberarlo. El user no se borra; sólo deberá actualizar su email
+                para volver a iniciar sesión.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  loading={saving}
+                  onClick={handleTakeoverEmail}
+                >
+                  Liberar email y reintentar
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEmailClash(null)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </form>
       )}
     </div>
