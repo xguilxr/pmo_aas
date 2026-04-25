@@ -200,7 +200,7 @@ async def create_request(
             ),
             entity_type="permission_request",
             entity_id=str(req.id),
-            link=f"/superadmin/permission-requests",
+            link="/superadmin/permission-requests",
             meta={"reason": body.reason[:500]},
         )
         db.add(notif)

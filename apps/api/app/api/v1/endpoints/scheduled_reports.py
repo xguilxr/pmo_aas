@@ -232,7 +232,8 @@ async def run_scheduled_report_now(
     se enqueue vía Celery; si el worker está caído, la fila queda
     esperando y se procesará al próximo arranque.
     """
-    from datetime import UTC, datetime as _dt
+    from datetime import UTC
+    from datetime import datetime as _dt
 
     tenant_id = _tenant(cu)
     sched = (

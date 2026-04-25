@@ -470,9 +470,10 @@ async def test_charter_patch_edits_sections_1_to_3(client, db_session):
     assert data["restrictions"] == "Plazo 6 meses"
 
 
-# Charter no existe → 404 para proyectos creados antes de US-012
+# US-083 (charter universal): proyectos sin charter ya no devuelven 404 —
+# el endpoint hace lazy auto-create con project.name como project_name.
 @pytest.mark.asyncio
-async def test_charter_404_when_missing(client, db_session):
+async def test_charter_autocreated_when_missing(client, db_session):
     from app.db.base import new_uuid
     from app.models.project import Project
 
@@ -489,7 +490,15 @@ async def test_charter_404_when_missing(client, db_session):
     await db_session.commit()
 
     r = await client.get(f"/api/v1/projects/{orphan.id}/charter", headers=auth["_authz"])
-    assert r.status_code == 404
+    assert r.status_code == 200
+    data = r.json()
+    assert data["project_name"] == "Sin charter"
+    # GET de nuevo es idempotente: devuelve la row creada antes.
+    r2 = await client.get(
+        f"/api/v1/projects/{orphan.id}/charter", headers=auth["_authz"]
+    )
+    assert r2.status_code == 200
+    assert r2.json()["id"] == data["id"]
 
 
 # ============================================================================
