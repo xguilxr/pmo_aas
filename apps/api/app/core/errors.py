@@ -18,8 +18,10 @@ def not_found(entity: str) -> AppError:
     return AppError(status.HTTP_404_NOT_FOUND, "NOT_FOUND", f"{entity} no encontrado")
 
 
-def conflict(detail: str, code: str = "CONFLICT") -> AppError:
-    return AppError(status.HTTP_409_CONFLICT, code, detail)
+def conflict(
+    detail: str, code: str = "CONFLICT", fields: dict | None = None
+) -> AppError:
+    return AppError(status.HTTP_409_CONFLICT, code, detail, fields)
 
 
 def validation_error(detail: str, fields: dict | None = None) -> AppError:

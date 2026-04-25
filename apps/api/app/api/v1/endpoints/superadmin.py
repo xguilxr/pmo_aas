@@ -484,6 +484,12 @@ class _SuperadminMeUpdate(BaseModel):
     full_name: str | None = None
     new_password: str | None = None
     current_password: str = Field(min_length=1)
+    # BUG-032: si el email destino ya está en uso por otro user
+    # (típicamente el propio owner registrado como admin de algún
+    # tenant), permite "tomar" el email renombrando al user en
+    # conflicto a `released.<ts>.<old_email>` y mover el ownership
+    # del email al superadmin. Audit log queda con la migración.
+    force_takeover_email: bool = False
 
 
 @router.get("/me", response_model=_SuperadminMeRead)
@@ -538,7 +544,34 @@ async def superadmin_me_update(
             )
         ).scalar_one_or_none()
         if clash is not None:
-            raise conflict("Email ya en uso por otro usuario")
+            if not body.force_takeover_email:
+                # BUG-032: mensaje detallado para que la UI ofrezca
+                # take-over si el owner reconoce el clash como suyo.
+                # `extra` viaja en `error.detail.extra` para el cliente.
+                raise conflict(
+                    "Email ya en uso por otro usuario",
+                    code="EMAIL_TAKEN_OFFER_TAKEOVER",
+                    fields={
+                        "clashing_user_id": str(clash.id),
+                        "clashing_user_email": clash.email,
+                        "clashing_user_username": clash.username,
+                        "clashing_user_tenant_id": (
+                            str(clash.tenant_id) if clash.tenant_id else None
+                        ),
+                    },
+                )
+            # Liberar el email del user en conflicto: renombrar a
+            # `released.<unix_ts>.<old_email>` y guardar diff.
+            from time import time as _now_ts
+
+            ts = int(_now_ts())
+            released_email = f"released.{ts}.{clash.email}"
+            diff["email_takeover"] = {
+                "released_user_id": str(clash.id),
+                "old_email": clash.email,
+                "new_released_email": released_email,
+            }
+            clash.email = released_email
         diff["email"] = {"from": u.email, "to": new_email}
         u.email = new_email
 

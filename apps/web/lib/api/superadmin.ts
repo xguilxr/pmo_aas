@@ -144,6 +144,10 @@ export type SuperadminMeUpdateBody = {
   email?: string;
   full_name?: string;
   new_password?: string;
+  // BUG-032: si el endpoint devuelve 409 con
+  // code=EMAIL_TAKEN_OFFER_TAKEOVER, la UI ofrece reintentar con
+  // este flag en true → libera el email del user en clash.
+  force_takeover_email?: boolean;
 };
 
 export function getSuperadminMe(): Promise<SuperadminMe> {
