@@ -7,9 +7,44 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-25 — Sprint 7 v1.6 — TRIAGE COMPLETO. Esperando status:ready del owner.
+2026-04-25 — Sprint 7 v1.6 ✅ EJECUTADO EN BLOQUE.
 Branch sesión actual: claude/review-and-triage-issues-EUsvX
 
+Owner pidió "ejecuta TODO de golpe para hacer un solo PR" tras triage.
+9 items entregados en commits limpios (1 por item) según regla
+sagrada CLAUDE.md §7. ENH-035 (#158) queda diferido a v2.0
+(post-MVP, marcado por el owner).
+
+Items entregados (en orden de implementación):
+  · ENH-037 #167 → c5798bf  feat(web) — botón Nuevo Programa en /pmo/orgs/[id]
+  · BUG-035  #163 → 7766281  fix(api,web) — RAID comments con nombre del autor
+  · BUG-033  #160 → 3ad5e9a  fix(api,web) — UI superadmin dropdown role inline
+  · BUG-032  #159 → 2f86f38  fix(api,web) — SA /me email change con take-over
+  · ENH-036  #162 → a48aa2b  feat(web) — RAID detail edit form
+  · BUG-034  #161 → 49358e8  fix(api,web) — documents download via presigned URL
+  · BUG-036  #166 → e441a07  fix(api,web,infra) — scheduled reports (beat embed + run-now)
+  · US-083   #165 → c740a59  feat(api,web) — charter universal + descarga DOCX/PDF
+  · US-082   #164 → 3533d21  feat(api,web) — tickets de permisos tenant→SA
+
+Migraciones agregadas (auto-aplican al deploy via Dockerfile CMD):
+- 0030 charter_for_legacy_projects (data — backfill rows vacías)
+- 0031 permission_change_requests
+
+Pendiente owner:
+- Revisar PR (1 solo PR con todos los commits).
+- En Railway: confirmar que el redeploy del worker aplica el cambio
+  del worker.railway.toml (--beat embedded para BUG-036).
+- BUG-032: probar el flow de take-over de email si hay clash al
+  cambiar a daguilar1601@gmail.com.
+- BUG-036: validar que el botón "Enviar ahora" dispara el correo
+  end-to-end.
+
+Naming convention nueva (próxima sesión):
+- Per instrucción del owner 2026-04-25, las próximas branches
+  seguirán el formato: sprint{N}-{ddmmyy}-{merge_order}-{code}
+  (ej. sprint8-280426-1-cleanup).
+
+--- contexto Sprint 7 triage ---
 Triage 2026-04-25:
 - 9 issues needs-rework analizados (#50, #78, #105, #111, #113, #125,
   #126, #127, #130).
@@ -77,26 +112,26 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 > Triage completo 2026-04-25. Esperando `status:ready` del owner por
 > issue (mínimo recomendado: Bloque 0 hotfix antes que el resto).
 
-### Bloque 0 — Hotfix verificación post-Sprint 6 (2 items)
-- [ ] BUG-032 — SuperAdmin /me no permite cambiar email — #159 (status:triage)
-- [ ] BUG-033 — UI gestión users sin opción modificar rol — #160 (status:triage)
+### Bloque 0 — Hotfix verificación post-Sprint 6 (2 items) ✅
+- [x] BUG-032 — SuperAdmin /me email change con take-over — #159 ✅ 2f86f38
+- [x] BUG-033 — UI superadmin dropdown role inline — #160 ✅ 3ad5e9a
 
-### Bloque 1 — Charter universal + downloads (2 items)
-- [ ] BUG-034 — Documents R2: link "Abrir" da 404; migrar a presigned URLs — #161 (status:triage)
-- [ ] US-083 — Charter universal: migración legacy + editor + descarga DOCX/PDF — #165 (status:triage)
+### Bloque 1 — Charter universal + downloads (2 items) ✅
+- [x] BUG-034 — Documents download via presigned URL R2 — #161 ✅ 49358e8
+- [x] US-083 — Charter universal + descarga DOCX/PDF — #165 ✅ c740a59
 
-### Bloque 2 — RAID polish (2 items)
-- [ ] ENH-036 — RAID página detalle (`raid/[item_id]`) sin opción editar — #162 (status:triage)
-- [ ] BUG-035 — RAID comments muestran user ID en vez del nombre — #163 (status:triage)
+### Bloque 2 — RAID polish (2 items) ✅
+- [x] ENH-036 — RAID detail page edit form — #162 ✅ a48aa2b
+- [x] BUG-035 — RAID comments con nombre del autor — #163 ✅ 7766281
 
-### Bloque 3 — Reportes Resend funcional (1 item)
-- [ ] BUG-036 — Reportes calendarizados no envían correo (beat + Resend) — #166 (status:triage)
+### Bloque 3 — Reportes Resend funcional (1 item) ✅
+- [x] BUG-036 — Scheduled reports beat + run-now — #166 ✅ e441a07
 
-### Bloque 4 — Tenant ↔ SuperAdmin permission tickets (1 item)
-- [ ] US-082 — Ticket cambio permisos del tenant admin → SuperAdmin (con notif email) — #164 (status:triage)
+### Bloque 4 — Tenant ↔ SuperAdmin permission tickets (1 item) ✅
+- [x] US-082 — Tickets de permisos con notif email — #164 ✅ 3533d21
 
-### Bloque 5 — UX programas (1 item)
-- [ ] ENH-037 — `/pmo/organizations/[id]`: botón "Nuevo Programa" con permission gate — #167 (status:triage)
+### Bloque 5 — UX programas (1 item) ✅
+- [x] ENH-037 — Botón Nuevo Programa /pmo/orgs/[id] — #167 ✅ c5798bf
 
 ### Follow-ups identificados (Sprint 8+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030+) tras validación de Sprint 6 en producción.
