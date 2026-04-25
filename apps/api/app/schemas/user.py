@@ -1,6 +1,10 @@
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
+
+# US-076 + DEC-024: vocabulario de role_type post-eliminación de viewer.
+RoleTypeIn = Literal["admin", "user"]
 
 
 class UserCreate(BaseModel):
@@ -10,6 +14,11 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=1)
     role_ids: list[UUID] = []
     is_active: bool = True
+    # US-078: role_type explícito al crear. Default "user".
+    role_type: RoleTypeIn = "user"
+    # US-078: lista opcional de orgs a EXCLUIR (default = ninguna,
+    # i.e. acceso a todas las orgs del tenant).
+    excluded_organization_ids: list[UUID] = []
 
 
 class UserUpdate(BaseModel):
@@ -17,6 +26,10 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     role_ids: list[UUID] | None = None
     is_active: bool | None = None
+    # US-078: cambiar role_type del user (admin ↔ user).
+    role_type: RoleTypeIn | None = None
+    # US-078: forzar cambio en próximo login sin tocar password actual.
+    must_change_password: bool | None = None
 
 
 class UserRead(BaseModel):
@@ -28,8 +41,19 @@ class UserRead(BaseModel):
     must_change_password: bool = False
     last_login: str | None = None
     roles: list[str] = []
+    role_type: str | None = None  # US-076 + DEC-024
 
     model_config = {"from_attributes": True}
+
+
+class ExcludedOrganizationsBody(BaseModel):
+    """Reemplazo batch del set de orgs excluidas para un user."""
+
+    organization_ids: list[UUID] = []
+
+
+class ExcludedOrganizationsRead(BaseModel):
+    organization_ids: list[UUID]
 
 
 class UserResetPasswordResponse(BaseModel):

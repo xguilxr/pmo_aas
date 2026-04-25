@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api";
 
+export type RoleType = "admin" | "user";
+
 export type AdminUser = {
   id: string;
   username: string;
@@ -9,6 +11,7 @@ export type AdminUser = {
   must_change_password: boolean;
   last_login: string | null;
   roles: string[];
+  role_type: RoleType | null;
 };
 
 export type PaginatedUsers = {
@@ -51,6 +54,8 @@ export type CreateUserBody = {
   password: string;
   role_ids: string[];
   is_active: boolean;
+  role_type?: RoleType; // US-078
+  excluded_organization_ids?: string[]; // US-078
 };
 
 export function createUser(body: CreateUserBody): Promise<AdminUser> {
@@ -62,6 +67,8 @@ export type UpdateUserBody = {
   email?: string;
   role_ids?: string[];
   is_active?: boolean;
+  role_type?: RoleType; // US-078
+  must_change_password?: boolean; // US-078
 };
 
 export function updateUser(id: string, body: UpdateUserBody): Promise<AdminUser> {
@@ -80,6 +87,35 @@ export function resetUserPassword(id: string): Promise<{ temp_password: string }
 
 export function unlockUser(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/admin/users/${id}/unlock`, { method: "POST" });
+}
+
+// US-078: forzar cambio en próximo login (no toca password actual).
+export function forcePasswordChange(id: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/admin/users/${id}/force-password-change`,
+    { method: "POST" }
+  );
+}
+
+// US-078: membership opt-out user↔organización.
+export type ExcludedOrgsResponse = { organization_ids: string[] };
+
+export function getExcludedOrganizations(
+  userId: string
+): Promise<ExcludedOrgsResponse> {
+  return apiFetch<ExcludedOrgsResponse>(
+    `/api/v1/admin/users/${userId}/excluded-organizations`
+  );
+}
+
+export function setExcludedOrganizations(
+  userId: string,
+  organizationIds: string[]
+): Promise<ExcludedOrgsResponse> {
+  return apiFetch<ExcludedOrgsResponse>(
+    `/api/v1/admin/users/${userId}/excluded-organizations`,
+    { method: "PUT", body: { organization_ids: organizationIds } }
+  );
 }
 
 export type AdminRole = {

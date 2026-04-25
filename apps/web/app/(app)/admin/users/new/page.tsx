@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
-import { createUser, listRoles, type AdminRole } from "@/lib/api/admin";
+import { createUser, listRoles, type AdminRole, type RoleType } from "@/lib/api/admin";
+import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { checkPasswordPolicy, generatePassword, passwordPolicyOk } from "@/lib/password";
 
 const POLICY_ERRORS: Record<string, string> = {
@@ -31,22 +32,31 @@ export default function NewUserPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [roleType, setRoleType] = useState<RoleType>("user");
 
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  // US-078: default = todas incluidas → ninguna excluida.
+  const [excludedOrgIds, setExcludedOrgIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    listRoles()
-      .then((r) => {
-        if (!cancelled) setRoles(r);
+    Promise.all([
+      listRoles(),
+      listOrganizations({ is_active: true }),
+    ])
+      .then(([r, orgList]) => {
+        if (cancelled) return;
+        setRoles(r);
+        setOrgs(orgList);
       })
       .catch((err) => {
         if (!cancelled) {
           setError(
-            err instanceof ApiError ? err.message : "No se pudieron cargar los roles disponibles",
+            err instanceof ApiError ? err.message : "No se pudieron cargar los datos del formulario",
           );
         }
       })
@@ -90,6 +100,8 @@ export default function NewUserPage() {
         password,
         role_ids: roleIds,
         is_active: isActive,
+        role_type: roleType,
+        excluded_organization_ids: excludedOrgIds,
       });
       router.replace(`/admin/users/${created.id}?created=1`);
     } catch (err) {
@@ -263,6 +275,69 @@ export default function NewUserPage() {
                         <div className="text-xs text-[var(--color-tertiary)]">{r.description}</div>
                       ) : null}
                     </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="role_type" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            Rol del tenant
+          </label>
+          <select
+            id="role_type"
+            value={roleType}
+            onChange={(e) => setRoleType(e.target.value as RoleType)}
+            disabled={submitting}
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+          >
+            <option value="user">User — operación normal del tenant</option>
+            <option value="admin">Admin — metaconfig (5 capabilities adicionales)</option>
+          </select>
+          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            <Link href="/admin/permissions" className="underline">
+              Ver qué hace cada rol
+            </Link>
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">
+            Acceso a organizaciones
+          </p>
+          <p className="mb-2 text-xs text-[var(--color-tertiary)]">
+            Por defecto el usuario tendrá acceso a todas las organizaciones del
+            tenant. Desmarca para excluirlo de orgs específicas.
+          </p>
+          {orgs.length === 0 ? (
+            <p className="text-xs text-[var(--color-tertiary)]">
+              Sin organizaciones activas en el tenant.
+            </p>
+          ) : (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {orgs.map((o) => {
+                const included = !excludedOrgIds.includes(o.id);
+                return (
+                  <label
+                    key={o.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] px-3 py-2 hover:bg-[var(--color-subtle)]"
+                  >
+                    <Checkbox
+                      checked={included}
+                      onChange={(e) =>
+                        setExcludedOrgIds((prev) =>
+                          e.target.checked
+                            ? prev.filter((id) => id !== o.id)
+                            : Array.from(new Set([...prev, o.id]))
+                        )
+                      }
+                      disabled={submitting}
+                    />
+                    <span className="text-sm text-[var(--color-primary)]">
+                      {o.name}
+                    </span>
                   </label>
                 );
               })}
