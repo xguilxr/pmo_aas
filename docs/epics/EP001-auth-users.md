@@ -5,11 +5,99 @@
 | **ID** | EP001 |
 | **Prioridad** | Alta (fundacional) |
 | **Dependencias** | — |
-| **Módulo** | `auth`, `admin.users`, `admin.roles` |
-| **Estado** | MVP |
-| **Versión objetivo** | v1.0 |
+| **Módulo** | `auth`, `admin.users` |
+| **Estado** | v1.5 (Sprint 6 — refactor capability-based) |
+| **Versión objetivo** | v1.5 |
 
-## Objetivo de negocio
+## Modelo actual (post-Sprint 6 / DEC-024)
+
+> **Reescritura parcial 2026-04-25.** El modelo de permisos pasó de
+> matriz `(role × module × action)` a **capability-based**. Las
+> secciones "User Stories" e "Implementación" abajo conservan el
+> diseño v1.0 como referencia histórica; el comportamiento real
+> productivo lo manda esta sección.
+
+### Roles fijos (DEC-020 + DEC-024)
+
+| `role_type` | Descripción |
+|---|---|
+| `admin` | Tiene 5 capabilities adicionales sobre `user`. |
+| `user`  | Default. Hace casi todo en el tenant. |
+
+`viewer` fue **eliminado** en Sprint 6 (migración 0028). Cualquier
+registro residual se normalizó a `user`. La tabla `roles` y
+`user_roles` quedaron *deprecated* — borrado físico → US-081
+(Sprint 7).
+
+### 5 capabilities del admin (DEC-024)
+
+| Capability | Cubre |
+|---|---|
+| `tenant.manage`         | Branding, settings, configuración del tenant |
+| `ai.configure`          | Proveedores y modos de IA |
+| `users.manage`          | 10 acciones admin→user (alta/edición/reset/desactivación/asignación rol/membership orgs/auditoría/desbloqueo/soft-delete/forzar password) |
+| `organizations.delete`  | Solo eliminar orgs. Crear/editar lo hace cualquier user |
+| `audit.read`            | Ver audit log del tenant |
+
+**Todo lo demás** (proyectos, tareas, riesgos, issues, change_requests,
+documentos, minutas, lecciones, áreas, dashboard, IA generación,
+project_requests, charters, reports, scheduled reports, importación
+de planes, organizaciones crear/editar) → cualquier user autenticado
+del tenant. Sin granularidad CRUD por módulo.
+
+### Flujo del gate
+
+```
+request → get_current_user → CurrentUser
+                                  │
+              role_type ∈ {admin,user} + is_superadmin
+                                  │
+                                  ▼
+       require_capability("X")  →  cu.has_capability("X")
+                                       │
+                              ┌────────┴────────┐
+                              ▼                 ▼
+                        is_superadmin?    capability ∈
+                              │           capabilities_for(role_type)?
+                              │ + override de tenant (DEC-021)
+                              ▼
+                          True/False
+```
+
+Implementación: `app/core/permissions.py` (mapping estático),
+`app/api/deps.py` (`CurrentUser.has_capability`, `require_capability`,
+`require_authenticated`).
+
+### Test de regresión (US-079)
+
+`apps/api/tests/test_permission_matrix.py` clasifica cada APIRoute
+en una de 8 categorías y falla si aparece un endpoint con un gate no
+reconocido. Esto previene la causa raíz de DEC-024 (strings huérfanos
+en el mapping). Marker `pytest -m permissions` para correr aislado.
+
+### UI
+
+- **`/admin/permissions`** — página informativa read-only que lista
+  las 5 capabilities. Footer apunta al superadmin para overrides
+  (DEC-021).
+- **`/admin/users` + `/admin/users/[id]`** — CRUD de users con select
+  `role_type`, sección de "Acceso a organizaciones" (modelo opt-out,
+  default todas marcadas), y los 10 botones de acciones admin→user.
+- **`/admin/roles`** y `role-editor.tsx` **eliminados en Sprint 6**.
+  Redirect 301 → `/admin/permissions`.
+
+### Modelo de datos efectivo
+
+- `users.role_type: VARCHAR(16)` ∈ {`admin`, `user`}.
+- `tenant_role_permission_overrides` (US-073, DEC-021): vocabulario
+  de overrides es ahora `capability` en `module` y `"grant"` en
+  `action`. Solo el superadmin escribe aquí.
+- `organization_user_exclusions` (US-078, opt-out membership): default
+  vacío → user accede a todas las orgs del tenant.
+
+---
+
+## Objetivo de negocio (v1.0, histórico)
 
 Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles con permisos granulares por módulo, y tener trazabilidad completa de quién hace qué.
 

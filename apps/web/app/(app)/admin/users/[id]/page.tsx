@@ -23,14 +23,19 @@ import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
 import {
   deleteUser,
+  forcePasswordChange,
+  getExcludedOrganizations,
   getUser,
   listRoles,
   resetUserPassword,
+  setExcludedOrganizations,
   unlockUser,
   updateUser,
   type AdminRole,
   type AdminUser,
+  type RoleType,
 } from "@/lib/api/admin";
+import { listOrganizations, type Organization } from "@/lib/api/organizations";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "Nunca";
@@ -57,6 +62,9 @@ function UserDetail() {
 
   const [user, setUser] = useState<AdminUser | null>(null);
   const [roles, setRoles] = useState<AdminRole[]>([]);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [excludedOrgIds, setExcludedOrgIds] = useState<string[]>([]);
+  const [originalExcludedOrgIds, setOriginalExcludedOrgIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -64,6 +72,7 @@ function UserDetail() {
   const [email, setEmail] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [roleType, setRoleType] = useState<RoleType>("user");
 
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice>(
@@ -76,6 +85,7 @@ function UserDetail() {
   const [resetTemp, setResetTemp] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [forcing, setForcing] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -83,14 +93,23 @@ function UserDetail() {
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
-    Promise.all([getUser(userId), listRoles()])
-      .then(([u, r]) => {
+    Promise.all([
+      getUser(userId),
+      listRoles(),
+      listOrganizations({ is_active: true }),
+      getExcludedOrganizations(userId).catch(() => ({ organization_ids: [] as string[] })),
+    ])
+      .then(([u, r, orgList, excl]) => {
         if (cancelled) return;
         setUser(u);
         setRoles(r);
+        setOrgs(orgList);
+        setExcludedOrgIds(excl.organization_ids);
+        setOriginalExcludedOrgIds(excl.organization_ids);
         setFullName(u.full_name);
         setEmail(u.email);
         setIsActive(u.is_active);
+        setRoleType((u.role_type as RoleType) ?? "user");
         const ids = r.filter((role) => u.roles.includes(role.name)).map((role) => role.id);
         setRoleIds(ids);
       })
@@ -112,11 +131,29 @@ function UserDetail() {
     if (fullName.trim() !== user.full_name) return true;
     if (email.trim().toLowerCase() !== user.email.toLowerCase()) return true;
     if (isActive !== user.is_active) return true;
-    const currentIds = roles.filter((r) => user.roles.includes(r.name)).map((r) => r.id).sort();
-    const nextIds = [...roleIds].sort();
-    if (currentIds.length !== nextIds.length) return true;
-    return currentIds.some((id, i) => id !== nextIds[i]);
-  }, [user, roles, fullName, email, isActive, roleIds]);
+    if (roleType !== ((user.role_type as RoleType) ?? "user")) return true;
+    const currentRoleIds = roles
+      .filter((r) => user.roles.includes(r.name))
+      .map((r) => r.id)
+      .sort();
+    const nextRoleIds = [...roleIds].sort();
+    if (currentRoleIds.length !== nextRoleIds.length) return true;
+    if (currentRoleIds.some((id, i) => id !== nextRoleIds[i])) return true;
+    const a = [...originalExcludedOrgIds].sort();
+    const b = [...excludedOrgIds].sort();
+    if (a.length !== b.length) return true;
+    return a.some((id, i) => id !== b[i]);
+  }, [
+    user,
+    roles,
+    fullName,
+    email,
+    isActive,
+    roleIds,
+    roleType,
+    originalExcludedOrgIds,
+    excludedOrgIds,
+  ]);
 
   function toggleRole(id: string, checked: boolean) {
     setRoleIds((prev) => (checked ? [...prev, id] : prev.filter((r) => r !== id)));
@@ -133,7 +170,17 @@ function UserDetail() {
         email: email.trim().toLowerCase(),
         is_active: isActive,
         role_ids: roleIds,
+        role_type: roleType,
       });
+      // Persistir exclusions si cambiaron.
+      const a = [...originalExcludedOrgIds].sort();
+      const b = [...excludedOrgIds].sort();
+      const exclusionsChanged =
+        a.length !== b.length || a.some((id, i) => id !== b[i]);
+      if (exclusionsChanged) {
+        await setExcludedOrganizations(user.id, excludedOrgIds);
+        setOriginalExcludedOrgIds(excludedOrgIds);
+      }
       setUser(updated);
       setIsActive(updated.is_active);
       setNotice({ kind: "success", message: "Cambios guardados" });
@@ -145,6 +192,37 @@ function UserDetail() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleForcePasswordChange() {
+    if (!user) return;
+    setForcing(true);
+    setNotice(null);
+    try {
+      await forcePasswordChange(user.id);
+      setUser({ ...user, must_change_password: true });
+      setNotice({
+        kind: "success",
+        message: "El usuario deberá cambiar su contraseña en el próximo ingreso.",
+      });
+    } catch (err) {
+      setNotice({
+        kind: "danger",
+        message:
+          err instanceof ApiError
+            ? err.message
+            : "No se pudo forzar el cambio de contraseña",
+      });
+    } finally {
+      setForcing(false);
+    }
+  }
+
+  function toggleExcludeOrg(orgId: string, included: boolean) {
+    // Checkbox marcado = INCLUIDA → quitar de exclusiones.
+    setExcludedOrgIds((prev) =>
+      included ? prev.filter((id) => id !== orgId) : Array.from(new Set([...prev, orgId]))
+    );
   }
 
   async function handleResetPassword() {
@@ -303,11 +381,8 @@ function UserDetail() {
           <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">Roles</p>
           {roles.length === 0 ? (
             <p className="text-xs text-[var(--color-tertiary)]">
-              No hay roles disponibles. Crea uno en{" "}
-              <Link href="/admin/roles" className="underline">
-                Roles
-              </Link>
-              .
+              Los permisos se gestionan por <Link href="/admin/permissions" className="underline">capability del rol</Link>{" "}
+              (admin/user). La asignación se hará desde esta página en US-078.
             </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -338,6 +413,63 @@ function UserDetail() {
           )}
         </div>
 
+        <div>
+          <label htmlFor="role_type" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            Rol del tenant
+          </label>
+          <select
+            id="role_type"
+            value={roleType}
+            onChange={(e) => setRoleType(e.target.value as RoleType)}
+            disabled={saving}
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+          >
+            <option value="user">User — operación normal del tenant</option>
+            <option value="admin">Admin — metaconfig (5 capabilities adicionales)</option>
+          </select>
+          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            <Link href="/admin/permissions" className="underline">
+              Ver qué hace cada rol
+            </Link>
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">
+            Acceso a organizaciones
+          </p>
+          <p className="mb-2 text-xs text-[var(--color-tertiary)]">
+            Por defecto el usuario tiene acceso a todas las organizaciones del
+            tenant. Desmarca para excluirlo de orgs específicas.
+          </p>
+          {orgs.length === 0 ? (
+            <p className="text-xs text-[var(--color-tertiary)]">
+              Sin organizaciones activas en el tenant.
+            </p>
+          ) : (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {orgs.map((o) => {
+                const included = !excludedOrgIds.includes(o.id);
+                return (
+                  <label
+                    key={o.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] px-3 py-2 hover:bg-[var(--color-subtle)]"
+                  >
+                    <Checkbox
+                      checked={included}
+                      onChange={(e) => toggleExcludeOrg(o.id, e.target.checked)}
+                      disabled={saving}
+                    />
+                    <span className="text-sm text-[var(--color-primary)]">
+                      {o.name}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <Switch
           id="is_active"
           checked={isActive}
@@ -356,6 +488,8 @@ function UserDetail() {
               setEmail(user.email);
               setIsActive(user.is_active);
               setRoleIds(roles.filter((r) => user.roles.includes(r.name)).map((r) => r.id));
+              setRoleType((user.role_type as RoleType) ?? "user");
+              setExcludedOrgIds(originalExcludedOrgIds);
             }}
           >
             Descartar
@@ -373,7 +507,7 @@ function UserDetail() {
             Resetear, desbloquear o desactivar esta cuenta.
           </p>
         </header>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <Button
             type="button"
             variant="secondary"
@@ -384,6 +518,21 @@ function UserDetail() {
           >
             <KeyRound className="h-4 w-4" aria-hidden />
             Resetear contraseña
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleForcePasswordChange}
+            loading={forcing}
+            disabled={user.must_change_password}
+            title={
+              user.must_change_password
+                ? "El usuario ya tiene un cambio pendiente"
+                : "Marca al usuario para que cambie su contraseña en el próximo ingreso (sin tocar la actual)."
+            }
+          >
+            <KeyRound className="h-4 w-4" aria-hidden />
+            Forzar cambio próximo login
           </Button>
           <Button
             type="button"

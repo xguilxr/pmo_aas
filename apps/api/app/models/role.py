@@ -1,3 +1,10 @@
+# DEPRECATED US-077 + DEC-024 — el modelo de permisos pasó de
+# (role × module × action) a 5 capabilities admin (`tenant.manage`,
+# `ai.configure`, `users.manage`, `organizations.delete`, `audit.read`).
+# `Role.permissions` JSON se ignora desde US-076 (`CurrentUser.has_capability`).
+# Las tablas `roles` y `user_roles` quedan vivas como compat, pero la UI
+# `/admin/roles/*` y los endpoints `admin_roles.py` se borraron en US-077.
+# Borrado físico de las tablas → US-081 (Sprint 7) tras validación.
 from uuid import UUID
 
 from sqlalchemy import JSON, Boolean, ForeignKey, String, UniqueConstraint
@@ -7,6 +14,7 @@ from app.db.base import Base, TimestampMixin, new_uuid
 
 
 class Role(Base, TimestampMixin):
+    """DEPRECATED US-077 — borrar en US-081 (Sprint 7)."""
     __tablename__ = "roles"
     __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_roles_tenant_name"),)
 
@@ -21,6 +29,8 @@ class Role(Base, TimestampMixin):
 
 
 class UserRole(Base):
+    """DEPRECATED US-077 — borrar en US-081 (Sprint 7)."""
+
     __tablename__ = "user_roles"
 
     user_id: Mapped[UUID] = mapped_column(

@@ -76,6 +76,20 @@ const nextConfig = {
         destination: "/pmo/reports",
         permanent: true,
       },
+      // US-077 (DEC-024): /admin/roles eliminado. Los permisos viven
+      // en 5 capabilities admin (modelo capability-based). Redirect a
+      // /admin/permissions (página informativa read-only de US-078) o
+      // /admin/users si la página informativa aún no se desplegó.
+      {
+        source: "/admin/roles/:path*",
+        destination: "/admin/permissions",
+        permanent: true,
+      },
+      {
+        source: "/admin/roles",
+        destination: "/admin/permissions",
+        permanent: true,
+      },
     ];
   },
 };

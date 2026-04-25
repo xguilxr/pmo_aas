@@ -7,27 +7,25 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-25 — Sprint 6 v1.5 ARRANCA. Branch: claude/debug-admin-permissions-n3Yop
+2026-04-25 — Sprint 6 v1.5 ✅ COMPLETO.
+Branch: claude/debug-admin-permissions-n3Yop · PR #156
 
-Overhaul del modelo de permisos (DEC-024 — capability-based).
-Kickoff tras diagnóstico de admin lockout residual post-DEC-020
-(ai.generate + documents:upload no existen en mapping + UI zombie
-de /admin/roles editaba JSON ignorado por CurrentUser.has()).
+5/5 items entregados (US-076 a US-080). Suite 339 pass / 1 skip.
+Esperando review + merge.
 
-Scope aprobado por owner (2026-04-25):
-- 5 capabilities admin: tenant.manage, ai.configure, users.manage,
-  organizations.delete, audit.read.
-- viewer ELIMINADO (migra a user).
-- 10 acciones admin→user bajo users.manage.
-- Membership user↔org modelo opt-out (exclusions) — default all,
-  scope filtrado efectivo diferido a ENH futuro.
-- Tablas roles/user_roles deprecadas (borrado físico → Sprint 7).
+PRs / commits:
+- US-076 (#151) → fabf8c3  feat(api) — capability model + migración 0028
+- US-077 (#152) → fc93bb3  feat(web,api) — borra /admin/roles legacy
+- US-079 (#154) → 2a0315a  test(api) — matriz role × endpoint
+- US-078 (#153) → 1fc8ad8  feat(api,web) — UI users + exclusions + migración 0029
+- US-080 (#155) → (siguiente commit) — consolidación de docs
 
-US activa: US-076 (#151) — backend refactor. Sin hotfix previo;
-los mismatches se resuelven de raíz dentro de US-076.
+Pendiente owner:
+- Revisar PR #156 + mergear a main.
+- Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 
 --- contexto Sprint 5 cerrado ---
-Branch: claude/sprint-pending-tasks-YhSdj
+Branch: claude/sprint-pending-tasks-YhSdj (mergeada)
 
 ENH-034 (#142) Diagnóstico bottleneck tests — ✅ fix-committed.
 Causa raíz: `send_notification_email.delay()` intentaba abrir socket
@@ -93,20 +91,20 @@ acción manual con la DB.
 
 **Sprint 6 (v1.5) — Permission model overhaul (DEC-024). 5 items en 5 bloques.**
 
-### Bloque 1 — Refactor backend del modelo de permisos (1 item)
-- [ ] US-076 — Modelo capability-based en permissions.py + deps.py + migración 0028 (viewer→user) + barrido de endpoints con require_capability/require_authenticated — #151 🚧 IN-PROGRESS
+### Bloque 1 — Refactor backend del modelo de permisos (1 item) ✅
+- [x] US-076 — Modelo capability-based + migración 0028 + barrido endpoints — #151 ✅ fabf8c3
 
-### Bloque 2 — Eliminar UI/endpoints legacy de roles (1 item)
-- [ ] US-077 — Borrar `/admin/roles/*`, `role-editor.tsx`, `admin_roles.py`, limpiar `admin.ts`. Deprecar (no borrar) tablas `roles`/`user_roles` — #152
+### Bloque 2 — Eliminar UI/endpoints legacy de roles (1 item) ✅
+- [x] US-077 — Borrar `/admin/roles/*`, `role-editor.tsx`, `admin_roles.py`, limpiar `admin.ts` — #152 ✅ fc93bb3
 
-### Bloque 3 — UI nueva gestión users + capabilities + org membership (1 item)
-- [ ] US-078 — `/admin/users/[id]` consolidado (10 acciones admin→user) + `/admin/permissions` read-only + `organization_user_exclusions` (migración 0029) — #153
+### Bloque 3 — UI nueva gestión users + capabilities + org membership (1 item) ✅
+- [x] US-078 — `/admin/users/[id]` (10 acciones) + `/admin/permissions` + migración 0029 (exclusions) — #153 ✅ 1fc8ad8
 
-### Bloque 4 — Tests de matriz role × endpoint (1 item)
-- [ ] US-079 — `test_permission_matrix.py` con inventario explícito + fail-on-unknown-endpoint — #154
+### Bloque 4 — Tests de matriz role × endpoint (1 item) ✅
+- [x] US-079 — `test_permission_matrix.py` con clasificación estática + fail-on-unknown — #154 ✅ 2a0315a
 
-### Bloque 5 — Cierre: actualización de documentación (1 item)
-- [ ] US-080 — Consolidar EP001/EP007/EP010, DB-CHANGES, DECISIONS, runbooks. Actualizar CLAUDE.md §2 con próximos IDs — #155
+### Bloque 5 — Cierre: actualización de documentación (1 item) ✅
+- [x] US-080 — Consolidar EP001, DECISIONS (anotaciones DEC-020/021), DB-CHANGES, CLAUDE.md §2, SPRINT.md — #155 ✅ (en este commit)
 
 ### Follow-up identificado (Sprint 7)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030) tras validación de Sprint 6 en producción.
@@ -116,7 +114,7 @@ acción manual con la DB.
 
 ## 🗂️ Sprint 5 (v1.4) — CERRADO
 
-**10 items en 6 bloques + 1 follow-up. 9/10 mergeados a main, US-069 fix-committed (PR pendiente).**
+**10 items en 6 bloques + 1 follow-up. Todos mergeados a main.**
 
 ### Bloque 0 — Hotfix admin lockout (1 item) ✅ MERGEADO
 - [x] BUG-031 — Admin lockout post-US-059/060 — #121 ✅ PR #129

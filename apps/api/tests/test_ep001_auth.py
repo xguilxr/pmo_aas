@@ -239,17 +239,8 @@ async def test_tcmt005_cross_tenant_forbidden(client, db_session):
     assert r.status_code == 403
 
 
-# -- TC-018 cannot delete system role ------------------------------
-@pytest.mark.asyncio
-async def test_tc018_cannot_delete_system_role(client, db_session):
-    t = await create_tenant(db_session)
-    admin_role = await create_admin_role(db_session, t)
-    await create_user(db_session, tenant=t, username="admin", email="admin@acme.example.com",
-                      password="Str0ng-Admin-1!", roles=[admin_role])
-    auth = await login(client, "admin", "Str0ng-Admin-1!")
-    r = await client.delete(f"/api/v1/admin/roles/{admin_role.id}", headers=auth["_authz"])
-    assert r.status_code == 422
-
+# -- TC-018 — borrado en US-077: el endpoint /admin/roles desapareció
+# (DEC-024). El modelo de roles legacy quedó deprecated, ver US-081.
 
 # -- TC-021/022 search & filter ------------------------------------
 @pytest.mark.asyncio
