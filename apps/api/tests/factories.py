@@ -53,7 +53,20 @@ async def create_user(
     full_name: str = "Admin User",
     is_superadmin: bool = False,
     roles: list[Role] | None = None,
+    role_type: str | None = None,
 ) -> User:
+    # US-076 + DEC-024: los tests históricamente NO seteaban role_type.
+    # Inferimos del rol legacy asignado (equivalente a migración 0026):
+    # un user con rol "Administrador" o "Admin" recibe role_type="admin",
+    # el resto "user". Tests que necesiten un role_type específico lo
+    # pasan explícito.
+    if role_type is None:
+        if is_superadmin:
+            role_type = "admin"
+        elif roles and any(r.name in ("Administrador", "Admin", "PMO Manager") for r in roles):
+            role_type = "admin"
+        else:
+            role_type = "user"
     u = User(
         tenant_id=tenant.id if tenant else None,
         username=username.lower(),
@@ -62,6 +75,7 @@ async def create_user(
         full_name=full_name,
         is_active=True,
         is_superadmin=is_superadmin,
+        role_type=role_type,
     )
     db.add(u)
     await db.flush()

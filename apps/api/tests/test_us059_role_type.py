@@ -1,46 +1,86 @@
-"""US-059 + US-060 — role_type simplificado + permissions endpoint."""
+"""US-059 + US-060 + US-076 — role_type simplificado + capabilities endpoint.
+
+Post-DEC-024 el modelo es capability-based. Los tests validan:
+- `capabilities_for` devuelve las 5 admin capabilities solo a admin.
+- `flat_permissions` en admin lista las 5 capabilities.
+- El shim legacy `legacy_permissions_shim` devuelve strings module:action
+  para compat con el frontend pre-US-078.
+- viewer fue eliminado.
+"""
 import pytest
 
-from app.core.permissions import ROLE_PERMISSIONS, flat_permissions, permissions_for
+from app.core.permissions import (
+    ADMIN_CAPABILITIES,
+    capabilities_for,
+    flat_permissions,
+    legacy_permissions_shim,
+)
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 
-def test_permissions_admin_has_organizations_crud():
-    p = permissions_for("admin")
-    assert {"create", "read", "update", "delete"}.issubset(p["organizations"])
+def test_capabilities_admin_has_all_five():
+    caps = capabilities_for("admin")
+    assert caps == ADMIN_CAPABILITIES
+    assert len(caps) == 5
 
 
-def test_permissions_user_cannot_crud_organizations():
-    p = permissions_for("user")
-    assert "create" not in p.get("organizations", set())
-    assert "read" in p["organizations"]
+def test_capabilities_user_is_empty():
+    assert capabilities_for("user") == frozenset()
 
 
-def test_permissions_user_can_crud_projects():
-    p = permissions_for("user")
-    assert {"create", "read", "update", "delete"}.issubset(p["projects"])
+def test_capabilities_unknown_role_is_empty():
+    # viewer eliminado (DEC-024) + cualquier string extraño → set vacío (fail-safe).
+    assert capabilities_for("viewer") == frozenset()
+    assert capabilities_for("random-garbage") == frozenset()
+    assert capabilities_for(None) == frozenset()
 
 
-def test_permissions_viewer_read_only():
-    p = permissions_for("viewer")
-    for module, actions in p.items():
-        assert actions == {"read"}, f"viewer tiene acciones no-read en {module}"
+def test_flat_permissions_admin_lists_capabilities():
+    flat = flat_permissions("admin")
+    assert flat == sorted(ADMIN_CAPABILITIES)
+    assert "organizations.delete" in flat
+    assert "users.manage" in flat
 
 
-def test_permissions_invalid_role_type_falls_back_to_viewer():
-    p = permissions_for("random-garbage")
-    assert p == ROLE_PERMISSIONS["viewer"]
+def test_flat_permissions_user_is_empty():
+    assert flat_permissions("user") == []
 
 
-def test_flat_permissions_shape():
-    flat = flat_permissions("user")
-    assert "projects:read" in flat
-    assert "organizations:read" in flat
-    assert "organizations:create" not in flat
+def test_legacy_shim_user_has_projects_crud():
+    shim = legacy_permissions_shim("user")
+    assert "projects:read" in shim
+    assert "projects:create" in shim
+    assert "projects:update" in shim
+    assert "projects:delete" in shim
+    # User puede crear org (solo delete es admin).
+    assert "organizations:read" in shim
+    assert "organizations:create" in shim
+    assert "organizations:update" in shim
+    assert "organizations:delete" not in shim
+
+
+def test_legacy_shim_admin_has_delete_org_plus_all_user_perms():
+    shim = legacy_permissions_shim("admin")
+    assert "organizations:delete" in shim
+    assert "users:read" in shim
+    assert "users:create" in shim
+    assert "users:update" in shim
+    assert "users:delete" in shim
+    assert "audit:read" in shim
+    # Los strings legacy que el frontend viejo todavía espera.
+    assert "admin.users:read" in shim
+    assert "admin.roles:read" in shim
+
+
+def test_legacy_shim_includes_ai_generate_and_documents_upload():
+    """Los mismatches que motivaron DEC-024 quedan cubiertos por el shim."""
+    shim_user = legacy_permissions_shim("user")
+    assert "ai.generate:create" in shim_user
+    assert "documents:upload" in shim_user
 
 
 @pytest.mark.asyncio
-async def test_me_permissions_endpoint(client, db_session):
+async def test_me_permissions_endpoint_admin(client, db_session):
     t = await create_tenant(db_session)
     admin_role = await create_admin_role(db_session, t)
     u = await create_user(
@@ -59,22 +99,28 @@ async def test_me_permissions_endpoint(client, db_session):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["role_type"] == "admin"
+    # Capabilities del vocabulario nuevo.
+    assert "organizations.delete" in body["capabilities"]
+    assert "users.manage" in body["capabilities"]
+    # Shim legacy — frontend pre-US-078 sigue funcionando.
     assert "organizations:create" in body["permissions"]
     assert "projects:read" in body["permissions"]
+    assert "organizations:delete" in body["permissions"]
 
 
 @pytest.mark.asyncio
-async def test_user_role_type_blocks_admin_endpoints(client, db_session):
+async def test_user_role_type_can_create_org_but_not_delete(client, db_session):
+    """Post-DEC-024 un user regular puede crear/editar organizaciones. Solo
+    el delete es admin-only (capability `organizations.delete`)."""
     from app.models.role import Role
 
     t = await create_tenant(db_session)
-    # Rol ultra-permisivo legacy — pero el user tendrá role_type=user,
-    # que en deps.py tiene precedencia → bloquea.
+    # Rol legacy vacío — el comportamiento ahora depende solo de role_type.
     open_role = Role(
         tenant_id=t.id,
         name="OpenRole",
         description="",
-        permissions={"organizations": ["read", "create", "update", "delete"]},
+        permissions={},
         is_system=False,
     )
     db_session.add(open_role)
@@ -91,20 +137,30 @@ async def test_user_role_type_blocks_admin_endpoints(client, db_session):
     await db_session.commit()
     auth = await login(client, "someuser", "Str0ng-User-1!")
 
-    # User intenta crear Organization → 403 (gate por role_type).
+    # User PUEDE crear una organización (DEC-024).
     r = await client.post(
         "/api/v1/organizations",
-        json={"name": "NoPuede"},
+        json={"name": "UserCreatedOrg"},
         headers=auth["_authz"],
+    )
+    assert r.status_code in (200, 201), r.text
+    org_id = r.json()["id"]
+
+    # Pero NO puede borrarla (capability organizations.delete).
+    r = await client.delete(
+        f"/api/v1/organizations/{org_id}", headers=auth["_authz"]
     )
     assert r.status_code == 403
 
-    # Pero SÍ puede crear un proyecto (tras crear la org con admin real,
-    # aquí nos basta con verificar el gate del module).
+    # /me/permissions muestra el estado correcto.
     perms = await client.get(
         "/api/v1/auth/me/permissions", headers=auth["_authz"]
     )
     assert perms.status_code == 200
-    flat = perms.json()["permissions"]
+    body = perms.json()
+    assert body["role_type"] == "user"
+    assert body["capabilities"] == []
+    flat = body["permissions"]
     assert "projects:create" in flat
-    assert "organizations:create" not in flat
+    assert "organizations:create" in flat
+    assert "organizations:delete" not in flat

@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.models.ai import Report
@@ -99,7 +99,7 @@ async def list_reports(
     status: str | None = Query(default=None),
     period: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -126,7 +126,7 @@ async def list_reports(
 async def create_report(
     project_id: UUID,
     body: ReportCreate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Crea un reporte manual (borrador). Secciones pre-llenadas con las
@@ -168,7 +168,7 @@ async def create_report(
 @router.get("/reports/{report_id}", response_model=ReportRead)
 async def get_report(
     report_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -188,7 +188,7 @@ async def get_report(
 async def update_report(
     report_id: UUID,
     body: ReportUpdate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -278,7 +278,7 @@ async def _tenant_name(db: AsyncSession, tenant_id: UUID) -> str | None:
 async def generate_avance_report(
     project_id: UUID,
     body: AvanceGenerate | None = None,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Genera Reporte de Avance (Python, sin IA). Devuelve el PDF y guarda
@@ -327,7 +327,7 @@ async def generate_avance_report(
 async def download_avance_report(
     report_id: UUID,
     inline: bool = Query(default=False),
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Re-descarga un Reporte de Avance previamente generado (usa
@@ -358,7 +358,7 @@ async def download_avance_report(
 async def generate_seguimiento_report(
     project_id: UUID,
     body: SeguimientoGenerate | None = None,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Reporte de Seguimiento (Python, sin IA). Ver US-039."""
@@ -408,7 +408,7 @@ async def generate_seguimiento_report(
 async def download_seguimiento_report(
     report_id: UUID,
     inline: bool = Query(default=False),
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -435,7 +435,7 @@ async def download_seguimiento_report(
 @router.delete("/reports/{report_id}", status_code=204)
 async def delete_report(
     report_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

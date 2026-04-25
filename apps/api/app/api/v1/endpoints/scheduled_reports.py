@@ -16,7 +16,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, forbidden, not_found
 from app.db.session import get_db
 from app.models.project import Project
@@ -93,7 +93,7 @@ def _validate_enum(field: str, value: str, allowed: tuple[str, ...]) -> None:
 )
 async def list_scheduled_reports(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -119,7 +119,7 @@ async def list_scheduled_reports(
 async def create_scheduled_report(
     project_id: UUID,
     body: ScheduledReportCreate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -163,7 +163,7 @@ async def create_scheduled_report(
 async def update_scheduled_report(
     scheduled_id: UUID,
     body: ScheduledReportUpdate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -219,7 +219,7 @@ async def update_scheduled_report(
 @router.delete("/scheduled-reports/{scheduled_id}", status_code=204)
 async def delete_scheduled_report(
     scheduled_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

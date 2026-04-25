@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.ai import AIJob, Report
@@ -38,7 +38,7 @@ def _tenant(cu: CurrentUser) -> UUID:
 async def generate_minute(
     body: GenerateMinuteRequest,
     response: Response,
-    cu: CurrentUser = Depends(require_permission("ai.generate", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """US-051: dispatch a Celery. Devuelve 202 + job_id; la UI hace
@@ -108,7 +108,7 @@ async def draft_report(
     project_id: UUID,
     body: ReportDraftRequest,
     response: Response,
-    cu: CurrentUser = Depends(require_permission("ai.generate", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """US-051: dispatch a Celery (idéntico pattern que `generate_minute`)."""
@@ -171,7 +171,7 @@ class SendReportRequest(BaseModel):
 async def send_report(
     report_id: UUID,
     body: SendReportRequest,
-    cu: CurrentUser = Depends(require_permission("ai.generate", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -204,7 +204,7 @@ async def send_report(
 @router.get("/jobs/{job_id}")
 async def get_job(
     job_id: UUID,
-    cu: CurrentUser = Depends(require_permission("ai.generate", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

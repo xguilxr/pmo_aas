@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_permission
+from app.api.deps import CurrentUser, get_current_user, require_capability
 from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.models.tenant import Tenant
@@ -44,7 +44,7 @@ def _ext_to_mime(path_suffix: str) -> str:
 @router.post("/admin/tenant/logo")
 async def upload_tenant_logo(
     file: UploadFile = File(...),
-    cu: CurrentUser = Depends(require_permission("admin", "update")),
+    cu: CurrentUser = Depends(require_capability("tenant.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant_id(cu)
@@ -72,7 +72,7 @@ async def upload_tenant_logo(
 
 @router.delete("/admin/tenant/logo", status_code=200)
 async def remove_tenant_logo(
-    cu: CurrentUser = Depends(require_permission("admin", "update")),
+    cu: CurrentUser = Depends(require_capability("tenant.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant_id(cu)

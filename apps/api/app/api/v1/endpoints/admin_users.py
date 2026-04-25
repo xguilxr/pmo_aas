@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_capability
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
 from app.core.security import hash_password, validate_password_policy
 from app.db.session import get_db
@@ -61,7 +61,7 @@ async def list_users(
     is_active: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=200),
-    cu: CurrentUser = Depends(require_permission("users", "read")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(User)
@@ -93,7 +93,7 @@ async def list_users(
 @router.post("", response_model=UserRead, status_code=201)
 async def create_user(
     body: UserCreate,
-    cu: CurrentUser = Depends(require_permission("users", "create")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     ok, err = validate_password_policy(body.password)
@@ -150,7 +150,7 @@ async def create_user(
 @router.get("/{user_id}", response_model=UserRead)
 async def get_user(
     user_id: UUID,
-    cu: CurrentUser = Depends(require_permission("users", "read")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     u = (await db.execute(select(User).where(User.id == str(user_id)))).scalar_one_or_none()
@@ -164,7 +164,7 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     body: UserUpdate,
-    cu: CurrentUser = Depends(require_permission("users", "update")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     u = (await db.execute(select(User).where(User.id == str(user_id)))).scalar_one_or_none()
@@ -194,7 +194,7 @@ async def update_user(
 @router.delete("/{user_id}", status_code=204)
 async def delete_user(
     user_id: UUID,
-    cu: CurrentUser = Depends(require_permission("users", "delete")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     u = (await db.execute(select(User).where(User.id == str(user_id)))).scalar_one_or_none()
@@ -217,7 +217,7 @@ async def delete_user(
 @router.post("/{user_id}/reset-password", response_model=UserResetPasswordResponse)
 async def reset_password(
     user_id: UUID,
-    cu: CurrentUser = Depends(require_permission("users", "update")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     u = (await db.execute(select(User).where(User.id == str(user_id)))).scalar_one_or_none()
@@ -240,7 +240,7 @@ async def reset_password(
 @router.post("/{user_id}/unlock", status_code=204)
 async def unlock_user(
     user_id: UUID,
-    cu: CurrentUser = Depends(require_permission("users", "update")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     u = (await db.execute(select(User).where(User.id == str(user_id)))).scalar_one_or_none()

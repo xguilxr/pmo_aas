@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.organization import Organization
@@ -54,7 +54,7 @@ async def list_projects(
     only_mine: bool = Query(default=False),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=15, ge=1, le=100),
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -96,7 +96,7 @@ async def list_projects(
 @router.post("", response_model=ProjectRead, status_code=201)
 async def create_project(
     body: ProjectCreate,
-    cu: CurrentUser = Depends(require_permission("projects", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -207,7 +207,7 @@ async def _get_project(db: AsyncSession, project_id: UUID, tenant_id: UUID) -> P
 @router.get("/{project_id}", response_model=ProjectDetail)
 async def get_project(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -257,7 +257,7 @@ async def get_project(
 async def update_project(
     project_id: UUID,
     body: ProjectUpdate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -282,7 +282,7 @@ async def update_project(
 @router.delete("/{project_id}", status_code=204)
 async def delete_project(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "delete")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
 
@@ -303,7 +303,7 @@ async def delete_project(
 async def change_phase(
     project_id: UUID,
     body: PhaseChange,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -328,7 +328,7 @@ async def change_phase(
 @router.get("/{project_id}/members")
 async def list_members(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -351,7 +351,7 @@ async def list_members(
 async def add_member(
     project_id: UUID,
     body: MemberCreate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -385,7 +385,7 @@ async def add_member(
 async def remove_member(
     project_id: UUID,
     user_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -413,7 +413,7 @@ async def remove_member(
 async def export_project(
     project_id: UUID,
     format: str = Query(default="json", pattern="^(json|pdf)$"),
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

@@ -246,14 +246,35 @@ async def me(cu: CurrentUser = Depends(get_current_user), db: AsyncSession = Dep
 
 @router.get("/me/permissions")
 async def my_permissions(cu: CurrentUser = Depends(get_current_user)):
-    """US-060 — expone el role_type + lista plana de permisos del user
-    actual para que el frontend pueda gate-ar botones/links."""
-    from app.core.permissions import flat_permissions
+    """US-060 + US-076 — expone el role_type + capabilities del user
+    actual para que el frontend pueda gate-ar botones/links.
 
+    `capabilities` es el vocabulario nuevo (5 strings para admin, 0
+    para user). `permissions` es el shim legacy `module:action` para
+    el hook `useMyPermissions` pre-DEC-024; se borra en US-080/081 al
+    migrar el hook al vocabulario de capabilities.
+    """
+    from app.core.permissions import (
+        capabilities_for,
+        flat_permissions,
+        legacy_permissions_shim,
+    )
+
+    role_type = cu.role_type or "user"
+    # Aplicar overrides de tenant para reportar el set efectivo.
+    effective_caps = set(capabilities_for(role_type))
+    for cap, granted in cu.capability_overrides.get(role_type, {}).items():
+        if granted:
+            effective_caps.add(cap)
+        else:
+            effective_caps.discard(cap)
     return {
-        "role_type": cu.role_type or "user",
+        "role_type": role_type,
         "is_superadmin": cu.is_superadmin,
-        "permissions": flat_permissions(cu.role_type or "user"),
+        "capabilities": sorted(effective_caps) if not cu.is_superadmin else sorted(flat_permissions("admin")),
+        "permissions": legacy_permissions_shim(
+            "admin" if cu.is_superadmin else role_type
+        ),
     }
 
 

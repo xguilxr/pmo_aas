@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated, require_capability
 from app.core.errors import business_rule, forbidden, not_found
 from app.db.session import get_db
 from app.models.audit import AuditLog
@@ -39,7 +39,7 @@ class BulkAssignRoleBody(BaseModel):
 @router.post("/users/bulk/assign-role", status_code=200)
 async def bulk_assign_role(
     body: BulkAssignRoleBody,
-    cu: CurrentUser = Depends(require_permission("users", "update")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -83,7 +83,7 @@ class BulkDeactivateBody(BaseModel):
 @router.post("/users/bulk/deactivate", status_code=200)
 async def bulk_deactivate(
     body: BulkDeactivateBody,
-    cu: CurrentUser = Depends(require_permission("users", "update")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -111,7 +111,7 @@ async def bulk_deactivate(
 @router.post("/roles/{role_id}/duplicate", response_model=RoleRead, status_code=201)
 async def duplicate_role(
     role_id: UUID,
-    cu: CurrentUser = Depends(require_permission("roles", "create")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -137,7 +137,7 @@ async def duplicate_role(
 @router.get("/roles/{role_id}/impact")
 async def role_impact(
     role_id: UUID,
-    cu: CurrentUser = Depends(require_permission("roles", "read")),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -163,7 +163,7 @@ async def role_impact(
 # ---- Organizations with metrics ----
 @router.get("/organizations/metrics")
 async def org_metrics(
-    cu: CurrentUser = Depends(require_permission("organizations", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -200,7 +200,7 @@ async def org_metrics(
 @router.get("/projects")
 async def admin_list_projects(
     include_inactive_orgs: bool = Query(default=True),
-    cu: CurrentUser = Depends(require_permission("admin", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -233,7 +233,7 @@ class ForceCloseBody(BaseModel):
 async def admin_force_close(
     project_id: UUID,
     body: ForceCloseBody,
-    cu: CurrentUser = Depends(require_permission("admin", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -262,7 +262,7 @@ class TenantInfoUpdate(BaseModel):
 
 @router.get("/tenant")
 async def get_tenant_info(
-    cu: CurrentUser = Depends(require_permission("users", "read")),
+    cu: CurrentUser = Depends(require_capability("tenant.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     """Info + stats del tenant actual (US-023).
@@ -346,7 +346,7 @@ async def get_tenant_info(
 @router.patch("/tenant")
 async def update_tenant_info(
     body: TenantInfoUpdate,
-    cu: CurrentUser = Depends(require_permission("users", "update")),
+    cu: CurrentUser = Depends(require_capability("tenant.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     """Actualiza nombre y/o logo del tenant (US-023).
@@ -402,7 +402,7 @@ class TenantSettingsUpdate(BaseModel):
 
 @router.get("/settings")
 async def get_settings(
-    cu: CurrentUser = Depends(require_permission("users", "read")),
+    cu: CurrentUser = Depends(require_capability("tenant.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -415,7 +415,7 @@ async def get_settings(
 @router.patch("/settings")
 async def patch_settings(
     body: TenantSettingsUpdate,
-    cu: CurrentUser = Depends(require_permission("users", "update")),
+    cu: CurrentUser = Depends(require_capability("tenant.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -444,7 +444,7 @@ async def list_audit_logs(
     date_to: datetime | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=50, ge=1, le=500),
-    cu: CurrentUser = Depends(require_permission("users", "read")),
+    cu: CurrentUser = Depends(require_capability("audit.read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -475,7 +475,7 @@ async def list_audit_logs(
 
 @router.get("/audit-logs/export.csv")
 async def export_audit_logs(
-    cu: CurrentUser = Depends(require_permission("users", "read")),
+    cu: CurrentUser = Depends(require_capability("audit.read")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

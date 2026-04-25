@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden
 from app.db.session import get_db
 from app.models.project import Project
@@ -82,7 +82,7 @@ async def scoped_project_ids(
 @router.get("/kpis")
 async def kpis(
     organization_id: UUID | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("dashboard", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -214,7 +214,7 @@ async def kpis(
 @router.get("/charts")
 async def charts(
     organization_id: UUID | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("dashboard", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -277,7 +277,7 @@ async def plan_vs_actual(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     phase: str | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("dashboard", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -351,7 +351,7 @@ async def plan_vs_actual_csv(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     phase: str | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("dashboard", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     data = await plan_vs_actual(organization_id, program_id, phase, cu, db)

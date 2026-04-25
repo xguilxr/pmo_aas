@@ -28,9 +28,9 @@ lista anterior. El contexto es finito.
 
 | Prefijo | Uso | Contador | Próximo libre |
 |---|---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-055** (US-054 cerrada en Bloque 22) |
-| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-023** |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-012** (ENH-011 cerrada en Bloque 22) |
+| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-081** (US-080 abierta en Sprint 6 Bloque 5) |
+| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-032** |
+| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-035** (ENH-034 abierta en Sprint 5 follow-up) |
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
 | `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` | — |
 | `ADR-###` | Architecture Decision Record | Ver `docs/adr/` | — |

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.db.session import get_db
 from app.models.modules import (
@@ -133,7 +133,7 @@ async def list_risks(
     severity_max: int | None = Query(default=None, ge=1, le=25),
     area_id: UUID | None = Query(default=None),
     q: str | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("risks", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -175,7 +175,7 @@ async def list_risks(
 async def create_risk(
     project_id: UUID,
     body: RiskCreate,
-    cu: CurrentUser = Depends(require_permission("risks", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -209,7 +209,7 @@ async def create_risk(
 @risks_router.get("/risks/{risk_id}", response_model=RiskRead)
 async def get_risk(
     risk_id: UUID,
-    cu: CurrentUser = Depends(require_permission("risks", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """US-065: detalle de un riesgo para la página dedicada."""
@@ -236,7 +236,7 @@ async def get_risk(
 async def update_risk(
     risk_id: UUID,
     body: RiskUpdate,
-    cu: CurrentUser = Depends(require_permission("risks", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -279,7 +279,7 @@ async def update_risk(
 async def add_risk_comment(
     risk_id: UUID,
     body: RiskComment,
-    cu: CurrentUser = Depends(require_permission("risks", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """US-058: comentarios tipo Jira sobre un riesgo (mismo shape que
@@ -325,7 +325,7 @@ async def add_risk_comment(
 @risks_router.delete("/risks/{risk_id}", status_code=204)
 async def delete_risk(
     risk_id: UUID,
-    cu: CurrentUser = Depends(require_permission("risks", "delete")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -350,7 +350,7 @@ async def list_issues(
     overdue: bool = Query(default=False),
     type: str | None = Query(default=None),
     area_id: UUID | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("issues", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -389,7 +389,7 @@ async def list_issues(
 async def create_issue(
     project_id: UUID,
     body: IssueCreate,
-    cu: CurrentUser = Depends(require_permission("issues", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -421,7 +421,7 @@ async def create_issue(
 @issues_router.get("/issues/{issue_id}", response_model=IssueRead)
 async def get_issue(
     issue_id: UUID,
-    cu: CurrentUser = Depends(require_permission("issues", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """US-065: detalle de un issue (acción/incidente/decisión)."""
@@ -448,7 +448,7 @@ async def get_issue(
 async def add_issue_comment(
     issue_id: UUID,
     body: IssueComment,
-    cu: CurrentUser = Depends(require_permission("issues", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -475,7 +475,7 @@ async def add_issue_comment(
 async def update_issue(
     issue_id: UUID,
     body: IssueUpdate,
-    cu: CurrentUser = Depends(require_permission("issues", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -509,7 +509,7 @@ chg_router = APIRouter(tags=["change_requests"])
 async def list_chgs(
     project_id: UUID,
     status: list[str] | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("change_requests", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -527,7 +527,7 @@ async def list_chgs(
 async def create_chg(
     project_id: UUID,
     body: ChangeRequestCreate,
-    cu: CurrentUser = Depends(require_permission("change_requests", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -554,7 +554,7 @@ async def create_chg(
 @chg_router.post("/change-requests/{chg_id}/approve", response_model=ChangeRequestRead)
 async def approve_chg(
     chg_id: UUID,
-    cu: CurrentUser = Depends(require_permission("change_requests", "approve")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -573,7 +573,7 @@ async def approve_chg(
 @chg_router.post("/change-requests/{chg_id}/reject", response_model=ChangeRequestRead)
 async def reject_chg(
     chg_id: UUID,
-    cu: CurrentUser = Depends(require_permission("change_requests", "approve")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -597,7 +597,7 @@ docs_router = APIRouter(tags=["documents"])
 async def upload_document(
     project_id: UUID,
     body: DocumentCreate,
-    cu: CurrentUser = Depends(require_permission("documents", "upload")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -654,7 +654,7 @@ async def upload_document_file(
     description: str | None = Query(default=None),
     category: str | None = Query(default="other"),
     file: UploadFile = File(...),
-    cu: CurrentUser = Depends(require_permission("documents", "upload")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a file and create a document entry with versioning."""
@@ -713,7 +713,7 @@ async def list_documents(
     project_id: UUID,
     include_versions: bool = Query(default=False),
     category: str | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("documents", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -733,7 +733,7 @@ async def list_documents(
 async def update_document(
     doc_id: UUID,
     body: DocumentUpdate,
-    cu: CurrentUser = Depends(require_permission("documents", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Actualiza metadata (title/description/category) sin tocar el archivo."""
@@ -767,7 +767,7 @@ async def update_document(
 @docs_router.get("/documents/{doc_id}/download")
 async def download_document(
     doc_id: UUID,
-    cu: CurrentUser = Depends(require_permission("documents", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Download a document file.
@@ -827,7 +827,7 @@ async def list_lessons_cross(
     category: str | None = Query(default=None),
     tag: str | None = Query(default=None),
     q: str | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("lessons", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -871,7 +871,7 @@ async def list_lessons_cross(
 async def create_lesson(
     project_id: UUID,
     body: LessonCreate,
-    cu: CurrentUser = Depends(require_permission("lessons", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -902,7 +902,7 @@ minutes_router = APIRouter(tags=["minutes"])
 async def create_minute(
     project_id: UUID,
     body: MeetingMinuteCreate,
-    cu: CurrentUser = Depends(require_permission("minutes", "create")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -929,7 +929,7 @@ async def create_minute(
 @minutes_router.get("/projects/{project_id}/meeting-minutes", response_model=list[MeetingMinuteRead])
 async def list_minutes(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("minutes", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -948,7 +948,7 @@ async def list_minutes(
 async def export_minute(
     minute_id: UUID,
     format: str = Query(default="pdf", pattern="^(pdf|docx|md|txt)$"),
-    cu: CurrentUser = Depends(require_permission("minutes", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Exporta la minuta en el formato estandarizado (US-040).
@@ -1028,7 +1028,7 @@ async def export_minute(
 async def convert_agreement_to_issue(
     minute_id: UUID,
     agreement_index: int,
-    cu: CurrentUser = Depends(require_permission("minutes", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

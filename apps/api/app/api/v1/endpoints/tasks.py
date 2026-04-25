@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.project import Project
@@ -93,7 +93,7 @@ class TaskRead(BaseModel):
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])
 async def list_tasks(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -111,7 +111,7 @@ async def list_tasks(
 async def create_task(
     project_id: UUID,
     body: TaskCreate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -144,7 +144,7 @@ async def create_task(
 async def update_task(
     task_id: UUID,
     body: TaskUpdate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -165,7 +165,7 @@ async def update_task(
 @router.delete("/tasks/{task_id}", status_code=204)
 async def delete_task(
     task_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -189,7 +189,7 @@ async def import_ms_project(
     project_id: UUID,
     file: UploadFile,
     strategy: str = Query(default="replace", pattern="^(replace|merge)$"),
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -488,7 +488,7 @@ async def import_preview(
     project_id: UUID,
     file: UploadFile,
     sheet: str | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """US-070 step 1 — parsea el archivo, guarda en Redis y devuelve
@@ -595,7 +595,7 @@ async def import_confirm(
     project_id: UUID,
     job_id: str,
     body: ImportConfirmBody,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """US-070 step 2 — lee preview de Redis, aplica mapping y persiste."""
@@ -756,7 +756,7 @@ async def import_confirm(
 @router.get("/projects/{project_id}/gantt")
 async def gantt_view(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

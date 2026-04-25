@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.models.organization import BusinessUnit, Department
@@ -109,7 +109,7 @@ def _read(charter: ProjectCharter, project: Project) -> ProjectCharterRead:
 @router.get("/{project_id}/charter", response_model=ProjectCharterRead)
 async def get_charter(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     project, charter = await _get_project_and_charter(db, _tenant(cu), project_id)
@@ -120,7 +120,7 @@ async def get_charter(
 async def update_charter(
     project_id: UUID,
     body: ProjectCharterUpdate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -203,7 +203,7 @@ async def update_charter(
 @router.get("/{project_id}/charter/pdf", response_class=HTMLResponse)
 async def charter_printable(
     project_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Devuelve HTML imprimible a PDF. Un renderer PDF nativo queda como
