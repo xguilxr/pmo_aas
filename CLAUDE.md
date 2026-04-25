@@ -28,9 +28,9 @@ lista anterior. El contexto es finito.
 
 | Prefijo | Uso | Contador | Próximo libre |
 |---|---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-082** (US-081 reservada para borrado físico de tablas legacy en Sprint 7) |
-| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-032** |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-035** (ENH-034 cerrada en Sprint 5) |
+| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-084** (US-081 reservada para borrado físico de tablas legacy en Sprint 8+; US-082 = #164 permission tickets; US-083 = #165 charter universal) |
+| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-037** (BUG-032 = #159, BUG-033 = #160, BUG-034 = #161, BUG-035 = #163, BUG-036 = #166) |
+| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-038** (ENH-035 = #158 CI deep-dive post-MVP; ENH-036 = #162 RAID detail edit; ENH-037 = #167 PMO programs button) |
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
 | `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` | — |
 | `ADR-###` | Architecture Decision Record | Ver `docs/adr/` | — |
@@ -369,5 +369,5 @@ Excepciones permitidas:
 
 ---
 
-**Última actualización:** 2026-04-21
+**Última actualización:** 2026-04-25
 **Responsable:** Claude Code (owner: xguilxr)

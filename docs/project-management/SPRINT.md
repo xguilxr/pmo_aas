@@ -7,70 +7,53 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-25 — Sprint 6 v1.5 ✅ COMPLETO.
-Branch: claude/debug-admin-permissions-n3Yop · PR #156
+2026-04-25 — Sprint 7 v1.6 — TRIAGE COMPLETO. Esperando status:ready del owner.
+Branch sesión actual: claude/review-and-triage-issues-EUsvX
+
+Triage 2026-04-25:
+- 9 issues needs-rework analizados (#50, #78, #105, #111, #113, #125,
+  #126, #127, #130).
+- 9 cerrados como `completed` (scope original cumplido en cada uno;
+  gaps reportados se separan en issues nuevos).
+- 10 issues nuevos creados (Sprint 7):
+  · #158 ENH-035 — Análisis profundo CI tests (post-MVP, v2.0).
+  · #159 BUG-032 — SuperAdmin /me no permite cambiar email.
+  · #160 BUG-033 — UI gestión users sin opción modificar rol.
+  · #161 BUG-034 — Documents R2: link "Abrir" da 404 (presigned URL).
+  · #162 ENH-036 — RAID página detalle sin opción editar.
+  · #163 BUG-035 — RAID comments muestran user ID en vez de nombre.
+  · #164 US-082 — Tenant admin: ticket cambio permisos → SuperAdmin.
+  · #165 US-083 — Charter universal: migración legacy + descarga DOCX/PDF.
+  · #166 BUG-036 — Reportes calendarizados no envían correo (Resend/beat).
+  · #167 ENH-037 — /pmo/organizations/[id]: botón "Nuevo Programa".
+
+Decisiones owner (vía AskUserQuestion 2026-04-25):
+- PR #156 (Sprint 6) está mergeado y deployed → bugs de #125/#127/#113
+  son reales, no cache stale.
+- Charter legacy: migración data Alembic (no lazy on-demand).
+- US-082: tabla + flujo nuevos, no se reutiliza Solicitudes EP005.
+- ENH-036 alcance: solo página detalle dedicada (no preview panel).
+
+Pendiente owner para arrancar Sprint 7:
+- Revisar los 10 issues nuevos (#158-#167).
+- Asignar `status:ready` a los que apruebe (mínimo recomendado:
+  Bloque 0 hotfix → BUG-032 + BUG-033).
+- Confirmar orden de bloques (default: 0 → 1 → 2 → 3 → 4 → 5).
+
+--- contexto Sprint 6 cerrado ---
+Sprint 6 v1.5 ✅ COMPLETO. Branch: claude/debug-admin-permissions-n3Yop
+PR #156 mergeado a main (confirmado por owner 2026-04-25).
 
 5/5 items entregados (US-076 a US-080). Suite 339 pass / 1 skip.
-Esperando review + merge.
 
 PRs / commits:
 - US-076 (#151) → fabf8c3  feat(api) — capability model + migración 0028
 - US-077 (#152) → fc93bb3  feat(web,api) — borra /admin/roles legacy
 - US-079 (#154) → 2a0315a  test(api) — matriz role × endpoint
 - US-078 (#153) → 1fc8ad8  feat(api,web) — UI users + exclusions + migración 0029
-- US-080 (#155) → (siguiente commit) — consolidación de docs
+- US-080 (#155) → consolidación de docs
 
-Pendiente owner:
-- Revisar PR #156 + mergear a main.
-- Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
-
---- contexto Sprint 5 cerrado ---
-Branch: claude/sprint-pending-tasks-YhSdj (mergeada)
-
-ENH-034 (#142) Diagnóstico bottleneck tests — ✅ fix-committed.
-Causa raíz: `send_notification_email.delay()` intentaba abrir socket
-al broker Redis (`REDIS_URL=redis://localhost:6379/15`) sin Redis
-disponible en CI; socket timeout default ~30s + retry interno =
-~38s acumulado por test. Fix: fixture autouse que mockea
-`.delay()` con no-op (equivalente quirúrgico a task_always_eager
-sin ejecutar la task email).
-
-PRs mergeados a main:
-- BUG-031 (#121)  PR #129
-- ENH-030 (#130)  PR #131
-- US-072  (#125)  PR #134
-- US-074  (#127)  PR #134
-- US-071  (#124)  PR #135
-- ENH-032 (#133)  PR #139 (consolidado con ENH-033)
-- ENH-033 (#138)  PR #139
-- US-073  (#126)  PR #140 (+ fixes CI dual runs + permissions)
-- ENH-031 (#132)  PR #141 (a5cfab1 — session engine + clean tables)
-- Docs Sprint 5   PR #137 (b6fc650)
-- US-069  (#122)  PR #143 (5ef2677 + cleanup ruff + alembic doc)
-
-Branch activa pendiente de PR:
-- US-075 (#128) sub-bloques A+C — commit 33b0c7a en
-  claude/sprint-pending-tasks-YhSdj. Esperando review + merge.
-
-Pendientes siguientes sesiones:
-- US-075 (#128) sub-bloque B — páginas informativas /pmo/programs/*
-  y /pmo/organizations/[id] con KPIs (~1-2 días).
-- US-070 (#123) Wizard de mapeo de columnas — tras cerrar US-075
-  (mega 4-6 días).
-- ENH-034 (#142) Diagnosticar bottleneck 38s en 9 tests
-  (status:triage — pendiente label ready del owner).
-
-Pendiente owner:
-- Revisar PR de US-075. Cambios: 28 page.tsx renombrados (preserva
-  historial git), 137 refs sustituidas en 40 archivos, 11 redirects
-  301 nuevos, scope de ADMIN_NAV ahora correcto (solo role_type=admin).
-- En el primer deploy: cache de Next.js se invalida por las rutas
-  nuevas. Verificar que un user con role_type=user (no admin) ya
-  NO ve el menú "Admin" (este PR cierra un bug de scope no reportado).
-
-Nota: las migraciones Alembic son automáticas al mergear (CMD del
-Dockerfile corre `alembic upgrade head` antes de uvicorn). No hay
-acción manual con la DB.
+Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 ```
 
 ---
@@ -82,14 +65,49 @@ acción manual con la DB.
 > pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
 
 ```
-— Vacío — (todos los nuevos issues ya en Bloques del Sprint 5)
+— Vacío — (los 10 issues nuevos del 2026-04-25 ya están en Bloques de Sprint 7)
 ```
 
 ---
 
 ## ⏳ QUEUE
 
-**Sprint 6 (v1.5) — Permission model overhaul (DEC-024). 5 items en 5 bloques.**
+**Sprint 7 (v1.6) — Reworks post-Sprint 6 + charter universal + tickets de permisos. 10 items en 6 bloques.**
+
+> Triage completo 2026-04-25. Esperando `status:ready` del owner por
+> issue (mínimo recomendado: Bloque 0 hotfix antes que el resto).
+
+### Bloque 0 — Hotfix verificación post-Sprint 6 (2 items)
+- [ ] BUG-032 — SuperAdmin /me no permite cambiar email — #159 (status:triage)
+- [ ] BUG-033 — UI gestión users sin opción modificar rol — #160 (status:triage)
+
+### Bloque 1 — Charter universal + downloads (2 items)
+- [ ] BUG-034 — Documents R2: link "Abrir" da 404; migrar a presigned URLs — #161 (status:triage)
+- [ ] US-083 — Charter universal: migración legacy + editor + descarga DOCX/PDF — #165 (status:triage)
+
+### Bloque 2 — RAID polish (2 items)
+- [ ] ENH-036 — RAID página detalle (`raid/[item_id]`) sin opción editar — #162 (status:triage)
+- [ ] BUG-035 — RAID comments muestran user ID en vez del nombre — #163 (status:triage)
+
+### Bloque 3 — Reportes Resend funcional (1 item)
+- [ ] BUG-036 — Reportes calendarizados no envían correo (beat + Resend) — #166 (status:triage)
+
+### Bloque 4 — Tenant ↔ SuperAdmin permission tickets (1 item)
+- [ ] US-082 — Ticket cambio permisos del tenant admin → SuperAdmin (con notif email) — #164 (status:triage)
+
+### Bloque 5 — UX programas (1 item)
+- [ ] ENH-037 — `/pmo/organizations/[id]`: botón "Nuevo Programa" con permission gate — #167 (status:triage)
+
+### Follow-ups identificados (Sprint 8+)
+- US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030+) tras validación de Sprint 6 en producción.
+- ENH-035 — Análisis profundo optimización CI tests pesados (post-MVP / v2.0) — #158.
+- ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
+
+---
+
+## 🗂️ Sprint 6 (v1.5) — CERRADO
+
+**5 items en 5 bloques. PR #156 mergeado a main 2026-04-25.**
 
 ### Bloque 1 — Refactor backend del modelo de permisos (1 item) ✅
 - [x] US-076 — Modelo capability-based + migración 0028 + barrido endpoints — #151 ✅ fabf8c3
@@ -104,11 +122,7 @@ acción manual con la DB.
 - [x] US-079 — `test_permission_matrix.py` con clasificación estática + fail-on-unknown — #154 ✅ 2a0315a
 
 ### Bloque 5 — Cierre: actualización de documentación (1 item) ✅
-- [x] US-080 — Consolidar EP001, DECISIONS (anotaciones DEC-020/021), DB-CHANGES, CLAUDE.md §2, SPRINT.md — #155 ✅ (en este commit)
-
-### Follow-up identificado (Sprint 7)
-- US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030) tras validación de Sprint 6 en producción.
-- ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions` (proyectos/riesgos/minutas filtrados por orgs accesibles del user).
+- [x] US-080 — Consolidar EP001, DECISIONS (anotaciones DEC-020/021), DB-CHANGES, CLAUDE.md §2, SPRINT.md — #155 ✅
 
 ---
 
@@ -255,6 +269,29 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 ## Notas y cambios
 
+- **2026-04-25 (Sprint 7 triage post-Sprint 6):** owner revisa los 9
+  items con `status:needs-rework` y deja comments. Triage:
+  - **9 cerrados como `completed`** (#50, #78, #105, #111, #113, #125,
+    #126, #127, #130). Scope original cumplido en cada uno; los gaps
+    se separan en issues nuevos.
+  - **10 issues nuevos creados:** #158 ENH-035, #159 BUG-032, #160
+    BUG-033, #161 BUG-034, #162 ENH-036, #163 BUG-035, #164 US-082,
+    #165 US-083, #166 BUG-036, #167 ENH-037.
+  - **Sprint 7 v1.6 organizado en 6 bloques** (Bloque 0 hotfix
+    SuperAdmin → Bloque 1 charter+downloads → Bloque 2 RAID polish →
+    Bloque 3 reportes Resend → Bloque 4 permission tickets → Bloque 5
+    UX programas).
+  - Decisiones owner (vía AskUserQuestion):
+    1. PR #156 (Sprint 6) está mergeado y deployed → bugs reportados
+       son reales, no cache stale.
+    2. Charter legacy: **migración data Alembic** autogenera row vacía
+       en `project_charters` para todo project sin charter (no lazy).
+    3. US-082: **tabla + flujo nuevos** (`permission_change_requests`),
+       no se reutiliza el módulo de Solicitudes (EP005).
+    4. ENH-036: alcance solo página detalle dedicada (no preview panel).
+  - Override CLAUDE.md: ENH-030 (#130) cerrado como `completed` aunque
+    no llega a CA2 <60s — owner acepta el resultado actual ~3min para
+    v1.x; análisis profundo se difiere a #158 (post-MVP / v2.0).
 - **2026-04-24 (Sprint 5 sesión US-069):** entregada US-069 Import
   MPP nativo (commit `5ef2677`, branch `claude/sprint-pending-tasks-YhSdj`).
   Decisiones clave:
