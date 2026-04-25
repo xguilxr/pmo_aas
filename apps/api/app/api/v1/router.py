@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     modules,
     notifications,
     organizations,
+    permission_requests,
     project_areas,
     project_charters,
     project_requests,
@@ -56,6 +57,8 @@ api_router.include_router(tasks.router)
 api_router.include_router(superadmin.router)
 api_router.include_router(superadmin_ai.router)
 api_router.include_router(superadmin_panel.router)
+api_router.include_router(permission_requests.router)
+api_router.include_router(permission_requests.sa_router)
 api_router.include_router(tenant_cross.router)
 api_router.include_router(entity_history.router)
 

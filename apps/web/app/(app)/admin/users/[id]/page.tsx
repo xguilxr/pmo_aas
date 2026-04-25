@@ -36,6 +36,12 @@ import {
   type RoleType,
 } from "@/lib/api/admin";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  createPermissionRequest,
+  type CreatePermissionRequestBody,
+} from "@/lib/api/permission-requests";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "Nunca";
@@ -75,6 +81,8 @@ function UserDetail() {
   const [roleType, setRoleType] = useState<RoleType>("user");
 
   const [saving, setSaving] = useState(false);
+  // US-082 — modal de solicitar cambio de permiso al SuperAdmin.
+  const [showPermRequestModal, setShowPermRequestModal] = useState(false);
   const [notice, setNotice] = useState<Notice>(
     searchParams.get("created") === "1"
       ? { kind: "success", message: "Usuario creado correctamente" }
@@ -325,7 +333,7 @@ function UserDetail() {
               {user.username} · {user.email}
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {user.is_active ? (
               <Badge variant="success">Activo</Badge>
             ) : (
@@ -333,9 +341,26 @@ function UserDetail() {
             )}
             {user.must_change_password ? <Badge variant="warning">Cambio pendiente</Badge> : null}
             <Badge>Último ingreso: {formatDate(user.last_login)}</Badge>
+            {/* US-082 — solicitar cambio de permiso al SuperAdmin. */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowPermRequestModal(true)}
+            >
+              Solicitar cambio de permiso
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* US-082 — modal para crear ticket. */}
+      <PermissionRequestModal
+        open={showPermRequestModal}
+        onClose={() => setShowPermRequestModal(false)}
+        targetUserId={user.id}
+        targetUserLabel={user.full_name || user.email}
+      />
 
       {notice ? (
         <Banner variant={notice.kind === "success" ? "success" : "danger"}>
@@ -648,5 +673,147 @@ export default function UserDetailPage() {
     >
       <UserDetail />
     </Suspense>
+  );
+}
+
+/**
+ * US-082 — modal "Solicitar cambio de permiso" al SuperAdmin.
+ * Inputs: módulo, acción, otorgar/revocar, motivo (≥10 chars). Al
+ * guardar hace POST a /api/v1/permission-requests y notifica
+ * automáticamente al superadmin (in-app + email vía Resend).
+ */
+function PermissionRequestModal({
+  open,
+  onClose,
+  targetUserId,
+  targetUserLabel,
+}: {
+  open: boolean;
+  onClose: () => void;
+  targetUserId: string;
+  targetUserLabel: string;
+}) {
+  const [moduleName, setModuleName] = useState("tasks");
+  const [action, setAction] = useState("delete");
+  const [grant, setGrant] = useState(true);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (reason.trim().length < 10) {
+      setError("El motivo debe tener al menos 10 caracteres.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body: CreatePermissionRequestBody = {
+        target_user_id: targetUserId,
+        module: moduleName.trim().toLowerCase(),
+        action: action.trim().toLowerCase(),
+        requested_grant: grant,
+        reason: reason.trim(),
+      };
+      await createPermissionRequest(body);
+      setSuccess(true);
+      setReason("");
+      setTimeout(() => {
+        setSuccess(false);
+        onClose();
+      }, 2_000);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo crear el ticket",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Solicitar cambio de permiso">
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm text-[var(--color-secondary)]">
+          Estás pidiendo al SuperAdmin un cambio de permiso para{" "}
+          <strong>{targetUserLabel}</strong>. Recibirás respuesta por email +
+          notificación in-app.
+        </p>
+
+        {success ? (
+          <Banner variant="success">
+            Ticket creado. El SuperAdmin recibirá notificación por email.
+          </Banner>
+        ) : null}
+        {error ? <Banner variant="danger">{error}</Banner> : null}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+              Módulo
+            </label>
+            <Input
+              value={moduleName}
+              onChange={(e) => setModuleName(e.target.value)}
+              placeholder="ej. tasks"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+              Acción
+            </label>
+            <Input
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              placeholder="ej. delete"
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+            Tipo de cambio
+          </label>
+          <Select
+            value={grant ? "grant" : "revoke"}
+            onChange={(e) => setGrant(e.target.value === "grant")}
+          >
+            <option value="grant">Otorgar el permiso</option>
+            <option value="revoke">Revocar el permiso</option>
+          </Select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+            Motivo (mínimo 10 caracteres)
+          </label>
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="Explica por qué este usuario necesita este permiso puntual..."
+            required
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" loading={saving} disabled={saving || success}>
+            Enviar solicitud
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
