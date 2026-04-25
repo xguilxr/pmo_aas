@@ -458,3 +458,96 @@ que se agrega un recurso nuevo.
 prefijo URL — no bloquea DEC-022. Tracking separado (ADR a abrir).
 
 Registrada 2026-04-24 tras BUG-031 + inspección de navegación As-Is.
+
+---
+
+## DEC-024 — Modelo capability-based para permisos del admin (reemplaza matriz CRUD)
+
+**Contexto (2026-04-25, Sprint 6 kickoff):** DEC-020 simplificó el
+modelo a 3 `role_type` estáticos, pero el mapping quedó expresado
+como matriz `(módulo × acción CRUD)` que nunca casó con la realidad
+de los endpoints. Producción quedó con 3 capas desalineadas:
+
+1. `permissions.py` con módulos sin prefijo (`users`, `organizations`).
+2. Endpoints con strings libres desconocidos por el mapping
+   (`ai.generate:create`, `documents:upload`).
+3. UI `/admin/roles/*` editando el JSON `Role.permissions` que
+   `CurrentUser.has()` ignora por completo cuando `role_type` está
+   seteado.
+
+Resultado: un admin con "todos los checkboxes marcados" seguía
+recibiendo 403 en IA y upload de documentos. El owner redefine el
+scope: la herramienta es de **soporte/visualización**, no gestión
+transaccional — la granularidad CRUD por módulo no aporta. Todos
+los users del tenant hacen casi todo; el admin solo se encarga de
+metaconfig.
+
+**Decisión:** reemplazar la matriz `(role_type × módulo × acción)`
+por un modelo **capability-based**:
+
+- `Admin` tiene **exactamente 5 capabilities**:
+  - `tenant.manage` — configuración del tenant (branding, settings).
+  - `ai.configure` — proveedores y modos de IA.
+  - `users.manage` — alta/edición/reset/desactivación/asignación
+    role_type + asignación a orgs del tenant.
+  - `organizations.delete` — **solo** borrar organizaciones.
+  - `audit.read` — ver audit log del tenant.
+- `User` tiene `set()` de capabilities.
+- Todo lo demás (proyectos, tareas, riesgos, issues, change_requests,
+  documentos, minutas, lecciones, áreas, dashboard, IA generación,
+  project_requests, charters, reports, scheduled reports, importación
+  de planes) → accesible a **cualquier user autenticado del tenant**.
+  Sin granularidad CRUD por módulo.
+- `viewer` queda **eliminado** (en la práctica no aportaba; users con
+  `role_type='viewer'` se migran a `'user'` en migración 0028).
+
+**Consecuencias:**
+- Endpoints cambian de `require_permission(module, action)` a
+  `require_capability(name)` o `require_authenticated()`.
+- `CurrentUser.has_capability(name)` reemplaza la API conceptual de
+  `has(module, action)` (esta última queda como shim compatible).
+- Overrides de tenant (US-073 / DEC-021) pasan a ser por
+  `capability`, no por `module:action`. Misma tabla, vocabulario
+  reducido.
+- UI `/admin/roles/*` + `apps/web/components/role-editor.tsx` se
+  eliminan (US-077).
+- Nueva página informativa `/admin/permissions` (read-only) en
+  su lugar (US-078).
+- Tablas `roles` + `user_roles` quedan deprecated en este sprint;
+  borrado físico difere a Sprint 7 (US-081) tras validación.
+- Tests de matriz `(role × endpoint) → status` en `apps/api/tests/
+  test_permission_matrix.py` (US-079) previenen que vuelva a
+  aparecer un endpoint huérfano del mapping.
+
+**Alternativa descartada #1:** mantener la matriz CRUD y arreglar
+solo los mismatches (`ai.generate` + `documents:upload` + UI zombie).
+Rechazada: cada endpoint nuevo repite el riesgo; la matriz es más
+granular de lo que el producto usa.
+
+**Alternativa descartada #2:** quitar todo el RBAC y dejar tenant
+como boundary único. Rechazada: el owner sí necesita diferenciar
+admin (metaconfig) de user (operación), aunque la diferencia sea
+pequeña.
+
+**Afecta:**
+- `apps/api/app/core/permissions.py` (reescritura).
+- `apps/api/app/api/deps.py` (`has_capability`, `require_capability`).
+- Todos los endpoints con `require_permission(...)` (~30 archivos).
+- Frontend: borrado de `/admin/roles/*` + nueva `/admin/permissions`.
+- Migración 0028 (backfill role_type + viewer→user).
+- `docs/epics/EP001-auth-users.md`, `EP007-admin.md`, `EP010-superadmin-panel.md`
+  reescritos en US-080.
+
+**Relación con DEC-020 y DEC-021:**
+- **DEC-020** (3 roles fijos, sin aprobaciones jerárquicas) se
+  mantiene conceptualmente. El cambio es cómo se expresa el mapping
+  (capabilities en vez de matriz CRUD).
+- **DEC-021** (superadmin puede override por tenant) se mantiene.
+  Vocabulario de override pasa a `capability` en vez de
+  `module:action`. El modelo de la tabla
+  `tenant_role_permission_overrides` ya admite este cambio sin
+  migración.
+
+Registrada 2026-04-25 tras sesión de diseño del Sprint 6 con owner.
+Implementación: Sprint 6 v1.5 (US-076 a US-080). Borrado físico de
+tablas legacy en Sprint 7 (US-081).
