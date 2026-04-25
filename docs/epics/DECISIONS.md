@@ -383,6 +383,15 @@ plataforma debe ser asistiva, no burocrática.
 
 Registrada 2026-04-24 mid-Sprint 4 tras el primer hotfix BUG-030.
 
+**Update 2026-04-25 (Sprint 6):** la simplificación de roles se
+mantiene, pero el mapping `(role × module × action)` propuesto por
+esta decisión se reemplaza por **capability-based** (DEC-024). El rol
+`viewer` queda eliminado por falta de uso real (los users del tenant
+participan; nadie es read-only puro). Productivo migra a 2 roles:
+`admin` + `user`, donde `admin` recibe **5 capabilities** específicas
+(ver DEC-024). Migración Alembic 0028 normaliza cualquier registro
+`viewer` residual a `user`.
+
 ---
 
 ## DEC-021 — SuperAdmin puede override permisos por tenant (safety net)
@@ -418,6 +427,16 @@ DEC-020 eliminó; reserva la flexibilidad para el superadmin como caso
 de emergencia, no para uso normal.
 
 Registrada 2026-04-24 tras BUG-031.
+
+**Update 2026-04-25 (Sprint 6):** post-DEC-024 el vocabulario de
+overrides cambia de `(module, action)` a **capability**. La tabla
+`tenant_role_permission_overrides` se reinterpreta sin migración:
+`module` ahora guarda el string de capability (ej.
+`"organizations.delete"`) y `action` se setea fijo en `"grant"`. Las
+filas legacy con `module:action` arbitrarios se ignoran silenciosa-
+mente al cargar overrides (el cleanup formal queda para US-081 si
+es necesario). El gate efectivo aplica overrides en
+`CurrentUser.has_capability(name)`.
 
 ---
 

@@ -80,7 +80,7 @@ Layout root:
   3. **Admin** (dropdown).
      - Panel del Tenant — `/admin/supervision` (anteriormente "Supervisión").
      - Usuarios — `/admin/users`.
-     - Roles — `/admin/roles`.
+     - Permisos — `/admin/permissions` (Sprint 6: read-only, lista las 5 capabilities admin del modelo DEC-024).
      - Auditoría — `/admin/audit-logs`.
      - Configuración — `/admin/settings`.
 - Super admin: sección adicional sólo visible para `is_superadmin` (Visión general, Tenants, Logs platform, Health).

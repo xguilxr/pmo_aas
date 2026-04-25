@@ -187,3 +187,54 @@ para auditoría).
 
 Ver `docs/archive/cancelled-epics/EP012-db-migration.md` y **DEC-013**.
 No hay trabajo de BD pendiente por esta épica.
+
+---
+
+## EP001 — Permission model overhaul (Sprint 6, DEC-024)
+
+### Migración **0028** — `role_type` normalize viewer→user (US-076)
+
+`UPDATE users SET role_type='user' WHERE role_type='viewer'` +
+`UPDATE users SET role_type='user' WHERE role_type IS NULL` (backfill
+de cualquier registro legacy que no haya tocado la migración 0026).
+
+Sin cambio de schema; solo data normalization. `viewer` queda
+eliminado del vocabulario (DEC-024) — el endpoint `/auth/me/permissions`
+deja de aceptarlo y `capabilities_for("viewer")` retorna `set()` por
+fail-safe. `Literal[RoleType] = ["admin", "user"]`.
+
+### Migración **0029** — `organization_user_exclusions` (US-078)
+
+Tabla nueva para membership opt-out user↔organización:
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | `VARCHAR(36)` PK | UUID |
+| `user_id` | `VARCHAR(36)` FK `users.id` `ON DELETE CASCADE` | indexed |
+| `organization_id` | `VARCHAR(36)` FK `organizations.id` `ON DELETE CASCADE` | indexed |
+| `created_at` | `TIMESTAMPTZ` | server_default now() |
+| `created_by_user_id` | `VARCHAR(36)` FK `users.id` `ON DELETE SET NULL` | nullable |
+
+Constraint `UNIQUE (user_id, organization_id)` (`uq_org_user_excl_pair`).
+
+Modelo opt-out: tabla vacía = user accede a TODAS las orgs del tenant.
+El admin agrega filas para excluir orgs puntuales desde
+`/admin/users/{id}`.
+
+**Pendiente (ENH separado):** filtrado efectivo en queries de
+proyectos/riesgos/minutas por orgs accesibles del user. Hoy solo se
+almacena el dato.
+
+### Tablas deprecated (US-077, borrado físico → US-081 Sprint 7)
+
+`roles` y `user_roles` quedan presentes pero **sin UI editor** (la
+página `/admin/roles/*` y endpoints `admin_roles.py` se borraron en
+US-077). El gate ignora `Role.permissions` JSON desde US-076; las
+tablas viven solo por compat hasta validar Sprint 6 en producción.
+
+### Migración futura prevista — **0030** (US-081, Sprint 7)
+
+`DROP TABLE user_roles` + `DROP TABLE roles`. Sin downgrade real
+(no se reconstruye la matriz JSON de permisos eliminada). Programado
+para Sprint 7 tras 1-2 sprints de validación productiva del modelo
+capability-based.
