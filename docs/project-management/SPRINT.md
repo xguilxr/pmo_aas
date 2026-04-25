@@ -7,11 +7,15 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-24 — Sprint 5 en curso. Branch: claude/sprint-pending-tasks-YhSdj
+2026-04-24 — Sprint 5 ✅ COMPLETO. Branch: claude/sprint-pending-tasks-YhSdj
 
-US-070 (#123) Wizard de mapeo — ✅ COMPLETA (sub-bloques A+B
-fix-committed). Sprint 5 cerrado salvo ENH-034 (#142, follow-up
-de tests bottleneck).
+ENH-034 (#142) Diagnóstico bottleneck tests — ✅ fix-committed.
+Causa raíz: `send_notification_email.delay()` intentaba abrir socket
+al broker Redis (`REDIS_URL=redis://localhost:6379/15`) sin Redis
+disponible en CI; socket timeout default ~30s + retry interno =
+~38s acumulado por test. Fix: fixture autouse que mockea
+`.delay()` con no-op (equivalente quirúrgico a task_always_eager
+sin ejecutar la task email).
 
 PRs mergeados a main:
 - BUG-031 (#121)  PR #129
@@ -97,7 +101,7 @@ acción manual con la DB.
         KPIs en `/pmo/organizations/[id]`)
 
 ### Follow-ups detectados durante ejecución
-- [ ] ENH-034 — Diagnosticar bottleneck 38s en 9 tests (cierra CA2 <60s de ENH-031) — #142 `status:triage`
+- [x] ENH-034 — Diagnosticar bottleneck 38s en 9 tests (cierra CA2 <60s de ENH-031) — #142 ✅ fix-committed (causa: Celery .delay() esperaba broker Redis ausente)
 
 ---
 
