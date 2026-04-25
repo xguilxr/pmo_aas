@@ -125,7 +125,7 @@ const ADMIN_NAV: NavItem = {
   match: (p) =>
     p.startsWith("/admin/supervision") ||
     p.startsWith("/admin/users") ||
-    p.startsWith("/admin/roles") ||
+    p.startsWith("/admin/permissions") ||
     p.startsWith("/admin/audit-logs") ||
     p.startsWith("/admin/settings") ||
     p.startsWith("/admin/tenant") ||
@@ -158,26 +158,18 @@ const ADMIN_NAV: NavItem = {
         p.startsWith("/admin/organizations") && !p.includes("/panel"),
     },
     {
-      id: "users-roles",
-      label: "Usuarios y Roles",
+      id: "users",
+      label: "Usuarios",
       icon: <Users className="h-4 w-4" aria-hidden />,
-      match: (p) => p.startsWith("/admin/users") || p.startsWith("/admin/roles"),
-      children: [
-        {
-          id: "users",
-          label: "Usuarios",
-          icon: <Users className="h-4 w-4" aria-hidden />,
-          href: "/admin/users",
-          match: (p) => p.startsWith("/admin/users"),
-        },
-        {
-          id: "roles",
-          label: "Roles",
-          icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
-          href: "/admin/roles",
-          match: (p) => p.startsWith("/admin/roles"),
-        },
-      ],
+      href: "/admin/users",
+      match: (p) => p.startsWith("/admin/users"),
+    },
+    {
+      id: "permissions",
+      label: "Permisos",
+      icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+      href: "/admin/permissions",
+      match: (p) => p.startsWith("/admin/permissions"),
     },
     {
       id: "audit",

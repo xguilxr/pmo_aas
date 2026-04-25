@@ -303,11 +303,8 @@ function UserDetail() {
           <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">Roles</p>
           {roles.length === 0 ? (
             <p className="text-xs text-[var(--color-tertiary)]">
-              No hay roles disponibles. Crea uno en{" "}
-              <Link href="/admin/roles" className="underline">
-                Roles
-              </Link>
-              .
+              Los permisos se gestionan por <Link href="/admin/permissions" className="underline">capability del rol</Link>{" "}
+              (admin/user). La asignación se hará desde esta página en US-078.
             </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">

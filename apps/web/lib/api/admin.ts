@@ -86,94 +86,14 @@ export type AdminRole = {
   id: string;
   name: string;
   description: string | null;
-  is_system: boolean;
-  permissions: Record<string, string[]>;
 };
 
+/**
+ * US-077 — `listRoles` queda como shim compat hasta que `/admin/users/*`
+ * se reescriba en US-078 para gestionar `role_type` directamente sin
+ * roles legacy. Devuelve `[]` porque la tabla `roles` está deprecada
+ * (DEC-024) y el gate del backend ignora `Role.permissions` JSON.
+ */
 export function listRoles(): Promise<AdminRole[]> {
-  return apiFetch<AdminRole[]>("/api/v1/admin/roles");
+  return Promise.resolve([]);
 }
-
-export function getRole(id: string): Promise<AdminRole> {
-  return apiFetch<AdminRole>(`/api/v1/admin/roles/${id}`);
-}
-
-export type CreateRoleBody = {
-  name: string;
-  description?: string | null;
-  permissions: Record<string, string[]>;
-};
-
-export function createRole(body: CreateRoleBody): Promise<AdminRole> {
-  return apiFetch<AdminRole>("/api/v1/admin/roles", { method: "POST", body });
-}
-
-export type UpdateRoleBody = {
-  name?: string;
-  description?: string | null;
-  permissions?: Record<string, string[]>;
-};
-
-export function updateRole(id: string, body: UpdateRoleBody): Promise<AdminRole> {
-  return apiFetch<AdminRole>(`/api/v1/admin/roles/${id}`, { method: "PATCH", body });
-}
-
-export function deleteRole(id: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/admin/roles/${id}`, { method: "DELETE" });
-}
-
-export const VALID_MODULES = [
-  "projects",
-  "risks",
-  "issues",
-  "change_requests",
-  "documents",
-  "lessons",
-  "minutes",
-  "admin.users",
-  "admin.roles",
-  "admin.organizations",
-  "admin.projects",
-  "admin.requests",
-  "ai.generate",
-  "dashboard",
-] as const;
-
-export const VALID_ACTIONS = [
-  "read",
-  "create",
-  "update",
-  "delete",
-  "approve",
-  "upload",
-  "minute",
-  "report",
-] as const;
-
-export const MODULE_LABELS: Record<(typeof VALID_MODULES)[number], string> = {
-  projects: "Proyectos",
-  risks: "Riesgos",
-  issues: "Issues",
-  change_requests: "Cambios",
-  documents: "Documentos",
-  lessons: "Lecciones",
-  minutes: "Minutas",
-  "admin.users": "Admin · Usuarios",
-  "admin.roles": "Admin · Roles",
-  "admin.organizations": "Admin · Organizaciones",
-  "admin.projects": "Admin · Proyectos",
-  "admin.requests": "Admin · Solicitudes",
-  "ai.generate": "IA · Generación",
-  dashboard: "Tablero",
-};
-
-export const ACTION_LABELS: Record<(typeof VALID_ACTIONS)[number], string> = {
-  read: "Ver",
-  create: "Crear",
-  update: "Editar",
-  delete: "Borrar",
-  approve: "Aprobar",
-  upload: "Subir",
-  minute: "Levantar",
-  report: "Reportar",
-};
