@@ -5,10 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import forbidden, unauthorized
-from app.core.permissions import permissions_for
+from app.core.permissions import (
+    ADMIN_CAPABILITIES,
+    capabilities_for,
+    module_action_to_capability,
+)
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models.role import Role, UserRole
 from app.models.tenant_permission import TenantRolePermissionOverride
 from app.models.user import User
 
@@ -19,20 +22,18 @@ class CurrentUser:
         user: User,
         tenant_ids: list[UUID],
         active_tenant_id: UUID | None,
-        roles: list[str],
-        permissions: dict[str, set[str]],
-        # US-073 + DEC-021: overrides de permisos por tenant aplicados
-        # sobre el mapping estático. Estructura:
-        # {role_type: {module: {action: granted_bool}}}.
-        # Se precarga al construir CurrentUser (ver get_current_user).
-        permission_overrides: dict[str, dict[str, dict[str, bool]]] | None = None,
+        # US-073 + DEC-021: overrides de capabilities por tenant.
+        # Estructura post-DEC-024: {role_type: {capability: granted_bool}}.
+        # Compatibilidad: las filas existentes de la tabla usan
+        # (role_type, module, action, granted); a partir de ahora
+        # `module` contiene la capability completa y `action` se setea
+        # en `"grant"`. Ver `_load_overrides()`.
+        capability_overrides: dict[str, dict[str, bool]] | None = None,
     ) -> None:
         self.user = user
         self.tenant_ids = tenant_ids
         self.active_tenant_id = active_tenant_id
-        self.roles = roles
-        self.permissions = permissions
-        self.permission_overrides = permission_overrides or {}
+        self.capability_overrides = capability_overrides or {}
 
     @property
     def id(self) -> UUID:
@@ -44,47 +45,65 @@ class CurrentUser:
 
     @property
     def role_type(self) -> str | None:
-        """US-059 — rol fijo simplificado. None para users pre-migración
-        (se resuelve por el sistema viejo)."""
+        """US-059 + US-076 — rol fijo ∈ {admin, user}. viewer eliminado
+        por DEC-024 (migración 0028 normaliza cualquier residual a
+        'user'). None solo para users pre-migración aún sin role_type."""
         return getattr(self.user, "role_type", None)
 
-    def has(self, module: str, action: str) -> bool:
+    def has_capability(self, name: str) -> bool:
+        """Chequeo principal post-DEC-024. Aplica overrides de tenant
+        si existen. Fail-closed: capability no listada en
+        `ADMIN_CAPABILITIES` devuelve False salvo superadmin."""
         if self.is_superadmin:
             return True
-        # US-060: si el user tiene role_type, el mapping estático manda.
-        # Esto ignora permisos custom del Role legacy — decisión
-        # explícita de DEC-020 para evitar matriz de permisos confusa.
-        rt = self.role_type
-        if rt in {"admin", "user", "viewer"}:
-            base = action in permissions_for(rt).get(module, set())
-            # US-073 + DEC-021: aplicar overrides del tenant activo.
-            override = (
-                self.permission_overrides.get(rt, {})
-                .get(module, {})
-                .get(action)
-            )
-            if override is True:
-                return True
-            if override is False:
-                return False
-            return base
-        # Fallback: users sin role_type (legacy) usan el JSON permissions.
-        return action in self.permissions.get(module, set())
+        if name not in ADMIN_CAPABILITIES:
+            return False
+        rt = self.role_type or "user"
+        base = name in capabilities_for(rt)
+        override = self.capability_overrides.get(rt, {}).get(name)
+        if override is True:
+            return True
+        if override is False:
+            return False
+        return base
 
-    @property
-    def is_admin_equivalent(self) -> bool:
-        """True si el usuario tiene capacidades administrativas (DEC-005).
+    def has(self, module: str, action: str) -> bool:
+        """Shim legacy. Post-DEC-024 el gate real es
+        `has_capability()`. Esta función:
 
-        US-059: si role_type=='admin', basta con eso. Si no, cae al
-        legacy detection (rol "Administrador" + permisos admin.*).
+        1. Superadmin → True.
+        2. Si (module, action) mapea a una capability conocida → delega
+           a `has_capability()`.
+        3. Si no mapea → True para cualquier user autenticado (modelo
+           "todos pueden todo salvo las 5 capabilities admin").
         """
         if self.is_superadmin:
             return True
+        cap = module_action_to_capability(module, action)
+        if cap is not None:
+            return self.has_capability(cap)
+        # Por default cualquier user autenticado puede.
+        return True
+
+    @property
+    def is_admin_equivalent(self) -> bool:
+        """True si el user tiene role_type admin o es superadmin.
+        Post-DEC-024 ya no depende de roles legacy ni de strings
+        `admin.*` en el JSON permissions."""
+        if self.is_superadmin:
+            return True
+        return self.role_type == "admin"
+
+    @property
+    def roles(self) -> list[str]:
+        """Shim legacy. Pre-DEC-024 era la lista de nombres de Role del
+        user; hoy se deriva de `role_type`. Lo usan 2 endpoints para
+        propagar el claim al access_token. Borrar en US-081."""
+        if self.is_superadmin:
+            return ["superadmin"]
         if self.role_type == "admin":
-            return True
-        if "Administrador" in self.roles:
-            return True
-        return any(k.startswith("admin.") for k in self.permissions.keys())
+            return ["Administrador"]
+        return []
 
 
 async def get_current_user(
@@ -109,25 +128,17 @@ async def get_current_user(
     if user is None or not user.is_active:
         raise unauthorized(code="USER_INACTIVE", detail="Usuario inactivo")
 
-    role_rows = (
-        await db.execute(
-            select(Role).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user.id)
-        )
-    ).scalars().all()
-    role_names = [r.name for r in role_rows]
-    perms: dict[str, set[str]] = {}
-    for r in role_rows:
-        for module, actions in (r.permissions or {}).items():
-            perms.setdefault(module, set()).update(actions)
-
     tenant_ids_raw = payload.get("tenant_ids", []) or []
     active_raw = payload.get("active_tenant_id")
     active_tenant_id = UUID(active_raw) if active_raw else None
 
-    # US-073 + DEC-021: precargar overrides de permisos del tenant
-    # activo. Solo se cargan si hay active_tenant_id. La query es chica
-    # (típicamente 0 filas) y se cachea por la duración del request.
-    permission_overrides: dict[str, dict[str, dict[str, bool]]] = {}
+    # US-073 + DEC-021 + DEC-024: precargar overrides de capabilities
+    # del tenant activo. La tabla `tenant_role_permission_overrides`
+    # se reinterpreta: `module` guarda la capability completa
+    # (ej. "organizations.delete") y `action` se usa como discriminante
+    # fijo. Filas legacy con action ≠ "grant" se ignoran (se limpiarán
+    # en US-080/081).
+    capability_overrides: dict[str, dict[str, bool]] = {}
     if active_tenant_id is not None and not user.is_superadmin:
         rows = (
             await db.execute(
@@ -137,24 +148,66 @@ async def get_current_user(
             )
         ).scalars().all()
         for r in rows:
-            permission_overrides.setdefault(r.role_type, {}).setdefault(
-                r.module, {}
-            )[r.action] = r.granted
+            # Solo overrides "grant" sobre capabilities conocidas del
+            # modelo nuevo. Los legacy (module/action arbitrarios) se
+            # ignoran silenciosamente.
+            if r.module in ADMIN_CAPABILITIES:
+                capability_overrides.setdefault(r.role_type, {})[r.module] = r.granted
 
     return CurrentUser(
         user=user,
         tenant_ids=[UUID(t) for t in tenant_ids_raw],
         active_tenant_id=active_tenant_id,
-        roles=role_names,
-        permissions=perms,
-        permission_overrides=permission_overrides,
+        capability_overrides=capability_overrides,
     )
 
 
-def require_permission(module: str, action: str):
+def require_capability(name: str):
+    """Dependencia FastAPI que exige una capability específica.
+
+    Fail-closed: si `name` no está en `ADMIN_CAPABILITIES`, lanza
+    `ValueError` al construir la dependencia (error de programación)
+    para prevenir strings inexistentes como los que causaron el bug
+    que motivó DEC-024 (`ai.generate`, `documents.upload`).
+    """
+    if name not in ADMIN_CAPABILITIES:
+        raise ValueError(
+            f"capability desconocida: {name!r}. Lista válida: "
+            f"{sorted(ADMIN_CAPABILITIES)}"
+        )
+
     async def _checker(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if not cu.has(module, action):
-            raise forbidden(code="FORBIDDEN", detail=f"Falta permiso {module}:{action}")
+        if not cu.has_capability(name):
+            raise forbidden(code="FORBIDDEN", detail=f"Falta capability {name}")
+        return cu
+
+    return _checker
+
+
+def require_authenticated():
+    """Cualquier user autenticado del tenant. No chequea capability."""
+
+    async def _checker(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        return cu
+
+    return _checker
+
+
+def require_permission(module: str, action: str):
+    """Shim legacy. Se mantiene para compat con tests o llamadas no
+    migradas aún. Resuelve internamente a `require_capability()` o
+    `require_authenticated()` según el mapping de DEC-024.
+
+    TODO US-081 — borrar esta función y sus usos residuales.
+    """
+    cap = module_action_to_capability(module, action)
+
+    async def _checker(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        if cap is not None:
+            if not cu.has_capability(cap):
+                raise forbidden(
+                    code="FORBIDDEN", detail=f"Falta capability {cap}"
+                )
         return cu
 
     return _checker

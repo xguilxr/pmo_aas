@@ -98,23 +98,16 @@ async def test_tc086_overdue_issues(client, db_session):
     assert len(r.json()) == 1
 
 
-# TC-088 approve requires permission (viewer cannot)
+# TC-088 (post-DEC-024): cualquier user autenticado puede aprobar change requests
 @pytest.mark.asyncio
-async def test_tc088_approve_requires_permission(client, db_session):
-    from app.models.role import Role
-
+async def test_tc088_any_authenticated_user_can_approve(client, db_session):
+    """Post-DEC-024: aprobar change_requests dejó de ser admin-only.
+    DEC-020 ya lo había relajado en el mapping y DEC-024 lo consolida:
+    cualquier user autenticado del tenant puede aprobar."""
     t, auth, proj_id, _area_id = await _setup(client, db_session)
-    # crear viewer role sin permiso approve
-    viewer_role = Role(
-        tenant_id=t.id, name="Viewer", description="",
-        permissions={"change_requests": ["read", "create"], "projects": ["read"]},
-        is_system=False,
-    )
-    db_session.add(viewer_role)
-    await db_session.flush()
     await create_user(
         db_session, tenant=t, username="viewer", email="viewer@acme.example.com",
-        password="Str0ng-View-1!", roles=[viewer_role],
+        password="Str0ng-View-1!",
     )
     # Crear change request con admin
     r = await client.post(
@@ -124,9 +117,11 @@ async def test_tc088_approve_requires_permission(client, db_session):
     )
     chg_id = r.json()["id"]
     viewer_auth = await login(client, "viewer", "Str0ng-View-1!")
-    deny = await client.post(f"/api/v1/change-requests/{chg_id}/approve",
-                              headers=viewer_auth["_authz"])
-    assert deny.status_code == 403
+    approve = await client.post(
+        f"/api/v1/change-requests/{chg_id}/approve",
+        headers=viewer_auth["_authz"],
+    )
+    assert approve.status_code == 200, approve.text
 
 
 # TC-089 rejected → approved blocked

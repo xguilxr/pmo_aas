@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.api.v1.endpoints.reports import ReportRead
 from app.core.errors import forbidden
 from app.db.session import get_db
@@ -85,7 +85,7 @@ async def list_tenant_risks(
     severity_min: int | None = Query(default=None, ge=1, le=25),
     owner_id: UUID | None = Query(default=None),
     area_id: UUID | None = Query(default=None),  # US-064.
-    cu: CurrentUser = Depends(require_permission("risks", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     tenant_id = _tenant(cu)
@@ -129,7 +129,7 @@ async def list_tenant_issues(
     priority_min: int | None = Query(default=None, ge=1, le=5),
     owner_id: UUID | None = Query(default=None),
     area_id: UUID | None = Query(default=None),  # US-064.
-    cu: CurrentUser = Depends(require_permission("issues", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     tenant_id = _tenant(cu)
@@ -169,7 +169,7 @@ async def list_tenant_changes(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("change_requests", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     tenant_id = _tenant(cu)
@@ -196,7 +196,7 @@ async def list_tenant_minutes(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("minutes", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     tenant_id = _tenant(cu)
@@ -221,7 +221,7 @@ async def list_tenant_reports(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("reports", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     tenant_id = _tenant(cu)

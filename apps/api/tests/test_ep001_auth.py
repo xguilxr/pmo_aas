@@ -397,37 +397,32 @@ async def test_tcnew018_senior_pmo_can_access_admin(client, db_session):
     assert r.status_code == 200, r.text
 
 
-# CurrentUser.is_admin_equivalent detecta roles con admin.*
+# US-076 + DEC-024: is_admin_equivalent depende solo de role_type/is_superadmin
 @pytest.mark.asyncio
 async def test_is_admin_equivalent_helper(client, db_session):
     from app.api.deps import CurrentUser
 
-    # solo Viewer (sin admin.*)
-    cu_viewer = CurrentUser(
-        user=type("U", (), {"is_superadmin": False})(),
+    # user regular
+    cu_user = CurrentUser(
+        user=type("U", (), {"is_superadmin": False, "role_type": "user"})(),
         tenant_ids=[],
         active_tenant_id=None,
-        roles=["Viewer"],
-        permissions={"projects": {"read"}, "dashboard": {"read"}},
     )
-    assert cu_viewer.is_admin_equivalent is False
+    assert cu_user.is_admin_equivalent is False
 
-    # Administrador
+    # admin
     cu_admin = CurrentUser(
-        user=type("U", (), {"is_superadmin": False})(),
+        user=type("U", (), {"is_superadmin": False, "role_type": "admin"})(),
         tenant_ids=[], active_tenant_id=None,
-        roles=["Administrador"], permissions={},
     )
     assert cu_admin.is_admin_equivalent is True
 
-    # Senior PMO por permisos admin.*
-    cu_sr = CurrentUser(
-        user=type("U", (), {"is_superadmin": False})(),
+    # superadmin (bypass total)
+    cu_sa = CurrentUser(
+        user=type("U", (), {"is_superadmin": True, "role_type": None})(),
         tenant_ids=[], active_tenant_id=None,
-        roles=["PMO Manager"],
-        permissions={"admin.users": {"read"}, "dashboard": {"read"}},
     )
-    assert cu_sr.is_admin_equivalent is True
+    assert cu_sa.is_admin_equivalent is True
 
 
 # ============================================================================

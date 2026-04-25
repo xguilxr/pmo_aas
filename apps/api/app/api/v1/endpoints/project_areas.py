@@ -6,7 +6,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, forbidden, not_found
 from app.db.session import get_db
 from app.models.project import Project
@@ -53,7 +53,7 @@ async def list_areas(
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
     type: str | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -80,7 +80,7 @@ async def list_areas(
 async def create_area(
     project_id: UUID,
     body: ProjectAreaCreate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -147,7 +147,7 @@ async def _get_area(
 @router.get("/project-areas/{area_id}", response_model=ProjectAreaRead)
 async def get_area(
     area_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -168,7 +168,7 @@ async def get_area(
 async def update_area(
     area_id: UUID,
     body: ProjectAreaUpdate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -197,7 +197,7 @@ async def update_area(
 @router.delete("/project-areas/{area_id}", status_code=204)
 async def delete_area(
     area_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -228,7 +228,7 @@ async def delete_area(
 async def list_area_resources(
     area_id: UUID,
     is_active: bool | None = Query(default=None),
-    cu: CurrentUser = Depends(require_permission("projects", "read")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -253,7 +253,7 @@ async def list_area_resources(
 async def create_area_resource(
     area_id: UUID,
     body: ProjectAreaResourceCreate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -325,7 +325,7 @@ async def _get_resource(
 async def update_area_resource(
     resource_id: UUID,
     body: ProjectAreaResourceUpdate,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
@@ -351,7 +351,7 @@ async def update_area_resource(
 @router.delete("/project-area-resources/{resource_id}", status_code=204)
 async def delete_area_resource(
     resource_id: UUID,
-    cu: CurrentUser = Depends(require_permission("projects", "update")),
+    cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)

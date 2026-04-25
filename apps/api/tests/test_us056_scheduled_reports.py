@@ -175,6 +175,8 @@ async def test_us056_cross_tenant_404(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us056_non_admin_cannot_create(client, db_session):
+    """Post-DEC-024: cualquier user autenticado del tenant puede
+    programar reportes; el gate admin-only desapareció."""
     t, _auth = await _admin(client, db_session, slug="sched-viewer")
     p = await _seed_project(db_session, t, folio="P-0504")
     await create_user(
@@ -195,7 +197,7 @@ async def test_us056_non_admin_cannot_create(client, db_session):
         },
         headers=viewer["_authz"],
     )
-    assert r.status_code == 403
+    assert r.status_code == 201, r.text
 
 
 @pytest.mark.asyncio

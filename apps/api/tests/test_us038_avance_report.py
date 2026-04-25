@@ -235,10 +235,11 @@ async def test_us038_cross_tenant_404(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_us038_non_admin_cannot_generate(client, db_session):
+async def test_us038_any_authenticated_user_can_generate(client, db_session):
+    """Post-DEC-024: reports:create dejó de ser admin-only. Cualquier
+    user autenticado del tenant puede generar reporte de avance."""
     t, _auth = await _admin(client, db_session, slug="avance-d")
     p = await _seed_project(db_session, t, folio="P-0004")
-    # user sin projects:update
     await create_user(
         db_session, tenant=t, username="viewer_d",
         email="viewer@avance-d.example.com", password="Str0ng-User-1!",
@@ -248,4 +249,4 @@ async def test_us038_non_admin_cannot_generate(client, db_session):
         f"/api/v1/projects/{p.id}/reports/avance",
         headers=viewer["_authz"],
     )
-    assert r.status_code == 403
+    assert r.status_code == 200, r.text

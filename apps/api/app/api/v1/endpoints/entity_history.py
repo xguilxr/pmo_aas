@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden
 from app.db.session import get_db
 from app.models.audit import AuditLog
@@ -39,7 +39,7 @@ async def list_history(
     entity_type: Literal["risk", "issue", "charter", "project"] = Query(...),
     entity_id: UUID = Query(...),
     cu: CurrentUser = Depends(
-        require_permission("risks", "read")  # risks:read es el gate mínimo
+        require_authenticated()  # risks:read es el gate mínimo
     ),
     db: AsyncSession = Depends(get_db),
 ) -> list[HistoryEntry]:
