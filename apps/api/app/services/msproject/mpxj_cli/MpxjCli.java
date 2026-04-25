@@ -111,8 +111,11 @@ public final class MpxjCli {
             appendInt(
                 out,
                 "progress",
-                task.getPercentComplete() != null
-                    ? task.getPercentComplete().intValue() : 0
+                // En MPXJ 13.x el método se llama getPercentageComplete()
+                // (no getPercentComplete() como en versiones <10).
+                // Devuelve Number? — null si la tarea no tiene avance.
+                task.getPercentageComplete() != null
+                    ? task.getPercentageComplete().intValue() : 0
             );
             appendBool(out, "is_milestone", Boolean.TRUE.equals(task.getMilestone()));
             appendNullableStr(out, "predecessors_raw", formatPredecessors(task));
