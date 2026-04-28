@@ -28,9 +28,9 @@ lista anterior. El contexto es finito.
 
 | Prefijo | Uso | Contador | Próximo libre |
 |---|---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-084** (US-081 reservada para borrado físico de tablas legacy en Sprint 8+; US-082 = #164 permission tickets; US-083 = #165 charter universal) |
-| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-037** (BUG-032 = #159, BUG-033 = #160, BUG-034 = #161, BUG-035 = #163, BUG-036 = #166) |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-038** (ENH-035 = #158 CI deep-dive post-MVP; ENH-036 = #162 RAID detail edit; ENH-037 = #167 PMO programs button) |
+| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-088** (US-081 reservada para borrado físico de tablas legacy en Sprint 9+; US-082-083 = Sprint 7; US-084 = #175 plan editable manual; US-085 = #177 org libre + inactiva; US-086 = #178 stakeholders catálogo tenant; US-087 = #179 reportes KPIs) |
+| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-039** (BUG-032-036 = Sprint 7; BUG-037 = #171 botón Enviar UX; BUG-038 = #181 INBOX estado simultáneo) |
+| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-044** (ENH-035 = #158 post-MVP/v2.0; ENH-036-037 = Sprint 7; ENH-038 = #170 fechas solicitud; ENH-039 = #172 cambios aprobador; ENH-040 = #173 presupuesto opcional; ENH-041 = #174 BU select; ENH-042 = #176 minutas IA jerarquía; ENH-043 = #180 cross-empresa workaround) |
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
 | `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` | — |
 | `ADR-###` | Architecture Decision Record | Ver `docs/adr/` | — |
@@ -369,5 +369,5 @@ Excepciones permitidas:
 
 ---
 
-**Última actualización:** 2026-04-25
+**Última actualización:** 2026-04-28
 **Responsable:** Claude Code (owner: xguilxr)

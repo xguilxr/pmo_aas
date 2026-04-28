@@ -7,8 +7,67 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-25 — Sprint 7 v1.6 ✅ EJECUTADO EN BLOQUE.
-Branch sesión actual: claude/review-and-triage-issues-EUsvX
+2026-04-28 — Sprint 8 v1.7 — TRIAGE COMPLETO, esperando status:ready
+Branch sesión actual: claude/create-issues-sprint-planning-9Ke3t
+
+Owner mandó feedback DRC Consultores + propuestas (16 items).
+Tras AskUserQuestion 2026-04-28 con 4 decisiones del owner, se crean
+11 issues nuevos en 5 bloques + 1 INBOX placeholder (esperando repro).
+
+Items creados (en orden de bloques):
+  Bloque 1 — Solicitud chicos (3 items, ≤2h c/u):
+    · ENH-038 #170 — Fecha solicitud + restricción entrega (item 4)
+    · BUG-037 #171 — Botón Enviar UX faltantes (item 5)
+    · ENH-039 #172 — Cambios mostrar aprobador + fechas (item 15)
+
+  Bloque 2 — Solicitud medianos (2 items, 1-2 días c/u):
+    · ENH-040 #173 — Presupuesto opcional (item 3)
+    · ENH-041 #174 — BU select + "Otra…" (item 2)
+
+  Bloque 3 — Plan + Minutas UX (2 items):
+    · US-084 #175 — Plan editable manual con flag (item 8)
+    · ENH-042 #176 — Minutas IA jerarquía visual (item 13)
+
+  Bloque 4 — Cambios grandes (3 items, 3-4 días c/u):
+    · US-085 #177 — Org libre + creación inactiva + notif (item 1)
+    · US-086 #178 — Stakeholders Opción B catálogo tenant (item 11)
+    · US-087 #179 — Reportes KPIs + fechas explícitas (item 14)
+
+  Bloque 5 — Workaround docs (1 item, 1-2h):
+    · ENH-043 #180 — Programas cross-empresa workaround + ADR (item 16)
+
+INBOX (esperando repro):
+  · BUG-038 #181 — Solicitud "Pendiente" + "Aprobada" simultáneo (item 6)
+
+Decisiones owner (vía AskUserQuestion 2026-04-28):
+  1. US-085 (item 1): activación org manual sin requisitos previos
+     (no se exige logo/TZ/moneda como gate).
+  2. US-086 (item 11): Opción B — catálogo tenant (no global con
+     tabla de participación). DEC-025 a registrar.
+  3. ENH-043 (item 16): posponer cross-empresa, doc workaround.
+  4. BUG-038 (item 6): INBOX hasta repro.
+
+Items "ya resueltos" — verificación owner en deploy actual:
+  · Item 7 (Editar Charter en revisión) — ya solo aparece si proyecto.
+  · Item 9 (RAID A/I/D solo descripción) — ya está así (US-064).
+  · Item 10 (RAID editable durante ejecución) — Sprint 7 ENH-036.
+  · Item 12 (Documentos no funciona) — Sprint 7 BUG-034.
+
+Pendiente owner:
+  - Revisar los 12 issues nuevos (#170-#181).
+  - Asignar `status:ready` a los que apruebe (orden default: 1→2→3→4→5).
+  - Verificar items "ya resueltos" en deploy actual.
+  - BUG-038 #181: cuando reproduzca el bug, comentar con ID/screenshot
+    para mover a un Bloque del Sprint 8 (o Sprint 9).
+
+Próximo libre tras Sprint 8 triage:
+  - US-088, BUG-039, ENH-044
+```
+
+```
+--- contexto Sprint 7 cerrado ---
+2026-04-25 — Sprint 7 v1.6 ✅ EJECUTADO EN BLOQUE + MERGEADO A MAIN.
+Branch: claude/review-and-triage-issues-EUsvX → PR #169 (merge 34fc716).
 
 Owner pidió "ejecuta TODO de golpe para hacer un solo PR" tras triage.
 9 items entregados en commits limpios (1 por item) según regla
@@ -100,17 +159,53 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 > pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
 
 ```
-— Vacío — (los 10 issues nuevos del 2026-04-25 ya están en Bloques de Sprint 7)
+- BUG-038 #181 — Solicitud muestra "Pendiente" + "Aprobada" simultáneo.
+  Esperando repro del owner (ID/nombre + screenshot) para asignar a bloque.
 ```
 
 ---
 
 ## ⏳ QUEUE
 
-**Sprint 7 (v1.6) — Reworks post-Sprint 6 + charter universal + tickets de permisos. 10 items en 6 bloques.**
+**Sprint 8 (v1.7) — Feedback DRC Consultores. 11 items en 5 bloques + 1 INBOX.**
 
-> Triage completo 2026-04-25. Esperando `status:ready` del owner por
-> issue (mínimo recomendado: Bloque 0 hotfix antes que el resto).
+> Triage completo 2026-04-28. Esperando `status:ready` del owner por
+> issue. Orden recomendado: Bloque 1 (chicos primero, quick wins) →
+> Bloque 2 → Bloque 3 → Bloque 4 → Bloque 5.
+
+### Bloque 1 — Solicitud cambios chicos (3 items, ≤2h c/u)
+- [ ] ENH-038 — Mostrar fecha solicitud + agregar restricción entrega — #170
+- [ ] BUG-037 — Botón "Enviar" UX con indicadores de campos faltantes — #171
+- [ ] ENH-039 — Cambios: mostrar aprobador + fechas solicitud/aprobación — #172
+
+### Bloque 2 — Solicitud cambios medianos (2 items, 1-2 días c/u)
+- [ ] ENH-040 — Presupuesto opcional (no eliminar) — #173
+- [ ] ENH-041 — BU select de catálogo + "Otra…" dependiente de org — #174
+
+### Bloque 3 — Plan + Minutas UX (2 items)
+- [ ] US-084 — Plan: edición manual de datos agregados con flag — #175
+- [ ] ENH-042 — Minutas: jerarquía visual con IA como acción primaria — #176
+
+### Bloque 4 — Cambios grandes (3 items, 3-4 días c/u)
+- [ ] US-085 — Solicitud: organización con "Otra…" + creación inactiva + notif — #177
+- [ ] US-086 — Stakeholders: catálogo tenant (Opción B) — #178
+- [ ] US-087 — Reportes: bloque KPIs numéricos + fechas explícitas — #179
+
+### Bloque 5 — Workaround docs (1 item, 1-2h)
+- [ ] ENH-043 — Programas cross-empresa: workaround + ADR diferimiento — #180
+
+### Follow-ups identificados (Sprint 9+)
+- BUG-038 — Solicitud "Pendiente"+"Aprobada" simultáneo — INBOX #181 (esperando repro).
+- US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030+) tras validación de Sprint 6 en producción.
+- ENH-035 — Análisis profundo optimización CI tests pesados (post-MVP / v2.0) — #158.
+- ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
+- Cross-empresa nativo (post-ENH-043): si ≥3 grupos lo solicitan, abrir US con `program_organizations` + redesign listados.
+
+---
+
+## 🗂️ Sprint 7 (v1.6) — CERRADO
+
+**10 items en 6 bloques (1 diferido a v2.0). PR #169 mergeado a main 2026-04-28.**
 
 ### Bloque 0 — Hotfix verificación post-Sprint 6 (2 items) ✅
 - [x] BUG-032 — SuperAdmin /me email change con take-over — #159 ✅ 2f86f38
@@ -133,10 +228,8 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 ### Bloque 5 — UX programas (1 item) ✅
 - [x] ENH-037 — Botón Nuevo Programa /pmo/orgs/[id] — #167 ✅ c5798bf
 
-### Follow-ups identificados (Sprint 8+)
-- US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030+) tras validación de Sprint 6 en producción.
-- ENH-035 — Análisis profundo optimización CI tests pesados (post-MVP / v2.0) — #158.
-- ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
+### Diferido a v2.0
+- ENH-035 #158 — Análisis profundo optimización CI tests pesados (post-MVP).
 
 ---
 
@@ -304,6 +397,28 @@ Sprint 3 v1.2 cerrado 2026-04-24 — 2 bloques:
 
 ## Notas y cambios
 
+- **2026-04-28 (Sprint 8 triage — feedback DRC Consultores):** owner
+  manda documento con 16 items (feedback del socio) ya analizados.
+  Triage:
+  - **6 items "ya resueltos"** según owner — verificación en deploy
+    actual sin issue nuevo: 2 (BU texto libre — REVIVIDO como ENH-041
+    porque ahora pide patrón select+otra), 7, 9, 10, 12, 13 (existencia
+    minutas IA — pero la jerarquía visual SÍ es cambio nuevo: ENH-042).
+  - **11 issues nuevos creados (#170-#180):** distribuidos en 5 bloques
+    (3 chicos + 2 medianos + 2 plan/UX + 3 grandes + 1 workaround).
+  - **1 INBOX placeholder (#181 BUG-038):** esperando repro del owner.
+  - **Sprint 8 v1.7 organizado en 5 bloques** + INBOX.
+  - Decisiones owner (vía AskUserQuestion 2026-04-28):
+    1. US-085 (Org libre #177): activación manual sin requisitos previos.
+    2. US-086 (Stakeholders #178): **Opción B** — catálogo tenant.
+       DEC-025 a registrar.
+    3. ENH-043 (Cross-empresa #180): posponer cambio estructural,
+       documentar workaround + ADR de diferimiento.
+    4. BUG-038 (Estado simultáneo #181): postergar hasta repro.
+  - Cleanup Sprint 7: las 9 issues #159-#167 (excepto #158 ENH-035) se
+    movieron de `status:ready` a `status:fix-committed` (PR #169
+    mergeado 2026-04-28). #158 ENH-035 pasó a `post-mvp` + `v2.0` sin
+    `status:ready` (no se trabajará en v1.x).
 - **2026-04-25 (Sprint 7 triage post-Sprint 6):** owner revisa los 9
   items con `status:needs-rework` y deja comments. Triage:
   - **9 cerrados como `completed`** (#50, #78, #105, #111, #113, #125,
