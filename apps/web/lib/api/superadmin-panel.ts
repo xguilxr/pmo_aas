@@ -171,6 +171,8 @@ export function unfreezeTenant(id: string): Promise<{ ok: boolean; frozen: boole
 
 // ---- US-042: Usuarios cross-tenant ----
 
+export type SuperadminRoleType = "admin" | "user" | "viewer";
+
 export type SuperadminUserRow = {
   id: string;
   username: string;
@@ -178,6 +180,7 @@ export type SuperadminUserRow = {
   full_name: string | null;
   is_active: boolean;
   is_superadmin: boolean;
+  role_type: SuperadminRoleType | null;
   tenant_id: string | null;
   tenant_slug: string | null;
   tenant_name: string | null;
@@ -235,5 +238,23 @@ export function toggleSuperadminUserActive(
   return apiFetch(`/api/v1/superadmin/users/${id}/toggle-active`, {
     method: "POST",
     body: { reason },
+  });
+}
+
+// BUG-033: actualiza role_type desde la modal de /superadmin/users.
+// El endpoint vive en superadmin.py (US-072), separado del PATCH genérico.
+export function updateSuperadminUserRoleType(
+  id: string,
+  role_type: SuperadminRoleType,
+): Promise<{
+  id: string;
+  role_type: SuperadminRoleType;
+  changed: boolean;
+  from?: SuperadminRoleType;
+  to?: SuperadminRoleType;
+}> {
+  return apiFetch(`/api/v1/superadmin/users/${id}/role-type`, {
+    method: "PATCH",
+    body: { role_type },
   });
 }

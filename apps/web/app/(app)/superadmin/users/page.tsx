@@ -14,6 +14,8 @@ import {
   listSuperadminUsers,
   toggleSuperadminUserActive,
   updateSuperadminUser,
+  updateSuperadminUserRoleType,
+  type SuperadminRoleType,
   type SuperadminUserRow,
 } from "@/lib/api/superadmin-panel";
 
@@ -247,12 +249,19 @@ function EditUserModal({
   const [fullName, setFullName] = useState(user.full_name ?? "");
   const [email, setEmail] = useState(user.email);
   const [username, setUsername] = useState(user.username);
+  const [roleType, setRoleType] = useState<SuperadminRoleType | "">(
+    user.role_type ?? "",
+  );
   const [saving, setSaving] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
+      // BUG-033: role_type tiene endpoint propio (US-072 audit-log).
+      if (roleType && roleType !== (user.role_type ?? "")) {
+        await updateSuperadminUserRoleType(user.id, roleType);
+      }
       await updateSuperadminUser(user.id, {
         full_name: fullName !== (user.full_name ?? "") ? fullName || undefined : undefined,
         email: email !== user.email ? email : undefined,
@@ -303,6 +312,20 @@ function EditUserModal({
             maxLength={64}
           />
         </Field>
+        {user.is_superadmin ? null : (
+          <Field label="Rol">
+            <select
+              value={roleType}
+              onChange={(e) => setRoleType(e.target.value as SuperadminRoleType | "")}
+              className="block w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-primary)]"
+            >
+              <option value="">— sin asignar —</option>
+              <option value="admin">admin</option>
+              <option value="user">user</option>
+              <option value="viewer">viewer</option>
+            </select>
+          </Field>
+        )}
       </form>
     </Modal>
   );
