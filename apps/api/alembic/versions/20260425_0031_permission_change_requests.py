@@ -38,7 +38,7 @@ def upgrade() -> None:
             "requested_grant",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("1"),
+            server_default=sa.text("true"),
         ),
         sa.Column("reason", sa.Text(), nullable=False),
         sa.Column(
