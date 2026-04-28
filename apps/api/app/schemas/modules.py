@@ -16,6 +16,18 @@ class AreaMini(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------- User embed (BUG-035) ----------
+class UserMini(BaseModel):
+    """Shape mínimo del owner embebido en RiskRead/IssueRead para que el
+    sidebar de RAID detail muestre nombre en vez de UUID."""
+
+    id: UUID
+    full_name: str | None = None
+    email: str
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- Risks ----------
 class RiskCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
@@ -58,6 +70,7 @@ class RiskRead(BaseModel):
     severity: int | None
     mitigation_strategy: str | None
     owner_id: UUID | None
+    owner: UserMini | None = None  # BUG-035: nombre del responsable.
     area_id: UUID | None
     area: AreaMini | None = None  # US-064: embebido por endpoint.
     identified_at: date | None
@@ -108,6 +121,7 @@ class IssueRead(BaseModel):
     resolution: str | None
     status: str
     owner_id: UUID | None
+    owner: UserMini | None = None  # BUG-035: nombre del responsable.
     area_id: UUID | None
     area: AreaMini | None = None
     reported_at: datetime | None = None

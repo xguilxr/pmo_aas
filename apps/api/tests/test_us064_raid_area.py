@@ -82,6 +82,47 @@ async def test_tc064_2_risk_with_area_embeds(client, db_session):
     assert body["area"] == {"id": area_id, "name": "Finanzas"}
 
 
+# TC-035 — BUG-035: POST/GET /risks devuelve `owner` con full_name + email.
+@pytest.mark.asyncio
+async def test_bug035_risk_embeds_owner(client, db_session):
+    _, auth, proj_id = await _setup(client, db_session)
+    area_id = await _area(client, auth, proj_id, "Finanzas")
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    me_id = me.json()["id"]
+
+    r = await client.post(
+        f"/api/v1/projects/{proj_id}/risks",
+        json={
+            "title": "Riesgo con owner", "probability": 3, "impact": 3,
+            "area_id": area_id, "owner_id": me_id,
+        },
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["owner_id"] == me_id
+    assert body["owner"] is not None
+    assert body["owner"]["id"] == me_id
+    assert body["owner"]["email"] == "admin@acme.example.com"
+
+    # GET detail también lo embebe.
+    r2 = await client.get(f"/api/v1/risks/{body['id']}", headers=auth["_authz"])
+    assert r2.status_code == 200
+    assert r2.json()["owner"]["email"] == "admin@acme.example.com"
+
+    # Riesgo sin owner: owner=None.
+    r3 = await client.post(
+        f"/api/v1/projects/{proj_id}/risks",
+        json={
+            "title": "Riesgo sin owner", "probability": 2, "impact": 2,
+            "area_id": area_id,
+        },
+        headers=auth["_authz"],
+    )
+    assert r3.status_code == 201
+    assert r3.json()["owner"] is None
+
+
 # TC-064.3 — GET lista ordena por área ASC → legacy NULL al final
 @pytest.mark.asyncio
 async def test_tc064_3_list_orders_by_area(client, db_session):

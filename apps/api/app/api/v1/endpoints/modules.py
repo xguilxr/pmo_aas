@@ -122,6 +122,39 @@ async def _load_areas(
     return {str(a.id): a for a in rows}
 
 
+async def _attach_owners(db: AsyncSession, items: list) -> None:
+    """BUG-035: enriquece `item.owner` con `{id, full_name, email}` para
+    que el sidebar de RAID detail muestre nombre del responsable en vez
+    del UUID.
+
+    Mutates `item.owner` in-place. Items sin `owner_id` quedan con
+    owner=None. 1 SELECT batch del set único de owner_ids.
+    """
+    owner_ids: set[str] = set()
+    for it in items:
+        oid = getattr(it, "owner_id", None)
+        if oid:
+            owner_ids.add(str(oid))
+    by_id: dict[str, User] = {}
+    if owner_ids:
+        rows = (
+            await db.execute(select(User).where(User.id.in_(owner_ids)))
+        ).scalars().all()
+        by_id = {str(u.id): u for u in rows}
+    for it in items:
+        oid = getattr(it, "owner_id", None)
+        user = by_id.get(str(oid)) if oid else None
+        it.owner = (  # type: ignore[attr-defined]
+            {
+                "id": str(user.id),
+                "full_name": user.full_name,
+                "email": user.email,
+            }
+            if user
+            else None
+        )
+
+
 async def _attach_comment_authors(db: AsyncSession, items: list) -> None:
     """BUG-035: enriquece `item.comments[].author` con `{id, full_name,
     email}` para que el frontend muestre el nombre real en vez del UUID.
@@ -209,6 +242,7 @@ async def list_risks(
     rows = (await db.execute(stmt)).all()
     risks = [r for r, _ in rows]
     await _attach_comment_authors(db, risks)
+    await _attach_owners(db, risks)
     out: list[RiskRead] = []
     for r, area in rows:
         _attach_area(r, area)
@@ -248,6 +282,7 @@ async def create_risk(
     )
     await db.commit()
     _attach_area(r, area)
+    await _attach_owners(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -275,6 +310,7 @@ async def get_risk(
     r, area = row
     _attach_area(r, area)
     await _attach_comment_authors(db, [r])
+    await _attach_owners(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -319,6 +355,7 @@ async def update_risk(
         ).scalar_one_or_none()
     _attach_area(r, area)
     await _attach_comment_authors(db, [r])
+    await _attach_owners(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -367,6 +404,7 @@ async def add_risk_comment(
         ).scalar_one_or_none()
     _attach_area(r, area)
     await _attach_comment_authors(db, [r])
+    await _attach_owners(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -428,6 +466,7 @@ async def list_issues(
     rows = (await db.execute(stmt)).all()
     issues = [i for i, _ in rows]
     await _attach_comment_authors(db, issues)
+    await _attach_owners(db, issues)
     out: list[IssueRead] = []
     for i, area in rows:
         _attach_area(i, area)
@@ -465,6 +504,7 @@ async def create_issue(
     )
     await db.commit()
     _attach_area(i, area)
+    await _attach_owners(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -492,6 +532,7 @@ async def get_issue(
     i, area = row
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])
+    await _attach_owners(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -520,6 +561,7 @@ async def add_issue_comment(
         ).scalar_one_or_none()
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])
+    await _attach_owners(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -551,6 +593,7 @@ async def update_issue(
         ).scalar_one_or_none()
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])
+    await _attach_owners(db, [i])
     return IssueRead.model_validate(i)
 
 
