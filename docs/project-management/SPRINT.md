@@ -7,8 +7,24 @@
 ## 🔴 IN-PROGRESS
 
 ```
-2026-04-28 — Sprint 8 v1.7 — TRIAGE COMPLETO, esperando status:ready
-Branch sesión actual: claude/create-issues-sprint-planning-9Ke3t
+2026-04-28 (PM) — Sprint 8 v1.7 — Bloque 0 hotfix prod ✅ EJECUTADO
+Branch sesión: claude/fix-api-deploy-failure-LIFac
+
+Hotfix detectado tras revisión de logs Railway: el redeploy del api
+post-merge Sprint 7 fallaba en `alembic upgrade head` con
+DatatypeMismatch sobre la migración 0031 (US-082). Causa: server_default
+=sa.text("1") sobre columna BOOLEAN — Postgres rechaza, SQLite acepta
+(por eso CI no lo cazó).
+
+  · BUG-039 #184 → 62c4f96  fix(db) — boolean default Postgres-compatible
+    en permission_change_requests (server_default "1" → "true").
+
+Fuera de orden de bloques (atendido directo como hotfix por bloqueo de
+producción). Owner debe mergear ASAP para que Railway redespliegue api.
+
+--- contexto Sprint 8 triage ---
+2026-04-28 (AM) — Sprint 8 v1.7 — TRIAGE COMPLETO, esperando status:ready
+Branch triage: claude/create-issues-sprint-planning-9Ke3t (PR #182 mergeado)
 
 Owner mandó feedback DRC Consultores + propuestas (16 items).
 Tras AskUserQuestion 2026-04-28 con 4 decisiones del owner, se crean
@@ -60,8 +76,8 @@ Pendiente owner:
   - BUG-038 #181: cuando reproduzca el bug, comentar con ID/screenshot
     para mover a un Bloque del Sprint 8 (o Sprint 9).
 
-Próximo libre tras Sprint 8 triage:
-  - US-088, BUG-039, ENH-044
+Próximo libre tras Sprint 8 triage + hotfix BUG-039:
+  - US-088, BUG-040, ENH-044
 ```
 
 ```
@@ -167,11 +183,14 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 
 ## ⏳ QUEUE
 
-**Sprint 8 (v1.7) — Feedback DRC Consultores. 11 items en 5 bloques + 1 INBOX.**
+**Sprint 8 (v1.7) — Feedback DRC Consultores + 1 hotfix prod. 12 items en 6 bloques + 1 INBOX.**
 
 > Triage completo 2026-04-28. Esperando `status:ready` del owner por
-> issue. Orden recomendado: Bloque 1 (chicos primero, quick wins) →
-> Bloque 2 → Bloque 3 → Bloque 4 → Bloque 5.
+> issue. Orden recomendado: Bloque 0 hotfix (ya ejecutado) → Bloque 1
+> (chicos primero, quick wins) → Bloque 2 → Bloque 3 → Bloque 4 → Bloque 5.
+
+### Bloque 0 — Hotfix prod api deploy (1 item) ✅
+- [x] BUG-039 — Boolean default Postgres-compatible en permission_change_requests — #184 ✅ 62c4f96
 
 ### Bloque 1 — Solicitud cambios chicos (3 items, ≤2h c/u)
 - [ ] ENH-038 — Mostrar fecha solicitud + agregar restricción entrega — #170
