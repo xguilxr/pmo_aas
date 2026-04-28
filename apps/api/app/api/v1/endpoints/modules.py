@@ -893,7 +893,17 @@ async def get_document_download_url(
         raise not_found("Documento")
 
     expires_in = 300
-    filename_hint = (d.title or str(d.id)).replace("/", "_")
+    # BUG-040: el filename de descarga debe preservar la extensión del
+    # archivo subido. La extensión vive en el path R2 (`.{ext}` al final
+    # del key) y se mapea desde el `mime_type` guardado.
+    from app.services.document_storage import ALLOWED_DOC_MIMES
+    raw_title = (d.title or str(d.id)).replace("/", "_")
+    ext = ALLOWED_DOC_MIMES.get((d.mime_type or "").lower())
+    if not ext and d.file_url:
+        # Fallback: extraer ext del key si el mime_type quedó vacío.
+        tail = d.file_url.rsplit(".", 1)
+        ext = tail[1] if len(tail) == 2 else None
+    filename_hint = f"{raw_title}.{ext}" if ext else raw_title
     if settings.STORAGE_BACKEND == "s3":
         url = get_document_presigned_url(
             str(tenant_id),

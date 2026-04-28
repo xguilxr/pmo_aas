@@ -84,6 +84,39 @@ async def test_bug029_save_document_accepts_xls_with_fallback(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_bug040_save_document_rejects_oversize_above_1mb(tmp_path):
+    """BUG-040: el límite ahora es 1 MB. Un upload de 1 MB + 1 byte
+    debe rechazarse con 413 + mensaje 'excede 1 MB'."""
+    from app.core.errors import AppError
+    from app.services import document_storage as storage_module
+
+    original_storage_path = storage_module.settings.STORAGE_PATH
+    storage_module.settings.STORAGE_PATH = str(tmp_path)
+
+    try:
+        too_big = b"\x00" * (storage_module.MAX_DOC_BYTES + 1)
+        fake_upload = MagicMock()
+        fake_upload.content_type = "application/pdf"
+        fake_upload.filename = "huge.pdf"
+        fake_upload.read = AsyncMock(return_value=too_big)
+        fake_upload.size = len(too_big)
+
+        with pytest.raises(AppError) as exc_info:
+            await storage_module.save_document(
+                "tenant-a", "project-b", fake_upload, "doc-big"
+            )
+
+        # Status 413 (PAYLOAD_TOO_LARGE).
+        assert exc_info.value.status_code == 413
+        err = getattr(exc_info.value, "detail", None) or {}
+        # AppError serializa como {"detail": "...", "code": "...", "fields": ...}
+        msg = err.get("detail") if isinstance(err, dict) else str(err)
+        assert "1 MB" in str(msg)
+    finally:
+        storage_module.settings.STORAGE_PATH = original_storage_path
+
+
+@pytest.mark.asyncio
 async def test_bug029_save_document_rejects_unknown_format(tmp_path):
     """Extensiones no whitelisted (ej. `.exe`) siguen bloqueadas con
     mensaje claro y field `filename` en el error para debugging."""

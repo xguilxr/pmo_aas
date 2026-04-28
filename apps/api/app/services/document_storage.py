@@ -23,7 +23,10 @@ from fastapi import UploadFile, status
 from app.core.config import settings
 from app.core.errors import AppError, validation_error
 
-MAX_DOC_BYTES = 50 * 1024 * 1024  # 50 MB
+# BUG-040: límite reducido a 1 MB. La plataforma no es un drive
+# corporativo; documentos grandes deben vivir en SharePoint/Drive y
+# enlazarse desde el comentario.
+MAX_DOC_BYTES = 1 * 1024 * 1024  # 1 MB
 
 # MIME -> extensión canónica (whitelist: PDF, XLSX, DOCX, PPTX, PNG, JPG, CSV,
 # + formatos legacy XLS/DOC/PPT). BUG-029 agrega los legacy porque algunos
