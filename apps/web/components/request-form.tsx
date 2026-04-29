@@ -219,7 +219,7 @@ export function RequestForm() {
         sponsor: draft.sponsor.trim(),
         sponsor_email: draft.sponsor_email.trim(),
         benefits: draft.benefits.trim(),
-        budget: Number(draft.budget),
+        budget: draft.budget.trim() ? Number(draft.budget) : null,
         scope: draft.scope.trim(),
         entregables: draft.entregables.trim() || null,
         key_people: draft.key_people.trim() || null,
@@ -398,8 +398,11 @@ export function RequestForm() {
             label="Presupuesto (MXN)"
             htmlFor="budget"
             error={fieldErrors.budget}
-            required
-            help={draft.budget ? currency(draft.budget) : "Ej: 1250000.00"}
+            help={
+              draft.budget
+                ? currency(draft.budget)
+                : "Opcional — si tienes estimado grueso (ej: 1250000.00)"
+            }
           >
             <Input
               id="budget"
@@ -409,7 +412,6 @@ export function RequestForm() {
               inputMode="decimal"
               value={draft.budget}
               onChange={(e) => setField("budget", e.target.value)}
-              required
             />
           </Field>
           <Field
@@ -850,9 +852,13 @@ function validateAll(d: Draft): { ok: boolean; errors: Record<string, string> } 
       else e[k] = "Obligatorio (mínimo 3 caracteres)";
     }
   }
-  const budget = Number(d.budget);
-  if (!d.budget || !Number.isFinite(budget) || budget < 0) {
-    e.budget = "Presupuesto no válido";
+  // ENH-040: presupuesto opcional. Sólo validar formato si el usuario
+  // llenó algo.
+  if (d.budget.trim()) {
+    const budget = Number(d.budget);
+    if (!Number.isFinite(budget) || budget < 0) {
+      e.budget = "Presupuesto no válido (debe ser >= 0)";
+    }
   }
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!d.sponsor_email.trim() || !emailRe.test(d.sponsor_email.trim())) {

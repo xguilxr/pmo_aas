@@ -36,7 +36,7 @@ class ProjectRequest(Base, TimestampMixin):
     sponsor: Mapped[str] = mapped_column(String(200), nullable=False)
     sponsor_email: Mapped[str | None] = mapped_column(String(200))
     benefits: Mapped[str] = mapped_column(String(5000), nullable=False)
-    budget: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     scope: Mapped[str] = mapped_column(String(5000), nullable=False)
     entregables: Mapped[str | None] = mapped_column(String(5000))
     key_people: Mapped[str | None] = mapped_column(String(5000))

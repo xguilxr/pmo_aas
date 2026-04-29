@@ -372,7 +372,9 @@ export default function RequestDetailPage() {
           <Row k="Organización" v={org?.name ?? "—"} />
           <Row k="Unidad de negocio" v={request.business_unit} />
           <Row k="Departamento" v={request.department} />
-          <Row k="Presupuesto" v={formatMxn(request.budget)} />
+          {request.budget !== null && request.budget !== undefined ? (
+            <Row k="Presupuesto" v={formatMxn(request.budget)} />
+          ) : null}
         </Card>
         <Card title="Seguimiento">
           <Row k="Fecha de solicitud" v={formatDate(request.requested_at)} />

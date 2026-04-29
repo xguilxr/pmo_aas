@@ -23,7 +23,7 @@ export type ProjectRequest = {
   sponsor: string;
   sponsor_email: string | null;
   benefits: string;
-  budget: string;
+  budget: string | null;
   scope: string;
   entregables: string | null;
   key_people: string | null;
@@ -54,7 +54,7 @@ export type ProjectRequestCreateBody = {
   sponsor: string;
   sponsor_email: string;
   benefits: string;
-  budget: number | string;
+  budget?: number | string | null;
   scope: string;
   entregables?: string | null;
   key_people?: string | null;

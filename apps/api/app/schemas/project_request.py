@@ -26,7 +26,8 @@ class ProjectRequestCreate(BaseModel):
     sponsor: str = Field(min_length=1, max_length=200)
     sponsor_email: EmailStr
     benefits: str = Field(min_length=3)
-    budget: Decimal = Field(ge=Decimal("0"))
+    # ENH-040: presupuesto opcional. Si se llena debe ser >= 0.
+    budget: Decimal | None = Field(default=None, ge=Decimal("0"))
     scope: str = Field(min_length=3)
     entregables: str | None = None
     key_people: str | None = None
@@ -74,7 +75,7 @@ class ProjectRequestRead(BaseModel):
     sponsor: str
     sponsor_email: str | None = None
     benefits: str
-    budget: Decimal
+    budget: Decimal | None = None
     scope: str
     entregables: str | None = None
     key_people: str | None = None
