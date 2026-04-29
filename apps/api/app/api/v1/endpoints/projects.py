@@ -270,11 +270,47 @@ async def update_project(
         if k in ("program_id", "pm_id") and v is not None:
             v = str(v)
         setattr(p, k, v)
+    # US-084: campos agregados editados a mano. Marcamos en
+    # manually_edited_fields para que importadores los respeten y la
+    # UI muestre badge de "editado manualmente".
+    PLAN_AGGREGATE_FIELDS = {"start_date", "end_date", "budget", "progress"}
+    touched = PLAN_AGGREGATE_FIELDS.intersection(data.keys())
+    if touched:
+        edited = dict(p.manually_edited_fields or {})
+        now_iso = datetime.now(UTC).isoformat()
+        for k in touched:
+            edited[k] = {"edited_at": now_iso, "edited_by": str(cu.id)}
+        p.manually_edited_fields = edited
     await write_audit(
         db, action="project.update", module="projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),
         details={"before": {k: str(v) for k, v in before.items()}, "after": {k: str(v) for k, v in data.items()}},
     )
+    await db.commit()
+    return ProjectRead.model_validate(p)
+
+
+@router.post("/{project_id}/plan-aggregates/reset", response_model=ProjectRead)
+async def reset_plan_aggregate(
+    project_id: UUID,
+    body: dict,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-084: quita el flag de 'editado manualmente' de un campo del
+    plan. Body: `{"field": "start_date"}`. El valor actual del campo
+    se preserva pero queda elegible para sobrescritura por importadores.
+    """
+    tenant_id = _tenant(cu)
+    p = await _get_project(db, project_id, tenant_id)
+    if p.phase == "closed":
+        raise business_rule("Proyecto cerrado, no editable")
+    field = body.get("field")
+    if field not in {"start_date", "end_date", "budget", "progress"}:
+        raise validation_error("field inválido")
+    edited = dict(p.manually_edited_fields or {})
+    edited.pop(field, None)
+    p.manually_edited_fields = edited
     await db.commit()
     return ProjectRead.model_validate(p)
 

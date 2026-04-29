@@ -62,6 +62,8 @@ class ProjectRead(BaseModel):
     progress: int
     health_status: str
     request_id: UUID | None = None
+    # US-084: campos del plan agregados con prioridad manual.
+    manually_edited_fields: dict = {}
 
     model_config = {"from_attributes": True}
 

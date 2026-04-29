@@ -301,8 +301,16 @@ export default function ProjectDetailPage() {
       ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Avance" value={`${project.progress}%`} />
-        <MetricCard label="Presupuesto plan" value={formatMxn(project.budget)} />
+        <MetricCard
+          label="Avance"
+          value={`${project.progress}%`}
+          manualEdit={project.manually_edited_fields?.progress}
+        />
+        <MetricCard
+          label="Presupuesto plan"
+          value={formatMxn(project.budget)}
+          manualEdit={project.manually_edited_fields?.budget}
+        />
         <MetricCard label="Presupuesto real" value={formatMxn(project.actual_budget)} />
         <HealthCard
           value={project.health_status}
@@ -595,12 +603,30 @@ function PhaseBadge({ phase }: { phase: ProjectPhase }) {
   return <Badge variant={map[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricCard({
+  label,
+  value,
+  manualEdit,
+}: {
+  label: string;
+  value: string;
+  manualEdit?: { edited_at: string; edited_by: string } | null;
+}) {
   return (
     <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
-        {label}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+          {label}
+        </p>
+        {manualEdit ? (
+          <span
+            title={`Editado manualmente el ${new Date(manualEdit.edited_at).toLocaleString("es-MX")}`}
+            className="text-[10px] font-medium text-[var(--color-warning-fg)]"
+          >
+            ✏️ Manual
+          </span>
+        ) : null}
+      </div>
       <p className="mt-1 text-[22px] font-semibold tracking-tight text-[var(--text-primary)] tabular-nums">
         {value}
       </p>
