@@ -95,13 +95,14 @@ export default function MinutesPage() {
       loading={loading}
       error={error}
       headerExtras={
-        <Link href={`/pmo/projects/${id}/ai-minutes/new`}>
-          <Button variant="secondary">
+        <Link href={`/pmo/projects/${id}/ai-minutes/new`} title="Sube la transcripción y la IA genera la minuta automáticamente.">
+          <Button>
             <Sparkles className="h-4 w-4" aria-hidden /> Generar con IA
           </Button>
         </Link>
       }
-      newButtonLabel="Nueva minuta"
+      newButtonLabel="Llenar manualmente"
+      newButtonVariant="secondary"
       newModalTitle="Registrar minuta"
       newModalOpen={open}
       setNewModalOpen={setOpen}

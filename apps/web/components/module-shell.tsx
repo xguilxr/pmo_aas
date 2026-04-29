@@ -21,6 +21,7 @@ type Props<T extends { id: string; folio: string }> = {
   filters?: ReactNode;
   onRowClick?: (r: T) => void;
   newButtonLabel?: string;
+  newButtonVariant?: "primary" | "secondary" | "ghost" | "danger";
   newModalTitle?: string;
   newModalForm?: (close: () => void) => ReactNode;
   newModalFooter?: (close: () => void) => ReactNode;
@@ -44,6 +45,7 @@ export function ModuleShell<T extends { id: string; folio: string }>({
   filters,
   onRowClick,
   newButtonLabel = "Nuevo",
+  newButtonVariant,
   newModalTitle,
   newModalForm,
   newModalFooter,
@@ -99,7 +101,7 @@ export function ModuleShell<T extends { id: string; folio: string }>({
           <div className="flex flex-wrap items-center gap-2">
             {headerExtras}
             {newModalForm ? (
-              <Button onClick={() => setOpen(true)}>
+              <Button onClick={() => setOpen(true)} variant={newButtonVariant}>
                 <Plus className="h-4 w-4" aria-hidden /> {newButtonLabel}
               </Button>
             ) : null}
