@@ -113,6 +113,7 @@ async def create_request(
         ),
         requested_by=cu.id,
         requested_at=datetime.now(UTC),
+        delivery_constraint_date=body.delivery_constraint_date,
         status="in_review",
         attachments=[a.model_dump() for a in body.attachments],
     )

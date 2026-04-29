@@ -31,6 +31,7 @@ export type ProjectRequest = {
   observations: string | null;
   requester_name: string | null;
   requester_email: string | null;
+  delivery_constraint_date: string | null;
   status: RequestStatus;
   requested_by: string;
   requested_at: string;
@@ -61,6 +62,7 @@ export type ProjectRequestCreateBody = {
   observations?: string | null;
   requester_name?: string | null;
   requester_email?: string | null;
+  delivery_constraint_date?: string | null;
   attachments?: RequestAttachment[];
 };
 

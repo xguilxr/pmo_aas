@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -34,6 +34,7 @@ class ProjectRequestCreate(BaseModel):
     observations: str | None = None
     requester_name: str | None = Field(default=None, max_length=200)
     requester_email: EmailStr | None = None
+    delivery_constraint_date: date | None = None
     attachments: list[Attachment] = []
 
 
@@ -56,6 +57,7 @@ class ProjectRequestUpdate(BaseModel):
     observations: str | None = None
     requester_name: str | None = None
     requester_email: EmailStr | None = None
+    delivery_constraint_date: date | None = None
 
 
 class ProjectRequestRead(BaseModel):
@@ -80,6 +82,7 @@ class ProjectRequestRead(BaseModel):
     observations: str | None = None
     requester_name: str | None = None
     requester_email: str | None = None
+    delivery_constraint_date: date | None = None
     status: str
     requested_by: UUID
     requested_at: datetime

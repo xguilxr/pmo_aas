@@ -37,6 +37,7 @@ type Draft = {
   observations: string;
   requester_name: string;
   requester_email: string;
+  delivery_constraint_date: string;
   attachments: RequestAttachment[];
 };
 
@@ -58,6 +59,7 @@ const EMPTY: Draft = {
   observations: "",
   requester_name: "",
   requester_email: "",
+  delivery_constraint_date: "",
   attachments: [],
 };
 
@@ -225,6 +227,7 @@ export function RequestForm() {
         observations: draft.observations.trim() || null,
         requester_name: draft.requester_name.trim() || null,
         requester_email: draft.requester_email.trim() || null,
+        delivery_constraint_date: draft.delivery_constraint_date.trim() || null,
         attachments: draft.attachments,
       };
       const created: ProjectRequest = await createRequest(body);
@@ -407,6 +410,19 @@ export function RequestForm() {
               value={draft.budget}
               onChange={(e) => setField("budget", e.target.value)}
               required
+            />
+          </Field>
+          <Field
+            label="Fecha de restricción de entrega"
+            htmlFor="delivery_constraint_date"
+            error={fieldErrors.delivery_constraint_date}
+            help="Opcional — si la entrega debe ocurrir en/antes de una fecha"
+          >
+            <Input
+              id="delivery_constraint_date"
+              type="date"
+              value={draft.delivery_constraint_date}
+              onChange={(e) => setField("delivery_constraint_date", e.target.value)}
             />
           </Field>
           <Field
@@ -862,6 +878,7 @@ function firstStepWithError(errs: Record<string, string>): StepId | null {
       "requester_name",
       "requester_email",
       "budget",
+      "delivery_constraint_date",
     ],
     scope: [
       "scope",
