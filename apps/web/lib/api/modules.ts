@@ -214,6 +214,9 @@ export type ChangeRequest = {
   requested_at: string;
   approved_by: string | null;
   approved_at: string | null;
+  // ENH-039: usuarios resueltos para mostrar nombres en vez de UUIDs.
+  requester: UserMini | null;
+  approver: UserMini | null;
 };
 
 export type ChangeRequestCreateBody = {

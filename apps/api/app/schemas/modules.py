@@ -162,6 +162,10 @@ class ChangeRequestRead(BaseModel):
     requested_at: datetime
     approved_by: UUID | None
     approved_at: datetime | None
+    # ENH-039: usuarios resueltos para que la UI muestre nombres en
+    # vez de UUIDs.
+    requester: UserMini | None = None
+    approver: UserMini | None = None
 
     model_config = {"from_attributes": True}
 

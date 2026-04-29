@@ -191,9 +191,35 @@ export default function ChangesPage() {
             ),
           },
           {
-            key: "requested_at",
-            label: "Solicitado",
-            render: (r) => new Date(r.requested_at).toLocaleDateString("es-MX"),
+            key: "requested",
+            label: "Solicitado por",
+            render: (r) => (
+              <div className="text-[12px] leading-tight">
+                <div className="text-[var(--text-primary)]">
+                  {r.requester?.full_name ?? r.requester?.email ?? "—"}
+                </div>
+                <div className="text-[var(--text-tertiary)]">
+                  {new Date(r.requested_at).toLocaleDateString("es-MX")}
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: "approved",
+            label: "Aprobado por",
+            render: (r) =>
+              r.approver ? (
+                <div className="text-[12px] leading-tight">
+                  <div className="text-[var(--text-primary)]">
+                    {r.approver.full_name ?? r.approver.email}
+                  </div>
+                  <div className="text-[var(--text-tertiary)]">
+                    {r.approved_at ? new Date(r.approved_at).toLocaleDateString("es-MX") : ""}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-[11px] text-[var(--text-tertiary)]">—</span>
+              ),
           },
           {
             key: "actions",

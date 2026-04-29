@@ -155,6 +155,33 @@ async def _attach_owners(db: AsyncSession, items: list) -> None:
         )
 
 
+async def _attach_change_users(db: AsyncSession, items: list) -> None:
+    """ENH-039: enriquece `item.requester` y `item.approver` con
+    `{id, full_name, email}` para que la UI de Cambios muestre los
+    nombres en vez de UUIDs. 1 SELECT batch.
+    """
+    ids: set[str] = set()
+    for it in items:
+        for attr in ("requested_by", "approved_by"):
+            v = getattr(it, attr, None)
+            if v:
+                ids.add(str(v))
+    by_id: dict[str, User] = {}
+    if ids:
+        rows = (await db.execute(select(User).where(User.id.in_(ids)))).scalars().all()
+        by_id = {str(u.id): u for u in rows}
+
+    def _mini(uid):
+        u = by_id.get(str(uid)) if uid else None
+        return (
+            {"id": str(u.id), "full_name": u.full_name, "email": u.email} if u else None
+        )
+
+    for it in items:
+        it.requester = _mini(getattr(it, "requested_by", None))  # type: ignore[attr-defined]
+        it.approver = _mini(getattr(it, "approved_by", None))  # type: ignore[attr-defined]
+
+
 async def _attach_comment_authors(db: AsyncSession, items: list) -> None:
     """BUG-035: enriquece `item.comments[].author` con `{id, full_name,
     email}` para que el frontend muestre el nombre real en vez del UUID.
@@ -616,6 +643,7 @@ async def list_chgs(
     if status:
         stmt = stmt.where(ChangeRequest.status.in_(status))
     rows = (await db.execute(stmt.order_by(ChangeRequest.requested_at.desc()))).scalars().all()
+    await _attach_change_users(db, rows)
     return [ChangeRequestRead.model_validate(c) for c in rows]
 
 
@@ -644,6 +672,7 @@ async def create_chg(
         entity_id=str(c.id), details={"folio": folio},
     )
     await db.commit()
+    await _attach_change_users(db, [c])
     return ChangeRequestRead.model_validate(c)
 
 
@@ -663,6 +692,7 @@ async def approve_chg(
     c.approved_by = cu.id
     c.approved_at = datetime.now(UTC)
     await db.commit()
+    await _attach_change_users(db, [c])
     return ChangeRequestRead.model_validate(c)
 
 
@@ -682,6 +712,7 @@ async def reject_chg(
     c.approved_by = cu.id
     c.approved_at = datetime.now(UTC)
     await db.commit()
+    await _attach_change_users(db, [c])
     return ChangeRequestRead.model_validate(c)
 
 
