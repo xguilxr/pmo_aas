@@ -10,7 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
-import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import {
+  createBusinessUnit,
+  listBusinessUnits,
+  listOrganizations,
+  type BusinessUnit,
+  type Organization,
+} from "@/lib/api/organizations";
 import {
   createRequest,
   type ProjectRequest,
@@ -25,6 +31,7 @@ type Draft = {
   objective: string;
   organization_id: string;
   business_unit: string;
+  business_unit_id: string;
   department: string;
   sponsor: string;
   sponsor_email: string;
@@ -47,6 +54,7 @@ const EMPTY: Draft = {
   objective: "",
   organization_id: "",
   business_unit: "",
+  business_unit_id: "",
   department: "",
   sponsor: "",
   sponsor_email: "",
@@ -108,6 +116,9 @@ export function RequestForm() {
   const [step, setStep] = useState<StepId>("basics");
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [buMode, setBuMode] = useState<"select" | "new">("select");
+  const [newBuName, setNewBuName] = useState("");
   const [saving, setSaving] = useState(false);
   const [autosavedAt, setAutosavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +146,25 @@ export function RequestForm() {
       cancelled = true;
     };
   }, []);
+
+  // ENH-041: refetch BUs cuando cambia la organización seleccionada.
+  useEffect(() => {
+    if (!draft.organization_id) {
+      setBusinessUnits([]);
+      return;
+    }
+    let cancelled = false;
+    listBusinessUnits(draft.organization_id, { is_active: true })
+      .then((rows) => {
+        if (!cancelled) setBusinessUnits(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setBusinessUnits([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.organization_id]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -209,12 +239,39 @@ export function RequestForm() {
     setSaving(true);
     setError(null);
     try {
+      // ENH-041: si el usuario eligió "Otra…", crear la BU primero
+      // y obtener el FK antes de enviar la solicitud.
+      let buId = draft.business_unit_id;
+      let buName = draft.business_unit.trim();
+      if (buMode === "new" && newBuName.trim()) {
+        try {
+          const created = await createBusinessUnit(draft.organization_id, {
+            name: newBuName.trim(),
+            is_active: true,
+          });
+          buId = created.id;
+          buName = created.name;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) {
+            setError(
+              "Ya existe una Unidad de negocio con ese nombre en la organización seleccionada.",
+            );
+          } else {
+            setError(
+              err instanceof ApiError ? err.message : "No se pudo crear la nueva BU",
+            );
+          }
+          setSaving(false);
+          return;
+        }
+      }
       const body: ProjectRequestCreateBody = {
         title: draft.title.trim(),
         description: draft.description.trim(),
         objective: draft.objective.trim(),
         organization_id: draft.organization_id,
-        business_unit: draft.business_unit.trim(),
+        business_unit: buName,
+        business_unit_id: buId || null,
         department: draft.department.trim(),
         sponsor: draft.sponsor.trim(),
         sponsor_email: draft.sponsor_email.trim(),
@@ -366,7 +423,15 @@ export function RequestForm() {
             <Select
               id="org"
               value={draft.organization_id}
-              onChange={(e) => setField("organization_id", e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setField("organization_id", v);
+                // ENH-041: al cambiar la org, reset BU dependiente.
+                setField("business_unit_id", "");
+                setField("business_unit", "");
+                setBuMode("select");
+                setNewBuName("");
+              }}
               disabled={loadingOrgs}
               required
             >
@@ -378,13 +443,58 @@ export function RequestForm() {
               ))}
             </Select>
           </Field>
-          <Field label="Unidad de negocio" htmlFor="bu" error={fieldErrors.business_unit} required>
-            <Input
+          <Field
+            label="Unidad de negocio"
+            htmlFor="bu"
+            error={fieldErrors.business_unit}
+            required
+            help={
+              !draft.organization_id
+                ? "Selecciona primero una organización"
+                : buMode === "new"
+                  ? "Se creará al enviar la solicitud"
+                  : undefined
+            }
+          >
+            <Select
               id="bu"
-              value={draft.business_unit}
-              onChange={(e) => setField("business_unit", e.target.value)}
+              value={buMode === "new" ? "__new__" : draft.business_unit_id}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__new__") {
+                  setBuMode("new");
+                  setField("business_unit_id", "");
+                  setField("business_unit", newBuName.trim());
+                } else {
+                  setBuMode("select");
+                  setNewBuName("");
+                  setField("business_unit_id", v);
+                  const bu = businessUnits.find((b) => b.id === v);
+                  setField("business_unit", bu?.name ?? "");
+                }
+              }}
+              disabled={!draft.organization_id}
               required
-            />
+            >
+              <option value="">Selecciona…</option>
+              {businessUnits.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+              <option value="__new__">Otra…</option>
+            </Select>
+            {buMode === "new" ? (
+              <Input
+                className="mt-2"
+                placeholder="Nombre de la nueva BU"
+                value={newBuName}
+                onChange={(e) => {
+                  setNewBuName(e.target.value);
+                  setField("business_unit", e.target.value);
+                }}
+              />
+            ) : null}
           </Field>
           <Field label="Departamento" htmlFor="dept" error={fieldErrors.department} required>
             <Input
