@@ -30,6 +30,7 @@ type Draft = {
   description: string;
   objective: string;
   organization_id: string;
+  organization_name_new: string;
   business_unit: string;
   business_unit_id: string;
   department: string;
@@ -53,6 +54,7 @@ const EMPTY: Draft = {
   description: "",
   objective: "",
   organization_id: "",
+  organization_name_new: "",
   business_unit: "",
   business_unit_id: "",
   department: "",
@@ -148,9 +150,12 @@ export function RequestForm() {
   }, []);
 
   // ENH-041: refetch BUs cuando cambia la organización seleccionada.
+  // US-085: si la org es "__new__" no hay org real; obligamos a que
+  // el usuario use "Otra…" para BU.
   useEffect(() => {
-    if (!draft.organization_id) {
+    if (!draft.organization_id || draft.organization_id === "__new__") {
       setBusinessUnits([]);
+      if (draft.organization_id === "__new__") setBuMode("new");
       return;
     }
     let cancelled = false;
@@ -239,11 +244,15 @@ export function RequestForm() {
     setSaving(true);
     setError(null);
     try {
-      // ENH-041: si el usuario eligió "Otra…", crear la BU primero
-      // y obtener el FK antes de enviar la solicitud.
-      let buId = draft.business_unit_id;
-      let buName = draft.business_unit.trim();
-      if (buMode === "new" && newBuName.trim()) {
+      // ENH-041: si el usuario eligió "Otra…" para BU sobre una org
+      // existente, crear la BU primero y obtener el FK antes de enviar.
+      // US-085: si la org es "__new__", la BU va como texto libre
+      // (sin FK) — se materializará luego cuando el admin active la
+      // org y configure sus BUs.
+      const isNewOrg = draft.organization_id === "__new__";
+      let buId = isNewOrg ? "" : draft.business_unit_id;
+      let buName = isNewOrg ? newBuName.trim() : draft.business_unit.trim();
+      if (buMode === "new" && !isNewOrg && newBuName.trim()) {
         try {
           const created = await createBusinessUnit(draft.organization_id, {
             name: newBuName.trim(),
@@ -269,7 +278,8 @@ export function RequestForm() {
         title: draft.title.trim(),
         description: draft.description.trim(),
         objective: draft.objective.trim(),
-        organization_id: draft.organization_id,
+        organization_id: isNewOrg ? null : draft.organization_id,
+        organization_name_new: isNewOrg ? draft.organization_name_new.trim() : null,
         business_unit: buName,
         business_unit_id: buId || null,
         department: draft.department.trim(),
@@ -419,13 +429,24 @@ export function RequestForm() {
               onChange={(e) => setField("requester_email", e.target.value)}
             />
           </Field>
-          <Field label="Organización" htmlFor="org" error={fieldErrors.organization_id} required>
+          <Field
+            label="Organización"
+            htmlFor="org"
+            error={fieldErrors.organization_id}
+            required
+            help={
+              draft.organization_id === "__new__"
+                ? "Se creará inactiva — el admin del tenant la activa después."
+                : undefined
+            }
+          >
             <Select
               id="org"
               value={draft.organization_id}
               onChange={(e) => {
                 const v = e.target.value;
                 setField("organization_id", v);
+                if (v !== "__new__") setField("organization_name_new", "");
                 // ENH-041: al cambiar la org, reset BU dependiente.
                 setField("business_unit_id", "");
                 setField("business_unit", "");
@@ -441,7 +462,16 @@ export function RequestForm() {
                   {o.name}
                 </option>
               ))}
+              <option value="__new__">Otra…</option>
             </Select>
+            {draft.organization_id === "__new__" ? (
+              <Input
+                className="mt-2"
+                placeholder="Nombre de la nueva organización"
+                value={draft.organization_name_new}
+                onChange={(e) => setField("organization_name_new", e.target.value)}
+              />
+            ) : null}
           </Field>
           <Field
             label="Unidad de negocio"
@@ -958,8 +988,18 @@ function validateAll(d: Draft): { ok: boolean; errors: Record<string, string> } 
   for (const k of required) {
     const v = d[k];
     if (typeof v !== "string" || v.trim().length < 3) {
-      if (k === "organization_id") e[k] = "Selecciona una organización";
-      else e[k] = "Obligatorio (mínimo 3 caracteres)";
+      if (k === "organization_id") {
+        // US-085: si eligió "Otra…", la validación debe pasar al
+        // campo organization_name_new.
+        if (v !== "__new__") e[k] = "Selecciona una organización";
+      } else {
+        e[k] = "Obligatorio (mínimo 3 caracteres)";
+      }
+    }
+  }
+  if (d.organization_id === "__new__") {
+    if (!d.organization_name_new.trim() || d.organization_name_new.trim().length < 3) {
+      e.organization_name_new = "Captura el nombre (mínimo 3 caracteres)";
     }
   }
   // ENH-040: presupuesto opcional. Sólo validar formato si el usuario

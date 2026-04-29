@@ -46,7 +46,10 @@ export type ProjectRequestCreateBody = {
   title: string;
   description: string;
   objective: string;
-  organization_id: string;
+  // US-085: si null + organization_name_new presente, backend crea la
+  // org como inactiva.
+  organization_id: string | null;
+  organization_name_new?: string | null;
   business_unit: string;
   department: string;
   business_unit_id?: string | null;

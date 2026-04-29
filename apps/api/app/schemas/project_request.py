@@ -17,7 +17,11 @@ class ProjectRequestCreate(BaseModel):
     title: str = Field(min_length=3, max_length=200)
     description: str = Field(min_length=3)
     objective: str = Field(min_length=3)
-    organization_id: UUID
+    # US-085: si el solicitante elige "Otra…", manda
+    # `organization_id=None` + `organization_name_new` con el nombre de
+    # la nueva organización (se creará con is_active=false).
+    organization_id: UUID | None = None
+    organization_name_new: str | None = Field(default=None, max_length=200)
     business_unit: str = Field(min_length=1, max_length=200)
     department: str = Field(min_length=1, max_length=200)
     # FKs reales (US-011): opcionales hasta migrar datos legacy

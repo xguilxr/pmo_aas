@@ -38,6 +38,9 @@ PLATFORM_AI_ALERT = "platform_ai_alert"
 # US-063: flujo de recuperación/cambio de contraseña.
 PASSWORD_RESET_REQUESTED = "password_reset_requested"
 PASSWORD_CHANGED = "password_changed"
+# US-085: nueva organización capturada vía solicitud, queda inactiva
+# hasta que el admin del tenant la termine de configurar.
+ORGANIZATION_PENDING_SETUP = "organization_pending_setup"
 
 # Qué tipos mandan email por default cuando el user no tiene override.
 # Post-MVP puede moverse a config-per-tenant.
@@ -50,6 +53,7 @@ EMAIL_BY_DEFAULT = {
     PLATFORM_AI_ALERT,
     PASSWORD_RESET_REQUESTED,
     PASSWORD_CHANGED,
+    ORGANIZATION_PENDING_SETUP,
 }
 
 # Ventana de deduplicación in-app antes de mandar email (US-028).

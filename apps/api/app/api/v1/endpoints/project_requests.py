@@ -37,16 +37,46 @@ async def create_request(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    org = (
-        await db.execute(
-            select(Organization).where(
-                Organization.id == str(body.organization_id),
-                Organization.tenant_id == tenant_id,
+    # US-085: si el solicitante eligió "Otra…", crear org inactiva.
+    new_org_created = False
+    if body.organization_id is None:
+        if not (body.organization_name_new and body.organization_name_new.strip()):
+            raise business_rule(
+                "Selecciona una organización o captura una nueva (Otra…)"
             )
+        new_name = body.organization_name_new.strip()
+        # 409 si ya existe una org con ese nombre (case-sensitive,
+        # cubre el unique constraint a nivel DB también).
+        existing = (
+            await db.execute(
+                select(Organization).where(
+                    Organization.tenant_id == tenant_id,
+                    Organization.name == new_name,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            raise conflict(
+                f"Ya existe una organización con el nombre '{new_name}'",
+                code="ORG_NAME_DUPLICATE",
+            )
+        org = Organization(
+            tenant_id=tenant_id, name=new_name, is_active=False
         )
-    ).scalar_one_or_none()
-    if org is None:
-        raise business_rule("La organización no existe en tu tenant")
+        db.add(org)
+        await db.flush()
+        new_org_created = True
+    else:
+        org = (
+            await db.execute(
+                select(Organization).where(
+                    Organization.id == str(body.organization_id),
+                    Organization.tenant_id == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if org is None:
+            raise business_rule("La organización no existe en tu tenant")
 
     # Validar FKs BU/Depto si vienen (US-011).
     if body.business_unit_id is not None:
@@ -91,7 +121,7 @@ async def create_request(
         title=body.title,
         description=body.description,
         objective=body.objective,
-        organization_id=str(body.organization_id),
+        organization_id=str(org.id),
         business_unit=body.business_unit,
         department=body.department,
         business_unit_id=(
@@ -124,6 +154,38 @@ async def create_request(
         user_id=cu.id, tenant_id=tenant_id, entity_type="project_request",
         entity_id=str(pr.id), details={"folio": folio},
     )
+    # US-085: notificar al admin del tenant si la org se creó como
+    # inactiva por "Otra…" (la activación es manual).
+    if new_org_created:
+        from app.models.user import User as _User  # local import: ciclo
+        from app.services.notifications import (
+            ORGANIZATION_PENDING_SETUP,
+            enqueue_notification,
+        )
+        admins = (
+            await db.execute(
+                select(_User).where(
+                    _User.tenant_id == str(tenant_id),
+                    _User.role_type == "admin",
+                )
+            )
+        ).scalars().all()
+        for adm in admins:
+            await enqueue_notification(
+                db,
+                tenant_id=tenant_id,
+                user_id=adm.id,
+                type=ORGANIZATION_PENDING_SETUP,
+                title=f"Configura la nueva organización: {org.name}",
+                body=(
+                    "Una nueva solicitud capturó esta organización. "
+                    "Está inactiva — actívala desde su pantalla de configuración."
+                ),
+                entity_type="organization",
+                entity_id=str(org.id),
+                link=f"/admin/organizations/{org.id}",
+                meta={"created_via": "project_request", "request_id": str(pr.id)},
+            )
     await db.commit()
     return ProjectRequestRead.model_validate(pr)
 
