@@ -6,6 +6,38 @@
   {{ project.folio }} · {{ project.name }} · Corte {{ cut_off_date }}
 </p>
 
+{# US-087: bloque "Indicadores del período" — fechas + KPIs numéricos.
+   Campos sin valor (None) se ocultan. Si NINGÚN KPI tiene valor, sólo
+   se renderiza la línea del período. #}
+<h2>Indicadores del período</h2>
+<p class="meta">
+  Período: {{ kpis.period_start }} – {{ kpis.period_end }}
+</p>
+{% if kpis_visible %}
+<table>
+  <thead>
+    <tr>
+      {% if kpis.progress_pct_real is not none %}<th class="right">% completado</th>{% endif %}
+      {% if kpis.progress_pct_planned is not none %}<th class="right">% planeado</th>{% endif %}
+      {% if kpis.cost_planned is not none %}<th class="right">Costo plan</th>{% endif %}
+      {% if kpis.cost_real is not none %}<th class="right">Costo real</th>{% endif %}
+      {% if kpis.hours_planned is not none %}<th class="right">Horas plan</th>{% endif %}
+      {% if kpis.hours_real is not none %}<th class="right">Horas reales</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      {% if kpis.progress_pct_real is not none %}<td class="nums right">{{ kpis.progress_pct_real }}%</td>{% endif %}
+      {% if kpis.progress_pct_planned is not none %}<td class="nums right">{{ kpis.progress_pct_planned }}%</td>{% endif %}
+      {% if kpis.cost_planned is not none %}<td class="nums right">${{ "{:,.2f}".format(kpis.cost_planned) }}</td>{% endif %}
+      {% if kpis.cost_real is not none %}<td class="nums right">${{ "{:,.2f}".format(kpis.cost_real) }}</td>{% endif %}
+      {% if kpis.hours_planned is not none %}<td class="nums right">{{ kpis.hours_planned }}</td>{% endif %}
+      {% if kpis.hours_real is not none %}<td class="nums right">{{ kpis.hours_real }}</td>{% endif %}
+    </tr>
+  </tbody>
+</table>
+{% endif %}
+
 <h2>Información general</h2>
 <dl class="kv small">
   <dt>Proyecto</dt><dd>{{ project.name }}</dd>

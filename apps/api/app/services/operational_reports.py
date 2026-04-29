@@ -19,6 +19,11 @@ from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.task import Task
 from app.models.user import User
+from app.services.report_kpis import (
+    compute_kpis,
+    default_period_start,
+    kpis_have_any_value,
+)
 
 
 async def _get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
@@ -162,10 +167,23 @@ async def build_avance_context(
         )
     ).scalars().all()
 
+    # US-087: KPIs estructurados del período. Campos sin datos quedan
+    # en None y la plantilla los oculta.
+    kpis_period_start = default_period_start(cut_off_date)
+    kpis = await compute_kpis(
+        db,
+        tenant_id=tenant_id,
+        project_id=project_id,
+        period_start=kpis_period_start,
+        period_end=cut_off_date,
+    )
+
     return {
         "title": f"Reporte de Avance — {project.folio}",
         "cut_off_date": cut_off_date.isoformat(),
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
+        "kpis": kpis,
+        "kpis_visible": kpis_have_any_value(kpis),
         "project": {
             "id": str(project.id),
             "folio": project.folio,
