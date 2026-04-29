@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, FileText, Plus, Trash2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
@@ -110,6 +110,7 @@ export function RequestForm() {
   const [autosavedAt, setAutosavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showSummary, setShowSummary] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -147,8 +148,6 @@ export function RequestForm() {
     return () => clearInterval(t);
   }, [draft, hydrated]);
 
-  const canSubmit = useMemo(() => validateAll(draft).ok, [draft]);
-
   function setField<K extends keyof Draft>(k: K, v: Draft[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
     setFieldErrors((e) => {
@@ -159,15 +158,52 @@ export function RequestForm() {
     });
   }
 
+  function focusFirstError(errors: Record<string, string>) {
+    if (typeof window === "undefined") return;
+    const order = [
+      "title",
+      "sponsor",
+      "sponsor_email",
+      "organization_id",
+      "business_unit",
+      "department",
+      "budget",
+      "description",
+      "objective",
+      "scope",
+      "benefits",
+    ];
+    const idMap: Record<string, string> = {
+      organization_id: "org",
+      business_unit: "bu",
+      department: "dept",
+      description: "desc",
+      objective: "obj",
+    };
+    const key = order.find((k) => errors[k]);
+    if (!key) return;
+    const id = idMap[key] ?? key;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        (el as HTMLInputElement).focus({ preventScroll: true });
+      }
+    });
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const result = validateAll(draft);
     if (!result.ok) {
       setFieldErrors(result.errors);
+      setShowSummary(true);
       const firstStep = firstStepWithError(result.errors);
       if (firstStep) setStep(firstStep);
+      focusFirstError(result.errors);
       return;
     }
+    setShowSummary(false);
     setSaving(true);
     setError(null);
     try {
@@ -247,6 +283,18 @@ export function RequestForm() {
       </ol>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
+      {showSummary && Object.keys(fieldErrors).length > 0 ? (
+        <Banner variant="danger">
+          <div>
+            <p className="font-medium">Faltan campos obligatorios:</p>
+            <ul className="mt-1 list-disc pl-5 text-sm">
+              {fieldsSummary(fieldErrors).map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        </Banner>
+      ) : null}
       {autosavedAt ? (
         <p className="text-xs text-[var(--color-tertiary)]">
           Guardado automático · {autosavedAt.toLocaleTimeString("es-MX")}
@@ -500,7 +548,7 @@ export function RequestForm() {
               Siguiente
             </Button>
           ) : (
-            <Button type="submit" loading={saving} disabled={!canSubmit}>
+            <Button type="submit" loading={saving}>
               Enviar solicitud
             </Button>
           )}
@@ -521,6 +569,7 @@ type FieldProps = {
 };
 
 function Field({ label, htmlFor, error, children, required, full, help }: FieldProps) {
+  const errorId = error ? `${htmlFor}-error` : undefined;
   return (
     <div className={cn(full ? "sm:col-span-2" : undefined)}>
       <label
@@ -529,14 +578,43 @@ function Field({ label, htmlFor, error, children, required, full, help }: FieldP
       >
         {label} {required ? <span className="text-[var(--color-danger-fg)]">*</span> : null}
       </label>
-      {children}
+      <div
+        className={cn(
+          error
+            ? "rounded-[var(--radius-md)] ring-2 ring-[var(--color-danger-fg)]/40"
+            : undefined,
+        )}
+        aria-describedby={errorId}
+      >
+        {children}
+      </div>
       {error ? (
-        <p className="mt-1 text-xs text-[var(--color-danger-fg)]">{error}</p>
+        <p id={errorId} className="mt-1 text-xs text-[var(--color-danger-fg)]" role="alert">
+          {error}
+        </p>
       ) : help ? (
         <p className="mt-1 text-xs text-[var(--color-tertiary)]">{help}</p>
       ) : null}
     </div>
   );
+}
+
+function fieldsSummary(errors: Record<string, string>): string[] {
+  const labels: Record<string, string> = {
+    title: "Título",
+    description: "Descripción",
+    objective: "Objetivo",
+    organization_id: "Organización",
+    business_unit: "Unidad de negocio",
+    department: "Departamento",
+    sponsor: "Sponsor",
+    sponsor_email: "Email del sponsor",
+    benefits: "Beneficios esperados",
+    budget: "Presupuesto",
+    scope: "Alcance",
+    requester_email: "Email del solicitante",
+  };
+  return Object.keys(errors).map((k) => labels[k] ?? k);
 }
 
 function AttachmentsEditor({
