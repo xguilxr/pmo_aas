@@ -524,6 +524,52 @@ PC Windows (tailscaled service)          Railway worker (sidecar tailscaled)
 
 ---
 
+## ADR-016 — Programas cross-empresa: diferir hasta criterio de demanda
+
+**Estado:** ✅ Aceptada — 2026-04-29
+**Fecha:** 2026-04-29
+
+**Contexto:**
+Feedback DRC (Sprint 8 v1.7, item 16) pidió poder agrupar proyectos
+de varias empresas dentro de un mismo programa "Corporativo". Hoy el
+modelo `programs` tiene FK 1:1 a `organizations`, lo que limita un
+programa a vivir en una sola org. Ampliar a N:M requiere:
+- Tabla nueva `program_organizations` (m2m).
+- Redesign de listados que filtran por `organization_id`.
+- Reportes y dashboards que asuman 1:1 hoy.
+- Permisos: ¿quién puede leer un programa que cruza orgs?
+
+ETA estimado: 3-4 días + tests.
+
+**Decisión:**
+**Diferir** la migración estructural. Entregar un workaround
+documentado (`docs/runbooks/programs/cross-org-programs-workaround.md`)
+para los pocos casos actuales, y revisitar cuando se cumpla cualquiera
+de los siguientes triggers:
+1. **≥3 grupos de clientes** lo solicitan formalmente.
+2. El cliente más grande (>50 proyectos) lo necesita estructuralmente.
+3. La tasa de "programas con un solo proyecto cuyo PM es de otra
+   empresa" supera el 20% del total (proxy de uso forzado del
+   workaround).
+
+**Consecuencias:**
+- ✅ Sprint 8 entrega el feature visible (workaround) sin
+  arriesgar la estabilidad de listados/reportes.
+- ✅ Decisión auditada; futuros tickets de "programas cross-empresa"
+  apuntan a este ADR para evaluar trigger.
+- ❌ Clientes con la necesidad genuina cargan con etiquetas/tags como
+  workaround; reportes cross-org requieren filtros manuales.
+
+**Alternativas evaluadas:**
+- **Implementar ahora** (m2m + redesign): rechazada por costo vs.
+  demanda actual (1 cliente, 1 caso real).
+- **Eliminar la FK org en programs** (programa "free")**: rechazada
+  porque rompe la jerarquía conceptual del modelo PMO.
+
+**Triggers de revisión:** ver "Decisión" arriba (3 criterios).
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown
