@@ -76,8 +76,8 @@ Pendiente owner:
   - BUG-038 #181: cuando reproduzca el bug, comentar con ID/screenshot
     para mover a un Bloque del Sprint 8 (o Sprint 9).
 
-Próximo libre tras Sprint 8 triage + hotfix BUG-039:
-  - US-088, BUG-040, ENH-044
+Próximo libre tras Sprint 8 triage + hotfix BUG-039 + ENH-044 (CI gate):
+  - US-088, BUG-040, ENH-045
 ```
 
 ```
@@ -183,11 +183,12 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 
 ## ⏳ QUEUE
 
-**Sprint 8 (v1.7) — Feedback DRC Consultores + 1 hotfix prod. 12 items en 6 bloques + 1 INBOX.**
+**Sprint 8 (v1.7) — Feedback DRC Consultores + 1 hotfix prod + 1 CI gate. 13 items en 7 bloques + 1 INBOX.**
 
 > Triage completo 2026-04-28. Esperando `status:ready` del owner por
 > issue. Orden recomendado: Bloque 0 hotfix (ya ejecutado) → Bloque 1
-> (chicos primero, quick wins) → Bloque 2 → Bloque 3 → Bloque 4 → Bloque 5.
+> (chicos primero, quick wins) → Bloque 2 → Bloque 3 → Bloque 4 →
+> Bloque 5 → Bloque 6 (CI improvement; puede ejecutarse en paralelo).
 
 ### Bloque 0 — Hotfix prod api deploy (1 item) ✅
 - [x] BUG-039 — Boolean default Postgres-compatible en permission_change_requests — #184 ✅ 62c4f96
@@ -213,10 +214,14 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 ### Bloque 5 — Workaround docs (1 item, 1-2h)
 - [ ] ENH-043 — Programas cross-empresa: workaround + ADR diferimiento — #180
 
+### Bloque 6 — CI improvement track (1 item ahora + 1 diferido)
+> Detonado por BUG-039 (#184): SQLite-pasa-Postgres-falla quedó suelto y crasheó prod. Bundle de mejoras al CI.
+- [ ] ENH-044 — CI gate: `alembic upgrade head` contra Postgres efímero — #185 (sprint 8, ETA ≤2h, cazaría BUG-039-likes inmediatamente).
+- [ ] ENH-035 — Análisis profundo optimización tests pesados — #158 (post-MVP / v2.0, sister issue; hipótesis #5 podría absorber ENH-044 si la suite migra a Postgres).
+
 ### Follow-ups identificados (Sprint 9+)
 - BUG-038 — Solicitud "Pendiente"+"Aprobada" simultáneo — INBOX #181 (esperando repro).
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030+) tras validación de Sprint 6 en producción.
-- ENH-035 — Análisis profundo optimización CI tests pesados (post-MVP / v2.0) — #158.
 - ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
 - Cross-empresa nativo (post-ENH-043): si ≥3 grupos lo solicitan, abrir US con `program_organizations` + redesign listados.
 
