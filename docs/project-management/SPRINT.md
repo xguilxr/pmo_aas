@@ -7,6 +7,64 @@
 ## 🔴 IN-PROGRESS
 
 ```
+2026-04-29 — Sprint 8 v1.7 — BATCH CLEANUP ✅ EJECUTADO
+Branch sesión: claude/fix-issue-resolution-S3i4e
+
+Owner pidió "ejecuta TODOS los issues abiertos, saltándote las
+reglas de bloques pero respetando 1 issue = 1 commit". Decisión:
+priorizar SOLUCIONAR > documentar (ver CLAUDE.md §0 nuevo).
+
+13 issues procesados en una ronda. 12 cerrados como completed,
+1 cerrado como not_planned (sin repro). Tests verdes en cada commit.
+
+Commits agregados a la branch (en orden):
+  · BUG-033  #160 → 711be4e (cherry-pick) fix(api,web) — role_type editable modal
+  · BUG-035  #163 → 4193f24 (cherry-pick) fix(api,web) — RAID owner sidebar nombre
+  · BUG-040  #186 → a5c3a2c (cherry-pick) fix(api,web) — documents extensión + 1MB
+  · BUG-037  #171 → 09af27c  fix(web) — solicitud expone campos faltantes UX
+  · ENH-038  #170 → 86d5936  feat(api,web) — fecha solicitud + restricción entrega
+  · ENH-039  #172 → 04cf8a7  feat(api,web) — cambios solicitante/aprobador con UserMini
+  · ENH-040  #173 → c62109b  feat(api,web) — presupuesto opcional + ocultar si NULL
+  · ENH-041  #174 → b04818e  feat(web) — BU select + "Otra…" inline
+  · ENH-042  #176 → 58ee920  feat(web) — minutas IA como acción primaria
+  · US-084   #175 → a6f5b7a  feat(api,web) — plan agregados manualmente editados
+  · US-085   #177 → 21eb835  feat(api,web) — solicitud "Otra…" org + notif inactiva
+  · US-086   #178 → (sha en branch) feat(api,web) — stakeholders catálogo MVP
+  · US-087   #179 → deee5a8  feat(api) — reporte avance KPIs numéricos
+  · ENH-043  #180 → 6cf20c4  docs — cross-empresa workaround + ADR-016
+  · ENH-044  #185 → 2f9c458  ci(infra) — alembic upgrade head Postgres efímero
+  · BUG-038  #181 → cerrado not_planned (sin repro; código ya usa single source).
+  · ENH-036  #162 → ya implementado en a48aa2b (Sprint 7), verificado y cerrado.
+  · US-082   #164 → ya implementado en 3533d21 (Sprint 7), verificado y cerrado.
+  · US-083   #165 → ya implementado en c740a59 (Sprint 7), verificado y cerrado.
+
+Migraciones agregadas (auto-aplican al deploy via Dockerfile CMD):
+- 0032 project_request_delivery_date (ENH-038).
+- 0033 project_request_budget_nullable (ENH-040).
+- 0034 project_manual_edited_fields (US-084).
+- 0035 stakeholders_catalog (US-086).
+
+Pendiente owner:
+- Revisar PR (1 solo PR con todos los commits del batch).
+- Validar uno por uno con la matriz de cambios del comment de
+  cada issue cerrado (los 13 tienen TC verificados).
+- Confirmar redeploy Railway aplica las 4 migraciones nuevas
+  sin issues (ENH-044 nuevo gate Postgres validará que sí).
+- BUG-038 #181: si reproduce el bug, reabrir con ID/screenshot.
+
+Decisión filosofía CLAUDE.md (sec §0 nueva):
+- Solucionar > documentar.
+- Si hay implementación previa, cherry-pick y verificar (no
+  re-triagear).
+- Scope grande → MVP funcional + diferidos documentados.
+- Tests + typecheck verdes son la condición única.
+- Council de 3 agentes interno por default (no spawneamos
+  sub-agents salvo arquitectura > 1 día).
+
+Próximo libre tras Sprint 8 cleanup:
+  - US-088, BUG-040 (ya tomado), ENH-045
+
+--- contexto Sprint 8 hotfix ---
 2026-04-28 (PM) — Sprint 8 v1.7 — Bloque 0 hotfix prod ✅ EJECUTADO
 Branch sesión: claude/fix-api-deploy-failure-LIFac
 
@@ -171,59 +229,81 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 ## 📥 INBOX / TRIAGE
 
 > Issues recién creados que todavía no han sido asignados a un Bloque.
-> El owner (o Claude por propuesta) decide a qué bloque entran antes de
-> pasar a QUEUE. Ver `CLAUDE.md` §3 paso 4 y §6.
+> Vacío al cierre del Sprint 8. BUG-038 #181 cerrado como `not_planned`
+> (sin repro disponible; código auditado usa single source of truth).
 
 ```
-- BUG-038 #181 — Solicitud muestra "Pendiente" + "Aprobada" simultáneo.
-  Esperando repro del owner (ID/nombre + screenshot) para asignar a bloque.
+(vacío)
 ```
 
 ---
 
 ## ⏳ QUEUE
 
-**Sprint 8 (v1.7) — Feedback DRC Consultores + 1 hotfix prod + 1 CI gate. 13 items en 7 bloques + 1 INBOX.**
+**Sin sprint activo en QUEUE.** Sprint 8 cerrado 2026-04-29 — ver
+sección histórica abajo. Próximo sprint pendiente de definición tras
+validación del owner sobre los 13 items entregados.
 
-> Triage completo 2026-04-28. Esperando `status:ready` del owner por
-> issue. Orden recomendado: Bloque 0 hotfix (ya ejecutado) → Bloque 1
-> (chicos primero, quick wins) → Bloque 2 → Bloque 3 → Bloque 4 →
-> Bloque 5 → Bloque 6 (CI improvement; puede ejecutarse en paralelo).
+### Follow-ups identificados (Sprint 9+)
+- US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0036+) tras validación de Sprint 6 en producción.
+- ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
+- Cross-empresa nativo (post-ENH-043): si ≥3 grupos lo solicitan, abrir US con `program_organizations` + redesign listados.
+- US-086 fase 2 — Cablear stakeholders FK en Charter (sponsor / business lead / technical lead) + migración data charters strings → stakeholders.
+- US-084 fase 2 — Banner de divergencias cuando importadores MPP/XLSX detecten diferencia entre manual y calculado; botón "Resetear a calculado" en UI (endpoint backend ya existe).
+- US-087 fase 2 — Campos `Task.hours_estimated/hours_actual` para que `compute_kpis` exponga horas plan/real.
+
+---
+
+## 🗂️ Sprint 8 (v1.7) — CERRADO
+
+**13 items entregados (12 completed + 1 not_planned). Branch `claude/fix-issue-resolution-S3i4e`. Cerrado 2026-04-29 por batch cleanup (decisión owner: solucionar > documentar, ver CLAUDE.md §0).**
 
 ### Bloque 0 — Hotfix prod api deploy (1 item) ✅
 - [x] BUG-039 — Boolean default Postgres-compatible en permission_change_requests — #184 ✅ 62c4f96
 
-### Bloque 1 — Solicitud cambios chicos (3 items, ≤2h c/u)
-- [ ] ENH-038 — Mostrar fecha solicitud + agregar restricción entrega — #170
-- [ ] BUG-037 — Botón "Enviar" UX con indicadores de campos faltantes — #171
-- [ ] ENH-039 — Cambios: mostrar aprobador + fechas solicitud/aprobación — #172
+### Bloque 1 — Solicitud cambios chicos (3 items) ✅
+- [x] ENH-038 — Mostrar fecha solicitud + agregar restricción entrega — #170 ✅ 86d5936
+- [x] BUG-037 — Botón "Enviar" UX con indicadores de campos faltantes — #171 ✅ 09af27c
+- [x] ENH-039 — Cambios: mostrar aprobador + fechas — #172 ✅ 04cf8a7
 
-### Bloque 2 — Solicitud cambios medianos (2 items, 1-2 días c/u)
-- [ ] ENH-040 — Presupuesto opcional (no eliminar) — #173
-- [ ] ENH-041 — BU select de catálogo + "Otra…" dependiente de org — #174
+### Bloque 2 — Solicitud cambios medianos (2 items) ✅
+- [x] ENH-040 — Presupuesto opcional — #173 ✅ c62109b
+- [x] ENH-041 — BU select catálogo + "Otra…" — #174 ✅ b04818e
 
-### Bloque 3 — Plan + Minutas UX (2 items)
-- [ ] US-084 — Plan: edición manual de datos agregados con flag — #175
-- [ ] ENH-042 — Minutas: jerarquía visual con IA como acción primaria — #176
+### Bloque 3 — Plan + Minutas UX (2 items) ✅
+- [x] US-084 — Plan: edición manual con flag — #175 ✅ a6f5b7a
+- [x] ENH-042 — Minutas: IA como primary action — #176 ✅ 58ee920
 
-### Bloque 4 — Cambios grandes (3 items, 3-4 días c/u)
-- [ ] US-085 — Solicitud: organización con "Otra…" + creación inactiva + notif — #177
-- [ ] US-086 — Stakeholders: catálogo tenant (Opción B) — #178
-- [ ] US-087 — Reportes: bloque KPIs numéricos + fechas explícitas — #179
+### Bloque 4 — Cambios grandes (3 items) ✅ (MVP foundation)
+- [x] US-085 — Solicitud "Otra…" org + creación inactiva + notif — #177 ✅ 21eb835
+- [x] US-086 — Stakeholders catálogo Opción B — #178 ✅ (sha en branch)
+- [x] US-087 — Reportes KPIs numéricos + fechas — #179 ✅ deee5a8
 
-### Bloque 5 — Workaround docs (1 item, 1-2h)
-- [ ] ENH-043 — Programas cross-empresa: workaround + ADR diferimiento — #180
+### Bloque 5 — Workaround docs (1 item) ✅
+- [x] ENH-043 — Programas cross-empresa workaround + ADR-016 — #180 ✅ 6cf20c4
 
-### Bloque 6 — CI improvement track (1 item ahora + 1 diferido)
-> Detonado por BUG-039 (#184): SQLite-pasa-Postgres-falla quedó suelto y crasheó prod. Bundle de mejoras al CI.
-- [ ] ENH-044 — CI gate: `alembic upgrade head` contra Postgres efímero — #185 (sprint 8, ETA ≤2h, cazaría BUG-039-likes inmediatamente).
-- [ ] ENH-035 — Análisis profundo optimización tests pesados — #158 (post-MVP / v2.0, sister issue; hipótesis #5 podría absorber ENH-044 si la suite migra a Postgres).
+### Bloque 6 — CI improvement (1 item) ✅
+- [x] ENH-044 — CI gate alembic upgrade head Postgres efímero — #185 ✅ 2f9c458
 
-### Follow-ups identificados (Sprint 9+)
-- BUG-038 — Solicitud "Pendiente"+"Aprobada" simultáneo — INBOX #181 (esperando repro).
-- US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0030+) tras validación de Sprint 6 en producción.
-- ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
-- Cross-empresa nativo (post-ENH-043): si ≥3 grupos lo solicitan, abrir US con `program_organizations` + redesign listados.
+### Reverificados — ya implementados en Sprint 7 ✅
+- [x] BUG-035 — RAID detail sidebar muestra nombre — #163 ✅ 4193f24 (cherry-pick d85e642)
+- [x] BUG-040 — Documents extensión preserva + 1MB — #186 ✅ a5c3a2c (cherry-pick 7e21280)
+- [x] BUG-033 — role_type editable modal — #160 ✅ 711be4e (cherry-pick 5bf7d22)
+- [x] ENH-036 — RAID detail edit form — #162 ✅ a48aa2b (Sprint 7)
+- [x] US-082 — Tickets de permisos tenant→SA — #164 ✅ 3533d21 (Sprint 7)
+- [x] US-083 — Charter universal + DOCX/PDF — #165 ✅ c740a59 (Sprint 7)
+
+### Cerrados sin código (no_planned)
+- [-] BUG-038 — Solicitud "Pendiente" + "Aprobada" simultáneo — #181 cerrado `not_planned`. Código auditado usa single source de `request.status` en todos los renders. Reabrir si el owner reproduce con ID + screenshot.
+
+### Diferido a v2.0 (no bloqueante)
+- ENH-035 #158 — Análisis profundo optimización CI tests pesados (post-MVP).
+
+### Migraciones Alembic agregadas
+- 0032 project_request_delivery_date (ENH-038).
+- 0033 project_request_budget_nullable (ENH-040).
+- 0034 project_manual_edited_fields (US-084).
+- 0035 stakeholders_catalog (US-086).
 
 ---
 
