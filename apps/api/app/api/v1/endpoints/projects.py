@@ -273,8 +273,8 @@ async def update_project(
     # US-084: campos agregados editados a mano. Marcamos en
     # manually_edited_fields para que importadores los respeten y la
     # UI muestre badge de "editado manualmente".
-    PLAN_AGGREGATE_FIELDS = {"start_date", "end_date", "budget", "progress"}
-    touched = PLAN_AGGREGATE_FIELDS.intersection(data.keys())
+    plan_aggregate_fields = {"start_date", "end_date", "budget", "progress"}
+    touched = plan_aggregate_fields.intersection(data.keys())
     if touched:
         edited = dict(p.manually_edited_fields or {})
         now_iso = datetime.now(UTC).isoformat()
