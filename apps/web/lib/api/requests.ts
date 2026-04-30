@@ -23,7 +23,7 @@ export type ProjectRequest = {
   sponsor: string;
   sponsor_email: string | null;
   benefits: string;
-  budget: string;
+  budget: string | null;
   scope: string;
   entregables: string | null;
   key_people: string | null;
@@ -31,6 +31,7 @@ export type ProjectRequest = {
   observations: string | null;
   requester_name: string | null;
   requester_email: string | null;
+  delivery_constraint_date: string | null;
   status: RequestStatus;
   requested_by: string;
   requested_at: string;
@@ -45,7 +46,10 @@ export type ProjectRequestCreateBody = {
   title: string;
   description: string;
   objective: string;
-  organization_id: string;
+  // US-085: si null + organization_name_new presente, backend crea la
+  // org como inactiva.
+  organization_id: string | null;
+  organization_name_new?: string | null;
   business_unit: string;
   department: string;
   business_unit_id?: string | null;
@@ -53,7 +57,7 @@ export type ProjectRequestCreateBody = {
   sponsor: string;
   sponsor_email: string;
   benefits: string;
-  budget: number | string;
+  budget?: number | string | null;
   scope: string;
   entregables?: string | null;
   key_people?: string | null;
@@ -61,6 +65,7 @@ export type ProjectRequestCreateBody = {
   observations?: string | null;
   requester_name?: string | null;
   requester_email?: string | null;
+  delivery_constraint_date?: string | null;
   attachments?: RequestAttachment[];
 };
 

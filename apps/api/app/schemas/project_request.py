@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -17,7 +17,11 @@ class ProjectRequestCreate(BaseModel):
     title: str = Field(min_length=3, max_length=200)
     description: str = Field(min_length=3)
     objective: str = Field(min_length=3)
-    organization_id: UUID
+    # US-085: si el solicitante elige "Otra…", manda
+    # `organization_id=None` + `organization_name_new` con el nombre de
+    # la nueva organización (se creará con is_active=false).
+    organization_id: UUID | None = None
+    organization_name_new: str | None = Field(default=None, max_length=200)
     business_unit: str = Field(min_length=1, max_length=200)
     department: str = Field(min_length=1, max_length=200)
     # FKs reales (US-011): opcionales hasta migrar datos legacy
@@ -26,7 +30,8 @@ class ProjectRequestCreate(BaseModel):
     sponsor: str = Field(min_length=1, max_length=200)
     sponsor_email: EmailStr
     benefits: str = Field(min_length=3)
-    budget: Decimal = Field(ge=Decimal("0"))
+    # ENH-040: presupuesto opcional. Si se llena debe ser >= 0.
+    budget: Decimal | None = Field(default=None, ge=Decimal("0"))
     scope: str = Field(min_length=3)
     entregables: str | None = None
     key_people: str | None = None
@@ -34,6 +39,7 @@ class ProjectRequestCreate(BaseModel):
     observations: str | None = None
     requester_name: str | None = Field(default=None, max_length=200)
     requester_email: EmailStr | None = None
+    delivery_constraint_date: date | None = None
     attachments: list[Attachment] = []
 
 
@@ -56,6 +62,7 @@ class ProjectRequestUpdate(BaseModel):
     observations: str | None = None
     requester_name: str | None = None
     requester_email: EmailStr | None = None
+    delivery_constraint_date: date | None = None
 
 
 class ProjectRequestRead(BaseModel):
@@ -72,7 +79,7 @@ class ProjectRequestRead(BaseModel):
     sponsor: str
     sponsor_email: str | None = None
     benefits: str
-    budget: Decimal
+    budget: Decimal | None = None
     scope: str
     entregables: str | None = None
     key_people: str | None = None
@@ -80,6 +87,7 @@ class ProjectRequestRead(BaseModel):
     observations: str | None = None
     requester_name: str | None = None
     requester_email: str | None = None
+    delivery_constraint_date: date | None = None
     status: str
     requested_by: UUID
     requested_at: datetime

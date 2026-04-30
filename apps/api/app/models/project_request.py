@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, new_uuid
@@ -36,7 +36,7 @@ class ProjectRequest(Base, TimestampMixin):
     sponsor: Mapped[str] = mapped_column(String(200), nullable=False)
     sponsor_email: Mapped[str | None] = mapped_column(String(200))
     benefits: Mapped[str] = mapped_column(String(5000), nullable=False)
-    budget: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     scope: Mapped[str] = mapped_column(String(5000), nullable=False)
     entregables: Mapped[str | None] = mapped_column(String(5000))
     key_people: Mapped[str | None] = mapped_column(String(5000))
@@ -47,6 +47,8 @@ class ProjectRequest(Base, TimestampMixin):
 
     requested_by: Mapped[UUID] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # ENH-038: fecha de restricción de entrega (opcional, sólo fecha)
+    delivery_constraint_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
 
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="in_review")
     reviewed_by: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))

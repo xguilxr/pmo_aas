@@ -82,6 +82,15 @@ export default function DocumentsPage() {
 
   async function submit() {
     if (!form.file || !form.title.trim()) return;
+    // BUG-040: límite de 1 MB en cliente para feedback inmediato. El
+    // backend lo vuelve a validar.
+    const MAX_BYTES = 1 * 1024 * 1024;
+    if (form.file.size > MAX_BYTES) {
+      setError(
+        "El documento excede 1 MB. Reduce el tamaño o usa el campo de descripción para enlaces externos.",
+      );
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -206,7 +215,7 @@ export default function DocumentsPage() {
                 </span>
               ) : (
                 <span className="text-sm text-[var(--color-tertiary)]">
-                  PDF, XLSX, DOCX, PPTX, PNG, JPG o CSV · máx. 50 MB
+                  PDF, XLSX, DOCX, PPTX, PNG, JPG o CSV · máx. 1 MB
                 </span>
               )}
             </div>

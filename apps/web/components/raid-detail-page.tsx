@@ -191,8 +191,11 @@ export function RaidDetailPage({
           <SidebarField label="Área" value={item.area?.name ?? "—"} />
           <SidebarField
             label="Responsable"
-            value={item.owner_id ?? "—"}
-            mono
+            value={
+              item.owner?.full_name ||
+              item.owner?.email ||
+              (item.owner_id ? "Usuario eliminado" : "—")
+            }
           />
           <SidebarField
             label="F. Creación"

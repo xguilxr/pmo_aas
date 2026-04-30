@@ -53,6 +53,9 @@ async def test_us042_list_cross_tenant(client, db_session):
     assert "bob" in usernames
     # Super admin mismo también aparece
     assert "sa_root" in usernames
+    # BUG-033: la respuesta debe exponer role_type para alimentar la
+    # modal Editar de /superadmin/users.
+    assert all("role_type" in u for u in body["items"])
 
 
 @pytest.mark.asyncio

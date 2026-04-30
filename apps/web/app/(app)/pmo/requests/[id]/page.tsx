@@ -47,6 +47,16 @@ function formatDate(iso: string | null | undefined): string {
   }
 }
 
+function formatDateOnly(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  // Acepta "YYYY-MM-DD" o ISO completo. Forzamos parseo local para evitar shift de TZ.
+  const ymd = iso.length >= 10 ? iso.slice(0, 10) : iso;
+  const [y, m, d] = ymd.split("-").map((s) => Number(s));
+  if (!y || !m || !d) return iso;
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString("es-MX", { dateStyle: "long" });
+}
+
 function formatMxn(n: string | number): string {
   const v = typeof n === "string" ? Number(n) : n;
   if (!Number.isFinite(v)) return "—";
@@ -362,11 +372,19 @@ export default function RequestDetailPage() {
           <Row k="Organización" v={org?.name ?? "—"} />
           <Row k="Unidad de negocio" v={request.business_unit} />
           <Row k="Departamento" v={request.department} />
-          <Row k="Presupuesto" v={formatMxn(request.budget)} />
+          {request.budget !== null && request.budget !== undefined ? (
+            <Row k="Presupuesto" v={formatMxn(request.budget)} />
+          ) : null}
         </Card>
         <Card title="Seguimiento">
-          <Row k="Creada" v={formatDate(request.requested_at)} />
+          <Row k="Fecha de solicitud" v={formatDate(request.requested_at)} />
           <Row k="Revisada" v={formatDate(request.reviewed_at)} />
+          {request.delivery_constraint_date ? (
+            <Row
+              k="Fecha de restricción de entrega"
+              v={formatDateOnly(request.delivery_constraint_date)}
+            />
+          ) : null}
           <Row k="Estado" v={REQUEST_STATUS_LABEL[request.status]} />
           {request.project_id ? <Row k="Proyecto" v={request.project_id} /> : null}
         </Card>

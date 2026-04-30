@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
+    JSON,
     Date,
     DateTime,
     ForeignKey,
@@ -50,3 +51,6 @@ class Project(Base, TimestampMixin):
     health_status: Mapped[str] = mapped_column(String(16), nullable=False, default="green")
     request_id: Mapped[UUID | None] = mapped_column(String(36))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # US-084: dict por nombre de field con auditoría de edición manual.
+    # Forma: {field_name: {edited_at: ISO, edited_by: user_id}}.
+    manually_edited_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

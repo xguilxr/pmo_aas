@@ -24,6 +24,12 @@ export type Project = {
   progress: number;
   health_status: ProjectHealth;
   request_id: string | null;
+  // US-084: { field: { edited_at, edited_by } } por agregado del plan
+  // que el PM marcó como editado a mano (importadores deben respetar).
+  manually_edited_fields: Record<
+    string,
+    { edited_at: string; edited_by: string }
+  >;
 };
 
 export type ProjectMember = {
@@ -111,6 +117,20 @@ export function createProject(body: ProjectCreateBody): Promise<Project> {
 
 export function updateProject(id: string, body: ProjectUpdateBody): Promise<Project> {
   return apiFetch<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body });
+}
+
+/**
+ * US-084: quita el flag de "editado manualmente" del campo dado.
+ * Field ∈ start_date | end_date | budget | progress.
+ */
+export function resetPlanAggregateOverride(
+  id: string,
+  field: "start_date" | "end_date" | "budget" | "progress",
+): Promise<Project> {
+  return apiFetch<Project>(`/api/v1/projects/${id}/plan-aggregates/reset`, {
+    method: "POST",
+    body: { field },
+  });
 }
 
 export function deleteProject(id: string): Promise<void> {

@@ -30,6 +30,13 @@ export type AreaMini = {
   name: string;
 };
 
+/** BUG-035: owner mínimo embebido en RAID detail/list. */
+export type UserMini = {
+  id: string;
+  full_name: string | null;
+  email: string;
+};
+
 export type Risk = {
   id: string;
   folio: string;
@@ -42,6 +49,7 @@ export type Risk = {
   severity: number | null;
   mitigation_strategy: string | null;
   owner_id: string | null;
+  owner: UserMini | null;
   area_id: string | null;
   area: AreaMini | null;
   identified_at: string | null;
@@ -130,6 +138,7 @@ export type Issue = {
   resolution: string | null;
   status: IssueStatus;
   owner_id: string | null;
+  owner: UserMini | null;
   area_id: string | null;
   area: AreaMini | null;
   reported_at: string | null;
@@ -205,6 +214,9 @@ export type ChangeRequest = {
   requested_at: string;
   approved_by: string | null;
   approved_at: string | null;
+  // ENH-039: usuarios resueltos para mostrar nombres en vez de UUIDs.
+  requester: UserMini | null;
+  approver: UserMini | null;
 };
 
 export type ChangeRequestCreateBody = {

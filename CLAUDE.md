@@ -7,6 +7,47 @@
 
 ---
 
+## 0. Principio rector — solucionar > documentar
+
+> **Decisión owner 2026-04-29:** se prioriza por encima de todo lo demás.
+
+El proceso de issue tracking, triage, bloques y SPRINT.md existe para
+**ordenar** el trabajo, no para reemplazarlo. Si una sesión gasta más
+ronda en mover items entre INBOX/QUEUE/Bloques que en escribir código,
+algo está mal. Más enfoque en solucionar, menos en documentar issues.
+
+Reglas blandas (no son atajos para saltarse 1 US = 1 commit ni la
+revisión del owner, pero sí relajan el ceremonial):
+
+- **El gate `status:ready` se respeta**, pero una vez aprobado no
+  hay que volver a justificar el scope: implementar y demostrar que
+  funciona.
+- **Si un issue ya está implementado** en otro commit/branch →
+  cherry-pick + verificar + cerrar. No re-triagear ni re-asignar
+  bloque.
+- **Si el AC tiene scope grande** (>1 día), entregar el **MVP
+  funcional** + documentar el resto como "diferido (no bloqueante)"
+  en el comment de cierre. Mejor cerrar 80% que dejar abierto al 20%.
+- **Tests + typecheck verdes son la única condición** para considerar
+  un fix terminado. Si pasan, se commitea. Si no, se itera hasta que
+  pasen — sin batchear.
+- **El comment de cierre demuestra** que funciona (TC ejecutados +
+  verificación). No es opcional. Es la diferencia entre "fix
+  submitted" y "fix delivered".
+- **Council de 3 agentes (mini consejo):** se hace **internamente**
+  por default (3 perspectivas en el reasoning). Solo se delega a
+  sub-agents cuando la decisión arquitectónica lo amerita (>1 día de
+  ETA o blast radius alto).
+- **Saltarse las reglas de bloques** está permitido cuando el owner
+  pide ejecutar un batch de issues. La regla **1 issue = 1 commit**
+  no se salta.
+
+Si terminar una ronda implica saturar memoria/context con lectura de
+docs auxiliares, prefiere ejecutar y demostrar; el doc se actualiza
+al final del bloque, no en cada paso.
+
+---
+
 ## 1. Archivos de contexto obligatorios
 
 Antes de tocar código o crear issues, leer en este orden:
@@ -369,5 +410,5 @@ Excepciones permitidas:
 
 ---
 
-**Última actualización:** 2026-04-28
+**Última actualización:** 2026-04-29
 **Responsable:** Claude Code (owner: xguilxr)

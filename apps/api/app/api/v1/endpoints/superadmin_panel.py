@@ -372,6 +372,9 @@ async def list_all_users(
                 "full_name": u.full_name,
                 "is_active": u.is_active,
                 "is_superadmin": u.is_superadmin,
+                # BUG-033: incluir role_type para que la modal Editar de
+                # /superadmin/users pueda mostrar el dropdown de rol.
+                "role_type": u.role_type,
                 "tenant_id": str(u.tenant_id) if u.tenant_id else None,
                 "tenant_slug": tenants_map.get(str(u.tenant_id), (None, None))[0]
                     if u.tenant_id else None,

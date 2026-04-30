@@ -34,7 +34,8 @@ function formatDate(iso: string): string {
   }
 }
 
-function formatMxn(n: string | number): string {
+function formatMxn(n: string | number | null | undefined): string {
+  if (n === null || n === undefined || n === "") return "—";
   const v = typeof n === "string" ? Number(n) : n;
   if (!Number.isFinite(v)) return "—";
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(v);

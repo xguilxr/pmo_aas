@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, FileText, Plus, Trash2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
@@ -10,7 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
-import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import {
+  createBusinessUnit,
+  listBusinessUnits,
+  listOrganizations,
+  type BusinessUnit,
+  type Organization,
+} from "@/lib/api/organizations";
 import {
   createRequest,
   type ProjectRequest,
@@ -24,7 +30,9 @@ type Draft = {
   description: string;
   objective: string;
   organization_id: string;
+  organization_name_new: string;
   business_unit: string;
+  business_unit_id: string;
   department: string;
   sponsor: string;
   sponsor_email: string;
@@ -37,6 +45,7 @@ type Draft = {
   observations: string;
   requester_name: string;
   requester_email: string;
+  delivery_constraint_date: string;
   attachments: RequestAttachment[];
 };
 
@@ -45,7 +54,9 @@ const EMPTY: Draft = {
   description: "",
   objective: "",
   organization_id: "",
+  organization_name_new: "",
   business_unit: "",
+  business_unit_id: "",
   department: "",
   sponsor: "",
   sponsor_email: "",
@@ -58,6 +69,7 @@ const EMPTY: Draft = {
   observations: "",
   requester_name: "",
   requester_email: "",
+  delivery_constraint_date: "",
   attachments: [],
 };
 
@@ -106,10 +118,14 @@ export function RequestForm() {
   const [step, setStep] = useState<StepId>("basics");
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [buMode, setBuMode] = useState<"select" | "new">("select");
+  const [newBuName, setNewBuName] = useState("");
   const [saving, setSaving] = useState(false);
   const [autosavedAt, setAutosavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showSummary, setShowSummary] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -133,6 +149,28 @@ export function RequestForm() {
     };
   }, []);
 
+  // ENH-041: refetch BUs cuando cambia la organización seleccionada.
+  // US-085: si la org es "__new__" no hay org real; obligamos a que
+  // el usuario use "Otra…" para BU.
+  useEffect(() => {
+    if (!draft.organization_id || draft.organization_id === "__new__") {
+      setBusinessUnits([]);
+      if (draft.organization_id === "__new__") setBuMode("new");
+      return;
+    }
+    let cancelled = false;
+    listBusinessUnits(draft.organization_id, { is_active: true })
+      .then((rows) => {
+        if (!cancelled) setBusinessUnits(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setBusinessUnits([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.organization_id]);
+
   useEffect(() => {
     if (!hydrated) return;
     saveDraft(draft);
@@ -147,8 +185,6 @@ export function RequestForm() {
     return () => clearInterval(t);
   }, [draft, hydrated]);
 
-  const canSubmit = useMemo(() => validateAll(draft).ok, [draft]);
-
   function setField<K extends keyof Draft>(k: K, v: Draft[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
     setFieldErrors((e) => {
@@ -159,29 +195,98 @@ export function RequestForm() {
     });
   }
 
+  function focusFirstError(errors: Record<string, string>) {
+    if (typeof window === "undefined") return;
+    const order = [
+      "title",
+      "sponsor",
+      "sponsor_email",
+      "organization_id",
+      "business_unit",
+      "department",
+      "budget",
+      "description",
+      "objective",
+      "scope",
+      "benefits",
+    ];
+    const idMap: Record<string, string> = {
+      organization_id: "org",
+      business_unit: "bu",
+      department: "dept",
+      description: "desc",
+      objective: "obj",
+    };
+    const key = order.find((k) => errors[k]);
+    if (!key) return;
+    const id = idMap[key] ?? key;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        (el as HTMLInputElement).focus({ preventScroll: true });
+      }
+    });
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const result = validateAll(draft);
     if (!result.ok) {
       setFieldErrors(result.errors);
+      setShowSummary(true);
       const firstStep = firstStepWithError(result.errors);
       if (firstStep) setStep(firstStep);
+      focusFirstError(result.errors);
       return;
     }
+    setShowSummary(false);
     setSaving(true);
     setError(null);
     try {
+      // ENH-041: si el usuario eligió "Otra…" para BU sobre una org
+      // existente, crear la BU primero y obtener el FK antes de enviar.
+      // US-085: si la org es "__new__", la BU va como texto libre
+      // (sin FK) — se materializará luego cuando el admin active la
+      // org y configure sus BUs.
+      const isNewOrg = draft.organization_id === "__new__";
+      let buId = isNewOrg ? "" : draft.business_unit_id;
+      let buName = isNewOrg ? newBuName.trim() : draft.business_unit.trim();
+      if (buMode === "new" && !isNewOrg && newBuName.trim()) {
+        try {
+          const created = await createBusinessUnit(draft.organization_id, {
+            name: newBuName.trim(),
+            is_active: true,
+          });
+          buId = created.id;
+          buName = created.name;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) {
+            setError(
+              "Ya existe una Unidad de negocio con ese nombre en la organización seleccionada.",
+            );
+          } else {
+            setError(
+              err instanceof ApiError ? err.message : "No se pudo crear la nueva BU",
+            );
+          }
+          setSaving(false);
+          return;
+        }
+      }
       const body: ProjectRequestCreateBody = {
         title: draft.title.trim(),
         description: draft.description.trim(),
         objective: draft.objective.trim(),
-        organization_id: draft.organization_id,
-        business_unit: draft.business_unit.trim(),
+        organization_id: isNewOrg ? null : draft.organization_id,
+        organization_name_new: isNewOrg ? draft.organization_name_new.trim() : null,
+        business_unit: buName,
+        business_unit_id: buId || null,
         department: draft.department.trim(),
         sponsor: draft.sponsor.trim(),
         sponsor_email: draft.sponsor_email.trim(),
         benefits: draft.benefits.trim(),
-        budget: Number(draft.budget),
+        budget: draft.budget.trim() ? Number(draft.budget) : null,
         scope: draft.scope.trim(),
         entregables: draft.entregables.trim() || null,
         key_people: draft.key_people.trim() || null,
@@ -189,6 +294,7 @@ export function RequestForm() {
         observations: draft.observations.trim() || null,
         requester_name: draft.requester_name.trim() || null,
         requester_email: draft.requester_email.trim() || null,
+        delivery_constraint_date: draft.delivery_constraint_date.trim() || null,
         attachments: draft.attachments,
       };
       const created: ProjectRequest = await createRequest(body);
@@ -247,6 +353,18 @@ export function RequestForm() {
       </ol>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
+      {showSummary && Object.keys(fieldErrors).length > 0 ? (
+        <Banner variant="danger">
+          <div>
+            <p className="font-medium">Faltan campos obligatorios:</p>
+            <ul className="mt-1 list-disc pl-5 text-sm">
+              {fieldsSummary(fieldErrors).map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        </Banner>
+      ) : null}
       {autosavedAt ? (
         <p className="text-xs text-[var(--color-tertiary)]">
           Guardado automático · {autosavedAt.toLocaleTimeString("es-MX")}
@@ -311,11 +429,30 @@ export function RequestForm() {
               onChange={(e) => setField("requester_email", e.target.value)}
             />
           </Field>
-          <Field label="Organización" htmlFor="org" error={fieldErrors.organization_id} required>
+          <Field
+            label="Organización"
+            htmlFor="org"
+            error={fieldErrors.organization_id}
+            required
+            help={
+              draft.organization_id === "__new__"
+                ? "Se creará inactiva — el admin del tenant la activa después."
+                : undefined
+            }
+          >
             <Select
               id="org"
               value={draft.organization_id}
-              onChange={(e) => setField("organization_id", e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setField("organization_id", v);
+                if (v !== "__new__") setField("organization_name_new", "");
+                // ENH-041: al cambiar la org, reset BU dependiente.
+                setField("business_unit_id", "");
+                setField("business_unit", "");
+                setBuMode("select");
+                setNewBuName("");
+              }}
               disabled={loadingOrgs}
               required
             >
@@ -325,15 +462,69 @@ export function RequestForm() {
                   {o.name}
                 </option>
               ))}
+              <option value="__new__">Otra…</option>
             </Select>
+            {draft.organization_id === "__new__" ? (
+              <Input
+                className="mt-2"
+                placeholder="Nombre de la nueva organización"
+                value={draft.organization_name_new}
+                onChange={(e) => setField("organization_name_new", e.target.value)}
+              />
+            ) : null}
           </Field>
-          <Field label="Unidad de negocio" htmlFor="bu" error={fieldErrors.business_unit} required>
-            <Input
+          <Field
+            label="Unidad de negocio"
+            htmlFor="bu"
+            error={fieldErrors.business_unit}
+            required
+            help={
+              !draft.organization_id
+                ? "Selecciona primero una organización"
+                : buMode === "new"
+                  ? "Se creará al enviar la solicitud"
+                  : undefined
+            }
+          >
+            <Select
               id="bu"
-              value={draft.business_unit}
-              onChange={(e) => setField("business_unit", e.target.value)}
+              value={buMode === "new" ? "__new__" : draft.business_unit_id}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__new__") {
+                  setBuMode("new");
+                  setField("business_unit_id", "");
+                  setField("business_unit", newBuName.trim());
+                } else {
+                  setBuMode("select");
+                  setNewBuName("");
+                  setField("business_unit_id", v);
+                  const bu = businessUnits.find((b) => b.id === v);
+                  setField("business_unit", bu?.name ?? "");
+                }
+              }}
+              disabled={!draft.organization_id}
               required
-            />
+            >
+              <option value="">Selecciona…</option>
+              {businessUnits.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+              <option value="__new__">Otra…</option>
+            </Select>
+            {buMode === "new" ? (
+              <Input
+                className="mt-2"
+                placeholder="Nombre de la nueva BU"
+                value={newBuName}
+                onChange={(e) => {
+                  setNewBuName(e.target.value);
+                  setField("business_unit", e.target.value);
+                }}
+              />
+            ) : null}
           </Field>
           <Field label="Departamento" htmlFor="dept" error={fieldErrors.department} required>
             <Input
@@ -347,8 +538,11 @@ export function RequestForm() {
             label="Presupuesto (MXN)"
             htmlFor="budget"
             error={fieldErrors.budget}
-            required
-            help={draft.budget ? currency(draft.budget) : "Ej: 1250000.00"}
+            help={
+              draft.budget
+                ? currency(draft.budget)
+                : "Opcional — si tienes estimado grueso (ej: 1250000.00)"
+            }
           >
             <Input
               id="budget"
@@ -358,7 +552,19 @@ export function RequestForm() {
               inputMode="decimal"
               value={draft.budget}
               onChange={(e) => setField("budget", e.target.value)}
-              required
+            />
+          </Field>
+          <Field
+            label="Fecha de restricción de entrega"
+            htmlFor="delivery_constraint_date"
+            error={fieldErrors.delivery_constraint_date}
+            help="Opcional — si la entrega debe ocurrir en/antes de una fecha"
+          >
+            <Input
+              id="delivery_constraint_date"
+              type="date"
+              value={draft.delivery_constraint_date}
+              onChange={(e) => setField("delivery_constraint_date", e.target.value)}
             />
           </Field>
           <Field
@@ -500,7 +706,7 @@ export function RequestForm() {
               Siguiente
             </Button>
           ) : (
-            <Button type="submit" loading={saving} disabled={!canSubmit}>
+            <Button type="submit" loading={saving}>
               Enviar solicitud
             </Button>
           )}
@@ -521,6 +727,7 @@ type FieldProps = {
 };
 
 function Field({ label, htmlFor, error, children, required, full, help }: FieldProps) {
+  const errorId = error ? `${htmlFor}-error` : undefined;
   return (
     <div className={cn(full ? "sm:col-span-2" : undefined)}>
       <label
@@ -529,14 +736,43 @@ function Field({ label, htmlFor, error, children, required, full, help }: FieldP
       >
         {label} {required ? <span className="text-[var(--color-danger-fg)]">*</span> : null}
       </label>
-      {children}
+      <div
+        className={cn(
+          error
+            ? "rounded-[var(--radius-md)] ring-2 ring-[var(--color-danger-fg)]/40"
+            : undefined,
+        )}
+        aria-describedby={errorId}
+      >
+        {children}
+      </div>
       {error ? (
-        <p className="mt-1 text-xs text-[var(--color-danger-fg)]">{error}</p>
+        <p id={errorId} className="mt-1 text-xs text-[var(--color-danger-fg)]" role="alert">
+          {error}
+        </p>
       ) : help ? (
         <p className="mt-1 text-xs text-[var(--color-tertiary)]">{help}</p>
       ) : null}
     </div>
   );
+}
+
+function fieldsSummary(errors: Record<string, string>): string[] {
+  const labels: Record<string, string> = {
+    title: "Título",
+    description: "Descripción",
+    objective: "Objetivo",
+    organization_id: "Organización",
+    business_unit: "Unidad de negocio",
+    department: "Departamento",
+    sponsor: "Sponsor",
+    sponsor_email: "Email del sponsor",
+    benefits: "Beneficios esperados",
+    budget: "Presupuesto",
+    scope: "Alcance",
+    requester_email: "Email del solicitante",
+  };
+  return Object.keys(errors).map((k) => labels[k] ?? k);
 }
 
 function AttachmentsEditor({
@@ -752,13 +988,27 @@ function validateAll(d: Draft): { ok: boolean; errors: Record<string, string> } 
   for (const k of required) {
     const v = d[k];
     if (typeof v !== "string" || v.trim().length < 3) {
-      if (k === "organization_id") e[k] = "Selecciona una organización";
-      else e[k] = "Obligatorio (mínimo 3 caracteres)";
+      if (k === "organization_id") {
+        // US-085: si eligió "Otra…", la validación debe pasar al
+        // campo organization_name_new.
+        if (v !== "__new__") e[k] = "Selecciona una organización";
+      } else {
+        e[k] = "Obligatorio (mínimo 3 caracteres)";
+      }
     }
   }
-  const budget = Number(d.budget);
-  if (!d.budget || !Number.isFinite(budget) || budget < 0) {
-    e.budget = "Presupuesto no válido";
+  if (d.organization_id === "__new__") {
+    if (!d.organization_name_new.trim() || d.organization_name_new.trim().length < 3) {
+      e.organization_name_new = "Captura el nombre (mínimo 3 caracteres)";
+    }
+  }
+  // ENH-040: presupuesto opcional. Sólo validar formato si el usuario
+  // llenó algo.
+  if (d.budget.trim()) {
+    const budget = Number(d.budget);
+    if (!Number.isFinite(budget) || budget < 0) {
+      e.budget = "Presupuesto no válido (debe ser >= 0)";
+    }
   }
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!d.sponsor_email.trim() || !emailRe.test(d.sponsor_email.trim())) {
@@ -784,6 +1034,7 @@ function firstStepWithError(errs: Record<string, string>): StepId | null {
       "requester_name",
       "requester_email",
       "budget",
+      "delivery_constraint_date",
     ],
     scope: [
       "scope",
