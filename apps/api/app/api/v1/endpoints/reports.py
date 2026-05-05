@@ -20,6 +20,7 @@ from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.models.ai import Report
 from app.models.project import Project
+from app.models.report_history import ReportHistory
 from app.services.audit import write_audit
 from app.services.operational_reports import (
     build_avance_context,
@@ -307,6 +308,17 @@ async def generate_avance_report(
     )
     db.add(rep)
     await db.flush()
+    # US-092: registrar en historial de reportes generados.
+    db.add(
+        ReportHistory(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            report_type="avance",
+            generated_by_user_id=str(cu.id),
+            source_report_id=str(rep.id),
+            file_size_bytes=len(pdf) if pdf else None,
+        )
+    )
     await write_audit(
         db,
         action="report.generate.avance",
@@ -388,6 +400,17 @@ async def generate_seguimiento_report(
     )
     db.add(rep)
     await db.flush()
+    # US-092: registrar en historial.
+    db.add(
+        ReportHistory(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            report_type="seguimiento",
+            generated_by_user_id=str(cu.id),
+            source_report_id=str(rep.id),
+            file_size_bytes=len(pdf) if pdf else None,
+        )
+    )
     await write_audit(
         db,
         action="report.generate.seguimiento",
@@ -464,3 +487,114 @@ async def delete_report(
     )
     await db.commit()
     return Response(status_code=204)
+
+
+# ============================================================================
+# US-092 — Historial de reportes generados.
+# ============================================================================
+
+class ReportHistoryRead(BaseModel):
+    id: UUID
+    project_id: UUID
+    report_type: str
+    generated_at: datetime
+    generated_by_user_id: UUID | None
+    file_size_bytes: int | None
+    scheduled_report_id: UUID | None
+    source_report_id: UUID | None
+    # Embedded mini para que la UI muestre nombre del autor sin extra
+    # request a /users.
+    generated_by_name: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+@router.get(
+    "/projects/{project_id}/report-history",
+    response_model=list[ReportHistoryRead],
+)
+async def list_report_history(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-092: lista paginada (50 por default) ordenada `generated_at DESC`."""
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    rows = (
+        await db.execute(
+            select(ReportHistory)
+            .where(
+                ReportHistory.tenant_id == str(tenant_id),
+                ReportHistory.project_id == str(project.id),
+            )
+            .order_by(ReportHistory.generated_at.desc())
+            .limit(50)
+        )
+    ).scalars().all()
+    # Enriquecer con nombre del autor (1 SELECT batch).
+    from app.models.user import User
+
+    user_ids = {str(r.generated_by_user_id) for r in rows if r.generated_by_user_id}
+    users_by_id: dict[str, User] = {}
+    if user_ids:
+        urows = (
+            await db.execute(select(User).where(User.id.in_(user_ids)))
+        ).scalars().all()
+        users_by_id = {str(u.id): u for u in urows}
+    out: list[ReportHistoryRead] = []
+    for r in rows:
+        u = users_by_id.get(str(r.generated_by_user_id)) if r.generated_by_user_id else None
+        item = ReportHistoryRead.model_validate(r)
+        if u:
+            item.generated_by_name = u.full_name or u.email
+        elif r.scheduled_report_id:
+            item.generated_by_name = "Automático (scheduler)"
+        out.append(item)
+    return out
+
+
+@router.get("/report-history/{history_id}/download")
+async def download_report_history(
+    history_id: UUID,
+    inline: bool = Query(default=False),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-092: re-renderiza el PDF desde el `Report.sections` snapshot
+    asociado. En una iteración futura, si `file_key` está poblado, se
+    devolverá el binario archivado en R2 directamente.
+    """
+    tenant_id = _tenant(cu)
+    h = (
+        await db.execute(
+            select(ReportHistory).where(
+                ReportHistory.id == str(history_id),
+                ReportHistory.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if h is None:
+        raise not_found("Reporte de historial")
+    if h.source_report_id is None:
+        raise not_found("Snapshot del reporte (no se puede re-renderizar)")
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(h.source_report_id),
+                Report.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte fuente")
+    template = (
+        "reports/avance.html" if h.report_type == "avance" else "reports/seguimiento.html"
+    )
+    ctx = dict(rep.sections or {})
+    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    pdf = render_pdf(template, ctx)
+    project = await _get_project(db, tenant_id, UUID(h.project_id))
+    label = "Avance" if h.report_type == "avance" else "Seguimiento"
+    filename = _report_filename(label, project.name, h.generated_at)
+    return _pdf_response(pdf, filename, inline=inline)

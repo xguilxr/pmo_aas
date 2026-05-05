@@ -34,15 +34,19 @@ import {
   createReport,
   deleteReport,
   downloadAvanceReport,
+  downloadReportHistory,
   downloadSeguimientoReport,
   generateAvanceReport,
   generateSeguimientoReport,
   getReport,
   listReports,
+  listReportHistory,
   previewAvanceReport,
+  previewReportHistory,
   previewSeguimientoReport,
   updateReport,
   type Report,
+  type ReportHistoryItem,
   type ReportPeriod,
 } from "@/lib/api/reports";
 import {
@@ -312,16 +316,7 @@ function ReportsInner() {
       </div>
 
       {view === "history" ? (
-        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
-          <CalendarClock className="mx-auto mb-3 h-8 w-8" aria-hidden />
-          <p className="font-medium text-[var(--color-secondary)]">
-            Historial de reportes
-          </p>
-          <p className="mt-1">
-            Próximamente — persistencia DB + R2 (US-092). Aquí verás cada reporte
-            generado (manual o por cron) con fecha, autor y opciones de Ver / Descargar.
-          </p>
-        </section>
+        <ReportHistoryView projectId={id} />
       ) : view === "create" ? (
         <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
           <Sparkles className="mx-auto mb-3 h-8 w-8" aria-hidden />
@@ -1513,5 +1508,130 @@ export default function ReportsPage() {
     >
       <ReportsInner />
     </Suspense>
+  );
+}
+
+// ENH-055 + US-092 — vista Historial.
+function ReportHistoryView({ projectId }: { projectId: string }) {
+  const [items, setItems] = useState<ReportHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listReportHistory(projectId)
+      .then((rows) => {
+        if (!cancelled) setItems(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : "No se pudo cargar el historial",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </section>
+    );
+  }
+
+  if (error) {
+    return <Banner variant="danger">{error}</Banner>;
+  }
+
+  if (items.length === 0) {
+    return (
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
+        <CalendarClock className="mx-auto mb-3 h-8 w-8" aria-hidden />
+        <p className="font-medium text-[var(--color-secondary)]">
+          Sin historial todavía
+        </p>
+        <p className="mt-1">
+          Genera tu primer reporte de Avance o Seguimiento desde la vista
+          Catálogo. Cada generación queda registrada aquí.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <table className="w-full text-sm">
+        <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <tr>
+            <th className="px-3 py-2 font-medium">Fecha</th>
+            <th className="px-3 py-2 font-medium">Tipo</th>
+            <th className="px-3 py-2 font-medium">Generado por</th>
+            <th className="px-3 py-2 font-medium">Tamaño</th>
+            <th className="w-32 px-3 py-2 font-medium" aria-label="Acciones" />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((h) => (
+            <tr
+              key={h.id}
+              className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+            >
+              <td className="px-3 py-2 text-xs tabular-nums text-[var(--color-secondary)]">
+                {new Date(h.generated_at).toLocaleString("es-MX", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+              </td>
+              <td className="px-3 py-2">
+                <Badge variant="neutral">
+                  {h.report_type === "avance" ? "Avance" : "Seguimiento"}
+                </Badge>
+              </td>
+              <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                {h.generated_by_name ?? "—"}
+              </td>
+              <td className="px-3 py-2 text-xs tabular-nums text-[var(--color-tertiary)]">
+                {h.file_size_bytes != null
+                  ? `${Math.max(1, Math.round(h.file_size_bytes / 1024))} KB`
+                  : "—"}
+              </td>
+              <td className="px-3 py-2 text-right">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => previewReportHistory(h.id).catch(() => {})}
+                  title="Ver"
+                >
+                  <Eye className="h-4 w-4" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => downloadReportHistory(h.id).catch(() => {})}
+                  title="Descargar"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }
