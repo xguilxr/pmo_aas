@@ -239,7 +239,7 @@ async def _send_welcome_email(
     subject = f"Bienvenido a {tenant_name or 'PMO·aaS'} — credenciales de acceso"
     try:
         result = await send_email_via_resend(to=email, subject=subject, html=html)
-    except Exception as exc:  # noqa: BLE001 — captura amplia adrede.
+    except Exception as exc:
         log.warning("welcome email send failed: %s", exc)
         return False
     return result is not None
