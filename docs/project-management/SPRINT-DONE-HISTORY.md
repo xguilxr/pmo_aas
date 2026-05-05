@@ -112,4 +112,245 @@
 
 ---
 
-**Última actualización:** 2026-04-22 (intake Sprint 2)
+**Última actualización:** 2026-05-05 (cierre Sprint 9)
+
+---
+
+## Sprint 2 (v1.1) — CERRADO 2026-04-23
+
+**18 items en 4 bloques + hotfix Railway. Branch consolidado a main.**
+
+### Bloque 1 — Setup: navegación + bugs + permisos (7 items) ✅
+- [x] BUG-026 — Auth: timeout de inactividad a 15 minutos — #87 ✅ 77dc093
+- [x] US-055 — Export tareas (CSV/Excel) — Opción A descarga instantánea — #71 ✅ 023a99c
+- [x] ENH-012 — Sidebar: módulo "Módulos de Proyecto" — #72 ✅ e2e420f
+- [x] ENH-013 — Botón "Nuevo Programa" abre modal en Organizaciones — #73 ✅ b47f19a
+- [x] BUG-023 — Project Charter: link a editor cuando no hay archivo — #74 ✅ d81d036
+- [x] BUG-024 — Lógica de uploads no configurada — #75 ✅ 3cd997d
+- [x] BUG-025 — Rol "Reportes" sin módulo de permisos — #76 ✅ b1954c7
+
+### Bloque 2 — Reportes + Dashboard (5 items) ✅
+- [x] ENH-014 — Reportes: filename datetime + preview PDF — #77 ✅ 02cfaa6
+- [x] US-056 — Calendarizar reportes vía Resend — #78 ✅ 51947ef
+- [x] ENH-015 — Dashboard: expandir barra navegación — #80 ✅ 55956f9
+- [x] ENH-017 — RAID: filtros en línea horizontal — #82 ✅ 6832199
+- [x] ENH-016 — Solicitudes: reabrir si proyecto no existe — #81 ✅ ade6ee7
+
+### Bloque 3 — RAID + Áreas (5 items) ✅
+- [x] ENH-019 — RAID: filtros avanzados (status + severidad) — #85 ✅ fe3b001
+- [x] ENH-018 — RAID: agregar toggle Kanban — #84 ✅ c894f12
+- [x] US-058 — RAID: preview panel editable + comentarios — #83 ✅ e239caa
+- [x] ENH-020 — Áreas: múltiples recursos/contactos — #86 ✅ 009c0f2
+- [x] US-062 — Áreas/Recursos: Area Leader + recursos asignados — #91 ✅ 009c0f2
+
+### Bloque 4 — IA multi-modo (1 item) ✅
+- [x] US-057 — IA multi-modo por tenant: disabled / platform (Groq) / byo — #79 ✅ (9 commits, hotfix 40c4176)
+
+---
+
+## Sprint 3 (v1.2) — CERRADO 2026-04-24
+
+**5 items en 2 bloques.**
+
+### Bloque 1 — Limpieza post-v1.1 + Auth self-service (2 items) ✅
+- [x] ENH-021 — Superadmin AI: quitar defaults editables Ollama — #96 ✅ b70c887
+- [x] US-063 — Recuperación y cambio de contraseña por correo — #95 ✅ (6 commits)
+
+### Bloque 2 — Cleanup IA legacy post-DEC-017 (3 items) ✅
+- [x] BUG-027 — /admin/tenant: retirar dropdown Modo IA + form Ollama — #100 ✅ 1b62045
+- [x] ENH-022 — Housekeeping docs/ai/ + archivar EP016 — #102 ✅ 6315d19
+- [x] ENH-023 — Retirar sidecar Tailscale del worker — #103 ✅ f541171
+
+---
+
+## Sprint 4 (v1.3) — CERRADO
+
+**14 items en 4 bloques.**
+
+### Bloque 1 — Reworks del review (8 items) ✅
+- [x] BUG-015 — Dashboard: botón "Exportar CSV" rework — #40 ✅ d3523bb
+- [x] BUG-029 — Upload Excel falla + botón sin styling — #105 ✅ 3f6ac90
+- [x] ENH-003 — Modal "Nuevo programa" en /admin — #50 ✅ b47f19a
+- [x] ENH-024 — Reporte: filename correcto al descargar — #106 ✅ 33c043c
+- [x] ENH-025 — Filtros RAID horizontales definitivo — #107 ✅ ca9dc1d
+- [x] ENH-026 — Consolidar Panel RAID en /admin/raid — #108 ✅ 8d69623
+- [x] ENH-027 — Panel editable RAID en /admin/projects/[id]/raid — #109 ✅ 3001959
+- [x] ENH-028 — Export tareas Excel MPP-like + CSV BOM UTF-8 — #110 ✅ f1db32a
+
+### Bloque 2 — Infra + RAID robusto + charter + PMO (5 items) ✅
+- [x] US-066 — Uploads: object storage S3 (Cloudflare R2) — #113 ✅ e0f9c2e
+- [x] BUG-028 — Charter .docx real en bucket + editable — #104 ✅ 342e2b3
+- [x] US-064 — RAID: área obligatoria + responsable + fechas — #111 ✅ 798c89f
+- [x] US-065 — RAID: página dedicada + historial — #112 ✅ 76277ac
+- [x] US-068 — Página PMO de organización separada de admin — #116 ✅ 8f78d9b
+
+### Bloque 3 — Import Project/Excel (1 item) ✅
+- [x] US-067 — Import XLSX → tareas — #114 ✅ e9ef28b
+
+### Bloque 4 — Auth simplificada post-DEC-020 (2 items) ✅
+- [x] US-059 — Roles Admin/User/Viewer + backend gate — #88 ✅ 13eca87
+- [x] US-060 — Hook useMyPermissions + gate UI — #89 ✅ 4fd19ca
+
+---
+
+## Sprint 5 (v1.4) — CERRADO
+
+**10 items en 6 bloques + 1 follow-up.**
+
+### Bloque 0 — Hotfix admin lockout ✅
+- [x] BUG-031 — Admin lockout post-US-059/060 — #121 ✅ PR #129
+
+### Bloque 0.5 — Infra CI ✅
+- [x] ENH-030 — Acelerar suite tests + CI Fase 1/2/3 — #130 ✅ PR #131
+- [x] ENH-032 + ENH-033 — Ruff + path filters + concurrency — #133/#138 ✅ PR #139
+- [x] ENH-031 — Engine session-scoped + clean tables — #132 ✅ PR #141 a5cfab1
+
+### Bloque 1 — SuperAdmin safety net ✅
+- [x] US-072 — SuperAdmin: editar role_type — #125 ✅ PR #134
+- [x] US-073 — SuperAdmin: overrides permisos por tenant (DEC-021) — #126 ✅ PR #140 (mig 0027)
+- [x] US-074 — SuperAdmin: cambiar email + password — #127 ✅ PR #134
+
+### Bloque 2 — Import inteligente de planes ✅
+- [x] US-069 — Import MPP nativo vía MPXJ (OpenJDK 21) — #122 ✅ PR #143
+- [x] US-070 — Wizard de mapeo de columnas Excel/CSV/MPP — #123 ✅ PRs #146 + frontend
+- [x] US-071 — Plantilla vacía descargable del plan — #124 ✅ PR #135
+
+### Bloque 3 — Refactor navegación TO-BE ✅
+- [x] US-075 — Recursos de proyecto bajo /pmo/* (DEC-022) — #128 ✅ 33b0c7a
+
+### Follow-ups detectados
+- [x] ENH-034 — Diagnosticar bottleneck 38s en 9 tests — #142 ✅ (causa: Celery .delay() sin broker)
+
+---
+
+## Sprint 6 (v1.5) — CERRADO 2026-04-25
+
+**5 items en 5 bloques. PR #156 mergeado a main. Suite 339 pass / 1 skip.**
+
+### Bloque 1 — Refactor backend permisos ✅
+- [x] US-076 — Modelo capability-based + migración 0028 — #151 ✅ fabf8c3
+
+### Bloque 2 — Eliminar UI/endpoints legacy de roles ✅
+- [x] US-077 — Borrar /admin/roles/*, role-editor.tsx, admin_roles.py — #152 ✅ fc93bb3
+
+### Bloque 3 — UI nueva gestión users + capabilities ✅
+- [x] US-078 — /admin/users/[id] (10 acciones) + /admin/permissions + mig 0029 — #153 ✅ 1fc8ad8
+
+### Bloque 4 — Tests matriz role × endpoint ✅
+- [x] US-079 — test_permission_matrix.py con clasificación estática — #154 ✅ 2a0315a
+
+### Bloque 5 — Cierre actualización docs ✅
+- [x] US-080 — Consolidar EP001, DECISIONS, DB-CHANGES, CLAUDE.md, SPRINT.md — #155 ✅
+
+---
+
+## Sprint 7 (v1.6) — CERRADO 2026-04-28
+
+**10 items en 6 bloques (1 diferido a v2.0). PR #169 mergeado a main 2026-04-28.**
+
+### Bloque 0 — Hotfix verificación post-Sprint 6 ✅
+- [x] BUG-032 — SuperAdmin /me email change con take-over — #159 ✅ 2f86f38
+- [x] BUG-033 — UI superadmin dropdown role inline — #160 ✅ 3ad5e9a
+
+### Bloque 1 — Charter universal + downloads ✅
+- [x] BUG-034 — Documents download via presigned URL R2 — #161 ✅ 49358e8
+- [x] US-083 — Charter universal + descarga DOCX/PDF — #165 ✅ c740a59
+
+### Bloque 2 — RAID polish ✅
+- [x] ENH-036 — RAID detail page edit form — #162 ✅ a48aa2b
+- [x] BUG-035 — RAID comments con nombre del autor — #163 ✅ 7766281
+
+### Bloque 3 — Reportes Resend funcional ✅
+- [x] BUG-036 — Scheduled reports beat + run-now — #166 ✅ e441a07
+
+### Bloque 4 — Tenant ↔ SuperAdmin permission tickets ✅
+- [x] US-082 — Tickets de permisos con notif email — #164 ✅ 3533d21
+
+### Bloque 5 — UX programas ✅
+- [x] ENH-037 — Botón Nuevo Programa /pmo/orgs/[id] — #167 ✅ c5798bf
+
+### Diferido a v2.0
+- ENH-035 #158 — Análisis profundo optimización CI tests pesados (post-MVP).
+
+### Migraciones agregadas
+- 0030 charter_for_legacy_projects
+- 0031 permission_change_requests
+
+---
+
+## Sprint 8 (v1.7) — CERRADO 2026-04-29
+
+**13 items entregados (12 completed + 1 not_planned). Branch `claude/fix-issue-resolution-S3i4e`. Cerrado por batch cleanup (decisión owner: solucionar > documentar, ver CLAUDE.md §0).**
+
+### Bloque 0 — Hotfix prod api deploy ✅
+- [x] BUG-039 — Boolean default Postgres-compatible permission_change_requests — #184 ✅ 62c4f96
+
+### Bloque 1 — Solicitud cambios chicos ✅
+- [x] ENH-038 — Mostrar fecha solicitud + restricción entrega — #170 ✅ 86d5936
+- [x] BUG-037 — Botón Enviar UX con campos faltantes — #171 ✅ 09af27c
+- [x] ENH-039 — Cambios: mostrar aprobador + fechas — #172 ✅ 04cf8a7
+
+### Bloque 2 — Solicitud cambios medianos ✅
+- [x] ENH-040 — Presupuesto opcional — #173 ✅ c62109b
+- [x] ENH-041 — BU select catálogo + "Otra…" — #174 ✅ b04818e
+
+### Bloque 3 — Plan + Minutas UX ✅
+- [x] US-084 — Plan: edición manual con flag — #175 ✅ a6f5b7a
+- [x] ENH-042 — Minutas: IA como primary action — #176 ✅ 58ee920
+
+### Bloque 4 — Cambios grandes (MVP foundation) ✅
+- [x] US-085 — Solicitud "Otra…" org + creación inactiva + notif — #177 ✅ 21eb835
+- [x] US-086 — Stakeholders catálogo Opción B — #178 ✅
+- [x] US-087 — Reportes KPIs numéricos + fechas — #179 ✅ deee5a8
+
+### Bloque 5 — Workaround docs ✅
+- [x] ENH-043 — Programas cross-empresa workaround + ADR-016 — #180 ✅ 6cf20c4
+
+### Bloque 6 — CI improvement ✅
+- [x] ENH-044 — CI gate alembic upgrade head Postgres efímero — #185 ✅ 2f9c458
+
+### Reverificados — ya implementados en Sprint 7 ✅
+- [x] BUG-035 — RAID detail sidebar nombre — #163 ✅ 4193f24 (cherry-pick)
+- [x] BUG-040 — Documents extensión + 1MB — #186 ✅ a5c3a2c (cherry-pick)
+- [x] BUG-033 — role_type editable modal — #160 ✅ 711be4e (cherry-pick)
+- [x] ENH-036 — RAID detail edit form — #162 ✅ a48aa2b
+- [x] US-082 — Tickets permisos tenant→SA — #164 ✅ 3533d21
+- [x] US-083 — Charter universal + DOCX/PDF — #165 ✅ c740a59
+
+### Cerrados sin código
+- [-] BUG-038 — Solicitud "Pendiente" + "Aprobada" simultáneo — #181 cerrado `not_planned` (sin repro).
+
+### Migraciones agregadas
+- 0032 project_request_delivery_date (ENH-038)
+- 0033 project_request_budget_nullable (ENH-040)
+- 0034 project_manual_edited_fields (US-084)
+- 0035 stakeholders_catalog (US-086)
+
+---
+
+## Sprint 9 (v1.8) — CERRADO 2026-05-05
+
+**6 items entregados en 2 bloques + hotfix UX. Branch `claude/resolve-merge-conflicts-4MmJK` (PR #213 mergeado a main 044dc08).**
+
+### Bloque 1 — Hard delete two-step ✅
+- [x] US-088 — Hard delete two-step para 6 entidades admin (programs/orgs/BUs/depts/users/stakeholders) + ADR-017 — #189 ✅
+  - Backend: `core/hard_delete.py`, `schemas/hard_delete.py`, 12 endpoints (preview + DELETE permanent).
+  - Frontend: `components/hard-delete-button.tsx` reusable + clientes API.
+  - Tests: 9/9 passing. Suites EP002 + EP007 + US-042 = 42/42 sin regresión.
+
+### Bloque 2 — Batch 3 items ✅
+- [x] ENH-045 — Password policy 12 → 8 chars — #192 ✅ 990d138
+- [x] US-089 — Email bienvenida con creds al crear usuario (Resend + must_change_password) — #193 ✅ 77ac31b
+- [x] ENH-046 — Reportes programados: día de semana + hora (recurrentes) y fecha + hora (one-time) + migración 0036 — #194 ✅
+
+### Hotfix UX post-US-088 ✅
+- [x] BUG-041 — Documents bajan como `.file` (Content-Disposition fix) — #191 ✅
+- [x] (chore) Botón "Desactivar" con icono `PowerOff` + label visible en 6 entidades.
+- [x] (docs) README actualizado a estado Sprint 9 v1.8.
+
+### Diferidos (follow-up)
+- Hard-delete de User cuando hay `project_request.requested_by` bloqueado — futuro endpoint reasignación.
+- Lista organizations (cards) sin botón inline de hard-delete — entrar al detalle es el lugar natural.
+
+### Limpieza branches
+- `claude/sprint-issues-backlog-setup-EMiLA` → SAFE TO DELETE (6 commits ahead, todos superseded por cherry-picks Sprint 8).
