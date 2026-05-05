@@ -5,10 +5,13 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
+  ChevronDown,
+  ChevronRight,
   Download,
   FileDown,
   FileSpreadsheet,
   ListTree,
+  Network,
   Plus,
   Rows3,
   Trash2,
@@ -49,6 +52,31 @@ function fmtDate(d: string | null | undefined): string {
   } catch {
     return d;
   }
+}
+
+// ENH-047: ordena WBS como `1.2.10` > `1.2.2` (numérico, no lexicográfico).
+function compareWbs(a: string | null | undefined, b: string | null | undefined): number {
+  const sa = (a ?? "").split(".").map((p) => Number.parseInt(p, 10));
+  const sb = (b ?? "").split(".").map((p) => Number.parseInt(p, 10));
+  const len = Math.max(sa.length, sb.length);
+  for (let i = 0; i < len; i += 1) {
+    const va = Number.isFinite(sa[i]) ? sa[i] : 0;
+    const vb = Number.isFinite(sb[i]) ? sb[i] : 0;
+    if (va !== vb) return va - vb;
+  }
+  return 0;
+}
+
+function wbsDepth(wbs: string | null | undefined): number {
+  if (!wbs) return 0;
+  return wbs.split(".").filter(Boolean).length - 1;
+}
+
+function wbsParent(wbs: string | null | undefined): string | null {
+  if (!wbs) return null;
+  const parts = wbs.split(".").filter(Boolean);
+  if (parts.length <= 1) return null;
+  return parts.slice(0, -1).join(".");
 }
 
 function ownerLabel(owner: Task["owner"]): string {
@@ -115,11 +143,45 @@ function TaskList({
   tasks,
   loading,
   onDelete,
+  groupByWbs = false,
+  collapsed,
+  onToggleCollapse,
 }: {
   tasks: Task[];
   loading: boolean;
   onDelete?: (t: Task) => void;
+  // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
+  // y permite colapsar nodos padre.
+  groupByWbs?: boolean;
+  collapsed?: Set<string>;
+  onToggleCollapse?: (wbs: string) => void;
 }) {
+  // ENH-047: orden + visibilidad bajo grupo WBS.
+  const display = useMemo(() => {
+    if (!groupByWbs) return tasks;
+    const sorted = [...tasks].sort((a, b) => compareWbs(a.wbs, b.wbs));
+    if (!collapsed || collapsed.size === 0) return sorted;
+    return sorted.filter((t) => {
+      let p = wbsParent(t.wbs);
+      while (p) {
+        if (collapsed.has(p)) return false;
+        p = wbsParent(p);
+      }
+      return true;
+    });
+  }, [tasks, groupByWbs, collapsed]);
+
+  // ENH-047: set de WBS que tienen al menos un hijo (para mostrar chevron).
+  const hasChildren = useMemo(() => {
+    if (!groupByWbs) return new Set<string>();
+    const out = new Set<string>();
+    for (const t of tasks) {
+      const p = wbsParent(t.wbs);
+      if (p) out.add(p);
+    }
+    return out;
+  }, [tasks, groupByWbs]);
+
   if (loading) {
     return (
       <div className="space-y-2 p-4">
@@ -153,7 +215,12 @@ function TaskList({
           </tr>
         </thead>
         <tbody>
-          {tasks.map((t) => (
+          {display.map((t) => {
+            const depth = groupByWbs ? wbsDepth(t.wbs) : 0;
+            const wbsKey = t.wbs ?? "";
+            const isParent = groupByWbs && wbsKey && hasChildren.has(wbsKey);
+            const isCollapsed = !!(isParent && collapsed?.has(wbsKey));
+            return (
             <tr
               key={t.id}
               className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
@@ -162,9 +229,30 @@ function TaskList({
                 {t.wbs ?? ""}
               </td>
               <td className="px-3 py-2">
-                <div className="font-medium text-[var(--color-primary)]">
-                  {t.is_milestone ? "🔷 " : ""}
-                  {t.name}
+                <div
+                  className="flex items-center gap-1 font-medium text-[var(--color-primary)]"
+                  style={groupByWbs ? { paddingLeft: depth * 16 } : undefined}
+                >
+                  {groupByWbs && isParent && onToggleCollapse ? (
+                    <button
+                      type="button"
+                      onClick={() => onToggleCollapse(wbsKey)}
+                      className="inline-flex h-4 w-4 items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+                      aria-label={isCollapsed ? "Expandir" : "Colapsar"}
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                    </button>
+                  ) : groupByWbs ? (
+                    <span className="inline-block h-4 w-4" aria-hidden />
+                  ) : null}
+                  <span>
+                    {t.is_milestone ? "🔷 " : ""}
+                    {t.name}
+                  </span>
                 </div>
               </td>
               <td className="px-3 py-2 text-xs">
@@ -196,7 +284,8 @@ function TaskList({
                 </td>
               ) : null}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -221,6 +310,43 @@ function PlanInner() {
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   // US-070: el wizard maneja su propio busy/strategy/mapping.
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  // ENH-047: agrupación jerárquica por WBS. Default OFF para no romper
+  // la UX actual; persiste en localStorage por proyecto.
+  const [groupByWbs, setGroupByWbs] = useState(false);
+  const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const v = window.localStorage.getItem(`plan-grouping:${id}`);
+      if (v === "wbs") setGroupByWbs(true);
+    } catch {
+      /* localStorage puede fallar (modo privado, quota) — ignoramos. */
+    }
+  }, [id]);
+
+  function toggleGroupByWbs() {
+    const next = !groupByWbs;
+    setGroupByWbs(next);
+    if (typeof window !== "undefined") {
+      try {
+        if (next) window.localStorage.setItem(`plan-grouping:${id}`, "wbs");
+        else window.localStorage.removeItem(`plan-grouping:${id}`);
+      } catch {
+        /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
+      }
+    }
+  }
+
+  function toggleCollapsedWbs(wbs: string) {
+    setCollapsedWbs((prev) => {
+      const next = new Set(prev);
+      if (next.has(wbs)) next.delete(wbs);
+      else next.add(wbs);
+      return next;
+    });
+  }
 
   // ENH-006: editor de tareas inline (crear + eliminar) sin depender de
   // una página extra /tasks.
@@ -514,6 +640,19 @@ function PlanInner() {
               compacta junto a Excel para no perder funcionalidad
               (ENH-028). Layout `flex-wrap` para apilar en móvil. */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* ENH-047: toggle agrupación por WBS jerárquica. */}
+            <Button
+              type="button"
+              size="sm"
+              variant={groupByWbs ? "primary" : "ghost"}
+              onClick={toggleGroupByWbs}
+              aria-label="Agrupar por WBS"
+              aria-pressed={groupByWbs}
+              title="Agrupar tareas por WBS jerárquico"
+            >
+              <Network className="h-4 w-4" aria-hidden />
+              WBS
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -586,7 +725,14 @@ function PlanInner() {
             </Button>
           </div>
         </header>
-        <TaskList tasks={tasks} loading={loadingTasks} onDelete={handleDeleteTask} />
+        <TaskList
+          tasks={tasks}
+          loading={loadingTasks}
+          onDelete={handleDeleteTask}
+          groupByWbs={groupByWbs}
+          collapsed={collapsedWbs}
+          onToggleCollapse={toggleCollapsedWbs}
+        />
       </section>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -597,6 +743,8 @@ function PlanInner() {
       exportingXlsx,
       projectName,
       downloadingTemplate,
+      groupByWbs,
+      collapsedWbs,
     ],
   );
 
