@@ -3,6 +3,12 @@ import { getAccessToken } from "@/lib/auth-storage";
 
 export type TaskStatus = "not_started" | "in_progress" | "completed" | "on_hold";
 
+export type TaskOwnerMini = {
+  id: string;
+  full_name: string | null;
+  email: string;
+};
+
 export type Task = {
   id: string;
   project_id: string;
@@ -17,6 +23,10 @@ export type Task = {
   status: TaskStatus | string;
   source: string;
   external_id: string | null;
+  // ENH-049: responsable embebido para mostrar en la columna sin
+  // round-trip extra a /users.
+  owner_id: string | null;
+  owner: TaskOwnerMini | null;
 };
 
 export type TaskCreateBody = {

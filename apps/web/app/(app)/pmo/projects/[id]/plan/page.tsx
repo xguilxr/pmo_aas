@@ -51,6 +51,44 @@ function fmtDate(d: string | null | undefined): string {
   }
 }
 
+function ownerLabel(owner: Task["owner"]): string {
+  if (!owner) return "—";
+  return owner.full_name?.trim() || owner.email;
+}
+
+function ownerInitials(owner: Task["owner"]): string {
+  if (!owner) return "—";
+  const src = owner.full_name?.trim() || owner.email;
+  return src
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+}
+
+function OwnerCell({ owner }: { owner: Task["owner"] }) {
+  if (!owner) {
+    return <span className="text-[var(--color-tertiary)]">—</span>;
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-2"
+      title={ownerLabel(owner)}
+    >
+      <span
+        aria-hidden
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-subtle)] text-[10px] font-medium text-[var(--color-secondary)]"
+      >
+        {ownerInitials(owner)}
+      </span>
+      <span className="truncate text-[var(--color-secondary)]">
+        {ownerLabel(owner)}
+      </span>
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const label = TASK_STATUS_LABEL[status as keyof typeof TASK_STATUS_LABEL] ?? status;
   const tone =
@@ -105,6 +143,8 @@ function TaskList({
           <tr>
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
             <th className="px-3 py-2 font-medium">Tarea</th>
+            {/* ENH-049: columna Responsable entre Tarea y Fechas. */}
+            <th className="px-3 py-2 font-medium">Responsable</th>
             <th className="px-3 py-2 font-medium">Inicio</th>
             <th className="px-3 py-2 font-medium">Fin</th>
             <th className="px-3 py-2 font-medium">Avance</th>
@@ -126,6 +166,9 @@ function TaskList({
                   {t.is_milestone ? "🔷 " : ""}
                   {t.name}
                 </div>
+              </td>
+              <td className="px-3 py-2 text-xs">
+                <OwnerCell owner={t.owner} />
               </td>
               <td className="px-3 py-2 text-[var(--color-secondary)]">
                 {fmtDate(t.start_date)}
@@ -314,7 +357,7 @@ function PlanInner() {
       t.progress ?? 0,
       t.is_milestone ? "Sí" : "No",
       TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
-      "—",
+      ownerLabel(t.owner),
     ]);
     const csv = [
       headers.map((h) => `"${h}"`).join(","),
@@ -395,7 +438,7 @@ function PlanInner() {
           status:
             TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
             t.status,
-          owner: "—",
+          owner: ownerLabel(t.owner),
         });
         // Avance como porcentaje formateado.
         row.getCell("progress").numFmt = "0%";

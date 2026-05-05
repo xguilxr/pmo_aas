@@ -11,6 +11,8 @@ from app.core.errors import business_rule, forbidden, not_found, validation_erro
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.task import Task, TaskDependency
+from app.models.user import User
+from app.schemas.modules import UserMini
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
 from app.services.import_job_store import (
@@ -86,8 +88,33 @@ class TaskRead(BaseModel):
     status: str
     source: str
     external_id: str | None
+    # ENH-049: responsable embebido para que la lista de tareas muestre
+    # avatar+nombre sin un round-trip extra a /users.
+    owner_id: UUID | None = None
+    owner: UserMini | None = None
 
     model_config = {"from_attributes": True}
+
+
+async def _attach_owners(db: AsyncSession, tasks: list[Task]) -> None:
+    """ENH-049: enriquece `task.owner` con `{id, full_name, email}` para
+    la columna Responsable. 1 SELECT batch del set único de owner_ids."""
+    owner_ids: set[str] = {str(t.owner_id) for t in tasks if t.owner_id}
+    if not owner_ids:
+        for t in tasks:
+            t.owner = None  # type: ignore[attr-defined]
+        return
+    rows = (
+        await db.execute(select(User).where(User.id.in_(owner_ids)))
+    ).scalars().all()
+    by_id = {str(u.id): u for u in rows}
+    for t in tasks:
+        u = by_id.get(str(t.owner_id)) if t.owner_id else None
+        t.owner = (  # type: ignore[attr-defined]
+            {"id": str(u.id), "full_name": u.full_name, "email": u.email}
+            if u
+            else None
+        )
 
 
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])
@@ -104,6 +131,7 @@ async def list_tasks(
             .order_by(Task.wbs.nullsfirst() if hasattr(Task.wbs, "nullsfirst") else Task.wbs)
         )
     ).scalars().all()
+    await _attach_owners(db, list(rows))
     return [TaskRead.model_validate(t) for t in rows]
 
 
@@ -137,6 +165,7 @@ async def create_task(
         entity_type="task", entity_id=str(t.id),
     )
     await db.commit()
+    await _attach_owners(db, [t])
     return TaskRead.model_validate(t)
 
 
@@ -159,6 +188,7 @@ async def update_task(
     for k, v in data.items():
         setattr(t, k, v)
     await db.commit()
+    await _attach_owners(db, [t])
     return TaskRead.model_validate(t)
 
 
