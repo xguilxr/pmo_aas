@@ -343,9 +343,49 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 
 ## ⏳ QUEUE
 
-**Sin sprint activo en QUEUE.** Sprint 8 cerrado 2026-04-29 — ver
-sección histórica abajo. Próximo sprint pendiente de definición tras
-validación del owner sobre los 13 items entregados.
+**Sprint 10 (v1.9) — TRIAGE COMPLETO 2026-05-05, esperando `status:ready`.**
+
+Owner pidió planeación de los próximos 2 sprints (no implementación).
+Tras AskUserQuestion + clarificaciones, se crearon 10 issues en 5 bloques
+para Sprint 10 + 2 bugs para Sprint 11.
+
+### Sprint 10 — Bloque 1: Plan visualización (3 ENHs)
+- [ ] ENH-047 #196 — Toggle agrupación WBS en lista de tareas
+- [ ] ENH-048 #197 — Filtros chip multi-select Hitos / Críticos / Retrasados
+- [ ] ENH-049 #198 — Columna Responsable visible en lista
+
+### Sprint 10 — Bloque 2: Plan template + columnas (3 items)
+- [ ] ENH-050 #199 — Campo "Hito Relacionado" en form de tarea
+- [ ] ENH-051 #200 — Campo "Criticidad" en form de tarea
+- [ ] US-090  #201 — Columnas Outline Level (auto), Duration (auto, max 21d), Predecessors/Successors (asignables)
+
+### Sprint 10 — Bloque 3: Plan import/export UX (2 ENHs)
+- [ ] ENH-052 #202 — Botones Plantilla / Descargar / Importar en misma fila + colores distintos
+- [ ] ENH-053 #203 — Mapeo de columnas asistido por IA al importar
+
+### Sprint 10 — Bloque 4: RAID editable completo (1 ENH)
+- [ ] ENH-054 #204 — Toda la información de ítems RAID editable inline/modal
+
+### Sprint 10 — Bloque 5: Áreas / Equipos / Actores (1 US)
+- [ ] US-091  #205 — Jerarquía Área→Equipo→Actor + teléfono + UI rediseñada (vista por área / por actor) + toggle de filtro
+
+### Sprint 11 (v1.10) — Bloque 1: Nav review (2 BUGs)
+- [ ] BUG-042 #206 — Breadcrumb desde Programa → link Org va a PMO en lugar de Admin
+- [ ] BUG-043 #207 — Panel de Programa en vista PMO Org no es clicable
+- [ ] (pasada con `ui-reviewer` agent comenzando por RAID, luego nav)
+
+**Decisiones owner (vía clarificación 2026-05-05):**
+1. US-090: Outline Level + Duration auto-calculadas (Duration max 21 días); Predecessors/Successors asignables como referencias WBS.
+2. ENH-053: approach mínimo (heurística + LLM del tenant si AI habilitada; manual override siempre disponible).
+3. US-091: mantener tabla `project_areas` con `type ∈ {area,actor,team}` pero agregar FK explícitas `team_id` + `area_id` + campo `phone`.
+4. BUG-042/043: van a Sprint 11 como parte del nav review (no Bloque 0 hotfix).
+
+**Pendiente owner:**
+- Revisar los 12 issues nuevos (#196-#207).
+- Asignar `status:ready` a los que apruebe (orden default: Bloque 1 → 2 → 3 → 4 → 5 para Sprint 10).
+- Confirmar versión target (default propuesto: v1.9 Sprint 10, v1.10 Sprint 11).
+
+**Próximo libre tras este triage:** US-092, BUG-044, ENH-055.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0036+) tras validación de Sprint 6 en producción.
