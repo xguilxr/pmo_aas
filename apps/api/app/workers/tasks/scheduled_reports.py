@@ -205,6 +205,7 @@ async def _send(scheduled_id: str) -> dict:
                 from_dt=now,
                 day_of_week=sched.day_of_week,
                 hour_of_day=sched.hour_of_day,
+                day_of_month=sched.day_of_month,
                 run_at=sched.run_at,
             )
         sched.last_error = None if resp is not None else "Resend no configurado"

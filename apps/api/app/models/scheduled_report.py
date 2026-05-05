@@ -42,8 +42,11 @@ class ScheduledReport(Base, TimestampMixin):
     # ENH-046: día de la semana (0=lunes … 6=domingo) — sólo usado por
     # cadence="weekly". NULL para los demás casos.
     day_of_week: Mapped[int | None] = mapped_column(SmallInteger)
-    # ENH-046: hora del día (0-23, en UTC). Usado por daily/weekly.
+    # ENH-046: hora del día (0-23, en UTC). Usado por daily/weekly/monthly.
     hour_of_day: Mapped[int | None] = mapped_column(SmallInteger)
+    # ENH-056: día del mes (1-31). Sólo aplica a cadence="monthly". Si el
+    # mes destino no tiene ese día, se clampa al último del mes.
+    day_of_month: Mapped[int | None] = mapped_column(SmallInteger)
     # ENH-046: timestamp de ejecución one-time (cadence="once").
     run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

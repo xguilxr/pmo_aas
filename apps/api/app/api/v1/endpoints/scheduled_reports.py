@@ -60,6 +60,8 @@ class ScheduledReportCreate(BaseModel):
     # ENH-046: opcionales según cadencia.
     day_of_week: int | None = Field(default=None, ge=0, le=6)
     hour_of_day: int | None = Field(default=None, ge=0, le=23)
+    # ENH-056: día del mes (1-31) para cadence=monthly. Clamp server-side.
+    day_of_month: int | None = Field(default=None, ge=1, le=31)
     run_at: datetime | None = None
 
     @model_validator(mode="after")
@@ -74,6 +76,12 @@ class ScheduledReportCreate(BaseModel):
             )
         if self.cadence == "daily" and self.hour_of_day is None:
             raise ValueError("cadence=daily requiere hour_of_day (0-23)")
+        if self.cadence == "monthly" and (
+            self.day_of_month is None or self.hour_of_day is None
+        ):
+            raise ValueError(
+                "cadence=monthly requiere day_of_month (1-31) y hour_of_day (0-23)"
+            )
         return self
 
 
@@ -84,6 +92,7 @@ class ScheduledReportUpdate(BaseModel):
     enabled: bool | None = None
     day_of_week: int | None = Field(default=None, ge=0, le=6)
     hour_of_day: int | None = Field(default=None, ge=0, le=23)
+    day_of_month: int | None = Field(default=None, ge=1, le=31)
     run_at: datetime | None = None
 
 
@@ -96,6 +105,7 @@ class ScheduledReportRead(BaseModel):
     enabled: bool
     day_of_week: int | None = None
     hour_of_day: int | None = None
+    day_of_month: int | None = None
     run_at: datetime | None = None
     last_run_at: datetime | None
     next_run_at: datetime | None
@@ -158,6 +168,7 @@ async def create_scheduled_report(
         cadence=body.cadence,
         day_of_week=body.day_of_week,
         hour_of_day=body.hour_of_day,
+        day_of_month=body.day_of_month,
         run_at=body.run_at,
         recipients=[str(e) for e in body.recipients],
         enabled=body.enabled,
@@ -166,6 +177,7 @@ async def create_scheduled_report(
                 body.cadence,
                 day_of_week=body.day_of_week,
                 hour_of_day=body.hour_of_day,
+                day_of_month=body.day_of_month,
                 run_at=body.run_at,
             )
             if body.enabled
@@ -228,16 +240,17 @@ async def update_scheduled_report(
     prev_cadence = sched.cadence
     prev_dow = sched.day_of_week
     prev_hod = sched.hour_of_day
+    prev_dom = sched.day_of_month
     prev_run_at = sched.run_at
     for field, value in data.items():
         setattr(sched, field, value)
 
-    # ENH-046: validación condicional pos-merge SOLO si el caller tocó
-    # alguno de los campos relacionados con cadencia. Esto permite a
-    # filas legacy (sin day_of_week/hour_of_day) recibir updates de
-    # `recipients`/`enabled` sin tropezarse con la validación.
+    # ENH-046 / ENH-056: validación condicional pos-merge SOLO si el
+    # caller tocó campos de cadencia. Filas legacy reciben updates de
+    # `recipients`/`enabled` sin tropezar con validación.
     cadence_fields_touched = any(
-        f in data for f in ("cadence", "day_of_week", "hour_of_day", "run_at")
+        f in data
+        for f in ("cadence", "day_of_week", "hour_of_day", "day_of_month", "run_at")
     )
     if cadence_fields_touched:
         if sched.cadence == "once" and sched.run_at is None:
@@ -250,12 +263,19 @@ async def update_scheduled_report(
             )
         if sched.cadence == "daily" and sched.hour_of_day is None:
             raise business_rule("cadence=daily requiere hour_of_day (0-23)")
+        if sched.cadence == "monthly" and (
+            sched.day_of_month is None or sched.hour_of_day is None
+        ):
+            raise business_rule(
+                "cadence=monthly requiere day_of_month (1-31) y hour_of_day (0-23)"
+            )
 
     # Re-computar next_run_at si cambió algún input que lo afecta.
     inputs_changed = (
         sched.cadence != prev_cadence
         or sched.day_of_week != prev_dow
         or sched.hour_of_day != prev_hod
+        or sched.day_of_month != prev_dom
         or sched.run_at != prev_run_at
         or (sched.enabled and not prev_enabled)
     )
@@ -264,6 +284,7 @@ async def update_scheduled_report(
             sched.cadence,
             day_of_week=sched.day_of_week,
             hour_of_day=sched.hour_of_day,
+            day_of_month=sched.day_of_month,
             run_at=sched.run_at,
         )
     if not sched.enabled:

@@ -545,6 +545,8 @@ function ScheduledReportForm({
   // ENH-046: campos opcionales según cadencia.
   const [dayOfWeek, setDayOfWeek] = useState<number>(0); // 0 = Lunes
   const [hourOfDay, setHourOfDay] = useState<number>(9); // 09:00 default
+  // ENH-056: día del mes para cadence=monthly.
+  const [dayOfMonth, setDayOfMonth] = useState<number>(1);
   const [runAtDate, setRunAtDate] = useState<string>(""); // YYYY-MM-DD
   const [runAtTime, setRunAtTime] = useState<string>("09:00"); // HH:MM
   const [saving, setSaving] = useState(false);
@@ -559,6 +561,7 @@ function ScheduledReportForm({
       setEnabled(existing.enabled);
       setDayOfWeek(existing.day_of_week ?? 0);
       setHourOfDay(existing.hour_of_day ?? 9);
+      setDayOfMonth(existing.day_of_month ?? 1);
       if (existing.run_at) {
         const d = new Date(existing.run_at);
         setRunAtDate(d.toISOString().slice(0, 10));
@@ -576,6 +579,7 @@ function ScheduledReportForm({
       setEnabled(true);
       setDayOfWeek(0);
       setHourOfDay(9);
+      setDayOfMonth(1);
       setRunAtDate("");
       setRunAtTime("09:00");
     }
@@ -604,16 +608,20 @@ function ScheduledReportForm({
           return;
         }
       }
-      // ENH-046: armar payload con los campos condicionales.
+      // ENH-046 / ENH-056: armar payload con los campos condicionales.
       const cadenceFields: {
         day_of_week?: number | null;
         hour_of_day?: number | null;
+        day_of_month?: number | null;
         run_at?: string | null;
       } = {};
       if (cadence === "weekly") {
         cadenceFields.day_of_week = dayOfWeek;
         cadenceFields.hour_of_day = hourOfDay;
       } else if (cadence === "daily") {
+        cadenceFields.hour_of_day = hourOfDay;
+      } else if (cadence === "monthly") {
+        cadenceFields.day_of_month = dayOfMonth;
         cadenceFields.hour_of_day = hourOfDay;
       } else if (cadence === "once") {
         if (!runAtDate) {
@@ -759,6 +767,50 @@ function ScheduledReportForm({
                 <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
               ))}
             </Select>
+          </div>
+        ) : null}
+
+        {cadence === "monthly" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="sched-dom"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Día del mes (1-31)
+              </label>
+              <Select
+                id="sched-dom"
+                value={String(dayOfMonth)}
+                onChange={(e) => setDayOfMonth(Number(e.target.value))}
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+                Si el mes seleccionado no tiene ese día, se enviará el último día del mes.
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="sched-hod-m"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Hora (24h)
+              </label>
+              <Select
+                id="sched-hod-m"
+                value={String(hourOfDay)}
+                onChange={(e) => setHourOfDay(Number(e.target.value))}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
+                ))}
+              </Select>
+            </div>
           </div>
         ) : null}
 
