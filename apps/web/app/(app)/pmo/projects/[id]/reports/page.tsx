@@ -154,6 +154,16 @@ function GeneratedReportActions({ report }: { report: Report }) {
   );
 }
 
+// ENH-055: 3-vista toggle (Catálogo / Historial / Creación) con hash en URL.
+type ReportsView = "catalog" | "history" | "create";
+
+function parseViewHash(): ReportsView {
+  if (typeof window === "undefined") return "catalog";
+  const h = (window.location.hash || "").replace(/^#/, "").toLowerCase();
+  if (h === "history" || h === "create") return h;
+  return "catalog";
+}
+
 function ReportsInner() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -164,6 +174,28 @@ function ReportsInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // ENH-055: vista activa persistida en `location.hash`.
+  const [view, setView] = useState<ReportsView>("catalog");
+
+  useEffect(() => {
+    setView(parseViewHash());
+    function onHash() {
+      setView(parseViewHash());
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("hashchange", onHash);
+      return () => window.removeEventListener("hashchange", onHash);
+    }
+  }, []);
+
+  function setViewAndHash(v: ReportsView) {
+    setView(v);
+    if (typeof window !== "undefined") {
+      const newHash = v === "catalog" ? "" : `#${v}`;
+      const url = `${window.location.pathname}${window.location.search}${newHash}`;
+      window.history.replaceState(null, "", url);
+    }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -244,6 +276,65 @@ function ReportsInner() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
+      {/* ENH-055: toggle 3 vistas Catálogo / Historial / Creación con
+          persistencia en hash. */}
+      <div
+        role="radiogroup"
+        aria-label="Vista de reportes"
+        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+      >
+        {(
+          [
+            { v: "catalog" as const, label: "Catálogo" },
+            { v: "history" as const, label: "Historial" },
+            { v: "create" as const, label: "Creación" },
+          ]
+        ).map((opt) => {
+          const active = view === opt.v;
+          return (
+            <button
+              key={opt.v}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setViewAndHash(opt.v)}
+              className={cn(
+                "rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors",
+                active
+                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === "history" ? (
+        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
+          <CalendarClock className="mx-auto mb-3 h-8 w-8" aria-hidden />
+          <p className="font-medium text-[var(--color-secondary)]">
+            Historial de reportes
+          </p>
+          <p className="mt-1">
+            Próximamente — persistencia DB + R2 (US-092). Aquí verás cada reporte
+            generado (manual o por cron) con fecha, autor y opciones de Ver / Descargar.
+          </p>
+        </section>
+      ) : view === "create" ? (
+        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
+          <Sparkles className="mx-auto mb-3 h-8 w-8" aria-hidden />
+          <p className="font-medium text-[var(--color-secondary)]">
+            Creación con IA
+          </p>
+          <p className="mt-1">
+            Próximamente — formulario que arma un reporte custom con secciones
+            seleccionables + asistencia IA del tenant (US-093).
+          </p>
+        </section>
+      ) : (
+      <>
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
         {loading ? (
           <div className="space-y-2 p-4">
@@ -306,6 +397,8 @@ function ReportsInner() {
       </section>
 
       <ScheduledReportsSection projectId={id} />
+      </>
+      )}
 
       <CreateReportModal
         open={createOpen}
