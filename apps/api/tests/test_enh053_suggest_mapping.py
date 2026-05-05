@@ -8,11 +8,11 @@ Cubre:
 """
 import pytest
 
+from app.services.ai.tenant_ai import TenantAIConfig
 from app.services.import_mapping_suggest import (
     heuristic_suggestion,
     suggest_column_mapping,
 )
-from app.services.ai.tenant_ai import TenantAIConfig
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 

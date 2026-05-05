@@ -4,9 +4,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, UploadFile
 from pydantic import BaseModel, Field
-
-# ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
-TaskCriticality = Literal["low", "medium", "high", "critical"]
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,10 +17,21 @@ from app.schemas.modules import UserMini
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
+from app.services.import_job_store import (
+    JOB_TTL_SECONDS,
+    create_job_id,
+    delete_preview,
+    load_preview,
+    save_preview,
+)
 from app.services.import_mapping_suggest import (
     SYSTEM_FIELDS as MAPPING_SYSTEM_FIELDS,
+)
+from app.services.import_mapping_suggest import (
     suggest_column_mapping,
 )
+from app.services.msproject.mpp_parser import parse_mpp
+from app.services.msproject.xml_parser import parse_ms_project_xml
 from app.services.plan_metadata import (
     collect_by_wbs,
     compute_duration_days,
@@ -32,16 +40,10 @@ from app.services.plan_metadata import (
     recompute_successors_for_project,
     validate_predecessors,
 )
-from app.services.import_job_store import (
-    JOB_TTL_SECONDS,
-    create_job_id,
-    delete_preview,
-    load_preview,
-    save_preview,
-)
-from app.services.msproject.mpp_parser import parse_mpp
-from app.services.msproject.xml_parser import parse_ms_project_xml
 from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
+
+# ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
+TaskCriticality = Literal["low", "medium", "high", "critical"]
 
 router = APIRouter(tags=["tasks"])
 
