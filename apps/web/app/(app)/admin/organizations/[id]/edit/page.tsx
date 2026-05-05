@@ -17,8 +17,11 @@ import { ApiError } from "@/lib/api";
 import {
   deleteOrganization,
   getOrganization,
+  hardDeleteOrganization,
+  previewHardDeleteOrganization,
   type Organization,
 } from "@/lib/api/organizations";
+import { HardDeleteButton } from "@/components/hard-delete-button";
 
 function OrganizationDetailInner() {
   const params = useParams<{ id: string }>();
@@ -116,10 +119,20 @@ function OrganizationDetailInner() {
             </div>
           </div>
         </div>
-        <Button variant="danger" onClick={() => setConfirmDelete(true)}>
-          <Trash2 className="h-4 w-4" aria-hidden />
-          Desactivar
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+            <Trash2 className="h-4 w-4" aria-hidden />
+            Desactivar
+          </Button>
+          {!org.is_active ? (
+            <HardDeleteButton
+              preview={() => previewHardDeleteOrganization(org.id)}
+              hardDelete={(slug) => hardDeleteOrganization(org.id, slug)}
+              onDeleted={() => router.replace("/admin/organizations")}
+              entityLabel="Organización"
+            />
+          ) : null}
+        </div>
       </div>
 
       {notice ? <Banner variant="success">{notice}</Banner> : null}

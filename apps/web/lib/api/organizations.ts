@@ -244,6 +244,68 @@ export function deleteProgram(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/programs/${id}`, { method: "DELETE" });
 }
 
+// US-088: hard delete (segundo paso) — programs.
+
+export type HardDeletePreview = {
+  entity_type: string;
+  entity_id: string;
+  entity_name: string;
+  is_active: boolean;
+  confirm_slug: string;
+  cascades: Record<string, number>;
+  blockers: string[];
+};
+
+export function previewHardDeleteProgram(id: string): Promise<HardDeletePreview> {
+  return apiFetch<HardDeletePreview>(`/api/v1/programs/${id}/hard-delete-preview`);
+}
+
+export function hardDeleteProgram(id: string, confirm: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/programs/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function previewHardDeleteOrganization(
+  id: string,
+): Promise<HardDeletePreview> {
+  return apiFetch<HardDeletePreview>(`/api/v1/organizations/${id}/hard-delete-preview`);
+}
+
+export function hardDeleteOrganization(id: string, confirm: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/organizations/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function previewHardDeleteBusinessUnit(
+  id: string,
+): Promise<HardDeletePreview> {
+  return apiFetch<HardDeletePreview>(`/api/v1/business-units/${id}/hard-delete-preview`);
+}
+
+export function hardDeleteBusinessUnit(id: string, confirm: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/business-units/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function previewHardDeleteDepartment(
+  id: string,
+): Promise<HardDeletePreview> {
+  return apiFetch<HardDeletePreview>(`/api/v1/departments/${id}/hard-delete-preview`);
+}
+
+export function hardDeleteDepartment(id: string, confirm: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/departments/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE" },
+  );
+}
+
 // -- Business Units ----
 
 export type BusinessUnit = {

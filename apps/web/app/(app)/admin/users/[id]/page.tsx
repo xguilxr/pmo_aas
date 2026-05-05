@@ -26,7 +26,9 @@ import {
   forcePasswordChange,
   getExcludedOrganizations,
   getUser,
+  hardDeleteUser,
   listRoles,
+  previewHardDeleteUser,
   resetUserPassword,
   setExcludedOrganizations,
   unlockUser,
@@ -35,6 +37,7 @@ import {
   type AdminUser,
   type RoleType,
 } from "@/lib/api/admin";
+import { HardDeleteButton } from "@/components/hard-delete-button";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -586,6 +589,16 @@ function UserDetail() {
               </>
             )}
           </Button>
+          {!user.is_active ? (
+            <HardDeleteButton
+              preview={() => previewHardDeleteUser(user.id)}
+              hardDelete={(slug) => hardDeleteUser(user.id, slug)}
+              onDeleted={() => {
+                window.location.assign("/admin/users");
+              }}
+              entityLabel="Usuario"
+            />
+          ) : null}
         </div>
       </section>
 

@@ -7,12 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_authenticated, require_capability
 from app.core.errors import business_rule, conflict, forbidden, not_found
+from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.db.session import get_db
 from app.models.modules import Risk
 from app.models.organization import BusinessUnit, Department, Organization, Program
 from app.models.project import Project
+from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
+from app.models.project_request import ProjectRequest
 from app.models.user import User
+from app.schemas.hard_delete import HardDeletePreview
 from app.schemas.organization import (
     BusinessUnitCreate,
     BusinessUnitRead,
@@ -1116,6 +1120,482 @@ async def delete_department(
             "force": force,
             "active_programs": active_programs,
             "active_projects": active_projects,
+        },
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)
+
+
+# =============================================================================
+# US-088 — Hard delete (segundo paso) para org/program/BU/dept
+# =============================================================================
+# Patrón: requiere is_active=False + ?confirm=<slug> exacto.
+# Cascada explícita por entidad (FK CASCADE no cubre todos los casos — ver
+# ADR-017). Cada endpoint loguea action `<entity>.hard_delete` con el conteo
+# real de filas borradas.
+# -----------------------------------------------------------------------------
+
+
+async def _project_count_for_program(db: AsyncSession, tenant_id, program_id: str) -> int:
+    return (
+        await db.execute(
+            select(func.count(Project.id)).where(
+                Project.tenant_id == tenant_id, Project.program_id == program_id
+            )
+        )
+    ).scalar_one()
+
+
+async def _delete_projects_in(db: AsyncSession, tenant_id, where) -> int:
+    """Hard-delete físico de Projects que matcheen el predicado.
+
+    Devuelve count borrado. Itera con `db.delete()` para que SQLAlchemy
+    dispare las CASCADE de modules/charter/tasks/areas/members/scheduled.
+    """
+    rows = (
+        await db.execute(
+            select(Project).where(Project.tenant_id == tenant_id, where)
+        )
+    ).scalars().all()
+    count = len(rows)
+    for p in rows:
+        await db.delete(p)
+    await db.flush()
+    return count
+
+
+@programs_router.get(
+    "/{program_id}/hard-delete-preview", response_model=HardDeletePreview
+)
+async def preview_hard_delete_program(
+    program_id: UUID,
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    prog = (
+        await db.execute(
+            select(Program).where(
+                Program.id == str(program_id), Program.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if prog is None:
+        raise not_found("Programa")
+    projects = await _project_count_for_program(db, tenant_id, prog.id)
+    return HardDeletePreview(
+        entity_type="program",
+        entity_id=str(prog.id),
+        entity_name=prog.name,
+        is_active=prog.is_active,
+        confirm_slug=confirm_slug("program", prog.name),
+        cascades={"projects": projects},
+    )
+
+
+@programs_router.delete("/{program_id}/permanent", status_code=204)
+async def hard_delete_program(
+    program_id: UUID,
+    confirm: str = Query(...),
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    prog = (
+        await db.execute(
+            select(Program).where(
+                Program.id == str(program_id), Program.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if prog is None:
+        raise not_found("Programa")
+    ensure_inactive(prog.is_active, "Programa")
+    projects = await _project_count_for_program(db, tenant_id, prog.id)
+    preview = {"projects": projects}
+    ensure_confirm(confirm, confirm_slug("program", prog.name), preview=preview)
+
+    deleted_projects = await _delete_projects_in(
+        db, tenant_id, Project.program_id == prog.id
+    )
+    await db.delete(prog)
+    await write_audit(
+        db, action="program.hard_delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="program",
+        entity_id=str(prog.id),
+        details={"name": prog.name, "cascades": {"projects": deleted_projects}},
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)
+
+
+@router.get(
+    "/{org_id}/hard-delete-preview", response_model=HardDeletePreview
+)
+async def preview_hard_delete_org(
+    org_id: UUID,
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    org = (
+        await db.execute(
+            select(Organization).where(
+                Organization.id == str(org_id), Organization.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if org is None:
+        raise not_found("Organización")
+    bu = (await db.execute(
+        select(func.count(BusinessUnit.id)).where(
+            BusinessUnit.tenant_id == tenant_id, BusinessUnit.organization_id == org.id
+        )
+    )).scalar_one()
+    progs = (await db.execute(
+        select(func.count(Program.id)).where(
+            Program.tenant_id == tenant_id, Program.organization_id == org.id
+        )
+    )).scalar_one()
+    projects = (await db.execute(
+        select(func.count(Project.id)).where(
+            Project.tenant_id == tenant_id, Project.organization_id == org.id
+        )
+    )).scalar_one()
+    requests = (await db.execute(
+        select(func.count(ProjectRequest.id)).where(
+            ProjectRequest.tenant_id == tenant_id,
+            ProjectRequest.organization_id == org.id,
+        )
+    )).scalar_one()
+    return HardDeletePreview(
+        entity_type="organization",
+        entity_id=str(org.id),
+        entity_name=org.name,
+        is_active=org.is_active,
+        confirm_slug=confirm_slug("organization", org.name),
+        cascades={
+            "business_units": bu,
+            "programs": progs,
+            "projects": projects,
+            "project_requests": requests,
+        },
+    )
+
+
+@router.delete("/{org_id}/permanent", status_code=204)
+async def hard_delete_org(
+    org_id: UUID,
+    confirm: str = Query(...),
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    org = (
+        await db.execute(
+            select(Organization).where(
+                Organization.id == str(org_id), Organization.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if org is None:
+        raise not_found("Organización")
+    ensure_inactive(org.is_active, "Organización")
+
+    cascades_preview = {
+        "business_units": (await db.execute(
+            select(func.count(BusinessUnit.id)).where(
+                BusinessUnit.tenant_id == tenant_id,
+                BusinessUnit.organization_id == org.id,
+            )
+        )).scalar_one(),
+        "programs": (await db.execute(
+            select(func.count(Program.id)).where(
+                Program.tenant_id == tenant_id, Program.organization_id == org.id
+            )
+        )).scalar_one(),
+        "projects": (await db.execute(
+            select(func.count(Project.id)).where(
+                Project.tenant_id == tenant_id, Project.organization_id == org.id
+            )
+        )).scalar_one(),
+        "project_requests": (await db.execute(
+            select(func.count(ProjectRequest.id)).where(
+                ProjectRequest.tenant_id == tenant_id,
+                ProjectRequest.organization_id == org.id,
+            )
+        )).scalar_one(),
+    }
+    ensure_confirm(
+        confirm,
+        confirm_slug("organization", org.name),
+        preview=cascades_preview,
+    )
+
+    deleted_projects = await _delete_projects_in(
+        db, tenant_id, Project.organization_id == org.id
+    )
+    # ProjectRequest.organization_id es NOT NULL sin cascade FK — borrar.
+    requests = (
+        await db.execute(
+            select(ProjectRequest).where(
+                ProjectRequest.tenant_id == tenant_id,
+                ProjectRequest.organization_id == org.id,
+            )
+        )
+    ).scalars().all()
+    deleted_requests = len(requests)
+    for r in requests:
+        await db.delete(r)
+    # Charter.organization_id es nullable y los charters ya fueron borrados
+    # vía cascade desde Project. El resto cae por FK CASCADE: BUs, programs,
+    # exclusions, notifications. Stakeholders.organization_id queda SET NULL.
+    await db.flush()
+    await db.delete(org)
+    await write_audit(
+        db, action="organization.hard_delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="organization",
+        entity_id=str(org.id),
+        details={
+            "name": org.name,
+            "cascades": {
+                **cascades_preview,
+                "projects_deleted": deleted_projects,
+                "requests_deleted": deleted_requests,
+            },
+        },
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)
+
+
+@business_units_router.get(
+    "/business-units/{bu_id}/hard-delete-preview",
+    response_model=HardDeletePreview,
+)
+async def preview_hard_delete_bu(
+    bu_id: UUID,
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    bu = (
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.id == str(bu_id),
+                BusinessUnit.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if bu is None:
+        raise not_found("Unidad de negocio")
+    depts = (await db.execute(
+        select(func.count(Department.id)).where(
+            Department.tenant_id == tenant_id, Department.business_unit_id == bu.id
+        )
+    )).scalar_one()
+    proj_links = (await db.execute(
+        select(func.count(Project.id)).where(
+            Project.tenant_id == tenant_id, Project.business_unit_id == bu.id
+        )
+    )).scalar_one()
+    return HardDeletePreview(
+        entity_type="business_unit",
+        entity_id=str(bu.id),
+        entity_name=bu.name,
+        # `is_active` puede estar en True aunque ya tenga `deleted_at`. Para
+        # el gate consideramos que un BU con deleted_at ya fue desactivado.
+        is_active=bu.is_active and bu.deleted_at is None,
+        confirm_slug=confirm_slug("business_unit", bu.name),
+        cascades={
+            "departments": depts,
+            "project_links_to_unset": proj_links,
+        },
+    )
+
+
+@business_units_router.delete(
+    "/business-units/{bu_id}/permanent", status_code=204
+)
+async def hard_delete_bu(
+    bu_id: UUID,
+    confirm: str = Query(...),
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import update
+
+    tenant_id = _ensure_tenant(cu)
+    bu = (
+        await db.execute(
+            select(BusinessUnit).where(
+                BusinessUnit.id == str(bu_id),
+                BusinessUnit.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if bu is None:
+        raise not_found("Unidad de negocio")
+    is_inactive_state = (not bu.is_active) or bu.deleted_at is not None
+    if not is_inactive_state:
+        ensure_inactive(True, "Unidad de negocio")  # lanza siempre
+
+    depts = (await db.execute(
+        select(func.count(Department.id)).where(
+            Department.tenant_id == tenant_id, Department.business_unit_id == bu.id
+        )
+    )).scalar_one()
+    proj_links = (await db.execute(
+        select(func.count(Project.id)).where(
+            Project.tenant_id == tenant_id, Project.business_unit_id == bu.id
+        )
+    )).scalar_one()
+    ensure_confirm(
+        confirm,
+        confirm_slug("business_unit", bu.name),
+        preview={"departments": depts, "project_links_to_unset": proj_links},
+    )
+
+    # Desreferenciar tablas con FK nullable que no cascadea.
+    await db.execute(
+        update(Project).where(Project.business_unit_id == bu.id).values(business_unit_id=None)
+    )
+    await db.execute(
+        update(ProjectCharter).where(ProjectCharter.business_unit_id == bu.id).values(business_unit_id=None)
+    )
+    await db.execute(
+        update(ProjectRequest).where(ProjectRequest.business_unit_id == bu.id).values(business_unit_id=None)
+    )
+    await db.flush()
+    # Departments cascadea por FK ondelete=CASCADE.
+    await db.delete(bu)
+    await write_audit(
+        db, action="business_unit.hard_delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit",
+        entity_id=str(bu.id),
+        details={
+            "name": bu.name,
+            "cascades": {"departments": depts, "project_links_unset": proj_links},
+        },
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)
+
+
+@departments_router.get(
+    "/departments/{dept_id}/hard-delete-preview",
+    response_model=HardDeletePreview,
+)
+async def preview_hard_delete_dept(
+    dept_id: UUID,
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    dept = (
+        await db.execute(
+            select(Department).where(
+                Department.id == str(dept_id),
+                Department.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if dept is None:
+        raise not_found("Departamento")
+    progs = (await db.execute(
+        select(func.count(Program.id)).where(
+            Program.tenant_id == tenant_id, Program.department_id == dept.id
+        )
+    )).scalar_one()
+    projs = (await db.execute(
+        select(func.count(Project.id)).where(
+            Project.tenant_id == tenant_id, Project.department_id == dept.id
+        )
+    )).scalar_one()
+    return HardDeletePreview(
+        entity_type="department",
+        entity_id=str(dept.id),
+        entity_name=dept.name,
+        is_active=dept.is_active and dept.deleted_at is None,
+        confirm_slug=confirm_slug("department", dept.name),
+        cascades={
+            "program_links_to_unset": progs,
+            "project_links_to_unset": projs,
+        },
+    )
+
+
+@departments_router.delete(
+    "/departments/{dept_id}/permanent", status_code=204
+)
+async def hard_delete_dept(
+    dept_id: UUID,
+    confirm: str = Query(...),
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import update
+
+    tenant_id = _ensure_tenant(cu)
+    dept = (
+        await db.execute(
+            select(Department).where(
+                Department.id == str(dept_id),
+                Department.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if dept is None:
+        raise not_found("Departamento")
+    is_inactive_state = (not dept.is_active) or dept.deleted_at is not None
+    if not is_inactive_state:
+        ensure_inactive(True, "Departamento")
+
+    progs = (await db.execute(
+        select(func.count(Program.id)).where(
+            Program.tenant_id == tenant_id, Program.department_id == dept.id
+        )
+    )).scalar_one()
+    projs = (await db.execute(
+        select(func.count(Project.id)).where(
+            Project.tenant_id == tenant_id, Project.department_id == dept.id
+        )
+    )).scalar_one()
+    ensure_confirm(
+        confirm,
+        confirm_slug("department", dept.name),
+        preview={"program_links_to_unset": progs, "project_links_to_unset": projs},
+    )
+
+    await db.execute(
+        update(Program).where(Program.department_id == dept.id).values(department_id=None)
+    )
+    await db.execute(
+        update(Project).where(Project.department_id == dept.id).values(department_id=None)
+    )
+    await db.execute(
+        update(ProjectCharter).where(ProjectCharter.department_id == dept.id).values(department_id=None)
+    )
+    await db.execute(
+        update(ProjectRequest).where(ProjectRequest.department_id == dept.id).values(department_id=None)
+    )
+    await db.flush()
+    await db.delete(dept)
+    await write_audit(
+        db, action="department.hard_delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="department",
+        entity_id=str(dept.id),
+        details={
+            "name": dept.name,
+            "cascades": {"program_links_unset": progs, "project_links_unset": projs},
         },
     )
     await db.commit()

@@ -25,13 +25,18 @@ import {
   createDepartment,
   deleteBusinessUnit,
   deleteDepartment,
+  hardDeleteBusinessUnit,
+  hardDeleteDepartment,
   listBusinessUnits,
   listDepartments,
+  previewHardDeleteBusinessUnit,
+  previewHardDeleteDepartment,
   updateBusinessUnit,
   updateDepartment,
   type BusinessUnit,
   type Department,
 } from "@/lib/api/organizations";
+import { HardDeleteButton } from "@/components/hard-delete-button";
 import { cn } from "@/lib/cn";
 
 type DeptsByBu = Record<string, Department[] | "loading" | "error">;
@@ -241,6 +246,16 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </Button>
+                    {!bu.is_active ? (
+                      <HardDeleteButton
+                        preview={() => previewHardDeleteBusinessUnit(bu.id)}
+                        hardDelete={(slug) => hardDeleteBusinessUnit(bu.id, slug)}
+                        onDeleted={() => void refreshBus()}
+                        entityLabel="Unidad de negocio"
+                        triggerVariant="ghost"
+                        triggerLabel="Eliminar"
+                      />
+                    ) : null}
                   </div>
                 </div>
 
@@ -302,6 +317,18 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                             >
                               <Trash2 className="h-4 w-4" aria-hidden />
                             </Button>
+                            {!d.is_active ? (
+                              <HardDeleteButton
+                                preview={() => previewHardDeleteDepartment(d.id)}
+                                hardDelete={(slug) =>
+                                  hardDeleteDepartment(d.id, slug)
+                                }
+                                onDeleted={() => void refreshDepts(d.business_unit_id)}
+                                entityLabel="Departamento"
+                                triggerVariant="ghost"
+                                triggerLabel="Eliminar"
+                              />
+                            ) : null}
                           </div>
                         </li>
                       ))

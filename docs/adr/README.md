@@ -570,6 +570,80 @@ de los siguientes triggers:
 
 ---
 
+## ADR-017 — Hard delete tenant-admin con patrón two-step
+
+**Estado:** ✅ Aceptada — 2026-05-05
+**Fecha:** 2026-05-05
+
+**Contexto:**
+Hasta US-088 todas las acciones "Borrar" del panel de tenant-admin
+hacían soft-delete (`is_active=false`, en algunos casos `deleted_at`).
+El owner reportó (2026-05-05) que necesita borrar permanentemente un
+programa duplicado: el soft-delete deja basura visible en filtros
+"inactivos" y, sobre todo, no libera unique constraints (`name` por
+tenant), por lo que recrear con el mismo nombre falla.
+
+Las 6 entidades afectadas son: `Organization`, `Program`,
+`BusinessUnit`, `Department`, `User`, `Stakeholder`. La única
+contraparte con hard-delete previo era `superadmin.delete_tenant`
+(slug confirm, blast radius enorme, fuera del alcance del tenant).
+
+**Decisión:**
+Adoptar el patrón **two-step delete** uniforme para las 6 entidades:
+
+1. **Paso 1 (existente):** `DELETE /<entity>/{id}` → soft-delete
+   (`is_active=false`, `deleted_at` cuando aplique).
+2. **Paso 2 (nuevo, US-088):** `DELETE /<entity>/{id}/permanent?confirm=<slug>`
+   → físico, tras chequeo `is_active=false` y match exacto de `confirm_slug`.
+3. **Preview:** `GET /<entity>/{id}/hard-delete-preview` devuelve
+   `{ confirm_slug, cascades, blockers }` para que la UI muestre
+   conteos antes de exigir el typed confirm.
+4. **Cascada:** decisión owner (AskUserQuestion 2026-05-05) =
+   "cascade-delete dependents (with explicit count in confirm)".
+   Implementación per-entidad:
+   - `Organization` → hard-delete proyectos/requests dependientes,
+     CASCADE FK toma BUs/programs/exclusions; stakeholders quedan
+     SET NULL.
+   - `Program` → hard-delete proyectos hijos (project FK CASCADE
+     barre modules/charter/tasks/areas/members/scheduled_reports).
+   - `BusinessUnit` → SET NULL en project/charter/request, CASCADE FK
+     barre departments.
+   - `Department` → SET NULL en program/project/charter/request.
+   - `User` → SET NULL en ~15 FKs nullables; CASCADE FK barre
+     auth/role/member/notification/exclusion. **Bloqueante** si el
+     user tiene `project_request.requested_by` o
+     `permission_change_request.requested_by_user_id` (NOT NULL): se
+     devuelve 409 con `blockers` en `fields`. Resolver manualmente.
+   - `Stakeholder` → delete trivial (sin dependientes hoy).
+5. **Audit:** acción `<entity>.hard_delete` con `details.cascades`.
+
+**Consecuencias:**
+- ✅ Owner desbloqueado para limpiar duplicados con UI segura.
+- ✅ Patrón único reutilizable (`confirm_slug` determinístico,
+  componente `<HardDeleteButton>` único en frontend).
+- ✅ Inactivar primero protege contra hard-delete accidental.
+- ❌ Cascade de `User` no es total: hay tablas con FK NOT NULL
+  no-cascade (`project_request.requested_by`,
+  `permission_change_request.requested_by_user_id`). Se documentan
+  como blockers; futura US puede agregar reasignación interactiva.
+- ❌ FK landscape diverso → la lógica de cascade vive en cada
+  endpoint, no en un helper genérico. Ver `apps/api/app/core/hard_delete.py`
+  para el helper mínimo (slug + checks).
+
+**Alternativas evaluadas:**
+- **Hard-delete sin two-step (botón directo):** rechazada — sin
+  freno previo es demasiado fácil borrar producción.
+- **Bloquear hard-delete si hay dependientes (sin cascade):**
+  rechazada por owner — preferían cascade explícito sobre fricción
+  de limpiar dependientes manualmente uno por uno.
+- **`ondelete=CASCADE` global vía migración:** rechazada por
+  blast radius (ya hay datos en producción) y porque algunas
+  relaciones deben sobrevivir al borrado del padre (auditoría).
+- **Slug confirm autogenerado vs typed:** se eligió typed confirm
+  para forzar contacto consciente con el nombre exacto.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown

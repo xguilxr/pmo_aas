@@ -15,12 +15,15 @@ import { ApiError } from "@/lib/api";
 import {
   createProgram,
   deleteProgram,
+  hardDeleteProgram,
   listPrograms,
+  previewHardDeleteProgram,
   updateProgram,
   type Program,
   type ProgramCreateBody,
   type ProgramUpdateBody,
 } from "@/lib/api/organizations";
+import { HardDeleteButton } from "@/components/hard-delete-button";
 
 type Props = {
   organizationId: string;
@@ -148,6 +151,16 @@ export function ProgramsSection({ organizationId }: Props) {
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </Button>
+                    {!p.is_active ? (
+                      <HardDeleteButton
+                        preview={() => previewHardDeleteProgram(p.id)}
+                        hardDelete={(slug) => hardDeleteProgram(p.id, slug)}
+                        onDeleted={() => void refresh()}
+                        entityLabel="Programa"
+                        triggerVariant="ghost"
+                        triggerLabel="Eliminar"
+                      />
+                    ) : null}
                   </div>
                 </div>
               ))}

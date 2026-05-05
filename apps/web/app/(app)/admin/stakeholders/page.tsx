@@ -12,9 +12,12 @@ import { ApiError } from "@/lib/api";
 import {
   createStakeholder,
   deleteStakeholder,
+  hardDeleteStakeholder,
   listStakeholders,
+  previewHardDeleteStakeholder,
   type Stakeholder,
 } from "@/lib/api/stakeholders";
+import { HardDeleteButton } from "@/components/hard-delete-button";
 
 export default function StakeholdersPage() {
   const [rows, setRows] = useState<Stakeholder[]>([]);
@@ -167,14 +170,26 @@ export default function StakeholdersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(s.id)}
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </Button>
+                    <div className="inline-flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(s.id)}
+                        aria-label="Desactivar"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Button>
+                      {!s.is_active ? (
+                        <HardDeleteButton
+                          preview={() => previewHardDeleteStakeholder(s.id)}
+                          hardDelete={(slug) => hardDeleteStakeholder(s.id, slug)}
+                          onDeleted={() => void load()}
+                          entityLabel="Stakeholder"
+                          triggerVariant="ghost"
+                          triggerLabel="Eliminar"
+                        />
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))
