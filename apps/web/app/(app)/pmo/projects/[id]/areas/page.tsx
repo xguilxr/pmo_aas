@@ -63,6 +63,10 @@ type FormState = {
   contact_email: string;
   /** US-062: líder del área (user_id o "" para ninguno). */
   area_leader_id: string;
+  /** US-091: jerarquía explícita Área→Equipo→Actor + teléfono. */
+  team_id: string;
+  area_id: string;
+  phone: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -72,6 +76,9 @@ const EMPTY_FORM: FormState = {
   contact_name: "",
   contact_email: "",
   area_leader_id: "",
+  team_id: "",
+  area_id: "",
+  phone: "",
 };
 
 export default function ProjectAreasPage() {
@@ -146,6 +153,9 @@ export default function ProjectAreasPage() {
       contact_name: area.contact_name ?? "",
       contact_email: area.contact_email ?? "",
       area_leader_id: area.area_leader_id ?? "",
+      team_id: area.team_id ?? "",
+      area_id: area.area_id ?? "",
+      phone: area.phone ?? "",
     });
     setFormError(null);
     setModalOpen(true);
@@ -172,6 +182,14 @@ export default function ProjectAreasPage() {
         contact_name: form.contact_name.trim() || null,
         contact_email: form.contact_email.trim() || null,
         area_leader_id: form.area_leader_id || null,
+        // US-091: solo enviar team_id/area_id/phone cuando aplican.
+        team_id:
+          form.type === "actor" && form.team_id ? form.team_id : null,
+        area_id:
+          (form.type === "actor" || form.type === "team") && form.area_id
+            ? form.area_id
+            : null,
+        phone: form.type === "actor" ? form.phone.trim() || null : null,
       };
       if (editing) {
         await updateProjectArea(editing.id, payload);
@@ -231,24 +249,49 @@ export default function ProjectAreasPage() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <div className="grid gap-3 border-b border-[var(--border-default)] p-4 sm:grid-cols-[1fr_180px]">
+        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-default)] p-4">
           <Input
             type="search"
             value={search}
             placeholder="Buscar por nombre o contacto"
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Buscar áreas"
+            className="min-w-[240px] flex-1"
           />
-          <Select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            aria-label="Filtrar por tipo"
+          {/* US-091: toggle (en lugar de dropdown) para Áreas / Equipos / Actores. */}
+          <div
+            role="radiogroup"
+            aria-label="Vista por tipo"
+            className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
           >
-            <option value="">Todos los tipos</option>
-            <option value="area">Áreas</option>
-            <option value="actor">Actores</option>
-            <option value="team">Equipos</option>
-          </Select>
+            {(
+              [
+                { v: "", label: "Todos" },
+                { v: "area", label: "Por Área" },
+                { v: "team", label: "Por Equipo" },
+                { v: "actor", label: "Por Actor" },
+              ] as const
+            ).map((opt) => {
+              const active = typeFilter === opt.v;
+              return (
+                <button
+                  key={opt.v}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setTypeFilter(opt.v)}
+                  className={cn(
+                    "rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
+                    active
+                      ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {loading ? (
@@ -303,6 +346,18 @@ export default function ProjectAreasPage() {
                           <Mail className="h-3 w-3" aria-hidden />
                           {a.contact_email}
                         </a>
+                      ) : null}
+                      {/* US-091: phone + área + equipo en cada card. */}
+                      {a.phone ? <span>{a.phone}</span> : null}
+                      {a.area_id ? (
+                        <span>
+                          Área: {rows.find((r) => r.id === a.area_id)?.name ?? "—"}
+                        </span>
+                      ) : null}
+                      {a.team_id ? (
+                        <span>
+                          Equipo: {rows.find((r) => r.id === a.team_id)?.name ?? "—"}
+                        </span>
                       ) : null}
                       {a.description ? (
                         <span className="line-clamp-1">{a.description}</span>
@@ -438,6 +493,82 @@ export default function ProjectAreasPage() {
                 ))}
               </Select>
             </div>
+            {/* US-091: jerarquía. Form actor → Área + Equipo + Phone.
+                Form equipo → Área. Form área → ninguno. */}
+            {(form.type === "actor" || form.type === "team") ? (
+              <div>
+                <label
+                  htmlFor="area-parent-area"
+                  className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                >
+                  Área (opcional)
+                </label>
+                <Select
+                  id="area-parent-area"
+                  value={form.area_id}
+                  onChange={(e) =>
+                    setForm({ ...form, area_id: e.target.value })
+                  }
+                >
+                  <option value="">— Sin área —</option>
+                  {rows
+                    .filter((r) => r.type === "area" && r.id !== editing?.id)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                </Select>
+              </div>
+            ) : null}
+            {form.type === "actor" ? (
+              <>
+                <div>
+                  <label
+                    htmlFor="area-parent-team"
+                    className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                  >
+                    Equipo (opcional)
+                  </label>
+                  <Select
+                    id="area-parent-team"
+                    value={form.team_id}
+                    onChange={(e) =>
+                      setForm({ ...form, team_id: e.target.value })
+                    }
+                  >
+                    <option value="">— Sin equipo —</option>
+                    {rows
+                      .filter((r) => r.type === "team")
+                      .filter((t) =>
+                        // Si el actor tiene un área seleccionada, filtrar
+                        // equipos a los que pertenecen a esa área.
+                        !form.area_id ? true : t.area_id === form.area_id,
+                      )
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </Select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="area-phone"
+                    className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                  >
+                    Teléfono (opcional)
+                  </label>
+                  <Input
+                    id="area-phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="+52 55 1234 5678"
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
           <div>
             <label

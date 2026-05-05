@@ -11,6 +11,9 @@ export type ScheduledReport = {
   // ENH-046: opcionales según cadencia
   day_of_week: number | null;   // 0=lunes ... 6=domingo
   hour_of_day: number | null;   // 0..23
+  // ENH-056: día del mes (1-31) para cadence=monthly. Si el mes destino
+  // no tiene ese día, se clampa al último (28/29/30).
+  day_of_month: number | null;
   run_at: string | null;        // ISO datetime para cadence=once
   recipients: string[];
   enabled: boolean;
@@ -28,6 +31,7 @@ export type ScheduledReportCreateBody = {
   enabled?: boolean;
   day_of_week?: number | null;
   hour_of_day?: number | null;
+  day_of_month?: number | null;
   run_at?: string | null;
 };
 
@@ -38,6 +42,7 @@ export type ScheduledReportUpdateBody = {
   enabled?: boolean;
   day_of_week?: number | null;
   hour_of_day?: number | null;
+  day_of_month?: number | null;
   run_at?: string | null;
 };
 

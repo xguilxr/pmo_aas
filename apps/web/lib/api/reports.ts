@@ -233,3 +233,68 @@ export function previewSeguimientoReport(reportId: string): Promise<void> {
     `/api/v1/reports/${reportId}/seguimiento/download?inline=true`,
   );
 }
+
+// ===========================================================================
+// US-092 — Historial de reportes generados (manual + scheduler).
+// ===========================================================================
+
+export type ReportHistoryItem = {
+  id: string;
+  project_id: string;
+  report_type: "avance" | "seguimiento" | string;
+  generated_at: string;
+  generated_by_user_id: string | null;
+  file_size_bytes: number | null;
+  scheduled_report_id: string | null;
+  source_report_id: string | null;
+  generated_by_name: string | null;
+};
+
+export function listReportHistory(
+  projectId: string,
+): Promise<ReportHistoryItem[]> {
+  return apiFetch<ReportHistoryItem[]>(
+    `/api/v1/projects/${projectId}/report-history`,
+  );
+}
+
+export function downloadReportHistory(historyId: string): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/report-history/${historyId}/download`,
+    undefined,
+    "GET",
+  );
+}
+
+export function previewReportHistory(historyId: string): Promise<void> {
+  return previewPdfFromEndpoint(
+    `/api/v1/report-history/${historyId}/download?inline=true`,
+  );
+}
+
+// US-093 — Reportes: creación con IA + preview.
+export type AIReportGenerateBody = {
+  base?: "avance" | "seguimiento" | "custom";
+  period_end?: string | null;
+  include_kpis?: boolean;
+  include_tasks?: boolean;
+  include_raid?: boolean;
+  include_milestones?: boolean;
+  free_notes?: string;
+  save_to_history?: boolean;
+};
+
+export type AIReportGenerateResponse = {
+  html: string;
+  history_id: string | null;
+};
+
+export function aiGenerateReport(
+  projectId: string,
+  body: AIReportGenerateBody,
+): Promise<AIReportGenerateResponse> {
+  return apiFetch<AIReportGenerateResponse>(
+    `/api/v1/projects/${projectId}/reports/ai-generate`,
+    { method: "POST", body },
+  );
+}

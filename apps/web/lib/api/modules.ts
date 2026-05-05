@@ -156,7 +156,13 @@ export type IssueCreateBody = {
   status?: IssueStatus;
 };
 
-export type IssueUpdateBody = Partial<IssueCreateBody> & { resolution?: string | null };
+// ENH-054: type + reported_at editables post-creación (no estaban en
+// IssueCreateBody como opcionales — ya cubiertos vía Partial — pero
+// reported_at no existía en Create).
+export type IssueUpdateBody = Partial<IssueCreateBody> & {
+  resolution?: string | null;
+  reported_at?: string | null;
+};
 
 export function listIssues(
   projectId: string,

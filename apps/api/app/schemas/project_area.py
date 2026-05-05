@@ -12,6 +12,10 @@ class ProjectAreaCreate(BaseModel):
     contact_email: EmailStr | None = None
     area_leader_id: UUID | None = None
     is_active: bool = True
+    # US-091: jerarquía explícita.
+    team_id: UUID | None = None
+    area_id: UUID | None = None
+    phone: str | None = Field(default=None, max_length=32)
 
 
 class ProjectAreaUpdate(BaseModel):
@@ -22,6 +26,9 @@ class ProjectAreaUpdate(BaseModel):
     contact_email: EmailStr | None = None
     area_leader_id: UUID | None = None
     is_active: bool | None = None
+    team_id: UUID | None = None
+    area_id: UUID | None = None
+    phone: str | None = Field(default=None, max_length=32)
 
 
 class ProjectAreaRead(BaseModel):
@@ -33,6 +40,9 @@ class ProjectAreaRead(BaseModel):
     contact_name: str | None
     contact_email: str | None
     area_leader_id: UUID | None = None
+    team_id: UUID | None = None
+    area_id: UUID | None = None
+    phone: str | None = None
     is_active: bool
 
     model_config = {"from_attributes": True}

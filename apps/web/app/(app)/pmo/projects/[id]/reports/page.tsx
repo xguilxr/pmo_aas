@@ -31,18 +31,23 @@ import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 import {
   PERIOD_LABEL,
   SECTION_LABELS,
+  aiGenerateReport,
   createReport,
   deleteReport,
   downloadAvanceReport,
+  downloadReportHistory,
   downloadSeguimientoReport,
   generateAvanceReport,
   generateSeguimientoReport,
   getReport,
   listReports,
+  listReportHistory,
   previewAvanceReport,
+  previewReportHistory,
   previewSeguimientoReport,
   updateReport,
   type Report,
+  type ReportHistoryItem,
   type ReportPeriod,
 } from "@/lib/api/reports";
 import {
@@ -154,6 +159,16 @@ function GeneratedReportActions({ report }: { report: Report }) {
   );
 }
 
+// ENH-055: 3-vista toggle (Catálogo / Historial / Creación) con hash en URL.
+type ReportsView = "catalog" | "history" | "create";
+
+function parseViewHash(): ReportsView {
+  if (typeof window === "undefined") return "catalog";
+  const h = (window.location.hash || "").replace(/^#/, "").toLowerCase();
+  if (h === "history" || h === "create") return h;
+  return "catalog";
+}
+
 function ReportsInner() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -164,6 +179,28 @@ function ReportsInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // ENH-055: vista activa persistida en `location.hash`.
+  const [view, setView] = useState<ReportsView>("catalog");
+
+  useEffect(() => {
+    setView(parseViewHash());
+    function onHash() {
+      setView(parseViewHash());
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("hashchange", onHash);
+      return () => window.removeEventListener("hashchange", onHash);
+    }
+  }, []);
+
+  function setViewAndHash(v: ReportsView) {
+    setView(v);
+    if (typeof window !== "undefined") {
+      const newHash = v === "catalog" ? "" : `#${v}`;
+      const url = `${window.location.pathname}${window.location.search}${newHash}`;
+      window.history.replaceState(null, "", url);
+    }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -244,6 +281,47 @@ function ReportsInner() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
+      {/* ENH-055: toggle 3 vistas Catálogo / Historial / Creación con
+          persistencia en hash. */}
+      <div
+        role="radiogroup"
+        aria-label="Vista de reportes"
+        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+      >
+        {(
+          [
+            { v: "catalog" as const, label: "Catálogo" },
+            { v: "history" as const, label: "Historial" },
+            { v: "create" as const, label: "Creación" },
+          ]
+        ).map((opt) => {
+          const active = view === opt.v;
+          return (
+            <button
+              key={opt.v}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setViewAndHash(opt.v)}
+              className={cn(
+                "rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors",
+                active
+                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === "history" ? (
+        <ReportHistoryView projectId={id} />
+      ) : view === "create" ? (
+        <ReportCreateAIView projectId={id} />
+      ) : (
+      <>
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
         {loading ? (
           <div className="space-y-2 p-4">
@@ -306,6 +384,8 @@ function ReportsInner() {
       </section>
 
       <ScheduledReportsSection projectId={id} />
+      </>
+      )}
 
       <CreateReportModal
         open={createOpen}
@@ -545,6 +625,8 @@ function ScheduledReportForm({
   // ENH-046: campos opcionales según cadencia.
   const [dayOfWeek, setDayOfWeek] = useState<number>(0); // 0 = Lunes
   const [hourOfDay, setHourOfDay] = useState<number>(9); // 09:00 default
+  // ENH-056: día del mes para cadence=monthly.
+  const [dayOfMonth, setDayOfMonth] = useState<number>(1);
   const [runAtDate, setRunAtDate] = useState<string>(""); // YYYY-MM-DD
   const [runAtTime, setRunAtTime] = useState<string>("09:00"); // HH:MM
   const [saving, setSaving] = useState(false);
@@ -559,6 +641,7 @@ function ScheduledReportForm({
       setEnabled(existing.enabled);
       setDayOfWeek(existing.day_of_week ?? 0);
       setHourOfDay(existing.hour_of_day ?? 9);
+      setDayOfMonth(existing.day_of_month ?? 1);
       if (existing.run_at) {
         const d = new Date(existing.run_at);
         setRunAtDate(d.toISOString().slice(0, 10));
@@ -576,6 +659,7 @@ function ScheduledReportForm({
       setEnabled(true);
       setDayOfWeek(0);
       setHourOfDay(9);
+      setDayOfMonth(1);
       setRunAtDate("");
       setRunAtTime("09:00");
     }
@@ -604,16 +688,20 @@ function ScheduledReportForm({
           return;
         }
       }
-      // ENH-046: armar payload con los campos condicionales.
+      // ENH-046 / ENH-056: armar payload con los campos condicionales.
       const cadenceFields: {
         day_of_week?: number | null;
         hour_of_day?: number | null;
+        day_of_month?: number | null;
         run_at?: string | null;
       } = {};
       if (cadence === "weekly") {
         cadenceFields.day_of_week = dayOfWeek;
         cadenceFields.hour_of_day = hourOfDay;
       } else if (cadence === "daily") {
+        cadenceFields.hour_of_day = hourOfDay;
+      } else if (cadence === "monthly") {
+        cadenceFields.day_of_month = dayOfMonth;
         cadenceFields.hour_of_day = hourOfDay;
       } else if (cadence === "once") {
         if (!runAtDate) {
@@ -759,6 +847,50 @@ function ScheduledReportForm({
                 <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
               ))}
             </Select>
+          </div>
+        ) : null}
+
+        {cadence === "monthly" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="sched-dom"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Día del mes (1-31)
+              </label>
+              <Select
+                id="sched-dom"
+                value={String(dayOfMonth)}
+                onChange={(e) => setDayOfMonth(Number(e.target.value))}
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+                Si el mes seleccionado no tiene ese día, se enviará el último día del mes.
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="sched-hod-m"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Hora (24h)
+              </label>
+              <Select
+                id="sched-hod-m"
+                value={String(hourOfDay)}
+                onChange={(e) => setHourOfDay(Number(e.target.value))}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
+                ))}
+              </Select>
+            </div>
           </div>
         ) : null}
 
@@ -1368,5 +1500,295 @@ export default function ReportsPage() {
     >
       <ReportsInner />
     </Suspense>
+  );
+}
+
+// ENH-055 + US-092 — vista Historial.
+function ReportHistoryView({ projectId }: { projectId: string }) {
+  const [items, setItems] = useState<ReportHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listReportHistory(projectId)
+      .then((rows) => {
+        if (!cancelled) setItems(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : "No se pudo cargar el historial",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </section>
+    );
+  }
+
+  if (error) {
+    return <Banner variant="danger">{error}</Banner>;
+  }
+
+  if (items.length === 0) {
+    return (
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
+        <CalendarClock className="mx-auto mb-3 h-8 w-8" aria-hidden />
+        <p className="font-medium text-[var(--color-secondary)]">
+          Sin historial todavía
+        </p>
+        <p className="mt-1">
+          Genera tu primer reporte de Avance o Seguimiento desde la vista
+          Catálogo. Cada generación queda registrada aquí.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <table className="w-full text-sm">
+        <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <tr>
+            <th className="px-3 py-2 font-medium">Fecha</th>
+            <th className="px-3 py-2 font-medium">Tipo</th>
+            <th className="px-3 py-2 font-medium">Generado por</th>
+            <th className="px-3 py-2 font-medium">Tamaño</th>
+            <th className="w-32 px-3 py-2 font-medium" aria-label="Acciones" />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((h) => (
+            <tr
+              key={h.id}
+              className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+            >
+              <td className="px-3 py-2 text-xs tabular-nums text-[var(--color-secondary)]">
+                {new Date(h.generated_at).toLocaleString("es-MX", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+              </td>
+              <td className="px-3 py-2">
+                <Badge variant="neutral">
+                  {h.report_type === "avance" ? "Avance" : "Seguimiento"}
+                </Badge>
+              </td>
+              <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                {h.generated_by_name ?? "—"}
+              </td>
+              <td className="px-3 py-2 text-xs tabular-nums text-[var(--color-tertiary)]">
+                {h.file_size_bytes != null
+                  ? `${Math.max(1, Math.round(h.file_size_bytes / 1024))} KB`
+                  : "—"}
+              </td>
+              <td className="px-3 py-2 text-right">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => previewReportHistory(h.id).catch(() => {})}
+                  title="Ver"
+                >
+                  <Eye className="h-4 w-4" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => downloadReportHistory(h.id).catch(() => {})}
+                  title="Descargar"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+// US-093 — vista Creación con IA + preview.
+function ReportCreateAIView({ projectId }: { projectId: string }) {
+  const [base, setBase] = useState<"avance" | "seguimiento" | "custom">("avance");
+  const [includeKpis, setIncludeKpis] = useState(true);
+  const [includeTasks, setIncludeTasks] = useState(true);
+  const [includeRaid, setIncludeRaid] = useState(true);
+  const [includeMilestones, setIncludeMilestones] = useState(true);
+  const [freeNotes, setFreeNotes] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [savingHistory, setSavingHistory] = useState(false);
+  const [savedHistoryId, setSavedHistoryId] = useState<string | null>(null);
+
+  async function generate(saveToHistory: boolean) {
+    if (saveToHistory) setSavingHistory(true);
+    else setGenerating(true);
+    setError(null);
+    try {
+      const res = await aiGenerateReport(projectId, {
+        base,
+        include_kpis: includeKpis,
+        include_tasks: includeTasks,
+        include_raid: includeRaid,
+        include_milestones: includeMilestones,
+        free_notes: freeNotes,
+        save_to_history: saveToHistory,
+      });
+      setPreviewHtml(res.html);
+      setSavedHistoryId(res.history_id);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo generar el reporte",
+      );
+    } finally {
+      setGenerating(false);
+      setSavingHistory(false);
+    }
+  }
+
+  function downloadHtmlAsFile() {
+    if (!previewHtml) return;
+    const blob = new Blob([previewHtml], { type: "text/html;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `Reporte-IA-${new Date().toISOString().slice(0, 10)}.html`;
+    a.click();
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
+          <Sparkles className="h-4 w-4" aria-hidden />
+          Creación con IA
+        </h2>
+        <p className="text-xs text-[var(--color-tertiary)]">
+          La IA del tenant arma un reporte custom combinando datos del
+          proyecto con tus instrucciones. Si tu tenant no tiene IA
+          configurada, este panel se rechaza con error claro.
+        </p>
+        {error ? <Banner variant="danger">{error}</Banner> : null}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+            Tipo base
+          </label>
+          <Select
+            value={base}
+            onChange={(e) =>
+              setBase(e.target.value as "avance" | "seguimiento" | "custom")
+            }
+          >
+            <option value="avance">Avance</option>
+            <option value="seguimiento">Seguimiento</option>
+            <option value="custom">Personalizado</option>
+          </Select>
+        </div>
+        <fieldset className="space-y-1.5">
+          <legend className="mb-1 text-xs font-medium text-[var(--color-secondary)]">
+            Secciones a incluir
+          </legend>
+          {(
+            [
+              ["KPIs", includeKpis, setIncludeKpis] as const,
+              ["Tareas", includeTasks, setIncludeTasks] as const,
+              ["RAID (riesgos / incidencias)", includeRaid, setIncludeRaid] as const,
+              ["Hitos", includeMilestones, setIncludeMilestones] as const,
+            ]
+          ).map(([label, checked, set]) => (
+            <label key={label} className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => set(e.target.checked)}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </fieldset>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+            Instrucciones adicionales
+          </label>
+          <Textarea
+            rows={4}
+            value={freeNotes}
+            onChange={(e) => setFreeNotes(e.target.value)}
+            placeholder="Foco en hitos del Q2; tono ejecutivo; máximo 1 página."
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            onClick={() => generate(false)}
+            loading={generating}
+            disabled={generating || savingHistory}
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            Generar con IA
+          </Button>
+          {previewHtml ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={downloadHtmlAsFile}
+                disabled={savingHistory}
+              >
+                <Download className="h-4 w-4" aria-hidden />
+                Descargar HTML
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => generate(true)}
+                loading={savingHistory}
+                disabled={savedHistoryId !== null}
+              >
+                {savedHistoryId
+                  ? "Guardado en historial"
+                  : "Guardar en Historial"}
+              </Button>
+            </>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        {previewHtml ? (
+          <iframe
+            title="Vista previa del reporte IA"
+            srcDoc={previewHtml}
+            className="h-[640px] w-full rounded-[var(--radius-xl)]"
+          />
+        ) : (
+          <div className="flex h-[400px] flex-col items-center justify-center gap-2 p-10 text-center text-sm text-[var(--color-tertiary)]">
+            <Sparkles className="h-8 w-8" aria-hidden />
+            <p>Configura el reporte y pulsa "Generar con IA" para ver la preview.</p>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

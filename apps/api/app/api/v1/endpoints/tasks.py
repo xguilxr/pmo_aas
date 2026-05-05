@@ -1,9 +1,10 @@
 from datetime import UTC, date, datetime
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
@@ -11,6 +12,9 @@ from app.core.errors import business_rule, forbidden, not_found, validation_erro
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.task import Task, TaskDependency
+from app.models.user import User
+from app.schemas.modules import UserMini
+from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
 from app.services.import_job_store import (
@@ -20,9 +24,26 @@ from app.services.import_job_store import (
     load_preview,
     save_preview,
 )
+from app.services.import_mapping_suggest import (
+    SYSTEM_FIELDS as MAPPING_SYSTEM_FIELDS,
+)
+from app.services.import_mapping_suggest import (
+    suggest_column_mapping,
+)
 from app.services.msproject.mpp_parser import parse_mpp
 from app.services.msproject.xml_parser import parse_ms_project_xml
+from app.services.plan_metadata import (
+    collect_by_wbs,
+    compute_duration_days,
+    compute_outline_level,
+    ensure_duration_max_21,
+    recompute_successors_for_project,
+    validate_predecessors,
+)
 from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
+
+# ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
+TaskCriticality = Literal["low", "medium", "high", "critical"]
 
 router = APIRouter(tags=["tasks"])
 
@@ -60,6 +81,12 @@ class TaskCreate(BaseModel):
     owner_id: UUID | None = None
     priority: int | None = Field(default=None, ge=1, le=5)
     status: str = "not_started"
+    # ENH-051: criticidad opcional al crear; default `medium` server-side.
+    criticality: TaskCriticality = "medium"
+    # ENH-050: hito relacionado opcional al crear.
+    related_milestone_id: UUID | None = None
+    # US-090: predecesoras como lista de wbs_code.
+    predecessors: list[str] | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -70,6 +97,25 @@ class TaskUpdate(BaseModel):
     progress: int | None = Field(default=None, ge=0, le=100)
     status: str | None = None
     owner_id: UUID | None = None
+    criticality: TaskCriticality | None = None
+    # ENH-050: PATCH para reasignar / desasociar (None) el hito relacionado.
+    # Pydantic distingue ausente vs None vía `model_dump(exclude_unset=True)`.
+    related_milestone_id: UUID | None = None
+    # US-090: PATCH de predecesoras. None = desasociar todas, ausente = no tocar.
+    predecessors: list[str] | None = None
+    # US-090: tras editar fechas, el backend recalcula duration_days
+    # (auto). Si el cliente manda duration_days explícito, se ignora.
+    wbs: str | None = None
+
+
+class TaskMini(BaseModel):
+    """ENH-050: shape mínimo del hito relacionado embebido en TaskRead."""
+
+    id: UUID
+    name: str
+    wbs: str | None = None
+
+    model_config = {"from_attributes": True}
 
 
 class TaskRead(BaseModel):
@@ -86,8 +132,79 @@ class TaskRead(BaseModel):
     status: str
     source: str
     external_id: str | None
+    # ENH-049: responsable embebido para que la lista de tareas muestre
+    # avatar+nombre sin un round-trip extra a /users.
+    owner_id: UUID | None = None
+    owner: UserMini | None = None
+    # ENH-051: criticidad para chip de color en lista + filtro Críticos.
+    criticality: str = "medium"
+    # ENH-050: hito relacionado.
+    related_milestone_id: UUID | None = None
+    related_milestone: TaskMini | None = None
+    # US-090: outline level + predecesoras / sucesoras (auto-managed).
+    # Coerce None → [] para tasks legacy importadas antes de migración 0039.
+    outline_level: int | None = None
+    predecessors: list[str] | None = None
+    successors: list[str] | None = None
 
     model_config = {"from_attributes": True}
+
+
+async def _validate_related_milestone(
+    db: AsyncSession, project_id: UUID, related_id: UUID
+) -> Task:
+    """ENH-050: target debe (a) existir, (b) pertenecer al mismo proyecto,
+    (c) ser un hito (`is_milestone=true`). Devuelve la Task validada o
+    levanta 422."""
+    target = (
+        await db.execute(select(Task).where(Task.id == str(related_id)))
+    ).scalar_one_or_none()
+    if target is None:
+        raise validation_error("related_milestone_id no existe")
+    if str(target.project_id) != str(project_id):
+        raise validation_error("related_milestone_id no pertenece al proyecto")
+    if not target.is_milestone:
+        raise validation_error("related_milestone_id debe apuntar a un hito (is_milestone=true)")
+    return target
+
+
+async def _attach_milestones(db: AsyncSession, tasks: list[Task]) -> None:
+    """ENH-050: enriquece `task.related_milestone` con `{id, name, wbs}`."""
+    ids: set[str] = {str(t.related_milestone_id) for t in tasks if t.related_milestone_id}
+    if not ids:
+        for t in tasks:
+            t.related_milestone = None  # type: ignore[attr-defined]
+        return
+    rows = (
+        await db.execute(select(Task).where(Task.id.in_(ids)))
+    ).scalars().all()
+    by_id = {str(r.id): r for r in rows}
+    for t in tasks:
+        m = by_id.get(str(t.related_milestone_id)) if t.related_milestone_id else None
+        t.related_milestone = (  # type: ignore[attr-defined]
+            {"id": str(m.id), "name": m.name, "wbs": m.wbs} if m else None
+        )
+
+
+async def _attach_owners(db: AsyncSession, tasks: list[Task]) -> None:
+    """ENH-049: enriquece `task.owner` con `{id, full_name, email}` para
+    la columna Responsable. 1 SELECT batch del set único de owner_ids."""
+    owner_ids: set[str] = {str(t.owner_id) for t in tasks if t.owner_id}
+    if not owner_ids:
+        for t in tasks:
+            t.owner = None  # type: ignore[attr-defined]
+        return
+    rows = (
+        await db.execute(select(User).where(User.id.in_(owner_ids)))
+    ).scalars().all()
+    by_id = {str(u.id): u for u in rows}
+    for t in tasks:
+        u = by_id.get(str(t.owner_id)) if t.owner_id else None
+        t.owner = (  # type: ignore[attr-defined]
+            {"id": str(u.id), "full_name": u.full_name, "email": u.email}
+            if u
+            else None
+        )
 
 
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])
@@ -104,6 +221,9 @@ async def list_tasks(
             .order_by(Task.wbs.nullsfirst() if hasattr(Task.wbs, "nullsfirst") else Task.wbs)
         )
     ).scalars().all()
+    rows_list = list(rows)
+    await _attach_owners(db, rows_list)
+    await _attach_milestones(db, rows_list)
     return [TaskRead.model_validate(t) for t in rows]
 
 
@@ -120,23 +240,51 @@ async def create_task(
         raise business_rule("Proyecto cerrado")
     if body.start_date and body.end_date and body.end_date < body.start_date:
         raise validation_error("end_date debe ser >= start_date")
+    if body.related_milestone_id is not None:
+        await _validate_related_milestone(db, project_id, body.related_milestone_id)
+    # US-090: duration auto-calculada desde fechas (override del client si
+    # las fechas existen). Clamp a max 21 días.
+    auto_duration = compute_duration_days(body.start_date, body.end_date)
+    final_duration = auto_duration if auto_duration is not None else body.duration_days
+    ensure_duration_max_21(final_duration)
+    # US-090: predecessors validados contra el set actual de tasks del
+    # proyecto + cycle check.
+    cleaned_preds: list[str] = []
+    if body.predecessors is not None:
+        all_tasks = (
+            await db.execute(select(Task).where(Task.project_id == str(project_id)))
+        ).scalars().all()
+        cleaned_preds = validate_predecessors(
+            body.predecessors, collect_by_wbs(all_tasks), body.wbs
+        )
     t = Task(
         tenant_id=str(tenant_id), project_id=str(project_id),
         name=body.name, description=body.description, wbs=body.wbs,
         parent_id=str(body.parent_id) if body.parent_id else None,
         start_date=body.start_date, end_date=body.end_date,
-        duration_days=body.duration_days, progress=body.progress,
+        duration_days=final_duration, progress=body.progress,
         is_milestone=body.is_milestone,
         owner_id=str(body.owner_id) if body.owner_id else None,
         priority=body.priority, status=body.status, source="manual",
+        criticality=body.criticality,
+        related_milestone_id=(
+            str(body.related_milestone_id) if body.related_milestone_id else None
+        ),
+        outline_level=compute_outline_level(body.wbs),
+        predecessors=cleaned_preds,
+        successors=[],
     )
     db.add(t)
     await db.flush()
+    # US-090: re-sync successors de todo el proyecto (incluye la task nueva).
+    await recompute_successors_for_project(db, str(project_id))
     await write_audit(
         db, action="task.create", module="tasks", user_id=cu.id, tenant_id=tenant_id,
         entity_type="task", entity_id=str(t.id),
     )
     await db.commit()
+    await _attach_owners(db, [t])
+    await _attach_milestones(db, [t])
     return TaskRead.model_validate(t)
 
 
@@ -153,12 +301,45 @@ async def update_task(
     ).scalar_one_or_none()
     if t is None:
         raise not_found("Tarea")
+    # ENH-050: distinguir "no enviado" vs "enviado=null" (desasociar). El
+    # resto de campos sigue usando exclude_none=True para back-compat.
+    data_full = body.model_dump(exclude_unset=True)
     data = body.model_dump(exclude_none=True)
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    if "related_milestone_id" in data_full:
+        rid = data_full["related_milestone_id"]
+        if rid is None:
+            t.related_milestone_id = None
+        else:
+            await _validate_related_milestone(db, UUID(str(t.project_id)), rid)
+            t.related_milestone_id = str(rid)
+        data.pop("related_milestone_id", None)
+    # US-090: handle predecessors PATCH (None = vaciar, ausente = no tocar).
+    if "predecessors" in data_full:
+        new_preds = data_full["predecessors"] or []
+        all_tasks = (
+            await db.execute(select(Task).where(Task.project_id == t.project_id))
+        ).scalars().all()
+        t.predecessors = validate_predecessors(
+            new_preds, collect_by_wbs(all_tasks, exclude_id=str(t.id)), t.wbs
+        )
+        data.pop("predecessors", None)
     for k, v in data.items():
         setattr(t, k, v)
+    # US-090: si tocaron wbs / start / end, recomputar outline + duration.
+    if "wbs" in data_full:
+        t.outline_level = compute_outline_level(t.wbs)
+    if {"start_date", "end_date"} & data_full.keys():
+        auto_d = compute_duration_days(t.start_date, t.end_date)
+        if auto_d is not None:
+            ensure_duration_max_21(auto_d)
+            t.duration_days = auto_d
+    # Re-sync successors del proyecto entero (predecessors o wbs pueden haber cambiado).
+    await recompute_successors_for_project(db, t.project_id)
     await db.commit()
+    await _attach_owners(db, [t])
+    await _attach_milestones(db, [t])
     return TaskRead.model_validate(t)
 
 
@@ -177,6 +358,12 @@ async def delete_task(
     await db.execute(delete(TaskDependency).where(
         (TaskDependency.predecessor_id == t.id) | (TaskDependency.successor_id == t.id)
     ))
+    # ENH-050: la FK self con ondelete=SET NULL cubre Postgres en prod;
+    # en SQLite (tests) la PRAGMA foreign_keys puede estar OFF, así que
+    # también NULLeamos explícitamente para que la semántica sea idéntica.
+    await db.execute(
+        update(Task).where(Task.related_milestone_id == t.id).values(related_milestone_id=None)
+    )
     await db.delete(t)
     await db.commit()
     from fastapi.responses import Response
@@ -791,3 +978,66 @@ async def gantt_view(
             for d in deps
         ],
     }
+
+
+# ENH-053 — Sugerencia de mapeo de columnas asistido por IA.
+class SuggestMappingBody(BaseModel):
+    headers: list[str] = Field(min_length=1, max_length=50)
+
+
+class SuggestMappingItem(BaseModel):
+    field: str | None
+    confidence: float
+    source: str  # "ai" | "heuristic" | "none"
+
+
+class SuggestMappingResponse(BaseModel):
+    suggestions: dict[str, SuggestMappingItem]
+    system_fields: list[str]
+    ai_used: bool
+
+
+@router.post(
+    "/projects/{project_id}/tasks/import/suggest-mapping",
+    response_model=SuggestMappingResponse,
+)
+async def suggest_import_mapping(
+    project_id: UUID,
+    body: SuggestMappingBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-053: dado un set de headers detectados por el wizard, devuelve
+    una sugerencia de mapeo `{header: {field, confidence, source}}`.
+
+    - Heurística siempre corre (sinónimos hardcoded en español + inglés).
+    - Si `tenant.ai_mode != disabled`, llama al LLM del tenant para
+      refinar; si la IA falla la heurística queda como fallback.
+    """
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+    tenant_cfg = await load_tenant_ai(db, tenant_id)
+    # Platform groq + ollama legacy se cargan vía workers.tasks.ai si es
+    # necesario; aquí mantenemos el endpoint inline-only y dejamos que
+    # `suggest_column_mapping` falle suave a heurística si el provider
+    # no está bien configurado.
+    suggestions = await suggest_column_mapping(
+        body.headers,
+        tenant_cfg=tenant_cfg,
+        platform_groq_config=None,
+        tenant_ollama_config=tenant_cfg.legacy_ollama,
+        tenant_id=str(tenant_id),
+    )
+    ai_used = any(s.get("source") == "ai" for s in suggestions.values())
+    return SuggestMappingResponse(
+        suggestions={
+            h: SuggestMappingItem(
+                field=s.get("field"),
+                confidence=float(s.get("confidence", 0.0)),
+                source=str(s.get("source", "none")),
+            )
+            for h, s in suggestions.items()
+        },
+        system_fields=list(MAPPING_SYSTEM_FIELDS),
+        ai_used=ai_used,
+    )

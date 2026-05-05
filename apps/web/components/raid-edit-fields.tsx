@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api";
 import { listUsers } from "@/lib/api/admin";
 import {
   type Issue,
+  type IssueType,
   type Risk,
   updateIssue,
   updateRisk,
@@ -83,6 +84,13 @@ export function RaidEditFields(props:
   const [riskIdentified, setRiskIdentified] = useState(
     kind === "risk" ? item.identified_at ?? "" : "",
   );
+  // ENH-054: campos faltantes — category + closure_note para Risk.
+  const [riskCategory, setRiskCategory] = useState(
+    kind === "risk" ? item.category ?? "" : "",
+  );
+  const [riskClosureNote, setRiskClosureNote] = useState(
+    kind === "risk" ? item.closure_note ?? "" : "",
+  );
   const [issuePriority, setIssuePriority] = useState<number | "">(
     kind === "issue" ? item.priority ?? "" : "",
   );
@@ -91,6 +99,15 @@ export function RaidEditFields(props:
   );
   const [issueResolution, setIssueResolution] = useState(
     kind === "issue" ? item.resolution ?? "" : "",
+  );
+  // ENH-054: type + reported_at para Issue.
+  const [issueType, setIssueType] = useState<IssueType>(
+    kind === "issue" ? item.type : "action",
+  );
+  const [issueReported, setIssueReported] = useState(
+    kind === "issue" && item.reported_at
+      ? new Date(item.reported_at).toISOString().slice(0, 10)
+      : "",
   );
 
   useEffect(() => {
@@ -137,10 +154,18 @@ export function RaidEditFields(props:
       setRiskMitigation(item.mitigation_strategy ?? "");
       setRiskDue(item.due_date ?? "");
       setRiskIdentified(item.identified_at ?? "");
+      setRiskCategory(item.category ?? "");
+      setRiskClosureNote(item.closure_note ?? "");
     } else {
       setIssuePriority(item.priority ?? "");
       setIssueCommitted(item.committed_date ?? "");
       setIssueResolution(item.resolution ?? "");
+      setIssueType(item.type);
+      setIssueReported(
+        item.reported_at
+          ? new Date(item.reported_at).toISOString().slice(0, 10)
+          : "",
+      );
     }
     setError(null);
   }
@@ -154,6 +179,7 @@ export function RaidEditFields(props:
         const body: Parameters<typeof updateRisk>[1] = {
           title: title.trim(),
           description: description.trim() || null,
+          category: riskCategory.trim() || null,
           area_id: areaId || undefined,
           owner_id: ownerId || null,
           probability: riskProb,
@@ -161,6 +187,7 @@ export function RaidEditFields(props:
           mitigation_strategy: riskMitigation.trim() || null,
           identified_at: riskIdentified || null,
           due_date: riskDue || null,
+          closure_note: riskClosureNote.trim() || null,
         };
         const updated = await updateRisk(item.id, body);
         onSaved(updated);
@@ -168,9 +195,14 @@ export function RaidEditFields(props:
         const body: Parameters<typeof updateIssue>[1] = {
           title: title.trim(),
           description: description.trim() || null,
+          type: issueType,
           area_id: areaId || undefined,
           owner_id: ownerId || null,
           priority: issuePriority === "" ? null : Number(issuePriority),
+          // ENH-054: reported_at viaja como ISO string si tiene fecha.
+          reported_at: issueReported
+            ? new Date(`${issueReported}T00:00:00Z`).toISOString()
+            : null,
           committed_date: issueCommitted || null,
           resolution: issueResolution.trim() || null,
         };
@@ -280,6 +312,14 @@ export function RaidEditFields(props:
 
       {kind === "risk" ? (
         <>
+          {/* ENH-054: categoría editable. */}
+          <Field label="Categoría">
+            <Input
+              value={riskCategory}
+              onChange={(e) => setRiskCategory(e.target.value)}
+              placeholder="Tecnología / Negocio / Operación / …"
+            />
+          </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Fecha identificado">
               <Input
@@ -323,9 +363,38 @@ export function RaidEditFields(props:
               rows={2}
             />
           </Field>
+          {/* ENH-054: nota de cierre editable inline. */}
+          <Field label="Nota de cierre (opcional)">
+            <Textarea
+              value={riskClosureNote}
+              onChange={(e) => setRiskClosureNote(e.target.value)}
+              rows={2}
+              placeholder="Solo aplica si el estado pasa a Cerrado o Materializado"
+            />
+          </Field>
         </>
       ) : (
         <>
+          {/* ENH-054: tipo (Action/Issue/Decision) editable post-creación. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Tipo">
+              <Select
+                value={issueType}
+                onChange={(e) => setIssueType(e.target.value as IssueType)}
+              >
+                <option value="action">Acción</option>
+                <option value="issue">Incidencia</option>
+                <option value="decision">Decisión</option>
+              </Select>
+            </Field>
+            <Field label="Fecha reportada">
+              <Input
+                type="date"
+                value={issueReported}
+                onChange={(e) => setIssueReported(e.target.value)}
+              />
+            </Field>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Prioridad (1-5)">
               <Input

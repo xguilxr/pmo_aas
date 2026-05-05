@@ -2,6 +2,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Date,
     DateTime,
@@ -36,9 +37,27 @@ class Task(Base, TimestampMixin):
     owner_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
     priority: Mapped[int | None] = mapped_column(SmallInteger)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_started")
+    # ENH-051: criticidad separada del concepto general de priority. Valores:
+    # low | medium | high | critical (default medium). Check constraint en
+    # migración 0037.
+    criticality: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="medium", server_default="medium"
+    )
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     external_id: Mapped[str | None] = mapped_column(String(100))
     imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # ENH-050: vincula una tarea a un hito relacionado (otra task con
+    # is_milestone=true). FK self con ondelete=SET NULL.
+    related_milestone_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), index=True
+    )
+    # US-090: outline_level computado desde wbs.split('.').length.
+    outline_level: Mapped[int | None] = mapped_column(SmallInteger)
+    # US-090: predecessors / successors como JSON array de wbs_code.
+    # `predecessors` es authoritative; `successors` es derivado en write
+    # de los predecessors de otras tareas del mismo proyecto.
+    predecessors: Mapped[list | None] = mapped_column(JSON)
+    successors: Mapped[list | None] = mapped_column(JSON)
 
 
 class TaskDependency(Base):

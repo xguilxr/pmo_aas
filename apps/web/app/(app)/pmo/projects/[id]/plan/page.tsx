@@ -5,8 +5,13 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
+  ChevronDown,
+  ChevronRight,
   Download,
+  FileDown,
+  FileSpreadsheet,
   ListTree,
+  Network,
   Plus,
   Rows3,
   Trash2,
@@ -24,6 +29,7 @@ import { ImportWizard } from "@/components/import-wizard";
 import { ApiError } from "@/lib/api";
 import { getProject } from "@/lib/api/projects";
 import {
+  TASK_CRITICALITY_LABEL,
   TASK_STATUS_LABEL,
   createTask,
   deleteTask,
@@ -31,6 +37,7 @@ import {
   listTasks,
   type GanttData,
   type Task,
+  type TaskCriticality,
   type TaskStatus,
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
@@ -47,6 +54,94 @@ function fmtDate(d: string | null | undefined): string {
   } catch {
     return d;
   }
+}
+
+// ENH-047: ordena WBS como `1.2.10` > `1.2.2` (numérico, no lexicográfico).
+function compareWbs(a: string | null | undefined, b: string | null | undefined): number {
+  const sa = (a ?? "").split(".").map((p) => Number.parseInt(p, 10));
+  const sb = (b ?? "").split(".").map((p) => Number.parseInt(p, 10));
+  const len = Math.max(sa.length, sb.length);
+  for (let i = 0; i < len; i += 1) {
+    const va = Number.isFinite(sa[i]) ? sa[i] : 0;
+    const vb = Number.isFinite(sb[i]) ? sb[i] : 0;
+    if (va !== vb) return va - vb;
+  }
+  return 0;
+}
+
+function wbsDepth(wbs: string | null | undefined): number {
+  if (!wbs) return 0;
+  return wbs.split(".").filter(Boolean).length - 1;
+}
+
+function wbsParent(wbs: string | null | undefined): string | null {
+  if (!wbs) return null;
+  const parts = wbs.split(".").filter(Boolean);
+  if (parts.length <= 1) return null;
+  return parts.slice(0, -1).join(".");
+}
+
+// ENH-048: predicados para los chips de filtro Hitos / Críticos / Retrasados.
+type ChipKey = "milestone" | "critical" | "delayed";
+
+function isTaskCritical(t: Task): boolean {
+  return t.criticality === "high" || t.criticality === "critical";
+}
+
+function isTaskDelayed(t: Task): boolean {
+  if (!t.end_date) return false;
+  if (t.status === "completed") return false;
+  const end = new Date(t.end_date);
+  if (Number.isNaN(end.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return end.getTime() < today.getTime();
+}
+
+function chipMatches(t: Task, chips: Set<ChipKey>): boolean {
+  if (chips.size === 0) return true;
+  if (chips.has("milestone") && t.is_milestone) return true;
+  if (chips.has("critical") && isTaskCritical(t)) return true;
+  if (chips.has("delayed") && isTaskDelayed(t)) return true;
+  return false;
+}
+
+function ownerLabel(owner: Task["owner"]): string {
+  if (!owner) return "—";
+  return owner.full_name?.trim() || owner.email;
+}
+
+function ownerInitials(owner: Task["owner"]): string {
+  if (!owner) return "—";
+  const src = owner.full_name?.trim() || owner.email;
+  return src
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+}
+
+function OwnerCell({ owner }: { owner: Task["owner"] }) {
+  if (!owner) {
+    return <span className="text-[var(--color-tertiary)]">—</span>;
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-2"
+      title={ownerLabel(owner)}
+    >
+      <span
+        aria-hidden
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-subtle)] text-[10px] font-medium text-[var(--color-secondary)]"
+      >
+        {ownerInitials(owner)}
+      </span>
+      <span className="truncate text-[var(--color-secondary)]">
+        {ownerLabel(owner)}
+      </span>
+    </span>
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -71,15 +166,75 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ENH-051: chip de color por criticidad. Critical rojo, high naranja,
+// medium gris (sin chip — default), low verde.
+function CriticalityChip({ value }: { value: TaskCriticality }) {
+  if (value === "medium") return null;
+  const tone =
+    value === "critical"
+      ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+      : value === "high"
+        ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
+        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+  return (
+    <span
+      className={cn(
+        "ml-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+        tone,
+      )}
+      title={`Criticidad: ${TASK_CRITICALITY_LABEL[value]}`}
+    >
+      {TASK_CRITICALITY_LABEL[value]}
+    </span>
+  );
+}
+
 function TaskList({
   tasks,
   loading,
   onDelete,
+  groupByWbs = false,
+  collapsed,
+  onToggleCollapse,
+  showProjectCols = false,
 }: {
   tasks: Task[];
   loading: boolean;
   onDelete?: (t: Task) => void;
+  // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
+  // y permite colapsar nodos padre.
+  groupByWbs?: boolean;
+  collapsed?: Set<string>;
+  onToggleCollapse?: (wbs: string) => void;
+  // US-090: cuando true, muestra columnas Outline/Duration/Pred/Succ.
+  showProjectCols?: boolean;
 }) {
+  // ENH-047: orden + visibilidad bajo grupo WBS.
+  const display = useMemo(() => {
+    if (!groupByWbs) return tasks;
+    const sorted = [...tasks].sort((a, b) => compareWbs(a.wbs, b.wbs));
+    if (!collapsed || collapsed.size === 0) return sorted;
+    return sorted.filter((t) => {
+      let p = wbsParent(t.wbs);
+      while (p) {
+        if (collapsed.has(p)) return false;
+        p = wbsParent(p);
+      }
+      return true;
+    });
+  }, [tasks, groupByWbs, collapsed]);
+
+  // ENH-047: set de WBS que tienen al menos un hijo (para mostrar chevron).
+  const hasChildren = useMemo(() => {
+    if (!groupByWbs) return new Set<string>();
+    const out = new Set<string>();
+    for (const t of tasks) {
+      const p = wbsParent(t.wbs);
+      if (p) out.add(p);
+    }
+    return out;
+  }, [tasks, groupByWbs]);
+
   if (loading) {
     return (
       <div className="space-y-2 p-4">
@@ -102,16 +257,37 @@ function TaskList({
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
+            {showProjectCols ? (
+              <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
+                Nivel
+              </th>
+            ) : null}
             <th className="px-3 py-2 font-medium">Tarea</th>
+            {/* ENH-049: columna Responsable entre Tarea y Fechas. */}
+            <th className="px-3 py-2 font-medium">Responsable</th>
             <th className="px-3 py-2 font-medium">Inicio</th>
             <th className="px-3 py-2 font-medium">Fin</th>
+            {showProjectCols ? (
+              <>
+                <th className="w-16 px-3 py-2 font-medium" title="Duración (auto, máx 21d)">
+                  Dur.
+                </th>
+                <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
+                <th className="w-24 px-3 py-2 font-medium">Sucesoras</th>
+              </>
+            ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
             {onDelete ? <th className="w-10 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
         <tbody>
-          {tasks.map((t) => (
+          {display.map((t) => {
+            const depth = groupByWbs ? wbsDepth(t.wbs) : 0;
+            const wbsKey = t.wbs ?? "";
+            const isParent = groupByWbs && wbsKey && hasChildren.has(wbsKey);
+            const isCollapsed = !!(isParent && collapsed?.has(wbsKey));
+            return (
             <tr
               key={t.id}
               className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
@@ -119,11 +295,50 @@ function TaskList({
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
+              {showProjectCols ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
+                  {t.outline_level ?? "—"}
+                </td>
+              ) : null}
               <td className="px-3 py-2">
-                <div className="font-medium text-[var(--color-primary)]">
-                  {t.is_milestone ? "🔷 " : ""}
-                  {t.name}
+                <div
+                  className="flex items-center gap-1 font-medium text-[var(--color-primary)]"
+                  style={groupByWbs ? { paddingLeft: depth * 16 } : undefined}
+                >
+                  {groupByWbs && isParent && onToggleCollapse ? (
+                    <button
+                      type="button"
+                      onClick={() => onToggleCollapse(wbsKey)}
+                      className="inline-flex h-4 w-4 items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+                      aria-label={isCollapsed ? "Expandir" : "Colapsar"}
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                    </button>
+                  ) : groupByWbs ? (
+                    <span className="inline-block h-4 w-4" aria-hidden />
+                  ) : null}
+                  <span>
+                    {t.is_milestone ? "🔷 " : ""}
+                    {t.name}
+                    <CriticalityChip value={t.criticality ?? "medium"} />
+                    {/* ENH-050: tooltip con hito relacionado. */}
+                    {t.related_milestone ? (
+                      <span
+                        className="ml-2 inline-flex items-center rounded bg-[var(--color-subtle)] px-1.5 py-0.5 text-[9px] text-[var(--color-tertiary)]"
+                        title={`Hito relacionado: ${t.related_milestone.name}`}
+                      >
+                        ↪ {t.related_milestone.wbs ?? t.related_milestone.name}
+                      </span>
+                    ) : null}
+                  </span>
                 </div>
+              </td>
+              <td className="px-3 py-2 text-xs">
+                <OwnerCell owner={t.owner} />
               </td>
               <td className="px-3 py-2 text-[var(--color-secondary)]">
                 {fmtDate(t.start_date)}
@@ -131,6 +346,19 @@ function TaskList({
               <td className="px-3 py-2 text-[var(--color-secondary)]">
                 {fmtDate(t.end_date)}
               </td>
+              {showProjectCols ? (
+                <>
+                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
+                    {t.duration_days != null ? `${t.duration_days}d` : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                    {(t.predecessors ?? []).join(", ") || "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                    {(t.successors ?? []).join(", ") || "—"}
+                  </td>
+                </>
+              ) : null}
               <td className="px-3 py-2 text-[var(--color-secondary)] tabular-nums">
                 {t.progress}%
               </td>
@@ -151,7 +379,8 @@ function TaskList({
                 </td>
               ) : null}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -177,6 +406,74 @@ function PlanInner() {
   // US-070: el wizard maneja su propio busy/strategy/mapping.
   const [wizardOpen, setWizardOpen] = useState(false);
 
+  // ENH-047: agrupación jerárquica por WBS. Default OFF para no romper
+  // la UX actual; persiste en localStorage por proyecto.
+  const [groupByWbs, setGroupByWbs] = useState(false);
+  const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
+
+  // US-090: toggle visibilidad de columnas MS Project (Outline / Duration
+  // / Predecesoras / Sucesoras). Default OFF para no saturar el ancho.
+  const [showProjectCols, setShowProjectCols] = useState(false);
+
+  // ENH-048: chips de filtro multi-select Hitos / Críticos / Retrasados.
+  const [activeChips, setActiveChips] = useState<Set<ChipKey>>(new Set());
+
+  function toggleChip(key: ChipKey) {
+    setActiveChips((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  // Conteos por chip (siempre sobre el set total, no sobre filtrado).
+  const chipCounts = useMemo(
+    () => ({
+      milestone: tasks.filter((t) => t.is_milestone).length,
+      critical: tasks.filter((t) => isTaskCritical(t)).length,
+      delayed: tasks.filter((t) => isTaskDelayed(t)).length,
+    }),
+    [tasks],
+  );
+
+  const filteredTasks = useMemo(
+    () => (activeChips.size === 0 ? tasks : tasks.filter((t) => chipMatches(t, activeChips))),
+    [tasks, activeChips],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const v = window.localStorage.getItem(`plan-grouping:${id}`);
+      if (v === "wbs") setGroupByWbs(true);
+    } catch {
+      /* localStorage puede fallar (modo privado, quota) — ignoramos. */
+    }
+  }, [id]);
+
+  function toggleGroupByWbs() {
+    const next = !groupByWbs;
+    setGroupByWbs(next);
+    if (typeof window !== "undefined") {
+      try {
+        if (next) window.localStorage.setItem(`plan-grouping:${id}`, "wbs");
+        else window.localStorage.removeItem(`plan-grouping:${id}`);
+      } catch {
+        /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
+      }
+    }
+  }
+
+  function toggleCollapsedWbs(wbs: string) {
+    setCollapsedWbs((prev) => {
+      const next = new Set(prev);
+      if (next.has(wbs)) next.delete(wbs);
+      else next.add(wbs);
+      return next;
+    });
+  }
+
   // ENH-006: editor de tareas inline (crear + eliminar) sin depender de
   // una página extra /tasks.
   const [newOpen, setNewOpen] = useState(false);
@@ -189,6 +486,12 @@ function PlanInner() {
     progress: "0",
     is_milestone: false,
     status: "not_started" as TaskStatus,
+    criticality: "medium" as TaskCriticality,
+    // ENH-050: hito relacionado, opcional.
+    related_milestone_id: "" as string,
+    // US-090: predecesoras como string CSV ("1.1, 1.2") por simplicidad
+    // del MVP — el backend valida cada wbs.
+    predecessors_csv: "" as string,
   });
   const [creating, setCreating] = useState(false);
 
@@ -247,6 +550,14 @@ function PlanInner() {
         progress: Number(newForm.progress) || 0,
         is_milestone: newForm.is_milestone,
         status: newForm.status,
+        criticality: newForm.criticality,
+        related_milestone_id: newForm.related_milestone_id || null,
+        predecessors: newForm.predecessors_csv
+          ? newForm.predecessors_csv
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : null,
       });
       setNewOpen(false);
       setNewForm({
@@ -258,6 +569,9 @@ function PlanInner() {
         progress: "0",
         is_milestone: false,
         status: "not_started",
+        criticality: "medium",
+        related_milestone_id: "",
+        predecessors_csv: "",
       });
       await loadTasksAndGantt();
     } catch (err) {
@@ -312,7 +626,7 @@ function PlanInner() {
       t.progress ?? 0,
       t.is_milestone ? "Sí" : "No",
       TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
-      "—",
+      ownerLabel(t.owner),
     ]);
     const csv = [
       headers.map((h) => `"${h}"`).join(","),
@@ -393,7 +707,7 @@ function PlanInner() {
           status:
             TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
             t.status,
-          owner: "—",
+          owner: ownerLabel(t.owner),
         });
         // Avance como porcentaje formateado.
         row.getCell("progress").numFmt = "0%";
@@ -463,44 +777,38 @@ function PlanInner() {
               Lista de tareas
             </h2>
           </div>
-          <div className="flex items-center gap-2">
-            {/* US-070: el wizard reemplaza el control inline anterior.
-                Soporta XLSX/CSV (con mapping manual de columnas), MPP
-                (via MPXJ) y XML (formato MS Project). */}
+          {/* ENH-052: orden Plantilla → Descargar (Excel/CSV) → Importar
+              con colores distintos. Plantilla = gris secundario;
+              Descargar = azul; Importar = verde. CSV queda como variante
+              compacta junto a Excel para no perder funcionalidad
+              (ENH-028). Layout `flex-wrap` para apilar en móvil. */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* ENH-047: toggle agrupación por WBS jerárquica. */}
             <Button
               type="button"
               size="sm"
-              variant="secondary"
-              onClick={() => setWizardOpen(true)}
-              aria-label="Abrir wizard de import"
+              variant={groupByWbs ? "primary" : "ghost"}
+              onClick={toggleGroupByWbs}
+              aria-label="Agrupar por WBS"
+              aria-pressed={groupByWbs}
+              title="Agrupar tareas por WBS jerárquico"
             >
-              <Upload className="h-4 w-4" aria-hidden />
-              Importar
+              <Network className="h-4 w-4" aria-hidden />
+              WBS
             </Button>
+            {/* US-090: toggle columnas tipo MS Project (Outline / Duration
+                / Predecesoras / Sucesoras). */}
             <Button
               type="button"
               size="sm"
-              variant="secondary"
-              onClick={exportToCSV}
-              aria-label="Exportar a CSV"
+              variant={showProjectCols ? "primary" : "ghost"}
+              onClick={() => setShowProjectCols((v) => !v)}
+              aria-label="Mostrar columnas MS Project"
+              aria-pressed={showProjectCols}
+              title="Outline level + Duración + Predecesoras + Sucesoras"
             >
-              <Download className="h-4 w-4" aria-hidden />
-              CSV
+              MSP
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={exportToExcel}
-              loading={exportingXlsx}
-              aria-label="Exportar a Excel"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              Excel
-            </Button>
-            {/* US-071: plantilla vacía descargable. Visible siempre,
-                incluso con plan vacío, para que el PM pueda armar el
-                plan offline y subirlo después. */}
             <Button
               type="button"
               size="sm"
@@ -527,8 +835,40 @@ function PlanInner() {
               aria-label="Descargar plantilla vacía"
               title="Descargar XLSX vacío con las columnas que el sistema espera"
             >
-              <Download className="h-4 w-4" aria-hidden />
+              <FileDown className="h-4 w-4" aria-hidden />
               Plantilla
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={exportToExcel}
+              loading={exportingXlsx}
+              aria-label="Descargar plan en Excel"
+              className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Descargar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={exportToCSV}
+              aria-label="Exportar a CSV"
+              title="Descargar como CSV"
+            >
+              <FileSpreadsheet className="h-4 w-4" aria-hidden />
+              CSV
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setWizardOpen(true)}
+              aria-label="Abrir wizard de import"
+              className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300"
+            >
+              <Upload className="h-4 w-4" aria-hidden />
+              Importar
             </Button>
             <Button
               type="button"
@@ -541,17 +881,70 @@ function PlanInner() {
             </Button>
           </div>
         </header>
-        <TaskList tasks={tasks} loading={loadingTasks} onDelete={handleDeleteTask} />
+        {/* ENH-048: chips multi-select Hitos / Críticos / Retrasados. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-2">
+          {(
+            [
+              { key: "milestone" as const, label: "Hitos" },
+              { key: "critical" as const, label: "Críticos" },
+              { key: "delayed" as const, label: "Retrasados" },
+            ]
+          ).map(({ key, label }) => {
+            const active = activeChips.has(key);
+            const count = chipCounts[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => toggleChip(key)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                )}
+              >
+                {label}
+                <span className="tabular-nums opacity-80">({count})</span>
+              </button>
+            );
+          })}
+          {activeChips.size > 0 ? (
+            <button
+              type="button"
+              onClick={() => setActiveChips(new Set())}
+              className="text-xs text-[var(--color-tertiary)] underline-offset-2 hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          ) : null}
+        </div>
+        <TaskList
+          tasks={filteredTasks}
+          loading={loadingTasks}
+          onDelete={handleDeleteTask}
+          groupByWbs={groupByWbs}
+          collapsed={collapsedWbs}
+          onToggleCollapse={toggleCollapsedWbs}
+          showProjectCols={showProjectCols}
+        />
       </section>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       tasks,
+      filteredTasks,
       loadingTasks,
       id,
       exportingXlsx,
       projectName,
       downloadingTemplate,
+      groupByWbs,
+      collapsedWbs,
+      activeChips,
+      chipCounts,
+      showProjectCols,
     ],
   );
 
@@ -733,6 +1126,62 @@ function PlanInner() {
               value={newForm.progress}
               onChange={(e) => setNewForm({ ...newForm, progress: e.target.value })}
             />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Criticidad
+            </span>
+            <Select
+              value={newForm.criticality}
+              onChange={(e) =>
+                setNewForm({
+                  ...newForm,
+                  criticality: e.target.value as TaskCriticality,
+                })
+              }
+            >
+              {(Object.keys(TASK_CRITICALITY_LABEL) as TaskCriticality[]).map((k) => (
+                <option key={k} value={k}>
+                  {TASK_CRITICALITY_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {/* US-090: predecesoras CSV de wbs_code. */}
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Predecesoras (lista de WBS separadas por coma)
+            </span>
+            <Input
+              value={newForm.predecessors_csv}
+              onChange={(e) =>
+                setNewForm({ ...newForm, predecessors_csv: e.target.value })
+              }
+              placeholder="1.1, 1.2"
+            />
+          </label>
+          {/* ENH-050: hito relacionado. Solo lista tareas con
+              is_milestone=true del proyecto actual. */}
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Hito relacionado (opcional)
+            </span>
+            <Select
+              value={newForm.related_milestone_id}
+              onChange={(e) =>
+                setNewForm({ ...newForm, related_milestone_id: e.target.value })
+              }
+            >
+              <option value="">— Sin hito —</option>
+              {tasks
+                .filter((t) => t.is_milestone)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.wbs ? `${t.wbs} · ` : ""}
+                    {t.name}
+                  </option>
+                ))}
+            </Select>
           </label>
           <label className="inline-flex items-center gap-2 self-end">
             <input

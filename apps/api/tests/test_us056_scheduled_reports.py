@@ -139,6 +139,9 @@ async def test_us056_delete_scheduled_report(client, db_session):
         json={
             "report_type": "avance",
             "cadence": "monthly",
+            # ENH-056: monthly ahora requiere day_of_month + hour_of_day.
+            "day_of_month": 1,
+            "hour_of_day": 9,
             "recipients": ["a@x.com"],
         },
         headers=auth["_authz"],

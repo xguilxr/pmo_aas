@@ -33,6 +33,17 @@ class ProjectArea(Base):
     area_leader_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")
     )
+    # US-091: jerarquía explícita Área → Equipo → Actor.
+    # `team_id` apunta a otra row con type='team' (sólo para actores).
+    # `area_id` apunta a otra row con type='area' (para actores y equipos).
+    # `phone` aplica a actores; se permite a otros tipos para flexibilidad.
+    team_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("project_areas.id", ondelete="SET NULL")
+    )
+    area_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("project_areas.id", ondelete="SET NULL")
+    )
+    phone: Mapped[str | None] = mapped_column(String(32))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

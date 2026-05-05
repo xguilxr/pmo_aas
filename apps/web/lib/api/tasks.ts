@@ -3,6 +3,15 @@ import { getAccessToken } from "@/lib/auth-storage";
 
 export type TaskStatus = "not_started" | "in_progress" | "completed" | "on_hold";
 
+// ENH-051: criticidad de tarea (separada de priority general).
+export type TaskCriticality = "low" | "medium" | "high" | "critical";
+
+export type TaskOwnerMini = {
+  id: string;
+  full_name: string | null;
+  email: string;
+};
+
 export type Task = {
   id: string;
   project_id: string;
@@ -17,6 +26,19 @@ export type Task = {
   status: TaskStatus | string;
   source: string;
   external_id: string | null;
+  // ENH-049: responsable embebido para mostrar en la columna sin
+  // round-trip extra a /users.
+  owner_id: string | null;
+  owner: TaskOwnerMini | null;
+  // ENH-051: criticidad. Default "medium" si la columna está fresca.
+  criticality: TaskCriticality;
+  // ENH-050: hito relacionado (FK self a otra task con is_milestone=true).
+  related_milestone_id: string | null;
+  related_milestone: { id: string; name: string; wbs: string | null } | null;
+  // US-090: outline + predecessors / successors.
+  outline_level: number | null;
+  predecessors: string[] | null;
+  successors: string[] | null;
 };
 
 export type TaskCreateBody = {
@@ -32,11 +54,26 @@ export type TaskCreateBody = {
   owner_id?: string | null;
   priority?: number | null;
   status?: TaskStatus;
+  criticality?: TaskCriticality;
+  // ENH-050.
+  related_milestone_id?: string | null;
+  // US-090.
+  predecessors?: string[] | null;
 };
 
 export type TaskUpdateBody = Partial<TaskCreateBody> & {
   status?: TaskStatus;
   progress?: number;
+  criticality?: TaskCriticality;
+  related_milestone_id?: string | null;
+  predecessors?: string[] | null;
+};
+
+export const TASK_CRITICALITY_LABEL: Record<TaskCriticality, string> = {
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
+  critical: "Crítica",
 };
 
 export type GanttDependency = {
@@ -207,6 +244,29 @@ export async function importPreview(
   const url = `${base}/api/v1/projects/${projectId}/tasks/import/preview${qs}`;
   const res = await rawFetch(url, { method: "POST", body: form });
   return _decode<ImportPreviewResult>(res);
+}
+
+// ENH-053 — sugerencia de mapeo asistida por IA (heurística + LLM).
+export type SuggestMappingItem = {
+  field: SystemField | null;
+  confidence: number;
+  source: "ai" | "heuristic" | "none";
+};
+
+export type SuggestMappingResponse = {
+  suggestions: Record<string, SuggestMappingItem>;
+  system_fields: SystemField[];
+  ai_used: boolean;
+};
+
+export function suggestImportMapping(
+  projectId: string,
+  headers: string[],
+): Promise<SuggestMappingResponse> {
+  return apiFetch<SuggestMappingResponse>(
+    `/api/v1/projects/${projectId}/tasks/import/suggest-mapping`,
+    { method: "POST", body: { headers } },
+  );
 }
 
 export async function importConfirm(

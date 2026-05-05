@@ -27,6 +27,7 @@ from app.models.project_area import ProjectArea, ProjectAreaResource  # noqa: F4
 from app.models.project_charter import ProjectCharter  # noqa: F401
 from app.models.project_member import ProjectMember  # noqa: F401
 from app.models.project_request import FolioSequence, ProjectRequest  # noqa: F401
+from app.models.report_history import ReportHistory  # noqa: F401
 from app.models.role import Role, UserRole  # noqa: F401
 from app.models.scheduled_report import ScheduledReport  # noqa: F401
 from app.models.stakeholder import Stakeholder  # noqa: F401

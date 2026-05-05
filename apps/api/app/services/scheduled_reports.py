@@ -9,6 +9,7 @@ posterior si el owner lo pide.
 """
 from __future__ import annotations
 
+import calendar
 from datetime import UTC, datetime, time, timedelta
 from typing import Literal
 
@@ -19,12 +20,22 @@ Cadence = Literal["daily", "weekly", "monthly", "once"]
 ReportType = Literal["avance", "seguimiento"]
 
 
+def _last_day_of_month(year: int, month: int) -> int:
+    """ENH-056: 28/29/30/31 según corresponda. Reusa `calendar.monthrange`."""
+    return calendar.monthrange(year, month)[1]
+
+
+def _next_month(year: int, month: int) -> tuple[int, int]:
+    return (year + 1, 1) if month == 12 else (year, month + 1)
+
+
 def compute_next_run(
     cadence: str,
     *,
     from_dt: datetime | None = None,
     day_of_week: int | None = None,
     hour_of_day: int | None = None,
+    day_of_month: int | None = None,
     run_at: datetime | None = None,
 ) -> datetime:
     """Devuelve el próximo `next_run_at` aplicando la cadencia y los
@@ -66,7 +77,27 @@ def compute_next_run(
             candidate += timedelta(days=7)
         return candidate
     if cadence == "monthly":
-        return base + timedelta(days=30)
+        # ENH-056: si tenemos day_of_month + hour_of_day, calculamos
+        # próxima ocurrencia "fija" con clamp al último día del mes
+        # destino. Sin estos campos, mantenemos legacy `+30 días`.
+        if day_of_month is None or hour_of_day is None:
+            return base + timedelta(days=30)
+        # Candidato 1: este mes en day_of_month (clampeado).
+        last = _last_day_of_month(base.year, base.month)
+        target_day = min(day_of_month, last)
+        candidate = base.replace(
+            day=target_day, hour=hour_of_day, minute=0, second=0, microsecond=0
+        )
+        if candidate > base:
+            return candidate
+        # Sino: siguiente mes con clamp.
+        ny, nm = _next_month(base.year, base.month)
+        last_next = _last_day_of_month(ny, nm)
+        target_day = min(day_of_month, last_next)
+        return base.replace(
+            year=ny, month=nm, day=target_day,
+            hour=hour_of_day, minute=0, second=0, microsecond=0,
+        )
     raise ValueError(f"Cadencia inválida: {cadence}")
 
 
