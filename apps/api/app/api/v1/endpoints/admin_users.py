@@ -144,6 +144,9 @@ async def create_user(
         password_hash=hash_password(body.password),
         is_active=body.is_active,
         role_type=body.role_type,  # US-078
+        # US-089: usuarios creados por admin deben cambiar password
+        # en su primer login (el password viaja por email, riesgo no-cero).
+        must_change_password=True,
     )
     db.add(user)
     await db.flush()
@@ -167,13 +170,79 @@ async def create_user(
                 )
             )
 
+    # US-089: enviar email de bienvenida con credenciales (post-flush, pre-commit
+    # para que un fallo de Resend no marque el user como creado en BD).
+    welcome_email_sent = await _send_welcome_email(
+        db,
+        tenant_id=tenant_id,
+        full_name=body.full_name,
+        email=email,
+        username=username,
+        password=body.password,
+    )
+
     await write_audit(
         db, action="user.create", module="admin.users", user_id=cu.id, tenant_id=tenant_id,
         entity_type="user", entity_id=str(user.id),
-        details={"username": username, "email": email, "role_type": body.role_type},
+        details={
+            "username": username,
+            "email": email,
+            "role_type": body.role_type,
+            "welcome_email_sent": welcome_email_sent,
+        },
     )
     await db.commit()
     return await _serialize(db, user)
+
+
+async def _send_welcome_email(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID | None,
+    full_name: str,
+    email: str,
+    username: str,
+    password: str,
+) -> bool:
+    """US-089: envía email de bienvenida con credenciales. Devuelve True
+    si el send completó (Resend ack); False si Resend está deshabilitado
+    o si el send falló (no levanta — el user ya está creado en DB).
+    """
+    import logging
+
+    from app.models.tenant import Tenant
+    from app.services.email import (
+        build_welcome_email_html,
+        send_email_via_resend,
+    )
+
+    log = logging.getLogger(__name__)
+
+    tenant_name: str | None = None
+    tenant_logo_url: str | None = None
+    if tenant_id:
+        t = (
+            await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+        ).scalar_one_or_none()
+        if t is not None:
+            tenant_name = t.name
+            tenant_logo_url = (t.settings or {}).get("branding", {}).get("logo_url")
+
+    html = build_welcome_email_html(
+        full_name=full_name,
+        email=email,
+        username=username,
+        password=password,
+        tenant_name=tenant_name,
+        tenant_logo_url=tenant_logo_url,
+    )
+    subject = f"Bienvenido a {tenant_name or 'PMO·aaS'} — credenciales de acceso"
+    try:
+        result = await send_email_via_resend(to=email, subject=subject, html=html)
+    except Exception as exc:  # noqa: BLE001 — captura amplia adrede.
+        log.warning("welcome email send failed: %s", exc)
+        return False
+    return result is not None
 
 
 @router.get("/{user_id}", response_model=UserRead)

@@ -70,6 +70,64 @@ Ajusta tus preferencias desde <a href="{settings.APP_BASE_URL}/account">tu cuent
 """
 
 
+def build_welcome_email_html(
+    *,
+    full_name: str,
+    email: str,
+    username: str,
+    password: str,
+    tenant_name: str | None = None,
+    tenant_logo_url: str | None = None,
+) -> str:
+    """US-089: template HTML con credenciales de ingreso para usuarios
+    creados por un admin.
+
+    El email contiene email, username, password (en claro) y un link a
+    `${APP_BASE_URL}/login`. El recipiente debe cambiar el password en su
+    primer login (`must_change_password=True` se setea server-side).
+    """
+    login_url = f"{settings.APP_BASE_URL}/login"
+    logo_html = (
+        f'<img src="{tenant_logo_url}" alt="{tenant_name or "PMO·aaS"}" '
+        f'style="max-height:36px;margin-bottom:16px" />'
+        if tenant_logo_url
+        else f'<div style="font-weight:600;color:#182e4e;margin-bottom:16px">'
+        f'{tenant_name or "PMO·aaS"}</div>'
+    )
+    creds_table = f"""
+<table role="presentation" cellpadding="6" cellspacing="0" style="background:#f1f5f9;border-radius:8px;width:100%;font-size:14px;color:#0f172a">
+  <tr><td style="font-weight:600;color:#475569;width:120px">Email</td><td>{email}</td></tr>
+  <tr><td style="font-weight:600;color:#475569">Usuario</td><td>{username}</td></tr>
+  <tr><td style="font-weight:600;color:#475569">Contraseña</td><td><code style="background:#fff;padding:2px 6px;border-radius:4px;border:1px solid #e2e8f0">{password}</code></td></tr>
+</table>
+"""
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<body style="font-family:-apple-system,Segoe UI,sans-serif;background:#f8fafc;margin:0;padding:24px">
+<table role="presentation" align="center" width="560" style="background:#fff;border-radius:12px;padding:24px;border:1px solid #e2e8f0">
+<tr><td>
+{logo_html}
+<h2 style="margin:0 0 8px;color:#0f172a">Bienvenido a {tenant_name or "PMO·aaS"}</h2>
+<p style="color:#334155;line-height:1.5">
+Hola {full_name}, se creó tu cuenta. Estas son tus credenciales de acceso:
+</p>
+{creds_table}
+<p style="color:#334155;line-height:1.5;margin-top:16px">
+Por seguridad, te pediremos que cambies la contraseña la primera vez que ingreses.
+</p>
+<p><a href="{login_url}" style="display:inline-block;padding:10px 16px;background:#182e4e;color:#fff;border-radius:6px;text-decoration:none">
+Iniciar sesión
+</a></p>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
+<p style="font-size:12px;color:#64748b">
+Si no esperabas este correo, ignóralo. La cuenta sólo es accesible con la contraseña enviada.
+</p>
+</td></tr>
+</table>
+</body></html>
+"""
+
+
 async def send_email_via_resend(
     *,
     to: str | list[str],
