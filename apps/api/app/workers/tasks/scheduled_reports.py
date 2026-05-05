@@ -194,7 +194,19 @@ async def _send(scheduled_id: str) -> dict:
 
         now = datetime.now(UTC)
         sched.last_run_at = now
-        sched.next_run_at = compute_next_run(sched.cadence, from_dt=now)
+        # ENH-046: para cadence="once" no hay próxima ejecución; el
+        # schedule queda deshabilitado tras correr.
+        if sched.cadence == "once":
+            sched.next_run_at = None
+            sched.enabled = False
+        else:
+            sched.next_run_at = compute_next_run(
+                sched.cadence,
+                from_dt=now,
+                day_of_week=sched.day_of_week,
+                hour_of_day=sched.hour_of_day,
+                run_at=sched.run_at,
+            )
         sched.last_error = None if resp is not None else "Resend no configurado"
 
         db.add(

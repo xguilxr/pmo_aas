@@ -58,7 +58,22 @@ Diferidos (documentados como follow-up):
   hay que entrar al detalle. Bajo impacto: la lista solo se ve para
   navegar; el detalle es el lugar natural de borrado.
 
-Próximo libre: US-089, BUG-042, ENH-045.
+Próximo libre: US-090, BUG-042, ENH-047.
+
+--- contexto ronda Sprint 9 (mismo branch) ---
+2026-05-05 — Sprint 9 v1.8 — Bloque 2: 3 items batch ✅ EJECUTADO
+Branch sesión: claude/resolve-merge-conflicts-4MmJK (mismo)
+
+Owner pidió 3 items en una ronda:
+  · ENH-045 #192 → 990d138  feat(auth) — password policy 12 → 8 chars.
+  · US-089  #193 → 77ac31b  feat(api) — email bienvenida con creds al
+    crear usuario (template Resend + must_change_password=true).
+  · ENH-046 #194 → (sha por commitear) feat(api,web) — reportes
+    programados con día de semana + hora (recurrentes) y fecha + hora
+    one-time. Migración 0036 + nuevos campos del schema + UI condicional.
+
+Tests: 29/29 verde (US-088 + US-056 + ENH-046 + US-089).
+Frontend: tsc + next build OK.
 
 --- contexto post-US088 (mismo branch) ---
 2026-05-05 — Sprint 9 v1.8 — BUG-041 + UX polish ✅ EJECUTADO

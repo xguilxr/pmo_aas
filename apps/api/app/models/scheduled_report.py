@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    SmallInteger,
     String,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -36,7 +37,15 @@ class ScheduledReport(Base, TimestampMixin):
         String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     report_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    # ENH-046: cadence acepta "daily" | "weekly" | "monthly" | "once".
     cadence: Mapped[str] = mapped_column(String(16), nullable=False)
+    # ENH-046: día de la semana (0=lunes … 6=domingo) — sólo usado por
+    # cadence="weekly". NULL para los demás casos.
+    day_of_week: Mapped[int | None] = mapped_column(SmallInteger)
+    # ENH-046: hora del día (0-23, en UTC). Usado por daily/weekly.
+    hour_of_day: Mapped[int | None] = mapped_column(SmallInteger)
+    # ENH-046: timestamp de ejecución one-time (cadence="once").
+    run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
