@@ -271,3 +271,30 @@ export function previewReportHistory(historyId: string): Promise<void> {
     `/api/v1/report-history/${historyId}/download?inline=true`,
   );
 }
+
+// US-093 — Reportes: creación con IA + preview.
+export type AIReportGenerateBody = {
+  base?: "avance" | "seguimiento" | "custom";
+  period_end?: string | null;
+  include_kpis?: boolean;
+  include_tasks?: boolean;
+  include_raid?: boolean;
+  include_milestones?: boolean;
+  free_notes?: string;
+  save_to_history?: boolean;
+};
+
+export type AIReportGenerateResponse = {
+  html: string;
+  history_id: string | null;
+};
+
+export function aiGenerateReport(
+  projectId: string,
+  body: AIReportGenerateBody,
+): Promise<AIReportGenerateResponse> {
+  return apiFetch<AIReportGenerateResponse>(
+    `/api/v1/projects/${projectId}/reports/ai-generate`,
+    { method: "POST", body },
+  );
+}

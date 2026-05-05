@@ -598,3 +598,164 @@ async def download_report_history(
     label = "Avance" if h.report_type == "avance" else "Seguimiento"
     filename = _report_filename(label, project.name, h.generated_at)
     return _pdf_response(pdf, filename, inline=inline)
+
+
+# ============================================================================
+# US-093 — Creación de reporte con IA (3a vista de ENH-055).
+# ============================================================================
+
+class AIGenerateBody(BaseModel):
+    base: str = Field(default="avance", pattern="^(avance|seguimiento|custom)$")
+    period_end: date | None = None
+    include_kpis: bool = True
+    include_tasks: bool = True
+    include_raid: bool = True
+    include_milestones: bool = True
+    free_notes: str = Field(default="", max_length=4000)
+    save_to_history: bool = False
+
+
+class AIGenerateResponse(BaseModel):
+    html: str
+    history_id: str | None = None
+
+
+_AI_REPORT_SYSTEM_PROMPT = (
+    "Eres un asistente PMO senior. Redacta un reporte de proyecto en HTML "
+    "limpio (sin <html>/<body> wrappers, sólo el bloque interno) en español. "
+    "Usa <h2> para títulos de sección, <p>/<ul> para contenido. Sé conciso, "
+    "directo y orientado a decisiones."
+)
+
+
+@router.post(
+    "/projects/{project_id}/reports/ai-generate",
+    response_model=AIGenerateResponse,
+)
+async def ai_generate_report(
+    project_id: UUID,
+    body: AIGenerateBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-093: genera un reporte custom con IA.
+
+    Estrategia:
+    1. Construye contexto base (avance/seguimiento) según `body.base`.
+    2. Filtra el contexto a las secciones solicitadas.
+    3. Llama al LLM del tenant con el JSON + free_notes.
+    4. Envuelve en HTML estilizado y devuelve.
+    5. Si `save_to_history=true`, persiste un Report + ReportHistory para
+       que aparezca en la vista Historial (US-092).
+    """
+    import json
+
+    from app.core.errors import business_rule
+    from app.services.ai.provider import generate_for_tenant
+    from app.services.ai.tenant_ai import load_tenant_ai
+    from app.services.operational_reports import build_seguimiento_context
+
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+
+    tenant_cfg = await load_tenant_ai(db, tenant_id)
+    if tenant_cfg.mode == "disabled":
+        raise business_rule(
+            "El tenant no tiene IA configurada (ai_mode=disabled)"
+        )
+
+    cut_off = body.period_end or datetime.now(UTC).date()
+    if body.base == "seguimiento":
+        context = await build_seguimiento_context(db, tenant_id, project.id, cut_off, 14)
+    else:
+        context = await build_avance_context(db, tenant_id, project.id, cut_off)
+
+    filtered: dict = {}
+    if body.include_kpis:
+        filtered["kpis"] = context.get("kpis") or context.get("metrics") or {}
+    if body.include_tasks:
+        filtered["tasks"] = context.get("tasks") or context.get("activities") or []
+    if body.include_raid:
+        filtered["raid"] = {
+            "risks": context.get("risks", []),
+            "issues": context.get("issues", []),
+        }
+    if body.include_milestones:
+        filtered["milestones"] = context.get("milestones") or []
+
+    user_prompt = (
+        f"Proyecto: {project.name} ({project.folio}).\n"
+        f"Período hasta {cut_off.isoformat()}.\n"
+        f"Datos del proyecto (JSON):\n{json.dumps(filtered, ensure_ascii=False, default=str)[:6000]}\n\n"
+        f"Notas adicionales del usuario:\n{body.free_notes or '(ninguna)'}\n\n"
+        "Devuelve HTML limpio sin <html>/<body>."
+    )
+
+    try:
+        res = await generate_for_tenant(
+            user_prompt,
+            system=_AI_REPORT_SYSTEM_PROMPT,
+            tenant_ai_mode=tenant_cfg.mode,
+            byo_config=tenant_cfg.byo,
+            tenant_ollama_config=tenant_cfg.legacy_ollama,
+            tenant_id=str(tenant_id),
+        )
+        body_html = (res.text or "").strip()
+    except Exception as exc:
+        raise business_rule(f"La IA falló al generar el reporte: {exc}") from exc
+
+    full_html = (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<style>body{font-family:system-ui,sans-serif;color:#1f2937;"
+        "line-height:1.5;padding:24px;max-width:760px;margin:0 auto}"
+        "h1{font-size:20px}h2{font-size:16px;margin-top:18px;"
+        "border-bottom:1px solid #e5e7eb;padding-bottom:4px}"
+        "ul{margin:6px 0 12px 18px}p{margin:6px 0}"
+        ".meta{color:#6b7280;font-size:12px;margin-bottom:16px}</style></head><body>"
+        f"<h1>{project.name}</h1>"
+        f"<p class='meta'>Folio {project.folio} · {cut_off.isoformat()} · Generado con IA</p>"
+        f"{body_html}"
+        "</body></html>"
+    )
+
+    history_id: str | None = None
+    if body.save_to_history:
+        rep = Report(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            title=f"Reporte IA — {project.folio} — {cut_off.isoformat()}",
+            period=None,
+            generator="ai",
+            cut_off_date=cut_off,
+            sections={"_html": full_html, "_base": body.base},
+            recipients=[],
+            status="draft",
+            generated_by_ai=True,
+            created_by=cu.id,
+        )
+        db.add(rep)
+        await db.flush()
+        h = ReportHistory(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            report_type=body.base if body.base != "custom" else "ai_custom",
+            generated_by_user_id=str(cu.id),
+            source_report_id=str(rep.id),
+            file_size_bytes=len(full_html.encode("utf-8")),
+        )
+        db.add(h)
+        await db.flush()
+        history_id = str(h.id)
+        await write_audit(
+            db,
+            action="report.generate.ai",
+            module="reports",
+            user_id=cu.id,
+            tenant_id=tenant_id,
+            entity_type="report",
+            entity_id=str(rep.id),
+            details={"base": body.base},
+        )
+        await db.commit()
+
+    return AIGenerateResponse(html=full_html, history_id=history_id)

@@ -31,6 +31,7 @@ import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 import {
   PERIOD_LABEL,
   SECTION_LABELS,
+  aiGenerateReport,
   createReport,
   deleteReport,
   downloadAvanceReport,
@@ -318,16 +319,7 @@ function ReportsInner() {
       {view === "history" ? (
         <ReportHistoryView projectId={id} />
       ) : view === "create" ? (
-        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
-          <Sparkles className="mx-auto mb-3 h-8 w-8" aria-hidden />
-          <p className="font-medium text-[var(--color-secondary)]">
-            Creación con IA
-          </p>
-          <p className="mt-1">
-            Próximamente — formulario que arma un reporte custom con secciones
-            seleccionables + asistencia IA del tenant (US-093).
-          </p>
-        </section>
+        <ReportCreateAIView projectId={id} />
       ) : (
       <>
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
@@ -1633,5 +1625,170 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
         </tbody>
       </table>
     </section>
+  );
+}
+
+// US-093 — vista Creación con IA + preview.
+function ReportCreateAIView({ projectId }: { projectId: string }) {
+  const [base, setBase] = useState<"avance" | "seguimiento" | "custom">("avance");
+  const [includeKpis, setIncludeKpis] = useState(true);
+  const [includeTasks, setIncludeTasks] = useState(true);
+  const [includeRaid, setIncludeRaid] = useState(true);
+  const [includeMilestones, setIncludeMilestones] = useState(true);
+  const [freeNotes, setFreeNotes] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [savingHistory, setSavingHistory] = useState(false);
+  const [savedHistoryId, setSavedHistoryId] = useState<string | null>(null);
+
+  async function generate(saveToHistory: boolean) {
+    if (saveToHistory) setSavingHistory(true);
+    else setGenerating(true);
+    setError(null);
+    try {
+      const res = await aiGenerateReport(projectId, {
+        base,
+        include_kpis: includeKpis,
+        include_tasks: includeTasks,
+        include_raid: includeRaid,
+        include_milestones: includeMilestones,
+        free_notes: freeNotes,
+        save_to_history: saveToHistory,
+      });
+      setPreviewHtml(res.html);
+      setSavedHistoryId(res.history_id);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo generar el reporte",
+      );
+    } finally {
+      setGenerating(false);
+      setSavingHistory(false);
+    }
+  }
+
+  function downloadHtmlAsFile() {
+    if (!previewHtml) return;
+    const blob = new Blob([previewHtml], { type: "text/html;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `Reporte-IA-${new Date().toISOString().slice(0, 10)}.html`;
+    a.click();
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
+          <Sparkles className="h-4 w-4" aria-hidden />
+          Creación con IA
+        </h2>
+        <p className="text-xs text-[var(--color-tertiary)]">
+          La IA del tenant arma un reporte custom combinando datos del
+          proyecto con tus instrucciones. Si tu tenant no tiene IA
+          configurada, este panel se rechaza con error claro.
+        </p>
+        {error ? <Banner variant="danger">{error}</Banner> : null}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+            Tipo base
+          </label>
+          <Select
+            value={base}
+            onChange={(e) =>
+              setBase(e.target.value as "avance" | "seguimiento" | "custom")
+            }
+          >
+            <option value="avance">Avance</option>
+            <option value="seguimiento">Seguimiento</option>
+            <option value="custom">Personalizado</option>
+          </Select>
+        </div>
+        <fieldset className="space-y-1.5">
+          <legend className="mb-1 text-xs font-medium text-[var(--color-secondary)]">
+            Secciones a incluir
+          </legend>
+          {(
+            [
+              ["KPIs", includeKpis, setIncludeKpis] as const,
+              ["Tareas", includeTasks, setIncludeTasks] as const,
+              ["RAID (riesgos / incidencias)", includeRaid, setIncludeRaid] as const,
+              ["Hitos", includeMilestones, setIncludeMilestones] as const,
+            ]
+          ).map(([label, checked, set]) => (
+            <label key={label} className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => set(e.target.checked)}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </fieldset>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+            Instrucciones adicionales
+          </label>
+          <Textarea
+            rows={4}
+            value={freeNotes}
+            onChange={(e) => setFreeNotes(e.target.value)}
+            placeholder="Foco en hitos del Q2; tono ejecutivo; máximo 1 página."
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            onClick={() => generate(false)}
+            loading={generating}
+            disabled={generating || savingHistory}
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            Generar con IA
+          </Button>
+          {previewHtml ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={downloadHtmlAsFile}
+                disabled={savingHistory}
+              >
+                <Download className="h-4 w-4" aria-hidden />
+                Descargar HTML
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => generate(true)}
+                loading={savingHistory}
+                disabled={savedHistoryId !== null}
+              >
+                {savedHistoryId
+                  ? "Guardado en historial"
+                  : "Guardar en Historial"}
+              </Button>
+            </>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        {previewHtml ? (
+          <iframe
+            title="Vista previa del reporte IA"
+            srcDoc={previewHtml}
+            className="h-[640px] w-full rounded-[var(--radius-xl)]"
+          />
+        ) : (
+          <div className="flex h-[400px] flex-col items-center justify-center gap-2 p-10 text-center text-sm text-[var(--color-tertiary)]">
+            <Sparkles className="h-8 w-8" aria-hidden />
+            <p>Configura el reporte y pulsa "Generar con IA" para ver la preview.</p>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
