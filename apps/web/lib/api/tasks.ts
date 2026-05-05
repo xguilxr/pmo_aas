@@ -35,6 +35,10 @@ export type Task = {
   // ENH-050: hito relacionado (FK self a otra task con is_milestone=true).
   related_milestone_id: string | null;
   related_milestone: { id: string; name: string; wbs: string | null } | null;
+  // US-090: outline + predecessors / successors.
+  outline_level: number | null;
+  predecessors: string[] | null;
+  successors: string[] | null;
 };
 
 export type TaskCreateBody = {
@@ -53,6 +57,8 @@ export type TaskCreateBody = {
   criticality?: TaskCriticality;
   // ENH-050.
   related_milestone_id?: string | null;
+  // US-090.
+  predecessors?: string[] | null;
 };
 
 export type TaskUpdateBody = Partial<TaskCreateBody> & {
@@ -60,6 +66,7 @@ export type TaskUpdateBody = Partial<TaskCreateBody> & {
   progress?: number;
   criticality?: TaskCriticality;
   related_milestone_id?: string | null;
+  predecessors?: string[] | null;
 };
 
 export const TASK_CRITICALITY_LABEL: Record<TaskCriticality, string> = {

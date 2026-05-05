@@ -196,6 +196,7 @@ function TaskList({
   groupByWbs = false,
   collapsed,
   onToggleCollapse,
+  showProjectCols = false,
 }: {
   tasks: Task[];
   loading: boolean;
@@ -205,6 +206,8 @@ function TaskList({
   groupByWbs?: boolean;
   collapsed?: Set<string>;
   onToggleCollapse?: (wbs: string) => void;
+  // US-090: cuando true, muestra columnas Outline/Duration/Pred/Succ.
+  showProjectCols?: boolean;
 }) {
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
@@ -254,11 +257,25 @@ function TaskList({
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
+            {showProjectCols ? (
+              <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
+                Nivel
+              </th>
+            ) : null}
             <th className="px-3 py-2 font-medium">Tarea</th>
             {/* ENH-049: columna Responsable entre Tarea y Fechas. */}
             <th className="px-3 py-2 font-medium">Responsable</th>
             <th className="px-3 py-2 font-medium">Inicio</th>
             <th className="px-3 py-2 font-medium">Fin</th>
+            {showProjectCols ? (
+              <>
+                <th className="w-16 px-3 py-2 font-medium" title="Duración (auto, máx 21d)">
+                  Dur.
+                </th>
+                <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
+                <th className="w-24 px-3 py-2 font-medium">Sucesoras</th>
+              </>
+            ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
             {onDelete ? <th className="w-10 px-3 py-2" aria-label="Acciones" /> : null}
@@ -278,6 +295,11 @@ function TaskList({
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
+              {showProjectCols ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
+                  {t.outline_level ?? "—"}
+                </td>
+              ) : null}
               <td className="px-3 py-2">
                 <div
                   className="flex items-center gap-1 font-medium text-[var(--color-primary)]"
@@ -324,6 +346,19 @@ function TaskList({
               <td className="px-3 py-2 text-[var(--color-secondary)]">
                 {fmtDate(t.end_date)}
               </td>
+              {showProjectCols ? (
+                <>
+                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
+                    {t.duration_days != null ? `${t.duration_days}d` : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                    {(t.predecessors ?? []).join(", ") || "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                    {(t.successors ?? []).join(", ") || "—"}
+                  </td>
+                </>
+              ) : null}
               <td className="px-3 py-2 text-[var(--color-secondary)] tabular-nums">
                 {t.progress}%
               </td>
@@ -375,6 +410,10 @@ function PlanInner() {
   // la UX actual; persiste en localStorage por proyecto.
   const [groupByWbs, setGroupByWbs] = useState(false);
   const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
+
+  // US-090: toggle visibilidad de columnas MS Project (Outline / Duration
+  // / Predecesoras / Sucesoras). Default OFF para no saturar el ancho.
+  const [showProjectCols, setShowProjectCols] = useState(false);
 
   // ENH-048: chips de filtro multi-select Hitos / Críticos / Retrasados.
   const [activeChips, setActiveChips] = useState<Set<ChipKey>>(new Set());
@@ -450,6 +489,9 @@ function PlanInner() {
     criticality: "medium" as TaskCriticality,
     // ENH-050: hito relacionado, opcional.
     related_milestone_id: "" as string,
+    // US-090: predecesoras como string CSV ("1.1, 1.2") por simplicidad
+    // del MVP — el backend valida cada wbs.
+    predecessors_csv: "" as string,
   });
   const [creating, setCreating] = useState(false);
 
@@ -510,6 +552,12 @@ function PlanInner() {
         status: newForm.status,
         criticality: newForm.criticality,
         related_milestone_id: newForm.related_milestone_id || null,
+        predecessors: newForm.predecessors_csv
+          ? newForm.predecessors_csv
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : null,
       });
       setNewOpen(false);
       setNewForm({
@@ -523,6 +571,7 @@ function PlanInner() {
         status: "not_started",
         criticality: "medium",
         related_milestone_id: "",
+        predecessors_csv: "",
       });
       await loadTasksAndGantt();
     } catch (err) {
@@ -747,6 +796,19 @@ function PlanInner() {
               <Network className="h-4 w-4" aria-hidden />
               WBS
             </Button>
+            {/* US-090: toggle columnas tipo MS Project (Outline / Duration
+                / Predecesoras / Sucesoras). */}
+            <Button
+              type="button"
+              size="sm"
+              variant={showProjectCols ? "primary" : "ghost"}
+              onClick={() => setShowProjectCols((v) => !v)}
+              aria-label="Mostrar columnas MS Project"
+              aria-pressed={showProjectCols}
+              title="Outline level + Duración + Predecesoras + Sucesoras"
+            >
+              MSP
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -865,6 +927,7 @@ function PlanInner() {
           groupByWbs={groupByWbs}
           collapsed={collapsedWbs}
           onToggleCollapse={toggleCollapsedWbs}
+          showProjectCols={showProjectCols}
         />
       </section>
     ),
@@ -881,6 +944,7 @@ function PlanInner() {
       collapsedWbs,
       activeChips,
       chipCounts,
+      showProjectCols,
     ],
   );
 
@@ -1082,6 +1146,19 @@ function PlanInner() {
                 </option>
               ))}
             </Select>
+          </label>
+          {/* US-090: predecesoras CSV de wbs_code. */}
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Predecesoras (lista de WBS separadas por coma)
+            </span>
+            <Input
+              value={newForm.predecessors_csv}
+              onChange={(e) =>
+                setNewForm({ ...newForm, predecessors_csv: e.target.value })
+              }
+              placeholder="1.1, 1.2"
+            />
           </label>
           {/* ENH-050: hito relacionado. Solo lista tareas con
               is_milestone=true del proyecto actual. */}

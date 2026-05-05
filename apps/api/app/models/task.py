@@ -2,6 +2,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Date,
     DateTime,
@@ -50,6 +51,13 @@ class Task(Base, TimestampMixin):
     related_milestone_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("tasks.id", ondelete="SET NULL"), index=True
     )
+    # US-090: outline_level computado desde wbs.split('.').length.
+    outline_level: Mapped[int | None] = mapped_column(SmallInteger)
+    # US-090: predecessors / successors como JSON array de wbs_code.
+    # `predecessors` es authoritative; `successors` es derivado en write
+    # de los predecessors de otras tareas del mismo proyecto.
+    predecessors: Mapped[list | None] = mapped_column(JSON)
+    successors: Mapped[list | None] = mapped_column(JSON)
 
 
 class TaskDependency(Base):

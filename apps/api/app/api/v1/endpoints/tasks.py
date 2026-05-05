@@ -19,6 +19,14 @@ from app.models.user import User
 from app.schemas.modules import UserMini
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
+from app.services.plan_metadata import (
+    collect_by_wbs,
+    compute_duration_days,
+    compute_outline_level,
+    ensure_duration_max_21,
+    recompute_successors_for_project,
+    validate_predecessors,
+)
 from app.services.import_job_store import (
     JOB_TTL_SECONDS,
     create_job_id,
@@ -70,6 +78,8 @@ class TaskCreate(BaseModel):
     criticality: TaskCriticality = "medium"
     # ENH-050: hito relacionado opcional al crear.
     related_milestone_id: UUID | None = None
+    # US-090: predecesoras como lista de wbs_code.
+    predecessors: list[str] | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -84,6 +94,11 @@ class TaskUpdate(BaseModel):
     # ENH-050: PATCH para reasignar / desasociar (None) el hito relacionado.
     # Pydantic distingue ausente vs None vía `model_dump(exclude_unset=True)`.
     related_milestone_id: UUID | None = None
+    # US-090: PATCH de predecesoras. None = desasociar todas, ausente = no tocar.
+    predecessors: list[str] | None = None
+    # US-090: tras editar fechas, el backend recalcula duration_days
+    # (auto). Si el cliente manda duration_days explícito, se ignora.
+    wbs: str | None = None
 
 
 class TaskMini(BaseModel):
@@ -119,6 +134,11 @@ class TaskRead(BaseModel):
     # ENH-050: hito relacionado.
     related_milestone_id: UUID | None = None
     related_milestone: TaskMini | None = None
+    # US-090: outline level + predecesoras / sucesoras (auto-managed).
+    # Coerce None → [] para tasks legacy importadas antes de migración 0039.
+    outline_level: int | None = None
+    predecessors: list[str] | None = None
+    successors: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -215,12 +235,27 @@ async def create_task(
         raise validation_error("end_date debe ser >= start_date")
     if body.related_milestone_id is not None:
         await _validate_related_milestone(db, project_id, body.related_milestone_id)
+    # US-090: duration auto-calculada desde fechas (override del client si
+    # las fechas existen). Clamp a max 21 días.
+    auto_duration = compute_duration_days(body.start_date, body.end_date)
+    final_duration = auto_duration if auto_duration is not None else body.duration_days
+    ensure_duration_max_21(final_duration)
+    # US-090: predecessors validados contra el set actual de tasks del
+    # proyecto + cycle check.
+    cleaned_preds: list[str] = []
+    if body.predecessors is not None:
+        all_tasks = (
+            await db.execute(select(Task).where(Task.project_id == str(project_id)))
+        ).scalars().all()
+        cleaned_preds = validate_predecessors(
+            body.predecessors, collect_by_wbs(all_tasks), body.wbs
+        )
     t = Task(
         tenant_id=str(tenant_id), project_id=str(project_id),
         name=body.name, description=body.description, wbs=body.wbs,
         parent_id=str(body.parent_id) if body.parent_id else None,
         start_date=body.start_date, end_date=body.end_date,
-        duration_days=body.duration_days, progress=body.progress,
+        duration_days=final_duration, progress=body.progress,
         is_milestone=body.is_milestone,
         owner_id=str(body.owner_id) if body.owner_id else None,
         priority=body.priority, status=body.status, source="manual",
@@ -228,9 +263,14 @@ async def create_task(
         related_milestone_id=(
             str(body.related_milestone_id) if body.related_milestone_id else None
         ),
+        outline_level=compute_outline_level(body.wbs),
+        predecessors=cleaned_preds,
+        successors=[],
     )
     db.add(t)
     await db.flush()
+    # US-090: re-sync successors de todo el proyecto (incluye la task nueva).
+    await recompute_successors_for_project(db, str(project_id))
     await write_audit(
         db, action="task.create", module="tasks", user_id=cu.id, tenant_id=tenant_id,
         entity_type="task", entity_id=str(t.id),
@@ -268,8 +308,28 @@ async def update_task(
             await _validate_related_milestone(db, UUID(str(t.project_id)), rid)
             t.related_milestone_id = str(rid)
         data.pop("related_milestone_id", None)
+    # US-090: handle predecessors PATCH (None = vaciar, ausente = no tocar).
+    if "predecessors" in data_full:
+        new_preds = data_full["predecessors"] or []
+        all_tasks = (
+            await db.execute(select(Task).where(Task.project_id == t.project_id))
+        ).scalars().all()
+        t.predecessors = validate_predecessors(
+            new_preds, collect_by_wbs(all_tasks, exclude_id=str(t.id)), t.wbs
+        )
+        data.pop("predecessors", None)
     for k, v in data.items():
         setattr(t, k, v)
+    # US-090: si tocaron wbs / start / end, recomputar outline + duration.
+    if "wbs" in data_full:
+        t.outline_level = compute_outline_level(t.wbs)
+    if {"start_date", "end_date"} & data_full.keys():
+        auto_d = compute_duration_days(t.start_date, t.end_date)
+        if auto_d is not None:
+            ensure_duration_max_21(auto_d)
+            t.duration_days = auto_d
+    # Re-sync successors del proyecto entero (predecessors o wbs pueden haber cambiado).
+    await recompute_successors_for_project(db, t.project_id)
     await db.commit()
     await _attach_owners(db, [t])
     await _attach_milestones(db, [t])
