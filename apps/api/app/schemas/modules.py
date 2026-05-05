@@ -53,6 +53,8 @@ class RiskUpdate(BaseModel):
     mitigation_strategy: str | None = None
     owner_id: UUID | None = None
     area_id: UUID | None = None  # US-064: permite asignar área a legacy.
+    # ENH-054: identified_at editable post-creación.
+    identified_at: date | None = None
     due_date: date | None = None
     status: Literal["identified", "analyzing", "mitigating", "materialized", "closed"] | None = None
     closure_note: str | None = None
@@ -101,7 +103,11 @@ class IssueCreate(BaseModel):
 class IssueUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
+    # ENH-054: type editable (action / issue / decision) post-creación.
+    type: Literal["action", "issue", "decision"] | None = None
     priority: int | None = Field(default=None, ge=1, le=5)
+    # ENH-054: reported_at editable post-creación (datetime).
+    reported_at: datetime | None = None
     committed_date: date | None = None
     owner_id: UUID | None = None
     area_id: UUID | None = None  # US-064: permite asignar a legacy.
