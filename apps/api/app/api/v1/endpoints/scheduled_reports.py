@@ -12,7 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,6 +57,24 @@ class ScheduledReportCreate(BaseModel):
     cadence: Cadence
     recipients: list[EmailStr] = Field(min_length=1)
     enabled: bool = True
+    # ENH-046: opcionales según cadencia.
+    day_of_week: int | None = Field(default=None, ge=0, le=6)
+    hour_of_day: int | None = Field(default=None, ge=0, le=23)
+    run_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def _validate_cadence_fields(self):
+        if self.cadence == "once" and self.run_at is None:
+            raise ValueError("cadence=once requiere run_at")
+        if self.cadence == "weekly" and (
+            self.day_of_week is None or self.hour_of_day is None
+        ):
+            raise ValueError(
+                "cadence=weekly requiere day_of_week (0-6) y hour_of_day (0-23)"
+            )
+        if self.cadence == "daily" and self.hour_of_day is None:
+            raise ValueError("cadence=daily requiere hour_of_day (0-23)")
+        return self
 
 
 class ScheduledReportUpdate(BaseModel):
@@ -64,6 +82,9 @@ class ScheduledReportUpdate(BaseModel):
     cadence: Cadence | None = None
     recipients: list[EmailStr] | None = None
     enabled: bool | None = None
+    day_of_week: int | None = Field(default=None, ge=0, le=6)
+    hour_of_day: int | None = Field(default=None, ge=0, le=23)
+    run_at: datetime | None = None
 
 
 class ScheduledReportRead(BaseModel):
@@ -73,6 +94,9 @@ class ScheduledReportRead(BaseModel):
     cadence: str
     recipients: list[str]
     enabled: bool
+    day_of_week: int | None = None
+    hour_of_day: int | None = None
+    run_at: datetime | None = None
     last_run_at: datetime | None
     next_run_at: datetime | None
     last_error: str | None
@@ -132,9 +156,21 @@ async def create_scheduled_report(
         project_id=str(project.id),
         report_type=body.report_type,
         cadence=body.cadence,
+        day_of_week=body.day_of_week,
+        hour_of_day=body.hour_of_day,
+        run_at=body.run_at,
         recipients=[str(e) for e in body.recipients],
         enabled=body.enabled,
-        next_run_at=compute_next_run(body.cadence) if body.enabled else None,
+        next_run_at=(
+            compute_next_run(
+                body.cadence,
+                day_of_week=body.day_of_week,
+                hour_of_day=body.hour_of_day,
+                run_at=body.run_at,
+            )
+            if body.enabled
+            else None
+        ),
         created_by=cu.id,
     )
     db.add(sched)
@@ -190,14 +226,46 @@ async def update_scheduled_report(
 
     prev_enabled = sched.enabled
     prev_cadence = sched.cadence
+    prev_dow = sched.day_of_week
+    prev_hod = sched.hour_of_day
+    prev_run_at = sched.run_at
     for field, value in data.items():
         setattr(sched, field, value)
 
-    # Si se habilitó o cambió la cadencia, re-computar next_run_at.
-    if sched.enabled and (
-        not prev_enabled or sched.cadence != prev_cadence or sched.next_run_at is None
-    ):
-        sched.next_run_at = compute_next_run(sched.cadence)
+    # ENH-046: validación condicional pos-merge SOLO si el caller tocó
+    # alguno de los campos relacionados con cadencia. Esto permite a
+    # filas legacy (sin day_of_week/hour_of_day) recibir updates de
+    # `recipients`/`enabled` sin tropezarse con la validación.
+    cadence_fields_touched = any(
+        f in data for f in ("cadence", "day_of_week", "hour_of_day", "run_at")
+    )
+    if cadence_fields_touched:
+        if sched.cadence == "once" and sched.run_at is None:
+            raise business_rule("cadence=once requiere run_at")
+        if sched.cadence == "weekly" and (
+            sched.day_of_week is None or sched.hour_of_day is None
+        ):
+            raise business_rule(
+                "cadence=weekly requiere day_of_week (0-6) y hour_of_day (0-23)"
+            )
+        if sched.cadence == "daily" and sched.hour_of_day is None:
+            raise business_rule("cadence=daily requiere hour_of_day (0-23)")
+
+    # Re-computar next_run_at si cambió algún input que lo afecta.
+    inputs_changed = (
+        sched.cadence != prev_cadence
+        or sched.day_of_week != prev_dow
+        or sched.hour_of_day != prev_hod
+        or sched.run_at != prev_run_at
+        or (sched.enabled and not prev_enabled)
+    )
+    if sched.enabled and (inputs_changed or sched.next_run_at is None):
+        sched.next_run_at = compute_next_run(
+            sched.cadence,
+            day_of_week=sched.day_of_week,
+            hour_of_day=sched.hour_of_day,
+            run_at=sched.run_at,
+        )
     if not sched.enabled:
         sched.next_run_at = None
 

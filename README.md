@@ -1,11 +1,13 @@
 # PMO-aaS — Project Management Office as a Service
 
-> Plataforma SaaS multi-tenant para gestionar portafolios, programas y proyectos. Reconstruida sobre **Railway** con un stack limpio, fluido y rápido, con estética inspirada en macOS/iPadOS.
+> Plataforma SaaS multi-tenant para gestionar portafolios, programas y proyectos. Construida sobre **Railway** con un stack limpio, fluido y rápido, con estética inspirada en macOS/iPadOS.
 
 [![Stack](https://img.shields.io/badge/stack-Next.js%2015%20%2B%20FastAPI-black)]()
 [![DB](https://img.shields.io/badge/db-PostgreSQL%2016-blue)]()
 [![Deploy](https://img.shields.io/badge/deploy-Railway-purple)]()
-[![AI](https://img.shields.io/badge/ai-Ollama%20%7C%20Claude-orange)]()
+[![Storage](https://img.shields.io/badge/storage-Cloudflare%20R2-orange)]()
+[![AI](https://img.shields.io/badge/ai-Groq%20%7C%20Gemini%20%7C%20Claude%20%7C%20Ollama-red)]()
+[![Sprint](https://img.shields.io/badge/sprint-9%20v1.8-green)]()
 
 ---
 
@@ -14,12 +16,16 @@
 PMO-aaS es una herramienta para Project Management Offices que necesitan:
 
 - **Gestionar el ciclo de vida completo** de un proyecto: solicitud → aprobación → ejecución → cierre.
-- **Jerarquía organizacional clara**: PMO → Organización → Programa → Proyecto.
+- **Jerarquía organizacional clara**: PMO → Organización → Unidad de Negocio → Departamento → Programa → Proyecto.
 - **6 módulos transversales** por proyecto: Riesgos, Incidencias, Cambios, Documentos, Lecciones, Minutas.
 - **Dashboard accionable** con KPIs, salud del portafolio y Plan vs Real.
-- **IA local** (Ollama) para generar minutas desde transcripciones y reportes de avance.
-- **Integración con Microsoft Project** para importar .mpp/.xml y visualizar Gantt.
-- **Multi-tenant estricto** con aislamiento a nivel de fila + Super Admin platform-wide.
+- **Charter editable** + sección RAID + áreas de proyecto + stakeholders catálogo.
+- **IA multi-proveedor** (Groq, Gemini, Claude, Ollama) para minutas, reportes de avance y análisis.
+- **Integración con Microsoft Project** para importar `.mpp/.xml` y visualizar Gantt.
+- **Permisos por capability** + Super Admin platform-wide + tenant-cross dashboards.
+- **Notificaciones** por evento + email vía Resend + reportes programados.
+- **Multi-tenant estricto** con aislamiento a nivel de fila + Storage S3 namespacing por tenant.
+- **Hard delete de dos pasos** (US-088): desactivar primero, luego eliminar permanentemente con typed-confirm + cascade.
 
 ---
 
@@ -29,18 +35,14 @@ Toda la documentación técnica y de producto vive en [`docs/`](./docs). Arranca
 
 | Área | Ruta | Descripción |
 |---|---|---|
-| Visión general | [`docs/00-overview.md`](./docs/00-overview.md) | Misión, alcance, personas, KPIs del proyecto |
-| Arquitectura | [`docs/architecture/`](./docs/architecture/) | C4, stack, BD, deploy en Railway, API |
-| Épicas | [`docs/epics/`](./docs/epics/) | EP001-EP009 con User Stories + Test Cases |
+| Arquitectura | [`docs/architecture/`](./docs/architecture/) | Stack, BD, deploy en Railway, API, multi-tenant |
+| Épicas | [`docs/epics/`](./docs/epics/) | EP001–EP015 con User Stories + Test Cases |
+| Sprint actual | [`docs/project-management/SPRINT.md`](./docs/project-management/SPRINT.md) | IN-PROGRESS, INBOX, QUEUE, bloques y DONE del sprint |
+| Histórico de sprints | [`docs/project-management/SPRINT-DONE-HISTORY.md`](./docs/project-management/SPRINT-DONE-HISTORY.md) | Sprints cerrados |
+| Runbooks | [`docs/runbooks/`](./docs/runbooks/) | Storage R2, Resend email, MS Project import, deploy Railway, etc. |
+| ADRs | [`docs/adr/`](./docs/adr/) | Decisiones arquitectónicas (ADR-001 a ADR-017) |
 | Testing | [`docs/testing/`](./docs/testing/) | Matriz de trazabilidad, multi-tenant isolation |
-| Design System | [`docs/design-system/`](./docs/design-system/) | Tokens, componentes, motion (estilo Apple) |
-| IA | [`docs/ai/`](./docs/ai/) | Setup de modelo local, prompts, fallback |
-| ADRs | [`docs/adr/`](./docs/adr/) | Decisiones arquitectónicas registradas |
-| Glosario | [`docs/glossary.md`](./docs/glossary.md) | Términos de negocio ES/EN |
-| Plan de construcción | [`docs/construction-plan.md`](./docs/construction-plan.md) | Carriles de trabajo (Claude / usuario) y cronograma |
-| Agentes / Skills | [`docs/agents-skills-proposals.md`](./docs/agents-skills-proposals.md) | Uso de claudio-enterprises + complementos PMO |
-| Propuestas genéricas | [`docs/agents-skills-generic-proposals.md`](./docs/agents-skills-generic-proposals.md) | Agentes/skills reutilizables para tu plugin |
-| Setup local | [`docs/setup-dev.md`](./docs/setup-dev.md) | Instalación detallada (Windows sin Docker) |
+| Reglas de Claude Code | [`CLAUDE.md`](./CLAUDE.md) | Numeración (US/BUG/ENH), gates, ciclo issue→fix→comment |
 
 ---
 
@@ -48,16 +50,16 @@ Toda la documentación técnica y de producto vive en [`docs/`](./docs). Arranca
 
 | Capa | Tecnología | Por qué |
 |---|---|---|
-| Frontend | **Next.js 15** (App Router) + TypeScript 5 + Tailwind v4 + shadcn/ui | SSR, RSC, DX, estética Apple con Radix |
-| Backend | **FastAPI 0.115** + Python 3.12 + Pydantic v2 | Tipado, performance, OpenAPI auto |
-| BD | **PostgreSQL 16** (Railway) + Prisma/SQLAlchemy 2.0 | JSONB, RLS para multi-tenant |
-| Auth | JWT + refresh tokens + bcrypt | Standard, sin vendor lock |
-| IA local | **Ollama** + Qwen 2.5 (7B/14B) | Privacidad, sin coste por token — **default** |
-| IA gratis (2.º) | **Google Gemini 1.5 Flash** (free tier) | 15 RPM / 1M tokens/día sin costo |
-| IA premium (3.º) | **Anthropic Claude Sonnet 4.6** | Opcional por tenant para cargas complejas |
-| MS Project | **MPXJ** (Java 21) + **frappe-gantt** | Abre .mpp/.xml/.xlsx nativo |
-| Jobs | **Celery** (Python) + Redis | Reportes programados, generación IA async |
-| Observabilidad | **GlitchTip** self-hosted + Railway Logs + **UptimeRobot** free | Errores + traces + uptime sin costo extra |
+| Frontend | **Next.js 15** (App Router, RSC) + TypeScript 5 + Tailwind v4 | SSR, DX, estética Apple |
+| Backend | **FastAPI 0.115** + Python 3.12 + Pydantic v2 + SQLAlchemy 2.0 async | Tipado, performance, OpenAPI auto |
+| BD | **PostgreSQL 16** (Railway) + Alembic migrations | Multi-tenant por columna `tenant_id`, FK CASCADE selectivo |
+| Storage | **Cloudflare R2** (S3-compatible) vía boto3 | Object storage para documentos + branding logos. Ver [`docs/runbooks/infra/uploads-storage.md`](./docs/runbooks/infra/uploads-storage.md) |
+| Auth | JWT + refresh tokens + bcrypt + role_type (admin/user/viewer) | Capabilities por módulo en `app/core/permissions.py` |
+| IA | **Groq** + **Google Gemini** (free tier) + **Anthropic Claude** + **Ollama** local | Multi-provider con failover por tenant |
+| MS Project | **MPXJ** (Java 21) + **frappe-gantt** | Importa `.mpp/.xml/.xlsx` |
+| Jobs | **Celery** (Python) + Redis | Reportes programados, generación IA async, notificaciones email |
+| Email | **Resend** (transactional) | Notificaciones, reset de password, alertas |
+| CI/CD | GitHub Actions + Railway autodeploy + alembic gate contra Postgres efímero | Migrations validadas en CI antes de deploy |
 
 Detalles completos en [`docs/architecture/stack.md`](./docs/architecture/stack.md).
 
@@ -65,60 +67,41 @@ Detalles completos en [`docs/architecture/stack.md`](./docs/architecture/stack.m
 
 ## Quickstart local
 
-**Sin Docker obligatorio.** Elige tu ruta según tu SO. Detalles en [`docs/setup-dev.md`](./docs/setup-dev.md).
+**Sin Docker obligatorio.** Detalles completos en [`docs/runbooks/railway/SETUP.md`](./docs/runbooks/railway/SETUP.md).
 
-### Ruta A — Windows nativo (recomendado si ya tuviste problemas con Docker)
+### Ruta A — Dev local nativo
 
-```powershell
-# Prerequisitos (una vez):
-#   - Node 20 LTS      https://nodejs.org
-#   - Python 3.12      https://www.python.org
-#   - PostgreSQL 16    https://www.postgresql.org/download/windows  (o Railway dev DB)
-#   - Redis            Memurai (https://www.memurai.com) o WSL/Ubuntu
-#   - Ollama           https://ollama.com/download/windows
-#   - pnpm             corepack enable; corepack prepare pnpm@latest --activate
+```bash
+# Prerequisitos:
+#   - Node 20 LTS + pnpm (corepack enable)
+#   - Python 3.12
+#   - PostgreSQL 16 (local o Railway dev DB)
+#   - Redis (local, Memurai en Windows o WSL)
+#   - Ollama (opcional, para IA local)
 
-git clone git@github.com:xguilxr/pmo_aas.git; cd pmo_aas
-pnpm install
-cp .env.example .env   # rellena DATABASE_URL, REDIS_URL, JWT_SECRET, etc.
+git clone git@github.com:xguilxr/pmo_aas.git && cd pmo_aas
+cp .env.example .env   # rellena DATABASE_URL, REDIS_URL, JWT_SECRET, S3_*, etc.
 
 # Backend
-cd apps\api
-py -3.12 -m venv .venv; .venv\Scripts\Activate.ps1
+cd apps/api
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload --port 8080
 
 # Frontend (otra consola)
-cd apps\web
+cd apps/web
+pnpm install
 pnpm dev                          # http://localhost:3000
 
-# Modelo IA (una vez, en otra consola)
-ollama pull qwen2.5:7b-instruct-q4_K_M
+# Worker (otra consola, opcional para AI/notifs/reports)
+cd apps/api
+celery -A app.workers.celery_app worker -l info
 ```
 
-### Ruta B — Dev services en Railway (cero instalación local pesada)
+### Ruta B — Railway end-to-end
 
-Crea un entorno `dev` en Railway con los plugins Postgres y Redis, copia las
-`DATABASE_URL` / `REDIS_URL` a tu `.env`, y corre frontend y backend en local.
-Ollama lo pones local (free) o en otro VPS. Guía paso a paso en
-[`docs/construction-plan.md`](./docs/construction-plan.md).
-
-### Ruta C — macOS / Linux con Docker (si quieres todo contenido)
-
-```bash
-git clone git@github.com:xguilxr/pmo_aas.git && cd pmo_aas
-docker compose up -d postgres redis    # solo Postgres + Redis
-pnpm install
-cd apps/api && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && alembic upgrade head
-uvicorn app.main:app --reload --port 8080 &
-cd ../web && pnpm dev
-```
-
-Ollama se instala **nativo** en el host (más rápido que en container y sin
-fricción de GPU passthrough). Guía de despliegue productivo en
-[`docs/architecture/deployment-railway.md`](./docs/architecture/deployment-railway.md).
+Crea un proyecto en Railway con plugins **Postgres** + **Redis**, conecta el repo y deja que autodeploy despliegue `apps/api` y `apps/web` por separado. Configura las env vars S3_* apuntando al bucket R2. Guía paso a paso en [`docs/runbooks/railway/DEPLOYMENT.md`](./docs/runbooks/railway/DEPLOYMENT.md).
 
 ---
 
@@ -128,27 +111,42 @@ fricción de GPU passthrough). Guía de despliegue productivo en
 pmo_aas/
 ├── apps/
 │   ├── web/                      # Next.js 15 (frontend)
+│   │   ├── app/(app)/            # Rutas autenticadas (admin/, pmo/, superadmin/)
+│   │   ├── components/           # Componentes (incl. hard-delete-button US-088)
+│   │   └── lib/api/              # Cliente tipado del API
 │   └── api/                      # FastAPI (backend)
-├── packages/
-│   ├── ui/                       # Design system (shadcn + tokens)
-│   ├── config/                   # ESLint, tsconfig, tailwind preset
-│   └── sdk/                      # Cliente tipado del API para el web
-├── docs/                         # Toda la documentación
-├── docker-compose.yml            # Dev local
-├── railway.json                  # Infra como código para Railway
-└── .github/workflows/            # CI (lint, test, build)
+│       ├── app/api/v1/           # Endpoints REST + deps + middleware
+│       ├── app/core/             # config, errors, permissions, hard_delete, security
+│       ├── app/models/           # SQLAlchemy 2.0 (organization, project, user, modules…)
+│       ├── app/services/         # audit, document_storage (R2), folio, notifications, email
+│       ├── app/workers/          # Celery tasks (notifications, reports, AI)
+│       ├── alembic/versions/     # Migrations (0001 → 0035 stakeholders catalog)
+│       └── tests/                # Pytest async (EP001-EP010 + US-### + BUG-### + ENH-###)
+├── docs/                         # Documentación (epics, ADRs, runbooks, sprint, testing)
+├── CLAUDE.md                     # Reglas de trabajo de Claude Code en este repo
+└── .github/workflows/            # CI: lint, typecheck, tests, alembic-gate
 ```
 
 ---
 
 ## Convenciones
 
-- **Ramas**: `feat/*`, `fix/*`, `chore/*`, `docs/*`. PRs pequeños (<400 líneas).
-- **Commits**: Conventional Commits (`feat(auth): …`).
-- **IDs de trazabilidad**: `EP-XXX` (épica), `US-XXX` (user story), `TC-XXX` (test case), `ADR-XXX`.
-- **Idiomas**: Español (default UI/BD) + Inglés. Claves i18n en `packages/i18n/`.
-- **Moneda**: MXN con formato `$1,234.56`.
-- **Folios**: `SOL-YYYY-NNN`, `PRJ-YYYY-NNN`, `RIS-…`, `INC-…`, `CHG-…`, `DOC-…`, `LEC-…`, `MIN-…`.
+- **Branches:** `claude/<tema>-<sufijo>` para sesiones de Claude Code; `main` es productivo.
+- **Commits:** `<tipo>(<scope>): <ID> — <desc> (refs #N)` — ver [`CLAUDE.md` §4](./CLAUDE.md).
+- **Una US/BUG/ENH = un commit.** Mover de IN-PROGRESS → DONE en `SPRINT.md` al pushear.
+- **IDs de trazabilidad:** `US-XXX` (story), `BUG-XXX` (bug), `ENH-XXX` (enhancement), `EP0XX` (epic), `ADR-XXX`, `DEC-XXX`, `TC-XXX`. Próximos libres en [`CLAUDE.md` §2](./CLAUDE.md).
+- **Idiomas:** Español (default UI) + Inglés en código y docs técnicas.
+- **Moneda:** MXN con formato `$1,234.56`. Presupuestos opcionales (ENH-040).
+- **Folios:** `SOL-YYYY-NNN` (solicitudes), `PRJ-YYYY-NNN` (proyectos), `RIS-…`, `INC-…`, `CHG-…`, `DOC-…`, `LEC-…`, `MIN-…`.
+
+---
+
+## Estado actual (Sprint 9 v1.8)
+
+- **Producción:** desplegada en Railway. API + Web + Worker + Postgres + Redis. Storage en Cloudflare R2.
+- **Última migración aplicada:** `0035_stakeholders_catalog` (US-086).
+- **Última feature entregada:** [US-088 #189](https://github.com/xguilxr/pmo_aas/issues/189) — hard delete two-step para 6 entidades admin (programs, orgs, BUs, depts, users, stakeholders) con cascade explícito y typed-confirm. Ver [`ADR-017`](./docs/adr/README.md#adr-017--hard-delete-tenant-admin-con-patrón-two-step).
+- **Cobertura de tests:** EP001-EP010 + US-### dedicados + BUG-### regresión. CI gate corre pytest + alembic upgrade head contra Postgres efímero.
 
 ---
 

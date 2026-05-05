@@ -16,7 +16,7 @@ import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { checkPasswordPolicy, generatePassword, passwordPolicyOk } from "@/lib/password";
 
 const POLICY_ERRORS: Record<string, string> = {
-  password_too_short: "Contraseña: al menos 12 caracteres",
+  password_too_short: "Contraseña: al menos 8 caracteres",
   password_missing_uppercase: "Contraseña: incluye una mayúscula",
   password_missing_digit: "Contraseña: incluye un dígito",
   password_missing_symbol: "Contraseña: incluye un símbolo",

@@ -13,7 +13,7 @@ import { changePassword } from "@/lib/auth";
 import { checkPasswordPolicy } from "@/lib/password";
 
 const POLICY_ERRORS: Record<string, string> = {
-  password_too_short: "Debe tener al menos 12 caracteres",
+  password_too_short: "Debe tener al menos 8 caracteres",
   password_missing_uppercase: "Debe incluir al menos una letra mayúscula",
   password_missing_digit: "Debe incluir al menos un dígito",
   password_missing_symbol: "Debe incluir al menos un símbolo",

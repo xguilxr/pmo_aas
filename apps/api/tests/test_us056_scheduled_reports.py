@@ -52,6 +52,7 @@ async def _seed_project(db_session, tenant, *, folio="P-0500"):
 
 def test_compute_next_run_cadences():
     base = datetime(2026, 4, 23, 12, 0, tzinfo=UTC)
+    # Legacy: sin params → suma fija (compat con código pre-ENH-046).
     assert compute_next_run("daily", from_dt=base) == base + timedelta(days=1)
     assert compute_next_run("weekly", from_dt=base) == base + timedelta(days=7)
     assert compute_next_run("monthly", from_dt=base) == base + timedelta(days=30)
@@ -69,6 +70,8 @@ async def test_us056_create_scheduled_report(client, db_session):
         json={
             "report_type": "avance",
             "cadence": "weekly",
+            "day_of_week": 0,
+            "hour_of_day": 9,
             "recipients": ["pm@example.com", "sponsor@example.com"],
         },
         headers=auth["_authz"],
@@ -92,6 +95,7 @@ async def test_us056_update_toggles_next_run(client, db_session):
         json={
             "report_type": "seguimiento",
             "cadence": "daily",
+            "hour_of_day": 9,
             "recipients": ["a@x.com"],
         },
         headers=auth["_authz"],
@@ -111,7 +115,12 @@ async def test_us056_update_toggles_next_run(client, db_session):
     # Reactivar re-computa next_run_at
     resumed = await client.patch(
         f"/api/v1/scheduled-reports/{sid}",
-        json={"enabled": True, "cadence": "weekly"},
+        json={
+            "enabled": True,
+            "cadence": "weekly",
+            "day_of_week": 1,
+            "hour_of_day": 9,
+        },
         headers=auth["_authz"],
     )
     assert resumed.status_code == 200
@@ -159,6 +168,8 @@ async def test_us056_cross_tenant_404(client, db_session):
         json={
             "report_type": "avance",
             "cadence": "weekly",
+            "day_of_week": 0,
+            "hour_of_day": 9,
             "recipients": ["a@x.com"],
         },
         headers=auth_a["_authz"],
@@ -193,6 +204,8 @@ async def test_us056_non_admin_cannot_create(client, db_session):
         json={
             "report_type": "avance",
             "cadence": "weekly",
+            "day_of_week": 0,
+            "hour_of_day": 9,
             "recipients": ["a@x.com"],
         },
         headers=viewer["_authz"],
@@ -206,7 +219,13 @@ async def test_us056_validates_recipients_not_empty(client, db_session):
     p = await _seed_project(db_session, t, folio="P-0505")
     r = await client.post(
         f"/api/v1/projects/{p.id}/scheduled-reports",
-        json={"report_type": "avance", "cadence": "weekly", "recipients": []},
+        json={
+            "report_type": "avance",
+            "cadence": "weekly",
+            "day_of_week": 0,
+            "hour_of_day": 9,
+            "recipients": [],
+        },
         headers=auth["_authz"],
     )
     assert r.status_code == 422

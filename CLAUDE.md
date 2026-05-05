@@ -69,9 +69,9 @@ lista anterior. El contexto es finito.
 
 | Prefijo | Uso | Contador | Próximo libre |
 |---|---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-089** (US-081 reservada para borrado físico de tablas legacy en Sprint 9+; US-082-083 = Sprint 7; US-084 = #175 plan editable manual; US-085 = #177 org libre + inactiva; US-086 = #178 stakeholders catálogo tenant; US-087 = #179 reportes KPIs; US-088 = #189 hard delete two-step) |
-| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-039** (BUG-032-036 = Sprint 7; BUG-037 = #171 botón Enviar UX; BUG-038 = #181 INBOX estado simultáneo) |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-044** (ENH-035 = #158 post-MVP/v2.0; ENH-036-037 = Sprint 7; ENH-038 = #170 fechas solicitud; ENH-039 = #172 cambios aprobador; ENH-040 = #173 presupuesto opcional; ENH-041 = #174 BU select; ENH-042 = #176 minutas IA jerarquía; ENH-043 = #180 cross-empresa workaround) |
+| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-090** (US-081 reservada; US-082-083 = Sprint 7; US-084 = #175 plan editable manual; US-085 = #177 org libre + inactiva; US-086 = #178 stakeholders catálogo tenant; US-087 = #179 reportes KPIs; US-088 = #189 hard delete two-step; US-089 = #193 email bienvenida nuevo user) |
+| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-042** (BUG-032-036 = Sprint 7; BUG-037 = #171 botón Enviar UX; BUG-038 = #181 INBOX estado simultáneo; BUG-039 = #184 boolean default postgres; BUG-040 = #186 documents extensión + 1MB; BUG-041 = #191 descarga `.file` content-disposition) |
+| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-047** (ENH-035 = #158 post-MVP/v2.0; ENH-036-037 = Sprint 7; ENH-038 = #170 fechas solicitud; ENH-039 = #172 cambios aprobador; ENH-040 = #173 presupuesto opcional; ENH-041 = #174 BU select; ENH-042 = #176 minutas IA jerarquía; ENH-043 = #180 cross-empresa workaround; ENH-044 = #185 alembic CI gate; ENH-045 = #192 password 12→8; ENH-046 = #194 reportes dow+hora) |
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
 | `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` | — |
 | `ADR-###` | Architecture Decision Record | Ver `docs/adr/` | — |

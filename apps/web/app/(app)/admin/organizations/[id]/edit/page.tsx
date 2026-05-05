@@ -2,7 +2,7 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Building2, Trash2 } from "lucide-react";
+import { Building2, PowerOff } from "lucide-react";
 
 import { OrganizationForm } from "@/components/organization-form";
 import { OrgHierarchySection } from "@/components/org-hierarchy-section";
@@ -121,7 +121,7 @@ function OrganizationDetailInner() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="danger" onClick={() => setConfirmDelete(true)}>
-            <Trash2 className="h-4 w-4" aria-hidden />
+            <PowerOff className="h-4 w-4" aria-hidden />
             Desactivar
           </Button>
           {!org.is_active ? (

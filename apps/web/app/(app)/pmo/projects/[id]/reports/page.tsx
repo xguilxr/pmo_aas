@@ -542,6 +542,11 @@ function ScheduledReportForm({
   const [cadence, setCadence] = useState<ScheduledReportCadence>("weekly");
   const [recipients, setRecipients] = useState("");
   const [enabled, setEnabled] = useState(true);
+  // ENH-046: campos opcionales según cadencia.
+  const [dayOfWeek, setDayOfWeek] = useState<number>(0); // 0 = Lunes
+  const [hourOfDay, setHourOfDay] = useState<number>(9); // 09:00 default
+  const [runAtDate, setRunAtDate] = useState<string>(""); // YYYY-MM-DD
+  const [runAtTime, setRunAtTime] = useState<string>("09:00"); // HH:MM
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -552,11 +557,27 @@ function ScheduledReportForm({
       setCadence(existing.cadence);
       setRecipients(existing.recipients.join(", "));
       setEnabled(existing.enabled);
+      setDayOfWeek(existing.day_of_week ?? 0);
+      setHourOfDay(existing.hour_of_day ?? 9);
+      if (existing.run_at) {
+        const d = new Date(existing.run_at);
+        setRunAtDate(d.toISOString().slice(0, 10));
+        setRunAtTime(
+          `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`,
+        );
+      } else {
+        setRunAtDate("");
+        setRunAtTime("09:00");
+      }
     } else {
       setReportType("avance");
       setCadence("weekly");
       setRecipients("");
       setEnabled(true);
+      setDayOfWeek(0);
+      setHourOfDay(9);
+      setRunAtDate("");
+      setRunAtTime("09:00");
     }
     setError(null);
   }, [open, existing]);
@@ -583,12 +604,37 @@ function ScheduledReportForm({
           return;
         }
       }
+      // ENH-046: armar payload con los campos condicionales.
+      const cadenceFields: {
+        day_of_week?: number | null;
+        hour_of_day?: number | null;
+        run_at?: string | null;
+      } = {};
+      if (cadence === "weekly") {
+        cadenceFields.day_of_week = dayOfWeek;
+        cadenceFields.hour_of_day = hourOfDay;
+      } else if (cadence === "daily") {
+        cadenceFields.hour_of_day = hourOfDay;
+      } else if (cadence === "once") {
+        if (!runAtDate) {
+          setError("Selecciona la fecha de ejecución");
+          setSaving(false);
+          return;
+        }
+        // Combinar fecha local + hora local → ISO. Backend asume UTC si naive,
+        // así que convertimos explicitamente con `new Date(...)` que toma la
+        // tz local del browser y serializa a UTC con toISOString().
+        const iso = new Date(`${runAtDate}T${runAtTime}:00`).toISOString();
+        cadenceFields.run_at = iso;
+      }
+
       if (existing) {
         await updateScheduledReport(existing.id, {
           report_type: reportType,
           cadence,
           recipients: list,
           enabled,
+          ...cadenceFields,
         });
       } else {
         await createScheduledReport(projectId, {
@@ -596,6 +642,7 @@ function ScheduledReportForm({
           cadence,
           recipients: list,
           enabled,
+          ...cadenceFields,
         });
       }
       onSaved();
@@ -648,8 +695,107 @@ function ScheduledReportForm({
             <option value="daily">Diario</option>
             <option value="weekly">Semanal</option>
             <option value="monthly">Mensual</option>
+            <option value="once">Una vez (fecha específica)</option>
           </Select>
         </div>
+
+        {cadence === "weekly" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="sched-dow"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Día de la semana
+              </label>
+              <Select
+                id="sched-dow"
+                value={String(dayOfWeek)}
+                onChange={(e) => setDayOfWeek(Number(e.target.value))}
+              >
+                <option value="0">Lunes</option>
+                <option value="1">Martes</option>
+                <option value="2">Miércoles</option>
+                <option value="3">Jueves</option>
+                <option value="4">Viernes</option>
+                <option value="5">Sábado</option>
+                <option value="6">Domingo</option>
+              </Select>
+            </div>
+            <div>
+              <label
+                htmlFor="sched-hod"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Hora (24h)
+              </label>
+              <Select
+                id="sched-hod"
+                value={String(hourOfDay)}
+                onChange={(e) => setHourOfDay(Number(e.target.value))}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        ) : null}
+
+        {cadence === "daily" ? (
+          <div>
+            <label
+              htmlFor="sched-hod-d"
+              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            >
+              Hora (24h)
+            </label>
+            <Select
+              id="sched-hod-d"
+              value={String(hourOfDay)}
+              onChange={(e) => setHourOfDay(Number(e.target.value))}
+            >
+              {Array.from({ length: 24 }, (_, h) => (
+                <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
+              ))}
+            </Select>
+          </div>
+        ) : null}
+
+        {cadence === "once" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="sched-runat-date"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Fecha
+              </label>
+              <Input
+                id="sched-runat-date"
+                type="date"
+                value={runAtDate}
+                onChange={(e) => setRunAtDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="sched-runat-time"
+                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              >
+                Hora
+              </label>
+              <Input
+                id="sched-runat-time"
+                type="time"
+                step={3600}
+                value={runAtTime}
+                onChange={(e) => setRunAtTime(e.target.value)}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div>
           <label
             htmlFor="sched-recipients"

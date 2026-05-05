@@ -37,7 +37,7 @@ export type PolicyCheck = { label: string; ok: boolean };
 export function checkPasswordPolicy(pwd: string): PolicyCheck[] {
   const symbols = /[!@#$%^&*()\-_=+[\]{};:,.<>/?|`~'"\\]/;
   return [
-    { label: "Al menos 12 caracteres", ok: pwd.length >= 12 },
+    { label: "Al menos 8 caracteres", ok: pwd.length >= 8 },
     { label: "Una letra mayúscula", ok: /[A-Z]/.test(pwd) },
     { label: "Un dígito", ok: /\d/.test(pwd) },
     { label: "Un símbolo", ok: symbols.test(pwd) },

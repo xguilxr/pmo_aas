@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Calendar, Pencil, Plus, Trash2 } from "lucide-react";
+import { Calendar, Pencil, Plus, PowerOff } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -147,9 +147,11 @@ export function ProgramsSection({ organizationId }: Props) {
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeleting(p)}
-                      aria-label={`Borrar ${p.name}`}
+                      aria-label={`Desactivar ${p.name}`}
+                      title="Desactivar"
                     >
-                      <Trash2 className="h-4 w-4" aria-hidden />
+                      <PowerOff className="h-4 w-4" aria-hidden />
+                      <span className="ml-1 text-xs">Desactivar</span>
                     </Button>
                     {!p.is_active ? (
                       <HardDeleteButton
@@ -187,21 +189,21 @@ export function ProgramsSection({ organizationId }: Props) {
       <Modal
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        title="Borrar programa"
-        description="Esta acción desactiva el programa. Se puede reactivar desde la edición."
+        title="Desactivar programa"
+        description="El programa quedará inactivo pero no se borra. Se puede reactivar desde la edición o eliminar permanentemente."
         footer={
           <>
             <Button variant="secondary" onClick={() => setDeleting(null)}>
               Cancelar
             </Button>
             <Button variant="danger" onClick={handleDelete}>
-              Borrar
+              Desactivar
             </Button>
           </>
         }
       >
         <p className="text-sm text-[var(--color-secondary)]">
-          ¿Confirmas borrar el programa <strong>{deleting?.name}</strong>?
+          ¿Confirmas desactivar el programa <strong>{deleting?.name}</strong>?
         </p>
       </Modal>
     </section>

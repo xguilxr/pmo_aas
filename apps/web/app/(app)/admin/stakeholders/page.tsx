@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Plus, PowerOff, Users } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ export default function StakeholdersPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar stakeholder?")) return;
+    if (!confirm("¿Desactivar stakeholder? Quedará inactivo pero no se borra.")) return;
     try {
       await deleteStakeholder(id);
       await load();
@@ -175,9 +175,11 @@ export default function StakeholdersPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDelete(s.id)}
-                        aria-label="Desactivar"
+                        aria-label={`Desactivar ${s.full_name}`}
+                        title="Desactivar"
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden />
+                        <PowerOff className="h-4 w-4" aria-hidden />
+                        <span className="ml-1 text-xs">Desactivar</span>
                       </Button>
                       {!s.is_active ? (
                         <HardDeleteButton
