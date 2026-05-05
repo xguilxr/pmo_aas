@@ -36,6 +36,12 @@ class Task(Base, TimestampMixin):
     owner_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
     priority: Mapped[int | None] = mapped_column(SmallInteger)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_started")
+    # ENH-051: criticidad separada del concepto general de priority. Valores:
+    # low | medium | high | critical (default medium). Check constraint en
+    # migración 0037.
+    criticality: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="medium", server_default="medium"
+    )
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     external_id: Mapped[str | None] = mapped_column(String(100))
     imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

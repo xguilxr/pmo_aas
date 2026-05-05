@@ -29,6 +29,7 @@ import { ImportWizard } from "@/components/import-wizard";
 import { ApiError } from "@/lib/api";
 import { getProject } from "@/lib/api/projects";
 import {
+  TASK_CRITICALITY_LABEL,
   TASK_STATUS_LABEL,
   createTask,
   deleteTask,
@@ -36,6 +37,7 @@ import {
   listTasks,
   type GanttData,
   type Task,
+  type TaskCriticality,
   type TaskStatus,
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
@@ -135,6 +137,29 @@ function StatusBadge({ status }: { status: string }) {
       )}
     >
       {label}
+    </span>
+  );
+}
+
+// ENH-051: chip de color por criticidad. Critical rojo, high naranja,
+// medium gris (sin chip — default), low verde.
+function CriticalityChip({ value }: { value: TaskCriticality }) {
+  if (value === "medium") return null;
+  const tone =
+    value === "critical"
+      ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+      : value === "high"
+        ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
+        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+  return (
+    <span
+      className={cn(
+        "ml-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+        tone,
+      )}
+      title={`Criticidad: ${TASK_CRITICALITY_LABEL[value]}`}
+    >
+      {TASK_CRITICALITY_LABEL[value]}
     </span>
   );
 }
@@ -252,6 +277,7 @@ function TaskList({
                   <span>
                     {t.is_milestone ? "🔷 " : ""}
                     {t.name}
+                    <CriticalityChip value={t.criticality ?? "medium"} />
                   </span>
                 </div>
               </td>
@@ -360,6 +386,7 @@ function PlanInner() {
     progress: "0",
     is_milestone: false,
     status: "not_started" as TaskStatus,
+    criticality: "medium" as TaskCriticality,
   });
   const [creating, setCreating] = useState(false);
 
@@ -418,6 +445,7 @@ function PlanInner() {
         progress: Number(newForm.progress) || 0,
         is_milestone: newForm.is_milestone,
         status: newForm.status,
+        criticality: newForm.criticality,
       });
       setNewOpen(false);
       setNewForm({
@@ -429,6 +457,7 @@ function PlanInner() {
         progress: "0",
         is_milestone: false,
         status: "not_started",
+        criticality: "medium",
       });
       await loadTasksAndGantt();
     } catch (err) {
@@ -926,6 +955,26 @@ function PlanInner() {
               value={newForm.progress}
               onChange={(e) => setNewForm({ ...newForm, progress: e.target.value })}
             />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Criticidad
+            </span>
+            <Select
+              value={newForm.criticality}
+              onChange={(e) =>
+                setNewForm({
+                  ...newForm,
+                  criticality: e.target.value as TaskCriticality,
+                })
+              }
+            >
+              {(Object.keys(TASK_CRITICALITY_LABEL) as TaskCriticality[]).map((k) => (
+                <option key={k} value={k}>
+                  {TASK_CRITICALITY_LABEL[k]}
+                </option>
+              ))}
+            </Select>
           </label>
           <label className="inline-flex items-center gap-2 self-end">
             <input

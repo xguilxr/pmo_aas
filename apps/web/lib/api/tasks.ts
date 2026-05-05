@@ -3,6 +3,9 @@ import { getAccessToken } from "@/lib/auth-storage";
 
 export type TaskStatus = "not_started" | "in_progress" | "completed" | "on_hold";
 
+// ENH-051: criticidad de tarea (separada de priority general).
+export type TaskCriticality = "low" | "medium" | "high" | "critical";
+
 export type TaskOwnerMini = {
   id: string;
   full_name: string | null;
@@ -27,6 +30,8 @@ export type Task = {
   // round-trip extra a /users.
   owner_id: string | null;
   owner: TaskOwnerMini | null;
+  // ENH-051: criticidad. Default "medium" si la columna está fresca.
+  criticality: TaskCriticality;
 };
 
 export type TaskCreateBody = {
@@ -42,11 +47,20 @@ export type TaskCreateBody = {
   owner_id?: string | null;
   priority?: number | null;
   status?: TaskStatus;
+  criticality?: TaskCriticality;
 };
 
 export type TaskUpdateBody = Partial<TaskCreateBody> & {
   status?: TaskStatus;
   progress?: number;
+  criticality?: TaskCriticality;
+};
+
+export const TASK_CRITICALITY_LABEL: Record<TaskCriticality, string> = {
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
+  critical: "Crítica",
 };
 
 export type GanttDependency = {

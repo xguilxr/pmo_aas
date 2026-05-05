@@ -1,8 +1,12 @@
 from datetime import UTC, date, datetime
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, UploadFile
 from pydantic import BaseModel, Field
+
+# ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
+TaskCriticality = Literal["low", "medium", "high", "critical"]
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,6 +66,8 @@ class TaskCreate(BaseModel):
     owner_id: UUID | None = None
     priority: int | None = Field(default=None, ge=1, le=5)
     status: str = "not_started"
+    # ENH-051: criticidad opcional al crear; default `medium` server-side.
+    criticality: TaskCriticality = "medium"
 
 
 class TaskUpdate(BaseModel):
@@ -72,6 +78,7 @@ class TaskUpdate(BaseModel):
     progress: int | None = Field(default=None, ge=0, le=100)
     status: str | None = None
     owner_id: UUID | None = None
+    criticality: TaskCriticality | None = None
 
 
 class TaskRead(BaseModel):
@@ -92,6 +99,8 @@ class TaskRead(BaseModel):
     # avatar+nombre sin un round-trip extra a /users.
     owner_id: UUID | None = None
     owner: UserMini | None = None
+    # ENH-051: criticidad para chip de color en lista + filtro Críticos.
+    criticality: str = "medium"
 
     model_config = {"from_attributes": True}
 
@@ -157,6 +166,7 @@ async def create_task(
         is_milestone=body.is_milestone,
         owner_id=str(body.owner_id) if body.owner_id else None,
         priority=body.priority, status=body.status, source="manual",
+        criticality=body.criticality,
     )
     db.add(t)
     await db.flush()
