@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 # ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
 TaskCriticality = Literal["low", "medium", "high", "critical"]
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
@@ -68,6 +68,8 @@ class TaskCreate(BaseModel):
     status: str = "not_started"
     # ENH-051: criticidad opcional al crear; default `medium` server-side.
     criticality: TaskCriticality = "medium"
+    # ENH-050: hito relacionado opcional al crear.
+    related_milestone_id: UUID | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -79,6 +81,19 @@ class TaskUpdate(BaseModel):
     status: str | None = None
     owner_id: UUID | None = None
     criticality: TaskCriticality | None = None
+    # ENH-050: PATCH para reasignar / desasociar (None) el hito relacionado.
+    # Pydantic distingue ausente vs None vía `model_dump(exclude_unset=True)`.
+    related_milestone_id: UUID | None = None
+
+
+class TaskMini(BaseModel):
+    """ENH-050: shape mínimo del hito relacionado embebido en TaskRead."""
+
+    id: UUID
+    name: str
+    wbs: str | None = None
+
+    model_config = {"from_attributes": True}
 
 
 class TaskRead(BaseModel):
@@ -101,8 +116,47 @@ class TaskRead(BaseModel):
     owner: UserMini | None = None
     # ENH-051: criticidad para chip de color en lista + filtro Críticos.
     criticality: str = "medium"
+    # ENH-050: hito relacionado.
+    related_milestone_id: UUID | None = None
+    related_milestone: TaskMini | None = None
 
     model_config = {"from_attributes": True}
+
+
+async def _validate_related_milestone(
+    db: AsyncSession, project_id: UUID, related_id: UUID
+) -> Task:
+    """ENH-050: target debe (a) existir, (b) pertenecer al mismo proyecto,
+    (c) ser un hito (`is_milestone=true`). Devuelve la Task validada o
+    levanta 422."""
+    target = (
+        await db.execute(select(Task).where(Task.id == str(related_id)))
+    ).scalar_one_or_none()
+    if target is None:
+        raise validation_error("related_milestone_id no existe")
+    if str(target.project_id) != str(project_id):
+        raise validation_error("related_milestone_id no pertenece al proyecto")
+    if not target.is_milestone:
+        raise validation_error("related_milestone_id debe apuntar a un hito (is_milestone=true)")
+    return target
+
+
+async def _attach_milestones(db: AsyncSession, tasks: list[Task]) -> None:
+    """ENH-050: enriquece `task.related_milestone` con `{id, name, wbs}`."""
+    ids: set[str] = {str(t.related_milestone_id) for t in tasks if t.related_milestone_id}
+    if not ids:
+        for t in tasks:
+            t.related_milestone = None  # type: ignore[attr-defined]
+        return
+    rows = (
+        await db.execute(select(Task).where(Task.id.in_(ids)))
+    ).scalars().all()
+    by_id = {str(r.id): r for r in rows}
+    for t in tasks:
+        m = by_id.get(str(t.related_milestone_id)) if t.related_milestone_id else None
+        t.related_milestone = (  # type: ignore[attr-defined]
+            {"id": str(m.id), "name": m.name, "wbs": m.wbs} if m else None
+        )
 
 
 async def _attach_owners(db: AsyncSession, tasks: list[Task]) -> None:
@@ -140,7 +194,9 @@ async def list_tasks(
             .order_by(Task.wbs.nullsfirst() if hasattr(Task.wbs, "nullsfirst") else Task.wbs)
         )
     ).scalars().all()
-    await _attach_owners(db, list(rows))
+    rows_list = list(rows)
+    await _attach_owners(db, rows_list)
+    await _attach_milestones(db, rows_list)
     return [TaskRead.model_validate(t) for t in rows]
 
 
@@ -157,6 +213,8 @@ async def create_task(
         raise business_rule("Proyecto cerrado")
     if body.start_date and body.end_date and body.end_date < body.start_date:
         raise validation_error("end_date debe ser >= start_date")
+    if body.related_milestone_id is not None:
+        await _validate_related_milestone(db, project_id, body.related_milestone_id)
     t = Task(
         tenant_id=str(tenant_id), project_id=str(project_id),
         name=body.name, description=body.description, wbs=body.wbs,
@@ -167,6 +225,9 @@ async def create_task(
         owner_id=str(body.owner_id) if body.owner_id else None,
         priority=body.priority, status=body.status, source="manual",
         criticality=body.criticality,
+        related_milestone_id=(
+            str(body.related_milestone_id) if body.related_milestone_id else None
+        ),
     )
     db.add(t)
     await db.flush()
@@ -176,6 +237,7 @@ async def create_task(
     )
     await db.commit()
     await _attach_owners(db, [t])
+    await _attach_milestones(db, [t])
     return TaskRead.model_validate(t)
 
 
@@ -192,13 +254,25 @@ async def update_task(
     ).scalar_one_or_none()
     if t is None:
         raise not_found("Tarea")
+    # ENH-050: distinguir "no enviado" vs "enviado=null" (desasociar). El
+    # resto de campos sigue usando exclude_none=True para back-compat.
+    data_full = body.model_dump(exclude_unset=True)
     data = body.model_dump(exclude_none=True)
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    if "related_milestone_id" in data_full:
+        rid = data_full["related_milestone_id"]
+        if rid is None:
+            t.related_milestone_id = None
+        else:
+            await _validate_related_milestone(db, UUID(str(t.project_id)), rid)
+            t.related_milestone_id = str(rid)
+        data.pop("related_milestone_id", None)
     for k, v in data.items():
         setattr(t, k, v)
     await db.commit()
     await _attach_owners(db, [t])
+    await _attach_milestones(db, [t])
     return TaskRead.model_validate(t)
 
 
@@ -217,6 +291,12 @@ async def delete_task(
     await db.execute(delete(TaskDependency).where(
         (TaskDependency.predecessor_id == t.id) | (TaskDependency.successor_id == t.id)
     ))
+    # ENH-050: la FK self con ondelete=SET NULL cubre Postgres en prod;
+    # en SQLite (tests) la PRAGMA foreign_keys puede estar OFF, así que
+    # también NULLeamos explícitamente para que la semántica sea idéntica.
+    await db.execute(
+        update(Task).where(Task.related_milestone_id == t.id).values(related_milestone_id=None)
+    )
     await db.delete(t)
     await db.commit()
     from fastapi.responses import Response

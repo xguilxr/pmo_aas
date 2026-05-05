@@ -45,6 +45,11 @@ class Task(Base, TimestampMixin):
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     external_id: Mapped[str | None] = mapped_column(String(100))
     imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # ENH-050: vincula una tarea a un hito relacionado (otra task con
+    # is_milestone=true). FK self con ondelete=SET NULL.
+    related_milestone_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), index=True
+    )
 
 
 class TaskDependency(Base):

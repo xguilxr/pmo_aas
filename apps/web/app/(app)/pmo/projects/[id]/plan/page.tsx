@@ -303,6 +303,15 @@ function TaskList({
                     {t.is_milestone ? "🔷 " : ""}
                     {t.name}
                     <CriticalityChip value={t.criticality ?? "medium"} />
+                    {/* ENH-050: tooltip con hito relacionado. */}
+                    {t.related_milestone ? (
+                      <span
+                        className="ml-2 inline-flex items-center rounded bg-[var(--color-subtle)] px-1.5 py-0.5 text-[9px] text-[var(--color-tertiary)]"
+                        title={`Hito relacionado: ${t.related_milestone.name}`}
+                      >
+                        ↪ {t.related_milestone.wbs ?? t.related_milestone.name}
+                      </span>
+                    ) : null}
                   </span>
                 </div>
               </td>
@@ -439,6 +448,8 @@ function PlanInner() {
     is_milestone: false,
     status: "not_started" as TaskStatus,
     criticality: "medium" as TaskCriticality,
+    // ENH-050: hito relacionado, opcional.
+    related_milestone_id: "" as string,
   });
   const [creating, setCreating] = useState(false);
 
@@ -498,6 +509,7 @@ function PlanInner() {
         is_milestone: newForm.is_milestone,
         status: newForm.status,
         criticality: newForm.criticality,
+        related_milestone_id: newForm.related_milestone_id || null,
       });
       setNewOpen(false);
       setNewForm({
@@ -510,6 +522,7 @@ function PlanInner() {
         is_milestone: false,
         status: "not_started",
         criticality: "medium",
+        related_milestone_id: "",
       });
       await loadTasksAndGantt();
     } catch (err) {
@@ -1068,6 +1081,29 @@ function PlanInner() {
                   {TASK_CRITICALITY_LABEL[k]}
                 </option>
               ))}
+            </Select>
+          </label>
+          {/* ENH-050: hito relacionado. Solo lista tareas con
+              is_milestone=true del proyecto actual. */}
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Hito relacionado (opcional)
+            </span>
+            <Select
+              value={newForm.related_milestone_id}
+              onChange={(e) =>
+                setNewForm({ ...newForm, related_milestone_id: e.target.value })
+              }
+            >
+              <option value="">— Sin hito —</option>
+              {tasks
+                .filter((t) => t.is_milestone)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.wbs ? `${t.wbs} · ` : ""}
+                    {t.name}
+                  </option>
+                ))}
             </Select>
           </label>
           <label className="inline-flex items-center gap-2 self-end">
