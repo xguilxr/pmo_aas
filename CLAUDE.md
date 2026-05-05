@@ -316,6 +316,18 @@ Reglas:
 - De QUEUE → **IN-PROGRESS** cuando Claude empieza a trabajarlo.
 - De IN-PROGRESS → **DONE** cuando el commit está pusheado; se registra en el archivo histórico correspondiente al sprint.
 
+### Limpieza al cierre de sprint (obligatoria)
+
+Cuando un sprint termina (todos sus bloques en DONE y el owner confirma cierre), antes de arrancar el siguiente sprint Claude debe:
+
+1. **Mover** todas las secciones `🗂️ Sprint N (vX.Y) — CERRADO` y el contexto IN-PROGRESS narrativo de ese sprint desde `SPRINT.md` a `SPRINT-DONE-HISTORY.md` (preservando bloques, commits SHA, migraciones agregadas y diferidos).
+2. **Reemplazar** la sección DONE de `SPRINT.md` con una tabla resumen `Sprint | Versión | Cerrado | Items` (1 fila por sprint cerrado) que apunte a `SPRINT-DONE-HISTORY.md`.
+3. **Limpiar** `IN-PROGRESS` para que apunte solo al nuevo sprint activo (o "Sin US activa" si recién arranca).
+4. **Truncar** la sección `Notas y cambios` a entradas del sprint actual + la entrada del cierre; el histórico narrativo vive en `SPRINT-DONE-HISTORY.md`.
+5. **Commit** con mensaje `docs(sprint): cierre Sprint N — archiva a SPRINT-DONE-HISTORY.md`.
+
+Objetivo: `SPRINT.md` nunca debe pasar de ~250 líneas. Si crece más, es señal de que falta limpiar.
+
 ---
 
 ## 7. Regla sagrada: 1 US = 1 commit
