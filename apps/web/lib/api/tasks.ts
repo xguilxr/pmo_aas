@@ -246,6 +246,29 @@ export async function importPreview(
   return _decode<ImportPreviewResult>(res);
 }
 
+// ENH-053 — sugerencia de mapeo asistida por IA (heurística + LLM).
+export type SuggestMappingItem = {
+  field: SystemField | null;
+  confidence: number;
+  source: "ai" | "heuristic" | "none";
+};
+
+export type SuggestMappingResponse = {
+  suggestions: Record<string, SuggestMappingItem>;
+  system_fields: SystemField[];
+  ai_used: boolean;
+};
+
+export function suggestImportMapping(
+  projectId: string,
+  headers: string[],
+): Promise<SuggestMappingResponse> {
+  return apiFetch<SuggestMappingResponse>(
+    `/api/v1/projects/${projectId}/tasks/import/suggest-mapping`,
+    { method: "POST", body: { headers } },
+  );
+}
+
 export async function importConfirm(
   projectId: string,
   jobId: string,

@@ -17,8 +17,13 @@ from app.models.project import Project
 from app.models.task import Task, TaskDependency
 from app.models.user import User
 from app.schemas.modules import UserMini
+from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
+from app.services.import_mapping_suggest import (
+    SYSTEM_FIELDS as MAPPING_SYSTEM_FIELDS,
+    suggest_column_mapping,
+)
 from app.services.plan_metadata import (
     collect_by_wbs,
     compute_duration_days,
@@ -971,3 +976,66 @@ async def gantt_view(
             for d in deps
         ],
     }
+
+
+# ENH-053 — Sugerencia de mapeo de columnas asistido por IA.
+class SuggestMappingBody(BaseModel):
+    headers: list[str] = Field(min_length=1, max_length=50)
+
+
+class SuggestMappingItem(BaseModel):
+    field: str | None
+    confidence: float
+    source: str  # "ai" | "heuristic" | "none"
+
+
+class SuggestMappingResponse(BaseModel):
+    suggestions: dict[str, SuggestMappingItem]
+    system_fields: list[str]
+    ai_used: bool
+
+
+@router.post(
+    "/projects/{project_id}/tasks/import/suggest-mapping",
+    response_model=SuggestMappingResponse,
+)
+async def suggest_import_mapping(
+    project_id: UUID,
+    body: SuggestMappingBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-053: dado un set de headers detectados por el wizard, devuelve
+    una sugerencia de mapeo `{header: {field, confidence, source}}`.
+
+    - Heurística siempre corre (sinónimos hardcoded en español + inglés).
+    - Si `tenant.ai_mode != disabled`, llama al LLM del tenant para
+      refinar; si la IA falla la heurística queda como fallback.
+    """
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+    tenant_cfg = await load_tenant_ai(db, tenant_id)
+    # Platform groq + ollama legacy se cargan vía workers.tasks.ai si es
+    # necesario; aquí mantenemos el endpoint inline-only y dejamos que
+    # `suggest_column_mapping` falle suave a heurística si el provider
+    # no está bien configurado.
+    suggestions = await suggest_column_mapping(
+        body.headers,
+        tenant_cfg=tenant_cfg,
+        platform_groq_config=None,
+        tenant_ollama_config=tenant_cfg.legacy_ollama,
+        tenant_id=str(tenant_id),
+    )
+    ai_used = any(s.get("source") == "ai" for s in suggestions.values())
+    return SuggestMappingResponse(
+        suggestions={
+            h: SuggestMappingItem(
+                field=s.get("field"),
+                confidence=float(s.get("confidence", 0.0)),
+                source=str(s.get("source", "none")),
+            )
+            for h, s in suggestions.items()
+        },
+        system_fields=list(MAPPING_SYSTEM_FIELDS),
+        ai_used=ai_used,
+    )

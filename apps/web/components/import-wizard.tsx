@@ -17,6 +17,7 @@ import {
   SYSTEM_FIELD_LABELS,
   importConfirm,
   importPreview,
+  suggestImportMapping,
 } from "@/lib/api/tasks";
 
 /**
@@ -60,6 +61,10 @@ export function ImportWizard({
   const [strategy, setStrategy] = useState<"merge" | "replace">("merge");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ENH-053: confidence por columna. Se llena con la sugerencia AI/heurística;
+  // confidence < 0.7 muestra warning de "match débil" en la UI.
+  const [confidence, setConfidence] = useState<Record<number, number>>({});
+  const [aiUsed, setAiUsed] = useState(false);
 
   function reset() {
     setStep("upload");
@@ -67,6 +72,8 @@ export function ImportWizard({
     setPreview(null);
     setSheet(null);
     setMapping({});
+    setConfidence({});
+    setAiUsed(false);
     setStrategy("merge");
     setBusy(false);
     setError(null);
@@ -89,6 +96,36 @@ export function ImportWizard({
         if (typeof idx === "number") initial[idx] = field as SystemField;
       }
       setMapping(initial);
+      // ENH-053: pedir sugerencia (heurística + IA si tenant tiene IA)
+      // para las columnas que no fueron detectadas por el parser. Si
+      // falla, no rompe el flujo — el wizard sigue manual.
+      const headerRow = (result.sample_rows[0] || []).map((v) =>
+        v == null ? "" : String(v),
+      );
+      const headers = headerRow.filter(Boolean);
+      if (headers.length > 0 && NEEDS_MAPPING.includes(result.source)) {
+        try {
+          const sug = await suggestImportMapping(projectId, headers);
+          setAiUsed(sug.ai_used);
+          const conf: Record<number, number> = {};
+          headerRow.forEach((h, idx) => {
+            if (!h) return;
+            const item = sug.suggestions[h];
+            if (!item) return;
+            conf[idx] = item.confidence;
+            // Si el parser ya detectó una columna, no la pisamos. Para
+            // columnas sin detect, completamos con la sugerencia.
+            if (item.field && initial[idx] === undefined) {
+              initial[idx] = item.field;
+            }
+          });
+          setMapping({ ...initial });
+          setConfidence(conf);
+        } catch {
+          /* la heurística siempre debe funcionar offline; si el endpoint
+             cae lo dejamos al usuario. */
+        }
+      }
       // Si Excel con >1 hojas y todavía no se eligió, abrir sheet
       // selector. Si no, ir directo a preview.
       if (result.sheets.length > 1 && !selectedSheet) {
@@ -240,6 +277,8 @@ export function ImportWizard({
           needsMapping={needsMapping}
           strategy={strategy}
           onChangeStrategy={setStrategy}
+          confidence={confidence}
+          aiUsed={aiUsed}
         />
       ) : null}
 
@@ -426,6 +465,8 @@ function PreviewStep({
   needsMapping,
   strategy,
   onChangeStrategy,
+  confidence = {},
+  aiUsed = false,
 }: {
   preview: ImportPreviewResult;
   headerLabels: (string | null)[];
@@ -436,6 +477,8 @@ function PreviewStep({
   needsMapping: boolean;
   strategy: "merge" | "replace";
   onChangeStrategy: (s: "merge" | "replace") => void;
+  confidence?: Record<number, number>;
+  aiUsed?: boolean;
 }) {
   const usedFields = new Set(
     Object.values(mapping).filter(Boolean) as SystemField[],
@@ -455,6 +498,12 @@ function PreviewStep({
           <span>
             Tareas detectadas: <strong>{preview.task_count}</strong>
           </span>
+          {/* ENH-053: badge cuando la IA refinó el mapeo. */}
+          {aiUsed ? (
+            <span className="ml-3 inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+              ✨ Mapeo asistido por IA
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-[var(--color-tertiary)]">
@@ -495,27 +544,38 @@ function PreviewStep({
                     {label ?? `Col ${idx + 1}`}
                   </div>
                   {needsMapping ? (
-                    <Select
-                      className="mt-1 w-full text-[11px]"
-                      value={mapping[idx] ?? ""}
-                      onChange={(e) =>
-                        onChangeMapping(idx, e.target.value as SystemField | "")
-                      }
-                      aria-label={`Mapeo de columna ${label ?? idx + 1}`}
-                    >
-                      <option value="">— ignorar —</option>
-                      {SYSTEM_FIELDS.map((f) => (
-                        <option
-                          key={f}
-                          value={f}
-                          disabled={
-                            mapping[idx] !== f && usedFields.has(f as SystemField)
-                          }
+                    <>
+                      <Select
+                        className="mt-1 w-full text-[11px]"
+                        value={mapping[idx] ?? ""}
+                        onChange={(e) =>
+                          onChangeMapping(idx, e.target.value as SystemField | "")
+                        }
+                        aria-label={`Mapeo de columna ${label ?? idx + 1}`}
+                      >
+                        <option value="">— ignorar —</option>
+                        {SYSTEM_FIELDS.map((f) => (
+                          <option
+                            key={f}
+                            value={f}
+                            disabled={
+                              mapping[idx] !== f && usedFields.has(f as SystemField)
+                            }
+                          >
+                            {SYSTEM_FIELD_LABELS[f]}
+                          </option>
+                        ))}
+                      </Select>
+                      {/* ENH-053: warning de match débil. */}
+                      {mapping[idx] && (confidence[idx] ?? 0) < 0.7 && (confidence[idx] ?? 0) > 0 ? (
+                        <p
+                          className="mt-1 text-[10px] text-amber-600"
+                          title="La sugerencia tiene baja confianza — verifica el mapeo."
                         >
-                          {SYSTEM_FIELD_LABELS[f]}
-                        </option>
-                      ))}
-                    </Select>
+                          ⚠ baja confianza
+                        </p>
+                      ) : null}
+                    </>
                   ) : null}
                 </th>
               ))}
