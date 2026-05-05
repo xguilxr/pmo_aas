@@ -8,8 +8,8 @@ import {
   Copy,
   KeyRound,
   Lock,
+  PowerOff,
   ShieldOff,
-  UserX,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -579,7 +579,7 @@ function UserDetail() {
           >
             {user.is_active ? (
               <>
-                <UserX className="h-4 w-4" aria-hidden />
+                <PowerOff className="h-4 w-4" aria-hidden />
                 Desactivar
               </>
             ) : (

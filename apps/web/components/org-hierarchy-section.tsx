@@ -7,7 +7,7 @@ import {
   ExternalLink,
   Pencil,
   Plus,
-  Trash2,
+  PowerOff,
   Users,
   Workflow,
 } from "lucide-react";
@@ -243,8 +243,10 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                       variant="ghost"
                       onClick={() => setConfirmBu(bu)}
                       title="Desactivar"
+                      aria-label={`Desactivar ${bu.name}`}
                     >
-                      <Trash2 className="h-4 w-4" aria-hidden />
+                      <PowerOff className="h-4 w-4" aria-hidden />
+                      <span className="ml-1 text-xs">Desactivar</span>
                     </Button>
                     {!bu.is_active ? (
                       <HardDeleteButton
@@ -314,8 +316,10 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                               variant="ghost"
                               onClick={() => setConfirmDept(d)}
                               title="Desactivar"
+                              aria-label={`Desactivar ${d.name}`}
                             >
-                              <Trash2 className="h-4 w-4" aria-hidden />
+                              <PowerOff className="h-4 w-4" aria-hidden />
+                              <span className="ml-1 text-xs">Desactivar</span>
                             </Button>
                             {!d.is_active ? (
                               <HardDeleteButton
