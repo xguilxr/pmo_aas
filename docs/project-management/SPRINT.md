@@ -369,11 +369,12 @@ Owner pidió planeación de los próximos 2 sprints + mejoras a la página de re
 ### Sprint 10 — Bloque 5: Áreas / Equipos / Actores (1 US)
 - [ ] US-091  #205 — Jerarquía Área→Equipo→Actor + teléfono + UI rediseñada (vista por área / por actor) + toggle de filtro
 
-### Sprint 10 — Bloque 6: Reportes 3 vistas ✅ status:ready
+### Sprint 10 — Bloque 6: Reportes 3 vistas + cadencia mensual ✅ status:ready
 - [ ] ENH-055 #209 — Reportes: layout 3 vistas (Catálogo / Historial / Creación) + implementa vista Catálogo
 - [ ] US-092  #210 — Reportes: Historial de reportes generados (persistencia DB + R2)
 - [ ] US-093  #211 — Reportes: Creación nueva con IA + preview (tercera vista)
-- Orden de implementación: ENH-055 → US-092 → US-093 (US-093 depende de ambos).
+- [ ] ENH-056 #212 — Reportes programados: cadencia mensual con día del mes (1-31) + clamp al último día
+- Orden de implementación: ENH-055 → US-092 → ENH-056 → US-093 (US-093 depende de ENH-055 + US-092).
 
 ### Sprint 11 (v1.10) — Bloque 1: Nav review (2 BUGs)
 - [ ] BUG-042 #206 — Breadcrumb desde Programa → link Org va a PMO en lugar de Admin
@@ -391,7 +392,7 @@ Owner pidió planeación de los próximos 2 sprints + mejoras a la página de re
 - Revisar y asignar `status:ready` a los 12 issues plan/RAID/áreas (#196-#207, excluyendo reportes que ya están ready).
 - Confirmar versión target (default propuesto: v1.9 Sprint 10, v1.10 Sprint 11).
 
-**Próximo libre tras este triage:** US-094, BUG-044, ENH-056.
+**Próximo libre tras este triage:** US-094, BUG-044, ENH-057.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0036+) tras validación de Sprint 6 en producción.
