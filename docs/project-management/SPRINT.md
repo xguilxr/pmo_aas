@@ -343,11 +343,11 @@ Migraciones aplican automáticamente al deploy (CMD del Dockerfile).
 
 ## ⏳ QUEUE
 
-**Sprint 10 (v1.9) — TRIAGE COMPLETO 2026-05-05, esperando `status:ready`.**
+**Sprint 10 (v1.9) — TRIAGE COMPLETO 2026-05-05.**
+**Bloque 6 (reportes) marcado `status:ready` por owner 2026-05-05.**
 
-Owner pidió planeación de los próximos 2 sprints (no implementación).
-Tras AskUserQuestion + clarificaciones, se crearon 10 issues en 5 bloques
-para Sprint 10 + 2 bugs para Sprint 11.
+Owner pidió planeación de los próximos 2 sprints + mejoras a la página de reportes.
+15 issues en total: 10 en 5 bloques plan/RAID/áreas + 3 reportes (Bloque 6, ready) + 2 bugs Sprint 11.
 
 ### Sprint 10 — Bloque 1: Plan visualización (3 ENHs)
 - [ ] ENH-047 #196 — Toggle agrupación WBS en lista de tareas
@@ -369,6 +369,12 @@ para Sprint 10 + 2 bugs para Sprint 11.
 ### Sprint 10 — Bloque 5: Áreas / Equipos / Actores (1 US)
 - [ ] US-091  #205 — Jerarquía Área→Equipo→Actor + teléfono + UI rediseñada (vista por área / por actor) + toggle de filtro
 
+### Sprint 10 — Bloque 6: Reportes 3 vistas ✅ status:ready
+- [ ] ENH-055 #209 — Reportes: layout 3 vistas (Catálogo / Historial / Creación) + implementa vista Catálogo
+- [ ] US-092  #210 — Reportes: Historial de reportes generados (persistencia DB + R2)
+- [ ] US-093  #211 — Reportes: Creación nueva con IA + preview (tercera vista)
+- Orden de implementación: ENH-055 → US-092 → US-093 (US-093 depende de ambos).
+
 ### Sprint 11 (v1.10) — Bloque 1: Nav review (2 BUGs)
 - [ ] BUG-042 #206 — Breadcrumb desde Programa → link Org va a PMO en lugar de Admin
 - [ ] BUG-043 #207 — Panel de Programa en vista PMO Org no es clicable
@@ -379,13 +385,13 @@ para Sprint 10 + 2 bugs para Sprint 11.
 2. ENH-053: approach mínimo (heurística + LLM del tenant si AI habilitada; manual override siempre disponible).
 3. US-091: mantener tabla `project_areas` con `type ∈ {area,actor,team}` pero agregar FK explícitas `team_id` + `area_id` + campo `phone`.
 4. BUG-042/043: van a Sprint 11 como parte del nav review (no Bloque 0 hotfix).
+5. Reportes Bloque 6: 3 vistas (Catálogo, Historial, Creación IA). ENH-055/US-092/US-093 = `status:ready`.
 
 **Pendiente owner:**
-- Revisar los 12 issues nuevos (#196-#207).
-- Asignar `status:ready` a los que apruebe (orden default: Bloque 1 → 2 → 3 → 4 → 5 para Sprint 10).
+- Revisar y asignar `status:ready` a los 12 issues plan/RAID/áreas (#196-#207, excluyendo reportes que ya están ready).
 - Confirmar versión target (default propuesto: v1.9 Sprint 10, v1.10 Sprint 11).
 
-**Próximo libre tras este triage:** US-092, BUG-044, ENH-055.
+**Próximo libre tras este triage:** US-094, BUG-044, ENH-056.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0036+) tras validación de Sprint 6 en producción.
