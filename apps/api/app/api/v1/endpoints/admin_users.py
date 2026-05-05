@@ -8,12 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_capability
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
+from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.core.security import hash_password, validate_password_policy
 from app.db.session import get_db
 from app.models.organization import Organization
 from app.models.organization_user_exclusion import OrganizationUserExclusion
+from app.models.permission_request import PermissionChangeRequest
+from app.models.project_member import ProjectMember
+from app.models.project_request import ProjectRequest
 from app.models.role import Role, UserRole
 from app.models.user import User
+from app.schemas.hard_delete import HardDeletePreview
 from app.schemas.user import (
     ExcludedOrganizationsBody,
     ExcludedOrganizationsRead,
@@ -405,3 +410,150 @@ async def replace_excluded_organizations(
     return ExcludedOrganizationsRead(
         organization_ids=[UUID(x) for x in target_ids]
     )
+
+
+# =============================================================================
+# US-088 — Hard delete (segundo paso) para usuarios
+# =============================================================================
+# Cascade strategy: el FK CASCADE cubre auth/sessions, role, project_member,
+# notifications, organization_user_exclusion. Pero hay tablas con
+# `requested_by NOT NULL` (project_requests, permission_requests) que
+# bloquearían el delete. Si existen referencias bloqueantes, devolvemos
+# `blockers` en el preview y el endpoint DELETE responde 409 con detalle.
+# Las FKs nullable se settean a NULL antes del delete.
+# -----------------------------------------------------------------------------
+
+
+def _slug(u: User) -> str:
+    return confirm_slug("user", u.username or u.email or u.id)
+
+
+async def _user_blockers(db: AsyncSession, u: User) -> dict[str, int]:
+    pr_count = (
+        await db.execute(
+            select(func.count(ProjectRequest.id)).where(ProjectRequest.requested_by == u.id)
+        )
+    ).scalar_one()
+    perm_req_count = (
+        await db.execute(
+            select(func.count(PermissionChangeRequest.id)).where(
+                PermissionChangeRequest.requested_by_user_id == u.id
+            )
+        )
+    ).scalar_one()
+    out: dict[str, int] = {}
+    if pr_count:
+        out["project_requests_as_requester"] = pr_count
+    if perm_req_count:
+        out["permission_requests_as_requester"] = perm_req_count
+    return out
+
+
+@router.get(
+    "/{user_id}/hard-delete-preview", response_model=HardDeletePreview
+)
+async def preview_hard_delete_user(
+    user_id: UUID,
+    cu: CurrentUser = Depends(require_capability("users.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    u = (await db.execute(select(User).where(User.id == str(user_id)))).scalar_one_or_none()
+    if u is None:
+        raise not_found("Usuario")
+    _ensure_same_tenant(cu, u.tenant_id)
+    if u.is_superadmin:
+        raise business_rule("No se puede borrar un super admin desde el panel de tenant")
+    blockers_map = await _user_blockers(db, u)
+    return HardDeletePreview(
+        entity_type="user",
+        entity_id=str(u.id),
+        entity_name=u.full_name or u.username,
+        is_active=u.is_active,
+        confirm_slug=_slug(u),
+        cascades={
+            "memberships": (await db.execute(
+                select(func.count()).select_from(ProjectMember).where(ProjectMember.user_id == u.id)
+            )).scalar_one(),
+        },
+        blockers=[f"{k}={v}" for k, v in blockers_map.items()],
+    )
+
+
+@router.delete("/{user_id}/permanent", status_code=204)
+async def hard_delete_user(
+    user_id: UUID,
+    confirm: str = Query(...),
+    cu: CurrentUser = Depends(require_capability("users.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import update
+
+    from app.models.modules import (
+        ChangeRequest,
+        Document,
+        Issue,
+        Lesson,
+        MeetingMinute,
+        Risk,
+    )
+    from app.models.organization import BusinessUnit, Department
+    from app.models.project import Project
+    from app.models.project_area import ProjectArea
+    from app.models.project_charter import ProjectCharter
+    from app.models.stakeholder import Stakeholder
+    from app.models.task import Task
+
+    u = (await db.execute(select(User).where(User.id == str(user_id)))).scalar_one_or_none()
+    if u is None:
+        raise not_found("Usuario")
+    _ensure_same_tenant(cu, u.tenant_id)
+    if u.is_superadmin:
+        raise business_rule("No se puede borrar un super admin desde el panel de tenant")
+    ensure_inactive(u.is_active, "Usuario")
+
+    blockers_map = await _user_blockers(db, u)
+    if blockers_map:
+        raise conflict(
+            "No se puede eliminar permanentemente: el usuario tiene referencias "
+            "que requieren limpieza manual previa.",
+            code="USER_HAS_BLOCKING_REFS",
+            fields={"blockers": blockers_map},
+        )
+    ensure_confirm(confirm, _slug(u))
+
+    # Settear a NULL las FKs nullable que apuntan al user (no hay ondelete=SET NULL).
+    nullable_fks = [
+        (Project, "pm_id"),
+        (ProjectCharter, "pm_id"),
+        (ProjectCharter, "created_by"),
+        (Stakeholder, "created_by"),
+        (BusinessUnit, "created_by"),
+        (Department, "created_by"),
+        (ProjectArea, "created_by"),
+        (Task, "owner_id"),
+        (Risk, "created_by"),
+        (Risk, "owner_id"),
+        (Issue, "created_by"),
+        (Issue, "owner_id"),
+        (ChangeRequest, "created_by"),
+        (ChangeRequest, "requested_by"),
+        (ChangeRequest, "approved_by"),
+        (Document, "created_by"),
+        (Document, "uploaded_by"),
+        (Lesson, "created_by"),
+        (MeetingMinute, "created_by"),
+    ]
+    for model, attr in nullable_fks:
+        col = getattr(model, attr)
+        await db.execute(update(model).where(col == u.id).values({attr: None}))
+    await db.flush()
+    await db.delete(u)
+    await write_audit(
+        db, action="user.hard_delete", module="admin.users",
+        user_id=cu.id, tenant_id=u.tenant_id, entity_type="user", entity_id=str(u.id),
+        details={"username": u.username, "email": u.email},
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)

@@ -79,6 +79,20 @@ export function deleteUser(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/admin/users/${id}`, { method: "DELETE" });
 }
 
+// US-088: hard delete (segundo paso) — users.
+import type { HardDeletePreview } from "@/lib/api/organizations";
+
+export function previewHardDeleteUser(id: string): Promise<HardDeletePreview> {
+  return apiFetch<HardDeletePreview>(`/api/v1/admin/users/${id}/hard-delete-preview`);
+}
+
+export function hardDeleteUser(id: string, confirm: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/admin/users/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE" },
+  );
+}
+
 export function resetUserPassword(id: string): Promise<{ temp_password: string }> {
   return apiFetch<{ temp_password: string }>(`/api/v1/admin/users/${id}/reset-password`, {
     method: "POST",

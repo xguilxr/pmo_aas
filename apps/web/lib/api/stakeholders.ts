@@ -61,3 +61,19 @@ export function updateStakeholder(
 export function deleteStakeholder(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/stakeholders/${id}`, { method: "DELETE" });
 }
+
+// US-088: hard delete (segundo paso) — stakeholders.
+import type { HardDeletePreview } from "@/lib/api/organizations";
+
+export function previewHardDeleteStakeholder(
+  id: string,
+): Promise<HardDeletePreview> {
+  return apiFetch<HardDeletePreview>(`/api/v1/stakeholders/${id}/hard-delete-preview`);
+}
+
+export function hardDeleteStakeholder(id: string, confirm: string): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/stakeholders/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE" },
+  );
+}

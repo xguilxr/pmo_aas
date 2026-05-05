@@ -8,13 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import not_found
+from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.db.session import get_db
 from app.models.stakeholder import Stakeholder
+from app.schemas.hard_delete import HardDeletePreview
 from app.schemas.stakeholder import (
     StakeholderCreate,
     StakeholderRead,
     StakeholderUpdate,
 )
+from app.services.audit import write_audit
 
 router = APIRouter(prefix="/stakeholders", tags=["stakeholders"])
 
@@ -153,3 +156,74 @@ async def delete_stakeholder(
     s.deleted_at = datetime.now(UTC)
     s.is_active = False
     await db.commit()
+
+
+# =============================================================================
+# US-088 — Hard delete (segundo paso) para stakeholders
+# =============================================================================
+# Stakeholders no tiene dependientes hoy. Cascade es trivial.
+# -----------------------------------------------------------------------------
+
+
+@router.get(
+    "/{stakeholder_id}/hard-delete-preview", response_model=HardDeletePreview
+)
+async def preview_hard_delete_stakeholder(
+    stakeholder_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _tenant(cu)
+    s = (
+        await db.execute(
+            select(Stakeholder).where(
+                Stakeholder.id == str(stakeholder_id),
+                Stakeholder.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if s is None:
+        raise not_found("Stakeholder")
+    return HardDeletePreview(
+        entity_type="stakeholder",
+        entity_id=str(s.id),
+        entity_name=s.full_name,
+        is_active=s.is_active and s.deleted_at is None,
+        confirm_slug=confirm_slug("stakeholder", s.full_name),
+        cascades={},
+    )
+
+
+@router.delete("/{stakeholder_id}/permanent", status_code=204)
+async def hard_delete_stakeholder(
+    stakeholder_id: UUID,
+    confirm: str = Query(...),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _tenant(cu)
+    s = (
+        await db.execute(
+            select(Stakeholder).where(
+                Stakeholder.id == str(stakeholder_id),
+                Stakeholder.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if s is None:
+        raise not_found("Stakeholder")
+    is_inactive_state = (not s.is_active) or s.deleted_at is not None
+    if not is_inactive_state:
+        ensure_inactive(True, "Stakeholder")
+    ensure_confirm(confirm, confirm_slug("stakeholder", s.full_name))
+    await db.delete(s)
+    await write_audit(
+        db, action="stakeholder.hard_delete", module="stakeholders",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="stakeholder",
+        entity_id=str(s.id),
+        details={"name": s.full_name},
+    )
+    await db.commit()
+    from fastapi.responses import Response
+
+    return Response(status_code=204)

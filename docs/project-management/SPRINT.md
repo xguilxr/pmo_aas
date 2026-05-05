@@ -7,6 +7,73 @@
 ## 🔴 IN-PROGRESS
 
 ```
+2026-05-05 — Sprint 9 v1.8 — Bloque 1: hard delete two-step ✅ EJECUTADO
+Branch sesión: claude/resolve-merge-conflicts-4MmJK
+
+Owner reportó (2026-05-05): "Como admin de tenant intenté borrar
+permanentemente un programa duplicado pero solo se desactiva".
+Decisión owner (AskUserQuestion): scope = las 6 entidades admin
+(programs, orgs, BUs, depts, users, stakeholders); cascada = borrado
+físico con conteo explícito en confirm modal.
+
+Resultado:
+  · US-088 #189 → (sha por commitear) feat(api,web) — hard delete
+    two-step para 6 entidades + ADR-017.
+
+Cambios entregados:
+- Backend (`apps/api/app/`):
+  - `core/hard_delete.py` (nuevo): helper `confirm_slug` +
+    `ensure_inactive` + `ensure_confirm`.
+  - `schemas/hard_delete.py` (nuevo): `HardDeletePreview`.
+  - `api/v1/endpoints/organizations.py`: 8 endpoints nuevos
+    (preview + DELETE permanent para program/org/BU/dept).
+  - `api/v1/endpoints/admin_users.py`: 2 endpoints + cascade SET NULL
+    en ~15 FKs nullable; bloqueante si hay project_request o
+    permission_change_request con NOT NULL FK al user.
+  - `api/v1/endpoints/stakeholders.py`: 2 endpoints (cascade trivial).
+- Frontend (`apps/web/`):
+  - `components/hard-delete-button.tsx` (nuevo): reusable component
+    con preview → modal → typed slug confirm → delete.
+  - `lib/api/{organizations,admin,stakeholders}.ts`: clientes nuevos.
+  - Wired en: `programs-section.tsx`, `org-hierarchy-section.tsx`
+    (BUs y depts), `admin/organizations/[id]/edit/page.tsx`,
+    `admin/users/[id]/page.tsx`, `admin/stakeholders/page.tsx`.
+- Tests: `apps/api/tests/test_us088_hard_delete.py` — 9/9 passing
+  (3 program incl. cascade, 1 org, 1 BU, 1 dept, 1 stakeholder,
+  2 user). Suites EP002 + EP007 + US-042 = 42/42 sin regresión.
+- Docs: `docs/adr/README.md` ADR-017 nuevo. CLAUDE.md próximo
+  libre ahora US-089.
+
+Pendiente owner:
+- Revisar PR + verificar el flujo en /admin/organizations/<id>/edit:
+  el botón "Eliminar" rojo aparece para programas inactivos. Click →
+  modal con conteo de proyectos en cascada + input typed-confirm.
+- Confirmar typed-slug funciona en otras 5 entidades.
+- Cerrar issue #189 cuando todo verde.
+
+Diferidos (documentados como follow-up):
+- Hard-delete de User cuando hay `project_request.requested_by` =
+  bloqueado. Futuro: agregar endpoint de reasignación interactiva.
+- Lista organizations (cards) no tiene botón inline de hard-delete,
+  hay que entrar al detalle. Bajo impacto: la lista solo se ve para
+  navegar; el detalle es el lugar natural de borrado.
+
+Próximo libre: US-089, BUG-040 (ya tomado), ENH-045.
+
+Limpieza branches (2026-05-05):
+- `claude/sprint-issues-backlog-setup-EMiLA` → SAFE TO DELETE.
+  Owner reportó la branch tras cleanup; tiene 6 commits ahead de
+  main pero todos están superseded:
+  · 5bf7d22 BUG-033 → ya en main como 711be4e (Sprint 8 cherry-pick).
+  · d85e642 BUG-035 → ya en main como 4193f24 (Sprint 8 cherry-pick).
+  · 7e21280 BUG-040 → ya en main como a5c3a2c (Sprint 8 cherry-pick).
+  · f7e3279 BUG-032 → fue un fix con scope distinto al issue real;
+    issue #159 cerró con 2f86f38 (otro scope, /superadmin/me email).
+  · 8de1051, bae45f3 — sprint coordination docs ya superseded.
+  Conflictos en `modules.py` (US-086) + `SPRINT.md` confirman
+  staleness. Owner puede borrar la remote sin merge.
+
+--- contexto Sprint 8 cleanup ---
 2026-04-29 — Sprint 8 v1.7 — BATCH CLEANUP ✅ EJECUTADO
 Branch sesión: claude/fix-issue-resolution-S3i4e
 
