@@ -81,6 +81,31 @@ function wbsParent(wbs: string | null | undefined): string | null {
   return parts.slice(0, -1).join(".");
 }
 
+// ENH-048: predicados para los chips de filtro Hitos / Críticos / Retrasados.
+type ChipKey = "milestone" | "critical" | "delayed";
+
+function isTaskCritical(t: Task): boolean {
+  return t.criticality === "high" || t.criticality === "critical";
+}
+
+function isTaskDelayed(t: Task): boolean {
+  if (!t.end_date) return false;
+  if (t.status === "completed") return false;
+  const end = new Date(t.end_date);
+  if (Number.isNaN(end.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return end.getTime() < today.getTime();
+}
+
+function chipMatches(t: Task, chips: Set<ChipKey>): boolean {
+  if (chips.size === 0) return true;
+  if (chips.has("milestone") && t.is_milestone) return true;
+  if (chips.has("critical") && isTaskCritical(t)) return true;
+  if (chips.has("delayed") && isTaskDelayed(t)) return true;
+  return false;
+}
+
 function ownerLabel(owner: Task["owner"]): string {
   if (!owner) return "—";
   return owner.full_name?.trim() || owner.email;
@@ -341,6 +366,33 @@ function PlanInner() {
   // la UX actual; persiste en localStorage por proyecto.
   const [groupByWbs, setGroupByWbs] = useState(false);
   const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
+
+  // ENH-048: chips de filtro multi-select Hitos / Críticos / Retrasados.
+  const [activeChips, setActiveChips] = useState<Set<ChipKey>>(new Set());
+
+  function toggleChip(key: ChipKey) {
+    setActiveChips((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  // Conteos por chip (siempre sobre el set total, no sobre filtrado).
+  const chipCounts = useMemo(
+    () => ({
+      milestone: tasks.filter((t) => t.is_milestone).length,
+      critical: tasks.filter((t) => isTaskCritical(t)).length,
+      delayed: tasks.filter((t) => isTaskDelayed(t)).length,
+    }),
+    [tasks],
+  );
+
+  const filteredTasks = useMemo(
+    () => (activeChips.size === 0 ? tasks : tasks.filter((t) => chipMatches(t, activeChips))),
+    [tasks, activeChips],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -754,8 +806,47 @@ function PlanInner() {
             </Button>
           </div>
         </header>
+        {/* ENH-048: chips multi-select Hitos / Críticos / Retrasados. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-2">
+          {(
+            [
+              { key: "milestone" as const, label: "Hitos" },
+              { key: "critical" as const, label: "Críticos" },
+              { key: "delayed" as const, label: "Retrasados" },
+            ]
+          ).map(({ key, label }) => {
+            const active = activeChips.has(key);
+            const count = chipCounts[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => toggleChip(key)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                )}
+              >
+                {label}
+                <span className="tabular-nums opacity-80">({count})</span>
+              </button>
+            );
+          })}
+          {activeChips.size > 0 ? (
+            <button
+              type="button"
+              onClick={() => setActiveChips(new Set())}
+              className="text-xs text-[var(--color-tertiary)] underline-offset-2 hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          ) : null}
+        </div>
         <TaskList
-          tasks={tasks}
+          tasks={filteredTasks}
           loading={loadingTasks}
           onDelete={handleDeleteTask}
           groupByWbs={groupByWbs}
@@ -767,6 +858,7 @@ function PlanInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       tasks,
+      filteredTasks,
       loadingTasks,
       id,
       exportingXlsx,
@@ -774,6 +866,8 @@ function PlanInner() {
       downloadingTemplate,
       groupByWbs,
       collapsedWbs,
+      activeChips,
+      chipCounts,
     ],
   );
 
