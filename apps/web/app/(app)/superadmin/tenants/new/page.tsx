@@ -279,7 +279,7 @@ export default function NewTenantPage() {
                   type="text"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="min. 12 caracteres, mayúscula, dígito, símbolo"
+                  placeholder="min. 8 caracteres, mayúscula, dígito, símbolo"
                   disabled={saving}
                 />
                 <Button

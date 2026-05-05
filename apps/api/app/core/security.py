@@ -72,11 +72,11 @@ def decode_refresh_token(token: str) -> dict[str, Any]:
         raise ValueError("invalid_refresh") from exc
 
 
-PASSWORD_POLICY_MIN_LEN = 12
+PASSWORD_POLICY_MIN_LEN = 8
 
 
 def validate_password_policy(password: str) -> tuple[bool, str | None]:
-    """Return (ok, error_code). Policy: min 12 chars, 1 upper, 1 digit, 1 symbol."""
+    """Return (ok, error_code). Policy: min 8 chars, 1 upper, 1 digit, 1 symbol."""
     if len(password) < PASSWORD_POLICY_MIN_LEN:
         return False, "password_too_short"
     if not any(c.isupper() for c in password):
