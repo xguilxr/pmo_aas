@@ -6,6 +6,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   Download,
+  FileDown,
+  FileSpreadsheet,
   ListTree,
   Plus,
   Rows3,
@@ -463,44 +465,12 @@ function PlanInner() {
               Lista de tareas
             </h2>
           </div>
-          <div className="flex items-center gap-2">
-            {/* US-070: el wizard reemplaza el control inline anterior.
-                Soporta XLSX/CSV (con mapping manual de columnas), MPP
-                (via MPXJ) y XML (formato MS Project). */}
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => setWizardOpen(true)}
-              aria-label="Abrir wizard de import"
-            >
-              <Upload className="h-4 w-4" aria-hidden />
-              Importar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={exportToCSV}
-              aria-label="Exportar a CSV"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              CSV
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={exportToExcel}
-              loading={exportingXlsx}
-              aria-label="Exportar a Excel"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              Excel
-            </Button>
-            {/* US-071: plantilla vacía descargable. Visible siempre,
-                incluso con plan vacío, para que el PM pueda armar el
-                plan offline y subirlo después. */}
+          {/* ENH-052: orden Plantilla → Descargar (Excel/CSV) → Importar
+              con colores distintos. Plantilla = gris secundario;
+              Descargar = azul; Importar = verde. CSV queda como variante
+              compacta junto a Excel para no perder funcionalidad
+              (ENH-028). Layout `flex-wrap` para apilar en móvil. */}
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               size="sm"
@@ -527,8 +497,40 @@ function PlanInner() {
               aria-label="Descargar plantilla vacía"
               title="Descargar XLSX vacío con las columnas que el sistema espera"
             >
-              <Download className="h-4 w-4" aria-hidden />
+              <FileDown className="h-4 w-4" aria-hidden />
               Plantilla
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={exportToExcel}
+              loading={exportingXlsx}
+              aria-label="Descargar plan en Excel"
+              className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Descargar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={exportToCSV}
+              aria-label="Exportar a CSV"
+              title="Descargar como CSV"
+            >
+              <FileSpreadsheet className="h-4 w-4" aria-hidden />
+              CSV
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setWizardOpen(true)}
+              aria-label="Abrir wizard de import"
+              className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300"
+            >
+              <Upload className="h-4 w-4" aria-hidden />
+              Importar
             </Button>
             <Button
               type="button"
