@@ -12,6 +12,10 @@ export type ProjectArea = {
   contact_email: string | null;
   /** US-062: líder del área (FK a users, nullable). */
   area_leader_id: string | null;
+  /** US-091: jerarquía explícita Área→Equipo→Actor. */
+  team_id: string | null;
+  area_id: string | null;
+  phone: string | null;
   is_active: boolean;
 };
 
@@ -22,6 +26,9 @@ export type ProjectAreaCreateBody = {
   contact_name?: string | null;
   contact_email?: string | null;
   area_leader_id?: string | null;
+  team_id?: string | null;
+  area_id?: string | null;
+  phone?: string | null;
   is_active?: boolean;
 };
 

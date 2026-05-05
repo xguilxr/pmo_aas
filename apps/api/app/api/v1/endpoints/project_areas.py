@@ -91,6 +91,18 @@ async def create_area(
     if data.get("area_leader_id") is not None:
         await _require_tenant_user(db, tenant_id, data["area_leader_id"])
         data["area_leader_id"] = str(data["area_leader_id"])
+    # US-091: validar que team_id apunte a un row con type='team' del mismo
+    # proyecto, y area_id a uno con type='area'.
+    if data.get("team_id") is not None:
+        await _require_project_area_of_type(
+            db, tenant_id, project.id, data["team_id"], "team"
+        )
+        data["team_id"] = str(data["team_id"])
+    if data.get("area_id") is not None:
+        await _require_project_area_of_type(
+            db, tenant_id, project.id, data["area_id"], "area"
+        )
+        data["area_id"] = str(data["area_id"])
     area = ProjectArea(
         tenant_id=tenant_id,
         project_id=project.id,
@@ -126,6 +138,36 @@ async def _require_tenant_user(
     ).scalar_one_or_none()
     if row is None:
         raise not_found("Usuario")
+
+
+async def _require_project_area_of_type(
+    db: AsyncSession,
+    tenant_id: UUID | str,
+    project_id: UUID | str,
+    target_id: UUID | str,
+    expected_type: str,
+) -> None:
+    """US-091: valida que `target_id` sea una ProjectArea del mismo
+    proyecto + tenant + con `type=expected_type`. Rechaza con 422."""
+    row = (
+        await db.execute(
+            select(ProjectArea).where(
+                ProjectArea.id == str(target_id),
+                ProjectArea.tenant_id == str(tenant_id),
+                ProjectArea.project_id == str(project_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        from app.core.errors import validation_error
+
+        raise validation_error(f"{expected_type}_id no existe en el proyecto")
+    if row.type != expected_type:
+        from app.core.errors import validation_error
+
+        raise validation_error(
+            f"{expected_type}_id debe apuntar a un registro con type='{expected_type}'"
+        )
 
 
 async def _get_area(
@@ -177,6 +219,17 @@ async def update_area(
     if "area_leader_id" in data and data["area_leader_id"] is not None:
         await _require_tenant_user(db, tenant_id, data["area_leader_id"])
         data["area_leader_id"] = str(data["area_leader_id"])
+    # US-091: validar FKs de jerarquía si se mandaron en el patch.
+    if "team_id" in data and data["team_id"] is not None:
+        await _require_project_area_of_type(
+            db, tenant_id, area.project_id, data["team_id"], "team"
+        )
+        data["team_id"] = str(data["team_id"])
+    if "area_id" in data and data["area_id"] is not None:
+        await _require_project_area_of_type(
+            db, tenant_id, area.project_id, data["area_id"], "area"
+        )
+        data["area_id"] = str(data["area_id"])
     for field, value in data.items():
         if field == "contact_email" and value is not None:
             value = str(value)
