@@ -263,7 +263,7 @@ export default function OrganizationPanelPage() {
                 >
                   <td className="py-2">
                     <Link
-                      href={`/pmo/programs/${p.id}`}
+                      href={`/pmo/programs/${p.id}?ctx=admin`}
                       className="text-[var(--color-accent)] hover:underline"
                     >
                       {p.name}
