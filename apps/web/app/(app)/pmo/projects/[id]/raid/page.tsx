@@ -734,7 +734,7 @@ function IssuesSection({
                   {displayLabel}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.priority ?? "—"}
+                  <PriorityBadge priority={it.priority} />
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.status}
@@ -804,6 +804,31 @@ function SeverityBadge({ severity }: { severity: number | null }) {
       )}
     >
       {severity}
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: number | null | undefined }) {
+  if (priority === null || priority === undefined)
+    return <span className="text-xs">—</span>;
+  const tone =
+    priority === 1
+      ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
+      : priority === 2
+        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
+        : priority === 3
+          ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]"
+          : "bg-[var(--color-subtle)] text-[var(--color-secondary)]";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        tone,
+      )}
+      aria-label={`Prioridad ${priority}`}
+      title={`Prioridad ${priority}`}
+    >
+      P{priority}
     </span>
   );
 }
