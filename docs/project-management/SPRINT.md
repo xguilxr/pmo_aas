@@ -9,11 +9,11 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 11 (v1.10) — Bloque 2 (Nav cleanup) ENTREGADO 2026-05-06
+Sprint 11 (v1.10) — Bloques 1+2+3 ENTREGADOS 2026-05-06
 Branch sesión: claude/next-sprint-tasks-fITMO
 
-Sin US activa. Bloque 3 (RAID polish) próximo:
-  BUG-046 #221 → BUG-047 #222 → BUG-048 #223 → ENH-060 #224 → ENH-061 #225
+Sin US activa. Sprint 11 cerrado por mi parte (12 items entregados).
+Pendiente owner: verificación + cierre issues #206/#207/#216-#225.
 
 Próximo libre: US-094, BUG-049, ENH-062.
 ```
@@ -46,12 +46,12 @@ Próximo libre: US-094, BUG-049, ENH-062.
 - [x] ENH-058 #219 — `pmo/projects/new` + `pmo/requests/new` con Breadcrumb + BackLink — `de9dc0b`
 - [x] ENH-059 #220 — `admin/users/[id]` migra a `<BackLink>` reutilizable — `9cc4fc6`
 
-### Sprint 11 — Bloque 3: RAID polish (5 issues — correctness primero)
-- [ ] BUG-046 #221 — RAID Issue/Action/Decision tables: priority como badge color
-- [ ] BUG-047 #222 — RAID closure_note vía `window.prompt()` → modal inline
-- [ ] BUG-048 #223 — RAID title field acepta whitespace-only (trim antes de validar)
-- [ ] ENH-060 #224 — RAID status dropdown sin feedback visual de save
-- [ ] ENH-061 #225 — RAID matriz P × I: celdas clicables filtran tabla
+### Sprint 11 — Bloque 3: RAID polish (5 issues — correctness primero) ✅ ENTREGADO
+- [x] BUG-046 #221 — Priority como badge color (P1=red, P2=warning, P3=info, P4+=neutral) — `e27d560`
+- [x] BUG-047 #222 — closure_note vía Modal + Textarea (sin `window.prompt`) — `68e8d5b`
+- [x] BUG-048 #223 — Title trim + min_length backend (TitleStr Annotated) + frontend submit guard — `213ad11`
+- [x] ENH-060 #224 — Status dropdown spinner + check verde 1.5s — `55b615b`
+- [x] ENH-061 #225 — Matriz P×I celdas clicables → filtran tabla con chip [×] — `a16699c`
 
 ### Backlog v2.0 — RAID polish diferidos (P3 de pasada UI 2026-05-06)
 - Bulk actions multi-select RAID
