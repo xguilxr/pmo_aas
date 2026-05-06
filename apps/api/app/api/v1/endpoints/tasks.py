@@ -39,6 +39,7 @@ from app.services.plan_metadata import (
     ensure_duration_max_21,
     recompute_successors_for_project,
     validate_predecessors,
+    wbs_sort_key,
 )
 from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
 
@@ -218,13 +219,13 @@ async def list_tasks(
     rows = (
         await db.execute(
             select(Task).where(Task.project_id == str(project_id))
-            .order_by(Task.wbs.nullsfirst() if hasattr(Task.wbs, "nullsfirst") else Task.wbs)
         )
     ).scalars().all()
-    rows_list = list(rows)
+    # BUG-049 — orden natural por WBS (1.2 < 1.10) post-fetch.
+    rows_list = sorted(list(rows), key=lambda t: wbs_sort_key(t.wbs))
     await _attach_owners(db, rows_list)
     await _attach_milestones(db, rows_list)
-    return [TaskRead.model_validate(t) for t in rows]
+    return [TaskRead.model_validate(t) for t in rows_list]
 
 
 @router.post("/projects/{project_id}/tasks", response_model=TaskRead, status_code=201)
