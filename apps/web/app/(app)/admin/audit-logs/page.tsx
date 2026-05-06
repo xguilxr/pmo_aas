@@ -5,6 +5,7 @@ import { Download, ScrollText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -74,6 +75,12 @@ export default function AuditLogsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
+      <Breadcrumb
+        items={[
+          { href: "/admin/tenant", label: "Admin" },
+          { label: "Auditoría" },
+        ]}
+      />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--text-secondary)]">

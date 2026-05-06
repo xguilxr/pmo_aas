@@ -11,6 +11,8 @@
 
 import { Check, Minus, ShieldCheck } from "lucide-react";
 
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+
 type CapabilityRow = {
   capability: string;
   label: string;
@@ -80,6 +82,12 @@ function YesNo({ ok }: { ok: boolean }) {
 export default function PermissionsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <Breadcrumb
+        items={[
+          { href: "/admin/tenant", label: "Admin" },
+          { label: "Permisos" },
+        ]}
+      />
       <div>
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-6 w-6 text-[var(--color-primary)]" aria-hidden />
