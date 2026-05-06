@@ -34,17 +34,15 @@ import {
   aiGenerateReport,
   createReport,
   deleteReport,
-  downloadAvanceReport,
   downloadReportHistory,
-  downloadSeguimientoReport,
   generateAvanceReport,
   generateSeguimientoReport,
   getReport,
   listReports,
   listReportHistory,
-  previewAvanceReport,
+  previewAvanceTemplate,
   previewReportHistory,
-  previewSeguimientoReport,
+  previewSeguimientoTemplate,
   updateReport,
   type Report,
   type ReportHistoryItem,
@@ -90,73 +88,6 @@ function GeneratorBadge({ generator }: { generator: Report["generator"] }) {
   if (generator === "seguimiento")
     return <Badge variant="info">Seguimiento</Badge>;
   return null;
-}
-
-function GeneratedReportActions({ report }: { report: Report }) {
-  const [busy, setBusy] = useState<"preview" | "download" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const isAvance = report.generator === "avance";
-  const isSeguimiento = report.generator === "seguimiento";
-  if (!isAvance && !isSeguimiento) return null;
-
-  async function run(kind: "preview" | "download") {
-    setBusy(kind);
-    setError(null);
-    try {
-      if (kind === "preview") {
-        await (isAvance
-          ? previewAvanceReport(report.id)
-          : previewSeguimientoReport(report.id));
-      } else {
-        await (isAvance
-          ? downloadAvanceReport(report.id)
-          : downloadSeguimientoReport(report.id));
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-label="Preview PDF"
-        title="Preview PDF en el navegador"
-        loading={busy === "preview"}
-        disabled={busy !== null}
-        onClick={(e) => {
-          e.stopPropagation();
-          void run("preview");
-        }}
-      >
-        <Eye className="h-4 w-4" aria-hidden />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-label="Descargar PDF"
-        title="Descargar PDF"
-        loading={busy === "download"}
-        disabled={busy !== null}
-        onClick={(e) => {
-          e.stopPropagation();
-          void run("download");
-        }}
-      >
-        <Download className="h-4 w-4" aria-hidden />
-      </Button>
-      {error ? (
-        <span className="text-[11px] text-[var(--color-danger-fg)]">{error}</span>
-      ) : null}
-    </div>
-  );
 }
 
 // ENH-055: 3-vista toggle (Catálogo / Historial / Creación) con hash en URL.
@@ -269,14 +200,9 @@ function ReportsInner() {
             email con PDF opcional.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <GenerateAvanceButton projectId={id} onDone={() => void refresh()} />
-          <GenerateSeguimientoButton projectId={id} onDone={() => void refresh()} />
-          <GenerateWithAIButton projectId={id} onCreated={openReport} />
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" aria-hidden /> Nuevo reporte
-          </Button>
-        </div>
+        {/* ENH-055 fase 2: botones legacy (Avance/Seguimiento/IA/Nuevo) eliminados.
+            El flujo nuevo: Catálogo → templates con Visualizar/Descargar; las
+            generaciones quedan en Historial automáticamente (US-092). */}
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
@@ -321,70 +247,10 @@ function ReportsInner() {
       ) : view === "create" ? (
         <ReportCreateAIView projectId={id} />
       ) : (
-      <>
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        {loading ? (
-          <div className="space-y-2 p-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-[var(--color-tertiary)]">
-            Aún no hay reportes. Crea el primero manualmente o con IA.
-          </div>
-        ) : (
-          <ul className="divide-y divide-[var(--border-subtle)]">
-            {rows.map((r) => (
-              <li
-                key={r.id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-subtle)]"
-              >
-                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
-                  <FileText className="h-4 w-4" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openReport(r.id)}
-                      className="truncate text-left text-sm font-medium text-[var(--color-primary)] hover:underline"
-                    >
-                      {r.title}
-                    </button>
-                    <StatusBadge status={r.status} />
-                    <GeneratorBadge generator={r.generator} />
-                    {r.generated_by_ai ? (
-                      <Badge variant="info">IA</Badge>
-                    ) : null}
-                    {r.period ? (
-                      <Badge variant="neutral">
-                        {PERIOD_LABEL[r.period as ReportPeriod] ?? r.period}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--color-tertiary)]">
-                    <span>Creado {fmtDate(r.created_at)}</span>
-                    {r.sent_at ? (
-                      <span>Enviado {fmtDate(r.sent_at)}</span>
-                    ) : null}
-                    {r.recipients.length > 0 ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Mail className="h-3 w-3" aria-hidden />
-                        {r.recipients.length} destinatarios
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                <GeneratedReportActions report={r} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <ScheduledReportsSection projectId={id} />
-      </>
+        <>
+          <ReportCatalogView projectId={id} />
+          <ScheduledReportsSection projectId={id} />
+        </>
       )}
 
       <CreateReportModal
@@ -1500,6 +1366,107 @@ export default function ReportsPage() {
     >
       <ReportsInner />
     </Suspense>
+  );
+}
+
+// ENH-055 fase 2 — vista Catálogo: solo templates (Avance + Seguimiento)
+// con Visualizar/Descargar. Las generaciones se persisten automáticamente
+// en Historial (backend US-092). El catálogo NO crece con cada descarga;
+// solo se expande cuando se agregan templates nuevos (futuro: IA-creados).
+type CatalogTemplate = {
+  id: "avance" | "seguimiento";
+  title: string;
+  description: string;
+};
+
+const CATALOG_TEMPLATES: CatalogTemplate[] = [
+  {
+    id: "avance",
+    title: "Reporte de Avance",
+    description:
+      "Estado del proyecto a una fecha de corte: KPIs, hitos, RAID y avance de tareas.",
+  },
+  {
+    id: "seguimiento",
+    title: "Reporte de Seguimiento",
+    description:
+      "Actividades por responsable en un período de tiempo (1 día, 1 semana, 1 mes).",
+  },
+];
+
+function ReportCatalogView({ projectId }: { projectId: string }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(
+    template: CatalogTemplate,
+    action: "preview" | "download",
+  ) {
+    const key = `${template.id}-${action}`;
+    setBusy(key);
+    setError(null);
+    try {
+      if (template.id === "avance") {
+        if (action === "preview") await previewAvanceTemplate(projectId);
+        else await generateAvanceReport(projectId);
+      } else {
+        if (action === "preview") await previewSeguimientoTemplate(projectId);
+        else await generateSeguimientoReport(projectId);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error generando reporte");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="space-y-3">
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {CATALOG_TEMPLATES.map((t) => (
+          <article
+            key={t.id}
+            className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
+                <FileText className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-[var(--color-primary)]">
+                  {t.title}
+                </h3>
+                <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                  {t.description}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void run(t, "preview")}
+                loading={busy === `${t.id}-preview`}
+                disabled={busy !== null && busy !== `${t.id}-preview`}
+              >
+                <Eye className="h-4 w-4" aria-hidden /> Visualizar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void run(t, "download")}
+                loading={busy === `${t.id}-download`}
+                disabled={busy !== null && busy !== `${t.id}-download`}
+              >
+                <Download className="h-4 w-4" aria-hidden /> Descargar
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -164,8 +164,12 @@ async function downloadPdfFromEndpoint(
  * ENH-014: abre el PDF inline en una pestaña nueva para preview sin
  * forzar descarga. Retorna sin hacer nada si la pestaña es bloqueada.
  */
-async function previewPdfFromEndpoint(path: string): Promise<void> {
-  const { blob } = await fetchPdfFromEndpoint(path, undefined, "GET");
+async function previewPdfFromEndpoint(
+  path: string,
+  body?: unknown,
+  method: "GET" | "POST" = "GET",
+): Promise<void> {
+  const { blob } = await fetchPdfFromEndpoint(path, body, method);
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank", "noopener,noreferrer");
   if (!win) {
@@ -231,6 +235,32 @@ export function previewAvanceReport(reportId: string): Promise<void> {
 export function previewSeguimientoReport(reportId: string): Promise<void> {
   return previewPdfFromEndpoint(
     `/api/v1/reports/${reportId}/seguimiento/download?inline=true`,
+  );
+}
+
+/**
+ * ENH-055 fase 2: genera el reporte template y lo abre inline (preview).
+ * El backend persiste a ReportHistory automáticamente (US-092).
+ */
+export function previewAvanceTemplate(
+  projectId: string,
+  cutOffDate?: string,
+): Promise<void> {
+  return previewPdfFromEndpoint(
+    `/api/v1/projects/${projectId}/reports/avance`,
+    { cut_off_date: cutOffDate ?? null },
+    "POST",
+  );
+}
+
+export function previewSeguimientoTemplate(
+  projectId: string,
+  period?: string,
+): Promise<void> {
+  return previewPdfFromEndpoint(
+    `/api/v1/projects/${projectId}/reports/seguimiento`,
+    { period: period ?? null },
+    "POST",
   );
 }
 
