@@ -9,16 +9,20 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 11 (v1.10) — Bloques 1+2+3 ENTREGADOS + 3 hot fixes 2026-05-06
-Branch sesión: claude/next-sprint-tasks-fITMO
+Sprint 12 (v1.10/v1.11) — Bloques 1+2+3 ENTREGADOS 2026-05-06
+Branch sesión: claude/sprint-12-bloques
 
-Hot fixes 2026-05-06 sobre status:needs-rework:
-  #204 ENH-054 fase 2 — RAID edit affordance prominente — `25ec5a0`
-  #205 US-091 fase 2 — vista Por Actor con tabla — `aa1a1ad`
-  #209 ENH-055 fase 2 — Catálogo solo templates + drop botones legacy — `682b06c`
+Sprint 12 entregado en orden Bloque 1 → 2 → 3 (ENH-065 #236
+cerrado por owner pre-arranque):
+  Bloque 1 — Plan: BUG-049/050/051 + US-095/096
+  Bloque 2 — Admin: US-094 + ENH-062
+  Bloque 3 — Reportes: ENH-063 + ENH-064
 
-Sprint 12 (v1.10/v1.11) backlog status:ready 2026-05-06:
-  10 issues triagados (US-094/095/096, BUG-049/050/051, ENH-062/063/064/065).
+Pendiente verificación owner: cerrar #227-235.
+
+Post-Sprint 12 (próximo bloque): redesign RAID + Area requirements
+  (no cubierto por issues actuales). Owner abrirá scope en sesión
+  siguiente sobre branch claude/redesign-raid-area-requirements-EhZ3d.
 
 Próximo libre: US-097, BUG-052, ENH-066.
 ```
@@ -70,27 +74,30 @@ Próximo libre: US-097, BUG-052, ENH-066.
 
 ---
 
-## ⏳ Sprint 12 (v1.10/v1.11) — backlog `status:ready` 2026-05-06
+## ⏳ Sprint 12 (v1.10/v1.11) — Bloques 1+2+3 ENTREGADOS 2026-05-06
 
-### Sprint 12 — Bloque 1: Plan fixes + plantilla (5 issues)
-- [ ] BUG-049 #230 — WBS natural sort (1.1 → 1.2 → 1.10).
-- [ ] BUG-050 #231 — Outline level auto-calc desde WBS (backend hook).
-- [ ] BUG-051 #232 — Tareas delayed con marca visual roja.
-- [ ] US-095 #229 — Editar tarea (botón Pencil antes del basurerito).
-- [ ] US-096 #227 — Plantilla XLSX: Hito/Criticidad/Outline/Duración + fórmulas + conditional formatting.
+### Sprint 12 — Bloque 1: Plan fixes + plantilla (5 issues) ✅ ENTREGADO
+- [x] BUG-049 #230 — WBS natural sort (1.1 → 1.2 → 1.10) — `fb35a2e`
+- [x] BUG-050 #231 — Outline level auto-calc en imports + backfill 0043 — `374e4cc`
+- [x] BUG-051 #232 — Tareas delayed con marca visual roja — `99a481c`
+- [x] US-095 #229 — Editar tarea (botón Pencil + modal pre-poblado) — `eab7849`
+- [x] US-096 #227 — Plantilla XLSX con fórmulas + nuevos campos — `8889751`
 
-### Sprint 12 — Bloque 2: Admin restructure (2 issues)
-- [ ] US-094 #228 — Página `/admin` landing con 6 paneles.
-- [ ] ENH-062 #233 — Quitar "Gestión de" en labels admin.
+### Sprint 12 — Bloque 2: Admin restructure (2 issues) ✅ ENTREGADO
+- [x] US-094 #228 — Página `/admin` landing con 6 paneles — `41d617e`
+- [x] ENH-062 #233 — Quitar "Gestión de" en labels admin — `8929a43`
 
-### Sprint 12 — Bloque 3: Reportes refinamiento (2 issues)
-- [ ] ENH-063 #234 — Filtro periodo (1d/1sem/2sem/1mes/3meses).
-- [ ] ENH-064 #235 — Default focus hitos/críticas/delayed + concisión.
+### Sprint 12 — Bloque 3: Reportes refinamiento (2 issues) ✅ ENTREGADO
+- [x] ENH-063 #234 — Filtro periodo (1d/1sem/2sem/1mes/3meses) — `7321e0f`
+- [x] ENH-064 #235 — Default focus hitos/críticas/delayed — `f7db92c`
 
-### Sprint 12 — Triage pendiente (1 issue)
-- [ ] ENH-065 #236 — Niveles de agrupación (clarificación owner pendiente).
+### Post-Sprint 12 — RAID + Area requirements redesign
+- [ ] Owner redefinirá scope en próxima sesión: los issues anteriores
+      cubren parte del RAID (ENH-054, BUG-046/047/048, ENH-060/061) y
+      Area (US-091, ENH-020) pero **no satisfacen los requerimientos
+      reales**. Branch reservada: `claude/redesign-raid-area-requirements-EhZ3d`.
 
-### Reworks ya entregados (esperando verificación)
+### Reworks Sprint 11 ya entregados (esperando verificación)
 - [x] #204 ENH-054 fase 2 — `25ec5a0`
 - [x] #205 US-091 fase 2 — `aa1a1ad`
 - [x] #209 ENH-055 fase 2 — `682b06c`
@@ -139,6 +146,7 @@ Próximo libre: US-097, BUG-052, ENH-066.
 
 ## Notas y cambios recientes
 
+- **2026-05-06 (Sprint 12 Bloques 1-3 entregados):** 9 commits sobre branch `claude/sprint-12-bloques`, fast-forward desde `main` post-Sprint 11. Migración Alembic 0043 agregada (backfill de `tasks.outline_level`). Owner adelantó que el siguiente bloque será **redesign RAID + Area requirements** (no cubierto por #204/#205/#209/#221-225 ni US-091): scope se definirá al inicio de la próxima sesión sobre branch `claude/redesign-raid-area-requirements-EhZ3d`. ENH-065 #236 cerrado por owner pre-arranque.
 - **2026-05-06 (Sprint 11 Bloque 1 entregado):** BUG-042 (breadcrumb context-aware via `?ctx=admin` query param) `4591aee` + BUG-043 (ProgramCard como `<Link>` con hover/focus) `98822f7`. Pendiente owner: verificar + cerrar issues #206 #207.
 - **2026-05-06 (Sprint 11 arranque):** Sprint 10 cerrado y archivado a SPRINT-DONE-HISTORY.md (14 items, PR #215 mergeado a main `7e03332`). SPRINT.md queda con Sprint 11 Bloque 1 IN-PROGRESS — solo BUG-042 + BUG-043 pendientes (nav review).
 - **2026-05-05 (Sprint 10 triage):** owner pidió planeación próximos 2 sprints + mejoras a página de reportes. 15 issues creados (#196-#207, #209-#212) en 6 bloques Sprint 10 + 1 bloque Sprint 11. Detalle histórico en SPRINT-DONE-HISTORY.md.
