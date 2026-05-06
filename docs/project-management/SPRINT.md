@@ -9,14 +9,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 11 (v1.10) — Bloque 1 (Nav review) ENTREGADO 2026-05-06
+Sprint 11 (v1.10) — Bloque 2 (Nav cleanup) marcado status:ready 2026-05-06
 Branch sesión: claude/next-sprint-tasks-fITMO
 
-Sin US activa. Bloque 1 cerrado:
-  BUG-042 #206 ✅ 4591aee — breadcrumb context-aware admin/pmo
-  BUG-043 #207 ✅ 98822f7 — ProgramCard clicable en PMO Org view
+US activa: BUG-044 #216
 
-Próximo libre: US-094, BUG-044, ENH-057.
+Próximo libre: US-094, BUG-049, ENH-062.
 ```
 
 ---
@@ -33,14 +31,38 @@ Próximo libre: US-094, BUG-044, ENH-057.
 
 ## ⏳ QUEUE
 
-**Sprint 11 (v1.10) — Bloque 1 marcado `status:ready` por owner 2026-05-05.**
+**Sprint 11 (v1.10) — Bloque 1 ENTREGADO 2026-05-06. Bloques 2+3 `status:ready` por owner 2026-05-06.**
 
 ### Sprint 11 — Bloque 1: Nav review (2 BUGs) ✅ ENTREGADO
 - [x] BUG-042 #206 — Breadcrumb desde Programa → link Org va a PMO en lugar de Admin — `4591aee`
 - [x] BUG-043 #207 — Panel de Programa en vista PMO Org no es clicable — `98822f7`
-- [ ] (pasada con `ui-reviewer` agent comenzando por RAID, luego nav)
+- [x] (pasada UI 2026-05-06 → 23 findings → 13 issues triagados → Bloques 2 + 3)
 
-**Próximo libre:** US-094, BUG-044, ENH-057.
+### Sprint 11 — Bloque 2: Nav cleanup (5 issues — cierra patrón BUG-042) ⏳ ACTIVO
+- [ ] BUG-044 #216 — Admin Org → tabla proyectos: link `/pmo/projects` sin `?ctx=admin`
+- [ ] BUG-045 #217 — Admin Supervisión → links proyectos sin `?ctx=admin`
+- [ ] ENH-057 #218 — Admin pages sin Breadcrumb (stakeholders/permissions/audit-logs/settings)
+- [ ] ENH-058 #219 — `pmo/projects/new` + `pmo/requests/new` sin Breadcrumb consistente
+- [ ] ENH-059 #220 — `admin/users/[id]` migrar a `<BackLink>` reutilizable
+
+### Sprint 11 — Bloque 3: RAID polish (5 issues — correctness primero)
+- [ ] BUG-046 #221 — RAID Issue/Action/Decision tables: priority como badge color
+- [ ] BUG-047 #222 — RAID closure_note vía `window.prompt()` → modal inline
+- [ ] BUG-048 #223 — RAID title field acepta whitespace-only (trim antes de validar)
+- [ ] ENH-060 #224 — RAID status dropdown sin feedback visual de save
+- [ ] ENH-061 #225 — RAID matriz P × I: celdas clicables filtran tabla
+
+### Backlog v2.0 — RAID polish diferidos (P3 de pasada UI 2026-05-06)
+- Bulk actions multi-select RAID
+- Empty states per-severity en lista RAID
+- Preview modal "Abrir/Editar" link
+- Keyboard shortcut (Ctrl+K) crear RAID item
+- Type-change post-creación: confirmation modal
+- Audit log UI por item RAID
+- Date format inconsistency Issue table
+- Closure prompt cancelar: estado inconsistente
+
+**Próximo libre:** US-094, BUG-049, ENH-062.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
