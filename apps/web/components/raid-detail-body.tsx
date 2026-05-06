@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check, Loader2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ export function RiskDetailBody({
   const [closurePending, setClosurePending] = useState<RiskStatus | null>(null);
   const [closureNote, setClosureNote] = useState("");
   const [closureError, setClosureError] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     setStatus(risk.status);
@@ -93,6 +95,12 @@ export function RiskDetailBody({
     setComment("");
     setError(null);
   }, [risk.id, risk.status, risk.comments]);
+
+  useEffect(() => {
+    if (!savedFlash) return;
+    const t = setTimeout(() => setSavedFlash(false), 1500);
+    return () => clearTimeout(t);
+  }, [savedFlash]);
 
   async function applyStatusChange(
     next: RiskStatus,
@@ -107,6 +115,7 @@ export function RiskDetailBody({
       if (closureNoteValue) payload.closure_note = closureNoteValue;
       const updated = await updateRisk(risk.id, payload);
       setStatus(updated.status);
+      setSavedFlash(true);
       onUpdated({ id: updated.id, status: updated.status });
       return true;
     } catch (err) {
@@ -175,8 +184,19 @@ export function RiskDetailBody({
   return (
     <div className="space-y-4">
       <div>
-        <div className="mb-1 text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-          Estado
+        <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <span>Estado</span>
+          {savingStatus ? (
+            <Loader2
+              className="h-3 w-3 animate-spin text-[var(--color-tertiary)]"
+              aria-label="Guardando"
+            />
+          ) : savedFlash ? (
+            <Check
+              className="h-3 w-3 text-[var(--color-success-fg)]"
+              aria-label="Guardado"
+            />
+          ) : null}
         </div>
         <Select
           value={status}
@@ -254,6 +274,7 @@ export function IssueDetailBody({
   const [addingComment, setAddingComment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>(issue.comments ?? []);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     setStatus(issue.status);
@@ -262,6 +283,12 @@ export function IssueDetailBody({
     setError(null);
   }, [issue.id, issue.status, issue.comments]);
 
+  useEffect(() => {
+    if (!savedFlash) return;
+    const t = setTimeout(() => setSavedFlash(false), 1500);
+    return () => clearTimeout(t);
+  }, [savedFlash]);
+
   async function changeStatus(next: IssueStatus) {
     if (next === status) return;
     setSavingStatus(true);
@@ -269,6 +296,7 @@ export function IssueDetailBody({
     try {
       const updated = await updateIssue(issue.id, { status: next });
       setStatus(updated.status);
+      setSavedFlash(true);
       onUpdated({ id: updated.id, status: updated.status });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
@@ -299,8 +327,19 @@ export function IssueDetailBody({
   return (
     <div className="space-y-4">
       <div>
-        <div className="mb-1 text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-          Estado
+        <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <span>Estado</span>
+          {savingStatus ? (
+            <Loader2
+              className="h-3 w-3 animate-spin text-[var(--color-tertiary)]"
+              aria-label="Guardando"
+            />
+          ) : savedFlash ? (
+            <Check
+              className="h-3 w-3 text-[var(--color-success-fg)]"
+              aria-label="Guardado"
+            />
+          ) : null}
         </div>
         <Select
           value={status}
