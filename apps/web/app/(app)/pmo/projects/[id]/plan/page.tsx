@@ -287,10 +287,14 @@ function TaskList({
             const wbsKey = t.wbs ?? "";
             const isParent = groupByWbs && wbsKey && hasChildren.has(wbsKey);
             const isCollapsed = !!(isParent && collapsed?.has(wbsKey));
+            const delayed = isTaskDelayed(t);
             return (
             <tr
               key={t.id}
-              className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+              className={cn(
+                "border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]",
+                delayed && "bg-[var(--color-danger-bg)]/40",
+              )}
             >
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
@@ -321,9 +325,17 @@ function TaskList({
                   ) : groupByWbs ? (
                     <span className="inline-block h-4 w-4" aria-hidden />
                   ) : null}
-                  <span>
+                  <span className={delayed ? "text-[var(--color-danger-fg)]" : undefined}>
                     {t.is_milestone ? "🔷 " : ""}
                     {t.name}
+                    {delayed ? (
+                      <span
+                        className="ml-2 inline-flex items-center rounded border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]"
+                        title="end_date < hoy y status != completado"
+                      >
+                        Retrasada
+                      </span>
+                    ) : null}
                     <CriticalityChip value={t.criticality ?? "medium"} />
                     {/* ENH-050: tooltip con hito relacionado. */}
                     {t.related_milestone ? (
@@ -343,7 +355,14 @@ function TaskList({
               <td className="px-3 py-2 text-[var(--color-secondary)]">
                 {fmtDate(t.start_date)}
               </td>
-              <td className="px-3 py-2 text-[var(--color-secondary)]">
+              <td
+                className={cn(
+                  "px-3 py-2",
+                  delayed
+                    ? "font-medium text-[var(--color-danger-fg)]"
+                    : "text-[var(--color-secondary)]",
+                )}
+              >
                 {fmtDate(t.end_date)}
               </td>
               {showProjectCols ? (
