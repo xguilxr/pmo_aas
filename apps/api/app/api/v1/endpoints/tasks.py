@@ -474,6 +474,7 @@ async def import_ms_project(
             existing.duration_days = pt.duration_days
             existing.progress = pt.progress
             existing.is_milestone = pt.is_milestone
+            existing.outline_level = compute_outline_level(pt.wbs)
             created[pt.external_id] = existing
         else:
             t = Task(
@@ -484,6 +485,7 @@ async def import_ms_project(
                 is_milestone=pt.is_milestone, status="not_started",
                 source="msproject", external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
+                outline_level=compute_outline_level(pt.wbs),
             )
             db.add(t)
             await db.flush()
@@ -895,6 +897,7 @@ async def import_confirm(
             existing.progress = pt.progress
             existing.is_milestone = pt.is_milestone
             existing.source = source_label
+            existing.outline_level = compute_outline_level(pt.wbs)
             created[pt.external_id] = existing
         else:
             t = Task(
@@ -905,6 +908,7 @@ async def import_confirm(
                 is_milestone=pt.is_milestone, status="not_started",
                 source=source_label, external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
+                outline_level=compute_outline_level(pt.wbs),
             )
             db.add(t)
             await db.flush()
