@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   ListTree,
   Network,
+  Pencil,
   Plus,
   Rows3,
   Trash2,
@@ -35,6 +36,7 @@ import {
   deleteTask,
   getGantt,
   listTasks,
+  updateTask,
   type GanttData,
   type Task,
   type TaskCriticality,
@@ -193,6 +195,7 @@ function TaskList({
   tasks,
   loading,
   onDelete,
+  onEdit,
   groupByWbs = false,
   collapsed,
   onToggleCollapse,
@@ -201,6 +204,8 @@ function TaskList({
   tasks: Task[];
   loading: boolean;
   onDelete?: (t: Task) => void;
+  // US-095: abre modal de edición pre-poblado.
+  onEdit?: (t: Task) => void;
   // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
   // y permite colapsar nodos padre.
   groupByWbs?: boolean;
@@ -209,6 +214,7 @@ function TaskList({
   // US-090: cuando true, muestra columnas Outline/Duration/Pred/Succ.
   showProjectCols?: boolean;
 }) {
+  const showActions = !!(onEdit || onDelete);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
@@ -278,7 +284,7 @@ function TaskList({
             ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
-            {onDelete ? <th className="w-10 px-3 py-2" aria-label="Acciones" /> : null}
+            {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
         <tbody>
@@ -384,17 +390,32 @@ function TaskList({
               <td className="px-3 py-2">
                 <StatusBadge status={t.status} />
               </td>
-              {onDelete ? (
+              {showActions ? (
                 <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => onDelete(t)}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
-                    aria-label={`Eliminar ${t.name}`}
-                    title="Eliminar"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {onEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => onEdit(t)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+                        aria-label={`Editar ${t.name}`}
+                        title="Editar"
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    ) : null}
+                    {onDelete ? (
+                      <button
+                        type="button"
+                        onClick={() => onDelete(t)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
+                        aria-label={`Eliminar ${t.name}`}
+                        title="Eliminar"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
               ) : null}
             </tr>
@@ -513,6 +534,75 @@ function PlanInner() {
     predecessors_csv: "" as string,
   });
   const [creating, setCreating] = useState(false);
+
+  // US-095: edición de tarea existente (mismo schema que newForm).
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    wbs: "",
+    start_date: "",
+    end_date: "",
+    duration_days: "",
+    progress: "0",
+    is_milestone: false,
+    status: "not_started" as TaskStatus,
+    criticality: "medium" as TaskCriticality,
+    related_milestone_id: "" as string,
+    predecessors_csv: "" as string,
+  });
+  const [updating, setUpdating] = useState(false);
+
+  function openEditTask(t: Task) {
+    setEditingId(t.id);
+    setEditForm({
+      name: t.name,
+      wbs: t.wbs ?? "",
+      start_date: t.start_date ?? "",
+      end_date: t.end_date ?? "",
+      duration_days: t.duration_days != null ? String(t.duration_days) : "",
+      progress: String(t.progress ?? 0),
+      is_milestone: !!t.is_milestone,
+      status: (t.status as TaskStatus) ?? "not_started",
+      criticality: (t.criticality as TaskCriticality) ?? "medium",
+      related_milestone_id: t.related_milestone?.id ?? "",
+      predecessors_csv: (t.predecessors ?? []).join(", "),
+    });
+    setEditOpen(true);
+  }
+
+  async function submitEditTask() {
+    if (!editingId) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      await updateTask(editingId, {
+        name: editForm.name,
+        wbs: editForm.wbs || null,
+        start_date: editForm.start_date || null,
+        end_date: editForm.end_date || null,
+        duration_days: editForm.duration_days ? Number(editForm.duration_days) : null,
+        progress: Number(editForm.progress) || 0,
+        is_milestone: editForm.is_milestone,
+        status: editForm.status,
+        criticality: editForm.criticality,
+        related_milestone_id: editForm.related_milestone_id || null,
+        predecessors: editForm.predecessors_csv
+          ? editForm.predecessors_csv
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : null,
+      });
+      setEditOpen(false);
+      setEditingId(null);
+      await loadTasksAndGantt();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo actualizar la tarea");
+    } finally {
+      setUpdating(false);
+    }
+  }
 
   function setModeAndUrl(next: Mode) {
     setMode(next);
@@ -943,6 +1033,7 @@ function PlanInner() {
           tasks={filteredTasks}
           loading={loadingTasks}
           onDelete={handleDeleteTask}
+          onEdit={openEditTask}
           groupByWbs={groupByWbs}
           collapsed={collapsedWbs}
           onToggleCollapse={toggleCollapsedWbs}
@@ -1208,6 +1299,179 @@ function PlanInner() {
               checked={newForm.is_milestone}
               onChange={(e) =>
                 setNewForm({ ...newForm, is_milestone: e.target.checked })
+              }
+            />
+            <span className="text-xs text-[var(--color-secondary)]">Hito</span>
+          </label>
+        </div>
+      </Modal>
+
+      {/* US-095: modal de edición. Mismos campos que Nueva tarea. */}
+      <Modal
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditingId(null);
+        }}
+        title="Editar tarea"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setEditOpen(false);
+                setEditingId(null);
+              }}
+              disabled={updating}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={submitEditTask}
+              loading={updating}
+              disabled={!editForm.name.trim()}
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Nombre *
+            </span>
+            <Input
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              required
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">WBS</span>
+            <Input
+              value={editForm.wbs}
+              onChange={(e) => setEditForm({ ...editForm, wbs: e.target.value })}
+              placeholder="1.2.3"
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Estado
+            </span>
+            <Select
+              value={editForm.status}
+              onChange={(e) =>
+                setEditForm({ ...editForm, status: e.target.value as TaskStatus })
+              }
+            >
+              {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
+                <option key={k} value={k}>
+                  {TASK_STATUS_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Inicio
+            </span>
+            <Input
+              type="date"
+              value={editForm.start_date}
+              onChange={(e) =>
+                setEditForm({ ...editForm, start_date: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Fin
+            </span>
+            <Input
+              type="date"
+              value={editForm.end_date}
+              onChange={(e) =>
+                setEditForm({ ...editForm, end_date: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Avance (0-100)
+            </span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={editForm.progress}
+              onChange={(e) =>
+                setEditForm({ ...editForm, progress: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Criticidad
+            </span>
+            <Select
+              value={editForm.criticality}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  criticality: e.target.value as TaskCriticality,
+                })
+              }
+            >
+              {(Object.keys(TASK_CRITICALITY_LABEL) as TaskCriticality[]).map((k) => (
+                <option key={k} value={k}>
+                  {TASK_CRITICALITY_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Predecesoras (lista de WBS separadas por coma)
+            </span>
+            <Input
+              value={editForm.predecessors_csv}
+              onChange={(e) =>
+                setEditForm({ ...editForm, predecessors_csv: e.target.value })
+              }
+              placeholder="1.1, 1.2"
+            />
+          </label>
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Hito relacionado (opcional)
+            </span>
+            <Select
+              value={editForm.related_milestone_id}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  related_milestone_id: e.target.value,
+                })
+              }
+            >
+              <option value="">— Sin hito —</option>
+              {tasks
+                .filter((t) => t.is_milestone && t.id !== editingId)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.wbs ? `${t.wbs} · ` : ""}
+                    {t.name}
+                  </option>
+                ))}
+            </Select>
+          </label>
+          <label className="inline-flex items-center gap-2 self-end">
+            <input
+              type="checkbox"
+              checked={editForm.is_milestone}
+              onChange={(e) =>
+                setEditForm({ ...editForm, is_milestone: e.target.checked })
               }
             />
             <span className="text-xs text-[var(--color-secondary)]">Hito</span>
