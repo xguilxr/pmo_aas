@@ -2,6 +2,7 @@
 
 import { Cog } from "lucide-react";
 
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { TenantSettingsForm } from "@/components/tenant-settings-form";
 
 /**
@@ -12,6 +13,12 @@ import { TenantSettingsForm } from "@/components/tenant-settings-form";
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-5">
+      <Breadcrumb
+        items={[
+          { href: "/admin/tenant", label: "Admin" },
+          { label: "Configuración" },
+        ]}
+      />
       <header className="flex items-center gap-3">
         <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--text-secondary)]">
           <Cog className="h-5 w-5" aria-hidden />

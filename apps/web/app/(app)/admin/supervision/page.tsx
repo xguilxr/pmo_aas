@@ -195,7 +195,7 @@ export default function SupervisionPage() {
                   <tr key={r.id} className="h-14 border-b border-[var(--border-subtle)]">
                     <td className="px-4">
                       <Link
-                        href={`/pmo/projects/${r.id}`}
+                        href={`/pmo/projects/${r.id}?ctx=admin`}
                         className="font-medium text-[var(--text-primary)] hover:underline"
                       >
                         {r.name}

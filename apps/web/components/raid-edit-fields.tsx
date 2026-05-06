@@ -172,6 +172,10 @@ export function RaidEditFields(props:
 
   async function save() {
     if (saving) return;
+    if (title.trim().length < 2) {
+      setError("El título es obligatorio (mín. 2 caracteres).");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {

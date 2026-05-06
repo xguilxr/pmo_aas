@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, PowerOff, Users } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
@@ -90,6 +91,12 @@ export default function StakeholdersPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
+      <Breadcrumb
+        items={[
+          { href: "/admin/tenant", label: "Admin" },
+          { label: "Stakeholders" },
+        ]}
+      />
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5" aria-hidden />

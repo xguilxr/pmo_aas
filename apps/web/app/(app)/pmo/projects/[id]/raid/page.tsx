@@ -438,7 +438,16 @@ function severityToneOf(sev: number | null): "danger" | "warning" | "success" | 
 
 // ENH-007: matriz P×I inline en la pestaña Riesgos del RAID, para que
 // no sea necesario abrir /risks como página separada.
-function RiskMatrix({ rows }: { rows: Risk[] }) {
+// ENH-061: celdas clicables → filtran tabla por (probability, impact).
+function RiskMatrix({
+  rows,
+  selected,
+  onCellToggle,
+}: {
+  rows: Risk[];
+  selected: { p: number; i: number } | null;
+  onCellToggle: (p: number, i: number) => void;
+}) {
   const grid: number[][] = useMemo(() => {
     const g: number[][] = Array.from({ length: 5 }, () => Array(5).fill(0));
     for (const r of rows) {
@@ -452,8 +461,7 @@ function RiskMatrix({ rows }: { rows: Risk[] }) {
         Matriz P × I
       </h2>
       <p className="mb-3 text-xs text-[var(--color-tertiary)]">
-        Conteo de riesgos por combinación de probabilidad (filas) e impacto
-        (columnas). Color según severidad (P × I).
+        Click en una celda para filtrar la tabla por esa combinación.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full max-w-xl border-collapse text-center text-xs">
@@ -490,14 +498,29 @@ function RiskMatrix({ rows }: { rows: Risk[] }) {
                       : tone === "warning"
                         ? "var(--color-warning-border)"
                         : "var(--color-success-border)";
+                  const isActive =
+                    selected && selected.p === p + 1 && selected.i === i + 1;
                   return (
                     <td
                       key={i}
                       className="h-12 w-12 border p-0 text-[var(--color-primary)]"
                       style={{ backgroundColor: bg, borderColor: border }}
-                      title={`Severidad ${sev} · ${count} riesgo(s)`}
                     >
-                      <span className="font-semibold tabular-nums">{count}</span>
+                      <button
+                        type="button"
+                        onClick={() => onCellToggle(p + 1, i + 1)}
+                        aria-pressed={Boolean(isActive)}
+                        aria-label={`Filtrar P=${p + 1}, I=${i + 1} (${count} riesgos)`}
+                        title={`Severidad ${sev} · ${count} riesgo(s)`}
+                        className={cn(
+                          "h-full w-full cursor-pointer font-semibold tabular-nums transition hover:opacity-80 focus:outline-none focus-visible:outline-none",
+                          isActive
+                            ? "ring-2 ring-inset ring-[var(--color-accent)]"
+                            : "",
+                        )}
+                      >
+                        {count}
+                      </button>
                     </td>
                   );
                 })}
@@ -520,10 +543,51 @@ function RisksSection({
   onRiskUpdate: (r: Partial<Risk> & { id: string }) => void;
 }) {
   const [preview, setPreview] = useState<Risk | null>(null);
+  // ENH-061: filtro por celda P×I de la matriz.
+  const [cellFilter, setCellFilter] = useState<
+    { p: number; i: number } | null
+  >(null);
   void projectId;
+
+  function toggleCell(p: number, i: number) {
+    setCellFilter((prev) =>
+      prev && prev.p === p && prev.i === i ? null : { p, i },
+    );
+  }
+
+  const visibleRows = useMemo(() => {
+    if (!cellFilter) return rows;
+    return rows.filter(
+      (r) => r.probability === cellFilter.p && r.impact === cellFilter.i,
+    );
+  }, [rows, cellFilter]);
+
   return (
     <div className="space-y-5">
-      <RiskMatrix rows={rows} />
+      <RiskMatrix
+        rows={rows}
+        selected={cellFilter}
+        onCellToggle={toggleCell}
+      />
+      {cellFilter ? (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-[var(--color-tertiary)]">Filtro:</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent-bg,var(--color-subtle))] px-2 py-0.5 text-[var(--color-accent)]">
+            P={cellFilter.p}, I={cellFilter.i}
+            <button
+              type="button"
+              onClick={() => setCellFilter(null)}
+              aria-label="Quitar filtro de matriz"
+              className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-[var(--color-subtle)]"
+            >
+              ×
+            </button>
+          </span>
+          <span className="text-[var(--color-tertiary)]">
+            {visibleRows.length} riesgo(s)
+          </span>
+        </div>
+      ) : null}
       {rows.length === 0 ? (
         <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
           Sin riesgos registrados. Usa el botón <strong>+ Nuevo riesgo</strong>
@@ -551,7 +615,7 @@ function RisksSection({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {visibleRows.map((r) => (
                   <tr
                     key={r.id}
                     className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
@@ -734,7 +798,7 @@ function IssuesSection({
                   {displayLabel}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.priority ?? "—"}
+                  <PriorityBadge priority={it.priority} />
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.status}
@@ -804,6 +868,31 @@ function SeverityBadge({ severity }: { severity: number | null }) {
       )}
     >
       {severity}
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: number | null | undefined }) {
+  if (priority === null || priority === undefined)
+    return <span className="text-xs">—</span>;
+  const tone =
+    priority === 1
+      ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
+      : priority === 2
+        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
+        : priority === 3
+          ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]"
+          : "bg-[var(--color-subtle)] text-[var(--color-secondary)]";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        tone,
+      )}
+      aria-label={`Prioridad ${priority}`}
+      title={`Prioridad ${priority}`}
+    >
+      P{priority}
     </span>
   );
 }

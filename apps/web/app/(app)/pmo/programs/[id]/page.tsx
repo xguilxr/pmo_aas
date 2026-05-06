@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AlertTriangle, FolderKanban, Network, TrendingUp } from "lucide-react";
 
@@ -80,6 +80,12 @@ function money(n: number): string {
 
 export default function ProgramSummaryPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const ctx = searchParams.get("ctx") === "admin" ? "admin" : "pmo";
+  const orgHref = (orgId: string) =>
+    ctx === "admin" ? `/admin/organizations/${orgId}` : `/pmo/organizations/${orgId}`;
+  const portfolioHref = ctx === "admin" ? "/admin" : "/pmo";
+  const portfolioLabel = ctx === "admin" ? "Admin" : "Portafolio";
   const [data, setData] = useState<ProgramSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,17 +133,15 @@ export default function ProgramSummaryPage() {
       <div className="flex items-center gap-2">
         <BackLink
           fallbackHref={
-            data.organization_id
-              ? `/pmo/organizations/${data.organization_id}`
-              : "/pmo"
+            data.organization_id ? orgHref(data.organization_id) : portfolioHref
           }
         />
         <Breadcrumb
           items={[
-            { href: "/pmo", label: "Portafolio" },
+            { href: portfolioHref, label: portfolioLabel },
             data.organization_name
               ? {
-                  href: `/pmo/organizations/${data.organization_id}`,
+                  href: orgHref(data.organization_id),
                   label: data.organization_name,
                 }
               : { label: "Organización" },

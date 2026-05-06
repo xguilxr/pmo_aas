@@ -296,7 +296,10 @@ function ProgramCard({
   projectCount: number;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+    <Link
+      href={`/pmo/programs/${program.id}`}
+      className="flex flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)] transition hover:border-[var(--color-accent)] hover:shadow-[var(--shadow-md)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+    >
       <div className="flex items-start justify-between gap-2">
         <h3 className="min-w-0 truncate text-sm font-semibold text-[var(--color-primary)]">
           {program.name}
@@ -314,7 +317,7 @@ function ProgramCard({
           proyectos
         </span>
       </div>
-    </div>
+    </Link>
   );
 }
 

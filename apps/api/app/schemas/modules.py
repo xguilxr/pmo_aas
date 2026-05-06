@@ -1,8 +1,17 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
+
+# BUG-048: strip + min_length para evitar títulos whitespace-only.
+TitleStr = Annotated[
+    str, StringConstraints(min_length=2, max_length=200, strip_whitespace=True)
+]
+OptionalTitleStr = Annotated[
+    str | None,
+    StringConstraints(min_length=2, max_length=200, strip_whitespace=True),
+]
 
 
 # ---------- Area embed (US-064) ----------
@@ -30,7 +39,7 @@ class UserMini(BaseModel):
 
 # ---------- Risks ----------
 class RiskCreate(BaseModel):
-    title: str = Field(min_length=2, max_length=200)
+    title: TitleStr
     description: str | None = None
     category: str | None = None
     probability: int = Field(ge=1, le=5)
@@ -45,7 +54,7 @@ class RiskCreate(BaseModel):
 
 
 class RiskUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=2, max_length=200)
+    title: OptionalTitleStr = None
     description: str | None = None
     category: str | None = None
     probability: int | None = Field(default=None, ge=1, le=5)
@@ -90,7 +99,7 @@ class RiskComment(BaseModel):
 
 # ---------- Issues ----------
 class IssueCreate(BaseModel):
-    title: str = Field(min_length=2, max_length=200)
+    title: TitleStr
     description: str | None = None
     type: Literal["action", "issue", "decision"]
     priority: int | None = Field(default=None, ge=1, le=5)
@@ -101,7 +110,7 @@ class IssueCreate(BaseModel):
 
 
 class IssueUpdate(BaseModel):
-    title: str | None = None
+    title: OptionalTitleStr = None
     description: str | None = None
     # ENH-054: type editable (action / issue / decision) post-creación.
     type: Literal["action", "issue", "decision"] | None = None

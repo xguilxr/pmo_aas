@@ -113,6 +113,7 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const search = useSearchParams();
+  const ctx = search.get("ctx") === "admin" ? "admin" : "pmo";
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [org, setOrg] = useState<Organization | null>(null);
@@ -256,13 +257,42 @@ export default function ProjectDetailPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <header className="space-y-3">
         <div className="flex items-center gap-2">
-          <BackLink fallbackHref="/pmo/projects" />
+          <BackLink
+            fallbackHref={
+              ctx === "admin" && project.organization_id
+                ? `/admin/organizations/${project.organization_id}`
+                : "/pmo/projects"
+            }
+          />
           <nav className="text-[11px] text-[var(--text-tertiary)]">
-            <Link href="/pmo/projects" className="hover:underline">
-              Proyectos
-            </Link>
-            <span className="mx-1">/</span>
-            <span>{project.folio}</span>
+            {ctx === "admin" ? (
+              <>
+                <Link href="/admin" className="hover:underline">
+                  Admin
+                </Link>
+                <span className="mx-1">/</span>
+                {project.organization_id ? (
+                  <>
+                    <Link
+                      href={`/admin/organizations/${project.organization_id}`}
+                      className="hover:underline"
+                    >
+                      {org?.name ?? "Organización"}
+                    </Link>
+                    <span className="mx-1">/</span>
+                  </>
+                ) : null}
+                <span>{project.folio}</span>
+              </>
+            ) : (
+              <>
+                <Link href="/pmo/projects" className="hover:underline">
+                  Proyectos
+                </Link>
+                <span className="mx-1">/</span>
+                <span>{project.folio}</span>
+              </>
+            )}
           </nav>
         </div>
         <div className="flex flex-wrap items-start justify-between gap-3">

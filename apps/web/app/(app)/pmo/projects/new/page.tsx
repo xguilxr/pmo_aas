@@ -1,19 +1,21 @@
-import Link from "next/link";
-
+import { BackLink } from "@/components/back-link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ProjectForm } from "@/components/project-form";
 
 export default function NewProjectPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-5">
+      <div className="flex items-center gap-2">
+        <BackLink fallbackHref="/pmo/projects" />
+        <Breadcrumb
+          items={[
+            { href: "/pmo/projects", label: "Proyectos" },
+            { label: "Nuevo" },
+          ]}
+        />
+      </div>
       <header>
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/projects" className="hover:underline">
-            Proyectos
-          </Link>
-          <span className="mx-1">/</span>
-          <span>Nuevo</span>
-        </nav>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
           Nuevo proyecto
         </h1>
         <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
