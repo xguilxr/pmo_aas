@@ -44,6 +44,12 @@ HEADER_ALIASES: dict[str, list[str]] = {
         "% avance",
     ],
     "is_milestone": ["hito", "milestone", "es hito"],
+    "criticality": ["criticidad", "criticality", "prioridad criticidad"],
+    "related_milestone": [
+        "hito relacionado",
+        "related milestone",
+        "milestone relacionado",
+    ],
     "predecessors": ["predecesoras", "predecessors", "predecessoras"],
     "resources": [
         "recursos",
@@ -65,6 +71,9 @@ class ParsedTask:
     duration_days: int | None = None
     progress: int = 0
     is_milestone: bool = False
+    # US-096: criticidad + hito relacionado opcionales en plantilla.
+    criticality: str | None = None
+    related_milestone_wbs: str | None = None
     predecessors_raw: str | None = None
     resources_raw: str | None = None
 
@@ -263,6 +272,13 @@ def parse_xlsx(
                 is_milestone=_coerce_bool(row[columns["is_milestone"]])
                 if "is_milestone" in columns and columns["is_milestone"] < len(row)
                 else False,
+                criticality=(_norm(row[columns["criticality"]]) or None)
+                if "criticality" in columns and columns["criticality"] < len(row)
+                else None,
+                related_milestone_wbs=(_norm(row[columns["related_milestone"]]) or None)
+                if "related_milestone" in columns
+                and columns["related_milestone"] < len(row)
+                else None,
                 predecessors_raw=_norm(row[columns["predecessors"]]) or None
                 if "predecessors" in columns and columns["predecessors"] < len(row)
                 else None,

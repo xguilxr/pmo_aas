@@ -35,6 +35,9 @@ SYSTEM_FIELDS: tuple[str, ...] = (
     "duration_days",
     "progress",
     "is_milestone",
+    # US-096.
+    "criticality",
+    "related_milestone",
     "predecessors",
     "resources",
 )
@@ -52,6 +55,10 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
     ),
     "progress": ("avance", "progreso", "progress", "%", "percent", "porcentaje"),
     "is_milestone": ("hito", "milestone", "es hito"),
+    "criticality": ("criticidad", "criticality"),
+    "related_milestone": (
+        "hito relacionado", "related milestone", "milestone relacionado",
+    ),
     "predecessors": ("predecesor", "predecesoras", "predecessor", "pred"),
     "resources": (
         "recurso", "recursos", "resource", "asignado", "owner",

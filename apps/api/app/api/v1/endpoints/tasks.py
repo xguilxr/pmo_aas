@@ -46,6 +46,20 @@ from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xls
 # ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
 TaskCriticality = Literal["low", "medium", "high", "critical"]
 
+_VALID_CRITICALITY = {"low", "medium", "high", "critical"}
+
+
+def _normalize_criticality(raw: object) -> str | None:
+    """US-096 — normaliza el valor leído desde la plantilla XLSX.
+
+    Acepta variantes case-insensitive ('Low', 'HIGH'). Devuelve None
+    si el valor no calza con el enum (la fila usa el default de la
+    columna en la BD)."""
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    return s if s in _VALID_CRITICALITY else None
+
 router = APIRouter(tags=["tasks"])
 
 
@@ -898,8 +912,13 @@ async def import_confirm(
             existing.is_milestone = pt.is_milestone
             existing.source = source_label
             existing.outline_level = compute_outline_level(pt.wbs)
+            # US-096: criticidad opcional desde la plantilla.
+            crit = _normalize_criticality(getattr(pt, "criticality", None))
+            if crit:
+                existing.criticality = crit
             created[pt.external_id] = existing
         else:
+            crit = _normalize_criticality(getattr(pt, "criticality", None))
             t = Task(
                 tenant_id=str(tenant_id), project_id=str(p.id),
                 name=pt.name, wbs=pt.wbs,
@@ -909,6 +928,7 @@ async def import_confirm(
                 source=source_label, external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
                 outline_level=compute_outline_level(pt.wbs),
+                criticality=crit or "medium",
             )
             db.add(t)
             await db.flush()

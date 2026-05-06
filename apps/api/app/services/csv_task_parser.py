@@ -147,6 +147,13 @@ def parse_csv(
                 is_milestone=_coerce_bool(row[columns["is_milestone"]])
                 if "is_milestone" in columns and columns["is_milestone"] < len(row)
                 else False,
+                criticality=(_norm(row[columns["criticality"]]) or None)
+                if "criticality" in columns and columns["criticality"] < len(row)
+                else None,
+                related_milestone_wbs=(_norm(row[columns["related_milestone"]]) or None)
+                if "related_milestone" in columns
+                and columns["related_milestone"] < len(row)
+                else None,
                 predecessors_raw=_norm(row[columns["predecessors"]]) or None
                 if "predecessors" in columns and columns["predecessors"] < len(row)
                 else None,

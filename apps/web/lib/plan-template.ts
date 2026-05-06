@@ -1,30 +1,50 @@
 /**
- * US-071 — Plantilla vacía descargable del Plan.
+ * US-071 + US-096 — Plantilla XLSX descargable del Plan.
  *
- * Genera un XLSX en el browser con las 9 columnas canónicas del export
- * (ENH-028) + 2 filas de ejemplo + hoja "Instrucciones" con formatos
- * válidos por columna. Roundtrip diseñado para que el archivo
- * descargado se pueda llenar y subir por el wizard de import (US-070)
- * sin necesidad de mapeo manual.
+ * Genera un XLSX en el browser con las columnas canónicas del export
+ * (ENH-028, US-090, ENH-050/051) + 2 filas de ejemplo + hoja
+ * "Instrucciones" con formatos válidos por columna. Roundtrip diseñado
+ * para que el archivo descargado se pueda llenar y subir por el wizard
+ * de import (US-070) sin necesidad de mapeo manual.
+ *
+ * US-096: agrega columnas Outline Level (auto fórmula), Criticidad,
+ * Hito Relacionado, Predecessors, Successors. Conditional formatting
+ * de Duración > 21 (regla buenas prácticas, US-090).
  */
 import type { Workbook, Worksheet } from "exceljs";
 
 const SHEET_PLAN = "Plan";
 const SHEET_INSTRUCTIONS = "Instrucciones";
 
+// US-096: columnas reordenadas. Outline Level entre Tarea e Inicio
+// (auto-fórmula). Criticidad/Hito Relacionado/Predecessors/Successors
+// al final para no romper layout existente del usuario.
 const COLUMNS = [
-  { header: "WBS", key: "wbs", width: 10 },
-  { header: "Tarea", key: "name", width: 40 },
-  { header: "Inicio", key: "start", width: 14 },
-  { header: "Fin", key: "end", width: 14 },
-  { header: "Duración (días)", key: "duration", width: 16 },
-  { header: "Avance (%)", key: "progress", width: 12 },
-  { header: "Es hito", key: "milestone", width: 10 },
-  { header: "Estado", key: "status", width: 16 },
-  { header: "Responsable", key: "owner", width: 24 },
+  { header: "WBS", key: "wbs", width: 10 },               // A
+  { header: "Tarea", key: "name", width: 40 },             // B
+  { header: "Outline Level", key: "outline", width: 12 },  // C (auto)
+  { header: "Inicio", key: "start", width: 14 },           // D
+  { header: "Fin", key: "end", width: 14 },                // E
+  { header: "Duración (días)", key: "duration", width: 16 }, // F (auto)
+  { header: "Avance (%)", key: "progress", width: 12 },    // G
+  { header: "Es hito", key: "milestone", width: 10 },      // H
+  { header: "Criticidad", key: "criticality", width: 12 }, // I
+  { header: "Estado", key: "status", width: 16 },          // J
+  { header: "Responsable", key: "owner", width: 24 },      // K
+  { header: "Hito Relacionado", key: "related_milestone", width: 18 }, // L
+  { header: "Predecessors", key: "predecessors", width: 16 }, // M
+  { header: "Successors", key: "successors", width: 16 },  // N
 ];
 
 const VALID_STATUSES = ["not_started", "in_progress", "completed", "on_hold"];
+const VALID_CRITICALITY = ["low", "medium", "high", "critical"];
+
+// US-090 / BUG-050: limit operacional para Duración (días).
+const MAX_DURATION_DAYS = 21;
+
+// Última fila a la que aplicamos validations + fórmulas. 1000 es
+// suficiente para proyectos reales y mantiene el archivo ligero.
+const LAST_DATA_ROW = 1000;
 
 function _styleHeader(ws: Worksheet) {
   const header = ws.getRow(1);
@@ -53,10 +73,25 @@ function _addExampleRow(
   });
 }
 
-function _attachDataValidation(ws: Worksheet, lastRow = 1000) {
-  // Avance (%): entero 0-100 (col 6).
-  for (let r = 2; r <= lastRow; r++) {
-    ws.getCell(`F${r}`).dataValidation = {
+function _attachAutoFormulas(ws: Worksheet) {
+  // US-096 CA2: Outline Level desde WBS.
+  // =IF(A2="","",LEN(A2)-LEN(SUBSTITUTE(A2,".",""))+1)
+  // US-096 CA3: Duración = Fin - Inicio + 1 (inclusivo).
+  // =IF(AND(D2<>"",E2<>""),E2-D2+1,"")
+  for (let r = 2; r <= LAST_DATA_ROW; r++) {
+    ws.getCell(`C${r}`).value = {
+      formula: `IF(A${r}="","",LEN(A${r})-LEN(SUBSTITUTE(A${r},".",""))+1)`,
+    } as never;
+    ws.getCell(`F${r}`).value = {
+      formula: `IF(AND(D${r}<>"",E${r}<>""),E${r}-D${r}+1,"")`,
+    } as never;
+  }
+}
+
+function _attachDataValidation(ws: Worksheet) {
+  for (let r = 2; r <= LAST_DATA_ROW; r++) {
+    // Avance (%) — col G.
+    ws.getCell(`G${r}`).dataValidation = {
       type: "whole",
       operator: "between",
       formulae: [0, 100],
@@ -64,12 +99,22 @@ function _attachDataValidation(ws: Worksheet, lastRow = 1000) {
       errorStyle: "warning",
       error: "Avance debe estar entre 0 y 100.",
     };
-    ws.getCell(`G${r}`).dataValidation = {
+    // Es hito — col H.
+    ws.getCell(`H${r}`).dataValidation = {
       type: "list",
       formulae: ['"Sí,No,Yes,No"'],
       allowBlank: true,
     };
-    ws.getCell(`H${r}`).dataValidation = {
+    // US-096: Criticidad — col I.
+    ws.getCell(`I${r}`).dataValidation = {
+      type: "list",
+      formulae: [`"${VALID_CRITICALITY.join(",")}"`],
+      allowBlank: true,
+      errorStyle: "warning",
+      error: `Criticidad debe ser: ${VALID_CRITICALITY.join(", ")}.`,
+    };
+    // Estado — col J.
+    ws.getCell(`J${r}`).dataValidation = {
       type: "list",
       formulae: [`"${VALID_STATUSES.join(",")}"`],
       allowBlank: true,
@@ -79,13 +124,37 @@ function _attachDataValidation(ws: Worksheet, lastRow = 1000) {
   }
 }
 
+function _attachConditionalFormatting(ws: Worksheet) {
+  // US-096 CA4: Duración > 21 → fondo amarillo en la celda de Duración.
+  // ExcelJS API: addConditionalFormatting con type=cellIs.
+  ws.addConditionalFormatting({
+    ref: `F2:F${LAST_DATA_ROW}`,
+    rules: [
+      {
+        type: "cellIs",
+        operator: "greaterThan",
+        priority: 1,
+        formulae: [String(MAX_DURATION_DAYS)],
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFFFF8C5" },
+          },
+          font: { color: { argb: "FF92400E" }, bold: true },
+        },
+      } as never,
+    ],
+  });
+}
+
 function _addInstructionsSheet(wb: Workbook) {
   const ws = wb.addWorksheet(SHEET_INSTRUCTIONS);
   ws.columns = [
     { header: "Columna", key: "col", width: 18 },
     { header: "Tipo", key: "type", width: 14 },
     { header: "Formato / Valores válidos", key: "format", width: 50 },
-    { header: "Notas", key: "notes", width: 50 },
+    { header: "Notas", key: "notes", width: 60 },
   ];
   _styleHeader(ws);
   const rows: Array<Record<string, string>> = [
@@ -102,6 +171,12 @@ function _addInstructionsSheet(wb: Workbook) {
       notes: "Obligatorio. Filas con tarea vacía se ignoran al importar.",
     },
     {
+      col: "Outline Level",
+      type: "Auto",
+      format: "Fórmula =LEN(WBS)-LEN(SUB(WBS,'.',''))+1",
+      notes: "US-096: se calcula automáticamente desde WBS. No editar.",
+    },
+    {
       col: "Inicio",
       type: "Fecha",
       format: "YYYY-MM-DD (ISO 8601)",
@@ -115,9 +190,10 @@ function _addInstructionsSheet(wb: Workbook) {
     },
     {
       col: "Duración (días)",
-      type: "Número",
-      format: "Entero ≥ 0",
-      notes: "Si es 0 y Es hito = Sí, se trata como hito.",
+      type: "Auto",
+      format: "Fórmula =Fin-Inicio+1",
+      notes:
+        `US-096: se calcula desde fechas. Conditional formatting amarillo si > ${MAX_DURATION_DAYS} días (fuera de buenas prácticas, US-090).`,
     },
     {
       col: "Avance (%)",
@@ -133,6 +209,12 @@ function _addInstructionsSheet(wb: Workbook) {
       notes: "Marca la tarea como milestone (diamante en Gantt).",
     },
     {
+      col: "Criticidad",
+      type: "Lista",
+      format: VALID_CRITICALITY.join(" | "),
+      notes: "ENH-051. Default: medium.",
+    },
+    {
       col: "Estado",
       type: "Lista",
       format: VALID_STATUSES.join(" | "),
@@ -145,13 +227,33 @@ function _addInstructionsSheet(wb: Workbook) {
       notes:
         "Al importar se hace fuzzy-match contra usuarios del tenant; si no hay match, queda como texto libre.",
     },
+    {
+      col: "Hito Relacionado",
+      type: "Texto",
+      format: "WBS de un hito existente (ej: 1.5)",
+      notes:
+        "ENH-050. Liga la tarea a un hito del mismo proyecto. Resolución por WBS al importar.",
+    },
+    {
+      col: "Predecessors",
+      type: "CSV de WBS",
+      format: "ej: 1.1, 1.2",
+      notes:
+        "US-090. Lista de WBS separados por coma. Cada WBS debe existir en el plan.",
+    },
+    {
+      col: "Successors",
+      type: "Auto",
+      format: "Calculado",
+      notes:
+        "US-090: se reconstruye desde Predecessors al importar. No editar.",
+    },
   ];
   for (const r of rows) {
     ws.addRow(r);
   }
   ws.getRow(1).height = 22;
 
-  // Notas finales (US-071).
   ws.addRow({});
   const note = ws.addRow({
     col: "Nota",
@@ -177,35 +279,44 @@ export async function buildEmptyTemplate(projectName: string): Promise<Blob> {
   ws.columns = COLUMNS;
   _styleHeader(ws);
 
-  // 2 filas de ejemplo en gris itálico.
   const today = new Date();
   const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
   const closingDay = new Date(today.getTime() + 9 * 24 * 60 * 60 * 1000);
 
+  // Las celdas de Outline + Duración llevan fórmula; los ejemplos
+  // dejan esas columnas vacías para que la fórmula se vea funcionando.
   _addExampleRow(ws, {
     wbs: "1.1",
     name: "Kickoff del proyecto",
     start: today,
     end: tomorrow,
-    duration: 2,
     progress: 0,
     milestone: "No",
+    criticality: "medium",
     status: "not_started",
     owner: "responsable@empresa.com",
+    related_milestone: "",
+    predecessors: "",
+    successors: "",
   });
   _addExampleRow(ws, {
     wbs: "1.2",
     name: "Cierre de fase 1",
     start: closingDay,
     end: closingDay,
-    duration: 0,
     progress: 0,
     milestone: "Sí",
+    criticality: "high",
     status: "not_started",
     owner: "",
+    related_milestone: "",
+    predecessors: "1.1",
+    successors: "",
   });
 
+  _attachAutoFormulas(ws);
   _attachDataValidation(ws);
+  _attachConditionalFormatting(ws);
   _addInstructionsSheet(wb);
 
   const buffer = await wb.xlsx.writeBuffer();
