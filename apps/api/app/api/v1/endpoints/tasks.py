@@ -236,7 +236,7 @@ async def list_tasks(
         )
     ).scalars().all()
     # BUG-049 — orden natural por WBS (1.2 < 1.10) post-fetch.
-    rows_list = sorted(list(rows), key=lambda t: wbs_sort_key(t.wbs))
+    rows_list = sorted(rows, key=lambda t: wbs_sort_key(t.wbs))
     await _attach_owners(db, rows_list)
     await _attach_milestones(db, rows_list)
     return [TaskRead.model_validate(t) for t in rows_list]
