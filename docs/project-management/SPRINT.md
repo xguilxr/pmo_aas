@@ -9,13 +9,18 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 11 (v1.10) — Bloques 1+2+3 ENTREGADOS 2026-05-06
+Sprint 11 (v1.10) — Bloques 1+2+3 ENTREGADOS + 3 hot fixes 2026-05-06
 Branch sesión: claude/next-sprint-tasks-fITMO
 
-Sin US activa. Sprint 11 cerrado por mi parte (12 items entregados).
-Pendiente owner: verificación + cierre issues #206/#207/#216-#225.
+Hot fixes 2026-05-06 sobre status:needs-rework:
+  #204 ENH-054 fase 2 — RAID edit affordance prominente — `25ec5a0`
+  #205 US-091 fase 2 — vista Por Actor con tabla — `aa1a1ad`
+  #209 ENH-055 fase 2 — Catálogo solo templates + drop botones legacy — `682b06c`
 
-Próximo libre: US-094, BUG-049, ENH-062.
+Sprint 12 (v1.10/v1.11) backlog status:ready 2026-05-06:
+  10 issues triagados (US-094/095/096, BUG-049/050/051, ENH-062/063/064/065).
+
+Próximo libre: US-097, BUG-052, ENH-066.
 ```
 
 ---
@@ -63,7 +68,34 @@ Próximo libre: US-094, BUG-049, ENH-062.
 - Date format inconsistency Issue table
 - Closure prompt cancelar: estado inconsistente
 
-**Próximo libre:** US-094, BUG-049, ENH-062.
+---
+
+## ⏳ Sprint 12 (v1.10/v1.11) — backlog `status:ready` 2026-05-06
+
+### Sprint 12 — Bloque 1: Plan fixes + plantilla (5 issues)
+- [ ] BUG-049 #230 — WBS natural sort (1.1 → 1.2 → 1.10).
+- [ ] BUG-050 #231 — Outline level auto-calc desde WBS (backend hook).
+- [ ] BUG-051 #232 — Tareas delayed con marca visual roja.
+- [ ] US-095 #229 — Editar tarea (botón Pencil antes del basurerito).
+- [ ] US-096 #227 — Plantilla XLSX: Hito/Criticidad/Outline/Duración + fórmulas + conditional formatting.
+
+### Sprint 12 — Bloque 2: Admin restructure (2 issues)
+- [ ] US-094 #228 — Página `/admin` landing con 6 paneles.
+- [ ] ENH-062 #233 — Quitar "Gestión de" en labels admin.
+
+### Sprint 12 — Bloque 3: Reportes refinamiento (2 issues)
+- [ ] ENH-063 #234 — Filtro periodo (1d/1sem/2sem/1mes/3meses).
+- [ ] ENH-064 #235 — Default focus hitos/críticas/delayed + concisión.
+
+### Sprint 12 — Triage pendiente (1 issue)
+- [ ] ENH-065 #236 — Niveles de agrupación (clarificación owner pendiente).
+
+### Reworks ya entregados (esperando verificación)
+- [x] #204 ENH-054 fase 2 — `25ec5a0`
+- [x] #205 US-091 fase 2 — `aa1a1ad`
+- [x] #209 ENH-055 fase 2 — `682b06c`
+
+**Próximo libre:** US-097, BUG-052, ENH-066.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
