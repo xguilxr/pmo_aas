@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   ISSUE_STATUS_LABEL,
@@ -81,6 +83,9 @@ export function RiskDetailBody({
   const [addingComment, setAddingComment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>(risk.comments ?? []);
+  const [closurePending, setClosurePending] = useState<RiskStatus | null>(null);
+  const [closureNote, setClosureNote] = useState("");
+  const [closureError, setClosureError] = useState<string | null>(null);
 
   useEffect(() => {
     setStatus(risk.status);
@@ -89,34 +94,63 @@ export function RiskDetailBody({
     setError(null);
   }, [risk.id, risk.status, risk.comments]);
 
-  async function changeStatus(next: RiskStatus) {
-    if (next === status) return;
+  async function applyStatusChange(
+    next: RiskStatus,
+    closureNoteValue?: string,
+  ) {
     setSavingStatus(true);
     setError(null);
     try {
       const payload: { status: RiskStatus; closure_note?: string | null } = {
         status: next,
       };
-      if ((next === "closed" || next === "materialized") && !risk.closure_note) {
-        const note = window.prompt(
-          "Nota de cierre obligatoria para cerrar/materializar el riesgo:",
-        );
-        if (!note || !note.trim()) {
-          setSavingStatus(false);
-          return;
-        }
-        payload.closure_note = note.trim();
-      }
+      if (closureNoteValue) payload.closure_note = closureNoteValue;
       const updated = await updateRisk(risk.id, payload);
       setStatus(updated.status);
       onUpdated({ id: updated.id, status: updated.status });
+      return true;
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Error al guardar el estado",
       );
       setStatus(risk.status);
+      return false;
     } finally {
       setSavingStatus(false);
+    }
+  }
+
+  function changeStatus(next: RiskStatus) {
+    if (next === status) return;
+    if ((next === "closed" || next === "materialized") && !risk.closure_note) {
+      setStatus(next);
+      setClosureNote("");
+      setClosureError(null);
+      setClosurePending(next);
+      return;
+    }
+    void applyStatusChange(next);
+  }
+
+  function cancelClosure() {
+    setClosurePending(null);
+    setClosureNote("");
+    setClosureError(null);
+    setStatus(risk.status);
+  }
+
+  async function confirmClosure() {
+    if (!closurePending) return;
+    const trimmed = closureNote.trim();
+    if (trimmed.length < 2) {
+      setClosureError("La nota de cierre es obligatoria (mín. 2 caracteres).");
+      return;
+    }
+    const ok = await applyStatusChange(closurePending, trimmed);
+    if (ok) {
+      setClosurePending(null);
+      setClosureNote("");
+      setClosureError(null);
     }
   }
 
@@ -165,6 +199,44 @@ export function RiskDetailBody({
         onSubmit={submitComment}
         busy={addingComment}
       />
+      <Modal
+        open={closurePending !== null}
+        onClose={cancelClosure}
+        title="Nota de cierre"
+        description={
+          closurePending === "materialized"
+            ? "Documenta cómo se materializó el riesgo (mín. 2 caracteres)."
+            : "Documenta el motivo del cierre (mín. 2 caracteres)."
+        }
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={cancelClosure}
+              disabled={savingStatus}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={confirmClosure} disabled={savingStatus}>
+              {savingStatus ? "Guardando…" : "Confirmar"}
+            </Button>
+          </>
+        }
+      >
+        <Textarea
+          value={closureNote}
+          onChange={(e) => setClosureNote(e.target.value)}
+          placeholder="Nota de cierre…"
+          rows={4}
+          autoFocus
+          disabled={savingStatus}
+        />
+        {closureError ? (
+          <p className="mt-2 text-xs text-[var(--color-danger-fg)]">
+            {closureError}
+          </p>
+        ) : null}
+      </Modal>
     </div>
   );
 }
