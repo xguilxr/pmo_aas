@@ -135,8 +135,8 @@ export default function TenantAdminAIPage() {
     <div className="mx-auto max-w-3xl space-y-5">
       <header className="space-y-2">
         <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/admin/tenant" className="hover:underline">
-            Gestión de Tenant
+          <Link href="/admin" className="hover:underline">
+            Admin
           </Link>
           <span className="mx-1">/</span>
           <span>IA</span>

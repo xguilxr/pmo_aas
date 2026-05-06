@@ -84,7 +84,7 @@ export default function PermissionsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <Breadcrumb
         items={[
-          { href: "/admin/tenant", label: "Admin" },
+          { href: "/admin", label: "Admin" },
           { label: "Permisos" },
         ]}
       />
