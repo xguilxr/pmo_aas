@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
-  ArrowLeft,
   Copy,
   KeyRound,
   Lock,
@@ -12,6 +11,7 @@ import {
   ShieldOff,
 } from "lucide-react";
 
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -297,13 +297,7 @@ function UserDetail() {
   if (loadError) {
     return (
       <div className="mx-auto max-w-2xl space-y-4">
-        <Link
-          href="/admin/users"
-          className="inline-flex items-center gap-1 text-sm text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Volver a usuarios
-        </Link>
+        <BackLink fallbackHref="/admin/users" />
         <Banner variant="danger">{loadError}</Banner>
       </div>
     );
@@ -322,13 +316,7 @@ function UserDetail() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <Link
-          href="/admin/users"
-          className="inline-flex items-center gap-1 text-sm text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Volver a usuarios
-        </Link>
+        <BackLink fallbackHref="/admin/users" />
         <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">{user.full_name}</h1>
