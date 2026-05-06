@@ -354,3 +354,47 @@
 
 ### Limpieza branches
 - `claude/sprint-issues-backlog-setup-EMiLA` → SAFE TO DELETE (6 commits ahead, todos superseded por cherry-picks Sprint 8).
+
+---
+
+## Sprint 10 (v1.9) — CERRADO 2026-05-06
+
+**14 items entregados en 6 bloques. Branch `claude/archive-sprint-tasks-Ee7XC` (PR #215 mergeado a main `7e03332`).**
+
+### Bloque 1 — Plan visualización ✅
+- [x] ENH-047 — Toggle agrupación por WBS en lista de tareas — #196 ✅ 8457513
+- [x] ENH-048 — Filtros chip multi-select Hitos / Críticos / Retrasados — #197 ✅ be046e6
+- [x] ENH-049 — Columna Responsable visible en lista — #198 ✅ 2b743c0
+
+### Bloque 2 — Plan template + columnas ✅
+- [x] ENH-050 — Campo "Hito Relacionado" en form de tarea — #199 ✅ b3a9202
+- [x] ENH-051 — Campo "Criticidad" en form de tarea — #200 ✅ 58afc29
+- [x] US-090 — Outline Level / Duration / Predecessors / Successors — #201 ✅ ec694a1
+
+### Bloque 3 — Plan import/export UX ✅
+- [x] ENH-052 — Botones Plantilla/Descargar/Importar misma fila + colores distintos — #202 ✅ 2ab9bb1
+- [x] ENH-053 — Mapeo de columnas asistido por IA al importar — #203 ✅ 006b8ee
+
+### Bloque 4 — RAID editable completo ✅
+- [x] ENH-054 — Toda la información de ítems RAID editable inline/modal — #204 ✅ 1c4c854
+
+### Bloque 5 — Áreas / Equipos / Actores ✅
+- [x] US-091 — Jerarquía Área→Equipo→Actor + teléfono + UI rediseñada — #205 ✅ 4ec5877
+
+### Bloque 6 — Reportes 3 vistas + cadencia mensual ✅
+- [x] ENH-055 — Reportes layout 3 vistas (Catálogo / Historial / Creación) — #209 ✅ 2554baa
+- [x] US-092 — Historial de reportes generados (DB + R2) — #210 ✅ 728fe06
+- [x] ENH-056 — Reportes programados: cadencia mensual con día del mes (1-31) + clamp — #212 ✅ 5b74e34
+- [x] US-093 — Creación con IA + preview (tercera vista) — #211 ✅ bbd8b4b
+
+### Migraciones agregadas
+- 0037 task_criticality (ENH-051)
+- 0038 task_related_milestone (ENH-050)
+- 0039 task_outline_pred_succ (US-090)
+- 0040 scheduled_reports_dom (ENH-056)
+- 0041 project_areas_team_phone (US-091)
+- 0042 report_history (US-092)
+
+### Notas
+- 14 commits referenciando 14 issues; todos siguen `OPEN` con `status:ready` — owner cierra manualmente tras verificación (CLAUDE.md §3 paso 7).
+- BUG-042 (#206) + BUG-043 (#207) creados en triage Sprint 10 quedaron asignados a Sprint 11 desde el inicio (decisión owner 2026-05-05).
