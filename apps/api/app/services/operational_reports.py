@@ -26,6 +26,21 @@ from app.services.report_kpis import (
 )
 
 
+def _period_label(days: int) -> str:
+    """ENH-063 — etiqueta humana para el período."""
+    if days <= 1:
+        return "1 día"
+    if days <= 7:
+        return "1 semana"
+    if days <= 14:
+        return "2 semanas"
+    if days <= 30:
+        return "1 mes"
+    if days <= 90:
+        return "3 meses"
+    return f"{days} días"
+
+
 async def _get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
     row = (
         await db.execute(
@@ -59,8 +74,13 @@ async def build_avance_context(
     tenant_id: UUID,
     project_id: UUID,
     cut_off_date: date,
+    window_days: int = 14,
 ) -> dict[str, Any]:
-    """Contexto para Reporte de Avance (sin IA)."""
+    """Contexto para Reporte de Avance (sin IA).
+
+    `window_days` (ENH-063) define el rango hacia atrás para hitos
+    cerrados y eventos del período. Default 14d para back-compat.
+    """
     project = await _get_project(db, tenant_id, project_id)
 
     org = (
@@ -95,7 +115,7 @@ async def build_avance_context(
 
     # Hitos
     milestones = [t for t in all_tasks if t.is_milestone]
-    period_start = cut_off_date - timedelta(days=14)
+    period_start = cut_off_date - timedelta(days=window_days)
     milestones_done = sorted(
         [
             t
@@ -178,9 +198,14 @@ async def build_avance_context(
         period_end=cut_off_date,
     )
 
+    # ENH-063: etiqueta legible del período para el header.
+    period_label = _period_label(window_days)
     return {
-        "title": f"Reporte de Avance — {project.folio}",
+        "title": f"Reporte de Avance — {project.folio} ({period_label})",
         "cut_off_date": cut_off_date.isoformat(),
+        "period_days": window_days,
+        "period_label": period_label,
+        "period_start": period_start.isoformat(),
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "kpis": kpis,
         "kpis_visible": kpis_have_any_value(kpis),
@@ -371,10 +396,13 @@ async def build_seguimiento_context(
             )
         ]
 
+    period_label = _period_label(window_days)
     return {
-        "title": f"Reporte de Seguimiento — {project.folio}",
+        "title": f"Reporte de Seguimiento — {project.folio} ({period_label})",
         "cut_off_date": cut_off_date.isoformat(),
         "window_days": window_days,
+        "period_days": window_days,
+        "period_label": period_label,
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "project": {
             "id": str(project.id),

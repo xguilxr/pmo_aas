@@ -228,11 +228,20 @@ async def update_report(
 
 class AvanceGenerate(BaseModel):
     cut_off_date: date | None = None
+    # ENH-063: período canónico para filtrar contenido del reporte.
+    # 1 / 7 / 14 / 30 / 90 días. Default 7 (1 semana).
+    period_days: int | None = Field(default=None, ge=1, le=365)
 
 
 class SeguimientoGenerate(BaseModel):
     cut_off_date: date | None = None
     window_days: int = Field(default=14, ge=1, le=90)
+    # ENH-063: alias canónico que sobrescribe window_days si viene.
+    period_days: int | None = Field(default=None, ge=1, le=365)
+
+
+# ENH-063: ventana default cuando el caller no especifica.
+_DEFAULT_PERIOD_DAYS = 7
 
 
 def _sanitize_filename_part(value: str) -> str:
@@ -287,8 +296,15 @@ async def generate_avance_report(
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
     cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
+    # ENH-063: período → window_days. Default 7d (1 semana).
+    window_days = (
+        (body.period_days if body and body.period_days else None)
+        or _DEFAULT_PERIOD_DAYS
+    )
 
-    context = await build_avance_context(db, tenant_id, project.id, cut_off)
+    context = await build_avance_context(
+        db, tenant_id, project.id, cut_off, window_days=window_days
+    )
     context["tenant_name"] = await _tenant_name(db, tenant_id)
 
     pdf = render_pdf("reports/avance.html", context)
@@ -377,7 +393,11 @@ async def generate_seguimiento_report(
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
     cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
-    window_days = (body.window_days if body else 14) or 14
+    # ENH-063: period_days (canónico) > window_days (legacy) > default.
+    if body and body.period_days:
+        window_days = body.period_days
+    else:
+        window_days = (body.window_days if body else 14) or 14
 
     context = await build_seguimiento_context(
         db, tenant_id, project.id, cut_off, window_days=window_days,
