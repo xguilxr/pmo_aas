@@ -644,7 +644,14 @@ _AI_REPORT_SYSTEM_PROMPT = (
     "Eres un asistente PMO senior. Redacta un reporte de proyecto en HTML "
     "limpio (sin <html>/<body> wrappers, sólo el bloque interno) en español. "
     "Usa <h2> para títulos de sección, <p>/<ul> para contenido. Sé conciso, "
-    "directo y orientado a decisiones."
+    "directo y orientado a decisiones. "
+    # ENH-064: foco default en hitos / críticas / retrasadas.
+    "Por defecto enfócate en (en este orden): (1) hitos del proyecto, "
+    "(2) tareas con criticidad 'high' o 'critical', y (3) tareas retrasadas "
+    "(end_date < hoy y status != 'done'). No incluyas tareas de baja "
+    "prioridad ni completadas a menos que el usuario lo pida explícitamente "
+    "en sus notas adicionales. Mantén el reporte breve (no más de 6-8 "
+    "secciones cortas)."
 )
 
 
@@ -694,7 +701,17 @@ async def ai_generate_report(
     if body.include_kpis:
         filtered["kpis"] = context.get("kpis") or context.get("metrics") or {}
     if body.include_tasks:
-        filtered["tasks"] = context.get("tasks") or context.get("activities") or []
+        # ENH-064: prefiere focus_tasks (hitos/críticas/retrasadas top 20)
+        # antes que la lista cruda; mantiene el reporte conciso.
+        filtered["tasks"] = (
+            context.get("focus_tasks")
+            or context.get("tasks")
+            or context.get("activities")
+            or []
+        )
+    # ENH-064: incluye siempre el priority_summary cuando esté disponible.
+    if context.get("priority_summary"):
+        filtered["priority_summary"] = context["priority_summary"]
     if body.include_raid:
         filtered["raid"] = {
             "risks": context.get("risks", []),

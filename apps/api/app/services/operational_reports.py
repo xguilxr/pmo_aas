@@ -26,6 +26,49 @@ from app.services.report_kpis import (
 )
 
 
+def _is_delayed(t: Task, today: date) -> bool:
+    """ENH-064 — tarea retrasada: end_date < hoy y no completada."""
+    if t.end_date is None:
+        return False
+    if t.status == "done" or (t.progress or 0) >= 100:
+        return False
+    return t.end_date < today
+
+
+def _is_critical_task(t: Task) -> bool:
+    """ENH-064 — criticidad alta o crítica."""
+    return getattr(t, "criticality", None) in ("high", "critical")
+
+
+def prioritize_tasks(
+    tasks: list[Task],
+    today: date,
+    top_n: int = 20,
+) -> list[Task]:
+    """ENH-064 — devuelve `tasks` reordenadas: hitos > críticas > retrasadas
+    > resto. Truncado a `top_n` para que el reporte sea conciso.
+
+    El orden dentro de cada bucket preserva el orden de entrada (estable).
+    Una tarea aparece sólo una vez (deduplicación por id).
+    """
+    seen: set = set()
+    out: list[Task] = []
+
+    def _push(predicate):
+        for t in tasks:
+            if t.id in seen:
+                continue
+            if predicate(t):
+                seen.add(t.id)
+                out.append(t)
+
+    _push(lambda t: bool(t.is_milestone))
+    _push(_is_critical_task)
+    _push(lambda t: _is_delayed(t, today))
+    _push(lambda t: True)  # resto, en orden original
+    return out[:top_n]
+
+
 def _period_label(days: int) -> str:
     """ENH-063 — etiqueta humana para el período."""
     if days <= 1:
@@ -116,6 +159,17 @@ async def build_avance_context(
     # Hitos
     milestones = [t for t in all_tasks if t.is_milestone]
     period_start = cut_off_date - timedelta(days=window_days)
+
+    # ENH-064: foco en hitos / críticas / retrasadas.
+    n_milestones = len(milestones)
+    n_critical = sum(1 for t in all_tasks if _is_critical_task(t))
+    n_delayed = sum(1 for t in all_tasks if _is_delayed(t, cut_off_date))
+    priority_summary = {
+        "milestones": n_milestones,
+        "critical": n_critical,
+        "delayed": n_delayed,
+    }
+    focus_tasks = prioritize_tasks(all_tasks, cut_off_date, top_n=20)
     milestones_done = sorted(
         [
             t
@@ -207,6 +261,20 @@ async def build_avance_context(
         "period_label": period_label,
         "period_start": period_start.isoformat(),
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
+        # ENH-064: resumen + focus tasks (top 20 prioritizadas).
+        "priority_summary": priority_summary,
+        "focus_tasks": [
+            {
+                "wbs": t.wbs,
+                "name": t.name,
+                "is_milestone": bool(t.is_milestone),
+                "criticality": getattr(t, "criticality", None),
+                "end_date": t.end_date.isoformat() if t.end_date else None,
+                "progress": t.progress or 0,
+                "delayed": _is_delayed(t, cut_off_date),
+            }
+            for t in focus_tasks
+        ],
         "kpis": kpis,
         "kpis_visible": kpis_have_any_value(kpis),
         "project": {
