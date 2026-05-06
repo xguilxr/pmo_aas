@@ -9,11 +9,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 11 (v1.10) — Bloque 1 (Nav review) marcado status:ready 2026-05-05
+Sprint 11 (v1.10) — Bloque 1 (Nav review) ENTREGADO 2026-05-06
 Branch sesión: claude/next-sprint-tasks-fITMO
 
-Sin US activa todavía. Orden de implementación del Bloque 1:
-  BUG-042 #206 → BUG-043 #207
+Sin US activa. Bloque 1 cerrado:
+  BUG-042 #206 ✅ 4591aee — breadcrumb context-aware admin/pmo
+  BUG-043 #207 ✅ 98822f7 — ProgramCard clicable en PMO Org view
 
 Próximo libre: US-094, BUG-044, ENH-057.
 ```
@@ -34,9 +35,9 @@ Próximo libre: US-094, BUG-044, ENH-057.
 
 **Sprint 11 (v1.10) — Bloque 1 marcado `status:ready` por owner 2026-05-05.**
 
-### Sprint 11 — Bloque 1: Nav review (2 BUGs)
-- [ ] BUG-042 #206 — Breadcrumb desde Programa → link Org va a PMO en lugar de Admin
-- [ ] BUG-043 #207 — Panel de Programa en vista PMO Org no es clicable
+### Sprint 11 — Bloque 1: Nav review (2 BUGs) ✅ ENTREGADO
+- [x] BUG-042 #206 — Breadcrumb desde Programa → link Org va a PMO en lugar de Admin — `4591aee`
+- [x] BUG-043 #207 — Panel de Programa en vista PMO Org no es clicable — `98822f7`
 - [ ] (pasada con `ui-reviewer` agent comenzando por RAID, luego nav)
 
 **Próximo libre:** US-094, BUG-044, ENH-057.
@@ -83,6 +84,7 @@ Próximo libre: US-094, BUG-044, ENH-057.
 
 ## Notas y cambios recientes
 
+- **2026-05-06 (Sprint 11 Bloque 1 entregado):** BUG-042 (breadcrumb context-aware via `?ctx=admin` query param) `4591aee` + BUG-043 (ProgramCard como `<Link>` con hover/focus) `98822f7`. Pendiente owner: verificar + cerrar issues #206 #207.
 - **2026-05-06 (Sprint 11 arranque):** Sprint 10 cerrado y archivado a SPRINT-DONE-HISTORY.md (14 items, PR #215 mergeado a main `7e03332`). SPRINT.md queda con Sprint 11 Bloque 1 IN-PROGRESS — solo BUG-042 + BUG-043 pendientes (nav review).
 - **2026-05-05 (Sprint 10 triage):** owner pidió planeación próximos 2 sprints + mejoras a página de reportes. 15 issues creados (#196-#207, #209-#212) en 6 bloques Sprint 10 + 1 bloque Sprint 11. Detalle histórico en SPRINT-DONE-HISTORY.md.
 - **Notas históricas de Sprints 2-9:** ver `SPRINT-DONE-HISTORY.md` (incluye decisiones DEC-018/020/021/022, contexto reshuffles, naming conventions, runbooks Cloudflare R2, Tailscale).
