@@ -320,7 +320,7 @@ export default function OrganizationPanelPage() {
                   <td className="py-2 font-mono text-xs">{p.folio ?? "—"}</td>
                   <td className="py-2">
                     <Link
-                      href={`/pmo/projects/${p.id}`}
+                      href={`/pmo/projects/${p.id}?ctx=admin`}
                       className="text-[var(--color-accent)] hover:underline"
                     >
                       {p.name}
