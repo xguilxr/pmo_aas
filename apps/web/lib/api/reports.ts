@@ -187,10 +187,12 @@ async function previewPdfFromEndpoint(
 export function generateAvanceReport(
   projectId: string,
   cutOffDate?: string,
+  // ENH-063.
+  periodDays?: number,
 ): Promise<void> {
   return downloadPdfFromEndpoint(
     `/api/v1/projects/${projectId}/reports/avance`,
-    { cut_off_date: cutOffDate ?? null },
+    { cut_off_date: cutOffDate ?? null, period_days: periodDays ?? null },
     "POST",
   );
 }
@@ -208,10 +210,16 @@ export function generateSeguimientoReport(
   projectId: string,
   cutOffDate?: string,
   windowDays = 14,
+  // ENH-063: si periodDays viene, sobreescribe windowDays.
+  periodDays?: number,
 ): Promise<void> {
   return downloadPdfFromEndpoint(
     `/api/v1/projects/${projectId}/reports/seguimiento`,
-    { cut_off_date: cutOffDate ?? null, window_days: windowDays },
+    {
+      cut_off_date: cutOffDate ?? null,
+      window_days: windowDays,
+      period_days: periodDays ?? null,
+    },
     "POST",
   );
 }
@@ -245,10 +253,12 @@ export function previewSeguimientoReport(reportId: string): Promise<void> {
 export function previewAvanceTemplate(
   projectId: string,
   cutOffDate?: string,
+  // ENH-063: período canónico (1/7/14/30/90 días).
+  periodDays?: number,
 ): Promise<void> {
   return previewPdfFromEndpoint(
     `/api/v1/projects/${projectId}/reports/avance`,
-    { cut_off_date: cutOffDate ?? null },
+    { cut_off_date: cutOffDate ?? null, period_days: periodDays ?? null },
     "POST",
   );
 }
@@ -256,10 +266,15 @@ export function previewAvanceTemplate(
 export function previewSeguimientoTemplate(
   projectId: string,
   period?: string,
+  // ENH-063.
+  periodDays?: number,
 ): Promise<void> {
   return previewPdfFromEndpoint(
     `/api/v1/projects/${projectId}/reports/seguimiento`,
-    { period: period ?? null },
+    {
+      period: period ?? null,
+      period_days: periodDays ?? null,
+    },
     "POST",
   );
 }

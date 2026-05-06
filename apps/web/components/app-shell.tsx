@@ -114,7 +114,7 @@ const TOP_NAV: NavItem[] = [
 ];
 
 // Admin-only. Sidebar con 4 ítems raíz (US-036 / issue #17).
-// "Gestión de Tenant" fusiona "Mi tenant" + "Panel del Tenant" + "Configuración"
+// "Tenant" fusiona "Mi tenant" + "Panel del Tenant" + "Configuración"
 // con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
 // El drill-down real (Organizaciones → Programas → Proyectos) vive en el
 // sidebar principal vía <OrgTreeNav />.
@@ -134,7 +134,7 @@ const ADMIN_NAV: NavItem = {
   children: [
     {
       id: "tenant-mgmt",
-      label: "Gestión de Tenant",
+      label: "Tenant",
       icon: <Building2 className="h-4 w-4" aria-hidden />,
       href: "/admin/tenant",
       match: (p) =>
@@ -151,7 +151,7 @@ const ADMIN_NAV: NavItem = {
     },
     {
       id: "orgs-mgmt",
-      label: "Gestión de Organizaciones",
+      label: "Organizaciones",
       icon: <Network className="h-4 w-4" aria-hidden />,
       href: "/admin/organizations",
       match: (p) =>

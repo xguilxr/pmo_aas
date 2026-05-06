@@ -190,7 +190,7 @@ function TenantAdminPageInner() {
     <div className="mx-auto max-w-5xl space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-          Gestión de Tenant
+          Tenant
         </h1>
         <p className="mt-1 text-sm text-[var(--color-tertiary)]">
           Información, branding, configuración y uso del tenant en una sola vista.

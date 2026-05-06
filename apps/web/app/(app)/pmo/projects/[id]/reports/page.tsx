@@ -1394,9 +1394,23 @@ const CATALOG_TEMPLATES: CatalogTemplate[] = [
   },
 ];
 
+// ENH-063: opciones canónicas de período. El default 7 = 1 semana.
+const PERIOD_OPTIONS = [
+  { value: 1, label: "1 día" },
+  { value: 7, label: "1 semana" },
+  { value: 14, label: "2 semanas" },
+  { value: 30, label: "1 mes" },
+  { value: 90, label: "3 meses" },
+] as const;
+
 function ReportCatalogView({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // ENH-063: período seleccionado por template card. Cada card mantiene
+  // su propio valor (default 7 días = 1 semana).
+  const [periodByTemplate, setPeriodByTemplate] = useState<
+    Record<string, number>
+  >({ avance: 7, seguimiento: 7 });
 
   async function run(
     template: CatalogTemplate,
@@ -1405,13 +1419,22 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
     const key = `${template.id}-${action}`;
     setBusy(key);
     setError(null);
+    const periodDays = periodByTemplate[template.id] ?? 7;
     try {
       if (template.id === "avance") {
-        if (action === "preview") await previewAvanceTemplate(projectId);
-        else await generateAvanceReport(projectId);
+        if (action === "preview")
+          await previewAvanceTemplate(projectId, undefined, periodDays);
+        else await generateAvanceReport(projectId, undefined, periodDays);
       } else {
-        if (action === "preview") await previewSeguimientoTemplate(projectId);
-        else await generateSeguimientoReport(projectId);
+        if (action === "preview")
+          await previewSeguimientoTemplate(projectId, undefined, periodDays);
+        else
+          await generateSeguimientoReport(
+            projectId,
+            undefined,
+            periodDays,
+            periodDays,
+          );
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error generando reporte");
@@ -1442,6 +1465,27 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
                 </p>
               </div>
             </div>
+            {/* ENH-063: período antes de los botones. */}
+            <label className="flex items-center gap-2 pt-1 text-xs text-[var(--color-secondary)]">
+              <span className="font-medium">Período</span>
+              <select
+                value={periodByTemplate[t.id] ?? 7}
+                onChange={(e) =>
+                  setPeriodByTemplate((prev) => ({
+                    ...prev,
+                    [t.id]: Number(e.target.value),
+                  }))
+                }
+                disabled={busy !== null}
+                className="rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-1 text-xs"
+              >
+                {PERIOD_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="flex flex-wrap gap-2 pt-1">
               <Button
                 type="button"

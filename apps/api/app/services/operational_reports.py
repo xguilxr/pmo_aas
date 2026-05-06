@@ -26,6 +26,64 @@ from app.services.report_kpis import (
 )
 
 
+def _is_delayed(t: Task, today: date) -> bool:
+    """ENH-064 — tarea retrasada: end_date < hoy y no completada."""
+    if t.end_date is None:
+        return False
+    if t.status == "done" or (t.progress or 0) >= 100:
+        return False
+    return t.end_date < today
+
+
+def _is_critical_task(t: Task) -> bool:
+    """ENH-064 — criticidad alta o crítica."""
+    return getattr(t, "criticality", None) in ("high", "critical")
+
+
+def prioritize_tasks(
+    tasks: list[Task],
+    today: date,
+    top_n: int = 20,
+) -> list[Task]:
+    """ENH-064 — devuelve `tasks` reordenadas: hitos > críticas > retrasadas
+    > resto. Truncado a `top_n` para que el reporte sea conciso.
+
+    El orden dentro de cada bucket preserva el orden de entrada (estable).
+    Una tarea aparece sólo una vez (deduplicación por id).
+    """
+    seen: set = set()
+    out: list[Task] = []
+
+    def _push(predicate):
+        for t in tasks:
+            if t.id in seen:
+                continue
+            if predicate(t):
+                seen.add(t.id)
+                out.append(t)
+
+    _push(lambda t: bool(t.is_milestone))
+    _push(_is_critical_task)
+    _push(lambda t: _is_delayed(t, today))
+    _push(lambda t: True)  # resto, en orden original
+    return out[:top_n]
+
+
+def _period_label(days: int) -> str:
+    """ENH-063 — etiqueta humana para el período."""
+    if days <= 1:
+        return "1 día"
+    if days <= 7:
+        return "1 semana"
+    if days <= 14:
+        return "2 semanas"
+    if days <= 30:
+        return "1 mes"
+    if days <= 90:
+        return "3 meses"
+    return f"{days} días"
+
+
 async def _get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
     row = (
         await db.execute(
@@ -59,8 +117,13 @@ async def build_avance_context(
     tenant_id: UUID,
     project_id: UUID,
     cut_off_date: date,
+    window_days: int = 14,
 ) -> dict[str, Any]:
-    """Contexto para Reporte de Avance (sin IA)."""
+    """Contexto para Reporte de Avance (sin IA).
+
+    `window_days` (ENH-063) define el rango hacia atrás para hitos
+    cerrados y eventos del período. Default 14d para back-compat.
+    """
     project = await _get_project(db, tenant_id, project_id)
 
     org = (
@@ -95,7 +158,18 @@ async def build_avance_context(
 
     # Hitos
     milestones = [t for t in all_tasks if t.is_milestone]
-    period_start = cut_off_date - timedelta(days=14)
+    period_start = cut_off_date - timedelta(days=window_days)
+
+    # ENH-064: foco en hitos / críticas / retrasadas.
+    n_milestones = len(milestones)
+    n_critical = sum(1 for t in all_tasks if _is_critical_task(t))
+    n_delayed = sum(1 for t in all_tasks if _is_delayed(t, cut_off_date))
+    priority_summary = {
+        "milestones": n_milestones,
+        "critical": n_critical,
+        "delayed": n_delayed,
+    }
+    focus_tasks = prioritize_tasks(all_tasks, cut_off_date, top_n=20)
     milestones_done = sorted(
         [
             t
@@ -178,10 +252,29 @@ async def build_avance_context(
         period_end=cut_off_date,
     )
 
+    # ENH-063: etiqueta legible del período para el header.
+    period_label = _period_label(window_days)
     return {
-        "title": f"Reporte de Avance — {project.folio}",
+        "title": f"Reporte de Avance — {project.folio} ({period_label})",
         "cut_off_date": cut_off_date.isoformat(),
+        "period_days": window_days,
+        "period_label": period_label,
+        "period_start": period_start.isoformat(),
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
+        # ENH-064: resumen + focus tasks (top 20 prioritizadas).
+        "priority_summary": priority_summary,
+        "focus_tasks": [
+            {
+                "wbs": t.wbs,
+                "name": t.name,
+                "is_milestone": bool(t.is_milestone),
+                "criticality": getattr(t, "criticality", None),
+                "end_date": t.end_date.isoformat() if t.end_date else None,
+                "progress": t.progress or 0,
+                "delayed": _is_delayed(t, cut_off_date),
+            }
+            for t in focus_tasks
+        ],
         "kpis": kpis,
         "kpis_visible": kpis_have_any_value(kpis),
         "project": {
@@ -371,10 +464,13 @@ async def build_seguimiento_context(
             )
         ]
 
+    period_label = _period_label(window_days)
     return {
-        "title": f"Reporte de Seguimiento — {project.folio}",
+        "title": f"Reporte de Seguimiento — {project.folio} ({period_label})",
         "cut_off_date": cut_off_date.isoformat(),
         "window_days": window_days,
+        "period_days": window_days,
+        "period_label": period_label,
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "project": {
             "id": str(project.id),

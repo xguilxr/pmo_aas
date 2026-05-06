@@ -39,11 +39,26 @@ from app.services.plan_metadata import (
     ensure_duration_max_21,
     recompute_successors_for_project,
     validate_predecessors,
+    wbs_sort_key,
 )
 from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
 
 # ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
 TaskCriticality = Literal["low", "medium", "high", "critical"]
+
+_VALID_CRITICALITY = {"low", "medium", "high", "critical"}
+
+
+def _normalize_criticality(raw: object) -> str | None:
+    """US-096 — normaliza el valor leído desde la plantilla XLSX.
+
+    Acepta variantes case-insensitive ('Low', 'HIGH'). Devuelve None
+    si el valor no calza con el enum (la fila usa el default de la
+    columna en la BD)."""
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    return s if s in _VALID_CRITICALITY else None
 
 router = APIRouter(tags=["tasks"])
 
@@ -218,13 +233,13 @@ async def list_tasks(
     rows = (
         await db.execute(
             select(Task).where(Task.project_id == str(project_id))
-            .order_by(Task.wbs.nullsfirst() if hasattr(Task.wbs, "nullsfirst") else Task.wbs)
         )
     ).scalars().all()
-    rows_list = list(rows)
+    # BUG-049 — orden natural por WBS (1.2 < 1.10) post-fetch.
+    rows_list = sorted(rows, key=lambda t: wbs_sort_key(t.wbs))
     await _attach_owners(db, rows_list)
     await _attach_milestones(db, rows_list)
-    return [TaskRead.model_validate(t) for t in rows]
+    return [TaskRead.model_validate(t) for t in rows_list]
 
 
 @router.post("/projects/{project_id}/tasks", response_model=TaskRead, status_code=201)
@@ -473,6 +488,7 @@ async def import_ms_project(
             existing.duration_days = pt.duration_days
             existing.progress = pt.progress
             existing.is_milestone = pt.is_milestone
+            existing.outline_level = compute_outline_level(pt.wbs)
             created[pt.external_id] = existing
         else:
             t = Task(
@@ -483,6 +499,7 @@ async def import_ms_project(
                 is_milestone=pt.is_milestone, status="not_started",
                 source="msproject", external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
+                outline_level=compute_outline_level(pt.wbs),
             )
             db.add(t)
             await db.flush()
@@ -894,8 +911,14 @@ async def import_confirm(
             existing.progress = pt.progress
             existing.is_milestone = pt.is_milestone
             existing.source = source_label
+            existing.outline_level = compute_outline_level(pt.wbs)
+            # US-096: criticidad opcional desde la plantilla.
+            crit = _normalize_criticality(getattr(pt, "criticality", None))
+            if crit:
+                existing.criticality = crit
             created[pt.external_id] = existing
         else:
+            crit = _normalize_criticality(getattr(pt, "criticality", None))
             t = Task(
                 tenant_id=str(tenant_id), project_id=str(p.id),
                 name=pt.name, wbs=pt.wbs,
@@ -904,6 +927,8 @@ async def import_confirm(
                 is_milestone=pt.is_milestone, status="not_started",
                 source=source_label, external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
+                outline_level=compute_outline_level(pt.wbs),
+                criticality=crit or "medium",
             )
             db.add(t)
             await db.flush()

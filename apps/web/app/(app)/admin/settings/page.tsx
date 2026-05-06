@@ -15,7 +15,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-4xl space-y-5">
       <Breadcrumb
         items={[
-          { href: "/admin/tenant", label: "Admin" },
+          { href: "/admin", label: "Admin" },
           { label: "Configuración" },
         ]}
       />

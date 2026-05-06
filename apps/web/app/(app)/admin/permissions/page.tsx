@@ -24,7 +24,7 @@ type CapabilityRow = {
 const ROWS: CapabilityRow[] = [
   {
     capability: "tenant.manage",
-    label: "Gestión del tenant",
+    label: "Tenant",
     description:
       "Editar branding, settings, y configuración general del tenant.",
     admin: true,
@@ -40,7 +40,7 @@ const ROWS: CapabilityRow[] = [
   },
   {
     capability: "users.manage",
-    label: "Gestión de usuarios",
+    label: "Usuarios",
     description:
       "Alta, edición, desactivación, reset de password, asignación de rol y de organizaciones.",
     admin: true,
@@ -84,7 +84,7 @@ export default function PermissionsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <Breadcrumb
         items={[
-          { href: "/admin/tenant", label: "Admin" },
+          { href: "/admin", label: "Admin" },
           { label: "Permisos" },
         ]}
       />

@@ -60,7 +60,7 @@ export default function PmoHome() {
           Vista informativa del portafolio. Selecciona una organización para
           ver sus programas y proyectos. La gestión (CRUD) vive en{" "}
           <Link href="/admin/organizations" className="text-[var(--color-accent)] hover:underline">
-            Admin → Gestión de Organizaciones
+            Admin → Organizaciones
           </Link>
           .
         </p>
@@ -81,7 +81,7 @@ export default function PmoHome() {
             href="/admin/organizations"
             className="text-[var(--color-accent)] hover:underline"
           >
-            Admin → Gestión de Organizaciones
+            Admin → Organizaciones
           </Link>
           .
         </div>

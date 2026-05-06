@@ -115,9 +115,24 @@ async def recompute_successors_for_project(
     # Asigna ordenado, dedupe, lista vacía si no hay.
     for t in rows:
         if t.wbs and t.wbs in succ_by_wbs:
-            t.successors = sorted(set(succ_by_wbs[t.wbs]))
+            t.successors = sorted(set(succ_by_wbs[t.wbs]), key=wbs_sort_key)
         else:
             t.successors = []
+
+
+def wbs_sort_key(wbs: str | None) -> tuple:
+    """BUG-049 — natural sort por segmento. `1.10` > `1.2`. Segmentos no
+    numéricos van al final (flag 1 vs 0) preservando orden lexicográfico."""
+    if not wbs:
+        return ((2,),)
+    parts: list[tuple[int, int, str]] = []
+    for seg in wbs.split("."):
+        s = seg.strip()
+        if s.isdigit():
+            parts.append((0, int(s), ""))
+        else:
+            parts.append((1, 0, s))
+    return tuple(parts)
 
 
 def collect_by_wbs(tasks: Iterable[Task], exclude_id: str | None = None) -> dict[str, Task]:

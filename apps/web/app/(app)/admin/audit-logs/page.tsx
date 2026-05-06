@@ -77,7 +77,7 @@ export default function AuditLogsPage() {
     <div className="mx-auto max-w-7xl space-y-5">
       <Breadcrumb
         items={[
-          { href: "/admin/tenant", label: "Admin" },
+          { href: "/admin", label: "Admin" },
           { label: "Auditoría" },
         ]}
       />
