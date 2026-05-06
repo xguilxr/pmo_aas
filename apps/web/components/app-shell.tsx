@@ -122,7 +122,9 @@ const ADMIN_NAV: NavItem = {
   id: "admin",
   label: "Admin",
   icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+  href: "/admin",
   match: (p) =>
+    p === "/admin" ||
     p.startsWith("/admin/supervision") ||
     p.startsWith("/admin/users") ||
     p.startsWith("/admin/permissions") ||

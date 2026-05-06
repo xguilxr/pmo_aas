@@ -10,31 +10,27 @@
 
 ```
 Sprint 12 (v1.10/v1.11) — Bloques 1+2+3 ENTREGADOS 2026-05-06
-Branch sesión: claude/sprint-12-bloques
+  + reworks 2026-05-06 (US-094 #228 / US-095 #229) en branch
+    claude/fix-issues-plan-sprints-2psWS — pendiente verif. owner.
+Branch sesión: claude/fix-issues-plan-sprints-2psWS
 
-Sprint 12 entregado en orden Bloque 1 → 2 → 3 (ENH-065 #236
-cerrado por owner pre-arranque):
-  Bloque 1 — Plan: BUG-049/050/051 + US-095/096
-  Bloque 2 — Admin: US-094 + ENH-062
-  Bloque 3 — Reportes: ENH-063 + ENH-064
+Sprints 13-16 PLANEADOS 2026-05-06 (19 issues #240-#258 status:triage):
+  Sprint 13 (v1.12) — Áreas + Plan (6 issues, branch claude/sprint-13-areas-plan)
+  Sprint 14 (v1.13) — RAID detail redesign (4 issues, branch claude/sprint-14-raid-detail-redesign)
+  Sprint 15 (v1.14) — Reportes (4 issues, branch claude/sprint-15-reportes-redesign)
+  Sprint 16 (v1.15) — IA conversacional global (5 issues, branch claude/sprint-16-ai-global)
 
-Pendiente verificación owner: cerrar #227-235.
-
-Post-Sprint 12 (próximo bloque): redesign RAID + Area requirements
-  (no cubierto por issues actuales). Owner abrirá scope en sesión
-  siguiente sobre branch claude/redesign-raid-area-requirements-EhZ3d.
-
-Próximo libre: US-097, BUG-052, ENH-066.
+Próximo libre: US-103, BUG-054, ENH-077.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
 
-> Issues recién creados que todavía no han sido asignados a un Bloque.
+> Issues creados con status:triage. Owner pasa a status:ready para arrancar.
 
 ```
-(vacío)
+(vacío — todos los issues nuevos están organizados en bloques de Sprint 13-16, ver abajo.)
 ```
 
 ---
@@ -91,18 +87,73 @@ Próximo libre: US-097, BUG-052, ENH-066.
 - [x] ENH-063 #234 — Filtro periodo (1d/1sem/2sem/1mes/3meses) — `7321e0f`
 - [x] ENH-064 #235 — Default focus hitos/críticas/delayed — `f7db92c`
 
-### Post-Sprint 12 — RAID + Area requirements redesign
-- [ ] Owner redefinirá scope en próxima sesión: los issues anteriores
-      cubren parte del RAID (ENH-054, BUG-046/047/048, ENH-060/061) y
-      Area (US-091, ENH-020) pero **no satisfacen los requerimientos
-      reales**. Branch reservada: `claude/redesign-raid-area-requirements-EhZ3d`.
+### Post-Sprint 12 — Reworks 2026-05-06 (branch claude/fix-issues-plan-sprints-2psWS)
+- [x] #228 US-094 rework — sidebar `Admin` linkea a `/admin` — `4d82b4b`
+- [x] #229 US-095 rework — fila se refresca con respuesta del PATCH — `204f2fd`
 
 ### Reworks Sprint 11 ya entregados (esperando verificación)
 - [x] #204 ENH-054 fase 2 — `25ec5a0`
 - [x] #205 US-091 fase 2 — `aa1a1ad`
 - [x] #209 ENH-055 fase 2 — `682b06c`
 
-**Próximo libre:** US-097, BUG-052, ENH-066.
+---
+
+## ⏳ Sprint 13 (v1.12) — Áreas + Plan (PLANEADO 2026-05-06)
+Branch: `claude/sprint-13-areas-plan`
+
+- [ ] US-097 #240 — Jerarquía Áreas → Equipos → Actores (CRUD 3 niveles + migración)
+- [ ] US-098 #241 — Plan: asignar Área responsable (edit form + columna + filtro)
+- [ ] ENH-066 #242 — Plan: toggle "Agrupar por Área" (paralelo a WBS)
+- [ ] ENH-067 #243 — Plan: toggles de nivel WBS (1/2/3) + default manual
+- [ ] ENH-068 #244 — Plan: Gantt sincroniza agrupación con la lista
+- [ ] US-099 #245 — Reasignación masiva de actores (bulk move)
+
+**Migración Alembic prevista:** 1 — `areas`, `teams`, `actors` + `tasks.area_id`.
+
+---
+
+## ⏳ Sprint 14 (v1.13) — RAID detail redesign "Denso" (PLANEADO 2026-05-06)
+Branch: `claude/sprint-14-raid-detail-redesign` (hereda placeholder `claude/redesign-raid-area-requirements-EhZ3d`)
+
+- [ ] US-100 #246 — Rediseño detalle item RAID layout "Denso" (4 tipos)
+- [ ] ENH-069 #247 — Banner modo edición + Cancelar/Guardar transaccional
+- [ ] ENH-070 #248 — Card unificada Comentarios + Historial
+- [ ] BUG-052 #249 — Breadcrumb `RAID / Tipo / ID` + ← Volver preserva filtro
+
+**Sin cambios de schema ni paleta.** Mock referencia: `docs/design/raid-redesign/raid-item.html` (a subir antes del primer commit del bloque).
+
+---
+
+## ⏳ Sprint 15 (v1.14) — Reportes (PLANEADO 2026-05-06, scope a refinar)
+Branch: `claude/sprint-15-reportes-redesign`
+
+- [ ] ENH-071 #250 — Reglas/condiciones de filtrado configurables
+- [ ] ENH-072 #251 — Ordenamiento configurable por columna + persistencia
+- [ ] ENH-073 #252 — Refresh visual (layout, tipografía, densidad)
+- [ ] US-101 #253 — "Crear reporte con IA" (endpoint hoy trabado)
+
+> Owner pidió definir con mayor precisión cuando lleguemos a este sprint. Issues quedan como esqueleto status:triage.
+
+---
+
+## ⏳ Sprint 16 (v1.15) — IA conversacional global (PLANEADO 2026-05-06)
+Branch: `claude/sprint-16-ai-global`
+
+### Bloque 0 (gate pre-arranque)
+- [ ] BUG-053 #254 — Cleanup residuos Ollama (env Railway + código + páginas)
+  - **Decisión pendiente con owner antes de status:ready:** cuál es el provider definitivo de IA (Anthropic / OpenAI / proxy LiteLLM).
+
+### Bloque 1 (post-cleanup)
+- [ ] US-102 #255 — Side-panel chat IA en cada página (Ctrl+K + botón flotante)
+- [ ] ENH-074 #256 — Context-awareness por página (pathname + IDs)
+- [ ] ENH-075 #257 — Acciones ejecutables vía tool-use (crear tarea / RAID / nav)
+- [ ] ENH-076 #258 — Historial persistente por usuario + summary rolling
+
+**Migración Alembic prevista:** 1 — `ai_conversations` + `ai_messages` con RLS.
+
+---
+
+**Próximo libre:** US-103, BUG-054, ENH-077.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
@@ -146,6 +197,7 @@ Próximo libre: US-097, BUG-052, ENH-066.
 
 ## Notas y cambios recientes
 
+- **2026-05-06 (post-Sprint 12 — reworks + planeación Sprints 13-16):** owner verificó Sprint 12 y reportó reworks: #228 US-094 (sidebar `Admin` no linkeaba a landing) → fix `4d82b4b`; #229 US-095 (edit no refresca tabla) → fix `204f2fd`. Owner aprobó scope de los próximos 4 sprints (Áreas+Plan, RAID detail redesign, Reportes, IA conversacional global). 19 issues creados (#240-#258) con `status:triage` distribuidos en 4 bloques. Sprint 16 incluye **Bloque 0** (BUG-053 cleanup Ollama) como gate pre-arranque. Branches reservadas: `claude/sprint-13-areas-plan`, `claude/sprint-14-raid-detail-redesign`, `claude/sprint-15-reportes-redesign`, `claude/sprint-16-ai-global`.
 - **2026-05-06 (Sprint 12 Bloques 1-3 entregados):** 9 commits sobre branch `claude/sprint-12-bloques`, fast-forward desde `main` post-Sprint 11. Migración Alembic 0043 agregada (backfill de `tasks.outline_level`). Owner adelantó que el siguiente bloque será **redesign RAID + Area requirements** (no cubierto por #204/#205/#209/#221-225 ni US-091): scope se definirá al inicio de la próxima sesión sobre branch `claude/redesign-raid-area-requirements-EhZ3d`. ENH-065 #236 cerrado por owner pre-arranque.
 - **2026-05-06 (Sprint 11 Bloque 1 entregado):** BUG-042 (breadcrumb context-aware via `?ctx=admin` query param) `4591aee` + BUG-043 (ProgramCard como `<Link>` con hover/focus) `98822f7`. Pendiente owner: verificar + cerrar issues #206 #207.
 - **2026-05-06 (Sprint 11 arranque):** Sprint 10 cerrado y archivado a SPRINT-DONE-HISTORY.md (14 items, PR #215 mergeado a main `7e03332`). SPRINT.md queda con Sprint 11 Bloque 1 IN-PROGRESS — solo BUG-042 + BUG-043 pendientes (nav review).
