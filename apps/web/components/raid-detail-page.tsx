@@ -277,26 +277,24 @@ export function RaidDetailPage({
           </section>
 
           <section className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-[var(--color-primary)]">
-                Editar / comentarios
-              </h2>
-              {/* ENH-036: edición completa de área, responsable, fechas
-                  y otros campos. */}
-              {isRisk ? (
-                <RaidEditFields
-                  kind="risk"
-                  item={risk as Risk}
-                  onSaved={(r) => setRisk(r)}
-                />
-              ) : (
-                <RaidEditFields
-                  kind="issue"
-                  item={issue as Issue}
-                  onSaved={(i) => setIssue(i)}
-                />
-              )}
-            </div>
+            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+              Edición y actividad
+            </h2>
+            {/* ENH-036 + ENH-054: edición completa inline. La affordance
+                ahora es un card explícito con CTA primario. */}
+            {isRisk ? (
+              <RaidEditFields
+                kind="risk"
+                item={risk as Risk}
+                onSaved={(r) => setRisk(r)}
+              />
+            ) : (
+              <RaidEditFields
+                kind="issue"
+                item={issue as Issue}
+                onSaved={(i) => setIssue(i)}
+              />
+            )}
             {isRisk ? (
               <RiskDetailBody
                 risk={risk as Risk}

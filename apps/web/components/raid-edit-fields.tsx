@@ -228,18 +228,21 @@ export function RaidEditFields(props:
   if (!editing) {
     if (!canEdit) return null;
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-stretch gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-[var(--color-tertiary)]">
+          Todos los campos del ítem son editables — título, descripción, área,
+          responsable, fechas, P×I/prioridad, mitigación/resolución y nota de
+          cierre.
+        </p>
         <Button
           type="button"
-          variant="secondary"
-          size="sm"
           onClick={() => {
             reset();
             setEditing(true);
           }}
         >
-          <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden />
-          Editar campos
+          <Pencil className="mr-1 h-4 w-4" aria-hidden />
+          Editar este ítem
         </Button>
       </div>
     );
