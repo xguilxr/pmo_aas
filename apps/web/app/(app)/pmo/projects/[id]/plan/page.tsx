@@ -576,7 +576,7 @@ function PlanInner() {
     setUpdating(true);
     setError(null);
     try {
-      await updateTask(editingId, {
+      const updated = await updateTask(editingId, {
         name: editForm.name,
         wbs: editForm.wbs || null,
         start_date: editForm.start_date || null,
@@ -594,6 +594,10 @@ function PlanInner() {
               .filter(Boolean)
           : null,
       });
+      // BUG-fix: refresca la fila inmediatamente con la respuesta del PATCH
+      // (loadTasksAndGantt podía servir GET cacheado y dejar la tabla
+      // mostrando el valor anterior aunque el backend ya lo había guardado).
+      setTasks((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
       setEditOpen(false);
       setEditingId(null);
       await loadTasksAndGantt();
