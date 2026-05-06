@@ -306,6 +306,83 @@ export default function ProjectAreasPage() {
               ? "Aún no hay áreas registradas."
               : "Ningún área coincide con los filtros."}
           </div>
+        ) : typeFilter === "actor" ? (
+          // US-091 fase 2: vista por Actor = tabla plana con Nombre/Email/
+          // Teléfono/Área/Equipo (CA4).
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Nombre</th>
+                  <th className="px-3 py-2 font-medium">Email</th>
+                  <th className="px-3 py-2 font-medium">Teléfono</th>
+                  <th className="px-3 py-2 font-medium">Área</th>
+                  <th className="px-3 py-2 font-medium">Equipo</th>
+                  <th className="w-32 px-3 py-2 font-medium" aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((a) => (
+                  <tr
+                    key={a.id}
+                    className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+                  >
+                    <td className="px-3 py-2 text-[var(--color-primary)]">
+                      <span className="font-medium">{a.name}</span>
+                      {!a.is_active ? (
+                        <Badge variant="danger" className="ml-2">
+                          Inactiva
+                        </Badge>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {a.contact_email ? (
+                        <a
+                          href={`mailto:${a.contact_email}`}
+                          className="hover:underline"
+                        >
+                          {a.contact_email}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {a.phone || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {a.area_id
+                        ? rows.find((r) => r.id === a.area_id)?.name ?? "—"
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {a.team_id
+                        ? rows.find((r) => r.id === a.team_id)?.name ?? "—"
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEdit(a)}
+                        title="Editar"
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmDelete(a)}
+                        title="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <ul className="divide-y divide-[var(--border-subtle)]">
             {filtered.map((a) => {
