@@ -9,10 +9,11 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 11 (v1.10) — Bloque 2 (Nav cleanup) marcado status:ready 2026-05-06
+Sprint 11 (v1.10) — Bloque 2 (Nav cleanup) ENTREGADO 2026-05-06
 Branch sesión: claude/next-sprint-tasks-fITMO
 
-US activa: BUG-044 #216
+Sin US activa. Bloque 3 (RAID polish) próximo:
+  BUG-046 #221 → BUG-047 #222 → BUG-048 #223 → ENH-060 #224 → ENH-061 #225
 
 Próximo libre: US-094, BUG-049, ENH-062.
 ```
@@ -38,12 +39,12 @@ Próximo libre: US-094, BUG-049, ENH-062.
 - [x] BUG-043 #207 — Panel de Programa en vista PMO Org no es clicable — `98822f7`
 - [x] (pasada UI 2026-05-06 → 23 findings → 13 issues triagados → Bloques 2 + 3)
 
-### Sprint 11 — Bloque 2: Nav cleanup (5 issues — cierra patrón BUG-042) ⏳ ACTIVO
-- [ ] BUG-044 #216 — Admin Org → tabla proyectos: link `/pmo/projects` sin `?ctx=admin`
-- [ ] BUG-045 #217 — Admin Supervisión → links proyectos sin `?ctx=admin`
-- [ ] ENH-057 #218 — Admin pages sin Breadcrumb (stakeholders/permissions/audit-logs/settings)
-- [ ] ENH-058 #219 — `pmo/projects/new` + `pmo/requests/new` sin Breadcrumb consistente
-- [ ] ENH-059 #220 — `admin/users/[id]` migrar a `<BackLink>` reutilizable
+### Sprint 11 — Bloque 2: Nav cleanup (5 issues — cierra patrón BUG-042) ✅ ENTREGADO
+- [x] BUG-044 #216 — Admin Org → tabla proyectos `?ctx=admin` + project detail ctx-aware — `0e1bd0e`
+- [x] BUG-045 #217 — Admin Supervisión → links proyectos `?ctx=admin` — `63c5352`
+- [x] ENH-057 #218 — Admin pages con Breadcrumb (4 pages) — `0aee75d`
+- [x] ENH-058 #219 — `pmo/projects/new` + `pmo/requests/new` con Breadcrumb + BackLink — `de9dc0b`
+- [x] ENH-059 #220 — `admin/users/[id]` migra a `<BackLink>` reutilizable — `9cc4fc6`
 
 ### Sprint 11 — Bloque 3: RAID polish (5 issues — correctness primero)
 - [ ] BUG-046 #221 — RAID Issue/Action/Decision tables: priority como badge color
