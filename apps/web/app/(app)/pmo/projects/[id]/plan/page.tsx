@@ -594,13 +594,15 @@ function PlanInner() {
               .filter(Boolean)
           : null,
       });
-      // BUG-fix: refresca la fila inmediatamente con la respuesta del PATCH
-      // (loadTasksAndGantt podía servir GET cacheado y dejar la tabla
-      // mostrando el valor anterior aunque el backend ya lo había guardado).
-      setTasks((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
       setEditOpen(false);
       setEditingId(null);
+      // BUG-fix US-095 rework v2: refetch primero (para sincronizar gantt
+      // y dependencias) y APLICAR DESPUÉS la respuesta del PATCH como
+      // fuente autoritativa para la fila editada. Antes se aplicaba la
+      // optimistic update y luego loadTasksAndGantt la pisaba con datos
+      // potencialmente stale del cache HTTP del navegador.
       await loadTasksAndGantt();
+      setTasks((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo actualizar la tarea");
     } finally {
