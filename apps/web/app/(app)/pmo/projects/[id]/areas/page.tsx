@@ -269,13 +269,21 @@ export default function ProjectAreasPage() {
     const name = String(form.get("name") || "").trim();
     const description = String(form.get("description") || "").trim() || null;
     const is_active = form.get("is_active") === "on";
+    // ENH-085: líder = Actor del catálogo. "" → null (sin líder).
+    const lead_actor_id_raw = String(form.get("lead_actor_id") || "");
+    const lead_actor_id = lead_actor_id_raw ? lead_actor_id_raw : null;
     if (!name) {
       setFormError("Nombre es requerido");
       setSaving(false);
       return;
     }
     try {
-      await updateArea(editingArea.id, { name, description, is_active });
+      await updateArea(editingArea.id, {
+        name,
+        description,
+        is_active,
+        lead_actor_id,
+      });
       setModal(null);
       setEditingArea(null);
       await refresh();
@@ -493,6 +501,40 @@ export default function ProjectAreasPage() {
                 rows={2}
                 defaultValue={editingArea.description ?? ""}
               />
+            </Field>
+            <Field label="Líder del área">
+              <Select
+                name="lead_actor_id"
+                defaultValue={editingArea.lead_actor_id ?? ""}
+                disabled={
+                  editingArea.teams.flatMap((t) => t.actors).length === 0 &&
+                  (editingArea.unassigned_actors ?? []).length === 0
+                }
+              >
+                <option value="">— Sin líder —</option>
+                {[
+                  ...editingArea.teams.flatMap((t) =>
+                    t.actors.map((a) => ({
+                      id: a.id,
+                      label: `${t.name} / ${a.name}`,
+                    })),
+                  ),
+                  ...(editingArea.unassigned_actors ?? []).map((a) => ({
+                    id: a.id,
+                    label: `(sin equipo) ${a.name}`,
+                  })),
+                ].map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              {editingArea.teams.flatMap((t) => t.actors).length === 0 &&
+              (editingArea.unassigned_actors ?? []).length === 0 ? (
+                <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                  Aún no hay actores en el área. Crea un recurso primero.
+                </p>
+              ) : null}
             </Field>
             <label className="flex items-center gap-2 text-sm">
               <input
