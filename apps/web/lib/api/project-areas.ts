@@ -1,3 +1,13 @@
+/**
+ * ENH-078 (2026-05-07): shim de compatibilidad post drop de
+ * `project_areas`. Las áreas ahora viven en el catálogo tenant
+ * (`/api/v1/areas`) con `area_assignments` controlando visibilidad
+ * por proyecto. Este módulo expone la API legacy mapeada al nuevo
+ * endpoint para que RAID/Plan no requieran rewrite inmediato.
+ *
+ * Se mantienen sólo las funciones consumidas por componentes vivos.
+ * CRUD de áreas/equipos/actores se hace ahora vía `/lib/api/areas.ts`.
+ */
 import { apiFetch } from "@/lib/api";
 
 export type ProjectAreaType = "area" | "actor" | "team";
@@ -10,130 +20,53 @@ export type ProjectArea = {
   description: string | null;
   contact_name: string | null;
   contact_email: string | null;
-  /** US-062: líder del área (FK a users, nullable). */
   area_leader_id: string | null;
-  /** US-091: jerarquía explícita Área→Equipo→Actor. */
   team_id: string | null;
   area_id: string | null;
   phone: string | null;
   is_active: boolean;
 };
 
-export type ProjectAreaCreateBody = {
-  name: string;
-  type?: ProjectAreaType;
-  description?: string | null;
-  contact_name?: string | null;
-  contact_email?: string | null;
-  area_leader_id?: string | null;
-  team_id?: string | null;
-  area_id?: string | null;
-  phone?: string | null;
-  is_active?: boolean;
-};
-
-export type ProjectAreaUpdateBody = Partial<ProjectAreaCreateBody>;
-
-/** ENH-020 + US-062: recurso asignado al área (interno o externo). */
-export type ProjectAreaResource = {
+type AreaCatalogRead = {
   id: string;
-  area_id: string;
-  user_id: string | null;
-  name: string | null;
-  email: string | null;
-  role: string | null;
+  tenant_id: string;
+  name: string;
+  description: string | null;
+  lead_actor_id: string | null;
   is_active: boolean;
 };
 
-export type ProjectAreaResourceCreateBody = {
-  user_id?: string | null;
-  name?: string | null;
-  email?: string | null;
-  role?: string | null;
-  is_active?: boolean;
-};
-
-export type ProjectAreaResourceUpdateBody = {
-  name?: string | null;
-  email?: string | null;
-  role?: string | null;
-  is_active?: boolean;
-};
-
-function qs(params: Record<string, unknown>): string {
-  const usp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v === undefined || v === null || v === "") continue;
-    usp.set(k, String(v));
-  }
-  const s = usp.toString();
-  return s ? `?${s}` : "";
-}
-
-export function listProjectAreas(
+/**
+ * Lista las áreas visibles para el proyecto (cascada org/program/proj/global).
+ * Sólo retorna áreas (type='area'); equipos/actores no se exponen aquí.
+ * Si el caller filtra por type !== 'area', devuelve [].
+ */
+export async function listProjectAreas(
   projectId: string,
   params: { q?: string; is_active?: boolean; type?: ProjectAreaType } = {},
 ): Promise<ProjectArea[]> {
-  return apiFetch<ProjectArea[]>(
-    `/api/v1/projects/${projectId}/areas${qs(params)}`,
+  if (params.type && params.type !== "area") return [];
+  const rows = await apiFetch<AreaCatalogRead[]>(
+    `/api/v1/admin/areas/by-project/${projectId}`,
   );
-}
-
-export function createProjectArea(
-  projectId: string,
-  body: ProjectAreaCreateBody,
-): Promise<ProjectArea> {
-  return apiFetch<ProjectArea>(`/api/v1/projects/${projectId}/areas`, {
-    method: "POST",
-    body,
-  });
-}
-
-export function updateProjectArea(
-  id: string,
-  body: ProjectAreaUpdateBody,
-): Promise<ProjectArea> {
-  return apiFetch<ProjectArea>(`/api/v1/project-areas/${id}`, {
-    method: "PATCH",
-    body,
-  });
-}
-
-export function deleteProjectArea(id: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/project-areas/${id}`, { method: "DELETE" });
-}
-
-export function listAreaResources(
-  areaId: string,
-  params: { is_active?: boolean } = {},
-): Promise<ProjectAreaResource[]> {
-  return apiFetch<ProjectAreaResource[]>(
-    `/api/v1/project-areas/${areaId}/resources${qs(params)}`,
-  );
-}
-
-export function createAreaResource(
-  areaId: string,
-  body: ProjectAreaResourceCreateBody,
-): Promise<ProjectAreaResource> {
-  return apiFetch<ProjectAreaResource>(
-    `/api/v1/project-areas/${areaId}/resources`,
-    { method: "POST", body },
-  );
-}
-
-export function updateAreaResource(
-  resourceId: string,
-  body: ProjectAreaResourceUpdateBody,
-): Promise<ProjectAreaResource> {
-  return apiFetch<ProjectAreaResource>(
-    `/api/v1/project-area-resources/${resourceId}`,
-    { method: "PATCH", body },
-  );
-}
-
-export function deleteAreaResource(resourceId: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/project-area-resources/${resourceId}`, {
-    method: "DELETE",
-  });
+  const q = params.q?.trim().toLowerCase();
+  return rows
+    .filter((a) =>
+      params.is_active !== undefined ? a.is_active === params.is_active : true,
+    )
+    .filter((a) => (q ? a.name.toLowerCase().includes(q) : true))
+    .map<ProjectArea>((a) => ({
+      id: a.id,
+      project_id: projectId,
+      name: a.name,
+      type: "area",
+      description: a.description,
+      contact_name: null,
+      contact_email: null,
+      area_leader_id: a.lead_actor_id,
+      team_id: null,
+      area_id: null,
+      phone: null,
+      is_active: a.is_active,
+    }));
 }

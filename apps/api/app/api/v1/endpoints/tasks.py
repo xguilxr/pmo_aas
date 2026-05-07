@@ -94,6 +94,8 @@ class TaskCreate(BaseModel):
     progress: int = Field(default=0, ge=0, le=100)
     is_milestone: bool = False
     owner_id: UUID | None = None
+    # ENH-079: responsable como Actor (futuro reemplazo de owner_id).
+    assignee_actor_id: UUID | None = None
     priority: int | None = Field(default=None, ge=1, le=5)
     status: str = "not_started"
     # ENH-051: criticidad opcional al crear; default `medium` server-side.
@@ -114,6 +116,7 @@ class TaskUpdate(BaseModel):
     progress: int | None = Field(default=None, ge=0, le=100)
     status: str | None = None
     owner_id: UUID | None = None
+    assignee_actor_id: UUID | None = None
     area_id: UUID | None = None
     criticality: TaskCriticality | None = None
     # ENH-050: PATCH para reasignar / desasociar (None) el hito relacionado.
@@ -154,6 +157,7 @@ class TaskRead(BaseModel):
     # avatar+nombre sin un round-trip extra a /users.
     owner_id: UUID | None = None
     owner: UserMini | None = None
+    assignee_actor_id: UUID | None = None
     # ENH-051: criticidad para chip de color en lista + filtro Críticos.
     criticality: str = "medium"
     # ENH-050: hito relacionado.
@@ -207,24 +211,53 @@ async def _attach_milestones(db: AsyncSession, tasks: list[Task]) -> None:
 
 
 async def _attach_owners(db: AsyncSession, tasks: list[Task]) -> None:
-    """ENH-049: enriquece `task.owner` con `{id, full_name, email}` para
-    la columna Responsable. 1 SELECT batch del set único de owner_ids."""
-    owner_ids: set[str] = {str(t.owner_id) for t in tasks if t.owner_id}
-    if not owner_ids:
-        for t in tasks:
-            t.owner = None  # type: ignore[attr-defined]
-        return
-    rows = (
-        await db.execute(select(User).where(User.id.in_(owner_ids)))
-    ).scalars().all()
-    by_id = {str(u.id): u for u in rows}
+    """ENH-049 + ENH-079: enriquece `task.owner` con `{id, full_name, email}`
+    para la columna Responsable. Si `assignee_actor_id` está set, mappea
+    al Actor (preferido); fallback al owner_id user legacy.
+    """
+    from app.models.area import Actor
+
+    actor_ids: set[str] = {
+        str(t.assignee_actor_id) for t in tasks if t.assignee_actor_id
+    }
+    actor_by_id: dict[str, Actor] = {}
+    if actor_ids:
+        rows = (
+            await db.execute(select(Actor).where(Actor.id.in_(actor_ids)))
+        ).scalars().all()
+        actor_by_id = {str(a.id): a for a in rows}
+
+    legacy_owner_ids: set[str] = {
+        str(t.owner_id) for t in tasks if t.owner_id and not t.assignee_actor_id
+    }
+    user_by_id: dict[str, User] = {}
+    if legacy_owner_ids:
+        rows = (
+            await db.execute(select(User).where(User.id.in_(legacy_owner_ids)))
+        ).scalars().all()
+        user_by_id = {str(u.id): u for u in rows}
+
     for t in tasks:
-        u = by_id.get(str(t.owner_id)) if t.owner_id else None
-        t.owner = (  # type: ignore[attr-defined]
-            {"id": str(u.id), "full_name": u.full_name, "email": u.email}
-            if u
-            else None
-        )
+        if t.assignee_actor_id:
+            a = actor_by_id.get(str(t.assignee_actor_id))
+            t.owner = (  # type: ignore[attr-defined]
+                {
+                    "id": str(a.id),
+                    "full_name": a.name,
+                    "email": a.email or "",
+                }
+                if a
+                else None
+            )
+        elif t.owner_id:
+            u = user_by_id.get(str(t.owner_id))
+            t.owner = (  # type: ignore[attr-defined]
+                {"id": str(u.id), "full_name": u.full_name, "email": u.email}
+                if u
+                else None
+            )
+        else:
+            t.owner = None  # type: ignore[attr-defined]
 
 
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])
@@ -285,6 +318,7 @@ async def create_task(
         duration_days=final_duration, progress=body.progress,
         is_milestone=body.is_milestone,
         owner_id=str(body.owner_id) if body.owner_id else None,
+        assignee_actor_id=str(body.assignee_actor_id) if body.assignee_actor_id else None,
         priority=body.priority, status=body.status, source="manual",
         criticality=body.criticality,
         related_milestone_id=(
@@ -328,6 +362,13 @@ async def update_task(
     data = body.model_dump(exclude_none=True)
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    if "assignee_actor_id" in data and data["assignee_actor_id"] is not None:
+        data["assignee_actor_id"] = str(data["assignee_actor_id"])
+    # ENH-079: PATCH `assignee_actor_id` distingue ausente vs None.
+    if "assignee_actor_id" in data_full:
+        aid = data_full["assignee_actor_id"]
+        t.assignee_actor_id = str(aid) if aid is not None else None
+        data.pop("assignee_actor_id", None)
     # US-098: PATCH `area_id` distingue ausente (no tocar) vs None
     # (desasignar) — mismo patrón que related_milestone_id.
     if "area_id" in data_full:

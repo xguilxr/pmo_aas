@@ -22,12 +22,18 @@ async def _setup(client, db_session):
     proj_id = r.json()["id"]
     # US-064: ítems RAID requieren area_id. Crea un area por defecto y la
     # devuelve para que los tests la pasen en el POST.
+    # ENH-078: catálogo tenant + assignment al proyecto.
     ra = await client.post(
-        f"/api/v1/projects/{proj_id}/areas",
-        json={"name": "Default Area", "type": "area"},
+        "/api/v1/areas",
+        json={"name": "Default Area"},
         headers=auth["_authz"],
     )
     area_id = ra.json()["id"]
+    await client.put(
+        f"/api/v1/admin/areas/{area_id}/assignments",
+        json={"scopes": [{"project_id": proj_id}]},
+        headers=auth["_authz"],
+    )
     return t, auth, proj_id, area_id
 
 

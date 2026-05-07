@@ -6,7 +6,8 @@ export type Area = {
   tenant_id: string;
   name: string;
   description: string | null;
-  lead_name?: string | null;
+  /** ENH-078: FK al Actor líder (con is_lead=true). */
+  lead_actor_id?: string | null;
   is_active: boolean;
   created_at: string;
 };
@@ -30,6 +31,7 @@ export type Actor = {
   email: string | null;
   phone: string | null;
   is_active: boolean;
+  is_lead?: boolean;
   created_at: string;
 };
 
@@ -40,6 +42,7 @@ export type TreeActor = {
   phone: string | null;
   user_id: string | null;
   is_active: boolean;
+  is_lead?: boolean;
 };
 
 export type TreeTeam = {
@@ -54,7 +57,7 @@ export type TreeArea = {
   id: string;
   name: string;
   description: string | null;
-  lead_name?: string | null;
+  lead_actor_id?: string | null;
   is_active: boolean;
   teams: TreeTeam[];
   unassigned_actors: TreeActor[];
@@ -80,11 +83,18 @@ export function getAreasTree(includeInactive = false): Promise<AreaTreeResponse>
   );
 }
 
+export type AreaLeadInput = {
+  actor_id?: string | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
 export function createArea(body: {
   name: string;
   description?: string | null;
-  lead_name?: string | null;
   is_active?: boolean;
+  lead?: AreaLeadInput | null;
 }): Promise<Area> {
   return apiFetch<Area>("/api/v1/areas", { method: "POST", body });
 }
@@ -94,8 +104,8 @@ export function updateArea(
   body: {
     name?: string;
     description?: string | null;
-    lead_name?: string | null;
     is_active?: boolean;
+    lead_actor_id?: string | null;
   },
 ): Promise<Area> {
   return apiFetch<Area>(`/api/v1/areas/${id}`, { method: "PATCH", body });
@@ -167,6 +177,7 @@ export function createActor(body: {
   email?: string | null;
   phone?: string | null;
   is_active?: boolean;
+  is_lead?: boolean;
 }): Promise<Actor> {
   return apiFetch<Actor>("/api/v1/actors", { method: "POST", body });
 }
@@ -180,6 +191,7 @@ export function updateActor(
     email?: string | null;
     phone?: string | null;
     is_active?: boolean;
+    is_lead?: boolean;
   },
 ): Promise<Actor> {
   return apiFetch<Actor>(`/api/v1/actors/${id}`, { method: "PATCH", body });
@@ -210,5 +222,50 @@ export function reassignActor(
   return apiFetch<ActorReassignResponse>(
     `/api/v1/actors/${id}/reassign`,
     { method: "POST", body },
+  );
+}
+
+// ---------- Area assignments (US-103) ----------
+export type AreaAssignment = {
+  id: string;
+  area_id: string;
+  organization_id: string | null;
+  program_id: string | null;
+  project_id: string | null;
+  is_global: boolean;
+  created_at: string;
+};
+
+export type AssignmentScope = {
+  organization_id?: string | null;
+  program_id?: string | null;
+  project_id?: string | null;
+  is_global?: boolean;
+};
+
+export function listAreaAssignments(areaId: string): Promise<AreaAssignment[]> {
+  return apiFetch<AreaAssignment[]>(
+    `/api/v1/admin/areas/${areaId}/assignments`,
+  );
+}
+
+export function setAreaAssignments(
+  areaId: string,
+  scopes: AssignmentScope[],
+): Promise<AreaAssignment[]> {
+  return apiFetch<AreaAssignment[]>(
+    `/api/v1/admin/areas/${areaId}/assignments`,
+    { method: "PUT", body: { scopes } },
+  );
+}
+
+export function listAreasByProject(projectId: string): Promise<Area[]> {
+  return apiFetch<Area[]>(`/api/v1/admin/areas/by-project/${projectId}`);
+}
+
+// ENH-079 — Actores asignables como responsables/owners del proyecto.
+export function listActorsByProject(projectId: string): Promise<Actor[]> {
+  return apiFetch<Actor[]>(
+    `/api/v1/admin/areas/by-project/${projectId}/actors`,
   );
 }

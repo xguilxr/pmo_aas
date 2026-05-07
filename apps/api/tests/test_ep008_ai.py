@@ -38,12 +38,19 @@ async def _setup(client, db_session):
     proj_id = p.json()["id"]
     # US-064: area default para que los POST de risks/issues pasen la
     # validación Pydantic.
+    # ENH-078: catálogo tenant + assignment al proyecto.
     ra = await client.post(
-        f"/api/v1/projects/{proj_id}/areas",
-        json={"name": "Default Area", "type": "area"},
+        "/api/v1/areas",
+        json={"name": "Default Area"},
         headers=auth["_authz"],
     )
-    return t, auth, proj_id, ra.json()["id"]
+    aid = ra.json()["id"]
+    await client.put(
+        f"/api/v1/admin/areas/{aid}/assignments",
+        json={"scopes": [{"project_id": proj_id}]},
+        headers=auth["_authz"],
+    )
+    return t, auth, proj_id, aid
 
 
 # TC-112 chunking con overlap

@@ -30,6 +30,7 @@ import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
 import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
+import { listActorsByProject, type Actor } from "@/lib/api/areas";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { getProject } from "@/lib/api/projects";
 import {
@@ -680,6 +681,8 @@ function PlanInner() {
   // US-098 fix: usuarios del tenant para el select de Responsable en
   // el edit form de tarea.
   const [users, setUsers] = useState<AdminUser[]>([]);
+  // ENH-079: actores del proyecto (catálogo tenant) para Responsable.
+  const [actors, setActors] = useState<Actor[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -903,6 +906,8 @@ function PlanInner() {
     // US-098: área responsable + responsable (owner).
     area_id: "" as string,
     owner_id: "" as string,
+    // ENH-079: responsable como Actor del catálogo.
+    assignee_actor_id: "" as string,
   });
   const [updating, setUpdating] = useState(false);
 
@@ -917,6 +922,7 @@ function PlanInner() {
       progress: String(t.progress ?? 0),
       area_id: t.area_id ?? "",
       owner_id: t.owner_id ?? "",
+      assignee_actor_id: (t as { assignee_actor_id?: string | null }).assignee_actor_id ?? "",
       is_milestone: !!t.is_milestone,
       status: (t.status as TaskStatus) ?? "not_started",
       criticality: (t.criticality as TaskCriticality) ?? "medium",
@@ -949,8 +955,11 @@ function PlanInner() {
               .filter(Boolean)
           : null,
         area_id: editForm.area_id || null,
-        owner_id: editForm.owner_id || null,
-      });
+        owner_id: editForm.assignee_actor_id ? null : (editForm.owner_id || null),
+        // ENH-079: nuevo flujo. Si elige Actor, owner_id se nulea para
+        // evitar doble fuente. Backend display prioriza Actor.
+        assignee_actor_id: editForm.assignee_actor_id || null,
+      } as Parameters<typeof updateTask>[1] & { assignee_actor_id: string | null });
       setEditOpen(false);
       setEditingId(null);
       // BUG-fix US-095 rework v2: refetch primero (para sincronizar gantt
@@ -1015,6 +1024,11 @@ function PlanInner() {
     listUsers({ is_active: true, page: 1, limit: 200 })
       .then((resp) => setUsers(resp.items))
       .catch(() => {});
+    // ENH-079: actores del proyecto (vía area_assignments cascade) para
+    // el dropdown de Responsable. Reemplaza el flujo legacy `users`.
+    listActorsByProject(id)
+      .then((rows) => setActors(rows))
+      .catch(() => setActors([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -1923,21 +1937,22 @@ function PlanInner() {
               ))}
             </Select>
           </label>
-          {/* US-098 fix: Responsable (recurso/usuario) SEGUNDO. */}
+          {/* ENH-079: Responsable = Actor del catálogo (no users). */}
           <label>
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
               Responsable
             </span>
             <Select
-              value={editForm.owner_id}
+              value={editForm.assignee_actor_id}
               onChange={(e) =>
-                setEditForm({ ...editForm, owner_id: e.target.value })
+                setEditForm({ ...editForm, assignee_actor_id: e.target.value })
               }
             >
               <option value="">— Sin responsable —</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name?.trim() || u.email}
+              {actors.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.email ? ` · ${a.email}` : ""}
                 </option>
               ))}
             </Select>

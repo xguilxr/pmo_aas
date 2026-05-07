@@ -41,10 +41,15 @@ class Risk(Base, _ModuleBase, TimestampMixin):
     severity: Mapped[int | None] = mapped_column(Integer)  # computed client-side for SQLite compat
     mitigation_strategy: Mapped[str | None] = mapped_column(String(5000))
     owner_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
+    # ENH-079: owner como Actor del catálogo (FK actors). Coexiste con
+    # `owner_id` legacy hasta que el dropdown migre a Actores.
+    owner_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("actors.id", ondelete="SET NULL")
+    )
     # US-064: área responsable. Obligatorio en ítems nuevos vía Pydantic;
     # nullable en DB para preservar legacy (pre-migración 0024).
     area_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("project_areas.id", ondelete="SET NULL")
+        String(36), ForeignKey("areas.id", ondelete="SET NULL")
     )
     identified_at: Mapped[date | None] = mapped_column(Date)
     due_date: Mapped[date | None] = mapped_column(Date)
@@ -64,9 +69,13 @@ class Issue(Base, _ModuleBase, TimestampMixin):
     resolution: Mapped[str | None] = mapped_column(String(5000))
     comments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     owner_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
+    # ENH-079: owner como Actor del catálogo.
+    owner_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("actors.id", ondelete="SET NULL")
+    )
     # US-064: igual que Risk.area_id.
     area_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("project_areas.id", ondelete="SET NULL")
+        String(36), ForeignKey("areas.id", ondelete="SET NULL")
     )
 
 

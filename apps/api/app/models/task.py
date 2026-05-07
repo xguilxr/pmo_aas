@@ -51,15 +51,23 @@ class Task(Base, TimestampMixin):
     related_milestone_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("tasks.id", ondelete="SET NULL"), index=True
     )
-    # US-098: área responsable. Apunta a `project_areas` (US-091, scope
-    # proyecto) — owner clarificó 2026-05-07 que las áreas a asignar
-    # son las del proyecto, no el catálogo tenant. Migración 0046
-    # repunta el FK a project_areas.id.
+    # US-098 / US-103: área responsable. Apunta a `areas` (catálogo
+    # tenant compartido — Op A 2026-05-07). Migración 0048 repunta
+    # el FK desde `project_areas` a `areas`. Las áreas visibles para
+    # un proyecto se filtran via `area_assignments`.
     # Nullable; ondelete=SET NULL para que borrar un área no rompa
     # tareas históricas.
     area_id: Mapped[UUID | None] = mapped_column(
         String(36),
-        ForeignKey("project_areas.id", ondelete="SET NULL"),
+        ForeignKey("areas.id", ondelete="SET NULL"),
+        index=True,
+    )
+    # ENH-079: responsable como Actor del catálogo (FK actors). Reemplaza
+    # el flujo legacy `owner_id → users` para Plan. Migración 0050
+    # backfilea via match user_id.
+    assignee_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("actors.id", ondelete="SET NULL"),
         index=True,
     )
     # US-090: outline_level computado desde wbs.split('.').length.

@@ -140,7 +140,9 @@ export default function AreasAdminPage() {
       id: a.id,
       name: a.name,
       description: a.description ?? "",
-      lead_name: a.lead_name ?? "",
+      // ENH-078: lead_name fue removido del shape; el lead se gestiona
+      // como Actor con is_lead=true. Edit panel inline sigue diferido.
+      lead_name: "",
     });
   }
 
@@ -172,10 +174,18 @@ export default function AreasAdminPage() {
     setError(null);
     try {
       if (creating.kind === "area") {
+        const leadName = form.lead_name.trim();
         await createArea({
           name: form.name.trim(),
           description: form.description.trim() || null,
-          lead_name: form.lead_name.trim() || null,
+          // ENH-078: líder se persiste como Actor con is_lead=true.
+          lead: leadName
+            ? {
+                name: leadName,
+                email: form.email.trim() || null,
+                phone: form.phone.trim() || null,
+              }
+            : null,
         });
       } else if (creating.kind === "team") {
         await createTeam({
@@ -207,10 +217,12 @@ export default function AreasAdminPage() {
     setError(null);
     try {
       if (editing.kind === "area") {
+        // ENH-078: lead_name ya no existe; el líder se gestiona vía
+        // lead_actor_id (selector de actor). En esta versión legacy
+        // del modal admin sólo persistimos los campos básicos.
         await updateArea(editing.id, {
           name: editing.name.trim(),
           description: editing.description.trim() || null,
-          lead_name: editing.lead_name.trim() || null,
         });
       } else if (editing.kind === "team") {
         await updateTeam(editing.id, {
@@ -706,11 +718,6 @@ function AreaNode({
         <div className="flex-1 min-w-0">
           <div className="font-medium text-[var(--color-primary)]">
             {area.name}
-            {area.lead_name ? (
-              <span className="ml-2 text-xs font-normal text-[var(--color-tertiary)]">
-                · líder {area.lead_name}
-              </span>
-            ) : null}
           </div>
           {area.description ? (
             <div className="text-xs text-[var(--color-tertiary)] truncate">

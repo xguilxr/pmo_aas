@@ -125,7 +125,6 @@ _FREE_MODULES_CRUD = (
     "meeting_minutes",
     "reports",
     "areas",
-    "project_areas",
     "lessons",
     "dashboard",
     "ai",

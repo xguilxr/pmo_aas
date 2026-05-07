@@ -14,13 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import not_found, validation_error
 from app.db.session import get_db
-from app.models.area import Actor, Area, Team
+from app.models.area import Actor, Area, AreaAssignment, Team
 from app.schemas.area import (
     ActorCreate,
     ActorRead,
     ActorReassignBody,
     ActorReassignResponse,
     ActorUpdate,
+    AreaAssignmentRead,
+    AreaAssignmentSetBody,
     AreaCreate,
     AreaRead,
     AreaTreeResponse,
@@ -67,17 +69,53 @@ async def create_area(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    """ENH-078: si `body.lead` viene, crea/reusa el Actor líder primero
+    y enlaza vía `lead_actor_id`. Decisión owner: el líder se persiste
+    como Actor con `is_lead=true` antes de crear el área.
+    """
     tenant_id = _tenant(cu)
     a = Area(
         tenant_id=str(tenant_id),
         name=body.name.strip(),
         description=body.description,
-        lead_name=body.lead_name.strip() if body.lead_name else None,
         is_active=body.is_active,
         created_by=str(cu.id),
     )
     db.add(a)
+    await db.flush()  # obtain a.id
+
+    if body.lead is not None:
+        lead_actor: Actor | None = None
+        if body.lead.actor_id is not None:
+            lead_actor = (
+                await db.execute(
+                    select(Actor).where(
+                        Actor.id == str(body.lead.actor_id),
+                        Actor.tenant_id == str(tenant_id),
+                    )
+                )
+            ).scalar_one_or_none()
+            if lead_actor is None:
+                raise not_found("Lead actor")
+            lead_actor.is_lead = True
+        elif body.lead.name:
+            lead_actor = Actor(
+                tenant_id=str(tenant_id),
+                team_id=None,
+                user_id=None,
+                name=body.lead.name.strip(),
+                email=body.lead.email,
+                phone=body.lead.phone,
+                is_active=True,
+                is_lead=True,
+                created_by=str(cu.id),
+            )
+            db.add(lead_actor)
+            await db.flush()
+        if lead_actor is not None:
+            a.lead_actor_id = lead_actor.id
     await db.commit()
+    await db.refresh(a)
     return AreaRead.model_validate(a)
 
 
@@ -127,7 +165,7 @@ async def get_areas_tree(
                 id=area.id,
                 name=area.name,
                 description=area.description,
-                lead_name=area.lead_name,
+                lead_actor_id=area.lead_actor_id,
                 is_active=area.is_active,
                 teams=[
                     TreeTeam(
@@ -403,6 +441,7 @@ async def create_actor(
         email=str(body.email) if body.email else None,
         phone=body.phone,
         is_active=body.is_active,
+        is_lead=body.is_lead,
         created_by=str(cu.id),
     )
     db.add(a)
@@ -593,3 +632,261 @@ async def delete_actor(
     a.deleted_at = datetime.now(UTC)
     a.is_active = False
     await db.commit()
+
+
+# =============================================================================
+# /admin/areas/{area_id}/assignments — US-103 catálogo compartido
+# =============================================================================
+assignments_router = APIRouter(prefix="/admin/areas", tags=["areas"])
+
+
+@assignments_router.get(
+    "/{area_id}/assignments",
+    response_model=list[AreaAssignmentRead],
+)
+async def list_area_assignments(
+    area_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _tenant(cu)
+    # Validar que el área pertenece al tenant
+    area = (
+        await db.execute(
+            select(Area).where(
+                Area.id == str(area_id),
+                Area.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if area is None:
+        raise not_found("Area")
+    rows = (
+        await db.execute(
+            select(AreaAssignment).where(
+                AreaAssignment.tenant_id == str(tenant_id),
+                AreaAssignment.area_id == str(area_id),
+            )
+        )
+    ).scalars().all()
+    return [AreaAssignmentRead.model_validate(r) for r in rows]
+
+
+@assignments_router.put(
+    "/{area_id}/assignments",
+    response_model=list[AreaAssignmentRead],
+)
+async def set_area_assignments(
+    area_id: UUID,
+    body: AreaAssignmentSetBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reemplaza el set completo de asignaciones del área.
+
+    Cada `scope` aporta exactamente un destino: organization_id /
+    program_id / project_id / is_global. El backend valida exclusividad.
+    """
+    from sqlalchemy import delete as sa_delete
+
+    tenant_id = _tenant(cu)
+    area = (
+        await db.execute(
+            select(Area).where(
+                Area.id == str(area_id),
+                Area.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if area is None:
+        raise not_found("Area")
+
+    # Validar cada scope
+    for s in body.scopes:
+        targets = sum(
+            [
+                bool(s.organization_id),
+                bool(s.program_id),
+                bool(s.project_id),
+                bool(s.is_global),
+            ]
+        )
+        if targets != 1:
+            raise validation_error(
+                "Cada scope debe especificar exactamente un destino "
+                "(organization_id, program_id, project_id o is_global)."
+            )
+
+    # Replace strategy: borra todo y reinserta. Simple para v1.
+    await db.execute(
+        sa_delete(AreaAssignment).where(
+            AreaAssignment.tenant_id == str(tenant_id),
+            AreaAssignment.area_id == str(area_id),
+        )
+    )
+    new_rows: list[AreaAssignment] = []
+    for s in body.scopes:
+        row = AreaAssignment(
+            tenant_id=str(tenant_id),
+            area_id=str(area_id),
+            organization_id=str(s.organization_id) if s.organization_id else None,
+            program_id=str(s.program_id) if s.program_id else None,
+            project_id=str(s.project_id) if s.project_id else None,
+            is_global=bool(s.is_global),
+            created_by=str(cu.id),
+        )
+        db.add(row)
+        new_rows.append(row)
+    await db.commit()
+    for r in new_rows:
+        await db.refresh(r)
+    return [AreaAssignmentRead.model_validate(r) for r in new_rows]
+
+
+@assignments_router.get(
+    "/by-project/{project_id}/actors",
+    response_model=list[ActorRead],
+)
+async def list_actors_by_project(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-079: lista los Actores del catálogo asignables como
+    responsables/owners en un proyecto. Resolución por cascada de
+    `area_assignments` (org/program/project/global) → trae Actores
+    de los Equipos cuya Área esté visible para el proyecto, más
+    Actores huérfanos de esas Áreas.
+    """
+    from sqlalchemy import or_
+
+    from app.models.project import Project
+
+    tenant_id = _tenant(cu)
+    project = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if project is None:
+        raise not_found("Project")
+
+    cond = or_(
+        AreaAssignment.is_global == True,  # noqa: E712
+        AreaAssignment.project_id == str(project_id),
+        AreaAssignment.organization_id == str(project.organization_id),
+    )
+    if project.program_id:
+        cond = or_(cond, AreaAssignment.program_id == str(project.program_id))
+
+    visible_areas = (
+        await db.execute(
+            select(Area.id)
+            .join(AreaAssignment, AreaAssignment.area_id == Area.id)
+            .where(
+                Area.tenant_id == str(tenant_id),
+                Area.is_active == True,  # noqa: E712
+                cond,
+            )
+            .distinct()
+        )
+    ).scalars().all()
+    if not visible_areas:
+        return []
+
+    teams = (
+        await db.execute(
+            select(Team.id).where(
+                Team.tenant_id == str(tenant_id),
+                Team.area_id.in_(visible_areas),
+                Team.is_active.is_(True),
+            )
+        )
+    ).scalars().all()
+
+    actor_filter = or_(
+        Actor.team_id.in_(teams) if teams else False,
+        Actor.team_id.is_(None),
+    )
+    rows = (
+        await db.execute(
+            select(Actor)
+            .where(
+                Actor.tenant_id == str(tenant_id),
+                Actor.is_active == True,  # noqa: E712
+                Actor.deleted_at.is_(None),
+                actor_filter,
+            )
+            .order_by(Actor.name)
+        )
+    ).scalars().all()
+    # Filter orphan actors to only those whose original team's area was
+    # visible — para evitar listar TODOS los actores sin team del tenant.
+    # Heurística simple: si team_id es None, los listamos sólo si el
+    # actor tiene el flag is_lead (los líderes manuales suelen estar
+    # huérfanos de team) o si está enlazado a un user (PMO sync).
+    out: list[Actor] = []
+    for a in rows:
+        if a.team_id is None and not (a.is_lead or a.user_id is not None):
+            continue
+        out.append(a)
+    return [ActorRead.model_validate(a) for a in out]
+
+
+@assignments_router.get(
+    "/by-project/{project_id}",
+    response_model=list[AreaRead],
+)
+async def list_areas_by_project(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lista las áreas visibles para un proyecto considerando cascada.
+
+    Un área es visible si:
+    - Tiene assignment con `is_global=true`, o
+    - Tiene assignment al `project_id` directo, o
+    - Tiene assignment al `program_id` del proyecto, o
+    - Tiene assignment a la `organization_id` del proyecto.
+    """
+    from sqlalchemy import or_
+
+    from app.models.project import Project
+
+    tenant_id = _tenant(cu)
+    project = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if project is None:
+        raise not_found("Project")
+
+    cond = or_(
+        AreaAssignment.is_global == True,  # noqa: E712
+        AreaAssignment.project_id == str(project_id),
+    )
+    if project.program_id:
+        cond = or_(cond, AreaAssignment.program_id == str(project.program_id))
+    cond = or_(cond, AreaAssignment.organization_id == str(project.organization_id))
+
+    stmt = (
+        select(Area)
+        .join(AreaAssignment, AreaAssignment.area_id == Area.id)
+        .where(
+            Area.tenant_id == str(tenant_id),
+            Area.is_active == True,  # noqa: E712
+            cond,
+        )
+        .distinct()
+        .order_by(Area.name)
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    return [AreaRead.model_validate(r) for r in rows]
