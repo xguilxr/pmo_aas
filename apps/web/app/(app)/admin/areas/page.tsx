@@ -34,16 +34,20 @@ import {
   getAreasTree,
   listAreaAssignments,
   reassignActor,
+  setAreaAssignments,
   syncPmoUsers,
   updateActor,
   updateArea,
   updateTeam,
   type AreaAssignment,
   type AreaTreeResponse,
+  type AssignmentScope,
   type TreeActor,
   type TreeArea,
   type TreeTeam,
 } from "@/lib/api/areas";
+import { listOrganizations, listPrograms, type Organization, type Program } from "@/lib/api/organizations";
+import { listProjects, type Project } from "@/lib/api/projects";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
@@ -94,6 +98,15 @@ export default function AreasAdminPage() {
     Record<string, AreaAssignment[] | null>
   >({});
 
+  // ENH-083: catálogo de Orgs/Programas/Proyectos del tenant para el
+  // editor de assignments. Se carga 1 vez al montar.
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  // Set de scopes seleccionados en el modal de edit (mientras se edita).
+  // Format: "global" | `org:${id}` | `prog:${id}` | `proj:${id}`.
+  const [editingScopes, setEditingScopes] = useState<Set<string>>(new Set());
+
   const [creating, setCreating] = useState<CreatingNode | null>(null);
   const [editing, setEditing] = useState<EditingNode | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -135,6 +148,21 @@ export default function AreasAdminPage() {
         // Si el sync falla, seguimos cargando — no es bloqueante.
       }
       await load();
+    })();
+    // ENH-083: catálogo de scopes para el editor de assignments.
+    (async () => {
+      try {
+        const [o, p, pr] = await Promise.all([
+          listOrganizations(),
+          listPrograms(),
+          listProjects(),
+        ]);
+        setOrgs(o);
+        setPrograms(p);
+        setProjects(pr);
+      } catch {
+        // No-op; sin catálogo el editor queda con sólo el toggle Global.
+      }
     })();
   }, []);
 
@@ -182,6 +210,42 @@ export default function AreasAdminPage() {
       // ENH-078: lead_name fue removido del shape; el lead se gestiona
       // como Actor con is_lead=true. Edit panel inline sigue diferido.
       lead_name: "",
+    });
+    // ENH-083: hidrata scopes desde el cache local. Si todavía no se
+    // cargó, lo trae ahora.
+    void (async () => {
+      let rows = assignments[a.id] ?? null;
+      if (rows === null || rows === undefined) {
+        try {
+          rows = await listAreaAssignments(a.id);
+          setAssignments((prev) => ({ ...prev, [a.id]: rows ?? [] }));
+        } catch {
+          rows = [];
+        }
+      }
+      const set = new Set<string>();
+      for (const r of rows) {
+        if (r.is_global) set.add("global");
+        else if (r.organization_id) set.add(`org:${r.organization_id}`);
+        else if (r.program_id) set.add(`prog:${r.program_id}`);
+        else if (r.project_id) set.add(`proj:${r.project_id}`);
+      }
+      setEditingScopes(set);
+    })();
+  }
+
+  function toggleScope(key: string) {
+    setEditingScopes((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        // Global es mutex con todo lo demás.
+        if (key === "global") next.clear();
+        else next.delete("global");
+        next.add(key);
+      }
+      return next;
     });
   }
 
@@ -263,6 +327,25 @@ export default function AreasAdminPage() {
           name: editing.name.trim(),
           description: editing.description.trim() || null,
         });
+        // ENH-083: persistir assignments (replace strategy).
+        const scopes: AssignmentScope[] = [];
+        for (const key of editingScopes) {
+          if (key === "global") scopes.push({ is_global: true });
+          else if (key.startsWith("org:"))
+            scopes.push({ organization_id: key.slice(4) });
+          else if (key.startsWith("prog:"))
+            scopes.push({ program_id: key.slice(5) });
+          else if (key.startsWith("proj:"))
+            scopes.push({ project_id: key.slice(5) });
+        }
+        await setAreaAssignments(editing.id, scopes);
+        // Refetch para obtener nombres legibles (PUT no resuelve joins).
+        try {
+          const refreshed = await listAreaAssignments(editing.id);
+          setAssignments((prev) => ({ ...prev, [editing.id]: refreshed }));
+        } catch {
+          /* ignore */
+        }
       } else if (editing.kind === "team") {
         await updateTeam(editing.id, {
           name: editing.name.trim(),
@@ -273,6 +356,9 @@ export default function AreasAdminPage() {
           name: editing.name.trim(),
           email: editing.email.trim() || null,
           phone: editing.phone.trim() || null,
+          // ENH-084: permite mover el actor entre teams (de cualquier
+          // área) o dejarlo sin team via NULL.
+          team_id: editing.team_id ?? null,
         });
       }
       setEditing(null);
@@ -375,7 +461,10 @@ export default function AreasAdminPage() {
             {tree.orphan_actors.length > 0 ? (
               <li className="border-t border-[var(--border-default)]">
                 <div className="flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                  Actores sin equipo asignado ({tree.orphan_actors.length})
+                  Actores sin área asignada ({tree.orphan_actors.length})
+                  <span className="ml-2 normal-case text-[var(--color-tertiary)]">
+                    — usa "Editar" para moverlos a un equipo/área.
+                  </span>
                 </div>
                 <ul>
                   {tree.orphan_actors.map((ac) => (
@@ -559,6 +648,15 @@ export default function AreasAdminPage() {
                 />
               </div>
             ) : null}
+            {editing.kind === "area" ? (
+              <AssignmentsEditor
+                orgs={orgs}
+                programs={programs}
+                projects={projects}
+                selected={editingScopes}
+                onToggle={toggleScope}
+              />
+            ) : null}
             {editing.kind !== "actor" ? (
               <div>
                 <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
@@ -611,6 +709,34 @@ export default function AreasAdminPage() {
                     }
                     maxLength={32}
                   />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                    Equipo (opcional)
+                  </label>
+                  <Select
+                    value={editing.team_id ?? ""}
+                    onChange={(e) =>
+                      setEditing((prev) =>
+                        prev && prev.kind === "actor"
+                          ? { ...prev, team_id: e.target.value || null }
+                          : prev,
+                      )
+                    }
+                  >
+                    <option value="">— Sin equipo —</option>
+                    {(tree?.areas ?? []).flatMap((a) =>
+                      a.teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {a.name} / {t.name}
+                        </option>
+                      )),
+                    )}
+                  </Select>
+                  <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                    Mueve el actor a otra área/equipo o déjalo sin
+                    equipo.
+                  </p>
                 </div>
               </>
             )}
@@ -1087,5 +1213,157 @@ function ActorRow({
         <Trash2 className="h-3.5 w-3.5" aria-hidden />
       </button>
     </li>
+  );
+}
+
+// ENH-083 — editor de assignments en cascada (Org/Programa/Proyecto/Global).
+function AssignmentsEditor({
+  orgs,
+  programs,
+  projects,
+  selected,
+  onToggle,
+}: {
+  orgs: Organization[];
+  programs: Program[];
+  projects: Project[];
+  selected: Set<string>;
+  onToggle: (key: string) => void;
+}) {
+  const isGlobal = selected.has("global");
+  const programsByOrg = new Map<string, Program[]>();
+  for (const p of programs) {
+    const list = programsByOrg.get(p.organization_id) ?? [];
+    list.push(p);
+    programsByOrg.set(p.organization_id, list);
+  }
+  const projectsByOrg = new Map<string, Project[]>();
+  const projectsByProgram = new Map<string, Project[]>();
+  for (const pr of projects) {
+    const list = projectsByOrg.get(pr.organization_id) ?? [];
+    list.push(pr);
+    projectsByOrg.set(pr.organization_id, list);
+    if (pr.program_id) {
+      const l2 = projectsByProgram.get(pr.program_id) ?? [];
+      l2.push(pr);
+      projectsByProgram.set(pr.program_id, l2);
+    }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-subtle)]/40 p-3">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-secondary)]">
+        Habilitada en
+      </div>
+      <label className="mb-2 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isGlobal}
+          onChange={() => onToggle("global")}
+        />
+        <span className="font-medium">
+          Global — todos los proyectos del tenant
+        </span>
+      </label>
+      <div
+        className={cn(
+          "max-h-64 space-y-2 overflow-y-auto",
+          isGlobal && "pointer-events-none opacity-50",
+        )}
+      >
+        {orgs.length === 0 ? (
+          <div className="text-xs text-[var(--color-tertiary)]">
+            Sin organizaciones registradas en este tenant.
+          </div>
+        ) : null}
+        {orgs.map((o) => {
+          const orgKey = `org:${o.id}`;
+          const orgPrograms = programsByOrg.get(o.id) ?? [];
+          const orgProjectsNoProgram = (projectsByOrg.get(o.id) ?? []).filter(
+            (pr) => !pr.program_id,
+          );
+          return (
+            <div key={o.id} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={selected.has(orgKey)}
+                  onChange={() => onToggle(orgKey)}
+                />
+                <Building2 className="h-3.5 w-3.5 text-[var(--color-tertiary)]" aria-hidden />
+                <span>{o.name}</span>
+                <span className="text-xs font-normal text-[var(--color-tertiary)]">
+                  (toda la org)
+                </span>
+              </label>
+              {orgPrograms.length > 0 || orgProjectsNoProgram.length > 0 ? (
+                <div className="ml-6 mt-1 space-y-1">
+                  {orgPrograms.map((p) => {
+                    const progKey = `prog:${p.id}`;
+                    const projInProg = projectsByProgram.get(p.id) ?? [];
+                    return (
+                      <div key={p.id}>
+                        <label className="flex items-center gap-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(progKey)}
+                            onChange={() => onToggle(progKey)}
+                          />
+                          <span className="font-medium text-[var(--color-secondary)]">
+                            {p.name}
+                          </span>
+                          <span className="text-[var(--color-tertiary)]">
+                            (todo el programa)
+                          </span>
+                        </label>
+                        {projInProg.length > 0 ? (
+                          <div className="ml-5 mt-0.5 space-y-0.5">
+                            {projInProg.map((pr) => (
+                              <label
+                                key={pr.id}
+                                className="flex items-center gap-2 text-xs text-[var(--color-secondary)]"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selected.has(`proj:${pr.id}`)}
+                                  onChange={() => onToggle(`proj:${pr.id}`)}
+                                />
+                                <span>{pr.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                  {orgProjectsNoProgram.map((pr) => (
+                    <label
+                      key={pr.id}
+                      className="flex items-center gap-2 text-xs text-[var(--color-secondary)]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.has(`proj:${pr.id}`)}
+                        onChange={() => onToggle(`proj:${pr.id}`)}
+                      />
+                      <span>{pr.name}</span>
+                      <span className="text-[var(--color-tertiary)]">
+                        (sin programa)
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      {isGlobal ? (
+        <p className="mt-2 text-xs text-[var(--color-tertiary)]">
+          Global excluye selecciones específicas. Desactívalo para elegir
+          scopes individuales.
+        </p>
+      ) : null}
+    </div>
   );
 }
