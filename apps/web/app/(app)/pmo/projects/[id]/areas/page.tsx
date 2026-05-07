@@ -36,6 +36,7 @@ import {
   getAreasTree,
   listAreasByProject,
   setAreaAssignments,
+  updateArea,
   type Area as CatalogArea,
   type AreaTreeResponse,
   type TreeActor,
@@ -45,7 +46,7 @@ import {
 import { cn } from "@/lib/cn";
 
 type View = "areas" | "actors";
-type ModalKind = "area" | "team" | "actor" | null;
+type ModalKind = "area" | "team" | "actor" | "edit-area" | null;
 
 type FlatActor = TreeActor & {
   area_id: string;
@@ -63,6 +64,7 @@ export default function ProjectAreasPage() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<View>("areas");
   const [modal, setModal] = useState<ModalKind>(null);
+  const [editingArea, setEditingArea] = useState<TreeArea | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -257,6 +259,41 @@ export default function ProjectAreasPage() {
     }
   }
 
+  // ENH-081 — edit área desde el árbol del proyecto.
+  async function handleEditArea(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingArea) return;
+    setFormError(null);
+    setSaving(true);
+    const form = new FormData(e.currentTarget);
+    const name = String(form.get("name") || "").trim();
+    const description = String(form.get("description") || "").trim() || null;
+    const is_active = form.get("is_active") === "on";
+    if (!name) {
+      setFormError("Nombre es requerido");
+      setSaving(false);
+      return;
+    }
+    try {
+      await updateArea(editingArea.id, { name, description, is_active });
+      setModal(null);
+      setEditingArea(null);
+      await refresh();
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError ? err.message : "No se pudo guardar el área",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openEditArea(area: TreeArea) {
+    setFormError(null);
+    setEditingArea(area);
+    setModal("edit-area");
+  }
+
   async function handleDelete(kind: "area" | "team" | "actor", id: string, name: string) {
     if (!confirm(`¿Eliminar ${kind} "${name}"?`)) return;
     try {
@@ -369,6 +406,7 @@ export default function ProjectAreasPage() {
                   key={area.id}
                   area={area}
                   onDelete={handleDelete}
+                  onEdit={openEditArea}
                 />
               ))}
             </div>
@@ -433,6 +471,47 @@ export default function ProjectAreasPage() {
           </p>
           <FormActions onCancel={() => setModal(null)} saving={saving} label="Crear equipo" />
         </form>
+      </Modal>
+
+      <Modal
+        open={modal === "edit-area"}
+        onClose={() => {
+          setModal(null);
+          setEditingArea(null);
+        }}
+        title={editingArea ? `Editar área — ${editingArea.name}` : "Editar área"}
+      >
+        {editingArea ? (
+          <form onSubmit={handleEditArea} className="space-y-3">
+            {formError ? <Banner variant="danger">{formError}</Banner> : null}
+            <Field label="Nombre del área" required>
+              <Input name="name" required defaultValue={editingArea.name} />
+            </Field>
+            <Field label="Descripción">
+              <Textarea
+                name="description"
+                rows={2}
+                defaultValue={editingArea.description ?? ""}
+              />
+            </Field>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="is_active"
+                defaultChecked={editingArea.is_active}
+              />
+              <span>Activa</span>
+            </label>
+            <FormActions
+              onCancel={() => {
+                setModal(null);
+                setEditingArea(null);
+              }}
+              saving={saving}
+              label="Guardar"
+            />
+          </form>
+        ) : null}
       </Modal>
 
       <Modal open={modal === "actor"} onClose={() => setModal(null)} title="Nuevo recurso">
@@ -536,9 +615,11 @@ function NewResourceForm({ areas }: { areas: TreeArea[] }) {
 function AreaTreeNode({
   area,
   onDelete,
+  onEdit,
 }: {
   area: TreeArea;
   onDelete: (kind: "area" | "team" | "actor", id: string, name: string) => void;
+  onEdit: (area: TreeArea) => void;
 }) {
   return (
     <div className="px-4 py-3">
@@ -549,7 +630,12 @@ function AreaTreeNode({
         </span>
         {!area.is_active ? <Badge variant="danger">Inactiva</Badge> : null}
         <span className="ml-auto flex gap-1">
-          <Button size="sm" variant="ghost" disabled title="Editar (próximamente)">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onEdit(area)}
+            title="Editar"
+          >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           <Button
