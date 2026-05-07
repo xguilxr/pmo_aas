@@ -36,6 +36,7 @@ import {
   getAreasTree,
   listAreasByProject,
   setAreaAssignments,
+  updateActor,
   updateArea,
   type Area as CatalogArea,
   type AreaTreeResponse,
@@ -46,7 +47,7 @@ import {
 import { cn } from "@/lib/cn";
 
 type View = "areas" | "actors";
-type ModalKind = "area" | "team" | "actor" | "edit-area" | null;
+type ModalKind = "area" | "team" | "actor" | "edit-area" | "edit-actor" | null;
 
 type FlatActor = TreeActor & {
   area_id: string;
@@ -65,6 +66,7 @@ export default function ProjectAreasPage() {
   const [view, setView] = useState<View>("areas");
   const [modal, setModal] = useState<ModalKind>(null);
   const [editingArea, setEditingArea] = useState<TreeArea | null>(null);
+  const [editingActor, setEditingActor] = useState<TreeActor | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -302,6 +304,43 @@ export default function ProjectAreasPage() {
     setModal("edit-area");
   }
 
+  // ENH-086 — edit actor (recurso) desde el árbol/tabla del proyecto.
+  function openEditActor(actor: TreeActor) {
+    setFormError(null);
+    setEditingActor(actor);
+    setModal("edit-actor");
+  }
+
+  async function handleEditActor(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingActor) return;
+    setFormError(null);
+    setSaving(true);
+    const form = new FormData(e.currentTarget);
+    const name = String(form.get("name") || "").trim();
+    const email = String(form.get("email") || "").trim() || null;
+    const phone = String(form.get("phone") || "").trim() || null;
+    const team_id_raw = String(form.get("team_id") || "");
+    const team_id = team_id_raw ? team_id_raw : null;
+    if (!name) {
+      setFormError("Nombre es requerido");
+      setSaving(false);
+      return;
+    }
+    try {
+      await updateActor(editingActor.id, { name, email, phone, team_id });
+      setModal(null);
+      setEditingActor(null);
+      await refresh();
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError ? err.message : "No se pudo guardar el recurso",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleDelete(kind: "area" | "team" | "actor", id: string, name: string) {
     if (!confirm(`¿Eliminar ${kind} "${name}"?`)) return;
     try {
@@ -415,6 +454,7 @@ export default function ProjectAreasPage() {
                   area={area}
                   onDelete={handleDelete}
                   onEdit={openEditArea}
+                  onEditActor={openEditActor}
                 />
               ))}
             </div>
@@ -426,7 +466,11 @@ export default function ProjectAreasPage() {
               : "Ningún actor coincide con la búsqueda."}
           </div>
         ) : (
-          <ActorsTable rows={filteredActors} onDelete={handleDelete} />
+          <ActorsTable
+            rows={filteredActors}
+            onDelete={handleDelete}
+            onEdit={openEditActor}
+          />
         )}
       </section>
 
@@ -556,6 +600,81 @@ export default function ProjectAreasPage() {
         ) : null}
       </Modal>
 
+      <Modal
+        open={modal === "edit-actor"}
+        onClose={() => {
+          setModal(null);
+          setEditingActor(null);
+        }}
+        title={
+          editingActor
+            ? `Editar recurso — ${editingActor.name}`
+            : "Editar recurso"
+        }
+      >
+        {editingActor ? (
+          <form onSubmit={handleEditActor} className="space-y-3">
+            {formError ? <Banner variant="danger">{formError}</Banner> : null}
+            <Field label="Nombre" required>
+              <Input name="name" required defaultValue={editingActor.name} />
+            </Field>
+            <Field label="Correo">
+              <Input
+                name="email"
+                type="email"
+                defaultValue={editingActor.email ?? ""}
+              />
+            </Field>
+            <Field label="Teléfono">
+              <Input
+                name="phone"
+                type="tel"
+                defaultValue={editingActor.phone ?? ""}
+              />
+            </Field>
+            <Field label="Equipo">
+              <Select
+                name="team_id"
+                defaultValue={
+                  // Resuelve team actual buscando en projectAreas el actor.
+                  projectAreas
+                    .flatMap((a) =>
+                      a.teams.flatMap((t) =>
+                        t.actors.map((ac) => ({
+                          actor_id: ac.id,
+                          team_id: t.id,
+                        })),
+                      ),
+                    )
+                    .find((x) => x.actor_id === editingActor.id)?.team_id ?? ""
+                }
+              >
+                <option value="">— Sin equipo —</option>
+                {projectAreas.flatMap((a) =>
+                  a.teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {a.name} / {t.name}
+                    </option>
+                  )),
+                )}
+              </Select>
+              <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                Mueve el recurso a otro equipo de cualquier área asignada al
+                proyecto, o déjalo sin equipo.
+              </p>
+            </Field>
+            <FormActions
+              onCancel={() => {
+                setModal(null);
+                setEditingActor(null);
+              }}
+              saving={saving}
+              label="Guardar"
+            />
+          </form>
+        ) : null}
+      </Modal>
+
       <Modal open={modal === "actor"} onClose={() => setModal(null)} title="Nuevo recurso">
         <form onSubmit={handleCreateActor} className="space-y-3">
           {formError ? <Banner variant="danger">{formError}</Banner> : null}
@@ -658,10 +777,12 @@ function AreaTreeNode({
   area,
   onDelete,
   onEdit,
+  onEditActor,
 }: {
   area: TreeArea;
   onDelete: (kind: "area" | "team" | "actor", id: string, name: string) => void;
   onEdit: (area: TreeArea) => void;
+  onEditActor: (actor: TreeActor) => void;
 }) {
   return (
     <div className="px-4 py-3">
@@ -697,6 +818,7 @@ function AreaTreeNode({
             team={t}
             leadActorId={area.lead_actor_id ?? null}
             onDelete={onDelete}
+            onEditActor={onEditActor}
           />
         ))}
         {(area.unassigned_actors ?? []).map((r) => (
@@ -705,6 +827,7 @@ function AreaTreeNode({
             actor={r}
             isLead={r.id === area.lead_actor_id}
             onDelete={(id, name) => onDelete("actor", id, name)}
+            onEdit={onEditActor}
           />
         ))}
         {area.teams.length === 0 && (area.unassigned_actors ?? []).length === 0 ? (
@@ -721,10 +844,12 @@ function TeamNode({
   team,
   leadActorId,
   onDelete,
+  onEditActor,
 }: {
   team: TreeTeam;
   leadActorId: string | null;
   onDelete: (kind: "area" | "team" | "actor", id: string, name: string) => void;
+  onEditActor: (actor: TreeActor) => void;
 }) {
   return (
     <div>
@@ -748,6 +873,7 @@ function TeamNode({
             actor={a}
             isLead={a.id === leadActorId}
             onDelete={(id, name) => onDelete("actor", id, name)}
+            onEdit={onEditActor}
           />
         ))}
       </div>
@@ -759,10 +885,12 @@ function ActorRow({
   actor,
   isLead,
   onDelete,
+  onEdit,
 }: {
   actor: TreeActor;
   isLead: boolean;
   onDelete: (id: string, name: string) => void;
+  onEdit?: (actor: TreeActor) => void;
 }) {
   const lead = isLead || actor.is_lead;
   return (
@@ -783,12 +911,23 @@ function ActorRow({
       {actor.email ? (
         <span className="text-[var(--color-tertiary)]">· {actor.email}</span>
       ) : null}
+      {onEdit ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => onEdit(actor)}
+          title="Editar recurso"
+          className="ml-auto"
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      ) : null}
       <Button
         size="sm"
         variant="ghost"
         onClick={() => onDelete(actor.id, actor.name)}
         title="Eliminar"
-        className="ml-auto"
+        className={onEdit ? "" : "ml-auto"}
       >
         <Trash2 className="h-3 w-3" />
       </Button>
@@ -799,9 +938,11 @@ function ActorRow({
 function ActorsTable({
   rows,
   onDelete,
+  onEdit,
 }: {
   rows: FlatActor[];
   onDelete: (kind: "area" | "team" | "actor", id: string, name: string) => void;
+  onEdit: (actor: TreeActor) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -838,6 +979,14 @@ function ActorsTable({
               <td className="px-3 py-2 text-[var(--color-secondary)]">{r.team_name || "—"}</td>
               <td className="px-3 py-2 text-[var(--color-secondary)]">{r.area_name}</td>
               <td className="px-3 py-2 text-right">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onEdit(r)}
+                  title="Editar recurso"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
