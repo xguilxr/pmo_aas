@@ -32,7 +32,11 @@ import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 import {
   PERIOD_LABEL,
   SECTION_LABELS,
+  type AIReportTemplate,
   aiGenerateReport,
+  createAIReportTemplate,
+  deleteAIReportTemplate,
+  listAIReportTemplates,
   createReport,
   deleteReport,
   downloadReportHistory,
@@ -1660,7 +1664,17 @@ function HistoryKPICard({
 }
 
 // ENH-073: filtros segmented + búsqueda en historial.
-type HistoryBucket = "all" | "avance" | "seguimiento";
+type HistoryBucket = "all" | "avance" | "seguimiento" | "ai_custom";
+
+// BUG-055: label uniforme para todos los tipos de reporte que aparecen en
+// el historial. `ai_custom` es el tipo que persiste el endpoint
+// `/reports/ai-generate` cuando el usuario activa save_to_history.
+function reportTypeLabel(t: string): string {
+  if (t === "avance") return "Avance";
+  if (t === "seguimiento") return "Seguimiento";
+  if (t === "ai_custom") return "IA";
+  return t;
+}
 
 function ReportHistoryView({ projectId }: { projectId: string }) {
   const [items, setItems] = useState<ReportHistoryItem[]>([]);
@@ -1689,11 +1703,12 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
 
   // ENH-073: counts por bucket — alimentan los KPI cards y los pills.
   const counts = useMemo(() => {
-    const c = { all: items.length, avance: 0, seguimiento: 0, week: 0 };
+    const c = { all: items.length, avance: 0, seguimiento: 0, ai_custom: 0, week: 0 };
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     for (const it of items) {
       if (it.report_type === "avance") c.avance += 1;
       else if (it.report_type === "seguimiento") c.seguimiento += 1;
+      else if (it.report_type === "ai_custom") c.ai_custom += 1;
       if (new Date(it.generated_at).getTime() >= weekAgo) c.week += 1;
     }
     return c;
@@ -1704,7 +1719,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
     return items.filter((h) => {
       if (bucket !== "all" && h.report_type !== bucket) return false;
       if (q) {
-        const hay = `${h.generated_by_name ?? ""} ${h.report_type}`.toLowerCase();
+        const hay = `${h.generated_by_name ?? ""} ${reportTypeLabel(h.report_type)}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -1744,7 +1759,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
   if (loading) {
     return (
       <section className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-[var(--radius-lg)]" />
           ))}
@@ -1786,12 +1801,13 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
     { v: "all", label: "Todos", count: counts.all },
     { v: "avance", label: "Avance", count: counts.avance },
     { v: "seguimiento", label: "Seguimiento", count: counts.seguimiento },
+    { v: "ai_custom", label: "IA", count: counts.ai_custom },
   ];
 
   return (
     <section className="space-y-3">
       {/* ENH-073: KPI summary cards con acentos pastel — clicables como filtros. */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         <HistoryKPICard
           label="Total"
           value={counts.all}
@@ -1817,10 +1833,18 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
           onClick={() => setBucket("seguimiento")}
         />
         <HistoryKPICard
+          label="IA"
+          value={counts.ai_custom}
+          total={counts.all}
+          tone="warning"
+          active={bucket === "ai_custom"}
+          onClick={() => setBucket("ai_custom")}
+        />
+        <HistoryKPICard
           label="Última semana"
           value={counts.week}
           total={counts.all}
-          tone="warning"
+          tone="neutral"
           active={false}
           onClick={() => setBucket("all")}
         />
@@ -1947,7 +1971,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
               </td>
               <td className="px-3 py-2">
                 <Badge variant="neutral">
-                  {h.report_type === "avance" ? "Avance" : "Seguimiento"}
+                  {reportTypeLabel(h.report_type)}
                 </Badge>
               </td>
               <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
@@ -2129,6 +2153,91 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
 
   const filterCount = activeFilterCount(filters);
 
+  // ENH-080 — plantillas reusables del reporte IA.
+  const [templates, setTemplates] = useState<AIReportTemplate[]>([]);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listAIReportTemplates(projectId)
+      .then((rows) => {
+        if (!cancelled) setTemplates(rows);
+      })
+      .catch(() => {
+        /* lista de plantillas opcional — fallar silenciosamente. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  function applyTemplate(t: AIReportTemplate) {
+    setBase(t.base);
+    const c = t.config ?? {};
+    setIncludeKpis(c.include_kpis ?? true);
+    setIncludeTasks(c.include_tasks ?? true);
+    setIncludeRaid(c.include_raid ?? true);
+    setIncludeMilestones(c.include_milestones ?? true);
+    setFreeNotes(c.free_notes ?? "");
+    setFilters({
+      ...EMPTY_FILTERS,
+      date_from: c.date_from ?? "",
+      date_to: c.date_to ?? "",
+      criticalities: c.criticalities ?? [],
+      statuses: c.statuses ?? [],
+      severities: c.severities ?? [],
+    });
+  }
+
+  async function saveAsTemplate() {
+    const name = templateName.trim();
+    if (!name) {
+      setTemplateError("Ingresa un nombre para la plantilla.");
+      return;
+    }
+    setSavingTemplate(true);
+    setTemplateError(null);
+    try {
+      const tpl = await createAIReportTemplate(projectId, {
+        name,
+        base,
+        config: {
+          include_kpis: includeKpis,
+          include_tasks: includeTasks,
+          include_raid: includeRaid,
+          include_milestones: includeMilestones,
+          free_notes: freeNotes,
+          date_from: filters.date_from || null,
+          date_to: filters.date_to || null,
+          criticalities: filters.criticalities.length ? filters.criticalities : null,
+          statuses: filters.statuses.length ? filters.statuses : null,
+          severities: filters.severities.length ? filters.severities : null,
+        },
+      });
+      setTemplates((prev) => [tpl, ...prev]);
+      setTemplateName("");
+    } catch (err) {
+      setTemplateError(
+        err instanceof ApiError ? err.message : "No se pudo guardar la plantilla",
+      );
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  async function removeTemplate(id: string) {
+    try {
+      await deleteAIReportTemplate(id);
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      setTemplateError(
+        err instanceof ApiError ? err.message : "No se pudo borrar la plantilla",
+      );
+    }
+  }
+
   async function generate(saveToHistory: boolean) {
     if (saveToHistory) setSavingHistory(true);
     else setGenerating(true);
@@ -2296,6 +2405,69 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
             placeholder="Foco en hitos del Q2; tono ejecutivo; máximo 1 página."
           />
         </div>
+        {/* ENH-080: plantillas reusables — guardar config + cargar/borrar. */}
+        <fieldset className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
+          <legend className="px-1 text-xs font-medium text-[var(--color-secondary)]">
+            Plantillas guardadas
+          </legend>
+          {templateError ? (
+            <p className="text-xs text-[var(--color-danger-fg)]">{templateError}</p>
+          ) : null}
+          <div className="flex gap-1.5">
+            <Input
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Nombre de la plantilla"
+              maxLength={120}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={saveAsTemplate}
+              loading={savingTemplate}
+              disabled={savingTemplate || !templateName.trim()}
+            >
+              Guardar
+            </Button>
+          </div>
+          {templates.length > 0 ? (
+            <ul className="space-y-1">
+              {templates.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-app)] px-2 py-1.5"
+                >
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className="flex-1 truncate text-left text-xs font-medium text-[var(--color-primary)] hover:underline"
+                    title="Cargar configuración de esta plantilla"
+                  >
+                    {t.name}
+                  </button>
+                  <span className="rounded-full bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-tertiary)]">
+                    {t.base}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeTemplate(t.id)}
+                    className="text-[var(--color-tertiary)] hover:text-[var(--color-danger-fg)]"
+                    title="Borrar plantilla"
+                    aria-label={`Borrar plantilla ${t.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-[var(--color-tertiary)]">
+              Aún no guardas ninguna plantilla para este proyecto.
+            </p>
+          )}
+        </fieldset>
         <div className="flex flex-col gap-2">
           <Button
             type="button"

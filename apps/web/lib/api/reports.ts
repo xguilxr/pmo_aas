@@ -351,3 +351,53 @@ export function aiGenerateReport(
     { method: "POST", body },
   );
 }
+
+// ENH-080 — Plantillas reusables del reporte IA.
+export type AIReportTemplateConfig = {
+  include_kpis?: boolean;
+  include_tasks?: boolean;
+  include_raid?: boolean;
+  include_milestones?: boolean;
+  free_notes?: string;
+  area_ids?: string[] | null;
+  assignee_actor_ids?: string[] | null;
+  criticalities?: string[] | null;
+  statuses?: string[] | null;
+  severities?: string[] | null;
+  date_from?: string | null;
+  date_to?: string | null;
+};
+
+export type AIReportTemplate = {
+  id: string;
+  project_id: string;
+  name: string;
+  base: "avance" | "seguimiento" | "custom";
+  config: AIReportTemplateConfig;
+  created_by: string | null;
+  created_at: string;
+};
+
+export function listAIReportTemplates(
+  projectId: string,
+): Promise<AIReportTemplate[]> {
+  return apiFetch<AIReportTemplate[]>(
+    `/api/v1/projects/${projectId}/ai-report-templates`,
+  );
+}
+
+export function createAIReportTemplate(
+  projectId: string,
+  body: { name: string; base: "avance" | "seguimiento" | "custom"; config: AIReportTemplateConfig },
+): Promise<AIReportTemplate> {
+  return apiFetch<AIReportTemplate>(
+    `/api/v1/projects/${projectId}/ai-report-templates`,
+    { method: "POST", body },
+  );
+}
+
+export function deleteAIReportTemplate(templateId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/ai-report-templates/${templateId}`, {
+    method: "DELETE",
+  });
+}

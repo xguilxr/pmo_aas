@@ -105,4 +105,62 @@ async def test_ai_platform_returns_html_with_save_to_history(client, db_session)
         f"/api/v1/projects/{proj}/report-history", headers=auth["_authz"]
     )
     assert h.status_code == 200
-    assert any(item["id"] == body["history_id"] for item in h.json())
+    rows = h.json()
+    assert any(item["id"] == body["history_id"] for item in rows)
+    # BUG-055: el reporte IA se registra como `ai_custom` cuando base="custom",
+    # o conserva el base original (avance/seguimiento) si así fue solicitado.
+    entry = next(it for it in rows if it["id"] == body["history_id"])
+    assert entry["report_type"] in ("avance", "ai_custom")
+
+
+@pytest.mark.asyncio
+async def test_ai_custom_history_download_serves_html(client, db_session):
+    """BUG-055: download/preview de un reporte IA debe devolver el HTML
+    guardado, no intentar renderizar el template Avance/Seguimiento (que
+    explotaría con sections={"_html": ..., "_base": "custom"})."""
+    auth, proj = await _setup(client, db_session, ai_mode="platform")
+    fake = AIResult(
+        text="<h2>Reporte personalizado</h2><p>Foco en Q2.</p>",
+        model="groq-stub",
+        tokens_in=5,
+        tokens_out=10,
+    )
+
+    async def _fake_generate(*args, **kwargs):
+        return fake
+
+    async def _fake_resolve_groq(*args, **kwargs):
+        return {"api_key": "test-key", "model": "groq-stub"}
+
+    with patch(
+        "app.services.ai.provider.generate_for_tenant",
+        side_effect=_fake_generate,
+    ), patch(
+        "app.services.ai.platform_config.resolve_groq_config",
+        side_effect=_fake_resolve_groq,
+    ):
+        r = await client.post(
+            f"/api/v1/projects/{proj}/reports/ai-generate",
+            json={"base": "custom", "save_to_history": True},
+            headers=auth["_authz"],
+        )
+    assert r.status_code == 200, r.text
+    history_id = r.json()["history_id"]
+
+    # Inline preview → text/html con el snapshot del HTML.
+    dl = await client.get(
+        f"/api/v1/report-history/{history_id}/download?inline=true",
+        headers=auth["_authz"],
+    )
+    assert dl.status_code == 200, dl.text
+    assert dl.headers["content-type"].startswith("text/html")
+    assert b"Reporte personalizado" in dl.content
+    assert "inline" in dl.headers.get("content-disposition", "")
+
+    # Download → mismo contenido pero con disposition attachment.
+    att = await client.get(
+        f"/api/v1/report-history/{history_id}/download",
+        headers=auth["_authz"],
+    )
+    assert att.status_code == 200
+    assert "attachment" in att.headers.get("content-disposition", "")
