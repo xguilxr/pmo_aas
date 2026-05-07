@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
+  Building2,
   ChevronDown,
   ChevronRight,
   Download,
@@ -189,6 +190,95 @@ function CriticalityChip({ value }: { value: TaskCriticality }) {
     >
       {TASK_CRITICALITY_LABEL[value]}
     </span>
+  );
+}
+
+// ENH-066 + ENH-077: agrupación por Área. Render header de grupo +
+// TaskList plana por área. Sólo se muestran áreas con al menos 1
+// fila visible (chips × área filter ya aplicados en filteredTasks).
+function AreaGroupedList({
+  tasks,
+  areas,
+  loading,
+  onDelete,
+  onEdit,
+  showProjectCols,
+}: {
+  tasks: Task[];
+  areas: Area[];
+  loading: boolean;
+  onDelete?: (t: Task) => void;
+  onEdit?: (t: Task) => void;
+  showProjectCols: boolean;
+}) {
+  const grouped = useMemo(() => {
+    const byArea = new Map<string, Task[]>();
+    for (const t of tasks) {
+      const key = t.area_id ?? "__unassigned__";
+      if (!byArea.has(key)) byArea.set(key, []);
+      byArea.get(key)!.push(t);
+    }
+    return byArea;
+  }, [tasks]);
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (tasks.length === 0) {
+    return (
+      <div className="p-8 text-center text-sm text-[var(--color-tertiary)]">
+        Sin tareas registradas (filtros activos pueden estar ocultando todo).
+      </div>
+    );
+  }
+
+  // Áreas con tareas (ordenadas por nombre); "Sin asignar" al final.
+  const areaOrder = areas
+    .filter((a) => grouped.has(a.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const unassigned = grouped.get("__unassigned__");
+
+  return (
+    <div>
+      {areaOrder.map((a) => (
+        <div key={a.id}>
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
+            {a.name}{" "}
+            <span className="ml-1 text-[var(--color-tertiary)] tabular-nums">
+              ({grouped.get(a.id)!.length})
+            </span>
+          </div>
+          <TaskList
+            tasks={grouped.get(a.id)!}
+            loading={false}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            showProjectCols={showProjectCols}
+          />
+        </div>
+      ))}
+      {unassigned ? (
+        <div>
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Sin asignar{" "}
+            <span className="ml-1 tabular-nums">({unassigned.length})</span>
+          </div>
+          <TaskList
+            tasks={unassigned}
+            loading={false}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            showProjectCols={showProjectCols}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -453,6 +543,8 @@ function PlanInner() {
   // ENH-047: agrupación jerárquica por WBS. Default OFF para no romper
   // la UX actual; persiste en localStorage por proyecto.
   const [groupByWbs, setGroupByWbs] = useState(false);
+  // ENH-066: agrupación por Área (mutex con WBS).
+  const [groupByArea, setGroupByArea] = useState(false);
   const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
   // ENH-067: nivel rápido WBS. "manual" deja `collapsedWbs` tal cual
   // (default — usuario expande/colapsa con chevron). 1..4 colapsan
@@ -501,22 +593,42 @@ function PlanInner() {
     try {
       const v = window.localStorage.getItem(`plan-grouping:${id}`);
       if (v === "wbs") setGroupByWbs(true);
+      else if (v === "area") setGroupByArea(true);
     } catch {
       /* localStorage puede fallar (modo privado, quota) — ignoramos. */
     }
   }, [id]);
 
+  // ENH-077: WBS y Área son mutex — sólo un agrupador a la vez.
+  function persistGrouping(mode: "wbs" | "area" | null) {
+    if (typeof window === "undefined") return;
+    try {
+      if (mode) window.localStorage.setItem(`plan-grouping:${id}`, mode);
+      else window.localStorage.removeItem(`plan-grouping:${id}`);
+    } catch {
+      /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
+    }
+  }
+
   function toggleGroupByWbs() {
     const next = !groupByWbs;
     setGroupByWbs(next);
-    if (typeof window !== "undefined") {
-      try {
-        if (next) window.localStorage.setItem(`plan-grouping:${id}`, "wbs");
-        else window.localStorage.removeItem(`plan-grouping:${id}`);
-      } catch {
-        /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
-      }
+    if (next) setGroupByArea(false); // mutex
+    persistGrouping(next ? "wbs" : null);
+  }
+
+  function toggleGroupByArea() {
+    const next = !groupByArea;
+    setGroupByArea(next);
+    if (next) {
+      setGroupByWbs(false); // mutex
+      // ENH-077: cada agrupador tiene su propio set de colapsado;
+      // al cambiar de WBS a Área limpiamos collapsedWbs para no
+      // contaminar.
+      setCollapsedWbs(new Set());
+      setWbsLevel("manual");
     }
+    persistGrouping(next ? "area" : null);
   }
 
   function toggleCollapsedWbs(wbs: string) {
@@ -950,6 +1062,19 @@ function PlanInner() {
               <Network className="h-4 w-4" aria-hidden />
               WBS
             </Button>
+            {/* ENH-066: toggle agrupación por Área (mutex con WBS). */}
+            <Button
+              type="button"
+              size="sm"
+              variant={groupByArea ? "primary" : "ghost"}
+              onClick={toggleGroupByArea}
+              aria-label="Agrupar por Área"
+              aria-pressed={groupByArea}
+              title="Agrupar tareas por Área responsable"
+            >
+              <Building2 className="h-4 w-4" aria-hidden />
+              Área
+            </Button>
             {/* ENH-067: niveles rápidos WBS (1/2/3/4/Manual). Sólo
                 visibles cuando WBS está ON. */}
             {groupByWbs ? (
@@ -1135,16 +1260,30 @@ function PlanInner() {
             </div>
           ) : null}
         </div>
-        <TaskList
-          tasks={filteredTasks}
-          loading={loadingTasks}
-          onDelete={handleDeleteTask}
-          onEdit={openEditTask}
-          groupByWbs={groupByWbs}
-          collapsed={collapsedWbs}
-          onToggleCollapse={toggleCollapsedWbs}
-          showProjectCols={showProjectCols}
-        />
+        {groupByArea ? (
+          // ENH-066: agrupación por Área. Render una TaskList por
+          // grupo con header. Áreas vacías post-filtro se omiten
+          // (ENH-077 CA1/CA3).
+          <AreaGroupedList
+            tasks={filteredTasks}
+            areas={areas}
+            loading={loadingTasks}
+            onDelete={handleDeleteTask}
+            onEdit={openEditTask}
+            showProjectCols={showProjectCols}
+          />
+        ) : (
+          <TaskList
+            tasks={filteredTasks}
+            loading={loadingTasks}
+            onDelete={handleDeleteTask}
+            onEdit={openEditTask}
+            groupByWbs={groupByWbs}
+            collapsed={collapsedWbs}
+            onToggleCollapse={toggleCollapsedWbs}
+            showProjectCols={showProjectCols}
+          />
+        )}
       </section>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
