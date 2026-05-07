@@ -640,6 +640,15 @@ class AIGenerateResponse(BaseModel):
     history_id: str | None = None
 
 
+# US-101: reglas globales de orden compartidas entre el reporte IA y la
+# UI de listas (consumidas por ENH-071 / ENH-072 como default sort).
+REPORT_GLOBAL_ORDER_RULES = (
+    "Agrupa los items por área del proyecto. Dentro de cada área, ordena "
+    "por fecha fin (end_date) priorizando las fechas más cercanas a hoy "
+    "primero (más urgente arriba). Items sin área van al final bajo "
+    "'Sin área asignada'."
+)
+
 _AI_REPORT_SYSTEM_PROMPT = (
     "Eres un asistente PMO senior. Redacta un reporte de proyecto en HTML "
     "limpio (sin <html>/<body> wrappers, sólo el bloque interno) en español. "
@@ -651,7 +660,9 @@ _AI_REPORT_SYSTEM_PROMPT = (
     "(end_date < hoy y status != 'done'). No incluyas tareas de baja "
     "prioridad ni completadas a menos que el usuario lo pida explícitamente "
     "en sus notas adicionales. Mantén el reporte breve (no más de 6-8 "
-    "secciones cortas)."
+    "secciones cortas). "
+    # US-101: regla global de orden para todo output del módulo de reportes.
+    f"REGLA DE ORDEN OBLIGATORIA: {REPORT_GLOBAL_ORDER_RULES}"
 )
 
 
@@ -677,7 +688,8 @@ async def ai_generate_report(
     """
     import json
 
-    from app.core.errors import business_rule
+    from app.core.errors import business_rule, service_unavailable
+    from app.services.ai.platform_config import resolve_groq_config
     from app.services.ai.provider import generate_for_tenant
     from app.services.ai.tenant_ai import load_tenant_ai
     from app.services.operational_reports import build_seguimiento_context
@@ -690,6 +702,19 @@ async def ai_generate_report(
         raise business_rule(
             "El tenant no tiene IA configurada (ai_mode=disabled)"
         )
+
+    # US-101: unifica con el code path de minutas (workers/tasks/ai.py:252)
+    # — el endpoint debe resolver la config Groq y pasarla explícita al
+    # provider; sin esto el caller falla con `groq_no_api_key`.
+    platform_groq = None
+    if tenant_cfg.mode == "platform":
+        platform_groq = await resolve_groq_config(db)
+        if platform_groq is None:
+            raise service_unavailable(
+                "El proveedor de IA (Groq) no está disponible: falta la API "
+                "key en plataforma.",
+                code="ai_provider_unavailable",
+            )
 
     cut_off = body.period_end or datetime.now(UTC).date()
     if body.base == "seguimiento":
@@ -733,6 +758,7 @@ async def ai_generate_report(
             user_prompt,
             system=_AI_REPORT_SYSTEM_PROMPT,
             tenant_ai_mode=tenant_cfg.mode,
+            platform_groq_config=platform_groq,
             byo_config=tenant_cfg.byo,
             tenant_ollama_config=tenant_cfg.legacy_ollama,
             tenant_id=str(tenant_id),
