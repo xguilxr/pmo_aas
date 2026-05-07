@@ -454,6 +454,13 @@ function PlanInner() {
   // la UX actual; persiste en localStorage por proyecto.
   const [groupByWbs, setGroupByWbs] = useState(false);
   const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
+  // ENH-067: nivel rápido WBS. "manual" deja `collapsedWbs` tal cual
+  // (default — usuario expande/colapsa con chevron). 1..4 colapsan
+  // todos los WBS de profundidad N para que sólo se muestren niveles
+  // ≤ N. Cualquier toggle manual del chevron cambia el modo a "manual"
+  // automáticamente.
+  type WbsLevel = 1 | 2 | 3 | 4 | "manual";
+  const [wbsLevel, setWbsLevel] = useState<WbsLevel>("manual");
 
   // US-090: toggle visibilidad de columnas MS Project (Outline / Duration
   // / Predecesoras / Sucesoras). Default OFF para no saturar el ancho.
@@ -519,6 +526,22 @@ function PlanInner() {
       else next.add(wbs);
       return next;
     });
+    // ENH-067: cualquier toggle manual sale de los niveles rápidos.
+    setWbsLevel("manual");
+  }
+
+  // ENH-067: aplica un nivel rápido. Colapsa todos los WBS con
+  // `depth >= level` para que sólo se muestren los niveles 1..level.
+  function applyWbsLevel(level: WbsLevel) {
+    setWbsLevel(level);
+    if (level === "manual") return;
+    const next = new Set<string>();
+    for (const t of tasks) {
+      const w = t.wbs;
+      if (!w) continue;
+      if (wbsDepth(w) >= level) next.add(w);
+    }
+    setCollapsedWbs(next);
   }
 
   // ENH-006: editor de tareas inline (crear + eliminar) sin depender de
@@ -927,6 +950,39 @@ function PlanInner() {
               <Network className="h-4 w-4" aria-hidden />
               WBS
             </Button>
+            {/* ENH-067: niveles rápidos WBS (1/2/3/4/Manual). Sólo
+                visibles cuando WBS está ON. */}
+            {groupByWbs ? (
+              <div
+                className="flex items-center gap-0.5 rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-0.5 py-0.5"
+                aria-label="Nivel WBS rápido"
+              >
+                {([1, 2, 3, 4, "manual"] as const).map((lvl) => {
+                  const active = wbsLevel === lvl;
+                  return (
+                    <button
+                      key={String(lvl)}
+                      type="button"
+                      onClick={() => applyWbsLevel(lvl)}
+                      aria-pressed={active}
+                      title={
+                        lvl === "manual"
+                          ? "Modo manual (chevrons)"
+                          : `Mostrar hasta nivel ${lvl}`
+                      }
+                      className={cn(
+                        "h-6 rounded px-2 text-[11px] font-medium",
+                        active
+                          ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                          : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                      )}
+                    >
+                      {lvl === "manual" ? "Manual" : lvl}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             {/* US-090: toggle columnas tipo MS Project (Outline / Duration
                 / Predecesoras / Sucesoras). */}
             <Button
