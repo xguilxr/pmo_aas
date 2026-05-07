@@ -575,6 +575,53 @@ async def list_report_history(
     return out
 
 
+@router.delete("/report-history/{history_id}", status_code=204)
+async def delete_report_history(
+    history_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-081: borra una entry del historial (house-keeping). También
+    borra el `Report` source si todavía existe — el user pidió liberar
+    espacio explícitamente."""
+    tenant_id = _tenant(cu)
+    h = (
+        await db.execute(
+            select(ReportHistory).where(
+                ReportHistory.id == str(history_id),
+                ReportHistory.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if h is None:
+        raise not_found("Reporte de historial")
+    source_id = h.source_report_id
+    await db.delete(h)
+    if source_id is not None:
+        rep = (
+            await db.execute(
+                select(Report).where(
+                    Report.id == str(source_id),
+                    Report.tenant_id == str(tenant_id),
+                )
+            )
+        ).scalar_one_or_none()
+        if rep is not None:
+            await db.delete(rep)
+    await write_audit(
+        db,
+        action="report_history.delete",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="report_history",
+        entity_id=str(history_id),
+        details={"source_report_id": str(source_id) if source_id else None},
+    )
+    await db.commit()
+    return Response(status_code=204)
+
+
 @router.get("/report-history/{history_id}/download")
 async def download_report_history(
     history_id: UUID,
@@ -853,7 +900,32 @@ async def ai_generate_report(
         )
         body_html = (res.text or "").strip()
     except Exception as exc:
-        raise business_rule(f"La IA falló al generar el reporte: {exc}") from exc
+        # BUG-057: si el provider falla, propagamos un mensaje útil al user
+        # y registramos el traceback completo para debugging server-side.
+        import logging
+
+        logging.getLogger("app.reports.ai").exception(
+            "AI generate failed for tenant=%s project=%s mode=%s",
+            tenant_id, project.id, tenant_cfg.mode,
+        )
+        msg = str(exc).strip()
+        if not msg:
+            # Excepciones tipo httpx con response body vacío → caemos a repr.
+            msg = repr(exc) or type(exc).__name__
+        # Si la excepción trae un response HTTP, anexa status + body trimmed.
+        resp = getattr(exc, "response", None)
+        if resp is not None:
+            status = getattr(resp, "status_code", None)
+            try:
+                body_text = resp.text if hasattr(resp, "text") else ""
+            except Exception:
+                body_text = ""
+            if status or body_text:
+                snippet = (body_text or "")[:240]
+                msg = f"{msg} [HTTP {status}] {snippet}".strip()
+        raise business_rule(
+            f"La IA falló al generar el reporte ({type(exc).__name__}): {msg}"
+        ) from exc
 
     # BUG-056: estilos alineados al DS y al base.html de PDF (DM Sans +
     # JetBrains Mono, paleta var(--chrome|--muted|--border)). El HTML se

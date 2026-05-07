@@ -36,6 +36,7 @@ import {
   aiGenerateReport,
   createAIReportTemplate,
   deleteAIReportTemplate,
+  deleteReportHistory,
   listAIReportTemplates,
   createReport,
   deleteReport,
@@ -1685,6 +1686,25 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
   // ENH-073: bucket activo + búsqueda inline.
   const [bucket, setBucket] = useState<HistoryBucket>("all");
   const [search, setSearch] = useState("");
+  // ENH-081: confirmación de delete (id de la entry en proceso de borrar).
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteReportHistory(pendingDelete);
+      setItems((prev) => prev.filter((it) => it.id !== pendingDelete));
+      setPendingDelete(null);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo borrar el reporte",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     setSort(loadHistorySort(projectId));
@@ -2001,6 +2021,16 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                 >
                   <Download className="h-4 w-4" aria-hidden />
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPendingDelete(h.id)}
+                  title="Borrar"
+                  aria-label="Borrar este reporte"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </Button>
               </td>
             </tr>
           ))}
@@ -2008,6 +2038,38 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
       </table>
     </section>
       )}
+      {/* ENH-081: Modal de confirmación para borrar reporte. */}
+      <Modal
+        open={pendingDelete !== null}
+        onClose={() => (deleting ? null : setPendingDelete(null))}
+        title="Borrar reporte"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-[var(--color-secondary)]">
+            ¿Borrar este reporte del historial? Esta acción no se puede
+            deshacer.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setPendingDelete(null)}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={confirmDelete}
+              loading={deleting}
+              disabled={deleting}
+            >
+              Borrar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }

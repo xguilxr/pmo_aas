@@ -114,6 +114,40 @@ async def test_ai_platform_returns_html_with_save_to_history(client, db_session)
 
 
 @pytest.mark.asyncio
+async def test_bug057_provider_failure_includes_exception_context(client, db_session):
+    """BUG-057: cuando el provider falla con un exception sin str(), el
+    endpoint debe incluir tipo + repr en el detail (no solo el prefijo)."""
+    auth, proj = await _setup(client, db_session, ai_mode="platform")
+
+    class _SilentProviderError(Exception):
+        def __str__(self):  # str(exc) intencionalmente vacío
+            return ""
+
+    async def _fake_generate(*args, **kwargs):
+        raise _SilentProviderError()
+
+    async def _fake_resolve_groq(*args, **kwargs):
+        return {"api_key": "test-key", "model": "groq-stub"}
+
+    with patch(
+        "app.services.ai.provider.generate_for_tenant",
+        side_effect=_fake_generate,
+    ), patch(
+        "app.services.ai.platform_config.resolve_groq_config",
+        side_effect=_fake_resolve_groq,
+    ):
+        r = await client.post(
+            f"/api/v1/projects/{proj}/reports/ai-generate",
+            json={"base": "avance", "save_to_history": False},
+            headers=auth["_authz"],
+        )
+    assert r.status_code in (400, 422), r.text
+    detail = r.json()["detail"]
+    msg = detail["detail"] if isinstance(detail, dict) else detail
+    assert "_SilentProviderError" in msg, msg
+
+
+@pytest.mark.asyncio
 async def test_ai_custom_history_download_serves_html(client, db_session):
     """BUG-055: download/preview de un reporte IA debe devolver el HTML
     guardado, no intentar renderizar el template Avance/Seguimiento (que

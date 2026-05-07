@@ -317,6 +317,13 @@ export function previewReportHistory(historyId: string): Promise<void> {
   );
 }
 
+// ENH-081 — house-keeping: borrar entry del historial.
+export function deleteReportHistory(historyId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/report-history/${historyId}`, {
+    method: "DELETE",
+  });
+}
+
 // US-093 — Reportes: creación con IA + preview.
 export type AIReportGenerateBody = {
   base?: "avance" | "seguimiento" | "custom";
