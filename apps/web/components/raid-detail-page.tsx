@@ -2,33 +2,49 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, GitCommit, Shield, TriangleAlert } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Scale,
+  TriangleAlert,
+} from "lucide-react";
 
-import { IssueDetailBody, RiskDetailBody } from "@/components/raid-detail-body";
-import { RaidEditFields } from "@/components/raid-edit-fields";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { apiFetch, ApiError } from "@/lib/api";
+import { listUsers } from "@/lib/api/admin";
 import {
+  addIssueComment,
+  addRiskComment,
   ISSUE_STATUS_LABEL,
   ISSUE_TYPE_LABEL,
   RISK_STATUS_LABEL,
+  updateIssue,
+  updateRisk,
   type Issue,
   type IssueType,
   type Risk,
 } from "@/lib/api/modules";
+import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { cn } from "@/lib/cn";
 
 /**
- * US-065 — página dedicada de un ítem RAID.
+ * US-100 — vista detalle item RAID layout "Denso".
  *
- * Se usa en dos rutas:
- * - `/pmo/projects/[id]/raid/[raidId]` (scope proyecto).
- * - `/pmo/raid/[type]/[raidId]` (vista cross-tenant).
+ * Aplica a 4 tipos: risk, action, incident, decision. Spec canónica
+ * en `docs/design-system/raid-detail-denso.md`. Mantiene el contenido
+ * existente; cambia la organización: header card + strip 6 columnas
+ * + cards stacked + edit toggle global (no inline).
  *
- * Diferencia: el breadcrumb superior. El resto del layout es idéntico
- * (header + metadata + descripción + panel editable + historial).
+ * Ruta scope-proyecto: `/pmo/projects/[id]/raid/[raidId]`.
+ * Ruta cross-tenant: `/pmo/raid/[type]/[raidId]`.
  */
 
 export type RaidDetailType = "risk" | "action" | "incident" | "decision";
@@ -40,6 +56,80 @@ type HistoryEntry = {
   occurred_at: string;
   details: Record<string, unknown>;
 };
+
+type EditDraft = {
+  title: string;
+  description: string;
+  area_id: string;
+  owner_id: string;
+  category: string; // risk only
+  probability: number; // risk only
+  impact: number; // risk only
+  mitigation_strategy: string; // risk only
+  identified_at: string; // risk only
+  due_date: string; // risk only
+  closure_note: string; // risk only
+  type: IssueType;
+  priority: number | "";
+  reported_at: string;
+  committed_date: string;
+  resolution: string;
+};
+
+function emptyDraft(): EditDraft {
+  return {
+    title: "",
+    description: "",
+    area_id: "",
+    owner_id: "",
+    category: "",
+    probability: 1,
+    impact: 1,
+    mitigation_strategy: "",
+    identified_at: "",
+    due_date: "",
+    closure_note: "",
+    type: "action",
+    priority: "",
+    reported_at: "",
+    committed_date: "",
+    resolution: "",
+  };
+}
+
+function draftFromRisk(r: Risk): EditDraft {
+  return {
+    ...emptyDraft(),
+    title: r.title,
+    description: r.description ?? "",
+    area_id: r.area_id ?? "",
+    owner_id: r.owner_id ?? "",
+    category: r.category ?? "",
+    probability: r.probability ?? 1,
+    impact: r.impact ?? 1,
+    mitigation_strategy: r.mitigation_strategy ?? "",
+    identified_at: r.identified_at ?? "",
+    due_date: r.due_date ?? "",
+    closure_note: r.closure_note ?? "",
+  };
+}
+
+function draftFromIssue(i: Issue): EditDraft {
+  return {
+    ...emptyDraft(),
+    title: i.title,
+    description: i.description ?? "",
+    area_id: i.area_id ?? "",
+    owner_id: i.owner_id ?? "",
+    type: i.type,
+    priority: i.priority ?? "",
+    reported_at: i.reported_at
+      ? new Date(i.reported_at).toISOString().slice(0, 10)
+      : "",
+    committed_date: i.committed_date ?? "",
+    resolution: i.resolution ?? "",
+  };
+}
 
 export function RaidDetailPage({
   raidType,
@@ -57,6 +147,24 @@ export function RaidDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ENH-069: edit toggle global con draft transaccional.
+  const { has } = useMyPermissions();
+  const canEdit = has("raid:update") || has("raid:write");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<EditDraft>(emptyDraft());
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Selects del form: áreas + usuarios. Se cargan al entrar a edición.
+  const [areas, setAreas] = useState<ProjectArea[]>([]);
+  const [users, setUsers] = useState<
+    { id: string; full_name: string; email: string }[]
+  >([]);
+
+  // ENH-070: card unificada Comentarios + Historial.
+  const [commentText, setCommentText] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -66,7 +174,6 @@ export function RaidDetailPage({
       : `/api/v1/issues/${itemId}`;
     const entityType = isRisk ? "risk" : "issue";
     const historyUrl = `/api/v1/history?entity_type=${entityType}&entity_id=${itemId}`;
-
     Promise.all([
       apiFetch<Risk | Issue>(detailUrl),
       apiFetch<HistoryEntry[]>(historyUrl).catch(() => []),
@@ -95,6 +202,41 @@ export function RaidDetailPage({
       cancelled = true;
     };
   }, [isRisk, itemId]);
+
+  // Cargar áreas + usuarios al entrar a edición (lazy).
+  useEffect(() => {
+    if (!editing) return;
+    const projectId = isRisk ? risk?.project_id : issue?.project_id;
+    if (!projectId) return;
+    let cancelled = false;
+    Promise.all([
+      listProjectAreas(projectId, { is_active: true }),
+      listUsers({ is_active: true, page: 1, limit: 200 }).catch(() => ({
+        items: [] as { id: string; full_name?: string | null; email: string }[],
+      })),
+    ])
+      .then(([areaRows, usersResp]) => {
+        if (cancelled) return;
+        setAreas(areaRows);
+        setUsers(
+          (
+            usersResp as {
+              items: { id: string; full_name?: string | null; email: string }[];
+            }
+          ).items.map((u) => ({
+            id: u.id,
+            full_name: u.full_name ?? "",
+            email: u.email,
+          })),
+        );
+      })
+      .catch(() => {
+        /* non-fatal */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editing, isRisk, risk?.project_id, issue?.project_id]);
 
   const issueTypeFromTab = useMemo<IssueType | null>(() => {
     if (raidType === "action") return "action";
@@ -125,12 +267,14 @@ export function RaidDetailPage({
   const item = isRisk ? risk : issue;
   if (!item) return null;
 
+  // Iconos por tipo (spec): warning Riesgo, check Acción, alert
+  // Issue, scale Decisión.
   const Icon = isRisk
     ? TriangleAlert
     : issueTypeFromTab === "action"
-      ? GitCommit
+      ? CheckCircle2
       : issueTypeFromTab === "decision"
-        ? CheckCircle2
+        ? Scale
         : AlertTriangle;
 
   const statusLabel = isRisk
@@ -145,183 +289,557 @@ export function RaidDetailPage({
         (issue as Issue).type
       : "";
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-5 p-6">
-      {breadcrumb}
+  const statusVariant: "info" | "success" | "danger" | "neutral" = isRisk
+    ? raidStatusVariant((risk as Risk).status)
+    : issueStatusVariant((issue as Issue).status);
 
-      <header className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-        <div className="flex items-start justify-between gap-4">
+  function startEdit() {
+    if (isRisk && risk) setDraft(draftFromRisk(risk));
+    else if (!isRisk && issue) setDraft(draftFromIssue(issue));
+    setEditError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setEditError(null);
+  }
+
+  async function saveEdit() {
+    if (saving) return;
+    if (draft.title.trim().length < 2) {
+      setEditError("El título es obligatorio (mín. 2 caracteres).");
+      return;
+    }
+    setSaving(true);
+    setEditError(null);
+    try {
+      if (isRisk && risk) {
+        const updated = await updateRisk(risk.id, {
+          title: draft.title.trim(),
+          description: draft.description.trim() || null,
+          category: draft.category.trim() || null,
+          area_id: draft.area_id || undefined,
+          owner_id: draft.owner_id || null,
+          probability: draft.probability,
+          impact: draft.impact,
+          mitigation_strategy: draft.mitigation_strategy.trim() || null,
+          identified_at: draft.identified_at || null,
+          due_date: draft.due_date || null,
+          closure_note: draft.closure_note.trim() || null,
+        });
+        setRisk(updated);
+      } else if (!isRisk && issue) {
+        const updated = await updateIssue(issue.id, {
+          title: draft.title.trim(),
+          description: draft.description.trim() || null,
+          type: draft.type,
+          area_id: draft.area_id || undefined,
+          owner_id: draft.owner_id || null,
+          priority: draft.priority === "" ? null : Number(draft.priority),
+          reported_at: draft.reported_at
+            ? new Date(`${draft.reported_at}T00:00:00Z`).toISOString()
+            : null,
+          committed_date: draft.committed_date || null,
+          resolution: draft.resolution.trim() || null,
+        });
+        setIssue(updated);
+      }
+      setEditing(false);
+    } catch (err) {
+      setEditError(
+        err instanceof ApiError ? err.message : "No se pudo guardar los cambios",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function postComment() {
+    if (postingComment) return;
+    const text = commentText.trim();
+    if (!text) return;
+    setPostingComment(true);
+    try {
+      if (isRisk && risk) {
+        const updated = await addRiskComment(risk.id, { text });
+        setRisk(updated);
+      } else if (!isRisk && issue) {
+        const updated = await addIssueComment(issue.id, { text });
+        setIssue(updated);
+      }
+      setCommentText("");
+    } catch {
+      /* el caller no tiene un banner global; se puede mejorar */
+    } finally {
+      setPostingComment(false);
+    }
+  }
+
+  const fmtDate = (iso: string | null | undefined) => {
+    if (!iso) return null;
+    if (iso.length === 10) return iso; // YYYY-MM-DD
+    try {
+      return new Date(iso).toISOString().slice(0, 10);
+    } catch {
+      return iso;
+    }
+  };
+
+  // BUG-052: el breadcrumb canónico vive en el padre (route page).
+  return (
+    <div className="mx-auto max-w-5xl space-y-3 p-6">
+      {/* Fila de navegación: breadcrumb + botón Editar global */}
+      <div className="flex items-center justify-between gap-2 px-0">
+        <div className="min-w-0 flex-1">{breadcrumb}</div>
+        {canEdit ? (
+          <Button
+            type="button"
+            variant={editing ? "secondary" : "primary"}
+            size="sm"
+            onClick={() => (editing ? cancelEdit() : startEdit())}
+            disabled={saving}
+          >
+            {editing ? "Editando…" : "Editar"}
+          </Button>
+        ) : null}
+      </div>
+
+      {/* Header card: bloque superior (icono + ID/tipo/estado/sev + título)
+          + strip de metadatos (6 columnas) */}
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <header className="flex flex-col gap-2 px-[18px] py-[14px]">
           <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)]">
+            <div className="mt-0.5 flex h-9 w-9 flex-none items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)]">
               <Icon className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
             </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-mono uppercase tracking-wide text-[var(--color-tertiary)]">
-                {item.folio} · {typeLabel}
-              </p>
-              <h1 className="mt-0.5 text-xl font-semibold text-[var(--color-primary)]">
-                {item.title}
-              </h1>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
+                    {item.folio}
+                  </span>
+                  <span className="text-[var(--color-tertiary)]">·</span>
+                  <span
+                    className="rounded border border-[var(--chrome-soft-border,_var(--border-default))] bg-[var(--chrome-soft-bg,_var(--color-subtle))] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--chrome-soft-text,_var(--color-tertiary))]"
+                  >
+                    {typeLabel}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={statusVariant}>{statusLabel}</Badge>
+                  {isRisk && (risk as Risk).severity != null ? (
+                    <Badge
+                      variant={
+                        ((risk as Risk).severity ?? 0) >= 12
+                          ? "danger"
+                          : ((risk as Risk).severity ?? 0) >= 6
+                            ? "warning"
+                            : "success"
+                      }
+                    >
+                      Sev {(risk as Risk).severity}
+                    </Badge>
+                  ) : null}
+                  {!isRisk && (issue as Issue).priority != null ? (
+                    <Badge variant="neutral">P{(issue as Issue).priority}</Badge>
+                  ) : null}
+                </div>
+              </div>
+              {editing ? (
+                <Input
+                  value={draft.title}
+                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                  className="text-[17px] font-semibold"
+                />
+              ) : (
+                <h1
+                  className="text-[17px] font-semibold leading-snug text-[var(--color-primary)]"
+                  style={{ lineHeight: 1.4 }}
+                >
+                  {item.title}
+                </h1>
+              )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="neutral">{statusLabel}</Badge>
-            {isRisk && (risk as Risk).severity != null ? (
-              <Badge
-                variant={
-                  ((risk as Risk).severity ?? 0) >= 13
-                    ? "danger"
-                    : ((risk as Risk).severity ?? 0) >= 6
-                      ? "warning"
-                      : "success"
-                }
-              >
-                Sev {(risk as Risk).severity}
-              </Badge>
-            ) : null}
-            {!isRisk && (issue as Issue).priority != null ? (
-              <Badge variant="neutral">P{(issue as Issue).priority}</Badge>
-            ) : null}
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="grid gap-5 md:grid-cols-[260px_1fr]">
-        <aside className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-          <SidebarField label="Área" value={item.area?.name ?? "—"} />
-          <SidebarField
-            label="Responsable"
-            value={
-              item.owner?.full_name ||
-              item.owner?.email ||
-              (item.owner_id ? "Usuario eliminado" : "—")
-            }
-          />
-          <SidebarField
-            label="F. Creación"
-            value={
-              isRisk
-                ? (risk as Risk).identified_at ?? "—"
-                : (issue as Issue).reported_at
-                  ? new Date((issue as Issue).reported_at as string)
-                      .toISOString()
-                      .slice(0, 10)
-                  : "—"
-            }
-          />
-          <SidebarField
-            label="F. Compromiso"
-            value={
-              isRisk
-                ? (risk as Risk).due_date ?? "—"
-                : (issue as Issue).committed_date ?? "—"
-            }
-          />
-          {isRisk ? (
-            <SidebarField
-              label="P × I"
-              value={`${(risk as Risk).probability ?? "—"} × ${(risk as Risk).impact ?? "—"}`}
-            />
-          ) : null}
-          {isRisk ? (
-            <SidebarField
-              label="Categoría"
-              value={(risk as Risk).category ?? "—"}
-            />
-          ) : null}
-          <SidebarField
-            label="Proyecto"
-            value={
-              <Link
-                href={`/pmo/projects/${item.project_id}`}
-                className="font-mono text-[12px] text-[var(--color-accent)] hover:underline"
+        {/* Strip 6 columnas con borde superior + fondo soft. */}
+        <div className="grid gap-4 border-t border-[var(--border-default)] bg-[var(--chrome-soft-bg,_var(--color-subtle))] px-[18px] py-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          {/* Área */}
+          <StripCell label="Área">
+            {editing ? (
+              <Select
+                value={draft.area_id}
+                onChange={(e) => setDraft({ ...draft, area_id: e.target.value })}
               >
-                {item.project_id.slice(0, 8)}…
-              </Link>
-            }
-          />
-        </aside>
-
-        <div className="space-y-5">
-          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-            <h2 className="mb-2 text-sm font-semibold text-[var(--color-primary)]">
-              Descripción
-            </h2>
-            <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
-              {item.description || (
-                <span className="italic text-[var(--color-tertiary)]">
-                  Sin descripción.
+                <option value="">— sin área —</option>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              item.area?.name ?? <Empty />
+            )}
+          </StripCell>
+          {/* Responsable / Decisor */}
+          <StripCell label={raidType === "decision" ? "Decisor" : "Responsable"}>
+            {editing ? (
+              <Select
+                value={draft.owner_id}
+                onChange={(e) => setDraft({ ...draft, owner_id: e.target.value })}
+              >
+                <option value="">— sin asignar —</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name?.trim() || u.email}
+                  </option>
+                ))}
+              </Select>
+            ) : item.owner?.full_name || item.owner?.email ? (
+              item.owner.full_name || item.owner.email
+            ) : (
+              <Empty />
+            )}
+          </StripCell>
+          {/* Centro: P×I (risk) | Prioridad (action) | Severidad (issue) | Tipo decisión (decision) */}
+          {isRisk ? (
+            <StripCell label="P × I">
+              {editing ? (
+                <div className="flex items-center gap-1">
+                  <Select
+                    value={String(draft.probability)}
+                    onChange={(e) =>
+                      setDraft({ ...draft, probability: Number(e.target.value) })
+                    }
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="text-[var(--color-tertiary)]">×</span>
+                  <Select
+                    value={String(draft.impact)}
+                    onChange={(e) =>
+                      setDraft({ ...draft, impact: Number(e.target.value) })
+                    }
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : (
+                <span>
+                  {(risk as Risk).probability ?? "—"} ×{" "}
+                  {(risk as Risk).impact ?? "—"}
+                  <span className="ml-1 text-[var(--color-tertiary)]">
+                    = {(risk as Risk).severity ?? "—"}
+                  </span>
                 </span>
               )}
+            </StripCell>
+          ) : raidType === "decision" ? (
+            <StripCell label="Tipo decisión">{typeLabel}</StripCell>
+          ) : raidType === "incident" ? (
+            <StripCell label="Severidad">
+              {(issue as Issue).priority != null ? (
+                `P${(issue as Issue).priority}`
+              ) : (
+                <Empty />
+              )}
+            </StripCell>
+          ) : (
+            <StripCell label="Prioridad">
+              {editing ? (
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={draft.priority}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      priority: e.target.value === "" ? "" : Number(e.target.value),
+                    })
+                  }
+                />
+              ) : (issue as Issue).priority != null ? (
+                `P${(issue as Issue).priority}`
+              ) : (
+                <Empty />
+              )}
+            </StripCell>
+          )}
+          {/* Categoría / Estado de aprobación */}
+          {isRisk ? (
+            <StripCell label="Categoría">
+              {editing ? (
+                <Input
+                  value={draft.category}
+                  onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+                />
+              ) : (
+                (risk as Risk).category ?? <Empty />
+              )}
+            </StripCell>
+          ) : raidType === "decision" ? (
+            <StripCell label="Estado aprobación">{statusLabel}</StripCell>
+          ) : (
+            <StripCell label="Categoría">
+              <Empty />
+            </StripCell>
+          )}
+          {/* F. Creación */}
+          <StripCell label="F. Creación">
+            {editing && isRisk ? (
+              <Input
+                type="date"
+                value={draft.identified_at}
+                onChange={(e) =>
+                  setDraft({ ...draft, identified_at: e.target.value })
+                }
+              />
+            ) : editing && !isRisk ? (
+              <Input
+                type="date"
+                value={draft.reported_at}
+                onChange={(e) =>
+                  setDraft({ ...draft, reported_at: e.target.value })
+                }
+              />
+            ) : (
+              fmtDate(
+                isRisk
+                  ? (risk as Risk).identified_at
+                  : (issue as Issue).reported_at,
+              ) ?? <Empty />
+            )}
+          </StripCell>
+          {/* F. Compromiso / Resolución / Vigencia */}
+          <StripCell
+            label={
+              raidType === "incident"
+                ? "F. Resolución"
+                : raidType === "decision"
+                  ? "F. Vigencia"
+                  : "F. Compromiso"
+            }
+          >
+            {editing && isRisk ? (
+              <Input
+                type="date"
+                value={draft.due_date}
+                onChange={(e) => setDraft({ ...draft, due_date: e.target.value })}
+              />
+            ) : editing && !isRisk ? (
+              <Input
+                type="date"
+                value={draft.committed_date}
+                onChange={(e) =>
+                  setDraft({ ...draft, committed_date: e.target.value })
+                }
+              />
+            ) : (
+              fmtDate(
+                isRisk
+                  ? (risk as Risk).due_date
+                  : (issue as Issue).committed_date,
+              ) ?? <Empty />
+            )}
+          </StripCell>
+        </div>
+      </section>
+
+      {/* ENH-069: banner modo edición + Cancelar/Guardar */}
+      {editing ? (
+        <section className="flex items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--info-border,_var(--border-default))] bg-[var(--info-bg,_var(--color-subtle))] px-[18px] py-2.5">
+          <p className="text-[13px] text-[var(--info-fg,_var(--color-primary))]">
+            Modo edición activo.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={cancelEdit}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" size="sm" onClick={saveEdit} loading={saving}>
+              Guardar
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {editError ? <Banner variant="danger">{editError}</Banner> : null}
+
+      {/* Card Descripción */}
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <header className="border-b border-[var(--border-default)] px-4 py-2.5">
+          <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
+            Descripción
+          </h2>
+        </header>
+        <div className="px-4 py-3">
+          {editing ? (
+            <Textarea
+              value={draft.description}
+              onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+              rows={4}
+            />
+          ) : item.description ? (
+            <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
+              {item.description}
             </p>
-            {isRisk && (risk as Risk).mitigation_strategy ? (
-              <div className="mt-4">
-                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-                  Estrategia de mitigación
-                </h3>
-                <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
-                  {(risk as Risk).mitigation_strategy}
-                </p>
-              </div>
-            ) : null}
-            {!isRisk && (issue as Issue).resolution ? (
-              <div className="mt-4">
-                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-                  Resolución
-                </h3>
-                <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
-                  {(issue as Issue).resolution}
-                </p>
-              </div>
-            ) : null}
-          </section>
+          ) : (
+            <p className="text-[13px] italic text-[var(--color-tertiary)]">
+              Sin descripción.
+            </p>
+          )}
+          {/* Mitigation strategy / Resolution editables en edit mode */}
+          {editing && isRisk ? (
+            <div className="mt-3">
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                Estrategia de mitigación
+              </label>
+              <Textarea
+                value={draft.mitigation_strategy}
+                onChange={(e) =>
+                  setDraft({ ...draft, mitigation_strategy: e.target.value })
+                }
+                rows={2}
+              />
+            </div>
+          ) : isRisk && (risk as Risk).mitigation_strategy ? (
+            <div className="mt-3">
+              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                Estrategia de mitigación
+              </h3>
+              <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
+                {(risk as Risk).mitigation_strategy}
+              </p>
+            </div>
+          ) : null}
+          {editing && !isRisk ? (
+            <div className="mt-3">
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                Resolución
+              </label>
+              <Textarea
+                value={draft.resolution}
+                onChange={(e) => setDraft({ ...draft, resolution: e.target.value })}
+                rows={2}
+              />
+            </div>
+          ) : !isRisk && (issue as Issue).resolution ? (
+            <div className="mt-3">
+              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                Resolución
+              </h3>
+              <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
+                {(issue as Issue).resolution}
+              </p>
+            </div>
+          ) : null}
+          {editing && isRisk ? (
+            <div className="mt-3">
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                Nota de cierre (opcional)
+              </label>
+              <Textarea
+                value={draft.closure_note}
+                onChange={(e) =>
+                  setDraft({ ...draft, closure_note: e.target.value })
+                }
+                rows={2}
+                placeholder="Solo aplica si el estado pasa a Cerrado o Materializado"
+              />
+            </div>
+          ) : null}
+        </div>
+      </section>
 
-          <section className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
-              Edición y actividad
-            </h2>
-            {/* ENH-036 + ENH-054: edición completa inline. La affordance
-                ahora es un card explícito con CTA primario. */}
-            {isRisk ? (
-              <RaidEditFields
-                kind="risk"
-                item={risk as Risk}
-                onSaved={(r) => setRisk(r)}
-              />
-            ) : (
-              <RaidEditFields
-                kind="issue"
-                item={issue as Issue}
-                onSaved={(i) => setIssue(i)}
-              />
-            )}
-            {isRisk ? (
-              <RiskDetailBody
-                risk={risk as Risk}
-                onUpdated={(r) => setRisk((prev) => (prev ? { ...prev, ...r } : prev))}
-              />
-            ) : (
-              <IssueDetailBody
-                issue={issue as Issue}
-                onUpdated={(i) => setIssue((prev) => (prev ? { ...prev, ...i } : prev))}
-              />
-            )}
-          </section>
+      {/* Card Proyecto */}
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <header className="border-b border-[var(--border-default)] px-4 py-2.5">
+          <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
+            Proyecto
+          </h2>
+        </header>
+        <div className="flex items-center gap-2 px-4 py-3 text-[13px]">
+          <Link
+            href={`/pmo/projects/${item.project_id}`}
+            className="font-mono text-[12px] text-[var(--color-accent)] underline-offset-2 hover:underline"
+          >
+            {item.project_id.slice(0, 8)}…
+          </Link>
+        </div>
+      </section>
 
-          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-            <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">
+      {/* ENH-070: Card Comentarios + Historial unificada */}
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <header className="border-b border-[var(--border-default)] px-4 py-2.5">
+          <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
+            Comentarios &amp; Historial
+          </h2>
+        </header>
+        <div className="grid gap-5 px-4 py-3 md:grid-cols-2">
+          {/* Comentarios */}
+          <div className="space-y-3">
+            <h3 className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              Comentarios
+            </h3>
+            <CommentList
+              comments={
+                isRisk
+                  ? (risk as Risk).comments ?? []
+                  : (issue as Issue).comments ?? []
+              }
+            />
+            <div className="space-y-2">
+              <Textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                rows={2}
+                placeholder="Agregar un comentario…"
+              />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={postComment}
+                  loading={postingComment}
+                  disabled={!commentText.trim()}
+                >
+                  Agregar
+                </Button>
+              </div>
+            </div>
+          </div>
+          {/* Historial */}
+          <div className="space-y-2">
+            <h3 className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
               Historial de cambios
-            </h2>
+            </h3>
             {history.length === 0 ? (
-              <p className="text-[13px] italic text-[var(--color-tertiary)]">
+              <p className="text-[12px] italic text-[var(--color-tertiary)]">
                 Sin eventos registrados.
               </p>
             ) : (
-              <ol className="space-y-2 text-[12px]">
+              <ol className="space-y-1 text-[12px]">
                 {history.map((h) => (
                   <li
                     key={h.id}
-                    className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 py-2"
+                    className="flex flex-wrap items-baseline gap-2 border-b border-[var(--border-subtle)] pb-1 last:border-b-0"
                   >
                     <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
                       {new Date(h.occurred_at).toLocaleString("es-MX", {
@@ -329,51 +847,110 @@ export function RaidDetailPage({
                         timeStyle: "short",
                       })}
                     </span>
-                    <span className="flex-1">
-                      <span className="font-medium text-[var(--color-primary)]">
-                        {h.action}
-                      </span>
-                      {h.user_id ? (
-                        <span className="ml-2 font-mono text-[11px] text-[var(--color-tertiary)]">
+                    <span className="text-[var(--color-tertiary)]">·</span>
+                    <span className="font-medium text-[var(--color-primary)]">
+                      {h.action}
+                    </span>
+                    {h.user_id ? (
+                      <>
+                        <span className="text-[var(--color-tertiary)]">·</span>
+                        <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
                           {h.user_id.slice(0, 8)}
                         </span>
-                      ) : null}
-                    </span>
+                      </>
+                    ) : null}
                   </li>
                 ))}
               </ol>
             )}
-          </section>
+          </div>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function StripCell({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+        {label}
+      </p>
+      <div className="mt-0.5 break-words text-[13px] text-[var(--color-primary)]">
+        {children}
       </div>
     </div>
   );
 }
 
-function SidebarField({
-  label,
-  value,
-  mono = false,
+function Empty() {
+  return <span className="text-[var(--color-tertiary)]">—</span>;
+}
+
+function CommentList({
+  comments,
 }: {
-  label: string;
-  value: React.ReactNode;
-  mono?: boolean;
+  comments: { text: string; author_id?: string; created_at?: string }[];
 }) {
+  if (comments.length === 0) {
+    return (
+      <p className="text-[12px] italic text-[var(--color-tertiary)]">
+        Sin comentarios todavía.
+      </p>
+    );
+  }
   return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wide text-[var(--color-tertiary)]">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-0.5 break-words text-[13px] text-[var(--color-primary)]",
-          mono ? "font-mono text-[11px]" : "",
-        )}
-      >
-        {value}
-      </p>
-    </div>
+    <ol className="space-y-2 text-[12px]">
+      {comments.map((c, i) => (
+        <li
+          key={i}
+          className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-2 py-1.5"
+        >
+          <div className="flex items-baseline gap-2 text-[11px] text-[var(--color-tertiary)]">
+            {c.author_id ? (
+              <span className="font-mono">{c.author_id.slice(0, 8)}</span>
+            ) : null}
+            {c.created_at ? (
+              <span className="font-mono">
+                {new Date(c.created_at).toLocaleString("es-MX", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
+            {c.text}
+          </p>
+        </li>
+      ))}
+    </ol>
   );
+}
+
+function raidStatusVariant(
+  status: "identified" | "analyzing" | "mitigating" | "materialized" | "closed",
+): "info" | "success" | "danger" | "neutral" {
+  if (status === "identified" || status === "analyzing") return "info";
+  if (status === "mitigating") return "info";
+  if (status === "materialized") return "danger";
+  if (status === "closed") return "neutral";
+  return "neutral";
+}
+
+function issueStatusVariant(
+  status: "open" | "in_progress" | "resolved" | "closed",
+): "info" | "success" | "danger" | "neutral" {
+  if (status === "open" || status === "in_progress") return "info";
+  if (status === "resolved") return "success";
+  if (status === "closed") return "neutral";
+  return "neutral";
 }
 
 export function BackLink({ href, label }: { href: string; label: string }) {
