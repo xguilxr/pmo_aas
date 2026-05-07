@@ -5,6 +5,7 @@ import {
   Bot,
   Building2,
   ClipboardList,
+  Network,
   Settings2,
   ShieldCheck,
   Users,
@@ -48,6 +49,13 @@ const PANELS = [
     description:
       "Usuarios del tenant: alta, roles, contraseñas y exclusiones.",
     icon: Users,
+  },
+  {
+    href: "/admin/areas",
+    label: "Áreas",
+    description:
+      "Catálogo Áreas → Equipos → Actores reutilizable a través de proyectos.",
+    icon: Network,
   },
   {
     href: "/admin/permissions",
