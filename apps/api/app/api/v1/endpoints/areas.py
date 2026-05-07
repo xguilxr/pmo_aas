@@ -539,7 +539,8 @@ async def reassign_actor(
             tasks_moved = res.rowcount or 0
 
     if body.deactivate_source:
-        from datetime import UTC, datetime as _dt
+        from datetime import UTC
+        from datetime import datetime as _dt
         src.is_active = False
         src.deleted_at = _dt.now(UTC)
 

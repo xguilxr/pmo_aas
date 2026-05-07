@@ -282,7 +282,7 @@ export default function AreasAdminPage() {
         </Button>
       </header>
 
-      {error ? <Banner tone="danger">{error}</Banner> : null}
+      {error ? <Banner variant="danger">{error}</Banner> : null}
 
       {loading ? (
         <div className="space-y-2">
