@@ -15,24 +15,48 @@ function parseType(v: string): RaidDetailType {
   return "risk";
 }
 
+// BUG-052: tipo localizado para breadcrumb + map al param `kind` del
+// listado tenant (`/pmo/raid?kind=...`).
+const TYPE_META: Record<
+  RaidDetailType,
+  { label: string; kindParam: string }
+> = {
+  risk: { label: "Riesgos", kindParam: "risks" },
+  action: { label: "Acciones", kindParam: "actions" },
+  incident: { label: "Issues", kindParam: "issues" },
+  decision: { label: "Decisiones", kindParam: "decisions" },
+};
+
 function Inner() {
   const { type, raidId } = useParams<{ type: string; raidId: string }>();
   const resolved = parseType(type);
+  const meta = TYPE_META[resolved];
+  const filteredHref = `/pmo/raid?kind=${meta.kindParam}`;
   return (
     <RaidDetailPage
       raidType={resolved}
       itemId={raidId}
       breadcrumb={
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/raid" className="hover:underline">
-            RAID · Tenant
-          </Link>
-          <span className="mx-1">/</span>
-          <span>Ítem</span>
-          <div className="mt-1">
-            <BackLink href="/pmo/raid" label="Volver al RAID" />
-          </div>
-        </nav>
+        <div className="flex flex-col gap-1">
+          {/* BUG-052: breadcrumb canónico RAID / [Tipo] / [ID] */}
+          <nav
+            aria-label="Breadcrumb"
+            className="text-[11px] text-[var(--color-tertiary)]"
+          >
+            <Link href="/pmo/raid" className="hover:underline">
+              RAID
+            </Link>
+            <span className="mx-1">/</span>
+            <Link href={filteredHref} className="hover:underline">
+              {meta.label}
+            </Link>
+            <span className="mx-1">/</span>
+            <span className="font-mono text-[var(--color-secondary)]">
+              {raidId.slice(0, 8)}
+            </span>
+          </nav>
+          <BackLink href={filteredHref} label="Volver" />
+        </div>
       }
     />
   );
