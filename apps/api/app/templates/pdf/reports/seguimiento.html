@@ -23,13 +23,15 @@
 {% macro render_group(title, groups, show_overdue) %}
 <h2>{{ title }}</h2>
 {% if groups %}
+  {# ENH-083: bloques por área con su tabla; ordenados por fecha asc adentro. #}
   {% for g in groups %}
-    <h3>{{ g.owner_name }} <span class="muted small">({{ g.rows|length }})</span></h3>
+    <h3>{{ g.area_name }} <span class="muted small">({{ g.rows|length }})</span></h3>
     <table>
       <thead>
         <tr>
           <th>Folio</th><th>Origen</th><th>Actividad</th>
-          <th>Status</th><th class="right">Compromiso</th>
+          <th>Responsable</th><th>Status</th>
+          <th class="right">Compromiso</th>
           {% if show_overdue %}<th class="right">Días vencidos</th>{% endif %}
         </tr>
       </thead>
@@ -39,6 +41,7 @@
           <td class="small">{{ it.folio or "—" }}</td>
           <td class="small">{{ "Tarea" if it.source == "task" else "Acción" }}</td>
           <td>{{ it.title }}</td>
+          <td class="small">{{ it.owner_name or "—" }}</td>
           <td class="small">{{ it.status }}</td>
           <td class="small right">{{ it.due_date or "—" }}</td>
           {% if show_overdue %}

@@ -466,6 +466,24 @@ async def build_seguimiento_context(
         for uid, name in rows:
             owner_map[str(uid)] = name or "—"
 
+    # ENH-083: agrupamos por área (no por owner). Resolver area_id → name
+    # con una sola query batch.
+    area_ids: set = {t.area_id for t in task_rows if t.area_id}
+    area_ids |= {a.area_id for a in action_rows if a.area_id}
+    area_map: dict[str, str] = {}
+    if area_ids:
+        arows = (
+            await db.execute(
+                select(Area.id, Area.name).where(Area.id.in_(area_ids))
+            )
+        ).all()
+        area_map = {str(aid): (name or "—") for aid, name in arows}
+
+    UNASSIGNED_AREA = "Sin área asignada"
+
+    def _area_label(area_id) -> str:
+        return area_map.get(str(area_id), UNASSIGNED_AREA) if area_id else UNASSIGNED_AREA
+
     items: list[dict[str, Any]] = []
     for t in task_rows:
         due = t.end_date
@@ -475,7 +493,8 @@ async def build_seguimiento_context(
             "title": t.name,
             "status": t.status,
             "due_date": due.isoformat() if due else None,
-            "owner_key": str(t.owner_id) if t.owner_id else "unassigned",
+            "owner_name": owner_map.get(str(t.owner_id), "—") if t.owner_id else "—",
+            "area_name": _area_label(t.area_id),
             "progress": t.progress or 0,
             "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
         })
@@ -487,7 +506,8 @@ async def build_seguimiento_context(
             "title": a.title,
             "status": a.status,
             "due_date": due.isoformat() if due else None,
-            "owner_key": str(a.owner_id) if a.owner_id else "unassigned",
+            "owner_name": owner_map.get(str(a.owner_id), "—") if a.owner_id else "—",
+            "area_name": _area_label(a.area_id),
             "progress": None,
             "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
         })
@@ -508,20 +528,21 @@ async def build_seguimiento_context(
     ]
 
     def group(arr: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # ENH-083: agrupar por área; "Sin área asignada" siempre al final.
+        # Items dentro de cada bloque ordenados por fecha asc.
         buckets: dict[str, list[dict[str, Any]]] = {}
         for it in arr:
-            buckets.setdefault(it["owner_key"], []).append(it)
+            buckets.setdefault(it["area_name"], []).append(it)
         return [
             {
-                "owner_name": owner_map.get(k, "—"),
-                "owner_key": k,
+                "area_name": k,
                 "rows": sorted(
                     v, key=lambda x: (x["due_date"] or "", x["title"] or "")
                 ),
             }
             for k, v in sorted(
                 buckets.items(),
-                key=lambda kv: (kv[0] == "unassigned", owner_map.get(kv[0], "")),
+                key=lambda kv: (kv[0] == UNASSIGNED_AREA, kv[0]),
             )
         ]
 
