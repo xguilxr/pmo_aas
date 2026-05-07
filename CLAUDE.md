@@ -69,9 +69,9 @@ lista anterior. El contexto es finito.
 
 | Prefijo | Uso | Contador | Próximo libre |
 |---|---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-103** (Sprints 13-16 reservados 2026-05-06: US-097=#240 áreas jerarquía; US-098=#241 plan area; US-099=#245 reasignación masiva; US-100=#246 RAID detail redesign; US-101=#253 reportes IA; US-102=#255 IA chat global) |
-| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-054** (Sprint 14: BUG-052=#249 RAID breadcrumb. Sprint 16: BUG-053=#254 cleanup Ollama pre-arranque) |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-078** (Sprint 13: ENH-066=#242 plan area; ENH-067=#243 niveles WBS 1/2/3/4/Manual; ENH-068=#244 sync gantt; ENH-077=#259 composición chips × agrupador × nivel. Sprint 14: ENH-069=#247 banner edit; ENH-070=#248 card comments. Sprint 15: ENH-071=#250 filtros; ENH-072=#251 orden; ENH-073=#252 visual. Sprint 16: ENH-074=#256 context; ENH-075=#257 tools; ENH-076=#258 historial) |
+| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-104** (Sprints 13-17 reservados: US-097=#240 áreas jerarquía; US-098=#241 plan area; US-099=#245 reasignación masiva; US-100=#246 RAID detail redesign; US-101=#253 reportes IA; US-102=#255 IA chat global; US-103=#263 áreas catálogo compartido) |
+| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-055** (Sprint 14: BUG-052=#249 RAID breadcrumb. Sprint 15: BUG-054=#265 vista Por Actor empty. Sprint 17: BUG-053=#254 cleanup Ollama pre-arranque) |
+| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-080** (Sprint 13: ENH-066=#242 plan area; ENH-067=#243 niveles WBS 1/2/3/4/Manual; ENH-068=#244 sync gantt; ENH-077=#259 composición chips × agrupador × nivel. Sprint 14: ENH-069=#247 banner edit; ENH-070=#248 card comments. Sprint 15: ENH-078=#264 panel áreas redesign; ENH-079=#266 plan responsable=actor. Sprint 16: ENH-071=#250 filtros; ENH-072=#251 orden; ENH-073=#252 visual. Sprint 17: ENH-074=#256 context; ENH-075=#257 tools; ENH-076=#258 historial) |
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
 | `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` | — |
 | `ADR-###` | Architecture Decision Record | Ver `docs/adr/` | — |
