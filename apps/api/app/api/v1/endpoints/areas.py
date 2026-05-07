@@ -744,6 +744,99 @@ async def set_area_assignments(
 
 
 @assignments_router.get(
+    "/by-project/{project_id}/actors",
+    response_model=list[ActorRead],
+)
+async def list_actors_by_project(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-079: lista los Actores del catálogo asignables como
+    responsables/owners en un proyecto. Resolución por cascada de
+    `area_assignments` (org/program/project/global) → trae Actores
+    de los Equipos cuya Área esté visible para el proyecto, más
+    Actores huérfanos de esas Áreas.
+    """
+    from sqlalchemy import or_
+
+    from app.models.project import Project
+
+    tenant_id = _tenant(cu)
+    project = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if project is None:
+        raise not_found("Project")
+
+    cond = or_(
+        AreaAssignment.is_global == True,  # noqa: E712
+        AreaAssignment.project_id == str(project_id),
+        AreaAssignment.organization_id == str(project.organization_id),
+    )
+    if project.program_id:
+        cond = or_(cond, AreaAssignment.program_id == str(project.program_id))
+
+    visible_areas = (
+        await db.execute(
+            select(Area.id)
+            .join(AreaAssignment, AreaAssignment.area_id == Area.id)
+            .where(
+                Area.tenant_id == str(tenant_id),
+                Area.is_active == True,  # noqa: E712
+                cond,
+            )
+            .distinct()
+        )
+    ).scalars().all()
+    if not visible_areas:
+        return []
+
+    teams = (
+        await db.execute(
+            select(Team.id).where(
+                Team.tenant_id == str(tenant_id),
+                Team.area_id.in_(visible_areas),
+                Team.is_active.is_(True),
+            )
+        )
+    ).scalars().all()
+
+    actor_filter = or_(
+        Actor.team_id.in_(teams) if teams else False,
+        Actor.team_id.is_(None),
+    )
+    rows = (
+        await db.execute(
+            select(Actor)
+            .where(
+                Actor.tenant_id == str(tenant_id),
+                Actor.is_active == True,  # noqa: E712
+                Actor.deleted_at.is_(None),
+                actor_filter,
+            )
+            .order_by(Actor.name)
+        )
+    ).scalars().all()
+    # Filter orphan actors to only those whose original team's area was
+    # visible — para evitar listar TODOS los actores sin team del tenant.
+    # Heurística simple: si team_id es None, los listamos sólo si el
+    # actor tiene el flag is_lead (los líderes manuales suelen estar
+    # huérfanos de team) o si está enlazado a un user (PMO sync).
+    out: list[Actor] = []
+    for a in rows:
+        if a.team_id is None and not (a.is_lead or a.user_id is not None):
+            continue
+        out.append(a)
+    return [ActorRead.model_validate(a) for a in out]
+
+
+@assignments_router.get(
     "/by-project/{project_id}",
     response_model=list[AreaRead],
 )

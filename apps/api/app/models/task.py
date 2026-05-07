@@ -62,6 +62,14 @@ class Task(Base, TimestampMixin):
         ForeignKey("areas.id", ondelete="SET NULL"),
         index=True,
     )
+    # ENH-079: responsable como Actor del catálogo (FK actors). Reemplaza
+    # el flujo legacy `owner_id → users` para Plan. Migración 0050
+    # backfilea via match user_id.
+    assignee_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("actors.id", ondelete="SET NULL"),
+        index=True,
+    )
     # US-090: outline_level computado desde wbs.split('.').length.
     outline_level: Mapped[int | None] = mapped_column(SmallInteger)
     # US-090: predecessors / successors como JSON array de wbs_code.

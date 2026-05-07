@@ -262,3 +262,10 @@ export function setAreaAssignments(
 export function listAreasByProject(projectId: string): Promise<Area[]> {
   return apiFetch<Area[]>(`/api/v1/admin/areas/by-project/${projectId}`);
 }
+
+// ENH-079 — Actores asignables como responsables/owners del proyecto.
+export function listActorsByProject(projectId: string): Promise<Actor[]> {
+  return apiFetch<Actor[]>(
+    `/api/v1/admin/areas/by-project/${projectId}/actors`,
+  );
+}
