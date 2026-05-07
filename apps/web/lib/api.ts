@@ -63,6 +63,9 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestOptions =
       headers: finalHeaders,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       credentials: "include",
+      // BUG-fix US-095 rework: evita que GETs idempotentes (ej. /tasks)
+      // se sirvan desde el HTTP cache del navegador tras un PATCH.
+      cache: "no-store",
       signal,
     });
   } catch (err) {

@@ -20,7 +20,7 @@ Sprints 13-16 PLANEADOS 2026-05-06 (19 issues #240-#258 status:triage):
   Sprint 15 (v1.14) — Reportes (4 issues, branch claude/sprint-15-reportes-redesign)
   Sprint 16 (v1.15) — IA conversacional global (5 issues, branch claude/sprint-16-ai-global)
 
-Próximo libre: US-103, BUG-054, ENH-077.
+Próximo libre: US-103, BUG-054, ENH-078.
 ```
 
 ---
@@ -88,8 +88,8 @@ Próximo libre: US-103, BUG-054, ENH-077.
 - [x] ENH-064 #235 — Default focus hitos/críticas/delayed — `f7db92c`
 
 ### Post-Sprint 12 — Reworks 2026-05-06 (branch claude/fix-issues-plan-sprints-2psWS)
-- [x] #228 US-094 rework — sidebar `Admin` linkea a `/admin` — `4d82b4b`
-- [x] #229 US-095 rework — fila se refresca con respuesta del PATCH — `204f2fd`
+- [x] #228 US-094 rework — sidebar `Admin` linkea a `/admin` — `4d82b4b` (cerrado por owner)
+- [ ] #229 US-095 rework v2 — `cache:no-store` + optimistic update wins — `cf0283e` (v1 `204f2fd` no resolvió, owner revisar)
 
 ### Reworks Sprint 11 ya entregados (esperando verificación)
 - [x] #204 ENH-054 fase 2 — `25ec5a0`
@@ -101,12 +101,13 @@ Próximo libre: US-103, BUG-054, ENH-077.
 ## ⏳ Sprint 13 (v1.12) — Áreas + Plan (PLANEADO 2026-05-06)
 Branch: `claude/sprint-13-areas-plan`
 
-- [ ] US-097 #240 — Jerarquía Áreas → Equipos → Actores (CRUD 3 niveles + migración)
-- [ ] US-098 #241 — Plan: asignar Área responsable (edit form + columna + filtro)
-- [ ] ENH-066 #242 — Plan: toggle "Agrupar por Área" (paralelo a WBS)
-- [ ] ENH-067 #243 — Plan: toggles de nivel WBS (1/2/3) + default manual
-- [ ] ENH-068 #244 — Plan: Gantt sincroniza agrupación con la lista
-- [ ] US-099 #245 — Reasignación masiva de actores (bulk move)
+- [ ] US-097 #240 — Jerarquía Áreas → Equipos → Actores (CRUD 3 niveles + migración) — `status:ready`
+- [ ] US-098 #241 — Plan: asignar Área responsable (edit form + columna + filtro) — `status:ready`
+- [ ] ENH-066 #242 — Plan: toggle "Agrupar por Área" (paralelo a WBS) — `status:ready`
+- [ ] ENH-067 #243 — Plan: toggles de nivel WBS (1/2/3/4/Manual) — Manual default — `status:ready`
+- [ ] ENH-068 #244 — Plan: Gantt sincroniza agrupación con la lista — `status:ready`
+- [ ] ENH-077 #259 — Plan: composición chips × agrupador × nivel coexisten naturalmente — `status:ready`
+- [ ] US-099 #245 — Reasignación masiva de actores (bulk move) — `status:ready`
 
 **Migración Alembic prevista:** 1 — `areas`, `teams`, `actors` + `tasks.area_id`.
 
@@ -115,12 +116,12 @@ Branch: `claude/sprint-13-areas-plan`
 ## ⏳ Sprint 14 (v1.13) — RAID detail redesign "Denso" (PLANEADO 2026-05-06)
 Branch: `claude/sprint-14-raid-detail-redesign` (hereda placeholder `claude/redesign-raid-area-requirements-EhZ3d`)
 
-- [ ] US-100 #246 — Rediseño detalle item RAID layout "Denso" (4 tipos)
-- [ ] ENH-069 #247 — Banner modo edición + Cancelar/Guardar transaccional
-- [ ] ENH-070 #248 — Card unificada Comentarios + Historial
-- [ ] BUG-052 #249 — Breadcrumb `RAID / Tipo / ID` + ← Volver preserva filtro
+- [ ] US-100 #246 — Rediseño detalle item RAID layout "Denso" (4 tipos) — `status:ready`
+- [ ] ENH-069 #247 — Banner modo edición + Cancelar/Guardar transaccional — `status:ready`
+- [ ] ENH-070 #248 — Card unificada Comentarios + Historial — `status:ready`
+- [ ] BUG-052 #249 — Breadcrumb `RAID / Tipo / ID` + ← Volver preserva filtro — `status:ready`
 
-**Sin cambios de schema ni paleta.** Mock referencia: `docs/design/raid-redesign/raid-item.html` (a subir antes del primer commit del bloque).
+**Sin cambios de schema ni paleta.** Spec canónica: `docs/design-system/raid-detail-denso.md`. Mock visual: `docs/archive/raid-detail-denso-mock-2026-05-06.html` (artefacto histórico).
 
 ---
 
@@ -140,8 +141,8 @@ Branch: `claude/sprint-15-reportes-redesign`
 Branch: `claude/sprint-16-ai-global`
 
 ### Bloque 0 (gate pre-arranque)
-- [ ] BUG-053 #254 — Cleanup residuos Ollama (env Railway + código + páginas)
-  - **Decisión pendiente con owner antes de status:ready:** cuál es el provider definitivo de IA (Anthropic / OpenAI / proxy LiteLLM).
+- [ ] BUG-053 #254 — Cleanup residuos Ollama + cablear Groq (default) + BYO whitelist
+  - **Decisión owner 2026-05-06:** provider de planta = **Groq**. BYO whitelist = `gemini, openai, anthropic, perplexity`. Ollama y cualquier otro provider → eliminar de UI / código / env.
 
 ### Bloque 1 (post-cleanup)
 - [ ] US-102 #255 — Side-panel chat IA en cada página (Ctrl+K + botón flotante)
@@ -153,7 +154,7 @@ Branch: `claude/sprint-16-ai-global`
 
 ---
 
-**Próximo libre:** US-103, BUG-054, ENH-077.
+**Próximo libre:** US-103, BUG-054, ENH-078.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
