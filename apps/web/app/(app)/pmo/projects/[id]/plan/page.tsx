@@ -594,10 +594,63 @@ function PlanInner() {
       const v = window.localStorage.getItem(`plan-grouping:${id}`);
       if (v === "wbs") setGroupByWbs(true);
       else if (v === "area") setGroupByArea(true);
+      // ENH-077 CA5: chips activos persistidos.
+      const chipsRaw = window.localStorage.getItem(`plan-chips:${id}`);
+      if (chipsRaw) {
+        const chips = chipsRaw
+          .split(",")
+          .filter((c): c is ChipKey => c === "milestone" || c === "critical" || c === "delayed");
+        if (chips.length > 0) setActiveChips(new Set(chips));
+      }
+      // ENH-077 CA5: nivel WBS persistido.
+      const lvlRaw = window.localStorage.getItem(`plan-wbs-level:${id}`);
+      if (
+        lvlRaw === "1" || lvlRaw === "2" || lvlRaw === "3" || lvlRaw === "4"
+      ) {
+        setWbsLevel(Number(lvlRaw) as 1 | 2 | 3 | 4);
+      } else if (lvlRaw === "manual") {
+        setWbsLevel("manual");
+      }
+      // areaFilter persistido.
+      const af = window.localStorage.getItem(`plan-area-filter:${id}`);
+      if (af) setAreaFilter(af);
     } catch {
       /* localStorage puede fallar (modo privado, quota) — ignoramos. */
     }
   }, [id]);
+
+  // ENH-077 CA5: persiste chips, level, areaFilter cuando cambian.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (activeChips.size === 0) window.localStorage.removeItem(`plan-chips:${id}`);
+      else window.localStorage.setItem(
+        `plan-chips:${id}`,
+        Array.from(activeChips).join(","),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [activeChips, id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(`plan-wbs-level:${id}`, String(wbsLevel));
+    } catch {
+      /* ignore */
+    }
+  }, [wbsLevel, id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (areaFilter) window.localStorage.setItem(`plan-area-filter:${id}`, areaFilter);
+      else window.localStorage.removeItem(`plan-area-filter:${id}`);
+    } catch {
+      /* ignore */
+    }
+  }, [areaFilter, id]);
 
   // ENH-077: WBS y Área son mutex — sólo un agrupador a la vez.
   function persistGrouping(mode: "wbs" | "area" | null) {
@@ -1303,6 +1356,41 @@ function PlanInner() {
     ],
   );
 
+  // ENH-068 + ENH-077: el Gantt respeta el set visible de la lista
+  // (chips × agrupador × área filter × nivel WBS). Construimos un
+  // GanttData filtrado a partir de filteredTasks + collapsedWbs.
+  const filteredGantt = useMemo<GanttData | null>(() => {
+    if (!gantt) return null;
+    const visibleIds = new Set<string>();
+    // Si hay agrupación WBS con colapsado, descartamos también las
+    // tasks ocultas por la cadena de padres (mismo criterio que la
+    // lista). Si no hay agrupación, sólo aplica filteredTasks.
+    const filteredById = new Set(filteredTasks.map((t) => t.id));
+    for (const t of filteredTasks) {
+      if (groupByWbs && collapsedWbs.size > 0) {
+        let p = wbsParent(t.wbs);
+        let hidden = false;
+        while (p) {
+          if (collapsedWbs.has(p)) {
+            hidden = true;
+            break;
+          }
+          p = wbsParent(p);
+        }
+        if (!hidden) visibleIds.add(t.id);
+      } else {
+        visibleIds.add(t.id);
+      }
+    }
+    return {
+      ...gantt,
+      tasks: gantt.tasks.filter((g) => visibleIds.has(g.id)),
+      dependencies: gantt.dependencies.filter(
+        (d) => visibleIds.has(d.predecessor_id) && visibleIds.has(d.successor_id),
+      ),
+    };
+  }, [gantt, filteredTasks, groupByWbs, collapsedWbs]);
+
   const ganttBlock = useMemo(
     () => (
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-sm)]">
@@ -1311,19 +1399,24 @@ function PlanInner() {
           <h2 className="text-sm font-semibold text-[var(--color-primary)]">
             Gantt
           </h2>
+          {filteredGantt && gantt && filteredGantt.tasks.length < gantt.tasks.length ? (
+            <span className="ml-2 text-xs text-[var(--color-tertiary)]">
+              ({filteredGantt.tasks.length} de {gantt.tasks.length} visibles)
+            </span>
+          ) : null}
         </header>
         {loadingGantt ? (
           <Skeleton className="h-[360px] w-full" />
-        ) : gantt ? (
-          <GanttView data={gantt} />
+        ) : filteredGantt && filteredGantt.tasks.length > 0 ? (
+          <GanttView data={filteredGantt} />
         ) : (
           <div className="p-6 text-center text-sm text-[var(--color-tertiary)]">
-            Sin datos para el Gantt.
+            Sin datos para el Gantt con los filtros activos.
           </div>
         )}
       </section>
     ),
-    [gantt, loadingGantt],
+    [filteredGantt, gantt, loadingGantt],
   );
 
   return (
