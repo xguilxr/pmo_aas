@@ -180,3 +180,27 @@ export function updateActor(
 export function deleteActor(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/actors/${id}`, { method: "DELETE" });
 }
+
+// US-099 — bulk reassign tasks/raid/minutes from one actor to another.
+export type ActorReassignBody = {
+  target_actor_id: string;
+  scopes?: string[];
+  deactivate_source?: boolean;
+};
+
+export type ActorReassignResponse = {
+  tasks_moved: number;
+  raid_moved: number;
+  minutes_moved: number;
+  source_deactivated: boolean;
+};
+
+export function reassignActor(
+  id: string,
+  body: ActorReassignBody,
+): Promise<ActorReassignResponse> {
+  return apiFetch<ActorReassignResponse>(
+    `/api/v1/actors/${id}/reassign`,
+    { method: "POST", body },
+  );
+}

@@ -125,3 +125,17 @@ class TreeArea(BaseModel):
 class AreaTreeResponse(BaseModel):
     areas: list[TreeArea]
     orphan_actors: list[TreeActor] = Field(default_factory=list)
+
+
+# ---------- Actor reassign (US-099) ----------
+class ActorReassignBody(BaseModel):
+    target_actor_id: UUID
+    scopes: list[str] = Field(default_factory=lambda: ["tasks"])
+    deactivate_source: bool = True
+
+
+class ActorReassignResponse(BaseModel):
+    tasks_moved: int
+    raid_moved: int = 0
+    minutes_moved: int = 0
+    source_deactivated: bool

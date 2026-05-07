@@ -18,6 +18,8 @@ from app.models.area import Actor, Area, Team
 from app.schemas.area import (
     ActorCreate,
     ActorRead,
+    ActorReassignBody,
+    ActorReassignResponse,
     ActorUpdate,
     AreaCreate,
     AreaRead,
@@ -471,6 +473,97 @@ async def update_actor(
         setattr(a, k, v)
     await db.commit()
     return ActorRead.model_validate(a)
+
+
+@actors_router.post(
+    "/{actor_id}/reassign", response_model=ActorReassignResponse
+)
+async def reassign_actor(
+    actor_id: UUID,
+    body: ActorReassignBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-099 — bulk-move tareas (y opcionalmente RAID / minutas) de un
+    actor a otro. Operación atómica: si algo falla se hace rollback.
+
+    El vínculo actor→tareas es vía `actor.user_id` (las tareas
+    referencian `users.id` en `tasks.owner_id`). Si el actor origen
+    no tiene `user_id`, no hay nada que mover (devuelve 0 / 0 / 0).
+
+    MVP: scope='tasks' única; RAID y minutas quedan diferidos hasta
+    que el owner valide el modelo final de actores en esos módulos.
+    """
+    from sqlalchemy import update as sa_update
+
+    from app.models.task import Task as TaskModel
+    from app.services.audit import write_audit
+
+    tenant_id = _tenant(cu)
+    src = (
+        await db.execute(
+            select(Actor).where(
+                Actor.id == str(actor_id),
+                Actor.tenant_id == str(tenant_id),
+                Actor.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if src is None:
+        raise not_found("Actor")
+    tgt = (
+        await db.execute(
+            select(Actor).where(
+                Actor.id == str(body.target_actor_id),
+                Actor.tenant_id == str(tenant_id),
+                Actor.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if tgt is None:
+        raise validation_error("target_actor_id no existe en el tenant")
+    if str(tgt.id) == str(src.id):
+        raise validation_error("target_actor_id debe ser distinto del actor origen")
+
+    tasks_moved = 0
+    if "tasks" in body.scopes:
+        if src.user_id is not None and tgt.user_id is not None:
+            res = await db.execute(
+                sa_update(TaskModel)
+                .where(
+                    TaskModel.tenant_id == str(tenant_id),
+                    TaskModel.owner_id == str(src.user_id),
+                )
+                .values(owner_id=str(tgt.user_id))
+            )
+            tasks_moved = res.rowcount or 0
+
+    if body.deactivate_source:
+        from datetime import UTC, datetime as _dt
+        src.is_active = False
+        src.deleted_at = _dt.now(UTC)
+
+    await write_audit(
+        db,
+        action="actor.reassign",
+        module="actors",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="actor",
+        entity_id=str(src.id),
+        details={
+            "target_actor_id": str(tgt.id),
+            "tasks_moved": tasks_moved,
+            "deactivated": body.deactivate_source,
+        },
+    )
+    await db.commit()
+    return ActorReassignResponse(
+        tasks_moved=tasks_moved,
+        raid_moved=0,
+        minutes_moved=0,
+        source_deactivated=body.deactivate_source,
+    )
 
 
 @actors_router.delete("/{actor_id}", status_code=204)

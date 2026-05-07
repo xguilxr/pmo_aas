@@ -4,6 +4,7 @@
 // Árbol expandible 3 niveles con CRUD por nodo.
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  ArrowRightLeft,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -31,6 +32,7 @@ import {
   deleteArea,
   deleteTeam,
   getAreasTree,
+  reassignActor,
   updateActor,
   updateArea,
   updateTeam,
@@ -39,6 +41,7 @@ import {
   type TreeArea,
   type TreeTeam,
 } from "@/lib/api/areas";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
 type NodeKind = "area" | "team" | "actor";
@@ -79,6 +82,11 @@ export default function AreasAdminPage() {
   const [creating, setCreating] = useState<CreatingNode | null>(null);
   const [editing, setEditing] = useState<EditingNode | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // US-099: state del modal de reasignación masiva.
+  const [reassigning, setReassigning] = useState<{
+    source: TreeActor;
+    targetId: string;
+  } | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -215,6 +223,30 @@ export default function AreasAdminPage() {
     }
   }
 
+  async function submitReassign() {
+    if (!reassigning || !reassigning.targetId) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await reassignActor(reassigning.source.id, {
+        target_actor_id: reassigning.targetId,
+        scopes: ["tasks"],
+        deactivate_source: true,
+      });
+      alert(
+        `Reasignados ${res.tasks_moved} tareas. Actor origen ${
+          res.source_deactivated ? "desactivado" : "activo"
+        }.`,
+      );
+      setReassigning(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al reasignar");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function onDelete(kind: NodeKind, id: string, name: string) {
     if (!confirm(`¿Eliminar ${kind === "area" ? "Área" : kind === "team" ? "Equipo" : "Actor"} "${name}"?`)) return;
     setError(null);
@@ -272,6 +304,9 @@ export default function AreasAdminPage() {
                 openEditTeam={openEditTeam}
                 openEditActor={openEditActor}
                 onDelete={onDelete}
+                onReassign={(ac) =>
+                  setReassigning({ source: ac, targetId: "" })
+                }
               />
             ))}
             {tree.orphan_actors.length > 0 ? (
@@ -288,6 +323,9 @@ export default function AreasAdminPage() {
                       depth={1}
                       openEditActor={openEditActor}
                       onDelete={onDelete}
+                      onReassign={(a) =>
+                        setReassigning({ source: a, targetId: "" })
+                      }
                     />
                   ))}
                 </ul>
@@ -494,6 +532,86 @@ export default function AreasAdminPage() {
           </form>
         ) : null}
       </Modal>
+
+      {/* Modal: reasignación masiva (US-099) */}
+      <Modal
+        open={reassigning !== null}
+        onClose={() => setReassigning(null)}
+        title={
+          reassigning
+            ? `Reasignar tareas de ${reassigning.source.name}`
+            : ""
+        }
+      >
+        {reassigning && tree ? (
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--color-secondary)]">
+              Todas las tareas asignadas a <strong>{reassigning.source.name}</strong>{" "}
+              se moverán al actor seleccionado. El actor origen se desactivará
+              tras la operación.
+            </p>
+            <p className="text-xs text-[var(--color-tertiary)]">
+              MVP: sólo se mueven tareas. RAID y minutas quedan diferidos
+              hasta que el modelo de actores en esos módulos se valide.
+            </p>
+            <label>
+              <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                Actor destino
+              </span>
+              <Select
+                value={reassigning.targetId}
+                onChange={(e) =>
+                  setReassigning((prev) =>
+                    prev ? { ...prev, targetId: e.target.value } : prev,
+                  )
+                }
+              >
+                <option value="">Selecciona un actor…</option>
+                {/* Lista plana de todos los actores activos del tree
+                    excepto el origen. */}
+                {[
+                  ...tree.areas.flatMap((a) =>
+                    a.teams.flatMap((t) =>
+                      t.actors.map((ac) => ({
+                        id: ac.id,
+                        label: `${a.name} / ${t.name} / ${ac.name}`,
+                      })),
+                    ),
+                  ),
+                  ...tree.orphan_actors.map((ac) => ({
+                    id: ac.id,
+                    label: `(sin equipo) ${ac.name}`,
+                  })),
+                ]
+                  .filter((x) => x.id !== reassigning.source.id)
+                  .map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.label}
+                    </option>
+                  ))}
+              </Select>
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setReassigning(null)}
+                disabled={submitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={submitReassign}
+                loading={submitting}
+                disabled={!reassigning.targetId}
+              >
+                Reasignar y desactivar
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
@@ -507,6 +625,7 @@ function AreaNode({
   openEditTeam,
   openEditActor,
   onDelete,
+  onReassign,
 }: {
   area: TreeArea;
   expanded: Set<string>;
@@ -516,6 +635,7 @@ function AreaNode({
   openEditTeam: (area_id: string, t: TreeTeam) => void;
   openEditActor: (team_id: string | null, a: TreeActor) => void;
   onDelete: (kind: NodeKind, id: string, name: string) => void;
+  onReassign: (a: TreeActor) => void;
 }) {
   const isOpen = expanded.has(area.id);
   return (
@@ -594,6 +714,7 @@ function AreaNode({
               openEditTeam={openEditTeam}
               openEditActor={openEditActor}
               onDelete={onDelete}
+              onReassign={onReassign}
             />
           ))}
           {area.teams.length === 0 ? (
@@ -616,6 +737,7 @@ function TeamNode({
   openEditTeam,
   openEditActor,
   onDelete,
+  onReassign,
 }: {
   team: TreeTeam;
   areaId: string;
@@ -624,6 +746,7 @@ function TeamNode({
   openCreate: (n: CreatingNode) => void;
   openEditTeam: (area_id: string, t: TreeTeam) => void;
   openEditActor: (team_id: string | null, a: TreeActor) => void;
+  onReassign: (a: TreeActor) => void;
   onDelete: (kind: NodeKind, id: string, name: string) => void;
 }) {
   const isOpen = expanded.has(team.id);
@@ -699,6 +822,7 @@ function TeamNode({
               depth={2}
               openEditActor={openEditActor}
               onDelete={onDelete}
+              onReassign={onReassign}
             />
           ))}
           {team.actors.length === 0 ? (
@@ -718,12 +842,14 @@ function ActorRow({
   depth,
   openEditActor,
   onDelete,
+  onReassign,
 }: {
   actor: TreeActor;
   teamId: string | null;
   depth: number;
   openEditActor: (team_id: string | null, a: TreeActor) => void;
   onDelete: (kind: NodeKind, id: string, name: string) => void;
+  onReassign?: (a: TreeActor) => void;
 }) {
   return (
     <li
@@ -742,6 +868,17 @@ function ActorRow({
           </div>
         ) : null}
       </div>
+      {onReassign ? (
+        <button
+          type="button"
+          onClick={() => onReassign(actor)}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+          aria-label="Reasignar tareas a otro actor"
+          title="Reasignar tareas"
+        >
+          <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={() => openEditActor(teamId, actor)}
