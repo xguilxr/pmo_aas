@@ -73,9 +73,15 @@ async def test_ai_platform_returns_html_with_save_to_history(client, db_session)
     async def _fake_generate(*args, **kwargs):
         return fake
 
+    async def _fake_resolve_groq(*args, **kwargs):
+        return {"api_key": "test-key", "model": "groq-stub"}
+
     with patch(
         "app.services.ai.provider.generate_for_tenant",
         side_effect=_fake_generate,
+    ), patch(
+        "app.services.ai.platform_config.resolve_groq_config",
+        side_effect=_fake_resolve_groq,
     ):
         r = await client.post(
             f"/api/v1/projects/{proj}/reports/ai-generate",
