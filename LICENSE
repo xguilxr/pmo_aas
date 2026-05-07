@@ -1,0 +1,143 @@
+PROPRIETARY SOFTWARE LICENSE — ALL RIGHTS RESERVED
+
+Copyright (c) 2026 David Eduardo Aguilar Guillen.
+
+All rights reserved.
+
+This software, including but not limited to its source code, object code,
+documentation, configuration files, database schemas, design assets, branding,
+and any other materials contained in this repository (collectively, the
+"Software"), is the proprietary and confidential property of the copyright
+holder identified above ("Owner").
+
+NO LICENSE GRANTED
+==================
+
+No license, express or implied, is granted to any party under copyright,
+patent, trademark, trade secret, or any other intellectual property right by
+the publication of this Software in a public repository or by any other
+means, except as explicitly stated in this file.
+
+The Software is published publicly solely for purposes of transparency,
+demonstration, and reference. Public visibility does NOT constitute, and
+shall NOT be construed as, a grant of any rights to use, copy, modify,
+distribute, sublicense, sell, host, deploy, or create derivative works of
+the Software.
+
+PROHIBITED ACTIVITIES
+=====================
+
+Without prior, separate, written and signed permission from the Owner, you
+may NOT:
+
+  1. Copy, reproduce, or download the Software in whole or in part, except
+     for the purpose of reading and reviewing the code via GitHub's web
+     interface in accordance with GitHub's Terms of Service.
+  2. Modify, adapt, translate, or create derivative works based on the
+     Software.
+  3. Distribute, publish, sublicense, sell, lease, rent, or otherwise
+     transfer the Software or any portion thereof to any third party.
+  4. Use the Software, in whole or in part, in any production environment,
+     commercial product, internal tool, service, or hosted offering.
+  5. Use the Software, in whole or in part, to train, fine-tune, evaluate,
+     benchmark, or otherwise improve any machine learning model, large
+     language model, generative AI system, or similar system.
+  6. Remove, alter, or obscure any copyright, trademark, patent, or other
+     proprietary notices contained in the Software.
+  7. Reverse-engineer, decompile, or disassemble any compiled or obfuscated
+     portion of the Software.
+
+PERMITTED ACTIVITIES
+====================
+
+You MAY:
+
+  1. View and read the Software's source code via GitHub's web interface.
+  2. Fork the repository on GitHub solely for the purpose of submitting a
+     pull request to the original repository, provided that the fork is
+     not used for any other purpose listed under "Prohibited Activities".
+  3. Submit issues, discussions, or pull requests through the original
+     GitHub repository, with the understanding that any contribution you
+     submit is licensed back to the Owner under the terms set forth in
+     the "Contributions" section below.
+
+CONTRIBUTIONS
+=============
+
+By submitting a pull request, patch, suggestion, or any other contribution
+to this repository (a "Contribution"), you irrevocably grant to the Owner
+a worldwide, royalty-free, perpetual, irrevocable, sublicensable, and
+transferable license to use, copy, modify, distribute, publish, and create
+derivative works of your Contribution, in any form and for any purpose
+(including commercial purposes), without obligation to credit, compensate,
+or notify you. You represent and warrant that you have the right to grant
+this license and that your Contribution is original to you.
+
+THIRD-PARTY COMPONENTS
+======================
+
+The Software may include or depend upon third-party libraries, frameworks,
+or other components, each of which is governed by its own license. Nothing
+in this License affects your rights or obligations under those third-party
+licenses. The Owner makes no representation or warranty regarding any
+third-party component.
+
+NO TRADEMARK LICENSE
+====================
+
+This License does not grant any rights to use the names, logos, or other
+brand elements of the Owner or of "PMO-aaS" or any related identifier.
+
+DISCLAIMER OF WARRANTY
+======================
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. THE OWNER
+DOES NOT WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE, SECURE, OR
+UNINTERRUPTED.
+
+LIMITATION OF LIABILITY
+=======================
+
+IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+ENFORCEMENT
+===========
+
+The Owner reserves the right to enforce all rights granted by applicable
+copyright, trademark, patent, trade secret, and other intellectual property
+laws, and to seek any and all remedies available at law or in equity for
+any unauthorized use of the Software.
+
+LICENSE INQUIRIES
+=================
+
+To request a separate commercial, evaluation, or other license, contact
+the Owner via the GitHub profile associated with this repository
+(https://github.com/xguilxr).
+
+GOVERNING LAW
+=============
+
+This License shall be governed by and construed in accordance with the
+laws applicable to the Owner's jurisdiction of residence, without regard
+to its conflict-of-law principles. Any dispute arising out of or relating
+to this License shall be subject to the exclusive jurisdiction of the
+competent courts of the Owner's jurisdiction of residence.
+
+ENTIRE AGREEMENT
+================
+
+This License constitutes the entire agreement between you and the Owner
+regarding the Software and supersedes all prior or contemporaneous
+understandings regarding such subject matter.
+
+----------------------------------------------------------------------
+END OF LICENSE

@@ -8,6 +8,21 @@
 [![Storage](https://img.shields.io/badge/storage-Cloudflare%20R2-orange)]()
 [![AI](https://img.shields.io/badge/ai-Groq%20%7C%20Gemini%20%7C%20Claude%20%7C%20Ollama-red)]()
 [![Sprint](https://img.shields.io/badge/sprint-9%20v1.8-green)]()
+[![License](https://img.shields.io/badge/license-Proprietary-red)](./LICENSE)
+
+---
+
+## License
+
+Copyright (c) 2026 David Eduardo Aguilar Guillen. **All rights reserved.**
+
+This repository is published for transparency and reference only. Use,
+copying, modification, redistribution, hosting, deployment, and AI/ML
+training are **not permitted** without prior written permission. See
+[`LICENSE`](./LICENSE) for full terms.
+
+For commercial or evaluation licensing inquiries, contact the owner via
+[github.com/xguilxr](https://github.com/xguilxr).
 
 ---
 
