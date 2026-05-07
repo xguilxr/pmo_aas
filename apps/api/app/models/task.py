@@ -51,11 +51,16 @@ class Task(Base, TimestampMixin):
     related_milestone_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("tasks.id", ondelete="SET NULL"), index=True
     )
-    # US-098: área responsable (catálogo tenant `areas` — US-097).
-    # Nullable; ondelete=SET NULL para que borrar un Área no rompa
+    # US-098: área responsable. Apunta a `project_areas` (US-091, scope
+    # proyecto) — owner clarificó 2026-05-07 que las áreas a asignar
+    # son las del proyecto, no el catálogo tenant. Migración 0046
+    # repunta el FK a project_areas.id.
+    # Nullable; ondelete=SET NULL para que borrar un área no rompa
     # tareas históricas.
     area_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("areas.id", ondelete="SET NULL"), index=True
+        String(36),
+        ForeignKey("project_areas.id", ondelete="SET NULL"),
+        index=True,
     )
     # US-090: outline_level computado desde wbs.split('.').length.
     outline_level: Mapped[int | None] = mapped_column(SmallInteger)

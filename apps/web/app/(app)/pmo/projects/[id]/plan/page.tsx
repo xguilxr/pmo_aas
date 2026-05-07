@@ -29,7 +29,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
 import { ApiError } from "@/lib/api";
-import { listAreas, type Area } from "@/lib/api/areas";
+import { listUsers, type AdminUser } from "@/lib/api/admin";
+import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { getProject } from "@/lib/api/projects";
 import {
   TASK_CRITICALITY_LABEL,
@@ -53,6 +54,15 @@ const MODE_FROM_PARAM = (v: string | null): Mode =>
 
 function fmtDate(d: string | null | undefined): string {
   if (!d) return "—";
+  // Bug timezone: la API devuelve YYYY-MM-DD (date pura sin TZ). El
+  // constructor `new Date("YYYY-MM-DD")` interpreta como UTC midnight,
+  // y al formatear en TZ negativa muestra el día anterior. Parseamos
+  // YYYY-MM-DD como fecha local explícitamente.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+  if (m) {
+    const local = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return local.toLocaleDateString("es-MX");
+  }
   try {
     return new Date(d).toLocaleDateString("es-MX");
   } catch {
@@ -193,6 +203,120 @@ function CriticalityChip({ value }: { value: TaskCriticality }) {
   );
 }
 
+// US-098 fix: dropdown checklist de Áreas para la toolbar top-level.
+// Popover simple con click-outside para cerrar. Multi-select via Set.
+// Toggle adicional "Agrupar" arriba del listado para que el botón de
+// área en la toolbar también permita activar la agrupación por área.
+function AreaFilterDropdown({
+  areas,
+  selected,
+  onChange,
+  groupByArea,
+  onToggleGroup,
+}: {
+  areas: ProjectArea[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+  groupByArea: boolean;
+  onToggleGroup: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [popoverEl, setPopoverEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (popoverEl && !popoverEl.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open, popoverEl]);
+  const count = selected.size;
+  const label =
+    count === 0 ? "Todas" : count === 1 ? "1 área" : `${count} áreas`;
+  return (
+    <div ref={setPopoverEl} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title="Filtrar por Área"
+        className={cn(
+          "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+          count > 0
+            ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+            : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+        )}
+      >
+        <Building2 className="h-3.5 w-3.5" aria-hidden />
+        Área: {label}
+        <ChevronDown className="h-3 w-3" aria-hidden />
+      </button>
+      {open ? (
+        <div
+          role="listbox"
+          className="absolute left-0 z-20 mt-1 w-64 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-md)]"
+        >
+          <div className="mb-1 flex items-center justify-between border-b border-[var(--border-subtle)] pb-1.5">
+            <button
+              type="button"
+              onClick={onToggleGroup}
+              aria-pressed={groupByArea}
+              className={cn(
+                "rounded px-2 py-0.5 text-[11px] font-medium",
+                groupByArea
+                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                  : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+              )}
+            >
+              {groupByArea ? "Agrupando por Área" : "Agrupar por Área"}
+            </button>
+            {selected.size > 0 ? (
+              <button
+                type="button"
+                onClick={() => onChange(new Set())}
+                className="text-[11px] text-[var(--color-tertiary)] hover:underline"
+              >
+                Limpiar
+              </button>
+            ) : null}
+          </div>
+          {areas.length === 0 ? (
+            <p className="p-2 text-[11px] italic text-[var(--color-tertiary)]">
+              Sin áreas registradas en el proyecto.
+            </p>
+          ) : (
+            <ul className="max-h-64 overflow-auto">
+              {areas.map((a) => {
+                const checked = selected.has(a.id);
+                return (
+                  <li key={a.id}>
+                    <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-[var(--color-subtle)]">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = new Set(selected);
+                          if (checked) next.delete(a.id);
+                          else next.add(a.id);
+                          onChange(next);
+                        }}
+                      />
+                      <span className="flex-1 text-[var(--color-primary)]">
+                        {a.name}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ENH-066 + ENH-077: agrupación por Área. Render header de grupo +
 // TaskList plana por área. Sólo se muestran áreas con al menos 1
 // fila visible (chips × área filter ya aplicados en filteredTasks).
@@ -205,7 +329,7 @@ function AreaGroupedList({
   showProjectCols,
 }: {
   tasks: Task[];
-  areas: Area[];
+  areas: ProjectArea[];
   loading: boolean;
   onDelete?: (t: Task) => void;
   onEdit?: (t: Task) => void;
@@ -260,6 +384,7 @@ function AreaGroupedList({
             onDelete={onDelete}
             onEdit={onEdit}
             showProjectCols={showProjectCols}
+            areas={areas}
           />
         </div>
       ))}
@@ -275,6 +400,7 @@ function AreaGroupedList({
             onDelete={onDelete}
             onEdit={onEdit}
             showProjectCols={showProjectCols}
+            areas={areas}
           />
         </div>
       ) : null}
@@ -291,6 +417,7 @@ function TaskList({
   collapsed,
   onToggleCollapse,
   showProjectCols = false,
+  areas = [],
 }: {
   tasks: Task[];
   loading: boolean;
@@ -304,7 +431,15 @@ function TaskList({
   onToggleCollapse?: (wbs: string) => void;
   // US-090: cuando true, muestra columnas Outline/Duration/Pred/Succ.
   showProjectCols?: boolean;
+  // US-098 fix: áreas del proyecto para resolver `task.area_id` →
+  // nombre en la columna 'Área responsable'.
+  areas?: ProjectArea[];
 }) {
+  const areaById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of areas) m.set(a.id, a.name);
+    return m;
+  }, [areas]);
   const showActions = !!(onEdit || onDelete);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
@@ -360,8 +495,9 @@ function TaskList({
               </th>
             ) : null}
             <th className="px-3 py-2 font-medium">Tarea</th>
-            {/* ENH-049: columna Responsable entre Tarea y Fechas. */}
-            <th className="px-3 py-2 font-medium">Responsable</th>
+            {/* US-098 fix: la columna ahora es 'Área responsable'.
+                El owner (responsable persona) sigue editable en el form. */}
+            <th className="px-3 py-2 font-medium">Área responsable</th>
             <th className="px-3 py-2 font-medium">Inicio</th>
             <th className="px-3 py-2 font-medium">Fin</th>
             {showProjectCols ? (
@@ -447,7 +583,15 @@ function TaskList({
                 </div>
               </td>
               <td className="px-3 py-2 text-xs">
-                <OwnerCell owner={t.owner} />
+                {/* US-098 fix: muestra Área responsable. El owner queda
+                    visible en el form de edición. */}
+                {t.area_id && areaById.has(t.area_id) ? (
+                  <span className="text-[var(--color-secondary)]">
+                    {areaById.get(t.area_id)}
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-tertiary)]">—</span>
+                )}
               </td>
               <td className="px-3 py-2 text-[var(--color-secondary)]">
                 {fmtDate(t.start_date)}
@@ -528,9 +672,14 @@ function PlanInner() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [gantt, setGantt] = useState<GanttData | null>(null);
   const [projectName, setProjectName] = useState<string>("");
-  // US-098: catálogo tenant de Áreas para select en form + filtro.
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [areaFilter, setAreaFilter] = useState<string>("");
+  // US-098: áreas del proyecto (project_areas, US-091) para select en
+  // form + filtro. Nota: el filter en este state acepta multi-select
+  // (Set) para el dropdown checklist de la nueva toolbar.
+  const [areas, setAreas] = useState<ProjectArea[]>([]);
+  const [areaFilter, setAreaFilter] = useState<Set<string>>(new Set());
+  // US-098 fix: usuarios del tenant para el select de Responsable en
+  // el edit form de tarea.
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -584,7 +733,8 @@ function PlanInner() {
     let rows = tasks;
     if (activeChips.size > 0) rows = rows.filter((t) => chipMatches(t, activeChips));
     // US-098: filtro por Área (chip dropdown).
-    if (areaFilter) rows = rows.filter((t) => t.area_id === areaFilter);
+    if (areaFilter.size > 0)
+      rows = rows.filter((t) => t.area_id && areaFilter.has(t.area_id));
     return rows;
   }, [tasks, activeChips, areaFilter]);
 
@@ -611,9 +761,10 @@ function PlanInner() {
       } else if (lvlRaw === "manual") {
         setWbsLevel("manual");
       }
-      // areaFilter persistido.
+      // areaFilter persistido (CSV de IDs).
       const af = window.localStorage.getItem(`plan-area-filter:${id}`);
-      if (af) setAreaFilter(af);
+      if (af)
+        setAreaFilter(new Set(af.split(",").map((s) => s.trim()).filter(Boolean)));
     } catch {
       /* localStorage puede fallar (modo privado, quota) — ignoramos. */
     }
@@ -645,7 +796,11 @@ function PlanInner() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      if (areaFilter) window.localStorage.setItem(`plan-area-filter:${id}`, areaFilter);
+      if (areaFilter.size > 0)
+        window.localStorage.setItem(
+          `plan-area-filter:${id}`,
+          Array.from(areaFilter).join(","),
+        );
       else window.localStorage.removeItem(`plan-area-filter:${id}`);
     } catch {
       /* ignore */
@@ -745,8 +900,9 @@ function PlanInner() {
     criticality: "medium" as TaskCriticality,
     related_milestone_id: "" as string,
     predecessors_csv: "" as string,
-    // US-098: área responsable.
+    // US-098: área responsable + responsable (owner).
     area_id: "" as string,
+    owner_id: "" as string,
   });
   const [updating, setUpdating] = useState(false);
 
@@ -760,6 +916,7 @@ function PlanInner() {
       duration_days: t.duration_days != null ? String(t.duration_days) : "",
       progress: String(t.progress ?? 0),
       area_id: t.area_id ?? "",
+      owner_id: t.owner_id ?? "",
       is_milestone: !!t.is_milestone,
       status: (t.status as TaskStatus) ?? "not_started",
       criticality: (t.criticality as TaskCriticality) ?? "medium",
@@ -792,6 +949,7 @@ function PlanInner() {
               .filter(Boolean)
           : null,
         area_id: editForm.area_id || null,
+        owner_id: editForm.owner_id || null,
       });
       setEditOpen(false);
       setEditingId(null);
@@ -848,10 +1006,14 @@ function PlanInner() {
     getProject(id)
       .then((p) => setProjectName(p.name))
       .catch(() => {});
-    // US-098: cargar Áreas del tenant para el select del edit form
-    // y el filtro. Falla silencioso (la UI muestra "Sin áreas").
-    listAreas({ is_active: true })
-      .then((rows) => setAreas(rows))
+    // US-098: cargar áreas DEL PROYECTO (project_areas, US-091) para
+    // el select del edit form y el filtro de la toolbar. Falla
+    // silencioso (la UI muestra "Sin áreas"). Filtramos a type='area'.
+    listProjectAreas(id, { is_active: true })
+      .then((rows) => setAreas(rows.filter((r) => r.type === "area")))
+      .catch(() => {});
+    listUsers({ is_active: true, page: 1, limit: 200 })
+      .then((resp) => setUsers(resp.items))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -1101,79 +1263,11 @@ function PlanInner() {
               Descargar = azul; Importar = verde. CSV queda como variante
               compacta junto a Excel para no perder funcionalidad
               (ENH-028). Layout `flex-wrap` para apilar en móvil. */}
+          {/* US-098 fix toolbar refactor: WBS / Área / MSP / Vista
+              ahora viven en la toolbar top-level (fuera del panel
+              de lista). Aquí solo quedan: plantilla, descargar,
+              CSV, importar, nueva tarea. */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* ENH-047: toggle agrupación por WBS jerárquica. */}
-            <Button
-              type="button"
-              size="sm"
-              variant={groupByWbs ? "primary" : "ghost"}
-              onClick={toggleGroupByWbs}
-              aria-label="Agrupar por WBS"
-              aria-pressed={groupByWbs}
-              title="Agrupar tareas por WBS jerárquico"
-            >
-              <Network className="h-4 w-4" aria-hidden />
-              WBS
-            </Button>
-            {/* ENH-066: toggle agrupación por Área (mutex con WBS). */}
-            <Button
-              type="button"
-              size="sm"
-              variant={groupByArea ? "primary" : "ghost"}
-              onClick={toggleGroupByArea}
-              aria-label="Agrupar por Área"
-              aria-pressed={groupByArea}
-              title="Agrupar tareas por Área responsable"
-            >
-              <Building2 className="h-4 w-4" aria-hidden />
-              Área
-            </Button>
-            {/* ENH-067: niveles rápidos WBS (1/2/3/4/Manual). Sólo
-                visibles cuando WBS está ON. */}
-            {groupByWbs ? (
-              <div
-                className="flex items-center gap-0.5 rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-0.5 py-0.5"
-                aria-label="Nivel WBS rápido"
-              >
-                {([1, 2, 3, 4, "manual"] as const).map((lvl) => {
-                  const active = wbsLevel === lvl;
-                  return (
-                    <button
-                      key={String(lvl)}
-                      type="button"
-                      onClick={() => applyWbsLevel(lvl)}
-                      aria-pressed={active}
-                      title={
-                        lvl === "manual"
-                          ? "Modo manual (chevrons)"
-                          : `Mostrar hasta nivel ${lvl}`
-                      }
-                      className={cn(
-                        "h-6 rounded px-2 text-[11px] font-medium",
-                        active
-                          ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                          : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
-                      )}
-                    >
-                      {lvl === "manual" ? "Manual" : lvl}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-            {/* US-090: toggle columnas tipo MS Project (Outline / Duration
-                / Predecesoras / Sucesoras). */}
-            <Button
-              type="button"
-              size="sm"
-              variant={showProjectCols ? "primary" : "ghost"}
-              onClick={() => setShowProjectCols((v) => !v)}
-              aria-label="Mostrar columnas MS Project"
-              aria-pressed={showProjectCols}
-              title="Outline level + Duración + Predecesoras + Sucesoras"
-            >
-              MSP
-            </Button>
             <Button
               type="button"
               size="sm"
@@ -1284,34 +1378,8 @@ function PlanInner() {
               Limpiar filtros
             </button>
           ) : null}
-          {/* US-098: filtro por Área. Dropdown junto a los chips. */}
-          {areas.length > 0 ? (
-            <div className="ml-auto flex items-center gap-1.5">
-              <span className="text-xs text-[var(--color-tertiary)]">Área:</span>
-              <Select
-                value={areaFilter}
-                onChange={(e) => setAreaFilter(e.target.value)}
-                className="h-7 text-xs"
-              >
-                <option value="">Todas</option>
-                {areas.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </Select>
-              {areaFilter ? (
-                <button
-                  type="button"
-                  onClick={() => setAreaFilter("")}
-                  className="text-xs text-[var(--color-tertiary)] hover:underline"
-                  title="Limpiar filtro de Área"
-                >
-                  ×
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+          {/* US-098 fix: filtro de Área se movió a la toolbar
+              top-level. */}
         </div>
         {groupByArea ? (
           // ENH-066: agrupación por Área. Render una TaskList por
@@ -1335,6 +1403,7 @@ function PlanInner() {
             collapsed={collapsedWbs}
             onToggleCollapse={toggleCollapsedWbs}
             showProjectCols={showProjectCols}
+            areas={areas}
           />
         )}
       </section>
@@ -1421,32 +1490,99 @@ function PlanInner() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <nav className="text-[11px] text-[var(--text-tertiary)]">
-            <Link href="/pmo/projects" className="hover:underline">
-              Proyectos
-            </Link>
-            <span className="mx-1">/</span>
-            <Link href={`/pmo/projects/${id}`} className="hover:underline">
-              Detalle
-            </Link>
-            <span className="mx-1">/</span>
-            <span>Plan</span>
-          </nav>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            Plan
-          </h1>
-          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-            Lista de tareas y timeline Gantt en una sola vista. Ajusta la
-            presentación con el toggle.
-          </p>
-        </div>
+      <header>
+        <nav className="text-[11px] text-[var(--text-tertiary)]">
+          <Link href="/pmo/projects" className="hover:underline">
+            Proyectos
+          </Link>
+          <span className="mx-1">/</span>
+          <Link href={`/pmo/projects/${id}`} className="hover:underline">
+            Detalle
+          </Link>
+          <span className="mx-1">/</span>
+          <span>Plan</span>
+        </nav>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+          Plan
+        </h1>
+      </header>
 
+      {/* US-098 fix toolbar refactor: WBS / Área / MSP / Vista al mismo
+          nivel, sobre el panel de la lista. Orden L→R: WBS+niveles,
+          Área (multi-checklist), MSP, Vista (Lista/Dividida/Gantt). */}
+      <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-sm)]">
+        {/* WBS toggle + niveles 1/2/3/4/Manual integrados */}
+        <div className="flex items-center gap-1 rounded border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5">
+          <button
+            type="button"
+            onClick={toggleGroupByWbs}
+            aria-pressed={groupByWbs}
+            title="Agrupar por WBS"
+            className={cn(
+              "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+              groupByWbs
+                ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+            )}
+          >
+            <Network className="h-3.5 w-3.5" aria-hidden />
+            WBS
+          </button>
+          {groupByWbs
+            ? ([1, 2, 3, 4, "manual"] as const).map((lvl) => {
+                const active = wbsLevel === lvl;
+                return (
+                  <button
+                    key={String(lvl)}
+                    type="button"
+                    onClick={() => applyWbsLevel(lvl)}
+                    aria-pressed={active}
+                    title={
+                      lvl === "manual"
+                        ? "Modo manual (chevrons)"
+                        : `Mostrar hasta nivel ${lvl}`
+                    }
+                    className={cn(
+                      "h-7 rounded px-2 text-[11px] font-medium",
+                      active
+                        ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                        : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                    )}
+                  >
+                    {lvl === "manual" ? "Manual" : lvl}
+                  </button>
+                );
+              })
+            : null}
+        </div>
+        {/* Área dropdown checklist */}
+        <AreaFilterDropdown
+          areas={areas}
+          selected={areaFilter}
+          onChange={setAreaFilter}
+          groupByArea={groupByArea}
+          onToggleGroup={toggleGroupByArea}
+        />
+        {/* MSP toggle */}
+        <button
+          type="button"
+          onClick={() => setShowProjectCols((v) => !v)}
+          aria-pressed={showProjectCols}
+          title="Outline level + Duración + Predecesoras + Sucesoras"
+          className={cn(
+            "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+            showProjectCols
+              ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+              : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+          )}
+        >
+          MSP
+        </button>
+        {/* Mode toggle (Lista / Dividida / Gantt) */}
         <div
           role="radiogroup"
           aria-label="Vista del Plan"
-          className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+          className="ml-auto inline-flex rounded border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
         >
           {(
             [
@@ -1465,10 +1601,10 @@ function PlanInner() {
                 aria-checked={active}
                 onClick={() => setModeAndUrl(opt.v as Mode)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
+                  "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
                   active
                     ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                    : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                    : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" aria-hidden />
@@ -1477,7 +1613,7 @@ function PlanInner() {
             );
           })}
         </div>
-      </header>
+      </div>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
@@ -1768,7 +1904,7 @@ function PlanInner() {
               ))}
             </Select>
           </label>
-          {/* US-098: Área responsable. Catálogo tenant `areas`. */}
+          {/* US-098 fix: Área responsable PRIMERO (project_areas). */}
           <label>
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
               Área responsable
@@ -1783,6 +1919,25 @@ function PlanInner() {
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {/* US-098 fix: Responsable (recurso/usuario) SEGUNDO. */}
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Responsable
+            </span>
+            <Select
+              value={editForm.owner_id}
+              onChange={(e) =>
+                setEditForm({ ...editForm, owner_id: e.target.value })
+              }
+            >
+              <option value="">— Sin responsable —</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name?.trim() || u.email}
                 </option>
               ))}
             </Select>

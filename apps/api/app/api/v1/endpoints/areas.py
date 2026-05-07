@@ -72,6 +72,7 @@ async def create_area(
         tenant_id=str(tenant_id),
         name=body.name.strip(),
         description=body.description,
+        lead_name=body.lead_name.strip() if body.lead_name else None,
         is_active=body.is_active,
         created_by=str(cu.id),
     )
@@ -126,6 +127,7 @@ async def get_areas_tree(
                 id=area.id,
                 name=area.name,
                 description=area.description,
+                lead_name=area.lead_name,
                 is_active=area.is_active,
                 teams=[
                     TreeTeam(
