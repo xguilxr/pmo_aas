@@ -327,6 +327,14 @@ export type AIReportGenerateBody = {
   include_milestones?: boolean;
   free_notes?: string;
   save_to_history?: boolean;
+  // ENH-071: filtros configurables sobre el listado del reporte.
+  date_from?: string | null;
+  date_to?: string | null;
+  area_ids?: string[] | null;
+  assignee_actor_ids?: string[] | null;
+  criticalities?: string[] | null;
+  statuses?: string[] | null;
+  severities?: string[] | null;
 };
 
 export type AIReportGenerateResponse = {

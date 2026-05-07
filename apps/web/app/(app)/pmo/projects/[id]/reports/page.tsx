@@ -26,6 +26,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
+import { getStoredUser } from "@/lib/auth-storage";
 import { draftReport, sendReport } from "@/lib/api/ai";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 import {
@@ -1639,6 +1640,114 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
   );
 }
 
+// ENH-071: filtros del reporte IA.
+type AIReportFilters = {
+  date_from: string;
+  date_to: string;
+  criticalities: string[];
+  statuses: string[];
+  severities: string[];
+};
+
+const EMPTY_FILTERS: AIReportFilters = {
+  date_from: "",
+  date_to: "",
+  criticalities: [],
+  statuses: [],
+  severities: [],
+};
+
+const CRITICALITY_OPTS = ["low", "medium", "high", "critical"] as const;
+const STATUS_OPTS = ["not_started", "in_progress", "done"] as const;
+const SEVERITY_OPTS = ["low", "medium", "high", "critical"] as const;
+
+const STATUS_LABEL: Record<string, string> = {
+  not_started: "No iniciada",
+  in_progress: "En curso",
+  done: "Hecha",
+};
+
+function filtersStorageKey(projectId: string): string | null {
+  const u = getStoredUser();
+  if (!u) return null;
+  return `pmo:reports:filters:${projectId}:${u.id}`;
+}
+
+function loadFilters(projectId: string): AIReportFilters {
+  if (typeof window === "undefined") return EMPTY_FILTERS;
+  const k = filtersStorageKey(projectId);
+  if (!k) return EMPTY_FILTERS;
+  try {
+    const raw = window.localStorage.getItem(k);
+    if (!raw) return EMPTY_FILTERS;
+    return { ...EMPTY_FILTERS, ...JSON.parse(raw) };
+  } catch {
+    return EMPTY_FILTERS;
+  }
+}
+
+function saveFilters(projectId: string, f: AIReportFilters): void {
+  if (typeof window === "undefined") return;
+  const k = filtersStorageKey(projectId);
+  if (!k) return;
+  try {
+    window.localStorage.setItem(k, JSON.stringify(f));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function activeFilterCount(f: AIReportFilters): number {
+  return (
+    (f.date_from ? 1 : 0) +
+    (f.date_to ? 1 : 0) +
+    f.criticalities.length +
+    f.statuses.length +
+    f.severities.length
+  );
+}
+
+function FilterChips<T extends string>({
+  label,
+  options,
+  selected,
+  onToggle,
+  labelMap,
+}: {
+  label: string;
+  options: readonly T[];
+  selected: string[];
+  onToggle: (v: T) => void;
+  labelMap?: Record<string, string>;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium text-[var(--color-secondary)]">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {options.map((opt) => {
+          const active = selected.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onToggle(opt)}
+              className={`rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs transition ${
+                active
+                  ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                  : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]"
+              }`}
+            >
+              {labelMap?.[opt] ?? opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // US-093 — vista Creación con IA + preview.
 function ReportCreateAIView({ projectId }: { projectId: string }) {
   const [base, setBase] = useState<"avance" | "seguimiento" | "custom">("avance");
@@ -1653,6 +1762,25 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
   const [savingHistory, setSavingHistory] = useState(false);
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(null);
 
+  // ENH-071: filtros configurables persistidos por usuario.
+  const [filters, setFilters] = useState<AIReportFilters>(EMPTY_FILTERS);
+  useEffect(() => {
+    setFilters(loadFilters(projectId));
+  }, [projectId]);
+  useEffect(() => {
+    saveFilters(projectId, filters);
+  }, [projectId, filters]);
+
+  function toggleArr<K extends keyof AIReportFilters>(key: K, v: string) {
+    setFilters((prev) => {
+      const cur = prev[key] as string[];
+      const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v];
+      return { ...prev, [key]: next } as AIReportFilters;
+    });
+  }
+
+  const filterCount = activeFilterCount(filters);
+
   async function generate(saveToHistory: boolean) {
     if (saveToHistory) setSavingHistory(true);
     else setGenerating(true);
@@ -1666,6 +1794,12 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
         include_milestones: includeMilestones,
         free_notes: freeNotes,
         save_to_history: saveToHistory,
+        // ENH-071: filtros enviados al backend.
+        date_from: filters.date_from || null,
+        date_to: filters.date_to || null,
+        criticalities: filters.criticalities.length ? filters.criticalities : null,
+        statuses: filters.statuses.length ? filters.statuses : null,
+        severities: filters.severities.length ? filters.severities : null,
       });
       setPreviewHtml(res.html);
       setSavedHistoryId(res.history_id);
@@ -1737,6 +1871,71 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
               <span>{label}</span>
             </label>
           ))}
+        </fieldset>
+        {/* ENH-071: filtros configurables sobre el listado del reporte. */}
+        <fieldset className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
+          <legend className="flex items-center gap-1.5 px-1 text-xs font-medium text-[var(--color-secondary)]">
+            <span>Filtros</span>
+            {filterCount > 0 ? (
+              <span className="rounded-full bg-[var(--color-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {filterCount}
+              </span>
+            ) : null}
+            {filterCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="ml-auto text-[10px] uppercase tracking-wide text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+              >
+                Limpiar
+              </button>
+            ) : null}
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-xs">
+              <span className="mb-1 block text-[var(--color-tertiary)]">
+                Desde
+              </span>
+              <Input
+                type="date"
+                value={filters.date_from}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, date_from: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs">
+              <span className="mb-1 block text-[var(--color-tertiary)]">
+                Hasta
+              </span>
+              <Input
+                type="date"
+                value={filters.date_to}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, date_to: e.target.value }))
+                }
+              />
+            </label>
+          </div>
+          <FilterChips
+            label="Criticidad (tareas)"
+            options={CRITICALITY_OPTS}
+            selected={filters.criticalities}
+            onToggle={(v) => toggleArr("criticalities", v)}
+          />
+          <FilterChips
+            label="Status (tareas / issues)"
+            options={STATUS_OPTS}
+            selected={filters.statuses}
+            onToggle={(v) => toggleArr("statuses", v)}
+            labelMap={STATUS_LABEL}
+          />
+          <FilterChips
+            label="Severidad (riesgos)"
+            options={SEVERITY_OPTS}
+            selected={filters.severities}
+            onToggle={(v) => toggleArr("severities", v)}
+          />
         </fieldset>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
