@@ -3,6 +3,8 @@ name = "pmoaas-api"
 version = "0.1.0"
 description = "PMO-aaS FastAPI backend"
 requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary — All Rights Reserved (see ../../LICENSE)" }
+authors = [{ name = "David Eduardo Aguilar Guillen" }]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
