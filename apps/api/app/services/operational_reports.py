@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
+from app.models.area import Area
 from app.models.modules import ChangeRequest, Issue, Risk
 from app.models.organization import Organization, Program
 from app.models.project import Project
@@ -180,13 +181,20 @@ async def build_avance_context(
         ],
         key=lambda t: t.end_date or date.min,
     )
+    # ENH-082: cota superior del listado de hitos próximos = mismo
+    # window_days que el resto del reporte (antes era ilimitado, lo que
+    # mostraba hitos a meses de distancia aunque el user pidiera 1 mes).
+    upcoming_end = cut_off_date + timedelta(days=window_days)
     milestones_upcoming = sorted(
         [
             t
             for t in milestones
-            if t.status != "done" and (t.progress or 0) < 100 and t.end_date is not None and t.end_date >= cut_off_date
+            if t.status != "done"
+            and (t.progress or 0) < 100
+            and t.end_date is not None
+            and cut_off_date <= t.end_date <= upcoming_end
         ],
-        key=lambda t: t.end_date or date.max,
+        key=lambda t: (t.end_date or date.max),
     )[:10]
 
     # Riesgos top
@@ -214,7 +222,6 @@ async def build_avance_context(
                 Issue.deleted_at.is_(None),
                 Issue.status.notin_(["resolved", "closed"]),
             )
-            .order_by(Issue.priority.desc().nullslast() if hasattr(Issue.priority, "nullslast") else Issue.priority.desc())
             .limit(15)
         )
     ).scalars().all()
@@ -228,6 +235,45 @@ async def build_avance_context(
             )
         ).all()
         owner_map = {str(uid): (name or "—") for uid, name in rows}
+
+    # ENH-082: resolver área para hitos / risks / issues. Una sola
+    # query batch sobre todas las area_ids referenciadas.
+    area_ids: set[str] = set()
+    for t in milestones_upcoming:
+        if t.area_id:
+            area_ids.add(str(t.area_id))
+    for r in risk_rows:
+        if r.area_id:
+            area_ids.add(str(r.area_id))
+    for i in aid_rows:
+        if i.area_id:
+            area_ids.add(str(i.area_id))
+    area_map: dict[str, str] = {}
+    if area_ids:
+        arows = (
+            await db.execute(
+                select(Area.id, Area.name).where(Area.id.in_(area_ids))
+            )
+        ).all()
+        area_map = {str(aid): (name or "—") for aid, name in arows}
+
+    def _area_name(aid) -> str:
+        return area_map.get(str(aid), "—") if aid else "—"
+
+    # ENH-082: orden definitivo. Issues: due asc nullslast, priority desc.
+    aid_rows = sorted(
+        aid_rows,
+        key=lambda i: (
+            (i.committed_date or date.max),
+            -(i.priority or 0),
+        ),
+    )
+    # ENH-082: hitos próximos ya están ordenados por end_date; estabilizamos
+    # por área para el caso de empates en fecha.
+    milestones_upcoming = sorted(
+        milestones_upcoming,
+        key=lambda t: (t.end_date or date.max, _area_name(t.area_id)),
+    )
 
     # Cambios en revisión
     changes_in_review = (
@@ -323,6 +369,10 @@ async def build_avance_context(
                 "name": t.name,
                 "end_date": t.end_date.isoformat() if t.end_date else None,
                 "progress": t.progress or 0,
+                # ENH-082: área responsable, status y delayed flag.
+                "area_name": _area_name(t.area_id),
+                "status": t.status,
+                "delayed": _is_delayed(t, cut_off_date),
             }
             for t in milestones_upcoming
         ],
@@ -335,6 +385,9 @@ async def build_avance_context(
                 "probability": r.probability,
                 "impact": r.impact,
                 "mitigation_strategy": r.mitigation_strategy,
+                # ENH-082: área + due_date.
+                "area_name": _area_name(r.area_id),
+                "due_date": r.due_date.isoformat() if r.due_date else None,
             }
             for r in risk_rows
         ],
@@ -347,6 +400,8 @@ async def build_avance_context(
                 "priority": i.priority,
                 "committed_date": i.committed_date.isoformat() if i.committed_date else None,
                 "owner_name": owner_map.get(str(i.owner_id), "—") if i.owner_id else "—",
+                # ENH-082: área responsable como fallback cuando no hay owner.
+                "area_name": _area_name(i.area_id),
                 "overdue": bool(
                     i.committed_date
                     and i.committed_date < cut_off_date
