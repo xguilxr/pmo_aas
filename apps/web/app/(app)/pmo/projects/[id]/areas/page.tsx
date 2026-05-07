@@ -303,8 +303,14 @@ export default function ProjectAreasPage() {
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-[var(--color-tertiary)]">
             {rows.length === 0
-              ? "Aún no hay áreas registradas."
-              : "Ningún área coincide con los filtros."}
+              ? typeFilter === "actor"
+                ? "Aún no hay actores registrados."
+                : typeFilter === "team"
+                  ? "Aún no hay equipos registrados."
+                  : typeFilter === "area"
+                    ? "Aún no hay áreas registradas."
+                    : "Aún no hay áreas, equipos ni actores registrados."
+              : "Ningún registro coincide con los filtros."}
           </div>
         ) : typeFilter === "actor" ? (
           // US-091 fase 2: vista por Actor = tabla plana con Nombre/Email/
