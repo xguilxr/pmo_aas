@@ -30,3 +30,9 @@ def validation_error(detail: str, fields: dict | None = None) -> AppError:
 
 def business_rule(detail: str, code: str = "BUSINESS_RULE") -> AppError:
     return AppError(status.HTTP_422_UNPROCESSABLE_ENTITY, code, detail)
+
+
+def service_unavailable(
+    detail: str, code: str = "SERVICE_UNAVAILABLE"
+) -> AppError:
+    return AppError(status.HTTP_503_SERVICE_UNAVAILABLE, code, detail)

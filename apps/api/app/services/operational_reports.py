@@ -269,9 +269,15 @@ async def build_avance_context(
                 "name": t.name,
                 "is_milestone": bool(t.is_milestone),
                 "criticality": getattr(t, "criticality", None),
+                "status": t.status,
                 "end_date": t.end_date.isoformat() if t.end_date else None,
                 "progress": t.progress or 0,
                 "delayed": _is_delayed(t, cut_off_date),
+                # ENH-071: campos para filtrado en el endpoint de reportes IA.
+                "area_id": str(t.area_id) if t.area_id else None,
+                "assignee_actor_id": (
+                    str(t.assignee_actor_id) if t.assignee_actor_id else None
+                ),
             }
             for t in focus_tasks
         ],

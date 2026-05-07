@@ -26,6 +26,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
+import { getStoredUser } from "@/lib/auth-storage";
 import { draftReport, sendReport } from "@/lib/api/ai";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 import {
@@ -1514,11 +1515,206 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
   );
 }
 
+// ENH-072: ordenamiento configurable de la tabla de historial.
+type HistorySortCol = "generated_at" | "report_type" | "generated_by" | "size";
+type HistorySortDir = "asc" | "desc" | "none";
+type HistorySort = { col: HistorySortCol; dir: HistorySortDir };
+
+const HISTORY_SORT_DEFAULT: HistorySort = { col: "generated_at", dir: "desc" };
+
+function historySortKey(projectId: string): string | null {
+  const u = getStoredUser();
+  if (!u) return null;
+  return `pmo:reports:history-sort:${projectId}:${u.id}`;
+}
+
+function loadHistorySort(projectId: string): HistorySort {
+  if (typeof window === "undefined") return HISTORY_SORT_DEFAULT;
+  const k = historySortKey(projectId);
+  if (!k) return HISTORY_SORT_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(k);
+    if (!raw) return HISTORY_SORT_DEFAULT;
+    const parsed = JSON.parse(raw) as HistorySort;
+    if (!parsed.col || !parsed.dir) return HISTORY_SORT_DEFAULT;
+    return parsed;
+  } catch {
+    return HISTORY_SORT_DEFAULT;
+  }
+}
+
+function saveHistorySort(projectId: string, s: HistorySort): void {
+  if (typeof window === "undefined") return;
+  const k = historySortKey(projectId);
+  if (!k) return;
+  try {
+    window.localStorage.setItem(k, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
+
+function nextSortDir(d: HistorySortDir): HistorySortDir {
+  // 3-state toggle: asc → desc → none → asc
+  return d === "asc" ? "desc" : d === "desc" ? "none" : "asc";
+}
+
+function sortIndicator(active: boolean, dir: HistorySortDir): string {
+  if (!active || dir === "none") return "";
+  return dir === "asc" ? " ▲" : " ▼";
+}
+
+function sortHistory(
+  items: ReportHistoryItem[],
+  sort: HistorySort,
+): ReportHistoryItem[] {
+  if (sort.dir === "none") return items;
+  const sign = sort.dir === "asc" ? 1 : -1;
+  const cmp = (a: ReportHistoryItem, b: ReportHistoryItem) => {
+    let av: string | number | null;
+    let bv: string | number | null;
+    switch (sort.col) {
+      case "generated_at":
+        av = a.generated_at;
+        bv = b.generated_at;
+        break;
+      case "report_type":
+        av = a.report_type;
+        bv = b.report_type;
+        break;
+      case "generated_by":
+        av = a.generated_by_name ?? "";
+        bv = b.generated_by_name ?? "";
+        break;
+      case "size":
+        av = a.file_size_bytes ?? -1;
+        bv = b.file_size_bytes ?? -1;
+        break;
+    }
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (av < bv) return -1 * sign;
+    if (av > bv) return 1 * sign;
+    return 0;
+  };
+  return [...items].sort(cmp);
+}
+
 // ENH-055 + US-092 — vista Historial.
+// ENH-073: KPI summary card con acento pastel + barra de proporción.
+function HistoryKPICard({
+  label,
+  value,
+  total,
+  tone,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  tone: "info" | "success" | "warning" | "neutral";
+  active: boolean;
+  onClick: () => void;
+}) {
+  const toneClass =
+    tone === "info"
+      ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)] border-[var(--color-info-border)]"
+      : tone === "success"
+        ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)] border-[var(--color-success-border)]"
+        : tone === "warning"
+          ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)] border-[var(--color-warning-border)]"
+          : "bg-[var(--color-subtle)] text-[var(--color-secondary)] border-[var(--border-default)]";
+  const ratio = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex flex-col gap-2 rounded-[var(--radius-lg)] border p-3 text-left transition-shadow",
+        toneClass,
+        active
+          ? "shadow-[var(--shadow-sm)] ring-2 ring-[var(--color-primary)] ring-offset-1 ring-offset-[var(--color-app)]"
+          : "shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-sm)]",
+      )}
+    >
+      <span className="text-[11px] font-medium uppercase tracking-wide opacity-80">
+        {label}
+      </span>
+      <span className="font-mono text-2xl font-semibold tabular-nums">
+        {value}
+      </span>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-[var(--color-neutral-0)]/40"
+        aria-hidden
+      >
+        <div
+          className="h-full rounded-full bg-current"
+          style={{ width: `${ratio}%`, opacity: 0.55 }}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ENH-073: filtros segmented + búsqueda en historial.
+type HistoryBucket = "all" | "avance" | "seguimiento";
+
 function ReportHistoryView({ projectId }: { projectId: string }) {
   const [items, setItems] = useState<ReportHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // ENH-072: sort persistido por usuario+proyecto, default generated_at desc.
+  const [sort, setSort] = useState<HistorySort>(HISTORY_SORT_DEFAULT);
+  // ENH-073: bucket activo + búsqueda inline.
+  const [bucket, setBucket] = useState<HistoryBucket>("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setSort(loadHistorySort(projectId));
+  }, [projectId]);
+  useEffect(() => {
+    saveHistorySort(projectId, sort);
+  }, [projectId, sort]);
+
+  function onHeaderClick(col: HistorySortCol) {
+    setSort((prev) =>
+      prev.col === col
+        ? { col, dir: nextSortDir(prev.dir) }
+        : { col, dir: "asc" },
+    );
+  }
+
+  // ENH-073: counts por bucket — alimentan los KPI cards y los pills.
+  const counts = useMemo(() => {
+    const c = { all: items.length, avance: 0, seguimiento: 0, week: 0 };
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    for (const it of items) {
+      if (it.report_type === "avance") c.avance += 1;
+      else if (it.report_type === "seguimiento") c.seguimiento += 1;
+      if (new Date(it.generated_at).getTime() >= weekAgo) c.week += 1;
+    }
+    return c;
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((h) => {
+      if (bucket !== "all" && h.report_type !== bucket) return false;
+      if (q) {
+        const hay = `${h.generated_by_name ?? ""} ${h.report_type}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [items, bucket, search]);
+
+  const sortedItems = useMemo(
+    () => sortHistory(filteredItems, sort),
+    [filteredItems, sort],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1547,10 +1743,17 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
 
   if (loading) {
     return (
-      <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
+      <section className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-[var(--radius-lg)]" />
+          ))}
+        </div>
+        <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </section>
       </section>
     );
   }
@@ -1561,12 +1764,17 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
 
   if (items.length === 0) {
     return (
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
-        <CalendarClock className="mx-auto mb-3 h-8 w-8" aria-hidden />
-        <p className="font-medium text-[var(--color-secondary)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--color-info-border)] bg-[var(--color-info-bg)] p-10 text-center shadow-[var(--shadow-sm)]">
+        <div
+          aria-hidden
+          className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-info-border)] bg-[var(--color-surface)]"
+        >
+          <CalendarClock className="h-7 w-7 text-[var(--color-info-fg)]" />
+        </div>
+        <p className="text-sm font-semibold text-[var(--color-info-fg)]">
           Sin historial todavía
         </p>
-        <p className="mt-1">
+        <p className="mt-1 text-xs text-[var(--color-secondary)]">
           Genera tu primer reporte de Avance o Seguimiento desde la vista
           Catálogo. Cada generación queda registrada aquí.
         </p>
@@ -1574,20 +1782,159 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
     );
   }
 
+  const bucketTabs: { v: HistoryBucket; label: string; count: number }[] = [
+    { v: "all", label: "Todos", count: counts.all },
+    { v: "avance", label: "Avance", count: counts.avance },
+    { v: "seguimiento", label: "Seguimiento", count: counts.seguimiento },
+  ];
+
   return (
+    <section className="space-y-3">
+      {/* ENH-073: KPI summary cards con acentos pastel — clicables como filtros. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <HistoryKPICard
+          label="Total"
+          value={counts.all}
+          total={counts.all}
+          tone="neutral"
+          active={bucket === "all"}
+          onClick={() => setBucket("all")}
+        />
+        <HistoryKPICard
+          label="Avance"
+          value={counts.avance}
+          total={counts.all}
+          tone="info"
+          active={bucket === "avance"}
+          onClick={() => setBucket("avance")}
+        />
+        <HistoryKPICard
+          label="Seguimiento"
+          value={counts.seguimiento}
+          total={counts.all}
+          tone="success"
+          active={bucket === "seguimiento"}
+          onClick={() => setBucket("seguimiento")}
+        />
+        <HistoryKPICard
+          label="Última semana"
+          value={counts.week}
+          total={counts.all}
+          tone="warning"
+          active={false}
+          onClick={() => setBucket("all")}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center sm:justify-between">
+        {/* ENH-073: segmented tabs con pill de conteo. */}
+        <div
+          role="radiogroup"
+          aria-label="Filtro por tipo de reporte"
+          className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-app)] p-0.5"
+        >
+          {bucketTabs.map((tab) => {
+            const active = bucket === tab.v;
+            return (
+              <button
+                key={tab.v}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setBucket(tab.v)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                )}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 font-mono text-[10px] tabular-nums",
+                    active
+                      ? "bg-[var(--color-inverse)]/20 text-[var(--color-inverse)]"
+                      : "bg-[var(--color-subtle)] text-[var(--color-tertiary)]",
+                  )}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {/* ENH-073: búsqueda inline. */}
+        <div className="sm:max-w-xs">
+          <Input
+            type="search"
+            placeholder="Buscar por autor o tipo…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {sortedItems.length === 0 ? (
+        <section className="rounded-[var(--radius-xl)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] p-8 text-center shadow-[var(--shadow-sm)]">
+          <div
+            aria-hidden
+            className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-warning-border)] bg-[var(--color-surface)]"
+          >
+            <Eye className="h-6 w-6 text-[var(--color-warning-fg)]" />
+          </div>
+          <p className="text-sm font-semibold text-[var(--color-warning-fg)]">
+            Sin coincidencias
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-secondary)]">
+            Ajusta los filtros o la búsqueda para ver resultados.
+          </p>
+        </section>
+      ) : (
     <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
-            <th className="px-3 py-2 font-medium">Fecha</th>
-            <th className="px-3 py-2 font-medium">Tipo</th>
-            <th className="px-3 py-2 font-medium">Generado por</th>
-            <th className="px-3 py-2 font-medium">Tamaño</th>
+            {(
+              [
+                ["generated_at", "Fecha"],
+                ["report_type", "Tipo"],
+                ["generated_by", "Generado por"],
+                ["size", "Tamaño"],
+              ] as const
+            ).map(([col, label]) => {
+              const active = sort.col === col;
+              return (
+                <th key={col} className="px-3 py-2 font-medium">
+                  <button
+                    type="button"
+                    onClick={() => onHeaderClick(col)}
+                    className={`flex items-center gap-1 hover:text-[var(--color-primary)] ${
+                      active && sort.dir !== "none"
+                        ? "text-[var(--color-primary)]"
+                        : ""
+                    }`}
+                    aria-sort={
+                      active && sort.dir !== "none"
+                        ? sort.dir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                  >
+                    <span>{label}</span>
+                    <span aria-hidden className="text-[10px]">
+                      {sortIndicator(active, sort.dir)}
+                    </span>
+                  </button>
+                </th>
+              );
+            })}
             <th className="w-32 px-3 py-2 font-medium" aria-label="Acciones" />
           </tr>
         </thead>
         <tbody>
-          {items.map((h) => (
+          {sortedItems.map((h) => (
             <tr
               key={h.id}
               className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
@@ -1636,6 +1983,116 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
         </tbody>
       </table>
     </section>
+      )}
+    </section>
+  );
+}
+
+// ENH-071: filtros del reporte IA.
+type AIReportFilters = {
+  date_from: string;
+  date_to: string;
+  criticalities: string[];
+  statuses: string[];
+  severities: string[];
+};
+
+const EMPTY_FILTERS: AIReportFilters = {
+  date_from: "",
+  date_to: "",
+  criticalities: [],
+  statuses: [],
+  severities: [],
+};
+
+const CRITICALITY_OPTS = ["low", "medium", "high", "critical"] as const;
+const STATUS_OPTS = ["not_started", "in_progress", "done"] as const;
+const SEVERITY_OPTS = ["low", "medium", "high", "critical"] as const;
+
+const STATUS_LABEL: Record<string, string> = {
+  not_started: "No iniciada",
+  in_progress: "En curso",
+  done: "Hecha",
+};
+
+function filtersStorageKey(projectId: string): string | null {
+  const u = getStoredUser();
+  if (!u) return null;
+  return `pmo:reports:filters:${projectId}:${u.id}`;
+}
+
+function loadFilters(projectId: string): AIReportFilters {
+  if (typeof window === "undefined") return EMPTY_FILTERS;
+  const k = filtersStorageKey(projectId);
+  if (!k) return EMPTY_FILTERS;
+  try {
+    const raw = window.localStorage.getItem(k);
+    if (!raw) return EMPTY_FILTERS;
+    return { ...EMPTY_FILTERS, ...JSON.parse(raw) };
+  } catch {
+    return EMPTY_FILTERS;
+  }
+}
+
+function saveFilters(projectId: string, f: AIReportFilters): void {
+  if (typeof window === "undefined") return;
+  const k = filtersStorageKey(projectId);
+  if (!k) return;
+  try {
+    window.localStorage.setItem(k, JSON.stringify(f));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function activeFilterCount(f: AIReportFilters): number {
+  return (
+    (f.date_from ? 1 : 0) +
+    (f.date_to ? 1 : 0) +
+    f.criticalities.length +
+    f.statuses.length +
+    f.severities.length
+  );
+}
+
+function FilterChips<T extends string>({
+  label,
+  options,
+  selected,
+  onToggle,
+  labelMap,
+}: {
+  label: string;
+  options: readonly T[];
+  selected: string[];
+  onToggle: (v: T) => void;
+  labelMap?: Record<string, string>;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium text-[var(--color-secondary)]">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {options.map((opt) => {
+          const active = selected.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onToggle(opt)}
+              className={`rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs transition ${
+                active
+                  ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                  : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]"
+              }`}
+            >
+              {labelMap?.[opt] ?? opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1653,6 +2110,25 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
   const [savingHistory, setSavingHistory] = useState(false);
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(null);
 
+  // ENH-071: filtros configurables persistidos por usuario.
+  const [filters, setFilters] = useState<AIReportFilters>(EMPTY_FILTERS);
+  useEffect(() => {
+    setFilters(loadFilters(projectId));
+  }, [projectId]);
+  useEffect(() => {
+    saveFilters(projectId, filters);
+  }, [projectId, filters]);
+
+  function toggleArr<K extends keyof AIReportFilters>(key: K, v: string) {
+    setFilters((prev) => {
+      const cur = prev[key] as string[];
+      const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v];
+      return { ...prev, [key]: next } as AIReportFilters;
+    });
+  }
+
+  const filterCount = activeFilterCount(filters);
+
   async function generate(saveToHistory: boolean) {
     if (saveToHistory) setSavingHistory(true);
     else setGenerating(true);
@@ -1666,6 +2142,12 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
         include_milestones: includeMilestones,
         free_notes: freeNotes,
         save_to_history: saveToHistory,
+        // ENH-071: filtros enviados al backend.
+        date_from: filters.date_from || null,
+        date_to: filters.date_to || null,
+        criticalities: filters.criticalities.length ? filters.criticalities : null,
+        statuses: filters.statuses.length ? filters.statuses : null,
+        severities: filters.severities.length ? filters.severities : null,
       });
       setPreviewHtml(res.html);
       setSavedHistoryId(res.history_id);
@@ -1737,6 +2219,71 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
               <span>{label}</span>
             </label>
           ))}
+        </fieldset>
+        {/* ENH-071: filtros configurables sobre el listado del reporte. */}
+        <fieldset className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
+          <legend className="flex items-center gap-1.5 px-1 text-xs font-medium text-[var(--color-secondary)]">
+            <span>Filtros</span>
+            {filterCount > 0 ? (
+              <span className="rounded-full bg-[var(--color-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {filterCount}
+              </span>
+            ) : null}
+            {filterCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="ml-auto text-[10px] uppercase tracking-wide text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+              >
+                Limpiar
+              </button>
+            ) : null}
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-xs">
+              <span className="mb-1 block text-[var(--color-tertiary)]">
+                Desde
+              </span>
+              <Input
+                type="date"
+                value={filters.date_from}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, date_from: e.target.value }))
+                }
+              />
+            </label>
+            <label className="text-xs">
+              <span className="mb-1 block text-[var(--color-tertiary)]">
+                Hasta
+              </span>
+              <Input
+                type="date"
+                value={filters.date_to}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, date_to: e.target.value }))
+                }
+              />
+            </label>
+          </div>
+          <FilterChips
+            label="Criticidad (tareas)"
+            options={CRITICALITY_OPTS}
+            selected={filters.criticalities}
+            onToggle={(v) => toggleArr("criticalities", v)}
+          />
+          <FilterChips
+            label="Status (tareas / issues)"
+            options={STATUS_OPTS}
+            selected={filters.statuses}
+            onToggle={(v) => toggleArr("statuses", v)}
+            labelMap={STATUS_LABEL}
+          />
+          <FilterChips
+            label="Severidad (riesgos)"
+            options={SEVERITY_OPTS}
+            selected={filters.severities}
+            onToggle={(v) => toggleArr("severities", v)}
+          />
         </fieldset>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">

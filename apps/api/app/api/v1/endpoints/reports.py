@@ -634,11 +634,32 @@ class AIGenerateBody(BaseModel):
     free_notes: str = Field(default="", max_length=4000)
     save_to_history: bool = False
 
+    # ENH-071: filtros configurables sobre el listado del reporte. Todos
+    # opcionales — cuando van vacíos no aplican (back-compat con el flujo
+    # anterior). Persisten por usuario en localStorage del frontend; el
+    # backend solo los recibe, no los persiste.
+    date_from: date | None = None
+    date_to: date | None = None
+    area_ids: list[UUID] | None = None
+    assignee_actor_ids: list[UUID] | None = None
+    criticalities: list[str] | None = None  # low|medium|high|critical
+    statuses: list[str] | None = None       # not_started|in_progress|done|...
+    severities: list[str] | None = None     # risks: low|medium|high|critical
+
 
 class AIGenerateResponse(BaseModel):
     html: str
     history_id: str | None = None
 
+
+# US-101: reglas globales de orden compartidas entre el reporte IA y la
+# UI de listas (consumidas por ENH-071 / ENH-072 como default sort).
+REPORT_GLOBAL_ORDER_RULES = (
+    "Agrupa los items por área del proyecto. Dentro de cada área, ordena "
+    "por fecha fin (end_date) priorizando las fechas más cercanas a hoy "
+    "primero (más urgente arriba). Items sin área van al final bajo "
+    "'Sin área asignada'."
+)
 
 _AI_REPORT_SYSTEM_PROMPT = (
     "Eres un asistente PMO senior. Redacta un reporte de proyecto en HTML "
@@ -651,7 +672,9 @@ _AI_REPORT_SYSTEM_PROMPT = (
     "(end_date < hoy y status != 'done'). No incluyas tareas de baja "
     "prioridad ni completadas a menos que el usuario lo pida explícitamente "
     "en sus notas adicionales. Mantén el reporte breve (no más de 6-8 "
-    "secciones cortas)."
+    "secciones cortas). "
+    # US-101: regla global de orden para todo output del módulo de reportes.
+    f"REGLA DE ORDEN OBLIGATORIA: {REPORT_GLOBAL_ORDER_RULES}"
 )
 
 
@@ -677,7 +700,8 @@ async def ai_generate_report(
     """
     import json
 
-    from app.core.errors import business_rule
+    from app.core.errors import business_rule, service_unavailable
+    from app.services.ai.platform_config import resolve_groq_config
     from app.services.ai.provider import generate_for_tenant
     from app.services.ai.tenant_ai import load_tenant_ai
     from app.services.operational_reports import build_seguimiento_context
@@ -691,11 +715,72 @@ async def ai_generate_report(
             "El tenant no tiene IA configurada (ai_mode=disabled)"
         )
 
+    # US-101: unifica con el code path de minutas (workers/tasks/ai.py:252)
+    # — el endpoint debe resolver la config Groq y pasarla explícita al
+    # provider; sin esto el caller falla con `groq_no_api_key`.
+    platform_groq = None
+    if tenant_cfg.mode == "platform":
+        platform_groq = await resolve_groq_config(db)
+        if platform_groq is None:
+            raise service_unavailable(
+                "El proveedor de IA (Groq) no está disponible: falta la API "
+                "key en plataforma.",
+                code="ai_provider_unavailable",
+            )
+
     cut_off = body.period_end or datetime.now(UTC).date()
     if body.base == "seguimiento":
         context = await build_seguimiento_context(db, tenant_id, project.id, cut_off, 14)
     else:
         context = await build_avance_context(db, tenant_id, project.id, cut_off)
+
+    # ENH-071: filtros configurables sobre el listado del reporte.
+    area_set = {str(a) for a in (body.area_ids or [])}
+    actor_set = {str(a) for a in (body.assignee_actor_ids or [])}
+    crit_set = set(body.criticalities or [])
+    status_set = set(body.statuses or [])
+    sev_set = set(body.severities or [])
+    d_from, d_to = body.date_from, body.date_to
+
+    def _in_date_window(iso: str | None) -> bool:
+        if not iso or (d_from is None and d_to is None):
+            return True
+        try:
+            d = date.fromisoformat(iso)
+        except ValueError:
+            return True
+        if d_from and d < d_from:
+            return False
+        if d_to and d > d_to:
+            return False
+        return True
+
+    def _task_matches(t: dict) -> bool:
+        if area_set and (t.get("area_id") not in area_set):
+            return False
+        if actor_set and (t.get("assignee_actor_id") not in actor_set):
+            return False
+        if crit_set and (t.get("criticality") not in crit_set):
+            return False
+        if status_set and (t.get("status") not in status_set):
+            return False
+        if not _in_date_window(t.get("end_date")):
+            return False
+        return True
+
+    def _risk_matches(r: dict) -> bool:
+        if sev_set and (r.get("severity") not in sev_set):
+            return False
+        if status_set and (r.get("status") not in status_set):
+            return False
+        return True
+
+    def _issue_matches(i: dict) -> bool:
+        if status_set and (i.get("status") not in status_set):
+            return False
+        if not _in_date_window(i.get("committed_date")):
+            return False
+        return True
 
     filtered: dict = {}
     if body.include_kpis:
@@ -703,19 +788,24 @@ async def ai_generate_report(
     if body.include_tasks:
         # ENH-064: prefiere focus_tasks (hitos/críticas/retrasadas top 20)
         # antes que la lista cruda; mantiene el reporte conciso.
-        filtered["tasks"] = (
+        raw_tasks = (
             context.get("focus_tasks")
             or context.get("tasks")
             or context.get("activities")
             or []
         )
+        filtered["tasks"] = [t for t in raw_tasks if _task_matches(t)]
+        filtered["tasks_total"] = len(raw_tasks)
+        filtered["tasks_filtered"] = len(filtered["tasks"])
     # ENH-064: incluye siempre el priority_summary cuando esté disponible.
     if context.get("priority_summary"):
         filtered["priority_summary"] = context["priority_summary"]
     if body.include_raid:
+        raw_risks = context.get("top_risks") or context.get("risks") or []
+        raw_issues = context.get("open_aids") or context.get("issues") or []
         filtered["raid"] = {
-            "risks": context.get("risks", []),
-            "issues": context.get("issues", []),
+            "risks": [r for r in raw_risks if _risk_matches(r)],
+            "issues": [i for i in raw_issues if _issue_matches(i)],
         }
     if body.include_milestones:
         filtered["milestones"] = context.get("milestones") or []
@@ -733,6 +823,7 @@ async def ai_generate_report(
             user_prompt,
             system=_AI_REPORT_SYSTEM_PROMPT,
             tenant_ai_mode=tenant_cfg.mode,
+            platform_groq_config=platform_groq,
             byo_config=tenant_cfg.byo,
             tenant_ollama_config=tenant_cfg.legacy_ollama,
             tenant_id=str(tenant_id),
