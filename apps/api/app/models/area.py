@@ -34,11 +34,13 @@ class Area(Base, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000))
-    # US-097 fix: el líder de un Área no necesariamente es un user del
-    # tenant — puede ser un actor/recurso. Texto libre para no forzar
-    # FK; cuando el owner cablee actores como líderes se agrega una
-    # FK opcional adicional sin migrar este campo.
-    lead_name: Mapped[str | None] = mapped_column(String(200))
+    # ENH-078: líder del área = Actor con `is_lead=true`. FK opcional
+    # (área puede crearse sin líder y asignarlo después). El campo
+    # `lead_name` (legacy US-097) fue migrado a Actor en 0049.
+    lead_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("actors.id", ondelete="SET NULL"),
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")
@@ -158,6 +160,10 @@ class Actor(Base, TimestampMixin):
     email: Mapped[str | None] = mapped_column(String(200))
     phone: Mapped[str | None] = mapped_column(String(32))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # ENH-078: marca actor como líder de su área. El área enlaza vía
+    # `areas.lead_actor_id`. Sin constraint single-leader-per-area
+    # (validación en endpoint).
+    is_lead: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")

@@ -17,7 +17,8 @@ from app.models.modules import (
     Risk,
 )
 from app.models.project import Project
-from app.models.project_area import ProjectArea
+from app.models.area import Area, AreaAssignment
+from sqlalchemy import or_ as _or_
 from app.models.user import User
 from app.schemas.modules import (
     ChangeRequestCreate,
@@ -82,16 +83,38 @@ def _ensure_editable(p: Project, *, allow_after_closed: bool = False) -> None:
 
 async def _validate_area(
     db: AsyncSession, area_id: UUID, project_id: UUID, tenant_id: UUID
-) -> ProjectArea:
-    """US-064: el area_id debe existir, pertenecer al mismo proyecto y
-    estar activa. Si falla, 422 o 404 según el caso."""
+) -> Area:
+    """US-064 / US-103: el area_id debe ser un Área del catálogo tenant
+    asignada (vía area_assignments) al proyecto en cuestión. La cascada
+    cubre is_global, project_id directo, program_id del proyecto y
+    organization_id del proyecto.
+    """
+    project = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if project is None:
+        raise business_rule("Proyecto no encontrado")
+    cond = _or_(
+        AreaAssignment.is_global.is_(True),
+        AreaAssignment.project_id == str(project_id),
+        AreaAssignment.organization_id == str(project.organization_id),
+    )
+    if project.program_id:
+        cond = _or_(cond, AreaAssignment.program_id == str(project.program_id))
     area = (
         await db.execute(
-            select(ProjectArea).where(
-                ProjectArea.id == str(area_id),
-                ProjectArea.project_id == str(project_id),
-                ProjectArea.tenant_id == str(tenant_id),
-                ProjectArea.is_active.is_(True),
+            select(Area)
+            .join(AreaAssignment, AreaAssignment.area_id == Area.id)
+            .where(
+                Area.id == str(area_id),
+                Area.tenant_id == str(tenant_id),
+                Area.is_active.is_(True),
+                cond,
             )
         )
     ).scalar_one_or_none()
@@ -100,7 +123,7 @@ async def _validate_area(
     return area
 
 
-def _attach_area(item, area: ProjectArea | None) -> None:
+def _attach_area(item, area: Area | None) -> None:
     """Guarda el area embebida en un atributo transitorio para que
     *Read.model_validate la recoja automáticamente (from_attributes)."""
     item.area = (  # type: ignore[attr-defined]
@@ -110,13 +133,13 @@ def _attach_area(item, area: ProjectArea | None) -> None:
 
 async def _load_areas(
     db: AsyncSession, area_ids: list[str]
-) -> dict[str, ProjectArea]:
+) -> dict[str, Area]:
     ids = [a for a in area_ids if a]
     if not ids:
         return {}
     rows = (
         await db.execute(
-            select(ProjectArea).where(ProjectArea.id.in_(ids))
+            select(Area).where(Area.id.in_(ids))
         )
     ).scalars().all()
     return {str(a.id): a for a in rows}
@@ -244,8 +267,8 @@ async def list_risks(
     # US-064: outer join con project_areas para ordering por nombre de
     # área (legacy NULL va al final con COALESCE a 'ZZZ').
     stmt = (
-        select(Risk, ProjectArea)
-        .outerjoin(ProjectArea, ProjectArea.id == Risk.area_id)
+        select(Risk, Area)
+        .outerjoin(Area, Area.id == Risk.area_id)
         .where(Risk.project_id == str(project_id), Risk.deleted_at.is_(None))
     )
     if status:
@@ -262,7 +285,7 @@ async def list_risks(
     # de área ascendente, fecha descendente, severidad descendente.
     stmt = stmt.order_by(
         case((Risk.area_id.is_(None), 1), else_=0),
-        ProjectArea.name.asc(),
+        Area.name.asc(),
         Risk.identified_at.desc().nullslast(),
         Risk.severity.desc().nullslast(),
     )
@@ -323,8 +346,8 @@ async def get_risk(
     tenant_id = _tenant(cu)
     row = (
         await db.execute(
-            select(Risk, ProjectArea)
-            .outerjoin(ProjectArea, ProjectArea.id == Risk.area_id)
+            select(Risk, Area)
+            .outerjoin(Area, Area.id == Risk.area_id)
             .where(
                 Risk.id == str(risk_id),
                 Risk.tenant_id == str(tenant_id),
@@ -377,7 +400,7 @@ async def update_risk(
     if r.area_id:
         area = (
             await db.execute(
-                select(ProjectArea).where(ProjectArea.id == r.area_id)
+                select(Area).where(Area.id == r.area_id)
             )
         ).scalar_one_or_none()
     _attach_area(r, area)
@@ -427,7 +450,7 @@ async def add_risk_comment(
     area = None
     if r.area_id:
         area = (
-            await db.execute(select(ProjectArea).where(ProjectArea.id == r.area_id))
+            await db.execute(select(Area).where(Area.id == r.area_id))
         ).scalar_one_or_none()
     _attach_area(r, area)
     await _attach_comment_authors(db, [r])
@@ -469,8 +492,8 @@ async def list_issues(
     tenant_id = _tenant(cu)
     await _get_project(db, project_id, tenant_id)
     stmt = (
-        select(Issue, ProjectArea)
-        .outerjoin(ProjectArea, ProjectArea.id == Issue.area_id)
+        select(Issue, Area)
+        .outerjoin(Area, Area.id == Issue.area_id)
         .where(Issue.project_id == str(project_id), Issue.deleted_at.is_(None))
     )
     if status:
@@ -486,7 +509,7 @@ async def list_issues(
         )
     stmt = stmt.order_by(
         case((Issue.area_id.is_(None), 1), else_=0),
-        ProjectArea.name.asc(),
+        Area.name.asc(),
         Issue.reported_at.desc(),
         Issue.priority.desc().nullslast(),
     )
@@ -545,8 +568,8 @@ async def get_issue(
     tenant_id = _tenant(cu)
     row = (
         await db.execute(
-            select(Issue, ProjectArea)
-            .outerjoin(ProjectArea, ProjectArea.id == Issue.area_id)
+            select(Issue, Area)
+            .outerjoin(Area, Area.id == Issue.area_id)
             .where(
                 Issue.id == str(issue_id),
                 Issue.tenant_id == str(tenant_id),
@@ -584,7 +607,7 @@ async def add_issue_comment(
     area = None
     if i.area_id:
         area = (
-            await db.execute(select(ProjectArea).where(ProjectArea.id == i.area_id))
+            await db.execute(select(Area).where(Area.id == i.area_id))
         ).scalar_one_or_none()
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])
@@ -616,7 +639,7 @@ async def update_issue(
     area = None
     if i.area_id:
         area = (
-            await db.execute(select(ProjectArea).where(ProjectArea.id == i.area_id))
+            await db.execute(select(Area).where(Area.id == i.area_id))
         ).scalar_one_or_none()
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])

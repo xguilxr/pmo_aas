@@ -1,17 +1,20 @@
 "use client";
 
-import Link from "next/link";
+// ENH-078 (2026-05-07) — rediseño post Op A. Las áreas viven en el
+// catálogo tenant; esta página muestra las asignadas al proyecto vía
+// `area_assignments` y permite crear áreas/equipos/recursos que se
+// auto-asignan al proyecto.
+
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Building2,
-  Mail,
+  Crown,
   Pencil,
   Plus,
   Trash2,
   User,
   Users,
-  UserCircle2,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,100 +26,58 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
-import { listUsers, type AdminUser } from "@/lib/api/admin";
 import {
-  createAreaResource,
-  createProjectArea,
-  deleteAreaResource,
-  deleteProjectArea,
-  listAreaResources,
-  listProjectAreas,
-  updateProjectArea,
-  type ProjectArea,
-  type ProjectAreaResource,
-  type ProjectAreaType,
-} from "@/lib/api/project-areas";
+  createActor,
+  createArea,
+  createTeam,
+  deleteActor,
+  deleteArea,
+  deleteTeam,
+  getAreasTree,
+  listAreasByProject,
+  setAreaAssignments,
+  type Area as CatalogArea,
+  type AreaTreeResponse,
+  type TreeActor,
+  type TreeArea,
+  type TreeTeam,
+} from "@/lib/api/areas";
 import { cn } from "@/lib/cn";
 
-const TYPE_LABEL: Record<ProjectAreaType, string> = {
-  area: "Área",
-  actor: "Actor",
-  team: "Equipo",
-};
+type View = "areas" | "actors";
+type ModalKind = "area" | "team" | "actor" | null;
 
-const TYPE_ICON: Record<ProjectAreaType, React.ComponentType<{ className?: string }>> = {
-  area: Building2,
-  actor: User,
-  team: Users,
-};
-
-function userLabel(users: AdminUser[], userId: string): string {
-  const u = users.find((x) => x.id === userId);
-  return u ? u.full_name : userId.slice(0, 8);
-}
-
-type FormState = {
-  name: string;
-  type: ProjectAreaType;
-  description: string;
-  contact_name: string;
-  contact_email: string;
-  /** US-062: líder del área (user_id o "" para ninguno). */
-  area_leader_id: string;
-  /** US-091: jerarquía explícita Área→Equipo→Actor + teléfono. */
-  team_id: string;
+type FlatActor = TreeActor & {
   area_id: string;
-  phone: string;
-};
-
-const EMPTY_FORM: FormState = {
-  name: "",
-  type: "area",
-  description: "",
-  contact_name: "",
-  contact_email: "",
-  area_leader_id: "",
-  team_id: "",
-  area_id: "",
-  phone: "",
+  area_name: string;
+  team_id: string | null;
+  team_name: string | null;
 };
 
 export default function ProjectAreasPage() {
-  const { id } = useParams<{ id: string }>();
-  const [rows, setRows] = useState<ProjectArea[]>([]);
+  const { id: projectId } = useParams<{ id: string }>();
+  const [tree, setTree] = useState<AreaTreeResponse | null>(null);
+  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [typeFilter, setTypeFilter] = useState<string>("");
   const [search, setSearch] = useState("");
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<ProjectArea | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [view, setView] = useState<View>("areas");
+  const [modal, setModal] = useState<ModalKind>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<ProjectArea | null>(null);
-  // ENH-020 + US-062
-  const [resourcesArea, setResourcesArea] = useState<ProjectArea | null>(null);
-  const [users, setUsers] = useState<AdminUser[]>([]);
-
-  useEffect(() => {
-    // US-062: usuarios del tenant para el selector de líder + recursos internos.
-    listUsers({ is_active: true, limit: 200 })
-      .then((r) => setUsers(r.items))
-      .catch(() => setUsers([]));
-  }, []);
 
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const r = await listProjectAreas(id, {
-        type: (typeFilter || undefined) as ProjectAreaType | undefined,
-      });
-      setRows(r);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al cargar áreas");
+      const [t, byProj] = await Promise.all([
+        getAreasTree(false),
+        listAreasByProject(projectId),
+      ]);
+      setTree(t);
+      setAssignedIds(new Set(byProj.map((a) => a.id)));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Error al cargar áreas");
     } finally {
       setLoading(false);
     }
@@ -125,91 +86,183 @@ export default function ProjectAreasPage() {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, typeFilter]);
+  }, [projectId]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        (r.contact_name ?? "").toLowerCase().includes(q),
-    );
-  }, [rows, search]);
+  // Áreas visibles del proyecto = catálogo filtrado por assignedIds
+  const projectAreas: TreeArea[] = useMemo(() => {
+    if (!tree) return [];
+    return tree.areas.filter((a) => assignedIds.has(a.id));
+  }, [tree, assignedIds]);
 
-  function openCreate() {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
-    setModalOpen(true);
-  }
-
-  function openEdit(area: ProjectArea) {
-    setEditing(area);
-    setForm({
-      name: area.name,
-      type: area.type,
-      description: area.description ?? "",
-      contact_name: area.contact_name ?? "",
-      contact_email: area.contact_email ?? "",
-      area_leader_id: area.area_leader_id ?? "",
-      team_id: area.team_id ?? "",
-      area_id: area.area_id ?? "",
-      phone: area.phone ?? "",
-    });
-    setFormError(null);
-    setModalOpen(true);
-  }
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (form.name.trim().length < 2) {
-      setFormError("El nombre es obligatorio (min 2 caracteres)");
-      return;
-    }
-    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (form.contact_email && !emailRe.test(form.contact_email.trim())) {
-      setFormError("Email inválido");
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      const payload = {
-        name: form.name.trim(),
-        type: form.type,
-        description: form.description.trim() || null,
-        contact_name: form.contact_name.trim() || null,
-        contact_email: form.contact_email.trim() || null,
-        area_leader_id: form.area_leader_id || null,
-        // US-091: solo enviar team_id/area_id/phone cuando aplican.
-        team_id:
-          form.type === "actor" && form.team_id ? form.team_id : null,
-        area_id:
-          (form.type === "actor" || form.type === "team") && form.area_id
-            ? form.area_id
-            : null,
-        phone: form.type === "actor" ? form.phone.trim() || null : null,
-      };
-      if (editing) {
-        await updateProjectArea(editing.id, payload);
-      } else {
-        await createProjectArea(id, payload);
+  // Tabla actores (vista 2)
+  const actorsFlat: FlatActor[] = useMemo(() => {
+    const out: FlatActor[] = [];
+    for (const a of projectAreas) {
+      for (const t of a.teams) {
+        for (const r of t.actors) {
+          out.push({
+            ...r,
+            area_id: a.id,
+            area_name: a.name,
+            team_id: t.id,
+            team_name: t.name,
+          });
+        }
       }
-      setModalOpen(false);
+      for (const r of a.unassigned_actors ?? []) {
+        out.push({
+          ...r,
+          area_id: a.id,
+          area_name: a.name,
+          team_id: null,
+          team_name: null,
+        });
+      }
+    }
+    return out;
+  }, [projectAreas]);
+
+  const filteredAreas = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return projectAreas;
+    return projectAreas.filter((a) => a.name.toLowerCase().includes(q));
+  }, [projectAreas, search]);
+
+  const filteredActors = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return actorsFlat;
+    return actorsFlat.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        (a.email ?? "").toLowerCase().includes(q) ||
+        a.area_name.toLowerCase().includes(q),
+    );
+  }, [actorsFlat, search]);
+
+  // ---------- handlers ----------
+  async function ensureAssigned(areaId: string) {
+    if (assignedIds.has(areaId)) return;
+    // Auto-assign al proyecto. Si ya tiene assignments, los preserva
+    // tal cual y agrega project_id.
+    // Por simplicidad: enviamos un único scope project_id (replace).
+    // Esto puede borrar otros assignments — ENH-078 v1 acepta tradeoff.
+    try {
+      await setAreaAssignments(areaId, [{ project_id: projectId }]);
+    } catch {
+      // si falla el auto-assign, no rompemos la creación
+    }
+  }
+
+  async function handleCreateArea(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setFormError(null);
+    setSaving(true);
+    const form = new FormData(e.currentTarget);
+    const name = String(form.get("name") || "").trim();
+    const description = String(form.get("description") || "").trim() || null;
+    const leadName = String(form.get("lead_name") || "").trim();
+    const leadEmail = String(form.get("lead_email") || "").trim();
+    const leadPhone = String(form.get("lead_phone") || "").trim();
+    if (!name) {
+      setFormError("Nombre es requerido");
+      setSaving(false);
+      return;
+    }
+    try {
+      const created = await createArea({
+        name,
+        description,
+        is_active: true,
+        lead: leadName
+          ? {
+              name: leadName,
+              email: leadEmail || null,
+              phone: leadPhone || null,
+            }
+          : null,
+      });
+      await ensureAssigned(created.id);
+      setModal(null);
       await refresh();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Error al guardar");
+      setFormError(
+        err instanceof ApiError ? err.message : "No se pudo crear el área",
+      );
     } finally {
       setSaving(false);
     }
   }
 
-  async function confirmRemove() {
-    if (!confirmDelete) return;
+  async function handleCreateTeam(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setFormError(null);
+    setSaving(true);
+    const form = new FormData(e.currentTarget);
+    const area_id = String(form.get("area_id") || "");
+    const name = String(form.get("name") || "").trim();
+    if (!area_id || !name) {
+      setFormError("Área y nombre son requeridos");
+      setSaving(false);
+      return;
+    }
     try {
-      await deleteProjectArea(confirmDelete.id);
-      setConfirmDelete(null);
+      await createTeam({ area_id, name });
+      setModal(null);
+      await refresh();
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError ? err.message : "No se pudo crear el equipo",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateActor(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setFormError(null);
+    setSaving(true);
+    const form = new FormData(e.currentTarget);
+    const area_id = String(form.get("area_id") || "");
+    const team_id_raw = String(form.get("team_id") || "");
+    const new_team_name = String(form.get("new_team_name") || "").trim();
+    const name = String(form.get("name") || "").trim();
+    const email = String(form.get("email") || "").trim();
+    const phone = String(form.get("phone") || "").trim();
+    if (!area_id || !name) {
+      setFormError("Área y nombre son requeridos");
+      setSaving(false);
+      return;
+    }
+    try {
+      let team_id: string | null = team_id_raw || null;
+      if (!team_id && new_team_name) {
+        const t = await createTeam({ area_id, name: new_team_name });
+        team_id = t.id;
+      }
+      await createActor({
+        team_id,
+        name,
+        email: email || null,
+        phone: phone || null,
+      });
+      setModal(null);
+      await refresh();
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError ? err.message : "No se pudo crear el recurso",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(kind: "area" | "team" | "actor", id: string, name: string) {
+    if (!confirm(`¿Eliminar ${kind} "${name}"?`)) return;
+    try {
+      if (kind === "area") await deleteArea(id);
+      else if (kind === "team") await deleteTeam(id);
+      else await deleteActor(id);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al eliminar");
@@ -217,69 +270,71 @@ export default function ProjectAreasPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-4 p-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <nav className="text-[11px] text-[var(--text-tertiary)]">
-            <Link href="/pmo/projects" className="hover:underline">
-              Proyectos
-            </Link>
-            <span className="mx-1">/</span>
-            <Link href={`/pmo/projects/${id}`} className="hover:underline">
-              Detalle
-            </Link>
-            <span className="mx-1">/</span>
-            <span>Áreas</span>
-          </nav>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            Áreas y actores
+          <h1 className="text-xl font-semibold text-[var(--color-primary)]">
+            Áreas del proyecto
           </h1>
-          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-            Registra áreas, equipos y actores stakeholder del proyecto. Pueden
-            referenciarse desde tareas, RAIDs y minutas aunque no tengan
-            cuenta en la plataforma.
+          <p className="text-sm text-[var(--color-tertiary)]">
+            Catálogo compartido — las áreas creadas aquí quedan en el catálogo
+            tenant y se auto-asignan a este proyecto.
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" aria-hidden />
-          Nueva área
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => { setFormError(null); setModal("area"); }} size="sm">
+            <Plus className="mr-1 h-4 w-4" /> Nueva área
+          </Button>
+          <Button
+            onClick={() => { setFormError(null); setModal("team"); }}
+            size="sm"
+            variant="outline"
+            disabled={projectAreas.length === 0}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Nuevo equipo
+          </Button>
+          <Button
+            onClick={() => { setFormError(null); setModal("actor"); }}
+            size="sm"
+            variant="outline"
+            disabled={projectAreas.length === 0}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Nuevo recurso
+          </Button>
+        </div>
       </header>
 
-      {error ? <Banner variant="danger">{error}</Banner> : null}
+      {error ? <Banner variant="error">{error}</Banner> : null}
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-default)] p-4">
           <Input
             type="search"
             value={search}
-            placeholder="Buscar por nombre o contacto"
+            placeholder="Buscar"
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Buscar áreas"
+            aria-label="Buscar"
             className="min-w-[240px] flex-1"
           />
-          {/* US-091: toggle (en lugar de dropdown) para Áreas / Equipos / Actores. */}
           <div
             role="radiogroup"
-            aria-label="Vista por tipo"
+            aria-label="Vista"
             className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
           >
             {(
               [
-                { v: "", label: "Todos" },
-                { v: "area", label: "Por Área" },
-                { v: "team", label: "Por Equipo" },
-                { v: "actor", label: "Por Actor" },
+                { v: "areas", label: "Áreas" },
+                { v: "actors", label: "Actores" },
               ] as const
             ).map((opt) => {
-              const active = typeFilter === opt.v;
+              const active = view === opt.v;
               return (
                 <button
                   key={opt.v}
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  onClick={() => setTypeFilter(opt.v)}
+                  onClick={() => setView(opt.v)}
                   className={cn(
                     "rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
                     active
@@ -297,649 +352,377 @@ export default function ProjectAreasPage() {
         {loading ? (
           <div className="space-y-2 p-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : view === "areas" ? (
+          filteredAreas.length === 0 ? (
+            <div className="p-10 text-center text-sm text-[var(--color-tertiary)]">
+              {projectAreas.length === 0
+                ? "Aún no hay áreas asignadas a este proyecto."
+                : "Ningún área coincide con la búsqueda."}
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--border-subtle)]">
+              {filteredAreas.map((area) => (
+                <AreaTreeNode
+                  key={area.id}
+                  area={area}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )
+        ) : filteredActors.length === 0 ? (
           <div className="p-10 text-center text-sm text-[var(--color-tertiary)]">
-            {rows.length === 0
-              ? typeFilter === "actor"
-                ? "Aún no hay actores registrados."
-                : typeFilter === "team"
-                  ? "Aún no hay equipos registrados."
-                  : typeFilter === "area"
-                    ? "Aún no hay áreas registradas."
-                    : "Aún no hay áreas, equipos ni actores registrados."
-              : "Ningún registro coincide con los filtros."}
-          </div>
-        ) : typeFilter === "actor" ? (
-          // US-091 fase 2: vista por Actor = tabla plana con Nombre/Email/
-          // Teléfono/Área/Equipo (CA4).
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Nombre</th>
-                  <th className="px-3 py-2 font-medium">Email</th>
-                  <th className="px-3 py-2 font-medium">Teléfono</th>
-                  <th className="px-3 py-2 font-medium">Área</th>
-                  <th className="px-3 py-2 font-medium">Equipo</th>
-                  <th className="w-32 px-3 py-2 font-medium" aria-label="Acciones" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
-                  >
-                    <td className="px-3 py-2 text-[var(--color-primary)]">
-                      <span className="font-medium">{a.name}</span>
-                      {!a.is_active ? (
-                        <Badge variant="danger" className="ml-2">
-                          Inactiva
-                        </Badge>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {a.contact_email ? (
-                        <a
-                          href={`mailto:${a.contact_email}`}
-                          className="hover:underline"
-                        >
-                          {a.contact_email}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {a.phone || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {a.area_id
-                        ? rows.find((r) => r.id === a.area_id)?.name ?? "—"
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {a.team_id
-                        ? rows.find((r) => r.id === a.team_id)?.name ?? "—"
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(a)}
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" aria-hidden />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConfirmDelete(a)}
-                        title="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {actorsFlat.length === 0
+              ? "Aún no hay actores registrados en las áreas asignadas."
+              : "Ningún actor coincide con la búsqueda."}
           </div>
         ) : (
-          <ul className="divide-y divide-[var(--border-subtle)]">
-            {filtered.map((a) => {
-              const Icon = TYPE_ICON[a.type];
-              return (
-                <li
-                  key={a.id}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-subtle)]"
-                >
-                  <div
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium text-[var(--color-primary)]">
-                        {a.name}
-                      </span>
-                      <Badge variant="neutral">{TYPE_LABEL[a.type]}</Badge>
-                      {a.area_leader_id ? (
-                        <Badge variant="info">
-                          <UserCircle2 className="mr-1 h-3 w-3" aria-hidden />
-                          {userLabel(users, a.area_leader_id)}
-                        </Badge>
-                      ) : null}
-                      {!a.is_active ? <Badge variant="danger">Inactiva</Badge> : null}
-                    </div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--color-tertiary)]">
-                      {a.contact_name ? <span>{a.contact_name}</span> : null}
-                      {a.contact_email ? (
-                        <a
-                          href={`mailto:${a.contact_email}`}
-                          className="inline-flex items-center gap-1 hover:underline"
-                        >
-                          <Mail className="h-3 w-3" aria-hidden />
-                          {a.contact_email}
-                        </a>
-                      ) : null}
-                      {/* US-091: phone + área + equipo en cada card. */}
-                      {a.phone ? <span>{a.phone}</span> : null}
-                      {a.area_id ? (
-                        <span>
-                          Área: {rows.find((r) => r.id === a.area_id)?.name ?? "—"}
-                        </span>
-                      ) : null}
-                      {a.team_id ? (
-                        <span>
-                          Equipo: {rows.find((r) => r.id === a.team_id)?.name ?? "—"}
-                        </span>
-                      ) : null}
-                      {a.description ? (
-                        <span className="line-clamp-1">{a.description}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setResourcesArea(a)}
-                      title="Gestionar recursos"
-                    >
-                      <Users className="h-4 w-4" aria-hidden /> Recursos
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEdit(a)}
-                      title="Editar"
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setConfirmDelete(a)}
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <ActorsTable rows={filteredActors} onDelete={handleDelete} />
         )}
       </section>
 
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editing ? "Editar área" : "Nueva área"}
-      >
-        <form onSubmit={handleSubmit} noValidate className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor="area-name"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-              >
-                Nombre
-              </label>
-              <Input
-                id="area-name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-                minLength={2}
-                maxLength={200}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="area-type"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-              >
-                Tipo
-              </label>
-              <Select
-                id="area-type"
-                value={form.type}
-                onChange={(e) =>
-                  setForm({ ...form, type: e.target.value as ProjectAreaType })
-                }
-              >
-                <option value="area">Área</option>
-                <option value="actor">Actor</option>
-                <option value="team">Equipo</option>
-              </Select>
-            </div>
-            <div>
-              <label
-                htmlFor="contact-name"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-              >
-                Contacto (nombre)
-              </label>
-              <Input
-                id="contact-name"
-                value={form.contact_name}
-                onChange={(e) =>
-                  setForm({ ...form, contact_name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="contact-email"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-              >
-                Contacto (email)
-              </label>
-              <Input
-                id="contact-email"
-                type="email"
-                value={form.contact_email}
-                onChange={(e) =>
-                  setForm({ ...form, contact_email: e.target.value })
-                }
-              />
-            </div>
-            {/* US-062: Líder del área (opcional, usuario del tenant). */}
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="area-leader"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-              >
-                Líder del Área (opcional)
-              </label>
-              <Select
-                id="area-leader"
-                value={form.area_leader_id}
-                onChange={(e) =>
-                  setForm({ ...form, area_leader_id: e.target.value })
-                }
-              >
-                <option value="">Sin líder asignado</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.email})
-                  </option>
-                ))}
-              </Select>
-            </div>
-            {/* US-091: jerarquía. Form actor → Área + Equipo + Phone.
-                Form equipo → Área. Form área → ninguno. */}
-            {(form.type === "actor" || form.type === "team") ? (
-              <div>
-                <label
-                  htmlFor="area-parent-area"
-                  className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-                >
-                  Área (opcional)
-                </label>
-                <Select
-                  id="area-parent-area"
-                  value={form.area_id}
-                  onChange={(e) =>
-                    setForm({ ...form, area_id: e.target.value })
-                  }
-                >
-                  <option value="">— Sin área —</option>
-                  {rows
-                    .filter((r) => r.type === "area" && r.id !== editing?.id)
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                </Select>
-              </div>
-            ) : null}
-            {form.type === "actor" ? (
-              <>
-                <div>
-                  <label
-                    htmlFor="area-parent-team"
-                    className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-                  >
-                    Equipo (opcional)
-                  </label>
-                  <Select
-                    id="area-parent-team"
-                    value={form.team_id}
-                    onChange={(e) =>
-                      setForm({ ...form, team_id: e.target.value })
-                    }
-                  >
-                    <option value="">— Sin equipo —</option>
-                    {rows
-                      .filter((r) => r.type === "team")
-                      .filter((t) =>
-                        // Si el actor tiene un área seleccionada, filtrar
-                        // equipos a los que pertenecen a esa área.
-                        !form.area_id ? true : t.area_id === form.area_id,
-                      )
-                      .map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                  </Select>
-                </div>
-                <div>
-                  <label
-                    htmlFor="area-phone"
-                    className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-                  >
-                    Teléfono (opcional)
-                  </label>
-                  <Input
-                    id="area-phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="+52 55 1234 5678"
-                  />
-                </div>
-              </>
-            ) : null}
-          </div>
-          <div>
-            <label
-              htmlFor="area-desc"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-            >
-              Descripción
-            </label>
-            <Textarea
-              id="area-desc"
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
-          </div>
-          {formError ? <Banner variant="danger">{formError}</Banner> : null}
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setModalOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" loading={saving}>
-              {editing ? "Guardar" : "Crear"}
-            </Button>
-          </div>
+      {/* Modales */}
+      <Modal open={modal === "area"} onClose={() => setModal(null)} title="Nueva área">
+        <form onSubmit={handleCreateArea} className="space-y-3">
+          {formError ? <Banner variant="error">{formError}</Banner> : null}
+          <Field label="Nombre del área" required>
+            <Input name="name" required />
+          </Field>
+          <Field label="Líder del área">
+            <Input name="lead_name" placeholder="Nombre completo (opcional)" />
+          </Field>
+          <Field label="Contacto líder (correo)">
+            <Input name="lead_email" type="email" placeholder="lider@empresa.com" />
+          </Field>
+          <Field label="Teléfono líder (opcional)">
+            <Input name="lead_phone" type="tel" />
+          </Field>
+          <Field label="Descripción">
+            <Textarea name="description" rows={2} />
+          </Field>
+          <p className="text-xs text-[var(--color-tertiary)]">
+            Equipos y recursos se agregan después con los botones "Nuevo
+            equipo" / "Nuevo recurso". El líder se persiste como Actor del
+            área con flag is_lead=true.
+          </p>
+          <FormActions onCancel={() => setModal(null)} saving={saving} label="Crear área" />
         </form>
       </Modal>
 
-      <Modal
-        open={confirmDelete !== null}
-        onClose={() => setConfirmDelete(null)}
-        title="Eliminar área"
-      >
-        <p className="text-sm text-[var(--color-secondary)]">
-          ¿Seguro que quieres eliminar "{confirmDelete?.name}"? Esta acción no
-          se puede deshacer.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
-            Cancelar
-          </Button>
-          <Button variant="danger" onClick={confirmRemove}>
-            Eliminar
-          </Button>
-        </div>
+      <Modal open={modal === "team"} onClose={() => setModal(null)} title="Nuevo equipo">
+        <form onSubmit={handleCreateTeam} className="space-y-3">
+          {formError ? <Banner variant="error">{formError}</Banner> : null}
+          <Field label="Área" required>
+            <Select name="area_id" required>
+              <option value="">— Selecciona —</option>
+              {projectAreas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Nombre del equipo" required>
+            <Input name="name" required />
+          </Field>
+          <p className="text-xs text-[var(--color-tertiary)]">
+            Los recursos del equipo se agregan después con "Nuevo recurso".
+          </p>
+          <FormActions onCancel={() => setModal(null)} saving={saving} label="Crear equipo" />
+        </form>
       </Modal>
 
-      <AreaResourcesModal
-        area={resourcesArea}
-        users={users}
-        onClose={() => setResourcesArea(null)}
-      />
+      <Modal open={modal === "actor"} onClose={() => setModal(null)} title="Nuevo recurso">
+        <form onSubmit={handleCreateActor} className="space-y-3">
+          {formError ? <Banner variant="error">{formError}</Banner> : null}
+          <NewResourceForm areas={projectAreas} />
+          <FormActions onCancel={() => setModal(null)} saving={saving} label="Crear recurso" />
+        </form>
+      </Modal>
     </div>
   );
 }
 
-/* =================== Recursos del Área (ENH-020 + US-062) =================== */
-
-function AreaResourcesModal({
-  area,
-  users,
-  onClose,
+function Field({
+  label,
+  required,
+  children,
 }: {
-  area: ProjectArea | null;
-  users: AdminUser[];
-  onClose: () => void;
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
 }) {
-  const [resources, setResources] = useState<ProjectAreaResource[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"internal" | "external">("external");
-  const [userId, setUserId] = useState<string>("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!area) return;
-    setError(null);
-    setLoading(true);
-    listAreaResources(area.id)
-      .then(setResources)
-      .catch((err) =>
-        setError(
-          err instanceof ApiError ? err.message : "Error al cargar recursos",
-        ),
-      )
-      .finally(() => setLoading(false));
-  }, [area]);
-
-  function resetForm() {
-    setUserId("");
-    setName("");
-    setEmail("");
-    setRole("");
-  }
-
-  async function add(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!area) return;
-    setBusy(true);
-    setError(null);
-    try {
-      if (mode === "internal") {
-        if (!userId) {
-          setError("Selecciona un usuario");
-          setBusy(false);
-          return;
-        }
-        await createAreaResource(area.id, {
-          user_id: userId,
-          role: role.trim() || null,
-        });
-      } else {
-        if (name.trim().length < 2) {
-          setError("Nombre requerido (≥ 2 caracteres)");
-          setBusy(false);
-          return;
-        }
-        await createAreaResource(area.id, {
-          name: name.trim(),
-          email: email.trim() || null,
-          role: role.trim() || null,
-        });
-      }
-      resetForm();
-      const r = await listAreaResources(area.id);
-      setResources(r);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al agregar");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove(id: string) {
-    if (!area) return;
-    try {
-      await deleteAreaResource(id);
-      setResources((prev) => prev.filter((r) => r.id !== id));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al eliminar");
-    }
-  }
-
   return (
-    <Modal
-      open={area !== null}
-      onClose={onClose}
-      title={area ? `Recursos de "${area.name}"` : "Recursos"}
-    >
-      {loading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
+    <label className="flex flex-col gap-1 text-sm">
+      <span className="text-xs font-medium text-[var(--text-secondary)]">
+        {label}
+        {required ? " *" : ""}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function FormActions({
+  onCancel,
+  saving,
+  label,
+}: {
+  onCancel: () => void;
+  saving: boolean;
+  label: string;
+}) {
+  return (
+    <div className="flex justify-end gap-2 pt-2">
+      <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>
+        Cancelar
+      </Button>
+      <Button type="submit" disabled={saving}>
+        {saving ? "Guardando…" : label}
+      </Button>
+    </div>
+  );
+}
+
+function NewResourceForm({ areas }: { areas: TreeArea[] }) {
+  const [areaId, setAreaId] = useState<string>(areas[0]?.id ?? "");
+  const teamsInArea = areas.find((a) => a.id === areaId)?.teams ?? [];
+  return (
+    <>
+      <Field label="Área" required>
+        <Select
+          name="area_id"
+          required
+          value={areaId}
+          onChange={(e) => setAreaId(e.target.value)}
+        >
+          <option value="">— Selecciona —</option>
+          {areas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Equipo (opcional — si vacío, se crea o queda sin equipo)">
+        <Select name="team_id">
+          <option value="">— Sin equipo —</option>
+          {teamsInArea.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Nuevo equipo (si no existe, se crea con este nombre)">
+        <Input name="new_team_name" placeholder="Opcional" />
+      </Field>
+      <Field label="Nombre del recurso" required>
+        <Input name="name" required />
+      </Field>
+      <Field label="Correo">
+        <Input name="email" type="email" />
+      </Field>
+      <Field label="Teléfono (opcional)">
+        <Input name="phone" type="tel" />
+      </Field>
+    </>
+  );
+}
+
+function AreaTreeNode({
+  area,
+  onDelete,
+}: {
+  area: TreeArea;
+  onDelete: (kind: "area" | "team" | "actor", id: string, name: string) => void;
+}) {
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Building2 className="h-4 w-4 text-[var(--color-primary)]" />
+        <span className="font-medium text-[var(--color-primary)]">
+          {area.name}
+        </span>
+        {!area.is_active ? <Badge variant="danger">Inactiva</Badge> : null}
+        <span className="ml-auto flex gap-1">
+          <Button size="sm" variant="ghost" disabled title="Editar (próximamente)">
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onDelete("area", area.id, area.name)}
+            title="Eliminar"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </span>
+      </div>
+      <div className="ml-6 mt-2 space-y-1 border-l border-[var(--border-subtle)] pl-3">
+        {area.teams.map((t) => (
+          <TeamNode
+            key={t.id}
+            team={t}
+            leadActorId={area.lead_actor_id ?? null}
+            onDelete={onDelete}
+          />
+        ))}
+        {(area.unassigned_actors ?? []).map((r) => (
+          <ActorRow
+            key={r.id}
+            actor={r}
+            isLead={r.id === area.lead_actor_id}
+            onDelete={(id, name) => onDelete("actor", id, name)}
+          />
+        ))}
+        {area.teams.length === 0 && (area.unassigned_actors ?? []).length === 0 ? (
+          <p className="text-xs text-[var(--color-tertiary)]">
+            Sin equipos ni recursos. Usa "Nuevo equipo" o "Nuevo recurso".
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function TeamNode({
+  team,
+  leadActorId,
+  onDelete,
+}: {
+  team: TreeTeam;
+  leadActorId: string | null;
+  onDelete: (kind: "area" | "team" | "actor", id: string, name: string) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 text-sm">
+        <Users className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
+        <span className="text-[var(--text-secondary)]">{team.name}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => onDelete("team", team.id, team.name)}
+          title="Eliminar equipo"
+          className="ml-1"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+      <div className="ml-5 space-y-0.5">
+        {team.actors.map((a) => (
+          <ActorRow
+            key={a.id}
+            actor={a}
+            isLead={a.id === leadActorId}
+            onDelete={(id, name) => onDelete("actor", id, name)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActorRow({
+  actor,
+  isLead,
+  onDelete,
+}: {
+  actor: TreeActor;
+  isLead: boolean;
+  onDelete: (id: string, name: string) => void;
+}) {
+  const lead = isLead || actor.is_lead;
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      {lead ? (
+        <Crown className="h-3 w-3 text-[var(--color-warning)]" />
       ) : (
-        <>
-          {error ? <Banner variant="danger">{error}</Banner> : null}
-          <section className="mb-3 space-y-2">
-            {resources.length === 0 ? (
-              <p className="text-sm text-[var(--color-tertiary)]">
-                Sin recursos asignados todavía.
-              </p>
-            ) : (
-              <ul className="divide-y divide-[var(--border-subtle)] rounded-[var(--radius-md)] border border-[var(--border-default)]">
-                {resources.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex items-center gap-3 px-3 py-2 text-sm"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-[var(--color-primary)]">
-                          {r.user_id
-                            ? userLabel(users, r.user_id)
-                            : r.name || "—"}
-                        </span>
-                        {r.user_id ? (
-                          <Badge variant="info">Interno</Badge>
-                        ) : (
-                          <Badge variant="neutral">Externo</Badge>
-                        )}
-                        {r.role ? (
-                          <Badge variant="neutral">{r.role}</Badge>
-                        ) : null}
-                      </div>
-                      {r.email ? (
-                        <div className="text-xs text-[var(--color-tertiary)]">
-                          {r.email}
-                        </div>
-                      ) : null}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => remove(r.id)}
-                      aria-label="Eliminar recurso"
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-          <form onSubmit={add} className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
-            <div className="inline-flex rounded-[8px] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-0.5">
-              <button
-                type="button"
-                onClick={() => setMode("external")}
-                aria-pressed={mode === "external"}
-                className={cn(
-                  "rounded-[6px] px-2.5 py-1 text-xs font-medium",
-                  mode === "external"
-                    ? "bg-[var(--color-surface)] text-[var(--text-primary)]"
-                    : "text-[var(--text-secondary)]",
-                )}
-              >
-                Externo
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("internal")}
-                aria-pressed={mode === "internal"}
-                className={cn(
-                  "rounded-[6px] px-2.5 py-1 text-xs font-medium",
-                  mode === "internal"
-                    ? "bg-[var(--color-surface)] text-[var(--text-primary)]"
-                    : "text-[var(--text-secondary)]",
-                )}
-              >
-                Usuario de plataforma
-              </button>
-            </div>
-            {mode === "internal" ? (
-              <Select
-                aria-label="Usuario"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-              >
-                <option value="">Selecciona usuario…</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.email})
-                  </option>
-                ))}
-              </Select>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Input
-                  placeholder="Nombre"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  aria-label="Nombre del recurso externo"
-                />
-                <Input
-                  placeholder="Email (opcional)"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-label="Email del recurso externo"
-                />
-              </div>
-            )}
-            <Input
-              placeholder="Rol (opcional, ej. Analista, Sponsor)"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              aria-label="Rol del recurso"
-            />
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Cerrar
-              </Button>
-              <Button type="submit" loading={busy}>
-                <Plus className="h-4 w-4" aria-hidden /> Agregar recurso
-              </Button>
-            </div>
-          </form>
-        </>
+        <User className="h-3 w-3 text-[var(--color-tertiary)]" />
       )}
-    </Modal>
+      <span className={cn(
+        lead ? "font-medium text-[var(--color-primary)]" : "text-[var(--text-secondary)]",
+      )}>
+        {actor.name}
+      </span>
+      {lead ? (
+        <span className="text-[var(--color-warning)]">*Líder de área</span>
+      ) : null}
+      {actor.email ? (
+        <span className="text-[var(--color-tertiary)]">· {actor.email}</span>
+      ) : null}
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => onDelete(actor.id, actor.name)}
+        title="Eliminar"
+        className="ml-auto"
+      >
+        <Trash2 className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
+function ActorsTable({
+  rows,
+  onDelete,
+}: {
+  rows: FlatActor[];
+  onDelete: (kind: "area" | "team" | "actor", id: string, name: string) => void;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <tr>
+            <th className="px-3 py-2 font-medium">Nombre</th>
+            <th className="px-3 py-2 font-medium">Correo</th>
+            <th className="px-3 py-2 font-medium">Teléfono</th>
+            <th className="px-3 py-2 font-medium">Equipo</th>
+            <th className="px-3 py-2 font-medium">Área</th>
+            <th className="w-20 px-3 py-2" aria-label="Acciones" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
+              <td className="px-3 py-2 text-[var(--color-primary)]">
+                <span className="font-medium">{r.name}</span>
+                {r.is_lead ? (
+                  <Badge variant="warning" className="ml-2">Líder</Badge>
+                ) : null}
+              </td>
+              <td className="px-3 py-2 text-[var(--color-secondary)]">
+                {r.email ? (
+                  <a href={`mailto:${r.email}`} className="hover:underline">
+                    {r.email}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td className="px-3 py-2 text-[var(--color-secondary)]">{r.phone || "—"}</td>
+              <td className="px-3 py-2 text-[var(--color-secondary)]">{r.team_name || "—"}</td>
+              <td className="px-3 py-2 text-[var(--color-secondary)]">{r.area_name}</td>
+              <td className="px-3 py-2 text-right">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onDelete("actor", r.id, r.name)}
+                  title="Eliminar"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

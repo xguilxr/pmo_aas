@@ -172,10 +172,18 @@ export default function AreasAdminPage() {
     setError(null);
     try {
       if (creating.kind === "area") {
+        const leadName = form.lead_name.trim();
         await createArea({
           name: form.name.trim(),
           description: form.description.trim() || null,
-          lead_name: form.lead_name.trim() || null,
+          // ENH-078: líder se persiste como Actor con is_lead=true.
+          lead: leadName
+            ? {
+                name: leadName,
+                email: form.email.trim() || null,
+                phone: form.phone.trim() || null,
+              }
+            : null,
         });
       } else if (creating.kind === "team") {
         await createTeam({
@@ -207,10 +215,12 @@ export default function AreasAdminPage() {
     setError(null);
     try {
       if (editing.kind === "area") {
+        // ENH-078: lead_name ya no existe; el líder se gestiona vía
+        // lead_actor_id (selector de actor). En esta versión legacy
+        // del modal admin sólo persistimos los campos básicos.
         await updateArea(editing.id, {
           name: editing.name.trim(),
           description: editing.description.trim() || null,
-          lead_name: editing.lead_name.trim() || null,
         });
       } else if (editing.kind === "team") {
         await updateTeam(editing.id, {

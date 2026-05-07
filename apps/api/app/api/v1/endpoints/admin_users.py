@@ -567,7 +567,7 @@ async def hard_delete_user(
     )
     from app.models.organization import BusinessUnit, Department
     from app.models.project import Project
-    from app.models.project_area import ProjectArea
+    from app.models.area import Area as ProjectArea  # ENH-078 alias
     from app.models.project_charter import ProjectCharter
     from app.models.stakeholder import Stakeholder
     from app.models.task import Task

@@ -28,7 +28,7 @@ from app.models.modules import (
     Risk,
 )
 from app.models.project import Project
-from app.models.project_area import ProjectArea
+from app.models.area import Area as ProjectArea  # ENH-078: alias post drop
 from app.schemas.modules import (
     ChangeRequestRead,
     IssueRead,

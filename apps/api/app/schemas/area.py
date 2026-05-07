@@ -6,18 +6,32 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 # ---------- Area ----------
+class AreaLeadInput(BaseModel):
+    """ENH-078: input de líder al crear/editar un Área.
+
+    Si `actor_id` se pasa, se reusa el Actor existente y se marca
+    `is_lead=true`. Si se pasa `name`, se crea un Actor nuevo (sin
+    team) con `is_lead=true` y se enlaza.
+    """
+
+    actor_id: UUID | None = None
+    name: str | None = Field(default=None, max_length=200)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=32)
+
+
 class AreaCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
-    lead_name: str | None = Field(default=None, max_length=200)
     is_active: bool = True
+    lead: AreaLeadInput | None = None
 
 
 class AreaUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=200)
     description: str | None = None
-    lead_name: str | None = None
     is_active: bool | None = None
+    lead_actor_id: UUID | None = None
 
 
 class AreaRead(BaseModel):
@@ -25,7 +39,7 @@ class AreaRead(BaseModel):
     tenant_id: UUID
     name: str
     description: str | None
-    lead_name: str | None = None
+    lead_actor_id: UUID | None = None
     is_active: bool
     created_at: datetime
 
@@ -67,6 +81,7 @@ class ActorCreate(BaseModel):
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=32)
     is_active: bool = True
+    is_lead: bool = False
 
 
 class ActorUpdate(BaseModel):
@@ -76,6 +91,7 @@ class ActorUpdate(BaseModel):
     email: EmailStr | None = None
     phone: str | None = None
     is_active: bool | None = None
+    is_lead: bool | None = None
 
 
 class ActorRead(BaseModel):
@@ -87,6 +103,7 @@ class ActorRead(BaseModel):
     email: str | None
     phone: str | None
     is_active: bool
+    is_lead: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -100,6 +117,7 @@ class TreeActor(BaseModel):
     phone: str | None
     user_id: UUID | None
     is_active: bool
+    is_lead: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -118,7 +136,7 @@ class TreeArea(BaseModel):
     id: UUID
     name: str
     description: str | None
-    lead_name: str | None = None
+    lead_actor_id: UUID | None = None
     is_active: bool
     teams: list[TreeTeam] = Field(default_factory=list)
     unassigned_actors: list[TreeActor] = Field(default_factory=list)

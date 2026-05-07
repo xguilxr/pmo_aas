@@ -69,17 +69,53 @@ async def create_area(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    """ENH-078: si `body.lead` viene, crea/reusa el Actor líder primero
+    y enlaza vía `lead_actor_id`. Decisión owner: el líder se persiste
+    como Actor con `is_lead=true` antes de crear el área.
+    """
     tenant_id = _tenant(cu)
     a = Area(
         tenant_id=str(tenant_id),
         name=body.name.strip(),
         description=body.description,
-        lead_name=body.lead_name.strip() if body.lead_name else None,
         is_active=body.is_active,
         created_by=str(cu.id),
     )
     db.add(a)
+    await db.flush()  # obtain a.id
+
+    if body.lead is not None:
+        lead_actor: Actor | None = None
+        if body.lead.actor_id is not None:
+            lead_actor = (
+                await db.execute(
+                    select(Actor).where(
+                        Actor.id == str(body.lead.actor_id),
+                        Actor.tenant_id == str(tenant_id),
+                    )
+                )
+            ).scalar_one_or_none()
+            if lead_actor is None:
+                raise not_found("Lead actor")
+            lead_actor.is_lead = True
+        elif body.lead.name:
+            lead_actor = Actor(
+                tenant_id=str(tenant_id),
+                team_id=None,
+                user_id=None,
+                name=body.lead.name.strip(),
+                email=body.lead.email,
+                phone=body.lead.phone,
+                is_active=True,
+                is_lead=True,
+                created_by=str(cu.id),
+            )
+            db.add(lead_actor)
+            await db.flush()
+        if lead_actor is not None:
+            a.lead_actor_id = lead_actor.id
     await db.commit()
+    await db.refresh(a)
     return AreaRead.model_validate(a)
 
 
@@ -129,7 +165,7 @@ async def get_areas_tree(
                 id=area.id,
                 name=area.name,
                 description=area.description,
-                lead_name=area.lead_name,
+                lead_actor_id=area.lead_actor_id,
                 is_active=area.is_active,
                 teams=[
                     TreeTeam(
@@ -405,6 +441,7 @@ async def create_actor(
         email=str(body.email) if body.email else None,
         phone=body.phone,
         is_active=body.is_active,
+        is_lead=body.is_lead,
         created_by=str(cu.id),
     )
     db.add(a)
