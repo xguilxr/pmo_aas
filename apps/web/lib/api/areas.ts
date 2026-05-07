@@ -234,6 +234,10 @@ export type AreaAssignment = {
   project_id: string | null;
   is_global: boolean;
   created_at: string;
+  // ENH-080: nombres legibles resueltos en backend.
+  organization_name?: string | null;
+  program_name?: string | null;
+  project_name?: string | null;
 };
 
 export type AssignmentScope = {

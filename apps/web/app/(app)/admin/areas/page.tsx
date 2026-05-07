@@ -32,10 +32,12 @@ import {
   deleteArea,
   deleteTeam,
   getAreasTree,
+  listAreaAssignments,
   reassignActor,
   updateActor,
   updateArea,
   updateTeam,
+  type AreaAssignment,
   type AreaTreeResponse,
   type TreeActor,
   type TreeArea,
@@ -85,6 +87,12 @@ export default function AreasAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
+  // ENH-080: cache de assignments por área. Lazy-load al expandir.
+  // null = no cargado, [] = cargado vacío, [...] = cargado con assignments.
+  const [assignments, setAssignments] = useState<
+    Record<string, AreaAssignment[] | null>
+  >({});
+
   const [creating, setCreating] = useState<CreatingNode | null>(null);
   const [editing, setEditing] = useState<EditingNode | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -126,6 +134,26 @@ export default function AreasAdminPage() {
       else next.add(id);
       return next;
     });
+  }
+
+  // ENH-080: carga lazy de assignments cuando se expande un área.
+  async function ensureAssignmentsLoaded(areaId: string) {
+    if (assignments[areaId] !== undefined) return;
+    // Marca como "cargando" con array vacío para evitar dobles fetches.
+    setAssignments((prev) => ({ ...prev, [areaId]: prev[areaId] ?? null }));
+    try {
+      const rows = await listAreaAssignments(areaId);
+      setAssignments((prev) => ({ ...prev, [areaId]: rows }));
+    } catch {
+      setAssignments((prev) => ({ ...prev, [areaId]: [] }));
+    }
+  }
+
+  function toggleArea(areaId: string) {
+    if (!expanded.has(areaId)) {
+      void ensureAssignmentsLoaded(areaId);
+    }
+    toggle(areaId);
   }
 
   function openCreate(node: CreatingNode) {
@@ -321,6 +349,8 @@ export default function AreasAdminPage() {
                 area={a}
                 expanded={expanded}
                 toggle={toggle}
+                toggleArea={toggleArea}
+                assignments={assignments[a.id] ?? null}
                 openCreate={openCreate}
                 openEditArea={openEditArea}
                 openEditTeam={openEditTeam}
@@ -676,6 +706,8 @@ function AreaNode({
   area,
   expanded,
   toggle,
+  toggleArea,
+  assignments,
   openCreate,
   openEditArea,
   openEditTeam,
@@ -686,6 +718,8 @@ function AreaNode({
   area: TreeArea;
   expanded: Set<string>;
   toggle: (id: string) => void;
+  toggleArea: (id: string) => void;
+  assignments: AreaAssignment[] | null;
   openCreate: (n: CreatingNode) => void;
   openEditArea: (a: TreeArea) => void;
   openEditTeam: (area_id: string, t: TreeTeam) => void;
@@ -704,7 +738,7 @@ function AreaNode({
       >
         <button
           type="button"
-          onClick={() => toggle(area.id)}
+          onClick={() => toggleArea(area.id)}
           className="inline-flex h-6 w-6 items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
           aria-label={isOpen ? "Colapsar" : "Expandir"}
         >
@@ -758,7 +792,9 @@ function AreaNode({
         </button>
       </div>
       {isOpen ? (
-        <ul className="bg-[var(--color-subtle)]/40">
+        <div className="bg-[var(--color-subtle)]/40">
+          <AssignmentsSection assignments={assignments} />
+          <ul>
           {area.teams.map((t) => (
             <TeamNode
               key={t.id}
@@ -778,9 +814,75 @@ function AreaNode({
               Sin equipos. Usa el botón + para crear el primero.
             </li>
           ) : null}
-        </ul>
+          </ul>
+        </div>
       ) : null}
     </li>
+  );
+}
+
+function AssignmentsSection({
+  assignments,
+}: {
+  assignments: AreaAssignment[] | null;
+}) {
+  if (assignments === null) {
+    return (
+      <div className="px-12 py-2 text-xs text-[var(--color-tertiary)]">
+        Cargando habilitaciones…
+      </div>
+    );
+  }
+  if (assignments.length === 0) {
+    return (
+      <div className="px-12 py-2 text-xs text-[var(--color-tertiary)]">
+        <span className="font-medium uppercase tracking-wide">Habilitada en:</span>{" "}
+        no asignada a ningún scope todavía.
+      </div>
+    );
+  }
+  const items = assignments.map((a) => {
+    if (a.is_global)
+      return { key: a.id, kind: "Global", label: "Todos los proyectos del tenant" };
+    if (a.organization_id)
+      return {
+        key: a.id,
+        kind: "Org",
+        label: a.organization_name ?? `Org ${a.organization_id.slice(0, 8)}`,
+      };
+    if (a.program_id)
+      return {
+        key: a.id,
+        kind: "Programa",
+        label: a.program_name ?? `Programa ${a.program_id.slice(0, 8)}`,
+      };
+    if (a.project_id)
+      return {
+        key: a.id,
+        kind: "Proyecto",
+        label: a.project_name ?? `Proyecto ${a.project_id.slice(0, 8)}`,
+      };
+    return { key: a.id, kind: "?", label: "(scope desconocido)" };
+  });
+  return (
+    <div className="px-12 py-2 text-xs">
+      <span className="font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+        Habilitada en
+      </span>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {items.map((it) => (
+          <span
+            key={it.key}
+            className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-0.5 text-[var(--color-secondary)]"
+          >
+            <span className="text-[var(--color-tertiary)]">{it.kind}:</span>
+            <span className="font-medium text-[var(--color-primary)]">
+              {it.label}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

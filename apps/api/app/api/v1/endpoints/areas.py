@@ -661,6 +661,12 @@ async def list_area_assignments(
     ).scalar_one_or_none()
     if area is None:
         raise not_found("Area")
+    # ENH-080: enriquece cada assignment con nombre legible del scope
+    # destino (org/program/project) para que el dropdown del catálogo
+    # admin pueda mostrar a qué Org/Programa/Proyectos está habilitada.
+    from app.models.organization import Organization, Program
+    from app.models.project import Project
+
     rows = (
         await db.execute(
             select(AreaAssignment).where(
@@ -669,7 +675,49 @@ async def list_area_assignments(
             )
         )
     ).scalars().all()
-    return [AreaAssignmentRead.model_validate(r) for r in rows]
+
+    org_ids = {r.organization_id for r in rows if r.organization_id}
+    prog_ids = {r.program_id for r in rows if r.program_id}
+    proj_ids = {r.project_id for r in rows if r.project_id}
+
+    org_names: dict[str, str] = {}
+    if org_ids:
+        for oid, oname in (
+            await db.execute(
+                select(Organization.id, Organization.name).where(
+                    Organization.id.in_(org_ids)
+                )
+            )
+        ).all():
+            org_names[str(oid)] = oname
+    prog_names: dict[str, str] = {}
+    if prog_ids:
+        for pid, pname in (
+            await db.execute(
+                select(Program.id, Program.name).where(Program.id.in_(prog_ids))
+            )
+        ).all():
+            prog_names[str(pid)] = pname
+    proj_names: dict[str, str] = {}
+    if proj_ids:
+        for pid, pname in (
+            await db.execute(
+                select(Project.id, Project.name).where(Project.id.in_(proj_ids))
+            )
+        ).all():
+            proj_names[str(pid)] = pname
+
+    out: list[AreaAssignmentRead] = []
+    for r in rows:
+        item = AreaAssignmentRead.model_validate(r)
+        if r.organization_id:
+            item.organization_name = org_names.get(str(r.organization_id))
+        if r.program_id:
+            item.program_name = prog_names.get(str(r.program_id))
+        if r.project_id:
+            item.project_name = proj_names.get(str(r.project_id))
+        out.append(item)
+    return out
 
 
 @assignments_router.put(
