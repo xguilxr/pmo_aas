@@ -152,26 +152,25 @@ async def get_areas_tree(
         teams_by_area[str(t.area_id)].append(t)
 
     actors_by_team: dict[str, list[Actor]] = defaultdict(list)
+    actors_by_area_no_team: dict[str, list[Actor]] = defaultdict(list)
     orphans: list[Actor] = []
+    pmo_area = next((a for a in areas if a.name == "PMO"), None)
     for a in actors:
         if a.team_id:
             actors_by_team[str(a.team_id)].append(a)
-        else:
-            orphans.append(a)
-
-    # ENH-082: actores sincronizados desde users del tenant (sync PMO,
-    # `user_id` no nulo y `team_id` nulo) se muestran bajo el área PMO
-    # en `unassigned_actors` para que aparezcan en el catálogo aunque no
-    # tengan equipo. El resto de huérfanos (sin user_id) sigue en
-    # `orphan_actors`.
-    pmo_area = next((a for a in areas if a.name == "PMO"), None)
-    pmo_unassigned: list[Actor] = []
-    other_orphans: list[Actor] = []
-    for o in orphans:
-        if pmo_area is not None and o.user_id is not None:
-            pmo_unassigned.append(o)
-        else:
-            other_orphans.append(o)
+            continue
+        # ENH-084 rework: actor sin team con `area_id` directo va a
+        # `unassigned_actors` de esa área.
+        if a.area_id:
+            actors_by_area_no_team[str(a.area_id)].append(a)
+            continue
+        # ENH-082: actor sincronizado desde user (PMO seed) sin team
+        # ni area_id explícito → cae en PMO si existe.
+        if pmo_area is not None and a.user_id is not None:
+            actors_by_area_no_team[str(pmo_area.id)].append(a)
+            continue
+        orphans.append(a)
+    other_orphans = orphans
 
     return AreaTreeResponse(
         areas=[
@@ -191,11 +190,10 @@ async def get_areas_tree(
                     )
                     for t in teams_by_area.get(str(area.id), [])
                 ],
-                unassigned_actors=(
-                    [TreeActor.model_validate(x) for x in pmo_unassigned]
-                    if pmo_area is not None and area.id == pmo_area.id
-                    else []
-                ),
+                unassigned_actors=[
+                    TreeActor.model_validate(x)
+                    for x in actors_by_area_no_team.get(str(area.id), [])
+                ],
             )
             for area in areas
         ],
@@ -521,11 +519,32 @@ async def update_actor(
             if parent_team is None:
                 raise validation_error("team_id no existe en el tenant")
             a.team_id = str(new_team_id)
+            # ENH-084 rework: si el team se setea, area_id queda en
+            # sync con team.area_id automáticamente para mantener
+            # consistencia, salvo que el caller pase area_id explícito.
+            if "area_id" not in data_full:
+                a.area_id = str(parent_team.area_id)
         else:
             a.team_id = None
+    if "area_id" in data_full:
+        new_area_id = data_full["area_id"]
+        if new_area_id is not None:
+            parent_area = (
+                await db.execute(
+                    select(Area).where(
+                        Area.id == str(new_area_id),
+                        Area.tenant_id == str(tenant_id),
+                    )
+                )
+            ).scalar_one_or_none()
+            if parent_area is None:
+                raise validation_error("area_id no existe en el tenant")
+            a.area_id = str(new_area_id)
+        else:
+            a.area_id = None
     data = body.model_dump(exclude_none=True)
     for k, v in data.items():
-        if k == "team_id":
+        if k in ("team_id", "area_id"):
             continue
         if k in ("user_id", "email") and v is not None:
             v = str(v)

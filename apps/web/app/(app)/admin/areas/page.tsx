@@ -72,6 +72,7 @@ type EditingNode =
       kind: "actor";
       id: string;
       team_id: string | null;
+      area_id: string | null;
       name: string;
       email: string;
       phone: string;
@@ -264,6 +265,9 @@ export default function AreasAdminPage() {
       kind: "actor",
       id: a.id,
       team_id,
+      // ENH-084 rework: hidrata area_id desde el actor (puede venir
+      // del catálogo) o derivado del team padre si está disponible.
+      area_id: a.area_id ?? null,
       name: a.name,
       email: a.email ?? "",
       phone: a.phone ?? "",
@@ -359,6 +363,10 @@ export default function AreasAdminPage() {
           // ENH-084: permite mover el actor entre teams (de cualquier
           // área) o dejarlo sin team via NULL.
           team_id: editing.team_id ?? null,
+          // ENH-084 rework: área directa (Actor sin team puede vivir
+          // bajo Área). Si team_id está set, backend la mantiene en
+          // sync automáticamente.
+          area_id: editing.area_id ?? null,
         });
       }
       setEditing(null);
@@ -712,10 +720,46 @@ export default function AreasAdminPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                    Área
+                  </label>
+                  <Select
+                    value={editing.area_id ?? ""}
+                    onChange={(e) => {
+                      const newAreaId = e.target.value || null;
+                      setEditing((prev) =>
+                        prev && prev.kind === "actor"
+                          ? {
+                              ...prev,
+                              area_id: newAreaId,
+                              // Si cambia el área, limpia team que ya
+                              // no pertenece.
+                              team_id:
+                                prev.team_id &&
+                                (tree?.areas ?? [])
+                                  .find((a) => a.id === newAreaId)
+                                  ?.teams.some((t) => t.id === prev.team_id)
+                                  ? prev.team_id
+                                  : null,
+                            }
+                          : prev,
+                      );
+                    }}
+                  >
+                    <option value="">— Sin área —</option>
+                    {(tree?.areas ?? []).map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
                     Equipo (opcional)
                   </label>
                   <Select
                     value={editing.team_id ?? ""}
+                    disabled={!editing.area_id}
                     onChange={(e) =>
                       setEditing((prev) =>
                         prev && prev.kind === "actor"
@@ -725,17 +769,18 @@ export default function AreasAdminPage() {
                     }
                   >
                     <option value="">— Sin equipo —</option>
-                    {(tree?.areas ?? []).flatMap((a) =>
-                      a.teams.map((t) => (
+                    {(tree?.areas ?? [])
+                      .find((a) => a.id === editing.area_id)
+                      ?.teams.map((t) => (
                         <option key={t.id} value={t.id}>
-                          {a.name} / {t.name}
+                          {t.name}
                         </option>
-                      )),
-                    )}
+                      ))}
                   </Select>
                   <p className="mt-1 text-xs text-[var(--color-tertiary)]">
-                    Mueve el actor a otra área/equipo o déjalo sin
-                    equipo.
+                    Selecciona Área primero. El actor puede vivir bajo
+                    un Área sin equipo (recurso libre del área) o
+                    asignado a un Equipo específico.
                   </p>
                 </div>
               </>

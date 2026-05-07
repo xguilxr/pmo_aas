@@ -76,6 +76,8 @@ class TeamRead(BaseModel):
 # ---------- Actor ----------
 class ActorCreate(BaseModel):
     team_id: UUID | None = None
+    # ENH-084 rework: área directa (sin team).
+    area_id: UUID | None = None
     user_id: UUID | None = None
     name: str = Field(min_length=2, max_length=200)
     email: EmailStr | None = None
@@ -86,6 +88,7 @@ class ActorCreate(BaseModel):
 
 class ActorUpdate(BaseModel):
     team_id: UUID | None = None
+    area_id: UUID | None = None
     user_id: UUID | None = None
     name: str | None = Field(default=None, min_length=2, max_length=200)
     email: EmailStr | None = None
@@ -98,6 +101,7 @@ class ActorRead(BaseModel):
     id: UUID
     tenant_id: UUID
     team_id: UUID | None
+    area_id: UUID | None = None
     user_id: UUID | None
     name: str
     email: str | None
@@ -118,6 +122,10 @@ class TreeActor(BaseModel):
     user_id: UUID | None
     is_active: bool
     is_lead: bool = False
+    # ENH-084 rework: expone area_id/team_id para que el frontend
+    # pueda hidratar el modal de edit con la asignación actual.
+    team_id: UUID | None = None
+    area_id: UUID | None = None
 
     model_config = {"from_attributes": True}
 
