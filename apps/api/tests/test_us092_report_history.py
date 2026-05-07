@@ -87,3 +87,37 @@ async def test_history_download_re_renders_pdf(client, db_session):
     )
     # Mock render devuelve un PDF stub corto en tests; basta validar el header.
     assert dl.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_enh081_delete_history_entry(client, db_session):
+    """ENH-081: el user puede borrar un entry del historial.
+    DELETE → 204 y la entry desaparece del listing."""
+    auth, proj = await _setup(client, db_session)
+    await client.post(
+        f"/api/v1/projects/{proj}/reports/avance",
+        json={},
+        headers=auth["_authz"],
+    )
+    h = await client.get(
+        f"/api/v1/projects/{proj}/report-history", headers=auth["_authz"]
+    )
+    hist_id = h.json()[0]["id"]
+    d = await client.delete(
+        f"/api/v1/report-history/{hist_id}", headers=auth["_authz"]
+    )
+    assert d.status_code == 204
+    h2 = await client.get(
+        f"/api/v1/projects/{proj}/report-history", headers=auth["_authz"]
+    )
+    assert all(it["id"] != hist_id for it in h2.json())
+
+
+@pytest.mark.asyncio
+async def test_enh081_delete_unknown_returns_404(client, db_session):
+    auth, _ = await _setup(client, db_session)
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    d = await client.delete(
+        f"/api/v1/report-history/{fake_id}", headers=auth["_authz"]
+    )
+    assert d.status_code == 404
