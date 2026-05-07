@@ -273,6 +273,9 @@ export default function AreasAdminPage() {
           name: editing.name.trim(),
           email: editing.email.trim() || null,
           phone: editing.phone.trim() || null,
+          // ENH-084: permite mover el actor entre teams (de cualquier
+          // área) o dejarlo sin team via NULL.
+          team_id: editing.team_id ?? null,
         });
       }
       setEditing(null);
@@ -375,7 +378,10 @@ export default function AreasAdminPage() {
             {tree.orphan_actors.length > 0 ? (
               <li className="border-t border-[var(--border-default)]">
                 <div className="flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                  Actores sin equipo asignado ({tree.orphan_actors.length})
+                  Actores sin área asignada ({tree.orphan_actors.length})
+                  <span className="ml-2 normal-case text-[var(--color-tertiary)]">
+                    — usa "Editar" para moverlos a un equipo/área.
+                  </span>
                 </div>
                 <ul>
                   {tree.orphan_actors.map((ac) => (
@@ -611,6 +617,34 @@ export default function AreasAdminPage() {
                     }
                     maxLength={32}
                   />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                    Equipo (opcional)
+                  </label>
+                  <Select
+                    value={editing.team_id ?? ""}
+                    onChange={(e) =>
+                      setEditing((prev) =>
+                        prev && prev.kind === "actor"
+                          ? { ...prev, team_id: e.target.value || null }
+                          : prev,
+                      )
+                    }
+                  >
+                    <option value="">— Sin equipo —</option>
+                    {(tree?.areas ?? []).flatMap((a) =>
+                      a.teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {a.name} / {t.name}
+                        </option>
+                      )),
+                    )}
+                  </Select>
+                  <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                    Mueve el actor a otra área/equipo o déjalo sin
+                    equipo.
+                  </p>
                 </div>
               </>
             )}
