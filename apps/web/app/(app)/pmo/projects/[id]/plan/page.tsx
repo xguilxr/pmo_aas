@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
+  Building2,
   ChevronDown,
   ChevronRight,
   Download,
@@ -28,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
 import { ApiError } from "@/lib/api";
+import { listAreas, type Area } from "@/lib/api/areas";
 import { getProject } from "@/lib/api/projects";
 import {
   TASK_CRITICALITY_LABEL,
@@ -188,6 +190,95 @@ function CriticalityChip({ value }: { value: TaskCriticality }) {
     >
       {TASK_CRITICALITY_LABEL[value]}
     </span>
+  );
+}
+
+// ENH-066 + ENH-077: agrupación por Área. Render header de grupo +
+// TaskList plana por área. Sólo se muestran áreas con al menos 1
+// fila visible (chips × área filter ya aplicados en filteredTasks).
+function AreaGroupedList({
+  tasks,
+  areas,
+  loading,
+  onDelete,
+  onEdit,
+  showProjectCols,
+}: {
+  tasks: Task[];
+  areas: Area[];
+  loading: boolean;
+  onDelete?: (t: Task) => void;
+  onEdit?: (t: Task) => void;
+  showProjectCols: boolean;
+}) {
+  const grouped = useMemo(() => {
+    const byArea = new Map<string, Task[]>();
+    for (const t of tasks) {
+      const key = t.area_id ?? "__unassigned__";
+      if (!byArea.has(key)) byArea.set(key, []);
+      byArea.get(key)!.push(t);
+    }
+    return byArea;
+  }, [tasks]);
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (tasks.length === 0) {
+    return (
+      <div className="p-8 text-center text-sm text-[var(--color-tertiary)]">
+        Sin tareas registradas (filtros activos pueden estar ocultando todo).
+      </div>
+    );
+  }
+
+  // Áreas con tareas (ordenadas por nombre); "Sin asignar" al final.
+  const areaOrder = areas
+    .filter((a) => grouped.has(a.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const unassigned = grouped.get("__unassigned__");
+
+  return (
+    <div>
+      {areaOrder.map((a) => (
+        <div key={a.id}>
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
+            {a.name}{" "}
+            <span className="ml-1 text-[var(--color-tertiary)] tabular-nums">
+              ({grouped.get(a.id)!.length})
+            </span>
+          </div>
+          <TaskList
+            tasks={grouped.get(a.id)!}
+            loading={false}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            showProjectCols={showProjectCols}
+          />
+        </div>
+      ))}
+      {unassigned ? (
+        <div>
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Sin asignar{" "}
+            <span className="ml-1 tabular-nums">({unassigned.length})</span>
+          </div>
+          <TaskList
+            tasks={unassigned}
+            loading={false}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            showProjectCols={showProjectCols}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -437,6 +528,9 @@ function PlanInner() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [gantt, setGantt] = useState<GanttData | null>(null);
   const [projectName, setProjectName] = useState<string>("");
+  // US-098: catálogo tenant de Áreas para select en form + filtro.
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [areaFilter, setAreaFilter] = useState<string>("");
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -449,7 +543,16 @@ function PlanInner() {
   // ENH-047: agrupación jerárquica por WBS. Default OFF para no romper
   // la UX actual; persiste en localStorage por proyecto.
   const [groupByWbs, setGroupByWbs] = useState(false);
+  // ENH-066: agrupación por Área (mutex con WBS).
+  const [groupByArea, setGroupByArea] = useState(false);
   const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
+  // ENH-067: nivel rápido WBS. "manual" deja `collapsedWbs` tal cual
+  // (default — usuario expande/colapsa con chevron). 1..4 colapsan
+  // todos los WBS de profundidad N para que sólo se muestren niveles
+  // ≤ N. Cualquier toggle manual del chevron cambia el modo a "manual"
+  // automáticamente.
+  type WbsLevel = 1 | 2 | 3 | 4 | "manual";
+  const [wbsLevel, setWbsLevel] = useState<WbsLevel>("manual");
 
   // US-090: toggle visibilidad de columnas MS Project (Outline / Duration
   // / Predecesoras / Sucesoras). Default OFF para no saturar el ancho.
@@ -477,32 +580,108 @@ function PlanInner() {
     [tasks],
   );
 
-  const filteredTasks = useMemo(
-    () => (activeChips.size === 0 ? tasks : tasks.filter((t) => chipMatches(t, activeChips))),
-    [tasks, activeChips],
-  );
+  const filteredTasks = useMemo(() => {
+    let rows = tasks;
+    if (activeChips.size > 0) rows = rows.filter((t) => chipMatches(t, activeChips));
+    // US-098: filtro por Área (chip dropdown).
+    if (areaFilter) rows = rows.filter((t) => t.area_id === areaFilter);
+    return rows;
+  }, [tasks, activeChips, areaFilter]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const v = window.localStorage.getItem(`plan-grouping:${id}`);
       if (v === "wbs") setGroupByWbs(true);
+      else if (v === "area") setGroupByArea(true);
+      // ENH-077 CA5: chips activos persistidos.
+      const chipsRaw = window.localStorage.getItem(`plan-chips:${id}`);
+      if (chipsRaw) {
+        const chips = chipsRaw
+          .split(",")
+          .filter((c): c is ChipKey => c === "milestone" || c === "critical" || c === "delayed");
+        if (chips.length > 0) setActiveChips(new Set(chips));
+      }
+      // ENH-077 CA5: nivel WBS persistido.
+      const lvlRaw = window.localStorage.getItem(`plan-wbs-level:${id}`);
+      if (
+        lvlRaw === "1" || lvlRaw === "2" || lvlRaw === "3" || lvlRaw === "4"
+      ) {
+        setWbsLevel(Number(lvlRaw) as 1 | 2 | 3 | 4);
+      } else if (lvlRaw === "manual") {
+        setWbsLevel("manual");
+      }
+      // areaFilter persistido.
+      const af = window.localStorage.getItem(`plan-area-filter:${id}`);
+      if (af) setAreaFilter(af);
     } catch {
       /* localStorage puede fallar (modo privado, quota) — ignoramos. */
     }
   }, [id]);
 
+  // ENH-077 CA5: persiste chips, level, areaFilter cuando cambian.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (activeChips.size === 0) window.localStorage.removeItem(`plan-chips:${id}`);
+      else window.localStorage.setItem(
+        `plan-chips:${id}`,
+        Array.from(activeChips).join(","),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [activeChips, id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(`plan-wbs-level:${id}`, String(wbsLevel));
+    } catch {
+      /* ignore */
+    }
+  }, [wbsLevel, id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (areaFilter) window.localStorage.setItem(`plan-area-filter:${id}`, areaFilter);
+      else window.localStorage.removeItem(`plan-area-filter:${id}`);
+    } catch {
+      /* ignore */
+    }
+  }, [areaFilter, id]);
+
+  // ENH-077: WBS y Área son mutex — sólo un agrupador a la vez.
+  function persistGrouping(mode: "wbs" | "area" | null) {
+    if (typeof window === "undefined") return;
+    try {
+      if (mode) window.localStorage.setItem(`plan-grouping:${id}`, mode);
+      else window.localStorage.removeItem(`plan-grouping:${id}`);
+    } catch {
+      /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
+    }
+  }
+
   function toggleGroupByWbs() {
     const next = !groupByWbs;
     setGroupByWbs(next);
-    if (typeof window !== "undefined") {
-      try {
-        if (next) window.localStorage.setItem(`plan-grouping:${id}`, "wbs");
-        else window.localStorage.removeItem(`plan-grouping:${id}`);
-      } catch {
-        /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
-      }
+    if (next) setGroupByArea(false); // mutex
+    persistGrouping(next ? "wbs" : null);
+  }
+
+  function toggleGroupByArea() {
+    const next = !groupByArea;
+    setGroupByArea(next);
+    if (next) {
+      setGroupByWbs(false); // mutex
+      // ENH-077: cada agrupador tiene su propio set de colapsado;
+      // al cambiar de WBS a Área limpiamos collapsedWbs para no
+      // contaminar.
+      setCollapsedWbs(new Set());
+      setWbsLevel("manual");
     }
+    persistGrouping(next ? "area" : null);
   }
 
   function toggleCollapsedWbs(wbs: string) {
@@ -512,6 +691,22 @@ function PlanInner() {
       else next.add(wbs);
       return next;
     });
+    // ENH-067: cualquier toggle manual sale de los niveles rápidos.
+    setWbsLevel("manual");
+  }
+
+  // ENH-067: aplica un nivel rápido. Colapsa todos los WBS con
+  // `depth >= level` para que sólo se muestren los niveles 1..level.
+  function applyWbsLevel(level: WbsLevel) {
+    setWbsLevel(level);
+    if (level === "manual") return;
+    const next = new Set<string>();
+    for (const t of tasks) {
+      const w = t.wbs;
+      if (!w) continue;
+      if (wbsDepth(w) >= level) next.add(w);
+    }
+    setCollapsedWbs(next);
   }
 
   // ENH-006: editor de tareas inline (crear + eliminar) sin depender de
@@ -550,6 +745,8 @@ function PlanInner() {
     criticality: "medium" as TaskCriticality,
     related_milestone_id: "" as string,
     predecessors_csv: "" as string,
+    // US-098: área responsable.
+    area_id: "" as string,
   });
   const [updating, setUpdating] = useState(false);
 
@@ -562,6 +759,7 @@ function PlanInner() {
       end_date: t.end_date ?? "",
       duration_days: t.duration_days != null ? String(t.duration_days) : "",
       progress: String(t.progress ?? 0),
+      area_id: t.area_id ?? "",
       is_milestone: !!t.is_milestone,
       status: (t.status as TaskStatus) ?? "not_started",
       criticality: (t.criticality as TaskCriticality) ?? "medium",
@@ -593,6 +791,7 @@ function PlanInner() {
               .map((s) => s.trim())
               .filter(Boolean)
           : null,
+        area_id: editForm.area_id || null,
       });
       setEditOpen(false);
       setEditingId(null);
@@ -648,6 +847,11 @@ function PlanInner() {
     // y queda con string vacío → fallback a "PROYECTO" en el nombre del archivo.
     getProject(id)
       .then((p) => setProjectName(p.name))
+      .catch(() => {});
+    // US-098: cargar Áreas del tenant para el select del edit form
+    // y el filtro. Falla silencioso (la UI muestra "Sin áreas").
+    listAreas({ is_active: true })
+      .then((rows) => setAreas(rows))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -911,6 +1115,52 @@ function PlanInner() {
               <Network className="h-4 w-4" aria-hidden />
               WBS
             </Button>
+            {/* ENH-066: toggle agrupación por Área (mutex con WBS). */}
+            <Button
+              type="button"
+              size="sm"
+              variant={groupByArea ? "primary" : "ghost"}
+              onClick={toggleGroupByArea}
+              aria-label="Agrupar por Área"
+              aria-pressed={groupByArea}
+              title="Agrupar tareas por Área responsable"
+            >
+              <Building2 className="h-4 w-4" aria-hidden />
+              Área
+            </Button>
+            {/* ENH-067: niveles rápidos WBS (1/2/3/4/Manual). Sólo
+                visibles cuando WBS está ON. */}
+            {groupByWbs ? (
+              <div
+                className="flex items-center gap-0.5 rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-0.5 py-0.5"
+                aria-label="Nivel WBS rápido"
+              >
+                {([1, 2, 3, 4, "manual"] as const).map((lvl) => {
+                  const active = wbsLevel === lvl;
+                  return (
+                    <button
+                      key={String(lvl)}
+                      type="button"
+                      onClick={() => applyWbsLevel(lvl)}
+                      aria-pressed={active}
+                      title={
+                        lvl === "manual"
+                          ? "Modo manual (chevrons)"
+                          : `Mostrar hasta nivel ${lvl}`
+                      }
+                      className={cn(
+                        "h-6 rounded px-2 text-[11px] font-medium",
+                        active
+                          ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                          : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                      )}
+                    >
+                      {lvl === "manual" ? "Manual" : lvl}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             {/* US-090: toggle columnas tipo MS Project (Outline / Duration
                 / Predecesoras / Sucesoras). */}
             <Button
@@ -1034,17 +1284,59 @@ function PlanInner() {
               Limpiar filtros
             </button>
           ) : null}
+          {/* US-098: filtro por Área. Dropdown junto a los chips. */}
+          {areas.length > 0 ? (
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="text-xs text-[var(--color-tertiary)]">Área:</span>
+              <Select
+                value={areaFilter}
+                onChange={(e) => setAreaFilter(e.target.value)}
+                className="h-7 text-xs"
+              >
+                <option value="">Todas</option>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </Select>
+              {areaFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setAreaFilter("")}
+                  className="text-xs text-[var(--color-tertiary)] hover:underline"
+                  title="Limpiar filtro de Área"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-        <TaskList
-          tasks={filteredTasks}
-          loading={loadingTasks}
-          onDelete={handleDeleteTask}
-          onEdit={openEditTask}
-          groupByWbs={groupByWbs}
-          collapsed={collapsedWbs}
-          onToggleCollapse={toggleCollapsedWbs}
-          showProjectCols={showProjectCols}
-        />
+        {groupByArea ? (
+          // ENH-066: agrupación por Área. Render una TaskList por
+          // grupo con header. Áreas vacías post-filtro se omiten
+          // (ENH-077 CA1/CA3).
+          <AreaGroupedList
+            tasks={filteredTasks}
+            areas={areas}
+            loading={loadingTasks}
+            onDelete={handleDeleteTask}
+            onEdit={openEditTask}
+            showProjectCols={showProjectCols}
+          />
+        ) : (
+          <TaskList
+            tasks={filteredTasks}
+            loading={loadingTasks}
+            onDelete={handleDeleteTask}
+            onEdit={openEditTask}
+            groupByWbs={groupByWbs}
+            collapsed={collapsedWbs}
+            onToggleCollapse={toggleCollapsedWbs}
+            showProjectCols={showProjectCols}
+          />
+        )}
       </section>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1064,6 +1356,41 @@ function PlanInner() {
     ],
   );
 
+  // ENH-068 + ENH-077: el Gantt respeta el set visible de la lista
+  // (chips × agrupador × área filter × nivel WBS). Construimos un
+  // GanttData filtrado a partir de filteredTasks + collapsedWbs.
+  const filteredGantt = useMemo<GanttData | null>(() => {
+    if (!gantt) return null;
+    const visibleIds = new Set<string>();
+    // Si hay agrupación WBS con colapsado, descartamos también las
+    // tasks ocultas por la cadena de padres (mismo criterio que la
+    // lista). Si no hay agrupación, sólo aplica filteredTasks.
+    const filteredById = new Set(filteredTasks.map((t) => t.id));
+    for (const t of filteredTasks) {
+      if (groupByWbs && collapsedWbs.size > 0) {
+        let p = wbsParent(t.wbs);
+        let hidden = false;
+        while (p) {
+          if (collapsedWbs.has(p)) {
+            hidden = true;
+            break;
+          }
+          p = wbsParent(p);
+        }
+        if (!hidden) visibleIds.add(t.id);
+      } else {
+        visibleIds.add(t.id);
+      }
+    }
+    return {
+      ...gantt,
+      tasks: gantt.tasks.filter((g) => visibleIds.has(g.id)),
+      dependencies: gantt.dependencies.filter(
+        (d) => visibleIds.has(d.predecessor_id) && visibleIds.has(d.successor_id),
+      ),
+    };
+  }, [gantt, filteredTasks, groupByWbs, collapsedWbs]);
+
   const ganttBlock = useMemo(
     () => (
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-sm)]">
@@ -1072,19 +1399,24 @@ function PlanInner() {
           <h2 className="text-sm font-semibold text-[var(--color-primary)]">
             Gantt
           </h2>
+          {filteredGantt && gantt && filteredGantt.tasks.length < gantt.tasks.length ? (
+            <span className="ml-2 text-xs text-[var(--color-tertiary)]">
+              ({filteredGantt.tasks.length} de {gantt.tasks.length} visibles)
+            </span>
+          ) : null}
         </header>
         {loadingGantt ? (
           <Skeleton className="h-[360px] w-full" />
-        ) : gantt ? (
-          <GanttView data={gantt} />
+        ) : filteredGantt && filteredGantt.tasks.length > 0 ? (
+          <GanttView data={filteredGantt} />
         ) : (
           <div className="p-6 text-center text-sm text-[var(--color-tertiary)]">
-            Sin datos para el Gantt.
+            Sin datos para el Gantt con los filtros activos.
           </div>
         )}
       </section>
     ),
-    [gantt, loadingGantt],
+    [filteredGantt, gantt, loadingGantt],
   );
 
   return (
@@ -1432,6 +1764,25 @@ function PlanInner() {
               {(Object.keys(TASK_CRITICALITY_LABEL) as TaskCriticality[]).map((k) => (
                 <option key={k} value={k}>
                   {TASK_CRITICALITY_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {/* US-098: Área responsable. Catálogo tenant `areas`. */}
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Área responsable
+            </span>
+            <Select
+              value={editForm.area_id}
+              onChange={(e) =>
+                setEditForm({ ...editForm, area_id: e.target.value })
+              }
+            >
+              <option value="">— Sin asignar —</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
                 </option>
               ))}
             </Select>

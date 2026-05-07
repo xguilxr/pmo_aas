@@ -39,6 +39,8 @@ export type Task = {
   outline_level: number | null;
   predecessors: string[] | null;
   successors: string[] | null;
+  // US-098: área responsable (FK al catálogo tenant `areas`).
+  area_id: string | null;
 };
 
 export type TaskCreateBody = {
@@ -59,6 +61,8 @@ export type TaskCreateBody = {
   related_milestone_id?: string | null;
   // US-090.
   predecessors?: string[] | null;
+  // US-098.
+  area_id?: string | null;
 };
 
 export type TaskUpdateBody = Partial<TaskCreateBody> & {

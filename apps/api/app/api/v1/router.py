@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     admin_panel,
     admin_users,
     ai,
+    areas,
     auth,
     branding,
     dashboard,
@@ -43,6 +44,9 @@ api_router.include_router(project_requests.router)
 api_router.include_router(projects.router)
 api_router.include_router(project_charters.router)
 api_router.include_router(project_areas.router)
+api_router.include_router(areas.areas_router)
+api_router.include_router(areas.teams_router)
+api_router.include_router(areas.actors_router)
 api_router.include_router(reports.router)
 api_router.include_router(scheduled_reports.router)
 api_router.include_router(stakeholders.router)

@@ -18,39 +18,51 @@ function parseType(v: string | null): RaidDetailType {
   return "risk";
 }
 
+// BUG-052: mapping al param `tab` del listado proyecto.
+const TYPE_META: Record<
+  RaidDetailType,
+  { label: string; tabParam: string }
+> = {
+  risk: { label: "Riesgos", tabParam: "risks" },
+  action: { label: "Acciones", tabParam: "actions" },
+  incident: { label: "Incidentes", tabParam: "incidents" },
+  decision: { label: "Decisiones", tabParam: "decisions" },
+};
+
 function Inner() {
   const { id, raidId } = useParams<{ id: string; raidId: string }>();
   const search = useSearchParams();
   const type = parseType(search.get("type"));
+  const meta = TYPE_META[type];
+  const filteredHref = `/pmo/projects/${id}/raid?tab=${meta.tabParam}`;
   return (
     <RaidDetailPage
       raidType={type}
       itemId={raidId}
       breadcrumb={
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/projects" className="hover:underline">
-            Proyectos
-          </Link>
-          <span className="mx-1">/</span>
-          <Link
-            href={`/pmo/projects/${id}`}
-            className="hover:underline"
+        <div className="flex flex-col gap-1">
+          {/* BUG-052: breadcrumb canónico RAID / [Tipo] / [ID] */}
+          <nav
+            aria-label="Breadcrumb"
+            className="text-[11px] text-[var(--color-tertiary)]"
           >
-            Detalle
-          </Link>
-          <span className="mx-1">/</span>
-          <Link
-            href={`/pmo/projects/${id}/raid`}
-            className="hover:underline"
-          >
-            RAID
-          </Link>
-          <span className="mx-1">/</span>
-          <span>Ítem</span>
-          <div className="mt-1">
-            <BackLink href={`/pmo/projects/${id}/raid`} label="Volver al RAID" />
-          </div>
-        </nav>
+            <Link
+              href={`/pmo/projects/${id}/raid`}
+              className="hover:underline"
+            >
+              RAID
+            </Link>
+            <span className="mx-1">/</span>
+            <Link href={filteredHref} className="hover:underline">
+              {meta.label}
+            </Link>
+            <span className="mx-1">/</span>
+            <span className="font-mono text-[var(--color-secondary)]">
+              {raidId.slice(0, 8)}
+            </span>
+          </nav>
+          <BackLink href={filteredHref} label="Volver" />
+        </div>
       }
     />
   );
