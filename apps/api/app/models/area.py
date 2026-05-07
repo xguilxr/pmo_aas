@@ -33,6 +33,11 @@ class Area(Base, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000))
+    # US-097 fix: el líder de un Área no necesariamente es un user del
+    # tenant — puede ser un actor/recurso. Texto libre para no forzar
+    # FK; cuando el owner cablee actores como líderes se agrega una
+    # FK opcional adicional sin migrar este campo.
+    lead_name: Mapped[str | None] = mapped_column(String(200))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")

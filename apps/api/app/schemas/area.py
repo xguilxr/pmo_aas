@@ -9,12 +9,14 @@ from pydantic import BaseModel, EmailStr, Field
 class AreaCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
+    lead_name: str | None = Field(default=None, max_length=200)
     is_active: bool = True
 
 
 class AreaUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=200)
     description: str | None = None
+    lead_name: str | None = None
     is_active: bool | None = None
 
 
@@ -23,6 +25,7 @@ class AreaRead(BaseModel):
     tenant_id: UUID
     name: str
     description: str | None
+    lead_name: str | None = None
     is_active: bool
     created_at: datetime
 
@@ -115,6 +118,7 @@ class TreeArea(BaseModel):
     id: UUID
     name: str
     description: str | None
+    lead_name: str | None = None
     is_active: bool
     teams: list[TreeTeam] = Field(default_factory=list)
     unassigned_actors: list[TreeActor] = Field(default_factory=list)

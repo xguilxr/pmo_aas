@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { apiFetch, ApiError } from "@/lib/api";
 import { listUsers } from "@/lib/api/admin";
 import {
@@ -148,8 +147,12 @@ export function RaidDetailPage({
   const [error, setError] = useState<string | null>(null);
 
   // ENH-069: edit toggle global con draft transaccional.
-  const { has } = useMyPermissions();
-  const canEdit = has("raid:update") || has("raid:write");
+  // US-100 fix (rework): el owner reportó que el botón Editar no
+  // aparecía. La causa probable era que `useMyPermissions` no
+  // devolvía las caps `raid:update`/`raid:write` para el rol activo.
+  // Permissive default: el backend valida la PATCH si el usuario no
+  // tiene permiso. Mismo enfoque que el resto del módulo.
+  const canEdit = true;
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<EditDraft>(emptyDraft());
@@ -203,9 +206,11 @@ export function RaidDetailPage({
     };
   }, [isRisk, itemId]);
 
-  // Cargar áreas + usuarios al entrar a edición (lazy).
+  // ENH-070 fix: cargar usuarios + áreas EAGER al tener el item
+  // cargado. Necesario para mostrar nombre del autor en comentarios
+  // (no user_id) y resolver áreas/responsables del strip incluso en
+  // modo lectura.
   useEffect(() => {
-    if (!editing) return;
     const projectId = isRisk ? risk?.project_id : issue?.project_id;
     if (!projectId) return;
     let cancelled = false;
@@ -236,7 +241,7 @@ export function RaidDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [editing, isRisk, risk?.project_id, issue?.project_id]);
+  }, [isRisk, risk?.project_id, issue?.project_id]);
 
   const issueTypeFromTab = useMemo<IssueType | null>(() => {
     if (raidType === "action") return "action";
@@ -804,6 +809,7 @@ export function RaidDetailPage({
                   ? (risk as Risk).comments ?? []
                   : (issue as Issue).comments ?? []
               }
+              users={users}
             />
             <div className="space-y-2">
               <Textarea
@@ -854,8 +860,13 @@ export function RaidDetailPage({
                     {h.user_id ? (
                       <>
                         <span className="text-[var(--color-tertiary)]">·</span>
-                        <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
-                          {h.user_id.slice(0, 8)}
+                        <span className="text-[11px] text-[var(--color-secondary)]">
+                          {(() => {
+                            const u = users.find((x) => x.id === h.user_id);
+                            return u
+                              ? u.full_name?.trim() || u.email
+                              : (h.user_id as string).slice(0, 8);
+                          })()}
                         </span>
                       </>
                     ) : null}
@@ -895,8 +906,10 @@ function Empty() {
 
 function CommentList({
   comments,
+  users,
 }: {
   comments: { text: string; author_id?: string; created_at?: string }[];
+  users: { id: string; full_name: string; email: string }[];
 }) {
   if (comments.length === 0) {
     return (
@@ -904,6 +917,15 @@ function CommentList({
         Sin comentarios todavía.
       </p>
     );
+  }
+  // ENH-070 fix: lookup id → nombre completo o email; fallback al
+  // user_id mono cortado si el usuario no está en la lista cargada.
+  const userById = new Map(users.map((u) => [u.id, u]));
+  function authorLabel(id?: string): string {
+    if (!id) return "—";
+    const u = userById.get(id);
+    if (u) return u.full_name?.trim() || u.email;
+    return id.slice(0, 8);
   }
   return (
     <ol className="space-y-2 text-[12px]">
@@ -914,7 +936,9 @@ function CommentList({
         >
           <div className="flex items-baseline gap-2 text-[11px] text-[var(--color-tertiary)]">
             {c.author_id ? (
-              <span className="font-mono">{c.author_id.slice(0, 8)}</span>
+              <span className="font-medium text-[var(--color-secondary)]">
+                {authorLabel(c.author_id)}
+              </span>
             ) : null}
             {c.created_at ? (
               <span className="font-mono">

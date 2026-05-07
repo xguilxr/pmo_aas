@@ -6,6 +6,7 @@ export type Area = {
   tenant_id: string;
   name: string;
   description: string | null;
+  lead_name?: string | null;
   is_active: boolean;
   created_at: string;
 };
@@ -53,6 +54,7 @@ export type TreeArea = {
   id: string;
   name: string;
   description: string | null;
+  lead_name?: string | null;
   is_active: boolean;
   teams: TreeTeam[];
   unassigned_actors: TreeActor[];
@@ -81,6 +83,7 @@ export function getAreasTree(includeInactive = false): Promise<AreaTreeResponse>
 export function createArea(body: {
   name: string;
   description?: string | null;
+  lead_name?: string | null;
   is_active?: boolean;
 }): Promise<Area> {
   return apiFetch<Area>("/api/v1/areas", { method: "POST", body });
@@ -88,7 +91,12 @@ export function createArea(body: {
 
 export function updateArea(
   id: string,
-  body: { name?: string; description?: string | null; is_active?: boolean },
+  body: {
+    name?: string;
+    description?: string | null;
+    lead_name?: string | null;
+    is_active?: boolean;
+  },
 ): Promise<Area> {
   return apiFetch<Area>(`/api/v1/areas/${id}`, { method: "PATCH", body });
 }

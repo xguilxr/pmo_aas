@@ -47,7 +47,13 @@ import { cn } from "@/lib/cn";
 type NodeKind = "area" | "team" | "actor";
 
 type EditingNode =
-  | { kind: "area"; id: string; name: string; description: string }
+  | {
+      kind: "area";
+      id: string;
+      name: string;
+      description: string;
+      lead_name: string;
+    }
   | {
       kind: "team";
       id: string;
@@ -91,6 +97,7 @@ export default function AreasAdminPage() {
   const [form, setForm] = useState({
     name: "",
     description: "",
+    lead_name: "",
     email: "",
     phone: "",
   });
@@ -122,17 +129,18 @@ export default function AreasAdminPage() {
   }
 
   function openCreate(node: CreatingNode) {
-    setForm({ name: "", description: "", email: "", phone: "" });
+    setForm({ name: "", description: "", lead_name: "", email: "", phone: "" });
     setCreating(node);
   }
 
   function openEditArea(a: TreeArea) {
-    setForm({ name: "", description: "", email: "", phone: "" });
+    setForm({ name: "", description: "", lead_name: "", email: "", phone: "" });
     setEditing({
       kind: "area",
       id: a.id,
       name: a.name,
       description: a.description ?? "",
+      lead_name: a.lead_name ?? "",
     });
   }
 
@@ -167,6 +175,7 @@ export default function AreasAdminPage() {
         await createArea({
           name: form.name.trim(),
           description: form.description.trim() || null,
+          lead_name: form.lead_name.trim() || null,
         });
       } else if (creating.kind === "team") {
         await createTeam({
@@ -201,6 +210,7 @@ export default function AreasAdminPage() {
         await updateArea(editing.id, {
           name: editing.name.trim(),
           description: editing.description.trim() || null,
+          lead_name: editing.lead_name.trim() || null,
         });
       } else if (editing.kind === "team") {
         await updateTeam(editing.id, {
@@ -370,6 +380,21 @@ export default function AreasAdminPage() {
                 autoFocus
               />
             </div>
+            {creating.kind === "area" ? (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                  Líder del área (opcional)
+                </label>
+                <Input
+                  value={form.lead_name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, lead_name: e.target.value }))
+                  }
+                  maxLength={200}
+                  placeholder="Nombre del líder (puede ser un actor sin cuenta)"
+                />
+              </div>
+            ) : null}
             {creating.kind !== "actor" ? (
               <div>
                 <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
@@ -462,6 +487,25 @@ export default function AreasAdminPage() {
                 autoFocus
               />
             </div>
+            {editing.kind === "area" ? (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                  Líder del área (opcional)
+                </label>
+                <Input
+                  value={editing.lead_name}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev && prev.kind === "area"
+                        ? { ...prev, lead_name: e.target.value }
+                        : prev,
+                    )
+                  }
+                  maxLength={200}
+                  placeholder="Nombre del líder (puede ser un actor sin cuenta)"
+                />
+              </div>
+            ) : null}
             {editing.kind !== "actor" ? (
               <div>
                 <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
@@ -662,6 +706,11 @@ function AreaNode({
         <div className="flex-1 min-w-0">
           <div className="font-medium text-[var(--color-primary)]">
             {area.name}
+            {area.lead_name ? (
+              <span className="ml-2 text-xs font-normal text-[var(--color-tertiary)]">
+                · líder {area.lead_name}
+              </span>
+            ) : null}
           </div>
           {area.description ? (
             <div className="text-xs text-[var(--color-tertiary)] truncate">
