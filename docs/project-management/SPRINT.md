@@ -148,14 +148,31 @@ Branch sesión: `claude/fix-issues-plan-sprints-2psWS`
 
 ---
 
-## ⏳ Sprint 15 (v1.14) — Áreas refinement + Plan responsables (PLANEADO 2026-05-07)
-Branch: `claude/define-area-roles-tYoXl`
+## ⏳ Sprint 15 (v1.14) — Áreas refinement + Plan responsables — Bloque 1 ENTREGADO 2026-05-07
+Branch sesión: `claude/define-area-roles-tYoXl`
 
-### Bloque 1 (4 issues, mismo bloque, commits separados)
-- [ ] US-103 #263 — Áreas como catálogo compartido + asignación cascada org/programa/proyecto (incluye seed PMO global, migración Alembic 0046)
-- [ ] ENH-078 #264 — Restructura panel Áreas: 2 toggles (`Áreas`/`Actores`) + árbol jerárquico + 3 forms (Nueva área / Nuevo equipo / Nuevo recurso). Líder = Actor con `is_lead=true` creado primero. Migración Alembic agrega `actors.email/phone/is_lead` + `areas.lead_actor_id`.
-- [ ] BUG-054 #265 — Vista "Por Actor" muestra "no hay áreas registradas" aunque existan
-- [ ] ENH-079 #266 — Plan: responsable de tarea = Actor del área (+ users PMO en RAID). Migración Alembic 0047 con backfill por correo.
+### Bloque 1 (4 issues, commits separados)
+- [x] BUG-054 #265 — Vista "Por Actor" empty state contextual — `5cd31eb`
+- [x] US-103 #263 — Áreas catálogo compartido + assignments cascada (org/program/project/global) + PMO seed global + endpoints `/admin/areas/{id}/assignments` y `/admin/areas/by-project/{id}` — `0a7768d` (migración 0048)
+- [x] ENH-078 #264 — Restructura Áreas + drop `project_areas`: 2 toggles, árbol jerárquico, 3 forms, líder=Actor con is_lead=true. Op A completa. — `b2bb881` (migración 0049)
+- [x] ENH-079 #266 — Plan: responsable = Actor + sync PMO users → Actores. Backfill task/risks/issues por user_id match. — `db20f0e` (migración 0050)
+
+**Pendiente verificación owner:** cerrar #263-#266 tras smoke test.
+
+**Migraciones Alembic agregadas:** 0048 (area_assignments + repoint task/risks/issues + PMO seed) + 0049 (actors.is_lead + areas.lead_actor_id + DROP project_areas) + 0050 (assignee_actor_id + sync PMO).
+
+**Decisiones owner 2026-05-07:**
+- Opción A: `project_areas` deprecada y dropeada (0049). Catálogo tenant `areas/teams/actors` es fuente única.
+- Líder del área = Actor con `is_lead=true`, creado primero antes del área.
+- RAID owner = single-FK a actors (no polimórfico). PMO users → Actores en área "PMO" global.
+- TC-5 (desasignar área con tareas): forzar reasignación (a implementar en endpoint que valide).
+
+**Diferidos del bloque (no bloqueantes):**
+- ENH-078: edit panel inline para gestionar equipos/recursos del área desde un solo modal; selector de actor existente como líder.
+- ENH-078: cascade checkboxes UI en `/admin/areas/{id}` (backend listo, UI sigue pendiente).
+- ENH-079: RAID create/edit dropdown owner sigue usando users (switch a Actores requiere RaidCreate/Update schema changes).
+- ENH-079: DB trigger / hook para sync continuo PMO users → Actors al crear user nuevo (hoy 1-time backfill).
+- US-103 TC-5: endpoint que bloquea desasignar con tareas activas (hoy permite + cascade NULL via FK).
 
 **Migraciones Alembic previstas:** 2 (0046 area_assignments + PMO seed; 0047 actor fields + tasks.assignee_actor_id + raid_items owner polimórfico).
 
@@ -239,6 +256,7 @@ Branch: `claude/sprint-17-ai-global`
 
 ## Notas y cambios recientes
 
+- **2026-05-07 (Sprint 15 Bloque 1 entregado):** 4 issues entregados en branch `claude/define-area-roles-tYoXl`. 4 commits: `5cd31eb` BUG-054 + `0a7768d` US-103 + `b2bb881` ENH-078 + `db20f0e` ENH-079. **3 migraciones Alembic** (0048+0049+0050) requieren `alembic upgrade head` en Railway api+worker. Op A confirmada por owner: `project_areas` dropeado, catálogo tenant es fuente única. PMO seed global + sync PMO users → Actores. Plan responsable usa Actores; RAID dropdown switch diferido.
 - **2026-05-07 (triage Sprint 15 — Áreas refinement):** owner pidió rediseño completo del módulo Áreas tras Sprint 13. Se crearon 4 issues (#263 US-103, #264 ENH-078, #265 BUG-054, #266 ENH-079) con `status:triage`. Sprint 15 (Reportes) → 16 y Sprint 16 (IA) → 17. Nuevo epic **EP017 (Áreas/Actores)** que referencia EP004 (Admin). Decisiones: líder del área se persiste como Actor con `is_lead=true` (no campos sueltos), creado primero antes del área; US-103 y ENH-078 quedan separados pero entregados en el mismo bloque.
 - **2026-05-07 (Sprint 14 Bloque 1 entregado):** 4 issues (#246-#249) entregados sobre la misma branch `claude/fix-issues-plan-sprints-2psWS` en 2 commits (`7b1bf5e` US-100+ENH-069+ENH-070, `6b5fa2e` BUG-052). Rewrite completo de `apps/web/components/raid-detail-page.tsx` (188→765 líneas) siguiendo `docs/design-system/raid-detail-denso.md`. **Sin migraciones**, sin cambios de schema ni paleta. Owner planeaba 1 deploy combinando Sprint 13 + 14.
 - **2026-05-07 (Sprint 13 Bloque 1 entregado):** 7 issues entregados sobre branch `claude/fix-issues-plan-sprints-2psWS`. 6 commits (`9d264cc`, `7fd939f`, `e36f937`, `237374b`, `f6f349c`, `632fdf9`). Migraciones Alembic 0044 (areas/teams/actors) + 0045 (tasks.area_id) requieren `alembic upgrade head` en Railway api+worker. US-095 #229 rework v2 también pusheado en commit `cf0283e` (cache:no-store + optimistic update post-refetch). Pendiente verificación owner: 7 issues Sprint 13 + #229.
