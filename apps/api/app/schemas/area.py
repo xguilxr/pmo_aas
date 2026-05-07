@@ -131,6 +131,34 @@ class AreaTreeResponse(BaseModel):
     orphan_actors: list[TreeActor] = Field(default_factory=list)
 
 
+# ---------- Area assignments (US-103) ----------
+class AreaAssignmentRead(BaseModel):
+    id: UUID
+    area_id: UUID
+    organization_id: UUID | None
+    program_id: UUID | None
+    project_id: UUID | None
+    is_global: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AssignmentScope(BaseModel):
+    """Item de scope: exactamente uno de los IDs setteado, o is_global."""
+
+    organization_id: UUID | None = None
+    program_id: UUID | None = None
+    project_id: UUID | None = None
+    is_global: bool = False
+
+
+class AreaAssignmentSetBody(BaseModel):
+    """PUT /admin/areas/{id}/assignments — reemplaza el set completo."""
+
+    scopes: list[AssignmentScope] = Field(default_factory=list)
+
+
 # ---------- Actor reassign (US-099) ----------
 class ActorReassignBody(BaseModel):
     target_actor_id: UUID

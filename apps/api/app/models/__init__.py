@@ -1,6 +1,6 @@
 """Registro central de modelos ORM."""
 from app.models.ai import AIJob, Report  # noqa: F401
-from app.models.area import Actor, Area, Team  # noqa: F401
+from app.models.area import Actor, Area, AreaAssignment, Team  # noqa: F401
 from app.models.audit import AuditLog  # noqa: F401
 from app.models.auth import PasswordResetToken, RefreshToken  # noqa: F401
 from app.models.modules import (  # noqa: F401
