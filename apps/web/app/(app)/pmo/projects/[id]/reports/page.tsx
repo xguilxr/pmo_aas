@@ -1602,12 +1602,76 @@ function sortHistory(
 }
 
 // ENH-055 + US-092 — vista Historial.
+// ENH-073: KPI summary card con acento pastel + barra de proporción.
+function HistoryKPICard({
+  label,
+  value,
+  total,
+  tone,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  tone: "info" | "success" | "warning" | "neutral";
+  active: boolean;
+  onClick: () => void;
+}) {
+  const toneClass =
+    tone === "info"
+      ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)] border-[var(--color-info-border)]"
+      : tone === "success"
+        ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)] border-[var(--color-success-border)]"
+        : tone === "warning"
+          ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)] border-[var(--color-warning-border)]"
+          : "bg-[var(--color-subtle)] text-[var(--color-secondary)] border-[var(--border-default)]";
+  const ratio = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex flex-col gap-2 rounded-[var(--radius-lg)] border p-3 text-left transition-shadow",
+        toneClass,
+        active
+          ? "shadow-[var(--shadow-sm)] ring-2 ring-[var(--color-primary)] ring-offset-1 ring-offset-[var(--color-app)]"
+          : "shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-sm)]",
+      )}
+    >
+      <span className="text-[11px] font-medium uppercase tracking-wide opacity-80">
+        {label}
+      </span>
+      <span className="font-mono text-2xl font-semibold tabular-nums">
+        {value}
+      </span>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-[var(--color-neutral-0)]/40"
+        aria-hidden
+      >
+        <div
+          className="h-full rounded-full bg-current"
+          style={{ width: `${ratio}%`, opacity: 0.55 }}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ENH-073: filtros segmented + búsqueda en historial.
+type HistoryBucket = "all" | "avance" | "seguimiento";
+
 function ReportHistoryView({ projectId }: { projectId: string }) {
   const [items, setItems] = useState<ReportHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // ENH-072: sort persistido por usuario+proyecto, default generated_at desc.
   const [sort, setSort] = useState<HistorySort>(HISTORY_SORT_DEFAULT);
+  // ENH-073: bucket activo + búsqueda inline.
+  const [bucket, setBucket] = useState<HistoryBucket>("all");
+  const [search, setSearch] = useState("");
+
   useEffect(() => {
     setSort(loadHistorySort(projectId));
   }, [projectId]);
@@ -1623,7 +1687,34 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
     );
   }
 
-  const sortedItems = useMemo(() => sortHistory(items, sort), [items, sort]);
+  // ENH-073: counts por bucket — alimentan los KPI cards y los pills.
+  const counts = useMemo(() => {
+    const c = { all: items.length, avance: 0, seguimiento: 0, week: 0 };
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    for (const it of items) {
+      if (it.report_type === "avance") c.avance += 1;
+      else if (it.report_type === "seguimiento") c.seguimiento += 1;
+      if (new Date(it.generated_at).getTime() >= weekAgo) c.week += 1;
+    }
+    return c;
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((h) => {
+      if (bucket !== "all" && h.report_type !== bucket) return false;
+      if (q) {
+        const hay = `${h.generated_by_name ?? ""} ${h.report_type}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [items, bucket, search]);
+
+  const sortedItems = useMemo(
+    () => sortHistory(filteredItems, sort),
+    [filteredItems, sort],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1652,10 +1743,17 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
 
   if (loading) {
     return (
-      <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
+      <section className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-[var(--radius-lg)]" />
+          ))}
+        </div>
+        <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </section>
       </section>
     );
   }
@@ -1666,12 +1764,17 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
 
   if (items.length === 0) {
     return (
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]">
-        <CalendarClock className="mx-auto mb-3 h-8 w-8" aria-hidden />
-        <p className="font-medium text-[var(--color-secondary)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--color-info-border)] bg-[var(--color-info-bg)] p-10 text-center shadow-[var(--shadow-sm)]">
+        <div
+          aria-hidden
+          className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-info-border)] bg-[var(--color-surface)]"
+        >
+          <CalendarClock className="h-7 w-7 text-[var(--color-info-fg)]" />
+        </div>
+        <p className="text-sm font-semibold text-[var(--color-info-fg)]">
           Sin historial todavía
         </p>
-        <p className="mt-1">
+        <p className="mt-1 text-xs text-[var(--color-secondary)]">
           Genera tu primer reporte de Avance o Seguimiento desde la vista
           Catálogo. Cada generación queda registrada aquí.
         </p>
@@ -1679,7 +1782,115 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
     );
   }
 
+  const bucketTabs: { v: HistoryBucket; label: string; count: number }[] = [
+    { v: "all", label: "Todos", count: counts.all },
+    { v: "avance", label: "Avance", count: counts.avance },
+    { v: "seguimiento", label: "Seguimiento", count: counts.seguimiento },
+  ];
+
   return (
+    <section className="space-y-3">
+      {/* ENH-073: KPI summary cards con acentos pastel — clicables como filtros. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <HistoryKPICard
+          label="Total"
+          value={counts.all}
+          total={counts.all}
+          tone="neutral"
+          active={bucket === "all"}
+          onClick={() => setBucket("all")}
+        />
+        <HistoryKPICard
+          label="Avance"
+          value={counts.avance}
+          total={counts.all}
+          tone="info"
+          active={bucket === "avance"}
+          onClick={() => setBucket("avance")}
+        />
+        <HistoryKPICard
+          label="Seguimiento"
+          value={counts.seguimiento}
+          total={counts.all}
+          tone="success"
+          active={bucket === "seguimiento"}
+          onClick={() => setBucket("seguimiento")}
+        />
+        <HistoryKPICard
+          label="Última semana"
+          value={counts.week}
+          total={counts.all}
+          tone="warning"
+          active={false}
+          onClick={() => setBucket("all")}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center sm:justify-between">
+        {/* ENH-073: segmented tabs con pill de conteo. */}
+        <div
+          role="radiogroup"
+          aria-label="Filtro por tipo de reporte"
+          className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-app)] p-0.5"
+        >
+          {bucketTabs.map((tab) => {
+            const active = bucket === tab.v;
+            return (
+              <button
+                key={tab.v}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setBucket(tab.v)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                )}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 font-mono text-[10px] tabular-nums",
+                    active
+                      ? "bg-[var(--color-inverse)]/20 text-[var(--color-inverse)]"
+                      : "bg-[var(--color-subtle)] text-[var(--color-tertiary)]",
+                  )}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {/* ENH-073: búsqueda inline. */}
+        <div className="sm:max-w-xs">
+          <Input
+            type="search"
+            placeholder="Buscar por autor o tipo…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {sortedItems.length === 0 ? (
+        <section className="rounded-[var(--radius-xl)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] p-8 text-center shadow-[var(--shadow-sm)]">
+          <div
+            aria-hidden
+            className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-warning-border)] bg-[var(--color-surface)]"
+          >
+            <Eye className="h-6 w-6 text-[var(--color-warning-fg)]" />
+          </div>
+          <p className="text-sm font-semibold text-[var(--color-warning-fg)]">
+            Sin coincidencias
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-secondary)]">
+            Ajusta los filtros o la búsqueda para ver resultados.
+          </p>
+        </section>
+      ) : (
     <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
@@ -1771,6 +1982,8 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
           ))}
         </tbody>
       </table>
+    </section>
+      )}
     </section>
   );
 }
