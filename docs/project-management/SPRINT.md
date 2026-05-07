@@ -21,11 +21,12 @@ Sprint 13 (v1.12) — Bloque 1 ENTREGADO 2026-05-07 (7 issues — pendiente veri
 Sprint 14 (v1.13) — Bloque 1 ENTREGADO 2026-05-07 (4 issues — pendiente verif. owner):
   US-100 + ENH-069/070 + BUG-052. Sin migraciones, sin cambios de schema.
 
-Sprint 15-16 — PLANEADOS (status:triage):
-  Sprint 15 (v1.14) — Reportes (4 issues)
-  Sprint 16 (v1.15) — IA conversacional global (5 issues)
+Sprint 15-17 — PLANEADOS (status:triage):
+  Sprint 15 (v1.14) — Áreas refinement + Plan responsables (4 issues)
+  Sprint 16 (v1.15) — Reportes (4 issues)
+  Sprint 17 (v1.16) — IA conversacional global (5 issues)
 
-Próximo libre: US-103, BUG-054, ENH-078.
+Próximo libre: US-104, BUG-055, ENH-080.
 ```
 
 ---
@@ -147,8 +148,26 @@ Branch sesión: `claude/fix-issues-plan-sprints-2psWS`
 
 ---
 
-## ⏳ Sprint 15 (v1.14) — Reportes (PLANEADO 2026-05-06, scope a refinar)
-Branch: `claude/sprint-15-reportes-redesign`
+## ⏳ Sprint 15 (v1.14) — Áreas refinement + Plan responsables (PLANEADO 2026-05-07)
+Branch: `claude/define-area-roles-tYoXl`
+
+### Bloque 1 (4 issues, mismo bloque, commits separados)
+- [ ] US-103 #263 — Áreas como catálogo compartido + asignación cascada org/programa/proyecto (incluye seed PMO global, migración Alembic 0046)
+- [ ] ENH-078 #264 — Restructura panel Áreas: 2 toggles (`Áreas`/`Actores`) + árbol jerárquico + 3 forms (Nueva área / Nuevo equipo / Nuevo recurso). Líder = Actor con `is_lead=true` creado primero. Migración Alembic agrega `actors.email/phone/is_lead` + `areas.lead_actor_id`.
+- [ ] BUG-054 #265 — Vista "Por Actor" muestra "no hay áreas registradas" aunque existan
+- [ ] ENH-079 #266 — Plan: responsable de tarea = Actor del área (+ users PMO en RAID). Migración Alembic 0047 con backfill por correo.
+
+**Migraciones Alembic previstas:** 2 (0046 area_assignments + PMO seed; 0047 actor fields + tasks.assignee_actor_id + raid_items owner polimórfico).
+
+**Decisiones owner 2026-05-07:**
+- Líder del área se persiste como Actor con flag `is_lead=true` (no campos sueltos en `areas`).
+- Nuevo epic **EP017 (Áreas/Actores)** referenciado también desde EP004 (Admin) porque la página vive en `/admin/areas`.
+- US-103 y ENH-078 quedan como issues separados pero entregados en el mismo bloque.
+
+---
+
+## ⏳ Sprint 16 (v1.15) — Reportes (PLANEADO 2026-05-06, scope a refinar)
+Branch: `claude/sprint-16-reportes-redesign`
 
 - [ ] ENH-071 #250 — Reglas/condiciones de filtrado configurables
 - [ ] ENH-072 #251 — Ordenamiento configurable por columna + persistencia
@@ -159,8 +178,8 @@ Branch: `claude/sprint-15-reportes-redesign`
 
 ---
 
-## ⏳ Sprint 16 (v1.15) — IA conversacional global (PLANEADO 2026-05-06)
-Branch: `claude/sprint-16-ai-global`
+## ⏳ Sprint 17 (v1.16) — IA conversacional global (PLANEADO 2026-05-06)
+Branch: `claude/sprint-17-ai-global`
 
 ### Bloque 0 (gate pre-arranque)
 - [ ] BUG-053 #254 — Cleanup residuos Ollama + cablear Groq (default) + BYO whitelist
@@ -176,7 +195,7 @@ Branch: `claude/sprint-16-ai-global`
 
 ---
 
-**Próximo libre:** US-103, BUG-054, ENH-078.
+**Próximo libre:** US-104, BUG-055, ENH-080.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
@@ -220,6 +239,7 @@ Branch: `claude/sprint-16-ai-global`
 
 ## Notas y cambios recientes
 
+- **2026-05-07 (triage Sprint 15 — Áreas refinement):** owner pidió rediseño completo del módulo Áreas tras Sprint 13. Se crearon 4 issues (#263 US-103, #264 ENH-078, #265 BUG-054, #266 ENH-079) con `status:triage`. Sprint 15 (Reportes) → 16 y Sprint 16 (IA) → 17. Nuevo epic **EP017 (Áreas/Actores)** que referencia EP004 (Admin). Decisiones: líder del área se persiste como Actor con `is_lead=true` (no campos sueltos), creado primero antes del área; US-103 y ENH-078 quedan separados pero entregados en el mismo bloque.
 - **2026-05-07 (Sprint 14 Bloque 1 entregado):** 4 issues (#246-#249) entregados sobre la misma branch `claude/fix-issues-plan-sprints-2psWS` en 2 commits (`7b1bf5e` US-100+ENH-069+ENH-070, `6b5fa2e` BUG-052). Rewrite completo de `apps/web/components/raid-detail-page.tsx` (188→765 líneas) siguiendo `docs/design-system/raid-detail-denso.md`. **Sin migraciones**, sin cambios de schema ni paleta. Owner planeaba 1 deploy combinando Sprint 13 + 14.
 - **2026-05-07 (Sprint 13 Bloque 1 entregado):** 7 issues entregados sobre branch `claude/fix-issues-plan-sprints-2psWS`. 6 commits (`9d264cc`, `7fd939f`, `e36f937`, `237374b`, `f6f349c`, `632fdf9`). Migraciones Alembic 0044 (areas/teams/actors) + 0045 (tasks.area_id) requieren `alembic upgrade head` en Railway api+worker. US-095 #229 rework v2 también pusheado en commit `cf0283e` (cache:no-store + optimistic update post-refetch). Pendiente verificación owner: 7 issues Sprint 13 + #229.
 - **2026-05-06 (post-Sprint 12 — reworks + planeación Sprints 13-16):** owner verificó Sprint 12 y reportó reworks: #228 US-094 (sidebar `Admin` no linkeaba a landing) → fix `4d82b4b`; #229 US-095 (edit no refresca tabla) → fix `204f2fd`. Owner aprobó scope de los próximos 4 sprints (Áreas+Plan, RAID detail redesign, Reportes, IA conversacional global). 19 issues creados (#240-#258) con `status:triage` distribuidos en 4 bloques. Sprint 16 incluye **Bloque 0** (BUG-053 cleanup Ollama) como gate pre-arranque. Branches reservadas: `claude/sprint-13-areas-plan`, `claude/sprint-14-raid-detail-redesign`, `claude/sprint-15-reportes-redesign`, `claude/sprint-16-ai-global`.
