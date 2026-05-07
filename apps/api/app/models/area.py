@@ -152,6 +152,14 @@ class Actor(Base, TimestampMixin):
         String(36),
         ForeignKey("teams.id", ondelete="SET NULL"),
     )
+    # ENH-084 rework: área directa cuando no se asigna a un equipo.
+    # Permite asignar un Actor a un Área como recurso sin obligar
+    # a crear un equipo intermedio. Si `team_id` se setea, debe
+    # coincidir con el `area_id` del team (validación en endpoint).
+    area_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("areas.id", ondelete="SET NULL"),
+    )
     user_id: Mapped[UUID | None] = mapped_column(
         String(36),
         ForeignKey("users.id", ondelete="SET NULL"),

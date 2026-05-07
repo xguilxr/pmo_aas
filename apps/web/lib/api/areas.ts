@@ -26,6 +26,7 @@ export type Actor = {
   id: string;
   tenant_id: string;
   team_id: string | null;
+  area_id?: string | null;
   user_id: string | null;
   name: string;
   email: string | null;
@@ -43,6 +44,8 @@ export type TreeActor = {
   user_id: string | null;
   is_active: boolean;
   is_lead?: boolean;
+  team_id?: string | null;
+  area_id?: string | null;
 };
 
 export type TreeTeam = {
@@ -186,6 +189,7 @@ export function updateActor(
   id: string,
   body: {
     team_id?: string | null;
+    area_id?: string | null;
     user_id?: string | null;
     name?: string;
     email?: string | null;
