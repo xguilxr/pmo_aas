@@ -140,7 +140,9 @@ export default function AreasAdminPage() {
       id: a.id,
       name: a.name,
       description: a.description ?? "",
-      lead_name: a.lead_name ?? "",
+      // ENH-078: lead_name fue removido del shape; el lead se gestiona
+      // como Actor con is_lead=true. Edit panel inline sigue diferido.
+      lead_name: "",
     });
   }
 
@@ -716,11 +718,6 @@ function AreaNode({
         <div className="flex-1 min-w-0">
           <div className="font-medium text-[var(--color-primary)]">
             {area.name}
-            {area.lead_name ? (
-              <span className="ml-2 text-xs font-normal text-[var(--color-tertiary)]">
-                · líder {area.lead_name}
-              </span>
-            ) : null}
           </div>
           {area.description ? (
             <div className="text-xs text-[var(--color-tertiary)] truncate">

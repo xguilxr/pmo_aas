@@ -288,7 +288,7 @@ export default function ProjectAreasPage() {
           <Button
             onClick={() => { setFormError(null); setModal("team"); }}
             size="sm"
-            variant="outline"
+            variant="secondary"
             disabled={projectAreas.length === 0}
           >
             <Plus className="mr-1 h-4 w-4" /> Nuevo equipo
@@ -296,7 +296,7 @@ export default function ProjectAreasPage() {
           <Button
             onClick={() => { setFormError(null); setModal("actor"); }}
             size="sm"
-            variant="outline"
+            variant="secondary"
             disabled={projectAreas.length === 0}
           >
             <Plus className="mr-1 h-4 w-4" /> Nuevo recurso
@@ -304,7 +304,7 @@ export default function ProjectAreasPage() {
         </div>
       </header>
 
-      {error ? <Banner variant="error">{error}</Banner> : null}
+      {error ? <Banner variant="danger">{error}</Banner> : null}
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-default)] p-4">
@@ -387,7 +387,7 @@ export default function ProjectAreasPage() {
       {/* Modales */}
       <Modal open={modal === "area"} onClose={() => setModal(null)} title="Nueva área">
         <form onSubmit={handleCreateArea} className="space-y-3">
-          {formError ? <Banner variant="error">{formError}</Banner> : null}
+          {formError ? <Banner variant="danger">{formError}</Banner> : null}
           <Field label="Nombre del área" required>
             <Input name="name" required />
           </Field>
@@ -414,7 +414,7 @@ export default function ProjectAreasPage() {
 
       <Modal open={modal === "team"} onClose={() => setModal(null)} title="Nuevo equipo">
         <form onSubmit={handleCreateTeam} className="space-y-3">
-          {formError ? <Banner variant="error">{formError}</Banner> : null}
+          {formError ? <Banner variant="danger">{formError}</Banner> : null}
           <Field label="Área" required>
             <Select name="area_id" required>
               <option value="">— Selecciona —</option>
@@ -437,7 +437,7 @@ export default function ProjectAreasPage() {
 
       <Modal open={modal === "actor"} onClose={() => setModal(null)} title="Nuevo recurso">
         <form onSubmit={handleCreateActor} className="space-y-3">
-          {formError ? <Banner variant="error">{formError}</Banner> : null}
+          {formError ? <Banner variant="danger">{formError}</Banner> : null}
           <NewResourceForm areas={projectAreas} />
           <FormActions onCancel={() => setModal(null)} saving={saving} label="Crear recurso" />
         </form>

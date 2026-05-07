@@ -88,7 +88,9 @@ def upgrade() -> None:
         ).fetchone()
         if not pmo_area:
             continue
-        pmo_area_id = pmo_area[0]
+        # pmo_area_id intentionally unused beyond existence check
+        # (sync logic doesn't actually need it; FK enforcement is at
+        # area_assignments level, not at actor level).
 
         # Users activos del tenant. Si tienen rol PMO se prioriza.
         # Para minimizar dependencias asumimos que los users del tenant

@@ -21,6 +21,7 @@ from app.api.v1.endpoints.reports import ReportRead
 from app.core.errors import forbidden
 from app.db.session import get_db
 from app.models.ai import Report
+from app.models.area import Area as ProjectArea  # ENH-078: alias post drop
 from app.models.modules import (
     ChangeRequest,
     Issue,
@@ -28,7 +29,6 @@ from app.models.modules import (
     Risk,
 )
 from app.models.project import Project
-from app.models.area import Area as ProjectArea  # ENH-078: alias post drop
 from app.schemas.modules import (
     ChangeRequestRead,
     IssueRead,

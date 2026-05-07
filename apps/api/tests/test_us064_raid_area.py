@@ -31,12 +31,19 @@ async def _setup(client, db_session):
 
 
 async def _area(client, auth, proj_id, name):
+    """ENH-078: crea área en catálogo tenant + asigna al proyecto."""
     r = await client.post(
-        f"/api/v1/projects/{proj_id}/areas",
-        json={"name": name, "type": "area"},
+        "/api/v1/areas",
+        json={"name": name},
         headers=auth["_authz"],
     )
-    return r.json()["id"]
+    aid = r.json()["id"]
+    await client.put(
+        f"/api/v1/admin/areas/{aid}/assignments",
+        json={"scopes": [{"project_id": proj_id}]},
+        headers=auth["_authz"],
+    )
+    return aid
 
 
 # TC-064.1 — POST /risks sin area_id → 422

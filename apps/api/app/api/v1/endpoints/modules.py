@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.db.session import get_db
+from app.models.area import Area, AreaAssignment
 from app.models.modules import (
     ChangeRequest,
     Document,
@@ -17,8 +18,6 @@ from app.models.modules import (
     Risk,
 )
 from app.models.project import Project
-from app.models.area import Area, AreaAssignment
-from sqlalchemy import or_ as _or_
 from app.models.user import User
 from app.schemas.modules import (
     ChangeRequestCreate,
@@ -99,13 +98,13 @@ async def _validate_area(
     ).scalar_one_or_none()
     if project is None:
         raise business_rule("Proyecto no encontrado")
-    cond = _or_(
+    cond = or_(
         AreaAssignment.is_global.is_(True),
         AreaAssignment.project_id == str(project_id),
         AreaAssignment.organization_id == str(project.organization_id),
     )
     if project.program_id:
-        cond = _or_(cond, AreaAssignment.program_id == str(project.program_id))
+        cond = or_(cond, AreaAssignment.program_id == str(project.program_id))
     area = (
         await db.execute(
             select(Area)

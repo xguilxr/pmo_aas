@@ -557,6 +557,7 @@ async def hard_delete_user(
 ):
     from sqlalchemy import update
 
+    from app.models.area import Area as ProjectArea  # ENH-078 alias
     from app.models.modules import (
         ChangeRequest,
         Document,
@@ -567,7 +568,6 @@ async def hard_delete_user(
     )
     from app.models.organization import BusinessUnit, Department
     from app.models.project import Project
-    from app.models.area import Area as ProjectArea  # ENH-078 alias
     from app.models.project_charter import ProjectCharter
     from app.models.stakeholder import Stakeholder
     from app.models.task import Task

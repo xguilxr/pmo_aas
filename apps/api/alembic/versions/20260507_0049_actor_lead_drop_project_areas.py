@@ -88,37 +88,103 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Recrea project_areas + project_area_resources vacías.
+    # Recrea project_areas + project_area_resources vacías. Incluye
+    # todas las columnas + FKs + índices que las migraciones previas
+    # (0013/0041) esperan en sus downgrades.
     op.create_table(
         "project_areas",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column("tenant_id", sa.String(length=36), nullable=False),
-        sa.Column("project_id", sa.String(length=36), nullable=False),
+        sa.Column(
+            "tenant_id",
+            sa.String(length=36),
+            sa.ForeignKey("tenants.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "project_id",
+            sa.String(length=36),
+            sa.ForeignKey("projects.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("type", sa.String(length=16), nullable=False, server_default="area"),
         sa.Column("description", sa.String(length=2000), nullable=True),
         sa.Column("contact_name", sa.String(length=200), nullable=True),
         sa.Column("contact_email", sa.String(length=200), nullable=True),
-        sa.Column("area_leader_id", sa.String(length=36), nullable=True),
+        sa.Column(
+            "area_leader_id",
+            sa.String(length=36),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("team_id", sa.String(length=36), nullable=True),
         sa.Column("area_id", sa.String(length=36), nullable=True),
         sa.Column("phone", sa.String(length=32), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("created_by", sa.String(length=36), nullable=True),
+        sa.Column(
+            "created_by",
+            sa.String(length=36),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
     )
+    op.create_foreign_key(
+        "fk_project_areas_team",
+        "project_areas",
+        "project_areas",
+        ["team_id"],
+        ["id"],
+        ondelete="SET NULL",
+    )
+    op.create_foreign_key(
+        "fk_project_areas_area",
+        "project_areas",
+        "project_areas",
+        ["area_id"],
+        ["id"],
+        ondelete="SET NULL",
+    )
+    op.create_index("ix_project_areas_team_id", "project_areas", ["team_id"])
+    op.create_index("ix_project_areas_area_id", "project_areas", ["area_id"])
+    op.create_index("ix_project_areas_project", "project_areas", ["project_id"])
+    op.create_index("ix_project_areas_tenant", "project_areas", ["tenant_id"])
     op.create_table(
         "project_area_resources",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column("tenant_id", sa.String(length=36), nullable=False),
-        sa.Column("area_id", sa.String(length=36), nullable=False),
-        sa.Column("user_id", sa.String(length=36), nullable=True),
+        sa.Column(
+            "tenant_id",
+            sa.String(length=36),
+            sa.ForeignKey("tenants.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "area_id",
+            sa.String(length=36),
+            sa.ForeignKey("project_areas.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "user_id",
+            sa.String(length=36),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("name", sa.String(length=200), nullable=True),
         sa.Column("email", sa.String(length=200), nullable=True),
         sa.Column("role", sa.String(length=100), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("created_by", sa.String(length=36), nullable=True),
+        sa.Column(
+            "created_by",
+            sa.String(length=36),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )
+    op.create_index("idx_par_area", "project_area_resources", ["area_id"])
+    op.create_index(
+        "idx_par_tenant_user", "project_area_resources", ["tenant_id", "user_id"]
     )
 
     with op.batch_alter_table("areas") as batch_op:
