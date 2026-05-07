@@ -10,7 +10,7 @@ from app.models.organization import Organization
 from app.models.project import Project
 from app.models.task import Task
 from app.services.operational_reports import build_avance_context
-from tests.factories import create_admin_role, create_tenant, create_user, login
+from tests.factories import create_admin_role, create_tenant, create_user
 
 
 async def _seed(db_session):

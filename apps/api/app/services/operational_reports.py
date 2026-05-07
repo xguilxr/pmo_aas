@@ -479,10 +479,10 @@ async def build_seguimiento_context(
         ).all()
         area_map = {str(aid): (name or "—") for aid, name in arows}
 
-    UNASSIGNED_AREA = "Sin área asignada"
+    unassigned_area = "Sin área asignada"
 
     def _area_label(area_id) -> str:
-        return area_map.get(str(area_id), UNASSIGNED_AREA) if area_id else UNASSIGNED_AREA
+        return area_map.get(str(area_id), unassigned_area) if area_id else unassigned_area
 
     items: list[dict[str, Any]] = []
     for t in task_rows:
@@ -542,7 +542,7 @@ async def build_seguimiento_context(
             }
             for k, v in sorted(
                 buckets.items(),
-                key=lambda kv: (kv[0] == UNASSIGNED_AREA, kv[0]),
+                key=lambda kv: (kv[0] == unassigned_area, kv[0]),
             )
         ]
 
