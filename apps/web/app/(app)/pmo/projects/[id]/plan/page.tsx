@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
 import { ApiError } from "@/lib/api";
+import { listAreas, type Area } from "@/lib/api/areas";
 import { getProject } from "@/lib/api/projects";
 import {
   TASK_CRITICALITY_LABEL,
@@ -437,6 +438,9 @@ function PlanInner() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [gantt, setGantt] = useState<GanttData | null>(null);
   const [projectName, setProjectName] = useState<string>("");
+  // US-098: catálogo tenant de Áreas para select en form + filtro.
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [areaFilter, setAreaFilter] = useState<string>("");
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingGantt, setLoadingGantt] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -477,10 +481,13 @@ function PlanInner() {
     [tasks],
   );
 
-  const filteredTasks = useMemo(
-    () => (activeChips.size === 0 ? tasks : tasks.filter((t) => chipMatches(t, activeChips))),
-    [tasks, activeChips],
-  );
+  const filteredTasks = useMemo(() => {
+    let rows = tasks;
+    if (activeChips.size > 0) rows = rows.filter((t) => chipMatches(t, activeChips));
+    // US-098: filtro por Área (chip dropdown).
+    if (areaFilter) rows = rows.filter((t) => t.area_id === areaFilter);
+    return rows;
+  }, [tasks, activeChips, areaFilter]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -550,6 +557,8 @@ function PlanInner() {
     criticality: "medium" as TaskCriticality,
     related_milestone_id: "" as string,
     predecessors_csv: "" as string,
+    // US-098: área responsable.
+    area_id: "" as string,
   });
   const [updating, setUpdating] = useState(false);
 
@@ -562,6 +571,7 @@ function PlanInner() {
       end_date: t.end_date ?? "",
       duration_days: t.duration_days != null ? String(t.duration_days) : "",
       progress: String(t.progress ?? 0),
+      area_id: t.area_id ?? "",
       is_milestone: !!t.is_milestone,
       status: (t.status as TaskStatus) ?? "not_started",
       criticality: (t.criticality as TaskCriticality) ?? "medium",
@@ -593,6 +603,7 @@ function PlanInner() {
               .map((s) => s.trim())
               .filter(Boolean)
           : null,
+        area_id: editForm.area_id || null,
       });
       setEditOpen(false);
       setEditingId(null);
@@ -648,6 +659,11 @@ function PlanInner() {
     // y queda con string vacío → fallback a "PROYECTO" en el nombre del archivo.
     getProject(id)
       .then((p) => setProjectName(p.name))
+      .catch(() => {});
+    // US-098: cargar Áreas del tenant para el select del edit form
+    // y el filtro. Falla silencioso (la UI muestra "Sin áreas").
+    listAreas({ is_active: true })
+      .then((rows) => setAreas(rows))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -1033,6 +1049,34 @@ function PlanInner() {
             >
               Limpiar filtros
             </button>
+          ) : null}
+          {/* US-098: filtro por Área. Dropdown junto a los chips. */}
+          {areas.length > 0 ? (
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="text-xs text-[var(--color-tertiary)]">Área:</span>
+              <Select
+                value={areaFilter}
+                onChange={(e) => setAreaFilter(e.target.value)}
+                className="h-7 text-xs"
+              >
+                <option value="">Todas</option>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </Select>
+              {areaFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setAreaFilter("")}
+                  className="text-xs text-[var(--color-tertiary)] hover:underline"
+                  title="Limpiar filtro de Área"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
         <TaskList
@@ -1432,6 +1476,25 @@ function PlanInner() {
               {(Object.keys(TASK_CRITICALITY_LABEL) as TaskCriticality[]).map((k) => (
                 <option key={k} value={k}>
                   {TASK_CRITICALITY_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {/* US-098: Área responsable. Catálogo tenant `areas`. */}
+          <label>
+            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+              Área responsable
+            </span>
+            <Select
+              value={editForm.area_id}
+              onChange={(e) =>
+                setEditForm({ ...editForm, area_id: e.target.value })
+              }
+            >
+              <option value="">— Sin asignar —</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
                 </option>
               ))}
             </Select>

@@ -102,6 +102,8 @@ class TaskCreate(BaseModel):
     related_milestone_id: UUID | None = None
     # US-090: predecesoras como lista de wbs_code.
     predecessors: list[str] | None = None
+    # US-098: área responsable (catálogo tenant).
+    area_id: UUID | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -112,6 +114,7 @@ class TaskUpdate(BaseModel):
     progress: int | None = Field(default=None, ge=0, le=100)
     status: str | None = None
     owner_id: UUID | None = None
+    area_id: UUID | None = None
     criticality: TaskCriticality | None = None
     # ENH-050: PATCH para reasignar / desasociar (None) el hito relacionado.
     # Pydantic distingue ausente vs None vía `model_dump(exclude_unset=True)`.
@@ -161,6 +164,8 @@ class TaskRead(BaseModel):
     outline_level: int | None = None
     predecessors: list[str] | None = None
     successors: list[str] | None = None
+    # US-098: área responsable.
+    area_id: UUID | None = None
 
     model_config = {"from_attributes": True}
 
@@ -225,16 +230,16 @@ async def _attach_owners(db: AsyncSession, tasks: list[Task]) -> None:
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])
 async def list_tasks(
     project_id: UUID,
+    area_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
     await _ensure_project(db, project_id, tenant_id)
-    rows = (
-        await db.execute(
-            select(Task).where(Task.project_id == str(project_id))
-        )
-    ).scalars().all()
+    stmt = select(Task).where(Task.project_id == str(project_id))
+    if area_id is not None:
+        stmt = stmt.where(Task.area_id == str(area_id))
+    rows = (await db.execute(stmt)).scalars().all()
     # BUG-049 — orden natural por WBS (1.2 < 1.10) post-fetch.
     rows_list = sorted(rows, key=lambda t: wbs_sort_key(t.wbs))
     await _attach_owners(db, rows_list)
@@ -288,6 +293,7 @@ async def create_task(
         outline_level=compute_outline_level(body.wbs),
         predecessors=cleaned_preds,
         successors=[],
+        area_id=str(body.area_id) if body.area_id else None,
     )
     db.add(t)
     await db.flush()
@@ -322,6 +328,12 @@ async def update_task(
     data = body.model_dump(exclude_none=True)
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    # US-098: PATCH `area_id` distingue ausente (no tocar) vs None
+    # (desasignar) — mismo patrón que related_milestone_id.
+    if "area_id" in data_full:
+        aid = data_full["area_id"]
+        t.area_id = str(aid) if aid is not None else None
+        data.pop("area_id", None)
     if "related_milestone_id" in data_full:
         rid = data_full["related_milestone_id"]
         if rid is None:
