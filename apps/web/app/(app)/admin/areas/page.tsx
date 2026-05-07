@@ -34,6 +34,7 @@ import {
   getAreasTree,
   listAreaAssignments,
   reassignActor,
+  syncPmoUsers,
   updateActor,
   updateArea,
   updateTeam,
@@ -124,7 +125,17 @@ export default function AreasAdminPage() {
   }
 
   useEffect(() => {
-    void load();
+    // ENH-082: sincroniza tenant users → Actores PMO al entrar al
+    // catálogo. Idempotente; el load reentra después para refrescar
+    // el árbol con los nuevos actores.
+    (async () => {
+      try {
+        await syncPmoUsers();
+      } catch {
+        // Si el sync falla, seguimos cargando — no es bloqueante.
+      }
+      await load();
+    })();
   }, []);
 
   function toggle(id: string) {
@@ -815,6 +826,26 @@ function AreaNode({
             </li>
           ) : null}
           </ul>
+          {area.unassigned_actors && area.unassigned_actors.length > 0 ? (
+            <div>
+              <div className="flex items-center gap-2 px-12 py-2 text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+                Actores sin equipo ({area.unassigned_actors.length})
+              </div>
+              <ul>
+                {area.unassigned_actors.map((ac) => (
+                  <ActorRow
+                    key={ac.id}
+                    actor={ac}
+                    teamId={null}
+                    depth={2}
+                    openEditActor={openEditActor}
+                    onDelete={onDelete}
+                    onReassign={onReassign}
+                  />
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </li>

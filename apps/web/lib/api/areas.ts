@@ -267,6 +267,21 @@ export function listAreasByProject(projectId: string): Promise<Area[]> {
   return apiFetch<Area[]>(`/api/v1/admin/areas/by-project/${projectId}`);
 }
 
+// ENH-082 — re-sync runtime de tenant users → Actores en área PMO.
+export type PmoSyncResponse = {
+  created: number;
+  linked: number;
+  skipped: number;
+  total_users: number;
+  synced_at: string;
+};
+
+export function syncPmoUsers(): Promise<PmoSyncResponse> {
+  return apiFetch<PmoSyncResponse>("/api/v1/admin/areas/pmo/sync-users", {
+    method: "POST",
+  });
+}
+
 // ENH-079 — Actores asignables como responsables/owners del proyecto.
 export function listActorsByProject(projectId: string): Promise<Actor[]> {
   return apiFetch<Actor[]>(

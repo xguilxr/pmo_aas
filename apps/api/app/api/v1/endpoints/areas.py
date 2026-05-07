@@ -159,6 +159,20 @@ async def get_areas_tree(
         else:
             orphans.append(a)
 
+    # ENH-082: actores sincronizados desde users del tenant (sync PMO,
+    # `user_id` no nulo y `team_id` nulo) se muestran bajo el área PMO
+    # en `unassigned_actors` para que aparezcan en el catálogo aunque no
+    # tengan equipo. El resto de huérfanos (sin user_id) sigue en
+    # `orphan_actors`.
+    pmo_area = next((a for a in areas if a.name == "PMO"), None)
+    pmo_unassigned: list[Actor] = []
+    other_orphans: list[Actor] = []
+    for o in orphans:
+        if pmo_area is not None and o.user_id is not None:
+            pmo_unassigned.append(o)
+        else:
+            other_orphans.append(o)
+
     return AreaTreeResponse(
         areas=[
             TreeArea(
@@ -177,11 +191,15 @@ async def get_areas_tree(
                     )
                     for t in teams_by_area.get(str(area.id), [])
                 ],
-                unassigned_actors=[],
+                unassigned_actors=(
+                    [TreeActor.model_validate(x) for x in pmo_unassigned]
+                    if pmo_area is not None and area.id == pmo_area.id
+                    else []
+                ),
             )
             for area in areas
         ],
-        orphan_actors=[TreeActor.model_validate(o) for o in orphans],
+        orphan_actors=[TreeActor.model_validate(o) for o in other_orphans],
     )
 
 
@@ -882,6 +900,125 @@ async def list_actors_by_project(
             continue
         out.append(a)
     return [ActorRead.model_validate(a) for a in out]
+
+
+@assignments_router.post("/pmo/sync-users")
+async def sync_pmo_users(
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-082 — Re-sincroniza users activos del tenant como Actores en
+    área PMO (idempotente). Mismo match que migración 0050:
+    `actor.user_id == user.id` o `actor.email == user.email`.
+
+    Crea Actores con `team_id=NULL` (sin equipo) bajo el tenant. La
+    asociación con el área PMO se hace en el tree endpoint via heurística
+    `user_id IS NOT NULL` para evitar agregar `area_id` directo a Actor.
+    """
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from app.models.user import User
+
+    tenant_id = _tenant(cu)
+
+    # Asegura que el área PMO exista (puede no haber sido sembrada si
+    # el tenant es post-migración 0048).
+    pmo = (
+        await db.execute(
+            select(Area).where(
+                Area.tenant_id == str(tenant_id),
+                Area.name == "PMO",
+            )
+        )
+    ).scalar_one_or_none()
+    if pmo is None:
+        pmo = Area(
+            tenant_id=str(tenant_id),
+            name="PMO",
+            description="Área PMO (default, aplica a todos los proyectos)",
+            is_active=True,
+            created_by=str(cu.id),
+        )
+        db.add(pmo)
+        await db.flush()
+        # Garantiza assignment global para que el área aplique a todos
+        # los proyectos del tenant.
+        db.add(
+            AreaAssignment(
+                tenant_id=str(tenant_id),
+                area_id=str(pmo.id),
+                is_global=True,
+                created_by=str(cu.id),
+            )
+        )
+        await db.flush()
+
+    users = (
+        await db.execute(
+            select(User).where(
+                User.tenant_id == str(tenant_id),
+                User.is_active.is_(True),
+            )
+        )
+    ).scalars().all()
+
+    created = 0
+    linked = 0
+    skipped = 0
+    for u in users:
+        # ¿Ya existe Actor por user_id o email?
+        existing: Actor | None = None
+        if u.email:
+            existing = (
+                await db.execute(
+                    select(Actor).where(
+                        Actor.tenant_id == str(tenant_id),
+                        Actor.deleted_at.is_(None),
+                        (Actor.user_id == str(u.id))
+                        | (Actor.email == u.email),
+                    )
+                )
+            ).scalars().first()
+        else:
+            existing = (
+                await db.execute(
+                    select(Actor).where(
+                        Actor.tenant_id == str(tenant_id),
+                        Actor.deleted_at.is_(None),
+                        Actor.user_id == str(u.id),
+                    )
+                )
+            ).scalars().first()
+        if existing is not None:
+            if existing.user_id is None:
+                existing.user_id = str(u.id)
+                linked += 1
+            else:
+                skipped += 1
+            continue
+        actor = Actor(
+            id=str(uuid4()),
+            tenant_id=str(tenant_id),
+            team_id=None,
+            user_id=str(u.id),
+            name=u.full_name or (u.email or "(sin nombre)"),
+            email=u.email,
+            phone=None,
+            is_active=True,
+            is_lead=False,
+        )
+        db.add(actor)
+        created += 1
+
+    await db.commit()
+    return {
+        "created": created,
+        "linked": linked,
+        "skipped": skipped,
+        "total_users": len(users),
+        "synced_at": datetime.now(UTC).isoformat(),
+    }
 
 
 @assignments_router.get(
