@@ -234,6 +234,10 @@ export type AreaAssignment = {
   project_id: string | null;
   is_global: boolean;
   created_at: string;
+  // ENH-080: nombres legibles resueltos en backend.
+  organization_name?: string | null;
+  program_name?: string | null;
+  project_name?: string | null;
 };
 
 export type AssignmentScope = {
@@ -261,6 +265,21 @@ export function setAreaAssignments(
 
 export function listAreasByProject(projectId: string): Promise<Area[]> {
   return apiFetch<Area[]>(`/api/v1/admin/areas/by-project/${projectId}`);
+}
+
+// ENH-082 — re-sync runtime de tenant users → Actores en área PMO.
+export type PmoSyncResponse = {
+  created: number;
+  linked: number;
+  skipped: number;
+  total_users: number;
+  synced_at: string;
+};
+
+export function syncPmoUsers(): Promise<PmoSyncResponse> {
+  return apiFetch<PmoSyncResponse>("/api/v1/admin/areas/pmo/sync-users", {
+    method: "POST",
+  });
 }
 
 // ENH-079 — Actores asignables como responsables/owners del proyecto.

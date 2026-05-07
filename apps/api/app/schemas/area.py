@@ -158,6 +158,12 @@ class AreaAssignmentRead(BaseModel):
     project_id: UUID | None
     is_global: bool
     created_at: datetime
+    # ENH-080: nombres legibles para mostrar en el dropdown de Admin/Áreas
+    # sin obligar al frontend a hacer N batch-fetches por área. Resueltos
+    # en el endpoint via join.
+    organization_name: str | None = None
+    program_name: str | None = None
+    project_name: str | None = None
 
     model_config = {"from_attributes": True}
 
