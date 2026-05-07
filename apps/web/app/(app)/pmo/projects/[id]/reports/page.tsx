@@ -1515,11 +1515,115 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
   );
 }
 
+// ENH-072: ordenamiento configurable de la tabla de historial.
+type HistorySortCol = "generated_at" | "report_type" | "generated_by" | "size";
+type HistorySortDir = "asc" | "desc" | "none";
+type HistorySort = { col: HistorySortCol; dir: HistorySortDir };
+
+const HISTORY_SORT_DEFAULT: HistorySort = { col: "generated_at", dir: "desc" };
+
+function historySortKey(projectId: string): string | null {
+  const u = getStoredUser();
+  if (!u) return null;
+  return `pmo:reports:history-sort:${projectId}:${u.id}`;
+}
+
+function loadHistorySort(projectId: string): HistorySort {
+  if (typeof window === "undefined") return HISTORY_SORT_DEFAULT;
+  const k = historySortKey(projectId);
+  if (!k) return HISTORY_SORT_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(k);
+    if (!raw) return HISTORY_SORT_DEFAULT;
+    const parsed = JSON.parse(raw) as HistorySort;
+    if (!parsed.col || !parsed.dir) return HISTORY_SORT_DEFAULT;
+    return parsed;
+  } catch {
+    return HISTORY_SORT_DEFAULT;
+  }
+}
+
+function saveHistorySort(projectId: string, s: HistorySort): void {
+  if (typeof window === "undefined") return;
+  const k = historySortKey(projectId);
+  if (!k) return;
+  try {
+    window.localStorage.setItem(k, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
+
+function nextSortDir(d: HistorySortDir): HistorySortDir {
+  // 3-state toggle: asc → desc → none → asc
+  return d === "asc" ? "desc" : d === "desc" ? "none" : "asc";
+}
+
+function sortIndicator(active: boolean, dir: HistorySortDir): string {
+  if (!active || dir === "none") return "";
+  return dir === "asc" ? " ▲" : " ▼";
+}
+
+function sortHistory(
+  items: ReportHistoryItem[],
+  sort: HistorySort,
+): ReportHistoryItem[] {
+  if (sort.dir === "none") return items;
+  const sign = sort.dir === "asc" ? 1 : -1;
+  const cmp = (a: ReportHistoryItem, b: ReportHistoryItem) => {
+    let av: string | number | null;
+    let bv: string | number | null;
+    switch (sort.col) {
+      case "generated_at":
+        av = a.generated_at;
+        bv = b.generated_at;
+        break;
+      case "report_type":
+        av = a.report_type;
+        bv = b.report_type;
+        break;
+      case "generated_by":
+        av = a.generated_by_name ?? "";
+        bv = b.generated_by_name ?? "";
+        break;
+      case "size":
+        av = a.file_size_bytes ?? -1;
+        bv = b.file_size_bytes ?? -1;
+        break;
+    }
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (av < bv) return -1 * sign;
+    if (av > bv) return 1 * sign;
+    return 0;
+  };
+  return [...items].sort(cmp);
+}
+
 // ENH-055 + US-092 — vista Historial.
 function ReportHistoryView({ projectId }: { projectId: string }) {
   const [items, setItems] = useState<ReportHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // ENH-072: sort persistido por usuario+proyecto, default generated_at desc.
+  const [sort, setSort] = useState<HistorySort>(HISTORY_SORT_DEFAULT);
+  useEffect(() => {
+    setSort(loadHistorySort(projectId));
+  }, [projectId]);
+  useEffect(() => {
+    saveHistorySort(projectId, sort);
+  }, [projectId, sort]);
+
+  function onHeaderClick(col: HistorySortCol) {
+    setSort((prev) =>
+      prev.col === col
+        ? { col, dir: nextSortDir(prev.dir) }
+        : { col, dir: "asc" },
+    );
+  }
+
+  const sortedItems = useMemo(() => sortHistory(items, sort), [items, sort]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1580,15 +1684,46 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
-            <th className="px-3 py-2 font-medium">Fecha</th>
-            <th className="px-3 py-2 font-medium">Tipo</th>
-            <th className="px-3 py-2 font-medium">Generado por</th>
-            <th className="px-3 py-2 font-medium">Tamaño</th>
+            {(
+              [
+                ["generated_at", "Fecha"],
+                ["report_type", "Tipo"],
+                ["generated_by", "Generado por"],
+                ["size", "Tamaño"],
+              ] as const
+            ).map(([col, label]) => {
+              const active = sort.col === col;
+              return (
+                <th key={col} className="px-3 py-2 font-medium">
+                  <button
+                    type="button"
+                    onClick={() => onHeaderClick(col)}
+                    className={`flex items-center gap-1 hover:text-[var(--color-primary)] ${
+                      active && sort.dir !== "none"
+                        ? "text-[var(--color-primary)]"
+                        : ""
+                    }`}
+                    aria-sort={
+                      active && sort.dir !== "none"
+                        ? sort.dir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                  >
+                    <span>{label}</span>
+                    <span aria-hidden className="text-[10px]">
+                      {sortIndicator(active, sort.dir)}
+                    </span>
+                  </button>
+                </th>
+              );
+            })}
             <th className="w-32 px-3 py-2 font-medium" aria-label="Acciones" />
           </tr>
         </thead>
         <tbody>
-          {items.map((h) => (
+          {sortedItems.map((h) => (
             <tr
               key={h.id}
               className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
