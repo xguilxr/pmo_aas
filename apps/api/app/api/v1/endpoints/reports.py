@@ -853,7 +853,32 @@ async def ai_generate_report(
         )
         body_html = (res.text or "").strip()
     except Exception as exc:
-        raise business_rule(f"La IA falló al generar el reporte: {exc}") from exc
+        # BUG-057: si el provider falla, propagamos un mensaje útil al user
+        # y registramos el traceback completo para debugging server-side.
+        import logging
+
+        logging.getLogger("app.reports.ai").exception(
+            "AI generate failed for tenant=%s project=%s mode=%s",
+            tenant_id, project.id, tenant_cfg.mode,
+        )
+        msg = str(exc).strip()
+        if not msg:
+            # Excepciones tipo httpx con response body vacío → caemos a repr.
+            msg = repr(exc) or type(exc).__name__
+        # Si la excepción trae un response HTTP, anexa status + body trimmed.
+        resp = getattr(exc, "response", None)
+        if resp is not None:
+            status = getattr(resp, "status_code", None)
+            try:
+                body_text = resp.text if hasattr(resp, "text") else ""
+            except Exception:
+                body_text = ""
+            if status or body_text:
+                snippet = (body_text or "")[:240]
+                msg = f"{msg} [HTTP {status}] {snippet}".strip()
+        raise business_rule(
+            f"La IA falló al generar el reporte ({type(exc).__name__}): {msg}"
+        ) from exc
 
     # BUG-056: estilos alineados al DS y al base.html de PDF (DM Sans +
     # JetBrains Mono, paleta var(--chrome|--muted|--border)). El HTML se
