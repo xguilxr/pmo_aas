@@ -19,6 +19,7 @@ from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.models.ai import Report
+from app.models.ai_report_template import AIReportTemplate
 from app.models.project import Project
 from app.models.report_history import ReportHistory
 from app.services.audit import write_audit
@@ -952,3 +953,142 @@ async def ai_generate_report(
         await db.commit()
 
     return AIGenerateResponse(html=full_html, history_id=history_id)
+
+
+# ============================================================================
+# ENH-080 — Plantillas reusables del reporte IA.
+# ============================================================================
+
+
+class AIReportTemplateConfig(BaseModel):
+    """Config persistida para regenerar el reporte. Espejo de los campos
+    relevantes de AIGenerateBody (sin `period_end`, que siempre se calcula
+    en el momento de generar)."""
+
+    include_kpis: bool = True
+    include_tasks: bool = True
+    include_raid: bool = True
+    include_milestones: bool = True
+    free_notes: str = Field(default="", max_length=4000)
+    area_ids: list[UUID] | None = None
+    assignee_actor_ids: list[UUID] | None = None
+    criticalities: list[str] | None = None
+    statuses: list[str] | None = None
+    severities: list[str] | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+
+
+class AIReportTemplateCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    base: str = Field(default="avance", pattern="^(avance|seguimiento|custom)$")
+    config: AIReportTemplateConfig = Field(default_factory=AIReportTemplateConfig)
+
+
+class AIReportTemplateRead(BaseModel):
+    id: UUID
+    project_id: UUID
+    name: str
+    base: str
+    config: dict
+    created_by: UUID | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+@router.get(
+    "/projects/{project_id}/ai-report-templates",
+    response_model=list[AIReportTemplateRead],
+)
+async def list_ai_report_templates(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    rows = (
+        await db.execute(
+            select(AIReportTemplate)
+            .where(
+                AIReportTemplate.tenant_id == str(tenant_id),
+                AIReportTemplate.project_id == str(project.id),
+            )
+            .order_by(AIReportTemplate.created_at.desc())
+        )
+    ).scalars().all()
+    return [AIReportTemplateRead.model_validate(r) for r in rows]
+
+
+@router.post(
+    "/projects/{project_id}/ai-report-templates",
+    response_model=AIReportTemplateRead,
+    status_code=201,
+)
+async def create_ai_report_template(
+    project_id: UUID,
+    body: AIReportTemplateCreate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    tpl = AIReportTemplate(
+        tenant_id=str(tenant_id),
+        project_id=str(project.id),
+        name=body.name.strip(),
+        base=body.base,
+        config=body.config.model_dump(mode="json"),
+        created_by=cu.id,
+        created_at=datetime.now(UTC),
+    )
+    db.add(tpl)
+    await db.flush()
+    await write_audit(
+        db,
+        action="ai_report_template.create",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="ai_report_template",
+        entity_id=str(tpl.id),
+        details={"name": tpl.name, "base": tpl.base},
+    )
+    await db.commit()
+    await db.refresh(tpl)
+    return AIReportTemplateRead.model_validate(tpl)
+
+
+@router.delete(
+    "/ai-report-templates/{template_id}",
+    status_code=204,
+)
+async def delete_ai_report_template(
+    template_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _tenant(cu)
+    tpl = (
+        await db.execute(
+            select(AIReportTemplate).where(
+                AIReportTemplate.id == str(template_id),
+                AIReportTemplate.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if tpl is None:
+        raise not_found("Plantilla de reporte IA")
+    await db.delete(tpl)
+    await write_audit(
+        db,
+        action="ai_report_template.delete",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="ai_report_template",
+        entity_id=str(template_id),
+    )
+    await db.commit()
+    return Response(status_code=204)
