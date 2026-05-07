@@ -608,13 +608,35 @@ async def download_report_history(
     ).scalar_one_or_none()
     if rep is None:
         raise not_found("Reporte fuente")
+    project = await _get_project(db, tenant_id, UUID(h.project_id))
+    # BUG-055: AI reports guardan HTML en sections["_html"]; servir directo
+    # (no usan los templates de Avance/Seguimiento).
+    if rep.generator == "ai" or h.report_type == "ai_custom":
+        html = (rep.sections or {}).get("_html") or ""
+        filename = _report_filename("IA", project.name, h.generated_at)
+        # Para HTML preferimos sufijo .html en lugar de .pdf; el inline=true
+        # abre directo en el browser, attachment fuerza descarga.
+        ascii_name = re.sub(r"[^A-Za-z0-9._-]", "_", filename).rstrip(".")
+        if not ascii_name.lower().endswith(".html"):
+            ascii_name = re.sub(r"\.pdf$", "", ascii_name) + ".html"
+        utf_name = quote(re.sub(r"\.pdf$", "", filename) + ".html")
+        disposition = "inline" if inline else "attachment"
+        return Response(
+            content=html.encode("utf-8"),
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Content-Disposition": (
+                    f"{disposition}; filename=\"{ascii_name}\"; "
+                    f"filename*=UTF-8''{utf_name}"
+                )
+            },
+        )
     template = (
         "reports/avance.html" if h.report_type == "avance" else "reports/seguimiento.html"
     )
     ctx = dict(rep.sections or {})
     ctx["tenant_name"] = await _tenant_name(db, tenant_id)
     pdf = render_pdf(template, ctx)
-    project = await _get_project(db, tenant_id, UUID(h.project_id))
     label = "Avance" if h.report_type == "avance" else "Seguimiento"
     filename = _report_filename(label, project.name, h.generated_at)
     return _pdf_response(pdf, filename, inline=inline)

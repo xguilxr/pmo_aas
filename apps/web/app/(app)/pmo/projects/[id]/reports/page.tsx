@@ -1660,7 +1660,17 @@ function HistoryKPICard({
 }
 
 // ENH-073: filtros segmented + búsqueda en historial.
-type HistoryBucket = "all" | "avance" | "seguimiento";
+type HistoryBucket = "all" | "avance" | "seguimiento" | "ai_custom";
+
+// BUG-055: label uniforme para todos los tipos de reporte que aparecen en
+// el historial. `ai_custom` es el tipo que persiste el endpoint
+// `/reports/ai-generate` cuando el usuario activa save_to_history.
+function reportTypeLabel(t: string): string {
+  if (t === "avance") return "Avance";
+  if (t === "seguimiento") return "Seguimiento";
+  if (t === "ai_custom") return "IA";
+  return t;
+}
 
 function ReportHistoryView({ projectId }: { projectId: string }) {
   const [items, setItems] = useState<ReportHistoryItem[]>([]);
@@ -1689,11 +1699,12 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
 
   // ENH-073: counts por bucket — alimentan los KPI cards y los pills.
   const counts = useMemo(() => {
-    const c = { all: items.length, avance: 0, seguimiento: 0, week: 0 };
+    const c = { all: items.length, avance: 0, seguimiento: 0, ai_custom: 0, week: 0 };
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     for (const it of items) {
       if (it.report_type === "avance") c.avance += 1;
       else if (it.report_type === "seguimiento") c.seguimiento += 1;
+      else if (it.report_type === "ai_custom") c.ai_custom += 1;
       if (new Date(it.generated_at).getTime() >= weekAgo) c.week += 1;
     }
     return c;
@@ -1704,7 +1715,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
     return items.filter((h) => {
       if (bucket !== "all" && h.report_type !== bucket) return false;
       if (q) {
-        const hay = `${h.generated_by_name ?? ""} ${h.report_type}`.toLowerCase();
+        const hay = `${h.generated_by_name ?? ""} ${reportTypeLabel(h.report_type)}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -1744,7 +1755,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
   if (loading) {
     return (
       <section className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-[var(--radius-lg)]" />
           ))}
@@ -1786,12 +1797,13 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
     { v: "all", label: "Todos", count: counts.all },
     { v: "avance", label: "Avance", count: counts.avance },
     { v: "seguimiento", label: "Seguimiento", count: counts.seguimiento },
+    { v: "ai_custom", label: "IA", count: counts.ai_custom },
   ];
 
   return (
     <section className="space-y-3">
       {/* ENH-073: KPI summary cards con acentos pastel — clicables como filtros. */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         <HistoryKPICard
           label="Total"
           value={counts.all}
@@ -1817,10 +1829,18 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
           onClick={() => setBucket("seguimiento")}
         />
         <HistoryKPICard
+          label="IA"
+          value={counts.ai_custom}
+          total={counts.all}
+          tone="warning"
+          active={bucket === "ai_custom"}
+          onClick={() => setBucket("ai_custom")}
+        />
+        <HistoryKPICard
           label="Última semana"
           value={counts.week}
           total={counts.all}
-          tone="warning"
+          tone="neutral"
           active={false}
           onClick={() => setBucket("all")}
         />
@@ -1947,7 +1967,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
               </td>
               <td className="px-3 py-2">
                 <Badge variant="neutral">
-                  {h.report_type === "avance" ? "Avance" : "Seguimiento"}
+                  {reportTypeLabel(h.report_type)}
                 </Badge>
               </td>
               <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
