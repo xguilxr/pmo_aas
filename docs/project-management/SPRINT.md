@@ -18,10 +18,12 @@ Sprint 13 (v1.12) — Bloque 1 ENTREGADO 2026-05-07 (7 issues — pendiente veri
   US-097/098/099 + ENH-066/067/068/077.
   Migraciones 0044 (areas/teams/actors) + 0045 (tasks.area_id) agregadas.
 
-Sprint 14-16 — siguen PLANEADOS (status:ready Sprint 14, status:triage 15-16):
-  Sprint 14 (v1.13) — RAID detail redesign (4 issues, status:ready)
-  Sprint 15 (v1.14) — Reportes (4 issues, status:triage)
-  Sprint 16 (v1.15) — IA conversacional global (5 issues, status:triage)
+Sprint 14 (v1.13) — Bloque 1 ENTREGADO 2026-05-07 (4 issues — pendiente verif. owner):
+  US-100 + ENH-069/070 + BUG-052. Sin migraciones, sin cambios de schema.
+
+Sprint 15-16 — PLANEADOS (status:triage):
+  Sprint 15 (v1.14) — Reportes (4 issues)
+  Sprint 16 (v1.15) — IA conversacional global (5 issues)
 
 Próximo libre: US-103, BUG-054, ENH-078.
 ```
@@ -126,15 +128,22 @@ Branch sesión: `claude/fix-issues-plan-sprints-2psWS` (rama Sprint 13 reservada
 
 ---
 
-## ⏳ Sprint 14 (v1.13) — RAID detail redesign "Denso" (PLANEADO 2026-05-06)
-Branch: `claude/sprint-14-raid-detail-redesign` (hereda placeholder `claude/redesign-raid-area-requirements-EhZ3d`)
+## ⏳ Sprint 14 (v1.13) — RAID detail redesign "Denso" — Bloque 1 ENTREGADO 2026-05-07
+Branch sesión: `claude/fix-issues-plan-sprints-2psWS`
 
-- [ ] US-100 #246 — Rediseño detalle item RAID layout "Denso" (4 tipos) — `status:ready`
-- [ ] ENH-069 #247 — Banner modo edición + Cancelar/Guardar transaccional — `status:ready`
-- [ ] ENH-070 #248 — Card unificada Comentarios + Historial — `status:ready`
-- [ ] BUG-052 #249 — Breadcrumb `RAID / Tipo / ID` + ← Volver preserva filtro — `status:ready`
+- [x] US-100 #246 — Rediseño detalle item RAID layout "Denso" (4 tipos) — `7b1bf5e`
+- [x] ENH-069 #247 — Banner modo edición + Cancelar/Guardar transaccional — `7b1bf5e`
+- [x] ENH-070 #248 — Card unificada Comentarios + Historial — `7b1bf5e`
+- [x] BUG-052 #249 — Breadcrumb `RAID / Tipo / ID` + ← Volver preserva filtro — `6b5fa2e`
 
-**Sin cambios de schema ni paleta.** Spec canónica: `docs/design-system/raid-detail-denso.md`. Mock visual: `docs/archive/raid-detail-denso-mock-2026-05-06.html` (artefacto histórico).
+**Pendiente verificación owner:** cerrar #246-#249 tras smoke test.
+
+**Sin cambios de schema, sin cambios de paleta.** Spec canónica: `docs/design-system/raid-detail-denso.md`.
+
+**Diferidos del bloque (no bloqueantes):**
+- US-100: P×I como cuadritos visuales explícitos del mock (hoy "3 × 3 = 9" inline).
+- US-100/ENH-070: avatar/nombre del autor en comentarios — endpoints actuales no devuelven user mini en el shape de Comment.
+- ENH-069 CA6: confirm "descartar cambios" al navegar fuera con dirty form.
 
 ---
 
@@ -211,6 +220,7 @@ Branch: `claude/sprint-16-ai-global`
 
 ## Notas y cambios recientes
 
+- **2026-05-07 (Sprint 14 Bloque 1 entregado):** 4 issues (#246-#249) entregados sobre la misma branch `claude/fix-issues-plan-sprints-2psWS` en 2 commits (`7b1bf5e` US-100+ENH-069+ENH-070, `6b5fa2e` BUG-052). Rewrite completo de `apps/web/components/raid-detail-page.tsx` (188→765 líneas) siguiendo `docs/design-system/raid-detail-denso.md`. **Sin migraciones**, sin cambios de schema ni paleta. Owner planeaba 1 deploy combinando Sprint 13 + 14.
 - **2026-05-07 (Sprint 13 Bloque 1 entregado):** 7 issues entregados sobre branch `claude/fix-issues-plan-sprints-2psWS`. 6 commits (`9d264cc`, `7fd939f`, `e36f937`, `237374b`, `f6f349c`, `632fdf9`). Migraciones Alembic 0044 (areas/teams/actors) + 0045 (tasks.area_id) requieren `alembic upgrade head` en Railway api+worker. US-095 #229 rework v2 también pusheado en commit `cf0283e` (cache:no-store + optimistic update post-refetch). Pendiente verificación owner: 7 issues Sprint 13 + #229.
 - **2026-05-06 (post-Sprint 12 — reworks + planeación Sprints 13-16):** owner verificó Sprint 12 y reportó reworks: #228 US-094 (sidebar `Admin` no linkeaba a landing) → fix `4d82b4b`; #229 US-095 (edit no refresca tabla) → fix `204f2fd`. Owner aprobó scope de los próximos 4 sprints (Áreas+Plan, RAID detail redesign, Reportes, IA conversacional global). 19 issues creados (#240-#258) con `status:triage` distribuidos en 4 bloques. Sprint 16 incluye **Bloque 0** (BUG-053 cleanup Ollama) como gate pre-arranque. Branches reservadas: `claude/sprint-13-areas-plan`, `claude/sprint-14-raid-detail-redesign`, `claude/sprint-15-reportes-redesign`, `claude/sprint-16-ai-global`.
 - **2026-05-06 (Sprint 12 Bloques 1-3 entregados):** 9 commits sobre branch `claude/sprint-12-bloques`, fast-forward desde `main` post-Sprint 11. Migración Alembic 0043 agregada (backfill de `tasks.outline_level`). Owner adelantó que el siguiente bloque será **redesign RAID + Area requirements** (no cubierto por #204/#205/#209/#221-225 ni US-091): scope se definirá al inicio de la próxima sesión sobre branch `claude/redesign-raid-area-requirements-EhZ3d`. ENH-065 #236 cerrado por owner pre-arranque.
