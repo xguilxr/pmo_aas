@@ -258,6 +258,25 @@ async def update_area(
     if a is None:
         raise not_found("Área")
     data = body.model_dump(exclude_none=True)
+    # BUG-060: rename con colisión devuelve 409 estructurado en vez de 500.
+    if "name" in data:
+        new_name = data["name"].strip()
+        clash = (
+            await db.execute(
+                select(Area).where(
+                    Area.tenant_id == str(tenant_id),
+                    Area.id != str(area_id),
+                    func.lower(Area.name) == new_name.lower(),
+                )
+            )
+        ).scalar_one_or_none()
+        if clash is not None:
+            raise conflict(
+                "Ya existe un área con ese nombre en el tenant",
+                code="AREA_NAME_DUPLICATE",
+                fields={"existing_area_id": str(clash.id)},
+            )
+        data["name"] = new_name
     for k, v in data.items():
         setattr(a, k, v)
     await db.commit()
@@ -407,6 +426,28 @@ async def update_team(
         if new_area is None:
             raise validation_error("area_id no existe en el tenant")
         data["area_id"] = str(data["area_id"])
+    # BUG-060: rename / re-assign con colisión devuelve 409 en vez de 500.
+    target_area_id = data.get("area_id", t.area_id)
+    target_name = data["name"].strip() if "name" in data else t.name
+    if "name" in data or "area_id" in data:
+        clash = (
+            await db.execute(
+                select(Team).where(
+                    Team.tenant_id == str(tenant_id),
+                    Team.area_id == str(target_area_id),
+                    Team.id != str(team_id),
+                    func.lower(Team.name) == target_name.lower(),
+                )
+            )
+        ).scalar_one_or_none()
+        if clash is not None:
+            raise conflict(
+                "Ya existe un equipo con ese nombre en esta área",
+                code="TEAM_NAME_DUPLICATE",
+                fields={"existing_team_id": str(clash.id)},
+            )
+    if "name" in data:
+        data["name"] = target_name
     for k, v in data.items():
         setattr(t, k, v)
     await db.commit()
