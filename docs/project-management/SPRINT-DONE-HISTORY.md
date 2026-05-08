@@ -398,3 +398,20 @@
 ### Notas
 - 14 commits referenciando 14 issues; todos siguen `OPEN` con `status:ready` — owner cierra manualmente tras verificación (CLAUDE.md §3 paso 7).
 - BUG-042 (#206) + BUG-043 (#207) creados en triage Sprint 10 quedaron asignados a Sprint 11 desde el inicio (decisión owner 2026-05-05).
+
+---
+
+## Sprint 16 (v1.14) — CERRADO 2026-05-07
+
+> Sprints 11-15 quedan provisionalmente en `SPRINT.md` hasta verificación owner; Sprint 16 entró/salió completo en la misma cadencia y se archiva aquí para no contaminar el archivo activo.
+
+### Bloque 1 — Reportes (4 issues entregados, todos `state:closed completed`)
+- [x] US-101 #253 — "Crear reporte con IA" — fix Groq init + endpoint `POST /reports/ai-generate` + reglas globales de orden (agrupar por área, fecha-fin más cercana primero) — closed 2026-05-07
+- [x] ENH-071 #250 — Reglas/condiciones de filtrado configurables (rango fechas custom + área/fase/responsable/severidad multi-select + persistencia localStorage) — closed 2026-05-08
+- [x] ENH-072 #251 — Ordenamiento configurable por columna + persistencia por template — closed 2026-05-07
+- [x] ENH-073 #252 — Refresh visual (DM Sans + JetBrains Mono, KPI cards pastel clicables, segmented tabs, drawer detalle, dual-mode HTML interactivo + PDF render server-side) — closed 2026-05-07
+
+### Notas
+- Sprint 16 fue parte del paquete Sprint 13-16 triagado 2026-05-06 con scope original "Reportes refinement". Entregado y cerrado en menos de 48h.
+- Status final: todos los issues llegaron a `closed completed` por owner.
+- Sin migraciones Alembic.
