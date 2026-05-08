@@ -195,6 +195,7 @@ export default function TenantAdminAIPage() {
         <BYOSection
           data={data}
           onOpenWizard={(p) => setWizardProvider(p)}
+          onAfterRetest={() => void refresh()}
         />
       ) : null}
 
@@ -304,10 +305,13 @@ function ModeCard({
 function BYOSection({
   data,
   onOpenWizard,
+  onAfterRetest,
 }: {
   data: TenantAIProviderRead;
   onOpenWizard: (p: BYOProviderInfo) => void;
+  onAfterRetest: () => void;
 }) {
+  const activeKey = data.byo?.provider as BYOProvider | undefined;
   return (
     <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-2">
@@ -329,7 +333,8 @@ function BYOSection({
           <ProviderCard
             key={p.key}
             info={p}
-            connected={data.byo?.provider === p.key && data.byo.has_api_key}
+            connected={activeKey === p.key && !!data.byo?.has_api_key}
+            testStatus={activeKey === p.key ? data.byo?.last_test_status ?? null : null}
             disabled={false}
             onClick={() => onOpenWizard(p)}
           />
@@ -337,40 +342,103 @@ function BYOSection({
       </div>
 
       {data.byo ? (
-        <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3 text-[12px]">
-          <div className="font-medium text-[var(--color-primary)]">
-            Conexión activa
-          </div>
-          <div className="mt-1 text-[var(--color-secondary)]">
-            Proveedor: <strong>{data.byo.provider}</strong> · Modelo:{" "}
-            <strong>{data.byo.model ?? "—"}</strong> · Key:{" "}
-            <span className="font-mono">
-              {data.byo.api_key_mask ?? "sin key"}
-            </span>
-          </div>
-          {data.byo.last_test_status ? (
-            <div className="mt-1 text-[var(--color-tertiary)]">
-              Último test:{" "}
-              {data.byo.last_test_status === "ok" ? "OK" : "FAIL"} ·{" "}
-              {data.byo.last_test_at
-                ? new Date(data.byo.last_test_at).toLocaleString()
-                : "—"}
-            </div>
-          ) : null}
-        </div>
+        <ActiveConnectionPanel data={data} onAfterRetest={onAfterRetest} />
       ) : null}
     </section>
+  );
+}
+
+function ActiveConnectionPanel({
+  data,
+  onAfterRetest,
+}: {
+  data: TenantAIProviderRead;
+  onAfterRetest: () => void;
+}) {
+  const [retesting, setRetesting] = useState(false);
+  const [retestError, setRetestError] = useState<string | null>(null);
+  const byo = data.byo!;
+  const failed = byo.last_test_status === "fail";
+
+  async function retest() {
+    setRetesting(true);
+    setRetestError(null);
+    try {
+      const r = await testTenantAIProvider({});
+      if (!r.ok) {
+        setRetestError(r.error ?? "Falló la prueba.");
+      }
+      onAfterRetest();
+    } catch (err) {
+      setRetestError(err instanceof ApiError ? err.message : "Error al probar.");
+    } finally {
+      setRetesting(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      {failed ? (
+        <Banner variant="danger">
+          <div className="flex flex-col gap-2">
+            <div>
+              <strong>Última prueba falló:</strong>{" "}
+              {byo.last_test_error ?? "sin detalle"}
+            </div>
+            {retestError ? (
+              <div className="text-[12px]">{retestError}</div>
+            ) : null}
+            <div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={retest}
+                loading={retesting}
+              >
+                Probar de nuevo
+              </Button>
+            </div>
+          </div>
+        </Banner>
+      ) : null}
+
+      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3 text-[12px]">
+        <div className="font-medium text-[var(--color-primary)]">
+          Conexión activa
+        </div>
+        <div className="mt-1 text-[var(--color-secondary)]">
+          Proveedor: <strong>{byo.provider}</strong> · Modelo:{" "}
+          <strong>{byo.model ?? "—"}</strong> · Key:{" "}
+          <span className="font-mono">{byo.api_key_mask ?? "sin key"}</span>
+        </div>
+        {byo.last_test_status ? (
+          <div className="mt-1 text-[var(--color-tertiary)]">
+            Último test:{" "}
+            {byo.last_test_status === "ok" ? "OK" : "FAIL"} ·{" "}
+            {byo.last_test_at
+              ? new Date(byo.last_test_at).toLocaleString()
+              : "—"}
+          </div>
+        ) : (
+          <div className="mt-1 text-[var(--color-tertiary)]">
+            Sin probar todavía.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
 function ProviderCard({
   info,
   connected,
+  testStatus,
   disabled,
   onClick,
 }: {
   info: BYOProviderInfo;
   connected: boolean;
+  testStatus: "ok" | "fail" | null;
   disabled: boolean;
   onClick: () => void;
 }) {
@@ -390,11 +458,15 @@ function ProviderCard({
         <span className="font-medium text-[var(--color-primary)]">
           {info.label}
         </span>
-        {connected ? (
+        {connected && testStatus === "fail" ? (
+          <Badge variant="danger">Última prueba falló</Badge>
+        ) : connected && testStatus === "ok" ? (
           <Badge variant="success">
             <Check className="mr-1 h-3 w-3" aria-hidden />
             Conectado
           </Badge>
+        ) : connected ? (
+          <Badge variant="warning">Sin probar</Badge>
         ) : disabled ? (
           <Badge variant="neutral">Próximamente</Badge>
         ) : (
@@ -779,15 +851,17 @@ function DeepLinks({
         compact ? "pt-1" : "rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3",
       )}
     >
-      <a
-        href={info.api_keys_url}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
-      >
-        Generar API key
-        <ExternalLink className="h-3 w-3" aria-hidden />
-      </a>
+      {info.api_keys_url ? (
+        <a
+          href={info.api_keys_url}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
+        >
+          Generar API key
+          <ExternalLink className="h-3 w-3" aria-hidden />
+        </a>
+      ) : null}
       <a
         href={info.docs_url}
         target="_blank"

@@ -77,6 +77,19 @@ BYO_CATALOG: list[BYOProviderInfo] = [
         "suggested_models": ["sonar", "sonar-pro"],
         "requires_base_url": False,
     },
+    {
+        "key": "custom",
+        "label": "Otro proveedor (compatible OpenAI)",
+        "description": (
+            "Conecta cualquier endpoint compatible con la API de OpenAI "
+            "(proxy, self-hosted, vLLM, LM Studio, etc.). Requiere "
+            "base_url + api_key + modelo."
+        ),
+        "api_keys_url": "",
+        "docs_url": "https://platform.openai.com/docs/api-reference",
+        "suggested_models": [],
+        "requires_base_url": True,
+    },
 ]
 
 

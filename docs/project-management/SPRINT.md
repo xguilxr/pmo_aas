@@ -9,8 +9,10 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 17 (v1.16) — Bloque 0 ENTREGADO 2026-05-08 (pendiente verif. owner):
+Sprint 17 (v1.16) — Bloque 0 MERGED 2026-05-08 (PR #297, BUG-053):
   BUG-053 #254 — cleanup Ollama + cablear Groq como default
+Sprint 17 (v1.16) — Bloque 0.5 IN-PROGRESS 2026-05-08:
+  US-104 #298 — módulo BYO: test-before-save + custom provider + retry
   Branch sesión: claude/setup-ai-module-8HYs1
 ```
 
@@ -219,7 +221,7 @@ Branch: `claude/sprint-17-ai-global`
 
 ---
 
-**Próximo libre:** US-104, BUG-055, ENH-080.
+**Próximo libre:** US-105, BUG-055, ENH-080.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.

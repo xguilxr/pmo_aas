@@ -17,7 +17,7 @@ export type TestConnectionResult = {
 export type TenantAIMode = "disabled" | "platform" | "byo";
 
 /** Proveedores expuestos en el catálogo público de /admin/ai. */
-export type BYOProvider = "openai" | "claude" | "perplexity" | "gemini";
+export type BYOProvider = "openai" | "claude" | "perplexity" | "gemini" | "custom";
 
 export type BYOConfigRead = {
   provider: BYOProvider;
@@ -64,8 +64,10 @@ export function getTenantAIProvider(): Promise<TenantAIProviderRead> {
 
 export function updateTenantAIProvider(
   body: TenantAIProviderPatch,
+  opts?: { force?: boolean },
 ): Promise<TenantAIProviderRead> {
-  return apiFetch<TenantAIProviderRead>("/api/v1/admin/ai/provider", {
+  const qs = opts?.force ? "?force=true" : "";
+  return apiFetch<TenantAIProviderRead>(`/api/v1/admin/ai/provider${qs}`, {
     method: "PATCH",
     body,
   });
@@ -85,6 +87,7 @@ export const BYO_PROVIDER_LABEL: Record<BYOProvider, string> = {
   claude: "Anthropic (Claude)",
   perplexity: "Perplexity",
   gemini: "Google Gemini",
+  custom: "Otro proveedor (compatible OpenAI)",
 };
 
 // Fallback de modelos si el catálogo del backend no se pudo cargar.
@@ -93,4 +96,5 @@ export const BYO_PROVIDER_MODELS: Record<BYOProvider, string[]> = {
   claude: ["claude-3-5-haiku-20241022", "claude-sonnet-4-6"],
   perplexity: ["sonar", "sonar-pro"],
   gemini: ["gemini-1.5-flash", "gemini-1.5-pro"],
+  custom: [],
 };

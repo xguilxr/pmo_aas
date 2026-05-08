@@ -15,8 +15,8 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,7 +56,7 @@ class TestConnectionResult(BaseModel):
 
 
 class BYOConfigIn(BaseModel):
-    provider: Literal["openai", "claude", "perplexity", "gemini"]
+    provider: Literal["openai", "claude", "perplexity", "gemini", "custom"]
     api_key: str | None = Field(
         default=None,
         description=(
@@ -66,6 +66,12 @@ class BYOConfigIn(BaseModel):
     )
     model: str | None = Field(default=None, max_length=100)
     base_url: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _custom_requires_base_url(self) -> BYOConfigIn:
+        if self.provider == "custom" and not (self.base_url or "").strip():
+            raise ValueError("base_url requerido para provider=custom")
+        return self
 
 
 class BYOConfigRead(BaseModel):
@@ -136,6 +142,14 @@ async def update_provider_config(
     body: TenantAIProviderPatch,
     cu: CurrentUser = Depends(require_capability("ai.configure")),
     db: AsyncSession = Depends(get_db),
+    force: bool = Query(
+        False,
+        description=(
+            "US-104: si true, salta el ping pre-guardado (escape hatch "
+            "para casos donde el provider esté caído pero el admin "
+            "necesita registrar la config igual)."
+        ),
+    ),
 ):
     tenant_id = _tenant_id(cu)
     t = (
@@ -146,7 +160,6 @@ async def update_provider_config(
 
     merged = dict(t.settings or {})
     ai = dict(merged.get("ai") or {})
-    ai["mode"] = body.mode
 
     if body.mode == "byo":
         if body.byo is None:
@@ -172,10 +185,45 @@ async def update_provider_config(
             )
         byo["model"] = body.byo.model or existing.get("model")
         byo["base_url"] = body.byo.base_url or existing.get("base_url")
-        # Al cambiar credenciales limpiamos el último test.
-        if body.byo.api_key is not None or (
+
+        # US-104: gate test-before-save. Pingueamos con la config nueva
+        # antes de tocar nada en BD. Si falla y `force` es false, abortamos
+        # con 422 — la config previa (incluso si está rota) se conserva.
+        if not force:
+            from app.services.ai_secrets import decrypt_secret
+
+            api_key_plain = (
+                body.byo.api_key
+                if body.byo.api_key is not None
+                else decrypt_secret(byo["api_key_encrypted"] or "")
+            )
+            ping = await _ping_byo_provider(
+                byo["provider"], api_key_plain, byo["model"], byo["base_url"],
+            )
+            if not ping.ok:
+                from fastapi import HTTPException
+
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "BYO_TEST_FAILED",
+                        "message": (
+                            f"La prueba de conexión falló: {ping.error or 'sin detalle'}. "
+                            "Revisa la API key, el modelo o la base_url. "
+                            "Reintenta o usa ?force=true para guardar igual."
+                        ),
+                        "ping_error": ping.error,
+                        "ping_code": ping.code,
+                        "latency_ms": ping.latency_ms,
+                    },
+                )
+            byo["last_test_at"] = datetime.now(UTC).isoformat()
+            byo["last_test_status"] = "ok"
+            byo["last_test_error"] = None
+        elif body.byo.api_key is not None or (
             body.byo.provider != (existing or {}).get("provider")
         ):
+            # Force: cambiamos credenciales pero no se probó → invalidamos test.
             byo["last_test_at"] = None
             byo["last_test_status"] = None
             byo["last_test_error"] = None
@@ -184,11 +232,9 @@ async def update_provider_config(
             byo["last_test_status"] = existing.get("last_test_status")
             byo["last_test_error"] = existing.get("last_test_error")
         ai["byo"] = byo
-    elif body.mode == "platform":
-        # Preservamos byo previo archivado por si el user vuelve a byo.
-        pass
-    else:  # disabled
-        pass
+        ai["mode"] = body.mode
+    else:  # platform | disabled
+        ai["mode"] = body.mode
 
     merged["ai"] = ai
     t.settings = merged
@@ -285,13 +331,39 @@ async def _ping_byo_provider(
 
     started = time.perf_counter()
     try:
-        if provider == "openai":
+        if provider in ("openai", "custom"):
             if not api_key:
                 return TestConnectionResult(ok=False, error="api_key requerida", code="NO_KEY")
-            url = f"{(base_url or 'https://api.openai.com/v1').rstrip('/')}/models"
+            if provider == "custom" and not base_url:
+                return TestConnectionResult(
+                    ok=False, error="base_url requerida", code="NO_BASE_URL",
+                )
+            root = (base_url or "https://api.openai.com/v1").rstrip("/")
+            url = f"{root}/models"
             async with httpx.AsyncClient(timeout=10.0) as c:
                 r = await c.get(url, headers={"Authorization": f"Bearer {api_key}"})
             latency = int((time.perf_counter() - started) * 1000)
+            # US-104: muchos servers OpenAI-compatible no exponen GET /models;
+            # si vemos 404/405 caemos a un POST mínimo a /chat/completions.
+            if r.status_code in (404, 405) and provider == "custom":
+                async with httpx.AsyncClient(timeout=10.0) as c:
+                    r2 = await c.post(
+                        f"{root}/chat/completions",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        json={
+                            "model": model or "gpt-4o-mini",
+                            "messages": [{"role": "user", "content": "ping"}],
+                            "max_tokens": 4,
+                        },
+                    )
+                latency = int((time.perf_counter() - started) * 1000)
+                if r2.status_code >= 300:
+                    return TestConnectionResult(
+                        ok=False, latency_ms=latency,
+                        error=f"HTTP {r2.status_code}: {r2.text[:120]}",
+                        code="HTTP_ERROR",
+                    )
+                return TestConnectionResult(ok=True, latency_ms=latency)
             if r.status_code >= 300:
                 return TestConnectionResult(
                     ok=False, latency_ms=latency,
