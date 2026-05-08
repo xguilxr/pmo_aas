@@ -880,12 +880,56 @@ async def ai_generate_report(
     if body.include_milestones:
         filtered["milestones"] = context.get("milestones") or []
 
+    # ENH-085: separar Filtros vs Instrucciones — la IA necesita jerarquía
+    # explícita para no diluir las free_notes en los 6000 chars de datos.
+    # Resolvemos los nombres de áreas (legibles) si vinieron area_ids.
+    from app.models.area import Area
+
+    area_name_map: dict[str, str] = {}
+    if area_set:
+        arows = (
+            await db.execute(
+                select(Area.id, Area.name).where(Area.id.in_(area_set))
+            )
+        ).all()
+        area_name_map = {str(aid): (name or "—") for aid, name in arows}
+
+    filter_lines: list[str] = []
+    if area_set:
+        names = sorted(area_name_map.get(a, a) for a in area_set)
+        filter_lines.append(f"Áreas: {', '.join(names)}")
+    if crit_set:
+        filter_lines.append(f"Criticidad: {', '.join(sorted(crit_set))}")
+    if status_set:
+        filter_lines.append(f"Status: {', '.join(sorted(status_set))}")
+    if sev_set:
+        filter_lines.append(f"Severidad: {', '.join(sorted(sev_set))}")
+    if d_from or d_to:
+        filter_lines.append(
+            f"Fechas: {d_from.isoformat() if d_from else '—'} → "
+            f"{d_to.isoformat() if d_to else '—'}"
+        )
+    filters_summary_text = "\n".join(filter_lines) if filter_lines else "(sin filtros adicionales)"
+
     user_prompt = (
         f"Proyecto: {project.name} ({project.folio}).\n"
         f"Período hasta {cut_off.isoformat()}.\n"
-        f"Datos del proyecto (JSON):\n{json.dumps(filtered, ensure_ascii=False, default=str)[:6000]}\n\n"
-        f"Notas adicionales del usuario:\n{body.free_notes or '(ninguna)'}\n\n"
-        "Devuelve HTML limpio sin <html>/<body>."
+        "\n<DATOS_DEL_PROYECTO>\n"
+        f"{json.dumps(filtered, ensure_ascii=False, default=str)[:6000]}\n"
+        "</DATOS_DEL_PROYECTO>\n"
+        "\n<FILTROS_APLICADOS>\n"
+        "Los datos arriba YA están recortados según estos filtros. No "
+        "menciones items que NO aparezcan en el JSON.\n"
+        f"{filters_summary_text}\n"
+        "</FILTROS_APLICADOS>\n"
+        "\n<INSTRUCCIONES_DEL_USUARIO>\n"
+        "DEBES OBEDECER ESTAS INSTRUCCIONES POR ENCIMA DE LAS REGLAS GENERALES. "
+        "Si no hay instrucciones, sigue las reglas del system prompt.\n"
+        f"{body.free_notes.strip() if body.free_notes else '(ninguna)'}\n"
+        "</INSTRUCCIONES_DEL_USUARIO>\n"
+        "\n<FORMATO_DE_SALIDA>\n"
+        "HTML limpio en español, sin <html>/<body>. Usa <h2>/<p>/<ul>.\n"
+        "</FORMATO_DE_SALIDA>"
     )
 
     try:
@@ -926,6 +970,18 @@ async def ai_generate_report(
         raise business_rule(
             f"La IA falló al generar el reporte ({type(exc).__name__}): {msg}"
         ) from exc
+
+    # ENH-085: bloque de "Filtros activos" en el header — transparencia
+    # para el lector (sabe qué dataset alimentó la IA).
+    if filter_lines:
+        filters_chips_html = (
+            "<div class='filters'>"
+            + "<span class='filter-label'>Filtros activos:</span>"
+            + "".join(f"<span class='chip'>{line}</span>" for line in filter_lines)
+            + "</div>"
+        )
+    else:
+        filters_chips_html = ""
 
     # BUG-056: estilos alineados al DS y al base.html de PDF (DM Sans +
     # JetBrains Mono, paleta var(--chrome|--muted|--border)). El HTML se
@@ -973,12 +1029,18 @@ async def ai_generate_report(
         "pre{padding:10px 12px;overflow-x:auto}"
         "blockquote{margin:10px 0;padding:6px 14px;border-left:3px solid var(--info-border);"
         "background:var(--info-bg);color:var(--info-fg);border-radius:0 6px 6px 0}"
+        ".filters{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}"
+        ".filter-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);"
+        "text-transform:uppercase;letter-spacing:.04em;margin-right:4px}"
+        ".chip{display:inline-block;font-size:11.5px;padding:3px 9px;border-radius:999px;"
+        "background:var(--app);border:1px solid var(--border);color:var(--text-soft)}"
         "@media print{body{background:white;padding:0}main{box-shadow:none;border:none;padding:0}}"
         "</style></head><body><main>"
         "<header>"
         "<span class='tag'>Reporte · IA</span>"
         f"<h1>{project.name}</h1>"
         f"<p class='meta'>Folio {project.folio} · Corte {cut_off.isoformat()} · Generado con IA</p>"
+        f"{filters_chips_html}"
         "</header>"
         f"{body_html}"
         "</main></body></html>"
