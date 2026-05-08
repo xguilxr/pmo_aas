@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import AppError, forbidden, not_found
 from app.db.session import get_db
+from app.models.modules import ChangeRequest, Issue, Lesson, Risk
 from app.models.project import Project
 from app.models.project_artifact import ARTIFACT_TYPES, ProjectArtifact
 from app.models.project_charter import ProjectCharter
@@ -283,3 +284,87 @@ async def download_plan(
         headers["X-Plan-Format-Fallback"] = "xlsx-mpp-not-supported"
 
     return StreamingResponse(BytesIO(data), media_type=mime, headers=headers)
+
+
+@router.get("/{project_id}/raid/export")
+async def export_raid(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-082: Excel RAID con 4 sheets dedicados (Risks/Issues/Lessons/Changes).
+
+    Cada sheet con header bold + fondo, freeze pane y autosize. Sheets vacíos
+    se incluyen igual con header (CA5). Refleja el estado actual de DB —
+    el módulo Documentos (US-106) consume este endpoint en su tab RAIDs.
+    """
+    from io import BytesIO
+    from urllib.parse import quote
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services.raid_export import XLSX_MIME, export_raid_xlsx
+
+    tenant_id = _tenant(cu)
+    project = await _ensure_project(db, project_id, tenant_id)
+
+    risks = (
+        await db.execute(
+            select(Risk)
+            .where(
+                Risk.project_id == str(project_id),
+                Risk.deleted_at.is_(None),
+            )
+            .order_by(Risk.severity.desc().nullslast(), Risk.identified_at.desc().nullslast())
+        )
+    ).scalars().all()
+
+    issues = (
+        await db.execute(
+            select(Issue)
+            .where(
+                Issue.project_id == str(project_id),
+                Issue.deleted_at.is_(None),
+            )
+            .order_by(Issue.priority.desc().nullslast(), Issue.reported_at.desc())
+        )
+    ).scalars().all()
+
+    lessons = (
+        await db.execute(
+            select(Lesson)
+            .where(
+                Lesson.project_id == str(project_id),
+                Lesson.deleted_at.is_(None),
+            )
+            .order_by(Lesson.created_at.desc())
+        )
+    ).scalars().all()
+
+    changes = (
+        await db.execute(
+            select(ChangeRequest)
+            .where(
+                ChangeRequest.project_id == str(project_id),
+                ChangeRequest.deleted_at.is_(None),
+            )
+            .order_by(ChangeRequest.requested_at.desc())
+        )
+    ).scalars().all()
+
+    data = export_raid_xlsx(
+        risks=list(risks),
+        issues=list(issues),
+        lessons=list(lessons),
+        changes=list(changes),
+    )
+
+    safe_name = (project.name or "raid").replace("/", "_")
+    filename = f"RAID - {safe_name}.xlsx"
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="{filename}"; '
+            f"filename*=UTF-8''{quote(filename)}"
+        ),
+    }
+    return StreamingResponse(BytesIO(data), media_type=XLSX_MIME, headers=headers)
