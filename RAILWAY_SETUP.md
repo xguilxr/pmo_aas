@@ -53,11 +53,9 @@ Railway al importar el repo creó un servicio default. Bórralo y crea estos 3 d
 - Settings → **Config file path**: `worker.railway.toml` ← importante
 - Settings → **Watch Paths**: `apps/api/**`
 
-> **US-048 (2026-04-21):** el servicio `worker` corre con sidecar
-> Tailscale. El Dockerfile compartido de `apps/api` instala `tailscaled`
-> y el wrapper `start-worker.sh` (referenciado por `startCommand` en
-> `worker.railway.toml`) arranca el daemon en user-space antes de
-> Celery. Requiere la Shared Variable `TS_AUTHKEY` (ver §4).
+> **BUG-053 (2026-05-08):** el sidecar Tailscale + `OllamaProvider`
+> fueron retirados. El worker corre como un Celery puro contra Groq
+> (modo `platform`) o el provider BYO del tenant.
 
 ### Servicio `web`
 
@@ -89,10 +87,11 @@ Railway al importar el repo creó un servicio default. Bórralo y crea estos 3 d
 | `BCRYPT_ROUNDS` | `12` | |
 | `PYTHON_ENV` | `production` | |
 | `LOG_LEVEL` | `INFO` | |
-| `AI_MODE` | `disabled` | Después cambias a `gemini` o `ollama` |
+| `AI_MODE` | `platform` | `disabled` \| `platform` \| `byo`. Default = `platform` (Groq). |
+| `GROQ_API_KEY` | `gsk_…` | Key de la cuenta Groq de plataforma. En prod además se persiste cifrada en `platform_ai_settings`. |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Modelo default del modo platform. |
+| `AI_SECRETS_FERNET_KEY` | → generar | Fernet key (32 bytes base64) que cifra BYO api_keys + Groq platform key. |
 | `STORAGE_PATH` | `/data/uploads` | Volume mount (post-MVP) |
-| `TS_AUTHKEY` | `tskey-auth-…` | **Solo consumido por el worker** (US-048). Generar en Tailscale admin console con Reusable + Ephemeral + tag `tag:railway-worker`. Rotar cada 90 días — anotar en calendar |
-| `TS_HOSTNAME` | `railway-worker` | Opcional. Default del `start-worker.sh` |
 
 > **Tip:** Railway tiene un botón "Raw Editor" en la pestaña Variables que te deja pegar
 > varios `KEY=value` a la vez. Úsalo para ir rápido.
@@ -201,89 +200,20 @@ Branches recomendadas:
 
 ---
 
-## Servicio `worker` — sidecar Tailscale (US-048)
+## Servicio `worker` — IA cloud (BUG-053)
 
-El worker se une al tailnet privado del owner para consumir el endpoint
-Ollama local de cada tenant (`settings.ai.ollama.base_url =
-http://ollama-host.<tailnet>.ts.net:11434`). Ver runbook:
-[`docs/ai/local-ollama-setup.md`](./docs/ai/local-ollama-setup.md).
+El worker procesa los jobs IA llamando directo a la API HTTP del provider
+del tenant: Groq (modo `platform`) o el BYO configurado por el admin del
+tenant en `/admin/ai`. Ya no requiere sidecar Tailscale ni Ollama local.
 
-### Cómo funciona
+Limpieza pendiente en Railway dashboard al desplegar este branch:
 
-1. El Dockerfile (`apps/api/Dockerfile`) instala el binario de Tailscale
-   con el script oficial + `iptables` + `ca-certificates`.
-2. El `startCommand` del worker apunta a `/app/start-worker.sh`, que:
-   - Arranca `tailscaled --tun=userspace-networking` (Railway no da
-     `/dev/net/tun`, pero user-space networking es suficiente).
-   - Corre `tailscale up --authkey=${TS_AUTHKEY} --hostname=railway-worker
-     --accept-dns=true`.
-   - `exec` a Celery. Si `tailscaled` muere, el container muere también
-     y Railway lo reinicia.
-3. MagicDNS resuelve `ollama-host.<tailnet>.ts.net` dentro del tailnet.
-4. `OllamaProvider.generate()` (US-048) lee
-   `tenants.settings.ai.ollama.{base_url, model, timeout_sec}` y hace el
-   request HTTP directo — sin headers de auth.
-
-### Requisitos previos
-
-1. **Runbook del owner ejecutado**: Ollama + Tailscale en la PC Windows
-   (US-046). La PC aparece como `ollama-host` en
-   <https://login.tailscale.com/admin/machines>.
-2. **ACL con tag `tag:railway-worker`**:
-   <https://login.tailscale.com/admin/acls> → agregar
-   ```json
-   {
-     "tagOwners": {
-       "tag:railway-worker": ["autogroup:admin"]
-     }
-   }
-   ```
-3. **TS_AUTHKEY** generado y pegado en Shared Variables (§4):
-   - Reusable: ON (el worker redeploya varias veces con la misma key).
-   - Ephemeral: ON (el peer se borra del admin al morir el container).
-   - Pre-approved: ON.
-   - Tags: `tag:railway-worker`.
-   - Expiration: 90 días.
-
-### Verificación post-deploy
-
-```
-Railway UI → servicio worker → Deployments → último → Shell
-```
-
-```bash
-# El peer debe aparecer como `ollama-host` con `active`
-tailscale --socket=/tmp/tailscaled.sock status
-
-# Debe devolver "Ollama is running"
-curl http://ollama-host.<tu-tailnet>.ts.net:11434
-
-# Debe devolver 200 con la lista de modelos
-curl http://ollama-host.<tu-tailnet>.ts.net:11434/api/tags
-```
-
-Si los 3 comandos pasan, el worker está listo para procesar minutas
-contra el Ollama local del owner.
-
-### Rotación de TS_AUTHKEY
-
-Cada 90 días (o si se sospecha compromiso):
-
-1. Generar nueva key en Tailscale admin con los mismos flags.
-2. Pegar en Railway → Shared Variables → `TS_AUTHKEY` (sobrescribir).
-3. Railway redeploya el worker automáticamente. En ese momento, el peer
-   ephemeral previo queda colgado en el admin console por un rato (se
-   purga solo).
-4. Revocar la key anterior en Tailscale admin.
-
-### Servicio `api` — NO usa Tailscale
-
-El `api` comparte la misma imagen Docker (por simplicidad) pero su CMD
-default ejecuta `uvicorn` sin llamar `start-worker.sh`. Tailscale queda
-instalado pero inactivo. El botón "Probar conexión" de la UI de admin
-corre desde `api`, por lo que siempre fallará con timeout/unreachable
-contra el tailnet — esto es esperado; la verificación real la hace el
-worker al procesar una minuta.
+- Borrar variables: `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `AI_TIMEOUT_S`,
+  `TS_AUTHKEY`, `TS_HOSTNAME`, `AI_BYO_ENABLED`.
+- Confirmar que `AI_MODE` esté en `platform` (o el modo deseado).
+- Confirmar que `GROQ_API_KEY` y `AI_SECRETS_FERNET_KEY` estén seteadas.
+- Aplicar migración: `alembic upgrade head` (incluye 0053 que migra
+  tenants viejos con `mode in {ollama, gemini, claude}` → `platform`).
 
 ---
 

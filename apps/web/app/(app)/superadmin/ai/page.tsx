@@ -23,16 +23,13 @@ import {
 import { getStoredUser } from "@/lib/auth-storage";
 
 /**
- * US-054 + US-057: config de AI a nivel de plataforma.
+ * Config de AI a nivel de plataforma (US-054, US-057, BUG-053).
  *
- * Desde v1.1 (DEC-017) el superadmin sólo configura Groq como IA base.
- * Los defaults de Ollama/Gemini/Claude fueron retirados: los tenants
- * que necesitan un proveedor propio lo configuran como BYO en
- * /admin/ai y el cascade global legacy queda archivado en env vars
- * únicamente (por si algún entorno de dev lo necesita).
+ * El superadmin configura Groq como IA base. Los tenants que necesitan
+ * un proveedor propio lo configuran como BYO en /admin/ai.
  *
- * Orden de prioridad que el provider aplica:
- *   tenant override (admin) > platform defaults (esta página) > env var
+ * Orden de prioridad: tenant override (admin) > platform defaults (esta
+ * página) > env var.
  */
 export default function SuperadminAIPage() {
   const user = getStoredUser();
@@ -163,10 +160,7 @@ export default function SuperadminAIPage() {
               IA base de la plataforma (Groq)
             </h2>
             <p className="text-[12px] text-[var(--text-tertiary)]">
-              US-057: los tenants que elijan modo "platform" usan esta config.
-              Los defaults de Ollama (US-048) fueron retirados en v1.1 — los
-              tenants con Ollama propio lo configuran como BYO desde
-              <code>/admin/ai</code>.
+              Los tenants que elijan modo "platform" usan esta config.
             </p>
 
             {/* US-057: Groq como IA base de la plataforma */}

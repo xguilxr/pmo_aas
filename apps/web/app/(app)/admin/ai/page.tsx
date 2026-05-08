@@ -241,7 +241,6 @@ export default function TenantAdminAIPage() {
       {wizardProvider ? (
         <BYOConnectWizard
           provider={wizardProvider}
-          byoEnabled={data.byo_enabled}
           onClose={() => setWizardProvider(null)}
           onConnected={() => {
             setWizardProvider(null);
@@ -319,22 +318,11 @@ function BYOSection({
         <h2 className="text-sm font-semibold text-[var(--color-primary)]">
           Conectar tu proveedor
         </h2>
-        {!data.byo_enabled ? (
-          <Badge variant="warning">Próximamente</Badge>
-        ) : null}
       </div>
-      {!data.byo_enabled ? (
-        <p className="text-[12px] text-[var(--color-tertiary)]">
-          Estamos puliendo el asistente de conexión. El owner habilitará
-          esta opción pronto — mientras tanto puedes usar{" "}
-          <strong>IA de la plataforma (Groq)</strong>.
-        </p>
-      ) : (
-        <p className="text-[12px] text-[var(--color-tertiary)]">
-          Elige tu proveedor favorito. Te abriremos un asistente para pegar
-          la API key y probar la conexión.
-        </p>
-      )}
+      <p className="text-[12px] text-[var(--color-tertiary)]">
+        Elige tu proveedor favorito. Te abriremos un asistente para pegar
+        la API key y probar la conexión.
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {data.byo_catalog.map((p) => (
@@ -342,13 +330,13 @@ function BYOSection({
             key={p.key}
             info={p}
             connected={data.byo?.provider === p.key && data.byo.has_api_key}
-            disabled={!data.byo_enabled}
+            disabled={false}
             onClick={() => onOpenWizard(p)}
           />
         ))}
       </div>
 
-      {data.byo && data.byo_enabled ? (
+      {data.byo ? (
         <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3 text-[12px]">
           <div className="font-medium text-[var(--color-primary)]">
             Conexión activa
@@ -424,20 +412,15 @@ function ProviderCard({
 
 function BYOConnectWizard({
   provider,
-  byoEnabled,
   onClose,
   onConnected,
 }: {
   provider: BYOProviderInfo;
-  byoEnabled: boolean;
   onClose: () => void;
   onConnected: () => void;
 }) {
-  // Si el flag está off, mostramos "preview" (sólo info + cerrar) y
-  // ocultamos los demás pasos. Cuando está on, el wizard inicia en
-  // "intro".
-  type Step = "preview" | "intro" | "key" | "test" | "save";
-  const [step, setStep] = useState<Step>(byoEnabled ? "intro" : "preview");
+  type Step = "intro" | "key" | "test" | "save";
+  const [step, setStep] = useState<Step>("intro");
 
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(provider.suggested_models[0] ?? "");
@@ -504,9 +487,7 @@ function BYOConnectWizard({
       onClose={onClose}
       title={`Conectar ${provider.label}`}
     >
-      {!byoEnabled ? (
-        <WizardPreview info={provider} onClose={onClose} />
-      ) : step === "intro" ? (
+      {step === "intro" ? (
         <WizardIntro
           info={provider}
           onBack={onClose}
@@ -544,32 +525,6 @@ function BYOConnectWizard({
         />
       )}
     </Modal>
-  );
-}
-
-function WizardPreview({
-  info,
-  onClose,
-}: {
-  info: BYOProviderInfo;
-  onClose: () => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <Banner variant="info">
-        Este flujo aún no está habilitado. Estamos puliendo el asistente de
-        conexión; el owner te avisará cuando se active.
-      </Banner>
-      <p className="text-[13px] text-[var(--color-secondary)]">
-        {info.description}
-      </p>
-      <DeepLinks info={info} />
-      <div className="flex justify-end">
-        <Button variant="ghost" onClick={onClose}>
-          Cerrar
-        </Button>
-      </div>
-    </div>
   );
 }
 

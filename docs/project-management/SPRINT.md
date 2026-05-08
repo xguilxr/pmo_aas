@@ -9,6 +9,12 @@
 ## 🔴 IN-PROGRESS
 
 ```
+Sprint 17 (v1.16) — Bloque 0 ENTREGADO 2026-05-08 (pendiente verif. owner):
+  BUG-053 #254 — cleanup Ollama + cablear Groq como default
+  Branch sesión: claude/setup-ai-module-8HYs1
+```
+
+```
 Sprint 12 (v1.10/v1.11) — Bloques 1+2+3 ENTREGADOS 2026-05-06
   + reworks 2026-05-06 (US-094 #228 / US-095 #229) en branch
     claude/fix-issues-plan-sprints-2psWS — pendiente verif. owner.
@@ -198,9 +204,10 @@ Branch: `claude/sprint-16-reportes-redesign`
 ## ⏳ Sprint 17 (v1.16) — IA conversacional global (PLANEADO 2026-05-06)
 Branch: `claude/sprint-17-ai-global`
 
-### Bloque 0 (gate pre-arranque)
-- [ ] BUG-053 #254 — Cleanup residuos Ollama + cablear Groq (default) + BYO whitelist
+### Bloque 0 (gate pre-arranque) ✅ ENTREGADO 2026-05-08
+- [x] BUG-053 #254 — Cleanup residuos Ollama + cablear Groq (default) + BYO whitelist — `d6947d3`
   - **Decisión owner 2026-05-06:** provider de planta = **Groq**. BYO whitelist = `gemini, openai, anthropic, perplexity`. Ollama y cualquier otro provider → eliminar de UI / código / env.
+  - **Migración Alembic 0053** agregada (migra tenants legacy → `platform`, drop columnas `ollama_base_url`/`ollama_model`/`ai_timeout_sec` de `platform_ai_settings`).
 
 ### Bloque 1 (post-cleanup)
 - [ ] US-102 #255 — Side-panel chat IA en cada página (Ctrl+K + botón flotante)

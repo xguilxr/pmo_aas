@@ -2,9 +2,6 @@ import { apiFetch } from "@/lib/api";
 
 export type EnvSnapshot = {
   ai_mode: string;
-  ollama_base_url: string;
-  ollama_model: string;
-  ai_timeout_sec: number;
   gemini_configured: boolean;
   claude_configured: boolean;
   groq_configured: boolean;
@@ -12,9 +9,6 @@ export type EnvSnapshot = {
 
 export type PlatformAIDefaultsRead = {
   ai_mode: string | null;
-  ollama_base_url: string | null;
-  ollama_model: string | null;
-  ai_timeout_sec: number | null;
   groq_api_key_mask: string | null;
   groq_configured: boolean;
   groq_model: string | null;
@@ -22,10 +16,7 @@ export type PlatformAIDefaultsRead = {
 };
 
 export type PlatformAIDefaultsPatch = {
-  ai_mode?: "ollama" | "gemini" | "claude" | "disabled" | null;
-  ollama_base_url?: string | null;
-  ollama_model?: string | null;
-  ai_timeout_sec?: number | null;
+  ai_mode?: "disabled" | "platform" | "byo" | null;
   groq_api_key?: string | null;
   groq_model?: string | null;
 };

@@ -73,13 +73,12 @@ Crear en Railway como **Shared Variables** — se copian a todos los servicios a
 | `REFRESH_TOKEN_TTL_SEC` | No | `2592000` | 30 días (default) |
 | `BCRYPT_ROUNDS` | No | `12` | Difficulty de hash. ⚠️ cambiar rompe logins viejos. |
 | `ALLOWED_ORIGINS` | **Sí** | `https://app.pmo-aas.com,https://www.pmo-aas.com` | CORS whitelist. |
-| `AI_MODE` | **Sí** | `ollama` | Prioridad: ollama → gemini → claude → disabled |
-| `OLLAMA_BASE_URL` | **Sí** | `http://ollama-host.<tailnet>.ts.net:11434` | MagicDNS Tailscale (o IP). |
-| `OLLAMA_MODEL` | No | `qwen2.5:7b-instruct-q4_K_M` | Modelo default. |
-| `GEMINI_API_KEY` | **Sí** | `AIza…` | Google AI Studio (2.º fallback). |
-| `GEMINI_MODEL` | No | `gemini-1.5-flash` | (default) |
-| `ANTHROPIC_API_KEY` | **Sí** | `sk-ant-…` | Anthropic (3.º fallback). |
-| `ANTHROPIC_MODEL` | No | `claude-sonnet-4-6` | (default) |
+| `AI_MODE` | **Sí** | `platform` | `disabled` \| `platform` \| `byo` (BUG-053). |
+| `GROQ_API_KEY` | **Sí** | `gsk_…` | Key Groq de plataforma (modo `platform`). |
+| `GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Modelo default Groq. |
+| `AI_SECRETS_FERNET_KEY` | **Sí** | `<fernet 32B>` | Cifra BYO api_keys + Groq platform key. |
+| `GEMINI_API_KEY` | No | `AIza…` | Default env-only (BYO no usa este). |
+| `ANTHROPIC_API_KEY` | No | `sk-ant-…` | Default env-only (BYO no usa este). |
 | `STORAGE_BACKEND` | **Sí** | `s3` (prod) / `local` (dev) | Backend de storage (ver §4). |
 | `S3_*` | **Sí prod** | ver §4 | 5 variables R2/B2 (ver runbook `infra/uploads-storage.md`). |
 | `LOG_LEVEL` | No | `INFO` | debug, info, warning, error. |

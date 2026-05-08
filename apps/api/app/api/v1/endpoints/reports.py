@@ -939,7 +939,6 @@ async def ai_generate_report(
             tenant_ai_mode=tenant_cfg.mode,
             platform_groq_config=platform_groq,
             byo_config=tenant_cfg.byo,
-            tenant_ollama_config=tenant_cfg.legacy_ollama,
             tenant_id=str(tenant_id),
         )
         body_html = (res.text or "").strip()

@@ -1,10 +1,10 @@
-"""Tasks Celery para generación de IA (US-051).
+"""Tasks Celery para generación de IA (US-051, BUG-053).
 
 El endpoint `POST /ai/minutes` y `POST /ai/projects/{id}/reports/draft`
 crean un `AIJob` en estado `queued` y dispatchan estas tasks al
-worker Celery. El worker (que sí tiene sidecar Tailscale — US-048)
-ejecuta la cascada IA, persiste el resultado y marca el job como
-`succeeded` o `failed`. La UI hace polling a `GET /ai/jobs/{id}`.
+worker Celery. El worker enruta al provider del tenant (platform/byo),
+persiste el resultado y marca el job como `succeeded` o `failed`. La
+UI hace polling a `GET /ai/jobs/{id}`.
 
 Las tasks son sincrónicas para Celery pero internamente corren una
 coroutine con `run_async` — así podemos reusar el código async de
@@ -23,11 +23,7 @@ from sqlalchemy import desc, select
 from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
-from app.models.tenant import Tenant
-from app.services.ai.platform_config import (
-    resolve_groq_config,
-    resolve_ollama_config,
-)
+from app.services.ai.platform_config import resolve_groq_config
 from app.services.ai.prompts import MINUTE_SYSTEM, REPORT_SYSTEM
 from app.services.ai.provider import (
     AIResult,
@@ -71,24 +67,6 @@ def _parse_json_strict(s: str) -> dict | None:
             except Exception:
                 return None
         return None
-
-
-async def _tenant_ollama_cfg(db, tenant_id: str) -> dict | None:
-    """US-054: merge tenant override → platform defaults → env.
-
-    Antes (US-048) solo leía `tenants.settings.ai.ollama`; si el tenant no
-    tenía config, devolvía None y el provider caía al env directo.
-    Ahora `resolve_ollama_config()` incluye los defaults editables por
-    superadmin en `platform_ai_settings`, permitiendo a la plataforma
-    tener un modelo "base" sin tocar env vars.
-    """
-    t = (
-        await db.execute(select(Tenant).where(Tenant.id == tenant_id))
-    ).scalar_one_or_none()
-    tenant_cfg = None
-    if t is not None:
-        tenant_cfg = dict(((t.settings or {}).get("ai") or {}).get("ollama") or {})
-    return await resolve_ollama_config(db, tenant_cfg)
 
 
 async def _alert_superadmin_platform_failure(
@@ -144,7 +122,6 @@ async def _call_ai_for_tenant(
     system: str | None,
     tenant_cfg: TenantAIConfig,
     platform_groq_config: dict | None,
-    tenant_ollama_config: dict | None,
     tenant_id: str,
     job_id: str,
 ) -> AIResult:
@@ -160,7 +137,6 @@ async def _call_ai_for_tenant(
                 tenant_ai_mode=tenant_cfg.mode,
                 platform_groq_config=platform_groq_config,
                 byo_config=tenant_cfg.byo,
-                tenant_ollama_config=tenant_ollama_config,
                 tenant_id=tenant_id,
                 job_id=job_id,
             )
@@ -248,12 +224,8 @@ async def _run_minute(
     try:
         async with db_session() as db:
             tenant_cfg = await load_tenant_ai(db, tenant_id)
-            ollama_cfg = await _tenant_ollama_cfg(db, tenant_id)
             platform_groq = await resolve_groq_config(db)
 
-        # US-057: el endpoint ya gateó `disabled`, pero defensivo por si
-        # la task se re-encola con un tenant que fue deshabilitado mientras
-        # tanto.
         if tenant_cfg.mode == "disabled":
             raise RuntimeError("ai_disabled_for_tenant")
 
@@ -273,7 +245,6 @@ async def _run_minute(
                 system=MINUTE_SYSTEM,
                 tenant_cfg=tenant_cfg,
                 platform_groq_config=platform_groq,
-                tenant_ollama_config=ollama_cfg,
                 tenant_id=tenant_id,
                 job_id=job_id,
             )
@@ -388,7 +359,6 @@ async def _run_report(
             }
             project_folio = p.folio
             tenant_cfg = await load_tenant_ai(db, tenant_id)
-            ollama_cfg = await _tenant_ollama_cfg(db, tenant_id)
             platform_groq = await resolve_groq_config(db)
 
         # US-057: reports sólo habilitados en modo `byo`. El endpoint ya
@@ -404,7 +374,6 @@ async def _run_report(
             system=REPORT_SYSTEM,
             tenant_cfg=tenant_cfg,
             platform_groq_config=platform_groq,
-            tenant_ollama_config=ollama_cfg,
             tenant_id=tenant_id,
             job_id=job_id,
         )

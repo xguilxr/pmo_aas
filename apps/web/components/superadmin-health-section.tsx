@@ -81,7 +81,7 @@ export function SuperadminHealthSection() {
         <HealthCard
           title="IA providers"
           status="unknown"
-          hint="Ollama / Gemini / Claude — ping por tenant"
+          hint="Groq / BYO providers — ping por tenant"
         />
         <HealthCard title="Storage" status="unknown" hint="Volume / S3 usage" />
       </div>
