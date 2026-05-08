@@ -2496,11 +2496,17 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
           <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
             Instrucciones adicionales
           </label>
+          {/* ENH-085: aclarar la división filtros vs instrucciones. */}
+          <p className="mb-1.5 text-[11px] text-[var(--color-tertiary)]">
+            Para filtrar por dato (área, severidad, fechas) usa los filtros
+            arriba — la IA los respeta automáticamente. Aquí escribe tono,
+            segmentaciones específicas o exclusiones puntuales.
+          </p>
           <Textarea
             rows={4}
             value={freeNotes}
             onChange={(e) => setFreeNotes(e.target.value)}
-            placeholder="Foco en hitos del Q2; tono ejecutivo; máximo 1 página."
+            placeholder="Tono ejecutivo. Énfasis en hitos del Q2. NO incluyas el presupuesto."
           />
         </div>
         {/* ENH-080: plantillas reusables — guardar config + cargar/borrar. */}
