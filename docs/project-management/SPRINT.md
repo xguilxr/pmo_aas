@@ -215,20 +215,25 @@ Branch sesión: `claude/define-area-roles-tYoXl`
 
 **Decisión owner 2026-05-08:** posterga el chat global. Primero ejecutar Sprints 18-23 (Documentos / RAID / Minutas / Reportes / Cambios / BYO universal). Volver a evaluar necesidad después.
 
+### Pendiente redefinición Áreas/Recursos
+- [ ] US-105 #311 — Import Plan: wizard matching responsables → Actor. Depende del shape final del catálogo Actores que salga de la redefinición. Se queda en `status:triage` hasta entonces.
+- [ ] **Tab Organigrama de US-106** — placeholder UI en Sprint 18; el cableado funcional (lista de recursos asignados al proyecto) depende del mismo paquete.
+
+**Decisión owner 2026-05-08:** la redefinición de Áreas/Recursos es el próximo paquete arquitectónico (sin issue creado todavía). Los items de arriba quedan congelados hasta que ese paquete se planee y entregue.
+
 ---
 
 ## ⏳ Sprint 18 (v1.17) — Documentos & Plan vivo (PLANEADO 2026-05-08)
 Branch reservada: `claude/sprint-18-documentos-plan`
 
-### Bloque 1 (4 issues — orden recomendado)
-- [ ] US-106 #308 — Sistema de Artefactos por proyecto (Charter / Plan / RAID / Organigrama, whitelist)
+### Bloque 1 (3 issues — orden recomendado)
+- [ ] US-106 #308 — Sistema de Artefactos por proyecto (Charter / Plan / RAID / Organigrama, whitelist). **Tab Organigrama queda como placeholder UI** — su contenido funcional depende de la redefinición pendiente Áreas/Recursos.
 - [ ] ENH-081 #309 — Project Charter: auto-creación nuevos + backfill existentes
 - [ ] ENH-080 #310 — Plan vivo: sync DB ↔ archivo maestro preservando formato origen (.mpp/.xlsx/.csv)
-- [ ] US-105 #311 — Import Plan: wizard de matching responsables → Actor (post-import, no bloquea)
 
 **Decisiones:**
 - DB es fuente de verdad del Plan; archivo se regenera on-demand en formato origen.
-- Matching de Actores en imports = wizard posterior, por nombre, manual confirm.
+- Tab Organigrama = placeholder en Sprint 18; cableado real post-redefinición Áreas/Recursos.
 
 **Migraciones Alembic previstas:** 2 — `project_artifacts`, charter backfill.
 
@@ -346,6 +351,7 @@ Branch reservada: `claude/sprint-23-byo-universal`
 
 ## Notas y cambios recientes
 
+- **2026-05-08 (deferral US-105 + tab Organigrama):** owner postergó US-105 (#311) y el cableado funcional del tab Organigrama de US-106 (#308) hasta la redefinición del módulo de Áreas y Recursos (próximo paquete arquitectónico, sin issue aún). US-105 queda en `status:triage` sin versión; Sprint 18 Bloque 1 baja de 4 a 3 issues. Tab Organigrama existe como placeholder UI con empty state. Issues #308 y #311 actualizados con la nota; SPRINT.md y EP018 reflejan el cambio.
 - **2026-05-08 (triage Sprints 18-23):** owner pegó dump de 22 ideas (Documentos/Artefactos, Plan vivo, RAID polish, IA Minutas, Reportes HTML, Cambios approval, BYO universal). Triage produjo 22 issues nuevos (#308-#329), 2 epics nuevos (EP018 Documentos, EP019 Cambios) y 6 sprints planeados (18-23). Decisiones owner: (a) DB es fuente de verdad del Plan; archivo se regenera preservando formato; (b) matching de Actores en imports = wizard posterior, por nombre, no bloquea; (c) BYO universal con OpenAI-compatible + caso especial Copilot M365 vía Azure OpenAI. Sprint 17 Bloque 1 (chat global #255-258) postergado a re-evaluación; label `v1.15` removido. Sprint 16 (Reportes #250-253) ya estaba 100% cerrado v1.14 — archivado a `SPRINT-DONE-HISTORY.md`.
 - **2026-05-07 (Sprint 15 Bloque 1 entregado):** 4 issues entregados en branch `claude/define-area-roles-tYoXl`. 4 commits: `5cd31eb` BUG-054 + `0a7768d` US-103 + `b2bb881` ENH-078 + `db20f0e` ENH-079. **3 migraciones Alembic** (0048+0049+0050) requieren `alembic upgrade head` en Railway api+worker. Op A confirmada por owner: `project_areas` dropeado, catálogo tenant es fuente única. PMO seed global + sync PMO users → Actores. Plan responsable usa Actores; RAID dropdown switch diferido.
 - **2026-05-07 (triage Sprint 15 — Áreas refinement):** owner pidió rediseño completo del módulo Áreas tras Sprint 13. Se crearon 4 issues (#263 US-103, #264 ENH-078, #265 BUG-054, #266 ENH-079) con `status:triage`. Sprint 15 (Reportes) → 16 y Sprint 16 (IA) → 17. Nuevo epic **EP017 (Áreas/Actores)** que referencia EP004 (Admin). Decisiones: líder del área se persiste como Actor con `is_lead=true` (no campos sueltos), creado primero antes del área; US-103 y ENH-078 quedan separados pero entregados en el mismo bloque.

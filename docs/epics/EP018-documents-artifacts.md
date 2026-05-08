@@ -24,12 +24,16 @@ Cerrar el catálogo de documentos vivos por proyecto. Hoy los usuarios pueden su
 - **DEC-Artifacts-whitelist** — Solo los 4 tipos de artefactos definidos pueden vivir en un proyecto. Subidas fuera del whitelist se rechazan en el endpoint.
 - **DEC-Charter-backfill** — Proyectos sin solicitud previa reciben un Charter stub con campos vacíos para que el PM complete; proyectos creados desde solicitud heredan los datos de la solicitud.
 
-## US iniciales
+## US iniciales (Sprint 18)
 
-- **US-105** — Import Plan/Excel: matching wizard a Actor existente o auto-crear (post-import, no bloquea carga).
-- **US-106** — Sistema de Artefactos por proyecto (whitelist + storage + UI tabs Charter/Plan/RAID/Organigrama).
+- **US-106** — Sistema de Artefactos por proyecto (whitelist + storage + UI tabs Charter/Plan/RAID/Organigrama). Tab Organigrama queda como placeholder UI; cableado funcional pendiente de redefinición Áreas/Recursos.
 - **ENH-080** — Plan vivo: sync DB ↔ archivo maestro preservando formato origen.
 - **ENH-081** — Charter: auto-creación al crear proyecto + backfill de existentes.
+
+## US diferidas (post-redefinición Áreas/Recursos)
+
+- **US-105** — Import Plan/Excel: matching wizard a Actor existente o auto-crear (post-import, no bloquea carga). Postergada 2026-05-08: depende del shape final del catálogo Actores que salga de la redefinición pendiente.
+- **US-106 — Tab Organigrama (parte funcional)** — la lista de recursos asignados al proyecto se cablea cuando exista la nueva definición de Áreas/Recursos.
 
 ## Migraciones Alembic previstas
 
