@@ -13,6 +13,11 @@ Sprint 18 (v1.17) — Bloque 1 ENTREGADO 2026-05-08 (3 issues — pendiente veri
   US-106 + ENH-081 + ENH-080. Migraciones 0055 + 0056 agregadas.
   Branch sesión: claude/review-start-next-sprint-R8JWc
 
+Sprint 19 (v1.18) — Bloque 1 PARCIAL ENTREGADO 2026-05-08 (3 de 6, pendiente verif. owner):
+  US-107 + ENH-082 + ENH-083 (backend pesado).
+  Pendiente: ENH-088 + ENH-086 + ENH-087 (UI vistas dedicadas, próxima sesión).
+  Migración 0057 agregada.
+
 Sprint 17 (v1.16) — Bloque 0 MERGED 2026-05-08 (PR #297, BUG-053).
 Sprint 17 (v1.16) — Bloque 0.5 IN-PROGRESS 2026-05-08:
   US-104 #298 — módulo BYO: test-before-save + custom provider + retry
@@ -255,18 +260,22 @@ Branch sesión: `claude/review-start-next-sprint-R8JWc` (rama reservada `claude/
 
 ---
 
-## ⏳ Sprint 19 (v1.18) — RAID polish + vistas dedicadas (PLANEADO 2026-05-08)
-Branch reservada: `claude/sprint-19-raid-polish`
+## ⏳ Sprint 19 (v1.18) — RAID polish + vistas dedicadas — Bloque 1 PARCIAL ENTREGADO 2026-05-08
+Branch sesión: `claude/review-start-next-sprint-R8JWc` (rama reservada `claude/sprint-19-raid-polish` no se usó al continuar la sesión activa).
 
-### Bloque 1 (6 issues — orden recomendado)
-- [ ] ENH-082 #312 — Export RAID Excel "bonito" 4 sheets dedicados con todas las propiedades
-- [ ] US-107 #313 — Riesgo: entidad "Acción de mitigación" linked (multi-responsable, status, fecha)
-- [ ] ENH-083 #314 — Riesgo: render mitigación + lista Acciones inline en ticket
-- [ ] ENH-088 #315 — Preview "tarjeta flotante" sobre página actual (reemplaza side panel) — RAID/Lecciones/Cambios
+### Bloque 1 entregado (3 de 6, backend pesado primero)
+- [x] US-107 #313 — Acciones de mitigación (multi-actor) + migración 0057 — `9d94fc9`
+- [x] ENH-082 #312 — Export RAID Excel 4 sheets — `0c59aaa`
+- [x] ENH-083 #314 — Render mitigación + acciones inline RAID detail — `5eb6b69`
+
+### Bloque 1 pendiente (3 de 6, próxima sesión)
+- [ ] ENH-088 #315 — Preview "tarjeta flotante" sobre página actual (reemplaza side panel)
 - [ ] ENH-086 #316 — Lecciones: página dedicada in-platform (extiende RAID Denso)
 - [ ] ENH-087 #317 — Cambios: página dedicada in-platform (extiende RAID Denso)
 
-**Migración Alembic prevista:** 1 — `risk_actions` + `risk_action_assignees`.
+**Pendiente verificación owner:** cerrar #312-#314 tras smoke test.
+
+**Migración Alembic agregada:** 0057 (`risk_actions` + `risk_action_assignees` con CASCADE desde Risk).
 
 ---
 
@@ -365,6 +374,7 @@ Branch reservada: `claude/sprint-23-byo-universal`
 
 ## Notas y cambios recientes
 
+- **2026-05-08 (Sprint 19 Bloque 1 parcial — 3 de 6):** owner pidió arrancar Sprint 19; se priorizó "backend pesado primero" (US-107 + ENH-082 + ENH-083). 3 commits sobre branch `claude/review-start-next-sprint-R8JWc`: `9d94fc9` US-107 (risk_actions + assignees N:N + endpoints), `0c59aaa` ENH-082 (export RAID 4 sheets con styling), `5eb6b69` ENH-083 (RiskActionsCard inline en raid-detail-page). **1 migración Alembic** (0057) requiere `alembic upgrade head`. Quedan ENH-088 (floating preview), ENH-086 (Lecciones page), ENH-087 (Cambios page) para siguiente sesión — son refactors de UI (raid-detail-page parametrizable + nuevo componente preview).
 - **2026-05-08 (Sprint 18 Bloque 1 entregado):** 3 issues (#308-#310) entregados sobre branch `claude/review-start-next-sprint-R8JWc` en 3 commits separados (`6e2f947` US-106 + `0b43755` ENH-081 + `13f51ed` ENH-080). **2 migraciones Alembic** (0055 `project_artifacts` table + 0056 charter backfill data) requieren `alembic upgrade head` en Railway api+worker. Decisiones owner respetadas: DB es fuente de verdad del Plan, archivo se regenera on-demand; whitelist 4 tipos (charter/plan/raid/organigrama). MPP write fallback a XLSX por limitación MPXJ; tab Organigrama placeholder hasta redefinición Áreas/Recursos.
 - **2026-05-08 (deferral US-105 + tab Organigrama):** owner postergó US-105 (#311) y el cableado funcional del tab Organigrama de US-106 (#308) hasta la redefinición del módulo de Áreas y Recursos (próximo paquete arquitectónico, sin issue aún). US-105 queda en `status:triage` sin versión; Sprint 18 Bloque 1 baja de 4 a 3 issues. Tab Organigrama existe como placeholder UI con empty state. Issues #308 y #311 actualizados con la nota; SPRINT.md y EP018 reflejan el cambio.
 - **2026-05-08 (triage Sprints 18-23):** owner pegó dump de 22 ideas (Documentos/Artefactos, Plan vivo, RAID polish, IA Minutas, Reportes HTML, Cambios approval, BYO universal). Triage produjo 22 issues nuevos (#308-#329), 2 epics nuevos (EP018 Documentos, EP019 Cambios) y 6 sprints planeados (18-23). Decisiones owner: (a) DB es fuente de verdad del Plan; archivo se regenera preservando formato; (b) matching de Actores en imports = wizard posterior, por nombre, no bloquea; (c) BYO universal con OpenAI-compatible + caso especial Copilot M365 vía Azure OpenAI. Sprint 17 Bloque 1 (chat global #255-258) postergado a re-evaluación; label `v1.15` removido. Sprint 16 (Reportes #250-253) ya estaba 100% cerrado v1.14 — archivado a `SPRINT-DONE-HISTORY.md`.

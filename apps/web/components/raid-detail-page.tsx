@@ -33,6 +33,7 @@ import {
 } from "@/lib/api/modules";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { cn } from "@/lib/cn";
+import { RiskActionsCard } from "@/components/risk-actions-card";
 
 /**
  * US-100 — vista detalle item RAID layout "Denso".
@@ -772,6 +773,9 @@ export function RaidDetailPage({
           ) : null}
         </div>
       </section>
+
+      {/* ENH-083: Card Acciones de mitigación (solo en riesgos) */}
+      {isRisk && risk ? <RiskActionsCard riskId={risk.id} /> : null}
 
       {/* Card Proyecto */}
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
