@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { generateMinute, type AIMinutePayload } from "@/lib/api/ai";
+import { createMinute } from "@/lib/api/modules";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
 export default function NewAIMinutePage() {
@@ -28,6 +29,7 @@ export default function NewAIMinutePage() {
   const [result, setResult] = useState<AIMinutePayload | null>(null);
   const [savedMinuteId, setSavedMinuteId] = useState<string | null>(null);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
+  const [savingPreview, setSavingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const polling = useAIJobPolling({
@@ -48,6 +50,28 @@ export default function NewAIMinutePage() {
       setError(job.error || "La generación falló");
     },
   });
+
+  async function savePreview() {
+    if (!result) return;
+    setSavingPreview(true);
+    setError(null);
+    try {
+      const created = await createMinute(id, {
+        title: title.trim() || "Minuta (IA)",
+        meeting_date: new Date().toISOString(),
+        participants: result.participants ?? [],
+        topics: result.topics ?? [],
+        agreements: result.agreements ?? [],
+        generated_by_ai: true,
+      });
+      setSavedMinuteId(created.id);
+      router.replace(`/pmo/projects/${id}/minutes?created=1`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo guardar la minuta");
+    } finally {
+      setSavingPreview(false);
+    }
+  }
 
   async function onFile(file: File) {
     if (file.size > 5 * 1024 * 1024) {
@@ -291,7 +315,7 @@ export default function NewAIMinutePage() {
             </Banner>
           ) : (
             <div className="flex justify-end">
-              <Button onClick={() => handleGenerate(true)} loading={generating}>
+              <Button onClick={savePreview} loading={savingPreview} disabled={generating}>
                 Guardar como minuta
               </Button>
             </div>
