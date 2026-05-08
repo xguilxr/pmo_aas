@@ -66,6 +66,7 @@ import {
   type ScheduledReportCadence,
   type ScheduledReportType,
 } from "@/lib/api/scheduled-reports";
+import { type Area, listAreasByProject } from "@/lib/api/areas";
 import { cn } from "@/lib/cn";
 
 function fmtDate(iso: string | null | undefined): string {
@@ -2074,10 +2075,12 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
   );
 }
 
-// ENH-071: filtros del reporte IA.
+// ENH-071/ENH-084: filtros del reporte IA. ENH-084 agrega `area_ids`
+// (multi-select) — el backend ya lo aceptaba; faltaba en UI.
 type AIReportFilters = {
   date_from: string;
   date_to: string;
+  area_ids: string[];
   criticalities: string[];
   statuses: string[];
   severities: string[];
@@ -2086,6 +2089,7 @@ type AIReportFilters = {
 const EMPTY_FILTERS: AIReportFilters = {
   date_from: "",
   date_to: "",
+  area_ids: [],
   criticalities: [],
   statuses: [],
   severities: [],
@@ -2135,6 +2139,7 @@ function activeFilterCount(f: AIReportFilters): number {
   return (
     (f.date_from ? 1 : 0) +
     (f.date_to ? 1 : 0) +
+    f.area_ids.length +
     f.criticalities.length +
     f.statuses.length +
     f.severities.length
@@ -2215,6 +2220,22 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
 
   const filterCount = activeFilterCount(filters);
 
+  // ENH-084 — listado de áreas del proyecto para el filtro multi-select.
+  const [projectAreas, setProjectAreas] = useState<Area[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    listAreasByProject(projectId)
+      .then((rows) => {
+        if (!cancelled) setProjectAreas(rows);
+      })
+      .catch(() => {
+        /* opcional — si falla, simplemente no mostramos chips de área. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
   // ENH-080 — plantillas reusables del reporte IA.
   const [templates, setTemplates] = useState<AIReportTemplate[]>([]);
   const [templateName, setTemplateName] = useState("");
@@ -2247,6 +2268,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
       ...EMPTY_FILTERS,
       date_from: c.date_from ?? "",
       date_to: c.date_to ?? "",
+      area_ids: c.area_ids ?? [],
       criticalities: c.criticalities ?? [],
       statuses: c.statuses ?? [],
       severities: c.severities ?? [],
@@ -2273,6 +2295,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
           free_notes: freeNotes,
           date_from: filters.date_from || null,
           date_to: filters.date_to || null,
+          area_ids: filters.area_ids.length ? filters.area_ids : null,
           criticalities: filters.criticalities.length ? filters.criticalities : null,
           statuses: filters.statuses.length ? filters.statuses : null,
           severities: filters.severities.length ? filters.severities : null,
@@ -2313,9 +2336,10 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
         include_milestones: includeMilestones,
         free_notes: freeNotes,
         save_to_history: saveToHistory,
-        // ENH-071: filtros enviados al backend.
+        // ENH-071/ENH-084: filtros enviados al backend.
         date_from: filters.date_from || null,
         date_to: filters.date_to || null,
+        area_ids: filters.area_ids.length ? filters.area_ids : null,
         criticalities: filters.criticalities.length ? filters.criticalities : null,
         statuses: filters.statuses.length ? filters.statuses : null,
         severities: filters.severities.length ? filters.severities : null,
@@ -2436,6 +2460,18 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
               />
             </label>
           </div>
+          {/* ENH-084: chip multi-select de áreas del proyecto. */}
+          {projectAreas.length > 0 ? (
+            <FilterChips
+              label="Área"
+              options={projectAreas.map((a) => a.id)}
+              selected={filters.area_ids}
+              onToggle={(v) => toggleArr("area_ids", v)}
+              labelMap={Object.fromEntries(
+                projectAreas.map((a) => [a.id, a.name]),
+              )}
+            />
+          ) : null}
           <FilterChips
             label="Criticidad (tareas)"
             options={CRITICALITY_OPTS}
