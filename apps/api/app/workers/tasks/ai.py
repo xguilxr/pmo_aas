@@ -23,7 +23,6 @@ from sqlalchemy import desc, select
 from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
-from app.models.tenant import Tenant
 from app.services.ai.platform_config import resolve_groq_config
 from app.services.ai.prompts import MINUTE_SYSTEM, REPORT_SYSTEM
 from app.services.ai.provider import (

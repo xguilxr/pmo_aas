@@ -9,10 +9,14 @@ Cleanup post-Ollama:
 5. Si `platform_ai_settings.ai_mode` venía con valor legacy, normalizar
    a `platform`.
 
+Implementado en Python (read-modify-write) porque `tenants.settings` es
+`JSON` (no `jsonb`) — los operadores `jsonb_set`, `#-`, `?` no aplican.
+
 Revision ID: 20260508_0053
 Revises: 20260507_0052
 Create Date: 2026-05-08 00:00:00
 """
+import json
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -25,64 +29,49 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-_LEGACY_MODES = ("ollama", "gemini", "claude")
+_LEGACY_MODES = {"ollama", "gemini", "claude"}
 
 
 def upgrade() -> None:
     bind = op.get_bind()
 
-    # 1+2+3: migrar tenants. Usamos jsonb_set + condicionales en SQL puro
-    # para no levantar el ORM (más seguro en runtime de migración).
-    bind.execute(
-        sa.text(
-            """
-            UPDATE tenants
-            SET settings = jsonb_set(
-                COALESCE(settings, '{}'::jsonb),
-                '{ai,mode}',
-                '"platform"'::jsonb,
-                true
-            )
-            WHERE COALESCE(settings->'ai'->>'mode', '') IN :legacy
-            """
-        ).bindparams(sa.bindparam("legacy", _LEGACY_MODES, expanding=True))
-    )
+    rows = bind.execute(sa.text("SELECT id, settings FROM tenants")).fetchall()
+    for row in rows:
+        tenant_id, raw = row[0], row[1]
+        settings = _coerce_dict(raw)
+        ai = settings.get("ai")
+        if not isinstance(ai, dict):
+            continue
+        changed = False
 
-    # Tenants con BYO provider=ollama → reset a platform (sin BYO).
-    bind.execute(
-        sa.text(
-            """
-            UPDATE tenants
-            SET settings = jsonb_set(
-                settings #- '{ai,byo}',
-                '{ai,mode}',
-                '"platform"'::jsonb,
-                true
-            )
-            WHERE settings->'ai'->'byo'->>'provider' = 'ollama'
-            """
-        )
-    )
+        mode = str(ai.get("mode") or "").lower()
+        if mode in _LEGACY_MODES:
+            ai["mode"] = "platform"
+            changed = True
 
-    # Borrar config legacy `tenants.settings.ai.ollama` (US-048).
-    bind.execute(
-        sa.text(
-            """
-            UPDATE tenants
-            SET settings = settings #- '{ai,ollama}'
-            WHERE settings->'ai' ? 'ollama'
-            """
-        )
-    )
+        byo = ai.get("byo")
+        if isinstance(byo, dict) and str(byo.get("provider") or "").lower() == "ollama":
+            ai["mode"] = "platform"
+            ai["byo"] = None
+            changed = True
+
+        if "ollama" in ai:
+            ai.pop("ollama", None)
+            changed = True
+
+        if changed:
+            settings["ai"] = ai
+            bind.execute(
+                sa.text("UPDATE tenants SET settings = CAST(:s AS json) WHERE id = :id"),
+                {"s": json.dumps(settings), "id": tenant_id},
+            )
 
     # 5: normalizar platform_ai_settings.ai_mode si venía legacy.
     bind.execute(
         sa.text(
-            """
-            UPDATE platform_ai_settings
-            SET ai_mode = 'platform'
-            WHERE ai_mode IN ('ollama', 'gemini', 'claude')
-            """
+            "UPDATE platform_ai_settings "
+            "SET ai_mode = 'platform' "
+            "WHERE ai_mode IN ('ollama', 'gemini', 'claude')"
         )
     )
 
@@ -107,3 +96,17 @@ def downgrade() -> None:
     )
     # Los tenants migrados a `platform` no se revierten — no preservamos
     # el modo viejo, así que el downgrade es lossy by design.
+
+
+def _coerce_dict(raw):
+    """tenants.settings se materializa como dict (psycopg) o str (sqlite)."""
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        return dict(raw)
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw) or {}
+        except Exception:
+            return {}
+    return {}
