@@ -26,11 +26,7 @@ Sprint 15-17 — PLANEADOS (status:triage):
   Sprint 16 (v1.15) — Reportes (4 issues)
   Sprint 17 (v1.16) — IA conversacional global (5 issues)
 
-Sprint 18 (v1.17) — PROPUESTO 2026-05-08 (status:triage):
-  AI ops — US-104 #294 botón "Probar conexión" BYO (sin api_key).
-  Origen: BUG-058 evidenció misconfig (provider=openai, base_url=Tailscale Ollama).
-
-Próximo libre: US-105, BUG-059, ENH-086.
+Próximo libre: US-104, BUG-055, ENH-080.
 ```
 
 ---
