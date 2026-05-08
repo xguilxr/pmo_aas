@@ -1,41 +1,81 @@
 "use client";
 
-import { useParams } from "next/navigation";
+/**
+ * Módulo Documentos por proyecto (US-106 / EP018) — 4 tabs fijos:
+ * Project Charter, Plan, RAIDs, Organigrama.
+ *
+ * Este es el único módulo Documentos visible en la nav del proyecto.
+ * Los archivos sueltos del MVP previo viven en /documents/legacy (mismo
+ * endpoint backend, fuera del whitelist de Artefactos).
+ */
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ExternalLink, FileText, Upload } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { ModuleShell } from "@/components/module-shell";
-import { ApiError, apiBase } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
-  DOC_CATEGORY_LABEL,
-  createDocument,
-  listDocuments,
-  openDocumentForDownload,
-  type DocumentCategory,
-  type ProjectDocument,
-} from "@/lib/api/modules";
+  Download,
+  ExternalLink,
+  FileText,
+  Layers,
+  ListTree,
+  Network,
+  Pencil,
+  ShieldAlert,
+} from "lucide-react";
 
-function guessMime(name: string): string {
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  const map: Record<string, string> = {
-    pdf: "application/pdf",
-    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    csv: "text/csv",
-  };
-  return map[ext] ?? "application/octet-stream";
-}
+import { Button } from "@/components/ui/button";
+import { ApiError, apiBase, apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
+
+type ArtifactType = "charter" | "plan" | "raid" | "organigrama";
+
+type ArtifactMeta = {
+  type: ArtifactType;
+  available: boolean;
+  source_format: string | null;
+  filename: string | null;
+  size_bytes: number | null;
+  download_url: string | null;
+  edit_url: string | null;
+  placeholder: boolean;
+  placeholder_reason: string | null;
+};
+
+type ArtifactList = {
+  project_id: string;
+  items: ArtifactMeta[];
+};
+
+const TAB_DEFS: Array<{
+  key: ArtifactType;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+}> = [
+  {
+    key: "charter",
+    label: "Project Charter",
+    icon: <FileText className="h-4 w-4" aria-hidden />,
+    description: "Documento fundacional del proyecto (auto-creado).",
+  },
+  {
+    key: "plan",
+    label: "Plan",
+    icon: <ListTree className="h-4 w-4" aria-hidden />,
+    description: "Archivo vivo del plan; DB es la fuente de verdad.",
+  },
+  {
+    key: "raid",
+    label: "RAIDs",
+    icon: <ShieldAlert className="h-4 w-4" aria-hidden />,
+    description: "Risks · Issues · Lessons · Changes (export Excel).",
+  },
+  {
+    key: "organigrama",
+    label: "Organigrama",
+    icon: <Network className="h-4 w-4" aria-hidden />,
+    description: "Recursos asignados al proyecto.",
+  },
+];
 
 function formatSize(bytes: number | null): string {
   if (!bytes) return "—";
@@ -44,32 +84,44 @@ function formatSize(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export default function DocumentsPage() {
+async function downloadAuthed(path: string, fallbackName: string) {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { Accept: "application/octet-stream" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "GET",
+    headers,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new ApiError(res.status, "DOWNLOAD_FAILED", `Descarga falló (HTTP ${res.status})`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export default function DocumentosPage() {
   const { id } = useParams<{ id: string }>();
-  const [rows, setRows] = useState<ProjectDocument[]>([]);
+  const [data, setData] = useState<ArtifactList | null>(null);
+  const [active, setActive] = useState<ArtifactType>("charter");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<{
-    title: string;
-    description: string;
-    category: DocumentCategory;
-    file?: File;
-  }>({
-    title: "",
-    description: "",
-    category: "other",
-  });
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      setRows(await listDocuments(id));
+      setData(await apiFetch<ArtifactList>(`/api/v1/projects/${id}/artifacts`));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudieron cargar los documentos");
+      setError(err instanceof ApiError ? err.message : "No se pudieron cargar los artefactos");
     } finally {
       setLoading(false);
     }
@@ -80,255 +132,190 @@ export default function DocumentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function submit() {
-    if (!form.file || !form.title.trim()) return;
-    // BUG-040: límite de 1 MB en cliente para feedback inmediato. El
-    // backend lo vuelve a validar.
-    const MAX_BYTES = 1 * 1024 * 1024;
-    if (form.file.size > MAX_BYTES) {
-      setError(
-        "El documento excede 1 MB. Reduce el tamaño o usa el campo de descripción para enlaces externos.",
-      );
-      return;
-    }
-    setSubmitting(true);
+  const itemsByType = useMemo(() => {
+    const map = new Map<ArtifactType, ArtifactMeta>();
+    data?.items.forEach((it) => map.set(it.type, it));
+    return map;
+  }, [data]);
+
+  const current = itemsByType.get(active);
+
+  async function handleDownload(meta: ArtifactMeta) {
+    if (!meta.download_url) return;
+    setBusy(true);
     setError(null);
     try {
-      const params = new URLSearchParams({
-        title: form.title,
-        description: form.description || "",
-        category: form.category,
-      });
-      const formData = new FormData();
-      formData.append("file", form.file);
-
-      // BUG-029: usar apiBase() + Authorization header (el fetch nativo
-      // ignoraba el JWT y el backend respondía 401 → el frontend mostraba
-      // el mensaje genérico "No se pudo subir el documento").
-      const token = getAccessToken();
-      const headers: Record<string, string> = { Accept: "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const response = await fetch(
-        `${apiBase()}/api/v1/projects/${id}/documents/upload?${params}`,
-        {
-          method: "POST",
-          body: formData,
-          headers,
-          credentials: "include",
-        },
-      );
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({} as Record<string, unknown>));
-        // FastAPI serializa el error con shape `{detail: "..."}` o
-        // `{detail: {code, message, fields}}`. Capturamos el texto
-        // más descriptivo disponible en vez del fallback genérico.
-        const detail = errorData.detail as unknown;
-        const message =
-          typeof detail === "string"
-            ? detail
-            : typeof detail === "object" && detail !== null
-              ? String(
-                  (detail as Record<string, unknown>).message ??
-                    JSON.stringify(detail),
-                )
-              : `Upload falló (HTTP ${response.status})`;
-        throw new ApiError(response.status, "upload_failed", message);
-      }
-      setForm({ title: "", description: "", category: "other" });
-      setOpen(false);
-      await load();
+      const ext = meta.source_format || "bin";
+      await downloadAuthed(meta.download_url, `${active}-${id}.${ext}`);
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "No se pudo registrar el documento",
-      );
+      setError(err instanceof ApiError ? err.message : "No se pudo descargar el artefacto");
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   }
 
   return (
-    <ModuleShell<ProjectDocument>
-      projectId={id}
-      title="Documentos"
-      subtitle="Documentación del proyecto con control de versiones."
-      icon={<FileText className="h-5 w-5" aria-hidden />}
-      records={rows}
-      loading={loading}
-      error={error}
-      newButtonLabel="Registrar documento"
-      newModalTitle="Registrar documento"
-      newModalOpen={open}
-      setNewModalOpen={setOpen}
-      newModalForm={() => (
-        <div className="space-y-3">
-          <Field label="Título">
-            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          </Field>
-          <Field label="Descripción">
-            <Textarea
-              rows={2}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
-          </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Categoría">
-              <Select
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value as DocumentCategory })}
-              >
-                {(Object.keys(DOC_CATEGORY_LABEL) as DocumentCategory[]).map((c) => (
-                  <option key={c} value={c}>
-                    {DOC_CATEGORY_LABEL[c]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <Field label="Archivo">
-            <div className="flex items-center gap-3">
-              <label className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-subtle)]">
-                <Upload className="h-4 w-4" aria-hidden />
-                {form.file ? "Cambiar archivo" : "Seleccionar archivo…"}
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv"
-                  onChange={(e) =>
-                    setForm({ ...form, file: e.target.files?.[0] })
-                  }
-                  className="sr-only"
-                />
-              </label>
-              {form.file ? (
-                <span className="truncate text-sm text-[var(--color-secondary)]">
-                  {form.file.name}
-                  <span className="ml-2 text-xs text-[var(--color-tertiary)]">
-                    ({Math.round((form.file.size / 1024) * 10) / 10} KB)
-                  </span>
-                </span>
-              ) : (
-                <span className="text-sm text-[var(--color-tertiary)]">
-                  PDF, XLSX, DOCX, PPTX, PNG, JPG o CSV · máx. 1 MB
-                </span>
-              )}
-            </div>
-          </Field>
+    <div className="space-y-4 p-6">
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <Layers className="h-5 w-5" aria-hidden />
+            Documentos
+          </h1>
+          <p className="text-sm text-[var(--color-secondary)]">
+            Catálogo curado de artefactos vivos del proyecto.
+          </p>
         </div>
-      )}
-      newModalFooter={(close) => (
-        <>
-          <Button variant="secondary" onClick={close} disabled={submitting}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={submit}
-            loading={submitting}
-            disabled={!form.title.trim() || !form.file}
-          >
-            Subir
-          </Button>
-        </>
-      )}
-      columns={[
-        {
-          key: "title",
-          label: "Documento",
-          render: (r) => (
-            <div>
-              <p className="font-medium">{r.title}</p>
-              {r.description ? (
-                <p className="text-[11px] text-[var(--text-tertiary)]">{r.description}</p>
-              ) : null}
-            </div>
-          ),
-        },
-        {
-          key: "category",
-          label: "Categoría",
-          render: (r) =>
-            r.category ? <Badge>{DOC_CATEGORY_LABEL[r.category]}</Badge> : <span>—</span>,
-        },
-        {
-          key: "version",
-          label: "Versión",
-          render: (r) => (
-            <span className="tabular-nums text-[var(--text-secondary)]">v{r.version}</span>
-          ),
-        },
-        {
-          key: "size",
-          label: "Tamaño",
-          render: (r) => <span className="tabular-nums">{formatSize(r.size_bytes)}</span>,
-        },
-        {
-          key: "link",
-          label: "",
-          render: (r) => {
-            // BUG-028: el charter siempre ofrece "Editar" además del
-            // "Abrir" (ir al editor en vez de sólo descargar el .docx).
-            const isCharter = r.category === "charter";
-            const parts: React.ReactNode[] = [];
-            if (r.file_url) {
-              // BUG-034: usa /download-url (presigned R2 si está
-              // disponible, fallback a fetch+blob para backend local).
-              // El <a href> plain anterior daba 404/401 porque no
-              // mandaba Authorization: Bearer.
-              parts.push(
-                <button
-                  key="open"
-                  type="button"
-                  className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void openDocumentForDownload(r.id);
-                  }}
-                >
-                  Abrir <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                </button>,
-              );
-            }
-            if (isCharter) {
-              parts.push(
-                <Link
-                  key="edit"
-                  href={`/pmo/projects/${id}/charter`}
-                  className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Editar <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                </Link>,
-              );
-            }
-            if (parts.length === 0) {
-              return (
-                <span
-                  className="text-[12px] italic text-[var(--color-tertiary)]"
-                  title="Este documento no tiene archivo adjunto. Sube un archivo para poder abrirlo."
-                >
-                  Sin archivo
+        <Link
+          href={`/pmo/projects/${id}/documents/legacy`}
+          className="text-xs text-[var(--color-tertiary)] underline-offset-2 hover:underline"
+        >
+          Ver archivos legacy →
+        </Link>
+      </header>
+
+      <div className="flex flex-wrap gap-1 border-b border-[var(--border)]">
+        {TAB_DEFS.map((tab) => {
+          const meta = itemsByType.get(tab.key);
+          const isActive = active === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActive(tab.key)}
+              className={
+                "flex items-center gap-2 border-b-2 px-3 py-2 text-sm transition-colors " +
+                (isActive
+                  ? "border-[var(--color-primary)] text-[var(--color-primary)]"
+                  : "border-transparent text-[var(--color-secondary)] hover:text-[var(--color-primary)]")
+              }
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+              {meta?.placeholder ? (
+                <span className="rounded bg-[var(--color-warning-soft,#fef3c7)] px-1 py-0.5 text-[10px] uppercase text-[var(--color-warning,#92400e)]">
+                  Pendiente
                 </span>
-              );
-            }
-            return <div className="flex items-center gap-3">{parts}</div>;
-          },
-        },
-      ]}
-    />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {loading ? (
+        <div className="text-sm text-[var(--color-tertiary)]">Cargando…</div>
+      ) : error ? (
+        <div className="rounded border border-[var(--color-danger,#dc2626)] bg-[var(--color-danger-soft,#fee2e2)] px-3 py-2 text-sm text-[var(--color-danger,#dc2626)]">
+          {error}
+        </div>
+      ) : current ? (
+        <ArtifactPanel
+          projectId={id}
+          meta={current}
+          busy={busy}
+          onDownload={handleDownload}
+        />
+      ) : null}
+    </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function ArtifactPanel({
+  projectId,
+  meta,
+  busy,
+  onDownload,
+}: {
+  projectId: string;
+  meta: ArtifactMeta;
+  busy: boolean;
+  onDownload: (m: ArtifactMeta) => void;
+}) {
+  if (meta.placeholder) {
+    return (
+      <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <Network className="h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
+          <h3 className="text-base font-medium">Organigrama del proyecto</h3>
+          <p className="max-w-md text-sm text-[var(--color-secondary)]">
+            {meta.placeholder_reason ??
+              "Pendiente de redefinición Áreas/Recursos."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const detail = TAB_DEFS.find((t) => t.key === meta.type);
+
   return (
-    <label className="block">
-      <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">{label}</span>
-      {children}
-    </label>
+    <div className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <div>
+        <h2 className="flex items-center gap-2 text-base font-medium">
+          {detail?.icon}
+          {detail?.label}
+        </h2>
+        <p className="text-sm text-[var(--color-secondary)]">{detail?.description}</p>
+      </div>
+
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-[var(--color-tertiary)]">Estado</dt>
+          <dd>{meta.available ? "Disponible" : "Sin generar"}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--color-tertiary)]">Formato</dt>
+          <dd>{meta.source_format ?? "—"}</dd>
+        </div>
+        {meta.filename ? (
+          <div>
+            <dt className="text-[var(--color-tertiary)]">Archivo</dt>
+            <dd className="truncate">{meta.filename}</dd>
+          </div>
+        ) : null}
+        {meta.size_bytes ? (
+          <div>
+            <dt className="text-[var(--color-tertiary)]">Tamaño</dt>
+            <dd>{formatSize(meta.size_bytes)}</dd>
+          </div>
+        ) : null}
+      </dl>
+
+      <div className="flex flex-wrap gap-2">
+        {meta.download_url ? (
+          <Button onClick={() => onDownload(meta)} loading={busy}>
+            <Download className="h-4 w-4" aria-hidden /> Descargar
+          </Button>
+        ) : null}
+        {meta.type === "charter" ? (
+          <Link href={`/pmo/projects/${projectId}/charter`}>
+            <Button variant="secondary">
+              <Pencil className="h-4 w-4" aria-hidden /> Editar Charter
+            </Button>
+          </Link>
+        ) : null}
+        {meta.type === "plan" ? (
+          <Link href={`/pmo/projects/${projectId}/plan`}>
+            <Button variant="secondary">
+              <ExternalLink className="h-4 w-4" aria-hidden /> Abrir Plan
+            </Button>
+          </Link>
+        ) : null}
+        {meta.type === "raid" ? (
+          <Link href={`/pmo/projects/${projectId}/raid`}>
+            <Button variant="secondary">
+              <ExternalLink className="h-4 w-4" aria-hidden /> Abrir RAID
+            </Button>
+          </Link>
+        ) : null}
+      </div>
+
+      {meta.type === "plan" && !meta.available ? (
+        <p className="text-xs text-[var(--color-tertiary)]">
+          Aún no hay archivo de Plan importado. La descarga genera la plantilla XLSX
+          a partir de las tareas actuales en DB.
+        </p>
+      ) : null}
+    </div>
   );
 }

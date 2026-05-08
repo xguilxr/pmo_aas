@@ -9,6 +9,10 @@
 ## 🔴 IN-PROGRESS
 
 ```
+Sprint 18 (v1.17) — Bloque 1 ENTREGADO 2026-05-08 (3 issues — pendiente verif. owner):
+  US-106 + ENH-081 + ENH-080. Migraciones 0055 + 0056 agregadas.
+  Branch sesión: claude/review-start-next-sprint-R8JWc
+
 Sprint 17 (v1.16) — Bloque 0 MERGED 2026-05-08 (PR #297, BUG-053).
 Sprint 17 (v1.16) — Bloque 0.5 IN-PROGRESS 2026-05-08:
   US-104 #298 — módulo BYO: test-before-save + custom provider + retry
@@ -16,8 +20,7 @@ Sprint 17 (v1.16) — Bloque 0.5 IN-PROGRESS 2026-05-08:
 
 Sprint 17 Bloque 1 (chat global #255-258) → POSTERGADO (ver sección Deferred).
 
-Sprints 18-23 PLANEADOS 2026-05-08 (status:triage) — 22 issues + 2 epics nuevos:
-  Sprint 18 (v1.17) — Documentos & Plan vivo (4 issues, 2 migraciones)
+Sprints 19-23 PLANEADOS 2026-05-08 (status:triage):
   Sprint 19 (v1.18) — RAID polish + vistas dedicadas (6 issues, 1 migración)
   Sprint 20 (v1.19) — IA Minutas (5 issues)
   Sprint 21 (v1.20) — Reportes redesign HTML (4 issues, 1 migración)
@@ -223,13 +226,24 @@ Branch sesión: `claude/define-area-roles-tYoXl`
 
 ---
 
-## ⏳ Sprint 18 (v1.17) — Documentos & Plan vivo (PLANEADO 2026-05-08)
-Branch reservada: `claude/sprint-18-documentos-plan`
+## ⏳ Sprint 18 (v1.17) — Documentos & Plan vivo — Bloque 1 ENTREGADO 2026-05-08
+Branch sesión: `claude/review-start-next-sprint-R8JWc` (rama reservada `claude/sprint-18-documentos-plan` no se usó al ya estar la sesión activa).
 
-### Bloque 1 (3 issues — orden recomendado)
-- [ ] US-106 #308 — Sistema de Artefactos por proyecto (Charter / Plan / RAID / Organigrama, whitelist). **Tab Organigrama queda como placeholder UI** — su contenido funcional depende de la redefinición pendiente Áreas/Recursos.
-- [ ] ENH-081 #309 — Project Charter: auto-creación nuevos + backfill existentes
-- [ ] ENH-080 #310 — Plan vivo: sync DB ↔ archivo maestro preservando formato origen (.mpp/.xlsx/.csv)
+### Bloque 1 (3 issues, commits separados)
+- [x] US-106 #308 — Sistema de Artefactos por proyecto (Charter / Plan / RAID / Organigrama, whitelist) — `6e2f947`
+- [x] ENH-081 #309 — Charter auto-creación + backfill + completeness banner — `0b43755`
+- [x] ENH-080 #310 — Plan vivo: regeneradores xlsx/csv + fallback mpp — `13f51ed`
+
+**Pendiente verificación owner:** cerrar #308-#310 tras smoke test.
+
+**Migraciones Alembic agregadas:** 0055 (`project_artifacts` table) + 0056 (charter backfill data migration) — requieren `alembic upgrade head` en Railway api+worker.
+
+**Diferidos del bloque (no bloqueantes):**
+- US-106 CA6: permisos PM/admin para reemplazar artifacts — escritura cubierta hoy via endpoints nativos (charter PATCH, tasks/import); el endpoint genérico de upload de artefactos se cablea cuando lo pidan.
+- US-106: subroute `/documents/legacy` (free-form upload) sigue accesible vía link; quitar cuando se migre la data al modelo de artefactos.
+- ENH-080 CA3: roundtrip MPP write requiere MPXJ Pro / subprocess Java — fallback a XLSX devuelve header `X-Plan-Format-Fallback`. Diferido hasta que un usuario reporte el caso de uso real.
+- ENH-080: storage del archivo original (preservar fórmulas/macros .mpp) — no necesario hoy: regen desde DB cumple los CA.
+- ENH-081: lista `CHARTER_REQUIRED_FIELDS` per-tenant — diferido a cuando ≥3 tenants pidan customización.
 
 **Decisiones:**
 - DB es fuente de verdad del Plan; archivo se regenera on-demand en formato origen.
@@ -351,6 +365,7 @@ Branch reservada: `claude/sprint-23-byo-universal`
 
 ## Notas y cambios recientes
 
+- **2026-05-08 (Sprint 18 Bloque 1 entregado):** 3 issues (#308-#310) entregados sobre branch `claude/review-start-next-sprint-R8JWc` en 3 commits separados (`6e2f947` US-106 + `0b43755` ENH-081 + `13f51ed` ENH-080). **2 migraciones Alembic** (0055 `project_artifacts` table + 0056 charter backfill data) requieren `alembic upgrade head` en Railway api+worker. Decisiones owner respetadas: DB es fuente de verdad del Plan, archivo se regenera on-demand; whitelist 4 tipos (charter/plan/raid/organigrama). MPP write fallback a XLSX por limitación MPXJ; tab Organigrama placeholder hasta redefinición Áreas/Recursos.
 - **2026-05-08 (deferral US-105 + tab Organigrama):** owner postergó US-105 (#311) y el cableado funcional del tab Organigrama de US-106 (#308) hasta la redefinición del módulo de Áreas y Recursos (próximo paquete arquitectónico, sin issue aún). US-105 queda en `status:triage` sin versión; Sprint 18 Bloque 1 baja de 4 a 3 issues. Tab Organigrama existe como placeholder UI con empty state. Issues #308 y #311 actualizados con la nota; SPRINT.md y EP018 reflejan el cambio.
 - **2026-05-08 (triage Sprints 18-23):** owner pegó dump de 22 ideas (Documentos/Artefactos, Plan vivo, RAID polish, IA Minutas, Reportes HTML, Cambios approval, BYO universal). Triage produjo 22 issues nuevos (#308-#329), 2 epics nuevos (EP018 Documentos, EP019 Cambios) y 6 sprints planeados (18-23). Decisiones owner: (a) DB es fuente de verdad del Plan; archivo se regenera preservando formato; (b) matching de Actores en imports = wizard posterior, por nombre, no bloquea; (c) BYO universal con OpenAI-compatible + caso especial Copilot M365 vía Azure OpenAI. Sprint 17 Bloque 1 (chat global #255-258) postergado a re-evaluación; label `v1.15` removido. Sprint 16 (Reportes #250-253) ya estaba 100% cerrado v1.14 — archivado a `SPRINT-DONE-HISTORY.md`.
 - **2026-05-07 (Sprint 15 Bloque 1 entregado):** 4 issues entregados en branch `claude/define-area-roles-tYoXl`. 4 commits: `5cd31eb` BUG-054 + `0a7768d` US-103 + `b2bb881` ENH-078 + `db20f0e` ENH-079. **3 migraciones Alembic** (0048+0049+0050) requieren `alembic upgrade head` en Railway api+worker. Op A confirmada por owner: `project_areas` dropeado, catálogo tenant es fuente única. PMO seed global + sync PMO users → Actores. Plan responsable usa Actores; RAID dropdown switch diferido.

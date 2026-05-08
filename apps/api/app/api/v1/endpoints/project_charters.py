@@ -20,6 +20,8 @@ from app.models.organization import BusinessUnit, Department
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
 from app.schemas.project_charter import (
+    CHARTER_REQUIRED_FIELDS,
+    CharterCompleteness,
     CharterSection4,
     ProjectCharterRead,
     ProjectCharterUpdate,
@@ -91,6 +93,26 @@ def _build_section4(project: Project) -> CharterSection4:
     )
 
 
+def _completeness(charter: ProjectCharter) -> CharterCompleteness:
+    """ENH-081 CA3: calcula campos faltantes contra `CHARTER_REQUIRED_FIELDS`.
+
+    Un campo cuenta como "vacío" si es None o un string que tras strip queda
+    en "". Otros tipos (int para priority) solo cuentan vacíos si son None.
+    """
+    missing: list[str] = []
+    for field in CHARTER_REQUIRED_FIELDS:
+        value = getattr(charter, field, None)
+        if value is None:
+            missing.append(field)
+        elif isinstance(value, str) and not value.strip():
+            missing.append(field)
+    return CharterCompleteness(
+        is_complete=not missing,
+        missing_fields=missing,
+        required_fields=list(CHARTER_REQUIRED_FIELDS),
+    )
+
+
 def _read(charter: ProjectCharter, project: Project) -> ProjectCharterRead:
     return ProjectCharterRead(
         id=charter.id,
@@ -117,6 +139,7 @@ def _read(charter: ProjectCharter, project: Project) -> ProjectCharterRead:
         key_people=charter.key_people,
         benefits=charter.benefits,
         section_4=_build_section4(project),
+        completeness=_completeness(charter),
         created_at=charter.created_at,
         updated_at=charter.updated_at,
     )

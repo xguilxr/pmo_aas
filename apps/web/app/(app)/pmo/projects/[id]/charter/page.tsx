@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
+  CHARTER_FIELD_LABEL,
   downloadCharter,
   getProjectCharter,
   updateProjectCharter,
@@ -214,6 +215,18 @@ export default function ProjectCharterEditPage() {
       </header>
 
       {notice ? <Banner variant={notice.kind}>{notice.message}</Banner> : null}
+
+      {charter?.completeness && !charter.completeness.is_complete ? (
+        <Banner variant="warning" title="Charter incompleto">
+          Faltan campos requeridos:{" "}
+          <span className="font-medium">
+            {charter.completeness.missing_fields
+              .map((f) => CHARTER_FIELD_LABEL[f] ?? f)
+              .join(", ")}
+          </span>
+          .
+        </Banner>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Section title="1. Información general">

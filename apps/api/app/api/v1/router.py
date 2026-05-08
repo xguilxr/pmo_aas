@@ -14,6 +14,7 @@ from app.api.v1.endpoints import (
     notifications,
     organizations,
     permission_requests,
+    project_artifacts,
     project_charters,
     project_requests,
     projects,
@@ -42,6 +43,7 @@ api_router.include_router(organizations.departments_router)
 api_router.include_router(project_requests.router)
 api_router.include_router(projects.router)
 api_router.include_router(project_charters.router)
+api_router.include_router(project_artifacts.router)
 api_router.include_router(areas.areas_router)
 api_router.include_router(areas.teams_router)
 api_router.include_router(areas.actors_router)

@@ -47,8 +47,32 @@ export type ProjectCharter = {
 
   section_4: CharterSection4;
 
+  // ENH-081 CA3: lista de campos requeridos calculada server-side.
+  completeness: CharterCompleteness;
+
   created_at: string;
   updated_at: string;
+};
+
+export type CharterCompleteness = {
+  is_complete: boolean;
+  missing_fields: string[];
+  required_fields: string[];
+};
+
+// ENH-081 CA3: labels en español por campo requerido (UI banner).
+export const CHARTER_FIELD_LABEL: Record<string, string> = {
+  project_name: "Nombre",
+  description: "Descripción",
+  sponsor: "Sponsor",
+  objective: "Objetivo",
+  scope: "Alcance",
+  project_type: "Tipo de proyecto",
+  priority: "Prioridad",
+  business_leader: "Líder de negocio",
+  tech_leader: "Líder técnico",
+  benefits: "Beneficios",
+  restrictions: "Restricciones",
 };
 
 // Sólo secciones 1–3 son editables (DEC-008).
