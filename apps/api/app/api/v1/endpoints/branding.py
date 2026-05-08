@@ -29,9 +29,10 @@ router = APIRouter(tags=["branding"])
 
 # ---- helpers ----
 def _tenant_id(cu: CurrentUser) -> UUID:
-    if cu.user.tenant_id is None:
+    # BUG-056: superadmin con joinAsAdmin opera con effective_tenant_id.
+    if cu.effective_tenant_id is None:
         raise forbidden()
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 def _ext_to_mime(path_suffix: str) -> str:
@@ -108,7 +109,7 @@ async def serve_tenant_logo(
     tenant_id: UUID,
     cu: CurrentUser = Depends(get_current_user),
 ):
-    if not cu.is_superadmin and str(cu.user.tenant_id) != str(tenant_id):
+    if not cu.is_superadmin and str(cu.effective_tenant_id) != str(tenant_id):
         raise not_found("Logo")
     path = find_logo_file(str(tenant_id))
     if path is None:
@@ -132,7 +133,7 @@ async def my_tenant_branding(
     Endpoint ligero, auth-only (sin permiso específico), para que el
     topbar pueda consumirlo desde cualquier página del app.
     """
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         return {
             "tenant_id": None,
             "tenant_name": None,
@@ -141,7 +142,7 @@ async def my_tenant_branding(
             "primary_color": None,
         }
     t = (
-        await db.execute(select(Tenant).where(Tenant.id == str(cu.user.tenant_id)))
+        await db.execute(select(Tenant).where(Tenant.id == str(cu.effective_tenant_id)))
     ).scalar_one_or_none()
     if t is None:
         raise not_found("Tenant")

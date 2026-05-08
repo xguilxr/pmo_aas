@@ -23,7 +23,7 @@ router = APIRouter(prefix="/stakeholders", tags=["stakeholders"])
 
 
 def _tenant(cu: CurrentUser) -> UUID:
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 @router.get("", response_model=list[StakeholderRead])

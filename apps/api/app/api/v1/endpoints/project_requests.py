@@ -25,9 +25,9 @@ router = APIRouter(prefix="/project-requests", tags=["project_requests"])
 
 
 def _tenant(cu: CurrentUser) -> UUID:
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         raise forbidden()
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 @router.post("", response_model=ProjectRequestRead, status_code=201)

@@ -28,7 +28,11 @@ import { NotificationBell } from "@/components/notification-bell";
 import { OrgTreeNav } from "@/components/org-tree-nav";
 import { UserMenu } from "@/components/user-menu";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
-import { getStoredUser, type StoredUser } from "@/lib/auth-storage";
+import {
+  getActiveTenantId,
+  getStoredUser,
+  type StoredUser,
+} from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 
 type NavItem = {
@@ -324,15 +328,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   // "leído y es null" para no flashear la navegación equivocada.
   const [user, setUser] = useState<StoredUser | null>(null);
   const [userReady, setUserReady] = useState(false);
+  const [activeTenantId, setActiveTid] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const close = () => setOpen(false);
 
   useEffect(() => {
     setUser(getStoredUser());
+    setActiveTid(getActiveTenantId());
     setUserReady(true);
     function refresh() {
       setUser(getStoredUser());
+      setActiveTid(getActiveTenantId());
     }
     window.addEventListener("storage", refresh);
     window.addEventListener("pmoaas:user-updated", refresh);
@@ -345,12 +352,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   // US-075 (DEC-022): el OrgTreeNav lo ve cualquier usuario del tenant
   // (no solo admin). El menú ADMIN_NAV se restringe a role_type=admin
   // (o superadmin actuando como admin del tenant).
+  // BUG-056: el superadmin que usó "Unirme como admin" guarda
+  // `active_tenant_id` en localStorage — cuando ese flag está presente
+  // se renderiza como admin del tenant para que el nav y los flujos
+  // (dashboard, /admin/*, OrgTreeNav) le aparezcan.
+  const superadminJoinedTenant = Boolean(
+    user?.is_superadmin && activeTenantId,
+  );
   const orgTreeVisible = useMemo(
-    () => Boolean(user && !user.is_superadmin),
-    [user],
+    () =>
+      Boolean(user && (!user.is_superadmin || superadminJoinedTenant)),
+    [user, superadminJoinedTenant],
   );
   const { roleType } = useMyPermissions();
-  const adminVisible = orgTreeVisible && roleType === "admin";
+  const adminVisible =
+    superadminJoinedTenant || (orgTreeVisible && roleType === "admin");
 
   useEffect(() => {
     setExpanded((prev) => {
@@ -406,7 +422,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-2">
-          {userReady && !user?.is_superadmin ? (
+          {userReady && (!user?.is_superadmin || superadminJoinedTenant) ? (
             <NavTree
               items={TOP_NAV}
               pathname={pathname}

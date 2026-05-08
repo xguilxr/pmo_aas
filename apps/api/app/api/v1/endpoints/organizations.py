@@ -48,9 +48,13 @@ router = APIRouter(prefix="/organizations", tags=["organizations"])
 
 
 def _ensure_tenant(cu: CurrentUser) -> UUID:
-    if cu.user.tenant_id is None:
+    # BUG-056: superadmin post `joinAsAdmin` tiene `user.tenant_id=None`
+    # pero un `active_tenant_id` en el JWT — usar ese como tenant
+    # efectivo para que las pantallas /admin/organizations funcionen.
+    tid = cu.effective_tenant_id
+    if tid is None:
         raise forbidden(detail="Acción no disponible para super admin sin tenant activo")
-    return cu.user.tenant_id
+    return tid
 
 
 @router.get("/panels", response_model=list[OrganizationPanel])
