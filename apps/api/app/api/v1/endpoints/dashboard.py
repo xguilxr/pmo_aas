@@ -20,9 +20,9 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 def _tenant(cu: CurrentUser) -> UUID:
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         raise forbidden()
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 async def _count(db: AsyncSession, stmt) -> int:

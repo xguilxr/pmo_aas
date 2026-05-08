@@ -75,8 +75,9 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(User)
-    if not cu.is_superadmin:
-        stmt = stmt.where(User.tenant_id == cu.user.tenant_id)
+    # BUG-055: usar effective_tenant_id (cubre superadmin con joinAsAdmin).
+    if cu.effective_tenant_id is not None:
+        stmt = stmt.where(User.tenant_id == cu.effective_tenant_id)
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(
@@ -110,9 +111,19 @@ async def create_user(
     if not ok:
         raise validation_error("Contraseña no cumple política", {"code": err})
 
-    tenant_id = cu.user.tenant_id
-    if tenant_id is None and not cu.is_superadmin:
-        raise forbidden()
+    # BUG-055: el superadmin que hizo `joinAsAdmin` tiene
+    # `user.tenant_id=None` pero un `active_tenant_id` en el JWT — usar
+    # ese para que el user creado quede ligado al tenant correcto.
+    tenant_id = cu.effective_tenant_id
+    if tenant_id is None:
+        raise forbidden(
+            detail=(
+                "Superadmin debe ingresar al tenant (Unirme como admin) "
+                "antes de crear usuarios."
+            )
+            if cu.is_superadmin
+            else "Acceso denegado",
+        )
 
     username = body.username.strip().lower()
     email = body.email.lower()

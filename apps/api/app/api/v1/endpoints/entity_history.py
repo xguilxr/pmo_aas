@@ -43,13 +43,13 @@ async def list_history(
     ),
     db: AsyncSession = Depends(get_db),
 ) -> list[HistoryEntry]:
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         raise forbidden()
     rows = (
         await db.execute(
             select(AuditLog)
             .where(
-                AuditLog.tenant_id == str(cu.user.tenant_id),
+                AuditLog.tenant_id == str(cu.effective_tenant_id),
                 AuditLog.entity_type == entity_type,
                 AuditLog.entity_id == str(entity_id),
             )

@@ -37,7 +37,7 @@ from app.schemas.area import (
 
 
 def _tenant(cu: CurrentUser) -> UUID:
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 # =============================================================================

@@ -29,9 +29,9 @@ class GenerateMinuteRequest(BaseModel):
 
 
 def _tenant(cu: CurrentUser) -> UUID:
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         raise forbidden()
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 @router.post("/minutes", status_code=202)

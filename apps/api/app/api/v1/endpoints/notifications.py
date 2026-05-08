@@ -26,9 +26,9 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 def _scope(cu: CurrentUser):
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         raise forbidden()
-    return Notification.tenant_id == str(cu.user.tenant_id), Notification.user_id == cu.id
+    return Notification.tenant_id == str(cu.effective_tenant_id), Notification.user_id == cu.id
 
 
 @router.get("", response_model=list[NotificationRead])

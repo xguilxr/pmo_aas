@@ -44,6 +44,20 @@ class CurrentUser:
         return self.user.is_superadmin
 
     @property
+    def effective_tenant_id(self) -> UUID | None:
+        """BUG-055/056 — tenant en el que el request opera realmente.
+
+        Para users normales coincide con `user.tenant_id`. Para
+        superadmin que hizo `joinAsAdmin` el `user.tenant_id` sigue
+        siendo None, pero el JWT trae `active_tenant_id` apuntando al
+        tenant invadido — que es el contexto correcto para crear
+        users, listar orgs, etc.
+        """
+        if self.user.tenant_id is not None:
+            return self.user.tenant_id
+        return self.active_tenant_id
+
+    @property
     def role_type(self) -> str | None:
         """US-059 + US-076 — rol fijo ∈ {admin, user}. viewer eliminado
         por DEC-024 (migración 0028 normaliza cualquier residual a

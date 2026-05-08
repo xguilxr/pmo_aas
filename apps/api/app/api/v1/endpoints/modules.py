@@ -56,9 +56,9 @@ MAX_DOC_SIZE = 25 * 1024 * 1024
 
 
 def _tenant(cu: CurrentUser) -> UUID:
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         raise forbidden()
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 async def _get_project(db: AsyncSession, project_id: UUID, tenant_id: UUID) -> Project:

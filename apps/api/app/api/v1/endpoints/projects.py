@@ -36,9 +36,9 @@ VALID_TRANSITIONS = {
 
 
 def _tenant(cu: CurrentUser) -> UUID:
-    if cu.user.tenant_id is None:
+    if cu.effective_tenant_id is None:
         raise forbidden()
-    return cu.user.tenant_id
+    return cu.effective_tenant_id
 
 
 @router.get("", response_model=list[ProjectRead])
