@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import not_found, validation_error
+from app.core.errors import conflict, not_found, validation_error
 from app.db.session import get_db
 from app.models.area import Actor, Area, AreaAssignment, Team
 from app.schemas.area import (
@@ -449,12 +449,54 @@ async def create_actor(
         ).scalar_one_or_none()
         if parent_team is None:
             raise validation_error("team_id no existe en el tenant")
+
+    # BUG-059: el unique (tenant_id, email) hacía que un POST con un
+    # email ya registrado tirara 500. Para flujos de "carga de recursos
+    # a áreas" reusamos el actor existente: si está soft-deleted lo
+    # revivimos con los nuevos datos; si está activo devolvemos 409 con
+    # `existing_actor_id` para que el frontend ofrezca asignar al
+    # existente en vez de duplicar.
+    if body.email:
+        normalized_email = str(body.email).strip().lower()
+        existing = (
+            await db.execute(
+                select(Actor).where(
+                    Actor.tenant_id == str(tenant_id),
+                    func.lower(Actor.email) == normalized_email,
+                )
+            )
+        ).scalars().first()
+        if existing is not None:
+            if existing.deleted_at is not None:
+                existing.deleted_at = None
+                existing.team_id = (
+                    str(body.team_id) if body.team_id else existing.team_id
+                )
+                existing.area_id = (
+                    str(body.area_id) if body.area_id else existing.area_id
+                )
+                existing.user_id = (
+                    str(body.user_id) if body.user_id else existing.user_id
+                )
+                existing.name = body.name.strip()
+                existing.phone = body.phone
+                existing.is_active = body.is_active
+                existing.is_lead = body.is_lead
+                await db.commit()
+                return ActorRead.model_validate(existing)
+            raise conflict(
+                "Ya existe un actor con ese email en el tenant",
+                code="ACTOR_EMAIL_DUPLICATE",
+                fields={"existing_actor_id": str(existing.id)},
+            )
+
     a = Actor(
         tenant_id=str(tenant_id),
         team_id=str(body.team_id) if body.team_id else None,
+        area_id=str(body.area_id) if body.area_id else None,
         user_id=str(body.user_id) if body.user_id else None,
         name=body.name.strip(),
-        email=str(body.email) if body.email else None,
+        email=str(body.email).strip().lower() if body.email else None,
         phone=body.phone,
         is_active=body.is_active,
         is_lead=body.is_lead,
