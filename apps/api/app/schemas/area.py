@@ -25,6 +25,9 @@ class AreaCreate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     is_active: bool = True
     lead: AreaLeadInput | None = None
+    # BUG-061: si se pasa, el área queda scoped a esa organización.
+    # Si se omite/None, el área es tenant-global.
+    organization_id: UUID | None = None
 
 
 class AreaUpdate(BaseModel):
@@ -32,11 +35,17 @@ class AreaUpdate(BaseModel):
     description: str | None = None
     is_active: bool | None = None
     lead_actor_id: UUID | None = None
+    # BUG-061: permite mover un área entre orgs o convertirla en global
+    # (pasar explícitamente null no se distingue de "no enviar" en
+    # exclude_unset; el endpoint trata `organization_id` con
+    # `model_dump(exclude_unset=True)` para distinguir).
+    organization_id: UUID | None = None
 
 
 class AreaRead(BaseModel):
     id: UUID
     tenant_id: UUID
+    organization_id: UUID | None = None
     name: str
     description: str | None
     lead_actor_id: UUID | None = None
@@ -142,6 +151,7 @@ class TreeTeam(BaseModel):
 
 class TreeArea(BaseModel):
     id: UUID
+    organization_id: UUID | None = None
     name: str
     description: str | None
     lead_actor_id: UUID | None = None

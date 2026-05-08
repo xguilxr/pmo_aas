@@ -117,19 +117,28 @@ export default function AreasAdminPage() {
     targetId: string;
   } | null>(null);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    description: string;
+    lead_name: string;
+    email: string;
+    phone: string;
+    /** BUG-061: scope del área. "" = global; uuid = atada a esa org. */
+    organization_id: string;
+  }>({
     name: "",
     description: "",
     lead_name: "",
     email: "",
     phone: "",
+    organization_id: "",
   });
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getAreasTree(true);
+      const data = await getAreasTree({ includeInactive: true });
       setTree(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al cargar áreas");
@@ -197,12 +206,12 @@ export default function AreasAdminPage() {
   }
 
   function openCreate(node: CreatingNode) {
-    setForm({ name: "", description: "", lead_name: "", email: "", phone: "" });
+    setForm({ name: "", description: "", lead_name: "", email: "", phone: "", organization_id: "" });
     setCreating(node);
   }
 
   function openEditArea(a: TreeArea) {
-    setForm({ name: "", description: "", lead_name: "", email: "", phone: "" });
+    setForm({ name: "", description: "", lead_name: "", email: "", phone: "", organization_id: "" });
     setEditing({
       kind: "area",
       id: a.id,
@@ -285,6 +294,8 @@ export default function AreasAdminPage() {
         await createArea({
           name: form.name.trim(),
           description: form.description.trim() || null,
+          // BUG-061: scope opcional. "" = global; uuid = atada a esa org.
+          organization_id: form.organization_id || null,
           // ENH-078: líder se persiste como Actor con is_lead=true.
           lead: leadName
             ? {
@@ -452,6 +463,11 @@ export default function AreasAdminPage() {
               <AreaNode
                 key={a.id}
                 area={a}
+                orgName={
+                  a.organization_id
+                    ? orgs.find((o) => o.id === a.organization_id)?.name ?? null
+                    : null
+                }
                 expanded={expanded}
                 toggle={toggle}
                 toggleArea={toggleArea}
@@ -531,19 +547,48 @@ export default function AreasAdminPage() {
               />
             </div>
             {creating.kind === "area" ? (
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-                  Líder del área (opcional)
-                </label>
-                <Input
-                  value={form.lead_name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, lead_name: e.target.value }))
-                  }
-                  maxLength={200}
-                  placeholder="Nombre del líder (puede ser un actor sin cuenta)"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                    Alcance del área
+                  </label>
+                  <Select
+                    value={form.organization_id}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        organization_id: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">
+                      Global (visible en todas las organizaciones)
+                    </option>
+                    {orgs.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        Solo en {o.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+                    Áreas con el mismo nombre pueden coexistir en
+                    organizaciones distintas con recursos diferentes.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+                    Líder del área (opcional)
+                  </label>
+                  <Input
+                    value={form.lead_name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, lead_name: e.target.value }))
+                    }
+                    maxLength={200}
+                    placeholder="Nombre del líder (puede ser un actor sin cuenta)"
+                  />
+                </div>
+              </>
             ) : null}
             {creating.kind !== "actor" ? (
               <div>
@@ -898,6 +943,7 @@ function AreaNode({
   onReassign,
 }: {
   area: TreeArea;
+  orgName: string | null;
   expanded: Set<string>;
   toggle: (id: string) => void;
   toggleArea: (id: string) => void;
@@ -932,8 +978,23 @@ function AreaNode({
         </button>
         <Network className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-[var(--color-primary)]">
-            {area.name}
+          <div className="font-medium text-[var(--color-primary)] flex items-center gap-1.5">
+            <span className="truncate">{area.name}</span>
+            <span
+              className={cn(
+                "shrink-0 rounded-[var(--radius-sm)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide",
+                orgName
+                  ? "bg-[var(--color-info-subtle)] text-[var(--color-info-fg)]"
+                  : "bg-[var(--color-success-subtle)] text-[var(--color-success-fg)]",
+              )}
+              title={
+                orgName
+                  ? `Área scoped a la organización ${orgName}`
+                  : "Área tenant-global (visible en todas las organizaciones)"
+              }
+            >
+              {orgName ?? "Global"}
+            </span>
           </div>
           {area.description ? (
             <div className="text-xs text-[var(--color-tertiary)] truncate">

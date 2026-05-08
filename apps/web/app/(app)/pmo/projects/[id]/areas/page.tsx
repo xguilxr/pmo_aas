@@ -75,7 +75,7 @@ export default function ProjectAreasPage() {
     setError(null);
     try {
       const [t, byProj] = await Promise.all([
-        getAreasTree(false),
+        getAreasTree({ includeInactive: false }),
         listAreasByProject(projectId),
       ]);
       setTree(t);

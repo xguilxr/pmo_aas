@@ -4,6 +4,8 @@ import { apiFetch } from "@/lib/api";
 export type Area = {
   id: string;
   tenant_id: string;
+  /** BUG-061: null = área tenant-global; set = área scoped a esa org. */
+  organization_id?: string | null;
   name: string;
   description: string | null;
   /** ENH-078: FK al Actor líder (con is_lead=true). */
@@ -58,6 +60,7 @@ export type TreeTeam = {
 
 export type TreeArea = {
   id: string;
+  organization_id?: string | null;
   name: string;
   description: string | null;
   lead_actor_id?: string | null;
@@ -72,17 +75,37 @@ export type AreaTreeResponse = {
 };
 
 // ---------- Areas ----------
-export function listAreas(params?: { q?: string; is_active?: boolean }): Promise<Area[]> {
+export function listAreas(params?: {
+  q?: string;
+  is_active?: boolean;
+  organization_id?: string | null;
+  include_global?: boolean;
+}): Promise<Area[]> {
   const qs = new URLSearchParams();
   if (params?.q) qs.set("q", params.q);
   if (params?.is_active != null) qs.set("is_active", String(params.is_active));
+  if (params?.organization_id) qs.set("organization_id", params.organization_id);
+  if (params?.include_global != null)
+    qs.set("include_global", String(params.include_global));
   const tail = qs.toString();
   return apiFetch<Area[]>(`/api/v1/areas${tail ? `?${tail}` : ""}`);
 }
 
-export function getAreasTree(includeInactive = false): Promise<AreaTreeResponse> {
+export function getAreasTree(
+  params?: {
+    includeInactive?: boolean;
+    organization_id?: string | null;
+    include_global?: boolean;
+  },
+): Promise<AreaTreeResponse> {
+  const qs = new URLSearchParams();
+  if (params?.includeInactive) qs.set("include_inactive", "true");
+  if (params?.organization_id) qs.set("organization_id", params.organization_id);
+  if (params?.include_global != null)
+    qs.set("include_global", String(params.include_global));
+  const tail = qs.toString();
   return apiFetch<AreaTreeResponse>(
-    `/api/v1/areas/tree${includeInactive ? "?include_inactive=true" : ""}`,
+    `/api/v1/areas/tree${tail ? `?${tail}` : ""}`,
   );
 }
 
@@ -98,6 +121,8 @@ export function createArea(body: {
   description?: string | null;
   is_active?: boolean;
   lead?: AreaLeadInput | null;
+  /** BUG-061: si se omite o null el área queda tenant-global. */
+  organization_id?: string | null;
 }): Promise<Area> {
   return apiFetch<Area>("/api/v1/areas", { method: "POST", body });
 }
@@ -109,6 +134,7 @@ export function updateArea(
     description?: string | null;
     is_active?: boolean;
     lead_actor_id?: string | null;
+    organization_id?: string | null;
   },
 ): Promise<Area> {
   return apiFetch<Area>(`/api/v1/areas/${id}`, { method: "PATCH", body });
