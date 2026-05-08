@@ -22,8 +22,14 @@ from app.db.base import Base, TimestampMixin, new_uuid
 class Area(Base, TimestampMixin):
     __tablename__ = "areas"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "name", name="uq_areas_tenant_name"),
+        # BUG-061: scope opcional por organización. Las áreas globales
+        # (organization_id IS NULL) viven en `uq_areas_tenant_global_name`
+        # (partial unique en migración 0054); las org-scoped en
+        # `uq_areas_tenant_org_name`. Aquí dejamos solo el índice de
+        # lookup — los uniques se manejan a nivel de migración para
+        # diferenciar global vs scoped.
         Index("ix_areas_tenant_active", "tenant_id", "is_active"),
+        Index("ix_areas_tenant_organization", "tenant_id", "organization_id"),
     )
 
     id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
@@ -31,6 +37,14 @@ class Area(Base, TimestampMixin):
         String(36),
         ForeignKey("tenants.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    # BUG-061: nullable = área tenant-global (visible en todas las orgs);
+    # set = área scoped a esa organización. Permite "IT" en Org A e
+    # "IT" en Org B con recursos distintos.
+    organization_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000))

@@ -50,15 +50,28 @@ areas_router = APIRouter(prefix="/areas", tags=["areas"])
 async def list_areas(
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
+    organization_id: UUID | None = Query(default=None),
+    include_global: bool = Query(default=True),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    """BUG-061: cuando `organization_id` se pasa, devuelve áreas de esa
+    organización + (si `include_global=true`) las tenant-globales. Sin
+    `organization_id` se devuelven todas las del tenant."""
     tenant_id = _tenant(cu)
     stmt = select(Area).where(Area.tenant_id == str(tenant_id))
     if is_active is not None:
         stmt = stmt.where(Area.is_active == is_active)
     if q:
         stmt = stmt.where(func.lower(Area.name).like(f"%{q.lower()}%"))
+    if organization_id is not None:
+        if include_global:
+            stmt = stmt.where(
+                (Area.organization_id == str(organization_id))
+                | (Area.organization_id.is_(None))
+            )
+        else:
+            stmt = stmt.where(Area.organization_id == str(organization_id))
     rows = (await db.execute(stmt.order_by(Area.name))).scalars().all()
     return [AreaRead.model_validate(r) for r in rows]
 
@@ -75,13 +88,37 @@ async def create_area(
     """
     tenant_id = _tenant(cu)
     name = body.name.strip()
-    # BUG-060: pre-check del unique (tenant_id, name) para evitar 500.
-    # Si existe inactivo → reactivar; si existe activo → 409 limpio.
+    org_id = str(body.organization_id) if body.organization_id else None
+
+    # BUG-061: validar que la org pertenece al tenant si se pasó.
+    if org_id is not None:
+        from app.models.organization import Organization
+
+        org_ok = (
+            await db.execute(
+                select(Organization.id).where(
+                    Organization.id == org_id,
+                    Organization.tenant_id == str(tenant_id),
+                )
+            )
+        ).scalar_one_or_none()
+        if org_ok is None:
+            raise validation_error("organization_id no existe en el tenant")
+
+    # BUG-060/061: pre-check del unique scoped al mismo organization_id
+    # (NULL == NULL para esta lógica). Si existe inactivo → reactivar;
+    # si existe activo → 409 limpio.
+    name_clash = func.lower(Area.name) == name.lower()
+    if org_id is None:
+        scope_clause = Area.organization_id.is_(None)
+    else:
+        scope_clause = Area.organization_id == org_id
     existing_area = (
         await db.execute(
             select(Area).where(
                 Area.tenant_id == str(tenant_id),
-                func.lower(Area.name) == name.lower(),
+                scope_clause,
+                name_clash,
             )
         )
     ).scalar_one_or_none()
@@ -93,13 +130,15 @@ async def create_area(
             await db.refresh(existing_area)
             return AreaRead.model_validate(existing_area)
         raise conflict(
-            "Ya existe un área con ese nombre en el tenant",
+            "Ya existe un área con ese nombre en este alcance "
+            "(misma organización o entre globales)",
             code="AREA_NAME_DUPLICATE",
             fields={"existing_area_id": str(existing_area.id)},
         )
 
     a = Area(
         tenant_id=str(tenant_id),
+        organization_id=org_id,
         name=name,
         description=body.description,
         is_active=body.is_active,
@@ -146,6 +185,8 @@ async def create_area(
 @areas_router.get("/tree", response_model=AreaTreeResponse)
 async def get_areas_tree(
     include_inactive: bool = Query(default=False),
+    organization_id: UUID | None = Query(default=None),
+    include_global: bool = Query(default=True),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
@@ -154,10 +195,21 @@ async def get_areas_tree(
     Optimizado en 3 queries. `unassigned_actors` por área queda vacío
     (los actores se asocian sólo vía team). `orphan_actors` lista los
     actores sin team asignado (post bulk-move o recién creados).
+
+    BUG-061: si `organization_id` se pasa, filtra a las áreas de esa
+    org (más las globales si `include_global=true`).
     """
     tenant_id = _tenant(cu)
 
     areas_q = select(Area).where(Area.tenant_id == str(tenant_id))
+    if organization_id is not None:
+        if include_global:
+            areas_q = areas_q.where(
+                (Area.organization_id == str(organization_id))
+                | (Area.organization_id.is_(None))
+            )
+        else:
+            areas_q = areas_q.where(Area.organization_id == str(organization_id))
     teams_q = select(Team).where(Team.tenant_id == str(tenant_id))
     actors_q = select(Actor).where(
         Actor.tenant_id == str(tenant_id), Actor.deleted_at.is_(None)
@@ -200,6 +252,7 @@ async def get_areas_tree(
         areas=[
             TreeArea(
                 id=area.id,
+                organization_id=area.organization_id,
                 name=area.name,
                 description=area.description,
                 lead_actor_id=area.lead_actor_id,
@@ -257,26 +310,57 @@ async def update_area(
     ).scalar_one_or_none()
     if a is None:
         raise not_found("Área")
-    data = body.model_dump(exclude_none=True)
-    # BUG-060: rename con colisión devuelve 409 estructurado en vez de 500.
-    if "name" in data:
-        new_name = data["name"].strip()
+    # BUG-061: organization_id puede venir explícitamente null (mover a
+    # global) — usar exclude_unset para distinguir "no enviar" de
+    # "enviar null". El resto de campos sigue con exclude_none.
+    payload = body.model_dump(exclude_unset=True)
+    data = {k: v for k, v in payload.items() if v is not None or k == "organization_id"}
+
+    # BUG-061: validar nueva org si vino set (no None).
+    if data.get("organization_id") is not None:
+        from app.models.organization import Organization
+
+        org_ok = (
+            await db.execute(
+                select(Organization.id).where(
+                    Organization.id == str(data["organization_id"]),
+                    Organization.tenant_id == str(tenant_id),
+                )
+            )
+        ).scalar_one_or_none()
+        if org_ok is None:
+            raise validation_error("organization_id no existe en el tenant")
+        data["organization_id"] = str(data["organization_id"])
+
+    # BUG-060/061: rename / move-org con colisión devuelve 409 estructurado.
+    name_changing = "name" in data
+    org_changing = "organization_id" in data
+    if name_changing or org_changing:
+        new_name = data["name"].strip() if name_changing else a.name
+        new_org = data["organization_id"] if org_changing else a.organization_id
+        scope_clause = (
+            Area.organization_id.is_(None)
+            if new_org is None
+            else Area.organization_id == new_org
+        )
         clash = (
             await db.execute(
                 select(Area).where(
                     Area.tenant_id == str(tenant_id),
                     Area.id != str(area_id),
+                    scope_clause,
                     func.lower(Area.name) == new_name.lower(),
                 )
             )
         ).scalar_one_or_none()
         if clash is not None:
             raise conflict(
-                "Ya existe un área con ese nombre en el tenant",
+                "Ya existe un área con ese nombre en este alcance",
                 code="AREA_NAME_DUPLICATE",
                 fields={"existing_area_id": str(clash.id)},
             )
-        data["name"] = new_name
+        if name_changing:
+            data["name"] = new_name
     for k, v in data.items():
         setattr(a, k, v)
     await db.commit()
