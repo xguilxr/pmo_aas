@@ -318,21 +318,31 @@ class PerplexityProvider:
         )
 
 
+class CustomProvider(OpenAIProvider):
+    """BYO custom OpenAI-compatible (US-104). Reusa OpenAIProvider pero
+    requiere base_url explícito (no hay default) — la validación vive en
+    el schema Pydantic del PATCH."""
+
+    name = "custom"
+
+
 _PROVIDERS: dict[str, AIProvider] = {
     "gemini": GeminiProvider(),
     "claude": ClaudeProvider(),
     "groq": GroqProvider(),
     "openai": OpenAIProvider(),
     "perplexity": PerplexityProvider(),
+    "custom": CustomProvider(),
     "disabled": DisabledProvider(),
 }
 
-# BUG-053 (2026-05-08): proveedores BYO whitelist (sin Ollama).
+# US-104 (2026-05-08): + custom OpenAI-compatible.
 BYO_PROVIDERS: tuple[str, ...] = (
     "openai",
     "claude",
     "perplexity",
     "gemini",
+    "custom",
 )
 
 # Alias mantenido para minimizar diff con código que importaba esta tupla.

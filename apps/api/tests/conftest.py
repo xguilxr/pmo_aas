@@ -109,6 +109,16 @@ def _stub_ai_providers(monkeypatch, request):
     for name in ("gemini", "claude", "groq", "openai", "perplexity"):
         cls = type(provider_mod._PROVIDERS[name])
         monkeypatch.setattr(cls, "generate", _stub_generate)
+
+    # US-104: el PATCH /admin/ai/provider corre _ping_byo_provider antes
+    # de persistir. En tests no queremos hacer HTTP real → stub a ok.
+    # Tests específicos del gate pueden monkeypatchearlo de vuelta.
+    from app.api.v1.endpoints import admin_ai as admin_ai_mod
+
+    async def _stub_ping(*args, **kwargs):
+        return admin_ai_mod.TestConnectionResult(ok=True, latency_ms=1)
+
+    monkeypatch.setattr(admin_ai_mod, "_ping_byo_provider", _stub_ping)
     yield
 
 
