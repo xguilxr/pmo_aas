@@ -83,16 +83,109 @@ async def provision_tenant(
     db.add(user)
     await db.flush()
     db.add(UserRole(user_id=user.id, role_id=admin_role.id))
+    # US-076 (role_type fijo): el admin recién provisionado debe tener
+    # `role_type=admin` para que las capabilities admin estén activas.
+    user.role_type = "admin"
+
+    # ENH-080: enviar email de bienvenida + setup al admin del tenant
+    # nuevo. Pre-commit para que un fail de Resend no enmascare el
+    # provisioning, pero guardamos el flag en el audit log.
+    welcome_sent = await _send_tenant_welcome_email(
+        tenant_name=body.name,
+        tenant_slug=slug,
+        admin_full_name=body.admin_full_name,
+        admin_email=body.admin_email.lower(),
+        admin_username=username,
+        admin_password=pwd,
+    )
 
     await write_audit(
         db, action="tenant.provisioned", module="superadmin", user_id=cu.id,
         entity_type="tenant", entity_id=str(tenant.id),
-        details={"slug": slug, "admin_user_id": str(user.id)},
+        details={
+            "slug": slug,
+            "admin_user_id": str(user.id),
+            "welcome_email_sent": welcome_sent,
+        },
     )
     await db.commit()
     return TenantProvisionResponse(
         tenant_id=tenant.id, slug=slug, admin_user_id=user.id, admin_password=pwd,
     )
+
+
+async def _send_tenant_welcome_email(
+    *,
+    tenant_name: str,
+    tenant_slug: str,
+    admin_full_name: str,
+    admin_email: str,
+    admin_username: str,
+    admin_password: str,
+) -> bool:
+    """ENH-080 — bienvenida al admin de un tenant recién provisionado.
+
+    Incluye credenciales + manual de montaje inicial (organizaciones →
+    usuarios → primer proyecto). Devuelve True si Resend ack, False si
+    canal deshabilitado o falla (no levanta — el tenant ya existe).
+    """
+    import logging
+
+    from app.core.config import settings as _settings
+    from app.services.email import send_email_via_resend
+
+    log = logging.getLogger(__name__)
+    login_url = f"{_settings.APP_BASE_URL}/login"
+    admin_url = f"{_settings.APP_BASE_URL}/admin"
+    html = f"""<!DOCTYPE html>
+<html lang="es">
+<body style="font-family:-apple-system,Segoe UI,sans-serif;background:#f8fafc;margin:0;padding:24px;color:#0f172a">
+<table role="presentation" align="center" width="600" style="background:#fff;border-radius:12px;padding:28px;border:1px solid #e2e8f0">
+<tr><td>
+<div style="font-weight:600;color:#182e4e;margin-bottom:16px;font-size:14px">PMO·aaS</div>
+<h2 style="margin:0 0 8px">Bienvenido a PMO·aaS — tenant <em>{tenant_name}</em></h2>
+<p style="color:#334155;line-height:1.5">
+Hola {admin_full_name}, tu tenant fue creado y eres el administrador
+inicial. Estas son tus credenciales (cámbialas en el primer login):
+</p>
+<table role="presentation" cellpadding="6" cellspacing="0" style="background:#f1f5f9;border-radius:8px;width:100%;font-size:14px">
+  <tr><td style="font-weight:600;color:#475569;width:140px">Tenant</td><td>{tenant_name} <code style="font-size:12px;color:#64748b">({tenant_slug})</code></td></tr>
+  <tr><td style="font-weight:600;color:#475569">Email</td><td>{admin_email}</td></tr>
+  <tr><td style="font-weight:600;color:#475569">Usuario</td><td>{admin_username}</td></tr>
+  <tr><td style="font-weight:600;color:#475569">Contraseña</td><td><code style="background:#fff;padding:2px 6px;border-radius:4px;border:1px solid #e2e8f0">{admin_password}</code></td></tr>
+</table>
+<p style="margin-top:20px"><a href="{login_url}" style="display:inline-block;padding:10px 18px;background:#182e4e;color:#fff;border-radius:6px;text-decoration:none">Iniciar sesión</a></p>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
+<h3 style="margin:0 0 8px;color:#0f172a">Manual de montaje inicial</h3>
+<ol style="color:#334155;line-height:1.6;padding-left:20px">
+  <li>Inicia sesión en <a href="{login_url}">{login_url}</a> y cambia la contraseña.</li>
+  <li>Configura branding y datos del tenant en <a href="{admin_url}/tenant">/admin/tenant</a>.</li>
+  <li>Crea tus organizaciones y áreas en <a href="{admin_url}/organizations">/admin/organizations</a>.</li>
+  <li>Da de alta a los usuarios del equipo desde <a href="{admin_url}/users">/admin/users</a> (cada uno recibirá un correo con sus credenciales).</li>
+  <li>Define permisos por rol en <a href="{admin_url}/permissions">/admin/permissions</a>.</li>
+  <li>Configura el proveedor de IA (opcional) en <a href="{admin_url}/ai">/admin/ai</a>.</li>
+  <li>Levanta tu primer proyecto desde <a href="{_settings.APP_BASE_URL}/pmo/projects/new">/pmo/projects/new</a>.</li>
+</ol>
+<p style="color:#334155;line-height:1.5;margin-top:16px">
+Cualquier duda responde a este correo y el equipo PMO·aaS te acompaña en el setup.
+</p>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
+<p style="font-size:12px;color:#64748b">
+Si no esperabas este correo, contacta al super administrador que provisionó el tenant.
+</p>
+</td></tr>
+</table>
+</body></html>
+"""
+    subject = f"Bienvenido a PMO·aaS — tenant {tenant_name} listo"
+    try:
+        result = await send_email_via_resend(
+            to=admin_email, subject=subject, html=html
+        )
+    except Exception as exc:
+        log.warning("tenant welcome email send failed: %s", exc)
+        return False
+    return result is not None
 
 
 @router.get("/tenants", response_model=list[TenantRead])
