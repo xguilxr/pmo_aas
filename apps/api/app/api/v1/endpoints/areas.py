@@ -74,9 +74,33 @@ async def create_area(
     como Actor con `is_lead=true` antes de crear el área.
     """
     tenant_id = _tenant(cu)
+    name = body.name.strip()
+    # BUG-060: pre-check del unique (tenant_id, name) para evitar 500.
+    # Si existe inactivo → reactivar; si existe activo → 409 limpio.
+    existing_area = (
+        await db.execute(
+            select(Area).where(
+                Area.tenant_id == str(tenant_id),
+                func.lower(Area.name) == name.lower(),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_area is not None:
+        if not existing_area.is_active:
+            existing_area.is_active = True
+            existing_area.description = body.description or existing_area.description
+            await db.commit()
+            await db.refresh(existing_area)
+            return AreaRead.model_validate(existing_area)
+        raise conflict(
+            "Ya existe un área con ese nombre en el tenant",
+            code="AREA_NAME_DUPLICATE",
+            fields={"existing_area_id": str(existing_area.id)},
+        )
+
     a = Area(
         tenant_id=str(tenant_id),
-        name=body.name.strip(),
+        name=name,
         description=body.description,
         is_active=body.is_active,
         created_by=str(cu.id),
@@ -303,10 +327,33 @@ async def create_team(
     ).scalar_one_or_none()
     if parent is None:
         raise validation_error("area_id no existe en el tenant")
+    name = body.name.strip()
+    # BUG-060: pre-check del unique (tenant_id, area_id, name).
+    existing_team = (
+        await db.execute(
+            select(Team).where(
+                Team.tenant_id == str(tenant_id),
+                Team.area_id == str(body.area_id),
+                func.lower(Team.name) == name.lower(),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_team is not None:
+        if not existing_team.is_active:
+            existing_team.is_active = True
+            existing_team.description = body.description or existing_team.description
+            await db.commit()
+            await db.refresh(existing_team)
+            return TeamRead.model_validate(existing_team)
+        raise conflict(
+            "Ya existe un equipo con ese nombre en esta área",
+            code="TEAM_NAME_DUPLICATE",
+            fields={"existing_team_id": str(existing_team.id)},
+        )
     t = Team(
         tenant_id=str(tenant_id),
         area_id=str(body.area_id),
-        name=body.name.strip(),
+        name=name,
         description=body.description,
         is_active=body.is_active,
         created_by=str(cu.id),
