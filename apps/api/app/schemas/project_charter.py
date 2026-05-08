@@ -13,7 +13,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-
 # ENH-081 CA3: lista configurable de campos requeridos para considerar el
 # charter "completo". Si alguno está vacío, la UI muestra banner de aviso.
 # Se mantiene en backend (no en BD) para iterar rápido sin migración —

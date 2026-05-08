@@ -13,7 +13,7 @@ Idempotente — se omite cualquier proyecto que ya tenga charter.
 Solo data migration; no toca schema.
 """
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -43,7 +43,7 @@ def upgrade() -> None:
     if not rows:
         return
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     insert_stmt = sa.text(
         """
         INSERT INTO project_charters (

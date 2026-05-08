@@ -16,14 +16,12 @@ vía modules.docs_router). Organigrama queda como placeholder en Sprint 18
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from fastapi import status
-
 from app.core.errors import AppError, forbidden, not_found
 from app.db.session import get_db
 from app.models.project import Project
