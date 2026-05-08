@@ -1,12 +1,8 @@
-"""Defaults de AI a nivel de plataforma (US-054).
+"""Defaults de AI a nivel de plataforma (US-054, BUG-053).
 
-Superadmin puede ajustar AI_MODE, Ollama base_url/model y timeout sin
-redeploy. Los valores se guardan en la tabla singleton
-`platform_ai_settings` (id='default') y son leídos por el provider
-entre el override per-tenant y las env vars.
-
-Secrets (GEMINI_API_KEY, ANTHROPIC_API_KEY) NO viven aquí — siguen en
-env para evitar almacenar secrets sin cifrado.
+Superadmin puede ajustar AI_MODE y la config Groq sin redeploy. Los
+valores se guardan en la tabla singleton `platform_ai_settings`
+(id='default').
 
 Endpoints:
 - GET  /api/v1/superadmin/ai/defaults — lee config actual + snapshot env.
@@ -17,7 +13,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,9 +28,6 @@ router = APIRouter(prefix="/superadmin/ai", tags=["superadmin_ai"])
 
 class EnvSnapshot(BaseModel):
     ai_mode: str
-    ollama_base_url: str
-    ollama_model: str
-    ai_timeout_sec: int
     gemini_configured: bool
     claude_configured: bool
     groq_configured: bool
@@ -42,10 +35,6 @@ class EnvSnapshot(BaseModel):
 
 class PlatformAIDefaultsRead(BaseModel):
     ai_mode: str | None = None
-    ollama_base_url: str | None = None
-    ollama_model: str | None = None
-    ai_timeout_sec: int | None = None
-    # US-057: Groq como IA base de la plataforma.
     groq_api_key_mask: str | None = None
     groq_configured: bool = False
     groq_model: str | None = None
@@ -53,11 +42,7 @@ class PlatformAIDefaultsRead(BaseModel):
 
 
 class PlatformAIDefaultsPatch(BaseModel):
-    ai_mode: Literal["ollama", "gemini", "claude", "disabled"] | None = None
-    ollama_base_url: AnyHttpUrl | None = None
-    ollama_model: str | None = Field(default=None, max_length=100)
-    ai_timeout_sec: int | None = Field(default=None, ge=5, le=3600)
-    # US-057: Groq
+    ai_mode: Literal["disabled", "platform", "byo"] | None = None
     groq_api_key: str | None = Field(default=None, description="Vacío = borrar; None = conservar")
     groq_model: str | None = Field(default=None, max_length=100)
 
@@ -81,17 +66,11 @@ def _to_read(row: PlatformAISettings) -> PlatformAIDefaultsRead:
     groq_plain = decrypt_secret(row.groq_api_key_encrypted or "")
     return PlatformAIDefaultsRead(
         ai_mode=row.ai_mode,
-        ollama_base_url=row.ollama_base_url,
-        ollama_model=row.ollama_model,
-        ai_timeout_sec=row.ai_timeout_sec,
         groq_api_key_mask=mask_secret(groq_plain) if groq_plain else None,
         groq_configured=bool(groq_plain or settings.GROQ_API_KEY),
         groq_model=row.groq_model,
         env=EnvSnapshot(
             ai_mode=settings.AI_MODE,
-            ollama_base_url=settings.OLLAMA_BASE_URL,
-            ollama_model=settings.OLLAMA_MODEL,
-            ai_timeout_sec=settings.AI_TIMEOUT_S,
             gemini_configured=bool(settings.GEMINI_API_KEY),
             claude_configured=bool(settings.ANTHROPIC_API_KEY),
             groq_configured=bool(settings.GROQ_API_KEY),
@@ -119,19 +98,6 @@ async def update_defaults(
     data = body.model_dump(exclude_unset=True)
     if "ai_mode" in data:
         row.ai_mode = data["ai_mode"]
-    if "ollama_base_url" in data:
-        row.ollama_base_url = (
-            str(data["ollama_base_url"]).rstrip("/")
-            if data["ollama_base_url"] is not None
-            else None
-        )
-    if "ollama_model" in data:
-        row.ollama_model = data["ollama_model"]
-    if "ai_timeout_sec" in data:
-        row.ai_timeout_sec = (
-            int(data["ai_timeout_sec"]) if data["ai_timeout_sec"] is not None else None
-        )
-    # US-057: Groq settings.
     if "groq_api_key" in data and data["groq_api_key"] is not None:
         from app.services.ai_secrets import encrypt_secret
 

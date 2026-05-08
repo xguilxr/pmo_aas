@@ -116,8 +116,8 @@ export default function NewAIMinutePage() {
           Minuta con IA
         </h1>
         <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-          Pega la transcripción (o sube un .txt). El worker procesa la cascada Ollama → Gemini →
-          Claude según la configuración del tenant. Max 5 MB.
+          Pega la transcripción (o sube un .txt). El worker procesa con el
+          proveedor IA del tenant (Groq plataforma o BYO). Max 5 MB.
         </p>
       </header>
 

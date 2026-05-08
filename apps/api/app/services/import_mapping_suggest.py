@@ -109,7 +109,6 @@ async def suggest_column_mapping(
     *,
     tenant_cfg: TenantAIConfig,
     platform_groq_config: dict | None = None,
-    tenant_ollama_config: dict | None = None,
     tenant_id: str | None = None,
 ) -> dict[str, Suggestion]:
     """Devuelve `{header: Suggestion}` con AI + heurística merged."""
@@ -127,7 +126,6 @@ async def suggest_column_mapping(
             tenant_ai_mode=tenant_cfg.mode,
             platform_groq_config=platform_groq_config,
             byo_config=tenant_cfg.byo,
-            tenant_ollama_config=tenant_ollama_config,
             tenant_id=tenant_id,
         )
         parsed = _safe_parse_ai_response(res.text)

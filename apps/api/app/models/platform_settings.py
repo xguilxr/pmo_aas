@@ -8,7 +8,7 @@ Diseñada como 1 row + columnas tipadas (no JSON genérico) para que las
 migraciones futuras sean aditivas claras. Si se agregan más secciones
 (ej. branding global, feature flags) se crearán tablas hermanas.
 """
-from sqlalchemy import Integer, String
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -22,10 +22,7 @@ class PlatformAISettings(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=PLATFORM_SETTINGS_ID)
 
     ai_mode: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    ollama_base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    ollama_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    ai_timeout_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # US-057: Groq como IA base de la plataforma (modo "platform").
+    # Groq como IA base de la plataforma (modo "platform").
     # La api_key se guarda cifrada con Fernet (FERNET_KEY env).
     groq_api_key_encrypted: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     groq_model: Mapped[str | None] = mapped_column(String(100), nullable=True)

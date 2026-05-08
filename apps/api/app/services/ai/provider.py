@@ -1,23 +1,17 @@
-"""Proveedores IA con selección por tenant (US-057).
+"""Proveedores IA con selección por tenant (US-057, BUG-053).
 
-Hasta US-054 el sistema tenía una cascada global `AI_MODE` en env.
-Desde US-057 cada tenant elige entre tres modos (`tenants.settings.ai.mode`):
+Modos canónicos en `tenants.settings.ai.mode`:
 
  - `disabled`: ningún request IA (el endpoint devuelve 409).
  - `platform`: Groq (llama-3.3-70b-versatile por default) con la key
-   de la plataforma compartida. La trazabilidad cross-tenant vive
-   en `ai_jobs` de nuestra BD + logs estructurados del worker; NO se
-   envía al body de Groq porque Chat Completions OpenAI-compatible
-   rechaza claves desconocidas (`metadata`) con 400 (ver BUG-030).
-   Scope limitado a minutas.
- - `byo`: el tenant trae su propio proveedor (OpenAI / Claude /
-   Perplexity / Gemini / Ollama tailnet) con credenciales cifradas
-   en `tenants.settings.ai.byo`.
+   de la plataforma compartida. Trazabilidad cross-tenant vive en
+   `ai_jobs` + logs estructurados del worker.
+ - `byo`: tenant trae su propio proveedor (openai / anthropic /
+   perplexity / gemini) con credenciales cifradas en
+   `tenants.settings.ai.byo`.
 
-La vieja cascada de env `AI_MODE` (ollama/gemini/claude/disabled) se
-conserva para retro-compat hasta que todos los tenants migren a modos
-`disabled|platform|byo`. `generate_with_cascade(..., tenant_ai_mode=...)`
-es la nueva ruta; sin ese argumento se mantiene el comportamiento legacy.
+BUG-053 (2026-05-08): Ollama eliminado. La cascada legacy
+`generate_with_cascade` se borró; usar `generate_for_tenant` siempre.
 """
 from __future__ import annotations
 
@@ -54,55 +48,6 @@ class DisabledProvider:
         return AIResult(text=text, model="stub", tokens_in=0, tokens_out=len(text) // 4)
 
 
-class OllamaProvider:
-    name = "ollama"
-
-    async def generate(
-        self,
-        prompt: str,
-        *,
-        system: str | None = None,
-        override: dict | None = None,
-    ) -> AIResult:
-        """Llama a Ollama.
-
-        US-048: si `override` trae `base_url`/`model`/`timeout_sec` del
-        tenant (leídos desde `tenants.settings.ai.ollama`), se usan para
-        este call; en caso contrario cae a los env `OLLAMA_BASE_URL` /
-        `OLLAMA_MODEL`. Esto permite que cada tenant apunte a su propio
-        endpoint tailnet sin tocar env del worker.
-
-        ENH-011: el fallback del timeout total de httpx ahora viene de
-        `settings.AI_TIMEOUT_S` (default 120s). Antes estaba hardcoded.
-        Orden de prioridad: override tenant > env AI_TIMEOUT_S > 120s.
-        """
-        import httpx
-
-        ov = override or {}
-        base_url = str(ov.get("base_url") or settings.OLLAMA_BASE_URL).rstrip("/")
-        model = str(ov.get("model") or settings.OLLAMA_MODEL)
-        timeout_total = float(ov.get("timeout_sec") or settings.AI_TIMEOUT_S)
-
-        payload = {"model": model, "prompt": prompt, "stream": False}
-        if system:
-            payload["system"] = system
-        timeout = httpx.Timeout(timeout_total, connect=5.0)
-        try:
-            async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as c:
-                r = await c.post("/api/generate", json=payload)
-                r.raise_for_status()
-                data = r.json()
-                return AIResult(
-                    text=data.get("response", ""),
-                    model=f"ollama:{model}",
-                    tokens_in=data.get("prompt_eval_count", 0),
-                    tokens_out=data.get("eval_count", 0),
-                    duration_ms=int((data.get("total_duration", 0) or 0) / 1_000_000),
-                )
-        except Exception as exc:
-            raise RuntimeError(f"ollama@{base_url} model={model}: {type(exc).__name__}: {exc}") from exc
-
-
 class GeminiProvider:
     name = "gemini"
 
@@ -113,8 +58,6 @@ class GeminiProvider:
         system: str | None = None,
         override: dict | None = None,
     ) -> AIResult:
-        """US-057: `override` permite inyectar api_key/model del tenant
-        (modo BYO). Si no hay override cae a los env globales."""
         ov = override or {}
         api_key = ov.get("api_key") or settings.GEMINI_API_KEY
         model = ov.get("model") or settings.GEMINI_MODEL
@@ -130,7 +73,6 @@ class GeminiProvider:
         body = {"contents": [{"role": "user", "parts": parts}]}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
-        # BUG-058: log para diagnosticar ConnectTimeout BYO (sin api_key).
         logger.info(
             "ai.byo.gemini call model=%s timeout=60 tenant=%s",
             model, ov.get("tenant_id"),
@@ -187,7 +129,6 @@ class ClaudeProvider:
         if system:
             body["system"] = system
         url = "https://api.anthropic.com/v1/messages"
-        # BUG-058: log para diagnosticar ConnectTimeout BYO.
         logger.info(
             "ai.byo.claude call url=%s model=%s timeout=90 tenant=%s",
             url, model, ov.get("tenant_id"),
@@ -219,13 +160,6 @@ class GroqProvider:
     API OpenAI-compatible bajo `https://api.groq.com/openai/v1`. La key
     y el modelo se resuelven desde `platform_ai_settings` (ver
     `platform_config.resolve_groq_config`).
-
-    Trazabilidad cross-tenant: el dashboard de uso del superadmin la
-    deriva de `ai_jobs` (tenant_id, job_id ya persistidos en nuestra
-    BD) + logs estructurados del worker. **No** se inyecta al body del
-    request — Groq usa la API de Chat Completions OpenAI-compatible
-    que no acepta el campo `metadata` y responde 400 si viene (ver
-    BUG-030, 2026-04-23).
     """
 
     name = "groq"
@@ -275,7 +209,7 @@ class GroqProvider:
 
 
 class OpenAIProvider:
-    """BYO (US-057). API key y modelo vienen del tenant."""
+    """BYO. API key y modelo vienen del tenant."""
 
     name = "openai"
 
@@ -303,9 +237,6 @@ class OpenAIProvider:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-        # BUG-058: log el base_url/model resueltos (sin api_key) para
-        # diagnosticar ConnectTimeout — el tenant pudo configurar un
-        # base_url custom mal escrito.
         logger.info(
             "ai.byo.openai call base_url=%s model=%s timeout=90 tenant=%s",
             base_url, model, ov.get("tenant_id"),
@@ -333,7 +264,7 @@ class OpenAIProvider:
 
 
 class PerplexityProvider:
-    """BYO (US-057). API compatible con OpenAI, modelos sonar-*."""
+    """BYO. API compatible con OpenAI, modelos sonar-*."""
 
     name = "perplexity"
 
@@ -361,7 +292,6 @@ class PerplexityProvider:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-        # BUG-058: log para diagnosticar ConnectTimeout BYO.
         logger.info(
             "ai.byo.perplexity call base_url=%s model=%s timeout=90 tenant=%s",
             base_url, model, ov.get("tenant_id"),
@@ -389,7 +319,6 @@ class PerplexityProvider:
 
 
 _PROVIDERS: dict[str, AIProvider] = {
-    "ollama": OllamaProvider(),
     "gemini": GeminiProvider(),
     "claude": ClaudeProvider(),
     "groq": GroqProvider(),
@@ -398,27 +327,16 @@ _PROVIDERS: dict[str, AIProvider] = {
     "disabled": DisabledProvider(),
 }
 
-# US-057 + follow-up 2026-04-24: proveedores BYO expuestos al tenant.
-# Ollama se removió del catálogo público el 2026-04-24 (decisión del
-# owner: la UI muestra OpenAI / Claude / Perplexity / Gemini). La
-# clase `OllamaProvider` sigue existiendo para atender tenants legacy
-# (US-048) cuya config ya quedó en `settings.ai.byo.provider="ollama"`;
-# el endpoint PATCH rechaza nuevos ollama vía `BYO_PROVIDERS_ALLOWED`.
+# BUG-053 (2026-05-08): proveedores BYO whitelist (sin Ollama).
 BYO_PROVIDERS: tuple[str, ...] = (
     "openai",
     "claude",
     "perplexity",
     "gemini",
-    "ollama",  # legacy: aceptado por el worker, rechazado para alta nueva
 )
 
-# Lo que la UI y el endpoint PATCH ofrecen como opciones válidas nuevas.
-BYO_PROVIDERS_ALLOWED: tuple[str, ...] = (
-    "openai",
-    "claude",
-    "perplexity",
-    "gemini",
-)
+# Alias mantenido para minimizar diff con código que importaba esta tupla.
+BYO_PROVIDERS_ALLOWED: tuple[str, ...] = BYO_PROVIDERS
 
 
 async def generate_for_tenant(
@@ -428,19 +346,17 @@ async def generate_for_tenant(
     tenant_ai_mode: str,
     platform_groq_config: dict | None = None,
     byo_config: dict | None = None,
-    tenant_ollama_config: dict | None = None,
     tenant_id: str | None = None,
     job_id: str | None = None,
 ) -> AIResult:
-    """Ruta nueva (US-057): enruta según `tenant_ai_mode` sin cascada.
+    """Enruta según `tenant_ai_mode` sin cascada.
 
-    - `disabled`: no se llama IA. El caller debe haber chequeado esto
-      antes y devolver 409; esta función si se invoca devuelve el stub.
-    - `platform`: usa `GroqProvider` con la config de plataforma. No cae
-      a otros proveedores (owner dixit — privacidad/costo); 3 reintentos
-      internos se hacen en el `GroqProvider.generate` del caller.
+    - `disabled`: stub. El caller debería haber chequeado esto antes y
+      respondido 409.
+    - `platform`: usa `GroqProvider` con la config de plataforma. No
+      cae a otros proveedores (privacidad/costo).
     - `byo`: usa el provider de `byo_config['provider']`. Falla duro si
-      las credenciales están mal; no cae a plataforma (ídem).
+      las credenciales están mal; no cae a plataforma.
     """
     if tenant_ai_mode == "disabled":
         return await _PROVIDERS["disabled"].generate(prompt, system=system)
@@ -461,74 +377,12 @@ async def generate_for_tenant(
         if provider_name not in BYO_PROVIDERS:
             raise RuntimeError(f"byo_provider_invalid: {provider_name!r}")
         prov = _PROVIDERS[provider_name]
-        # Ollama BYO puede heredar el legacy de US-048 cuando migremos.
         override = dict(cfg)
-        if provider_name == "ollama" and tenant_ollama_config:
-            override = {**tenant_ollama_config, **cfg}
-        # BUG-058: pasar tenant_id al provider para que aparezca en los logs.
         if tenant_id:
             override.setdefault("tenant_id", tenant_id)
         return await prov.generate(prompt, system=system, override=override)
 
     raise RuntimeError(f"tenant_ai_mode_invalid: {tenant_ai_mode!r}")
-
-
-async def generate_with_cascade(
-    prompt: str,
-    *,
-    system: str | None = None,
-    tenant_ollama_config: dict | None = None,
-    ai_mode_override: str | None = None,
-) -> AIResult:
-    """Intenta en orden: configured primary → gemini → disabled stub.
-
-    US-048: `tenant_ollama_config`, si se pasa, se inyecta solo al
-    `OllamaProvider` para que use el endpoint tailnet del tenant en vez
-    del env global. Los demás providers ignoran el parámetro.
-
-    US-054: `ai_mode_override` permite al worker Celery pasar el modo
-    efectivo resuelto desde `platform_ai_settings` (superadmin) en vez
-    de leer `settings.AI_MODE` del env. Si es None, cae al env.
-    """
-    mode = ai_mode_override or settings.AI_MODE
-    if mode == "disabled":
-        return await _PROVIDERS["disabled"].generate(prompt, system=system)
-
-    cascade: list[str] = []
-    if mode == "ollama":
-        cascade = ["ollama", "gemini", "claude", "disabled"]
-    elif mode == "gemini":
-        cascade = ["gemini", "ollama", "claude", "disabled"]
-    elif mode == "claude":
-        cascade = ["claude", "gemini", "ollama", "disabled"]
-    else:
-        cascade = ["disabled"]
-
-    last_err: Exception | None = None
-    for idx, name in enumerate(cascade):
-        prov = _PROVIDERS[name]
-        try:
-            if name == "ollama" and tenant_ollama_config:
-                return await prov.generate(
-                    prompt, system=system, override=tenant_ollama_config,
-                )
-            return await prov.generate(prompt, system=system)
-        except Exception as exc:
-            last_err = exc
-            next_name = cascade[idx + 1] if idx + 1 < len(cascade) else None
-            # Mensaje con razón visible en logs estándar; extras para el
-            # futuro exporter Prometheus ai_cascade_fallback_total{from,to}.
-            logger.warning(
-                "ai_cascade_fallback from=%s to=%s err=%s: %s",
-                name, next_name, type(exc).__name__, str(exc)[:200],
-                extra={
-                    "ai_provider_from": name,
-                    "ai_provider_to": next_name,
-                    "ai_cascade_error": str(exc)[:200],
-                },
-            )
-            continue
-    raise RuntimeError(f"all ai providers failed: {last_err}")
 
 
 def chunk_text(text: str, *, max_tokens: int = 3000, overlap_tokens: int = 200) -> list[str]:

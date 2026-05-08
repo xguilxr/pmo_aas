@@ -28,13 +28,11 @@ por-tenant configurada en `/admin/ai`:
 Ver runbook operativo en
 [`docs/ops/groq-setup-runbook.md`](../ops/groq-setup-runbook.md).
 
-**Cascada legacy (US-043 original, retro-compat con tenants sin
-migrar, ver ADR-007):**
-1. **Ollama local** — default, privacidad, $0/token.
-2. **Gemini 1.5 Flash** — 2.º fallback gratuito (1M tok/día free).
-3. **Claude Sonnet 4.6** — 3.º premium, solo si tenant lo activa.
-
-Ver setup técnico en [`../ai/`](../ai/).
+> **BUG-053 (2026-05-08):** la cascada legacy `Ollama → Gemini → Claude`
+> y todo el stack Tailscale fueron retirados. Modos canónicos hoy:
+> `disabled | platform (Groq) | byo`. Ver setup técnico en
+> [`../ai/`](../ai/) y runbook Groq en
+> [`../runbooks/ai/groq-setup.md`](../runbooks/ai/groq-setup.md).
 
 ---
 

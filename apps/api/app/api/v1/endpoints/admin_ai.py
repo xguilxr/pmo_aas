@@ -1,19 +1,7 @@
-"""Config y smoke de proveedores IA por-tenant.
+"""Config y smoke de proveedores IA por-tenant (US-057, BUG-053).
 
-Historia:
-- US-045 (2026-04-20): versión inicial con Cloudflare Tunnel +
-  Service Token (CF-Access-Client-Id / CF-Access-Client-Secret).
-- US-047 (2026-04-21): pivote a Tailscale — se eliminan los campos
-  CF-Access. La config Ollama por-tenant se expuso como
-  `{base_url, model, timeout_sec}` y se serví bajo `/admin/ai/ollama`.
-- US-057 (2026-04-22, DEC-017): se reemplaza el cascade global por
-  3 modos por-tenant (`disabled | platform | byo`). El nuevo flujo
-  vive en `/admin/ai/provider`.
-- BUG-027 (2026-04-23, ver DEC-019): se retiran los endpoints
-  `/admin/ai/ollama` (GET/PATCH) y `/admin/ai/test-connection` — ya
-  no tienen consumidor en la UI (`OllamaLocalAiForm` borrado). Los
-  tenants legacy con `settings.ai.ollama` en BD siguen intactos;
-  el worker los ignora porque el schema activo es `settings.ai.mode`.
+3 modos por-tenant: `disabled | platform | byo`. BYO whitelist:
+openai / claude / perplexity / gemini.
 
 Endpoints activos:
 - GET   /api/v1/admin/ai/provider       — modo + BYO config.
@@ -33,7 +21,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_capability
-from app.core.config import settings
 from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.models.tenant import Tenant
@@ -69,9 +56,6 @@ class TestConnectionResult(BaseModel):
 
 
 class BYOConfigIn(BaseModel):
-    # US-063 follow-up: ollama queda fuera del Literal — para tenants
-    # legacy US-048 que ya estén en la BD, el worker sigue funcionando
-    # pero el endpoint PATCH rechaza nuevos ollama.
     provider: Literal["openai", "claude", "perplexity", "gemini"]
     api_key: str | None = Field(
         default=None,
@@ -98,13 +82,6 @@ class BYOConfigRead(BaseModel):
 class TenantAIProviderRead(BaseModel):
     mode: Literal["disabled", "platform", "byo"]
     byo: BYOConfigRead | None = None
-    # US-063 follow-up: feature-flag del modo BYO. Cuando está off, el
-    # wizard de conexión en la UI queda deshabilitado ("Próximamente")
-    # pero las cards con metadata de cada proveedor siguen visibles.
-    byo_enabled: bool = False
-    # Catálogo de proveedores BYO soportados con sus deep-links a la
-    # consola + modelos sugeridos. Se lee de la UI para renderizar las
-    # cards sin hardcodear URLs.
     byo_catalog: list[dict] = []
 
 
@@ -150,7 +127,6 @@ async def get_provider_config(
     return TenantAIProviderRead(
         mode=mode,  # type: ignore[arg-type]
         byo=_build_byo_read(byo_raw) if byo_raw else None,
-        byo_enabled=bool(settings.AI_BYO_ENABLED),
         byo_catalog=catalog_for_api(),
     )
 
@@ -173,18 +149,6 @@ async def update_provider_config(
     ai["mode"] = body.mode
 
     if body.mode == "byo":
-        # US-063 follow-up: feature flag. El backend aún acepta BYO vía
-        # API (para tests y scripts), pero desde /admin/ai el wizard
-        # queda deshabilitado hasta que el owner encienda el flag.
-        if not settings.AI_BYO_ENABLED:
-            from app.core.errors import business_rule
-
-            raise business_rule(
-                "El modo BYO aún no está habilitado en esta plataforma. "
-                "Habilítalo con AI_BYO_ENABLED=1 en Railway cuando el "
-                "wizard de conexión esté listo.",
-                code="BYO_NOT_ENABLED",
-            )
         if body.byo is None:
             from app.core.errors import business_rule
 
@@ -259,24 +223,13 @@ async def test_provider_connection(
     cu: CurrentUser = Depends(require_capability("ai.configure")),
     db: AsyncSession = Depends(get_db),
 ):
-    """US-057: valida credenciales BYO con un ping mínimo antes de guardar.
+    """Valida credenciales BYO con un ping mínimo antes de guardar.
 
     Para cada provider llama el endpoint más barato (GET /models para
-    OpenAI y Gemini, POST mínimo para Claude y Perplexity, GET /api/tags
-    para Ollama). Devuelve ok/latency/error.
+    OpenAI y Gemini, POST mínimo para Claude y Perplexity). Devuelve
+    ok/latency/error.
     """
     from app.services.ai_secrets import decrypt_secret
-
-    # Gate BYO feature flag (US-063 follow-up).
-    if not settings.AI_BYO_ENABLED:
-        return TestConnectionResult(
-            ok=False,
-            error=(
-                "BYO aún no habilitado. Activa AI_BYO_ENABLED cuando el "
-                "wizard de conexión esté listo."
-            ),
-            code="BYO_NOT_ENABLED",
-        )
 
     tenant_id = _tenant_id(cu)
     t = (
@@ -404,22 +357,6 @@ async def _ping_byo_provider(
             )
             async with httpx.AsyncClient(timeout=10.0) as c:
                 r = await c.get(url)
-            latency = int((time.perf_counter() - started) * 1000)
-            if r.status_code >= 300:
-                return TestConnectionResult(
-                    ok=False, latency_ms=latency,
-                    error=f"HTTP {r.status_code}",
-                    code="HTTP_ERROR",
-                )
-            return TestConnectionResult(ok=True, latency_ms=latency)
-
-        if provider == "ollama":
-            if not base_url:
-                return TestConnectionResult(
-                    ok=False, error="base_url requerida", code="NO_BASE_URL",
-                )
-            async with httpx.AsyncClient(timeout=10.0) as c:
-                r = await c.get(f"{base_url.rstrip('/')}/api/tags")
             latency = int((time.perf_counter() - started) * 1000)
             if r.status_code >= 300:
                 return TestConnectionResult(

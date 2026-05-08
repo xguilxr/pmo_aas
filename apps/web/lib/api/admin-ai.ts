@@ -1,10 +1,8 @@
 import { apiFetch } from "@/lib/api";
 
 // ============================================================================
-// US-057 + DEC-017/019 — Selector de modo IA por tenant (disabled / platform / byo).
-// Los helpers legacy de Ollama/Tailscale (US-045, US-047, US-048) se retiraron
-// en BUG-027: el cascade IA vive en `settings.ai.{mode,byo,...}` y el único
-// flujo de alta de proveedor es el wizard BYO de /admin/ai.
+// Selector de modo IA por tenant (disabled / platform / byo). El único flujo
+// de alta de proveedor es el wizard BYO de /admin/ai (BUG-053).
 // ============================================================================
 
 export type TestConnectionResult = {
@@ -18,10 +16,7 @@ export type TestConnectionResult = {
 
 export type TenantAIMode = "disabled" | "platform" | "byo";
 
-/** Proveedores expuestos en el catálogo público de /admin/ai. Ollama
- *  quedó fuera (follow-up US-063): tenants legacy US-048 siguen
- *  funcionando en el worker pero la UI ya no ofrece su alta.
- */
+/** Proveedores expuestos en el catálogo público de /admin/ai. */
 export type BYOProvider = "openai" | "claude" | "perplexity" | "gemini";
 
 export type BYOConfigRead = {
@@ -55,7 +50,6 @@ export type BYOProviderInfo = {
 export type TenantAIProviderRead = {
   mode: TenantAIMode;
   byo: BYOConfigRead | null;
-  byo_enabled: boolean;
   byo_catalog: BYOProviderInfo[];
 };
 

@@ -16,14 +16,14 @@ async def _setup(client, db_session):
     admin_role = await create_admin_role(db_session, t)
     await create_user(db_session, tenant=t, username="admin", email="admin@acme.example.com",
                       password="Str0ng-Admin-1!", roles=[admin_role])
-    # US-057: habilitar IA en modo `byo` (ollama) para que tanto minutas
+    # US-057: habilitar IA en modo `byo` (openai stubbed) para que tanto minutas
     # como draft-report pasen el gate del endpoint. Los providers están
     # stubbed en conftest, así que la llamada devuelve el stub.
     await enable_tenant_ai(
         db_session,
         t,
         mode="byo",
-        byo={"provider": "ollama", "base_url": "http://localhost:11434", "model": "stub"},
+        byo={"provider": "openai", "api_key_encrypted": "stub-key", "model": "stub"},
     )
     auth = await login(client, "admin", "Str0ng-Admin-1!")
     r = await client.post("/api/v1/organizations", json={"name": "Org1"}, headers=auth["_authz"])

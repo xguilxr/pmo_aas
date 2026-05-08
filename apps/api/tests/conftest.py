@@ -80,18 +80,12 @@ async def client(db_engine) -> AsyncIterator[AsyncClient]:
         yield c
 
 
-# US-057: stub de providers IA para tests integration (los que usan el
-# `client` o dispatchan el worker IA). Previo a US-057 los tests dependían
-# de AI_MODE=disabled para que el cascade devolviera stubs; ahora el modo
-# es per-tenant y los providers reales harían HTTP, por eso se stubbean.
-#
-# Los tests unitarios que ejercen `OllamaProvider.generate()` directamente
-# (p. ej. test_enh011_ai_timeout.py con httpx mock) NO activan este
-# stub: se excluyen por nombre de archivo.
+# Stub de providers IA para tests integration (los que usan el `client`
+# o dispatchan el worker IA). El modo es per-tenant y los providers
+# reales harían HTTP, por eso se stubbean a DisabledProvider.
 import pytest  # noqa: E402
 
 _AI_STUB_EXCLUDE_PREFIXES = (
-    "test_enh011_ai_timeout",
     # BUG-030: test que mockea httpx directamente para verificar que
     # el body enviado a Groq no contenga el campo `metadata`. No debe
     # stubbearse el provider, si no el httpx mock nunca se llama.
@@ -112,7 +106,7 @@ def _stub_ai_providers(monkeypatch, request):
     async def _stub_generate(_self, prompt, *, system=None, override=None):
         return await stub.generate(prompt, system=system)
 
-    for name in ("ollama", "gemini", "claude", "groq", "openai", "perplexity"):
+    for name in ("gemini", "claude", "groq", "openai", "perplexity"):
         cls = type(provider_mod._PROVIDERS[name])
         monkeypatch.setattr(cls, "generate", _stub_generate)
     yield

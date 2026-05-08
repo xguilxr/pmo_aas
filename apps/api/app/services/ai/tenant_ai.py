@@ -1,4 +1,4 @@
-"""Resolución del modo IA por tenant (US-057).
+"""Resolución del modo IA por tenant (US-057, BUG-053).
 
 Lee `tenants.settings.ai.{mode, byo}` y construye la config efectiva
 que el worker (o el endpoint que gatea 409) necesita para enrutar al
@@ -9,15 +9,14 @@ Shape canónico de `tenants.settings.ai`:
     {
       "mode": "disabled" | "platform" | "byo",
       "byo": {
-        "provider": "openai" | "claude" | "perplexity" | "gemini" | "ollama",
+        "provider": "openai" | "claude" | "perplexity" | "gemini",
         "api_key_encrypted": "enc::...",
         "model": "...",
-        "base_url": "...",              # sólo ollama (tailnet) y opcional openai
+        "base_url": "...",              # opcional (openai compat)
         "last_test_at": "2026-04-23T...",
         "last_test_status": "ok" | "fail",
         "last_test_error": "..."        # opcional
-      } | null,
-      "ollama": {...}                    # legacy US-048 — se migra al commit 0022
+      } | null
     }
 """
 from __future__ import annotations
@@ -42,7 +41,6 @@ class TenantAIConfig:
 
     mode: str  # "disabled" | "platform" | "byo"
     byo: dict[str, Any] | None = None  # api_key descifrada + provider + model/base_url
-    legacy_ollama: dict[str, Any] | None = None  # US-048 retro-compat
 
     @property
     def enabled(self) -> bool:
@@ -79,8 +77,4 @@ async def load_tenant_ai(db: AsyncSession, tenant_id: UUID | str) -> TenantAICon
         # Limpiar Nones para que el factory use defaults del provider.
         byo_effective = {k: v for k, v in byo_effective.items() if v is not None}
 
-    legacy_ollama = ai.get("ollama") if isinstance(ai.get("ollama"), dict) else None
-
-    return TenantAIConfig(
-        mode=mode, byo=byo_effective, legacy_ollama=legacy_ollama
-    )
+    return TenantAIConfig(mode=mode, byo=byo_effective)

@@ -29,33 +29,22 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000"
     SEED_ON_STARTUP: bool = True
 
-    AI_MODE: Literal["ollama", "gemini", "claude", "disabled"] = "disabled"
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen2.5:7b-instruct-q4_K_M"
-    # ENH-011: fallback del httpx timeout total de OllamaProvider cuando el
-    # tenant no configuró `settings.ai.ollama.timeout_sec`. Transcripts
-    # largas (1h de reunión) pueden tardar >2min en un 7B local — por eso
-    # el default es generoso y el env se puede subir sin bound rígido.
-    AI_TIMEOUT_S: int = 120
+    # BUG-053 (2026-05-08): cleanup post-Ollama. Modos canónicos:
+    #   - "disabled": sin IA, endpoints `/ai/*` responden 409.
+    #   - "platform": Groq (llama-3.3-70b-versatile) con la key de plataforma.
+    #   - "byo": tenant trae su propia key (openai/anthropic/gemini/perplexity).
+    # Retro-compat: tenants viejos con mode in {ollama, gemini, claude}
+    # se migraron a "platform" en la migración 0053.
+    AI_MODE: Literal["disabled", "platform", "byo"] = "platform"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
-    # US-057: IA base de la plataforma (modo "platform"). El api_key se lee
-    # primero de `platform_ai_settings.groq_api_key_encrypted` (cifrada con
-    # Fernet); si está vacía, cae a este env para dev/test. El modelo por
-    # defecto (llama-3.3-70b-versatile) balancea calidad + free tier.
-    # NOTA 2026-04-23: llama-3.1-70b-versatile quedó descontinuado por
-    # Groq; usar 3.3 como reemplazo directo.
+    # IA base de la plataforma (modo "platform"). La api_key se lee primero
+    # de `platform_ai_settings.groq_api_key_encrypted` (cifrada con Fernet);
+    # si está vacía, cae a este env para dev/test.
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
-    # US-063-follow-up (2026-04-24): feature flag para habilitar el modo
-    # BYO (bring-your-own) en la UI /admin/ai. El backend ya soporta BYO
-    # (US-057), pero el wizard de conexión se está puliendo; hasta que
-    # el owner lo encienda (`AI_BYO_ENABLED=1`), el tenant sólo ve las
-    # opciones "Sin IA" y "IA de la plataforma (Groq)" en la UI, y el
-    # endpoint PATCH rechaza `mode="byo"` con 409 BYO_NOT_ENABLED.
-    AI_BYO_ENABLED: bool = False
 
     STORAGE_PATH: str = "/tmp/pmo-uploads"
 

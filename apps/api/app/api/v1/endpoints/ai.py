@@ -41,13 +41,9 @@ async def generate_minute(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """US-051: dispatch a Celery. Devuelve 202 + job_id; la UI hace
-    polling a `GET /ai/jobs/{id}` hasta que termine.
-
-    Antes (US-NEW-040..043) esto corría sincrónicamente en `api`. A
-    partir de US-051 el worker procesa el job — inicialmente vía sidecar
-    Tailscale (US-048) para alcanzar Ollama; desde DEC-017 (US-057) el
-    proveedor es Groq/BYO cloud y el sidecar se retiró en ENH-023.
+    """Dispatch a Celery. Devuelve 202 + job_id; la UI hace polling a
+    `GET /ai/jobs/{id}` hasta que termine. El worker enruta al
+    provider del tenant (platform Groq / BYO cloud).
     """
     tenant_id = _tenant(cu)
     if len(body.transcript.encode("utf-8")) > MAX_TRANSCRIPT_BYTES:

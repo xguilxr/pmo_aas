@@ -1095,15 +1095,10 @@ async def suggest_import_mapping(
     tenant_id = _tenant(cu)
     await _ensure_project(db, project_id, tenant_id)
     tenant_cfg = await load_tenant_ai(db, tenant_id)
-    # Platform groq + ollama legacy se cargan vía workers.tasks.ai si es
-    # necesario; aquí mantenemos el endpoint inline-only y dejamos que
-    # `suggest_column_mapping` falle suave a heurística si el provider
-    # no está bien configurado.
     suggestions = await suggest_column_mapping(
         body.headers,
         tenant_cfg=tenant_cfg,
         platform_groq_config=None,
-        tenant_ollama_config=tenant_cfg.legacy_ollama,
         tenant_id=str(tenant_id),
     )
     ai_used = any(s.get("source") == "ai" for s in suggestions.values())
