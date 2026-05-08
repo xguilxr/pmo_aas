@@ -357,15 +357,22 @@ function ActiveConnectionPanel({
 }) {
   const [retesting, setRetesting] = useState(false);
   const [retestError, setRetestError] = useState<string | null>(null);
+  const [retestOk, setRetestOk] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const byo = data.byo!;
   const failed = byo.last_test_status === "fail";
 
   async function retest() {
     setRetesting(true);
     setRetestError(null);
+    setRetestOk(null);
     try {
       const r = await testTenantAIProvider({});
-      if (!r.ok) {
+      if (r.ok) {
+        setRetestOk(
+          r.latency_ms != null ? `Conexión OK · ${r.latency_ms} ms` : "Conexión OK",
+        );
+      } else {
         setRetestError(r.error ?? "Falló la prueba.");
       }
       onAfterRetest();
@@ -376,31 +383,29 @@ function ActiveConnectionPanel({
     }
   }
 
+  if (editing) {
+    return (
+      <ActiveConnectionEditForm
+        byo={byo}
+        onCancel={() => setEditing(false)}
+        onSaved={() => {
+          setEditing(false);
+          onAfterRetest();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="mt-3 space-y-2">
       {failed ? (
         <Banner variant="danger">
-          <div className="flex flex-col gap-2">
-            <div>
-              <strong>Última prueba falló:</strong>{" "}
-              {byo.last_test_error ?? "sin detalle"}
-            </div>
-            {retestError ? (
-              <div className="text-[12px]">{retestError}</div>
-            ) : null}
-            <div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={retest}
-                loading={retesting}
-              >
-                Probar de nuevo
-              </Button>
-            </div>
-          </div>
+          <strong>Última prueba falló:</strong>{" "}
+          {byo.last_test_error ?? "sin detalle"}
         </Banner>
       ) : null}
+      {retestError ? <Banner variant="danger">{retestError}</Banner> : null}
+      {retestOk ? <Banner variant="success">{retestOk}</Banner> : null}
 
       <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3 text-[12px]">
         <div className="font-medium text-[var(--color-primary)]">
@@ -408,7 +413,14 @@ function ActiveConnectionPanel({
         </div>
         <div className="mt-1 text-[var(--color-secondary)]">
           Proveedor: <strong>{byo.provider}</strong> · Modelo:{" "}
-          <strong>{byo.model ?? "—"}</strong> · Key:{" "}
+          <strong>{byo.model ?? "—"}</strong>
+          {byo.base_url ? (
+            <>
+              {" "}· Base URL:{" "}
+              <span className="font-mono break-all">{byo.base_url}</span>
+            </>
+          ) : null}
+          {" "}· Key:{" "}
           <span className="font-mono">{byo.api_key_mask ?? "sin key"}</span>
         </div>
         {byo.last_test_status ? (
@@ -424,8 +436,141 @@ function ActiveConnectionPanel({
             Sin probar todavía.
           </div>
         )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={retest}
+            loading={retesting}
+          >
+            Probar conexión
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setEditing(true)}
+          >
+            Editar
+          </Button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function ActiveConnectionEditForm({
+  byo,
+  onCancel,
+  onSaved,
+}: {
+  byo: NonNullable<TenantAIProviderRead["byo"]>;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [model, setModel] = useState(byo.model ?? "");
+  const [baseUrl, setBaseUrl] = useState(byo.base_url ?? "");
+  const [apiKey, setApiKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await updateTenantAIProvider({
+        mode: "byo",
+        byo: {
+          provider: byo.provider as BYOProvider,
+          api_key: apiKey.trim() ? apiKey : null,
+          model: model.trim() || null,
+          base_url: baseUrl.trim() || null,
+        },
+      });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={save}
+      className="mt-3 space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3 text-[12px]"
+    >
+      <div className="font-medium text-[var(--color-primary)]">
+        Editar conexión · {byo.provider}
+      </div>
+      <div>
+        <label
+          htmlFor="edit-model"
+          className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+        >
+          Modelo
+        </label>
+        <Input
+          id="edit-model"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="Ej. gpt-4o-mini"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="edit-url"
+          className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+        >
+          Base URL
+        </label>
+        <Input
+          id="edit-url"
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
+          placeholder="https://api..."
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="edit-key"
+          className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+        >
+          API key
+        </label>
+        <Input
+          id="edit-key"
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder={byo.api_key_mask ?? "Pega una nueva key"}
+          autoComplete="off"
+        />
+        <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+          Déjalo vacío para conservar la key actual.
+        </p>
+      </div>
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      <p className="text-[11px] text-[var(--color-tertiary)]">
+        Al guardar se prueba la conexión con los nuevos valores. Si falla,
+        la config previa se conserva.
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={saving}
+        >
+          Cancelar
+        </Button>
+        <Button type="submit" size="sm" loading={saving}>
+          Guardar y probar
+        </Button>
+      </div>
+    </form>
   );
 }
 
