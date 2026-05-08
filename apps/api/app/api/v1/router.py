@@ -19,6 +19,7 @@ from app.api.v1.endpoints import (
     project_requests,
     projects,
     reports,
+    risk_actions,
     scheduled_reports,
     stakeholders,
     superadmin,
@@ -52,6 +53,7 @@ api_router.include_router(reports.router)
 api_router.include_router(scheduled_reports.router)
 api_router.include_router(stakeholders.router)
 api_router.include_router(modules.risks_router)
+api_router.include_router(risk_actions.router)
 api_router.include_router(modules.issues_router)
 api_router.include_router(modules.chg_router)
 api_router.include_router(modules.docs_router)
