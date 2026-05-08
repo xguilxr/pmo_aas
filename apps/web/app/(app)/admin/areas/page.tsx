@@ -931,6 +931,7 @@ export default function AreasAdminPage() {
 
 function AreaNode({
   area,
+  orgName,
   expanded,
   toggle,
   toggleArea,
