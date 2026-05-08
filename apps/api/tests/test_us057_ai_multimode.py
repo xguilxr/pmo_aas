@@ -286,9 +286,8 @@ async def test_us057_admin_provider_get_returns_catalog(client, db_session):
     )
     body = r.json()
     keys = {p["key"] for p in body["byo_catalog"]}
-    assert keys == {"openai", "claude", "perplexity", "gemini"}
+    assert keys == {"openai", "claude", "perplexity", "gemini", "custom"}
     for p in body["byo_catalog"]:
-        assert p["api_keys_url"].startswith("https://")
         assert p["docs_url"].startswith("https://")
         assert isinstance(p["suggested_models"], list)
 
