@@ -205,7 +205,7 @@ Branch: `claude/sprint-16-reportes-redesign`
 Branch: `claude/sprint-17-ai-global`
 
 ### Bloque 0 (gate pre-arranque) ✅ ENTREGADO 2026-05-08
-- [x] BUG-053 #254 — Cleanup residuos Ollama + cablear Groq (default) + BYO whitelist — pendiente SHA
+- [x] BUG-053 #254 — Cleanup residuos Ollama + cablear Groq (default) + BYO whitelist — `d6947d3`
   - **Decisión owner 2026-05-06:** provider de planta = **Groq**. BYO whitelist = `gemini, openai, anthropic, perplexity`. Ollama y cualquier otro provider → eliminar de UI / código / env.
   - **Migración Alembic 0053** agregada (migra tenants legacy → `platform`, drop columnas `ollama_base_url`/`ollama_model`/`ai_timeout_sec` de `platform_ai_settings`).
 
