@@ -130,21 +130,31 @@ class GeminiProvider:
         body = {"contents": [{"role": "user", "parts": parts}]}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
-        async with httpx.AsyncClient(timeout=60.0) as c:
-            r = await c.post(url, json=body)
-            r.raise_for_status()
-            data = r.json()
-            text = ""
-            for cand in data.get("candidates", []):
-                for p in cand.get("content", {}).get("parts", []):
-                    text += p.get("text", "")
-            usage = data.get("usageMetadata", {})
-            return AIResult(
-                text=text,
-                model=f"gemini:{model}",
-                tokens_in=usage.get("promptTokenCount", 0),
-                tokens_out=usage.get("candidatesTokenCount", 0),
-            )
+        # BUG-058: log para diagnosticar ConnectTimeout BYO (sin api_key).
+        logger.info(
+            "ai.byo.gemini call model=%s timeout=60 tenant=%s",
+            model, ov.get("tenant_id"),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as c:
+                r = await c.post(url, json=body)
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise RuntimeError(
+                f"gemini_connect_error model={model}: {type(exc).__name__}"
+            ) from exc
+        text = ""
+        for cand in data.get("candidates", []):
+            for p in cand.get("content", {}).get("parts", []):
+                text += p.get("text", "")
+        usage = data.get("usageMetadata", {})
+        return AIResult(
+            text=text,
+            model=f"gemini:{model}",
+            tokens_in=usage.get("promptTokenCount", 0),
+            tokens_out=usage.get("candidatesTokenCount", 0),
+        )
 
 
 class ClaudeProvider:
@@ -176,20 +186,31 @@ class ClaudeProvider:
         }
         if system:
             body["system"] = system
-        async with httpx.AsyncClient(timeout=90.0) as c:
-            r = await c.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
-            r.raise_for_status()
-            data = r.json()
-            text = "".join(
-                b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
-            )
-            usage = data.get("usage", {})
-            return AIResult(
-                text=text,
-                model=f"claude:{model}",
-                tokens_in=usage.get("input_tokens", 0),
-                tokens_out=usage.get("output_tokens", 0),
-            )
+        url = "https://api.anthropic.com/v1/messages"
+        # BUG-058: log para diagnosticar ConnectTimeout BYO.
+        logger.info(
+            "ai.byo.claude call url=%s model=%s timeout=90 tenant=%s",
+            url, model, ov.get("tenant_id"),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=90.0) as c:
+                r = await c.post(url, headers=headers, json=body)
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise RuntimeError(
+                f"claude_connect_error url={url}: {type(exc).__name__}"
+            ) from exc
+        text = "".join(
+            b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
+        )
+        usage = data.get("usage", {})
+        return AIResult(
+            text=text,
+            model=f"claude:{model}",
+            tokens_in=usage.get("input_tokens", 0),
+            tokens_out=usage.get("output_tokens", 0),
+        )
 
 
 class GroqProvider:
@@ -282,21 +303,33 @@ class OpenAIProvider:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-        async with httpx.AsyncClient(timeout=90.0) as c:
-            r = await c.post(f"{base_url}/chat/completions", headers=headers, json=body)
-            r.raise_for_status()
-            data = r.json()
-            text = ""
-            choices = data.get("choices") or []
-            if choices:
-                text = choices[0].get("message", {}).get("content", "") or ""
-            usage = data.get("usage", {})
-            return AIResult(
-                text=text,
-                model=f"openai:{model}",
-                tokens_in=usage.get("prompt_tokens", 0),
-                tokens_out=usage.get("completion_tokens", 0),
-            )
+        # BUG-058: log el base_url/model resueltos (sin api_key) para
+        # diagnosticar ConnectTimeout — el tenant pudo configurar un
+        # base_url custom mal escrito.
+        logger.info(
+            "ai.byo.openai call base_url=%s model=%s timeout=90 tenant=%s",
+            base_url, model, ov.get("tenant_id"),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=90.0) as c:
+                r = await c.post(f"{base_url}/chat/completions", headers=headers, json=body)
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise RuntimeError(
+                f"openai_connect_error base_url={base_url}: {type(exc).__name__}"
+            ) from exc
+        text = ""
+        choices = data.get("choices") or []
+        if choices:
+            text = choices[0].get("message", {}).get("content", "") or ""
+        usage = data.get("usage", {})
+        return AIResult(
+            text=text,
+            model=f"openai:{model}",
+            tokens_in=usage.get("prompt_tokens", 0),
+            tokens_out=usage.get("completion_tokens", 0),
+        )
 
 
 class PerplexityProvider:
@@ -328,21 +361,31 @@ class PerplexityProvider:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-        async with httpx.AsyncClient(timeout=90.0) as c:
-            r = await c.post(f"{base_url}/chat/completions", headers=headers, json=body)
-            r.raise_for_status()
-            data = r.json()
-            text = ""
-            choices = data.get("choices") or []
-            if choices:
-                text = choices[0].get("message", {}).get("content", "") or ""
-            usage = data.get("usage", {})
-            return AIResult(
-                text=text,
-                model=f"perplexity:{model}",
-                tokens_in=usage.get("prompt_tokens", 0),
-                tokens_out=usage.get("completion_tokens", 0),
-            )
+        # BUG-058: log para diagnosticar ConnectTimeout BYO.
+        logger.info(
+            "ai.byo.perplexity call base_url=%s model=%s timeout=90 tenant=%s",
+            base_url, model, ov.get("tenant_id"),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=90.0) as c:
+                r = await c.post(f"{base_url}/chat/completions", headers=headers, json=body)
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise RuntimeError(
+                f"perplexity_connect_error base_url={base_url}: {type(exc).__name__}"
+            ) from exc
+        text = ""
+        choices = data.get("choices") or []
+        if choices:
+            text = choices[0].get("message", {}).get("content", "") or ""
+        usage = data.get("usage", {})
+        return AIResult(
+            text=text,
+            model=f"perplexity:{model}",
+            tokens_in=usage.get("prompt_tokens", 0),
+            tokens_out=usage.get("completion_tokens", 0),
+        )
 
 
 _PROVIDERS: dict[str, AIProvider] = {
@@ -422,6 +465,9 @@ async def generate_for_tenant(
         override = dict(cfg)
         if provider_name == "ollama" and tenant_ollama_config:
             override = {**tenant_ollama_config, **cfg}
+        # BUG-058: pasar tenant_id al provider para que aparezca en los logs.
+        if tenant_id:
+            override.setdefault("tenant_id", tenant_id)
         return await prov.generate(prompt, system=system, override=override)
 
     raise RuntimeError(f"tenant_ai_mode_invalid: {tenant_ai_mode!r}")
