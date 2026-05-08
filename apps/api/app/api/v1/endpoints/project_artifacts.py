@@ -29,6 +29,7 @@ from app.db.session import get_db
 from app.models.project import Project
 from app.models.project_artifact import ARTIFACT_TYPES, ProjectArtifact
 from app.models.project_charter import ProjectCharter
+from app.models.task import Task
 
 router = APIRouter(prefix="/projects", tags=["project_artifacts"])
 
@@ -213,3 +214,74 @@ async def get_artifact(
         return _raid_meta(project_id)
 
     return _organigrama_meta()
+
+
+@router.get("/{project_id}/plan/download")
+async def download_plan(
+    project_id: UUID,
+    format: str = "auto",
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-080: regenera el archivo del Plan on-demand desde DB.
+
+    `format=auto` (default) usa el `source_format` registrado en
+    `project_artifacts.plan` (último import). Si no hay artefacto previo,
+    cae a XLSX (plantilla US-096). `format=xlsx|csv|mpp` fuerza el formato.
+
+    MPP no es soportado para escritura (MPXJ Pro requerido); en ese caso
+    se regenera en XLSX y se devuelve el header
+    `X-Plan-Format-Fallback: xlsx-mpp-not-supported`.
+    """
+    from io import BytesIO
+    from urllib.parse import quote
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services.plan_regenerator import regenerate_for_format
+
+    tenant_id = _tenant(cu)
+    project = await _ensure_project(db, project_id, tenant_id)
+
+    art = (
+        await db.execute(
+            select(ProjectArtifact).where(
+                ProjectArtifact.project_id == str(project_id),
+                ProjectArtifact.type == "plan",
+            )
+        )
+    ).scalar_one_or_none()
+
+    fmt = (format or "auto").lower()
+    if fmt == "auto":
+        fmt = (art.source_format if art else None) or "xlsx"
+    if fmt not in ("xlsx", "csv", "mpp", "template"):
+        raise AppError(
+            status.HTTP_400_BAD_REQUEST,
+            "INVALID_FORMAT",
+            f"format inválido: {format!r}. Usa auto|xlsx|csv|mpp.",
+            {"format": format},
+        )
+
+    tasks = (
+        await db.execute(
+            select(Task)
+            .where(Task.project_id == str(project_id))
+            .order_by(Task.outline_level.nullslast(), Task.wbs)
+        )
+    ).scalars().all()
+
+    data, mime, ext, fallback = regenerate_for_format(fmt, list(tasks))
+
+    safe_name = (project.name or "plan").replace("/", "_")
+    filename = f"Plan - {safe_name}.{ext}"
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="{filename}"; '
+            f"filename*=UTF-8''{quote(filename)}"
+        ),
+    }
+    if fallback:
+        headers["X-Plan-Format-Fallback"] = "xlsx-mpp-not-supported"
+
+    return StreamingResponse(BytesIO(data), media_type=mime, headers=headers)

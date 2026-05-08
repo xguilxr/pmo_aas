@@ -11,6 +11,7 @@ from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.project import Project
+from app.models.project_artifact import ProjectArtifact
 from app.models.task import Task, TaskDependency
 from app.models.user import User
 from app.schemas.modules import UserMini
@@ -986,6 +987,36 @@ async def import_confirm(
             db.add(t)
             await db.flush()
             created[pt.external_id] = t
+
+    # ENH-080: registrar el Plan vivo en `project_artifacts` con el
+    # source_format detectado, para que `GET /plan/download` regenere
+    # en el formato origen. UNIQUE(project_id, type='plan') → upsert.
+    plan_format = "mpp" if source == "mpp" else ("csv" if source == "csv" else "xlsx")
+    existing_art = (
+        await db.execute(
+            select(ProjectArtifact).where(
+                ProjectArtifact.project_id == str(project_id),
+                ProjectArtifact.type == "plan",
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_art is None:
+        db.add(
+            ProjectArtifact(
+                tenant_id=str(tenant_id),
+                project_id=str(project_id),
+                type="plan",
+                source_format=plan_format,
+                filename=preview.get("filename") or None,
+                size_bytes=len(data),
+                created_by=cu.id,
+            )
+        )
+    else:
+        existing_art.source_format = plan_format
+        existing_art.filename = preview.get("filename") or existing_art.filename
+        existing_art.size_bytes = len(data)
+        existing_art.created_by = cu.id
 
     # Cleanup Redis post-commit exitoso.
     delete_preview(job_id)
