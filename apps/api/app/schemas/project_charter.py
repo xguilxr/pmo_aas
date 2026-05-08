@@ -14,6 +14,27 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 
+# ENH-081 CA3: lista configurable de campos requeridos para considerar el
+# charter "completo". Si alguno está vacío, la UI muestra banner de aviso.
+# Se mantiene en backend (no en BD) para iterar rápido sin migración —
+# cuando el set se vuelva sensible al tenant, mover a `tenant_settings`.
+CHARTER_REQUIRED_FIELDS: tuple[str, ...] = (
+    "project_name",
+    "description",
+    "sponsor",
+    "objective",
+    "scope",
+    "project_type",
+    "priority",
+)
+
+
+class CharterCompleteness(BaseModel):
+    is_complete: bool
+    missing_fields: list[str]
+    required_fields: list[str]
+
+
 class CharterSection4(BaseModel):
     """Datos de gestión derivados del proyecto al consultar."""
 
@@ -86,6 +107,9 @@ class ProjectCharterRead(BaseModel):
 
     # Sección 4: derivada (sólo lectura)
     section_4: CharterSection4
+
+    # ENH-081 CA3: completeness contra `CHARTER_REQUIRED_FIELDS`.
+    completeness: CharterCompleteness
 
     created_at: datetime
     updated_at: datetime
