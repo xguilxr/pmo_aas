@@ -44,7 +44,7 @@ class CurrentUser:
         return self.user.is_superadmin
 
     @property
-    def effective_tenant_id(self) -> UUID | None:
+    def effective_tenant_id(self) -> str | None:
         """BUG-055/056 — tenant en el que el request opera realmente.
 
         Para users normales coincide con `user.tenant_id`. Para
@@ -52,10 +52,17 @@ class CurrentUser:
         siendo None, pero el JWT trae `active_tenant_id` apuntando al
         tenant invadido — que es el contexto correcto para crear
         users, listar orgs, etc.
+
+        Devuelve `str` (no UUID) porque las columnas `tenant_id` son
+        `String(36)` en BD: pasar un UUID hace que asyncpg envíe el
+        placeholder como `$1::UUID` y rompa la comparación con varchar
+        (`operator does not exist: character varying = uuid`).
         """
         if self.user.tenant_id is not None:
-            return self.user.tenant_id
-        return self.active_tenant_id
+            return str(self.user.tenant_id)
+        if self.active_tenant_id is not None:
+            return str(self.active_tenant_id)
+        return None
 
     @property
     def role_type(self) -> str | None:

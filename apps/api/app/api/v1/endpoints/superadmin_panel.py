@@ -360,8 +360,13 @@ async def list_all_users(
                 .where(UserRole.user_id.in_(user_ids))
             )
         ).all()
+        # Dedup: el superadmin acumula un UserRole "Administrador" por
+        # cada tenant en el que hace `joinAsAdmin` — la UI solo necesita
+        # los nombres únicos para no mostrar N badges idénticos.
         for uid, rname in role_rows:
-            roles_by_user.setdefault(str(uid), []).append(rname)
+            bucket = roles_by_user.setdefault(str(uid), [])
+            if rname not in bucket:
+                bucket.append(rname)
 
     return {
         "items": [
