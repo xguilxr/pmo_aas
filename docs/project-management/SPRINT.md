@@ -9,32 +9,25 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 17 (v1.16) — Bloque 0 MERGED 2026-05-08 (PR #297, BUG-053):
-  BUG-053 #254 — cleanup Ollama + cablear Groq como default
+Sprint 17 (v1.16) — Bloque 0 MERGED 2026-05-08 (PR #297, BUG-053).
 Sprint 17 (v1.16) — Bloque 0.5 IN-PROGRESS 2026-05-08:
   US-104 #298 — módulo BYO: test-before-save + custom provider + retry
   Branch sesión: claude/setup-ai-module-8HYs1
-```
 
-```
-Sprint 12 (v1.10/v1.11) — Bloques 1+2+3 ENTREGADOS 2026-05-06
-  + reworks 2026-05-06 (US-094 #228 / US-095 #229) en branch
-    claude/fix-issues-plan-sprints-2psWS — pendiente verif. owner.
-Branch sesión: claude/fix-issues-plan-sprints-2psWS
+Sprint 17 Bloque 1 (chat global #255-258) → POSTERGADO (ver sección Deferred).
 
-Sprint 13 (v1.12) — Bloque 1 ENTREGADO 2026-05-07 (7 issues — pendiente verif. owner):
-  US-097/098/099 + ENH-066/067/068/077.
-  Migraciones 0044 (areas/teams/actors) + 0045 (tasks.area_id) agregadas.
+Sprints 18-23 PLANEADOS 2026-05-08 (status:triage) — 22 issues + 2 epics nuevos:
+  Sprint 18 (v1.17) — Documentos & Plan vivo (4 issues, 2 migraciones)
+  Sprint 19 (v1.18) — RAID polish + vistas dedicadas (6 issues, 1 migración)
+  Sprint 20 (v1.19) — IA Minutas (5 issues)
+  Sprint 21 (v1.20) — Reportes redesign HTML (4 issues, 1 migración)
+  Sprint 22 (v1.21) — Cambios approval workflow (2 issues, 2 migraciones)
+  Sprint 23 (v1.22) — BYO universal + Copilot M365 (1 issue)
+  Branch sesión actual: claude/plan-hierarchy-restructure-sdQOm
 
-Sprint 14 (v1.13) — Bloque 1 ENTREGADO 2026-05-07 (4 issues — pendiente verif. owner):
-  US-100 + ENH-069/070 + BUG-052. Sin migraciones, sin cambios de schema.
+Sprints 12-15 — Bloques entregados, pendiente verificación owner.
 
-Sprint 15-17 — PLANEADOS (status:triage):
-  Sprint 15 (v1.14) — Áreas refinement + Plan responsables (4 issues)
-  Sprint 16 (v1.15) — Reportes (4 issues)
-  Sprint 17 (v1.16) — IA conversacional global (5 issues)
-
-Próximo libre: US-104, BUG-055, ENH-080.
+Próximo libre: US-114, BUG-056, ENH-092.
 ```
 
 ---
@@ -191,37 +184,129 @@ Branch sesión: `claude/define-area-roles-tYoXl`
 
 ---
 
-## ⏳ Sprint 16 (v1.15) — Reportes (PLANEADO 2026-05-06, scope a refinar)
-Branch: `claude/sprint-16-reportes-redesign`
-
-- [ ] ENH-071 #250 — Reglas/condiciones de filtrado configurables
-- [ ] ENH-072 #251 — Ordenamiento configurable por columna + persistencia
-- [ ] ENH-073 #252 — Refresh visual (layout, tipografía, densidad)
-- [ ] US-101 #253 — "Crear reporte con IA" (endpoint hoy trabado)
-
-> Owner pidió definir con mayor precisión cuando lleguemos a este sprint. Issues quedan como esqueleto status:triage.
+## ⏳ Sprint 16 (v1.14) — Reportes ✅ CERRADO 2026-05-07
+4 issues (#250 ENH-071 + #251 ENH-072 + #252 ENH-073 + #253 US-101) entregados v1.14, todos `state:closed completed`. Detalle archivado en `SPRINT-DONE-HISTORY.md`.
 
 ---
 
-## ⏳ Sprint 17 (v1.16) — IA conversacional global (PLANEADO 2026-05-06)
-Branch: `claude/sprint-17-ai-global`
+## ⏳ Sprint 17 (v1.16) — IA conversacional global
 
 ### Bloque 0 (gate pre-arranque) ✅ ENTREGADO 2026-05-08
 - [x] BUG-053 #254 — Cleanup residuos Ollama + cablear Groq (default) + BYO whitelist — `d6947d3`
-  - **Decisión owner 2026-05-06:** provider de planta = **Groq**. BYO whitelist = `gemini, openai, anthropic, perplexity`. Ollama y cualquier otro provider → eliminar de UI / código / env.
-  - **Migración Alembic 0053** agregada (migra tenants legacy → `platform`, drop columnas `ollama_base_url`/`ollama_model`/`ai_timeout_sec` de `platform_ai_settings`).
+  - **Decisión owner 2026-05-06:** provider de planta = **Groq**. BYO whitelist = `gemini, openai, anthropic, perplexity`.
+  - **Migración Alembic 0053** agregada.
 
-### Bloque 1 (post-cleanup)
-- [ ] US-102 #255 — Side-panel chat IA en cada página (Ctrl+K + botón flotante)
-- [ ] ENH-074 #256 — Context-awareness por página (pathname + IDs)
-- [ ] ENH-075 #257 — Acciones ejecutables vía tool-use (crear tarea / RAID / nav)
-- [ ] ENH-076 #258 — Historial persistente por usuario + summary rolling
+### Bloque 0.5 ⏳ IN-PROGRESS 2026-05-08
+- [ ] US-104 #298 — Módulo BYO: test-before-save + custom provider + retry. Branch `claude/setup-ai-module-8HYs1`.
 
-**Migración Alembic prevista:** 1 — `ai_conversations` + `ai_messages` con RLS.
+### Bloque 1 ⏸️ POSTERGADO 2026-05-08 (ver sección Deferred)
 
 ---
 
-**Próximo libre:** US-105, BUG-055, ENH-080.
+## ⏸️ Deferred — re-evaluación post Sprints 18-23
+
+> Issues abiertos sin asignación de versión. Se retoman cuando owner decida.
+
+### IA conversacional global (ex Sprint 17 Bloque 1)
+- [ ] US-102 #255 — Side-panel chat IA en cada página (Ctrl+K + flotante)
+- [ ] ENH-074 #256 — Context-awareness por página
+- [ ] ENH-075 #257 — Tool-use (crear tarea / RAID / nav)
+- [ ] ENH-076 #258 — Historial persistente + summary rolling
+
+**Decisión owner 2026-05-08:** posterga el chat global. Primero ejecutar Sprints 18-23 (Documentos / RAID / Minutas / Reportes / Cambios / BYO universal). Volver a evaluar necesidad después.
+
+### Pendiente redefinición Áreas/Recursos
+- [ ] US-105 #311 — Import Plan: wizard matching responsables → Actor. Depende del shape final del catálogo Actores que salga de la redefinición. Se queda en `status:triage` hasta entonces.
+- [ ] **Tab Organigrama de US-106** — placeholder UI en Sprint 18; el cableado funcional (lista de recursos asignados al proyecto) depende del mismo paquete.
+
+**Decisión owner 2026-05-08:** la redefinición de Áreas/Recursos es el próximo paquete arquitectónico (sin issue creado todavía). Los items de arriba quedan congelados hasta que ese paquete se planee y entregue.
+
+---
+
+## ⏳ Sprint 18 (v1.17) — Documentos & Plan vivo (PLANEADO 2026-05-08)
+Branch reservada: `claude/sprint-18-documentos-plan`
+
+### Bloque 1 (3 issues — orden recomendado)
+- [ ] US-106 #308 — Sistema de Artefactos por proyecto (Charter / Plan / RAID / Organigrama, whitelist). **Tab Organigrama queda como placeholder UI** — su contenido funcional depende de la redefinición pendiente Áreas/Recursos.
+- [ ] ENH-081 #309 — Project Charter: auto-creación nuevos + backfill existentes
+- [ ] ENH-080 #310 — Plan vivo: sync DB ↔ archivo maestro preservando formato origen (.mpp/.xlsx/.csv)
+
+**Decisiones:**
+- DB es fuente de verdad del Plan; archivo se regenera on-demand en formato origen.
+- Tab Organigrama = placeholder en Sprint 18; cableado real post-redefinición Áreas/Recursos.
+
+**Migraciones Alembic previstas:** 2 — `project_artifacts`, charter backfill.
+
+**Epic:** EP018 (Documentos / Artefactos) — nuevo, ver `docs/epics/EP018-documents-artifacts.md`.
+
+---
+
+## ⏳ Sprint 19 (v1.18) — RAID polish + vistas dedicadas (PLANEADO 2026-05-08)
+Branch reservada: `claude/sprint-19-raid-polish`
+
+### Bloque 1 (6 issues — orden recomendado)
+- [ ] ENH-082 #312 — Export RAID Excel "bonito" 4 sheets dedicados con todas las propiedades
+- [ ] US-107 #313 — Riesgo: entidad "Acción de mitigación" linked (multi-responsable, status, fecha)
+- [ ] ENH-083 #314 — Riesgo: render mitigación + lista Acciones inline en ticket
+- [ ] ENH-088 #315 — Preview "tarjeta flotante" sobre página actual (reemplaza side panel) — RAID/Lecciones/Cambios
+- [ ] ENH-086 #316 — Lecciones: página dedicada in-platform (extiende RAID Denso)
+- [ ] ENH-087 #317 — Cambios: página dedicada in-platform (extiende RAID Denso)
+
+**Migración Alembic prevista:** 1 — `risk_actions` + `risk_action_assignees`.
+
+---
+
+## ⏳ Sprint 20 (v1.19) — IA Minutas (PLANEADO 2026-05-08)
+Branch reservada: `claude/sprint-20-ia-minutas`
+
+### Bloque 1 (5 issues)
+- [ ] ENH-084 #318 — IA Minutas: 4 secciones RAID estandarizadas independiente del modelo (post-procesado JSON-schema)
+- [ ] US-108 #319 — IA Minutas → sugerir RAIDs aprobables por PM (PM revisa/edita/aprueba/crea)
+- [ ] BUG-055 #320 — Generación minuta: botón Cancelar/Volver (UI faltante)
+- [ ] ENH-090 #321 — Preview Minuta in-platform (HTML viewer embebido)
+- [ ] ENH-091 #322 — Botón Borrar minuta
+
+**Sin migraciones previstas.**
+
+---
+
+## ⏳ Sprint 21 (v1.20) — Reportes redesign HTML (PLANEADO 2026-05-08)
+Branch reservada: `claude/sprint-21-reportes-html`
+
+### Bloque 1 (4 issues — orden recomendado)
+- [ ] US-111 #324 — Render HTML interactivo con filtros + KPIs (ref `docs/archive/Reporte de Seguimiento.html`) — base que consumen los demás
+- [ ] US-109 #323 — Panel creación 2 modos (Nuevo / Plantilla) + render HTML inicial + tweaker IA edita HTML
+- [ ] ENH-085 #325 — Guardar como Reporte / Guardar como Plantilla (catálogo tenant)
+- [ ] ENH-089 #326 — Export Reportes/Minutas: HTML primario + adecuaciones PDF/TXT
+
+**Migración Alembic prevista:** 1 — `report_templates`.
+
+---
+
+## ⏳ Sprint 22 (v1.21) — Cambios / Approval workflow (PLANEADO 2026-05-08)
+Branch reservada: `claude/sprint-22-cambios-approval`
+
+### Bloque 1 (2 issues)
+- [ ] US-112 #327 — Cambios: registrar responsables de aprobación (multi-actor)
+- [ ] US-113 #328 — Workflow email: token JWT firmado + landing pública aprobar/rechazar + re-trigger en rechazo
+
+**Migraciones Alembic previstas:** 2 — `change_approvers`, `approval_tokens`.
+
+**Epic:** EP019 (Cambios / Approval workflow) — nuevo, ver `docs/epics/EP019-changes-approval.md`.
+
+---
+
+## ⏳ Sprint 23 (v1.22) — BYO universal + Copilot M365 (PLANEADO 2026-05-08)
+Branch reservada: `claude/sprint-23-byo-universal`
+
+### Bloque 1 (1 issue)
+- [ ] US-110 #329 — BYO universal (cualquier API válida vía OpenAI-compatible) + soporte Microsoft Copilot M365 vía Azure OpenAI
+
+**Sin migraciones previstas.**
+
+---
+
+**Próximo libre:** US-114, BUG-056, ENH-092.
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
@@ -250,6 +335,7 @@ Branch: `claude/sprint-17-ai-global`
 | 8 | v1.7 | 2026-04-29 | 13 (7 bloques, 1 not_planned) |
 | 9 | v1.8 | 2026-05-05 | 6 (2 bloques + hotfix UX) |
 | 10 | v1.9 | 2026-05-06 | 14 (6 bloques) |
+| 16 | v1.14 | 2026-05-07 | 4 (1 bloque — Reportes) |
 
 ---
 
@@ -265,6 +351,8 @@ Branch: `claude/sprint-17-ai-global`
 
 ## Notas y cambios recientes
 
+- **2026-05-08 (deferral US-105 + tab Organigrama):** owner postergó US-105 (#311) y el cableado funcional del tab Organigrama de US-106 (#308) hasta la redefinición del módulo de Áreas y Recursos (próximo paquete arquitectónico, sin issue aún). US-105 queda en `status:triage` sin versión; Sprint 18 Bloque 1 baja de 4 a 3 issues. Tab Organigrama existe como placeholder UI con empty state. Issues #308 y #311 actualizados con la nota; SPRINT.md y EP018 reflejan el cambio.
+- **2026-05-08 (triage Sprints 18-23):** owner pegó dump de 22 ideas (Documentos/Artefactos, Plan vivo, RAID polish, IA Minutas, Reportes HTML, Cambios approval, BYO universal). Triage produjo 22 issues nuevos (#308-#329), 2 epics nuevos (EP018 Documentos, EP019 Cambios) y 6 sprints planeados (18-23). Decisiones owner: (a) DB es fuente de verdad del Plan; archivo se regenera preservando formato; (b) matching de Actores en imports = wizard posterior, por nombre, no bloquea; (c) BYO universal con OpenAI-compatible + caso especial Copilot M365 vía Azure OpenAI. Sprint 17 Bloque 1 (chat global #255-258) postergado a re-evaluación; label `v1.15` removido. Sprint 16 (Reportes #250-253) ya estaba 100% cerrado v1.14 — archivado a `SPRINT-DONE-HISTORY.md`.
 - **2026-05-07 (Sprint 15 Bloque 1 entregado):** 4 issues entregados en branch `claude/define-area-roles-tYoXl`. 4 commits: `5cd31eb` BUG-054 + `0a7768d` US-103 + `b2bb881` ENH-078 + `db20f0e` ENH-079. **3 migraciones Alembic** (0048+0049+0050) requieren `alembic upgrade head` en Railway api+worker. Op A confirmada por owner: `project_areas` dropeado, catálogo tenant es fuente única. PMO seed global + sync PMO users → Actores. Plan responsable usa Actores; RAID dropdown switch diferido.
 - **2026-05-07 (triage Sprint 15 — Áreas refinement):** owner pidió rediseño completo del módulo Áreas tras Sprint 13. Se crearon 4 issues (#263 US-103, #264 ENH-078, #265 BUG-054, #266 ENH-079) con `status:triage`. Sprint 15 (Reportes) → 16 y Sprint 16 (IA) → 17. Nuevo epic **EP017 (Áreas/Actores)** que referencia EP004 (Admin). Decisiones: líder del área se persiste como Actor con `is_lead=true` (no campos sueltos), creado primero antes del área; US-103 y ENH-078 quedan separados pero entregados en el mismo bloque.
 - **2026-05-07 (Sprint 14 Bloque 1 entregado):** 4 issues (#246-#249) entregados sobre la misma branch `claude/fix-issues-plan-sprints-2psWS` en 2 commits (`7b1bf5e` US-100+ENH-069+ENH-070, `6b5fa2e` BUG-052). Rewrite completo de `apps/web/components/raid-detail-page.tsx` (188→765 líneas) siguiendo `docs/design-system/raid-detail-denso.md`. **Sin migraciones**, sin cambios de schema ni paleta. Owner planeaba 1 deploy combinando Sprint 13 + 14.
