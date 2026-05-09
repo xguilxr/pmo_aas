@@ -8,6 +8,7 @@ from app.api.v1.endpoints import (
     areas,
     auth,
     branding,
+    change_approvals,
     dashboard,
     entity_history,
     modules,
@@ -52,6 +53,8 @@ api_router.include_router(areas.actors_router)
 api_router.include_router(areas.assignments_router)
 api_router.include_router(reports.router)
 api_router.include_router(report_templates.router)
+api_router.include_router(change_approvals.router)
+api_router.include_router(change_approvals.public_router)
 api_router.include_router(scheduled_reports.router)
 api_router.include_router(stakeholders.router)
 api_router.include_router(modules.risks_router)
