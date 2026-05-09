@@ -514,6 +514,8 @@ export const LESSON_CATEGORY_LABEL: Record<LessonCategory, string> = {
 export type MinuteAgreement = {
   description: string;
   owner_id?: string | null;
+  /** Texto libre del responsable cuando viene del LLM (no FK). */
+  owner?: string | null;
   due_date?: string | null;
   status?: string | null;
 };
@@ -522,6 +524,8 @@ export type MinuteParticipant = {
   user_id?: string;
   name: string;
   email?: string;
+  /** Rol declarado por el LLM o capturado manualmente. */
+  role?: string | null;
 };
 
 export type MinuteTopic = {
