@@ -197,6 +197,48 @@ async def send_report(
     return {"ok": True, "sent_at": r.sent_at.isoformat(), "recipients": body.recipients}
 
 
+@router.post("/jobs/{job_id}/cancel")
+async def cancel_job(
+    job_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """BUG-055: marca un AIJob como cancelado para que el worker
+    detecte el flag y omita la persistencia del minute/report final.
+    Solo aplica a jobs en estado `queued` o `running` — los demás
+    transicionan no son válidos.
+
+    El worker verifica el estado antes de hacer commit; si es
+    `cancelled`, se aborta sin crear el MeetingMinute (CA4 — sin
+    minutas huérfanas).
+    """
+    tenant_id = _tenant(cu)
+    j = (
+        await db.execute(
+            select(AIJob).where(
+                AIJob.id == str(job_id), AIJob.tenant_id == str(tenant_id)
+            )
+        )
+    ).scalar_one_or_none()
+    if j is None:
+        raise not_found("Job")
+    if j.status not in {"queued", "running"}:
+        raise conflict(
+            f"Job en estado `{j.status}` no se puede cancelar",
+            code="STATE_TRANSITION",
+        )
+    j.status = "cancelled"
+    j.completed_at = datetime.now(UTC)
+    j.error = "Cancelado por el usuario"
+    await write_audit(
+        db, action="ai.job.cancel", module="ai",
+        user_id=cu.id, tenant_id=tenant_id,
+        entity_type="ai_job", entity_id=str(j.id),
+    )
+    await db.commit()
+    return {"id": str(j.id), "status": j.status}
+
+
 @router.get("/jobs/{job_id}")
 async def get_job(
     job_id: UUID,

@@ -44,6 +44,8 @@ logger = logging.getLogger("pmoaas.ai.tasks")
 _AI_CALL_MAX_RETRIES = 3
 _AI_CALL_BACKOFF_SEC: tuple[float, ...] = (1.0, 3.0, 8.0)
 
+_EMPTY_RAID = {"risks": [], "issues": [], "lessons": [], "changes": []}
+
 _EMPTY_MINUTE = {
     "summary": "",
     "participants": [],
@@ -52,7 +54,34 @@ _EMPTY_MINUTE = {
     "decisions": [],
     "next_steps": [],
     "risks_blockers": [],
+    "raid": dict(_EMPTY_RAID),
 }
+
+
+def _normalize_raid_block(raw: object) -> dict:
+    """ENH-084: normaliza el bloque `raid` a las 4 claves canónicas con
+    arrays. Tolera modelos que devuelvan claves alternativas (`risk`,
+    `lesson`, `change`, alias) o aplanen los items en un array suelto.
+    Si no hay items de un tipo, queda en `[]` — no se inventa.
+    """
+    block: dict = dict(_EMPTY_RAID)
+    if not isinstance(raw, dict):
+        return block
+    aliases = {
+        "risks": ("risks", "risk", "riesgos", "riesgo"),
+        "issues": ("issues", "issue", "incidents", "incidencias", "incidentes"),
+        "lessons": (
+            "lessons", "lesson", "lecciones", "lessons_learned",
+        ),
+        "changes": ("changes", "change", "cambios", "change_requests"),
+    }
+    for key, names in aliases.items():
+        for n in names:
+            v = raw.get(n)
+            if isinstance(v, list):
+                block[key].extend([x for x in v if isinstance(x, dict)])
+                break
+    return block
 
 
 def _parse_json_strict(s: str) -> dict | None:
@@ -257,6 +286,15 @@ async def _run_minute(
                 parsed["summary"] = res.text[:2000]
             collected.append(parsed)
 
+        # ENH-084: bloque `raid` normalizado y mergeado en cascada (4
+        # tipos canónicos: risks/issues/lessons/changes). Si el modelo
+        # no devuelve la sección, queda en arrays vacíos — sin inventar.
+        merged_raid: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
+        for c in collected:
+            block = _normalize_raid_block(c.get("raid"))
+            for k in merged_raid:
+                merged_raid[k].extend(block[k])
+
         merged = {
             "summary": "\n\n".join([c.get("summary") or "" for c in collected]).strip(),
             "participants": functools.reduce(operator.iadd, (c.get("participants") or [] for c in collected), []),
@@ -265,15 +303,38 @@ async def _run_minute(
             "decisions": functools.reduce(operator.iadd, (c.get("decisions") or [] for c in collected), []),
             "next_steps": functools.reduce(operator.iadd, (c.get("next_steps") or [] for c in collected), []),
             "risks_blockers": functools.reduce(operator.iadd, (c.get("risks_blockers") or [] for c in collected), []),
+            "raid": merged_raid,
         }
 
         async with db_session() as db:
             job = (
                 await db.execute(select(AIJob).where(AIJob.id == job_id))
             ).scalar_one()
+            # BUG-055 CA4: si el usuario canceló mid-stream, no
+            # persistimos la minuta — evita orphans en DB. La fila del
+            # job queda con status=cancelled (set por el endpoint).
+            if job.status == "cancelled":
+                logger.info("minute task cancelled before persist job=%s", job_id)
+                return
             minute_id: str | None = None
             if save_as_minute:
                 folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
+                # US-108: cada sugerencia entra como `pending` con
+                # ticket_id null hasta que el PM la apruebe.
+                raid_persisted: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
+                for kind in raid_persisted:
+                    for it in merged["raid"].get(kind, []):
+                        if not isinstance(it, dict):
+                            continue
+                        raid_persisted[kind].append({
+                            "short_desc": str(it.get("short_desc") or "").strip(),
+                            "suggested_owner_name": it.get("suggested_owner_name") or None,
+                            "suggested_priority": it.get("suggested_priority"),
+                            "raw_quote": it.get("raw_quote") or None,
+                            "status": "pending",
+                            "ticket_id": None,
+                            "ticket_type": None,
+                        })
                 mm = MeetingMinute(
                     tenant_id=tenant_id, project_id=project_id, folio=folio,
                     title=title, meeting_date=datetime.now(UTC),
@@ -281,6 +342,7 @@ async def _run_minute(
                     agreements=merged["agreements"], next_meeting_date=None,
                     attachments=[], generated_by_ai=True, status="final",
                     created_by=requested_by,
+                    raid_suggestions=raid_persisted,
                 )
                 db.add(mm)
                 await db.flush()

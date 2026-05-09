@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
-import { Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Wand2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -12,22 +12,31 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
-import { generateMinute, type AIMinutePayload } from "@/lib/api/ai";
-import { createMinute } from "@/lib/api/modules";
+import {
+  EMPTY_RAID_BLOCK,
+  cancelAIJob,
+  generateMinute,
+  type AIMinutePayload,
+  type AIRaidBlock,
+} from "@/lib/api/ai";
+import {
+  createMinute,
+  getMinute,
+  type MeetingMinute,
+} from "@/lib/api/modules";
+import { MinuteRaidSuggestionsEditor } from "@/components/minute-raid-suggestions-editor";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
 export default function NewAIMinutePage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
   const [title, setTitle] = useState("Minuta (IA)");
   const [language, setLanguage] = useState<"" | "es" | "en">("");
   const [transcript, setTranscript] = useState("");
   const [dispatching, setDispatching] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [savingRequested, setSavingRequested] = useState(false);
   const [result, setResult] = useState<AIMinutePayload | null>(null);
   const [savedMinuteId, setSavedMinuteId] = useState<string | null>(null);
+  const [savedMinute, setSavedMinute] = useState<MeetingMinute | null>(null);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +51,16 @@ export default function NewAIMinutePage() {
         setSavedMinuteId(payload.minute_id ?? null);
       }
       setModelUsed(job.model);
-      if (savingRequested && payload?.minute_id) {
-        router.replace(`/pmo/projects/${id}/minutes?created=1`);
+      // US-108: si la minuta se guardó, traemos el objeto persistido
+      // (incluye `raid_suggestions`) para alimentar el editor in-place.
+      // Antes redirigíamos directo a /minutes; ahora dejamos al PM
+      // revisar/aprobar las sugerencias antes de salir.
+      if (payload?.minute_id) {
+        getMinute(payload.minute_id)
+          .then((m) => setSavedMinute(m))
+          .catch(() => {
+            /* no-fatal: queda el read-only del result */
+          });
       }
     },
     onError: (job) => {
@@ -65,7 +82,7 @@ export default function NewAIMinutePage() {
         generated_by_ai: true,
       });
       setSavedMinuteId(created.id);
-      router.replace(`/pmo/projects/${id}/minutes?created=1`);
+      setSavedMinute(created);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo guardar la minuta");
     } finally {
@@ -82,6 +99,27 @@ export default function NewAIMinutePage() {
     setTranscript(text);
   }
 
+  // BUG-055: cancela el job activo y resetea al estado pre-generación.
+  // El backend marca el AIJob como `cancelled` y el worker omite la
+  // persistencia al detectar el flag (CA4: sin minutas huérfanas).
+  async function handleCancel() {
+    const id_to_cancel = jobId;
+    setJobId(null); // detiene el polling localmente (CA2)
+    if (id_to_cancel) {
+      try {
+        await cancelAIJob(id_to_cancel);
+      } catch {
+        /* el worker queda con el flag o termina solo; UX no se bloquea */
+      }
+    }
+    setDispatching(false);
+    setResult(null);
+    setSavedMinuteId(null);
+    setSavedMinute(null);
+    setModelUsed(null);
+    setError(null);
+  }
+
   async function handleGenerate(save: boolean) {
     if (transcript.trim().length < 20) {
       setError("La transcripción es demasiado corta");
@@ -92,7 +130,6 @@ export default function NewAIMinutePage() {
     setResult(null);
     setSavedMinuteId(null);
     setModelUsed(null);
-    setSavingRequested(save);
     try {
       const res = await generateMinute({
         project_id: id,
@@ -135,6 +172,15 @@ export default function NewAIMinutePage() {
           <span className="mx-1">/</span>
           <span>Generar con IA</span>
         </nav>
+        {/* BUG-055 CA3: ← Volver en cabecera, navega a la lista de
+            minutas sin guardar nada. */}
+        <Link
+          href={`/pmo/projects/${id}/minutes`}
+          className="mt-2 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          Volver
+        </Link>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
           <Sparkles className="h-6 w-6 text-[var(--color-accent)]" aria-hidden />
           Minuta con IA
@@ -148,9 +194,24 @@ export default function NewAIMinutePage() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {polling.error ? <Banner variant="danger">{polling.error}</Banner> : null}
 
+      {/* BUG-055 CA1+CA2: banner con botón Cancelar visible mientras
+          la generación está corriendo. */}
       {statusLabel ? (
         <Banner variant="info">
-          {statusLabel} (job {jobId?.slice(0, 8)}…)
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              {statusLabel} (job {jobId?.slice(0, 8)}…)
+            </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleCancel}
+              aria-label="Cancelar generación"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+              Cancelar
+            </Button>
+          </div>
         </Banner>
       ) : null}
 
@@ -303,9 +364,29 @@ export default function NewAIMinutePage() {
             </MinuteSection>
           </div>
 
+          {/* ENH-084 + US-108: 4 secciones RAID. Antes de guardar la
+              minuta, render read-only desde el output crudo del job;
+              tras guardar, switch al editor con persistencia (edit /
+              discard / approve bulk con creación de tickets reales). */}
+          {savedMinute ? (
+            <MinuteRaidSuggestionsEditor
+              minute={savedMinute}
+              onMinuteChanged={setSavedMinute}
+            />
+          ) : (
+            <RaidSuggestionsSection raid={result.raid ?? EMPTY_RAID_BLOCK} />
+          )}
+
           {savedMinuteId ? (
             <Banner variant="success">
               Minuta guardada.{" "}
+              <Link
+                className="underline"
+                href={`/pmo/projects/${id}/minutes/${savedMinuteId}`}
+              >
+                Ver minuta
+              </Link>{" "}
+              ·{" "}
               <Link
                 className="underline"
                 href={`/pmo/projects/${id}/minutes`}
@@ -323,6 +404,92 @@ export default function NewAIMinutePage() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * ENH-084: render de las 4 secciones RAID estandarizadas en bloques
+ * colapsables (CA5). En modo solo lectura aquí; US-108 hace estas filas
+ * editables y aprobables.
+ */
+const RAID_SECTION_META: Array<{
+  key: keyof AIRaidBlock;
+  label: string;
+  emptyHint: string;
+}> = [
+  { key: "risks", label: "Riesgos", emptyHint: "Sin riesgos detectados." },
+  { key: "issues", label: "Issues", emptyHint: "Sin issues detectados." },
+  { key: "lessons", label: "Lecciones", emptyHint: "Sin lecciones detectadas." },
+  { key: "changes", label: "Cambios", emptyHint: "Sin cambios detectados." },
+];
+
+function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
+  const total =
+    raid.risks.length +
+    raid.issues.length +
+    raid.lessons.length +
+    raid.changes.length;
+  return (
+    <section className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-4">
+      <header className="flex items-center justify-between">
+        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          Sugerencias RAID detectadas
+        </h3>
+        <Badge variant={total === 0 ? "neutral" : "info"}>
+          {total} {total === 1 ? "item" : "items"}
+        </Badge>
+      </header>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {RAID_SECTION_META.map((meta) => {
+          const items = raid[meta.key];
+          return (
+            <details
+              key={meta.key}
+              open={items.length > 0}
+              className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-3"
+            >
+              <summary className="flex cursor-pointer items-center justify-between text-[12px] font-medium text-[var(--text-primary)]">
+                <span>{meta.label}</span>
+                <Badge variant={items.length === 0 ? "neutral" : "info"}>
+                  {items.length}
+                </Badge>
+              </summary>
+              <div className="mt-2 space-y-2">
+                {items.length === 0 ? (
+                  <p className="text-[12px] italic text-[var(--text-tertiary)]">
+                    {meta.emptyHint}
+                  </p>
+                ) : (
+                  items.map((it, i) => (
+                    <div
+                      key={i}
+                      className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-2.5 py-2"
+                    >
+                      <p className="text-[12px] font-medium text-[var(--text-primary)]">
+                        {it.short_desc}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                        {it.suggested_owner_name ? (
+                          <span>👤 {it.suggested_owner_name}</span>
+                        ) : null}
+                        {it.suggested_priority ? (
+                          <span>⚑ P{it.suggested_priority}</span>
+                        ) : null}
+                      </div>
+                      {it.raw_quote ? (
+                        <p className="mt-1 line-clamp-2 italic text-[11px] text-[var(--text-tertiary)]">
+                          “{it.raw_quote}”
+                        </p>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

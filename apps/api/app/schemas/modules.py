@@ -256,8 +256,10 @@ class LessonCreate(BaseModel):
 
 
 class LessonUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, min_length=2, max_length=200)
     description: str | None = None
+    category: Literal["success", "improvement", "error"] | None = None
+    phase: str | None = None
     recommendation: str | None = None
     tags: list[str] | None = None
 
@@ -303,5 +305,36 @@ class MeetingMinuteRead(BaseModel):
     attachments: list
     generated_by_ai: bool
     status: str
+    # US-108: sugerencias RAID detectadas por el LLM con su estado
+    # actual de revisión (pending / approved / discarded).
+    raid_suggestions: dict = Field(default_factory=dict)
 
     model_config = {"from_attributes": True}
+
+
+class MeetingMinuteUpdate(BaseModel):
+    """ENH-090/US-108: edición ligera de una minuta — usado para
+    persistir cambios en `raid_suggestions` (descartar, editar
+    short_desc) sin tocar el flujo de aprobación.
+    """
+
+    title: str | None = Field(default=None, min_length=2, max_length=200)
+    raid_suggestions: dict | None = None
+
+
+class RaidApproveItem(BaseModel):
+    """US-108: el PM aprueba un item RAID sugerido y lo convierte en
+    ticket real. `index` es la posición en el array `raid_suggestions[type]`.
+    `override` permite editar `short_desc` / `description` / `priority`
+    antes de crear el ticket.
+    """
+
+    type: Literal["risks", "issues", "lessons", "changes"]
+    index: int
+    short_desc: str | None = None
+    description: str | None = None
+    priority: int | None = None
+
+
+class RaidApproveBatch(BaseModel):
+    items: list[RaidApproveItem] = Field(min_length=1)

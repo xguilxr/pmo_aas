@@ -1,5 +1,27 @@
 import { apiFetch } from "@/lib/api";
 
+/** ENH-084: shape canónico de un item RAID sugerido (4 tipos comparten). */
+export type AIRaidSuggestion = {
+  short_desc: string;
+  suggested_owner_name?: string | null;
+  suggested_priority?: number | null;
+  raw_quote?: string | null;
+};
+
+export type AIRaidBlock = {
+  risks: AIRaidSuggestion[];
+  issues: AIRaidSuggestion[];
+  lessons: AIRaidSuggestion[];
+  changes: AIRaidSuggestion[];
+};
+
+export const EMPTY_RAID_BLOCK: AIRaidBlock = {
+  risks: [],
+  issues: [],
+  lessons: [],
+  changes: [],
+};
+
 export type AIMinutePayload = {
   summary: string;
   participants: { name: string; role?: string }[];
@@ -8,10 +30,12 @@ export type AIMinutePayload = {
   decisions: { description: string; rationale?: string }[];
   next_steps: { action: string; owner?: string; due_date?: string }[];
   risks_blockers: { description: string }[];
+  /** ENH-084: 4 secciones RAID estandarizadas. */
+  raid?: AIRaidBlock;
   minute_id?: string | null;
 };
 
-export type AIJobStatus = "queued" | "running" | "succeeded" | "failed";
+export type AIJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export type DispatchResult = {
   job_id: string;
@@ -46,6 +70,19 @@ export type AIJobRead = {
 
 export function getAIJob(jobId: string): Promise<AIJobRead> {
   return apiFetch<AIJobRead>(`/api/v1/ai/jobs/${jobId}`);
+}
+
+/**
+ * BUG-055: marca el job como cancelado en el backend. El worker, al
+ * llegar a la fase de persistencia, detecta el flag y omite el guardado
+ * para evitar minutas huérfanas. La UI deja de hacer polling tras este
+ * call.
+ */
+export function cancelAIJob(jobId: string): Promise<{ id: string; status: string }> {
+  return apiFetch<{ id: string; status: string }>(
+    `/api/v1/ai/jobs/${jobId}/cancel`,
+    { method: "POST" },
+  );
 }
 
 export type ReportSections = {

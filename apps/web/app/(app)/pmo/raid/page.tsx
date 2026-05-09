@@ -6,7 +6,6 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Eye, LayoutGrid, List as ListIcon, Shield } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
-import { IssueDetailBody, RiskDetailBody } from "@/components/raid-detail-body";
 import {
   TenantCrossFilters,
   type TenantCrossFilterValue,
@@ -310,20 +309,10 @@ function TenantRaidInner() {
             : []
         }
         description={previewRisk?.description ?? null}
-        extra={
-          previewRisk ? (
-            <RiskDetailBody
-              risk={previewRisk}
-              onUpdated={(r) => {
-                setPreviewRisk({ ...previewRisk, ...r });
-                setRisks((prev) =>
-                  prev.map((x) =>
-                    x.id === r.id ? { ...x, ...r } : x,
-                  ),
-                );
-              }}
-            />
-          ) : null
+        openHref={
+          previewRisk
+            ? `/pmo/raid/risk/${previewRisk.id}`
+            : undefined
         }
       />
 
@@ -348,20 +337,10 @@ function TenantRaidInner() {
             : []
         }
         description={previewIssue?.description ?? null}
-        extra={
-          previewIssue ? (
-            <IssueDetailBody
-              issue={previewIssue}
-              onUpdated={(i) => {
-                setPreviewIssue({ ...previewIssue, ...i });
-                setIssues((prev) =>
-                  prev.map((x) =>
-                    x.id === i.id ? { ...x, ...i } : x,
-                  ),
-                );
-              }}
-            />
-          ) : null
+        openHref={
+          previewIssue
+            ? `/pmo/raid/${previewIssue.type === "issue" ? "incident" : previewIssue.type}/${previewIssue.id}`
+            : undefined
         }
       />
     </div>

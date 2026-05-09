@@ -249,6 +249,24 @@ export function createChange(
   });
 }
 
+/** ENH-087: detalle dedicado de un change request. */
+export function getChange(id: string): Promise<ChangeRequest> {
+  return apiFetch<ChangeRequest>(`/api/v1/change-requests/${id}`);
+}
+
+export type ChangeRequestUpdateBody = {
+  title?: string;
+  description?: string | null;
+  impact?: string | null;
+};
+
+export function updateChange(id: string, body: ChangeRequestUpdateBody): Promise<ChangeRequest> {
+  return apiFetch<ChangeRequest>(`/api/v1/change-requests/${id}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
 export function approveChange(id: string, body?: { comment?: string }): Promise<ChangeRequest> {
   return apiFetch<ChangeRequest>(`/api/v1/change-requests/${id}/approve`, {
     method: "POST",
@@ -468,6 +486,24 @@ export function createLesson(projectId: string, body: LessonCreateBody): Promise
   return apiFetch<Lesson>(`/api/v1/projects/${projectId}/lessons`, { method: "POST", body });
 }
 
+/** ENH-086: detalle dedicado de una lección. */
+export function getLesson(lessonId: string): Promise<Lesson> {
+  return apiFetch<Lesson>(`/api/v1/lessons/${lessonId}`);
+}
+
+export type LessonUpdateBody = {
+  title?: string;
+  description?: string | null;
+  category?: LessonCategory;
+  phase?: string | null;
+  recommendation?: string | null;
+  tags?: string[];
+};
+
+export function updateLesson(lessonId: string, body: LessonUpdateBody): Promise<Lesson> {
+  return apiFetch<Lesson>(`/api/v1/lessons/${lessonId}`, { method: "PATCH", body });
+}
+
 export const LESSON_CATEGORY_LABEL: Record<LessonCategory, string> = {
   success: "Éxito",
   improvement: "Mejora",
@@ -493,6 +529,24 @@ export type MinuteTopic = {
   notes: string;
 };
 
+/** US-108: estado de una sugerencia RAID persistida en una minuta. */
+export type MinuteRaidSuggestion = {
+  short_desc: string;
+  suggested_owner_name?: string | null;
+  suggested_priority?: number | null;
+  raw_quote?: string | null;
+  status: "pending" | "approved" | "discarded";
+  ticket_id?: string | null;
+  ticket_type?: "risk" | "issue" | "lesson" | "change_request" | null;
+};
+
+export type MinuteRaidSuggestions = {
+  risks: MinuteRaidSuggestion[];
+  issues: MinuteRaidSuggestion[];
+  lessons: MinuteRaidSuggestion[];
+  changes: MinuteRaidSuggestion[];
+};
+
 export type MeetingMinute = {
   id: string;
   folio: string;
@@ -506,6 +560,8 @@ export type MeetingMinute = {
   attachments: { name?: string; url: string }[];
   generated_by_ai: boolean;
   status: string;
+  /** US-108: sugerencias RAID detectadas por la IA + estado de revisión PM. */
+  raid_suggestions?: Partial<MinuteRaidSuggestions>;
 };
 
 export type MinuteCreateBody = {
@@ -531,6 +587,48 @@ export function createMinute(
     method: "POST",
     body,
   });
+}
+
+/** ENH-090: detalle de una minuta para el preview in-platform. */
+export function getMinute(minuteId: string): Promise<MeetingMinute> {
+  return apiFetch<MeetingMinute>(`/api/v1/meeting-minutes/${minuteId}`);
+}
+
+/** US-108 + ENH-090: actualiza título y/o `raid_suggestions` (descarte / edit). */
+export function updateMinute(
+  minuteId: string,
+  body: { title?: string; raid_suggestions?: Partial<MinuteRaidSuggestions> },
+): Promise<MeetingMinute> {
+  return apiFetch<MeetingMinute>(`/api/v1/meeting-minutes/${minuteId}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+/** ENH-091: borra físicamente una minuta. */
+export function deleteMinute(minuteId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/meeting-minutes/${minuteId}`, {
+    method: "DELETE",
+  });
+}
+
+/** US-108: aprueba sugerencias RAID en bulk y crea los tickets reales. */
+export type RaidApproveItem = {
+  type: "risks" | "issues" | "lessons" | "changes";
+  index: number;
+  short_desc?: string;
+  description?: string | null;
+  priority?: number | null;
+};
+
+export function approveMinuteRaidSuggestions(
+  minuteId: string,
+  items: RaidApproveItem[],
+): Promise<MeetingMinute> {
+  return apiFetch<MeetingMinute>(
+    `/api/v1/meeting-minutes/${minuteId}/approve-raid-suggestions`,
+    { method: "POST", body: { items } },
+  );
 }
 
 export function convertAgreement(
