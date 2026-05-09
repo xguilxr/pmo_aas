@@ -40,14 +40,25 @@ def compute_duration_days(start: date | None, end: date | None) -> int | None:
 
 
 def ensure_duration_max_21(value: int | None) -> None:
-    """Levanta 422 si excede el máximo. None pasa sin validar."""
-    if value is None:
-        return
-    if value > DURATION_MAX_DAYS:
-        raise validation_error(
-            f"duration_days excede el máximo de {DURATION_MAX_DAYS} días "
-            f"(actual: {value}). Acorta start_date / end_date."
-        )
+    """ENH-094: 21 días es recomendación, no regla dura. La función se
+    mantiene para no romper imports existentes pero ya no levanta 422.
+    Las actividades macro (meses) se permiten; el frontend muestra
+    warning visual cuando `duration_days > DURATION_MAX_DAYS`."""
+    return None
+
+
+def duration_warning(value: int | None) -> str | None:
+    """Devuelve mensaje de warning si la duración excede el máximo
+    recomendado. None cuando está dentro del rango o la duración es
+    desconocida."""
+    if value is None or value <= DURATION_MAX_DAYS:
+        return None
+    return (
+        f"duration_days excede el máximo recomendado de "
+        f"{DURATION_MAX_DAYS} días (actual: {value}). Es válido para "
+        "actividades macro, pero considera dividirla en sub-tareas si "
+        "es operativa."
+    )
 
 
 def validate_predecessors(

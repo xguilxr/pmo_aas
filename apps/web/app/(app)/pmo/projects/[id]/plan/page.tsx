@@ -503,7 +503,7 @@ function TaskList({
             <th className="px-3 py-2 font-medium">Fin</th>
             {showProjectCols ? (
               <>
-                <th className="w-16 px-3 py-2 font-medium" title="Duración (auto, máx 21d)">
+                <th className="w-16 px-3 py-2 font-medium" title="Duración (auto). Máximo recomendado 21d; macros mayores se permiten con warning.">
                   Dur.
                 </th>
                 <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
@@ -610,7 +610,25 @@ function TaskList({
               {showProjectCols ? (
                 <>
                   <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
-                    {t.duration_days != null ? `${t.duration_days}d` : "—"}
+                    {t.duration_days != null ? (
+                      <span
+                        className={cn(
+                          t.duration_days > 21
+                            ? "text-[var(--color-warning-fg)]"
+                            : undefined,
+                        )}
+                        title={
+                          t.duration_days > 21
+                            ? "Duración mayor al máximo recomendado de 21 días. OK para actividades macro; considera dividir si es operativa."
+                            : undefined
+                        }
+                      >
+                        {t.duration_days}d
+                        {t.duration_days > 21 ? " ⚠" : null}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
                     {(t.predecessors ?? []).join(", ") || "—"}
