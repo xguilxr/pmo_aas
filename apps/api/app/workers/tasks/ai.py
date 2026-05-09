@@ -43,6 +43,10 @@ logger = logging.getLogger("pmoaas.ai.tasks")
 # umbral aplica al BYO para uniformidad.
 _AI_CALL_MAX_RETRIES = 3
 _AI_CALL_BACKOFF_SEC: tuple[float, ...] = (1.0, 3.0, 8.0)
+# BUG-061: 429 (rate limit) necesita backoff más generoso que el genérico.
+# El window típico de Groq es 60s. Si el provider devuelve `Retry-After` lo
+# honramos, sino usamos esta tabla.
+_AI_CALL_BACKOFF_429_SEC: tuple[float, ...] = (10.0, 25.0, 60.0)
 
 def _empty_raid() -> dict:
     return {"risks": [], "issues": [], "lessons": [], "changes": []}
@@ -176,14 +180,26 @@ async def _call_ai_for_tenant(
             )
         except Exception as exc:
             last_err = exc
-            sleep_sec = _AI_CALL_BACKOFF_SEC[
-                min(attempt, len(_AI_CALL_BACKOFF_SEC) - 1)
-            ]
+            # BUG-061: rate limit (429) lo manejamos con backoff dedicado
+            # honrando el header `Retry-After` cuando viene.
+            is_429 = _is_rate_limit(exc)
+            retry_after = _retry_after_seconds(exc) if is_429 else None
+            if retry_after is not None:
+                sleep_sec = retry_after
+            elif is_429:
+                sleep_sec = _AI_CALL_BACKOFF_429_SEC[
+                    min(attempt, len(_AI_CALL_BACKOFF_429_SEC) - 1)
+                ]
+            else:
+                sleep_sec = _AI_CALL_BACKOFF_SEC[
+                    min(attempt, len(_AI_CALL_BACKOFF_SEC) - 1)
+                ]
             logger.warning(
-                "ai_call_retry tenant=%s job=%s mode=%s attempt=%d/%d err=%s",
+                "ai_call_retry tenant=%s job=%s mode=%s attempt=%d/%d err=%s sleep=%.1fs%s",
                 tenant_id, job_id, tenant_cfg.mode,
                 attempt + 1, _AI_CALL_MAX_RETRIES,
-                type(exc).__name__,
+                type(exc).__name__, sleep_sec,
+                " (429)" if is_429 else "",
             )
             if attempt + 1 < _AI_CALL_MAX_RETRIES:
                 import asyncio
@@ -194,10 +210,46 @@ async def _call_ai_for_tenant(
         await _alert_superadmin_platform_failure(
             tenant_id, job_id, str(last_err)[:500]
         )
+    if _is_rate_limit(last_err):
+        # Mensaje user-facing que el frontend puede mostrar tal cual.
+        raise RuntimeError(
+            "AI_RATE_LIMITED: el proveedor (Groq) está saturado y no aceptó "
+            "la petición tras 3 reintentos. Espera 1-2 minutos y vuelve a "
+            "intentar, o cambia a un proveedor BYO."
+        )
     raise RuntimeError(
         f"ai_call_failed mode={tenant_cfg.mode} after {_AI_CALL_MAX_RETRIES}"
         f" retries: {last_err}"
     )
+
+
+def _is_rate_limit(exc: Exception | None) -> bool:
+    if exc is None:
+        return False
+    # httpx.HTTPStatusError tiene .response.status_code; otros providers
+    # podrían usar mensajes con "429" o "rate limit".
+    resp = getattr(exc, "response", None)
+    if resp is not None and getattr(resp, "status_code", None) == 429:
+        return True
+    msg = str(exc).lower()
+    return "429" in msg or "rate limit" in msg or "too many requests" in msg
+
+
+def _retry_after_seconds(exc: Exception) -> float | None:
+    resp = getattr(exc, "response", None)
+    if resp is None:
+        return None
+    headers = getattr(resp, "headers", None)
+    if headers is None:
+        return None
+    raw = headers.get("retry-after") or headers.get("Retry-After")
+    if not raw:
+        return None
+    try:
+        # Cap a 90s para no bloquear el worker indefinidamente.
+        return min(float(raw), 90.0)
+    except (TypeError, ValueError):
+        return None
 
 
 def _provider_from_model(model_str: str, tenant_cfg: TenantAIConfig) -> str:

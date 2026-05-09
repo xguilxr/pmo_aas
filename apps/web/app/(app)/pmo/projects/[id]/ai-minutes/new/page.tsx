@@ -64,7 +64,15 @@ export default function NewAIMinutePage() {
       }
     },
     onError: (job) => {
-      setError(job.error || "La generación falló");
+      // BUG-061: el worker codifica rate-limit como `AI_RATE_LIMITED: ...`.
+      // Mostramos solo la parte legible para el usuario.
+      const raw = job.error || "La generación falló";
+      const rateLimited = raw.startsWith("AI_RATE_LIMITED:");
+      setError(
+        rateLimited
+          ? raw.replace("AI_RATE_LIMITED:", "").trim()
+          : raw,
+      );
     },
   });
 
