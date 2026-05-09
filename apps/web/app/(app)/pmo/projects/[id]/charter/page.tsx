@@ -388,7 +388,7 @@ export default function ProjectCharterEditPage() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => router.push(`/pmo/projects/${charter.project_id}`)}
+            onClick={() => router.push(`/pmo/projects/${charter.project_id}/documents`)}
             disabled={saving}
           >
             Cancelar
