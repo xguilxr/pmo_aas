@@ -9,11 +9,13 @@ import { ItemPreviewModal } from "@/components/item-preview-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { ModuleShell } from "@/components/module-shell";
 import { ApiError } from "@/lib/api";
 import {
   createMinute,
+  deleteMinute,
   exportMinute,
   listMinutes,
   type MeetingMinute,
@@ -30,6 +32,8 @@ export default function MinutesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<MeetingMinute | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<MeetingMinute | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -63,6 +67,23 @@ export default function MinutesPage() {
     setParticipants([]);
     setTopics([]);
     setAgreements([]);
+  }
+
+  // ENH-091: borra una minuta tras confirm modal. Solo creator/admin
+  // (validado en backend); el botón aparece para todos pero el 403
+  // que vuelve del API se muestra como banner.
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await deleteMinute(confirmDelete.id);
+      setConfirmDelete(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo borrar la minuta");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function submit() {
@@ -274,8 +295,54 @@ export default function MinutesPage() {
           label: "Exportar",
           render: (r) => <ExportMinuteButtons minuteId={r.id} />,
         },
+        {
+          key: "actions",
+          label: "",
+          render: (r) => (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDelete(r);
+              }}
+              aria-label={`Borrar ${r.title}`}
+              title="Borrar minuta"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ),
+        },
       ]}
     />
+    <Modal
+      open={confirmDelete !== null}
+      onClose={() => !deleting && setConfirmDelete(null)}
+      title="¿Borrar minuta?"
+      footer={
+        <>
+          <Button
+            variant="secondary"
+            onClick={() => setConfirmDelete(null)}
+            disabled={deleting}
+          >
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleDelete} loading={deleting}>
+            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+          </Button>
+        </>
+      }
+    >
+      <p className="text-[13px] text-[var(--text-primary)]">
+        ¿Borrar minuta <strong>{confirmDelete?.title}</strong>? Esta acción
+        no se puede deshacer.
+      </p>
+      <p className="mt-2 text-[12px] text-[var(--text-tertiary)]">
+        Tickets RAID generados a partir de esta minuta NO se borrarán; solo
+        se rompe el link de origen.
+      </p>
+    </Modal>
     <ItemPreviewModal
       open={preview !== null}
       onClose={() => setPreview(null)}
