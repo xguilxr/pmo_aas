@@ -127,3 +127,10 @@ class MeetingMinute(Base, _ModuleBase, TimestampMixin):
     attachments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     transcript_file_id: Mapped[str | None] = mapped_column(String(36))
     generated_by_ai: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # US-108: sugerencias RAID detectadas por el LLM, persistidas para
+    # que el PM pueda revisarlas y aprobarlas (o descartarlas) más tarde.
+    # Shape: {risks: [...], issues: [...], lessons: [...], changes: [...]}.
+    # Cada item: {short_desc, suggested_owner_name?, suggested_priority?,
+    #            raw_quote?, status: "pending"|"approved"|"discarded",
+    #            ticket_id: <uuid|null>, ticket_type: "risk"|"issue"|"lesson"|"change_request"|null}.
+    raid_suggestions: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

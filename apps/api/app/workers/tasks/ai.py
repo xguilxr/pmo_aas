@@ -313,6 +313,22 @@ async def _run_minute(
             minute_id: str | None = None
             if save_as_minute:
                 folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
+                # US-108: cada sugerencia entra como `pending` con
+                # ticket_id null hasta que el PM la apruebe.
+                raid_persisted: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
+                for kind in raid_persisted:
+                    for it in merged["raid"].get(kind, []):
+                        if not isinstance(it, dict):
+                            continue
+                        raid_persisted[kind].append({
+                            "short_desc": str(it.get("short_desc") or "").strip(),
+                            "suggested_owner_name": it.get("suggested_owner_name") or None,
+                            "suggested_priority": it.get("suggested_priority"),
+                            "raw_quote": it.get("raw_quote") or None,
+                            "status": "pending",
+                            "ticket_id": None,
+                            "ticket_type": None,
+                        })
                 mm = MeetingMinute(
                     tenant_id=tenant_id, project_id=project_id, folio=folio,
                     title=title, meeting_date=datetime.now(UTC),
@@ -320,6 +336,7 @@ async def _run_minute(
                     agreements=merged["agreements"], next_meeting_date=None,
                     attachments=[], generated_by_ai=True, status="final",
                     created_by=requested_by,
+                    raid_suggestions=raid_persisted,
                 )
                 db.add(mm)
                 await db.flush()

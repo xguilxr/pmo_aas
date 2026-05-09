@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Sparkles, Wand2 } from "lucide-react";
 
@@ -18,21 +18,24 @@ import {
   type AIMinutePayload,
   type AIRaidBlock,
 } from "@/lib/api/ai";
-import { createMinute } from "@/lib/api/modules";
+import {
+  createMinute,
+  getMinute,
+  type MeetingMinute,
+} from "@/lib/api/modules";
+import { MinuteRaidSuggestionsEditor } from "@/components/minute-raid-suggestions-editor";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
 export default function NewAIMinutePage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
   const [title, setTitle] = useState("Minuta (IA)");
   const [language, setLanguage] = useState<"" | "es" | "en">("");
   const [transcript, setTranscript] = useState("");
   const [dispatching, setDispatching] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [savingRequested, setSavingRequested] = useState(false);
   const [result, setResult] = useState<AIMinutePayload | null>(null);
   const [savedMinuteId, setSavedMinuteId] = useState<string | null>(null);
+  const [savedMinute, setSavedMinute] = useState<MeetingMinute | null>(null);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +50,16 @@ export default function NewAIMinutePage() {
         setSavedMinuteId(payload.minute_id ?? null);
       }
       setModelUsed(job.model);
-      if (savingRequested && payload?.minute_id) {
-        router.replace(`/pmo/projects/${id}/minutes?created=1`);
+      // US-108: si la minuta se guardó, traemos el objeto persistido
+      // (incluye `raid_suggestions`) para alimentar el editor in-place.
+      // Antes redirigíamos directo a /minutes; ahora dejamos al PM
+      // revisar/aprobar las sugerencias antes de salir.
+      if (payload?.minute_id) {
+        getMinute(payload.minute_id)
+          .then((m) => setSavedMinute(m))
+          .catch(() => {
+            /* no-fatal: queda el read-only del result */
+          });
       }
     },
     onError: (job) => {
@@ -70,7 +81,7 @@ export default function NewAIMinutePage() {
         generated_by_ai: true,
       });
       setSavedMinuteId(created.id);
-      router.replace(`/pmo/projects/${id}/minutes?created=1`);
+      setSavedMinute(created);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo guardar la minuta");
     } finally {
@@ -97,7 +108,6 @@ export default function NewAIMinutePage() {
     setResult(null);
     setSavedMinuteId(null);
     setModelUsed(null);
-    setSavingRequested(save);
     try {
       const res = await generateMinute({
         project_id: id,
@@ -308,13 +318,29 @@ export default function NewAIMinutePage() {
             </MinuteSection>
           </div>
 
-          {/* ENH-084: 4 secciones RAID estandarizadas (post-procesador
-              determinístico, independiente del modelo). */}
-          <RaidSuggestionsSection raid={result.raid ?? EMPTY_RAID_BLOCK} />
+          {/* ENH-084 + US-108: 4 secciones RAID. Antes de guardar la
+              minuta, render read-only desde el output crudo del job;
+              tras guardar, switch al editor con persistencia (edit /
+              discard / approve bulk con creación de tickets reales). */}
+          {savedMinute ? (
+            <MinuteRaidSuggestionsEditor
+              minute={savedMinute}
+              onMinuteChanged={setSavedMinute}
+            />
+          ) : (
+            <RaidSuggestionsSection raid={result.raid ?? EMPTY_RAID_BLOCK} />
+          )}
 
           {savedMinuteId ? (
             <Banner variant="success">
               Minuta guardada.{" "}
+              <Link
+                className="underline"
+                href={`/pmo/projects/${id}/minutes/${savedMinuteId}`}
+              >
+                Ver minuta
+              </Link>{" "}
+              ·{" "}
               <Link
                 className="underline"
                 href={`/pmo/projects/${id}/minutes`}

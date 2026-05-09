@@ -33,6 +33,8 @@ from app.schemas.modules import (
     LessonCreate,
     LessonRead,
     LessonUpdate,
+    MeetingMinuteUpdate,
+    RaidApproveBatch,
     MeetingMinuteCreate,
     MeetingMinuteRead,
     RiskComment,
@@ -1395,3 +1397,248 @@ async def convert_agreement_to_issue(
     db.add(issue)
     await db.commit()
     return {"issue_id": str(issue.id), "folio": folio}
+
+
+# ========== US-108 + ENH-090/091: minuta GET/PATCH/DELETE + approve RAID =========
+
+_RAID_TYPE_TO_PREFIX = {
+    "risks": "RIS",
+    "issues": "INC",
+    "lessons": "LEC",
+    "changes": "CHG",
+}
+
+
+@minutes_router.get("/meeting-minutes/{minute_id}", response_model=MeetingMinuteRead)
+async def get_minute(
+    minute_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-090: detalle de una minuta para el preview in-platform."""
+    tenant_id = _tenant(cu)
+    m = (
+        await db.execute(
+            select(MeetingMinute).where(
+                MeetingMinute.id == str(minute_id),
+                MeetingMinute.tenant_id == str(tenant_id),
+                MeetingMinute.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if m is None:
+        raise not_found("Minuta")
+    return MeetingMinuteRead.model_validate(m)
+
+
+@minutes_router.patch("/meeting-minutes/{minute_id}", response_model=MeetingMinuteRead)
+async def update_minute(
+    minute_id: UUID,
+    body: MeetingMinuteUpdate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-108: persiste cambios en `raid_suggestions` (descarte / edit
+    inline) y/o título. El array completo viene del cliente y reemplaza
+    al actual — el cliente es responsable de preservar el shape.
+    """
+    tenant_id = _tenant(cu)
+    m = (
+        await db.execute(
+            select(MeetingMinute).where(
+                MeetingMinute.id == str(minute_id),
+                MeetingMinute.tenant_id == str(tenant_id),
+                MeetingMinute.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if m is None:
+        raise not_found("Minuta")
+    data = body.model_dump(exclude_none=True)
+    if "raid_suggestions" in data and isinstance(data["raid_suggestions"], dict):
+        m.raid_suggestions = data["raid_suggestions"]
+    if "title" in data:
+        m.title = data["title"]
+    await write_audit(
+        db, action="meeting_minute.update", module="minutes",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute",
+        entity_id=str(m.id),
+    )
+    await db.commit()
+    await db.refresh(m)
+    return MeetingMinuteRead.model_validate(m)
+
+
+@minutes_router.delete("/meeting-minutes/{minute_id}", status_code=204)
+async def delete_minute(
+    minute_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-091: borra físicamente una minuta. Solo el creador o un admin
+    del proyecto puede borrarla (CA3). Tickets RAID generados por la
+    minuta NO se eliminan — solo se rompe el link de origen (CA5).
+    """
+    tenant_id = _tenant(cu)
+    m = (
+        await db.execute(
+            select(MeetingMinute).where(
+                MeetingMinute.id == str(minute_id),
+                MeetingMinute.tenant_id == str(tenant_id),
+                MeetingMinute.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if m is None:
+        raise not_found("Minuta")
+    is_creator = str(m.created_by) == str(cu.id) if m.created_by else False
+    is_admin = bool(getattr(cu, "is_admin", False)) or bool(
+        getattr(cu, "is_superadmin", False)
+    )
+    if not (is_creator or is_admin):
+        raise forbidden("Solo el creador o un admin puede borrar la minuta")
+    await write_audit(
+        db, action="meeting_minute.delete", module="minutes",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute",
+        entity_id=str(m.id),
+        details={"folio": m.folio, "title": m.title},
+    )
+    await db.delete(m)
+    await db.commit()
+    return None
+
+
+@minutes_router.post(
+    "/meeting-minutes/{minute_id}/approve-raid-suggestions",
+    response_model=MeetingMinuteRead,
+)
+async def approve_raid_suggestions(
+    minute_id: UUID,
+    body: RaidApproveBatch,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-108: bulk-aprueba sugerencias RAID y crea los tickets reales
+    en el módulo correspondiente. Los items aprobados quedan marcados
+    con `status: approved` + `ticket_id` para auditoría.
+
+    Idempotencia: items ya aprobados (`status == "approved"`) se ignoran
+    silenciosamente — no se duplican tickets si el cliente reintenta.
+    """
+    tenant_id = _tenant(cu)
+    m = (
+        await db.execute(
+            select(MeetingMinute).where(
+                MeetingMinute.id == str(minute_id),
+                MeetingMinute.tenant_id == str(tenant_id),
+                MeetingMinute.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if m is None:
+        raise not_found("Minuta")
+
+    suggestions = dict(m.raid_suggestions or {})
+    for kind in ("risks", "issues", "lessons", "changes"):
+        suggestions.setdefault(kind, [])
+
+    for it in body.items:
+        bucket = suggestions.get(it.type) or []
+        if not (0 <= it.index < len(bucket)):
+            raise business_rule(
+                f"Indice {it.index} inválido para {it.type}",
+            )
+        sugg = dict(bucket[it.index])
+        if sugg.get("status") == "approved" and sugg.get("ticket_id"):
+            # Idempotencia: ya creado, no se duplica.
+            continue
+        short_desc = (it.short_desc or sugg.get("short_desc") or "").strip()
+        if not short_desc:
+            raise business_rule(
+                f"short_desc vacío en {it.type}[{it.index}]",
+            )
+        title_value = short_desc[:200]
+        description_value = (
+            it.description or sugg.get("raw_quote") or sugg.get("short_desc") or None
+        )
+        priority_value = it.priority or sugg.get("suggested_priority") or 3
+
+        prefix = _RAID_TYPE_TO_PREFIX[it.type]
+        folio = await next_folio(db, tenant_id=tenant_id, prefix=prefix)
+        ticket_type: str
+        ticket_id: str
+
+        if it.type == "risks":
+            r = Risk(
+                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
+                title=title_value, description=description_value,
+                category=None, owner_id=None, area_id=None,
+                probability=int(priority_value) if priority_value else 3,
+                impact=int(priority_value) if priority_value else 3,
+                severity=(int(priority_value) ** 2) if priority_value else 9,
+                mitigation_strategy=None, status="identified",
+                identified_at=datetime.now(UTC).date(),
+                due_date=None, closure_note=None,
+                comments=[],
+                created_by=cu.id,
+            )
+            db.add(r)
+            await db.flush()
+            ticket_type = "risk"
+            ticket_id = str(r.id)
+        elif it.type == "issues":
+            issue = Issue(
+                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
+                title=title_value, description=description_value,
+                type="issue", priority=int(priority_value) if priority_value else 3,
+                committed_date=None, owner_id=None, area_id=None,
+                status="open", reported_at=datetime.now(UTC),
+                comments=[], created_by=cu.id,
+            )
+            db.add(issue)
+            await db.flush()
+            ticket_type = "issue"
+            ticket_id = str(issue.id)
+        elif it.type == "lessons":
+            lesson = Lesson(
+                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
+                title=title_value, description=description_value,
+                category="improvement", phase=None,
+                recommendation=None, tags=[],
+                status="published", created_by=cu.id,
+            )
+            db.add(lesson)
+            await db.flush()
+            ticket_type = "lesson"
+            ticket_id = str(lesson.id)
+        else:  # changes
+            chg = ChangeRequest(
+                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
+                title=title_value, description=description_value,
+                type="scope", impact=None, status="in_review",
+                requested_by=cu.id, requested_at=datetime.now(UTC),
+                created_by=cu.id,
+            )
+            db.add(chg)
+            await db.flush()
+            ticket_type = "change_request"
+            ticket_id = str(chg.id)
+
+        sugg["status"] = "approved"
+        sugg["ticket_id"] = ticket_id
+        sugg["ticket_type"] = ticket_type
+        if it.short_desc:
+            sugg["short_desc"] = short_desc
+        bucket[it.index] = sugg
+        suggestions[it.type] = bucket
+
+    m.raid_suggestions = suggestions
+    await write_audit(
+        db, action="meeting_minute.approve_raid_suggestions", module="minutes",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute",
+        entity_id=str(m.id),
+        details={"approved_count": len(body.items)},
+    )
+    await db.commit()
+    await db.refresh(m)
+    return MeetingMinuteRead.model_validate(m)
