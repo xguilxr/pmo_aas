@@ -287,10 +287,12 @@ async def download_charter(
         db, _tenant(cu), project_id
     )
 
-    safe_name = (charter.project_name or project.name or "charter").replace(
-        "/", "_"
+    # ENH-092: filename canónico `{project-slug}-charter.{ext}`.
+    from app.services.filename_slug import artifact_filename
+
+    filename = artifact_filename(
+        charter.project_name or project.name, "charter", fmt,
     )
-    filename = f"Charter - {safe_name}.{fmt}"
     safe_q = quote(filename)
 
     if fmt == "docx":

@@ -86,23 +86,36 @@ class ArtifactList(BaseModel):
     items: list[ArtifactMeta]
 
 
-def _charter_meta(project_id: UUID, charter: ProjectCharter | None) -> ArtifactMeta:
+def _charter_meta(
+    project_id: UUID,
+    charter: ProjectCharter | None,
+    project_name: str | None = None,
+) -> ArtifactMeta:
+    from app.services.filename_slug import artifact_filename
+
     if charter is None:
         return ArtifactMeta(
             type="charter",
             available=False,
             edit_url=f"/api/v1/projects/{project_id}/charter",
         )
+    name = charter.project_name or project_name
     return ArtifactMeta(
         type="charter",
         available=True,
         source_format="docx",
+        # ENH-092: filename derivado del nombre del proyecto.
+        filename=artifact_filename(name, "charter", "docx"),
         download_url=f"/api/v1/projects/{project_id}/charter/download?format=docx",
         edit_url=f"/api/v1/projects/{project_id}/charter",
     )
 
 
-def _plan_meta(project_id: UUID, art: ProjectArtifact | None) -> ArtifactMeta:
+def _plan_meta(
+    project_id: UUID,
+    art: ProjectArtifact | None,
+    project_name: str | None = None,
+) -> ArtifactMeta:
     if art is None:
         return ArtifactMeta(
             type="plan",
@@ -119,7 +132,7 @@ def _plan_meta(project_id: UUID, art: ProjectArtifact | None) -> ArtifactMeta:
     )
 
 
-def _raid_meta(project_id: UUID) -> ArtifactMeta:
+def _raid_meta(project_id: UUID, project_name: str | None = None) -> ArtifactMeta:
     # ENH-082 (Sprint 19) entregará el export 4-sheets dedicado. Mientras,
     # se expone el endpoint de export RAID actual (modules.docs_router).
     return ArtifactMeta(
@@ -149,7 +162,7 @@ async def list_artifacts(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    project = await _ensure_project(db, project_id, tenant_id)
 
     charter = (
         await db.execute(
@@ -169,9 +182,9 @@ async def list_artifacts(
     return ArtifactList(
         project_id=project_id,
         items=[
-            _charter_meta(project_id, charter),
-            _plan_meta(project_id, plan_art),
-            _raid_meta(project_id),
+            _charter_meta(project_id, charter, project.name),
+            _plan_meta(project_id, plan_art, project.name),
+            _raid_meta(project_id, project.name),
             _organigrama_meta(),
         ],
     )
@@ -186,7 +199,7 @@ async def get_artifact(
 ):
     t = _validate_type(artifact_type)
     tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    project = await _ensure_project(db, project_id, tenant_id)
 
     if t == "charter":
         charter = (
@@ -196,7 +209,7 @@ async def get_artifact(
                 )
             )
         ).scalar_one_or_none()
-        return _charter_meta(project_id, charter)
+        return _charter_meta(project_id, charter, project.name)
 
     if t == "plan":
         art = (
@@ -207,10 +220,10 @@ async def get_artifact(
                 )
             )
         ).scalar_one_or_none()
-        return _plan_meta(project_id, art)
+        return _plan_meta(project_id, art, project.name)
 
     if t == "raid":
-        return _raid_meta(project_id)
+        return _raid_meta(project_id, project.name)
 
     return _organigrama_meta()
 
