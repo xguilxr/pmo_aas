@@ -1,5 +1,27 @@
 import { apiFetch } from "@/lib/api";
 
+/** ENH-084: shape canónico de un item RAID sugerido (4 tipos comparten). */
+export type AIRaidSuggestion = {
+  short_desc: string;
+  suggested_owner_name?: string | null;
+  suggested_priority?: number | null;
+  raw_quote?: string | null;
+};
+
+export type AIRaidBlock = {
+  risks: AIRaidSuggestion[];
+  issues: AIRaidSuggestion[];
+  lessons: AIRaidSuggestion[];
+  changes: AIRaidSuggestion[];
+};
+
+export const EMPTY_RAID_BLOCK: AIRaidBlock = {
+  risks: [],
+  issues: [],
+  lessons: [],
+  changes: [],
+};
+
 export type AIMinutePayload = {
   summary: string;
   participants: { name: string; role?: string }[];
@@ -8,6 +30,8 @@ export type AIMinutePayload = {
   decisions: { description: string; rationale?: string }[];
   next_steps: { action: string; owner?: string; due_date?: string }[];
   risks_blockers: { description: string }[];
+  /** ENH-084: 4 secciones RAID estandarizadas. */
+  raid?: AIRaidBlock;
   minute_id?: string | null;
 };
 

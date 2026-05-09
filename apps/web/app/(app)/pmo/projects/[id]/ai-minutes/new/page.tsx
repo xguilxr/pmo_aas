@@ -12,7 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
-import { generateMinute, type AIMinutePayload } from "@/lib/api/ai";
+import {
+  EMPTY_RAID_BLOCK,
+  generateMinute,
+  type AIMinutePayload,
+  type AIRaidBlock,
+} from "@/lib/api/ai";
 import { createMinute } from "@/lib/api/modules";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
@@ -303,6 +308,10 @@ export default function NewAIMinutePage() {
             </MinuteSection>
           </div>
 
+          {/* ENH-084: 4 secciones RAID estandarizadas (post-procesador
+              determinístico, independiente del modelo). */}
+          <RaidSuggestionsSection raid={result.raid ?? EMPTY_RAID_BLOCK} />
+
           {savedMinuteId ? (
             <Banner variant="success">
               Minuta guardada.{" "}
@@ -323,6 +332,92 @@ export default function NewAIMinutePage() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * ENH-084: render de las 4 secciones RAID estandarizadas en bloques
+ * colapsables (CA5). En modo solo lectura aquí; US-108 hace estas filas
+ * editables y aprobables.
+ */
+const RAID_SECTION_META: Array<{
+  key: keyof AIRaidBlock;
+  label: string;
+  emptyHint: string;
+}> = [
+  { key: "risks", label: "Riesgos", emptyHint: "Sin riesgos detectados." },
+  { key: "issues", label: "Issues", emptyHint: "Sin issues detectados." },
+  { key: "lessons", label: "Lecciones", emptyHint: "Sin lecciones detectadas." },
+  { key: "changes", label: "Cambios", emptyHint: "Sin cambios detectados." },
+];
+
+function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
+  const total =
+    raid.risks.length +
+    raid.issues.length +
+    raid.lessons.length +
+    raid.changes.length;
+  return (
+    <section className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-4">
+      <header className="flex items-center justify-between">
+        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          Sugerencias RAID detectadas
+        </h3>
+        <Badge variant={total === 0 ? "neutral" : "info"}>
+          {total} {total === 1 ? "item" : "items"}
+        </Badge>
+      </header>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {RAID_SECTION_META.map((meta) => {
+          const items = raid[meta.key];
+          return (
+            <details
+              key={meta.key}
+              open={items.length > 0}
+              className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-3"
+            >
+              <summary className="flex cursor-pointer items-center justify-between text-[12px] font-medium text-[var(--text-primary)]">
+                <span>{meta.label}</span>
+                <Badge variant={items.length === 0 ? "neutral" : "info"}>
+                  {items.length}
+                </Badge>
+              </summary>
+              <div className="mt-2 space-y-2">
+                {items.length === 0 ? (
+                  <p className="text-[12px] italic text-[var(--text-tertiary)]">
+                    {meta.emptyHint}
+                  </p>
+                ) : (
+                  items.map((it, i) => (
+                    <div
+                      key={i}
+                      className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-2.5 py-2"
+                    >
+                      <p className="text-[12px] font-medium text-[var(--text-primary)]">
+                        {it.short_desc}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                        {it.suggested_owner_name ? (
+                          <span>👤 {it.suggested_owner_name}</span>
+                        ) : null}
+                        {it.suggested_priority ? (
+                          <span>⚑ P{it.suggested_priority}</span>
+                        ) : null}
+                      </div>
+                      {it.raw_quote ? (
+                        <p className="mt-1 line-clamp-2 italic text-[11px] text-[var(--text-tertiary)]">
+                          “{it.raw_quote}”
+                        </p>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
