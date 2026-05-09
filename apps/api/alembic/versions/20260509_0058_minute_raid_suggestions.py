@@ -27,7 +27,7 @@ def upgrade() -> None:
             "raid_suggestions",
             sa.JSON(),
             nullable=False,
-            server_default=sa.text("'{}'"),
+            server_default=sa.text("'{}'::json"),
         ),
     )
     # Drop el server_default tras backfill (no necesitamos defaults
