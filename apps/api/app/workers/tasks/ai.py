@@ -44,18 +44,23 @@ logger = logging.getLogger("pmoaas.ai.tasks")
 _AI_CALL_MAX_RETRIES = 3
 _AI_CALL_BACKOFF_SEC: tuple[float, ...] = (1.0, 3.0, 8.0)
 
-_EMPTY_RAID = {"risks": [], "issues": [], "lessons": [], "changes": []}
+def _empty_raid() -> dict:
+    return {"risks": [], "issues": [], "lessons": [], "changes": []}
 
-_EMPTY_MINUTE = {
-    "summary": "",
-    "participants": [],
-    "topics": [],
-    "agreements": [],
-    "decisions": [],
-    "next_steps": [],
-    "risks_blockers": [],
-    "raid": dict(_EMPTY_RAID),
-}
+
+def _empty_minute() -> dict:
+    """Devuelve un dict virgen — fábrica, NO un singleton, para evitar
+    que los `extend` en cascada contaminen llamadas posteriores."""
+    return {
+        "summary": "",
+        "participants": [],
+        "topics": [],
+        "agreements": [],
+        "decisions": [],
+        "next_steps": [],
+        "risks_blockers": [],
+        "raid": _empty_raid(),
+    }
 
 
 def _normalize_raid_block(raw: object) -> dict:
@@ -64,7 +69,7 @@ def _normalize_raid_block(raw: object) -> dict:
     `lesson`, `change`, alias) o aplanen los items en un array suelto.
     Si no hay items de un tipo, queda en `[]` — no se inventa.
     """
-    block: dict = dict(_EMPTY_RAID)
+    block: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
     if not isinstance(raw, dict):
         return block
     aliases = {
@@ -282,7 +287,7 @@ async def _run_minute(
             total_out += res.tokens_out
             parsed = _parse_json_strict(res.text)
             if parsed is None:
-                parsed = dict(_EMPTY_MINUTE)
+                parsed = _empty_minute()
                 parsed["summary"] = res.text[:2000]
             collected.append(parsed)
 
