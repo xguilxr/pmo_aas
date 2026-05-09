@@ -116,17 +116,29 @@ def _plan_meta(
     art: ProjectArtifact | None,
     project_name: str | None = None,
 ) -> ArtifactMeta:
+    from app.services.filename_slug import artifact_filename
+
     if art is None:
+        # BUG-057: sin import previo, la descarga regenera la plantilla
+        # XLSX desde DB (vacía o con tareas). Reportamos source_format
+        # = xlsx para que la UI no caiga al fallback ".bin".
         return ArtifactMeta(
             type="plan",
             available=False,
+            source_format="xlsx",
+            filename=artifact_filename(project_name, "plan", "xlsx"),
             download_url=f"/api/v1/projects/{project_id}/plan/download?format=auto",
         )
+    # ENH-092 / BUG-057: filename derivado del nombre del proyecto + ext
+    # canónico del source_format. MPP cae a XLSX en el regenerator (ENH-080).
+    ext = (art.source_format or "xlsx").lower()
+    if ext == "mpp":
+        ext = "xlsx"
     return ArtifactMeta(
         type="plan",
         available=True,
         source_format=art.source_format,
-        filename=art.filename,
+        filename=artifact_filename(project_name, "plan", ext),
         size_bytes=art.size_bytes,
         download_url=f"/api/v1/projects/{project_id}/plan/download?format=auto",
     )
