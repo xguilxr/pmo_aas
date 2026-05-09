@@ -147,10 +147,14 @@ def _plan_meta(
 def _raid_meta(project_id: UUID, project_name: str | None = None) -> ArtifactMeta:
     # ENH-082 (Sprint 19) entregará el export 4-sheets dedicado. Mientras,
     # se expone el endpoint de export RAID actual (modules.docs_router).
+    from app.services.filename_slug import artifact_filename
+
     return ArtifactMeta(
         type="raid",
         available=True,
         source_format="xlsx",
+        # ENH-093: filename con nombre de proyecto, no con su UUID.
+        filename=artifact_filename(project_name, "raid", "xlsx"),
         download_url=f"/api/v1/projects/{project_id}/raid/export",
     )
 
@@ -297,8 +301,10 @@ async def download_plan(
 
     data, mime, ext, fallback = regenerate_for_format(fmt, list(tasks))
 
-    safe_name = (project.name or "plan").replace("/", "_")
-    filename = f"Plan - {safe_name}.{ext}"
+    # ENH-092: filename canónico `{project-slug}-plan.{ext}`.
+    from app.services.filename_slug import artifact_filename
+
+    filename = artifact_filename(project.name, "plan", ext)
     headers = {
         "Content-Disposition": (
             f'attachment; filename="{filename}"; '
@@ -384,8 +390,10 @@ async def export_raid(
         changes=list(changes),
     )
 
-    safe_name = (project.name or "raid").replace("/", "_")
-    filename = f"RAID - {safe_name}.xlsx"
+    # ENH-093: filename canónico `{project-slug}-raid.xlsx`.
+    from app.services.filename_slug import artifact_filename
+
+    filename = artifact_filename(project.name, "raid", "xlsx")
     headers = {
         "Content-Disposition": (
             f'attachment; filename="{filename}"; '
