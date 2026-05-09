@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, new_uuid
@@ -45,3 +45,7 @@ class Report(Base, TimestampMixin):
     generator: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     cut_off_date: Mapped[date | None] = mapped_column(Date)
     created_by: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
+    # US-109/ENH-089: HTML final del reporte (con tweaks aplicados via
+    # LLM). Es el formato primario de exportación; PDF/TXT son
+    # adecuaciones server-side.
+    html_content: Mapped[str] = mapped_column(Text, nullable=False, default="")
