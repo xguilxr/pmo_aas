@@ -191,10 +191,37 @@ async def update_provider_config(
     ai = dict(merged.get("ai") or {})
 
     if body.mode == "byo":
+        # BUG-060: si el tenant ya tiene una config BYO persistida, el
+        # PATCH puede no incluir `byo` (p. ej. solo se está cambiando
+        # `mode` de platform→byo o re-confirmando). Antes esto fallaba
+        # con "byo requerido cuando mode='byo'". Ahora permitimos
+        # heredar la config existente; solo se exige `byo` cuando la
+        # config previa no existe o no tiene provider.
+        existing_byo = ai.get("byo") if isinstance(ai.get("byo"), dict) else None
         if body.byo is None:
-            from app.core.errors import business_rule
+            if not existing_byo or not existing_byo.get("provider"):
+                from app.core.errors import business_rule
 
-            raise business_rule("byo requerido cuando mode='byo'")
+                raise business_rule(
+                    "byo requerido cuando mode='byo' y no hay config previa",
+                )
+            # Solo se está re-confirmando mode=byo (o cambiando de
+            # platform→byo manteniendo la config existente). No se toca
+            # `ai["byo"]`; persistimos el cambio de mode y devolvemos.
+            ai["mode"] = "byo"
+            t.settings = {**merged, "ai": ai}
+            await write_audit(
+                db,
+                action="admin.ai.update_mode",
+                module="admin",
+                user_id=cu.id,
+                tenant_id=tenant_id,
+                entity_type="tenant",
+                entity_id=str(tenant_id),
+                details={"mode": "byo", "byo_provider": existing_byo.get("provider")},
+            )
+            await db.commit()
+            return await get_provider_config(cu=cu, db=db)  # type: ignore[arg-type]
         if body.byo.provider not in BYO_PROVIDERS_ALLOWED:
             from app.core.errors import business_rule
 
