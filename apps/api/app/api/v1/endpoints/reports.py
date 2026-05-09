@@ -1399,6 +1399,7 @@ async def render_default_report_html(
 async def export_report(
     report_id: UUID,
     format: str = Query(default="html", pattern="^(html|pdf|txt)$"),
+    inline: bool = Query(default=False),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1447,11 +1448,13 @@ async def export_report(
     base_name = re.sub(r"[^A-Za-z0-9_-]+", "_", rep.title or "reporte")[:80] or "reporte"
 
     if format == "html":
+        # US-111 rework: `inline=true` permite preview en tab nueva.
+        disposition = "inline" if inline else "attachment"
         return _Resp(
             content=html_content,
             media_type="text/html; charset=utf-8",
             headers={
-                "Content-Disposition": f'attachment; filename="{base_name}.html"',
+                "Content-Disposition": f'{disposition}; filename="{base_name}.html"',
             },
         )
     if format == "txt":

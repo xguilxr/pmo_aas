@@ -48,6 +48,7 @@ import {
   listReportHistory,
   previewAvanceTemplate,
   previewReportHistory,
+  previewReportHtml,
   previewSeguimientoTemplate,
   updateReport,
   type Report,
@@ -2017,10 +2018,26 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                   variant="ghost"
                   size="sm"
                   onClick={() => previewReportHistory(h.id).catch(() => {})}
-                  title="Ver"
+                  title="Ver PDF"
                 >
                   <Eye className="h-4 w-4" aria-hidden />
                 </Button>
+                {/* US-111 rework: ver el HTML interactivo (KPIs +
+                    filtros vanilla JS embebidos) cuando el reporte
+                    fuente lo tiene populado. */}
+                {h.source_report_id ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      previewReportHtml(h.source_report_id as string).catch(() => {})
+                    }
+                    title="Ver HTML interactivo"
+                  >
+                    <FileText className="h-4 w-4" aria-hidden />
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="ghost"
