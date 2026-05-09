@@ -16,6 +16,24 @@ Dado un transcript, devuelve SOLO un JSON válido con la siguiente estructura:
   }
 }
 
+ENH-096 — Profundidad esperada en `topics`:
+- `title`: tema concreto, idealmente con un sustantivo eje (ej. "WMS /
+  Plantas", "CFDI — 70 cadenas sin facturación en LSP", "Business Area").
+- `notes`: 2 a 5 oraciones que combinen QUÉ se discutió, QUIÉN lo dijo
+  o se hizo responsable, FECHAS / NÚMEROS mencionados, próximos pasos
+  cercanos, y cualquier dependencia o decisión preliminar. NO uses
+  bullets cortos tipo "se discutió X"; reconstruye el contexto en prosa
+  útil para alguien que no estuvo en la sala.
+- Cuando un tema afecte a varias áreas, extrae UN topic por sub-tema
+  (ej. "Master Data" y "Lista de clientes/productos" como temas
+  separados aunque hayan salido de la misma conversación).
+- Si la transcripción explicita responsables o fechas, INCLÚYELOS en el
+  texto (ej. "Eli Gomora reportó que ~70 cadenas...", "Sesión planeada
+  para 28/03").
+
+`agreements`, `decisions` y `next_steps`: 1 oración completa cada uno;
+identifica responsable y fecha cuando se mencionen.
+
 ENH-084: el bloque `raid` debe incluirse SIEMPRE con esas 4 claves.
 - "risks": amenazas o eventos inciertos discutidos.
 - "issues": problemas/incidentes ya materializados o bloqueos activos.
