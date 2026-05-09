@@ -53,6 +53,20 @@ type Mode = "split" | "list" | "gantt";
 const MODE_FROM_PARAM = (v: string | null): Mode =>
   v === "list" || v === "gantt" || v === "split" ? v : "split";
 
+// ENH-094: duración inclusive desde dos strings YYYY-MM-DD del form.
+// Devuelve null si falta alguno o si end < start.
+function computeDurationDaysFromForm(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): number | null {
+  if (!start || !end) return null;
+  const s = new Date(`${start}T00:00:00`);
+  const e = new Date(`${end}T00:00:00`);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null;
+  const days = Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1;
+  return days >= 0 ? days : null;
+}
+
 function fmtDate(d: string | null | undefined): string {
   if (!d) return "—";
   // Bug timezone: la API devuelve YYYY-MM-DD (date pura sin TZ). El
@@ -611,21 +625,16 @@ function TaskList({
                 <>
                   <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
                     {t.duration_days != null ? (
-                      <span
-                        className={cn(
-                          t.duration_days > 21
-                            ? "text-[var(--color-warning-fg)]"
-                            : undefined,
-                        )}
-                        title={
-                          t.duration_days > 21
-                            ? "Duración mayor al máximo recomendado de 21 días. OK para actividades macro; considera dividir si es operativa."
-                            : undefined
-                        }
-                      >
-                        {t.duration_days}d
-                        {t.duration_days > 21 ? " ⚠" : null}
-                      </span>
+                      t.duration_days > 21 ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 font-medium text-[var(--color-warning-fg)]"
+                          title="Duración mayor al máximo recomendado de 21 días. OK para actividades macro; considera dividir si es operativa."
+                        >
+                          ⚠ {t.duration_days}d
+                        </span>
+                      ) : (
+                        <span>{t.duration_days}d</span>
+                      )
                     ) : (
                       "—"
                     )}
@@ -1676,6 +1685,23 @@ function PlanInner() {
         }
       >
         <div className="grid gap-3 sm:grid-cols-2">
+          {/* ENH-094: warning soft cuando duración inferida supera el
+              máximo recomendado (21d). No bloquea guardar. */}
+          {(() => {
+            const d = computeDurationDaysFromForm(
+              newForm.start_date,
+              newForm.end_date,
+            );
+            return d != null && d > 21 ? (
+              <div className="sm:col-span-2">
+                <Banner variant="warning">
+                  Duración inferida: {d} días. El máximo recomendado son 21
+                  para tareas operativas. Es válido para actividades macro,
+                  pero considera dividirla.
+                </Banner>
+              </div>
+            ) : null;
+          })()}
           <label className="sm:col-span-2">
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
               Nombre *
@@ -1843,6 +1869,23 @@ function PlanInner() {
         }
       >
         <div className="grid gap-3 sm:grid-cols-2">
+          {/* ENH-094: warning soft cuando duración inferida supera el
+              máximo recomendado (21d). No bloquea guardar. */}
+          {(() => {
+            const d = computeDurationDaysFromForm(
+              editForm.start_date,
+              editForm.end_date,
+            );
+            return d != null && d > 21 ? (
+              <div className="sm:col-span-2">
+                <Banner variant="warning">
+                  Duración inferida: {d} días. El máximo recomendado son 21
+                  para tareas operativas. Es válido para actividades macro,
+                  pero considera dividirla.
+                </Banner>
+              </div>
+            ) : null;
+          })()}
           <label className="sm:col-span-2">
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
               Nombre *
