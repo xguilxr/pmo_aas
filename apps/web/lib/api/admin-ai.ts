@@ -17,7 +17,13 @@ export type TestConnectionResult = {
 export type TenantAIMode = "disabled" | "platform" | "byo";
 
 /** Proveedores expuestos en el catálogo público de /admin/ai. */
-export type BYOProvider = "openai" | "claude" | "perplexity" | "gemini" | "custom";
+export type BYOProvider =
+  | "openai"
+  | "claude"
+  | "perplexity"
+  | "gemini"
+  | "custom"
+  | "azure";
 
 export type BYOConfigRead = {
   provider: BYOProvider;
@@ -25,6 +31,11 @@ export type BYOConfigRead = {
   has_api_key: boolean;
   model: string | null;
   base_url: string | null;
+  deployment_name: string | null;
+  api_version: string | null;
+  rate_limit_rpm: number | null;
+  daily_token_limit: number | null;
+  acknowledge_security: boolean | null;
   last_test_at: string | null;
   last_test_status: "ok" | "fail" | null;
   last_test_error: string | null;
@@ -35,6 +46,11 @@ export type BYOConfigIn = {
   api_key?: string | null;
   model?: string | null;
   base_url?: string | null;
+  deployment_name?: string | null;
+  api_version?: string | null;
+  rate_limit_rpm?: number | null;
+  daily_token_limit?: number | null;
+  acknowledge_security?: boolean | null;
 };
 
 export type BYOProviderInfo = {
@@ -45,6 +61,10 @@ export type BYOProviderInfo = {
   docs_url: string;
   suggested_models: string[];
   requires_base_url: boolean;
+  requires_azure_fields?: boolean;
+  requires_security_ack?: boolean;
+  security_warning?: string;
+  base_url_hint?: string;
 };
 
 export type TenantAIProviderRead = {
@@ -88,6 +108,7 @@ export const BYO_PROVIDER_LABEL: Record<BYOProvider, string> = {
   perplexity: "Perplexity",
   gemini: "Google Gemini",
   custom: "Otro proveedor (compatible OpenAI)",
+  azure: "Microsoft Copilot M365 (Azure OpenAI)",
 };
 
 // Fallback de modelos si el catálogo del backend no se pudo cargar.
@@ -97,4 +118,5 @@ export const BYO_PROVIDER_MODELS: Record<BYOProvider, string[]> = {
   perplexity: ["sonar", "sonar-pro"],
   gemini: ["gemini-1.5-flash", "gemini-1.5-pro"],
   custom: [],
+  azure: ["gpt-4o", "gpt-4", "gpt-35-turbo"],
 };

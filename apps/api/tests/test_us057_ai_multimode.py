@@ -279,14 +279,14 @@ async def test_us057_admin_provider_patch_requires_byo_config(client, db_session
 
 @pytest.mark.asyncio
 async def test_us057_admin_provider_get_returns_catalog(client, db_session):
-    """GET expone byo_catalog con los 4 providers whitelisted."""
+    """GET expone byo_catalog con los providers whitelisted (US-110: + azure)."""
     _t, _u, auth = await _admin(client, db_session, slug="ai57-catalog")
     r = await client.get(
         "/api/v1/admin/ai/provider", headers=auth["_authz"],
     )
     body = r.json()
     keys = {p["key"] for p in body["byo_catalog"]}
-    assert keys == {"openai", "claude", "perplexity", "gemini", "custom"}
+    assert keys == {"openai", "claude", "perplexity", "gemini", "custom", "azure"}
     for p in body["byo_catalog"]:
         assert p["docs_url"].startswith("https://")
         assert isinstance(p["suggested_models"], list)

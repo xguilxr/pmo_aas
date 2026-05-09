@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-class BYOProviderInfo(TypedDict):
+class BYOProviderInfo(TypedDict, total=False):
     key: str
     label: str
     description: str
@@ -23,6 +23,11 @@ class BYOProviderInfo(TypedDict):
     docs_url: str
     suggested_models: list[str]
     requires_base_url: bool
+    # US-110:
+    requires_azure_fields: bool  # azure deployment + api_version + endpoint
+    requires_security_ack: bool  # custom: tenant ack del riesgo
+    security_warning: str  # texto custom mostrado en wizard
+    base_url_hint: str  # placeholder UI
 
 
 BYO_CATALOG: list[BYOProviderInfo] = [
@@ -82,13 +87,40 @@ BYO_CATALOG: list[BYOProviderInfo] = [
         "label": "Otro proveedor (compatible OpenAI)",
         "description": (
             "Conecta cualquier endpoint compatible con la API de OpenAI "
-            "(proxy, self-hosted, vLLM, LM Studio, etc.). Requiere "
-            "base_url + api_key + modelo."
+            "(Together, Mistral, Groq custom, vLLM, LM Studio, etc.). "
+            "Requiere base_url + api_key + modelo."
         ),
         "api_keys_url": "",
         "docs_url": "https://platform.openai.com/docs/api-reference",
         "suggested_models": [],
         "requires_base_url": True,
+        "requires_security_ack": True,
+        "security_warning": (
+            "Tu tenant es responsable de la seguridad y el cumplimiento "
+            "del proveedor elegido. La plataforma no audita la red, los "
+            "logs ni la retención de datos del endpoint custom. Asegúrate "
+            "de que el proveedor cumple con tus políticas internas antes "
+            "de procesar información sensible."
+        ),
+        "base_url_hint": "https://api.together.xyz/v1",
+    },
+    {
+        "key": "azure",
+        "label": "Microsoft Copilot M365 (Azure OpenAI)",
+        "description": (
+            "Conecta el deployment de Azure OpenAI asociado a tu licencia "
+            "Microsoft 365 / Copilot. Requiere endpoint del recurso, "
+            "deployment_name y api_version. Auth via api-key (sin Bearer)."
+        ),
+        "api_keys_url": "https://portal.azure.com/",
+        "docs_url": (
+            "https://learn.microsoft.com/azure/ai-services/openai/"
+            "chatgpt-quickstart?tabs=command-line%2Cpython-new&pivots=rest-api"
+        ),
+        "suggested_models": ["gpt-4o", "gpt-4", "gpt-35-turbo"],
+        "requires_base_url": True,
+        "requires_azure_fields": True,
+        "base_url_hint": "https://my-resource.openai.azure.com",
     },
 ]
 

@@ -56,7 +56,9 @@ class TestConnectionResult(BaseModel):
 
 
 class BYOConfigIn(BaseModel):
-    provider: Literal["openai", "claude", "perplexity", "gemini", "custom"]
+    provider: Literal[
+        "openai", "claude", "perplexity", "gemini", "custom", "azure",
+    ]
     api_key: str | None = Field(
         default=None,
         description=(
@@ -66,11 +68,28 @@ class BYOConfigIn(BaseModel):
     )
     model: str | None = Field(default=None, max_length=100)
     base_url: str | None = Field(default=None, max_length=500)
+    # US-110: Azure / Microsoft Copilot M365.
+    deployment_name: str | None = Field(default=None, max_length=120)
+    api_version: str | None = Field(default=None, max_length=40)
+    # US-110 CA4: límites por provider para evitar costos descontrolados.
+    rate_limit_rpm: int | None = Field(default=None, ge=1, le=100_000)
+    daily_token_limit: int | None = Field(default=None, ge=100, le=100_000_000)
+    # US-110 CA3: ack explícito de riesgo cuando el tenant elige custom.
+    acknowledge_security: bool | None = Field(default=None)
 
     @model_validator(mode="after")
-    def _custom_requires_base_url(self) -> BYOConfigIn:
+    def _provider_specific_requirements(self) -> BYOConfigIn:
         if self.provider == "custom" and not (self.base_url or "").strip():
             raise ValueError("base_url requerido para provider=custom")
+        if self.provider == "azure":
+            if not (self.base_url or "").strip():
+                raise ValueError(
+                    "base_url (resource endpoint) requerido para provider=azure",
+                )
+            if not (self.deployment_name or "").strip():
+                raise ValueError(
+                    "deployment_name requerido para provider=azure",
+                )
         return self
 
 
@@ -80,6 +99,11 @@ class BYOConfigRead(BaseModel):
     has_api_key: bool = False
     model: str | None = None
     base_url: str | None = None
+    deployment_name: str | None = None
+    api_version: str | None = None
+    rate_limit_rpm: int | None = None
+    daily_token_limit: int | None = None
+    acknowledge_security: bool | None = None
     last_test_at: str | None = None
     last_test_status: Literal["ok", "fail"] | None = None
     last_test_error: str | None = None
@@ -108,6 +132,11 @@ def _build_byo_read(byo_raw: dict) -> BYOConfigRead:
         has_api_key=bool(plain),
         model=byo_raw.get("model"),
         base_url=byo_raw.get("base_url"),
+        deployment_name=byo_raw.get("deployment_name"),
+        api_version=byo_raw.get("api_version"),
+        rate_limit_rpm=byo_raw.get("rate_limit_rpm"),
+        daily_token_limit=byo_raw.get("daily_token_limit"),
+        acknowledge_security=byo_raw.get("acknowledge_security"),
         last_test_at=byo_raw.get("last_test_at"),
         last_test_status=byo_raw.get("last_test_status"),
         last_test_error=byo_raw.get("last_test_error"),
@@ -174,6 +203,24 @@ async def update_provider_config(
                 code="BYO_PROVIDER_INVALID",
             )
         existing = ai.get("byo") if isinstance(ai.get("byo"), dict) else {}
+        # US-110 CA3: provider=custom obliga ack explícito (al crear o al
+        # cambiar a custom desde otro provider). Si ya estaba como custom y
+        # ack=True existe en BD, se conserva.
+        if body.byo.provider == "custom":
+            ack = body.byo.acknowledge_security
+            if ack is None and existing.get("provider") == "custom":
+                ack = bool(existing.get("acknowledge_security"))
+            if not ack:
+                from app.core.errors import business_rule
+
+                raise business_rule(
+                    (
+                        "Para conectar un proveedor custom debes confirmar "
+                        "que tu tenant es responsable de la seguridad y el "
+                        "cumplimiento del proveedor (acknowledge_security)."
+                    ),
+                    code="BYO_SECURITY_ACK_REQUIRED",
+                )
         byo: dict = {"provider": body.byo.provider}
         # Re-cifrar solo si el usuario envía api_key explícita; si no,
         # conservar la cifrada existente.
@@ -185,6 +232,29 @@ async def update_provider_config(
             )
         byo["model"] = body.byo.model or existing.get("model")
         byo["base_url"] = body.byo.base_url or existing.get("base_url")
+        # US-110: persistir deployment Azure + límites + ack.
+        byo["deployment_name"] = (
+            body.byo.deployment_name or existing.get("deployment_name")
+        )
+        byo["api_version"] = body.byo.api_version or existing.get("api_version")
+        byo["rate_limit_rpm"] = (
+            body.byo.rate_limit_rpm
+            if body.byo.rate_limit_rpm is not None
+            else existing.get("rate_limit_rpm")
+        )
+        byo["daily_token_limit"] = (
+            body.byo.daily_token_limit
+            if body.byo.daily_token_limit is not None
+            else existing.get("daily_token_limit")
+        )
+        if body.byo.provider == "custom":
+            byo["acknowledge_security"] = (
+                body.byo.acknowledge_security
+                if body.byo.acknowledge_security is not None
+                else existing.get("acknowledge_security")
+            )
+        else:
+            byo["acknowledge_security"] = None
 
         # US-104: gate test-before-save. Pingueamos con la config nueva
         # antes de tocar nada en BD. Si falla y `force` es false, abortamos
@@ -199,6 +269,8 @@ async def update_provider_config(
             )
             ping = await _ping_byo_provider(
                 byo["provider"], api_key_plain, byo["model"], byo["base_url"],
+                deployment_name=byo.get("deployment_name"),
+                api_version=byo.get("api_version"),
             )
             if not ping.ok:
                 from fastapi import HTTPException
@@ -296,13 +368,20 @@ async def test_provider_connection(
         api_key = decrypt_secret(byo_raw.get("api_key_encrypted") or "")
         model = byo_raw.get("model")
         base_url = byo_raw.get("base_url")
+        deployment_name = byo_raw.get("deployment_name")
+        api_version = byo_raw.get("api_version")
     else:
         provider = byo_in.provider
         api_key = byo_in.api_key or ""
         model = byo_in.model
         base_url = byo_in.base_url
+        deployment_name = byo_in.deployment_name
+        api_version = byo_in.api_version
 
-    result = await _ping_byo_provider(provider, api_key, model, base_url)
+    result = await _ping_byo_provider(
+        provider, api_key, model, base_url,
+        deployment_name=deployment_name, api_version=api_version,
+    )
 
     # Persistir el resultado en el tenant para el panel del superadmin,
     # SOLO si estamos validando la config ya guardada (body.byo == None).
@@ -326,6 +405,8 @@ async def _ping_byo_provider(
     api_key: str,
     model: str | None,
     base_url: str | None,
+    deployment_name: str | None = None,
+    api_version: str | None = None,
 ) -> TestConnectionResult:
     import httpx
 
@@ -434,6 +515,42 @@ async def _ping_byo_provider(
                 return TestConnectionResult(
                     ok=False, latency_ms=latency,
                     error=f"HTTP {r.status_code}",
+                    code="HTTP_ERROR",
+                )
+            return TestConnectionResult(ok=True, latency_ms=latency)
+
+        if provider == "azure":
+            if not api_key:
+                return TestConnectionResult(ok=False, error="api_key requerida", code="NO_KEY")
+            if not base_url:
+                return TestConnectionResult(
+                    ok=False, error="resource endpoint (base_url) requerido",
+                    code="NO_BASE_URL",
+                )
+            if not deployment_name:
+                return TestConnectionResult(
+                    ok=False, error="deployment_name requerido",
+                    code="NO_DEPLOYMENT",
+                )
+            ver = api_version or "2024-02-15-preview"
+            url = (
+                f"{base_url.rstrip('/')}/openai/deployments/"
+                f"{deployment_name}/chat/completions?api-version={ver}"
+            )
+            async with httpx.AsyncClient(timeout=10.0) as c:
+                r = await c.post(
+                    url,
+                    headers={"api-key": api_key, "Content-Type": "application/json"},
+                    json={
+                        "messages": [{"role": "user", "content": "ping"}],
+                        "max_tokens": 4,
+                    },
+                )
+            latency = int((time.perf_counter() - started) * 1000)
+            if r.status_code >= 300:
+                return TestConnectionResult(
+                    ok=False, latency_ms=latency,
+                    error=f"HTTP {r.status_code}: {r.text[:120]}",
                     code="HTTP_ERROR",
                 )
             return TestConnectionResult(ok=True, latency_ms=latency)
