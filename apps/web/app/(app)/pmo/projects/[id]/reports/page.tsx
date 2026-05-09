@@ -207,9 +207,17 @@ function ReportsInner() {
             email con PDF opcional.
           </p>
         </div>
-        {/* ENH-055 fase 2: botones legacy (Avance/Seguimiento/IA/Nuevo) eliminados.
-            El flujo nuevo: Catálogo → templates con Visualizar/Descargar; las
-            generaciones quedan en Historial automáticamente (US-092). */}
+        {/* US-109 (rework): CTA principal hacia el panel de creación con
+            tweaker IA. El destino `/reports/tweak` (sin query) muestra el
+            panel inicial con los 2 modos: "Generar nuevo reporte" vs
+            "Generar con base en plantilla". */}
+        <div className="flex items-center gap-2">
+          <Link href={`/pmo/projects/${id}/reports/tweak`}>
+            <Button>
+              <Sparkles className="h-4 w-4" aria-hidden /> Crear reporte (IA + plantilla)
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
@@ -2366,11 +2374,34 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
   }
 
   return (
+    <div className="space-y-4">
+      {/* US-109 (rework): banner que redirige al panel con 2 modos
+          (nuevo desde data del proyecto / desde plantilla guardada) +
+          tweaker IA HTML iterativo. El form clásico de abajo queda
+          como atajo para reportes guiados. */}
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-subtle)]/40 p-4 shadow-[var(--shadow-sm)]">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
+            <Sparkles className="h-4 w-4" aria-hidden />
+            Crear reporte con tweaker IA HTML
+          </h2>
+          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            Elige punto de partida (data del proyecto o plantilla
+            guardada) y modifícalo iterativamente con instrucciones IA.
+          </p>
+        </div>
+        <Link href={`/pmo/projects/${projectId}/reports/tweak`}>
+          <Button>
+            Empezar — elegir modo
+          </Button>
+        </Link>
+      </section>
+
     <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
       <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
           <Sparkles className="h-4 w-4" aria-hidden />
-          Creación con IA
+          Creación con IA (clásico)
         </h2>
         <p className="text-xs text-[var(--color-tertiary)]">
           La IA del tenant arma un reporte custom combinando datos del
@@ -2623,6 +2654,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
           </div>
         )}
       </section>
+    </div>
     </div>
   );
 }
