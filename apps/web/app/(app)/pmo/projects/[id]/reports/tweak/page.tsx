@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  Download,
   FileText,
   Layout,
   Save,
@@ -160,6 +161,19 @@ function Inner() {
     }
   }
 
+  function downloadLocalHtml() {
+    if (!html) return;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reporte-${id}.html`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
   // CA6: deshacer último tweak (pop del head del historial).
   function undoLast() {
     if (history.length === 0) return;
@@ -240,6 +254,17 @@ function Inner() {
             disabled={history.length === 0 || tweaking}
           >
             <Undo2 className="h-3.5 w-3.5" aria-hidden /> Deshacer ({history.length})
+          </Button>
+          {/* ENH-089 CA5: descarga HTML directo del state local. PDF/TXT
+              quedan disponibles después de guardar como Reporte (vía
+              `/reports/{id}/export?format=...`). */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={downloadLocalHtml}
+            disabled={!html || tweaking}
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden /> Descargar HTML
           </Button>
           <Button
             variant="primary"

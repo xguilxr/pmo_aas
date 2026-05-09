@@ -1390,3 +1390,85 @@ async def render_default_report_html(
         **data,
     )
     return Response(content=html, media_type="text/html; charset=utf-8")
+
+
+# ========== ENH-089 — export reportes en HTML/PDF/TXT ==========
+
+
+@router.get("/reports/{report_id}/export")
+async def export_report(
+    report_id: UUID,
+    format: str = Query(default="html", pattern="^(html|pdf|txt)$"),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-089 — descarga el reporte en el formato seleccionado.
+
+    - `html` (CA1, default): HTML standalone con filtros embebidos.
+    - `pdf` (CA2): WeasyPrint sobre el HTML; el `@media print` oculta
+      los inputs de filtro y los `<details>` quedan abiertos por
+      paginación.
+    - `txt` (CA3): texto plano flatten (vía `html_to_text`) — útil para
+      minutas que se pegan en email.
+    """
+    from fastapi.responses import Response as _Resp
+
+    from app.services.pdf_renderer import html_to_pdf, html_to_text
+
+    tenant_id = _tenant(cu)
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(report_id),
+                Report.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte")
+    # Si no hay HTML guardado, regenera vía US-111 endpoint.
+    html_content = rep.html_content
+    if not html_content:
+        project = await _get_project(db, tenant_id, UUID(str(rep.project_id)))
+        cut_off = rep.cut_off_date or datetime.now(UTC).date()
+        context = await build_avance_context(db, tenant_id, project.id, cut_off)
+        data = _project_render_data(project, context)
+        html_content = render_report_html(
+            title=rep.title or f"Reporte — {project.folio}",
+            project_name=project.name,
+            project_folio=project.folio,
+            generated_at=datetime.now(UTC),
+            summary_html=str((rep.sections or {}).get("executive_summary") or ""),
+            **data,
+        )
+        rep.html_content = html_content
+        await db.commit()
+
+    base_name = re.sub(r"[^A-Za-z0-9_-]+", "_", rep.title or "reporte")[:80] or "reporte"
+
+    if format == "html":
+        return _Resp(
+            content=html_content,
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{base_name}.html"',
+            },
+        )
+    if format == "txt":
+        text = html_to_text(html_content)
+        return _Resp(
+            content=text,
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{base_name}.txt"',
+            },
+        )
+    # pdf
+    pdf = html_to_pdf(html_content)
+    return _Resp(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{base_name}.pdf"',
+        },
+    )
