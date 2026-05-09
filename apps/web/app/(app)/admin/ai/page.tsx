@@ -47,7 +47,7 @@ const MODE_DESCRIPTION: Record<TenantAIMode, string> = {
     "Desactiva todas las funciones de IA. Los botones de 'Generar con IA' se ocultan. Default para tenants nuevos.",
   platform:
     "Usa la IA que hostea la plataforma (Groq · llama-3.3-70b-versatile). Por ahora sólo minutas; el contenido del tenant nunca se comparte con otros tenants.",
-  byo: "Conecta tu cuenta de OpenAI, Claude, Gemini o Perplexity. El costo corre por tu cuenta y puedes usar IA para minutas y reportes.",
+  byo: "Conecta OpenAI, Claude, Gemini, Perplexity, Microsoft Copilot M365 (Azure OpenAI) o cualquier endpoint OpenAI-compatible. El costo corre por tu cuenta.",
 };
 
 export default function TenantAdminAIPage() {
@@ -420,9 +420,33 @@ function ActiveConnectionPanel({
               <span className="font-mono break-all">{byo.base_url}</span>
             </>
           ) : null}
+          {byo.deployment_name ? (
+            <>
+              {" "}· Deployment:{" "}
+              <span className="font-mono">{byo.deployment_name}</span>
+            </>
+          ) : null}
+          {byo.api_version ? (
+            <>
+              {" "}· API version:{" "}
+              <span className="font-mono">{byo.api_version}</span>
+            </>
+          ) : null}
           {" "}· Key:{" "}
           <span className="font-mono">{byo.api_key_mask ?? "sin key"}</span>
         </div>
+        {(byo.rate_limit_rpm != null || byo.daily_token_limit != null) ? (
+          <div className="mt-1 text-[var(--color-tertiary)]">
+            Límites:{" "}
+            {byo.rate_limit_rpm != null
+              ? `${byo.rate_limit_rpm} RPM`
+              : "RPM —"}{" "}
+            ·{" "}
+            {byo.daily_token_limit != null
+              ? `${byo.daily_token_limit.toLocaleString()} tokens/día`
+              : "tokens/día —"}
+          </div>
+        ) : null}
         {byo.last_test_status ? (
           <div className="mt-1 text-[var(--color-tertiary)]">
             Último test:{" "}
@@ -468,8 +492,21 @@ function ActiveConnectionEditForm({
   onCancel: () => void;
   onSaved: () => void;
 }) {
+  const isAzure = byo.provider === "azure";
+  const isCustom = byo.provider === "custom";
   const [model, setModel] = useState(byo.model ?? "");
   const [baseUrl, setBaseUrl] = useState(byo.base_url ?? "");
+  const [deploymentName, setDeploymentName] = useState(byo.deployment_name ?? "");
+  const [apiVersion, setApiVersion] = useState(byo.api_version ?? "");
+  const [rateLimitRpm, setRateLimitRpm] = useState(
+    byo.rate_limit_rpm != null ? String(byo.rate_limit_rpm) : "",
+  );
+  const [dailyTokenLimit, setDailyTokenLimit] = useState(
+    byo.daily_token_limit != null ? String(byo.daily_token_limit) : "",
+  );
+  const [acknowledgeSecurity, setAcknowledgeSecurity] = useState(
+    !!byo.acknowledge_security,
+  );
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -478,6 +515,8 @@ function ActiveConnectionEditForm({
     e.preventDefault();
     setSaving(true);
     setError(null);
+    const rpmTrim = rateLimitRpm.trim();
+    const tokTrim = dailyTokenLimit.trim();
     try {
       await updateTenantAIProvider({
         mode: "byo",
@@ -486,6 +525,13 @@ function ActiveConnectionEditForm({
           api_key: apiKey.trim() ? apiKey : null,
           model: model.trim() || null,
           base_url: baseUrl.trim() || null,
+          deployment_name: isAzure
+            ? (deploymentName.trim() || null)
+            : null,
+          api_version: isAzure ? (apiVersion.trim() || null) : null,
+          rate_limit_rpm: rpmTrim ? Number(rpmTrim) : null,
+          daily_token_limit: tokTrim ? Number(tokTrim) : null,
+          acknowledge_security: isCustom ? acknowledgeSecurity : null,
         },
       });
       onSaved();
@@ -523,7 +569,7 @@ function ActiveConnectionEditForm({
           htmlFor="edit-url"
           className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
         >
-          Base URL
+          {isAzure ? "Resource endpoint" : "Base URL"}
         </label>
         <Input
           id="edit-url"
@@ -532,6 +578,37 @@ function ActiveConnectionEditForm({
           placeholder="https://api..."
         />
       </div>
+      {isAzure ? (
+        <>
+          <div>
+            <label
+              htmlFor="edit-deployment"
+              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            >
+              Deployment name
+            </label>
+            <Input
+              id="edit-deployment"
+              value={deploymentName}
+              onChange={(e) => setDeploymentName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="edit-api-version"
+              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            >
+              API version
+            </label>
+            <Input
+              id="edit-api-version"
+              value={apiVersion}
+              onChange={(e) => setApiVersion(e.target.value)}
+              placeholder="2024-02-15-preview"
+            />
+          </div>
+        </>
+      ) : null}
       <div>
         <label
           htmlFor="edit-key"
@@ -551,6 +628,54 @@ function ActiveConnectionEditForm({
           Déjalo vacío para conservar la key actual.
         </p>
       </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor="edit-rpm"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Rate limit (RPM)
+          </label>
+          <Input
+            id="edit-rpm"
+            type="number"
+            min={1}
+            value={rateLimitRpm}
+            onChange={(e) => setRateLimitRpm(e.target.value)}
+            placeholder="—"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="edit-tokens"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Tope tokens diarios
+          </label>
+          <Input
+            id="edit-tokens"
+            type="number"
+            min={100}
+            value={dailyTokenLimit}
+            onChange={(e) => setDailyTokenLimit(e.target.value)}
+            placeholder="—"
+          />
+        </div>
+      </div>
+      {isCustom ? (
+        <label className="flex items-start gap-2 text-[12px]">
+          <input
+            type="checkbox"
+            checked={acknowledgeSecurity}
+            onChange={(e) => setAcknowledgeSecurity(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Confirmo que mi tenant es responsable de la seguridad y
+            cumplimiento del proveedor custom.
+          </span>
+        </label>
+      ) : null}
       {error ? <Banner variant="danger">{error}</Banner> : null}
       <p className="text-[11px] text-[var(--color-tertiary)]">
         Al guardar se prueba la conexión con los nuevos valores. Si falla,
@@ -642,6 +767,13 @@ function BYOConnectWizard({
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(provider.suggested_models[0] ?? "");
   const [baseUrl, setBaseUrl] = useState("");
+  const [deploymentName, setDeploymentName] = useState("");
+  const [apiVersion, setApiVersion] = useState(
+    provider.requires_azure_fields ? "2024-02-15-preview" : "",
+  );
+  const [rateLimitRpm, setRateLimitRpm] = useState<string>("");
+  const [dailyTokenLimit, setDailyTokenLimit] = useState<string>("");
+  const [acknowledgeSecurity, setAcknowledgeSecurity] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
     | { ok: boolean; latency_ms: number | null; error: string | null }
@@ -650,19 +782,34 @@ function BYOConnectWizard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function buildPayload() {
+    const base = {
+      provider: provider.key,
+      api_key: apiKey,
+      model: model || null,
+      base_url: baseUrl || null,
+    } as const;
+    const extra: Record<string, unknown> = {};
+    if (provider.requires_azure_fields) {
+      extra.deployment_name = deploymentName || null;
+      extra.api_version = apiVersion || null;
+    }
+    const rpm = rateLimitRpm.trim();
+    if (rpm) extra.rate_limit_rpm = Number(rpm);
+    const dt = dailyTokenLimit.trim();
+    if (dt) extra.daily_token_limit = Number(dt);
+    if (provider.requires_security_ack) {
+      extra.acknowledge_security = acknowledgeSecurity;
+    }
+    return { ...base, ...extra };
+  }
+
   async function runTest() {
     setTesting(true);
     setTestResult(null);
     setError(null);
     try {
-      const r = await testTenantAIProvider({
-        byo: {
-          provider: provider.key,
-          api_key: apiKey,
-          model: model || null,
-          base_url: baseUrl || null,
-        },
-      });
+      const r = await testTenantAIProvider({ byo: buildPayload() });
       setTestResult({
         ok: r.ok,
         latency_ms: r.latency_ms,
@@ -681,15 +828,7 @@ function BYOConnectWizard({
     setSaving(true);
     setError(null);
     try {
-      await updateTenantAIProvider({
-        mode: "byo",
-        byo: {
-          provider: provider.key,
-          api_key: apiKey,
-          model: model || null,
-          base_url: baseUrl || null,
-        },
-      });
+      await updateTenantAIProvider({ mode: "byo", byo: buildPayload() });
       onConnected();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
@@ -719,6 +858,16 @@ function BYOConnectWizard({
           setModel={setModel}
           baseUrl={baseUrl}
           setBaseUrl={setBaseUrl}
+          deploymentName={deploymentName}
+          setDeploymentName={setDeploymentName}
+          apiVersion={apiVersion}
+          setApiVersion={setApiVersion}
+          rateLimitRpm={rateLimitRpm}
+          setRateLimitRpm={setRateLimitRpm}
+          dailyTokenLimit={dailyTokenLimit}
+          setDailyTokenLimit={setDailyTokenLimit}
+          acknowledgeSecurity={acknowledgeSecurity}
+          setAcknowledgeSecurity={setAcknowledgeSecurity}
           onBack={() => setStep("intro")}
           onNext={() => setStep("test")}
         />
@@ -783,6 +932,16 @@ function WizardKey({
   setModel,
   baseUrl,
   setBaseUrl,
+  deploymentName,
+  setDeploymentName,
+  apiVersion,
+  setApiVersion,
+  rateLimitRpm,
+  setRateLimitRpm,
+  dailyTokenLimit,
+  setDailyTokenLimit,
+  acknowledgeSecurity,
+  setAcknowledgeSecurity,
   onBack,
   onNext,
 }: {
@@ -793,10 +952,25 @@ function WizardKey({
   setModel: (s: string) => void;
   baseUrl: string;
   setBaseUrl: (s: string) => void;
+  deploymentName: string;
+  setDeploymentName: (s: string) => void;
+  apiVersion: string;
+  setApiVersion: (s: string) => void;
+  rateLimitRpm: string;
+  setRateLimitRpm: (s: string) => void;
+  dailyTokenLimit: string;
+  setDailyTokenLimit: (s: string) => void;
+  acknowledgeSecurity: boolean;
+  setAcknowledgeSecurity: (v: boolean) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
-  const canAdvance = apiKey.trim().length > 5;
+  const baseUrlReady = !info.requires_base_url || baseUrl.trim().length > 0;
+  const azureReady =
+    !info.requires_azure_fields || deploymentName.trim().length > 0;
+  const ackReady = !info.requires_security_ack || acknowledgeSecurity;
+  const canAdvance =
+    apiKey.trim().length > 5 && baseUrlReady && azureReady && ackReady;
   return (
     <div className="space-y-3">
       <div>
@@ -826,20 +1000,28 @@ function WizardKey({
           htmlFor="wiz-model"
           className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
         >
-          Modelo
+          {info.requires_azure_fields ? "Modelo (opcional · informativo)" : "Modelo"}
         </label>
         <Input
           id="wiz-model"
           list="wiz-model-suggestions"
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          placeholder="Ej. gpt-4o-mini"
+          placeholder={
+            info.requires_azure_fields ? "Ej. gpt-4o" : "Ej. gpt-4o-mini"
+          }
         />
         <datalist id="wiz-model-suggestions">
           {info.suggested_models.map((m) => (
             <option key={m} value={m} />
           ))}
         </datalist>
+        {info.requires_azure_fields ? (
+          <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+            Azure usa el deployment server-side; el campo "modelo" es solo
+            referencia para tu equipo.
+          </p>
+        ) : null}
       </div>
       {info.requires_base_url ? (
         <div>
@@ -847,16 +1029,121 @@ function WizardKey({
             htmlFor="wiz-url"
             className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
           >
-            Base URL (opcional)
+            {info.requires_azure_fields
+              ? "Resource endpoint"
+              : "Base URL"}
           </label>
           <Input
             id="wiz-url"
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="https://api..."
+            placeholder={info.base_url_hint ?? "https://api..."}
           />
+          {info.requires_azure_fields ? (
+            <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+              Lo encuentras en Azure Portal → tu recurso OpenAI →
+              "Keys and Endpoint".
+            </p>
+          ) : null}
         </div>
       ) : null}
+      {info.requires_azure_fields ? (
+        <>
+          <div>
+            <label
+              htmlFor="wiz-deployment"
+              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            >
+              Deployment name
+            </label>
+            <Input
+              id="wiz-deployment"
+              value={deploymentName}
+              onChange={(e) => setDeploymentName(e.target.value)}
+              placeholder="Ej. gpt-4o-prod"
+            />
+            <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+              Azure Portal → tu recurso → "Model deployments".
+            </p>
+          </div>
+          <div>
+            <label
+              htmlFor="wiz-api-version"
+              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            >
+              API version
+            </label>
+            <Input
+              id="wiz-api-version"
+              value={apiVersion}
+              onChange={(e) => setApiVersion(e.target.value)}
+              placeholder="2024-02-15-preview"
+            />
+          </div>
+        </>
+      ) : null}
+      {info.requires_security_ack && info.security_warning ? (
+        <Banner variant="warning">
+          <p className="font-medium">Aviso de seguridad</p>
+          <p className="mt-1 text-[12px]">{info.security_warning}</p>
+          <label className="mt-2 flex items-start gap-2 text-[12px]">
+            <input
+              type="checkbox"
+              checked={acknowledgeSecurity}
+              onChange={(e) => setAcknowledgeSecurity(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Confirmo que mi tenant es responsable de la seguridad y
+              cumplimiento del proveedor elegido.
+            </span>
+          </label>
+        </Banner>
+      ) : null}
+      <details className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3 text-[12px]">
+        <summary className="cursor-pointer font-medium text-[var(--color-secondary)]">
+          Límites de uso (opcional)
+        </summary>
+        <div className="mt-2 space-y-2">
+          <div>
+            <label
+              htmlFor="wiz-rpm"
+              className="mb-1 block text-[12px] text-[var(--color-secondary)]"
+            >
+              Rate limit (requests por minuto)
+            </label>
+            <Input
+              id="wiz-rpm"
+              type="number"
+              min={1}
+              value={rateLimitRpm}
+              onChange={(e) => setRateLimitRpm(e.target.value)}
+              placeholder="60"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="wiz-tokens"
+              className="mb-1 block text-[12px] text-[var(--color-secondary)]"
+            >
+              Tope de tokens diarios
+            </label>
+            <Input
+              id="wiz-tokens"
+              type="number"
+              min={100}
+              value={dailyTokenLimit}
+              onChange={(e) => setDailyTokenLimit(e.target.value)}
+              placeholder="500000"
+            />
+          </div>
+          <p className="text-[11px] text-[var(--color-tertiary)]">
+            Los límites se almacenan junto con la config para que el
+            worker los respete (CA4 US-110). Déjalos vacíos para no
+            aplicar tope.
+          </p>
+        </div>
+      </details>
       <DeepLinks info={info} compact />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onBack}>

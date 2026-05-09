@@ -73,6 +73,12 @@ async def load_tenant_ai(db: AsyncSession, tenant_id: UUID | str) -> TenantAICon
             "api_key": decrypt_secret(byo_raw.get("api_key_encrypted") or ""),
             "model": byo_raw.get("model") or None,
             "base_url": byo_raw.get("base_url") or None,
+            # US-110: Azure (Copilot M365) deployment + api_version,
+            # rate/token limits visibles para el worker (CA4).
+            "deployment_name": byo_raw.get("deployment_name") or None,
+            "api_version": byo_raw.get("api_version") or None,
+            "rate_limit_rpm": byo_raw.get("rate_limit_rpm"),
+            "daily_token_limit": byo_raw.get("daily_token_limit"),
         }
         # Limpiar Nones para que el factory use defaults del provider.
         byo_effective = {k: v for k, v in byo_effective.items() if v is not None}

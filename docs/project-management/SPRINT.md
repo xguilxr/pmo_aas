@@ -38,8 +38,10 @@ Sprint 21 (v1.20) — Bloque 1 ENTREGADO 2026-05-09 (4 de 4, pendiente verif. ow
 Sprint 22 (v1.21) — Bloque 1 ENTREGADO 2026-05-09 (2 de 2, pendiente verif. owner):
   US-112 + US-113. Migración 0060 agregada.
 
-Sprint 23 PLANEADO 2026-05-08 (status:ready):
-  Sprint 23 (v1.22) — BYO universal + Copilot M365 (1 issue)
+Sprint 23 (v1.22) — Bloque 1 ENTREGADO 2026-05-09 (1 de 1, pendiente verif. owner):
+  US-110 — BYO universal (custom OpenAI-compat) + Azure OpenAI / Copilot M365.
+  Sin migraciones (settings.ai.byo soporta dict flexible).
+  Branch sesión: claude/continue-sprint-work-mcmzX
 
 Sprints 12-15 — Bloques entregados, pendiente verificación owner.
 
@@ -350,13 +352,28 @@ Branch sesión: `claude/continue-sprint-tasks-jR3zt`.
 
 ---
 
-## ⏳ Sprint 23 (v1.22) — BYO universal + Copilot M365 (PLANEADO 2026-05-08)
-Branch reservada: `claude/sprint-23-byo-universal`
+## ⏳ Sprint 23 (v1.22) — BYO universal + Copilot M365 — Bloque 1 ENTREGADO 2026-05-09
+Branch sesión: `claude/continue-sprint-work-mcmzX` (rama reservada `claude/sprint-23-byo-universal` no se usó al ya estar la sesión activa).
 
-### Bloque 1 (1 issue)
-- [ ] US-110 #329 — BYO universal (cualquier API válida vía OpenAI-compatible) + soporte Microsoft Copilot M365 vía Azure OpenAI
+### Bloque 1 (1 de 1)
+- [x] US-110 #329 — BYO universal (`custom` OpenAI-compatible para Together/Mistral/vLLM/etc.) + Azure OpenAI / Microsoft Copilot M365 (provider `azure` con deployment_name + api_version) — `1c5674d`
 
-**Sin migraciones previstas.**
+**Pendiente verificación owner:** cerrar #329 tras smoke test.
+
+**Sin migración Alembic.** El shape `tenants.settings.ai.byo` JSON ya admite los campos nuevos (`deployment_name`, `api_version`, `rate_limit_rpm`, `daily_token_limit`, `acknowledge_security`).
+
+**Diferidos del bloque (no bloqueantes):**
+- US-110 CA4 enforcement runtime: los límites `rate_limit_rpm` / `daily_token_limit` se almacenan y exponen al worker via `tenant_ai.load_tenant_ai`, pero el rate-limiter activo (cuenta de requests + cierre de circuito) llega cuando se reporten costos descontrolados.
+- US-110 CA6 fase 2: auth via service principal Azure (hoy solo api-key del recurso).
+- US-110: GitHub Copilot completion (out-of-scope explícito, no es API chat).
+- US-110 CA8 spike Azure: documentación inline cubierta en docstring de `AzureProvider` + tooltips de la UI; ADR formal cuando lo pida el owner.
+
+**Decisiones:**
+- Azure usa API REST OpenAI-compatible (`{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=...`), header `api-key`. El campo `model` es informativo: el deployment es server-side.
+- `custom` mantiene whitelist (heredada de US-104) pero ahora obliga `acknowledge_security=true` antes de guardar (CA3).
+- Test-before-save US-104 cubre `azure` con POST mínimo a `/chat/completions`.
+
+**Epic:** EP008 (IA / proveedores).
 
 ---
 
@@ -405,6 +422,7 @@ Branch reservada: `claude/sprint-23-byo-universal`
 
 ## Notas y cambios recientes
 
+- **2026-05-09 (Sprint 23 Bloque 1 cerrado — 1 de 1):** entregado US-110 sobre branch `claude/continue-sprint-work-mcmzX`. 1 commit (`1c5674d`). Sin migración Alembic — el shape `tenants.settings.ai.byo` admite los campos nuevos como JSON. Cambios principales: `AzureProvider` agregado a `provider.py` (header `api-key`, no Bearer); `BYO_PROVIDERS` extendido con `"azure"`; `BYOConfigIn` nuevos campos `deployment_name`, `api_version`, `rate_limit_rpm`, `daily_token_limit`, `acknowledge_security`; `_ping_byo_provider` rama Azure que POSTea a `/openai/deployments/{deployment}/chat/completions?api-version=...`; UI wizard expone deployment + api_version cuando catálogo declara `requires_azure_fields`, y banner de seguridad + checkbox cuando `requires_security_ack` (custom). 12 tests nuevos (`test_us110_byo_universal.py`) + actualizado el test de catálogo en `test_us057_ai_multimode.py`. CA4 enforcement (rate-limiter activo) diferido hasta que se reporten costos descontrolados; los límites se persisten ya y `load_tenant_ai` los propaga al worker.
 - **2026-05-09 (Sprint 22 Bloque 1 cerrado — 2 de 2):** entregados US-112 + US-113 sobre branch `claude/continue-sprint-tasks-jR3zt`. 2 commits (`e72b445` US-112 backend con migración 0060 consolidada — incluye ambas tablas `change_approvers` + `approval_tokens` para evitar revisiones intercaladas; `e44efdc` US-113 endpoints públicos + landing `/approve/[token]`). **1 migración Alembic** (0060) requiere `alembic upgrade head`. JWT HS256 firmado con `APPROVAL_TOKEN_SECRET` o `JWT_SECRET`; en DB queda solo el SHA256 hash. Re-trigger borra tokens previos (CA11) — los aprobadores readicionados quedan reset a pending. Email cae a `logger.info` cuando EP011 no expone `send_email`; integración real es follow-up sin bloqueo.
 - **2026-05-09 (Sprint 21 Bloque 1 cerrado — 4 de 4):** entregados ENH-085 + US-111 + US-109 + ENH-089 sobre branch `claude/continue-sprint-tasks-jR3zt`. 4 commits separados (`73bf661` ENH-085 con migración 0059 + tabla `report_templates` + columna `reports.html_content`, `8c33cbd` US-111 con `html_report_renderer` reusable para reportes y minutas, `69d1e84` US-109 con tweaker UI + endpoint sync `/ai/reports/tweak-html`, `fdac553` ENH-089 con `/reports/{id}/export?format=html|pdf|txt` + helpers `html_to_pdf`/`html_to_text`). **1 migración Alembic** (0059). Reusa el patrón de `<details>` colapsables y filtros vanilla JS embebidos del template de US-111 para que el HTML descargado funcione offline (CA4). El tweaker es sync (out-of-scope: streaming) — historial N=10 in-memory + botón Deshacer.
 - **2026-05-09 (Sprint 20 Bloque 1 cerrado — 5 de 5):** entregados ENH-084 + US-108 + BUG-055 + ENH-090 + ENH-091 sobre branch `claude/continue-sprint-tasks-jR3zt`. 5 commits separados (`719fe50` ENH-084 prompt + post-procesador con `_normalize_raid_block`, `236990a` US-108 con migración 0058 + endpoints CRUD minuta + bulk approve crea tickets reales, `eb9baa9` BUG-055 cancel endpoint + worker check, `a392350` ENH-090 preview page con 4 secciones colapsables + descargas + editor embebido, `8188685` ENH-091 confirm modal en lista). **1 migración Alembic** (0058) requiere `alembic upgrade head` en Railway api+worker. ENH-088 floating preview ya cableado en la lista de minutas con `openHref` → preview dedicado. CA5 de ENH-091 (tickets generados no se borran al borrar la minuta) garantizado por el modelo: `meeting_minutes` no tiene FK hacia los tickets RAID.

@@ -326,6 +326,78 @@ class CustomProvider(OpenAIProvider):
     name = "custom"
 
 
+class AzureProvider:
+    """BYO Azure OpenAI / Microsoft Copilot M365 (US-110).
+
+    Endpoint shape: ``{resource_endpoint}/openai/deployments/{deployment_name}/
+    chat/completions?api-version=YYYY-MM-DD-preview``. Auth via header
+    ``api-key`` (no Bearer). El campo "model" del prompt es ignorado por
+    Azure: siempre usa el deployment server-side.
+
+    `base_url` aquí almacena el resource endpoint (ej. ``https://my-resource.
+    openai.azure.com``). `deployment_name` y `api_version` viven en el
+    override del BYO config. Si falta deployment, falla duro.
+    """
+
+    name = "azure"
+    DEFAULT_API_VERSION = "2024-02-15-preview"
+
+    async def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        override: dict | None = None,
+    ) -> AIResult:
+        ov = override or {}
+        api_key = ov.get("api_key")
+        if not api_key:
+            raise RuntimeError("azure_no_api_key")
+        base_url = str(ov.get("base_url") or "").rstrip("/")
+        if not base_url:
+            raise RuntimeError("azure_no_resource_endpoint")
+        deployment = ov.get("deployment_name")
+        if not deployment:
+            raise RuntimeError("azure_no_deployment_name")
+        api_version = ov.get("api_version") or self.DEFAULT_API_VERSION
+        import httpx
+
+        url = (
+            f"{base_url}/openai/deployments/{deployment}/chat/completions"
+            f"?api-version={api_version}"
+        )
+        messages: list[dict] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        body = {"messages": messages, "stream": False}
+        headers = {"api-key": api_key, "Content-Type": "application/json"}
+        logger.info(
+            "ai.byo.azure call deployment=%s api_version=%s timeout=90 tenant=%s",
+            deployment, api_version, ov.get("tenant_id"),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=90.0) as c:
+                r = await c.post(url, headers=headers, json=body)
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise RuntimeError(
+                f"azure_connect_error endpoint={base_url}: {type(exc).__name__}"
+            ) from exc
+        text = ""
+        choices = data.get("choices") or []
+        if choices:
+            text = choices[0].get("message", {}).get("content", "") or ""
+        usage = data.get("usage", {})
+        return AIResult(
+            text=text,
+            model=f"azure:{deployment}",
+            tokens_in=usage.get("prompt_tokens", 0),
+            tokens_out=usage.get("completion_tokens", 0),
+        )
+
+
 _PROVIDERS: dict[str, AIProvider] = {
     "gemini": GeminiProvider(),
     "claude": ClaudeProvider(),
@@ -333,9 +405,11 @@ _PROVIDERS: dict[str, AIProvider] = {
     "openai": OpenAIProvider(),
     "perplexity": PerplexityProvider(),
     "custom": CustomProvider(),
+    "azure": AzureProvider(),
     "disabled": DisabledProvider(),
 }
 
+# US-110 (2026-05-09): + azure (Microsoft Copilot M365 vía Azure OpenAI).
 # US-104 (2026-05-08): + custom OpenAI-compatible.
 BYO_PROVIDERS: tuple[str, ...] = (
     "openai",
@@ -343,6 +417,7 @@ BYO_PROVIDERS: tuple[str, ...] = (
     "perplexity",
     "gemini",
     "custom",
+    "azure",
 )
 
 # Alias mantenido para minimizar diff con código que importaba esta tupla.

@@ -106,7 +106,7 @@ def _stub_ai_providers(monkeypatch, request):
     async def _stub_generate(_self, prompt, *, system=None, override=None):
         return await stub.generate(prompt, system=system)
 
-    for name in ("gemini", "claude", "groq", "openai", "perplexity"):
+    for name in ("gemini", "claude", "groq", "openai", "perplexity", "custom", "azure"):
         cls = type(provider_mod._PROVIDERS[name])
         monkeypatch.setattr(cls, "generate", _stub_generate)
 
