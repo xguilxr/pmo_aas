@@ -97,7 +97,24 @@ export default function TenantAdminAIPage() {
       setConfirmOpen(false);
       setNotice(`Modo cambiado a "${MODE_LABEL[next]}".`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al guardar");
+      // BUG-060: si el backend rechaza el switch a `byo` por falta de
+      // config previa, en vez de dejar al usuario en una pantalla de
+      // error cerramos el modal y le sugerimos abrir el wizard de
+      // conexión. El error técnico queda como notice descartable.
+      const msg = err instanceof ApiError ? err.message : "Error al guardar";
+      const needsWizard =
+        next === "byo" &&
+        err instanceof ApiError &&
+        /byo requerido/i.test(err.message);
+      if (needsWizard) {
+        setConfirmOpen(false);
+        setPendingMode(data.mode);
+        setNotice(
+          "Para usar BYO necesitas conectar primero un proveedor. Abre el wizard desde la lista.",
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -201,7 +218,14 @@ export default function TenantAdminAIPage() {
 
       <Modal
         open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
+        onClose={() => {
+          // BUG-060: limpiar error previo al cerrar el modal de cambio
+          // de modo. Antes el error de un intento fallido quedaba
+          // visible aunque el usuario reculara y configurara BYO via
+          // el wizard.
+          setConfirmOpen(false);
+          setError(null);
+        }}
         title="Confirmar cambio de modo"
       >
         <div className="space-y-3">
