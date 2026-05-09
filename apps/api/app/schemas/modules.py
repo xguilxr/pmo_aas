@@ -317,13 +317,18 @@ class MeetingMinuteRead(BaseModel):
 
 
 class MeetingMinuteUpdate(BaseModel):
-    """ENH-090/US-108: edición ligera de una minuta — usado para
+    """ENH-090/US-108/ENH-095: edición ligera de una minuta — usado para
     persistir cambios en `raid_suggestions` (descartar, editar
-    short_desc) sin tocar el flujo de aprobación.
+    short_desc) y, desde ENH-095, también las secciones estructuradas
+    (participants/topics/agreements) editables inline en el preview.
     """
 
     title: str | None = Field(default=None, min_length=2, max_length=200)
     raid_suggestions: dict | None = None
+    # ENH-095: edición por secciones desde el preview.
+    participants: list[dict] | None = None
+    topics: list[dict] | None = None
+    agreements: list[dict] | None = None
 
 
 class RaidApproveItem(BaseModel):

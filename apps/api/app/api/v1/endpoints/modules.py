@@ -1531,6 +1531,13 @@ async def update_minute(
         m.raid_suggestions = data["raid_suggestions"]
     if "title" in data:
         m.title = data["title"]
+    # ENH-095: secciones estructuradas editables desde el preview.
+    if "participants" in data and isinstance(data["participants"], list):
+        m.participants = data["participants"]
+    if "topics" in data and isinstance(data["topics"], list):
+        m.topics = data["topics"]
+    if "agreements" in data and isinstance(data["agreements"], list):
+        m.agreements = data["agreements"]
     await write_audit(
         db, action="meeting_minute.update", module="minutes",
         user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute",

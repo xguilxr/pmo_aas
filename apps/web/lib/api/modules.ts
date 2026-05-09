@@ -598,10 +598,18 @@ export function getMinute(minuteId: string): Promise<MeetingMinute> {
   return apiFetch<MeetingMinute>(`/api/v1/meeting-minutes/${minuteId}`);
 }
 
-/** US-108 + ENH-090: actualiza título y/o `raid_suggestions` (descarte / edit). */
+/** US-108 + ENH-090 + ENH-095: actualiza título, `raid_suggestions` y/o
+ *  las secciones estructuradas (participants / topics / agreements)
+ *  desde el editor inline del preview. */
 export function updateMinute(
   minuteId: string,
-  body: { title?: string; raid_suggestions?: Partial<MinuteRaidSuggestions> },
+  body: {
+    title?: string;
+    raid_suggestions?: Partial<MinuteRaidSuggestions>;
+    participants?: MinuteParticipant[];
+    topics?: MinuteTopic[];
+    agreements?: MinuteAgreement[];
+  },
 ): Promise<MeetingMinute> {
   return apiFetch<MeetingMinute>(`/api/v1/meeting-minutes/${minuteId}`, {
     method: "PATCH",
