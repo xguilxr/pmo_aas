@@ -25,13 +25,15 @@ Sprint 17 (v1.16) — Bloque 0.5 IN-PROGRESS 2026-05-08:
 
 Sprint 17 Bloque 1 (chat global #255-258) → POSTERGADO (ver sección Deferred).
 
-Sprints 19-23 PLANEADOS 2026-05-08 (status:triage):
-  Sprint 19 (v1.18) — RAID polish + vistas dedicadas (6 issues, 1 migración)
-  Sprint 20 (v1.19) — IA Minutas (5 issues)
+Sprint 20 (v1.19) — Bloque 1 ENTREGADO 2026-05-09 (5 de 5, pendiente verif. owner):
+  ENH-084 + US-108 + BUG-055 + ENH-090 + ENH-091.
+  Migración 0058 agregada.
+  Branch sesión: claude/continue-sprint-tasks-jR3zt
+
+Sprints 21-23 PLANEADOS 2026-05-08 (status:ready):
   Sprint 21 (v1.20) — Reportes redesign HTML (4 issues, 1 migración)
   Sprint 22 (v1.21) — Cambios approval workflow (2 issues, 2 migraciones)
   Sprint 23 (v1.22) — BYO universal + Copilot M365 (1 issue)
-  Branch sesión actual: claude/plan-hierarchy-restructure-sdQOm
 
 Sprints 12-15 — Bloques entregados, pendiente verificación owner.
 
@@ -282,17 +284,23 @@ Branch sesión: `claude/review-start-next-sprint-R8JWc` (3 issues backend pesado
 
 ---
 
-## ⏳ Sprint 20 (v1.19) — IA Minutas (PLANEADO 2026-05-08)
-Branch reservada: `claude/sprint-20-ia-minutas`
+## ⏳ Sprint 20 (v1.19) — IA Minutas — Bloque 1 ENTREGADO 2026-05-09
+Branch sesión: `claude/continue-sprint-tasks-jR3zt`.
 
-### Bloque 1 (5 issues)
-- [ ] ENH-084 #318 — IA Minutas: 4 secciones RAID estandarizadas independiente del modelo (post-procesado JSON-schema)
-- [ ] US-108 #319 — IA Minutas → sugerir RAIDs aprobables por PM (PM revisa/edita/aprueba/crea)
-- [ ] BUG-055 #320 — Generación minuta: botón Cancelar/Volver (UI faltante)
-- [ ] ENH-090 #321 — Preview Minuta in-platform (HTML viewer embebido)
-- [ ] ENH-091 #322 — Botón Borrar minuta
+### Bloque 1 (5 de 5)
+- [x] ENH-084 #318 — IA Minutas: 4 secciones RAID estandarizadas (post-procesador determinístico) — `719fe50`
+- [x] US-108 #319 — Sugerir RAIDs aprobables por PM (editor inline + bulk approve crea tickets reales) — `236990a` (migración 0058)
+- [x] BUG-055 #320 — Botón Cancelar (cancela job + worker omite persist) y ← Volver — `eb9baa9`
+- [x] ENH-090 #321 — Preview Minuta in-platform (HTML embebido + 4 secciones colapsables + editor RAID) — `a392350`
+- [x] ENH-091 #322 — Botón Borrar minuta (header preview + kebab en lista + confirm modal) — `8188685`
 
-**Sin migraciones previstas.**
+**Pendiente verificación owner:** cerrar #318-#322 tras smoke test.
+
+**Migración Alembic agregada:** 0058 (`meeting_minutes.raid_suggestions JSON`) — requiere `alembic upgrade head` en Railway api+worker.
+
+**Diferidos del bloque (no bloqueantes):**
+- ENH-090 CA4: botón "Pop-up" para ventana externa — render in-platform cubre el caso principal.
+- BUG-055: AbortController para abortar el dispatch HTTP — el dispatch es 202 inmediato; cancelación cubre la parte que importa (worker no persiste).
 
 ---
 
@@ -377,6 +385,7 @@ Branch reservada: `claude/sprint-23-byo-universal`
 
 ## Notas y cambios recientes
 
+- **2026-05-09 (Sprint 20 Bloque 1 cerrado — 5 de 5):** entregados ENH-084 + US-108 + BUG-055 + ENH-090 + ENH-091 sobre branch `claude/continue-sprint-tasks-jR3zt`. 5 commits separados (`719fe50` ENH-084 prompt + post-procesador con `_normalize_raid_block`, `236990a` US-108 con migración 0058 + endpoints CRUD minuta + bulk approve crea tickets reales, `eb9baa9` BUG-055 cancel endpoint + worker check, `a392350` ENH-090 preview page con 4 secciones colapsables + descargas + editor embebido, `8188685` ENH-091 confirm modal en lista). **1 migración Alembic** (0058) requiere `alembic upgrade head` en Railway api+worker. ENH-088 floating preview ya cableado en la lista de minutas con `openHref` → preview dedicado. CA5 de ENH-091 (tickets generados no se borran al borrar la minuta) garantizado por el modelo: `meeting_minutes` no tiene FK hacia los tickets RAID.
 - **2026-05-09 (Sprint 19 Bloque 1 cerrado — 6 de 6):** entregados ENH-088 + ENH-086 + ENH-087 sobre branch `claude/continue-sprint-tasks-jR3zt` en 3 commits separados (`e021a97` ENH-088 floating preview, `b3798d9` ENH-086 lessons dedicated page, `4d91009` ENH-087 changes dedicated page). Backend extendido con GET/PATCH para lessons + change-requests (audit logs `lesson.update` y `change_request.update`); status de change requests sigue gobernado por approve/reject. Sin migraciones Alembic. Comentarios&Historial en cards `lesson` y `change` quedan como placeholder hasta que existan endpoints; card "Aprobadores" en cambios anuncia EP019.
 - **2026-05-08 (Sprint 19 Bloque 1 parcial — 3 de 6):** owner pidió arrancar Sprint 19; se priorizó "backend pesado primero" (US-107 + ENH-082 + ENH-083). 3 commits sobre branch `claude/review-start-next-sprint-R8JWc`: `9d94fc9` US-107 (risk_actions + assignees N:N + endpoints), `0c59aaa` ENH-082 (export RAID 4 sheets con styling), `5eb6b69` ENH-083 (RiskActionsCard inline en raid-detail-page). **1 migración Alembic** (0057) requiere `alembic upgrade head`. Quedan ENH-088 (floating preview), ENH-086 (Lecciones page), ENH-087 (Cambios page) para siguiente sesión — son refactors de UI (raid-detail-page parametrizable + nuevo componente preview).
 - **2026-05-08 (Sprint 18 Bloque 1 entregado):** 3 issues (#308-#310) entregados sobre branch `claude/review-start-next-sprint-R8JWc` en 3 commits separados (`6e2f947` US-106 + `0b43755` ENH-081 + `13f51ed` ENH-080). **2 migraciones Alembic** (0055 `project_artifacts` table + 0056 charter backfill data) requieren `alembic upgrade head` en Railway api+worker. Decisiones owner respetadas: DB es fuente de verdad del Plan, archivo se regenera on-demand; whitelist 4 tipos (charter/plan/raid/organigrama). MPP write fallback a XLSX por limitación MPXJ; tab Organigrama placeholder hasta redefinición Áreas/Recursos.
