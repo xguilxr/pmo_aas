@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Download, Eye, MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
 
@@ -25,6 +25,7 @@ import {
 
 export default function MinutesPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [rows, setRows] = useState<MeetingMinute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +102,7 @@ export default function MinutesPage() {
           </Button>
         </Link>
       }
+      onRowClick={(r) => router.push(`/pmo/projects/${id}/minutes/${r.id}`)}
       newButtonLabel="Llenar manualmente"
       newButtonVariant="secondary"
       newModalTitle="Registrar minuta"
@@ -279,6 +281,7 @@ export default function MinutesPage() {
       onClose={() => setPreview(null)}
       title={preview?.title ?? ""}
       subtitle={preview?.folio}
+      openHref={preview ? `/pmo/projects/${id}/minutes/${preview.id}` : undefined}
       fields={
         preview
           ? [
