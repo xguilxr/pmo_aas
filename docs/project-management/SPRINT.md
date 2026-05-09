@@ -9,6 +9,14 @@
 ## 🔴 IN-PROGRESS
 
 ```
+Sprint 24 (v1.23) — Bloque 1+2+3+4 ENTREGADO 2026-05-09 (12 de 12, pendiente verif. owner):
+  BUG-056 + ENH-092 + BUG-057 + ENH-093 + ENH-094 +
+  ENH-095 + ENH-096 + BUG-058 +
+  US-109 (rework) + US-111 (rework) + BUG-059 +
+  BUG-060.
+  Sin migración Alembic.
+  Branch sesión: claude/fix-project-charter-issues-RFoAy
+
 Sprint 18 (v1.17) — Bloque 1 ENTREGADO 2026-05-08 (3 issues — pendiente verif. owner):
   US-106 + ENH-081 + ENH-080. Migraciones 0055 + 0056 agregadas.
   Branch sesión: claude/review-start-next-sprint-R8JWc
@@ -377,7 +385,48 @@ Branch sesión: `claude/continue-sprint-work-mcmzX` (rama reservada `claude/spri
 
 ---
 
-**Próximo libre:** US-114, BUG-056, ENH-092.
+**Próximo libre:** US-114, BUG-061, ENH-097.
+
+---
+
+## ⏳ Sprint 24 (v1.23) — Feedback batch 2026-05-09 — Bloque 1 ENTREGADO 2026-05-09
+Branch sesión: `claude/fix-project-charter-issues-RFoAy`.
+
+Triage owner-aprobado para batch en una sesión: 10 issues nuevos +
+2 reworks. 12 commits separados (1 por item).
+
+### Bloque 1 — Documentos & Plan polish (5 items)
+- [x] BUG-056 #336 — Cancelar edición Charter → `/documents` (no resumen) — `8807084`
+- [x] ENH-092 #337 — Charter filename usa nombre de proyecto slugificado — `5591e8d`
+- [x] BUG-057 #338 — Plan download `.bin` → plantilla XLSX (frontend fallback + `_plan_meta` reporta source_format) — `bd9b138`
+- [x] ENH-093 #339 — RAID export filename usa nombre de proyecto slugificado — `772d01b`
+- [x] ENH-094 #340 — Plan `duration_days > 21` = warning, no blocker — `834d02b`
+
+### Bloque 2 — Minutas (4 items)
+- [x] ENH-095 #341 — Editor estructurado por secciones en preview minuta (Participantes / Temas / Acuerdos) — `e3f5b44`
+- [x] ENH-096 #342 — Minuta IA: bullets más detallados, 2-5 oraciones con contexto + responsables + fechas — `1705494`
+- [x] BUG-058 #343 — Preview muestra RAIDs pero al guardar quedaba vacío (faltaba aceptar `raid_suggestions` en `MeetingMinuteCreate`) — `127ee97`
+
+### Bloque 3 — Reportes (3 items, 1 = rework)
+- [x] US-109 #323 (rework) — CTA visible para panel 2 modos (`/reports/tweak`) — `0c1304c`
+- [x] US-111 #324 (rework) — Preview HTML interactivo (export?format=html&inline=true + botón en historial) — `7fd2343`
+- [x] BUG-059 #344 — Preview reporte respeta `rep.html_content` (último tweak) en lugar de `sections["_html"]` (snapshot original) — `c365bf2`
+
+### Bloque 4 — IA (1 item)
+- [x] BUG-060 #345 — `mode=byo` ya no exige `body.byo` cuando hay config previa persistida — `3170581`
+
+**Pendiente verificación owner:** cerrar #336-#345 + #323/#324 tras smoke test.
+
+**Sin migraciones Alembic.** Solo cambios de código y prompt.
+
+**Diferidos del bloque (no bloqueantes):**
+- ENH-094 fase 2: warning visual en el form de edit/new task (modal) — hoy solo en la celda de la tabla.
+- ENH-095 fase 2: edición de RAID-suggestions del editor inline ya existe (US-108); decisiones / next_steps / risks_blockers todavía read-only en el preview.
+- US-111 rework: tweaker IA arrancando desde un reporte existente (hoy `/reports/tweak` carga render default o plantilla — no un `Report` ya guardado).
+
+**Notas:**
+- Los commit headers usan `refs #330..#339` (numeración estimada al momento del commit). El número real en GitHub es `+6` (issues creados después del último issue persistido en el repo). El mapping arriba (`BUG-056 #336` etc.) es la fuente de verdad.
+- Branch única `claude/fix-project-charter-issues-RFoAy` para todo el batch (owner pidió "resolvamos esto", excepción al multi-branch reservado por bloque).
 
 ### Follow-ups identificados (Sprint 9+)
 - US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
@@ -422,6 +471,7 @@ Branch sesión: `claude/continue-sprint-work-mcmzX` (rama reservada `claude/spri
 
 ## Notas y cambios recientes
 
+- **2026-05-09 (Sprint 24 — feedback batch entregado, 12 de 12):** owner pegó dump de 12 items mezclando BUGs / ENHs / reworks tras smoke test (Documentos, Plan, Minutas, Reportes, IA admin). Triage produjo 10 issues nuevos (`#336-#345`) + 2 reworks (`#323`, `#324`). 12 commits separados sobre branch `claude/fix-project-charter-issues-RFoAy`. **Sin migraciones Alembic.** Highlights: nuevo helper `app.services.filename_slug` con patrón canónico `{project-slug}-{kind}.{ext}` reusado por Charter / Plan / RAID; `MeetingMinuteCreate` ahora acepta `raid_suggestions`; `MeetingMinuteUpdate` extendido con `participants`/`topics`/`agreements` editables desde el preview; prompt MINUTE_SYSTEM mejorado para bullets de 2-5 oraciones; `ensure_duration_max_21` se vuelve no-op (warning visual en plan); `download_report_history` y `export_report?format=html` ahora respetan `rep.html_content` (último tweak) e `inline=true`; `update_provider_config` permite `body.byo=null` cuando hay config previa.
 - **2026-05-09 (Sprint 23 Bloque 1 cerrado — 1 de 1):** entregado US-110 sobre branch `claude/continue-sprint-work-mcmzX`. 1 commit (`1c5674d`). Sin migración Alembic — el shape `tenants.settings.ai.byo` admite los campos nuevos como JSON. Cambios principales: `AzureProvider` agregado a `provider.py` (header `api-key`, no Bearer); `BYO_PROVIDERS` extendido con `"azure"`; `BYOConfigIn` nuevos campos `deployment_name`, `api_version`, `rate_limit_rpm`, `daily_token_limit`, `acknowledge_security`; `_ping_byo_provider` rama Azure que POSTea a `/openai/deployments/{deployment}/chat/completions?api-version=...`; UI wizard expone deployment + api_version cuando catálogo declara `requires_azure_fields`, y banner de seguridad + checkbox cuando `requires_security_ack` (custom). 12 tests nuevos (`test_us110_byo_universal.py`) + actualizado el test de catálogo en `test_us057_ai_multimode.py`. CA4 enforcement (rate-limiter activo) diferido hasta que se reporten costos descontrolados; los límites se persisten ya y `load_tenant_ai` los propaga al worker.
 - **2026-05-09 (Sprint 22 Bloque 1 cerrado — 2 de 2):** entregados US-112 + US-113 sobre branch `claude/continue-sprint-tasks-jR3zt`. 2 commits (`e72b445` US-112 backend con migración 0060 consolidada — incluye ambas tablas `change_approvers` + `approval_tokens` para evitar revisiones intercaladas; `e44efdc` US-113 endpoints públicos + landing `/approve/[token]`). **1 migración Alembic** (0060) requiere `alembic upgrade head`. JWT HS256 firmado con `APPROVAL_TOKEN_SECRET` o `JWT_SECRET`; en DB queda solo el SHA256 hash. Re-trigger borra tokens previos (CA11) — los aprobadores readicionados quedan reset a pending. Email cae a `logger.info` cuando EP011 no expone `send_email`; integración real es follow-up sin bloqueo.
 - **2026-05-09 (Sprint 21 Bloque 1 cerrado — 4 de 4):** entregados ENH-085 + US-111 + US-109 + ENH-089 sobre branch `claude/continue-sprint-tasks-jR3zt`. 4 commits separados (`73bf661` ENH-085 con migración 0059 + tabla `report_templates` + columna `reports.html_content`, `8c33cbd` US-111 con `html_report_renderer` reusable para reportes y minutas, `69d1e84` US-109 con tweaker UI + endpoint sync `/ai/reports/tweak-html`, `fdac553` ENH-089 con `/reports/{id}/export?format=html|pdf|txt` + helpers `html_to_pdf`/`html_to_text`). **1 migración Alembic** (0059). Reusa el patrón de `<details>` colapsables y filtros vanilla JS embebidos del template de US-111 para que el HTML descargado funcione offline (CA4). El tweaker es sync (out-of-scope: streaming) — historial N=10 in-memory + botón Deshacer.
