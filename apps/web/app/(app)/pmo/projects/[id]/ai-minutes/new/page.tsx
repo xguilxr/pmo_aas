@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Wand2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   EMPTY_RAID_BLOCK,
+  cancelAIJob,
   generateMinute,
   type AIMinutePayload,
   type AIRaidBlock,
@@ -98,6 +99,27 @@ export default function NewAIMinutePage() {
     setTranscript(text);
   }
 
+  // BUG-055: cancela el job activo y resetea al estado pre-generación.
+  // El backend marca el AIJob como `cancelled` y el worker omite la
+  // persistencia al detectar el flag (CA4: sin minutas huérfanas).
+  async function handleCancel() {
+    const id_to_cancel = jobId;
+    setJobId(null); // detiene el polling localmente (CA2)
+    if (id_to_cancel) {
+      try {
+        await cancelAIJob(id_to_cancel);
+      } catch {
+        /* el worker queda con el flag o termina solo; UX no se bloquea */
+      }
+    }
+    setDispatching(false);
+    setResult(null);
+    setSavedMinuteId(null);
+    setSavedMinute(null);
+    setModelUsed(null);
+    setError(null);
+  }
+
   async function handleGenerate(save: boolean) {
     if (transcript.trim().length < 20) {
       setError("La transcripción es demasiado corta");
@@ -150,6 +172,15 @@ export default function NewAIMinutePage() {
           <span className="mx-1">/</span>
           <span>Generar con IA</span>
         </nav>
+        {/* BUG-055 CA3: ← Volver en cabecera, navega a la lista de
+            minutas sin guardar nada. */}
+        <Link
+          href={`/pmo/projects/${id}/minutes`}
+          className="mt-2 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          Volver
+        </Link>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
           <Sparkles className="h-6 w-6 text-[var(--color-accent)]" aria-hidden />
           Minuta con IA
@@ -163,9 +194,24 @@ export default function NewAIMinutePage() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {polling.error ? <Banner variant="danger">{polling.error}</Banner> : null}
 
+      {/* BUG-055 CA1+CA2: banner con botón Cancelar visible mientras
+          la generación está corriendo. */}
       {statusLabel ? (
         <Banner variant="info">
-          {statusLabel} (job {jobId?.slice(0, 8)}…)
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              {statusLabel} (job {jobId?.slice(0, 8)}…)
+            </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleCancel}
+              aria-label="Cancelar generación"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+              Cancelar
+            </Button>
+          </div>
         </Banner>
       ) : null}
 

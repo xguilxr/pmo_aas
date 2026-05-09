@@ -18,7 +18,10 @@ type UseAIJobPollingResult = {
   error: string | null;
 };
 
-const TERMINAL: AIJobStatus[] = ["succeeded", "failed"];
+// BUG-055: incluir `cancelled` como estado terminal — si el usuario
+// cancela, queremos que el polling se detenga limpiamente sin invocar
+// onSuccess/onError.
+const TERMINAL: AIJobStatus[] = ["succeeded", "failed", "cancelled"];
 const BACKOFF_MS = [1000, 2000, 3000, 5000, 8000];
 const MAX_POLL_MS = 10 * 60 * 1000;
 

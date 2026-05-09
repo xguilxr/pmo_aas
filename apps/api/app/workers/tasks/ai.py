@@ -310,6 +310,12 @@ async def _run_minute(
             job = (
                 await db.execute(select(AIJob).where(AIJob.id == job_id))
             ).scalar_one()
+            # BUG-055 CA4: si el usuario canceló mid-stream, no
+            # persistimos la minuta — evita orphans en DB. La fila del
+            # job queda con status=cancelled (set por el endpoint).
+            if job.status == "cancelled":
+                logger.info("minute task cancelled before persist job=%s", job_id)
+                return
             minute_id: str | None = None
             if save_as_minute:
                 folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")

@@ -35,7 +35,7 @@ export type AIMinutePayload = {
   minute_id?: string | null;
 };
 
-export type AIJobStatus = "queued" | "running" | "succeeded" | "failed";
+export type AIJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export type DispatchResult = {
   job_id: string;
@@ -70,6 +70,19 @@ export type AIJobRead = {
 
 export function getAIJob(jobId: string): Promise<AIJobRead> {
   return apiFetch<AIJobRead>(`/api/v1/ai/jobs/${jobId}`);
+}
+
+/**
+ * BUG-055: marca el job como cancelado en el backend. El worker, al
+ * llegar a la fase de persistencia, detecta el flag y omite el guardado
+ * para evitar minutas huérfanas. La UI deja de hacer polling tras este
+ * call.
+ */
+export function cancelAIJob(jobId: string): Promise<{ id: string; status: string }> {
+  return apiFetch<{ id: string; status: string }>(
+    `/api/v1/ai/jobs/${jobId}/cancel`,
+    { method: "POST" },
+  );
 }
 
 export type ReportSections = {
