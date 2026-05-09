@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
-import { IssueDetailBody, RiskDetailBody } from "@/components/raid-detail-body";
 import {
   KIND_NEW_LABEL,
   RaidCreateModal,
@@ -692,16 +691,10 @@ function RisksSection({
             : []
         }
         description={preview?.description ?? null}
-        extra={
-          preview ? (
-            <RiskDetailBody
-              risk={preview}
-              onUpdated={(r) => {
-                setPreview({ ...preview, ...r });
-                onRiskUpdate(r);
-              }}
-            />
-          ) : null
+        openHref={
+          preview
+            ? `/pmo/projects/${preview.project_id}/raid/${preview.id}?type=risk`
+            : undefined
         }
       />
     </div>
@@ -836,16 +829,10 @@ function IssuesSection({
             : []
         }
         description={preview?.description ?? null}
-        extra={
-          preview ? (
-            <IssueDetailBody
-              issue={preview}
-              onUpdated={(i) => {
-                setPreview({ ...preview, ...i });
-                onIssueUpdate(i);
-              }}
-            />
-          ) : null
+        openHref={
+          preview
+            ? `/pmo/projects/${preview.project_id}/raid/${preview.id}?type=${issueType === "issue" ? "incident" : issueType}`
+            : undefined
         }
       />
     </section>
