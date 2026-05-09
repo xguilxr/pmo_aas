@@ -660,8 +660,15 @@ async def download_report_history(
     project = await _get_project(db, tenant_id, UUID(h.project_id))
     # BUG-055: AI reports guardan HTML en sections["_html"]; servir directo
     # (no usan los templates de Avance/Seguimiento).
+    # BUG-059: si el reporte fue tweakeado (US-109), `rep.html_content`
+    # tiene la última versión. Sin esto el preview servía el HTML viejo
+    # almacenado en sections["_html"] desde la generación inicial.
     if rep.generator == "ai" or h.report_type == "ai_custom":
-        html = (rep.sections or {}).get("_html") or ""
+        html = (
+            rep.html_content
+            or (rep.sections or {}).get("_html")
+            or ""
+        )
         filename = _report_filename("IA", project.name, h.generated_at)
         # Para HTML preferimos sufijo .html en lugar de .pdf; el inline=true
         # abre directo en el browser, attachment fuerza descarga.
