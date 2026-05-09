@@ -145,8 +145,13 @@ export default function DocumentosPage() {
     setBusy(true);
     setError(null);
     try {
-      const ext = meta.source_format || "bin";
-      await downloadAuthed(meta.download_url, `${active}-${id}.${ext}`);
+      // BUG-057 / ENH-092 / ENH-093: el backend ya expone el filename
+      // canónico (`{project-slug}-{tipo}.{ext}`) para cada artefacto.
+      // Si no llegó (artefacto deshabilitado), caemos a un default
+      // razonable usando la extensión informada por el server.
+      const ext = meta.source_format || "xlsx";
+      const fallback = `${active}.${ext}`;
+      await downloadAuthed(meta.download_url, meta.filename || fallback);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo descargar el artefacto");
     } finally {

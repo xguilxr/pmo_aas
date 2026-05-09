@@ -74,19 +74,31 @@ async def test_tc090_2_duration_from_dates_inclusive(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_tc090_3_duration_max_21_rejects(client, db_session):
+async def test_tc090_3_duration_max_21_now_warning(client, db_session):
+    """ENH-094: 21 días dejó de bloquear. Una tarea con duración mayor
+    se acepta y `duration_warning` indica el motivo para que la UI lo
+    pinte. Mantenemos el smoke de creación porque rompe la validación
+    previa que sí bloqueaba."""
+    from app.services.plan_metadata import duration_warning
+
     auth, proj = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj}/tasks",
         json={
             "name": "T1",
             "start_date": "2026-01-01",
-            "end_date": "2026-02-15",
+            "end_date": "2026-02-15",  # 46 días → > 21
         },
         headers=auth["_authz"],
     )
-    assert r.status_code in (400, 422), r.text
-    assert "21" in r.text
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["duration_days"] is not None and body["duration_days"] > 21
+    # Helper sigue exponiendo el warning para que el frontend lo use.
+    msg = duration_warning(body["duration_days"])
+    assert msg is not None and "21" in msg
+    # Tareas dentro del rango no levantan warning.
+    assert duration_warning(10) is None
 
 
 @pytest.mark.asyncio

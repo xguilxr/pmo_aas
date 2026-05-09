@@ -1247,6 +1247,13 @@ async def create_minute(
     tenant_id = _tenant(cu)
     await _get_project(db, project_id, tenant_id)
     folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
+    # BUG-058: sanitiza `raid_suggestions` al shape canónico de 4
+    # buckets — protege contra payloads del cliente sin la forma esperada.
+    raid_in = body.raid_suggestions if isinstance(body.raid_suggestions, dict) else {}
+    raid_persisted = {
+        kind: list(raid_in.get(kind) or [])
+        for kind in ("risks", "issues", "lessons", "changes")
+    }
     m = MeetingMinute(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
         title=body.title, meeting_date=body.meeting_date, participants=body.participants,
@@ -1254,6 +1261,7 @@ async def create_minute(
         next_meeting_date=body.next_meeting_date, attachments=body.attachments,
         transcript_file_id=body.transcript_file_id, generated_by_ai=body.generated_by_ai,
         status="final", created_by=cu.id,
+        raid_suggestions=raid_persisted,
     )
     db.add(m)
     await db.flush()
@@ -1523,6 +1531,13 @@ async def update_minute(
         m.raid_suggestions = data["raid_suggestions"]
     if "title" in data:
         m.title = data["title"]
+    # ENH-095: secciones estructuradas editables desde el preview.
+    if "participants" in data and isinstance(data["participants"], list):
+        m.participants = data["participants"]
+    if "topics" in data and isinstance(data["topics"], list):
+        m.topics = data["topics"]
+    if "agreements" in data and isinstance(data["agreements"], list):
+        m.agreements = data["agreements"]
     await write_audit(
         db, action="meeting_minute.update", module="minutes",
         user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute",

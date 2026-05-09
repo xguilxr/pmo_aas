@@ -7,23 +7,33 @@ import {
   ArrowLeft,
   Download,
   MessageSquare,
+  Pencil,
+  Plus,
+  Save,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { MinuteRaidSuggestionsEditor } from "@/components/minute-raid-suggestions-editor";
 import { ApiError } from "@/lib/api";
 import {
   deleteMinute,
   exportMinute,
   getMinute,
+  updateMinute,
   type MeetingMinute,
+  type MinuteAgreement,
   type MinuteExportFormat,
+  type MinuteParticipant,
+  type MinuteTopic,
 } from "@/lib/api/modules";
 
 /**
@@ -201,83 +211,13 @@ export default function MinutePreviewPage() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      {/* Secciones de la minuta — colapsables (CA3). */}
-      <CollapsibleSection title="Resumen" defaultOpen>
-        {minute.topics.length === 0 ? (
-          <p className="text-[12px] italic text-[var(--text-tertiary)]">
-            Sin temas registrados.
-          </p>
-        ) : (
-          <ul className="space-y-1.5 text-[13px] text-[var(--text-primary)]">
-            {minute.topics.map((t, i) => (
-              <li key={i}>· {t.title}</li>
-            ))}
-          </ul>
-        )}
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Participantes">
-        {minute.participants.length === 0 ? (
-          <p className="text-[12px] italic text-[var(--text-tertiary)]">
-            Sin participantes.
-          </p>
-        ) : (
-          <ul className="flex flex-wrap gap-1.5">
-            {minute.participants.map((p, i) => (
-              <li key={i}>
-                <Badge>{p.name}</Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Temas">
-        {minute.topics.length === 0 ? (
-          <p className="text-[12px] italic text-[var(--text-tertiary)]">
-            Sin temas.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {minute.topics.map((t, i) => (
-              <li
-                key={i}
-                className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3"
-              >
-                <p className="text-[13px] font-medium text-[var(--text-primary)]">
-                  {t.title}
-                </p>
-                {t.notes ? (
-                  <p className="mt-1 whitespace-pre-wrap text-[12px] text-[var(--text-secondary)]">
-                    {t.notes}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CollapsibleSection>
-
-      <CollapsibleSection title={`Acuerdos (${minute.agreements.length})`}>
-        {minute.agreements.length === 0 ? (
-          <p className="text-[12px] italic text-[var(--text-tertiary)]">
-            Sin acuerdos.
-          </p>
-        ) : (
-          <ul className="space-y-1.5 text-[13px] text-[var(--text-primary)]">
-            {minute.agreements.map((a, i) => (
-              <li key={i}>
-                · {a.description}
-                {a.due_date ? (
-                  <span className="ml-1 text-[var(--text-tertiary)]">
-                    → {a.due_date}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CollapsibleSection>
+      {/* ENH-095 — Editor estructurado por secciones (participants / topics
+          / agreements). Cada sección tiene "Editar" → forms inline →
+          "Guardar / Cancelar"; al guardar, PATCH `/meeting-minutes/{id}`
+          y el state local se sincroniza con la respuesta. */}
+      <ParticipantsSection minute={minute} setMinute={setMinute} />
+      <TopicsSection minute={minute} setMinute={setMinute} />
+      <AgreementsSection minute={minute} setMinute={setMinute} />
 
       {/* US-108: editor de sugerencias RAID embebido en el preview. */}
       <MinuteRaidSuggestionsEditor
@@ -328,10 +268,12 @@ export default function MinutePreviewPage() {
 function CollapsibleSection({
   title,
   defaultOpen,
+  actions,
   children,
 }: {
   title: string;
   defaultOpen?: boolean;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -339,11 +281,419 @@ function CollapsibleSection({
       open={defaultOpen}
       className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
     >
-      <summary className="cursor-pointer border-b border-[var(--border-default)] px-4 py-2.5 text-[13px] font-semibold text-[var(--color-primary)]">
-        {title}
+      <summary className="flex cursor-pointer items-center justify-between gap-2 border-b border-[var(--border-default)] px-4 py-2.5 text-[13px] font-semibold text-[var(--color-primary)]">
+        <span>{title}</span>
+        {actions ? (
+          <span
+            className="flex items-center gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") e.stopPropagation();
+            }}
+          >
+            {actions}
+          </span>
+        ) : null}
       </summary>
       <div className="px-4 py-3">{children}</div>
     </details>
+  );
+}
+
+// ENH-095 helpers ----------------------------------------------------------
+
+function useSectionSave<T>(
+  minuteId: string,
+  setMinute: (m: MeetingMinute) => void,
+) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function save(field: "participants" | "topics" | "agreements", value: T) {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateMinute(minuteId, {
+        [field]: value as never,
+      });
+      setMinute(updated);
+      return true;
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudieron guardar los cambios",
+      );
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+  return { save, saving, error };
+}
+
+function ParticipantsSection({
+  minute,
+  setMinute,
+}: {
+  minute: MeetingMinute;
+  setMinute: (m: MeetingMinute) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<MinuteParticipant[]>(minute.participants);
+  const { save, saving, error } = useSectionSave<MinuteParticipant[]>(
+    minute.id,
+    setMinute,
+  );
+  function start() {
+    setDraft(minute.participants);
+    setEditing(true);
+  }
+  async function commit() {
+    const cleaned = draft
+      .map((p) => ({ ...p, name: (p.name ?? "").trim() }))
+      .filter((p) => p.name.length > 0);
+    const ok = await save("participants", cleaned);
+    if (ok) setEditing(false);
+  }
+  return (
+    <CollapsibleSection
+      title="Participantes"
+      defaultOpen
+      actions={
+        editing ? (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+              <X className="h-3.5 w-3.5" aria-hidden /> Cancelar
+            </Button>
+            <Button size="sm" onClick={commit} loading={saving}>
+              <Save className="h-3.5 w-3.5" aria-hidden /> Guardar
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={start}>
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+          </Button>
+        )
+      }
+    >
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      {!editing ? (
+        minute.participants.length === 0 ? (
+          <p className="text-[12px] italic text-[var(--text-tertiary)]">
+            Sin participantes.
+          </p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {minute.participants.map((p, i) => (
+              <li key={i}>
+                <Badge>{p.role ? `${p.name} · ${p.role}` : p.name}</Badge>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : (
+        <div className="space-y-2">
+          {draft.map((p, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <Input
+                className="flex-1 min-w-[180px]"
+                value={p.name ?? ""}
+                onChange={(e) =>
+                  setDraft((d) =>
+                    d.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)),
+                  )
+                }
+                placeholder="Nombre"
+              />
+              <Input
+                className="w-[180px]"
+                value={p.role ?? ""}
+                onChange={(e) =>
+                  setDraft((d) =>
+                    d.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)),
+                  )
+                }
+                placeholder="Rol (opcional)"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setDraft((d) => d.filter((_, j) => j !== i))}
+                aria-label={`Quitar ${p.name || "participante"}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              </Button>
+            </div>
+          ))}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setDraft((d) => [...d, { name: "", role: "" }])}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar participante
+          </Button>
+        </div>
+      )}
+    </CollapsibleSection>
+  );
+}
+
+function TopicsSection({
+  minute,
+  setMinute,
+}: {
+  minute: MeetingMinute;
+  setMinute: (m: MeetingMinute) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<MinuteTopic[]>(minute.topics);
+  const { save, saving, error } = useSectionSave<MinuteTopic[]>(
+    minute.id,
+    setMinute,
+  );
+  function start() {
+    setDraft(minute.topics);
+    setEditing(true);
+  }
+  async function commit() {
+    const cleaned = draft
+      .map((t) => ({
+        ...t,
+        title: (t.title ?? "").trim(),
+        notes: (t.notes ?? "").trim(),
+      }))
+      .filter((t) => t.title.length > 0 || t.notes.length > 0);
+    const ok = await save("topics", cleaned);
+    if (ok) setEditing(false);
+  }
+  return (
+    <CollapsibleSection
+      title={`Temas (${minute.topics.length})`}
+      defaultOpen
+      actions={
+        editing ? (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+              <X className="h-3.5 w-3.5" aria-hidden /> Cancelar
+            </Button>
+            <Button size="sm" onClick={commit} loading={saving}>
+              <Save className="h-3.5 w-3.5" aria-hidden /> Guardar
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={start}>
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+          </Button>
+        )
+      }
+    >
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      {!editing ? (
+        minute.topics.length === 0 ? (
+          <p className="text-[12px] italic text-[var(--text-tertiary)]">
+            Sin temas.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {minute.topics.map((t, i) => (
+              <li
+                key={i}
+                className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3"
+              >
+                <p className="text-[13px] font-medium text-[var(--text-primary)]">
+                  {t.title}
+                </p>
+                {t.notes ? (
+                  <p className="mt-1 whitespace-pre-wrap text-[12px] text-[var(--text-secondary)]">
+                    {t.notes}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : (
+        <div className="space-y-3">
+          {draft.map((t, i) => (
+            <div
+              key={i}
+              className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3"
+            >
+              <Input
+                value={t.title ?? ""}
+                onChange={(e) =>
+                  setDraft((d) =>
+                    d.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)),
+                  )
+                }
+                placeholder="Título del tema"
+              />
+              <Textarea
+                rows={4}
+                value={t.notes ?? ""}
+                onChange={(e) =>
+                  setDraft((d) =>
+                    d.map((x, j) => (j === i ? { ...x, notes: e.target.value } : x)),
+                  )
+                }
+                placeholder="Notas (2-5 oraciones con contexto, responsables, fechas, próximos pasos)"
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setDraft((d) => d.filter((_, j) => j !== i))}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden /> Quitar tema
+                </Button>
+              </div>
+            </div>
+          ))}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setDraft((d) => [...d, { title: "", notes: "" }])}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar tema
+          </Button>
+        </div>
+      )}
+    </CollapsibleSection>
+  );
+}
+
+function AgreementsSection({
+  minute,
+  setMinute,
+}: {
+  minute: MeetingMinute;
+  setMinute: (m: MeetingMinute) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<MinuteAgreement[]>(minute.agreements);
+  const { save, saving, error } = useSectionSave<MinuteAgreement[]>(
+    minute.id,
+    setMinute,
+  );
+  function start() {
+    setDraft(minute.agreements);
+    setEditing(true);
+  }
+  async function commit() {
+    const cleaned = draft
+      .map((a) => ({
+        ...a,
+        description: (a.description ?? "").trim(),
+      }))
+      .filter((a) => a.description.length > 0);
+    const ok = await save("agreements", cleaned);
+    if (ok) setEditing(false);
+  }
+  return (
+    <CollapsibleSection
+      title={`Acuerdos (${minute.agreements.length})`}
+      actions={
+        editing ? (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+              <X className="h-3.5 w-3.5" aria-hidden /> Cancelar
+            </Button>
+            <Button size="sm" onClick={commit} loading={saving}>
+              <Save className="h-3.5 w-3.5" aria-hidden /> Guardar
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={start}>
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+          </Button>
+        )
+      }
+    >
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      {!editing ? (
+        minute.agreements.length === 0 ? (
+          <p className="text-[12px] italic text-[var(--text-tertiary)]">
+            Sin acuerdos.
+          </p>
+        ) : (
+          <ul className="space-y-1.5 text-[13px] text-[var(--text-primary)]">
+            {minute.agreements.map((a, i) => (
+              <li key={i}>
+                · {a.description}
+                {a.due_date ? (
+                  <span className="ml-1 text-[var(--text-tertiary)]">
+                    → {a.due_date}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : (
+        <div className="space-y-2">
+          {draft.map((a, i) => (
+            <div
+              key={i}
+              className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3"
+            >
+              <Textarea
+                rows={2}
+                value={a.description ?? ""}
+                onChange={(e) =>
+                  setDraft((d) =>
+                    d.map((x, j) =>
+                      j === i ? { ...x, description: e.target.value } : x,
+                    ),
+                  )
+                }
+                placeholder="Descripción del acuerdo"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  className="w-[180px]"
+                  value={a.owner ?? ""}
+                  onChange={(e) =>
+                    setDraft((d) =>
+                      d.map((x, j) => (j === i ? { ...x, owner: e.target.value } : x)),
+                    )
+                  }
+                  placeholder="Responsable"
+                />
+                <Input
+                  className="w-[160px]"
+                  type="date"
+                  value={a.due_date ?? ""}
+                  onChange={(e) =>
+                    setDraft((d) =>
+                      d.map((x, j) =>
+                        j === i ? { ...x, due_date: e.target.value || undefined } : x,
+                      ),
+                    )
+                  }
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setDraft((d) => d.filter((_, j) => j !== i))}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden /> Quitar
+                </Button>
+              </div>
+            </div>
+          ))}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              setDraft((d) => [
+                ...d,
+                { description: "", owner: undefined, due_date: undefined },
+              ])
+            }
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar acuerdo
+          </Button>
+        </div>
+      )}
+    </CollapsibleSection>
   );
 }
 

@@ -86,46 +86,75 @@ class ArtifactList(BaseModel):
     items: list[ArtifactMeta]
 
 
-def _charter_meta(project_id: UUID, charter: ProjectCharter | None) -> ArtifactMeta:
+def _charter_meta(
+    project_id: UUID,
+    charter: ProjectCharter | None,
+    project_name: str | None = None,
+) -> ArtifactMeta:
+    from app.services.filename_slug import artifact_filename
+
     if charter is None:
         return ArtifactMeta(
             type="charter",
             available=False,
             edit_url=f"/api/v1/projects/{project_id}/charter",
         )
+    name = charter.project_name or project_name
     return ArtifactMeta(
         type="charter",
         available=True,
         source_format="docx",
+        # ENH-092: filename derivado del nombre del proyecto.
+        filename=artifact_filename(name, "charter", "docx"),
         download_url=f"/api/v1/projects/{project_id}/charter/download?format=docx",
         edit_url=f"/api/v1/projects/{project_id}/charter",
     )
 
 
-def _plan_meta(project_id: UUID, art: ProjectArtifact | None) -> ArtifactMeta:
+def _plan_meta(
+    project_id: UUID,
+    art: ProjectArtifact | None,
+    project_name: str | None = None,
+) -> ArtifactMeta:
+    from app.services.filename_slug import artifact_filename
+
     if art is None:
+        # BUG-057: sin import previo, la descarga regenera la plantilla
+        # XLSX desde DB (vacía o con tareas). Reportamos source_format
+        # = xlsx para que la UI no caiga al fallback ".bin".
         return ArtifactMeta(
             type="plan",
             available=False,
+            source_format="xlsx",
+            filename=artifact_filename(project_name, "plan", "xlsx"),
             download_url=f"/api/v1/projects/{project_id}/plan/download?format=auto",
         )
+    # ENH-092 / BUG-057: filename derivado del nombre del proyecto + ext
+    # canónico del source_format. MPP cae a XLSX en el regenerator (ENH-080).
+    ext = (art.source_format or "xlsx").lower()
+    if ext == "mpp":
+        ext = "xlsx"
     return ArtifactMeta(
         type="plan",
         available=True,
         source_format=art.source_format,
-        filename=art.filename,
+        filename=artifact_filename(project_name, "plan", ext),
         size_bytes=art.size_bytes,
         download_url=f"/api/v1/projects/{project_id}/plan/download?format=auto",
     )
 
 
-def _raid_meta(project_id: UUID) -> ArtifactMeta:
+def _raid_meta(project_id: UUID, project_name: str | None = None) -> ArtifactMeta:
     # ENH-082 (Sprint 19) entregará el export 4-sheets dedicado. Mientras,
     # se expone el endpoint de export RAID actual (modules.docs_router).
+    from app.services.filename_slug import artifact_filename
+
     return ArtifactMeta(
         type="raid",
         available=True,
         source_format="xlsx",
+        # ENH-093: filename con nombre de proyecto, no con su UUID.
+        filename=artifact_filename(project_name, "raid", "xlsx"),
         download_url=f"/api/v1/projects/{project_id}/raid/export",
     )
 
@@ -149,7 +178,7 @@ async def list_artifacts(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    project = await _ensure_project(db, project_id, tenant_id)
 
     charter = (
         await db.execute(
@@ -169,9 +198,9 @@ async def list_artifacts(
     return ArtifactList(
         project_id=project_id,
         items=[
-            _charter_meta(project_id, charter),
-            _plan_meta(project_id, plan_art),
-            _raid_meta(project_id),
+            _charter_meta(project_id, charter, project.name),
+            _plan_meta(project_id, plan_art, project.name),
+            _raid_meta(project_id, project.name),
             _organigrama_meta(),
         ],
     )
@@ -186,7 +215,7 @@ async def get_artifact(
 ):
     t = _validate_type(artifact_type)
     tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    project = await _ensure_project(db, project_id, tenant_id)
 
     if t == "charter":
         charter = (
@@ -196,7 +225,7 @@ async def get_artifact(
                 )
             )
         ).scalar_one_or_none()
-        return _charter_meta(project_id, charter)
+        return _charter_meta(project_id, charter, project.name)
 
     if t == "plan":
         art = (
@@ -207,10 +236,10 @@ async def get_artifact(
                 )
             )
         ).scalar_one_or_none()
-        return _plan_meta(project_id, art)
+        return _plan_meta(project_id, art, project.name)
 
     if t == "raid":
-        return _raid_meta(project_id)
+        return _raid_meta(project_id, project.name)
 
     return _organigrama_meta()
 
@@ -272,8 +301,10 @@ async def download_plan(
 
     data, mime, ext, fallback = regenerate_for_format(fmt, list(tasks))
 
-    safe_name = (project.name or "plan").replace("/", "_")
-    filename = f"Plan - {safe_name}.{ext}"
+    # ENH-092: filename canónico `{project-slug}-plan.{ext}`.
+    from app.services.filename_slug import artifact_filename
+
+    filename = artifact_filename(project.name, "plan", ext)
     headers = {
         "Content-Disposition": (
             f'attachment; filename="{filename}"; '
@@ -359,8 +390,10 @@ async def export_raid(
         changes=list(changes),
     )
 
-    safe_name = (project.name or "raid").replace("/", "_")
-    filename = f"RAID - {safe_name}.xlsx"
+    # ENH-093: filename canónico `{project-slug}-raid.xlsx`.
+    from app.services.filename_slug import artifact_filename
+
+    filename = artifact_filename(project.name, "raid", "xlsx")
     headers = {
         "Content-Disposition": (
             f'attachment; filename="{filename}"; '

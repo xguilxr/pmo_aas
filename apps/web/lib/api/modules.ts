@@ -514,6 +514,8 @@ export const LESSON_CATEGORY_LABEL: Record<LessonCategory, string> = {
 export type MinuteAgreement = {
   description: string;
   owner_id?: string | null;
+  /** Texto libre del responsable cuando viene del LLM (no FK). */
+  owner?: string | null;
   due_date?: string | null;
   status?: string | null;
 };
@@ -522,6 +524,8 @@ export type MinuteParticipant = {
   user_id?: string;
   name: string;
   email?: string;
+  /** Rol declarado por el LLM o capturado manualmente. */
+  role?: string | null;
 };
 
 export type MinuteTopic = {
@@ -573,6 +577,10 @@ export type MinuteCreateBody = {
   next_meeting_date?: string | null;
   attachments?: { name?: string; url: string }[];
   generated_by_ai?: boolean;
+  /** BUG-058: persiste las sugerencias RAID detectadas por la IA cuando
+   *  el usuario va por "Previsualizar → Guardar como minuta". Sin esto,
+   *  el preview mostraba items pero el detalle aparecía vacío. */
+  raid_suggestions?: Partial<MinuteRaidSuggestions>;
 };
 
 export function listMinutes(projectId: string): Promise<MeetingMinute[]> {
@@ -594,10 +602,18 @@ export function getMinute(minuteId: string): Promise<MeetingMinute> {
   return apiFetch<MeetingMinute>(`/api/v1/meeting-minutes/${minuteId}`);
 }
 
-/** US-108 + ENH-090: actualiza título y/o `raid_suggestions` (descarte / edit). */
+/** US-108 + ENH-090 + ENH-095: actualiza título, `raid_suggestions` y/o
+ *  las secciones estructuradas (participants / topics / agreements)
+ *  desde el editor inline del preview. */
 export function updateMinute(
   minuteId: string,
-  body: { title?: string; raid_suggestions?: Partial<MinuteRaidSuggestions> },
+  body: {
+    title?: string;
+    raid_suggestions?: Partial<MinuteRaidSuggestions>;
+    participants?: MinuteParticipant[];
+    topics?: MinuteTopic[];
+    agreements?: MinuteAgreement[];
+  },
 ): Promise<MeetingMinute> {
   return apiFetch<MeetingMinute>(`/api/v1/meeting-minutes/${minuteId}`, {
     method: "PATCH",

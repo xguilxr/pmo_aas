@@ -324,6 +324,34 @@ export function deleteReportHistory(historyId: string): Promise<void> {
   });
 }
 
+// US-111 rework: abre el HTML interactivo (con filtros vanilla JS) en
+// una tab nueva. Requiere que el reporte tenga `html_content` o que
+// regenere on-the-fly (export endpoint hace ambos).
+export async function previewReportHtml(reportId: string): Promise<void> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { Accept: "text/html" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(
+    `${apiBase()}/api/v1/reports/${reportId}/export?format=html&inline=true`,
+    {
+      method: "GET",
+      headers,
+      credentials: "include",
+    },
+  );
+  if (!res.ok) {
+    throw new ApiError(res.status, "PREVIEW_FAILED", `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) {
+    URL.revokeObjectURL(url);
+    throw new ApiError(0, "POPUP_BLOCKED", "Permite pop-ups para ver el HTML.");
+  }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 // US-093 — Reportes: creación con IA + preview.
 export type AIReportGenerateBody = {
   base?: "avance" | "seguimiento" | "custom";
