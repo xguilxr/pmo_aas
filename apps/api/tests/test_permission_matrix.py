@@ -49,6 +49,9 @@ PUBLIC_ENDPOINTS: set[tuple[str, str]] = {
     ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/auth/forgot-password"),  # US-063
     ("POST", "/api/v1/auth/reset-password"),  # US-063
+    # US-113: landing pública de aprobación de cambios (token JWT en URL).
+    ("GET", "/api/v1/public/approve/{jwt_str}"),
+    ("POST", "/api/v1/public/approve/{jwt_str}"),
 }
 
 

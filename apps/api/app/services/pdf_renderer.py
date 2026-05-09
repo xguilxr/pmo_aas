@@ -69,3 +69,63 @@ def render_pdf(template_name: str, context: dict[str, Any]) -> bytes:
             "No se pudo generar el PDF",
             {"template": template_name, "error": str(exc)[:200]},
         ) from exc
+
+
+def html_to_pdf(html_content: str) -> bytes:
+    """ENH-089: convierte un HTML standalone (con estilos inline) en PDF
+    via WeasyPrint. Usa la versión print-friendly del HTML implícitamente
+    a través del media query `@media print` que ya hemos añadido en el
+    template (oculta inputs de filtro en print).
+    """
+    try:
+        from weasyprint import HTML
+    except Exception as exc:  # pragma: no cover - dep. ausente
+        logger.exception("weasyprint missing or broken: %s", exc)
+        raise AppError(
+            502,
+            "PDF_ENGINE_UNAVAILABLE",
+            "Motor PDF no disponible",
+            {},
+        ) from exc
+    try:
+        return HTML(string=html_content).write_pdf()
+    except Exception as exc:
+        logger.exception("html_to_pdf failed: %s", exc)
+        raise AppError(
+            502,
+            "PDF_RENDER_FAILED",
+            "No se pudo generar el PDF",
+            {"error": str(exc)[:200]},
+        ) from exc
+
+
+def html_to_text(html_content: str) -> str:
+    """ENH-089 CA3: flatten HTML → texto plano simple. Útil para
+    minutas/reportes que se pegan en email. Implementación intencionalmente
+    simple (regex) para no traer una dependencia más; preserva listas y
+    saltos de párrafo.
+    """
+    import re
+
+    s = html_content
+    # Normaliza saltos antes de etiquetas de bloque.
+    s = re.sub(
+        r"</(?:p|div|li|tr|h[1-6]|details|section|header|footer)>",
+        "\n",
+        s,
+        flags=re.IGNORECASE,
+    )
+    s = re.sub(r"<br\s*/?>", "\n", s, flags=re.IGNORECASE)
+    s = re.sub(r"<li[^>]*>", "  • ", s, flags=re.IGNORECASE)
+    s = re.sub(r"<th[^>]*>|<td[^>]*>", "  ", s, flags=re.IGNORECASE)
+    s = re.sub(r"</(?:th|td)>", "  |", s, flags=re.IGNORECASE)
+    s = re.sub(r"</tr>", "\n", s, flags=re.IGNORECASE)
+    # Escapa el resto.
+    s = re.sub(r"<[^>]+>", "", s)
+    # Decode HTML entities básicas.
+    import html as _htmllib
+    s = _htmllib.unescape(s)
+    # Compacta espacios y deja máximo 2 saltos seguidos.
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"\n{3,}", "\n\n", s).strip()
+    return s

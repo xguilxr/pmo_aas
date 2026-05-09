@@ -30,9 +30,15 @@ Sprint 20 (v1.19) — Bloque 1 ENTREGADO 2026-05-09 (5 de 5, pendiente verif. ow
   Migración 0058 agregada.
   Branch sesión: claude/continue-sprint-tasks-jR3zt
 
-Sprints 21-23 PLANEADOS 2026-05-08 (status:ready):
-  Sprint 21 (v1.20) — Reportes redesign HTML (4 issues, 1 migración)
-  Sprint 22 (v1.21) — Cambios approval workflow (2 issues, 2 migraciones)
+Sprint 21 (v1.20) — Bloque 1 ENTREGADO 2026-05-09 (4 de 4, pendiente verif. owner):
+  ENH-085 + US-111 + US-109 + ENH-089.
+  Migración 0059 agregada.
+  Branch sesión: claude/continue-sprint-tasks-jR3zt
+
+Sprint 22 (v1.21) — Bloque 1 ENTREGADO 2026-05-09 (2 de 2, pendiente verif. owner):
+  US-112 + US-113. Migración 0060 agregada.
+
+Sprint 23 PLANEADO 2026-05-08 (status:ready):
   Sprint 23 (v1.22) — BYO universal + Copilot M365 (1 issue)
 
 Sprints 12-15 — Bloques entregados, pendiente verificación owner.
@@ -304,29 +310,43 @@ Branch sesión: `claude/continue-sprint-tasks-jR3zt`.
 
 ---
 
-## ⏳ Sprint 21 (v1.20) — Reportes redesign HTML (PLANEADO 2026-05-08)
-Branch reservada: `claude/sprint-21-reportes-html`
+## ⏳ Sprint 21 (v1.20) — Reportes redesign HTML — Bloque 1 ENTREGADO 2026-05-09
+Branch sesión: `claude/continue-sprint-tasks-jR3zt`.
 
-### Bloque 1 (4 issues — orden recomendado)
-- [ ] US-111 #324 — Render HTML interactivo con filtros + KPIs (ref `docs/archive/Reporte de Seguimiento.html`) — base que consumen los demás
-- [ ] US-109 #323 — Panel creación 2 modos (Nuevo / Plantilla) + render HTML inicial + tweaker IA edita HTML
-- [ ] ENH-085 #325 — Guardar como Reporte / Guardar como Plantilla (catálogo tenant)
-- [ ] ENH-089 #326 — Export Reportes/Minutas: HTML primario + adecuaciones PDF/TXT
+### Bloque 1 (4 de 4)
+- [x] ENH-085 #325 — `report_templates` tenant-shared + endpoints CRUD + `reports.html_content` — `73bf661` (migración 0059)
+- [x] US-111 #324 — Render HTML interactivo con KPIs + filtros vanilla JS embebidos (CA6 incluye Minutas) — `8c33cbd`
+- [x] US-109 #323 — Panel 2 modos + tweaker IA HTML (sync endpoint) + historial N=10 + Save como plantilla — `69d1e84`
+- [x] ENH-089 #326 — Export `/reports/{id}/export?format=html|pdf|txt` + Minutas con `format=html` + `html_to_pdf`/`html_to_text` helpers — `fdac553`
 
-**Migración Alembic prevista:** 1 — `report_templates`.
+**Pendiente verificación owner:** cerrar #323-#326 tras smoke test.
+
+**Migración Alembic agregada:** 0059 (`report_templates` table + `reports.html_content` column) — requiere `alembic upgrade head`.
+
+**Diferidos del bloque (no bloqueantes):**
+- ENH-089 CA5: selector visual de formato en la lista de reportes (los 3 endpoints están listos; cablear botón download dropdown en `reports/page.tsx` cuando se requiera reusar la página existente).
+- US-109 streaming token-by-token (out-of-scope explícito).
+- Diff visual entre versiones del HTML tweakeado (out-of-scope explícito).
+- Cablear "Guardar como reporte" (`report_history`) en tweak page — hoy solo guarda como plantilla; el flujo completo de persistir un tweak como Report queda como follow-up cuando lo pidan.
 
 ---
 
-## ⏳ Sprint 22 (v1.21) — Cambios / Approval workflow (PLANEADO 2026-05-08)
-Branch reservada: `claude/sprint-22-cambios-approval`
+## ⏳ Sprint 22 (v1.21) — Cambios / Approval workflow — Bloque 1 ENTREGADO 2026-05-09
+Branch sesión: `claude/continue-sprint-tasks-jR3zt`.
 
-### Bloque 1 (2 issues)
-- [ ] US-112 #327 — Cambios: registrar responsables de aprobación (multi-actor)
-- [ ] US-113 #328 — Workflow email: token JWT firmado + landing pública aprobar/rechazar + re-trigger en rechazo
+### Bloque 1 (2 de 2)
+- [x] US-112 #327 — Aprobadores multi-actor en Cambios (tabla + endpoints + guards de estado) — `e72b445`
+- [x] US-113 #328 — Workflow email + token JWT firmado + landing pública `/approve/[token]` + re-trigger — `e44efdc`
 
-**Migraciones Alembic previstas:** 2 — `change_approvers`, `approval_tokens`.
+**Pendiente verificación owner:** cerrar #327-#328 tras smoke test.
+
+**Migración Alembic agregada:** 0060 (consolida ambas: `change_approvers` + `approval_tokens` en una sola revisión).
 
 **Epic:** EP019 (Cambios / Approval workflow) — nuevo, ver `docs/epics/EP019-changes-approval.md`.
+
+**Diferidos del bloque (no bloqueantes):**
+- US-112 CA2: cableado de la card "Aprobadores" en `ENH-087` (página dedicada de Cambios) — backend listo; UI integration sigue como follow-up cuando el owner valide UX.
+- US-113: integración real con proveedor de email (Resend / EP011) — hoy `_send_approval_email` cae a logger.info en dev. Cuando EP011 publique `app.services.notifications.send_email`, se conecta automático.
 
 ---
 
@@ -385,6 +405,8 @@ Branch reservada: `claude/sprint-23-byo-universal`
 
 ## Notas y cambios recientes
 
+- **2026-05-09 (Sprint 22 Bloque 1 cerrado — 2 de 2):** entregados US-112 + US-113 sobre branch `claude/continue-sprint-tasks-jR3zt`. 2 commits (`e72b445` US-112 backend con migración 0060 consolidada — incluye ambas tablas `change_approvers` + `approval_tokens` para evitar revisiones intercaladas; `e44efdc` US-113 endpoints públicos + landing `/approve/[token]`). **1 migración Alembic** (0060) requiere `alembic upgrade head`. JWT HS256 firmado con `APPROVAL_TOKEN_SECRET` o `JWT_SECRET`; en DB queda solo el SHA256 hash. Re-trigger borra tokens previos (CA11) — los aprobadores readicionados quedan reset a pending. Email cae a `logger.info` cuando EP011 no expone `send_email`; integración real es follow-up sin bloqueo.
+- **2026-05-09 (Sprint 21 Bloque 1 cerrado — 4 de 4):** entregados ENH-085 + US-111 + US-109 + ENH-089 sobre branch `claude/continue-sprint-tasks-jR3zt`. 4 commits separados (`73bf661` ENH-085 con migración 0059 + tabla `report_templates` + columna `reports.html_content`, `8c33cbd` US-111 con `html_report_renderer` reusable para reportes y minutas, `69d1e84` US-109 con tweaker UI + endpoint sync `/ai/reports/tweak-html`, `fdac553` ENH-089 con `/reports/{id}/export?format=html|pdf|txt` + helpers `html_to_pdf`/`html_to_text`). **1 migración Alembic** (0059). Reusa el patrón de `<details>` colapsables y filtros vanilla JS embebidos del template de US-111 para que el HTML descargado funcione offline (CA4). El tweaker es sync (out-of-scope: streaming) — historial N=10 in-memory + botón Deshacer.
 - **2026-05-09 (Sprint 20 Bloque 1 cerrado — 5 de 5):** entregados ENH-084 + US-108 + BUG-055 + ENH-090 + ENH-091 sobre branch `claude/continue-sprint-tasks-jR3zt`. 5 commits separados (`719fe50` ENH-084 prompt + post-procesador con `_normalize_raid_block`, `236990a` US-108 con migración 0058 + endpoints CRUD minuta + bulk approve crea tickets reales, `eb9baa9` BUG-055 cancel endpoint + worker check, `a392350` ENH-090 preview page con 4 secciones colapsables + descargas + editor embebido, `8188685` ENH-091 confirm modal en lista). **1 migración Alembic** (0058) requiere `alembic upgrade head` en Railway api+worker. ENH-088 floating preview ya cableado en la lista de minutas con `openHref` → preview dedicado. CA5 de ENH-091 (tickets generados no se borran al borrar la minuta) garantizado por el modelo: `meeting_minutes` no tiene FK hacia los tickets RAID.
 - **2026-05-09 (Sprint 19 Bloque 1 cerrado — 6 de 6):** entregados ENH-088 + ENH-086 + ENH-087 sobre branch `claude/continue-sprint-tasks-jR3zt` en 3 commits separados (`e021a97` ENH-088 floating preview, `b3798d9` ENH-086 lessons dedicated page, `4d91009` ENH-087 changes dedicated page). Backend extendido con GET/PATCH para lessons + change-requests (audit logs `lesson.update` y `change_request.update`); status de change requests sigue gobernado por approve/reject. Sin migraciones Alembic. Comentarios&Historial en cards `lesson` y `change` quedan como placeholder hasta que existan endpoints; card "Aprobadores" en cambios anuncia EP019.
 - **2026-05-08 (Sprint 19 Bloque 1 parcial — 3 de 6):** owner pidió arrancar Sprint 19; se priorizó "backend pesado primero" (US-107 + ENH-082 + ENH-083). 3 commits sobre branch `claude/review-start-next-sprint-R8JWc`: `9d94fc9` US-107 (risk_actions + assignees N:N + endpoints), `0c59aaa` ENH-082 (export RAID 4 sheets con styling), `5eb6b69` ENH-083 (RiskActionsCard inline en raid-detail-page). **1 migración Alembic** (0057) requiere `alembic upgrade head`. Quedan ENH-088 (floating preview), ENH-086 (Lecciones page), ENH-087 (Cambios page) para siguiente sesión — son refactors de UI (raid-detail-page parametrizable + nuevo componente preview).

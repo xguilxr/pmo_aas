@@ -4,6 +4,10 @@ from app.models.ai_report_template import AIReportTemplate  # noqa: F401
 from app.models.area import Actor, Area, AreaAssignment, Team  # noqa: F401
 from app.models.audit import AuditLog  # noqa: F401
 from app.models.auth import PasswordResetToken, RefreshToken  # noqa: F401
+from app.models.change_approval import (  # noqa: F401
+    ApprovalToken,
+    ChangeApprover,
+)
 from app.models.modules import (  # noqa: F401
     ChangeRequest,
     Document,
@@ -30,6 +34,7 @@ from app.models.project_charter import ProjectCharter  # noqa: F401
 from app.models.project_member import ProjectMember  # noqa: F401
 from app.models.project_request import FolioSequence, ProjectRequest  # noqa: F401
 from app.models.report_history import ReportHistory  # noqa: F401
+from app.models.report_template import ReportTemplate  # noqa: F401
 from app.models.risk_action import RiskAction, RiskActionAssignee  # noqa: F401
 from app.models.role import Role, UserRole  # noqa: F401
 from app.models.scheduled_report import ScheduledReport  # noqa: F401

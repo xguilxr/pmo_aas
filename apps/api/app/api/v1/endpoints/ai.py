@@ -11,6 +11,9 @@ from app.core.errors import conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.ai import AIJob, Report
 from app.models.project import Project
+from app.services.ai.platform_config import resolve_groq_config
+from app.services.ai.prompts import HTML_TWEAK_SYSTEM
+from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.workers.tasks.ai import draft_report_task, generate_minute_task
@@ -258,3 +261,88 @@ async def get_job(
         "tokens_in": j.tokens_in, "tokens_out": j.tokens_out,
         "duration_ms": j.duration_ms, "output": j.output, "error": j.error,
     }
+
+
+# ========== US-109 — tweaker IA del HTML del reporte ==========
+
+
+class TweakHTMLBody(BaseModel):
+    current_html: str = Field(min_length=20)
+    instruction: str = Field(min_length=2, max_length=2000)
+
+
+class TweakHTMLResult(BaseModel):
+    html: str
+    model: str | None = None
+
+
+@router.post("/reports/tweak-html", response_model=TweakHTMLResult)
+async def tweak_report_html(
+    body: TweakHTMLBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-109 CA3-CA5: aplica una instrucción al HTML actual del reporte
+    via LLM y devuelve el HTML modificado. Sin streaming (out-of-scope) y
+    sin persistencia — el frontend mantiene el historial (CA6) y guarda
+    explícitamente con ENH-085.
+
+    Rate-limit / longitud: el HTML se trunca a ~400KB para mantener el
+    prompt razonable; el caller es responsable de no enviar HTML inflado.
+    """
+    tenant_id = _tenant(cu)
+    cfg = await load_tenant_ai(db, tenant_id)
+    if cfg.mode == "disabled":
+        raise conflict(
+            "IA deshabilitada para este tenant",
+            code="AI_DISABLED",
+        )
+    platform_groq = await resolve_groq_config(db) if cfg.mode == "platform" else None
+
+    # Truncar input a 400KB para no inflar el prompt.
+    current_html = body.current_html[:400_000]
+    prompt = (
+        f"INSTRUCCIÓN DEL USUARIO:\n{body.instruction}\n\n"
+        f"HTML ACTUAL:\n{current_html}\n\n"
+        "Devuelve SOLO el HTML modificado completo."
+    )
+
+    try:
+        res = await generate_for_tenant(
+            prompt,
+            system=HTML_TWEAK_SYSTEM,
+            tenant_ai_mode=cfg.mode,
+            platform_groq_config=platform_groq,
+            byo_config=cfg.byo,
+            tenant_id=str(tenant_id),
+        )
+    except Exception as exc:
+        raise validation_error(
+            f"Falló el tweak IA: {type(exc).__name__}",
+            code="AI_TWEAK_FAILED",
+            fields={"detail": str(exc)[:500]},
+        ) from exc
+
+    html_out = res.text.strip()
+    # Algunos modelos devuelven el HTML envuelto en ```html ... ```; lo limpiamos.
+    if html_out.startswith("```"):
+        html_out = html_out.split("\n", 1)[1] if "\n" in html_out else html_out
+        if html_out.endswith("```"):
+            html_out = html_out.rsplit("```", 1)[0]
+        html_out = html_out.strip()
+    # Si el modelo devolvió texto sin DOCTYPE, asume que ignoró las
+    # reglas y devuelve el HTML original como fallback de seguridad.
+    if "<html" not in html_out.lower():
+        raise validation_error(
+            "El modelo no devolvió HTML válido. Reformula la instrucción.",
+            code="AI_TWEAK_INVALID_OUTPUT",
+        )
+
+    await write_audit(
+        db, action="report.tweak_html", module="reports",
+        user_id=cu.id, tenant_id=tenant_id,
+        entity_type="report", entity_id="tweak",
+        details={"instruction_chars": len(body.instruction), "model": res.model},
+    )
+    await db.commit()
+    return TweakHTMLResult(html=html_out, model=res.model)

@@ -23,6 +23,7 @@ from app.models.ai_report_template import AIReportTemplate
 from app.models.project import Project
 from app.models.report_history import ReportHistory
 from app.services.audit import write_audit
+from app.services.html_report_renderer import render_report_html
 from app.services.operational_reports import (
     build_avance_context,
     build_seguimiento_context,
@@ -1225,3 +1226,249 @@ async def delete_ai_report_template(
     )
     await db.commit()
     return Response(status_code=204)
+
+
+# ========== US-111 / ENH-089 — render HTML interactivo ==========
+
+
+def _project_render_data(
+    project: Project, context: dict
+) -> dict:
+    """Adapta el contexto de `build_avance_context` al shape que espera
+    `render_report_html`. El contexto incluye listas de Task/Risk/Issue/
+    ChangeRequest ya enriquecidas con `owner` resuelto.
+    """
+    progress = round(project.progress or 0)
+    summary = context.get("priority_summary") or {}
+    delayed = summary.get("delayed", 0)
+    milestones_pending = summary.get("milestones", 0) - len(
+        context.get("milestones_done", [])
+    )
+    risks = context.get("risks") or []
+    issues = context.get("issues") or []
+    changes = context.get("changes") or []
+    risks_high = sum(
+        1 for r in risks if (getattr(r, "severity", 0) or 0) >= 12
+    )
+    on_time_total = max(1, project.tasks_total if hasattr(project, "tasks_total") else 0)
+    on_time_pct = max(0, 100 - round((delayed / on_time_total) * 100)) if on_time_total else 0
+    tasks_focus = context.get("focus_tasks") or []
+
+    def _task_row(t):
+        owner = getattr(t, "assignee_name", None) or getattr(t, "owner_name", None)
+        end = getattr(t, "end_date", None)
+        status = getattr(t, "status", "") or ""
+        if status == "in_progress":
+            status = "En curso"
+        elif status == "done":
+            status = "Hecho"
+        elif status == "not_started":
+            status = "Pendiente"
+        # ENH-064 — anota retraso como sufijo para que el filtro KPI
+        # "retrasada" funcione (busca el texto en la fila).
+        delayed_now = (
+            end is not None
+            and end < datetime.now(UTC).date()
+            and status != "Hecho"
+        )
+        if delayed_now:
+            status += " (retrasada)"
+        return {
+            "name": getattr(t, "name", "") or "",
+            "owner": owner or "—",
+            "status": status,
+            "end_date": end.isoformat() if end else None,
+            "progress": int(getattr(t, "progress", 0) or 0),
+        }
+
+    return {
+        "kpis": {
+            "progress": progress,
+            "on_time_pct": on_time_pct,
+            "delayed_count": delayed,
+            "risks_high": risks_high,
+            "milestones_pending": max(0, milestones_pending),
+        },
+        "tasks": [_task_row(t) for t in tasks_focus],
+        "risks": [
+            {
+                "title": getattr(r, "title", "") or "",
+                "owner": getattr(r, "owner_name", None) or "—",
+                "severity": "alta" if (getattr(r, "severity", 0) or 0) >= 12
+                else ("media" if (getattr(r, "severity", 0) or 0) >= 6 else "baja"),
+                "status": getattr(r, "status", "") or "",
+            }
+            for r in risks
+        ],
+        "issues": [
+            {
+                "title": getattr(i, "title", "") or "",
+                "owner": getattr(i, "owner_name", None) or "—",
+                "priority": f"P{getattr(i, 'priority', '') or '—'}",
+                "status": getattr(i, "status", "") or "",
+            }
+            for i in issues
+        ],
+        "changes": [
+            {
+                "title": getattr(c, "title", "") or "",
+                "type": getattr(c, "type", "") or "—",
+                "status": getattr(c, "status", "") or "",
+                "requester": getattr(c, "requester_name", None) or "—",
+            }
+            for c in changes
+        ],
+    }
+
+
+@router.get("/reports/{report_id}/render-html")
+async def render_report_html_endpoint(
+    report_id: UUID,
+    refresh: bool = Query(default=False),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-111 — devuelve el HTML standalone del reporte.
+
+    Si el `Report.html_content` ya está populado y `refresh=false`,
+    devuelve el HTML guardado (incluye tweaks de US-109 si los hubo).
+    Con `refresh=true` regenera desde data del proyecto.
+    """
+    tenant_id = _tenant(cu)
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(report_id),
+                Report.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte")
+    if rep.html_content and not refresh:
+        return Response(
+            content=rep.html_content,
+            media_type="text/html; charset=utf-8",
+        )
+    project = await _get_project(db, tenant_id, UUID(str(rep.project_id)))
+    cut_off = rep.cut_off_date or datetime.now(UTC).date()
+    context = await build_avance_context(db, tenant_id, project.id, cut_off)
+    data = _project_render_data(project, context)
+    html = render_report_html(
+        title=rep.title or f"Reporte — {project.folio}",
+        project_name=project.name,
+        project_folio=project.folio,
+        generated_at=datetime.now(UTC),
+        summary_html=str((rep.sections or {}).get("executive_summary") or ""),
+        **data,
+    )
+    rep.html_content = html
+    await db.commit()
+    return Response(content=html, media_type="text/html; charset=utf-8")
+
+
+@router.post("/projects/{project_id}/reports/render-default-html")
+async def render_default_report_html(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-109 CA2 — devuelve el HTML default sobre data del proyecto SIN
+    crear un Report (uso: arranque del flujo "Generar nuevo reporte"
+    para que el render exista desde el inicio antes del tweak IA).
+    """
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    cut_off = datetime.now(UTC).date()
+    context = await build_avance_context(db, tenant_id, project.id, cut_off)
+    data = _project_render_data(project, context)
+    html = render_report_html(
+        title=f"Reporte — {project.folio}",
+        project_name=project.name,
+        project_folio=project.folio,
+        generated_at=datetime.now(UTC),
+        **data,
+    )
+    return Response(content=html, media_type="text/html; charset=utf-8")
+
+
+# ========== ENH-089 — export reportes en HTML/PDF/TXT ==========
+
+
+@router.get("/reports/{report_id}/export")
+async def export_report(
+    report_id: UUID,
+    format: str = Query(default="html", pattern="^(html|pdf|txt)$"),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-089 — descarga el reporte en el formato seleccionado.
+
+    - `html` (CA1, default): HTML standalone con filtros embebidos.
+    - `pdf` (CA2): WeasyPrint sobre el HTML; el `@media print` oculta
+      los inputs de filtro y los `<details>` quedan abiertos por
+      paginación.
+    - `txt` (CA3): texto plano flatten (vía `html_to_text`) — útil para
+      minutas que se pegan en email.
+    """
+    from fastapi.responses import Response as _Resp
+
+    from app.services.pdf_renderer import html_to_pdf, html_to_text
+
+    tenant_id = _tenant(cu)
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(report_id),
+                Report.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte")
+    # Si no hay HTML guardado, regenera vía US-111 endpoint.
+    html_content = rep.html_content
+    if not html_content:
+        project = await _get_project(db, tenant_id, UUID(str(rep.project_id)))
+        cut_off = rep.cut_off_date or datetime.now(UTC).date()
+        context = await build_avance_context(db, tenant_id, project.id, cut_off)
+        data = _project_render_data(project, context)
+        html_content = render_report_html(
+            title=rep.title or f"Reporte — {project.folio}",
+            project_name=project.name,
+            project_folio=project.folio,
+            generated_at=datetime.now(UTC),
+            summary_html=str((rep.sections or {}).get("executive_summary") or ""),
+            **data,
+        )
+        rep.html_content = html_content
+        await db.commit()
+
+    base_name = re.sub(r"[^A-Za-z0-9_-]+", "_", rep.title or "reporte")[:80] or "reporte"
+
+    if format == "html":
+        return _Resp(
+            content=html_content,
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{base_name}.html"',
+            },
+        )
+    if format == "txt":
+        text = html_to_text(html_content)
+        return _Resp(
+            content=text,
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{base_name}.txt"',
+            },
+        )
+    # pdf
+    pdf = html_to_pdf(html_content)
+    return _Resp(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{base_name}.pdf"',
+        },
+    )

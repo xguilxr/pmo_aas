@@ -1283,17 +1283,59 @@ async def list_minutes(
     return [MeetingMinuteRead.model_validate(m) for m in rows]
 
 
+@minutes_router.get("/meeting-minutes/{minute_id}/render-html")
+async def render_minute_html_endpoint(
+    minute_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-090 + US-111 CA6: HTML standalone de la minuta para preview
+    in-platform (iframe) o export. Reusa el renderer de US-111."""
+    from fastapi.responses import Response as _Resp
+
+    from app.services.html_report_renderer import render_minute_html
+
+    tenant_id = _tenant(cu)
+    m = (
+        await db.execute(
+            select(MeetingMinute).where(
+                MeetingMinute.id == str(minute_id),
+                MeetingMinute.tenant_id == str(tenant_id),
+                MeetingMinute.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if m is None:
+        raise not_found("Minuta")
+    project = (
+        await db.execute(select(Project).where(Project.id == str(m.project_id)))
+    ).scalar_one_or_none()
+    html = render_minute_html(
+        title=m.title,
+        project_name=project.name if project else "",
+        project_folio=project.folio if project else "",
+        meeting_date=m.meeting_date,
+        summary="",
+        participants=list(m.participants or []),
+        topics=list(m.topics or []),
+        agreements=list(m.agreements or []),
+        raid_suggestions=dict(m.raid_suggestions or {}),
+    )
+    return _Resp(content=html, media_type="text/html; charset=utf-8")
+
+
 @minutes_router.get("/meeting-minutes/{minute_id}/export")
 async def export_minute(
     minute_id: UUID,
-    format: str = Query(default="pdf", pattern="^(pdf|docx|md|txt)$"),
+    format: str = Query(default="pdf", pattern="^(pdf|docx|md|txt|html)$"),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Exporta la minuta en el formato estandarizado (US-040).
 
     Formatos soportados: `pdf` (WeasyPrint), `docx` (python-docx),
-    `md`, `txt`. Las acciones del RAID vienen agrupadas por área /
+    `md`, `txt`, `html` (ENH-089 — primario; standalone con filtros
+    embebidos). Las acciones del RAID vienen agrupadas por área /
     responsable.
     """
     from fastapi.responses import Response
@@ -1328,6 +1370,28 @@ async def export_minute(
         f"{(project and project.folio) or 'proyecto'}_{(m.meeting_date.date().isoformat() if m.meeting_date else 'fecha')}"
     )
 
+    if format == "html":
+        # ENH-089 CA1: HTML primario standalone (estilos inline, JS embebido).
+        from app.services.html_report_renderer import render_minute_html
+
+        html_content = render_minute_html(
+            title=m.title,
+            project_name=project.name if project else "",
+            project_folio=project.folio if project else "",
+            meeting_date=m.meeting_date,
+            summary="",
+            participants=list(m.participants or []),
+            topics=list(m.topics or []),
+            agreements=list(m.agreements or []),
+            raid_suggestions=dict(m.raid_suggestions or {}),
+        )
+        return Response(
+            content=html_content.encode("utf-8"),
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{base_name}.html"',
+            },
+        )
     if format == "md":
         data = to_markdown(view).encode("utf-8")
         return Response(

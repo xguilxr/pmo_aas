@@ -85,6 +85,24 @@ export function cancelAIJob(jobId: string): Promise<{ id: string; status: string
   );
 }
 
+/** US-109 — tweaker IA del HTML del reporte. */
+export type TweakHTMLBody = {
+  current_html: string;
+  instruction: string;
+};
+
+export type TweakHTMLResult = {
+  html: string;
+  model: string | null;
+};
+
+export function tweakReportHTML(body: TweakHTMLBody): Promise<TweakHTMLResult> {
+  return apiFetch<TweakHTMLResult>(`/api/v1/ai/reports/tweak-html`, {
+    method: "POST",
+    body,
+  });
+}
+
 export type ReportSections = {
   executive_summary?: string;
   achievements?: string[] | string;
