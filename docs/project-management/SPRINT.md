@@ -13,10 +13,10 @@ Sprint 18 (v1.17) — Bloque 1 ENTREGADO 2026-05-08 (3 issues — pendiente veri
   US-106 + ENH-081 + ENH-080. Migraciones 0055 + 0056 agregadas.
   Branch sesión: claude/review-start-next-sprint-R8JWc
 
-Sprint 19 (v1.18) — Bloque 1 PARCIAL ENTREGADO 2026-05-08 (3 de 6, pendiente verif. owner):
-  US-107 + ENH-082 + ENH-083 (backend pesado).
-  Pendiente: ENH-088 + ENH-086 + ENH-087 (UI vistas dedicadas, próxima sesión).
+Sprint 19 (v1.18) — Bloque 1 ENTREGADO 2026-05-09 (6 de 6, pendiente verif. owner):
+  US-107 + ENH-082 + ENH-083 + ENH-088 + ENH-086 + ENH-087.
   Migración 0057 agregada.
+  Branch sesión: claude/continue-sprint-tasks-jR3zt
 
 Sprint 17 (v1.16) — Bloque 0 MERGED 2026-05-08 (PR #297, BUG-053).
 Sprint 17 (v1.16) — Bloque 0.5 IN-PROGRESS 2026-05-08:
@@ -260,22 +260,25 @@ Branch sesión: `claude/review-start-next-sprint-R8JWc` (rama reservada `claude/
 
 ---
 
-## ⏳ Sprint 19 (v1.18) — RAID polish + vistas dedicadas — Bloque 1 PARCIAL ENTREGADO 2026-05-08
-Branch sesión: `claude/review-start-next-sprint-R8JWc` (rama reservada `claude/sprint-19-raid-polish` no se usó al continuar la sesión activa).
+## ⏳ Sprint 19 (v1.18) — RAID polish + vistas dedicadas — Bloque 1 ENTREGADO 2026-05-09
+Branch sesión: `claude/review-start-next-sprint-R8JWc` (3 issues backend pesado) +
+`claude/continue-sprint-tasks-jR3zt` (3 issues UI vistas dedicadas).
 
-### Bloque 1 entregado (3 de 6, backend pesado primero)
+### Bloque 1 entregado (6 de 6)
 - [x] US-107 #313 — Acciones de mitigación (multi-actor) + migración 0057 — `9d94fc9`
 - [x] ENH-082 #312 — Export RAID Excel 4 sheets — `0c59aaa`
 - [x] ENH-083 #314 — Render mitigación + acciones inline RAID detail — `5eb6b69`
+- [x] ENH-088 #315 — Preview "tarjeta flotante" centrada + `openHref` (reemplaza side panel) — `e021a97`
+- [x] ENH-086 #316 — Lecciones: página dedicada `/pmo/projects/[id]/lessons/[lessonId]` + GET/PATCH backend — `b3798d9`
+- [x] ENH-087 #317 — Cambios: página dedicada `/pmo/projects/[id]/changes/[changeId]` + GET/PATCH backend — `4d91009`
 
-### Bloque 1 pendiente (3 de 6, próxima sesión)
-- [ ] ENH-088 #315 — Preview "tarjeta flotante" sobre página actual (reemplaza side panel)
-- [ ] ENH-086 #316 — Lecciones: página dedicada in-platform (extiende RAID Denso)
-- [ ] ENH-087 #317 — Cambios: página dedicada in-platform (extiende RAID Denso)
+**Pendiente verificación owner:** cerrar #312-#317 tras smoke test.
 
-**Pendiente verificación owner:** cerrar #312-#314 tras smoke test.
+**Migración Alembic agregada:** 0057 (`risk_actions` + `risk_action_assignees` con CASCADE desde Risk). ENH-086/087/088 sin migración.
 
-**Migración Alembic agregada:** 0057 (`risk_actions` + `risk_action_assignees` con CASCADE desde Risk).
+**Diferidos del bloque (no bloqueantes):**
+- ENH-086/087: card "Comentarios & Historial" muestra placeholder hasta que existan endpoints `lessons/{id}/comments` y `change-requests/{id}/comments` (no priorizado).
+- ENH-087 CA6: card "Aprobadores" hoy muestra approver único + nota EP019; el workflow multi-aprobador (US-112/US-113) llega con Sprint 22.
 
 ---
 
@@ -374,6 +377,7 @@ Branch reservada: `claude/sprint-23-byo-universal`
 
 ## Notas y cambios recientes
 
+- **2026-05-09 (Sprint 19 Bloque 1 cerrado — 6 de 6):** entregados ENH-088 + ENH-086 + ENH-087 sobre branch `claude/continue-sprint-tasks-jR3zt` en 3 commits separados (`e021a97` ENH-088 floating preview, `b3798d9` ENH-086 lessons dedicated page, `4d91009` ENH-087 changes dedicated page). Backend extendido con GET/PATCH para lessons + change-requests (audit logs `lesson.update` y `change_request.update`); status de change requests sigue gobernado por approve/reject. Sin migraciones Alembic. Comentarios&Historial en cards `lesson` y `change` quedan como placeholder hasta que existan endpoints; card "Aprobadores" en cambios anuncia EP019.
 - **2026-05-08 (Sprint 19 Bloque 1 parcial — 3 de 6):** owner pidió arrancar Sprint 19; se priorizó "backend pesado primero" (US-107 + ENH-082 + ENH-083). 3 commits sobre branch `claude/review-start-next-sprint-R8JWc`: `9d94fc9` US-107 (risk_actions + assignees N:N + endpoints), `0c59aaa` ENH-082 (export RAID 4 sheets con styling), `5eb6b69` ENH-083 (RiskActionsCard inline en raid-detail-page). **1 migración Alembic** (0057) requiere `alembic upgrade head`. Quedan ENH-088 (floating preview), ENH-086 (Lecciones page), ENH-087 (Cambios page) para siguiente sesión — son refactors de UI (raid-detail-page parametrizable + nuevo componente preview).
 - **2026-05-08 (Sprint 18 Bloque 1 entregado):** 3 issues (#308-#310) entregados sobre branch `claude/review-start-next-sprint-R8JWc` en 3 commits separados (`6e2f947` US-106 + `0b43755` ENH-081 + `13f51ed` ENH-080). **2 migraciones Alembic** (0055 `project_artifacts` table + 0056 charter backfill data) requieren `alembic upgrade head` en Railway api+worker. Decisiones owner respetadas: DB es fuente de verdad del Plan, archivo se regenera on-demand; whitelist 4 tipos (charter/plan/raid/organigrama). MPP write fallback a XLSX por limitación MPXJ; tab Organigrama placeholder hasta redefinición Áreas/Recursos.
 - **2026-05-08 (deferral US-105 + tab Organigrama):** owner postergó US-105 (#311) y el cableado funcional del tab Organigrama de US-106 (#308) hasta la redefinición del módulo de Áreas y Recursos (próximo paquete arquitectónico, sin issue aún). US-105 queda en `status:triage` sin versión; Sprint 18 Bloque 1 baja de 4 a 3 issues. Tab Organigrama existe como placeholder UI con empty state. Issues #308 y #311 actualizados con la nota; SPRINT.md y EP018 reflejan el cambio.
