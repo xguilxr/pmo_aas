@@ -573,6 +573,10 @@ export type MinuteCreateBody = {
   next_meeting_date?: string | null;
   attachments?: { name?: string; url: string }[];
   generated_by_ai?: boolean;
+  /** BUG-058: persiste las sugerencias RAID detectadas por la IA cuando
+   *  el usuario va por "Previsualizar → Guardar como minuta". Sin esto,
+   *  el preview mostraba items pero el detalle aparecía vacío. */
+  raid_suggestions?: Partial<MinuteRaidSuggestions>;
 };
 
 export function listMinutes(projectId: string): Promise<MeetingMinute[]> {

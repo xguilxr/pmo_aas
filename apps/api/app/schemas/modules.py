@@ -290,6 +290,10 @@ class MeetingMinuteCreate(BaseModel):
     attachments: list[dict] = []
     transcript_file_id: str | None = None
     generated_by_ai: bool = False
+    # BUG-058: el flujo "Previsualizar → Guardar como minuta" perdía
+    # las sugerencias RAID detectadas por el LLM al persistirlas.
+    # Aceptamos el shape persistible {risks/issues/lessons/changes}.
+    raid_suggestions: dict = Field(default_factory=dict)
 
 
 class MeetingMinuteRead(BaseModel):

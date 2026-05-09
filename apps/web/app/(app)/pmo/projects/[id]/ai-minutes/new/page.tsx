@@ -73,6 +73,17 @@ export default function NewAIMinutePage() {
     setSavingPreview(true);
     setError(null);
     try {
+      // BUG-058: mapear el output crudo del LLM al shape persistible de
+      // `raid_suggestions` (cada item con status="pending"). Sin esto,
+      // la preview mostraba items pero el detalle de la minuta los
+      // perdía al guardar.
+      const raidIn = result.raid ?? EMPTY_RAID_BLOCK;
+      const raidPersisted = {
+        risks: raidIn.risks.map(toPersistedRaid),
+        issues: raidIn.issues.map(toPersistedRaid),
+        lessons: raidIn.lessons.map(toPersistedRaid),
+        changes: raidIn.changes.map(toPersistedRaid),
+      };
       const created = await createMinute(id, {
         title: title.trim() || "Minuta (IA)",
         meeting_date: new Date().toISOString(),
@@ -80,6 +91,7 @@ export default function NewAIMinutePage() {
         topics: result.topics ?? [],
         agreements: result.agreements ?? [],
         generated_by_ai: true,
+        raid_suggestions: raidPersisted,
       });
       setSavedMinuteId(created.id);
       setSavedMinute(created);
@@ -88,6 +100,23 @@ export default function NewAIMinutePage() {
     } finally {
       setSavingPreview(false);
     }
+  }
+
+  function toPersistedRaid(it: {
+    short_desc: string;
+    suggested_owner_name?: string | null;
+    suggested_priority?: number | null;
+    raw_quote?: string | null;
+  }) {
+    return {
+      short_desc: (it.short_desc ?? "").trim(),
+      suggested_owner_name: it.suggested_owner_name ?? null,
+      suggested_priority: it.suggested_priority ?? null,
+      raw_quote: it.raw_quote ?? null,
+      status: "pending" as const,
+      ticket_id: null,
+      ticket_type: null,
+    };
   }
 
   async function onFile(file: File) {
