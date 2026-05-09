@@ -1,0 +1,435 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Lightbulb } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { ApiError } from "@/lib/api";
+import {
+  LESSON_CATEGORY_LABEL,
+  getLesson,
+  updateLesson,
+  type Lesson,
+  type LessonCategory,
+} from "@/lib/api/modules";
+
+/**
+ * ENH-086 — página dedicada de Lecciones aprendidas.
+ *
+ * Reusa el patrón "Denso" de RAID (US-100): header card + strip de
+ * metadatos + cards de contenido + edición transaccional con banner
+ * (ENH-069 pattern).
+ *
+ * Nota: el backend no provee comentarios ni historial para Lecciones
+ * (ver `apps/api/app/api/v1/endpoints/modules.py` — solo GET/PATCH/POST).
+ * La card "Comentarios & Historial" se renderiza con un placeholder y
+ * se cablea cuando exista el endpoint correspondiente (diferido).
+ */
+
+type EditDraft = {
+  title: string;
+  description: string;
+  category: LessonCategory;
+  phase: string;
+  recommendation: string;
+  tags: string;
+};
+
+const PHASE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "planning", label: "Planificación" },
+  { value: "execution", label: "Ejecución" },
+  { value: "support", label: "Soporte" },
+  { value: "closed", label: "Cierre" },
+];
+
+function draftFromLesson(l: Lesson): EditDraft {
+  return {
+    title: l.title,
+    description: l.description ?? "",
+    category: l.category ?? "improvement",
+    phase: l.phase ?? "",
+    recommendation: l.recommendation ?? "",
+    tags: l.tags.join(", "),
+  };
+}
+
+export function LessonDetailPage({
+  lessonId,
+  breadcrumb,
+}: {
+  lessonId: string;
+  breadcrumb: React.ReactNode;
+}) {
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<EditDraft | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    getLesson(lessonId)
+      .then((l) => {
+        if (!cancelled) setLesson(l);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(
+          err instanceof ApiError
+            ? err.status === 404
+              ? "Esta lección no existe o no tienes permiso para verla."
+              : err.message
+            : "No se pudo cargar la lección",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonId]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 p-6">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 p-6">
+        {breadcrumb}
+        <Banner variant="danger">{error}</Banner>
+      </div>
+    );
+  }
+
+  if (!lesson) return null;
+
+  function startEdit() {
+    if (!lesson) return;
+    setDraft(draftFromLesson(lesson));
+    setEditError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setEditError(null);
+    setDraft(null);
+  }
+
+  async function saveEdit() {
+    if (!draft || !lesson || saving) return;
+    if (draft.title.trim().length < 2) {
+      setEditError("El título es obligatorio (mín. 2 caracteres).");
+      return;
+    }
+    setSaving(true);
+    setEditError(null);
+    try {
+      const tags = draft.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const updated = await updateLesson(lesson.id, {
+        title: draft.title.trim(),
+        description: draft.description.trim() || null,
+        category: draft.category,
+        phase: draft.phase || null,
+        recommendation: draft.recommendation.trim() || null,
+        tags,
+      });
+      setLesson(updated);
+      setEditing(false);
+    } catch (err) {
+      setEditError(
+        err instanceof ApiError ? err.message : "No se pudo guardar los cambios",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const categoryLabel = lesson.category
+    ? LESSON_CATEGORY_LABEL[lesson.category]
+    : "—";
+  const categoryVariant: "success" | "danger" | "warning" =
+    lesson.category === "success"
+      ? "success"
+      : lesson.category === "error"
+        ? "danger"
+        : "warning";
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-3 p-6">
+      <div className="flex items-center justify-between gap-2 px-0">
+        <div className="min-w-0 flex-1">{breadcrumb}</div>
+        <Button
+          type="button"
+          variant={editing ? "secondary" : "primary"}
+          size="sm"
+          onClick={() => (editing ? cancelEdit() : startEdit())}
+          disabled={saving}
+        >
+          {editing ? "Editando…" : "Editar"}
+        </Button>
+      </div>
+
+      {/* Header card + strip */}
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <header className="flex flex-col gap-2 px-[18px] py-[14px]">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 flex-none items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)]">
+              <Lightbulb className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
+                    {lesson.folio}
+                  </span>
+                  <span className="text-[var(--color-tertiary)]">·</span>
+                  <span className="rounded border border-[var(--chrome-soft-border,_var(--border-default))] bg-[var(--chrome-soft-bg,_var(--color-subtle))] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--chrome-soft-text,_var(--color-tertiary))]">
+                    Lección
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {lesson.category ? (
+                    <Badge variant={categoryVariant}>{categoryLabel}</Badge>
+                  ) : null}
+                </div>
+              </div>
+              {editing && draft ? (
+                <Input
+                  value={draft.title}
+                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                  className="text-[17px] font-semibold"
+                />
+              ) : (
+                <h1
+                  className="text-[17px] font-semibold leading-snug text-[var(--color-primary)]"
+                  style={{ lineHeight: 1.4 }}
+                >
+                  {lesson.title}
+                </h1>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="grid gap-4 border-t border-[var(--border-default)] bg-[var(--chrome-soft-bg,_var(--color-subtle))] px-[18px] py-3 grid-cols-2 sm:grid-cols-3">
+          <StripCell label="Categoría">
+            {editing && draft ? (
+              <Select
+                value={draft.category}
+                onChange={(e) =>
+                  setDraft({ ...draft, category: e.target.value as LessonCategory })
+                }
+              >
+                {(Object.keys(LESSON_CATEGORY_LABEL) as LessonCategory[]).map((c) => (
+                  <option key={c} value={c}>
+                    {LESSON_CATEGORY_LABEL[c]}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              categoryLabel
+            )}
+          </StripCell>
+          <StripCell label="Fase">
+            {editing && draft ? (
+              <Select
+                value={draft.phase}
+                onChange={(e) => setDraft({ ...draft, phase: e.target.value })}
+              >
+                <option value="">— sin fase —</option>
+                {PHASE_OPTIONS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+            ) : lesson.phase ? (
+              PHASE_OPTIONS.find((p) => p.value === lesson.phase)?.label ?? lesson.phase
+            ) : (
+              <Empty />
+            )}
+          </StripCell>
+          <StripCell label="Tags">
+            {editing && draft ? (
+              <Input
+                value={draft.tags}
+                onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
+                placeholder="comma, separated"
+              />
+            ) : lesson.tags.length ? (
+              <div className="flex flex-wrap gap-1">
+                {lesson.tags.map((t) => (
+                  <Badge key={t}>{t}</Badge>
+                ))}
+              </div>
+            ) : (
+              <Empty />
+            )}
+          </StripCell>
+        </div>
+      </section>
+
+      {editing ? (
+        <section className="flex items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--info-border,_var(--border-default))] bg-[var(--info-bg,_var(--color-subtle))] px-[18px] py-2.5">
+          <p className="text-[13px] text-[var(--info-fg,_var(--color-primary))]">
+            Modo edición activo.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={cancelEdit}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" size="sm" onClick={saveEdit} loading={saving}>
+              Guardar
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {editError ? <Banner variant="danger">{editError}</Banner> : null}
+
+      {/* Descripción */}
+      <DetailCard title="Descripción">
+        {editing && draft ? (
+          <Textarea
+            value={draft.description}
+            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            rows={4}
+          />
+        ) : lesson.description ? (
+          <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
+            {lesson.description}
+          </p>
+        ) : (
+          <p className="text-[13px] italic text-[var(--color-tertiary)]">
+            Sin descripción.
+          </p>
+        )}
+      </DetailCard>
+
+      {/* Recomendación */}
+      <DetailCard title="Recomendación">
+        {editing && draft ? (
+          <Textarea
+            value={draft.recommendation}
+            onChange={(e) =>
+              setDraft({ ...draft, recommendation: e.target.value })
+            }
+            rows={3}
+          />
+        ) : lesson.recommendation ? (
+          <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
+            {lesson.recommendation}
+          </p>
+        ) : (
+          <p className="text-[13px] italic text-[var(--color-tertiary)]">
+            Sin recomendación.
+          </p>
+        )}
+      </DetailCard>
+
+      {/* Proyecto */}
+      <DetailCard title="Proyecto">
+        <div className="flex items-center gap-2 text-[13px]">
+          <Link
+            href={`/pmo/projects/${lesson.project_id}`}
+            className="font-mono text-[12px] text-[var(--color-accent)] underline-offset-2 hover:underline"
+          >
+            {lesson.project_id.slice(0, 8)}…
+          </Link>
+        </div>
+      </DetailCard>
+
+      {/* Comentarios & Historial — placeholder hasta endpoint backend. */}
+      <DetailCard title="Comentarios & Historial">
+        <p className="text-[12px] italic text-[var(--color-tertiary)]">
+          Próximamente. Esta lección aún no tiene comentarios ni historial
+          registrado.
+        </p>
+      </DetailCard>
+    </div>
+  );
+}
+
+function DetailCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <header className="border-b border-[var(--border-default)] px-4 py-2.5">
+        <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
+          {title}
+        </h2>
+      </header>
+      <div className="px-4 py-3">{children}</div>
+    </section>
+  );
+}
+
+function StripCell({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+        {label}
+      </p>
+      <div className="mt-0.5 break-words text-[13px] text-[var(--color-primary)]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Empty() {
+  return <span className="text-[var(--color-tertiary)]">—</span>;
+}
+
+export function LessonBackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
+    >
+      <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+      {label}
+    </Link>
+  );
+}

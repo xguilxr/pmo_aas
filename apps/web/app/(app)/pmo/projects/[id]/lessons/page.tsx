@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Eye, Lightbulb } from "lucide-react";
 
@@ -22,6 +22,7 @@ import {
 
 export default function LessonsPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [rows, setRows] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +105,7 @@ export default function LessonsPage() {
       records={rows}
       loading={loading}
       error={error}
+      onRowClick={(r) => router.push(`/pmo/projects/${id}/lessons/${r.id}`)}
       newButtonLabel="Nueva lección"
       newModalTitle="Registrar lección aprendida"
       newModalOpen={open}
@@ -250,6 +252,7 @@ export default function LessonsPage() {
       onClose={() => setPreview(null)}
       title={preview?.title ?? ""}
       subtitle={preview?.folio}
+      openHref={preview ? `/pmo/projects/${id}/lessons/${preview.id}` : undefined}
       fields={
         preview
           ? [

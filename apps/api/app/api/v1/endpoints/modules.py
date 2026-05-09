@@ -22,6 +22,7 @@ from app.models.user import User
 from app.schemas.modules import (
     ChangeRequestCreate,
     ChangeRequestRead,
+    ChangeRequestUpdate,
     DocumentCreate,
     DocumentRead,
     DocumentUpdate,
@@ -31,6 +32,7 @@ from app.schemas.modules import (
     IssueUpdate,
     LessonCreate,
     LessonRead,
+    LessonUpdate,
     MeetingMinuteCreate,
     MeetingMinuteRead,
     RiskComment,
@@ -1083,6 +1085,59 @@ async def list_lessons_cross(
         }
         rows = [r for r in rows if str(r.project_id) in project_ids]
     return [LessonRead.model_validate(r) for r in rows]
+
+
+@lessons_router.get("/lessons/{lesson_id}", response_model=LessonRead)
+async def get_lesson(
+    lesson_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-086: detalle de lección para la página dedicada."""
+    tenant_id = _tenant(cu)
+    l = (
+        await db.execute(
+            select(Lesson).where(
+                Lesson.id == str(lesson_id),
+                Lesson.tenant_id == str(tenant_id),
+                Lesson.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if l is None:
+        raise not_found("Lección")
+    return LessonRead.model_validate(l)
+
+
+@lessons_router.patch("/lessons/{lesson_id}", response_model=LessonRead)
+async def update_lesson(
+    lesson_id: UUID,
+    body: LessonUpdate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-086: edición transaccional desde la página dedicada."""
+    tenant_id = _tenant(cu)
+    l = (
+        await db.execute(
+            select(Lesson).where(
+                Lesson.id == str(lesson_id),
+                Lesson.tenant_id == str(tenant_id),
+                Lesson.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if l is None:
+        raise not_found("Lección")
+    data = body.model_dump(exclude_none=True)
+    for k, v in data.items():
+        setattr(l, k, v)
+    await write_audit(
+        db, action="lesson.update", module="lessons",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="lesson", entity_id=str(l.id),
+    )
+    await db.commit()
+    return LessonRead.model_validate(l)
 
 
 @lessons_router.post("/projects/{project_id}/lessons", response_model=LessonRead, status_code=201)

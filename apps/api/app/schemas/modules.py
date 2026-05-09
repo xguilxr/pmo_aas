@@ -256,8 +256,10 @@ class LessonCreate(BaseModel):
 
 
 class LessonUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, min_length=2, max_length=200)
     description: str | None = None
+    category: Literal["success", "improvement", "error"] | None = None
+    phase: str | None = None
     recommendation: str | None = None
     tags: list[str] | None = None
 

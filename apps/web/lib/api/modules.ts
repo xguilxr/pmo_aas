@@ -468,6 +468,24 @@ export function createLesson(projectId: string, body: LessonCreateBody): Promise
   return apiFetch<Lesson>(`/api/v1/projects/${projectId}/lessons`, { method: "POST", body });
 }
 
+/** ENH-086: detalle dedicado de una lección. */
+export function getLesson(lessonId: string): Promise<Lesson> {
+  return apiFetch<Lesson>(`/api/v1/lessons/${lessonId}`);
+}
+
+export type LessonUpdateBody = {
+  title?: string;
+  description?: string | null;
+  category?: LessonCategory;
+  phase?: string | null;
+  recommendation?: string | null;
+  tags?: string[];
+};
+
+export function updateLesson(lessonId: string, body: LessonUpdateBody): Promise<Lesson> {
+  return apiFetch<Lesson>(`/api/v1/lessons/${lessonId}`, { method: "PATCH", body });
+}
+
 export const LESSON_CATEGORY_LABEL: Record<LessonCategory, string> = {
   success: "Éxito",
   improvement: "Mejora",
