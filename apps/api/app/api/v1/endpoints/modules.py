@@ -700,6 +700,70 @@ async def create_chg(
     return ChangeRequestRead.model_validate(c)
 
 
+@chg_router.get("/change-requests/{chg_id}", response_model=ChangeRequestRead)
+async def get_chg(
+    chg_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-087: detalle de change request para la página dedicada."""
+    tenant_id = _tenant(cu)
+    c = (
+        await db.execute(
+            select(ChangeRequest).where(
+                ChangeRequest.id == str(chg_id),
+                ChangeRequest.tenant_id == str(tenant_id),
+                ChangeRequest.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if c is None:
+        raise not_found("Change request")
+    await _attach_change_users(db, [c])
+    return ChangeRequestRead.model_validate(c)
+
+
+@chg_router.patch("/change-requests/{chg_id}", response_model=ChangeRequestRead)
+async def update_chg(
+    chg_id: UUID,
+    body: ChangeRequestUpdate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-087: edición transaccional desde la página dedicada.
+
+    Permite editar title/description/impact mientras el status sigue
+    `in_review`. La transición de status se sigue haciendo vía los
+    endpoints `/approve` y `/reject` (single source of truth para
+    auditoría de aprobaciones).
+    """
+    tenant_id = _tenant(cu)
+    c = (
+        await db.execute(
+            select(ChangeRequest).where(
+                ChangeRequest.id == str(chg_id),
+                ChangeRequest.tenant_id == str(tenant_id),
+                ChangeRequest.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if c is None:
+        raise not_found("Change request")
+    data = body.model_dump(exclude_none=True)
+    # Status sigue gobernado por approve/reject — ignorar si llega.
+    data.pop("status", None)
+    for k, v in data.items():
+        setattr(c, k, v)
+    await write_audit(
+        db, action="change_request.update", module="change_requests",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="change_request",
+        entity_id=str(c.id),
+    )
+    await db.commit()
+    await _attach_change_users(db, [c])
+    return ChangeRequestRead.model_validate(c)
+
+
 @chg_router.post("/change-requests/{chg_id}/approve", response_model=ChangeRequestRead)
 async def approve_chg(
     chg_id: UUID,

@@ -249,6 +249,24 @@ export function createChange(
   });
 }
 
+/** ENH-087: detalle dedicado de un change request. */
+export function getChange(id: string): Promise<ChangeRequest> {
+  return apiFetch<ChangeRequest>(`/api/v1/change-requests/${id}`);
+}
+
+export type ChangeRequestUpdateBody = {
+  title?: string;
+  description?: string | null;
+  impact?: string | null;
+};
+
+export function updateChange(id: string, body: ChangeRequestUpdateBody): Promise<ChangeRequest> {
+  return apiFetch<ChangeRequest>(`/api/v1/change-requests/${id}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
 export function approveChange(id: string, body?: { comment?: string }): Promise<ChangeRequest> {
   return apiFetch<ChangeRequest>(`/api/v1/change-requests/${id}/approve`, {
     method: "POST",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckCircle2, GitPullRequest, XCircle } from "lucide-react";
 
@@ -26,6 +26,7 @@ import {
 
 export default function ChangesPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [rows, setRows] = useState<ChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +114,7 @@ export default function ChangesPage() {
         records={rows}
         loading={loading}
         error={error}
+        onRowClick={(r) => router.push(`/pmo/projects/${id}/changes/${r.id}`)}
         newButtonLabel="Nuevo cambio"
         newModalTitle="Solicitar cambio"
         newModalOpen={open}
