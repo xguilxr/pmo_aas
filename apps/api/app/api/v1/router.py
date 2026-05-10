@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     permission_requests,
     project_artifacts,
     project_charters,
+    project_directory,
     project_requests,
     projects,
     report_templates,
@@ -51,6 +52,8 @@ api_router.include_router(areas.areas_router)
 api_router.include_router(areas.teams_router)
 api_router.include_router(areas.actors_router)
 api_router.include_router(areas.assignments_router)
+api_router.include_router(project_directory.roles_router)
+api_router.include_router(project_directory.participations_router)
 api_router.include_router(reports.router)
 api_router.include_router(report_templates.router)
 api_router.include_router(change_approvals.router)

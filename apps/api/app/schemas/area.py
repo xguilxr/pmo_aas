@@ -93,6 +93,10 @@ class ActorCreate(BaseModel):
     phone: str | None = Field(default=None, max_length=32)
     is_active: bool = True
     is_lead: bool = False
+    # US-114: enriquecimiento.
+    company: str | None = Field(default=None, max_length=200)
+    job_title: str | None = Field(default=None, max_length=200)
+    manager_actor_id: UUID | None = None
 
 
 class ActorUpdate(BaseModel):
@@ -104,6 +108,9 @@ class ActorUpdate(BaseModel):
     phone: str | None = None
     is_active: bool | None = None
     is_lead: bool | None = None
+    company: str | None = None
+    job_title: str | None = None
+    manager_actor_id: UUID | None = None
 
 
 class ActorRead(BaseModel):
@@ -117,6 +124,9 @@ class ActorRead(BaseModel):
     phone: str | None
     is_active: bool
     is_lead: bool = False
+    company: str | None = None
+    job_title: str | None = None
+    manager_actor_id: UUID | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
