@@ -45,8 +45,9 @@ import {
   type TreeTeam,
 } from "@/lib/api/areas";
 import { cn } from "@/lib/cn";
+import { DirectoryView } from "@/components/directory/DirectoryView";
 
-type View = "areas" | "actors";
+type View = "directory" | "areas" | "actors";
 type ModalKind = "area" | "team" | "actor" | "edit-area" | "edit-actor" | null;
 
 type FlatActor = TreeActor & {
@@ -63,7 +64,7 @@ export default function ProjectAreasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<View>("areas");
+  const [view, setView] = useState<View>("directory");
   const [modal, setModal] = useState<ModalKind>(null);
   const [editingArea, setEditingArea] = useState<TreeArea | null>(null);
   const [editingActor, setEditingActor] = useState<TreeActor | null>(null);
@@ -407,8 +408,9 @@ export default function ProjectAreasPage() {
           >
             {(
               [
-                { v: "areas", label: "Áreas" },
-                { v: "actors", label: "Actores" },
+                { v: "directory", label: "Directorio" },
+                { v: "areas", label: "Áreas (legacy)" },
+                { v: "actors", label: "Actores (legacy)" },
               ] as const
             ).map((opt) => {
               const active = view === opt.v;
@@ -438,6 +440,10 @@ export default function ProjectAreasPage() {
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
+          </div>
+        ) : view === "directory" ? (
+          <div className="p-4">
+            <DirectoryView projectId={projectId} />
           </div>
         ) : view === "areas" ? (
           filteredAreas.length === 0 ? (
