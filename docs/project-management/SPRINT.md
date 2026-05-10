@@ -53,7 +53,7 @@ Sprint 23 (v1.22) — Bloque 1 ENTREGADO 2026-05-09 (1 de 1, pendiente verif. ow
 
 Sprints 12-15 — Bloques entregados, pendiente verificación owner.
 
-Próximo libre: US-114, BUG-056, ENH-092.
+Próximo libre: US-119, BUG-056, ENH-092.
 ```
 
 ---
@@ -63,7 +63,19 @@ Próximo libre: US-114, BUG-056, ENH-092.
 > Issues creados con status:triage. Owner pasa a status:ready para arrancar.
 
 ```
-(vacío — todos los issues nuevos están organizados en bloques de Sprint 13-16, ver abajo.)
+Sprint 25 (v1.24) — EP017 Directorio de Proyecto — TRIAGE 2026-05-10:
+  Bloque 1 (MVP):
+    US-114 #349 — Schema directorio: project_participations + project_roles + refactor actors/teams
+    US-115 #350 — API directorio: endpoints participations + project_roles + refactor /actors /teams
+    US-116 #351 — UI rediseño /pmo/projects/[id]/areas + /admin/areas (dos toggles)
+    US-117 #352 — Dropdowns filtrados por participation en plan/RAID/cambios/lecciones/minutas
+  Bloque 2 (post-MVP, no bloqueante):
+    US-118 #353 — Consolidar project_members en project_participations + migrar permisos RBAC
+  Branch sesión: claude/design-areas-resources-8DIfi
+  Epic doc: docs/epics/EP017-project-directory.md
+  Pendiente owner: crear label EP017 en GitHub UI; aprobar status:ready de US-114→US-117 para arrancar Bloque 1.
+
+(antes: vacío — todos los issues nuevos están organizados en bloques de Sprint 13-16, ver abajo.)
 ```
 
 ---
@@ -471,6 +483,7 @@ Triage owner-aprobado para batch en una sesión: 10 issues nuevos +
 
 ## Notas y cambios recientes
 
+- **2026-05-10 (EP017 Directorio de Proyecto — diseño + triage):** owner pidió rediseño del módulo de Áreas/Recursos basado en feedback de modelo (separar área funcional / equipo operativo / rol proyecto / participación temporal). Decisión clave: `actors` sigue como catálogo tenant; nueva tabla `project_participations` (con `is_primary` por persona-proyecto) reemplaza la jerarquía `Area→Team→Actor`; `teams` queda plano sin FK a area; `project_roles` nuevo catálogo editable; en Plan se elimina FK directo a área (drop `tasks/risks/issues.area_id` con snapshot a `legacy_area_id`) — los filtros derivan vía join contra primary participation. 5 issues triaged en INBOX (US-114→US-118, `#349`-`#353`); epic doc creado en `docs/epics/EP017-project-directory.md`. Branch sesión: `claude/design-areas-resources-8DIfi`. Pendiente owner: crear label `EP017` en GitHub UI; aprobar `status:ready` para Bloque 1.
 - **2026-05-09 (Sprint 24 — feedback batch entregado, 12 de 12):** owner pegó dump de 12 items mezclando BUGs / ENHs / reworks tras smoke test (Documentos, Plan, Minutas, Reportes, IA admin). Triage produjo 10 issues nuevos (`#336-#345`) + 2 reworks (`#323`, `#324`). 12 commits separados sobre branch `claude/fix-project-charter-issues-RFoAy`. **Sin migraciones Alembic.** Highlights: nuevo helper `app.services.filename_slug` con patrón canónico `{project-slug}-{kind}.{ext}` reusado por Charter / Plan / RAID; `MeetingMinuteCreate` ahora acepta `raid_suggestions`; `MeetingMinuteUpdate` extendido con `participants`/`topics`/`agreements` editables desde el preview; prompt MINUTE_SYSTEM mejorado para bullets de 2-5 oraciones; `ensure_duration_max_21` se vuelve no-op (warning visual en plan); `download_report_history` y `export_report?format=html` ahora respetan `rep.html_content` (último tweak) e `inline=true`; `update_provider_config` permite `body.byo=null` cuando hay config previa.
 - **2026-05-09 (Sprint 23 Bloque 1 cerrado — 1 de 1):** entregado US-110 sobre branch `claude/continue-sprint-work-mcmzX`. 1 commit (`1c5674d`). Sin migración Alembic — el shape `tenants.settings.ai.byo` admite los campos nuevos como JSON. Cambios principales: `AzureProvider` agregado a `provider.py` (header `api-key`, no Bearer); `BYO_PROVIDERS` extendido con `"azure"`; `BYOConfigIn` nuevos campos `deployment_name`, `api_version`, `rate_limit_rpm`, `daily_token_limit`, `acknowledge_security`; `_ping_byo_provider` rama Azure que POSTea a `/openai/deployments/{deployment}/chat/completions?api-version=...`; UI wizard expone deployment + api_version cuando catálogo declara `requires_azure_fields`, y banner de seguridad + checkbox cuando `requires_security_ack` (custom). 12 tests nuevos (`test_us110_byo_universal.py`) + actualizado el test de catálogo en `test_us057_ai_multimode.py`. CA4 enforcement (rate-limiter activo) diferido hasta que se reporten costos descontrolados; los límites se persisten ya y `load_tenant_ai` los propaga al worker.
 - **2026-05-09 (Sprint 22 Bloque 1 cerrado — 2 de 2):** entregados US-112 + US-113 sobre branch `claude/continue-sprint-tasks-jR3zt`. 2 commits (`e72b445` US-112 backend con migración 0060 consolidada — incluye ambas tablas `change_approvers` + `approval_tokens` para evitar revisiones intercaladas; `e44efdc` US-113 endpoints públicos + landing `/approve/[token]`). **1 migración Alembic** (0060) requiere `alembic upgrade head`. JWT HS256 firmado con `APPROVAL_TOKEN_SECRET` o `JWT_SECRET`; en DB queda solo el SHA256 hash. Re-trigger borra tokens previos (CA11) — los aprobadores readicionados quedan reset a pending. Email cae a `logger.info` cuando EP011 no expone `send_email`; integración real es follow-up sin bloqueo.
