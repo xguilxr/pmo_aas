@@ -115,3 +115,7 @@ export const deleteParticipation = (projectId: string, participationId: string) 
   apiFetch<void>(`/api/v1/projects/${projectId}/participations/${participationId}`, {
     method: "DELETE",
   });
+
+// US-117 — actores eligibles para dropdowns de assignee/owner.
+export const listEligibleActors = (projectId: string) =>
+  apiFetch<ActorMini[]>(`/api/v1/projects/${projectId}/eligible-actors`);

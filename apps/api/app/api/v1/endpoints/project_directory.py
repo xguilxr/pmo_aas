@@ -299,6 +299,66 @@ async def update_participation(
     return _hydrate(part, None)
 
 
+# =============================================================================
+# /projects/{project_id}/eligible-actors — para dropdowns filtrados (US-117)
+# =============================================================================
+eligible_router = APIRouter(
+    prefix="/projects/{project_id}/eligible-actors", tags=["participations"]
+)
+
+
+@eligible_router.get("", response_model=list[ActorMini])
+async def list_eligible_actors(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Actores con participation activa en el proyecto.
+
+    Filtra por `is_active=true` y, si tienen ventana temporal,
+    `start_date <= today <= end_date` (cuando están definidos).
+    Pensado para alimentar dropdowns de assignee/owner en plan, RAID,
+    cambios, lecciones, minutas.
+    """
+    from datetime import date
+
+    today = date.today()
+    rows = (
+        await db.execute(
+            select(ProjectParticipation, Actor)
+            .join(Actor, Actor.id == ProjectParticipation.actor_id)
+            .where(
+                and_(
+                    ProjectParticipation.tenant_id == str(_tenant(cu)),
+                    ProjectParticipation.project_id == str(project_id),
+                    ProjectParticipation.is_active.is_(True),
+                    Actor.is_active.is_(True),
+                )
+            )
+        )
+    ).all()
+    seen: set[str] = set()
+    out: list[ActorMini] = []
+    for part, actor in rows:
+        if actor.id in seen:
+            continue
+        if part.start_date and part.start_date > today:
+            continue
+        if part.end_date and part.end_date < today:
+            continue
+        seen.add(actor.id)
+        out.append(
+            ActorMini(
+                id=actor.id,
+                name=actor.name,
+                email=actor.email,
+                company=actor.company,
+                job_title=actor.job_title,
+            )
+        )
+    return out
+
+
 @participations_router.delete("/{participation_id}", status_code=204)
 async def delete_participation(
     project_id: UUID,
