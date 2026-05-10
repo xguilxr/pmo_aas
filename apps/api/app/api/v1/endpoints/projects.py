@@ -12,6 +12,7 @@ from app.models.organization import Organization
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
+from app.services.project_membership_sync import sync_member_to_participation
 from app.models.user import User
 from app.schemas.project import (
     MemberCreate,
@@ -128,6 +129,10 @@ async def create_project(
     await db.flush()
 
     db.add(ProjectMember(project_id=project.id, user_id=str(body.pm_id), role_in_project="pm"))
+    # US-118 Fase 1: doble escritura → project_participations.
+    await sync_member_to_participation(
+        db, tenant_id, project.id, str(body.pm_id), "pm"
+    )
 
     # BUG-018: autocrear charter + documento con la info que llega del form.
     # Los campos no capturados (stakeholders extra, prioridad, alcance,
