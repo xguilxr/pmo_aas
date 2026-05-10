@@ -32,7 +32,9 @@ from app.models.project import Project  # noqa: F401
 from app.models.project_artifact import ProjectArtifact  # noqa: F401
 from app.models.project_charter import ProjectCharter  # noqa: F401
 from app.models.project_member import ProjectMember  # noqa: F401
+from app.models.project_participation import ProjectParticipation  # noqa: F401
 from app.models.project_request import FolioSequence, ProjectRequest  # noqa: F401
+from app.models.project_role import ProjectRole  # noqa: F401
 from app.models.report_history import ReportHistory  # noqa: F401
 from app.models.report_template import ReportTemplate  # noqa: F401
 from app.models.risk_action import RiskAction, RiskActionAssignee  # noqa: F401
