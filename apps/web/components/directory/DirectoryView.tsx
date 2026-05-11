@@ -20,6 +20,7 @@ import {
   listActors,
   listAreasByProject,
   listTeams,
+  updateActor,
   type Actor,
   type Area,
   type Team,
@@ -263,6 +264,7 @@ export function DirectoryView({ projectId }: Props) {
         <EditParticipationModal
           projectId={projectId}
           participation={editing}
+          actor={actorsById[editing.actor_id] ?? editing.actor ?? null}
           initialAreas={areas}
           initialTeams={teams}
           initialRoles={roles}
@@ -506,6 +508,7 @@ function AddPersonModal({
 function EditParticipationModal({
   projectId,
   participation,
+  actor,
   initialAreas,
   initialTeams,
   initialRoles,
@@ -514,6 +517,7 @@ function EditParticipationModal({
 }: {
   projectId: string;
   participation: Participation;
+  actor: Actor | { id: string; name: string; email: string | null; company: string | null; job_title: string | null } | null;
   initialAreas: Area[];
   initialTeams: Team[];
   initialRoles: ProjectRole[];
@@ -523,6 +527,14 @@ function EditParticipationModal({
   const [areas, setAreas] = useState<Area[]>(initialAreas);
   const [teams, setTeams] = useState<Team[]>(initialTeams);
   const [roles, setRoles] = useState<ProjectRole[]>(initialRoles);
+  // ENH-087: campos del actor editables desde el modal.
+  const [actorName, setActorName] = useState(actor?.name ?? "");
+  const [actorEmail, setActorEmail] = useState(actor?.email ?? "");
+  const [actorPhone, setActorPhone] = useState(
+    (actor as Actor | null)?.phone ?? "",
+  );
+  const [actorCompany, setActorCompany] = useState(actor?.company ?? "");
+  const [actorJobTitle, setActorJobTitle] = useState(actor?.job_title ?? "");
   const [functionalAreaId, setFunctionalAreaId] = useState(
     participation.functional_area_id ?? "",
   );
@@ -541,6 +553,24 @@ function EditParticipationModal({
     setSaving(true);
     setError(null);
     try {
+      // ENH-087: actualiza actor si cambió algún campo.
+      if (actor) {
+        const actorChanged =
+          (actor.name ?? "") !== actorName ||
+          (actor.email ?? "") !== actorEmail ||
+          ((actor as Actor).phone ?? "") !== actorPhone ||
+          (actor.company ?? "") !== actorCompany ||
+          (actor.job_title ?? "") !== actorJobTitle;
+        if (actorChanged) {
+          await updateActor(actor.id, {
+            name: actorName.trim() || undefined,
+            email: actorEmail.trim() || null,
+            phone: actorPhone.trim() || null,
+            company: actorCompany.trim() || null,
+            job_title: actorJobTitle.trim() || null,
+          } as any);
+        }
+      }
       await updateParticipation(projectId, participation.id, {
         functional_area_id: functionalAreaId || null,
         operational_team_id: operationalTeamId || null,
@@ -572,8 +602,44 @@ function EditParticipationModal({
   }
 
   return (
-    <Modal open={true} title="Editar participación" onClose={onClose}>
+    <Modal open={true} title="Editar persona y participación" onClose={onClose}>
       <div className="space-y-3">
+        {/* ENH-087: edición de campos del actor */}
+        <div className="space-y-2 rounded border border-[var(--border-default)] p-2">
+          <div className="text-xs font-semibold text-[var(--text-secondary)]">
+            Datos de la persona
+          </div>
+          <Input
+            placeholder="Nombre completo"
+            value={actorName}
+            onChange={(e) => setActorName(e.target.value)}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              placeholder="Email"
+              value={actorEmail}
+              onChange={(e) => setActorEmail(e.target.value)}
+            />
+            <Input
+              placeholder="Teléfono"
+              value={actorPhone}
+              onChange={(e) => setActorPhone(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              placeholder="Empresa"
+              value={actorCompany}
+              onChange={(e) => setActorCompany(e.target.value)}
+            />
+            <Input
+              placeholder="Cargo"
+              value={actorJobTitle}
+              onChange={(e) => setActorJobTitle(e.target.value)}
+            />
+          </div>
+        </div>
+
         <CatalogPickerWithCreate
           label="Área funcional"
           value={functionalAreaId}
