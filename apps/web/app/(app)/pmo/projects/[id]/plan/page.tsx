@@ -28,6 +28,8 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
+import { PersonPicker } from "@/components/directory/PersonPicker";
+import { ProjectAreaPicker } from "@/components/directory/ProjectAreaPicker";
 import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { listActorsByProject, type Actor } from "@/lib/api/areas";
@@ -1979,44 +1981,33 @@ function PlanInner() {
               ))}
             </Select>
           </label>
-          {/* US-098 fix: Área responsable PRIMERO (project_areas). */}
+          {/* US-098 / ENH-083: Área responsable con inline-create. */}
           <label>
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
               Área responsable
             </span>
-            <Select
-              value={editForm.area_id}
-              onChange={(e) =>
-                setEditForm({ ...editForm, area_id: e.target.value })
+            <ProjectAreaPicker
+              projectId={id}
+              value={editForm.area_id || null}
+              onChange={(v) =>
+                setEditForm({ ...editForm, area_id: v ?? "" })
               }
-            >
-              <option value="">— Sin asignar —</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
+              placeholder="— Sin asignar —"
+            />
           </label>
-          {/* ENH-079: Responsable = Actor del catálogo (no users). */}
+          {/* ENH-079 / BUG-056: Responsable = Actor del catálogo via PersonPicker. */}
           <label>
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
               Responsable
             </span>
-            <Select
-              value={editForm.assignee_actor_id}
-              onChange={(e) =>
-                setEditForm({ ...editForm, assignee_actor_id: e.target.value })
+            <PersonPicker
+              projectId={id}
+              value={editForm.assignee_actor_id || null}
+              onChange={(v) =>
+                setEditForm({ ...editForm, assignee_actor_id: v ?? "" })
               }
-            >
-              <option value="">— Sin responsable —</option>
-              {actors.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                  {a.email ? ` · ${a.email}` : ""}
-                </option>
-              ))}
-            </Select>
+              placeholder="— Sin responsable —"
+            />
           </label>
           <label className="sm:col-span-2">
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">

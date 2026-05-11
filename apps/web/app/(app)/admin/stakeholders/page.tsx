@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 import {
   createStakeholder,
   deleteStakeholder,
@@ -22,6 +24,7 @@ import { HardDeleteButton } from "@/components/hard-delete-button";
 
 export default function StakeholdersPage() {
   const [rows, setRows] = useState<Stakeholder[]>([]);
+  const { sortedRows, ctrl: skCtrl } = useSortableRows<Stakeholder>(rows);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -134,9 +137,9 @@ export default function StakeholdersPage() {
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-subtle)] text-[12px] uppercase tracking-wide text-[var(--color-tertiary)]">
             <tr>
-              <th className="px-4 py-3 text-left">Nombre</th>
-              <th className="px-4 py-3 text-left">Empresa / Puesto</th>
-              <th className="px-4 py-3 text-left">Contacto</th>
+              <SortableTh<Stakeholder> sortKey="name" getter={(s) => s.full_name} ctrl={skCtrl} className="px-4 py-3">Nombre</SortableTh>
+              <SortableTh<Stakeholder> sortKey="company" getter={(s) => s.company ?? ""} ctrl={skCtrl} className="px-4 py-3">Empresa / Puesto</SortableTh>
+              <SortableTh<Stakeholder> sortKey="contact" getter={(s) => s.email ?? s.phone ?? ""} ctrl={skCtrl} className="px-4 py-3">Contacto</SortableTh>
               <th className="px-4 py-3 text-right" />
             </tr>
           </thead>
@@ -154,7 +157,7 @@ export default function StakeholdersPage() {
                 </td>
               </tr>
             ) : (
-              rows.map((s) => (
+              sortedRows.map((s) => (
                 <tr key={s.id}>
                   <td className="px-4 py-3 font-medium text-[var(--color-primary)]">
                     {s.full_name}

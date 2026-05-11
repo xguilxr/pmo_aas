@@ -12,6 +12,8 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 import {
   listRoles,
   listUsers,
@@ -56,6 +58,7 @@ export default function UsersListPage() {
   const [data, setData] = useState<PaginatedUsers | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { sortedRows: sortedUsers, ctrl: usersCtrl } = useSortableRows<AdminUser>(data?.items ?? []);
 
   useEffect(() => {
     setPage(1);
@@ -174,10 +177,10 @@ export default function UsersListPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
               <tr>
-                <th className="px-4 py-3 font-medium">Usuario</th>
-                <th className="px-4 py-3 font-medium">Roles</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium">Último ingreso</th>
+                <SortableTh<AdminUser> sortKey="user" getter={(u) => u.full_name ?? u.email} ctrl={usersCtrl} className="px-4 py-3">Usuario</SortableTh>
+                <SortableTh<AdminUser> sortKey="roles" getter={(u) => (u.roles ?? []).join(",")} ctrl={usersCtrl} className="px-4 py-3">Roles</SortableTh>
+                <SortableTh<AdminUser> sortKey="status" getter={(u) => (u.is_active ? "activo" : "inactivo")} ctrl={usersCtrl} className="px-4 py-3">Estado</SortableTh>
+                <SortableTh<AdminUser> sortKey="last_login" getter={(u) => (u as any).last_login_at ?? ""} ctrl={usersCtrl} className="px-4 py-3">Último ingreso</SortableTh>
                 <th className="px-4 py-3" aria-label="Acciones" />
               </tr>
             </thead>
@@ -203,8 +206,8 @@ export default function UsersListPage() {
                     </td>
                   </tr>
                 ))
-              ) : data && data.items.length > 0 ? (
-                data.items.map((u: AdminUser) => (
+              ) : data && sortedUsers.length > 0 ? (
+                sortedUsers.map((u: AdminUser) => (
                   <tr
                     key={u.id}
                     className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"

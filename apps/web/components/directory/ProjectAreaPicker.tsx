@@ -1,57 +1,51 @@
 "use client";
 
-// US-117 / BUG-056 — picker reusable de persona del proyecto, alimentado
-// por eligible-actors (participations activas). Soporta inline-create
-// que (a) crea actor en el catálogo tenant, (b) crea participation
-// activa en el proyecto, (c) autoselecciona el nuevo actor.
+// ENH-083 — picker reusable de Área asignada al proyecto. Inline-create
+// crea área tenant + auto-assign al proyecto (setAreaAssignments).
 
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { createActor } from "@/lib/api/areas";
 import {
-  createParticipation,
-  listEligibleActors,
-  type ActorMini,
-} from "@/lib/api/project-directory";
+  createArea,
+  listAreasByProject,
+  setAreaAssignments,
+  type Area,
+} from "@/lib/api/areas";
 
 type Props = {
   projectId: string;
   value: string | null | undefined;
-  onChange: (actorId: string | null) => void;
+  onChange: (areaId: string | null) => void;
   disabled?: boolean;
   placeholder?: string;
   className?: string;
-  /** Si true, oculta el botón "+ Crear y agregar al proyecto" inline. */
-  hideCreate?: boolean;
 };
 
-export function PersonPicker({
+export function ProjectAreaPicker({
   projectId,
   value,
   onChange,
   disabled,
   placeholder = "Sin asignar",
   className,
-  hideCreate,
 }: Props) {
-  const [actors, setActors] = useState<ActorMini[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await listEligibleActors(projectId);
-      setActors(rows);
+      const rows = await listAreasByProject(projectId);
+      setAreas(rows);
     } catch {
-      setActors([]);
+      setAreas([]);
     } finally {
       setLoading(false);
     }
@@ -66,20 +60,19 @@ export function PersonPicker({
     setBusy(true);
     setErr(null);
     try {
-      const actor = await createActor({
+      const created = await createArea({
         name: newName.trim(),
-        email: newEmail.trim() || undefined,
-      } as any);
-      await createParticipation(projectId, {
-        actor_id: actor.id,
         is_active: true,
-        is_primary: true,
       });
+      try {
+        await setAreaAssignments(created.id, [{ project_id: projectId }]);
+      } catch {
+        // si falla el auto-assign, mantenemos el área creada
+      }
       await refresh();
-      onChange(actor.id);
+      onChange(created.id);
       setCreating(false);
       setNewName("");
-      setNewEmail("");
     } catch (e: any) {
       setErr(e?.message ?? "Error al crear");
     } finally {
@@ -97,40 +90,32 @@ export function PersonPicker({
             onChange={(e) => onChange(e.target.value || null)}
           >
             <option value="">{placeholder}</option>
-            {actors.map((a) => (
+            {areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
-                {a.email ? ` — ${a.email}` : ""}
               </option>
             ))}
           </Select>
-          {!hideCreate && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setCreating(true)}
-              disabled={disabled}
-              title="Crear y agregar al proyecto"
-            >
-              + Nueva
-            </Button>
-          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setCreating(true)}
+            disabled={disabled}
+            title="Crear área y asignar al proyecto"
+          >
+            + Nueva
+          </Button>
         </div>
       ) : (
         <div className="space-y-1 rounded border border-[var(--border-default)] p-2">
           <div className="text-xs font-medium text-[var(--text-secondary)]">
-            Nueva persona — se agrega al proyecto automáticamente
+            Nueva área — se agrega al proyecto automáticamente
           </div>
           <Input
-            placeholder="Nombre completo *"
+            placeholder="Nombre del área *"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-          />
-          <Input
-            placeholder="Email (opcional)"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
           />
           {err ? <p className="text-xs text-red-600">{err}</p> : null}
           <div className="flex justify-end gap-1">
@@ -141,7 +126,6 @@ export function PersonPicker({
               onClick={() => {
                 setCreating(false);
                 setNewName("");
-                setNewEmail("");
                 setErr(null);
               }}
               disabled={busy}

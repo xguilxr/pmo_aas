@@ -14,6 +14,8 @@ import { Banner } from "@/components/ui/banner";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 import {
   listTenantChanges,
   type TenantChange,
@@ -38,6 +40,7 @@ function TenantChangesInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<TenantChange | null>(null);
+  const { sortedRows, ctrl: sortCtrl } = useSortableRows<TenantChange>(rows);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,15 +116,15 @@ function TenantChangesInner() {
             <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
               <tr>
                 <th className="w-10 px-3 py-2" />
-                <th className="px-3 py-2 font-medium">Folio</th>
-                <th className="px-3 py-2 font-medium">Título</th>
-                <th className="px-3 py-2 font-medium">Estado</th>
-                <th className="px-3 py-2 font-medium">Tipo</th>
-                <th className="px-3 py-2 font-medium">Proyecto</th>
+                <SortableTh<TenantChange> sortKey="folio" getter={(r) => r.folio} ctrl={sortCtrl}>Folio</SortableTh>
+                <SortableTh<TenantChange> sortKey="title" getter={(r) => r.title} ctrl={sortCtrl}>Título</SortableTh>
+                <SortableTh<TenantChange> sortKey="status" getter={(r) => r.status} ctrl={sortCtrl}>Estado</SortableTh>
+                <SortableTh<TenantChange> sortKey="type" getter={(r) => r.type ?? ""} ctrl={sortCtrl}>Tipo</SortableTh>
+                <SortableTh<TenantChange> sortKey="project" getter={(r) => r.project_name ?? ""} ctrl={sortCtrl}>Proyecto</SortableTh>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {sortedRows.map((r) => (
                 <tr key={r.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
                   <td className="px-3 py-2">
                     <button

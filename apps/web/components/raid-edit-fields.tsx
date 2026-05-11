@@ -19,6 +19,7 @@ import {
   updateRisk,
 } from "@/lib/api/modules";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
+import { ProjectAreaPicker } from "@/components/directory/ProjectAreaPicker";
 
 /**
  * ENH-036 — formulario inline de edición completa para items RAID en
@@ -288,18 +289,13 @@ export function RaidEditFields(props:
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Área responsable">
-          <Select
-            value={areaId}
-            onChange={(e) => setAreaId(e.target.value)}
+          <ProjectAreaPicker
+            projectId={item.project_id}
+            value={areaId || null}
+            onChange={(v) => setAreaId(v ?? "")}
             disabled={optsLoading}
-          >
-            <option value="">— sin área —</option>
-            {areas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
+            placeholder="— sin área —"
+          />
         </Field>
         <Field label="Responsable">
           <Select

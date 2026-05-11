@@ -35,6 +35,8 @@ import {
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 
 const PHASE_LABEL: Record<string, string> = {
   planning: "Planificación",
@@ -112,6 +114,7 @@ function DashboardInner() {
   const [phaseFilter, setPhaseFilter] = useState("");
 
   const [rows, setRows] = useState<PlanVsActualRow[]>([]);
+  const { sortedRows: sortedDashRows, ctrl: dashCtrl } = useSortableRows<PlanVsActualRow>(rows);
   const [loadingRows, setLoadingRows] = useState(true);
 
   // Sincronizar cambio de filtro con URL (US-014: estado del filtro en URL).
@@ -434,14 +437,14 @@ function DashboardInner() {
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
               <tr>
-                <th className="px-4 py-3 font-medium">Proyecto</th>
-                <th className="px-4 py-3 font-medium">PM asignado</th>
-                <th className="px-4 py-3 font-medium">Fin plan</th>
-                <th className="px-4 py-3 font-medium">Presupuesto plan</th>
-                <th className="px-4 py-3 font-medium">Presupuesto real</th>
-                <th className="px-4 py-3 font-medium">Avance plan</th>
-                <th className="px-4 py-3 font-medium">Avance real</th>
-                <th className="px-4 py-3 font-medium">Salud</th>
+                <SortableTh<PlanVsActualRow> sortKey="project" getter={(r) => (r as any).project_name ?? ""} ctrl={dashCtrl} className="px-4 py-3">Proyecto</SortableTh>
+                <SortableTh<PlanVsActualRow> sortKey="pm" getter={(r) => (r as any).pm_name ?? ""} ctrl={dashCtrl} className="px-4 py-3">PM asignado</SortableTh>
+                <SortableTh<PlanVsActualRow> sortKey="end_plan" getter={(r) => (r as any).end_plan ?? ""} ctrl={dashCtrl} className="px-4 py-3">Fin plan</SortableTh>
+                <SortableTh<PlanVsActualRow> sortKey="budget_plan" getter={(r) => (r as any).budget_plan ?? 0} ctrl={dashCtrl} className="px-4 py-3">Presupuesto plan</SortableTh>
+                <SortableTh<PlanVsActualRow> sortKey="budget_actual" getter={(r) => (r as any).budget_actual ?? 0} ctrl={dashCtrl} className="px-4 py-3">Presupuesto real</SortableTh>
+                <SortableTh<PlanVsActualRow> sortKey="progress_plan" getter={(r) => (r as any).progress_plan ?? 0} ctrl={dashCtrl} className="px-4 py-3">Avance plan</SortableTh>
+                <SortableTh<PlanVsActualRow> sortKey="progress_actual" getter={(r) => (r as any).progress_actual ?? 0} ctrl={dashCtrl} className="px-4 py-3">Avance real</SortableTh>
+                <SortableTh<PlanVsActualRow> sortKey="health" getter={(r) => (r as any).health ?? ""} ctrl={dashCtrl} className="px-4 py-3">Salud</SortableTh>
               </tr>
             </thead>
             <tbody>
@@ -455,8 +458,8 @@ function DashboardInner() {
                     ))}
                   </tr>
                 ))
-              ) : rows.length > 0 ? (
-                rows.map((r) => (
+              ) : sortedDashRows.length > 0 ? (
+                sortedDashRows.map((r) => (
                   <tr
                     key={r.project_id}
                     className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
