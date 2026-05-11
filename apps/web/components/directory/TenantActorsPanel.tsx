@@ -25,6 +25,8 @@ import {
   type Actor,
   type Area,
 } from "@/lib/api/areas";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 
 export function TenantActorsPanel() {
   const [actors, setActors] = useState<Actor[]>([]);
@@ -74,6 +76,8 @@ export function TenantActorsPanel() {
     }
     return rows;
   }, [actors, areaFilter, search]);
+
+  const { sortedRows, ctrl: sortCtrl } = useSortableRows<Actor>(filtered);
 
   async function handleDelete(actor: Actor) {
     if (!confirm(`¿Eliminar persona "${actor.name}"?`)) return;
@@ -132,15 +136,15 @@ export function TenantActorsPanel() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase">
             <tr>
-              <th className="px-3 py-2">Nombre</th>
-              <th className="px-3 py-2">Email</th>
-              <th className="px-3 py-2">Empresa / Cargo</th>
-              <th className="px-3 py-2">Área funcional</th>
+              <SortableTh<Actor> sortKey="name" getter={(a) => a.name} ctrl={sortCtrl}>Nombre</SortableTh>
+              <SortableTh<Actor> sortKey="email" getter={(a) => a.email ?? ""} ctrl={sortCtrl}>Email</SortableTh>
+              <SortableTh<Actor> sortKey="company" getter={(a) => a.company ?? ""} ctrl={sortCtrl}>Empresa / Cargo</SortableTh>
+              <SortableTh<Actor> sortKey="area" getter={(a) => a.area_id ? areaById[a.area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {sortedRows.length === 0 ? (
               <tr>
                 <td
                   colSpan={5}
@@ -152,7 +156,7 @@ export function TenantActorsPanel() {
                 </td>
               </tr>
             ) : (
-              filtered.map((a) => (
+              sortedRows.map((a) => (
                 <tr key={a.id} className="border-t hover:bg-muted/30">
                   <td className="px-3 py-2">
                     <span className="font-medium text-[var(--color-primary)]">

@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 import { auditLogsCsvUrl, listAuditLogs, type AuditLogEntry } from "@/lib/api/admin-panel";
 
 const ENTITY_TYPES = [
@@ -31,6 +33,7 @@ const ENTITY_TYPES = [
 
 export default function AuditLogsPage() {
   const [rows, setRows] = useState<AuditLogEntry[]>([]);
+  const { sortedRows, ctrl: auditCtrl } = useSortableRows<AuditLogEntry>(rows);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,12 +149,12 @@ export default function AuditLogsPage() {
           <table className="w-full text-[13px]">
             <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
               <tr>
-                <th className="h-10 px-4 font-medium">Cuándo</th>
-                <th className="h-10 px-4 font-medium">Acción</th>
-                <th className="h-10 px-4 font-medium">Módulo</th>
-                <th className="h-10 px-4 font-medium">Entidad</th>
-                <th className="h-10 px-4 font-medium">Usuario</th>
-                <th className="h-10 px-4 font-medium">IP</th>
+                <SortableTh<AuditLogEntry> sortKey="when" getter={(r) => (r as any).created_at ?? ""} ctrl={auditCtrl} className="h-10 px-4">Cuándo</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="action" getter={(r) => (r as any).action ?? ""} ctrl={auditCtrl} className="h-10 px-4">Acción</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="module" getter={(r) => (r as any).module ?? ""} ctrl={auditCtrl} className="h-10 px-4">Módulo</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="entity" getter={(r) => (r as any).entity_type ?? ""} ctrl={auditCtrl} className="h-10 px-4">Entidad</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="user" getter={(r) => (r as any).user_email ?? ""} ctrl={auditCtrl} className="h-10 px-4">Usuario</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="ip" getter={(r) => (r as any).ip ?? ""} ctrl={auditCtrl} className="h-10 px-4">IP</SortableTh>
                 <th className="h-10 px-4 font-medium">Detalles</th>
               </tr>
             </thead>
@@ -167,7 +170,7 @@ export default function AuditLogsPage() {
                   </tr>
                 ))
               ) : rows.length ? (
-                rows.map((r) => (
+                sortedRows.map((r) => (
                   <tr key={r.id} className="border-b border-[var(--border-subtle)]">
                     <td className="px-4 py-2 font-mono text-[11px] text-[var(--text-secondary)]">
                       {r.occurred_at ? new Date(r.occurred_at).toLocaleString("es-MX") : "—"}

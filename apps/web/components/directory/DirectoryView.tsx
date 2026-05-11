@@ -35,6 +35,8 @@ import {
   type Participation,
   type ProjectRole,
 } from "@/lib/api/project-directory";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 
 type Props = {
   projectId: string;
@@ -120,6 +122,9 @@ export function DirectoryView({ projectId }: Props) {
     );
   }, [participations, actorsById, search]);
 
+  // ENH-088: orden por columna.
+  const { sortedRows, ctrl: sortCtrl } = useSortableRows<Row>(rows);
+
   async function handleRemove(p: Participation, actorName: string | undefined) {
     if (!confirm(`¿Quitar a "${actorName ?? "esta persona"}" del proyecto?`)) {
       return;
@@ -169,17 +174,17 @@ export function DirectoryView({ projectId }: Props) {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase">
               <tr>
-                <th className="px-3 py-2">Persona</th>
-                <th className="px-3 py-2">Empresa / Cargo</th>
-                <th className="px-3 py-2">Área funcional</th>
-                <th className="px-3 py-2">Equipo operativo</th>
-                <th className="px-3 py-2">Rol</th>
-                <th className="px-3 py-2">Periodo</th>
+                <SortableTh<Row> sortKey="name" getter={(r) => r.actor?.name ?? ""} ctrl={sortCtrl}>Persona</SortableTh>
+                <SortableTh<Row> sortKey="company" getter={(r) => r.actor?.company ?? ""} ctrl={sortCtrl}>Empresa / Cargo</SortableTh>
+                <SortableTh<Row> sortKey="area" getter={(r) => r.participation.functional_area_id ? areasById[r.participation.functional_area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
+                <SortableTh<Row> sortKey="team" getter={(r) => r.participation.operational_team_id ? teamsById[r.participation.operational_team_id]?.name ?? "" : ""} ctrl={sortCtrl}>Equipo operativo</SortableTh>
+                <SortableTh<Row> sortKey="role" getter={(r) => r.participation.project_role_id ? rolesById[r.participation.project_role_id]?.name ?? "" : ""} ctrl={sortCtrl}>Rol</SortableTh>
+                <SortableTh<Row> sortKey="period" getter={(r) => r.participation.start_date ?? ""} ctrl={sortCtrl}>Periodo</SortableTh>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ participation: p, actor }) => (
+              {sortedRows.map(({ participation: p, actor }) => (
                 <tr key={p.id} className="border-t hover:bg-muted/30">
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">

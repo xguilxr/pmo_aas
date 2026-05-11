@@ -16,6 +16,8 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 import { ApiError } from "@/lib/api";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 import {
   ISSUE_STATUS_LABEL,
   ISSUE_TYPE_LABEL,
@@ -354,23 +356,24 @@ function RiskTable({
   rows: TenantRisk[];
   onPreview: (r: TenantRisk) => void;
 }) {
+  const { sortedRows, ctrl } = useSortableRows<TenantRisk>(rows);
   return (
     <table className="w-full text-sm">
       <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
         <tr>
           <th className="w-10 px-3 py-2" />
-          <th className="px-3 py-2 font-medium">Folio</th>
-          <th className="px-3 py-2 font-medium">Título</th>
-          <th className="px-3 py-2 font-medium">Área</th>
-          <th className="px-3 py-2 font-medium">Severidad</th>
-          <th className="px-3 py-2 font-medium">Estado</th>
-          <th className="px-3 py-2 font-medium">F. Creación</th>
-          <th className="px-3 py-2 font-medium">F. Compromiso</th>
-          <th className="px-3 py-2 font-medium">Proyecto</th>
+          <SortableTh<TenantRisk> sortKey="folio" getter={(r) => r.folio} ctrl={ctrl}>Folio</SortableTh>
+          <SortableTh<TenantRisk> sortKey="title" getter={(r) => r.title} ctrl={ctrl}>Título</SortableTh>
+          <SortableTh<TenantRisk> sortKey="area" getter={(r) => r.area?.name ?? ""} ctrl={ctrl}>Área</SortableTh>
+          <SortableTh<TenantRisk> sortKey="severity" getter={(r) => r.severity ?? 0} ctrl={ctrl}>Severidad</SortableTh>
+          <SortableTh<TenantRisk> sortKey="status" getter={(r) => r.status} ctrl={ctrl}>Estado</SortableTh>
+          <SortableTh<TenantRisk> sortKey="identified" getter={(r) => r.identified_at ?? ""} ctrl={ctrl}>F. Creación</SortableTh>
+          <SortableTh<TenantRisk> sortKey="due" getter={(r) => r.due_date ?? ""} ctrl={ctrl}>F. Compromiso</SortableTh>
+          <SortableTh<TenantRisk> sortKey="project" getter={(r) => (r as any).project_name ?? r.project_id} ctrl={ctrl}>Proyecto</SortableTh>
         </tr>
       </thead>
       <tbody>
-        {rows.map((r) => (
+        {sortedRows.map((r) => (
           <tr key={r.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
             <td className="px-3 py-2">
               <button
@@ -452,22 +455,23 @@ function IssueTable({
           : "Incidente",
     [kind],
   );
+  const { sortedRows, ctrl } = useSortableRows<TenantIssue>(rows);
   return (
     <table className="w-full text-sm">
       <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
         <tr>
           <th className="w-10 px-3 py-2" />
-          <th className="px-3 py-2 font-medium">Folio</th>
-          <th className="px-3 py-2 font-medium">Título</th>
-          <th className="px-3 py-2 font-medium">Área</th>
-          <th className="px-3 py-2 font-medium">Tipo</th>
-          <th className="px-3 py-2 font-medium">Estado</th>
-          <th className="px-3 py-2 font-medium">F. Compromiso</th>
-          <th className="px-3 py-2 font-medium">Proyecto</th>
+          <SortableTh<TenantIssue> sortKey="folio" getter={(r) => r.folio} ctrl={ctrl}>Folio</SortableTh>
+          <SortableTh<TenantIssue> sortKey="title" getter={(r) => r.title} ctrl={ctrl}>Título</SortableTh>
+          <SortableTh<TenantIssue> sortKey="area" getter={(r) => r.area?.name ?? ""} ctrl={ctrl}>Área</SortableTh>
+          <SortableTh<TenantIssue> sortKey="type" getter={(r) => r.type ?? ""} ctrl={ctrl}>Tipo</SortableTh>
+          <SortableTh<TenantIssue> sortKey="status" getter={(r) => r.status} ctrl={ctrl}>Estado</SortableTh>
+          <SortableTh<TenantIssue> sortKey="due" getter={(r) => r.committed_date ?? ""} ctrl={ctrl}>F. Compromiso</SortableTh>
+          <SortableTh<TenantIssue> sortKey="project" getter={(r) => (r as any).project_name ?? r.project_id} ctrl={ctrl}>Proyecto</SortableTh>
         </tr>
       </thead>
       <tbody>
-        {rows.map((r) => (
+        {sortedRows.map((r) => (
           <tr key={r.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
             <td className="px-3 py-2">
               <button

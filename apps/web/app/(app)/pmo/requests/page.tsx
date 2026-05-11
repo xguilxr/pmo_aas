@@ -18,6 +18,8 @@ import {
   type RequestStatus,
 } from "@/lib/api/requests";
 import { cn } from "@/lib/cn";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 
 const TABS: { key: RequestStatus; label: string }[] = [
   { key: "in_review", label: REQUEST_STATUS_LABEL.in_review },
@@ -57,6 +59,7 @@ export default function RequestsListPage() {
 
   const [rows, setRows] = useState<ProjectRequest[]>([]);
   const [orgs, setOrgs] = useState<Record<string, Organization>>({});
+  const { sortedRows: sortedReqRows, ctrl: reqCtrl } = useSortableRows<ProjectRequest>(rows);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -172,12 +175,12 @@ export default function RequestsListPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
               <tr>
-                <th className="px-4 py-3 font-medium">Folio</th>
-                <th className="px-4 py-3 font-medium">Título</th>
-                <th className="px-4 py-3 font-medium">Organización</th>
-                <th className="px-4 py-3 font-medium">Fecha</th>
-                <th className="px-4 py-3 font-medium">Presupuesto</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
+                <SortableTh<ProjectRequest> sortKey="folio" getter={(r) => r.folio} ctrl={reqCtrl} className="px-4 py-3">Folio</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="title" getter={(r) => r.title} ctrl={reqCtrl} className="px-4 py-3">Título</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="org" getter={(r) => orgs[r.organization_id]?.name ?? ""} ctrl={reqCtrl} className="px-4 py-3">Organización</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="date" getter={(r) => r.requested_at ?? (r as any).created_at ?? ""} ctrl={reqCtrl} className="px-4 py-3">Fecha</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="budget" getter={(r) => (r as any).budget ?? 0} ctrl={reqCtrl} className="px-4 py-3">Presupuesto</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="status" getter={(r) => r.status} ctrl={reqCtrl} className="px-4 py-3">Estado</SortableTh>
               </tr>
             </thead>
             <tbody>
@@ -192,8 +195,8 @@ export default function RequestsListPage() {
                     <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
                   </tr>
                 ))
-              ) : rows.length > 0 ? (
-                rows.map((r) => (
+              ) : sortedReqRows.length > 0 ? (
+                sortedReqRows.map((r) => (
                   <tr
                     key={r.id}
                     className="cursor-pointer border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"

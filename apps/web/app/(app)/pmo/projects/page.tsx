@@ -25,6 +25,8 @@ import {
   type ProjectType,
 } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 
 const ALL_PHASES: ProjectPhase[] = ["planning", "execution", "support", "closed"];
 const ALL_TYPES: ProjectType[] = ["innovation", "transformation", "operation", "bau"];
@@ -333,18 +335,19 @@ function ListView({
   orgs: Organization[];
 }) {
   const orgsMap = useMemo(() => Object.fromEntries(orgs.map((o) => [o.id, o])), [orgs]);
+  const { sortedRows, ctrl: sortCtrl } = useSortableRows<Project>(rows);
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[13px]">
         <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
           <tr>
-            <th className="h-10 px-4 font-medium">Proyecto</th>
-            <th className="h-10 px-4 font-medium">Organización</th>
-            <th className="h-10 px-4 font-medium">Fase</th>
-            <th className="h-10 px-4 font-medium">Prioridad</th>
-            <th className="h-10 px-4 font-medium">Avance</th>
-            <th className="h-10 px-4 font-medium">Presupuesto</th>
-            <th className="h-10 px-4 font-medium">Salud</th>
+            <SortableTh<Project> sortKey="name" getter={(p) => p.name} ctrl={sortCtrl} className="h-10 px-4">Proyecto</SortableTh>
+            <SortableTh<Project> sortKey="org" getter={(p) => orgsMap[p.organization_id]?.name ?? ""} ctrl={sortCtrl} className="h-10 px-4">Organización</SortableTh>
+            <SortableTh<Project> sortKey="phase" getter={(p) => p.phase ?? ""} ctrl={sortCtrl} className="h-10 px-4">Fase</SortableTh>
+            <SortableTh<Project> sortKey="priority" getter={(p) => (p as any).priority ?? ""} ctrl={sortCtrl} className="h-10 px-4">Prioridad</SortableTh>
+            <SortableTh<Project> sortKey="progress" getter={(p) => (p as any).progress_pct ?? 0} ctrl={sortCtrl} className="h-10 px-4">Avance</SortableTh>
+            <SortableTh<Project> sortKey="budget" getter={(p) => (p as any).budget ?? 0} ctrl={sortCtrl} className="h-10 px-4">Presupuesto</SortableTh>
+            <SortableTh<Project> sortKey="health" getter={(p) => (p as any).health ?? ""} ctrl={sortCtrl} className="h-10 px-4">Salud</SortableTh>
           </tr>
         </thead>
         <tbody>
@@ -358,8 +361,8 @@ function ListView({
                 ))}
               </tr>
             ))
-          ) : rows.length ? (
-            rows.map((p) => (
+          ) : sortedRows.length ? (
+            sortedRows.map((p) => (
               <tr
                 key={p.id}
                 className="h-14 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60"

@@ -22,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 import {
   ISSUE_STATUS_LABEL,
   ISSUE_TYPE_LABEL,
@@ -554,12 +556,13 @@ function RisksSection({
     );
   }
 
-  const visibleRows = useMemo(() => {
+  const filteredRows = useMemo(() => {
     if (!cellFilter) return rows;
     return rows.filter(
       (r) => r.probability === cellFilter.p && r.impact === cellFilter.i,
     );
   }, [rows, cellFilter]);
+  const { sortedRows: visibleRows, ctrl: riskSortCtrl } = useSortableRows<Risk>(filteredRows);
 
   return (
     <div className="space-y-5">
@@ -604,13 +607,13 @@ function RisksSection({
               <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
                 <tr>
                   <th className="w-10 px-3 py-2" aria-label="Preview" />
-                  <th className="px-3 py-2 font-medium">Folio</th>
-                  <th className="px-3 py-2 font-medium">Título</th>
-                  <th className="px-3 py-2 font-medium">Área</th>
-                  <th className="px-3 py-2 font-medium">Severidad</th>
-                  <th className="px-3 py-2 font-medium">Estado</th>
-                  <th className="px-3 py-2 font-medium">F. Creación</th>
-                  <th className="px-3 py-2 font-medium">F. Compromiso</th>
+                  <SortableTh<Risk> sortKey="folio" getter={(r) => r.folio} ctrl={riskSortCtrl}>Folio</SortableTh>
+                  <SortableTh<Risk> sortKey="title" getter={(r) => r.title} ctrl={riskSortCtrl}>Título</SortableTh>
+                  <SortableTh<Risk> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={riskSortCtrl}>Área</SortableTh>
+                  <SortableTh<Risk> sortKey="severity" getter={(r) => r.severity ?? 0} ctrl={riskSortCtrl}>Severidad</SortableTh>
+                  <SortableTh<Risk> sortKey="status" getter={(r) => r.status} ctrl={riskSortCtrl}>Estado</SortableTh>
+                  <SortableTh<Risk> sortKey="identified" getter={(r) => (r as any).identified_at ?? ""} ctrl={riskSortCtrl}>F. Creación</SortableTh>
+                  <SortableTh<Risk> sortKey="due" getter={(r) => r.due_date ?? ""} ctrl={riskSortCtrl}>F. Compromiso</SortableTh>
                 </tr>
               </thead>
               <tbody>
@@ -715,6 +718,7 @@ function IssuesSection({
   onIssueUpdate: (i: Partial<Issue> & { id: string }) => void;
 }) {
   const [preview, setPreview] = useState<Issue | null>(null);
+  const { sortedRows, ctrl: issueSortCtrl } = useSortableRows<Issue>(rows);
   void projectId;
   if (rows.length === 0) {
     return (
@@ -741,18 +745,18 @@ function IssuesSection({
           <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
             <tr>
               <th className="w-10 px-3 py-2" aria-label="Preview" />
-              <th className="px-3 py-2 font-medium">Folio</th>
-              <th className="px-3 py-2 font-medium">Título</th>
-              <th className="px-3 py-2 font-medium">Área</th>
-              <th className="px-3 py-2 font-medium">Tipo</th>
-              <th className="px-3 py-2 font-medium">Prioridad</th>
-              <th className="px-3 py-2 font-medium">Estado</th>
-              <th className="px-3 py-2 font-medium">F. Creación</th>
-              <th className="px-3 py-2 font-medium">F. Compromiso</th>
+              <SortableTh<Issue> sortKey="folio" getter={(r) => r.folio} ctrl={issueSortCtrl}>Folio</SortableTh>
+              <SortableTh<Issue> sortKey="title" getter={(r) => r.title} ctrl={issueSortCtrl}>Título</SortableTh>
+              <SortableTh<Issue> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={issueSortCtrl}>Área</SortableTh>
+              <SortableTh<Issue> sortKey="type" getter={(r) => (r as any).type ?? ""} ctrl={issueSortCtrl}>Tipo</SortableTh>
+              <SortableTh<Issue> sortKey="priority" getter={(r) => (r as any).priority ?? 0} ctrl={issueSortCtrl}>Prioridad</SortableTh>
+              <SortableTh<Issue> sortKey="status" getter={(r) => r.status} ctrl={issueSortCtrl}>Estado</SortableTh>
+              <SortableTh<Issue> sortKey="identified" getter={(r) => (r as any).identified_at ?? (r as any).created_at ?? ""} ctrl={issueSortCtrl}>F. Creación</SortableTh>
+              <SortableTh<Issue> sortKey="committed" getter={(r) => (r as any).committed_date ?? ""} ctrl={issueSortCtrl}>F. Compromiso</SortableTh>
             </tr>
           </thead>
           <tbody>
-            {rows.map((it) => (
+            {sortedRows.map((it) => (
               <tr
                 key={it.id}
                 className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"

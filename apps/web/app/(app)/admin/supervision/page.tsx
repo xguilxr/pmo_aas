@@ -11,6 +11,8 @@ import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
+import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { SortableTh } from "@/components/ui/sortable-th";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import {
   forceCloseProject,
@@ -32,6 +34,7 @@ function formatMxn(n: number): string {
 
 export default function SupervisionPage() {
   const [rows, setRows] = useState<AdminProjectRow[]>([]);
+  const { sortedRows, ctrl: supCtrl } = useSortableRows<AdminProjectRow>(rows);
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [metrics, setMetrics] = useState<OrgMetrics[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,11 +174,11 @@ export default function SupervisionPage() {
           <table className="w-full text-[13px]">
             <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
               <tr>
-                <th className="h-10 px-4 font-medium">Proyecto</th>
-                <th className="h-10 px-4 font-medium">Organización</th>
-                <th className="h-10 px-4 font-medium">Fase</th>
-                <th className="h-10 px-4 font-medium">Salud</th>
-                <th className="h-10 px-4 font-medium">Presupuesto</th>
+                <SortableTh<AdminProjectRow> sortKey="project" getter={(r) => (r as any).name ?? ""} ctrl={supCtrl} className="h-10 px-4">Proyecto</SortableTh>
+                <SortableTh<AdminProjectRow> sortKey="org" getter={(r) => (r as any).organization_name ?? ""} ctrl={supCtrl} className="h-10 px-4">Organización</SortableTh>
+                <SortableTh<AdminProjectRow> sortKey="phase" getter={(r) => (r as any).phase ?? ""} ctrl={supCtrl} className="h-10 px-4">Fase</SortableTh>
+                <SortableTh<AdminProjectRow> sortKey="health" getter={(r) => (r as any).health ?? ""} ctrl={supCtrl} className="h-10 px-4">Salud</SortableTh>
+                <SortableTh<AdminProjectRow> sortKey="budget" getter={(r) => (r as any).budget ?? 0} ctrl={supCtrl} className="h-10 px-4">Presupuesto</SortableTh>
                 <th className="h-10 px-4" />
               </tr>
             </thead>
@@ -191,7 +194,7 @@ export default function SupervisionPage() {
                   </tr>
                 ))
               ) : rows.length ? (
-                rows.map((r) => (
+                sortedRows.map((r) => (
                   <tr key={r.id} className="h-14 border-b border-[var(--border-subtle)]">
                     <td className="px-4">
                       <Link
