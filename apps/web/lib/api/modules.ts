@@ -49,6 +49,7 @@ export type Risk = {
   severity: number | null;
   mitigation_strategy: string | null;
   owner_id: string | null;
+  owner_actor_id?: string | null;
   owner: UserMini | null;
   area_id: string | null;
   area: AreaMini | null;
@@ -67,6 +68,7 @@ export type RiskCreateBody = {
   impact: number;
   mitigation_strategy?: string | null;
   owner_id?: string | null;
+  owner_actor_id?: string | null;
   area_id: string; // US-064: obligatorio en creación.
   identified_at?: string | null;
   due_date?: string | null;
@@ -138,6 +140,7 @@ export type Issue = {
   resolution: string | null;
   status: IssueStatus;
   owner_id: string | null;
+  owner_actor_id?: string | null;
   owner: UserMini | null;
   area_id: string | null;
   area: AreaMini | null;
@@ -152,6 +155,7 @@ export type IssueCreateBody = {
   priority?: number | null;
   committed_date?: string | null;
   owner_id?: string | null;
+  owner_actor_id?: string | null;
   area_id: string; // US-064: obligatorio en creación.
   status?: IssueStatus;
 };

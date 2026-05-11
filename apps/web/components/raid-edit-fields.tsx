@@ -10,7 +10,6 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
-import { listUsers } from "@/lib/api/admin";
 import {
   type Issue,
   type IssueType,
@@ -20,6 +19,7 @@ import {
 } from "@/lib/api/modules";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { ProjectAreaPicker } from "@/components/directory/ProjectAreaPicker";
+import { PersonPicker } from "@/components/directory/PersonPicker";
 
 /**
  * ENH-036 — formulario inline de edición completa para items RAID en
@@ -36,8 +36,6 @@ import { ProjectAreaPicker } from "@/components/directory/ProjectAreaPicker";
  *
  * Permisos: requiere `raid:update` o `raid:write` (capability gate).
  */
-
-type RaidUserOption = { id: string; full_name: string; email: string };
 
 type SaveResult<T> = (next: T) => void;
 
@@ -62,14 +60,15 @@ export function RaidEditFields(props:
   const [error, setError] = useState<string | null>(null);
 
   const [areas, setAreas] = useState<ProjectArea[]>([]);
-  const [users, setUsers] = useState<RaidUserOption[]>([]);
   const [optsLoading, setOptsLoading] = useState(false);
 
   // Local form state — initialized from `item` when entering edit mode.
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.description ?? "");
   const [areaId, setAreaId] = useState(item.area_id ?? "");
-  const [ownerId, setOwnerId] = useState(item.owner_id ?? "");
+  const [ownerActorId, setOwnerActorId] = useState<string>(
+    (item as { owner_actor_id?: string | null }).owner_actor_id ?? "",
+  );
   const [riskProb, setRiskProb] = useState<number>(
     kind === "risk" ? item.probability ?? 1 : 1,
   );
@@ -115,26 +114,12 @@ export function RaidEditFields(props:
     if (!editing) return;
     let cancelled = false;
     setOptsLoading(true);
-    Promise.all([
-      listProjectAreas(item.project_id, { is_active: true }),
-      listUsers({ is_active: true, page: 1, limit: 200 }).catch(() => ({
-        items: [] as { id: string; full_name?: string | null; email: string }[],
-      })),
-    ])
-      .then(([areaRows, usersResp]) => {
-        if (cancelled) return;
-        setAreas(areaRows);
-        const userRows = (usersResp as { items: { id: string; full_name?: string | null; email: string }[] }).items;
-        setUsers(
-          userRows.map((u) => ({
-            id: u.id,
-            full_name: u.full_name ?? "",
-            email: u.email,
-          })),
-        );
+    listProjectAreas(item.project_id, { is_active: true })
+      .then((areaRows) => {
+        if (!cancelled) setAreas(areaRows);
       })
       .catch(() => {
-        /* non-fatal — selects quedan vacíos */
+        /* non-fatal — areas quedan vacías */
       })
       .finally(() => {
         if (!cancelled) setOptsLoading(false);
@@ -148,7 +133,9 @@ export function RaidEditFields(props:
     setTitle(item.title);
     setDescription(item.description ?? "");
     setAreaId(item.area_id ?? "");
-    setOwnerId(item.owner_id ?? "");
+    setOwnerActorId(
+      (item as { owner_actor_id?: string | null }).owner_actor_id ?? "",
+    );
     if (kind === "risk") {
       setRiskProb(item.probability ?? 1);
       setRiskImpact(item.impact ?? 1);
@@ -186,7 +173,7 @@ export function RaidEditFields(props:
           description: description.trim() || null,
           category: riskCategory.trim() || null,
           area_id: areaId || undefined,
-          owner_id: ownerId || null,
+          owner_actor_id: ownerActorId || null,
           probability: riskProb,
           impact: riskImpact,
           mitigation_strategy: riskMitigation.trim() || null,
@@ -202,7 +189,7 @@ export function RaidEditFields(props:
           description: description.trim() || null,
           type: issueType,
           area_id: areaId || undefined,
-          owner_id: ownerId || null,
+          owner_actor_id: ownerActorId || null,
           priority: issuePriority === "" ? null : Number(issuePriority),
           // ENH-054: reported_at viaja como ISO string si tiene fecha.
           reported_at: issueReported
@@ -298,18 +285,13 @@ export function RaidEditFields(props:
           />
         </Field>
         <Field label="Responsable">
-          <Select
-            value={ownerId}
-            onChange={(e) => setOwnerId(e.target.value)}
+          <PersonPicker
+            projectId={item.project_id}
+            value={ownerActorId || null}
+            onChange={(v) => setOwnerActorId(v ?? "")}
             disabled={optsLoading}
-          >
-            <option value="">— sin responsable —</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.full_name?.trim() || u.email}
-              </option>
-            ))}
-          </Select>
+            placeholder="— sin responsable —"
+          />
         </Field>
       </div>
 
