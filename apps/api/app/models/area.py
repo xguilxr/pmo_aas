@@ -182,10 +182,19 @@ class Actor(Base, TimestampMixin):
     email: Mapped[str | None] = mapped_column(String(200))
     phone: Mapped[str | None] = mapped_column(String(32))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    # ENH-078: marca actor como líder de su área. El área enlaza vía
-    # `areas.lead_actor_id`. Sin constraint single-leader-per-area
-    # (validación en endpoint).
+    # ENH-078 / US-114: liderazgo legacy global. Coexiste con
+    # `project_participations.is_area_lead` (líder por proyecto) hasta
+    # que US-119 dropee este campo.
     is_lead: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # US-114: enriquecimiento de persona. `company`/`job_title` para el
+    # directorio (cliente, vendor, interno, cargo organizacional);
+    # `manager_actor_id` autoreferencia para reportes jerárquicos.
+    company: Mapped[str | None] = mapped_column(String(200))
+    job_title: Mapped[str | None] = mapped_column(String(200))
+    manager_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("actors.id", ondelete="SET NULL"),
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")

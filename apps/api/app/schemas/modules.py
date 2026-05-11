@@ -253,6 +253,7 @@ class LessonCreate(BaseModel):
     phase: str | None = None
     recommendation: str | None = None
     tags: list[str] = []
+    owner_actor_id: UUID | None = None
 
 
 class LessonUpdate(BaseModel):
@@ -262,6 +263,7 @@ class LessonUpdate(BaseModel):
     phase: str | None = None
     recommendation: str | None = None
     tags: list[str] | None = None
+    owner_actor_id: UUID | None = None
 
 
 class LessonRead(BaseModel):
@@ -275,6 +277,7 @@ class LessonRead(BaseModel):
     recommendation: str | None
     tags: list[str] = []
     status: str
+    owner_actor_id: UUID | None = None
 
     model_config = {"from_attributes": True}
 

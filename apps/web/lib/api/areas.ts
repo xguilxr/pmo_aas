@@ -35,6 +35,10 @@ export type Actor = {
   phone: string | null;
   is_active: boolean;
   is_lead?: boolean;
+  // US-114: enriquecimiento.
+  company?: string | null;
+  job_title?: string | null;
+  manager_actor_id?: string | null;
   created_at: string;
 };
 
@@ -201,12 +205,17 @@ export function listActors(params?: {
 
 export function createActor(body: {
   team_id?: string | null;
+  area_id?: string | null;
   user_id?: string | null;
   name: string;
   email?: string | null;
   phone?: string | null;
   is_active?: boolean;
   is_lead?: boolean;
+  // US-114: enriquecimiento.
+  company?: string | null;
+  job_title?: string | null;
+  manager_actor_id?: string | null;
 }): Promise<Actor> {
   return apiFetch<Actor>("/api/v1/actors", { method: "POST", body });
 }

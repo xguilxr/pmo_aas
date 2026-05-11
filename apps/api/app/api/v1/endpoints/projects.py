@@ -24,6 +24,7 @@ from app.schemas.project import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.project_membership_sync import sync_member_to_participation
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -128,6 +129,10 @@ async def create_project(
     await db.flush()
 
     db.add(ProjectMember(project_id=project.id, user_id=str(body.pm_id), role_in_project="pm"))
+    # US-118 Fase 1: doble escritura → project_participations.
+    await sync_member_to_participation(
+        db, tenant_id, project.id, str(body.pm_id), "pm"
+    )
 
     # BUG-018: autocrear charter + documento con la info que llega del form.
     # Los campos no capturados (stakeholders extra, prioridad, alcance,

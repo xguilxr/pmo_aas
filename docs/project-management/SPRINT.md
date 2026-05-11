@@ -63,17 +63,22 @@ Próximo libre: US-119, BUG-056, ENH-092.
 > Issues creados con status:triage. Owner pasa a status:ready para arrancar.
 
 ```
-Sprint 25 (v1.24) — EP017 Directorio de Proyecto — TRIAGE 2026-05-10:
-  Bloque 1 (MVP):
-    US-114 #349 — Schema directorio: project_participations + project_roles + refactor actors/teams
-    US-115 #350 — API directorio: endpoints participations + project_roles + refactor /actors /teams
-    US-116 #351 — UI rediseño /pmo/projects/[id]/areas + /admin/areas (dos toggles)
-    US-117 #352 — Dropdowns filtrados por participation en plan/RAID/cambios/lecciones/minutas
-  Bloque 2 (post-MVP, no bloqueante):
-    US-118 #353 — Consolidar project_members en project_participations + migrar permisos RBAC
+Sprint 25 (v1.24) — EP017 Directorio de Proyecto — Bloque 1+2 ENTREGADO 2026-05-10 (5 de 5, pendiente verif. owner):
+  US-114 #349 (6842344) — Schema additivo: project_participations + project_roles + actors enriquecido. Migración 0061.
+  US-115 #350 (49ea588) — API: endpoints participations + project_roles + servicio derived_assignment.
+  US-116 #351 (a24212f) — UI: tab Directorio en /pmo/projects/[id]/areas + DirectoryView + AddPersonModal + EditParticipationModal + cliente API.
+  US-117 #352 (4236214) — eligible-actors endpoint + PersonPicker + lessons.owner_actor_id (migración 0062).
+  US-118 #353 (2896787) — Fase 1 doble escritura project_members → project_participations (sync helper + cableado en POST /projects).
+  Migraciones agregadas: 0061 + 0062.
   Branch sesión: claude/design-areas-resources-8DIfi
   Epic doc: docs/epics/EP017-project-directory.md
-  Pendiente owner: crear label EP017 en GitHub UI; aprobar status:ready de US-114→US-117 para arrancar Bloque 1.
+  Diferidos (sin issue, no bloqueantes):
+    - /admin/areas rediseño completo (Toggle 2 con 5 sub-tabs).
+    - Cableado de PersonPicker en cada formulario existente (TaskAssigneeDropdown, RiskOwnerDropdown, IssueOwnerDropdown, ChangeApproverPicker, LessonOwnerDropdown, ParticipantPicker minutas).
+    - Filtros/agrupadores de Plan por dimensiones derivadas (depende de PersonPicker integrado + ENH-077).
+    - US-118 Fases 2 (RBAC migra a leer participations) y 3 (drop project_members) — abrir US separadas con owner OK explícito por blast radius.
+    - US-119 cleanup: drop legacy actors.team_id, actors.is_lead, teams.area_id, tasks/risks/issues.area_id (mantenidos hasta que el cableado de PersonPicker complete migración).
+  Pendiente owner: crear label EP017 en GitHub UI y aplicar a #349-353; verificar fix; cerrar issues.
 
 (antes: vacío — todos los issues nuevos están organizados en bloques de Sprint 13-16, ver abajo.)
 ```

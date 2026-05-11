@@ -113,6 +113,10 @@ class Lesson(Base, _ModuleBase, TimestampMixin):
     phase: Mapped[str | None] = mapped_column(String(32))
     recommendation: Mapped[str | None] = mapped_column(String(5000))
     tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # US-117: dueño como Actor del catálogo (consistente con risks/issues/tasks).
+    owner_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("actors.id", ondelete="SET NULL")
+    )
 
 
 class MeetingMinute(Base, _ModuleBase, TimestampMixin):
