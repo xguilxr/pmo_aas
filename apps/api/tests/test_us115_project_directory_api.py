@@ -1,6 +1,5 @@
 """US-115 — endpoints de project_directory."""
 import pytest
-from sqlalchemy import select
 
 from app.models.area import Actor
 from app.models.organization import Organization
@@ -36,10 +35,12 @@ async def _setup(db_session):
 @pytest.mark.asyncio
 async def test_us115_project_role_unique(db_session):
     """TC-115-5 (parcial): UNIQUE (tenant_id, name) en project_roles."""
+    from sqlalchemy.exc import IntegrityError
+
     db_session.add(ProjectRole(tenant_id="t1", name="PM"))
     await db_session.commit()
     db_session.add(ProjectRole(tenant_id="t1", name="PM"))
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         await db_session.commit()
 
 

@@ -32,7 +32,6 @@ from app.models.project_participation import ProjectParticipation
 from app.models.project_role import ProjectRole
 from app.models.user import User
 
-
 _ROLE_LABEL_MAP = {
     "pm": "PM",
     "sponsor": "Sponsor",

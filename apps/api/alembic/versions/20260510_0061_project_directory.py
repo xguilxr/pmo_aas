@@ -197,7 +197,7 @@ def upgrade() -> None:
         bind.execute(
             sa.text(
                 "INSERT INTO actors (id, tenant_id, user_id, name, email, is_active, is_lead) "
-                "VALUES (:id, :t, :u, :n, :e, 1, 0)"
+                "VALUES (:id, :t, :u, :n, :e, TRUE, FALSE)"
             ),
             {
                 "id": aid,
@@ -246,7 +246,7 @@ def upgrade() -> None:
                     " functional_area_id, is_area_lead, is_primary, is_active) "
                     "SELECT :id, :t, :p, :a, :r, "
                     "       (SELECT area_id FROM actors WHERE id=:a), "
-                    "       0, 0, 1"
+                    "       FALSE, FALSE, TRUE"
                 ),
                 {
                     "id": str(uuid.uuid4()),
@@ -284,7 +284,7 @@ def upgrade() -> None:
                     "INSERT INTO project_participations "
                     "(id, tenant_id, project_id, actor_id, operational_team_id, "
                     " functional_area_id, is_area_lead, is_primary, is_active) "
-                    "VALUES (:id, :t, :p, :a, :tm, :ar, 0, 1, 1)"
+                    "VALUES (:id, :t, :p, :a, :tm, :ar, FALSE, TRUE, TRUE)"
                 ),
                 {
                     "id": str(uuid.uuid4()),
@@ -299,8 +299,8 @@ def upgrade() -> None:
     # 4.3) is_area_lead = actor.is_lead + functional_area_id matches
     bind.execute(
         sa.text(
-            "UPDATE project_participations SET is_area_lead = 1 "
-            "WHERE actor_id IN (SELECT id FROM actors WHERE is_lead = 1) "
+            "UPDATE project_participations SET is_area_lead = TRUE "
+            "WHERE actor_id IN (SELECT id FROM actors WHERE is_lead = TRUE) "
             "AND functional_area_id IS NOT NULL"
         )
     )
@@ -321,7 +321,7 @@ def upgrade() -> None:
         # SQLite fallback: sin WINDOW, tomar MIN(id) por grupo
         bind.execute(
             sa.text(
-                "UPDATE project_participations SET is_primary = 1 "
+                "UPDATE project_participations SET is_primary = TRUE "
                 "WHERE id IN ("
                 "  SELECT MIN(id) FROM project_participations "
                 "  GROUP BY project_id, actor_id"

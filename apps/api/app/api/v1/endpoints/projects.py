@@ -12,7 +12,6 @@ from app.models.organization import Organization
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
-from app.services.project_membership_sync import sync_member_to_participation
 from app.models.user import User
 from app.schemas.project import (
     MemberCreate,
@@ -25,6 +24,7 @@ from app.schemas.project import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.project_membership_sync import sync_member_to_participation
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 

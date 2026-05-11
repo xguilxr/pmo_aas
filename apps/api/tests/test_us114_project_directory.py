@@ -2,7 +2,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.models.area import Actor, Area
+from app.models.area import Actor
 from app.models.project_participation import ProjectParticipation
 from app.models.project_role import ProjectRole
 
