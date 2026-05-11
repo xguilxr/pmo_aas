@@ -323,6 +323,7 @@ async def create_risk(
         probability=body.probability, impact=body.impact, severity=severity,
         mitigation_strategy=body.mitigation_strategy,
         owner_id=str(body.owner_id) if body.owner_id else None,
+        owner_actor_id=str(body.owner_actor_id) if body.owner_actor_id else None,
         area_id=str(body.area_id),
         identified_at=body.identified_at, due_date=body.due_date,
         status=body.status, created_by=cu.id,
@@ -386,6 +387,8 @@ async def update_risk(
             raise business_rule("closure_note obligatorio al cerrar/materializar")
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    if "owner_actor_id" in data and data["owner_actor_id"] is not None:
+        data["owner_actor_id"] = str(data["owner_actor_id"])
     # US-064: si el PATCH cambia area_id, validar pertenencia al proyecto.
     if "area_id" in data and data["area_id"] is not None:
         await _validate_area(db, data["area_id"], UUID(r.project_id), tenant_id)
@@ -545,6 +548,7 @@ async def create_issue(
         title=body.title, description=body.description, type=body.type,
         priority=body.priority, committed_date=body.committed_date,
         owner_id=str(body.owner_id) if body.owner_id else None,
+        owner_actor_id=str(body.owner_actor_id) if body.owner_actor_id else None,
         area_id=str(body.area_id),
         status=body.status, reported_at=datetime.now(UTC),
         comments=[], created_by=cu.id,
@@ -632,6 +636,8 @@ async def update_issue(
     data = body.model_dump(exclude_none=True)
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
+    if "owner_actor_id" in data and data["owner_actor_id"] is not None:
+        data["owner_actor_id"] = str(data["owner_actor_id"])
     # US-064: si cambia area_id en PATCH, validar pertenencia.
     if "area_id" in data and data["area_id"] is not None:
         await _validate_area(db, data["area_id"], UUID(i.project_id), tenant_id)
