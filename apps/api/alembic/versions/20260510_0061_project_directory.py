@@ -239,14 +239,17 @@ def upgrade() -> None:
             if key in seen_pa:
                 continue
             seen_pa.add(key)
+            area_row = bind.execute(
+                sa.text("SELECT area_id FROM actors WHERE id=:a"),
+                {"a": actor_id},
+            ).fetchone()
+            area_id = area_row[0] if area_row else None
             bind.execute(
                 sa.text(
                     "INSERT INTO project_participations "
                     "(id, tenant_id, project_id, actor_id, project_role_id, "
                     " functional_area_id, is_area_lead, is_primary, is_active) "
-                    "SELECT :id, :t, :p, :a, :r, "
-                    "       (SELECT area_id FROM actors WHERE id=:a), "
-                    "       FALSE, FALSE, TRUE"
+                    "VALUES (:id, :t, :p, :a, :r, :ar, FALSE, FALSE, TRUE)"
                 ),
                 {
                     "id": str(uuid.uuid4()),
@@ -254,6 +257,7 @@ def upgrade() -> None:
                     "p": project_id,
                     "a": actor_id,
                     "r": _role_id(tenant_id, role_label),
+                    "ar": area_id,
                 },
             )
 
