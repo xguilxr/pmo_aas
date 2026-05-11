@@ -108,7 +108,7 @@ export const updateParticipation = (
 ) =>
   apiFetch<Participation>(
     `/api/v1/projects/${projectId}/participations/${participationId}`,
-    { method: "PATCH", body: JSON.stringify(body) },
+    { method: "PATCH", body },
   );
 
 export const deleteParticipation = (projectId: string, participationId: string) =>
