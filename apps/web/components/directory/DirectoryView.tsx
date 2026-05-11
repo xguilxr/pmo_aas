@@ -1,16 +1,11 @@
 "use client";
 
-// US-116 — Toggle 1 del rediseño de /pmo/projects/[id]/areas.
-// Lista actores con primary participation en el proyecto (directorio
-// navegable). Acciones: agregar persona del catálogo tenant, crear nueva
-// persona inline, editar participation, desactivar.
-//
-// La vista es self-contained: convive con la vista legacy de áreas/actores
-// de la misma página. Los catálogos del Toggle 2 viven en componentes
-// separados (CatalogTabs).
+// US-116 — Toggle Directorio del proyecto.
+// ENH-082 — agregado: operational_team_id en modales, inline create de
+// área/equipo/rol, botón "Quitar" en fila, nombres legibles (no UUIDs).
 
 import { useEffect, useMemo, useState } from "react";
-import { Crown, Plus, Star, UserPlus, X } from "lucide-react";
+import { Crown, Plus, Star, Trash2, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,21 +15,24 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   createActor,
+  createArea,
+  createTeam,
   listActors,
+  listAreasByProject,
+  listTeams,
   type Actor,
   type Area,
-  listAreasByProject,
+  type Team,
 } from "@/lib/api/areas";
-
-const listActorsTenant = () => listActors();
 import {
   createParticipation,
+  createProjectRole,
   deleteParticipation,
   listParticipations,
   listProjectRoles,
+  updateParticipation,
   type Participation,
   type ProjectRole,
-  updateParticipation,
 } from "@/lib/api/project-directory";
 
 type Props = {
@@ -49,8 +47,9 @@ type Row = {
 export function DirectoryView({ projectId }: Props) {
   const [participations, setParticipations] = useState<Participation[]>([]);
   const [actorsById, setActorsById] = useState<Record<string, Actor>>({});
-  const [areasById, setAreasById] = useState<Record<string, Area>>({});
-  const [rolesById, setRolesById] = useState<Record<string, ProjectRole>>({});
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [roles, setRoles] = useState<ProjectRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -61,15 +60,17 @@ export function DirectoryView({ projectId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const [parts, areas, roles, actors] = await Promise.all([
+      const [parts, ar, tm, ro, actors] = await Promise.all([
         listParticipations(projectId, { include: "actor" }),
         listAreasByProject(projectId).catch(() => [] as Area[]),
+        listTeams().catch(() => [] as Team[]),
         listProjectRoles().catch(() => [] as ProjectRole[]),
-        listActorsTenant().catch(() => [] as Actor[]),
+        listActors().catch(() => [] as Actor[]),
       ]);
       setParticipations(parts);
-      setAreasById(Object.fromEntries(areas.map((a) => [a.id, a])));
-      setRolesById(Object.fromEntries(roles.map((r) => [r.id, r])));
+      setAreas(ar);
+      setTeams(tm);
+      setRoles(ro);
       setActorsById(Object.fromEntries(actors.map((a) => [a.id, a])));
     } catch (e: any) {
       setError(e?.message ?? "Error cargando directorio");
@@ -83,8 +84,20 @@ export function DirectoryView({ projectId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  const areasById = useMemo(
+    () => Object.fromEntries(areas.map((a) => [a.id, a])),
+    [areas],
+  );
+  const teamsById = useMemo(
+    () => Object.fromEntries(teams.map((t) => [t.id, t])),
+    [teams],
+  );
+  const rolesById = useMemo(
+    () => Object.fromEntries(roles.map((r) => [r.id, r])),
+    [roles],
+  );
+
   const rows: Row[] = useMemo(() => {
-    // Solo primary participation por (actor) — el resto se ve en el modal de detalle.
     const byActor: Record<string, Participation> = {};
     for (const p of participations) {
       if (!p.is_active) continue;
@@ -105,6 +118,18 @@ export function DirectoryView({ projectId }: Props) {
         r.actor?.company?.toLowerCase().includes(q),
     );
   }, [participations, actorsById, search]);
+
+  async function handleRemove(p: Participation, actorName: string | undefined) {
+    if (!confirm(`¿Quitar a "${actorName ?? "esta persona"}" del proyecto?`)) {
+      return;
+    }
+    try {
+      await deleteParticipation(projectId, p.id);
+      await refresh();
+    } catch (e: any) {
+      setError(e?.message ?? "Error al quitar");
+    }
+  }
 
   if (loading) {
     return (
@@ -183,7 +208,11 @@ export function DirectoryView({ projectId }: Props) {
                       ? areasById[p.functional_area_id]?.name ?? "—"
                       : "—"}
                   </td>
-                  <td className="px-3 py-2">{p.operational_team_id ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    {p.operational_team_id
+                      ? teamsById[p.operational_team_id]?.name ?? "—"
+                      : "—"}
+                  </td>
                   <td className="px-3 py-2">
                     {p.project_role_id
                       ? rolesById[p.project_role_id]?.name ?? "—"
@@ -200,6 +229,14 @@ export function DirectoryView({ projectId }: Props) {
                     >
                       Editar
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemove(p, actor?.name)}
+                      title="Quitar del proyecto"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -211,6 +248,9 @@ export function DirectoryView({ projectId }: Props) {
       {showAdd && (
         <AddPersonModal
           projectId={projectId}
+          initialAreas={areas}
+          initialTeams={teams}
+          initialRoles={roles}
           onClose={() => setShowAdd(false)}
           onSaved={() => {
             setShowAdd(false);
@@ -223,6 +263,9 @@ export function DirectoryView({ projectId }: Props) {
         <EditParticipationModal
           projectId={projectId}
           participation={editing}
+          initialAreas={areas}
+          initialTeams={teams}
+          initialRoles={roles}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -235,21 +278,27 @@ export function DirectoryView({ projectId }: Props) {
 }
 
 // ---------------------------------------------------------------------------
-// Add Person modal — Toggle 1 entry-point. Permite (a) seleccionar del
-// catálogo tenant o (b) crear actor nuevo inline + crear participation.
+// Add Person modal
 // ---------------------------------------------------------------------------
 function AddPersonModal({
   projectId,
+  initialAreas,
+  initialTeams,
+  initialRoles,
   onClose,
   onSaved,
 }: {
   projectId: string;
+  initialAreas: Area[];
+  initialTeams: Team[];
+  initialRoles: ProjectRole[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [tenantActors, setTenantActors] = useState<Actor[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [roles, setRoles] = useState<ProjectRole[]>([]);
+  const [areas, setAreas] = useState<Area[]>(initialAreas);
+  const [teams, setTeams] = useState<Team[]>(initialTeams);
+  const [roles, setRoles] = useState<ProjectRole[]>(initialRoles);
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [actorId, setActorId] = useState<string>("");
   const [newActorName, setNewActorName] = useState("");
@@ -257,6 +306,7 @@ function AddPersonModal({
   const [newActorCompany, setNewActorCompany] = useState("");
   const [newActorJobTitle, setNewActorJobTitle] = useState("");
   const [functionalAreaId, setFunctionalAreaId] = useState<string>("");
+  const [operationalTeamId, setOperationalTeamId] = useState<string>("");
   const [roleId, setRoleId] = useState<string>("");
   const [isAreaLead, setIsAreaLead] = useState(false);
   const [isPrimary, setIsPrimary] = useState(true);
@@ -264,16 +314,10 @@ function AddPersonModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      listActorsTenant().catch(() => []),
-      listAreasByProject(projectId).catch(() => []),
-      listProjectRoles({ is_active: true }).catch(() => []),
-    ]).then(([a, ar, ro]) => {
-      setTenantActors(a as Actor[]);
-      setAreas(ar as Area[]);
-      setRoles(ro as ProjectRole[]);
-    });
-  }, [projectId]);
+    listActors()
+      .then((a) => setTenantActors(a))
+      .catch(() => setTenantActors([]));
+  }, []);
 
   async function submit() {
     setSaving(true);
@@ -295,6 +339,7 @@ function AddPersonModal({
       await createParticipation(projectId, {
         actor_id: aid,
         functional_area_id: functionalAreaId || undefined,
+        operational_team_id: operationalTeamId || undefined,
         project_role_id: roleId || undefined,
         is_area_lead: isAreaLead,
         is_primary: isPrimary,
@@ -365,32 +410,60 @@ function AddPersonModal({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-xs">
-            Área funcional
-            <Select
-              value={functionalAreaId}
-              onChange={(e) => setFunctionalAreaId(e.target.value)}
-            >
-              <option value="">—</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="text-xs">
-            Rol proyecto
-            <Select value={roleId} onChange={(e) => setRoleId(e.target.value)}>
-              <option value="">—</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </Select>
-          </label>
+        <div className="grid grid-cols-1 gap-2">
+          <CatalogPickerWithCreate
+            label="Área funcional"
+            value={functionalAreaId}
+            onChange={setFunctionalAreaId}
+            options={areas.map((a) => ({ id: a.id, label: a.name }))}
+            onCreate={async (name) => {
+              const created = await createArea({ name, is_active: true });
+              setAreas((prev) => [...prev, created]);
+              return created.id;
+            }}
+            createPlaceholder="Nombre del área"
+          />
+          <CatalogPickerWithCreate
+            label="Equipo operativo"
+            value={operationalTeamId}
+            onChange={setOperationalTeamId}
+            options={teams.map((t) => ({
+              id: t.id,
+              label: t.name,
+              hint:
+                areas.find((a) => a.id === t.area_id)?.name ?? undefined,
+            }))}
+            onCreate={async (name) => {
+              const areaForTeam =
+                functionalAreaId || areas[0]?.id;
+              if (!areaForTeam) {
+                throw new Error("Crea o selecciona un área primero");
+              }
+              const created = await createTeam({
+                area_id: areaForTeam,
+                name,
+                is_active: true,
+              });
+              setTeams((prev) => [...prev, created]);
+              return created.id;
+            }}
+            createPlaceholder="Nombre del equipo"
+          />
+          <CatalogPickerWithCreate
+            label="Rol proyecto"
+            value={roleId}
+            onChange={setRoleId}
+            options={roles.map((r) => ({ id: r.id, label: r.name }))}
+            onCreate={async (name) => {
+              const created = await createProjectRole({
+                name,
+                is_active: true,
+              });
+              setRoles((prev) => [...prev, created]);
+              return created.id;
+            }}
+            createPlaceholder="Nombre del rol"
+          />
         </div>
 
         <div className="flex gap-4 text-xs">
@@ -433,18 +506,28 @@ function AddPersonModal({
 function EditParticipationModal({
   projectId,
   participation,
+  initialAreas,
+  initialTeams,
+  initialRoles,
   onClose,
   onSaved,
 }: {
   projectId: string;
   participation: Participation;
+  initialAreas: Area[];
+  initialTeams: Team[];
+  initialRoles: ProjectRole[];
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [roles, setRoles] = useState<ProjectRole[]>([]);
+  const [areas, setAreas] = useState<Area[]>(initialAreas);
+  const [teams, setTeams] = useState<Team[]>(initialTeams);
+  const [roles, setRoles] = useState<ProjectRole[]>(initialRoles);
   const [functionalAreaId, setFunctionalAreaId] = useState(
     participation.functional_area_id ?? "",
+  );
+  const [operationalTeamId, setOperationalTeamId] = useState(
+    participation.operational_team_id ?? "",
   );
   const [roleId, setRoleId] = useState(participation.project_role_id ?? "");
   const [isAreaLead, setIsAreaLead] = useState(participation.is_area_lead);
@@ -454,22 +537,13 @@ function EditParticipationModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([
-      listAreasByProject(projectId).catch(() => []),
-      listProjectRoles({ is_active: true }).catch(() => []),
-    ]).then(([ar, ro]) => {
-      setAreas(ar as Area[]);
-      setRoles(ro as ProjectRole[]);
-    });
-  }, [projectId]);
-
   async function save() {
     setSaving(true);
     setError(null);
     try {
       await updateParticipation(projectId, participation.id, {
         functional_area_id: functionalAreaId || null,
+        operational_team_id: operationalTeamId || null,
         project_role_id: roleId || null,
         is_area_lead: isAreaLead,
         is_primary: isPrimary,
@@ -485,7 +559,7 @@ function EditParticipationModal({
   }
 
   async function removeFromProject() {
-    if (!confirm("¿Quitar persona del proyecto? (soft-delete)")) return;
+    if (!confirm("¿Quitar persona del proyecto?")) return;
     setSaving(true);
     try {
       await deleteParticipation(projectId, participation.id);
@@ -500,33 +574,54 @@ function EditParticipationModal({
   return (
     <Modal open={true} title="Editar participación" onClose={onClose}>
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-xs">
-            Área funcional
-            <Select
-              value={functionalAreaId}
-              onChange={(e) => setFunctionalAreaId(e.target.value)}
-            >
-              <option value="">—</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="text-xs">
-            Rol proyecto
-            <Select value={roleId} onChange={(e) => setRoleId(e.target.value)}>
-              <option value="">—</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-        </div>
+        <CatalogPickerWithCreate
+          label="Área funcional"
+          value={functionalAreaId}
+          onChange={setFunctionalAreaId}
+          options={areas.map((a) => ({ id: a.id, label: a.name }))}
+          onCreate={async (name) => {
+            const created = await createArea({ name, is_active: true });
+            setAreas((prev) => [...prev, created]);
+            return created.id;
+          }}
+          createPlaceholder="Nombre del área"
+        />
+        <CatalogPickerWithCreate
+          label="Equipo operativo"
+          value={operationalTeamId}
+          onChange={setOperationalTeamId}
+          options={teams.map((t) => ({
+            id: t.id,
+            label: t.name,
+            hint: areas.find((a) => a.id === t.area_id)?.name ?? undefined,
+          }))}
+          onCreate={async (name) => {
+            const areaForTeam = functionalAreaId || areas[0]?.id;
+            if (!areaForTeam) {
+              throw new Error("Crea o selecciona un área primero");
+            }
+            const created = await createTeam({
+              area_id: areaForTeam,
+              name,
+              is_active: true,
+            });
+            setTeams((prev) => [...prev, created]);
+            return created.id;
+          }}
+          createPlaceholder="Nombre del equipo"
+        />
+        <CatalogPickerWithCreate
+          label="Rol proyecto"
+          value={roleId}
+          onChange={setRoleId}
+          options={roles.map((r) => ({ id: r.id, label: r.name }))}
+          onCreate={async (name) => {
+            const created = await createProjectRole({ name, is_active: true });
+            setRoles((prev) => [...prev, created]);
+            return created.id;
+          }}
+          createPlaceholder="Nombre del rol"
+        />
 
         <div className="grid grid-cols-2 gap-2">
           <label className="text-xs">
@@ -570,7 +665,7 @@ function EditParticipationModal({
 
         <div className="flex justify-between pt-2">
           <Button variant="secondary" onClick={removeFromProject} disabled={saving}>
-            <X className="mr-1 h-4 w-4" /> Quitar del proyecto
+            <Trash2 className="mr-1 h-4 w-4" /> Quitar del proyecto
           </Button>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>
@@ -583,5 +678,106 @@ function EditParticipationModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Select con opción "+ Crear nuevo" inline. onCreate recibe el nombre y
+// devuelve el id del item creado, que se setea automáticamente.
+// ---------------------------------------------------------------------------
+function CatalogPickerWithCreate({
+  label,
+  value,
+  onChange,
+  options,
+  onCreate,
+  createPlaceholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { id: string; label: string; hint?: string }[];
+  onCreate: (name: string) => Promise<string>;
+  createPlaceholder: string;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submitCreate() {
+    if (!newName.trim()) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const id = await onCreate(newName.trim());
+      onChange(id);
+      setNewName("");
+      setCreating(false);
+    } catch (e: any) {
+      setErr(e?.message ?? "Error al crear");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <label className="block text-xs">
+      <div className="flex items-center justify-between">
+        <span>{label}</span>
+        {!creating ? (
+          <button
+            type="button"
+            className="text-[var(--color-accent)] hover:underline"
+            onClick={() => setCreating(true)}
+          >
+            + Crear nuevo
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="text-[var(--color-tertiary)] hover:underline"
+            onClick={() => {
+              setCreating(false);
+              setNewName("");
+              setErr(null);
+            }}
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
+      {creating ? (
+        <div className="mt-1 space-y-1">
+          <div className="flex gap-1">
+            <Input
+              placeholder={createPlaceholder}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitCreate();
+                }
+              }}
+            />
+            <Button size="sm" onClick={submitCreate} disabled={busy || !newName.trim()}>
+              {busy ? "…" : "Crear"}
+            </Button>
+          </div>
+          {err ? <p className="text-red-600">{err}</p> : null}
+        </div>
+      ) : (
+        <Select value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">—</option>
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+              {o.hint ? ` (${o.hint})` : ""}
+            </option>
+          ))}
+        </Select>
+      )}
+    </label>
   );
 }

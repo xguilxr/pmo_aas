@@ -272,7 +272,7 @@ function Row({
       <div className="flex-1">
         <div className="flex items-center gap-2">
           <span className="font-medium text-[var(--color-primary)]">{title}</span>
-          {badge ? <Badge variant="secondary">{badge}</Badge> : null}
+          {badge ? <Badge variant="neutral">{badge}</Badge> : null}
           {inactive ? <Badge variant="danger">Inactivo</Badge> : null}
         </div>
         {subtitle ? (
