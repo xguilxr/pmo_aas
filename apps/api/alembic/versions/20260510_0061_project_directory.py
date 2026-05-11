@@ -171,7 +171,7 @@ def upgrade() -> None:
             bind.execute(
                 sa.text(
                     "INSERT INTO project_roles (id, tenant_id, name, description, is_active) "
-                    "VALUES (:id, :t, :n, :d, 1)"
+                    "VALUES (:id, :t, :n, :d, TRUE)"
                 ),
                 {"id": rid, "t": tenant_id, "n": name, "d": desc},
             )
