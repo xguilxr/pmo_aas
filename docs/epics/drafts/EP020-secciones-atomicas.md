@@ -382,6 +382,57 @@ Soporta IA: opcional — narrativa de seguimiento de compromisos vencidos
 Niveles: 3, 4.
 ```
 
+#### S-11 Riesgos (R) — SPEC CERRADO
+```
+Categoría: RAID (segundo en A→R→D→I)
+Propósito: panorama de riesgos del proyecto, priorizados por severidad.
+           Audiencia: sponsor / dirección.
+
+Fuente: risks
+  Sub-bloque ABIERTOS:  status IN ('open', 'mitigating', 'monitoring')
+  Sub-bloque MITIGADOS: status = 'mitigated' AND closed_at dentro de ventana
+
+Severidad: probabilidad (1-5) × impacto (1-5) → score 1-25
+Buckets:
+  CRÍTICO (rojo)     score >= 15
+  ALTO    (naranja)  score 9-14
+  MEDIO   (amarillo) score 4-8
+  BAJO    (verde)    score 1-3
+
+Visual default: (δ) Tabla compacta priorizada — DOS sub-tablas
+
+  ──── Riesgos abiertos ────
+  Columnas: Riesgo | Severidad (chip) | Prob×Imp | Estado | Dueño | Área
+  Orden default: severidad desc → área asc → fecha_identificación asc
+
+  ──── Riesgos mitigados (ventana) ────
+  Columnas: Riesgo | Severidad al mitigar | Fecha mitigación | Dueño | Área
+  Orden: fecha_mitigación desc
+
+NOTA: NO incluir columna "Mitigación corta" (densidad innecesaria).
+      El plan de mitigación se consulta en el módulo Riesgos directo.
+
+Modo Avance (composición A): orden severidad → área → fecha
+Modo Seguimiento (composición B): filtrar por área del bloque, orden
+                                   severidad desc → fecha asc
+
+Modos:
+  resumen (default): top N abiertos + mitigados de la ventana
+  detalle:           todos los abiertos sin top N
+
+Parámetros específicos:
+  top_n_abiertos:    5 / 10 / 20 / todos (default 10)
+  incluir_buckets:   multi-select (default crítico+alto+medio)
+  ventana_mitigados: 7 / 14 / 30 días (default 14)
+  mostrar_mitigados: sí/no (default sí)
+
+Soporta IA: opcional — narrativa de top 3 críticos
+            ("riesgo X concentra impacto en hito Y").
+
+Niveles: 3, 4.
+         Nivel 1/2: vista cross-proyecto agregada en S-34.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
