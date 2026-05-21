@@ -976,6 +976,80 @@ Soporta IA: no.
 Niveles: 3, 4.
 ```
 
+#### S-31 KPI tile + S-32 Tabla de KPIs — SPEC CERRADO
+```
+Categoría: KPI
+Propósito:
+  S-31 = tarjeta individual (tile) con UN KPI. Se combinan en grids
+         (3-4 tiles por fila) al top del reporte.
+  S-32 = tabla con N KPIs en filas. Se usa cuando se necesitan muchos
+         KPIs sin gastar el ancho del canvas en tiles.
+  AMBAS están disponibles en el catálogo (no son excluyentes).
+
+Catálogo base v1.0 (CERRADO — extensión por admin tenant es follow-up v2.0):
+
+  KPI-01  % Avance plan vs real        (reusa S-06)
+  KPI-02  % Avance hitos               (cumplidos del periodo / total hitos del periodo)
+  KPI-03  # Riesgos críticos abiertos
+  KPI-04  # Issues abiertos
+  KPI-05  # Acciones vencidas
+  KPI-06  Días al próximo hito
+  KPI-07  # Cambios aprobados en el periodo
+  KPI-08  # Decisiones pendientes
+  KPI-09  CV / CPI                     (solo si PPS activo en el proyecto)
+  KPI-10  % Tareas en curso vs planeadas
+
+  Cada KPI tiene una función de cálculo registrada en el motor por id.
+
+Features que dependen de snapshots → DESCARTADAS en v1.0:
+  - Δ vs periodo anterior (delta arrow + número)
+  - Sparkline (últimos N cortes)
+  Razón: requieren snapshots históricos del KPI, infraestructura que no
+  existe en plataforma todavía. Se posterga a v2.0 junto con S-05 / S-07.
+
+Visual default S-31 (tile):
+  ┌─────────────────┐
+  │ % Avance        │
+  │                 │
+  │     62%         │   ← valor grande
+  │                 │
+  └─────────────────┘
+  Sin delta ni sparkline en v1.0.
+
+Visual default S-32 (tabla):
+  Columnas: KPI | Valor actual
+  (sin columnas de tendencia / delta en v1.0)
+
+Tamaño canvas:
+  S-31: 1/4 o 1/3
+  S-32: full o 1/2
+
+Modo Avance / Seguimiento:
+  Si el KPI soporta filtrado por área, se recalcula con el área del
+  bloque en Modo B (ej. KPI-01, KPI-02, KPI-04, KPI-05 sí).
+  Si no soporta área (ej. KPI-09 CV/CPI proyecto-completo), se omite
+  en Modo B o se muestra el global.
+
+Parámetros específicos S-31:
+  kpi_id:              selector del catálogo (uno)
+  tamaño:              1/4 (default) / 1/3
+
+Parámetros específicos S-32:
+  kpis_seleccionados:  multi-select del catálogo
+  orden:               manual (default) / por id
+
+Soporta IA: no.
+
+Niveles: 3, 4.
+         Nivel 1/2: tiles agregados del portafolio (suma o promedio
+         cross-proyecto) — variante futura.
+
+DEPENDENCIA / FOLLOW-UP v2.0:
+  - Snapshots periódicos del valor de cada KPI por proyecto
+    → habilita delta vs anterior y sparklines.
+  - UI admin tenant para definir KPIs custom con fórmula propia.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
