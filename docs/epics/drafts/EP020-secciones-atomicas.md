@@ -575,6 +575,86 @@ Soporta IA: no (vista visual pura).
 Niveles: 3, 4 (siempre opcional, nunca default).
 ```
 
+#### S-06 % Avance plan vs real — SPEC CERRADO
+```
+Categoría: AVN
+Propósito: KPI más visible del reporte — qué % del plan se ha ejecutado
+           a la fecha de corte vs qué % debía estar ejecutado.
+
+Fuente: tasks (todas las del proyecto, status != cancelled)
+
+Método de cálculo del % real: CONFIGURABLE por tenant
+  Setting del admin del tenant: `progress_calculation_method` enum,
+  con 3 opciones más comunes:
+
+    (a) "weighted_duration"   — DEFAULT recomendado
+         % = Σ(progress_i × duración_planificada_i) / Σ(duración_planificada_i)
+         Cada tarea pesa según cuánto tiempo planeado abarca.
+
+    (b) "weighted_effort"
+         % = Σ(progress_i × horas_estimadas_i) / Σ(horas_estimadas_i)
+         Cada tarea pesa según esfuerzo planeado en horas.
+         Requiere que las tareas tengan horas_estimadas pobladas.
+
+    (c) "simple_count"
+         % = tareas_terminadas / total_tareas
+         Sin ponderación. Útil cuando todas las tareas son comparables
+         en tamaño, o cuando no hay duración/horas confiables.
+
+  El reporte consulta el setting y aplica el método correspondiente.
+  Si el setting no existe, default = "weighted_duration".
+
+Método del % planeado a fecha de corte:
+  Default: lineal por duración planificada acumulada
+  (curva S configurada por proyecto queda como follow-up)
+
+Desviación: % real − % planeado (en puntos porcentuales)
+
+Visual default: (a) card con gauge semicircular
+  Centro:    % real (número grande)
+  Subtítulo: "vs N% planeado"
+  Delta:     ±N pp con color
+
+  Color del % real según desviación:
+    verde      ≥ −2 pp     (en o sobre plan)
+    amarillo   −2 a −10 pp (ligero retraso)
+    rojo       < −10 pp    (retraso material)
+  (umbrales recomendados, configurables a futuro)
+
+Variantes seleccionables:
+  (a) card con gauge semicircular — default
+  (b) barra horizontal plan vs real
+  (c) tile minimalista solo número
+
+Tamaño canvas: 1/3 (card individual)
+
+Modo Avance: KPI agregado de todo el proyecto
+Modo Seguimiento (composición B): se recalcula con tasks del área del
+                                   bloque, mostrando avance de esa área
+
+Parámetros específicos:
+  variante:          a / b / c (default a)
+  mostrar_delta_pp:  sí/no (default sí)
+  mostrar_sparkline: sí/no (default no)
+
+Soporta IA: opcional — interpretación corta.
+
+Niveles: 3, 4.
+         Nivel 1/2: se reusa como tile dentro de S-35 (avance promedio
+         portafolio).
+
+DEPENDENCIA DEL SISTEMA (ENH a EP007 Admin / EP001 Tenants):
+  - tenants.progress_calculation_method ENUM
+      ('weighted_duration', 'weighted_effort', 'simple_count')
+      DEFAULT 'weighted_duration'
+  - UI en admin del tenant para seleccionar método (radio buttons +
+    explicación corta de cada opción).
+  - Validación: si selecciona 'weighted_effort' y hay tareas sin
+    horas_estimadas, mostrar warning ("X tareas sin horas estimadas
+    se contarán con peso 0").
+  - Migración Alembic.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
