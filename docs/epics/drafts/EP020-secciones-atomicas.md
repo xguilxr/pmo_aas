@@ -166,11 +166,55 @@ Soporta IA: no (sección directa, sin narrativa).
 Niveles: 3, 4.
 
 DEPENDENCIA DEL SISTEMA (ENH a EP006 Plan — se abre como issue separado):
-  - tasks.is_critical BOOLEAN NOT NULL DEFAULT FALSE
+  - REEMPLAZAR la columna `critical` existente por BOOLEAN NOT NULL DEFAULT FALSE.
+    (Hoy existe una columna `critical` con otra lógica; se elimina para no
+    mantener dos columnas similares con semánticas distintas → riesgo de confusión.)
+  - Migración Alembic: convertir valores existentes (lo que sea TRUTHY → true,
+    el resto false) y dropear la columna vieja.
   - Plantilla import (Excel/CSV): columna "Crítica" (Sí/No)
   - Form edición tarea: checkbox "Crítica" hermano del checkbox "Hito"
-  - Migración Alembic correspondiente
-  - Mapping desde MS Project import si trae flag
+  - Mapping desde MS Project import: si el archivo trae una columna "Critical"
+    (o equivalente), mapearla al BOOLEAN.
+```
+
+#### S-17 Delayed — SPEC CERRADO
+```
+Categoría: PLN
+Propósito: lista operativa de tareas retrasadas, optimizada para
+           "cobrar" a áreas (o personas) que no están cumpliendo.
+
+Fuente:
+  tasks WHERE fecha_plan_fin < hoy
+        AND completed_at IS NULL
+  Exclusiones dinámicas (calculadas en tiempo de render del reporte):
+    - is_milestone = true  → excluir SI S-09 está en el mismo reporte
+    - is_critical  = true  → excluir SI S-16 está en el mismo reporte
+  Si S-09 o S-16 no están en el reporte, S-17 los incluye.
+
+Visual default: tabla compacta agrupada por ÁREA (collapsable)
+  Cabecera área:   Área X    [12 retrasadas · prom. 8d]
+  Filas:           Tarea | Fecha plan | Días retraso (chip color) | Responsable
+  Orden default dentro de cada área: días de retraso desc.
+
+Bandas de retraso (chips de color):
+  1-7d    amarillo claro
+  8-14d   ámbar
+  15-21d  naranja
+  >21d    rojo intenso
+
+Modos:
+  resumen (default): contador por área + promedio días + top 10 por área
+  detalle:           listado completo por área
+
+Parámetros específicos:
+  agrupación:    área (default) | responsable | sin agrupar
+  top_n_resumen: 10 (default)
+  bandas_color:  sí/no (default sí)
+
+Soporta IA: opcional — narrativa por área ("área X acumula 12 tareas con
+            promedio 8d retraso; 3 superan 21d y requieren escalación")
+
+Niveles: 3, 4.
 ```
 
 ### RAID — orden **A → R → D → I**
