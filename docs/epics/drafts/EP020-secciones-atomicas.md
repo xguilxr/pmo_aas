@@ -433,6 +433,53 @@ Niveles: 3, 4.
          Nivel 1/2: vista cross-proyecto agregada en S-34.
 ```
 
+#### S-13 Decisiones (D) — SPEC CERRADO
+```
+Categoría: RAID (tercero en A→R→D→I)
+Propósito: registro de decisiones tomadas + propuestas pendientes.
+           Las decisiones generadas desde minutas son el MISMO registro
+           (no sub-tipo separado), solo difieren en el origen.
+
+Fuente: decisions (módulo separado de Changes)
+  Campo `origin`: "raid_direct" | "minute_<id>"
+  Mismo registro, solo distinto punto de creación.
+
+Estados:
+  TOMADA      verde   decision_date IS NOT NULL
+  PROPUESTA   azul    decision_date IS NULL
+
+  (estado "escalada" queda como follow-up del modelo; hoy los
+   escalamientos se hacen ad-hoc como comentarios en el item.)
+
+Visual default: (δ) Tabla compacta — DOS sub-tablas
+
+  ──── Tomadas (en ventana) ────
+  Columnas: Decisión | Fecha | Tomada por | Impacto | Origen | Área
+  Orden: ÁREA asc → FECHA decisión desc
+
+  ──── Pendientes / Propuestas (deuda activa, sin filtro de ventana) ────
+  Columnas: Decisión | Propuesta por | Impacto | Origen | Área
+  Orden: ÁREA asc → fecha_creación asc (más antiguas primero)
+
+Campo Impacto: se toma directo del registro (no se calcula).
+Origen en reporte: "Manual" si raid_direct, "Minuta YYYY-MM-DD" si minute_<id>.
+
+Modo Avance: orden área → fecha
+Modo Seguimiento (composición B): filtrar por área del bloque
+
+Modos:
+  resumen (default): tomadas (ventana) + propuestas (todas)
+  detalle:           agrega contexto largo + alternativas si existen
+
+Parámetros específicos:
+  ventana_tomadas:    ventana del reporte (default)
+  mostrar_propuestas: sí/no (default sí)
+
+Soporta IA: opcional — síntesis de decisiones clave del periodo.
+
+Niveles: 3, 4.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
