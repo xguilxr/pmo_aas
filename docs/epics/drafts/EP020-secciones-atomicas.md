@@ -730,6 +730,68 @@ Acción: re-evaluar cuando se introduzca el concepto en plataforma.
 Label issue: post-mvp, v2.0
 ```
 
+#### S-19 Snapshot Gantt WBS-1 — SPEC CERRADO
+```
+Categoría: AVN
+Propósito: imagen renderizada del Gantt a primer nivel de WBS, para
+           dar contexto visual del cronograma sin inundar con detalle.
+
+Fuente: tasks aplastadas a WBS-1
+  Cada rama WBS-1 = una fila.
+  Rango barra: min(fecha_plan_inicio hijas) → max(fecha_plan_fin hijas)
+  % avance:    mismo cálculo del tenant aplicado al grupo
+
+Eje X (tiempo): ventana del reporte + buffer
+  default: inicio_ventana − 7d hasta fin_ventana + 14d
+  granularidad: AUTOMÁTICA según duración del eje
+    - eje ≤ 30d  → días
+    - eje ≤ 180d → semanas
+    - eje > 180d → meses
+
+Visual default: Gantt horizontal plan + real
+  Plan: barra hueca/tenue
+  Real: barra sólida coloreada por desviación (umbrales S-06/S-08)
+  Hitos: rombos sobre la barra (solo si S-09 NO está en el reporte)
+  Línea vertical "HOY"
+  Ordenado por fecha_inicio asc.
+
+Render:
+  Client (UI):  SVG interactivo (hover, tooltip)
+  PDF / export: HEADLESS BROWSER (puppeteer / playwright) toma el SVG
+                client-side y lo rasteriza a PNG.
+                Garantiza fidelidad visual entre pantalla y reporte.
+
+Tamaño canvas: full
+
+Modo Avance: todas las ramas WBS-1
+Modo Seguimiento (B): filtrar a ramas del área del bloque
+                      (si el área cruza varias ramas, mostrarlas todas)
+
+Variantes seleccionables:
+  (a) Gantt plan + real (default)
+  (b) Gantt solo real
+  (c) Gantt + hitos (si S-09 no está)
+
+Parámetros específicos:
+  buffer_antes_dias:   0 / 7 (default) / 14
+  buffer_después_dias: 0 / 14 (default) / 30 / 60
+  mostrar_hitos:       auto (default — sí si S-09 NO está)
+  granularidad_eje:    automática (default) / día / semana / mes
+
+Soporta IA: no.
+
+Niveles: 3, 4.
+
+DEPENDENCIA DEL SISTEMA:
+  - Servicio headless browser (puppeteer o playwright) instalado en
+    worker que renderiza el Gantt client-side, exporta SVG/PNG y lo
+    inyecta al PDF generado por WeasyPrint (US-037).
+  - Endpoint nuevo: GET /projects/{id}/gantt/snapshot?wbs_level=1&...
+    devuelve el bytes del PNG/SVG.
+  - Coordinar con el motor PDF (US-037) para que acepte imágenes
+    externas embebidas.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
