@@ -95,10 +95,48 @@ no inflar reportes de planes grandes.
 > Filosofía: en planes de 100-1000+ tareas el detalle completo es contraproducente.
 > Estas 4 secciones cubren lo esencial. Si el PM necesita más detalle, lo pide
 > agregando otra sección o configurando el modo en "detalle".
-- **S-09** Hitos — sub-tabla: cumplidos / próximos / vencidos, en ese orden, dentro de la ventana
-- **S-16** Tareas críticas — del camino crítico **o** marcadas críticas por el PM
-- **S-17** Tareas retrasadas (Delayed) — default modo **resumen** (1 línea por item con responsable + área + días de retraso). Detalle bajo demanda. Útil para "cobrar a áreas" que no cumplen
-- **S-18** Próximas (ventana configurable, default 2 semanas) — agenda ordenada por fecha plan fin asc
+
+#### S-09 Hitos — SPEC CERRADO
+```
+Categoría: PLN
+Propósito: hitos del proyecto agrupados por estado, visualmente digeribles.
+
+Fuente: tasks WHERE is_milestone = true
+
+Estados (4):
+  CUMPLIDO  verde   completed_at dentro de ventana_cumplidos
+  PRÓXIMO   azul    fecha_plan en (hoy, hoy+lookahead]
+  CRÍTICO   ámbar   fecha_plan en (hoy, hoy+3d]   (regla operativa, no configurable)
+  VENCIDO   rojo    fecha_plan < hoy AND completed_at IS NULL
+
+Ventanas:
+  cumplidos:  últimas 2 semanas (configurable, default 14d)
+  próximos:   amarrado a la ventana del reporte
+  vencidos:   TODOS hasta hoy (sin filtro de ventana — deuda viva)
+  críticos:   próximos 3 días (fijo)
+
+Visual default: (β) Tarjetones agrupados por estado
+  - 4 columnas: Cumplidos | Próximos | Críticos | Vencidos
+  - cada hito = mini-card con: título, fecha plan, fecha real/proyectada,
+    variación días, responsable, área
+  - color de borde por estado
+
+Variantes seleccionables (toggle en panel parámetros):
+  (α) Timeline horizontal con tarjetas sobre eje temporal
+  (γ) Mini-Gantt WBS-1 con rombos de hitos
+
+Parámetros específicos (extra a transversales):
+  lookahead_próximos:        14 / 30 / 60 días (default 30, sobreescribe ventana si menor)
+  ventana_cumplidos:         7 / 14 / 30 días (default 14)
+  mostrar_variación_días:    sí/no (default sí, aplica a cumplidos y vencidos)
+  columnas_opcionales:       responsable, área, WBS path
+
+Soporta IA: opcional — narrativa corta por hito vencido o crítico
+            ("vencido 5d por dependencia con X")
+
+Niveles: 3 (Proyecto), 4 (Custom).
+         Nivel 2 versión agregada del programa (X cumplidos / Y planificados).
+```
 
 ### RAID — orden **A → R → D → I**
 Cada subsección con los mismos parámetros transversales (área, ventana, top N, ordenamiento, agrupación).
