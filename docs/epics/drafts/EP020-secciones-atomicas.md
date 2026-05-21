@@ -524,6 +524,57 @@ Niveles: 3, 4.
          Nivel 1/2: agregado cross-proyecto en S-34.
 ```
 
+#### S-15 Matriz Probabilidad × Impacto — SPEC CERRADO
+```
+Categoría: RAID (complemento visual opcional de Riesgos)
+Propósito: heatmap 5×5 que distribuye los riesgos abiertos por
+           probabilidad × impacto. Es una vista visual bonita,
+           NO obligatoria.
+
+IMPORTANTE — Inclusión:
+  Esta sección NO se incluye por default en los reportes base (Avance /
+  Seguimiento). Solo aparece en reportes especializados de Riesgos, o
+  cuando el PM la agrega manualmente en Nivel 4.
+  Función: complemento o reemplazo de S-11 en esos casos.
+
+Fuente: risks WHERE status IN ('open', 'mitigating', 'monitoring')
+
+Visual default: matriz 5×5 numérica
+  Eje Y: Impacto      (1 abajo → 5 arriba)
+  Eje X: Probabilidad (1 izquierda → 5 derecha)
+  Color de celda según bucket: CRÍTICO / ALTO / MEDIO / BAJO
+  Contenido de celda: número de riesgos en esa combinación (badge)
+
+  Si el reporte incluye S-11 también, la tabla complementaria con IDs
+  y títulos ya se muestra naturalmente desde S-11; no se duplica acá.
+
+Tamaño canvas: 1/2
+
+Escala: 5×5 (decisión: mantener 5×5 por ahora; reducción a 3×3
+        requeriría cambio de plataforma + migración de items, fuera
+        de alcance de este epic).
+
+Modo Avance: todos los riesgos abiertos del proyecto
+Modo Seguimiento (composición B): filtrar por área del bloque.
+                                  Si la matriz queda VACÍA en esa
+                                  área → OCULTAR la sección para
+                                  esa área (no renderizar el cuadro).
+
+Variantes:
+  (a) matriz numérica  → default
+  (b) matriz con IDs   → opcional, denso
+  (c) matriz antes/después → DESCARTADA (requería snapshots y
+                              no aporta vs alternativas más simples)
+
+Parámetros específicos:
+  variante:          a / b (default a)
+  incluir_mitigados: sí/no (default no — vista de "qué amenaza HOY")
+
+Soporta IA: no (vista visual pura).
+
+Niveles: 3, 4 (siempre opcional, nunca default).
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
