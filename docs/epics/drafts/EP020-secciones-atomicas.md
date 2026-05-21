@@ -480,6 +480,50 @@ Soporta IA: opcional — síntesis de decisiones clave del periodo.
 Niveles: 3, 4.
 ```
 
+#### S-12 Issues (I) — SPEC CERRADO
+```
+Categoría: RAID (cuarto y último en A→R→D→I)
+Propósito: incidencias / issues del proyecto. Mismo patrón que decisiones:
+           los issues generados desde minutas son el MISMO registro que
+           los creados en RAID directo.
+
+Fuente: issues
+  Campo `origin`: "raid_direct" | "minute_<id>"
+  Campo `severity`: viene tal como esté declarado en el registro
+                    (la sección no calcula, solo presenta)
+  Campo `status`: viene del registro (debe tener su propio estado)
+
+Visual default: (δ) Tabla compacta — DOS sub-tablas
+
+  ──── Abiertos / En curso (sin filtro de ventana, deuda viva) ────
+  Columnas: Issue | Severidad (chip) | Estado | Días abierto |
+            Dueño | Origen | Área
+  Orden: severidad desc → ÁREA asc → días_abierto desc
+  ("días abierto" señala issues envejecidos sin atención)
+
+  ──── Resueltos (en ventana del reporte) ────
+  Columnas: Issue | Severidad | Fecha resolución | Dueño | Área
+  Orden: fecha_resolución desc
+
+Modo Avance: orden severidad → área → días/fecha
+Modo Seguimiento (composición B): filtrar por área del bloque
+
+Modos:
+  resumen (default): top N abiertos + resueltos de la ventana
+  detalle:           todos los abiertos sin top N + descripción larga
+
+Parámetros específicos:
+  top_n_abiertos:    5 / 10 / 20 / todos (default 10)
+  ventana_resueltos: 7 / 14 / 30 días (default 14)
+  mostrar_resueltos: sí/no (default sí)
+
+Soporta IA: opcional — narrativa de top issues envejecidos.
+            ("issue X lleva 18d abierto sin actividad reciente").
+
+Niveles: 3, 4.
+         Nivel 1/2: agregado cross-proyecto en S-34.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
