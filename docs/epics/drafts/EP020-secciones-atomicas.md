@@ -792,6 +792,53 @@ DEPENDENCIA DEL SISTEMA:
     externas embebidas.
 ```
 
+#### S-03 Semáforo global — SPEC CERRADO
+```
+Categoría: EST
+Propósito: chip único con el estado general del proyecto, declarado
+           por el PM. Un solo semáforo (no 4 dimensiones); refleja
+           el juicio profesional del PM respaldado por las secciones
+           operativas del reporte.
+
+Fuente: project_status_snapshots
+  Estado declarado por el PM al cierre del periodo.
+  No se calcula automáticamente.
+
+Estados (RAG):
+  VERDE   on-track
+  ÁMBAR   con desafíos
+  ROJO    fuera de control
+
+Visual default: chip grande centrado, una línea
+  ┌─────────────────────────────────┐
+  │    ESTADO  🟢 VERDE             │
+  │    "comentario corto del PM"    │
+  └─────────────────────────────────┘
+
+Tamaño canvas: full (visual prominente al top del reporte)
+
+Modo Avance: estado del proyecto
+Modo Seguimiento (B): se renderiza UNA SOLA VEZ al inicio del reporte,
+                      no por área.
+
+Parámetros específicos:
+  mostrar_comentario: sí/no (default sí — 1 línea del PM)
+  mostrar_tendencia:  sí/no (default sí — "↑ desde ámbar" si cambió)
+
+Soporta IA: no (es declaración del PM).
+
+Niveles: 3, 4.
+         Nivel 1/2: agregado en S-36 (proyectos en alerta del portafolio).
+
+DEPENDENCIA DEL SISTEMA:
+  - project_status_snapshots: tabla nueva
+      campos: project_id, snapshot_date, status_rag ('green'|'amber'|'red'),
+              comment, created_by
+  - UI en proyecto para que el PM actualice el estado por periodo
+    (dropdown + textarea opcional)
+  - Migración Alembic
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
