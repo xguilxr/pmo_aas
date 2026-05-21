@@ -217,6 +217,70 @@ Soporta IA: opcional — narrativa por área ("área X acumula 12 tareas con
 Niveles: 3, 4.
 ```
 
+#### S-18 Próximas (En curso + Arranca) — SPEC CERRADO
+```
+Categoría: PLN
+Propósito: visión operativa de qué se está trabajando AHORA + qué arranca
+           en el periodo que viene. Complementa lo que YA se cierra
+           (cubierto por S-09 hitos próximos y S-16 críticos próximos).
+
+Estructura: la sección tiene DOS sub-bloques visuales.
+
+  ───────────────────────────────────────────────
+  BLOQUE A — EN CURSO
+  ───────────────────────────────────────────────
+  Fuente:
+    tasks WHERE fecha_plan_inicio < hoy
+          AND fecha_plan_fin   >= hoy
+          AND completed_at IS NULL
+    Excluye:
+      - is_milestone = true  → SI S-09 está en el reporte
+      - is_critical  = true  → SI S-16 está en el reporte
+      - retrasadas (fecha_plan_fin < hoy ya no aplica acá; van a S-17)
+
+  Visual: tabla agrupada por ÁREA
+    Cabecera: Área X    [4 en curso]
+    Columnas: Tarea | Fecha plan fin | Días restantes | Responsable
+    Orden: fecha plan fin asc (las que cierran antes primero)
+
+  ───────────────────────────────────────────────
+  BLOQUE B — ARRANCA (próximos 21 días)
+  ───────────────────────────────────────────────
+  Fuente:
+    tasks WHERE fecha_plan_inicio >= hoy
+          AND fecha_plan_inicio <= hoy + lookahead
+          AND completed_at IS NULL
+    Mismas exclusiones dinámicas que Bloque A.
+
+  Visual: tabla agrupada por SEMANA → luego por ÁREA dentro de cada semana
+    Semana 22-may a 28-may   [8 tareas]
+      └ Área X   [3]
+          Tarea | Inicio | Fin | Responsable
+      └ Área Y   [5]
+          Tarea | Inicio | Fin | Responsable
+    Orden dentro de área: fecha plan inicio asc.
+
+Lookahead default: 21 días (configurable 7 / 14 / 21 / 30 / 60).
+                   Alineado con la banda mayor de S-17 (>21d).
+
+Modos:
+  resumen (default): título + fechas + responsable + área
+  detalle:           agrega WBS path, duración estimada, predecesoras
+
+Parámetros específicos:
+  lookahead:           7 / 14 / 21 / 30 / 60 días (default 21)
+  mostrar_en_curso:    sí/no (default sí — Bloque A visible)
+  mostrar_arranca:     sí/no (default sí — Bloque B visible)
+  agrupación_arranca:  semana→área (default) | semana | área | sin agrupar
+  agrupación_curso:    área (default) | responsable | sin agrupar
+
+Soporta IA: opcional — resumen ejecutivo de carga próxima por área
+            ("equipo X concentrará 60% de la carga arrancante; área Y
+            cierra 5 entregables esta semana").
+
+Niveles: 3, 4.
+```
+
 ### RAID — orden **A → R → D → I**
 Cada subsección con los mismos parámetros transversales (área, ventana, top N, ordenamiento, agrupación).
 - **S-14** **Acuerdos / Acciones (A)** — primero. Pendientes con responsable y fecha compromiso
