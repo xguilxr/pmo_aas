@@ -884,6 +884,18 @@ Parámetros específicos:
 Niveles: 3, 4.
 ```
 
+#### S-05 Tendencia de estado — DIFERIDA v2.0
+```
+Estado: NO se implementa en v1.0.
+Razón: requiere snapshots históricos del semáforo del proyecto, que
+       todavía no existen. La tabla project_status_snapshots se crea
+       con S-03, pero sin data histórica acumulada esta sección no
+       tiene contenido útil.
+Acción: re-evaluar a partir de v2.0, cuando exista al menos 1 trimestre
+        de snapshots acumulados.
+Label issue: post-mvp, v2.0
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
