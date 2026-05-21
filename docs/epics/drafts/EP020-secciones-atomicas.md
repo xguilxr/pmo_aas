@@ -896,6 +896,86 @@ Acción: re-evaluar a partir de v2.0, cuando exista al menos 1 trimestre
 Label issue: post-mvp, v2.0
 ```
 
+#### S-01 Portada — SPEC CERRADO
+```
+Categoría: HDR
+Propósito: primera página del reporte. Identificación visual y datos
+           esenciales.
+
+Contenido:
+  - Título del reporte                  ("Reporte de Avance" / custom)
+  - Nombre del proyecto                  (auto)
+  - Código del proyecto                  ("---" si vacío)
+  - Periodo del reporte                  ("del 8-may al 21-may de 2026")
+  - Fecha de emisión                     (timestamp — identifica el reporte)
+  - Logo PMO (tenant)                    (de quien ofrece el servicio,
+                                          configurable en branding del tenant —
+                                          NO el logo de la app)
+  - Logo cliente (organización)          (configurable en la organización
+                                          dueña del proyecto)
+  - Nombre del PM responsable
+  - Plantilla aplicada
+
+NOTA — Sin versionamiento:
+  Cada emisión es ÚNICA, identificada por su fecha/hora de creación.
+  No hay v1/v2 ni replace-in-place. Re-emitir genera un nuevo reporte
+  con otro timestamp.
+
+Visual default: página dedicada vertical centrada
+  Logos PMO y cliente arriba (lado a lado)
+  Bloque central con título, proyecto, código, periodo, emisión
+  Bloque inferior con PM y plantilla
+
+Campos vacíos: "---"
+
+Parámetros específicos:
+  mostrar_logo_pmo:     sí/no (default sí)
+  mostrar_logo_cliente: sí/no (default sí)
+  mostrar_plantilla:    sí/no (default sí)
+  layout:               vertical centrado (default) / horizontal banner
+
+Modo Avance / Seguimiento: idéntico.
+Soporta IA: no.
+Niveles: 3, 4.
+
+DEPENDENCIA DEL SISTEMA (ENH a EP002 Organizaciones):
+  - organizations.client_logo_url — logo del cliente por organización.
+    Hoy el branding solo cubre el tenant.
+  - UI en admin de organización para upload del logo.
+  - Migración Alembic + S3/R2 storage similar al branding del tenant.
+```
+
+#### S-02 Información del proyecto — SPEC CERRADO
+```
+Categoría: HDR
+Propósito: tabla resumen con datos estructurales del proyecto.
+
+Bloques (configurables, todos pueden activarse/desactivarse):
+  Identificación:
+    Código (---), Nombre, Cliente/organización, Programa, Tipo
+  Cronograma:
+    Inicio plan, Fin plan, Fin proyectada (si difiere), Duración
+  Equipo:
+    Sponsor, PM, Patrocinador técnico (si existe)
+  Presupuesto (OPCIONAL):
+    Presupuesto aprobado, Moneda
+    NOTA: muchos proyectos no manejan presupuesto en plataforma;
+          este bloque queda OFF por default y se activa por proyecto.
+
+Visual default: 2 columnas con bloques etiquetados.
+Campos vacíos: "---"
+
+Parámetros específicos:
+  bloques_visibles:   multi-select
+                      default: identificación + cronograma + equipo
+                      presupuesto se activa solo si el proyecto lo gestiona
+  mostrar_proyectado: sí/no (default sí, si difiere del plan)
+
+Modo Avance / Seguimiento: idéntico.
+Soporta IA: no.
+Niveles: 3, 4.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
