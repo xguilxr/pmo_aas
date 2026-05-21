@@ -655,6 +655,17 @@ DEPENDENCIA DEL SISTEMA (ENH a EP007 Admin / EP001 Tenants):
   - Migración Alembic.
 ```
 
+#### S-07 Curva S — DESCARTADA
+```
+Estado: NO se implementa.
+Razón: requiere rigidez del plan (snapshots históricos consistentes,
+       re-baselining controlado, granularidad fija) que esta plataforma
+       no impone. La flexibilidad del plan haría que la curva sea
+       engañosa más que útil.
+Acción: se elimina del catálogo. Si en el futuro se rigidiza el plan,
+        re-evaluar.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
