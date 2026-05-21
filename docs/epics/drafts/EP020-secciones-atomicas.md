@@ -1150,6 +1150,101 @@ Razón: solicitudes de cambio y lecciones aprendidas existen como
 Acción: re-evaluar si hay demanda.
 ```
 
+#### S-28 Bloque libre rich text — SPEC CERRADO
+```
+Categoría: NAR
+Propósito: contenido textual del PM que no encaja en otras secciones
+           (contexto, anuncios, recordatorios, agradecimientos).
+
+Fuente: input directo del PM en el canvas.
+Persistencia: snapshot del reporte (reports.sections JSONB,
+              item type='free_text').
+
+Visual: bloque editable con toolbar rich-text.
+  Soporta: negritas, cursivas, listas, links, headings H2/H3,
+           quotes, código inline, separadores horizontales.
+  NO soporta imágenes ni archivos embebidos (limita el motor PDF
+  y owner confirma "solo texto").
+
+Tamaño canvas: full (default) / 2/3 / 1/2
+
+Modo Avance / Seguimiento: idéntico (no se filtra por área).
+
+Parámetros específicos:
+  título_bloque:  texto libre (opcional)
+  tamaño_canvas:  full (default) / 2/3 / 1/2
+  borde:          sí/no (default sí)
+
+Soporta IA: no (distinto de S-04 que es IA-asistido).
+Niveles: 3, 4.
+```
+
+#### S-29 Logros destacados (IA) — SPEC CERRADO — OPCIONAL
+```
+Categoría: NAR
+Propósito: lista de 3-5 logros del periodo generados por IA.
+           Coexiste con S-04 sin redundancia (S-04 es párrafo único
+           ejecutivo; S-29 son bullets focalizados en logros).
+
+Inclusión: OPCIONAL. No se incluye por default en reportes Avance/
+           Seguimiento. Disponible en Nivel 4 custom.
+
+Fuente: IA con contexto inyectado (transparente al PM):
+  - Hitos cumplidos en la ventana
+  - Tareas críticas terminadas en la ventana
+  - Riesgos mitigados en la ventana
+  - Acciones cerradas en la ventana
+
+Output: 3-5 bullets cortos en español, tono BALANCEADO
+        (positivo pero factual, no "vendedor"). PM puede editar.
+
+Persistencia: snapshot del reporte SOLO con el texto final editado.
+              La versión cruda del IA NO se guarda (sin auditoría).
+
+Visual default: lista con icono ✓ o ★
+Tamaño canvas: 1/2 o 2/3
+
+Modo Avance: logros del proyecto completo
+Modo Seguimiento (B): se renderiza al inicio (una vez), no por área.
+
+Parámetros:
+  cantidad_objetivo: 3 (default) / 5 / 7
+  permitir_edición:  sí (default)
+  mostrar_contexto:  sí (default — qué datos vio la IA)
+
+Niveles: 3, 4 (siempre opcional).
+```
+
+#### S-30 Próximos pasos (IA) — SPEC CERRADO — OPCIONAL
+```
+Categoría: NAR
+Propósito: cierra el reporte con foco siguiente periodo. Bullets
+           cortos generados por IA y editables.
+
+Inclusión: OPCIONAL. Mismo patrón que S-29.
+
+Fuente: IA con contexto inyectado:
+  - Hitos próximos (lookahead 30d)
+  - Tareas que arrancan próximas 21d
+  - Acciones críticas pendientes
+  - Riesgos críticos abiertos sin mitigación cerrada
+
+Output: 3-5 bullets, tono prospectivo y BALANCEADO, ordenados por
+        prioridad o fecha. PM puede editar.
+
+Persistencia: snapshot del reporte SOLO con el texto final editado.
+
+Visual default: lista con icono → o •
+Tamaño canvas: 1/2 o 2/3
+
+Parámetros:
+  cantidad_objetivo: 3 (default) / 5 / 7
+  permitir_edición:  sí (default)
+  mostrar_contexto:  sí (default)
+
+Niveles: 3, 4 (siempre opcional).
+```
+
 ### NAR — Narrativa / IA
 - **S-28** Bloque narrativo libre — rich text editable
 - **S-29** Logros destacados — IA
