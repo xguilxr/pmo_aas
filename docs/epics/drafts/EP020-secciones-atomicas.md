@@ -73,6 +73,55 @@ no inflar reportes de planes grandes.
 
 ---
 
+## Modos de composición de reporte (template-level)
+
+Concepto que vive en el nivel **template**, no en el de sección.
+Define cómo se orquestan las secciones cuando el reporte se renderiza.
+
+### Modo A — Por sección (matriz "sección × área")
+Cada sección es un bloque discreto en el orden que el PM la puso en el canvas.
+Dentro de cada sección, los items se ordenan por:
+**área asc → fecha de finalización asc**.
+
+Aplicación: **Reporte de Avance** (existente, US-038).
+Ejemplo:
+```
+1. Hitos
+     · Área Compras  | 22-may  · …
+     · Área TI       | 28-may  · …
+2. Acciones
+     · Área Compras  | 23-may  · …
+     · Área TI       | 24-may  · …
+```
+
+### Modo B — Por área (matriz invertida "área × sección")
+La agrupación externa es **área**; dentro de cada área se renderizan las
+secciones secuencialmente. Cada área es su propio "mini-reporte".
+
+Aplicación: **Reporte de Seguimiento** (existente, US-039).
+Ejemplo:
+```
+Área Compras
+  ├ Hitos:    · 22-may …
+  ├ Acciones: · 23-may …
+  └ Riesgos:  · alto …
+Área TI
+  ├ Hitos:    · 28-may …
+  ├ Acciones: · 24-may …
+  └ Riesgos:  · medio …
+```
+
+### Implicaciones para el catálogo de secciones
+- Toda sección debe ser capaz de filtrarse por una sola área (para que
+  el Modo B la pueda repetir N veces).
+- Toda sección debe exponer su data en un shape que permita ambos modos
+  (la diferencia es de **render**, no de query).
+- El template del reporte declara `composition_mode: "by_section" | "by_area"`.
+
+---
+
+---
+
 ## Lista seed (~36 candidatos para podar/ajustar)
 
 ### HDR — Identidad / Header
@@ -283,11 +332,55 @@ Niveles: 3, 4.
 
 ### RAID — orden **A → R → D → I**
 Cada subsección con los mismos parámetros transversales (área, ventana, top N, ordenamiento, agrupación).
-- **S-14** **Acuerdos / Acciones (A)** — primero. Pendientes con responsable y fecha compromiso
+
+> **Nomenclatura de la plataforma:**
+> - **A = Acciones** (no "Acuerdos"). Los Acuerdos de minutas se ven más como Decisiones (D).
+>   Las Acciones se crean directo en el tab RAID o desde sugerencias de minutas.
+> - **R = Riesgos**
+> - **D = Decisiones** (incluye acuerdos de minuta convertidos)
+> - **I = Issues** (incidentes)
+
+- **S-14** **Acciones (A)** — pendientes con responsable y fecha compromiso
 - **S-11** **Riesgos (R)** — top N por severidad, con dueño y mitigación
 - **S-13** **Decisiones (D)** — del periodo, con sponsor que decide
-- **S-12** **Issues / Incidentes (I)** — abiertos, default modo resumen
+- **S-12** **Issues (I)** — abiertos, default modo resumen
 - **S-15** Matriz probabilidad × impacto — heatmap 5×5 (visualización complementaria de Riesgos)
+
+#### S-14 Acciones (A) — SPEC CERRADO
+```
+Categoría: RAID (primero en orden A→R→D→I)
+Propósito: lista de acciones pendientes del proyecto. Origen: tab RAID
+           directo o sugerencias convertidas desde minutas.
+
+Fuente: action_items (tabla unificada)
+  Columna `origin`: "raid_direct" | "minute_<id>"
+  (en reportes se muestra como "Manual" o "Minuta YYYY-MM-DD")
+
+Estados:
+  PENDIENTE   azul    completed_at IS NULL AND fecha_compromiso > hoy+3d
+  PRÓXIMO     ámbar   fecha_compromiso en (hoy, hoy+3d]
+  VENCIDO     rojo    fecha_compromiso < hoy AND completed_at IS NULL
+  CUMPLIDO    verde   completed_at dentro de ventana_cumplidos
+
+Visual default: (δ) Tabla compacta priorizada
+  Columnas: Acción | Compromiso | Estado (chip) | Responsable | Área | Origen
+  Orden default: ÁREA asc → FECHA COMPROMISO asc
+  (sin agrupar — el ordenamiento por área ya da bloques visuales claros)
+
+Modos:
+  resumen (default): solo pendientes + próximos + vencidos
+  detalle:           agrega cumplidos del periodo + descripción larga
+
+Parámetros específicos:
+  ventana_cumplidos: 7 / 14 / 30 días (default 14)
+  mostrar_cumplidos: sí/no (default no en resumen, sí en detalle)
+
+Soporta IA: opcional — narrativa de seguimiento de compromisos vencidos
+            por área ("área X tiene 3 acciones vencidas, la más antigua
+            de 12-may sin avance").
+
+Niveles: 3, 4.
+```
 
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
