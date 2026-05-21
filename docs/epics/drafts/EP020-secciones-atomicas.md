@@ -1131,14 +1131,24 @@ Razón: la tabla project_participations no registra salidas (end_date)
 Acción: se elimina del catálogo.
 ```
 
-### PPS — Presupuesto / Costo
-- **S-23** Resumen presupuesto — planificado / ejecutado / comprometido / disponible
-- **S-24** Variación de costo — CV / CPI
-- **S-25** Gasto por concepto / categoría — pie o tabla
+### PPS — Presupuesto / Costo — DESCARTADA categoría completa
+```
+Estado: NO se implementa en v1.0.
+Razón: muchos proyectos no manejan presupuesto en la plataforma.
+       Owner confirma descartar S-23, S-24, S-25.
+Acción: si en el futuro PPS se vuelve estándar, re-abrir.
+        El bloque "Presupuesto" en S-02 queda como única referencia
+        (opcional, OFF por default).
+```
 
-### QCH — Calidad / Cambios
-- **S-26** Solicitudes de cambio del periodo
-- **S-27** Lecciones aprendidas del periodo
+### QCH — Calidad / Cambios — DESCARTADA categoría completa
+```
+Estado: NO se implementa en v1.0.
+Razón: solicitudes de cambio y lecciones aprendidas existen como
+       módulos (EP019 changes-approval, EP006 lessons), pero no
+       como secciones del reporte. Owner descarta S-26, S-27.
+Acción: re-evaluar si hay demanda.
+```
 
 ### NAR — Narrativa / IA
 - **S-28** Bloque narrativo libre — rich text editable
