@@ -718,6 +718,18 @@ Niveles: 3, 4.
          Nivel 1/2: vista por proyecto del portafolio → S-35.
 ```
 
+#### S-10 Entregables del periodo — DIFERIDA v2.0
+```
+Estado: NO se implementa en v1.0.
+Razón: el concepto de "entregable" formal no está configurado en la
+       plataforma todavía. Requiere primero definir modelo de datos
+       (módulo separado o flag sobre tasks/documents).
+Acción: re-evaluar cuando se introduzca el concepto en plataforma.
+        Mientras tanto, S-09 Hitos cubre parcialmente la función
+        (los hitos suelen representar entregables clave).
+Label issue: post-mvp, v2.0
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
