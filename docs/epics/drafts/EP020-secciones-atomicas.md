@@ -1052,8 +1052,84 @@ DEPENDENCIA / FOLLOW-UP v2.0:
 
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
-- **S-21** Carga por responsable — horas/tareas
-- **S-22** Cambios de equipo en el periodo
+- **S-21** Carga por responsable — # tareas
+
+#### S-20 Composición del equipo — SPEC CERRADO
+```
+Categoría: EQP
+Propósito: lista de actores participando en el proyecto. Útil al detalle
+           por área (Modo Seguimiento).
+
+Fuente: project_participations (sin filtro de "activos desde", solo
+        los que están actualmente en el proyecto).
+
+NOTA: no se distingue interno/externo en plataforma — la mayoría son
+      externos, solo PMO del tenant es interno. No es información
+      relevante en el reporte.
+
+Visual default: tabla compacta
+  Columnas: Persona | Rol | Área
+  Orden: rol (sponsor → PM → líderes → miembros) → nombre asc
+
+Modo Avance: lista completa del proyecto
+Modo Seguimiento (B): filtrar a actores del área del bloque
+                      (este es el caso de uso principal — ver equipo
+                      por área en el reporte de seguimiento)
+
+Parámetros:
+  agrupación: ninguna (default) / área / rol
+
+Soporta IA: no.
+Niveles: 3, 4.
+```
+
+#### S-21 Carga por responsable — SPEC CERRADO
+```
+Categoría: EQP
+Propósito: cuántas tareas activas tiene cada responsable. Detecta
+           sobrecargas. Útil al detalle por área (Modo Seguimiento).
+
+Fuente: tasks activas (no completadas, no canceladas) agrupadas por
+        responsable.
+        Métrica única: # tareas (la plataforma no tiene horas estimadas
+        confiables, así que no se ofrece variante por esfuerzo).
+
+Visual default: barras horizontales por responsable
+  Persona X   [████████░░░░]   8 tareas
+  Persona Y   [██████████░░]  10 tareas
+  Persona Z   [██░░░░░░░░░░]   2 tareas
+  Color de barra (umbrales configurables por tenant):
+    verde  ≤ 5 tareas
+    ámbar  6-10
+    rojo   > 10
+
+Orden default: carga desc (más cargados arriba)
+
+Modo Avance: todos los responsables del proyecto
+Modo Seguimiento (B): filtrar a responsables del área del bloque
+                      (caso de uso principal)
+
+Parámetros:
+  umbrales_color: configurables por tenant
+  top_n:          todos (default) / 10 / 20
+
+Soporta IA: opcional — narrativa de sobrecarga.
+Niveles: 3, 4.
+
+DEPENDENCIA DEL SISTEMA:
+  - tenants.task_load_thresholds JSONB (default {green:5, amber:10})
+  - UI admin tenant para configurar
+```
+
+#### S-22 Cambios de equipo en el periodo — DESCARTADA
+```
+Estado: NO se implementa.
+Razón: la tabla project_participations no registra salidas (end_date)
+       en plataforma. Detectar incorporaciones tiene poco valor sin
+       el contrapunto de salidas. Owner confirma que no es información
+       necesaria a este nivel de detalle.
+Acción: se elimina del catálogo.
+```
 
 ### PPS — Presupuesto / Costo
 - **S-23** Resumen presupuesto — planificado / ejecutado / comprometido / disponible
