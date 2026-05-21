@@ -1254,11 +1254,136 @@ Niveles: 3, 4 (siempre opcional).
 - **S-31** KPI tile — valor + delta vs periodo anterior + sparkline
 - **S-32** Tabla de KPIs configurable
 
-### PRT — Portafolio (Niveles 1 PMO / 2 Org)
-- **S-33** Mapa de proyectos por estado — grid o treemap
-- **S-34** Top riesgos del portafolio
-- **S-35** Avance promedio del portafolio — barras
-- **S-36** Proyectos en alerta — lista con razón
+### PRT — Portafolio — SPEC CERRADO (4 secciones, Niveles 1 y 2)
+
+```
+#### S-33 Mapa de proyectos por estado
+
+Categoría: PRT (Niveles 1, 2)
+Propósito: vista panorámica de proyectos del scope, coloreados por RAG.
+
+Fuente: project_status_snapshots — último snapshot por proyecto.
+        Proyectos sin snapshot → estado "sin info" (gris).
+
+Visual: grid de cards (default) o treemap
+  Card: nombre, código (---), chip RAG grande, PM, fecha último update.
+  Click → drilldown (HTML).
+  Orden default: rojos → ámbares → verdes → sin info.
+
+Parámetros:
+  agrupación: ninguna (default) / por programa / por cliente / por PM
+  orden:      por_estado (default) / alfabético / por_tamaño
+  variante:   grid (default) / treemap
+  filtros:    multi-select de programas o clientes
+
+Soporta IA: opcional — narrativa de salud del portafolio.
+Niveles: 1, 2.
+```
+
+```
+#### S-34 Top riesgos del portafolio
+
+Categoría: PRT
+Fuente: risks cross-proyecto del scope
+        WHERE status IN ('open','mitigating') AND bucket IN ('CRÍTICO','ALTO')
+
+Visual: tabla compacta
+  Columnas: Riesgo | Severidad | Proyecto | Cliente | Dueño | Estado
+  Orden: severidad desc → fecha_identificación asc
+  Top N default 10.
+
+Parámetros:
+  top_n:           5 / 10 (default) / 20
+  incluir_buckets: multi-select (default crítico+alto)
+
+Soporta IA: opcional — patrones cross-proyecto.
+Niveles: 1, 2.
+```
+
+```
+#### S-35 Avance promedio del portafolio
+
+Categoría: PRT
+Fuente: cada proyecto del scope aporta su % avance (S-06).
+  Muestra: avance promedio + desviación pp + distribución.
+
+Visual: card + barra de distribución (verde/ámbar/rojo)
+
+Parámetros:
+  ponderación:           simple (default) / por duración / por # tareas
+  umbrales_distribución: alineados con S-06 (default −2 / −10 pp)
+
+Soporta IA: opcional.
+Niveles: 1, 2.
+```
+
+```
+#### S-36 Proyectos en alerta
+
+Categoría: PRT
+Fuente: project_status_snapshots, WHERE status_rag IN ('red','amber')
+
+Visual: tabla compacta
+  Columnas: Proyecto | RAG | Razón (comentario PM) | PM | Último update
+  Orden: rojos primero → ámbares; dentro: más antiguo primero
+         (los envejecidos en alerta llaman la atención)
+
+Parámetros:
+  incluir_ámbar:          sí/no (default sí)
+  agrupación:             ninguna (default) / por programa / por cliente
+  mostrar_envejecimiento: sí/no (default sí — requiere snapshots del RAG;
+                          en v1.0 muestra "N días en alerta" desde el
+                          primer snapshot que esté rojo/ámbar; si no
+                          hay historia, oculta la columna)
+
+Soporta IA: opcional — patrón de envejecimiento.
+Niveles: 1, 2.
+```
+
+---
+
+## Módulo UI para generar reportes Niveles 1 y 2 (REQUERIDO)
+
+Owner confirma: el catálogo de secciones se entrega, **pero hace falta
+un módulo donde se puedan generar estos reportes Niveles 1 (PMO) y 2
+(Org/Programa)**.
+
+### Punto de entrada propuesto
+
+**Nivel 1 — Reportes PMO:**
+- Ruta: `/pmo/reports/portfolio`
+- Ubicación menú: sidebar PMO → "Reportes" → tab "Portafolio"
+- Audiencia: usuarios del tenant con rol PMO / admin
+- Plantillas seed iniciales:
+  - "Estado de portafolio" → S-33 + S-35 + S-36
+  - "Foco de riesgo" → S-34 + S-36
+
+**Nivel 2 — Reportes de organización / programa:**
+- Ruta: `/pmo/organizations/{id}/reports` y `/pmo/programs/{id}/reports`
+- Ubicación: tab nuevo "Reportes" en el detalle de la organización/programa
+- Audiencia: usuarios con acceso a la organización (clientes + PMO)
+- Plantillas seed iniciales:
+  - "Estado de organización" → S-33 + S-35 + S-36 filtrado a la org
+  - "Resumen ejecutivo cliente" → S-04 + S-33 + S-34 filtrado a la org
+
+### Flujo de generación
+
+1. Usuario entra al módulo y ve listado de reportes ya generados (histórico).
+2. Click "Nuevo reporte" → selector de plantilla seed o "desde blanco" (canvas Nivel 4).
+3. Configurar parámetros (periodo, scope, filtros) → preview en vivo.
+4. Generar → guarda snapshot + permite export PDF/HTML.
+5. Programar emisión recurrente (reusa motor US-056 scheduled-reports).
+
+### Dependencias
+
+- Reusa motor de canvas Nivel 4 (US-111) con flag `level: 1 | 2 | 3 | 4`
+  que limita qué secciones del catálogo se ofrecen.
+- Reusa motor PDF compartido (US-037).
+- Reusa motor de programación (US-056).
+- Crea nuevas plantillas seed para Niveles 1 y 2 (US separada).
+
+Esta entrega se traduce en US adicionales del EP020 cuando se promueva
+el catálogo a epic oficial.
 
 ---
 
