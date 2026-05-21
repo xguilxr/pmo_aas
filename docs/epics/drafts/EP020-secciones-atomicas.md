@@ -839,6 +839,51 @@ DEPENDENCIA DEL SISTEMA:
   - Migración Alembic
 ```
 
+#### S-04 Resumen ejecutivo — SPEC CERRADO
+```
+Categoría: EST
+Propósito: narrativa corta (3 líneas) que contextualiza el periodo.
+           Cierra el top del reporte después del semáforo.
+
+Fuente: snapshot del reporte (reports.executive_summary)
+  Modo default: IA-asistido — la IA genera un draft con la data del
+                reporte, el PM edita antes de publicar.
+  Modo alterno: manual puro (sin IA).
+
+Persistencia: una vez emitido el reporte, el texto queda CONGELADO
+              en el snapshot. Ediciones posteriores en próximos
+              reportes no afectan reportes ya emitidos.
+
+Visual default: bloque de texto con título "Resumen ejecutivo"
+  Soporta: negritas, cursivas, listas, links
+  Longitud objetivo: 3 líneas (≈ 200-300 caracteres)
+
+Tamaño canvas: full
+
+Modo Avance: una sola narrativa del proyecto
+Modo Seguimiento (B): se renderiza al inicio del reporte, no por área
+
+Soporta IA: SÍ — modo default
+  Contexto inyectado al prompt (transparente al PM):
+    - % avance plan vs real (S-06)
+    - Conteo hitos cumplidos / próximos / vencidos (S-09)
+    - Top 3 riesgos críticos abiertos (S-11)
+    - Acciones vencidas y por área (S-14)
+    - Estado RAG declarado (S-03)
+  Output: 3 líneas, español, tono ejecutivo.
+  El PM puede ver QUÉ datos se inyectaron al prompt (panel
+  expandible "ver contexto IA") y ajustarlos antes de regenerar.
+
+Parámetros específicos:
+  modo_creación:     IA-asistido (default) / manual
+  longitud:          corto / medio / largo (default corto = 3 líneas)
+  tono:              ejecutivo (default) / técnico / informal
+  prompt_extra:      texto libre del PM para guiar a la IA
+  mostrar_contexto:  sí/no (default sí — transparencia)
+
+Niveles: 3, 4.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
