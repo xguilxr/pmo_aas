@@ -666,6 +666,58 @@ Acción: se elimina del catálogo. Si en el futuro se rigidiza el plan,
         re-evaluar.
 ```
 
+#### S-08 Avance por WBS-1 / Área — SPEC CERRADO
+```
+Categoría: AVN
+Propósito: barras horizontales con el % de avance de cada rama de
+           WBS-1 (default) o área. Identifica rezagados de un vistazo.
+
+Fuente: tasks agrupadas por WBS-1 (default) o por área
+  Filtro de inclusión del grupo:
+    Solo se incluyen grupos que tengan al menos una task con fecha
+    plan inicio o fin DENTRO de la ventana del reporte.
+    Grupos sin actividad en el periodo se omiten (no inflar reporte).
+
+  Por cada grupo incluido:
+    % avance = mismo cálculo que S-06 (respeta método del tenant)
+    % planeado = lineal por duración a fecha de corte
+    delta_pp = real − planeado
+
+Visual default: barras horizontales con plan vs real
+  Una fila por grupo:
+    Grupo X   [██████████░░░░░░░░░░] 52%  vs 60% plan   −8 pp
+  - Fondo gris (0-100%)
+  - Relleno coloreado según delta (mismos umbrales S-06)
+  - Chip a la derecha con delta pp
+
+Orden default: % avance ASC (rezagados arriba — llaman atención primero)
+
+Tamaño canvas: full
+
+Modo Avance: todos los grupos con actividad en el periodo (sin top N)
+Modo Seguimiento (composición B): SE OMITE (sería redundante con
+                                   la composición por área)
+
+Variantes seleccionables:
+  (a) barras plan vs real (default)
+  (b) solo barras de real
+  (c) barras + contador tareas terminadas / total
+
+Agrupación:
+  por_WBS_1: default
+  por_área:  alternativa
+
+Parámetros específicos:
+  agrupación: WBS-1 (default) / área
+  variante:   a / b / c (default a)
+  orden:      avance_asc (default)
+
+Soporta IA: opcional — narrativa de grupos críticos.
+
+Niveles: 3, 4.
+         Nivel 1/2: vista por proyecto del portafolio → S-35.
+```
+
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
 - **S-21** Carga por responsable — horas/tareas
