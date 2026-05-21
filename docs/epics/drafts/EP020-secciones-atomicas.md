@@ -138,6 +138,41 @@ Niveles: 3 (Proyecto), 4 (Custom).
          Nivel 2 versión agregada del programa (X cumplidos / Y planificados).
 ```
 
+#### S-16 Críticos — SPEC CERRADO
+```
+Categoría: PLN
+Propósito: tareas críticas del proyecto — las que NO pueden retrasarse
+           sin impactar fecha fin u otro hito clave.
+
+Fuente: tasks WHERE is_critical = true
+  Criterio único: flag manual del PM marcado en form de edición de tarea,
+  símil al checkbox "Hito".
+
+Estados (mismos 4 que S-09):
+  CUMPLIDO / PRÓXIMO / CRÍTICO (≤3d) / VENCIDO
+  Mismas ventanas (cumplidos 14d default, vencidos TODOS hasta hoy).
+
+Visual default: (δ) Tabla compacta priorizada
+  Columnas: Tarea | Fecha plan fin | Estado (chip color) | Responsable | Área
+  Orden default: fecha plan fin asc
+
+No mostrar: predecesoras / dependencias (los reportes deben ser ligeros;
+            el detalle se consulta en el plan).
+
+Filtros: aplica filtro por área del bloque de parámetros transversales.
+         Sin filtro de área = todas las críticas del proyecto.
+
+Soporta IA: no (sección directa, sin narrativa).
+Niveles: 3, 4.
+
+DEPENDENCIA DEL SISTEMA (ENH a EP006 Plan — se abre como issue separado):
+  - tasks.is_critical BOOLEAN NOT NULL DEFAULT FALSE
+  - Plantilla import (Excel/CSV): columna "Crítica" (Sí/No)
+  - Form edición tarea: checkbox "Crítica" hermano del checkbox "Hito"
+  - Migración Alembic correspondiente
+  - Mapping desde MS Project import si trae flag
+```
+
 ### RAID — orden **A → R → D → I**
 Cada subsección con los mismos parámetros transversales (área, ventana, top N, ordenamiento, agrupación).
 - **S-14** **Acuerdos / Acciones (A)** — primero. Pendientes con responsable y fecha compromiso
