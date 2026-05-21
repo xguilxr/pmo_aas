@@ -40,15 +40,36 @@ Disponible en niveles: <1 PMO | 2 Org | 3 Proyecto | 4 Custom>
 |---|---|---|
 | **HDR** | Identidad / Header | Portada, info del proyecto, branding |
 | **EST** | Estado / Semáforo | RAG global, resumen ejecutivo, tendencia |
-| **AVN** | Avance | % avance, curva S, hitos, entregables |
-| **RAID** | RAID | Riesgos, issues, acuerdos, decisiones |
-| **PLN** | Plan / Cronograma | Tareas críticas, vencidas, próximas, Gantt |
+| **AVN** | Avance | % avance, curva S, snapshot Gantt WBS-1, entregables |
+| **PLN** | Plan / Cronograma | **Hitos, críticos y retrasadas** (NO el detalle completo) |
+| **RAID** | RAID — orden **A → R → D → I** | Acuerdos, Riesgos, Decisiones, Issues |
 | **EQP** | Equipo / Recursos | Composición, carga, cambios |
 | **PPS** | Presupuesto / Costo | Resumen, variaciones, gasto por categoría |
 | **QCH** | Calidad / Cambios | Solicitudes de cambio, lecciones |
 | **NAR** | Narrativa / IA | Texto libre, logros, próximos pasos |
-| **KPI** | KPIs custom | Tiles configurables, tablas |
+| **KPI** | KPIs / Indicadores | Tiles configurables, tablas, avances clave |
 | **PRT** | Portafolio (cross-proyecto) | Solo Niveles 1/2 |
+
+---
+
+## Parámetros transversales (aplican a casi toda sección operativa)
+
+Estos parámetros viven **en el contenedor de sección** y se ofrecen
+automáticamente cuando la sección expone data tabular o temporal.
+No hay que repetirlos en cada spec.
+
+| Param | Valores | Default | Aplica a |
+|---|---|---|---|
+| **Área / segmento** | "todas" \| `area_id[]` | todas | PLN, RAID, EQP, AVN, KPI |
+| **Ventana temporal** | corte único \| rango (desde→hasta) \| "periodo del reporte" | periodo del reporte | PLN, RAID, AVN, EQP, QCH |
+| **Solo items con fecha dentro de la ventana** | sí / no | sí | PLN (hitos, críticos, próximas), RAID acciones |
+| **Top N** | 5 / 10 / 20 / todos | 10 | RAID riesgos/issues, PLN delayed |
+| **Modo** | resumen \| detalle | resumen | PLN delayed, RAID issues |
+| **Ordenamiento** | fecha plan fin asc \| severidad desc \| área | fecha plan fin asc | PLN, RAID |
+| **Agrupación** | ninguna \| por área \| por responsable \| por tipo | ninguna | PLN, RAID, EQP |
+
+**Regla:** "modo resumen" = una línea por item con totales; "modo detalle" = expansión con campos completos. Default siempre resumen para
+no inflar reportes de planes grandes.
 
 ---
 
@@ -67,21 +88,25 @@ Disponible en niveles: <1 PMO | 2 Org | 3 Proyecto | 4 Custom>
 - **S-06** % Avance plan vs real — gauge / card grande
 - **S-07** Curva S — planificado vs real acumulado
 - **S-08** Avance por área/WBS — barras horizontales
-- **S-09** Hitos próximos y cumplidos — timeline
 - **S-10** Entregables del periodo — tabla
+- **S-19** Snapshot Gantt WBS-1 — imagen renderizada del Gantt a primer nivel de WBS (no detalle)
 
-### RAID
-- **S-11** Top N riesgos por severidad — tabla con dueño y mitigación
-- **S-12** Top N issues abiertos
-- **S-13** Decisiones del periodo
-- **S-14** Acciones / acuerdos pendientes — con responsable y fecha
-- **S-15** Matriz probabilidad × impacto — heatmap 5x5
+### PLN — Plan / Cronograma (orientado a Hitos + Críticos + Delayed)
+> Filosofía: en planes de 100-1000+ tareas el detalle completo es contraproducente.
+> Estas 4 secciones cubren lo esencial. Si el PM necesita más detalle, lo pide
+> agregando otra sección o configurando el modo en "detalle".
+- **S-09** Hitos — sub-tabla: cumplidos / próximos / vencidos, en ese orden, dentro de la ventana
+- **S-16** Tareas críticas — del camino crítico **o** marcadas críticas por el PM
+- **S-17** Tareas retrasadas (Delayed) — default modo **resumen** (1 línea por item con responsable + área + días de retraso). Detalle bajo demanda. Útil para "cobrar a áreas" que no cumplen
+- **S-18** Próximas (ventana configurable, default 2 semanas) — agenda ordenada por fecha plan fin asc
 
-### PLN — Plan / Cronograma
-- **S-16** Tareas en camino crítico
-- **S-17** Tareas vencidas
-- **S-18** Próximas 2 semanas — agenda
-- **S-19** Snapshot Gantt — imagen renderizada del Gantt
+### RAID — orden **A → R → D → I**
+Cada subsección con los mismos parámetros transversales (área, ventana, top N, ordenamiento, agrupación).
+- **S-14** **Acuerdos / Acciones (A)** — primero. Pendientes con responsable y fecha compromiso
+- **S-11** **Riesgos (R)** — top N por severidad, con dueño y mitigación
+- **S-13** **Decisiones (D)** — del periodo, con sponsor que decide
+- **S-12** **Issues / Incidentes (I)** — abiertos, default modo resumen
+- **S-15** Matriz probabilidad × impacto — heatmap 5×5 (visualización complementaria de Riesgos)
 
 ### EQP — Equipo / Recursos
 - **S-20** Composición del equipo / actores activos
