@@ -398,6 +398,10 @@ class TenantSettingsUpdate(BaseModel):
     primary_color: str | None = None
     ai_mode: str | None = None
     logo_url: str | None = None
+    # ENH-098: Per-tenant progress calculation method for the
+    # Report Builder (EP020). Stored under
+    # `settings.report_builder.progress_calculation_method`.
+    progress_calculation_method: str | None = None
     # ENH-099: Per-tenant task-load colorization thresholds for the
     # Report Builder (EP020). Canonical storage lives under
     # `settings.report_builder.task_load_thresholds`. Both keys
@@ -414,12 +418,16 @@ async def get_settings(
     t = (await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))).scalar_one_or_none()
     if t is None:
         raise not_found("Tenant")
-    # ENH-099: expose effective task_load_thresholds (with default) as a
-    # top-level convenience field while preserving the canonical nested
-    # shape under `settings.report_builder`.
-    from app.services.tenant_settings import get_task_load_thresholds
+    # ENH-098/099: expose effective report-builder settings (with defaults)
+    # as top-level convenience fields while preserving the canonical
+    # nested shape under `settings.report_builder`.
+    from app.services.tenant_settings import (
+        get_progress_calculation_method,
+        get_task_load_thresholds,
+    )
 
     settings = dict(t.settings or {})
+    settings["progress_calculation_method"] = get_progress_calculation_method(t)
     settings["task_load_thresholds"] = get_task_load_thresholds(t)
     return {"settings": settings}
 
@@ -431,7 +439,10 @@ async def patch_settings(
     db: AsyncSession = Depends(get_db),
 ):
     from app.services.tenant_settings import (
+        PROGRESS_CALC_METHODS,
+        get_progress_calculation_method,
         get_task_load_thresholds,
+        set_progress_calculation_method,
         set_task_load_thresholds,
     )
 
@@ -441,8 +452,18 @@ async def patch_settings(
         raise not_found("Tenant")
     updates = body.model_dump(exclude_none=True)
 
+    # ENH-098: validate `progress_calculation_method` enum before persisting.
+    progress_method = updates.pop("progress_calculation_method", None)
+    if progress_method is not None and progress_method not in PROGRESS_CALC_METHODS:
+        raise business_rule(
+            f"progress_calculation_method must be one of {list(PROGRESS_CALC_METHODS)}",
+            code="INVALID_PROGRESS_CALC_METHOD",
+        )
+
     # ENH-099: validate task_load_thresholds before persisting anything.
     thresholds_update = updates.pop("task_load_thresholds", None)
+    green_max: int | None = None
+    amber_max: int | None = None
     if thresholds_update is not None:
         if not isinstance(thresholds_update, dict):
             raise business_rule(
@@ -468,7 +489,11 @@ async def patch_settings(
     merged.update(updates)
     t.settings = merged
     audit_fields = list(updates.keys())
+    if progress_method is not None:
+        set_progress_calculation_method(t, progress_method)
+        audit_fields.append("progress_calculation_method")
     if thresholds_update is not None:
+        assert green_max is not None and amber_max is not None
         set_task_load_thresholds(t, green_max, amber_max)
         audit_fields.append("task_load_thresholds")
 
@@ -478,6 +503,7 @@ async def patch_settings(
     )
     await db.commit()
     response_settings = dict(t.settings or {})
+    response_settings["progress_calculation_method"] = get_progress_calculation_method(t)
     response_settings["task_load_thresholds"] = get_task_load_thresholds(t)
     return {"settings": response_settings}
 
