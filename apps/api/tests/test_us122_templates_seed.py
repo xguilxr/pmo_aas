@@ -20,8 +20,8 @@ from tests.factories import create_admin_role, create_tenant, create_user, login
 _VERSIONS_DIR = (
     Path(__file__).resolve().parents[1] / "alembic" / "versions"
 )
-_SECTIONS_MIGRATION = _VERSIONS_DIR / "20260522_0068_report_sections.py"
-_TEMPLATES_MIGRATION = _VERSIONS_DIR / "20260522_0069_report_builder_templates.py"
+_SECTIONS_MIGRATION = _VERSIONS_DIR / "20260523_0070_report_sections.py"
+_TEMPLATES_MIGRATION = _VERSIONS_DIR / "20260523_0071_report_builder_templates.py"
 
 
 def _load_module(name: str, path: Path):

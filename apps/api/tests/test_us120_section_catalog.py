@@ -19,7 +19,7 @@ _MIGRATION_PATH = (
     Path(__file__).resolve().parents[1]
     / "alembic"
     / "versions"
-    / "20260522_0068_report_sections.py"
+    / "20260523_0070_report_sections.py"
 )
 
 

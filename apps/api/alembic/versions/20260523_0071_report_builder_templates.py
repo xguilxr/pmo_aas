@@ -1,7 +1,7 @@
 """report_builder_templates + 4 seed plantillas (US-122, EP020).
 
-Revision ID: 20260522_0069
-Revises: 20260522_0068
+Revision ID: 20260523_0071
+Revises: 20260523_0070
 Create Date: 2026-05-22 11:00:00
 
 US-122: tabla `report_builder_templates` que persiste composiciones
@@ -34,8 +34,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "20260522_0069"
-down_revision: str | None = "20260522_0068"
+revision: str = "20260523_0071"
+down_revision: str | None = "20260523_0070"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

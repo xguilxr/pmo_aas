@@ -1,7 +1,7 @@
 """report_sections catalog + seed 22 atomic sections (US-120, EP020).
 
-Revision ID: 20260522_0068
-Revises: 20260522_0067
+Revision ID: 20260523_0070
+Revises: 20260523_0069
 Create Date: 2026-05-22 10:00:00
 
 US-120: catálogo global de secciones atómicas que el Report Builder
@@ -31,8 +31,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "20260522_0068"
-down_revision: str | None = "20260522_0067"
+revision: str = "20260523_0070"
+down_revision: str | None = "20260523_0069"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
