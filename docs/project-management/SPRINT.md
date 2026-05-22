@@ -9,13 +9,20 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sin US activa al cierre 2026-05-22.
+Mega-PR EP020 abierto (claude/dazzling-fermat-W354x) — 10 US
+entregadas en 10 commits secuenciales, sin merges intermedios.
+Por mergear todo de un golpe tras CI verde:
 
-Próximo bloque accionable: Sprint 27 Bloque 1 — Motor de render
-+ Export PDF (US-123 + US-130). Pre-requisitos US-120/121/122
-ya en main. Recomendación owner: ejecutar SECUENCIAL puro
-(1 sesión = 1 lane = 1 US a la vez) tras las collisions de
-migraciones del Sprint 26.
+  US-123 (engine) 67bb040
+  US-130 (export PDF) 0dba512
+  US-124 (canvas drag-drop) d53daaa
+  US-125 (panel params) ec63303
+  US-126 (plantillas privadas + visibility) 88bbcac · migración 0073
+  US-127 (chat IA conversacional) 5436224
+  US-131 (suscripciones custom) 176448b · migración 0074
+  US-128 (UI Nivel 1 PMO) 58e29d1
+  US-129 (UI Nivel 2 Org/Programa) 13f7595
+  US-132 (Gantt SVG snapshot) d97943f
 
 Próximo libre: US-133, BUG-062, ENH-109.
 ```
@@ -26,27 +33,28 @@ Próximo libre: US-133, BUG-062, ENH-109.
 
 > Issues creados con `status:triage`. Owner pasa a `status:ready` para arrancar.
 
-### Sprint 27 — Motor de render + Canvas Nivel 4 (siguiente)
+### Sprints 27-29 EP020 — entregados en mega-PR (pendiente merge)
 
-**Bloque 1 (motor + export):**
-- [ ] **US-123 #381** — Engine de render con modos composición A/B. Service `app/services/reports/engine.py`. Consume catálogo (US-120) + plantillas (US-122).
-- [ ] **US-130 #390** — Export PDF de reportes custom (reusa motor PDF compartido US-037).
+Todos los items abajo están en commits separados sobre la branch
+`claude/dazzling-fermat-W354x`. Al mergear el PR pasan a la tabla DONE.
 
-**Bloque 2 (canvas Nivel 4):**
-- [ ] **US-124 #382** — Canvas drag-and-drop + preview en vivo en `/pmo/projects/{id}/reports/builder`.
-- [ ] **US-125 #383** — Panel de parámetros transversales.
-- [ ] **US-126 #384** — Plantillas privadas + publicar al proyecto.
+**Sprint 27 Bloque 1 (motor + export):**
+- [x] **US-123 #381** — Engine de render con modos composición A/B (`67bb040`).
+- [x] **US-130 #390** — Export PDF de reportes custom (`0dba512`).
 
-### Sprint 28 — IA conversacional + Suscripciones
+**Sprint 27 Bloque 2 (canvas Nivel 4):**
+- [x] **US-124 #382** — Canvas drag-and-drop + preview en vivo (`d53daaa`).
+- [x] **US-125 #383** — Panel de parámetros transversales (`ec63303`).
+- [x] **US-126 #384** — Plantillas privadas + publicar al proyecto (`88bbcac`, migración 0073).
 
-- [ ] **US-127 #385** — Modo IA conversacional construyendo el reporte (tool calls). Reusa cascada EP008.
-- [ ] **US-131 #386** — Suscripciones de reportes custom (reusa motor `scheduled_reports` US-056).
+**Sprint 28:**
+- [x] **US-127 #385** — IA conversacional (tool-call JSON-action, reusa cascada EP008) (`5436224`).
+- [x] **US-131 #386** — Suscripciones reportes custom (`176448b`, migración 0074).
 
-### Sprint 29 — UI Niveles 1/2 + Gantt
-
-- [ ] **US-128 #387** — Módulo UI Reportes Nivel 1 PMO (`/pmo/reports/portfolio`).
-- [ ] **US-129 #388** — Módulo UI Reportes Nivel 2 Organización (tab nuevo en org/programa).
-- [ ] **US-132 #389** — Render headless del Gantt WBS-1 para S-19 (puppeteer/playwright).
+**Sprint 29:**
+- [x] **US-128 #387** — UI Reportes Nivel 1 PMO `/pmo/reports/portfolio` (`58e29d1`).
+- [x] **US-129 #388** — UI Reportes Nivel 2 Organización + Programa (`13f7595`).
+- [x] **US-132 #389** — Render del Gantt WBS-N para S-19 (SVG Python; Playwright diferido a v1.x — DEC-029) (`d97943f`).
 
 ---
 
@@ -132,6 +140,7 @@ Próximo libre: US-133, BUG-062, ENH-109.
 
 ## Notas y cambios recientes
 
+- **2026-05-25 (mega-PR EP020 completo):** 10 US entregadas en 10 commits secuenciales sobre `claude/dazzling-fermat-W354x` (US-123 a US-132). Decisiones DEC-025..029 registradas en DECISIONS.md. Migraciones 0073 (visibility) + 0074 (scheduled custom) en DB-CHANGES.md. Suite de regresión EP020: 30/30 tests verdes. Pendiente revisión owner + merge.
 - **2026-05-22 (cierre Sprint 26 + skill /handoff):** Sprint 26 cerrado completo (16 items en 3 bloques). Frente Minutas v1.0 entregado (BUG-061 + 7 ENH). Backbone EP020 entregado (US-120/121/122). 3 collisions de alembic resueltas con merge migrations + renaming. **Decisión clave:** owner pivotea a desarrollo secuencial puro tras los errores de paralelización. Skill `/handoff` creado (PR #412 mergeado) para forzar cleanup de SPRINT.md y mantener bridge entre sesiones.
 - **2026-05-22 (Sprint 26 Bloque 0 — Minutas v1.0 + EP020 planning):** catálogo de 22 secciones atómicas de EP020 cerrado tras 4 rondas con owner. Promoción del draft a epic oficial `docs/epics/EP020-report-builder.md` con 13 US (US-120 a US-132) + 5 ENH dependencias. Gold standard de minuta (Highlander EAM-BNF) como referencia normativa del parser IA. 26 issues creados (#373-#398) + labels aplicados.
 - **2026-05-10 (EP017 Directorio de Proyecto — Sprint 25 entregado):** 5 US entregadas. Migraciones 0061 + 0062. Diferidos significativos: PersonPicker cableado en cada form, US-118 Fases 2/3, US-119 cleanup.

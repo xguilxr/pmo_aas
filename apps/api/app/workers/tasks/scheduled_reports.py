@@ -107,6 +107,7 @@ async def _send(scheduled_id: str) -> dict:
             return {"skipped": "project_missing"}
 
         cut_off = datetime.now(UTC).date()
+        builder_html: str | None = None  # US-131: HTML pre-renderizado del builder
         if sched.report_type == "avance":
             context = await build_avance_context(
                 db, tenant_id, project_id, cut_off
@@ -121,6 +122,37 @@ async def _send(scheduled_id: str) -> dict:
             template = "reports/seguimiento.html"
             titulo = "Reporte de Seguimiento"
             generator = "seguimiento"
+        elif sched.report_type == "custom":
+            # US-131 — render con el engine del Report Builder (US-123).
+            if not sched.report_builder_template_id:
+                sched.enabled = False
+                sched.last_error = "custom requiere report_builder_template_id"
+                sched.next_run_at = None
+                await db.commit()
+                return {"skipped": "no_template"}
+            from app.services.reports.engine import (
+                ReportScope,
+                ReportWindow,
+                render_template,
+            )
+
+            try:
+                result = await render_template(
+                    db,
+                    sched.report_builder_template_id,
+                    ReportScope(tenant_id=tenant_id, project_id=project_id),
+                    ReportWindow(cut_off_date=cut_off, window_days=14),
+                )
+            except Exception as exc:
+                sched.last_error = f"render falló: {str(exc)[:300]}"
+                sched.next_run_at = None
+                await db.commit()
+                return {"skipped": "render_failed"}
+            builder_html = result.html
+            context = {"json": result.json, "tenant_name": None}
+            template = "builder.html"  # no se re-renderiza (se usa builder_html)
+            titulo = "Reporte custom"
+            generator = "manual"
         else:
             sched.enabled = False
             sched.last_error = f"Tipo no soportado: {sched.report_type}"
@@ -147,7 +179,13 @@ async def _send(scheduled_id: str) -> dict:
         )
         context["tenant_name"] = tenant_name
 
-        pdf_bytes = render_pdf(template, context)
+        if builder_html is not None:
+            # US-131 — el motor del builder ya generó HTML; sólo convertir.
+            from app.services.pdf_renderer import html_to_pdf
+
+            pdf_bytes = html_to_pdf(builder_html)
+        else:
+            pdf_bytes = render_pdf(template, context)
         filename = (
             f"{titulo.replace(' ', '_')}_{project.folio}_"
             f"{cut_off.isoformat()}.pdf"

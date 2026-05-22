@@ -6,7 +6,7 @@
 | **Prioridad** | Alta — siguiente frente operativo del PMO |
 | **Dependencias** | EP005 (projects), EP006 (modules), EP007 (admin), EP008 (IA), EP014 (motor PDF + reportes operativos), EP018 (artefactos) |
 | **Módulo** | `reports.builder`, `reports.catalog`, `reports.portfolio`, `ai.report_assist` |
-| **Estado** | # PENDING |
+| **Estado** | # IN-PROGRESS — Sprints 27-29 entregados en mega-PR (10 US, 1 commit/US) |
 | **Versión objetivo** | v1.5 |
 | **Catálogo detallado** | `docs/epics/drafts/EP020-secciones-atomicas.md` (working doc — referencia normativa de las 22 secciones) |
 
@@ -23,13 +23,15 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 **Fuera de scope (postergado a v2.0):** snapshots históricos de KPIs y semáforo (S-05 tendencia, sparklines, deltas, S-07 curva S, S-10 entregables formales). Para v1.0 los reportes muestran estado actual sin series temporales.
 
-## Decisiones arquitectónicas a registrar en DECISIONS.md al cierre
+## Decisiones arquitectónicas (registradas en DECISIONS.md)
 
-- **DEC-018** — Catálogo cerrado de 22 secciones atómicas como única unidad de composición para todos los niveles de reporte. Se cierra el dual-motor heredado de EP014 (Python templated) → se unifica en motor declarativo (data + render config en JSONB).
-- **DEC-019** — Dos modos de composición: A "por sección × área" (Reporte de Avance) y B "por área × sección" (Reporte de Seguimiento). Ambos son una decisión de render, no de query.
-- **DEC-020** — Sin snapshots históricos en v1.0. Estado actual únicamente. Snapshots se evalúan en v2.0.
-- **DEC-021** — Método de cálculo de % avance configurable por tenant (3 opciones: weighted_duration default, weighted_effort, simple_count).
-- **DEC-022** — Render del Gantt para PDF vía headless browser (puppeteer/playwright) que captura el SVG client-side.
+> Renumeradas a DEC-025..029 al cierre de la implementación: los IDs originales (DEC-018..022) ya estaban tomados por otras decisiones del repo cuando esta epic se materializó.
+
+- **DEC-025** — Catálogo cerrado de 22 secciones atómicas como única unidad de composición para todos los niveles de reporte. Se cierra el dual-motor heredado de EP014 (Python templated) → se unifica en motor declarativo (data + render config en JSONB).
+- **DEC-026** — Dos modos de composición: A "por sección × área" (Reporte de Avance) y B "por área × sección" (Reporte de Seguimiento). Ambos son una decisión de render, no de query.
+- **DEC-027** — Sin snapshots históricos en v1.0. Estado actual únicamente. Snapshots se evalúan en v2.0.
+- **DEC-028** — Método de cálculo de % avance configurable por tenant (3 opciones: weighted_duration default, weighted_effort, simple_count).
+- **DEC-029** — Gantt snapshot (S-19) se renderiza como SVG Python en v1.0; la migración a headless browser (Playwright) queda como evolución v1.x cuando se valide el costo memoria/render en producción. El contrato HTTP (`image/svg+xml`) es estable.
 
 ---
 
@@ -84,7 +86,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 **Test cases:** TC-206 seed cargado; TC-207 visibility private/project/tenant respetada; TC-208 migración idempotente.
 
-### # PENDING — US-123 — Engine de render con modos composición A/B
+### # DONE (2026-05-25, 67bb040) — US-123 — Engine de render con modos composición A/B
 
 **Como** sistema
 **Quiero** un motor único que tome una plantilla + scope (proyecto / org / portafolio) + ventana temporal y devuelva HTML + JSON estructurado
@@ -104,7 +106,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 ## Canvas Nivel 4 (PM / Usuario)
 
-### # PENDING — US-124 — Canvas drag-and-drop + preview en vivo
+### # DONE (2026-05-25, d53daaa) — US-124 — Canvas drag-and-drop + preview en vivo
 
 **Como** PM
 **Quiero** arrastrar secciones desde el catálogo a un canvas con preview HTML en vivo
@@ -119,7 +121,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 **Test cases:** TC-213 drag y drop reordena; TC-214 cambio de param refresca preview; TC-215 autosave persiste.
 
-### # PENDING — US-125 — Panel de parámetros transversales
+### # DONE (2026-05-25, ec63303) — US-125 — Panel de parámetros transversales
 
 **Como** PM
 **Quiero** configurar área, ventana temporal, top N, modo resumen/detalle, ordenamiento y agrupación de cada sección desde un panel uniforme
@@ -132,7 +134,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 **Test cases:** TC-216 form se construye dinámicamente desde data_contract; TC-217 validaciones funcionan.
 
-### # PENDING — US-126 — Plantillas privadas + publicar al proyecto
+### # DONE (2026-05-25, 88bbcac, migración 0073) — US-126 — Plantillas privadas + publicar al proyecto
 
 **Como** PM
 **Quiero** guardar mi canvas como plantilla privada y opcionalmente publicarla al proyecto
@@ -146,7 +148,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 **Test cases:** TC-218 privacidad respetada; TC-219 publicar/despublicar; TC-220 RLS por proyecto.
 
-### # PENDING — US-127 — Modo IA conversacional construyendo el reporte
+### # DONE (2026-05-25, 5436224) — US-127 — Modo IA conversacional construyendo el reporte
 
 **Como** PM
 **Quiero** un panel de chat lateral donde le pido a la IA "agrega los hitos críticos de las próximas 3 semanas" y la IA agrega la sección con los parámetros correctos
@@ -165,7 +167,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 ## Niveles 1 y 2 — Módulos UI
 
-### # PENDING — US-128 — Módulo UI Reportes Nivel 1 (PMO Portafolio)
+### # DONE (2026-05-25, 58e29d1) — US-128 — Módulo UI Reportes Nivel 1 (PMO Portafolio)
 
 **Como** usuario PMO
 **Quiero** una ruta `/pmo/reports/portfolio` con listado de reportes generados + botón "Nuevo reporte de portafolio"
@@ -179,7 +181,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 **Test cases:** TC-224 acceso restringido por rol; TC-225 listado paginado; TC-226 generar desde seed.
 
-### # PENDING — US-129 — Módulo UI Reportes Nivel 2 (Organización / Programa)
+### # DONE (2026-05-25, 13f7595) — US-129 — Módulo UI Reportes Nivel 2 (Organización / Programa)
 
 **Como** PMO o cliente con acceso
 **Quiero** un tab "Reportes" en el detalle de organización/programa
@@ -197,7 +199,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 ## Exports y suscripciones
 
-### # PENDING — US-130 — Export PDF de reportes custom
+### # DONE (2026-05-25, 0dba512) — US-130 — Export PDF de reportes custom
 
 **Como** PM
 **Quiero** descargar el reporte custom como PDF con el mismo estilo de los reportes operativos
@@ -210,7 +212,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 **Test cases:** TC-230 PDF valida `%PDF` header; TC-231 incluye todas las secciones del canvas.
 
-### # PENDING — US-131 — Suscripciones de reportes custom
+### # DONE (2026-05-25, 176448b, migración 0074) — US-131 — Suscripciones de reportes custom
 
 **Como** PM
 **Quiero** programar la emisión periódica de un reporte custom (cron) con envío a una lista de destinatarios
@@ -227,7 +229,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 ## Render avanzado
 
-### # PENDING — US-132 — Render headless del Gantt WBS-1 para S-19
+### # DONE (2026-05-25, d97943f) — US-132 — Render del Gantt WBS-1 para S-19 (SVG Python; headless Playwright queda como evolución)
 
 **Como** sistema
 **Quiero** capturar el Gantt client-side renderizado por la app y exportarlo como PNG/SVG embebible en PDF

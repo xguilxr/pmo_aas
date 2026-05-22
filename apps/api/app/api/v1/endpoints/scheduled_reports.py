@@ -63,6 +63,8 @@ class ScheduledReportCreate(BaseModel):
     # ENH-056: día del mes (1-31) para cadence=monthly. Clamp server-side.
     day_of_month: int | None = Field(default=None, ge=1, le=31)
     run_at: datetime | None = None
+    # US-131: para report_type='custom', plantilla del Report Builder.
+    report_builder_template_id: UUID | None = None
 
     @model_validator(mode="after")
     def _validate_cadence_fields(self):
@@ -81,6 +83,10 @@ class ScheduledReportCreate(BaseModel):
         ):
             raise ValueError(
                 "cadence=monthly requiere day_of_month (1-31) y hour_of_day (0-23)"
+            )
+        if self.report_type == "custom" and self.report_builder_template_id is None:
+            raise ValueError(
+                "report_type=custom requiere report_builder_template_id"
             )
         return self
 
@@ -107,6 +113,7 @@ class ScheduledReportRead(BaseModel):
     hour_of_day: int | None = None
     day_of_month: int | None = None
     run_at: datetime | None = None
+    report_builder_template_id: UUID | None = None
     last_run_at: datetime | None
     next_run_at: datetime | None
     last_error: str | None
@@ -170,6 +177,11 @@ async def create_scheduled_report(
         hour_of_day=body.hour_of_day,
         day_of_month=body.day_of_month,
         run_at=body.run_at,
+        report_builder_template_id=(
+            str(body.report_builder_template_id)
+            if body.report_builder_template_id
+            else None
+        ),
         recipients=[str(e) for e in body.recipients],
         enabled=body.enabled,
         next_run_at=(

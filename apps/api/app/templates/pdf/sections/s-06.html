@@ -1,0 +1,11 @@
+{# S-06 % de Avance #}
+<section class="section section-s06">
+  <h2>% de Avance</h2>
+  <p class="nums" style="font-size: 22pt; font-weight: 700; color: var(--chrome);">
+    {{ data.percent }}%
+  </p>
+  <p class="muted small">
+    Método: {{ data.method }}
+    {% if data.fallback %} · <em>fallback: {{ data.fallback }}</em>{% endif %}
+  </p>
+</section>

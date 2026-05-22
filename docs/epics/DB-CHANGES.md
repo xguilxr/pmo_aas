@@ -238,3 +238,31 @@ tablas viven solo por compat hasta validar Sprint 6 en producción.
 (no se reconstruye la matriz JSON de permisos eliminada). Programado
 para Sprint 7 tras 1-2 sprints de validación productiva del modelo
 capability-based.
+
+---
+
+## EP020 Report Builder — visibility + scheduled custom (2026-05-25)
+
+### Migración **0073** — `report_builder_templates` visibility (US-126)
+
+Columnas nuevas en `report_builder_templates`:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `owner_id` | `VARCHAR(36)` FK `users.id` `ON DELETE SET NULL` | indexed (`ix_report_builder_templates_owner`) |
+| `project_id` | `VARCHAR(36)` FK `projects.id` `ON DELETE CASCADE` | indexed |
+| `visibility` | `VARCHAR(16)` NOT NULL DEFAULT `'private'` | `'private' \| 'project' \| 'tenant'` |
+
+Reglas:
+- `private` → sólo el `owner_id` puede ver/modificar.
+- `project` → todos los miembros del `project_id` la ven; sólo el owner publica/despublica.
+- `tenant` → reservado, no usado en v1.0.
+- Seeds (`is_seed=True`, `tenant_id=NULL`) siguen visibles para todos los users (no respetan visibility).
+
+### Migración **0074** — `scheduled_reports.report_builder_template_id` (US-131)
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `report_builder_template_id` | `VARCHAR(36)` FK `report_builder_templates.id` `ON DELETE SET NULL` | indexed (`ix_scheduled_reports_builder_template`) |
+
+Cuando `scheduled_reports.report_type='custom'`, este campo apunta a la plantilla del Report Builder. El worker (`apps/api/app/workers/tasks/scheduled_reports.py`) invoca el motor de US-123 (`render_template`) sobre la plantilla y manda el HTML resultante por `html_to_pdf` antes de adjuntar al email via Resend. `REPORT_TYPES` se extiende a `("avance", "seguimiento", "custom")`.

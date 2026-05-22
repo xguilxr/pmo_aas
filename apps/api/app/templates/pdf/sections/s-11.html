@@ -1,0 +1,37 @@
+{# S-11 Riesgos #}
+<section class="section section-s11">
+  <h2>Riesgos Abiertos</h2>
+  {% if data.rows %}
+  <table>
+    <thead><tr><th>Folio</th><th>Riesgo</th><th>Severidad</th><th>Área</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for r in data.rows %}
+      <tr>
+        <td class="small muted">{{ r.folio or '' }}</td>
+        <td>{{ r.title }}</td>
+        <td>
+          {% set sev = r.severity %}
+          {% if sev is number %}
+            {% if sev >= 16 %}<span class="pill red">{{ sev }} Crítico</span>
+            {% elif sev >= 9 %}<span class="pill red">{{ sev }} Alto</span>
+            {% elif sev >= 4 %}<span class="pill yellow">{{ sev }} Medio</span>
+            {% else %}<span class="pill green">{{ sev }} Bajo</span>
+            {% endif %}
+          {% else %}
+            {% set s = (sev or '')|lower %}
+            {% if s == 'critical' %}<span class="pill red">Crítico</span>
+            {% elif s == 'high' %}<span class="pill red">Alto</span>
+            {% elif s == 'medium' %}<span class="pill yellow">Medio</span>
+            {% elif s == 'low' %}<span class="pill green">Bajo</span>
+            {% else %}<span class="pill gray">{{ sev or '—' }}</span>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td>{{ r.area_name }}</td>
+        <td>{{ r.status }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">Sin riesgos abiertos.</p>{% endif %}
+</section>

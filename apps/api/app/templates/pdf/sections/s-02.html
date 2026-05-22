@@ -1,0 +1,20 @@
+{# S-02 Información del Proyecto #}
+<section class="section section-s02">
+  <h2>Información del Proyecto</h2>
+  {% if data.empty %}
+    <p class="empty">Sin proyecto en el scope.</p>
+  {% else %}
+  <dl class="kv">
+    <dt>Folio</dt><dd>{{ data.folio }}</dd>
+    <dt>Nombre</dt><dd>{{ data.name }}</dd>
+    {% if data.description %}<dt>Descripción</dt><dd>{{ data.description }}</dd>{% endif %}
+    {% if data.phase %}<dt>Fase</dt><dd>{{ data.phase }}</dd>{% endif %}
+    {% if data.type %}<dt>Tipo</dt><dd>{{ data.type }}</dd>{% endif %}
+    {% if data.priority %}<dt>Prioridad</dt><dd>{{ data.priority }}</dd>{% endif %}
+    {% if data.pm_name %}<dt>PM</dt><dd>{{ data.pm_name }}</dd>{% endif %}
+    {% if data.sponsor %}<dt>Sponsor</dt><dd>{{ data.sponsor }}</dd>{% endif %}
+    {% if data.start_date %}<dt>Inicio</dt><dd>{{ data.start_date }}</dd>{% endif %}
+    {% if data.end_date %}<dt>Fin</dt><dd>{{ data.end_date }}</dd>{% endif %}
+  </dl>
+  {% endif %}
+</section>

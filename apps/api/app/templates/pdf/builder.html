@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<header>
+  <h1>{{ title }}</h1>
+  <p class="meta">
+    {% if project %}{{ project.folio }} — {{ project.name }} · {% endif %}
+    Corte: {{ cut_off_date }} · Ventana: {{ window_days }} días ·
+    Plantilla: {{ template.code }} (Modo {{ mode }})
+  </p>
+</header>
+
+{% if mode == "A" %}
+  {% for s in sections_meta %}
+    {% set data = sections_data.get(s.code, {}) %}
+    {% include s.template ignore missing %}
+  {% endfor %}
+{% else %}
+  {# Modo B — secciones "globales" (sin rows) primero #}
+  {% for s in sections_meta %}
+    {% set data = sections_data.get(s.code, {}) %}
+    {% if not data.rows %}
+      {% include s.template ignore missing %}
+    {% endif %}
+  {% endfor %}
+  {# Luego itera áreas y dentro de cada una repite las secciones aplicables #}
+  {% for area_name, by_code in sections_data.get('__by_area__', {}).items() %}
+    <section class="area-block">
+      <h2>Área: {{ area_name }}</h2>
+      {% for s in sections_meta %}
+        {% set rows = by_code.get(s.code) %}
+        {% if rows %}
+          {% set data = {'rows': rows} %}
+          {% include s.template ignore missing %}
+        {% endif %}
+      {% endfor %}
+    </section>
+  {% endfor %}
+{% endif %}
+
+{% if not sections_meta %}
+  <p class="empty">La plantilla no tiene secciones configuradas.</p>
+{% endif %}
+
+{# US-130 — footer con metadata del export. WeasyPrint repite este
+   bloque sólo una vez (no en cada página); el footer paginado del
+   chrome vive en `base.html` (@bottom-left/right). #}
+<footer class="report-footer" style="margin-top: 2em; padding-top: .8em; border-top: 1px solid var(--border); font-size: 8.5pt; color: var(--muted);">
+  <p>
+    <strong>Plantilla:</strong> {{ template.name }} ({{ template.code }}) ·
+    <strong>Modo:</strong> {{ mode }} ·
+    <strong>Nivel:</strong> {{ template.level }}
+  </p>
+  <p>
+    {% if project %}<strong>Proyecto:</strong> {{ project.folio }} — {{ project.name }} · {% endif %}
+    {% if pm_name %}<strong>PM:</strong> {{ pm_name }} · {% endif %}
+    <strong>Emitido:</strong> {{ generated_at }}
+  </p>
+  <p>
+    <strong>Scope:</strong>
+    tenant <code>{{ scope.tenant_id }}</code>
+    {% if scope.project_id %} · project <code>{{ scope.project_id }}</code>{% endif %}
+    {% if scope.organization_id %} · org <code>{{ scope.organization_id }}</code>{% endif %}
+    {% if scope.program_id %} · program <code>{{ scope.program_id }}</code>{% endif %}
+  </p>
+</footer>
+{% endblock %}

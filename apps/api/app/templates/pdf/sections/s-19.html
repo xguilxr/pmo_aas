@@ -1,0 +1,12 @@
+{# S-19 Snapshot Gantt WBS-1 — US-132 #}
+<section class="section section-s19">
+  <h2>Gantt (WBS-{{ data.wbs_level or 1 }})</h2>
+  {% if data.empty %}
+    <p class="empty">Sin proyecto.</p>
+  {% else %}
+    {# El endpoint devuelve image/svg+xml; WeasyPrint lo inlinea en PDF
+       y el iframe del preview lo carga vía HTTP. #}
+    <img src="{{ data.snapshot_url }}" alt="Gantt WBS-{{ data.wbs_level or 1 }}"
+         style="max-width: 100%; height: auto; border: 1px solid var(--border);" />
+  {% endif %}
+</section>
