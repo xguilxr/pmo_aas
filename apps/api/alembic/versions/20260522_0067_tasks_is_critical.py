@@ -11,8 +11,8 @@ Decisión owner 2026-05-22: NO drop de `criticality`. Ambas columnas
 coexisten para el Report Builder (EP020). La eliminación del enum se
 planificará en sprint posterior.
 
-Revision ID: 20260522_0063
-Revises: 20260510_0062
+Revision ID: 20260522_0067
+Revises: 20260522_0066
 Create Date: 2026-05-22 00:00:00
 """
 from collections.abc import Sequence
@@ -21,8 +21,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "20260522_0063"
-down_revision: str | None = "20260510_0062"
+revision: str = "20260522_0067"
+down_revision: str | None = "20260522_0066"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
