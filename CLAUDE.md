@@ -52,11 +52,12 @@ al final del bloque, no en cada paso.
 
 Antes de tocar código o crear issues, leer en este orden:
 
-1. `CLAUDE.md` (este archivo) — reglas y mecanismo.
-2. `docs/project-management/SPRINT.md` — tarea activa, QUEUE, INBOX y bloques.
-3. El o los archivos de epic relevantes en `docs/epics/EP0XX-*.md`.
-4. `docs/epics/DECISIONS.md` — solo si hay duda arquitectónica.
-5. `docs/epics/DB-CHANGES.md` — solo si la US toca schema.
+1. `docs/project-management/HANDOFF.md` — bridge de la sesión anterior. Indica dónde retomar.
+2. `CLAUDE.md` (este archivo) — reglas y mecanismo.
+3. `docs/project-management/SPRINT.md` — tarea activa, QUEUE, INBOX y bloques.
+4. El o los archivos de epic relevantes en `docs/epics/EP0XX-*.md`.
+5. `docs/epics/DECISIONS.md` — solo si hay duda arquitectónica.
+6. `docs/epics/DB-CHANGES.md` — solo si la US toca schema.
 
 **Nota (Sprint 2+):** Desde Sprint 2 (2026-04-22), `SPRINT.md` y `SPRINT-DONE-HISTORY.md` viven en `docs/project-management/` (ver sección 6 para estructura).
 
@@ -422,5 +423,34 @@ Excepciones permitidas:
 
 ---
 
-**Última actualización:** 2026-04-29
+## 12. Handoff entre sesiones — `/handoff`
+
+> El skill `/handoff` (en `.claude/skills/handoff/SKILL.md`) genera y
+> mantiene `docs/project-management/HANDOFF.md` con el estado para la
+> próxima sesión.
+
+### Flujo obligatorio
+
+1. **Al abrir una sesión:** Claude lee `HANDOFF.md` **antes que
+   SPRINT.md**. Es el puente que la sesión anterior dejó. Si está
+   vacío o desactualizado, pídeselo al owner antes de retomar.
+
+2. **Al cerrar una sesión:** owner invoca `/handoff`. El skill:
+   - Limpia `SPRINT.md` archivando lo completado a `SPRINT-DONE-HISTORY.md`.
+   - Trunca `Notas y cambios` a las del sprint actual.
+   - Reescribe `HANDOFF.md` con: dónde estamos, dónde retomar, hecho
+     en la sesión, PRs en flight, gotchas, cleanup pendiente, ideas
+     futuras sin issue.
+   - Hace 1 commit + push (sin crear PR).
+
+3. **Regla dura:** SPRINT.md nunca supera ~250 líneas. Si crece más,
+   `/handoff` es el momento de limpiarlo.
+
+4. **Si la sesión no produjo commits**, `/handoff` igual escribe un
+   resumen breve ("sesión de discusión/planeación") para que la
+   próxima sesión retome el hilo.
+
+---
+
+**Última actualización:** 2026-05-23
 **Responsable:** Claude Code (owner: xguilxr)
