@@ -65,7 +65,11 @@ Próximo libre: US-133, BUG-062, ENH-109.
 ### Pendiente redefinición Áreas/Recursos (cubierto parcial por EP017 Sprint 25)
 - [ ] **US-105 #311** — Import Plan: wizard matching responsables → Actor.
 - [ ] **Tab Organigrama de US-106** — placeholder UI; cableado funcional depende del paquete EP017 final.
-- [ ] **US-119 cleanup** — drop legacy `actors.team_id`, `actors.is_lead`, `teams.area_id`, `tasks/risks/issues.area_id`. Esperando cableado completo de PersonPicker.
+- [ ] **US-119 #414** — EP017 cleanup: drop legacy `actors.team_id`, `actors.is_lead`, `teams.area_id`, `tasks/risks/issues.area_id`. **Bloqueado por ENH-109.**
+- [ ] **ENH-109 #417** — PersonPicker cableado en formularios existentes (Task/Risk/Issue/Change/Lesson/Participant). **Bloquea US-119 y ENH-110.**
+- [ ] **ENH-110 #418** — Filtros / agrupadores de Plan por dimensiones derivadas. Depende de ENH-109.
+- [ ] **US-133 #415** — US-118 Fase 2: RBAC migra a leer `project_participations` (en lugar de `project_members`).
+- [ ] **US-134 #416** — US-118 Fase 3: drop `project_members` table. Bloqueado por US-133 en producción ≥ 1 sprint.
 
 ### Snapshots históricos (postergado v2.0)
 - Snapshots periódicos de KPIs y semáforo (habilita S-05 tendencia, sparklines, deltas vs anterior).
