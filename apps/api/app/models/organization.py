@@ -21,6 +21,10 @@ class Organization(Base, TimestampMixin):
     country: Mapped[str | None] = mapped_column(String(100))
     contact_email: Mapped[str | None] = mapped_column(String(200))
     logo_url: Mapped[str | None] = mapped_column(String(500))
+    # ENH-100: logo del *cliente* de esta organización (separado de `logo_url`,
+    # que es la marca del propio tenant/PMO). Lo consume el header de los
+    # reportes generados por EP020 Report Builder.
+    client_logo_url: Mapped[str | None] = mapped_column(String(500))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 

@@ -8,6 +8,8 @@ export type Organization = {
   country: string | null;
   contact_email: string | null;
   logo_url: string | null;
+  /** ENH-100: logo del cliente (usado por el header de reportes EP020). */
+  client_logo_url: string | null;
   is_active: boolean;
 };
 
@@ -17,6 +19,9 @@ export type OrganizationCreateBody = {
   industry?: string | null;
   country?: string | null;
   contact_email?: string | null;
+  logo_url?: string | null;
+  /** ENH-100 */
+  client_logo_url?: string | null;
   is_active?: boolean;
 };
 
@@ -120,6 +125,8 @@ export type OrganizationPanelDetail = {
   country: string | null;
   contact_email: string | null;
   logo_url: string | null;
+  /** ENH-100 */
+  client_logo_url: string | null;
   is_active: boolean;
   business_units: OrgPanelBusinessUnit[];
   programs: OrgPanelProgram[];

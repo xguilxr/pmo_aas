@@ -48,6 +48,9 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
   const [industry, setIndustry] = useState(initial?.industry ?? "");
   const [country, setCountry] = useState(initial?.country ?? "");
   const [contactEmail, setContactEmail] = useState(initial?.contact_email ?? "");
+  const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
+  // ENH-100: logo del cliente (consumido por el header de reportes EP020).
+  const [clientLogoUrl, setClientLogoUrl] = useState(initial?.client_logo_url ?? "");
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -61,9 +64,22 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
       (industry ?? "") !== (initial.industry ?? "") ||
       (country ?? "").trim() !== (initial.country ?? "").trim() ||
       (contactEmail ?? "").trim() !== (initial.contact_email ?? "").trim() ||
+      (logoUrl ?? "").trim() !== (initial.logo_url ?? "").trim() ||
+      (clientLogoUrl ?? "").trim() !== (initial.client_logo_url ?? "").trim() ||
       isActive !== initial.is_active
     );
-  }, [mode, initial, name, reasonSocial, industry, country, contactEmail, isActive]);
+  }, [
+    mode,
+    initial,
+    name,
+    reasonSocial,
+    industry,
+    country,
+    contactEmail,
+    logoUrl,
+    clientLogoUrl,
+    isActive,
+  ]);
 
   const canSubmit = name.trim().length >= 2;
 
@@ -79,6 +95,9 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
         industry: industry || null,
         country: country.trim() || null,
         contact_email: contactEmail.trim() || null,
+        logo_url: logoUrl.trim() || null,
+        // ENH-100
+        client_logo_url: clientLogoUrl.trim() || null,
         is_active: isActive,
       };
       if (mode === "create") {
@@ -187,6 +206,46 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
             onChange={(e) => setContactEmail(e.target.value)}
             disabled={saving}
           />
+        </div>
+        <div>
+          <label
+            htmlFor="logo_url"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Logo de la organización (URL)
+          </label>
+          <Input
+            id="logo_url"
+            type="url"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            disabled={saving}
+            maxLength={500}
+            placeholder="https://cdn.example.com/org-logo.png"
+          />
+          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            Marca propia de esta organización (PMO).
+          </p>
+        </div>
+        <div>
+          <label
+            htmlFor="client_logo_url"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Logo del cliente (URL)
+          </label>
+          <Input
+            id="client_logo_url"
+            type="url"
+            value={clientLogoUrl}
+            onChange={(e) => setClientLogoUrl(e.target.value)}
+            disabled={saving}
+            maxLength={500}
+            placeholder="https://cdn.example.com/cliente-logo.png"
+          />
+          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            ENH-100: usado en el header de reportes generados (EP020).
+          </p>
         </div>
       </div>
 

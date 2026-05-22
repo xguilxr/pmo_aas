@@ -362,6 +362,7 @@ async def get_org_panel(
         country=org.country,
         contact_email=org.contact_email,
         logo_url=org.logo_url,
+        client_logo_url=org.client_logo_url,
         is_active=org.is_active,
         business_units=[
             OrgPanelBusinessUnit(
