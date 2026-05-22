@@ -307,6 +307,12 @@ class MeetingMinuteCreate(BaseModel):
     # las sugerencias RAID detectadas por el LLM al persistirlas.
     # Aceptamos el shape persistible {risks/issues/lessons/changes}.
     raid_suggestions: dict = Field(default_factory=dict)
+    # BUG-061: al guardar la minuta desde el preview IA, los items RAID
+    # marcados `status="pending"` se convierten en tickets reales en la
+    # misma transacción. Items con `status="discarded"` (desmarcados por
+    # el PM en el preview) NO se crean. Default `True` para no romper
+    # llamadas manuales que ya tenían un POST seguido de approve.
+    auto_approve_raid: bool = True
 
 
 class MeetingMinuteRead(BaseModel):

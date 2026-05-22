@@ -25,11 +25,28 @@ import {
   type MeetingMinute,
 } from "@/lib/api/modules";
 import { MinuteRaidSuggestionsEditor } from "@/components/minute-raid-suggestions-editor";
+import { MinuteSaveModal } from "@/components/minute-save-modal";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
 export default function NewAIMinutePage() {
   const { id } = useParams<{ id: string }>();
-  const [title, setTitle] = useState("Minuta (IA)");
+  // ENH-104: título por default vacío. Se autorrellena con el nombre
+  // de archivo en `onFile` (sin extensión), pero solo si el usuario no
+  // lo ha tocado a mano. Al guardar con título vacío, se abre el modal
+  // "Confirma el título" (obligatorio).
+  const [title, setTitle] = useState("");
+  const [titleTouched, setTitleTouched] = useState(false);
+  const [titleModalOpen, setTitleModalOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState<null | "preview" | "generate">(
+    null,
+  );
+  // ENH-108: dos pestañas para alimentar el transcript. "upload" abre
+  // el file picker; "paste" muestra un textarea grande. Ambas
+  // alimentan el mismo state `transcript`; el origen (ENH-106) deriva
+  // de la última fuente activa.
+  const [transcriptSource, setTranscriptSource] = useState<"upload" | "paste">(
+    "upload",
+  );
   const [language, setLanguage] = useState<"" | "es" | "en">("");
   const [transcript, setTranscript] = useState("");
   const [dispatching, setDispatching] = useState(false);
@@ -40,6 +57,22 @@ export default function NewAIMinutePage() {
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // BUG-061: PM puede desmarcar items en el preview RAID. Key = `${kind}:${idx}`.
+  // Items en este set se persisten con `status: "discarded"` en lugar de
+  // `pending`, y el backend NO les crea ticket al hacer auto-approve.
+  const [discardedRaid, setDiscardedRaid] = useState<Set<string>>(new Set());
+
+  const toggleDiscardRaid = (key: string, next: boolean) => {
+    setDiscardedRaid((prev) => {
+      const out = new Set(prev);
+      if (next) {
+        out.add(key);
+      } else {
+        out.delete(key);
+      }
+      return out;
+    });
+  };
 
   const polling = useAIJobPolling({
     jobId,
@@ -76,8 +109,17 @@ export default function NewAIMinutePage() {
     },
   });
 
-  async function savePreview() {
+  async function savePreview(titleOverride?: string) {
     if (!result) return;
+    const effectiveTitle = (titleOverride ?? title).trim();
+    // ENH-104: si el título quedó vacío, abre el modal en lugar de
+    // guardar. El modal llama de vuelta con el título completo vía
+    // `titleOverride`.
+    if (!effectiveTitle) {
+      setPendingSave("preview");
+      setTitleModalOpen(true);
+      return;
+    }
     setSavingPreview(true);
     setError(null);
     try {
@@ -86,14 +128,29 @@ export default function NewAIMinutePage() {
       // la preview mostraba items pero el detalle de la minuta los
       // perdía al guardar.
       const raidIn = result.raid ?? EMPTY_RAID_BLOCK;
+      // BUG-061: items desmarcados en el preview se marcan
+      // `status="discarded"` para que el backend NO les cree ticket en el
+      // auto-approve. Items pendientes se persisten como `pending` y se
+      // convierten en tickets reales al hacer createMinute.
+      const persistKind = (
+        kind: "risks" | "issues" | "lessons" | "changes",
+        items: typeof raidIn.risks,
+      ) =>
+        items.map((it, idx) => {
+          const base = toPersistedRaid(it);
+          if (discardedRaid.has(`${kind}:${idx}`)) {
+            return { ...base, status: "discarded" as const };
+          }
+          return base;
+        });
       const raidPersisted = {
-        risks: raidIn.risks.map(toPersistedRaid),
-        issues: raidIn.issues.map(toPersistedRaid),
-        lessons: raidIn.lessons.map(toPersistedRaid),
-        changes: raidIn.changes.map(toPersistedRaid),
+        risks: persistKind("risks", raidIn.risks),
+        issues: persistKind("issues", raidIn.issues),
+        lessons: persistKind("lessons", raidIn.lessons),
+        changes: persistKind("changes", raidIn.changes),
       };
       const created = await createMinute(id, {
-        title: title.trim() || "Minuta (IA)",
+        title: effectiveTitle,
         meeting_date: new Date().toISOString(),
         participants: result.participants ?? [],
         topics: result.topics ?? [],
@@ -134,6 +191,12 @@ export default function NewAIMinutePage() {
     }
     const text = await file.text();
     setTranscript(text);
+    // ENH-104: usa el nombre del archivo (sin extensión) como título
+    // sugerido, salvo que el usuario ya haya tipeado algo a mano.
+    if (!titleTouched) {
+      const stem = file.name.replace(/\.[^.]+$/, "");
+      setTitle(stem);
+    }
   }
 
   // BUG-055: cancela el job activo y resetea al estado pre-generación.
@@ -157,9 +220,16 @@ export default function NewAIMinutePage() {
     setError(null);
   }
 
-  async function handleGenerate(save: boolean) {
+  async function handleGenerate(save: boolean, titleOverride?: string) {
     if (transcript.trim().length < 20) {
       setError("La transcripción es demasiado corta");
+      return;
+    }
+    const effectiveTitle = (titleOverride ?? title).trim();
+    // ENH-104: si pidió guardar pero título está vacío, abre modal.
+    if (save && !effectiveTitle) {
+      setPendingSave("generate");
+      setTitleModalOpen(true);
       return;
     }
     setDispatching(true);
@@ -173,7 +243,7 @@ export default function NewAIMinutePage() {
         transcript,
         language: language || undefined,
         save_as_minute: save,
-        title: title.trim() || "Minuta (IA)",
+        title: effectiveTitle || "Minuta (IA)",
       });
       setJobId(res.job_id);
     } catch (err) {
@@ -256,7 +326,14 @@ export default function NewAIMinutePage() {
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
             <Field label="Título">
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <Input
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setTitleTouched(true);
+                }}
+                placeholder="Ej.: Reunión semanal de avance"
+              />
             </Field>
             <Field label="Idioma">
               <Select value={language} onChange={(e) => setLanguage(e.target.value as "" | "es" | "en")}>
@@ -266,26 +343,96 @@ export default function NewAIMinutePage() {
               </Select>
             </Field>
           </div>
-          <Field label="Transcripción">
-            <Textarea
-              rows={16}
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Pega aquí la transcripción de la reunión…"
-            />
-          </Field>
-          <div className="flex items-center gap-2 text-[12px] text-[var(--text-tertiary)]">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] px-3 py-2 hover:bg-[var(--color-subtle)]">
-              <input
-                type="file"
-                accept=".txt,.srt,.md"
-                className="hidden"
-                onChange={(e) => e.target.files && onFile(e.target.files[0])}
-              />
-              Subir archivo…
-            </label>
-            <span>{transcript ? `${transcript.length.toLocaleString("es-MX")} caracteres` : "—"}</span>
+          {/* ENH-108: tabs Subir / Pegar. Ambas alimentan el mismo
+              textarea `transcript`. El tab "paste" muestra un textarea
+              grande y warn-only sobre 50k chars (sin límite duro). */}
+          <div
+            className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-0.5 text-[12px]"
+            role="tablist"
+            aria-label="Fuente del transcript"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={transcriptSource === "upload"}
+              onClick={() => setTranscriptSource("upload")}
+              className={`rounded-[var(--radius-sm)] px-3 py-1.5 ${
+                transcriptSource === "upload"
+                  ? "bg-[var(--color-surface)] font-medium shadow-sm"
+                  : "text-[var(--text-secondary)]"
+              }`}
+            >
+              Subir archivo
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={transcriptSource === "paste"}
+              onClick={() => setTranscriptSource("paste")}
+              className={`rounded-[var(--radius-sm)] px-3 py-1.5 ${
+                transcriptSource === "paste"
+                  ? "bg-[var(--color-surface)] font-medium shadow-sm"
+                  : "text-[var(--text-secondary)]"
+              }`}
+            >
+              Pegar transcript
+            </button>
           </div>
+
+          {transcriptSource === "upload" ? (
+            <>
+              <Field label="Archivo de transcript">
+                <label className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] px-3 py-3 hover:bg-[var(--color-subtle)]">
+                  <input
+                    type="file"
+                    accept=".txt,.srt,.md"
+                    className="hidden"
+                    onChange={(e) => e.target.files && onFile(e.target.files[0])}
+                  />
+                  <span className="text-[12px] text-[var(--text-secondary)]">
+                    {transcript
+                      ? `Archivo cargado · ${transcript.length.toLocaleString(
+                          "es-MX",
+                        )} caracteres. Click para reemplazar.`
+                      : "Sube .txt, .srt o .md (máx 5 MB)"}
+                  </span>
+                </label>
+              </Field>
+              {transcript ? (
+                <Field label="Preview (read-only)">
+                  <Textarea
+                    rows={10}
+                    value={transcript}
+                    readOnly
+                    className="bg-[var(--color-subtle)]/40"
+                  />
+                </Field>
+              ) : null}
+            </>
+          ) : (
+            <Field label="Pega aquí el transcript completo">
+              <Textarea
+                rows={16}
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Pega aquí la transcripción de la reunión. Sin límite duro de tamaño; verás un aviso al pasar 50,000 caracteres."
+                aria-describedby="paste-char-warning"
+              />
+              <div
+                id="paste-char-warning"
+                className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-tertiary)]"
+              >
+                <span>
+                  {transcript.length.toLocaleString("es-MX")} caracteres
+                </span>
+                {transcript.length > 50000 ? (
+                  <span className="text-[var(--color-warning-fg)]">
+                    ⚠ Texto muy largo: el procesamiento puede tardar.
+                  </span>
+                ) : null}
+              </div>
+            </Field>
+          )}
         </div>
         <aside className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-4">
           <p className="text-[12px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
@@ -411,7 +558,11 @@ export default function NewAIMinutePage() {
               onMinuteChanged={setSavedMinute}
             />
           ) : (
-            <RaidSuggestionsSection raid={result.raid ?? EMPTY_RAID_BLOCK} />
+            <RaidSuggestionsSection
+              raid={result.raid ?? EMPTY_RAID_BLOCK}
+              discarded={discardedRaid}
+              onToggle={toggleDiscardRaid}
+            />
           )}
 
           {savedMinuteId ? (
@@ -433,13 +584,40 @@ export default function NewAIMinutePage() {
             </Banner>
           ) : (
             <div className="flex justify-end">
-              <Button onClick={savePreview} loading={savingPreview} disabled={generating}>
+              <Button onClick={() => savePreview()} loading={savingPreview} disabled={generating}>
                 Guardar como minuta
               </Button>
             </div>
           )}
         </section>
       ) : null}
+      {/* ENH-104: modal "Confirma el título" obligatorio al guardar
+          si el título quedó vacío. */}
+      <MinuteSaveModal
+        open={titleModalOpen}
+        initial={title}
+        onConfirm={(newTitle) => {
+          setTitle(newTitle);
+          setTitleTouched(true);
+          setTitleModalOpen(false);
+          const pending = pendingSave;
+          setPendingSave(null);
+          // Después de cerrar el modal, dispara la acción pendiente.
+          // Setea el título *antes* del próximo render con
+          // queueMicrotask para evitar leer el state stale.
+          queueMicrotask(() => {
+            if (pending === "preview") {
+              void savePreview(newTitle);
+            } else if (pending === "generate") {
+              void handleGenerate(true, newTitle);
+            }
+          });
+        }}
+        onCancel={() => {
+          setTitleModalOpen(false);
+          setPendingSave(null);
+        }}
+      />
     </div>
   );
 }
@@ -460,12 +638,21 @@ const RAID_SECTION_META: Array<{
   { key: "changes", label: "Cambios", emptyHint: "Sin cambios detectados." },
 ];
 
-function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
+function RaidSuggestionsSection({
+  raid,
+  discarded,
+  onToggle,
+}: {
+  raid: AIRaidBlock;
+  discarded: Set<string>;
+  onToggle: (key: string, next: boolean) => void;
+}) {
   const total =
     raid.risks.length +
     raid.issues.length +
     raid.lessons.length +
     raid.changes.length;
+  const kept = total - discarded.size;
   return (
     <section className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-4">
       <header className="flex items-center justify-between">
@@ -473,9 +660,15 @@ function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
           Sugerencias RAID detectadas
         </h3>
         <Badge variant={total === 0 ? "neutral" : "info"}>
-          {total} {total === 1 ? "item" : "items"}
+          {kept} de {total} {total === 1 ? "item" : "items"} se crearán
         </Badge>
       </header>
+      {/* BUG-061: cada item es un checkbox. Desmarcado → no se crea
+          ticket al guardar. Default todo marcado. */}
+      <p className="text-[11px] italic text-[var(--text-tertiary)]">
+        Desmarca los items que no quieras crear como tickets reales al
+        guardar.
+      </p>
       <div className="grid gap-3 lg:grid-cols-2">
         {RAID_SECTION_META.map((meta) => {
           const items = raid[meta.key];
@@ -497,29 +690,52 @@ function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
                     {meta.emptyHint}
                   </p>
                 ) : (
-                  items.map((it, i) => (
-                    <div
-                      key={i}
-                      className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-2.5 py-2"
-                    >
-                      <p className="text-[12px] font-medium text-[var(--text-primary)]">
-                        {it.short_desc}
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
-                        {it.suggested_owner_name ? (
-                          <span>👤 {it.suggested_owner_name}</span>
-                        ) : null}
-                        {it.suggested_priority ? (
-                          <span>⚑ P{it.suggested_priority}</span>
-                        ) : null}
-                      </div>
-                      {it.raw_quote ? (
-                        <p className="mt-1 line-clamp-2 italic text-[11px] text-[var(--text-tertiary)]">
-                          “{it.raw_quote}”
-                        </p>
-                      ) : null}
-                    </div>
-                  ))
+                  items.map((it, i) => {
+                    const key = `${meta.key}:${i}`;
+                    const isDiscarded = discarded.has(key);
+                    return (
+                      <label
+                        key={i}
+                        className={`flex cursor-pointer gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-2.5 py-2 ${
+                          isDiscarded
+                            ? "bg-[var(--color-surface)] opacity-60"
+                            : "bg-[var(--color-subtle)]"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!isDiscarded}
+                          onChange={(e) => onToggle(key, !e.target.checked)}
+                          className="mt-0.5 h-4 w-4 shrink-0"
+                          aria-label={`Crear como ticket: ${it.short_desc}`}
+                        />
+                        <div className="flex-1">
+                          <p
+                            className={`text-[12px] font-medium ${
+                              isDiscarded
+                                ? "text-[var(--text-tertiary)] line-through"
+                                : "text-[var(--text-primary)]"
+                            }`}
+                          >
+                            {it.short_desc}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                            {it.suggested_owner_name ? (
+                              <span>👤 {it.suggested_owner_name}</span>
+                            ) : null}
+                            {it.suggested_priority ? (
+                              <span>⚑ P{it.suggested_priority}</span>
+                            ) : null}
+                          </div>
+                          {it.raw_quote ? (
+                            <p className="mt-1 line-clamp-2 italic text-[11px] text-[var(--text-tertiary)]">
+                              “{it.raw_quote}”
+                            </p>
+                          ) : null}
+                        </div>
+                      </label>
+                    );
+                  })
                 )}
               </div>
             </details>

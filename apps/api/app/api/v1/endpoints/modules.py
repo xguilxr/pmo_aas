@@ -1260,9 +1260,22 @@ async def create_minute(
         kind: list(raid_in.get(kind) or [])
         for kind in ("risks", "issues", "lessons", "changes")
     }
+    # ENH-103: enriquecer participantes con match contra actors del
+    # proyecto. Match → actor_id + match_status="matched" + verified;
+    # sin match → crea actor auto_created + participation guest, marca
+    # match_status="auto_created" + verified=False para chip amarillo.
+    from app.services.minutes.participant_matcher import match_participants
+
+    enriched_participants = await match_participants(
+        db,
+        project_id=project_id,
+        tenant_id=tenant_id,
+        participants=list(body.participants or []),
+        created_by=cu.id,
+    )
     m = MeetingMinute(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
-        title=body.title, meeting_date=body.meeting_date, participants=body.participants,
+        title=body.title, meeting_date=body.meeting_date, participants=enriched_participants,
         topics=body.topics, agreements=body.agreements,
         next_meeting_date=body.next_meeting_date, attachments=body.attachments,
         transcript_file_id=body.transcript_file_id, generated_by_ai=body.generated_by_ai,
@@ -1277,11 +1290,57 @@ async def create_minute(
     )
     db.add(m)
     await db.flush()
+
+    # BUG-061: si el cliente pidió auto-aprobar (default), creamos los
+    # tickets RAID en la misma transacción para items con
+    # `status="pending"`. Items con `status="discarded"` (desmarcados en
+    # el preview por el PM) NO se crean. El JSON de raid_suggestions
+    # queda con `status="approved"` + `ticket_id` para los aprobados,
+    # `status="discarded"` para los descartados.
+    approved_count = 0
+    if body.auto_approve_raid:
+        suggestions = dict(m.raid_suggestions or {})
+        for kind in ("risks", "issues", "lessons", "changes"):
+            bucket = list(suggestions.get(kind) or [])
+            for idx, raw in enumerate(bucket):
+                sugg = dict(raw) if isinstance(raw, dict) else {}
+                status = sugg.get("status") or "pending"
+                if status != "pending":
+                    bucket[idx] = sugg
+                    continue
+                short_desc = (sugg.get("short_desc") or "").strip()
+                if not short_desc:
+                    # Sin texto utilizable: lo dejamos descartado en lugar
+                    # de fallar la creación entera de la minuta.
+                    sugg["status"] = "discarded"
+                    bucket[idx] = sugg
+                    continue
+                ticket_id, ticket_type = await _create_raid_ticket_from_suggestion(
+                    db,
+                    minute=m,
+                    kind=kind,
+                    sugg=sugg,
+                    override_short_desc=None,
+                    override_description=None,
+                    override_priority=None,
+                    cu=cu,
+                    tenant_id=tenant_id,
+                )
+                sugg["status"] = "approved"
+                sugg["ticket_id"] = ticket_id
+                sugg["ticket_type"] = ticket_type
+                bucket[idx] = sugg
+                approved_count += 1
+            suggestions[kind] = bucket
+        m.raid_suggestions = suggestions
+
     await write_audit(
         db, action="meeting_minute.create", module="minutes",
         user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute", entity_id=str(m.id),
+        details={"auto_approved_raid": approved_count} if approved_count else None,
     )
     await db.commit()
+    await db.refresh(m)
     return MeetingMinuteRead.model_validate(m)
 
 
@@ -1491,6 +1550,83 @@ _RAID_TYPE_TO_PREFIX = {
     "lessons": "LEC",
     "changes": "CHG",
 }
+
+
+async def _create_raid_ticket_from_suggestion(
+    db: AsyncSession,
+    *,
+    minute: "MeetingMinute",
+    kind: str,
+    sugg: dict,
+    override_short_desc: str | None,
+    override_description: str | None,
+    override_priority: int | None,
+    cu: CurrentUser,
+    tenant_id: UUID,
+) -> tuple[str, str]:
+    """BUG-061: helper compartido entre `create_minute` (auto-approve al
+    guardar el preview) y `approve_raid_suggestions` (US-108 editor).
+    Crea el ticket en el módulo correspondiente y retorna
+    ``(ticket_id, ticket_type)``. No actualiza ``sugg`` ni hace commit —
+    eso queda al caller.
+    """
+    short_desc = (override_short_desc or sugg.get("short_desc") or "").strip()
+    if not short_desc:
+        raise business_rule(f"short_desc vacío en {kind}")
+    title_value = short_desc[:200]
+    description_value = (
+        override_description or sugg.get("raw_quote") or sugg.get("short_desc") or None
+    )
+    priority_value = override_priority or sugg.get("suggested_priority") or 3
+    prefix = _RAID_TYPE_TO_PREFIX[kind]
+    folio = await next_folio(db, tenant_id=tenant_id, prefix=prefix)
+
+    if kind == "risks":
+        r = Risk(
+            tenant_id=str(tenant_id), project_id=str(minute.project_id), folio=folio,
+            title=title_value, description=description_value,
+            category=None, owner_id=None, area_id=None,
+            probability=int(priority_value) if priority_value else 3,
+            impact=int(priority_value) if priority_value else 3,
+            severity=(int(priority_value) ** 2) if priority_value else 9,
+            mitigation_strategy=None, status="identified",
+            identified_at=datetime.now(UTC).date(),
+            due_date=None, closure_note=None, comments=[], created_by=cu.id,
+        )
+        db.add(r)
+        await db.flush()
+        return str(r.id), "risk"
+    if kind == "issues":
+        issue = Issue(
+            tenant_id=str(tenant_id), project_id=str(minute.project_id), folio=folio,
+            title=title_value, description=description_value,
+            type="issue", priority=int(priority_value) if priority_value else 3,
+            committed_date=None, owner_id=None, area_id=None,
+            status="open", reported_at=datetime.now(UTC),
+            comments=[], created_by=cu.id,
+        )
+        db.add(issue)
+        await db.flush()
+        return str(issue.id), "issue"
+    if kind == "lessons":
+        lesson = Lesson(
+            tenant_id=str(tenant_id), project_id=str(minute.project_id), folio=folio,
+            title=title_value, description=description_value,
+            category="improvement", phase=None,
+            recommendation=None, tags=[], status="published", created_by=cu.id,
+        )
+        db.add(lesson)
+        await db.flush()
+        return str(lesson.id), "lesson"
+    chg = ChangeRequest(
+        tenant_id=str(tenant_id), project_id=str(minute.project_id), folio=folio,
+        title=title_value, description=description_value,
+        type="scope", impact=None, status="in_review",
+        requested_by=cu.id, requested_at=datetime.now(UTC), created_by=cu.id,
+    )
+    db.add(chg)
+    await db.flush()
+    return str(chg.id), "change_request"
 
 
 @minutes_router.get("/meeting-minutes/{minute_id}", response_model=MeetingMinuteRead)
