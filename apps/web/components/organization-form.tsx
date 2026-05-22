@@ -234,17 +234,40 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
           >
             Logo del cliente (URL)
           </label>
-          <Input
-            id="client_logo_url"
-            type="url"
-            value={clientLogoUrl}
-            onChange={(e) => setClientLogoUrl(e.target.value)}
-            disabled={saving}
-            maxLength={500}
-            placeholder="https://cdn.example.com/cliente-logo.png"
-          />
+          <div className="flex items-center gap-3">
+            <Input
+              id="client_logo_url"
+              type="url"
+              value={clientLogoUrl}
+              onChange={(e) => setClientLogoUrl(e.target.value)}
+              disabled={saving}
+              maxLength={500}
+              placeholder="https://cdn.example.com/cliente-logo.png"
+              className="flex-1"
+            />
+            {/* ENH-113: preview en vivo cuando hay URL. */}
+            {clientLogoUrl ? (
+              <div className="flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded border border-[var(--border-default)] bg-[var(--color-subtle)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={clientLogoUrl}
+                  alt="Preview logo cliente"
+                  className="h-full w-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="flex h-12 w-12 flex-none items-center justify-center rounded border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] text-[10px] text-[var(--color-tertiary)]">
+                logo
+              </div>
+            )}
+          </div>
           <p className="mt-1 text-xs text-[var(--color-tertiary)]">
-            ENH-100: usado en el header de reportes generados (EP020).
+            ENH-100/113: usado en el header de reportes generados (EP020,
+            sección S-01). v1.0: pega la URL pública del logo (CDN, R2,
+            S3); el upload directo desde aquí llega en v1.1.
           </p>
         </div>
       </div>
