@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Download, Loader2, Save, Sparkles } from "lucide-react";
+import { ArrowLeft, Calendar, Download, Loader2, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { ChatPanel } from "@/components/reports/builder/ChatPanel";
 import { SectionCanvas } from "@/components/reports/builder/SectionCanvas";
 import { PreviewPane } from "@/components/reports/builder/PreviewPane";
 import { SaveTemplateModal } from "@/components/reports/builder/SaveTemplateModal";
+import { ScheduleCustomModal } from "@/components/reports/builder/ScheduleCustomModal";
 import {
   SectionParamsPanel,
   type SectionParams,
@@ -100,6 +101,8 @@ export default function ReportBuilderPage() {
   const [currentUserId] = useState<string | null>(() => getStoredUser()?.id ?? null);
   // US-127 — chat IA.
   const [chatOpen, setChatOpen] = useState(false);
+  // US-131 — modal programar suscripción.
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   async function refreshTemplates() {
     const tpls = await listBuilderTemplates({});
@@ -373,6 +376,19 @@ export default function ReportBuilderPage() {
             <Save className="mr-1 h-3.5 w-3.5" /> Guardar plantilla
           </Button>
           <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setScheduleOpen(true)}
+            disabled={!loadedTemplateId}
+            title={
+              loadedTemplateId
+                ? "Programar envío recurrente"
+                : "Guarda primero la plantilla"
+            }
+          >
+            <Calendar className="mr-1 h-3.5 w-3.5" /> Programar
+          </Button>
+          <Button
             variant="primary"
             size="sm"
             onClick={handleExport}
@@ -464,6 +480,13 @@ export default function ReportBuilderPage() {
           </>
         )}
       </main>
+
+      <ScheduleCustomModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        projectId={projectId}
+        templateId={loadedTemplateId}
+      />
 
       <ChatPanel
         open={chatOpen}

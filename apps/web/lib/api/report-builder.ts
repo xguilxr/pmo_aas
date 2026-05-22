@@ -188,3 +188,25 @@ export type ChatResponse = {
 export function chatWithBuilder(body: ChatRequest): Promise<ChatResponse> {
   return apiFetch(`/api/v1/report-builder/ai-chat`, { method: "POST", body });
 }
+
+/** US-131 — crear suscripción del Report Builder (report_type='custom'). */
+export type ScheduleCustomBody = {
+  cadence: "daily" | "weekly" | "monthly" | "once";
+  recipients: string[];
+  day_of_week?: number | null;
+  hour_of_day?: number | null;
+  day_of_month?: number | null;
+  run_at?: string | null;
+  report_builder_template_id: string;
+  enabled?: boolean;
+};
+
+export function createCustomSchedule(
+  projectId: string,
+  body: ScheduleCustomBody
+): Promise<unknown> {
+  return apiFetch(`/api/v1/projects/${projectId}/scheduled-reports`, {
+    method: "POST",
+    body: { ...body, report_type: "custom" },
+  });
+}
