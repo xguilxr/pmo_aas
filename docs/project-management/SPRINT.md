@@ -53,8 +53,9 @@ Sprint 23 (v1.22) — Bloque 1 ENTREGADO 2026-05-09 (1 de 1, pendiente verif. ow
 
 Sprints 12-15 — Bloques entregados, pendiente verificación owner.
 
-Próximo libre: US-133, BUG-061, ENH-102.
-(US-119 reservada para EP017 cleanup diferido; US-120 a US-132 reservadas EP020.)
+Próximo libre: US-133, BUG-062, ENH-109.
+(US-119 reservada para EP017 cleanup diferido; US-120 a US-132 reservadas EP020.
+ BUG-061 + ENH-102 a ENH-108 reservados para Sprint 26 Bloque 0 Minutas v1.0.)
 ```
 
 ---
@@ -80,6 +81,91 @@ Sprint 25 (v1.24) — EP017 Directorio de Proyecto — Bloque 1+2 ENTREGADO 2026
     - US-118 Fases 2 (RBAC migra a leer participations) y 3 (drop project_members) — abrir US separadas con owner OK explícito por blast radius.
     - US-119 cleanup: drop legacy actors.team_id, actors.is_lead, teams.area_id, tasks/risks/issues.area_id (mantenidos hasta que el cableado de PersonPicker complete migración).
   Pendiente owner: crear label EP017 en GitHub UI y aplicar a #349-353; verificar fix; cerrar issues.
+
+### EP008/EP014 — Minutas v1.0 — INBOX 2026-05-22 (Sprint 26 Bloque 0, antes que dependencias EP020)
+
+> Frente minutas: estructura rígida + parser IA correcto + matching de participantes + suscripciones.
+> Cierra deuda histórica + abre suscripciones equivalente a US-056 pero para minutas.
+> Status sugerido: `status:triage` hasta que owner pase a `status:ready`.
+
+**BUG-061 — Preview muestra RAID pero al guardar no persiste**
+- Contexto: en el flow `/ai-minutes/new`, el preview muestra correctamente los items RAID sugeridos por el IA. Al hacer "Aceptar" / guardar, los items no se persisten en la minuta resultante (sí queda el texto pero los RAID quedan vacíos).
+- AC:
+  - [ ] Al guardar (`POST /ai-minutes/{id}/accept`), los items del preview RAID pasan a la tabla correspondiente (acciones, riesgos, decisiones, issues) ligados a la minuta.
+  - [ ] Si el PM desmarcó algún sugerido en el preview, NO se crea.
+  - [ ] TC verde con minuta de ejemplo de 5 items mixtos.
+- Fix propuesto: revisar `apps/web/app/(app)/pmo/projects/[id]/ai-minutes/new/page.tsx` (preview) vs `apps/api/app/api/v1/endpoints/ai.py` (accept handler); el accept debe iterar sobre items confirmados y crear registros, no solo guardar texto.
+- Epic: EP008.
+- Sprint: 26 Bloque 0.
+
+**ENH-102 — Parser RAID estricto (solo A/R/D/I, descartar lecciones/cambios) + opción crear items**
+- Contexto: hoy el IA alucina y sugiere lecciones y cambios mezclados con RAID. La regla es estricta: solo Acciones, Riesgos, Decisiones, Issues. Además, cada sugerencia debe tener checkbox "crear como item del proyecto" (ya estaba — verificar que sigue funcionando tras BUG-061).
+- AC:
+  - [ ] Prompt schema ampliado solo permite tipos {action, risk, decision, issue}. Lecciones/cambios rechazados en validación post-IA.
+  - [ ] Si el modelo emite item con tipo no permitido, descartar silenciosamente.
+  - [ ] Cada item sugerido tiene checkbox individual "crear" (default sí); al aceptar la minuta solo se crean los marcados.
+  - [ ] TC: prompt con transcript que menciona "lección aprendida" no produce item.
+- Archivos: `apps/api/app/services/ai/prompts.py`, validador post-IA en `services/ai/validator.py` (nuevo si no existe).
+- Epic: EP008.
+
+**ENH-103 — Match participantes ↔ actores del proyecto (auto-link + crear faltantes)**
+- Contexto: hoy los participantes de la minuta son strings libres. Necesitamos que se conecten con actores del proyecto (EP017 directorio). Si el participante existe → link; si no, crear actor on-the-fly con flag `unverified`.
+- AC:
+  - [ ] Al guardar minuta, cada participante se intenta matchear (case-insensitive, fuzzy match por nombre completo) contra `project_participations` del proyecto.
+  - [ ] Match exitoso → link `minute_participants.actor_id` se asigna.
+  - [ ] Sin match → crear `actor` con `auto_created=true` y `verified=false`; agregar al proyecto vía `project_participations` con rol "guest".
+  - [ ] UI muestra los matcheados como chips verdes y los nuevos como chips amarillos.
+- Archivos: `apps/api/app/services/minutes/participant_matcher.py` (nuevo), `apps/web/components/minute-raid-suggestions-editor.tsx`.
+- Epic: EP008 + EP017.
+
+**ENH-104 — Título auto desde nombre de archivo + prompt al guardar si vacío**
+- Contexto: hoy el título default es "Minuta (IA)". El owner quiere: si el origen es un archivo importado, usar el nombre del archivo; si transcript IA o manual y queda vacío, abrir modal al guardar pidiendo título.
+- AC:
+  - [ ] Import file: `title = file.name` (sin extensión), editable.
+  - [ ] Transcript IA / manual: `title = ""` por default; modal "Confirma el título" obligatorio al guardar si vacío.
+  - [ ] Sin modal si el usuario ya editó el título.
+- Archivos: flow `/ai-minutes/new`, modal nuevo en `apps/web/components/minute-save-modal.tsx`.
+- Epic: EP008.
+
+**ENH-105 — Estructura de minuta v1.0 (6 secciones fijas)**
+- Contexto: cerrar la estructura rígida especificada por owner.
+- AC:
+  - [ ] Secciones: 1. Encabezado, 2. Participantes (asistentes + ausentes justificados + no justificados), 3. Agenda (resumen 2-3 oraciones), 4. Desarrollo por tema (bullet points), 5. RAID (A/R/D/I), 6. Notas libres (opcional).
+  - [ ] No se admiten secciones extra ni reordenamiento.
+  - [ ] Plantillas export (`.pdf`, `.docx`, `.md`, `.txt`) actualizadas con la nueva estructura.
+  - [ ] Prompt IA actualizado para emitir JSON con esta estructura.
+- Archivos: `apps/api/app/services/minutes_formatter.py`, plantillas `apps/api/app/templates/pdf/minutes/minute.html`, prompt EP008.
+- Epic: EP008 + EP014.
+
+**ENH-106 — Campo de auditoría `origin` en minuta (manual / transcript-IA / import)**
+- Contexto: el origen no aparece en la minuta visible, pero debe quedar en BD para auditoría.
+- AC:
+  - [ ] `meeting_minutes.origin ENUM ('manual','transcript_ai','import_file','import_paste')` NOT NULL.
+  - [ ] Backfill: registros existentes → `'manual'` o `'transcript_ai'` según `generated_by_ai`.
+  - [ ] Visible en admin/audit log; NO renderizado en la minuta exportada.
+- Migración Alembic.
+- Epic: EP008.
+
+**ENH-107 — Suscripciones programadas de minutas**
+- Contexto: hoy reportes tienen `scheduled-reports` (US-056). Minutas no. Owner pide símil.
+- AC:
+  - [ ] Endpoint `POST /projects/{id}/scheduled-minutes` con cadence (weekly/monthly), destinatarios, plantilla de minuta opcional.
+  - [ ] Worker beat: en el cron, busca la última minuta del proyecto en el periodo y la envía como PDF a la lista.
+  - [ ] Si no hay minuta en el periodo → email con "Sin minuta registrada en este periodo".
+  - [ ] Reusa motor Resend y patrón US-056.
+- Archivos: `apps/api/app/services/scheduled_minutes.py` (nuevo), endpoints, worker tasks.
+- Epic: EP014.
+
+**ENH-108 — Copy-paste directo de transcript (sin file upload)**
+- Contexto: hoy en `/ai-minutes/new` solo se sube archivo. Owner pide modal con textarea grande para pegar transcript directo.
+- AC:
+  - [ ] En `/ai-minutes/new`, dos tabs: "Subir archivo" (existente) | "Pegar transcript".
+  - [ ] Tab paste: textarea ≥ 10 líneas visibles, sin límite duro de chars (warn al pasar 50k chars).
+  - [ ] Mismo flow downstream que upload: crea AIJob, polling, preview, accept.
+- Archivos: `apps/web/app/(app)/pmo/projects/[id]/ai-minutes/new/page.tsx`.
+- Epic: EP008.
+
+**Total Sprint 26 Bloque 0:** 1 BUG + 7 ENH = 8 items.
 
 (antes: vacío — todos los issues nuevos están organizados en bloques de Sprint 13-16, ver abajo.)
 ```
