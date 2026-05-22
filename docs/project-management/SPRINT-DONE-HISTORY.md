@@ -415,3 +415,157 @@
 - Sprint 16 fue parte del paquete Sprint 13-16 triagado 2026-05-06 con scope original "Reportes refinement". Entregado y cerrado en menos de 48h.
 - Status final: todos los issues llegaron a `closed completed` por owner.
 - Sin migraciones Alembic.
+
+---
+
+## Sprint 17 (v1.16) — CERRADO 2026-05-08
+
+### Bloque 0 — BUG-053 cleanup Ollama (gate pre-arranque)
+- [x] BUG-053 #254 — Eliminación de runtime Ollama embebido / configuración legacy — MERGED PR #297
+
+### Bloque 0.5 — US-104 BYO config
+- [x] US-104 #298 — Módulo BYO: test-before-save + custom provider + retry — entregado
+- Branch sesión: `claude/setup-ai-module-8HYs1`
+
+### Bloque 1 — IA conversacional global → POSTERGADO
+- US-102 / ENH-074 / ENH-075 / ENH-076 (#255-#258) movidos a Deferred 2026-05-08.
+
+---
+
+## Sprint 18 (v1.17) — CERRADO 2026-05-08
+
+### Bloque 1 — Documentos & Plan vivo (3 issues)
+- [x] US-106 #308 — Sistema de Artefactos por proyecto — `6e2f947`
+- [x] ENH-081 #309 — Charter auto-creación + backfill + completeness banner — `0b43755`
+- [x] ENH-080 #310 — Plan vivo: regeneradores xlsx/csv + fallback mpp — `13f51ed`
+
+**Migraciones:** 0055 (project_artifacts table) + 0056 (charter backfill).
+Branch: `claude/review-start-next-sprint-R8JWc`.
+
+### Diferidos del bloque
+- US-106 CA6 endpoint genérico de upload (cubierto vía endpoints nativos).
+- Tab Organigrama placeholder hasta redefinición Áreas/Recursos.
+- US-105 #311 wizard matching responsables — Deferred a Sprint 25 EP017.
+
+---
+
+## Sprint 19 (v1.18) — CERRADO 2026-05-09
+
+### Bloque 1 — RAID polish + vistas dedicadas (6 issues)
+- [x] US-107 — risk_actions + assignees N:N + endpoints — `9d94fc9`
+- [x] ENH-082 — Export RAID 4 sheets con styling — `0c59aaa`
+- [x] ENH-083 — RiskActionsCard inline en raid-detail-page — `5eb6b69`
+- [x] ENH-088 — Floating preview RAID — `e021a97`
+- [x] ENH-086 — Lessons dedicated page — `b3798d9`
+- [x] ENH-087 — Changes dedicated page — `4d91009`
+
+**Migraciones:** 0057 (risk_actions).
+Branch: `claude/continue-sprint-tasks-jR3zt`.
+
+---
+
+## Sprint 20 (v1.19) — CERRADO 2026-05-09
+
+### Bloque 1 — IA Minutas (5 issues)
+- [x] ENH-084 — Prompt + post-procesador con `_normalize_raid_block` — `719fe50`
+- [x] US-108 — CRUD minuta + bulk approve crea tickets reales — `236990a`
+- [x] BUG-055 — Cancel endpoint + worker check — `eb9baa9`
+- [x] ENH-090 — Preview page con 4 secciones colapsables + editor embebido — `a392350`
+- [x] ENH-091 — Confirm modal en lista — `8188685`
+
+**Migraciones:** 0058.
+Branch: `claude/continue-sprint-tasks-jR3zt`.
+
+---
+
+## Sprint 21 (v1.20) — CERRADO 2026-05-09
+
+### Bloque 1 — Reportes redesign HTML (4 issues)
+- [x] ENH-085 — Tabla `report_templates` + columna `reports.html_content` — `73bf661`
+- [x] US-111 — `html_report_renderer` reusable para reportes y minutas — `8c33cbd`
+- [x] US-109 — Tweaker UI + endpoint sync `/ai/reports/tweak-html` — `69d1e84`
+- [x] ENH-089 — `/reports/{id}/export?format=html|pdf|txt` — `fdac553`
+
+**Migraciones:** 0059.
+Branch: `claude/continue-sprint-tasks-jR3zt`.
+
+---
+
+## Sprint 22 (v1.21) — CERRADO 2026-05-09
+
+### Bloque 1 — Cambios / Approval workflow (2 issues)
+- [x] US-112 — Backend con migración 0060 + tablas `change_approvers` + `approval_tokens` — `e72b445`
+- [x] US-113 — Endpoints públicos + landing `/approve/[token]` — `e44efdc`
+
+**Migraciones:** 0060.
+JWT HS256 firmado con `APPROVAL_TOKEN_SECRET`; DB guarda solo SHA256 hash. Re-trigger borra tokens previos. Email cae a `logger.info` cuando EP011 no expone `send_email`.
+
+---
+
+## Sprint 23 (v1.22) — CERRADO 2026-05-09
+
+### Bloque 1 — BYO universal + Copilot M365 (1 issue)
+- [x] US-110 — BYO universal (custom OpenAI-compat) + Azure OpenAI / Copilot M365 — `1c5674d`
+
+Sin migraciones (settings.ai.byo soporta dict flexible).
+Branch: `claude/continue-sprint-work-mcmzX`.
+
+**Diferido:** CA4 enforcement (rate-limiter activo) hasta que se reporten costos descontrolados; los límites se persisten ya y `load_tenant_ai` los propaga al worker.
+
+---
+
+## Sprint 24 (v1.23) — CERRADO 2026-05-09
+
+### Bloques 1+2+3+4 — Feedback batch (12 items)
+- [x] BUG-056 + ENH-092 + BUG-057 + ENH-093 + ENH-094 + ENH-095 + ENH-096 + BUG-058 + US-109 (rework) + US-111 (rework) + BUG-059 + BUG-060.
+
+Sin migración Alembic. 12 commits separados sobre branch `claude/fix-project-charter-issues-RFoAy`.
+
+**Highlights:**
+- Helper `app.services.filename_slug` con patrón canónico `{project-slug}-{kind}.{ext}` reusado por Charter / Plan / RAID.
+- `MeetingMinuteCreate` ahora acepta `raid_suggestions`; `MeetingMinuteUpdate` extendido con `participants/topics/agreements` editables desde preview.
+- Prompt MINUTE_SYSTEM mejorado para bullets de 2-5 oraciones.
+- `ensure_duration_max_21` se vuelve no-op (warning visual en plan).
+- `download_report_history` y `export_report?format=html` respetan `rep.html_content` (último tweak) e `inline=true`.
+- `update_provider_config` permite `body.byo=null` cuando hay config previa.
+
+---
+
+## Sprint 25 (v1.24) — CERRADO 2026-05-10
+
+### Bloques 1+2 — EP017 Directorio de Proyecto (5 issues)
+- [x] US-114 #349 — Schema additivo: `project_participations` + `project_roles` + actors enriquecido — `6842344` (migración 0061)
+- [x] US-115 #350 — API: endpoints participations + project_roles + servicio `derived_assignment` — `49ea588`
+- [x] US-116 #351 — UI: tab Directorio + DirectoryView + AddPersonModal + EditParticipationModal — `a24212f`
+- [x] US-117 #352 — eligible-actors endpoint + PersonPicker + lessons.owner_actor_id (migración 0062) — `4236214`
+- [x] US-118 #353 — Fase 1 doble escritura `project_members → project_participations` — `2896787`
+
+**Migraciones:** 0061 + 0062.
+Branch: `claude/design-areas-resources-8DIfi`.
+Epic doc: `docs/epics/EP017-project-directory.md`.
+
+### Diferidos (sin issue, no bloqueantes)
+- `/admin/areas` rediseño completo (Toggle 2 con 5 sub-tabs).
+- Cableado de `PersonPicker` en cada formulario existente (TaskAssigneeDropdown, RiskOwnerDropdown, IssueOwnerDropdown, ChangeApproverPicker, LessonOwnerDropdown, ParticipantPicker minutas).
+- Filtros/agrupadores de Plan por dimensiones derivadas (depende de PersonPicker integrado + ENH-077).
+- US-118 Fases 2 (RBAC migra a leer participations) y 3 (drop project_members).
+- US-119 cleanup: drop legacy actors.team_id, actors.is_lead, teams.area_id, tasks/risks/issues.area_id.
+
+---
+
+## Sprints 11-15 — CERRADOS (verificación owner posterior)
+
+### Sprint 11 (v1.9) — Cerrado 2026-05-06
+Bloques 1+2+3 — Nav review, Nav cleanup (cierra patrón BUG-042), RAID polish. Migración Alembic 0042.
+
+### Sprint 12 (v1.10/v1.11) — Cerrado 2026-05-06
+Bloques 1+2+3 — Plan fixes + plantilla, Admin restructure, Reportes refinamiento. Migración Alembic 0043 (backfill `tasks.outline_level`).
+
+### Sprint 13 (v1.12) — Cerrado 2026-05-07
+Bloque 1 — Áreas + Plan (7 issues). Migraciones 0044 (areas/teams/actors) + 0045 (tasks.area_id).
+
+### Sprint 14 (v1.13) — Cerrado 2026-05-07
+Bloque 1 — RAID detail redesign "Denso" (4 issues, #246-#249). Rewrite completo de `raid-detail-page.tsx` (188→765 líneas). Sin migraciones.
+
+### Sprint 15 (v1.14) — Cerrado 2026-05-07
+Bloque 1 — Áreas refinement + Plan responsables (4 issues, #263-#266). Migraciones 0048+0049+0050. `project_areas` dropeado; catálogo tenant fuente única; PMO seed global + sync PMO users → Actores.
