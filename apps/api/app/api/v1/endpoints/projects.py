@@ -269,8 +269,17 @@ async def update_project(
     p = await _get_project(db, project_id, tenant_id)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no editable")
+    # ENH-101: status_rag necesita poder ser seteado a None (clear),
+    # por lo que usamos `exclude_unset` solo para ese campo: si el
+    # cliente lo envió (aun como null) lo incluimos.
+    fields_set = body.model_fields_set
     data = body.model_dump(exclude_none=True)
+    if "status_rag" in fields_set:
+        data["status_rag"] = body.status_rag  # puede ser None
     before = {k: getattr(p, k) for k in data}
+    status_rag_changed = (
+        "status_rag" in data and before.get("status_rag") != data["status_rag"]
+    )
     for k, v in data.items():
         if k in ("program_id", "pm_id") and v is not None:
             v = str(v)
@@ -291,6 +300,17 @@ async def update_project(
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),
         details={"before": {k: str(v) for k, v in before.items()}, "after": {k: str(v) for k, v in data.items()}},
     )
+    # ENH-101: log dedicado cuando cambia el RAG declarativo, para
+    # que el Report Builder / auditoría pueda trackearlo aislado.
+    if status_rag_changed:
+        await write_audit(
+            db, action="project.status_rag.set", module="projects",
+            user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),
+            details={
+                "before": str(before.get("status_rag")) if before.get("status_rag") is not None else None,
+                "after": data["status_rag"],
+            },
+        )
     await db.commit()
     return ProjectRead.model_validate(p)
 

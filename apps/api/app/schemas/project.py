@@ -41,6 +41,9 @@ class ProjectUpdate(BaseModel):
     actual_budget: Decimal | None = None
     progress: int | None = Field(default=None, ge=0, le=100)
     health_status: Literal["green", "yellow", "red"] | None = None
+    # ENH-101: declarative RAG override (PM manual). Use sentinel
+    # "__unset__" semantics: omit = no change; explicit null = clear.
+    status_rag: Literal["green", "amber", "red"] | None = None
 
 
 class ProjectRead(BaseModel):
@@ -61,6 +64,8 @@ class ProjectRead(BaseModel):
     actual_budget: Decimal | None
     progress: int
     health_status: str
+    # ENH-101: declarative RAG (override del PM). None = sin override.
+    status_rag: Literal["green", "amber", "red"] | None = None
     request_id: UUID | None = None
     # US-084: campos del plan agregados con prioridad manual.
     manually_edited_fields: dict = {}

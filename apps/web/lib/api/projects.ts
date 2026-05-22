@@ -3,6 +3,8 @@ import { apiFetch } from "@/lib/api";
 export type ProjectPhase = "planning" | "execution" | "support" | "closed";
 export type ProjectType = "innovation" | "transformation" | "operation" | "bau";
 export type ProjectHealth = "green" | "yellow" | "red";
+// ENH-101: RAG declarativo del PM (override manual). null = sin override.
+export type ProjectStatusRag = "green" | "amber" | "red";
 export type ProjectMemberRole = "pm" | "team" | "viewer" | "stakeholder";
 
 export type Project = {
@@ -23,6 +25,8 @@ export type Project = {
   actual_budget: string | null;
   progress: number;
   health_status: ProjectHealth;
+  // ENH-101: RAG declarado por el PM. null = no override.
+  status_rag: ProjectStatusRag | null;
   request_id: string | null;
   // US-084: { field: { edited_at, edited_by } } por agregado del plan
   // que el PM marcó como editado a mano (importadores deben respetar).
@@ -73,6 +77,7 @@ export type ProjectUpdateBody = Partial<{
   actual_budget: number | string | null;
   progress: number;
   health_status: ProjectHealth;
+  status_rag: ProjectStatusRag | null;
 }>;
 
 export type ListProjectsParams = {
@@ -176,6 +181,13 @@ export const TYPE_LABEL: Record<ProjectType, string> = {
 export const HEALTH_LABEL: Record<ProjectHealth, string> = {
   green: "Verde",
   yellow: "Amarillo",
+  red: "Rojo",
+};
+
+// ENH-101: labels para el RAG declarativo (override manual del PM).
+export const STATUS_RAG_LABEL: Record<ProjectStatusRag, string> = {
+  green: "Verde",
+  amber: "Ámbar",
   red: "Rojo",
 };
 
