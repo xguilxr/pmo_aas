@@ -39,6 +39,7 @@ from app.models.report_history import ReportHistory  # noqa: F401
 from app.models.report_template import ReportTemplate  # noqa: F401
 from app.models.risk_action import RiskAction, RiskActionAssignee  # noqa: F401
 from app.models.role import Role, UserRole  # noqa: F401
+from app.models.scheduled_minute import ScheduledMinute  # noqa: F401
 from app.models.scheduled_report import ScheduledReport  # noqa: F401
 from app.models.stakeholder import Stakeholder  # noqa: F401
 from app.models.task import Task, TaskDependency  # noqa: F401

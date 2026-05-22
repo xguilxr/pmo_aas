@@ -29,6 +29,7 @@ celery_app = Celery(
     include=[
         "app.workers.tasks.ai",
         "app.workers.tasks.notifications",
+        "app.workers.tasks.scheduled_minutes",
         "app.workers.tasks.scheduled_reports",
     ],
 )
@@ -43,6 +44,11 @@ celery_app.conf.broker_connection_retry_on_startup = True
 celery_app.conf.beat_schedule = {
     "scheduled-reports-dispatch-due": {
         "task": "scheduled_reports.dispatch_due",
+        "schedule": 300.0,
+    },
+    # ENH-107: dispatch de minutas programadas cada 5 min.
+    "scheduled-minutes-dispatch-due": {
+        "task": "scheduled_minutes.dispatch_due",
         "schedule": 300.0,
     },
 }
