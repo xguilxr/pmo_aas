@@ -399,6 +399,9 @@ async def _run_minute(
                     agreements=merged["agreements"], next_meeting_date=None,
                     attachments=[], generated_by_ai=True, status="final",
                     created_by=requested_by,
+                    # ENH-106: minutas creadas por el job de IA (transcript →
+                    # accept) llevan origin `transcript_ai` para auditoría.
+                    origin="transcript_ai",
                     raid_suggestions=raid_persisted,
                 )
                 db.add(mm)

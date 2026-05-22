@@ -299,6 +299,10 @@ class MeetingMinuteCreate(BaseModel):
     attachments: list[dict] = []
     transcript_file_id: str | None = None
     generated_by_ai: bool = False
+    # ENH-106: origen de la minuta (audit-only). Default `manual`.
+    # `transcript_ai` lo setea el worker de IA, no el cliente; aceptamos
+    # los 4 valores en el schema para consistencia con el campo en DB.
+    origin: Literal["manual", "transcript_ai", "import_file", "import_paste"] = "manual"
     # BUG-058: el flujo "Previsualizar → Guardar como minuta" perdía
     # las sugerencias RAID detectadas por el LLM al persistirlas.
     # Aceptamos el shape persistible {risks/issues/lessons/changes}.
@@ -317,6 +321,9 @@ class MeetingMinuteRead(BaseModel):
     next_meeting_date: date | None
     attachments: list
     generated_by_ai: bool
+    # ENH-106: origen de la minuta (audit-only). No se renderiza en
+    # exports; visible solo en admin/audit-log.
+    origin: str = "manual"
     status: str
     # US-108: sugerencias RAID detectadas por el LLM con su estado
     # actual de revisión (pending / approved / discarded).

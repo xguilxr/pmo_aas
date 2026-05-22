@@ -131,6 +131,13 @@ class MeetingMinute(Base, _ModuleBase, TimestampMixin):
     attachments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     transcript_file_id: Mapped[str | None] = mapped_column(String(36))
     generated_by_ai: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # ENH-106: campo de auditoría — origen de la minuta. Valores:
+    # `manual` (POST normal), `transcript_ai` (job de IA aceptado),
+    # `import_file` (importada desde archivo), `import_paste` (pegada).
+    # No se renderiza en exports; visible solo en admin/audit-log.
+    origin: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="manual", server_default="manual"
+    )
     # US-108: sugerencias RAID detectadas por el LLM, persistidas para
     # que el PM pueda revisarlas y aprobarlas (o descartarlas) más tarde.
     # Shape: {risks: [...], issues: [...], lessons: [...], changes: [...]}.
