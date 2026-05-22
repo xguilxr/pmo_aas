@@ -10,6 +10,9 @@ class OrganizationCreate(BaseModel):
     industry: str | None = None
     country: str | None = None
     contact_email: str | None = None
+    logo_url: str | None = Field(default=None, max_length=500)
+    # ENH-100: logo del cliente (consumido por EP020 Report Builder).
+    client_logo_url: str | None = Field(default=None, max_length=500)
     is_active: bool = True
 
 
@@ -19,6 +22,9 @@ class OrganizationUpdate(BaseModel):
     industry: str | None = None
     country: str | None = None
     contact_email: str | None = None
+    logo_url: str | None = Field(default=None, max_length=500)
+    # ENH-100
+    client_logo_url: str | None = Field(default=None, max_length=500)
     is_active: bool | None = None
 
 
@@ -30,6 +36,8 @@ class OrganizationRead(BaseModel):
     country: str | None
     contact_email: str | None
     logo_url: str | None
+    # ENH-100
+    client_logo_url: str | None = None
     is_active: bool
 
     model_config = {"from_attributes": True}
@@ -110,6 +118,8 @@ class OrganizationPanelDetail(BaseModel):
     country: str | None = None
     contact_email: str | None = None
     logo_url: str | None = None
+    # ENH-100
+    client_logo_url: str | None = None
     is_active: bool
     business_units: list[OrgPanelBusinessUnit] = Field(default_factory=list)
     programs: list[OrgPanelProgram] = Field(default_factory=list)
