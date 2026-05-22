@@ -492,3 +492,29 @@ async def export_project(
     ).encode()
     return Response(content=body, media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename={p.folio}.pdf"})
+
+
+@router.get("/{project_id}/progress")
+async def get_project_progress(
+    project_id: UUID,
+    method: str | None = Query(default=None),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-121 — Return ``% avance`` resolved by the configured method.
+
+    Optional ``?method=`` query param overrides the tenant default.
+    Response shape: ``{"value": float, "method": str, "fallback": str|None}``.
+    """
+    from app.services.progress_calculator import compute_progress_detailed
+
+    tenant_id = _tenant(cu)
+    p = await _get_project(db, project_id, tenant_id)
+    result = await compute_progress_detailed(db, p.id, method=method)
+    payload: dict[str, object] = {
+        "value": result.value,
+        "method": result.method,
+    }
+    if result.fallback is not None:
+        payload["fallback"] = result.fallback
+    return payload
