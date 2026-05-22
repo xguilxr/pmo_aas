@@ -12,12 +12,13 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Download, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { CatalogSidebar } from "@/components/reports/builder/CatalogSidebar";
+import { ChatPanel } from "@/components/reports/builder/ChatPanel";
 import { SectionCanvas } from "@/components/reports/builder/SectionCanvas";
 import { PreviewPane } from "@/components/reports/builder/PreviewPane";
 import { SaveTemplateModal } from "@/components/reports/builder/SaveTemplateModal";
@@ -32,6 +33,7 @@ import {
   listSections,
   listBuilderTemplates,
   updateBuilderTemplate,
+  type ChatAction,
   type ReportBuilderTemplate,
   type ReportSection,
   type RenderRequest,
@@ -96,6 +98,8 @@ export default function ReportBuilderPage() {
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [currentUserId] = useState<string | null>(() => getStoredUser()?.id ?? null);
+  // US-127 — chat IA.
+  const [chatOpen, setChatOpen] = useState(false);
 
   async function refreshTemplates() {
     const tpls = await listBuilderTemplates({});
@@ -240,6 +244,65 @@ export default function ReportBuilderPage() {
     }
   }
 
+  /** US-127 — aplica acciones devueltas por la IA al canvas y devuelve
+   *  un undo handle que el ChatPanel guarda para que el PM revierta. */
+  function applyChatActions(actions: ChatAction[]): () => void {
+    const prevCodes = [...codes];
+    const prevParams = { ...paramsByCode };
+    let nextCodes = [...codes];
+    let nextParams = { ...paramsByCode };
+    for (const a of actions) {
+      if (a.type === "add_section" && a.code && !nextCodes.includes(a.code)) {
+        nextCodes = [...nextCodes, a.code];
+      } else if (
+        a.type === "remove_section" &&
+        a.index !== null &&
+        a.index !== undefined &&
+        a.index >= 0 &&
+        a.index < nextCodes.length
+      ) {
+        const removed = nextCodes[a.index];
+        nextCodes = nextCodes.filter((_, i) => i !== a.index);
+        if (removed) {
+          const np = { ...nextParams };
+          delete np[removed];
+          nextParams = np;
+        }
+      } else if (
+        a.type === "update_section_params" &&
+        a.index !== null &&
+        a.index !== undefined &&
+        nextCodes[a.index]
+      ) {
+        const code = nextCodes[a.index];
+        nextParams = {
+          ...nextParams,
+          [code]: { ...(nextParams[code] ?? {}), ...(a.params ?? {}) },
+        };
+      } else if (
+        a.type === "reorder_section" &&
+        a.index !== null &&
+        a.index !== undefined &&
+        a.to !== null &&
+        a.to !== undefined &&
+        a.index >= 0 &&
+        a.to >= 0 &&
+        a.index < nextCodes.length &&
+        a.to < nextCodes.length
+      ) {
+        const moved = nextCodes[a.index];
+        nextCodes = nextCodes.filter((_, i) => i !== a.index);
+        nextCodes.splice(a.to, 0, moved);
+      }
+    }
+    setCodes(nextCodes);
+    setParamsByCode(nextParams);
+    return () => {
+      setCodes(prevCodes);
+      setParamsByCode(prevParams);
+    };
+  }
+
   const handleReorder = useCallback((next: string[]) => setCodes(next), []);
   const handleRemove = useCallback(
     (code: string) => {
@@ -293,6 +356,14 @@ export default function ReportBuilderPage() {
               className="ml-1 h-8 w-16 rounded border border-zinc-300 px-2 text-xs"
             />
           </label>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setChatOpen(true)}
+            title="Abrir chat IA"
+          >
+            <Sparkles className="mr-1 h-3.5 w-3.5 text-violet-500" /> IA
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -393,6 +464,14 @@ export default function ReportBuilderPage() {
           </>
         )}
       </main>
+
+      <ChatPanel
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        canvasCodes={codes}
+        compositionMode={compositionMode}
+        onApplyActions={applyChatActions}
+      />
 
       <SaveTemplateModal
         open={saveOpen}

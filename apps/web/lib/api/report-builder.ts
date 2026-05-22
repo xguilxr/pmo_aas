@@ -157,3 +157,34 @@ export function updateBuilderTemplate(
 export function deleteBuilderTemplate(id: string): Promise<void> {
   return apiFetch(`/api/v1/report-builder-templates/${id}`, { method: "DELETE" });
 }
+
+/** US-127 — chat IA conversacional. */
+export type ChatAction = {
+  type:
+    | "add_section"
+    | "remove_section"
+    | "update_section_params"
+    | "reorder_section"
+    | "no_op";
+  code?: string | null;
+  index?: number | null;
+  to?: number | null;
+  params?: Record<string, unknown> | null;
+};
+
+export type ChatRequest = {
+  user_message: string;
+  canvas_codes: string[];
+  composition_mode: "A" | "B";
+  history?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+};
+
+export type ChatResponse = {
+  message: string;
+  actions: ChatAction[];
+  raw_output: string | null;
+};
+
+export function chatWithBuilder(body: ChatRequest): Promise<ChatResponse> {
+  return apiFetch(`/api/v1/report-builder/ai-chat`, { method: "POST", body });
+}
