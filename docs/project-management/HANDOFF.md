@@ -76,14 +76,20 @@ Ver `SPRINT.md` para detalle completo.
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
-Items mencionados durante la sesión que vale la pena no perder:
-
 - **Sesión de revisión completa de diseño y navegación del producto.** Owner planea esta sesión "al finalizar todo esto" (probablemente cuando EP020 esté completo). Foco: UX cross-módulo, consistencia visual, navegación, atajos.
-- **Re-evaluar chat IA conversacional global** (US-102/ENH-074/075/076 en Deferred) después de cerrar EP020 — owner postergó decisión en Sprint 17.
-- **Cleanup legacy de Áreas/Recursos:** US-119 (drop columnas `actors.team_id`, `actors.is_lead`, `teams.area_id`, `tasks/risks/issues.area_id`) cuando PersonPicker esté cableado en todos los forms del EP017 fase 2.
-- **PersonPicker cableado en cada formulario existente** (TaskAssigneeDropdown, RiskOwnerDropdown, IssueOwnerDropdown, ChangeApproverPicker, LessonOwnerDropdown, ParticipantPicker minutas) — diferido del EP017 Sprint 25.
-- **Filtros/agrupadores de Plan por dimensiones derivadas** (depende del PersonPicker integrado + ENH-077).
-- **US-118 Fases 2 y 3:** RBAC migra a leer `project_participations` (Fase 2) y drop `project_members` (Fase 3) — abrir US separadas con owner OK explícito por blast radius.
+- **Re-evaluar chat IA conversacional global** (US-102/ENH-074/075/076 en Deferred) después de cerrar EP020.
+
+## 🗃️ Items creados al cierre de sesión (Deferred — sin sprint asignado)
+
+Los siguientes 5 issues se crearon al cierre de sesión para que no se pierdan en backlog informal. Todos en `status:triage` esperando owner los asigne a un sprint:
+
+- **US-119 #414** — EP017 cleanup: drop legacy `actors.team_id` / `actors.is_lead` / `teams.area_id` / `tasks|risks|issues.area_id`.
+- **US-133 #415** — US-118 Fase 2: RBAC migra a leer `project_participations`.
+- **US-134 #416** — US-118 Fase 3: drop tabla `project_members`.
+- **ENH-109 #417** — PersonPicker cableado en formularios existentes (Task/Risk/Issue/Change/Lesson/Participant).
+- **ENH-110 #418** — Filtros / agrupadores de Plan por dimensiones derivadas.
+
+Dependencias: ENH-109 bloquea US-119 y ENH-110. US-133 bloquea US-134.
 
 ---
 

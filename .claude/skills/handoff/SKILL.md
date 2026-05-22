@@ -28,6 +28,19 @@ Antes de escribir nada, junta esta información:
 - **Errores o gotchas** detectados (CI rojo, dependencias rotas,
   collisions de migraciones, etc.).
 
+## Paso 1.5 — Verificar epic docs pendientes de actualización (§0.2)
+
+Antes del cleanup, repasa los commits de la sesión y pregúntate:
+- ¿Algún commit cambió comportamiento descrito en `docs/epics/EP0XX-*.md`?
+- ¿Algún schema, endpoint o flow cambió y la epic todavía describe el
+  comportamiento viejo?
+
+Si SÍ → **delega a sub-agente Haiku** para actualizar el epic doc antes
+de cerrar la sesión (ver CLAUDE.md §10 patrón). El HANDOFF.md final
+debe poder afirmar que no quedan epics desactualizadas.
+
+Si NO aplica → continúa al paso 2.
+
 ## Paso 2 — Limpieza obligatoria de SPRINT.md
 
 Antes de redactar el handoff:
@@ -99,6 +112,18 @@ máximo. Detalle completo en SPRINT.md.
 - Sprint N Bloque M: <items + foco>
 - Sprint N+1: <items + foco>
 - ...
+
+## 📚 Estado de las epics docs
+
+Lista de epics que la sesión tocó (commits con cambios funcionales) y
+si están sincronizadas con el código:
+
+| Epic | Sincronizada | Notas |
+|---|---|---|
+| EP0XX | sí / pendiente | <razón si pendiente> |
+
+Si alguna queda pendiente, anotarlo como acción para la próxima
+sesión.
 
 ## 🧹 Cleanup técnico pendiente
 
