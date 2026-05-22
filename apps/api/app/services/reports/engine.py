@@ -791,6 +791,7 @@ async def render_template(
             if ctx.project
             else None
         ),
+        "pm_name": ctx.pm_name,
         "scope": {
             "tenant_id": str(scope.tenant_id),
             "project_id": str(scope.project_id) if scope.project_id else None,

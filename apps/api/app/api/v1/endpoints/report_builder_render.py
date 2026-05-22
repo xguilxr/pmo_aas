@@ -1,10 +1,10 @@
-"""Render endpoint del Report Builder — US-123 (EP020).
+"""Render + Export endpoints del Report Builder — US-123 + US-130 (EP020).
 
-Toma un template (id o code seed), scope (project_id v1.0) y window
-opcionales, e invoca :func:`app.services.reports.engine.render_template`.
-
-El response es `{html, json, sections_meta}`. El export PDF vive en
-US-130 y se invoca aparte (`?format=pdf` en el mismo endpoint).
+- `POST /report-builder/render?format=json|pdf` — toma template +
+  scope + window inline (US-123).
+- `POST /report-builder/templates/{template_id}/export?format=pdf` —
+  shape específico del AC US-130 (PM descarga el reporte custom como
+  PDF reusando el motor compartido).
 """
 from __future__ import annotations
 
@@ -100,3 +100,64 @@ async def render_report(
         json=result.json,
         sections_meta=result.sections_meta,
     )
+
+
+class ExportRequest(BaseModel):
+    """Body de POST /report-builder/templates/{template_id}/export."""
+
+    project_id: UUID | None = None
+    organization_id: UUID | None = None
+    program_id: UUID | None = None
+    level: int = Field(default=3, ge=1, le=4)
+    cut_off_date: date | None = None
+    window_days: int = Field(default=14, ge=1, le=365)
+    params: dict[str, dict[str, Any]] | None = None
+
+
+@router.post("/templates/{template_id}/export")
+async def export_template_pdf(
+    template_id: UUID,
+    payload: ExportRequest,
+    format: str = Query(default="pdf", pattern="^(pdf|html)$"),
+    db: AsyncSession = Depends(get_db),
+    cu: CurrentUser = Depends(require_authenticated()),
+):
+    """US-130 — descarga el reporte custom como PDF (o HTML).
+
+    Reusa `render_template` (US-123). El footer del PDF incluye PM,
+    fecha de emisión, plantilla aplicada y scope (cableado en
+    `templates/pdf/builder.html`).
+    """
+    tenant_id = cu.effective_tenant_id
+    if tenant_id is None:
+        raise forbidden("Sin tenant activo")
+
+    if payload.level == 3 and not payload.project_id:
+        raise validation_error(
+            "project_id es obligatorio para reportes Nivel 3",
+            {"project_id": "required"},
+        )
+
+    scope = ReportScope(
+        tenant_id=tenant_id,
+        project_id=payload.project_id,
+        organization_id=payload.organization_id,
+        program_id=payload.program_id,
+        level=payload.level,
+    )
+    window = ReportWindow(
+        cut_off_date=payload.cut_off_date or date.today(),
+        window_days=payload.window_days,
+    )
+    result = await render_template(
+        db,
+        template_id,
+        scope,
+        window,
+        params_overrides=payload.params,
+    )
+
+    if format == "html":
+        return Response(content=result.html, media_type="text/html")
+    pdf_bytes = html_to_pdf(result.html)
+    return Response(content=pdf_bytes, media_type="application/pdf")

@@ -40,4 +40,27 @@
 {% if not sections_meta %}
   <p class="empty">La plantilla no tiene secciones configuradas.</p>
 {% endif %}
+
+{# US-130 — footer con metadata del export. WeasyPrint repite este
+   bloque sólo una vez (no en cada página); el footer paginado del
+   chrome vive en `base.html` (@bottom-left/right). #}
+<footer class="report-footer" style="margin-top: 2em; padding-top: .8em; border-top: 1px solid var(--border); font-size: 8.5pt; color: var(--muted);">
+  <p>
+    <strong>Plantilla:</strong> {{ template.name }} ({{ template.code }}) ·
+    <strong>Modo:</strong> {{ mode }} ·
+    <strong>Nivel:</strong> {{ template.level }}
+  </p>
+  <p>
+    {% if project %}<strong>Proyecto:</strong> {{ project.folio }} — {{ project.name }} · {% endif %}
+    {% if pm_name %}<strong>PM:</strong> {{ pm_name }} · {% endif %}
+    <strong>Emitido:</strong> {{ generated_at }}
+  </p>
+  <p>
+    <strong>Scope:</strong>
+    tenant <code>{{ scope.tenant_id }}</code>
+    {% if scope.project_id %} · project <code>{{ scope.project_id }}</code>{% endif %}
+    {% if scope.organization_id %} · org <code>{{ scope.organization_id }}</code>{% endif %}
+    {% if scope.program_id %} · program <code>{{ scope.program_id }}</code>{% endif %}
+  </p>
+</footer>
 {% endblock %}
