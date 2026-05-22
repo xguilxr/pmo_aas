@@ -43,10 +43,14 @@ def upgrade() -> None:
     # 2) Backfill desde criticality. Usamos SQL plano para que funcione
     # tanto en Postgres como en SQLite (batch upgrade tests).
     bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        true_lit, false_lit = "TRUE", "FALSE"
+    else:
+        true_lit, false_lit = "1", "0"
     bind.execute(
         sa.text(
             "UPDATE tasks SET is_critical = CASE "
-            "WHEN criticality IN ('high', 'critical') THEN 1 ELSE 0 END"
+            f"WHEN criticality IN ('high', 'critical') THEN {true_lit} ELSE {false_lit} END"
         )
     )
 

@@ -159,10 +159,10 @@ def test_tc097_4_parser_xlsx_with_is_critical_column():
 def test_tc097_4_parser_csv_no_is_critical_column():
     """Parser CSV: misma semántica — sin columna → None."""
     csv_bytes = (
-        "Nombre,Criticidad\n"
-        "T1,high\n"
-        "T2,low\n"
-    ).encode("utf-8")
+        b"Nombre,Criticidad\n"
+        b"T1,high\n"
+        b"T2,low\n"
+    )
     result = parse_csv(csv_bytes)
     assert len(result.tasks) == 2
     assert all(t.is_critical is None for t in result.tasks)
