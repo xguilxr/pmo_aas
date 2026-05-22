@@ -51,6 +51,7 @@ import {
   previewReportHistory,
   previewReportHtml,
   previewSeguimientoTemplate,
+  regenerateBuilderPdf,
   updateReport,
   type Report,
   type ReportHistoryItem,
@@ -96,16 +97,20 @@ function GeneratorBadge({ generator }: { generator: Report["generator"] }) {
   if (generator === "avance") return <Badge variant="info">Avance</Badge>;
   if (generator === "seguimiento")
     return <Badge variant="info">Seguimiento</Badge>;
+  if (generator === "builder")
+    return <Badge variant="accent">Builder</Badge>;
   return null;
 }
 
-// ENH-055: 3-vista toggle (Catálogo / Historial / Creación) con hash en URL.
-type ReportsView = "catalog" | "history" | "create";
+// ENH-055: toggle de vistas con hash en URL.
+// US-141: añade "builder" para listar reportes generados desde el
+// Report Builder (`generator='builder'`) con acción "Regenerar PDF".
+type ReportsView = "catalog" | "history" | "builder" | "create";
 
 function parseViewHash(): ReportsView {
   if (typeof window === "undefined") return "catalog";
   const h = (window.location.hash || "").replace(/^#/, "").toLowerCase();
-  if (h === "history" || h === "create") return h;
+  if (h === "history" || h === "create" || h === "builder") return h;
   return "catalog";
 }
 
@@ -246,6 +251,7 @@ function ReportsInner() {
           [
             { v: "catalog" as const, label: "Catálogo" },
             { v: "history" as const, label: "Historial" },
+            { v: "builder" as const, label: "Builder" },
             { v: "create" as const, label: "Creación" },
           ]
         ).map((opt) => {
@@ -272,6 +278,8 @@ function ReportsInner() {
 
       {view === "history" ? (
         <ReportHistoryView projectId={id} />
+      ) : view === "builder" ? (
+        <ReportBuilderView projectId={id} />
       ) : view === "create" ? (
         <ReportCreateAIView projectId={id} />
       ) : (
@@ -2685,5 +2693,126 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
       </section>
     </div>
     </div>
+  );
+}
+
+// US-141 — vista Builder: lista solo reportes generados desde el Report
+// Builder (generator='builder') con acción "Regenerar PDF" desde
+// snapshot (US-140).
+function ReportBuilderView({ projectId }: { projectId: string }) {
+  const [rows, setRows] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listReports(projectId)
+      .then((all) => {
+        if (cancelled) return;
+        setRows(all.filter((r) => r.generator === "builder"));
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(
+            err instanceof ApiError ? err.message : "Error al cargar reportes",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  async function regenerate(reportId: string) {
+    setRegeneratingId(reportId);
+    try {
+      const blob = await regenerateBuilderPdf(reportId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-${reportId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al regenerar PDF");
+    } finally {
+      setRegeneratingId(null);
+    }
+  }
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
+      <header className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            Reportes del Builder
+          </h2>
+          <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+            Cada export desde `/reports/builder` o cada ejecución de
+            una suscripción custom (US-131) queda registrado aquí. El
+            PDF se regenera desde el snapshot HTML — el contenido se
+            preserva aunque la data del proyecto cambie después.
+          </p>
+        </div>
+        <Link
+          href={`/pmo/projects/${projectId}/reports/builder`}
+          className="text-xs text-[var(--text-secondary)] hover:underline"
+        >
+          Abrir builder →
+        </Link>
+      </header>
+
+      {error && <Banner variant="danger">{error}</Banner>}
+
+      {loading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] p-6 text-center text-sm text-[var(--text-tertiary)]">
+          Sin reportes generados aún. Abre el Report Builder, configura
+          tu plantilla y descarga el PDF para que aparezca aquí.
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--border-subtle)]">
+          {rows.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center justify-between gap-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                  {r.title}
+                </p>
+                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                  <Badge variant="accent">Builder</Badge>
+                  <span>{r.cut_off_date ?? "—"}</span>
+                  <span>·</span>
+                  <span>{new Date(r.created_at).toLocaleString("es-MX")}</span>
+                  {r.status === "sent" && (
+                    <Badge variant="success">Enviado</Badge>
+                  )}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => regenerate(r.id)}
+                loading={regeneratingId === r.id}
+                disabled={!!regeneratingId}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" /> Regenerar PDF
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
