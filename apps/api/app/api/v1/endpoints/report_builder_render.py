@@ -149,13 +149,50 @@ async def export_template_pdf(
         cut_off_date=payload.cut_off_date or date.today(),
         window_days=payload.window_days,
     )
+    # Cargamos el template explícitamente para tener el ORM object al
+    # persistir (US-140); `render_template` lo acepta por id pero no lo
+    # devuelve.
+    from sqlalchemy import select as _select
+
+    from app.models.report_builder_template import ReportBuilderTemplate
+
+    tpl_row = (
+        await db.execute(
+            _select(ReportBuilderTemplate).where(
+                ReportBuilderTemplate.id == str(template_id)
+            )
+        )
+    ).scalar_one_or_none()
+    if tpl_row is None:
+        from app.core.errors import not_found
+
+        raise not_found("Plantilla de reporte")
+
     result = await render_template(
         db,
-        template_id,
+        tpl_row,
         scope,
         window,
         params_overrides=payload.params,
     )
+
+    # US-140 — persistir snapshot. Solo cuando hay project_id (Nivel 3/4);
+    # exports L1/L2 no tienen home en `reports` (su modelo asume
+    # `project_id`).
+    if scope.project_id:
+        from app.services.reports.persistence import persist_builder_export
+
+        await persist_builder_export(
+            db,
+            tenant_id=tenant_id,
+            project_id=scope.project_id,
+            template=tpl_row,
+            cut_off_date=window.cut_off_date,
+            sections_snapshot=result.json,
+            html_content=result.html,
+            created_by=cu.id,
+        )
+        await db.commit()
 
     if format == "html":
         return Response(content=result.html, media_type="text/html")
