@@ -21,6 +21,10 @@ import { CatalogSidebar } from "@/components/reports/builder/CatalogSidebar";
 import { SectionCanvas } from "@/components/reports/builder/SectionCanvas";
 import { PreviewPane } from "@/components/reports/builder/PreviewPane";
 import {
+  SectionParamsPanel,
+  type SectionParams,
+} from "@/components/reports/builder/SectionParamsPanel";
+import {
   listSections,
   listBuilderTemplates,
   type ReportBuilderTemplate,
@@ -78,6 +82,9 @@ export default function ReportBuilderPage() {
     new Date().toISOString().slice(0, 10)
   );
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  // US-125 — params por sección (map code → params).
+  const [paramsByCode, setParamsByCode] = useState<Record<string, SectionParams>>({});
+  const [rightPanel, setRightPanel] = useState<"params" | "preview">("preview");
 
   // 1) Catálogo + plantillas seed
   useEffect(() => {
@@ -109,6 +116,7 @@ export default function ReportBuilderPage() {
       setCompositionMode(d.composition_mode);
       setCutOff(d.cut_off_date ?? cutOff);
       setWindowDays(d.window_days);
+      if (d.params) setParamsByCode(d.params);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
@@ -122,12 +130,12 @@ export default function ReportBuilderPage() {
         composition_mode: compositionMode,
         cut_off_date: cutOff,
         window_days: windowDays,
-        params: {},
+        params: paramsByCode,
         updated_at: new Date().toISOString(),
       });
     }, AUTOSAVE_MS);
     return () => clearInterval(id);
-  }, [projectId, codes, compositionMode, cutOff, windowDays]);
+  }, [projectId, codes, compositionMode, cutOff, windowDays, paramsByCode]);
 
   const renderRequest = useMemo<RenderRequest | null>(() => {
     if (codes.length === 0) return null;
@@ -146,11 +154,12 @@ export default function ReportBuilderPage() {
       level: 3,
       cut_off_date: cutOff,
       window_days: windowDays,
+      params: paramsByCode,
       // Override en frontend: para preview puramente declarativo, el
       // motor v1.0 ignora codes extra; el render fiel del canvas
       // sustituirá la seed por una custom (US-126 al guardar).
     };
-  }, [codes, compositionMode, cutOff, windowDays, projectId, templates]);
+  }, [codes, compositionMode, cutOff, windowDays, projectId, templates, paramsByCode]);
 
   const handleAdd = useCallback(
     (code: string) => {
@@ -242,8 +251,52 @@ export default function ReportBuilderPage() {
                 onRemove={handleRemove}
               />
             </div>
-            <div className="w-[480px] border-l border-zinc-200">
-              <PreviewPane request={renderRequest} />
+            <div className="flex w-[480px] flex-col border-l border-zinc-200">
+              <div className="flex border-b border-zinc-200 bg-zinc-50 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRightPanel("params")}
+                  className={`flex-1 px-3 py-1.5 ${
+                    rightPanel === "params"
+                      ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
+                      : "text-zinc-500 hover:text-zinc-700"
+                  }`}
+                >
+                  Parámetros
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightPanel("preview")}
+                  className={`flex-1 px-3 py-1.5 ${
+                    rightPanel === "preview"
+                      ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
+                      : "text-zinc-500 hover:text-zinc-700"
+                  }`}
+                >
+                  Preview
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {rightPanel === "params" ? (
+                  <SectionParamsPanel
+                    section={
+                      selectedCode
+                        ? catalog.find((s) => s.code === selectedCode) ?? null
+                        : null
+                    }
+                    params={selectedCode ? paramsByCode[selectedCode] ?? {} : {}}
+                    onChange={(next) => {
+                      if (!selectedCode) return;
+                      setParamsByCode({
+                        ...paramsByCode,
+                        [selectedCode]: next,
+                      });
+                    }}
+                  />
+                ) : (
+                  <PreviewPane request={renderRequest} />
+                )}
+              </div>
             </div>
           </>
         )}
