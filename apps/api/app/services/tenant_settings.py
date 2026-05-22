@@ -1,9 +1,11 @@
-"""Tenant-level settings accessors (ENH-099).
+"""Tenant-level settings accessors (ENH-098 + ENH-099).
 
 Shape canónico de ``tenants.settings.report_builder``::
 
     {
       "report_builder": {
+        "progress_calculation_method":
+            "by_task_count" | "by_duration" | "by_effort",
         "task_load_thresholds": {
             "green_max": int,  # tareas <= green_max  -> verde
             "amber_max": int,  # green_max < tareas <= amber_max -> ámbar
@@ -12,24 +14,28 @@ Shape canónico de ``tenants.settings.report_builder``::
       }
     }
 
-Default cuando la clave no existe: ``{"green_max": 5, "amber_max": 10}``.
+Defaults cuando la clave no existe:
+- ``progress_calculation_method`` → ``"by_task_count"``
+- ``task_load_thresholds`` → ``{"green_max": 5, "amber_max": 10}``
 
 Este módulo expone helpers puros (sin DB) que consultan/escriben sobre
-un objeto ``Tenant`` ya cargado. EP020 (Report Builder) consumirá
-``get_task_load_thresholds`` para colorear la carga de tareas por
-recurso al renderizar reportes.
-
-Nota: el sibling worker ENH-098 también agrega claves bajo
-``settings.report_builder``; cada PR usa una sub-clave independiente
-(``progress_calculation_method`` vs ``task_load_thresholds``), por lo
-que la segunda en mergear simplemente añade su función a este módulo.
+un objeto ``Tenant`` ya cargado. EP020 (Report Builder) consumirá estos
+accessors al renderizar reportes.
 """
-
 from __future__ import annotations
 
 from typing import Any
 
 from app.models.tenant import Tenant
+
+# ---- progress_calculation_method (ENH-098) ----
+
+PROGRESS_CALC_METHODS: tuple[str, ...] = (
+    "by_task_count",
+    "by_duration",
+    "by_effort",
+)
+DEFAULT_PROGRESS_CALC_METHOD: str = "by_task_count"
 
 # ---- task_load_thresholds (ENH-099) ----
 
@@ -41,6 +47,40 @@ def _report_builder_block(tenant: Tenant) -> dict[str, Any]:
     settings = tenant.settings or {}
     rb = settings.get("report_builder")
     return rb if isinstance(rb, dict) else {}
+
+
+def get_progress_calculation_method(tenant: Tenant) -> str:
+    """Resolve the per-tenant progress calculation method.
+
+    Returns the configured value if it is one of
+    :data:`PROGRESS_CALC_METHODS`; otherwise returns
+    :data:`DEFAULT_PROGRESS_CALC_METHOD`.
+    """
+    rb = _report_builder_block(tenant)
+    val = rb.get("progress_calculation_method")
+    if isinstance(val, str) and val in PROGRESS_CALC_METHODS:
+        return val
+    return DEFAULT_PROGRESS_CALC_METHOD
+
+
+def set_progress_calculation_method(tenant: Tenant, value: str) -> dict[str, Any]:
+    """Persist the progress calculation method on the tenant settings dict.
+
+    Returns the merged ``tenant.settings`` (also assigned on the model).
+    Raises :class:`ValueError` if ``value`` is not in
+    :data:`PROGRESS_CALC_METHODS`.
+    """
+    if value not in PROGRESS_CALC_METHODS:
+        raise ValueError(
+            f"invalid progress_calculation_method: {value!r}; "
+            f"expected one of {PROGRESS_CALC_METHODS}"
+        )
+    merged = dict(tenant.settings or {})
+    rb = dict(merged.get("report_builder") or {})
+    rb["progress_calculation_method"] = value
+    merged["report_builder"] = rb
+    tenant.settings = merged
+    return merged
 
 
 def get_task_load_thresholds(tenant: Tenant) -> dict[str, int]:

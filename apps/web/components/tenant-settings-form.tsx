@@ -12,9 +12,17 @@ import { ApiError } from "@/lib/api";
 import {
   getSettings,
   updateSettings,
+  type ProgressCalculationMethod,
   type TaskLoadThresholds,
   type TenantSettings,
 } from "@/lib/api/admin-panel";
+
+// ENH-098: progress calculation method options (Report Builder / EP020).
+const PROGRESS_CALC_METHODS: { value: ProgressCalculationMethod; label: string }[] = [
+  { value: "by_task_count", label: "Por conteo de tareas" },
+  { value: "by_duration", label: "Por duración" },
+  { value: "by_effort", label: "Por esfuerzo" },
+];
 
 // ENH-099: defaults shown when the tenant has no thresholds configured.
 const DEFAULT_TASK_LOAD_THRESHOLDS: TaskLoadThresholds = {
@@ -175,6 +183,36 @@ export function TenantSettingsForm() {
             </span>
           </div>
         </Field>
+
+        {/* ENH-098 — Cálculo de avance (Report Builder / EP020) */}
+        <div className="border-t border-[var(--border-subtle)] pt-4">
+          <h3 className="mb-2 text-[13px] font-semibold text-[var(--text-primary)]">
+            Cálculo de avance
+          </h3>
+          <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
+            Método usado para calcular el % de avance de los proyectos en los
+            reportes generados por el Report Builder.
+          </p>
+          <Field label="Método de cálculo">
+            <Select
+              value={form.progress_calculation_method ?? "by_task_count"}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  progress_calculation_method:
+                    (e.target.value as ProgressCalculationMethod) ||
+                    undefined,
+                })
+              }
+            >
+              {PROGRESS_CALC_METHODS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
 
         {/* ENH-099 — Umbrales de carga de tareas (Report Builder / EP020) */}
         <div className="border-t border-[var(--border-subtle)] pt-4">

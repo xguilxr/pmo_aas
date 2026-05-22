@@ -11,6 +11,12 @@ function qs(params: Record<string, unknown>): string {
 }
 
 /* ===== Tenant settings ===== */
+// ENH-098: per-tenant progress calculation method (Report Builder / EP020).
+export type ProgressCalculationMethod =
+  | "by_task_count"
+  | "by_duration"
+  | "by_effort";
+
 // ENH-099: per-tenant resource-load colorization thresholds (Report Builder / EP020).
 export type TaskLoadThresholds = {
   green_max: number;
@@ -24,8 +30,11 @@ export type TenantSettings = {
   timezone?: string;
   primary_color?: string;
   logo_url?: string;
-  // ENH-099: per-tenant task-load colorization thresholds. Canonical storage
-  // lives under `settings.report_builder.task_load_thresholds`.
+  // ENH-098: canonical storage under `settings.report_builder.progress_calculation_method`,
+  // exposed by the API as a top-level convenience field.
+  progress_calculation_method?: ProgressCalculationMethod;
+  // ENH-099: canonical storage under `settings.report_builder.task_load_thresholds`,
+  // exposed by the API as a top-level convenience field.
   task_load_thresholds?: TaskLoadThresholds;
 };
 
