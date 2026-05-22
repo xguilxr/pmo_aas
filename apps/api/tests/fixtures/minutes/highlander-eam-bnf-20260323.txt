@@ -1,0 +1,59 @@
+Sesión Highlander EAM-BNF – Operacional-20260323_120200-Grabación de la reunión
+March 23, 2026, 6:02PM
+46m 25s
+
+NAVARRO Mario (EXT) started transcription
+
+Martin Scalia   0:03
+Gracias Mario.
+
+David Aguilar   0:04
+Gracias. Siempre empezamos sesiones cuando viene Juan Carlos, pero hoy no vamos a esperar un par de minutos.
+
+David Aguilar   2:15
+Ok, lo primero es. La sesión para la revisión del Business Area hoy a las 5:00 de la tarde ya se tiene agendada la sesión. Con la nueva propuesta actualizada de cómo se va a trabajar. Poncho tuvo sesión con Global: para Beck quedó alineado, pero IPP no. Tendremos otra sesión el lunes para definir Business Areas definitivamente.
+
+PABLO Aline   4:10
+Quisiera que se socialicen los resultados de Global en la sesión de las 5 PM con todos los stakeholders.
+
+GOMORA Elizabeth   5:01
+Hay que asegurar continuidad post-definición; no detenernos en Business Area, avanzar con balance sheet y workarounds. Mi preocupación es que los workarounds de balance pueden terminar siendo más costosos que el proceso actual.
+
+David Aguilar   7:00
+Mañana en la mañana tendremos sesión para definir manejo de temas abiertos al 31 de enero (cuentas abiertas en SAP Themis BEC). Tenemos dos compañías en SAP: Themis BEC con saldos anteriores y Themis BNF con nuevos movimientos desde 1 de enero. Eli ya entregó actividades de DBS para BNF (counting, P2P, tesorería, finanzas). El plan SAP Themis BEC se completa una vez resuelta la sesión de mañana.
+
+GONZALEZ Diego   10:42
+Voy a contactar a Paola Canchola esta semana para coordinar las etiquetas. Falta claridad sobre quién valida las etiquetas, eso sigue abierto.
+
+Martin Scalia   12:30
+Se acordó que el mantenimiento de vehículos y flota SÍ se implementa con Mario al frente. También decidimos reclasificar pozos/arrendamiento como tema transversal — David lo tomará.
+
+David Aguilar   15:10
+Tenemos que agregar la definición de balances al backlog, lo tomamos Martin y yo, es inmediato.
+
+NAVARRO Mario   18:45
+Sobre el reporting de D&A — Víctor Rodríguez no está mapeado en plan de integración Themis. Hay que mapearlo esta semana, David y yo lo tomamos.
+
+PABLO Aline   22:00
+Aline va a mapear las fuentes de reportes (One Source / Frog / SAP) junto con Janine. Lo haremos después de la sesión de las 5 PM.
+
+David Aguilar   25:00
+Inducción Highlander para product owners IT legacy esta semana — David, Aline, Martin coordinamos.
+
+David Aguilar   28:14
+Voy a invitar a Amado Lim a las sesiones comerciales de BigBeck esta semana.
+
+VIANA Francisco   31:00
+Una lección aprendida del proyecto anterior es que sin alineación temprana con Global se generan retrabajos.
+
+DIAZ ORDAZ Alfonso   34:00
+Hay una solicitud de cambio pendiente para ajustar el alcance del módulo de tesorería.
+
+David Aguilar   37:00
+Los permisos de pozos de extracción podrían retrasarse — Luis y CMP están coordinando, riesgo para abril-mayo. La definición final de Business Area queda pendiente para la sesión del lunes con Global, lo lleva Poncho y Aline. Sobre eComercio vs Estela, queda pendiente decisión integral para el 27 de marzo (Aline, Felipe, Sandy).
+
+David Aguilar   42:00
+Próximos pasos calendarizados: hoy 5 PM sesión Business Area; mañana AM sesión cuentas abiertas SAP Themis BEC; mañana sesión líderes (escenarios extracción de agua con Poncho); 25 marzo sesión con PINI (condiciones comerciales EAM en BNF); viernes 27 marzo sesión eComercio/Estela; lunes segunda sesión Business Area con Global; miércoles 12:00 sesión de seguimiento de backlog.
+
+Martin Scalia   45:30
+Cierro la sesión, gracias a todos.
