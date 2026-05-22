@@ -569,3 +569,53 @@ Bloque 1 — RAID detail redesign "Denso" (4 issues, #246-#249). Rewrite complet
 
 ### Sprint 15 (v1.14) — Cerrado 2026-05-07
 Bloque 1 — Áreas refinement + Plan responsables (4 issues, #263-#266). Migraciones 0048+0049+0050. `project_areas` dropeado; catálogo tenant fuente única; PMO seed global + sync PMO users → Actores.
+
+---
+
+## Sprint 26 (v1.25) — CERRADO 2026-05-22
+
+### Bloque 0 — Minutas v1.0 (1 BUG + 7 ENH)
+- [x] **BUG-061 #391** — Preview RAID vs save persistence (lane).
+- [x] **ENH-102 #392** — Parser RAID estricto A/R/D/I + validador post-IA + gold standard Highlander — `4fa8072` (PR #408).
+- [x] **ENH-103 #393** — Match participantes ↔ actores del proyecto.
+- [x] **ENH-104 #394** — Título auto desde nombre de archivo.
+- [x] **ENH-105 #395** — Estructura de minuta v1.0 (6 secciones fijas) — `9d637b0` (PR #408).
+- [x] **ENH-106 #396** — `meeting_minutes.origin` audit field — `7b7ee3d` (PR #406, migración `20260523_0068`).
+- [x] **ENH-107 #397** — `scheduled_minutes` (cron + email) — `c711af5` (PR #407, migración `20260522_0068`).
+- [x] **ENH-108 #398** — Copy-paste directo de transcript.
+
+**Branches sesión:** múltiples lanes paralelos (A/B/C/D/E).
+**Hotfix:** PR #409 (`fix-alembic-multiple-heads-0068`) — merge migration `20260523_0069` para unificar los heads paralelos 0068.
+**Fixtures gold standard:** `apps/api/tests/fixtures/minutes/highlander-eam-bnf-20260323.{txt,expected.json}`.
+
+### Bloque 1 — Dependencias del sistema EP020 (5 ENH)
+- [x] **ENH-097 #373** — `tasks.is_critical BOOLEAN` (reemplaza columna `critical` legacy) — migración `20260522_0067`.
+- [x] **ENH-098 #374** — `tenants.progress_calculation_method` ENUM por tenant.
+- [x] **ENH-099 #375** — `tenants.task_load_thresholds` JSONB por tenant.
+- [x] **ENH-100 #376** — `organizations.client_logo_url` + UI upload — migración `20260522_0064`.
+- [x] **ENH-101 #377** — `projects.status_rag` declarativo del PM — migración `20260522_0065`.
+
+**Migraciones agregadas:** 0064, 0065, 0066 (merge heads logo+rag), 0067.
+
+### Bloque 2 — Backbone EP020 (3 US)
+- [x] **US-120 #378** — `report_sections` catálogo + seed 22 secciones atómicas — `1796189` (PR #411, migración `20260523_0070`).
+- [x] **US-121 #379** — Servicio cálculo % avance configurable por tenant — PR #405 (`fe1a857`).
+- [x] **US-122 #380** — `report_builder_templates` + 4 plantillas seed (L3-AVANCE, L3-SEGUIMIENTO, L1-PORTAFOLIO, L2-ORG) — `501d66b` (PR #411, migración `20260523_0071`).
+
+**Migraciones agregadas:** 0070, 0071. Hubo collision con revision IDs 0068/0069 (paralelización lane B0 vs lane B2 sin coordinación); fix en `4b12123` renumerando los archivos del lane B2 a 0070/0071.
+
+### Lecciones aprendidas — Sprint 26
+
+1. **Paralelización con migraciones es peligrosa.** Tres alembic-heads-collisions distintos en este sprint:
+   - 0064 ↔ 0065 (logo + status_rag desde Bloque 1) — resuelto con 0066 merge.
+   - 20260522_0068 ↔ 20260523_0068 (scheduled_minutes + minute_origin del Bloque 0) — resuelto con 20260523_0069 merge.
+   - 20260522_0068 ↔ 20260522_0069 vs nombres ya usados por Bloque 0 — resuelto renombrando archivos del Bloque 2 a 0070/0071.
+2. **Decisión owner 2026-05-22:** volver a desarrollo **secuencial puro** para evitar este tipo de errores. 1 sesión activa a la vez, 1 lane, 1 branch, 1 migración consecutiva. La paralelización agresiva costó múltiples rondas de fix.
+3. **Skill `/handoff` creado** para mantener bridge entre sesiones y forzar cleanup de SPRINT.md.
+
+### Otros artefactos producidos
+- `docs/epics/EP020-report-builder.md` — epic oficial con 13 US (US-120 a US-132) + 5 ENH dependencias.
+- `docs/epics/drafts/EP020-secciones-atomicas.md` — catálogo de 22 secciones (referencia normativa).
+- `docs/epics/drafts/minute-gold-standard.md` — Highlander EAM-BNF (transcript + minuta esperada + pipeline parser IA).
+- `.claude/skills/handoff/SKILL.md` — skill para bridges entre sesiones (PR #412).
+- 26 issues creados en GitHub (#373-#398), todos con labels aplicados.
