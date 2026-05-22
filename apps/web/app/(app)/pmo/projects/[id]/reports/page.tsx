@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   FileText,
+  LayoutGrid,
   Mail,
   Pencil,
   Plus,
@@ -211,8 +212,19 @@ function ReportsInner() {
         {/* US-109 (rework): CTA principal hacia el panel de creación con
             tweaker IA. El destino `/reports/tweak` (sin query) muestra el
             panel inicial con los 2 modos: "Generar nuevo reporte" vs
-            "Generar con base en plantilla". */}
+            "Generar con base en plantilla".
+            US-135 (Sprint 30): segundo CTA hacia el Report Builder canvas
+            (EP020). Chip "Nuevo" para señalar funcionalidad reciente. */}
         <div className="flex items-center gap-2">
+          <Link href={`/pmo/projects/${id}/reports/builder`}>
+            <Button variant="secondary">
+              <LayoutGrid className="h-4 w-4" aria-hidden />
+              Report Builder
+              <Badge className="ml-1 bg-violet-100 text-[10px] text-violet-700">
+                Nuevo
+              </Badge>
+            </Button>
+          </Link>
           <Link href={`/pmo/projects/${id}/reports/tweak`}>
             <Button>
               <Sparkles className="h-4 w-4" aria-hidden /> Crear reporte (IA + plantilla)
