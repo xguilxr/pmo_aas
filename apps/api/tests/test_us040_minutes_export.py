@@ -88,15 +88,17 @@ async def test_us040_export_md_contains_sections(client, db_session):
     assert r.status_code == 200, r.text
     assert r.headers["content-type"].startswith("text/markdown")
     body = r.text
-    # Separadores corporativos
-    assert body.count("========") >= 5
-    # Secciones
-    assert "Resumen e Hitos" in body
-    assert "RAID" in body
-    assert "Notas adicionales" in body
-    # Acciones agrupadas por responsable/área
-    assert "PM:" in body or "PM :" in body or "PM\n" in body
-    assert "Área de Ingeniería" in body
+    # Separadores corporativos (ENH-105: 6 secciones + título => 7 separadores).
+    assert body.count("========") >= 6
+    # Secciones ENH-105 (6 secciones rígidas)
+    assert "1. Encabezado" in body
+    assert "2. Participantes" in body
+    assert "3. Resumen / Objetivo" in body
+    assert "4. Temas tratados" in body
+    assert "5. RAID — A/R/D/I" in body
+    assert "6. Notas libres" in body
+    # Las acciones legacy van como RAID Acciones (A — Acciones).
+    assert "A — Acciones" in body
 
 
 @pytest.mark.asyncio
@@ -168,8 +170,8 @@ async def test_us040_export_cross_tenant_404(client, db_session):
     assert r.status_code == 404
 
 
-def test_us040_view_groups_actions_by_owner(db_session):
-    """Test unitario: build_view agrupa acciones por owner/área."""
+def test_us040_view_groups_actions_by_type(db_session):
+    """ENH-105: build_view agrupa items legacy en RAID A/R/D/I."""
     from app.services.minutes_formatter import build_view
 
     class _Mini:
@@ -183,11 +185,11 @@ def test_us040_view_groups_actions_by_owner(db_session):
             {"kind": "action", "description": "a3", "area": "Ventas"},
             {"kind": "risk", "description": "r1", "severity": 10},
         ]
+        raid_suggestions = {}
 
     view = build_view(_Mini(), None)
-    assert len(view.raid_groups) == 2
-    owners = [g["owner"] for g in view.raid_groups]
-    assert "Juan" in owners
-    assert "Ventas" in owners
-    juan_rows = next(g for g in view.raid_groups if g["owner"] == "Juan")["rows"]
-    assert len(juan_rows) == 2
+    # Acciones legacy migran a raid type A; risk a type R.
+    assert len(view.raid_by_type["A"]) == 3
+    assert len(view.raid_by_type["R"]) == 1
+    descriptions = [r["description"] for r in view.raid_by_type["A"]]
+    assert {"a1", "a2", "a3"} <= set(descriptions)
