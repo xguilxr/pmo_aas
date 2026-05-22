@@ -37,6 +37,8 @@ SYSTEM_FIELDS: tuple[str, ...] = (
     "is_milestone",
     # US-096.
     "criticality",
+    # ENH-097: boolean explicito de criticidad.
+    "is_critical",
     "related_milestone",
     "predecessors",
     "resources",
@@ -56,6 +58,7 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
     "progress": ("avance", "progreso", "progress", "%", "percent", "porcentaje"),
     "is_milestone": ("hito", "milestone", "es hito"),
     "criticality": ("criticidad", "criticality"),
+    "is_critical": ("is_critical", "es critico", "es crítico", "critico", "crítico"),
     "related_milestone": (
         "hito relacionado", "related milestone", "milestone relacionado",
     ),

@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
+import sqlalchemy as sa
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -42,6 +43,13 @@ class Task(Base, TimestampMixin):
     # migración 0037.
     criticality: Mapped[str] = mapped_column(
         String(16), nullable=False, default="medium", server_default="medium"
+    )
+    # ENH-097: boolean explicito de criticidad, alimentado por Report Builder
+    # (EP020). Coexiste con `criticality` (string enum) — owner decidió mantener
+    # ambas columnas por ahora. Backfill en migración 0063 deriva true para
+    # criticality in {high, critical}.
+    is_critical: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=sa.false()
     )
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     external_id: Mapped[str | None] = mapped_column(String(100))

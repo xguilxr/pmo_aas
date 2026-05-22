@@ -909,6 +909,8 @@ function PlanInner() {
     is_milestone: false,
     status: "not_started" as TaskStatus,
     criticality: "medium" as TaskCriticality,
+    // ENH-097: boolean explicito de criticidad (paralelo al enum).
+    is_critical: false,
     // ENH-050: hito relacionado, opcional.
     related_milestone_id: "" as string,
     // US-090: predecesoras como string CSV ("1.1, 1.2") por simplicidad
@@ -930,6 +932,8 @@ function PlanInner() {
     is_milestone: false,
     status: "not_started" as TaskStatus,
     criticality: "medium" as TaskCriticality,
+    // ENH-097: boolean explicito de criticidad (paralelo al enum).
+    is_critical: false,
     related_milestone_id: "" as string,
     predecessors_csv: "" as string,
     // US-098: área responsable + responsable (owner).
@@ -955,6 +959,12 @@ function PlanInner() {
       is_milestone: !!t.is_milestone,
       status: (t.status as TaskStatus) ?? "not_started",
       criticality: (t.criticality as TaskCriticality) ?? "medium",
+      // ENH-097: respeta valor del backend; si viene undefined (rows
+      // pre-migración), mirror desde el enum criticality.
+      is_critical:
+        typeof t.is_critical === "boolean"
+          ? t.is_critical
+          : t.criticality === "high" || t.criticality === "critical",
       related_milestone_id: t.related_milestone?.id ?? "",
       predecessors_csv: (t.predecessors ?? []).join(", "),
     });
@@ -976,6 +986,7 @@ function PlanInner() {
         is_milestone: editForm.is_milestone,
         status: editForm.status,
         criticality: editForm.criticality,
+        is_critical: editForm.is_critical,
         related_milestone_id: editForm.related_milestone_id || null,
         predecessors: editForm.predecessors_csv
           ? editForm.predecessors_csv
@@ -1075,6 +1086,7 @@ function PlanInner() {
         is_milestone: newForm.is_milestone,
         status: newForm.status,
         criticality: newForm.criticality,
+        is_critical: newForm.is_critical,
         related_milestone_id: newForm.related_milestone_id || null,
         predecessors: newForm.predecessors_csv
           ? newForm.predecessors_csv
@@ -1094,6 +1106,7 @@ function PlanInner() {
         is_milestone: false,
         status: "not_started",
         criticality: "medium",
+        is_critical: false,
         related_milestone_id: "",
         predecessors_csv: "",
       });
@@ -1791,6 +1804,19 @@ function PlanInner() {
               ))}
             </Select>
           </label>
+          {/* ENH-097: checkbox boolean explicito de criticidad (paralelo al enum). */}
+          <label className="inline-flex items-center gap-2 self-end">
+            <input
+              type="checkbox"
+              checked={newForm.is_critical}
+              onChange={(e) =>
+                setNewForm({ ...newForm, is_critical: e.target.checked })
+              }
+            />
+            <span className="text-xs text-[var(--color-secondary)]">
+              Marcar como crítica
+            </span>
+          </label>
           {/* US-090: predecesoras CSV de wbs_code. */}
           <label className="sm:col-span-2">
             <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
@@ -1980,6 +2006,19 @@ function PlanInner() {
                 </option>
               ))}
             </Select>
+          </label>
+          {/* ENH-097: checkbox boolean explicito de criticidad (paralelo al enum). */}
+          <label className="inline-flex items-center gap-2 self-end">
+            <input
+              type="checkbox"
+              checked={editForm.is_critical}
+              onChange={(e) =>
+                setEditForm({ ...editForm, is_critical: e.target.checked })
+              }
+            />
+            <span className="text-xs text-[var(--color-secondary)]">
+              Marcar como crítica
+            </span>
           </label>
           {/* US-098 / ENH-083: Área responsable con inline-create. */}
           <label>
