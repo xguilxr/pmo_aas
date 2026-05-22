@@ -26,6 +26,7 @@
 | [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 | 🆕 NUEVA | EP005, EP006, EP008 |
 | [EP015](./EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 | 🆕 NUEVA | EP010 |
 | [EP016](./EP016-local-ai-tunnel.md) | Modelo IA local (Ollama + Cloudflare Tunnel + nssm) | v1.1 | 🆕 NUEVA | EP008, EP014 |
+| [EP020](./EP020-report-builder.md) | Report Builder (Niveles 1, 2, 4) + catálogo 22 secciones | v1.5 | 🆕 NUEVA | EP005, EP006, EP007, EP008, EP014, EP018 |
 
 ---
 
