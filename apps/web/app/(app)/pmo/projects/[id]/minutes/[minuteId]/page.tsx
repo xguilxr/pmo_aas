@@ -382,11 +382,28 @@ function ParticipantsSection({
           </p>
         ) : (
           <ul className="flex flex-wrap gap-1.5">
-            {minute.participants.map((p, i) => (
-              <li key={i}>
-                <Badge>{p.role ? `${p.name} · ${p.role}` : p.name}</Badge>
-              </li>
-            ))}
+            {minute.participants.map((p, i) => {
+              // ENH-103: chip color refleja el match contra actors del
+              // proyecto. matched (actor existente) = success/verde;
+              // auto_created (creado on-the-fly, pending verificación) =
+              // warning/amarillo. Sin match_status (legacy / minutas
+              // pre-ENH-103) = neutral.
+              const match = (p as { match_status?: string }).match_status;
+              const variant: "success" | "warning" | "neutral" =
+                match === "matched"
+                  ? "success"
+                  : match === "auto_created"
+                    ? "warning"
+                    : "neutral";
+              return (
+                <li key={i}>
+                  <Badge variant={variant}>
+                    {p.role ? `${p.name} · ${p.role}` : p.name}
+                    {match === "auto_created" ? " ·  nuevo" : null}
+                  </Badge>
+                </li>
+              );
+            })}
           </ul>
         )
       ) : (

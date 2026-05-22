@@ -1260,9 +1260,22 @@ async def create_minute(
         kind: list(raid_in.get(kind) or [])
         for kind in ("risks", "issues", "lessons", "changes")
     }
+    # ENH-103: enriquecer participantes con match contra actors del
+    # proyecto. Match → actor_id + match_status="matched" + verified;
+    # sin match → crea actor auto_created + participation guest, marca
+    # match_status="auto_created" + verified=False para chip amarillo.
+    from app.services.minutes.participant_matcher import match_participants
+
+    enriched_participants = await match_participants(
+        db,
+        project_id=project_id,
+        tenant_id=tenant_id,
+        participants=list(body.participants or []),
+        created_by=cu.id,
+    )
     m = MeetingMinute(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
-        title=body.title, meeting_date=body.meeting_date, participants=body.participants,
+        title=body.title, meeting_date=body.meeting_date, participants=enriched_participants,
         topics=body.topics, agreements=body.agreements,
         next_meeting_date=body.next_meeting_date, attachments=body.attachments,
         transcript_file_id=body.transcript_file_id, generated_by_ai=body.generated_by_ai,

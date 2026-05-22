@@ -186,6 +186,15 @@ class Actor(Base, TimestampMixin):
     # `project_participations.is_area_lead` (líder por proyecto) hasta
     # que US-119 dropee este campo.
     is_lead: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # ENH-103: flags para distinguir actores creados a mano vs los que el
+    # matcher de minutas crea on-the-fly. `verified=False + auto_created=
+    # True` marca actores pendientes de validación por el owner.
+    auto_created: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     # US-114: enriquecimiento de persona. `company`/`job_title` para el
     # directorio (cliente, vendor, interno, cargo organizacional);
     # `manager_actor_id` autoreferencia para reportes jerárquicos.
