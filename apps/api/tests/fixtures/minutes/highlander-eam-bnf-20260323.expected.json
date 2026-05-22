@@ -1,0 +1,92 @@
+{
+  "header": {
+    "title": "EAM-BNF Fase 1 — Sesión Operacional",
+    "date": "2026-03-23",
+    "time": "12:02 PM",
+    "duration": "46 minutos",
+    "modality": "virtual",
+    "location": null,
+    "facilitator": "David Aguilar"
+  },
+  "participants": {
+    "attendees": [
+      {"name": "David Aguilar", "role": "PM / OBELIT", "area": "PMO"},
+      {"name": "Martin Scalia", "role": "Sponsor / Director", "area": "PMO"},
+      {"name": "NAVARRO Mario (EXT)", "role": "Consultor SAP", "area": "IT / SAP"},
+      {"name": "DIAZ ORDAZ Alfonso", "role": "Finanzas / DBS", "area": "DBS / Finanzas"},
+      {"name": "GOMORA Elizabeth", "role": "DBS / Controlling", "area": "DBS / Finanzas"},
+      {"name": "PABLO Aline", "role": "Comercial / Business", "area": "Comercial"},
+      {"name": "GONZALEZ Diego", "role": "Operaciones", "area": "Operaciones"},
+      {"name": "VIANA Francisco", "role": "Comercial / Reporting", "area": "Comercial"}
+    ],
+    "absent_justified": [],
+    "absent_unjustified": []
+  },
+  "summary": "Revisar el estatus de avance de la migración de legal entity de EAM a Bonafont, con foco en el backlog de actividades abiertas, planes por área funcional, y próximos pasos para las definiciones críticas (Business Area, cuentas abiertas en SAP Themis, balance sheet).",
+  "topics": [
+    {"title": "Business Area", "bullets": [
+      "Sesión programada hoy a las 5:00 PM con propuesta actualizada.",
+      "Poncho tuvo sesión con Global: para Beck alineado, pero IPP no.",
+      "Otra sesión el lunes para definir Business Areas definitivamente.",
+      "Aline solicita socializar resultados de Global en la sesión de 5 PM.",
+      "Eli: asegurar continuidad post-definición; avanzar con balance sheet y workarounds."
+    ]},
+    {"title": "Cuentas abiertas / SAP Themis para BEC", "bullets": [
+      "Sesión mañana AM para definir manejo de temas abiertos al 31 de enero.",
+      "Dos compañías en SAP: Themis BEC (saldos anteriores) y Themis BNF (nuevos movimientos desde 1 de enero).",
+      "Eli ya entregó actividades de DBS para BNF (counting, P2P, tesorería, finanzas).",
+      "Plan SAP Themis BEC se completa una vez resuelta la sesión de mañana."
+    ]},
+    {"title": "Etiquetas y validación", "bullets": [
+      "Diego contactará a Paola Canchola esta semana.",
+      "Falta claridad sobre quién valida etiquetas."
+    ]},
+    {"title": "Mantenimiento de vehículos / flota", "bullets": [
+      "Se acordó que SÍ se implementa, Mario al frente."
+    ]},
+    {"title": "Pozos / arrendamiento", "bullets": [
+      "Se reclasifica como tema transversal, David lo toma."
+    ]},
+    {"title": "Backlog — definición de balances", "bullets": [
+      "Agregar definición de balances al backlog (Martin / David, inmediato)."
+    ]},
+    {"title": "Reporting D&A / Víctor Rodríguez", "bullets": [
+      "Víctor Rodríguez no mapeado en plan de integración Themis.",
+      "David y Mario lo mapearán esta semana."
+    ]},
+    {"title": "Fuentes de reportes (One Source / Frog / SAP)", "bullets": [
+      "Aline y Janine mapearán fuentes post 5 PM."
+    ]},
+    {"title": "Inducción Highlander para product owners IT legacy", "bullets": [
+      "Esta semana, coordinan David, Aline y Martin."
+    ]},
+    {"title": "Sesiones comerciales BigBeck", "bullets": [
+      "Invitar a Amado Lim a las sesiones comerciales."
+    ]},
+    {"title": "Permisos de pozos de extracción", "bullets": [
+      "Podrían retrasarse — Luis y CMP coordinando, riesgo abril-mayo."
+    ]},
+    {"title": "eComercio vs Estela", "bullets": [
+      "Decisión integral pendiente para 27 marzo (Aline, Felipe, Sandy)."
+    ]}
+  ],
+  "raid": [
+    {"type": "A", "description": "Contactar a Paola Canchola esta semana para etiquetas", "responsible": "Diego González", "due_date": "Sem 24-28 mar", "status": "Open"},
+    {"type": "A", "description": "Agregar definición de balances al backlog", "responsible": "Martin / David", "due_date": "Inmediato", "status": "Open"},
+    {"type": "A", "description": "Socializar resultados Global en sesión 5 PM hoy", "responsible": "Poncho / Aline", "due_date": "Hoy 5 PM", "status": "Open"},
+    {"type": "A", "description": "Mapear Víctor Rodríguez / D&A en plan integración Themis", "responsible": "David / Mario", "due_date": "Sem 25 mar", "status": "Open"},
+    {"type": "A", "description": "Inducción Highlander para product owners IT legacy", "responsible": "David / Aline / Martin", "due_date": "Esta semana", "status": "Open"},
+    {"type": "A", "description": "Aline: mapear fuentes de reportes (One Source/Frog/SAP)", "responsible": "Aline / Janine", "due_date": "Post 5 PM", "status": "Open"},
+    {"type": "A", "description": "Invitar Amado Lim a sesiones comerciales (BigBeck)", "responsible": "David", "due_date": "Sem 24-28 mar", "status": "Open"},
+    {"type": "R", "description": "Workarounds de balance pueden ser más costosos que actual", "responsible": "Eli / Poncho", "due_date": null, "status": "Open"},
+    {"type": "R", "description": "IPP Business Area no alineado con Global", "responsible": "Poncho", "due_date": null, "status": "Open"},
+    {"type": "R", "description": "Reporting D&A (Víctor Rodríguez) no mapeado en Themis", "responsible": "David / Mario", "due_date": null, "status": "Open"},
+    {"type": "R", "description": "Permisos de pozos de extracción podrían retrasarse", "responsible": "Luis / CMP", "due_date": "abr-may", "status": "Open"},
+    {"type": "D", "description": "Mantenimiento de vehículos/flota: SÍ se implementa", "responsible": "Mario", "due_date": "(resuelta)", "status": "Closed"},
+    {"type": "D", "description": "Reclasificar pozos/arrendamiento a tema transversal", "responsible": "David", "due_date": "(resuelta)", "status": "Closed"},
+    {"type": "D", "description": "Business Area: definición final en sesión lunes c/ Global", "responsible": "Poncho / Aline", "due_date": "Lunes", "status": "Pending"},
+    {"type": "D", "description": "eComercio vs Estela: decisión integral 27 marzo", "responsible": "Aline / Felipe / Sandy", "due_date": "27 mar", "status": "Pending"},
+    {"type": "I", "description": "Falta claridad sobre quién valida etiquetas", "responsible": "Diego González", "due_date": "En curso", "status": "In Progress"}
+  ],
+  "free_notes": "Próximos pasos calendarizados:\n- Hoy 5:00 PM — Sesión Business Area (socializar Global)\n- Mañana AM — Sesión cuentas abiertas SAP Themis BEC\n- Mañana — Sesión líderes (escenarios extracción de agua con Poncho)\n- 25 marzo — Sesión con PINI (condiciones comerciales EAM en BNF)\n- Viernes 27 marzo — Sesión eComercio/Estela\n- Lunes — Segunda sesión Business Area con Global\n- Miércoles 12:00 — Sesión de seguimiento de backlog"
+}
