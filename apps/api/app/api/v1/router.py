@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     change_approvals,
     dashboard,
     entity_history,
+    gantt_snapshot,
     modules,
     notifications,
     organizations,
@@ -66,6 +67,7 @@ api_router.include_router(report_sections.router)
 api_router.include_router(report_builder_templates.router)
 api_router.include_router(report_builder_render.router)
 api_router.include_router(report_builder_chat.router)
+api_router.include_router(gantt_snapshot.router)
 api_router.include_router(change_approvals.router)
 api_router.include_router(change_approvals.public_router)
 api_router.include_router(scheduled_reports.router)
