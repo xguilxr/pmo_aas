@@ -40,6 +40,22 @@ export default function NewAIMinutePage() {
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // BUG-061: PM puede desmarcar items en el preview RAID. Key = `${kind}:${idx}`.
+  // Items en este set se persisten con `status: "discarded"` en lugar de
+  // `pending`, y el backend NO les crea ticket al hacer auto-approve.
+  const [discardedRaid, setDiscardedRaid] = useState<Set<string>>(new Set());
+
+  const toggleDiscardRaid = (key: string, next: boolean) => {
+    setDiscardedRaid((prev) => {
+      const out = new Set(prev);
+      if (next) {
+        out.add(key);
+      } else {
+        out.delete(key);
+      }
+      return out;
+    });
+  };
 
   const polling = useAIJobPolling({
     jobId,
@@ -86,11 +102,26 @@ export default function NewAIMinutePage() {
       // la preview mostraba items pero el detalle de la minuta los
       // perdía al guardar.
       const raidIn = result.raid ?? EMPTY_RAID_BLOCK;
+      // BUG-061: items desmarcados en el preview se marcan
+      // `status="discarded"` para que el backend NO les cree ticket en el
+      // auto-approve. Items pendientes se persisten como `pending` y se
+      // convierten en tickets reales al hacer createMinute.
+      const persistKind = (
+        kind: "risks" | "issues" | "lessons" | "changes",
+        items: typeof raidIn.risks,
+      ) =>
+        items.map((it, idx) => {
+          const base = toPersistedRaid(it);
+          if (discardedRaid.has(`${kind}:${idx}`)) {
+            return { ...base, status: "discarded" as const };
+          }
+          return base;
+        });
       const raidPersisted = {
-        risks: raidIn.risks.map(toPersistedRaid),
-        issues: raidIn.issues.map(toPersistedRaid),
-        lessons: raidIn.lessons.map(toPersistedRaid),
-        changes: raidIn.changes.map(toPersistedRaid),
+        risks: persistKind("risks", raidIn.risks),
+        issues: persistKind("issues", raidIn.issues),
+        lessons: persistKind("lessons", raidIn.lessons),
+        changes: persistKind("changes", raidIn.changes),
       };
       const created = await createMinute(id, {
         title: title.trim() || "Minuta (IA)",
@@ -411,7 +442,11 @@ export default function NewAIMinutePage() {
               onMinuteChanged={setSavedMinute}
             />
           ) : (
-            <RaidSuggestionsSection raid={result.raid ?? EMPTY_RAID_BLOCK} />
+            <RaidSuggestionsSection
+              raid={result.raid ?? EMPTY_RAID_BLOCK}
+              discarded={discardedRaid}
+              onToggle={toggleDiscardRaid}
+            />
           )}
 
           {savedMinuteId ? (
@@ -460,12 +495,21 @@ const RAID_SECTION_META: Array<{
   { key: "changes", label: "Cambios", emptyHint: "Sin cambios detectados." },
 ];
 
-function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
+function RaidSuggestionsSection({
+  raid,
+  discarded,
+  onToggle,
+}: {
+  raid: AIRaidBlock;
+  discarded: Set<string>;
+  onToggle: (key: string, next: boolean) => void;
+}) {
   const total =
     raid.risks.length +
     raid.issues.length +
     raid.lessons.length +
     raid.changes.length;
+  const kept = total - discarded.size;
   return (
     <section className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-4">
       <header className="flex items-center justify-between">
@@ -473,9 +517,15 @@ function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
           Sugerencias RAID detectadas
         </h3>
         <Badge variant={total === 0 ? "neutral" : "info"}>
-          {total} {total === 1 ? "item" : "items"}
+          {kept} de {total} {total === 1 ? "item" : "items"} se crearán
         </Badge>
       </header>
+      {/* BUG-061: cada item es un checkbox. Desmarcado → no se crea
+          ticket al guardar. Default todo marcado. */}
+      <p className="text-[11px] italic text-[var(--text-tertiary)]">
+        Desmarca los items que no quieras crear como tickets reales al
+        guardar.
+      </p>
       <div className="grid gap-3 lg:grid-cols-2">
         {RAID_SECTION_META.map((meta) => {
           const items = raid[meta.key];
@@ -497,29 +547,52 @@ function RaidSuggestionsSection({ raid }: { raid: AIRaidBlock }) {
                     {meta.emptyHint}
                   </p>
                 ) : (
-                  items.map((it, i) => (
-                    <div
-                      key={i}
-                      className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-2.5 py-2"
-                    >
-                      <p className="text-[12px] font-medium text-[var(--text-primary)]">
-                        {it.short_desc}
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
-                        {it.suggested_owner_name ? (
-                          <span>👤 {it.suggested_owner_name}</span>
-                        ) : null}
-                        {it.suggested_priority ? (
-                          <span>⚑ P{it.suggested_priority}</span>
-                        ) : null}
-                      </div>
-                      {it.raw_quote ? (
-                        <p className="mt-1 line-clamp-2 italic text-[11px] text-[var(--text-tertiary)]">
-                          “{it.raw_quote}”
-                        </p>
-                      ) : null}
-                    </div>
-                  ))
+                  items.map((it, i) => {
+                    const key = `${meta.key}:${i}`;
+                    const isDiscarded = discarded.has(key);
+                    return (
+                      <label
+                        key={i}
+                        className={`flex cursor-pointer gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-2.5 py-2 ${
+                          isDiscarded
+                            ? "bg-[var(--color-surface)] opacity-60"
+                            : "bg-[var(--color-subtle)]"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!isDiscarded}
+                          onChange={(e) => onToggle(key, !e.target.checked)}
+                          className="mt-0.5 h-4 w-4 shrink-0"
+                          aria-label={`Crear como ticket: ${it.short_desc}`}
+                        />
+                        <div className="flex-1">
+                          <p
+                            className={`text-[12px] font-medium ${
+                              isDiscarded
+                                ? "text-[var(--text-tertiary)] line-through"
+                                : "text-[var(--text-primary)]"
+                            }`}
+                          >
+                            {it.short_desc}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                            {it.suggested_owner_name ? (
+                              <span>👤 {it.suggested_owner_name}</span>
+                            ) : null}
+                            {it.suggested_priority ? (
+                              <span>⚑ P{it.suggested_priority}</span>
+                            ) : null}
+                          </div>
+                          {it.raw_quote ? (
+                            <p className="mt-1 line-clamp-2 italic text-[11px] text-[var(--text-tertiary)]">
+                              “{it.raw_quote}”
+                            </p>
+                          ) : null}
+                        </div>
+                      </label>
+                    );
+                  })
                 )}
               </div>
             </details>
