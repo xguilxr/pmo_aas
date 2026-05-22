@@ -1267,6 +1267,12 @@ async def create_minute(
         next_meeting_date=body.next_meeting_date, attachments=body.attachments,
         transcript_file_id=body.transcript_file_id, generated_by_ai=body.generated_by_ai,
         status="final", created_by=cu.id,
+        # ENH-106: campo audit-only. Si el body declara `generated_by_ai=True`
+        # y origin sigue siendo el default `manual`, lo corregimos a
+        # `transcript_ai` para mantener consistencia con el backfill.
+        origin=(
+            "transcript_ai" if body.generated_by_ai and body.origin == "manual" else body.origin
+        ),
         raid_suggestions=raid_persisted,
     )
     db.add(m)
