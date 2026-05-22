@@ -45,6 +45,8 @@ HEADER_ALIASES: dict[str, list[str]] = {
     ],
     "is_milestone": ["hito", "milestone", "es hito"],
     "criticality": ["criticidad", "criticality", "prioridad criticidad"],
+    # ENH-097: columna boolean explicita is_critical (Sprint 26 / EP020).
+    "is_critical": ["is_critical", "es critico", "es crítico", "critico", "crítico"],
     "related_milestone": [
         "hito relacionado",
         "related milestone",
@@ -73,6 +75,9 @@ class ParsedTask:
     is_milestone: bool = False
     # US-096: criticidad + hito relacionado opcionales en plantilla.
     criticality: str | None = None
+    # ENH-097: boolean explicito. None = no presente en plantilla (caller
+    # debe derivarlo de criticality).
+    is_critical: bool | None = None
     related_milestone_wbs: str | None = None
     predecessors_raw: str | None = None
     resources_raw: str | None = None
@@ -274,6 +279,9 @@ def parse_xlsx(
                 else False,
                 criticality=(_norm(row[columns["criticality"]]) or None)
                 if "criticality" in columns and columns["criticality"] < len(row)
+                else None,
+                is_critical=_coerce_bool(row[columns["is_critical"]])
+                if "is_critical" in columns and columns["is_critical"] < len(row)
                 else None,
                 related_milestone_wbs=(_norm(row[columns["related_milestone"]]) or None)
                 if "related_milestone" in columns

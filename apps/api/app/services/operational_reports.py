@@ -315,6 +315,8 @@ async def build_avance_context(
                 "name": t.name,
                 "is_milestone": bool(t.is_milestone),
                 "criticality": getattr(t, "criticality", None),
+                # ENH-097: boolean explicito expuesto en el payload (paralelo al enum).
+                "is_critical": bool(getattr(t, "is_critical", False)),
                 "status": t.status,
                 "end_date": t.end_date.isoformat() if t.end_date else None,
                 "progress": t.progress or 0,

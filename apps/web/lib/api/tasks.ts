@@ -32,6 +32,8 @@ export type Task = {
   owner: TaskOwnerMini | null;
   // ENH-051: criticidad. Default "medium" si la columna está fresca.
   criticality: TaskCriticality;
+  // ENH-097: boolean explicito de criticidad (paralelo al enum). Sprint 26.
+  is_critical?: boolean;
   // ENH-050: hito relacionado (FK self a otra task con is_milestone=true).
   related_milestone_id: string | null;
   related_milestone: { id: string; name: string; wbs: string | null } | null;
@@ -57,6 +59,8 @@ export type TaskCreateBody = {
   priority?: number | null;
   status?: TaskStatus;
   criticality?: TaskCriticality;
+  // ENH-097: boolean explicito.
+  is_critical?: boolean;
   // ENH-050.
   related_milestone_id?: string | null;
   // US-090.
@@ -69,6 +73,7 @@ export type TaskUpdateBody = Partial<TaskCreateBody> & {
   status?: TaskStatus;
   progress?: number;
   criticality?: TaskCriticality;
+  is_critical?: boolean;
   related_milestone_id?: string | null;
   predecessors?: string[] | null;
 };

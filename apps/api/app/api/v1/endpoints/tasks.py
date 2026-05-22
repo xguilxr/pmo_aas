@@ -101,6 +101,8 @@ class TaskCreate(BaseModel):
     status: str = "not_started"
     # ENH-051: criticidad opcional al crear; default `medium` server-side.
     criticality: TaskCriticality = "medium"
+    # ENH-097: boolean explicito de criticidad (paralelo a `criticality`).
+    is_critical: bool = False
     # ENH-050: hito relacionado opcional al crear.
     related_milestone_id: UUID | None = None
     # US-090: predecesoras como lista de wbs_code.
@@ -120,6 +122,8 @@ class TaskUpdate(BaseModel):
     assignee_actor_id: UUID | None = None
     area_id: UUID | None = None
     criticality: TaskCriticality | None = None
+    # ENH-097: PATCH del boolean explicito.
+    is_critical: bool | None = None
     # ENH-050: PATCH para reasignar / desasociar (None) el hito relacionado.
     # Pydantic distingue ausente vs None vía `model_dump(exclude_unset=True)`.
     related_milestone_id: UUID | None = None
@@ -161,6 +165,8 @@ class TaskRead(BaseModel):
     assignee_actor_id: UUID | None = None
     # ENH-051: criticidad para chip de color en lista + filtro Críticos.
     criticality: str = "medium"
+    # ENH-097: boolean explicito de criticidad (paralelo a `criticality`).
+    is_critical: bool = False
     # ENH-050: hito relacionado.
     related_milestone_id: UUID | None = None
     related_milestone: TaskMini | None = None
@@ -322,6 +328,7 @@ async def create_task(
         assignee_actor_id=str(body.assignee_actor_id) if body.assignee_actor_id else None,
         priority=body.priority, status=body.status, source="manual",
         criticality=body.criticality,
+        is_critical=body.is_critical,
         related_milestone_id=(
             str(body.related_milestone_id) if body.related_milestone_id else None
         ),
@@ -970,9 +977,21 @@ async def import_confirm(
             crit = _normalize_criticality(getattr(pt, "criticality", None))
             if crit:
                 existing.criticality = crit
+            # ENH-097: is_critical viene explicito de la plantilla, o se
+            # deriva del enum criticality (high/critical → true).
+            parsed_ic = getattr(pt, "is_critical", None)
+            if parsed_ic is not None:
+                existing.is_critical = bool(parsed_ic)
+            elif crit:
+                existing.is_critical = crit in ("high", "critical")
             created[pt.external_id] = existing
         else:
             crit = _normalize_criticality(getattr(pt, "criticality", None))
+            parsed_ic = getattr(pt, "is_critical", None)
+            if parsed_ic is not None:
+                ic_value = bool(parsed_ic)
+            else:
+                ic_value = (crit or "medium") in ("high", "critical")
             t = Task(
                 tenant_id=str(tenant_id), project_id=str(p.id),
                 name=pt.name, wbs=pt.wbs,
@@ -983,6 +1002,7 @@ async def import_confirm(
                 imported_at=datetime.now(UTC),
                 outline_level=compute_outline_level(pt.wbs),
                 criticality=crit or "medium",
+                is_critical=ic_value,
             )
             db.add(t)
             await db.flush()

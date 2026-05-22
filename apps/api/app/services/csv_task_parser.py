@@ -150,6 +150,9 @@ def parse_csv(
                 criticality=(_norm(row[columns["criticality"]]) or None)
                 if "criticality" in columns and columns["criticality"] < len(row)
                 else None,
+                is_critical=_coerce_bool(row[columns["is_critical"]])
+                if "is_critical" in columns and columns["is_critical"] < len(row)
+                else None,
                 related_milestone_wbs=(_norm(row[columns["related_milestone"]]) or None)
                 if "related_milestone" in columns
                 and columns["related_milestone"] < len(row)

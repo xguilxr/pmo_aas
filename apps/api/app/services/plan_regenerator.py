@@ -31,6 +31,8 @@ PLAN_HEADERS = [
     "Hito",
     "Estado",
     "Criticidad",
+    # ENH-097: boolean explicito de criticidad (paralelo al enum).
+    "is_critical",
     "Outline",
 ]
 
@@ -46,6 +48,7 @@ def _row(task: Task) -> list[object]:
         "Sí" if task.is_milestone else "No",
         task.status or "",
         getattr(task, "criticality", None) or "",
+        "Sí" if getattr(task, "is_critical", False) else "No",
         task.outline_level if task.outline_level is not None else "",
     ]
 
