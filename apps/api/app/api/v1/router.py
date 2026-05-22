@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     project_directory,
     project_requests,
     projects,
+    report_builder_render,
     report_builder_templates,
     report_sections,
     report_templates,
@@ -62,6 +63,7 @@ api_router.include_router(reports.router)
 api_router.include_router(report_templates.router)
 api_router.include_router(report_sections.router)
 api_router.include_router(report_builder_templates.router)
+api_router.include_router(report_builder_render.router)
 api_router.include_router(change_approvals.router)
 api_router.include_router(change_approvals.public_router)
 api_router.include_router(scheduled_reports.router)

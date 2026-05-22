@@ -1,0 +1,12 @@
+{# S-19 Snapshot Gantt WBS-1 — placeholder hasta US-132 #}
+<section class="section section-s19">
+  <h2>Gantt (WBS-{{ data.wbs_level or 1 }})</h2>
+  {% if data.empty %}
+    <p class="empty">Sin proyecto.</p>
+  {% else %}
+    {# US-132 cableará un <img> aquí con la URL de snapshot. Por ahora
+       el snapshot se referencia para que el HTML interactivo pueda
+       resolverlo (no embebible en PDF). #}
+    <p class="muted small">Snapshot: <code>{{ data.snapshot_url }}</code></p>
+  {% endif %}
+</section>

@@ -1,0 +1,9 @@
+{# S-04 Resumen Ejecutivo (IA opcional) #}
+<section class="section section-s04">
+  <h2>Resumen Ejecutivo</h2>
+  {% if data.summary %}
+    <p>{{ data.summary }}</p>
+  {% else %}
+    <p class="empty">Resumen pendiente — habilita IA o edita manualmente.</p>
+  {% endif %}
+</section>

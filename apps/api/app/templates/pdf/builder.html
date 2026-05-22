@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<header>
+  <h1>{{ title }}</h1>
+  <p class="meta">
+    {% if project %}{{ project.folio }} — {{ project.name }} · {% endif %}
+    Corte: {{ cut_off_date }} · Ventana: {{ window_days }} días ·
+    Plantilla: {{ template.code }} (Modo {{ mode }})
+  </p>
+</header>
+
+{% if mode == "A" %}
+  {% for s in sections_meta %}
+    {% set data = sections_data.get(s.code, {}) %}
+    {% include s.template ignore missing %}
+  {% endfor %}
+{% else %}
+  {# Modo B — secciones "globales" (sin rows) primero #}
+  {% for s in sections_meta %}
+    {% set data = sections_data.get(s.code, {}) %}
+    {% if not data.rows %}
+      {% include s.template ignore missing %}
+    {% endif %}
+  {% endfor %}
+  {# Luego itera áreas y dentro de cada una repite las secciones aplicables #}
+  {% for area_name, by_code in sections_data.get('__by_area__', {}).items() %}
+    <section class="area-block">
+      <h2>Área: {{ area_name }}</h2>
+      {% for s in sections_meta %}
+        {% set rows = by_code.get(s.code) %}
+        {% if rows %}
+          {% set data = {'rows': rows} %}
+          {% include s.template ignore missing %}
+        {% endif %}
+      {% endfor %}
+    </section>
+  {% endfor %}
+{% endif %}
+
+{% if not sections_meta %}
+  <p class="empty">La plantilla no tiene secciones configuradas.</p>
+{% endif %}
+{% endblock %}

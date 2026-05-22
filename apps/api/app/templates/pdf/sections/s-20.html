@@ -1,0 +1,14 @@
+{# S-20 Composición del equipo por área #}
+<section class="section section-s20">
+  <h2>Equipo por Área</h2>
+  {% if data.rows %}
+  <table>
+    <thead><tr><th>Área</th><th class="right">Personas</th></tr></thead>
+    <tbody>
+      {% for r in data.rows %}
+      <tr><td>{{ r.area_name }}</td><td class="right nums">{{ r.count }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">Sin datos de equipo.</p>{% endif %}
+</section>

@@ -1,0 +1,10 @@
+{# S-01 Portada — header del reporte #}
+<section class="section section-s01">
+  <h2>{{ data.title }}</h2>
+  {% if data.subtitle %}<p class="muted">{{ data.subtitle }}</p>{% endif %}
+  <dl class="kv">
+    {% if data.organization_name %}<dt>Organización</dt><dd>{{ data.organization_name }}</dd>{% endif %}
+    {% if data.program_name %}<dt>Programa</dt><dd>{{ data.program_name }}</dd>{% endif %}
+    <dt>Fecha de corte</dt><dd>{{ data.cut_off_date }}</dd>
+  </dl>
+</section>
