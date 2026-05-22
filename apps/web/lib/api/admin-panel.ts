@@ -11,6 +11,12 @@ function qs(params: Record<string, unknown>): string {
 }
 
 /* ===== Tenant settings ===== */
+// ENH-099: per-tenant resource-load colorization thresholds (Report Builder / EP020).
+export type TaskLoadThresholds = {
+  green_max: number;
+  amber_max: number;
+};
+
 export type TenantSettings = {
   locale?: string;
   currency?: string;
@@ -18,6 +24,9 @@ export type TenantSettings = {
   timezone?: string;
   primary_color?: string;
   logo_url?: string;
+  // ENH-099: per-tenant task-load colorization thresholds. Canonical storage
+  // lives under `settings.report_builder.task_load_thresholds`.
+  task_load_thresholds?: TaskLoadThresholds;
 };
 
 export function getSettings(): Promise<{ settings: TenantSettings }> {
