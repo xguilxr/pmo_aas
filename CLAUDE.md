@@ -7,14 +7,44 @@
 
 ---
 
-## 0. Principio rector — solucionar > documentar
+## 0. Principios rectores
 
-> **Decisión owner 2026-04-29:** se prioriza por encima de todo lo demás.
+> **Decisión owner 2026-04-29 + 2026-05-22:** estos principios mandan sobre todo lo demás.
+
+### 0.1 Solucionar > documentar (issues / tracking)
 
 El proceso de issue tracking, triage, bloques y SPRINT.md existe para
 **ordenar** el trabajo, no para reemplazarlo. Si una sesión gasta más
-ronda en mover items entre INBOX/QUEUE/Bloques que en escribir código,
+ronda en mover items entre INBOX/Bloques que en escribir código,
 algo está mal. Más enfoque en solucionar, menos en documentar issues.
+
+### 0.2 Documentación del producto pristina
+
+> **Nuevo 2026-05-22.** Co-principio que NO compite con 0.1.
+
+Las **epics (`docs/epics/EP0XX-*.md`) describen la funcionalidad del
+producto**, no el plan de trabajo. Cuando un commit cambia el
+comportamiento descrito en una epic, **la epic debe actualizarse en el
+mismo bloque de trabajo**, no después.
+
+Distinción clave:
+- **Epic** = qué hace la plataforma, descripción funcional, viva.
+- **Issue** = instrucción técnica para implementar un cambio puntual.
+- **SPRINT.md** = orden y estado del trabajo en curso.
+
+Cuando una US/ENH/BUG modifica:
+- Comportamiento descrito en la epic → actualizar epic.
+- Schema descrito en la epic → actualizar epic (+ DB-CHANGES.md).
+- Endpoint nuevo / removido / renombrado → actualizar epic.
+- Decisión arquitectónica → además actualizar `DECISIONS.md`.
+
+Si el cambio NO afecta la descripción del producto (refactor interno,
+fix de typo, optimización transparente), no hay nada que actualizar.
+
+**Implementación práctica:** usa un sub-agente con modelo Haiku
+(rápido + barato) para redactar/refinar la edición del epic doc
+después del commit principal. Ver §10 sub-sección "Delegación a
+sub-agentes" para el patrón.
 
 Reglas blandas (no son atajos para saltarse 1 US = 1 commit ni la
 revisión del owner, pero sí relajan el ceremonial):
@@ -112,9 +142,28 @@ Fase C — Implementación        →   Fase D — Cierre (owner)
 
 ### Fase A — Planeación / Diseño (solo cuando aplica)
 
-Para frentes grandes (epic nuevo, redesign, módulo nuevo, refactor con
-blast radius alto) NO se crean issues primero. Se hace una sesión de
-discovery con el owner siguiendo este patrón:
+Fase A puede arrancar de dos formas:
+- (a) **Sesión de planeación/diseño** explícita (el owner pide
+  "vamos a diseñar X").
+- (b) **Comentario suelto del owner** que abre un frente nuevo o
+  redefine algo existente.
+
+#### Cuándo Fase A es obligatoria
+
+- Funcionalidad **nueva** que requiere epic doc (nuevo módulo,
+  nuevo flujo end-to-end).
+- Redesign / restructure de funcionalidad existente.
+- Cambio que toca > 10 archivos o > 1 día de implementación.
+- Cualquier US/ENH cuyo scope no está claro en una línea.
+
+#### Cuándo se puede saltar Fase A
+
+- Bug puntual con AC obvio.
+- ENH pequeño sobre código existente.
+- Cambio puntual que el owner pide directo sin planear sprint
+  ("crea un issue para X" → Fase B paso 1 directo).
+
+#### Flujo cuando aplica
 
 1. **Discovery activo** — Claude pregunta, propone, refina con el
    owner en rondas. Mini-consejo de 3 perspectivas interno por default.
@@ -123,22 +172,20 @@ discovery con el owner siguiendo este patrón:
 3. **Owner cierra scope** — confirma alcance, descarta secciones,
    marca opcionales / diferidos. El draft queda como referencia
    normativa.
-4. **Promoción a epic oficial** — solo cuando el draft está cerrado,
-   se crea `docs/epics/EP0XX-<tema>.md` con US numeradas + AC + TC +
-   dependencias + plan de sprints.
+4. **Decisión: epic nueva o epic existente:**
+   - Si la funcionalidad es **nueva** → crear `docs/epics/EP0XX-<tema>.md`.
+   - Si **afecta una epic existente** → actualizar `docs/epics/EP0YY-*.md`
+     directamente (no crear epic nuevo). El draft puede quedar como
+     working doc temporal hasta que la actualización quede integrada.
+   - Si el cambio es **estrictamente puntual** y no merece doc nuevo
+     → saltar a Fase B.
 5. **Acuerdo final** — owner confirma orden de sprints/bloques y
    damos paso a Fase B.
 
-Ejemplos de cuándo Fase A es obligatoria:
-- Epic nuevo (EP020 — Report Builder, EP017 — Directorio).
-- Restructure de un módulo existente.
-- Cambio que toca > 10 archivos o > 1 día de implementación.
-- Cualquier US/ENH cuyo scope no está claro en una línea.
-
-Cuándo se puede saltar Fase A:
-- Bug puntual con AC obvio.
-- ENH pequeño sobre código existente.
-- Owner pega un dump corto donde el triage es directo.
+> **Las epics son documentación funcional viva, no plan de trabajo.**
+> Las epics existen para describir qué hace la plataforma. Los issues
+> son instrucciones técnicas. SPRINT.md es estado del trabajo. No
+> confundir los tres roles.
 
 ---
 
@@ -201,6 +248,16 @@ Template obligatorio:
   - Status: `status:triage`
   - Extras si aplica: `post-mvp`, `v1.0`, etc.
 
+**Formato canónico de referencia en docs:** cuando referencias un
+item en SPRINT.md, HANDOFF.md, epic docs o comments, usa
+**`<ID> #<issue>`** juntos. Ejemplos:
+- `US-120 #378` — US y issue GitHub linkeados.
+- `BUG-061 #391` — bug + issue.
+- `ENH-097 #373` — enhancement + issue.
+
+Esto hace navegable la doc: el ID es estable a través del tiempo, el
+`#issue` lleva al detalle técnico en GitHub.
+
 #### Paso 4 — Integrar a SPRINT.md
 
 Heurística (corresponde a la opción 7c del acuerdo):
@@ -230,14 +287,15 @@ issues recién creados hasta que el owner decide en qué bloque entran.
 
 #### Paso 5 — Antes de tocar código
 
-- **Gate `status:ready`** — el issue debe tener este label antes de
-  empezar. Si está en `triage`, ese label es del owner (no de Claude).
-  Pedirle al owner que apruebe el gate.
+- **Gate `status:ready` (soft).** Idealmente el issue tiene este label
+  antes de empezar. Si el owner pidió ejecutar algo directo sin haber
+  pasado triage → ready (porque tiene mucho que hacer y confía en el
+  scope), está OK saltarse el gate. La regla blanda: **Claude
+  nunca arranca trabajo sin un OK explícito del owner**, sea por label
+  o por chat. La label es la mejor práctica, el chat es el fallback.
 - **1 US/BUG/ENH = 1 commit.** Sin mezclar en el mismo commit.
 - Mover la US de INBOX → **IN-PROGRESS** en SPRINT.md antes de empezar.
-- **Cambiar label** del issue: `status:ready` → `status:in-progress`.
-  (Si por alguna razón viene de `status:triage` directo — owner pasó por
-  alto el gate — pedir confirmación antes de saltarlo.)
+- **Cambiar label** del issue: `triage` o `ready` → `status:in-progress`.
 
 #### Paso 6 — Commit + push
 
@@ -283,7 +341,11 @@ issues recién creados hasta que el owner decide en qué bloque entran.
 
 3. Mover la US en `SPRINT.md` IN-PROGRESS → DONE (solo si es el
    último item del bloque; si no, esperar al cierre del bloque).
-4. **No cerrar** el issue. El owner lo cierra cuando verifica.
+4. **Actualizar epic doc si aplica** (§0.2). Si el commit cambió
+   comportamiento descrito en `docs/epics/EP0XX-*.md`, edita la epic
+   en el mismo branch antes de seguir. Delegable a sub-agente Haiku
+   (ver §10).
+5. **No cerrar** el issue. El owner lo cierra cuando verifica.
 
 > Si hay que actualizar labels o comments en N issues a la vez
 > (cierre de un bloque grande), delega a un sub-agente con la lista
@@ -306,6 +368,8 @@ El owner:
 Cuando todos los issues de un bloque están en `status:fix-committed`
 (esperando verificación del owner) o `closed completed`:
 - Actualizar SPRINT.md: mover los items del bloque a DONE.
+- Verificar que todas las epics afectadas por items del bloque ya
+  estén actualizadas (§0.2). Si quedaron pendientes, hacerlo ahora.
 - Si el bloque cierra el sprint, ejecutar el cleanup completo de §6.
 
 ---
@@ -350,7 +414,7 @@ Set requerido. Si falta alguna, la crea el owner (UI o gh CLI):
 | `bug` | #d73a4a | Tipo: reporte de fallo |
 | `enhancement` | #a2eeef | Tipo: mejora sobre US existente |
 | `user-story` | #7057ff | Tipo: historia nueva |
-| `EP001` … `EP02X` | #0e8a16 | Epic al que pertenece (uno o varios) |
+| `EP001` … `EP020` | #0e8a16 | Epic al que pertenece (uno o varios) |
 | `status:triage` | #fbca04 | Recién creado, pendiente de aprobación del triage |
 | `status:ready` | #0e8a16 | **Owner aprobó el triage — Claude puede arrancar** |
 | `status:in-progress` | #0075ca | Claude está trabajando |
@@ -409,8 +473,20 @@ Archivo vive en `docs/project-management/SPRINT.md` (desde Sprint 2).
 3. Al cerrar bloque → mover los items a **DONE** (tabla resumen);
    el detalle del bloque va a SPRINT-DONE-HISTORY.md.
 
-> **NO mover items por cada commit individual.** Solo al cerrar
-> bloque completo o al cierre de sesión vía `/handoff`.
+**Frecuencia de actualización de SPRINT.md** (decisión owner 2026-05-22):
+
+| Evento | ¿Actualizar SPRINT.md? |
+|---|---|
+| Cada commit individual | NO (sobrecarga) |
+| Al crear ≥ 1 issue nuevo | SÍ (entra a INBOX) |
+| Al cerrar BLOQUE completo | SÍ (items pasan a DONE) |
+| Al cerrar SPRINT | SÍ + cleanup obligatorio (§6 abajo) |
+| Al cerrar SESIÓN (`/handoff`) | SÍ siempre — el skill /handoff lo hace |
+
+> Cuanto más actualizado esté SPRINT.md mejor (para que otra sesión lo
+> retome sin sorpresas), pero NO a costa de detenerse cada commit. El
+> equilibrio: actualizar en "segmentos grandes" (bloque, sprint,
+> sesión).
 
 ### Limpieza al cierre de sprint (obligatoria)
 
@@ -495,18 +571,60 @@ mismo sprint, la metodología por default es:
 - Si el contexto se agota, commit con `wip:` y documentar dónde quedó
   en `docs/project-management/SPRINT.md` (sección IN-PROGRESS) antes de terminar la sesión.
 
-### Delegación a sub-agentes
+### Delegación a sub-agentes (optimización de recursos)
 
-Usa sub-agentes (con la herramienta `Agent`) cuando:
+> **Principio:** la sesión principal cuesta más contexto que un
+> sub-agente. Delega lo que no requiera tu juicio en el thread.
 
-- **Crear ≥ 5 issues** en GitHub: pasa la lista completa al agente.
-- **Aplicar labels en ≥ 10 issues**: agente con tabla `# → labels`.
-- **Audit de codebase**: sub-agente explorer cuando hay que mapear
-  varios módulos antes de planear.
-- **Búsquedas multi-archivo** que exceden 3 queries directas.
+#### Cuándo delegar
 
-Mantén la sesión principal para discusión + diseño + commits propios.
-Los agentes ahorran contexto del thread principal.
+| Caso | Modelo sugerido | Razón |
+|---|---|---|
+| Crear ≥ 5 issues en GitHub | sonnet | Lista de specs ya escrita, ejecución mecánica |
+| Aplicar labels en ≥ 10 issues | sonnet o haiku | Operación bulk, schema simple |
+| Audit / mapeo de codebase | sonnet (`Explore`) | Exploración masiva sin escritura |
+| Búsqueda multi-archivo > 3 queries | sonnet (`Explore` o `general-purpose`) | Búsquedas en paralelo |
+| **Actualizar epic doc tras commit** (§0.2) | **haiku** | Redacción técnica corta, modelo barato y rápido |
+| Refinamiento de wording / typos | haiku | Tarea de redacción, no de razonamiento |
+| Revisión de seguridad / arquitectura | opus (`code-reviewer`) | Razonamiento profundo |
+| Planning multi-step de epic nuevo | opus o sonnet | Decisiones arquitectónicas |
+
+#### Patrón: actualizar epic doc con Haiku
+
+Cuando un commit cambia comportamiento descrito en una epic, en
+lugar de editar la epic en la sesión principal (gasta contexto),
+delega al sub-agente:
+
+```
+Agent({
+  description: "Update epic doc post-commit",
+  subagent_type: "general-purpose",
+  model: "haiku",
+  prompt: `
+    Acabamos de pushear commit <SHA> que implementa <ID> en la branch <branch>.
+    El cambio modifica el comportamiento descrito en docs/epics/EP0XX-*.md.
+
+    Tarea: edita el epic doc para reflejar el nuevo comportamiento.
+    Mantén el resto del doc intacto. Specs del cambio:
+    <pega AC del issue + diff resumido>
+
+    Reglas:
+    - Mantén el tono y estructura existentes.
+    - No agregues secciones nuevas a menos que sea estrictamente necesario.
+    - Marca cambios con la fecha (YYYY-MM-DD) al final.
+    - Si la US tiene un sub-bloque dedicado en el epic, actualízalo
+      con commit SHA y status DONE.
+    - Commit + push al final con header docs(epic): EP0XX update for <ID>.
+  `
+})
+```
+
+#### Cuándo NO delegar
+
+- Decisiones que requieren contexto profundo de la sesión actual.
+- Commits que tocan código (la sesión principal es la dueña).
+- Resúmenes finales al owner.
+- El `/handoff` (debe correrlo la sesión que lo está cerrando).
 
 ---
 
