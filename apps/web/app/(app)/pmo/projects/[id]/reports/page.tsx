@@ -70,6 +70,10 @@ import {
   type ScheduledReportType,
 } from "@/lib/api/scheduled-reports";
 import { type Area, listAreasByProject } from "@/lib/api/areas";
+import {
+  listBuilderTemplates,
+  type ReportBuilderTemplate,
+} from "@/lib/api/report-builder";
 import { cn } from "@/lib/cn";
 
 function fmtDate(iso: string | null | undefined): string {
@@ -531,6 +535,8 @@ function ScheduledReportForm({
   const [dayOfMonth, setDayOfMonth] = useState<number>(1);
   const [runAtDate, setRunAtDate] = useState<string>(""); // YYYY-MM-DD
   const [runAtTime, setRunAtTime] = useState<string>("09:00"); // HH:MM
+  // ENH-114: plantilla del builder cuando report_type='custom'.
+  const [builderTemplateId, setBuilderTemplateId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -544,6 +550,7 @@ function ScheduledReportForm({
       setDayOfWeek(existing.day_of_week ?? 0);
       setHourOfDay(existing.hour_of_day ?? 9);
       setDayOfMonth(existing.day_of_month ?? 1);
+      setBuilderTemplateId(existing.report_builder_template_id ?? null);
       if (existing.run_at) {
         const d = new Date(existing.run_at);
         setRunAtDate(d.toISOString().slice(0, 10));
@@ -564,6 +571,7 @@ function ScheduledReportForm({
       setDayOfMonth(1);
       setRunAtDate("");
       setRunAtTime("09:00");
+      setBuilderTemplateId(null);
     }
     setError(null);
   }, [open, existing]);
@@ -618,6 +626,16 @@ function ScheduledReportForm({
         cadenceFields.run_at = iso;
       }
 
+      // ENH-114: validar selección de plantilla del builder.
+      if (reportType === "custom" && !builderTemplateId) {
+        setError("Selecciona la plantilla del builder a programar");
+        setSaving(false);
+        return;
+      }
+      const builderField =
+        reportType === "custom"
+          ? { report_builder_template_id: builderTemplateId }
+          : {};
       if (existing) {
         await updateScheduledReport(existing.id, {
           report_type: reportType,
@@ -625,6 +643,7 @@ function ScheduledReportForm({
           recipients: list,
           enabled,
           ...cadenceFields,
+          ...builderField,
         });
       } else {
         await createScheduledReport(projectId, {
@@ -633,6 +652,7 @@ function ScheduledReportForm({
           recipients: list,
           enabled,
           ...cadenceFields,
+          ...builderField,
         });
       }
       onSaved();
@@ -666,8 +686,18 @@ function ScheduledReportForm({
           >
             <option value="avance">Reporte de Avance</option>
             <option value="seguimiento">Reporte de Seguimiento</option>
+            <option value="custom">Plantilla del Builder</option>
           </Select>
         </div>
+        {/* ENH-114: cuando es 'custom', el usuario debe elegir una
+            plantilla del Report Builder (US-131 backend ya lo acepta). */}
+        {reportType === "custom" && (
+          <BuilderTemplatePicker
+            projectId={projectId}
+            value={builderTemplateId}
+            onChange={setBuilderTemplateId}
+          />
+        )}
         <div>
           <label
             htmlFor="sched-cadence"
@@ -2692,6 +2722,78 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
         )}
       </section>
     </div>
+    </div>
+  );
+}
+
+// ENH-114 — picker de plantillas del Report Builder para el form de
+// suscripciones (cuando report_type='custom').
+function BuilderTemplatePicker({
+  projectId,
+  value,
+  onChange,
+}: {
+  projectId: string;
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const [tpls, setTpls] = useState<ReportBuilderTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    listBuilderTemplates({})
+      .then((all) => {
+        if (cancelled) return;
+        // Mostrar seeds + propias + del proyecto activo.
+        setTpls(
+          all.filter(
+            (t) =>
+              t.is_seed ||
+              t.visibility === "private" ||
+              (t.visibility === "project" && t.project_id === projectId),
+          ),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  return (
+    <div>
+      <label
+        htmlFor="sched-builder-tpl"
+        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+      >
+        Plantilla del Builder
+      </label>
+      <Select
+        id="sched-builder-tpl"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        disabled={loading || tpls.length === 0}
+      >
+        <option value="">
+          {loading
+            ? "Cargando…"
+            : tpls.length === 0
+              ? "Sin plantillas disponibles"
+              : "Selecciona plantilla…"}
+        </option>
+        {tpls.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name} {t.is_seed ? "(seed)" : ""} · L{t.level}
+          </option>
+        ))}
+      </Select>
+      {!loading && tpls.length === 0 && (
+        <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+          Abre el Report Builder y guarda una plantilla antes de programar.
+        </p>
+      )}
     </div>
   );
 }
