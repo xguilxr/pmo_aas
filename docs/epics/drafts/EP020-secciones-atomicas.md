@@ -831,12 +831,15 @@ Niveles: 3, 4.
          Nivel 1/2: agregado en S-36 (proyectos en alerta del portafolio).
 
 DEPENDENCIA DEL SISTEMA:
-  - project_status_snapshots: tabla nueva
-      campos: project_id, snapshot_date, status_rag ('green'|'amber'|'red'),
-              comment, created_by
-  - UI en proyecto para que el PM actualice el estado por periodo
-    (dropdown + textarea opcional)
-  - Migración Alembic
+  - Campos sobre projects (no tabla histórica de snapshots — sale de
+    este planeo, se posterga a v2.0):
+      projects.status_rag    ENUM ('green','amber','red') NULL
+      projects.status_comment TEXT NULL
+      projects.status_updated_at TIMESTAMP NULL
+      projects.status_updated_by UUID NULL (ref users)
+  - UI en proyecto para que el PM actualice el estado (dropdown +
+    textarea opcional). Cada update sobreescribe el anterior.
+  - Migración Alembic.
 ```
 
 #### S-04 Resumen ejecutivo — SPEC CERRADO

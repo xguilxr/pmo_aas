@@ -53,7 +53,8 @@ Sprint 23 (v1.22) — Bloque 1 ENTREGADO 2026-05-09 (1 de 1, pendiente verif. ow
 
 Sprints 12-15 — Bloques entregados, pendiente verificación owner.
 
-Próximo libre: US-119, BUG-056, ENH-092.
+Próximo libre: US-133, BUG-061, ENH-102.
+(US-119 reservada para EP017 cleanup diferido; US-120 a US-132 reservadas EP020.)
 ```
 
 ---
@@ -82,6 +83,51 @@ Sprint 25 (v1.24) — EP017 Directorio de Proyecto — Bloque 1+2 ENTREGADO 2026
 
 (antes: vacío — todos los issues nuevos están organizados en bloques de Sprint 13-16, ver abajo.)
 ```
+
+### EP020 — Report Builder (Niveles 1, 2, 4) — INBOX 2026-05-22
+
+> Epic doc: `docs/epics/EP020-report-builder.md`
+> Catálogo detallado: `docs/epics/drafts/EP020-secciones-atomicas.md`
+> Status sugerido para todos: `status:triage` hasta que owner pase a `status:ready` por bloque.
+
+**Dependencias del sistema (Sprint 26 Bloque 1 — ENH a otros epics):**
+- ENH-097 — EP006 Plan: `tasks.is_critical` boolean (reemplaza columna existente)
+- ENH-098 — EP007 Admin: `progress_calculation_method` por tenant
+- ENH-099 — EP007 Admin: `task_load_thresholds` por tenant
+- ENH-100 — EP002 Org: `client_logo_url` + UI upload
+- ENH-101 — EP005 Projects: `status_rag` declarativo del PM
+
+**Backbone (Sprint 26 Bloque 2):**
+- US-120 — Modelo y seed del catálogo de 22 secciones atómicas
+- US-121 — Servicio cálculo % avance configurable por tenant
+- US-122 — Modelo de plantillas + 4 plantillas seed (L3-Avance, L3-Seguimiento, L1-Portafolio, L2-Org)
+
+**Motor de render + export (Sprint 27 Bloque 1):**
+- US-123 — Engine de render con modos composición A (por sección) / B (por área)
+- US-130 — Export PDF de reportes custom
+
+**Canvas Nivel 4 (Sprint 27 Bloque 2):**
+- US-124 — Canvas drag-and-drop + preview en vivo
+- US-125 — Panel de parámetros transversales
+- US-126 — Plantillas privadas + publicar al proyecto
+
+**IA + Suscripciones (Sprint 28):**
+- US-127 — Modo IA conversacional construyendo el reporte (tool calls)
+- US-131 — Suscripciones de reportes custom (reusa US-056)
+
+**Módulos UI Niveles 1/2 + Gantt (Sprint 29):**
+- US-128 — Módulo UI Reportes Nivel 1 PMO (`/pmo/reports/portfolio`)
+- US-129 — Módulo UI Reportes Nivel 2 Org/Programa (tab en organización)
+- US-132 — Render headless del Gantt WBS-1 para S-19 (puppeteer/playwright)
+
+**Fuera de scope v1.0 (postergado v2.0):**
+- Snapshots históricos del semáforo y de KPIs (S-05 tendencia, sparklines, deltas vs anterior).
+- S-07 Curva S (descartada — incompatible con flexibilidad del plan).
+- S-10 Entregables formales (concepto no configurado en plataforma).
+
+**Pendientes externos al owner:**
+- Crear labels `EP020`, `EP020:catalog`, `EP020:builder`, `EP020:portfolio` en GitHub UI.
+- Aprobar triage por bloque y pasar issues a `status:ready` antes de arrancar Sprint 26.
 
 ---
 
