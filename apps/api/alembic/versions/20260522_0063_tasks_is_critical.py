@@ -28,35 +28,27 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # 1) add column nullable=True con default false, para no fallar en
-    # rows existentes durante el ALTER en Postgres.
+    # Add column NOT NULL con server_default=false. Para filas existentes
+    # el default cubre el INSERT implícito durante el ALTER (mismo patrón
+    # que migración 0037 ``tasks.criticality``). Backfill posterior pisa
+    # las filas que deberían quedar en true según el enum existente.
     with op.batch_alter_table("tasks") as batch:
         batch.add_column(
             sa.Column(
                 "is_critical",
                 sa.Boolean(),
-                nullable=True,
-                server_default=sa.false(),
+                nullable=False,
+                server_default=sa.text("false"),
             )
         )
 
-    # 2) Backfill desde criticality. Usamos SQL plano para que funcione
-    # tanto en Postgres como en SQLite (batch upgrade tests).
-    bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        true_lit, false_lit = "TRUE", "FALSE"
-    else:
-        true_lit, false_lit = "1", "0"
-    bind.execute(
-        sa.text(
-            "UPDATE tasks SET is_critical = CASE "
-            f"WHEN criticality IN ('high', 'critical') THEN {true_lit} ELSE {false_lit} END"
-        )
+    # Backfill desde el enum existente. Usamos boolean literals que
+    # Postgres acepta (``true``/``false``) y que SQLite trata como
+    # alias de 1/0 desde 3.23.
+    op.execute(
+        "UPDATE tasks SET is_critical = true "
+        "WHERE criticality IN ('high', 'critical')"
     )
-
-    # 3) NOT NULL constraint.
-    with op.batch_alter_table("tasks") as batch:
-        batch.alter_column("is_critical", existing_type=sa.Boolean(), nullable=False)
 
 
 def downgrade() -> None:
