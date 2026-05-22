@@ -101,12 +101,14 @@ Sprint 25 (v1.24) — EP017 Directorio de Proyecto — Bloque 1+2 ENTREGADO 2026
 **ENH-102 — Parser RAID estricto (solo A/R/D/I, descartar lecciones/cambios) + opción crear items**
 - Contexto: hoy el IA alucina y sugiere lecciones y cambios mezclados con RAID. La regla es estricta: solo Acciones, Riesgos, Decisiones, Issues. Además, cada sugerencia debe tener checkbox "crear como item del proyecto" (ya estaba — verificar que sigue funcionando tras BUG-061).
 - AC:
-  - [ ] Prompt schema ampliado solo permite tipos {action, risk, decision, issue}. Lecciones/cambios rechazados en validación post-IA.
-  - [ ] Si el modelo emite item con tipo no permitido, descartar silenciosamente.
+  - [ ] Prompt schema ampliado solo permite tipos {A, R, D, I}. Lecciones/cambios descartados silenciosamente en validador post-IA (no error — solo log para métricas).
   - [ ] Cada item sugerido tiene checkbox individual "crear" (default sí); al aceptar la minuta solo se crean los marcados.
-  - [ ] TC: prompt con transcript que menciona "lección aprendida" no produce item.
-- Archivos: `apps/api/app/services/ai/prompts.py`, validador post-IA en `services/ai/validator.py` (nuevo si no existe).
+  - [ ] Pipeline completo del parser definido en `docs/epics/drafts/minute-gold-standard.md` sección 3.
+  - [ ] Few-shot con caso Highlander EAM-BNF para emular nivel de detalle.
+  - [ ] TC-300 a TC-309 derivados del gold standard (ver doc).
+- Archivos: `apps/api/app/services/ai/prompts.py`, validador post-IA en `services/ai/validator.py` (nuevo si no existe), fixture `apps/api/tests/fixtures/minutes/highlander-eam-bnf-20260323.*`.
 - Epic: EP008.
+- Gold standard: `docs/epics/drafts/minute-gold-standard.md`.
 
 **ENH-103 — Match participantes ↔ actores del proyecto (auto-link + crear faltantes)**
 - Contexto: hoy los participantes de la minuta son strings libres. Necesitamos que se conecten con actores del proyecto (EP017 directorio). Si el participante existe → link; si no, crear actor on-the-fly con flag `unverified`.
@@ -128,14 +130,16 @@ Sprint 25 (v1.24) — EP017 Directorio de Proyecto — Bloque 1+2 ENTREGADO 2026
 - Epic: EP008.
 
 **ENH-105 — Estructura de minuta v1.0 (6 secciones fijas)**
-- Contexto: cerrar la estructura rígida especificada por owner.
+- Contexto: cerrar la estructura rígida especificada por owner. Owner aclaró 2026-05-22: las "actividades a hacer del backlog" del ejemplo se consolidan dentro del RAID como Acciones (no hay sección separada).
 - AC:
-  - [ ] Secciones: 1. Encabezado, 2. Participantes (asistentes + ausentes justificados + no justificados), 3. Agenda (resumen 2-3 oraciones), 4. Desarrollo por tema (bullet points), 5. RAID (A/R/D/I), 6. Notas libres (opcional).
+  - [ ] Secciones: 1. Encabezado, 2. Participantes (asistentes + ausentes justificados + no justificados), 3. Resumen / Objetivo (2-3 oraciones), 4. Temas tratados (bullets factuales nivel `minute-gold-standard.md`), 5. RAID unificado A/R/D/I (incluye TODAS las acciones — las "actividades del backlog" del ejemplo van como Acciones), 6. Notas libres (opcional — usable para próximos pasos calendarizados).
   - [ ] No se admiten secciones extra ni reordenamiento.
   - [ ] Plantillas export (`.pdf`, `.docx`, `.md`, `.txt`) actualizadas con la nueva estructura.
-  - [ ] Prompt IA actualizado para emitir JSON con esta estructura.
+  - [ ] Prompt IA actualizado para emitir JSON con esta estructura (ver `docs/epics/drafts/minute-gold-standard.md` sección 3 para schema y few-shot).
+  - [ ] Test fixture: `apps/api/tests/fixtures/minutes/highlander-eam-bnf-20260323.{txt,expected.json}` con el caso real del owner.
 - Archivos: `apps/api/app/services/minutes_formatter.py`, plantillas `apps/api/app/templates/pdf/minutes/minute.html`, prompt EP008.
 - Epic: EP008 + EP014.
+- Gold standard: `docs/epics/drafts/minute-gold-standard.md`.
 
 **ENH-106 — Campo de auditoría `origin` en minuta (manual / transcript-IA / import)**
 - Contexto: el origen no aparece en la minuta visible, pero debe quedar en BD para auditoría.
