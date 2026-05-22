@@ -49,6 +49,10 @@ class Project(Base, TimestampMixin):
     actual_budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     progress: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     health_status: Mapped[str] = mapped_column(String(16), nullable=False, default="green")
+    # ENH-101: RAG declarado por el PM (override manual). Si está
+    # seteado, prevalece sobre el cómputo automático para mostrar en
+    # UI. NULL = sin override.
+    status_rag: Mapped[str | None] = mapped_column(String(8), nullable=True)
     request_id: Mapped[UUID | None] = mapped_column(String(36))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # US-084: dict por nombre de field con auditoría de edición manual.
