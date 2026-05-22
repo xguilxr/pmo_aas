@@ -12,8 +12,15 @@ import { ApiError } from "@/lib/api";
 import {
   getSettings,
   updateSettings,
+  type TaskLoadThresholds,
   type TenantSettings,
 } from "@/lib/api/admin-panel";
+
+// ENH-099: defaults shown when the tenant has no thresholds configured.
+const DEFAULT_TASK_LOAD_THRESHOLDS: TaskLoadThresholds = {
+  green_max: 5,
+  amber_max: 10,
+};
 
 const LOCALES = [
   { value: "es-MX", label: "Español (MX)" },
@@ -168,6 +175,67 @@ export function TenantSettingsForm() {
             </span>
           </div>
         </Field>
+
+        {/* ENH-099 — Umbrales de carga de tareas (Report Builder / EP020) */}
+        <div className="border-t border-[var(--border-subtle)] pt-4">
+          <h3 className="mb-2 text-[13px] font-semibold text-[var(--text-primary)]">
+            Umbrales de carga de tareas
+          </h3>
+          <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
+            Define los cortes para colorear la carga de tareas por recurso en
+            los reportes: hasta <em>verde</em>, hasta <em>ámbar</em>, y por
+            encima se marca en rojo. Ambos valores deben ser positivos y
+            <span className="whitespace-nowrap"> verde &lt; ámbar</span>.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Verde hasta">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={
+                  form.task_load_thresholds?.green_max ??
+                  DEFAULT_TASK_LOAD_THRESHOLDS.green_max
+                }
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  const current =
+                    form.task_load_thresholds ?? DEFAULT_TASK_LOAD_THRESHOLDS;
+                  setForm({
+                    ...form,
+                    task_load_thresholds: {
+                      green_max: Number.isFinite(next) ? next : current.green_max,
+                      amber_max: current.amber_max,
+                    },
+                  });
+                }}
+              />
+            </Field>
+            <Field label="Ámbar hasta">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={
+                  form.task_load_thresholds?.amber_max ??
+                  DEFAULT_TASK_LOAD_THRESHOLDS.amber_max
+                }
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  const current =
+                    form.task_load_thresholds ?? DEFAULT_TASK_LOAD_THRESHOLDS;
+                  setForm({
+                    ...form,
+                    task_load_thresholds: {
+                      green_max: current.green_max,
+                      amber_max: Number.isFinite(next) ? next : current.amber_max,
+                    },
+                  });
+                }}
+              />
+            </Field>
+          </div>
+        </div>
 
         <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">
           <Button

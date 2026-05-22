@@ -398,6 +398,11 @@ class TenantSettingsUpdate(BaseModel):
     primary_color: str | None = None
     ai_mode: str | None = None
     logo_url: str | None = None
+    # ENH-099: Per-tenant task-load colorization thresholds for the
+    # Report Builder (EP020). Canonical storage lives under
+    # `settings.report_builder.task_load_thresholds`. Both keys
+    # (green_max, amber_max) must be sent together.
+    task_load_thresholds: dict[str, int] | None = None
 
 
 @router.get("/settings")
@@ -409,7 +414,14 @@ async def get_settings(
     t = (await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))).scalar_one_or_none()
     if t is None:
         raise not_found("Tenant")
-    return {"settings": t.settings or {}}
+    # ENH-099: expose effective task_load_thresholds (with default) as a
+    # top-level convenience field while preserving the canonical nested
+    # shape under `settings.report_builder`.
+    from app.services.tenant_settings import get_task_load_thresholds
+
+    settings = dict(t.settings or {})
+    settings["task_load_thresholds"] = get_task_load_thresholds(t)
+    return {"settings": settings}
 
 
 @router.patch("/settings")
@@ -418,20 +430,56 @@ async def patch_settings(
     cu: CurrentUser = Depends(require_capability("tenant.manage")),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services.tenant_settings import (
+        get_task_load_thresholds,
+        set_task_load_thresholds,
+    )
+
     tenant_id = _tenant(cu)
     t = (await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))).scalar_one_or_none()
     if t is None:
         raise not_found("Tenant")
     updates = body.model_dump(exclude_none=True)
+
+    # ENH-099: validate task_load_thresholds before persisting anything.
+    thresholds_update = updates.pop("task_load_thresholds", None)
+    if thresholds_update is not None:
+        if not isinstance(thresholds_update, dict):
+            raise business_rule(
+                "task_load_thresholds must be an object with green_max/amber_max",
+                code="INVALID_TASK_LOAD_THRESHOLDS",
+            )
+        try:
+            green_max = int(thresholds_update["green_max"])
+            amber_max = int(thresholds_update["amber_max"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise business_rule(
+                "task_load_thresholds requires integer green_max and amber_max",
+                code="INVALID_TASK_LOAD_THRESHOLDS",
+            ) from exc
+        if green_max <= 0 or amber_max <= 0 or green_max >= amber_max:
+            raise business_rule(
+                "task_load_thresholds: green_max y amber_max deben ser positivos "
+                "y green_max < amber_max",
+                code="INVALID_TASK_LOAD_THRESHOLDS",
+            )
+
     merged = dict(t.settings or {})
     merged.update(updates)
     t.settings = merged
+    audit_fields = list(updates.keys())
+    if thresholds_update is not None:
+        set_task_load_thresholds(t, green_max, amber_max)
+        audit_fields.append("task_load_thresholds")
+
     await write_audit(
         db, action="tenant.settings.update", module="admin",
-        user_id=cu.id, tenant_id=tenant_id, details={"fields": list(updates.keys())},
+        user_id=cu.id, tenant_id=tenant_id, details={"fields": audit_fields},
     )
     await db.commit()
-    return {"settings": t.settings}
+    response_settings = dict(t.settings or {})
+    response_settings["task_load_thresholds"] = get_task_load_thresholds(t)
+    return {"settings": response_settings}
 
 
 # ---- Audit logs view ----
