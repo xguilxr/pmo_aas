@@ -23,6 +23,7 @@ from app.api.v1.endpoints import (
     report_templates,
     reports,
     risk_actions,
+    scheduled_minutes,
     scheduled_reports,
     stakeholders,
     superadmin,
@@ -60,6 +61,7 @@ api_router.include_router(report_templates.router)
 api_router.include_router(change_approvals.router)
 api_router.include_router(change_approvals.public_router)
 api_router.include_router(scheduled_reports.router)
+api_router.include_router(scheduled_minutes.router)
 api_router.include_router(stakeholders.router)
 api_router.include_router(modules.risks_router)
 api_router.include_router(risk_actions.router)
