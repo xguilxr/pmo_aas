@@ -65,6 +65,20 @@ class ReportBuilderTemplate(Base, TimestampMixin):
     is_seed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="0"
     )
+    # US-126 — plantillas custom: visibility + owner + project scope.
+    owner_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    # 'private' = sólo owner; 'project' = todos los miembros del project;
+    # 'tenant' = todos los users del tenant (reservado, no usado v1.0).
+    visibility: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="private", server_default="private"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

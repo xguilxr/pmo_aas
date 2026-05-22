@@ -35,6 +35,8 @@ export type ReportSection = {
   enabled: boolean;
 };
 
+export type TemplateVisibility = "private" | "project" | "tenant";
+
 export type ReportBuilderTemplate = {
   id: string;
   tenant_id: string | null;
@@ -46,6 +48,9 @@ export type ReportBuilderTemplate = {
   section_codes: string[];
   default_parameters: Record<string, Record<string, unknown>>;
   is_seed: boolean;
+  owner_id: string | null;
+  project_id: string | null;
+  visibility: TemplateVisibility;
   created_at: string;
   updated_at: string;
 };

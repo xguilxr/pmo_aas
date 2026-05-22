@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -20,17 +20,23 @@ import { Select } from "@/components/ui/select";
 import { CatalogSidebar } from "@/components/reports/builder/CatalogSidebar";
 import { SectionCanvas } from "@/components/reports/builder/SectionCanvas";
 import { PreviewPane } from "@/components/reports/builder/PreviewPane";
+import { SaveTemplateModal } from "@/components/reports/builder/SaveTemplateModal";
 import {
   SectionParamsPanel,
   type SectionParams,
 } from "@/components/reports/builder/SectionParamsPanel";
+import { TemplatesGallery } from "@/components/reports/builder/TemplatesGallery";
 import {
+  deleteBuilderTemplate,
+  exportBuilderPdf,
   listSections,
   listBuilderTemplates,
+  updateBuilderTemplate,
   type ReportBuilderTemplate,
   type ReportSection,
   type RenderRequest,
 } from "@/lib/api/report-builder";
+import { getStoredUser } from "@/lib/auth-storage";
 
 type DraftShape = {
   codes: string[];
@@ -85,15 +91,25 @@ export default function ReportBuilderPage() {
   // US-125 — params por sección (map code → params).
   const [paramsByCode, setParamsByCode] = useState<Record<string, SectionParams>>({});
   const [rightPanel, setRightPanel] = useState<"params" | "preview">("preview");
+  // US-126 — modal "Guardar como plantilla" + plantilla cargada.
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [currentUserId] = useState<string | null>(() => getStoredUser()?.id ?? null);
 
-  // 1) Catálogo + plantillas seed
+  async function refreshTemplates() {
+    const tpls = await listBuilderTemplates({});
+    setTemplates(tpls);
+  }
+
+  // 1) Catálogo + plantillas (seeds + propias + del proyecto)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const [sec, tpls] = await Promise.all([
           listSections({ level: 4 }),
-          listBuilderTemplates({ level: 3 }),
+          listBuilderTemplates({}),
         ]);
         if (cancelled) return;
         setCatalog(sec);
@@ -170,6 +186,60 @@ export default function ReportBuilderPage() {
     [codes]
   );
 
+  const loadTemplateIntoCanvas = useCallback(
+    (tpl: ReportBuilderTemplate) => {
+      setCodes(tpl.section_codes);
+      setCompositionMode(tpl.composition_mode);
+      setParamsByCode((tpl.default_parameters as Record<string, SectionParams>) ?? {});
+      setLoadedTemplateId(tpl.is_seed ? null : tpl.id);
+      setSelectedCode(null);
+    },
+    []
+  );
+
+  async function togglePublish(tpl: ReportBuilderTemplate) {
+    const newVisibility = tpl.visibility === "project" ? "private" : "project";
+    await updateBuilderTemplate(tpl.id, {
+      visibility: newVisibility,
+      ...(newVisibility === "project" ? { project_id: projectId } : {}),
+    });
+    await refreshTemplates();
+  }
+
+  async function removeTemplate(tpl: ReportBuilderTemplate) {
+    if (!window.confirm(`¿Borrar "${tpl.name}"?`)) return;
+    await deleteBuilderTemplate(tpl.id);
+    if (loadedTemplateId === tpl.id) setLoadedTemplateId(null);
+    await refreshTemplates();
+  }
+
+  async function handleExport() {
+    if (!loadedTemplateId) {
+      window.alert("Guarda la plantilla antes de exportar.");
+      return;
+    }
+    setExporting(true);
+    try {
+      const blob = await exportBuilderPdf(loadedTemplateId, {
+        project_id: projectId,
+        level: 3,
+        cut_off_date: cutOff,
+        window_days: windowDays,
+        params: paramsByCode,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-${cutOff}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Error al exportar");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const handleReorder = useCallback((next: string[]) => setCodes(next), []);
   const handleRemove = useCallback(
     (code: string) => {
@@ -223,8 +293,22 @@ export default function ReportBuilderPage() {
               className="ml-1 h-8 w-16 rounded border border-zinc-300 px-2 text-xs"
             />
           </label>
-          <Button variant="secondary" size="sm" disabled title="Llega en US-130/US-126">
-            <Download className="mr-1 h-3.5 w-3.5" /> Exportar
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setSaveOpen(true)}
+            disabled={codes.length === 0}
+          >
+            <Save className="mr-1 h-3.5 w-3.5" /> Guardar plantilla
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleExport}
+            disabled={!loadedTemplateId || exporting}
+            loading={exporting}
+          >
+            <Download className="mr-1 h-3.5 w-3.5" /> Exportar PDF
           </Button>
         </div>
       </header>
@@ -242,6 +326,14 @@ export default function ReportBuilderPage() {
               onAdd={handleAdd}
             />
             <div className="flex flex-1 flex-col border-r border-zinc-200">
+              <TemplatesGallery
+                templates={templates}
+                currentUserId={currentUserId}
+                projectId={projectId}
+                onLoad={loadTemplateIntoCanvas}
+                onTogglePublish={togglePublish}
+                onDelete={removeTemplate}
+              />
               <SectionCanvas
                 codes={codes}
                 catalog={catalog}
@@ -301,6 +393,22 @@ export default function ReportBuilderPage() {
           </>
         )}
       </main>
+
+      <SaveTemplateModal
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        defaults={{
+          level: 4,
+          composition_mode: compositionMode,
+          section_codes: codes,
+          default_parameters: paramsByCode,
+          project_id: projectId,
+        }}
+        onSaved={async (id) => {
+          setLoadedTemplateId(id);
+          await refreshTemplates();
+        }}
+      />
     </div>
   );
 }
