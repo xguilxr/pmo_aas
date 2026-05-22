@@ -8,10 +8,10 @@
  * en `<ScopedReportsPanel>`. El detalle de la organización (US-136)
  * monta el mismo componente como tab.
  */
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 
 export default function OrgReportsPage() {
@@ -20,13 +20,15 @@ export default function OrgReportsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-6">
+      {/* ENH-115: breadcrumb consistente Tenant > Organización > Reportes */}
+      <Breadcrumb
+        items={[
+          { href: "/pmo/reports", label: "Reportes" },
+          { href: `/pmo/organizations/${orgId}`, label: "Organización" },
+          { label: "Reportes de la organización" },
+        ]}
+      />
       <header>
-        <Link
-          href={`/pmo/organizations/${orgId}`}
-          className="mb-1 inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
-        >
-          <ArrowLeft className="h-3 w-3" /> Volver a la organización
-        </Link>
         <div className="flex items-center gap-2">
           <Building2 className="h-6 w-6 text-zinc-700" />
           <h1 className="text-2xl font-semibold text-zinc-900">

@@ -6,10 +6,10 @@
  * Deep-link a la vista que también se monta como tab dentro del
  * detalle del programa (`?tab=reports`).
  */
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Network } from "lucide-react";
+import { Network } from "lucide-react";
 
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 
 export default function ProgramReportsPage() {
@@ -18,13 +18,15 @@ export default function ProgramReportsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-6">
+      {/* ENH-115: breadcrumb Tenant > Programa > Reportes */}
+      <Breadcrumb
+        items={[
+          { href: "/pmo/reports", label: "Reportes" },
+          { href: `/pmo/programs/${programId}`, label: "Programa" },
+          { label: "Reportes del programa" },
+        ]}
+      />
       <header>
-        <Link
-          href={`/pmo/programs/${programId}`}
-          className="mb-1 inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
-        >
-          <ArrowLeft className="h-3 w-3" /> Volver al programa
-        </Link>
         <div className="flex items-center gap-2">
           <Network className="h-6 w-6 text-zinc-700" />
           <h1 className="text-2xl font-semibold text-zinc-900">

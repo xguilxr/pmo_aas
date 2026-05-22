@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Download, FileText, LayoutDashboard, Loader2, Plus, Sparkles } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -104,6 +105,13 @@ export default function PortfolioReportsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-6">
+      {/* ENH-115: breadcrumb Tenant > Reportes > Portafolio */}
+      <Breadcrumb
+        items={[
+          { href: "/pmo/reports", label: "Reportes" },
+          { label: "Portafolio (PMO)" },
+        ]}
+      />
       <header className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <LayoutDashboard className="h-6 w-6 text-zinc-700" />
