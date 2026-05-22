@@ -25,11 +25,21 @@ import {
   type MeetingMinute,
 } from "@/lib/api/modules";
 import { MinuteRaidSuggestionsEditor } from "@/components/minute-raid-suggestions-editor";
+import { MinuteSaveModal } from "@/components/minute-save-modal";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
 export default function NewAIMinutePage() {
   const { id } = useParams<{ id: string }>();
-  const [title, setTitle] = useState("Minuta (IA)");
+  // ENH-104: título por default vacío. Se autorrellena con el nombre
+  // de archivo en `onFile` (sin extensión), pero solo si el usuario no
+  // lo ha tocado a mano. Al guardar con título vacío, se abre el modal
+  // "Confirma el título" (obligatorio).
+  const [title, setTitle] = useState("");
+  const [titleTouched, setTitleTouched] = useState(false);
+  const [titleModalOpen, setTitleModalOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState<null | "preview" | "generate">(
+    null,
+  );
   const [language, setLanguage] = useState<"" | "es" | "en">("");
   const [transcript, setTranscript] = useState("");
   const [dispatching, setDispatching] = useState(false);
@@ -92,8 +102,17 @@ export default function NewAIMinutePage() {
     },
   });
 
-  async function savePreview() {
+  async function savePreview(titleOverride?: string) {
     if (!result) return;
+    const effectiveTitle = (titleOverride ?? title).trim();
+    // ENH-104: si el título quedó vacío, abre el modal en lugar de
+    // guardar. El modal llama de vuelta con el título completo vía
+    // `titleOverride`.
+    if (!effectiveTitle) {
+      setPendingSave("preview");
+      setTitleModalOpen(true);
+      return;
+    }
     setSavingPreview(true);
     setError(null);
     try {
@@ -124,7 +143,7 @@ export default function NewAIMinutePage() {
         changes: persistKind("changes", raidIn.changes),
       };
       const created = await createMinute(id, {
-        title: title.trim() || "Minuta (IA)",
+        title: effectiveTitle,
         meeting_date: new Date().toISOString(),
         participants: result.participants ?? [],
         topics: result.topics ?? [],
@@ -165,6 +184,12 @@ export default function NewAIMinutePage() {
     }
     const text = await file.text();
     setTranscript(text);
+    // ENH-104: usa el nombre del archivo (sin extensión) como título
+    // sugerido, salvo que el usuario ya haya tipeado algo a mano.
+    if (!titleTouched) {
+      const stem = file.name.replace(/\.[^.]+$/, "");
+      setTitle(stem);
+    }
   }
 
   // BUG-055: cancela el job activo y resetea al estado pre-generación.
@@ -188,9 +213,16 @@ export default function NewAIMinutePage() {
     setError(null);
   }
 
-  async function handleGenerate(save: boolean) {
+  async function handleGenerate(save: boolean, titleOverride?: string) {
     if (transcript.trim().length < 20) {
       setError("La transcripción es demasiado corta");
+      return;
+    }
+    const effectiveTitle = (titleOverride ?? title).trim();
+    // ENH-104: si pidió guardar pero título está vacío, abre modal.
+    if (save && !effectiveTitle) {
+      setPendingSave("generate");
+      setTitleModalOpen(true);
       return;
     }
     setDispatching(true);
@@ -204,7 +236,7 @@ export default function NewAIMinutePage() {
         transcript,
         language: language || undefined,
         save_as_minute: save,
-        title: title.trim() || "Minuta (IA)",
+        title: effectiveTitle || "Minuta (IA)",
       });
       setJobId(res.job_id);
     } catch (err) {
@@ -287,7 +319,14 @@ export default function NewAIMinutePage() {
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
             <Field label="Título">
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <Input
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setTitleTouched(true);
+                }}
+                placeholder="Ej.: Reunión semanal de avance"
+              />
             </Field>
             <Field label="Idioma">
               <Select value={language} onChange={(e) => setLanguage(e.target.value as "" | "es" | "en")}>
@@ -468,13 +507,40 @@ export default function NewAIMinutePage() {
             </Banner>
           ) : (
             <div className="flex justify-end">
-              <Button onClick={savePreview} loading={savingPreview} disabled={generating}>
+              <Button onClick={() => savePreview()} loading={savingPreview} disabled={generating}>
                 Guardar como minuta
               </Button>
             </div>
           )}
         </section>
       ) : null}
+      {/* ENH-104: modal "Confirma el título" obligatorio al guardar
+          si el título quedó vacío. */}
+      <MinuteSaveModal
+        open={titleModalOpen}
+        initial={title}
+        onConfirm={(newTitle) => {
+          setTitle(newTitle);
+          setTitleTouched(true);
+          setTitleModalOpen(false);
+          const pending = pendingSave;
+          setPendingSave(null);
+          // Después de cerrar el modal, dispara la acción pendiente.
+          // Setea el título *antes* del próximo render con
+          // queueMicrotask para evitar leer el state stale.
+          queueMicrotask(() => {
+            if (pending === "preview") {
+              void savePreview(newTitle);
+            } else if (pending === "generate") {
+              void handleGenerate(true, newTitle);
+            }
+          });
+        }}
+        onCancel={() => {
+          setTitleModalOpen(false);
+          setPendingSave(null);
+        }}
+      />
     </div>
   );
 }
