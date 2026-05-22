@@ -68,19 +68,24 @@ lista anterior. El contexto es finito.
 
 ## 2. Numeración de identificadores
 
-| Prefijo | Uso | Contador | Próximo libre |
-|---|---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento | **US-104** (Sprints 13-17 reservados: US-097=#240 áreas jerarquía; US-098=#241 plan area; US-099=#245 reasignación masiva; US-100=#246 RAID detail redesign; US-101=#253 reportes IA; US-102=#255 IA chat global; US-103=#263 áreas catálogo compartido) |
-| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento | **BUG-055** (Sprint 14: BUG-052=#249 RAID breadcrumb. Sprint 15: BUG-054=#265 vista Por Actor empty. Sprint 17: BUG-053=#254 cleanup Ollama pre-arranque) |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento | **ENH-080** (Sprint 13: ENH-066=#242 plan area; ENH-067=#243 niveles WBS 1/2/3/4/Manual; ENH-068=#244 sync gantt; ENH-077=#259 composición chips × agrupador × nivel. Sprint 14: ENH-069=#247 banner edit; ENH-070=#248 card comments. Sprint 15: ENH-078=#264 panel áreas redesign; ENH-079=#266 plan responsable=actor. Sprint 16: ENH-071=#250 filtros; ENH-072=#251 orden; ENH-073=#252 visual. Sprint 17: ENH-074=#256 context; ENH-075=#257 tools; ENH-076=#258 historial) |
-| `EP0XX` | Épica (3 dígitos) | Asignado manualmente | — |
-| `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` | — |
-| `ADR-###` | Architecture Decision Record | Ver `docs/adr/` | — |
-| `TC-###` | Test case | Ver epic relevante | — |
+| Prefijo | Uso | Contador |
+|---|---|---|
+| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento |
+| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento |
+| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento |
+| `EP0XX` | Épica (3 dígitos) | Asignado manualmente |
+| `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` |
+| `ADR-###` | Architecture Decision Record | Ver `docs/adr/` |
+| `TC-###` | Test case | Ver epic relevante |
+
+**Fuente de verdad del contador "próximo libre":** la sección IN-PROGRESS
+de `SPRINT.md` siempre lleva la línea `Próximo libre: US-###, BUG-###,
+ENH-###`. Ese es el único lugar canónico — este CLAUDE.md no lo replica
+para evitar desincronización.
 
 **Reglas:**
 - El próximo ID libre se calcula mirando el último registrado en
-  `SPRINT.md` (DONE + QUEUE + INBOX + bloques activos).
+  `SPRINT.md` (DONE + INBOX + bloques activos).
 - Si una US ya no aplica, queda tachada en el sprint pero **no** se
   reusa su número.
 - Los **ENH no crean US nueva**: actualizan la US afectada y quedan como
@@ -92,29 +97,76 @@ lista anterior. El contexto es finito.
 
 ---
 
-## 3. Ciclo feedback → issue → fix → comment
+## 3. Ciclo de trabajo — de la idea al fix entregado
 
-Flujo que arranca cuando el owner pega un comment con uno o varios
-items (bugs, enhancements o ideas nuevas).
+El flujo completo tiene 4 fases. Cada item nuevo de trabajo pasa por
+todas, pero los items pequeños (BUG simple) pueden saltar de Fase A a
+Fase B directo si el owner los pega ya formados.
 
-### Paso 1 — Intake
+```
+Fase A — Planeación / Diseño   →   Fase B — Triage e issues   →
+Fase C — Implementación        →   Fase D — Cierre (owner)
+```
+
+---
+
+### Fase A — Planeación / Diseño (solo cuando aplica)
+
+Para frentes grandes (epic nuevo, redesign, módulo nuevo, refactor con
+blast radius alto) NO se crean issues primero. Se hace una sesión de
+discovery con el owner siguiendo este patrón:
+
+1. **Discovery activo** — Claude pregunta, propone, refina con el
+   owner en rondas. Mini-consejo de 3 perspectivas interno por default.
+2. **Draft doc vivo** — el output se escribe en `docs/epics/drafts/<tema>.md`
+   y se itera con el owner (no en GitHub, no en SPRINT.md todavía).
+3. **Owner cierra scope** — confirma alcance, descarta secciones,
+   marca opcionales / diferidos. El draft queda como referencia
+   normativa.
+4. **Promoción a epic oficial** — solo cuando el draft está cerrado,
+   se crea `docs/epics/EP0XX-<tema>.md` con US numeradas + AC + TC +
+   dependencias + plan de sprints.
+5. **Acuerdo final** — owner confirma orden de sprints/bloques y
+   damos paso a Fase B.
+
+Ejemplos de cuándo Fase A es obligatoria:
+- Epic nuevo (EP020 — Report Builder, EP017 — Directorio).
+- Restructure de un módulo existente.
+- Cambio que toca > 10 archivos o > 1 día de implementación.
+- Cualquier US/ENH cuyo scope no está claro en una línea.
+
+Cuándo se puede saltar Fase A:
+- Bug puntual con AC obvio.
+- ENH pequeño sobre código existente.
+- Owner pega un dump corto donde el triage es directo.
+
+---
+
+### Fase B — Triage e issues
+
+#### Paso 1 — Intake
 - El owner pega el comment tal cual, crudo.
 - Claude parsea y clasifica **cada item** como:
   - `BUG` — algo no funciona como se esperaba
   - `ENH` — mejora sobre US existente
   - `US` — historia nueva del diseño
 
-### Paso 2 — Triage
+#### Paso 2 — Triage
 - Para cada item: identifico epic afectado (`EP0XX`), US afectada (si
   aplica), y propongo ID auto-incremento.
 - Presento resumen al owner con:
   - Tipo + ID propuesto
-  - Epic + US afectada
+  - Epic(s) + US afectada
   - Desc corta (1 línea)
   - Bloque sugerido (existente que calza, o "Bloque X+1" nuevo)
 - **Espero OK explícito** antes de crear issues.
 
-### Paso 3 — Crear issue en GitHub
+#### Paso 3 — Crear issue en GitHub
+
+> **Delegación a sub-agentes:** si hay que crear ≥ 5 issues en una
+> tanda, usa un sub-agente con la lista completa de specs en el prompt.
+> Si son ≤ 4, créalos directo desde main con el tool mcp__github__
+> apropiado.
 
 Template obligatorio:
 
@@ -144,11 +196,12 @@ Template obligatorio:
   epic viven en el body, no en el título).
 - **Labels obligatorias al crear:**
   - Tipo: `bug` / `enhancement` / `user-story`
-  - Epic: `EP0XX` (uno solo)
+  - Epic: `EP0XX` (uno principal). Si el item toca varios epics, se
+    pueden añadir labels adicionales para los secundarios.
   - Status: `status:triage`
   - Extras si aplica: `post-mvp`, `v1.0`, etc.
 
-### Paso 4 — Integrar a SPRINT.md
+#### Paso 4 — Integrar a SPRINT.md
 
 Heurística (corresponde a la opción 7c del acuerdo):
 
@@ -162,11 +215,32 @@ Heurística (corresponde a la opción 7c del acuerdo):
 Sección **📥 INBOX / TRIAGE** al inicio de `SPRINT.md`: aquí viven los
 issues recién creados hasta que el owner decide en qué bloque entran.
 
-### Paso 5 — Implementación
+**Cuándo actualizar SPRINT.md (regla práctica):**
+- **Al crear issues nuevos** → agregar al INBOX (1 commit doc).
+- **Al cerrar un BLOQUE completo** → mover items de INBOX/IN-PROGRESS
+  a DONE. Esto evita actualizar SPRINT.md por cada commit pequeño.
+- **Al cerrar SESIÓN** → ejecutar `/handoff` que limpia SPRINT.md
+  archivando lo cerrado a `SPRINT-DONE-HISTORY.md` y reescribe
+  `HANDOFF.md`.
+- **Al cerrar SPRINT completo** → cleanup más profundo (ver §6).
 
+---
+
+### Fase C — Implementación
+
+#### Paso 5 — Antes de tocar código
+
+- **Gate `status:ready`** — el issue debe tener este label antes de
+  empezar. Si está en `triage`, ese label es del owner (no de Claude).
+  Pedirle al owner que apruebe el gate.
 - **1 US/BUG/ENH = 1 commit.** Sin mezclar en el mismo commit.
-- Mover la US de INBOX/QUEUE → **IN-PROGRESS** antes de empezar.
-- Cambiar label `status:triage` → `status:in-progress` en el issue.
+- Mover la US de INBOX → **IN-PROGRESS** en SPRINT.md antes de empezar.
+- **Cambiar label** del issue: `status:ready` → `status:in-progress`.
+  (Si por alguna razón viene de `status:triage` directo — owner pasó por
+  alto el gate — pedir confirmación antes de saltarlo.)
+
+#### Paso 6 — Commit + push
+
 - Header de commit:
   ```
   fix(scope): BUG-006 — desc corta (refs #42)
@@ -177,13 +251,16 @@ issues recién creados hasta que el owner decide en qué bloque entran.
   El owner cierra manualmente.
 - Si toca schema, crear migración Alembic en el mismo commit y
   referenciarla en `DB-CHANGES.md` al final.
+- **Push obligatorio inmediato** tras el commit. No acumular commits
+  locales que no se han pusheado.
 
-### Paso 6 — Comment al commit
+#### Paso 7 — Comment al issue + actualizar label
 
-Cuando el commit está pusheado:
+> **Esto NO es opcional.** Cada push de un commit que resuelve un
+> issue obliga a 2 acciones inmediatas en GitHub:
 
-1. Cambiar label `status:in-progress` → `status:fix-committed` en el issue.
-2. Dejar comment con esta plantilla:
+1. **Cambiar label** del issue: `status:in-progress` → `status:fix-committed`.
+2. **Dejar comment** en el issue con esta plantilla:
 
 ```markdown
 ## Resuelto en commit <SHA corto>
@@ -204,16 +281,32 @@ Cuando el commit está pusheado:
 <si encontré algo durante el fix que abre otro issue, lo listo aquí>
 ```
 
-3. Mover la US en `SPRINT.md` a **DONE** con fecha y SHA del commit.
+3. Mover la US en `SPRINT.md` IN-PROGRESS → DONE (solo si es el
+   último item del bloque; si no, esperar al cierre del bloque).
 4. **No cerrar** el issue. El owner lo cierra cuando verifica.
 
-### Paso 7 — Cierre (owner)
+> Si hay que actualizar labels o comments en N issues a la vez
+> (cierre de un bloque grande), delega a un sub-agente con la lista
+> completa para no quemar contexto haciéndolo manual.
+
+---
+
+### Fase D — Cierre
+
+#### Paso 8 — Verificación del owner
 
 El owner:
 - Verifica que el fix funciona.
 - Si OK → cierra el issue con `completed`.
 - Si no OK → comenta, cambia label a `status:needs-rework`, y Claude
-  retoma desde paso 5 en el **mismo** issue (no crear issue nuevo).
+  retoma desde Fase C paso 5 en el **mismo** issue (no crear issue nuevo).
+
+#### Paso 9 — Cierre de bloque (Claude)
+
+Cuando todos los issues de un bloque están en `status:fix-committed`
+(esperando verificación del owner) o `closed completed`:
+- Actualizar SPRINT.md: mover los items del bloque a DONE.
+- Si el bloque cierra el sprint, ejecutar el cleanup completo de §6.
 
 ---
 
@@ -257,7 +350,7 @@ Set requerido. Si falta alguna, la crea el owner (UI o gh CLI):
 | `bug` | #d73a4a | Tipo: reporte de fallo |
 | `enhancement` | #a2eeef | Tipo: mejora sobre US existente |
 | `user-story` | #7057ff | Tipo: historia nueva |
-| `EP001` … `EP016` | #0e8a16 | Epic al que pertenece |
+| `EP001` … `EP02X` | #0e8a16 | Epic al que pertenece (uno o varios) |
 | `status:triage` | #fbca04 | Recién creado, pendiente de aprobación del triage |
 | `status:ready` | #0e8a16 | **Owner aprobó el triage — Claude puede arrancar** |
 | `status:in-progress` | #0075ca | Claude está trabajando |
@@ -296,26 +389,28 @@ el owner y espera de nuevo el `status:ready` antes de tocar código.
 Archivo vive en `docs/project-management/SPRINT.md` (desde Sprint 2).
 
 ```
-🔴 IN-PROGRESS    (la US que Claude está tocando ahora, o "Sin US activa")
-📥 INBOX / TRIAGE (issues recién creados, pendientes de asignar a bloque)
-⏳ QUEUE          (próximas 5, en orden)
-✅ DONE           (referencia a SPRINT-DONE-HISTORY.md)
+🔴 IN-PROGRESS    (la US/bloque que Claude está tocando ahora,
+                   o "Sin US activa" + próximo paso accionable)
+📥 INBOX / TRIAGE (issues recién creados + Sprints planeados con
+                   sus bloques en orden de ejecución)
+⏸️ Deferred       (issues sin asignación de versión, esperan decisión)
+✅ DONE           (tabla resumen — detalle en SPRINT-DONE-HISTORY.md)
 
-📋 Backlog por prioridad (Sprint actual)
-  Bloque 1, 2, 3... (por orden de ejecución)
+📋 Backlog v2.0
 ```
 
-**Separación de histórico (desde Sprint 2):**
-- `SPRINT.md` → solo items pendientes + bloques activos del sprint.
-- `SPRINT-DONE-HISTORY.md` → tabla DONE de sprints anteriores + detalles de bloques cerrados.
+**Separación de histórico:**
+- `SPRINT.md` → solo items del sprint actual + INBOX + Deferred + backlog v2.0.
+- `SPRINT-DONE-HISTORY.md` → detalle de bloques cerrados de sprints anteriores.
 
-Reglas:
-- Al crear un issue nuevo, se agrega a **📥 INBOX** primero.
-- El owner (o Claude por propuesta) lo mueve a un **Bloque** existente
-  o propone **"Bloque X+1"** nuevo.
-- De ahí entra a **QUEUE** cuando le toca el turno.
-- De QUEUE → **IN-PROGRESS** cuando Claude empieza a trabajarlo.
-- De IN-PROGRESS → **DONE** cuando el commit está pusheado; se registra en el archivo histórico correspondiente al sprint.
+**Flujo de un item en SPRINT.md:**
+1. Al crear issue → entra al **INBOX** (sección del sprint correspondiente).
+2. Al arrancar implementación → mover a **IN-PROGRESS**.
+3. Al cerrar bloque → mover los items a **DONE** (tabla resumen);
+   el detalle del bloque va a SPRINT-DONE-HISTORY.md.
+
+> **NO mover items por cada commit individual.** Solo al cerrar
+> bloque completo o al cierre de sesión vía `/handoff`.
 
 ### Limpieza al cierre de sprint (obligatoria)
 
@@ -352,6 +447,32 @@ Excepciones permitidas:
 - Cada sesión de Claude tiene asignada una branch específica; ver
   `SPRINT.md` → IN-PROGRESS para la activa.
 
+### Rebase + force-push
+
+Cuando una branch abierta queda atrás respecto a `main` (CI falla
+porque main agregó migraciones / cambios que la branch no tiene):
+
+1. `git fetch origin main`
+2. `git rebase origin/main` (sobre la branch local).
+3. Resolver conflictos si los hay.
+4. `git push --force-with-lease origin <branch>` — **siempre con
+   `--force-with-lease`, nunca con `--force` solo**. El flag protege
+   contra pisar trabajo del owner si modificó la branch remota.
+
+Esto aplica también cuando hay collisions de migraciones Alembic
+(revision IDs duplicados al mergear lanes paralelos a main).
+
+### Sesiones secuenciales > paralelas (decisión owner 2026-05-22)
+
+Tras múltiples collisions de migraciones por paralelizar lanes en el
+mismo sprint, la metodología por default es:
+
+- **1 sesión activa = 1 lane = 1 branch.**
+- Migraciones consecutivas, sin paralelización.
+- Esperar CI verde + merge antes de arrancar la siguiente US.
+- La paralelización solo se justifica si los lanes son completamente
+  independientes (sin migraciones, sin schemas compartidos).
+
 ---
 
 ## 9. Cuando dudar
@@ -373,6 +494,19 @@ Excepciones permitidas:
 - Al abrir un archivo, anotar qué se necesita y descartarlo después.
 - Si el contexto se agota, commit con `wip:` y documentar dónde quedó
   en `docs/project-management/SPRINT.md` (sección IN-PROGRESS) antes de terminar la sesión.
+
+### Delegación a sub-agentes
+
+Usa sub-agentes (con la herramienta `Agent`) cuando:
+
+- **Crear ≥ 5 issues** en GitHub: pasa la lista completa al agente.
+- **Aplicar labels en ≥ 10 issues**: agente con tabla `# → labels`.
+- **Audit de codebase**: sub-agente explorer cuando hay que mapear
+  varios módulos antes de planear.
+- **Búsquedas multi-archivo** que exceden 3 queries directas.
+
+Mantén la sesión principal para discusión + diseño + commits propios.
+Los agentes ahorran contexto del thread principal.
 
 ---
 
@@ -452,5 +586,5 @@ Excepciones permitidas:
 
 ---
 
-**Última actualización:** 2026-05-23
+**Última actualización:** 2026-05-22 (post-Sprint 26)
 **Responsable:** Claude Code (owner: xguilxr)
