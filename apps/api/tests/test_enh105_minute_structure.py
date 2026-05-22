@@ -57,8 +57,8 @@ def test_section_order_is_canonical() -> None:
 def test_view_has_all_six_sections(gold_view) -> None:
     d = gold_view.as_dict()
     # Each section key must exist (non-None / non-missing).
-    assert "header" in d and d["header"]
-    assert ("attendees" in d) and d["attendees"]  # participants
+    assert d.get("header")
+    assert d.get("attendees")  # participants
     assert d["summary"]
     assert d["topics"]
     assert any(d["raid_by_type"][t] for t in RAID_TYPE_ORDER)
