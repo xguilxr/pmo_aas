@@ -10,6 +10,7 @@ import {
   FileText,
   FolderKanban,
   GitPullRequest,
+  KeyRound,
   LayoutDashboard,
   LayoutGrid,
   Menu,
@@ -233,6 +234,13 @@ const SUPERADMIN_NAV: NavItem[] = [
     icon: <Users className="h-4 w-4" aria-hidden />,
     href: "/superadmin/users",
     match: (p) => p.startsWith("/superadmin/users"),
+  },
+  {
+    id: "sa-permission-requests",
+    label: "Permisos",
+    icon: <KeyRound className="h-4 w-4" aria-hidden />,
+    href: "/superadmin/permission-requests",
+    match: (p) => p.startsWith("/superadmin/permission-requests"),
   },
   {
     id: "sa-ai",

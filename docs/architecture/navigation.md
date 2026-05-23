@@ -42,7 +42,6 @@ flowchart TB
             ORG_REP["/pmo/organizations/[id]/reports"]:::app
             PRG_DET["/pmo/programs/[id]"]:::app
             PRG_REP["/pmo/programs/[id]/reports"]:::app
-            PRG_LIST["/pmo/programs (huérfana)"]:::orphan
             PRJ_LIST["/pmo/projects"]:::app
             PRJ_NEW["/pmo/projects/new"]:::app
             PRJ["/pmo/projects/[id]<br/>(hub + tabs)"]:::app
@@ -82,9 +81,6 @@ flowchart TB
             ADM_PERM["/admin/permissions"]:::admin
             ADM_AREAS["/admin/areas"]:::admin
             ADM_AUDIT["/admin/audit-logs"]:::admin
-            ADM_SET["/admin/settings (huérfana)"]:::orphan
-            ADM_SUP["/admin/supervision (huérfana)"]:::orphan
-            ADM_STK["/admin/stakeholders (huérfana)"]:::orphan
         end
 
         subgraph SUPER ["/superadmin — plataforma"]
@@ -95,7 +91,7 @@ flowchart TB
             SA_LOG["/superadmin/logs"]:::super
             SA_ME["/superadmin/me"]:::super
             SA_HEALTH["/superadmin/health (huérfana)"]:::orphan
-            SA_PRQ["/superadmin/permission-requests (huérfana)"]:::orphan
+            SA_PRQ["/superadmin/permission-requests"]:::super
         end
     end
 
@@ -162,8 +158,9 @@ flowchart LR
         S1["/superadmin"]
         S2["/superadmin/tenants"]
         S3["/superadmin/users"]
-        S4["/superadmin/ai"]
-        S5["/superadmin/logs"]
+        S4["/superadmin/permission-requests"]
+        S5["/superadmin/ai"]
+        S6["/superadmin/logs"]
     end
 
     TREE["OrgTreeNav<br/>orgs → programas → proyectos"]
@@ -194,7 +191,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **78 páginas** (78 archivos `page.tsx`).
+Total: **73 páginas** (`page.tsx`) post-cleanup 2026-05-23. Antes eran 78; se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
 
 ### 3.1 Rutas públicas (5)
 
@@ -214,7 +211,7 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/account` | Perfil, password, preferencias de notificación. |
 | `/notifications` | Centro de notificaciones (filtros por tipo). |
 
-### 3.3 `/pmo/**` — portal de proyectos (35)
+### 3.3 `/pmo/**` — portal de proyectos (34)
 
 **Navegación / listados**
 
@@ -227,7 +224,7 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/pmo/programs/[id]/reports` | Reportes scope programa. |
 | `/pmo/projects` | Listado de proyectos (filtros: fase, salud, búsqueda). |
 | `/pmo/projects/new` | Crear proyecto. |
-| `/pmo/projects/[id]` | Hub del proyecto: header, KPIs, links a módulos. |
+| `/pmo/projects/[id]` | Hub del proyecto: header, KPIs, links a módulos. Sub-tabs internos: `Resumen` · `Equipo` · `Avance` · `Presupuesto` · `Actividad` · `Stakeholders` (este último solo si el charter tiene sponsor / líder de negocio / líder técnico). |
 | `/pmo/requests` | Listado de solicitudes de proyecto. |
 | `/pmo/requests/new` | Nueva solicitud. |
 | `/pmo/requests/[id]` | Detalle de solicitud + aprobación → crea proyecto. |
@@ -263,18 +260,17 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/reports/builder` | Wizard de reporte. | Botón en `/reports` |
 | `/reports/tweak` | Ajustes finos del último reporte. | Botón en `/reports` |
 
-### 3.4 `/admin/**` — admin del tenant (15)
+### 3.4 `/admin/**` — admin del tenant (11)
 
 | URL | Propósito | Acceso |
 |---|---|---|
 | `/admin` | Landing con 7 paneles. | Sidebar admin |
-| `/admin/tenant` | Branding, dominio, config, stats. | Sidebar + panel |
+| `/admin/tenant` | Branding, dominio, config, stats (consolidó `/admin/settings` y `/admin/supervision` via tabs). | Sidebar + panel |
 | `/admin/ai` | Provider de IA (modo `byo`). | Sidebar + panel |
 | `/admin/organizations` | CRUD organizaciones. | Sidebar + panel |
 | `/admin/organizations/new` | Nueva organización. | Botón |
 | `/admin/organizations/[id]` | Detalle org (BUs, departamentos). | Click en row |
 | `/admin/organizations/[id]/edit` | Editar organización. | Botón en detalle |
-| `/admin/organizations/[id]/panel` | Redirect legacy → `/admin/organizations/[id]`. | — |
 | `/admin/users` | CRUD usuarios. | Sidebar + panel |
 | `/admin/users/new` | Nuevo usuario. | Botón |
 | `/admin/users/[id]` | Detalle usuario, roles, reset pwd. | Click en row |
@@ -293,6 +289,7 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/superadmin/tenants/[id]/users` | Usuarios del tenant. | Botón en detalle |
 | `/superadmin/tenants/[id]/permissions` | Permisos del tenant. | Botón en detalle |
 | `/superadmin/users` | Lista global de usuarios. | Sidebar |
+| `/superadmin/permission-requests` | Aprobación / rechazo de tickets `permission_change_requests` (US-082; auto-crea overrides en `tenant_role_permission_overrides`). | Sidebar |
 | `/superadmin/ai` | Config IA plataforma (Groq). | Sidebar |
 | `/superadmin/logs` | Logs plataforma. | Sidebar |
 | `/superadmin/me` | Perfil del superadmin. | UserMenu |
@@ -396,38 +393,36 @@ admin tiene 5 capabilities cerradas (`tenant.manage`, `ai.configure`,
 
 ## 6. Páginas huérfanas y rutas legacy
 
-> **Verificado** (2026-05-23) con grep sobre `apps/web/{app,components}`
-> de `href=` y `router.push(` contra cada ruta, y revisando los
-> `redirects()` de `apps/web/next.config.js`.
+> **Verificado y limpiado** (2026-05-23). Cleanup ejecutado en este
+> mismo commit: ver decisiones del owner abajo.
 
-### 6.1 Rutas legacy redirigidas en `next.config.js`
+### 6.1 Decisiones aplicadas (cleanup 2026-05-23)
 
-Estas URLs tienen un `page.tsx` en el repo **pero nunca se renderiza**:
-Next.js intercepta antes con un 301 al destino real. Son **código
-muerto** salvo que se necesite el redirect para bookmarks viejos.
-
-| URL legacy | Redirect a | ¿Eliminar el `page.tsx`? |
+| Página | Decisión | Acción ejecutada |
 |---|---|---|
-| `/admin/supervision` | `/admin/tenant?tab=stats` | Sí (US-036). El redirect ya cubre el caso. |
-| `/admin/settings` | `/admin/tenant?tab=config` | Sí (US-036). |
-| `/admin/projects/**` | `/pmo/projects/**` | Sí (US-075 / DEC-022). |
-| `/admin/programs/**` | `/pmo/programs/**` | Sí. |
-| `/admin/raid/**`, `/admin/requests/**`, `/admin/changes`, `/admin/minutes`, `/admin/reports` | `/pmo/...` | Sí (US-075). |
-| `/admin/roles/**` | `/admin/permissions` | Sí. |
-| `/admin/organizations/[id]/panel` | `/admin/organizations/[id]` | Sí (BUG-019). |
+| `/admin/stakeholders` (catálogo standalone) | Innecesario como página propia. Solo informativo. | **Borrado** (`page.tsx` + `lib/api/stakeholders.ts`). Reemplazado por sub-tab "Stakeholders" en `/pmo/projects/[id]` (Resumen del proyecto). Lista solo los que vienen del charter (sponsor / líder de negocio / líder técnico); si no hay, el tab se oculta. |
+| `/superadmin/permission-requests` | Necesario — sin él, US-082 está rota. | **Wire-up** agregado a `SUPERADMIN_NAV` en `app-shell.tsx` (entre Usuarios y IA). |
+| `/superadmin/health` | Dejar como está. | Sin cambios. **No era huérfana**: el archivo es un redirect client-side a `/superadmin` (US-026: Health se consolidó en Visión General). Solo subsiste para bookmarks viejos. |
+| `/pmo/programs` (listado plano) | Drill-down vía OrgTreeNav cubre el caso. | **Borrado** (`page.tsx`). El detalle `/pmo/programs/[id]` queda intacto. |
 
-> Recomendación: abrir un issue tipo cleanup para borrar los
-> `page.tsx` correspondientes. El redirect en `next.config.js` debe
-> mantenerse (cubre bookmarks y emails).
+### 6.2 Rutas legacy redirigidas en `next.config.js`
 
-### 6.2 Huérfanas reales (sin redirect y sin link entrante)
+Estas URLs tienen un redirect 301 en `apps/web/next.config.js`. El redirect
+**permanece** (cubre bookmarks y deep-links de emails). Los `page.tsx`
+muertos que el redirect cubría se **borraron** en este commit:
 
-| Página | Diagnóstico | Recomendación |
+| URL legacy | Redirect a | `page.tsx` borrado |
 |---|---|---|
-| `/admin/stakeholders` | Sin entrada en sidebar, panel del landing ni `href=` en código. | Aclarar propósito: directorio de stakeholders cross-project. Si vive, exponer como panel en `/admin` o sub-item de `/admin/areas`. Si no, borrar. |
-| `/superadmin/permission-requests` | Sin link entrante. Probablemente para validar `permission_change_requests`. | Agregar a `SUPERADMIN_NAV` o como sub-item de `/superadmin/users`. |
-| `/superadmin/health` | Sin link entrante. Página de utilidad útil. | Linkear desde `/superadmin` (overview) o en el footer del AppShell para superadmin. |
-| `/pmo/programs` (listado) | Solo se enlaza el detalle `/pmo/programs/[id]` (desde `OrgTreeNav`, `/pmo/organizations/[id]`, y la redirect legacy `/admin/programs`). El listado plano no se alcanza por nav. | Decidir: exponerlo en TOP_NAV bajo Proyectos, o eliminar el archivo. |
+| `/admin/supervision` | `/admin/tenant?tab=stats` | ✅ (US-036) |
+| `/admin/settings` | `/admin/tenant?tab=config` | ✅ (US-036) |
+| `/admin/organizations/[id]/panel` | `/admin/organizations/[id]` | ✅ (BUG-019) |
+
+El resto de las legacy URLs (`/admin/projects/**`, `/admin/programs/**`,
+`/admin/raid/**`, `/admin/requests/**`, `/admin/changes`,
+`/admin/minutes`, `/admin/reports`, `/admin/roles/**`) **nunca tuvieron
+`page.tsx`**: fueron rutas que se movieron a `/pmo/*` (US-075 / DEC-022)
+o se consolidaron en `/admin/permissions` (roles). El redirect es la
+única definición que existe.
 
 ### 6.3 Páginas con acceso indirecto único
 
@@ -440,14 +435,13 @@ No son huérfanas, pero su único punto de entrada es no-obvio:
 | `/pmo/projects/[id]/charter` | Tras crear proyecto (`router.replace` desde `project-form`), desde `/documents` y desde el flujo de aprobación de request. **No tiene tab propio**. |
 | `/pmo/projects/[id]/edit` | Botón "Editar" en el header del hub del proyecto. |
 | `/superadmin/me` | Solo desde `UserMenu` cuando el usuario es superadmin. |
+| `/superadmin/health` | Redirect client-side; nadie lo visita "en vivo". |
 
-### 6.4 Resumen
+### 6.4 Estado actual
 
-- **8 rutas legacy** con `page.tsx` muerto (resueltas por redirects en `next.config.js`). Cleanup recomendado.
-- **4 páginas huérfanas reales** que necesitan decisión (wire-up o eliminar).
-- **5 páginas con acceso indirecto único** (alcanzables pero difíciles de descubrir).
-
-Acción sugerida: abrir issue `ENH-XXX — cleanup de rutas legacy y wire-up de huérfanas` y resolver caso por caso.
+- **0 huérfanas reales** post-cleanup.
+- **6 páginas con acceso indirecto único** documentadas arriba (alcanzables pero difíciles de descubrir).
+- Cleanup del `page.tsx` muerto: ejecutado en el commit de este cambio.
 
 ---
 
