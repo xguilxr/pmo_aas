@@ -1,275 +1,177 @@
 # Catálogo de Prompts
 
 **ID:** `DOC-AI-PROMPTS`
+**Última verificación contra código:** 2026-05-23.
 
-Todos los prompts del sistema viven aquí, **versionados**. Cualquier cambio en producción pasa por PR (cambios de prompt tienen efecto grande — se trata como código).
+Inventario real de prompts del sistema, ubicación exacta en código, y reglas de cambio.
 
-Estructura:
-- Cada prompt tiene `id`, `version`, `purpose`, `inputs`, `output_schema`, `system`, `user_template`, `few_shot`, `notes`.
-- Referenciamos en código:
-  ```python
-  from app.ai.prompts import MINUTE_FROM_TRANSCRIPT_V2
-  ```
+> **Política:** cambiar un prompt en producción tiene blast radius alto (cambia output que el usuario edita). Va por PR como cualquier otro código. Cuando un prompt cambia, anotarlo abajo con commit/fecha.
 
 ---
 
-## PROMPT — `minute.from_transcript.v2`
+## 1. Catálogo central — `apps/api/app/services/ai/prompts.py`
 
-**Versión:** 2 (2026-04-18)
-**Propósito:** Extraer minuta estructurada desde transcripción de reunión.
-**Entradas:**
-- `transcript: str` — texto de la transcripción.
-- `project_name: str`
-- `language: "es" | "en"`
-- `known_participants: list[{name, email}]` — ayuda al modelo a identificar speakers.
+Tres prompts viven en este archivo y se importan desde el worker o desde endpoints.
 
-**Schema de output (Pydantic):**
+### 1.1 `MINUTE_SYSTEM`
 
-```python
-class MinuteDraft(BaseModel):
-    summary: str = Field(max_length=500)
-    participants: list[Participant]
-    topics: list[Topic]
-    agreements: list[Agreement]
-    decisions: list[Decision]
-    next_steps: list[NextStep]
-    risks_blockers: list[RiskBlocker] = []
+- **Consumido en:** `apps/api/app/workers/tasks/ai.py:331` (task `ai.generate_minute`).
+- **Propósito:** estructurar una minuta operativa a partir de una transcripción de reunión.
+- **Disponible en:** modo `platform` (Groq) y `byo` (todos los providers).
+- **Schema de output** (JSON estricto, sin campos extra):
 
-class Participant(BaseModel):
-    name: str
-    role: str | None = None
-    email: str | None = None
-
-class Topic(BaseModel):
-    title: str
-    notes: str
-
-class Agreement(BaseModel):
-    description: str
-    owner: str | None = None
-    due_date: date | None = None
-
-class Decision(BaseModel):
-    description: str
-    rationale: str | None = None
-
-class NextStep(BaseModel):
-    action: str
-    owner: str | None = None
-    due_date: date | None = None
-
-class RiskBlocker(BaseModel):
-    description: str
-    severity: Literal["low","medium","high"] | None = None
-```
-
-### System prompt (ES)
-
-```text
-Eres un asistente experto en gestión de proyectos (PMO). Tu tarea es extraer una MINUTA ESTRUCTURADA desde la transcripción de una reunión.
-
-Reglas absolutas:
-1. Responde SÓLO con un objeto JSON válido que cumpla el esquema proporcionado. Sin texto adicional antes o después.
-2. Usa el idioma de la transcripción. Si es español, responde en español. Si es inglés, en inglés.
-3. Si no puedes identificar un campo, usa `null` o arreglo vacío — NO inventes.
-4. Participantes: extrae solo los nombres efectivamente mencionados en la transcripción. Puedes cruzar con la lista `known_participants` si coincide.
-5. Acuerdos (agreements): son compromisos explícitos. Quién + qué + cuándo (si se dijo).
-6. Decisiones (decisions): resoluciones tomadas con implicación para el proyecto.
-7. Próximos pasos (next_steps): acciones futuras. Distintos de acuerdos en que pueden no tener dueño asignado.
-8. Riesgos/bloqueos: problemas que surgieron en la conversación.
-9. El resumen (summary) es 3-5 frases máximo.
-10. Las fechas deben ir en ISO (YYYY-MM-DD). Si se dijo "la próxima semana", interpreta relativo a la fecha de la reunión.
-
-Esquema JSON exacto:
+```json
 {
-  "summary": string,
-  "participants": [{ "name": string, "role": string|null, "email": string|null }],
-  "topics": [{ "title": string, "notes": string }],
-  "agreements": [{ "description": string, "owner": string|null, "due_date": "YYYY-MM-DD"|null }],
-  "decisions": [{ "description": string, "rationale": string|null }],
-  "next_steps": [{ "action": string, "owner": string|null, "due_date": "YYYY-MM-DD"|null }],
-  "risks_blockers": [{ "description": string, "severity": "low"|"medium"|"high"|null }]
+  "header": {
+    "title": "string",
+    "date": "string|null",
+    "time": "string|null",
+    "duration": "string|null",
+    "modality": "string|null",
+    "location": "string|null",
+    "facilitator": "string|null"
+  },
+  "participants": {
+    "attendees":          [{"name": "...", "role": "?", "area": "?"}],
+    "absent_justified":   [{"name": "...", "role": "?", "area": "?"}],
+    "absent_unjustified": [{"name": "...", "role": "?", "area": "?"}]
+  },
+  "summary": "string (2-3 oraciones)",
+  "topics":  [{"title": "...", "bullets": ["...", "..."]}],
+  "raid":    [
+    {
+      "type": "A|R|D|I",
+      "description": "...",
+      "responsible": "string|null",
+      "due_date": "string|null",
+      "status": "Open|In Progress|Pending|Closed"
+    }
+  ],
+  "free_notes": "string|null"
 }
 ```
 
-### User prompt template
+- **Reglas críticas** (codificadas en el system prompt):
+  - **ENH-102:** `raid` solo lleva A/R/D/I. **Sin** Lecciones aprendidas ni Solicitudes de cambio (si aparecen en el transcript, se descartan; un validador posterior también las filtra). Cada Acción debe llevar `responsible` y `due_date` si se mencionan.
+  - **ENH-105:** las 6 claves van exactas, en ese orden. `topics[*].bullets` son enunciados factuales, no prosa. "Próximos pasos calendarizados" sin responsable van a `free_notes`; con responsable y fecha van a `raid` como Acción.
+- **Few-shot anchor:** Highlander EAM-BNF (ver el system prompt para los números target — ~12 temas, 7 acciones, 4 riesgos, 4 decisiones, 1 issue en una sesión de 46 min).
 
-```text
-Proyecto: {{ project_name }}
-Fecha de la reunión: {{ meeting_date }}
-Participantes conocidos: {{ known_participants_json }}
+### 1.2 `REPORT_SYSTEM`
 
-Transcripción:
-"""
-{{ transcript }}
-"""
-
-Devuelve la minuta estructurada en JSON.
-```
-
-### Few-shot (abreviado)
+- **Consumido en:** `apps/api/app/workers/tasks/ai.py:496` (task `ai.draft_report`).
+- **Propósito:** generar el draft estructurado de un reporte ejecutivo.
+- **Disponible en:** solo modo `byo`. En modo `platform` el endpoint devuelve `409 AI_PLATFORM_SCOPE_LIMITED` (Groq se limita a minutas; DEC-017).
+- **Schema de output** (JSON estricto):
 
 ```json
-// Ejemplo 1 — reunión de kickoff
 {
-  "summary": "Kickoff del proyecto Migración ERP. Se definió alcance, equipo y cronograma Q2.",
-  "participants": [
-    { "name": "Ana Pérez", "role": "PM", "email": "ana.perez@acme.mx" },
-    { "name": "Carlos Ruiz", "role": "Sponsor", "email": null }
-  ],
-  "topics": [
-    { "title": "Alcance", "notes": "Migración del ERP legacy al nuevo stack. Incluye módulos finanzas y RH. Excluye nómina en esta fase." }
-  ],
-  "agreements": [
-    { "description": "Ana enviará el project charter final", "owner": "Ana Pérez", "due_date": "2026-04-25" }
-  ],
-  "decisions": [
-    { "description": "Se opta por enfoque Big Bang en vez de migración por fases", "rationale": "Reducir tiempos de coexistencia entre sistemas" }
-  ],
-  "next_steps": [
-    { "action": "Preparar demo del nuevo ERP para comité", "owner": "Carlos Ruiz", "due_date": "2026-05-02" }
-  ],
-  "risks_blockers": [
-    { "description": "Dependencia de proveedor externo para integración bancaria", "severity": "high" }
+  "executive_summary": "...",
+  "achievements": ["...", "..."],
+  "next_activities": ["...", "..."],
+  "top_risks": ["...", "..."],
+  "budget_status": "..."
+}
+```
+
+### 1.3 `HTML_TWEAK_SYSTEM`
+
+- **Consumido en:** `apps/api/app/api/v1/endpoints/ai.py:313` (endpoint `POST /api/v1/ai/reports/tweak-html`).
+- **Propósito:** aplicar una instrucción del usuario sobre el HTML de un reporte ya generado.
+- **Disponible en:** modo `byo`.
+- **Output:** HTML completo (desde `<!DOCTYPE html>` hasta `</html>`), **no JSON**.
+- **Reglas críticas:**
+  - Preserva clases, estructura `<details>` colapsables, `<style>` inline y JS embebido.
+  - Si la instrucción es ambigua, aplica la interpretación más conservadora.
+
+---
+
+## 2. Prompts inline (vivos en su endpoint)
+
+No están en `prompts.py` porque su template depende del estado del request.
+
+### 2.1 `_AI_REPORT_SYSTEM_PROMPT` — `apps/api/app/api/v1/endpoints/reports.py:782`
+
+- **Endpoint:** `POST /projects/{project_id}/reports/ai-generate`.
+- **Propósito:** redactar un reporte completo en HTML para un proyecto, listo para mostrar.
+- **Reglas (codificadas en string concatenation):**
+  - HTML limpio sin wrappers (`<html>`/`<body>`), solo el bloque interno.
+  - `<h2>` para títulos de sección, `<p>`/`<ul>` para contenido.
+  - **ENH-064:** foco default en (1) hitos, (2) tareas `priority in (high, critical)`, (3) tareas retrasadas (`end_date < hoy AND status != 'done'`). Excluye tareas de baja prioridad y completadas a menos que el user lo pida en notas adicionales.
+  - **US-101:** se concatena `REPORT_GLOBAL_ORDER_RULES` (regla global de orden para todo output del módulo de reportes).
+  - Máximo 6–8 secciones cortas.
+
+### 2.2 `SYSTEM_PROMPT` — `apps/api/app/api/v1/endpoints/report_builder_chat.py:91`
+
+- **Endpoint:** chat del Report Builder (`/reports/builder` en el frontend).
+- **Propósito:** convertir mensajes del usuario en **acciones sobre el canvas** del builder, eligiendo secciones de un **catálogo cerrado** de "secciones atómicas".
+- **Output JSON estricto:**
+
+```json
+{
+  "message": "respuesta corta al usuario",
+  "actions": [
+    {"type": "add_section", "code": "S-09"},
+    {"type": "remove_section", "index": 2},
+    {"type": "update_section_params", "index": 0, "params": {"top_n": 5}},
+    {"type": "reorder_section", "from": 1, "to": 3}
   ]
 }
 ```
 
-### Notas
+- **Guardrails:** `code` debe existir en el catálogo (se inyecta abajo del system prompt). Índices 0-based. Sin texto fuera del JSON. Si la petición no requiere cambios, `actions: []`.
 
-- En v1 usábamos XML como formato. Cambio a JSON en v2 porque Pydantic valida directo y Qwen 2.5 es mucho mejor con JSON.
-- Para transcripciones > 9000 palabras, usamos `chunk_and_merge` (ver `app/ai/chunking.py`).
-- Testing: fixtures en `tests/fixtures/transcripts/` con outputs esperados.
+### 2.3 `_AI_SYSTEM_PROMPT` — `apps/api/app/services/import_mapping_suggest.py:72`
+
+- **Endpoint:** `POST /tasks/import/suggest-mapping` (mapeo automático de columnas al importar `.xlsx`/`.csv`).
+- **Propósito:** dado un set de headers del archivo, mapearlos a los `SYSTEM_FIELDS` del importer (campos de la tabla `tasks`).
+- **Idioma del prompt:** inglés (el resto son en español).
+- **Output JSON estricto:**
+
+```json
+{
+  "<header_original>": {"field": "<system_field>|null", "confidence": 0.92}
+}
+```
+
+- **Estrategia híbrida:** la heurística (`heuristic_suggestion`) corre primero; la IA es fallback / refinamiento.
 
 ---
 
-## PROMPT — `report.progress_draft.v1`
+## 3. Resolución del provider
 
-**Versión:** 1
-**Propósito:** Generar borrador de reporte de avance semanal/quincenal.
-**Entradas:**
-- `project_snapshot: ProjectSnapshot` — struct con KPIs, riesgos, cambios, minutas recientes.
-- `previous_report: ReportDraft | None` — para continuidad.
-- `period_start`, `period_end: date`
-- `style: "executive" | "detailed" | "brief"`
-- `language: "es" | "en"`
+El runtime (`apps/api/app/services/ai/provider.py:resolve_provider`) selecciona la implementación según `tenant.ai_mode`:
 
-**Schema de output:**
+| `ai_mode` | Provider real |
+|---|---|
+| `disabled` | `DisabledProvider` → 409 `AI_DISABLED` en endpoints IA |
+| `platform` | `GroqProvider` con key de plataforma (env `GROQ_API_KEY` o `platform_ai_settings.groq_api_key_encrypted`) |
+| `byo` | El provider configurado en `/admin/ai` para ese tenant. Catálogo: `openai`, `claude`, `gemini`, `perplexity`, `azure` (Microsoft Copilot M365 vía Azure OpenAI), `groq`, `custom` |
 
-```python
-class ReportDraft(BaseModel):
-    executive_summary: str
-    highlights: list[str]               # Logros del período
-    progress_overview: str
-    budget_note: str | None
-    upcoming_activities: list[str]
-    risks_top5: list[RiskSummary]
-    changes_in_review: list[ChangeSummary]
-    blockers: list[str]
-    appreciation: str | None            # Reconocimiento al equipo
-```
-
-### System prompt
-
-```text
-Eres un Project Manager senior redactando un reporte de avance para stakeholders. Escribes claro, conciso y profesional. Evitas jerga innecesaria y siempre mencionas tanto lo positivo como los riesgos.
-
-Reglas:
-1. Responde SOLO con JSON válido cumpliendo el schema.
-2. Idioma: {{ language }}.
-3. Executive summary: 3-4 oraciones. Que un directivo lo lea y entienda el estado en 20 segundos.
-4. Highlights: 3-5 bullets con logros concretos del período.
-5. Progress overview: 2-3 párrafos. Menciona % avance real vs plan si hay desviación.
-6. Budget note: solo si hay desviación > 5% o nota relevante. Si no, null.
-7. Upcoming activities: 3-5 bullets de lo que viene.
-8. Risks top 5: ordenados por severidad descendente. Cita severidad y estrategia de mitigación.
-9. Changes in review: lista todos los cambios en revisión con su tipo e impacto.
-10. Blockers: solo los reales que detienen el progreso. No riesgos teóricos.
-11. Appreciation: opcional. Si hay logros específicos de personas, reconócelos.
-12. Tono: profesional, no adulador, honesto con los problemas.
-
-Style="{{ style }}": adapta verbosidad.
-- executive: máximo conciso, solo lo crítico.
-- detailed: incluye contexto y razonamiento.
-- brief: ultra corto, 1-2 oraciones por sección.
-```
-
-### User prompt template
-
-```text
-Proyecto: {{ snapshot.project.name }}
-Periodo: {{ period_start }} a {{ period_end }}
-Fase actual: {{ snapshot.project.phase }}
-Avance: plan {{ snapshot.progress.planned }}% / real {{ snapshot.progress.actual }}%
-Presupuesto: plan ${{ snapshot.budget.planned }} / real ${{ snapshot.budget.actual }}
-Salud: {{ snapshot.health }}
-
-Datos del período:
-- Minutas ({{ snapshot.minutes|length }}): {{ snapshot.minutes_titles }}
-- Acuerdos cerrados: {{ snapshot.agreements_closed }}
-- Riesgos abiertos top 5: {{ snapshot.risks_top5_json }}
-- Cambios en revisión: {{ snapshot.changes_in_review_json }}
-- AIDs abiertas críticas: {{ snapshot.critical_issues_json }}
-
-Reporte previo (referencia): {{ previous_report.executive_summary or "N/A" }}
-
-Redacta el reporte en formato JSON siguiendo el schema.
-```
-
-### Notas
-
-- Para style="brief" usamos `max_tokens=1024`; para "detailed" hasta 4096.
-- En Claude activamos **prompt caching** del system + data del proyecto (cambia mínimo entre períodos).
+API keys de tenants en modo `byo` se cifran con **Fernet** (`services/ai_secrets.py`) antes de persistir.
 
 ---
 
-## PROMPT — `transcript.chunk_merge.v1`
+## 4. Versionado y cambios
 
-**Versión:** 1
-**Propósito:** Compactar resultados de chunks en una minuta coherente.
-**Usado por:** `generate_minute` cuando transcript se chunked.
-
-### System prompt
-
-```text
-Has recibido N borradores parciales de una minuta, cada uno cubriendo una sección de la misma reunión. Tu tarea es fusionarlos en UNA sola minuta coherente.
-
-Reglas:
-1. Elimina duplicados entre acuerdos/decisiones/topics. Si dos parciales mencionan lo mismo, quédate con la versión más clara.
-2. Resume preservando todo detalle no trivial.
-3. Participants: unión deduplicada (case-insensitive por nombre).
-4. Si hay conflicto (p.ej. owner diferente para mismo acuerdo), escoge el más específico.
-5. Output SOLO JSON válido con el mismo schema de `minute.from_transcript.v2`.
-```
-
-### User prompt
-
-```text
-Borradores parciales (JSON array):
-{{ partials_json }}
-
-Fusiona en una sola minuta coherente.
-```
+- **No hay sufijo `.v{N}`** en los identificadores hoy. Los prompts viven en `prompts.py` como constantes top-level y se cambian editando el archivo.
+- **No hay flag por tenant para A/B testing** de prompts (la versión vieja del doc lo sugería como ideal; no implementado).
+- **No hay golden dataset** (`tests/ai/golden/`) ni runner de comparación semántica. Diferido.
+- Cambios pasan por PR con commit referenciando el ENH/BUG (ej. ENH-102, ENH-105 mencionados arriba).
 
 ---
 
-## Versionado y A/B testing
+## 5. Guardrails reales
 
-- Cada prompt tiene sufijo `.v{N}`.
-- Al cambiar, se crea nueva versión. La vieja se mantiene 2 releases para comparar.
-- Flag por tenant: `tenants.settings.ai.prompt_versions.minute = "v2"` (default) o `"v1"` para comparar.
-- Métricas A/B: tasa de edición posterior (proxy de calidad). Si v2 reduce edición en 20%, migramos todos.
+- **Parseo JSON con retry implícito.** Si el JSON viene mal, el worker captura la excepción y marca el job `failed` con `error="ai_invalid_json"`. **No hay retry automático** hoy.
+- **Validación Pydantic:** los workers validan output contra schemas (`MinuteDraft`, `ReportDraft`, etc.) antes de persistir.
+- **Sin censura activa de PII en logs.** Los logs del worker pueden contener el prompt completo si `LOG_LEVEL=DEBUG`. En prod (`INFO`) solo se loguean `tenant_id`, `model`, `tokens_in/out` y `duration_ms`.
+- **Sin chunking.** No existe `app/ai/chunking.py`. Transcripciones largas se envían al provider tal cual; el provider falla con `context_too_long` y el job se marca `failed` (el usuario debe partir manualmente).
 
-## Testing de prompts
+> Si quieres reintroducir retry automático, chunking, golden dataset o sanitización de PII, abrir issues — es deuda razonable.
 
-- **Golden dataset**: `tests/ai/golden/` con 20 transcripts + outputs esperados curados.
-- Comparación con **similitud semántica** (embeddings) — no string match.
-- Test run: `pytest tests/ai/test_prompts_golden.py --model=qwen2.5:7b-instruct-q4_K_M`
-- CI corre contra mock (respuestas pregrabadas). Runs reales contra Ollama solo en release preparation.
+---
 
-## Guardrails
+## 6. Historial superseded
 
-- **Parsear JSON primero**. Si falla, 1 retry con system adicional: "Tu respuesta anterior no fue JSON válido. Responde SOLO con JSON válido conforme al esquema. Error: {error}".
-- **Validar Pydantic**. Si campo faltante, retry con system enfatizando el campo.
-- **Max retries = 2**. Tras eso, marcar job `failed` y pedir al usuario revisar manual.
-- **Censura de PII** en logs: `ai_jobs.input.transcript_hash` en vez de texto completo.
+- **Doc viejo (pre BUG-053):** documentaba `minute.from_transcript.v2`, `report.progress_draft.v1`, `transcript.chunk_merge.v1` con schemas y few-shots que **no coinciden con el código actual**. La cascada Ollama→Gemini→Claude y el chunking quedaron en `docs/archive/docs-ai-legacy/`.
+- Hoy el contrato real está en `app/services/ai/prompts.py` y este doc.

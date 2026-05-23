@@ -1,6 +1,6 @@
 # Capa de IA — PMO·aaS
 
-**Actualizado:** 2026-04-23 (post-DEC-017 + ENH-022).
+**Actualizado:** 2026-05-23 (post-BUG-053; Ollama removido del todo).
 
 Documentación técnica vigente de la IA generativa en la plataforma.
 
@@ -19,7 +19,11 @@ Ver [`docs/runbooks/ai/`](../runbooks/ai/):
 - [`groq-setup.md`](../runbooks/ai/groq-setup.md) — habilitar Groq como
   IA base de la plataforma (modo `platform` de US-057).
 - [`byo-setup.md`](../runbooks/ai/byo-setup.md) — conectar un proveedor
-  BYO (OpenAI / Claude / Gemini / Perplexity) desde `/admin/ai`.
+  BYO (OpenAI / Claude / Gemini / Perplexity / Microsoft Copilot M365
+  vía Azure OpenAI / endpoint custom OpenAI-compatible) desde `/admin/ai`.
+
+  > Catálogo real en `apps/api/app/services/ai/byo_catalog.py`. También
+  > existe `groq` como provider BYO si un tenant trae su propia key.
 
 ## Arquitectura vigente
 
@@ -30,7 +34,7 @@ Desde US-057 + DEC-017 la IA funciona con **tres modos por-tenant**
 |---|---|---|---|
 | `disabled` | — | IA apagada | $0 |
 | `platform` | Groq (`llama-3.3-70b-versatile`) | sólo minutas | hosteado por plataforma, free tier |
-| `byo` | OpenAI / Claude / Gemini / Perplexity | minutas + reportes | a cuenta del tenant |
+| `byo` | OpenAI / Claude / Gemini / Perplexity / Azure-Copilot M365 / Groq / custom | minutas + reportes | a cuenta del tenant |
 
 Ver `docs/epics/EP008-ai.md` para el modelo completo y
 `docs/epics/DECISIONS.md` para el historial de decisiones (DEC-017,
