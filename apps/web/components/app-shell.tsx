@@ -12,7 +12,6 @@ import {
   GitPullRequest,
   KeyRound,
   LayoutDashboard,
-  LayoutGrid,
   Menu,
   MessageSquare,
   Network,
@@ -51,8 +50,8 @@ type NavItem = {
 
 // US-052: sidebar top-nav extendido con vistas cross-tenant. El orden
 // refleja el flujo del PMO: de resumen (Tablero) a ingreso (Solicitudes)
-// a ejecución (Proyectos) a gobernanza (Módulos de Proyecto con RAID/Cambios/Minutas/Reportes).
-// ENH-012: RAID, Cambios, Minutas y Reportes agrupados bajo "Módulos de Proyecto" (colapsable).
+// a ejecución (Proyectos) a gobernanza (Módulos con RAID/Cambios/Minutas/Reportes).
+// ENH-012 / ENH-116: RAID, Cambios, Minutas y Reportes agrupados bajo "Módulos" (colapsable).
 const TOP_NAV: NavItem[] = [
   {
     id: "dashboard",
@@ -77,7 +76,7 @@ const TOP_NAV: NavItem[] = [
   },
   {
     id: "project-modules",
-    label: "Módulos de Proyecto",
+    label: "Módulos",
     icon: <FolderKanban className="h-4 w-4" aria-hidden />,
     match: (p) =>
       p.startsWith("/pmo/raid") ||
@@ -107,31 +106,14 @@ const TOP_NAV: NavItem[] = [
         match: (p) => p === "/pmo/minutes" || p.startsWith("/pmo/minutes/"),
       },
       {
+        // ENH-116: Reportes ahora apunta directo a /pmo/reports (sin
+        // dropdown). Builder Portafolio vive como TAB dentro de esa
+        // página (US-144). Esto aplana la jerarquía del sidebar.
         id: "reports",
         label: "Reportes",
         icon: <FileText className="h-4 w-4" aria-hidden />,
+        href: "/pmo/reports",
         match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
-        children: [
-          {
-            id: "reports-operational",
-            label: "Operacionales",
-            icon: <FileText className="h-4 w-4" aria-hidden />,
-            href: "/pmo/reports",
-            match: (p) =>
-              p === "/pmo/reports" ||
-              (p.startsWith("/pmo/reports/") && !p.startsWith("/pmo/reports/portfolio")),
-          },
-          {
-            // US-138: Builder de portafolio Nivel 1, visible solo para
-            // admin / PMO. El gate de la página también lo aplica.
-            id: "reports-portfolio",
-            label: "Builder Portafolio",
-            icon: <LayoutGrid className="h-4 w-4" aria-hidden />,
-            href: "/pmo/reports/portfolio",
-            match: (p) => p.startsWith("/pmo/reports/portfolio"),
-            adminOnly: true,
-          },
-        ],
       },
     ],
   },
