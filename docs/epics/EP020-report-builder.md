@@ -6,9 +6,43 @@
 | **Prioridad** | Alta — siguiente frente operativo del PMO |
 | **Dependencias** | EP005 (projects), EP006 (modules), EP007 (admin), EP008 (IA), EP014 (motor PDF + reportes operativos), EP018 (artefactos) |
 | **Módulo** | `reports.builder`, `reports.catalog`, `reports.portfolio`, `ai.report_assist` |
-| **Estado** | # IN-PROGRESS — Sprints 27-29 entregados en mega-PR (10 US, 1 commit/US) |
+| **Estado** | # IN-PROGRESS — Sprints 27-29, 31-32 entregados; rediseño Reportes proyecto + 4 tabs PMO/Org/Prog/Proyectos + builder unificado (Sprints 30-32) |
 | **Versión objetivo** | v1.5 |
 | **Catálogo detallado** | `docs/epics/drafts/EP020-secciones-atomicas.md` (working doc — referencia normativa de las 22 secciones) |
+
+## Cambios recientes (2026-05-23)
+
+**Sprint 31 Bloque 2 — Reportes a nivel PMO/Org/Prog/Proyectos rediseñados**
+- ✅ Sidebar simplificado ("Módulos" sin dropdown Reportes) — ENH-116 (bf423ca).
+- ✅ Tab "Proyectos" en `/pmo/reports` enriquecido (folio/tipo/período, filtro drafts, link detail) — ENH-120 (ba3aae1).
+- ✅ Tab "PMO" con Status PMO via `exportBuilderPdf({level:1})` — US-144 (f639d88).
+- ✅ Tab "Organizaciones" con filtro org — US-145 (ee8ab24).
+- ✅ Tab "Programas" con filtros org+programa — US-146 (0b5af6a).
+- ✅ Página detail reporte con iframe + regeneración — nueva ruta `/pmo/projects/[id]/reports/[reportId]/`.
+
+**Sprint 32 Bloque 1 — Look-ahead + Generar/Historial/Programar tabs**
+- ✅ Endpoint Look-ahead `POST /projects/{id}/reports/look-ahead` con ventana configurable — US-147 (2bd4032).
+- ✅ Campos period_from/period_to en Avance/Seguimiento + dropdown "3 semanas" — ENH-122 (bf2eba8).
+- ✅ 3 tabs Generar (con paneles Avance/Seguimiento/Look-ahead + catálogo plantillas)/Historial/Programar — ENH-121 (5e1c7f8).
+- ✅ Header con un solo CTA "Builder" — ENH-121.
+
+**Sprint 32 Bloque 2 — Builder unificado**
+- ✅ Header con Modo + Ventana (value+unit dropdown), persistencia en template defaults — US-148 (9a14e31).
+- ✅ Catálogo 22 secciones integrado en tab Generar — reusa US-120.
+- ✅ Preview live con líneas amarillas A4 — ENH-124 (cb1abff).
+- ✅ Navigation guard al salir sin guardar (`beforeunload` + onClick confirm) — ENH-125 (542ee5a).
+
+**Cleanup minutas**
+- ✅ Listing minutas (botón único + reorder columnas + sin MD/TXT) — ENH-117 (7ad1fd8).
+- ✅ Detail minuta sin MD/TXT — ENH-118 (89a430b).
+- ✅ Click nombre minuta → detail (no listing) — BUG-062 (bfe4efd).
+- ✅ Backend minutas con source_type (transcript|minute|manual) + migración 0075 — US-143 (1fb672b).
+- ✅ Frontend generador unificado 3 modos — US-142 (0bcf138).
+- ✅ Labels claros estados RAID — ENH-119 (a6f5ffb).
+- ✅ `/reports/tweak` → redirect `/reports/builder` — chore (def46f6).
+- ✅ `/ai-minutes/new` → redirect `/minutes/new` — chore (US-142 anterior).
+
+---
 
 ## Objetivo de negocio
 
@@ -37,18 +71,20 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 ## Backbone — Catálogo, motor y plantillas seed
 
-### # PENDING — US-120 — Modelo y seed del catálogo de secciones atómicas
+### # DONE (reusado en Sprint 31-32) — US-120 — Modelo y seed del catálogo de secciones atómicas
 
 **Como** plataforma
 **Quiero** un catálogo de 22 secciones atómicas registradas con su contrato de datos, parámetros y variantes visuales
 **Para** que los reportes de cualquier nivel se compongan combinando estas secciones.
 
 **Criterios de aceptación:**
-- [ ] Tabla `report_sections_catalog` con campos: `id` (S-XX), `category` (HDR/EST/AVN/PLN/RAID/EQP/NAR/KPI/PRT), `name`, `description`, `data_contract` JSONB, `default_params` JSONB, `variants` JSONB, `supports_ia` BOOL, `levels` ARRAY, `enabled` BOOL.
-- [ ] Seed con las 22 secciones especificadas en el catálogo (`docs/epics/drafts/EP020-secciones-atomicas.md`).
-- [ ] Endpoint `GET /reports/sections-catalog` devuelve el catálogo filtrable por categoría / nivel.
-- [ ] Service `app/services/reports/catalog.py` con función de cálculo registrada por id de sección.
-- [ ] Pruebas: catálogo no rompe seed; cada id tiene función de cálculo registrada.
+- [x] Tabla `report_sections_catalog` con campos: `id` (S-XX), `category` (HDR/EST/AVN/PLN/RAID/EQP/NAR/KPI/PRT), `name`, `description`, `data_contract` JSONB, `default_params` JSONB, `variants` JSONB, `supports_ia` BOOL, `levels` ARRAY, `enabled` BOOL.
+- [x] Seed con las 22 secciones especificadas en el catálogo (`docs/epics/drafts/EP020-secciones-atomicas.md`).
+- [x] Endpoint `GET /reports/sections-catalog` devuelve el catálogo filtrable por categoría / nivel.
+- [x] Service `app/services/reports/catalog.py` con función de cálculo registrada por id de sección.
+- [x] Pruebas: catálogo no rompe seed; cada id tiene función de cálculo registrada.
+
+**Status:** Entregado en Sprint 31. Catálogo integrado en tab Generar de Reportes proyecto (ENH-121) y disponible en canvas builder.
 
 **Test cases:** TC-200 catálogo seed completo; TC-201 endpoint filtrable; TC-202 función registrada por id.
 
@@ -165,37 +201,68 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 
 ---
 
-## Niveles 1 y 2 — Módulos UI
+## Niveles 1, 2, 3 — Módulos UI (Sprint 31-32)
 
-### # DONE (2026-05-25, 58e29d1) — US-128 — Módulo UI Reportes Nivel 1 (PMO Portafolio)
+### # DONE (2026-05-23) — Rediseño Reportes Nivel 1, 2, 3 (4 tabs PMO/Org/Prog/Proyectos) — ENH-116, ENH-120, US-144, US-145, US-146
 
-**Como** usuario PMO
-**Quiero** una ruta `/pmo/reports/portfolio` con listado de reportes generados + botón "Nuevo reporte de portafolio"
-**Para** generar y consultar reportes Nivel 1.
+Integra reportes a nivel PMO (Status), Organización, Programa y Proyectos en una estructura 4-tabs unificada bajo `/pmo/reports`.
 
-**Criterios de aceptación:**
-- [ ] Ruta y sidebar item nuevos.
-- [ ] Listado de reportes generados (histórico) con filtros por plantilla, fecha, creador.
-- [ ] Botón "Nuevo reporte" → selector de plantilla seed (L1-PORTAFOLIO) o "desde blanco" → canvas Nivel 4 con flag `level=1`.
-- [ ] Permisos: solo roles PMO / admin del tenant.
-
-**Test cases:** TC-224 acceso restringido por rol; TC-225 listado paginado; TC-226 generar desde seed.
-
-### # DONE (2026-05-25, 13f7595) — US-129 — Módulo UI Reportes Nivel 2 (Organización / Programa)
-
-**Como** PMO o cliente con acceso
-**Quiero** un tab "Reportes" en el detalle de organización/programa
-**Para** generar reportes Nivel 2 con scope filtrado a esa org.
+**Ruta principal:** `/pmo/reports`
 
 **Criterios de aceptación:**
-- [ ] Tab "Reportes" en `/pmo/organizations/{id}` y `/pmo/programs/{id}`.
-- [ ] Listado + botón nuevo, símil US-128.
-- [ ] Plantilla seed L2-ORG aplicada por default con scope filtrado a la org/programa.
-- [ ] Permisos: usuarios con acceso a la organización (incluye clientes).
+- [x] Tab "PMO" — Status PMO via `exportBuilderPdf({level:1})` — US-144 (f639d88).
+- [x] Tab "Organizaciones" — filtro por org, scope nivel 2 — US-145 (ee8ab24).
+- [x] Tab "Programas" — filtro org+programa — US-146 (0b5af6a).
+- [x] Tab "Proyectos" — folio, tipo, período enriquecidos; filtro drafts; link a detail — ENH-120 (ba3aae1).
+- [x] Sidebar simplificado: "Módulos" sin dropdown Reportes separado — ENH-116 (bf423ca).
+- [x] Página detail: `/pmo/projects/[id]/reports/[reportId]/` con iframe + regeneración.
 
-**Test cases:** TC-227 scope filtrado; TC-228 aislamiento por org (filtro `organization_id`, no RLS); TC-229 cliente puede consultar.
+**Generación:** cada tab usa `exportBuilderPdf({level})` disparado desde generador backend 3-paneles (Avance/Seguimiento/Look-ahead — ver ENH-121).
+
+### # ARCHIVED — US-128, US-129 (Nivel 1 y 2 anteriores, modelo viejo)
+
+Los módulos UI separados `/pmo/reports/portfolio` y `/pmo/organizations/{id}/reports` se reemplazan por la arquitectura 4-tabs unificada (Sprint 31-32). El viejo modelo point-and-click de "Nuevo reporte" se reemplaza por generador backend 3-paneles + catálogo plantillas builder integrado.
 
 ---
+
+## Reportes Proyecto Rediseñados (Sprint 31-32)
+
+### # DONE (2026-05-23) — US-147, ENH-122, ENH-121, US-148, ENH-124, ENH-125 — Tabs Generar/Historial/Programar + Look-ahead + Builder unificado
+
+Rediseña `/pmo/projects/[id]/reports` con 3 tabs y builder unificado con Modo + Ventana persistentes.
+
+**Tabs:**
+- **Generar** — 3 paneles (Avance/Seguimiento/Look-ahead) + catálogo plantillas builder — ENH-121 (5e1c7f8).
+- **Historial** — tabla reportes generados (sin cambios respecto anterior).
+- **Programar** — cron scheduling (sin cambios respecto anterior; forma existente soporta custom).
+
+**Look-ahead:** `POST /projects/{id}/reports/look-ahead` con `{window_value, window_unit}` — US-147 (2bd4032). Persiste `Report(generator='look_ahead')`. Excluye vencidas.
+
+**Generador parámetros:**
+- Campos `period_from`/`period_to` en Avance + Seguimiento para rango custom — ENH-122 (bf2eba8).
+- Dropdown "3 semanas" prepoblado — ENH-122.
+
+**Builder unificado:**
+- Header con Modo (Avance/Seguimiento/Look-ahead) + Ventana (value+unit dropdown) — US-148 (9a14e31).
+- Persistencia en `default_parameters._template` — US-148.
+- Load plantilla directo vía `?template_id=X` — US-148.
+- Preview live con líneas amarillas marcando cortes A4 — ENH-124 (cb1abff).
+- Navigation guard al salir sin guardar (`beforeunload` + onClick confirm en Link "Volver") — ENH-125 (542ee5a).
+
+**Status:** El rediseño consolida la experiencia anterior ("Catálogo → Historial → Builder → Creación") en 3 tabs claros (Generar/Historial/Programar) con header unificado de Modo+Ventana.
+
+### # DONE (2026-05-23) — ENH-117, ENH-118, BUG-062, US-143, US-142, ENH-119 — Cleanup minutas
+
+Simplifica la lista/detalle minutas y agrupa generación (transcript/minute/manual) en un solo flujo.
+
+- [x] Listing minutas: un solo botón + reorder columnas + sin MD/TXT — ENH-117 (7ad1fd8).
+- [x] Detail minuta: sin MD/TXT — ENH-118 (89a430b).
+- [x] Click nombre minuta → detail (no listing) — BUG-062 (bfe4efd).
+- [x] Backend minutas con `source_type ENUM (transcript|minute|manual)` + migración 0075 — US-143 (1fb672b).
+- [x] Frontend generador 3 modos unificado (transcript import/minuta + manual) — US-142 (0bcf138).
+- [x] Labels RAID con estado visual claro (color + icon) — ENH-119 (a6f5ffb).
+- [x] Redirect `/reports/tweak` → `/reports/builder` — chore (def46f6).
+- [x] Redirect `/ai-minutes/new` → `/minutes/new` — chore (anterior US-142).
 
 ## Exports y suscripciones
 
@@ -290,20 +357,23 @@ Se abren como issues separados con label del epic afectado. **Deben entregarse a
 
 ---
 
-## Plan de sprints sugerido
+## Plan de sprints (actualizado 2026-05-23)
 
-| Sprint | Bloque | Items | Foco |
-|---|---|---|---|
-| **26** | 1 | ENH-097, ENH-098, ENH-099, ENH-100, ENH-101 | Dependencias del sistema (modelo + admin UI) |
-| **26** | 2 | US-120, US-121, US-122 | Backbone catálogo + cálculo + plantillas seed |
-| **27** | 1 | US-123, US-130 | Motor de render + export PDF |
-| **27** | 2 | US-124, US-125, US-126 | Canvas Nivel 4 (drag-drop + params + plantillas privadas) |
-| **28** | 1 | US-127 | IA conversacional |
-| **28** | 2 | US-131 | Suscripciones custom |
-| **29** | 1 | US-128, US-129 | Módulos UI Niveles 1 y 2 |
-| **29** | 2 | US-132 | Render headless Gantt |
+| Sprint | Bloque | Items | Foco | Status |
+|---|---|---|---|---|
+| **26** | 1 | ENH-097, ENH-098, ENH-099, ENH-100, ENH-101 | Dependencias del sistema (modelo + admin UI) | ✅ DONE |
+| **26** | 2 | US-120, US-121, US-122 | Backbone catálogo + cálculo + plantillas seed | ✅ DONE (US-120 reusado Sprint 31) |
+| **27** | 1 | US-123, US-130 | Motor de render + export PDF | ✅ DONE |
+| **27** | 2 | US-124, US-125, US-126 | Canvas Nivel 4 (drag-drop + params + plantillas privadas) | ✅ DONE |
+| **28** | 1 | US-127 | IA conversacional | ✅ DONE |
+| **28** | 2 | US-131 | Suscripciones custom | ✅ DONE |
+| **29** | 1 | US-128, US-129 | Módulos UI Niveles 1 y 2 (modelo viejo) | ⚠️ ARCHIVED (reemplazado Sprint 31) |
+| **29** | 2 | US-132 | Render headless Gantt | ✅ DONE |
+| **31** | 2 | ENH-116, ENH-120, US-144, US-145, US-146 | 4 tabs PMO/Org/Prog/Proyectos rediseñados | ✅ DONE (2026-05-23) |
+| **32** | 1 | US-147, ENH-122, ENH-121, US-148 | Tabs Generar/Historial/Programar + Look-ahead + Builder unificado | ✅ DONE (2026-05-23) |
+| **32** | 2 | ENH-124, ENH-125, ENH-117, ENH-118, BUG-062, US-143, US-142, ENH-119 | Preview A4 + navigation guard + cleanup minutas + generador unificado | ✅ DONE (2026-05-23) |
 
-**Estimado:** 4 sprints (~8 semanas) para EP020 completo, sujeto a velocidad real.
+**Estimado:** EP020 backbone (Sprints 26-29) completado. Rediseño Reportes (Sprints 31-32) completado. Canvas Nivel 4 y IA conversacional están listos para reutilización en nuevos flujos.
 
 ## Riesgos
 
