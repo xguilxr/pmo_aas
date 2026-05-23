@@ -18,7 +18,7 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 | Reportes manuales que consumen 4-6 h/semana | PM redacta en Word cada viernes | IA local genera reporte en <60 s, PM solo revisa |
 | Minutas sin estructura | Notas libres sin acuerdos trazables | IA extrae acuerdos, participantes, próximos pasos desde transcripción |
 | Visibilidad baja del portafolio | Dirección no ve estado real | Dashboard con KPIs, semáforo de salud, Plan vs Real |
-| Aislamiento entre clientes | Instancias separadas caras | Multi-tenant con RLS en Postgres, 1 despliegue para N tenants |
+| Aislamiento entre clientes | Instancias separadas caras | Multi-tenant en capa app (filtro `tenant_id` por endpoint + tests `TC-MT-*`), 1 despliegue para N tenants |
 | Dependencia de MS Project standalone | PM importa/exporta manual | Importación .mpp/.xml y Gantt nativo en la app |
 
 ## 3. Personas / Roles
@@ -29,7 +29,7 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 | **Administrador** (del tenant) | Su tenant | CRUD de usuarios, roles, organizaciones, proyectos del tenant |
 | **PMO Manager** | Su tenant | Aprobar solicitudes, ver portafolio completo, priorizar |
 | **Project Manager** | Proyectos asignados | Ejecutar proyecto, gestionar riesgos/incidencias/cambios, reportar |
-| **Viewer / Stakeholder** | Proyectos asignados (read) | Ver avance, descargar reportes, consultar minutas |
+| **Stakeholder** | Lectura de proyecto vía link público + token | Ver avance, descargar reportes, consultar minutas. *(El rol "viewer" a nivel user fue eliminado — DEC-024 dejó solo `admin` y `user`.)* |
 | **Solicitante** (opcional) | Sólo form de solicitud | Crear solicitud de proyecto |
 
 ## 4. Alcance MVP vs Futuro
@@ -43,14 +43,14 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 - ✅ CRUD de proyectos (EP005)
 - ✅ 6 módulos transversales (EP006)
 - ✅ Panel de administración (EP007)
-- ✅ IA: minutas desde transcripción + reportes (EP008) — modo Ollama local
+- ✅ IA: minutas desde transcripción + reportes (EP008) — modos `platform` (Groq) o `byo` (OpenAI/Claude/Gemini/Perplexity/Azure Copilot M365/custom)
 - ✅ MS Project: importación .xml/.xlsx + Gantt read-only (EP009)
 - ✅ Super Admin platform-wide
 
 ### Post-MVP (v1.1+)
 
 - 🔜 Drag & drop en Gantt
-- 🔜 Importación nativa .mpp (requiere MPXJ + Java runtime en Railway)
+- ✅ Importación nativa `.mpp` (US-069, DONE — JRE 21 + MPXJ embebidos en el Dockerfile).
 - 🔜 Preview de PDFs/imágenes inline
 - 🔜 Mobile app (React Native / Expo)
 - 🔜 Webhooks outbound para integraciones externas
@@ -61,13 +61,13 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 
 | Categoría | Objetivo | Cómo medimos |
 |---|---|---|
-| Performance | p95 < 300 ms en listados, TTFB < 150 ms | Sentry Performance, Railway Metrics |
-| Disponibilidad | 99.5% mensual | UptimeRobot hitting `/health` |
-| Seguridad | OWASP Top 10, aislamiento estricto multi-tenant | Pen-test trimestral, TC-MT-* E2E en cada PR |
-| Accesibilidad | WCAG 2.1 AA | `axe-core` en Playwright CI |
-| Internacionalización | ES/EN desde día 1 | 100% claves en `i18n/` |
-| Observabilidad | MTTD < 5 min para errores críticos | Alertas Sentry + Slack |
-| Escalabilidad | 500 tenants, 50 proyectos/tenant, 100 usuarios concurrentes | Load test k6 antes de release |
+| Performance | p95 < 300 ms en listados, TTFB < 150 ms | Railway Metrics (sin APM hoy) |
+| Disponibilidad | 99.5% mensual | UptimeRobot hitting `/health` (pendiente formalizar) |
+| Seguridad | OWASP Top 10, aislamiento estricto multi-tenant | Tests `TC-MT-*` en CI; pen-test pendiente |
+| Accesibilidad | WCAG 2.1 AA | *(objetivo; sin axe-core en CI hoy)* |
+| Internacionalización | ES/EN como meta a futuro | **Hoy solo ES.** No hay i18n instalado. |
+| Observabilidad | MTTD < 5 min para errores críticos | Logs Railway + audit_log. Sin Sentry/GlitchTip integrado. |
+| Escalabilidad | 500 tenants, 50 proyectos/tenant, 100 usuarios concurrentes | Load test pendiente |
 
 ## 6. Principios de diseño
 
@@ -92,7 +92,7 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 - ❌ No somos un Jira/Linear para devs (no hay sprints ni board Kanban de tickets de código).
 - ❌ No reemplazamos contabilidad/ERP — integramos, no facturamos.
 - ❌ No hacemos videoconferencia — consumimos transcripciones, no audio.
-- ❌ No entrenamos modelos propios — usamos Ollama/Claude con prompts cuidados.
+- ❌ No entrenamos modelos propios — usamos Groq / providers BYO con prompts cuidados.
 
 ## 9. Glosario corto
 

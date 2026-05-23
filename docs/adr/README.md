@@ -27,7 +27,7 @@ Usar **Railway** como PaaS principal. Frontend, API, Worker y plugins (Postgres,
 **Consecuencias negativas:**
 - Dependencia de Railway para runtime. Mitigación: todo el código es estándar (Docker/Nixpacks funciona en otros PaaS si migramos).
 - Coste escala con réplicas; en volúmenes altos (>1000 tenants) puede convenir migrar a AWS/GCP.
-- Sin GPU nativa aún (para Ollama hosteamos externo o esperamos rollout).
+- *(Originalmente: sin GPU nativa para Ollama. Ya no aplica — DEC-017 + BUG-053 eliminaron Ollama; los providers IA son APIs remotas.)*
 
 **Alternativas evaluadas:**
 - AWS ECS: muy potente pero complejidad alta y coste fijo de load balancer/VPC.
@@ -67,7 +67,15 @@ Frontend debe ser rápido (TTFB, hydration), accesible, mantenible y tener buena
 
 ## ADR-003 — PostgreSQL con RLS para multi-tenancy
 
-**Estado:** ✅ Aceptada — 2026-04-18
+**Estado:** ⚠️ Aceptada en diseño 2026-04-18 — **NO implementada en producción.**
+
+> **Update 2026-05-23:** Ninguna migración Alembic activa el RLS
+> (`ENABLE ROW LEVEL SECURITY`) ni crea policies. El aislamiento
+> multi-tenant se hace en **capa de aplicación**: cada endpoint declara
+> `Depends(get_current_tenant_id)` y filtra `WHERE tenant_id = :tid` en
+> cada query. La defensa en profundidad vía RLS queda como deuda
+> técnica (ver `architecture/database.md` §"Lo que NO usamos" y
+> `architecture/security-multitenant.md`).
 **Contexto:**
 Multi-tenant tiene 3 patrones: DB-per-tenant, schema-per-tenant, shared-schema con RLS. Cada uno con trade-offs distintos.
 
@@ -102,7 +110,7 @@ Alternativas: FastAPI (Python), NestJS (Node), Rails, Django, Elixir/Phoenix, Go
 
 **Consecuencias positivas:**
 - Tipado fuerte con Pydantic (compartido con frontend vía OpenAPI).
-- Ecosistema IA (Ollama, Whisper, ML libs) nativo.
+- Ecosistema IA / ML libs (httpx contra Groq/OpenAI/Anthropic/Gemini/Perplexity/Azure) sin overhead de bindings exóticos.
 - MPXJ integra via subprocess, pero alternativa nativa si llegara.
 - DX excelente (autocompletion, docs auto).
 
@@ -166,7 +174,13 @@ Necesitamos workers para IA (minutas/reportes), import MS Project, envío masivo
 
 ## ADR-007 — Cascada de proveedores IA: Ollama → Gemini → Claude
 
-**Estado:** ✅ Aceptada — 2026-04-18
+**Estado:** ❌ **Reemplazada** por DEC-017 (modos `disabled`/`platform`/`byo` por tenant) y eliminada del código en BUG-053 (2026-05-08).
+
+> No queda `OllamaProvider` ni cascada automática. Modo `platform` corre
+> contra Groq; modo `byo` deja al tenant elegir UN provider (OpenAI /
+> Claude / Gemini / Perplexity / Azure Copilot M365 / custom / Groq).
+> Si un provider falla, el job se marca `failed` (sin fallback). Ver
+> `EP008-ai.md` y `architecture/stack.md`.
 **Contexto:**
 PMO maneja datos sensibles (presupuestos, estrategia, personal). Criterios en
 orden: (1) **privacidad**, (2) **coste cercano a cero** en MVP personal,
@@ -213,9 +227,15 @@ siguiente.
 
 ---
 
-## ADR-008 — Monorepo con pnpm + Turborepo
+## ADR-008 — Monorepo con pnpm (+ Turborepo planeado)
 
-**Estado:** ✅ Aceptada — 2026-04-18
+**Estado:** ⚠️ Aceptada parcialmente. pnpm workspaces sí, **Turborepo NO**.
+
+> **Update 2026-05-23:** No hay `turbo.json` ni dependencia Turborepo
+> en el repo. Los scripts corren `pnpm -r` directo. Caching de builds
+> es responsabilidad de cada herramienta (Next, ruff, pytest). Si en
+> algún punto los builds se vuelven el cuello, reintroducir Turbo es
+> trivial.
 **Contexto:**
 Proyecto tiene frontend (TS/React), backend (Python), docs, infra. Necesitamos gestionar dependencias compartidas y builds eficientes.
 
@@ -240,7 +260,13 @@ Gestor: **pnpm workspaces** + **Turborepo** para caching.
 
 ## ADR-009 — MPXJ + frappe-gantt para MS Project
 
-**Estado:** ✅ Aceptada — 2026-04-18 (con revisión post-MVP)
+**Estado:** ⚠️ MPXJ sí (US-069 DONE, embebido en Dockerfile). frappe-gantt **NO** (se usa SVG propio).
+
+> **Update 2026-05-23:** `.mpp` nativo ya es soporte estándar (no
+> post-MVP) — MPXJ + JRE 21 viven en el Dockerfile compartido. El
+> Gantt visual en frontend es `components/gantt-view.tsx` (SVG manual);
+> no se instaló frappe-gantt ni dhtmlx-gantt. Ver `EP009-ms-project.md`
+> y `architecture/stack.md`.
 **Contexto:**
 Necesitamos leer `.mpp`, `.xml`, `.xlsx` de MS Project y visualizar Gantt interactivo.
 
@@ -262,7 +288,13 @@ Necesitamos leer `.mpp`, `.xml`, `.xlsx` de MS Project y visualizar Gantt intera
 
 ## ADR-010 — i18n desde el día 1 con next-intl
 
-**Estado:** ✅ Aceptada — 2026-04-18
+**Estado:** ❌ **No implementada.** La app es **solo ES** hoy.
+
+> **Update 2026-05-23:** `next-intl` no está instalado en
+> `apps/web/package.json`. No hay archivos `messages/*.json` ni gate
+> CI. Si se necesita EN, hay que retomar como nueva US (incluiría
+> instalar next-intl, montar provider, extraer ~todas las strings de
+> JSX, y montar el catálogo de mensajes).
 **Contexto:**
 Mercado objetivo ES-MX principalmente, pero clientes pueden requerir EN-US. Agregar i18n tarde es caro.
 
@@ -283,7 +315,13 @@ Todas las strings en archivos de mensajes, no hardcoded. CI rule bloquea strings
 
 ## ADR-011 — GlitchTip self-hosted para observabilidad (reemplaza Sentry)
 
-**Estado:** ✅ Aceptada — 2026-04-18 (reemplaza propuesta previa de Sentry pago)
+**Estado:** ❌ **No implementada.** Ni GlitchTip ni Sentry están en el stack hoy.
+
+> **Update 2026-05-23:** `sentry-sdk` se eliminó de
+> `apps/api/requirements.txt`. No hay servicio `glitchtip` en Railway.
+> Hoy la observabilidad se limita a Railway Logs + `structlog` (JSON
+> en prod) + tabla `audit_log` para forense de negocio. Si se decide
+> reintegrar APM, esta ADR aplica como referencia.
 **Contexto:**
 Necesitamos errores + performance (p95) + trazas con tags `tenant_id`,
 `user_id`, `api_version`. Sentry cloud (plan Team $26/mes) no encaja en el
@@ -359,8 +397,7 @@ ausentes). Forzar Docker bloquea el setup inicial.
 
 **Decisión:**
 Ofrecer **tres rutas de setup** documentadas en `docs/setup-dev.md`:
-- **Ruta A:** Windows nativo — Postgres installer + Memurai (Redis) + Ollama
-  instalador + Python + Node. Cero Docker.
+- **Ruta A:** Windows nativo — Postgres installer + Memurai (Redis) + Python + Node. Cero Docker. *(El paso "Ollama installer" ya no aplica — BUG-053 eliminó Ollama; el dev local apunta a Groq con tu propia key o BYO.)*
 - **Ruta B:** Railway dev services — Postgres/Redis en Railway vía plugin;
   dev corre local contra esas URLs. Ideal si se trabaja desde varias máquinas.
 - **Ruta C:** macOS/Linux con Docker — para quien prefiere contenedores de

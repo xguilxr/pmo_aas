@@ -67,26 +67,27 @@ Layout root:
 - Main area con scroll propio.
 - Drawer lateral derecho (contextual, condicional).
 
-### Sidebar
+### Sidebar (`components/app-shell.tsx` — modelo vigente US-138)
 
-- Logo tenant arriba.
-- Navegación principal en árbol con dropdowns anidados (hasta 3 niveles):
-  1. **Tablero** — enlace directo a `/dashboard`.
-  2. **Organizaciones** (dropdown, enlace a `/admin/organizations`).
-     - Solicitudes — `/admin/requests`.
-     - Programas — `/admin/programs`.
-     - Proyectos (sub-dropdown, enlace a `/admin/projects`).
-       - Módulos de Proyectos (sub-grupo) — contiene todos los módulos: Riesgos, AIDs, Cambios, Documentos, Lecciones, Minutas, Tareas, Gantt, Minuta IA, Reporte IA. Los módulos apuntan al proyecto activo cuando la ruta es `/admin/projects/:id/...`; de lo contrario regresan al listado `/admin/projects`.
-  3. **Admin** (dropdown).
-     - Panel del Tenant — `/admin/supervision` (anteriormente "Supervisión").
-     - Usuarios — `/admin/users`.
-     - Permisos — `/admin/permissions` (Sprint 6: read-only, lista las 5 capabilities admin del modelo DEC-024).
-     - Auditoría — `/admin/audit-logs`.
-     - Configuración — `/admin/settings`.
-- Super admin: sección adicional sólo visible para `is_superadmin` (Visión general, Tenants, Logs platform, Health).
-- Los grupos con `href` + `children` actúan como link **y** toggle: clic en el label navega, clic en el chevron (derecha) expande/colapsa.
-- Auto-expand: al cargar o navegar, se expanden las ramas que contienen la ruta activa.
-- Item activo con pill de fondo (no border).
+El árbol "Organizaciones (dropdown) → Solicitudes / Programas / Proyectos →
+Módulos" del diseño original fue **reemplazado** por una topología plana de
+3 grupos. Detalle completo en `architecture/navigation.md` §2.
+
+- **TOP_NAV** (siempre visible): `Dashboard`, `Solicitudes` (`/pmo/requests`),
+  `Proyectos` (`/pmo/projects`), grupo "Módulos" (RAID / Cambios / Minutas /
+  Reportes / Portfolio admin-only) — todo bajo `/pmo/`.
+- **OrgTreeNav** (debajo de TOP_NAV): drill-down vivo de orgs → programas → proyectos.
+- **ADMIN_NAV** (solo si capability admin): `Tenant`, `IA`, `Organizaciones`,
+  `Usuarios`, `Permisos`, `Auditoría`. Items en `/admin/*`.
+- **SUPERADMIN_NAV** (solo `is_superadmin`): `Overview`, `Tenants`, `Users`, `IA`, `Logs`.
+- Las rutas legacy `/admin/projects`, `/admin/programs`, `/admin/raid`, etc.
+  redirigen 301 a `/pmo/*` (US-075 / DEC-022) — los bookmarks viejos no se
+  rompen pero el sidebar las saca del menú.
+- Módulos del proyecto (Plan / RAID / Áreas / Documentos / Lecciones /
+  Minutas / Reportes / Cambios) ahora viven como **tabs dentro de
+  `/pmo/projects/[id]/*`** (US-035, `components/project-tabs-bar.tsx`),
+  no como items del sidebar.
+- Item activo con pill de fondo (`--color-subtle`, `font-semibold`), sin border.
 - Cada nivel de anidación agrega `0.75rem` de indent al padding-left.
 - Acrylic/vibrancy background.
 
@@ -210,9 +211,9 @@ Grid 5×5 de celdas coloreadas (verde/amarillo/rojo según P×I). Hover muestra 
 
 Árbol jerárquico Org → Programa → Proyecto. Expandible. Usado en sidebar y selectors.
 
-### GanttChart
+### GanttView
 
-Wrapper sobre **frappe-gantt**. Props: tasks, dependencies, zoom level, onTaskClick. Responsive a tema.
+Componente SVG propio en `apps/web/components/gantt-view.tsx`. No usa frappe-gantt ni dhtmlx-gantt (la versión vieja del doc los mencionaba; nunca se instalaron). Props: `tasks`, `dependencies`, `zoomLevel`, callbacks. Virtualiza por viewport.
 
 ### MoneyDisplay
 

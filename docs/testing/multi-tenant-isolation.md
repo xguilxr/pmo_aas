@@ -230,7 +230,7 @@ Script: `scripts/canary/mt_isolation.py`.
 ## Checklist por PR (aparte de CI)
 
 - [ ] ¿Agregué un endpoint? → agregué test `TC-MT-XXX` correspondiente.
-- [ ] ¿Agregué una tabla? → habilité RLS + policy + test.
+- [ ] ¿Agregué una tabla? → tiene `tenant_id` indexado + cada query filtra por él + test `TC-MT-*`. *(No usamos RLS Postgres hoy; ver `architecture/database.md`.)*
 - [ ] ¿Worker lee archivos? → valida prefix del path.
 - [ ] ¿Cache por key compartida? → la key incluye `tenant_id`.
 - [ ] ¿Log/trace incluye `tenant_id`? → sí (para detección forense).
