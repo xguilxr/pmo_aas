@@ -12,17 +12,19 @@ El proyecto se despliega como **6 servicios** dentro de un mismo **Project** de 
 flowchart LR
     WEB["web<br/>Next.js 15"]
     API["api<br/>FastAPI"]
-    WORKER["worker<br/>Celery/BullMQ"]
+    WORKER["worker<br/>Celery (Python)"]
     DB[("postgres<br/>Railway Plugin")]
     REDIS[("redis<br/>Railway Plugin")]
-    OLLAMA["ollama<br/>(opcional, self-hosted)"]
+    GROQ["Groq API<br/>(modo platform)"]
+    OLLAMA["ollama<br/>(opcional, modo byo)"]
 
     WEB --> API
     API --> DB
     API --> REDIS
     WORKER --> DB
     WORKER --> REDIS
-    WORKER --> OLLAMA
+    WORKER -->|platform| GROQ
+    WORKER -.->|byo| OLLAMA
 ```
 
 | Servicio | Root | Runtime | Reemplazo al auto-deploy |
@@ -138,7 +140,8 @@ numReplicas = 2
 | `ACCESS_TOKEN_TTL_SEC` | `3600` | 1 h |
 | `REFRESH_TOKEN_TTL_SEC` | `2592000` | 30 d |
 | `BCRYPT_ROUNDS` | `12` | |
-| `AI_MODE` | `ollama` / `gemini` / `claude` / `disabled` | prioridad: ollama → gemini → claude |
+| `AI_MODE` | `platform` / `byo` / `disabled` | `platform` (default) usa Groq. `byo` deja al tenant configurar provider en `/admin/ai` (ollama/gemini/claude/openai). `disabled` apaga IA. |
+| `GROQ_API_KEY` | secret | requerido cuando `AI_MODE=platform`; vive a nivel plataforma (no por tenant) |
 | `OLLAMA_BASE_URL` | `https://ollama.pmoaas.com:11434` | externo con Cloudflare Tunnel preferido |
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct-q4_K_M` | |
 | `GEMINI_API_KEY` | `AIza…` | Free tier 2.º fallback |

@@ -98,7 +98,7 @@ Alternativa evaluada: **MongoDB** → descartada. Queries relacionales complejas
   - Colas de jobs (generación IA, envío de reportes)
   - Caché de respuestas cacheables (KPIs del dashboard, TTL 5 min)
   - Sesiones invalidadas (token blacklist)
-- **Cola**: **Celery** (Python-only) o **BullMQ** (si worker en Node). Ver ADR-006.
+- **Cola**: **Celery** (Python-only). El worker corre Celery directo contra Redis. La opción BullMQ (Node) quedó descartada en ADR-006 al consolidar el worker como Python.
 
 ---
 
@@ -113,18 +113,35 @@ Detalles en [`security-multitenant.md`](./security-multitenant.md).
 
 ---
 
-## IA — Ollama (default) → Gemini free (2.º) → Claude (3.º premium)
+## IA — modo platform (Groq) y modo BYO (Ollama / Gemini / Claude / OpenAI)
 
-Prioridad declarada en orden estricto:
+Desde **DEC-017** (2026-05) la plataforma separa dos modos por tenant:
+
+### Modo `platform` (default)
+
+Los tenants nuevos arrancan en este modo. La generación corre contra
+**Groq** (Llama 3.1 / Mixtral hosteado), pagado por la plataforma:
+
+- Latencia ~300–600 ms a nivel API.
+- Sin infra a mantener (no hay servidor de IA propio).
+- Cuota por tenant configurable desde `/superadmin/ai`.
+
+### Modo `byo` (Bring Your Own)
+
+El admin del tenant elige uno o varios providers desde `/admin/ai`. El
+runtime resuelve en cascada según lo configurado:
 
 1. **Ollama local** — privacidad total, cero costo por token, modelo
    `qwen2.5:7b-instruct-q4_K_M` default. Hosting: home-host con Cloudflare
    Tunnel, VPS con GPU, o Railway GPU cuando esté disponible.
 2. **Google Gemini 1.5 Flash** — free tier **1M tokens/día**, 15 RPM. Útil
-   cuando Ollama está caído, sobrecargado, o para tenants sin infra de IA
-   pero que aceptan enviar data a Google.
-3. **Claude Sonnet 4.6** — solo si el tenant lo activa explícitamente y
-   provee API key. Mejor calidad; coste por token real.
+   cuando Ollama está caído o como provider económico secundario.
+3. **Claude Sonnet 4.6** — máxima calidad; coste real por token.
+4. **OpenAI / Perplexity** — soportados como alternativa.
+
+> El antiguo orden "Ollama → Gemini → Claude" del MVP solo aplica a
+> tenants en modo `byo` que repliquen esa configuración. El default de
+> la plataforma es ahora Groq.
 
 El `AIProvider` es polimórfico y el runtime escoge en cascada: intenta
 primario, si falla o está deshabilitado pasa al siguiente. Ver
