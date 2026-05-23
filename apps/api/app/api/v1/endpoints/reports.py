@@ -26,6 +26,7 @@ from app.services.audit import write_audit
 from app.services.html_report_renderer import render_report_html
 from app.services.operational_reports import (
     build_avance_context,
+    build_look_ahead_context,
     build_seguimiento_context,
 )
 from app.services.pdf_renderer import render_pdf
@@ -282,6 +283,12 @@ class SeguimientoGenerate(BaseModel):
     period_days: int | None = Field(default=None, ge=1, le=365)
 
 
+# US-147 — Look-ahead. Ventana hacia adelante (numero + unidad).
+class LookAheadGenerate(BaseModel):
+    window_value: int = Field(default=2, ge=1, le=52)
+    window_unit: str = Field(default="weeks", pattern="^(days|weeks|months)$")
+
+
 # ENH-063: ventana default cuando el caller no especifica.
 _DEFAULT_PERIOD_DAYS = 7
 
@@ -390,6 +397,79 @@ async def generate_avance_report(
     await db.commit()
 
     filename = _report_filename("Avance", project.name, datetime.now(UTC))
+    return _pdf_response(pdf, filename)
+
+
+# US-147 — Reporte Look-ahead: solo actividades en ventana [hoy, hoy+ventana].
+@router.post("/projects/{project_id}/reports/look-ahead")
+async def generate_look_ahead_report(
+    project_id: UUID,
+    body: LookAheadGenerate | None = None,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Genera Reporte Look-ahead: actividades que arrancan o terminan
+    dentro de la ventana definida desde hoy. Excluye vencidas.
+
+    Persiste con `generator='look_ahead'` y `cut_off_date=hoy`.
+    """
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    payload = body or LookAheadGenerate()
+
+    context = await build_look_ahead_context(
+        db, tenant_id, project.id,
+        window_value=payload.window_value,
+        window_unit=payload.window_unit,
+    )
+    context["tenant_name"] = await _tenant_name(db, tenant_id)
+
+    pdf = render_pdf("reports/look_ahead.html", context)
+
+    today = datetime.now(UTC).date()
+    rep = Report(
+        tenant_id=str(tenant_id),
+        project_id=str(project.id),
+        title=(
+            f"Look-ahead — {project.folio} — "
+            f"{payload.window_value} {payload.window_unit}"
+        ),
+        period=f"{payload.window_value}{payload.window_unit[:1]}",
+        generator="look_ahead",
+        cut_off_date=today,
+        sections=context,
+        recipients=[],
+        status="draft",
+        generated_by_ai=False,
+        created_by=cu.id,
+    )
+    db.add(rep)
+    await db.flush()
+    db.add(
+        ReportHistory(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            report_type="look_ahead",
+            generated_by_user_id=str(cu.id),
+            source_report_id=str(rep.id),
+            file_size_bytes=len(pdf) if pdf else None,
+        )
+    )
+    await write_audit(
+        db,
+        action="report.generate.look_ahead",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="report",
+        entity_id=str(rep.id),
+        details={
+            "window_value": payload.window_value,
+            "window_unit": payload.window_unit,
+        },
+    )
+    await db.commit()
+    filename = _report_filename("Look-ahead", project.name, datetime.now(UTC))
     return _pdf_response(pdf, filename)
 
 
