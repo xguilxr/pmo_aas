@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,12 +11,14 @@ from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import conflict, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.ai import AIJob, Report
+from app.models.modules import MeetingMinute
 from app.models.project import Project
 from app.services.ai.platform_config import resolve_groq_config
 from app.services.ai.prompts import HTML_TWEAK_SYSTEM
 from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
+from app.services.folio import next_folio
 from app.workers.tasks.ai import draft_report_task, generate_minute_task
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -23,12 +26,37 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 MAX_TRANSCRIPT_BYTES = 5 * 1024 * 1024
 
 
+# US-143 — 3 modos de generación de minuta:
+# - transcript (default, retrocompatible): transcripción de reunión → IA estructura.
+# - minute: minuta YA redactada → IA normaliza al modelo canónico preservando contenido.
+# - manual: el form ya manda las 6 secciones llenas → persiste directo sin IA.
+MinuteSourceType = Literal["transcript", "minute", "manual"]
+
+
 class GenerateMinuteRequest(BaseModel):
     project_id: UUID
-    transcript: str = Field(min_length=10)
+    source_type: MinuteSourceType = "transcript"
+    transcript: str | None = Field(default=None, min_length=10)
+    # Modo `manual`: estructura canónica de 6 secciones (header/participants/
+    # summary/topics/raid/free_notes). Aquí se persiste tal cual sin IA.
+    structured_data: dict[str, Any] | None = None
     language: str | None = None
     save_as_minute: bool = True
     title: str = "Minuta (IA)"
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> "GenerateMinuteRequest":
+        if self.source_type in ("transcript", "minute"):
+            if not self.transcript:
+                raise ValueError(
+                    f"source_type={self.source_type} requiere `transcript` no vacío"
+                )
+        elif self.source_type == "manual":
+            if not self.structured_data:
+                raise ValueError(
+                    "source_type=manual requiere `structured_data` con las 6 secciones"
+                )
+        return self
 
 
 def _tenant(cu: CurrentUser) -> UUID:
@@ -44,11 +72,29 @@ async def generate_minute(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """Dispatch a Celery. Devuelve 202 + job_id; la UI hace polling a
-    `GET /ai/jobs/{id}` hasta que termine. El worker enruta al
-    provider del tenant (platform Groq / BYO cloud).
+    """US-143: 3 modos. `transcript` y `minute` dispatch a Celery; `manual`
+    persiste directo sin IA y devuelve 201.
+
+    La UI envía `source_type` para indicar el flujo.
     """
     tenant_id = _tenant(cu)
+
+    p = (
+        await db.execute(
+            select(Project).where(Project.id == str(body.project_id), Project.tenant_id == tenant_id)
+        )
+    ).scalar_one_or_none()
+    if p is None:
+        raise not_found("Proyecto")
+
+    # ----- Modo MANUAL: sin IA, persiste directo (US-143).
+    if body.source_type == "manual":
+        return await _persist_manual_minute(
+            db, tenant_id, body, cu
+        )
+
+    # ----- Modos transcript / minute: dispatch a Celery con IA.
+    assert body.transcript is not None  # garantizado por validator
     if len(body.transcript.encode("utf-8")) > MAX_TRANSCRIPT_BYTES:
         from fastapi import HTTPException
 
@@ -63,19 +109,16 @@ async def generate_minute(
             code="AI_DISABLED",
         )
 
-    p = (
-        await db.execute(
-            select(Project).where(Project.id == str(body.project_id), Project.tenant_id == tenant_id)
-        )
-    ).scalar_one_or_none()
-    if p is None:
-        raise not_found("Proyecto")
-
+    # US-143: `minute_from_transcript` o `minute_from_minute` para
+    # diferenciar en auditoría / dashboards. El worker enruta al prompt
+    # correcto según el `source_type` que se le pasa.
+    job_kind = "minute_from_transcript" if body.source_type == "transcript" else "minute_from_minute"
     job = AIJob(
         tenant_id=str(tenant_id), project_id=str(body.project_id),
-        kind="minute_from_transcript", status="queued",
+        kind=job_kind, status="queued",
         input={"len": len(body.transcript), "lang": body.language,
-               "save_as_minute": body.save_as_minute, "title": body.title},
+               "save_as_minute": body.save_as_minute, "title": body.title,
+               "source_type": body.source_type},
         requested_by=cu.id,
     )
     db.add(job)
@@ -92,10 +135,81 @@ async def generate_minute(
         save_as_minute=body.save_as_minute,
         title=body.title,
         requested_by=str(cu.id) if cu.id else None,
+        source_type=body.source_type,
     )
 
     response.headers["Location"] = f"/api/v1/ai/jobs/{job_id}"
     return {"job_id": job_id, "status": "queued"}
+
+
+async def _persist_manual_minute(
+    db: AsyncSession,
+    tenant_id: UUID,
+    body: GenerateMinuteRequest,
+    cu: CurrentUser,
+) -> dict[str, Any]:
+    """US-143 manual mode: construye `MeetingMinute` desde `structured_data`
+    sin invocar IA. Devuelve `{minute_id, status: "saved"}`.
+
+    `structured_data` espera la estructura canónica de 6 secciones; campos
+    faltantes se rellenan con defaults vacíos. RAID viene del form (no se
+    auto-sugiere porque el flujo manual no procesa texto).
+    """
+    sd = body.structured_data or {}
+    header = sd.get("header") or {}
+    participants_block = sd.get("participants") or {}
+    if isinstance(participants_block, list):
+        # tolerante: si llega una lista plana, asume attendees.
+        attendees = participants_block
+    else:
+        attendees = participants_block.get("attendees") or []
+    # Manual no auto-sugiere; el PM crea los items RAID por separado.
+    raid_suggestions_empty = {
+        "risks": [], "issues": [], "lessons": [], "changes": [],
+    }
+    meeting_date_raw = header.get("date") or sd.get("meeting_date")
+    if meeting_date_raw:
+        try:
+            md = datetime.fromisoformat(str(meeting_date_raw).replace("Z", "+00:00"))
+        except ValueError:
+            md = datetime.now(UTC)
+    else:
+        md = datetime.now(UTC)
+    folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
+    mm = MeetingMinute(
+        tenant_id=str(tenant_id),
+        project_id=str(body.project_id),
+        folio=folio,
+        title=body.title or header.get("title") or "Minuta",
+        meeting_date=md,
+        participants=attendees,
+        topics=sd.get("topics") or [],
+        agreements=sd.get("agreements") or sd.get("raid") or [],
+        next_meeting_date=None,
+        attachments=[],
+        generated_by_ai=False,
+        status="final",
+        created_by=cu.id,
+        # ENH-106: origin manual (form llenado por el PM).
+        origin="manual",
+        raid_suggestions=raid_suggestions_empty,
+        description=sd.get("summary") or None,
+    )
+    db.add(mm)
+    await db.flush()
+    minute_id = str(mm.id)
+    await write_audit(
+        db,
+        action="minute.create",
+        module="minutes",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="meeting_minute",
+        entity_id=minute_id,
+        details={"source_type": "manual", "folio": folio},
+    )
+    await db.commit()
+    return {"minute_id": minute_id, "status": "saved", "folio": folio}
 
 
 class ReportDraftRequest(BaseModel):

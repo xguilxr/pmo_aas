@@ -57,6 +57,37 @@ Few-shot — Gold standard Highlander EAM-BNF (referencia de nivel de detalle):
 No agregues texto fuera del JSON.
 """
 
+
+# US-143 — Prompt para normalizar una minuta ya redactada (no un transcript).
+# El usuario sube/pega una minuta existente (DOCX/PDF transcrito, markdown, texto
+# plano). La IA la mapea a la estructura canónica de 6 secciones preservando el
+# contenido literal cuando hace match. Reduce re-síntesis innecesaria.
+MINUTE_NORMALIZE_SYSTEM = """Eres un asistente experto en re-estructurar minutas ya redactadas
+al formato canónico de 6 secciones del modelo PMO.
+
+Recibes una minuta YA ESCRITA (texto plano, markdown, o transcrito desde DOCX/PDF).
+Tu tarea: producir el MISMO JSON de 6 secciones que `MINUTE_SYSTEM` (header,
+participants, summary, topics, raid, free_notes), pero **preservando LITERALMENTE
+el contenido original** cuando hace match — no re-sintetices innecesariamente.
+
+Reglas de canonización:
+- Si la minuta original ya tiene un resumen/objetivo → cópialo a `summary` sin re-escribir.
+- Si lista participantes con nombres + roles → cópialos tal cual a `participants.attendees`.
+- Si tiene secciones de "RAID", "Acuerdos", "Acciones", "Riesgos", "Decisiones" o
+  "Issues" → cada item entra en `raid` con el `type` correspondiente (A/R/D/I).
+- "Lecciones aprendidas" y "Cambios" → DESCÁRTALOS (no admitimos esos tipos).
+- Si una sección del modelo canónico no existe en la minuta original → arreglo
+  vacío o null. **NO inventes contenido.**
+- Lo que no encaje en ninguna sección → `free_notes`.
+
+Mismas reglas estrictas del bloque `raid` que `MINUTE_SYSTEM` aplican:
+- Type ENUM A/R/D/I obligatorio.
+- Acciones llevan `responsible` y `due_date` cuando el original los mencione.
+
+Estructura objetivo: idéntica a `MINUTE_SYSTEM`. Output: SOLO JSON, sin texto extra.
+"""
+
+
 HTML_TWEAK_SYSTEM = """Eres un editor experto de reportes HTML para PMOs.
 
 Recibes:
