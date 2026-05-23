@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   FileText,
+  LayoutGrid,
   Mail,
   Pencil,
   Plus,
@@ -50,6 +51,7 @@ import {
   previewReportHistory,
   previewReportHtml,
   previewSeguimientoTemplate,
+  regenerateBuilderPdf,
   updateReport,
   type Report,
   type ReportHistoryItem,
@@ -68,6 +70,10 @@ import {
   type ScheduledReportType,
 } from "@/lib/api/scheduled-reports";
 import { type Area, listAreasByProject } from "@/lib/api/areas";
+import {
+  listBuilderTemplates,
+  type ReportBuilderTemplate,
+} from "@/lib/api/report-builder";
 import { cn } from "@/lib/cn";
 
 function fmtDate(iso: string | null | undefined): string {
@@ -95,16 +101,20 @@ function GeneratorBadge({ generator }: { generator: Report["generator"] }) {
   if (generator === "avance") return <Badge variant="info">Avance</Badge>;
   if (generator === "seguimiento")
     return <Badge variant="info">Seguimiento</Badge>;
+  if (generator === "builder")
+    return <Badge variant="accent">Builder</Badge>;
   return null;
 }
 
-// ENH-055: 3-vista toggle (Catálogo / Historial / Creación) con hash en URL.
-type ReportsView = "catalog" | "history" | "create";
+// ENH-055: toggle de vistas con hash en URL.
+// US-141: añade "builder" para listar reportes generados desde el
+// Report Builder (`generator='builder'`) con acción "Regenerar PDF".
+type ReportsView = "catalog" | "history" | "builder" | "create";
 
 function parseViewHash(): ReportsView {
   if (typeof window === "undefined") return "catalog";
   const h = (window.location.hash || "").replace(/^#/, "").toLowerCase();
-  if (h === "history" || h === "create") return h;
+  if (h === "history" || h === "create" || h === "builder") return h;
   return "catalog";
 }
 
@@ -211,8 +221,19 @@ function ReportsInner() {
         {/* US-109 (rework): CTA principal hacia el panel de creación con
             tweaker IA. El destino `/reports/tweak` (sin query) muestra el
             panel inicial con los 2 modos: "Generar nuevo reporte" vs
-            "Generar con base en plantilla". */}
+            "Generar con base en plantilla".
+            US-135 (Sprint 30): segundo CTA hacia el Report Builder canvas
+            (EP020). Chip "Nuevo" para señalar funcionalidad reciente. */}
         <div className="flex items-center gap-2">
+          <Link href={`/pmo/projects/${id}/reports/builder`}>
+            <Button variant="secondary">
+              <LayoutGrid className="h-4 w-4" aria-hidden />
+              Report Builder
+              <Badge className="ml-1 bg-violet-100 text-[10px] text-violet-700">
+                Nuevo
+              </Badge>
+            </Button>
+          </Link>
           <Link href={`/pmo/projects/${id}/reports/tweak`}>
             <Button>
               <Sparkles className="h-4 w-4" aria-hidden /> Crear reporte (IA + plantilla)
@@ -234,6 +255,7 @@ function ReportsInner() {
           [
             { v: "catalog" as const, label: "Catálogo" },
             { v: "history" as const, label: "Historial" },
+            { v: "builder" as const, label: "Builder" },
             { v: "create" as const, label: "Creación" },
           ]
         ).map((opt) => {
@@ -260,6 +282,8 @@ function ReportsInner() {
 
       {view === "history" ? (
         <ReportHistoryView projectId={id} />
+      ) : view === "builder" ? (
+        <ReportBuilderView projectId={id} />
       ) : view === "create" ? (
         <ReportCreateAIView projectId={id} />
       ) : (
@@ -511,6 +535,8 @@ function ScheduledReportForm({
   const [dayOfMonth, setDayOfMonth] = useState<number>(1);
   const [runAtDate, setRunAtDate] = useState<string>(""); // YYYY-MM-DD
   const [runAtTime, setRunAtTime] = useState<string>("09:00"); // HH:MM
+  // ENH-114: plantilla del builder cuando report_type='custom'.
+  const [builderTemplateId, setBuilderTemplateId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -524,6 +550,7 @@ function ScheduledReportForm({
       setDayOfWeek(existing.day_of_week ?? 0);
       setHourOfDay(existing.hour_of_day ?? 9);
       setDayOfMonth(existing.day_of_month ?? 1);
+      setBuilderTemplateId(existing.report_builder_template_id ?? null);
       if (existing.run_at) {
         const d = new Date(existing.run_at);
         setRunAtDate(d.toISOString().slice(0, 10));
@@ -544,6 +571,7 @@ function ScheduledReportForm({
       setDayOfMonth(1);
       setRunAtDate("");
       setRunAtTime("09:00");
+      setBuilderTemplateId(null);
     }
     setError(null);
   }, [open, existing]);
@@ -598,6 +626,16 @@ function ScheduledReportForm({
         cadenceFields.run_at = iso;
       }
 
+      // ENH-114: validar selección de plantilla del builder.
+      if (reportType === "custom" && !builderTemplateId) {
+        setError("Selecciona la plantilla del builder a programar");
+        setSaving(false);
+        return;
+      }
+      const builderField =
+        reportType === "custom"
+          ? { report_builder_template_id: builderTemplateId }
+          : {};
       if (existing) {
         await updateScheduledReport(existing.id, {
           report_type: reportType,
@@ -605,6 +643,7 @@ function ScheduledReportForm({
           recipients: list,
           enabled,
           ...cadenceFields,
+          ...builderField,
         });
       } else {
         await createScheduledReport(projectId, {
@@ -613,6 +652,7 @@ function ScheduledReportForm({
           recipients: list,
           enabled,
           ...cadenceFields,
+          ...builderField,
         });
       }
       onSaved();
@@ -646,8 +686,18 @@ function ScheduledReportForm({
           >
             <option value="avance">Reporte de Avance</option>
             <option value="seguimiento">Reporte de Seguimiento</option>
+            <option value="custom">Plantilla del Builder</option>
           </Select>
         </div>
+        {/* ENH-114: cuando es 'custom', el usuario debe elegir una
+            plantilla del Report Builder (US-131 backend ya lo acepta). */}
+        {reportType === "custom" && (
+          <BuilderTemplatePicker
+            projectId={projectId}
+            value={builderTemplateId}
+            onChange={setBuilderTemplateId}
+          />
+        )}
         <div>
           <label
             htmlFor="sched-cadence"
@@ -2673,5 +2723,198 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
       </section>
     </div>
     </div>
+  );
+}
+
+// ENH-114 — picker de plantillas del Report Builder para el form de
+// suscripciones (cuando report_type='custom').
+function BuilderTemplatePicker({
+  projectId,
+  value,
+  onChange,
+}: {
+  projectId: string;
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const [tpls, setTpls] = useState<ReportBuilderTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    listBuilderTemplates({})
+      .then((all) => {
+        if (cancelled) return;
+        // Mostrar seeds + propias + del proyecto activo.
+        setTpls(
+          all.filter(
+            (t) =>
+              t.is_seed ||
+              t.visibility === "private" ||
+              (t.visibility === "project" && t.project_id === projectId),
+          ),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  return (
+    <div>
+      <label
+        htmlFor="sched-builder-tpl"
+        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+      >
+        Plantilla del Builder
+      </label>
+      <Select
+        id="sched-builder-tpl"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        disabled={loading || tpls.length === 0}
+      >
+        <option value="">
+          {loading
+            ? "Cargando…"
+            : tpls.length === 0
+              ? "Sin plantillas disponibles"
+              : "Selecciona plantilla…"}
+        </option>
+        {tpls.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name} {t.is_seed ? "(seed)" : ""} · L{t.level}
+          </option>
+        ))}
+      </Select>
+      {!loading && tpls.length === 0 && (
+        <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+          Abre el Report Builder y guarda una plantilla antes de programar.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// US-141 — vista Builder: lista solo reportes generados desde el Report
+// Builder (generator='builder') con acción "Regenerar PDF" desde
+// snapshot (US-140).
+function ReportBuilderView({ projectId }: { projectId: string }) {
+  const [rows, setRows] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listReports(projectId)
+      .then((all) => {
+        if (cancelled) return;
+        setRows(all.filter((r) => r.generator === "builder"));
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(
+            err instanceof ApiError ? err.message : "Error al cargar reportes",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  async function regenerate(reportId: string) {
+    setRegeneratingId(reportId);
+    try {
+      const blob = await regenerateBuilderPdf(reportId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-${reportId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al regenerar PDF");
+    } finally {
+      setRegeneratingId(null);
+    }
+  }
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
+      <header className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            Reportes del Builder
+          </h2>
+          <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+            Cada export desde `/reports/builder` o cada ejecución de
+            una suscripción custom (US-131) queda registrado aquí. El
+            PDF se regenera desde el snapshot HTML — el contenido se
+            preserva aunque la data del proyecto cambie después.
+          </p>
+        </div>
+        <Link
+          href={`/pmo/projects/${projectId}/reports/builder`}
+          className="text-xs text-[var(--text-secondary)] hover:underline"
+        >
+          Abrir builder →
+        </Link>
+      </header>
+
+      {error && <Banner variant="danger">{error}</Banner>}
+
+      {loading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] p-6 text-center text-sm text-[var(--text-tertiary)]">
+          Sin reportes generados aún. Abre el Report Builder, configura
+          tu plantilla y descarga el PDF para que aparezca aquí.
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--border-subtle)]">
+          {rows.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center justify-between gap-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                  {r.title}
+                </p>
+                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                  <Badge variant="accent">Builder</Badge>
+                  <span>{r.cut_off_date ?? "—"}</span>
+                  <span>·</span>
+                  <span>{new Date(r.created_at).toLocaleString("es-MX")}</span>
+                  {r.status === "sent" && (
+                    <Badge variant="success">Enviado</Badge>
+                  )}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => regenerate(r.id)}
+                loading={regeneratingId === r.id}
+                disabled={!!regeneratingId}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" /> Regenerar PDF
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

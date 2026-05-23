@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, FolderKanban, Network, TrendingUp } from "lucide-react";
+import { AlertTriangle, FileText, FolderKanban, Network, TrendingUp } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 import { ApiError } from "@/lib/api";
 import { getProgramSummary, type ProgramSummary } from "@/lib/api/organizations";
+
+type ProgramTab = "overview" | "reports";
 
 function Donut({ green, yellow, red }: { green: number; yellow: number; red: number }) {
   const total = green + yellow + red;
@@ -82,6 +85,9 @@ export default function ProgramSummaryPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const ctx = searchParams.get("ctx") === "admin" ? "admin" : "pmo";
+  // US-137: tabs "Resumen" | "Reportes" via ?tab=.
+  const activeTab: ProgramTab =
+    searchParams.get("tab") === "reports" ? "reports" : "overview";
   const orgHref = (orgId: string) =>
     ctx === "admin" ? `/admin/organizations/${orgId}` : `/pmo/organizations/${orgId}`;
   const portfolioHref = ctx === "admin" ? "/admin" : "/pmo";
@@ -172,6 +178,51 @@ export default function ProgramSummaryPage() {
         </div>
       </header>
 
+      {/* US-137: tabs Resumen / Reportes */}
+      <div
+        role="tablist"
+        aria-label="Vistas del programa"
+        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+      >
+        {(
+          [
+            { v: "overview" as const, label: "Resumen", icon: <Network className="h-3.5 w-3.5" aria-hidden /> },
+            { v: "reports" as const, label: "Reportes", icon: <FileText className="h-3.5 w-3.5" aria-hidden /> },
+          ]
+        ).map((opt) => {
+          const active = activeTab === opt.v;
+          const sp = new URLSearchParams(searchParams.toString());
+          if (opt.v === "overview") sp.delete("tab");
+          else sp.set("tab", "reports");
+          const href = `/pmo/programs/${params.id}${sp.toString() ? `?${sp.toString()}` : ""}`;
+          return (
+            <Link
+              key={opt.v}
+              href={href}
+              role="tab"
+              aria-selected={active}
+              className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors ${
+                active
+                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]"
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {activeTab === "reports" ? (
+        <section className="space-y-3">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Plantillas Nivel 2 aplicadas con scope filtrado a este programa.
+          </p>
+          <ScopedReportsPanel scope={{ kind: "program", id: params.id }} />
+        </section>
+      ) : (
+        <>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Proyectos" value={data.project_total} />
         <StatCard label="Activos" value={data.project_active} />
@@ -319,6 +370,8 @@ export default function ProgramSummaryPage() {
           </table>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

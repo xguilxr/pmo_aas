@@ -121,6 +121,46 @@ async def list_reports(
     return [ReportRead.model_validate(r) for r in rows]
 
 
+@router.post("/reports/{report_id}/regenerate-pdf")
+async def regenerate_builder_pdf(
+    report_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-140 — regenera el PDF de un reporte builder desde su snapshot.
+
+    Para reports con `generator='builder'`, el HTML completo se guarda
+    en `html_content` al momento del export. Esta ruta lo lee y
+    convierte a PDF on-demand sin re-correr el motor, lo cual mantiene
+    fidelidad temporal (el reporte se ve igual aunque la data del
+    proyecto cambie después).
+    """
+    from fastapi import Response
+
+    from app.services.pdf_renderer import html_to_pdf
+
+    tenant_id = _tenant(cu)
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(report_id),
+                Report.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte")
+    if rep.generator != "builder" or not rep.html_content:
+        from app.core.errors import business_rule
+
+        raise business_rule(
+            "Este reporte no fue generado por el Report Builder o no "
+            "tiene snapshot HTML"
+        )
+    pdf_bytes = html_to_pdf(rep.html_content)
+    return Response(content=pdf_bytes, media_type="application/pdf")
+
+
 @router.post(
     "/projects/{project_id}/reports",
     response_model=ReportRead,

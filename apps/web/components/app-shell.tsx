@@ -11,6 +11,7 @@ import {
   FolderKanban,
   GitPullRequest,
   LayoutDashboard,
+  LayoutGrid,
   Menu,
   MessageSquare,
   Network,
@@ -42,6 +43,9 @@ type NavItem = {
   href?: string;
   match?: (path: string) => boolean;
   children?: NavItem[];
+  // US-138: oculta el item del sidebar si el user no es admin / PMO del
+  // tenant. Aplicado en `NavTree` con la prop `adminVisible`.
+  adminOnly?: boolean;
 };
 
 // US-052: sidebar top-nav extendido con vistas cross-tenant. El orden
@@ -105,8 +109,28 @@ const TOP_NAV: NavItem[] = [
         id: "reports",
         label: "Reportes",
         icon: <FileText className="h-4 w-4" aria-hidden />,
-        href: "/pmo/reports",
         match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
+        children: [
+          {
+            id: "reports-operational",
+            label: "Operacionales",
+            icon: <FileText className="h-4 w-4" aria-hidden />,
+            href: "/pmo/reports",
+            match: (p) =>
+              p === "/pmo/reports" ||
+              (p.startsWith("/pmo/reports/") && !p.startsWith("/pmo/reports/portfolio")),
+          },
+          {
+            // US-138: Builder de portafolio Nivel 1, visible solo para
+            // admin / PMO. El gate de la página también lo aplica.
+            id: "reports-portfolio",
+            label: "Builder Portafolio",
+            icon: <LayoutGrid className="h-4 w-4" aria-hidden />,
+            href: "/pmo/reports/portfolio",
+            match: (p) => p.startsWith("/pmo/reports/portfolio"),
+            adminOnly: true,
+          },
+        ],
       },
     ],
   },
@@ -244,6 +268,7 @@ function NavTree({
   expanded,
   toggle,
   depth = 0,
+  adminVisible = false,
 }: {
   items: NavItem[];
   pathname: string;
@@ -251,10 +276,13 @@ function NavTree({
   expanded: Set<string>;
   toggle: (id: string) => void;
   depth?: number;
+  adminVisible?: boolean;
 }) {
+  // US-138: filtra items con `adminOnly` cuando el user no es admin / PMO.
+  const visibleItems = items.filter((it) => !it.adminOnly || adminVisible);
   return (
     <ul className={cn("space-y-0.5", depth > 0 && "mt-0.5")}>
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const hasChildren = !!item.children?.length;
         const isOpen = hasChildren && expanded.has(item.id);
         const active = item.match?.(pathname) ?? false;
@@ -311,6 +339,7 @@ function NavTree({
                 expanded={expanded}
                 toggle={toggle}
                 depth={depth + 1}
+                adminVisible={adminVisible}
               />
             ) : null}
           </li>
@@ -429,6 +458,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               onNavigate={close}
               expanded={expanded}
               toggle={toggle}
+              adminVisible={adminVisible}
             />
           ) : null}
           {orgTreeVisible ? (
