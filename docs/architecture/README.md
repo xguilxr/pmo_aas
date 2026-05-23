@@ -11,7 +11,8 @@
 | 3 | [`security-multitenant.md`](./security-multitenant.md) | JWT, tenancy, RBAC, superadmin |
 | 4 | [`deployment-railway.md`](./deployment-railway.md) | Infra Railway, variables, CI/CD, dominios |
 | 5 | [`api-conventions.md`](./api-conventions.md) | REST, errores, paginación, versionado |
-| 6 | Este archivo | C4 diagrams (contexto + contenedores) |
+| 6 | [`navigation.md`](./navigation.md) | Árbol de navegación web, páginas, flujos, huérfanas |
+| 7 | Este archivo | C4 diagrams (contexto + contenedores) |
 
 ---
 
@@ -35,8 +36,11 @@ flowchart TB
     ADMIN --> PMO
     SUPER --> PMO
     PMO --> STAKE
-    PMO -->|genera minutas/reportes| OLLAMA
-    PMO -.->|fallback| CLAUDE
+    GROQ["Groq API<br/>(IA modo platform)"]
+
+    PMO -->|modo platform| GROQ
+    PMO -.->|modo byo| OLLAMA
+    PMO -.->|modo byo (premium)| CLAUDE
     PMO --> SMTP
     MSP --> PMO
 ```
@@ -51,15 +55,16 @@ flowchart TB
 
     subgraph Railway
         API["FastAPI API<br/>(Python 3.12)"]
-        WORKER["BullMQ Worker<br/>(Node / Python)"]
+        WORKER["Celery Worker<br/>(Python 3.12)"]
         DB[("PostgreSQL 16<br/>+ RLS")]
         REDIS[("Redis 7<br/>sesiones + colas")]
         STORAGE["Railway Volume<br/>(uploads/tenants)"]
     end
 
     subgraph AI
-        OLLAMA["Ollama<br/>(Qwen 2.5 7B)"]
-        CLAUDE["Claude API"]
+        GROQ["Groq API<br/>(platform default)"]
+        OLLAMA["Ollama<br/>(byo, Qwen 2.5)"]
+        CLAUDE["Claude / Gemini<br/>(byo)"]
     end
 
     WEB -->|HTTPS JWT| API
@@ -69,8 +74,9 @@ flowchart TB
     API -->|enqueue| REDIS
     WORKER -->|dequeue| REDIS
     WORKER --> DB
-    WORKER --> OLLAMA
-    WORKER -.->|fallback| CLAUDE
+    WORKER -->|platform| GROQ
+    WORKER -.->|byo| OLLAMA
+    WORKER -.->|byo| CLAUDE
     WORKER -->|SMTP| SMTP["Resend / SES"]
 ```
 
@@ -124,7 +130,7 @@ sequenceDiagram
     participant A as FastAPI
     participant Q as Redis Queue
     participant WK as Worker
-    participant O as Ollama
+    participant P as IA Provider<br/>(Groq / Ollama / …)
 
     PM->>W: sube transcripción .txt
     W->>A: POST /ai/minutes (file + project_id)
@@ -134,12 +140,38 @@ sequenceDiagram
     W-->>PM: "Generando… (~60s)"
     WK->>Q: dequeue
     WK->>WK: chunk(text, 3000 tokens)
-    WK->>O: POST /api/generate (prompt)
-    O-->>WK: JSON estructurado
+    WK->>P: completions (prompt)
+    P-->>WK: JSON estructurado
     WK->>A: PUT /ai/minutes/{id}/result
     A-->>W: webhook / polling
     W-->>PM: render minuta editable
 ```
+
+## Estructura del frontend (Next.js App Router)
+
+```mermaid
+flowchart TB
+    ROOT["app/<br/>(root layout)"]
+    PUB["Públicas<br/>/login, /forgot-password, /reset,<br/>/change-password, /approve/[token]"]
+    APP["(app)/<br/>layout autenticado<br/>+ AppShell (sidebar + topbar)"]
+
+    DASH["/dashboard<br/>/account<br/>/notifications"]
+    PMO["/pmo/**<br/>portal de proyectos"]
+    ADMIN["/admin/**<br/>admin del tenant"]
+    SUPER["/superadmin/**<br/>admin de plataforma"]
+
+    ROOT --> PUB
+    ROOT --> APP
+    APP --> DASH
+    APP --> PMO
+    APP --> ADMIN
+    APP --> SUPER
+```
+
+> El detalle de cada subárbol, sus páginas, flujos y huérfanas vive en
+> [`navigation.md`](./navigation.md).
+
+---
 
 ## Decisiones transversales
 
