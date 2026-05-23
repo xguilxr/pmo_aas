@@ -71,9 +71,12 @@ export default function MinutesPage() {
       loading={loading}
       error={error}
       headerExtras={
-        // ENH-117 + US-142: un solo botón "Generar Minuta" → minutes/new.
-        // US-142 reemplazará el target ai-minutes/new por minutes/new.
-        <Link href={`/pmo/projects/${id}/ai-minutes/new`} title="Genera una minuta nueva desde transcript, minuta existente, o llenado manual.">
+        // ENH-117 + US-142: un solo botón "Generar Minuta" → minutes/new
+        // (generador unificado con 3 modos: transcript / minuta / manual).
+        <Link
+          href={`/pmo/projects/${id}/minutes/new`}
+          title="Genera una minuta nueva desde transcript, minuta existente, o llenado manual."
+        >
           <Button>
             <Sparkles className="h-4 w-4" aria-hidden /> Generar Minuta
           </Button>

@@ -42,19 +42,57 @@ export type DispatchResult = {
   status: AIJobStatus;
 };
 
+// US-143 — generador unificado: 3 source_types.
+// - `manual` retorna {minute_id, status:"saved", folio} sincrónico (no dispatch).
+// - `transcript|minute` retornan {job_id, status:"queued"} (dispatch async).
+export type MinuteSourceType = "transcript" | "minute" | "manual";
+
+export type ManualSaveResult = {
+  minute_id: string;
+  status: "saved";
+  folio: string;
+};
+
+export type ManualMinuteData = {
+  header?: {
+    title?: string | null;
+    date?: string | null;
+    time?: string | null;
+    duration?: string | null;
+    modality?: string | null;
+    location?: string | null;
+    facilitator?: string | null;
+  };
+  participants?: {
+    attendees?: { name: string; role?: string; area?: string }[];
+    absent_justified?: { name: string; role?: string; area?: string }[];
+    absent_unjustified?: { name: string; role?: string; area?: string }[];
+  };
+  summary?: string;
+  topics?: { title: string; bullets?: string[]; notes?: string }[];
+  agreements?: { description: string; owner?: string; due_date?: string }[];
+  raid?: unknown[];
+  free_notes?: string | null;
+};
+
 /**
- * US-051: dispatch a Celery. Devuelve 202 con {job_id, status}.
- * La UI debe hacer polling con `pollAIJob` (o el hook `useAIJobPolling`)
- * hasta status=succeeded|failed.
+ * US-051 + US-143: dispatch a Celery (transcript/minute) o persiste directo
+ * (manual). El frontend discrimina por `body.status`/`body.job_id` en la
+ * respuesta.
  */
 export function generateMinute(body: {
   project_id: string;
-  transcript: string;
+  source_type?: MinuteSourceType;
+  transcript?: string;
+  structured_data?: ManualMinuteData;
   language?: string;
   save_as_minute?: boolean;
   title?: string;
-}): Promise<DispatchResult> {
-  return apiFetch<DispatchResult>("/api/v1/ai/minutes", { method: "POST", body });
+}): Promise<DispatchResult | ManualSaveResult> {
+  return apiFetch<DispatchResult | ManualSaveResult>(
+    "/api/v1/ai/minutes",
+    { method: "POST", body },
+  );
 }
 
 export type AIJobRead = {
