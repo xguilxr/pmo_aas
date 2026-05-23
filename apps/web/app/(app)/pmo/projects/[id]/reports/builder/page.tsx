@@ -11,7 +11,7 @@
  * Autosave cada 30 s.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, Calendar, Download, Loader2, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
 
@@ -79,6 +79,9 @@ function saveDraft(projectId: string, d: DraftShape) {
 export default function ReportBuilderPage() {
   const params = useParams<{ id: string }>();
   const projectId = params?.id ?? "";
+  // ENH-125: ?template_id=X carga una plantilla existente al entrar.
+  const searchParams = useSearchParams();
+  const initialTemplateId = searchParams?.get("template_id") ?? null;
 
   const [catalog, setCatalog] = useState<ReportSection[]>([]);
   const [templates, setTemplates] = useState<ReportBuilderTemplate[]>([]);
@@ -87,6 +90,11 @@ export default function ReportBuilderPage() {
   const [codes, setCodes] = useState<string[]>([]);
   const [compositionMode, setCompositionMode] = useState<"A" | "B">("A");
   const [windowDays, setWindowDays] = useState<number>(14);
+  // US-148: ventana = value + unit (UI). Internamente sigue siendo
+  // windowDays (int) — el motor de US-123 trabaja en días. La conversión
+  // se hace al cambiar unit o value.
+  const [windowValue, setWindowValue] = useState<number>(2);
+  const [windowUnit, setWindowUnit] = useState<"days" | "weeks" | "months">("weeks");
   const [cutOff, setCutOff] = useState<string>(() =>
     new Date().toISOString().slice(0, 10)
   );
@@ -121,6 +129,15 @@ export default function ReportBuilderPage() {
         if (cancelled) return;
         setCatalog(sec);
         setTemplates(tpls);
+        // ENH-125: si vino ?template_id=X en la URL, cargar esa plantilla
+        // directamente. Útil cuando el PM hace click en "Editar" desde
+        // el listado de plantillas en /reports.
+        if (initialTemplateId) {
+          const found = tpls.find((t) => t.id === initialTemplateId);
+          if (found) {
+            loadTemplateIntoCanvas(found);
+          }
+        }
       } finally {
         if (!cancelled) setLoadingCatalog(false);
       }
@@ -128,7 +145,8 @@ export default function ReportBuilderPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTemplateId]);
 
   // 2) Hidratar canvas desde draft local
   useEffect(() => {
@@ -197,9 +215,24 @@ export default function ReportBuilderPage() {
     (tpl: ReportBuilderTemplate) => {
       setCodes(tpl.section_codes);
       setCompositionMode(tpl.composition_mode);
-      setParamsByCode((tpl.default_parameters as Record<string, SectionParams>) ?? {});
+      const params = (tpl.default_parameters as Record<string, SectionParams>) ?? {};
+      setParamsByCode(params);
       setLoadedTemplateId(tpl.is_seed ? null : tpl.id);
       setSelectedCode(null);
+      // US-148: si la plantilla persistió ventana de tiempo en
+      // `_template`, restaurarla en el header.
+      const tmplMeta = (params as Record<string, unknown>)._template as
+        | { window_days?: number; window_value?: number; window_unit?: string }
+        | undefined;
+      if (tmplMeta?.window_days && Number.isFinite(tmplMeta.window_days)) {
+        setWindowDays(tmplMeta.window_days);
+      }
+      if (tmplMeta?.window_value && Number.isFinite(tmplMeta.window_value)) {
+        setWindowValue(tmplMeta.window_value);
+      }
+      if (tmplMeta?.window_unit === "days" || tmplMeta?.window_unit === "weeks" || tmplMeta?.window_unit === "months") {
+        setWindowUnit(tmplMeta.window_unit);
+      }
     },
     []
   );
@@ -348,16 +381,35 @@ export default function ReportBuilderPage() {
               className="ml-1 h-8 rounded border border-zinc-300 px-2 text-xs"
             />
           </label>
-          <label className="text-xs text-zinc-600">
+          <label className="flex items-center gap-1 text-xs text-zinc-600">
             Ventana
             <input
               type="number"
               min={1}
-              max={365}
-              value={windowDays}
-              onChange={(e) => setWindowDays(Number(e.target.value) || 14)}
-              className="ml-1 h-8 w-16 rounded border border-zinc-300 px-2 text-xs"
+              max={52}
+              value={windowValue}
+              onChange={(e) => {
+                const v = Math.max(1, Number(e.target.value) || 2);
+                setWindowValue(v);
+                const mult = { days: 1, weeks: 7, months: 30 }[windowUnit];
+                setWindowDays(v * mult);
+              }}
+              className="h-8 w-14 rounded border border-zinc-300 px-2 text-xs"
             />
+            <Select
+              value={windowUnit}
+              onChange={(e) => {
+                const unit = e.target.value as "days" | "weeks" | "months";
+                setWindowUnit(unit);
+                const mult = { days: 1, weeks: 7, months: 30 }[unit];
+                setWindowDays(windowValue * mult);
+              }}
+              className="h-8 w-auto text-xs"
+            >
+              <option value="days">días</option>
+              <option value="weeks">semanas</option>
+              <option value="months">mes</option>
+            </Select>
           </label>
           <Button
             variant="ghost"
@@ -503,7 +555,16 @@ export default function ReportBuilderPage() {
           level: 4,
           composition_mode: compositionMode,
           section_codes: codes,
-          default_parameters: paramsByCode,
+          // US-148: persistir ventana de tiempo en `default_parameters._template`
+          // (bucket reservado para metadata global de la plantilla — sin migración).
+          default_parameters: {
+            ...paramsByCode,
+            _template: {
+              window_days: windowDays,
+              window_value: windowValue,
+              window_unit: windowUnit,
+            },
+          },
           project_id: projectId,
         }}
         onSaved={async (id) => {
