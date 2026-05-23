@@ -136,37 +136,37 @@ La app expone cinco superficies de navegación. Todas viven en
 
 ```mermaid
 flowchart LR
-    subgraph "TOP_NAV (todos)"
-        N1[Dashboard /dashboard]
-        N2[Solicitudes /pmo/requests]
-        N3[Proyectos /pmo/projects]
-        N4[Módulos]
-        N4 --> N4a[RAID /pmo/raid]
-        N4 --> N4b[Cambios /pmo/changes]
-        N4 --> N4c[Minutas /pmo/minutes]
-        N4 --> N4d[Reportes /pmo/reports]
-        N4 --> N4e[Portfolio /pmo/reports/portfolio<br/>admin-only]
+    subgraph TOP_NAV ["TOP_NAV - todos"]
+        N1["Dashboard<br/>/dashboard"]
+        N2["Solicitudes<br/>/pmo/requests"]
+        N3["Proyectos<br/>/pmo/projects"]
+        N4["Módulos"]
+        N4 --> N4a["RAID<br/>/pmo/raid"]
+        N4 --> N4b["Cambios<br/>/pmo/changes"]
+        N4 --> N4c["Minutas<br/>/pmo/minutes"]
+        N4 --> N4d["Reportes<br/>/pmo/reports"]
+        N4 --> N4e["Portfolio<br/>/pmo/reports/portfolio<br/>(admin-only)"]
     end
 
-    subgraph "ADMIN_NAV (admin)"
-        A0[/admin]
-        A1[/admin/tenant]
-        A2[/admin/ai]
-        A3[/admin/organizations]
-        A4[/admin/users]
-        A5[/admin/permissions]
-        A6[/admin/audit-logs]
+    subgraph ADMIN_NAV ["ADMIN_NAV - admin"]
+        A0["/admin"]
+        A1["/admin/tenant"]
+        A2["/admin/ai"]
+        A3["/admin/organizations"]
+        A4["/admin/users"]
+        A5["/admin/permissions"]
+        A6["/admin/audit-logs"]
     end
 
-    subgraph "SUPERADMIN_NAV (is_superadmin)"
-        S1[/superadmin]
-        S2[/superadmin/tenants]
-        S3[/superadmin/users]
-        S4[/superadmin/ai]
-        S5[/superadmin/logs]
+    subgraph SUPER_NAV ["SUPERADMIN_NAV - is_superadmin"]
+        S1["/superadmin"]
+        S2["/superadmin/tenants"]
+        S3["/superadmin/users"]
+        S4["/superadmin/ai"]
+        S5["/superadmin/logs"]
     end
 
-    TREE[OrgTreeNav<br/>orgs → programas → proyectos]
+    TREE["OrgTreeNav<br/>orgs → programas → proyectos"]
 ```
 
 ### 2.2 Tabs de proyecto
@@ -324,21 +324,21 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    A[/pmo/requests/new] --> B[/pmo/requests/[id]]
-    B -->|aprobar| C[/pmo/projects/[newId]/charter?created=1]
-    C --> D[Hub /pmo/projects/[newId]]
+    A["/pmo/requests/new"] --> B["/pmo/requests/[id]"]
+    B -->|aprobar| C["/pmo/projects/[newId]/charter?created=1"]
+    C --> D["Hub /pmo/projects/[newId]"]
 ```
 
 ### 4.3 Drill-down portafolio → tarea
 
 ```mermaid
 flowchart LR
-    A[/pmo] --> B[/pmo/organizations/[id]]
-    B --> C[/pmo/programs/[id]]
-    C --> D[/pmo/projects/[id]]
-    D -->|tab Plan| E[/plan]
-    E -->|botón| F[/tasks]
-    F -->|botón| G[/gantt]
+    A["/pmo"] --> B["/pmo/organizations/[id]"]
+    B --> C["/pmo/programs/[id]"]
+    C --> D["/pmo/projects/[id]"]
+    D -->|tab Plan| E["/plan"]
+    E -->|botón| F["/tasks"]
+    F -->|botón| G["/gantt"]
 ```
 
 Alternativa: el sidebar tiene `OrgTreeNav` que permite saltar de `/dashboard` directamente a cualquier `/pmo/projects/[id]` sin pasar por la landing.
@@ -347,30 +347,30 @@ Alternativa: el sidebar tiene `OrgTreeNav` que permite saltar de `/dashboard` di
 
 ```mermaid
 flowchart LR
-    A[Hub /pmo/projects/[id]] --> B[Tab Minutas]
-    B --> C[/minutes]
-    C -->|botón "Generar con IA"| D[/ai-minutes/new]
-    D -->|upload transcript| E[Job 202 Accepted]
-    E -->|polling| F[/minutes/[minuteId]]
+    A["Hub /pmo/projects/[id]"] --> B["Tab Minutas"]
+    B --> C["/minutes"]
+    C -->|botón Generar con IA| D["/ai-minutes/new"]
+    D -->|upload transcript| E["Job 202 Accepted"]
+    E -->|polling| F["/minutes/[minuteId]"]
 ```
 
 ### 4.5 Reporte ejecutivo
 
 ```mermaid
 flowchart LR
-    A[Tab Reportes] --> B[/reports]
-    B -->|"Nuevo"| C[/reports/builder]
-    C -->|generar| D[Reporte guardado en /reports]
-    D -->|"Ajustar"| E[/reports/tweak]
+    A["Tab Reportes"] --> B["/reports"]
+    B -->|Nuevo| C["/reports/builder"]
+    C -->|generar| D["Reporte guardado en /reports"]
+    D -->|Ajustar| E["/reports/tweak"]
 ```
 
 ### 4.6 Cambio de tenant (multi-tenant user)
 
 ```mermaid
 flowchart LR
-    A[UserMenu] --> B[Selector de tenant]
-    B -->|POST /auth/switch-tenant| C[nuevo JWT + reload]
-    C --> D[/dashboard del tenant elegido]
+    A["UserMenu"] --> B["Selector de tenant"]
+    B -->|POST /auth/switch-tenant| C["nuevo JWT + reload"]
+    C --> D["/dashboard del tenant elegido"]
 ```
 
 ---

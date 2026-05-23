@@ -40,7 +40,7 @@ flowchart TB
 
     PMO -->|modo platform| GROQ
     PMO -.->|modo byo| OLLAMA
-    PMO -.->|modo byo (premium)| CLAUDE
+    PMO -.->|modo byo premium| CLAUDE
     PMO --> SMTP
     MSP --> PMO
 ```
