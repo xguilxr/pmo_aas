@@ -120,11 +120,11 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 **Criterios de aceptación:**
 - [ ] Campos obligatorios: `full_name`, `username`, `email`, `password`, `role_ids[]`.
 - [ ] `username` y `email` deben ser únicos por tenant (`citext`).
-- [ ] `password` cumple política: min 12 chars, 1 mayúscula, 1 número, 1 símbolo.
+- [x] `password` cumple política (`core/security.py:validate_password_policy`): **min 8 chars**, 1 mayúscula, 1 dígito, 1 símbolo (set fijo). Sin requisito de lowercase ni blocklist de comunes (la política agresiva mencionada en docs viejos quedó como deuda).
 - [ ] Hash `bcrypt rounds=12` al guardar.
 - [ ] Response no expone `password_hash`.
 - [ ] Crear registro `audit_log` con `action='user.create'`.
-- [ ] Endpoint: `POST /api/v1/admin/users` (permiso `admin.users:create`).
+- [ ] Endpoint: `POST /api/v1/admin/users` (capability `users.manage`, ver DEC-024).
 - [ ] Al crear, retorna `201 Created` con el `UserOut`.
 
 **Test Cases:**

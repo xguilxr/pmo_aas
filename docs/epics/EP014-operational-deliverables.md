@@ -81,7 +81,7 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 - [ ] Devuelve PDF directamente (content-type `application/pdf`, filename `Reporte_Avance_{folio}_{YYYY-MM-DD}.pdf`).
 - [ ] Guarda copia en `documents` con `category='report'` + referencia al `reports` row (metadata: tipo `avance`, cut_off).
 - [ ] Endpoint `GET /api/v1/reports/{id}/avance/download` para re-descargar versión histórica.
-- [ ] UI en `/admin/projects/{id}?tab=reports`:
+- [ ] UI en `/pmo/projects/{id}?tab=reports`:
   - Botón "Generar Reporte de Avance" (nuevo) — sin IA, sin edición.
   - Al generar, descarga automática + row nuevo en listado con badge "Avance".
 
@@ -199,7 +199,7 @@ Notas adicionales
 
 **Frontend:**
 - `lib/api/modules.ts::exportMinute(id, format)` usa `fetch` + Blob.
-- Tabla de minutas en `/admin/projects/[id]/minutes` gana columna "Exportar" con 4 botones (PDF / DOCX / MD / TXT) que descargan directo.
+- Tabla de minutas en `/pmo/projects/[id]/minutes` gana columna "Exportar" con 4 botones (PDF / DOCX / MD / TXT) que descargan directo.
 
 **Tests (7/7 verdes, 186 en total):**
 - `test_usnew040_export_md_contains_sections` — 5 separadores `========`, "Resumen e Hitos", "RAID", "Notas adicionales", acciones agrupadas.
@@ -227,7 +227,7 @@ Seguimiento a una lista de emails con cadencia diaria/semanal/mensual
   (JSON), enabled, last_run_at, next_run_at.
 - [x] CRUD endpoints: `GET|POST /api/v1/projects/{id}/scheduled-reports`
   + `PATCH|DELETE /api/v1/scheduled-reports/{id}`.
-- [x] UI en `/admin/projects/{id}/reports`: sección "Envíos automáticos
+- [x] UI en `/pmo/projects/{id}/reports`: sección "Envíos automáticos
   programados" con add/edit/toggle/delete modal.
 - [x] Celery beat schedule cada 5 min (`scheduled_reports.dispatch_due`)
   que busca filas `enabled=true AND next_run_at <= now()` y encola una
@@ -254,7 +254,7 @@ Seguimiento a una lista de emails con cadencia diaria/semanal/mensual
   para múltiples destinatarios (`to: list[str]`) y `attachments`.
 - `app/workers/celery_app.py` — include + beat schedule cada 5 min.
 - Frontend: `apps/web/lib/api/scheduled-reports.ts` + sección
-  `ScheduledReportsSection` en `/admin/projects/[id]/reports/page.tsx`.
+  `ScheduledReportsSection` en `/pmo/projects/[id]/reports/page.tsx`.
 
 **Tests (9/9 verdes):**
 - `test_compute_next_run_cadences` — unit de cálculo de cadencia.

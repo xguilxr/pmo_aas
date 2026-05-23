@@ -337,6 +337,16 @@ issues recién creados hasta que el owner decide en qué bloque entran.
 
 ### Follow-ups detectados
 <si encontré algo durante el fix que abre otro issue, lo listo aquí>
+
+### Definition of Done (§13)
+- [ ] **Backend** (endpoint + Pydantic + tests)  ·  _(N/A si no aplica)_
+- [ ] **Worker / job async**  ·  _(N/A si síncrono)_
+- [ ] **DB** (migración Alembic + DB-CHANGES.md)  ·  _(N/A si no toca schema)_
+- [ ] **UX** (¿hay página/flow nuevo? ¿desde dónde se llega? linkear nav)  ·  _(N/A si solo backend)_
+- [ ] **UI** (componente o variante; tokens design-system)
+- [ ] **Docs** (epic actualizado · `navigation.md` si hay página nueva · ADR si hay decisión)
+- [ ] **Tests** (al menos unit o integración)
+- [ ] **Verificación manual** (pasos arriba ejecutados)
 ```
 
 3. Mover la US en `SPRINT.md` IN-PROGRESS → DONE (solo si es el
@@ -704,5 +714,78 @@ Agent({
 
 ---
 
-**Última actualización:** 2026-05-22 (post-Sprint 26)
+## 13. Mentalidad end-to-end (BE → worker → UX → UI → docs)
+
+> **Decisión owner 2026-05-23:** cada cambio de funcionalidad se piensa
+> como **slice completo**, no como rebanada técnica suelta.
+
+### Principio
+
+Cuando recibo una solicitud ("agrega X", "permite hacer Y", "arregla Z
+en el flow de A"), antes de tocar código pienso el slice completo
+preguntándome **¿qué capa toca?**:
+
+1. **Backend** — ¿endpoint nuevo / modificado? ¿Schema Pydantic?
+2. **Worker** — ¿hay parte asíncrona? ¿task de Celery?
+3. **DB** — ¿columna nueva, tabla nueva, migración?
+4. **UX** — ¿hay una página nueva o un flow nuevo? **¿Desde dónde se
+   llega?** (link en sidebar / tab / botón / breadcrumb). Si la
+   funcionalidad no es alcanzable, no existe.
+5. **UI** — ¿componente nuevo o variante? ¿Cumple tokens del design
+   system?
+6. **Docs** — epic, navigation.md (si hay página), ADR (si hay
+   decisión), DB-CHANGES.md (si hay schema).
+
+Si cualquier capa queda sin tocar **explico por qué** en el comment del
+issue (la línea N/A del DoD). El default no es "saltarme la capa", es
+"justificar por qué no aplica".
+
+### Antipatrones que la regla bloquea
+
+- ❌ "Crear página nueva sin link entrante" → genera huérfanas (el
+  problema que provocó esta regla).
+- ❌ "Crear endpoint sin schema Pydantic ni tests" → genera fricción
+  futura.
+- ❌ "Agregar columna sin actualizar DB-CHANGES.md ni la epic" →
+  drift documental.
+- ❌ "Renombrar URL sin actualizar navigation.md ni redirect" → rompe
+  bookmarks y deja docs obsoletas.
+- ❌ "Implementar API sin pensar en cómo se consume desde la UI" → la
+  UI termina forzada al shape del backend.
+
+### Anclas concretas
+
+- **Cualquier `page.tsx` nuevo en `apps/web/app/`** obliga a actualizar
+  `docs/architecture/navigation.md` y a tener al menos un `href=` o
+  `router.push()` entrante en código.
+- **Cualquier modelo nuevo en `apps/api/app/models/`** obliga a una
+  migración Alembic + entrada en `docs/epics/DB-CHANGES.md` +
+  actualización del ER de `docs/architecture/database.md`.
+- **Cualquier provider nuevo en `apps/api/app/services/ai/byo_catalog.py`**
+  obliga a actualizar `docs/runbooks/ai/byo-setup.md`,
+  `docs/ai/README.md` y `EP008-ai.md`.
+- **Cualquier capability nueva en `app/core/permissions.py`** obliga a
+  actualizar `docs/architecture/security-multitenant.md` §3 y a
+  decidir si debe aparecer en `/admin/permissions`.
+- **Cualquier ADR / DEC nueva** obliga a entrada en `docs/adr/README.md`
+  o `docs/epics/DECISIONS.md` en el mismo bloque de trabajo.
+
+### Cómo se enforce hoy (soft)
+
+- DoD checklist (§7 Paso 7) pegado en el comment del issue al cerrar.
+- Owner revisa el checklist al cerrar issue. Si una capa quedó
+  pendiente sin justificar, queda `status:needs-rework`.
+
+### Cómo se podría enforce más fuerte (deuda)
+
+- Skill `/feature-end-to-end <issue#>` que diff la branch, detecta
+  capas tocadas vs esperadas, y reporta huérfanas.
+- Hook SessionStart "drift radar" con `pages sin link entrante`,
+  `providers no documentados`, `migraciones no listadas en DB-CHANGES`.
+
+Ambos pendientes; abrir issues cuando se prioricen.
+
+---
+
+**Última actualización:** 2026-05-23 (DoD + mentalidad end-to-end)
 **Responsable:** Claude Code (owner: xguilxr)

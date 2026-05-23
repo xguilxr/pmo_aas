@@ -1,7 +1,11 @@
 # Runbook · Habilitar Groq como IA base de la plataforma (US-057)
 
-> Aplica a **Sprint 2 v1.1**. Ejecutar en producción tras mergear
-> la branch que trae las migraciones `20260423_0021` y `20260423_0022`.
+> Aplica a **Sprint 2 v1.1+** (vigente al 2026-05-23).
+>
+> Las migraciones de la US-057 (`20260423_0021`, `20260423_0022`) y la
+> BUG-053 (`Ollama eliminado`, 2026-05-08) ya están en `main`. Este
+> runbook se usa para **configurar Groq en un environment limpio** o
+> tras rotar credenciales.
 
 Tiempo estimado: **15–25 min** incluyendo la sección final de limpieza.
 
@@ -97,7 +101,9 @@ valores en `GroqUsageSummary.limit_requests_per_day` / `…tokens_per_day`
 2. Log in como admin del tenant → `/admin/ai`.
 3. Seleccionar radio **"IA de la plataforma (Groq)"** → **Guardar** →
    confirmar el modal de "Cambiar modo".
-4. Ir a `/admin/projects/{id}/minutes` → pegar una transcripción
+4. Ir a `/pmo/projects/{id}/minutes` (las rutas de proyecto migraron
+   de `/admin/projects/*` a `/pmo/projects/*` en US-075 / DEC-022;
+   un redirect 301 mantiene los bookmarks viejos) → pegar una transcripción
    breve (`"PM: hola. Ana: OK"`) → generar minuta IA.
 5. Verificar:
    - El job pasa a `succeeded` en ~3–10 s.
@@ -139,9 +145,10 @@ recibe la notificación:
 
 ## 6. Limpieza de intentos previos (IA local / tailnet)
 
-Los intentos anteriores de host local (Ollama en PC-PMO) dejaron
-residuos. Si **ningún tenant productivo depende ya de Ollama tailnet**
-(confirmar en `/superadmin/ai` → columna "Proveedor"), ejecutar:
+> **Nota 2026-05-23 (post BUG-053):** `OllamaProvider` se eliminó del
+> código. Esta sección queda como referencia para limpiar residuos
+> físicos / de Cloudflare si se desplegó el setup tailnet pre-DEC-017.
+> Si el environment es nuevo, **saltarse esta sección completa**.
 
 ### 6.1 En la máquina PC-PMO (Windows)
 
@@ -172,24 +179,20 @@ Remove-Item -Force "$env:USERPROFILE\.cloudflared\config.yml" -ErrorAction Silen
 
 ### 6.3 En la plataforma
 
-- Revisar `tenants.settings.ai.ollama.auth_legacy.*` en los tenants
-  migrados por el commit 0022 (data migration). Si ningún item queda
-  con `auth_legacy`, opcional en un commit de housekeeping **borrar
-  la columna legacy** o dejarla como retro-compat.
-- Una vez confirmado que `tenants.settings.ai.ollama.auth_legacy` no
-  se lee más, se puede **eliminar el módulo deprecated**
-  `apps/api/app/services/ai_secrets.py` (pero Fernet sigue vivo
-  porque lo usan US-057, así que sólo eliminar lo legacy, no el archivo).
+- BUG-053 ya eliminó `OllamaProvider` del runtime. Cualquier tenant que
+  tuviera `ai_mode='byo'` con provider `ollama` quedó imposible de
+  resolver — las migraciones de BUG-053 normalizaron esos registros.
+  No hay nada que limpiar en la BD.
+- `apps/api/app/services/ai_secrets.py` sigue vivo: lo usan US-057
+  (cifrado Fernet de la key de Groq y de las keys BYO). No borrar.
 
 ### 6.4 Verificación final
 
-- [ ] `/superadmin/ai` — panel de tenants: ningún tenant activo con
-  proveedor `ollama` salvo los que explícitamente quieren seguir con
-  su tailnet propio.
-- [ ] Railway `api` y `worker` sin variables viejas tipo
-  `OLLAMA_BASE_URL`, `OLLAMA_MODEL` apuntando al PC local. (Las env
-  siguen existiendo como defaults, pero deben apuntar a algo que
-  exista o estar vacías.)
+- [ ] `/superadmin/ai` — panel de tenants: ningún tenant lista `ollama`
+  como provider (ya no existe en el catálogo).
+- [ ] Railway `api` y `worker` sin variables viejas `OLLAMA_BASE_URL` /
+  `OLLAMA_MODEL`. Si están presentes, eliminarlas (son no-op pero
+  ensucian el inventario).
 - [ ] El PC-PMO puede apagarse sin consecuencias para la producción.
 
 ---

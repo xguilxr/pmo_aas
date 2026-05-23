@@ -163,23 +163,23 @@ Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mante
 
 | TC | US | Tipo | Descripción | Estado |
 |---|---|---|---|---|
-| TC-112 | US-043 | unit | Chunking overlap | 🟡 |
-| TC-113 | US-043 | int | Mock Ollama → JSON schema válido | 🟡 |
-| TC-114 | US-043 | int | Ollama timeout → fallback Claude | 🟡 |
-| TC-115 | US-043 | e2e | Upload→generar→editar→guardar | 🟡 |
-| TC-116 | US-043 | int | Archivo >5MB → 413 | 🟡 |
-| TC-117 | US-044 | int | Draft incluye top 5 riesgos | 🟡 |
+| ~~TC-112~~ | US-043 | unit | Chunking overlap | ❌ N/A — no hay chunking en código (post BUG-053) |
+| TC-113 | US-043 | int | Mock provider IA → JSON schema válido contra `MinuteDraft` | 🟡 |
+| ~~TC-114~~ | US-043 | int | ~~Ollama timeout → fallback Claude~~ | ❌ N/A — no hay cascada (BUG-053) |
+| TC-115 | US-043 | e2e | Upload→generar→editar→guardar minuta | 🟡 |
+| TC-116 | US-043 | int | Transcript > 5 MB → 413 PAYLOAD_TOO_LARGE | 🟡 |
+| TC-117 | US-044 | int | Draft incluye top risks | 🟡 |
 | TC-118 | US-044 | int | Send sin destinatarios → 400 | 🟡 |
 | TC-119 | US-044 | e2e | Envío llega (mailcatcher) | 🟡 |
 | TC-120 | US-044 | int | Duplicar reporte | 🟡 |
-| TC-121 | US-045 | int | Probar conexión Ollama | 🟡 |
-| TC-121b | US-045 | int | Cascade Ollama→Gemini tras fallo | 🟡 |
-| TC-121c | US-045 | int | Cascade Gemini→Claude tras 429 | 🟡 |
-| TC-121d | US-045 | e2e | Admin reordena cascada en UI | 🟡 |
-| TC-122 | US-045 | int | Claude key cifrada + enmascarada | 🟡 |
-| TC-123 | US-045 | e2e | Deshabilitar IA oculta botones | 🟡 |
-| TC-124 | US-046 | int | Agregados de tokens/costos | 🟡 |
-| TC-125 | US-046 | int | Filtro status=failed | 🟡 |
+| TC-121 | US-045 | int | `POST /admin/ai/provider/test` con provider configurado → ok+latency | 🟡 |
+| ~~TC-121b~~ | US-045 | — | ~~Cascade Ollama→Gemini~~ | ❌ N/A — no hay cascada |
+| ~~TC-121c~~ | US-045 | — | ~~Cascade Gemini→Claude~~ | ❌ N/A |
+| ~~TC-121d~~ | US-045 | — | ~~Admin reordena cascada~~ | ❌ N/A — UI no es drag&drop, es selección única por modo |
+| TC-122 | US-045 | int | API key BYO cifrada Fernet + enmascarada en GET | 🟡 |
+| TC-123 | US-045 | e2e | `ai_mode=disabled` oculta botones "Generar con IA" | 🟡 |
+| TC-124 | US-046 | int | Agregados de tokens/costo (vía `/superadmin/ai/groq-usage`) | 🟡 |
+| TC-125 | US-046 | int | Filtro `ai_jobs.status=failed` | 🟡 |
 
 ## Épica EP009 — MS Project
 
@@ -226,8 +226,8 @@ Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mante
 | TC-159 | US-059 | int | Cancel dentro de 24h → job cancelado | 🟡 |
 | TC-160 | US-059 | int | Hard delete → tablas del tenant vacías | 🟡 |
 | TC-161 | US-059 | e2e | Export ZIP con estructura correcta | 🟡 |
-| TC-162 | US-060 | int | Ollama > 3s → tarjeta unhealthy | 🟡 |
-| TC-163 | US-060 | int | Gemini RPM casi saturado → tarjeta amarilla | 🟡 |
+| TC-162 | US-060 | int | `POST /superadmin/ai/groq/ping` con key inválida → ok=false | 🟡 |
+| TC-163 | US-060 | int | `GET /superadmin/ai/groq-usage` cerca del límite → tarjeta amarilla | 🟡 |
 | TC-164 | US-061 | int | Maintenance mode → writes 503 | 🟡 |
 | TC-165 | US-061 | int | `defaults.ai_mode` hereda a nuevos tenants | 🟡 |
 | TC-166 | US-061 | e2e | Diff antes/después en UI | 🟡 |
@@ -245,6 +245,13 @@ Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mante
 | TC-MT-007 | Uploads aislados por slug | 🟡 |
 | TC-MT-008 | Jobs IA no procesan archivos cruzados | 🟡 |
 
-**Total TCs:** 139 (EP001–EP009) + 27 (EP010) + 3 (cascada IA EP008) + 8 MT = **177**
+**Total TCs documentados:** 139 (EP001–EP009) + 27 (EP010) + 8 MT = ~174 (los 4 TCs de cascada IA quedaron N/A tras BUG-053).
+
+> **Nota 2026-05-23:** esta matriz lista los TCs planeados/documentados.
+> El estado real (verde/amarillo/rojo) no se está manteniendo en CI con
+> un dashboard formal — los tests reales viven en `apps/api/tests/` y
+> CI corre todos los que existen (`pytest -m "not heavy"` smoke +
+> `pytest -m "heavy"` en push a main). Si quieres una matriz viva,
+> abrir issue para generar reporte automático desde `pytest --collect-only`.
 
 Ver detalle de TC-MT-* en [`multi-tenant-isolation.md`](./multi-tenant-isolation.md).

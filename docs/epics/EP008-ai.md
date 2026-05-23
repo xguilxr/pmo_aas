@@ -5,34 +5,38 @@
 | **ID** | EP008 |
 | **Prioridad** | Alta |
 | **Dependencias** | EP005, EP006 |
-| **Módulo** | `ai` |
-| **Estado** | MVP |
+| **Módulo backend** | `apps/api/app/services/ai/`, `apps/api/app/workers/tasks/ai.py`, `apps/api/app/api/v1/endpoints/{ai,admin_ai,superadmin_ai}.py` |
+| **Módulo frontend** | `/admin/ai`, `/superadmin/ai`, `/pmo/projects/[id]/ai-minutes/new`, `/pmo/projects/[id]/reports/*` |
+| **Estado** | Vivo en producción |
+| **Última verificación contra código** | 2026-05-23 |
 
 ## Objetivo de negocio
 
 Automatizar dos tareas que consumen horas de los PM:
-1. **Redactar minutas** desde transcripciones de reuniones (Zoom/Teams/Meet).
+
+1. **Redactar minutas** desde transcripciones de reuniones (Zoom/Teams/Meet copy-paste).
 2. **Generar reportes de avance** periódicos con IA que luego el PM revisa y envía.
 
-**Modo de IA por tenant (US-057 · DEC-017):** desde Sprint 2 v1.1 el
-modelo deja de ser una cascada global y pasa a ser una selección
-por-tenant configurada en `/admin/ai`:
+---
 
-1. `disabled` — endpoint `/ai/*` responde 409. Default del opt-in.
-2. `platform` — Groq `llama-3.1-70b-versatile` con la key de
-   plataforma cifrada en BD. **Sólo minutas** (los drafts de reportes
-   IA quedan reservados a modo `byo` hasta que el owner autorice).
-3. `byo` — el admin del tenant conecta OpenAI / Claude / Perplexity /
-   Gemini / Ollama tailnet con su propia API key (cifrada con Fernet).
+## Modo de IA por tenant (US-057 · DEC-017)
 
-Ver runbook operativo en
-[`docs/ops/groq-setup-runbook.md`](../ops/groq-setup-runbook.md).
+Desde Sprint 2 v1.1 cada tenant elige uno de tres modos en `/admin/ai`:
 
-> **BUG-053 (2026-05-08):** la cascada legacy `Ollama → Gemini → Claude`
-> y todo el stack Tailscale fueron retirados. Modos canónicos hoy:
-> `disabled | platform (Groq) | byo`. Ver setup técnico en
-> [`../ai/`](../ai/) y runbook Groq en
-> [`../runbooks/ai/groq-setup.md`](../runbooks/ai/groq-setup.md).
+| Modo | Provider | Scope habilitado | Quién paga |
+|---|---|---|---|
+| `disabled` | — | Ninguno. Endpoints `/ai/*` devuelven `409 AI_DISABLED`. | — |
+| `platform` | **Groq** (`llama-3.3-70b-versatile` por default) | **Solo minutas.** Reportes IA devuelven `409 AI_PLATFORM_SCOPE_LIMITED`. | Plataforma |
+| `byo` | OpenAI / Claude / Gemini / Perplexity / Azure (Copilot M365) / Custom / Groq con key propia | Minutas **y** reportes IA. | Tenant |
+
+Implementación: `apps/api/app/services/ai/`:
+- `provider.py` — clases `GroqProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAIProvider`, `PerplexityProvider`, `AzureProvider`, `CustomProvider`, `DisabledProvider` y `resolve_provider(cfg)`.
+- `byo_catalog.py` — catálogo de providers que ve el wizard de `/admin/ai`.
+- `platform_config.py` — resuelve la key Groq para modo `platform` (env o `platform_ai_settings.groq_api_key_encrypted` desencriptado con Fernet).
+- `tenant_ai.py` — carga el modo + config efectiva del tenant.
+- `ai_secrets.py` — cifra/descifra API keys con Fernet (key en env `AI_SECRETS_FERNET_KEY`).
+
+> **BUG-053 (2026-05-08):** se eliminó `OllamaProvider` y toda la cascada legacy `Ollama → Gemini → Claude`. Cualquier mención a Ollama en docs viejos es obsoleta. Setup actual: [`../runbooks/ai/groq-setup.md`](../runbooks/ai/groq-setup.md) y [`../runbooks/ai/byo-setup.md`](../runbooks/ai/byo-setup.md).
 
 ---
 
@@ -42,197 +46,217 @@ Ver runbook operativo en
 **Quiero** subir una transcripción y obtener una minuta estructurada
 **Para** ahorrar el trabajo de redactar.
 
-**Flujo:**
+### Flujo real
 
 ```mermaid
 sequenceDiagram
     participant PM
-    participant UI
-    participant API
-    participant Worker
-    participant Ollama
+    participant UI as Next.js
+    participant API as FastAPI /ai/minutes
+    participant Q as Redis (Celery)
+    participant WK as Worker
+    participant P as Provider IA
+    participant D as Postgres
 
-    PM->>UI: sube transcript.txt
-    UI->>API: POST /ai/minutes (project_id, file)
-    API->>API: guarda archivo, crea ai_job(kind=minute_from_transcript)
-    API-->>UI: 202 {job_id}
-    UI-->>PM: "Generando… (~60s)" + progress
-    Worker->>Worker: chunk(text, overlap 200 tokens)
-    loop por chunk
-        Worker->>Ollama: prompt + chunk
-        Ollama-->>Worker: partial
+    PM->>UI: pega transcripción + project_id
+    UI->>API: POST /api/v1/ai/minutes (JSON)
+    API->>API: gate AI_DISABLED si tenant.mode=disabled
+    API->>D: INSERT ai_jobs (kind=minute_from_transcript, status=queued)
+    API->>Q: enqueue ai.generate_minute(job_id)
+    API-->>UI: 202 Accepted + Location /ai/jobs/{id}
+
+    WK->>Q: dequeue
+    WK->>D: load tenant ai_mode + cfg
+    WK->>P: completions(system=MINUTE_SYSTEM, user=transcript)
+    P-->>WK: JSON (6 secciones)
+    WK->>WK: valida + filtra raid solo A/R/D/I (ENH-102)
+    WK->>D: UPDATE ai_jobs (succeeded, output, tokens, duration)
+    opt save_as_minute=true
+        WK->>D: INSERT meeting_minutes
     end
-    Worker->>Worker: merge + structured output
-    Worker->>API: PUT /ai/minutes/{id}/result
-    UI->>UI: WebSocket/polling recibe ok
-    UI-->>PM: renderiza minuta editable
+
+    loop polling
+        UI->>API: GET /api/v1/ai/jobs/{id}
+        API-->>UI: { status, output? }
+    end
+    UI-->>PM: render minuta editable
 ```
 
-**Criterios de aceptación:**
-- [ ] Input: archivo `.txt`, `.docx`, `.srt` ≤ 5 MB.
-- [ ] Idiomas soportados: ES y EN (autodetección por heurística + override).
-- [ ] Output estructurado:
-  ```json
-  {
-    "summary": "…",
-    "participants": [{name, role?}],
-    "topics": [{title, notes}],
-    "agreements": [{description, owner, due_date}],
-    "decisions": [{description, rationale}],
-    "next_steps": [{action, owner, due_date}],
-    "risks_blockers": [{description}]
-  }
-  ```
-- [ ] Tiempo esperado: < 60 s para 1 h de transcripción (~9000 palabras) con Qwen 2.5 7B Q4.
-- [ ] Chunking automático para > 3000 tokens con overlap de 200.
-- [ ] Registrar `ai_jobs`: model, tokens_in, tokens_out, duration, error.
-- [ ] UI: pantalla de edición con previewpost-generación; PM confirma y crea `meeting_minute`.
-- [ ] Mensaje claro si modelo local down y se cambia a fallback.
+### Criterios de aceptación (estado real)
 
-**Test Cases:**
-- `TC-112` (unit) — Chunking con overlap preserva continuidad.
-- `TC-113` (integration) — Mock Ollama → output JSON válido con schema Zod.
-- `TC-114` (integration) — Ollama timeout → fallback a Claude si configurado.
-- `TC-115` (E2E) — Upload transcript → generación → editar → guardar minuta.
-- `TC-116` (integration) — Archivo > 5 MB → 413.
+- [x] Input: **JSON body** con `{ project_id, transcript: str, language: "es"|"en", save_as_minute: bool, title?: str }`. El upload de `.txt`/`.docx`/`.srt` se hace **en cliente** (parse a string) antes de pegar el body.
+- [x] Tamaño máximo: **5 MB** del campo `transcript` (`MAX_TRANSCRIPT_BYTES` en `ai.py`). Excedido → `413 PAYLOAD_TOO_LARGE`.
+- [x] Output estructurado (ENH-102 / ENH-105): 6 secciones — `header`, `participants` (attendees/absent_justified/absent_unjustified), `summary`, `topics` (con `bullets` factuales), `raid` (solo A/R/D/I, sin lecciones ni change requests), `free_notes`.
+- [x] `ai_jobs` registra: `model_used`, `provider`, `tokens_in`, `tokens_out`, `duration_ms`, `error`.
+- [x] UI: `/pmo/projects/[id]/ai-minutes/new` para upload + polling. Resultado va a `/pmo/projects/[id]/minutes/[minuteId]` para edición.
+- [x] Si `tenant.ai_mode=disabled` → `409 AI_DISABLED`.
+- [ ] **No implementado:** chunking automático. Transcripciones que excedan la context window del provider fallan con error nativo del provider. Diferido.
+- [ ] **No implementado:** fallback automático entre providers (la cascada se eliminó con BUG-053).
+
+### Cobertura de pruebas
+
+- Tests en `apps/api/tests/test_ai_minutes*.py` cubren validación, gate `disabled`, persistencia, mocks de provider.
 
 ---
 
-## US-044 — Generar reporte de avance
+## US-044 — Generar reporte de avance (IA)
 
 **Como** PM
 **Quiero** generar un reporte con datos actuales del proyecto y enviarlo por correo
 **Para** mantener stakeholders informados.
 
-**Flujo:**
-1. PM abre `/projects/{id}/reports/new`.
-2. Sistema recolecta automáticamente:
-   - Avance actual, desviaciones plan vs real.
-   - Presupuesto planeado vs ejecutado.
-   - Top 5 riesgos, cambios en revisión, AIDs abiertas críticas.
-   - Últimas 2 minutas.
-3. IA redacta: resumen ejecutivo, logros, próximas actividades, riesgos.
-4. PM revisa en editor tipo Notion (client-side), ajusta texto.
-5. Selecciona destinatarios (team + stakeholders + emails manuales).
-6. "Enviar" → email HTML + PDF adjunto opcional.
-7. Reporte se guarda en `reports` para historial.
+### Endpoints reales
 
-**Criterios de aceptación:**
-- [ ] `POST /api/v1/projects/{id}/reports/draft` → genera draft con IA (job async).
-- [ ] Secciones editables individualmente en UI.
-- [ ] `POST /api/v1/reports/{id}/send` con `{recipients: [emails], include_pdf: bool, subject?: str}`.
-- [ ] Email via **Resend** con tracking de apertura (post-MVP).
-- [ ] Reporte queda en historial con estado `sent` + `sent_at` + `opened_by[]`.
-- [ ] Duplicar de reporte anterior como base (speed-up semana a semana).
+- `POST /api/v1/ai/projects/{project_id}/reports/draft` — async, dispatch a Celery (`ai.draft_report`). Solo modo `byo`; en `platform` devuelve `409 AI_PLATFORM_SCOPE_LIMITED`.
+- `POST /api/v1/projects/{project_id}/reports/ai-generate` — síncrono, genera HTML completo en una sola llamada. También solo en modo `byo`.
+- `POST /api/v1/ai/reports/{report_id}/send` — envía por email Resend.
+- `POST /api/v1/ai/reports/tweak-html` — aplica un instruction string para modificar HTML existente (modo `byo`).
 
-**Test Cases:**
-- `TC-117` (integration) — Draft incluye top 5 riesgos ordenados por severidad.
-- `TC-118` (integration) — Send sin destinatarios → 400.
-- `TC-119` (E2E) — Enviar reporte → se ve en bandeja de entrada (test con mailcatcher).
-- `TC-120` (integration) — Duplicar reporte previo → copia secciones editadas.
+### Schema del draft estructurado (`REPORT_SYSTEM`)
 
----
+```json
+{
+  "executive_summary": "...",
+  "achievements": ["..."],
+  "next_activities": ["..."],
+  "top_risks": ["..."],
+  "budget_status": "..."
+}
+```
 
-## US-045 — Configuración del motor de IA (cascada)
+### Flujo del report builder visual
 
-**Como** Administrador
-**Quiero** configurar qué motores de IA usa mi tenant y en qué orden
-**Para** balancear privacidad, costo y disponibilidad.
+Además del draft IA, hay un **Report Builder** con catálogo de secciones atómicas (US-101+):
 
-**Criterios de aceptación:**
-- [ ] Panel en `/admin/ai` con **toggle y orden** de 3 proveedores:
-      `Ollama` / `Gemini` / `Claude` / `Deshabilitado`.
-- [ ] UI drag-and-drop para reordenar la cascada.
-- [ ] Por proveedor:
-  - **Ollama:** `base_url`, `model`, `timeout_sec`, headers de auth opcionales
-    (Cloudflare Access).
-  - **Gemini:** `api_key` (usar global de plataforma por default, o propia);
-    `model` (default `gemini-1.5-flash`).
-  - **Claude:** `api_key` (masked), `model` (default `claude-sonnet-4-6`),
-    `max_tokens`, `temperature`.
-- [ ] Botón "Probar conexión" por proveedor → envía prompt de prueba y mide
-      latencia.
-- [ ] Indicador de estado por proveedor: verde/amarillo/rojo.
-- [ ] Banner de privacidad al activar Gemini/Claude (data sale del perímetro).
-- [ ] Guardar en `tenants.settings.ai` (JSONB, API keys cifradas en reposo con
-      Fernet + key rotation).
+- `/pmo/projects/[id]/reports/builder` — wizard donde el PM compone un reporte agregando "secciones" (cards de un catálogo cerrado).
+- Soporte de chat IA: `POST /api/v1/report-builder-chat/...` usa el `SYSTEM_PROMPT` que convierte instrucciones del usuario en acciones sobre el canvas (`add_section`, `remove_section`, `reorder_section`, `update_section_params`).
 
-**Test Cases:**
-- `TC-121` (integration) — Probar conexión Ollama 200 → "online".
-- `TC-122` (integration) — Guardar Claude key → cifrada en BD, response enmascara.
-- `TC-123` (E2E) — Deshabilitar IA → UI oculta botones "Generar con IA".
-- `TC-121b` (integration) — Ollama down → 2.ª llamada usa Gemini; métrica `ai_cascade_fallback_total{from=ollama,to=gemini}` incrementa.
-- `TC-121c` (integration) — Gemini rate-limit 429 → 3.ª llamada usa Claude si habilitado.
-- `TC-121d` (E2E) — Admin reordena providers, cambia default global → próxima minuta usa el nuevo orden.
+### Criterios de aceptación
+
+- [x] Draft IA en modo `byo` (`/ai/projects/{id}/reports/draft`).
+- [x] Reporte HTML directo (`/projects/{id}/reports/ai-generate`).
+- [x] Envío por email (`/ai/reports/{id}/send`).
+- [x] Persistencia en `reports` con `generated_by_ai`, `generator`, `period`, `cut_off_date`, `recipients`, `sent_at`.
+- [x] Historial inmutable en `report_history`.
+- [x] Programación de envíos recurrentes via `scheduled_reports` (cron tipo, recipients, template).
+- [x] Modal de bloqueo si `tenant.ai_mode=platform`: la UI lo redirige a `/admin/ai` para conectar BYO.
 
 ---
 
-## US-046 — Historial de jobs de IA
+## US-045 — Configuración del motor de IA (capa admin)
 
-**Como** Admin
-**Quiero** ver historial de jobs con métricas
+**Como** Admin del tenant
+**Quiero** elegir si uso la IA de la plataforma o conecto mi proveedor
+**Para** controlar privacidad, costo y modelo.
+
+### Endpoints reales
+
+- `GET /api/v1/admin/ai/provider` — lee config actual (modo, provider, modelo enmascarado).
+- `PATCH /api/v1/admin/ai/provider` — actualiza modo + config. Requiere capability `ai.configure`.
+- `POST /api/v1/admin/ai/provider/test` — ejecuta un prompt mínimo contra el provider configurado y devuelve latencia + ok/error.
+
+### UI (`/admin/ai`)
+
+- Selector de modo: 3 radios (`Sin IA` / `IA de la plataforma (Groq)` / `Conectar mi proveedor`).
+- En modo `byo`: grid de cards por provider (`openai`, `claude`, `gemini`, `perplexity`, `azure`, `custom`, + `groq` BYO). Wizard de 4 pasos: intro → key + modelo + campos extra (Azure: deployment + api_version; custom: base_url + security ack) → test → save.
+- Botón "Probar conexión" por provider configurado.
+- Indicador de último test + latencia.
+- API key enmascarada en GET (`••••w3xY`).
+- Cifrado Fernet (`AI_SECRETS_FERNET_KEY`) antes de persistir.
+
+> El doc viejo describía una **cascada drag-and-drop multi-provider** con fallback automático. **No existe.** El tenant elige UN provider activo por vez en modo `byo`. Cambiar de provider es un wizard, no un reorder.
+
+---
+
+## US-046 — Historial y observabilidad de IA
+
+**Como** Admin / Superadmin
+**Quiero** ver qué jobs corrieron, contra qué provider, cuánto consumieron
 **Para** auditar uso y costos.
 
-**Criterios de aceptación:**
-- [ ] `GET /api/v1/admin/ai-jobs?kind=&status=&date_range=&page=&limit=`.
-- [ ] Columnas: fecha, usuario, proyecto, tipo, modelo, tokens_in/out, duration, status.
-- [ ] Detalle: ver input/output completos (con permiso especial para privacidad).
-- [ ] Agregados: tokens totales del mes, costo estimado (si usa Claude).
+### Visibilidad real
 
-**Test Cases:**
-- `TC-124` (integration) — Agregados calculados correctos.
-- `TC-125` (integration) — Filtro status=failed muestra solo jobs fallidos con error visible.
+- **Tenant admin**: hoy no hay listado plano de jobs IA en `/admin/ai`. El historial se ve indirectamente vía `/admin/audit-logs` (acciones IA emiten audit events).
+- **Superadmin** (`/superadmin/ai`):
+  - `GET /api/v1/superadmin/ai/defaults` — config Groq plataforma.
+  - `GET /api/v1/superadmin/ai/tenants-status` — qué modo y provider tiene cada tenant; último test.
+  - `GET /api/v1/superadmin/ai/groq-usage` — agregado de requests/tokens contra Groq (estimado vs free tier).
+  - `POST /api/v1/superadmin/ai/groq/ping` — health check directo a Groq.
+
+### Pendiente
+
+- [ ] Listado de jobs por tenant en `/admin/ai` (filtros por kind / status / fecha).
+- [ ] Costo estimado por job (requiere tabla de precios por modelo).
 
 ---
 
 ## Prompts
 
-Detalle completo en [`../ai/prompts-catalog.md`](../ai/prompts-catalog.md). Resumen:
+Catálogo completo en [`../ai/prompts-catalog.md`](../ai/prompts-catalog.md). Resumen:
 
-- **Prompt de minuta**: system prompt con formato JSON estricto (Pydantic schema) + ejemplos few-shot en ES/EN.
-- **Prompt de reporte**: instrucciones por sección (resumen/logros/próximos pasos), contexto del proyecto inyectado.
+- `MINUTE_SYSTEM` — formato JSON 6-section para minutas (ENH-102 / ENH-105).
+- `REPORT_SYSTEM` — formato JSON 5-section para draft de reporte.
+- `HTML_TWEAK_SYSTEM` — editor incremental de HTML.
+- `_AI_REPORT_SYSTEM_PROMPT` (inline en `reports.py`) — generación HTML directa con foco hitos / críticos / retrasadas (ENH-064).
+- `SYSTEM_PROMPT` (inline en `report_builder_chat.py`) — acciones sobre canvas del Report Builder.
+- `_AI_SYSTEM_PROMPT` (inline en `import_mapping_suggest.py`) — mapeo de columnas en import.
 
-Todas las respuestas del LLM se validan contra schema Zod antes de guardarse. Si falla parse, reintentamos 1 vez con prompt corregido.
+Todas las respuestas se parsean JSON y validan contra schemas Pydantic. **Si falla parse, el job se marca `failed`** (no hay retry automático).
 
 ---
 
 ## Consideraciones
 
-- **Privacidad**: datos sensibles (transcripciones, reportes) nunca se envían a Claude sin que el admin del tenant active explícitamente el modo cloud.
-- **Límites**: max 5 jobs de IA concurrentes por tenant (queue).
-- **Costos**: con Claude Sonnet 4.6 + prompt caching, 1 minuta de 1h ≈ $0.02. Con Ollama, $0.
-- **Idioma**: el modelo responde en el idioma del texto fuente por default; override por user.
+- **Privacidad:** datos van al provider que el tenant escoge. Modo `platform` (Groq) y modo `byo` (OpenAI, Anthropic, Google, Perplexity, Azure, custom) implican que la transcripción/datos de proyecto salen del perímetro. Modo `disabled` mantiene todo on-prem.
+- **Rate limit:** depende del provider. Groq plataforma con tier free: 30 RPM / 14 400 RPD / 6k TPM / 1M TPD (ver `groq-setup.md`).
+- **Concurrencia worker:** `--concurrency=2` (`worker.railway.toml`). Si dos tenants disparan minutas al mismo tiempo, se procesan en paralelo.
+- **Costos típicos** (referencia):
+  - Groq plataforma: $0 dentro de free tier.
+  - Claude Sonnet 4.6: ~$0.02 por minuta de 1 h con prompt caching.
+  - GPT-4o-mini: ~$0.001 por minuta.
 
 ---
 
-## Endpoints
-```
-POST /api/v1/projects/{id}/ai/minutes
-GET  /api/v1/jobs/{job_id}                          (status + progress)
-GET  /api/v1/ai-minutes/{id}                        (resultado)
-POST /api/v1/ai-minutes/{id}/accept                 (convierte a meeting_minute)
+## Endpoints (estado real)
 
-POST /api/v1/projects/{id}/reports/draft
-GET  /api/v1/reports/{id}
-PATCH /api/v1/reports/{id}
-POST /api/v1/reports/{id}/send
-
-GET  /api/v1/admin/ai-jobs
-GET  /api/v1/admin/ai-settings
-PATCH /api/v1/admin/ai-settings
-POST /api/v1/admin/ai-settings/test
 ```
+# Minutas
+POST   /api/v1/ai/minutes                                     (202 async)
+GET    /api/v1/ai/jobs/{job_id}                              (status polling)
+POST   /api/v1/ai/jobs/{job_id}/cancel
+
+# Reportes IA (solo byo)
+POST   /api/v1/ai/projects/{project_id}/reports/draft        (202 async, draft estructurado)
+POST   /api/v1/projects/{project_id}/reports/ai-generate     (sync, HTML directo)
+POST   /api/v1/ai/reports/tweak-html                         (instruction → HTML editado)
+POST   /api/v1/ai/reports/{report_id}/send                   (Resend)
+
+# Admin tenant
+GET    /api/v1/admin/ai/provider
+PATCH  /api/v1/admin/ai/provider
+POST   /api/v1/admin/ai/provider/test
+
+# Superadmin
+GET    /api/v1/superadmin/ai/defaults
+GET    /api/v1/superadmin/ai/tenants-status
+GET    /api/v1/superadmin/ai/groq-usage
+POST   /api/v1/superadmin/ai/groq/ping
+```
+
+Reports (no específicos de IA pero relacionados) viven en `endpoints/reports.py` y exponen ~20 endpoints adicionales (CRUD, render HTML, export PDF/XLSX, regeneración).
 
 ---
 
 ## Definition of Done
 
-- [ ] Ollama con Qwen 2.5 7B probado end-to-end.
-- [ ] **Gemini 1.5 Flash integrado como 2.º proveedor** con rate limit handling.
-- [ ] Cascada Ollama → Gemini → Claude configurable y probada end-to-end con
-      provider caído y con rate-limit 429.
-- [ ] Schema validation de outputs garantizada.
-- [ ] Métricas de tokens, duración, y `ai_cascade_fallback_total` guardadas.
-- [ ] UI con editor tipo Notion para revisar y ajustar.
-- [ ] `TC-MT-008` verde: un worker no procesa archivos de otro tenant.
-- [ ] Documentación de prompts versionada en `docs/ai/`.
+- [x] Modos `disabled / platform / byo` configurables por tenant.
+- [x] Groq integrado como provider de plataforma.
+- [x] BYO catalog: OpenAI, Claude, Gemini, Perplexity, Azure (Copilot M365), Custom, Groq.
+- [x] API keys cifradas Fernet en BD.
+- [x] Minutas estructuradas 6-section validadas con schema.
+- [x] Reportes IA (draft JSON + HTML directo) en modo `byo`.
+- [x] Report Builder con chat IA y acciones sobre canvas.
+- [x] `TC-MT-008` verde: el worker no procesa archivos de otro tenant.
+- [x] Catálogo de prompts documentado en `docs/ai/prompts-catalog.md`.
+- [ ] Listado de jobs IA en `/admin/ai` con filtros (pendiente).
+- [ ] Retry automático y chunking (pendientes, sin issue abierto).

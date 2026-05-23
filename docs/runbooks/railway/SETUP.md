@@ -115,9 +115,10 @@ Hereda `NODE_ENV` + estas específicas:
 | Variable | Requiere | Valor ejemplo | Descripción |
 |---|---|---|---|
 | `NEXT_PUBLIC_API_URL` | **Sí** | `https://api.pmo-aas.com` | URL del backend (public, accesible desde browser). |
-| `NEXTAUTH_URL` | **Sí** | `https://app.pmo-aas.com` | Canonical URL de la app (para NextAuth callbacks). |
-| `NEXTAUTH_SECRET` | **Sí** | `<random 32+ chars>` | Llave para encriptar NextAuth session. Generar como en §3.2. |
-| `NEXT_PUBLIC_GLITCHTIP_DSN` | No | `https://…@glitchtip.pmo-aas.com/2` | Sentry DSN si usas GlitchTip (error reporting). |
+
+> **No usamos NextAuth.** El frontend habla directo con `/api/v1/auth/*` del backend. Si ves `NEXTAUTH_URL` / `NEXTAUTH_SECRET` en Railway, son legacy de versiones viejas del doc y pueden eliminarse.
+>
+> **GlitchTip / Sentry**: `sentry-sdk` no está instalado en `apps/api/requirements.txt`. La variable `NEXT_PUBLIC_GLITCHTIP_DSN` (o equivalente) hoy no se usa. Si se reintegra observabilidad APM, agregar aquí.
 
 ---
 

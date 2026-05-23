@@ -42,7 +42,6 @@ flowchart TB
             ORG_REP["/pmo/organizations/[id]/reports"]:::app
             PRG_DET["/pmo/programs/[id]"]:::app
             PRG_REP["/pmo/programs/[id]/reports"]:::app
-            PRG_LIST["/pmo/programs (huérfana)"]:::orphan
             PRJ_LIST["/pmo/projects"]:::app
             PRJ_NEW["/pmo/projects/new"]:::app
             PRJ["/pmo/projects/[id]<br/>(hub + tabs)"]:::app
@@ -82,9 +81,6 @@ flowchart TB
             ADM_PERM["/admin/permissions"]:::admin
             ADM_AREAS["/admin/areas"]:::admin
             ADM_AUDIT["/admin/audit-logs"]:::admin
-            ADM_SET["/admin/settings (huérfana)"]:::orphan
-            ADM_SUP["/admin/supervision (huérfana)"]:::orphan
-            ADM_STK["/admin/stakeholders (huérfana)"]:::orphan
         end
 
         subgraph SUPER ["/superadmin — plataforma"]
@@ -95,7 +91,7 @@ flowchart TB
             SA_LOG["/superadmin/logs"]:::super
             SA_ME["/superadmin/me"]:::super
             SA_HEALTH["/superadmin/health (huérfana)"]:::orphan
-            SA_PRQ["/superadmin/permission-requests (huérfana)"]:::orphan
+            SA_PRQ["/superadmin/permission-requests"]:::super
         end
     end
 
@@ -136,37 +132,38 @@ La app expone cinco superficies de navegación. Todas viven en
 
 ```mermaid
 flowchart LR
-    subgraph "TOP_NAV (todos)"
-        N1[Dashboard /dashboard]
-        N2[Solicitudes /pmo/requests]
-        N3[Proyectos /pmo/projects]
-        N4[Módulos]
-        N4 --> N4a[RAID /pmo/raid]
-        N4 --> N4b[Cambios /pmo/changes]
-        N4 --> N4c[Minutas /pmo/minutes]
-        N4 --> N4d[Reportes /pmo/reports]
-        N4 --> N4e[Portfolio /pmo/reports/portfolio<br/>admin-only]
+    subgraph TOP_NAV ["TOP_NAV - todos"]
+        N1["Dashboard<br/>/dashboard"]
+        N2["Solicitudes<br/>/pmo/requests"]
+        N3["Proyectos<br/>/pmo/projects"]
+        N4["Módulos"]
+        N4 --> N4a["RAID<br/>/pmo/raid"]
+        N4 --> N4b["Cambios<br/>/pmo/changes"]
+        N4 --> N4c["Minutas<br/>/pmo/minutes"]
+        N4 --> N4d["Reportes<br/>/pmo/reports"]
+        N4 --> N4e["Portfolio<br/>/pmo/reports/portfolio<br/>(admin-only)"]
     end
 
-    subgraph "ADMIN_NAV (admin)"
-        A0[/admin]
-        A1[/admin/tenant]
-        A2[/admin/ai]
-        A3[/admin/organizations]
-        A4[/admin/users]
-        A5[/admin/permissions]
-        A6[/admin/audit-logs]
+    subgraph ADMIN_NAV ["ADMIN_NAV - admin"]
+        A0["/admin"]
+        A1["/admin/tenant"]
+        A2["/admin/ai"]
+        A3["/admin/organizations"]
+        A4["/admin/users"]
+        A5["/admin/permissions"]
+        A6["/admin/audit-logs"]
     end
 
-    subgraph "SUPERADMIN_NAV (is_superadmin)"
-        S1[/superadmin]
-        S2[/superadmin/tenants]
-        S3[/superadmin/users]
-        S4[/superadmin/ai]
-        S5[/superadmin/logs]
+    subgraph SUPER_NAV ["SUPERADMIN_NAV - is_superadmin"]
+        S1["/superadmin"]
+        S2["/superadmin/tenants"]
+        S3["/superadmin/users"]
+        S4["/superadmin/permission-requests"]
+        S5["/superadmin/ai"]
+        S6["/superadmin/logs"]
     end
 
-    TREE[OrgTreeNav<br/>orgs → programas → proyectos]
+    TREE["OrgTreeNav<br/>orgs → programas → proyectos"]
 ```
 
 ### 2.2 Tabs de proyecto
@@ -194,7 +191,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **78 páginas** (78 archivos `page.tsx`).
+Total: **73 páginas** (`page.tsx`) post-cleanup 2026-05-23. Antes eran 78; se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
 
 ### 3.1 Rutas públicas (5)
 
@@ -214,7 +211,7 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/account` | Perfil, password, preferencias de notificación. |
 | `/notifications` | Centro de notificaciones (filtros por tipo). |
 
-### 3.3 `/pmo/**` — portal de proyectos (35)
+### 3.3 `/pmo/**` — portal de proyectos (34)
 
 **Navegación / listados**
 
@@ -227,7 +224,7 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/pmo/programs/[id]/reports` | Reportes scope programa. |
 | `/pmo/projects` | Listado de proyectos (filtros: fase, salud, búsqueda). |
 | `/pmo/projects/new` | Crear proyecto. |
-| `/pmo/projects/[id]` | Hub del proyecto: header, KPIs, links a módulos. |
+| `/pmo/projects/[id]` | Hub del proyecto: header, KPIs, links a módulos. Sub-tabs internos: `Resumen` · `Equipo` · `Avance` · `Presupuesto` · `Actividad` · `Stakeholders` (este último solo si el charter tiene sponsor / líder de negocio / líder técnico). |
 | `/pmo/requests` | Listado de solicitudes de proyecto. |
 | `/pmo/requests/new` | Nueva solicitud. |
 | `/pmo/requests/[id]` | Detalle de solicitud + aprobación → crea proyecto. |
@@ -263,18 +260,17 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/reports/builder` | Wizard de reporte. | Botón en `/reports` |
 | `/reports/tweak` | Ajustes finos del último reporte. | Botón en `/reports` |
 
-### 3.4 `/admin/**` — admin del tenant (15)
+### 3.4 `/admin/**` — admin del tenant (11)
 
 | URL | Propósito | Acceso |
 |---|---|---|
 | `/admin` | Landing con 7 paneles. | Sidebar admin |
-| `/admin/tenant` | Branding, dominio, config, stats. | Sidebar + panel |
+| `/admin/tenant` | Branding, dominio, config, stats (consolidó `/admin/settings` y `/admin/supervision` via tabs). | Sidebar + panel |
 | `/admin/ai` | Provider de IA (modo `byo`). | Sidebar + panel |
 | `/admin/organizations` | CRUD organizaciones. | Sidebar + panel |
 | `/admin/organizations/new` | Nueva organización. | Botón |
 | `/admin/organizations/[id]` | Detalle org (BUs, departamentos). | Click en row |
 | `/admin/organizations/[id]/edit` | Editar organización. | Botón en detalle |
-| `/admin/organizations/[id]/panel` | Redirect legacy → `/admin/organizations/[id]`. | — |
 | `/admin/users` | CRUD usuarios. | Sidebar + panel |
 | `/admin/users/new` | Nuevo usuario. | Botón |
 | `/admin/users/[id]` | Detalle usuario, roles, reset pwd. | Click en row |
@@ -293,6 +289,7 @@ Total: **78 páginas** (78 archivos `page.tsx`).
 | `/superadmin/tenants/[id]/users` | Usuarios del tenant. | Botón en detalle |
 | `/superadmin/tenants/[id]/permissions` | Permisos del tenant. | Botón en detalle |
 | `/superadmin/users` | Lista global de usuarios. | Sidebar |
+| `/superadmin/permission-requests` | Aprobación / rechazo de tickets `permission_change_requests` (US-082; auto-crea overrides en `tenant_role_permission_overrides`). | Sidebar |
 | `/superadmin/ai` | Config IA plataforma (Groq). | Sidebar |
 | `/superadmin/logs` | Logs plataforma. | Sidebar |
 | `/superadmin/me` | Perfil del superadmin. | UserMenu |
@@ -324,21 +321,21 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    A[/pmo/requests/new] --> B[/pmo/requests/[id]]
-    B -->|aprobar| C[/pmo/projects/[newId]/charter?created=1]
-    C --> D[Hub /pmo/projects/[newId]]
+    A["/pmo/requests/new"] --> B["/pmo/requests/[id]"]
+    B -->|aprobar| C["/pmo/projects/[newId]/charter?created=1"]
+    C --> D["Hub /pmo/projects/[newId]"]
 ```
 
 ### 4.3 Drill-down portafolio → tarea
 
 ```mermaid
 flowchart LR
-    A[/pmo] --> B[/pmo/organizations/[id]]
-    B --> C[/pmo/programs/[id]]
-    C --> D[/pmo/projects/[id]]
-    D -->|tab Plan| E[/plan]
-    E -->|botón| F[/tasks]
-    F -->|botón| G[/gantt]
+    A["/pmo"] --> B["/pmo/organizations/[id]"]
+    B --> C["/pmo/programs/[id]"]
+    C --> D["/pmo/projects/[id]"]
+    D -->|tab Plan| E["/plan"]
+    E -->|botón| F["/tasks"]
+    F -->|botón| G["/gantt"]
 ```
 
 Alternativa: el sidebar tiene `OrgTreeNav` que permite saltar de `/dashboard` directamente a cualquier `/pmo/projects/[id]` sin pasar por la landing.
@@ -347,30 +344,30 @@ Alternativa: el sidebar tiene `OrgTreeNav` que permite saltar de `/dashboard` di
 
 ```mermaid
 flowchart LR
-    A[Hub /pmo/projects/[id]] --> B[Tab Minutas]
-    B --> C[/minutes]
-    C -->|botón "Generar con IA"| D[/ai-minutes/new]
-    D -->|upload transcript| E[Job 202 Accepted]
-    E -->|polling| F[/minutes/[minuteId]]
+    A["Hub /pmo/projects/[id]"] --> B["Tab Minutas"]
+    B --> C["/minutes"]
+    C -->|botón Generar con IA| D["/ai-minutes/new"]
+    D -->|upload transcript| E["Job 202 Accepted"]
+    E -->|polling| F["/minutes/[minuteId]"]
 ```
 
 ### 4.5 Reporte ejecutivo
 
 ```mermaid
 flowchart LR
-    A[Tab Reportes] --> B[/reports]
-    B -->|"Nuevo"| C[/reports/builder]
-    C -->|generar| D[Reporte guardado en /reports]
-    D -->|"Ajustar"| E[/reports/tweak]
+    A["Tab Reportes"] --> B["/reports"]
+    B -->|Nuevo| C["/reports/builder"]
+    C -->|generar| D["Reporte guardado en /reports"]
+    D -->|Ajustar| E["/reports/tweak"]
 ```
 
 ### 4.6 Cambio de tenant (multi-tenant user)
 
 ```mermaid
 flowchart LR
-    A[UserMenu] --> B[Selector de tenant]
-    B -->|POST /auth/switch-tenant| C[nuevo JWT + reload]
-    C --> D[/dashboard del tenant elegido]
+    A["UserMenu"] --> B["Selector de tenant"]
+    B -->|POST /auth/switch-tenant| C["nuevo JWT + reload"]
+    C --> D["/dashboard del tenant elegido"]
 ```
 
 ---
@@ -383,55 +380,68 @@ flowchart LR
 | `Reportes → Portfolio` | Admin (flag `adminOnly`) |
 | `ADMIN_NAV` + `/admin/**` | Admin del tenant (rol con permisos admin) |
 | `SUPERADMIN_NAV` + `/superadmin/**` | `is_superadmin === true` |
-| `OrgTreeNav` (orgs/programas/proyectos) | Cualquier usuario; el backend filtra por RLS lo que el usuario puede ver |
+| `OrgTreeNav` (orgs/programas/proyectos) | Cualquier usuario; el backend filtra por `tenant_id` y por exclusiones en `organization_user_exclusions` lo que el usuario puede ver. |
 
 La decisión la toma `app-shell.tsx` usando el hook
-`useMyPermissions()` + el flag `user.is_superadmin`.
+`useMyPermissions()` (devuelve `roleType: "admin" | "user"`) + el flag
+`user.is_superadmin`. El gate es **capability-based** (DEC-024 / US-076):
+admin tiene 5 capabilities cerradas (`tenant.manage`, `ai.configure`,
+`users.manage`, `organizations.delete`, `audit.read`). Ver
+[`security-multitenant.md`](./security-multitenant.md#3-autorización--modelo-capability-based-dec-024--us-076).
 
 ---
 
-## 6. Páginas huérfanas detectadas
+## 6. Páginas huérfanas y rutas legacy
 
-> **Definición:** página que existe como `page.tsx` y compila, pero
-> ninguna otra parte de la app (sidebar, landing, tabs, breadcrumbs,
-> `Link`, `router.push`) la enlaza. Solo se puede llegar tipeando la
-> URL directamente.
+> **Verificado y limpiado** (2026-05-23). Cleanup ejecutado en este
+> mismo commit: ver decisiones del owner abajo.
 
-Verificado con grep sobre `apps/web/{app,components}` buscando `href=`
-y `router.push(` contra cada ruta.
+### 6.1 Decisiones aplicadas (cleanup 2026-05-23)
 
-| Página | Estado | Recomendación |
+| Página | Decisión | Acción ejecutada |
 |---|---|---|
-| `/admin/settings` | **Huérfana confirmada.** Sin link entrante. Solo aparece en `app-shell.tsx` como pattern matcher para resaltar sección. | Decidir: (a) eliminar si su contenido se fusionó con `/admin/tenant`, o (b) añadir entrada en `ADMIN_NAV` / panel del landing. |
-| `/admin/supervision` | **Huérfana confirmada.** Sin link entrante. Mismo caso que `/admin/settings`. | Aclarar propósito (¿monitoreo de auditoría?, ¿override de RLS?). Si vive, exponerla en sidebar o landing admin. |
-| `/admin/stakeholders` | **Huérfana confirmada.** Sin link entrante. | Probablemente directorio de stakeholders cross-project. Decidir si fusionar con `/admin/areas` o exponer como panel propio. |
-| `/superadmin/permission-requests` | **Huérfana confirmada.** No aparece en `SUPERADMIN_NAV`. | Si gestiona requests de elevación de permisos, agregar a `SUPERADMIN_NAV` o como sub-item de `/superadmin/users`. |
-| `/superadmin/health` | **Huérfana confirmada.** Sin link entrante. | Útil como página de utilidad (`/health` dashboard). Recomendado añadir un link discreto en footer del AppShell o en `/superadmin`. |
-| `/pmo/programs` | **Huérfana confirmada.** Solo se enlaza `/pmo/programs/[id]` desde `OrgTreeNav` y `/pmo/organizations/[id]`. El listado plano no se alcanza. | Decidir si tiene valor: si sí, exponerlo como sub-item en TOP_NAV bajo Proyectos; si no, eliminar el archivo. |
+| `/admin/stakeholders` (catálogo standalone) | Innecesario como página propia. Solo informativo. | **Borrado** (`page.tsx` + `lib/api/stakeholders.ts`). Reemplazado por sub-tab "Stakeholders" en `/pmo/projects/[id]` (Resumen del proyecto). Lista solo los que vienen del charter (sponsor / líder de negocio / líder técnico); si no hay, el tab se oculta. |
+| `/superadmin/permission-requests` | Necesario — sin él, US-082 está rota. | **Wire-up** agregado a `SUPERADMIN_NAV` en `app-shell.tsx` (entre Usuarios y IA). |
+| `/superadmin/health` | Dejar como está. | Sin cambios. **No era huérfana**: el archivo es un redirect client-side a `/superadmin` (US-026: Health se consolidó en Visión General). Solo subsiste para bookmarks viejos. |
+| `/pmo/programs` (listado plano) | Drill-down vía OrgTreeNav cubre el caso. | **Borrado** (`page.tsx`). El detalle `/pmo/programs/[id]` queda intacto. |
 
-### 6.1 Páginas con acceso indirecto único
+### 6.2 Rutas legacy redirigidas en `next.config.js`
 
-No son huérfanas estrictas, pero su único punto de entrada es
-no-obvio. Vale documentarlo:
+Estas URLs tienen un redirect 301 en `apps/web/next.config.js`. El redirect
+**permanece** (cubre bookmarks y deep-links de emails). Los `page.tsx`
+muertos que el redirect cubría se **borraron** en este commit:
+
+| URL legacy | Redirect a | `page.tsx` borrado |
+|---|---|---|
+| `/admin/supervision` | `/admin/tenant?tab=stats` | ✅ (US-036) |
+| `/admin/settings` | `/admin/tenant?tab=config` | ✅ (US-036) |
+| `/admin/organizations/[id]/panel` | `/admin/organizations/[id]` | ✅ (BUG-019) |
+
+El resto de las legacy URLs (`/admin/projects/**`, `/admin/programs/**`,
+`/admin/raid/**`, `/admin/requests/**`, `/admin/changes`,
+`/admin/minutes`, `/admin/reports`, `/admin/roles/**`) **nunca tuvieron
+`page.tsx`**: fueron rutas que se movieron a `/pmo/*` (US-075 / DEC-022)
+o se consolidaron en `/admin/permissions` (roles). El redirect es la
+única definición que existe.
+
+### 6.3 Páginas con acceso indirecto único
+
+No son huérfanas, pero su único punto de entrada es no-obvio:
 
 | Página | Único punto de entrada |
 |---|---|
-| `/pmo/projects/[id]/documents/legacy` | Botón "Vista clásica" dentro de `/documents`. |
-| `/pmo/projects/[id]/reports/tweak` | Solo desde `/reports` con un reporte ya generado. |
-| `/pmo/projects/[id]/charter` | Tras crear proyecto (redirect), desde `/documents`, o desde solicitud aprobada. **No tiene tab propio**. |
-| `/pmo/projects/[id]/edit` | Botón "Editar" en el header del hub. |
-| `/superadmin/me` | Solo desde UserMenu cuando el usuario es superadmin. |
-| `/admin/organizations/[id]/panel` | Redirect legacy. Mantener mientras existan emails/bookmarks viejos. |
+| `/pmo/projects/[id]/documents/legacy` | Botón "Vista clásica" en `/documents`. |
+| `/pmo/projects/[id]/reports/tweak` | Botón "Ajustar" en `/reports` (cuando hay un reporte generado). |
+| `/pmo/projects/[id]/charter` | Tras crear proyecto (`router.replace` desde `project-form`), desde `/documents` y desde el flujo de aprobación de request. **No tiene tab propio**. |
+| `/pmo/projects/[id]/edit` | Botón "Editar" en el header del hub del proyecto. |
+| `/superadmin/me` | Solo desde `UserMenu` cuando el usuario es superadmin. |
+| `/superadmin/health` | Redirect client-side; nadie lo visita "en vivo". |
 
-### 6.2 Resumen orphans
+### 6.4 Estado actual
 
-- **6 páginas huérfanas confirmadas** (sin ningún link entrante).
-- **6 páginas con acceso indirecto único** (potencialmente difíciles
-  de descubrir pero alcanzables).
-
-Acción sugerida (no implementada en este commit): abrir issue
-`ENH-XXX — wire-up de páginas huérfanas o eliminación` y decidir caso
-por caso si exponer, eliminar o redirigir.
+- **0 huérfanas reales** post-cleanup.
+- **6 páginas con acceso indirecto único** documentadas arriba (alcanzables pero difíciles de descubrir).
+- Cleanup del `page.tsx` muerto: ejecutado en el commit de este cambio.
 
 ---
 

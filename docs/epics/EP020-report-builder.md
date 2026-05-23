@@ -146,7 +146,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 - [ ] Galería "Mis plantillas" + "Plantillas del proyecto" en la pantalla de canvas.
 - [ ] Permisos: solo el owner puede publicar/despublicar la suya.
 
-**Test cases:** TC-218 privacidad respetada; TC-219 publicar/despublicar; TC-220 RLS por proyecto.
+**Test cases:** TC-218 privacidad respetada; TC-219 publicar/despublicar; TC-220 aislamiento por proyecto (filtro `project_id` en la query — no RLS, ver `architecture/database.md`).
 
 ### # DONE (2026-05-25, 5436224) — US-127 — Modo IA conversacional construyendo el reporte
 
@@ -157,11 +157,11 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 **Criterios de aceptación:**
 - [ ] Panel chat lateral colapsable en `/builder`.
 - [ ] IA tiene tool calls registrados: `add_section(id, params)`, `remove_section(idx)`, `update_section_params(idx, params)`, `reorder_section(from, to)`.
-- [ ] Modelo: reusa cascada EP008 (Groq plataforma o BYO tenant).
+- [ ] Modelo: reusa el provider del tenant (Groq plataforma o BYO según `tenant.ai_mode`). **No es cascada** — se eliminó en BUG-053; ver `EP008-ai.md`.
 - [ ] Cada acción del IA es revisable + revertible por el PM (transcript visible).
 - [ ] Contexto inyectado: lista del catálogo + data del proyecto.
 
-**Test cases:** TC-221 IA llama add_section con id válido; TC-222 PM puede revertir; TC-223 fallback entre modelos.
+**Test cases:** TC-221 IA llama add_section con id válido; TC-222 PM puede revertir. *(TC-223 "fallback entre modelos" se descarta: no hay cascada de providers post BUG-053.)*
 
 ---
 
@@ -193,7 +193,7 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de 
 - [ ] Plantilla seed L2-ORG aplicada por default con scope filtrado a la org/programa.
 - [ ] Permisos: usuarios con acceso a la organización (incluye clientes).
 
-**Test cases:** TC-227 scope filtrado; TC-228 RLS por org; TC-229 cliente puede consultar.
+**Test cases:** TC-227 scope filtrado; TC-228 aislamiento por org (filtro `organization_id`, no RLS); TC-229 cliente puede consultar.
 
 ---
 

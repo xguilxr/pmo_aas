@@ -1,8 +1,22 @@
-# Runbook · Conectar un proveedor BYO de IA (OpenAI / Claude / Gemini / Perplexity)
+# Runbook · Conectar un proveedor BYO de IA
 
+> Verificado contra `apps/api/app/services/ai/byo_catalog.py` (2026-05-23).
 > Aplica desde **Sprint 2 v1.1 + DEC-019**. Este runbook es para el **admin
-> del tenant** que quiere correr IA con su propia cuenta de proveedor en vez
-> de usar la IA que hostea la plataforma (Groq).
+> del tenant** que quiere correr IA con su propia cuenta de proveedor en
+> vez de usar la IA que hostea la plataforma (Groq).
+
+**Providers reales del catálogo:**
+
+| Key | Label | Notas |
+|---|---|---|
+| `openai` | OpenAI (ChatGPT) | gpt-4o-mini / gpt-4o / gpt-4-turbo |
+| `claude` | Anthropic (Claude) | claude-3-5-haiku-* / claude-sonnet-4-6 |
+| `gemini` | Google Gemini | gemini-1.5-flash / -pro |
+| `perplexity` | Perplexity | sonar / sonar-pro |
+| `azure` | **Microsoft Copilot M365 (Azure OpenAI)** | gpt-4o / gpt-4 / gpt-35-turbo; requiere endpoint + deployment + api_version |
+| `custom` | Otro endpoint OpenAI-compatible | Together, Mistral, vLLM, LM Studio. Requiere ack de seguridad. |
+
+> El provider `groq` también se puede conectar como BYO si el tenant trae su propia key.
 
 Tiempo estimado: **10–15 min** por proveedor.
 
@@ -26,14 +40,16 @@ Si sólo necesitas minutas y no te importa el modelo, quédate en modo
 
 ## 1. Pre-requisitos
 
-- Rol **Admin** del tenant en la plataforma.
-- Acceso a la consola del proveedor que vas a conectar (una cuenta).
-- El owner de la plataforma debe haber encendido la feature flag
-  `AI_BYO_ENABLED=1` en Railway (ver DEC-019). Si ves el badge
-  **"Próximamente"** sobre el wizard, escríbele al owner — no puedes
-  activar BYO hasta que el flag esté on.
-- Un método de pago válido con el proveedor (casi todos tienen free tier,
-  pero algunos endpoints requieren payment method en el archivo).
+- Rol **Admin** del tenant en la plataforma (capability `ai.configure`).
+- Acceso a la consola del proveedor que vas a conectar.
+- Un método de pago válido con el proveedor cuando aplique (la mayoría
+  tienen free tier; Anthropic y Perplexity requieren saldo prepagado).
+
+> El flag global `AI_BYO_ENABLED` mencionado en versiones viejas del
+> doc **no existe**. BYO está siempre disponible. El badge
+> "Próximamente" en `/admin/ai` se muestra solo cuando una card
+> específica del catálogo viene marcada como `disabled` (caso a caso,
+> no global).
 
 ---
 
@@ -88,6 +104,30 @@ Modelos recomendados: `gemini-1.5-flash` (free, rápido, 1M tokens/día),
 Modelos recomendados: `sonar` (búsqueda web en tiempo real),
 `sonar-pro` (más reasoning, más caro).
 
+### 2.5 Microsoft Copilot M365 (Azure OpenAI)
+
+1. En <https://portal.azure.com> → tu recurso **Azure OpenAI Service**
+   → **Keys and Endpoint**.
+2. Copiar **Endpoint** (ej. `https://my-resource.openai.azure.com`) y
+   **KEY 1** (no es un Bearer — Azure usa el header `api-key`).
+3. En **Model deployments** del recurso, anotar el **Deployment name**
+   exacto (no es el nombre del modelo) y la **API version** usada
+   (ej. `2024-08-01-preview`).
+
+El wizard pide los 4 campos: `endpoint (base_url)`, `api_key`,
+`deployment_name`, `api_version`.
+
+### 2.6 Custom (Together / Mistral / vLLM / LM Studio / …)
+
+1. Crear la API key en la consola de tu proveedor.
+2. Anotar `base_url` con la ruta `/v1` incluida (ej.
+   `https://api.together.xyz/v1`).
+3. Anotar el nombre del modelo tal como lo expone el endpoint.
+
+En el wizard hay que aceptar un **security ack** (la plataforma no
+audita el proveedor custom; el tenant es responsable de cumplimiento y
+retención de datos).
+
 ---
 
 ## 3. Conectar desde `/admin/ai`
@@ -131,12 +171,15 @@ Modelos recomendados: `sonar` (búsqueda web en tiempo real),
 
 ## 4. Smoke test
 
-1. Ir a `/admin/projects/<id>/minutes` → pegar una transcripción breve →
-   generar minuta con IA.
+1. Ir a `/pmo/projects/<id>/minutes` (US-075 movió las rutas de proyecto
+   de `/admin/projects/*` a `/pmo/projects/*`; redirect 301 cubre los
+   bookmarks viejos) → botón "Generar con IA" → pegar una transcripción
+   breve → encolar minuta.
 2. Verificar que el job pasa a `succeeded` en 3–15 s (depende del modelo).
-3. (Opcional, sólo BYO) Ir a `/admin/projects/<id>/ai-reports/new` →
-   generar un draft de reporte IA. Esta función **no** funciona en modo
-   `platform`, sólo en `byo`.
+3. (Opcional, sólo BYO) Ir a `/pmo/projects/<id>/reports` → botón
+   "Generar reporte IA" o desde el Report Builder. Esta función **no**
+   funciona en modo `platform` (Groq se limita a minutas; DEC-017).
+   En modo `platform` el endpoint responde `409 AI_PLATFORM_SCOPE_LIMITED`.
 
 Si algo falla:
 - Regresar a `/admin/ai` → card del proveedor → "Probar conexión" para
@@ -185,10 +228,12 @@ por si vuelves más adelante (no tienes que re-pegar la key).
 
 ## 8. Troubleshooting
 
-**P:** El wizard aparece con badge "Próximamente" y no puedo activar BYO.
-**R:** El owner de la plataforma no ha encendido `AI_BYO_ENABLED=1` en
-Railway. Pídelo por el canal interno — es un toggle + redeploy, no
-requiere cambios de código.
+**P:** Una card específica aparece con badge "Próximamente" y no se puede
+seleccionar.
+**R:** Es por provider, no global. Esa entrada del catálogo
+(`byo_catalog.py`) viene marcada como `disabled` por decisión del owner
+(ej. integración aún sin terminar). Pídelo si lo necesitas — el flag
+está en código, no en env.
 
 **P:** "Conexión OK" pero al generar minuta el job falla con
 `provider_error`.

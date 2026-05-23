@@ -225,6 +225,18 @@ Registrada 2026-04-23, al cerrar Sprint 2 v1.1.
 
 ## DEC-019 — Catálogo BYO sin Ollama + feature flag del wizard de conexión
 
+> **Update 2026-05-08 (BUG-053):** la "Parte 1" se llevó al límite —
+> `OllamaProvider` fue eliminado del runtime. Cualquier tenant que aún
+> tenga `settings.ai.byo.provider="ollama"` falla con
+> `unsupported_provider` al generar IA. La parte de "back-compat para
+> tenants legacy" descrita abajo es histórica.
+>
+> **Update 2026-05-23:** la "Parte 2 — feature flag `AI_BYO_ENABLED`"
+> se removió. BYO está siempre disponible; cualquier tenant admin puede
+> conectar provider desde `/admin/ai`. Si una card aparece como
+> "Próximamente" hoy, es por entrada `disabled` específica del
+> catálogo, no un gate global.
+
 **Contexto (2026-04-24, post-deploy v1.1):** el owner reportó que la
 UI `/admin/ai` seguía mostrando las opciones legacy (`sin definir`,
 `ollama local`, `claude`, `desactivado`) en el selector de modo IA.

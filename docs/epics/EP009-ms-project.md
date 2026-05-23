@@ -30,9 +30,9 @@ Eliminar el ping-pong de archivos MS Project entre PMs: importar `.xml`, `.xlsx`
 | Tema | Decisión | Rationale |
 |---|---|---|
 | Parser principal | **MPXJ** (Java) | Única lib open-source que lee `.mpp` binario + `.xml`/`.xlsx` |
-| Visualización | **frappe-gantt** (MVP) → **dhtmlx-gantt** (post-MVP) | frappe liviano < 30 KB; dhtmlx para drag&drop avanzado |
-| Formatos MVP | `.xml` y `.xlsx` | No requieren Java runtime |
-| Formatos post-MVP | `.mpp` | Requiere Java sidecar en Railway |
+| Visualización | **SVG propio** (`components/gantt-view.tsx`) | frappe-gantt fue descartado; el wrapper SVG manual cumple para el alcance actual y evita una dependencia extra |
+| Formatos aceptados | `.xlsx`, `.csv`, `.mpp`, `.xml` (MSPDI), `.mpx` | Todos integrados (US-069 agregó `.mpp` nativo) |
+| Java runtime | **Embebido en el Dockerfile** (JRE 21 + MPXJ pinned) | Ya está en producción; ver `runbooks/infra/mpp-import.md` |
 | Backend de parsing | **Worker job** (Celery) | Parsing puede tardar >30 s en proyectos grandes |
 
 ---
@@ -278,10 +278,16 @@ implementó.
 
 ## Notas técnicas
 
-- **Librería Python para XML**: `openpyxl` (xlsx) + parser XML custom (pequeño, controlado).
-- **Librería Java para .mpp** (post-MVP): MPXJ en sidecar. Invocado vía subprocess con `mpxj-cli`.
-- **frappe-gantt** wrapper en client component. Ver [`packages/ui/src/gantt/`](../packages/ui/src/gantt/).
-- **Performance**: con 1000 tareas, generar Gantt en web con data en memoria + virtualización (sólo dibujar barras visibles).
+- **Librería Python para XML/XLSX**: `openpyxl` (xlsx) + parsers custom en
+  `apps/api/app/services/msproject/`.
+- **Librería Java para .mpp** (US-069, DONE): **MPXJ embebido en el
+  Dockerfile** (no sidecar). Wrapper `MpxjCli.java` se compila en el
+  build; el endpoint invoca `java -cp /opt/mpxj/lib/*:/opt/mpxj/cli
+  MpxjCli <file>` vía `subprocess`. Ver `runbooks/infra/mpp-import.md`.
+- **Gantt visual**: SVG propio en `apps/web/components/gantt-view.tsx`
+  (no `frappe-gantt`, no `dhtmlx-gantt`).
+- **Performance**: con muchas tareas, virtualización (solo dibujar
+  barras visibles).
 
 ### Endpoints
 ```

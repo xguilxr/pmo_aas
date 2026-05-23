@@ -35,6 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { getOrganization, type Organization } from "@/lib/api/organizations";
+import { getProjectCharter, type ProjectCharter } from "@/lib/api/project-charters";
 import {
   HEALTH_LABEL,
   MEMBER_ROLE_LABEL,
@@ -54,7 +55,7 @@ import {
 } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
 
-type Tab = "overview" | "team" | "progress" | "budget" | "activity";
+type Tab = "overview" | "team" | "progress" | "budget" | "activity" | "stakeholders";
 
 const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
   planning: ["execution", "closed"],
@@ -119,6 +120,7 @@ export default function ProjectDetailPage() {
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [org, setOrg] = useState<Organization | null>(null);
+  const [charter, setCharter] = useState<ProjectCharter | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
@@ -136,6 +138,32 @@ export default function ProjectDetailPage() {
   const [memberRole, setMemberRole] = useState<ProjectMemberRole>("team");
   const [memberSubmitting, setMemberSubmitting] = useState(false);
   const [users, setUsers] = useState<AdminUser[]>([]);
+
+  // Stakeholders informativos del charter: sponsor / business_leader /
+  // tech_leader. Sólo se listan los que tienen `name` no vacío. Si la
+  // lista queda vacía, el tab se oculta (no hay nada que mostrar).
+  const charterStakeholders = useMemo(() => {
+    if (!charter) return [];
+    const rows: { role: string; name: string; email: string | null }[] = [];
+    if (charter.sponsor?.trim()) {
+      rows.push({ role: "Sponsor", name: charter.sponsor, email: charter.sponsor_email ?? null });
+    }
+    if (charter.business_leader?.trim()) {
+      rows.push({
+        role: "Líder de negocio",
+        name: charter.business_leader,
+        email: charter.business_leader_email ?? null,
+      });
+    }
+    if (charter.tech_leader?.trim()) {
+      rows.push({
+        role: "Líder técnico",
+        name: charter.tech_leader,
+        email: charter.tech_leader_email ?? null,
+      });
+    }
+    return rows;
+  }, [charter]);
 
   const [healthPending, setHealthPending] = useState<ProjectHealth | null>(null);
   // ENH-101: pending sentinel — "__null__" representa un clear explícito.
@@ -155,6 +183,13 @@ export default function ProjectDetailPage() {
         } catch {
           setOrg(null);
         }
+      }
+      try {
+        setCharter(await getProjectCharter(id));
+      } catch {
+        // Sin charter creado todavía o sin permiso; el tab de Stakeholders
+        // queda oculto.
+        setCharter(null);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo cargar el proyecto");
@@ -428,6 +463,11 @@ export default function ProjectDetailPage() {
             { id: "progress", label: "Avance" },
             { id: "budget", label: "Presupuesto" },
             { id: "activity", label: "Actividad" },
+            // Stakeholders: solo se renderiza si el charter tiene al
+            // menos uno (sponsor / business_leader / tech_leader).
+            ...(charterStakeholders.length > 0
+              ? [{ id: "stakeholders" as Tab, label: "Stakeholders" }]
+              : []),
           ] as { id: Tab; label: string }[]
         ).map((t) => (
           <button
@@ -555,6 +595,32 @@ export default function ProjectDetailPage() {
               registrados en el audit log global.
             </p>
           </div>
+        </Card>
+      ) : null}
+
+      {tab === "stakeholders" && charterStakeholders.length > 0 ? (
+        <Card title="Stakeholders">
+          <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
+            Solo informativo. Editable desde el charter del proyecto.
+          </p>
+          <ul className="divide-y divide-[var(--border-subtle)]">
+            {charterStakeholders.map((s) => (
+              <li key={`${s.role}-${s.name}`} className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-[14px] font-medium text-[var(--text-primary)]">{s.name}</p>
+                  <p className="text-[12px] text-[var(--text-tertiary)]">{s.role}</p>
+                </div>
+                {s.email ? (
+                  <a
+                    href={`mailto:${s.email}`}
+                    className="text-[12px] text-[var(--color-accent)] hover:underline"
+                  >
+                    {s.email}
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </Card>
       ) : null}
 
