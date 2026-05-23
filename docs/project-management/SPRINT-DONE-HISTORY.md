@@ -619,3 +619,67 @@ Bloque 1 — Áreas refinement + Plan responsables (4 issues, #263-#266). Migrac
 - `docs/epics/drafts/minute-gold-standard.md` — Highlander EAM-BNF (transcript + minuta esperada + pipeline parser IA).
 - `.claude/skills/handoff/SKILL.md` — skill para bridges entre sesiones (PR #412).
 - 26 issues creados en GitHub (#373-#398), todos con labels aplicados.
+
+---
+
+## Sprints 30-32 (v1.27) — Rediseño Minutas + Reports — Cerrados 2026-05-23
+
+22 items entregados secuencialmente en branch `claude/zen-brown-ivCbz`. Owner decisión 2026-05-23: rediseño grande de Minutas y Reports tras feedback de uso real.
+
+### Sprint 30 — Pre-requisitos + Sidebar + Minutas cosmético (7 items)
+
+**Bloque 1 — Pre-requisitos backend (ya en main vía commits previos):**
+- [x] **US-140 #428** — Persistir reports del builder (`d65805c`, verificado).
+- [x] **US-136 #424** — Tabs Resumen/Reportes en `/pmo/organizations/[id]` (`a9edbae`).
+- [x] **US-137 #425** — Tabs Resumen/Reportes en `/pmo/programs/[id]` (`03f06ff`).
+
+**Bloque 2 — Sidebar + bug + minutas cosmético:**
+- [x] **ENH-116 #450** — Sidebar "Módulos" + aplanar dropdown Reportes (`bf423ca`).
+- [x] **BUG-062 #451** — Click en nombre minuta abre detail (`bfe4efd`).
+- [x] **ENH-117 #452** — Listing minutas simplificado + columnas Folio/Minuta/Fecha/Tipo/Exportar/Preview/Borrar (`7ad1fd8`).
+- [x] **ENH-118 #453** — Detail minuta sin MD/TXT export (`89a430b`).
+
+### Sprint 31 — Minutas generador + Reports PMO 4 tabs (7 items)
+
+**Bloque 1 — Minutas generador unificado:**
+- [x] **US-143 #455** — Backend `source_type=transcript|minute|manual` + migración 0075 + nuevo `MINUTE_NORMALIZE_SYSTEM` (`1fb672b`).
+- [x] **US-142 #454** — Frontend `/minutes/new` con 3 modos. `/ai-minutes/new` redirect 301 (`0bcf138`).
+- [x] **ENH-119 #456** — Labels RAID claros en detail (`a6f5ffb`).
+
+**Bloque 2 — Reports `/pmo/reports` 4 tabs:**
+- [x] **ENH-120 #460** — Tab "Proyectos" rediseñado + backend enriquece folio/tipo/período + filtra drafts + detail page nuevo (`ba3aae1`).
+- [x] **US-144 #457** — Tab "PMO" con descarga Status PMO (`f639d88`).
+- [x] **US-145 #458** — Tab "Organizaciones" con filtro org (`ee8ab24`).
+- [x] **US-146 #459** — Tab "Programas" con filtros org+programa (`0b5af6a`).
+
+### Sprint 32 — Reports proyecto + Builder unificado (8 items)
+
+**Bloque 1 — Reports proyecto rediseñado:**
+- [x] **US-147 #462** — Endpoint Look-ahead + template (`2bd4032`).
+- [x] **ENH-122 #463** — `period_from`/`period_to` en Avance/Seguimiento (`bf2eba8`).
+- [x] **ENH-121 #461** — 3 tabs Generar/Historial/Programar + 3 paneles default + catálogo builder templates (`5e1c7f8`).
+- [x] **ENH-114 #433** — Schedule type=custom (`1d2b04f` preexistente, verificado).
+
+**Bloque 2 — Builder unificado:**
+- [x] **US-148 #464** — Header Modo + Ventana value+unit persistida + `?template_id` (`9a14e31`).
+- [x] **ENH-123 #465** — Catálogo 22 secciones verificado (sin commit nuevo).
+- [x] **ENH-124 #466** — Preview live con marcas A4 (`cb1abff`).
+- [x] **ENH-125 #467** — Navigation guard al salir sin guardar (`542ee5a`).
+
+**Cleanup:**
+- [x] **chore** — `/reports/tweak` → redirect a `/reports/builder` (`def46f6`).
+
+### Migraciones agregadas
+- **0075** — `meeting_minutes.origin` admite `'minute_ai'` (US-143).
+
+### Decisiones de diseño tomadas
+
+1. **Cascarón intencional** para historial PMO/Org/Prog: la persistencia de reportes Level=1/2 requiere decisión de schema (`Report.project_id` nullable o tabla aparte) que owner difiere a sesión separada de diseño del Reporte Status PMO.
+2. **`_template` bucket en `default_parameters`** del Builder: persiste `window_days`, `window_value`, `window_unit` sin migración nueva.
+3. **Modo manual de minutas** persiste directo en `MeetingMinute` (no pasa por celery) — endpoint distingue por `source_type` y retorna 201 + minute_id en sync (vs 202 + job_id en transcript/minute).
+4. **MD/TXT de minutas deprecados en UI** pero backend sigue aceptándolos por compat.
+
+### 16 issues triage cerrados al inicio del Sprint 30
+
+- 12 duplicados exactos (#435-#446 cerrados como `duplicate of`).
+- 4 superseded por rediseño: US-135 (#423), US-138 (#426), US-139 (#427), US-141 (#429) — labels conflictantes con la nueva organización de tabs.

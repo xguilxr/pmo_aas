@@ -9,63 +9,21 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 30 — Rediseño Minutas + Reports (decisión owner 2026-05-23).
-Branch: claude/zen-brown-ivCbz.
-
-Bloque 1 — Pre-requisitos backend (3 items existentes).
-Bloque 2 — Sidebar + bug + cosméticos minutas (4 items nuevos).
+Sprints 30-32 entregados completos (22 items, branch claude/zen-brown-ivCbz).
+Por mergear todo a main vía PR único.
 
 Próximo libre: US-149, BUG-063, ENH-126.
+
+Pendiente fuera de scope: ENH-115 #434 (breadcrumbs cross /pmo/**/reports).
+Owner puede pasarlo a status:ready cuando quiera retomarlo.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
 
-> Todos los issues abajo están en `status:ready` (owner aprobó). Claude los ataca secuencialmente. 1 issue = 1 commit + push + comment.
-
-### Sprint 30 — Pre-requisitos + Sidebar + Minutas cosmético (7 items)
-
-**Bloque 1 — Pre-requisitos backend (desbloquea B y D)**
-- [ ] **US-140 #428** — Persistir reports del builder (`generator='builder'`). CRÍTICO para tab Historial.
-- [ ] **US-136 #424** — Tabs Resumen/Reportes en `/pmo/organizations/[id]`. Pre-req B2.
-- [ ] **US-137 #425** — Tabs Resumen/Reportes en `/pmo/programs/[id]`. Pre-req B3.
-
-**Bloque 2 — Sidebar + bug + minutas cosmético**
-- [ ] **ENH-116 #450** — Sidebar: "Módulos de Proyecto" → "Módulos" + aplanar dropdown Reportes.
-- [ ] **BUG-062 #451** — Click en nombre de minuta abre el listing en vez del detail. Fix en `/pmo/minutes/page.tsx:113` (href apunta al listing del proyecto).
-- [ ] **ENH-117 #452** — Minutas listing rediseñado: un solo botón "Generar Minuta" + columnas Folio/Minuta/Fecha/Tipo/Exportar/Preview/Borrar.
-- [ ] **ENH-118 #453** — Detail de minuta: quitar export MD/TXT, dejar solo PDF/DOCX.
-
-### Sprint 31 — Minutas generador unificado + Reports PMO 4 tabs (7 items)
-
-**Bloque 1 — Minutas generador (Transcript/Minuta/Manual)**
-- [ ] **US-143 #455** — Backend: extender `POST /ai/projects/{id}/minutes/generate` con `source_type=transcript|minute|manual`.
-- [ ] **US-142 #454** — Frontend nueva ruta `minutes/new` con 3 modos. Reemplaza `ai-minutes/new` (borrar carpeta).
-- [ ] **ENH-119 #456** — Detail minuta: RAID sugeridos editables hasta confirmar → link read-only.
-
-**Bloque 2 — `/pmo/reports` 4 tabs (PMO/Org/Prog/Proyectos)**
-- [ ] **US-144 #457** — Tab "PMO" (default): descargar Status PMO + historial. Cascarón funcional, estructura del reporte se define en sesión aparte.
-- [ ] **US-145 #458** — Tab "Organizaciones": filtro org + historial.
-- [ ] **US-146 #459** — Tab "Programas": filtros org+programa + historial.
-- [ ] **ENH-120 #460** — Tab "Proyectos": mover contenido actual + fixes folio/tipo/período + filtrar drafts + link al detail + label "Builder".
-
-### Sprint 32 — Reports proyecto + Builder unificado (8 items)
-
-**Bloque 1 — Reports proyecto rediseñado**
-- [ ] **US-147 #462** — Endpoint reporte Look-ahead (`POST /projects/{id}/reports/look-ahead/generate`).
-- [ ] **ENH-122 #463** — Períodos extendidos en Avance/Seguimiento: "3 semanas" + rango custom from/to.
-- [ ] **ENH-121 #461** — Reports proyecto: 3 tabs Generar/Historial/Programar + 3 paneles default + catálogo plantillas builder.
-- [ ] **ENH-114 #433** — Schedule type=custom en form de ScheduledReportsSection (encaja en tab Programar).
-
-**Bloque 2 — Builder unificado**
-- [ ] **US-148 #464** — Builder header: selector Modo + ventana de tiempo persistida en plantilla.
-- [ ] **ENH-123 #465** — Builder catálogo: verificar 22 secciones EP020 + drag-drop.
-- [ ] **ENH-124 #466** — Builder: SectionParamsPanel contextual + PreviewPane real-time con cortes de página.
-- [ ] **ENH-125 #467** — Builder: guardar/editar plantilla + prompt salir sin guardar + edición desde tab Generar.
-
-### Cross / cuando haya hueco
-- [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`.
+### Cross-cutting / sin sprint asignado
+- [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`. `status:ready` desde 2026-05-23 pero diferido al cierre del rediseño grande. Owner pasa a ready o reasigna sprint cuando lo prioriza.
 
 ---
 
@@ -79,16 +37,16 @@ Próximo libre: US-149, BUG-063, ENH-126.
 - [ ] ENH-075 #257 — Tool-use (crear tarea / RAID / nav)
 - [ ] ENH-076 #258 — Historial persistente + summary rolling
 
-**Decisión owner 2026-05-08:** posterga el chat global. Primero ejecutar Sprints 18-23 (Documentos / RAID / Minutas / Reportes / Cambios / BYO universal). Volver a evaluar necesidad después.
+**Decisión owner 2026-05-08:** posterga el chat global. Volver a evaluar necesidad post-EP020.
 
 ### Pendiente redefinición Áreas/Recursos (cubierto parcial por EP017 Sprint 25)
 - [ ] **US-105 #311** — Import Plan: wizard matching responsables → Actor.
 - [ ] **Tab Organigrama de US-106** — placeholder UI; cableado funcional depende del paquete EP017 final.
 - [ ] **US-119 #414** — EP017 cleanup: drop legacy `actors.team_id`, `actors.is_lead`, `teams.area_id`, `tasks/risks/issues.area_id`. **Bloqueado por ENH-109.**
-- [ ] **ENH-109 #417** — PersonPicker cableado en formularios existentes (Task/Risk/Issue/Change/Lesson/Participant). **Bloquea US-119 y ENH-110.**
+- [ ] **ENH-109 #417** — PersonPicker cableado en formularios existentes. **Bloquea US-119 y ENH-110.**
 - [ ] **ENH-110 #418** — Filtros / agrupadores de Plan por dimensiones derivadas. Depende de ENH-109.
-- [ ] **US-133 #415** — US-118 Fase 2: RBAC migra a leer `project_participations` (en lugar de `project_members`).
-- [ ] **US-134 #416** — US-118 Fase 3: drop `project_members` table. Bloqueado por US-133 en producción ≥ 1 sprint.
+- [ ] **US-133 #415** — US-118 Fase 2: RBAC migra a leer `project_participations`.
+- [ ] **US-134 #416** — US-118 Fase 3: drop `project_members` table.
 
 ### Admin UI settings (cross — sin sprint asignado al rediseño Minutas/Reports)
 - [ ] **ENH-111 #430** — UI admin tenant para `progress_calculation_method`.
@@ -96,9 +54,9 @@ Próximo libre: US-149, BUG-063, ENH-126.
 - [ ] **ENH-113 #432** — UI admin org para upload `client_logo_url`.
 
 ### Snapshots históricos (postergado v2.0)
-- Snapshots periódicos de KPIs y semáforo (habilita S-05 tendencia, sparklines, deltas vs anterior).
-- S-07 Curva S (descartada — incompatible con flexibilidad del plan).
-- S-10 Entregables formales (concepto no configurado en plataforma).
+- Snapshots periódicos de KPIs y semáforo.
+- S-07 Curva S (descartada).
+- S-10 Entregables formales (concepto no configurado).
 
 ---
 
@@ -134,33 +92,42 @@ Próximo libre: US-149, BUG-063, ENH-126.
 | 24 | v1.23 | 2026-05-09 | 12 |
 | 25 | v1.24 | 2026-05-10 | 5 |
 | 26 | v1.25 | 2026-05-22 | 16 (3 bloques — Minutas v1.0 + Dependencias EP020 + Backbone EP020) |
-| 27-29 | v1.26 | 2026-05-25 | 10 (mega-PR EP020: US-123/124/125/126/127/128/129/130/131/132) |
+| 27-29 | v1.26 | 2026-05-25 | 10 (mega-PR EP020: US-123 a US-132) |
+| 30-32 | v1.27 | 2026-05-23 | 22 (rediseño Minutas + Reports — ver `SPRINT-DONE-HISTORY.md`) |
 
 ---
 
 ## 📋 Backlog v2.0 (post-v1.x)
 
-> **Contexto (DEC-020):** plataforma definida como herramienta de apoyo/visualización sin aprobaciones jerárquicas. US-061 cancelada; US-059/US-060 entregadas en Sprint 4.
+> **Contexto (DEC-020):** plataforma definida como herramienta de apoyo/visualización sin aprobaciones jerárquicas.
 
 - [ ] ENH-035 #158 — Análisis profundo optimización CI tests pesados.
-- [ ] US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
+- [ ] US-081 — Borrar físicamente tablas `roles` + `user_roles`.
 - [ ] ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
 - [ ] Cross-empresa nativo (post-ENH-043): si ≥3 grupos lo solicitan, abrir US con `program_organizations`.
 - [ ] US-086 fase 2 — Cablear stakeholders FK en Charter.
 - [ ] US-084 fase 2 — Banner de divergencias cuando importadores MPP/XLSX detecten diferencia entre manual y calculado.
-- [ ] US-087 fase 2 — Campos `Task.hours_estimated/hours_actual` para que `compute_kpis` exponga horas plan/real.
+- [ ] US-087 fase 2 — Campos `Task.hours_estimated/hours_actual`.
 - [ ] Hard-delete User cuando hay `project_request.requested_by` (US-088 fase 2).
-- [ ] Snapshots históricos de KPIs y semáforo (habilita S-05 tendencia, sparklines, deltas).
-- [ ] KPIs custom por admin tenant (extensión del catálogo cerrado v1.0 de EP020).
+- [ ] Snapshots históricos de KPIs y semáforo.
+- [ ] KPIs custom por admin tenant.
+- [ ] **Cleanup post-Sprint 32**: borrar `apps/web/app/(app)/pmo/projects/[id]/ai-minutes/` y `.../reports/tweak/` carpetas enteras (hoy son redirects 301). Tras 1 sprint en main sin reportes de bookmarks rotos.
+- [ ] **Persistencia reports L1/L2** (PMO/Org/Prog): hoy cascarón. Cuando owner defina estructura del Reporte Status PMO en sesión separada, agregar `generator='pmo'|'organization'|'program'` + nullable `project_id` o tabla aparte.
+- [ ] **Dirty-flag fino en builder** (mejora ENH-125): comparar canvas vs plantilla cargada para detectar cambios sin guardar incluso cuando hay `loadedTemplateId`.
 
 ---
 
 ## Notas y cambios recientes
 
-- **2026-05-23 (apertura Sprint 30-32 — rediseño Minutas + Reports):** owner pidió rediseño grande de Minutas y Reports. 16 issues triage cerrados (12 duplicados + 4 superseded), 18 issues nuevos creados (#450-#467), 5 issues existentes reasignados al plan (US-136/137/140, ENH-114/115). Plan: Sprint 30 cleanup + sidebar + cosmético minutas; Sprint 31 generador minutas unificado + 4 tabs `/pmo/reports`; Sprint 32 reports proyecto + builder unificado. Total 22 items secuenciales.
-- **2026-05-25 (mega-PR EP020 completo):** 10 US entregadas en 10 commits secuenciales (US-123 a US-132). Decisiones DEC-025..029 registradas en DECISIONS.md. Migraciones 0073 + 0074 en DB-CHANGES.md. Mergeado a main (PR #449).
-- **2026-05-22 (cierre Sprint 26 + skill /handoff):** Sprint 26 cerrado completo (16 items). Frente Minutas v1.0 + Backbone EP020. 3 collisions de alembic resueltas. **Decisión clave:** desarrollo secuencial puro.
-- **2026-05-22 (Sprint 26 Bloque 0 — Minutas v1.0 + EP020 planning):** catálogo de 22 secciones atómicas de EP020 cerrado. Promoción a epic oficial `EP020-report-builder.md`. Gold standard de minuta (Highlander EAM-BNF) como referencia normativa.
+- **2026-05-23 (cierre Sprints 30-32 — rediseño Minutas + Reports):** 22 items entregados secuencialmente en `claude/zen-brown-ivCbz`. Reorganización completa:
+  - **Sidebar**: "Módulos de Proyecto" → "Módulos"; dropdown Reportes aplanado.
+  - **Minutas**: listing simplificado (1 botón + columnas reordenadas), generador unificado `/minutes/new` con 3 modos (Transcript/Minuta/Manual), backend con `source_type` y migración 0075 (`minute_ai` origin). Detail sin MD/TXT. RAID labels claros.
+  - **Reports `/pmo/reports`**: 4 tabs (PMO/Organizaciones/Programas/Proyectos) reemplazan Operacionales/Builder. Detail standalone para reportes. Cascarón intencional para historial L1/L2.
+  - **Reports proyecto**: 3 tabs (Generar/Historial/Programar). 3 paneles default (Avance/Seguimiento/Look-ahead). Períodos extendidos (3 semanas + custom from/to). Catálogo plantillas builder. Scheduled custom soportado.
+  - **Builder**: Modo + Ventana (value+unit) persistido en plantilla. Edit via `?template_id=X`. Preview live con marcas A4. Navigation guard.
+  - **Cleanup**: `/ai-minutes/new` y `/reports/tweak` ahora redirects 301.
+- **2026-05-25 (mega-PR EP020 completo):** 10 US entregadas (US-123 a US-132). Mergeado a main.
+- **2026-05-22 (cierre Sprint 26 + skill /handoff):** Sprint 26 cerrado (16 items). Minutas v1.0 + Backbone EP020.
 
 ---
 
@@ -168,8 +135,8 @@ Próximo libre: US-149, BUG-063, ENH-126.
 
 Cuando arranques una sesión nueva:
 
-1. Lee `docs/project-management/HANDOFF.md` PRIMERO (bridge de la sesión anterior).
-2. Luego `CLAUDE.md` (reglas) + este archivo + el epic referenciado en IN-PROGRESS.
+1. Lee `docs/project-management/HANDOFF.md` PRIMERO.
+2. Luego `CLAUDE.md` + este archivo + el epic referenciado en IN-PROGRESS.
 3. Mueve la siguiente US/ENH/BUG de **INBOX** (marcada `status:ready`) a **IN-PROGRESS** antes de empezar.
 4. Cambia label del issue: `status:ready` → `status:in-progress`.
 5. Implementa con tests verdes + typecheck.
@@ -181,4 +148,4 @@ Cuando arranques una sesión nueva:
 
 **Regla sagrada:** 1 US = 1 commit. No mezclar varios IDs en el mismo commit.
 
-**Regla post-Sprint 26 (decisión owner 2026-05-22):** desarrollo secuencial puro. 1 sesión activa, 1 lane, 1 branch. Migraciones consecutivas sin paralelización para evitar collisions de revision IDs.
+**Regla post-Sprint 26 (decisión owner 2026-05-22):** desarrollo secuencial puro. 1 sesión activa, 1 lane, 1 branch. Migraciones consecutivas sin paralelización.
