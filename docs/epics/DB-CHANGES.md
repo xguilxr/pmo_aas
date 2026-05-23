@@ -268,3 +268,22 @@ Reglas:
 | `report_builder_template_id` | `VARCHAR(36)` FK `report_builder_templates.id` `ON DELETE SET NULL` | indexed (`ix_scheduled_reports_builder_template`) |
 
 Cuando `scheduled_reports.report_type='custom'`, este campo apunta a la plantilla del Report Builder. El worker (`apps/api/app/workers/tasks/scheduled_reports.py`) invoca el motor de US-123 (`render_template`) sobre la plantilla y manda el HTML resultante por `html_to_pdf` antes de adjuntar al email via Resend. `REPORT_TYPES` se extiende a `("avance", "seguimiento", "custom")`.
+
+---
+
+## EP019 Minutas — generador unificado (2026-05-23)
+
+### Migración **0075** — `meeting_minutes.origin` admite `'minute_ai'` (US-143)
+
+Extiende el CHECK constraint `ck_meeting_minutes_origin` para incluir el
+nuevo valor `'minute_ai'`. Sin cambio de tipo de columna.
+
+| Valor | Significado |
+|---|---|
+| `manual` | POST normal o `source_type=manual` del generador unificado |
+| `transcript_ai` | job de IA procesó un transcript |
+| `minute_ai` | **nuevo**: job de IA normalizó una minuta YA redactada (US-143) |
+| `import_file` | importada desde archivo |
+| `import_paste` | pegada en bloque |
+
+Sin backfill (sólo abre el valor para futuras inserciones).
