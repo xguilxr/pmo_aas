@@ -2,59 +2,70 @@
 
 > **Regla:** Claude Code lee SOLO este archivo + el epic relevante. 1 US = 1 commit. Al terminar, marcar DONE y mover la siguiente a IN-PROGRESS.
 >
-> **Histórico:** Sprints 1-26 cerrados → ver `SPRINT-DONE-HISTORY.md`.
+> **Histórico:** Sprints 1-29 cerrados → ver `SPRINT-DONE-HISTORY.md`.
 
 ---
 
 ## 🔴 IN-PROGRESS
 
 ```
-Mega-PR EP020 abierto (claude/dazzling-fermat-W354x) — 10 US
-entregadas en 10 commits secuenciales, sin merges intermedios.
-Por mergear todo de un golpe tras CI verde:
+Sprint 30 — Rediseño Minutas + Reports (decisión owner 2026-05-23).
+Branch: claude/zen-brown-ivCbz.
 
-  US-123 (engine) 67bb040
-  US-130 (export PDF) 0dba512
-  US-124 (canvas drag-drop) d53daaa
-  US-125 (panel params) ec63303
-  US-126 (plantillas privadas + visibility) 88bbcac · migración 0073
-  US-127 (chat IA conversacional) 5436224
-  US-131 (suscripciones custom) 176448b · migración 0074
-  US-128 (UI Nivel 1 PMO) 58e29d1
-  US-129 (UI Nivel 2 Org/Programa) 13f7595
-  US-132 (Gantt SVG snapshot) d97943f
+Bloque 1 — Pre-requisitos backend (3 items existentes).
+Bloque 2 — Sidebar + bug + cosméticos minutas (4 items nuevos).
 
-Próximo libre: US-133, BUG-062, ENH-109.
+Próximo libre: US-149, BUG-063, ENH-126.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
 
-> Issues creados con `status:triage`. Owner pasa a `status:ready` para arrancar.
+> Todos los issues abajo están en `status:ready` (owner aprobó). Claude los ataca secuencialmente. 1 issue = 1 commit + push + comment.
 
-### Sprints 27-29 EP020 — entregados en mega-PR (pendiente merge)
+### Sprint 30 — Pre-requisitos + Sidebar + Minutas cosmético (7 items)
 
-Todos los items abajo están en commits separados sobre la branch
-`claude/dazzling-fermat-W354x`. Al mergear el PR pasan a la tabla DONE.
+**Bloque 1 — Pre-requisitos backend (desbloquea B y D)**
+- [ ] **US-140 #428** — Persistir reports del builder (`generator='builder'`). CRÍTICO para tab Historial.
+- [ ] **US-136 #424** — Tabs Resumen/Reportes en `/pmo/organizations/[id]`. Pre-req B2.
+- [ ] **US-137 #425** — Tabs Resumen/Reportes en `/pmo/programs/[id]`. Pre-req B3.
 
-**Sprint 27 Bloque 1 (motor + export):**
-- [x] **US-123 #381** — Engine de render con modos composición A/B (`67bb040`).
-- [x] **US-130 #390** — Export PDF de reportes custom (`0dba512`).
+**Bloque 2 — Sidebar + bug + minutas cosmético**
+- [ ] **ENH-116 #450** — Sidebar: "Módulos de Proyecto" → "Módulos" + aplanar dropdown Reportes.
+- [ ] **BUG-062 #451** — Click en nombre de minuta abre el listing en vez del detail. Fix en `/pmo/minutes/page.tsx:113` (href apunta al listing del proyecto).
+- [ ] **ENH-117 #452** — Minutas listing rediseñado: un solo botón "Generar Minuta" + columnas Folio/Minuta/Fecha/Tipo/Exportar/Preview/Borrar.
+- [ ] **ENH-118 #453** — Detail de minuta: quitar export MD/TXT, dejar solo PDF/DOCX.
 
-**Sprint 27 Bloque 2 (canvas Nivel 4):**
-- [x] **US-124 #382** — Canvas drag-and-drop + preview en vivo (`d53daaa`).
-- [x] **US-125 #383** — Panel de parámetros transversales (`ec63303`).
-- [x] **US-126 #384** — Plantillas privadas + publicar al proyecto (`88bbcac`, migración 0073).
+### Sprint 31 — Minutas generador unificado + Reports PMO 4 tabs (7 items)
 
-**Sprint 28:**
-- [x] **US-127 #385** — IA conversacional (tool-call JSON-action, reusa cascada EP008) (`5436224`).
-- [x] **US-131 #386** — Suscripciones reportes custom (`176448b`, migración 0074).
+**Bloque 1 — Minutas generador (Transcript/Minuta/Manual)**
+- [ ] **US-143 #455** — Backend: extender `POST /ai/projects/{id}/minutes/generate` con `source_type=transcript|minute|manual`.
+- [ ] **US-142 #454** — Frontend nueva ruta `minutes/new` con 3 modos. Reemplaza `ai-minutes/new` (borrar carpeta).
+- [ ] **ENH-119 #456** — Detail minuta: RAID sugeridos editables hasta confirmar → link read-only.
 
-**Sprint 29:**
-- [x] **US-128 #387** — UI Reportes Nivel 1 PMO `/pmo/reports/portfolio` (`58e29d1`).
-- [x] **US-129 #388** — UI Reportes Nivel 2 Organización + Programa (`13f7595`).
-- [x] **US-132 #389** — Render del Gantt WBS-N para S-19 (SVG Python; Playwright diferido a v1.x — DEC-029) (`d97943f`).
+**Bloque 2 — `/pmo/reports` 4 tabs (PMO/Org/Prog/Proyectos)**
+- [ ] **US-144 #457** — Tab "PMO" (default): descargar Status PMO + historial. Cascarón funcional, estructura del reporte se define en sesión aparte.
+- [ ] **US-145 #458** — Tab "Organizaciones": filtro org + historial.
+- [ ] **US-146 #459** — Tab "Programas": filtros org+programa + historial.
+- [ ] **ENH-120 #460** — Tab "Proyectos": mover contenido actual + fixes folio/tipo/período + filtrar drafts + link al detail + label "Builder".
+
+### Sprint 32 — Reports proyecto + Builder unificado (8 items)
+
+**Bloque 1 — Reports proyecto rediseñado**
+- [ ] **US-147 #462** — Endpoint reporte Look-ahead (`POST /projects/{id}/reports/look-ahead/generate`).
+- [ ] **ENH-122 #463** — Períodos extendidos en Avance/Seguimiento: "3 semanas" + rango custom from/to.
+- [ ] **ENH-121 #461** — Reports proyecto: 3 tabs Generar/Historial/Programar + 3 paneles default + catálogo plantillas builder.
+- [ ] **ENH-114 #433** — Schedule type=custom en form de ScheduledReportsSection (encaja en tab Programar).
+
+**Bloque 2 — Builder unificado**
+- [ ] **US-148 #464** — Builder header: selector Modo + ventana de tiempo persistida en plantilla.
+- [ ] **ENH-123 #465** — Builder catálogo: verificar 22 secciones EP020 + drag-drop.
+- [ ] **ENH-124 #466** — Builder: SectionParamsPanel contextual + PreviewPane real-time con cortes de página.
+- [ ] **ENH-125 #467** — Builder: guardar/editar plantilla + prompt salir sin guardar + edición desde tab Generar.
+
+### Cross / cuando haya hueco
+- [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`.
 
 ---
 
@@ -78,6 +89,11 @@ Todos los items abajo están en commits separados sobre la branch
 - [ ] **ENH-110 #418** — Filtros / agrupadores de Plan por dimensiones derivadas. Depende de ENH-109.
 - [ ] **US-133 #415** — US-118 Fase 2: RBAC migra a leer `project_participations` (en lugar de `project_members`).
 - [ ] **US-134 #416** — US-118 Fase 3: drop `project_members` table. Bloqueado por US-133 en producción ≥ 1 sprint.
+
+### Admin UI settings (cross — sin sprint asignado al rediseño Minutas/Reports)
+- [ ] **ENH-111 #430** — UI admin tenant para `progress_calculation_method`.
+- [ ] **ENH-112 #431** — UI admin tenant para `task_load_thresholds`.
+- [ ] **ENH-113 #432** — UI admin org para upload `client_logo_url`.
 
 ### Snapshots históricos (postergado v2.0)
 - Snapshots periódicos de KPIs y semáforo (habilita S-05 tendencia, sparklines, deltas vs anterior).
@@ -118,6 +134,7 @@ Todos los items abajo están en commits separados sobre la branch
 | 24 | v1.23 | 2026-05-09 | 12 |
 | 25 | v1.24 | 2026-05-10 | 5 |
 | 26 | v1.25 | 2026-05-22 | 16 (3 bloques — Minutas v1.0 + Dependencias EP020 + Backbone EP020) |
+| 27-29 | v1.26 | 2026-05-25 | 10 (mega-PR EP020: US-123/124/125/126/127/128/129/130/131/132) |
 
 ---
 
@@ -140,10 +157,10 @@ Todos los items abajo están en commits separados sobre la branch
 
 ## Notas y cambios recientes
 
-- **2026-05-25 (mega-PR EP020 completo):** 10 US entregadas en 10 commits secuenciales sobre `claude/dazzling-fermat-W354x` (US-123 a US-132). Decisiones DEC-025..029 registradas en DECISIONS.md. Migraciones 0073 (visibility) + 0074 (scheduled custom) en DB-CHANGES.md. Suite de regresión EP020: 30/30 tests verdes. Pendiente revisión owner + merge.
-- **2026-05-22 (cierre Sprint 26 + skill /handoff):** Sprint 26 cerrado completo (16 items en 3 bloques). Frente Minutas v1.0 entregado (BUG-061 + 7 ENH). Backbone EP020 entregado (US-120/121/122). 3 collisions de alembic resueltas con merge migrations + renaming. **Decisión clave:** owner pivotea a desarrollo secuencial puro tras los errores de paralelización. Skill `/handoff` creado (PR #412 mergeado) para forzar cleanup de SPRINT.md y mantener bridge entre sesiones.
-- **2026-05-22 (Sprint 26 Bloque 0 — Minutas v1.0 + EP020 planning):** catálogo de 22 secciones atómicas de EP020 cerrado tras 4 rondas con owner. Promoción del draft a epic oficial `docs/epics/EP020-report-builder.md` con 13 US (US-120 a US-132) + 5 ENH dependencias. Gold standard de minuta (Highlander EAM-BNF) como referencia normativa del parser IA. 26 issues creados (#373-#398) + labels aplicados.
-- **2026-05-10 (EP017 Directorio de Proyecto — Sprint 25 entregado):** 5 US entregadas. Migraciones 0061 + 0062. Diferidos significativos: PersonPicker cableado en cada form, US-118 Fases 2/3, US-119 cleanup.
+- **2026-05-23 (apertura Sprint 30-32 — rediseño Minutas + Reports):** owner pidió rediseño grande de Minutas y Reports. 16 issues triage cerrados (12 duplicados + 4 superseded), 18 issues nuevos creados (#450-#467), 5 issues existentes reasignados al plan (US-136/137/140, ENH-114/115). Plan: Sprint 30 cleanup + sidebar + cosmético minutas; Sprint 31 generador minutas unificado + 4 tabs `/pmo/reports`; Sprint 32 reports proyecto + builder unificado. Total 22 items secuenciales.
+- **2026-05-25 (mega-PR EP020 completo):** 10 US entregadas en 10 commits secuenciales (US-123 a US-132). Decisiones DEC-025..029 registradas en DECISIONS.md. Migraciones 0073 + 0074 en DB-CHANGES.md. Mergeado a main (PR #449).
+- **2026-05-22 (cierre Sprint 26 + skill /handoff):** Sprint 26 cerrado completo (16 items). Frente Minutas v1.0 + Backbone EP020. 3 collisions de alembic resueltas. **Decisión clave:** desarrollo secuencial puro.
+- **2026-05-22 (Sprint 26 Bloque 0 — Minutas v1.0 + EP020 planning):** catálogo de 22 secciones atómicas de EP020 cerrado. Promoción a epic oficial `EP020-report-builder.md`. Gold standard de minuta (Highlander EAM-BNF) como referencia normativa.
 
 ---
 
@@ -154,7 +171,7 @@ Cuando arranques una sesión nueva:
 1. Lee `docs/project-management/HANDOFF.md` PRIMERO (bridge de la sesión anterior).
 2. Luego `CLAUDE.md` (reglas) + este archivo + el epic referenciado en IN-PROGRESS.
 3. Mueve la siguiente US/ENH/BUG de **INBOX** (marcada `status:ready`) a **IN-PROGRESS** antes de empezar.
-4. Cambia label del issue: `status:triage` → `status:in-progress`.
+4. Cambia label del issue: `status:ready` → `status:in-progress`.
 5. Implementa con tests verdes + typecheck.
 6. Commit con header `<tipo>(<scope>): <ID> — <desc> (refs #<issue>)` y push.
 7. Cambia label → `status:fix-committed` + comment con template CLAUDE.md §3 paso 6.
