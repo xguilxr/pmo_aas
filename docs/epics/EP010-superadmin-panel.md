@@ -237,19 +237,23 @@ configuración global.
   - Worker (queue depth, jobs por minuto, failed rate).
   - Postgres (conexiones, slow queries, size).
   - Redis (memoria, hit rate).
-  - IA providers: **Ollama** (healthy + modelos disponibles + latencia),
-    **Gemini** (healthy + rate limit restante), **Claude** (configured?).
-  - Storage (volume / S3 usage %).
+  - IA providers (post BUG-053): **Groq** (modo platform — `POST
+    /superadmin/ai/groq/ping`), uso del free tier (`GET
+    /superadmin/ai/groq-usage`). Para BYO se consulta `GET
+    /superadmin/ai/tenants-status` (provider/modelo/último test por
+    tenant). **Ollama eliminado.**
+  - Storage (volume / R2 usage %).
   - Email (Resend errors últimos 24h).
 - [ ] Refresh cada 15s.
 - [ ] Detalle expandible con últimas 10 fallas por sistema.
-- [ ] Integra con GlitchTip para mostrar top errores recientes.
+- [ ] **Sin integración GlitchTip / Sentry hoy** (`sentry-sdk` no está
+  instalado). Si se reintegra, agregar tarjeta de top errores.
 
 **Test Cases:**
-- `TC-162` (integration) — Tarjeta Ollama muestra `unhealthy` si el endpoint
-      tarda > 3s en responder.
-- `TC-163` (integration) — Rate limit Gemini consumido → tarjeta amarilla con
-      "14/15 RPM usados".
+- `TC-162` (integration) — `POST /superadmin/ai/groq/ping` con key
+  inválida devuelve `ok=false` con el error.
+- `TC-163` (integration) — `GET /superadmin/ai/groq-usage` refleja el
+  consumo agregado del día.
 
 ---
 

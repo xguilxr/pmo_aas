@@ -225,6 +225,6 @@ Ver detalle del shape en
 - [ ] Sidebar con árbol navegable.
 - [ ] Vista de organizaciones como paneles.
 - [ ] Breadcrumb adaptable a jerarquías incompletas.
-- [ ] RLS en tablas nuevas verificado (TC-MT-001 extendido).
+- [ ] Aislamiento app-level en tablas nuevas verificado vía `TC-MT-001` extendido (no RLS, ver DEC-003 / `architecture/security-multitenant.md`).
 - [ ] Bug 404 programas resuelto.
 - [ ] Migración BD documentada y reversible.

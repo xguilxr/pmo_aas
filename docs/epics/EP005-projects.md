@@ -240,7 +240,7 @@ Issue **#124**. Usa las 9 columnas canónicas de ENH-028 (WBS · Tarea
 · Inicio · Fin · Duración · Avance · Es hito · Estado · Responsable)
 + hoja de instrucciones con formatos válidos + data validation. Botón
 "Descargar plantilla" visible aun con plan vacío en
-`/admin/projects/[id]/plan`. Generación client-side con exceljs
+`/pmo/projects/[id]/plan`. Generación client-side con exceljs
 (sin backend). Estado: `status:triage`.
 
 ---
@@ -252,7 +252,7 @@ Issue **#124**. Usa las 9 columnas canónicas de ENH-028 (WBS · Tarea
 **Para** navegar planeación sin saltar entre pestañas.
 
 **Criterios de aceptación:**
-- [x] Ruta `/admin/projects/{id}/plan` con layout unificado.
+- [x] Ruta `/pmo/projects/{id}/plan` con layout unificado.
 - [x] Toggle `Lista / Dividida / Gantt` persistido en URL (`?view=list|gantt`).
 - [x] Default = "Dividida" (lista arriba, Gantt abajo).
 - [x] En "Lista" se muestra tabla read-only con link "Abrir editor
@@ -285,7 +285,7 @@ cuenta en la plataforma)
 - [x] Tipo: `area | actor | team`.
 - [x] Filtrado por tipo en listado.
 - [x] Aislamiento multi-tenant verificado (404 en proyecto ajeno).
-- [x] Página frontend `/admin/projects/{id}/areas` con CRUD completo
+- [x] Página frontend `/pmo/projects/{id}/areas` con CRUD completo
   (modal de crear/editar + confirmación de eliminar + búsqueda +
   filtro por tipo).
 - [x] Entrada "Áreas" en el sidebar de módulos del proyecto.

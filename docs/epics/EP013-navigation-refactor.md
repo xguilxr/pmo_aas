@@ -120,7 +120,7 @@ Se **elimina**:
 ### DEC-XXX a registrar en DECISIONS.md al cierre del bloque
 
 - **DEC-011** — Sidebar principal expone drill-down real; sidebar admin expone jerarquía administrativa. No se duplican.
-- **DEC-012** — Los módulos del proyecto viven como tabs dentro de `/admin/projects/{id}` (no como rutas separadas en el sidebar global). Las rutas individuales actuales quedan como deep-link para compatibilidad.
+- **DEC-012** — Los módulos del proyecto viven como tabs dentro de `/pmo/projects/{id}` (no como rutas separadas en el sidebar global). Las rutas individuales actuales quedan como deep-link para compatibilidad.
 - **DEC-013** — "Mi Tenant" y "Panel del Tenant" se consolidan en una sola página bajo `Admin → Gestión de Tenant`.
 
 ---
@@ -173,8 +173,8 @@ Se **elimina**:
 - [x] Expandir programa → lista de proyectos reales de ese programa.
 - [x] Click en la hoja:
   - Organización → `/admin/organizations/{id}` (enlace se redirige al panel de recursos reales en US-033 siguiente).
-  - Programa → `/admin/projects?program_id={id}` temporal; se actualiza a `/admin/programs/{id}` cuando US-034 cree la página resumen.
-  - Proyecto → `/admin/projects/{id}` (DONE).
+  - Programa → `/pmo/projects?program_id={id}` temporal; se actualiza a `/pmo/programs/{id}` cuando US-034 cree la página resumen.
+  - Proyecto → `/pmo/projects/{id}` (DONE).
 - [x] **Eliminada** la sección duplicada "Organizaciones (jerarquía administrativa)" del sidebar principal — BUs/Deptos sólo en `/admin/organizations`.
 - [x] **Eliminada** la sección "Módulos de proyecto" del sidebar (sus ítems serán tabs inline en US-035).
 - [x] Expansión persistida en `localStorage` (`pmoaas:sidebar:org-tree:expanded`).
@@ -219,14 +219,14 @@ Se **elimina**:
 
 **Criterios de aceptación:**
 - [x] Endpoint `GET /api/v1/programs/{id}/summary` auth-only + cross-tenant → 404.
-- [x] Ruta `/admin/programs/{id}` con:
+- [x] Ruta `/pmo/programs/{id}` con:
   - Header: nombre, org (link al panel), is_active badge, descripción.
   - 4 KPI cards: proyectos total / activos / en riesgo / cerrados.
   - Donut SVG con salud del portafolio (green/yellow/red).
   - Presupuesto plan vs real agregado + desviación %.
   - Top 10 riesgos con `severity >= 13` no cerrados/materializados.
   - Tabla de proyectos con folio, fase, salud, PM, avance, presupuesto plan/real.
-- [x] Sidebar (`OrgTreeNav`): link de programa actualizado a `/admin/programs/{id}` (antes apuntaba a `/admin/projects?program_id=…`).
+- [x] Sidebar (`OrgTreeNav`): link de programa actualizado a `/pmo/programs/{id}` (antes apuntaba a `/pmo/projects?program_id=…`).
 
 **Test Cases (3/3 verdes):**
 - `test_usnew034_summary_aggregates_correctly` — counts, health, presupuestos, top risks filtrados por severidad y status.
@@ -240,14 +240,14 @@ Se **elimina**:
 ## # DONE — US-035 — Tabs inline en detalle de proyecto (supersede US-017)
 
 **Como** PM
-**Quiero** que los módulos del proyecto (Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/admin/projects/{id}`, no páginas separadas
+**Quiero** que los módulos del proyecto (Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/pmo/projects/{id}`, no páginas separadas
 **Para** no perder contexto al moverme entre módulos.
 
 > Esta US **supersede** la US-017 original.
 
 **Criterios de aceptación:**
-- [x] Shared layout `app/(app)/admin/projects/[id]/layout.tsx` con barra de tabs sticky (`<ProjectTabsBar />`).
-- [x] Tabs visibles en orden: `Resumen | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios`. Charter se mantiene como documento del proyecto (categoría en Documentos, ya DONE por US-013). Equipo y Actividad siguen como sub-tabs internas de la página Resumen (pattern preexistente de `/admin/projects/[id]/page.tsx`).
+- [x] Shared layout `app/(app)/pmo/projects/[id]/layout.tsx` con barra de tabs sticky (`<ProjectTabsBar />`). Originalmente vivió en `app/(app)/admin/projects/[id]/`; US-075 / DEC-022 movió el árbol a `/pmo/` y dejó redirects 301 en `next.config.js`.
+- [x] Tabs visibles en orden: `Resumen | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios`. Charter se mantiene como documento del proyecto (categoría en Documentos, ya DONE por US-013). Equipo y Actividad siguen como sub-tabs internas de la página Resumen (pattern preexistente de `/pmo/projects/[id]/page.tsx`).
 - [x] Next.js layout persiste entre navegaciones a sub-rutas (`/plan`, `/raid`, etc.): el header y el tab bar no se re-renderizan, la percepción de UX coincide con "no hay cambio de página".
 - [x] Tab activa resaltada (bg `--color-subtle`, font-semibold).
 - [x] Scroll horizontal en la barra para anchos reducidos (`overflow-x-auto`).
