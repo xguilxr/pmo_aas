@@ -221,15 +221,46 @@ async def list_tenant_reports(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
+    include_drafts: bool = Query(default=False),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
+    """ENH-120 — listado tenant-wide de reportes de proyecto.
+
+    Cambios respecto al endpoint legacy:
+    - Filtra `status='draft'` por default (owner pidió que sólo aparezcan
+      reportes guardados/enviados). Pasar `?include_drafts=true` para ver
+      borradores.
+    - Enriquece cada item con `folio` (derivado del id corto),
+      `report_type` (derivado de `generator`) y `period` (existente).
+    """
     tenant_id = _tenant(cu)
     stmt = select(Report)
     stmt = _project_scope(
         stmt, Report.project_id, tenant_id, organization_id, program_id, project_id
     )
+    if not include_drafts:
+        stmt = stmt.where(Report.status != "draft")
     rows = (await db.execute(stmt.order_by(Report.created_at.desc()))).all()
-    return [
-        _enrich(ReportRead.model_validate(r), folio, name) for r, folio, name in rows
-    ]
+    out: list[dict] = []
+    for r, project_folio, project_name in rows:
+        data = _enrich(ReportRead.model_validate(r), project_folio, project_name)
+        # ENH-120: folio del reporte derivado del id (cascarón).
+        # Cuando exista un campo `folio` real en Report, usarlo en vez
+        # de derivarlo. Por ahora `RPT-<8 chars id>` es estable.
+        data["folio"] = f"RPT-{str(r.id)[:8].upper()}"
+        # ENH-120: report_type derivado del generator. "ai" → "Builder"
+        # cuando el reporte vino de la integración legacy IA → builder.
+        gen = data.get("generator") or "manual"
+        type_label = {
+            "manual": "Manual",
+            "ai": "Builder",
+            "builder": "Builder",
+            "avance": "Avance",
+            "seguimiento": "Seguimiento",
+            "look_ahead": "Look-ahead",
+        }.get(gen, gen.title())
+        data["report_type"] = type_label
+        # period viene del modelo directo (ReportRead lo expone).
+        out.append(data)
+    return out
