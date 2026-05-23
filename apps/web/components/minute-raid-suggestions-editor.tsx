@@ -306,7 +306,7 @@ export function MinuteRaidSuggestionsEditor({
           disabled={counts.pending === 0}
           loading={saving === "approve"}
         >
-          Crear todos los aprobados ({counts.pending})
+          Crear items RAID pendientes ({counts.pending})
         </Button>
       </header>
 
@@ -392,8 +392,12 @@ export function MinuteRaidSuggestionsEditor({
                                 {s.suggested_priority ? (
                                   <span>⚑ P{s.suggested_priority}</span>
                                 ) : null}
+                                {/* ENH-119: "approved" = item RAID real ya
+                                    creado y linkeado. Label "Creado" para
+                                    diferenciar del concepto de "aprobación"
+                                    legacy. */}
                                 {s.status === "approved" ? (
-                                  <Badge variant="success">Aprobado</Badge>
+                                  <Badge variant="success">✓ Creado</Badge>
                                 ) : s.status === "discarded" ? (
                                   <Badge variant="neutral">Descartado</Badge>
                                 ) : (
@@ -405,7 +409,7 @@ export function MinuteRaidSuggestionsEditor({
                                     className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
                                   >
                                     <ExternalLink className="h-3 w-3" aria-hidden />
-                                    {s.ticket_type ?? "ticket"}
+                                    Abrir {s.ticket_type ?? "ticket"}
                                   </Link>
                                 ) : null}
                               </div>
@@ -449,7 +453,8 @@ export function MinuteRaidSuggestionsEditor({
                               <button
                                 type="button"
                                 onClick={() => approveOne(meta.key, idx)}
-                                aria-label="Aprobar"
+                                aria-label="Crear item RAID"
+                                title="Crear item RAID a partir de esta sugerencia"
                                 disabled={saving !== null}
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-success-fg)] hover:bg-[var(--color-success-bg)] disabled:opacity-50"
                               >
