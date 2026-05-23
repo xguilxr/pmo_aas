@@ -110,7 +110,7 @@ export default function TenantMinutesPage() {
                   </td>
                   <td className="px-3 py-2">
                     <Link
-                      href={`/pmo/projects/${r.project_id}/minutes`}
+                      href={`/pmo/projects/${r.project_id}/minutes/${r.id}`}
                       className="text-[var(--color-primary)] hover:underline"
                     >
                       {r.title}
