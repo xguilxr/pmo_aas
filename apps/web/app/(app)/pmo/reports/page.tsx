@@ -389,19 +389,207 @@ function OrgScopePlaceholder() {
   );
 }
 
-// US-146 (cascarón pendiente).
+// US-146 — Tab Programas con filtros org + programa.
 function ProgramScopePlaceholder() {
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [templates, setTemplates] = useState<ReportBuilderTemplate[]>([]);
+  const [orgId, setOrgId] = useState<string>("");
+  const [programId, setProgramId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([listOrganizations({}), listBuilderTemplates({ level: 2 })])
+      .then(([os, tpls]) => {
+        if (!cancelled) {
+          setOrgs(os);
+          setTemplates(tpls);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "No se pudo cargar");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Recarga programas cuando cambia la org.
+  useEffect(() => {
+    if (!orgId) {
+      setPrograms([]);
+      setProgramId("");
+      return;
+    }
+    let cancelled = false;
+    setLoadingPrograms(true);
+    listPrograms({ organization_id: orgId })
+      .then((ps) => {
+        if (!cancelled) {
+          setPrograms(ps);
+          setProgramId("");
+        }
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "No se pudo cargar programas");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPrograms(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  async function generateProgramReport(tpl: ReportBuilderTemplate) {
+    if (!programId) {
+      setError("Selecciona organización y programa antes de generar");
+      return;
+    }
+    setExporting(tpl.id);
+    setError(null);
+    try {
+      const blob = await exportBuilderPdf(tpl.id, {
+        level: 2,
+        organization_id: orgId,
+        program_id: programId,
+        window_days: 30,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const progName =
+        programs.find((p) => p.id === programId)?.name?.replace(/[^a-z0-9]+/gi, "-") ?? "prog";
+      a.download = `program-${progName}-${tpl.code}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el reporte");
+    } finally {
+      setExporting(null);
+    }
+  }
+
   return (
-    <section className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] p-8 text-center">
-      <Network className="mx-auto h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
-      <p className="mt-3 text-sm font-medium text-[var(--text-primary)]">
-        Reportes por Programa
-      </p>
-      <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-        Cascarón pendiente (US-146). Aquí van los filtros org + programa + panel
-        de generación + historial scoped.
-      </p>
-    </section>
+    <div className="space-y-5">
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="flex items-start gap-3">
+          <Network className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <div className="flex-1">
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+              Reporte por Programa
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+              Selecciona organización y programa para descargar el reporte Status.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">
+              Organización
+            </span>
+            <Select
+              value={orgId}
+              onChange={(e) => setOrgId(e.target.value)}
+              disabled={loading || orgs.length === 0}
+            >
+              <option value="">— Selecciona —</option>
+              {orgs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">
+              Programa
+            </span>
+            <Select
+              value={programId}
+              onChange={(e) => setProgramId(e.target.value)}
+              disabled={!orgId || loadingPrograms || programs.length === 0}
+            >
+              <option value="">
+                {!orgId
+                  ? "— Primero elige una organización —"
+                  : loadingPrograms
+                  ? "Cargando..."
+                  : programs.length === 0
+                  ? "— Sin programas —"
+                  : "— Selecciona —"}
+              </option>
+              {programs.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+
+        {loading ? (
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-14 w-full" />
+          </div>
+        ) : templates.length === 0 ? (
+          <p className="mt-4 text-xs italic text-[var(--text-tertiary)]">
+            Sin plantillas Nivel 2 disponibles.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {templates.map((tpl) => (
+              <li
+                key={tpl.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                    {tpl.name}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
+                    {tpl.section_codes.length} secciones · Modo {tpl.composition_mode}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => generateProgramReport(tpl)}
+                  loading={exporting === tpl.id}
+                  disabled={exporting !== null || !programId}
+                >
+                  {exporting === tpl.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Descargar
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] p-6 text-center">
+        <p className="text-xs text-[var(--text-tertiary)]">
+          <strong className="text-[var(--text-secondary)]">Historial scoped al programa:</strong>{" "}
+          se habilitará cuando se persistan reportes Level=2 con `program_id` (mismo cascarón que US-145).
+        </p>
+      </section>
+    </div>
   );
 }
 
