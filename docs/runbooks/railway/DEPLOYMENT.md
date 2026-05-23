@@ -13,28 +13,35 @@ El proyecto se despliega como **6 componentes** dentro de un mismo **Project**:
 
 ```mermaid
 flowchart LR
-    WEB["web<br/>Next.js 15"]
-    API["api<br/>FastAPI"]
-    WORKER["worker<br/>Celery/BullMQ"]
+    WEB["web<br/>Next.js 15 (Nixpacks)"]
+    API["api<br/>FastAPI (Dockerfile)"]
+    WORKER["worker<br/>Celery + beat (mismo Dockerfile)"]
     DB[("postgres<br/>Railway Plugin")]
     REDIS[("redis<br/>Railway Plugin")]
-    OLLAMA["ollama<br/>(opcional, self-hosted)"]
+    GROQ["Groq API<br/>(modo platform)"]
+    BYO["BYO provider<br/>(modo byo)"]
+    R2[("Cloudflare R2<br/>(STORAGE_BACKEND=s3)")]
 
     WEB --> API
     API --> DB
     API --> REDIS
+    API -.-> R2
     WORKER --> DB
     WORKER --> REDIS
-    WORKER --> OLLAMA
+    WORKER -.-> R2
+    WORKER -->|platform| GROQ
+    WORKER -.->|byo| BYO
 ```
 
 | Servicio | Root | Runtime | Auto-deploy | Estado |
 |---|---|---|---|---|
-| `web` | `apps/web` | Nixpacks (Node 20) | Sí (rolling) | ✅ |
-| `api` | `apps/api` | Nixpacks (Python 3.12) | Sí (rolling) | ✅ |
-| `worker` | `apps/api` (start command diferente) | Nixpacks (Python 3.12) | Sí | ✅ |
+| `web` | `apps/web` | Nixpacks (Node 20, `npm`) | Sí (rolling) | ✅ |
+| `api` | `apps/api` | **Dockerfile** (JRE 21 + MPXJ + WeasyPrint) | Sí (rolling) | ✅ |
+| `worker` | `apps/api` (mismo Dockerfile, start command diferente) | Celery + beat | Sí | ✅ |
 | `postgres` | Plugin | PostgreSQL 16 | No (persistente) | ✅ |
 | `redis` | Plugin | Redis 7 | No | ✅ |
+
+> **No hay** servicio `ollama` (BUG-053 eliminó OllamaProvider). **No hay** servicio `glitchtip` (sin observabilidad APM hoy).
 
 ---
 
@@ -60,36 +67,51 @@ flowchart LR
 
 ```toml
 [build]
-builder = "NIXPACKS"
-buildCommand = "pip install -r requirements.txt && alembic upgrade head"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
-numReplicas = 2
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 ```
+
+El `CMD` default del Dockerfile aplica para `api`:
+
+```dockerfile
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
+```
+
+(Migraciones corren al arranque del contenedor `api`.)
 
 ### 2.3 apps/api/worker.railway.toml
 
 ```toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
 [deploy]
-startCommand = "celery -A app.workers.celery_app worker --loglevel=info --concurrency=2"
-healthcheckPath = ""
-numReplicas = 1
+startCommand = "celery -A app.workers.celery_app worker --beat --loglevel=info --concurrency=2"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 ```
 
-El worker corre Celery directo — procesa tasks de IA (Groq platform o
-BYO cloud). Hasta ENH-023 tenía un wrapper `start-worker.sh` que
-levantaba un sidecar Tailscale (US-048); DEC-017 eliminó esa
-dependencia al pasar la IA a Groq hosteado.
+El worker corre Celery + **beat embebido** (`--beat`, BUG-036) — procesa
+tasks de IA (Groq platform o BYO cloud) y dispara las tareas periódicas
+(`scheduled_reports.send_due_reports`, `scheduled_minutes.send_due_minutes`).
+Si se escala a >1 replica, separar beat a un servicio dedicado.
+
+Hasta ENH-023 (2026-04-23) tenía un wrapper `start-worker.sh` con
+sidecar Tailscale (US-048); DEC-017 lo eliminó.
 
 ### 2.4 apps/web/railway.toml
 
 ```toml
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=web"
+buildCommand = "npm install && npm run build"
 
 [deploy]
 startCommand = "pnpm --filter web start -p $PORT"
@@ -196,44 +218,28 @@ por el worker si se quiere rotación distinta de la de `documents/`.)
 
 ### 5.1 GitHub Actions (.github/workflows/ci.yml)
 
+Estructura real (ver `.github/workflows/ci.yml` para el detalle):
+
 ```yaml
-name: CI
-on: [pull_request, push]
+on:
+  push: { branches: [main] }
+  pull_request:
 
 jobs:
-  lint-test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: test
-        ports: [5432:5432]
-      redis:
-        image: redis:7
-        ports: [6379:6379]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo lint test build
-      - run: cd apps/api && pip install -r requirements.txt && pytest
-      - run: pnpm exec playwright install --with-deps
-      - run: pnpm test:e2e
+  changes:                       # dorny/paths-filter detecta api/web/workflows
+  lint:                          # ruff (solo si cambió api)
+  api-tests-smoke:               # pytest -n auto -m "not heavy"
+  api-migrations-postgres:       # alembic upgrade → downgrade → upgrade
+  api-tests-heavy:               # solo en push a main
 ```
 
 **Qué valida:**
-- Lint (ESLint, Ruff).
-- Unit tests (Jest, Pytest).
-- Build (Next.js, FastAPI).
-- E2E tests (Playwright).
+- **Lint**: `ruff` con reglas `E,F,I,N,UP,B,A,C4,RUF` (apps/api/pyproject.toml).
+- **Tests backend**: `pytest` + `pytest-asyncio` en paralelo (`-n auto`).
+  Lane "heavy" para tests pesados que solo corren en `main`.
+- **Migraciones**: Postgres efímero, valida reversibilidad upgrade → downgrade → upgrade (ENH-044).
+
+> **Sin Playwright / Schemathesis en CI hoy** — diferidos. `turbo` no se usa (no hay `turbo.json` ni dependencia en el repo).
 
 **Status:** ✅ Si todo pasa → se puede mergear a `main`.
 
@@ -329,11 +335,11 @@ railway run --service api pg_dump $DATABASE_URL > backup.sql
 Agregale:
 - Cloudflare DNS: $0 (free tier).
 - Resend emails: $0–20 (free/pro).
-- Ollama home-host: $0.
-- Gemini fallback: $0 (free tier).
-- Claude fallback: ~$0–5/mes (si se usa).
+- Groq API (modo platform, free tier / pay-as-you-go): $0–30.
+- Cloudflare R2 (10 GB free tier): $0.
+- Providers BYO (OpenAI/Claude/Gemini/Azure/Perplexity): los paga cada tenant con su key — $0 plataforma.
 
-**Total estimado para MVP:** $75–100/mes.
+**Total estimado:** ~$110–160/mes.
 
 ---
 
