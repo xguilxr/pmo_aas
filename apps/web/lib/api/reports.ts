@@ -241,6 +241,23 @@ export function downloadSeguimientoReport(reportId: string): Promise<void> {
   );
 }
 
+/**
+ * US-147: genera Reporte Look-ahead (actividades en ventana [hoy, hoy+ventana]).
+ * Excluye vencidas. Descarga PDF directo.
+ */
+export type LookAheadUnit = "days" | "weeks" | "months";
+export function generateLookAheadReport(
+  projectId: string,
+  windowValue: number,
+  windowUnit: LookAheadUnit,
+): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/projects/${projectId}/reports/look-ahead`,
+    { window_value: windowValue, window_unit: windowUnit },
+    "POST",
+  );
+}
+
 /** ENH-014: preview (inline) de un Reporte de Avance generado. */
 export function previewAvanceReport(reportId: string): Promise<void> {
   return previewPdfFromEndpoint(
