@@ -178,6 +178,23 @@ export default function ReportBuilderPage() {
     return () => clearInterval(id);
   }, [projectId, codes, compositionMode, cutOff, windowDays, paramsByCode]);
 
+  // ENH-125 — dirty flag: hay cambios sin guardar si el canvas no está
+  // vacío Y no hay loadedTemplateId (i.e. plantilla efímera no persistida).
+  // Para plantillas cargadas, no rastreamos diff fino (queda como mejora);
+  // hoy asumimos que cargada = no dirty hasta que owner pida más.
+  const isDirty = codes.length > 0 && !loadedTemplateId;
+
+  useEffect(() => {
+    function beforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirty) return;
+      e.preventDefault();
+      // Browsers ignoran custom strings y muestran su propio prompt.
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [isDirty]);
+
   const renderRequest = useMemo<RenderRequest | null>(() => {
     if (codes.length === 0) return null;
     // El motor necesita una plantilla; para preview construimos una
@@ -354,6 +371,12 @@ export default function ReportBuilderPage() {
         <div className="flex items-center gap-3">
           <Link
             href={`/pmo/projects/${projectId}/reports`}
+            onClick={(e) => {
+              // ENH-125: confirma antes de salir si hay cambios sin guardar.
+              if (isDirty && !window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar la plantilla?")) {
+                e.preventDefault();
+              }
+            }}
             className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft className="h-4 w-4" /> Reportes
