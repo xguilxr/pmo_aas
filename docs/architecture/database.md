@@ -1,363 +1,417 @@
 # Modelo de datos — PostgreSQL 16
 
 **ID:** `DOC-ARCH-DB`
+**Última verificación contra código:** 2026-05-23.
+
+> Refleja el estado real en `apps/api/app/models/` y `apps/api/alembic/versions/`. Hay **~49 tablas activas** (vs las ~17 que documentábamos antes) y la app es portable a SQLite para tests, lo que condiciona varias decisiones de tipos.
 
 ---
 
-## Principios
+## Principios reales
 
-1. **Todas las tablas tenant-scoped tienen `tenant_id UUID NOT NULL`** y RLS habilitado.
-2. **UUID v7** como PK (ordenables por tiempo, mejores índices que v4).
-3. **`created_at`, `updated_at`, `created_by`, `updated_by`, `deleted_at` (nullable)** en toda tabla relevante.
-4. **Soft delete** vía `deleted_at` — los queries filtran `deleted_at IS NULL` por default.
-5. **Auditoría** en tabla `audit_log` vía triggers genéricos en tablas sensibles.
-6. **Folios** generados por `sequences` por tenant + año: `PRJ-2026-001`.
-7. **Timestamps** en UTC (`timestamptz`). Formateo a TZ del tenant en el frontend.
+1. **Todas las tablas tenant-scoped llevan `tenant_id` (UUID como `String(36)`) indexado.** La columna es `NOT NULL` salvo en casos puntuales (ej. `users.tenant_id` puede ser NULL para superadmins globales; `audit_log.tenant_id` puede ser NULL para eventos platform-wide).
+2. **PK = UUID v4 serializado como `String(36)`** (no v7). Cross-dialect: el helper `app/db/base.py:new_uuid()` devuelve `str(uuid4())`. Decisión: poder correr la suite de tests contra SQLite sin extensiones nativas de Postgres.
+3. **Mixin `TimestampMixin`** agrega `created_at` y `updated_at` (timestamptz). El campo `deleted_at` se declara explícitamente por tabla donde aplica (no global).
+4. **Soft delete** vía `deleted_at IS NULL` en los queries. No hay vista materializada ni filtro automático.
+5. **Folios** por tenant + año vía tabla **`folio_sequences`** (no via sequence Postgres nativa). Patrón: `PRJ-2026-001`, `RIS-2026-007`, etc.
+6. **Timestamps en UTC** (`timestamptz` server-side). Formateo a TZ del tenant en el frontend.
+
+### Lo que NO usamos (a pesar de lo que decía la versión vieja del doc)
+
+| Mito | Realidad |
+|---|---|
+| Row-Level Security (RLS) habilitado | **No.** Cero migraciones tocan `ENABLE ROW LEVEL SECURITY`. El aislamiento se hace en la capa de aplicación: cada endpoint filtra `WHERE tenant_id = :tenant_id`. Los tests `TC-MT-*` aún validan el aislamiento end-to-end. |
+| `SET LOCAL app.tenant_id` por request | **No.** No existe ese mecanismo en el código. |
+| Roles Postgres `app_user` / `app_superadmin` con `BYPASSRLS` | **No.** La app conecta con un solo rol; el bypass de superadmin se hace en la capa Python omitiendo el filtro `tenant_id` cuando `is_superadmin`. |
+| Extensiones `pg_trgm`, `uuid-ossp`, `pgcrypto` | **No instaladas.** Ninguna migración tiene `CREATE EXTENSION`. Búsqueda fuzzy hoy es `ILIKE`. |
+| UUID v7 | UUID v4 (`uuid.uuid4()`). |
+
+> **Implicación:** la "defensa en profundidad" via RLS no existe. Un bug en una query que omita el filtro `tenant_id` rompería el aislamiento. Esto se mitiga con (a) los tests de aislamiento, (b) revisar cada endpoint nuevo en code review, y (c) el helper de queries que toma `tenant_id` como dependencia obligatoria. Migrar a RLS real está en `DECISIONS.md` como deuda técnica.
 
 ---
 
-## Diagrama ER (resumido)
+## Diagrama ER (alto nivel)
 
 ```mermaid
 erDiagram
-    TENANTS ||--o{ ORGANIZATIONS : has
     TENANTS ||--o{ USERS : has
     TENANTS ||--o{ ROLES : has
+    TENANTS ||--o{ ORGANIZATIONS : has
+    TENANTS ||--o{ PLATFORM_AI_SETTINGS : ""
+
     USERS }o--o{ ROLES : "user_roles"
-    USERS }o--o{ ORGANIZATIONS : "user_organizations"
+    USERS ||--o{ REFRESH_TOKENS : has
+    USERS ||--o{ PASSWORD_RESET_TOKENS : has
+
+    ORGANIZATIONS ||--o{ BUSINESS_UNITS : has
+    BUSINESS_UNITS ||--o{ DEPARTMENTS : has
     ORGANIZATIONS ||--o{ PROGRAMS : contains
     ORGANIZATIONS ||--o{ PROJECTS : contains
     PROGRAMS ||--o{ PROJECTS : groups
-    PROJECT_REQUESTS ||--o| PROJECTS : "becomes"
+
+    PROJECT_REQUESTS ||--o| PROJECTS : becomes
     PROJECTS ||--o{ PROJECT_MEMBERS : has
+    PROJECTS ||--o{ PROJECT_PARTICIPATIONS : has
+    PROJECTS ||--|| PROJECT_CHARTERS : has
+    PROJECTS ||--o{ PROJECT_ARTIFACTS : has
     PROJECTS ||--o{ RISKS : has
     PROJECTS ||--o{ ISSUES : has
+    PROJECTS ||--o{ RISK_ACTIONS : has
     PROJECTS ||--o{ CHANGE_REQUESTS : has
     PROJECTS ||--o{ DOCUMENTS : has
     PROJECTS ||--o{ LESSONS : has
     PROJECTS ||--o{ MEETING_MINUTES : has
     PROJECTS ||--o{ TASKS : has
+    PROJECTS ||--o{ REPORTS : has
+    PROJECTS ||--o{ SCHEDULED_REPORTS : ""
+    PROJECTS ||--o{ SCHEDULED_MINUTES : ""
+
     TASKS ||--o{ TASK_DEPENDENCIES : from_to
+
+    TENANTS ||--o{ AREAS : has
+    AREAS ||--o{ TEAMS : has
+    TEAMS ||--o{ ACTORS : has
+    AREAS ||--o{ AREA_ASSIGNMENTS : ""
+
     AI_JOBS }o--|| PROJECTS : for
+    REPORTS ||--o{ REPORT_HISTORY : versions
+    REPORTS ||--o{ REPORT_SECTIONS : ""
+
     AUDIT_LOG }o--o| TENANTS : scoped
+    NOTIFICATIONS }o--|| USERS : for
 ```
 
 ---
 
-## Tablas principales
+## Tabla de tablas (las 49 reales)
 
-### `tenants`
+Agrupadas por dominio. Todas heredan `TimestampMixin` salvo `audit_log` y tablas con timestamp ad-hoc.
 
-| Columna | Tipo | Notas |
-|---|---|---|
-| `id` | uuid PK | v7 |
-| `slug` | citext UNIQUE | URL-safe, `a-z0-9-` |
-| `name` | text | |
-| `logo_url` | text | archivo en Railway Volume `/tenants/{slug}/` |
-| `is_active` | bool | soft delete |
-| `settings` | jsonb | `{ "locale": "es", "currency": "MXN", "ai_mode": "ollama" }` |
-| `created_at` | timestamptz | |
+### Auth / tenancy
+
+| Tabla | Propósito |
+|---|---|
+| `tenants` | Org cliente de la plataforma. |
+| `users` | Cuentas. `tenant_id` NULL solo en superadmins globales. |
+| `roles` | Catálogo de roles por tenant. |
+| `user_roles` | N:M user ↔ role. |
+| `tenant_role_permission_overrides` | Override puntual de permisos por tenant. |
+| `refresh_tokens` | Tokens de refresh persistidos (revocables). |
+| `password_reset_tokens` | Tokens 1-uso para reset. |
+| `approval_tokens` | Tokens para `/approve/[token]` (project requests). |
+| `permission_change_requests` | Solicitudes de elevación de permisos (modera superadmin). |
+| `platform_ai_settings` | Singleton row con config de Groq para modo `platform`. |
+
+### Estructura organizacional
+
+| Tabla | Propósito |
+|---|---|
+| `organizations` | Empresas/clientes dentro del tenant. |
+| `business_units` | BUs dentro de la organización. |
+| `departments` | Departamentos dentro de la BU. |
+| `programs` | Programas (agrupan proyectos). |
+| `areas` | Áreas funcionales (catálogo del tenant). |
+| `teams` | Equipos dentro de un área. |
+| `actors` | Personas/contactos del tenant (no necesariamente usuarios). |
+| `area_assignments` | N:M área ↔ asignable. |
+| `organization_user_exclusions` | Excluye usuarios específicos de una org. |
+| `stakeholders` | Catálogo de stakeholders. |
+
+### Proyectos y módulos
+
+| Tabla | Propósito |
+|---|---|
+| `project_requests` | Solicitudes previas al proyecto. |
+| `projects` | Tabla central. |
+| `project_charters` | 1:1 charter editable por proyecto. |
+| `project_artifacts` | Artefactos asociados (HTML, archivos, etc.). |
+| `project_members` | Miembros con rol en el proyecto. |
+| `project_participations` | Participación N:M de actores/usuarios. |
+| `project_roles` | Catálogo de roles dentro de un proyecto (PM, sponsor, etc.). |
+| `risks` | Riesgos. |
+| `risk_actions` | Acciones para mitigar/eliminar riesgos. |
+| `risk_action_assignees` | N:M risk_action ↔ asignable. |
+| `issues` | AIDs (Acciones / Issues / Decisiones; campo `type` discrimina). |
+| `change_requests` | Cambios. |
+| `change_approvers` | Aprobadores por change request. |
+| `documents` | Biblioteca documental del proyecto. |
+| `lessons` | Lecciones aprendidas. |
+| `meeting_minutes` | Minutas. |
+| `tasks` | Tareas del cronograma. |
+| `task_dependencies` | FS/SS/FF/SF entre tareas. |
+
+### AI / reportes
+
+| Tabla | Propósito |
+|---|---|
+| `ai_jobs` | Estado de jobs IA (transcripción, reporte, etc.). |
+| `reports` | Reporte ejecutivo generado (AI o manual). |
+| `report_history` | Versiones inmutables de reportes. |
+| `report_sections` | Secciones reutilizables. |
+| `report_templates` | Plantillas de layout. |
+| `ai_report_templates` | Plantillas de prompt para reportes IA. |
+| `report_builder_templates` | Plantillas del wizard (`/reports/builder`). |
+| `scheduled_reports` | Reportes programados (cron + recipients). |
+| `scheduled_minutes` | Minutas programadas. |
+
+### Operativo / forense
+
+| Tabla | Propósito |
+|---|---|
+| `notifications` | Centro de notificaciones por usuario. |
+| `folio_sequences` | Contadores de folio por tenant + prefijo + año. |
+| `audit_log` | Bitácora forense (ver abajo). |
+
+---
+
+## Tablas centrales — schema real
+
+> Tipos según `sqlalchemy.orm` mapeados a Postgres. Donde dice `String(36)` es porque la app es portable a SQLite (tests); en Postgres es `varchar(36)`.
+
+### `projects` (real, con campos que el doc viejo omitía)
+
+```python
+class Project(Base, TimestampMixin):
+    __tablename__ = "projects"
+    __table_args__ = (UniqueConstraint("tenant_id", "folio"),)
+
+    id              String(36) PK  # uuid4
+    tenant_id       String(36) NOT NULL INDEX
+    organization_id String(36) NOT NULL FK organizations.id
+    program_id      String(36)     FK programs.id
+    business_unit_id String(36)    FK business_units.id
+    department_id   String(36)     FK departments.id
+    folio           String(32) NOT NULL          # 'PRJ-2026-001'
+    name            String(200) NOT NULL
+    description     String(5000)
+    type            String(50)                   # innovation/transformation/operation/bau
+    priority        SmallInt                     # 1..5
+    phase           String(32) NOT NULL default 'planning'
+    pm_id           String(36)     FK users.id
+    sponsor         String(200)
+    start_date      Date
+    end_date        Date
+    budget          Numeric(14,2)
+    actual_budget   Numeric(14,2)
+    progress        SmallInt NOT NULL default 0  # 0..100
+    health_status   String(16) NOT NULL default 'green'   # computado
+    status_rag      String(8)                    # ENH-101: override manual del PM (gana sobre health_status)
+    request_id      String(36)                   # FK project_requests.id (sin constraint formal)
+    deleted_at      DateTime(tz)
+    manually_edited_fields  JSON NOT NULL default {}      # US-084: {field: {edited_at, edited_by}}
+```
 
 ### `users`
 
-| Columna | Tipo | Notas |
-|---|---|---|
-| `id` | uuid PK | |
-| `tenant_id` | uuid FK | NULL solo para superadmins globales |
-| `username` | citext | UNIQUE con `tenant_id` |
-| `email` | citext | UNIQUE con `tenant_id` |
-| `password_hash` | text | bcrypt |
-| `full_name` | text | |
-| `avatar_url` | text | |
-| `locale` | text | `es-MX` por default |
-| `is_active` | bool | |
-| `is_superadmin` | bool | bypass RLS |
-| `last_login` | timestamptz | |
-| `failed_login_attempts` | int | 0-5 |
-| `locked_until` | timestamptz | null si no bloqueado |
-| `mfa_secret` | text | post-MVP |
+```python
+class User(Base, TimestampMixin):
+    __tablename__ = "users"
 
-**Índices:** `(tenant_id, email)`, `(tenant_id, username)`, `(is_superadmin) WHERE is_superadmin`.
-
-### `roles` y `permissions`
-
-```sql
-CREATE TABLE roles (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL REFERENCES tenants(id),
-    name text NOT NULL,
-    description text,
-    is_system bool DEFAULT false,   -- roles default no borrables
-    permissions jsonb NOT NULL,      -- { "projects": ["read","create"], ... }
-    UNIQUE(tenant_id, name)
-);
-
-CREATE TABLE user_roles (
-    user_id uuid REFERENCES users(id),
-    role_id uuid REFERENCES roles(id),
-    PRIMARY KEY(user_id, role_id)
-);
+    id                String(36) PK
+    tenant_id         String(36) INDEX  # NULL para superadmins globales
+    username          String(150)        # UNIQUE(tenant_id, username)
+    email             String(255)        # UNIQUE(tenant_id, email)
+    password_hash     String(255)
+    full_name         String(200)
+    avatar_url        String(500)
+    locale            String(10) default 'es-MX'
+    is_active         Boolean default true
+    is_superadmin     Boolean default false  # bypass del filtro tenant en la app
+    last_login        DateTime(tz)
+    failed_login_attempts  SmallInt default 0
+    locked_until      DateTime(tz)
+    # NOTA: `mfa_secret` NO existe en el modelo actual; MFA está diferido.
 ```
 
-Roles sistema por tenant creados en seed: `Administrador`, `PMO Manager`, `Project Manager`, `Viewer`.
+### Patrón módulos (`_ModuleBase` mixin)
 
-### `organizations`, `programs`, `projects`
+Todos los módulos (`risks`, `issues`, `change_requests`, `documents`, `lessons`, `meeting_minutes`) comparten:
 
-```sql
-CREATE TABLE organizations (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL REFERENCES tenants(id),
-    name text NOT NULL,
-    reason_social text,
-    industry text,
-    country text,
-    logo_url text,
-    is_active bool DEFAULT true,
-    created_at timestamptz DEFAULT now(),
-    UNIQUE(tenant_id, name)
-);
-
-CREATE TABLE programs (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL,
-    organization_id uuid NOT NULL REFERENCES organizations(id),
-    name text NOT NULL,
-    description text,
-    strategic_alignment text,
-    start_date date,
-    end_date date,
-    is_active bool DEFAULT true
-);
-
-CREATE TABLE projects (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL,
-    organization_id uuid NOT NULL REFERENCES organizations(id),
-    program_id uuid REFERENCES programs(id),
-    folio text NOT NULL,          -- 'PRJ-2026-001'
-    name text NOT NULL,
-    description text,
-    type text,                    -- 'innovation','transformation','operation','bau'
-    priority smallint,            -- 1..5
-    phase text NOT NULL DEFAULT 'planning',  -- enum
-    pm_id uuid REFERENCES users(id),
-    sponsor text,
-    start_date date,
-    end_date date,
-    budget numeric(14,2),
-    actual_budget numeric(14,2),
-    progress smallint DEFAULT 0,  -- 0..100
-    health_status text DEFAULT 'green', -- green/yellow/red
-    request_id uuid REFERENCES project_requests(id),
-    created_at timestamptz DEFAULT now(),
-    UNIQUE(tenant_id, folio)
-);
-
-CREATE INDEX idx_projects_tenant_phase ON projects(tenant_id, phase) WHERE deleted_at IS NULL;
-CREATE INDEX idx_projects_pm ON projects(pm_id);
+```python
+class _ModuleBase:
+    id              String(36) PK
+    tenant_id       String(36) NOT NULL INDEX
+    project_id      String(36) NOT NULL FK projects.id
+    folio           String(32) NOT NULL  # 'RIS-2026-001', etc.
+    title           String(200) NOT NULL
+    description     String(5000)
+    status          String(32) NOT NULL
+    created_by      String(36) FK users.id
+    deleted_at      DateTime(tz)
+    # UNIQUE(tenant_id, folio)
 ```
 
-### `project_requests`
+Campos específicos:
 
-```sql
-CREATE TABLE project_requests (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL,
-    folio text NOT NULL,            -- 'SOL-2026-001'
-    title text NOT NULL,
-    description text,
-    objective text,
-    organization_id uuid REFERENCES organizations(id),
-    business_unit text,
-    department text,
-    sponsor text,
-    benefits text,
-    budget numeric(14,2),
-    scope text,
-    requested_by uuid REFERENCES users(id),
-    requested_at timestamptz DEFAULT now(),
-    status text DEFAULT 'in_review',  -- in_review/approved/rejected/needs_info
-    reviewed_by uuid REFERENCES users(id),
-    reviewed_at timestamptz,
-    review_comment text,
-    attachments jsonb DEFAULT '[]',   -- [{filename, url, size, mime}]
-    UNIQUE(tenant_id, folio)
-);
+- **`risks`** → `category`, `probability`, `impact`, `severity` (Integer, **computado en la app**, no `GENERATED ALWAYS AS` — necesitamos compat con SQLite), `mitigation_strategy`, `owner_id`, `owner_actor_id`, `area_id`, `identified_at`, `due_date`, `closure_note`, `comments` (JSON).
+- **`issues`** → `type` (`action`/`issue`/`decision`), `priority`, `reported_at`, `committed_date`, `resolution`, `owner_id`, `owner_actor_id`, `area_id`, `comments`.
+- **`change_requests`** → `type` (`scope`/`time`/`cost`/`resource`), `impact`, `requested_by`, `requested_at`, `approved_by`, `approved_at`. Aprobadores N:M en `change_approvers`.
+- **`documents`** → `category`, `file_url`, `mime_type`, `size_bytes`, `version`. El storage real lo decide `STORAGE_BACKEND` (local Railway volume o Cloudflare R2 vía boto3) — ver [`stack.md`](./stack.md#storage-de-archivos).
+- **`lessons`** → `category` (`success`/`improvement`/`error`), `phase`, `recommendation`.
+- **`meeting_minutes`** → `meeting_date`, `participants` (JSON), `agreements` (JSON), `next_meeting_date`.
+
+### `tasks`
+
+```python
+class Task(Base, TimestampMixin):
+    id              String(36) PK
+    tenant_id       String(36) NOT NULL INDEX
+    project_id      String(36) NOT NULL FK projects.id ON DELETE CASCADE
+    wbs             String(64)            # '1.2.3'
+    parent_id       String(36) FK tasks.id
+    name            String(300) NOT NULL
+    description     String(5000)
+    start_date      Date
+    end_date        Date
+    duration_days   Integer
+    progress        SmallInt default 0
+    is_milestone    Boolean default false
+    owner_id        String(36) FK users.id
+    priority        SmallInt
+    status          String(32) default 'not_started'
+    source          String(16) default 'manual'   # manual / msproject
+    external_id     String(100)                    # id en el .mpp/.xml original
+    imported_at     DateTime(tz)
 ```
 
-### Módulos (`risks`, `issues`, `change_requests`, `documents`, `lessons`, `meeting_minutes`)
-
-Patrón común para todos:
-
-```sql
--- ejemplo: risks
-CREATE TABLE risks (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL,
-    project_id uuid NOT NULL REFERENCES projects(id),
-    folio text NOT NULL,                  -- 'RIS-2026-001'
-    title text NOT NULL,
-    description text,
-    category text,
-    probability smallint,                 -- 1..5
-    impact smallint,                      -- 1..5
-    severity smallint GENERATED ALWAYS AS (probability * impact) STORED,
-    mitigation_strategy text,
-    owner_id uuid REFERENCES users(id),
-    identified_at date,
-    due_date date,
-    status text DEFAULT 'identified',
-    created_by uuid REFERENCES users(id),
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now(),
-    deleted_at timestamptz,
-    UNIQUE(tenant_id, folio)
-);
-CREATE INDEX idx_risks_proj_status ON risks(project_id, status);
+```python
+class TaskDependency(Base):
+    id              String(36) PK
+    predecessor_id  String(36) NOT NULL FK tasks.id
+    successor_id    String(36) NOT NULL FK tasks.id
+    type            String(2)  default 'FS'      # FS/SS/FF/SF
+    lag_days        Integer    default 0
+    # UNIQUE(predecessor_id, successor_id)
 ```
 
-Mismo molde para:
-- `issues` (+ `type` AID, `due_date`, `resolution`)
-- `change_requests` (+ `type` scope/time/cost/resource, `approved_by`, `approved_at`)
-- `documents` (+ `file_url`, `version`, `mime_type`, `size_bytes`, `category`)
-- `lessons` (+ `category` success/improvement/error, `phase`, `recommendation`)
-- `meeting_minutes` (+ `meeting_date`, `participants jsonb`, `agreements jsonb`, `next_meeting_date`)
+### `ai_jobs` y `reports`
 
-### `tasks` (MS Project + manual)
-
-```sql
-CREATE TABLE tasks (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL,
-    project_id uuid NOT NULL REFERENCES projects(id),
-    wbs text,                        -- '1.2.3'
-    parent_id uuid REFERENCES tasks(id),
-    name text NOT NULL,
-    description text,
-    start_date date,
-    end_date date,
-    duration_days int,
-    progress smallint DEFAULT 0,
-    is_milestone bool DEFAULT false,
-    owner_id uuid REFERENCES users(id),
-    priority smallint,
-    status text DEFAULT 'not_started',
-    source text DEFAULT 'manual',    -- 'manual' | 'msproject'
-    external_id text,                -- id en el .mpp original
-    imported_at timestamptz
-);
-
-CREATE TABLE task_dependencies (
-    id uuid PRIMARY KEY,
-    predecessor_id uuid NOT NULL REFERENCES tasks(id),
-    successor_id uuid NOT NULL REFERENCES tasks(id),
-    type text NOT NULL DEFAULT 'FS', -- FS/SS/FF/SF
-    lag_days int DEFAULT 0,
-    UNIQUE(predecessor_id, successor_id)
-);
+```python
+class AIJob(Base, TimestampMixin):
+    id              String(36) PK
+    tenant_id       String(36) NOT NULL INDEX
+    project_id      String(36)
+    kind            String(64) NOT NULL    # minute_from_transcript | progress_report | ...
+    status          String(32) default 'queued'   # queued/running/succeeded/failed
+    input           JSON default {}
+    output          JSON
+    model_used      String(100)
+    tokens_in       Integer
+    tokens_out      Integer
+    duration_ms     Integer
+    error           String(2000)
+    requested_by    String(36) FK users.id
+    completed_at    DateTime(tz)
+    provider        String(32) INDEX        # groq/openai/claude/gemini/perplexity/azure/custom
 ```
 
-### `ai_jobs`
-
-```sql
-CREATE TABLE ai_jobs (
-    id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL,
-    project_id uuid REFERENCES projects(id),
-    kind text NOT NULL,              -- 'minute_from_transcript' | 'progress_report'
-    status text DEFAULT 'queued',    -- queued/running/succeeded/failed
-    input jsonb,                     -- metadata + rutas a archivos
-    output jsonb,                    -- resultado estructurado
-    model_used text,
-    tokens_in int,
-    tokens_out int,
-    duration_ms int,
-    error text,
-    requested_by uuid REFERENCES users(id),
-    created_at timestamptz DEFAULT now(),
-    completed_at timestamptz
-);
+```python
+class Report(Base, TimestampMixin):
+    id              String(36) PK
+    tenant_id       String(36) NOT NULL INDEX
+    project_id      String(36) NOT NULL INDEX
+    title           String(200) NOT NULL
+    sections        JSON default {}
+    status          String(32) default 'draft'
+    period          String(16)
+    sent_at         DateTime(tz)
+    recipients      JSON default []
+    generated_by_ai Boolean default false
+    generator       String(32) default 'manual'
+    cut_off_date    Date
+    created_by      String(36) FK users.id
+    html_content    Text default ''
 ```
 
 ### `audit_log`
 
-```sql
-CREATE TABLE audit_log (
-    id bigserial PRIMARY KEY,
-    tenant_id uuid,                   -- NULL para eventos platform-wide
-    user_id uuid,
-    action text NOT NULL,             -- 'login_success','project.create',...
-    module text,                      -- 'auth','projects','risks',...
-    entity_type text,
-    entity_id uuid,
-    details jsonb,
-    ip_address inet,
-    user_agent text,
-    occurred_at timestamptz DEFAULT now()
-);
-CREATE INDEX idx_audit_tenant_time ON audit_log(tenant_id, occurred_at DESC);
-CREATE INDEX idx_audit_user_time ON audit_log(user_id, occurred_at DESC);
+```python
+class AuditLog(Base):
+    id              Integer PK autoincrement     # NO bigserial; SmallInt sería corto
+    tenant_id       String(36)                   # NULL para eventos platform-wide
+    user_id         String(36)
+    action          String(100) NOT NULL
+    module          String(50)
+    entity_type     String(50)
+    entity_id       String(36)
+    details         JSON NOT NULL default {}
+    ip_address      String(64)
+    user_agent      String(500)
+    occurred_at     DateTime(tz) server_default now() NOT NULL
+    # INDEX (tenant_id, occurred_at)
+    # INDEX (user_id, occurred_at)
+    # INDEX (action, occurred_at)
 ```
 
 ---
 
-## Row-Level Security (RLS)
+## Aislamiento multi-tenant (sin RLS)
 
-Para cada tabla tenant-scoped:
-
-```sql
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation ON projects
-    USING (tenant_id = current_setting('app.tenant_id')::uuid);
-
--- Superadmin bypass: no crear policy, el rol postgres del pool API
--- es 'app_user' con RLS forzado. Un rol 'app_superadmin' tiene BYPASSRLS.
-```
-
-En cada request, antes de cualquier query:
+Patrón estándar en cada endpoint:
 
 ```python
-async def set_tenant_ctx(conn, tenant_id: UUID):
-    await conn.execute(f"SET LOCAL app.tenant_id = '{tenant_id}'")
+@router.get("/projects")
+async def list_projects(
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_id),  # del JWT
+):
+    stmt = select(Project).where(
+        Project.tenant_id == tenant_id,
+        Project.deleted_at.is_(None),
+    )
+    return (await db.execute(stmt)).scalars().all()
 ```
 
-**Tests bloqueantes:** los `TC-MT-*` verifican que un user de tenant A *NUNCA* pueda leer/escribir de B (ver [`../testing/multi-tenant-isolation.md`](../testing/multi-tenant-isolation.md)).
+**Tests bloqueantes:** los `TC-MT-*` en `docs/testing/multi-tenant-isolation.md` validan que un user del tenant A nunca pueda leer/escribir contra tenant B. Ver también `tests/test_tenant_isolation*`.
+
+**Superadmin:** los endpoints `/api/v1/superadmin/*` dependen de `get_superadmin_user` (chequea `user.is_superadmin == True`) y omiten el filtro `tenant_id` o reciben el `tenant_id` objetivo como query param explícito.
 
 ---
 
 ## Migraciones
 
-- Tool: **Alembic**. Convención: `alembic/versions/YYYYMMDDHHMM_slug.py`.
-- Un PR = una migración (máximo). Migraciones grandes se dividen.
-- **Prohibido** `DROP COLUMN` directo. Flujo en 2 pasos:
-  1. PR N: marcar columna como deprecated en código, dejar de escribir.
-  2. PR N+1 (tras release estable): `ALTER TABLE … DROP COLUMN`.
-- `alembic downgrade` debe funcionar siempre.
-- Seeds: `alembic/seeds/` con fixtures de roles sistema, tenant demo, superadmin inicial.
+- Tool: **Alembic**. Convención: `YYYYMMDD_NNNN_slug.py` (74 migraciones al 2026-05-25; ver `apps/api/alembic/versions/`).
+- **1 PR = 1 migración** preferible. Migraciones grandes se dividen.
+- **`DROP COLUMN` en 2 pasos:** primero deprecar en código, luego drop en migración siguiente. Ver `DB-CHANGES.md` para el log.
+- `alembic downgrade` debe funcionar siempre; valida CI.
+- **No hay seeds en Alembic.** Los datos iniciales (roles sistema, tenant demo, superadmin) se crean por scripts dedicados o por endpoints del superadmin.
 
 ---
 
 ## Backups & retención
 
-- **Railway Postgres**: backup diario automático (7 días retención plan Pro).
-- **Snapshot semanal** → volcado a S3 compatible (Backblaze B2) con `pg_dump`.
-- **Retención**: 30 días diarios + 12 meses mensuales.
-- **DR test** cada trimestre: restaurar snapshot en env aislado y correr E2E.
+- **Railway Postgres**: backup diario automático (retención según plan).
+- Snapshot semanal externo: pendiente de configurar (ver `runbooks/`).
+- DR test: pendiente formalizar cadencia.
 
 ---
 
-## Índices clave (cheat-sheet)
+## Índices clave reales
 
-```sql
--- Dashboard KPIs
-CREATE INDEX idx_projects_tenant_phase_health ON projects(tenant_id, phase, health_status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_risks_tenant_severity ON risks(tenant_id, severity DESC) WHERE status != 'closed';
-CREATE INDEX idx_issues_tenant_status ON issues(tenant_id, status) WHERE status IN ('open','in_progress');
+Hoy se declaran en los modelos (vía `index=True`) y en algunas migraciones explícitas:
 
--- Búsqueda fuzzy
-CREATE INDEX idx_projects_name_trgm ON projects USING gin (name gin_trgm_ops);
+```python
+# audit_log
+INDEX (tenant_id, occurred_at)
+INDEX (user_id, occurred_at)
+INDEX (action, occurred_at)
 
--- Auditoría
-CREATE INDEX idx_audit_action_time ON audit_log(action, occurred_at DESC);
+# projects (declarados via index=True en columnas)
+INDEX (tenant_id)
+
+# tasks, risks, issues, ... mismo patrón sobre tenant_id, project_id
 ```
+
+> **Pendiente** (mencionado como deuda): índices parciales `WHERE deleted_at IS NULL` para listados frecuentes, GIN trigram para búsqueda fuzzy. Hoy no existen. Crear migración cuando se priorice perf.
+
+---
+
+## Deuda técnica conocida (DB)
+
+| Item | Estado | Notas |
+|---|---|---|
+| Migrar a RLS real | Pendiente | Defensa en profundidad para multi-tenant. |
+| Extensiones `pg_trgm`/`pgcrypto`/`uuid-ossp` | No instaladas | Si se quiere fuzzy server-side. |
+| UUID v7 (ordenables por tiempo) | No | Mejorarían locality de índices, pero rompen compat con `uuid.UUID(str)` simple. |
+| Índices parciales `deleted_at IS NULL` | No | Mejoraría listados grandes. |
+| Snapshot semanal externo (S3/R2) | No formalizado | Solo Railway daily hoy. |

@@ -1,70 +1,92 @@
 # Stack tecnológico
 
 **ID:** `DOC-ARCH-STACK`
+**Última verificación contra código:** 2026-05-23.
 
 Decisiones de tecnología por capa, con rationale explícito. Cada decisión debería tener un ADR en [`../adr/`](../adr/).
 
+> **Política:** este doc refleja lo que está realmente instalado en `apps/web/package.json` y `apps/api/requirements*.txt`. Si una herramienta aparece aquí, está en el repo. Si se evaluó y no se adoptó, va en "Qué evitamos" o como nota explícita.
+
 ---
 
-## Frontend — Next.js 15 + TypeScript
+## Frontend — Next.js 15 + React 19 + TypeScript
 
-```ts
-// apps/web/package.json (fragmento)
+Dependencias reales (`apps/web/package.json`):
+
+```jsonc
 {
   "dependencies": {
-    "next": "^15.0",
-    "react": "^19.0",
-    "typescript": "^5.5",
-    "tailwindcss": "^4.0",
-    "@radix-ui/react-*": "latest",
-    "class-variance-authority": "^0.7",
-    "framer-motion": "^11",
-    "zod": "^3.23",
-    "react-hook-form": "^7.52",
-    "@tanstack/react-query": "^5.50",
-    "@tanstack/react-table": "^8.20",
-    "recharts": "^2.12",
-    "frappe-gantt": "^0.8",
-    "next-intl": "^3.17"
+    "next": "15.0.7",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "@dnd-kit/core": "6.1.0",
+    "@dnd-kit/sortable": "8.0.0",
+    "@dnd-kit/utilities": "3.2.2",
+    "lucide-react": "0.453.0",
+    "clsx": "2.1.1",
+    "tailwind-merge": "2.5.4",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "4.1.14",
+    "@tailwindcss/postcss": "4.1.14",
+    "postcss": "8.4.49",
+    "typescript": "5.6.3"
   }
 }
 ```
 
 **Por qué:**
 - **App Router + RSC** → TTFB bajo, menos JS al cliente, streaming con Suspense.
-- **shadcn/ui** → componentes copy-paste que usamos como base. Control total, sin dependencia.
-- **Tailwind v4** → CSS-first config, `@theme` con tokens de design system.
-- **TanStack Query** para mutations y caché client-side; RSC para lecturas iniciales.
-- **next-intl** — i18n tipado ES/EN desde día 1.
+- **Tailwind v4** → CSS-first config, tokens del design system vía `@theme`.
+- **@dnd-kit** para drag&drop (RAID, plan de tareas).
+- **lucide-react** como única familia de íconos.
+- **clsx + tailwind-merge** combinados en `lib/cn.ts` para componer clases sin pisar conflictos.
+- **exceljs** para generar/leer `.xlsx` en cliente (import wizard y exportaciones).
 
-**Qué evitamos:**
-- ❌ Redux / Zustand global — usamos Server Actions + TanStack Query.
-- ❌ Emotion / styled-components — Tailwind solo.
-- ❌ Material UI — estética inconsistente con Apple look.
+**Qué NO está en el repo (descartado o no necesario hasta ahora):**
+- ❌ TanStack Query / Redux / Zustand — la app usa `fetch` + RSC + `useState/useReducer` locales (`apps/web/lib/api/*` envuelve llamadas REST). No hay store global.
+- ❌ shadcn/ui formal — solo se reutilizan ideas (utility `cn`, primitivas Radix-like manuales en `components/ui/`); no hay registro shadcn ni dependencia `@radix-ui/*`.
+- ❌ next-intl / i18next — la UI hoy es **solo en español**. Se difirió i18n.
+- ❌ react-hook-form / zod en cliente — los formularios usan estado controlado + validación inline.
+- ❌ recharts / chart.js — los gráficos están escritos a mano con SVG (ej. `gantt-view.tsx`).
+- ❌ frappe-gantt — no instalado; el Gantt es SVG propio en `components/gantt-view.tsx`.
+- ❌ framer-motion — animaciones con CSS / `transition` de Tailwind.
+- ❌ Storybook — no configurado.
 
 ---
 
 ## Backend — FastAPI + Python 3.12
 
+Dependencias reales (`apps/api/requirements.txt`):
+
 ```txt
-# apps/api/requirements.txt (esenciales)
-fastapi==0.115.*
-uvicorn[standard]==0.32.*
-pydantic==2.9.*
-pydantic-settings==2.5.*
-sqlalchemy==2.0.*
-alembic==1.13.*
-asyncpg==0.29.*
-psycopg[binary]==3.2.*
-python-jose[cryptography]==3.3.*
-passlib[bcrypt]==1.7.*
-python-multipart==0.0.*
-httpx==0.27.*
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.5.2
+email-validator==2.2.0
+sqlalchemy==2.0.35
+alembic==1.13.3
+asyncpg==0.29.0
+psycopg[binary]==3.2.3
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.12
+httpx==0.27.2
 slowapi==0.1.9
-sentry-sdk[fastapi]==2.14.*  # apunta a GlitchTip self-hosted (compatible)
-google-generativeai==0.8.*   # Gemini free tier (2.º fallback)
-anthropic==0.39.*            # Claude (3.º fallback, opcional por tenant)
-celery[redis]==5.4.*
+redis==5.1.1
+celery[redis]==5.4.0
+tenacity==9.0.0
+structlog==24.4.0
+uuid7==0.1.0
+python-dotenv==1.0.1
+jinja2==3.1.4
+weasyprint==68.1            # PDF de reportes (EP014 — US-037)
+python-docx==1.2.0          # Minuta .docx (EP014 — US-040)
+boto3==1.35.49              # S3-compatible storage (Cloudflare R2 — US-066)
+openpyxl==3.1.5             # lectura .xlsx en imports
 ```
 
 **Por qué:**
@@ -72,11 +94,21 @@ celery[redis]==5.4.*
 - **SQLAlchemy 2.0** estilo `async` + `select()` moderno, compatible con RLS.
 - **Alembic** para migraciones versionadas y reversibles.
 - **Pydantic v2** → validación 10x más rápida que v1, schemas compartibles con frontend vía OpenAPI.
+- **httpx** es el cliente HTTP único: se usa también para hablar con proveedores de IA (Groq, Anthropic, Gemini, OpenAI) sin SDKs propietarios.
+- **structlog** para logs estructurados (JSON en prod, pretty en dev).
+- **tenacity** para retries (carga MS Project, llamadas IA).
+- **weasyprint + jinja2** → render HTML→PDF de reportes.
+- **python-docx** → minutas exportadas a Word.
+- **boto3** → cliente S3 para Cloudflare R2 (object storage de uploads).
+
+**Qué NO está en el repo (decisión consciente):**
+- ❌ `google-generativeai`, `anthropic`, `openai` SDKs — se llaman las APIs vía `httpx` directo para evitar dependencia transitiva pesada y poder cubrirlas con un solo mocking layer en tests.
+- ❌ `sentry-sdk` — sin observabilidad APM hoy; logs centralizados vía Railway + structlog. Se evaluará reintroducir cuando haya tráfico que lo justifique.
 
 **Convenciones:**
-- Todas las rutas de tenant viven bajo `/api/v1/…` con dependencia `get_current_tenant`.
+- Rutas tenant-scoped bajo `/api/v1/…` con dependencia `get_current_tenant`.
 - Super admin bajo `/api/v1/superadmin/…` con dependencia `get_superadmin_user`.
-- Errores devuelven `{ "detail": str, "code": "ERR_CODE", "fields": {...} }`.
+- Errores: `{ "detail": str, "code": "ERR_CODE", "fields": {...} }`.
 
 ---
 
@@ -95,107 +127,128 @@ Alternativa evaluada: **MongoDB** → descartada. Queries relacionales complejas
 
 - **Railway Redis** para:
   - Rate limiting (`slowapi`)
-  - Colas de jobs (generación IA, envío de reportes)
+  - Colas de jobs (generación IA, envío de reportes, minutas programadas)
   - Caché de respuestas cacheables (KPIs del dashboard, TTL 5 min)
   - Sesiones invalidadas (token blacklist)
-- **Cola**: **Celery** (Python-only). El worker corre Celery directo contra Redis. La opción BullMQ (Node) quedó descartada en ADR-006 al consolidar el worker como Python.
+- **Cola**: **Celery** (Python-only). El worker corre Celery directo contra Redis. Tasks vivas en `apps/api/app/workers/tasks/`: `ai.py`, `notifications.py`, `scheduled_minutes.py`, `scheduled_reports.py`.
+
+---
+
+## Storage de archivos
+
+Backend dual (`apps/api/app/services/document_storage.py` + `core/config.py`):
+
+| `STORAGE_BACKEND` | Para qué | Notas |
+|---|---|---|
+| `local` (default dev) | Carpeta en disco (`/data/uploads/{tenant_slug}`) | Funciona con Railway Volume; OK en dev/staging. |
+| `s3` (prod) | S3-compatible: Cloudflare R2 (default), Backblaze B2, AWS S3, MinIO | Vars `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_REGION` (`auto` para R2), `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`. |
+
+US-066 introdujo el backend S3 para evitar perder uploads si Railway recicla el volumen.
 
 ---
 
 ## Autenticación — JWT + refresh tokens
 
-- Access token: JWT HS256, TTL 1 h, claims `sub`, `tenant_ids`, `is_superadmin`.
-- Refresh token: JWT HS256, TTL 30 días, almacenado en cookie `HttpOnly; Secure; SameSite=Strict`.
-- Contraseñas: `bcrypt` con `rounds=12`.
+- Access token: JWT HS256, TTL **1 h** (`ACCESS_TOKEN_TTL_SEC=3600`), claims `sub`, `tenant_ids`, `is_superadmin`.
+- Refresh token: JWT HS256, TTL **30 días** (`REFRESH_TOKEN_TTL_SEC=2592000`), cookie `HttpOnly; Secure; SameSite=Strict`.
+- Contraseñas: `bcrypt` con `rounds=12` (`BCRYPT_ROUNDS=12`).
 - Reset: token único de 1 uso con TTL 30 min (vía email o mostrado al admin una vez).
 
 Detalles en [`security-multitenant.md`](./security-multitenant.md).
 
 ---
 
-## IA — modo platform (Groq) y modo BYO (Ollama / Gemini / Claude / OpenAI)
+## IA — modo `platform` (Groq) y modo `byo` (multi-provider)
 
-Desde **DEC-017** (2026-05) la plataforma separa dos modos por tenant:
+Definido en `apps/api/app/services/ai/`. Ver también `EP008-ai.md`.
 
-### Modo `platform` (default)
+### Modo `platform` (default para tenants nuevos)
 
-Los tenants nuevos arrancan en este modo. La generación corre contra
-**Groq** (Llama 3.1 / Mixtral hosteado), pagado por la plataforma:
+- Provider único: **Groq** (`api.groq.com/openai/v1`, API OpenAI-compatible).
+- Modelo default: `llama-3.3-70b-versatile` (override por tenant desde `/superadmin/ai`).
+- API key: `platform_ai_settings.groq_api_key_encrypted` (cifrada con Fernet) o env `GROQ_API_KEY` como fallback.
+- Sin infra propia: latencia ~300–600 ms.
 
-- Latencia ~300–600 ms a nivel API.
-- Sin infra a mantener (no hay servidor de IA propio).
-- Cuota por tenant configurable desde `/superadmin/ai`.
+> **Ollama fue eliminado** en BUG-053 (2026-05-08). Ya no hay `OllamaProvider` ni cascada legacy `ollama → gemini → claude`. El runbook `runbooks/ai/groq-setup.md` reemplaza a los antiguos `local-ollama-setup` y `local-model-setup`.
 
 ### Modo `byo` (Bring Your Own)
 
-El admin del tenant elige uno o varios providers desde `/admin/ai`. El
-runtime resuelve en cascada según lo configurado:
+El admin del tenant configura uno o más providers desde `/admin/ai`. Catálogo real en `apps/api/app/services/ai/byo_catalog.py`:
 
-1. **Ollama local** — privacidad total, cero costo por token, modelo
-   `qwen2.5:7b-instruct-q4_K_M` default. Hosting: home-host con Cloudflare
-   Tunnel, VPS con GPU, o Railway GPU cuando esté disponible.
-2. **Google Gemini 1.5 Flash** — free tier **1M tokens/día**, 15 RPM. Útil
-   cuando Ollama está caído o como provider económico secundario.
-3. **Claude Sonnet 4.6** — máxima calidad; coste real por token.
-4. **OpenAI / Perplexity** — soportados como alternativa.
-
-> El antiguo orden "Ollama → Gemini → Claude" del MVP solo aplica a
-> tenants en modo `byo` que repliquen esa configuración. El default de
-> la plataforma es ahora Groq.
-
-El `AIProvider` es polimórfico y el runtime escoge en cascada: intenta
-primario, si falla o está deshabilitado pasa al siguiente. Ver
-[`../ai/`](../ai/).
-
----
-
-## Microsoft Project — MPXJ + frappe-gantt
-
-- **MPXJ** (Java) → se ejecuta en un sidecar o se invoca vía subprocess.
-- **frappe-gantt** → librería JS liviana (< 30 KB), suficiente para MVP.
-- Post-MVP evaluamos **dhtmlx-gantt** si necesitamos drag&drop avanzado.
-
----
-
-## Observabilidad (stack $0)
-
-Ver ADR-011 actualizado. Todo lo siguiente es **free** o self-hosted:
-
-| Herramienta | Para qué | Costo |
+| key | Label | Notas |
 |---|---|---|
-| **GlitchTip** (self-hosted en Railway) | Errores FE + BE, compatible con Sentry-SDK | ~$5/mes container |
-| **Railway Logs** | Logs centralizados por servicio (ya incluido) | $0 |
-| **Railway Metrics** | CPU, memoria, red | $0 |
-| **UptimeRobot Free** | `/health` cada 5 min, 50 monitors, alertas email/Slack | $0 |
-| **BetterStack Logs Free** (alternativa) | 1GB/mes, 3 días retención | $0 |
-| **Audit log** (tabla propia) | Forense y compliance (negocio) | $0 |
+| `openai` | OpenAI (ChatGPT) | gpt-4o-mini / gpt-4o / gpt-4-turbo |
+| `claude` | Anthropic (Claude) | claude-sonnet-* via API directa |
+| `gemini` | Google Gemini | gemini-1.5-flash / gemini-1.5-pro |
+| `perplexity` | Perplexity | sonar / sonar-pro |
+| `azure` | **Microsoft Copilot M365** (Azure OpenAI) | gpt-4o / gpt-4 / gpt-35-turbo; requiere endpoint + deployment |
+| `custom` | Otro provider compatible OpenAI | base_url + api_key + modelo |
 
-Si crecemos y necesitamos tracing distribuido, **OpenTelemetry → Grafana
-Cloud Free** (10k series, 50GB logs, 14d retención) cubre sin costo.
+Adicionalmente el provider `groq` también está disponible en modo BYO si el tenant trae su propia key.
+
+El runtime (`provider.py:resolve_provider`) selecciona implementación por `cfg["provider"]`. Cada implementación es una clase `*Provider` con interfaz común (`AIProvider` Protocol).
+
+---
+
+## Microsoft Project — MPXJ (subprocess Java)
+
+- **MPXJ** (`net.sf.mpxj`) lee `.mpp` binario, `.xml` (MSPDI) y `.mpx`.
+- Se invoca como **subprocess Java**, no JPype, para evitar JVM compartida:
+  ```
+  java -cp "/opt/mpxj/lib/*:/opt/mpxj/cli" MpxjCli <input.mpp>
+  ```
+- Wrapper Java en `apps/api/app/services/msproject/mpxj_cli/MpxjCli.java`; classpath configurado en el `Dockerfile` del servicio `api`/`worker`.
+- Formatos aceptados por el import wizard (`apps/web/components/import-wizard.tsx`): `.xlsx`, `.csv`, `.mpp`, `.xml`, `.mpx`, `.mspdi`.
+- **Escritura `.mpp`** → no soportada (requiere MPXJ Pro comercial). Export sale como XLSX/CSV.
+- Visualización Gantt → SVG propio en `apps/web/components/gantt-view.tsx` (no `frappe-gantt`).
+
+---
+
+## Observabilidad
+
+Estado real hoy:
+
+| Herramienta | Estado | Notas |
+|---|---|---|
+| **Railway Logs** | Activo | `structlog` formatea JSON en prod, texto en dev. |
+| **Railway Metrics** | Activo (built-in) | CPU, memoria, red por servicio. |
+| **Audit log** (tabla `audit_log`) | Activo | Forense y compliance; ver `database.md`. |
+| **Sentry / GlitchTip** | **No integrado.** | El `sentry-sdk` se removió de `requirements.txt`. Pendiente decidir si reintroducir cuando crezca el tráfico. |
+| **UptimeRobot** | No configurado en repo | Si se contrata, apuntar a `/api/health`. |
+| **OpenTelemetry / tracing** | Descartado por ahora | Sin necesidad en MVP. |
 
 ---
 
 ## Testing
 
-| Tipo | Herramienta | Cobertura objetivo |
+| Tipo | Herramienta | Estado |
 |---|---|---|
-| Unit frontend | Vitest + React Testing Library | 60% |
-| Unit backend | pytest + pytest-asyncio | 80% |
-| Integración | pytest + testcontainers (Postgres real) | endpoints críticos |
-| E2E | Playwright | flujos core + TC-MT-* |
-| Contract | Schemathesis contra OpenAPI | diff vs deploy previo |
-| Load | k6 | release pre-flight (500 RPS) |
+| Unit / integración backend | `pytest` + `pytest-asyncio` + `pytest-xdist` | Activo. CI corre con marca `not heavy` en PR path y `heavy` en lane separada. |
+| Coverage backend | `pytest-cov` | Disponible; sin gate de % en CI. |
+| Lint backend | `ruff` 0.6.9 | Gate completo en CI (ENH-032). |
+| Lint frontend | `next lint` | Activo. |
+| E2E | Playwright | **No instalado.** Diferido. |
+| Contract | Schemathesis | **No instalado.** Diferido. |
+| Load | k6 | **No instalado.** Pre-release. |
+
+CI: `.github/workflows/ci.yml` corre ruff + pytest (smoke + heavy lane).
 
 ---
 
 ## DevEx / Tooling
 
-- **pnpm workspaces** + **Turborepo** → builds incrementales.
-- **Biome** o **Ruff + Black** → linting/formatting único.
-- **Husky + lint-staged** → pre-commit.
-- **Renovate** → actualización automática de dependencias.
-- **Storybook** para `packages/ui`.
-- **MkDocs Material** (opcional) para publicar `docs/` como sitio.
+Estado real:
+
+- **pnpm workspaces** (`pnpm@9.12.0`) + Node `>=20`. Workspaces: `apps/*`, `packages/*`.
+- **Ruff** para Python (lint + format). Configurado en `apps/api/pyproject.toml`.
+- **`next lint`** para frontend.
+- **Sin Turborepo** — los scripts corren `pnpm -r` directo.
+- **Sin Husky** — no hay pre-commit hooks instalados.
+- **Sin Storybook**.
+- **Sin Renovate / Dependabot configurado en el repo**.
+- **Sin MkDocs** — la doc vive como markdown en `docs/`.
+
+Si alguna se introduce, actualizar esta sección y dejar nota en `DECISIONS.md`.
 
 ---
 
@@ -208,13 +261,10 @@ Cloud Free** (10k series, 50GB logs, 14d retención) cubre sin costo.
 | 1× Web (Next.js) | 10 |
 | Postgres Pro | 20 |
 | Redis | 5 |
-| Volume 20 GB | 5 |
-| GlitchTip container (observabilidad) | 5 |
-| UptimeRobot Free | 0 |
-| Ollama host — ver ADR-007 (home / VPS / $0) | 0-50 |
-| Gemini free tier | 0 |
-| Resend (emails, 3k free) | 0-20 |
-| **Total** | **~$75-145** |
+| Volume 20 GB (si STORAGE_BACKEND=local) | 5 |
+| Cloudflare R2 (10 GB, free tier) | 0 |
+| Groq API (modo platform, tier free / pay-as-you-go) | 0–30 |
+| Resend (emails, 3k free) | 0–20 |
+| **Total** | **~$70–120** |
 
-Claude API se presupuesta solo si un tenant lo activa explícitamente — el
-coste se puede repercutir a ese tenant en su plan.
+Los providers BYO (OpenAI, Anthropic, Gemini, Azure/Copilot) los paga cada tenant con su propia API key — no entran al coste de plataforma.

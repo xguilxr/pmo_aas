@@ -383,55 +383,71 @@ flowchart LR
 | `Reportes → Portfolio` | Admin (flag `adminOnly`) |
 | `ADMIN_NAV` + `/admin/**` | Admin del tenant (rol con permisos admin) |
 | `SUPERADMIN_NAV` + `/superadmin/**` | `is_superadmin === true` |
-| `OrgTreeNav` (orgs/programas/proyectos) | Cualquier usuario; el backend filtra por RLS lo que el usuario puede ver |
+| `OrgTreeNav` (orgs/programas/proyectos) | Cualquier usuario; el backend filtra por `tenant_id` y por exclusiones en `organization_user_exclusions` lo que el usuario puede ver. |
 
 La decisión la toma `app-shell.tsx` usando el hook
-`useMyPermissions()` + el flag `user.is_superadmin`.
+`useMyPermissions()` (devuelve `roleType: "admin" | "user"`) + el flag
+`user.is_superadmin`. El gate es **capability-based** (DEC-024 / US-076):
+admin tiene 5 capabilities cerradas (`tenant.manage`, `ai.configure`,
+`users.manage`, `organizations.delete`, `audit.read`). Ver
+[`security-multitenant.md`](./security-multitenant.md#3-autorización--modelo-capability-based-dec-024--us-076).
 
 ---
 
-## 6. Páginas huérfanas detectadas
+## 6. Páginas huérfanas y rutas legacy
 
-> **Definición:** página que existe como `page.tsx` y compila, pero
-> ninguna otra parte de la app (sidebar, landing, tabs, breadcrumbs,
-> `Link`, `router.push`) la enlaza. Solo se puede llegar tipeando la
-> URL directamente.
+> **Verificado** (2026-05-23) con grep sobre `apps/web/{app,components}`
+> de `href=` y `router.push(` contra cada ruta, y revisando los
+> `redirects()` de `apps/web/next.config.js`.
 
-Verificado con grep sobre `apps/web/{app,components}` buscando `href=`
-y `router.push(` contra cada ruta.
+### 6.1 Rutas legacy redirigidas en `next.config.js`
 
-| Página | Estado | Recomendación |
+Estas URLs tienen un `page.tsx` en el repo **pero nunca se renderiza**:
+Next.js intercepta antes con un 301 al destino real. Son **código
+muerto** salvo que se necesite el redirect para bookmarks viejos.
+
+| URL legacy | Redirect a | ¿Eliminar el `page.tsx`? |
 |---|---|---|
-| `/admin/settings` | **Huérfana confirmada.** Sin link entrante. Solo aparece en `app-shell.tsx` como pattern matcher para resaltar sección. | Decidir: (a) eliminar si su contenido se fusionó con `/admin/tenant`, o (b) añadir entrada en `ADMIN_NAV` / panel del landing. |
-| `/admin/supervision` | **Huérfana confirmada.** Sin link entrante. Mismo caso que `/admin/settings`. | Aclarar propósito (¿monitoreo de auditoría?, ¿override de RLS?). Si vive, exponerla en sidebar o landing admin. |
-| `/admin/stakeholders` | **Huérfana confirmada.** Sin link entrante. | Probablemente directorio de stakeholders cross-project. Decidir si fusionar con `/admin/areas` o exponer como panel propio. |
-| `/superadmin/permission-requests` | **Huérfana confirmada.** No aparece en `SUPERADMIN_NAV`. | Si gestiona requests de elevación de permisos, agregar a `SUPERADMIN_NAV` o como sub-item de `/superadmin/users`. |
-| `/superadmin/health` | **Huérfana confirmada.** Sin link entrante. | Útil como página de utilidad (`/health` dashboard). Recomendado añadir un link discreto en footer del AppShell o en `/superadmin`. |
-| `/pmo/programs` | **Huérfana confirmada.** Solo se enlaza `/pmo/programs/[id]` desde `OrgTreeNav` y `/pmo/organizations/[id]`. El listado plano no se alcanza. | Decidir si tiene valor: si sí, exponerlo como sub-item en TOP_NAV bajo Proyectos; si no, eliminar el archivo. |
+| `/admin/supervision` | `/admin/tenant?tab=stats` | Sí (US-036). El redirect ya cubre el caso. |
+| `/admin/settings` | `/admin/tenant?tab=config` | Sí (US-036). |
+| `/admin/projects/**` | `/pmo/projects/**` | Sí (US-075 / DEC-022). |
+| `/admin/programs/**` | `/pmo/programs/**` | Sí. |
+| `/admin/raid/**`, `/admin/requests/**`, `/admin/changes`, `/admin/minutes`, `/admin/reports` | `/pmo/...` | Sí (US-075). |
+| `/admin/roles/**` | `/admin/permissions` | Sí. |
+| `/admin/organizations/[id]/panel` | `/admin/organizations/[id]` | Sí (BUG-019). |
 
-### 6.1 Páginas con acceso indirecto único
+> Recomendación: abrir un issue tipo cleanup para borrar los
+> `page.tsx` correspondientes. El redirect en `next.config.js` debe
+> mantenerse (cubre bookmarks y emails).
 
-No son huérfanas estrictas, pero su único punto de entrada es
-no-obvio. Vale documentarlo:
+### 6.2 Huérfanas reales (sin redirect y sin link entrante)
+
+| Página | Diagnóstico | Recomendación |
+|---|---|---|
+| `/admin/stakeholders` | Sin entrada en sidebar, panel del landing ni `href=` en código. | Aclarar propósito: directorio de stakeholders cross-project. Si vive, exponer como panel en `/admin` o sub-item de `/admin/areas`. Si no, borrar. |
+| `/superadmin/permission-requests` | Sin link entrante. Probablemente para validar `permission_change_requests`. | Agregar a `SUPERADMIN_NAV` o como sub-item de `/superadmin/users`. |
+| `/superadmin/health` | Sin link entrante. Página de utilidad útil. | Linkear desde `/superadmin` (overview) o en el footer del AppShell para superadmin. |
+| `/pmo/programs` (listado) | Solo se enlaza el detalle `/pmo/programs/[id]` (desde `OrgTreeNav`, `/pmo/organizations/[id]`, y la redirect legacy `/admin/programs`). El listado plano no se alcanza por nav. | Decidir: exponerlo en TOP_NAV bajo Proyectos, o eliminar el archivo. |
+
+### 6.3 Páginas con acceso indirecto único
+
+No son huérfanas, pero su único punto de entrada es no-obvio:
 
 | Página | Único punto de entrada |
 |---|---|
-| `/pmo/projects/[id]/documents/legacy` | Botón "Vista clásica" dentro de `/documents`. |
-| `/pmo/projects/[id]/reports/tweak` | Solo desde `/reports` con un reporte ya generado. |
-| `/pmo/projects/[id]/charter` | Tras crear proyecto (redirect), desde `/documents`, o desde solicitud aprobada. **No tiene tab propio**. |
-| `/pmo/projects/[id]/edit` | Botón "Editar" en el header del hub. |
-| `/superadmin/me` | Solo desde UserMenu cuando el usuario es superadmin. |
-| `/admin/organizations/[id]/panel` | Redirect legacy. Mantener mientras existan emails/bookmarks viejos. |
+| `/pmo/projects/[id]/documents/legacy` | Botón "Vista clásica" en `/documents`. |
+| `/pmo/projects/[id]/reports/tweak` | Botón "Ajustar" en `/reports` (cuando hay un reporte generado). |
+| `/pmo/projects/[id]/charter` | Tras crear proyecto (`router.replace` desde `project-form`), desde `/documents` y desde el flujo de aprobación de request. **No tiene tab propio**. |
+| `/pmo/projects/[id]/edit` | Botón "Editar" en el header del hub del proyecto. |
+| `/superadmin/me` | Solo desde `UserMenu` cuando el usuario es superadmin. |
 
-### 6.2 Resumen orphans
+### 6.4 Resumen
 
-- **6 páginas huérfanas confirmadas** (sin ningún link entrante).
-- **6 páginas con acceso indirecto único** (potencialmente difíciles
-  de descubrir pero alcanzables).
+- **8 rutas legacy** con `page.tsx` muerto (resueltas por redirects en `next.config.js`). Cleanup recomendado.
+- **4 páginas huérfanas reales** que necesitan decisión (wire-up o eliminar).
+- **5 páginas con acceso indirecto único** (alcanzables pero difíciles de descubrir).
 
-Acción sugerida (no implementada en este commit): abrir issue
-`ENH-XXX — wire-up de páginas huérfanas o eliminación` y decidir caso
-por caso si exponer, eliminar o redirigir.
+Acción sugerida: abrir issue `ENH-XXX — cleanup de rutas legacy y wire-up de huérfanas` y resolver caso por caso.
 
 ---
 
