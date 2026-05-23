@@ -173,13 +173,15 @@ al final) → `project_areas.name ASC` → `identified_at DESC` (risks) o
 `?area_id=` en `/projects/{id}/risks`, `/projects/{id}/issues`,
 `/tenant/risks` y `/tenant/issues`.
 
-## EP016 — IA local (Ollama vía Tailscale)
+## EP016 — IA local (Ollama vía Tailscale) — ❌ ARCHIVADA
 
-Sin schema nuevo. La config del endpoint vive en
-`tenants.settings.ai.ollama` (JSONB) — `{base_url, model, timeout_sec}`
-tras US-047. Secrets CF-Access legacy, si existieran, quedan
-archivados bajo `tenants.settings.ai.ollama.auth_legacy.*` (no borrados
-para auditoría).
+Toda la epic quedó superseded por DEC-017 y eliminada en BUG-053
+(2026-05-08). `OllamaProvider` se quitó del runtime. Los datos
+legacy en `tenants.settings.ai.ollama` quedaron en BD por auditoría
+pero ya no se leen — el resolver de provider falla con
+`unsupported_provider` para `provider="ollama"`.
+
+Ver `docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`.
 
 ---
 
