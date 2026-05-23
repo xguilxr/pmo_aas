@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, FileText, Layers, Network } from "lucide-react";
+import { Building2, Download, FileText, Layers, Loader2, Network } from "lucide-react";
 
 import {
   TenantCrossFilters,
@@ -21,8 +21,14 @@ import {
 } from "@/components/tenant-cross-filters";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import {
+  exportBuilderPdf,
+  listBuilderTemplates,
+  type ReportBuilderTemplate,
+} from "@/lib/api/report-builder";
 import { listTenantReports, type TenantReport } from "@/lib/api/tenant-cross";
 
 type TenantReportsTab = "pmo" | "organization" | "program" | "projects";
@@ -108,19 +114,124 @@ export default function TenantReportsPage() {
   );
 }
 
-// US-144 (cascarón pendiente).
+// US-144 — Tab PMO. Generación + (placeholder) historial.
 function PmoScopePlaceholder() {
+  const [templates, setTemplates] = useState<ReportBuilderTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listBuilderTemplates({ level: 1 })
+      .then((all) => {
+        if (!cancelled) setTemplates(all);
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "No se pudo cargar plantillas");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function generatePmoReport(tpl: ReportBuilderTemplate) {
+    setExporting(tpl.id);
+    setError(null);
+    try {
+      const blob = await exportBuilderPdf(tpl.id, {
+        level: 1,
+        window_days: 30,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pmo-status-${tpl.code}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el reporte");
+    } finally {
+      setExporting(null);
+    }
+  }
+
   return (
-    <section className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] p-8 text-center">
-      <Layers className="mx-auto h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
-      <p className="mt-3 text-sm font-medium text-[var(--text-primary)]">
-        Reporte Status PMO
-      </p>
-      <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-        Cascarón pendiente (US-144). Aquí va el panel para descargar el reporte
-        de status de la PMO completa + historial de reportes generados.
-      </p>
-    </section>
+    <div className="space-y-5">
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="flex items-start gap-3">
+          <Layers className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <div className="flex-1">
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+              Reporte Status PMO
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+              Genera el reporte de status de toda la PMO (sin filtros). El reporte
+              se descarga directo como PDF.
+            </p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-14 w-full" />
+          </div>
+        ) : templates.length === 0 ? (
+          <p className="mt-4 text-xs italic text-[var(--text-tertiary)]">
+            Sin plantillas Nivel 1 disponibles. Verifica el seed de
+            `report_builder_templates`.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {templates.map((tpl) => (
+              <li
+                key={tpl.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                    {tpl.name}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
+                    {tpl.section_codes.length} secciones · Modo {tpl.composition_mode}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => generatePmoReport(tpl)}
+                  loading={exporting === tpl.id}
+                  disabled={exporting !== null}
+                >
+                  {exporting === tpl.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Descargar
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Cascarón: historial scoped a PMO no persiste todavía. Cuando la
+          estructura final del reporte esté definida (sesión owner aparte),
+          aquí va una tabla con los descargados anteriormente. */}
+      <section className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] p-6 text-center">
+        <p className="text-xs text-[var(--text-tertiary)]">
+          <strong className="text-[var(--text-secondary)]">Historial:</strong>{" "}
+          se habilitará cuando se defina la estructura final del reporte PMO
+          (cascarón aprobado por owner — pendiente sesión de diseño).
+        </p>
+      </section>
+    </div>
   );
 }
 
