@@ -41,18 +41,19 @@ import {
  *
  * Render HTML embebido (sin pop-up) con secciones colapsables: Resumen,
  * Participantes, Temas, Acuerdos + el editor de Sugerencias RAID
- * (US-108). Header con acciones: Descargar (PDF/DOCX/MD/TXT), Borrar
+ * (US-108). Header con acciones: Descargar (PDF/DOCX), Borrar
  * (ENH-091) y ← Volver. Botón "Pop-up" opcional para usuarios que
  * prefieran ventana externa (CA4 — diferido a cuando lo pidan).
  *
  * Layout limpio sin sidebar — dentro del shell de la app pero la página
  * ocupa todo el ancho (max-w-5xl).
+ *
+ * ENH-118 (2026-05-23): MD/TXT removidos del export. El backend sigue
+ * aceptándolos por compat, pero la UI no los ofrece más.
  */
 const EXPORT_FORMATS: Array<{ key: MinuteExportFormat; label: string }> = [
   { key: "pdf", label: "PDF" },
   { key: "docx", label: "DOCX" },
-  { key: "md", label: "MD" },
-  { key: "txt", label: "TXT" },
 ];
 
 export default function MinutePreviewPage() {
