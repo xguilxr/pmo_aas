@@ -212,6 +212,19 @@ export default function MinutePreviewPage() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
+      {/* BUG-063: resumen visible al inicio (read-only en detail; el
+          form de generación es el lugar para editar). */}
+      {minute.description ? (
+        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+          <h2 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+            Resumen
+          </h2>
+          <p className="whitespace-pre-wrap text-[13px] text-[var(--text-primary)]">
+            {minute.description}
+          </p>
+        </section>
+      ) : null}
+
       {/* ENH-095 — Editor estructurado por secciones (participants / topics
           / agreements). Cada sección tiene "Editar" → forms inline →
           "Guardar / Cancelar"; al guardar, PATCH `/meeting-minutes/{id}`
@@ -219,6 +232,22 @@ export default function MinutePreviewPage() {
       <ParticipantsSection minute={minute} setMinute={setMinute} />
       <TopicsSection minute={minute} setMinute={setMinute} />
       <AgreementsSection minute={minute} setMinute={setMinute} />
+
+      {/* BUG-063: notas libres persistidas en raid_suggestions._meta.free_notes. */}
+      {(() => {
+        const fn = (minute.raid_suggestions as { _meta?: { free_notes?: string } } | undefined)?._meta?.free_notes;
+        if (!fn) return null;
+        return (
+          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+            <h2 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+              Notas libres
+            </h2>
+            <p className="whitespace-pre-wrap text-[13px] text-[var(--text-primary)]">
+              {fn}
+            </p>
+          </section>
+        );
+      })()}
 
       {/* US-108: editor de sugerencias RAID embebido en el preview. */}
       <MinuteRaidSuggestionsEditor
@@ -473,12 +502,15 @@ function TopicsSection({
   }
   async function commit() {
     const cleaned = draft
-      .map((t) => ({
-        ...t,
-        title: (t.title ?? "").trim(),
-        notes: (t.notes ?? "").trim(),
-      }))
-      .filter((t) => t.title.length > 0 || t.notes.length > 0);
+      .map((t) => {
+        const title = (t.title ?? "").trim();
+        const bullets = Array.isArray(t.bullets)
+          ? t.bullets.map((b) => b.trim()).filter(Boolean)
+          : [];
+        const notes = (t.notes ?? "").trim();
+        return { title, bullets, notes };
+      })
+      .filter((t) => t.title.length > 0 || t.bullets.length > 0 || t.notes.length > 0);
     const ok = await save("topics", cleaned);
     if (ok) setEditing(false);
   }
@@ -519,7 +551,13 @@ function TopicsSection({
                 <p className="text-[13px] font-medium text-[var(--text-primary)]">
                   {t.title}
                 </p>
-                {t.notes ? (
+                {Array.isArray(t.bullets) && t.bullets.length > 0 ? (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[12px] text-[var(--text-secondary)]">
+                    {t.bullets.map((b, j) => (
+                      <li key={j} className="whitespace-pre-wrap">{b}</li>
+                    ))}
+                  </ul>
+                ) : t.notes ? (
                   <p className="mt-1 whitespace-pre-wrap text-[12px] text-[var(--text-secondary)]">
                     {t.notes}
                   </p>
@@ -545,14 +583,27 @@ function TopicsSection({
                 placeholder="Título del tema"
               />
               <Textarea
-                rows={4}
-                value={t.notes ?? ""}
-                onChange={(e) =>
-                  setDraft((d) =>
-                    d.map((x, j) => (j === i ? { ...x, notes: e.target.value } : x)),
-                  )
+                rows={Math.max(
+                  4,
+                  Array.isArray(t.bullets) ? t.bullets.length : (t.notes ?? "").split(/\r?\n/).length,
+                )}
+                value={
+                  Array.isArray(t.bullets)
+                    ? t.bullets.join("\n")
+                    : (t.notes ?? "")
                 }
-                placeholder="Notas (2-5 oraciones con contexto, responsables, fechas, próximos pasos)"
+                onChange={(e) => {
+                  const lines = e.target.value
+                    .split(/\r?\n/)
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  setDraft((d) =>
+                    d.map((x, j) =>
+                      j === i ? { ...x, bullets: lines, notes: "" } : x,
+                    ),
+                  );
+                }}
+                placeholder="Bullets factuales (uno por línea — nombres, fechas, decisiones)"
               />
               <div className="flex justify-end">
                 <Button
@@ -568,7 +619,7 @@ function TopicsSection({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setDraft((d) => [...d, { title: "", notes: "" }])}
+            onClick={() => setDraft((d) => [...d, { title: "", bullets: [] }])}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar tema
           </Button>
