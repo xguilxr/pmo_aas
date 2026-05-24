@@ -8,7 +8,7 @@ Verifica que `POST /projects/{id}/reports/look-ahead`:
 """
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 

@@ -74,7 +74,7 @@ async def _setup(client, db_session, slug, n_tasks=5):
 @pytest.mark.asyncio
 async def test_tc235_endpoint_returns_svg(client, db_session):
     """TC-235 (adaptado) — endpoint devuelve SVG válido con <svg root."""
-    t, p, auth = await _setup(client, db_session, "us132-svg")
+    _t, p, auth = await _setup(client, db_session, "us132-svg")
     r = await client.get(
         f"/api/v1/projects/{p.id}/gantt/snapshot?wbs_level=1",
         headers=auth["_authz"],
@@ -140,7 +140,7 @@ async def test_tc236_placeholder_on_large_project(db_session):
 async def test_tc237_svg_embeddable(client, db_session):
     """TC-237 — el SVG es embebible como <img src=...>: chequeamos que el
     body sea XML válido (no JSON ni HTML)."""
-    t, p, auth = await _setup(client, db_session, "us132-emb", n_tasks=3)
+    _t, p, auth = await _setup(client, db_session, "us132-emb", n_tasks=3)
     r = await client.get(
         f"/api/v1/projects/{p.id}/gantt/snapshot",
         headers=auth["_authz"],
@@ -153,7 +153,7 @@ async def test_tc237_svg_embeddable(client, db_session):
 
 @pytest.mark.asyncio
 async def test_png_not_supported_v1(client, db_session):
-    t, p, auth = await _setup(client, db_session, "us132-png", n_tasks=1)
+    _t, p, auth = await _setup(client, db_session, "us132-png", n_tasks=1)
     r = await client.get(
         f"/api/v1/projects/{p.id}/gantt/snapshot?format=png",
         headers=auth["_authz"],

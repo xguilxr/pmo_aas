@@ -68,7 +68,7 @@ async def _setup(client, db_session, slug):
 
 @pytest.mark.asyncio
 async def test_tc218_private_visible_only_to_owner(client, db_session):
-    t, p1, p2, u1, u2, auth1, auth2 = await _setup(client, db_session, "us126-priv")
+    _t, _p1, _p2, _u1, _u2, auth1, auth2 = await _setup(client, db_session, "us126-priv")
     r = await client.post(
         "/api/v1/report-builder-templates",
         headers=auth1["_authz"],
@@ -93,7 +93,7 @@ async def test_tc218_private_visible_only_to_owner(client, db_session):
 
 @pytest.mark.asyncio
 async def test_tc219_publish_and_unpublish(client, db_session):
-    t, p1, p2, u1, u2, auth1, auth2 = await _setup(client, db_session, "us126-pub")
+    _t, p1, p2, _u1, _u2, auth1, auth2 = await _setup(client, db_session, "us126-pub")
     # Crear privada y publicar al proyecto p1.
     r = await client.post(
         "/api/v1/report-builder-templates",
@@ -159,7 +159,7 @@ async def test_tc219_publish_and_unpublish(client, db_session):
 
 @pytest.mark.asyncio
 async def test_only_owner_can_modify(client, db_session):
-    t, p1, p2, u1, u2, auth1, auth2 = await _setup(client, db_session, "us126-mod")
+    _t, _p1, _p2, _u1, _u2, auth1, auth2 = await _setup(client, db_session, "us126-mod")
     r = await client.post(
         "/api/v1/report-builder-templates",
         headers=auth1["_authz"],

@@ -76,7 +76,7 @@ async def _setup(client, db_session, slug):
 
 @pytest.mark.asyncio
 async def test_tc232_create_custom_schedule(client, db_session):
-    t, p, tpl, auth = await _setup(client, db_session, "us131-create")
+    _t, p, tpl, auth = await _setup(client, db_session, "us131-create")
 
     r = await client.post(
         f"/api/v1/projects/{p.id}/scheduled-reports",
@@ -99,7 +99,7 @@ async def test_tc232_create_custom_schedule(client, db_session):
 
 @pytest.mark.asyncio
 async def test_custom_requires_template_id(client, db_session):
-    t, p, _, auth = await _setup(client, db_session, "us131-no-tpl")
+    _t, p, _, auth = await _setup(client, db_session, "us131-no-tpl")
     r = await client.post(
         f"/api/v1/projects/{p.id}/scheduled-reports",
         headers=auth["_authz"],
@@ -116,7 +116,7 @@ async def test_custom_requires_template_id(client, db_session):
 @pytest.mark.asyncio
 async def test_tc234_external_email_accepted(client, db_session):
     """TC-234 — destinatarios externos (email no del tenant) son OK."""
-    t, p, tpl, auth = await _setup(client, db_session, "us131-ext")
+    _t, p, tpl, auth = await _setup(client, db_session, "us131-ext")
     r = await client.post(
         f"/api/v1/projects/{p.id}/scheduled-reports",
         headers=auth["_authz"],
