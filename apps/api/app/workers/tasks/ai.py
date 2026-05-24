@@ -24,7 +24,11 @@ from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
 from app.services.ai.platform_config import resolve_groq_config
-from app.services.ai.prompts import MINUTE_SYSTEM, REPORT_SYSTEM
+from app.services.ai.prompts import (
+    MINUTE_NORMALIZE_SYSTEM,
+    MINUTE_SYSTEM,
+    REPORT_SYSTEM,
+)
 from app.services.ai.provider import (
     AIResult,
     chunk_text,
@@ -299,7 +303,14 @@ async def _run_minute(
     save_as_minute: bool,
     title: str,
     requested_by: str | None,
+    source_type: str = "transcript",
 ) -> None:
+    # US-143: source_type=`minute` usa `MINUTE_NORMALIZE_SYSTEM` que
+    # preserva contenido literal en lugar de re-sintetizarlo. Default
+    # `transcript` para retrocompatibilidad.
+    prompt_system = (
+        MINUTE_NORMALIZE_SYSTEM if source_type == "minute" else MINUTE_SYSTEM
+    )
     async with db_session() as db:
         job = await _mark_running(db, job_id)
         if job is None:
@@ -328,7 +339,7 @@ async def _run_minute(
         for ch in chunks:
             res = await _call_ai_for_tenant(
                 ch,
-                system=MINUTE_SYSTEM,
+                system=prompt_system,
                 tenant_cfg=tenant_cfg,
                 platform_groq_config=platform_groq,
                 tenant_id=tenant_id,
@@ -392,6 +403,12 @@ async def _run_minute(
                             "ticket_id": None,
                             "ticket_type": None,
                         })
+                # ENH-106 + US-143: origen depende del source_type.
+                # `transcript_ai` (default) o `minute_ai` cuando la fuente
+                # fue una minuta ya redactada normalizada por IA.
+                minute_origin = (
+                    "minute_ai" if source_type == "minute" else "transcript_ai"
+                )
                 mm = MeetingMinute(
                     tenant_id=tenant_id, project_id=project_id, folio=folio,
                     title=title, meeting_date=datetime.now(UTC),
@@ -399,9 +416,7 @@ async def _run_minute(
                     agreements=merged["agreements"], next_meeting_date=None,
                     attachments=[], generated_by_ai=True, status="final",
                     created_by=requested_by,
-                    # ENH-106: minutas creadas por el job de IA (transcript →
-                    # accept) llevan origin `transcript_ai` para auditoría.
-                    origin="transcript_ai",
+                    origin=minute_origin,
                     raid_suggestions=raid_persisted,
                 )
                 db.add(mm)
@@ -424,7 +439,8 @@ async def _run_minute(
                 entity_type="ai_job", entity_id=str(job.id),
                 details={"model": model_used, "duration_ms": job.duration_ms,
                          "minute_id": minute_id, "language": language,
-                         "provider": job.provider, "mode": tenant_cfg.mode},
+                         "provider": job.provider, "mode": tenant_cfg.mode,
+                         "source_type": source_type},
             )
             await db.commit()
     except Exception as exc:
@@ -553,10 +569,11 @@ def generate_minute_task(
     save_as_minute: bool,
     title: str,
     requested_by: str | None,
+    source_type: str = "transcript",
 ) -> str:
     run_async(_run_minute(
         job_id, tenant_id, project_id, transcript, language,
-        save_as_minute, title, requested_by,
+        save_as_minute, title, requested_by, source_type,
     ))
     return job_id
 

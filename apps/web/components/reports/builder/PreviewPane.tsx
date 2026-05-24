@@ -25,7 +25,32 @@ export function PreviewPane({ request }: Props) {
     timer.current = setTimeout(async () => {
       try {
         const res = await renderBuilder(request, "json");
-        setHtml(res.html);
+        // ENH-124: inyecta CSS al HTML del preview para visualizar cortes de
+        // página A4 (aprox 1123px @ 96dpi). El estilo es solo para el
+        // preview; el PDF real respeta sus propios @page/page-break.
+        const pageBreakCss = `
+<style id="builder-preview-page-marks">
+  body { background: #f4f4f5; padding: 0; }
+  /* Container que simula página A4 */
+  body > * { background: white; }
+  /* Marcador visual cada ~1123px (alto A4 a 96dpi) */
+  body { background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 1100px,
+    #fcd34d 1100px,
+    #fcd34d 1102px,
+    transparent 1102px,
+    transparent 1123px,
+    #e4e4e7 1123px,
+    #e4e4e7 1135px
+  ); }
+</style>
+`.trim();
+        const enriched = res.html.includes("</head>")
+          ? res.html.replace("</head>", `${pageBreakCss}\n</head>`)
+          : pageBreakCss + res.html;
+        setHtml(enriched);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al renderizar preview");
@@ -41,7 +66,7 @@ export function PreviewPane({ request }: Props) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-600">
-        <span>Preview en vivo</span>
+        <span>Preview en vivo · líneas amarillas marcan cortes A4</span>
         {loading && <span className="text-zinc-400">Renderizando…</span>}
       </div>
       {error && (

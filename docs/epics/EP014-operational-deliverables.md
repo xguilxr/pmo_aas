@@ -151,6 +151,11 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 **Quiero** que la minuta generada con IA siempre tenga el mismo formato y pueda descargarse en `.docx`, `.md` o `.txt`
 **Para** compartirla en canales corporativos sin reformateo manual.
 
+**Cambios posteriores (Sprint 30 Bloque 2, 2026-05-23):**
+- **ENH-117 (commit `7ad1fd8`)** — Listing rediseñado: botón único "Generar Minuta" (consolidó "Generar con IA" + "Llenar manualmente"); tabla con columnas Folio | Minuta | Fecha | Tipo | Exportar | Preview | Borrar.
+- **ENH-118 (commit `89a430b`)** — Exportación simplificada: solo PDF y DOCX visibles en UI; MD/TXT removidos del detail (backend sigue aceptándolos por compatibilidad).
+- **BUG-062 (commit `bfe4efd`)** — Navegación en listing `/pmo/minutes` (tenant-wide): al hacer click en el nombre, abre el detail `/pmo/projects/X/minutes/Y` (antes apuntaba al listing del proyecto).
+
 **Formato requerido (ver issue #18):**
 
 ```
@@ -184,9 +189,9 @@ Notas adicionales
   - Export `.docx` (usa `python-docx`; plantilla con estilo corporativo).
 - [ ] Acciones del RAID se **agrupan por area o responsable** en el render (criterio explícito del issue).
 - [ ] Endpoints:
-  - `GET /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf` — PDF reutiliza US-037.
+  - `GET /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf` — PDF reutiliza US-037. Backend sigue aceptando MD/TXT por compat.
   - Si `format=pdf`, filename: `Minuta_{proyecto_folio}_{fecha}.pdf`; igual para los demás.
-- [ ] UI: dentro del editor de minutas (post-generación IA), botón "Descargar" con menú desplegable (docx / md / pdf).
+- [ ] UI: dentro del editor de minutas (post-generación IA), botón "Descargar" con menú desplegable (PDF / DOCX). **Cambio ENH-118 (2026-05-23):** MD/TXT removidos de UI.
 - [ ] Minutas **manuales** (no IA) también pueden usarse con el mismo formatter si cumplen el schema mínimo (campos opcionales se muestran como vacíos).
 
 **Implementación:**
@@ -199,7 +204,9 @@ Notas adicionales
 
 **Frontend:**
 - `lib/api/modules.ts::exportMinute(id, format)` usa `fetch` + Blob.
-- Tabla de minutas en `/pmo/projects/[id]/minutes` gana columna "Exportar" con 4 botones (PDF / DOCX / MD / TXT) que descargan directo.
+- Tabla de minutas en `/pmo/projects/[id]/minutes` gana columna "Exportar" con 2 botones (PDF / DOCX) que descargan directo.
+- **Cambio ENH-118 (2026-05-23):** UI expone solo PDF y DOCX; MD/TXT removidos de UI aunque el backend sigue aceptándolos por compatibilidad.
+- **Cambio ENH-117 (2026-05-23):** Botón único "Generar Minuta" en lugar de "Generar con IA" + "Llenar manualmente". Columnas reordenadas: Folio | Minuta | Fecha | Tipo | Exportar (PDF/DOCX) | Preview | Borrar.
 
 **Tests (7/7 verdes, 186 en total):**
 - `test_usnew040_export_md_contains_sections` — 5 separadores `========`, "Resumen e Hitos", "RAID", "Notas adicionales", acciones agrupadas.

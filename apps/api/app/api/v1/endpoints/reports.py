@@ -26,6 +26,7 @@ from app.services.audit import write_audit
 from app.services.html_report_renderer import render_report_html
 from app.services.operational_reports import (
     build_avance_context,
+    build_look_ahead_context,
     build_seguimiento_context,
 )
 from app.services.pdf_renderer import render_pdf
@@ -273,6 +274,10 @@ class AvanceGenerate(BaseModel):
     # ENH-063: período canónico para filtrar contenido del reporte.
     # 1 / 7 / 14 / 30 / 90 días. Default 7 (1 semana).
     period_days: int | None = Field(default=None, ge=1, le=365)
+    # ENH-122: rango custom. Si ambos vienen, sobrescriben period_days y
+    # cut_off_date (cut_off = period_to, window = period_to - period_from).
+    period_from: date | None = None
+    period_to: date | None = None
 
 
 class SeguimientoGenerate(BaseModel):
@@ -280,6 +285,15 @@ class SeguimientoGenerate(BaseModel):
     window_days: int = Field(default=14, ge=1, le=90)
     # ENH-063: alias canónico que sobrescribe window_days si viene.
     period_days: int | None = Field(default=None, ge=1, le=365)
+    # ENH-122: rango custom (mismo comportamiento que AvanceGenerate).
+    period_from: date | None = None
+    period_to: date | None = None
+
+
+# US-147 — Look-ahead. Ventana hacia adelante (numero + unidad).
+class LookAheadGenerate(BaseModel):
+    window_value: int = Field(default=2, ge=1, le=52)
+    window_unit: str = Field(default="weeks", pattern="^(days|weeks|months)$")
 
 
 # ENH-063: ventana default cuando el caller no especifica.
@@ -337,12 +351,19 @@ async def generate_avance_report(
     un row en `reports` con generator='avance' + snapshot del contexto."""
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
-    cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
-    # ENH-063: período → window_days. Default 7d (1 semana).
-    window_days = (
-        (body.period_days if body and body.period_days else None)
-        or _DEFAULT_PERIOD_DAYS
-    )
+    # ENH-122: si vienen ambos period_from + period_to, override de
+    # period_days y cut_off_date. Útil para reportes "ad hoc" con
+    # ventana arbitraria solicitados por owner.
+    if body and body.period_from and body.period_to:
+        cut_off = body.period_to
+        window_days = max(1, (body.period_to - body.period_from).days)
+    else:
+        cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
+        # ENH-063: período → window_days. Default 7d (1 semana).
+        window_days = (
+            (body.period_days if body and body.period_days else None)
+            or _DEFAULT_PERIOD_DAYS
+        )
 
     context = await build_avance_context(
         db, tenant_id, project.id, cut_off, window_days=window_days
@@ -393,6 +414,79 @@ async def generate_avance_report(
     return _pdf_response(pdf, filename)
 
 
+# US-147 — Reporte Look-ahead: solo actividades en ventana [hoy, hoy+ventana].
+@router.post("/projects/{project_id}/reports/look-ahead")
+async def generate_look_ahead_report(
+    project_id: UUID,
+    body: LookAheadGenerate | None = None,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Genera Reporte Look-ahead: actividades que arrancan o terminan
+    dentro de la ventana definida desde hoy. Excluye vencidas.
+
+    Persiste con `generator='look_ahead'` y `cut_off_date=hoy`.
+    """
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    payload = body or LookAheadGenerate()
+
+    context = await build_look_ahead_context(
+        db, tenant_id, project.id,
+        window_value=payload.window_value,
+        window_unit=payload.window_unit,
+    )
+    context["tenant_name"] = await _tenant_name(db, tenant_id)
+
+    pdf = render_pdf("reports/look_ahead.html", context)
+
+    today = datetime.now(UTC).date()
+    rep = Report(
+        tenant_id=str(tenant_id),
+        project_id=str(project.id),
+        title=(
+            f"Look-ahead — {project.folio} — "
+            f"{payload.window_value} {payload.window_unit}"
+        ),
+        period=f"{payload.window_value}{payload.window_unit[:1]}",
+        generator="look_ahead",
+        cut_off_date=today,
+        sections=context,
+        recipients=[],
+        status="draft",
+        generated_by_ai=False,
+        created_by=cu.id,
+    )
+    db.add(rep)
+    await db.flush()
+    db.add(
+        ReportHistory(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            report_type="look_ahead",
+            generated_by_user_id=str(cu.id),
+            source_report_id=str(rep.id),
+            file_size_bytes=len(pdf) if pdf else None,
+        )
+    )
+    await write_audit(
+        db,
+        action="report.generate.look_ahead",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="report",
+        entity_id=str(rep.id),
+        details={
+            "window_value": payload.window_value,
+            "window_unit": payload.window_unit,
+        },
+    )
+    await db.commit()
+    filename = _report_filename("Look-ahead", project.name, datetime.now(UTC))
+    return _pdf_response(pdf, filename)
+
+
 @router.get("/reports/{report_id}/avance/download")
 async def download_avance_report(
     report_id: UUID,
@@ -434,12 +528,17 @@ async def generate_seguimiento_report(
     """Reporte de Seguimiento (Python, sin IA). Ver US-039."""
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
-    cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
-    # ENH-063: period_days (canónico) > window_days (legacy) > default.
-    if body and body.period_days:
-        window_days = body.period_days
+    # ENH-122: rango custom (period_from + period_to) override igual que avance.
+    if body and body.period_from and body.period_to:
+        cut_off = body.period_to
+        window_days = max(1, (body.period_to - body.period_from).days)
     else:
-        window_days = (body.window_days if body else 14) or 14
+        cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
+        # ENH-063: period_days (canónico) > window_days (legacy) > default.
+        if body and body.period_days:
+            window_days = body.period_days
+        else:
+            window_days = (body.window_days if body else 14) or 14
 
     context = await build_seguimiento_context(
         db, tenant_id, project.id, cut_off, window_days=window_days,

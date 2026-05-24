@@ -111,7 +111,7 @@ async def test_export_persists_report_row(client, db_session, monkeypatch):
     monkeypatch.setattr(
         pdf_mod, "html_to_pdf", lambda html: b"%PDF-1.4\nstub\n%%EOF"
     )
-    t, p, tpl, auth = await _seed(client, db_session, "us140-persist")
+    _t, p, tpl, auth = await _seed(client, db_session, "us140-persist")
 
     r = await client.post(
         f"/api/v1/report-builder/templates/{tpl.id}/export?format=pdf",
@@ -146,7 +146,7 @@ async def test_regenerate_pdf_returns_blob(client, db_session, monkeypatch):
     monkeypatch.setattr(
         pdf_mod, "html_to_pdf", lambda html: b"%PDF-1.4\nstub\n%%EOF"
     )
-    t, p, tpl, auth = await _seed(client, db_session, "us140-regen")
+    _t, p, tpl, auth = await _seed(client, db_session, "us140-regen")
 
     # Primero export para crear la row.
     r1 = await client.post(
@@ -174,7 +174,7 @@ async def test_regenerate_pdf_returns_blob(client, db_session, monkeypatch):
 @pytest.mark.asyncio
 async def test_regenerate_pdf_rejects_non_builder(client, db_session):
     """Reports operacionales no aceptan regenerate-pdf."""
-    t, p, tpl, auth = await _seed(client, db_session, "us140-reject")
+    t, p, _tpl, auth = await _seed(client, db_session, "us140-reject")
     # Crear un report manual (no builder).
     rep = Report(
         tenant_id=str(t.id),

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Look-ahead</h1>
+<p class="meta">
+  {{ project.folio }} · {{ project.name }} · Ventana {{ window_label }}
+</p>
+<p class="meta">
+  Período: {{ period_start }} – {{ period_end }}
+</p>
+<p class="meta">
+  Solo se incluyen actividades que <strong>arrancan</strong> o <strong>terminan</strong>
+  dentro del período. Las vencidas (end_date &lt; hoy) se excluyen.
+</p>
+
+{% if not tasks %}
+<p><em>No hay actividades en la ventana definida.</em></p>
+{% else %}
+<h2>Actividades ({{ tasks|length }})</h2>
+<table>
+  <thead>
+    <tr>
+      <th>WBS</th>
+      <th>Nombre</th>
+      <th>Inicio</th>
+      <th>Fin</th>
+      <th class="right">% avance</th>
+      <th>Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tasks %}
+    <tr>
+      <td class="nums">{{ t.wbs or "—" }}</td>
+      <td>{{ t.name }}{% if t.is_milestone %} <em>(hito)</em>{% endif %}{% if t.is_critical %} <strong>·crítica</strong>{% endif %}</td>
+      <td class="nums">{{ t.start_date or "—" }}</td>
+      <td class="nums">{{ t.end_date or "—" }}</td>
+      <td class="nums right">{{ t.progress or 0 }}%</td>
+      <td>{{ t.status }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

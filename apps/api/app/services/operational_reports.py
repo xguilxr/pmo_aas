@@ -574,3 +574,91 @@ async def build_seguimiento_context(
         "groups_in_progress": group(in_progress),
         "groups_upcoming": group(upcoming),
     }
+
+
+# US-147 — Reporte Look-ahead: solo actividades en ventana [hoy, hoy+ventana].
+async def build_look_ahead_context(
+    db: AsyncSession,
+    tenant_id: UUID,
+    project_id: UUID,
+    window_value: int,
+    window_unit: str,
+) -> dict[str, Any]:
+    """Contexto para Reporte Look-ahead.
+
+    Selecciona tasks cuyo `start_date` o `end_date` cae dentro de
+    `[hoy, hoy+ventana]`. Excluye las que ya están vencidas
+    (`end_date < hoy`). Sin agrupar por área ni responsable — un
+    listado plano ordenado por end_date asc, start_date asc.
+
+    Args:
+        window_value: número de unidades de ventana hacia adelante.
+        window_unit: "days" | "weeks" | "months".
+    """
+    project = await _get_project(db, tenant_id, project_id)
+    today = datetime.now(UTC).date()
+    multipliers = {"days": 1, "weeks": 7, "months": 30}
+    if window_unit not in multipliers:
+        raise ValueError(f"window_unit invalid: {window_unit!r}")
+    days = window_value * multipliers[window_unit]
+    window_end = today + timedelta(days=days)
+
+    all_tasks = (
+        await db.execute(
+            select(Task).where(
+                Task.tenant_id == str(tenant_id),
+                Task.project_id == str(project_id),
+            )
+        )
+    ).scalars().all()
+
+    in_window: list[dict[str, Any]] = []
+    for t in all_tasks:
+        # Excluye vencidas (end_date < hoy).
+        if t.end_date is not None and t.end_date < today:
+            continue
+        starts_in = (
+            t.start_date is not None and today <= t.start_date <= window_end
+        )
+        ends_in = (
+            t.end_date is not None and today <= t.end_date <= window_end
+        )
+        if not (starts_in or ends_in):
+            continue
+        in_window.append({
+            "id": str(t.id),
+            "wbs": t.wbs,
+            "name": t.name,
+            # Serializa fechas a ISO string para que `sections` (JSONB)
+            # sea persistible sin custom encoder.
+            "start_date": t.start_date.isoformat() if t.start_date else None,
+            "end_date": t.end_date.isoformat() if t.end_date else None,
+            "progress": t.progress or 0,
+            "status": t.status,
+            "is_milestone": t.is_milestone,
+            "is_critical": bool(t.is_critical),
+        })
+
+    in_window.sort(
+        key=lambda r: (
+            r["end_date"] or "9999-12-31",
+            r["start_date"] or "9999-12-31",
+        )
+    )
+
+    unit_label = {"days": "días", "weeks": "semanas", "months": "meses"}[window_unit]
+    window_label = f"{window_value} {unit_label} ({today.isoformat()} → {window_end.isoformat()})"
+
+    return {
+        "project": {
+            "id": str(project.id),
+            "folio": project.folio,
+            "name": project.name,
+        },
+        "window_value": window_value,
+        "window_unit": window_unit,
+        "window_label": window_label,
+        "period_start": today.isoformat(),
+        "period_end": window_end.isoformat(),
+        "tasks": in_window,
+    }
