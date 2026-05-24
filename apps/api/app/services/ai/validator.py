@@ -119,12 +119,112 @@ def validate_raid_items(items: list[Any]) -> tuple[list[dict[str, Any]], dict[st
     return valid, metrics
 
 
+def flatten_participants(payload: Any) -> list[dict[str, Any]]:
+    """Aplana el dict de participantes del LLM a una lista plana de dicts.
+
+    El prompt pide ``{attendees, absent_justified, absent_unjustified}`` pero
+    la minuta persistida usa una lista plana. Cada item conserva
+    ``name``/``role``/``area`` y se le agrega ``attendance`` con uno de
+    ``attended``/``absent_justified``/``absent_unjustified``.
+
+    Tolera:
+    - ``dict`` con las 3 keys canónicas.
+    - ``list`` directa (asume todos attendees).
+    - ``None`` u otros tipos → retorna lista vacía.
+    """
+    if isinstance(payload, list):
+        return [
+            {**p, "attendance": p.get("attendance") or "attended"}
+            for p in payload
+            if isinstance(p, dict) and (p.get("name") or "").strip()
+        ]
+    if not isinstance(payload, dict):
+        return []
+    out: list[dict[str, Any]] = []
+    for status_key in ("attendees", "absent_justified", "absent_unjustified"):
+        bucket = payload.get(status_key) or []
+        if not isinstance(bucket, list):
+            continue
+        attendance = "attended" if status_key == "attendees" else status_key
+        for raw in bucket:
+            if not isinstance(raw, dict):
+                continue
+            name = (raw.get("name") or "").strip()
+            if not name:
+                continue
+            out.append({**raw, "attendance": attendance})
+    return out
+
+
+# Mapping de tipos A/R/D/I canónicos al bucket persistible. Usamos los
+# 4 nombres canónicos del RAID en lugar del legacy
+# ``{risks, issues, lessons, changes}``: A→actions, R→risks, D→decisions,
+# I→issues. Lecciones y cambios fueron descartados del modelo (owner
+# 2026-05-22) — si el LLM los emite los filtra el validator.
+RAID_TYPE_TO_BUCKET: dict[str, str] = {
+    "A": "actions",
+    "R": "risks",
+    "D": "decisions",
+    "I": "issues",
+}
+
+
+def raid_suggestions_from_flat(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Convierte la lista flat A/R/D/I del LLM al shape de buckets
+    persistible en ``MeetingMinute.raid_suggestions``.
+
+    Cada item del LLM ``{type, description, responsible, due_date, status}``
+    se mapea al shape de sugerencia
+    ``{short_desc, suggested_owner_name, suggested_due_date, raw_quote,
+    status: "pending", ticket_id: null, ticket_type: null}``.
+
+    Los items sin ``description`` se descartan. ``status`` de la sugerencia
+    siempre es ``pending`` hasta que el PM la apruebe/descarte.
+    """
+    out: dict[str, list[dict[str, Any]]] = {
+        "actions": [], "risks": [], "decisions": [], "issues": [],
+    }
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        type_letter = (raw.get("type") or "").strip().upper()
+        bucket = RAID_TYPE_TO_BUCKET.get(type_letter)
+        if not bucket:
+            continue
+        desc = (raw.get("description") or "").strip()
+        if not desc:
+            continue
+        out[bucket].append({
+            "short_desc": desc,
+            "suggested_owner_name": (raw.get("responsible") or None) or None,
+            "suggested_due_date": raw.get("due_date") or None,
+            "suggested_priority": None,
+            "raw_quote": raw.get("raw_quote") or None,
+            "status": "pending",
+            "ticket_id": None,
+            "ticket_type": None,
+        })
+    return out
+
+
 def validate_minute_payload(payload: Any) -> tuple[dict[str, Any], dict[str, int]]:
     """Coerce a minute JSON payload to the canonical 6-section shape.
 
     Missing sections are filled with empty defaults. RAID items are
-    filtered via :func:`validate_raid_items`. The returned payload is
+    filtered via :func:`validate_raid_items`. The returned payload es
     safe to feed to the formatter (ENH-105).
+
+    Output shape:
+        - ``header``: dict (raw del LLM).
+        - ``participants``: dict ``{attendees, absent_justified,
+          absent_unjustified}`` (raw del LLM normalizado).
+        - ``participants_flat``: list plana de ``{name, role?, area?,
+          attendance}`` lista para persistir en ``MeetingMinute.participants``.
+        - ``summary``, ``topics``, ``free_notes``: pass-through.
+        - ``raid``: list plana ``[{type:A|R|D|I, description, ...}]``
+          (validada).
+        - ``raid_suggestions``: dict ``{actions, risks, decisions,
+          issues}`` listo para ``MeetingMinute.raid_suggestions``.
     """
     if not isinstance(payload, dict):
         payload = {}
@@ -153,9 +253,11 @@ def validate_minute_payload(payload: Any) -> tuple[dict[str, Any], dict[str, int
     normalized = {
         "header": header,
         "participants": participants,
+        "participants_flat": flatten_participants(participants_raw),
         "summary": summary,
         "topics": topics,
         "raid": raid_items,
+        "raid_suggestions": raid_suggestions_from_flat(raid_items),
         "free_notes": free_notes,
     }
     return normalized, metrics

@@ -295,6 +295,13 @@ class MeetingMinuteCreate(BaseModel):
     participants: list[dict] = []
     topics: list[dict] = []
     agreements: list[dict] = []
+    # BUG-063: resumen editable (2-3 oraciones) — persiste en
+    # `MeetingMinute.description`. El IA lo llena al generar; el PM lo
+    # edita en el preview antes de guardar.
+    summary: str | None = Field(default=None, max_length=5000)
+    # BUG-063: notas libres editables al final de la minuta. Persiste en
+    # `raid_suggestions._meta.free_notes` para evitar migración.
+    free_notes: str | None = Field(default=None, max_length=10000)
     next_meeting_date: date | None = None
     attachments: list[dict] = []
     transcript_file_id: str | None = None
@@ -324,6 +331,8 @@ class MeetingMinuteRead(BaseModel):
     participants: list
     topics: list
     agreements: list
+    # BUG-063: resumen (2-3 oraciones) persistido en `description`.
+    description: str | None = None
     next_meeting_date: date | None
     attachments: list
     generated_by_ai: bool
@@ -339,28 +348,39 @@ class MeetingMinuteRead(BaseModel):
 
 
 class MeetingMinuteUpdate(BaseModel):
-    """ENH-090/US-108/ENH-095: edición ligera de una minuta — usado para
-    persistir cambios en `raid_suggestions` (descartar, editar
+    """ENH-090/US-108/ENH-095/BUG-063: edición ligera de una minuta —
+    usado para persistir cambios en `raid_suggestions` (descartar, editar
     short_desc) y, desde ENH-095, también las secciones estructuradas
     (participants/topics/agreements) editables inline en el preview.
+    BUG-063: también summary y meeting_date editables.
     """
 
     title: str | None = Field(default=None, min_length=2, max_length=200)
+    summary: str | None = Field(default=None, max_length=5000)
+    meeting_date: datetime | None = None
     raid_suggestions: dict | None = None
     # ENH-095: edición por secciones desde el preview.
     participants: list[dict] | None = None
     topics: list[dict] | None = None
     agreements: list[dict] | None = None
+    free_notes: str | None = Field(default=None, max_length=10000)
 
 
 class RaidApproveItem(BaseModel):
-    """US-108: el PM aprueba un item RAID sugerido y lo convierte en
-    ticket real. `index` es la posición en el array `raid_suggestions[type]`.
-    `override` permite editar `short_desc` / `description` / `priority`
-    antes de crear el ticket.
+    """US-108 + BUG-063: el PM aprueba un item RAID sugerido y lo convierte
+    en ticket real. `index` es la posición en el array
+    `raid_suggestions[type]`. `override` permite editar `short_desc` /
+    `description` / `priority` antes de crear el ticket.
+
+    Shape canónico A/R/D/I (actions/risks/decisions/issues). Lecciones y
+    cambios se mantienen para retro-compat con minutas previas al
+    refactor pero el LLM ya no los emite (owner 2026-05-22).
     """
 
-    type: Literal["risks", "issues", "lessons", "changes"]
+    type: Literal[
+        "actions", "risks", "decisions", "issues",
+        "lessons", "changes",
+    ]
     index: int
     short_desc: str | None = None
     description: str | None = None

@@ -171,14 +171,21 @@ async def test_duplicate_participants_dedup_within_same_call(client, db_session)
 
 
 @pytest.mark.asyncio
-async def test_create_minute_enriches_participants_e2e(client, db_session):
-    """E2E: POST /meeting-minutes con 3 participantes (1 existe, 2
-    nuevos) → MeetingMinute.participants queda enriquecido con match
-    info; los 2 nuevos generan actors auto_created.
+async def test_create_minute_persists_participants_as_is_no_matching(
+    client, db_session,
+):
+    """BUG-063 — owner pidió desactivar el matching automático en la
+    creación de minutas. Los participantes se persisten tal cual vienen
+    del transcript/PM. Cuando se creen RAIDs los asignamos a actores en
+    otro flow.
+
+    El service `match_participants` sigue disponible como utility para
+    consumers futuros (cobertura en los tests unitarios arriba); solo
+    cambió que `create_minute` ya no lo invoca.
     """
     tenant, auth = await _admin(client, db_session, slug="enh103-d")
     project = await _seed_project(db_session, tenant, folio="P-1004")
-    ana = await _seed_actor(db_session, tenant, project, name="Ana García")
+    await _seed_actor(db_session, tenant, project, name="Ana García")
 
     r = await client.post(
         f"/api/v1/projects/{project.id}/meeting-minutes",
@@ -186,9 +193,9 @@ async def test_create_minute_enriches_participants_e2e(client, db_session):
             "title": "Reunión kickoff",
             "meeting_date": datetime.now(UTC).isoformat(),
             "participants": [
-                {"name": "Ana García"},
+                {"name": "Ana García", "role": "PM"},
                 {"name": "Carlos Ruiz"},
-                {"name": "Pedro Soto"},
+                {"name": "Pedro Soto", "area": "Operaciones"},
             ],
             "topics": [],
             "agreements": [],
@@ -205,9 +212,13 @@ async def test_create_minute_enriches_participants_e2e(client, db_session):
     ).scalar_one()
     ps = list(m.participants or [])
     assert len(ps) == 3
+    names = {p["name"] for p in ps}
+    assert names == {"Ana García", "Carlos Ruiz", "Pedro Soto"}
+    # No enrichment fields al persistir: ni actor_id ni match_status.
+    assert all("actor_id" not in p for p in ps)
+    assert all("match_status" not in p for p in ps)
+    # Campos extra del transcript preservados sin modificación.
     ana_p = next(p for p in ps if p["name"] == "Ana García")
-    assert ana_p["actor_id"] == str(ana.id)
-    assert ana_p["match_status"] == "matched"
-    new_ps = [p for p in ps if p["match_status"] == "auto_created"]
-    assert len(new_ps) == 2
-    assert all(p["verified"] is False for p in new_ps)
+    assert ana_p.get("role") == "PM"
+    pedro_p = next(p for p in ps if p["name"] == "Pedro Soto")
+    assert pedro_p.get("area") == "Operaciones"

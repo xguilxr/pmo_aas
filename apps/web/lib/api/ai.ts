@@ -1,36 +1,54 @@
 import { apiFetch } from "@/lib/api";
 
-/** ENH-084: shape canónico de un item RAID sugerido (4 tipos comparten). */
+/** BUG-063: shape canónico de un item RAID sugerido (4 tipos comparten). */
 export type AIRaidSuggestion = {
   short_desc: string;
   suggested_owner_name?: string | null;
   suggested_priority?: number | null;
+  suggested_due_date?: string | null;
   raw_quote?: string | null;
 };
 
+/** BUG-063: 4 buckets canónicos A/R/D/I alineados con el modelo RAID. */
 export type AIRaidBlock = {
+  actions: AIRaidSuggestion[];
   risks: AIRaidSuggestion[];
+  decisions: AIRaidSuggestion[];
   issues: AIRaidSuggestion[];
-  lessons: AIRaidSuggestion[];
-  changes: AIRaidSuggestion[];
 };
 
 export const EMPTY_RAID_BLOCK: AIRaidBlock = {
+  actions: [],
   risks: [],
+  decisions: [],
   issues: [],
-  lessons: [],
-  changes: [],
+};
+
+export type AIParticipant = {
+  name: string;
+  role?: string | null;
+  area?: string | null;
+  attendance?: "attended" | "absent_justified" | "absent_unjustified";
+};
+
+export type AITopic = {
+  title: string;
+  bullets?: string[];
+  /** Legacy: minutas viejas usaban `notes`. */
+  notes?: string;
 };
 
 export type AIMinutePayload = {
+  header?: Record<string, unknown>;
   summary: string;
-  participants: { name: string; role?: string }[];
-  topics: { title: string; notes: string }[];
-  agreements: { description: string; owner?: string; due_date?: string }[];
-  decisions: { description: string; rationale?: string }[];
-  next_steps: { action: string; owner?: string; due_date?: string }[];
-  risks_blockers: { description: string }[];
-  /** ENH-084: 4 secciones RAID estandarizadas. */
+  participants: AIParticipant[];
+  topics: AITopic[];
+  /** Legacy: agregaciones del modelo viejo, sigue vacío en el nuevo flow. */
+  agreements?: unknown[];
+  free_notes?: string | null;
+  /** BUG-063: shape `raid_suggestions` con 4 buckets A/R/D/I. */
+  raid_suggestions?: AIRaidBlock;
+  /** Legacy alias — algunos consumers leen `raid` directo. */
   raid?: AIRaidBlock;
   minute_id?: string | null;
 };
