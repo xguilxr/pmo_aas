@@ -31,7 +31,7 @@ siguiente estructura de 6 secciones (sin agregar campos extra ni reordenar):
   "free_notes": string|null
 }
 
-REGLAS CRÍTICAS — RAID (ENH-102, BUG-063):
+REGLAS CRÍTICAS — RAID (ENH-102, BUG-063) y estructura (ENH-105):
 - Cada item es exclusivamente A (Acción), R (Riesgo), D (Decisión) o I (Issue).
 - **NO emitas Lecciones aprendidas ni Solicitudes de cambio** — si aparecen
   en el transcript, descártalas silenciosamente.
@@ -74,7 +74,7 @@ REGLAS DE ESTRUCTURA:
 FEW-SHOT — Gold standard Highlander EAM-BNF (referencia normativa):
 
 INPUT (transcript abreviado):
-> Sesión Highlander EAM-BNF – Operacional. 23 marzo 2026, 12:02 PM, 46 min.
+> Sesión Highlander EAM-BNF - Operacional. 23 marzo 2026, 12:02 PM, 46 min.
 > David Aguilar (PM): Business Area sesión hoy 5 PM con propuesta actualizada.
 >   Poncho con Global: Beck alineado, IPP no.
 > Aline: socializar resultados Global en la sesión de 5 PM.

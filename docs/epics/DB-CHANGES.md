@@ -287,3 +287,47 @@ nuevo valor `'minute_ai'`. Sin cambio de tipo de columna.
 | `import_paste` | pegada en bloque |
 
 Sin backfill (sólo abre el valor para futuras inserciones).
+
+---
+
+## BUG-063 — Re-seed idempotente de report_sections (2026-05-24)
+
+### Migración **0076** — re-seed `report_sections` si está vacío
+
+Owner reportó "el catálogo de secciones sigue vacío" en
+`/pmo/projects/[id]/reports/builder` tras el deploy del Sprint 26-32.
+La migración 0070 (US-120) creó la tabla y debía sembrar 22 secciones,
+pero las rows aparecen ausentes en su DB (posible reset post-deploy,
+o `bulk_insert` quedó sin commit).
+
+La migración 0076 es **idempotente**: si `report_sections` ya tiene
+rows, no hace nada. Si está vacía, inserta las 22 secciones canónicas
+EP020 con el mismo contenido que el seed original.
+
+Sin cambio de schema, solo backfill de datos. Downgrade es no-op.
+
+---
+
+## BUG-063 — Cambios de shape JSON (sin migración) (2026-05-24)
+
+Refactor del shape de `meeting_minutes.raid_suggestions` de:
+```
+{risks, issues, lessons, changes}
+```
+a:
+```
+{actions, risks, decisions, issues, lessons?, changes?, _meta?: {free_notes}}
+```
+
+- Buckets nuevos canónicos A/R/D/I alineados con el modelo RAID.
+- `lessons` y `changes` siguen aceptados para retro-compat con
+  minutas existentes (el LLM ya no los genera; validator descarta).
+- `_meta.free_notes` persiste las notas libres opcionales del PM
+  (evita migración de columna).
+
+Sin migración de schema (columna `raid_suggestions` es JSON). El
+formatter (`minutes_formatter.py`) lee los 6 buckets; el frontend
+y el endpoint endpoint aceptan ambos shapes en input.
+
+`meeting_minutes.description` se reutiliza para el resumen de 2-3
+oraciones (campo heredado de `_ModuleBase`, antes no usado por minute).
