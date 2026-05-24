@@ -35,6 +35,10 @@ REGLAS CRÍTICAS — RAID (ENH-102, BUG-063) y estructura (ENH-105):
 - Cada item es exclusivamente A (Acción), R (Riesgo), D (Decisión) o I (Issue).
 - **NO emitas Lecciones aprendidas ni Solicitudes de cambio** — si aparecen
   en el transcript, descártalas silenciosamente.
+- **Orden libre**: emite los items en el orden en que aparecen en el
+  transcript. NO los agrupes por tipo (A...A, R...R...). La plataforma
+  los agrupa internamente en buckets para mostrarlos en paneles
+  dedicados por tipo.
 - Mapping de señales del transcript → tipo:
   - "X va a hacer Y", "se contactará", "se agendará", "tomar el", "lo
     tomamos", "agregar al backlog" → A (Acción).
@@ -120,22 +124,24 @@ OUTPUT esperado (extracto):
      ]}
   ],
   "raid": [
-    {"type": "A", "description": "Contactar a Paola Canchola para etiquetas",
-     "responsible": "Diego González", "due_date": "Esta semana", "status": "Open"},
-    {"type": "A", "description": "Agregar definición de balances al backlog",
-     "responsible": "Martin / David", "due_date": "Inmediato", "status": "Open"},
+    // Orden libre — items en orden de aparición en el transcript,
+    // intercalando tipos. La plataforma los agrupa internamente.
+    {"type": "D", "description": "Business Area: definición final en sesión lunes con Global",
+     "responsible": "Poncho / Aline", "due_date": "Lunes", "status": "Pending"},
     {"type": "A", "description": "Socializar resultados Global en sesión 5 PM",
      "responsible": "Poncho / Aline", "due_date": "Hoy 5 PM", "status": "Open"},
     {"type": "R", "description": "Workarounds de balance pueden ser más costosos que actual",
      "responsible": "Eli / Poncho", "due_date": null, "status": "Open"},
-    {"type": "R", "description": "IPP Business Area no alineado con Global",
-     "responsible": "Poncho", "due_date": null, "status": "Open"},
+    {"type": "A", "description": "Contactar a Paola Canchola para etiquetas",
+     "responsible": "Diego González", "due_date": "Esta semana", "status": "Open"},
+    {"type": "I", "description": "Falta claridad sobre quién valida etiquetas",
+     "responsible": "Diego González", "due_date": "En curso", "status": "In Progress"},
     {"type": "D", "description": "Mantenimiento de vehículos/flota SÍ se implementa",
      "responsible": "Mario Navarro", "due_date": "(resuelta)", "status": "Closed"},
-    {"type": "D", "description": "Business Area: definición final en sesión lunes con Global",
-     "responsible": "Poncho / Aline", "due_date": "Lunes", "status": "Pending"},
-    {"type": "I", "description": "Falta claridad sobre quién valida etiquetas",
-     "responsible": "Diego González", "due_date": "En curso", "status": "In Progress"}
+    {"type": "A", "description": "Agregar definición de balances al backlog",
+     "responsible": "Martin / David", "due_date": "Inmediato", "status": "Open"},
+    {"type": "R", "description": "IPP Business Area no alineado con Global",
+     "responsible": "Poncho", "due_date": null, "status": "Open"}
   ],
   "free_notes": "Próximos pasos calendarizados:\\n- Hoy 5:00 PM — Sesión Business Area\\n- Mañana AM — Sesión cuentas abiertas SAP Themis BEC\\n- 25 marzo — Sesión con PINI (condiciones comerciales EAM en BNF)"
 }

@@ -641,58 +641,7 @@ export default function NewMinutePage() {
               )}
             />
 
-            <ArrayEditor
-              title="RAID (Acción / Riesgo / Decisión / Issue)"
-              items={mRaid}
-              onAdd={() =>
-                setMRaid([...mRaid, { type: "A", description: "", responsible: "", due_date: "" }])
-              }
-              onRemove={(i) => setMRaid(mRaid.filter((_, idx) => idx !== i))}
-              render={(r, i) => (
-                <div className="grid gap-2 sm:grid-cols-[80px_1fr_1fr_140px]">
-                  <Select
-                    value={r.type}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, type: e.target.value as ManualRaid["type"] };
-                      setMRaid(next);
-                    }}
-                  >
-                    <option value="A">A</option>
-                    <option value="R">R</option>
-                    <option value="D">D</option>
-                    <option value="I">I</option>
-                  </Select>
-                  <Input
-                    placeholder="Descripción"
-                    value={r.description}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, description: e.target.value };
-                      setMRaid(next);
-                    }}
-                  />
-                  <Input
-                    placeholder="Responsable"
-                    value={r.responsible}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, responsible: e.target.value };
-                      setMRaid(next);
-                    }}
-                  />
-                  <Input
-                    type="date"
-                    value={r.due_date}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, due_date: e.target.value };
-                      setMRaid(next);
-                    }}
-                  />
-                </div>
-              )}
-            />
+            <RaidPanels items={mRaid} setItems={setMRaid} />
 
             <Field label="Notas libres">
               <Textarea
@@ -814,58 +763,7 @@ export default function NewMinutePage() {
             )}
           />
 
-          <ArrayEditor
-            title="RAID — Acción / Riesgo / Decisión / Issue"
-            items={mRaid}
-            onAdd={() =>
-              setMRaid([...mRaid, { type: "A", description: "", responsible: "", due_date: "" }])
-            }
-            onRemove={(i) => setMRaid(mRaid.filter((_, idx) => idx !== i))}
-            render={(r, i) => (
-              <div className="grid gap-2 sm:grid-cols-[90px_1fr_1fr_160px]">
-                <Select
-                  value={r.type}
-                  onChange={(e) => {
-                    const next = [...mRaid];
-                    next[i] = { ...r, type: e.target.value as ManualRaid["type"] };
-                    setMRaid(next);
-                  }}
-                >
-                  <option value="A">A · Acción</option>
-                  <option value="R">R · Riesgo</option>
-                  <option value="D">D · Decisión</option>
-                  <option value="I">I · Issue</option>
-                </Select>
-                <Input
-                  placeholder="Descripción"
-                  value={r.description}
-                  onChange={(e) => {
-                    const next = [...mRaid];
-                    next[i] = { ...r, description: e.target.value };
-                    setMRaid(next);
-                  }}
-                />
-                <Input
-                  placeholder="Responsable"
-                  value={r.responsible}
-                  onChange={(e) => {
-                    const next = [...mRaid];
-                    next[i] = { ...r, responsible: e.target.value };
-                    setMRaid(next);
-                  }}
-                />
-                <Input
-                  placeholder="Fecha (ej. 25 mar / Inmediato)"
-                  value={r.due_date}
-                  onChange={(e) => {
-                    const next = [...mRaid];
-                    next[i] = { ...r, due_date: e.target.value };
-                    setMRaid(next);
-                  }}
-                />
-              </div>
-            )}
-          />
+          <RaidPanels items={mRaid} setItems={setMRaid} />
 
           <Field label="Notas libres">
             <Textarea
@@ -939,6 +837,127 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </span>
       {children}
     </label>
+  );
+}
+
+// BUG-063 — UX feedback owner: la minuta no es ARDI ordenada (eso es
+// para reportes). El estado interno es flat `ManualRaid[]` (orden libre,
+// se llena conforme la IA o el PM va detectando items), pero la UX
+// muestra **4 paneles dedicados** filtrando por tipo. El owner edita
+// cada bucket como una mini-tabla, agrega items con botón "+ Agregar
+// [tipo]" en el panel respectivo. Internamente todo sigue siendo un
+// solo array; al guardar, agrupamos en `raid_suggestions` buckets.
+const RAID_PANEL_META: Array<{ type: ManualRaid["type"]; label: string; hint: string }> = [
+  { type: "A", label: "Acciones", hint: "Compromisos accionables con responsable y fecha." },
+  { type: "R", label: "Riesgos", hint: "Preocupaciones, posibles retrasos, dependencias." },
+  { type: "D", label: "Decisiones", hint: "Acuerdos cerrados o pendientes de definir." },
+  { type: "I", label: "Issues", hint: "Problemas abiertos o pendientes de claridad." },
+];
+
+function RaidPanels({
+  items,
+  setItems,
+}: {
+  items: ManualRaid[];
+  setItems: (next: ManualRaid[]) => void;
+}) {
+  const updateAt = (globalIdx: number, patch: Partial<ManualRaid>) => {
+    const next = [...items];
+    next[globalIdx] = { ...next[globalIdx], ...patch };
+    setItems(next);
+  };
+  const removeAt = (globalIdx: number) => {
+    setItems(items.filter((_, i) => i !== globalIdx));
+  };
+  const addOfType = (type: ManualRaid["type"]) => {
+    setItems([...items, { type, description: "", responsible: "", due_date: "" }]);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-medium text-[var(--text-secondary)]">
+          RAID — Acciones / Riesgos / Decisiones / Issues
+        </span>
+        <span className="text-[11px] text-[var(--text-tertiary)]">
+          {items.length} item{items.length === 1 ? "" : "s"} en total
+        </span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {RAID_PANEL_META.map((meta) => {
+          const indexed = items
+            .map((r, idx) => ({ r, idx }))
+            .filter((x) => x.r.type === meta.type);
+          return (
+            <div
+              key={meta.type}
+              className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-3"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                    {meta.type} · {meta.label}
+                    <span className="ml-1.5 text-[11px] font-normal text-[var(--text-tertiary)]">
+                      ({indexed.length})
+                    </span>
+                  </p>
+                  <p className="text-[10.5px] text-[var(--text-tertiary)]">{meta.hint}</p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => addOfType(meta.type)}>
+                  <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {indexed.length === 0 ? (
+                  <p className="text-[11px] italic text-[var(--text-tertiary)]">
+                    Sin {meta.label.toLowerCase()} aún.
+                  </p>
+                ) : (
+                  indexed.map(({ r, idx }) => (
+                    <div
+                      key={idx}
+                      className="space-y-1.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-2"
+                    >
+                      <div className="flex items-start gap-1.5">
+                        <Textarea
+                          rows={Math.max(2, Math.ceil(r.description.length / 60))}
+                          placeholder="Descripción"
+                          value={r.description}
+                          onChange={(e) => updateAt(idx, { description: e.target.value })}
+                          className="text-[12px]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAt(idx)}
+                          aria-label="Quitar"
+                          className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-danger-fg)]"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </div>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        <Input
+                          placeholder="Responsable"
+                          value={r.responsible}
+                          onChange={(e) => updateAt(idx, { responsible: e.target.value })}
+                          className="text-[12px]"
+                        />
+                        <Input
+                          placeholder="Fecha (ej. 25 mar / Inmediato)"
+                          value={r.due_date}
+                          onChange={(e) => updateAt(idx, { due_date: e.target.value })}
+                          className="text-[12px]"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
