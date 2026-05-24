@@ -4,10 +4,11 @@
 // completamente en el próximo cleanup.
 import { redirect } from "next/navigation";
 
-export default function DeprecatedTweakPage({
+export default async function DeprecatedTweakPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  redirect(`/pmo/projects/${params.id}/reports/builder`);
+  const { id } = await params;
+  redirect(`/pmo/projects/${id}/reports/builder`);
 }

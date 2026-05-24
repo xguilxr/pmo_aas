@@ -4,10 +4,11 @@
 // gracia.
 import { redirect } from "next/navigation";
 
-export default function DeprecatedAiMinutesNewPage({
+export default async function DeprecatedAiMinutesNewPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  redirect(`/pmo/projects/${params.id}/minutes/new`);
+  const { id } = await params;
+  redirect(`/pmo/projects/${id}/minutes/new`);
 }
