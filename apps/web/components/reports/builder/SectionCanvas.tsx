@@ -20,6 +20,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Settings, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  SectionParamsForm,
+  type SectionParams,
+} from "@/components/reports/builder/SectionParamsPanel";
 import type { ReportSection } from "@/lib/api/report-builder";
 
 type Props = {
@@ -28,19 +32,25 @@ type Props = {
   /** Catálogo para resolver code → name/description. */
   catalog: ReportSection[];
   selectedCode: string | null;
+  /** BUG-063: params por sección para el panel inline desplegable. */
+  paramsByCode: Record<string, SectionParams>;
   onReorder: (codes: string[]) => void;
   onSelect: (code: string) => void;
   onRemove: (code: string) => void;
+  onParamsChange: (code: string, next: SectionParams) => void;
 };
 
-/** US-124 — canvas central con drag-and-drop vertical. */
+/** US-124 + BUG-063 — canvas central con drag-and-drop vertical y
+ *  parámetros inline desplegables por sección. */
 export function SectionCanvas({
   codes,
   catalog,
   selectedCode,
+  paramsByCode,
   onReorder,
   onSelect,
   onRemove,
+  onParamsChange,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -79,9 +89,11 @@ export function SectionCanvas({
                 key={code}
                 code={code}
                 section={byCode.get(code)}
-                selected={selectedCode === code}
-                onSelect={() => onSelect(code)}
+                expanded={selectedCode === code}
+                params={paramsByCode[code] ?? {}}
+                onToggle={() => onSelect(selectedCode === code ? "" : code)}
                 onRemove={() => onRemove(code)}
+                onParamsChange={(next) => onParamsChange(code, next)}
               />
             ))}
           </ul>
@@ -94,12 +106,22 @@ export function SectionCanvas({
 type ItemProps = {
   code: string;
   section: ReportSection | undefined;
-  selected: boolean;
-  onSelect: () => void;
+  expanded: boolean;
+  params: SectionParams;
+  onToggle: () => void;
   onRemove: () => void;
+  onParamsChange: (next: SectionParams) => void;
 };
 
-function SortableSectionItem({ code, section, selected, onSelect, onRemove }: ItemProps) {
+function SortableSectionItem({
+  code,
+  section,
+  expanded,
+  params,
+  onToggle,
+  onRemove,
+  onParamsChange,
+}: ItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: code,
   });
@@ -114,53 +136,60 @@ function SortableSectionItem({ code, section, selected, onSelect, onRemove }: It
     <li
       ref={setNodeRef}
       style={style}
-      onClick={onSelect}
-      className={`group flex cursor-pointer items-start gap-2 rounded-lg border bg-white p-3 shadow-sm transition ${
-        selected ? "border-zinc-900 ring-1 ring-zinc-900" : "border-zinc-200 hover:border-zinc-400"
+      className={`group rounded-lg border bg-white shadow-sm transition ${
+        expanded ? "border-zinc-900 ring-1 ring-zinc-900" : "border-zinc-200 hover:border-zinc-400"
       }`}
     >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="flex h-6 w-4 cursor-grab items-center justify-center text-zinc-400 hover:text-zinc-700"
-        onClick={(e) => e.stopPropagation()}
-        title="Arrastrar"
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-zinc-800">
-          <span className="text-zinc-400">{code}</span> · {section?.name ?? "(sin catalogar)"}
-        </p>
-        {section?.description && (
-          <p className="line-clamp-1 text-xs text-zinc-500">{section.description}</p>
-        )}
+      <div className="flex items-start gap-2 p-3">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="flex h-6 w-4 cursor-grab items-center justify-center text-zinc-400 hover:text-zinc-700"
+          title="Arrastrar"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="min-w-0 flex-1 text-left"
+        >
+          <p className="text-sm font-medium text-zinc-800">
+            <span className="text-zinc-400">{code}</span> · {section?.name ?? "(sin catalogar)"}
+          </p>
+          {section?.description && (
+            <p className="line-clamp-1 text-xs text-zinc-500">{section.description}</p>
+          )}
+        </button>
+        <Button
+          type="button"
+          size="sm"
+          variant={expanded ? "secondary" : "ghost"}
+          onClick={onToggle}
+          title="Parámetros de la sección"
+        >
+          <Settings className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={onRemove}
+          title="Quitar sección"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect();
-        }}
-        title="Parámetros"
-      >
-        <Settings className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        title="Quitar"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+      {expanded && (
+        <div className="border-t border-zinc-200 bg-zinc-50 p-3">
+          <SectionParamsForm
+            section={section ?? null}
+            params={params}
+            onChange={onParamsChange}
+          />
+        </div>
+      )}
     </li>
   );
 }

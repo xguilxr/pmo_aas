@@ -61,8 +61,12 @@ export type RenderRequest = {
   organization_id?: string | null;
   program_id?: string | null;
   level?: number;
+  /** El corte se define automáticamente al generar (hoy); el builder ya
+   *  no lo pide en la plantilla. Sigue opcional para compat con export. */
   cut_off_date?: string | null;
   window_days?: number;
+  /** BUG-063: filtro de área a nivel reporte (barra superior). */
+  area_id?: string | null;
   params?: Record<string, Record<string, unknown>>;
 };
 

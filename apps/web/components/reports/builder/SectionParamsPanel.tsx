@@ -8,64 +8,58 @@ import type { ReportSection } from "@/lib/api/report-builder";
 
 export type SectionParams = Record<string, unknown>;
 
-type Props = {
+/**
+ * US-125 + BUG-063 — Parámetros POR SECCIÓN (inline en el canvas).
+ *
+ * Los transversales del reporte completo (área, ventana, agrupación) se
+ * configuran en la barra superior. Aquí quedan SOLO los parámetros
+ * propios de cada sección:
+ * - `top_n` y `order_by` para secciones con tabla.
+ * - `mode` (resumen/detalle) para las que lo soporten.
+ * - Toggles de campos visibles (`excluded_fields`) cuando la sección
+ *   declara `data_shape.fields` — permite quitar columnas sin quitar la
+ *   sección entera.
+ */
+
+const ORDER_OPTIONS = [
+  { value: "", label: "Por defecto" },
+  { value: "date_asc", label: "Fecha ↑" },
+  { value: "date_desc", label: "Fecha ↓" },
+  { value: "severity_desc", label: "Severidad ↓" },
+  { value: "area", label: "Área" },
+] as const;
+
+const MODE_OPTIONS = [
+  { value: "", label: "Por defecto" },
+  { value: "summary", label: "Resumen" },
+  { value: "detail", label: "Detalle" },
+] as const;
+
+type FormProps = {
   section: ReportSection | null;
   params: SectionParams;
   onChange: (next: SectionParams) => void;
 };
 
-/**
- * US-125 — Panel de parámetros transversales.
- *
- * El form se construye dinámicamente leyendo `section.parameters_schema`
- * (informal JSON Schema-like) y completándolo con los parámetros
- * transversales aplicables (área, ventana, top N, modo, orden, agrupación)
- * según el `applies_to` declarado en cada section.
- */
-const TRANSVERSAL_FIELDS = [
-  { key: "area_id", label: "Área", type: "text", placeholder: "Todas si vacío" },
-  { key: "window_days", label: "Ventana (días)", type: "number", min: 1, max: 365 },
-  { key: "top_n", label: "Top N", type: "number", min: 1, max: 100 },
-  {
-    key: "mode",
-    label: "Modo",
-    type: "select",
-    options: [
-      { value: "", label: "—" },
-      { value: "summary", label: "Resumen" },
-      { value: "detail", label: "Detalle" },
-    ],
-  },
-  {
-    key: "order_by",
-    label: "Ordenamiento",
-    type: "select",
-    options: [
-      { value: "", label: "—" },
-      { value: "date_asc", label: "Fecha ↑" },
-      { value: "date_desc", label: "Fecha ↓" },
-      { value: "severity_desc", label: "Severidad ↓" },
-      { value: "area", label: "Área" },
-    ],
-  },
-  {
-    key: "group_by",
-    label: "Agrupación",
-    type: "select",
-    options: [
-      { value: "", label: "—" },
-      { value: "area", label: "Por área" },
-      { value: "owner", label: "Por responsable" },
-      { value: "type", label: "Por tipo" },
-    ],
-  },
-] as const;
+function _fieldsOf(section: ReportSection | null): string[] {
+  const shape = (section?.data_shape ?? {}) as Record<string, unknown>;
+  const fields = shape.fields;
+  return Array.isArray(fields) ? fields.filter((f): f is string => typeof f === "string") : [];
+}
 
-export function SectionParamsPanel({ section, params, onChange }: Props) {
-  const schema = useMemo<Record<string, unknown>>(
-    () => (section?.parameters_schema as Record<string, unknown>) ?? {},
-    [section]
+/** Form de parámetros de una sola sección (sin header — el canvas ya lo
+ *  muestra). Usado inline en cada item del SectionCanvas. */
+export function SectionParamsForm({ section, params, onChange }: FormProps) {
+  const fields = useMemo(() => _fieldsOf(section), [section]);
+  const excluded = useMemo(
+    () => (Array.isArray(params.excluded_fields) ? (params.excluded_fields as string[]) : []),
+    [params.excluded_fields],
   );
+  // Una sección "de tabla" si su data_shape declara `rows`.
+  const isTable = useMemo(() => {
+    const shape = (section?.data_shape ?? {}) as Record<string, unknown>;
+    return Array.isArray(shape.fields) && shape.fields.includes("rows");
+  }, [section]);
 
   function update(key: string, value: unknown) {
     if (value === "" || value === undefined || value === null) {
@@ -77,104 +71,105 @@ export function SectionParamsPanel({ section, params, onChange }: Props) {
     onChange({ ...params, [key]: value });
   }
 
-  function validate(key: string, raw: string, min?: number, max?: number): number | "" {
-    if (raw === "") return "";
-    const n = Number(raw);
-    if (Number.isNaN(n)) return "";
-    if (min !== undefined && n < min) return min;
-    if (max !== undefined && n > max) return max;
-    return n;
+  function toggleField(field: string, include: boolean) {
+    const set = new Set(excluded);
+    if (include) set.delete(field);
+    else set.add(field);
+    const arr = [...set];
+    if (arr.length === 0) {
+      const next = { ...params };
+      delete next.excluded_fields;
+      onChange(next);
+      return;
+    }
+    onChange({ ...params, excluded_fields: arr });
   }
 
   if (!section) {
-    return (
-      <div className="flex h-full flex-col bg-zinc-50 p-3 text-xs text-zinc-500">
-        Selecciona una sección del canvas para configurar sus parámetros.
-      </div>
-    );
+    return <p className="text-xs text-zinc-500">Sección sin catalogar.</p>;
   }
 
   return (
-    <div className="flex h-full flex-col bg-zinc-50 p-3">
-      <header className="mb-3">
-        <h3 className="text-sm font-semibold text-zinc-800">
-          {section.code} — {section.name}
-        </h3>
-        {section.description && (
-          <p className="mt-1 text-xs text-zinc-500">{section.description}</p>
-        )}
-      </header>
+    <div className="space-y-3">
+      {isTable && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-xs text-zinc-600">
+            <span className="mb-0.5 block">Top N</span>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              placeholder="Todos"
+              value={String(params.top_n ?? "")}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                update("top_n", e.target.value === "" || Number.isNaN(n) ? "" : Math.max(1, Math.min(100, n)));
+              }}
+            />
+          </label>
+          <label className="block text-xs text-zinc-600">
+            <span className="mb-0.5 block">Ordenamiento</span>
+            <Select
+              value={String(params.order_by ?? "")}
+              onChange={(e) => update("order_by", e.target.value)}
+            >
+              {ORDER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+      )}
 
-      <div className="space-y-3 overflow-y-auto">
-        <section>
-          <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Parámetros transversales
-          </h4>
-          <div className="space-y-2">
-            {TRANSVERSAL_FIELDS.map((f) => {
-              if (f.type === "select") {
-                return (
-                  <label key={f.key} className="block text-xs text-zinc-600">
-                    <span className="mb-0.5 block">{f.label}</span>
-                    <Select
-                      value={String(params[f.key] ?? "")}
-                      onChange={(e) => update(f.key, e.target.value)}
-                    >
-                      {f.options.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                );
-              }
-              if (f.type === "number") {
-                return (
-                  <label key={f.key} className="block text-xs text-zinc-600">
-                    <span className="mb-0.5 block">{f.label}</span>
-                    <Input
-                      type="number"
-                      min={f.min}
-                      max={f.max}
-                      value={String(params[f.key] ?? "")}
-                      onChange={(e) =>
-                        update(f.key, validate(f.key, e.target.value, f.min, f.max))
-                      }
-                    />
-                  </label>
-                );
-              }
+      <label className="block text-xs text-zinc-600">
+        <span className="mb-0.5 block">Modo</span>
+        <Select
+          value={String(params.mode ?? "")}
+          onChange={(e) => update("mode", e.target.value)}
+        >
+          {MODE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </label>
+
+      {fields.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-zinc-600">
+            Campos visibles
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {fields.map((f) => {
+              const included = !excluded.includes(f);
               return (
-                <label key={f.key} className="block text-xs text-zinc-600">
-                  <span className="mb-0.5 block">{f.label}</span>
-                  <Input
-                    type="text"
-                    placeholder={"placeholder" in f ? f.placeholder : ""}
-                    value={String(params[f.key] ?? "")}
-                    onChange={(e) => update(f.key, e.target.value)}
+                <label
+                  key={f}
+                  className={`inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
+                    included
+                      ? "border-zinc-300 bg-white text-zinc-700"
+                      : "border-zinc-200 bg-zinc-100 text-zinc-400 line-through"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="h-3 w-3"
+                    checked={included}
+                    onChange={(e) => toggleField(f, e.target.checked)}
                   />
+                  {f}
                 </label>
               );
             })}
           </div>
-        </section>
-
-        {Object.keys(schema).length > 0 && (
-          <section>
-            <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Específicos
-            </h4>
-            <div className="space-y-2 text-xs text-zinc-500">
-              {/* Schema dinámico: rendereo de fields según `parameters_schema`.
-                  Para v1.0 v exponemos sólo el JSON crudo como hint visual. */}
-              <pre className="overflow-x-auto rounded bg-white p-2 text-[10px]">
-{JSON.stringify(schema, null, 2)}
-              </pre>
-            </div>
-          </section>
-        )}
-      </div>
+          <p className="mt-1 text-[10.5px] text-zinc-400">
+            Desmarca un campo para quitarlo del reporte sin quitar la sección.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

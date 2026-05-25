@@ -23,11 +23,9 @@ import { SectionCanvas } from "@/components/reports/builder/SectionCanvas";
 import { PreviewPane } from "@/components/reports/builder/PreviewPane";
 import { SaveTemplateModal } from "@/components/reports/builder/SaveTemplateModal";
 import { ScheduleCustomModal } from "@/components/reports/builder/ScheduleCustomModal";
-import {
-  SectionParamsPanel,
-  type SectionParams,
-} from "@/components/reports/builder/SectionParamsPanel";
+import { type SectionParams } from "@/components/reports/builder/SectionParamsPanel";
 import { TemplatesGallery } from "@/components/reports/builder/TemplatesGallery";
+import { listAreasByProject } from "@/lib/api/areas";
 import {
   deleteBuilderTemplate,
   exportBuilderPdf,
@@ -95,13 +93,16 @@ export default function ReportBuilderPage() {
   // se hace al cambiar unit o value.
   const [windowValue, setWindowValue] = useState<number>(2);
   const [windowUnit, setWindowUnit] = useState<"days" | "weeks" | "months">("weeks");
-  const [cutOff, setCutOff] = useState<string>(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  // BUG-063: el corte ya NO se configura en la plantilla — se fija
+  // automáticamente a "hoy" al generar/preview. Mantenemos `cutOff`
+  // como constante interna para el render request.
+  const cutOff = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // BUG-063: filtro de área a nivel reporte (barra superior).
+  const [areaId, setAreaId] = useState<string>("");
+  const [areas, setAreas] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   // US-125 — params por sección (map code → params).
   const [paramsByCode, setParamsByCode] = useState<Record<string, SectionParams>>({});
-  const [rightPanel, setRightPanel] = useState<"params" | "preview">("preview");
   // US-126 — modal "Guardar como plantilla" + plantilla cargada.
   const [saveOpen, setSaveOpen] = useState(false);
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
@@ -122,13 +123,15 @@ export default function ReportBuilderPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [sec, tpls] = await Promise.all([
+        const [sec, tpls, projectAreas] = await Promise.all([
           listSections({ level: 4 }),
           listBuilderTemplates({}),
+          listAreasByProject(projectId).catch(() => []),
         ]);
         if (cancelled) return;
         setCatalog(sec);
         setTemplates(tpls);
+        setAreas(projectAreas.map((a) => ({ id: a.id, name: a.name })));
         // ENH-125: si vino ?template_id=X en la URL, cargar esa plantilla
         // directamente. Útil cuando el PM hace click en "Editar" desde
         // el listado de plantillas en /reports.
@@ -155,7 +158,7 @@ export default function ReportBuilderPage() {
     if (d) {
       setCodes(d.codes);
       setCompositionMode(d.composition_mode);
-      setCutOff(d.cut_off_date ?? cutOff);
+      // BUG-063: el corte ya no se restaura del draft — es siempre hoy.
       setWindowDays(d.window_days);
       if (d.params) setParamsByCode(d.params);
     }
@@ -212,12 +215,13 @@ export default function ReportBuilderPage() {
       level: 3,
       cut_off_date: cutOff,
       window_days: windowDays,
+      area_id: areaId || null,
       params: paramsByCode,
       // Override en frontend: para preview puramente declarativo, el
       // motor v1.0 ignora codes extra; el render fiel del canvas
       // sustituirá la seed por una custom (US-126 al guardar).
     };
-  }, [codes, compositionMode, cutOff, windowDays, projectId, templates, paramsByCode]);
+  }, [codes, compositionMode, cutOff, windowDays, areaId, projectId, templates, paramsByCode]);
 
   const handleAdd = useCallback(
     (code: string) => {
@@ -282,6 +286,7 @@ export default function ReportBuilderPage() {
         level: 3,
         cut_off_date: cutOff,
         window_days: windowDays,
+        area_id: areaId || null,
         params: paramsByCode,
       });
       const url = URL.createObjectURL(blob);
@@ -385,24 +390,32 @@ export default function ReportBuilderPage() {
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-zinc-600">
-            Modo
+            Agrupación
             <Select
               value={compositionMode}
               onChange={(e) => setCompositionMode(e.target.value as "A" | "B")}
               className="ml-1 inline-block h-8 w-auto"
+              title="Por sección: cada sección ordena sus items por área. Por área: agrupa todas las secciones bajo cada área."
             >
-              <option value="A">A · por sección</option>
-              <option value="B">B · por área</option>
+              <option value="A">Por sección</option>
+              <option value="B">Por área</option>
             </Select>
           </label>
           <label className="text-xs text-zinc-600">
-            Corte
-            <input
-              type="date"
-              value={cutOff}
-              onChange={(e) => setCutOff(e.target.value)}
-              className="ml-1 h-8 rounded border border-zinc-300 px-2 text-xs"
-            />
+            Área
+            <Select
+              value={areaId}
+              onChange={(e) => setAreaId(e.target.value)}
+              className="ml-1 inline-block h-8 w-auto"
+              title="Filtra el contenido del reporte a una sola área."
+            >
+              <option value="">Todas</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
           </label>
           <label className="flex items-center gap-1 text-xs text-zinc-600">
             Ventana
@@ -496,61 +509,27 @@ export default function ReportBuilderPage() {
                 onTogglePublish={togglePublish}
                 onDelete={removeTemplate}
               />
+              {/* BUG-063: contenido editable por sección — cada item del
+                  canvas despliega sus parámetros inline con el botón de
+                  settings (similar al editor de minutas). */}
               <SectionCanvas
                 codes={codes}
                 catalog={catalog}
                 selectedCode={selectedCode}
+                paramsByCode={paramsByCode}
                 onReorder={handleReorder}
                 onSelect={setSelectedCode}
                 onRemove={handleRemove}
+                onParamsChange={(code, next) =>
+                  setParamsByCode({ ...paramsByCode, [code]: next })
+                }
               />
             </div>
+            {/* BUG-063: columna derecha solo Preview, siempre visible y
+                actualizándose en vivo (el propio PreviewPane trae su
+                header + estado de render). */}
             <div className="flex w-[480px] flex-col border-l border-zinc-200">
-              <div className="flex border-b border-zinc-200 bg-zinc-50 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setRightPanel("params")}
-                  className={`flex-1 px-3 py-1.5 ${
-                    rightPanel === "params"
-                      ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
-                      : "text-zinc-500 hover:text-zinc-700"
-                  }`}
-                >
-                  Parámetros
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRightPanel("preview")}
-                  className={`flex-1 px-3 py-1.5 ${
-                    rightPanel === "preview"
-                      ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
-                      : "text-zinc-500 hover:text-zinc-700"
-                  }`}
-                >
-                  Preview
-                </button>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                {rightPanel === "params" ? (
-                  <SectionParamsPanel
-                    section={
-                      selectedCode
-                        ? catalog.find((s) => s.code === selectedCode) ?? null
-                        : null
-                    }
-                    params={selectedCode ? paramsByCode[selectedCode] ?? {} : {}}
-                    onChange={(next) => {
-                      if (!selectedCode) return;
-                      setParamsByCode({
-                        ...paramsByCode,
-                        [selectedCode]: next,
-                      });
-                    }}
-                  />
-                ) : (
-                  <PreviewPane request={renderRequest} />
-                )}
-              </div>
+              <PreviewPane request={renderRequest} />
             </div>
           </>
         )}
