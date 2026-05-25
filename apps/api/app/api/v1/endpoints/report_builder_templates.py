@@ -10,11 +10,13 @@
 `PATCH` permite cambiar `visibility` (publicar/despublicar) sólo al
 owner. `DELETE` también sólo al owner.
 """
+import json
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +29,18 @@ router = APIRouter(prefix="/report-builder-templates", tags=["report_builder_tem
 
 
 VISIBILITY_VALUES = ("private", "project", "tenant")
+
+
+def _coerce_json(value: Any) -> Any:
+    """BUG-063: defensa contra columnas JSON double-encoded (guardadas
+    como string por las migraciones de seed). Parsea strings; deja el
+    resto intacto."""
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (ValueError, TypeError):
+            return value
+    return value
 
 
 class ReportBuilderTemplateRead(BaseModel):
@@ -45,6 +59,18 @@ class ReportBuilderTemplateRead(BaseModel):
     visibility: str = "private"
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("section_codes", mode="before")
+    @classmethod
+    def _parse_codes(cls, v: Any) -> Any:
+        coerced = _coerce_json(v)
+        return coerced if isinstance(coerced, list) else []
+
+    @field_validator("default_parameters", mode="before")
+    @classmethod
+    def _parse_params(cls, v: Any) -> Any:
+        coerced = _coerce_json(v)
+        return coerced if isinstance(coerced, dict) else {}
 
     class Config:
         from_attributes = True

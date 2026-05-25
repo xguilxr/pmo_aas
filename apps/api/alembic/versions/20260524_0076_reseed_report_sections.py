@@ -14,7 +14,6 @@ Esta migración es **idempotente**: si la tabla ya tiene rows, no hace
 nada. Si está vacía, inserta las 22 secciones canónicas EP020 con el
 mismo contenido que el seed original de 0070.
 """
-import json
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -202,8 +201,10 @@ def upgrade() -> None:
             "description": description,
             "category": category,
             "level": level,
-            "data_shape": json.dumps(data_shape),
-            "parameters_schema": json.dumps(parameters_schema),
+            # BUG-063: dicts NATIVOS (sin json.dumps) para evitar
+            # double-encoding en sa.JSON.
+            "data_shape": data_shape,
+            "parameters_schema": parameters_schema,
             "composition_mode_default": mode,
             "supports_ia": supports_ia,
             "enabled": True,

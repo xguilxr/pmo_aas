@@ -25,7 +25,6 @@ Seed (4 plantillas, `is_seed=True`, `tenant_id=NULL`):
 - L2-ORG          modo A, nivel 2
   Secciones: S-01, S-02, S-04, S-33, S-35, S-36, S-34
 """
-import json
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -157,8 +156,10 @@ def upgrade() -> None:
             "description": description,
             "level": level,
             "composition_mode": mode,
-            "section_codes": json.dumps(section_codes),
-            "default_parameters": json.dumps({}),
+            # BUG-063: estructuras NATIVAS — SQLAlchemy serializa una sola
+            # vez vía sa.JSON. NO usar json.dumps (double-encoding → 500).
+            "section_codes": section_codes,
+            "default_parameters": {},
             "is_seed": True,
             "created_at": now,
             "updated_at": now,
