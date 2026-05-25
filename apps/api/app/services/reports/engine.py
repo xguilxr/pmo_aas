@@ -696,14 +696,21 @@ def _section_by_area(
 
     # Partición de secciones: las que tienen rows con `area_name`
     # pueden re-particionarse por área. El resto queda como global.
-    area_names = sorted({row["area_name"] for s in data.values() for row in s.get("rows", [])})
+    # BUG-063: usar .get() — no todas las rows traen `area_name`
+    # (ej. tablas de hitos/issues sin área). Las que no, caen en
+    # "Sin área asignada".
+    area_names = sorted({
+        row.get("area_name") or "Sin área asignada"
+        for s in data.values()
+        for row in s.get("rows", [])
+    })
     by_area: dict[str, dict[str, list[dict[str, Any]]]] = {a: {} for a in area_names}
     for code, payload in data.items():
         rows = payload.get("rows")
         if not rows:
             continue
         for row in rows:
-            area = row.get("area_name", "Sin área asignada")
+            area = row.get("area_name") or "Sin área asignada"
             by_area.setdefault(area, {}).setdefault(code, []).append(row)
 
     data["__by_area__"] = by_area

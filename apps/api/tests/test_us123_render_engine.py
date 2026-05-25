@@ -337,3 +337,43 @@ async def test_tc212_export_pdf(db_session, monkeypatch):
     pdf_bytes = pdf_mod.html_to_pdf(result.html)
     assert isinstance(pdf_bytes, bytes)
     assert pdf_bytes.startswith(b"%PDF")
+
+
+def test_section_by_area_tolerates_rows_without_area_name():
+    """BUG-063 — regresión: el render en modo B tiraba KeyError
+    'area_name' cuando una sección tenía rows sin esa clave (ej. hitos
+    o issues sin área). El motor debe agruparlos en 'Sin área asignada'.
+    """
+    from app.services.reports.engine import _section_by_area
+
+    # Simulamos el `data` ya construido por _section_by_section con dos
+    # secciones: una con area_name y otra sin él.
+    import app.services.reports.engine as engine_mod
+
+    # Parchamos _section_by_section para devolver data sintética.
+    original = engine_mod._section_by_section
+    try:
+        def _fake_by_section(section_codes, sections_map, ctx, params, window):
+            meta = [{"code": c, "name": c, "category": None, "template": ""} for c in section_codes]
+            data = {
+                "S-16": {"rows": [
+                    {"task": "Crítica 1", "area_name": "Alpha"},
+                    {"task": "Crítica 2"},  # sin area_name → debe ir a "Sin área asignada"
+                ]},
+                "S-09": {"rows": [
+                    {"name": "Hito 1"},  # sin area_name
+                ]},
+            }
+            return meta, data
+
+        engine_mod._section_by_section = _fake_by_section
+        meta, data = _section_by_area(["S-16", "S-09"], {}, None, {}, None)
+    finally:
+        engine_mod._section_by_section = original
+
+    by_area = data["__by_area__"]
+    assert "Alpha" in by_area
+    assert "Sin área asignada" in by_area
+    # Las rows sin área caen en el bucket fallback.
+    assert len(by_area["Sin área asignada"]["S-16"]) == 1
+    assert len(by_area["Sin área asignada"]["S-09"]) == 1
