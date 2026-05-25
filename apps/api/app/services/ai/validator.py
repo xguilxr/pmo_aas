@@ -119,40 +119,72 @@ def validate_raid_items(items: list[Any]) -> tuple[list[dict[str, Any]], dict[st
     return valid, metrics
 
 
+def _normalize_name(name: str | None) -> str:
+    """Lowercase + trim + strip diacritics para deduplicar nombres que
+    difieren solo en acentos/mayúsculas ("MARÍA López" == "maria lopez")."""
+    import unicodedata
+
+    raw = (name or "").strip().lower()
+    nfd = unicodedata.normalize("NFD", raw)
+    return "".join(ch for ch in nfd if not unicodedata.combining(ch))
+
+
 def flatten_participants(payload: Any) -> list[dict[str, Any]]:
-    """Aplana el dict de participantes del LLM a una lista plana de dicts.
+    """Aplana el dict de participantes del LLM a una lista plana de dicts,
+    **deduplicada por nombre normalizado**.
 
     El prompt pide ``{attendees, absent_justified, absent_unjustified}`` pero
     la minuta persistida usa una lista plana. Cada item conserva
     ``name``/``role``/``area`` y se le agrega ``attendance`` con uno de
     ``attended``/``absent_justified``/``absent_unjustified``.
 
+    BUG-063 (feedback owner): el LLM a veces lista el mismo participante
+    dos veces (con/sin acento, alias) o agrega personas solo mencionadas.
+    Aquí garantizamos una sola entrada por nombre normalizado — la primera
+    aparición gana, y si una repetición trae más metadata (role/area) se
+    fusiona sin pisar lo ya capturado.
+
     Tolera:
     - ``dict`` con las 3 keys canónicas.
     - ``list`` directa (asume todos attendees).
     - ``None`` u otros tipos → retorna lista vacía.
     """
+    raw_items: list[dict[str, Any]] = []
     if isinstance(payload, list):
-        return [
-            {**p, "attendance": p.get("attendance") or "attended"}
-            for p in payload
-            if isinstance(p, dict) and (p.get("name") or "").strip()
-        ]
-    if not isinstance(payload, dict):
-        return []
+        for p in payload:
+            if isinstance(p, dict) and (p.get("name") or "").strip():
+                raw_items.append({**p, "attendance": p.get("attendance") or "attended"})
+    elif isinstance(payload, dict):
+        for status_key in ("attendees", "absent_justified", "absent_unjustified"):
+            bucket = payload.get(status_key) or []
+            if not isinstance(bucket, list):
+                continue
+            attendance = "attended" if status_key == "attendees" else status_key
+            for raw in bucket:
+                if not isinstance(raw, dict):
+                    continue
+                name = (raw.get("name") or "").strip()
+                if not name:
+                    continue
+                raw_items.append({**raw, "attendance": attendance})
+
+    # Dedup por nombre normalizado, preservando orden de aparición. Si
+    # una repetición trae role/area no vacíos y el primero los tenía
+    # vacíos, se completan (merge no destructivo).
     out: list[dict[str, Any]] = []
-    for status_key in ("attendees", "absent_justified", "absent_unjustified"):
-        bucket = payload.get(status_key) or []
-        if not isinstance(bucket, list):
+    seen: dict[str, int] = {}
+    for item in raw_items:
+        key = _normalize_name(item.get("name"))
+        if not key:
             continue
-        attendance = "attended" if status_key == "attendees" else status_key
-        for raw in bucket:
-            if not isinstance(raw, dict):
-                continue
-            name = (raw.get("name") or "").strip()
-            if not name:
-                continue
-            out.append({**raw, "attendance": attendance})
+        if key in seen:
+            existing = out[seen[key]]
+            for field in ("role", "area", "email"):
+                if not (existing.get(field) or "").strip() and (item.get(field) or "").strip():
+                    existing[field] = item[field]
+            continue
+        seen[key] = len(out)
+        out.append(item)
     return out
 
 

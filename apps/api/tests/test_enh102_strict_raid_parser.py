@@ -18,6 +18,7 @@ from app.services.ai.prompts import MINUTE_SYSTEM
 from app.services.ai.validator import (
     ALLOWED_RAID_TYPES,
     ALLOWED_STATUSES,
+    flatten_participants,
     validate_minute_payload,
     validate_raid_items,
 )
@@ -144,3 +145,72 @@ def test_fixture_payload_round_trips_through_validator(expected_payload: dict) -
     # All items canonical
     for item in normalized["raid"]:
         assert item["type"] in ALLOWED_RAID_TYPES
+
+
+# ===== BUG-063 — dedup + speakers-only en participants =====
+
+
+def test_flatten_participants_dedups_by_normalized_name() -> None:
+    """El LLM a veces repite el mismo speaker con/sin acento o mayúsculas.
+    flatten_participants colapsa a una sola entrada por nombre normalizado.
+    """
+    payload = {
+        "attendees": [
+            {"name": "MARÍA López", "role": "PM"},
+            {"name": "maria lopez"},
+            {"name": "Juan Pérez", "area": "Finanzas"},
+        ],
+        "absent_justified": [],
+        "absent_unjustified": [],
+    }
+    out = flatten_participants(payload)
+    names = [p["name"] for p in out]
+    assert names == ["MARÍA López", "Juan Pérez"]
+    # El merge no-destructivo preserva el role del primero.
+    assert out[0]["role"] == "PM"
+
+
+def test_flatten_participants_merges_metadata_from_duplicate() -> None:
+    """Si el primer item viene sin role/area pero el duplicado los trae,
+    se completan sin pisar lo existente."""
+    payload = {
+        "attendees": [
+            {"name": "Ana García"},
+            {"name": "ana garcia", "role": "Sponsor", "area": "PMO"},
+        ],
+    }
+    out = flatten_participants(payload)
+    assert len(out) == 1
+    assert out[0]["role"] == "Sponsor"
+    assert out[0]["area"] == "PMO"
+
+
+def test_flatten_participants_dedups_flat_list_input() -> None:
+    out = flatten_participants(
+        [
+            {"name": "David Aguilar"},
+            {"name": "DAVID AGUILAR"},
+            {"name": "Martin Scalia"},
+        ]
+    )
+    assert [p["name"] for p in out] == ["David Aguilar", "Martin Scalia"]
+
+
+def test_validate_minute_payload_participants_flat_is_deduped() -> None:
+    payload = {
+        "participants": {
+            "attendees": [
+                {"name": "Eli Gómora"},
+                {"name": "eli gomora"},
+            ],
+        },
+        "raid": [],
+    }
+    normalized, _ = validate_minute_payload(payload)
+    assert len(normalized["participants_flat"]) == 1
+
+
+def test_prompt_enforces_speakers_only_participants() -> None:
+    """El prompt instruye a no incluir mencionados ni duplicados."""
+    assert "SIN DUPLICADOS" in MINUTE_SYSTEM
+    assert "MENCIONADAS" in MINUTE_SYSTEM

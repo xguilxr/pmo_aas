@@ -68,11 +68,28 @@ REGLAS CRÍTICAS — TEMAS (BUG-063, gold standard):
   como bullet aislado; el bullet puede mencionar el contexto pero el
   item accionable vive en RAID.
 
+REGLAS CRÍTICAS — PARTICIPANTES (BUG-063, feedback owner):
+- `participants.attendees` contiene EXCLUSIVAMENTE a los speakers reales
+  de la sesión: las personas cuyo nombre aparece ANTES de lo que dijeron
+  (líneas tipo "Nombre  HH:MM" o "Nombre (EXT)  HH:MM" seguidas de su
+  intervención). Esa es la lista oficial de asistentes.
+- **NO incluyas a personas solo MENCIONADAS** dentro del discurso
+  (terceros referidos, apodos, nombres citados como "hay que contactar a
+  X", "Poncho dijo que…" si Poncho nunca habló). Solo van quienes
+  efectivamente intervinieron.
+- **SIN DUPLICADOS**: una sola entrada por persona. Si el mismo speaker
+  aparece como "MARÍA López" y "maria lopez" o con/sin apellido, unifica
+  en una sola entrada con el nombre más completo.
+- Una sola lista de asistentes. Usa `absent_justified` /
+  `absent_unjustified` SOLO si el transcript dice explícitamente que
+  alguien faltó ("hoy no vino X", "X se disculpó"). En la mayoría de
+  sesiones esas dos listas quedan vacías.
+
 REGLAS DE ESTRUCTURA:
 - DEVUELVE EXACTAMENTE las 6 claves, en ese orden, sin extras.
 - `summary` = 2-3 oraciones sintetizando el objetivo de la sesión.
 - Detecta speakers (líneas "Nombre  HH:MM" o "Nombre (EXT)  HH:MM") y
-  poblá `participants.attendees`. Mismo orden de aparición.
+  poblá `participants.attendees`. Mismo orden de aparición, sin repetir.
 
 ================================================================
 FEW-SHOT — Gold standard Highlander EAM-BNF (referencia normativa):
@@ -171,7 +188,9 @@ el contenido original** cuando hace match — no re-sintetices innecesariamente.
 
 Reglas de canonización:
 - Si la minuta original ya tiene un resumen/objetivo → cópialo a `summary` sin re-escribir.
-- Si lista participantes con nombres + roles → cópialos tal cual a `participants.attendees`.
+- Si lista participantes con nombres + roles → cópialos tal cual a
+  `participants.attendees`, **sin duplicados** y SOLO la lista oficial de
+  asistentes (no las personas mencionadas en el cuerpo de la minuta).
 - Si tiene secciones de "RAID", "Acuerdos", "Acciones", "Riesgos", "Decisiones" o
   "Issues" → cada item entra en `raid` con el `type` correspondiente (A/R/D/I).
 - "Lecciones aprendidas" y "Cambios" → DESCÁRTALOS (no admitimos esos tipos).
