@@ -73,6 +73,10 @@ class ReportScope:
     program_id: UUID | str | None = None
     # Nivel del reporte (1=portafolio, 2=org, 3=proyecto, 4=custom).
     level: int = 3
+    # BUG-063: filtro de área a nivel reporte. Si está presente, el motor
+    # post-filtra las rows de todas las secciones dejando solo las del
+    # área seleccionada. None = todas las áreas.
+    area_id: UUID | str | None = None
 
 
 @dataclass
@@ -647,6 +651,52 @@ def get_section_builder(code: str):
 # ---------------------------------------------------------------------------
 
 
+def _apply_section_params(payload: dict[str, Any], params: dict) -> dict[str, Any]:
+    """BUG-063: aplica los parámetros por sección (configurados inline en
+    el canvas) al payload ya construido por el builder. Genérico para
+    cualquier sección con `rows`:
+
+    - ``order_by``: reordena rows (date_asc/date_desc/severity_desc/area).
+    - ``top_n``: trunca a las primeras N rows.
+    - ``excluded_fields``: quita esas keys de cada row (permite ocultar
+      columnas sin quitar la sección).
+
+    Secciones sin `rows` (header/summary/gauge) se devuelven intactas.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    rows = payload.get("rows")
+    if not isinstance(rows, list) or not rows:
+        return payload
+
+    order_by = params.get("order_by")
+    if order_by == "date_asc":
+        rows = sorted(rows, key=lambda r: r.get("end_date") or r.get("date") or "9999")
+    elif order_by == "date_desc":
+        rows = sorted(rows, key=lambda r: r.get("end_date") or r.get("date") or "", reverse=True)
+    elif order_by == "severity_desc":
+        rows = sorted(rows, key=lambda r: r.get("severity") or 0, reverse=True)
+    elif order_by == "area":
+        rows = sorted(rows, key=lambda r: r.get("area_name") or "")
+
+    top_n = params.get("top_n")
+    if isinstance(top_n, int) and top_n > 0:
+        rows = rows[:top_n]
+
+    excluded = params.get("excluded_fields")
+    if isinstance(excluded, list) and excluded:
+        excluded_set = set(excluded)
+        rows = [
+            {k: v for k, v in r.items() if k not in excluded_set}
+            if isinstance(r, dict) else r
+            for r in rows
+        ]
+
+    out = dict(payload)
+    out["rows"] = rows
+    return out
+
+
 def _section_by_section(
     section_codes: list[str],
     sections_map: dict[str, ReportSection],
@@ -665,6 +715,7 @@ def _section_by_section(
         params = params_by_code.get(code, {})
         try:
             payload = builder(ctx, params, window)
+            payload = _apply_section_params(payload, params)
         except Exception as exc:  # pragma: no cover - defensive
             logger.exception("engine: section %s builder failed: %s", code, exc)
             payload = {"status": "error", "error": str(exc)[:200]}
@@ -676,6 +727,36 @@ def _section_by_section(
         })
         data[code] = payload
     return meta, data
+
+
+def _apply_area_filter(
+    data: dict[str, dict[str, Any]],
+    ctx: _RenderContext,
+    area_id: str,
+) -> None:
+    """BUG-063: filtra in-place las rows de cada sección dejando solo las
+    del área seleccionada. Compara por `area_name` resuelto (las rows ya
+    traen el nombre, no el id). Si el área no se puede resolver a un
+    nombre, no filtra (defensivo). Re-deriva `__by_area__` si existe.
+    """
+    target_name = ctx.areas.get(str(area_id))
+    if not target_name:
+        return
+    for code, payload in data.items():
+        if code == "__by_area__":
+            continue
+        rows = payload.get("rows") if isinstance(payload, dict) else None
+        if not isinstance(rows, list):
+            continue
+        payload["rows"] = [
+            r for r in rows
+            if isinstance(r, dict) and (r.get("area_name") or "Sin área asignada") == target_name
+        ]
+    # Si el modo B ya construyó __by_area__, recórtalo a la única área.
+    if "__by_area__" in data and isinstance(data["__by_area__"], dict):
+        data["__by_area__"] = {
+            a: v for a, v in data["__by_area__"].items() if a == target_name
+        }
 
 
 def _section_by_area(
@@ -769,6 +850,12 @@ async def render_template(
         meta, data = _section_by_area(
             section_codes, sections_map, ctx, params_by_code, window
         )
+
+    # BUG-063: filtro de área a nivel reporte. Post-filtra rows de cada
+    # sección por el nombre del área seleccionada. Las secciones sin rows
+    # (header/summary) no se tocan. Aplica antes de armar el HTML.
+    if scope.area_id:
+        _apply_area_filter(data, ctx, str(scope.area_id))
 
     # Render Jinja2 via shared pdf_renderer (US-037).
     title = (

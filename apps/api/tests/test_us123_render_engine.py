@@ -377,3 +377,33 @@ def test_section_by_area_tolerates_rows_without_area_name():
     # Las rows sin área caen en el bucket fallback.
     assert len(by_area["Sin área asignada"]["S-16"]) == 1
     assert len(by_area["Sin área asignada"]["S-09"]) == 1
+
+
+def test_apply_section_params_top_n_order_excluded():
+    """BUG-063 — params por sección: top_n trunca, order_by reordena,
+    excluded_fields quita columnas. Genérico sobre payloads con rows."""
+    from app.services.reports.engine import _apply_section_params
+
+    payload = {
+        "rows": [
+            {"task": "A", "severity": 1, "area_name": "Beta", "owner": "x"},
+            {"task": "B", "severity": 9, "area_name": "Alpha", "owner": "y"},
+            {"task": "C", "severity": 5, "area_name": "Alpha", "owner": "z"},
+        ]
+    }
+    # order_by severity_desc + top_n 2 + excluir 'owner'
+    out = _apply_section_params(
+        payload,
+        {"order_by": "severity_desc", "top_n": 2, "excluded_fields": ["owner"]},
+    )
+    assert [r["task"] for r in out["rows"]] == ["B", "C"]
+    assert all("owner" not in r for r in out["rows"])
+    # El payload original no se muta.
+    assert len(payload["rows"]) == 3
+
+
+def test_apply_section_params_noop_without_rows():
+    from app.services.reports.engine import _apply_section_params
+
+    payload = {"progress_plan": 50, "progress_actual": 40}
+    assert _apply_section_params(payload, {"top_n": 5}) == payload

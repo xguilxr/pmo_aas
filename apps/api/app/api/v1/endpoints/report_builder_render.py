@@ -40,6 +40,9 @@ class RenderRequest(BaseModel):
     level: int = Field(default=3, ge=1, le=4)
     cut_off_date: date | None = None
     window_days: int = Field(default=14, ge=1, le=365)
+    # BUG-063: filtro de área a nivel reporte (param transversal de la
+    # barra superior del builder). None = todas las áreas.
+    area_id: UUID | None = None
     params: dict[str, dict[str, Any]] | None = None
 
 
@@ -76,6 +79,7 @@ async def render_report(
         organization_id=payload.organization_id,
         program_id=payload.program_id,
         level=payload.level,
+        area_id=payload.area_id,
     )
     window = ReportWindow(
         cut_off_date=payload.cut_off_date or date.today(),
@@ -111,6 +115,7 @@ class ExportRequest(BaseModel):
     level: int = Field(default=3, ge=1, le=4)
     cut_off_date: date | None = None
     window_days: int = Field(default=14, ge=1, le=365)
+    area_id: UUID | None = None
     params: dict[str, dict[str, Any]] | None = None
 
 
@@ -144,6 +149,7 @@ async def export_template_pdf(
         organization_id=payload.organization_id,
         program_id=payload.program_id,
         level=payload.level,
+        area_id=payload.area_id,
     )
     window = ReportWindow(
         cut_off_date=payload.cut_off_date or date.today(),
