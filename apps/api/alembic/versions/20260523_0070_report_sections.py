@@ -22,7 +22,6 @@ Secciones deferidas a v2.0 (no seedeadas): S-05 tendencia, S-07 curva S,
 S-10 entregables formales, S-15 matriz P×I, S-29/S-30 IA narrativa,
 S-31/S-32 KPIs configurables.
 """
-import json
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -248,8 +247,11 @@ def upgrade() -> None:
             "description": description,
             "category": category,
             "level": level,
-            "data_shape": json.dumps(data_shape),
-            "parameters_schema": json.dumps(parameters_schema),
+            # BUG-063: dicts NATIVOS — SQLAlchemy serializa una sola vez
+            # vía sa.JSON. NO usar json.dumps (causaba double-encoding →
+            # 500 en producción al validar con Pydantic).
+            "data_shape": data_shape,
+            "parameters_schema": parameters_schema,
             "composition_mode_default": mode,
             "supports_ia": supports_ia,
             "enabled": True,

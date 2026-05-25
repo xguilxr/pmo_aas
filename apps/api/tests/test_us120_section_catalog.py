@@ -142,3 +142,56 @@ async def test_us120_endpoint_filters_by_level(client, db_session):
 async def test_us120_endpoint_requires_auth(client):
     r = await client.get("/api/v1/report-sections")
     assert r.status_code in {401, 403}
+
+
+@pytest.mark.asyncio
+async def test_us120_endpoint_tolerates_double_encoded_json(client, db_session):
+    """BUG-063 — regresión: las migraciones de seed 0070/0071 guardaron
+    data_shape/parameters_schema como strings (double-encoded). El
+    endpoint debe parsearlos en vez de tirar 500.
+
+    Simulamos el estado corrupto insertando un row con strings JSON en
+    las columnas y verificamos que el endpoint los normaliza.
+    """
+    import uuid
+
+    from sqlalchemy import text
+
+    _t, auth = await _admin(client, db_session, slug="us120dbl")
+    # Inserta una sección con data_shape/parameters_schema como STRING
+    # (lo que dejaron las migraciones con json.dumps). Usamos SQL crudo
+    # con bind params para evitar que el JSON type del ORM lo re-serialice.
+    sid = str(uuid.uuid4())
+    await db_session.execute(
+        text(
+            "INSERT INTO report_sections "
+            "(id, code, name, description, category, level, data_shape, "
+            " parameters_schema, composition_mode_default, supports_ia, "
+            " enabled, created_at, updated_at) "
+            "VALUES (:id, :code, :name, :desc, :cat, :lvl, :ds, :ps, :mode, "
+            " :ia, :en, :ca, :ua)"
+        ),
+        {
+            "id": sid,
+            "code": "S-DBL",
+            "name": "Double encoded section",
+            "desc": None,
+            "cat": "HDR",
+            "lvl": 3,
+            "ds": '{"fields": ["title", "period"]}',
+            "ps": '{"period": {"type": "date_range"}}',
+            "mode": "A",
+            "ia": False,
+            "en": True,
+            "ca": "2026-05-25T00:00:00+00:00",
+            "ua": "2026-05-25T00:00:00+00:00",
+        },
+    )
+    await db_session.flush()
+
+    r = await client.get("/api/v1/report-sections", headers=auth["_authz"])
+    assert r.status_code == 200, r.text
+    row = next(x for x in r.json() if x["code"] == "S-DBL")
+    # El endpoint parseó el string a dict real.
+    assert row["data_shape"] == {"fields": ["title", "period"]}
+    assert row["parameters_schema"] == {"period": {"type": "date_range"}}
