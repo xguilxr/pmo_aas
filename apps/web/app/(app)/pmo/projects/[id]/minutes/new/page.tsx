@@ -18,7 +18,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, FileText, MessageSquare, Plus, Sparkles, Trash2, Upload, Wand2, X } from "lucide-react";
 
-import { MinuteRaidSuggestionsEditor } from "@/components/minute-raid-suggestions-editor";
 import { MinuteSaveModal } from "@/components/minute-save-modal";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -28,29 +27,33 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
-  EMPTY_RAID_BLOCK,
   cancelAIJob,
   generateMinute,
   type AIMinutePayload,
-  type AIRaidBlock,
   type ManualMinuteData,
   type ManualSaveResult,
   type MinuteSourceType,
 } from "@/lib/api/ai";
 import {
   createMinute,
-  getMinute,
-  type MeetingMinute,
 } from "@/lib/api/modules";
 import { useAIJobPolling } from "@/lib/hooks/use-ai-job-polling";
 
-type Attendee = { name: string; role?: string };
+type Attendee = { name: string; role?: string; area?: string };
 type ManualTopic = { title: string; bullets: string };
 type ManualRaid = {
   type: "A" | "R" | "D" | "I";
   description: string;
   responsible: string;
   due_date: string;
+};
+
+// BUG-063: mapping entre la letra A/R/D/I y el bucket persistible.
+const TYPE_LETTER_TO_BUCKET: Record<ManualRaid["type"], "actions" | "risks" | "decisions" | "issues"> = {
+  A: "actions",
+  R: "risks",
+  D: "decisions",
+  I: "issues",
 };
 
 export default function NewMinutePage() {
@@ -63,7 +66,7 @@ export default function NewMinutePage() {
   const [title, setTitle] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
   const [titleModalOpen, setTitleModalOpen] = useState(false);
-  const [pendingSave, setPendingSave] = useState<null | "preview" | "manual">(null);
+  const [pendingSave, setPendingSave] = useState<null | "generate" | "manual" | "save">(null);
   const [language, setLanguage] = useState<"" | "es" | "en">("");
   const [textInput, setTextInput] = useState("");
   const [textSource, setTextSource] = useState<"upload" | "paste">("paste");
@@ -79,38 +82,72 @@ export default function NewMinutePage() {
   // Flujo IA (modos transcript / minute).
   const [dispatching, setDispatching] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [result, setResult] = useState<AIMinutePayload | null>(null);
+  const [aiPayload, setAiPayload] = useState<AIMinutePayload | null>(null);
   const [savedMinuteId, setSavedMinuteId] = useState<string | null>(null);
-  const [savedMinute, setSavedMinute] = useState<MeetingMinute | null>(null);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [discardedRaid, setDiscardedRaid] = useState<Set<string>>(new Set());
-
-  const toggleDiscardRaid = (key: string, next: boolean) => {
-    setDiscardedRaid((prev) => {
-      const out = new Set(prev);
-      if (next) out.add(key);
-      else out.delete(key);
-      return out;
-    });
-  };
 
   const polling = useAIJobPolling({
     jobId,
     enabled: !!jobId,
     onSuccess: (job) => {
       const payload = (job.output ?? null) as (AIMinutePayload & { minute_id?: string | null }) | null;
-      if (payload) {
-        setResult(payload);
-        setSavedMinuteId(payload.minute_id ?? null);
-      }
+      if (!payload) return;
+      setAiPayload(payload);
       setModelUsed(job.model);
-      if (payload?.minute_id) {
-        getMinute(payload.minute_id)
-          .then((m) => setSavedMinute(m))
-          .catch(() => {});
+      // BUG-063: hidratar el form editable con el output IA para que el
+      // PM pueda editar antes de guardar. Reusa los mismos campos que el
+      // modo manual; el botón "Guardar Minuta" persiste el estado actual
+      // del form (no el `aiPayload` original).
+      if (payload.summary) setMSummary(payload.summary);
+      if (payload.header && typeof payload.header === "object") {
+        const h = payload.header as { date?: string };
+        if (h.date && !mHeaderDate) setMHeaderDate(String(h.date));
       }
+      if (Array.isArray(payload.participants) && payload.participants.length) {
+        setMAttendees(
+          payload.participants.map((p) => ({
+            name: p.name ?? "",
+            role: p.role ?? "",
+            area: p.area ?? "",
+          })),
+        );
+      }
+      if (Array.isArray(payload.topics) && payload.topics.length) {
+        setMTopics(
+          payload.topics.map((t) => {
+            const bullets = Array.isArray(t.bullets)
+              ? t.bullets.join("\n")
+              : (t.notes ?? "");
+            return { title: t.title ?? "", bullets };
+          }),
+        );
+      }
+      const raid = payload.raid_suggestions ?? payload.raid;
+      if (raid) {
+        const flat: ManualRaid[] = [];
+        const pushFromBucket = (kind: ManualRaid["type"], items?: { short_desc?: string; suggested_owner_name?: string | null; suggested_due_date?: string | null }[]) => {
+          if (!Array.isArray(items)) return;
+          for (const it of items) {
+            const desc = (it.short_desc ?? "").trim();
+            if (!desc) continue;
+            flat.push({
+              type: kind,
+              description: desc,
+              responsible: it.suggested_owner_name ?? "",
+              due_date: it.suggested_due_date ?? "",
+            });
+          }
+        };
+        pushFromBucket("A", raid.actions);
+        pushFromBucket("R", raid.risks);
+        pushFromBucket("D", raid.decisions);
+        pushFromBucket("I", raid.issues);
+        if (flat.length) setMRaid(flat);
+      }
+      if (payload.free_notes) setMFreeNotes(payload.free_notes);
+      if (payload.minute_id) setSavedMinuteId(payload.minute_id);
     },
     onError: (job) => {
       const raw = job.error || "La generación falló";
@@ -141,9 +178,8 @@ export default function NewMinutePage() {
       } catch {}
     }
     setDispatching(false);
-    setResult(null);
+    setAiPayload(null);
     setSavedMinuteId(null);
-    setSavedMinute(null);
     setModelUsed(null);
     setError(null);
   }
@@ -156,13 +192,13 @@ export default function NewMinutePage() {
       return;
     }
     if (!effectiveTitle) {
-      setPendingSave("preview");
+      setPendingSave("generate");
       setTitleModalOpen(true);
       return;
     }
     setDispatching(true);
     setError(null);
-    setResult(null);
+    setAiPayload(null);
     setSavedMinuteId(null);
     setModelUsed(null);
     try {
@@ -232,55 +268,78 @@ export default function NewMinutePage() {
     }
   }
 
-  // Guarda la preview (modos transcript/minute) tras IA.
+  // BUG-063: guarda la minuta desde el form editable (post-IA o manual).
+  // Toma el estado actual del form — el PM puede haber editado cualquier
+  // sección antes de pulsar "Guardar".
   async function savePreview(titleOverride?: string) {
-    if (!result) return;
     const effectiveTitle = (titleOverride ?? title).trim();
     if (!effectiveTitle) {
-      setPendingSave("preview");
+      setPendingSave("save");
       setTitleModalOpen(true);
       return;
     }
     setSavingPreview(true);
     setError(null);
     try {
-      const raidIn = result.raid ?? EMPTY_RAID_BLOCK;
-      const persistKind = (
-        kind: "risks" | "issues" | "lessons" | "changes",
-        items: typeof raidIn.risks,
-      ) =>
-        items.map((it, idx) => {
-          const base = {
-            short_desc: (it.short_desc ?? "").trim(),
-            suggested_owner_name: it.suggested_owner_name ?? null,
-            suggested_priority: it.suggested_priority ?? null,
-            raw_quote: it.raw_quote ?? null,
-            status: "pending" as const,
-            ticket_id: null,
-            ticket_type: null,
-          };
-          if (discardedRaid.has(`${kind}:${idx}`)) {
-            return { ...base, status: "discarded" as const };
-          }
-          return base;
-        });
-      const raidPersisted = {
-        risks: persistKind("risks", raidIn.risks),
-        issues: persistKind("issues", raidIn.issues),
-        lessons: persistKind("lessons", raidIn.lessons),
-        changes: persistKind("changes", raidIn.changes),
+      type SuggestionShape = {
+        short_desc: string;
+        suggested_owner_name: string | null;
+        suggested_due_date: string | null;
+        suggested_priority: number | null;
+        raw_quote: string | null;
+        status: "pending" | "approved" | "discarded";
+        ticket_id: string | null;
+        ticket_type: null;
       };
+      const raidPersisted: Record<"actions" | "risks" | "decisions" | "issues", SuggestionShape[]> = {
+        actions: [], risks: [], decisions: [], issues: [],
+      };
+      for (const r of mRaid) {
+        const desc = r.description.trim();
+        if (!desc) continue;
+        const bucket = TYPE_LETTER_TO_BUCKET[r.type];
+        raidPersisted[bucket].push({
+          short_desc: desc,
+          suggested_owner_name: r.responsible || null,
+          suggested_due_date: r.due_date || null,
+          suggested_priority: null,
+          raw_quote: null,
+          status: "pending",
+          ticket_id: null,
+          ticket_type: null,
+        });
+      }
+      const meetingDateIso = mHeaderDate
+        ? new Date(`${mHeaderDate}T12:00:00`).toISOString()
+        : new Date().toISOString();
       const created = await createMinute(id, {
         title: effectiveTitle,
-        meeting_date: new Date().toISOString(),
-        participants: result.participants ?? [],
-        topics: result.topics ?? [],
-        agreements: result.agreements ?? [],
-        generated_by_ai: true,
+        meeting_date: meetingDateIso,
+        summary: mSummary || null,
+        free_notes: mFreeNotes || null,
+        participants: mAttendees
+          .filter((a) => a.name.trim())
+          .map((a) => ({
+            name: a.name.trim(),
+            role: a.role || null,
+            area: a.area || null,
+          })),
+        topics: mTopics
+          .filter((t) => t.title.trim())
+          .map((t) => ({
+            title: t.title.trim(),
+            bullets: t.bullets
+              .split(/\r?\n/)
+              .map((b) => b.trim())
+              .filter(Boolean),
+          })),
+        agreements: [],
+        generated_by_ai: !!aiPayload,
         raid_suggestions: raidPersisted,
       });
       setSavedMinuteId(created.id);
-      setSavedMinute(created);
+      // Redirect al detalle para que el PM continúe trabajando ahí.
+      router.push(`/pmo/projects/${id}/minutes/${created.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo guardar la minuta");
     } finally {
@@ -582,58 +641,7 @@ export default function NewMinutePage() {
               )}
             />
 
-            <ArrayEditor
-              title="RAID (Acción / Riesgo / Decisión / Issue)"
-              items={mRaid}
-              onAdd={() =>
-                setMRaid([...mRaid, { type: "A", description: "", responsible: "", due_date: "" }])
-              }
-              onRemove={(i) => setMRaid(mRaid.filter((_, idx) => idx !== i))}
-              render={(r, i) => (
-                <div className="grid gap-2 sm:grid-cols-[80px_1fr_1fr_140px]">
-                  <Select
-                    value={r.type}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, type: e.target.value as ManualRaid["type"] };
-                      setMRaid(next);
-                    }}
-                  >
-                    <option value="A">A</option>
-                    <option value="R">R</option>
-                    <option value="D">D</option>
-                    <option value="I">I</option>
-                  </Select>
-                  <Input
-                    placeholder="Descripción"
-                    value={r.description}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, description: e.target.value };
-                      setMRaid(next);
-                    }}
-                  />
-                  <Input
-                    placeholder="Responsable"
-                    value={r.responsible}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, responsible: e.target.value };
-                      setMRaid(next);
-                    }}
-                  />
-                  <Input
-                    type="date"
-                    value={r.due_date}
-                    onChange={(e) => {
-                      const next = [...mRaid];
-                      next[i] = { ...r, due_date: e.target.value };
-                      setMRaid(next);
-                    }}
-                  />
-                </div>
-              )}
-            />
+            <RaidPanels items={mRaid} setItems={setMRaid} />
 
             <Field label="Notas libres">
               <Textarea
@@ -659,92 +667,142 @@ export default function NewMinutePage() {
         )}
       </section>
 
-      {/* Preview tras IA (modos transcript|minute) */}
-      {result ? (
+      {/* BUG-063: preview editable post-IA — reusa el form del modo manual
+          con los datos pre-cargados. El PM puede ajustar cualquier
+          sección antes de pulsar "Guardar Minuta". */}
+      {aiPayload && !savedMinuteId ? (
         <section className="space-y-4 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-6">
-          <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">Previsualización</h2>
-
-          <MinuteSection title="Resumen">
-            <p className="whitespace-pre-wrap text-[13px] text-[var(--text-primary)]">
-              {result.summary || "—"}
-            </p>
-          </MinuteSection>
-
-          <MinuteSection title="Participantes">
-            {result.participants?.length ? (
-              <ul className="flex flex-wrap gap-1.5">
-                {result.participants.map((p, i) => (
-                  <li key={i}>
-                    <Badge>{p.name}</Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-[13px] text-[var(--text-tertiary)]">—</p>
-            )}
-          </MinuteSection>
-
-          <MinuteSection title="Temas">
-            <ul className="space-y-2">
-              {result.topics?.map((t, i) => (
-                <li
-                  key={i}
-                  className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3"
-                >
-                  <p className="text-[13px] font-medium text-[var(--text-primary)]">{t.title}</p>
-                  <p className="mt-1 whitespace-pre-wrap text-[12px] text-[var(--text-secondary)]">
-                    {t.notes}
-                  </p>
-                </li>
-              ))}
-              {!result.topics?.length ? (
-                <p className="text-[13px] text-[var(--text-tertiary)]">—</p>
-              ) : null}
-            </ul>
-          </MinuteSection>
-
-          {savedMinute ? (
-            <MinuteRaidSuggestionsEditor
-              minute={savedMinute}
-              onMinuteChanged={setSavedMinute}
-            />
-          ) : (
-            <RaidPreview
-              raid={result.raid ?? EMPTY_RAID_BLOCK}
-              discarded={discardedRaid}
-              onToggle={toggleDiscardRaid}
-            />
-          )}
-
-          {savedMinuteId ? (
-            <Banner variant="success">
-              Minuta guardada.{" "}
-              <Link
-                className="underline"
-                href={`/pmo/projects/${id}/minutes/${savedMinuteId}`}
-              >
-                Ver minuta
-              </Link>
-            </Banner>
-          ) : (
-            <div className="flex items-center justify-between gap-2 pt-2">
-              <p className="text-[11px] text-[var(--text-tertiary)]">
-                {modelUsed ? (
-                  <>
-                    Modelo: <Badge>{modelUsed}</Badge>
-                  </>
-                ) : null}
+          <header className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">
+                Previsualización (editable)
+              </h2>
+              <p className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
+                Ajusta cualquier sección antes de guardar. La IA pre-cargó los campos basándose en el {mode === "minute" ? "texto de la minuta" : "transcript"}.
               </p>
-              <Button
-                onClick={() => savePreview()}
-                loading={savingPreview}
-                disabled={generating}
-              >
-                Guardar Minuta
-              </Button>
             </div>
-          )}
+            {modelUsed ? (
+              <Badge>Modelo: {modelUsed}</Badge>
+            ) : null}
+          </header>
+
+          <Field label="Resumen">
+            <Textarea
+              rows={3}
+              value={mSummary}
+              onChange={(e) => setMSummary(e.target.value)}
+              placeholder="2-3 oraciones que sintetizan el objetivo de la sesión."
+            />
+          </Field>
+
+          <ArrayEditor
+            title="Participantes"
+            items={mAttendees}
+            onAdd={() => setMAttendees([...mAttendees, { name: "", role: "", area: "" }])}
+            onRemove={(i) => setMAttendees(mAttendees.filter((_, idx) => idx !== i))}
+            render={(p, i) => (
+              <div className="grid gap-2 sm:grid-cols-3">
+                <Input
+                  placeholder="Nombre"
+                  value={p.name}
+                  onChange={(e) => {
+                    const next = [...mAttendees];
+                    next[i] = { ...p, name: e.target.value };
+                    setMAttendees(next);
+                  }}
+                />
+                <Input
+                  placeholder="Rol"
+                  value={p.role ?? ""}
+                  onChange={(e) => {
+                    const next = [...mAttendees];
+                    next[i] = { ...p, role: e.target.value };
+                    setMAttendees(next);
+                  }}
+                />
+                <Input
+                  placeholder="Área"
+                  value={p.area ?? ""}
+                  onChange={(e) => {
+                    const next = [...mAttendees];
+                    next[i] = { ...p, area: e.target.value };
+                    setMAttendees(next);
+                  }}
+                />
+              </div>
+            )}
+          />
+
+          <ArrayEditor
+            title="Temas tratados"
+            items={mTopics}
+            onAdd={() => setMTopics([...mTopics, { title: "", bullets: "" }])}
+            onRemove={(i) => setMTopics(mTopics.filter((_, idx) => idx !== i))}
+            render={(t, i) => (
+              <div className="space-y-1.5">
+                <Input
+                  placeholder="Título del tema"
+                  value={t.title}
+                  onChange={(e) => {
+                    const next = [...mTopics];
+                    next[i] = { ...t, title: e.target.value };
+                    setMTopics(next);
+                  }}
+                />
+                <Textarea
+                  rows={Math.min(8, Math.max(3, t.bullets.split(/\r?\n/).length))}
+                  placeholder="Bullets factuales (uno por línea)"
+                  value={t.bullets}
+                  onChange={(e) => {
+                    const next = [...mTopics];
+                    next[i] = { ...t, bullets: e.target.value };
+                    setMTopics(next);
+                  }}
+                />
+              </div>
+            )}
+          />
+
+          <RaidPanels items={mRaid} setItems={setMRaid} />
+
+          <Field label="Notas libres">
+            <Textarea
+              rows={3}
+              value={mFreeNotes}
+              onChange={(e) => setMFreeNotes(e.target.value)}
+              placeholder="Próximos pasos calendarizados u otras notas que no encajan en RAID."
+            />
+          </Field>
+
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancel}
+            >
+              Descartar previsualización
+            </Button>
+            <Button
+              onClick={() => savePreview()}
+              loading={savingPreview}
+              disabled={generating}
+            >
+              Guardar Minuta
+            </Button>
+          </div>
         </section>
+      ) : null}
+
+      {savedMinuteId ? (
+        <Banner variant="success">
+          Minuta guardada.{" "}
+          <Link
+            className="underline"
+            href={`/pmo/projects/${id}/minutes/${savedMinuteId}`}
+          >
+            Ver minuta
+          </Link>
+        </Banner>
       ) : null}
 
       <MinuteSaveModal
@@ -757,8 +815,9 @@ export default function NewMinutePage() {
           const pending = pendingSave;
           setPendingSave(null);
           queueMicrotask(() => {
-            if (pending === "preview") void handleGenerateAI(newTitle);
+            if (pending === "generate") void handleGenerateAI(newTitle);
             else if (pending === "manual") void handleGenerateManual(newTitle);
+            else if (pending === "save") void savePreview(newTitle);
           });
         }}
         onCancel={() => {
@@ -770,116 +829,6 @@ export default function NewMinutePage() {
   );
 }
 
-const RAID_SECTION_META: Array<{
-  key: keyof AIRaidBlock;
-  label: string;
-  emptyHint: string;
-}> = [
-  { key: "risks", label: "Riesgos", emptyHint: "Sin riesgos detectados." },
-  { key: "issues", label: "Issues", emptyHint: "Sin issues detectados." },
-  { key: "lessons", label: "Lecciones", emptyHint: "Sin lecciones detectadas." },
-  { key: "changes", label: "Cambios", emptyHint: "Sin cambios detectados." },
-];
-
-function RaidPreview({
-  raid,
-  discarded,
-  onToggle,
-}: {
-  raid: AIRaidBlock;
-  discarded: Set<string>;
-  onToggle: (key: string, next: boolean) => void;
-}) {
-  const total = raid.risks.length + raid.issues.length + raid.lessons.length + raid.changes.length;
-  const kept = total - discarded.size;
-  return (
-    <section className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-4">
-      <header className="flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          Sugerencias RAID detectadas
-        </h3>
-        <Badge variant={total === 0 ? "neutral" : "info"}>
-          {kept} de {total} {total === 1 ? "item" : "items"} se crearán
-        </Badge>
-      </header>
-      <p className="text-[11px] italic text-[var(--text-tertiary)]">
-        Desmarca los items que no quieras crear como tickets reales al guardar.
-      </p>
-      <div className="grid gap-3 lg:grid-cols-2">
-        {RAID_SECTION_META.map((meta) => {
-          const items = raid[meta.key];
-          return (
-            <details
-              key={meta.key}
-              open={items.length > 0}
-              className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-3"
-            >
-              <summary className="flex cursor-pointer items-center justify-between text-[12px] font-medium text-[var(--text-primary)]">
-                <span>{meta.label}</span>
-                <Badge variant={items.length === 0 ? "neutral" : "info"}>{items.length}</Badge>
-              </summary>
-              <div className="mt-2 space-y-2">
-                {items.length === 0 ? (
-                  <p className="text-[12px] italic text-[var(--text-tertiary)]">{meta.emptyHint}</p>
-                ) : (
-                  items.map((it, i) => {
-                    const key = `${meta.key}:${i}`;
-                    const isDiscarded = discarded.has(key);
-                    return (
-                      <label
-                        key={i}
-                        className={`flex cursor-pointer gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-2.5 py-2 ${
-                          isDiscarded
-                            ? "bg-[var(--color-surface)] opacity-60"
-                            : "bg-[var(--color-subtle)]"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={!isDiscarded}
-                          onChange={(e) => onToggle(key, !e.target.checked)}
-                          className="mt-0.5 h-4 w-4 shrink-0"
-                        />
-                        <div className="flex-1">
-                          <p
-                            className={`text-[12px] font-medium ${
-                              isDiscarded
-                                ? "text-[var(--text-tertiary)] line-through"
-                                : "text-[var(--text-primary)]"
-                            }`}
-                          >
-                            {it.short_desc}
-                          </p>
-                          {it.raw_quote ? (
-                            <p className="mt-1 line-clamp-2 italic text-[11px] text-[var(--text-tertiary)]">
-                              “{it.raw_quote}”
-                            </p>
-                          ) : null}
-                        </div>
-                      </label>
-                    );
-                  })
-                )}
-              </div>
-            </details>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function MinuteSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
-        {title}
-      </h3>
-      {children}
-    </section>
-  );
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
@@ -888,6 +837,127 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </span>
       {children}
     </label>
+  );
+}
+
+// BUG-063 — UX feedback owner: la minuta no es ARDI ordenada (eso es
+// para reportes). El estado interno es flat `ManualRaid[]` (orden libre,
+// se llena conforme la IA o el PM va detectando items), pero la UX
+// muestra **4 paneles dedicados** filtrando por tipo. El owner edita
+// cada bucket como una mini-tabla, agrega items con botón "+ Agregar
+// [tipo]" en el panel respectivo. Internamente todo sigue siendo un
+// solo array; al guardar, agrupamos en `raid_suggestions` buckets.
+const RAID_PANEL_META: Array<{ type: ManualRaid["type"]; label: string; hint: string }> = [
+  { type: "A", label: "Acciones", hint: "Compromisos accionables con responsable y fecha." },
+  { type: "R", label: "Riesgos", hint: "Preocupaciones, posibles retrasos, dependencias." },
+  { type: "D", label: "Decisiones", hint: "Acuerdos cerrados o pendientes de definir." },
+  { type: "I", label: "Issues", hint: "Problemas abiertos o pendientes de claridad." },
+];
+
+function RaidPanels({
+  items,
+  setItems,
+}: {
+  items: ManualRaid[];
+  setItems: (next: ManualRaid[]) => void;
+}) {
+  const updateAt = (globalIdx: number, patch: Partial<ManualRaid>) => {
+    const next = [...items];
+    next[globalIdx] = { ...next[globalIdx], ...patch };
+    setItems(next);
+  };
+  const removeAt = (globalIdx: number) => {
+    setItems(items.filter((_, i) => i !== globalIdx));
+  };
+  const addOfType = (type: ManualRaid["type"]) => {
+    setItems([...items, { type, description: "", responsible: "", due_date: "" }]);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-medium text-[var(--text-secondary)]">
+          RAID — Acciones / Riesgos / Decisiones / Issues
+        </span>
+        <span className="text-[11px] text-[var(--text-tertiary)]">
+          {items.length} item{items.length === 1 ? "" : "s"} en total
+        </span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {RAID_PANEL_META.map((meta) => {
+          const indexed = items
+            .map((r, idx) => ({ r, idx }))
+            .filter((x) => x.r.type === meta.type);
+          return (
+            <div
+              key={meta.type}
+              className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40 p-3"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                    {meta.type} · {meta.label}
+                    <span className="ml-1.5 text-[11px] font-normal text-[var(--text-tertiary)]">
+                      ({indexed.length})
+                    </span>
+                  </p>
+                  <p className="text-[10.5px] text-[var(--text-tertiary)]">{meta.hint}</p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => addOfType(meta.type)}>
+                  <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {indexed.length === 0 ? (
+                  <p className="text-[11px] italic text-[var(--text-tertiary)]">
+                    Sin {meta.label.toLowerCase()} aún.
+                  </p>
+                ) : (
+                  indexed.map(({ r, idx }) => (
+                    <div
+                      key={idx}
+                      className="space-y-1.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-2"
+                    >
+                      <div className="flex items-start gap-1.5">
+                        <Textarea
+                          rows={Math.max(2, Math.ceil(r.description.length / 60))}
+                          placeholder="Descripción"
+                          value={r.description}
+                          onChange={(e) => updateAt(idx, { description: e.target.value })}
+                          className="text-[12px]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAt(idx)}
+                          aria-label="Quitar"
+                          className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-danger-fg)]"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </div>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        <Input
+                          placeholder="Responsable"
+                          value={r.responsible}
+                          onChange={(e) => updateAt(idx, { responsible: e.target.value })}
+                          className="text-[12px]"
+                        />
+                        <Input
+                          placeholder="Fecha (ej. 25 mar / Inmediato)"
+                          value={r.due_date}
+                          onChange={(e) => updateAt(idx, { due_date: e.target.value })}
+                          className="text-[12px]"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

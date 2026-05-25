@@ -35,6 +35,7 @@ from app.services.ai.provider import (
     generate_for_tenant,
 )
 from app.services.ai.tenant_ai import TenantAIConfig, load_tenant_ai
+from app.services.ai.validator import validate_minute_payload
 from app.services.audit import write_audit
 from app.services.folio import next_folio
 from app.workers.celery_app import celery_app
@@ -52,8 +53,9 @@ _AI_CALL_BACKOFF_SEC: tuple[float, ...] = (1.0, 3.0, 8.0)
 # honramos, sino usamos esta tabla.
 _AI_CALL_BACKOFF_429_SEC: tuple[float, ...] = (10.0, 25.0, 60.0)
 
-def _empty_raid() -> dict:
-    return {"risks": [], "issues": [], "lessons": [], "changes": []}
+def _empty_raid_suggestions() -> dict:
+    """4 buckets canónicos A/R/D/I alineados con el modelo RAID."""
+    return {"actions": [], "risks": [], "decisions": [], "issues": []}
 
 
 def _empty_minute() -> dict:
@@ -61,40 +63,28 @@ def _empty_minute() -> dict:
     que los `extend` en cascada contaminen llamadas posteriores."""
     return {
         "summary": "",
+        "header": {},
         "participants": [],
         "topics": [],
-        "agreements": [],
-        "decisions": [],
-        "next_steps": [],
-        "risks_blockers": [],
-        "raid": _empty_raid(),
+        "free_notes": None,
+        "raid": [],
+        "raid_suggestions": _empty_raid_suggestions(),
     }
 
 
-def _normalize_raid_block(raw: object) -> dict:
-    """ENH-084: normaliza el bloque `raid` a las 4 claves canónicas con
-    arrays. Tolera modelos que devuelvan claves alternativas (`risk`,
-    `lesson`, `change`, alias) o aplanen los items en un array suelto.
-    Si no hay items de un tipo, queda en `[]` — no se inventa.
-    """
-    block: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
-    if not isinstance(raw, dict):
-        return block
-    aliases = {
-        "risks": ("risks", "risk", "riesgos", "riesgo"),
-        "issues": ("issues", "issue", "incidents", "incidencias", "incidentes"),
-        "lessons": (
-            "lessons", "lesson", "lecciones", "lessons_learned",
-        ),
-        "changes": ("changes", "change", "cambios", "change_requests"),
-    }
-    for key, names in aliases.items():
-        for n in names:
-            v = raw.get(n)
-            if isinstance(v, list):
-                block[key].extend([x for x in v if isinstance(x, dict)])
-                break
-    return block
+def _merge_raid_suggestions(buckets: list[dict]) -> dict:
+    """Concatena buckets canónicos {actions, risks, decisions, issues}
+    proveniente de chunks múltiples. Items inválidos (no-dict) se
+    descartan silenciosamente."""
+    out = _empty_raid_suggestions()
+    for b in buckets:
+        if not isinstance(b, dict):
+            continue
+        for k in out:
+            for it in b.get(k) or []:
+                if isinstance(it, dict):
+                    out[k].append(it)
+    return out
 
 
 def _parse_json_strict(s: str) -> dict | None:
@@ -332,10 +322,18 @@ async def _run_minute(
             (tenant_cfg.byo or {}).get("provider") if tenant_cfg.byo else None,
         )
         chunks = chunk_text(transcript)
+        # Cada chunk pasa por el validator que produce el shape canónico
+        # (gold standard EP019). Luego mergeamos chunks en el cascade
+        # del worker. Los participantes y RAID se aplanan/normalizan
+        # dentro del validator — el worker solo concatena.
         collected: list[dict] = []
         model_used = "unknown"
         total_in = 0
         total_out = 0
+        validator_metrics: dict[str, int] = {
+            "kept": 0, "dropped_lesson": 0, "dropped_change": 0,
+            "dropped_unknown": 0, "dropped_malformed": 0,
+        }
         for ch in chunks:
             res = await _call_ai_for_tenant(
                 ch,
@@ -350,29 +348,43 @@ async def _run_minute(
             total_out += res.tokens_out
             parsed = _parse_json_strict(res.text)
             if parsed is None:
-                parsed = _empty_minute()
-                parsed["summary"] = res.text[:2000]
-            collected.append(parsed)
-
-        # ENH-084: bloque `raid` normalizado y mergeado en cascada (4
-        # tipos canónicos: risks/issues/lessons/changes). Si el modelo
-        # no devuelve la sección, queda en arrays vacíos — sin inventar.
-        merged_raid: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
-        for c in collected:
-            block = _normalize_raid_block(c.get("raid"))
-            for k in merged_raid:
-                merged_raid[k].extend(block[k])
+                normalized = _empty_minute()
+                normalized["summary"] = res.text[:2000]
+            else:
+                normalized, m = validate_minute_payload(parsed)
+                for k, v in m.items():
+                    validator_metrics[k] = validator_metrics.get(k, 0) + v
+            collected.append(normalized)
 
         merged = {
+            "header": collected[0].get("header") if collected else {},
             "summary": "\n\n".join([c.get("summary") or "" for c in collected]).strip(),
-            "participants": functools.reduce(operator.iadd, (c.get("participants") or [] for c in collected), []),
-            "topics": functools.reduce(operator.iadd, (c.get("topics") or [] for c in collected), []),
-            "agreements": functools.reduce(operator.iadd, (c.get("agreements") or [] for c in collected), []),
-            "decisions": functools.reduce(operator.iadd, (c.get("decisions") or [] for c in collected), []),
-            "next_steps": functools.reduce(operator.iadd, (c.get("next_steps") or [] for c in collected), []),
-            "risks_blockers": functools.reduce(operator.iadd, (c.get("risks_blockers") or [] for c in collected), []),
-            "raid": merged_raid,
+            "participants": functools.reduce(
+                operator.iadd,
+                (c.get("participants_flat") or [] for c in collected),
+                [],
+            ),
+            "topics": functools.reduce(
+                operator.iadd,
+                (c.get("topics") or [] for c in collected),
+                [],
+            ),
+            # ENH-095/US-040: `agreements` queda como sinónimo legacy de
+            # `raid_suggestions.actions` para no romper exports/templates
+            # que lo referencian. La verdad canónica vive en
+            # `raid_suggestions`.
+            "agreements": [],
+            "free_notes": next(
+                (c.get("free_notes") for c in collected if c.get("free_notes")),
+                None,
+            ),
+            "raid_suggestions": _merge_raid_suggestions(
+                [c.get("raid_suggestions") for c in collected]
+            ),
         }
+        # Para retrocompat con UI vieja que aún lee `participants` como
+        # lista de speakers/attendees sin distinguir absentes.
+        # `participants_flat` ya cumple — el merge anterior reusa ese campo.
 
         async with db_session() as db:
             job = (
@@ -387,28 +399,17 @@ async def _run_minute(
             minute_id: str | None = None
             if save_as_minute:
                 folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
-                # US-108: cada sugerencia entra como `pending` con
-                # ticket_id null hasta que el PM la apruebe.
-                raid_persisted: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
-                for kind in raid_persisted:
-                    for it in merged["raid"].get(kind, []):
-                        if not isinstance(it, dict):
-                            continue
-                        raid_persisted[kind].append({
-                            "short_desc": str(it.get("short_desc") or "").strip(),
-                            "suggested_owner_name": it.get("suggested_owner_name") or None,
-                            "suggested_priority": it.get("suggested_priority"),
-                            "raw_quote": it.get("raw_quote") or None,
-                            "status": "pending",
-                            "ticket_id": None,
-                            "ticket_type": None,
-                        })
                 # ENH-106 + US-143: origen depende del source_type.
                 # `transcript_ai` (default) o `minute_ai` cuando la fuente
                 # fue una minuta ya redactada normalizada por IA.
                 minute_origin = (
                     "minute_ai" if source_type == "minute" else "transcript_ai"
                 )
+                # BUG-063: free_notes meta-persistido dentro de
+                # raid_suggestions._meta para evitar migración.
+                raid_with_meta = dict(merged["raid_suggestions"])
+                if merged.get("free_notes"):
+                    raid_with_meta["_meta"] = {"free_notes": merged["free_notes"]}
                 mm = MeetingMinute(
                     tenant_id=tenant_id, project_id=project_id, folio=folio,
                     title=title, meeting_date=datetime.now(UTC),
@@ -417,7 +418,8 @@ async def _run_minute(
                     attachments=[], generated_by_ai=True, status="final",
                     created_by=requested_by,
                     origin=minute_origin,
-                    raid_suggestions=raid_persisted,
+                    raid_suggestions=raid_with_meta,
+                    description=merged.get("summary") or None,
                 )
                 db.add(mm)
                 await db.flush()

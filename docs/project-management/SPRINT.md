@@ -9,13 +9,17 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sprints 30-32 entregados completos (22 items, branch claude/zen-brown-ivCbz).
-Por mergear todo a main vía PR único.
+BUG-063 entregado en branch claude/dreamy-heisenberg-jJkUS (4 commits):
+- fix(api): BUG-063 RAID shape A/R/D/I + participants flat + sin matcher
+- feat(api): BUG-063 prompt MINUTE_SYSTEM con few-shot real Highlander
+- feat(web): BUG-063 preview editable + nuevo shape RAID A/R/D/I
+- fix(api): BUG-063 re-seed idempotente report_sections (migración 0076)
 
-Próximo libre: US-149, BUG-063, ENH-126.
+Próximo libre: US-149, BUG-064, ENH-126.
 
 Pendiente fuera de scope: ENH-115 #434 (breadcrumbs cross /pmo/**/reports).
-Owner puede pasarlo a status:ready cuando quiera retomarlo.
+Próximo bloque sugerido por owner: planning IA (acciones realizables,
+información disponible, prompts, skills).
 ```
 
 ---
@@ -119,6 +123,14 @@ Owner puede pasarlo a status:ready cuando quiera retomarlo.
 
 ## Notas y cambios recientes
 
+- **2026-05-24 (BUG-063 — fix integral generación minutas):** branch `claude/dreamy-heisenberg-jJkUS`, 4 commits.
+  - Backend: participants ya no se aplanan mal como keys del dict; RAID `_normalize_raid_block` reemplazado por el validator que produce el shape canónico `{actions, risks, decisions, issues}`. Eliminada la invocación de `match_participants` en `create_minute` (owner: enfocar minuta en minuta). 422 al guardar arreglado en cascada.
+  - Mapping de tickets: A → Issue(type=action), R → Risk, D → Issue(type=decision), I → Issue(type=issue). Lessons/changes legacy retenidos para retro-compat.
+  - Prompt MINUTE_SYSTEM con few-shot real Highlander; reglas estrictas de detalle (5-15 bullets/tema, prefijo speaker cuando importe, ≥ 1 RAID si hay menciones concretas).
+  - Frontend: preview read-only reemplazado por form editable pre-cargado con output IA. Permite editar resumen, fecha, participantes (nombre/rol/area), temas con bullets, items RAID (A/R/D/I con responsable y due_date), notas libres. Botón "Guardar Minuta" persiste el estado actual del form.
+  - Detail page renderiza `summary` + `free_notes` y bullets[] para temas (fallback a notes legacy).
+  - Migración 0076: re-seed idempotente de `report_sections` si la tabla está vacía (cierra el bug "catálogo vacío" del builder).
+  - Tests: 549 passed, 1 skipped. TS + next build verdes.
 - **2026-05-23 (cierre Sprints 30-32 — rediseño Minutas + Reports):** 22 items entregados secuencialmente en `claude/zen-brown-ivCbz`. Reorganización completa:
   - **Sidebar**: "Módulos de Proyecto" → "Módulos"; dropdown Reportes aplanado.
   - **Minutas**: listing simplificado (1 botón + columnas reordenadas), generador unificado `/minutes/new` con 3 modos (Transcript/Minuta/Manual), backend con `source_type` y migración 0075 (`minute_ai` origin). Detail sin MD/TXT. RAID labels claros.

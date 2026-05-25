@@ -1253,29 +1253,38 @@ async def create_minute(
     tenant_id = _tenant(cu)
     await _get_project(db, project_id, tenant_id)
     folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
-    # BUG-058: sanitiza `raid_suggestions` al shape canónico de 4
-    # buckets — protege contra payloads del cliente sin la forma esperada.
+    # BUG-058 + BUG-063: sanitiza `raid_suggestions` al shape canónico
+    # A/R/D/I (actions/risks/decisions/issues). Tolera el shape legacy
+    # `{risks, issues, lessons, changes}` mapeando lessons/changes →
+    # descartado silenciosamente (owner 2026-05-22: solo A/R/D/I).
     raid_in = body.raid_suggestions if isinstance(body.raid_suggestions, dict) else {}
     raid_persisted = {
-        kind: list(raid_in.get(kind) or [])
-        for kind in ("risks", "issues", "lessons", "changes")
+        "actions": list(raid_in.get("actions") or []),
+        "risks": list(raid_in.get("risks") or []),
+        "decisions": list(raid_in.get("decisions") or []),
+        "issues": list(raid_in.get("issues") or []),
     }
-    # ENH-103: enriquecer participantes con match contra actors del
-    # proyecto. Match → actor_id + match_status="matched" + verified;
-    # sin match → crea actor auto_created + participation guest, marca
-    # match_status="auto_created" + verified=False para chip amarillo.
-    from app.services.minutes.participant_matcher import match_participants
-
-    enriched_participants = await match_participants(
-        db,
-        project_id=project_id,
-        tenant_id=tenant_id,
-        participants=list(body.participants or []),
-        created_by=cu.id,
-    )
+    # BUG-063: clientes legacy aún envían `lessons`/`changes`. Los
+    # persistimos para que el auto-approve los materialice como Lesson/
+    # ChangeRequest (el IA nuevo ya no los emite — validator los filtra).
+    for legacy_kind in ("lessons", "changes"):
+        if raid_in.get(legacy_kind):
+            raid_persisted[legacy_kind] = list(raid_in[legacy_kind])
+    # BUG-063: meta opcional con free_notes para evitar migración.
+    meta = {}
+    if body.free_notes:
+        meta["free_notes"] = body.free_notes
+    if meta:
+        raid_persisted["_meta"] = meta
+    # BUG-063: NO matching de participants. Owner pidió mantener la
+    # generación de minuta enfocada en la minuta; cuando se creen RAIDs
+    # asignamos a actores en otro flow. Aquí los persistimos tal y como
+    # vienen del transcript (lista plana de dicts con name/role/area/
+    # attendance opcional).
     m = MeetingMinute(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
-        title=body.title, meeting_date=body.meeting_date, participants=enriched_participants,
+        title=body.title, meeting_date=body.meeting_date,
+        participants=list(body.participants or []),
         topics=body.topics, agreements=body.agreements,
         next_meeting_date=body.next_meeting_date, attachments=body.attachments,
         transcript_file_id=body.transcript_file_id, generated_by_ai=body.generated_by_ai,
@@ -1287,6 +1296,7 @@ async def create_minute(
             "transcript_ai" if body.generated_by_ai and body.origin == "manual" else body.origin
         ),
         raid_suggestions=raid_persisted,
+        description=body.summary,
     )
     db.add(m)
     await db.flush()
@@ -1300,7 +1310,11 @@ async def create_minute(
     approved_count = 0
     if body.auto_approve_raid:
         suggestions = dict(m.raid_suggestions or {})
-        for kind in ("risks", "issues", "lessons", "changes"):
+        # BUG-063: 4 nuevos canónicos + 2 legacy (lessons/changes) para
+        # retro-compat con clientes pre-refactor. El IA ya no genera
+        # lessons/changes (validator los descarta), pero un POST manual
+        # con esos buckets sigue funcionando.
+        for kind in ("actions", "risks", "decisions", "issues", "lessons", "changes"):
             bucket = list(suggestions.get(kind) or [])
             for idx, raw in enumerate(bucket):
                 sugg = dict(raw) if isinstance(raw, dict) else {}
@@ -1544,11 +1558,23 @@ async def convert_agreement_to_issue(
 
 # ========== US-108 + ENH-090/091: minuta GET/PATCH/DELETE + approve RAID =========
 
+# BUG-063: shape canónico A/R/D/I. Acciones y Decisiones se materializan
+# como rows en `issues` con `type="action"|"decision"` (modelo Issue ya
+# soporta los 3 sub-tipos via la columna `type`). Lecciones/Cambios
+# legacy se mantienen para retro-compat con payloads previos al refactor.
 _RAID_TYPE_TO_PREFIX = {
+    "actions": "ACT",
     "risks": "RIS",
+    "decisions": "DEC",
     "issues": "INC",
     "lessons": "LEC",
     "changes": "CHG",
+}
+
+_RAID_KIND_TO_ISSUE_TYPE = {
+    "actions": "action",
+    "decisions": "decision",
+    "issues": "issue",
 }
 
 
@@ -1564,11 +1590,18 @@ async def _create_raid_ticket_from_suggestion(
     cu: CurrentUser,
     tenant_id: UUID,
 ) -> tuple[str, str]:
-    """BUG-061: helper compartido entre `create_minute` (auto-approve al
-    guardar el preview) y `approve_raid_suggestions` (US-108 editor).
-    Crea el ticket en el módulo correspondiente y retorna
+    """BUG-061 + BUG-063: helper compartido entre `create_minute` (auto-
+    approve al guardar el preview) y `approve_raid_suggestions` (US-108
+    editor). Crea el ticket en el módulo correspondiente y retorna
     ``(ticket_id, ticket_type)``. No actualiza ``sugg`` ni hace commit —
     eso queda al caller.
+
+    Mapping:
+    - ``actions`` → Issue(type=action), ticket_type=``action``.
+    - ``risks`` → Risk, ticket_type=``risk``.
+    - ``decisions`` → Issue(type=decision), ticket_type=``decision``.
+    - ``issues`` → Issue(type=issue), ticket_type=``issue``.
+    - ``lessons`` / ``changes`` → legacy, mantienen Lesson/ChangeRequest.
     """
     short_desc = (override_short_desc or sugg.get("short_desc") or "").strip()
     if not short_desc:
@@ -1578,7 +1611,7 @@ async def _create_raid_ticket_from_suggestion(
         override_description or sugg.get("raw_quote") or sugg.get("short_desc") or None
     )
     priority_value = override_priority or sugg.get("suggested_priority") or 3
-    prefix = _RAID_TYPE_TO_PREFIX[kind]
+    prefix = _RAID_TYPE_TO_PREFIX.get(kind, "INC")
     folio = await next_folio(db, tenant_id=tenant_id, prefix=prefix)
 
     if kind == "risks":
@@ -1596,18 +1629,19 @@ async def _create_raid_ticket_from_suggestion(
         db.add(r)
         await db.flush()
         return str(r.id), "risk"
-    if kind == "issues":
+    if kind in _RAID_KIND_TO_ISSUE_TYPE:
+        issue_type = _RAID_KIND_TO_ISSUE_TYPE[kind]
         issue = Issue(
             tenant_id=str(tenant_id), project_id=str(minute.project_id), folio=folio,
             title=title_value, description=description_value,
-            type="issue", priority=int(priority_value) if priority_value else 3,
+            type=issue_type, priority=int(priority_value) if priority_value else 3,
             committed_date=None, owner_id=None, area_id=None,
             status="open", reported_at=datetime.now(UTC),
             comments=[], created_by=cu.id,
         )
         db.add(issue)
         await db.flush()
-        return str(issue.id), "issue"
+        return str(issue.id), issue_type
     if kind == "lessons":
         lesson = Lesson(
             tenant_id=str(tenant_id), project_id=str(minute.project_id), folio=folio,
@@ -1679,6 +1713,11 @@ async def update_minute(
         m.raid_suggestions = data["raid_suggestions"]
     if "title" in data:
         m.title = data["title"]
+    # BUG-063: summary, meeting_date y free_notes editables.
+    if "summary" in data:
+        m.description = data["summary"]
+    if "meeting_date" in data:
+        m.meeting_date = data["meeting_date"]
     # ENH-095: secciones estructuradas editables desde el preview.
     if "participants" in data and isinstance(data["participants"], list):
         m.participants = data["participants"]
@@ -1686,6 +1725,18 @@ async def update_minute(
         m.topics = data["topics"]
     if "agreements" in data and isinstance(data["agreements"], list):
         m.agreements = data["agreements"]
+    if "free_notes" in data:
+        # BUG-063: persistido en `raid_suggestions._meta.free_notes` para
+        # evitar migración. El formatter ignora keys con `_` prefix y
+        # consume `_meta` solo donde corresponde.
+        rs = dict(m.raid_suggestions or {})
+        meta = dict(rs.get("_meta") or {})
+        if data["free_notes"]:
+            meta["free_notes"] = data["free_notes"]
+        else:
+            meta.pop("free_notes", None)
+        rs["_meta"] = meta
+        m.raid_suggestions = rs
     await write_audit(
         db, action="meeting_minute.update", module="minutes",
         user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute",
@@ -1766,7 +1817,7 @@ async def approve_raid_suggestions(
         raise not_found("Minuta")
 
     suggestions = dict(m.raid_suggestions or {})
-    for kind in ("risks", "issues", "lessons", "changes"):
+    for kind in ("actions", "risks", "decisions", "issues", "lessons", "changes"):
         suggestions.setdefault(kind, [])
 
     for it in body.items:
@@ -1779,83 +1830,22 @@ async def approve_raid_suggestions(
         if sugg.get("status") == "approved" and sugg.get("ticket_id"):
             # Idempotencia: ya creado, no se duplica.
             continue
-        short_desc = (it.short_desc or sugg.get("short_desc") or "").strip()
-        if not short_desc:
-            raise business_rule(
-                f"short_desc vacío en {it.type}[{it.index}]",
-            )
-        title_value = short_desc[:200]
-        description_value = (
-            it.description or sugg.get("raw_quote") or sugg.get("short_desc") or None
+        ticket_id, ticket_type = await _create_raid_ticket_from_suggestion(
+            db,
+            minute=m,
+            kind=it.type,
+            sugg=sugg,
+            override_short_desc=it.short_desc,
+            override_description=it.description,
+            override_priority=it.priority,
+            cu=cu,
+            tenant_id=tenant_id,
         )
-        priority_value = it.priority or sugg.get("suggested_priority") or 3
-
-        prefix = _RAID_TYPE_TO_PREFIX[it.type]
-        folio = await next_folio(db, tenant_id=tenant_id, prefix=prefix)
-        ticket_type: str
-        ticket_id: str
-
-        if it.type == "risks":
-            r = Risk(
-                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
-                title=title_value, description=description_value,
-                category=None, owner_id=None, area_id=None,
-                probability=int(priority_value) if priority_value else 3,
-                impact=int(priority_value) if priority_value else 3,
-                severity=(int(priority_value) ** 2) if priority_value else 9,
-                mitigation_strategy=None, status="identified",
-                identified_at=datetime.now(UTC).date(),
-                due_date=None, closure_note=None,
-                comments=[],
-                created_by=cu.id,
-            )
-            db.add(r)
-            await db.flush()
-            ticket_type = "risk"
-            ticket_id = str(r.id)
-        elif it.type == "issues":
-            issue = Issue(
-                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
-                title=title_value, description=description_value,
-                type="issue", priority=int(priority_value) if priority_value else 3,
-                committed_date=None, owner_id=None, area_id=None,
-                status="open", reported_at=datetime.now(UTC),
-                comments=[], created_by=cu.id,
-            )
-            db.add(issue)
-            await db.flush()
-            ticket_type = "issue"
-            ticket_id = str(issue.id)
-        elif it.type == "lessons":
-            lesson = Lesson(
-                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
-                title=title_value, description=description_value,
-                category="improvement", phase=None,
-                recommendation=None, tags=[],
-                status="published", created_by=cu.id,
-            )
-            db.add(lesson)
-            await db.flush()
-            ticket_type = "lesson"
-            ticket_id = str(lesson.id)
-        else:  # changes
-            chg = ChangeRequest(
-                tenant_id=str(tenant_id), project_id=str(m.project_id), folio=folio,
-                title=title_value, description=description_value,
-                type="scope", impact=None, status="in_review",
-                requested_by=cu.id, requested_at=datetime.now(UTC),
-                created_by=cu.id,
-            )
-            db.add(chg)
-            await db.flush()
-            ticket_type = "change_request"
-            ticket_id = str(chg.id)
-
         sugg["status"] = "approved"
         sugg["ticket_id"] = ticket_id
         sugg["ticket_type"] = ticket_type
         if it.short_desc:
-            sugg["short_desc"] = short_desc
+            sugg["short_desc"] = it.short_desc.strip()
         bucket[it.index] = sugg
         suggestions[it.type] = bucket
 
