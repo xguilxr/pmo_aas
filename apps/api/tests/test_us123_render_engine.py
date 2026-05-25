@@ -344,11 +344,8 @@ def test_section_by_area_tolerates_rows_without_area_name():
     'area_name' cuando una sección tenía rows sin esa clave (ej. hitos
     o issues sin área). El motor debe agruparlos en 'Sin área asignada'.
     """
-    from app.services.reports.engine import _section_by_area
-
-    # Simulamos el `data` ya construido por _section_by_section con dos
-    # secciones: una con area_name y otra sin él.
     import app.services.reports.engine as engine_mod
+    from app.services.reports.engine import _section_by_area
 
     # Parchamos _section_by_section para devolver data sintética.
     original = engine_mod._section_by_section
@@ -367,7 +364,7 @@ def test_section_by_area_tolerates_rows_without_area_name():
             return meta, data
 
         engine_mod._section_by_section = _fake_by_section
-        meta, data = _section_by_area(["S-16", "S-09"], {}, None, {}, None)
+        _meta, data = _section_by_area(["S-16", "S-09"], {}, None, {}, None)
     finally:
         engine_mod._section_by_section = original
 
