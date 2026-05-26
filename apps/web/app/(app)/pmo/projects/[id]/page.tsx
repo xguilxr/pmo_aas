@@ -3,58 +3,32 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Activity,
-  ArrowRightLeft,
-  BarChart3,
-  CircleDollarSign,
-  ClipboardList,
-  FileText,
-  GitPullRequest,
-  Lightbulb,
-  ListTree,
-  MessageSquare,
-  Pencil,
-  Shield,
-  Sparkles,
-  TriangleAlert,
-  UserMinus,
-  UserPlus,
-  Users,
-} from "lucide-react";
+import { Activity, ArrowRightLeft, Pencil } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
-import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { getOrganization, type Organization } from "@/lib/api/organizations";
 import { getProjectCharter, type ProjectCharter } from "@/lib/api/project-charters";
 import { listTasks, type Task } from "@/lib/api/tasks";
 import {
   HEALTH_LABEL,
-  MEMBER_ROLE_LABEL,
   PHASE_LABEL,
   TYPE_LABEL,
-  addMember,
   changePhase,
   getProject,
-  removeMember,
   updateProject,
   type ProjectDetail,
   type ProjectHealth,
-  type ProjectMemberRole,
   type ProjectPhase,
 } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
-
-type Tab = "overview" | "team" | "progress" | "budget" | "activity" | "stakeholders";
 
 const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
   planning: ["execution", "closed"],
@@ -62,30 +36,6 @@ const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
   support: ["closed"],
   closed: [],
 };
-
-// ENH-005: Resumen del proyecto muestra KPIs linkeados a cada módulo
-// en vez de una barra de botones. Los items con count tienen métrica;
-// los action-only (Tareas, Gantt, Minuta IA, Reporte IA) no.
-const MODULE_KPIS: {
-  key: keyof ProjectDetail["module_counts"] | string;
-  label: string;
-  href: (id: string) => string;
-  icon: React.ReactNode;
-  hasCount: boolean;
-}[] = [
-  // ENH-026: tabs Riesgos/AIDs apuntan a la vista consolidada /raid
-  // (las rutas /risks y /issues fueron consolidadas allí).
-  { key: "risks", label: "Riesgos", href: (id) => `/pmo/projects/${id}/raid?tab=risks`, icon: <TriangleAlert className="h-4 w-4" aria-hidden />, hasCount: true },
-  { key: "issues", label: "AIDs", href: (id) => `/pmo/projects/${id}/raid?tab=actions`, icon: <Shield className="h-4 w-4" aria-hidden />, hasCount: true },
-  { key: "change_requests", label: "Cambios", href: (id) => `/pmo/projects/${id}/changes`, icon: <GitPullRequest className="h-4 w-4" aria-hidden />, hasCount: true },
-  { key: "documents", label: "Documentos", href: (id) => `/pmo/projects/${id}/documents`, icon: <FileText className="h-4 w-4" aria-hidden />, hasCount: true },
-  { key: "lessons", label: "Lecciones", href: (id) => `/pmo/projects/${id}/lessons`, icon: <Lightbulb className="h-4 w-4" aria-hidden />, hasCount: true },
-  { key: "minutes", label: "Minutas", href: (id) => `/pmo/projects/${id}/minutes`, icon: <MessageSquare className="h-4 w-4" aria-hidden />, hasCount: true },
-  { key: "tasks", label: "Tareas", href: (id) => `/pmo/projects/${id}/tasks`, icon: <ListTree className="h-4 w-4" aria-hidden />, hasCount: false },
-  { key: "gantt", label: "Gantt", href: (id) => `/pmo/projects/${id}/gantt`, icon: <BarChart3 className="h-4 w-4" aria-hidden />, hasCount: false },
-  { key: "ai_minutes", label: "Minuta IA", href: (id) => `/pmo/projects/${id}/ai-minutes/new`, icon: <Sparkles className="h-4 w-4" aria-hidden />, hasCount: false },
-  { key: "reports", label: "Reporte IA", href: (id) => `/pmo/projects/${id}/reports`, icon: <Sparkles className="h-4 w-4" aria-hidden />, hasCount: false },
-];
 
 function formatMxn(v: string | number | null): string {
   if (v === null) return "—";
@@ -136,7 +86,6 @@ export default function ProjectDetailPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("team");
   const [notice, setNotice] = useState<string | null>(
     search.get("created") === "1" ? "Proyecto creado" : null,
   );
@@ -146,15 +95,8 @@ export default function ProjectDetailPage() {
   const [phaseComment, setPhaseComment] = useState("");
   const [phaseSubmitting, setPhaseSubmitting] = useState(false);
 
-  const [memberModal, setMemberModal] = useState(false);
-  const [memberUserId, setMemberUserId] = useState("");
-  const [memberRole, setMemberRole] = useState<ProjectMemberRole>("team");
-  const [memberSubmitting, setMemberSubmitting] = useState(false);
-  const [users, setUsers] = useState<AdminUser[]>([]);
-
   // Stakeholders informativos del charter: sponsor / business_leader /
-  // tech_leader. Sólo se listan los que tienen `name` no vacío. Si la
-  // lista queda vacía, el tab se oculta (no hay nada que mostrar).
+  // tech_leader. Sólo se listan los que tienen `name` no vacío.
   const charterStakeholders = useMemo(() => {
     if (!charter) return [];
     const rows: { role: string; name: string; email: string | null }[] = [];
@@ -217,18 +159,6 @@ export default function ProjectDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function openMemberModal() {
-    setMemberModal(true);
-    if (users.length === 0) {
-      try {
-        const r = await listUsers({ is_active: true, limit: 100 });
-        setUsers(r.items);
-      } catch {
-        setUsers([]);
-      }
-    }
-  }
-
   async function submitPhase() {
     if (!project) return;
     setPhaseSubmitting(true);
@@ -242,33 +172,6 @@ export default function ProjectDetailPage() {
       setNotice(err instanceof ApiError ? err.message : "No se pudo cambiar la fase");
     } finally {
       setPhaseSubmitting(false);
-    }
-  }
-
-  async function submitMember() {
-    if (!project || !memberUserId) return;
-    setMemberSubmitting(true);
-    try {
-      await addMember(project.id, { user_id: memberUserId, role_in_project: memberRole });
-      setMemberModal(false);
-      setMemberUserId("");
-      setMemberRole("team");
-      await reload();
-    } catch (err) {
-      setNotice(err instanceof ApiError ? err.message : "No se pudo agregar el miembro");
-    } finally {
-      setMemberSubmitting(false);
-    }
-  }
-
-  async function handleRemove(userId: string) {
-    if (!project) return;
-    if (!confirm("¿Quitar a este miembro del proyecto?")) return;
-    try {
-      await removeMember(project.id, userId);
-      await reload();
-    } catch (err) {
-      setNotice(err instanceof ApiError ? err.message : "No se pudo quitar el miembro");
     }
   }
 
@@ -455,193 +358,18 @@ export default function ProjectDetailPage() {
         <MiniGantt tasks={tasks} />
       </section>
 
-      <section
-        aria-label="Módulos del proyecto"
-        className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5"
-      >
-        {MODULE_KPIS.map((m) => {
-          const count = m.hasCount
-            ? project.module_counts[m.key as string] ?? 0
-            : null;
-          return (
-            <Link
-              key={m.key}
-              href={m.href(project.id)}
-              className="group flex h-full flex-col gap-1 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)]"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
-                  {m.label}
-                </span>
-                <span className="text-[var(--color-tertiary)]">{m.icon}</span>
-              </div>
-              {count !== null ? (
-                <span className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-                  {count}
-                </span>
-              ) : (
-                <span className="text-sm font-medium text-[var(--color-secondary)]">
-                  Abrir
-                </span>
-              )}
-              <span className="text-[11px] text-[var(--color-tertiary)] group-hover:text-[var(--color-secondary)]">
-                Ver detalle →
-              </span>
-            </Link>
-          );
-        })}
-      </section>
-
-      <nav role="tablist" className="flex items-center gap-1 border-b border-[var(--border-subtle)]">
-        {(
-          [
-            { id: "team", label: "Equipo" },
-            { id: "progress", label: "Avance" },
-            { id: "budget", label: "Presupuesto" },
-            { id: "activity", label: "Actividad" },
-            // Stakeholders: solo se renderiza si el charter tiene al
-            // menos uno (sponsor / business_leader / tech_leader).
-            ...(charterStakeholders.length > 0
-              ? [{ id: "stakeholders" as Tab, label: "Stakeholders" }]
-              : []),
-          ] as { id: Tab; label: string }[]
-        ).map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "-mb-px h-9 border-b-2 px-3 text-[13px] font-medium transition-colors",
-              tab === t.id
-                ? "border-[var(--text-primary)] text-[var(--text-primary)]"
-                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {tab === "team" ? (
-        <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
-          <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
-              <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">Equipo</h2>
-            </div>
-            <Button size="sm" onClick={openMemberModal}>
-              <UserPlus className="h-4 w-4" aria-hidden /> Agregar
-            </Button>
-          </header>
-          <ul className="divide-y divide-[var(--border-subtle)]">
-            {project.members.map((m) => (
-              <li key={m.user_id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-[14px] font-medium text-[var(--text-primary)]">
-                    {m.full_name || m.username}
-                  </p>
-                  <p className="text-[12px] text-[var(--text-tertiary)]">
-                    {MEMBER_ROLE_LABEL[m.role_in_project] ?? m.role_in_project}
-                  </p>
-                </div>
-                {m.role_in_project !== "pm" ? (
-                  <Button variant="ghost" size="sm" onClick={() => handleRemove(m.user_id)}>
-                    <UserMinus className="h-4 w-4" aria-hidden /> Quitar
-                  </Button>
-                ) : (
-                  <Badge variant="accent">PM</Badge>
-                )}
-              </li>
-            ))}
-            {project.members.length === 0 ? (
-              <li className="px-4 py-10 text-center text-[13px] text-[var(--text-tertiary)]">
-                Sin miembros asignados.
-              </li>
-            ) : null}
-          </ul>
-        </section>
-      ) : null}
-
-      {tab === "progress" ? (
-        <Card title="Avance">
-          <div className="flex items-center gap-3">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-muted)]">
-              <div
-                className="h-full rounded-full bg-[var(--text-primary)]"
-                style={{ width: `${project.progress}%` }}
-              />
-            </div>
-            <span className="w-12 text-right text-[13px] tabular-nums text-[var(--text-secondary)]">
-              {project.progress}%
-            </span>
-          </div>
-          <p className="mt-3 text-[13px] text-[var(--text-tertiary)]">
-            Para editar el avance, usa <span className="text-[var(--text-primary)]">Editar</span> en el
-            encabezado o actualiza desde el módulo de tareas cuando esté disponible.
+      {/* ENH-131: solo el feed de actividad queda en la parte baja del
+          Resumen (US-149 lo cablea con eventos reales del audit log). */}
+      <Card title="Actividad">
+        <div className="flex items-start gap-3">
+          <Activity className="mt-0.5 h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
+          <p className="text-[13px] text-[var(--text-tertiary)]">
+            El feed completo de eventos del proyecto se integrará con el panel de auditoría del
+            administrador. Mientras tanto, los cambios críticos (fase, asignaciones, salud) quedan
+            registrados en el audit log global.
           </p>
-        </Card>
-      ) : null}
-
-      {tab === "budget" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card title="Presupuesto plan">
-            <div className="flex items-center gap-2">
-              <CircleDollarSign className="h-5 w-5 text-[var(--text-tertiary)]" aria-hidden />
-              <span className="text-2xl font-semibold tabular-nums text-[var(--text-primary)]">
-                {formatMxn(project.budget)}
-              </span>
-            </div>
-          </Card>
-          <Card title="Presupuesto real">
-            <div className="flex items-center gap-2">
-              <CircleDollarSign className="h-5 w-5 text-[var(--text-tertiary)]" aria-hidden />
-              <span className="text-2xl font-semibold tabular-nums text-[var(--text-primary)]">
-                {formatMxn(project.actual_budget)}
-              </span>
-            </div>
-          </Card>
         </div>
-      ) : null}
-
-      {tab === "activity" ? (
-        <Card title="Actividad">
-          <div className="flex items-start gap-3">
-            <Activity className="mt-0.5 h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
-            <p className="text-[13px] text-[var(--text-tertiary)]">
-              El feed completo de eventos del proyecto se integrará con el panel de auditoría del
-              administrador. Mientras tanto, los cambios críticos (fase, asignaciones, salud) quedan
-              registrados en el audit log global.
-            </p>
-          </div>
-        </Card>
-      ) : null}
-
-      {tab === "stakeholders" && charterStakeholders.length > 0 ? (
-        <Card title="Stakeholders">
-          <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
-            Solo informativo. Editable desde el charter del proyecto.
-          </p>
-          <ul className="divide-y divide-[var(--border-subtle)]">
-            {charterStakeholders.map((s) => (
-              <li key={`${s.role}-${s.name}`} className="flex items-center justify-between py-2">
-                <div>
-                  <p className="text-[14px] font-medium text-[var(--text-primary)]">{s.name}</p>
-                  <p className="text-[12px] text-[var(--text-tertiary)]">{s.role}</p>
-                </div>
-                {s.email ? (
-                  <a
-                    href={`mailto:${s.email}`}
-                    className="text-[12px] text-[var(--color-accent)] hover:underline"
-                  >
-                    {s.email}
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
+      </Card>
 
       <Modal
         open={phaseModal}
@@ -685,57 +413,6 @@ export default function ProjectDetailPage() {
             value={phaseComment}
             onChange={(e) => setPhaseComment(e.target.value)}
           />
-        </div>
-      </Modal>
-
-      <Modal
-        open={memberModal}
-        onClose={() => !memberSubmitting && setMemberModal(false)}
-        title="Agregar miembro"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setMemberModal(false)} disabled={memberSubmitting}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={submitMember}
-              loading={memberSubmitting}
-              disabled={!memberUserId}
-            >
-              Agregar
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-3">
-          <label className="block text-[12px] font-medium text-[var(--text-secondary)]">
-            Usuario
-          </label>
-          <Select value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)}>
-            <option value="">Selecciona…</option>
-            {users
-              .filter((u) => !project.members.some((m) => m.user_id === u.id))
-              .map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name} · {u.email}
-                </option>
-              ))}
-          </Select>
-          <label className="block text-[12px] font-medium text-[var(--text-secondary)]">
-            Rol en el proyecto
-          </label>
-          <Select
-            value={memberRole}
-            onChange={(e) => setMemberRole(e.target.value as ProjectMemberRole)}
-          >
-            {(Object.keys(MEMBER_ROLE_LABEL) as ProjectMemberRole[])
-              .filter((r) => r !== "pm")
-              .map((r) => (
-                <option key={r} value={r}>
-                  {MEMBER_ROLE_LABEL[r]}
-                </option>
-              ))}
-          </Select>
         </div>
       </Modal>
     </div>
