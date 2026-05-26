@@ -55,7 +55,7 @@ Habilitar **4 niveles de reportes** del PMOaaS:
 
 Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de composición. Los 4 niveles son combinaciones predefinidas o libres de las mismas secciones. Un solo motor de render, dos modos de composición (Avance "por sección" y Seguimiento "por área").
 
-**Fuera de scope original (v1.0):** S-10 entregables formales; S-07 curva S (pendiente). **US-151 (2026-05-26) introdujo `metric_snapshots`** (foto semanal a 4 niveles), y **US-158 implementó S-05 (Tendencia)** —sparkline SVG server-side + tabla desde snapshots— y **S-15 (Matriz de riesgos 5x5)** como secciones del builder (project-level). Ambas seedeadas por migración 0080 y registradas en `SECTION_BUILDERS`. S-07 (curva S) queda como follow-up ahora que la historia existe.
+**Fuera de scope original (v1.0):** S-10 entregables formales; S-07 curva S (pendiente). **US-151 (2026-05-26) introdujo `metric_snapshots`** (foto semanal a 4 niveles), y **US-158 implementó S-05 (Tendencia)** —sparkline SVG server-side + tabla desde snapshots— y **S-15 (Matriz de riesgos 5x5)** como secciones del builder (project-level). Ambas seedeadas por migración 0080 y registradas en `SECTION_BUILDERS`. **US-161** implementó **S-07 (Curva-S)**: planeado (lineal `start_date`→`end_date`, capturado en `metric_snapshots.extras.avg_progress_plan`) vs real acumulado, como sección del builder con SVG dual server-side (migración 0081).
 
 ## Decisiones arquitectónicas (registradas en DECISIONS.md)
 

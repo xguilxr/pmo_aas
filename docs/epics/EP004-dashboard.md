@@ -283,8 +283,13 @@ tabla comparativa) → plantilla `reports/scope_status.html`. Endpoints
 y `POST /programs/{id}/reports/status` (N2, admin). Botones de descarga en `/pmo`,
 org y programa. Helper SVG en `reports/svg.py` (compartido con el motor).
 
-**Estado de integración:** backend + frontend DONE (Fase 1-4) + revamp Fase 5.
-Pendiente: verificación manual en navegador + PDF, y consolidar el
-`ProgressGauge` inline del project detail (PR #511) con el `Gauge` compartido
-cuando ese PR mergee. Follow-up: S-07 curva-S, scoping no-admin de las vistas
-agregadas, heatmap/treemap embebidos en el PDF.
+**Estado de integración:** backend + frontend DONE (Fase 1-5) + follow-ups:
+- **ENH-141** — `ProgressGauge` del project detail consolidado en el `Gauge`
+  compartido (tras merge de #511).
+- **US-161** — sección de reporte **S-07 Curva-S** (planeado vs real; planeado
+  capturado en `metric_snapshots.extras.avg_progress_plan`).
+- **US-162** — vistas/reportes agregados N1/N2 **accesibles a PMs** con scoping
+  por `scoped_project_ids` (capturar snapshots sigue admin-only).
+- **US-163** — **heatmap + treemap** embebidos en los PDF de status N1/N2.
+
+Único pendiente: verificación manual en navegador + revisión visual de los PDF.
