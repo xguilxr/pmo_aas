@@ -1080,6 +1080,8 @@ async def gantt_view(
     tasks = (
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
     ).scalars().all()
+    # BUG-066: el Gantt debe respetar el orden WBS igual que list_tasks.
+    tasks = sorted(tasks, key=lambda t: wbs_sort_key(t.wbs))
     deps = (
         await db.execute(
             select(TaskDependency).where(
