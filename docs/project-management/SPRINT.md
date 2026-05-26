@@ -30,7 +30,20 @@ Migraciones nuevas pendientes de aplicar en Railway: 0082 + 0083 (además de
 Follow-up doc diferido (US-164): navigation.md + ADR/DEC del supersede de
 chrome navy DEC-006.
 
-Próximo libre: US-165, BUG-069, ENH-144.
+Próximo libre: US-165, BUG-069, ENH-146.
+
+Batch "chrome: logo full-size + iconos org/programa" (2026-05-26) en branch
+claude/gracious-pascal-MPjsq. 2 commits, status:fix-committed, esperando
+MERGE + QA visual del owner:
+
+- ENH-144 #520 (e5f70e1) — logo del tenant a tamaño completo en topbar
+  (zona izquierda fija, independiente del estado colapsado de la sidebar) +
+  branding "PMO-aaS" a la derecha; elimina el nombre del tenant en texto.
+- ENH-145 #521 (d5974a9) — iconos distintos: organizaciones `Building2`,
+  programas `Layers` (lucide-react); corrige mislabel del nav admin.
+
+Frontend-only (sin migraciones). tsc verde (sólo error pre-existente en
+globals.css, ajeno al cambio).
 ```
 
 ---
