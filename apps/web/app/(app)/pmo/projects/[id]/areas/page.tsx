@@ -23,7 +23,7 @@ export default function ProjectAreasPage() {
           Áreas/Recursos
         </h1>
         <p className="text-sm text-[var(--color-tertiary)]">
-          Directorio del proyecto + catálogos tenant (áreas, equipos
+          Recursos del proyecto + catálogos tenant (áreas, equipos
           operativos, roles).
         </p>
       </header>
@@ -37,7 +37,7 @@ export default function ProjectAreasPage() {
           >
             {(
               [
-                { v: "directory", label: "Directorio" },
+                { v: "directory", label: "Recursos" },
                 { v: "catalog", label: "Áreas y Equipos" },
               ] as const
             ).map((opt) => {
