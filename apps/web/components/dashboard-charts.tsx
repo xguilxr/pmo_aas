@@ -245,3 +245,348 @@ export const PALETTE = {
   info: "var(--color-info-fg)",
   neutral: "var(--color-muted)",
 };
+
+// ===========================================================================
+// US-153 — Primitivos para dashboards N1/N2 (Gauge, TrendLines, RiskMatrix,
+// Heatmap, Treemap). Todos render-only y consumen tokens del design-system.
+// ===========================================================================
+
+const HEALTH_FILL: Record<string, string> = {
+  green: "var(--color-success-fg)",
+  yellow: "var(--color-warning-fg)",
+  red: "var(--color-danger-fg)",
+};
+
+/** Dona de progreso/desviación con el valor al centro (0-100). */
+export function Gauge({
+  value,
+  size = 120,
+  thickness = 12,
+  ariaLabel,
+  tone = "accent",
+  suffix = "%",
+}: {
+  value: number;
+  size?: number;
+  thickness?: number;
+  ariaLabel: string;
+  tone?: "accent" | "success" | "warning" | "danger";
+  suffix?: string;
+}) {
+  const pct = Math.max(0, Math.min(100, value));
+  const cx = size / 2;
+  const r = size / 2 - thickness / 2 - 2;
+  const circ = TAU * r;
+  const stroke = PALETTE[tone] ?? PALETTE.accent;
+  return (
+    <svg width={size} height={size} role="img" aria-label={ariaLabel}>
+      <g transform={`rotate(-90 ${cx} ${cx})`}>
+        <circle
+          cx={cx}
+          cy={cx}
+          r={r}
+          fill="none"
+          stroke="var(--color-subtle)"
+          strokeWidth={thickness}
+        />
+        <circle
+          cx={cx}
+          cy={cx}
+          r={r}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={thickness}
+          strokeLinecap="round"
+          strokeDasharray={`${(pct / 100) * circ} ${circ}`}
+        />
+      </g>
+      <text
+        x={cx}
+        y={cx + 1}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={size * 0.22}
+        fontWeight="600"
+        className="tabular-nums"
+        fill="var(--color-primary)"
+      >
+        {Math.round(pct)}
+        <tspan fontSize={size * 0.12} fill="var(--color-tertiary)">
+          {suffix}
+        </tspan>
+      </text>
+    </svg>
+  );
+}
+
+/** Línea de tendencia (una métrica) con área suave. `data` ordenado por x. */
+export function TrendLines({
+  data,
+  ariaLabel,
+  valueFormat,
+  color = "var(--color-accent)",
+}: {
+  data: { x: string; y: number }[];
+  ariaLabel: string;
+  valueFormat?: (n: number) => string;
+  color?: string;
+}) {
+  if (data.length === 0) return <EmptyCanvas size={120} label="Sin datos" />;
+  const VB_W = 300;
+  const VB_H = 100;
+  const padX = 6;
+  const padY = 10;
+  const max = Math.max(1, ...data.map((d) => d.y));
+  const min = Math.min(0, ...data.map((d) => d.y));
+  const span = max - min || 1;
+  const n = data.length;
+  const xAt = (i: number) =>
+    n === 1 ? VB_W / 2 : padX + (i * (VB_W - 2 * padX)) / (n - 1);
+  const yAt = (v: number) => VB_H - padY - ((v - min) / span) * (VB_H - 2 * padY);
+  const line = data.map((d, i) => `${xAt(i)},${yAt(d.y)}`).join(" ");
+  const area = `${padX},${VB_H - padY} ${line} ${xAt(n - 1)},${VB_H - padY}`;
+  const last = data[n - 1];
+  return (
+    <div className="w-full" style={{ aspectRatio: `${VB_W} / ${VB_H}` }}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={ariaLabel}
+      >
+        <polygon points={area} fill={color} opacity={0.1} />
+        <polyline
+          points={line}
+          fill="none"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        {n <= 24
+          ? data.map((d, i) => (
+              <circle key={i} cx={xAt(i)} cy={yAt(d.y)} r={1.6} fill={color}>
+                <title>{`${d.x}: ${valueFormat ? valueFormat(d.y) : d.y}`}</title>
+              </circle>
+            ))
+          : null}
+        <circle cx={xAt(n - 1)} cy={yAt(last.y)} r={2.6} fill={color} />
+      </svg>
+    </div>
+  );
+}
+
+/** Matriz 5×5 de riesgos (probabilidad × impacto). `cells` 1-indexados. */
+export function RiskMatrix({
+  cells,
+  ariaLabel,
+  onCellClick,
+}: {
+  cells: { probability: number; impact: number; count: number }[];
+  ariaLabel: string;
+  onCellClick?: (probability: number, impact: number) => void;
+}) {
+  const map = new Map<string, number>();
+  for (const c of cells) map.set(`${c.probability}:${c.impact}`, c.count);
+  const zoneClass = (sev: number) =>
+    sev <= 6
+      ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
+      : sev <= 12
+        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
+        : "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]";
+  const probs = [5, 4, 3, 2, 1];
+  const impacts = [1, 2, 3, 4, 5];
+  return (
+    <div role="img" aria-label={ariaLabel} className="text-xs">
+      <div className="flex gap-1">
+        <div className="flex w-4 items-center">
+          <span className="-rotate-90 whitespace-nowrap text-[10px] uppercase tracking-wide text-[var(--color-tertiary)]">
+            Probabilidad
+          </span>
+        </div>
+        <div className="grid flex-1 grid-cols-5 gap-1">
+          {probs.map((p) =>
+            impacts.map((im) => {
+              const count = map.get(`${p}:${im}`) ?? 0;
+              const sev = p * im;
+              const interactive = onCellClick && count > 0;
+              return (
+                <button
+                  key={`${p}:${im}`}
+                  type="button"
+                  disabled={!interactive}
+                  onClick={interactive ? () => onCellClick!(p, im) : undefined}
+                  title={`Prob ${p} × Impacto ${im} — ${count} riesgo(s)`}
+                  className={cnLocal(
+                    "flex aspect-square items-center justify-center rounded-[var(--radius-sm)] font-semibold tabular-nums transition-opacity",
+                    zoneClass(sev),
+                    count === 0 ? "opacity-30" : "",
+                    interactive ? "cursor-pointer hover:opacity-80" : "cursor-default",
+                  )}
+                >
+                  {count > 0 ? count : ""}
+                </button>
+              );
+            }),
+          )}
+        </div>
+      </div>
+      <div className="mt-1 grid grid-cols-5 gap-1 pl-5 text-center text-[10px] uppercase tracking-wide text-[var(--color-tertiary)]">
+        {impacts.map((im) => (
+          <span key={im}>{im}</span>
+        ))}
+      </div>
+      <div className="mt-0.5 pl-5 text-center text-[10px] uppercase tracking-wide text-[var(--color-tertiary)]">
+        Impacto →
+      </div>
+    </div>
+  );
+}
+
+/** Heatmap Organización × Salud (conteo de proyectos por celda). */
+export function Heatmap({
+  rows,
+  ariaLabel,
+  onCellClick,
+}: {
+  rows: { org_id: string; org_name: string; green: number; yellow: number; red: number; total: number }[];
+  ariaLabel: string;
+  onCellClick?: (orgId: string, health: "green" | "yellow" | "red") => void;
+}) {
+  if (rows.length === 0) return <EmptyCanvas size={120} label="Sin organizaciones" />;
+  const maxByCol = {
+    green: Math.max(1, ...rows.map((r) => r.green)),
+    yellow: Math.max(1, ...rows.map((r) => r.yellow)),
+    red: Math.max(1, ...rows.map((r) => r.red)),
+  };
+  const cols: ("green" | "yellow" | "red")[] = ["green", "yellow", "red"];
+  const colLabel = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
+  return (
+    <div role="img" aria-label={ariaLabel} className="overflow-x-auto">
+      <table className="w-full border-separate border-spacing-1 text-xs">
+        <thead>
+          <tr>
+            <th className="text-left font-medium text-[var(--color-tertiary)]" />
+            {cols.map((c) => (
+              <th key={c} className="px-2 text-center font-medium text-[var(--color-tertiary)]">
+                {colLabel[c]}
+              </th>
+            ))}
+            <th className="px-2 text-right font-medium text-[var(--color-tertiary)]">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.org_id}>
+              <td className="max-w-[180px] truncate pr-2 text-[var(--color-secondary)]" title={r.org_name}>
+                {r.org_name}
+              </td>
+              {cols.map((c) => {
+                const count = r[c];
+                const intensity = count / maxByCol[c];
+                const interactive = onCellClick && count > 0;
+                return (
+                  <td key={c} className="p-0">
+                    <button
+                      type="button"
+                      disabled={!interactive}
+                      onClick={interactive ? () => onCellClick!(r.org_id, c) : undefined}
+                      title={`${r.org_name} · ${colLabel[c]}: ${count}`}
+                      style={{ opacity: count === 0 ? 0.25 : 0.35 + intensity * 0.65 }}
+                      className={cnLocal(
+                        "flex h-8 w-full items-center justify-center rounded-[var(--radius-sm)] font-semibold tabular-nums",
+                        c === "green"
+                          ? "bg-[var(--color-success-fg)] text-white"
+                          : c === "yellow"
+                            ? "bg-[var(--color-warning-fg)] text-white"
+                            : "bg-[var(--color-danger-fg)] text-white",
+                        interactive ? "cursor-pointer hover:brightness-110" : "cursor-default",
+                      )}
+                    >
+                      {count > 0 ? count : ""}
+                    </button>
+                  </td>
+                );
+              })}
+              <td className="px-2 text-right font-semibold tabular-nums text-[var(--color-primary)]">
+                {r.total}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type TreeProject = { id: string; name: string; folio: string; value: number; health: string | null };
+type TreeProgram = { id: string; name: string; children: TreeProject[] };
+type TreeOrg = { id: string; name: string; children: TreeProgram[] };
+
+/** Treemap proporcional Organización → Programa → Proyecto (valor=presupuesto). */
+export function Treemap({ tree, ariaLabel }: { tree: TreeOrg[]; ariaLabel: string }) {
+  if (tree.length === 0) return <EmptyCanvas size={120} label="Sin proyectos" />;
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: "MXN",
+      maximumFractionDigits: 0,
+      notation: "compact",
+    }).format(n);
+  return (
+    <div role="img" aria-label={ariaLabel} className="space-y-3">
+      {tree.map((org) => {
+        const orgTotal = org.children.reduce(
+          (a, p) => a + p.children.reduce((b, c) => b + c.value, 0),
+          0,
+        );
+        return (
+          <div key={org.id} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="truncate font-semibold text-[var(--color-primary)]">{org.name}</span>
+              <span className="tabular-nums text-[var(--color-tertiary)]">{fmt(orgTotal)}</span>
+            </div>
+            <div className="space-y-1">
+              {org.children.map((prog) => {
+                const projects = prog.children.filter((p) => p.value > 0);
+                const total = projects.reduce((a, p) => a + p.value, 0);
+                if (projects.length === 0) return null;
+                return (
+                  <div key={prog.id} className="flex items-center gap-2">
+                    <span className="w-24 shrink-0 truncate text-[10px] text-[var(--color-tertiary)]" title={prog.name}>
+                      {prog.name}
+                    </span>
+                    <div className="flex h-6 flex-1 overflow-hidden rounded-[var(--radius-sm)]">
+                      {projects.map((p) => (
+                        <div
+                          key={p.id}
+                          title={`${p.name} (${p.folio}) · ${fmt(p.value)}`}
+                          style={{
+                            flexGrow: p.value,
+                            flexBasis: 0,
+                            backgroundColor: HEALTH_FILL[p.health ?? ""] ?? "var(--color-muted)",
+                          }}
+                          className="min-w-[3px] border-r border-[var(--color-surface)] last:border-r-0"
+                        />
+                      ))}
+                    </div>
+                    <span className="w-14 shrink-0 text-right text-[10px] tabular-nums text-[var(--color-tertiary)]">
+                      {fmt(total)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function cnLocal(...parts: (string | false | undefined | null)[]): string {
+  return parts.filter(Boolean).join(" ");
+}
