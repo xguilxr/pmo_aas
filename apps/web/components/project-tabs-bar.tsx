@@ -65,13 +65,6 @@ const TABS: ProjectTab[] = [
     match: (p) => /^\/admin\/projects\/[^/]+\/documents/.test(p),
   },
   {
-    id: "lessons",
-    label: "Lecciones",
-    icon: <Lightbulb className="h-4 w-4" aria-hidden />,
-    href: (id) => `/pmo/projects/${id}/lessons`,
-    match: (p) => /^\/admin\/projects\/[^/]+\/lessons/.test(p),
-  },
-  {
     id: "minutes",
     label: "Minutas",
     icon: <MessageSquare className="h-4 w-4" aria-hidden />,
@@ -92,6 +85,13 @@ const TABS: ProjectTab[] = [
     icon: <GitPullRequest className="h-4 w-4" aria-hidden />,
     href: (id) => `/pmo/projects/${id}/changes`,
     match: (p) => /^\/admin\/projects\/[^/]+\/changes/.test(p),
+  },
+  {
+    id: "lessons",
+    label: "Lecciones",
+    icon: <Lightbulb className="h-4 w-4" aria-hidden />,
+    href: (id) => `/pmo/projects/${id}/lessons`,
+    match: (p) => /^\/admin\/projects\/[^/]+\/lessons/.test(p),
   },
 ];
 
