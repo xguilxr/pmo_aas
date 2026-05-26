@@ -249,6 +249,18 @@ async def get_project(
             counts[label] = (
                 await db.execute(select(func.count(model.id)).where(model.project_id == p.id))
             ).scalar_one()
+        # ENH-130: RAID desglosado por tipo de Issue (action/issue/decision)
+        # para las tarjetas Acciones / Incidentes / Decisiones del Resumen.
+        for label, issue_type in [
+            ("actions", "action"), ("incidents", "issue"), ("decisions", "decision"),
+        ]:
+            counts[label] = (
+                await db.execute(
+                    select(func.count(Issue.id)).where(
+                        Issue.project_id == p.id, Issue.type == issue_type
+                    )
+                )
+            ).scalar_one()
     except Exception:
         pass
 

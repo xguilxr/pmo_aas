@@ -36,6 +36,7 @@ import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { getOrganization, type Organization } from "@/lib/api/organizations";
 import { getProjectCharter, type ProjectCharter } from "@/lib/api/project-charters";
+import { listTasks, type Task } from "@/lib/api/tasks";
 import {
   HEALTH_LABEL,
   MEMBER_ROLE_LABEL,
@@ -131,6 +132,8 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [org, setOrg] = useState<Organization | null>(null);
   const [charter, setCharter] = useState<ProjectCharter | null>(null);
+  // ENH-130: tareas para el mini-Gantt resumido (nivel 1, por meses).
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("team");
@@ -196,6 +199,11 @@ export default function ProjectDetailPage() {
         // Sin charter creado todavía o sin permiso; el tab de Stakeholders
         // queda oculto.
         setCharter(null);
+      }
+      try {
+        setTasks(await listTasks(id));
+      } catch {
+        setTasks([]);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo cargar el proyecto");
@@ -414,6 +422,37 @@ export default function ProjectDetailPage() {
           label="Presupuesto restante"
           value={formatMxn(remainingBudget(project.budget, project.actual_budget))}
         />
+      </section>
+
+      {/* ENH-130: tarjetas RAID (con link a detalle) + mini-Gantt nivel 1. */}
+      <section aria-label="RAID y cronograma" className="grid gap-3 lg:grid-cols-[300px_1fr]">
+        <div className="grid gap-3">
+          <RaidCard
+            label="Riesgos"
+            count={project.module_counts.risks ?? 0}
+            href={`/pmo/projects/${project.id}/raid?tab=risks`}
+            tone="danger"
+          />
+          <RaidCard
+            label="Acciones"
+            count={project.module_counts.actions ?? 0}
+            href={`/pmo/projects/${project.id}/raid?tab=actions`}
+            tone="info"
+          />
+          <RaidCard
+            label="Incidentes"
+            count={project.module_counts.incidents ?? 0}
+            href={`/pmo/projects/${project.id}/raid?tab=incidents`}
+            tone="warning"
+          />
+          <RaidCard
+            label="Decisiones"
+            count={project.module_counts.decisions ?? 0}
+            href={`/pmo/projects/${project.id}/raid?tab=decisions`}
+            tone="success"
+          />
+        </div>
+        <MiniGantt tasks={tasks} />
       </section>
 
       <section
@@ -740,6 +779,126 @@ function MetricCard({
       <p className="mt-1 text-[22px] font-semibold tracking-tight text-[var(--text-primary)] tabular-nums">
         {value}
       </p>
+    </article>
+  );
+}
+
+// ENH-130: tarjeta RAID con count y link al detalle del módulo.
+function RaidCard({
+  label,
+  count,
+  href,
+  tone,
+}: {
+  label: string;
+  count: number;
+  href: string;
+  tone: "danger" | "info" | "warning" | "success";
+}) {
+  const dot = {
+    danger: "bg-[var(--color-danger-fg)]",
+    info: "bg-[var(--color-info-fg)]",
+    warning: "bg-[var(--color-warning-fg)]",
+    success: "bg-[var(--color-success-fg)]",
+  }[tone];
+  return (
+    <Link
+      href={href}
+      className="group flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-4 py-3 transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)]"
+    >
+      <span className="flex items-center gap-2">
+        <span className={cn("h-2 w-2 rounded-full", dot)} />
+        <span className="text-[13px] font-medium text-[var(--text-primary)]">{label}</span>
+      </span>
+      <span className="text-[18px] font-semibold tabular-nums text-[var(--text-primary)]">
+        {count}
+      </span>
+    </Link>
+  );
+}
+
+// ENH-130: mini-Gantt resumido del plan (tareas de nivel 1, columnas por
+// mes). Read-only; vista panorámica sin entrar al tab Plan.
+function MiniGantt({ tasks }: { tasks: Task[] }) {
+  const level1 = tasks.filter((t) =>
+    t.outline_level != null ? t.outline_level === 1 : !!t.wbs && !t.wbs.includes("."),
+  );
+  const dated = level1.filter((t) => t.start_date && t.end_date);
+  const months: Date[] = [];
+  let span = 0;
+  let totalStart = 0;
+  if (dated.length > 0) {
+    const starts = dated.map((t) => new Date(t.start_date as string).getTime());
+    const ends = dated.map((t) => new Date(t.end_date as string).getTime());
+    const min = new Date(Math.min(...starts));
+    const max = new Date(Math.max(...ends));
+    const cur = new Date(min.getFullYear(), min.getMonth(), 1);
+    const last = new Date(max.getFullYear(), max.getMonth(), 1);
+    while (cur <= last) {
+      months.push(new Date(cur));
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    totalStart = new Date(months[0].getFullYear(), months[0].getMonth(), 1).getTime();
+    const totalEnd = new Date(
+      months[months.length - 1].getFullYear(),
+      months[months.length - 1].getMonth() + 1,
+      1,
+    ).getTime();
+    span = totalEnd - totalStart;
+  }
+  function barPos(t: Task): { left: number; width: number } | null {
+    if (!t.start_date || !t.end_date || span <= 0) return null;
+    const s = new Date(t.start_date).getTime();
+    const e = new Date(t.end_date).getTime();
+    const left = ((s - totalStart) / span) * 100;
+    const width = Math.max(2, ((e - s) / span) * 100);
+    return { left: Math.max(0, left), width };
+  }
+  return (
+    <article className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
+      <h2 className="mb-3 text-[14px] font-semibold text-[var(--text-primary)]">
+        Cronograma (nivel 1)
+      </h2>
+      {dated.length === 0 ? (
+        <p className="text-[13px] text-[var(--text-tertiary)]">
+          Sin tareas de nivel 1 con fechas para mostrar.
+        </p>
+      ) : (
+        <>
+          <div className="flex border-b border-[var(--border-subtle)] text-[10px] text-[var(--text-tertiary)]">
+            {months.map((mo) => (
+              <div
+                key={`${mo.getFullYear()}-${mo.getMonth()}`}
+                className="flex-1 border-l border-[var(--border-subtle)] px-1 py-1 text-center first:border-l-0"
+              >
+                {mo.toLocaleDateString("es-MX", { month: "short", year: "2-digit" })}
+              </div>
+            ))}
+          </div>
+          <ul className="mt-2 space-y-2">
+            {level1.map((t) => {
+              const p = barPos(t);
+              return (
+                <li key={t.id}>
+                  <div className="mb-0.5 truncate text-[12px] text-[var(--text-secondary)]">
+                    {t.wbs ? `${t.wbs} ` : ""}
+                    {t.name}
+                  </div>
+                  <div className="relative h-2.5 rounded bg-[var(--color-muted)]">
+                    {p ? (
+                      <div
+                        className="absolute h-2.5 rounded bg-[var(--text-primary)]"
+                        style={{ left: `${p.left}%`, width: `${p.width}%` }}
+                        title={`${t.start_date} → ${t.end_date}`}
+                      />
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </article>
   );
 }
