@@ -115,7 +115,10 @@ function wbsParent(wbs: string | null | undefined): string | null {
 // ENH-048: predicados para los chips de filtro Hitos / Críticos / Retrasados.
 type ChipKey = "milestone" | "critical" | "delayed";
 
+// ENH-133: criticidad es booleana (is_critical). Fallback al enum legacy
+// para tareas viejas sin el boolean seteado.
 function isTaskCritical(t: Task): boolean {
+  if (typeof t.is_critical === "boolean") return t.is_critical;
   return t.criticality === "high" || t.criticality === "critical";
 }
 
@@ -194,29 +197,6 @@ function StatusBadge({ status }: { status: string }) {
       )}
     >
       {label}
-    </span>
-  );
-}
-
-// ENH-051: chip de color por criticidad. Critical rojo, high naranja,
-// medium gris (sin chip — default), low verde.
-function CriticalityChip({ value }: { value: TaskCriticality }) {
-  if (value === "medium") return null;
-  const tone =
-    value === "critical"
-      ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
-      : value === "high"
-        ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
-        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
-  return (
-    <span
-      className={cn(
-        "ml-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
-        tone,
-      )}
-      title={`Criticidad: ${TASK_CRITICALITY_LABEL[value]}`}
-    >
-      {TASK_CRITICALITY_LABEL[value]}
     </span>
   );
 }
@@ -529,6 +509,7 @@ function TaskList({
             ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
+            <th className="px-3 py-2 font-medium">Criticidad</th>
             {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
@@ -587,7 +568,6 @@ function TaskList({
                         Retrasada
                       </span>
                     ) : null}
-                    <CriticalityChip value={t.criticality ?? "medium"} />
                     {/* ENH-050: tooltip con hito relacionado. */}
                     {t.related_milestone ? (
                       <span
@@ -655,6 +635,15 @@ function TaskList({
               </td>
               <td className="px-3 py-2">
                 <StatusBadge status={t.status} />
+              </td>
+              <td className="px-3 py-2">
+                {isTaskCritical(t) ? (
+                  <span className="inline-flex items-center rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]">
+                    Sí
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-tertiary)]">—</span>
+                )}
               </td>
               {showActions ? (
                 <td className="px-3 py-2">
