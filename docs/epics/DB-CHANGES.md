@@ -356,3 +356,18 @@ con `ON DELETE CASCADE`. Downgrade hace `drop_table`.
 
 Las métricas de *flujo* (cycle-time, throughput) NO viven aquí: se calculan
 on-the-fly desde timestamps existentes (`requested_at`/`approved_at`, etc.).
+
+---
+
+## BUG-068 — `organizations.logo_url` / `client_logo_url` → TEXT (2026-05-26)
+
+### Migración **0082** — widen logo columns
+
+`organizations.logo_url` y `client_logo_url` pasan de `String(500)` a `Text`.
+Antes, subir un PNG (que se almacena como data-URL base64) excedía los 500
+caracteres y se truncaba/rechazaba — "subir PNG no se guarda bien"; las URLs
+externas cortas sí cabían. Ahora ambas columnas admiten data-URLs base64 de
+logos subidos directamente (PNG/JPG/SVG/WEBP) además de URLs externas. El cap
+de longitud vive en el schema Pydantic (`_LOGO_MAX = 3_000_000`, ~imagen de
+2 MB codificada). `alter_column` vía `batch_alter_table` (compat SQLite + PG).
+Downgrade revierte a `String(500)`.
