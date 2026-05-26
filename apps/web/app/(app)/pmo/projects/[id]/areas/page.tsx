@@ -20,7 +20,7 @@ export default function ProjectAreasPage() {
     <div className="space-y-4 p-4">
       <header>
         <h1 className="text-xl font-semibold text-[var(--color-primary)]">
-          Áreas del proyecto
+          Áreas/Recursos
         </h1>
         <p className="text-sm text-[var(--color-tertiary)]">
           Directorio del proyecto + catálogos tenant (áreas, equipos

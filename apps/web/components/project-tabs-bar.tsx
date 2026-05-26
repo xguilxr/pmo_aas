@@ -52,7 +52,7 @@ const TABS: ProjectTab[] = [
   },
   {
     id: "areas",
-    label: "Áreas",
+    label: "Áreas/Recursos",
     icon: <Users className="h-4 w-4" aria-hidden />,
     href: (id) => `/pmo/projects/${id}/areas`,
     match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
