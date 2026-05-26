@@ -76,6 +76,10 @@ class ProjectRead(BaseModel):
 class ProjectDetail(ProjectRead):
     members: list[dict] = []
     module_counts: dict[str, int] = {}
+    # ENH-129: KPIs de tareas para el gauge de Avance del Resumen.
+    # Claves: milestones_total, milestones_done, critical_total,
+    # critical_done, overdue.
+    task_kpis: dict[str, int] = {}
 
 
 class PhaseChange(BaseModel):

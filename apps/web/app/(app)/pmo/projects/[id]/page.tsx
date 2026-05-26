@@ -97,6 +97,18 @@ function formatMxn(v: string | number | null): string {
   }).format(n);
 }
 
+// ENH-129: presupuesto restante = plan − real. null si no hay plan.
+function remainingBudget(
+  budget: string | number | null,
+  actual: string | number | null,
+): number | null {
+  if (budget === null) return null;
+  const b = typeof budget === "string" ? Number(budget) : budget;
+  if (!Number.isFinite(b)) return null;
+  const a = actual === null ? 0 : typeof actual === "string" ? Number(actual) : actual;
+  return b - (Number.isFinite(a) ? a : 0);
+}
+
 function formatDate(s: string | null): string {
   if (!s) return "—";
   try {
@@ -391,21 +403,16 @@ export default function ProjectDetailPage() {
       ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          label="Avance"
-          value={`${project.progress}%`}
-          manualEdit={project.manually_edited_fields?.progress}
-        />
-        <MetricCard
-          label="Presupuesto plan"
-          value={formatMxn(project.budget)}
-          manualEdit={project.manually_edited_fields?.budget}
-        />
-        <MetricCard label="Presupuesto real" value={formatMxn(project.actual_budget)} />
+        <AvanceCard progress={project.progress} kpis={project.task_kpis} />
         <HealthCard
           value={project.health_status}
           pending={healthPending}
           onChange={setHealth}
+        />
+        <MetricCard label="Fase" value={PHASE_LABEL[project.phase]} />
+        <MetricCard
+          label="Presupuesto restante"
+          value={formatMxn(remainingBudget(project.budget, project.actual_budget))}
         />
       </section>
 
@@ -733,6 +740,76 @@ function MetricCard({
       <p className="mt-1 text-[22px] font-semibold tracking-tight text-[var(--text-primary)] tabular-nums">
         {value}
       </p>
+    </article>
+  );
+}
+
+// ENH-129: gauge tipo dona con el % de avance al centro.
+function ProgressGauge({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
+  const r = 34;
+  const c = 2 * Math.PI * r;
+  const dash = (pct / 100) * c;
+  return (
+    <svg viewBox="0 0 80 80" className="h-20 w-20 -rotate-90" aria-hidden>
+      <circle cx="40" cy="40" r={r} fill="none" stroke="var(--color-muted)" strokeWidth="8" />
+      <circle
+        cx="40"
+        cy="40"
+        r={r}
+        fill="none"
+        stroke="var(--text-primary)"
+        strokeWidth="8"
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${c - dash}`}
+      />
+    </svg>
+  );
+}
+
+// ENH-129: tarjeta de Avance con gauge + 3 líneas (hitos, críticos,
+// atrasados) usando los counts reales de task_kpis.
+function AvanceCard({
+  progress,
+  kpis,
+}: {
+  progress: number;
+  kpis: Record<string, number>;
+}) {
+  const overdue = kpis.overdue ?? 0;
+  const lines: { label: string; value: string; danger?: boolean }[] = [
+    { label: "Hitos", value: `${kpis.milestones_done ?? 0}/${kpis.milestones_total ?? 0}` },
+    { label: "Críticos", value: `${kpis.critical_done ?? 0}/${kpis.critical_total ?? 0}` },
+    { label: "Atrasados", value: String(overdue), danger: overdue > 0 },
+  ];
+  return (
+    <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+        Avance
+      </p>
+      <div className="mt-2 flex items-center gap-4">
+        <div className="relative h-20 w-20 shrink-0">
+          <ProgressGauge value={progress} />
+          <span className="absolute inset-0 flex items-center justify-center text-[16px] font-semibold tabular-nums text-[var(--text-primary)]">
+            {progress}%
+          </span>
+        </div>
+        <dl className="space-y-1">
+          {lines.map((l) => (
+            <div key={l.label} className="flex items-baseline justify-between gap-3 text-[12px]">
+              <dt className="text-[var(--text-tertiary)]">{l.label}</dt>
+              <dd
+                className={cn(
+                  "font-semibold tabular-nums",
+                  l.danger ? "text-[var(--color-danger-fg)]" : "text-[var(--text-primary)]",
+                )}
+              >
+                {l.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </article>
   );
 }

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -252,9 +252,62 @@ async def get_project(
     except Exception:
         pass
 
+    # ENH-129: KPIs de tareas para el gauge de Avance (hitos, críticos,
+    # atrasados). Atrasado = fin < hoy y no completada.
+    task_kpis: dict[str, int] = {}
+    try:
+        from app.models.task import Task  # type: ignore
+
+        today = date.today()
+        task_kpis["milestones_total"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id, Task.is_milestone.is_(True)
+                )
+            )
+        ).scalar_one()
+        task_kpis["milestones_done"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id,
+                    Task.is_milestone.is_(True),
+                    Task.status == "completed",
+                )
+            )
+        ).scalar_one()
+        task_kpis["critical_total"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id, Task.is_critical.is_(True)
+                )
+            )
+        ).scalar_one()
+        task_kpis["critical_done"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id,
+                    Task.is_critical.is_(True),
+                    Task.status == "completed",
+                )
+            )
+        ).scalar_one()
+        task_kpis["overdue"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id,
+                    Task.end_date.is_not(None),
+                    Task.end_date < today,
+                    Task.status != "completed",
+                )
+            )
+        ).scalar_one()
+    except Exception:
+        pass
+
     out = ProjectRead.model_validate(p).model_dump()
     out["members"] = members
     out["module_counts"] = counts
+    out["task_kpis"] = task_kpis
     return out
 
 

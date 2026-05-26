@@ -46,6 +46,8 @@ export type ProjectMember = {
 export type ProjectDetail = Project & {
   members: ProjectMember[];
   module_counts: Record<string, number>;
+  // ENH-129: KPIs de tareas para el gauge de Avance del Resumen.
+  task_kpis: Record<string, number>;
 };
 
 export type ProjectCreateBody = {
