@@ -8,6 +8,7 @@ from app.models.change_approval import (  # noqa: F401
     ApprovalToken,
     ChangeApprover,
 )
+from app.models.metric_snapshot import MetricSnapshot  # noqa: F401
 from app.models.modules import (  # noqa: F401
     ChangeRequest,
     Document,

@@ -331,3 +331,28 @@ y el endpoint endpoint aceptan ambos shapes en input.
 
 `meeting_minutes.description` se reutiliza para el resumen de 2-3
 oraciones (campo heredado de `_ModuleBase`, antes no usado por minute).
+
+---
+
+## US-151 — Fundación de datos analíticos / dashboards N1-N2 (2026-05-26)
+
+### Migración **0079** — tabla `metric_snapshots`
+
+Foto periódica (cadencia **semanal**, lunes 02:00 UTC vía Celery beat) de
+las métricas de *stock* del portafolio a los 4 niveles de scope
+(`tenant` / `organization` / `program` / `project`). Sin historia persistida
+no hay líneas de tendencia en los dashboards ni en los reportes Nivel 1/2;
+esta tabla es esa historia y desbloquea las secciones S-05 (tendencia) y
+S-07 (curva-S) que EP020 había diferido por falta de datos.
+
+Columnas: `scope_type`, `scope_id`, `snapshot_date` + métricas escalares
+(`projects_total/active`, `health_green/yellow/red`, `avg_progress`,
+`budget_plan/actual`, `open_risks`, `severe_risks`, `open_issues`,
+`changes_in_review`, `requests_in_review`, `tasks_total/done`,
+`milestones_due_7/14/30`) y `extras` (JSONB, bolsa flexible para métricas
+futuras sin migración). `UNIQUE(tenant_id, scope_type, scope_id,
+snapshot_date)` garantiza idempotencia del job. FK `tenant_id` → `tenants`
+con `ON DELETE CASCADE`. Downgrade hace `drop_table`.
+
+Las métricas de *flujo* (cycle-time, throughput) NO viven aquí: se calculan
+on-the-fly desde timestamps existentes (`requested_at`/`approved_at`, etc.).
