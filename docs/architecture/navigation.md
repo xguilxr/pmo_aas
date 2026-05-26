@@ -122,8 +122,9 @@ La app expone cinco superficies de navegación. Todas viven en
 
 | Superficie | Archivo | Visibilidad |
 |---|---|---|
+| **Topbar + Logo del tenant** | `app-shell.tsx` (componente `BrandMark`) | Siempre que hay sesión. Logo PNG grande en zona izquierda (`w-[200px]` × `h-11`), tamaño fijo independiente del estado de sidebar. A la derecha aparece siempre "PMO-aaS". Fallback (sin logo): nombre del tenant + "PMO-aaS". |
 | **Sidebar principal** | `app-shell.tsx` | Siempre que hay sesión. Items admin/superadmin se ocultan por rol. |
-| **Árbol de organizaciones** | `org-tree-nav.tsx` | Dentro del sidebar. Lazy-loads orgs → programas → proyectos. |
+| **Árbol de organizaciones** | `org-tree-nav.tsx` | Dentro del sidebar. Lazy-loads orgs → programas → proyectos. Iconos: Organizaciones = `Building2`, Programas = `Layers`. |
 | **Menú de usuario** | `user-menu.tsx` | Top-right. Cuenta, idioma, tema, logout. |
 | **Notificaciones** | `notification-bell.tsx` | Top-right. Lleva a `/notifications`. |
 | **Tabs de proyecto** | `project-tabs-bar.tsx` (montado por `project-layout-client.tsx`) | Sticky dentro de `/pmo/projects/[id]/*`. |
