@@ -36,7 +36,6 @@ import { listActorsByProject, type Actor } from "@/lib/api/areas";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { getProject } from "@/lib/api/projects";
 import {
-  TASK_CRITICALITY_LABEL,
   TASK_STATUS_LABEL,
   createTask,
   deleteTask,
@@ -115,7 +114,10 @@ function wbsParent(wbs: string | null | undefined): string | null {
 // ENH-048: predicados para los chips de filtro Hitos / Críticos / Retrasados.
 type ChipKey = "milestone" | "critical" | "delayed";
 
+// ENH-133: criticidad es booleana (is_critical). Fallback al enum legacy
+// para tareas viejas sin el boolean seteado.
 function isTaskCritical(t: Task): boolean {
+  if (typeof t.is_critical === "boolean") return t.is_critical;
   return t.criticality === "high" || t.criticality === "critical";
 }
 
@@ -175,15 +177,34 @@ function OwnerCell({ owner }: { owner: Task["owner"] }) {
   );
 }
 
+// ENH-135: label + control para los forms de tarea.
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const label = TASK_STATUS_LABEL[status as keyof typeof TASK_STATUS_LABEL] ?? status;
+  // BUG-067: el enum real es completed/on_hold (no done/blocked).
   const tone =
-    status === "done"
+    status === "completed"
       ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
       : status === "in_progress"
         ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]"
-        : status === "blocked"
-          ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
+        : status === "on_hold"
+          ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
           : "bg-[var(--color-subtle)] text-[var(--color-secondary)]";
   return (
     <span
@@ -193,29 +214,6 @@ function StatusBadge({ status }: { status: string }) {
       )}
     >
       {label}
-    </span>
-  );
-}
-
-// ENH-051: chip de color por criticidad. Critical rojo, high naranja,
-// medium gris (sin chip — default), low verde.
-function CriticalityChip({ value }: { value: TaskCriticality }) {
-  if (value === "medium") return null;
-  const tone =
-    value === "critical"
-      ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
-      : value === "high"
-        ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
-        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
-  return (
-    <span
-      className={cn(
-        "ml-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
-        tone,
-      )}
-      title={`Criticidad: ${TASK_CRITICALITY_LABEL[value]}`}
-    >
-      {TASK_CRITICALITY_LABEL[value]}
     </span>
   );
 }
@@ -528,6 +526,7 @@ function TaskList({
             ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
+            <th className="px-3 py-2 font-medium">Criticidad</th>
             {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
@@ -586,7 +585,6 @@ function TaskList({
                         Retrasada
                       </span>
                     ) : null}
-                    <CriticalityChip value={t.criticality ?? "medium"} />
                     {/* ENH-050: tooltip con hito relacionado. */}
                     {t.related_milestone ? (
                       <span
@@ -654,6 +652,15 @@ function TaskList({
               </td>
               <td className="px-3 py-2">
                 <StatusBadge status={t.status} />
+              </td>
+              <td className="px-3 py-2">
+                {isTaskCritical(t) ? (
+                  <span className="inline-flex items-center rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]">
+                    Sí
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-tertiary)]">—</span>
+                )}
               </td>
               {showActions ? (
                 <td className="px-3 py-2">
@@ -916,6 +923,9 @@ function PlanInner() {
     // US-090: predecesoras como string CSV ("1.1, 1.2") por simplicidad
     // del MVP — el backend valida cada wbs.
     predecessors_csv: "" as string,
+    // ENH-135: área responsable + responsable también en Nueva tarea.
+    area_id: "" as string,
+    assignee_actor_id: "" as string,
   });
   const [creating, setCreating] = useState(false);
 
@@ -1094,6 +1104,10 @@ function PlanInner() {
               .map((s) => s.trim())
               .filter(Boolean)
           : null,
+        // ENH-135: área + responsable desde Nueva tarea.
+        area_id: newForm.area_id || null,
+        owner_id: null,
+        assignee_actor_id: newForm.assignee_actor_id || null,
       });
       setNewOpen(false);
       setNewForm({
@@ -1109,6 +1123,8 @@ function PlanInner() {
         is_critical: false,
         related_milestone_id: "",
         predecessors_csv: "",
+        area_id: "",
+        assignee_actor_id: "",
       });
       await loadTasksAndGantt();
     } catch (err) {
@@ -1143,27 +1159,42 @@ function PlanInner() {
       alert("No hay tareas para exportar");
       return;
     }
+    // ENH-134: orden de columnas canónico (espeja la plantilla).
+    const areaName = (aid: string | null) =>
+      (aid && areas.find((a) => a.id === aid)?.name) || "";
     const headers = [
       "WBS",
       "Tarea",
+      "Outline Level",
       "Inicio",
       "Fin",
       "Duración (días)",
       "Avance (%)",
-      "Es hito",
       "Estado",
+      "Área Responsable",
       "Responsable",
+      "Criticidad",
+      "Es hito",
+      "Hito Relacionado",
+      "Predecessors",
+      "Successors",
     ];
     const rows = tasks.map((t) => [
       t.wbs ?? "",
       t.name,
+      t.outline_level ?? "",
       t.start_date ?? "",
       t.end_date ?? "",
       t.duration_days ?? "",
       t.progress ?? 0,
-      t.is_milestone ? "Sí" : "No",
       TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
+      areaName(t.area_id),
       ownerLabel(t.owner),
+      isTaskCritical(t) ? "Sí" : "No",
+      t.is_milestone ? "Sí" : "No",
+      t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
+      (t.predecessors ?? []).join(", "),
+      (t.successors ?? []).join(", "),
     ]);
     const csv = [
       headers.map((h) => `"${h}"`).join(","),
@@ -1196,20 +1227,29 @@ function PlanInner() {
       const ws = wb.addWorksheet("Plan", {
         views: [{ state: "frozen", ySplit: 1 }],
       });
+      // ENH-134: orden de columnas canónico (espeja la plantilla).
+      const areaName = (aid: string | null) =>
+        (aid && areas.find((a) => a.id === aid)?.name) || "";
       ws.columns = [
         { header: "WBS", key: "wbs", width: 10 },
         { header: "Tarea", key: "name", width: 40 },
+        { header: "Outline Level", key: "outline", width: 12 },
         { header: "Inicio", key: "start", width: 12 },
         { header: "Fin", key: "end", width: 12 },
         { header: "Duración (días)", key: "duration", width: 14 },
         { header: "Avance (%)", key: "progress", width: 12 },
-        { header: "Es hito", key: "milestone", width: 10 },
         { header: "Estado", key: "status", width: 16 },
+        { header: "Área Responsable", key: "area", width: 22 },
         { header: "Responsable", key: "owner", width: 18 },
+        { header: "Criticidad", key: "criticality", width: 12 },
+        { header: "Es hito", key: "milestone", width: 10 },
+        { header: "Hito Relacionado", key: "related_milestone", width: 18 },
+        { header: "Predecessors", key: "predecessors", width: 16 },
+        { header: "Successors", key: "successors", width: 16 },
       ];
-      // Header bold + fill gris claro.
+      // Header bold + fill gris claro. ENH-134: font negro.
       const header = ws.getRow(1);
-      header.font = { bold: true, color: { argb: "FF1F2937" } };
+      header.font = { bold: true, color: { argb: "FF000000" } };
       header.fill = {
         type: "pattern",
         pattern: "solid",
@@ -1236,15 +1276,21 @@ function PlanInner() {
         const row = ws.addRow({
           wbs: t.wbs ?? "",
           name: t.name,
+          outline: t.outline_level ?? "",
           start: t.start_date ?? "",
           end: t.end_date ?? "",
           duration: t.duration_days ?? "",
           progress: typeof t.progress === "number" ? t.progress / 100 : 0,
-          milestone: t.is_milestone ? "♦" : "",
           status:
             TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
             t.status,
+          area: areaName(t.area_id),
           owner: ownerLabel(t.owner),
+          criticality: isTaskCritical(t) ? "Sí" : "No",
+          milestone: t.is_milestone ? "Sí" : "No",
+          related_milestone: t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
+          predecessors: (t.predecessors ?? []).join(", "),
+          successors: (t.successors ?? []).join(", "),
         });
         // Avance como porcentaje formateado.
         row.getCell("progress").numFmt = "0%";
@@ -1699,7 +1745,7 @@ function PlanInner() {
           </>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-3">
           {/* ENH-094: warning soft cuando duración inferida supera el
               máximo recomendado (21d). No bloquea guardar. */}
           {(() => {
@@ -1708,134 +1754,110 @@ function PlanInner() {
               newForm.end_date,
             );
             return d != null && d > 21 ? (
-              <div className="sm:col-span-2">
-                <Banner variant="warning">
-                  Duración inferida: {d} días. El máximo recomendado son 21
-                  para tareas operativas. Es válido para actividades macro,
-                  pero considera dividirla.
-                </Banner>
-              </div>
+              <Banner variant="warning">
+                Duración inferida: {d} días. El máximo recomendado son 21 para
+                tareas operativas. Es válido para actividades macro, pero
+                considera dividirla.
+              </Banner>
             ) : null;
           })()}
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Nombre *
-            </span>
-            <Input
-              value={newForm.name}
-              onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
-              required
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">WBS</span>
-            <Input
-              value={newForm.wbs}
-              onChange={(e) => setNewForm({ ...newForm, wbs: e.target.value })}
-              placeholder="1.2.3"
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Estado
-            </span>
-            <Select
-              value={newForm.status}
-              onChange={(e) =>
-                setNewForm({ ...newForm, status: e.target.value as TaskStatus })
-              }
-            >
-              {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
-                <option key={k} value={k}>
-                  {TASK_STATUS_LABEL[k]}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Inicio
-            </span>
-            <Input
-              type="date"
-              value={newForm.start_date}
-              onChange={(e) => setNewForm({ ...newForm, start_date: e.target.value })}
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Fin
-            </span>
-            <Input
-              type="date"
-              value={newForm.end_date}
-              onChange={(e) => setNewForm({ ...newForm, end_date: e.target.value })}
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Avance (0-100)
-            </span>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={newForm.progress}
-              onChange={(e) => setNewForm({ ...newForm, progress: e.target.value })}
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Criticidad
-            </span>
-            <Select
-              value={newForm.criticality}
-              onChange={(e) =>
-                setNewForm({
-                  ...newForm,
-                  criticality: e.target.value as TaskCriticality,
-                })
-              }
-            >
-              {(Object.keys(TASK_CRITICALITY_LABEL) as TaskCriticality[]).map((k) => (
-                <option key={k} value={k}>
-                  {TASK_CRITICALITY_LABEL[k]}
-                </option>
-              ))}
-            </Select>
-          </label>
-          {/* ENH-097: checkbox boolean explicito de criticidad (paralelo al enum). */}
-          <label className="inline-flex items-center gap-2 self-end">
-            <input
-              type="checkbox"
-              checked={newForm.is_critical}
-              onChange={(e) =>
-                setNewForm({ ...newForm, is_critical: e.target.checked })
-              }
-            />
-            <span className="text-xs text-[var(--color-secondary)]">
-              Marcar como crítica
-            </span>
-          </label>
-          {/* US-090: predecesoras CSV de wbs_code. */}
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Predecesoras (lista de WBS separadas por coma)
-            </span>
-            <Input
-              value={newForm.predecessors_csv}
-              onChange={(e) =>
-                setNewForm({ ...newForm, predecessors_csv: e.target.value })
-              }
-              placeholder="1.1, 1.2"
-            />
-          </label>
-          {/* ENH-050: hito relacionado. Solo lista tareas con
-              is_milestone=true del proyecto actual. */}
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Hito relacionado (opcional)
-            </span>
+          {/* ENH-135: WBS (pequeño) | Nombre */}
+          <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
+            <FormField label="WBS">
+              <Input
+                value={newForm.wbs}
+                onChange={(e) => setNewForm({ ...newForm, wbs: e.target.value })}
+                placeholder="1.2.3"
+              />
+            </FormField>
+            <FormField label="Nombre *">
+              <Input
+                value={newForm.name}
+                onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
+                required
+              />
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Inicio">
+              <Input
+                type="date"
+                value={newForm.start_date}
+                onChange={(e) => setNewForm({ ...newForm, start_date: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Fin">
+              <Input
+                type="date"
+                value={newForm.end_date}
+                onChange={(e) => setNewForm({ ...newForm, end_date: e.target.value })}
+              />
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Avance (0-100)">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={newForm.progress}
+                onChange={(e) => setNewForm({ ...newForm, progress: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Estado">
+              <Select
+                value={newForm.status}
+                onChange={(e) =>
+                  setNewForm({ ...newForm, status: e.target.value as TaskStatus })
+                }
+              >
+                {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
+                  <option key={k} value={k}>
+                    {TASK_STATUS_LABEL[k]}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Área responsable">
+              <ProjectAreaPicker
+                projectId={id}
+                value={newForm.area_id || null}
+                onChange={(v) => setNewForm({ ...newForm, area_id: v ?? "" })}
+                placeholder="— Sin asignar —"
+              />
+            </FormField>
+            <FormField label="Responsable">
+              <PersonPicker
+                projectId={id}
+                value={newForm.assignee_actor_id || null}
+                onChange={(v) => setNewForm({ ...newForm, assignee_actor_id: v ?? "" })}
+                placeholder="— Sin responsable —"
+              />
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={newForm.is_critical}
+                onChange={(e) => setNewForm({ ...newForm, is_critical: e.target.checked })}
+              />
+              <span className="text-xs text-[var(--color-secondary)]">
+                Marcar como crítica
+              </span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={newForm.is_milestone}
+                onChange={(e) => setNewForm({ ...newForm, is_milestone: e.target.checked })}
+              />
+              <span className="text-xs text-[var(--color-secondary)]">Marcar hito</span>
+            </label>
+          </div>
+          <FormField label="Hito relacionado (opcional)">
             <Select
               value={newForm.related_milestone_id}
               onChange={(e) =>
@@ -1852,17 +1874,21 @@ function PlanInner() {
                   </option>
                 ))}
             </Select>
-          </label>
-          <label className="inline-flex items-center gap-2 self-end">
-            <input
-              type="checkbox"
-              checked={newForm.is_milestone}
-              onChange={(e) =>
-                setNewForm({ ...newForm, is_milestone: e.target.checked })
-              }
-            />
-            <span className="text-xs text-[var(--color-secondary)]">Hito</span>
-          </label>
+          </FormField>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Predecesoras (WBS separadas por coma)">
+              <Input
+                value={newForm.predecessors_csv}
+                onChange={(e) =>
+                  setNewForm({ ...newForm, predecessors_csv: e.target.value })
+                }
+                placeholder="1.1, 1.2"
+              />
+            </FormField>
+            <FormField label="Sucesoras (auto)">
+              <Input value="" disabled placeholder="Se calculan automáticamente" />
+            </FormField>
+          </div>
         </div>
       </Modal>
 
@@ -1896,7 +1922,7 @@ function PlanInner() {
           </>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-3">
           {/* ENH-094: warning soft cuando duración inferida supera el
               máximo recomendado (21d). No bloquea guardar. */}
           {(() => {
@@ -1905,172 +1931,116 @@ function PlanInner() {
               editForm.end_date,
             );
             return d != null && d > 21 ? (
-              <div className="sm:col-span-2">
-                <Banner variant="warning">
-                  Duración inferida: {d} días. El máximo recomendado son 21
-                  para tareas operativas. Es válido para actividades macro,
-                  pero considera dividirla.
-                </Banner>
-              </div>
+              <Banner variant="warning">
+                Duración inferida: {d} días. El máximo recomendado son 21 para
+                tareas operativas. Es válido para actividades macro, pero
+                considera dividirla.
+              </Banner>
             ) : null;
           })()}
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Nombre *
-            </span>
-            <Input
-              value={editForm.name}
-              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              required
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">WBS</span>
-            <Input
-              value={editForm.wbs}
-              onChange={(e) => setEditForm({ ...editForm, wbs: e.target.value })}
-              placeholder="1.2.3"
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Estado
-            </span>
-            <Select
-              value={editForm.status}
-              onChange={(e) =>
-                setEditForm({ ...editForm, status: e.target.value as TaskStatus })
-              }
-            >
-              {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
-                <option key={k} value={k}>
-                  {TASK_STATUS_LABEL[k]}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Inicio
-            </span>
-            <Input
-              type="date"
-              value={editForm.start_date}
-              onChange={(e) =>
-                setEditForm({ ...editForm, start_date: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Fin
-            </span>
-            <Input
-              type="date"
-              value={editForm.end_date}
-              onChange={(e) =>
-                setEditForm({ ...editForm, end_date: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Avance (0-100)
-            </span>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={editForm.progress}
-              onChange={(e) =>
-                setEditForm({ ...editForm, progress: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Criticidad
-            </span>
-            <Select
-              value={editForm.criticality}
-              onChange={(e) =>
-                setEditForm({
-                  ...editForm,
-                  criticality: e.target.value as TaskCriticality,
-                })
-              }
-            >
-              {(Object.keys(TASK_CRITICALITY_LABEL) as TaskCriticality[]).map((k) => (
-                <option key={k} value={k}>
-                  {TASK_CRITICALITY_LABEL[k]}
-                </option>
-              ))}
-            </Select>
-          </label>
-          {/* ENH-097: checkbox boolean explicito de criticidad (paralelo al enum). */}
-          <label className="inline-flex items-center gap-2 self-end">
-            <input
-              type="checkbox"
-              checked={editForm.is_critical}
-              onChange={(e) =>
-                setEditForm({ ...editForm, is_critical: e.target.checked })
-              }
-            />
-            <span className="text-xs text-[var(--color-secondary)]">
-              Marcar como crítica
-            </span>
-          </label>
-          {/* US-098 / ENH-083: Área responsable con inline-create. */}
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Área responsable
-            </span>
-            <ProjectAreaPicker
-              projectId={id}
-              value={editForm.area_id || null}
-              onChange={(v) =>
-                setEditForm({ ...editForm, area_id: v ?? "" })
-              }
-              placeholder="— Sin asignar —"
-            />
-          </label>
-          {/* ENH-079 / BUG-056: Responsable = Actor del catálogo via PersonPicker. */}
-          <label>
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Responsable
-            </span>
-            <PersonPicker
-              projectId={id}
-              value={editForm.assignee_actor_id || null}
-              onChange={(v) =>
-                setEditForm({ ...editForm, assignee_actor_id: v ?? "" })
-              }
-              placeholder="— Sin responsable —"
-            />
-          </label>
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Predecesoras (lista de WBS separadas por coma)
-            </span>
-            <Input
-              value={editForm.predecessors_csv}
-              onChange={(e) =>
-                setEditForm({ ...editForm, predecessors_csv: e.target.value })
-              }
-              placeholder="1.1, 1.2"
-            />
-          </label>
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
-              Hito relacionado (opcional)
-            </span>
+          {/* ENH-135: WBS (pequeño) | Nombre */}
+          <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
+            <FormField label="WBS">
+              <Input
+                value={editForm.wbs}
+                onChange={(e) => setEditForm({ ...editForm, wbs: e.target.value })}
+                placeholder="1.2.3"
+              />
+            </FormField>
+            <FormField label="Nombre *">
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                required
+              />
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Inicio">
+              <Input
+                type="date"
+                value={editForm.start_date}
+                onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Fin">
+              <Input
+                type="date"
+                value={editForm.end_date}
+                onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+              />
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Avance (0-100)">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={editForm.progress}
+                onChange={(e) => setEditForm({ ...editForm, progress: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Estado">
+              <Select
+                value={editForm.status}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, status: e.target.value as TaskStatus })
+                }
+              >
+                {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
+                  <option key={k} value={k}>
+                    {TASK_STATUS_LABEL[k]}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {/* US-098 / ENH-083: Área responsable con inline-create. */}
+            <FormField label="Área responsable">
+              <ProjectAreaPicker
+                projectId={id}
+                value={editForm.area_id || null}
+                onChange={(v) => setEditForm({ ...editForm, area_id: v ?? "" })}
+                placeholder="— Sin asignar —"
+              />
+            </FormField>
+            {/* ENH-079 / BUG-056: Responsable = Actor del catálogo. */}
+            <FormField label="Responsable">
+              <PersonPicker
+                projectId={id}
+                value={editForm.assignee_actor_id || null}
+                onChange={(v) => setEditForm({ ...editForm, assignee_actor_id: v ?? "" })}
+                placeholder="— Sin responsable —"
+              />
+            </FormField>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={editForm.is_critical}
+                onChange={(e) => setEditForm({ ...editForm, is_critical: e.target.checked })}
+              />
+              <span className="text-xs text-[var(--color-secondary)]">
+                Marcar como crítica
+              </span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={editForm.is_milestone}
+                onChange={(e) => setEditForm({ ...editForm, is_milestone: e.target.checked })}
+              />
+              <span className="text-xs text-[var(--color-secondary)]">Marcar hito</span>
+            </label>
+          </div>
+          <FormField label="Hito relacionado (opcional)">
             <Select
               value={editForm.related_milestone_id}
               onChange={(e) =>
-                setEditForm({
-                  ...editForm,
-                  related_milestone_id: e.target.value,
-                })
+                setEditForm({ ...editForm, related_milestone_id: e.target.value })
               }
             >
               <option value="">— Sin hito —</option>
@@ -2083,17 +2053,25 @@ function PlanInner() {
                   </option>
                 ))}
             </Select>
-          </label>
-          <label className="inline-flex items-center gap-2 self-end">
-            <input
-              type="checkbox"
-              checked={editForm.is_milestone}
-              onChange={(e) =>
-                setEditForm({ ...editForm, is_milestone: e.target.checked })
-              }
-            />
-            <span className="text-xs text-[var(--color-secondary)]">Hito</span>
-          </label>
+          </FormField>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Predecesoras (WBS separadas por coma)">
+              <Input
+                value={editForm.predecessors_csv}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, predecessors_csv: e.target.value })
+                }
+                placeholder="1.1, 1.2"
+              />
+            </FormField>
+            <FormField label="Sucesoras (auto)">
+              <Input
+                value={(tasks.find((t) => t.id === editingId)?.successors ?? []).join(", ")}
+                disabled
+                placeholder="Se calculan automáticamente"
+              />
+            </FormField>
+          </div>
         </div>
       </Modal>
 

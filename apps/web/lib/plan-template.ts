@@ -16,28 +16,28 @@ import type { Workbook, Worksheet } from "exceljs";
 const SHEET_PLAN = "Plan";
 const SHEET_INSTRUCTIONS = "Instrucciones";
 
-// US-096: columnas reordenadas. Outline Level entre Tarea e Inicio
-// (auto-fórmula). Criticidad/Hito Relacionado/Predecessors/Successors
-// al final para no romper layout existente del usuario.
+// ENH-134: orden de columnas canónico V1. Outline Level y Duración son
+// auto-fórmula; Criticidad pasa a booleana (Sí/No) como Es hito; se agrega
+// Área Responsable antes de Responsable.
 const COLUMNS = [
-  { header: "WBS", key: "wbs", width: 10 },               // A
-  { header: "Tarea", key: "name", width: 40 },             // B
-  { header: "Outline Level", key: "outline", width: 12 },  // C (auto)
-  { header: "Inicio", key: "start", width: 14 },           // D
-  { header: "Fin", key: "end", width: 14 },                // E
+  { header: "WBS", key: "wbs", width: 10 },                  // A
+  { header: "Tarea", key: "name", width: 40 },               // B
+  { header: "Outline Level", key: "outline", width: 12 },    // C (auto)
+  { header: "Inicio", key: "start", width: 14 },             // D
+  { header: "Fin", key: "end", width: 14 },                  // E
   { header: "Duración (días)", key: "duration", width: 16 }, // F (auto)
-  { header: "Avance (%)", key: "progress", width: 12 },    // G
-  { header: "Es hito", key: "milestone", width: 10 },      // H
-  { header: "Criticidad", key: "criticality", width: 12 }, // I
-  { header: "Estado", key: "status", width: 16 },          // J
-  { header: "Responsable", key: "owner", width: 24 },      // K
-  { header: "Hito Relacionado", key: "related_milestone", width: 18 }, // L
-  { header: "Predecessors", key: "predecessors", width: 16 }, // M
-  { header: "Successors", key: "successors", width: 16 },  // N
+  { header: "Avance (%)", key: "progress", width: 12 },      // G
+  { header: "Estado", key: "status", width: 16 },            // H
+  { header: "Área Responsable", key: "area", width: 24 },    // I
+  { header: "Responsable", key: "owner", width: 24 },        // J
+  { header: "Criticidad", key: "criticality", width: 12 },   // K (Sí/No)
+  { header: "Es hito", key: "milestone", width: 10 },        // L
+  { header: "Hito Relacionado", key: "related_milestone", width: 18 }, // M
+  { header: "Predecessors", key: "predecessors", width: 16 }, // N
+  { header: "Successors", key: "successors", width: 16 },    // O (auto)
 ];
 
 const VALID_STATUSES = ["not_started", "in_progress", "completed", "on_hold"];
-const VALID_CRITICALITY = ["low", "medium", "high", "critical"];
 
 // US-090 / BUG-050: limit operacional para Duración (días).
 const MAX_DURATION_DAYS = 21;
@@ -48,7 +48,8 @@ const LAST_DATA_ROW = 1000;
 
 function _styleHeader(ws: Worksheet) {
   const header = ws.getRow(1);
-  header.font = { bold: true, color: { argb: "FF1F2937" } };
+  // ENH-134: font negro.
+  header.font = { bold: true, color: { argb: "FF000000" } };
   header.fill = {
     type: "pattern",
     pattern: "solid",
@@ -64,7 +65,8 @@ function _addExampleRow(
   data: Record<string, string | number | Date | boolean>,
 ) {
   const row = ws.addRow(data);
-  row.font = { color: { argb: "FF6B7280" }, italic: true };
+  // ENH-134: font negro (italic solo para indicar que son ejemplos).
+  row.font = { color: { argb: "FF000000" }, italic: true };
   row.alignment = { vertical: "middle" };
   row.eachCell((cell) => {
     if (typeof cell.value === "string" && cell.value.startsWith("ej:")) {
@@ -99,27 +101,25 @@ function _attachDataValidation(ws: Worksheet) {
       errorStyle: "warning",
       error: "Avance debe estar entre 0 y 100.",
     };
-    // Es hito — col H.
+    // Estado — col H.
     ws.getCell(`H${r}`).dataValidation = {
-      type: "list",
-      formulae: ['"Sí,No,Yes,No"'],
-      allowBlank: true,
-    };
-    // US-096: Criticidad — col I.
-    ws.getCell(`I${r}`).dataValidation = {
-      type: "list",
-      formulae: [`"${VALID_CRITICALITY.join(",")}"`],
-      allowBlank: true,
-      errorStyle: "warning",
-      error: `Criticidad debe ser: ${VALID_CRITICALITY.join(", ")}.`,
-    };
-    // Estado — col J.
-    ws.getCell(`J${r}`).dataValidation = {
       type: "list",
       formulae: [`"${VALID_STATUSES.join(",")}"`],
       allowBlank: true,
       errorStyle: "warning",
       error: `Estado debe ser uno de: ${VALID_STATUSES.join(", ")}.`,
+    };
+    // ENH-134: Criticidad ahora booleana (Sí/No) — col K.
+    ws.getCell(`K${r}`).dataValidation = {
+      type: "list",
+      formulae: ['"Sí,No,Yes,No"'],
+      allowBlank: true,
+    };
+    // Es hito — col L.
+    ws.getCell(`L${r}`).dataValidation = {
+      type: "list",
+      formulae: ['"Sí,No,Yes,No"'],
+      allowBlank: true,
     };
   }
 }
@@ -203,22 +203,17 @@ function _addInstructionsSheet(wb: Workbook) {
         "Acepta también 0.0–1.0 (decimal) o '45%' al importar; aquí se valida como entero.",
     },
     {
-      col: "Es hito",
-      type: "Lista",
-      format: "Sí / No (también Yes/No)",
-      notes: "Marca la tarea como milestone (diamante en Gantt).",
-    },
-    {
-      col: "Criticidad",
-      type: "Lista",
-      format: VALID_CRITICALITY.join(" | "),
-      notes: "ENH-051. Default: medium.",
-    },
-    {
       col: "Estado",
       type: "Lista",
       format: VALID_STATUSES.join(" | "),
       notes: "Default: not_started.",
+    },
+    {
+      col: "Área Responsable",
+      type: "Texto",
+      format: "Nombre del área (ej: PMO, Infraestructura)",
+      notes:
+        "ENH-134. Al importar se hace match contra las áreas del proyecto; si no hay match, se ignora.",
     },
     {
       col: "Responsable",
@@ -226,6 +221,18 @@ function _addInstructionsSheet(wb: Workbook) {
       format: "ej: juan.perez@empresa.com",
       notes:
         "Al importar se hace fuzzy-match contra usuarios del tenant; si no hay match, queda como texto libre.",
+    },
+    {
+      col: "Criticidad",
+      type: "Lista",
+      format: "Sí / No (también Yes/No)",
+      notes: "ENH-134. Booleana: marca la tarea como crítica.",
+    },
+    {
+      col: "Es hito",
+      type: "Lista",
+      format: "Sí / No (también Yes/No)",
+      notes: "Marca la tarea como milestone (diamante en Gantt).",
     },
     {
       col: "Hito Relacionado",
@@ -291,10 +298,11 @@ export async function buildEmptyTemplate(projectName: string): Promise<Blob> {
     start: today,
     end: tomorrow,
     progress: 0,
-    milestone: "No",
-    criticality: "medium",
     status: "not_started",
+    area: "PMO",
     owner: "responsable@empresa.com",
+    criticality: "No",
+    milestone: "No",
     related_milestone: "",
     predecessors: "",
     successors: "",
@@ -305,10 +313,11 @@ export async function buildEmptyTemplate(projectName: string): Promise<Blob> {
     start: closingDay,
     end: closingDay,
     progress: 0,
-    milestone: "Sí",
-    criticality: "high",
     status: "not_started",
+    area: "PMO",
     owner: "",
+    criticality: "Sí",
+    milestone: "Sí",
     related_milestone: "",
     predecessors: "1.1",
     successors: "",

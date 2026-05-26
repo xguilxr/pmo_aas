@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, Calendar, Download, Loader2, Save, Sparkles } from "lucide-react";
+import { Eye, ArrowLeft, FileDown, Loader2, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -22,15 +22,15 @@ import { ChatPanel } from "@/components/reports/builder/ChatPanel";
 import { SectionCanvas } from "@/components/reports/builder/SectionCanvas";
 import { PreviewPane } from "@/components/reports/builder/PreviewPane";
 import { SaveTemplateModal } from "@/components/reports/builder/SaveTemplateModal";
-import { ScheduleCustomModal } from "@/components/reports/builder/ScheduleCustomModal";
 import { type SectionParams } from "@/components/reports/builder/SectionParamsPanel";
 import { TemplatesGallery } from "@/components/reports/builder/TemplatesGallery";
 import { listAreasByProject } from "@/lib/api/areas";
 import {
   deleteBuilderTemplate,
-  exportBuilderPdf,
   listSections,
   listBuilderTemplates,
+  renderBuilderPdf,
+  saveBuilderReport,
   updateBuilderTemplate,
   type ChatAction,
   type ReportBuilderTemplate,
@@ -106,12 +106,12 @@ export default function ReportBuilderPage() {
   // US-126 — modal "Guardar como plantilla" + plantilla cargada.
   const [saveOpen, setSaveOpen] = useState(false);
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
+  // ENH-139/140: estados de Visualizar y Guardar Reporte.
+  const [visualizing, setVisualizing] = useState(false);
+  const [savingReport, setSavingReport] = useState(false);
   const [currentUserId] = useState<string | null>(() => getStoredUser()?.id ?? null);
   // US-127 — chat IA.
   const [chatOpen, setChatOpen] = useState(false);
-  // US-131 — modal programar suscripción.
-  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   async function refreshTemplates() {
     const tpls = await listBuilderTemplates({});
@@ -200,28 +200,19 @@ export default function ReportBuilderPage() {
 
   const renderRequest = useMemo<RenderRequest | null>(() => {
     if (codes.length === 0) return null;
-    // El motor necesita una plantilla; para preview construimos una
-    // "plantilla efímera" usando una seed L3-AVANCE como base y
-    // overriding section_codes. Como el backend no acepta inline
-    // template aún (futuro endpoint), por ahora usamos la seed más
-    // cercana al modo del canvas.
-    const seed = templates.find(
-      (t) => t.composition_mode === compositionMode && t.is_seed
-    );
-    if (!seed) return null;
+    // ENH-138: preview fiel del canvas. Enviamos los codes + modo inline;
+    // el backend arma una plantilla efímera y renderiza data real.
     return {
-      template: seed.id,
+      section_codes: codes,
+      composition_mode: compositionMode,
       project_id: projectId,
       level: 3,
       cut_off_date: cutOff,
       window_days: windowDays,
       area_id: areaId || null,
       params: paramsByCode,
-      // Override en frontend: para preview puramente declarativo, el
-      // motor v1.0 ignora codes extra; el render fiel del canvas
-      // sustituirá la seed por una custom (US-126 al guardar).
     };
-  }, [codes, compositionMode, cutOff, windowDays, areaId, projectId, templates, paramsByCode]);
+  }, [codes, compositionMode, cutOff, windowDays, areaId, projectId, paramsByCode]);
 
   const handleAdd = useCallback(
     (code: string) => {
@@ -274,31 +265,42 @@ export default function ReportBuilderPage() {
     await refreshTemplates();
   }
 
-  async function handleExport() {
-    if (!loadedTemplateId) {
-      window.alert("Guarda la plantilla antes de exportar.");
+  // ENH-139: abre un PDF del preview real (canvas inline, sin persistir).
+  async function handleVisualize() {
+    if (!renderRequest) {
+      window.alert("Agrega al menos una sección al canvas.");
       return;
     }
-    setExporting(true);
+    setVisualizing(true);
     try {
-      const blob = await exportBuilderPdf(loadedTemplateId, {
-        project_id: projectId,
-        level: 3,
-        cut_off_date: cutOff,
-        window_days: windowDays,
-        area_id: areaId || null,
-        params: paramsByCode,
-      });
+      const blob = await renderBuilderPdf(renderRequest);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `reporte-${cutOff}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      window.open(url, "_blank", "noopener,noreferrer");
+      // No revocamos de inmediato para que la pestaña pueda cargar el PDF.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Error al exportar");
+      window.alert(err instanceof Error ? err.message : "Error al visualizar");
     } finally {
-      setExporting(false);
+      setVisualizing(false);
+    }
+  }
+
+  // ENH-140: persiste un snapshot del reporte en el Historial del proyecto.
+  async function handleSaveReport() {
+    if (!renderRequest) {
+      window.alert("Agrega al menos una sección al canvas.");
+      return;
+    }
+    const name = window.prompt("Nombre del reporte:", "Reporte custom");
+    if (name === null) return;
+    setSavingReport(true);
+    try {
+      await saveBuilderReport({ ...renderRequest, name: name.trim() || "Reporte custom" });
+      window.alert("Reporte guardado en el Historial del proyecto.");
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Error al guardar el reporte");
+    } finally {
+      setSavingReport(false);
     }
   }
 
@@ -455,35 +457,35 @@ export default function ReportBuilderPage() {
           >
             <Sparkles className="mr-1 h-3.5 w-3.5 text-violet-500" /> IA
           </Button>
+          {/* ENH-139/140: orden Visualizar · Guardar Reporte · Guardar Plantilla. */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleVisualize}
+            disabled={codes.length === 0 || visualizing}
+            loading={visualizing}
+            title="Abrir un PDF del preview real"
+          >
+            <Eye className="mr-1 h-3.5 w-3.5" /> Visualizar
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSaveReport}
+            disabled={codes.length === 0 || savingReport}
+            loading={savingReport}
+            title="Guardar el reporte en el Historial del proyecto"
+          >
+            <FileDown className="mr-1 h-3.5 w-3.5" /> Guardar Reporte
+          </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setSaveOpen(true)}
             disabled={codes.length === 0}
+            title="Guardar la composición como plantilla reusable"
           >
-            <Save className="mr-1 h-3.5 w-3.5" /> Guardar plantilla
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setScheduleOpen(true)}
-            disabled={!loadedTemplateId}
-            title={
-              loadedTemplateId
-                ? "Programar envío recurrente"
-                : "Guarda primero la plantilla"
-            }
-          >
-            <Calendar className="mr-1 h-3.5 w-3.5" /> Programar
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleExport}
-            disabled={!loadedTemplateId || exporting}
-            loading={exporting}
-          >
-            <Download className="mr-1 h-3.5 w-3.5" /> Exportar PDF
+            <Save className="mr-1 h-3.5 w-3.5" /> Guardar Plantilla
           </Button>
         </div>
       </header>
@@ -534,13 +536,6 @@ export default function ReportBuilderPage() {
           </>
         )}
       </main>
-
-      <ScheduleCustomModal
-        open={scheduleOpen}
-        onClose={() => setScheduleOpen(false)}
-        projectId={projectId}
-        templateId={loadedTemplateId}
-      />
 
       <ChatPanel
         open={chatOpen}

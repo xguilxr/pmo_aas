@@ -12,12 +12,14 @@ import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { listOrganizations, listPrograms, type Organization, type Program } from "@/lib/api/organizations";
 import {
+  HEALTH_LABEL,
   PHASE_LABEL,
   TYPE_LABEL,
   createProject,
   updateProject,
   type Project,
   type ProjectCreateBody,
+  type ProjectHealth,
   type ProjectPhase,
   type ProjectType,
 } from "@/lib/api/projects";
@@ -44,6 +46,9 @@ export function ProjectForm({ mode, initial }: Props) {
   const [startDate, setStartDate] = useState(initial?.start_date ?? "");
   const [endDate, setEndDate] = useState(initial?.end_date ?? "");
   const [budget, setBudget] = useState(initial?.budget ?? "");
+  // ENH-132: salud y presupuesto real editables (solo modo edición).
+  const [health, setHealth] = useState<ProjectHealth>(initial?.health_status ?? "green");
+  const [actualBudget, setActualBudget] = useState(initial?.actual_budget ?? "");
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -109,6 +114,8 @@ export function ProjectForm({ mode, initial }: Props) {
           start_date: startDate || null,
           end_date: endDate || null,
           budget: budget ? Number(budget) : null,
+          actual_budget: actualBudget ? Number(actualBudget) : null,
+          health_status: health,
         });
         setNotice({ kind: "success", message: "Proyecto actualizado" });
         router.refresh();
@@ -231,6 +238,31 @@ export function ProjectForm({ mode, initial }: Props) {
             onChange={(e) => setBudget(e.target.value)}
           />
         </Field>
+        {mode === "edit" ? (
+          <>
+            <Field label="Presupuesto real / consumido (MXN)">
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={actualBudget}
+                onChange={(e) => setActualBudget(e.target.value)}
+              />
+            </Field>
+            <Field label="Salud">
+              <Select
+                value={health}
+                onChange={(e) => setHealth(e.target.value as ProjectHealth)}
+              >
+                {(Object.keys(HEALTH_LABEL) as ProjectHealth[]).map((k) => (
+                  <option key={k} value={k}>
+                    {HEALTH_LABEL[k]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </>
+        ) : null}
         <Field label="Inicio planeado">
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </Field>
@@ -243,7 +275,13 @@ export function ProjectForm({ mode, initial }: Props) {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => router.push("/pmo/projects")}
+          onClick={() =>
+            router.push(
+              mode === "edit" && initial
+                ? `/pmo/projects/${initial.id}`
+                : "/pmo/projects",
+            )
+          }
           disabled={saving}
         >
           Cancelar

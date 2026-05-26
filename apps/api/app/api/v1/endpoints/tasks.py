@@ -937,9 +937,30 @@ async def import_confirm(
             self.duration_days = pt.duration_days
             self.progress = pt.progress
             self.is_milestone = pt.is_milestone
+            # ENH-134: propaga criticidad/booleano y área para que el
+            # confirm los aplique (antes se perdían al no copiarse al shim).
+            self.criticality = getattr(pt, "criticality", None)
+            self.is_critical = getattr(pt, "is_critical", None)
+            self.area_raw = getattr(pt, "area_raw", None)
             self.predecessors: list = []
 
     parsed = [_TaskShim(t) for t in parse_result.tasks]
+
+    # ENH-134: resolución de "Área Responsable" (texto) → area_id contra
+    # las áreas del tenant (match case-insensitive por nombre).
+    from app.models.area import Area as _Area
+
+    _area_rows = (
+        await db.execute(
+            select(_Area.id, _Area.name).where(_Area.tenant_id == str(tenant_id))
+        )
+    ).all()
+    _area_by_name = {(r.name or "").strip().lower(): str(r.id) for r in _area_rows}
+
+    def _resolve_area(raw: object) -> str | None:
+        if not raw:
+            return None
+        return _area_by_name.get(str(raw).strip().lower())
 
     if body.strategy == "replace":
         await db.execute(
@@ -984,6 +1005,10 @@ async def import_confirm(
                 existing.is_critical = bool(parsed_ic)
             elif crit:
                 existing.is_critical = crit in ("high", "critical")
+            # ENH-134: área responsable resuelta por nombre.
+            resolved_area = _resolve_area(getattr(pt, "area_raw", None))
+            if resolved_area is not None:
+                existing.area_id = resolved_area
             created[pt.external_id] = existing
         else:
             crit = _normalize_criticality(getattr(pt, "criticality", None))
@@ -1003,6 +1028,7 @@ async def import_confirm(
                 outline_level=compute_outline_level(pt.wbs),
                 criticality=crit or "medium",
                 is_critical=ic_value,
+                area_id=_resolve_area(getattr(pt, "area_raw", None)),
             )
             db.add(t)
             await db.flush()
@@ -1080,6 +1106,8 @@ async def gantt_view(
     tasks = (
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
     ).scalars().all()
+    # BUG-066: el Gantt debe respetar el orden WBS igual que list_tasks.
+    tasks = sorted(tasks, key=lambda t: wbs_sort_key(t.wbs))
     deps = (
         await db.execute(
             select(TaskDependency).where(

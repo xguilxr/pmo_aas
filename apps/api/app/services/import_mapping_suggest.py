@@ -41,6 +41,8 @@ SYSTEM_FIELDS: tuple[str, ...] = (
     "is_critical",
     "related_milestone",
     "predecessors",
+    # ENH-134: área responsable (se resuelve a area_id al importar).
+    "area",
     "resources",
 )
 
@@ -57,12 +59,17 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
     ),
     "progress": ("avance", "progreso", "progress", "%", "percent", "porcentaje"),
     "is_milestone": ("hito", "milestone", "es hito"),
-    "criticality": ("criticidad", "criticality"),
-    "is_critical": ("is_critical", "es critico", "es crítico", "critico", "crítico"),
+    # ENH-134: "Criticidad" (Sí/No) → is_critical booleano.
+    "criticality": ("prioridad criticidad",),
+    "is_critical": (
+        "criticidad", "criticality", "is_critical",
+        "es critico", "es crítico", "critico", "crítico",
+    ),
     "related_milestone": (
         "hito relacionado", "related milestone", "milestone relacionado",
     ),
     "predecessors": ("predecesor", "predecesoras", "predecessor", "pred"),
+    "area": ("área responsable", "area responsable", "área", "area"),
     "resources": (
         "recurso", "recursos", "resource", "asignado", "owner",
         "responsable", "owner_id",

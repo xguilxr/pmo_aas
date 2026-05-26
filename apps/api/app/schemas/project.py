@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -76,6 +76,22 @@ class ProjectRead(BaseModel):
 class ProjectDetail(ProjectRead):
     members: list[dict] = []
     module_counts: dict[str, int] = {}
+    # ENH-129: KPIs de tareas para el gauge de Avance del Resumen.
+    # Claves: milestones_total, milestones_done, critical_total,
+    # critical_done, overdue.
+    task_kpis: dict[str, int] = {}
+
+
+class ActivityItem(BaseModel):
+    """US-149: evento del audit log para el feed de actividad del proyecto."""
+
+    id: int
+    action: str
+    module: str | None = None
+    occurred_at: datetime
+    user_id: UUID | None = None
+    user_name: str | None = None
+    details: dict = {}
 
 
 class PhaseChange(BaseModel):
