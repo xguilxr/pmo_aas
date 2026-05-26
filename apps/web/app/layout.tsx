@@ -8,6 +8,13 @@ export const metadata = {
   description: "Project Management Office as a Service",
 };
 
+// US-164: viewport explícito sin maximum-scale / user-scalable=no, para no
+// bloquear el pinch-zoom de trackpad ni los atajos ⌘+/⌘-.
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 // Script blocking para evitar flash of unstyled theme (FOUT): se ejecuta antes
 // de hidratar React, lee pmoaas.theme de localStorage y aplica .dark al <html>.
 const THEME_INIT_SCRIPT = `

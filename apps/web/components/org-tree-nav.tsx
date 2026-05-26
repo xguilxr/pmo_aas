@@ -60,8 +60,8 @@ function rowClass(active: boolean, top: boolean): string {
     "flex items-center gap-2 rounded-[var(--radius-md)] pr-1.5 transition-colors",
     top ? "h-9 text-[13px]" : "h-8 text-[12.5px]",
     active
-      ? "bg-[var(--chrome-active)] font-semibold text-[var(--chrome-text)]"
-      : "text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)]",
+      ? "bg-[var(--chrome-active)] font-semibold text-[var(--chrome-text-strong)]"
+      : "text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text-strong)]",
   );
 }
 
