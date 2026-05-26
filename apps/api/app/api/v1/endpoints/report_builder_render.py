@@ -29,7 +29,7 @@ from app.services.reports.engine import (
 router = APIRouter(prefix="/report-builder", tags=["report_builder"])
 
 
-def _resolve_template_ref(payload: "RenderRequest"):
+def _resolve_template_ref(payload: RenderRequest):
     """ENH-138: si vienen `section_codes` inline, construye una plantilla
     efímera (sin persistir) para el preview en vivo del canvas; si no, usa
     `template` (id/seed code)."""
