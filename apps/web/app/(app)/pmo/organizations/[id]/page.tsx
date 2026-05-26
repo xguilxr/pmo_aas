@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Download, FolderKanban, Network, Plus } from "lucide-react";
+import { Building2, Download, FolderKanban, Layers, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -292,7 +292,7 @@ export default function PmoOrganizationPage() {
 
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <Network className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+          <Layers className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
           <h2 className="text-sm font-semibold text-[var(--color-primary)]">
             Programas
           </h2>

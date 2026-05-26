@@ -97,11 +97,11 @@ Logo/Home (usa logo del tenant si está cargado)
 ├─ Tablero
 ├─ Solicitudes
 ├─ Organizaciones
-│   ├─ Org A                  → panel de recursos de la org
-│   │   ├─ Programa 1         → resumen del programa (KPIs + proyectos)
+│   ├─ Org A 🏢                  → panel de recursos de la org
+│   │   ├─ Programa 1 ◆         → resumen del programa (KPIs + proyectos)
 │   │   │   └─ Proyecto X     → detalle del proyecto con tabs inline
-│   │   └─ Programa 2
-│   └─ Org B
+│   │   └─ Programa 2 ◆
+│   └─ Org B 🏢
 └─ Admin (solo admin/senior PMO)
     ├─ Gestión de Tenant      (fusiona Mi Tenant + Panel del Tenant)
     ├─ Gestión de Organizaciones  (BUs + Deptos inline, una sola página)
@@ -110,6 +110,10 @@ Logo/Home (usa logo del tenant si está cargado)
     │   └─ Roles
     └─ Auditoría
 ```
+
+**Iconos de árbol (ENH-145, 2026-05-26):**
+- **Organizaciones:** icono `Building2` (lucide-react).
+- **Programas:** icono `Layers` (lucide-react, antes `Network`).
 
 Se **elimina**:
 
@@ -141,7 +145,7 @@ Se **elimina**:
 - [x] Endpoint `DELETE /api/v1/admin/tenant/logo` para quitar logo local.
 - [x] Endpoint `GET /api/v1/branding/tenants/{tenant_id}/logo` sirve el archivo (auth requerida; 404 si el user no es de ese tenant y no es superadmin).
 - [x] Endpoint `GET /api/v1/me/tenant-branding` devuelve `{tenant_id, tenant_name, tenant_slug, logo_url, primary_color}` — consumido por el topbar.
-- [x] `BrandMark` (frontend): cuando `logo_url` existe, muestra `<img>` con `alt=tenant_name`; si no, fallback `"PMO · aaS"`.
+- [x] `BrandMark` (frontend): cuando `logo_url` existe, muestra el logo **grande** en la zona izquierda del topbar (ancho fijo `w-[200px]`, alto `h-11`, `object-contain object-left`), ocupando aproximadamente el ancho de la sidebar. El tamaño es **independiente del estado de la sidebar** (collapsed/visible). A la derecha del logo aparece siempre el texto "PMO-aaS" (branding de la plataforma). Si no hay logo, fallback: se muestra el nombre del tenant en texto + "PMO-aaS".
 - [x] `TenantBrandingProvider` con caché en `localStorage` + refresh explícito tras upload/edición en `/admin/tenant`.
 - [x] Click en el logo/home → navega a `/dashboard`.
 - [x] `/admin/tenant` acepta archivo (botón "Subir archivo") o URL externa — el cambio se refleja en el topbar sin reload completo via `refreshBranding()`.
@@ -157,6 +161,8 @@ Se **elimina**:
 - `test_usnew031_overwrite_replaces_old_extension` — subir WEBP tras PNG deja un solo archivo en disco.
 
 **Commit:** `feat(branding): US-031 — upload y display del logo del tenant en chrome`.
+
+**Actualización 2026-05-26 — ENH-144:** Logo ahora se muestra **full-size en topbar** (no en cuadrito pequeño). Ancho `w-[200px]`, alto `h-11`, posición izquierda fija. Elimina el nombre del tenant en texto: ahora el logo es la identidad. Texto "PMO-aaS" siempre a la derecha. Tamaño no depende del colapso/visibilidad de sidebar. Fallback (sin logo): nombre tenant + "PMO-aaS".
 
 ---
 

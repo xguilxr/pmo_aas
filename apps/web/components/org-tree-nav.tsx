@@ -7,7 +7,7 @@ import {
   Building2,
   ChevronRight,
   FolderKanban,
-  Network,
+  Layers,
 } from "lucide-react";
 
 import {
@@ -365,7 +365,7 @@ function ProgramsList({
           <div key={prog.id}>
             <NodeRow
               depth={depth}
-              icon={<Network className="h-3.5 w-3.5" aria-hidden />}
+              icon={<Layers className="h-3.5 w-3.5" aria-hidden />}
               label={prog.name}
               href={`/pmo/programs/${prog.id}`}
               active={false}

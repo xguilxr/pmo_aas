@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   FolderKanban,
-  Network,
+  Layers,
   Plus,
   Search,
   Users,
@@ -142,7 +142,7 @@ function OrgCard({ panel }: { panel: OrganizationPanel }) {
           value={panel.department_count}
         />
         <MetricTile
-          icon={<Network className="h-4 w-4" aria-hidden />}
+          icon={<Layers className="h-4 w-4" aria-hidden />}
           label="Programas"
           value={panel.program_count}
         />
@@ -224,7 +224,7 @@ export default function OrganizationsListPage() {
         <div className="flex flex-wrap items-center gap-2">
           {canCreateProgram ? (
             <Button variant="secondary" onClick={() => setShowProgramModal(true)}>
-              <Network className="h-4 w-4" aria-hidden />
+              <Layers className="h-4 w-4" aria-hidden />
               Nuevo programa
             </Button>
           ) : null}

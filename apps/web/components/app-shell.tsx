@@ -16,7 +16,6 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquareText,
-  Network,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -173,7 +172,7 @@ const ADMIN_NAV: NavItem = {
     {
       id: "orgs-mgmt",
       label: "Organizaciones",
-      icon: <Network className="h-4 w-4" aria-hidden />,
+      icon: <Building2 className="h-4 w-4" aria-hidden />,
       href: "/admin/organizations",
       match: (p) =>
         p.startsWith("/admin/organizations") && !p.includes("/panel"),
@@ -503,25 +502,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <Link
             href={homeHref}
-            className="flex min-w-0 items-center gap-2.5"
+            className="flex min-w-0 items-center gap-3"
             aria-label="Inicio"
           >
-            <span className="inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-[8px] border border-[var(--border-default)] bg-[var(--color-surface)]">
-              {logoSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
+            {logoSrc ? (
+              <span className="flex h-11 w-[200px] flex-none items-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={logoSrc}
                   alt={brandName}
-                  className="h-full w-full object-contain"
+                  className="h-full w-auto max-w-full object-contain object-left"
                 />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center bg-[var(--color-accent)] text-white">
-                  <Network className="h-4 w-4" aria-hidden />
-                </span>
-              )}
-            </span>
-            <span className="truncate text-[15px] font-semibold tracking-tight text-[var(--color-primary)]">
-              {brandName}
+              </span>
+            ) : (
+              <span className="truncate text-[15px] font-semibold tracking-tight text-[var(--color-primary)]">
+                {brandName}
+              </span>
+            )}
+            <span className="whitespace-nowrap text-[13px] font-medium tracking-tight text-[var(--text-tertiary)]">
+              PMO-aaS
             </span>
           </Link>
         </div>
