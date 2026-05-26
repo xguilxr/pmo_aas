@@ -243,7 +243,13 @@ export function ProjectForm({ mode, initial }: Props) {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => router.push("/pmo/projects")}
+          onClick={() =>
+            router.push(
+              mode === "edit" && initial
+                ? `/pmo/projects/${initial.id}`
+                : "/pmo/projects",
+            )
+          }
           disabled={saving}
         >
           Cancelar
