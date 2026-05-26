@@ -11,7 +11,14 @@ import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
+import { Gauge, PALETTE, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { ApiError } from "@/lib/api";
+import {
+  getRiskMatrix,
+  getTrends,
+  type RiskMatrixResponse,
+  type TrendsResponse,
+} from "@/lib/api/analytics";
 import { getProgramSummary, type ProgramSummary } from "@/lib/api/organizations";
 
 type ProgramTab = "overview" | "reports";
@@ -52,6 +59,32 @@ function Donut({ green, yellow, red }: { green: number; yellow: number; red: num
         strokeDashoffset={`-${gSeg + ySeg}`}
       />
     </svg>
+  );
+}
+
+function ProgTrend({
+  label,
+  trends,
+  metric,
+  color,
+  fmt,
+}: {
+  label: string;
+  trends: TrendsResponse | null;
+  metric: string;
+  color: string;
+  fmt?: (n: number) => string;
+}) {
+  const series = (trends?.series ?? []).map((p) => ({ x: p.snapshot_date, y: Number(p[metric] ?? 0) }));
+  const last = series.length ? series[series.length - 1].y : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">{label}</span>
+        <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">{fmt ? fmt(last) : last}</span>
+      </div>
+      <TrendLines data={series} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={fmt} />
+    </div>
   );
 }
 
@@ -96,6 +129,10 @@ export default function ProgramSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // US-157 — analítica program-scoped.
+  const [riskMatrix, setRiskMatrix] = useState<RiskMatrixResponse | null>(null);
+  const [trends, setTrends] = useState<TrendsResponse | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -111,6 +148,19 @@ export default function ProgramSummaryPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getRiskMatrix({ scope: "program", id: params.id })
+      .then((r) => !cancelled && setRiskMatrix(r))
+      .catch(() => !cancelled && setRiskMatrix(null));
+    getTrends({ scope: "program", id: params.id, weeks: 12 })
+      .then((r) => !cancelled && setTrends(r))
+      .catch(() => !cancelled && setTrends(null));
     return () => {
       cancelled = true;
     };
@@ -279,6 +329,57 @@ export default function ProgramSummaryPage() {
             </div>
           </dl>
         </div>
+      </section>
+
+      <section aria-label="Analítica del programa" className="grid gap-3 lg:grid-cols-3">
+        {(() => {
+          const projects = data.projects ?? [];
+          const avgProgress = projects.length
+            ? Math.round(projects.reduce((a, p) => a + (p.progress ?? 0), 0) / projects.length)
+            : 0;
+          const consumedRaw =
+            data.budget_planned > 0 ? (data.budget_actual / data.budget_planned) * 100 : 0;
+          const consumedTone =
+            consumedRaw > 100 ? "danger" : consumedRaw >= 80 ? "warning" : "success";
+          return (
+            <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
+              <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">Indicadores</h2>
+              <div className="flex items-center justify-around gap-3">
+                <div className="flex flex-col items-center gap-1">
+                  <Gauge value={avgProgress} ariaLabel="Avance promedio" tone="accent" />
+                  <span className="text-xs text-[var(--color-tertiary)]">Avance</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <Gauge value={consumedRaw} ariaLabel="Presupuesto consumido" tone={consumedTone} />
+                  <span className="text-xs text-[var(--color-tertiary)]">Presupuesto</span>
+                </div>
+              </div>
+            </article>
+          );
+        })()}
+        <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">Matriz de riesgos</h2>
+          {riskMatrix && riskMatrix.total > 0 ? (
+            <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos del programa" />
+          ) : (
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
+              Sin riesgos abiertos con probabilidad e impacto.
+            </p>
+          )}
+        </article>
+        <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">Tendencias (12 semanas)</h2>
+          {(trends?.series.length ?? 0) > 0 ? (
+            <div className="space-y-3">
+              <ProgTrend label="Avance promedio" trends={trends} metric="avg_progress" color={PALETTE.success} fmt={(n) => `${Math.round(n)}%`} />
+              <ProgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={PALETTE.warning} />
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
+              Sin historia de snapshots todavía.
+            </p>
+          )}
+        </article>
       </section>
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
