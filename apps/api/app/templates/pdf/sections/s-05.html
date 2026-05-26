@@ -1,0 +1,23 @@
+{# S-05 Tendencia (metric_snapshots, US-158) #}
+<section class="section section-s05">
+  <h2>Tendencia — {{ data.metric_label }}</h2>
+  {% if data.empty %}
+    <p class="empty">Sin historia de snapshots para este proyecto todavía. Captura un snapshot o espera al job semanal.</p>
+  {% else %}
+  <div class="trend-chart" style="margin: 6px 0 10px;">{{ data.svg | safe }}</div>
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th class="right">{{ data.metric_label }}</th></tr>
+    </thead>
+    <tbody>
+      {% for p in data.points %}
+      <tr>
+        <td>{{ p.date }}</td>
+        <td class="right nums">{{ "%.0f"|format(p.value) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="nums">Variación del periodo: {{ "%+.0f"|format(data.delta) }}</p>
+  {% endif %}
+</section>

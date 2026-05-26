@@ -45,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
 from app.models.area import Area
+from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Issue, Risk
 from app.models.organization import Organization, Program
 from app.models.project import Project
@@ -52,6 +53,7 @@ from app.models.report_builder_template import ReportBuilderTemplate
 from app.models.report_section import ReportSection
 from app.models.task import Task
 from app.models.user import User
+from app.services.analytics.snapshots import METRIC_FIELDS
 from app.services.pdf_renderer import render_html
 from app.services.progress_calculator import compute_progress_detailed
 
@@ -174,6 +176,8 @@ class _RenderContext:
     risks: list[Risk] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
     areas: dict[str, str] = field(default_factory=dict)
+    # US-158 — serie histórica del proyecto (metric_snapshots) para S-05.
+    snapshots: list[MetricSnapshot] = field(default_factory=list)
     # Exclusiones cruzadas: ids de tasks/risks/issues que ya aparecieron
     # en secciones anteriores y deben omitirse en S-17/S-18.
     excluded_task_ids: set[str] = field(default_factory=set)
@@ -278,6 +282,20 @@ async def _build_context(
         progress_method = result.method
         progress_fallback = result.fallback
 
+        snapshots = (
+            await db.execute(
+                select(MetricSnapshot)
+                .where(
+                    MetricSnapshot.tenant_id == str(scope.tenant_id),
+                    MetricSnapshot.scope_type == "project",
+                    MetricSnapshot.scope_id == pid,
+                )
+                .order_by(MetricSnapshot.snapshot_date)
+            )
+        ).scalars().all()
+    else:
+        snapshots = []
+
     return _RenderContext(
         project=project,
         organization_name=org_name,
@@ -288,6 +306,7 @@ async def _build_context(
         risks=risks,
         issues=issues,
         areas=areas,
+        snapshots=list(snapshots),
         progress_percent=progress_pct,
         progress_method=progress_method,
         progress_fallback=progress_fallback,
@@ -609,11 +628,115 @@ def _build_s28_narrative(ctx, params, window):
     return {"text": (params or {}).get("text", "")}
 
 
+_TREND_METRIC_LABELS = {
+    "avg_progress": "Avance promedio (%)",
+    "open_risks": "Riesgos abiertos",
+    "severe_risks": "Riesgos severos",
+    "open_issues": "Issues abiertos",
+    "tasks_done": "Tareas completadas",
+    "tasks_total": "Tareas totales",
+    "budget_actual": "Presupuesto real",
+    "projects_active": "Proyectos activos",
+}
+
+
+def _sparkline_svg(values: list[float], color: str = "#182e4e") -> str:
+    """SVG inline (sin dependencias) para una serie pequeña. WeasyPrint lo
+    rasteriza sin navegador. Devuelve "" si hay menos de 1 punto."""
+    n = len(values)
+    if n == 0:
+        return ""
+    w, h, pad = 320.0, 60.0, 6.0
+    vmax = max(values)
+    vmin = min(0.0, min(values))
+    span = (vmax - vmin) or 1.0
+
+    def x_at(i: int) -> float:
+        return w / 2 if n == 1 else pad + i * (w - 2 * pad) / (n - 1)
+
+    def y_at(v: float) -> float:
+        return h - pad - ((v - vmin) / span) * (h - 2 * pad)
+
+    pts = " ".join(f"{x_at(i):.1f},{y_at(v):.1f}" for i, v in enumerate(values))
+    area = f"{pad:.1f},{h - pad:.1f} {pts} {x_at(n - 1):.1f},{h - pad:.1f}"
+    last_x, last_y = x_at(n - 1), y_at(values[-1])
+    return (
+        f'<svg viewBox="0 0 {w:.0f} {h:.0f}" width="100%" height="60" '
+        f'preserveAspectRatio="none" role="img" aria-label="Tendencia">'
+        f'<polygon points="{area}" fill="{color}" fill-opacity="0.10"/>'
+        f'<polyline points="{pts}" fill="none" stroke="{color}" '
+        f'stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>'
+        f'<circle cx="{last_x:.1f}" cy="{last_y:.1f}" r="2.6" fill="{color}"/>'
+        f"</svg>"
+    )
+
+
+def _build_s05_trends(ctx, params, window):
+    """S-05 — Tendencia de una métrica desde metric_snapshots (US-158).
+
+    Requiere que el job de snapshots (US-151) haya capturado historia del
+    proyecto. Sin snapshots devuelve `empty=True` (la plantilla muestra un
+    aviso, no rompe el render)."""
+    metric = (params or {}).get("metric", "avg_progress")
+    if metric not in METRIC_FIELDS:
+        metric = "avg_progress"
+    points = []
+    for s in ctx.snapshots:
+        raw = getattr(s, metric, 0)
+        points.append({"date": s.snapshot_date.isoformat(), "value": float(raw or 0)})
+    values = [p["value"] for p in points]
+    first = values[0] if values else 0.0
+    last = values[-1] if values else 0.0
+    return {
+        "metric": metric,
+        "metric_label": _TREND_METRIC_LABELS.get(metric, metric),
+        "points": points,
+        "svg": _sparkline_svg(values) if values else "",
+        "first": first,
+        "last": last,
+        "delta": last - first,
+        "empty": len(values) == 0,
+    }
+
+
+def _build_s15_risk_matrix(ctx, params, window):
+    """S-15 — Matriz 5×5 de riesgos abiertos (probabilidad × impacto)."""
+    grid: dict[tuple[int, int], int] = {}
+    total = 0
+    for r in ctx.risks:
+        if r.status in ("closed", "materialized"):
+            continue
+        if r.probability and r.impact:
+            key = (int(r.probability), int(r.impact))
+            grid[key] = grid.get(key, 0) + 1
+            total += 1
+    zone_bg = {"low": "#dcfce7", "mid": "#fef9c3", "high": "#fee2e2"}
+    matrix = []
+    for p in (5, 4, 3, 2, 1):
+        cells = []
+        for im in (1, 2, 3, 4, 5):
+            sev = p * im
+            zone = "low" if sev <= 6 else "mid" if sev <= 12 else "high"
+            cells.append(
+                {
+                    "probability": p,
+                    "impact": im,
+                    "count": grid.get((p, im), 0),
+                    "zone": zone,
+                    "bg": zone_bg[zone],
+                }
+            )
+        matrix.append({"probability": p, "cells": cells})
+    return {"matrix": matrix, "total": total}
+
+
 def _build_unimplemented(ctx, params, window):
     return {"status": "unimplemented"}
 
 
 SECTION_BUILDERS: dict[str, Any] = {
+    "S-05": _build_s05_trends,
+    "S-15": _build_s15_risk_matrix,
     "S-01": _build_s01_header,
     "S-02": _build_s02_info,
     "S-03": _build_s03_rag,
