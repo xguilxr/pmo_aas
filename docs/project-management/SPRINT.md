@@ -9,16 +9,27 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sin US activa.
+Batch "bugs logos + /pmo + rediseño big canvas" (2026-05-26) en branch
+claude/friendly-lamport-LZ45l. 4 commits, status:fix-committed, esperando
+MERGE + QA visual del owner:
 
-Última sesión (2026-05-26): Sprint 33 (v1.28) — Dashboards N1/N2 + reportes
-derivados + revamp + 4 follow-ups. 19 commits en branch
-claude/laughing-carson-stUJu (status:fix-committed). Esperando MERGE a main
-+ QA visual del owner. Detalle en SPRINT-DONE-HISTORY.md.
+- BUG-068 #514 (e87c55f) — upload PNG de logos de org (data-URL en DB, mig.
+  0082) + preview circular.
+- ENH-142 #515 (1ad5ed3) — botones crear org/programa/proyecto en /pmo.
+- ENH-143 #516 (c7551b4) — org detail: botón Nuevo proyecto, renombra Status,
+  quita toggle Resumen/Reportes.
+- US-164 #517 (766f9f4) — rediseño "big canvas" global (lienzo cream + sidebar
+  azul flotante + topbar full-width + fix tab-strip + iconos + pinch-zoom +
+  dark mode). Supersede chrome navy DEC-006.
 
-Migraciones nuevas pendientes de aplicar en Railway: 0079, 0080, 0081.
+tsc + next build verdes; tests EP002 (26) + nuevo test BUG-068 verdes.
+Migración nueva pendiente de aplicar en Railway: 0082 (además de 0079-0081
+si aún no se aplicaron).
 
-Próximo libre: US-164, BUG-068, ENH-142.
+Follow-up doc diferido (US-164): navigation.md + ADR/DEC del supersede de
+chrome navy DEC-006.
+
+Próximo libre: US-165, BUG-069, ENH-144.
 ```
 
 ---
@@ -125,6 +136,12 @@ Próximo libre: US-164, BUG-068, ENH-142.
 
 > Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
 
+- **2026-05-26 (batch bugs logos + /pmo + rediseño big canvas):** branch
+  `claude/friendly-lamport-LZ45l`, 4 commits (BUG-068 #514, ENH-142 #515,
+  ENH-143 #516, US-164 #517), `status:fix-committed`. Esperando merge + QA
+  visual. Rediseño "big canvas" supersede el chrome navy DEC-006 (sidebar azul
+  flotante + lienzo cream). Mig. nueva: 0082 (logos org → TEXT). Doc follow-up
+  diferido: navigation.md + ADR del cambio de chrome.
 - **2026-05-26 (Sprint 33 / v1.28 — Dashboards N1/N2 + reportes derivados + revamp):**
   branch `claude/laughing-carson-stUJu`, 19 commits, **esperando merge + QA**.
   - **Datos:** `MetricSnapshot` (foto semanal 4 niveles, mig. 0079) + endpoints

@@ -1,16 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Download, FileText, FolderKanban, Network, Plus } from "lucide-react";
+import { Building2, Download, FolderKanban, Network, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
-import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 import { Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
@@ -27,8 +26,6 @@ import {
   type OrgPanelProgram,
   type OrgPanelProject,
 } from "@/lib/api/organizations";
-
-type OrgTab = "overview" | "reports";
 
 const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
 const HEALTH_FILL: Record<string, string> = {
@@ -51,10 +48,6 @@ const HEALTH_FILL: Record<string, string> = {
  */
 export default function PmoOrganizationPage() {
   const { id } = useParams<{ id: string }>();
-  const search = useSearchParams();
-  // US-136: tabs "Resumen" | "Reportes" via ?tab=.
-  const activeTab: OrgTab =
-    search?.get("tab") === "reports" ? "reports" : "overview";
   const { canCreate, loading: permsLoading } = useMyPermissions();
   const [panel, setPanel] = useState<OrganizationPanelDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,6 +151,7 @@ export default function PmoOrganizationPage() {
   );
 
   const canCreateProgram = canCreate("programs");
+  const canCreateProject = canCreate("projects");
 
   if (loading) {
     return (
@@ -220,16 +214,24 @@ export default function PmoOrganizationPage() {
             <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
             Nuevo programa
           </Button>
+          {canCreateProject ? (
+            <Link href={`/pmo/projects/new?organization_id=${panel.id}`}>
+              <Button variant="primary" size="sm">
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Nuevo proyecto
+              </Button>
+            </Link>
+          ) : null}
           {trends !== null ? (
             <Button
               variant="secondary"
               size="sm"
               onClick={handleDownloadReport}
               disabled={downloadingReport}
-              title="Descarga el reporte de status de la organización en PDF"
+              title="Genera el reporte de status de la organización en PDF"
             >
               <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
-              {downloadingReport ? "Generando…" : "Status (PDF)"}
+              {downloadingReport ? "Generando…" : "Reporte de Status (PDF)"}
             </Button>
           ) : null}
           <Link
@@ -241,51 +243,6 @@ export default function PmoOrganizationPage() {
         </div>
       </header>
 
-      {/* US-136: tabs Resumen / Reportes */}
-      <div
-        role="tablist"
-        aria-label="Vistas de la organización"
-        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
-      >
-        {(
-          [
-            { v: "overview" as const, label: "Resumen", icon: <Building2 className="h-3.5 w-3.5" aria-hidden /> },
-            { v: "reports" as const, label: "Reportes", icon: <FileText className="h-3.5 w-3.5" aria-hidden /> },
-          ]
-        ).map((opt) => {
-          const active = activeTab === opt.v;
-          const href =
-            opt.v === "overview"
-              ? `/pmo/organizations/${id}`
-              : `/pmo/organizations/${id}?tab=reports`;
-          return (
-            <Link
-              key={opt.v}
-              href={href}
-              role="tab"
-              aria-selected={active}
-              className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors ${
-                active
-                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]"
-              }`}
-            >
-              {opt.icon}
-              {opt.label}
-            </Link>
-          );
-        })}
-      </div>
-
-      {activeTab === "reports" ? (
-        <section className="space-y-3">
-          <p className="text-sm text-[var(--text-secondary)]">
-            Plantillas Nivel 2 aplicadas con scope filtrado a esta organización.
-          </p>
-          <ScopedReportsPanel scope={{ kind: "organization", id }} />
-        </section>
-      ) : (
-        <>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiCard label="Business Units" value={buCount} />
         <KpiCard label="Departamentos" value={deptCount} />
@@ -402,8 +359,6 @@ export default function PmoOrganizationPage() {
           </div>
         )}
       </section>
-        </>
-      )}
 
       <ProgramModal
         open={showProgramModal}

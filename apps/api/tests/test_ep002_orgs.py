@@ -39,6 +39,26 @@ async def test_tc024_soft_delete_org(client, db_session):
     assert g.json()["is_active"] is False
 
 
+# BUG-068: logo subido como data-URL base64 (>500 chars) persiste íntegro.
+@pytest.mark.asyncio
+async def test_bug068_logo_data_url_persists(client, db_session):
+    _, auth = await _admin_setup(client, db_session)
+    data_url = "data:image/png;base64," + ("A" * 1000)
+    client_url = "data:image/png;base64," + ("B" * 1200)
+    r = await client.post(
+        "/api/v1/organizations",
+        json={"name": "OrgLogo", "logo_url": data_url, "client_logo_url": client_url},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 201, r.text
+    org_id = r.json()["id"]
+    g = await client.get(f"/api/v1/organizations/{org_id}", headers=auth["_authz"])
+    assert g.status_code == 200
+    body = g.json()
+    assert body["logo_url"] == data_url
+    assert body["client_logo_url"] == client_url
+
+
 # TC-027: program cross-org rejected
 @pytest.mark.asyncio
 async def test_tc027_program_cross_org(client, db_session):
