@@ -1,4 +1,5 @@
-import { apiFetch } from "@/lib/api";
+import { apiBase, apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
 
 // US-152 — cliente de los endpoints de analytics para dashboards N1/N2.
 
@@ -87,4 +88,41 @@ export function captureSnapshots(): Promise<{ date: string; rows: number }> {
     `/api/v1/dashboard/snapshots/capture`,
     { method: "POST" },
   );
+}
+
+// US-160 — reportes de status N1/N2 (PDF, fuera del builder). Descarga binaria.
+async function _downloadPdf(path: string, filename: string): Promise<void> {
+  const token = getAccessToken();
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: {
+      Accept: "application/pdf",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`No se pudo generar el reporte (${res.status}): ${txt.slice(0, 200)}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const _stamp = () => new Date().toISOString().slice(0, 10);
+
+export function downloadPortfolioStatusReport(): Promise<void> {
+  return _downloadPdf(`/api/v1/dashboard/reports/portfolio`, `status-portafolio-${_stamp()}.pdf`);
+}
+
+export function downloadOrgStatusReport(orgId: string): Promise<void> {
+  return _downloadPdf(`/api/v1/organizations/${orgId}/reports/status`, `status-org-${_stamp()}.pdf`);
+}
+
+export function downloadProgramStatusReport(programId: string): Promise<void> {
+  return _downloadPdf(`/api/v1/programs/${programId}/reports/status`, `status-programa-${_stamp()}.pdf`);
 }

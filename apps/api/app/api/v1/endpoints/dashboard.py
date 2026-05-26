@@ -5,7 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,8 @@ from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
 from app.models.user import User
 from app.services.analytics.snapshots import METRIC_FIELDS, snapshot_tenant
+from app.services.pdf_renderer import render_pdf
+from app.services.reports.scoped_status import build_scope_status_context
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -656,3 +658,23 @@ async def capture_snapshots(
         raise forbidden(detail="Solo un admin puede capturar snapshots")
     written = await snapshot_tenant(db, str(tenant_id), date.today())
     return {"date": date.today().isoformat(), "rows": written}
+
+
+@router.post("/reports/portfolio")
+async def portfolio_status_report(
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-160 — Reporte de Status Nivel 1 (Portafolio/PMO) en PDF. Vive fuera
+    del Report Builder; agrega KPIs, salud, tendencias, matriz de riesgos y
+    comparativa de organizaciones del tenant. Admin-equivalente."""
+    tenant_id = _tenant(cu)
+    if not cu.is_admin_equivalent:
+        raise forbidden(detail="El reporte de portafolio es solo para admins")
+    ctx = await build_scope_status_context(db, tenant_id, "tenant", None)
+    pdf = render_pdf("reports/scope_status.html", ctx)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="status-portafolio.pdf"'},
+    )

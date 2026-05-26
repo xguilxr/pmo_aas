@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, FileText, FolderKanban, Network, Plus } from "lucide-react";
+import { Building2, Download, FileText, FolderKanban, Network, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -15,6 +15,7 @@ import { Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashb
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
+  downloadOrgStatusReport,
   getRiskMatrix,
   getTrends,
   type RiskMatrixResponse,
@@ -64,6 +65,18 @@ export default function PmoOrganizationPage() {
   // US-156 — analítica org-scoped.
   const [riskMatrix, setRiskMatrix] = useState<RiskMatrixResponse | null>(null);
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  async function handleDownloadReport() {
+    setDownloadingReport(true);
+    try {
+      await downloadOrgStatusReport(id);
+    } catch {
+      /* el banner global de error de página no aplica aquí; silencioso */
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -207,6 +220,18 @@ export default function PmoOrganizationPage() {
             <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
             Nuevo programa
           </Button>
+          {trends !== null ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={downloadingReport}
+              title="Descarga el reporte de status de la organización en PDF"
+            >
+              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+              {downloadingReport ? "Generando…" : "Status (PDF)"}
+            </Button>
+          ) : null}
           <Link
             href={`/admin/organizations/${panel.id}`}
             className="text-[12px] text-[var(--color-accent)] hover:underline"

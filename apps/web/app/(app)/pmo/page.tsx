@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heatmap, TrendLines, Treemap } from "@/components/dashboard-charts";
 import { ApiError } from "@/lib/api";
 import {
+  downloadPortfolioStatusReport,
   getHeatmap,
   getTrends,
   getTreemap,
@@ -84,6 +87,20 @@ export default function PmoHome() {
   const [treemap, setTreemap] = useState<TreemapResponse | null>(null);
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [isAdminView, setIsAdminView] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  async function handleDownloadReport() {
+    setDownloading(true);
+    setReportError(null);
+    try {
+      await downloadPortfolioStatusReport();
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "No se pudo generar el reporte");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -152,8 +169,25 @@ export default function PmoHome() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
+      {reportError ? <Banner variant="danger">{reportError}</Banner> : null}
+
       {isAdminView ? (
         <section aria-label="Analítica de portafolio" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+              Analítica del portafolio
+            </h2>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={downloading}
+            >
+              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+              {downloading ? "Generando…" : "Descargar status PMO (PDF)"}
+            </Button>
+          </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <PortfolioPanel title="Salud por organización">
               <Heatmap

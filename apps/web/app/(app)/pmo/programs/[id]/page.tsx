@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, FileText, FolderKanban, Network, TrendingUp } from "lucide-react";
+import { AlertTriangle, Download, FileText, FolderKanban, Network, TrendingUp } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 import { Gauge, PALETTE, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { ApiError } from "@/lib/api";
 import {
+  downloadProgramStatusReport,
   getRiskMatrix,
   getTrends,
   type RiskMatrixResponse,
@@ -132,6 +134,18 @@ export default function ProgramSummaryPage() {
   // US-157 — analítica program-scoped.
   const [riskMatrix, setRiskMatrix] = useState<RiskMatrixResponse | null>(null);
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  async function handleDownloadReport() {
+    setDownloadingReport(true);
+    try {
+      await downloadProgramStatusReport(params.id);
+    } catch {
+      /* silencioso */
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -226,6 +240,18 @@ export default function ProgramSummaryPage() {
             ) : null}
           </div>
         </div>
+        {trends !== null ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDownloadReport}
+            disabled={downloadingReport}
+            title="Descarga el reporte de status del programa en PDF"
+          >
+            <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+            {downloadingReport ? "Generando…" : "Status (PDF)"}
+          </Button>
+        ) : null}
       </header>
 
       {/* US-137: tabs Resumen / Reportes */}
