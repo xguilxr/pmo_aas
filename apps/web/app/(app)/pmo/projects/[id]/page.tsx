@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, ArrowRightLeft, Pencil } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
+import { Gauge } from "@/components/dashboard-charts";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -639,29 +640,6 @@ function MiniGantt({ tasks }: { tasks: Task[] }) {
   );
 }
 
-// ENH-129: gauge tipo dona con el % de avance al centro.
-function ProgressGauge({ value }: { value: number }) {
-  const pct = Math.max(0, Math.min(100, value));
-  const r = 34;
-  const c = 2 * Math.PI * r;
-  const dash = (pct / 100) * c;
-  return (
-    <svg viewBox="0 0 80 80" className="h-20 w-20 -rotate-90" aria-hidden>
-      <circle cx="40" cy="40" r={r} fill="none" stroke="var(--color-muted)" strokeWidth="8" />
-      <circle
-        cx="40"
-        cy="40"
-        r={r}
-        fill="none"
-        stroke="var(--text-primary)"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${c - dash}`}
-      />
-    </svg>
-  );
-}
-
 // ENH-129: tarjeta de Avance con gauge + 3 líneas (hitos, críticos,
 // atrasados) usando los counts reales de task_kpis.
 function AvanceCard({
@@ -683,12 +661,7 @@ function AvanceCard({
         Avance
       </p>
       <div className="mt-2 flex items-center gap-4">
-        <div className="relative h-20 w-20 shrink-0">
-          <ProgressGauge value={progress} />
-          <span className="absolute inset-0 flex items-center justify-center text-[16px] font-semibold tabular-nums text-[var(--text-primary)]">
-            {progress}%
-          </span>
-        </div>
+        <Gauge value={progress} size={80} thickness={8} tone="primary" ariaLabel="Avance del proyecto" />
         <dl className="space-y-1">
           {lines.map((l) => (
             <div key={l.label} className="flex items-baseline justify-between gap-3 text-[12px]">

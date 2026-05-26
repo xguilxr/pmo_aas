@@ -270,7 +270,7 @@ export function Gauge({
   size?: number;
   thickness?: number;
   ariaLabel: string;
-  tone?: "accent" | "success" | "warning" | "danger";
+  tone?: "accent" | "success" | "warning" | "danger" | "primary";
   suffix?: string;
 }) {
   const pct = Math.max(0, Math.min(100, value));
