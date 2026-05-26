@@ -107,45 +107,53 @@ async def test_tc097_3_patch_toggles(client, db_session):
     assert r3.json()["progress"] == 50
 
 
-def _build_xlsx_with_criticality(criticalities: list[str]) -> bytes:
-    """Helper: minimal xlsx con header `Nombre` + `Criticidad` (no col is_critical)."""
+def _build_xlsx_with_header(header: str, values: list[str]) -> bytes:
+    """Helper: minimal xlsx con header `Nombre` + una columna arbitraria."""
     from openpyxl import Workbook
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Plan"
-    ws.append(["Nombre", "Criticidad"])
-    for i, c in enumerate(criticalities, start=1):
+    ws.append(["Nombre", header])
+    for i, c in enumerate(values, start=1):
         ws.append([f"Task {i}", c])
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
 
 
-def test_tc097_4_parser_xlsx_no_is_critical_column():
-    """Parser XLSX: cuando is_critical no esta en el header, el campo en
-    ParsedTask queda None — el endpoint deriva el valor desde criticality.
-    """
-    data = _build_xlsx_with_criticality(["high", "medium", "critical", "low"])
+def test_tc097_4_parser_xlsx_criticidad_boolean():
+    """ENH-134: la columna 'Criticidad' (Sí/No) mapea a is_critical booleano."""
+    data = _build_xlsx_with_header("Criticidad", ["Sí", "No", "Sí", "No"])
     result = parse_xlsx(data)
     assert len(result.tasks) == 4
-    # No column → None en ParsedTask.
+    assert [t.is_critical for t in result.tasks] == [True, False, True, False]
+
+
+def test_tc097_4_parser_xlsx_enum_via_manual_header():
+    """El enum criticality sigue accesible vía header 'Prioridad Criticidad'
+    (mapeo legacy); is_critical queda None para que el endpoint lo derive."""
+    data = _build_xlsx_with_header(
+        "Prioridad Criticidad", ["high", "medium", "critical", "low"]
+    )
+    result = parse_xlsx(data)
+    assert len(result.tasks) == 4
     assert all(t.is_critical is None for t in result.tasks)
-    # criticality_ si esta presente.
-    crits = [t.criticality for t in result.tasks]
-    assert crits == ["high", "medium", "critical", "low"]
+    assert [t.criticality for t in result.tasks] == [
+        "high", "medium", "critical", "low",
+    ]
 
 
 def test_tc097_4_parser_xlsx_with_is_critical_column():
-    """Parser XLSX reconoce columna `is_critical` / `crítico`."""
+    """Parser XLSX reconoce columna explicita `crítico` como booleano."""
     from openpyxl import Workbook
 
     wb = Workbook()
     ws = wb.active
-    ws.append(["Nombre", "Criticidad", "crítico"])
-    ws.append(["A", "low", "true"])
-    ws.append(["B", "medium", "false"])
-    ws.append(["C", "high", ""])
+    ws.append(["Nombre", "crítico"])
+    ws.append(["A", "true"])
+    ws.append(["B", "false"])
+    ws.append(["C", ""])
     buf = io.BytesIO()
     wb.save(buf)
     result = parse_xlsx(buf.getvalue())
@@ -156,16 +164,16 @@ def test_tc097_4_parser_xlsx_with_is_critical_column():
     assert result.tasks[2].is_critical is False
 
 
-def test_tc097_4_parser_csv_no_is_critical_column():
-    """Parser CSV: misma semántica — sin columna → None."""
+def test_tc097_4_parser_csv_criticidad_boolean():
+    """ENH-134: CSV — 'Criticidad' (Sí/No) mapea a is_critical booleano."""
     csv_bytes = (
         b"Nombre,Criticidad\n"
-        b"T1,high\n"
-        b"T2,low\n"
+        b"T1,S\xc3\xad\n"
+        b"T2,No\n"
     )
     result = parse_csv(csv_bytes)
     assert len(result.tasks) == 2
-    assert all(t.is_critical is None for t in result.tasks)
+    assert [t.is_critical for t in result.tasks] == [True, False]
 
 
 @pytest.mark.asyncio

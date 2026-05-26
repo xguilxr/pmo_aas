@@ -1133,27 +1133,42 @@ function PlanInner() {
       alert("No hay tareas para exportar");
       return;
     }
+    // ENH-134: orden de columnas canónico (espeja la plantilla).
+    const areaName = (aid: string | null) =>
+      (aid && areas.find((a) => a.id === aid)?.name) || "";
     const headers = [
       "WBS",
       "Tarea",
+      "Outline Level",
       "Inicio",
       "Fin",
       "Duración (días)",
       "Avance (%)",
-      "Es hito",
       "Estado",
+      "Área Responsable",
       "Responsable",
+      "Criticidad",
+      "Es hito",
+      "Hito Relacionado",
+      "Predecessors",
+      "Successors",
     ];
     const rows = tasks.map((t) => [
       t.wbs ?? "",
       t.name,
+      t.outline_level ?? "",
       t.start_date ?? "",
       t.end_date ?? "",
       t.duration_days ?? "",
       t.progress ?? 0,
-      t.is_milestone ? "Sí" : "No",
       TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
+      areaName(t.area_id),
       ownerLabel(t.owner),
+      isTaskCritical(t) ? "Sí" : "No",
+      t.is_milestone ? "Sí" : "No",
+      t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
+      (t.predecessors ?? []).join(", "),
+      (t.successors ?? []).join(", "),
     ]);
     const csv = [
       headers.map((h) => `"${h}"`).join(","),
@@ -1186,20 +1201,29 @@ function PlanInner() {
       const ws = wb.addWorksheet("Plan", {
         views: [{ state: "frozen", ySplit: 1 }],
       });
+      // ENH-134: orden de columnas canónico (espeja la plantilla).
+      const areaName = (aid: string | null) =>
+        (aid && areas.find((a) => a.id === aid)?.name) || "";
       ws.columns = [
         { header: "WBS", key: "wbs", width: 10 },
         { header: "Tarea", key: "name", width: 40 },
+        { header: "Outline Level", key: "outline", width: 12 },
         { header: "Inicio", key: "start", width: 12 },
         { header: "Fin", key: "end", width: 12 },
         { header: "Duración (días)", key: "duration", width: 14 },
         { header: "Avance (%)", key: "progress", width: 12 },
-        { header: "Es hito", key: "milestone", width: 10 },
         { header: "Estado", key: "status", width: 16 },
+        { header: "Área Responsable", key: "area", width: 22 },
         { header: "Responsable", key: "owner", width: 18 },
+        { header: "Criticidad", key: "criticality", width: 12 },
+        { header: "Es hito", key: "milestone", width: 10 },
+        { header: "Hito Relacionado", key: "related_milestone", width: 18 },
+        { header: "Predecessors", key: "predecessors", width: 16 },
+        { header: "Successors", key: "successors", width: 16 },
       ];
-      // Header bold + fill gris claro.
+      // Header bold + fill gris claro. ENH-134: font negro.
       const header = ws.getRow(1);
-      header.font = { bold: true, color: { argb: "FF1F2937" } };
+      header.font = { bold: true, color: { argb: "FF000000" } };
       header.fill = {
         type: "pattern",
         pattern: "solid",
@@ -1226,15 +1250,21 @@ function PlanInner() {
         const row = ws.addRow({
           wbs: t.wbs ?? "",
           name: t.name,
+          outline: t.outline_level ?? "",
           start: t.start_date ?? "",
           end: t.end_date ?? "",
           duration: t.duration_days ?? "",
           progress: typeof t.progress === "number" ? t.progress / 100 : 0,
-          milestone: t.is_milestone ? "♦" : "",
           status:
             TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
             t.status,
+          area: areaName(t.area_id),
           owner: ownerLabel(t.owner),
+          criticality: isTaskCritical(t) ? "Sí" : "No",
+          milestone: t.is_milestone ? "Sí" : "No",
+          related_milestone: t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
+          predecessors: (t.predecessors ?? []).join(", "),
+          successors: (t.successors ?? []).join(", "),
         });
         // Avance como porcentaje formateado.
         row.getCell("progress").numFmt = "0%";

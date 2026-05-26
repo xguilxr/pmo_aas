@@ -44,15 +44,33 @@ HEADER_ALIASES: dict[str, list[str]] = {
         "% avance",
     ],
     "is_milestone": ["hito", "milestone", "es hito"],
-    "criticality": ["criticidad", "criticality", "prioridad criticidad"],
-    # ENH-097: columna boolean explicita is_critical (Sprint 26 / EP020).
-    "is_critical": ["is_critical", "es critico", "es crítico", "critico", "crítico"],
+    # ENH-134: la columna "Criticidad" de la plantilla V1 es booleana
+    # (Sí/No) → mapea a is_critical. El enum legacy queda accesible solo
+    # vía mapeo manual ("prioridad criticidad").
+    "criticality": ["prioridad criticidad"],
+    "is_critical": [
+        "criticidad",
+        "criticality",
+        "is_critical",
+        "es critico",
+        "es crítico",
+        "critico",
+        "crítico",
+    ],
     "related_milestone": [
         "hito relacionado",
         "related milestone",
         "milestone relacionado",
     ],
     "predecessors": ["predecesoras", "predecessors", "predecessoras"],
+    # ENH-134: área responsable (se resuelve a area_id en el confirm).
+    "area": [
+        "área responsable",
+        "area responsable",
+        "área",
+        "area",
+        "área responsable ",
+    ],
     "resources": [
         "recursos",
         "resources",
@@ -81,6 +99,9 @@ class ParsedTask:
     related_milestone_wbs: str | None = None
     predecessors_raw: str | None = None
     resources_raw: str | None = None
+    # ENH-134: nombre del área responsable (texto). Se resuelve a area_id
+    # contra las áreas del proyecto en el confirm.
+    area_raw: str | None = None
 
 
 @dataclass
@@ -292,6 +313,11 @@ def parse_xlsx(
                 else None,
                 resources_raw=_norm(row[columns["resources"]]) or None
                 if "resources" in columns and columns["resources"] < len(row)
+                else None,
+                area_raw=(str(row[columns["area"]]).strip() or None)
+                if "area" in columns
+                and columns["area"] < len(row)
+                and row[columns["area"]] is not None
                 else None,
             )
             result.tasks.append(task)
