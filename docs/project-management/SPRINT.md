@@ -9,17 +9,32 @@
 ## 🔴 IN-PROGRESS
 
 ```
-BUG-063 entregado en branch claude/dreamy-heisenberg-jJkUS (4 commits):
-- fix(api): BUG-063 RAID shape A/R/D/I + participants flat + sin matcher
-- feat(api): BUG-063 prompt MINUTE_SYSTEM con few-shot real Highlander
-- feat(web): BUG-063 preview editable + nuevo shape RAID A/R/D/I
-- fix(api): BUG-063 re-seed idempotente report_sections (migración 0076)
+Rediseño V1 project detail — 21 issues entregados en branch
+claude/practical-ptolemy-s7LyL (status:fix-committed, esperan verificación
+del owner). Sin migraciones Alembic. Tests backend 565 passed/1 skipped;
+next build + tsc verdes.
 
-Próximo libre: US-149, BUG-064, ENH-126.
+Bloque A (layout):     BUG-064 #490, ENH-126 #491
+Bloque B (Resumen):    ENH-127 #492, ENH-128 #493, ENH-129 #494,
+                       ENH-130 #495, ENH-131 #496, US-149 #497,
+                       BUG-065 #498, ENH-132 #499
+Bloque C (Plan):       BUG-066 #500, BUG-067 #501, ENH-133 #502,
+                       ENH-134 #503, ENH-135 #504
+Bloque D (Áreas):      ENH-136 #505, ENH-137 #506
+Bloque E (Documentos): US-150 #507 (Organigrama Excel)
+Bloque F (Reportes):   ENH-138 #508, ENH-139 #509, ENH-140 #510
+
+Próximo libre: US-151, BUG-068, ENH-141.
+
+Notas para el owner / follow-ups detectados:
+- ENH-131 removió el panel de Equipo del Resumen: la gestión de miembros
+  queda para Áreas/Recursos (EP017). Confirmar si se quiere un acceso
+  directo desde el Resumen.
+- ENH-134: el header "Criticidad" ahora importa como booleano (is_critical);
+  el enum legacy solo se importa vía header "Prioridad Criticidad".
+- Sucesoras en el form de tarea es read-only (se derivan de predecesoras).
 
 Pendiente fuera de scope: ENH-115 #434 (breadcrumbs cross /pmo/**/reports).
-Próximo bloque sugerido por owner: planning IA (acciones realizables,
-información disponible, prompts, skills).
 ```
 
 ---
@@ -122,6 +137,19 @@ información disponible, prompts, skills).
 ---
 
 ## Notas y cambios recientes
+
+- **2026-05-26 (rediseño V1 project detail — 21 issues #490-#510):** branch
+  `claude/practical-ptolemy-s7LyL`. Layout de tabs (fondo sólido + Lecciones
+  al final), Resumen rediseñado (sin RAG; datos clave en la hoja; gauge de
+  Avance con Hitos/Críticos/Atrasados; Salud/Fase/Presupuesto Restante;
+  tarjetas RAID + mini-Gantt; feed de actividad real desde audit_log; sin
+  sub-tabs ni grilla de módulos), Editar (cancelar al resumen + Salud/Real
+  editables), Plan (Gantt ordena por WBS; Completada en verde; Criticidad
+  booleana; plantilla V1 con Área Responsable + font negro + matching;
+  forms reordenados con Área/Responsable en Nueva), Áreas→Áreas/Recursos +
+  Directorio→Recursos, Organigrama Excel de 4 hojas, builder de Reportes
+  (preview en vivo del canvas, Visualizar PDF, Guardar Reporte al historial).
+  Sin migraciones. Backend 565 passed/1 skipped.
 
 - **2026-05-24 (BUG-063 — fix integral generación minutas):** branch `claude/dreamy-heisenberg-jJkUS`, 4 commits.
   - Backend: participants ya no se aplanan mal como keys del dict; RAID `_normalize_raid_block` reemplazado por el validator que produce el shape canónico `{actions, risks, decisions, issues}`. Eliminada la invocación de `match_participants` en `create_minute` (owner: enfocar minuta en minuta). 422 al guardar arreglado en cascada.
