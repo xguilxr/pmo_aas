@@ -49,6 +49,35 @@
   <p class="meta">Sin historia de snapshots todavía. Captura un snapshot o espera al job semanal.</p>
 {% endif %}
 
+{% if heatmap_rows %}
+<h2>Salud por {% if rows_kind == "organizations" %}organización{% else %}programa{% endif %}</h2>
+<table style="border-collapse:collapse;">
+  <thead>
+    <tr>
+      <th></th>
+      <th style="padding:2px 8px;font-size:9pt;color:#6b7280;">Verde</th>
+      <th style="padding:2px 8px;font-size:9pt;color:#6b7280;">Amarillo</th>
+      <th style="padding:2px 8px;font-size:9pt;color:#6b7280;">Rojo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in heatmap_rows %}
+    <tr>
+      <td style="padding:2px 6px;font-size:9.5pt;">{{ r.name }}</td>
+      <td style="background:#16a34a;color:#fff;text-align:center;width:42px;{% if not r.green %}opacity:.25;{% endif %}">{{ r.green or "" }}</td>
+      <td style="background:#eab308;color:#fff;text-align:center;width:42px;{% if not r.yellow %}opacity:.25;{% endif %}">{{ r.yellow or "" }}</td>
+      <td style="background:#dc2626;color:#fff;text-align:center;width:42px;{% if not r.red %}opacity:.25;{% endif %}">{{ r.red or "" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if treemap_svg %}
+<h2>Presupuesto x salud</h2>
+<div class="treemap">{{ treemap_svg | safe }}</div>
+{% endif %}
+
 <h2>Matriz de riesgos (probabilidad x impacto)</h2>
 {% if risk_matrix.total == 0 %}
   <p class="meta">Sin riesgos abiertos con probabilidad e impacto definidos.</p>

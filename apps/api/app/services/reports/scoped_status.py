@@ -25,9 +25,18 @@ from app.services.analytics.snapshots import (
     aggregate_project_trends,
     compute_snapshot_values,
 )
-from app.services.reports.svg import sparkline_svg
+from app.services.reports.svg import sparkline_svg, treemap_svg
 
 _ZONE_BG = {"low": "#dcfce7", "mid": "#fef9c3", "high": "#fee2e2"}
+_HEALTH_HEX = {"green": "#16a34a", "yellow": "#eab308", "red": "#dc2626"}
+
+
+def _worst_health_color(row: dict) -> str:
+    if row.get("red"):
+        return _HEALTH_HEX["red"]
+    if row.get("yellow"):
+        return _HEALTH_HEX["yellow"]
+    return _HEALTH_HEX["green"]
 _TREND_COLOR = {"avg_progress": "#16a34a", "open_risks": "#d97706"}
 _TREND_LABEL = {"avg_progress": "Avance promedio (%)", "open_risks": "Riesgos abiertos"}
 
@@ -279,6 +288,7 @@ async def build_scope_status_context(
                 "folio": p.folio, "name": p.name, "phase": p.phase,
                 "health": p.health_status, "progress": int(p.progress or 0),
                 "pm_name": pm_names.get(str(p.pm_id)) if p.pm_id else None,
+                "budget_plan": float(p.budget or 0),
                 "budget_plan_fmt": _money(float(p.budget or 0)),
                 "budget_actual_fmt": _money(float(p.actual_budget or 0)),
             }
@@ -289,6 +299,22 @@ async def build_scope_status_context(
     tenant_name = (
         await db.execute(select(Tenant.name).where(Tenant.id == tenant_id))
     ).scalar_one_or_none()
+
+    # Heatmap (Org/Programa × Salud) — solo cuando las filas traen breakdown.
+    heatmap_rows = rows if rows_kind in ("organizations", "programs") else []
+    # Treemap (presupuesto × salud).
+    if rows_kind == "projects":
+        treemap_items = [
+            {"label": r["name"], "value": r.get("budget_plan", 0),
+             "color": _HEALTH_HEX.get(r.get("health"), "#9ca3af")}
+            for r in rows
+        ]
+    else:
+        treemap_items = [
+            {"label": r["name"], "value": r.get("budget_plan", 0),
+             "color": _worst_health_color(r)}
+            for r in rows
+        ]
 
     return {
         "title": title,
@@ -308,4 +334,6 @@ async def build_scope_status_context(
         "risk_matrix": risk_matrix,
         "rows": rows,
         "rows_kind": rows_kind,
+        "heatmap_rows": heatmap_rows,
+        "treemap_svg": treemap_svg(treemap_items),
     }

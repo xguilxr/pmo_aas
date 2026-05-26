@@ -6,6 +6,36 @@ strings SVG y los inyectamos en las plantillas Jinja con `| safe`.
 from __future__ import annotations
 
 
+def treemap_svg(items: list[dict]) -> str:
+    """Treemap 1-D (barra proporcional) sized por `value`, coloreado por
+    `color`. `items`: [{label, value, color}]. WeasyPrint rasteriza el SVG.
+    Devuelve "" si no hay valores positivos."""
+    rows = [i for i in items if (i.get("value") or 0) > 0]
+    total = sum(i["value"] for i in rows)
+    if total <= 0:
+        return ""
+    w, h = 320.0, 48.0
+    parts = [
+        f'<svg viewBox="0 0 {w:.0f} {h:.0f}" width="100%" height="48" '
+        f'preserveAspectRatio="none" role="img" aria-label="Treemap presupuesto por salud">'
+    ]
+    x = 0.0
+    for i in rows:
+        seg = (i["value"] / total) * w
+        label = (i.get("label") or "")[:18]
+        parts.append(
+            f'<rect x="{x:.1f}" y="0" width="{max(0.5, seg - 1):.1f}" height="{h}" '
+            f'fill="{i.get("color", "#9ca3af")}" rx="1"/>'
+        )
+        if seg > 26:
+            parts.append(
+                f'<text x="{x + 3:.1f}" y="14" font-size="7" fill="#fff">{label}</text>'
+            )
+        x += seg
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 def curve_svg(
     actual: list[float],
     planned: list[float],
