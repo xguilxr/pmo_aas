@@ -40,7 +40,6 @@ import {
   HEALTH_LABEL,
   MEMBER_ROLE_LABEL,
   PHASE_LABEL,
-  STATUS_RAG_LABEL,
   TYPE_LABEL,
   addMember,
   changePhase,
@@ -51,7 +50,6 @@ import {
   type ProjectHealth,
   type ProjectMemberRole,
   type ProjectPhase,
-  type ProjectStatusRag,
 } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
 
@@ -166,10 +164,6 @@ export default function ProjectDetailPage() {
   }, [charter]);
 
   const [healthPending, setHealthPending] = useState<ProjectHealth | null>(null);
-  // ENH-101: pending sentinel — "__null__" representa un clear explícito.
-  const [statusRagPending, setStatusRagPending] = useState<
-    ProjectStatusRag | "__null__" | null
-  >(null);
 
   async function reload() {
     setLoading(true);
@@ -268,22 +262,6 @@ export default function ProjectDetailPage() {
       setNotice(err instanceof ApiError ? err.message : "No se pudo actualizar la salud");
     } finally {
       setHealthPending(null);
-    }
-  }
-
-  // ENH-101: declarative RAG override (PM).
-  async function setStatusRag(value: ProjectStatusRag | null) {
-    if (!project) return;
-    setStatusRagPending(value ?? "__null__");
-    try {
-      await updateProject(project.id, { status_rag: value });
-      await reload();
-    } catch (err) {
-      setNotice(
-        err instanceof ApiError ? err.message : "No se pudo actualizar el RAG declarado",
-      );
-    } finally {
-      setStatusRagPending(null);
     }
   }
 
@@ -403,18 +381,6 @@ export default function ProjectDetailPage() {
           value={project.health_status}
           pending={healthPending}
           onChange={setHealth}
-        />
-      </section>
-
-      {/* ENH-101: tarjeta del RAG declarativo del PM. Si está seteado
-          prevalece visualmente sobre la salud calculada (que sigue
-          siendo el dato secundario). */}
-      <section aria-label="RAG declarado">
-        <StatusRagCard
-          value={project.status_rag ?? null}
-          computed={project.health_status}
-          pending={statusRagPending}
-          onChange={setStatusRag}
         />
       </section>
 
@@ -807,107 +773,6 @@ function HealthCard({
             </button>
           );
         })}
-      </div>
-    </article>
-  );
-}
-
-// ENH-101: tarjeta del RAG declarativo (override manual del PM).
-// Si está seteado, el RAG declarado es el dato primario y el
-// computado se rinde como secundario ("computado: <X>"). No modifica
-// la lógica del computo; solo cómo se presenta.
-function StatusRagCard({
-  value,
-  computed,
-  pending,
-  onChange,
-}: {
-  value: ProjectStatusRag | null;
-  computed: ProjectHealth;
-  pending: ProjectStatusRag | "__null__" | null;
-  onChange: (h: ProjectStatusRag | null) => void;
-}) {
-  const RAGS: ProjectStatusRag[] = ["green", "amber", "red"];
-  const ICON: Record<ProjectStatusRag, string> = {
-    green: "🟢",
-    amber: "🟡",
-    red: "🔴",
-  };
-  const headline = value
-    ? `${ICON[value]} ${STATUS_RAG_LABEL[value]}`
-    : "Sin asignar";
-  const COMPUTED_LABEL: Record<ProjectHealth, string> = {
-    green: "Verde",
-    yellow: "Amarillo",
-    red: "Rojo",
-  };
-  return (
-    <article
-      className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5"
-      title="Estado declarado por el PM (manual)"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
-            RAG declarado (PM)
-          </p>
-          <p className="mt-1 text-[18px] font-semibold text-[var(--text-primary)]">
-            {headline}
-          </p>
-          <p className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
-            computado: {COMPUTED_LABEL[computed]}
-          </p>
-        </div>
-        <div
-          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-1"
-          role="group"
-          aria-label="Asignar RAG declarado"
-        >
-          {RAGS.map((h) => {
-            const active = value === h;
-            const tone =
-              h === "green"
-                ? "bg-[var(--color-success-fg)]"
-                : h === "amber"
-                  ? "bg-[var(--color-warning-fg)]"
-                  : "bg-[var(--color-danger-fg)]";
-            return (
-              <button
-                key={h}
-                type="button"
-                onClick={() => onChange(h)}
-                aria-label={STATUS_RAG_LABEL[h]}
-                aria-pressed={active}
-                disabled={pending !== null}
-                title={`${ICON[h]} ${STATUS_RAG_LABEL[h]}`}
-                className={cn(
-                  "inline-flex h-7 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium transition-colors",
-                  active
-                    ? "bg-[var(--color-surface)] text-[var(--text-primary)] shadow-[var(--shadow-optical-sm)]"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-                )}
-              >
-                <span className={cn("h-2 w-2 rounded-full", tone)} />
-                {STATUS_RAG_LABEL[h]}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            aria-label="Sin asignar"
-            disabled={pending !== null || value === null}
-            title="Limpiar el RAG declarado"
-            className={cn(
-              "ml-1 inline-flex h-7 items-center rounded-full px-2 text-[11px] font-medium transition-colors",
-              value === null
-                ? "text-[var(--text-tertiary)]"
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-            )}
-          >
-            Sin asignar
-          </button>
-        </div>
       </div>
     </article>
   );
