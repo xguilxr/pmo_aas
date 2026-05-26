@@ -13,8 +13,9 @@ Batch "bugs logos + /pmo + rediseño big canvas" (2026-05-26) en branch
 claude/friendly-lamport-LZ45l. 4 commits, status:fix-committed, esperando
 MERGE + QA visual del owner:
 
-- BUG-068 #514 (e87c55f) — upload PNG de logos de org (data-URL en DB, mig.
-  0082) + preview circular.
+- BUG-068 #514 (e87c55f + 70f377a) — upload PNG de logos de org (data-URL en
+  DB, mig. 0082) + preview circular. Follow-up: logo del **tenant** también a
+  data-URL (mig. 0083) — arregla el 401 del serve endpoint con `<img>`.
 - ENH-142 #515 (1ad5ed3) — botones crear org/programa/proyecto en /pmo.
 - ENH-143 #516 (c7551b4) — org detail: botón Nuevo proyecto, renombra Status,
   quita toggle Resumen/Reportes.
@@ -22,9 +23,9 @@ MERGE + QA visual del owner:
   azul flotante + topbar full-width + fix tab-strip + iconos + pinch-zoom +
   dark mode). Supersede chrome navy DEC-006.
 
-tsc + next build verdes; tests EP002 (26) + nuevo test BUG-068 verdes.
-Migración nueva pendiente de aplicar en Railway: 0082 (además de 0079-0081
-si aún no se aplicaron).
+tsc + next build verdes; tests EP002 (26) + US-031 (data-URL) + BUG-068 verdes.
+Migraciones nuevas pendientes de aplicar en Railway: 0082 + 0083 (además de
+0079-0081 si aún no se aplicaron).
 
 Follow-up doc diferido (US-164): navigation.md + ADR/DEC del supersede de
 chrome navy DEC-006.
