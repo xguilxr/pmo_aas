@@ -177,13 +177,14 @@ function OwnerCell({ owner }: { owner: Task["owner"] }) {
 
 function StatusBadge({ status }: { status: string }) {
   const label = TASK_STATUS_LABEL[status as keyof typeof TASK_STATUS_LABEL] ?? status;
+  // BUG-067: el enum real es completed/on_hold (no done/blocked).
   const tone =
-    status === "done"
+    status === "completed"
       ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
       : status === "in_progress"
         ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]"
-        : status === "blocked"
-          ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
+        : status === "on_hold"
+          ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
           : "bg-[var(--color-subtle)] text-[var(--color-secondary)]";
   return (
     <span
