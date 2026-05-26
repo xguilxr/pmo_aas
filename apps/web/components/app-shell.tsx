@@ -16,7 +16,6 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquareText,
-  Network,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -173,7 +172,7 @@ const ADMIN_NAV: NavItem = {
     {
       id: "orgs-mgmt",
       label: "Organizaciones",
-      icon: <Network className="h-4 w-4" aria-hidden />,
+      icon: <Building2 className="h-4 w-4" aria-hidden />,
       href: "/admin/organizations",
       match: (p) =>
         p.startsWith("/admin/organizations") && !p.includes("/panel"),

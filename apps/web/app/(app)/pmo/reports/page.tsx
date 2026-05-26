@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Download, FileText, Layers, Loader2, Network } from "lucide-react";
+import { Building2, Download, FileText, Layers, Loader2 } from "lucide-react";
 
 import {
   TenantCrossFilters,
@@ -50,7 +50,7 @@ const TABS: Array<{ v: TenantReportsTab; label: string; icon: React.ReactNode }>
   {
     v: "program",
     label: "Programas",
-    icon: <Network className="h-3.5 w-3.5" aria-hidden />,
+    icon: <Layers className="h-3.5 w-3.5" aria-hidden />,
   },
   {
     v: "projects",
@@ -485,7 +485,7 @@ function ProgramScopePlaceholder() {
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
         <div className="flex items-start gap-3">
-          <Network className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <Layers className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
           <div className="flex-1">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">
               Reporte por Programa

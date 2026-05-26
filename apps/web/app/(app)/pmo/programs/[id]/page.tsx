@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, FileText, FolderKanban, Network, TrendingUp } from "lucide-react";
+import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
@@ -223,7 +223,7 @@ export default function ProgramSummaryPage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
-            <Network className="h-6 w-6" aria-hidden />
+            <Layers className="h-6 w-6" aria-hidden />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
@@ -262,7 +262,7 @@ export default function ProgramSummaryPage() {
       >
         {(
           [
-            { v: "overview" as const, label: "Resumen", icon: <Network className="h-3.5 w-3.5" aria-hidden /> },
+            { v: "overview" as const, label: "Resumen", icon: <Layers className="h-3.5 w-3.5" aria-hidden /> },
             { v: "reports" as const, label: "Reportes", icon: <FileText className="h-3.5 w-3.5" aria-hidden /> },
           ]
         ).map((opt) => {
