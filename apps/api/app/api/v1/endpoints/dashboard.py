@@ -19,7 +19,11 @@ from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
 from app.models.user import User
-from app.services.analytics.snapshots import METRIC_FIELDS, snapshot_tenant
+from app.services.analytics.snapshots import (
+    METRIC_FIELDS,
+    aggregate_project_trends,
+    snapshot_tenant,
+)
 from app.services.pdf_renderer import render_pdf
 from app.services.reports.scoped_status import build_scope_status_context
 
@@ -399,22 +403,20 @@ def _resolve_scope(scope: str, scope_id: UUID | None, tenant_id: UUID) -> tuple[
     return scope, str(scope_id)
 
 
-async def _assert_scope_access(
-    cu: CurrentUser,
+async def _visible_in_scope(
     db: AsyncSession,
     tenant_id: UUID,
     scope_type: str,
     scope_id: str,
-) -> None:
-    """Los no-admin solo acceden a analíticas de un proyecto que ven; las
-    vistas agregadas (tenant/org/programa) son admin-equivalente."""
-    if cu.is_admin_equivalent:
-        return
-    if scope_type == "project":
-        ids = await scoped_project_ids(cu, db, tenant_id)
-        if ids is None or scope_id in ids:
-            return
-    raise forbidden(detail="Sin acceso a las analíticas de este scope")
+    role_ids: list[str],
+) -> list[str]:
+    """Intersección de los proyectos del scope con los que el usuario ve."""
+    conds = _scope_project_conditions(scope_type, scope_id, tenant_id)
+    ids = [
+        str(i) for i in (await db.execute(select(Project.id).where(*conds))).scalars().all()
+    ]
+    allowed = set(role_ids)
+    return [i for i in ids if i in allowed]
 
 
 def _scope_project_conditions(scope_type: str, scope_id: str, tenant_id: UUID) -> list:
@@ -437,26 +439,33 @@ async def trends(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """Serie histórica de un scope leída de `metric_snapshots` (US-151)."""
+    """Serie histórica de un scope leída de `metric_snapshots` (US-151).
+
+    Admin: serie precomputada del scope. No-admin: serie agregada desde los
+    snapshots de los proyectos que el usuario ve dentro del scope (US-162)."""
     tenant_id = _tenant(cu)
     scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
-    await _assert_scope_access(cu, db, tenant_id, scope_type, scope_id)
     if metric and metric not in METRIC_FIELDS:
         raise validation_error(f"metric inválido: {metric}")
 
     since = date.today() - timedelta(weeks=weeks)
-    rows = (
-        await db.execute(
-            select(MetricSnapshot)
-            .where(
-                MetricSnapshot.tenant_id == str(tenant_id),
-                MetricSnapshot.scope_type == scope_type,
-                MetricSnapshot.scope_id == scope_id,
-                MetricSnapshot.snapshot_date >= since,
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    if role_ids is None:
+        rows = (
+            await db.execute(
+                select(MetricSnapshot)
+                .where(
+                    MetricSnapshot.tenant_id == str(tenant_id),
+                    MetricSnapshot.scope_type == scope_type,
+                    MetricSnapshot.scope_id == scope_id,
+                    MetricSnapshot.snapshot_date >= since,
+                )
+                .order_by(MetricSnapshot.snapshot_date)
             )
-            .order_by(MetricSnapshot.snapshot_date)
-        )
-    ).scalars().all()
+        ).scalars().all()
+    else:
+        visible = await _visible_in_scope(db, tenant_id, scope_type, scope_id, role_ids)
+        rows = await aggregate_project_trends(db, tenant_id, visible, since)
 
     fields = [metric] if metric else list(METRIC_FIELDS)
     series = []
@@ -521,10 +530,10 @@ async def heatmap(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """Matriz Organización × Salud (conteo de proyectos). Vista de portafolio."""
+    """Matriz Organización × Salud (conteo de proyectos). No-admin: solo cuenta
+    los proyectos que el usuario ve (US-162)."""
     tenant_id = _tenant(cu)
-    if not cu.is_admin_equivalent:
-        raise forbidden(detail="El heatmap de portafolio es solo para admins")
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
 
     orgs = (
         await db.execute(
@@ -533,6 +542,9 @@ async def heatmap(
             .order_by(Organization.name)
         )
     ).all()
+    count_conds = [Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None)]
+    if role_ids is not None:
+        count_conds.append(Project.id.in_(role_ids or ["__none__"]))
     counts = (
         await db.execute(
             select(
@@ -540,7 +552,7 @@ async def heatmap(
                 Project.health_status,
                 func.count(Project.id),
             )
-            .where(Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None))
+            .where(*count_conds)
             .group_by(Project.organization_id, Project.health_status)
         )
     ).all()
@@ -575,9 +587,6 @@ async def treemap(
     """Árbol Organización → Programa → Proyecto (valor=presupuesto, color=salud)."""
     tenant_id = _tenant(cu)
     scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
-    if not cu.is_admin_equivalent and scope_type != "project":
-        raise forbidden(detail="El treemap agregado es solo para admins")
-
     conds = _scope_project_conditions(scope_type, scope_id, tenant_id)
     role_ids = await scoped_project_ids(cu, db, tenant_id)
     if role_ids is not None:
@@ -667,11 +676,12 @@ async def portfolio_status_report(
 ):
     """US-160 — Reporte de Status Nivel 1 (Portafolio/PMO) en PDF. Vive fuera
     del Report Builder; agrega KPIs, salud, tendencias, matriz de riesgos y
-    comparativa de organizaciones del tenant. Admin-equivalente."""
+    comparativa de organizaciones. No-admin: limitado a sus proyectos (US-162)."""
     tenant_id = _tenant(cu)
-    if not cu.is_admin_equivalent:
-        raise forbidden(detail="El reporte de portafolio es solo para admins")
-    ctx = await build_scope_status_context(db, tenant_id, "tenant", None)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    ctx = await build_scope_status_context(
+        db, tenant_id, "tenant", None, restrict_project_ids=role_ids
+    )
     pdf = render_pdf("reports/scope_status.html", ctx)
     return Response(
         content=pdf,

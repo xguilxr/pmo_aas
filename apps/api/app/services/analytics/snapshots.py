@@ -66,13 +66,19 @@ async def compute_snapshot_values(
     scope_type: str,
     scope_id: str | UUID,
     ref_date: date | None = None,
+    restrict_project_ids: list[str] | None = None,
 ) -> dict:
-    """Devuelve el dict de métricas para un scope a la fecha de referencia."""
+    """Devuelve el dict de métricas para un scope a la fecha de referencia.
+
+    `restrict_project_ids` (no-admin): limita el cómputo a esos proyectos
+    visibles para el usuario; `None` = sin restricción (admin/job)."""
     tenant_id = str(tenant_id)
     scope_id = str(scope_id)
     ref_date = ref_date or date.today()
 
     conds = _project_conditions(tenant_id, scope_type, scope_id)
+    if restrict_project_ids is not None:
+        conds.append(Project.id.in_(restrict_project_ids or ["__none__"]))
     proj_rows = (
         await db.execute(
             select(
@@ -170,6 +176,53 @@ async def compute_snapshot_values(
 
 async def _count(db: AsyncSession, stmt) -> int:
     return (await db.execute(stmt)).scalar_one() or 0
+
+
+async def aggregate_project_trends(
+    db: AsyncSession,
+    tenant_id: str | UUID,
+    project_ids: list[str],
+    since: date,
+):
+    """Serie de tendencia agregada desde snapshots de un conjunto de proyectos
+    (para usuarios no-admin que ven solo sus proyectos). Suma los contadores y
+    promedia `avg_progress` por fecha. Devuelve objetos con los mismos atributos
+    que MetricSnapshot (acceso por getattr) para reusar el shape del endpoint."""
+    from types import SimpleNamespace
+
+    if not project_ids:
+        return []
+    snaps = (
+        await db.execute(
+            select(MetricSnapshot)
+            .where(
+                MetricSnapshot.tenant_id == str(tenant_id),
+                MetricSnapshot.scope_type == "project",
+                MetricSnapshot.scope_id.in_(project_ids),
+                MetricSnapshot.snapshot_date >= since,
+            )
+            .order_by(MetricSnapshot.snapshot_date)
+        )
+    ).scalars().all()
+
+    buckets: dict[date, dict] = {}
+    progress: dict[date, list[float]] = {}
+    for s in snaps:
+        d = s.snapshot_date
+        b = buckets.setdefault(d, {f: 0.0 for f in METRIC_FIELDS})
+        for f in METRIC_FIELDS:
+            if f == "avg_progress":
+                continue
+            b[f] += float(getattr(s, f) or 0)
+        progress.setdefault(d, []).append(float(s.avg_progress or 0))
+
+    out = []
+    for d in sorted(buckets):
+        b = buckets[d]
+        pr = progress.get(d) or [0.0]
+        b["avg_progress"] = round(sum(pr) / len(pr), 2)
+        out.append(SimpleNamespace(snapshot_date=d, **b))
+    return out
 
 
 async def upsert_snapshot(

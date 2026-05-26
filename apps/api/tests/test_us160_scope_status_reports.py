@@ -77,7 +77,9 @@ async def test_program_report_pdf(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_reports_forbidden_for_non_admin(client, db_session):
+async def test_portfolio_report_non_admin_scoped(client, db_session):
+    """US-162: un no-admin puede descargar el reporte (scoped a sus proyectos);
+    capturar snapshots sigue siendo admin-only."""
     t = await create_tenant(db_session, slug="np", name="NP")
     admin_role = await create_admin_role(db_session, t)
     await create_user(
@@ -90,4 +92,7 @@ async def test_reports_forbidden_for_non_admin(client, db_session):
     )
     auth = await login(client, "plain", "Str0ng-Pl-9!")
     r = await client.post("/api/v1/dashboard/reports/portfolio", headers=auth["_authz"])
-    assert r.status_code == 403
+    assert _is_pdf(r)
+    # capture sigue restringido a admins
+    rc = await client.post("/api/v1/dashboard/snapshots/capture", headers=auth["_authz"])
+    assert rc.status_code == 403

@@ -6,6 +6,7 @@ import pytest
 from app.models.modules import Risk
 from app.models.organization import Program
 from app.models.project import Project
+from app.models.role import Role
 from tests.factories import (
     create_admin_role,
     create_tenant,
@@ -148,18 +149,50 @@ async def test_treemap_nesting(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_heatmap_forbidden_for_non_admin(client, db_session):
+async def test_heatmap_scoped_to_pm_projects(client, db_session):
+    """US-162: un PM ve en el heatmap solo los proyectos donde es pm_id."""
+    t, auth, org_id, _prog, projects = await _setup(client, db_session)
+    # Admin ve los 3 proyectos de la org.
+    radm = await client.get("/api/v1/dashboard/heatmap", headers=auth["_authz"])
+    org_row_adm = next(r for r in radm.json()["rows"] if r["org_id"] == org_id)
+    assert org_row_adm["total"] == 3
+
+    pm_role = Role(
+        tenant_id=t.id, name="Project Manager", description="PM", is_system=True,
+        permissions={"projects": ["read"], "dashboard": ["read"]},
+    )
+    db_session.add(pm_role)
+    await db_session.flush()
+    pm = await create_user(
+        db_session, tenant=t, username="pmx", email="pmx@acme.example.com",
+        password="Str0ng-Pmx-1!", roles=[pm_role],
+    )
+    projects[0].pm_id = str(pm.id)
+    await db_session.commit()
+
+    pauth = await login(client, "pmx", "Str0ng-Pmx-1!")
+    rpm = await client.get("/api/v1/dashboard/heatmap", headers=pauth["_authz"])
+    assert rpm.status_code == 200
+    org_row_pm = next(r for r in rpm.json()["rows"] if r["org_id"] == org_id)
+    assert org_row_pm["total"] == 1  # solo su proyecto
+
+
+@pytest.mark.asyncio
+async def test_heatmap_non_admin_scoped(client, db_session):
+    """US-162: el heatmap ya no es admin-only; un no-admin lo consulta pero
+    solo cuenta sus proyectos visibles (aquí, ninguno → conteos vacíos)."""
     t = await create_tenant(db_session)
     admin_role = await create_admin_role(db_session, t)
     await create_user(
         db_session, tenant=t, username="adm2", email="adm2@acme.example.com",
         password="Str0ng-Adm-2!", roles=[admin_role],
     )
-    # Usuario sin rol admin (viewer plano).
     await create_user(
         db_session, tenant=t, username="plain", email="plain@acme.example.com",
         password="Str0ng-Pl-1!",
     )
     auth = await login(client, "plain", "Str0ng-Pl-1!")
     r = await client.get("/api/v1/dashboard/heatmap", headers=auth["_authz"])
-    assert r.status_code == 403
+    assert r.status_code == 200
+    # Sin proyectos visibles: cada organización (si existiera) tendría 0.
+    assert all(row["total"] == 0 for row in r.json()["rows"])

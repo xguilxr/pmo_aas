@@ -21,7 +21,10 @@ from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.services.analytics.snapshots import compute_snapshot_values
+from app.services.analytics.snapshots import (
+    aggregate_project_trends,
+    compute_snapshot_values,
+)
 from app.services.reports.svg import sparkline_svg
 
 _ZONE_BG = {"low": "#dcfce7", "mid": "#fef9c3", "high": "#fee2e2"}
@@ -63,20 +66,7 @@ def _project_conditions(tenant_id: str, scope_type: str, scope_id: str) -> list:
     return conds
 
 
-async def _trends(db: AsyncSession, tenant_id: str, scope_type: str, scope_id: str, weeks: int) -> list[dict]:
-    since = date.today() - timedelta(weeks=weeks)
-    snaps = (
-        await db.execute(
-            select(MetricSnapshot)
-            .where(
-                MetricSnapshot.tenant_id == tenant_id,
-                MetricSnapshot.scope_type == scope_type,
-                MetricSnapshot.scope_id == scope_id,
-                MetricSnapshot.snapshot_date >= since,
-            )
-            .order_by(MetricSnapshot.snapshot_date)
-        )
-    ).scalars().all()
+def _shape_trends(snaps) -> list[dict]:
     out = []
     for metric in ("avg_progress", "open_risks"):
         values = [float(getattr(s, metric) or 0) for s in snaps]
@@ -89,6 +79,22 @@ async def _trends(db: AsyncSession, tenant_id: str, scope_type: str, scope_id: s
             "empty": not values,
         })
     return out
+
+
+async def _scope_snapshots(db: AsyncSession, tenant_id: str, scope_type: str, scope_id: str, weeks: int):
+    since = date.today() - timedelta(weeks=weeks)
+    return (
+        await db.execute(
+            select(MetricSnapshot)
+            .where(
+                MetricSnapshot.tenant_id == tenant_id,
+                MetricSnapshot.scope_type == scope_type,
+                MetricSnapshot.scope_id == scope_id,
+                MetricSnapshot.snapshot_date >= since,
+            )
+            .order_by(MetricSnapshot.snapshot_date)
+        )
+    ).scalars().all()
 
 
 async def _risk_pairs(db: AsyncSession, project_ids: list[str]) -> list[tuple[int, int]]:
@@ -154,8 +160,12 @@ async def build_scope_status_context(
     scope_type: str,
     scope_id: UUID | str | None,
     weeks: int = 12,
+    restrict_project_ids: list[str] | None = None,
 ) -> dict:
-    """Contexto del reporte de status para tenant/organization/program."""
+    """Contexto del reporte de status para tenant/organization/program.
+
+    `restrict_project_ids` (no-admin): limita KPIs, riesgos, tablas y
+    tendencias a los proyectos visibles del usuario; `None` = sin restricción."""
     tenant_id = str(tenant_id)
     if scope_type == "tenant":
         scope_id = tenant_id
@@ -194,11 +204,27 @@ async def build_scope_status_context(
     else:
         raise not_found("Scope")
 
-    kpis = await compute_snapshot_values(db, tenant_id, scope_type, scope_id)
+    kpis = await compute_snapshot_values(
+        db, tenant_id, scope_type, scope_id, restrict_project_ids=restrict_project_ids
+    )
     conds = _project_conditions(tenant_id, scope_type, scope_id)
+    if restrict_project_ids is not None:
+        conds.append(Project.id.in_(restrict_project_ids or ["__none__"]))
     pids = await _project_ids(db, conds)
-    trends = await _trends(db, tenant_id, scope_type, scope_id, weeks)
+    if restrict_project_ids is None:
+        snaps = await _scope_snapshots(db, tenant_id, scope_type, scope_id, weeks)
+    else:
+        snaps = await aggregate_project_trends(
+            db, tenant_id, pids, date.today() - timedelta(weeks=weeks)
+        )
+    trends = _shape_trends(snaps)
     risk_matrix = _risk_matrix(await _risk_pairs(db, pids))
+    # Filtro de proyectos visibles para las tablas comparativas (no-admin).
+    restrict_conds = (
+        [Project.id.in_(restrict_project_ids or ["__none__"])]
+        if restrict_project_ids is not None
+        else []
+    )
 
     # Tabla comparativa según nivel.
     rows: list[dict] = []
@@ -213,7 +239,9 @@ async def build_scope_status_context(
                 )
             ).all()
         }
-        rows = await _health_rows_by(db, tenant_id, Project.organization_id, org_names, [])
+        rows = await _health_rows_by(
+            db, tenant_id, Project.organization_id, org_names, restrict_conds
+        )
         rows_kind = "organizations"
     elif scope_type == "organization":
         prog_names = {
@@ -227,7 +255,7 @@ async def build_scope_status_context(
         }
         rows = await _health_rows_by(
             db, tenant_id, Project.program_id, prog_names,
-            [Project.organization_id == scope_id],
+            [Project.organization_id == scope_id, *restrict_conds],
         )
         rows_kind = "programs"
     else:  # program → lista de proyectos

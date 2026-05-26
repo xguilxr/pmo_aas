@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_authenticated, require_capability
+from app.api.v1.endpoints.dashboard import scoped_project_ids
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.db.session import get_db
@@ -1626,9 +1627,10 @@ async def organization_status_report(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
-    if not cu.is_admin_equivalent:
-        raise forbidden(detail="El reporte de organización es solo para admins")
-    ctx = await build_scope_status_context(db, tenant_id, "organization", org_id)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    ctx = await build_scope_status_context(
+        db, tenant_id, "organization", org_id, restrict_project_ids=role_ids
+    )
     pdf = render_pdf("reports/scope_status.html", ctx)
     return Response(
         content=pdf,
@@ -1644,9 +1646,10 @@ async def program_status_report(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
-    if not cu.is_admin_equivalent:
-        raise forbidden(detail="El reporte de programa es solo para admins")
-    ctx = await build_scope_status_context(db, tenant_id, "program", program_id)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    ctx = await build_scope_status_context(
+        db, tenant_id, "program", program_id, restrict_project_ids=role_ids
+    )
     pdf = render_pdf("reports/scope_status.html", ctx)
     return Response(
         content=pdf,
