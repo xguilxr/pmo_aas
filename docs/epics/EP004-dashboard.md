@@ -275,7 +275,16 @@ del design-system); `KpiCard` gana píldora de tendencia; `lib/api/analytics.ts`
 - `test_us152_analytics` — trends/risk-matrix/heatmap/treemap/capture + authz ✅
 - Front: `tsc --noEmit` + `next build` verdes (sin tests de UI en el repo).
 
-**Estado de integración:** backend + frontend DONE (Fase 1-3). Pendiente:
-plantillas de reporte N1/N2 (Fase 4), revamp visual (Fase 5) y verificación
-manual en navegador. Consolidar el `ProgressGauge` inline del project detail
-(PR #511) con el `Gauge` compartido cuando ese PR mergee.
+**US-160 — reportes de status N1/N2 (PDF, fuera del builder):** se derivan de
+los dashboards y se descargan desde sus páginas. `build_scope_status_context`
+(KPIs + salud + tendencias sparkline desde snapshots + matriz de riesgos +
+tabla comparativa) → plantilla `reports/scope_status.html`. Endpoints
+`POST /dashboard/reports/portfolio` (N1), `POST /organizations/{id}/reports/status`
+y `POST /programs/{id}/reports/status` (N2, admin). Botones de descarga en `/pmo`,
+org y programa. Helper SVG en `reports/svg.py` (compartido con el motor).
+
+**Estado de integración:** backend + frontend DONE (Fase 1-4) + revamp Fase 5.
+Pendiente: verificación manual en navegador + PDF, y consolidar el
+`ProgressGauge` inline del project detail (PR #511) con el `Gauge` compartido
+cuando ese PR mergee. Follow-up: S-07 curva-S, scoping no-admin de las vistas
+agregadas, heatmap/treemap embebidos en el PDF.
