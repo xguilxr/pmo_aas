@@ -133,10 +133,16 @@ Dar a Project Managers y PMO Managers una vista en un solo lugar del estado del 
 
 ### Endpoints
 ```
-GET /api/v1/dashboard/kpis
-GET /api/v1/dashboard/charts
-GET /api/v1/dashboard/plan-vs-actual
-GET /api/v1/dashboard/plan-vs-actual/export.csv
+GET  /api/v1/dashboard/kpis
+GET  /api/v1/dashboard/charts
+GET  /api/v1/dashboard/plan-vs-actual
+GET  /api/v1/dashboard/plan-vs-actual/export.csv
+# US-152 — analytics para dashboards N1/N2 (scope=tenant|organization|program|project, id=)
+GET  /api/v1/dashboard/trends?scope=&id=&metric=&weeks=   # serie histórica (metric_snapshots)
+GET  /api/v1/dashboard/risk-matrix?scope=&id=             # conteo prob×impacto (en vivo)
+GET  /api/v1/dashboard/heatmap                            # Org×Salud (portafolio, admin)
+GET  /api/v1/dashboard/treemap?scope=&id=                 # Org→Programa→Proyecto
+POST /api/v1/dashboard/snapshots/capture                  # seed on-demand del snapshot de hoy
 ```
 
 ---
@@ -228,3 +234,30 @@ una organización específica
 - `test_usbug003_pm_name_in_plan_vs_actual` — pm_id y pm_name presentes ✅
 
 **Estado de integración:** DONE (BUG-003).
+
+---
+
+### US-151 / US-152 — Fundación analítica + dashboards N1/N2 (2026-05-26)
+
+Dashboards Nivel 1 (PMO/Portafolio) y Nivel 2 (Organización/Programa) ricos,
+de los que se **derivan** los reportes N1/N2 (el dashboard es la vista
+interactiva; el reporte es el mismo contenido congelado a PDF).
+
+**US-151 — fundación de datos (`metric_snapshots`):**
+- Tabla `metric_snapshots`: foto **semanal** (lunes 02:00 UTC, Celery beat) de
+  métricas de stock a 4 niveles de scope (tenant/org/programa/proyecto). Habilita
+  tendencias y desbloquea S-05/S-07 de EP020.
+- Servicio `services/analytics/snapshots.py` (cómputo + upsert idempotente);
+  job `workers/tasks/snapshots.py`.
+
+**US-152 — endpoints de analytics:** `trends`, `risk-matrix`, `heatmap`,
+`treemap`, `POST snapshots/capture` (ver bloque Endpoints). Authz: vistas
+agregadas (tenant/org/programa) son admin-equivalente; scope=project respeta
+`scoped_project_ids`. Multi-tenant por `tenant_id` en toda query.
+
+**Test Cases:**
+- `test_us151_metric_snapshots` — cómputo 4 niveles + idempotencia ✅
+- `test_us152_analytics` — trends/risk-matrix/heatmap/treemap/capture + authz ✅
+
+**Estado de integración:** backend DONE. Pendiente: primitivos SVG + rediseño
+de las 4 páginas (Fase 2-3) y plantillas de reporte N1/N2 (Fase 4).

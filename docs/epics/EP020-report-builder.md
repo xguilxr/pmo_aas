@@ -55,7 +55,7 @@ Habilitar **4 niveles de reportes** del PMOaaS:
 
 Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de composición. Los 4 niveles son combinaciones predefinidas o libres de las mismas secciones. Un solo motor de render, dos modos de composición (Avance "por sección" y Seguimiento "por área").
 
-**Fuera de scope (postergado a v2.0):** snapshots históricos de KPIs y semáforo (S-05 tendencia, sparklines, deltas, S-07 curva S, S-10 entregables formales). Para v1.0 los reportes muestran estado actual sin series temporales.
+**Fuera de scope original (v1.0):** S-10 entregables formales. Las series temporales (S-05 tendencia, sparklines, deltas, S-07 curva S) estaban diferidas por falta de historia; **US-151 (2026-05-26) introdujo `metric_snapshots`** (foto semanal a 4 niveles) que las habilita — quedan pendientes de implementación en las secciones de reporte (Fase 4 del plan de dashboards N1/N2, ver EP004).
 
 ## Decisiones arquitectónicas (registradas en DECISIONS.md)
 
