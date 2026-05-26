@@ -29,11 +29,44 @@ from app.services.reports.engine import (
 router = APIRouter(prefix="/report-builder", tags=["report_builder"])
 
 
+def _resolve_template_ref(payload: "RenderRequest"):
+    """ENH-138: si vienen `section_codes` inline, construye una plantilla
+    efímera (sin persistir) para el preview en vivo del canvas; si no, usa
+    `template` (id/seed code)."""
+    from app.models.report_builder_template import ReportBuilderTemplate
+
+    if payload.section_codes is not None:
+        mode = (payload.composition_mode or "A").upper()
+        return ReportBuilderTemplate(
+            id="preview",
+            code="custom",
+            name=payload.name or "Reporte custom",
+            level=payload.level,
+            composition_mode="B" if mode == "B" else "A",
+            section_codes=list(payload.section_codes),
+            default_parameters=payload.params or {},
+        )
+    if not payload.template:
+        raise validation_error(
+            "Se requiere `template` o `section_codes`",
+            {"template": "required"},
+        )
+    return payload.template
+
+
 class RenderRequest(BaseModel):
-    template: str = Field(
-        ...,
+    # ENH-138: `template` ahora es opcional. Si se envían `section_codes`
+    # inline (canvas del builder), se renderiza una plantilla efímera sin
+    # persistir; si no, se resuelve `template` por id/code seed.
+    template: str | None = Field(
+        default=None,
         description="Template id (UUID) o code seed (`L3-AVANCE`, ...).",
     )
+    # ENH-138: composición del canvas para preview en vivo.
+    section_codes: list[str] | None = None
+    composition_mode: str | None = None
+    # ENH-140: nombre del reporte al guardarlo en el historial.
+    name: str | None = None
     project_id: UUID | None = None
     organization_id: UUID | None = None
     program_id: UUID | None = None
@@ -86,9 +119,11 @@ async def render_report(
         window_days=payload.window_days,
     )
 
+    template_ref = _resolve_template_ref(payload)
+
     result = await render_template(
         db,
-        payload.template,
+        template_ref,
         scope,
         window,
         params_overrides=payload.params,
@@ -104,6 +139,64 @@ async def render_report(
         json=result.json,
         sections_meta=result.sections_meta,
     )
+
+
+class SaveReportResponse(BaseModel):
+    report_id: str
+    title: str
+
+
+@router.post("/save", response_model=SaveReportResponse)
+async def save_report(
+    payload: RenderRequest,
+    db: AsyncSession = Depends(get_db),
+    cu: CurrentUser = Depends(require_authenticated()),
+):
+    """ENH-140: genera y persiste un snapshot del reporte en el Historial
+    del proyecto (sin programar envíos). Acepta el canvas inline o un
+    template guardado."""
+    tenant_id = cu.effective_tenant_id
+    if tenant_id is None:
+        raise forbidden("Sin tenant activo")
+    if not payload.project_id:
+        raise validation_error(
+            "project_id es obligatorio para guardar el reporte al historial",
+            {"project_id": "required"},
+        )
+
+    scope = ReportScope(
+        tenant_id=tenant_id,
+        project_id=payload.project_id,
+        organization_id=payload.organization_id,
+        program_id=payload.program_id,
+        level=payload.level,
+        area_id=payload.area_id,
+    )
+    window = ReportWindow(
+        cut_off_date=payload.cut_off_date or date.today(),
+        window_days=payload.window_days,
+    )
+
+    from app.services.reports.engine import _load_template
+    from app.services.reports.persistence import persist_builder_export
+
+    template_obj = await _load_template(db, _resolve_template_ref(payload))
+    result = await render_template(
+        db, template_obj, scope, window, params_overrides=payload.params
+    )
+    rep = await persist_builder_export(
+        db,
+        tenant_id=tenant_id,
+        project_id=scope.project_id,
+        template=template_obj,
+        cut_off_date=window.cut_off_date,
+        sections_snapshot=result.json,
+        html_content=result.html,
+        created_by=cu.id,
+        status="draft",
+    )
+    await db.commit()
+    return SaveReportResponse(report_id=str(rep.id), title=rep.title)
 
 
 class ExportRequest(BaseModel):

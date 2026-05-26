@@ -56,7 +56,13 @@ export type ReportBuilderTemplate = {
 };
 
 export type RenderRequest = {
-  template: string;
+  /** ENH-138: opcional. Si se envían `section_codes`, el backend renderiza
+   *  una plantilla efímera del canvas (preview en vivo). */
+  template?: string | null;
+  section_codes?: string[];
+  composition_mode?: "A" | "B";
+  /** ENH-140: nombre del reporte al guardarlo en el historial. */
+  name?: string | null;
   project_id?: string | null;
   organization_id?: string | null;
   program_id?: string | null;
@@ -101,6 +107,32 @@ export function renderBuilder(body: RenderRequest, format: "json" | "pdf" = "jso
     method: "POST",
     body,
   });
+}
+
+/** ENH-139: PDF binario del preview real (canvas inline, sin persistir). */
+export async function renderBuilderPdf(body: RenderRequest): Promise<Blob> {
+  const token = getAccessToken();
+  const res = await fetch(`${apiBase()}/api/v1/report-builder/render?format=pdf`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/pdf",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Visualizar falló (${res.status}): ${txt.slice(0, 200)}`);
+  }
+  return res.blob();
+}
+
+/** ENH-140: persiste un snapshot del reporte en el Historial del proyecto. */
+export function saveBuilderReport(
+  body: RenderRequest,
+): Promise<{ report_id: string; title: string }> {
+  return apiFetch(`/api/v1/report-builder/save`, { method: "POST", body });
 }
 
 /** Descarga binaria del PDF — bypass `apiFetch` para tener `blob()`. */
