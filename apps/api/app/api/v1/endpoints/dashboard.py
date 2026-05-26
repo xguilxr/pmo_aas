@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -9,14 +10,20 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden
+from app.core.errors import forbidden, validation_error
 from app.db.session import get_db
+from app.models.metric_snapshot import MetricSnapshot
+from app.models.modules import Risk
+from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
 from app.models.user import User
+from app.services.analytics.snapshots import METRIC_FIELDS, snapshot_tenant
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+SCOPE_TYPES = ("tenant", "organization", "program", "project")
 
 
 def _tenant(cu: CurrentUser) -> UUID:
@@ -372,3 +379,280 @@ async def plan_vs_actual_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=plan_vs_actual.csv"},
     )
+
+
+# ============================================================================
+# US-152 — Analytics para dashboards N1/N2 (tendencias, matriz de riesgos,
+# heatmap, treemap) + captura on-demand de snapshots.
+# ============================================================================
+
+
+def _resolve_scope(scope: str, scope_id: UUID | None, tenant_id: UUID) -> tuple[str, str]:
+    if scope not in SCOPE_TYPES:
+        raise validation_error(f"scope inválido: {scope}")
+    if scope == "tenant":
+        return "tenant", str(tenant_id)
+    if scope_id is None:
+        raise validation_error(f"scope={scope} requiere el parámetro id")
+    return scope, str(scope_id)
+
+
+async def _assert_scope_access(
+    cu: CurrentUser,
+    db: AsyncSession,
+    tenant_id: UUID,
+    scope_type: str,
+    scope_id: str,
+) -> None:
+    """Los no-admin solo acceden a analíticas de un proyecto que ven; las
+    vistas agregadas (tenant/org/programa) son admin-equivalente."""
+    if cu.is_admin_equivalent:
+        return
+    if scope_type == "project":
+        ids = await scoped_project_ids(cu, db, tenant_id)
+        if ids is None or scope_id in ids:
+            return
+    raise forbidden(detail="Sin acceso a las analíticas de este scope")
+
+
+def _scope_project_conditions(scope_type: str, scope_id: str, tenant_id: UUID) -> list:
+    conds = [Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None)]
+    if scope_type == "organization":
+        conds.append(Project.organization_id == scope_id)
+    elif scope_type == "program":
+        conds.append(Project.program_id == scope_id)
+    elif scope_type == "project":
+        conds.append(Project.id == scope_id)
+    return conds
+
+
+@router.get("/trends")
+async def trends(
+    scope: str = Query(default="tenant"),
+    id: UUID | None = Query(default=None),
+    metric: str | None = Query(default=None),
+    weeks: int = Query(default=12, ge=1, le=104),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Serie histórica de un scope leída de `metric_snapshots` (US-151)."""
+    tenant_id = _tenant(cu)
+    scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
+    await _assert_scope_access(cu, db, tenant_id, scope_type, scope_id)
+    if metric and metric not in METRIC_FIELDS:
+        raise validation_error(f"metric inválido: {metric}")
+
+    since = date.today() - timedelta(weeks=weeks)
+    rows = (
+        await db.execute(
+            select(MetricSnapshot)
+            .where(
+                MetricSnapshot.tenant_id == str(tenant_id),
+                MetricSnapshot.scope_type == scope_type,
+                MetricSnapshot.scope_id == scope_id,
+                MetricSnapshot.snapshot_date >= since,
+            )
+            .order_by(MetricSnapshot.snapshot_date)
+        )
+    ).scalars().all()
+
+    fields = [metric] if metric else list(METRIC_FIELDS)
+    series = []
+    for r in rows:
+        point: dict = {"snapshot_date": r.snapshot_date.isoformat()}
+        for f in fields:
+            val = getattr(r, f)
+            point[f] = float(val) if val is not None else 0
+        series.append(point)
+    return {
+        "scope": scope_type,
+        "scope_id": scope_id,
+        "metric": metric,
+        "series": series,
+    }
+
+
+@router.get("/risk-matrix")
+async def risk_matrix(
+    scope: str = Query(default="tenant"),
+    id: UUID | None = Query(default=None),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Conteo de riesgos abiertos por celda (probabilidad × impacto), en vivo."""
+    tenant_id = _tenant(cu)
+    scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
+
+    conds = _scope_project_conditions(scope_type, scope_id, tenant_id)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    if role_ids is not None:
+        conds.append(Project.id.in_(role_ids or ["__none__"]))
+    pids = [
+        str(i) for i in (await db.execute(select(Project.id).where(*conds))).scalars().all()
+    ]
+
+    cells = []
+    total = 0
+    if pids:
+        rows = (
+            await db.execute(
+                select(Risk.probability, Risk.impact, func.count(Risk.id))
+                .where(
+                    Risk.project_id.in_(pids),
+                    Risk.status != "closed",
+                    Risk.probability.is_not(None),
+                    Risk.impact.is_not(None),
+                )
+                .group_by(Risk.probability, Risk.impact)
+            )
+        ).all()
+        for prob, imp, cnt in rows:
+            cells.append(
+                {"probability": int(prob), "impact": int(imp), "count": int(cnt)}
+            )
+            total += int(cnt)
+    return {"cells": cells, "total": total}
+
+
+@router.get("/heatmap")
+async def heatmap(
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Matriz Organización × Salud (conteo de proyectos). Vista de portafolio."""
+    tenant_id = _tenant(cu)
+    if not cu.is_admin_equivalent:
+        raise forbidden(detail="El heatmap de portafolio es solo para admins")
+
+    orgs = (
+        await db.execute(
+            select(Organization.id, Organization.name)
+            .where(Organization.tenant_id == str(tenant_id))
+            .order_by(Organization.name)
+        )
+    ).all()
+    counts = (
+        await db.execute(
+            select(
+                Project.organization_id,
+                Project.health_status,
+                func.count(Project.id),
+            )
+            .where(Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None))
+            .group_by(Project.organization_id, Project.health_status)
+        )
+    ).all()
+
+    by_org = {
+        str(oid): {
+            "org_id": str(oid),
+            "org_name": oname,
+            "green": 0,
+            "yellow": 0,
+            "red": 0,
+            "total": 0,
+        }
+        for oid, oname in orgs
+    }
+    for org_id, health, cnt in counts:
+        entry = by_org.get(str(org_id))
+        if entry is None or health not in ("green", "yellow", "red"):
+            continue
+        entry[health] += int(cnt)
+        entry["total"] += int(cnt)
+    return {"rows": list(by_org.values())}
+
+
+@router.get("/treemap")
+async def treemap(
+    scope: str = Query(default="tenant"),
+    id: UUID | None = Query(default=None),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Árbol Organización → Programa → Proyecto (valor=presupuesto, color=salud)."""
+    tenant_id = _tenant(cu)
+    scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
+    if not cu.is_admin_equivalent and scope_type != "project":
+        raise forbidden(detail="El treemap agregado es solo para admins")
+
+    conds = _scope_project_conditions(scope_type, scope_id, tenant_id)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    if role_ids is not None:
+        conds.append(Project.id.in_(role_ids or ["__none__"]))
+    projects = (
+        await db.execute(
+            select(
+                Project.id,
+                Project.name,
+                Project.folio,
+                Project.organization_id,
+                Project.program_id,
+                Project.budget,
+                Project.health_status,
+            ).where(*conds)
+        )
+    ).all()
+
+    org_names = {
+        str(i): n
+        for i, n in (
+            await db.execute(
+                select(Organization.id, Organization.name).where(
+                    Organization.tenant_id == str(tenant_id)
+                )
+            )
+        ).all()
+    }
+    prog_names = {
+        str(i): n
+        for i, n in (
+            await db.execute(
+                select(Program.id, Program.name).where(
+                    Program.tenant_id == str(tenant_id)
+                )
+            )
+        ).all()
+    }
+
+    tree: dict = {}
+    for p in projects:
+        oid = str(p.organization_id) if p.organization_id else "none"
+        pgid = str(p.program_id) if p.program_id else "none"
+        org_node = tree.setdefault(
+            oid,
+            {"id": oid, "name": org_names.get(oid, "Sin organización"), "children": {}},
+        )
+        prog_node = org_node["children"].setdefault(
+            pgid,
+            {"id": pgid, "name": prog_names.get(pgid, "Sin programa"), "children": []},
+        )
+        prog_node["children"].append(
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "folio": p.folio,
+                "value": float(p.budget or 0),
+                "health": p.health_status,
+            }
+        )
+
+    out = []
+    for org_node in tree.values():
+        org_node["children"] = list(org_node["children"].values())
+        out.append(org_node)
+    return {"tree": out}
+
+
+@router.post("/snapshots/capture")
+async def capture_snapshots(
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Captura on-demand del snapshot de HOY para el tenant (seed/backfill del
+    punto inicial; el job semanal llena hacia adelante). Admin-equivalente."""
+    tenant_id = _tenant(cu)
+    if not cu.is_admin_equivalent:
+        raise forbidden(detail="Solo un admin puede capturar snapshots")
+    written = await snapshot_tenant(db, str(tenant_id), date.today())
+    return {"date": date.today().isoformat(), "rows": written}

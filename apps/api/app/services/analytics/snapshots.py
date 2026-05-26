@@ -27,7 +27,7 @@ ACTIVE_PHASES = ["planning", "execution", "support"]
 SEVERE_THRESHOLD = 13
 
 # Métricas numéricas que componen el snapshot (todas las columnas escalares).
-_METRIC_FIELDS = (
+METRIC_FIELDS = (
     "projects_total",
     "projects_active",
     "health_green",
@@ -89,7 +89,7 @@ async def compute_snapshot_values(
     project_ids = [str(r.id) for r in proj_rows]
     active = [r for r in proj_rows if r.phase in ACTIVE_PHASES]
 
-    values: dict = {f: 0 for f in _METRIC_FIELDS}
+    values: dict = {f: 0 for f in METRIC_FIELDS}
     values["projects_total"] = len(proj_rows)
     values["projects_active"] = len(active)
     values["health_green"] = sum(1 for r in proj_rows if r.health_status == "green")
@@ -200,12 +200,12 @@ async def upsert_snapshot(
             scope_type=scope_type,
             scope_id=scope_id,
             snapshot_date=snapshot_date,
-            **{k: values[k] for k in _METRIC_FIELDS if k in values},
+            **{k: values[k] for k in METRIC_FIELDS if k in values},
         )
         db.add(snap)
         return snap
 
-    for k in _METRIC_FIELDS:
+    for k in METRIC_FIELDS:
         if k in values:
             setattr(existing, k, values[k])
     return existing
