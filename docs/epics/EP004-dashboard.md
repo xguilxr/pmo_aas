@@ -255,9 +255,27 @@ interactiva; el reporte es el mismo contenido congelado a PDF).
 agregadas (tenant/org/programa) son admin-equivalente; scope=project respeta
 `scoped_project_ids`. Multi-tenant por `tenant_id` en toda query.
 
+**US-153 — primitivos SVG + cliente analytics:** `Gauge`, `TrendLines`,
+`RiskMatrix`, `Heatmap`, `Treemap` en `components/dashboard-charts.tsx` (tokens
+del design-system); `KpiCard` gana píldora de tendencia; `lib/api/analytics.ts`.
+
+**US-154/155/156/157 — analítica en las 4 páginas:**
+- `/dashboard`: matriz de riesgos + heatmap (click filtra) + banda de tendencias
+  + treemap + botón "Capturar snapshot". Respeta filtro de organización.
+- `/pmo`: heatmap (click navega a la org) + treemap + tendencias del tenant.
+- `/pmo/organizations/[id]` (Resumen): donut de salud + matriz de riesgos +
+  tendencias org-scoped.
+- `/pmo/programs/[id]` (Resumen): gauges avance/presupuesto + matriz de riesgos
+  + tendencias program-scoped.
+- Las vistas agregadas (heatmap/treemap/tendencias tenant/org/programa) son
+  admin-equivalente; detección por capacidad (si el endpoint 403ea se ocultan).
+
 **Test Cases:**
 - `test_us151_metric_snapshots` — cómputo 4 niveles + idempotencia ✅
 - `test_us152_analytics` — trends/risk-matrix/heatmap/treemap/capture + authz ✅
+- Front: `tsc --noEmit` + `next build` verdes (sin tests de UI en el repo).
 
-**Estado de integración:** backend DONE. Pendiente: primitivos SVG + rediseño
-de las 4 páginas (Fase 2-3) y plantillas de reporte N1/N2 (Fase 4).
+**Estado de integración:** backend + frontend DONE (Fase 1-3). Pendiente:
+plantillas de reporte N1/N2 (Fase 4), revamp visual (Fase 5) y verificación
+manual en navegador. Consolidar el `ProgressGauge` inline del project detail
+(PR #511) con el `Gauge` compartido cuando ese PR mergee.
