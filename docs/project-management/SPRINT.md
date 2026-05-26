@@ -9,32 +9,16 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Rediseño V1 project detail — 21 issues entregados en branch
-claude/practical-ptolemy-s7LyL (status:fix-committed, esperan verificación
-del owner). Sin migraciones Alembic. Tests backend 565 passed/1 skipped;
-next build + tsc verdes.
+Sin US activa.
 
-Bloque A (layout):     BUG-064 #490, ENH-126 #491
-Bloque B (Resumen):    ENH-127 #492, ENH-128 #493, ENH-129 #494,
-                       ENH-130 #495, ENH-131 #496, US-149 #497,
-                       BUG-065 #498, ENH-132 #499
-Bloque C (Plan):       BUG-066 #500, BUG-067 #501, ENH-133 #502,
-                       ENH-134 #503, ENH-135 #504
-Bloque D (Áreas):      ENH-136 #505, ENH-137 #506
-Bloque E (Documentos): US-150 #507 (Organigrama Excel)
-Bloque F (Reportes):   ENH-138 #508, ENH-139 #509, ENH-140 #510
+Última sesión (2026-05-26): Sprint 33 (v1.28) — Dashboards N1/N2 + reportes
+derivados + revamp + 4 follow-ups. 19 commits en branch
+claude/laughing-carson-stUJu (status:fix-committed). Esperando MERGE a main
++ QA visual del owner. Detalle en SPRINT-DONE-HISTORY.md.
 
-Próximo libre: US-151, BUG-068, ENH-141.
+Migraciones nuevas pendientes de aplicar en Railway: 0079, 0080, 0081.
 
-Notas para el owner / follow-ups detectados:
-- ENH-131 removió el panel de Equipo del Resumen: la gestión de miembros
-  queda para Áreas/Recursos (EP017). Confirmar si se quiere un acceso
-  directo desde el Resumen.
-- ENH-134: el header "Criticidad" ahora importa como booleano (is_critical);
-  el enum legacy solo se importa vía header "Prioridad Criticidad".
-- Sucesoras en el form de tarea es read-only (se derivan de predecesoras).
-
-Pendiente fuera de scope: ENH-115 #434 (breadcrumbs cross /pmo/**/reports).
+Próximo libre: US-164, BUG-068, ENH-142.
 ```
 
 ---
@@ -72,10 +56,10 @@ Pendiente fuera de scope: ENH-115 #434 (breadcrumbs cross /pmo/**/reports).
 - [ ] **ENH-112 #431** — UI admin tenant para `task_load_thresholds`.
 - [ ] **ENH-113 #432** — UI admin org para upload `client_logo_url`.
 
-### Snapshots históricos (postergado v2.0)
-- Snapshots periódicos de KPIs y semáforo.
-- S-07 Curva S (descartada).
-- S-10 Entregables formales (concepto no configurado).
+### Reportes / snapshots (estado actualizado 2026-05-26)
+- ✅ Snapshots periódicos de KPIs y semáforo → **implementado** (US-151, `metric_snapshots`, cadencia semanal).
+- ✅ S-07 Curva-S → **implementado** (US-161, planeado lineal start→end).
+- [ ] S-10 Entregables formales (concepto no configurado) — sigue diferido.
 
 ---
 
@@ -113,6 +97,7 @@ Pendiente fuera de scope: ENH-115 #434 (breadcrumbs cross /pmo/**/reports).
 | 26 | v1.25 | 2026-05-22 | 16 (3 bloques — Minutas v1.0 + Dependencias EP020 + Backbone EP020) |
 | 27-29 | v1.26 | 2026-05-25 | 10 (mega-PR EP020: US-123 a US-132) |
 | 30-32 | v1.27 | 2026-05-23 | 22 (rediseño Minutas + Reports — ver `SPRINT-DONE-HISTORY.md`) |
+| 33 | v1.28 | 2026-05-26 | 13 (Dashboards N1/N2 + reportes derivados + revamp + follow-ups — ver `SPRINT-DONE-HISTORY.md`) |
 
 ---
 
@@ -128,46 +113,32 @@ Pendiente fuera de scope: ENH-115 #434 (breadcrumbs cross /pmo/**/reports).
 - [ ] US-084 fase 2 — Banner de divergencias cuando importadores MPP/XLSX detecten diferencia entre manual y calculado.
 - [ ] US-087 fase 2 — Campos `Task.hours_estimated/hours_actual`.
 - [ ] Hard-delete User cuando hay `project_request.requested_by` (US-088 fase 2).
-- [ ] Snapshots históricos de KPIs y semáforo.
+- [x] ~~Snapshots históricos de KPIs y semáforo~~ → hecho en v1.28 (US-151).
 - [ ] KPIs custom por admin tenant.
 - [ ] **Cleanup post-Sprint 32**: borrar `apps/web/app/(app)/pmo/projects/[id]/ai-minutes/` y `.../reports/tweak/` carpetas enteras (hoy son redirects 301). Tras 1 sprint en main sin reportes de bookmarks rotos.
-- [ ] **Persistencia reports L1/L2** (PMO/Org/Prog): hoy cascarón. Cuando owner defina estructura del Reporte Status PMO en sesión separada, agregar `generator='pmo'|'organization'|'program'` + nullable `project_id` o tabla aparte.
+- [ ] **Persistencia reports L1/L2** (PMO/Org/Prog): la **generación** ya existe (v1.28, US-160: PDF on-demand vía `/dashboard/reports/portfolio`, `/organizations/{id}/reports/status`, `/programs/{id}/reports/status`). Falta **persistir** el histórico: agregar `generator='pmo'|'organization'|'program'` + nullable `project_id` o tabla aparte.
 - [ ] **Dirty-flag fino en builder** (mejora ENH-125): comparar canvas vs plantilla cargada para detectar cambios sin guardar incluso cuando hay `loadedTemplateId`.
 
 ---
 
 ## Notas y cambios recientes
 
-- **2026-05-26 (rediseño V1 project detail — 21 issues #490-#510):** branch
-  `claude/practical-ptolemy-s7LyL`. Layout de tabs (fondo sólido + Lecciones
-  al final), Resumen rediseñado (sin RAG; datos clave en la hoja; gauge de
-  Avance con Hitos/Críticos/Atrasados; Salud/Fase/Presupuesto Restante;
-  tarjetas RAID + mini-Gantt; feed de actividad real desde audit_log; sin
-  sub-tabs ni grilla de módulos), Editar (cancelar al resumen + Salud/Real
-  editables), Plan (Gantt ordena por WBS; Completada en verde; Criticidad
-  booleana; plantilla V1 con Área Responsable + font negro + matching;
-  forms reordenados con Área/Responsable en Nueva), Áreas→Áreas/Recursos +
-  Directorio→Recursos, Organigrama Excel de 4 hojas, builder de Reportes
-  (preview en vivo del canvas, Visualizar PDF, Guardar Reporte al historial).
-  Sin migraciones. Backend 565 passed/1 skipped.
+> Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
 
-- **2026-05-24 (BUG-063 — fix integral generación minutas):** branch `claude/dreamy-heisenberg-jJkUS`, 4 commits.
-  - Backend: participants ya no se aplanan mal como keys del dict; RAID `_normalize_raid_block` reemplazado por el validator que produce el shape canónico `{actions, risks, decisions, issues}`. Eliminada la invocación de `match_participants` en `create_minute` (owner: enfocar minuta en minuta). 422 al guardar arreglado en cascada.
-  - Mapping de tickets: A → Issue(type=action), R → Risk, D → Issue(type=decision), I → Issue(type=issue). Lessons/changes legacy retenidos para retro-compat.
-  - Prompt MINUTE_SYSTEM con few-shot real Highlander; reglas estrictas de detalle (5-15 bullets/tema, prefijo speaker cuando importe, ≥ 1 RAID si hay menciones concretas).
-  - Frontend: preview read-only reemplazado por form editable pre-cargado con output IA. Permite editar resumen, fecha, participantes (nombre/rol/area), temas con bullets, items RAID (A/R/D/I con responsable y due_date), notas libres. Botón "Guardar Minuta" persiste el estado actual del form.
-  - Detail page renderiza `summary` + `free_notes` y bullets[] para temas (fallback a notes legacy).
-  - Migración 0076: re-seed idempotente de `report_sections` si la tabla está vacía (cierra el bug "catálogo vacío" del builder).
-  - Tests: 549 passed, 1 skipped. TS + next build verdes.
-- **2026-05-23 (cierre Sprints 30-32 — rediseño Minutas + Reports):** 22 items entregados secuencialmente en `claude/zen-brown-ivCbz`. Reorganización completa:
-  - **Sidebar**: "Módulos de Proyecto" → "Módulos"; dropdown Reportes aplanado.
-  - **Minutas**: listing simplificado (1 botón + columnas reordenadas), generador unificado `/minutes/new` con 3 modos (Transcript/Minuta/Manual), backend con `source_type` y migración 0075 (`minute_ai` origin). Detail sin MD/TXT. RAID labels claros.
-  - **Reports `/pmo/reports`**: 4 tabs (PMO/Organizaciones/Programas/Proyectos) reemplazan Operacionales/Builder. Detail standalone para reportes. Cascarón intencional para historial L1/L2.
-  - **Reports proyecto**: 3 tabs (Generar/Historial/Programar). 3 paneles default (Avance/Seguimiento/Look-ahead). Períodos extendidos (3 semanas + custom from/to). Catálogo plantillas builder. Scheduled custom soportado.
-  - **Builder**: Modo + Ventana (value+unit) persistido en plantilla. Edit via `?template_id=X`. Preview live con marcas A4. Navigation guard.
-  - **Cleanup**: `/ai-minutes/new` y `/reports/tweak` ahora redirects 301.
-- **2026-05-25 (mega-PR EP020 completo):** 10 US entregadas (US-123 a US-132). Mergeado a main.
-- **2026-05-22 (cierre Sprint 26 + skill /handoff):** Sprint 26 cerrado (16 items). Minutas v1.0 + Backbone EP020.
+- **2026-05-26 (Sprint 33 / v1.28 — Dashboards N1/N2 + reportes derivados + revamp):**
+  branch `claude/laughing-carson-stUJu`, 19 commits, **esperando merge + QA**.
+  - **Datos:** `MetricSnapshot` (foto semanal 4 niveles, mig. 0079) + endpoints
+    analytics (trends/risk-matrix/heatmap/treemap/capture).
+  - **Dashboards:** primitivos SVG (Gauge/TrendLines/RiskMatrix/Heatmap/Treemap) +
+    rediseño de `/dashboard`, `/pmo`, org y programa con sus visuales.
+  - **Reportes derivados:** secciones builder S-05/S-07/S-15 (migs. 0080/0081) +
+    reportes de status N1/N2 en PDF (fuera del builder) con heatmap/treemap/curva-S.
+  - **Revamp v1:** radio de tarjetas 16→10px + `tabular-nums` global (navy/paleta intactos).
+  - **Follow-ups:** vistas/reportes accesibles a PMs (scoped); `ProgressGauge` de
+    #511 consolidado en `Gauge` compartido.
+  - 583 tests backend + ruff + tsc + next build verdes; render real de PDF validado.
+- **2026-05-26 (rediseño V1 project detail — #490-#510, ya en main):** branch
+  `claude/practical-ptolemy-s7LyL` (#511 mergeado). Detalle en `SPRINT-DONE-HISTORY.md`.
 
 ---
 
