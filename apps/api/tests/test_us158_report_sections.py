@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from app.services.reports.engine import (
     _build_s05_trends,
+    _build_s07_curve_s,
     _build_s15_risk_matrix,
     _RenderContext,
     get_section_builder,
@@ -26,15 +27,44 @@ def _risk(p, i, status="identified"):
     return SimpleNamespace(probability=p, impact=i, status=status)
 
 
-def _snap(day, avg, risks=0):
+def _snap(day, avg, risks=0, planned=0):
     return SimpleNamespace(
-        snapshot_date=date(2026, 5, day), avg_progress=avg, open_risks=risks
+        snapshot_date=date(2026, 5, day), avg_progress=avg, open_risks=risks,
+        extras={"avg_progress_plan": planned},
     )
 
 
 def test_sections_registered():
     assert get_section_builder("S-05") is _build_s05_trends
+    assert get_section_builder("S-07") is _build_s07_curve_s
     assert get_section_builder("S-15") is _build_s15_risk_matrix
+
+
+def test_s07_curve_s():
+    ctx = _ctx(snapshots=[_snap(1, 5, planned=10), _snap(8, 20, planned=30), _snap(15, 60, planned=55)])
+    out = _build_s07_curve_s(ctx, {}, None)
+    assert out["empty"] is False
+    assert len(out["points"]) == 3
+    assert out["last_actual"] == 60
+    assert out["last_planned"] == 55
+    assert out["points"][0] == {"date": "2026-05-01", "actual": 5.0, "planned": 10.0}
+    assert out["svg"].startswith("<svg")
+
+
+def test_s07_curve_s_empty():
+    out = _build_s07_curve_s(_ctx(snapshots=[]), {}, None)
+    assert out["empty"] is True
+    assert out["svg"] == ""
+
+
+def test_planned_progress_linear():
+    from app.services.analytics.snapshots import _planned_progress
+
+    start, end = date(2026, 1, 1), date(2026, 1, 11)  # 10 días
+    assert _planned_progress(start, end, date(2025, 12, 1)) == 0.0  # antes
+    assert _planned_progress(start, end, date(2026, 1, 6)) == 50.0  # mitad
+    assert _planned_progress(start, end, date(2026, 2, 1)) == 100.0  # después
+    assert _planned_progress(None, end, date(2026, 1, 6)) == 0.0  # sin fechas
 
 
 def test_s15_risk_matrix_counts_and_zones():

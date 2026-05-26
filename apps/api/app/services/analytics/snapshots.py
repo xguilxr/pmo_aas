@@ -49,6 +49,20 @@ METRIC_FIELDS = (
 )
 
 
+def _planned_progress(start: date | None, end: date | None, ref_date: date) -> float:
+    """% planeado por tiempo transcurrido (lineal start→end). Mismo criterio
+    que dashboard `_plan_progress_for`, evaluado a `ref_date`."""
+    if not start or not end:
+        return 0.0
+    if ref_date <= start:
+        return 0.0
+    if ref_date >= end:
+        return 100.0
+    total = (end - start).days or 1
+    elapsed = (ref_date - start).days
+    return max(0.0, min(100.0, round(elapsed * 100 / total, 2)))
+
+
 def _project_conditions(tenant_id: str, scope_type: str, scope_id: str) -> list:
     conds = [Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None)]
     if scope_type == "organization":
@@ -88,6 +102,8 @@ async def compute_snapshot_values(
                 Project.progress,
                 Project.budget,
                 Project.actual_budget,
+                Project.start_date,
+                Project.end_date,
             ).where(*conds)
         )
     ).all()
@@ -159,6 +175,14 @@ async def compute_snapshot_values(
                     Task.end_date <= ref_date + timedelta(days=days),
                 ),
             )
+
+    # US-161: avance PLANEADO (curva-S, S-07) — promedio del % planeado por
+    # tiempo transcurrido (start_date→end_date) sobre los proyectos activos.
+    # Se guarda en `extras` para no migrar una columna por métrica derivada.
+    planned = [_planned_progress(r.start_date, r.end_date, ref_date) for r in active]
+    values["extras"] = {
+        "avg_progress_plan": round(sum(planned) / len(planned), 2) if planned else 0
+    }
 
     # Solicitudes en revisión: viven a nivel tenant/organización (no tienen
     # project_id). A nivel programa/proyecto no aplica → 0.
@@ -253,6 +277,7 @@ async def upsert_snapshot(
             scope_type=scope_type,
             scope_id=scope_id,
             snapshot_date=snapshot_date,
+            extras=values.get("extras", {}),
             **{k: values[k] for k in METRIC_FIELDS if k in values},
         )
         db.add(snap)
@@ -261,6 +286,8 @@ async def upsert_snapshot(
     for k in METRIC_FIELDS:
         if k in values:
             setattr(existing, k, values[k])
+    if "extras" in values:
+        existing.extras = values["extras"]
     return existing
 
 

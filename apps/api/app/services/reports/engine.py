@@ -674,6 +674,29 @@ def _build_s05_trends(ctx, params, window):
     }
 
 
+def _build_s07_curve_s(ctx, params, window):
+    """S-07 — Curva-S: avance planeado vs real acumulado desde metric_snapshots
+    (US-161). El planeado se captura en `extras.avg_progress_plan` por snapshot."""
+    from app.services.reports.svg import curve_svg
+
+    points = []
+    actual_vals: list[float] = []
+    planned_vals: list[float] = []
+    for s in ctx.snapshots:
+        actual = float(getattr(s, "avg_progress", 0) or 0)
+        planned = float((getattr(s, "extras", None) or {}).get("avg_progress_plan", 0) or 0)
+        points.append({"date": s.snapshot_date.isoformat(), "actual": actual, "planned": planned})
+        actual_vals.append(actual)
+        planned_vals.append(planned)
+    return {
+        "points": points,
+        "svg": curve_svg(actual_vals, planned_vals) if points else "",
+        "last_actual": actual_vals[-1] if actual_vals else 0,
+        "last_planned": planned_vals[-1] if planned_vals else 0,
+        "empty": not points,
+    }
+
+
 def _build_s15_risk_matrix(ctx, params, window):
     """S-15 — Matriz 5×5 de riesgos abiertos (probabilidad × impacto)."""
     grid: dict[tuple[int, int], int] = {}
@@ -711,6 +734,7 @@ def _build_unimplemented(ctx, params, window):
 
 SECTION_BUILDERS: dict[str, Any] = {
     "S-05": _build_s05_trends,
+    "S-07": _build_s07_curve_s,
     "S-15": _build_s15_risk_matrix,
     "S-01": _build_s01_header,
     "S-02": _build_s02_info,
