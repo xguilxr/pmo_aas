@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Download } from "lucide-react";
+import { Download, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heatmap, TrendLines, Treemap } from "@/components/dashboard-charts";
+import { ProgramModal } from "@/components/program-modal";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
   downloadPortfolioStatusReport,
@@ -89,6 +91,9 @@ export default function PmoHome() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  // ENH-142: creación directa de org / programa / proyecto desde el portafolio.
+  const { canCreate, loading: permsLoading } = useMyPermissions();
+  const [showProgramModal, setShowProgramModal] = useState(false);
 
   async function handleDownloadReport() {
     setDownloading(true);
@@ -153,19 +158,59 @@ export default function PmoHome() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-          PMO
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-          Vista informativa del portafolio. Selecciona una organización para
-          ver sus programas y proyectos. La gestión (CRUD) vive en{" "}
-          <Link href="/admin/organizations" className="text-[var(--color-accent)] hover:underline">
-            Admin → Organizaciones
-          </Link>
-          .
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+            PMO
+          </h1>
+          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+            Vista informativa del portafolio. Selecciona una organización para
+            ver sus programas y proyectos. La gestión (CRUD) vive en{" "}
+            <Link href="/admin/organizations" className="text-[var(--color-accent)] hover:underline">
+              Admin → Organizaciones
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {canCreate("organizations") ? (
+            <Link href="/admin/organizations/new">
+              <Button variant="secondary" size="sm">
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Nueva organización
+              </Button>
+            </Link>
+          ) : null}
+          {canCreate("programs") ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowProgramModal(true)}
+              disabled={permsLoading}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+              Nuevo programa
+            </Button>
+          ) : null}
+          {canCreate("projects") ? (
+            <Link href="/pmo/projects/new">
+              <Button variant="primary" size="sm">
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Nuevo proyecto
+              </Button>
+            </Link>
+          ) : null}
+        </div>
       </header>
+
+      <ProgramModal
+        open={showProgramModal}
+        onClose={() => setShowProgramModal(false)}
+        onSaved={() => {
+          setShowProgramModal(false);
+          router.refresh();
+        }}
+      />
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
