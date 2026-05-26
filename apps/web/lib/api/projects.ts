@@ -118,6 +118,21 @@ export function getProject(id: string): Promise<ProjectDetail> {
   return apiFetch<ProjectDetail>(`/api/v1/projects/${id}`);
 }
 
+// US-149: feed de actividad del proyecto (audit log).
+export type ActivityItem = {
+  id: number;
+  action: string;
+  module: string | null;
+  occurred_at: string;
+  user_id: string | null;
+  user_name: string | null;
+  details: Record<string, unknown>;
+};
+
+export function getProjectActivity(id: string, limit = 20): Promise<ActivityItem[]> {
+  return apiFetch<ActivityItem[]>(`/api/v1/projects/${id}/activity?limit=${limit}`);
+}
+
 export function createProject(body: ProjectCreateBody): Promise<Project> {
   return apiFetch<Project>("/api/v1/projects", { method: "POST", body });
 }

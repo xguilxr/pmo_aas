@@ -23,7 +23,9 @@ import {
   TYPE_LABEL,
   changePhase,
   getProject,
+  getProjectActivity,
   updateProject,
+  type ActivityItem,
   type ProjectDetail,
   type ProjectHealth,
   type ProjectPhase,
@@ -84,6 +86,8 @@ export default function ProjectDetailPage() {
   const [charter, setCharter] = useState<ProjectCharter | null>(null);
   // ENH-130: tareas para el mini-Gantt resumido (nivel 1, por meses).
   const [tasks, setTasks] = useState<Task[]>([]);
+  // US-149: feed de actividad real (audit log del proyecto).
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
@@ -146,6 +150,11 @@ export default function ProjectDetailPage() {
         setTasks(await listTasks(id));
       } catch {
         setTasks([]);
+      }
+      try {
+        setActivity(await getProjectActivity(id));
+      } catch {
+        setActivity([]);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo cargar el proyecto");
@@ -358,17 +367,9 @@ export default function ProjectDetailPage() {
         <MiniGantt tasks={tasks} />
       </section>
 
-      {/* ENH-131: solo el feed de actividad queda en la parte baja del
-          Resumen (US-149 lo cablea con eventos reales del audit log). */}
+      {/* ENH-131 + US-149: feed de actividad real del proyecto. */}
       <Card title="Actividad">
-        <div className="flex items-start gap-3">
-          <Activity className="mt-0.5 h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
-          <p className="text-[13px] text-[var(--text-tertiary)]">
-            El feed completo de eventos del proyecto se integrará con el panel de auditoría del
-            administrador. Mientras tanto, los cambios críticos (fase, asignaciones, salud) quedan
-            registrados en el audit log global.
-          </p>
-        </div>
+        <ActivityFeed items={activity} />
       </Card>
 
       <Modal
@@ -457,6 +458,64 @@ function MetricCard({
         {value}
       </p>
     </article>
+  );
+}
+
+// US-149: feed de actividad del proyecto desde el audit log.
+const ACTION_LABEL: Record<string, string> = {
+  "project.create": "Proyecto creado",
+  "project.update": "Proyecto actualizado",
+  "project.phase_change": "Cambio de fase",
+  "project.status_rag.set": "RAG declarado actualizado",
+  "project.member.add": "Miembro agregado",
+  "project.member.remove": "Miembro removido",
+  "project.delete": "Proyecto eliminado",
+};
+
+function formatActivityWhen(s: string): string {
+  try {
+    return new Date(s).toLocaleString("es-MX", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return s;
+  }
+}
+
+function ActivityFeed({ items }: { items: ActivityItem[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="flex items-start gap-3">
+        <Activity className="mt-0.5 h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
+        <p className="text-[13px] text-[var(--text-tertiary)]">
+          Sin actividad registrada todavía. Los cambios de fase, salud y asignaciones aparecerán
+          aquí.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <ul className="space-y-3">
+      {items.map((it) => (
+        <li key={it.id} className="flex items-start gap-3">
+          <Activity className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-tertiary)]" aria-hidden />
+          <div className="min-w-0">
+            <p className="text-[13px] text-[var(--text-primary)]">
+              {ACTION_LABEL[it.action] ?? it.action}
+              {it.user_name ? (
+                <span className="text-[var(--text-tertiary)]"> · {it.user_name}</span>
+              ) : null}
+            </p>
+            <p className="text-[11px] text-[var(--text-tertiary)]">
+              {formatActivityWhen(it.occurred_at)}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
