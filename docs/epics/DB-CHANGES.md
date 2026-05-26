@@ -371,3 +371,14 @@ logos subidos directamente (PNG/JPG/SVG/WEBP) además de URLs externas. El cap
 de longitud vive en el schema Pydantic (`_LOGO_MAX = 3_000_000`, ~imagen de
 2 MB codificada). `alter_column` vía `batch_alter_table` (compat SQLite + PG).
 Downgrade revierte a `String(500)`.
+
+### Migración **0083** — `tenants.logo_url` → TEXT
+
+Mismo problema en el logo del **tenant**: antes se guardaba en disco (efímero
+en Railway) y se servía por `GET /branding/tenants/{id}/logo`, un endpoint
+autenticado que un `<img src>` del navegador no puede consumir (mandaba 401 →
+el logo nunca se mostraba; con URLs externas sí funcionaba). Ahora el logo del
+tenant se guarda como **data-URL base64 en `tenants.logo_url`** y renderiza
+directo. La columna pasa de `String(500)` a `Text`. El endpoint de serve se
+conserva por retro-compat de logos viejos en disco; las subidas nuevas ya no
+lo usan. Downgrade revierte a `String(500)`.

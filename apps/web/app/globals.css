@@ -91,10 +91,11 @@
   --text-tertiary: #756F60;
   --text-faint: #A39C8B;
 
-  /* Chrome — sidebar azul flotante "big canvas" (US-164, supersede el navy
-     DEC-006). El topbar ya no usa chrome-bg: vive en el lienzo cream. */
-  --chrome-bg: #2A4DA0;
-  --chrome-bg-translucent: color-mix(in oklab, #2A4DA0 92%, transparent);
+  /* Chrome — sidebar flotante "big canvas" (US-164). El fondo conserva el
+     navy original (#182e4e, DEC-006); solo cambia a panel flotante con pill
+     activo semitransparente. El topbar ya no usa chrome-bg: vive en el cream. */
+  --chrome-bg: #182e4e;
+  --chrome-bg-translucent: color-mix(in oklab, #182e4e 92%, transparent);
   --chrome-border: transparent;
   --chrome-text: #C9D4EE;
   --chrome-text-strong: #FFFFFF;
@@ -137,11 +138,11 @@
   --text-tertiary: oklch(68% 0.010 250);
   --text-faint: oklch(56% 0.010 250);
 
-  /* US-164: el sidebar flotante conserva su identidad azul también en dark
-     (azul profundo), sobre un lienzo oscuro. El pill activo sigue siendo
-     blanco semitransparente, igual que en light. */
-  --chrome-bg: #21356B;
-  --chrome-bg-translucent: color-mix(in oklab, #21356B 92%, transparent);
+  /* US-164: en dark el sidebar conserva el fondo original (gris-azul del
+     theme oscuro, BUG-008). El pill activo sigue siendo blanco
+     semitransparente, igual que en light. */
+  --chrome-bg: oklch(17% 0.008 250);
+  --chrome-bg-translucent: color-mix(in oklab, oklch(17% 0.008 250) 92%, transparent);
   --chrome-border: transparent;
   --chrome-text: #C9D4EE;
   --chrome-text-strong: #FFFFFF;
