@@ -121,7 +121,7 @@ export default function ProjectDetailPage() {
   const [charter, setCharter] = useState<ProjectCharter | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("team");
   const [notice, setNotice] = useState<string | null>(
     search.get("created") === "1" ? "Proyecto creado" : null,
   );
@@ -357,6 +357,31 @@ export default function ProjectDetailPage() {
             </Button>
           </div>
         </div>
+
+        {/* ENH-128: Descripción + datos clave + stakeholders como parte de
+            la hoja (bajo el ID), no como panel separado. */}
+        <div className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
+          {project.description ? (
+            <p className="max-w-3xl whitespace-pre-wrap text-[14px] text-[var(--text-secondary)]">
+              {project.description}
+            </p>
+          ) : null}
+          <dl className="flex flex-wrap gap-x-8 gap-y-2">
+            <SheetField label="Organización" value={org?.name ?? "—"} />
+            <SheetField label="Sponsor" value={project.sponsor ?? "—"} />
+            <SheetField label="Prioridad" value={String(project.priority ?? "—")} />
+            <SheetField label="Inicio" value={formatDate(project.start_date)} />
+            <SheetField label="Fin" value={formatDate(project.end_date)} />
+            {charterStakeholders.length > 0 ? (
+              <SheetField
+                label="Stakeholders"
+                value={charterStakeholders
+                  .map((s) => `${s.name} · ${s.role}`)
+                  .join("   ")}
+              />
+            ) : null}
+          </dl>
+        </div>
       </header>
 
       {notice ? (
@@ -424,7 +449,6 @@ export default function ProjectDetailPage() {
       <nav role="tablist" className="flex items-center gap-1 border-b border-[var(--border-subtle)]">
         {(
           [
-            { id: "overview", label: "Resumen" },
             { id: "team", label: "Equipo" },
             { id: "progress", label: "Avance" },
             { id: "budget", label: "Presupuesto" },
@@ -452,23 +476,6 @@ export default function ProjectDetailPage() {
           </button>
         ))}
       </nav>
-
-      {tab === "overview" ? (
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Card title="Descripción" full>
-            <p className="whitespace-pre-wrap text-[14px] text-[var(--text-primary)]">
-              {project.description || "—"}
-            </p>
-          </Card>
-          <Card title="Datos clave">
-            <Row label="Organización" value={org?.name ?? "—"} />
-            <Row label="Sponsor" value={project.sponsor ?? "—"} />
-            <Row label="Prioridad" value={String(project.priority ?? "—")} />
-            <Row label="Inicio" value={formatDate(project.start_date)} />
-            <Row label="Fin" value={formatDate(project.end_date)} />
-          </Card>
-        </section>
-      ) : null}
 
       {tab === "team" ? (
         <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
@@ -800,11 +807,12 @@ function Card({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+// ENH-128: dato clave como parte de la hoja (definición inline, no panel).
+function SheetField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-0.5 sm:grid-cols-[140px_1fr]">
-      <span className="text-[11px] uppercase tracking-wide text-[var(--text-tertiary)]">{label}</span>
-      <span className="text-[13px] text-[var(--text-primary)]">{value}</span>
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-[11px] uppercase tracking-wide text-[var(--text-tertiary)]">{label}</dt>
+      <dd className="text-[13px] text-[var(--text-primary)]">{value}</dd>
     </div>
   );
 }
