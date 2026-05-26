@@ -683,3 +683,42 @@ Bloque 1 — Áreas refinement + Plan responsables (4 issues, #263-#266). Migrac
 
 - 12 duplicados exactos (#435-#446 cerrados como `duplicate of`).
 - 4 superseded por rediseño: US-135 (#423), US-138 (#426), US-139 (#427), US-141 (#429) — labels conflictantes con la nueva organización de tabs.
+
+---
+
+## 🗂️ Sprint 33 (v1.28) — Dashboards N1/N2 + reportes derivados + revamp — CERRADO 2026-05-26
+
+Branch `claude/laughing-carson-stUJu` (19 commits sobre `origin/main` con #511 ya mergeado). Tests backend 583 passed/1 skipped; ruff + tsc + next build verdes; render real de PDF (WeasyPrint) validado. **Esperando merge a main + QA visual del owner.**
+
+### Fundación de datos (BE)
+- [x] **US-151** `77f977c` — modelo `MetricSnapshot` + migración **0079** + servicio de cómputo/persistencia idempotente a 4 niveles (tenant/org/programa/proyecto) + job semanal Celery (lunes 02:00 UTC).
+- [x] **US-152** `ab40c73` — endpoints analytics: `/dashboard/trends`, `risk-matrix`, `heatmap`, `treemap`, `POST snapshots/capture`.
+
+### Primitivos + dashboards (FE)
+- [x] **US-153** `a6f0ba5` — primitivos SVG (`Gauge`, `TrendLines`, `RiskMatrix`, `Heatmap`, `Treemap`) + píldora de tendencia en `KpiCard` + cliente `lib/api/analytics.ts`.
+- [x] **US-154** `af41833` — `/dashboard`: matriz de riesgos + heatmap + tendencias + treemap + botón capturar snapshot.
+- [x] **US-155** `44bcac6` — `/pmo`: heatmap + treemap + tendencias del tenant.
+- [x] **US-156** `5f9913d` — `/pmo/organizations/[id]` Resumen: salud + riesgos + tendencias org.
+- [x] **US-157** `0c9ff4d` — `/pmo/programs/[id]` Resumen: gauges + riesgos + tendencias programa.
+
+### Reportes derivados N1/N2 (BE+FE)
+- [x] **US-158** `647795a` — secciones builder **S-05 Tendencia** + **S-15 Matriz** + migración **0080**.
+- [x] **US-160** `3451eeb` — reportes de status N1 (portafolio) y N2 (org/programa) en PDF, fuera del builder; endpoints + plantilla `scope_status.html` + botones de descarga.
+- [x] **US-161** `ffbb38b` — sección **S-07 Curva-S** (planeado vs real; planeado en `extras.avg_progress_plan`) + migración **0081**.
+- [x] **US-163** `6e61149` — heatmap + treemap embebidos en los PDF N1/N2.
+
+### Revamp + follow-ups
+- [x] **US-159** `411a44b` — revamp v1: radio de tarjetas 16→10px (`--radius-xl`) + `tabular-nums` global. Navy chrome + paleta intactos.
+- [x] **US-162** `360e5ee` — vistas/reportes agregados accesibles a PMs con scoping por `scoped_project_ids` (capturar snapshots sigue admin-only).
+- [x] **ENH-141** `9a669c6` — `ProgressGauge` inline del project detail (#511) consolidado en el `Gauge` compartido.
+
+### Migraciones agregadas
+- **0079** — `metric_snapshots` (foto semanal de stock, 4 niveles).
+- **0080** — seed idempotente secciones `S-05`, `S-15`.
+- **0081** — seed idempotente sección `S-07`.
+
+### Decisiones / notas
+1. **Snapshots históricos SÍ en v1.x** (revierte el diferido a v2.0): cadencia semanal por scope; el dashboard es fuente de verdad y los reportes se derivan.
+2. **S-07 Curva-S reactivada** (estaba "descartada"): el planeado se deriva lineal de `start_date`→`end_date`.
+3. **Reportes N1/N2 viven fuera del Report Builder** (que es project-only por migración 0078): generación on-demand vía endpoints dedicados, sin persistir `Report` rows (la persistencia L1/L2 sigue como backlog v2.0).
+4. **Vistas agregadas accesibles a PMs** scoped a sus proyectos (decisión owner 2026-05-26).

@@ -1,95 +1,81 @@
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-05-22
-**Branch activa:** `main` (todo mergeado al cierre)
-**Generado por:** `/handoff` (manual, skill recién creado)
+**Última actualización:** 2026-05-26
+**Branch activa:** `claude/laughing-carson-stUJu`
+**Generado por:** /handoff
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-Sprint 26 cerrado completo (16 items en 3 bloques). El frente Minutas v1.0 entregado (estructura rígida de 6 secciones + parser RAID estricto + matching de actores + suscripciones programadas + copy-paste). Las 5 dependencias del sistema EP020 (ENH-097 a ENH-101) y el backbone EP020 (US-120 catálogo, US-121 cálculo % avance, US-122 plantillas seed) ya están en main. **Cero PRs abiertos.** Todo el planning de EP020 (Sprints 27-29) está documentado y con issues en GitHub.
+Sprint 33 (v1.28) entregado completo en la branch `claude/laughing-carson-stUJu`:
+**Dashboards N1/N2 ricos + reportes derivados + revamp v1 + 4 follow-ups** (19
+commits, `status:fix-committed`). La branch está rebaseada sobre `main` (que ya
+tiene el rediseño V1 de project detail, #511). Tests backend 583 passed/1
+skipped; ruff + tsc + next build verdes; render real de PDF (WeasyPrint)
+validado. **Nada mergeado aún** de esta sesión: la branch espera merge + QA
+visual del owner. Cero PRs abiertos (no se creó PR).
 
 ## 📍 Dónde retomar (próximo paso accionable)
 
-Arrancar **Sprint 27 Bloque 1** en una sesión nueva:
-- **US-123 #381** — Engine de render con modos composición A/B (`app/services/reports/engine.py`).
-- **US-130 #390** — Export PDF de reportes custom (reusa motor PDF compartido US-037).
-
-Pre-requisitos en main: catálogo (US-120) + plantillas seed (US-122). El motor consume ambos.
-
-**Ejecutar SECUENCIAL:** owner pivoteó la metodología tras los errores de paralelización del Sprint 26. 1 sesión = 1 lane = 1 US a la vez.
+**Owner primero:** mergear `claude/laughing-carson-stUJu` a `main`, correr
+`alembic upgrade head` en Railway (migraciones 0079/0080/0081) y hacer QA visual
+(4 páginas + 3 PDF). Una vez mergeado, la próxima sesión arranca limpio desde
+INBOX (no hay US activa). Próximo libre: **US-164, BUG-068, ENH-142.**
 
 ## ✅ Hecho en esta sesión
 
-Sesión larga de planning + implementación (2026-05-22, ~12 horas):
+Sprint 33 (v1.28) — branch `claude/laughing-carson-stUJu`. Detalle completo en
+`SPRINT-DONE-HISTORY.md`. Resumen:
 
-**Planning (mañana):**
-- Catálogo cerrado de 22 secciones atómicas de EP020 tras 4 rondas con owner.
-- Epic oficial `docs/epics/EP020-report-builder.md` (13 US + 5 ENH dependencias).
-- Gold standard de minuta `docs/epics/drafts/minute-gold-standard.md` (Highlander EAM-BNF transcript + minuta esperada + pipeline parser IA).
-- 26 issues creados en GitHub (#373-#398) + labels aplicados.
-- 18 issues EP020 + 8 issues Minutas v1.0 distribuidos en 4 bloques.
-
-**Implementación (tarde/noche):**
-- Sprint 26 Bloque 0 — Minutas v1.0: BUG-061 + ENH-102 a ENH-108 (8 items).
-- Sprint 26 Bloque 1 — Dependencias EP020: ENH-097 a ENH-101 (5 items).
-- Sprint 26 Bloque 2 — Backbone EP020: US-120, US-121, US-122 (3 items).
-- 3 hotfixes de alembic multi-heads resueltos (PRs #409 + 2 fixes inline).
-
-**Tooling:**
-- Skill `/handoff` creado en `.claude/skills/handoff/SKILL.md` (PR #412).
-- SPRINT.md limpiado dos veces (662 → 178 → 168 líneas actuales).
-- Sprints 17-26 archivados a `SPRINT-DONE-HISTORY.md`.
+- **Fundación datos:** US-151 (`metric_snapshots`, mig. 0079) `77f977c`, US-152 (endpoints analytics) `ab40c73`.
+- **Dashboards:** US-153 primitivos SVG `a6f0ba5`; US-154 `/dashboard` `af41833`; US-155 `/pmo` `44bcac6`; US-156 org `5f9913d`; US-157 programa `0c9ff4d`.
+- **Reportes derivados:** US-158 S-05/S-15 (mig. 0080) `647795a`; US-160 reportes N1/N2 PDF `3451eeb`; US-161 S-07 Curva-S (mig. 0081) `ffbb38b`; US-163 heatmap/treemap en PDF `6e61149`.
+- **Revamp + follow-ups:** US-159 revamp v1 `411a44b`; US-162 acceso PM scoped `360e5ee`; ENH-141 consolidar gauge `9a669c6`.
+- **Docs:** EP004/EP020/DB-CHANGES actualizados en los mismos bloques.
 
 ## 🔄 PRs abiertos o en flight
 
-Ninguno. Todos los PRs de esta sesión están mergeados a main.
+Ninguno. La branch `claude/laughing-carson-stUJu` no tiene PR creado (el owner
+abre/mergea). #511 ya está mergeado a main.
 
 ## ⚠️ Gotchas y decisiones recientes
 
-- **Paralelización agresiva causa collisions de migraciones alembic.** 3 collisions distintas en este sprint:
-  1. ENH-100 + ENH-101 con misma `down_revision='20260510_0062'` → merge migration 0066.
-  2. ENH-106 + ENH-107 con misma `down_revision='20260522_0067'` → merge migration `20260523_0069`.
-  3. US-120 + US-122 reusaron revision IDs `20260522_0068` y `20260522_0069` que main ya tenía → rename a 0070/0071.
-- **Decisión owner 2026-05-22:** desarrollo secuencial puro de aquí en adelante. 1 sesión activa, 1 lane, 1 branch, migraciones consecutivas.
-- **Snapshots históricos fuera de scope v1.0.** Se posterga a v2.0 (descarta S-05 tendencia, sparklines, deltas, S-07 curva S, S-10 entregables formales del catálogo EP020).
-- **`tasks.is_critical` reemplaza columna `critical` legacy** — owner pidió eliminar dual-column para evitar confusión semántica.
-- **RAID estricto:** parser IA solo admite A/R/D/I; lecciones y cambios se descartan silenciosamente.
-- **Estructura minuta:** 6 secciones fijas (Encabezado, Participantes, Resumen, Temas, RAID unificado, Notas libres). Las "actividades a hacer" caen como Acciones del RAID, no como sección separada.
+- **Snapshots históricos reactivados** (estaban diferidos a v2.0): ahora v1.x, cadencia semanal por scope. El dashboard es fuente de verdad; los reportes se derivan.
+- **S-07 Curva-S reactivada** (estaba "descartada"): planeado lineal `start_date`→`end_date`, capturado en `metric_snapshots.extras.avg_progress_plan`.
+- **Reportes N1/N2 viven fuera del Report Builder** (project-only por mig. 0078): generación on-demand vía endpoints dedicados, **sin persistir** `Report` rows (persistencia sigue en backlog v2.0).
+- **Vistas agregadas accesibles a PMs** (decisión owner 2026-05-26), scoped a sus proyectos vía `scoped_project_ids`. Capturar snapshots sigue admin-only.
+- **Capture button**: en `/dashboard` se muestra cuando cargan las analíticas; para un PM no-admin devuelve 403 con banner informativo (accept. menor).
+- **Verificación visual pendiente**: tests + build + render real de PDF cubren correctitud, pero NO el aspecto visual en navegador (sin display en el entorno remoto).
 
 ## 📋 Lo que sigue (resumen ejecutivo del backlog activo)
 
-Ver `SPRINT.md` para detalle completo.
+Detalle en INBOX/Deferred de `SPRINT.md`.
 
-- **Sprint 27 Bloque 1** — Motor de render + Export PDF (US-123, US-130).
-- **Sprint 27 Bloque 2** — Canvas Nivel 4 drag-drop (US-124, US-125, US-126).
-- **Sprint 28** — IA conversacional (US-127) + Suscripciones custom (US-131).
-- **Sprint 29** — UI Niveles 1 PMO + 2 Org (US-128, US-129) + Render headless Gantt (US-132).
+- **INBOX:** ENH-115 #434 (breadcrumbs cross `/pmo/**/reports`, `status:ready` diferido).
+- **Deferred:** chat IA global (US-102 + ENH-074/075/076); paquete Áreas/Recursos EP017 (ENH-109 bloquea US-119/ENH-110; US-133/134 RBAC); admin UI settings (ENH-111/112/113).
+- **Backlog v2.0:** persistencia histórica de reportes L1/L2 (la generación ya existe); KPIs custom por tenant; S-10 entregables formales; cleanup carpetas redirect post-Sprint 32.
+
+## 📚 Estado de las epics docs
+
+| Epic | Sincronizada | Notas |
+|---|---|---|
+| EP004 (dashboard) | sí | Documenta US-151…163 + ENH-141 (Fase 1-5 + follow-ups). |
+| EP020 (report-builder) | sí | S-05/S-07/S-15 implementadas; nota L1/L2 fuera del builder. |
+| DB-CHANGES.md | sí | Migración 0079 documentada (0080/0081 son seeds de datos). |
 
 ## 🧹 Cleanup técnico pendiente
 
-- [ ] Borrar branches mergeadas localmente y en origin (`claude/sprint26-*`, `claude/adoring-lovelace-i5fak`, `claude/cleanup-planning-roadmap-nHh4J`, `claude/fix-alembic-multiple-heads-0068`, `claude/handoff-skill-setup`).
-- [ ] Verificar que el deploy de Railway terminó OK con todas las migraciones nuevas (0064-0067, 0068×2, 0069, 0070, 0071).
-- [ ] Crear label `EP020` en GitHub UI y aplicarla en bulk a #378-#390.
-- [ ] Cerrar manualmente los issues mergeados que owner no haya cerrado todavía (sub-tarea de validación post-deploy).
+- [ ] Mergear `claude/laughing-carson-stUJu` → `main`.
+- [ ] `alembic upgrade head` en Railway (aplica 0079 + 0080 + 0081).
+- [ ] Tras deploy, capturar snapshot (botón en `/dashboard`) para sembrar tendencias/curva-S; si no, el primer punto llega con el job del lunes 02:00 UTC.
+- [ ] QA visual: `/dashboard`, `/pmo`, org y programa (+ dark mode) y los 3 PDF (status N1/N2 + secciones S-05/S-07/S-15 en el builder de proyecto).
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
-- **Sesión de revisión completa de diseño y navegación del producto.** Owner planea esta sesión "al finalizar todo esto" (probablemente cuando EP020 esté completo). Foco: UX cross-módulo, consistencia visual, navegación, atajos.
-- **Re-evaluar chat IA conversacional global** (US-102/ENH-074/075/076 en Deferred) después de cerrar EP020.
-
-## 🗃️ Items creados al cierre de sesión (Deferred — sin sprint asignado)
-
-Los siguientes 5 issues se crearon al cierre de sesión para que no se pierdan en backlog informal. Todos en `status:triage` esperando owner los asigne a un sprint:
-
-- **US-119 #414** — EP017 cleanup: drop legacy `actors.team_id` / `actors.is_lead` / `teams.area_id` / `tasks|risks|issues.area_id`.
-- **US-133 #415** — US-118 Fase 2: RBAC migra a leer `project_participations`.
-- **US-134 #416** — US-118 Fase 3: drop tabla `project_members`.
-- **ENH-109 #417** — PersonPicker cableado en formularios existentes (Task/Risk/Issue/Change/Lesson/Participant).
-- **ENH-110 #418** — Filtros / agrupadores de Plan por dimensiones derivadas.
-
-Dependencias: ENH-109 bloquea US-119 y ENH-110. US-133 bloquea US-134.
+- Scoping fino del **botón "Capturar snapshot"** para ocultarlo a no-admins (hoy 403 con banner).
+- Persistencia del histórico de reportes N1/N2 (Report rows con `generator` + `project_id` nullable).
+- Heatmap/treemap como SVG más rico (squarified) si se quiere más fidelidad en el PDF.
 
 ---
 
@@ -98,6 +84,5 @@ Dependencias: ENH-109 bloquea US-119 y ENH-110. US-133 bloquea US-134.
 Para la próxima sesión:
 
 1. Lee este `HANDOFF.md` primero.
-2. Luego `CLAUDE.md` + `docs/project-management/SPRINT.md` + `docs/epics/EP020-report-builder.md`.
-3. El próximo paso accionable es **arrancar US-123** sobre una branch nueva (sugerencia: `claude/sprint27-b1-render-engine`). Pasar el issue #381 a `status:ready` antes.
-4. Recordar: **secuencial puro**. US-130 (export PDF) viene DESPUÉS de US-123 verde, no en paralelo.
+2. Luego `CLAUDE.md` + `docs/project-management/SPRINT.md` + el epic en flight (EP004 / EP020).
+3. Continúa desde el "próximo paso accionable" arriba (merge + QA del owner; luego INBOX).
