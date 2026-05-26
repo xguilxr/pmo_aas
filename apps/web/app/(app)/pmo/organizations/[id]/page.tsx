@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, FileText, FolderKanban, Network, Plus } from "lucide-react";
+import { Building2, Download, FileText, FolderKanban, Network, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -11,8 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
+import { Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
+import {
+  downloadOrgStatusReport,
+  getRiskMatrix,
+  getTrends,
+  type RiskMatrixResponse,
+  type TrendsResponse,
+} from "@/lib/api/analytics";
 import {
   getOrganizationPanel,
   type OrganizationPanelDetail,
@@ -21,6 +29,13 @@ import {
 } from "@/lib/api/organizations";
 
 type OrgTab = "overview" | "reports";
+
+const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
+const HEALTH_FILL: Record<string, string> = {
+  green: PALETTE.success,
+  yellow: PALETTE.warning,
+  red: PALETTE.danger,
+};
 
 /**
  * US-068 — Página PMO de organización.
@@ -46,6 +61,47 @@ export default function PmoOrganizationPage() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [showProgramModal, setShowProgramModal] = useState(false);
+
+  // US-156 — analítica org-scoped.
+  const [riskMatrix, setRiskMatrix] = useState<RiskMatrixResponse | null>(null);
+  const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  async function handleDownloadReport() {
+    setDownloadingReport(true);
+    try {
+      await downloadOrgStatusReport(id);
+    } catch {
+      /* el banner global de error de página no aplica aquí; silencioso */
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    getRiskMatrix({ scope: "organization", id })
+      .then((r) => !cancelled && setRiskMatrix(r))
+      .catch(() => !cancelled && setRiskMatrix(null));
+    getTrends({ scope: "organization", id, weeks: 12 })
+      .then((r) => !cancelled && setTrends(r))
+      .catch(() => !cancelled && setTrends(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [id, reloadKey]);
+
+  const healthData = useMemo(() => {
+    const counts: Record<string, number> = { green: 0, yellow: 0, red: 0 };
+    for (const pj of panel?.projects ?? []) {
+      if (pj.health_status && pj.health_status in counts) counts[pj.health_status] += 1;
+    }
+    return (["green", "yellow", "red"] as const).map((k) => ({
+      label: HEALTH_LABEL[k],
+      value: counts[k],
+      color: HEALTH_FILL[k],
+    }));
+  }, [panel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +220,18 @@ export default function PmoOrganizationPage() {
             <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
             Nuevo programa
           </Button>
+          {trends !== null ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={downloadingReport}
+              title="Descarga el reporte de status de la organización en PDF"
+            >
+              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+              {downloadingReport ? "Generando…" : "Status (PDF)"}
+            </Button>
+          ) : null}
           <Link
             href={`/admin/organizations/${panel.id}`}
             className="text-[12px] text-[var(--color-accent)] hover:underline"
@@ -231,6 +299,38 @@ export default function PmoOrganizationPage() {
           value={projectsActive}
           hint={`${panel.projects.length} total`}
         />
+      </section>
+
+      <section aria-label="Analítica de la organización" className="grid gap-4 lg:grid-cols-3">
+        <AnalyticsCard title="Salud de proyectos">
+          <div className="flex items-center gap-4">
+            <Pie data={healthData} ariaLabel="Salud de proyectos" size={140} />
+            <div className="flex-1">
+              <Legend data={healthData} />
+            </div>
+          </div>
+        </AnalyticsCard>
+        <AnalyticsCard title="Matriz de riesgos">
+          {riskMatrix && riskMatrix.total > 0 ? (
+            <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos de la organización" />
+          ) : (
+            <p className="py-8 text-center text-sm text-[var(--color-tertiary)]">
+              Sin riesgos abiertos con probabilidad e impacto.
+            </p>
+          )}
+        </AnalyticsCard>
+        <AnalyticsCard title="Tendencias (12 semanas)">
+          {(trends?.series.length ?? 0) > 0 ? (
+            <div className="space-y-3">
+              <OrgTrend label="Avance promedio" trends={trends} metric="avg_progress" color={PALETTE.success} fmt={(n) => `${Math.round(n)}%`} />
+              <OrgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={PALETTE.warning} />
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-[var(--color-tertiary)]">
+              Sin historia de snapshots todavía.
+            </p>
+          )}
+        </AnalyticsCard>
       </section>
 
       <section className="space-y-3">
@@ -314,6 +414,41 @@ export default function PmoOrganizationPage() {
         }}
         initialOrgId={panel.id}
       />
+    </div>
+  );
+}
+
+function AnalyticsCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">{title}</h2>
+      {children}
+    </article>
+  );
+}
+
+function OrgTrend({
+  label,
+  trends,
+  metric,
+  color,
+  fmt,
+}: {
+  label: string;
+  trends: TrendsResponse | null;
+  metric: string;
+  color: string;
+  fmt?: (n: number) => string;
+}) {
+  const data = (trends?.series ?? []).map((p) => ({ x: p.snapshot_date, y: Number(p[metric] ?? 0) }));
+  const last = data.length ? data[data.length - 1].y : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">{label}</span>
+        <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">{fmt ? fmt(last) : last}</span>
+      </div>
+      <TrendLines data={data} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={fmt} />
     </div>
   );
 }

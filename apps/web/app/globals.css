@@ -60,7 +60,10 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Revamp v1 (2026-05-26): tarjetas con esquinas sutiles (no burbujas).
+     Token de superficie de contenido bajado 16px → 10px. Modales/ventanas
+     conservan su propio radio. */
+  --radius-xl: 10px;
   --radius-2xl: 20px;
   --radius-window: 14px;
   --radius-modal: 16px;
@@ -171,6 +174,9 @@ body {
   color: var(--color-primary);
   font-family: var(--font-sans);
   font-feature-settings: "ss01", "cv11";
+  /* Revamp v1: cifras tabulares en toda la app para que métricas y columnas
+     numéricas alineen verticalmente (lenguaje visual del owner). */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

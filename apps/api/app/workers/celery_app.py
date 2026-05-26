@@ -2,6 +2,7 @@ import logging
 import os
 
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import settings
 
@@ -31,6 +32,7 @@ celery_app = Celery(
         "app.workers.tasks.notifications",
         "app.workers.tasks.scheduled_minutes",
         "app.workers.tasks.scheduled_reports",
+        "app.workers.tasks.snapshots",
     ],
 )
 celery_app.conf.task_serializer = "json"
@@ -50,5 +52,11 @@ celery_app.conf.beat_schedule = {
     "scheduled-minutes-dispatch-due": {
         "task": "scheduled_minutes.dispatch_due",
         "schedule": 300.0,
+    },
+    # US-151: snapshot semanal de métricas (lunes 02:00 UTC) para las
+    # tendencias de los dashboards N1/N2.
+    "metric-snapshots-weekly": {
+        "task": "metric_snapshots.weekly",
+        "schedule": crontab(hour=2, minute=0, day_of_week=1),
     },
 }

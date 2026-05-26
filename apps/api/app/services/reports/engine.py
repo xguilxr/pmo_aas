@@ -45,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
 from app.models.area import Area
+from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Issue, Risk
 from app.models.organization import Organization, Program
 from app.models.project import Project
@@ -52,6 +53,7 @@ from app.models.report_builder_template import ReportBuilderTemplate
 from app.models.report_section import ReportSection
 from app.models.task import Task
 from app.models.user import User
+from app.services.analytics.snapshots import METRIC_FIELDS
 from app.services.pdf_renderer import render_html
 from app.services.progress_calculator import compute_progress_detailed
 
@@ -174,6 +176,8 @@ class _RenderContext:
     risks: list[Risk] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
     areas: dict[str, str] = field(default_factory=dict)
+    # US-158 — serie histórica del proyecto (metric_snapshots) para S-05.
+    snapshots: list[MetricSnapshot] = field(default_factory=list)
     # Exclusiones cruzadas: ids de tasks/risks/issues que ya aparecieron
     # en secciones anteriores y deben omitirse en S-17/S-18.
     excluded_task_ids: set[str] = field(default_factory=set)
@@ -278,6 +282,20 @@ async def _build_context(
         progress_method = result.method
         progress_fallback = result.fallback
 
+        snapshots = (
+            await db.execute(
+                select(MetricSnapshot)
+                .where(
+                    MetricSnapshot.tenant_id == str(scope.tenant_id),
+                    MetricSnapshot.scope_type == "project",
+                    MetricSnapshot.scope_id == pid,
+                )
+                .order_by(MetricSnapshot.snapshot_date)
+            )
+        ).scalars().all()
+    else:
+        snapshots = []
+
     return _RenderContext(
         project=project,
         organization_name=org_name,
@@ -288,6 +306,7 @@ async def _build_context(
         risks=risks,
         issues=issues,
         areas=areas,
+        snapshots=list(snapshots),
         progress_percent=progress_pct,
         progress_method=progress_method,
         progress_fallback=progress_fallback,
@@ -609,11 +628,114 @@ def _build_s28_narrative(ctx, params, window):
     return {"text": (params or {}).get("text", "")}
 
 
+_TREND_METRIC_LABELS = {
+    "avg_progress": "Avance promedio (%)",
+    "open_risks": "Riesgos abiertos",
+    "severe_risks": "Riesgos severos",
+    "open_issues": "Issues abiertos",
+    "tasks_done": "Tareas completadas",
+    "tasks_total": "Tareas totales",
+    "budget_actual": "Presupuesto real",
+    "projects_active": "Proyectos activos",
+}
+
+
+def _sparkline_svg(values: list[float], color: str = "#182e4e") -> str:
+    from app.services.reports.svg import sparkline_svg
+
+    return sparkline_svg(values, color)
+
+
+def _build_s05_trends(ctx, params, window):
+    """S-05 — Tendencia de una métrica desde metric_snapshots (US-158).
+
+    Requiere que el job de snapshots (US-151) haya capturado historia del
+    proyecto. Sin snapshots devuelve `empty=True` (la plantilla muestra un
+    aviso, no rompe el render)."""
+    metric = (params or {}).get("metric", "avg_progress")
+    if metric not in METRIC_FIELDS:
+        metric = "avg_progress"
+    points = []
+    for s in ctx.snapshots:
+        raw = getattr(s, metric, 0)
+        points.append({"date": s.snapshot_date.isoformat(), "value": float(raw or 0)})
+    values = [p["value"] for p in points]
+    first = values[0] if values else 0.0
+    last = values[-1] if values else 0.0
+    return {
+        "metric": metric,
+        "metric_label": _TREND_METRIC_LABELS.get(metric, metric),
+        "points": points,
+        "svg": _sparkline_svg(values) if values else "",
+        "first": first,
+        "last": last,
+        "delta": last - first,
+        "empty": len(values) == 0,
+    }
+
+
+def _build_s07_curve_s(ctx, params, window):
+    """S-07 — Curva-S: avance planeado vs real acumulado desde metric_snapshots
+    (US-161). El planeado se captura en `extras.avg_progress_plan` por snapshot."""
+    from app.services.reports.svg import curve_svg
+
+    points = []
+    actual_vals: list[float] = []
+    planned_vals: list[float] = []
+    for s in ctx.snapshots:
+        actual = float(getattr(s, "avg_progress", 0) or 0)
+        planned = float((getattr(s, "extras", None) or {}).get("avg_progress_plan", 0) or 0)
+        points.append({"date": s.snapshot_date.isoformat(), "actual": actual, "planned": planned})
+        actual_vals.append(actual)
+        planned_vals.append(planned)
+    return {
+        "points": points,
+        "svg": curve_svg(actual_vals, planned_vals) if points else "",
+        "last_actual": actual_vals[-1] if actual_vals else 0,
+        "last_planned": planned_vals[-1] if planned_vals else 0,
+        "empty": not points,
+    }
+
+
+def _build_s15_risk_matrix(ctx, params, window):
+    """S-15 — Matriz 5×5 de riesgos abiertos (probabilidad × impacto)."""
+    grid: dict[tuple[int, int], int] = {}
+    total = 0
+    for r in ctx.risks:
+        if r.status in ("closed", "materialized"):
+            continue
+        if r.probability and r.impact:
+            key = (int(r.probability), int(r.impact))
+            grid[key] = grid.get(key, 0) + 1
+            total += 1
+    zone_bg = {"low": "#dcfce7", "mid": "#fef9c3", "high": "#fee2e2"}
+    matrix = []
+    for p in (5, 4, 3, 2, 1):
+        cells = []
+        for im in (1, 2, 3, 4, 5):
+            sev = p * im
+            zone = "low" if sev <= 6 else "mid" if sev <= 12 else "high"
+            cells.append(
+                {
+                    "probability": p,
+                    "impact": im,
+                    "count": grid.get((p, im), 0),
+                    "zone": zone,
+                    "bg": zone_bg[zone],
+                }
+            )
+        matrix.append({"probability": p, "cells": cells})
+    return {"matrix": matrix, "total": total}
+
+
 def _build_unimplemented(ctx, params, window):
     return {"status": "unimplemented"}
 
 
 SECTION_BUILDERS: dict[str, Any] = {
+    "S-05": _build_s05_trends,
+    "S-07": _build_s07_curve_s,
+    "S-15": _build_s15_risk_matrix,
     "S-01": _build_s01_header,
     "S-02": _build_s02_info,
     "S-03": _build_s03_rag,

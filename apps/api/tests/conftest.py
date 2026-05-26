@@ -204,6 +204,8 @@ def _stub_heavy_renderers(monkeypatch, request):
     # importador).
     for consumer_path in (
         "app.api.v1.endpoints.reports",
+        "app.api.v1.endpoints.dashboard",
+        "app.api.v1.endpoints.organizations",
     ):
         try:
             consumer = __import__(consumer_path, fromlist=["render_pdf"])

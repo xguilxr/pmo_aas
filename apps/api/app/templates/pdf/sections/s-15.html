@@ -1,0 +1,29 @@
+{# S-15 Matriz de riesgos (probabilidad × impacto) #}
+<section class="section section-s15">
+  <h2>Matriz de riesgos (probabilidad × impacto)</h2>
+  {% if data.total == 0 %}
+    <p class="empty">Sin riesgos abiertos con probabilidad e impacto definidos.</p>
+  {% else %}
+  <table class="risk-matrix" style="border-collapse: collapse;">
+    <tbody>
+      {% for row in data.matrix %}
+      <tr>
+        <th style="padding:4px 6px; text-align:right; font-size:10px;">P{{ row.probability }}</th>
+        {% for c in row.cells %}
+        <td style="background:{{ c.bg }}; width:36px; height:28px; text-align:center; border:1px solid #fff; font-weight:600;">
+          {{ c.count if c.count else "" }}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      <tr>
+        <th></th>
+        {% for im in [1, 2, 3, 4, 5] %}
+        <th style="padding:4px 6px; text-align:center; font-size:10px;">I{{ im }}</th>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+  <p class="nums">Total de riesgos abiertos posicionados: {{ data.total }}</p>
+  {% endif %}
+</section>

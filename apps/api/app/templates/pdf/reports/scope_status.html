@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ title }}</h1>
+<p class="meta">{{ scope_label }}{% if tenant_name %} · {{ tenant_name }}{% endif %} · Generado {{ generated_at }}</p>
+
+<h2>Indicadores</h2>
+<table>
+  <thead>
+    <tr>
+      <th class="right">Proyectos</th>
+      <th class="right">Activos</th>
+      <th class="right">Verde</th>
+      <th class="right">Amarillo</th>
+      <th class="right">Rojo</th>
+      <th class="right">Avance prom.</th>
+      <th class="right">Presup. plan</th>
+      <th class="right">Presup. real</th>
+      <th class="right">Riesgos</th>
+      <th class="right">Severos</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="nums right">{{ kpis.projects_total }}</td>
+      <td class="nums right">{{ kpis.projects_active }}</td>
+      <td class="nums right">{{ health.green }}</td>
+      <td class="nums right">{{ health.yellow }}</td>
+      <td class="nums right">{{ health.red }}</td>
+      <td class="nums right">{{ "%.0f"|format(kpis.avg_progress) }}%</td>
+      <td class="nums right">{{ budget_plan_fmt }}</td>
+      <td class="nums right">{{ budget_actual_fmt }}</td>
+      <td class="nums right">{{ kpis.open_risks }}</td>
+      <td class="nums right">{{ kpis.severe_risks }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Tendencias (12 semanas)</h2>
+{% set live = trends | rejectattr("empty") | list %}
+{% if live %}
+  {% for t in trends %}
+    {% if not t.empty %}
+    <h3>{{ t.label }} — {{ "%.0f"|format(t.last) }} ({{ "%+.0f"|format(t.delta) }})</h3>
+    <div style="margin-bottom:8px;">{{ t.svg | safe }}</div>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  <p class="meta">Sin historia de snapshots todavía. Captura un snapshot o espera al job semanal.</p>
+{% endif %}
+
+{% if heatmap_rows %}
+<h2>Salud por {% if rows_kind == "organizations" %}organización{% else %}programa{% endif %}</h2>
+<table style="border-collapse:collapse;">
+  <thead>
+    <tr>
+      <th></th>
+      <th style="padding:2px 8px;font-size:9pt;color:#6b7280;">Verde</th>
+      <th style="padding:2px 8px;font-size:9pt;color:#6b7280;">Amarillo</th>
+      <th style="padding:2px 8px;font-size:9pt;color:#6b7280;">Rojo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in heatmap_rows %}
+    <tr>
+      <td style="padding:2px 6px;font-size:9.5pt;">{{ r.name }}</td>
+      <td style="background:#16a34a;color:#fff;text-align:center;width:42px;{% if not r.green %}opacity:.25;{% endif %}">{{ r.green or "" }}</td>
+      <td style="background:#eab308;color:#fff;text-align:center;width:42px;{% if not r.yellow %}opacity:.25;{% endif %}">{{ r.yellow or "" }}</td>
+      <td style="background:#dc2626;color:#fff;text-align:center;width:42px;{% if not r.red %}opacity:.25;{% endif %}">{{ r.red or "" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if treemap_svg %}
+<h2>Presupuesto x salud</h2>
+<div class="treemap">{{ treemap_svg | safe }}</div>
+{% endif %}
+
+<h2>Matriz de riesgos (probabilidad x impacto)</h2>
+{% if risk_matrix.total == 0 %}
+  <p class="meta">Sin riesgos abiertos con probabilidad e impacto definidos.</p>
+{% else %}
+<table style="border-collapse:collapse;">
+  {% for row in risk_matrix.matrix %}
+  <tr>
+    <th style="padding:4px 6px;text-align:right;font-size:9pt;">P{{ row.probability }}</th>
+    {% for c in row.cells %}
+    <td style="background:{{ c.bg }};width:34px;height:26px;text-align:center;border:1px solid #fff;font-weight:600;">{{ c.count if c.count else "" }}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+  <tr>
+    <th></th>
+    {% for im in [1, 2, 3, 4, 5] %}<th style="text-align:center;font-size:9pt;">I{{ im }}</th>{% endfor %}
+  </tr>
+</table>
+<p class="meta">Total de riesgos abiertos posicionados: {{ risk_matrix.total }}</p>
+{% endif %}
+
+{% if rows_kind == "projects" %}
+<h2>Proyectos</h2>
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>Folio</th><th>Nombre</th><th>Fase</th><th>Salud</th><th>PM</th>
+      <th class="right">Avance</th><th class="right">Plan</th><th class="right">Real</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.folio or "—" }}</td>
+      <td>{{ r.name }}</td>
+      <td>{{ r.phase or "—" }}</td>
+      <td>{{ r.health or "—" }}</td>
+      <td>{{ r.pm_name or "—" }}</td>
+      <td class="nums right">{{ r.progress }}%</td>
+      <td class="nums right">{{ r.budget_plan_fmt }}</td>
+      <td class="nums right">{{ r.budget_actual_fmt }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="meta">Sin proyectos.</p>{% endif %}
+{% else %}
+<h2>{% if rows_kind == "organizations" %}Organizaciones{% else %}Programas{% endif %}</h2>
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th class="right">Proyectos</th>
+      <th class="right">Verde</th><th class="right">Amarillo</th><th class="right">Rojo</th>
+      <th class="right">Presup. plan</th><th class="right">Presup. real</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.name }}</td>
+      <td class="nums right">{{ r.total }}</td>
+      <td class="nums right">{{ r.green }}</td>
+      <td class="nums right">{{ r.yellow }}</td>
+      <td class="nums right">{{ r.red }}</td>
+      <td class="nums right">{{ r.budget_plan_fmt }}</td>
+      <td class="nums right">{{ r.budget_actual_fmt }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="meta">Sin elementos.</p>{% endif %}
+{% endif %}
+
+{% endblock %}

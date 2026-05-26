@@ -2,10 +2,12 @@ from datetime import UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_authenticated, require_capability
+from app.api.v1.endpoints.dashboard import scoped_project_ids
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.db.session import get_db
@@ -43,6 +45,8 @@ from app.schemas.organization import (
     ProgramUpdate,
 )
 from app.services.audit import write_audit
+from app.services.pdf_renderer import render_pdf
+from app.services.reports.scoped_status import build_scope_status_context
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
@@ -1607,3 +1611,48 @@ async def hard_delete_dept(
     from fastapi.responses import Response
 
     return Response(status_code=204)
+
+
+# ===========================================================================
+# US-160 — Reportes de Status Nivel 2 (Organización / Programa) en PDF.
+# Viven fuera del Report Builder; se descargan desde la página del scope.
+# Admin-equivalente (agregan datos de todo el scope).
+# ===========================================================================
+
+
+@router.post("/{org_id}/reports/status")
+async def organization_status_report(
+    org_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    ctx = await build_scope_status_context(
+        db, tenant_id, "organization", org_id, restrict_project_ids=role_ids
+    )
+    pdf = render_pdf("reports/scope_status.html", ctx)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="status-organizacion.pdf"'},
+    )
+
+
+@programs_router.post("/{program_id}/reports/status")
+async def program_status_report(
+    program_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    ctx = await build_scope_status_context(
+        db, tenant_id, "program", program_id, restrict_project_ids=role_ids
+    )
+    pdf = render_pdf("reports/scope_status.html", ctx)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="status-programa.pdf"'},
+    )
