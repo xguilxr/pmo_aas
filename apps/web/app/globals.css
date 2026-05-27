@@ -19,19 +19,20 @@
   --color-neutral-900: oklch(12% 0.004 80);
   --color-neutral-950: oklch(7% 0.003 80);
 
-  /* Semánticos — sistema "big canvas" (US-164): un solo lienzo cream + islas
-     blancas con sombra suave. La escala neutra de arriba se conserva (tablas,
-     badges, estados); solo la capa de superficie y el chrome cambian. */
-  --color-bg-app: #F6F2EA;     /* canvas */
+  /* Semánticos — sistema "big canvas" (US-164): un solo lienzo gris-azul
+     súper claro + islas blancas con sombra suave. La escala neutra de arriba
+     se conserva (tablas, badges, estados); solo la capa de superficie y el
+     chrome cambian. */
+  --color-bg-app: #F4F6FA;     /* canvas */
   --color-bg-surface: #FFFFFF; /* islas */
-  --color-bg-subtle: #FAF7F1;  /* surface-soft */
-  --color-bg-muted: #F0EBE0;
+  --color-bg-subtle: #F8FAFD;  /* surface-soft */
+  --color-bg-muted: #E9EDF4;
 
   /* Aliases retrocompat para código que ya usa --color-app / --color-surface / etc. */
-  --color-app: #F6F2EA;
+  --color-app: #F4F6FA;
   --color-surface: #FFFFFF;
-  --color-subtle: #FAF7F1;
-  --color-muted: #F0EBE0;
+  --color-subtle: #F8FAFD;
+  --color-muted: #E9EDF4;
   --color-primary: #1F1D17;    /* text-strong */
   --color-secondary: #3F3B30;  /* text */
   --color-tertiary: #756F60;   /* text-muted */
@@ -93,7 +94,7 @@
 
   /* Chrome — sidebar flotante "big canvas" (US-164). El fondo conserva el
      navy original (#182e4e, DEC-006); solo cambia a panel flotante con pill
-     activo semitransparente. El topbar ya no usa chrome-bg: vive en el cream. */
+     activo semitransparente. El topbar ya no usa chrome-bg: vive en el lienzo. */
   --chrome-bg: #182e4e;
   --chrome-bg-translucent: color-mix(in oklab, #182e4e 92%, transparent);
   --chrome-border: transparent;

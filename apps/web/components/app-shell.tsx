@@ -398,6 +398,12 @@ function NavTree({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  // El detalle de proyecto monta la barra de tabs sticky (project-tabs-bar);
+  // ahí el scroll container no lleva padding-top para que la barra pegue
+  // flush bajo el topbar. La página de creación (/projects/new) no la monta.
+  const isProjectDetail =
+    /^\/pmo\/projects\/[^/]+/.test(pathname) &&
+    !pathname.includes("/projects/new");
   // BUG-005: leer user en useEffect evita que el primer render (SSR y
   // primera hidratación cliente) muestre TOP_NAV para un superadmin antes
   // de leer localStorage. El flag `userReady` distingue "aún no leído" de
@@ -630,7 +636,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1 overflow-y-auto px-4 py-6 lg:px-8">
+        <main
+          className={cn(
+            "min-w-0 flex-1 overflow-y-auto px-4 lg:px-8",
+            // En el detalle de proyecto la barra de tabs es sticky y debe
+            // pegar flush bajo el topbar; el padding-top del scroll container
+            // rompería ese anclaje (desfase + bleed-through), así que se quita
+            // solo aquí. El resto de páginas conserva su respiro superior.
+            isProjectDetail ? "pb-6" : "py-6",
+          )}
+        >
           {children}
         </main>
       </div>
