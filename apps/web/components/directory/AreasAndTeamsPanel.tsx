@@ -19,8 +19,10 @@ import {
   createTeam,
   deleteArea,
   deleteTeam,
+  listAreaAssignments,
   listAreas,
   listTeams,
+  setAreaAssignments,
   updateArea,
   updateTeam,
   type Area,
@@ -39,7 +41,7 @@ type TeamModal = { kind: "team"; team: Team | null } | null;
 type RoleModal = { kind: "role"; role: ProjectRole | null } | null;
 type ActiveModal = AreaModal | TeamModal | RoleModal;
 
-export function AreasAndTeamsPanel() {
+export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
   const [areas, setAreas] = useState<Area[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [roles, setRoles] = useState<ProjectRole[]>([]);
@@ -177,6 +179,7 @@ export function AreasAndTeamsPanel() {
       {modal?.kind === "area" ? (
         <AreaModalForm
           area={modal.area}
+          projectId={projectId}
           onClose={() => setModal(null)}
           onSaved={() => {
             setModal(null);
@@ -291,12 +294,34 @@ function Row({
 
 // ---------- Modales ----------
 
+// Asegura que un área quede visible en un proyecto sin pisar otros
+// alcances ya configurados (merge no destructivo de assignments). Sirve
+// para "adoptar" áreas existentes (creadas sin asignación) a un proyecto.
+async function ensureProjectAssignment(areaId: string, projectId: string) {
+  const existing = await listAreaAssignments(areaId);
+  const alreadyVisible = existing.some(
+    (a) => a.is_global || a.project_id === projectId,
+  );
+  if (alreadyVisible) return;
+  await setAreaAssignments(areaId, [
+    ...existing.map((a) => ({
+      organization_id: a.organization_id,
+      program_id: a.program_id,
+      project_id: a.project_id,
+      is_global: a.is_global,
+    })),
+    { project_id: projectId },
+  ]);
+}
+
 function AreaModalForm({
   area,
+  projectId,
   onClose,
   onSaved,
 }: {
   area: Area | null;
+  projectId?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -320,12 +345,20 @@ function AreaModalForm({
           description: description.trim() || null,
           is_active: isActive,
         });
+        // En contexto de proyecto, "adoptar" el área existente: dejarla
+        // visible en este proyecto (recupera áreas creadas sin asignar).
+        if (projectId) await ensureProjectAssignment(area.id, projectId);
       } else {
-        await createArea({
+        const created = await createArea({
           name: name.trim(),
           description: description.trim() || null,
           is_active: isActive,
         });
+        // Área creada dentro de un proyecto → se asigna a ese proyecto
+        // para que aparezca en Recursos y en el Plan.
+        if (projectId) {
+          await setAreaAssignments(created.id, [{ project_id: projectId }]);
+        }
       }
       onSaved();
     } catch (e) {
@@ -338,6 +371,13 @@ function AreaModalForm({
   return (
     <Modal open title={area ? "Editar área" : "Nueva área"} onClose={onClose}>
       <div className="space-y-3">
+        {projectId ? (
+          <p className="rounded bg-[var(--color-subtle)] px-2 py-1 text-xs text-[var(--color-tertiary)]">
+            {area
+              ? "Al guardar, esta área queda disponible en este proyecto."
+              : "El área se agrega a este proyecto automáticamente."}
+          </p>
+        ) : null}
         <FieldLabel label="Nombre" required>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </FieldLabel>
