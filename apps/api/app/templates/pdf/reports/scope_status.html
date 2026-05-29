@@ -5,36 +5,37 @@
 <p class="meta">{{ scope_label }}{% if tenant_name %} · {{ tenant_name }}{% endif %} · Generado {{ generated_at }}</p>
 
 <h2>Indicadores</h2>
-<table>
-  <thead>
-    <tr>
-      <th class="right">Proyectos</th>
-      <th class="right">Activos</th>
-      <th class="right">Verde</th>
-      <th class="right">Amarillo</th>
-      <th class="right">Rojo</th>
-      <th class="right">Avance prom.</th>
-      <th class="right">Presup. plan</th>
-      <th class="right">Presup. real</th>
-      <th class="right">Riesgos</th>
-      <th class="right">Severos</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class="nums right">{{ kpis.projects_total }}</td>
-      <td class="nums right">{{ kpis.projects_active }}</td>
-      <td class="nums right">{{ health.green }}</td>
-      <td class="nums right">{{ health.yellow }}</td>
-      <td class="nums right">{{ health.red }}</td>
-      <td class="nums right">{{ "%.0f"|format(kpis.avg_progress) }}%</td>
-      <td class="nums right">{{ budget_plan_fmt }}</td>
-      <td class="nums right">{{ budget_actual_fmt }}</td>
-      <td class="nums right">{{ kpis.open_risks }}</td>
-      <td class="nums right">{{ kpis.severe_risks }}</td>
-    </tr>
-  </tbody>
-</table>
+<div class="kpi-row">
+  <div class="kpi-card accent"><div class="kpi-label">Proyectos</div><div class="kpi-value">{{ kpis.projects_total }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Activos</div><div class="kpi-value">{{ kpis.projects_active }}</div></div>
+  <div class="kpi-card ok"><div class="kpi-label">Avance prom.</div><div class="kpi-value">{{ "%.0f"|format(kpis.avg_progress) }}%</div></div>
+  <div class="kpi-card warn"><div class="kpi-label">Riesgos abiertos</div><div class="kpi-value">{{ kpis.open_risks }}</div></div>
+  <div class="kpi-card{% if kpis.severe_risks %} danger{% endif %}"><div class="kpi-label">Severos</div><div class="kpi-value">{{ kpis.severe_risks }}</div></div>
+</div>
+
+<div style="display:flex;gap:32px;align-items:center;margin:4px 0 18px;flex-wrap:wrap;">
+  {% if health_donut_svg %}
+  <div style="text-align:center;">
+    {{ health_donut_svg | safe }}
+    <div class="small muted" style="margin-top:4px;">Salud del portafolio</div>
+    <div class="small">
+      <span style="color:#1F8A5B;">●</span> {{ health.green }}&nbsp;&nbsp;
+      <span style="color:#B26B12;">●</span> {{ health.yellow }}&nbsp;&nbsp;
+      <span style="color:#C0392B;">●</span> {{ health.red }}
+    </div>
+  </div>
+  {% endif %}
+  <div style="text-align:center;">
+    {{ progress_gauge_svg | safe }}
+    <div class="small muted" style="margin-top:4px;">Avance promedio</div>
+  </div>
+  <div style="flex:1;min-width:170px;">
+    <dl class="kv small">
+      <dt>Presupuesto plan</dt><dd class="nums">{{ budget_plan_fmt }}</dd>
+      <dt>Presupuesto real</dt><dd class="nums">{{ budget_actual_fmt }}</dd>
+    </dl>
+  </div>
+</div>
 
 <h2>Tendencias (12 semanas)</h2>
 {% set live = trends | rejectattr("empty") | list %}

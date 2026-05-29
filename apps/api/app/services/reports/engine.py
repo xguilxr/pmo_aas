@@ -57,6 +57,8 @@ from app.services.analytics.snapshots import METRIC_FIELDS
 from app.services.pdf_renderer import render_html
 from app.services.progress_calculator import compute_progress_detailed
 from app.services.reports.branding import load_report_branding
+from app.services.reports.gantt_renderer import render_gantt_svg
+from app.services.reports.svg import gauge_svg
 
 logger = logging.getLogger(__name__)
 
@@ -419,6 +421,8 @@ def _build_s06_progress(ctx, params, window):
         "percent": round(ctx.progress_percent, 1),
         "method": ctx.progress_method,
         "fallback": ctx.progress_fallback,
+        # ENH-146 — gauge circular en vez de un número plano.
+        "gauge_svg": gauge_svg(ctx.progress_percent),
     }
 
 
@@ -589,16 +593,23 @@ def _build_s13_decisions(ctx, params, window):
 
 
 def _build_s19_gantt_snapshot(ctx, params, window):
-    # US-132 implementa el render headless del Gantt. Por defecto la
-    # sección expone un placeholder con la URL del endpoint snapshot;
-    # cuando US-132 esté disponible, el renderer lo embebe como <img>.
+    # ENH-146 — inlina el SVG del Gantt (US-132 render_gantt_svg) en vez de
+    # un <img src> relativo que no resolvía bajo WeasyPrint. Si el render
+    # falla, cae al endpoint snapshot para el preview HTTP.
     if not ctx.project:
         return {"empty": True}
+    wbs_level = (params or {}).get("wbs_level", 1)
+    try:
+        svg = render_gantt_svg(ctx.project, ctx.tasks, wbs_level=wbs_level)
+    except Exception:  # pragma: no cover - defensivo
+        logger.exception("s19 gantt render failed for project %s", ctx.project.id)
+        svg = ""
     return {
         "project_id": str(ctx.project.id),
-        "wbs_level": (params or {}).get("wbs_level", 1),
+        "wbs_level": wbs_level,
+        "svg": svg,
         "snapshot_url": (
-            f"/api/v1/projects/{ctx.project.id}/gantt/snapshot?wbs_level=1"
+            f"/api/v1/projects/{ctx.project.id}/gantt/snapshot?wbs_level={wbs_level}"
         ),
     }
 

@@ -1418,8 +1418,15 @@ def _project_render_data(
     risks_high = sum(
         1 for r in risks if (getattr(r, "severity", 0) or 0) >= 12
     )
-    on_time_total = max(1, project.tasks_total if hasattr(project, "tasks_total") else 0)
-    on_time_pct = max(0, 100 - round((delayed / on_time_total) * 100)) if on_time_total else 0
+    # ENH-146 — denominador real y consistente con la tabla del plan
+    # (antes usaba project.tasks_total que no existe en el ORM ⇒ el KPI
+    # saltaba a 0% o 100%). On-time = (total − retrasadas) / total.
+    tasks_total = (context.get("plan") or {}).get("total_tasks") or 0
+    on_time_pct = (
+        max(0, min(100, round((tasks_total - delayed) / tasks_total * 100)))
+        if tasks_total
+        else 0
+    )
     tasks_focus = context.get("focus_tasks") or []
 
     def _task_row(t):

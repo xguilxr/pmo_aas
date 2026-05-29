@@ -1,11 +1,17 @@
-{# S-06 % de Avance #}
+{# S-06 % de Avance — gauge circular (ENH-146) #}
 <section class="section section-s06">
   <h2>% de Avance</h2>
-  <p class="nums" style="font-size: 22pt; font-weight: 700; color: var(--chrome);">
-    {{ data.percent }}%
-  </p>
-  <p class="muted small">
-    Método: {{ data.method }}
-    {% if data.fallback %} · <em>fallback: {{ data.fallback }}</em>{% endif %}
-  </p>
+  <div style="display:flex;align-items:center;gap:16px;">
+    {% if data.gauge_svg %}
+    <div>{{ data.gauge_svg | safe }}</div>
+    {% else %}
+    <p class="nums" style="font-size: 22pt; font-weight: 700; color: var(--chrome);">
+      {{ data.percent }}%
+    </p>
+    {% endif %}
+    <p class="muted small">
+      Método: {{ data.method }}
+      {% if data.fallback %} · <em>fallback: {{ data.fallback }}</em>{% endif %}
+    </p>
+  </div>
 </section>
