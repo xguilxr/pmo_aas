@@ -1442,47 +1442,9 @@ function PlanInner() {
             </Button>
           </div>
         </header>
-        {/* ENH-048: chips multi-select Hitos / Críticos / Retrasados. */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-2">
-          {(
-            [
-              { key: "milestone" as const, label: "Hitos" },
-              { key: "critical" as const, label: "Críticos" },
-              { key: "delayed" as const, label: "Retrasados" },
-            ]
-          ).map(({ key, label }) => {
-            const active = activeChips.has(key);
-            const count = chipCounts[key];
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => toggleChip(key)}
-                aria-pressed={active}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                  active
-                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                    : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
-                )}
-              >
-                {label}
-                <span className="tabular-nums opacity-80">({count})</span>
-              </button>
-            );
-          })}
-          {activeChips.size > 0 ? (
-            <button
-              type="button"
-              onClick={() => setActiveChips(new Set())}
-              className="text-xs text-[var(--color-tertiary)] underline-offset-2 hover:underline"
-            >
-              Limpiar filtros
-            </button>
-          ) : null}
-          {/* US-098 fix: filtro de Área se movió a la toolbar
-              top-level. */}
-        </div>
+        {/* ENH-048 (movido a la toolbar top-level): los chips Hitos /
+            Críticos / Retrasados ahora viven junto a WBS/Área/MSP para
+            seguir accesibles en modo "solo Gantt". */}
         {groupByArea ? (
           // ENH-066: agrupación por Área. Render una TaskList por
           // grupo con header. Áreas vacías post-filtro se omiten
@@ -1680,6 +1642,49 @@ function PlanInner() {
         >
           MSP
         </button>
+        {/* ENH-048 (movido): chips Hitos / Críticos / Retrasados. Antes
+            vivían dentro del panel de lista y desaparecían en modo
+            "solo Gantt"; ahora están al nivel de WBS/Área/MSP y filtran
+            el Gantt en cualquier vista (condensan/expanden vía
+            filteredGantt). */}
+        <div className="flex flex-wrap items-center gap-1">
+          {(
+            [
+              { key: "milestone" as const, label: "Hitos" },
+              { key: "critical" as const, label: "Críticos" },
+              { key: "delayed" as const, label: "Retrasados" },
+            ]
+          ).map(({ key, label }) => {
+            const active = activeChips.has(key);
+            const count = chipCounts[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => toggleChip(key)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                )}
+              >
+                {label}
+                <span className="tabular-nums opacity-80">({count})</span>
+              </button>
+            );
+          })}
+          {activeChips.size > 0 ? (
+            <button
+              type="button"
+              onClick={() => setActiveChips(new Set())}
+              className="text-xs text-[var(--color-tertiary)] underline-offset-2 hover:underline"
+            >
+              Limpiar
+            </button>
+          ) : null}
+        </div>
         {/* Mode toggle (Lista / Dividida / Gantt) */}
         <div
           role="radiogroup"
