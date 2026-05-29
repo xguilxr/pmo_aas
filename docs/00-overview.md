@@ -15,7 +15,7 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 | Problema | Dolor actual | Cómo lo resolvemos |
 |---|---|---|
 | Dispersión de información | Excel + correos + SharePoint | Sistema único con jerarquía PMO→Org→Programa→Proyecto |
-| Reportes manuales que consumen 4-6 h/semana | PM redacta en Word cada viernes | IA local genera reporte en <60 s, PM solo revisa |
+| Reportes manuales que consumen 4-6 h/semana | PM redacta en Word cada viernes | IA (Groq/BYO) genera reporte en <60 s, PM solo revisa |
 | Minutas sin estructura | Notas libres sin acuerdos trazables | IA extrae acuerdos, participantes, próximos pasos desde transcripción |
 | Visibilidad baja del portafolio | Dirección no ve estado real | Dashboard con KPIs, semáforo de salud, Plan vs Real |
 | Aislamiento entre clientes | Instancias separadas caras | Multi-tenant en capa app (filtro `tenant_id` por endpoint + tests `TC-MT-*`), 1 despliegue para N tenants |

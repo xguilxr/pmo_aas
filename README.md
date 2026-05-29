@@ -6,8 +6,8 @@
 [![DB](https://img.shields.io/badge/db-PostgreSQL%2016-blue)]()
 [![Deploy](https://img.shields.io/badge/deploy-Railway-purple)]()
 [![Storage](https://img.shields.io/badge/storage-Cloudflare%20R2-orange)]()
-[![AI](https://img.shields.io/badge/ai-Groq%20%7C%20Gemini%20%7C%20Claude%20%7C%20Ollama-red)]()
-[![Sprint](https://img.shields.io/badge/sprint-9%20v1.8-green)]()
+[![AI](https://img.shields.io/badge/ai-Groq%20%7C%20Gemini%20%7C%20Claude%20%7C%20OpenAI-red)]()
+[![Sprint](https://img.shields.io/badge/sprint-33%20v1.28-green)]()
 [![License](https://img.shields.io/badge/license-Proprietary-red)](./LICENSE)
 
 ---
@@ -35,7 +35,7 @@ PMO-aaS es una herramienta para Project Management Offices que necesitan:
 - **6 módulos transversales** por proyecto: Riesgos, Incidencias, Cambios, Documentos, Lecciones, Minutas.
 - **Dashboard accionable** con KPIs, salud del portafolio y Plan vs Real.
 - **Charter editable** + sección RAID + áreas de proyecto + stakeholders catálogo.
-- **IA multi-proveedor** (Groq, Gemini, Claude, Ollama) para minutas, reportes de avance y análisis.
+- **IA multi-proveedor** (Groq como plataforma + BYO: OpenAI, Gemini, Claude, Perplexity, Azure, custom) para minutas, reportes de avance, análisis y asistente conversacional.
 - **Integración con Microsoft Project** para importar `.mpp/.xml` y visualizar Gantt.
 - **Permisos por capability** + Super Admin platform-wide + tenant-cross dashboards.
 - **Notificaciones** por evento + email vía Resend + reportes programados.
@@ -70,7 +70,7 @@ Toda la documentación técnica y de producto vive en [`docs/`](./docs). Arranca
 | BD | **PostgreSQL 16** (Railway) + Alembic migrations | Multi-tenant por columna `tenant_id`, FK CASCADE selectivo |
 | Storage | **Cloudflare R2** (S3-compatible) vía boto3 | Object storage para documentos + branding logos. Ver [`docs/runbooks/infra/uploads-storage.md`](./docs/runbooks/infra/uploads-storage.md) |
 | Auth | JWT + refresh tokens + bcrypt + role_type (admin/user/viewer) | Capabilities por módulo en `app/core/permissions.py` |
-| IA | **Groq** + **Google Gemini** (free tier) + **Anthropic Claude** + **Ollama** local | Multi-provider con failover por tenant |
+| IA | **Groq** (plataforma) + BYO: **OpenAI**, **Google Gemini**, **Anthropic Claude**, **Perplexity**, **Azure**, custom | Multi-provider por tenant (modo platform/byo/disabled) |
 | MS Project | **MPXJ** (Java 21) + **frappe-gantt** | Importa `.mpp/.xml/.xlsx` |
 | Jobs | **Celery** (Python) + Redis | Reportes programados, generación IA async, notificaciones email |
 | Email | **Resend** (transactional) | Notificaciones, reset de password, alertas |
@@ -92,7 +92,6 @@ Detalles completos en [`docs/architecture/stack.md`](./docs/architecture/stack.m
 #   - Python 3.12
 #   - PostgreSQL 16 (local o Railway dev DB)
 #   - Redis (local, Memurai en Windows o WSL)
-#   - Ollama (opcional, para IA local)
 
 git clone git@github.com:xguilxr/pmo_aas.git && cd pmo_aas
 cp .env.example .env   # rellena DATABASE_URL, REDIS_URL, JWT_SECRET, S3_*, etc.
@@ -156,11 +155,11 @@ pmo_aas/
 
 ---
 
-## Estado actual (Sprint 9 v1.8)
+## Estado actual (Sprint 33 v1.28)
 
 - **Producción:** desplegada en Railway. API + Web + Worker + Postgres + Redis. Storage en Cloudflare R2.
-- **Última migración aplicada:** `0035_stakeholders_catalog` (US-086).
-- **Última feature entregada:** [US-088 #189](https://github.com/xguilxr/pmo_aas/issues/189) — hard delete two-step para 6 entidades admin (programs, orgs, BUs, depts, users, stakeholders) con cascade explícito y typed-confirm. Ver [`ADR-017`](./docs/adr/README.md#adr-017--hard-delete-tenant-admin-con-patrón-two-step).
+- **Última migración:** `0084_assistant_conversations` (US-165) — head único de Alembic.
+- **Última feature entregada:** Dashboards N1/N2 + reportes derivados + revamp "big canvas" (Sprint 33). En curso: deepwork de reportes con logos/charts on-brand, confiabilidad minutas→RAID y asistente IA conversacional.
 - **Cobertura de tests:** EP001-EP010 + US-### dedicados + BUG-### regresión. CI gate corre pytest + alembic upgrade head contra Postgres efímero.
 
 ---
