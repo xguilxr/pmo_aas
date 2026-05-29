@@ -20,6 +20,7 @@ import {
   listActors,
   listAreasByProject,
   listTeams,
+  setAreaAssignments,
   updateActor,
   type Actor,
   type Area,
@@ -425,6 +426,15 @@ function AddPersonModal({
             options={areas.map((a) => ({ id: a.id, label: a.name }))}
             onCreate={async (name) => {
               const created = await createArea({ name, is_active: true });
+              // El área creada acá pertenece al proyecto: se asigna para
+              // que persista en Recursos y en el Plan.
+              try {
+                await setAreaAssignments(created.id, [
+                  { project_id: projectId },
+                ]);
+              } catch {
+                // no bloquear el alta si la asignación falla
+              }
               setAreas((prev) => [...prev, created]);
               return created.id;
             }}
@@ -652,6 +662,13 @@ function EditParticipationModal({
           options={areas.map((a) => ({ id: a.id, label: a.name }))}
           onCreate={async (name) => {
             const created = await createArea({ name, is_active: true });
+            // El área creada acá pertenece al proyecto: se asigna para
+            // que persista en Recursos y en el Plan.
+            try {
+              await setAreaAssignments(created.id, [{ project_id: projectId }]);
+            } catch {
+              // no bloquear el alta si la asignación falla
+            }
             setAreas((prev) => [...prev, created]);
             return created.id;
           }}

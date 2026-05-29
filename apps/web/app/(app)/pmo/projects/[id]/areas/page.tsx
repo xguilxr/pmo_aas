@@ -67,7 +67,7 @@ export default function ProjectAreasPage() {
           {view === "directory" ? (
             <DirectoryView projectId={projectId} />
           ) : (
-            <AreasAndTeamsPanel />
+            <AreasAndTeamsPanel projectId={projectId} />
           )}
         </div>
       </section>
