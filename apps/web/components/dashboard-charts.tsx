@@ -21,6 +21,7 @@ export function Pie({
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - thickness / 2 - 2;
+  const circ = TAU * r;
 
   if (total <= 0) {
     return (
@@ -28,34 +29,38 @@ export function Pie({
     );
   }
 
-  let acc = 0;
+  // BUG-069: cada segmento es un círculo completo con stroke-dasharray
+  // (misma técnica que Gauge/Donut), no un <path> de arco. El arco
+  // colapsaba cuando un único segmento valía el 100% (start == end ⇒
+  // path degenerado ⇒ la dona quedaba sin color). Con dasharray, un
+  // segmento al 100% pinta `${circ} 0` y llena el anillo correctamente.
+  const segments = data.filter((d) => d.value > 0);
+  let offset = 0;
   return (
     <svg width={size} height={size} role="img" aria-label={ariaLabel}>
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-subtle)" strokeWidth={thickness} />
-      {data.map((d, i) => {
-        if (d.value <= 0) return null;
-        const start = (acc / total) * TAU - Math.PI / 2;
-        acc += d.value;
-        const end = (acc / total) * TAU - Math.PI / 2;
-        const large = end - start > Math.PI ? 1 : 0;
-        const x1 = cx + r * Math.cos(start);
-        const y1 = cy + r * Math.sin(start);
-        const x2 = cx + r * Math.cos(end);
-        const y2 = cy + r * Math.sin(end);
-        const path = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
-        return (
-          <path
-            key={i}
-            d={path}
-            fill="none"
-            stroke={d.color}
-            strokeWidth={thickness}
-            strokeLinecap="butt"
-          >
-            <title>{`${d.label}: ${d.value}`}</title>
-          </path>
-        );
-      })}
+      <g transform={`rotate(-90 ${cx} ${cy})`}>
+        {segments.map((d, i) => {
+          const len = (d.value / total) * circ;
+          const dashoffset = -offset;
+          offset += len;
+          return (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={d.color}
+              strokeWidth={thickness}
+              strokeDasharray={`${len} ${circ - len}`}
+              strokeDashoffset={dashoffset}
+            >
+              <title>{`${d.label}: ${d.value}`}</title>
+            </circle>
+          );
+        })}
+      </g>
       <text
         x={cx}
         y={cy - 4}
