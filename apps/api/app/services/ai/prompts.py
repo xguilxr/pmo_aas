@@ -104,8 +104,8 @@ INPUT (transcript abreviado):
 > Martin: se acordó mantenimiento de flota SÍ se implementa con Mario al frente.
 > [12 temas más, 7 Acciones, 4 Riesgos, 4 Decisiones, 1 Issue]
 
-OUTPUT esperado (extracto):
-```json
+OUTPUT esperado (extracto) — devuelve SOLO el objeto JSON, sin bloques de
+código ni comentarios:
 {
   "header": {"title": "Sesión Highlander EAM-BNF — Operacional",
              "date": "2026-03-23", "time": "12:02 PM", "duration": "46 minutos",
@@ -141,8 +141,6 @@ OUTPUT esperado (extracto):
      ]}
   ],
   "raid": [
-    // Orden libre — items en orden de aparición en el transcript,
-    // intercalando tipos. La plataforma los agrupa internamente.
     {"type": "D", "description": "Business Area: definición final en sesión lunes con Global",
      "responsible": "Poncho / Aline", "due_date": "Lunes", "status": "Pending"},
     {"type": "A", "description": "Socializar resultados Global en sesión 5 PM",
@@ -162,7 +160,6 @@ OUTPUT esperado (extracto):
   ],
   "free_notes": "Próximos pasos calendarizados:\\n- Hoy 5:00 PM — Sesión Business Area\\n- Mañana AM — Sesión cuentas abiertas SAP Themis BEC\\n- 25 marzo — Sesión con PINI (condiciones comerciales EAM en BNF)"
 }
-```
 
 Calibración del nivel de detalle esperado: 12 temas con ~5 bullets c/u,
 ≥ 7 Acciones, ≥ 4 Riesgos, ≥ 4 Decisiones, ≥ 1 Issue para una sesión de

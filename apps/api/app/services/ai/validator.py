@@ -83,7 +83,17 @@ def validate_raid_items(items: list[Any]) -> tuple[list[dict[str, Any]], dict[st
             else:
                 metrics["dropped_unknown"] += 1
             continue
-        description = (raw.get("description") or raw.get("short_desc") or "").strip()
+        # ENH-147 — amplía las claves aceptadas para no descartar items que
+        # el modelo nombró con title/text/detail/summary en vez de description.
+        description = (
+            raw.get("description")
+            or raw.get("short_desc")
+            or raw.get("text")
+            or raw.get("title")
+            or raw.get("detail")
+            or raw.get("summary")
+            or ""
+        ).strip()
         if not description:
             metrics["dropped_malformed"] += 1
             continue

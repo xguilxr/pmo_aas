@@ -36,13 +36,17 @@ class AIResult:
 class AIProvider(Protocol):
     name: str
 
-    async def generate(self, prompt: str, *, system: str | None = None) -> AIResult: ...
+    async def generate(
+        self, prompt: str, *, system: str | None = None, json_mode: bool = False
+    ) -> AIResult: ...
 
 
 class DisabledProvider:
     name = "disabled"
 
-    async def generate(self, prompt: str, *, system: str | None = None) -> AIResult:
+    async def generate(
+        self, prompt: str, *, system: str | None = None, json_mode: bool = False
+    ) -> AIResult:
         snippet = prompt[:200].replace("\n", " ")
         text = f"[AI disabled — mock]\nSystem={system}\nPrompt_head={snippet!r}"
         return AIResult(text=text, model="stub", tokens_in=0, tokens_out=len(text) // 4)
@@ -57,6 +61,7 @@ class GeminiProvider:
         *,
         system: str | None = None,
         override: dict | None = None,
+        json_mode: bool = False,
     ) -> AIResult:
         ov = override or {}
         api_key = ov.get("api_key") or settings.GEMINI_API_KEY
@@ -70,9 +75,12 @@ class GeminiProvider:
             f"{model}:generateContent?key={api_key}"
         )
         parts = [{"text": prompt}]
-        body = {"contents": [{"role": "user", "parts": parts}]}
+        body: dict = {"contents": [{"role": "user", "parts": parts}]}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
+        if json_mode:
+            # ENH-147 — structured output nativo de Gemini.
+            body["generationConfig"] = {"response_mime_type": "application/json"}
         logger.info(
             "ai.byo.gemini call model=%s timeout=60 tenant=%s",
             model, ov.get("tenant_id"),
@@ -108,6 +116,7 @@ class ClaudeProvider:
         *,
         system: str | None = None,
         override: dict | None = None,
+        json_mode: bool = False,
     ) -> AIResult:
         ov = override or {}
         api_key = ov.get("api_key") or settings.ANTHROPIC_API_KEY
@@ -121,10 +130,15 @@ class ClaudeProvider:
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         }
+        messages: list[dict] = [{"role": "user", "content": prompt}]
+        if json_mode:
+            # ENH-147 — Anthropic no tiene json-mode nativo; prefill del
+            # turno assistant con "{" fuerza al modelo a continuar el JSON.
+            messages.append({"role": "assistant", "content": "{"})
         body = {
             "model": model,
             "max_tokens": 4096,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
         }
         if system:
             body["system"] = system
@@ -145,6 +159,10 @@ class ClaudeProvider:
         text = "".join(
             b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
         )
+        # ENH-147 — restituye el "{" del prefill para que el parser reciba
+        # un objeto JSON completo.
+        if json_mode and not text.lstrip().startswith("{"):
+            text = "{" + text
         usage = data.get("usage", {})
         return AIResult(
             text=text,
@@ -170,6 +188,7 @@ class GroqProvider:
         *,
         system: str | None = None,
         override: dict | None = None,
+        json_mode: bool = False,
     ) -> AIResult:
         ov = override or {}
         api_key = ov.get("api_key") or settings.GROQ_API_KEY
@@ -183,6 +202,8 @@ class GroqProvider:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         body: dict = {"model": model, "messages": messages, "stream": False}
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -219,6 +240,7 @@ class OpenAIProvider:
         *,
         system: str | None = None,
         override: dict | None = None,
+        json_mode: bool = False,
     ) -> AIResult:
         ov = override or {}
         api_key = ov.get("api_key")
@@ -233,6 +255,8 @@ class OpenAIProvider:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         body = {"model": model, "messages": messages, "stream": False}
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -274,6 +298,7 @@ class PerplexityProvider:
         *,
         system: str | None = None,
         override: dict | None = None,
+        json_mode: bool = False,
     ) -> AIResult:
         ov = override or {}
         api_key = ov.get("api_key")
@@ -288,6 +313,8 @@ class PerplexityProvider:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         body = {"model": model, "messages": messages, "stream": False}
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -348,6 +375,7 @@ class AzureProvider:
         *,
         system: str | None = None,
         override: dict | None = None,
+        json_mode: bool = False,
     ) -> AIResult:
         ov = override or {}
         api_key = ov.get("api_key")
@@ -371,6 +399,8 @@ class AzureProvider:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         body = {"messages": messages, "stream": False}
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
         headers = {"api-key": api_key, "Content-Type": "application/json"}
         logger.info(
             "ai.byo.azure call deployment=%s api_version=%s timeout=90 tenant=%s",
@@ -433,6 +463,7 @@ async def generate_for_tenant(
     byo_config: dict | None = None,
     tenant_id: str | None = None,
     job_id: str | None = None,
+    json_mode: bool = False,
 ) -> AIResult:
     """Enruta según `tenant_ai_mode` sin cascada.
 
@@ -442,9 +473,12 @@ async def generate_for_tenant(
       cae a otros proveedores (privacidad/costo).
     - `byo`: usa el provider de `byo_config['provider']`. Falla duro si
       las credenciales están mal; no cae a plataforma.
+
+    `json_mode` (ENH-147): fuerza salida JSON estructurada en el provider
+    (response_format / response_mime_type / prefill Claude).
     """
     if tenant_ai_mode == "disabled":
-        return await _PROVIDERS["disabled"].generate(prompt, system=system)
+        return await _PROVIDERS["disabled"].generate(prompt, system=system, json_mode=json_mode)
 
     if tenant_ai_mode == "platform":
         cfg = dict(platform_groq_config or {})
@@ -453,7 +487,7 @@ async def generate_for_tenant(
         if job_id:
             cfg.setdefault("job_id", job_id)
         return await _PROVIDERS["groq"].generate(
-            prompt, system=system, override=cfg,
+            prompt, system=system, override=cfg, json_mode=json_mode,
         )
 
     if tenant_ai_mode == "byo":
@@ -465,7 +499,9 @@ async def generate_for_tenant(
         override = dict(cfg)
         if tenant_id:
             override.setdefault("tenant_id", tenant_id)
-        return await prov.generate(prompt, system=system, override=override)
+        return await prov.generate(
+            prompt, system=system, override=override, json_mode=json_mode
+        )
 
     raise RuntimeError(f"tenant_ai_mode_invalid: {tenant_ai_mode!r}")
 
