@@ -258,5 +258,19 @@ Reports (no específicos de IA pero relacionados) viven en `endpoints/reports.py
 - [x] Report Builder con chat IA y acciones sobre canvas.
 - [x] `TC-MT-008` verde: el worker no procesa archivos de otro tenant.
 - [x] Catálogo de prompts documentado en `docs/ai/prompts-catalog.md`.
+- [x] **Salida estructurada por proveedor (`json_mode`, ENH-147):** la
+  abstracción `generate_for_tenant(..., json_mode=True)` fuerza JSON nativo
+  (OpenAI/Groq/Perplexity/Azure/Custom → `response_format`; Gemini →
+  `response_mime_type`; Claude → prefill `{`). Parser tolerante compartido
+  (`services/ai/json_parse.parse_json_lenient`) + repair-retry: en minutas,
+  si el parseo falla se re-pide SOLO JSON una vez antes de degradar, sin
+  pérdida silenciosa de RAID.
+- [x] **Asistente conversacional (US-165):** widget IA global (panel
+  flotante, Ctrl/⌘-K) respaldado por endpoints `/api/v1/assistant/*`
+  (chat sincrónico + persistencia en `assistant_conversations` /
+  `assistant_messages`, mig. 0084). Recibe contexto de página y responde
+  con `{message, actions}`; las acciones son de solo lectura/navegación
+  (`navigate`). Gateado por el modo IA del tenant.
 - [ ] Listado de jobs IA en `/admin/ai` con filtros (pendiente).
-- [ ] Retry automático y chunking (pendientes, sin issue abierto).
+- [ ] Tool-calling nativo del provider + acciones de escritura en el
+  asistente (diferido; v1 usa protocolo JSON-action de solo lectura).
