@@ -56,6 +56,7 @@ from app.models.user import User
 from app.services.analytics.snapshots import METRIC_FIELDS
 from app.services.pdf_renderer import render_html
 from app.services.progress_calculator import compute_progress_detailed
+from app.services.reports.branding import load_report_branding
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,9 @@ class _RenderContext:
     program_name: str | None
     pm_name: str | None
     tenant_name: str | None
+    # ENH-146 — branding para la banda de marca de los reportes.
+    tenant_logo_url: str | None = None
+    client_logo_url: str | None = None
     tasks: list[Task] = field(default_factory=list)
     risks: list[Risk] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
@@ -296,12 +300,19 @@ async def _build_context(
     else:
         snapshots = []
 
+    # ENH-146 — branding (nombre PMO + logos). Antes tenant_name quedaba en
+    # None, dejando el running header del PDF en blanco.
+    org_id_for_brand = project.organization_id if project else scope.organization_id
+    branding = await load_report_branding(db, scope.tenant_id, org_id_for_brand)
+
     return _RenderContext(
         project=project,
         organization_name=org_name,
         program_name=prog_name,
         pm_name=pm_name,
-        tenant_name=None,
+        tenant_name=branding["tenant_name"],
+        tenant_logo_url=branding["tenant_logo_url"],
+        client_logo_url=branding["client_logo_url"],
         tasks=tasks,
         risks=risks,
         issues=issues,
@@ -989,6 +1000,8 @@ async def render_template(
         "title": title,
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "tenant_name": ctx.tenant_name or "",
+        "tenant_logo_url": ctx.tenant_logo_url,
+        "client_logo_url": ctx.client_logo_url,
         "cut_off_date": window.cut_off_date.isoformat(),
         "window_days": window.window_days,
         "template": {

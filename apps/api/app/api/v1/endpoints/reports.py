@@ -30,6 +30,7 @@ from app.services.operational_reports import (
     build_seguimiento_context,
 )
 from app.services.pdf_renderer import render_pdf
+from app.services.reports.branding import load_report_branding
 
 router = APIRouter(tags=["reports"])
 
@@ -340,6 +341,27 @@ async def _tenant_name(db: AsyncSession, tenant_id: UUID) -> str | None:
     ).scalar_one_or_none()
 
 
+async def _apply_report_branding(
+    ctx: dict,
+    db: AsyncSession,
+    tenant_id: UUID,
+    *,
+    project_id: str | UUID | None = None,
+    organization_id: str | UUID | None = None,
+) -> None:
+    """ENH-146 — inyecta tenant_name + logos (PMO/cliente) en el contexto
+    del reporte. Resuelve la organización desde el proyecto cuando solo
+    se pasa `project_id`."""
+    org_id = organization_id
+    if org_id is None and project_id is not None:
+        org_id = (
+            await db.execute(
+                select(Project.organization_id).where(Project.id == str(project_id))
+            )
+        ).scalar_one_or_none()
+    ctx.update(await load_report_branding(db, tenant_id, org_id))
+
+
 @router.post("/projects/{project_id}/reports/avance")
 async def generate_avance_report(
     project_id: UUID,
@@ -368,7 +390,7 @@ async def generate_avance_report(
     context = await build_avance_context(
         db, tenant_id, project.id, cut_off, window_days=window_days
     )
-    context["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(context, db, tenant_id, project_id=project.id)
 
     pdf = render_pdf("reports/avance.html", context)
 
@@ -436,7 +458,7 @@ async def generate_look_ahead_report(
         window_value=payload.window_value,
         window_unit=payload.window_unit,
     )
-    context["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(context, db, tenant_id, project_id=project.id)
 
     pdf = render_pdf("reports/look_ahead.html", context)
 
@@ -510,7 +532,7 @@ async def download_avance_report(
     if rep is None:
         raise not_found("Reporte")
     ctx = dict(rep.sections or {})
-    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf("reports/avance.html", ctx)
     project = await _get_project(db, tenant_id, UUID(rep.project_id))
     stamp = rep.created_at if rep.created_at else datetime.now(UTC)
@@ -543,7 +565,7 @@ async def generate_seguimiento_report(
     context = await build_seguimiento_context(
         db, tenant_id, project.id, cut_off, window_days=window_days,
     )
-    context["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(context, db, tenant_id, project_id=project.id)
     pdf = render_pdf("reports/seguimiento.html", context)
 
     rep = Report(
@@ -608,7 +630,7 @@ async def download_seguimiento_report(
     if rep is None:
         raise not_found("Reporte")
     ctx = dict(rep.sections or {})
-    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf("reports/seguimiento.html", ctx)
     project = await _get_project(db, tenant_id, UUID(rep.project_id))
     stamp = rep.created_at if rep.created_at else datetime.now(UTC)
@@ -830,7 +852,7 @@ async def download_report_history(
         "reports/avance.html" if h.report_type == "avance" else "reports/seguimiento.html"
     )
     ctx = dict(rep.sections or {})
-    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf(template, ctx)
     label = "Avance" if h.report_type == "avance" else "Seguimiento"
     filename = _report_filename(label, project.name, h.generated_at)
