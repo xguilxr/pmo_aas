@@ -490,7 +490,7 @@ function DashboardInner() {
           {riskMatrix && riskMatrix.total > 0 ? (
             <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos" />
           ) : (
-            <p className="py-8 text-center text-sm text-[var(--color-tertiary)]">
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
               Sin riesgos abiertos con probabilidad e impacto definidos.
             </p>
           )}
@@ -532,7 +532,7 @@ function DashboardInner() {
                 />
               </div>
             ) : (
-              <p className="py-8 text-center text-sm text-[var(--color-tertiary)]">
+              <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
                 Aún no hay historia. Usa “Capturar snapshot” para sembrar el primer
                 punto; el job semanal llena el resto.
               </p>

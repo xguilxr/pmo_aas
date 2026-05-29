@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
+import { KpiCard } from "@/components/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -64,17 +65,6 @@ function ProgTrend({
         <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">{fmt ? fmt(last) : last}</span>
       </div>
       <TrendLines data={series} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={fmt} />
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4">
-      <div className="text-xs text-[var(--color-tertiary)]">{label}</div>
-      <div className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-        {value}
-      </div>
     </div>
   );
 }
@@ -278,10 +268,10 @@ export default function ProgramSummaryPage() {
       ) : (
         <>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Proyectos" value={data.project_total} />
-        <StatCard label="Activos" value={data.project_active} />
-        <StatCard label="En riesgo" value={data.project_at_risk} />
-        <StatCard label="Cerrados" value={data.project_closed} />
+        <KpiCard label="Proyectos" value={data.project_total} tone="accent" />
+        <KpiCard label="Activos" value={data.project_active} />
+        <KpiCard label="En riesgo" value={data.project_at_risk} tone={data.project_at_risk > 0 ? "warning" : "neutral"} />
+        <KpiCard label="Cerrados" value={data.project_closed} />
       </section>
 
       <section className="grid gap-3 md:grid-cols-[auto_1fr]">

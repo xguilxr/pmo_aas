@@ -25,6 +25,9 @@ type Props = {
   tone?: "neutral" | "accent" | "danger" | "warning" | "success";
   loading?: boolean;
   trend?: KpiTrend;
+  /** BUG-069: subtítulo opcional (ej. "12 total") para des-duplicar las
+   *  KpiCard re-implementadas localmente en org/program. */
+  hint?: string;
 };
 
 function formatValue(value: number, format: Props["format"]): string {
@@ -101,7 +104,7 @@ function TrendPill({ trend }: { trend: KpiTrend }) {
   );
 }
 
-export function KpiCard({ label, value, href, icon, format = "number", tone = "neutral", loading, trend }: Props) {
+export function KpiCard({ label, value, href, icon, format = "number", tone = "neutral", loading, trend, hint }: Props) {
   const animated = useCountUp(Number.isFinite(value) ? value : 0);
 
   const body = (
@@ -122,6 +125,7 @@ export function KpiCard({ label, value, href, icon, format = "number", tone = "n
         {loading ? "—" : formatValue(animated, format)}
       </span>
       {!loading && trend ? <TrendPill trend={trend} /> : null}
+      {hint ? <span className="text-[11px] text-[var(--color-tertiary)]">{hint}</span> : null}
       {href ? (
         <span className="text-xs text-[var(--color-tertiary)] group-hover:text-[var(--color-secondary)]">
           Ver detalle →

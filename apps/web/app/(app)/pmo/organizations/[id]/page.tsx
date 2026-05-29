@@ -10,6 +10,7 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
+import { KpiCard } from "@/components/kpi-card";
 import { Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
@@ -271,7 +272,7 @@ export default function PmoOrganizationPage() {
           {riskMatrix && riskMatrix.total > 0 ? (
             <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos de la organización" />
           ) : (
-            <p className="py-8 text-center text-sm text-[var(--color-tertiary)]">
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
               Sin riesgos abiertos con probabilidad e impacto.
             </p>
           )}
@@ -283,7 +284,7 @@ export default function PmoOrganizationPage() {
               <OrgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={PALETTE.warning} />
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-[var(--color-tertiary)]">
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
               Sin historia de snapshots todavía.
             </p>
           )}
@@ -299,7 +300,7 @@ export default function PmoOrganizationPage() {
           <Badge variant="neutral">{panel.programs.length}</Badge>
         </div>
         {panel.programs.length === 0 ? (
-          <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-8 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
             Esta organización no tiene programas registrados.
           </div>
         ) : (
@@ -329,7 +330,7 @@ export default function PmoOrganizationPage() {
           <Badge variant="neutral">{panel.projects.length}</Badge>
         </div>
         {panel.projects.length === 0 ? (
-          <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-8 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
             Sin proyectos registrados en esta organización.
           </div>
         ) : (
@@ -404,30 +405,6 @@ function OrgTrend({
         <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">{fmt ? fmt(last) : last}</span>
       </div>
       <TrendLines data={data} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={fmt} />
-    </div>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-      <div className="text-xs text-[var(--color-tertiary)]">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-        {value}
-      </div>
-      {hint ? (
-        <div className="mt-0.5 text-[11px] text-[var(--color-tertiary)]">
-          {hint}
-        </div>
-      ) : null}
     </div>
   );
 }

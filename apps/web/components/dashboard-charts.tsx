@@ -218,7 +218,7 @@ export function Legend({ data }: { data: Datum[] }) {
               />
               <span className="text-[var(--color-secondary)]">{d.label}</span>
             </span>
-            <span className="text-[var(--color-tertiary)]">
+            <span className="font-medium tabular-nums text-[var(--color-secondary)]">
               {d.value}
               {total > 0 ? ` · ${pct}%` : ""}
             </span>
