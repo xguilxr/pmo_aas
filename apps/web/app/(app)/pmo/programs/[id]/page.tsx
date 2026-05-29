@@ -6,13 +6,14 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
+import { KpiCard } from "@/components/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
-import { Gauge, PALETTE, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
+import { Gauge, Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { ApiError } from "@/lib/api";
 import {
   downloadProgramStatusReport,
@@ -25,43 +26,21 @@ import { getProgramSummary, type ProgramSummary } from "@/lib/api/organizations"
 
 type ProgramTab = "overview" | "reports";
 
-function Donut({ green, yellow, red }: { green: number; yellow: number; red: number }) {
-  const total = green + yellow + red;
-  if (total === 0) {
-    return (
-      <div className="flex h-32 w-32 items-center justify-center rounded-full border-4 border-[var(--border-subtle)] text-xs text-[var(--color-tertiary)]">
-        sin datos
-      </div>
-    );
-  }
-  const c = 2 * Math.PI * 40;
-  const seg = (n: number) => (n / total) * c;
-  const gSeg = seg(green);
-  const ySeg = seg(yellow);
-  const rSeg = seg(red);
-  return (
-    <svg viewBox="0 0 100 100" className="h-32 w-32 -rotate-90">
-      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border-subtle)" strokeWidth="10" />
-      <circle
-        cx="50" cy="50" r="40" fill="none" stroke="var(--color-success, #16a34a)"
-        strokeWidth="10"
-        strokeDasharray={`${gSeg} ${c - gSeg}`}
-        strokeDashoffset="0"
-      />
-      <circle
-        cx="50" cy="50" r="40" fill="none" stroke="var(--color-warning, #eab308)"
-        strokeWidth="10"
-        strokeDasharray={`${ySeg} ${c - ySeg}`}
-        strokeDashoffset={`-${gSeg}`}
-      />
-      <circle
-        cx="50" cy="50" r="40" fill="none" stroke="var(--color-danger, #dc2626)"
-        strokeWidth="10"
-        strokeDasharray={`${rSeg} ${c - rSeg}`}
-        strokeDashoffset={`-${gSeg + ySeg}`}
-      />
-    </svg>
-  );
+// BUG-069: usa los mismos tokens de marca que la org page (un solo set de
+// verdes/amarillos/rojos) en vez de variables CSS inexistentes.
+const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
+const HEALTH_FILL: Record<string, string> = {
+  green: PALETTE.success,
+  yellow: PALETTE.warning,
+  red: PALETTE.danger,
+};
+
+function healthToData(health: { green: number; yellow: number; red: number }) {
+  return (["green", "yellow", "red"] as const).map((k) => ({
+    label: HEALTH_LABEL[k],
+    value: health[k],
+    color: HEALTH_FILL[k],
+  }));
 }
 
 function ProgTrend({
@@ -86,17 +65,6 @@ function ProgTrend({
         <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">{fmt ? fmt(last) : last}</span>
       </div>
       <TrendLines data={series} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={fmt} />
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4">
-      <div className="text-xs text-[var(--color-tertiary)]">{label}</div>
-      <div className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-        {value}
-      </div>
     </div>
   );
 }
@@ -300,10 +268,10 @@ export default function ProgramSummaryPage() {
       ) : (
         <>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Proyectos" value={data.project_total} />
-        <StatCard label="Activos" value={data.project_active} />
-        <StatCard label="En riesgo" value={data.project_at_risk} />
-        <StatCard label="Cerrados" value={data.project_closed} />
+        <KpiCard label="Proyectos" value={data.project_total} tone="accent" />
+        <KpiCard label="Activos" value={data.project_active} />
+        <KpiCard label="En riesgo" value={data.project_at_risk} tone={data.project_at_risk > 0 ? "warning" : "neutral"} />
+        <KpiCard label="Cerrados" value={data.project_closed} />
       </section>
 
       <section className="grid gap-3 md:grid-cols-[auto_1fr]">
@@ -311,20 +279,9 @@ export default function ProgramSummaryPage() {
           <div className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
             Salud del portafolio
           </div>
-          <Donut {...data.health} />
-          <div className="flex gap-3 text-xs">
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-              {data.health.green}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
-              {data.health.yellow}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
-              {data.health.red}
-            </span>
+          <Pie data={healthToData(data.health)} ariaLabel="Salud del portafolio" size={140} />
+          <div className="w-full max-w-[180px]">
+            <Legend data={healthToData(data.health)} />
           </div>
         </div>
 
@@ -397,8 +354,10 @@ export default function ProgramSummaryPage() {
           <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">Tendencias (12 semanas)</h2>
           {(trends?.series.length ?? 0) > 0 ? (
             <div className="space-y-3">
-              <ProgTrend label="Avance promedio" trends={trends} metric="avg_progress" color={PALETTE.success} fmt={(n) => `${Math.round(n)}%`} />
+              {/* BUG-069: el avance ya se muestra como Gauge en "Indicadores";
+                  aquí solo dejamos las series que NO se repiten en otra tarjeta. */}
               <ProgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={PALETTE.warning} />
+              <ProgTrend label="Riesgos severos" trends={trends} metric="severe_risks" color={PALETTE.danger} />
             </div>
           ) : (
             <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">

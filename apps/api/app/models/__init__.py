@@ -2,6 +2,10 @@
 from app.models.ai import AIJob, Report  # noqa: F401
 from app.models.ai_report_template import AIReportTemplate  # noqa: F401
 from app.models.area import Actor, Area, AreaAssignment, Team  # noqa: F401
+from app.models.assistant import (  # noqa: F401
+    AssistantConversation,
+    AssistantMessage,
+)
 from app.models.audit import AuditLog  # noqa: F401
 from app.models.auth import PasswordResetToken, RefreshToken  # noqa: F401
 from app.models.change_approval import (  # noqa: F401

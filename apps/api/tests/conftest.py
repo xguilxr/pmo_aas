@@ -103,8 +103,8 @@ def _stub_ai_providers(monkeypatch, request):
 
     stub = provider_mod.DisabledProvider()
 
-    async def _stub_generate(_self, prompt, *, system=None, override=None):
-        return await stub.generate(prompt, system=system)
+    async def _stub_generate(_self, prompt, *, system=None, override=None, json_mode=False):
+        return await stub.generate(prompt, system=system, json_mode=json_mode)
 
     for name in ("gemini", "claude", "groq", "openai", "perplexity", "custom", "azure"):
         cls = type(provider_mod._PROVIDERS[name])

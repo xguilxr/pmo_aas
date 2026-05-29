@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     admin_users,
     ai,
     areas,
+    assistant,
     auth,
     branding,
     change_approvals,
@@ -83,6 +84,7 @@ api_router.include_router(modules.minutes_router)
 api_router.include_router(notifications.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
+api_router.include_router(assistant.router)
 api_router.include_router(tasks.router)
 api_router.include_router(superadmin.router)
 api_router.include_router(superadmin_ai.router)

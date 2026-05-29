@@ -3,9 +3,11 @@
   <h2>Gantt (WBS-{{ data.wbs_level or 1 }})</h2>
   {% if data.empty %}
     <p class="empty">Sin proyecto.</p>
+  {% elif data.svg %}
+    {# ENH-146 — SVG inline: rinde en PDF (WeasyPrint) y en HTML sin
+       depender de base_url ni de auth del endpoint snapshot. #}
+    <div style="overflow-x:auto;">{{ data.svg | safe }}</div>
   {% else %}
-    {# El endpoint devuelve image/svg+xml; WeasyPrint lo inlinea en PDF
-       y el iframe del preview lo carga vía HTTP. #}
     <img src="{{ data.snapshot_url }}" alt="Gantt WBS-{{ data.wbs_level or 1 }}"
          style="max-width: 100%; height: auto; border: 1px solid var(--border);" />
   {% endif %}

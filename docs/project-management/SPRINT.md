@@ -9,6 +9,32 @@
 ## 🔴 IN-PROGRESS
 
 ```
+Batch "deepwork reportes/RAID/IA/charts" (2026-05-28/29) en branch
+claude/deepwork-reports-raid-ai-charts. PR abierto, status:fix-committed,
+esperando MERGE + QA visual del owner. 8 commits:
+
+- BUG-069 #524 — charts: donut se llena al 100% (Pie con stroke-dasharray),
+  colores de marca en programa, dedup de métricas, KpiCard compartido,
+  empty states más limpios.
+- ENH-146 #525 — reportes con logos (PMO+cliente, data-URL) + paleta/tipo
+  on-brand (PDF y HTML inline) + donut/gauge reales + KPI cards + gantt
+  inline (S-19) + fix on_time_pct.
+- ENH-147 #526 — minutas→RAID confiables: json_mode por proveedor + parser
+  tolerante (fences/comas) + repair-retry sin pérdida silenciosa.
+- US-165 #527 — asistente IA conversacional: modelo de conversación
+  (mig. 0084) + endpoint /assistant + widget flotante global (Ctrl/⌘-K).
+- ENH-148 #528 — housekeeping: README/env/epics al día, sin Ollama, dead
+  code removido (require_permission, workspaces field).
+
+Pendiente de aplicar en Railway: migración 0084 (assistant_conversations).
+Diferidos (no bloqueantes): dashboard eyebrows (NEEDS-VISUAL-CHECK), KPI
+band en builder.html, borrado de packages/sdk (riesgo frozen-lockfile),
+dedup de RAID por chunk.
+
+Próximo libre: US-166, BUG-070, ENH-149.
+```
+
+```
 Batch "bugs logos + /pmo + rediseño big canvas" (2026-05-26) en branch
 claude/friendly-lamport-LZ45l. 4 commits, status:fix-committed, esperando
 MERGE + QA visual del owner:

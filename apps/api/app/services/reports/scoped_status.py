@@ -19,13 +19,15 @@ from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
 from app.models.organization import Organization, Program
 from app.models.project import Project
-from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.analytics.snapshots import (
     aggregate_project_trends,
     compute_snapshot_values,
 )
-from app.services.reports.svg import sparkline_svg, treemap_svg
+from app.services.reports.branding import load_report_branding
+from app.services.reports.svg import donut_svg, gauge_svg, sparkline_svg, treemap_svg
+
+_HEALTH_DONUT_COLOR = {"green": "#1F8A5B", "yellow": "#B26B12", "red": "#C0392B"}
 
 _ZONE_BG = {"low": "#dcfce7", "mid": "#fef9c3", "high": "#fee2e2"}
 _HEALTH_HEX = {"green": "#16a34a", "yellow": "#eab308", "red": "#dc2626"}
@@ -296,9 +298,11 @@ async def build_scope_status_context(
         ]
         rows_kind = "projects"
 
-    tenant_name = (
-        await db.execute(select(Tenant.name).where(Tenant.id == tenant_id))
-    ).scalar_one_or_none()
+    # ENH-146 — branding (nombre PMO + logos). El logo de cliente aplica a
+    # nivel organización; portafolio/programa muestran solo la marca PMO.
+    brand_org_id = scope_id if scope_type == "organization" else None
+    branding = await load_report_branding(db, tenant_id, brand_org_id)
+    tenant_name = branding["tenant_name"]
 
     # Heatmap (Org/Programa × Salud) — solo cuando las filas traen breakdown.
     heatmap_rows = rows if rows_kind in ("organizations", "programs") else []
@@ -322,12 +326,28 @@ async def build_scope_status_context(
         "scope_type": scope_type,
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M"),
         "tenant_name": tenant_name,
+        "tenant_logo_url": branding["tenant_logo_url"],
+        "client_logo_url": branding["client_logo_url"],
         "kpis": kpis,
         "health": {
             "green": kpis["health_green"],
             "yellow": kpis["health_yellow"],
             "red": kpis["health_red"],
         },
+        # ENH-146 — donut de salud + gauge de avance (charts reales en PDF).
+        "health_donut_svg": donut_svg(
+            [
+                {"label": "Verde", "value": kpis["health_green"], "color": _HEALTH_DONUT_COLOR["green"]},
+                {"label": "Amarillo", "value": kpis["health_yellow"], "color": _HEALTH_DONUT_COLOR["yellow"]},
+                {"label": "Rojo", "value": kpis["health_red"], "color": _HEALTH_DONUT_COLOR["red"]},
+            ],
+            center_label=str(
+                kpis["health_green"] + kpis["health_yellow"] + kpis["health_red"]
+            ),
+            center_sub="proyectos",
+            size=132,
+        ),
+        "progress_gauge_svg": gauge_svg(kpis.get("avg_progress") or 0),
         "budget_plan_fmt": _money(kpis["budget_plan"]),
         "budget_actual_fmt": _money(kpis["budget_actual"]),
         "trends": trends,

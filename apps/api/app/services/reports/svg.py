@@ -5,6 +5,8 @@ strings SVG y los inyectamos en las plantillas Jinja con `| safe`.
 """
 from __future__ import annotations
 
+import math
+
 
 def treemap_svg(items: list[dict]) -> str:
     """Treemap 1-D (barra proporcional) sized por `value`, coloreado por
@@ -102,5 +104,87 @@ def sparkline_svg(values: list[float], color: str = "#182e4e") -> str:
         f'<polyline points="{pts}" fill="none" stroke="{color}" '
         f'stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>'
         f'<circle cx="{last_x:.1f}" cy="{last_y:.1f}" r="2.6" fill="{color}"/>'
+        f"</svg>"
+    )
+
+
+def donut_svg(
+    segments: list[dict],
+    center_label: str | None = None,
+    center_sub: str | None = None,
+    size: float = 120.0,
+    thickness: float = 20.0,
+) -> str:
+    """Dona de composición (salud, status, etc). `segments`:
+    [{label, value, color}]. Usa stroke-dasharray sobre círculos completos
+    (no arcos <path>), así un único segmento al 100% pinta el anillo
+    completo en vez de colapsar. Devuelve "" si no hay valores positivos."""
+    rows = [s for s in segments if (s.get("value") or 0) > 0]
+    total = sum(s["value"] for s in rows)
+    if total <= 0:
+        return ""
+    cx = cy = size / 2
+    r = size / 2 - thickness / 2 - 2
+    circ = 2 * math.pi * r
+    parts = [
+        f'<svg viewBox="0 0 {size:.0f} {size:.0f}" width="{size:.0f}" '
+        f'height="{size:.0f}" role="img" aria-label="Distribución">',
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.2f}" fill="none" '
+        f'stroke="#e8e3d7" stroke-width="{thickness:.0f}"/>',
+        f'<g transform="rotate(-90 {cx:.1f} {cy:.1f})">',
+    ]
+    offset = 0.0
+    for s in rows:
+        length = s["value"] / total * circ
+        parts.append(
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.2f}" fill="none" '
+            f'stroke="{s.get("color", "#9ca3af")}" stroke-width="{thickness:.0f}" '
+            f'stroke-dasharray="{length:.2f} {circ - length:.2f}" '
+            f'stroke-dashoffset="{-offset:.2f}"/>'
+        )
+        offset += length
+    parts.append("</g>")
+    if center_label is not None:
+        parts.append(
+            f'<text x="{cx:.1f}" y="{cy:.1f}" text-anchor="middle" '
+            f'dominant-baseline="central" font-size="{size * 0.2:.0f}" '
+            f'font-weight="700" fill="#182e4e">{center_label}</text>'
+        )
+        if center_sub:
+            parts.append(
+                f'<text x="{cx:.1f}" y="{cy + size * 0.16:.1f}" '
+                f'text-anchor="middle" font-size="{size * 0.085:.0f}" '
+                f'fill="#756f60">{center_sub}</text>'
+            )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def gauge_svg(
+    percent: float,
+    color: str = "#2A4DA0",
+    size: float = 120.0,
+    thickness: float = 14.0,
+    suffix: str = "%",
+) -> str:
+    """Gauge circular (avance/consumo) 0-100 con el valor al centro."""
+    pct = max(0.0, min(100.0, float(percent or 0)))
+    cx = cy = size / 2
+    r = size / 2 - thickness / 2 - 2
+    circ = 2 * math.pi * r
+    filled = pct / 100 * circ
+    return (
+        f'<svg viewBox="0 0 {size:.0f} {size:.0f}" width="{size:.0f}" '
+        f'height="{size:.0f}" role="img" aria-label="Avance {pct:.0f}%">'
+        f'<g transform="rotate(-90 {cx:.1f} {cy:.1f})">'
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.2f}" fill="none" '
+        f'stroke="#e8e3d7" stroke-width="{thickness:.0f}"/>'
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.2f}" fill="none" '
+        f'stroke="{color}" stroke-width="{thickness:.0f}" stroke-linecap="round" '
+        f'stroke-dasharray="{filled:.2f} {circ - filled:.2f}"/>'
+        f"</g>"
+        f'<text x="{cx:.1f}" y="{cy:.1f}" text-anchor="middle" '
+        f'dominant-baseline="central" font-size="{size * 0.24:.0f}" '
+        f'font-weight="700" fill="#182e4e">{round(pct)}{suffix}</text>'
         f"</svg>"
     )

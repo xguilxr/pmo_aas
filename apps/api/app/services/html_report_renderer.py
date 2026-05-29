@@ -28,16 +28,71 @@ def _esc(value: Any) -> str:
     return html.escape(str(value))
 
 
+# ENH-146 — branding on-brand para el HTML interactivo (DM Sans + paleta de
+# marca de globals.css). Se comparte entre reporte y minuta para que el PDF
+# (vía WeasyPrint) y el navegador rendericen idéntico.
+_FONT_LINK = (
+    "<link rel='preconnect' href='https://fonts.googleapis.com'>"
+    "<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>"
+    "<link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&"
+    "display=swap' rel='stylesheet'>"
+)
+
+_BRAND_CSS = """
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+      background:#F4F6FA;color:#1F1D17;line-height:1.5;padding:32px;
+      -webkit-font-smoothing:antialiased;}
+    .container{max-width:1100px;margin:0 auto;}
+    .brand-header{display:flex;align-items:center;justify-content:space-between;
+      gap:16px;padding-bottom:16px;margin-bottom:20px;border-bottom:2px solid #182e4e;}
+    .brand-header .brand-pmo{display:flex;align-items:center;gap:10px;}
+    .brand-header img.brand-logo{max-height:42px;max-width:200px;object-fit:contain;}
+    .brand-header img.brand-client{max-height:38px;max-width:170px;object-fit:contain;}
+    .brand-header .brand-name{font-weight:600;font-size:15px;color:#182e4e;}
+    h1{font-size:30px;font-weight:700;letter-spacing:-0.02em;color:#182e4e;}
+    .meta{font-size:12px;color:#756F60;margin-top:6px;}
+    .kpi-row{display:flex;gap:12px;flex-wrap:wrap;margin:22px 0 30px;}
+    @media print{body{background:white;padding:12px;}
+      input[type=search]{display:none;} details{break-inside:avoid;}}
+"""
+
+
+def _brand_header_html(
+    tenant_name: str | None = None,
+    tenant_logo_url: str | None = None,
+    client_logo_url: str | None = None,
+) -> str:
+    """Banda de marca: logo PMO (izq) + nombre, logo cliente (der). "" si
+    no hay branding (no se pinta un header vacío)."""
+    if not (tenant_name or tenant_logo_url or client_logo_url):
+        return ""
+    left = ""
+    if tenant_logo_url:
+        left += f'<img class="brand-logo" src="{_esc(tenant_logo_url)}" alt="{_esc(tenant_name or "PMO")}">'
+    if tenant_name:
+        left += f'<span class="brand-name">{_esc(tenant_name)}</span>'
+    right = (
+        f'<img class="brand-client" src="{_esc(client_logo_url)}" alt="Logo del cliente">'
+        if client_logo_url
+        else ""
+    )
+    return (
+        f'<header class="brand-header"><div class="brand-pmo">{left}</div>{right}</header>'
+    )
+
+
 def _kpi_card(label: str, value: str, tone: str = "neutral", filter_key: str | None = None) -> str:
     """KPI card clicable (CA3): si tiene `filter_key`, emite atributo
     `data-filter` que el JS embebido usa para filtrar la tabla asociada.
     """
+    # ENH-146 — tonos alineados a la paleta semántica de marca (globals.css).
     tones = {
-        "danger": "background:#fbe1dc;border-color:#e89486;color:#b3331e;",
-        "warning": "background:#fcefcf;border-color:#d9b14a;color:#806022;",
-        "info": "background:#dbe6fb;border-color:#7aa3e6;color:#3a5fa8;",
-        "success": "background:#d6efdb;border-color:#7ec18a;color:#2c6e3f;",
-        "neutral": "background:#fff;border-color:#d8d3c8;color:#2a2622;",
+        "danger": "background:#FBEAE7;border-color:#E4B7B0;color:#C0392B;",
+        "warning": "background:#FBF1DD;border-color:#E7CE97;color:#B26B12;",
+        "info": "background:#E8EDF8;border-color:#B6C4E6;color:#2A4DA0;",
+        "success": "background:#E3F2E9;border-color:#A9D7BC;color:#1F8A5B;",
+        "neutral": "background:#fff;border-color:#e8e3d7;color:#1F1D17;",
     }
     style = tones.get(tone, tones["neutral"])
     cursor = "cursor:pointer;" if filter_key else ""
@@ -47,12 +102,12 @@ def _kpi_card(label: str, value: str, tone: str = "neutral", filter_key: str | N
         else ""
     )
     return (
-        f'<div class="kpi-card" style="border:2px solid;border-radius:18px;'
-        f'padding:20px 24px;{style}{cursor}min-width:180px;flex:1;"{data_attr}>'
-        f'<div style="font-size:11px;text-transform:uppercase;'
-        f'letter-spacing:0.06em;opacity:0.7;font-weight:600;">{_esc(label)}</div>'
-        f'<div style="font-size:48px;font-weight:700;margin-top:6px;'
-        f'line-height:1;">{_esc(value)}</div></div>'
+        f'<div class="kpi-card" style="border:1px solid;border-radius:12px;'
+        f'padding:16px 18px;{style}{cursor}min-width:150px;flex:1;"{data_attr}>'
+        f'<div style="font-size:10px;text-transform:uppercase;'
+        f'letter-spacing:0.06em;opacity:0.72;font-weight:600;">{_esc(label)}</div>'
+        f'<div style="font-size:34px;font-weight:700;margin-top:4px;'
+        f'line-height:1.05;font-variant-numeric:tabular-nums;">{_esc(value)}</div></div>'
     )
 
 
@@ -61,9 +116,9 @@ def _details(title: str, body_html: str, *, open_default: bool = True) -> str:
     open_attr = " open" if open_default else ""
     return (
         f'<details{open_attr} style="background:#fff;border:1px solid '
-        f'#e8e2d5;border-radius:14px;margin-bottom:16px;overflow:hidden;">'
-        f'<summary style="padding:14px 18px;cursor:pointer;font-size:14px;'
-        f'font-weight:600;color:#2a2622;background:#faf7f0;">{_esc(title)}'
+        f'#e8e3d7;border-radius:12px;margin-bottom:14px;overflow:hidden;">'
+        f'<summary style="padding:13px 18px;cursor:pointer;font-size:13.5px;'
+        f'font-weight:600;color:#182e4e;background:#F8FAFD;">{_esc(title)}'
         f"</summary>"
         f'<div style="padding:14px 18px;">{body_html}</div></details>'
     )
@@ -75,16 +130,16 @@ def _filter_table(
     """Tabla con input de filtro `<input>` que el JS embebido aplica
     sobre las filas (CA2 — filtros client-side)."""
     head = "".join(
-        f'<th style="text-align:left;padding:8px 10px;font-size:11px;'
-        f'text-transform:uppercase;letter-spacing:0.04em;color:#806b50;'
-        f'border-bottom:1px solid #e8e2d5;">{_esc(c)}</th>'
+        f'<th style="text-align:left;padding:8px 10px;font-size:10.5px;'
+        f'text-transform:uppercase;letter-spacing:0.04em;color:#756F60;'
+        f'border-bottom:1px solid #e8e3d7;">{_esc(c)}</th>'
         for c in columns
     )
     body_rows = "".join(
         '<tr data-row="1">'
         + "".join(
-            f'<td style="padding:8px 10px;font-size:13px;color:#2a2622;'
-            f'border-bottom:1px solid #f3eede;">{_esc(cell)}</td>'
+            f'<td style="padding:8px 10px;font-size:13px;color:#1F1D17;'
+            f'border-bottom:1px solid #EEF1F6;">{_esc(cell)}</td>'
             for cell in r
         )
         + "</tr>"
@@ -100,7 +155,7 @@ def _filter_table(
         f'<input type="search" placeholder="Filtrar…" '
         f'data-filter-target="{_esc(table_id)}" '
         f'style="width:100%;max-width:280px;padding:6px 10px;font-size:12px;'
-        f'border:1px solid #d8d3c8;border-radius:6px;"/>'
+        f'border:1px solid #e8e3d7;border-radius:8px;background:#fff;"/>'
         f"</div>"
         f'<div style="overflow-x:auto;"><table id="{_esc(table_id)}" '
         f'style="width:100%;border-collapse:collapse;font-family:inherit;">'
@@ -163,6 +218,9 @@ def render_report_html(
     issues: list[dict[str, Any]],
     changes: list[dict[str, Any]],
     summary_html: str = "",
+    tenant_name: str | None = None,
+    tenant_logo_url: str | None = None,
+    client_logo_url: str | None = None,
 ) -> str:
     """Renderiza un reporte HTML interactivo standalone.
 
@@ -259,18 +317,12 @@ def render_report_html(
   <meta charset="utf-8">
   <title>{_esc(title)} — {_esc(project_folio)}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    *{{box-sizing:border-box;margin:0;padding:0}}
-    body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fbfaf7;color:#2a2622;line-height:1.45;padding:32px;}}
-    .container{{max-width:1200px;margin:0 auto;}}
-    h1{{font-size:32px;font-weight:700;letter-spacing:-0.02em;}}
-    .meta{{font-size:12px;color:#806b50;margin-top:6px;}}
-    .kpi-row{{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0 32px;}}
-    @media print {{ body {{ background: white; padding: 12px; }} input[type=search] {{ display: none; }} details {{ break-inside: avoid; }} }}
-  </style>
+  {_FONT_LINK}
+  <style>{_BRAND_CSS}</style>
 </head>
 <body>
   <div class="container">
+    {_brand_header_html(tenant_name, tenant_logo_url, client_logo_url)}
     <header>
       <h1>{_esc(title)}</h1>
       <p class="meta">{_esc(project_name)} · <strong>{_esc(project_folio)}</strong> · {_esc(generated_at.strftime('%Y-%m-%d %H:%M'))}</p>
@@ -301,6 +353,9 @@ def render_minute_html(
     topics: list[dict[str, Any]],
     agreements: list[dict[str, Any]],
     raid_suggestions: dict[str, list[dict[str, Any]]] | None = None,
+    tenant_name: str | None = None,
+    tenant_logo_url: str | None = None,
+    client_logo_url: str | None = None,
 ) -> str:
     """ENH-090 + US-111 CA6: render HTML para minutas con la misma base
     visual (KPI cards + tablas con filtros + secciones colapsables)."""
@@ -381,18 +436,12 @@ def render_minute_html(
   <meta charset="utf-8">
   <title>{_esc(title)} — {_esc(project_folio)}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    *{{box-sizing:border-box;margin:0;padding:0}}
-    body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fbfaf7;color:#2a2622;line-height:1.45;padding:32px;}}
-    .container{{max-width:1100px;margin:0 auto;}}
-    h1{{font-size:30px;font-weight:700;letter-spacing:-0.02em;}}
-    .meta{{font-size:12px;color:#806b50;margin-top:6px;}}
-    .kpi-row{{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0 32px;}}
-    @media print {{ body {{ background: white; padding: 12px; }} input[type=search] {{ display: none; }} details {{ break-inside: avoid; }} }}
-  </style>
+  {_FONT_LINK}
+  <style>{_BRAND_CSS}</style>
 </head>
 <body>
   <div class="container">
+    {_brand_header_html(tenant_name, tenant_logo_url, client_logo_url)}
     <header>
       <h1>{_esc(title)}</h1>
       <p class="meta">{_esc(project_name)} · <strong>{_esc(project_folio)}</strong> · {_esc(meeting_date.strftime('%Y-%m-%d %H:%M'))}</p>

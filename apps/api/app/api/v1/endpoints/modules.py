@@ -1387,6 +1387,7 @@ async def render_minute_html_endpoint(
     from fastapi.responses import Response as _Resp
 
     from app.services.html_report_renderer import render_minute_html
+    from app.services.reports.branding import load_report_branding
 
     tenant_id = _tenant(cu)
     m = (
@@ -1403,6 +1404,9 @@ async def render_minute_html_endpoint(
     project = (
         await db.execute(select(Project).where(Project.id == str(m.project_id)))
     ).scalar_one_or_none()
+    brand = await load_report_branding(
+        db, tenant_id, project.organization_id if project else None
+    )
     html = render_minute_html(
         title=m.title,
         project_name=project.name if project else "",
@@ -1413,6 +1417,7 @@ async def render_minute_html_endpoint(
         topics=list(m.topics or []),
         agreements=list(m.agreements or []),
         raid_suggestions=dict(m.raid_suggestions or {}),
+        **brand,
     )
     return _Resp(content=html, media_type="text/html; charset=utf-8")
 
@@ -1466,7 +1471,11 @@ async def export_minute(
     if format == "html":
         # ENH-089 CA1: HTML primario standalone (estilos inline, JS embebido).
         from app.services.html_report_renderer import render_minute_html
+        from app.services.reports.branding import load_report_branding
 
+        brand = await load_report_branding(
+            db, tenant_id, project.organization_id if project else None
+        )
         html_content = render_minute_html(
             title=m.title,
             project_name=project.name if project else "",
@@ -1477,6 +1486,7 @@ async def export_minute(
             topics=list(m.topics or []),
             agreements=list(m.agreements or []),
             raid_suggestions=dict(m.raid_suggestions or {}),
+            **brand,
         )
         return Response(
             content=html_content.encode("utf-8"),

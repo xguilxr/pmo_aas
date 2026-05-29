@@ -88,17 +88,11 @@ def _merge_raid_suggestions(buckets: list[dict]) -> dict:
 
 
 def _parse_json_strict(s: str) -> dict | None:
-    try:
-        return json.loads(s)
-    except Exception:
-        start = s.find("{")
-        end = s.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                return json.loads(s[start : end + 1])
-            except Exception:
-                return None
-        return None
+    # ENH-147 — usa el parser tolerante compartido (fence-strip, comas
+    # colgantes, recorte entre llaves) en vez del json.loads frágil.
+    from app.services.ai.json_parse import parse_json_lenient
+
+    return parse_json_lenient(s)
 
 
 async def _alert_superadmin_platform_failure(
@@ -156,6 +150,7 @@ async def _call_ai_for_tenant(
     platform_groq_config: dict | None,
     tenant_id: str,
     job_id: str,
+    json_mode: bool = False,
 ) -> AIResult:
     """US-057: llama al provider del tenant con 3 reintentos. Sin
     fallback entre modos (disabled → caller debió chequear antes;
@@ -171,6 +166,7 @@ async def _call_ai_for_tenant(
                 byo_config=tenant_cfg.byo,
                 tenant_id=tenant_id,
                 job_id=job_id,
+                json_mode=json_mode,
             )
         except Exception as exc:
             last_err = exc
@@ -334,7 +330,9 @@ async def _run_minute(
             "kept": 0, "dropped_lesson": 0, "dropped_change": 0,
             "dropped_unknown": 0, "dropped_malformed": 0,
         }
+        parse_failed_chunks = 0
         for ch in chunks:
+            # ENH-147 — json_mode fuerza salida estructurada por proveedor.
             res = await _call_ai_for_tenant(
                 ch,
                 system=prompt_system,
@@ -342,12 +340,32 @@ async def _run_minute(
                 platform_groq_config=platform_groq,
                 tenant_id=tenant_id,
                 job_id=job_id,
+                json_mode=True,
             )
             model_used = res.model
             total_in += res.tokens_in
             total_out += res.tokens_out
             parsed = _parse_json_strict(res.text)
             if parsed is None:
+                # ENH-147 — reintento de reparación: re-pide SOLO JSON antes
+                # de degradar a minuta vacía (antes se perdía todo el RAID
+                # silenciosamente en cada fallo de parseo).
+                repair = await _call_ai_for_tenant(
+                    ch + "\n\nTu respuesta anterior no fue JSON válido. "
+                    "Devuelve EXCLUSIVAMENTE el objeto JSON pedido, sin texto "
+                    "ni fences ni comentarios.",
+                    system=prompt_system,
+                    tenant_cfg=tenant_cfg,
+                    platform_groq_config=platform_groq,
+                    tenant_id=tenant_id,
+                    job_id=job_id,
+                    json_mode=True,
+                )
+                total_in += repair.tokens_in
+                total_out += repair.tokens_out
+                parsed = _parse_json_strict(repair.text)
+            if parsed is None:
+                parse_failed_chunks += 1
                 normalized = _empty_minute()
                 normalized["summary"] = res.text[:2000]
             else:
@@ -355,6 +373,12 @@ async def _run_minute(
                 for k, v in m.items():
                     validator_metrics[k] = validator_metrics.get(k, 0) + v
             collected.append(normalized)
+        if parse_failed_chunks:
+            validator_metrics["parse_failed_chunks"] = parse_failed_chunks
+            logger.warning(
+                "minute parse failed for %d/%d chunks job=%s tenant=%s",
+                parse_failed_chunks, len(chunks), job_id, tenant_id,
+            )
 
         merged = {
             "header": collected[0].get("header") if collected else {},
@@ -516,6 +540,7 @@ async def _run_report(
             platform_groq_config=platform_groq,
             tenant_id=tenant_id,
             job_id=job_id,
+            json_mode=True,
         )
         sections = _parse_json_strict(res.text) or {
             "executive_summary": res.text[:1500],

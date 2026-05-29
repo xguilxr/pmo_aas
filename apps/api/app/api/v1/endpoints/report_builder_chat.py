@@ -22,7 +22,6 @@ de la cascada IA en v1.0.
 """
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
@@ -114,20 +113,14 @@ Reglas:
 
 
 def _parse_response(text: str) -> tuple[str, list[dict[str, Any]]]:
-    """Extrae el JSON de la respuesta del modelo."""
-    try:
-        # Intento directo
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        # Intento extraer el primer bloque JSON entre llaves.
-        start = text.find("{")
-        end = text.rfind("}")
-        if start < 0 or end <= start:
-            return text.strip()[:500], []
-        try:
-            data = json.loads(text[start : end + 1])
-        except json.JSONDecodeError:
-            return text.strip()[:500], []
+    """Extrae el JSON de la respuesta del modelo (ENH-147: usa el parser
+    tolerante compartido — fence-strip, comas colgantes, recorte entre
+    llaves — para no perder acciones cuando el modelo envuelve en fences)."""
+    from app.services.ai.json_parse import parse_json_lenient
+
+    data = parse_json_lenient(text)
+    if data is None:
+        return text.strip()[:500], []
     msg = str(data.get("message", "")).strip()
     raw_actions = data.get("actions") or []
     if not isinstance(raw_actions, list):
@@ -198,6 +191,7 @@ async def chat_with_builder(
             platform_groq_config=platform_cfg,
             byo_config=cfg.byo,
             tenant_id=str(tenant_id),
+            json_mode=True,
         )
     except Exception as exc:
         logger.exception("ai-chat generate_for_tenant failed: %s", exc)

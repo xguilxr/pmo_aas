@@ -1,7 +1,7 @@
 # Épicas — PMO-aaS
 
 **ID:** `DOC-EPICS`  
-**Última actualización:** 2026-04-20  
+**Última actualización:** 2026-05-29  
 **Metodología:** 1 US = 1 commit = 1 sesión de trabajo
 
 ---
@@ -26,6 +26,9 @@
 | [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 | ⚠️ ACTUALIZADA | EP005, EP006, EP008 |
 | [EP015](./EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 | 🆕 NUEVA | EP010 |
 | ~~[EP016](./EP016-local-ai-tunnel.md)~~ | ❌ **ARCHIVADA** — IA local (Ollama + Cloudflare/Tailscale). Superseded por DEC-017; código eliminado en BUG-053 (2026-05-08). | — | ❌ ARCHIVADA | — |
+| [EP017](./EP017-project-directory.md) | Directorio de proyecto (áreas, equipos, actores, participaciones) | v1.2 | 🆕 NUEVA | EP005, EP006 |
+| [EP018](./EP018-documents-artifacts.md) | Documentos y artefactos de proyecto | v1.3 | 🆕 NUEVA | EP005, EP006 |
+| [EP019](./EP019-changes-approval.md) | Gestión de cambios + flujo de aprobación | v1.4 | 🆕 NUEVA | EP005, EP006 |
 | [EP020](./EP020-report-builder.md) | Report Builder (Niveles 1, 2, 4) + catálogo 22 secciones | v1.5 | 🆕 NUEVA | EP005, EP006, EP007, EP008, EP014, EP018 |
 
 ---
