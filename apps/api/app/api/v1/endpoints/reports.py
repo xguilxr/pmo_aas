@@ -1522,12 +1522,14 @@ async def render_report_html_endpoint(
     cut_off = rep.cut_off_date or datetime.now(UTC).date()
     context = await build_avance_context(db, tenant_id, project.id, cut_off)
     data = _project_render_data(project, context)
+    brand = await load_report_branding(db, tenant_id, project.organization_id)
     html = render_report_html(
         title=rep.title or f"Reporte — {project.folio}",
         project_name=project.name,
         project_folio=project.folio,
         generated_at=datetime.now(UTC),
         summary_html=str((rep.sections or {}).get("executive_summary") or ""),
+        **brand,
         **data,
     )
     rep.html_content = html
@@ -1550,11 +1552,13 @@ async def render_default_report_html(
     cut_off = datetime.now(UTC).date()
     context = await build_avance_context(db, tenant_id, project.id, cut_off)
     data = _project_render_data(project, context)
+    brand = await load_report_branding(db, tenant_id, project.organization_id)
     html = render_report_html(
         title=f"Reporte — {project.folio}",
         project_name=project.name,
         project_folio=project.folio,
         generated_at=datetime.now(UTC),
+        **brand,
         **data,
     )
     return Response(content=html, media_type="text/html; charset=utf-8")
