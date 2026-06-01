@@ -35,7 +35,7 @@ from app.services.ai.provider import (
     generate_for_tenant,
 )
 from app.services.ai.tenant_ai import TenantAIConfig, load_tenant_ai
-from app.services.ai.validator import validate_minute_payload
+from app.services.ai.validator import dedupe_participants, validate_minute_payload
 from app.services.audit import write_audit
 from app.services.folio import next_folio
 from app.workers.celery_app import celery_app
@@ -383,10 +383,16 @@ async def _run_minute(
         merged = {
             "header": collected[0].get("header") if collected else {},
             "summary": "\n\n".join([c.get("summary") or "" for c in collected]).strip(),
-            "participants": functools.reduce(
-                operator.iadd,
-                (c.get("participants_flat") or [] for c in collected),
-                [],
+            # BUG-069: cada chunk dedupea internamente (flatten_participants),
+            # pero el concat cross-chunk volvía a duplicar cuando un mismo
+            # speaker aparecía en chunks distintos (overlap o transcripts
+            # largos). Re-dedupeamos por nombre normalizado tras el merge.
+            "participants": dedupe_participants(
+                functools.reduce(
+                    operator.iadd,
+                    (c.get("participants_flat") or [] for c in collected),
+                    [],
+                )
             ),
             "topics": functools.reduce(
                 operator.iadd,

@@ -184,6 +184,34 @@ def _normalize_iso_date(value: Any) -> str | None:
     return None
 
 
+def dedupe_participants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Dedup por nombre normalizado preservando orden de aparición. Si
+    una repetición trae role/area/email no vacíos y el primero los tenía
+    vacíos, se completan (merge no destructivo).
+
+    BUG-069: usado tanto por `flatten_participants` (dentro de un chunk)
+    como por el merge cross-chunk del worker, donde cada chunk del
+    transcript puede mencionar al mismo participante.
+    """
+    out: list[dict[str, Any]] = []
+    seen: dict[str, int] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        key = _normalize_name(item.get("name"))
+        if not key:
+            continue
+        if key in seen:
+            existing = out[seen[key]]
+            for field in ("role", "area", "email"):
+                if not (existing.get(field) or "").strip() and (item.get(field) or "").strip():
+                    existing[field] = item[field]
+            continue
+        seen[key] = len(out)
+        out.append(dict(item))
+    return out
+
+
 def flatten_participants(payload: Any) -> list[dict[str, Any]]:
     """Aplana el dict de participantes del LLM a una lista plana de dicts,
     **deduplicada por nombre normalizado**.
@@ -223,24 +251,7 @@ def flatten_participants(payload: Any) -> list[dict[str, Any]]:
                     continue
                 raw_items.append({**raw, "attendance": attendance})
 
-    # Dedup por nombre normalizado, preservando orden de aparición. Si
-    # una repetición trae role/area no vacíos y el primero los tenía
-    # vacíos, se completan (merge no destructivo).
-    out: list[dict[str, Any]] = []
-    seen: dict[str, int] = {}
-    for item in raw_items:
-        key = _normalize_name(item.get("name"))
-        if not key:
-            continue
-        if key in seen:
-            existing = out[seen[key]]
-            for field in ("role", "area", "email"):
-                if not (existing.get(field) or "").strip() and (item.get(field) or "").strip():
-                    existing[field] = item[field]
-            continue
-        seen[key] = len(out)
-        out.append(item)
-    return out
+    return dedupe_participants(raw_items)
 
 
 # Mapping de tipos A/R/D/I canónicos al bucket persistible. Usamos los

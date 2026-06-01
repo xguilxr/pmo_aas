@@ -248,3 +248,36 @@ def test_validate_minute_payload_accepts_iso_datetime() -> None:
         {"header": {"date": "2026-06-01T12:00:00Z"}}
     )
     assert normalized["header"]["date"] == "2026-06-01"
+
+
+# BUG-069: dedupe cross-chunk de participantes (re-usable helper que
+# también consume el worker en el merge tras chunkear).
+def test_dedupe_participants_merges_by_normalized_name() -> None:
+    from app.services.ai.validator import dedupe_participants
+
+    out = dedupe_participants(
+        [
+            {"name": "Juan Pérez", "role": "PM"},
+            {"name": "juan perez", "area": "Finanzas"},
+            {"name": "JUAN PEREZ"},
+            {"name": "María López", "role": "Dev"},
+        ]
+    )
+    assert [p["name"] for p in out] == ["Juan Pérez", "María López"]
+    # Merge no destructivo: el primer match conserva su role, gana area
+    # del segundo.
+    assert out[0]["role"] == "PM"
+    assert out[0]["area"] == "Finanzas"
+
+
+def test_dedupe_participants_ignores_empty_and_non_dict() -> None:
+    from app.services.ai.validator import dedupe_participants
+
+    out = dedupe_participants(
+        [
+            {"name": ""},
+            "no soy dict",  # type: ignore[list-item]
+            {"name": "Eli"},
+        ]
+    )
+    assert [p["name"] for p in out] == ["Eli"]
