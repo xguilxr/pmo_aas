@@ -184,6 +184,47 @@ def _normalize_iso_date(value: Any) -> str | None:
     return None
 
 
+def merge_topics(items: list[Any]) -> list[dict[str, Any]]:
+    """Fusiona topics con el mismo título normalizado preservando orden.
+    Los `bullets` de las repeticiones se concatenan al primero,
+    descartando duplicados textuales (lowercase + strip).
+
+    BUG-070: cuando el transcript se divide en chunks con overlap, el
+    mismo tema puede ser extraído por varios chunks (ej. "Alcance del
+    Proyecto" aparece 3 veces). Aquí los unificamos en un único topic
+    con bullets combinados.
+    """
+    import unicodedata
+
+    def _key(title: Any) -> str:
+        raw = str(title or "").strip().lower()
+        nfd = unicodedata.normalize("NFD", raw)
+        return "".join(ch for ch in nfd if not unicodedata.combining(ch))
+
+    out: list[dict[str, Any]] = []
+    seen: dict[str, int] = {}
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        title = str(raw.get("title") or "").strip()
+        if not title:
+            continue
+        key = _key(title)
+        bullets_raw = raw.get("bullets") if isinstance(raw.get("bullets"), list) else []
+        bullets = [str(b).strip() for b in bullets_raw if str(b).strip()]
+        if key in seen:
+            target = out[seen[key]]
+            existing_norm = {b.strip().lower() for b in target["bullets"]}
+            for b in bullets:
+                if b.strip().lower() not in existing_norm:
+                    target["bullets"].append(b)
+                    existing_norm.add(b.strip().lower())
+            continue
+        seen[key] = len(out)
+        out.append({"title": title, "bullets": list(bullets)})
+    return out
+
+
 def dedupe_participants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Dedup por nombre normalizado preservando orden de aparición. Si
     una repetición trae role/area/email no vacíos y el primero los tenía

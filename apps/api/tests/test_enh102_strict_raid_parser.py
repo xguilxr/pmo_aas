@@ -281,3 +281,49 @@ def test_dedupe_participants_ignores_empty_and_non_dict() -> None:
         ]
     )
     assert [p["name"] for p in out] == ["Eli"]
+
+
+# BUG-070: merge cross-chunk de topics por título normalizado.
+def test_merge_topics_fuses_same_title_across_chunks() -> None:
+    from app.services.ai.validator import merge_topics
+
+    out = merge_topics(
+        [
+            {"title": "Alcance del Proyecto", "bullets": ["bullet A", "bullet B"]},
+            {"title": "alcance del proyecto", "bullets": ["bullet C"]},
+            {"title": "ALCANCE DEL PROYECTO", "bullets": ["bullet A"]},  # dup
+            {"title": "Riesgos", "bullets": ["bullet D"]},
+        ]
+    )
+    assert [t["title"] for t in out] == ["Alcance del Proyecto", "Riesgos"]
+    assert out[0]["bullets"] == ["bullet A", "bullet B", "bullet C"]
+    assert out[1]["bullets"] == ["bullet D"]
+
+
+def test_merge_topics_ignores_empty_titles_and_non_lists() -> None:
+    from app.services.ai.validator import merge_topics
+
+    out = merge_topics(
+        [
+            {"title": "", "bullets": ["x"]},
+            {"title": "  ", "bullets": ["y"]},
+            {"title": "Tema", "bullets": "no es lista"},
+            {"title": "Tema", "bullets": ["z"]},
+        ]
+    )
+    assert len(out) == 1
+    assert out[0]["title"] == "Tema"
+    assert out[0]["bullets"] == ["z"]
+
+
+def test_merge_topics_accent_insensitive() -> None:
+    from app.services.ai.validator import merge_topics
+
+    out = merge_topics(
+        [
+            {"title": "Acción Inmediata", "bullets": ["a"]},
+            {"title": "Accion Inmediata", "bullets": ["b"]},
+        ]
+    )
+    assert len(out) == 1
+    assert out[0]["bullets"] == ["a", "b"]

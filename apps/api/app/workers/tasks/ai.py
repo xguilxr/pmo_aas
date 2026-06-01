@@ -35,7 +35,11 @@ from app.services.ai.provider import (
     generate_for_tenant,
 )
 from app.services.ai.tenant_ai import TenantAIConfig, load_tenant_ai
-from app.services.ai.validator import dedupe_participants, validate_minute_payload
+from app.services.ai.validator import (
+    dedupe_participants,
+    merge_topics,
+    validate_minute_payload,
+)
 from app.services.audit import write_audit
 from app.services.folio import next_folio
 from app.workers.celery_app import celery_app
@@ -394,10 +398,16 @@ async def _run_minute(
                     [],
                 )
             ),
-            "topics": functools.reduce(
-                operator.iadd,
-                (c.get("topics") or [] for c in collected),
-                [],
+            # BUG-070: el mismo tema puede ser extraído por varios chunks
+            # cuando el transcript se divide (ej. "Alcance del Proyecto"
+            # aparecía 3 veces). merge_topics fusiona por título
+            # normalizado y combina bullets sin duplicar.
+            "topics": merge_topics(
+                functools.reduce(
+                    operator.iadd,
+                    (c.get("topics") or [] for c in collected),
+                    [],
+                )
             ),
             # ENH-095/US-040: `agreements` queda como sinónimo legacy de
             # `raid_suggestions.actions` para no romper exports/templates
