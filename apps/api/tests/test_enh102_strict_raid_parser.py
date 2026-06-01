@@ -214,3 +214,37 @@ def test_prompt_enforces_speakers_only_participants() -> None:
     """El prompt instruye a no incluir mencionados ni duplicados."""
     assert "SIN DUPLICADOS" in MINUTE_SYSTEM
     assert "MENCIONADAS" in MINUTE_SYSTEM
+
+
+# BUG-068: el validator normaliza header.date a YYYY-MM-DD para evitar
+# que el frontend crashee con RangeError al hacer toISOString().
+def test_validate_minute_payload_normalizes_iso_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "2026-06-01"}})
+    assert normalized["header"]["date"] == "2026-06-01"
+
+
+def test_validate_minute_payload_normalizes_dmy_slash_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "01/06/2026"}})
+    assert normalized["header"]["date"] == "2026-06-01"
+
+
+def test_validate_minute_payload_normalizes_dmy_dash_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "01-06-2026"}})
+    assert normalized["header"]["date"] == "2026-06-01"
+
+
+def test_validate_minute_payload_nulls_unparseable_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "1 de junio"}})
+    assert normalized["header"]["date"] is None
+
+
+def test_validate_minute_payload_nulls_missing_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"title": "x"}})
+    assert normalized["header"]["date"] is None
+
+
+def test_validate_minute_payload_accepts_iso_datetime() -> None:
+    normalized, _ = validate_minute_payload(
+        {"header": {"date": "2026-06-01T12:00:00Z"}}
+    )
+    assert normalized["header"]["date"] == "2026-06-01"

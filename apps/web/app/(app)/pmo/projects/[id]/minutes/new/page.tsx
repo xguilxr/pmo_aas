@@ -309,9 +309,22 @@ export default function NewMinutePage() {
           ticket_type: null,
         });
       }
-      const meetingDateIso = mHeaderDate
-        ? new Date(`${mHeaderDate}T12:00:00`).toISOString()
-        : new Date().toISOString();
+      // BUG-068: si la IA devuelve `header.date` en formato no-ISO, el
+      // backend ya lo normaliza, pero el PM también puede haber pegado
+      // basura en el input. Defensa: intentamos construir el ISO; si
+      // falla caemos a "hoy" en lugar de explotar con RangeError
+      // (que termina mostrando el genérico "No se pudo guardar la
+      // minuta" porque el throw no es un ApiError).
+      let meetingDateIso: string;
+      try {
+        const candidate = mHeaderDate
+          ? new Date(`${mHeaderDate}T12:00:00`)
+          : new Date();
+        if (Number.isNaN(candidate.getTime())) throw new Error("invalid date");
+        meetingDateIso = candidate.toISOString();
+      } catch {
+        meetingDateIso = new Date().toISOString();
+      }
       const created = await createMinute(id, {
         title: effectiveTitle,
         meeting_date: meetingDateIso,
