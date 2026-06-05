@@ -21,6 +21,7 @@ import {
   deleteTeam,
   listAreaAssignments,
   listAreas,
+  listAreasByProject,
   listTeams,
   setAreaAssignments,
   updateArea,
@@ -48,6 +49,13 @@ export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ActiveModal>(null);
+  // BUG-076: qué áreas del catálogo tenant están visibles/asignadas a este
+  // proyecto (cascade), para indicarlo y permitir asignar/quitar inline. El
+  // catálogo tenant es soporte para asignar; el scoping real es por proyecto.
+  const [assignedAreaIds, setAssignedAreaIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -61,10 +69,48 @@ export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
       setAreas(a);
       setTeams(t);
       setRoles(r);
+      if (projectId) {
+        const assigned = await listAreasByProject(projectId).catch(
+          () => [] as Area[],
+        );
+        setAssignedAreaIds(new Set(assigned.map((x) => x.id)));
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Error al cargar catálogos");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // BUG-076: asignar/quitar un área del catálogo a este proyecto sin pisar
+  // otros alcances (org/program/global). Una vez asignada, aparece en los
+  // pickers de tarea/RAID y en el Plan (todos project-scoped).
+  async function toggleAreaAssignment(areaId: string) {
+    if (!projectId) return;
+    setAssigningId(areaId);
+    setError(null);
+    try {
+      const existing = await listAreaAssignments(areaId);
+      const hasDirect = existing.some((x) => x.project_id === projectId);
+      const rest = existing
+        .filter((x) => x.project_id !== projectId)
+        .map((x) => ({
+          organization_id: x.organization_id,
+          program_id: x.program_id,
+          project_id: x.project_id,
+          is_global: x.is_global,
+        }));
+      await setAreaAssignments(
+        areaId,
+        hasDirect ? rest : [...rest, { project_id: projectId }],
+      );
+      await refresh();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? e.message : "Error al cambiar la asignación",
+      );
+    } finally {
+      setAssigningId(null);
     }
   }
 
@@ -111,7 +157,11 @@ export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
       {/* Áreas funcionales */}
       <SectionCard
         title="Áreas funcionales"
-        description="Catálogo tenant de áreas. Las personas se asocian a un área en su perfil; en el proyecto, los líderes de área se marcan vía participación."
+        description={
+          projectId
+            ? "Catálogo tenant de áreas. Asigná las que use este proyecto: solo las asignadas aparecen en tareas, RAID y el Plan."
+            : "Catálogo tenant de áreas. Las personas se asocian a un área en su perfil; en el proyecto, los líderes de área se marcan vía participación."
+        }
         onAdd={() => setModal({ kind: "area", area: null })}
         addLabel="Nueva área"
         empty={areas.length === 0 ? "Sin áreas en el catálogo." : null}
@@ -122,6 +172,11 @@ export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
             title={a.name}
             subtitle={a.description ?? undefined}
             inactive={!a.is_active}
+            assigned={projectId ? assignedAreaIds.has(a.id) : undefined}
+            assignBusy={assigningId === a.id}
+            onToggleAssign={
+              projectId ? () => toggleAreaAssignment(a.id) : undefined
+            }
             onEdit={() => setModal({ kind: "area", area: a })}
             onDelete={() => handleDelete("area", a.id, a.name)}
           />
@@ -260,6 +315,9 @@ function Row({
   subtitle,
   badge,
   inactive,
+  assigned,
+  assignBusy,
+  onToggleAssign,
   onEdit,
   onDelete,
 }: {
@@ -267,6 +325,11 @@ function Row({
   subtitle?: string;
   badge?: string;
   inactive?: boolean;
+  // BUG-076: cuando se renderiza en contexto de proyecto, indica si el área
+  // está asignada a este proyecto y ofrece el toggle de asignación.
+  assigned?: boolean;
+  assignBusy?: boolean;
+  onToggleAssign?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -276,12 +339,28 @@ function Row({
         <div className="flex items-center gap-2">
           <span className="font-medium text-[var(--color-primary)]">{title}</span>
           {badge ? <Badge variant="neutral">{badge}</Badge> : null}
+          {assigned !== undefined ? (
+            <Badge variant={assigned ? "success" : "neutral"}>
+              {assigned ? "En este proyecto" : "No asignada"}
+            </Badge>
+          ) : null}
           {inactive ? <Badge variant="danger">Inactivo</Badge> : null}
         </div>
         {subtitle ? (
           <p className="text-xs text-[var(--color-tertiary)]">{subtitle}</p>
         ) : null}
       </div>
+      {onToggleAssign ? (
+        <Button
+          size="sm"
+          variant={assigned ? "ghost" : "secondary"}
+          onClick={onToggleAssign}
+          disabled={assignBusy}
+          title={assigned ? "Quitar del proyecto" : "Asignar al proyecto"}
+        >
+          {assignBusy ? "…" : assigned ? "Quitar" : "Asignar"}
+        </Button>
+      ) : null}
       <Button size="sm" variant="ghost" onClick={onEdit} title="Editar">
         <Pencil className="h-3.5 w-3.5" />
       </Button>

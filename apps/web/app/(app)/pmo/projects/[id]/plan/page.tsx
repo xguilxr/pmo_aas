@@ -1037,6 +1037,18 @@ function PlanInner() {
     );
   }
 
+  // BUG-076: áreas del proyecto (project-scoped). Se recarga junto con las
+  // tareas para que un área recién creada/asignada inline aparezca en la
+  // lista y el filtro sin reload de página.
+  async function loadAreas() {
+    try {
+      const rows = await listProjectAreas(id, { is_active: true });
+      setAreas(rows.filter((r) => r.type === "area"));
+    } catch {
+      /* silencioso — la UI muestra "Sin áreas" */
+    }
+  }
+
   async function loadTasksAndGantt() {
     setLoadingTasks(true);
     setLoadingGantt(true);
@@ -1056,6 +1068,8 @@ function PlanInner() {
     } finally {
       setLoadingGantt(false);
     }
+    // BUG-076: refrescar áreas tras cualquier reload de tareas.
+    void loadAreas();
   }
 
   useEffect(() => {
@@ -1065,12 +1079,8 @@ function PlanInner() {
     getProject(id)
       .then((p) => setProjectName(p.name))
       .catch(() => {});
-    // US-098: cargar áreas DEL PROYECTO (project_areas, US-091) para
-    // el select del edit form y el filtro de la toolbar. Falla
-    // silencioso (la UI muestra "Sin áreas"). Filtramos a type='area'.
-    listProjectAreas(id, { is_active: true })
-      .then((rows) => setAreas(rows.filter((r) => r.type === "area")))
-      .catch(() => {});
+    // US-098 / BUG-076: las áreas del proyecto las carga loadTasksAndGantt
+    // (arriba), así se refrescan en cada reload sin duplicar el fetch.
     listUsers({ is_active: true, page: 1, limit: 200 })
       .then((resp) => setUsers(resp.items))
       .catch(() => {});
