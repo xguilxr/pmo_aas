@@ -19,6 +19,7 @@ import {
   createTeam,
   deleteArea,
   deleteTeam,
+  listAreaAssignments,
   listAreas,
   listAreasByProject,
   listTeams,
