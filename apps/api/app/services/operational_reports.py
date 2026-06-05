@@ -31,7 +31,7 @@ def _is_delayed(t: Task, today: date) -> bool:
     """ENH-064 — tarea retrasada: end_date < hoy y no completada."""
     if t.end_date is None:
         return False
-    if t.status == "done" or (t.progress or 0) >= 100:
+    if t.status == "completed" or (t.progress or 0) >= 100:
         return False
     return t.end_date < today
 
@@ -148,7 +148,7 @@ async def build_avance_context(
         )
     ).scalars().all()
     total_tasks = len(all_tasks)
-    done = sum(1 for t in all_tasks if t.status == "done" or (t.progress or 0) >= 100)
+    done = sum(1 for t in all_tasks if t.status == "completed" or (t.progress or 0) >= 100)
     in_progress = sum(1 for t in all_tasks if t.status == "in_progress")
     not_started = sum(1 for t in all_tasks if t.status == "not_started")
     avg_progress = (
@@ -175,7 +175,7 @@ async def build_avance_context(
         [
             t
             for t in milestones
-            if (t.status == "done" or (t.progress or 0) >= 100)
+            if (t.status == "completed" or (t.progress or 0) >= 100)
             and t.end_date is not None
             and period_start <= t.end_date <= cut_off_date
         ],
@@ -189,7 +189,7 @@ async def build_avance_context(
         [
             t
             for t in milestones
-            if t.status != "done"
+            if t.status != "completed"
             and (t.progress or 0) < 100
             and t.end_date is not None
             and cut_off_date <= t.end_date <= upcoming_end
@@ -440,7 +440,7 @@ async def build_seguimiento_context(
         await db.execute(
             select(Task).where(
                 Task.project_id == str(project_id),
-                Task.status.notin_(["done", "cancelled"]),
+                Task.status.notin_(["completed", "cancelled"]),
             )
         )
     ).scalars().all()

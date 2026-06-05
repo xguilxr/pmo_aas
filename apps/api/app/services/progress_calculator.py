@@ -3,7 +3,7 @@
 Computes a project's ``% avance`` according to the tenant-configured
 method. Three modes are supported:
 
-- ``by_task_count``: simple percent of tasks with ``status='done'``.
+- ``by_task_count``: simple percent of tasks with ``status='completed'``.
 - ``by_duration``: weighted by ``duration_days`` (falls back to
   ``end_date - start_date`` when ``duration_days`` is null).
 - ``by_effort``: weighted by effort hours. The ``tasks.hours_estimated``
@@ -137,7 +137,7 @@ async def compute_progress_detailed(
         return ProgressResult(value=0.0, method=resolved, fallback=None)
 
     if resolved == "by_task_count":
-        done = sum(1 for t in tasks if t.status == "done")
+        done = sum(1 for t in tasks if t.status == "completed")
         return ProgressResult(
             value=_percent(done, len(tasks)),
             method="by_task_count",
@@ -146,11 +146,11 @@ async def compute_progress_detailed(
 
     if resolved == "by_duration":
         total = sum(_task_duration(t) for t in tasks)
-        done = sum(_task_duration(t) for t in tasks if t.status == "done")
+        done = sum(_task_duration(t) for t in tasks if t.status == "completed")
         if total <= 0:
             # No usable durations → fall back to task count to avoid 0.
             count_total = len(tasks)
-            count_done = sum(1 for t in tasks if t.status == "done")
+            count_done = sum(1 for t in tasks if t.status == "completed")
             return ProgressResult(
                 value=_percent(count_done, count_total),
                 method="by_duration",
@@ -168,7 +168,7 @@ async def compute_progress_detailed(
         "progress_calculator: by_effort requested but tasks.hours_estimated "
         "is unavailable; falling back to by_task_count"
     )
-    done = sum(1 for t in tasks if t.status == "done")
+    done = sum(1 for t in tasks if t.status == "completed")
     return ProgressResult(
         value=_percent(done, len(tasks)),
         method="by_effort",
