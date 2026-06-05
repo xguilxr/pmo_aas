@@ -24,7 +24,6 @@ from app.models.project import Project
 from app.models.report_history import ReportHistory
 from app.services.audit import write_audit
 from app.services.html_report_renderer import render_report_html
-from app.services.status_display import normalize_status, status_badge_html
 from app.services.operational_reports import (
     build_avance_context,
     build_look_ahead_context,
@@ -32,6 +31,7 @@ from app.services.operational_reports import (
 )
 from app.services.pdf_renderer import render_pdf
 from app.services.reports.branding import load_report_branding
+from app.services.status_display import normalize_status, status_badge_html
 
 router = APIRouter(tags=["reports"])
 
