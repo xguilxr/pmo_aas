@@ -28,8 +28,10 @@ import {
   updateIssue,
   updateRisk,
   type Issue,
+  type IssueStatus,
   type IssueType,
   type Risk,
+  type RiskStatus,
 } from "@/lib/api/modules";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { cn } from "@/lib/cn";
@@ -60,6 +62,7 @@ type HistoryEntry = {
 type EditDraft = {
   title: string;
   description: string;
+  status: string; // BUG-075: común a risk/issue; se castea por tipo al guardar.
   area_id: string;
   owner_id: string;
   category: string; // risk only
@@ -80,6 +83,7 @@ function emptyDraft(): EditDraft {
   return {
     title: "",
     description: "",
+    status: "",
     area_id: "",
     owner_id: "",
     category: "",
@@ -102,6 +106,7 @@ function draftFromRisk(r: Risk): EditDraft {
     ...emptyDraft(),
     title: r.title,
     description: r.description ?? "",
+    status: r.status,
     area_id: r.area_id ?? "",
     owner_id: r.owner_id ?? "",
     category: r.category ?? "",
@@ -119,6 +124,7 @@ function draftFromIssue(i: Issue): EditDraft {
     ...emptyDraft(),
     title: i.title,
     description: i.description ?? "",
+    status: i.status,
     area_id: i.area_id ?? "",
     owner_id: i.owner_id ?? "",
     type: i.type,
@@ -317,6 +323,19 @@ export function RaidDetailPage({
       setEditError("El título es obligatorio (mín. 2 caracteres).");
       return;
     }
+    // BUG-075: el backend exige closure_note al pasar un riesgo a
+    // Materializado o Cerrado (modules.py update_risk). Guard de UX
+    // para dar un mensaje claro en vez de un 400.
+    if (
+      isRisk &&
+      (draft.status === "materialized" || draft.status === "closed") &&
+      !draft.closure_note.trim()
+    ) {
+      setEditError(
+        "Para marcar el riesgo como Materializado o Cerrado, agregá una nota de cierre.",
+      );
+      return;
+    }
     setSaving(true);
     setEditError(null);
     try {
@@ -324,6 +343,7 @@ export function RaidDetailPage({
         const updated = await updateRisk(risk.id, {
           title: draft.title.trim(),
           description: draft.description.trim() || null,
+          status: draft.status as RiskStatus,
           category: draft.category.trim() || null,
           area_id: draft.area_id || undefined,
           owner_id: draft.owner_id || null,
@@ -339,6 +359,7 @@ export function RaidDetailPage({
         const updated = await updateIssue(issue.id, {
           title: draft.title.trim(),
           description: draft.description.trim() || null,
+          status: draft.status as IssueStatus,
           type: draft.type,
           area_id: draft.area_id || undefined,
           owner_id: draft.owner_id || null,
@@ -433,7 +454,26 @@ export function RaidDetailPage({
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={statusVariant}>{statusLabel}</Badge>
+                  {editing ? (
+                    <Select
+                      aria-label="Estado"
+                      value={draft.status}
+                      onChange={(e) =>
+                        setDraft({ ...draft, status: e.target.value })
+                      }
+                      className="h-8 w-auto py-0 text-[12px]"
+                    >
+                      {Object.entries(
+                        isRisk ? RISK_STATUS_LABEL : ISSUE_STATUS_LABEL,
+                      ).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Badge variant={statusVariant}>{statusLabel}</Badge>
+                  )}
                   {isRisk && (risk as Risk).severity != null ? (
                     <Badge
                       variant={
@@ -596,7 +636,11 @@ export function RaidDetailPage({
               )}
             </StripCell>
           ) : raidType === "decision" ? (
-            <StripCell label="Estado aprobación">{statusLabel}</StripCell>
+            <StripCell label="Estado aprobación">
+              {editing
+                ? ISSUE_STATUS_LABEL[draft.status as IssueStatus] ?? draft.status
+                : statusLabel}
+            </StripCell>
           ) : (
             <StripCell label="Categoría">
               <Empty />

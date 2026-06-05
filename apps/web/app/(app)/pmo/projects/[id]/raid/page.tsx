@@ -21,7 +21,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiBase } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import {
@@ -165,70 +166,53 @@ function RaidInner() {
     decisions: decisions.length,
   };
 
-  // Export RAID: CSV unificado con 4 secciones (el XLSX nativo queda como
-  // follow-up; CSV cumple el uso práctico y se abre en Excel directo).
-  function buildCsv(): string {
-    const esc = (v: unknown) => {
-      const s = v === null || v === undefined ? "" : String(v);
-      return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines: string[] = [];
-    lines.push("# Riesgos");
-    lines.push("folio;title;status;probability;impact;severity;owner;due_date");
-    for (const r of risks) {
-      lines.push(
-        [
-          r.folio,
-          r.title,
-          r.status,
-          r.probability ?? "",
-          r.impact ?? "",
-          r.severity ?? "",
-          r.owner_id ?? "",
-          r.due_date ?? "",
-        ]
-          .map(esc)
-          .join(";"),
-      );
-    }
-    for (const [section, items] of [
-      ["Acciones", actions],
-      ["Incidentes", incidents],
-      ["Decisiones", decisions],
-    ] as const) {
-      lines.push("");
-      lines.push(`# ${section}`);
-      lines.push("folio;title;status;priority;owner;committed_date;resolution");
-      for (const it of items) {
-        lines.push(
-          [
-            it.folio,
-            it.title,
-            it.status,
-            it.priority ?? "",
-            it.owner_id ?? "",
-            it.committed_date ?? "",
-            it.resolution ?? "",
-          ]
-            .map(esc)
-            .join(";"),
+  // ENH-152: Export RAID = descarga autenticada del XLSX (4 hojas ES:
+  // Riesgos/Acciones/Incidencias/Decisiones) del endpoint /raid/export — el
+  // MISMO archivo que el botón del módulo Documentos. El filename
+  // ('RAID-[Nombre Proyecto].xlsx') viene en el Content-Disposition.
+  const [exporting, setExporting] = useState(false);
+
+  async function downloadRaid() {
+    if (exporting) return;
+    setExporting(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const headers: Record<string, string> = {
+        Accept: "application/octet-stream",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${apiBase()}/api/v1/projects/${id}/raid/export`, {
+        method: "GET",
+        headers,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new ApiError(
+          res.status,
+          "EXPORT_FAILED",
+          `Exportación falló (HTTP ${res.status})`,
         );
       }
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = /filename="([^"]+)"/.exec(cd);
+      const name = match ? match[1] : `RAID-${id}.xlsx`;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo exportar el RAID",
+      );
+    } finally {
+      setExporting(false);
     }
-    return lines.join("\n");
-  }
-
-  function downloadCsv() {
-    const csv = buildCsv();
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `raid-${id}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
   }
 
   return (
@@ -264,11 +248,12 @@ function RaidInner() {
           </button>
           <button
             type="button"
-            onClick={downloadCsv}
-            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+            onClick={downloadRaid}
+            disabled={exporting}
+            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" aria-hidden />
-            Exportar RAID (CSV)
+            {exporting ? "Exportando…" : "Exportar RAID"}
           </button>
         </div>
       </header>

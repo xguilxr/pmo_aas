@@ -216,6 +216,51 @@ def test_prompt_enforces_speakers_only_participants() -> None:
     assert "MENCIONADAS" in MINUTE_SYSTEM
 
 
+# ===== BUG-073 — summary coercion (la IA devuelve dict/list, no str) =====
+
+
+def test_validate_minute_payload_coerces_dict_summary() -> None:
+    """La IA a veces devuelve summary como objeto en vez de string.
+
+    El validador debe aplanarlo a str para que el merge cross-chunk
+    (``"\\n\\n".join(...)`` en workers/tasks/ai.py) no reviente con
+    ``TypeError: sequence item 0: expected str instance, dict found``.
+    """
+    payload = {"summary": {"text": "Resumen de la reunión."}, "raid": []}
+    normalized, _ = validate_minute_payload(payload)
+    assert normalized["summary"] == "Resumen de la reunión."
+    assert isinstance(normalized["summary"], str)
+
+
+def test_validate_minute_payload_coerces_dict_summary_without_text_key() -> None:
+    payload = {"summary": {"overview": "Punto A", "detail": "Punto B"}, "raid": []}
+    normalized, _ = validate_minute_payload(payload)
+    assert isinstance(normalized["summary"], str)
+    assert "Punto A" in normalized["summary"]
+    assert "Punto B" in normalized["summary"]
+
+
+def test_validate_minute_payload_coerces_list_summary() -> None:
+    payload = {"summary": ["Primer bloque", "Segundo bloque"], "raid": []}
+    normalized, _ = validate_minute_payload(payload)
+    assert normalized["summary"] == "Primer bloque\n\nSegundo bloque"
+
+
+def test_validate_minute_payload_summary_join_is_safe_across_chunks() -> None:
+    """Reproduce el crash real: dos chunks, uno con summary dict.
+
+    Tras validar cada chunk, el merge cross-chunk debe poder hacer join
+    sin TypeError.
+    """
+    chunks = [
+        {"summary": "Texto plano", "raid": []},
+        {"summary": {"text": "Objeto del LLM"}, "raid": []},
+    ]
+    collected = [validate_minute_payload(c)[0] for c in chunks]
+    merged = "\n\n".join([c.get("summary") or "" for c in collected]).strip()
+    assert merged == "Texto plano\n\nObjeto del LLM"
+
+
 # BUG-068: el validator normaliza header.date a YYYY-MM-DD para evitar
 # que el frontend crashee con RangeError al hacer toISOString().
 def test_validate_minute_payload_normalizes_iso_date() -> None:

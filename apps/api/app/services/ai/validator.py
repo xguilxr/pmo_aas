@@ -51,6 +51,38 @@ def _coerce_type(value: Any) -> str | None:
     return None
 
 
+def _coerce_text(value: Any) -> str:
+    """Coerce a free-text field to a plain string.
+
+    The IA occasionally returns ``summary`` as a nested object
+    (``{"text": "..."}``, ``{"overview": "...", ...}``) or a list of
+    fragments instead of a plain string. Downstream consumers join this
+    field with ``str.join`` (minute merge across chunks in
+    :mod:`app.workers.tasks.ai`), which raises ``TypeError: sequence item
+    0: expected str instance, dict found`` on a dict/list. This flattens
+    any such shape to a string, returning ``""`` when there's nothing
+    usable.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        # Only keys that unambiguously mean "the whole text" short-circuit;
+        # anything else (overview + detail, bilingual, etc.) is concatenated
+        # so no content is dropped.
+        for key in ("text", "summary", "content", "body"):
+            inner = value.get(key)
+            if isinstance(inner, str) and inner.strip():
+                return inner
+        parts = [_coerce_text(v) for v in value.values()]
+        return "\n\n".join(p for p in parts if p.strip())
+    if isinstance(value, (list, tuple)):
+        parts = [_coerce_text(v) for v in value]
+        return "\n\n".join(p for p in parts if p.strip())
+    return str(value)
+
+
 def validate_raid_items(items: list[Any]) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Filter a RAID array to canonical A/R/D/I items.
 
@@ -392,7 +424,9 @@ def validate_minute_payload(payload: Any) -> tuple[dict[str, Any], dict[str, int
 
     topics = payload.get("topics") if isinstance(payload.get("topics"), list) else []
     raid_items, metrics = validate_raid_items(payload.get("raid") or [])
-    summary = payload.get("summary") or ""
+    # BUG-073 — la IA a veces devuelve summary como dict/list; coercionar a
+    # str para que el merge cross-chunk (str.join) no reviente.
+    summary = _coerce_text(payload.get("summary"))
     free_notes = payload.get("free_notes")
 
     normalized = {

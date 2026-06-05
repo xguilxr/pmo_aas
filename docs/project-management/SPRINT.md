@@ -9,67 +9,39 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "deepwork reportes/RAID/IA/charts" (2026-05-28/29) en branch
-claude/deepwork-reports-raid-ai-charts. PR abierto, status:fix-committed,
-esperando MERGE + QA visual del owner. 8 commits:
+Batch "gantt/áreas/reportes/RAID fixes" (2026-06-05) en branch
+claude/gantt-areas-fixes. status:fix-committed, esperando PR + MERGE + QA
+del owner. SIN PR creado aún. 9 commits de trabajo (6 sesión previa +
+3 esta sesión); ENH-149 no tuvo commit (ya estaba implementado).
 
-- BUG-069 #524 — charts: donut se llena al 100% (Pie con stroke-dasharray),
-  colores de marca en programa, dedup de métricas, KpiCard compartido,
-  empty states más limpios.
-- ENH-146 #525 — reportes con logos (PMO+cliente, data-URL) + paleta/tipo
-  on-brand (PDF y HTML inline) + donut/gauge reales + KPI cards + gantt
-  inline (S-19) + fix on_time_pct.
-- ENH-147 #526 — minutas→RAID confiables: json_mode por proveedor + parser
-  tolerante (fences/comas) + repair-retry sin pérdida silenciosa.
-- US-165 #527 — asistente IA conversacional: modelo de conversación
-  (mig. 0084) + endpoint /assistant + widget flotante global (Ctrl/⌘-K).
-- ENH-148 #528 — housekeeping: README/env/epics al día, sin Ollama, dead
-  code removido (require_permission, workspaces field).
+Sesión previa (2026-06-05):
+- BUG-073 #538 (593cb48) — minuta: coerciona summary dict/list a str.
+- BUG-074 #539 (7f7c272) — sweep status 'done'→'completed' en servicios de
+  reporte. Causa raíz de "completadas vencidas" y "avance 0%".
+- ENH-150 #540 (c53edf2) — status de tarea en ES + color leve en reportes
+  (status_display.py + filtros Jinja).
+- ENH-151 #541 (8b7f28f) — Reporte de Avance: fusión secciones + presupuesto
+  condicional.
+- BUG-076 #542 (1461c51) — áreas project-scoped: toggle Asignar/Quitar.
+- ENH-153 #543 (a71e395) — logos PMO+cliente en header del Project Charter.
 
-Pendiente de aplicar en Railway: migración 0084 (assistant_conversations).
-Diferidos (no bloqueantes): dashboard eyebrows (NEEDS-VISUAL-CHECK), KPI
-band en builder.html, borrado de packages/sdk (riesgo frozen-lockfile),
-dedup de RAID por chunk.
+Esta sesión (2026-06-05):
+- ENH-149 #544 (sin código) — Plan: editar end_date. Ya estaba implementado
+  end-to-end (input modal + PATCH + cierre de BUG-074); documentado + verificado.
+- BUG-075 #545 (aa5708c) — RAID: estado editable in-place (Select por tipo;
+  backend ya aceptaba status). Frontend-only.
+- ENH-154 #546 (02dd08a) — Seguimiento: sección "Acciones" (toda acción abierta)
+  separada de los buckets de Actividades; rescata acciones sin fecha.
+- ENH-152 #547 (482566f) — Export RAID: XLSX único 4 hojas ES (Riesgos/Acciones/
+  Incidencias/Decisiones), nombres resueltos, filename RAID-[Nombre].xlsx, mismo
+  archivo para botón /raid y Documentos.
 
-Próximo libre: US-166, BUG-070, ENH-149.
-```
+Sin migraciones nuevas. tsc verde · ruff limpio · pytest seguimiento 12/12 +
+RAID export 4/4 + EP006 20/20. Epics actualizadas: EP006, EP014, EP018.
+La branch está detrás de origin/main (main avanzó con otros merges, sin tocar
+estos archivos) → rebase al armar el PR si CI lo pide.
 
-```
-Batch "bugs logos + /pmo + rediseño big canvas" (2026-05-26) en branch
-claude/friendly-lamport-LZ45l. 4 commits, status:fix-committed, esperando
-MERGE + QA visual del owner:
-
-- BUG-068 #514 (e87c55f + 70f377a) — upload PNG de logos de org (data-URL en
-  DB, mig. 0082) + preview circular. Follow-up: logo del **tenant** también a
-  data-URL (mig. 0083) — arregla el 401 del serve endpoint con `<img>`.
-- ENH-142 #515 (1ad5ed3) — botones crear org/programa/proyecto en /pmo.
-- ENH-143 #516 (c7551b4) — org detail: botón Nuevo proyecto, renombra Status,
-  quita toggle Resumen/Reportes.
-- US-164 #517 (766f9f4) — rediseño "big canvas" global (lienzo cream + sidebar
-  azul flotante + topbar full-width + fix tab-strip + iconos + pinch-zoom +
-  dark mode). Supersede chrome navy DEC-006.
-
-tsc + next build verdes; tests EP002 (26) + US-031 (data-URL) + BUG-068 verdes.
-Migraciones nuevas pendientes de aplicar en Railway: 0082 + 0083 (además de
-0079-0081 si aún no se aplicaron).
-
-Follow-up doc diferido (US-164): navigation.md + ADR/DEC del supersede de
-chrome navy DEC-006.
-
-Próximo libre: US-165, BUG-069, ENH-146.
-
-Batch "chrome: logo full-size + iconos org/programa" (2026-05-26) en branch
-claude/gracious-pascal-MPjsq. 2 commits, status:fix-committed, esperando
-MERGE + QA visual del owner:
-
-- ENH-144 #520 (e5f70e1) — logo del tenant a tamaño completo en topbar
-  (zona izquierda fija, independiente del estado colapsado de la sidebar) +
-  branding "PMO-aaS" a la derecha; elimina el nombre del tenant en texto.
-- ENH-145 #521 (d5974a9) — iconos distintos: organizaciones `Building2`,
-  programas `Layers` (lucide-react); corrige mislabel del nav admin.
-
-Frontend-only (sin migraciones). tsc verde (sólo error pre-existente en
-globals.css, ajeno al cambio).
+Próximo libre: US-166, BUG-077, ENH-155.
 ```
 
 ---
@@ -117,6 +89,8 @@ globals.css, ajeno al cambio).
 ## ✅ DONE
 
 **Ver `SPRINT-DONE-HISTORY.md` para el historial completo.**
+
+> Batches post-Sprint 33 (deepwork reportes/RAID/IA #524-528, big canvas #514-517, chrome #520-521) mergeados a main 2026-05-26/29 → archivados en `SPRINT-DONE-HISTORY.md` el 2026-06-05.
 
 | Sprint | Versión | Cerrado | Items |
 |---|---|---|---|
@@ -169,6 +143,7 @@ globals.css, ajeno al cambio).
 - [ ] **Cleanup post-Sprint 32**: borrar `apps/web/app/(app)/pmo/projects/[id]/ai-minutes/` y `.../reports/tweak/` carpetas enteras (hoy son redirects 301). Tras 1 sprint en main sin reportes de bookmarks rotos.
 - [ ] **Persistencia reports L1/L2** (PMO/Org/Prog): la **generación** ya existe (v1.28, US-160: PDF on-demand vía `/dashboard/reports/portfolio`, `/organizations/{id}/reports/status`, `/programs/{id}/reports/status`). Falta **persistir** el histórico: agregar `generator='pmo'|'organization'|'program'` + nullable `project_id` o tabla aparte.
 - [ ] **Dirty-flag fino en builder** (mejora ENH-125): comparar canvas vs plantilla cargada para detectar cambios sin guardar incluso cuando hay `loadedTemplateId`.
+- [ ] **Export RAID — Lecciones/Cambios** (follow-up ENH-152): si se necesita exportar Lessons / ChangeRequests, abrir un export aparte (ENH-152 los descartó del XLSX RAID por decisión del owner 2026-06-05).
 
 ---
 
@@ -176,26 +151,18 @@ globals.css, ajeno al cambio).
 
 > Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
 
-- **2026-05-26 (batch bugs logos + /pmo + rediseño big canvas):** branch
-  `claude/friendly-lamport-LZ45l`, 4 commits (BUG-068 #514, ENH-142 #515,
-  ENH-143 #516, US-164 #517), `status:fix-committed`. Esperando merge + QA
-  visual. Rediseño "big canvas" supersede el chrome navy DEC-006 (sidebar azul
-  flotante + lienzo cream). Mig. nueva: 0082 (logos org → TEXT). Doc follow-up
-  diferido: navigation.md + ADR del cambio de chrome.
-- **2026-05-26 (Sprint 33 / v1.28 — Dashboards N1/N2 + reportes derivados + revamp):**
-  branch `claude/laughing-carson-stUJu`, 19 commits, **esperando merge + QA**.
-  - **Datos:** `MetricSnapshot` (foto semanal 4 niveles, mig. 0079) + endpoints
-    analytics (trends/risk-matrix/heatmap/treemap/capture).
-  - **Dashboards:** primitivos SVG (Gauge/TrendLines/RiskMatrix/Heatmap/Treemap) +
-    rediseño de `/dashboard`, `/pmo`, org y programa con sus visuales.
-  - **Reportes derivados:** secciones builder S-05/S-07/S-15 (migs. 0080/0081) +
-    reportes de status N1/N2 en PDF (fuera del builder) con heatmap/treemap/curva-S.
-  - **Revamp v1:** radio de tarjetas 16→10px + `tabular-nums` global (navy/paleta intactos).
-  - **Follow-ups:** vistas/reportes accesibles a PMs (scoped); `ProgressGauge` de
-    #511 consolidado en `Gauge` compartido.
-  - 583 tests backend + ruff + tsc + next build verdes; render real de PDF validado.
-- **2026-05-26 (rediseño V1 project detail — #490-#510, ya en main):** branch
-  `claude/practical-ptolemy-s7LyL` (#511 mergeado). Detalle en `SPRINT-DONE-HISTORY.md`.
+- **2026-06-05 (batch gantt/áreas/reportes/RAID fixes):** branch
+  `claude/gantt-areas-fixes`, 9 commits de trabajo, `status:fix-committed`,
+  **sin PR aún**. Sesión previa: BUG-073/074/076 #538/539/542 +
+  ENH-150/151/153 #540/541/543. Esta sesión cerró los 4 temas restantes:
+  ENH-149 #544 (ya estaba implementado, solo verificación), BUG-075 #545
+  (estado RAID editable), ENH-154 #546 (sección Acciones en Seguimiento),
+  ENH-152 #547 (export RAID XLSX 4 hojas ES unificado). Sin migraciones.
+  Epics EP006/EP014/EP018 actualizadas. Branch detrás de origin/main →
+  rebase al armar el PR si CI lo pide.
+- **2026-05-26/29 (3 batches mergeados):** deepwork reportes/RAID/IA
+  (#524-528, mig. 0084), big canvas (#514-517, migs 0082/0083), chrome
+  logo/iconos (#520-521). Archivados en `SPRINT-DONE-HISTORY.md`.
 
 ---
 

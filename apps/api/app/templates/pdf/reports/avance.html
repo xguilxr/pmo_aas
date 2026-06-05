@@ -6,37 +6,33 @@
   {{ project.folio }} · {{ project.name }} · Corte {{ cut_off_date }}
 </p>
 
-{# US-087: bloque "Indicadores del período" — fechas + KPIs numéricos.
-   Campos sin valor (None) se ocultan. Si NINGÚN KPI tiene valor, sólo
-   se renderiza la línea del período. #}
-<h2>Indicadores del período</h2>
-<p class="meta">
-  Período: {{ kpis.period_start }} – {{ kpis.period_end }}
-</p>
-{% if kpis_visible %}
+{# ENH-151: "Indicadores del período" + "Avance del plan" fusionadas en una
+   sola sección "Avance del Plan" (período + métricas del plan en una fila). #}
+<h2>Avance del Plan</h2>
+<p class="meta">Período: {{ kpis.period_start }} – {{ kpis.period_end }}</p>
 <table>
-  <thead>
-    <tr>
-      {% if kpis.progress_pct_real is not none %}<th class="right">% completado</th>{% endif %}
-      {% if kpis.progress_pct_planned is not none %}<th class="right">% planeado</th>{% endif %}
-      {% if kpis.cost_planned is not none %}<th class="right">Costo plan</th>{% endif %}
-      {% if kpis.cost_real is not none %}<th class="right">Costo real</th>{% endif %}
-      {% if kpis.hours_planned is not none %}<th class="right">Horas plan</th>{% endif %}
-      {% if kpis.hours_real is not none %}<th class="right">Horas reales</th>{% endif %}
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      {% if kpis.progress_pct_real is not none %}<td class="nums right">{{ kpis.progress_pct_real }}%</td>{% endif %}
-      {% if kpis.progress_pct_planned is not none %}<td class="nums right">{{ kpis.progress_pct_planned }}%</td>{% endif %}
-      {% if kpis.cost_planned is not none %}<td class="nums right">${{ "{:,.2f}".format(kpis.cost_planned) }}</td>{% endif %}
-      {% if kpis.cost_real is not none %}<td class="nums right">${{ "{:,.2f}".format(kpis.cost_real) }}</td>{% endif %}
-      {% if kpis.hours_planned is not none %}<td class="nums right">{{ kpis.hours_planned }}</td>{% endif %}
-      {% if kpis.hours_real is not none %}<td class="nums right">{{ kpis.hours_real }}</td>{% endif %}
-    </tr>
-  </tbody>
+  <thead><tr>
+    <th>Total tareas</th><th>Completadas</th><th>En curso</th><th>No iniciadas</th>
+    <th class="right">Avance promedio</th>
+    <th class="right">Avance planeado</th>
+    <th class="right">+/- avance</th>
+  </tr></thead>
+  <tbody><tr>
+    <td class="nums">{{ plan.total_tasks }}</td>
+    <td class="nums">{{ plan.done }}</td>
+    <td class="nums">{{ plan.in_progress }}</td>
+    <td class="nums">{{ plan.not_started }}</td>
+    <td class="nums right">{{ plan.avg_progress }}%</td>
+    {% if kpis.progress_pct_planned is not none %}
+      <td class="nums right">{{ kpis.progress_pct_planned }}%</td>
+      {% set diff = plan.avg_progress - kpis.progress_pct_planned %}
+      <td class="nums right"><span class="pill {{ 'green' if diff >= 0 else 'red' }}">{{ "%+.0f"|format(diff) }}%</span></td>
+    {% else %}
+      <td class="nums right">—</td>
+      <td class="nums right">—</td>
+    {% endif %}
+  </tr></tbody>
 </table>
-{% endif %}
 
 <h2>Información general</h2>
 <dl class="kv small">
@@ -52,38 +48,14 @@
   <dt>PM</dt><dd>{{ project.pm_name or "—" }}{% if project.pm_email %} &lt;{{ project.pm_email }}&gt;{% endif %}</dd>
   <dt>Sponsor</dt><dd>{{ project.sponsor or "—" }}</dd>
   <dt>Inicio / Fin</dt><dd>{{ project.start_date or "—" }} → {{ project.end_date or "—" }}</dd>
-  <dt>Avance reportado</dt><dd class="nums">{{ project.progress }}%</dd>
+  <dt>Avance reportado</dt><dd class="nums">{{ project.progress or plan.avg_progress }}%</dd>
+  {# ENH-151: presupuesto dentro de info general y solo si viene > 0 (regla de oro). #}
+  {% if project.budget and project.budget > 0 %}
+  <dt>Presupuesto plan</dt><dd class="nums">${{ "{:,.2f}".format(project.budget) }}</dd>
+  <dt>Presupuesto real</dt><dd class="nums">${{ "{:,.2f}".format(project.actual_budget or 0) }}</dd>
+  <dt>Desviación presupuesto</dt><dd class="nums">{{ "%+.1f"|format((((project.actual_budget or 0) - project.budget) / project.budget) * 100) }}%</dd>
+  {% endif %}
 </dl>
-
-<h2>Avance del plan</h2>
-<table>
-  <thead><tr>
-    <th>Total tareas</th><th>Completadas</th><th>En curso</th><th>No iniciadas</th><th class="right">Avance promedio</th>
-  </tr></thead>
-  <tbody><tr>
-    <td class="nums">{{ plan.total_tasks }}</td>
-    <td class="nums">{{ plan.done }}</td>
-    <td class="nums">{{ plan.in_progress }}</td>
-    <td class="nums">{{ plan.not_started }}</td>
-    <td class="nums right">{{ plan.avg_progress }}%</td>
-  </tr></tbody>
-</table>
-
-<h2>Presupuesto</h2>
-<table>
-  <thead><tr>
-    <th>Plan</th><th>Real</th><th class="right">Desviación</th>
-  </tr></thead>
-  <tbody><tr>
-    <td class="nums">${{ "{:,.2f}".format(project.budget) }}</td>
-    <td class="nums">${{ "{:,.2f}".format(project.actual_budget) }}</td>
-    <td class="nums right">
-    {% if project.budget and project.budget > 0 %}
-      {{ "%.1f"|format(((project.actual_budget - project.budget) / project.budget) * 100) }}%
-    {% else %}—{% endif %}
-    </td>
-  </tr></tbody>
-</table>
 
 <h2>Hitos cumplidos (últimos 14 días)</h2>
 {% if milestones_done %}
@@ -114,7 +86,7 @@
       <td class="small">{{ m.area_name or "—" }}</td>
       <td class="right">{{ m.end_date or "—" }}</td>
       <td class="small">
-        {{ m.status }}
+        {{ m.status | status_badge }}
         {% if m.delayed %}<span class="pill red">retrasado</span>{% endif %}
       </td>
       <td class="nums right">{{ m.progress }}%</td>

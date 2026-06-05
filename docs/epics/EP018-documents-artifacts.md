@@ -15,7 +15,7 @@ Cerrar el catálogo de documentos vivos por proyecto. Hoy los usuarios pueden su
 
 1. **Project Charter** — auto-creado al crear proyecto, backfilleado para los existentes.
 2. **Plan** — un único archivo vivo (.mpp / .xlsx / .csv / plantilla); DB es fuente de verdad, archivo se regenera preservando formato origen.
-3. **RAIDs** — export Excel siempre actualizado, 4 sheets dedicados (Risks / Issues / Lessons / Changes) con todas sus propiedades.
+3. **RAIDs** — export Excel siempre actualizado, 4 hojas dedicadas en español (Riesgos / Acciones / Incidencias / Decisiones) con columnas legibles (Folio · Título · Descripción · Severidad/Prioridad · Estado · Responsable área · Responsable · Fecha creación). *(ENH-152, 2026-06-05: taxonomía RAID canónica + nombres resueltos a texto + filename `RAID-[Nombre Proyecto].xlsx`; mismo archivo para el botón de /raid y el de Documentos. Reemplaza Risks/Issues/Lessons/Changes.)*
 4. **Organigrama** — lista de recursos asignados al proyecto (depende del catálogo Áreas/Actores de EP017).
 
 ## Decisiones arquitectónicas asociadas (a registrar en DECISIONS.md)

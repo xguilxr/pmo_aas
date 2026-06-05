@@ -160,7 +160,7 @@ async def compute_snapshot_values(
         values["tasks_done"] = await _count(
             db,
             select(func.count(Task.id)).where(
-                Task.project_id.in_(project_ids), Task.status == "done"
+                Task.project_id.in_(project_ids), Task.status == "completed"
             ),
         )
         for days, key in ((7, "milestones_due_7"), (14, "milestones_due_14"), (30, "milestones_due_30")):
@@ -169,7 +169,7 @@ async def compute_snapshot_values(
                 select(func.count(Task.id)).where(
                     Task.project_id.in_(project_ids),
                     Task.is_milestone.is_(True),
-                    Task.status != "done",
+                    Task.status != "completed",
                     Task.end_date.is_not(None),
                     Task.end_date >= ref_date,
                     Task.end_date <= ref_date + timedelta(days=days),

@@ -110,7 +110,7 @@ async def _seed_world(db, slug="us123"):
         ("T-CRITDEL", "in_progress", False, True, overdue, area_alpha),
         ("T-DELAYED", "in_progress", False, False, overdue, area_beta),
         ("T-UPCOMING", "in_progress", False, False, in_window, area_alpha),
-        ("T-DONE", "done", False, False, overdue, area_alpha),
+        ("T-DONE", "completed", False, False, overdue, area_alpha),
     ]
     for name, status, mile, crit, end, area in specs:
         db.add(

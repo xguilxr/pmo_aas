@@ -111,6 +111,8 @@ async def test_tc083_3_items_within_block_sorted_by_date(client, db_session):
     ])
     await db_session.commit()
     ctx = await build_seguimiento_context(db_session, t.id, p.id, cut, window_days=30)
-    block = next(g for g in ctx["groups_upcoming"] if g["area_name"] == "Operaciones")
+    # ENH-154: las acciones ahora viven en su propia sección "Acciones"
+    # (groups_actions), ya no mezcladas en los buckets de Actividades.
+    block = next(g for g in ctx["groups_actions"] if g["area_name"] == "Operaciones")
     titles = [r["title"] for r in block["rows"]]
     assert titles == ["Acción temprana", "Acción tarde"]

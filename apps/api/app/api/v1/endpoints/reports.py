@@ -31,6 +31,7 @@ from app.services.operational_reports import (
 )
 from app.services.pdf_renderer import render_pdf
 from app.services.reports.branding import load_report_branding
+from app.services.status_display import normalize_status, status_badge_html
 
 router = APIRouter(tags=["reports"])
 
@@ -908,7 +909,7 @@ _AI_REPORT_SYSTEM_PROMPT = (
     # ENH-064: foco default en hitos / críticas / retrasadas.
     "Por defecto enfócate en (en este orden): (1) hitos del proyecto, "
     "(2) tareas con criticidad 'high' o 'critical', y (3) tareas retrasadas "
-    "(end_date < hoy y status != 'done'). No incluyas tareas de baja "
+    "(end_date < hoy y status != 'completed'). No incluyas tareas de baja "
     "prioridad ni completadas a menos que el usuario lo pida explícitamente "
     "en sus notas adicionales. Mantén el reporte breve (no más de 6-8 "
     "secciones cortas). "
@@ -1432,22 +1433,22 @@ def _project_render_data(
     def _task_row(t):
         owner = getattr(t, "assignee_name", None) or getattr(t, "owner_name", None)
         end = getattr(t, "end_date", None)
-        status = getattr(t, "status", "") or ""
-        if status == "in_progress":
-            status = "En curso"
-        elif status == "done":
-            status = "Hecho"
-        elif status == "not_started":
-            status = "Pendiente"
+        raw_status = getattr(t, "status", "") or ""
         # ENH-064 — anota retraso como sufijo para que el filtro KPI
         # "retrasada" funcione (busca el texto en la fila).
         delayed_now = (
             end is not None
             and end < datetime.now(UTC).date()
-            and status != "Hecho"
+            and normalize_status(raw_status) != "completed"
         )
+        # ENH-150 — status en ES con color leve (badge HTML; la columna
+        # Estado se marca como raw en la tabla del renderer).
+        status = status_badge_html(raw_status)
         if delayed_now:
-            status += " (retrasada)"
+            status += (
+                ' <span style="color:#991b1b;font-weight:600;font-size:0.85em;">'
+                " (retrasada)</span>"
+            )
         return {
             "name": getattr(t, "name", "") or "",
             "owner": owner or "—",

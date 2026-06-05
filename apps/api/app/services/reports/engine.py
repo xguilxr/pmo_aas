@@ -344,7 +344,7 @@ def _area_label(ctx: _RenderContext, area_id: Any) -> str:
 def _is_delayed(t: Task, today: date) -> bool:
     if t.end_date is None:
         return False
-    if t.status == "done" or (t.progress or 0) >= 100:
+    if t.status == "completed" or (t.progress or 0) >= 100:
         return False
     return t.end_date < today
 
@@ -433,7 +433,7 @@ def _build_s08_progress_by_area(ctx, params, window):
         b = buckets.setdefault(label, {"total": 0, "done": 0, "progress_sum": 0.0})
         b["total"] += 1
         b["progress_sum"] += float(t.progress or 0)
-        if t.status == "done":
+        if t.status == "completed":
             b["done"] += 1
     rows = []
     for label, b in sorted(buckets.items()):
@@ -454,7 +454,7 @@ def _build_s09_milestones_upcoming(ctx, params, window):
     for t in ctx.tasks:
         if not t.is_milestone:
             continue
-        if t.status == "done" or (t.progress or 0) >= 100:
+        if t.status == "completed" or (t.progress or 0) >= 100:
             continue
         if not t.end_date:
             continue
@@ -470,7 +470,7 @@ def _build_s16_critical(ctx, params, window):
     for t in ctx.tasks:
         if not getattr(t, "is_critical", False):
             continue
-        if t.status == "done":
+        if t.status == "completed":
             continue
         rows.append(_task_to_row(ctx, t))
         ctx.excluded_task_ids.add(str(t.id))
@@ -498,7 +498,7 @@ def _build_s18_upcoming(ctx, params, window):
     for t in ctx.tasks:
         if str(t.id) in ctx.excluded_task_ids:
             continue  # Exclusión cruzada con S-09/S-16.
-        if not t.end_date or t.status == "done":
+        if not t.end_date or t.status == "completed":
             continue
         if today <= t.end_date <= horizon and not t.is_milestone:
             rows.append(_task_to_row(ctx, t))
@@ -634,7 +634,7 @@ def _build_s21_workload(ctx, params, window):
     # Carga por responsable: cuenta tareas activas por owner_id.
     buckets: dict[str, int] = {}
     for t in ctx.tasks:
-        if t.status in ("done", "cancelled"):
+        if t.status in ("completed", "cancelled"):
             continue
         if not t.owner_id:
             continue

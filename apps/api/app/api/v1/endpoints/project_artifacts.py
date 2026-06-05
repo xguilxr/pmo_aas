@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import AppError, forbidden, not_found
 from app.db.session import get_db
-from app.models.modules import ChangeRequest, Issue, Lesson, Risk
+from app.models.modules import Issue, Risk
 from app.models.project import Project
 from app.models.project_artifact import ARTIFACT_TYPES, ProjectArtifact
 from app.models.project_charter import ProjectCharter
@@ -145,16 +145,15 @@ def _plan_meta(
 
 
 def _raid_meta(project_id: UUID, project_name: str | None = None) -> ArtifactMeta:
-    # ENH-082 (Sprint 19) entregará el export 4-sheets dedicado. Mientras,
-    # se expone el endpoint de export RAID actual (modules.docs_router).
-    from app.services.filename_slug import artifact_filename
+    # ENH-152: export RAID = 4 hojas ES (Riesgos/Acciones/Incidencias/
+    # Decisiones), mismo archivo que el botón de /raid. Filename legible.
+    from app.services.filename_slug import raid_display_filename
 
     return ArtifactMeta(
         type="raid",
         available=True,
         source_format="xlsx",
-        # ENH-093: filename con nombre de proyecto, no con su UUID.
-        filename=artifact_filename(project_name, "raid", "xlsx"),
+        filename=raid_display_filename(project_name),
         download_url=f"/api/v1/projects/{project_id}/raid/export",
     )
 
@@ -324,18 +323,28 @@ async def export_raid(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """ENH-082: Excel RAID con 4 sheets dedicados (Risks/Issues/Lessons/Changes).
+    """ENH-152: Excel RAID con 4 hojas en español — Riesgos / Acciones /
+    Incidencias / Decisiones — con columnas legibles (nombres de área y
+    responsable resueltos a texto) y filename `RAID-[Nombre Proyecto].xlsx`.
 
-    Cada sheet con header bold + fondo, freeze pane y autosize. Sheets vacíos
-    se incluyen igual con header (CA5). Refleja el estado actual de DB —
-    el módulo Documentos (US-106) consume este endpoint en su tab RAIDs.
+    Es el **mismo archivo** para el botón de `/raid` y el del módulo
+    Documentos (tab RAIDs). Los 4 tipos RAID son `Risk` + `Issue.type`
+    (action / issue / decision). Refleja el estado actual de DB.
     """
     from io import BytesIO
     from urllib.parse import quote
 
     from fastapi.responses import StreamingResponse
 
-    from app.services.raid_export import XLSX_MIME, export_raid_xlsx
+    from app.models.area import Actor, Area
+    from app.models.user import User
+    from app.services.filename_slug import raid_display_filename
+    from app.services.raid_export import (
+        XLSX_MIME,
+        build_issue_rows,
+        build_risk_rows,
+        export_raid_xlsx,
+    )
 
     tenant_id = _tenant(cu)
     project = await _ensure_project(db, project_id, tenant_id)
@@ -362,39 +371,38 @@ async def export_raid(
         )
     ).scalars().all()
 
-    lessons = (
-        await db.execute(
-            select(Lesson)
-            .where(
-                Lesson.project_id == str(project_id),
-                Lesson.deleted_at.is_(None),
-            )
-            .order_by(Lesson.created_at.desc())
-        )
-    ).scalars().all()
+    actions = [i for i in issues if i.type == "action"]
+    incidents = [i for i in issues if i.type == "issue"]
+    decisions = [i for i in issues if i.type == "decision"]
 
-    changes = (
-        await db.execute(
-            select(ChangeRequest)
-            .where(
-                ChangeRequest.project_id == str(project_id),
-                ChangeRequest.deleted_at.is_(None),
-            )
-            .order_by(ChangeRequest.requested_at.desc())
-        )
-    ).scalars().all()
+    # Resolver nombres a texto: Responsable área (Area), Responsable
+    # (Actor del catálogo, fallback al Usuario).
+    area_ids = {str(x.area_id) for x in [*risks, *issues] if x.area_id}
+    actor_ids = {str(x.owner_actor_id) for x in [*risks, *issues] if x.owner_actor_id}
+    user_ids = {str(x.owner_id) for x in [*risks, *issues] if x.owner_id}
+
+    area_names = {
+        str(a.id): a.name
+        for a in (await db.execute(select(Area).where(Area.id.in_(area_ids)))).scalars().all()
+    } if area_ids else {}
+    actor_names = {
+        str(a.id): a.name
+        for a in (await db.execute(select(Actor).where(Actor.id.in_(actor_ids)))).scalars().all()
+    } if actor_ids else {}
+    user_names = {
+        str(u.id): u.full_name
+        for u in (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+    } if user_ids else {}
 
     data = export_raid_xlsx(
-        risks=list(risks),
-        issues=list(issues),
-        lessons=list(lessons),
-        changes=list(changes),
+        risks_rows=build_risk_rows(list(risks), area_names, actor_names, user_names),
+        actions_rows=build_issue_rows(actions, area_names, actor_names, user_names),
+        incidents_rows=build_issue_rows(incidents, area_names, actor_names, user_names),
+        decisions_rows=build_issue_rows(decisions, area_names, actor_names, user_names),
     )
 
-    # ENH-093: filename canónico `{project-slug}-raid.xlsx`.
-    from app.services.filename_slug import artifact_filename
-
-    filename = artifact_filename(project.name, "raid", "xlsx")
+    # ENH-152: filename legible `RAID-[Nombre Proyecto].xlsx`.
+    filename = raid_display_filename(project.name)
     headers = {
         "Content-Disposition": (
             f'attachment; filename="{filename}"; '

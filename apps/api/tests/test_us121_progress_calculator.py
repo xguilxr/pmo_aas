@@ -62,8 +62,8 @@ async def _seed_tasks(db_session, tenant, project):
     Total = 40 → by_duration = 10/40 = 25%.
     """
     specs = [
-        ("T1-done", "done", 4),
-        ("T2-done", "done", 6),
+        ("T1-done", "completed", 4),
+        ("T2-done", "completed", 6),
         ("T3-wip", "in_progress", 20),
         ("T4-wip", "in_progress", 10),
     ]

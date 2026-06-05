@@ -55,7 +55,7 @@ async def test_us038_generate_and_pdf(client, db_session):
     db_session.add_all([
         Task(
             tenant_id=str(t.id), project_id=str(p.id), name="T1",
-            status="done", progress=100, end_date=cut - timedelta(days=3),
+            status="completed", progress=100, end_date=cut - timedelta(days=3),
         ),
         Task(
             tenant_id=str(t.id), project_id=str(p.id), name="T2",
@@ -67,7 +67,7 @@ async def test_us038_generate_and_pdf(client, db_session):
         ),
         Task(
             tenant_id=str(t.id), project_id=str(p.id), name="Hito alfa",
-            is_milestone=True, status="done", progress=100,
+            is_milestone=True, status="completed", progress=100,
             end_date=cut - timedelta(days=5),
         ),
         Task(

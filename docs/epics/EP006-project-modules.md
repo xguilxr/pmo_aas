@@ -250,8 +250,10 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 - [x] Acciones: tabla `issues WHERE type='action'`.
 - [x] Incidentes: tabla `issues WHERE type='issue'` (label UI = "Incidente").
 - [x] Decisiones: tabla `issues WHERE type='decision'`.
-- [x] Export RAID → CSV con 4 secciones (un archivo); el XLSX con 4
-  sheets queda como follow-up.
+- [x] Export RAID → **ENH-152 (2026-06-05):** XLSX único con 4 hojas en
+  español (Riesgos / Acciones / Incidencias / Decisiones), columnas
+  legibles y filename `RAID-[Nombre Proyecto].xlsx`; mismo archivo para el
+  botón de `/raid` y el de Documentos. (Antes: CSV cliente + XLSX follow-up.)
 - [x] Sidebar: "Riesgos" + "AIDs" reemplazados por una sola entrada
   "RAID" (los enlaces legacy siguen funcionando).
 - [x] `ISSUE_TYPE_LABEL['issue']` actualizado de "Incidencia" a
