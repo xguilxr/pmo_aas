@@ -15,17 +15,16 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   createActor,
-  createArea,
   createTeam,
   listActors,
   listAreasByProject,
   listTeams,
-  setAreaAssignments,
   updateActor,
   type Actor,
   type Area,
   type Team,
 } from "@/lib/api/areas";
+import { createOrAdoptAreaForProject } from "@/lib/api/area-helpers";
 import {
   createParticipation,
   createProjectRole,
@@ -425,18 +424,29 @@ function AddPersonModal({
             onChange={setFunctionalAreaId}
             options={areas.map((a) => ({ id: a.id, label: a.name }))}
             onCreate={async (name) => {
-              const created = await createArea({ name, is_active: true });
-              // El área creada acá pertenece al proyecto: se asigna para
-              // que persista en Recursos y en el Plan.
-              try {
-                await setAreaAssignments(created.id, [
-                  { project_id: projectId },
+              // BUG-071: si el área ya existe en el catálogo tenant sin
+              // assignment al proyecto, la adoptamos en lugar de tirar
+              // 409. Si la asignación falla tras crear el área, ahora
+              // SÍ propaga el error (antes lo tragaba en silencio y la
+              // dejaba huérfana, por eso "ya existe pero no aparece").
+              const result = await createOrAdoptAreaForProject(
+                name,
+                projectId,
+              );
+              if (result.area) {
+                setAreas((prev) => [...prev, result.area as Area]);
+              } else if (!areas.some((a) => a.id === result.id)) {
+                // Caso adopted: el área existía en tenant pero no
+                // estaba en el state local del modal. La incluimos
+                // como placeholder mínimo para que el Select la
+                // muestre seleccionada. El próximo refresh del padre
+                // traerá la metadata completa vía listAreasByProject.
+                setAreas((prev) => [
+                  ...prev,
+                  { id: result.id, name } as Area,
                 ]);
-              } catch {
-                // no bloquear el alta si la asignación falla
               }
-              setAreas((prev) => [...prev, created]);
-              return created.id;
+              return result.id;
             }}
             createPlaceholder="Nombre del área"
           />
@@ -661,16 +671,16 @@ function EditParticipationModal({
           onChange={setFunctionalAreaId}
           options={areas.map((a) => ({ id: a.id, label: a.name }))}
           onCreate={async (name) => {
-            const created = await createArea({ name, is_active: true });
-            // El área creada acá pertenece al proyecto: se asigna para
-            // que persista en Recursos y en el Plan.
-            try {
-              await setAreaAssignments(created.id, [{ project_id: projectId }]);
-            } catch {
-              // no bloquear el alta si la asignación falla
+            // BUG-071: mismo patrón que AddPersonModal. createOrAdopt
+            // maneja 409 AREA_NAME_DUPLICATE adoptando el área existente
+            // y propaga si la asignación falla (no más áreas huérfanas).
+            const result = await createOrAdoptAreaForProject(name, projectId);
+            if (result.area) {
+              setAreas((prev) => [...prev, result.area as Area]);
+            } else if (!areas.some((a) => a.id === result.id)) {
+              setAreas((prev) => [...prev, { id: result.id, name } as Area]);
             }
-            setAreas((prev) => [...prev, created]);
-            return created.id;
+            return result.id;
           }}
           createPlaceholder="Nombre del área"
         />

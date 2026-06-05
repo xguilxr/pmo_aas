@@ -19,7 +19,6 @@ import {
   createTeam,
   deleteArea,
   deleteTeam,
-  listAreaAssignments,
   listAreas,
   listAreasByProject,
   listTeams,
@@ -29,6 +28,7 @@ import {
   type Area,
   type Team,
 } from "@/lib/api/areas";
+import { ensureProjectAssignment } from "@/lib/api/area-helpers";
 import {
   createProjectRole,
   deleteProjectRole,
@@ -372,26 +372,8 @@ function Row({
 }
 
 // ---------- Modales ----------
-
-// Asegura que un área quede visible en un proyecto sin pisar otros
-// alcances ya configurados (merge no destructivo de assignments). Sirve
-// para "adoptar" áreas existentes (creadas sin asignación) a un proyecto.
-async function ensureProjectAssignment(areaId: string, projectId: string) {
-  const existing = await listAreaAssignments(areaId);
-  const alreadyVisible = existing.some(
-    (a) => a.is_global || a.project_id === projectId,
-  );
-  if (alreadyVisible) return;
-  await setAreaAssignments(areaId, [
-    ...existing.map((a) => ({
-      organization_id: a.organization_id,
-      program_id: a.program_id,
-      project_id: a.project_id,
-      is_global: a.is_global,
-    })),
-    { project_id: projectId },
-  ]);
-}
+// BUG-071: ensureProjectAssignment vive ahora en @/lib/api/area-helpers
+// para que el inline-create del DirectoryView lo reuse.
 
 function AreaModalForm({
   area,

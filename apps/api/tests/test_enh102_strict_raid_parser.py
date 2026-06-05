@@ -259,3 +259,116 @@ def test_validate_minute_payload_summary_join_is_safe_across_chunks() -> None:
     collected = [validate_minute_payload(c)[0] for c in chunks]
     merged = "\n\n".join([c.get("summary") or "" for c in collected]).strip()
     assert merged == "Texto plano\n\nObjeto del LLM"
+
+
+# BUG-068: el validator normaliza header.date a YYYY-MM-DD para evitar
+# que el frontend crashee con RangeError al hacer toISOString().
+def test_validate_minute_payload_normalizes_iso_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "2026-06-01"}})
+    assert normalized["header"]["date"] == "2026-06-01"
+
+
+def test_validate_minute_payload_normalizes_dmy_slash_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "01/06/2026"}})
+    assert normalized["header"]["date"] == "2026-06-01"
+
+
+def test_validate_minute_payload_normalizes_dmy_dash_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "01-06-2026"}})
+    assert normalized["header"]["date"] == "2026-06-01"
+
+
+def test_validate_minute_payload_nulls_unparseable_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"date": "1 de junio"}})
+    assert normalized["header"]["date"] is None
+
+
+def test_validate_minute_payload_nulls_missing_date() -> None:
+    normalized, _ = validate_minute_payload({"header": {"title": "x"}})
+    assert normalized["header"]["date"] is None
+
+
+def test_validate_minute_payload_accepts_iso_datetime() -> None:
+    normalized, _ = validate_minute_payload(
+        {"header": {"date": "2026-06-01T12:00:00Z"}}
+    )
+    assert normalized["header"]["date"] == "2026-06-01"
+
+
+# BUG-069: dedupe cross-chunk de participantes (re-usable helper que
+# también consume el worker en el merge tras chunkear).
+def test_dedupe_participants_merges_by_normalized_name() -> None:
+    from app.services.ai.validator import dedupe_participants
+
+    out = dedupe_participants(
+        [
+            {"name": "Juan Pérez", "role": "PM"},
+            {"name": "juan perez", "area": "Finanzas"},
+            {"name": "JUAN PEREZ"},
+            {"name": "María López", "role": "Dev"},
+        ]
+    )
+    assert [p["name"] for p in out] == ["Juan Pérez", "María López"]
+    # Merge no destructivo: el primer match conserva su role, gana area
+    # del segundo.
+    assert out[0]["role"] == "PM"
+    assert out[0]["area"] == "Finanzas"
+
+
+def test_dedupe_participants_ignores_empty_and_non_dict() -> None:
+    from app.services.ai.validator import dedupe_participants
+
+    out = dedupe_participants(
+        [
+            {"name": ""},
+            "no soy dict",  # type: ignore[list-item]
+            {"name": "Eli"},
+        ]
+    )
+    assert [p["name"] for p in out] == ["Eli"]
+
+
+# BUG-070: merge cross-chunk de topics por título normalizado.
+def test_merge_topics_fuses_same_title_across_chunks() -> None:
+    from app.services.ai.validator import merge_topics
+
+    out = merge_topics(
+        [
+            {"title": "Alcance del Proyecto", "bullets": ["bullet A", "bullet B"]},
+            {"title": "alcance del proyecto", "bullets": ["bullet C"]},
+            {"title": "ALCANCE DEL PROYECTO", "bullets": ["bullet A"]},  # dup
+            {"title": "Riesgos", "bullets": ["bullet D"]},
+        ]
+    )
+    assert [t["title"] for t in out] == ["Alcance del Proyecto", "Riesgos"]
+    assert out[0]["bullets"] == ["bullet A", "bullet B", "bullet C"]
+    assert out[1]["bullets"] == ["bullet D"]
+
+
+def test_merge_topics_ignores_empty_titles_and_non_lists() -> None:
+    from app.services.ai.validator import merge_topics
+
+    out = merge_topics(
+        [
+            {"title": "", "bullets": ["x"]},
+            {"title": "  ", "bullets": ["y"]},
+            {"title": "Tema", "bullets": "no es lista"},
+            {"title": "Tema", "bullets": ["z"]},
+        ]
+    )
+    assert len(out) == 1
+    assert out[0]["title"] == "Tema"
+    assert out[0]["bullets"] == ["z"]
+
+
+def test_merge_topics_accent_insensitive() -> None:
+    from app.services.ai.validator import merge_topics
+
+    out = merge_topics(
+        [
+            {"title": "Acción Inmediata", "bullets": ["a"]},
+            {"title": "Accion Inmediata", "bullets": ["b"]},
+        ]
+    )
+    assert len(out) == 1
+    assert out[0]["bullets"] == ["a", "b"]

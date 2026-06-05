@@ -654,6 +654,16 @@ async def create_actor(
                 existing.phone = body.phone
                 existing.is_active = body.is_active
                 existing.is_lead = body.is_lead
+                # BUG-072: el revive también debe actualizar los campos
+                # de enriquecimiento US-114 si vienen en el body, igual
+                # que la creación. Antes se quedaban con el valor viejo
+                # (o null) de la entidad soft-deleted.
+                if body.company is not None:
+                    existing.company = body.company
+                if body.job_title is not None:
+                    existing.job_title = body.job_title
+                if body.manager_actor_id is not None:
+                    existing.manager_actor_id = str(body.manager_actor_id)
                 await db.commit()
                 return ActorRead.model_validate(existing)
             raise conflict(
@@ -672,6 +682,14 @@ async def create_actor(
         phone=body.phone,
         is_active=body.is_active,
         is_lead=body.is_lead,
+        # BUG-072: campos de enriquecimiento US-114. El schema los aceptaba
+        # pero el constructor los ignoraba — el frontend pedía Empresa /
+        # Cargo y al guardar la persona el valor se perdía.
+        company=body.company,
+        job_title=body.job_title,
+        manager_actor_id=(
+            str(body.manager_actor_id) if body.manager_actor_id else None
+        ),
         created_by=str(cu.id),
     )
     db.add(a)

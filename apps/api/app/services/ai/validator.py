@@ -171,6 +171,120 @@ def _normalize_name(name: str | None) -> str:
     return "".join(ch for ch in nfd if not unicodedata.combining(ch))
 
 
+# BUG-068: el LLM puede devolver header.date en cualquier formato
+# ("01/06/2026", "1 de junio", "2026-06-01"). El frontend hace
+# new Date(`${date}T12:00:00`).toISOString(), que crashea con
+# RangeError si el string no es ISO. Normalizamos aquí a YYYY-MM-DD
+# o null cuando no es parseable.
+_DATE_FORMATS_TRIED = (
+    "%Y-%m-%d",
+    "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y",
+    "%Y/%m/%d",
+    "%d/%m/%y", "%d-%m-%y",
+)
+
+
+def _normalize_iso_date(value: Any) -> str | None:
+    """Devuelve fecha en formato `YYYY-MM-DD` o `None` si no se puede
+    interpretar. Acepta strings ISO, formatos comunes es-MX/en-US, y
+    cualquier prefijo `YYYY-MM-DD` (e.g. timestamps ISO completos).
+    Nombres de mes en lenguaje natural devuelven `None` (mejor que
+    adivinar)."""
+    from datetime import date, datetime
+
+    if value is None:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if not isinstance(value, str):
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    # Caso fast-path: ISO completo o prefijo ISO.
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).date().isoformat()
+    except ValueError:
+        pass
+    for fmt in _DATE_FORMATS_TRIED:
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return None
+
+
+def merge_topics(items: list[Any]) -> list[dict[str, Any]]:
+    """Fusiona topics con el mismo título normalizado preservando orden.
+    Los `bullets` de las repeticiones se concatenan al primero,
+    descartando duplicados textuales (lowercase + strip).
+
+    BUG-070: cuando el transcript se divide en chunks con overlap, el
+    mismo tema puede ser extraído por varios chunks (ej. "Alcance del
+    Proyecto" aparece 3 veces). Aquí los unificamos en un único topic
+    con bullets combinados.
+    """
+    import unicodedata
+
+    def _key(title: Any) -> str:
+        raw = str(title or "").strip().lower()
+        nfd = unicodedata.normalize("NFD", raw)
+        return "".join(ch for ch in nfd if not unicodedata.combining(ch))
+
+    out: list[dict[str, Any]] = []
+    seen: dict[str, int] = {}
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        title = str(raw.get("title") or "").strip()
+        if not title:
+            continue
+        key = _key(title)
+        bullets_raw = raw.get("bullets") if isinstance(raw.get("bullets"), list) else []
+        bullets = [str(b).strip() for b in bullets_raw if str(b).strip()]
+        if key in seen:
+            target = out[seen[key]]
+            existing_norm = {b.strip().lower() for b in target["bullets"]}
+            for b in bullets:
+                if b.strip().lower() not in existing_norm:
+                    target["bullets"].append(b)
+                    existing_norm.add(b.strip().lower())
+            continue
+        seen[key] = len(out)
+        out.append({"title": title, "bullets": list(bullets)})
+    return out
+
+
+def dedupe_participants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Dedup por nombre normalizado preservando orden de aparición. Si
+    una repetición trae role/area/email no vacíos y el primero los tenía
+    vacíos, se completan (merge no destructivo).
+
+    BUG-069: usado tanto por `flatten_participants` (dentro de un chunk)
+    como por el merge cross-chunk del worker, donde cada chunk del
+    transcript puede mencionar al mismo participante.
+    """
+    out: list[dict[str, Any]] = []
+    seen: dict[str, int] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        key = _normalize_name(item.get("name"))
+        if not key:
+            continue
+        if key in seen:
+            existing = out[seen[key]]
+            for field in ("role", "area", "email"):
+                if not (existing.get(field) or "").strip() and (item.get(field) or "").strip():
+                    existing[field] = item[field]
+            continue
+        seen[key] = len(out)
+        out.append(dict(item))
+    return out
+
+
 def flatten_participants(payload: Any) -> list[dict[str, Any]]:
     """Aplana el dict de participantes del LLM a una lista plana de dicts,
     **deduplicada por nombre normalizado**.
@@ -210,24 +324,7 @@ def flatten_participants(payload: Any) -> list[dict[str, Any]]:
                     continue
                 raw_items.append({**raw, "attendance": attendance})
 
-    # Dedup por nombre normalizado, preservando orden de aparición. Si
-    # una repetición trae role/area no vacíos y el primero los tenía
-    # vacíos, se completan (merge no destructivo).
-    out: list[dict[str, Any]] = []
-    seen: dict[str, int] = {}
-    for item in raw_items:
-        key = _normalize_name(item.get("name"))
-        if not key:
-            continue
-        if key in seen:
-            existing = out[seen[key]]
-            for field in ("role", "area", "email"):
-                if not (existing.get(field) or "").strip() and (item.get(field) or "").strip():
-                    existing[field] = item[field]
-            continue
-        seen[key] = len(out)
-        out.append(item)
-    return out
+    return dedupe_participants(raw_items)
 
 
 # Mapping de tipos A/R/D/I canónicos al bucket persistible. Usamos los
@@ -303,6 +400,12 @@ def validate_minute_payload(payload: Any) -> tuple[dict[str, Any], dict[str, int
     if not isinstance(payload, dict):
         payload = {}
     header = payload.get("header") if isinstance(payload.get("header"), dict) else {}
+    # BUG-068: normaliza header.date a YYYY-MM-DD para que el frontend
+    # pueda hacer new Date(...).toISOString() sin crashear. Si el LLM
+    # devolvió algo no parseable (ej. "1 de junio"), queda None y el
+    # frontend cae a "hoy" por default.
+    if header:
+        header = {**header, "date": _normalize_iso_date(header.get("date"))}
     participants_raw = payload.get("participants")
     if isinstance(participants_raw, dict):
         participants = {
