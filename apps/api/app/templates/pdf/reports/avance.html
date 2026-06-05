@@ -114,7 +114,7 @@
       <td class="small">{{ m.area_name or "—" }}</td>
       <td class="right">{{ m.end_date or "—" }}</td>
       <td class="small">
-        {{ m.status }}
+        {{ m.status | status_badge }}
         {% if m.delayed %}<span class="pill red">retrasado</span>{% endif %}
       </td>
       <td class="nums right">{{ m.progress }}%</td>

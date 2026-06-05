@@ -42,7 +42,7 @@
           <td class="small">{{ "Tarea" if it.source == "task" else "Acción" }}</td>
           <td>{{ it.title }}</td>
           <td class="small">{{ it.owner_name or "—" }}</td>
-          <td class="small">{{ it.status }}</td>
+          <td class="small">{{ it.status | status_badge }}</td>
           <td class="small right">{{ it.due_date or "—" }}</td>
           {% if show_overdue %}
             <td class="small right">

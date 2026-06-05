@@ -24,6 +24,7 @@ from app.models.project import Project
 from app.models.report_history import ReportHistory
 from app.services.audit import write_audit
 from app.services.html_report_renderer import render_report_html
+from app.services.status_display import normalize_status, status_badge_html
 from app.services.operational_reports import (
     build_avance_context,
     build_look_ahead_context,
@@ -1432,22 +1433,22 @@ def _project_render_data(
     def _task_row(t):
         owner = getattr(t, "assignee_name", None) or getattr(t, "owner_name", None)
         end = getattr(t, "end_date", None)
-        status = getattr(t, "status", "") or ""
-        if status == "in_progress":
-            status = "En curso"
-        elif status == "completed":
-            status = "Hecho"
-        elif status == "not_started":
-            status = "Pendiente"
+        raw_status = getattr(t, "status", "") or ""
         # ENH-064 — anota retraso como sufijo para que el filtro KPI
         # "retrasada" funcione (busca el texto en la fila).
         delayed_now = (
             end is not None
             and end < datetime.now(UTC).date()
-            and status != "Hecho"
+            and normalize_status(raw_status) != "completed"
         )
+        # ENH-150 — status en ES con color leve (badge HTML; la columna
+        # Estado se marca como raw en la tabla del renderer).
+        status = status_badge_html(raw_status)
         if delayed_now:
-            status += " (retrasada)"
+            status += (
+                ' <span style="color:#991b1b;font-weight:600;font-size:0.85em;">'
+                " (retrasada)</span>"
+            )
         return {
             "name": getattr(t, "name", "") or "",
             "owner": owner or "—",

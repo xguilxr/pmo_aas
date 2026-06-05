@@ -125,10 +125,16 @@ def _details(title: str, body_html: str, *, open_default: bool = True) -> str:
 
 
 def _filter_table(
-    table_id: str, columns: list[str], rows: list[list[Any]]
+    table_id: str, columns: list[str], rows: list[list[Any]],
+    raw_cols: set[int] | None = None,
 ) -> str:
     """Tabla con input de filtro `<input>` que el JS embebido aplica
-    sobre las filas (CA2 — filtros client-side)."""
+    sobre las filas (CA2 — filtros client-side).
+
+    `raw_cols` (ENH-150): índices de columna cuyo contenido ya es HTML
+    seguro y no debe escaparse (p.ej. el badge de status).
+    """
+    raw = raw_cols or set()
     head = "".join(
         f'<th style="text-align:left;padding:8px 10px;font-size:10.5px;'
         f'text-transform:uppercase;letter-spacing:0.04em;color:#756F60;'
@@ -139,8 +145,9 @@ def _filter_table(
         '<tr data-row="1">'
         + "".join(
             f'<td style="padding:8px 10px;font-size:13px;color:#1F1D17;'
-            f'border-bottom:1px solid #EEF1F6;">{_esc(cell)}</td>'
-            for cell in r
+            f'border-bottom:1px solid #EEF1F6;">'
+            f'{cell if i in raw else _esc(cell)}</td>'
+            for i, cell in enumerate(r)
         )
         + "</tr>"
         for r in rows
@@ -258,6 +265,7 @@ def render_report_html(
             ]
             for t in tasks
         ],
+        raw_cols={2},  # ENH-150 — la columna Estado trae badge HTML
     )
 
     risks_table = _filter_table(

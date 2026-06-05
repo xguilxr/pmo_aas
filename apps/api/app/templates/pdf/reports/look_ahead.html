@@ -36,7 +36,7 @@
       <td class="nums">{{ t.start_date or "—" }}</td>
       <td class="nums">{{ t.end_date or "—" }}</td>
       <td class="nums right">{{ t.progress or 0 }}%</td>
-      <td>{{ t.status }}</td>
+      <td>{{ t.status | status_badge }}</td>
     </tr>
     {% endfor %}
   </tbody>
