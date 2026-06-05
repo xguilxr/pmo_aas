@@ -4,6 +4,31 @@
 
 ---
 
+## Batches post-Sprint 33 mergeados a main — 2026-05-26 → 2026-05-29
+
+> Archivados desde `SPRINT.md` IN-PROGRESS el 2026-06-05 (branches confirmadas mergeadas a `origin/main` vía `git branch -r --merged`).
+
+### Batch "deepwork reportes/RAID/IA/charts" — branch `claude/deepwork-reports-raid-ai-charts` (2026-05-28/29)
+- BUG-069 #524 — charts: donut se llena al 100% (Pie con stroke-dasharray), colores de marca en programa, dedup de métricas, KpiCard compartido, empty states más limpios.
+- ENH-146 #525 — reportes con logos (PMO+cliente, data-URL) + paleta/tipo on-brand (PDF y HTML inline) + donut/gauge reales + KPI cards + gantt inline (S-19) + fix on_time_pct.
+- ENH-147 #526 — minutas→RAID confiables: json_mode por proveedor + parser tolerante (fences/comas) + repair-retry sin pérdida silenciosa.
+- US-165 #527 — asistente IA conversacional: modelo de conversación (mig. **0084**) + endpoint /assistant + widget flotante global (Ctrl/⌘-K).
+- ENH-148 #528 — housekeeping: README/env/epics al día, sin Ollama, dead code removido (require_permission, workspaces field).
+- Diferidos (no bloqueantes): dashboard eyebrows (NEEDS-VISUAL-CHECK), KPI band en builder.html, borrado de packages/sdk (riesgo frozen-lockfile), dedup de RAID por chunk.
+
+### Batch "bugs logos + /pmo + rediseño big canvas" — branch `claude/friendly-lamport-LZ45l` (2026-05-26)
+- BUG-068 #514 (e87c55f + 70f377a) — upload PNG de logos de org (data-URL en DB, mig. **0082**) + preview circular. Follow-up: logo del tenant a data-URL (mig. **0083**).
+- ENH-142 #515 (1ad5ed3) — botones crear org/programa/proyecto en /pmo.
+- ENH-143 #516 (c7551b4) — org detail: botón Nuevo proyecto, renombra Status, quita toggle Resumen/Reportes.
+- US-164 #517 (766f9f4) — rediseño "big canvas" global (lienzo cream + sidebar azul flotante + topbar full-width + pinch-zoom + dark mode). Supersede chrome navy DEC-006.
+- Doc follow-up diferido (US-164): navigation.md + ADR/DEC del supersede de chrome navy DEC-006.
+
+### Batch "chrome: logo full-size + iconos org/programa" — branch `claude/gracious-pascal-MPjsq` (2026-05-26)
+- ENH-144 #520 (e5f70e1) — logo del tenant a tamaño completo en topbar + branding "PMO-aaS"; elimina el nombre del tenant en texto.
+- ENH-145 #521 (d5974a9) — iconos distintos: organizaciones `Building2`, programas `Layers`; corrige mislabel del nav admin.
+
+---
+
 ## Sprint 1 (v1.0 MVP) — Completado 2026-04-21
 
 ### ✅ DONE (histórico reciente Sprint 1)

@@ -1,88 +1,115 @@
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-05-26
-**Branch activa:** `claude/laughing-carson-stUJu`
+**Última actualización:** 2026-06-05
+**Branch activa:** `claude/gantt-areas-fixes`
 **Generado por:** /handoff
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-Sprint 33 (v1.28) entregado completo en la branch `claude/laughing-carson-stUJu`:
-**Dashboards N1/N2 ricos + reportes derivados + revamp v1 + 4 follow-ups** (19
-commits, `status:fix-committed`). La branch está rebaseada sobre `main` (que ya
-tiene el rediseño V1 de project detail, #511). Tests backend 583 passed/1
-skipped; ruff + tsc + next build verdes; render real de PDF (WeasyPrint)
-validado. **Nada mergeado aún** de esta sesión: la branch espera merge + QA
-visual del owner. Cero PRs abiertos (no se creó PR).
+El batch **"gantt/áreas/reportes/RAID fixes"** está **completo y en
+`status:fix-committed`**, esperando que el owner cree el PR, mergee y haga QA.
+Esta sesión cerró los **4 temas restantes** que dejó el handoff anterior
+(ENH-149, BUG-075, ENH-152, ENH-154). 9 commits de trabajo en total (6 de la
+sesión previa + 3 de esta), todos pusheados. **No hay PR creado todavía.** La
+branch está detrás de `origin/main` (main avanzó con otros merges que **no
+tocan** estos archivos).
 
 ## 📍 Dónde retomar (próximo paso accionable)
 
-**Owner primero:** mergear `claude/laughing-carson-stUJu` a `main`, correr
-`alembic upgrade head` en Railway (migraciones 0079/0080/0081) y hacer QA visual
-(4 páginas + 3 PDF). Una vez mergeado, la próxima sesión arranca limpio desde
-INBOX (no hay US activa). Próximo libre: **US-164, BUG-068, ENH-142.**
+**Crear el PR** `claude/gantt-areas-fixes` → `main` y verificar/cerrar los 4
+issues nuevos (#544-547). Si CI falla por estar detrás de main: rebase +
+`--force-with-lease`. Luego, próximo trabajo: `ENH-115 #434` (breadcrumbs en
+`/pmo/**/reports`, en INBOX) cuando el owner lo priorice.
 
-## ✅ Hecho en esta sesión
+## ✅ Hecho en esta sesión (2026-06-05)
 
-Sprint 33 (v1.28) — branch `claude/laughing-carson-stUJu`. Detalle completo en
-`SPRINT-DONE-HISTORY.md`. Resumen:
+- **ENH-149 #544** — Plan: editar `end_date`. **Sin código**: ya estaba
+  implementado end-to-end (input del modal de editar tarea + PATCH que persiste
+  + cierre de BUG-074 que des-marca el atraso). Verificado los 7 eslabones y el
+  edge case de 21 días (no aplica: `ensure_duration_max_21` es no-op). Issue
+  documentado + `status:fix-committed`.
+- **BUG-075 #545** (`aa5708c`) — RAID: estado editable. `<Select>` in-place en el
+  badge del header de `raid-detail-page.tsx`, poblado por tipo (Risk vs Issue).
+  Backend ya aceptaba `status`. Frontend-only.
+- **ENH-154 #546** (`02dd08a`) — Reporte de Seguimiento: sección **"Acciones"**
+  (toda acción abierta) antes de "Actividades próximas". Las acciones salen de
+  los buckets de Actividades (sin duplicados); rescata acciones sin fecha.
+- **ENH-152 #547** (`482566f`) — Export RAID rework: XLSX único con 4 hojas ES
+  (Riesgos/Acciones/Incidencias/Decisiones), nombres resueltos a texto, filename
+  `RAID-[Nombre Proyecto].xlsx`, mismo archivo para el botón de `/raid` (pasó de
+  CSV cliente a descarga del endpoint) y el de Documentos.
 
-- **Fundación datos:** US-151 (`metric_snapshots`, mig. 0079) `77f977c`, US-152 (endpoints analytics) `ab40c73`.
-- **Dashboards:** US-153 primitivos SVG `a6f0ba5`; US-154 `/dashboard` `af41833`; US-155 `/pmo` `44bcac6`; US-156 org `5f9913d`; US-157 programa `0c9ff4d`.
-- **Reportes derivados:** US-158 S-05/S-15 (mig. 0080) `647795a`; US-160 reportes N1/N2 PDF `3451eeb`; US-161 S-07 Curva-S (mig. 0081) `ffbb38b`; US-163 heatmap/treemap en PDF `6e61149`.
-- **Revamp + follow-ups:** US-159 revamp v1 `411a44b`; US-162 acceso PM scoped `360e5ee`; ENH-141 consolidar gauge `9a669c6`.
-- **Docs:** EP004/EP020/DB-CHANGES actualizados en los mismos bloques.
+Verificación: `tsc --noEmit` verde · ruff limpio · pytest seguimiento 12/12 +
+RAID export 4/4 + EP006 20/20. SPRINT.md limpiado (3 batches viejos mergeados
+archivados a `SPRINT-DONE-HISTORY.md`).
 
 ## 🔄 PRs abiertos o en flight
 
-Ninguno. La branch `claude/laughing-carson-stUJu` no tiene PR creado (el owner
-abre/mergea). #511 ya está mergeado a main.
+| # | Branch | Estado CI | Acción pendiente |
+|---|---|---|---|
+| (ninguno) | `claude/gantt-areas-fixes` | sin PR | **Crear PR** → main, mergear tras QA |
 
 ## ⚠️ Gotchas y decisiones recientes
 
-- **Snapshots históricos reactivados** (estaban diferidos a v2.0): ahora v1.x, cadencia semanal por scope. El dashboard es fuente de verdad; los reportes se derivan.
-- **S-07 Curva-S reactivada** (estaba "descartada"): planeado lineal `start_date`→`end_date`, capturado en `metric_snapshots.extras.avg_progress_plan`.
-- **Reportes N1/N2 viven fuera del Report Builder** (project-only por mig. 0078): generación on-demand vía endpoints dedicados, **sin persistir** `Report` rows (persistencia sigue en backlog v2.0).
-- **Vistas agregadas accesibles a PMs** (decisión owner 2026-05-26), scoped a sus proyectos vía `scoped_project_ids`. Capturar snapshots sigue admin-only.
-- **Capture button**: en `/dashboard` se muestra cuando cargan las analíticas; para un PM no-admin devuelve 403 con banner informativo (accept. menor).
-- **Verificación visual pendiente**: tests + build + render real de PDF cubren correctitud, pero NO el aspecto visual en navegador (sin display en el entorno remoto).
+- **El handoff anterior tenía errores de modelo** (los corregí al mapear contra
+  el código real, no los seguí a ciegas): BUG-075 NO era `raid-edit-fields.tsx`
+  (código muerto) ni `RiskActionItem` — son `Risk`+`Issue` de `models/modules.py`,
+  cada uno con su set de estados. ENH-152 NO tenía 2 generadores (el de `/raid`
+  era CSV cliente; el único XLSX es `raid_export.py`). ENH-154 NO era
+  `RiskActionItem` — son `Issue` con `type=='action'`.
+- **Decisiones del owner (2026-06-05):** BUG-075 las Decisiones reusan el set de
+  estados de Issue (no set propio → evita migración). ENH-152: descartar
+  Lessons/Changes del export; Responsable = Actor con fallback a Usuario; Fecha
+  creación = de negocio (`identified_at`/`reported_at`); filename legible; `/raid`
+  reemplaza CSV por el XLSX. ENH-154: criterio "vigente" = toda acción abierta;
+  acciones aparte (no duplicar en Actividades).
+- **Branch detrás de `origin/main`**: main avanzó (BUG-068 a 072: minutas/actores)
+  sin tocar estos archivos. Rebase solo si CI lo pide al armar el PR.
+- **Permisos GitHub**: el owner eligió autorizar las escrituras (issue/push/comment)
+  **tema por tema**; el classifier las frena individualmente.
 
-## 📋 Lo que sigue (resumen ejecutivo del backlog activo)
+## 📋 Lo que sigue (resumen del backlog activo)
 
-Detalle en INBOX/Deferred de `SPRINT.md`.
+Detalle en `SPRINT.md`.
 
-- **INBOX:** ENH-115 #434 (breadcrumbs cross `/pmo/**/reports`, `status:ready` diferido).
-- **Deferred:** chat IA global (US-102 + ENH-074/075/076); paquete Áreas/Recursos EP017 (ENH-109 bloquea US-119/ENH-110; US-133/134 RBAC); admin UI settings (ENH-111/112/113).
-- **Backlog v2.0:** persistencia histórica de reportes L1/L2 (la generación ya existe); KPIs custom por tenant; S-10 entregables formales; cleanup carpetas redirect post-Sprint 32.
+- **INBOX:** ENH-115 #434 — breadcrumbs en `/pmo/**/reports` (`status:ready`,
+  diferido; owner reasigna cuando prioriza).
+- **Deferred:** IA conversacional global (US-102/ENH-074-076), redefinición
+  Áreas/Recursos (US-105/119/133/134, ENH-109/110), admin UI settings
+  (ENH-111/112/113). Re-evaluar post-EP020.
+- **Próximo libre:** US-166, BUG-077, ENH-155.
 
 ## 📚 Estado de las epics docs
 
 | Epic | Sincronizada | Notas |
 |---|---|---|
-| EP004 (dashboard) | sí | Documenta US-151…163 + ENH-141 (Fase 1-5 + follow-ups). |
-| EP020 (report-builder) | sí | S-05/S-07/S-15 implementadas; nota L1/L2 fuera del builder. |
-| DB-CHANGES.md | sí | Migración 0079 documentada (0080/0081 son seeds de datos). |
+| EP006 (project-modules) | sí | AC del export RAID actualizado (ENH-152) |
+| EP014 (operational-deliverables) | sí | Reporte de Seguimiento: sección Acciones (ENH-154) |
+| EP018 (documents-artifacts) | sí | Artefacto RAIDs: 4 hojas ES + nombres resueltos (ENH-152) |
 
-## 🧹 Cleanup técnico pendiente
+No quedan epics desactualizadas por los commits de esta sesión.
 
-- [ ] Mergear `claude/laughing-carson-stUJu` → `main`.
-- [ ] `alembic upgrade head` en Railway (aplica 0079 + 0080 + 0081).
-- [ ] Tras deploy, capturar snapshot (botón en `/dashboard`) para sembrar tendencias/curva-S; si no, el primer punto llega con el job del lunes 02:00 UTC.
-- [ ] QA visual: `/dashboard`, `/pmo`, org y programa (+ dark mode) y los 3 PDF (status N1/N2 + secciones S-05/S-07/S-15 en el builder de proyecto).
+## 🧹 Cleanup técnico pendiente (owner / externo)
+
+- [ ] (GitHub web) Crear PR `claude/gantt-areas-fixes` → `main`: https://github.com/xguilxr/pmo_aas/compare/main...claude/gantt-areas-fixes
+- [ ] (app) Verificar y **cerrar** #544 (ENH-149), #545 (BUG-075), #546 (ENH-154), #547 (ENH-152) — cada comment trae su smoke test.
+- [ ] (Git Bash, si CI falla por estar atrás de main) `git fetch origin main && git rebase origin/main && git push --force-with-lease origin claude/gantt-areas-fixes`
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
-- Scoping fino del **botón "Capturar snapshot"** para ocultarlo a no-admins (hoy 403 con banner).
-- Persistencia del histórico de reportes N1/N2 (Report rows con `generator` + `project_id` nullable).
-- Heatmap/treemap como SVG más rico (squarified) si se quiere más fidelidad en el PDF.
+- Export RAID de **Lecciones/Cambios** aparte (ENH-152 los descartó del XLSX RAID).
+- Contador de **Acciones** en la tabla "Resumen" del Reporte de Seguimiento
+  (ENH-154 dejó el Resumen contando solo Actividades).
 
 ---
 
 ## Cómo retomar
 
-Para la próxima sesión:
-
-1. Lee este `HANDOFF.md` primero.
-2. Luego `CLAUDE.md` + `docs/project-management/SPRINT.md` + el epic en flight (EP004 / EP020).
-3. Continúa desde el "próximo paso accionable" arriba (merge + QA del owner; luego INBOX).
+1. (Git Bash o WSL) `cd /c/Users/dagui/claude/pmo_aas && git checkout claude/gantt-areas-fixes && git pull`
+2. (Git Bash) `git checkout -- apps/api/uv.lock 2>/dev/null; rm -f apps/api/uv.lock` — limpiar el artefacto untracked si `uv run` lo regeneró.
+3. (PowerShell, en `apps/api`) backend: `uv run uvicorn app.main:app --reload`
+4. (PowerShell, en `apps/web`) front: `pnpm dev` (sin `pnpm install`, lockfile intacto)
+5. (GitHub web) crear el PR y mergear tras QA, o continuar con ENH-115 sobre branch nueva.
+6. (tests por tema) `cd apps/api && uv run python -m pytest tests/ -k "<keyword>" -q` · `cd apps/web && pnpm exec tsc --noEmit`
