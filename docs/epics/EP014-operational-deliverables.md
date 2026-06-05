@@ -117,7 +117,7 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 **Criterios de aceptación:**
 - [ ] Endpoint `POST /api/v1/projects/{id}/reports/seguimiento` con body `{ window_days?: int }`. Default = 14 (semana pasada + siguiente).
 - [ ] Contexto desde la BD:
-  - Actividades vencidas (`due_date < today AND status NOT IN ('resolved','closed','done')`). Incluye tareas del plan y AIDs tipo action.
+  - Actividades vencidas (`due_date < today AND status NOT IN ('resolved','closed','done')`). **ENH-154 (2026-06-05): solo tareas del plan** — las AIDs tipo action se movieron a su propia sección "Acciones".
   - Actividades en curso.
   - Actividades próximas (hasta `window_days` adelante).
   - Agrupación: **por responsable** (nombre del usuario o area_reference).
@@ -129,7 +129,7 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 - [ ] Endpoint `GET /api/v1/reports/{id}/seguimiento/download`.
 
 **Implementación:**
-- `operational_reports.build_seguimiento_context()` unifica tareas del plan (no cerradas) y AIDs tipo `action` abiertas, clasifica en Vencidas / En curso / Próximas y agrupa por responsable (con bucket "Sin responsable" para items sin owner).
+- `operational_reports.build_seguimiento_context()` clasifica las tareas del plan (no cerradas) en Vencidas / En curso / Próximas y agrupa por área. **ENH-154 (2026-06-05):** las AIDs tipo `action` abiertas (status ∉ resolved/closed) ya no se mezclan en esos buckets; se listan completas (sin filtro de ventana) en su propia sección **"Acciones"** (`groups_actions`), renderizada antes de "Actividades próximas".
 - Plantilla `templates/pdf/reports/seguimiento.html` renderiza 3 secciones con una tabla por owner.
 - Endpoints `POST /api/v1/projects/{id}/reports/seguimiento` (body: `cut_off_date?`, `window_days?`) y `GET /api/v1/reports/{id}/seguimiento/download`.
 - Frontend: botón "Reporte de Seguimiento (PDF)" junto al de Avance.

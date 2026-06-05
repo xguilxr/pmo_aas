@@ -425,10 +425,11 @@ async def build_seguimiento_context(
 ) -> dict[str, Any]:
     """Contexto para Reporte de Seguimiento (acciones por responsable).
 
-    Unifica tareas del plan (no cerradas) y AIDs tipo `action` abiertas,
-    y las reparte en: vencidas, en curso (dentro de la ventana anterior)
-    y próximas (dentro de la ventana siguiente). Dentro de cada bucket
-    agrupa por responsable.
+    Reparte las tareas del plan (no cerradas) en: vencidas, en curso
+    (dentro de la ventana anterior) y próximas (dentro de la ventana
+    siguiente). ENH-154: las AIDs tipo `action` abiertas ya no se mezclan
+    en esos buckets; se listan completas en su propia sección "Acciones"
+    (`groups_actions`). Dentro de cada bloque agrupa por área.
     """
     project = await _get_project(db, tenant_id, project_id)
     window_end = cut_off_date + timedelta(days=window_days)
@@ -500,9 +501,13 @@ async def build_seguimiento_context(
             "progress": t.progress or 0,
             "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
         })
+    # ENH-154: las acciones (AID type=action) dejan de mezclarse con las
+    # tareas en los buckets de Actividades; van a su propia sección
+    # "Acciones" con TODAS las abiertas (sin filtro de ventana).
+    actions_items: list[dict[str, Any]] = []
     for a in action_rows:
         due = a.committed_date
-        items.append({
+        actions_items.append({
             "source": "action",
             "folio": a.folio,
             "title": a.title,
@@ -573,6 +578,7 @@ async def build_seguimiento_context(
         "groups_overdue": group(overdue),
         "groups_in_progress": group(in_progress),
         "groups_upcoming": group(upcoming),
+        "groups_actions": group(actions_items),
     }
 
 
