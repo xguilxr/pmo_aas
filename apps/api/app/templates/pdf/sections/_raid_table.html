@@ -1,0 +1,17 @@
+{# Helper compartido para S-12 / S-13 / S-14 (Issues/Decisions/Actions) #}
+{% if data.rows %}
+<table>
+  <thead><tr><th>Folio</th><th>Título</th><th>Estado</th><th>Comprometido</th><th>Área</th></tr></thead>
+  <tbody>
+    {% for r in data.rows %}
+    <tr>
+      <td class="small muted">{{ r.folio or '' }}</td>
+      <td>{{ r.title }}</td>
+      <td>{{ r.status }}</td>
+      <td class="small">{{ r.committed_date or '—' }}</td>
+      <td>{{ r.area_name }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">Sin items.</p>{% endif %}

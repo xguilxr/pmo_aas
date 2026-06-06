@@ -41,18 +41,19 @@ import {
  *
  * Render HTML embebido (sin pop-up) con secciones colapsables: Resumen,
  * Participantes, Temas, Acuerdos + el editor de Sugerencias RAID
- * (US-108). Header con acciones: Descargar (PDF/DOCX/MD/TXT), Borrar
+ * (US-108). Header con acciones: Descargar (PDF/DOCX), Borrar
  * (ENH-091) y ← Volver. Botón "Pop-up" opcional para usuarios que
  * prefieran ventana externa (CA4 — diferido a cuando lo pidan).
  *
  * Layout limpio sin sidebar — dentro del shell de la app pero la página
  * ocupa todo el ancho (max-w-5xl).
+ *
+ * ENH-118 (2026-05-23): MD/TXT removidos del export. El backend sigue
+ * aceptándolos por compat, pero la UI no los ofrece más.
  */
 const EXPORT_FORMATS: Array<{ key: MinuteExportFormat; label: string }> = [
   { key: "pdf", label: "PDF" },
   { key: "docx", label: "DOCX" },
-  { key: "md", label: "MD" },
-  { key: "txt", label: "TXT" },
 ];
 
 export default function MinutePreviewPage() {
@@ -211,6 +212,19 @@ export default function MinutePreviewPage() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
+      {/* BUG-063: resumen visible al inicio (read-only en detail; el
+          form de generación es el lugar para editar). */}
+      {minute.description ? (
+        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+          <h2 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+            Resumen
+          </h2>
+          <p className="whitespace-pre-wrap text-[13px] text-[var(--text-primary)]">
+            {minute.description}
+          </p>
+        </section>
+      ) : null}
+
       {/* ENH-095 — Editor estructurado por secciones (participants / topics
           / agreements). Cada sección tiene "Editar" → forms inline →
           "Guardar / Cancelar"; al guardar, PATCH `/meeting-minutes/{id}`
@@ -218,6 +232,22 @@ export default function MinutePreviewPage() {
       <ParticipantsSection minute={minute} setMinute={setMinute} />
       <TopicsSection minute={minute} setMinute={setMinute} />
       <AgreementsSection minute={minute} setMinute={setMinute} />
+
+      {/* BUG-063: notas libres persistidas en raid_suggestions._meta.free_notes. */}
+      {(() => {
+        const fn = (minute.raid_suggestions as { _meta?: { free_notes?: string } } | undefined)?._meta?.free_notes;
+        if (!fn) return null;
+        return (
+          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+            <h2 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+              Notas libres
+            </h2>
+            <p className="whitespace-pre-wrap text-[13px] text-[var(--text-primary)]">
+              {fn}
+            </p>
+          </section>
+        );
+      })()}
 
       {/* US-108: editor de sugerencias RAID embebido en el preview. */}
       <MinuteRaidSuggestionsEditor
@@ -382,11 +412,28 @@ function ParticipantsSection({
           </p>
         ) : (
           <ul className="flex flex-wrap gap-1.5">
-            {minute.participants.map((p, i) => (
-              <li key={i}>
-                <Badge>{p.role ? `${p.name} · ${p.role}` : p.name}</Badge>
-              </li>
-            ))}
+            {minute.participants.map((p, i) => {
+              // ENH-103: chip color refleja el match contra actors del
+              // proyecto. matched (actor existente) = success/verde;
+              // auto_created (creado on-the-fly, pending verificación) =
+              // warning/amarillo. Sin match_status (legacy / minutas
+              // pre-ENH-103) = neutral.
+              const match = (p as { match_status?: string }).match_status;
+              const variant: "success" | "warning" | "neutral" =
+                match === "matched"
+                  ? "success"
+                  : match === "auto_created"
+                    ? "warning"
+                    : "neutral";
+              return (
+                <li key={i}>
+                  <Badge variant={variant}>
+                    {p.role ? `${p.name} · ${p.role}` : p.name}
+                    {match === "auto_created" ? " ·  nuevo" : null}
+                  </Badge>
+                </li>
+              );
+            })}
           </ul>
         )
       ) : (
@@ -455,12 +502,15 @@ function TopicsSection({
   }
   async function commit() {
     const cleaned = draft
-      .map((t) => ({
-        ...t,
-        title: (t.title ?? "").trim(),
-        notes: (t.notes ?? "").trim(),
-      }))
-      .filter((t) => t.title.length > 0 || t.notes.length > 0);
+      .map((t) => {
+        const title = (t.title ?? "").trim();
+        const bullets = Array.isArray(t.bullets)
+          ? t.bullets.map((b) => b.trim()).filter(Boolean)
+          : [];
+        const notes = (t.notes ?? "").trim();
+        return { title, bullets, notes };
+      })
+      .filter((t) => t.title.length > 0 || t.bullets.length > 0 || t.notes.length > 0);
     const ok = await save("topics", cleaned);
     if (ok) setEditing(false);
   }
@@ -501,7 +551,13 @@ function TopicsSection({
                 <p className="text-[13px] font-medium text-[var(--text-primary)]">
                   {t.title}
                 </p>
-                {t.notes ? (
+                {Array.isArray(t.bullets) && t.bullets.length > 0 ? (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[12px] text-[var(--text-secondary)]">
+                    {t.bullets.map((b, j) => (
+                      <li key={j} className="whitespace-pre-wrap">{b}</li>
+                    ))}
+                  </ul>
+                ) : t.notes ? (
                   <p className="mt-1 whitespace-pre-wrap text-[12px] text-[var(--text-secondary)]">
                     {t.notes}
                   </p>
@@ -527,14 +583,27 @@ function TopicsSection({
                 placeholder="Título del tema"
               />
               <Textarea
-                rows={4}
-                value={t.notes ?? ""}
-                onChange={(e) =>
-                  setDraft((d) =>
-                    d.map((x, j) => (j === i ? { ...x, notes: e.target.value } : x)),
-                  )
+                rows={Math.max(
+                  4,
+                  Array.isArray(t.bullets) ? t.bullets.length : (t.notes ?? "").split(/\r?\n/).length,
+                )}
+                value={
+                  Array.isArray(t.bullets)
+                    ? t.bullets.join("\n")
+                    : (t.notes ?? "")
                 }
-                placeholder="Notas (2-5 oraciones con contexto, responsables, fechas, próximos pasos)"
+                onChange={(e) => {
+                  const lines = e.target.value
+                    .split(/\r?\n/)
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  setDraft((d) =>
+                    d.map((x, j) =>
+                      j === i ? { ...x, bullets: lines, notes: "" } : x,
+                    ),
+                  );
+                }}
+                placeholder="Bullets factuales (uno por línea — nombres, fechas, decisiones)"
               />
               <div className="flex justify-end">
                 <Button
@@ -550,7 +619,7 @@ function TopicsSection({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setDraft((d) => [...d, { title: "", notes: "" }])}
+            onClick={() => setDraft((d) => [...d, { title: "", bullets: [] }])}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar tema
           </Button>

@@ -225,6 +225,18 @@ Registrada 2026-04-23, al cerrar Sprint 2 v1.1.
 
 ## DEC-019 — Catálogo BYO sin Ollama + feature flag del wizard de conexión
 
+> **Update 2026-05-08 (BUG-053):** la "Parte 1" se llevó al límite —
+> `OllamaProvider` fue eliminado del runtime. Cualquier tenant que aún
+> tenga `settings.ai.byo.provider="ollama"` falla con
+> `unsupported_provider` al generar IA. La parte de "back-compat para
+> tenants legacy" descrita abajo es histórica.
+>
+> **Update 2026-05-23:** la "Parte 2 — feature flag `AI_BYO_ENABLED`"
+> se removió. BYO está siempre disponible; cualquier tenant admin puede
+> conectar provider desde `/admin/ai`. Si una card aparece como
+> "Próximamente" hoy, es por entrada `disabled` específica del
+> catálogo, no un gate global.
+
 **Contexto (2026-04-24, post-deploy v1.1):** el owner reportó que la
 UI `/admin/ai` seguía mostrando las opciones legacy (`sin definir`,
 `ollama local`, `claude`, `desactivado`) en el selector de modo IA.
@@ -570,3 +582,37 @@ pequeña.
 Registrada 2026-04-25 tras sesión de diseño del Sprint 6 con owner.
 Implementación: Sprint 6 v1.5 (US-076 a US-080). Borrado físico de
 tablas legacy en Sprint 7 (US-081).
+
+---
+
+## DEC-025 — Catálogo cerrado de 22 secciones atómicas para todos los niveles de reporte (EP020)
+**Fecha:** 2026-05-25
+**Decisión:** Una única lista cerrada de 22 secciones (`report_sections.code` S-01..S-36, ver `docs/epics/drafts/EP020-secciones-atomicas.md`) compone TODOS los reportes del PMOaaS sin importar nivel (PMO / Org / Proyecto / Custom). Se cierra el dual-motor heredado de EP014 (templated Python en `operational_reports.py`) y se unifica en un motor declarativo (`app/services/reports/engine.py`) que lee `report_builder_templates.section_codes`.
+**Rationale:** Una sola superficie de testing (TC-200..237), una sola pipeline de actualización del catálogo, una sola plantilla base para PDF. Los reportes operativos (US-038/039) siguen funcionando pero los nuevos pasan por el motor declarativo.
+**Implementación:** US-120 (catálogo seed), US-122 (4 plantillas seed), US-123 (engine).
+
+## DEC-026 — Dos modos de composición A/B en el motor de render (EP020)
+**Fecha:** 2026-05-25
+**Decisión:** El motor soporta `composition_mode='A'` ("by_section" — secciones secuenciales, items ordenados por área→fecha) y `composition_mode='B'` ("by_area" — matriz invertida que itera áreas y dentro de cada área renderiza secciones). Es una decisión de render, no de query.
+**Rationale:** La estructura del Reporte de Avance (sección × área) y la del Reporte de Seguimiento (área × sección) son las únicas dos vistas que el negocio necesita; codificarlo como flag binario en la plantilla evita que cada PM reinvente layouts ad-hoc.
+**Implementación:** US-123, `engine._section_by_section` y `engine._section_by_area`.
+
+## DEC-027 — Sin snapshots históricos en v1.0 (EP020)
+**Fecha:** 2026-05-25
+**Decisión:** Los reportes Nivel 1/2/3/4 muestran sólo estado actual. NO se persisten snapshots periódicos de KPIs / semáforo / curva S.
+**Rationale:** Snapshots requieren tabla aparte + job de captura + lógica de comparación entre cortes, todo fuera del scope de v1.0. Se evalúa en v2.0 cuando haya 3+ tenants pidiendo tendencia.
+**Afectados:** S-05 tendencia, S-07 curva S, S-10 entregables formales, sparklines, "deltas vs anterior" — todos descartados de v1.0.
+**Backlog:** ver `docs/project-management/SPRINT.md` → "Snapshots históricos (postergado v2.0)".
+
+## DEC-028 — Método de cálculo de % avance configurable por tenant (EP020)
+**Fecha:** 2026-05-25
+**Decisión:** `tenants.settings.report_builder.progress_calculation_method` (ENH-098) acepta `by_task_count` (default), `by_duration` o `by_effort`. El servicio `progress_calculator.compute_progress_detailed()` dispatcha según el método y devuelve `fallback` cuando los datos requeridos no existen (ej. `by_effort` cae a `by_task_count` porque `tasks.hours_estimated` aún no existe).
+**Rationale:** Distintos PMOs miden avance distinto; obligar a un método único genera fricción. El fallback explícito en el resultado deja claro qué se está reportando.
+**Implementación:** US-121 + ENH-098 (Sprint 26), reusado por S-06/S-08/S-35 vía `engine`.
+
+## DEC-029 — Gantt snapshot S-19 como SVG Python en v1.0; headless Playwright queda diferido (EP020)
+**Fecha:** 2026-05-25
+**Decisión:** El endpoint `GET /projects/{id}/gantt/snapshot` devuelve `image/svg+xml` generado 100% en Python (`app/services/reports/gantt_renderer.py`) — agrupación por WBS-N + barras + overlay de % avance. NO se usa Playwright en v1.0.
+**Rationale:** Playwright en el worker agrega ~200MB a la imagen + manejo de pool de browsers + auth dance al frontend; render < 10s no garantizable para proyectos grandes. El SVG Python rinde < 1s, es embebible en `<img>` y inlineable por WeasyPrint en el PDF, y el contrato HTTP (`image/svg+xml`) queda estable para cuando se migre a screenshot real.
+**Implementación:** US-132. `format=png` devuelve 501 hasta que llegue la evolución headless.
+**Trigger para revisar:** dos PMs pidiendo "Gantt idéntico al de la app" o necesidad de exports a herramientas que no rendericen SVG (raro).

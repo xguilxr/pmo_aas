@@ -1,6 +1,9 @@
 import { apiFetch } from "@/lib/api";
 
-export type ScheduledReportType = "avance" | "seguimiento";
+// ENH-114: extiende el tipo con 'custom' para suscripciones del Report
+// Builder (US-131). Cuando el tipo es 'custom', `report_builder_template_id`
+// debe ser el id de una `report_builder_templates`.
+export type ScheduledReportType = "avance" | "seguimiento" | "custom";
 export type ScheduledReportCadence = "daily" | "weekly" | "monthly" | "once";
 
 export type ScheduledReport = {
@@ -15,6 +18,8 @@ export type ScheduledReport = {
   // no tiene ese día, se clampa al último (28/29/30).
   day_of_month: number | null;
   run_at: string | null;        // ISO datetime para cadence=once
+  // ENH-114: id de la plantilla builder cuando report_type='custom'.
+  report_builder_template_id: string | null;
   recipients: string[];
   enabled: boolean;
   last_run_at: string | null;
@@ -33,6 +38,7 @@ export type ScheduledReportCreateBody = {
   hour_of_day?: number | null;
   day_of_month?: number | null;
   run_at?: string | null;
+  report_builder_template_id?: string | null;
 };
 
 export type ScheduledReportUpdateBody = {
@@ -44,6 +50,7 @@ export type ScheduledReportUpdateBody = {
   hour_of_day?: number | null;
   day_of_month?: number | null;
   run_at?: string | null;
+  report_builder_template_id?: string | null;
 };
 
 export function listScheduledReports(
@@ -123,4 +130,5 @@ export const DAY_OF_WEEK_SHORT: Record<number, string> = {
 export const REPORT_TYPE_LABEL: Record<ScheduledReportType, string> = {
   avance: "Reporte de Avance",
   seguimiento: "Reporte de Seguimiento",
+  custom: "Plantilla del Builder",
 };

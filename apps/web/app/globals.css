@@ -19,38 +19,41 @@
   --color-neutral-900: oklch(12% 0.004 80);
   --color-neutral-950: oklch(7% 0.003 80);
 
-  /* Semánticos (nuevos nombres) */
-  --color-bg-app: var(--color-neutral-50);
-  --color-bg-surface: var(--color-neutral-0);
-  --color-bg-subtle: var(--color-neutral-100);
-  --color-bg-muted: var(--color-neutral-200);
+  /* Semánticos — sistema "big canvas" (US-164): un solo lienzo gris-azul
+     súper claro + islas blancas con sombra suave. La escala neutra de arriba
+     se conserva (tablas, badges, estados); solo la capa de superficie y el
+     chrome cambian. */
+  --color-bg-app: #F4F6FA;     /* canvas */
+  --color-bg-surface: #FFFFFF; /* islas */
+  --color-bg-subtle: #F8FAFD;  /* surface-soft */
+  --color-bg-muted: #E9EDF4;
 
   /* Aliases retrocompat para código que ya usa --color-app / --color-surface / etc. */
-  --color-app: var(--color-neutral-50);
-  --color-surface: var(--color-neutral-0);
-  --color-subtle: var(--color-neutral-100);
-  --color-muted: var(--color-neutral-200);
-  --color-primary: var(--color-neutral-800);
-  --color-secondary: var(--color-neutral-600);
-  --color-tertiary: var(--color-neutral-500);
-  --color-disabled: var(--color-neutral-400);
-  --color-inverse: var(--color-neutral-0);
+  --color-app: #F4F6FA;
+  --color-surface: #FFFFFF;
+  --color-subtle: #F8FAFD;
+  --color-muted: #E9EDF4;
+  --color-primary: #1F1D17;    /* text-strong */
+  --color-secondary: #3F3B30;  /* text */
+  --color-tertiary: #756F60;   /* text-muted */
+  --color-disabled: #A39C8B;   /* text-faint */
+  --color-inverse: #FFFFFF;
 
-  --color-accent: oklch(55% 0.15 240);
-  --color-accent-hover: oklch(50% 0.16 240);
-  --color-accent-fg: var(--color-neutral-0);
+  --color-accent: #2A4DA0;     /* azul del sidebar / acento */
+  --color-accent-hover: #233F85;
+  --color-accent-fg: #FFFFFF;
 
   --color-success-bg: oklch(94% 0.05 155);
   --color-success-border: oklch(82% 0.09 155);
-  --color-success-fg: oklch(42% 0.11 155);
+  --color-success-fg: #1F8A5B; /* ok */
 
   --color-warning-bg: oklch(95% 0.06 85);
   --color-warning-border: oklch(84% 0.11 85);
-  --color-warning-fg: oklch(45% 0.13 85);
+  --color-warning-fg: #B26B12; /* warn */
 
   --color-danger-bg: oklch(94% 0.04 25);
   --color-danger-border: oklch(82% 0.08 25);
-  --color-danger-fg: oklch(48% 0.13 25);
+  --color-danger-fg: #C0392B; /* danger */
 
   --color-info-bg: oklch(94% 0.04 240);
   --color-info-border: oklch(82% 0.08 240);
@@ -60,7 +63,10 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Revamp v1 (2026-05-26): tarjetas con esquinas sutiles (no burbujas).
+     Token de superficie de contenido bajado 16px → 10px. Modales/ventanas
+     conservan su propio radio. */
+  --radius-xl: 10px;
   --radius-2xl: 20px;
   --radius-window: 14px;
   --radius-modal: 16px;
@@ -75,23 +81,33 @@
 }
 
 :root {
-  --focus-ring: oklch(55% 0.15 240);
-  --border-subtle: var(--color-neutral-200);
-  --border-default: var(--color-neutral-300);
-  --border-strong: var(--color-neutral-400);
+  --focus-ring: #2A4DA0;
+  /* Bordes mínimos: hairline casi imperceptible (US-164). */
+  --border-subtle: #EFEADF;
+  --border-default: #E8E3D7; /* border-hair */
+  --border-strong: #D8D2C4;
 
-  --text-primary: var(--color-neutral-800);
-  --text-secondary: var(--color-neutral-600);
-  --text-tertiary: var(--color-neutral-500);
+  --text-primary: #1F1D17;
+  --text-secondary: #3F3B30;
+  --text-tertiary: #756F60;
+  --text-faint: #A39C8B;
 
-  /* Chrome navy #182e4e (DEC-006, US-010) — sidebar + topbar */
+  /* Chrome — sidebar flotante "big canvas" (US-164). El fondo conserva el
+     navy original (#182e4e, DEC-006); solo cambia a panel flotante con pill
+     activo semitransparente. El topbar ya no usa chrome-bg: vive en el lienzo. */
   --chrome-bg: #182e4e;
   --chrome-bg-translucent: color-mix(in oklab, #182e4e 92%, transparent);
-  --chrome-border: #10203a;
-  --chrome-text: #F0F3FF;
-  --chrome-text-muted: #A7B0D9;
-  --chrome-hover: #24406a;
-  --chrome-active: #10203a;
+  --chrome-border: transparent;
+  --chrome-text: #C9D4EE;
+  --chrome-text-strong: #FFFFFF;
+  --chrome-text-muted: #95A8D4;
+  --chrome-hover: rgba(255, 255, 255, 0.08);
+  --chrome-active: rgba(255, 255, 255, 0.14); /* pill activo semitransparente */
+
+  /* Sombras del sistema: una sola capa suave para las islas blancas y una
+     más marcada para el panel flotante del sidebar. */
+  --island-shadow: 0 1px 2px rgba(20, 16, 8, 0.04), 0 6px 18px -8px rgba(20, 16, 8, 0.10);
+  --sb-shadow: 0 1px 2px rgba(15, 28, 60, 0.10), 0 10px 28px -12px rgba(15, 28, 60, 0.30);
 
   --chrome-soft-bg: oklch(97% 0.012 240);
   --chrome-soft-border: oklch(90% 0.018 240);
@@ -121,19 +137,22 @@
   --text-primary: oklch(97% 0.004 250);
   --text-secondary: oklch(82% 0.008 250);
   --text-tertiary: oklch(68% 0.010 250);
+  --text-faint: oklch(56% 0.010 250);
 
-  /* BUG-008: chrome en dark mode se alinea con la paleta gris del theme
-     oscuro. Antes era navy #080D35 que creaba contraste fuerte contra
-     los grises del app shell. Ahora es gris-con-tinte-azul 250, más
-     oscuro que --color-app para seguir diferenciando chrome del
-     contenido sin chocar. */
+  /* US-164: en dark el sidebar conserva el fondo original (gris-azul del
+     theme oscuro, BUG-008). El pill activo sigue siendo blanco
+     semitransparente, igual que en light. */
   --chrome-bg: oklch(17% 0.008 250);
   --chrome-bg-translucent: color-mix(in oklab, oklch(17% 0.008 250) 92%, transparent);
-  --chrome-border: oklch(13% 0.008 250);
-  --chrome-text: oklch(97% 0.004 250);
-  --chrome-text-muted: oklch(70% 0.010 250);
-  --chrome-hover: oklch(26% 0.010 250);
-  --chrome-active: oklch(13% 0.008 250);
+  --chrome-border: transparent;
+  --chrome-text: #C9D4EE;
+  --chrome-text-strong: #FFFFFF;
+  --chrome-text-muted: #8FA2CE;
+  --chrome-hover: rgba(255, 255, 255, 0.08);
+  --chrome-active: rgba(255, 255, 255, 0.16);
+
+  --island-shadow: 0 1px 2px rgba(0, 0, 0, 0.30), 0 6px 18px -8px rgba(0, 0, 0, 0.45);
+  --sb-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -12px rgba(0, 0, 0, 0.55);
 
   --color-success-bg: oklch(30% 0.06 155);
   --color-success-border: oklch(42% 0.09 155);
@@ -171,6 +190,9 @@ body {
   color: var(--color-primary);
   font-family: var(--font-sans);
   font-feature-settings: "ss01", "cv11";
+  /* Revamp v1: cifras tabulares en toda la app para que métricas y columnas
+     numéricas alineen verticalmente (lenguaje visual del owner). */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

@@ -14,10 +14,12 @@ from datetime import UTC, datetime, time, timedelta
 from typing import Literal
 
 CADENCES: tuple[str, ...] = ("daily", "weekly", "monthly", "once")
-REPORT_TYPES: tuple[str, ...] = ("avance", "seguimiento")
+# US-131: el motor del worker acepta plantillas custom del Report
+# Builder cuando report_type=='custom' (requiere report_builder_template_id).
+REPORT_TYPES: tuple[str, ...] = ("avance", "seguimiento", "custom")
 
 Cadence = Literal["daily", "weekly", "monthly", "once"]
-ReportType = Literal["avance", "seguimiento"]
+ReportType = Literal["avance", "seguimiento", "custom"]
 
 
 def _last_day_of_month(year: int, month: int) -> int:

@@ -2,80 +2,54 @@
 
 > **Regla:** Claude Code lee SOLO este archivo + el epic relevante. 1 US = 1 commit. Al terminar, marcar DONE y mover la siguiente a IN-PROGRESS.
 >
-> **Histórico:** Sprints 1-25 cerrados → ver `SPRINT-DONE-HISTORY.md`.
+> **Histórico:** Sprints 1-29 cerrados → ver `SPRINT-DONE-HISTORY.md`.
 
 ---
 
 ## 🔴 IN-PROGRESS
 
 ```
-Sprint 26 (v1.25) — Bloque 0 Minutas v1.0 — EN CURSO 2026-05-22
+Batch "gantt/áreas/reportes/RAID fixes" (2026-06-05) en branch
+claude/gantt-areas-fixes. status:fix-committed, esperando PR + MERGE + QA
+del owner. SIN PR creado aún. 9 commits de trabajo (6 sesión previa +
+3 esta sesión); ENH-149 no tuvo commit (ya estaba implementado).
 
-  Lanes A/B/C ya en main (BUG-061, ENH-103, ENH-104, ENH-106, ENH-107, ENH-108).
-  Migraciones agregadas a main: 0064 (client_logo_url), 0065 (status_rag),
-    0067 (tasks.is_critical), 20260522_0068 (scheduled_minutes),
-    20260523_0068 (minute_origin), 20260523_0069 (merge heads).
+Sesión previa (2026-06-05):
+- BUG-073 #538 (593cb48) — minuta: coerciona summary dict/list a str.
+- BUG-074 #539 (7f7c272) — sweep status 'done'→'completed' en servicios de
+  reporte. Causa raíz de "completadas vencidas" y "avance 0%".
+- ENH-150 #540 (c53edf2) — status de tarea en ES + color leve en reportes
+  (status_display.py + filtros Jinja).
+- ENH-151 #541 (8b7f28f) — Reporte de Avance: fusión secciones + presupuesto
+  condicional.
+- BUG-076 #542 (1461c51) — áreas project-scoped: toggle Asignar/Quitar.
+- ENH-153 #543 (a71e395) — logos PMO+cliente en header del Project Charter.
 
-  Lane D — PR #408 abierto:
-    ENH-102 — Parser RAID estricto (solo A/R/D/I) + validador post-IA.
-    ENH-105 — Estructura de minuta v1.0 (6 secciones fijas).
-    Branch sesión: claude/sprint26-b0-lane-d-prompts-parser
-    Estado: CI api-migrations-postgres pasa tras rebase sobre main + merge heads.
+Esta sesión (2026-06-05):
+- ENH-149 #544 (sin código) — Plan: editar end_date. Ya estaba implementado
+  end-to-end (input modal + PATCH + cierre de BUG-074); documentado + verificado.
+- BUG-075 #545 (aa5708c) — RAID: estado editable in-place (Select por tipo;
+  backend ya aceptaba status). Frontend-only.
+- ENH-154 #546 (02dd08a) — Seguimiento: sección "Acciones" (toda acción abierta)
+  separada de los buckets de Actividades; rescata acciones sin fecha.
+- ENH-152 #547 (482566f) — Export RAID: XLSX único 4 hojas ES (Riesgos/Acciones/
+  Incidencias/Decisiones), nombres resueltos, filename RAID-[Nombre].xlsx, mismo
+  archivo para botón /raid y Documentos.
 
-  Bloque 1 Dependencias EP020 — entregadas en main:
-    ENH-097 #373 — tasks.is_critical boolean (migración 0067).
-    ENH-098 #374 — progress_calculation_method por tenant.
-    ENH-099 #375 — task_load_thresholds por tenant.
-    ENH-100 #376 — organizations.client_logo_url + upload (migración 0064).
-    ENH-101 #377 — projects.status_rag declarativo (migración 0065).
+Sin migraciones nuevas. tsc verde · ruff limpio · pytest seguimiento 12/12 +
+RAID export 4/4 + EP006 20/20. Epics actualizadas: EP006, EP014, EP018.
+La branch está detrás de origin/main (main avanzó con otros merges, sin tocar
+estos archivos) → rebase al armar el PR si CI lo pide.
 
-Próximo libre: US-133, BUG-062, ENH-109.
-(US-119 reservada para EP017 cleanup diferido; US-120 a US-132 reservadas EP020.)
+Próximo libre: US-166, BUG-077, ENH-155.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
 
-> Issues creados con `status:triage`. Owner pasa a `status:ready` para arrancar.
-
-### Sprint 26 Bloque 2 — Backbone EP020 (siguiente)
-
-- [ ] **US-120 #378** — Modelo y seed del catálogo de 22 secciones atómicas. Reusa `docs/epics/drafts/EP020-secciones-atomicas.md` como referencia normativa. Tabla `report_sections_catalog` + endpoint `GET /reports/sections-catalog` + service `app/services/reports/catalog.py`.
-- [ ] **US-121 #379** — Servicio cálculo % avance configurable por tenant. Dispatcher de 3 métodos (`weighted_duration` default, `weighted_effort`, `simple_count`). Consume ENH-098 ya en main.
-- [ ] **US-122 #380** — Modelo de plantillas + 4 plantillas seed: L3-AVANCE (modo A), L3-SEGUIMIENTO (modo B), L1-PORTAFOLIO, L2-ORG. Tabla `report_templates` con `composition_mode` y `visibility`.
-
-### Sprint 27 — Motor de render + Canvas Nivel 4
-
-**Bloque 1 (motor + export):**
-- [ ] **US-123 #381** — Engine de render con modos composición A/B. Service `app/services/reports/engine.py`.
-- [ ] **US-130 #390** — Export PDF de reportes custom (reusa US-037).
-
-**Bloque 2 (canvas Nivel 4):**
-- [ ] **US-124 #382** — Canvas drag-and-drop + preview en vivo en `/pmo/projects/{id}/reports/builder`.
-- [ ] **US-125 #383** — Panel de parámetros transversales.
-- [ ] **US-126 #384** — Plantillas privadas + publicar al proyecto.
-
-### Sprint 28 — IA conversacional + Suscripciones
-
-- [ ] **US-127 #385** — Modo IA conversacional construyendo el reporte (tool calls). Reusa cascada EP008.
-- [ ] **US-131 #386** — Suscripciones de reportes custom (reusa motor `scheduled_reports` US-056).
-
-### Sprint 29 — UI Niveles 1/2 + Gantt
-
-- [ ] **US-128 #387** — Módulo UI Reportes Nivel 1 PMO (`/pmo/reports/portfolio`).
-- [ ] **US-129 #388** — Módulo UI Reportes Nivel 2 Organización (tab nuevo en org/programa).
-- [ ] **US-132 #389** — Render headless del Gantt WBS-1 para S-19 (puppeteer/playwright).
-
-### Diferidos Sprint 26 Bloque 0 (pendientes de verificación owner)
-
-- [ ] **BUG-061 #391** — Preview muestra RAID pero al guardar no persiste.
-- [ ] **ENH-103 #393** — Match participantes ↔ actores del proyecto (auto-link + crear faltantes).
-- [ ] **ENH-104 #394** — Título auto desde nombre de archivo + prompt al guardar si vacío.
-- [ ] **ENH-106 #396** — Campo de auditoría `origin` en minuta.
-- [ ] **ENH-107 #397** — Suscripciones programadas de minutas.
-- [ ] **ENH-108 #398** — Copy-paste directo de transcript (sin file upload).
-- En PR #408: ENH-102 #392 + ENH-105 #395.
+### Cross-cutting / sin sprint asignado
+- [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`. `status:ready` desde 2026-05-23 pero diferido al cierre del rediseño grande. Owner pasa a ready o reasigna sprint cuando lo prioriza.
 
 ---
 
@@ -89,17 +63,26 @@ Próximo libre: US-133, BUG-062, ENH-109.
 - [ ] ENH-075 #257 — Tool-use (crear tarea / RAID / nav)
 - [ ] ENH-076 #258 — Historial persistente + summary rolling
 
-**Decisión owner 2026-05-08:** posterga el chat global. Primero ejecutar Sprints 18-23 (Documentos / RAID / Minutas / Reportes / Cambios / BYO universal). Volver a evaluar necesidad después.
+**Decisión owner 2026-05-08:** posterga el chat global. Volver a evaluar necesidad post-EP020.
 
 ### Pendiente redefinición Áreas/Recursos (cubierto parcial por EP017 Sprint 25)
-- [ ] **US-105 #311** — Import Plan: wizard matching responsables → Actor. Depende del shape final del catálogo Actores.
-- [ ] **Tab Organigrama de US-106** — placeholder UI; el cableado funcional depende del paquete EP017 final.
-- [ ] **US-119 cleanup** — drop legacy `actors.team_id`, `actors.is_lead`, `teams.area_id`, `tasks/risks/issues.area_id`. Esperando cableado completo de PersonPicker.
+- [ ] **US-105 #311** — Import Plan: wizard matching responsables → Actor.
+- [ ] **Tab Organigrama de US-106** — placeholder UI; cableado funcional depende del paquete EP017 final.
+- [ ] **US-119 #414** — EP017 cleanup: drop legacy `actors.team_id`, `actors.is_lead`, `teams.area_id`, `tasks/risks/issues.area_id`. **Bloqueado por ENH-109.**
+- [ ] **ENH-109 #417** — PersonPicker cableado en formularios existentes. **Bloquea US-119 y ENH-110.**
+- [ ] **ENH-110 #418** — Filtros / agrupadores de Plan por dimensiones derivadas. Depende de ENH-109.
+- [ ] **US-133 #415** — US-118 Fase 2: RBAC migra a leer `project_participations`.
+- [ ] **US-134 #416** — US-118 Fase 3: drop `project_members` table.
 
-### Snapshots históricos (postergado v2.0)
-- Snapshots periódicos de KPIs y semáforo (S-05 tendencia, sparklines, deltas vs anterior).
-- S-07 Curva S (descartada — incompatible con flexibilidad del plan).
-- S-10 Entregables formales (concepto no configurado en plataforma).
+### Admin UI settings (cross — sin sprint asignado al rediseño Minutas/Reports)
+- [ ] **ENH-111 #430** — UI admin tenant para `progress_calculation_method`.
+- [ ] **ENH-112 #431** — UI admin tenant para `task_load_thresholds`.
+- [ ] **ENH-113 #432** — UI admin org para upload `client_logo_url`.
+
+### Reportes / snapshots (estado actualizado 2026-05-26)
+- ✅ Snapshots periódicos de KPIs y semáforo → **implementado** (US-151, `metric_snapshots`, cadencia semanal).
+- ✅ S-07 Curva-S → **implementado** (US-161, planeado lineal start→end).
+- [ ] S-10 Entregables formales (concepto no configurado) — sigue diferido.
 
 ---
 
@@ -107,58 +90,79 @@ Próximo libre: US-133, BUG-062, ENH-109.
 
 **Ver `SPRINT-DONE-HISTORY.md` para el historial completo.**
 
+> Batches post-Sprint 33 (deepwork reportes/RAID/IA #524-528, big canvas #514-517, chrome #520-521) mergeados a main 2026-05-26/29 → archivados en `SPRINT-DONE-HISTORY.md` el 2026-06-05.
+
 | Sprint | Versión | Cerrado | Items |
 |---|---|---|---|
 | 1 | v1.0 MVP | 2026-04-21 | ~94 (22 bloques) |
-| 2 | v1.1 | 2026-04-23 | 18 (4 bloques + hotfix) |
-| 3 | v1.2 | 2026-04-24 | 5 (2 bloques) |
-| 4 | v1.3 | 2026-04-24 | 14 (4 bloques) |
-| 5 | v1.4 | 2026-04-24 | 10 (6 bloques + follow-up) |
-| 6 | v1.5 | 2026-04-25 | 5 (5 bloques) |
-| 7 | v1.6 | 2026-04-28 | 10 (6 bloques, 1 diferido v2.0) |
-| 8 | v1.7 | 2026-04-29 | 13 (7 bloques, 1 not_planned) |
-| 9 | v1.8 | 2026-05-05 | 6 (2 bloques + hotfix UX) |
-| 10 | v1.9 | 2026-05-06 | 14 (6 bloques) |
-| 11 | v1.9 | 2026-05-06 | 12 (3 bloques) |
-| 12 | v1.10/v1.11 | 2026-05-06 | 9 (3 bloques) |
-| 13 | v1.12 | 2026-05-07 | 7 (1 bloque) |
-| 14 | v1.13 | 2026-05-07 | 4 (1 bloque) |
-| 15 | v1.14 | 2026-05-07 | 4 (1 bloque) |
-| 16 | v1.14 | 2026-05-07 | 4 (1 bloque — Reportes) |
-| 17 | v1.16 | 2026-05-08 | 2 (Bloque 0 + 0.5; Bloque 1 → Deferred) |
-| 18 | v1.17 | 2026-05-08 | 3 (1 bloque) |
-| 19 | v1.18 | 2026-05-09 | 6 (1 bloque) |
-| 20 | v1.19 | 2026-05-09 | 5 (1 bloque) |
-| 21 | v1.20 | 2026-05-09 | 4 (1 bloque) |
-| 22 | v1.21 | 2026-05-09 | 2 (1 bloque) |
-| 23 | v1.22 | 2026-05-09 | 1 (1 bloque) |
-| 24 | v1.23 | 2026-05-09 | 12 (4 bloques — feedback batch) |
-| 25 | v1.24 | 2026-05-10 | 5 (2 bloques — EP017 directorio) |
+| 2 | v1.1 | 2026-04-23 | 18 |
+| 3 | v1.2 | 2026-04-24 | 5 |
+| 4 | v1.3 | 2026-04-24 | 14 |
+| 5 | v1.4 | 2026-04-24 | 10 |
+| 6 | v1.5 | 2026-04-25 | 5 |
+| 7 | v1.6 | 2026-04-28 | 10 |
+| 8 | v1.7 | 2026-04-29 | 13 |
+| 9 | v1.8 | 2026-05-05 | 6 |
+| 10 | v1.9 | 2026-05-06 | 14 |
+| 11 | v1.9 | 2026-05-06 | 12 |
+| 12 | v1.10/v1.11 | 2026-05-06 | 9 |
+| 13 | v1.12 | 2026-05-07 | 7 |
+| 14 | v1.13 | 2026-05-07 | 4 |
+| 15 | v1.14 | 2026-05-07 | 4 |
+| 16 | v1.14 | 2026-05-07 | 4 |
+| 17 | v1.16 | 2026-05-08 | 2 |
+| 18 | v1.17 | 2026-05-08 | 3 |
+| 19 | v1.18 | 2026-05-09 | 6 |
+| 20 | v1.19 | 2026-05-09 | 5 |
+| 21 | v1.20 | 2026-05-09 | 4 |
+| 22 | v1.21 | 2026-05-09 | 2 |
+| 23 | v1.22 | 2026-05-09 | 1 |
+| 24 | v1.23 | 2026-05-09 | 12 |
+| 25 | v1.24 | 2026-05-10 | 5 |
+| 26 | v1.25 | 2026-05-22 | 16 (3 bloques — Minutas v1.0 + Dependencias EP020 + Backbone EP020) |
+| 27-29 | v1.26 | 2026-05-25 | 10 (mega-PR EP020: US-123 a US-132) |
+| 30-32 | v1.27 | 2026-05-23 | 22 (rediseño Minutas + Reports — ver `SPRINT-DONE-HISTORY.md`) |
+| 33 | v1.28 | 2026-05-26 | 13 (Dashboards N1/N2 + reportes derivados + revamp + follow-ups — ver `SPRINT-DONE-HISTORY.md`) |
 
 ---
 
 ## 📋 Backlog v2.0 (post-v1.x)
 
-> **Contexto (DEC-020):** plataforma definida como herramienta de apoyo/visualización sin aprobaciones jerárquicas. US-061 cancelada; US-059/US-060 entregadas en Sprint 4.
+> **Contexto (DEC-020):** plataforma definida como herramienta de apoyo/visualización sin aprobaciones jerárquicas.
 
-- [ ] ENH-035 #158 — Análisis profundo optimización CI tests pesados (post-MVP, diferido Sprint 7).
-- [ ] US-081 — Borrar físicamente tablas `roles` + `user_roles` (migración 0037+) tras validación de Sprint 6 en producción.
+- [ ] ENH-035 #158 — Análisis profundo optimización CI tests pesados.
+- [ ] US-081 — Borrar físicamente tablas `roles` + `user_roles`.
 - [ ] ENH futuro — Filtrado efectivo de queries por `organization_user_exclusions`.
-- [ ] Cross-empresa nativo (post-ENH-043): si ≥3 grupos lo solicitan, abrir US con `program_organizations` + redesign listados.
-- [ ] US-086 fase 2 — Cablear stakeholders FK en Charter + migración data charters strings → stakeholders.
+- [ ] Cross-empresa nativo (post-ENH-043): si ≥3 grupos lo solicitan, abrir US con `program_organizations`.
+- [ ] US-086 fase 2 — Cablear stakeholders FK en Charter.
 - [ ] US-084 fase 2 — Banner de divergencias cuando importadores MPP/XLSX detecten diferencia entre manual y calculado.
-- [ ] US-087 fase 2 — Campos `Task.hours_estimated/hours_actual` para que `compute_kpis` exponga horas plan/real.
-- [ ] Hard-delete User cuando hay `project_request.requested_by` (US-088 fase 2) — endpoint reasignación interactiva.
-- [ ] Snapshots históricos de KPIs y semáforo (habilita S-05 tendencia, sparklines, deltas vs periodo anterior en reportes EP020).
-- [ ] KPIs custom por admin tenant (extensión del catálogo cerrado v1.0 de EP020).
+- [ ] US-087 fase 2 — Campos `Task.hours_estimated/hours_actual`.
+- [ ] Hard-delete User cuando hay `project_request.requested_by` (US-088 fase 2).
+- [x] ~~Snapshots históricos de KPIs y semáforo~~ → hecho en v1.28 (US-151).
+- [ ] KPIs custom por admin tenant.
+- [ ] **Cleanup post-Sprint 32**: borrar `apps/web/app/(app)/pmo/projects/[id]/ai-minutes/` y `.../reports/tweak/` carpetas enteras (hoy son redirects 301). Tras 1 sprint en main sin reportes de bookmarks rotos.
+- [ ] **Persistencia reports L1/L2** (PMO/Org/Prog): la **generación** ya existe (v1.28, US-160: PDF on-demand vía `/dashboard/reports/portfolio`, `/organizations/{id}/reports/status`, `/programs/{id}/reports/status`). Falta **persistir** el histórico: agregar `generator='pmo'|'organization'|'program'` + nullable `project_id` o tabla aparte.
+- [ ] **Dirty-flag fino en builder** (mejora ENH-125): comparar canvas vs plantilla cargada para detectar cambios sin guardar incluso cuando hay `loadedTemplateId`.
+- [ ] **Export RAID — Lecciones/Cambios** (follow-up ENH-152): si se necesita exportar Lessons / ChangeRequests, abrir un export aparte (ENH-152 los descartó del XLSX RAID por decisión del owner 2026-06-05).
 
 ---
 
 ## Notas y cambios recientes
 
-- **2026-05-23 (hotfix alembic multiple heads):** ENH-106 (`20260523_0068_minute_origin`) y ENH-107 (`20260522_0068_scheduled_minutes`) se mergearon a main en paralelo con el mismo `down_revision='20260522_0067'`, dejando dos heads abiertos. Fix: merge migration `20260523_0069_merge_minute_heads` sin cambios de schema, branch `claude/fix-alembic-multiple-heads-0068`. Tras merge a main, CI api-migrations-postgres se recupera y PR #408 (lane D) se rebasea automáticamente.
-- **2026-05-22 (Sprint 26 Bloque 0 — Minutas v1.0 + EP020 planning):** owner cerró el catálogo de 22 secciones atómicas de EP020 (working doc `docs/epics/drafts/EP020-secciones-atomicas.md`) tras 4 rondas de profundización por categoría. Promoción del draft a epic oficial `docs/epics/EP020-report-builder.md` con 13 US (US-120 a US-132) + 5 ENH dependencias (ENH-097 a ENH-101). Frente Minutas planificado en paralelo: 1 BUG + 7 ENH (BUG-061 + ENH-102 a ENH-108) basados en transcript+minuta gold standard del owner — caso Highlander EAM-BNF que define el nivel de detalle del parser IA. 26 issues creados en GitHub (#373-#398). Labels aplicados a los 26 (solo falta `EP020` por crear). Decisión arquitectónica clave: snapshots históricos del semáforo y KPIs salen del scope v1.0 → posterga a v2.0 (descarta S-05, sparklines, deltas).
-- **2026-05-10 (EP017 Directorio de Proyecto — diseño + Sprint 25 entregado):** rediseño del módulo Áreas/Recursos basado en feedback de modelo (separar área funcional / equipo operativo / rol proyecto / participación temporal). Decisión clave: `actors` sigue como catálogo tenant; nueva tabla `project_participations` (con `is_primary` por persona-proyecto) reemplaza la jerarquía `Area→Team→Actor`; `teams` queda plano sin FK a area; `project_roles` nuevo catálogo editable. 5 US entregadas (US-114→US-118) sobre branch `claude/design-areas-resources-8DIfi`. Migraciones 0061 + 0062. Epic doc: `docs/epics/EP017-project-directory.md`. Diferidos significativos (sin issue): `/admin/areas` rediseño completo; cableado de PersonPicker en cada form; US-118 Fases 2/3; US-119 cleanup.
+> Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
+
+- **2026-06-05 (batch gantt/áreas/reportes/RAID fixes):** branch
+  `claude/gantt-areas-fixes`, 9 commits de trabajo, `status:fix-committed`,
+  **sin PR aún**. Sesión previa: BUG-073/074/076 #538/539/542 +
+  ENH-150/151/153 #540/541/543. Esta sesión cerró los 4 temas restantes:
+  ENH-149 #544 (ya estaba implementado, solo verificación), BUG-075 #545
+  (estado RAID editable), ENH-154 #546 (sección Acciones en Seguimiento),
+  ENH-152 #547 (export RAID XLSX 4 hojas ES unificado). Sin migraciones.
+  Epics EP006/EP014/EP018 actualizadas. Branch detrás de origin/main →
+  rebase al armar el PR si CI lo pide.
+- **2026-05-26/29 (3 batches mergeados):** deepwork reportes/RAID/IA
+  (#524-528, mig. 0084), big canvas (#514-517, migs 0082/0083), chrome
+  logo/iconos (#520-521). Archivados en `SPRINT-DONE-HISTORY.md`.
 
 ---
 
@@ -166,13 +170,17 @@ Próximo libre: US-133, BUG-062, ENH-109.
 
 Cuando arranques una sesión nueva:
 
-1. Lee `CLAUDE.md` (reglas) + este archivo + el epic referenciado en el bloque IN-PROGRESS.
-2. Mueve la siguiente US/ENH/BUG de la sección **INBOX** (ya marcada `status:ready` por owner) a **IN-PROGRESS** en este archivo antes de empezar.
-3. Cambia el label del issue: `status:triage` → `status:in-progress`.
-4. Implementa con tests verdes + typecheck.
-5. Commit con header `<tipo>(<scope>): <ID> — <desc> (refs #<issue>)` y push.
-6. Cambia label del issue → `status:fix-committed` y deja comment con el template del CLAUDE.md sección 3 paso 6.
-7. Mueve el item de IN-PROGRESS → DONE en este archivo (o a la tabla histórica si cierra sprint).
-8. Resumen de ronda al owner siguiendo CLAUDE.md sección 11.
+1. Lee `docs/project-management/HANDOFF.md` PRIMERO.
+2. Luego `CLAUDE.md` + este archivo + el epic referenciado en IN-PROGRESS.
+3. Mueve la siguiente US/ENH/BUG de **INBOX** (marcada `status:ready`) a **IN-PROGRESS** antes de empezar.
+4. Cambia label del issue: `status:ready` → `status:in-progress`.
+5. Implementa con tests verdes + typecheck.
+6. Commit con header `<tipo>(<scope>): <ID> — <desc> (refs #<issue>)` y push.
+7. Cambia label → `status:fix-committed` + comment con template CLAUDE.md §3 paso 6.
+8. Mueve item a DONE en este archivo o a la tabla histórica si cierra sprint.
+9. Resumen de ronda al owner siguiendo CLAUDE.md §11.
+10. Al cierre de sesión: invocar `/handoff` para limpiar SPRINT.md y dejar bridge.
 
 **Regla sagrada:** 1 US = 1 commit. No mezclar varios IDs en el mismo commit.
+
+**Regla post-Sprint 26 (decisión owner 2026-05-22):** desarrollo secuencial puro. 1 sesión activa, 1 lane, 1 branch. Migraciones consecutivas sin paralelización.

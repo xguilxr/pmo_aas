@@ -57,3 +57,11 @@ class ScheduledReport(Base, TimestampMixin):
     created_by: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")
     )
+    # US-131 — cuando `report_type='custom'`, apunta a la plantilla del
+    # Report Builder (US-122) que el worker renderiza con el engine
+    # US-123 antes de enviar por correo.
+    report_builder_template_id: Mapped[UUID | None] = mapped_column(
+        String(36),
+        ForeignKey("report_builder_templates.id", ondelete="SET NULL"),
+        nullable=True,
+    )

@@ -141,8 +141,9 @@ async def test_us057_factory_disabled_returns_stub():
 async def test_us057_factory_platform_calls_groq(monkeypatch):
     calls: dict = {}
 
-    async def _fake(self, prompt, *, system=None, override=None):
+    async def _fake(self, prompt, *, system=None, override=None, json_mode=False):
         calls["override"] = override
+        calls["json_mode"] = json_mode
         return AIResult(text="GROQ_OK", model="groq:llama-3.3-70b-versatile")
 
     monkeypatch.setattr(GroqProvider, "generate", _fake)

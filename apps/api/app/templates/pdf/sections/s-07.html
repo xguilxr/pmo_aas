@@ -1,0 +1,29 @@
+{# S-07 Curva-S: planeado vs real acumulado (US-161) #}
+<section class="section section-s07">
+  <h2>Curva-S — avance planeado vs real</h2>
+  {% if data.empty %}
+    <p class="empty">Sin historia de snapshots para este proyecto todavía.</p>
+  {% else %}
+  <div class="curve-s" style="margin: 6px 0 8px;">{{ data.svg | safe }}</div>
+  <p class="meta" style="font-size:9pt;">
+    <span style="color:#16a34a;">━</span> Real ({{ "%.0f"|format(data.last_actual) }}%)
+    &nbsp;·&nbsp;
+    <span style="color:#6b7280;">┄</span> Planeado ({{ "%.0f"|format(data.last_planned) }}%)
+  </p>
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th class="right">Planeado</th><th class="right">Real</th><th class="right">Δ</th></tr>
+    </thead>
+    <tbody>
+      {% for p in data.points %}
+      <tr>
+        <td>{{ p.date }}</td>
+        <td class="right nums">{{ "%.0f"|format(p.planned) }}%</td>
+        <td class="right nums">{{ "%.0f"|format(p.actual) }}%</td>
+        <td class="right nums">{{ "%+.0f"|format(p.actual - p.planned) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>

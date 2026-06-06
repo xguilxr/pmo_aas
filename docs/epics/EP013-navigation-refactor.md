@@ -97,11 +97,11 @@ Logo/Home (usa logo del tenant si está cargado)
 ├─ Tablero
 ├─ Solicitudes
 ├─ Organizaciones
-│   ├─ Org A                  → panel de recursos de la org
-│   │   ├─ Programa 1         → resumen del programa (KPIs + proyectos)
+│   ├─ Org A 🏢                  → panel de recursos de la org
+│   │   ├─ Programa 1 ◆         → resumen del programa (KPIs + proyectos)
 │   │   │   └─ Proyecto X     → detalle del proyecto con tabs inline
-│   │   └─ Programa 2
-│   └─ Org B
+│   │   └─ Programa 2 ◆
+│   └─ Org B 🏢
 └─ Admin (solo admin/senior PMO)
     ├─ Gestión de Tenant      (fusiona Mi Tenant + Panel del Tenant)
     ├─ Gestión de Organizaciones  (BUs + Deptos inline, una sola página)
@@ -110,6 +110,10 @@ Logo/Home (usa logo del tenant si está cargado)
     │   └─ Roles
     └─ Auditoría
 ```
+
+**Iconos de árbol (ENH-145, 2026-05-26):**
+- **Organizaciones:** icono `Building2` (lucide-react).
+- **Programas:** icono `Layers` (lucide-react, antes `Network`).
 
 Se **elimina**:
 
@@ -120,7 +124,7 @@ Se **elimina**:
 ### DEC-XXX a registrar en DECISIONS.md al cierre del bloque
 
 - **DEC-011** — Sidebar principal expone drill-down real; sidebar admin expone jerarquía administrativa. No se duplican.
-- **DEC-012** — Los módulos del proyecto viven como tabs dentro de `/admin/projects/{id}` (no como rutas separadas en el sidebar global). Las rutas individuales actuales quedan como deep-link para compatibilidad.
+- **DEC-012** — Los módulos del proyecto viven como tabs dentro de `/pmo/projects/{id}` (no como rutas separadas en el sidebar global). Las rutas individuales actuales quedan como deep-link para compatibilidad.
 - **DEC-013** — "Mi Tenant" y "Panel del Tenant" se consolidan en una sola página bajo `Admin → Gestión de Tenant`.
 
 ---
@@ -141,7 +145,7 @@ Se **elimina**:
 - [x] Endpoint `DELETE /api/v1/admin/tenant/logo` para quitar logo local.
 - [x] Endpoint `GET /api/v1/branding/tenants/{tenant_id}/logo` sirve el archivo (auth requerida; 404 si el user no es de ese tenant y no es superadmin).
 - [x] Endpoint `GET /api/v1/me/tenant-branding` devuelve `{tenant_id, tenant_name, tenant_slug, logo_url, primary_color}` — consumido por el topbar.
-- [x] `BrandMark` (frontend): cuando `logo_url` existe, muestra `<img>` con `alt=tenant_name`; si no, fallback `"PMO · aaS"`.
+- [x] `BrandMark` (frontend): cuando `logo_url` existe, muestra el logo **grande** en la zona izquierda del topbar (ancho fijo `w-[200px]`, alto `h-11`, `object-contain object-left`), ocupando aproximadamente el ancho de la sidebar. El tamaño es **independiente del estado de la sidebar** (collapsed/visible). A la derecha del logo aparece siempre el texto "PMO-aaS" (branding de la plataforma). Si no hay logo, fallback: se muestra el nombre del tenant en texto + "PMO-aaS".
 - [x] `TenantBrandingProvider` con caché en `localStorage` + refresh explícito tras upload/edición en `/admin/tenant`.
 - [x] Click en el logo/home → navega a `/dashboard`.
 - [x] `/admin/tenant` acepta archivo (botón "Subir archivo") o URL externa — el cambio se refleja en el topbar sin reload completo via `refreshBranding()`.
@@ -158,6 +162,8 @@ Se **elimina**:
 
 **Commit:** `feat(branding): US-031 — upload y display del logo del tenant en chrome`.
 
+**Actualización 2026-05-26 — ENH-144:** Logo ahora se muestra **full-size en topbar** (no en cuadrito pequeño). Ancho `w-[200px]`, alto `h-11`, posición izquierda fija. Elimina el nombre del tenant en texto: ahora el logo es la identidad. Texto "PMO-aaS" siempre a la derecha. Tamaño no depende del colapso/visibilidad de sidebar. Fallback (sin logo): nombre tenant + "PMO-aaS".
+
 ---
 
 ## # DONE — US-032 — Restructurar sidebar principal (drill-down real)
@@ -173,8 +179,8 @@ Se **elimina**:
 - [x] Expandir programa → lista de proyectos reales de ese programa.
 - [x] Click en la hoja:
   - Organización → `/admin/organizations/{id}` (enlace se redirige al panel de recursos reales en US-033 siguiente).
-  - Programa → `/admin/projects?program_id={id}` temporal; se actualiza a `/admin/programs/{id}` cuando US-034 cree la página resumen.
-  - Proyecto → `/admin/projects/{id}` (DONE).
+  - Programa → `/pmo/projects?program_id={id}` temporal; se actualiza a `/pmo/programs/{id}` cuando US-034 cree la página resumen.
+  - Proyecto → `/pmo/projects/{id}` (DONE).
 - [x] **Eliminada** la sección duplicada "Organizaciones (jerarquía administrativa)" del sidebar principal — BUs/Deptos sólo en `/admin/organizations`.
 - [x] **Eliminada** la sección "Módulos de proyecto" del sidebar (sus ítems serán tabs inline en US-035).
 - [x] Expansión persistida en `localStorage` (`pmoaas:sidebar:org-tree:expanded`).
@@ -219,14 +225,14 @@ Se **elimina**:
 
 **Criterios de aceptación:**
 - [x] Endpoint `GET /api/v1/programs/{id}/summary` auth-only + cross-tenant → 404.
-- [x] Ruta `/admin/programs/{id}` con:
+- [x] Ruta `/pmo/programs/{id}` con:
   - Header: nombre, org (link al panel), is_active badge, descripción.
   - 4 KPI cards: proyectos total / activos / en riesgo / cerrados.
   - Donut SVG con salud del portafolio (green/yellow/red).
   - Presupuesto plan vs real agregado + desviación %.
   - Top 10 riesgos con `severity >= 13` no cerrados/materializados.
   - Tabla de proyectos con folio, fase, salud, PM, avance, presupuesto plan/real.
-- [x] Sidebar (`OrgTreeNav`): link de programa actualizado a `/admin/programs/{id}` (antes apuntaba a `/admin/projects?program_id=…`).
+- [x] Sidebar (`OrgTreeNav`): link de programa actualizado a `/pmo/programs/{id}` (antes apuntaba a `/pmo/projects?program_id=…`).
 
 **Test Cases (3/3 verdes):**
 - `test_usnew034_summary_aggregates_correctly` — counts, health, presupuestos, top risks filtrados por severidad y status.
@@ -240,14 +246,14 @@ Se **elimina**:
 ## # DONE — US-035 — Tabs inline en detalle de proyecto (supersede US-017)
 
 **Como** PM
-**Quiero** que los módulos del proyecto (Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/admin/projects/{id}`, no páginas separadas
+**Quiero** que los módulos del proyecto (Plan, RAID, Áreas, Documentos, Lecciones, Minutas, Reportes, Cambios) sean tabs dentro de `/pmo/projects/{id}`, no páginas separadas
 **Para** no perder contexto al moverme entre módulos.
 
 > Esta US **supersede** la US-017 original.
 
 **Criterios de aceptación:**
-- [x] Shared layout `app/(app)/admin/projects/[id]/layout.tsx` con barra de tabs sticky (`<ProjectTabsBar />`).
-- [x] Tabs visibles en orden: `Resumen | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios`. Charter se mantiene como documento del proyecto (categoría en Documentos, ya DONE por US-013). Equipo y Actividad siguen como sub-tabs internas de la página Resumen (pattern preexistente de `/admin/projects/[id]/page.tsx`).
+- [x] Shared layout `app/(app)/pmo/projects/[id]/layout.tsx` con barra de tabs sticky (`<ProjectTabsBar />`). Originalmente vivió en `app/(app)/admin/projects/[id]/`; US-075 / DEC-022 movió el árbol a `/pmo/` y dejó redirects 301 en `next.config.js`.
+- [x] Tabs visibles en orden: `Resumen | Plan | RAID | Áreas | Documentos | Lecciones | Minutas | Reportes | Cambios`. Charter se mantiene como documento del proyecto (categoría en Documentos, ya DONE por US-013). Equipo y Actividad siguen como sub-tabs internas de la página Resumen (pattern preexistente de `/pmo/projects/[id]/page.tsx`).
 - [x] Next.js layout persiste entre navegaciones a sub-rutas (`/plan`, `/raid`, etc.): el header y el tab bar no se re-renderizan, la percepción de UX coincide con "no hay cambio de página".
 - [x] Tab activa resaltada (bg `--color-subtle`, font-semibold).
 - [x] Scroll horizontal en la barra para anchos reducidos (`overflow-x-auto`).

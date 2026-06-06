@@ -1,0 +1,9 @@
+{# S-28 Bloque narrativo libre #}
+<section class="section section-s28">
+  <h2>Notas</h2>
+  {% if data.text %}
+    <p style="white-space: pre-wrap;">{{ data.text }}</p>
+  {% else %}
+    <p class="empty">Sin notas.</p>
+  {% endif %}
+</section>

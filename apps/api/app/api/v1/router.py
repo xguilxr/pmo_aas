@@ -6,11 +6,13 @@ from app.api.v1.endpoints import (
     admin_users,
     ai,
     areas,
+    assistant,
     auth,
     branding,
     change_approvals,
     dashboard,
     entity_history,
+    gantt_snapshot,
     modules,
     notifications,
     organizations,
@@ -20,6 +22,10 @@ from app.api.v1.endpoints import (
     project_directory,
     project_requests,
     projects,
+    report_builder_chat,
+    report_builder_render,
+    report_builder_templates,
+    report_sections,
     report_templates,
     reports,
     risk_actions,
@@ -58,6 +64,11 @@ api_router.include_router(project_directory.participations_router)
 api_router.include_router(project_directory.eligible_router)
 api_router.include_router(reports.router)
 api_router.include_router(report_templates.router)
+api_router.include_router(report_sections.router)
+api_router.include_router(report_builder_templates.router)
+api_router.include_router(report_builder_render.router)
+api_router.include_router(report_builder_chat.router)
+api_router.include_router(gantt_snapshot.router)
 api_router.include_router(change_approvals.router)
 api_router.include_router(change_approvals.public_router)
 api_router.include_router(scheduled_reports.router)
@@ -73,6 +84,7 @@ api_router.include_router(modules.minutes_router)
 api_router.include_router(notifications.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
+api_router.include_router(assistant.router)
 api_router.include_router(tasks.router)
 api_router.include_router(superadmin.router)
 api_router.include_router(superadmin_ai.router)

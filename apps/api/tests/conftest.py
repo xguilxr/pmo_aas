@@ -103,8 +103,8 @@ def _stub_ai_providers(monkeypatch, request):
 
     stub = provider_mod.DisabledProvider()
 
-    async def _stub_generate(_self, prompt, *, system=None, override=None):
-        return await stub.generate(prompt, system=system)
+    async def _stub_generate(_self, prompt, *, system=None, override=None, json_mode=False):
+        return await stub.generate(prompt, system=system, json_mode=json_mode)
 
     for name in ("gemini", "claude", "groq", "openai", "perplexity", "custom", "azure"):
         cls = type(provider_mod._PROVIDERS[name])
@@ -204,6 +204,8 @@ def _stub_heavy_renderers(monkeypatch, request):
     # importador).
     for consumer_path in (
         "app.api.v1.endpoints.reports",
+        "app.api.v1.endpoints.dashboard",
+        "app.api.v1.endpoints.organizations",
     ):
         try:
             consumer = __import__(consumer_path, fromlist=["render_pdf"])

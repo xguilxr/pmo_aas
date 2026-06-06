@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -14,6 +14,7 @@ from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.schemas.project import (
+    ActivityItem,
     MemberCreate,
     PhaseChange,
     ProjectCreate,
@@ -262,6 +263,70 @@ async def get_project(
             counts[label] = (
                 await db.execute(select(func.count(model.id)).where(model.project_id == p.id))
             ).scalar_one()
+        # ENH-130: RAID desglosado por tipo de Issue (action/issue/decision)
+        # para las tarjetas Acciones / Incidentes / Decisiones del Resumen.
+        for label, issue_type in [
+            ("actions", "action"), ("incidents", "issue"), ("decisions", "decision"),
+        ]:
+            counts[label] = (
+                await db.execute(
+                    select(func.count(Issue.id)).where(
+                        Issue.project_id == p.id, Issue.type == issue_type
+                    )
+                )
+            ).scalar_one()
+    except Exception:
+        pass
+
+    # ENH-129: KPIs de tareas para el gauge de Avance (hitos, críticos,
+    # atrasados). Atrasado = fin < hoy y no completada.
+    task_kpis: dict[str, int] = {}
+    try:
+        from app.models.task import Task  # type: ignore
+
+        today = date.today()
+        task_kpis["milestones_total"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id, Task.is_milestone.is_(True)
+                )
+            )
+        ).scalar_one()
+        task_kpis["milestones_done"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id,
+                    Task.is_milestone.is_(True),
+                    Task.status == "completed",
+                )
+            )
+        ).scalar_one()
+        task_kpis["critical_total"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id, Task.is_critical.is_(True)
+                )
+            )
+        ).scalar_one()
+        task_kpis["critical_done"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id,
+                    Task.is_critical.is_(True),
+                    Task.status == "completed",
+                )
+            )
+        ).scalar_one()
+        task_kpis["overdue"] = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == p.id,
+                    Task.end_date.is_not(None),
+                    Task.end_date < today,
+                    Task.status != "completed",
+                )
+            )
+        ).scalar_one()
     except Exception:
         pass
 
@@ -273,7 +338,52 @@ async def get_project(
         out["progress"] = round_half_up(derived)
     out["members"] = members
     out["module_counts"] = counts
+    out["task_kpis"] = task_kpis
     return out
+
+
+@router.get("/{project_id}/activity", response_model=list[ActivityItem])
+async def get_project_activity(
+    project_id: UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-149: feed de actividad del proyecto leído del audit log.
+
+    Eventos a nivel proyecto (cambios de fase, salud, asignaciones,
+    actualizaciones) en orden cronológico inverso.
+    """
+    from app.models.audit import AuditLog
+
+    tenant_id = _tenant(cu)
+    p = await _get_project(db, project_id, tenant_id)  # valida acceso
+
+    rows = (
+        await db.execute(
+            select(AuditLog, User.full_name)
+            .outerjoin(User, User.id == AuditLog.user_id)
+            .where(
+                AuditLog.entity_type == "project",
+                AuditLog.entity_id == str(p.id),
+            )
+            .order_by(AuditLog.occurred_at.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    return [
+        ActivityItem(
+            id=row.AuditLog.id,
+            action=row.AuditLog.action,
+            module=row.AuditLog.module,
+            occurred_at=row.AuditLog.occurred_at,
+            user_id=row.AuditLog.user_id,
+            user_name=row.full_name,
+            details=row.AuditLog.details or {},
+        )
+        for row in rows
+    ]
 
 
 @router.patch("/{project_id}", response_model=ProjectRead)

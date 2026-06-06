@@ -146,7 +146,12 @@ def _legacy_to_structured(minute: MeetingMinute) -> dict[str, Any]:
 
     raid_block = minute.raid_suggestions or {}
     if isinstance(raid_block, dict):
-        for kind, code in (("risks", "R"), ("issues", "I")):
+        # Shape canónico A/R/D/I; legacy lessons/changes (descartados) no
+        # se materializan en exports.
+        for kind, code in (
+            ("actions", "A"), ("risks", "R"),
+            ("decisions", "D"), ("issues", "I"),
+        ):
             for it in raid_block.get(kind, []) or []:
                 if not isinstance(it, dict):
                     continue
@@ -154,8 +159,8 @@ def _legacy_to_structured(minute: MeetingMinute) -> dict[str, Any]:
                     "type": code,
                     "description": it.get("short_desc") or it.get("description") or "—",
                     "responsible": it.get("suggested_owner_name") or it.get("owner_name"),
-                    "due_date": None,
-                    "status": "Open",
+                    "due_date": it.get("suggested_due_date") or it.get("due_date"),
+                    "status": it.get("status") if it.get("status") in {"Open", "In Progress", "Pending", "Closed"} else "Open",
                 })
 
     topics: list[dict[str, Any]] = []

@@ -1,17 +1,75 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Download, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Heatmap, TrendLines, Treemap } from "@/components/dashboard-charts";
+import { ProgramModal } from "@/components/program-modal";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
+import {
+  downloadPortfolioStatusReport,
+  getHeatmap,
+  getTrends,
+  getTreemap,
+  type HeatmapResponse,
+  type TreemapResponse,
+  type TrendsResponse,
+} from "@/lib/api/analytics";
 import {
   listOrganizationPanels,
   type OrganizationPanel,
 } from "@/lib/api/organizations";
+
+function PortfolioPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">{title}</h2>
+      {children}
+    </article>
+  );
+}
+
+function metricSeries(trends: TrendsResponse | null, metric: string) {
+  return (trends?.series ?? []).map((p) => ({
+    x: p.snapshot_date,
+    y: Number(p[metric] ?? 0),
+  }));
+}
+
+function MiniTrend({
+  label,
+  data,
+  color,
+  fmt,
+}: {
+  label: string;
+  data: { x: string; y: number }[];
+  color: string;
+  fmt?: (n: number) => string;
+}) {
+  const last = data.length ? data[data.length - 1].y : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+          {label}
+        </span>
+        <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">
+          {fmt ? fmt(last) : last}
+        </span>
+      </div>
+      <TrendLines data={data} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={fmt} />
+    </div>
+  );
+}
 
 /**
  * US-068 — Landing PMO.
@@ -21,9 +79,33 @@ import {
  * Es el contraparte "info" del `/admin/organizations` (gestión CRUD).
  */
 export default function PmoHome() {
+  const router = useRouter();
   const [panels, setPanels] = useState<OrganizationPanel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // US-155 — analítica de portafolio (admin-equivalente; detección por capacidad).
+  const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
+  const [treemap, setTreemap] = useState<TreemapResponse | null>(null);
+  const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  const [isAdminView, setIsAdminView] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  // ENH-142: creación directa de org / programa / proyecto desde el portafolio.
+  const { canCreate, loading: permsLoading } = useMyPermissions();
+  const [showProgramModal, setShowProgramModal] = useState(false);
+
+  async function handleDownloadReport() {
+    setDownloading(true);
+    setReportError(null);
+    try {
+      await downloadPortfolioStatusReport();
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "No se pudo generar el reporte");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -50,23 +132,151 @@ export default function PmoHome() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    getHeatmap()
+      .then((r) => {
+        if (cancelled) return;
+        setHeatmap(r);
+        setIsAdminView(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHeatmap(null);
+        setIsAdminView(false);
+      });
+    getTreemap({ scope: "tenant" })
+      .then((r) => !cancelled && setTreemap(r))
+      .catch(() => !cancelled && setTreemap(null));
+    getTrends({ scope: "tenant", weeks: 12 })
+      .then((r) => !cancelled && setTrends(r))
+      .catch(() => !cancelled && setTrends(null));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-          PMO
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-          Vista informativa del portafolio. Selecciona una organización para
-          ver sus programas y proyectos. La gestión (CRUD) vive en{" "}
-          <Link href="/admin/organizations" className="text-[var(--color-accent)] hover:underline">
-            Admin → Organizaciones
-          </Link>
-          .
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+            PMO
+          </h1>
+          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+            Vista informativa del portafolio. Selecciona una organización para
+            ver sus programas y proyectos. La gestión (CRUD) vive en{" "}
+            <Link href="/admin/organizations" className="text-[var(--color-accent)] hover:underline">
+              Admin → Organizaciones
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {canCreate("organizations") ? (
+            <Link href="/admin/organizations/new">
+              <Button variant="secondary" size="sm">
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Nueva organización
+              </Button>
+            </Link>
+          ) : null}
+          {canCreate("programs") ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowProgramModal(true)}
+              disabled={permsLoading}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+              Nuevo programa
+            </Button>
+          ) : null}
+          {canCreate("projects") ? (
+            <Link href="/pmo/projects/new">
+              <Button variant="primary" size="sm">
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Nuevo proyecto
+              </Button>
+            </Link>
+          ) : null}
+        </div>
       </header>
 
+      <ProgramModal
+        open={showProgramModal}
+        onClose={() => setShowProgramModal(false)}
+        onSaved={() => {
+          setShowProgramModal(false);
+          router.refresh();
+        }}
+      />
+
       {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      {reportError ? <Banner variant="danger">{reportError}</Banner> : null}
+
+      {isAdminView ? (
+        <section aria-label="Analítica de portafolio" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+              Analítica del portafolio
+            </h2>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={downloading}
+            >
+              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+              {downloading ? "Generando…" : "Descargar status PMO (PDF)"}
+            </Button>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PortfolioPanel title="Salud por organización">
+              <Heatmap
+                rows={heatmap?.rows ?? []}
+                ariaLabel="Mapa de calor de salud por organización"
+                onCellClick={(orgId) => router.push(`/pmo/organizations/${orgId}`)}
+              />
+            </PortfolioPanel>
+            <PortfolioPanel title="Portafolio (presupuesto × salud)">
+              <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" />
+            </PortfolioPanel>
+          </div>
+          <PortfolioPanel title="Tendencias del tenant (12 semanas)">
+            {(trends?.series.length ?? 0) > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-3">
+                <MiniTrend
+                  label="Avance promedio"
+                  data={metricSeries(trends, "avg_progress")}
+                  color="var(--color-success-fg)"
+                  fmt={(n) => `${Math.round(n)}%`}
+                />
+                <MiniTrend
+                  label="Riesgos abiertos"
+                  data={metricSeries(trends, "open_risks")}
+                  color="var(--color-warning-fg)"
+                />
+                <MiniTrend
+                  label="Proyectos activos"
+                  data={metricSeries(trends, "projects_active")}
+                  color="var(--color-accent)"
+                />
+              </div>
+            ) : (
+              <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
+                Aún no hay historia de snapshots. Captura el primer punto desde el{" "}
+                <Link href="/dashboard" className="text-[var(--color-accent)] hover:underline">
+                  tablero
+                </Link>
+                .
+              </p>
+            )}
+          </PortfolioPanel>
+        </section>
+      ) : null}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

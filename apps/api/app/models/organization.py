@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, new_uuid
@@ -20,11 +20,13 @@ class Organization(Base, TimestampMixin):
     industry: Mapped[str | None] = mapped_column(String(100))
     country: Mapped[str | None] = mapped_column(String(100))
     contact_email: Mapped[str | None] = mapped_column(String(200))
-    logo_url: Mapped[str | None] = mapped_column(String(500))
+    # BUG-068: Text (no String(500)) para admitir data-URLs base64 de logos
+    # subidos directamente (PNG/JPG/SVG/WEBP), además de URLs externas.
+    logo_url: Mapped[str | None] = mapped_column(Text)
     # ENH-100: logo del *cliente* de esta organización (separado de `logo_url`,
     # que es la marca del propio tenant/PMO). Lo consume el header de los
     # reportes generados por EP020 Report Builder.
-    client_logo_url: Mapped[str | None] = mapped_column(String(500))
+    client_logo_url: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 

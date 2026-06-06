@@ -1,0 +1,16 @@
+{# ENH-146 — banda de marca compartida: logo PMO (izquierda) + nombre,
+   logo del cliente (derecha). Se omite por completo si no hay branding,
+   así los reportes sin logo no muestran un header vacío. #}
+{% if tenant_logo_url or client_logo_url or tenant_name %}
+<header class="brand-header">
+  <div class="brand-pmo">
+    {% if tenant_logo_url %}
+    <img class="brand-logo" src="{{ tenant_logo_url }}" alt="{{ tenant_name or 'PMO' }}" />
+    {% endif %}
+    {% if tenant_name %}<span class="brand-name">{{ tenant_name }}</span>{% endif %}
+  </div>
+  {% if client_logo_url %}
+  <img class="brand-logo brand-client" src="{{ client_logo_url }}" alt="Logo del cliente" />
+  {% endif %}
+</header>
+{% endif %}

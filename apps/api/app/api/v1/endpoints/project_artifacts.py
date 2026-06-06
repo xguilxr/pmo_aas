@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import AppError, forbidden, not_found
 from app.db.session import get_db
-from app.models.modules import ChangeRequest, Issue, Lesson, Risk
+from app.models.modules import Issue, Risk
 from app.models.project import Project
 from app.models.project_artifact import ARTIFACT_TYPES, ProjectArtifact
 from app.models.project_charter import ProjectCharter
@@ -145,29 +145,29 @@ def _plan_meta(
 
 
 def _raid_meta(project_id: UUID, project_name: str | None = None) -> ArtifactMeta:
-    # ENH-082 (Sprint 19) entregará el export 4-sheets dedicado. Mientras,
-    # se expone el endpoint de export RAID actual (modules.docs_router).
-    from app.services.filename_slug import artifact_filename
+    # ENH-152: export RAID = 4 hojas ES (Riesgos/Acciones/Incidencias/
+    # Decisiones), mismo archivo que el botón de /raid. Filename legible.
+    from app.services.filename_slug import raid_display_filename
 
     return ArtifactMeta(
         type="raid",
         available=True,
         source_format="xlsx",
-        # ENH-093: filename con nombre de proyecto, no con su UUID.
-        filename=artifact_filename(project_name, "raid", "xlsx"),
+        filename=raid_display_filename(project_name),
         download_url=f"/api/v1/projects/{project_id}/raid/export",
     )
 
 
-def _organigrama_meta() -> ArtifactMeta:
+def _organigrama_meta(project_id: UUID, project_name: str | None = None) -> ArtifactMeta:
+    # US-150: Excel con 4 hojas (Áreas/Equipos/Roles/Recursos).
+    from app.services.filename_slug import artifact_filename
+
     return ArtifactMeta(
         type="organigrama",
-        available=False,
-        placeholder=True,
-        placeholder_reason=(
-            "Pendiente de redefinición Áreas/Recursos. El cableado funcional "
-            "se entregará cuando esa redefinición se complete (post-Sprint 18)."
-        ),
+        available=True,
+        source_format="xlsx",
+        filename=artifact_filename(project_name, "organigrama", "xlsx"),
+        download_url=f"/api/v1/projects/{project_id}/organigrama/export",
     )
 
 
@@ -201,7 +201,7 @@ async def list_artifacts(
             _charter_meta(project_id, charter, project.name),
             _plan_meta(project_id, plan_art, project.name),
             _raid_meta(project_id, project.name),
-            _organigrama_meta(),
+            _organigrama_meta(project_id, project.name),
         ],
     )
 
@@ -241,7 +241,7 @@ async def get_artifact(
     if t == "raid":
         return _raid_meta(project_id, project.name)
 
-    return _organigrama_meta()
+    return _organigrama_meta(project_id, project.name)
 
 
 @router.get("/{project_id}/plan/download")
@@ -323,18 +323,28 @@ async def export_raid(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """ENH-082: Excel RAID con 4 sheets dedicados (Risks/Issues/Lessons/Changes).
+    """ENH-152: Excel RAID con 4 hojas en español — Riesgos / Acciones /
+    Incidencias / Decisiones — con columnas legibles (nombres de área y
+    responsable resueltos a texto) y filename `RAID-[Nombre Proyecto].xlsx`.
 
-    Cada sheet con header bold + fondo, freeze pane y autosize. Sheets vacíos
-    se incluyen igual con header (CA5). Refleja el estado actual de DB —
-    el módulo Documentos (US-106) consume este endpoint en su tab RAIDs.
+    Es el **mismo archivo** para el botón de `/raid` y el del módulo
+    Documentos (tab RAIDs). Los 4 tipos RAID son `Risk` + `Issue.type`
+    (action / issue / decision). Refleja el estado actual de DB.
     """
     from io import BytesIO
     from urllib.parse import quote
 
     from fastapi.responses import StreamingResponse
 
-    from app.services.raid_export import XLSX_MIME, export_raid_xlsx
+    from app.models.area import Actor, Area
+    from app.models.user import User
+    from app.services.filename_slug import raid_display_filename
+    from app.services.raid_export import (
+        XLSX_MIME,
+        build_issue_rows,
+        build_risk_rows,
+        export_raid_xlsx,
+    )
 
     tenant_id = _tenant(cu)
     project = await _ensure_project(db, project_id, tenant_id)
@@ -361,39 +371,172 @@ async def export_raid(
         )
     ).scalars().all()
 
-    lessons = (
-        await db.execute(
-            select(Lesson)
-            .where(
-                Lesson.project_id == str(project_id),
-                Lesson.deleted_at.is_(None),
-            )
-            .order_by(Lesson.created_at.desc())
-        )
-    ).scalars().all()
+    actions = [i for i in issues if i.type == "action"]
+    incidents = [i for i in issues if i.type == "issue"]
+    decisions = [i for i in issues if i.type == "decision"]
 
-    changes = (
-        await db.execute(
-            select(ChangeRequest)
-            .where(
-                ChangeRequest.project_id == str(project_id),
-                ChangeRequest.deleted_at.is_(None),
-            )
-            .order_by(ChangeRequest.requested_at.desc())
-        )
-    ).scalars().all()
+    # Resolver nombres a texto: Responsable área (Area), Responsable
+    # (Actor del catálogo, fallback al Usuario).
+    area_ids = {str(x.area_id) for x in [*risks, *issues] if x.area_id}
+    actor_ids = {str(x.owner_actor_id) for x in [*risks, *issues] if x.owner_actor_id}
+    user_ids = {str(x.owner_id) for x in [*risks, *issues] if x.owner_id}
+
+    area_names = {
+        str(a.id): a.name
+        for a in (await db.execute(select(Area).where(Area.id.in_(area_ids)))).scalars().all()
+    } if area_ids else {}
+    actor_names = {
+        str(a.id): a.name
+        for a in (await db.execute(select(Actor).where(Actor.id.in_(actor_ids)))).scalars().all()
+    } if actor_ids else {}
+    user_names = {
+        str(u.id): u.full_name
+        for u in (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+    } if user_ids else {}
 
     data = export_raid_xlsx(
-        risks=list(risks),
-        issues=list(issues),
-        lessons=list(lessons),
-        changes=list(changes),
+        risks_rows=build_risk_rows(list(risks), area_names, actor_names, user_names),
+        actions_rows=build_issue_rows(actions, area_names, actor_names, user_names),
+        incidents_rows=build_issue_rows(incidents, area_names, actor_names, user_names),
+        decisions_rows=build_issue_rows(decisions, area_names, actor_names, user_names),
     )
 
-    # ENH-093: filename canónico `{project-slug}-raid.xlsx`.
-    from app.services.filename_slug import artifact_filename
+    # ENH-152: filename legible `RAID-[Nombre Proyecto].xlsx`.
+    filename = raid_display_filename(project.name)
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="{filename}"; '
+            f"filename*=UTF-8''{quote(filename)}"
+        ),
+    }
+    return StreamingResponse(BytesIO(data), media_type=XLSX_MIME, headers=headers)
 
-    filename = artifact_filename(project.name, "raid", "xlsx")
+
+@router.get("/{project_id}/organigrama/export")
+async def export_organigrama(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-150: Excel con 4 hojas — Áreas, Equipos, Roles, Recursos.
+
+    El scope de áreas/recursos es el visible para el proyecto vía
+    `area_assignments` (global + organización + programa + proyecto).
+    Roles es el catálogo tenant completo.
+    """
+    from io import BytesIO
+    from urllib.parse import quote
+
+    from fastapi.responses import StreamingResponse
+    from sqlalchemy import or_
+
+    from app.models.area import Actor, Area, AreaAssignment, Team
+    from app.models.project_role import ProjectRole
+    from app.services.filename_slug import artifact_filename
+    from app.services.organigrama_export import XLSX_MIME, export_organigrama_xlsx
+
+    tenant_id = _tenant(cu)
+    project = await _ensure_project(db, project_id, tenant_id)
+
+    # Áreas visibles para el proyecto (cascada US-103).
+    scope_filters = [AreaAssignment.is_global.is_(True), AreaAssignment.project_id == str(project_id)]
+    if project.organization_id:
+        scope_filters.append(AreaAssignment.organization_id == str(project.organization_id))
+    if project.program_id:
+        scope_filters.append(AreaAssignment.program_id == str(project.program_id))
+    area_ids = set(
+        (
+            await db.execute(
+                select(AreaAssignment.area_id).where(
+                    AreaAssignment.tenant_id == tenant_id, or_(*scope_filters)
+                )
+            )
+        ).scalars().all()
+    )
+
+    areas = (
+        await db.execute(
+            select(Area).where(Area.id.in_(area_ids)).order_by(Area.name)
+        )
+    ).scalars().all() if area_ids else []
+    area_name = {str(a.id): a.name for a in areas}
+
+    teams = (
+        await db.execute(
+            select(Team).where(Team.area_id.in_(area_ids)).order_by(Team.name)
+        )
+    ).scalars().all() if area_ids else []
+    team_name = {str(t.id): t.name for t in teams}
+
+    roles = (
+        await db.execute(
+            select(ProjectRole)
+            .where(ProjectRole.tenant_id == tenant_id)
+            .order_by(ProjectRole.name)
+        )
+    ).scalars().all()
+
+    # Recursos: actores ligados a un equipo de esas áreas o directamente al área.
+    team_ids = {str(t.id) for t in teams}
+    actor_conds = []
+    if team_ids:
+        actor_conds.append(Actor.team_id.in_(team_ids))
+    if area_ids:
+        actor_conds.append(Actor.area_id.in_(area_ids))
+    actors = (
+        await db.execute(
+            select(Actor)
+            .where(
+                Actor.tenant_id == tenant_id,
+                Actor.deleted_at.is_(None),
+                or_(*actor_conds),
+            )
+            .order_by(Actor.name)
+        )
+    ).scalars().all() if actor_conds else []
+    actor_name = {str(a.id): a.name for a in actors}
+
+    def _team_area(team_id: str | None) -> str:
+        if not team_id:
+            return ""
+        t = next((x for x in teams if str(x.id) == team_id), None)
+        return area_name.get(str(t.area_id), "") if t else ""
+
+    areas_rows = [
+        [str(a.id), a.name, a.description or "",
+         actor_name.get(str(a.lead_actor_id), "") if a.lead_actor_id else "",
+         "Sí" if a.is_active else "No"]
+        for a in areas
+    ]
+    teams_rows = [
+        [str(t.id), area_name.get(str(t.area_id), ""), t.name, t.description or "",
+         "Sí" if t.is_active else "No"]
+        for t in teams
+    ]
+    roles_rows = [
+        [str(r.id), r.name, r.description or "", "Sí" if r.is_active else "No"]
+        for r in roles
+    ]
+    recursos_rows = [
+        [
+            str(a.id), a.name,
+            team_name.get(str(a.team_id), "") if a.team_id else "",
+            area_name.get(str(a.area_id), "") if a.area_id else _team_area(str(a.team_id) if a.team_id else None),
+            a.job_title or "", a.company or "", a.email or "", a.phone or "",
+            actor_name.get(str(a.manager_actor_id), "") if a.manager_actor_id else "",
+            "Sí" if a.is_active else "No",
+        ]
+        for a in actors
+    ]
+
+    data = export_organigrama_xlsx(
+        areas_rows=areas_rows,
+        teams_rows=teams_rows,
+        roles_rows=roles_rows,
+        recursos_rows=recursos_rows,
+    )
+
+    filename = artifact_filename(project.name, "organigrama", "xlsx")
     headers = {
         "Content-Disposition": (
             f'attachment; filename="{filename}"; '

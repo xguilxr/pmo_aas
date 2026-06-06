@@ -1,7 +1,7 @@
 # Épicas — PMO-aaS
 
 **ID:** `DOC-EPICS`  
-**Última actualización:** 2026-04-20  
+**Última actualización:** 2026-05-29  
 **Metodología:** 1 US = 1 commit = 1 sesión de trabajo
 
 ---
@@ -21,11 +21,14 @@
 | [EP009](./EP009-ms-project.md) | Integración Microsoft Project | MVP | ✅ SIN CAMBIOS | EP005 |
 | [EP010](./EP010-superadmin-panel.md) | Panel Super Admin | MVP | ⚠️ ACTUALIZADA | EP001, EP002 |
 | [EP011](./EP011-notifications.md) | Sistema de notificaciones | POST-MVP | 🆕 NUEVA | EP001, EP003 |
-| [EP012](./EP012-db-migration.md) | Instalación productivo Hostgator MySQL (code-compat + fresh install) | POST-MVP / release v1.0 | 🆕 NUEVA | Todas |
-| [EP013](./EP013-navigation-refactor.md) | Refactor de navegación (sidebar + admin + tabs inline) — issue #17 | v1.1 | 🆕 NUEVA | EP001, EP002, EP005, EP006, EP007, EP010 |
-| [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 | 🆕 NUEVA | EP005, EP006, EP008 |
+| ~~[EP012](./EP012-db-migration.md)~~ | ❌ **CANCELADA** — migración HostGator MySQL (DEC-013). Productivo corre 100% en Railway. | — | ❌ CANCELADA | — |
+| [EP013](./EP013-navigation-refactor.md) | Refactor de navegación (sidebar + admin + tabs inline) — issue #17 | v1.1 | ⚠️ ACTUALIZADA | EP001, EP002, EP005, EP006, EP007, EP010 |
+| [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 | ⚠️ ACTUALIZADA | EP005, EP006, EP008 |
 | [EP015](./EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 | 🆕 NUEVA | EP010 |
-| [EP016](./EP016-local-ai-tunnel.md) | Modelo IA local (Ollama + Cloudflare Tunnel + nssm) | v1.1 | 🆕 NUEVA | EP008, EP014 |
+| ~~[EP016](./EP016-local-ai-tunnel.md)~~ | ❌ **ARCHIVADA** — IA local (Ollama + Cloudflare/Tailscale). Superseded por DEC-017; código eliminado en BUG-053 (2026-05-08). | — | ❌ ARCHIVADA | — |
+| [EP017](./EP017-project-directory.md) | Directorio de proyecto (áreas, equipos, actores, participaciones) | v1.2 | 🆕 NUEVA | EP005, EP006 |
+| [EP018](./EP018-documents-artifacts.md) | Documentos y artefactos de proyecto | v1.3 | 🆕 NUEVA | EP005, EP006 |
+| [EP019](./EP019-changes-approval.md) | Gestión de cambios + flujo de aprobación | v1.4 | 🆕 NUEVA | EP005, EP006 |
 | [EP020](./EP020-report-builder.md) | Report Builder (Niveles 1, 2, 4) + catálogo 22 secciones | v1.5 | 🆕 NUEVA | EP005, EP006, EP007, EP008, EP014, EP018 |
 
 ---
@@ -97,20 +100,26 @@ No acumules cambios de varias US en un solo commit.
 
 ---
 
-## Orden de ejecución de los bloques pendientes
+## Orden de ejecución de los bloques
 
-Los bloques 1-8 están DONE. Lo que queda, en orden:
+> **Nota 2026-05-23:** este roadmap planeado quedó superado por la
+> ejecución real. Los bloques originales 9-11 (EP013, EP014, EP015)
+> están **DONE**. El bloque 12 (EP016 Ollama) y bloque 14 (EP012
+> MySQL) fueron **cancelados** (ver DEC-013 y BUG-053). EP011
+> (notificaciones) se entregó como parte del trabajo operativo
+> (`apps/api/app/api/v1/endpoints/notifications.py`, `notification-bell.tsx`).
+>
+> Para ver el estado vigente del sprint y los issues abiertos,
+> consultar `docs/project-management/SPRINT.md`.
 
-| Bloque | Epic | Issue origen | Alcance resumido |
-|---|---|---|---|
-| **9** | EP013 | #17 | Refactor de navegación: sidebar principal con drill-down real, sidebar admin consolidado, logo del tenant en chrome, tabs inline en detalle de proyecto (supersede US-017) |
-| **10** | EP014 | #18 | Reportes operativos Python sin IA (Avance + Seguimiento) con PDF descargable; formato estandarizado + export de Minuta IA (.docx/.md/.txt/.pdf) |
-| **11** | EP015 | #19 | Refactor sidebar super admin (4 ítems raíz), nueva página `/superadmin/users` cross-tenant, Health al top en Visión General |
-| **12** | EP016 | — | Modelo IA local: runbook Ollama + Cloudflare Tunnel + nssm, config por-tenant y smoke test del endpoint |
-| **13** | EP011 | — | Notificaciones (POST-MVP): tabla + in-app center + email via Resend |
-| **14** | EP012 | — | Instalación productivo Hostgator MySQL (fresh install). Staging sigue en Railway Postgres |
+### Cambios clave en el roadmap original
 
-### Ajustes clave respecto a la versión anterior del roadmap
-- **US-017** (tabs inline) queda **superseded** por US-035 (EP013). Sus dependencias están DONE, se construye como parte del bloque 9.
-- **EP012** ya no es "migración zero-downtime PG→MySQL". Es **fresh install** productivo en Hostgator MySQL + compatibilidad dialect-agnostic del código. Staging se queda en Railway Postgres (DEC-017/018/019).
-- Issues **#17** y **#18** quedan incorporados antes de los bloques POST-MVP previos.
+- **EP012** (migración MySQL HostGator) → **CANCELADA** en DEC-013.
+  Productivo corre 100% en Railway Postgres.
+- **EP016** (IA local Ollama via tunnel/tailnet) → **ARCHIVADA**.
+  Superseded por DEC-017 (modos `platform`/`byo`) y eliminada del
+  código por BUG-053 (2026-05-08). `OllamaProvider` ya no existe.
+- **US-017** (tabs inline) → superseded por US-035 (EP013), DONE.
+- Nuevas epics posteriores: EP017 (project directory),
+  EP018 (documents-artifacts), EP019 (changes approval),
+  EP020 (report builder Niveles 1/2/4). Ver tabla principal arriba.

@@ -218,29 +218,6 @@ def require_authenticated():
     return _checker
 
 
-def require_permission(module: str, action: str):
-    """Shim legacy. Se mantiene para compat con tests o llamadas no
-    migradas aún. Resuelve internamente a `require_capability()` o
-    `require_authenticated()` según el mapping de DEC-024.
-
-    TODO US-081 — borrar esta función y sus usos residuales.
-    """
-    cap = module_action_to_capability(module, action)
-
-    async def _checker(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if cap is not None:
-            if not cu.has_capability(cap):
-                raise forbidden(
-                    code="FORBIDDEN", detail=f"Falta capability {cap}"
-                )
-        return cu
-
-    _checker.__pmoaas_gate__ = (  # type: ignore[attr-defined]
-        ("capability", cap) if cap is not None else ("authenticated",)
-    )
-    return _checker
-
-
 async def get_superadmin(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     if not cu.is_superadmin:
         raise forbidden(code="FORBIDDEN", detail="Solo super admin")

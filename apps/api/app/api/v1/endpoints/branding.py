@@ -20,8 +20,7 @@ from app.services.branding_storage import (
     ALLOWED_LOGO_MIMES,
     delete_logo,
     find_logo_file,
-    logo_public_url,
-    save_logo,
+    logo_to_data_url,
 )
 
 router = APIRouter(tags=["branding"])
@@ -55,8 +54,11 @@ async def upload_tenant_logo(
     if t is None:
         raise not_found("Tenant")
 
-    _, ext = await save_logo(str(tenant_id), file)
-    t.logo_url = logo_public_url(str(tenant_id))
+    # BUG-068: guardamos el logo como data-URL en DB (no en disco efímero) para
+    # que renderice directo desde `<img>` sin pasar por un endpoint autenticado.
+    t.logo_url = await logo_to_data_url(file)
+    # Limpia cualquier archivo legacy en disco de subidas anteriores.
+    delete_logo(str(tenant_id))
     await write_audit(
         db,
         action="tenant.logo.upload",
@@ -65,7 +67,7 @@ async def upload_tenant_logo(
         tenant_id=tenant_id,
         entity_type="tenant",
         entity_id=str(t.id),
-        details={"ext": ext},
+        details={"stored": "data_url"},
     )
     await db.commit()
     return {"logo_url": t.logo_url}
@@ -83,12 +85,16 @@ async def remove_tenant_logo(
     if t is None:
         raise not_found("Tenant")
 
-    deleted = delete_logo(str(tenant_id))
-    # Si `logo_url` apuntaba al endpoint interno, lo limpiamos. Si era
-    # una URL externa legítima (p.ej. CDN), no la tocamos.
-    internal_prefix = logo_public_url(str(tenant_id))
-    if t.logo_url and t.logo_url.startswith(internal_prefix):
+    removed_file = delete_logo(str(tenant_id))
+    # Limpiamos el logo si es un data-URL subido o apuntaba al endpoint
+    # interno. Una URL externa legítima (p.ej. CDN) no se toca.
+    cleared = False
+    if t.logo_url and (
+        t.logo_url.startswith("data:") or t.logo_url.startswith("/api/")
+    ):
         t.logo_url = None
+        cleared = True
+    deleted = removed_file or cleared
     await write_audit(
         db,
         action="tenant.logo.remove",

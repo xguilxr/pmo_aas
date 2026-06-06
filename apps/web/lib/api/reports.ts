@@ -6,7 +6,16 @@ export type ReportStatus = "draft" | "sent";
 
 export type ReportSections = Record<string, string>;
 
-export type ReportGenerator = "manual" | "ai" | "avance" | "seguimiento";
+// US-140 — agregado "builder" para reportes generados desde el Report
+// Builder (EP020). El backend persiste con este valor cuando el PM
+// exporta PDF desde `/reports/builder` o cuando una suscripción custom
+// (US-131) corre en el cron.
+export type ReportGenerator =
+  | "manual"
+  | "ai"
+  | "avance"
+  | "seguimiento"
+  | "builder";
 
 export type Report = {
   id: string;
@@ -232,6 +241,23 @@ export function downloadSeguimientoReport(reportId: string): Promise<void> {
   );
 }
 
+/**
+ * US-147: genera Reporte Look-ahead (actividades en ventana [hoy, hoy+ventana]).
+ * Excluye vencidas. Descarga PDF directo.
+ */
+export type LookAheadUnit = "days" | "weeks" | "months";
+export function generateLookAheadReport(
+  projectId: string,
+  windowValue: number,
+  windowUnit: LookAheadUnit,
+): Promise<void> {
+  return downloadPdfFromEndpoint(
+    `/api/v1/projects/${projectId}/reports/look-ahead`,
+    { window_value: windowValue, window_unit: windowUnit },
+    "POST",
+  );
+}
+
 /** ENH-014: preview (inline) de un Reporte de Avance generado. */
 export function previewAvanceReport(reportId: string): Promise<void> {
   return previewPdfFromEndpoint(
@@ -435,4 +461,31 @@ export function deleteAIReportTemplate(templateId: string): Promise<void> {
   return apiFetch<void>(`/api/v1/ai-report-templates/${templateId}`, {
     method: "DELETE",
   });
+}
+
+/**
+ * US-140 — regenera el PDF de un reporte builder desde su snapshot HTML.
+ * Devuelve un blob para descarga directa (no JSON).
+ */
+export async function regenerateBuilderPdf(reportId: string): Promise<Blob> {
+  const token = getAccessToken();
+  const res = await fetch(
+    `${apiBase()}/api/v1/reports/${reportId}/regenerate-pdf`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/pdf",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    }
+  );
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new ApiError(
+      res.status,
+      "REGENERATE_FAILED",
+      `Regenerar PDF falló (${res.status}): ${txt.slice(0, 200)}`
+    );
+  }
+  return res.blob();
 }

@@ -20,10 +20,10 @@ export default function ProjectAreasPage() {
     <div className="space-y-4 p-4">
       <header>
         <h1 className="text-xl font-semibold text-[var(--color-primary)]">
-          Áreas del proyecto
+          Áreas/Recursos
         </h1>
         <p className="text-sm text-[var(--color-tertiary)]">
-          Directorio del proyecto + catálogos tenant (áreas, equipos
+          Recursos del proyecto + catálogos tenant (áreas, equipos
           operativos, roles).
         </p>
       </header>
@@ -37,7 +37,7 @@ export default function ProjectAreasPage() {
           >
             {(
               [
-                { v: "directory", label: "Directorio" },
+                { v: "directory", label: "Recursos" },
                 { v: "catalog", label: "Áreas y Equipos" },
               ] as const
             ).map((opt) => {
@@ -67,7 +67,7 @@ export default function ProjectAreasPage() {
           {view === "directory" ? (
             <DirectoryView projectId={projectId} />
           ) : (
-            <AreasAndTeamsPanel />
+            <AreasAndTeamsPanel projectId={projectId} />
           )}
         </div>
       </section>

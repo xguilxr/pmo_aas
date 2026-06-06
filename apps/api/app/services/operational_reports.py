@@ -35,7 +35,7 @@ def _is_delayed(t: Task, today: date) -> bool:
     """ENH-064 — tarea retrasada: end_date < hoy y no completada."""
     if t.end_date is None:
         return False
-    if t.status == "done" or (t.progress or 0) >= 100:
+    if t.status == "completed" or (t.progress or 0) >= 100:
         return False
     return t.end_date < today
 
@@ -152,7 +152,7 @@ async def build_avance_context(
         )
     ).scalars().all()
     total_tasks = len(all_tasks)
-    done = sum(1 for t in all_tasks if t.status == "done" or (t.progress or 0) >= 100)
+    done = sum(1 for t in all_tasks if t.status == "completed" or (t.progress or 0) >= 100)
     in_progress = sum(1 for t in all_tasks if t.status == "in_progress")
     not_started = sum(1 for t in all_tasks if t.status == "not_started")
     # ENH-109 — avance derivado del plan (rollup WBS: padre = promedio de
@@ -180,7 +180,7 @@ async def build_avance_context(
         [
             t
             for t in milestones
-            if (t.status == "done" or (t.progress or 0) >= 100)
+            if (t.status == "completed" or (t.progress or 0) >= 100)
             and t.end_date is not None
             and period_start <= t.end_date <= cut_off_date
         ],
@@ -194,7 +194,7 @@ async def build_avance_context(
         [
             t
             for t in milestones
-            if t.status != "done"
+            if t.status != "completed"
             and (t.progress or 0) < 100
             and t.end_date is not None
             and cut_off_date <= t.end_date <= upcoming_end
@@ -431,10 +431,11 @@ async def build_seguimiento_context(
 ) -> dict[str, Any]:
     """Contexto para Reporte de Seguimiento (acciones por responsable).
 
-    Unifica tareas del plan (no cerradas) y AIDs tipo `action` abiertas,
-    y las reparte en: vencidas, en curso (dentro de la ventana anterior)
-    y próximas (dentro de la ventana siguiente). Dentro de cada bucket
-    agrupa por responsable.
+    Reparte las tareas del plan (no cerradas) en: vencidas, en curso
+    (dentro de la ventana anterior) y próximas (dentro de la ventana
+    siguiente). ENH-154: las AIDs tipo `action` abiertas ya no se mezclan
+    en esos buckets; se listan completas en su propia sección "Acciones"
+    (`groups_actions`). Dentro de cada bloque agrupa por área.
     """
     project = await _get_project(db, tenant_id, project_id)
     window_end = cut_off_date + timedelta(days=window_days)
@@ -446,7 +447,7 @@ async def build_seguimiento_context(
         await db.execute(
             select(Task).where(
                 Task.project_id == str(project_id),
-                Task.status.notin_(["done", "cancelled"]),
+                Task.status.notin_(["completed", "cancelled"]),
             )
         )
     ).scalars().all()
@@ -506,9 +507,13 @@ async def build_seguimiento_context(
             "progress": t.progress or 0,
             "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
         })
+    # ENH-154: las acciones (AID type=action) dejan de mezclarse con las
+    # tareas en los buckets de Actividades; van a su propia sección
+    # "Acciones" con TODAS las abiertas (sin filtro de ventana).
+    actions_items: list[dict[str, Any]] = []
     for a in action_rows:
         due = a.committed_date
-        items.append({
+        actions_items.append({
             "source": "action",
             "folio": a.folio,
             "title": a.title,
@@ -579,4 +584,93 @@ async def build_seguimiento_context(
         "groups_overdue": group(overdue),
         "groups_in_progress": group(in_progress),
         "groups_upcoming": group(upcoming),
+        "groups_actions": group(actions_items),
+    }
+
+
+# US-147 — Reporte Look-ahead: solo actividades en ventana [hoy, hoy+ventana].
+async def build_look_ahead_context(
+    db: AsyncSession,
+    tenant_id: UUID,
+    project_id: UUID,
+    window_value: int,
+    window_unit: str,
+) -> dict[str, Any]:
+    """Contexto para Reporte Look-ahead.
+
+    Selecciona tasks cuyo `start_date` o `end_date` cae dentro de
+    `[hoy, hoy+ventana]`. Excluye las que ya están vencidas
+    (`end_date < hoy`). Sin agrupar por área ni responsable — un
+    listado plano ordenado por end_date asc, start_date asc.
+
+    Args:
+        window_value: número de unidades de ventana hacia adelante.
+        window_unit: "days" | "weeks" | "months".
+    """
+    project = await _get_project(db, tenant_id, project_id)
+    today = datetime.now(UTC).date()
+    multipliers = {"days": 1, "weeks": 7, "months": 30}
+    if window_unit not in multipliers:
+        raise ValueError(f"window_unit invalid: {window_unit!r}")
+    days = window_value * multipliers[window_unit]
+    window_end = today + timedelta(days=days)
+
+    all_tasks = (
+        await db.execute(
+            select(Task).where(
+                Task.tenant_id == str(tenant_id),
+                Task.project_id == str(project_id),
+            )
+        )
+    ).scalars().all()
+
+    in_window: list[dict[str, Any]] = []
+    for t in all_tasks:
+        # Excluye vencidas (end_date < hoy).
+        if t.end_date is not None and t.end_date < today:
+            continue
+        starts_in = (
+            t.start_date is not None and today <= t.start_date <= window_end
+        )
+        ends_in = (
+            t.end_date is not None and today <= t.end_date <= window_end
+        )
+        if not (starts_in or ends_in):
+            continue
+        in_window.append({
+            "id": str(t.id),
+            "wbs": t.wbs,
+            "name": t.name,
+            # Serializa fechas a ISO string para que `sections` (JSONB)
+            # sea persistible sin custom encoder.
+            "start_date": t.start_date.isoformat() if t.start_date else None,
+            "end_date": t.end_date.isoformat() if t.end_date else None,
+            "progress": t.progress or 0,
+            "status": t.status,
+            "is_milestone": t.is_milestone,
+            "is_critical": bool(t.is_critical),
+        })
+
+    in_window.sort(
+        key=lambda r: (
+            r["end_date"] or "9999-12-31",
+            r["start_date"] or "9999-12-31",
+        )
+    )
+
+    unit_label = {"days": "días", "weeks": "semanas", "months": "meses"}[window_unit]
+    window_label = f"{window_value} {unit_label} ({today.isoformat()} → {window_end.isoformat()})"
+
+    return {
+        "project": {
+            "id": str(project.id),
+            "folio": project.folio,
+            "name": project.name,
+        },
+        "window_value": window_value,
+        "window_unit": window_unit,
+        "window_label": window_label,
+        "period_start": today.isoformat(),
+        "period_end": window_end.isoformat(),
+        "tasks": in_window,
     }

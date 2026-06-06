@@ -81,7 +81,7 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 - [ ] Devuelve PDF directamente (content-type `application/pdf`, filename `Reporte_Avance_{folio}_{YYYY-MM-DD}.pdf`).
 - [ ] Guarda copia en `documents` con `category='report'` + referencia al `reports` row (metadata: tipo `avance`, cut_off).
 - [ ] Endpoint `GET /api/v1/reports/{id}/avance/download` para re-descargar versión histórica.
-- [ ] UI en `/admin/projects/{id}?tab=reports`:
+- [ ] UI en `/pmo/projects/{id}?tab=reports`:
   - Botón "Generar Reporte de Avance" (nuevo) — sin IA, sin edición.
   - Al generar, descarga automática + row nuevo en listado con badge "Avance".
 
@@ -117,7 +117,7 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 **Criterios de aceptación:**
 - [ ] Endpoint `POST /api/v1/projects/{id}/reports/seguimiento` con body `{ window_days?: int }`. Default = 14 (semana pasada + siguiente).
 - [ ] Contexto desde la BD:
-  - Actividades vencidas (`due_date < today AND status NOT IN ('resolved','closed','done')`). Incluye tareas del plan y AIDs tipo action.
+  - Actividades vencidas (`due_date < today AND status NOT IN ('resolved','closed','done')`). **ENH-154 (2026-06-05): solo tareas del plan** — las AIDs tipo action se movieron a su propia sección "Acciones".
   - Actividades en curso.
   - Actividades próximas (hasta `window_days` adelante).
   - Agrupación: **por responsable** (nombre del usuario o area_reference).
@@ -129,7 +129,7 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 - [ ] Endpoint `GET /api/v1/reports/{id}/seguimiento/download`.
 
 **Implementación:**
-- `operational_reports.build_seguimiento_context()` unifica tareas del plan (no cerradas) y AIDs tipo `action` abiertas, clasifica en Vencidas / En curso / Próximas y agrupa por responsable (con bucket "Sin responsable" para items sin owner).
+- `operational_reports.build_seguimiento_context()` clasifica las tareas del plan (no cerradas) en Vencidas / En curso / Próximas y agrupa por área. **ENH-154 (2026-06-05):** las AIDs tipo `action` abiertas (status ∉ resolved/closed) ya no se mezclan en esos buckets; se listan completas (sin filtro de ventana) en su propia sección **"Acciones"** (`groups_actions`), renderizada antes de "Actividades próximas".
 - Plantilla `templates/pdf/reports/seguimiento.html` renderiza 3 secciones con una tabla por owner.
 - Endpoints `POST /api/v1/projects/{id}/reports/seguimiento` (body: `cut_off_date?`, `window_days?`) y `GET /api/v1/reports/{id}/seguimiento/download`.
 - Frontend: botón "Reporte de Seguimiento (PDF)" junto al de Avance.
@@ -150,6 +150,11 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 **Como** PM
 **Quiero** que la minuta generada con IA siempre tenga el mismo formato y pueda descargarse en `.docx`, `.md` o `.txt`
 **Para** compartirla en canales corporativos sin reformateo manual.
+
+**Cambios posteriores (Sprint 30 Bloque 2, 2026-05-23):**
+- **ENH-117 (commit `7ad1fd8`)** — Listing rediseñado: botón único "Generar Minuta" (consolidó "Generar con IA" + "Llenar manualmente"); tabla con columnas Folio | Minuta | Fecha | Tipo | Exportar | Preview | Borrar.
+- **ENH-118 (commit `89a430b`)** — Exportación simplificada: solo PDF y DOCX visibles en UI; MD/TXT removidos del detail (backend sigue aceptándolos por compatibilidad).
+- **BUG-062 (commit `bfe4efd`)** — Navegación en listing `/pmo/minutes` (tenant-wide): al hacer click en el nombre, abre el detail `/pmo/projects/X/minutes/Y` (antes apuntaba al listing del proyecto).
 
 **Formato requerido (ver issue #18):**
 
@@ -184,9 +189,9 @@ Notas adicionales
   - Export `.docx` (usa `python-docx`; plantilla con estilo corporativo).
 - [ ] Acciones del RAID se **agrupan por area o responsable** en el render (criterio explícito del issue).
 - [ ] Endpoints:
-  - `GET /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf` — PDF reutiliza US-037.
+  - `GET /api/v1/meeting-minutes/{id}/export?format=docx|md|txt|pdf` — PDF reutiliza US-037. Backend sigue aceptando MD/TXT por compat.
   - Si `format=pdf`, filename: `Minuta_{proyecto_folio}_{fecha}.pdf`; igual para los demás.
-- [ ] UI: dentro del editor de minutas (post-generación IA), botón "Descargar" con menú desplegable (docx / md / pdf).
+- [ ] UI: dentro del editor de minutas (post-generación IA), botón "Descargar" con menú desplegable (PDF / DOCX). **Cambio ENH-118 (2026-05-23):** MD/TXT removidos de UI.
 - [ ] Minutas **manuales** (no IA) también pueden usarse con el mismo formatter si cumplen el schema mínimo (campos opcionales se muestran como vacíos).
 
 **Implementación:**
@@ -199,7 +204,9 @@ Notas adicionales
 
 **Frontend:**
 - `lib/api/modules.ts::exportMinute(id, format)` usa `fetch` + Blob.
-- Tabla de minutas en `/admin/projects/[id]/minutes` gana columna "Exportar" con 4 botones (PDF / DOCX / MD / TXT) que descargan directo.
+- Tabla de minutas en `/pmo/projects/[id]/minutes` gana columna "Exportar" con 2 botones (PDF / DOCX) que descargan directo.
+- **Cambio ENH-118 (2026-05-23):** UI expone solo PDF y DOCX; MD/TXT removidos de UI aunque el backend sigue aceptándolos por compatibilidad.
+- **Cambio ENH-117 (2026-05-23):** Botón único "Generar Minuta" en lugar de "Generar con IA" + "Llenar manualmente". Columnas reordenadas: Folio | Minuta | Fecha | Tipo | Exportar (PDF/DOCX) | Preview | Borrar.
 
 **Tests (7/7 verdes, 186 en total):**
 - `test_usnew040_export_md_contains_sections` — 5 separadores `========`, "Resumen e Hitos", "RAID", "Notas adicionales", acciones agrupadas.
@@ -227,7 +234,7 @@ Seguimiento a una lista de emails con cadencia diaria/semanal/mensual
   (JSON), enabled, last_run_at, next_run_at.
 - [x] CRUD endpoints: `GET|POST /api/v1/projects/{id}/scheduled-reports`
   + `PATCH|DELETE /api/v1/scheduled-reports/{id}`.
-- [x] UI en `/admin/projects/{id}/reports`: sección "Envíos automáticos
+- [x] UI en `/pmo/projects/{id}/reports`: sección "Envíos automáticos
   programados" con add/edit/toggle/delete modal.
 - [x] Celery beat schedule cada 5 min (`scheduled_reports.dispatch_due`)
   que busca filas `enabled=true AND next_run_at <= now()` y encola una
@@ -254,7 +261,7 @@ Seguimiento a una lista de emails con cadencia diaria/semanal/mensual
   para múltiples destinatarios (`to: list[str]`) y `attachments`.
 - `app/workers/celery_app.py` — include + beat schedule cada 5 min.
 - Frontend: `apps/web/lib/api/scheduled-reports.ts` + sección
-  `ScheduledReportsSection` en `/admin/projects/[id]/reports/page.tsx`.
+  `ScheduledReportsSection` en `/pmo/projects/[id]/reports/page.tsx`.
 
 **Tests (9/9 verdes):**
 - `test_compute_next_run_cadences` — unit de cálculo de cadencia.

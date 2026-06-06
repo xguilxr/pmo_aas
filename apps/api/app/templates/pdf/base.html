@@ -30,13 +30,16 @@
   }
 
   :root {
-    --chrome: #182e4e;
-    --accent: #2563eb;
-    --muted: #6b7280;
-    --border: #e5e7eb;
-    --danger: #dc2626;
-    --warn: #eab308;
-    --ok: #16a34a;
+    /* ENH-146 — paleta alineada a la marca del producto (globals.css). */
+    --chrome: #182e4e;        /* navy del chrome / títulos */
+    --accent: #2A4DA0;        /* azul de marca (antes #2563eb) */
+    --muted: #756f60;         /* texto-muted cálido de marca */
+    --border: #e8e3d7;        /* hairline de marca */
+    --danger: #C0392B;
+    --warn: #B26B12;
+    --ok: #1F8A5B;
+    --surface: #ffffff;
+    --app: #F4F6FA;
   }
 
   html, body {
@@ -90,10 +93,45 @@
   .nums { font-variant-numeric: tabular-nums; }
   .page-break { page-break-before: always; }
   .empty { color: var(--muted); font-style: italic; font-size: 9.5pt; }
+
+  /* ENH-146 — banda de marca (logo PMO + logo cliente). */
+  .brand-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin: 0 0 1.1em; padding-bottom: .7em;
+    border-bottom: 2px solid var(--chrome);
+  }
+  .brand-header .brand-pmo { display: flex; align-items: center; gap: .55rem; }
+  .brand-header .brand-logo { max-height: 40px; max-width: 200px; object-fit: contain; }
+  .brand-header .brand-name { font-weight: 600; font-size: 12pt; color: var(--chrome); }
+  .brand-header .brand-client { max-height: 36px; max-width: 160px; }
+
+  /* ENH-146 — banda de KPIs at-a-glance (compartida con el HTML inline). */
+  .kpi-row { display: flex; flex-wrap: wrap; gap: 10px; margin: .4em 0 1.2em; }
+  .kpi-card {
+    flex: 1 1 0; min-width: 110px; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; background: var(--surface);
+  }
+  .kpi-card .kpi-label {
+    font-size: 7.5pt; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); font-weight: 600;
+  }
+  .kpi-card .kpi-value {
+    font-size: 19pt; font-weight: 700; line-height: 1.05; color: var(--chrome);
+    font-variant-numeric: tabular-nums; margin-top: 2px;
+  }
+  .kpi-card.danger { border-color: var(--danger); }
+  .kpi-card.danger .kpi-value { color: var(--danger); }
+  .kpi-card.warn { border-color: var(--warn); }
+  .kpi-card.warn .kpi-value { color: var(--warn); }
+  .kpi-card.ok { border-color: var(--ok); }
+  .kpi-card.ok .kpi-value { color: var(--ok); }
+  .kpi-card.accent { border-color: var(--accent); }
+  .kpi-card.accent .kpi-value { color: var(--accent); }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
 <body>
+{% include "_brand_header.html" %}
 {% block content %}{% endblock %}
 </body>
 </html>

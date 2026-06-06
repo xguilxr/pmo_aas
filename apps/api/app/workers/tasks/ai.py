@@ -24,13 +24,22 @@ from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
 from app.services.ai.platform_config import resolve_groq_config
-from app.services.ai.prompts import MINUTE_SYSTEM, REPORT_SYSTEM
+from app.services.ai.prompts import (
+    MINUTE_NORMALIZE_SYSTEM,
+    MINUTE_SYSTEM,
+    REPORT_SYSTEM,
+)
 from app.services.ai.provider import (
     AIResult,
     chunk_text,
     generate_for_tenant,
 )
 from app.services.ai.tenant_ai import TenantAIConfig, load_tenant_ai
+from app.services.ai.validator import (
+    dedupe_participants,
+    merge_topics,
+    validate_minute_payload,
+)
 from app.services.audit import write_audit
 from app.services.folio import next_folio
 from app.workers.celery_app import celery_app
@@ -48,8 +57,9 @@ _AI_CALL_BACKOFF_SEC: tuple[float, ...] = (1.0, 3.0, 8.0)
 # honramos, sino usamos esta tabla.
 _AI_CALL_BACKOFF_429_SEC: tuple[float, ...] = (10.0, 25.0, 60.0)
 
-def _empty_raid() -> dict:
-    return {"risks": [], "issues": [], "lessons": [], "changes": []}
+def _empty_raid_suggestions() -> dict:
+    """4 buckets canónicos A/R/D/I alineados con el modelo RAID."""
+    return {"actions": [], "risks": [], "decisions": [], "issues": []}
 
 
 def _empty_minute() -> dict:
@@ -57,54 +67,36 @@ def _empty_minute() -> dict:
     que los `extend` en cascada contaminen llamadas posteriores."""
     return {
         "summary": "",
+        "header": {},
         "participants": [],
         "topics": [],
-        "agreements": [],
-        "decisions": [],
-        "next_steps": [],
-        "risks_blockers": [],
-        "raid": _empty_raid(),
+        "free_notes": None,
+        "raid": [],
+        "raid_suggestions": _empty_raid_suggestions(),
     }
 
 
-def _normalize_raid_block(raw: object) -> dict:
-    """ENH-084: normaliza el bloque `raid` a las 4 claves canónicas con
-    arrays. Tolera modelos que devuelvan claves alternativas (`risk`,
-    `lesson`, `change`, alias) o aplanen los items en un array suelto.
-    Si no hay items de un tipo, queda en `[]` — no se inventa.
-    """
-    block: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
-    if not isinstance(raw, dict):
-        return block
-    aliases = {
-        "risks": ("risks", "risk", "riesgos", "riesgo"),
-        "issues": ("issues", "issue", "incidents", "incidencias", "incidentes"),
-        "lessons": (
-            "lessons", "lesson", "lecciones", "lessons_learned",
-        ),
-        "changes": ("changes", "change", "cambios", "change_requests"),
-    }
-    for key, names in aliases.items():
-        for n in names:
-            v = raw.get(n)
-            if isinstance(v, list):
-                block[key].extend([x for x in v if isinstance(x, dict)])
-                break
-    return block
+def _merge_raid_suggestions(buckets: list[dict]) -> dict:
+    """Concatena buckets canónicos {actions, risks, decisions, issues}
+    proveniente de chunks múltiples. Items inválidos (no-dict) se
+    descartan silenciosamente."""
+    out = _empty_raid_suggestions()
+    for b in buckets:
+        if not isinstance(b, dict):
+            continue
+        for k in out:
+            for it in b.get(k) or []:
+                if isinstance(it, dict):
+                    out[k].append(it)
+    return out
 
 
 def _parse_json_strict(s: str) -> dict | None:
-    try:
-        return json.loads(s)
-    except Exception:
-        start = s.find("{")
-        end = s.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                return json.loads(s[start : end + 1])
-            except Exception:
-                return None
-        return None
+    # ENH-147 — usa el parser tolerante compartido (fence-strip, comas
+    # colgantes, recorte entre llaves) en vez del json.loads frágil.
+    from app.services.ai.json_parse import parse_json_lenient
+
+    return parse_json_lenient(s)
 
 
 async def _alert_superadmin_platform_failure(
@@ -162,6 +154,7 @@ async def _call_ai_for_tenant(
     platform_groq_config: dict | None,
     tenant_id: str,
     job_id: str,
+    json_mode: bool = False,
 ) -> AIResult:
     """US-057: llama al provider del tenant con 3 reintentos. Sin
     fallback entre modos (disabled → caller debió chequear antes;
@@ -177,6 +170,7 @@ async def _call_ai_for_tenant(
                 byo_config=tenant_cfg.byo,
                 tenant_id=tenant_id,
                 job_id=job_id,
+                json_mode=json_mode,
             )
         except Exception as exc:
             last_err = exc
@@ -299,7 +293,14 @@ async def _run_minute(
     save_as_minute: bool,
     title: str,
     requested_by: str | None,
+    source_type: str = "transcript",
 ) -> None:
+    # US-143: source_type=`minute` usa `MINUTE_NORMALIZE_SYSTEM` que
+    # preserva contenido literal en lugar de re-sintetizarlo. Default
+    # `transcript` para retrocompatibilidad.
+    prompt_system = (
+        MINUTE_NORMALIZE_SYSTEM if source_type == "minute" else MINUTE_SYSTEM
+    )
     async with db_session() as db:
         job = await _mark_running(db, job_id)
         if job is None:
@@ -321,47 +322,109 @@ async def _run_minute(
             (tenant_cfg.byo or {}).get("provider") if tenant_cfg.byo else None,
         )
         chunks = chunk_text(transcript)
+        # Cada chunk pasa por el validator que produce el shape canónico
+        # (gold standard EP019). Luego mergeamos chunks en el cascade
+        # del worker. Los participantes y RAID se aplanan/normalizan
+        # dentro del validator — el worker solo concatena.
         collected: list[dict] = []
         model_used = "unknown"
         total_in = 0
         total_out = 0
+        validator_metrics: dict[str, int] = {
+            "kept": 0, "dropped_lesson": 0, "dropped_change": 0,
+            "dropped_unknown": 0, "dropped_malformed": 0,
+        }
+        parse_failed_chunks = 0
         for ch in chunks:
+            # ENH-147 — json_mode fuerza salida estructurada por proveedor.
             res = await _call_ai_for_tenant(
                 ch,
-                system=MINUTE_SYSTEM,
+                system=prompt_system,
                 tenant_cfg=tenant_cfg,
                 platform_groq_config=platform_groq,
                 tenant_id=tenant_id,
                 job_id=job_id,
+                json_mode=True,
             )
             model_used = res.model
             total_in += res.tokens_in
             total_out += res.tokens_out
             parsed = _parse_json_strict(res.text)
             if parsed is None:
-                parsed = _empty_minute()
-                parsed["summary"] = res.text[:2000]
-            collected.append(parsed)
-
-        # ENH-084: bloque `raid` normalizado y mergeado en cascada (4
-        # tipos canónicos: risks/issues/lessons/changes). Si el modelo
-        # no devuelve la sección, queda en arrays vacíos — sin inventar.
-        merged_raid: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
-        for c in collected:
-            block = _normalize_raid_block(c.get("raid"))
-            for k in merged_raid:
-                merged_raid[k].extend(block[k])
+                # ENH-147 — reintento de reparación: re-pide SOLO JSON antes
+                # de degradar a minuta vacía (antes se perdía todo el RAID
+                # silenciosamente en cada fallo de parseo).
+                repair = await _call_ai_for_tenant(
+                    ch + "\n\nTu respuesta anterior no fue JSON válido. "
+                    "Devuelve EXCLUSIVAMENTE el objeto JSON pedido, sin texto "
+                    "ni fences ni comentarios.",
+                    system=prompt_system,
+                    tenant_cfg=tenant_cfg,
+                    platform_groq_config=platform_groq,
+                    tenant_id=tenant_id,
+                    job_id=job_id,
+                    json_mode=True,
+                )
+                total_in += repair.tokens_in
+                total_out += repair.tokens_out
+                parsed = _parse_json_strict(repair.text)
+            if parsed is None:
+                parse_failed_chunks += 1
+                normalized = _empty_minute()
+                normalized["summary"] = res.text[:2000]
+            else:
+                normalized, m = validate_minute_payload(parsed)
+                for k, v in m.items():
+                    validator_metrics[k] = validator_metrics.get(k, 0) + v
+            collected.append(normalized)
+        if parse_failed_chunks:
+            validator_metrics["parse_failed_chunks"] = parse_failed_chunks
+            logger.warning(
+                "minute parse failed for %d/%d chunks job=%s tenant=%s",
+                parse_failed_chunks, len(chunks), job_id, tenant_id,
+            )
 
         merged = {
+            "header": collected[0].get("header") if collected else {},
             "summary": "\n\n".join([c.get("summary") or "" for c in collected]).strip(),
-            "participants": functools.reduce(operator.iadd, (c.get("participants") or [] for c in collected), []),
-            "topics": functools.reduce(operator.iadd, (c.get("topics") or [] for c in collected), []),
-            "agreements": functools.reduce(operator.iadd, (c.get("agreements") or [] for c in collected), []),
-            "decisions": functools.reduce(operator.iadd, (c.get("decisions") or [] for c in collected), []),
-            "next_steps": functools.reduce(operator.iadd, (c.get("next_steps") or [] for c in collected), []),
-            "risks_blockers": functools.reduce(operator.iadd, (c.get("risks_blockers") or [] for c in collected), []),
-            "raid": merged_raid,
+            # BUG-069: cada chunk dedupea internamente (flatten_participants),
+            # pero el concat cross-chunk volvía a duplicar cuando un mismo
+            # speaker aparecía en chunks distintos (overlap o transcripts
+            # largos). Re-dedupeamos por nombre normalizado tras el merge.
+            "participants": dedupe_participants(
+                functools.reduce(
+                    operator.iadd,
+                    (c.get("participants_flat") or [] for c in collected),
+                    [],
+                )
+            ),
+            # BUG-070: el mismo tema puede ser extraído por varios chunks
+            # cuando el transcript se divide (ej. "Alcance del Proyecto"
+            # aparecía 3 veces). merge_topics fusiona por título
+            # normalizado y combina bullets sin duplicar.
+            "topics": merge_topics(
+                functools.reduce(
+                    operator.iadd,
+                    (c.get("topics") or [] for c in collected),
+                    [],
+                )
+            ),
+            # ENH-095/US-040: `agreements` queda como sinónimo legacy de
+            # `raid_suggestions.actions` para no romper exports/templates
+            # que lo referencian. La verdad canónica vive en
+            # `raid_suggestions`.
+            "agreements": [],
+            "free_notes": next(
+                (c.get("free_notes") for c in collected if c.get("free_notes")),
+                None,
+            ),
+            "raid_suggestions": _merge_raid_suggestions(
+                [c.get("raid_suggestions") for c in collected]
+            ),
         }
+        # Para retrocompat con UI vieja que aún lee `participants` como
+        # lista de speakers/attendees sin distinguir absentes.
+        # `participants_flat` ya cumple — el merge anterior reusa ese campo.
 
         async with db_session() as db:
             job = (
@@ -376,22 +439,17 @@ async def _run_minute(
             minute_id: str | None = None
             if save_as_minute:
                 folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
-                # US-108: cada sugerencia entra como `pending` con
-                # ticket_id null hasta que el PM la apruebe.
-                raid_persisted: dict = {"risks": [], "issues": [], "lessons": [], "changes": []}
-                for kind in raid_persisted:
-                    for it in merged["raid"].get(kind, []):
-                        if not isinstance(it, dict):
-                            continue
-                        raid_persisted[kind].append({
-                            "short_desc": str(it.get("short_desc") or "").strip(),
-                            "suggested_owner_name": it.get("suggested_owner_name") or None,
-                            "suggested_priority": it.get("suggested_priority"),
-                            "raw_quote": it.get("raw_quote") or None,
-                            "status": "pending",
-                            "ticket_id": None,
-                            "ticket_type": None,
-                        })
+                # ENH-106 + US-143: origen depende del source_type.
+                # `transcript_ai` (default) o `minute_ai` cuando la fuente
+                # fue una minuta ya redactada normalizada por IA.
+                minute_origin = (
+                    "minute_ai" if source_type == "minute" else "transcript_ai"
+                )
+                # BUG-063: free_notes meta-persistido dentro de
+                # raid_suggestions._meta para evitar migración.
+                raid_with_meta = dict(merged["raid_suggestions"])
+                if merged.get("free_notes"):
+                    raid_with_meta["_meta"] = {"free_notes": merged["free_notes"]}
                 mm = MeetingMinute(
                     tenant_id=tenant_id, project_id=project_id, folio=folio,
                     title=title, meeting_date=datetime.now(UTC),
@@ -399,10 +457,9 @@ async def _run_minute(
                     agreements=merged["agreements"], next_meeting_date=None,
                     attachments=[], generated_by_ai=True, status="final",
                     created_by=requested_by,
-                    # ENH-106: minutas creadas por el job de IA (transcript →
-                    # accept) llevan origin `transcript_ai` para auditoría.
-                    origin="transcript_ai",
-                    raid_suggestions=raid_persisted,
+                    origin=minute_origin,
+                    raid_suggestions=raid_with_meta,
+                    description=merged.get("summary") or None,
                 )
                 db.add(mm)
                 await db.flush()
@@ -424,7 +481,8 @@ async def _run_minute(
                 entity_type="ai_job", entity_id=str(job.id),
                 details={"model": model_used, "duration_ms": job.duration_ms,
                          "minute_id": minute_id, "language": language,
-                         "provider": job.provider, "mode": tenant_cfg.mode},
+                         "provider": job.provider, "mode": tenant_cfg.mode,
+                         "source_type": source_type},
             )
             await db.commit()
     except Exception as exc:
@@ -498,6 +556,7 @@ async def _run_report(
             platform_groq_config=platform_groq,
             tenant_id=tenant_id,
             job_id=job_id,
+            json_mode=True,
         )
         sections = _parse_json_strict(res.text) or {
             "executive_summary": res.text[:1500],
@@ -553,10 +612,11 @@ def generate_minute_task(
     save_as_minute: bool,
     title: str,
     requested_by: str | None,
+    source_type: str = "transcript",
 ) -> str:
     run_async(_run_minute(
         job_id, tenant_id, project_id, transcript, language,
-        save_as_minute, title, requested_by,
+        save_as_minute, title, requested_by, source_type,
     ))
     return job_id
 

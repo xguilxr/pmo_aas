@@ -561,29 +561,50 @@ export type MinuteParticipant = {
   email?: string;
   /** Rol declarado por el LLM o capturado manualmente. */
   role?: string | null;
+  /** BUG-063: área funcional del participante (PMO, Comercial, etc.). */
+  area?: string | null;
+  /** BUG-063: estado de asistencia. */
+  attendance?: "attended" | "absent_justified" | "absent_unjustified";
 };
 
 export type MinuteTopic = {
   title: string;
-  notes: string;
+  /** Bullets factuales del gold standard (5-15 por tema). */
+  bullets?: string[];
+  /** Legacy: minutas viejas usaban `notes` como prosa libre. */
+  notes?: string;
 };
 
-/** US-108: estado de una sugerencia RAID persistida en una minuta. */
+/** BUG-063: estado de una sugerencia RAID persistida en una minuta. */
 export type MinuteRaidSuggestion = {
   short_desc: string;
   suggested_owner_name?: string | null;
   suggested_priority?: number | null;
+  suggested_due_date?: string | null;
   raw_quote?: string | null;
   status: "pending" | "approved" | "discarded";
   ticket_id?: string | null;
-  ticket_type?: "risk" | "issue" | "lesson" | "change_request" | null;
+  ticket_type?:
+    | "action"
+    | "risk"
+    | "decision"
+    | "issue"
+    | "lesson"
+    | "change_request"
+    | null;
 };
 
+/** BUG-063: 4 buckets canónicos A/R/D/I. Lecciones/cambios legacy se
+ *  mantienen como opcionales para retro-compat con minutas viejas. */
 export type MinuteRaidSuggestions = {
+  actions: MinuteRaidSuggestion[];
   risks: MinuteRaidSuggestion[];
+  decisions: MinuteRaidSuggestion[];
   issues: MinuteRaidSuggestion[];
-  lessons: MinuteRaidSuggestion[];
-  changes: MinuteRaidSuggestion[];
+  lessons?: MinuteRaidSuggestion[];
+  changes?: MinuteRaidSuggestion[];
+  /** Meta-bucket reservado: free_notes y otros campos opcionales. */
+  _meta?: { free_notes?: string };
 };
 
 export type MeetingMinute = {
@@ -595,6 +616,8 @@ export type MeetingMinute = {
   participants: MinuteParticipant[];
   topics: MinuteTopic[];
   agreements: MinuteAgreement[];
+  /** BUG-063: resumen del LLM (2-3 oraciones). */
+  description?: string | null;
   next_meeting_date: string | null;
   attachments: { name?: string; url: string }[];
   generated_by_ai: boolean;
@@ -606,15 +629,16 @@ export type MeetingMinute = {
 export type MinuteCreateBody = {
   title: string;
   meeting_date: string;
+  summary?: string | null;
+  free_notes?: string | null;
   participants?: MinuteParticipant[];
   topics?: MinuteTopic[];
   agreements?: MinuteAgreement[];
   next_meeting_date?: string | null;
   attachments?: { name?: string; url: string }[];
   generated_by_ai?: boolean;
-  /** BUG-058: persiste las sugerencias RAID detectadas por la IA cuando
-   *  el usuario va por "Previsualizar → Guardar como minuta". Sin esto,
-   *  el preview mostraba items pero el detalle aparecía vacío. */
+  /** BUG-058 + BUG-063: persiste las sugerencias RAID al guardar el
+   *  preview. Shape A/R/D/I canónico. */
   raid_suggestions?: Partial<MinuteRaidSuggestions>;
 };
 
@@ -644,6 +668,9 @@ export function updateMinute(
   minuteId: string,
   body: {
     title?: string;
+    summary?: string | null;
+    meeting_date?: string;
+    free_notes?: string | null;
     raid_suggestions?: Partial<MinuteRaidSuggestions>;
     participants?: MinuteParticipant[];
     topics?: MinuteTopic[];
@@ -663,9 +690,17 @@ export function deleteMinute(minuteId: string): Promise<void> {
   });
 }
 
-/** US-108: aprueba sugerencias RAID en bulk y crea los tickets reales. */
+/** US-108 + BUG-063: aprueba sugerencias RAID en bulk y crea los tickets
+ *  reales. Shape canónico A/R/D/I; lessons/changes mantenidos por
+ *  retro-compat con minutas pre-refactor. */
 export type RaidApproveItem = {
-  type: "risks" | "issues" | "lessons" | "changes";
+  type:
+    | "actions"
+    | "risks"
+    | "decisions"
+    | "issues"
+    | "lessons"
+    | "changes";
   index: number;
   short_desc?: string;
   description?: string | null;

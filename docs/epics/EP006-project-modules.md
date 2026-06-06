@@ -146,11 +146,11 @@ Los 6 módulos transversales son el **corazón operativo** del proyecto. Cada un
 - [ ] Lecciones son **cross-proyecto**: `GET /api/v1/lessons?q=&category=&tag=&project_id=&organization_id=`.
 - [ ] Busqueda full-text en `title`+`description`+`recommendation` (Postgres `tsvector`).
 - [ ] Exportable a CSV para workshops post-mortem.
-- [ ] Permiso `lessons:read` global dentro del tenant (no restringido por proyecto).
+- [ ] Lectura abierta a cualquier user autenticado del tenant (modelo capability-based DEC-024: no hay capability dedicada para módulos de proyecto).
 
 **Test Cases:**
-- `TC-093` (integration) — Busqueda full-text encuentra lección por tag.
-- `TC-094` (integration) — User viewer puede leer lecciones de todos los proyectos del tenant.
+- `TC-093` (integration) — Busqueda fuzzy (`ILIKE`) encuentra lección por keyword.
+- `TC-094` (integration) — Cualquier user del tenant lee lecciones de todos los proyectos del tenant (el rol `viewer` fue eliminado; ya no aplica).
 
 ---
 
@@ -243,15 +243,17 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 **Para** revisar el estado completo sin saltar entre módulos.
 
 **Criterios de aceptación (DEC-007):**
-- [x] Nueva ruta `/admin/projects/{id}/raid` con 4 sub-tabs R/A/I/D.
+- [x] Nueva ruta `/pmo/projects/{id}/raid` con 4 sub-tabs R/A/I/D.
 - [x] Tab persistido en URL como `?tab=risks|actions|incidents|decisions`.
 - [x] Counters por categoría visibles en el header de cada tab.
 - [x] Riesgos: tabla `risks`.
 - [x] Acciones: tabla `issues WHERE type='action'`.
 - [x] Incidentes: tabla `issues WHERE type='issue'` (label UI = "Incidente").
 - [x] Decisiones: tabla `issues WHERE type='decision'`.
-- [x] Export RAID → CSV con 4 secciones (un archivo); el XLSX con 4
-  sheets queda como follow-up.
+- [x] Export RAID → **ENH-152 (2026-06-05):** XLSX único con 4 hojas en
+  español (Riesgos / Acciones / Incidencias / Decisiones), columnas
+  legibles y filename `RAID-[Nombre Proyecto].xlsx`; mismo archivo para el
+  botón de `/raid` y el de Documentos. (Antes: CSV cliente + XLSX follow-up.)
 - [x] Sidebar: "Riesgos" + "AIDs" reemplazados por una sola entrada
   "RAID" (los enlaces legacy siguen funcionando).
 - [x] `ISSUE_TYPE_LABEL['issue']` actualizado de "Incidencia" a
@@ -329,7 +331,7 @@ como follow-up; CSV cubre el caso de uso principal.
   acciones_pendientes, decisiones_requeridas, riesgos_top.
 - [x] "Generar con IA" reutiliza endpoint EP008 existente
   (`POST /ai/projects/{id}/reports/draft`).
-- [x] Frontend `/admin/projects/{id}/reports`:
+- [x] Frontend `/pmo/projects/{id}/reports`:
   - Listado con fecha de creación, periodo, estado, destinatarios.
   - Badge "IA" para generados con IA.
   - Botón "Nuevo reporte" → modal (título, periodo, destinatarios).

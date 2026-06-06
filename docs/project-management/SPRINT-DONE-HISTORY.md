@@ -4,6 +4,31 @@
 
 ---
 
+## Batches post-Sprint 33 mergeados a main — 2026-05-26 → 2026-05-29
+
+> Archivados desde `SPRINT.md` IN-PROGRESS el 2026-06-05 (branches confirmadas mergeadas a `origin/main` vía `git branch -r --merged`).
+
+### Batch "deepwork reportes/RAID/IA/charts" — branch `claude/deepwork-reports-raid-ai-charts` (2026-05-28/29)
+- BUG-069 #524 — charts: donut se llena al 100% (Pie con stroke-dasharray), colores de marca en programa, dedup de métricas, KpiCard compartido, empty states más limpios.
+- ENH-146 #525 — reportes con logos (PMO+cliente, data-URL) + paleta/tipo on-brand (PDF y HTML inline) + donut/gauge reales + KPI cards + gantt inline (S-19) + fix on_time_pct.
+- ENH-147 #526 — minutas→RAID confiables: json_mode por proveedor + parser tolerante (fences/comas) + repair-retry sin pérdida silenciosa.
+- US-165 #527 — asistente IA conversacional: modelo de conversación (mig. **0084**) + endpoint /assistant + widget flotante global (Ctrl/⌘-K).
+- ENH-148 #528 — housekeeping: README/env/epics al día, sin Ollama, dead code removido (require_permission, workspaces field).
+- Diferidos (no bloqueantes): dashboard eyebrows (NEEDS-VISUAL-CHECK), KPI band en builder.html, borrado de packages/sdk (riesgo frozen-lockfile), dedup de RAID por chunk.
+
+### Batch "bugs logos + /pmo + rediseño big canvas" — branch `claude/friendly-lamport-LZ45l` (2026-05-26)
+- BUG-068 #514 (e87c55f + 70f377a) — upload PNG de logos de org (data-URL en DB, mig. **0082**) + preview circular. Follow-up: logo del tenant a data-URL (mig. **0083**).
+- ENH-142 #515 (1ad5ed3) — botones crear org/programa/proyecto en /pmo.
+- ENH-143 #516 (c7551b4) — org detail: botón Nuevo proyecto, renombra Status, quita toggle Resumen/Reportes.
+- US-164 #517 (766f9f4) — rediseño "big canvas" global (lienzo cream + sidebar azul flotante + topbar full-width + pinch-zoom + dark mode). Supersede chrome navy DEC-006.
+- Doc follow-up diferido (US-164): navigation.md + ADR/DEC del supersede de chrome navy DEC-006.
+
+### Batch "chrome: logo full-size + iconos org/programa" — branch `claude/gracious-pascal-MPjsq` (2026-05-26)
+- ENH-144 #520 (e5f70e1) — logo del tenant a tamaño completo en topbar + branding "PMO-aaS"; elimina el nombre del tenant en texto.
+- ENH-145 #521 (d5974a9) — iconos distintos: organizaciones `Building2`, programas `Layers`; corrige mislabel del nav admin.
+
+---
+
 ## Sprint 1 (v1.0 MVP) — Completado 2026-04-21
 
 ### ✅ DONE (histórico reciente Sprint 1)
@@ -569,3 +594,156 @@ Bloque 1 — RAID detail redesign "Denso" (4 issues, #246-#249). Rewrite complet
 
 ### Sprint 15 (v1.14) — Cerrado 2026-05-07
 Bloque 1 — Áreas refinement + Plan responsables (4 issues, #263-#266). Migraciones 0048+0049+0050. `project_areas` dropeado; catálogo tenant fuente única; PMO seed global + sync PMO users → Actores.
+
+---
+
+## Sprint 26 (v1.25) — CERRADO 2026-05-22
+
+### Bloque 0 — Minutas v1.0 (1 BUG + 7 ENH)
+- [x] **BUG-061 #391** — Preview RAID vs save persistence (lane).
+- [x] **ENH-102 #392** — Parser RAID estricto A/R/D/I + validador post-IA + gold standard Highlander — `4fa8072` (PR #408).
+- [x] **ENH-103 #393** — Match participantes ↔ actores del proyecto.
+- [x] **ENH-104 #394** — Título auto desde nombre de archivo.
+- [x] **ENH-105 #395** — Estructura de minuta v1.0 (6 secciones fijas) — `9d637b0` (PR #408).
+- [x] **ENH-106 #396** — `meeting_minutes.origin` audit field — `7b7ee3d` (PR #406, migración `20260523_0068`).
+- [x] **ENH-107 #397** — `scheduled_minutes` (cron + email) — `c711af5` (PR #407, migración `20260522_0068`).
+- [x] **ENH-108 #398** — Copy-paste directo de transcript.
+
+**Branches sesión:** múltiples lanes paralelos (A/B/C/D/E).
+**Hotfix:** PR #409 (`fix-alembic-multiple-heads-0068`) — merge migration `20260523_0069` para unificar los heads paralelos 0068.
+**Fixtures gold standard:** `apps/api/tests/fixtures/minutes/highlander-eam-bnf-20260323.{txt,expected.json}`.
+
+### Bloque 1 — Dependencias del sistema EP020 (5 ENH)
+- [x] **ENH-097 #373** — `tasks.is_critical BOOLEAN` (reemplaza columna `critical` legacy) — migración `20260522_0067`.
+- [x] **ENH-098 #374** — `tenants.progress_calculation_method` ENUM por tenant.
+- [x] **ENH-099 #375** — `tenants.task_load_thresholds` JSONB por tenant.
+- [x] **ENH-100 #376** — `organizations.client_logo_url` + UI upload — migración `20260522_0064`.
+- [x] **ENH-101 #377** — `projects.status_rag` declarativo del PM — migración `20260522_0065`.
+
+**Migraciones agregadas:** 0064, 0065, 0066 (merge heads logo+rag), 0067.
+
+### Bloque 2 — Backbone EP020 (3 US)
+- [x] **US-120 #378** — `report_sections` catálogo + seed 22 secciones atómicas — `1796189` (PR #411, migración `20260523_0070`).
+- [x] **US-121 #379** — Servicio cálculo % avance configurable por tenant — PR #405 (`fe1a857`).
+- [x] **US-122 #380** — `report_builder_templates` + 4 plantillas seed (L3-AVANCE, L3-SEGUIMIENTO, L1-PORTAFOLIO, L2-ORG) — `501d66b` (PR #411, migración `20260523_0071`).
+
+**Migraciones agregadas:** 0070, 0071. Hubo collision con revision IDs 0068/0069 (paralelización lane B0 vs lane B2 sin coordinación); fix en `4b12123` renumerando los archivos del lane B2 a 0070/0071.
+
+### Lecciones aprendidas — Sprint 26
+
+1. **Paralelización con migraciones es peligrosa.** Tres alembic-heads-collisions distintos en este sprint:
+   - 0064 ↔ 0065 (logo + status_rag desde Bloque 1) — resuelto con 0066 merge.
+   - 20260522_0068 ↔ 20260523_0068 (scheduled_minutes + minute_origin del Bloque 0) — resuelto con 20260523_0069 merge.
+   - 20260522_0068 ↔ 20260522_0069 vs nombres ya usados por Bloque 0 — resuelto renombrando archivos del Bloque 2 a 0070/0071.
+2. **Decisión owner 2026-05-22:** volver a desarrollo **secuencial puro** para evitar este tipo de errores. 1 sesión activa a la vez, 1 lane, 1 branch, 1 migración consecutiva. La paralelización agresiva costó múltiples rondas de fix.
+3. **Skill `/handoff` creado** para mantener bridge entre sesiones y forzar cleanup de SPRINT.md.
+
+### Otros artefactos producidos
+- `docs/epics/EP020-report-builder.md` — epic oficial con 13 US (US-120 a US-132) + 5 ENH dependencias.
+- `docs/epics/drafts/EP020-secciones-atomicas.md` — catálogo de 22 secciones (referencia normativa).
+- `docs/epics/drafts/minute-gold-standard.md` — Highlander EAM-BNF (transcript + minuta esperada + pipeline parser IA).
+- `.claude/skills/handoff/SKILL.md` — skill para bridges entre sesiones (PR #412).
+- 26 issues creados en GitHub (#373-#398), todos con labels aplicados.
+
+---
+
+## Sprints 30-32 (v1.27) — Rediseño Minutas + Reports — Cerrados 2026-05-23
+
+22 items entregados secuencialmente en branch `claude/zen-brown-ivCbz`. Owner decisión 2026-05-23: rediseño grande de Minutas y Reports tras feedback de uso real.
+
+### Sprint 30 — Pre-requisitos + Sidebar + Minutas cosmético (7 items)
+
+**Bloque 1 — Pre-requisitos backend (ya en main vía commits previos):**
+- [x] **US-140 #428** — Persistir reports del builder (`d65805c`, verificado).
+- [x] **US-136 #424** — Tabs Resumen/Reportes en `/pmo/organizations/[id]` (`a9edbae`).
+- [x] **US-137 #425** — Tabs Resumen/Reportes en `/pmo/programs/[id]` (`03f06ff`).
+
+**Bloque 2 — Sidebar + bug + minutas cosmético:**
+- [x] **ENH-116 #450** — Sidebar "Módulos" + aplanar dropdown Reportes (`bf423ca`).
+- [x] **BUG-062 #451** — Click en nombre minuta abre detail (`bfe4efd`).
+- [x] **ENH-117 #452** — Listing minutas simplificado + columnas Folio/Minuta/Fecha/Tipo/Exportar/Preview/Borrar (`7ad1fd8`).
+- [x] **ENH-118 #453** — Detail minuta sin MD/TXT export (`89a430b`).
+
+### Sprint 31 — Minutas generador + Reports PMO 4 tabs (7 items)
+
+**Bloque 1 — Minutas generador unificado:**
+- [x] **US-143 #455** — Backend `source_type=transcript|minute|manual` + migración 0075 + nuevo `MINUTE_NORMALIZE_SYSTEM` (`1fb672b`).
+- [x] **US-142 #454** — Frontend `/minutes/new` con 3 modos. `/ai-minutes/new` redirect 301 (`0bcf138`).
+- [x] **ENH-119 #456** — Labels RAID claros en detail (`a6f5ffb`).
+
+**Bloque 2 — Reports `/pmo/reports` 4 tabs:**
+- [x] **ENH-120 #460** — Tab "Proyectos" rediseñado + backend enriquece folio/tipo/período + filtra drafts + detail page nuevo (`ba3aae1`).
+- [x] **US-144 #457** — Tab "PMO" con descarga Status PMO (`f639d88`).
+- [x] **US-145 #458** — Tab "Organizaciones" con filtro org (`ee8ab24`).
+- [x] **US-146 #459** — Tab "Programas" con filtros org+programa (`0b5af6a`).
+
+### Sprint 32 — Reports proyecto + Builder unificado (8 items)
+
+**Bloque 1 — Reports proyecto rediseñado:**
+- [x] **US-147 #462** — Endpoint Look-ahead + template (`2bd4032`).
+- [x] **ENH-122 #463** — `period_from`/`period_to` en Avance/Seguimiento (`bf2eba8`).
+- [x] **ENH-121 #461** — 3 tabs Generar/Historial/Programar + 3 paneles default + catálogo builder templates (`5e1c7f8`).
+- [x] **ENH-114 #433** — Schedule type=custom (`1d2b04f` preexistente, verificado).
+
+**Bloque 2 — Builder unificado:**
+- [x] **US-148 #464** — Header Modo + Ventana value+unit persistida + `?template_id` (`9a14e31`).
+- [x] **ENH-123 #465** — Catálogo 22 secciones verificado (sin commit nuevo).
+- [x] **ENH-124 #466** — Preview live con marcas A4 (`cb1abff`).
+- [x] **ENH-125 #467** — Navigation guard al salir sin guardar (`542ee5a`).
+
+**Cleanup:**
+- [x] **chore** — `/reports/tweak` → redirect a `/reports/builder` (`def46f6`).
+
+### Migraciones agregadas
+- **0075** — `meeting_minutes.origin` admite `'minute_ai'` (US-143).
+
+### Decisiones de diseño tomadas
+
+1. **Cascarón intencional** para historial PMO/Org/Prog: la persistencia de reportes Level=1/2 requiere decisión de schema (`Report.project_id` nullable o tabla aparte) que owner difiere a sesión separada de diseño del Reporte Status PMO.
+2. **`_template` bucket en `default_parameters`** del Builder: persiste `window_days`, `window_value`, `window_unit` sin migración nueva.
+3. **Modo manual de minutas** persiste directo en `MeetingMinute` (no pasa por celery) — endpoint distingue por `source_type` y retorna 201 + minute_id en sync (vs 202 + job_id en transcript/minute).
+4. **MD/TXT de minutas deprecados en UI** pero backend sigue aceptándolos por compat.
+
+### 16 issues triage cerrados al inicio del Sprint 30
+
+- 12 duplicados exactos (#435-#446 cerrados como `duplicate of`).
+- 4 superseded por rediseño: US-135 (#423), US-138 (#426), US-139 (#427), US-141 (#429) — labels conflictantes con la nueva organización de tabs.
+
+---
+
+## 🗂️ Sprint 33 (v1.28) — Dashboards N1/N2 + reportes derivados + revamp — CERRADO 2026-05-26
+
+Branch `claude/laughing-carson-stUJu` (19 commits sobre `origin/main` con #511 ya mergeado). Tests backend 583 passed/1 skipped; ruff + tsc + next build verdes; render real de PDF (WeasyPrint) validado. **Esperando merge a main + QA visual del owner.**
+
+### Fundación de datos (BE)
+- [x] **US-151** `77f977c` — modelo `MetricSnapshot` + migración **0079** + servicio de cómputo/persistencia idempotente a 4 niveles (tenant/org/programa/proyecto) + job semanal Celery (lunes 02:00 UTC).
+- [x] **US-152** `ab40c73` — endpoints analytics: `/dashboard/trends`, `risk-matrix`, `heatmap`, `treemap`, `POST snapshots/capture`.
+
+### Primitivos + dashboards (FE)
+- [x] **US-153** `a6f0ba5` — primitivos SVG (`Gauge`, `TrendLines`, `RiskMatrix`, `Heatmap`, `Treemap`) + píldora de tendencia en `KpiCard` + cliente `lib/api/analytics.ts`.
+- [x] **US-154** `af41833` — `/dashboard`: matriz de riesgos + heatmap + tendencias + treemap + botón capturar snapshot.
+- [x] **US-155** `44bcac6` — `/pmo`: heatmap + treemap + tendencias del tenant.
+- [x] **US-156** `5f9913d` — `/pmo/organizations/[id]` Resumen: salud + riesgos + tendencias org.
+- [x] **US-157** `0c9ff4d` — `/pmo/programs/[id]` Resumen: gauges + riesgos + tendencias programa.
+
+### Reportes derivados N1/N2 (BE+FE)
+- [x] **US-158** `647795a` — secciones builder **S-05 Tendencia** + **S-15 Matriz** + migración **0080**.
+- [x] **US-160** `3451eeb` — reportes de status N1 (portafolio) y N2 (org/programa) en PDF, fuera del builder; endpoints + plantilla `scope_status.html` + botones de descarga.
+- [x] **US-161** `ffbb38b` — sección **S-07 Curva-S** (planeado vs real; planeado en `extras.avg_progress_plan`) + migración **0081**.
+- [x] **US-163** `6e61149` — heatmap + treemap embebidos en los PDF N1/N2.
+
+### Revamp + follow-ups
+- [x] **US-159** `411a44b` — revamp v1: radio de tarjetas 16→10px (`--radius-xl`) + `tabular-nums` global. Navy chrome + paleta intactos.
+- [x] **US-162** `360e5ee` — vistas/reportes agregados accesibles a PMs con scoping por `scoped_project_ids` (capturar snapshots sigue admin-only).
+- [x] **ENH-141** `9a669c6` — `ProgressGauge` inline del project detail (#511) consolidado en el `Gauge` compartido.
+
+### Migraciones agregadas
+- **0079** — `metric_snapshots` (foto semanal de stock, 4 niveles).
+- **0080** — seed idempotente secciones `S-05`, `S-15`.
+- **0081** — seed idempotente sección `S-07`.
+
+### Decisiones / notas
+1. **Snapshots históricos SÍ en v1.x** (revierte el diferido a v2.0): cadencia semanal por scope; el dashboard es fuente de verdad y los reportes se derivan.
+2. **S-07 Curva-S reactivada** (estaba "descartada"): el planeado se deriva lineal de `start_date`→`end_date`.
+3. **Reportes N1/N2 viven fuera del Report Builder** (que es project-only por migración 0078): generación on-demand vía endpoints dedicados, sin persistir `Report` rows (la persistencia L1/L2 sigue como backlog v2.0).
+4. **Vistas agregadas accesibles a PMs** scoped a sus proyectos (decisión owner 2026-05-26).

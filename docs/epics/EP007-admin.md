@@ -106,7 +106,10 @@ Centralizar en un panel único la gestión de usuarios, roles, organizaciones y 
   - Formato de fecha.
   - Timezone.
   - Logo corporativo + color primario (para PDFs exportados).
-  - Modo IA (`ollama`/`claude`/`disabled`).
+  - Modo IA (`platform` / `byo` / `disabled`). El modo se configura en
+    `/admin/ai` (no en este panel). Ver `EP008-ai.md`. El catálogo BYO
+    incluye OpenAI / Claude / Gemini / Perplexity / Azure Copilot M365 /
+    Custom / Groq. Ollama fue eliminado (BUG-053).
 - [ ] Se guarda en `tenants.settings` (JSONB).
 - [ ] Cambio de idioma default no afecta preferencia individual de users.
 
@@ -124,7 +127,7 @@ Centralizar en un panel único la gestión de usuarios, roles, organizaciones y 
 
 **Criterios de aceptación:**
 - [ ] `GET /api/v1/admin/audit-logs?action=&user_id=&entity_type=&date_from=&date_to=&cursor=`.
-- [ ] Solo ve eventos del **tenant propio** (RLS estricto).
+- [ ] Solo ve eventos del **tenant propio** (filtro `tenant_id` en la query; no hay RLS Postgres, ver `architecture/security-multitenant.md`).
 - [ ] Incluye `action`, `module`, `entity_type`, `entity_id`, `details`, `ip_address`, `occurred_at`, `user_display`.
 - [ ] Export CSV para período.
 
@@ -134,7 +137,24 @@ Centralizar en un panel único la gestión de usuarios, roles, organizaciones y 
 
 ---
 
-## US-043 — Navegación jerárquica del sidebar
+## US-043 — Navegación jerárquica del sidebar (SUPERSEDED)
+
+> ⚠️ **Esta US está superseded por US-138** (sidebar capability-based
+> con TOP_NAV / ADMIN_NAV / SUPERADMIN_NAV separados; ver
+> `components/app-shell.tsx`). El árbol "Organizaciones → Solicitudes /
+> Programas / Proyectos → Módulos" se reemplazó por:
+>
+> - `OrgTreeNav` (drill-down vivo orgs → programas → proyectos).
+> - Tabs dentro de `/pmo/projects/[id]/*` (US-035) para los módulos.
+> - Items planos en TOP_NAV para Requests, Projects, RAID, Cambios, etc.
+> - Las rutas `/admin/projects`, `/admin/programs`, `/admin/raid`, etc.
+>   ahora son redirects 301 a `/pmo/*` (US-075 / DEC-022).
+> - `/admin/settings` y `/admin/supervision` → redirects a
+>   `/admin/tenant?tab={config|stats}` (US-036).
+> - `/admin/roles` → redirect a `/admin/permissions`.
+>
+> El árbol descrito abajo refleja el diseño original; queda como
+> contexto histórico.
 
 **Como** usuario autenticado (cualquier rol)
 **Quiero** un sidebar organizado en grupos colapsables con dropdowns anidados

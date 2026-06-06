@@ -173,13 +173,15 @@ al final) → `project_areas.name ASC` → `identified_at DESC` (risks) o
 `?area_id=` en `/projects/{id}/risks`, `/projects/{id}/issues`,
 `/tenant/risks` y `/tenant/issues`.
 
-## EP016 — IA local (Ollama vía Tailscale)
+## EP016 — IA local (Ollama vía Tailscale) — ❌ ARCHIVADA
 
-Sin schema nuevo. La config del endpoint vive en
-`tenants.settings.ai.ollama` (JSONB) — `{base_url, model, timeout_sec}`
-tras US-047. Secrets CF-Access legacy, si existieran, quedan
-archivados bajo `tenants.settings.ai.ollama.auth_legacy.*` (no borrados
-para auditoría).
+Toda la epic quedó superseded por DEC-017 y eliminada en BUG-053
+(2026-05-08). `OllamaProvider` se quitó del runtime. Los datos
+legacy en `tenants.settings.ai.ollama` quedaron en BD por auditoría
+pero ya no se leen — el resolver de provider falla con
+`unsupported_provider` para `provider="ollama"`.
+
+Ver `docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`.
 
 ---
 
@@ -238,3 +240,145 @@ tablas viven solo por compat hasta validar Sprint 6 en producción.
 (no se reconstruye la matriz JSON de permisos eliminada). Programado
 para Sprint 7 tras 1-2 sprints de validación productiva del modelo
 capability-based.
+
+---
+
+## EP020 Report Builder — visibility + scheduled custom (2026-05-25)
+
+### Migración **0073** — `report_builder_templates` visibility (US-126)
+
+Columnas nuevas en `report_builder_templates`:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `owner_id` | `VARCHAR(36)` FK `users.id` `ON DELETE SET NULL` | indexed (`ix_report_builder_templates_owner`) |
+| `project_id` | `VARCHAR(36)` FK `projects.id` `ON DELETE CASCADE` | indexed |
+| `visibility` | `VARCHAR(16)` NOT NULL DEFAULT `'private'` | `'private' \| 'project' \| 'tenant'` |
+
+Reglas:
+- `private` → sólo el `owner_id` puede ver/modificar.
+- `project` → todos los miembros del `project_id` la ven; sólo el owner publica/despublica.
+- `tenant` → reservado, no usado en v1.0.
+- Seeds (`is_seed=True`, `tenant_id=NULL`) siguen visibles para todos los users (no respetan visibility).
+
+### Migración **0074** — `scheduled_reports.report_builder_template_id` (US-131)
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `report_builder_template_id` | `VARCHAR(36)` FK `report_builder_templates.id` `ON DELETE SET NULL` | indexed (`ix_scheduled_reports_builder_template`) |
+
+Cuando `scheduled_reports.report_type='custom'`, este campo apunta a la plantilla del Report Builder. El worker (`apps/api/app/workers/tasks/scheduled_reports.py`) invoca el motor de US-123 (`render_template`) sobre la plantilla y manda el HTML resultante por `html_to_pdf` antes de adjuntar al email via Resend. `REPORT_TYPES` se extiende a `("avance", "seguimiento", "custom")`.
+
+---
+
+## EP019 Minutas — generador unificado (2026-05-23)
+
+### Migración **0075** — `meeting_minutes.origin` admite `'minute_ai'` (US-143)
+
+Extiende el CHECK constraint `ck_meeting_minutes_origin` para incluir el
+nuevo valor `'minute_ai'`. Sin cambio de tipo de columna.
+
+| Valor | Significado |
+|---|---|
+| `manual` | POST normal o `source_type=manual` del generador unificado |
+| `transcript_ai` | job de IA procesó un transcript |
+| `minute_ai` | **nuevo**: job de IA normalizó una minuta YA redactada (US-143) |
+| `import_file` | importada desde archivo |
+| `import_paste` | pegada en bloque |
+
+Sin backfill (sólo abre el valor para futuras inserciones).
+
+---
+
+## BUG-063 — Re-seed idempotente de report_sections (2026-05-24)
+
+### Migración **0076** — re-seed `report_sections` si está vacío
+
+Owner reportó "el catálogo de secciones sigue vacío" en
+`/pmo/projects/[id]/reports/builder` tras el deploy del Sprint 26-32.
+La migración 0070 (US-120) creó la tabla y debía sembrar 22 secciones,
+pero las rows aparecen ausentes en su DB (posible reset post-deploy,
+o `bulk_insert` quedó sin commit).
+
+La migración 0076 es **idempotente**: si `report_sections` ya tiene
+rows, no hace nada. Si está vacía, inserta las 22 secciones canónicas
+EP020 con el mismo contenido que el seed original.
+
+Sin cambio de schema, solo backfill de datos. Downgrade es no-op.
+
+---
+
+## BUG-063 — Cambios de shape JSON (sin migración) (2026-05-24)
+
+Refactor del shape de `meeting_minutes.raid_suggestions` de:
+```
+{risks, issues, lessons, changes}
+```
+a:
+```
+{actions, risks, decisions, issues, lessons?, changes?, _meta?: {free_notes}}
+```
+
+- Buckets nuevos canónicos A/R/D/I alineados con el modelo RAID.
+- `lessons` y `changes` siguen aceptados para retro-compat con
+  minutas existentes (el LLM ya no los genera; validator descarta).
+- `_meta.free_notes` persiste las notas libres opcionales del PM
+  (evita migración de columna).
+
+Sin migración de schema (columna `raid_suggestions` es JSON). El
+formatter (`minutes_formatter.py`) lee los 6 buckets; el frontend
+y el endpoint endpoint aceptan ambos shapes en input.
+
+`meeting_minutes.description` se reutiliza para el resumen de 2-3
+oraciones (campo heredado de `_ModuleBase`, antes no usado por minute).
+
+---
+
+## US-151 — Fundación de datos analíticos / dashboards N1-N2 (2026-05-26)
+
+### Migración **0079** — tabla `metric_snapshots`
+
+Foto periódica (cadencia **semanal**, lunes 02:00 UTC vía Celery beat) de
+las métricas de *stock* del portafolio a los 4 niveles de scope
+(`tenant` / `organization` / `program` / `project`). Sin historia persistida
+no hay líneas de tendencia en los dashboards ni en los reportes Nivel 1/2;
+esta tabla es esa historia y desbloquea las secciones S-05 (tendencia) y
+S-07 (curva-S) que EP020 había diferido por falta de datos.
+
+Columnas: `scope_type`, `scope_id`, `snapshot_date` + métricas escalares
+(`projects_total/active`, `health_green/yellow/red`, `avg_progress`,
+`budget_plan/actual`, `open_risks`, `severe_risks`, `open_issues`,
+`changes_in_review`, `requests_in_review`, `tasks_total/done`,
+`milestones_due_7/14/30`) y `extras` (JSONB, bolsa flexible para métricas
+futuras sin migración). `UNIQUE(tenant_id, scope_type, scope_id,
+snapshot_date)` garantiza idempotencia del job. FK `tenant_id` → `tenants`
+con `ON DELETE CASCADE`. Downgrade hace `drop_table`.
+
+Las métricas de *flujo* (cycle-time, throughput) NO viven aquí: se calculan
+on-the-fly desde timestamps existentes (`requested_at`/`approved_at`, etc.).
+
+---
+
+## BUG-068 — `organizations.logo_url` / `client_logo_url` → TEXT (2026-05-26)
+
+### Migración **0082** — widen logo columns
+
+`organizations.logo_url` y `client_logo_url` pasan de `String(500)` a `Text`.
+Antes, subir un PNG (que se almacena como data-URL base64) excedía los 500
+caracteres y se truncaba/rechazaba — "subir PNG no se guarda bien"; las URLs
+externas cortas sí cabían. Ahora ambas columnas admiten data-URLs base64 de
+logos subidos directamente (PNG/JPG/SVG/WEBP) además de URLs externas. El cap
+de longitud vive en el schema Pydantic (`_LOGO_MAX = 3_000_000`, ~imagen de
+2 MB codificada). `alter_column` vía `batch_alter_table` (compat SQLite + PG).
+Downgrade revierte a `String(500)`.
+
+### Migración **0083** — `tenants.logo_url` → TEXT
+
+Mismo problema en el logo del **tenant**: antes se guardaba en disco (efímero
+en Railway) y se servía por `GET /branding/tenants/{id}/logo`, un endpoint
+autenticado que un `<img src>` del navegador no puede consumir (mandaba 401 →
+el logo nunca se mostraba; con URLs externas sí funcionaba). Ahora el logo del
+tenant se guarda como **data-URL base64 en `tenants.logo_url`** y renderiza
+directo. La columna pasa de `String(500)` a `Text`. El endpoint de serve se
+conserva por retro-compat de logos viejos en disco; las subidas nuevas ya no
+lo usan. Downgrade revierte a `String(500)`.

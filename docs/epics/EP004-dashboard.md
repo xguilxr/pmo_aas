@@ -133,10 +133,16 @@ Dar a Project Managers y PMO Managers una vista en un solo lugar del estado del 
 
 ### Endpoints
 ```
-GET /api/v1/dashboard/kpis
-GET /api/v1/dashboard/charts
-GET /api/v1/dashboard/plan-vs-actual
-GET /api/v1/dashboard/plan-vs-actual/export.csv
+GET  /api/v1/dashboard/kpis
+GET  /api/v1/dashboard/charts
+GET  /api/v1/dashboard/plan-vs-actual
+GET  /api/v1/dashboard/plan-vs-actual/export.csv
+# US-152 — analytics para dashboards N1/N2 (scope=tenant|organization|program|project, id=)
+GET  /api/v1/dashboard/trends?scope=&id=&metric=&weeks=   # serie histórica (metric_snapshots)
+GET  /api/v1/dashboard/risk-matrix?scope=&id=             # conteo prob×impacto (en vivo)
+GET  /api/v1/dashboard/heatmap                            # Org×Salud (portafolio, admin)
+GET  /api/v1/dashboard/treemap?scope=&id=                 # Org→Programa→Proyecto
+POST /api/v1/dashboard/snapshots/capture                  # seed on-demand del snapshot de hoy
 ```
 
 ---
@@ -228,3 +234,62 @@ una organización específica
 - `test_usbug003_pm_name_in_plan_vs_actual` — pm_id y pm_name presentes ✅
 
 **Estado de integración:** DONE (BUG-003).
+
+---
+
+### US-151 / US-152 — Fundación analítica + dashboards N1/N2 (2026-05-26)
+
+Dashboards Nivel 1 (PMO/Portafolio) y Nivel 2 (Organización/Programa) ricos,
+de los que se **derivan** los reportes N1/N2 (el dashboard es la vista
+interactiva; el reporte es el mismo contenido congelado a PDF).
+
+**US-151 — fundación de datos (`metric_snapshots`):**
+- Tabla `metric_snapshots`: foto **semanal** (lunes 02:00 UTC, Celery beat) de
+  métricas de stock a 4 niveles de scope (tenant/org/programa/proyecto). Habilita
+  tendencias y desbloquea S-05/S-07 de EP020.
+- Servicio `services/analytics/snapshots.py` (cómputo + upsert idempotente);
+  job `workers/tasks/snapshots.py`.
+
+**US-152 — endpoints de analytics:** `trends`, `risk-matrix`, `heatmap`,
+`treemap`, `POST snapshots/capture` (ver bloque Endpoints). Authz: vistas
+agregadas (tenant/org/programa) son admin-equivalente; scope=project respeta
+`scoped_project_ids`. Multi-tenant por `tenant_id` en toda query.
+
+**US-153 — primitivos SVG + cliente analytics:** `Gauge`, `TrendLines`,
+`RiskMatrix`, `Heatmap`, `Treemap` en `components/dashboard-charts.tsx` (tokens
+del design-system); `KpiCard` gana píldora de tendencia; `lib/api/analytics.ts`.
+
+**US-154/155/156/157 — analítica en las 4 páginas:**
+- `/dashboard`: matriz de riesgos + heatmap (click filtra) + banda de tendencias
+  + treemap + botón "Capturar snapshot". Respeta filtro de organización.
+- `/pmo`: heatmap (click navega a la org) + treemap + tendencias del tenant.
+- `/pmo/organizations/[id]` (Resumen): donut de salud + matriz de riesgos +
+  tendencias org-scoped.
+- `/pmo/programs/[id]` (Resumen): gauges avance/presupuesto + matriz de riesgos
+  + tendencias program-scoped.
+- Las vistas agregadas (heatmap/treemap/tendencias tenant/org/programa) son
+  admin-equivalente; detección por capacidad (si el endpoint 403ea se ocultan).
+
+**Test Cases:**
+- `test_us151_metric_snapshots` — cómputo 4 niveles + idempotencia ✅
+- `test_us152_analytics` — trends/risk-matrix/heatmap/treemap/capture + authz ✅
+- Front: `tsc --noEmit` + `next build` verdes (sin tests de UI en el repo).
+
+**US-160 — reportes de status N1/N2 (PDF, fuera del builder):** se derivan de
+los dashboards y se descargan desde sus páginas. `build_scope_status_context`
+(KPIs + salud + tendencias sparkline desde snapshots + matriz de riesgos +
+tabla comparativa) → plantilla `reports/scope_status.html`. Endpoints
+`POST /dashboard/reports/portfolio` (N1), `POST /organizations/{id}/reports/status`
+y `POST /programs/{id}/reports/status` (N2, admin). Botones de descarga en `/pmo`,
+org y programa. Helper SVG en `reports/svg.py` (compartido con el motor).
+
+**Estado de integración:** backend + frontend DONE (Fase 1-5) + follow-ups:
+- **ENH-141** — `ProgressGauge` del project detail consolidado en el `Gauge`
+  compartido (tras merge de #511).
+- **US-161** — sección de reporte **S-07 Curva-S** (planeado vs real; planeado
+  capturado en `metric_snapshots.extras.avg_progress_plan`).
+- **US-162** — vistas/reportes agregados N1/N2 **accesibles a PMs** con scoping
+  por `scoped_project_ids` (capturar snapshots sigue admin-only).
+- **US-163** — **heatmap + treemap** embebidos en los PDF de status N1/N2.
+
+Único pendiente: verificación manual en navegador + revisión visual de los PDF.

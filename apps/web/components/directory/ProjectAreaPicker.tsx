@@ -67,7 +67,9 @@ export function ProjectAreaPicker({
       try {
         await setAreaAssignments(created.id, [{ project_id: projectId }]);
       } catch {
-        // si falla el auto-assign, mantenemos el área creada
+        setErr(
+          "Área creada, pero no se pudo asignar al proyecto. Refrescá e intentá de nuevo.",
+        );
       }
       await refresh();
       onChange(created.id);

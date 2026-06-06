@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Building2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,137 @@ import {
   type OrganizationCreateBody,
   type OrganizationUpdateBody,
 } from "@/lib/api/organizations";
+import { cn } from "@/lib/cn";
+
+// BUG-068: subida directa de logos (PNG/JPG/SVG/WEBP) como data-URL base64.
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
+const LOGO_ACCEPT = "image/png,image/jpeg,image/svg+xml,image/webp";
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("read error"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * BUG-068: campo de logo con tres caminos — subir archivo (data-URL),
+ * pegar URL externa, o quitar. Muestra preview en vivo; `shape="circle"`
+ * replica el circulito con que se muestra la org en /pmo y listados.
+ */
+function LogoField({
+  id,
+  label,
+  value,
+  onChange,
+  helper,
+  shape,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  helper: ReactNode;
+  shape: "circle" | "square";
+  disabled?: boolean;
+}) {
+  const [err, setErr] = useState<string | null>(null);
+  const isData = value.startsWith("data:");
+
+  async function onFile(file: File | undefined) {
+    setErr(null);
+    if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      setErr("El logo excede 2 MB. Usa una imagen más liviana.");
+      return;
+    }
+    try {
+      onChange(await readFileAsDataUrl(file));
+    } catch {
+      setErr("No se pudo leer el archivo.");
+    }
+  }
+
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+      >
+        {label}
+      </label>
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "flex h-12 w-12 flex-none items-center justify-center overflow-hidden border border-[var(--border-default)] bg-[var(--color-subtle)] text-[10px] text-[var(--color-tertiary)]",
+            shape === "circle" ? "rounded-full" : "rounded",
+          )}
+        >
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt={`Preview ${label}`}
+              className={cn(
+                "h-full w-full",
+                shape === "circle" ? "object-cover" : "object-contain",
+              )}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : shape === "circle" ? (
+            <Building2 className="h-5 w-5" aria-hidden />
+          ) : (
+            "logo"
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          {isData ? (
+            <div className="flex items-center gap-2 text-xs text-[var(--color-secondary)]">
+              <span className="truncate rounded-[var(--radius-sm)] bg-[var(--color-subtle)] px-2 py-1">
+                Imagen subida
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                disabled={disabled}
+                className="text-[var(--color-accent)] hover:underline"
+              >
+                Quitar
+              </button>
+            </div>
+          ) : (
+            <Input
+              id={id}
+              type="text"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              disabled={disabled}
+              maxLength={500}
+              placeholder="https://cdn.example.com/logo.png"
+            />
+          )}
+          <input
+            type="file"
+            accept={LOGO_ACCEPT}
+            disabled={disabled}
+            onChange={(e) => onFile(e.target.files?.[0])}
+            aria-label={`Subir ${label}`}
+            className="block w-full text-xs text-[var(--color-tertiary)] file:mr-3 file:rounded-[var(--radius-sm)] file:border file:border-[var(--border-default)] file:bg-[var(--color-surface)] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-[var(--color-secondary)] hover:file:bg-[var(--color-subtle)]"
+          />
+          {err ? (
+            <p className="text-xs text-[var(--color-danger-fg)]">{err}</p>
+          ) : null}
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-[var(--color-tertiary)]">{helper}</p>
+    </div>
+  );
+}
 
 type Props = {
   mode: "create" | "edit";
@@ -207,46 +339,24 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
             disabled={saving}
           />
         </div>
-        <div>
-          <label
-            htmlFor="logo_url"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-          >
-            Logo de la organización (URL)
-          </label>
-          <Input
-            id="logo_url"
-            type="url"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            disabled={saving}
-            maxLength={500}
-            placeholder="https://cdn.example.com/org-logo.png"
-          />
-          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
-            Marca propia de esta organización (PMO).
-          </p>
-        </div>
-        <div>
-          <label
-            htmlFor="client_logo_url"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-          >
-            Logo del cliente (URL)
-          </label>
-          <Input
-            id="client_logo_url"
-            type="url"
-            value={clientLogoUrl}
-            onChange={(e) => setClientLogoUrl(e.target.value)}
-            disabled={saving}
-            maxLength={500}
-            placeholder="https://cdn.example.com/cliente-logo.png"
-          />
-          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
-            ENH-100: usado en el header de reportes generados (EP020).
-          </p>
-        </div>
+        <LogoField
+          id="logo_url"
+          label="Logo de la organización"
+          value={logoUrl}
+          onChange={setLogoUrl}
+          shape="circle"
+          disabled={saving}
+          helper="Marca propia de esta organización (PMO). Sube un PNG/JPG/SVG/WEBP o pega una URL — así se verá en el circulito."
+        />
+        <LogoField
+          id="client_logo_url"
+          label="Logo del cliente"
+          value={clientLogoUrl}
+          onChange={setClientLogoUrl}
+          shape="square"
+          disabled={saving}
+          helper="ENH-100: usado en el header de los reportes generados (EP020, sección S-01). Sube un archivo o pega la URL pública."
+        />
       </div>
 
       <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-default)] px-4 py-3">

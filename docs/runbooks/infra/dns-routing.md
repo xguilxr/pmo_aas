@@ -1,8 +1,8 @@
 # DNS routing productivo — `pmo-aas.com`
 
-**ID:** `DOC-INFRA-DNS`  
-**Alcance:** EP016 US-049 / Bloque 15 del sprint  
-**Referencias:** DEC-012 (BD en Railway, landing en HostGator), DEC-011 (Tailscale reemplaza CF Tunnel)
+**ID:** `DOC-INFRA-DNS`
+**Alcance:** rutas productivas del dominio (app, api, landing).
+**Referencias:** DEC-012 (BD en Railway, landing en HostGator). DEC-011 (Tailscale para Ollama) ya **no aplica** — DEC-017 + BUG-053 eliminaron Ollama y el tailnet; los subdominios `ollama.*` que se hubieran creado pueden retirarse.
 
 Este runbook describe la configuración de DNS productiva del dominio
 `pmo-aas.com` en **Cloudflare**, combinando servicios hospedados en

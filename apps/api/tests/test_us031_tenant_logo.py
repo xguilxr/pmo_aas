@@ -46,6 +46,9 @@ def _cleanup(tenant_id: str) -> None:
 
 @pytest.mark.asyncio
 async def test_us031_upload_png_sets_logo_url(client, db_session):
+    # BUG-068: el logo se guarda como data-URL base64 en DB (no como serve URL).
+    import base64
+
     t, auth = await _admin(client, db_session, slug="logo-ok")
     try:
         r = await client.post(
@@ -55,16 +58,13 @@ async def test_us031_upload_png_sets_logo_url(client, db_session):
         )
         assert r.status_code == 200, r.text
         logo_url = r.json()["logo_url"]
-        assert logo_url == f"/api/v1/branding/tenants/{t.id}/logo"
+        assert logo_url.startswith("data:image/png;base64,")
+        # El data-URL decodifica al PNG original.
+        b64 = logo_url.split(",", 1)[1]
+        assert base64.b64decode(b64) == PNG_BYTES
 
         info = await client.get("/api/v1/admin/tenant", headers=auth["_authz"])
         assert info.json()["logo_url"] == logo_url
-
-        # Serve file back
-        srv = await client.get(logo_url, headers=auth["_authz"])
-        assert srv.status_code == 200
-        assert srv.headers["content-type"].startswith("image/png")
-        assert srv.content == PNG_BYTES
     finally:
         _cleanup(str(t.id))
 
@@ -170,29 +170,25 @@ async def test_us031_me_tenant_branding(client, db_session):
             headers=auth["_authz"],
         )
         r2 = await client.get("/api/v1/me/tenant-branding", headers=auth["_authz"])
-        assert r2.json()["logo_url"] == f"/api/v1/branding/tenants/{t.id}/logo"
+        assert r2.json()["logo_url"].startswith("data:image/png;base64,")
     finally:
         _cleanup(str(t.id))
 
 
 @pytest.mark.asyncio
-async def test_us031_overwrite_replaces_old_extension(client, db_session):
-    """Subir un WEBP después de un PNG debe dejar solo un archivo en disco."""
+async def test_us031_overwrite_replaces_logo(client, db_session):
+    """BUG-068: subir un WEBP después de un PNG reemplaza el data-URL."""
     t, auth = await _admin(client, db_session, slug="logo-swap")
-    try:
-        await client.post(
-            "/api/v1/admin/tenant/logo",
-            files={"file": ("logo.png", io.BytesIO(PNG_BYTES), "image/png")},
-            headers=auth["_authz"],
-        )
-        # Contenido no importa — validamos el MIME header
-        await client.post(
-            "/api/v1/admin/tenant/logo",
-            files={"file": ("logo.webp", io.BytesIO(b"RIFF....WEBP"), "image/webp")},
-            headers=auth["_authz"],
-        )
-        base = Path(settings.STORAGE_PATH) / "tenants" / str(t.id)
-        files = sorted(p.name for p in base.iterdir())
-        assert files == ["logo.webp"]
-    finally:
-        _cleanup(str(t.id))
+    await client.post(
+        "/api/v1/admin/tenant/logo",
+        files={"file": ("logo.png", io.BytesIO(PNG_BYTES), "image/png")},
+        headers=auth["_authz"],
+    )
+    # Contenido no importa — validamos el MIME header
+    await client.post(
+        "/api/v1/admin/tenant/logo",
+        files={"file": ("logo.webp", io.BytesIO(b"RIFF....WEBP"), "image/webp")},
+        headers=auth["_authz"],
+    )
+    info = await client.get("/api/v1/admin/tenant", headers=auth["_authz"])
+    assert info.json()["logo_url"].startswith("data:image/webp;base64,")

@@ -80,7 +80,24 @@ export function TenantSettingsForm() {
       .finally(() => setLoading(false));
   }, []);
 
+  // ENH-112: validación client-side de los thresholds.
+  const thresholdsValid = (() => {
+    const t = form.task_load_thresholds;
+    if (!t) return true;
+    return t.green_max > 0 && t.amber_max > 0 && t.green_max < t.amber_max;
+  })();
+  // ENH-111: warning informativo si se elige by_effort (las tasks
+  // todavía no tienen horas estimadas — fallback documentado).
+  const showEffortWarning =
+    form.progress_calculation_method === "by_effort";
+
   async function save() {
+    if (!thresholdsValid) {
+      setError(
+        "Umbrales inválidos: el valor verde debe ser positivo y estrictamente menor que el ámbar.",
+      );
+      return;
+    }
     setSaving(true);
     setNotice(null);
     setError(null);
@@ -212,6 +229,14 @@ export function TenantSettingsForm() {
               ))}
             </Select>
           </Field>
+          {showEffortWarning && (
+            <Banner variant="warning">
+              <strong>Aviso:</strong> `by_effort` requiere horas estimadas
+              por tarea (campo aún no expuesto en v1.0). Mientras tanto el
+              servicio devuelve el avance por conteo de tareas como
+              fallback documentado.
+            </Banner>
+          )}
         </div>
 
         {/* ENH-099 — Umbrales de carga de tareas (Report Builder / EP020) */}
@@ -273,6 +298,11 @@ export function TenantSettingsForm() {
               />
             </Field>
           </div>
+          {!thresholdsValid && (
+            <p className="mt-2 text-[12px] text-[var(--color-danger-fg)]">
+              Verde debe ser estrictamente menor que ámbar y ambos &gt; 0.
+            </p>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">

@@ -12,8 +12,10 @@ from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup
 
 from app.core.errors import AppError
+from app.services.status_display import status_badge_html, status_es
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,9 @@ def _format_datetime(value: datetime | None, fmt: str = "%Y-%m-%d %H:%M") -> str
 
 
 _env.filters["format_datetime"] = _format_datetime
+# ENH-150 — status de tarea en ES con color leve.
+_env.filters["status_es"] = status_es
+_env.filters["status_badge"] = lambda value: Markup(status_badge_html(value))
 
 
 def render_html(template_name: str, context: dict[str, Any]) -> str:

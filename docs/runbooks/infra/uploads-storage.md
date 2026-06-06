@@ -277,7 +277,7 @@ Si hace falta desactivar R2 por completo:
 
 ## 11. Troubleshooting
 
-**P:** Al subir un documento desde `/admin/projects/*/documents`,
+**P:** Al subir un documento desde `/pmo/projects/*/documents (legacy /admin/* redirige)`,
 error "No se pudo subir el documento" con status 500.
 
 **R:** Revisar logs del api en Railway. Causas típicas:

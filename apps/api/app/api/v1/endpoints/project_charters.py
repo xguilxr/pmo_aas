@@ -311,7 +311,12 @@ async def download_charter(
         )
 
     # format=pdf: weasyprint sobre el HTML imprimible.
-    html = _build_printable_html(charter, project)
+    from app.services.reports.branding import load_report_branding
+
+    branding = await load_report_branding(
+        db, _tenant(cu), project.organization_id
+    )
+    html = _build_printable_html(charter, project, branding)
     try:
         from weasyprint import HTML  # type: ignore
 
@@ -341,10 +346,49 @@ async def download_charter(
         )
 
 
-def _build_printable_html(charter: ProjectCharter, project: Project) -> str:
+def _build_printable_html(
+    charter: ProjectCharter,
+    project: Project,
+    branding: dict[str, str | None] | None = None,
+) -> str:
     """Render del HTML imprimible. Extraído para reuso por
-    `/charter/download?format=pdf` (US-083)."""
+    `/charter/download?format=pdf` (US-083).
+
+    ENH-153: si se pasa `branding` (de `load_report_branding`), pinta una
+    banda de marca con logo de la PMO + logo del cliente en el header,
+    igual que los reportes automatizados.
+    """
     s4 = _build_section4(project)
+    b = branding or {}
+
+    def _logo(url: str | None, max_h: int, max_w: int) -> str:
+        if not url:
+            return ""
+        return (
+            f'<img src="{url}" alt="" style="max-height:{max_h}px;'
+            f'max-width:{max_w}px;object-fit:contain;" />'
+        )
+
+    pmo_name = b.get("tenant_name") or ""
+    brand_html = ""
+    if b.get("tenant_logo_url") or b.get("client_logo_url") or pmo_name:
+        name_span = (
+            f'<span style="font-weight:600;font-size:14px;color:#182e4e;">'
+            f"{pmo_name}</span>"
+            if pmo_name
+            else ""
+        )
+        brand_html = (
+            '<div style="display:flex;align-items:center;'
+            "justify-content:space-between;gap:16px;border-bottom:2px solid "
+            '#182e4e;padding-bottom:10px;margin-bottom:16px;">'
+            '<div style="display:flex;align-items:center;gap:10px;">'
+            + _logo(b.get("tenant_logo_url"), 40, 200)
+            + name_span
+            + "</div>"
+            + _logo(b.get("client_logo_url"), 36, 160)
+            + "</div>"
+        )
 
     def row(label: str, value) -> str:
         v = "" if value is None else str(value)
@@ -371,6 +415,7 @@ def _build_printable_html(charter: ProjectCharter, project: Project) -> str:
 </style></head>
 <body>
   <header>
+    {brand_html}
     <h1>Project Charter — {charter.project_name}</h1>
     <p class="muted">Proyecto: {project.folio} · Generado on-demand</p>
   </header>
@@ -430,5 +475,10 @@ async def charter_printable(
     """Devuelve HTML imprimible a PDF. Un renderer PDF nativo queda como
     follow-up; el navegador puede imprimir esta vista (Ctrl+P) para
     obtener el PDF on-demand."""
+    from app.services.reports.branding import load_report_branding
+
     project, charter = await _get_project_and_charter(db, _tenant(cu), project_id)
-    return HTMLResponse(content=_build_printable_html(charter, project))
+    branding = await load_report_branding(
+        db, _tenant(cu), project.organization_id
+    )
+    return HTMLResponse(content=_build_printable_html(charter, project, branding))

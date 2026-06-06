@@ -20,7 +20,16 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bars, Legend, PALETTE, Pie } from "@/components/dashboard-charts";
+import {
+  Bars,
+  Heatmap,
+  Legend,
+  PALETTE,
+  Pie,
+  RiskMatrix,
+  TrendLines,
+  Treemap,
+} from "@/components/dashboard-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { ApiError } from "@/lib/api";
 import {
@@ -32,6 +41,17 @@ import {
   type DashboardKpis,
   type PlanVsActualRow,
 } from "@/lib/api/dashboard";
+import {
+  captureSnapshots,
+  getHeatmap,
+  getRiskMatrix,
+  getTreemap,
+  getTrends,
+  type HeatmapResponse,
+  type RiskMatrixResponse,
+  type TreemapResponse,
+  type TrendsResponse,
+} from "@/lib/api/analytics";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -116,6 +136,73 @@ function DashboardInner() {
   const [rows, setRows] = useState<PlanVsActualRow[]>([]);
   const { sortedRows: sortedDashRows, ctrl: dashCtrl } = useSortableRows<PlanVsActualRow>(rows);
   const [loadingRows, setLoadingRows] = useState(true);
+
+  // US-154 — analíticas ricas (tendencias, matriz de riesgos, heatmap, treemap).
+  const [riskMatrix, setRiskMatrix] = useState<RiskMatrixResponse | null>(null);
+  const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
+  const [treemap, setTreemap] = useState<TreemapResponse | null>(null);
+  const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  // El heatmap/treemap/trends agregados son admin-equivalente; si la primera
+  // llamada 403ea, ocultamos esas secciones (detección por capacidad).
+  const [isAdminView, setIsAdminView] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [captureMsg, setCaptureMsg] = useState<string | null>(null);
+
+  const analyticsScope = orgFilter ? ("organization" as const) : ("tenant" as const);
+
+  useEffect(() => {
+    let cancelled = false;
+    const scopeParams = { scope: analyticsScope, id: orgFilter || undefined };
+
+    // Matriz de riesgos: disponible para todos los roles (scoped por proyecto).
+    getRiskMatrix(scopeParams)
+      .then((r) => !cancelled && setRiskMatrix(r))
+      .catch(() => !cancelled && setRiskMatrix(null));
+
+    // Vistas agregadas (admin-equivalente).
+    getHeatmap()
+      .then((r) => {
+        if (cancelled) return;
+        setHeatmap(r);
+        setIsAdminView(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHeatmap(null);
+        setIsAdminView(false);
+      });
+    getTreemap(scopeParams)
+      .then((r) => !cancelled && setTreemap(r))
+      .catch(() => !cancelled && setTreemap(null));
+    getTrends({ ...scopeParams, weeks: 12 })
+      .then((r) => !cancelled && setTrends(r))
+      .catch(() => !cancelled && setTrends(null));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgFilter, analyticsScope]);
+
+  async function handleCapture() {
+    setCapturing(true);
+    setCaptureMsg(null);
+    try {
+      const res = await captureSnapshots();
+      setCaptureMsg(`Snapshot capturado (${res.rows} filas).`);
+      const refreshed = await getTrends({
+        scope: analyticsScope,
+        id: orgFilter || undefined,
+        weeks: 12,
+      });
+      setTrends(refreshed);
+    } catch (err) {
+      setCaptureMsg(
+        err instanceof ApiError ? err.message : "No se pudo capturar el snapshot",
+      );
+    } finally {
+      setCapturing(false);
+    }
+  }
 
   // Sincronizar cambio de filtro con URL (US-014: estado del filtro en URL).
   function changeOrgFilter(next: string) {
@@ -278,10 +365,23 @@ function DashboardInner() {
               Limpiar
             </Button>
           ) : null}
+          {isAdminView ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleCapture}
+              disabled={capturing}
+              title="Captura el snapshot de hoy para alimentar las tendencias"
+            >
+              {capturing ? "Capturando…" : "Capturar snapshot"}
+            </Button>
+          ) : null}
         </div>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
+      {captureMsg ? <Banner variant="info">{captureMsg}</Banner> : null}
 
       <section aria-label="Indicadores" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -384,6 +484,65 @@ function DashboardInner() {
           />
         </ChartCard>
       </section>
+
+      <section aria-label="Riesgos y salud" className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Matriz de riesgos (probabilidad × impacto)">
+          {riskMatrix && riskMatrix.total > 0 ? (
+            <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos" />
+          ) : (
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
+              Sin riesgos abiertos con probabilidad e impacto definidos.
+            </p>
+          )}
+        </ChartCard>
+        {isAdminView ? (
+          <ChartCard title="Salud por organización">
+            <Heatmap
+              rows={heatmap?.rows ?? []}
+              ariaLabel="Mapa de calor de salud por organización"
+              onCellClick={(orgId) => changeOrgFilter(orgId)}
+            />
+          </ChartCard>
+        ) : null}
+      </section>
+
+      {isAdminView ? (
+        <section aria-label="Tendencias y portafolio" className="grid gap-4 lg:grid-cols-2">
+          <ChartCard title="Tendencias (últimas 12 semanas)">
+            {(trends?.series.length ?? 0) > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-3">
+                <TrendMini
+                  label="Avance promedio"
+                  trends={trends}
+                  metric="avg_progress"
+                  color={PALETTE.success}
+                  valueFormat={(n) => `${Math.round(n)}%`}
+                />
+                <TrendMini
+                  label="Riesgos abiertos"
+                  trends={trends}
+                  metric="open_risks"
+                  color={PALETTE.warning}
+                />
+                <TrendMini
+                  label="Proyectos activos"
+                  trends={trends}
+                  metric="projects_active"
+                  color={PALETTE.accent}
+                />
+              </div>
+            ) : (
+              <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
+                Aún no hay historia. Usa “Capturar snapshot” para sembrar el primer
+                punto; el job semanal llena el resto.
+              </p>
+            )}
+          </ChartCard>
+          <ChartCard title="Portafolio (presupuesto × salud)">
+            <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" />
+          </ChartCard>
+        </section>
+      ) : null}
 
       <section
         aria-label="Plan vs Real"
@@ -551,6 +710,44 @@ function DashboardInner() {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function TrendMini({
+  label,
+  trends,
+  metric,
+  color,
+  valueFormat,
+}: {
+  label: string;
+  trends: TrendsResponse | null;
+  metric: string;
+  color: string;
+  valueFormat?: (n: number) => string;
+}) {
+  const data = (trends?.series ?? []).map((p) => ({
+    x: p.snapshot_date,
+    y: Number(p[metric] ?? 0),
+  }));
+  const last = data.length ? data[data.length - 1].y : 0;
+  const prev = data.length > 1 ? data[data.length - 2].y : last;
+  const delta = last - prev;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+          {label}
+        </span>
+        <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">
+          {valueFormat ? valueFormat(last) : last}
+        </span>
+      </div>
+      <TrendLines data={data} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={valueFormat} />
+      <p className="text-[11px] tabular-nums text-[var(--color-tertiary)]">
+        {delta === 0 ? "Sin cambio" : `${delta > 0 ? "▲" : "▼"} ${valueFormat ? valueFormat(Math.abs(delta)) : Math.abs(delta)} vs. semana previa`}
+      </p>
     </div>
   );
 }

@@ -67,7 +67,7 @@ const TAB_DEFS: Array<{
     key: "raid",
     label: "RAIDs",
     icon: <ShieldAlert className="h-4 w-4" aria-hidden />,
-    description: "Risks · Issues · Lessons · Changes (export Excel).",
+    description: "Riesgos · Acciones · Incidencias · Decisiones (export Excel).",
   },
   {
     key: "organigrama",

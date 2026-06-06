@@ -3,62 +3,68 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, FolderKanban, Network, TrendingUp } from "lucide-react";
+import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
+import { KpiCard } from "@/components/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
+import { Gauge, Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { ApiError } from "@/lib/api";
+import {
+  downloadProgramStatusReport,
+  getRiskMatrix,
+  getTrends,
+  type RiskMatrixResponse,
+  type TrendsResponse,
+} from "@/lib/api/analytics";
 import { getProgramSummary, type ProgramSummary } from "@/lib/api/organizations";
 
-function Donut({ green, yellow, red }: { green: number; yellow: number; red: number }) {
-  const total = green + yellow + red;
-  if (total === 0) {
-    return (
-      <div className="flex h-32 w-32 items-center justify-center rounded-full border-4 border-[var(--border-subtle)] text-xs text-[var(--color-tertiary)]">
-        sin datos
-      </div>
-    );
-  }
-  const c = 2 * Math.PI * 40;
-  const seg = (n: number) => (n / total) * c;
-  const gSeg = seg(green);
-  const ySeg = seg(yellow);
-  const rSeg = seg(red);
-  return (
-    <svg viewBox="0 0 100 100" className="h-32 w-32 -rotate-90">
-      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border-subtle)" strokeWidth="10" />
-      <circle
-        cx="50" cy="50" r="40" fill="none" stroke="var(--color-success, #16a34a)"
-        strokeWidth="10"
-        strokeDasharray={`${gSeg} ${c - gSeg}`}
-        strokeDashoffset="0"
-      />
-      <circle
-        cx="50" cy="50" r="40" fill="none" stroke="var(--color-warning, #eab308)"
-        strokeWidth="10"
-        strokeDasharray={`${ySeg} ${c - ySeg}`}
-        strokeDashoffset={`-${gSeg}`}
-      />
-      <circle
-        cx="50" cy="50" r="40" fill="none" stroke="var(--color-danger, #dc2626)"
-        strokeWidth="10"
-        strokeDasharray={`${rSeg} ${c - rSeg}`}
-        strokeDashoffset={`-${gSeg + ySeg}`}
-      />
-    </svg>
-  );
+type ProgramTab = "overview" | "reports";
+
+// BUG-069: usa los mismos tokens de marca que la org page (un solo set de
+// verdes/amarillos/rojos) en vez de variables CSS inexistentes.
+const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
+const HEALTH_FILL: Record<string, string> = {
+  green: PALETTE.success,
+  yellow: PALETTE.warning,
+  red: PALETTE.danger,
+};
+
+function healthToData(health: { green: number; yellow: number; red: number }) {
+  return (["green", "yellow", "red"] as const).map((k) => ({
+    label: HEALTH_LABEL[k],
+    value: health[k],
+    color: HEALTH_FILL[k],
+  }));
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function ProgTrend({
+  label,
+  trends,
+  metric,
+  color,
+  fmt,
+}: {
+  label: string;
+  trends: TrendsResponse | null;
+  metric: string;
+  color: string;
+  fmt?: (n: number) => string;
+}) {
+  const series = (trends?.series ?? []).map((p) => ({ x: p.snapshot_date, y: Number(p[metric] ?? 0) }));
+  const last = series.length ? series[series.length - 1].y : 0;
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4">
-      <div className="text-xs text-[var(--color-tertiary)]">{label}</div>
-      <div className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-        {value}
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">{label}</span>
+        <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">{fmt ? fmt(last) : last}</span>
       </div>
+      <TrendLines data={series} ariaLabel={`Tendencia de ${label}`} color={color} valueFormat={fmt} />
     </div>
   );
 }
@@ -95,6 +101,9 @@ export default function ProgramSummaryPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const ctx = searchParams.get("ctx") === "admin" ? "admin" : "pmo";
+  // US-137: tabs "Resumen" | "Reportes" via ?tab=.
+  const activeTab: ProgramTab =
+    searchParams.get("tab") === "reports" ? "reports" : "overview";
   const orgHref = (orgId: string) =>
     ctx === "admin" ? `/admin/organizations/${orgId}` : `/pmo/organizations/${orgId}`;
   const portfolioHref = ctx === "admin" ? "/admin" : "/pmo";
@@ -102,6 +111,22 @@ export default function ProgramSummaryPage() {
   const [data, setData] = useState<ProgramSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // US-157 — analítica program-scoped.
+  const [riskMatrix, setRiskMatrix] = useState<RiskMatrixResponse | null>(null);
+  const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  async function handleDownloadReport() {
+    setDownloadingReport(true);
+    try {
+      await downloadProgramStatusReport(params.id);
+    } catch {
+      /* silencioso */
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +143,19 @@ export default function ProgramSummaryPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getRiskMatrix({ scope: "program", id: params.id })
+      .then((r) => !cancelled && setRiskMatrix(r))
+      .catch(() => !cancelled && setRiskMatrix(null));
+    getTrends({ scope: "program", id: params.id, weeks: 12 })
+      .then((r) => !cancelled && setTrends(r))
+      .catch(() => !cancelled && setTrends(null));
     return () => {
       cancelled = true;
     };
@@ -166,7 +204,7 @@ export default function ProgramSummaryPage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
-            <Network className="h-6 w-6" aria-hidden />
+            <Layers className="h-6 w-6" aria-hidden />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
@@ -183,13 +221,70 @@ export default function ProgramSummaryPage() {
             ) : null}
           </div>
         </div>
+        {trends !== null ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDownloadReport}
+            disabled={downloadingReport}
+            title="Descarga el reporte de status del programa en PDF"
+          >
+            <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+            {downloadingReport ? "Generando…" : "Status (PDF)"}
+          </Button>
+        ) : null}
       </header>
 
+      {/* US-137: tabs Resumen / Reportes */}
+      <div
+        role="tablist"
+        aria-label="Vistas del programa"
+        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+      >
+        {(
+          [
+            { v: "overview" as const, label: "Resumen", icon: <Layers className="h-3.5 w-3.5" aria-hidden /> },
+            { v: "reports" as const, label: "Reportes", icon: <FileText className="h-3.5 w-3.5" aria-hidden /> },
+          ]
+        ).map((opt) => {
+          const active = activeTab === opt.v;
+          const sp = new URLSearchParams(searchParams.toString());
+          if (opt.v === "overview") sp.delete("tab");
+          else sp.set("tab", "reports");
+          const href = `/pmo/programs/${params.id}${sp.toString() ? `?${sp.toString()}` : ""}`;
+          return (
+            <Link
+              key={opt.v}
+              href={href}
+              role="tab"
+              aria-selected={active}
+              className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors ${
+                active
+                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]"
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {activeTab === "reports" ? (
+        <section className="space-y-3">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Plantillas Nivel 2 aplicadas con scope filtrado a este programa.
+          </p>
+          <ScopedReportsPanel scope={{ kind: "program", id: params.id }} />
+        </section>
+      ) : (
+        <>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Proyectos" value={data.project_total} />
-        <StatCard label="Activos" value={data.project_active} />
-        <StatCard label="En riesgo" value={data.project_at_risk} />
-        <StatCard label="Cerrados" value={data.project_closed} />
+        <KpiCard label="Proyectos" value={data.project_total} tone="accent" />
+        <KpiCard label="Activos" value={data.project_active} />
+        <KpiCard label="En riesgo" value={data.project_at_risk} tone={data.project_at_risk > 0 ? "warning" : "neutral"} />
+        <KpiCard label="Cerrados" value={data.project_closed} />
       </section>
 
       <section className="grid gap-3 md:grid-cols-[auto_1fr]">
@@ -197,20 +292,9 @@ export default function ProgramSummaryPage() {
           <div className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
             Salud del portafolio
           </div>
-          <Donut {...data.health} />
-          <div className="flex gap-3 text-xs">
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-              {data.health.green}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
-              {data.health.yellow}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
-              {data.health.red}
-            </span>
+          <Pie data={healthToData(data.health)} ariaLabel="Salud del portafolio" size={140} />
+          <div className="w-full max-w-[180px]">
+            <Legend data={healthToData(data.health)} />
           </div>
         </div>
 
@@ -241,6 +325,59 @@ export default function ProgramSummaryPage() {
             </div>
           </dl>
         </div>
+      </section>
+
+      <section aria-label="Analítica del programa" className="grid gap-3 lg:grid-cols-3">
+        {(() => {
+          const projects = data.projects ?? [];
+          const avgProgress = projects.length
+            ? Math.round(projects.reduce((a, p) => a + (p.progress ?? 0), 0) / projects.length)
+            : 0;
+          const consumedRaw =
+            data.budget_planned > 0 ? (data.budget_actual / data.budget_planned) * 100 : 0;
+          const consumedTone =
+            consumedRaw > 100 ? "danger" : consumedRaw >= 80 ? "warning" : "success";
+          return (
+            <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
+              <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">Indicadores</h2>
+              <div className="flex items-center justify-around gap-3">
+                <div className="flex flex-col items-center gap-1">
+                  <Gauge value={avgProgress} ariaLabel="Avance promedio" tone="accent" />
+                  <span className="text-xs text-[var(--color-tertiary)]">Avance</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <Gauge value={consumedRaw} ariaLabel="Presupuesto consumido" tone={consumedTone} />
+                  <span className="text-xs text-[var(--color-tertiary)]">Presupuesto</span>
+                </div>
+              </div>
+            </article>
+          );
+        })()}
+        <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">Matriz de riesgos</h2>
+          {riskMatrix && riskMatrix.total > 0 ? (
+            <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos del programa" />
+          ) : (
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
+              Sin riesgos abiertos con probabilidad e impacto.
+            </p>
+          )}
+        </article>
+        <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">Tendencias (12 semanas)</h2>
+          {(trends?.series.length ?? 0) > 0 ? (
+            <div className="space-y-3">
+              {/* BUG-069: el avance ya se muestra como Gauge en "Indicadores";
+                  aquí solo dejamos las series que NO se repiten en otra tarjeta. */}
+              <ProgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={PALETTE.warning} />
+              <ProgTrend label="Riesgos severos" trends={trends} metric="severe_risks" color={PALETTE.danger} />
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
+              Sin historia de snapshots todavía.
+            </p>
+          )}
+        </article>
       </section>
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
@@ -332,6 +469,8 @@ export default function ProgramSummaryPage() {
           </table>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

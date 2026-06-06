@@ -1,215 +1,224 @@
 # Despliegue en Railway
 
 **ID:** `DOC-ARCH-DEPLOY`
+**Última verificación contra código:** 2026-05-23.
 
 ---
 
 ## 1. Servicios Railway
 
-El proyecto se despliega como **6 servicios** dentro de un mismo **Project** de Railway:
+El proyecto se despliega como **4 servicios** dentro de un mismo **Project** de Railway:
 
 ```mermaid
 flowchart LR
-    WEB["web<br/>Next.js 15"]
-    API["api<br/>FastAPI"]
-    WORKER["worker<br/>Celery/BullMQ"]
+    WEB["web<br/>Next.js 15 (Nixpacks)"]
+    API["api<br/>FastAPI (Dockerfile)"]
+    WORKER["worker<br/>Celery + beat<br/>(mismo Dockerfile)"]
     DB[("postgres<br/>Railway Plugin")]
     REDIS[("redis<br/>Railway Plugin")]
-    OLLAMA["ollama<br/>(opcional, self-hosted)"]
+    GROQ["Groq API<br/>(modo platform)"]
+    BYO["Provider BYO<br/>(OpenAI / Claude /<br/>Gemini / Azure / …)"]
+    R2[("Cloudflare R2<br/>(opcional)")]
 
     WEB --> API
     API --> DB
     API --> REDIS
+    API -.->|STORAGE_BACKEND=s3| R2
     WORKER --> DB
     WORKER --> REDIS
-    WORKER --> OLLAMA
+    WORKER -->|tenant en modo platform| GROQ
+    WORKER -.->|tenant en modo byo| BYO
 ```
 
-| Servicio | Root | Runtime | Reemplazo al auto-deploy |
+| Servicio | Root | Builder | Notas |
 |---|---|---|---|
-| `web` | `apps/web` | Nixpacks (Node 20) | Sí, rolling |
-| `api` | `apps/api` | Nixpacks (Python 3.12) | Sí, rolling |
-| `worker` | `apps/api` (start command diferente) | Nixpacks (Python 3.12) | Sí |
-| `postgres` | Plugin | PostgreSQL 16 | No (persistente) |
-| `redis` | Plugin | Redis 7 | No |
-| `glitchtip` | Docker | GlitchTip (Sentry-compatible OSS) | Manual |
-| `ollama` | Docker o externo | GPU si disponible — ver abajo | Manual |
+| `web` | `apps/web` | Nixpacks (Node 20) | `npm install && npm run build` |
+| `api` | `apps/api` | **Dockerfile** (compartido con worker) | Incluye JRE 21 + MPXJ para import de `.mpp`; WeasyPrint para PDF |
+| `worker` | `apps/api` | **Dockerfile** (mismo) | Sobrescribe `CMD` con celery + beat embebido |
+| `postgres` | Plugin | — | PostgreSQL 16 |
+| `redis` | Plugin | — | Redis 7 |
 
-> **Desarrollo local:** no requiere Docker en Windows. Ver
-> [`../setup-dev.md`](../setup-dev.md) — rutas A (nativo), B (Railway dev
-> services) o C (Docker en macOS/Linux).
+> **No hay** servicio `glitchtip` (se descartó la observabilidad APM en MVP). **No hay** servicio `ollama` (BUG-053 eliminó Ollama). El sidecar Tailscale del worker se retiró en ENH-023.
+
+> **Desarrollo local:** ver `docs/setup-dev.md` (o el equivalente vigente; el archivo histórico está en `docs/archive/setup-dev.md` si no existe en raíz). Hoy basta `pnpm install` + `docker compose` opcional para Postgres/Redis.
 
 ---
 
-## 2. `railway.json` (infra como código)
+## 2. Infra como código
 
-En la raíz del monorepo:
+### Raíz — `railway.json`
 
 ```json
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": { "builder": "NIXPACKS" },
   "deploy": {
-    "startCommand": "pnpm start",
-    "healthcheckPath": "/api/health",
-    "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
 }
 ```
 
-Cada servicio tiene además su propio archivo (o config UI):
+> Es **el config default del project**; cada servicio puede sobreescribirlo con su `railway.toml`.
 
 ### `apps/api/railway.toml`
 
 ```toml
 [build]
-builder = "NIXPACKS"
-buildCommand = "pip install -r requirements.txt && alembic upgrade head"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
-numReplicas = 2
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 ```
 
-### `apps/api/worker.railway.toml` (mismo root, diferente start)
+El `CMD` default del Dockerfile aplica para `api`:
+
+```dockerfile
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
+```
+
+(Las migraciones corren al arranque del contenedor `api`.)
+
+### `apps/api/worker.railway.toml`
 
 ```toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
 [deploy]
-startCommand = "celery -A app.worker worker --loglevel=info --concurrency=4"
-healthcheckPath = ""   # worker no expone HTTP
-numReplicas = 1
+startCommand = "celery -A app.workers.celery_app worker --beat --loglevel=info --concurrency=2"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 ```
 
-**Tasks procesadas por el worker (US-051 + US-057):**
+> **`--beat` embebido (BUG-036).** El worker arranca también el scheduler de Celery Beat para ejecutar tareas periódicas (`scheduled_reports.send_due_reports`, `scheduled_minutes.send_due_minutes`). Hoy el worker corre con **1 replica**; si se escala >1 replica hay que mover `beat` a un servicio dedicado para evitar duplicar disparos.
 
-- `ai.generate_minute` — dispatchada por `POST /ai/minutes`. Resuelve
-  el provider según el modo del tenant (`platform` → Groq, `byo` →
-  OpenAI/Claude/Gemini/Perplexity) y persiste el resultado en
-  `ai_jobs`. Si `save_as_minute=true`, crea también la fila en
-  `meeting_minutes`.
-- `ai.draft_report` — dispatchada por `POST /ai/projects/{id}/reports/draft`.
-  Análoga, persiste en `reports`. Sólo disponible en modo `byo`
-  (DEC-017 limitó `platform` a minutas).
+**Tasks reales (`apps/api/app/workers/tasks/`):**
 
-El worker corre Celery directo. Hasta ENH-023 (2026-04-23) tenía un
-sidecar Tailscale (`start-worker.sh` + `TS_AUTHKEY`) para alcanzar
-Ollama local vía tailnet; DEC-017 movió la IA a Groq hosteado y el
-sidecar se retiró. La UI consume el resultado vía polling a
-`GET /ai/jobs/{id}` (ver hook `lib/hooks/use-ai-job-polling.ts` en el
-frontend).
+| Módulo | Tarea principal | Trigger |
+|---|---|---|
+| `ai.py` | `ai.generate_minute`, `ai.draft_report` | Encolada desde `/ai/minutes` y `/ai/projects/{id}/reports/draft`. Resuelve provider según modo del tenant (platform → Groq; byo → openai / claude / gemini / perplexity / azure / custom). |
+| `notifications.py` | Envío de emails Resend | Encolada desde audit hooks. |
+| `scheduled_minutes.py` | Generación de minutas programadas | Beat. |
+| `scheduled_reports.py` | Envío de reportes programados | Beat. |
 
 ### `apps/web/railway.toml`
 
 ```toml
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=web"
+buildCommand = "npm install && npm run build"
 
 [deploy]
-startCommand = "pnpm --filter web start -p $PORT"
+startCommand = "npm start"
 healthcheckPath = "/api/health"
-numReplicas = 2
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 ```
+
+> Usa **npm**, no pnpm, dentro del contenedor de web (los workspaces se aplanan al directorio del servicio en el build).
 
 ---
 
 ## 3. Variables de entorno
 
-### Comunes (shared, definidas como "Reference variables")
+### Compartidas / plugins
 
 | Variable | Fuente | Uso |
 |---|---|---|
 | `DATABASE_URL` | Plugin postgres | API + Worker |
 | `REDIS_URL` | Plugin redis | API + Worker |
-| `GLITCHTIP_DSN_API` | GlitchTip service | API (Sentry-SDK compatible) |
-| `GLITCHTIP_DSN_WEB` | GlitchTip service | Web |
-| `NODE_ENV` / `PYTHON_ENV` | `production` | — |
+| `PYTHON_ENV` | `production` / `staging` / `development` | API + Worker |
+| `LOG_LEVEL` | `INFO` (default) | API + Worker |
 
-### API / Worker
+### API + Worker (`apps/api/app/core/config.py`)
 
-| Variable | Ejemplo | Descripción |
+| Variable | Default | Notas |
 |---|---|---|
-| `JWT_SECRET` | `<rotate cada 90d>` | Firma de tokens |
-| `JWT_REFRESH_SECRET` | `<rotate>` | Firma de refresh |
+| `JWT_SECRET` | dev placeholder | **Rotar en prod** |
+| `JWT_REFRESH_SECRET` | dev placeholder | **Rotar en prod** |
+| `JWT_ALGORITHM` | `HS256` | |
 | `ACCESS_TOKEN_TTL_SEC` | `3600` | 1 h |
 | `REFRESH_TOKEN_TTL_SEC` | `2592000` | 30 d |
 | `BCRYPT_ROUNDS` | `12` | |
-| `AI_MODE` | `ollama` / `gemini` / `claude` / `disabled` | prioridad: ollama → gemini → claude |
-| `OLLAMA_BASE_URL` | `https://ollama.pmoaas.com:11434` | externo con Cloudflare Tunnel preferido |
-| `OLLAMA_MODEL` | `qwen2.5:7b-instruct-q4_K_M` | |
-| `GEMINI_API_KEY` | `AIza…` | Free tier 2.º fallback |
-| `GEMINI_MODEL` | `gemini-1.5-flash` | 1M tokens/día gratis |
-| `ANTHROPIC_API_KEY` | `sk-ant-…` | Fallback 3.º (premium) |
+| `MAX_FAILED_LOGIN_ATTEMPTS` | `5` | |
+| `ACCOUNT_LOCK_MINUTES` | `15` | |
+| `ALLOWED_ORIGINS` | `http://localhost:3000` | CORS, coma-separado |
+| `AI_MODE` | `platform` | `platform` / `byo` / `disabled` |
+| `GROQ_API_KEY` | — | Requerido si `AI_MODE=platform` |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Override por tenant via `/superadmin/ai` |
+| `GEMINI_API_KEY` | — | Tenant BYO en modo `byo` (también puede vivir cifrado por tenant) |
+| `GEMINI_MODEL` | `gemini-1.5-flash` | |
+| `ANTHROPIC_API_KEY` | — | Idem |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | |
-| `RESEND_API_KEY` | `re_…` | Emails |
-| `STORAGE_PATH` | `/data/uploads` | Railway Volume |
-| `ALLOWED_ORIGINS` | `https://app.pmoaas.com` | CORS |
+| `AI_SECRETS_FERNET_KEY` | dev placeholder | Cifra API keys de providers BYO antes de persistir en DB |
+| `STORAGE_BACKEND` | `local` | `local` (Railway Volume) o `s3` (Cloudflare R2 / B2 / AWS S3 / MinIO) |
+| `STORAGE_PATH` | `/tmp/pmo-uploads` | Solo cuando `STORAGE_BACKEND=local` |
+| `S3_ENDPOINT_URL` | — | Ej. `https://<account>.r2.cloudflarestorage.com` |
+| `S3_BUCKET` | — | |
+| `S3_REGION` | `auto` | `auto` para R2; región concreta para B2/AWS |
+| `S3_ACCESS_KEY_ID` | — | |
+| `S3_SECRET_ACCESS_KEY` | — | |
+| `RESEND_API_KEY` | — | Emails |
+| `RESEND_FROM` | — | Ej. `"PMO·aaS <no-reply@pmo-aas.com>"` |
+| `APP_BASE_URL` | `https://app.pmo-aas.com` | CTA y unsubscribe links en emails |
+| `SEED_ON_STARTUP` | `True` | Roles sistema + tenant demo al arrancar |
+| `VERSION` | `0.1.0` | Surface en `/health` |
 
 ### Web (Next.js)
 
 | Variable | Ejemplo |
 |---|---|
 | `NEXT_PUBLIC_API_URL` | `https://api.pmoaas.com` |
-| `NEXT_PUBLIC_GLITCHTIP_DSN` | `https://…@glitchtip.pmoaas.com/2` |
-| `NEXTAUTH_URL` | `https://app.pmoaas.com` |
-| `NEXTAUTH_SECRET` | `<rotate>` |
+
+> **No usamos NextAuth.** El frontend habla directo con `/api/v1/auth/*` del backend. Las variables `NEXTAUTH_URL` / `NEXTAUTH_SECRET` de versiones viejas del doc **no existen**.
+
+> **GlitchTip / Sentry**: no integrado hoy. Si se reintroduce, agregar `NEXT_PUBLIC_SENTRY_DSN` (web) y `SENTRY_DSN_API` (api/worker).
 
 ---
 
-## 4. Volúmenes y storage
+## 4. Storage de archivos
 
-- **Volume** `pmo-uploads` montado en `/data/uploads` en `api` y `worker`.
-- Estructura: `/data/uploads/tenants/{tenant_slug}/{entity}/{id}.ext`
-- Backup del volume: snapshot diario por Railway + sync semanal a Backblaze B2.
+Dos modos según `STORAGE_BACKEND` (ver §3 y `database.md`):
 
-**Alternativa preferida post-MVP:** migrar a **S3-compatible** (Backblaze, R2, o Railway S3 si se lanza) para simplificar réplicas y horizontal scaling.
+- **`local` (default dev/staging):** disco persistente. Railway Volume montado en `STORAGE_PATH`. Estructura: `STORAGE_PATH/tenants/{tenant_slug}/{entity}/{id}.ext`.
+- **`s3` (prod recomendado):** Cloudflare R2 (default), Backblaze B2, AWS S3 o MinIO. Cliente boto3 (`apps/api/app/services/document_storage.py`).
+
+Backup del volume local: depende del plan Railway. Si se usa R2, los backups los gestiona Cloudflare.
 
 ---
 
 ## 5. CI/CD
 
-### GitHub Actions
+### GitHub Actions — `.github/workflows/ci.yml`
 
-`.github/workflows/ci.yml`:
+Disparado en `push: [main]` y `pull_request`. Estructura real (resumida):
 
 ```yaml
-name: CI
-on: [pull_request, push]
-
 jobs:
-  lint-test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env: { POSTGRES_PASSWORD: test }
-        ports: [5432:5432]
-      redis:
-        image: redis:7
-        ports: [6379:6379]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo lint test build
-      - run: cd apps/api && pip install -r requirements.txt && pytest
-      - run: pnpm exec playwright install --with-deps
-      - run: pnpm test:e2e
+  changes:                       # paths-filter detecta api / web / workflows
+  lint:                          # ruff (solo si cambió api)
+  api-tests-smoke:               # pytest -n auto -m "not heavy" (solo api)
+  api-migrations-postgres:       # alembic upgrade → downgrade → upgrade contra Postgres efímero
+  api-tests-heavy:               # pytest -m "heavy" (solo en push a main)
 ```
+
+- **`changes`** usa `dorny/paths-filter@v3` para decidir qué jobs corren (PR de solo-frontend salta jobs api).
+- **Ruff** con reglas `E,F,I,N,UP,B,A,C4,RUF` (ver `apps/api/pyproject.toml`).
+- **Migraciones** validan reversibilidad upgrade → downgrade → upgrade contra Postgres real (ENH-044, caza regresiones tipo BUG-039 — SQLite acepta cosas que Postgres no).
+- **No hay** jobs Playwright ni Schemathesis en CI hoy (diferidos).
+- **Concurrency:** runs previos del mismo PR se cancelan al pushear; en `main` no se cancela.
 
 ### Railway auto-deploy
 
-- `main` → production (con aprobación manual en Railway UI).
-- `staging` → staging environment (auto).
-- Feature branches → preview environments (opcional, con `railway.preview.json`).
+- `main` → producción (auto a menos que se proteja la branch con review manual).
+- Branches `claude/**` → **no disparan CI** (se evita doble-run; el PR corre por el evento `pull_request`).
 
 ---
 
@@ -217,43 +226,45 @@ jobs:
 
 | Entorno | Frontend | API |
 |---|---|---|
-| Production | `app.pmoaas.com` | `api.pmoaas.com` |
-| Staging | `staging.pmoaas.com` | `api-staging.pmoaas.com` |
-| Preview PR | `pr-{n}-app.up.railway.app` | `pr-{n}-api.up.railway.app` |
+| Producción | `app.pmoaas.com` (ajustar según DNS real) | `api.pmoaas.com` |
 
-DNS en Cloudflare, TLS gestionado por Railway (Let's Encrypt).
+DNS gestionado en Cloudflare; TLS por Railway (Let's Encrypt).
+
+> Si tu setup actual usa subdominios distintos (ej. `pmo-aas.com`), actualizar esta tabla con los reales.
 
 ---
 
 ## 7. Migraciones en deploy
 
-- **Alembic** corre en `buildCommand` del servicio `api`.
-- **Rollback**: si el release falla, el deploy previo sigue activo. Para revertir migración: `alembic downgrade -1` en release de hotfix.
-- **Migraciones largas**: no usar estrategia de build command. Usar Railway **one-off job** ejecutado manualmente antes del release:
+- Alembic corre **al arranque del contenedor `api`** (`CMD ["sh", "-c", "alembic upgrade head && uvicorn …"]`).
+- El servicio `worker` **no** corre migraciones — para evitar carreras si se redeploya en paralelo.
+- Rollback de migración: deploy en hotfix con `alembic downgrade -1` ejecutado manualmente vía one-off:
 
 ```bash
-railway run --service api alembic upgrade head
+railway run --service api alembic downgrade -1
 ```
+
+- Migraciones de larga duración: ejecutar manualmente fuera del deploy con un one-off para no bloquear el rolling.
 
 ---
 
 ## 8. Runbooks operativos
 
-### Restart rolling
+### Restart
 
-Railway UI → servicio → "Restart" (hace rolling si `numReplicas > 1`).
+Railway UI → servicio → "Restart". Rolling automático si hay >1 replica.
 
-### Consultar logs
+### Logs
 
 ```bash
 railway logs --service api --tail
 railway logs --service worker --tail
 ```
 
-### Ejecutar script one-off
+### One-off scripts
 
 ```bash
-railway run --service api python scripts/seed_superadmin.py
+railway run --service api python -m scripts.<nombre>
 ```
 
 ### Recuperar Postgres
@@ -262,40 +273,44 @@ railway run --service api python scripts/seed_superadmin.py
 railway run --service api pg_restore -d $DATABASE_URL backup.dump
 ```
 
-### Toggle de feature flag
+### Ping a Groq
 
-```sql
-UPDATE feature_flags SET enabled = true WHERE tenant_id = 'X' AND key = 'ai_minutes';
-```
+Desde el panel superadmin: `POST /superadmin/ai/groq/ping` valida que la key cargada en `platform_ai_settings` (o `GROQ_API_KEY`) responda.
 
 ---
 
-## 9. Healthchecks
+## 9. Healthchecks reales
 
-### API `/health`
+### API `/health` (`apps/api/app/main.py:50`)
 
 ```python
-@router.get("/health")
-async def health(db: Session = Depends(get_db), redis = Depends(get_redis)):
-    try:
-        await db.execute(text("SELECT 1"))
-        await redis.ping()
-        return {"status": "ok", "version": settings.VERSION, "time": datetime.utcnow()}
-    except Exception as e:
-        raise HTTPException(503, {"status": "degraded", "error": str(e)})
+@app.get("/health", tags=["meta"])
+async def health():
+    return {"status": "ok", "version": settings.VERSION, "env": settings.PYTHON_ENV}
 ```
 
-### Web `/api/health`
+> El healthcheck actual **no** consulta DB ni Redis. Si quieres "liveness + readiness" diferenciado, abrir issue de hardening.
+
+### Web `/api/health` (`apps/web/app/api/health/route.ts`)
 
 ```ts
+export const dynamic = "force-dynamic";
 export async function GET() {
-  const apiOk = await fetch(`${process.env.API_URL}/health`).then(r => r.ok).catch(() => false);
-  return Response.json({ ok: apiOk, web: true, time: new Date().toISOString() },
-    { status: apiOk ? 200 : 503 });
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  let apiOk = null;
+  if (apiUrl) {
+    try {
+      const r = await fetch(`${apiUrl}/health`, { cache: "no-store", signal: AbortSignal.timeout(3000) });
+      apiOk = r.ok;
+    } catch { apiOk = false; }
+  }
+  return Response.json({ ok: true, web: true, api_ok: apiOk, api_url_configured: Boolean(apiUrl), time: new Date().toISOString() });
 }
 ```
 
-Monitoreo externo con **UptimeRobot** cada 60 s, alertas → Slack.
+> Devuelve `ok: true` siempre que el handler corra (no aborta con 503 si la API falla). Si se quiere fallar el healthcheck cuando la API esté caída, cambiar el `status` retornado.
+
+UptimeRobot u otro monitor externo: pendiente de wiring formal.
 
 ---
 
@@ -303,37 +318,22 @@ Monitoreo externo con **UptimeRobot** cada 60 s, alertas → Slack.
 
 | Entorno | USD/mes |
 |---|---:|
-| Staging (single replica) | 30 |
-| Production (2× api, 1× worker, 2× web) | 90 |
-| Plugins (Postgres + Redis) | 25 |
-| GlitchTip container (0.5 vCPU / 512MB) | 5 |
-| Ollama — ver sección 11 | 0-80 |
-| **Total** | **~$150-225** |
+| Staging (single replica) | ~25 |
+| Producción (1× web, 1× api, 1× worker) | ~60 |
+| Plugins (Postgres + Redis) | ~25 |
+| Groq API (modo platform, tier free / pay-as-you-go) | 0–30 |
+| Cloudflare R2 (10 GB, free tier) | 0 |
+| Resend (3k emails free) | 0–20 |
+| **Total** | **~$110–160** |
+
+Los providers BYO (OpenAI, Anthropic, Gemini, Azure/Copilot M365, Perplexity) los paga cada tenant con su propia API key — no entran en el coste de plataforma.
 
 ---
 
-## 11. Hosting del modelo local (Ollama)
+## 11. Notas históricas (para contexto)
 
-Detalle completo en [`../ai/local-model-setup.md`](../ai/local-model-setup.md).
-Resumen de opciones y cuándo usar cada una:
-
-| Opción | Costo/mes | Latencia | Cuándo usar |
-|---|---:|---|---|
-| **Home-host** (tu Mac Studio / PC gamer) | $0 | 20-60 tok/s | MVP / un solo tenant / cero costo cloud |
-| Cloudflare Tunnel al home-host | $0 | +30-80ms | Segura exposición del home-host sin abrir puertos |
-| Railway GPU (rolling) | ~$40-80 | ~40 tok/s | Cuando RW lo habilite; paridad total |
-| VPS Hetzner GEX44 (L4 24GB) | €250 | 50-100 tok/s | Varios tenants, GPU dedicada |
-| OVH Advance-2 (A4000) | €220 | 40-80 tok/s | Alternativa europea |
-| **Gemini 1.5 Flash** (sin hostear nada) | **$0** free tier | ~200ms API | 2.º fallback, cuando Ollama no está o está lento |
-
-### Estrategia recomendada para MVP personal
-
-1. **Desarrollo:** Ollama nativo en tu máquina local (ver `setup-dev.md`).
-2. **Staging / demos:** **Gemini 1.5 Flash** gratis — no hosteamos nada, solo
-   API key. El PMO completo funciona con su free tier (15 RPM, 1M tokens/día).
-3. **Producción temprana:** decide con los primeros tenants reales:
-   - Tenant quiere privacidad absoluta → Ollama home-host + Cloudflare Tunnel.
-   - Tenant no quiere IA → `AI_MODE=disabled`.
-   - Tenant quiere máxima calidad → Claude Sonnet con su propia API key.
-
-Esto implica **$0 de costo de IA** hasta que tengas un tenant pagando.
+- **ENH-023 (2026-04-23):** retirado el sidecar Tailscale del worker (DEC-017 eliminó la dependencia de Ollama-via-tailnet).
+- **BUG-053 (2026-05-08):** eliminado completamente `OllamaProvider`. Toda la cascada legacy `ollama → gemini → claude` desaparece.
+- **US-066 (2026-05):** introducido backend de storage S3-compatible (Cloudflare R2) además de Railway Volume.
+- **BUG-036 (2026-04-25):** Celery Beat embebido en el worker con `--beat` para no requerir un servicio Railway adicional.
+- **US-069 (2026-04-24):** JRE 21 + MPXJ embebidos en el Dockerfile para parser nativo de `.mpp`.

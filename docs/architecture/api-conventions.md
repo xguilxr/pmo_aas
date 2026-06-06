@@ -1,29 +1,44 @@
 # Convenciones del API REST
 
 **ID:** `DOC-ARCH-API`
+**Última verificación contra código:** 2026-05-23.
 
-Reglas para cualquier endpoint de `apps/api`. Cumplirlas hace el frontend trivial, el testing consistente y los clientes externos felices.
+Reglas reales que sigue `apps/api`. Donde una sección dice "ideal" o "pendiente" significa que es un objetivo pero el código actual todavía no lo cumple del todo.
 
 ---
 
 ## 1. Versionado y base URL
 
-- Prefijo: `/api/v1/…` — toda ruta.
+- Prefijo: `/api/v1/…` para toda la API.
 - `v2` solo si rompemos contrato. Nuevas features no-breaking siguen en `v1`.
-- Métricas por versión (Sentry tag `api_version`) para detectar uso de deprecadas.
+- Sin métricas formales por versión (no hay Sentry/APM integrado hoy).
 
 ---
 
 ## 2. Autenticación y tenancy
 
-| Header | Obligatorio | Uso |
-|---|---|---|
-| `Authorization: Bearer <jwt>` | Sí (excepto `/auth/login`, `/health`) | Access token |
-| `X-Tenant-ID: <uuid>` | En rutas tenant-scoped si el user tiene >1 tenant | Selecciona tenant activo (si omitido, usa `active_tenant_id` del JWT) |
-| `Idempotency-Key: <uuid>` | Recomendado en POST que crean recursos | Evita duplicados |
-| `Accept-Language: es|en` | Opcional | Controla idioma de mensajes de error |
+### Header obligatorio
 
-Superadmin usa rutas `/api/v1/superadmin/*` y **no** envía `X-Tenant-ID` (inyecta `tenant_id` por body o query).
+| Header | Cuándo | Notas |
+|---|---|---|
+| `Authorization: Bearer <jwt>` | Todas las rutas excepto `/health`, `/api/v1/auth/login`, `/api/v1/auth/forgot-password`, `/api/v1/auth/reset`, `/api/v1/approve/*` | Access token JWT HS256 |
+
+### Tenant activo
+
+El tenant **NO** viaja en un header dedicado. Se resuelve del JWT:
+
+1. Si `user.tenant_id is not None` → ese tenant.
+2. Si el user es superadmin y trae `active_tenant_id` en el JWT (vía `POST /auth/switch-tenant` o `joinAsAdmin`) → ese.
+3. Si no hay tenant → 403/404 en endpoints tenant-scoped.
+
+Ver `apps/api/app/api/deps.py:CurrentUser.effective_tenant_id`.
+
+> **No usamos `X-Tenant-ID`.** Versiones viejas del doc lo listaban; no existe en código.
+
+### Lo que **NO** tenemos hoy
+
+- ❌ `Idempotency-Key` header — no implementado. Si dos POST `/projects` llegan con el mismo body, se crean dos proyectos. Diferido.
+- ❌ `Accept-Language` — los mensajes de error son en español codificado en `errors.py`. No hay negociación de idioma.
 
 ---
 
@@ -32,83 +47,86 @@ Superadmin usa rutas `/api/v1/superadmin/*` y **no** envía `X-Tenant-ID` (inyec
 | Método | Uso | Idempotente |
 |---|---|---|
 | GET | Lectura | Sí |
-| POST | Crear / acciones no-CRUD (`/approve`) | No |
-| PUT | Reemplazo total (poco usado) | Sí |
-| PATCH | Actualización parcial | No garantizado, sí con `Idempotency-Key` |
-| DELETE | Soft delete por default | Sí |
+| POST | Crear / acciones no-CRUD (`/approve`, `/cancel`, `/switch-tenant`) | No |
+| PUT | Reemplazo total | Sí |
+| PATCH | Actualización parcial | No |
+| DELETE | Soft delete por default; `?permanent=true` o ruta dedicada para hard | Sí |
 
 ---
 
 ## 4. Convenciones de URL
 
 - Plural y en inglés: `/projects`, `/risks`, `/meeting-minutes`.
-- Sub-recursos jerárquicos cuando cae natural: `/projects/{id}/risks`, `/projects/{id}/documents`.
-- Acciones no-CRUD como verbos sub-ruta: `POST /projects/{id}/phase/change`, `POST /change-requests/{id}/approve`.
+- Sub-recursos jerárquicos: `/projects/{id}/risks`, `/projects/{id}/documents`, `/projects/{id}/charter`.
+- Acciones no-CRUD como verbos sub-ruta:
+  - `POST /change-requests/{id}/approve`
+  - `POST /ai/jobs/{id}/cancel`
+  - `POST /auth/switch-tenant`
+  - `POST /superadmin/tenants/{id}/freeze`
 - Filtros en query string: `?phase=execution&health=red&page=2&limit=20`.
-- Search: `?q=consulta` (fuzzy, min 2 chars).
+- Search: `?q=consulta` (búsqueda LIKE case-insensitive; ver §5.2).
 
 ---
 
 ## 5. Paginación, orden y filtros
 
-### Lista estándar
+### 5.1 Formato actual: array plano + page/limit
+
+La mayoría de los endpoints lista devuelve **un array bare**, no un envelope:
 
 ```http
-GET /api/v1/projects?page=2&limit=20&sort=-created_at&phase=execution
+GET /api/v1/projects?page=1&limit=15&phase=execution
 
-{
-  "items": [ ... ],
-  "page": 2,
-  "limit": 20,
-  "total": 345,
-  "pages": 18,
-  "has_next": true,
-  "has_prev": true
-}
+[
+  { "id": "...", "folio": "PRJ-2026-001", "name": "...", ... },
+  ...
+]
 ```
 
 - `page` ≥ 1, default 1.
-- `limit` default 20, máximo 100.
-- `sort` sufijo: `name` (asc), `-created_at` (desc). Múltiple con coma.
-- Filtros whitelisted por endpoint (documentados en OpenAPI).
-- Fechas: `created_at_from=2026-01-01&created_at_to=2026-03-31` (ISO 8601).
+- `limit` default **15**, máximo 100. (No 20 como decía el doc viejo.)
+- Orden por default: `created_at DESC` (varía por endpoint).
+- Filtros: query params whitelisted por endpoint (ver OpenAPI).
+- Multi-valor: usar el query param repetido (`phase=planning&phase=execution`).
 
-### Cursor pagination (listas grandes)
+### 5.2 Búsqueda (`q`)
 
-Para `audit_log`, `tasks`:
+Hoy es `LOWER(field) LIKE %q%` server-side (sin `pg_trgm`, ver `database.md`). Min 2 chars recomendado.
 
-```http
-GET /api/v1/audit-logs?cursor=eyJ0IjoiMjAyNi0w...&limit=100
-{ "items": [...], "next_cursor": "eyJ0..." }
-```
+### 5.3 Pendiente / no implementado
+
+- ❌ Envelope `{ items, total, pages, has_next, has_prev }` — diferido. El frontend pagina sin saber el total.
+- ❌ Cursor pagination — no implementada.
+- ❌ Sort multi-columna (`sort=-priority,name`) — no implementado.
+- ❌ Rangos de fecha `created_at_from/to` — solo en algunos endpoints (audit, raid_export). Caso por caso.
 
 ---
 
 ## 6. Esquemas y validación
 
-- Todo request body es un modelo Pydantic (`extra="forbid"`).
-- Todo response es un modelo `*Out`.
-- Generamos cliente TS vía `openapi-typescript` → `packages/sdk/`.
+- Request body: Pydantic v2 (`apps/api/app/schemas/`).
+- Response: modelo `*Read` o `*Out` dedicado.
+- **No todos los schemas usan `extra="forbid"`** todavía — depende del modelo. Tenerlo como objetivo en code review.
 
 ```python
 class ProjectCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=3, max_length=200)
     organization_id: UUID
     program_id: UUID | None = None
-    type: Literal["innovation","transformation","operation","bau"]
-    priority: int = Field(ge=1, le=5)
+    type: Literal["innovation","transformation","operation","bau"] | None = None
+    priority: int | None = Field(default=None, ge=1, le=5)
     start_date: date | None = None
     end_date: date | None = None
     budget: Decimal | None = Field(default=None, ge=0)
 
-class ProjectOut(BaseModel):
+class ProjectRead(BaseModel):
     id: UUID
     folio: str
     name: str
     phase: str
     progress: int
     health_status: str
+    status_rag: str | None
     created_at: datetime
 ```
 
@@ -116,127 +134,160 @@ class ProjectOut(BaseModel):
 
 ## 7. Respuestas de error
 
-**Formato único:**
+**Formato real** (vía `app.core.errors.AppError`):
 
 ```json
 {
-  "detail": "Human-readable message in Accept-Language",
-  "code": "VALIDATION_ERROR",
-  "fields": {
-    "name": ["String should have at least 3 characters"]
-  },
-  "trace_id": "a1b2c3..."
+  "detail": {
+    "detail": "mensaje legible",
+    "code": "CODIGO_ESTABLE",
+    "fields": { "name": ["..."] }
+  }
 }
 ```
 
-### Catálogo de códigos
+> Nota: el body real lleva un **doble `detail`** por la forma en que FastAPI envuelve `HTTPException.detail`. El frontend lo aplana al consumir. No hay `trace_id` (no hay APM ni tracing distribuido).
+
+### Catálogo de códigos reales (de `core/errors.py`)
 
 | HTTP | `code` | Cuándo |
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | Body inválido |
 | 401 | `UNAUTHENTICATED` | Token ausente/inválido/expirado |
-| 403 | `FORBIDDEN` | Sin permiso |
-| 403 | `ACCOUNT_LOCKED` | Bloqueo por intentos |
-| 404 | `NOT_FOUND` | Recurso no existe (o tenant no lo ve) |
+| 403 | `FORBIDDEN` | Sin permiso / capability |
+| 404 | `NOT_FOUND` | Recurso no existe (o el tenant no lo ve) |
 | 409 | `CONFLICT` | Duplicado (slug, folio, email) |
-| 409 | `STATE_TRANSITION` | Transición de estado no permitida |
-| 413 | `PAYLOAD_TOO_LARGE` | Archivo > 25 MB |
-| 415 | `UNSUPPORTED_MEDIA_TYPE` | MIME no whitelisted |
-| 422 | `BUSINESS_RULE` | Regla de dominio violada (ej. fecha fin < inicio) |
-| 429 | `RATE_LIMITED` | Demasiadas peticiones |
-| 500 | `INTERNAL` | Inesperado. No exponemos stacktrace. |
-| 503 | `DEPENDENCY_UNAVAILABLE` | Ollama/Claude/SMTP caído |
+| 422 | `BUSINESS_RULE` | Regla de dominio violada |
+| 503 | `SERVICE_UNAVAILABLE` | Provider de IA caído u otra dependencia externa |
 
-`trace_id` siempre incluido; el cliente lo muestra al usuario en errores 5xx para soporte.
+Códigos adicionales que algunos endpoints emiten ad-hoc (no centralizados):
+
+- `ACCOUNT_LOCKED` (403) — login después de 5 fails.
+- Errores de IA específicos (`gemini_no_api_key`, `claude_connect_error`, `groq_no_api_key`, etc.) — generados por los providers, llegan como `code` granular.
+
+> **Códigos del doc viejo que NO están** en código: `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `STATE_TRANSITION`, `RATE_LIMITED`, `INTERNAL` formal. Si los necesitas, agregarlos al catálogo central.
 
 ---
 
 ## 8. Jobs asíncronos
 
-Cuando una acción tarda >2 s (IA, import MS Project, envío masivo):
+Tareas IA, importación MS Project larga y generación de reportes corren en el worker Celery. El endpoint encola y responde `202`:
 
 ```http
 POST /api/v1/ai/minutes
-→ 202 Accepted
-{
-  "job_id": "uuid",
-  "status": "queued",
-  "status_url": "/api/v1/jobs/uuid",
-  "estimated_duration_sec": 60
-}
+Content-Type: multipart/form-data
 
-GET /api/v1/jobs/uuid
+→ 202 Accepted
+Location: /api/v1/ai/jobs/{job_id}
+
+{ "job_id": "uuid", "status": "queued", ... }
+```
+
+```http
+GET /api/v1/ai/jobs/{job_id}
+
 {
   "id": "uuid",
-  "status": "running" | "succeeded" | "failed",
-  "progress": 45,
-  "result_url": "/api/v1/ai/minutes/{id}"  // cuando succeeded
+  "status": "queued" | "running" | "succeeded" | "failed",
+  "kind": "minute_from_transcript",
+  "provider": "groq",
+  "output": { ... },     // cuando succeeded
+  "error": "...",        // cuando failed
+  "tokens_in": 1234,
+  "tokens_out": 567,
+  "duration_ms": 4500
 }
 ```
 
-Alternativa: **Server-Sent Events** (`text/event-stream`) para streaming de IA.
+Cancelación: `POST /api/v1/ai/jobs/{job_id}/cancel`.
+
+**No usamos Server-Sent Events** ni websockets — el frontend hace **polling** con `lib/hooks/use-ai-job-polling.ts`.
 
 ---
 
 ## 9. Uploads
 
-- Multipart. Límite 25 MB.
-- Response incluye `url` firmado con TTL 1 h para descargas.
+- Multipart (`Content-Type: multipart/form-data`).
+- Storage según `STORAGE_BACKEND` (`local` Railway Volume o `s3` Cloudflare R2 — ver `stack.md`).
+- Límites configurados por endpoint (`/projects/{id}/documents`, `/project-artifacts`, etc.) — no hay límite global formal.
+- Validación de MIME caso por caso; no hay whitelist central.
+
+Ejemplo:
 
 ```http
 POST /api/v1/projects/{id}/documents
 Content-Type: multipart/form-data
 
-file=@plan.pdf
+file=<bytes>
 category=Plan
 description=Plan maestro v1
 ```
 
-Response:
+Response típica:
+
 ```json
 {
   "id": "uuid",
   "folio": "DOC-2026-0012",
-  "filename": "plan.pdf",
-  "size": 104857,
+  "file_url": "...",
   "mime_type": "application/pdf",
-  "version": 1,
-  "download_url": "/api/v1/documents/uuid/download?token=…"
+  "size_bytes": 104857,
+  "version": 1
 }
 ```
+
+> Las URLs firmadas con TTL no están implementadas como mecanismo general. Descarga directa por endpoint dedicado o por proxy del backend.
 
 ---
 
 ## 10. CORS
 
-- `Access-Control-Allow-Origin`: lista estricta desde `ALLOWED_ORIGINS`.
-- `Access-Control-Allow-Credentials: true` (cookies refresh).
-- Preflight cacheado 1 día.
+- `Access-Control-Allow-Origin`: lista estricta desde `ALLOWED_ORIGINS` (coma-separado).
+- `Access-Control-Allow-Credentials: true` (para la cookie de refresh).
+- `expose_headers=["Content-Disposition"]` — permite que el frontend lea el nombre de archivo real en descargas.
 
 ---
 
 ## 11. OpenAPI y SDK
 
 - `GET /openapi.json` — spec completa.
-- `GET /docs` — Swagger UI (deshabilitado en producción, solo staging).
+- `GET /docs` — Swagger UI. **Habilitado en todos los entornos hoy** (no hay env gate). Si quieres ocultarlo en prod, pasar `docs_url=None` cuando `PYTHON_ENV=production`.
 - `GET /redoc` — ReDoc.
-- Generamos el cliente TypeScript en CI:
 
-```bash
-pnpm openapi-typescript https://api-staging.pmoaas.com/openapi.json -o packages/sdk/src/schema.ts
-```
+### SDK
+
+`packages/sdk/` existe como package del workspace (`@pmoaas/sdk`) pero **es un placeholder** (solo `index.ts` + `package.json`). No hay generación automática vía `openapi-typescript`. El frontend consume el API con `fetch` envuelto en `apps/web/lib/api/*.ts` (un archivo por dominio: `projects.ts`, `risks.ts`, etc.).
 
 ---
 
 ## 12. Contract tests
 
-- **Schemathesis** corre contra cada PR y valida cumplimiento del OpenAPI (status codes, headers, schemas).
-- Diff del OpenAPI vs `main` comenta en el PR qué rompe.
+- **No hay Schemathesis** en CI hoy. Diferido.
+- La validación de regresiones del API depende de los tests de pytest convencionales (`apps/api/tests/`).
 
 ---
 
 ## 13. Deprecación
 
-- Se marca con header `Deprecation: Tue, 01 Jan 2027 00:00:00 GMT`.
-- Documentado en CHANGELOG.md y en la descripción del endpoint OpenAPI.
-- Al menos 2 releases mayores antes de remover.
+- Sin política formal de header `Deprecation`.
+- Cambios breaking se documentan en epic + commit con `BREAKING` y se anuncian al owner. Cuando consolidemos un CHANGELOG, este apartado se formalizará.
+
+---
+
+## 14. Sobre el doble `detail`
+
+El `AppError` envuelve la información en `HTTPException.detail`, y FastAPI serializa esa key tal cual. Resultado en wire:
+
+```json
+{
+  "detail": {
+    "detail": "Credenciales inválidas",
+    "code": "UNAUTHENTICATED",
+    "fields": {}
+  }
+}
+```
+
+El frontend deshace el envelope al consumir errores (`apps/web/lib/api/*` mira `data.detail?.detail || data.detail`).
+
+Si quieres aplanar a una forma `{ code, detail, fields }` plana, hay que registrar un `exception_handler` en `main.py` que normalice antes de devolver. Es deuda técnica baja-prioridad.

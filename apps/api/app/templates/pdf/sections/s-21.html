@@ -1,0 +1,14 @@
+{# S-21 Carga por Responsable #}
+<section class="section section-s21">
+  <h2>Carga por Responsable</h2>
+  {% if data.rows %}
+  <table>
+    <thead><tr><th>Responsable (ID)</th><th class="right">Tareas activas</th></tr></thead>
+    <tbody>
+      {% for r in data.rows %}
+      <tr><td class="small">{{ r.owner_id }}</td><td class="right nums">{{ r.active_tasks }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">Sin tareas asignadas activas.</p>{% endif %}
+</section>

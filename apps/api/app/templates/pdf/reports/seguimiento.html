@@ -42,7 +42,7 @@
           <td class="small">{{ "Tarea" if it.source == "task" else "Acción" }}</td>
           <td>{{ it.title }}</td>
           <td class="small">{{ it.owner_name or "—" }}</td>
-          <td class="small">{{ it.status }}</td>
+          <td class="small">{{ it.status | status_badge }}</td>
           <td class="small right">{{ it.due_date or "—" }}</td>
           {% if show_overdue %}
             <td class="small right">
@@ -63,6 +63,7 @@
 
 {{ render_group("Actividades vencidas", groups_overdue, true) }}
 {{ render_group("Actividades en curso", groups_in_progress, false) }}
+{{ render_group("Acciones", groups_actions, false) }}
 {{ render_group("Actividades próximas", groups_upcoming, false) }}
 
 {% endblock %}

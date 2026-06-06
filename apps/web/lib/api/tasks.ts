@@ -56,6 +56,8 @@ export type TaskCreateBody = {
   progress?: number;
   is_milestone?: boolean;
   owner_id?: string | null;
+  // ENH-079 / ENH-135: responsable como Actor del catálogo.
+  assignee_actor_id?: string | null;
   priority?: number | null;
   status?: TaskStatus;
   criticality?: TaskCriticality;

@@ -70,7 +70,7 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
   const triggerColors =
     variant === "chrome"
       ? "text-[var(--chrome-text)] hover:bg-[var(--chrome-hover)] border-transparent"
-      : "text-[var(--text-primary)] hover:bg-[var(--color-subtle)] border-[var(--border-subtle)]";
+      : "bg-[var(--color-surface)] text-[var(--text-primary)] hover:bg-[var(--color-subtle)] border-[var(--border-default)]";
 
   const avatarBg =
     variant === "chrome"

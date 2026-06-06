@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   FileText,
+  LayoutGrid,
   Mail,
   Pencil,
   Plus,
@@ -42,7 +43,9 @@ import {
   deleteReport,
   downloadReportHistory,
   generateAvanceReport,
+  generateLookAheadReport,
   generateSeguimientoReport,
+  type LookAheadUnit,
   getReport,
   listReports,
   listReportHistory,
@@ -50,6 +53,7 @@ import {
   previewReportHistory,
   previewReportHtml,
   previewSeguimientoTemplate,
+  regenerateBuilderPdf,
   updateReport,
   type Report,
   type ReportHistoryItem,
@@ -68,6 +72,11 @@ import {
   type ScheduledReportType,
 } from "@/lib/api/scheduled-reports";
 import { type Area, listAreasByProject } from "@/lib/api/areas";
+import {
+  exportBuilderPdf,
+  listBuilderTemplates,
+  type ReportBuilderTemplate,
+} from "@/lib/api/report-builder";
 import { cn } from "@/lib/cn";
 
 function fmtDate(iso: string | null | undefined): string {
@@ -95,17 +104,26 @@ function GeneratorBadge({ generator }: { generator: Report["generator"] }) {
   if (generator === "avance") return <Badge variant="info">Avance</Badge>;
   if (generator === "seguimiento")
     return <Badge variant="info">Seguimiento</Badge>;
+  if (generator === "builder")
+    return <Badge variant="accent">Builder</Badge>;
   return null;
 }
 
-// ENH-055: 3-vista toggle (Catálogo / Historial / Creación) con hash en URL.
-type ReportsView = "catalog" | "history" | "create";
+// ENH-055: toggle de vistas con hash en URL.
+// US-141: añade "builder" para listar reportes generados desde el
+// Report Builder (`generator='builder'`) con acción "Regenerar PDF".
+// ENH-121: 3 tabs nuevos. Mantenemos retrocompat con hashes legacy:
+// #catalog → generate, #builder|#create → generate (deprecados, Builder
+// vive standalone en /reports/builder).
+type ReportsView = "generate" | "history" | "schedule";
 
 function parseViewHash(): ReportsView {
-  if (typeof window === "undefined") return "catalog";
+  if (typeof window === "undefined") return "generate";
   const h = (window.location.hash || "").replace(/^#/, "").toLowerCase();
-  if (h === "history" || h === "create") return h;
-  return "catalog";
+  if (h === "history") return "history";
+  if (h === "schedule" || h === "programar") return "schedule";
+  // Default + retrocompat para #catalog | #builder | #create.
+  return "generate";
 }
 
 function ReportsInner() {
@@ -118,8 +136,8 @@ function ReportsInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  // ENH-055: vista activa persistida en `location.hash`.
-  const [view, setView] = useState<ReportsView>("catalog");
+  // ENH-055 + ENH-121: vista activa persistida en `location.hash`.
+  const [view, setView] = useState<ReportsView>("generate");
 
   useEffect(() => {
     setView(parseViewHash());
@@ -135,7 +153,7 @@ function ReportsInner() {
   function setViewAndHash(v: ReportsView) {
     setView(v);
     if (typeof window !== "undefined") {
-      const newHash = v === "catalog" ? "" : `#${v}`;
+      const newHash = v === "generate" ? "" : `#${v}`;
       const url = `${window.location.pathname}${window.location.search}${newHash}`;
       window.history.replaceState(null, "", url);
     }
@@ -208,14 +226,14 @@ function ReportsInner() {
             email con PDF opcional.
           </p>
         </div>
-        {/* US-109 (rework): CTA principal hacia el panel de creación con
-            tweaker IA. El destino `/reports/tweak` (sin query) muestra el
-            panel inicial con los 2 modos: "Generar nuevo reporte" vs
-            "Generar con base en plantilla". */}
+        {/* ENH-121: un solo CTA hacia el Builder. "Crear reporte (IA +
+            plantilla)" deprecado — la lógica de tweaker se fusiona en el
+            builder unificado (US-148 a US-150 del Sprint 32 Bloque 2). */}
         <div className="flex items-center gap-2">
-          <Link href={`/pmo/projects/${id}/reports/tweak`}>
+          <Link href={`/pmo/projects/${id}/reports/builder`}>
             <Button>
-              <Sparkles className="h-4 w-4" aria-hidden /> Crear reporte (IA + plantilla)
+              <LayoutGrid className="h-4 w-4" aria-hidden />
+              Builder
             </Button>
           </Link>
         </div>
@@ -223,8 +241,10 @@ function ReportsInner() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      {/* ENH-055: toggle 3 vistas Catálogo / Historial / Creación con
-          persistencia en hash. */}
+      {/* ENH-121: 3 tabs. Generar (default) | Historial | Programar.
+          Sub-tabs Builder y Creación deprecados; Builder vive standalone
+          en /reports/builder; la lógica de Creación se fusiona en el
+          builder. */}
       <div
         role="radiogroup"
         aria-label="Vista de reportes"
@@ -232,9 +252,9 @@ function ReportsInner() {
       >
         {(
           [
-            { v: "catalog" as const, label: "Catálogo" },
+            { v: "generate" as const, label: "Generar" },
             { v: "history" as const, label: "Historial" },
-            { v: "create" as const, label: "Creación" },
+            { v: "schedule" as const, label: "Programar" },
           ]
         ).map((opt) => {
           const active = view === opt.v;
@@ -260,13 +280,10 @@ function ReportsInner() {
 
       {view === "history" ? (
         <ReportHistoryView projectId={id} />
-      ) : view === "create" ? (
-        <ReportCreateAIView projectId={id} />
+      ) : view === "schedule" ? (
+        <ScheduledReportsSection projectId={id} />
       ) : (
-        <>
-          <ReportCatalogView projectId={id} />
-          <ScheduledReportsSection projectId={id} />
-        </>
+        <ReportCatalogView projectId={id} />
       )}
 
       <CreateReportModal
@@ -511,6 +528,8 @@ function ScheduledReportForm({
   const [dayOfMonth, setDayOfMonth] = useState<number>(1);
   const [runAtDate, setRunAtDate] = useState<string>(""); // YYYY-MM-DD
   const [runAtTime, setRunAtTime] = useState<string>("09:00"); // HH:MM
+  // ENH-114: plantilla del builder cuando report_type='custom'.
+  const [builderTemplateId, setBuilderTemplateId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -524,6 +543,7 @@ function ScheduledReportForm({
       setDayOfWeek(existing.day_of_week ?? 0);
       setHourOfDay(existing.hour_of_day ?? 9);
       setDayOfMonth(existing.day_of_month ?? 1);
+      setBuilderTemplateId(existing.report_builder_template_id ?? null);
       if (existing.run_at) {
         const d = new Date(existing.run_at);
         setRunAtDate(d.toISOString().slice(0, 10));
@@ -544,6 +564,7 @@ function ScheduledReportForm({
       setDayOfMonth(1);
       setRunAtDate("");
       setRunAtTime("09:00");
+      setBuilderTemplateId(null);
     }
     setError(null);
   }, [open, existing]);
@@ -598,6 +619,16 @@ function ScheduledReportForm({
         cadenceFields.run_at = iso;
       }
 
+      // ENH-114: validar selección de plantilla del builder.
+      if (reportType === "custom" && !builderTemplateId) {
+        setError("Selecciona la plantilla del builder a programar");
+        setSaving(false);
+        return;
+      }
+      const builderField =
+        reportType === "custom"
+          ? { report_builder_template_id: builderTemplateId }
+          : {};
       if (existing) {
         await updateScheduledReport(existing.id, {
           report_type: reportType,
@@ -605,6 +636,7 @@ function ScheduledReportForm({
           recipients: list,
           enabled,
           ...cadenceFields,
+          ...builderField,
         });
       } else {
         await createScheduledReport(projectId, {
@@ -613,6 +645,7 @@ function ScheduledReportForm({
           recipients: list,
           enabled,
           ...cadenceFields,
+          ...builderField,
         });
       }
       onSaved();
@@ -646,8 +679,18 @@ function ScheduledReportForm({
           >
             <option value="avance">Reporte de Avance</option>
             <option value="seguimiento">Reporte de Seguimiento</option>
+            <option value="custom">Plantilla del Builder</option>
           </Select>
         </div>
+        {/* ENH-114: cuando es 'custom', el usuario debe elegir una
+            plantilla del Report Builder (US-131 backend ya lo acepta). */}
+        {reportType === "custom" && (
+          <BuilderTemplatePicker
+            projectId={projectId}
+            value={builderTemplateId}
+            onChange={setBuilderTemplateId}
+          />
+        )}
         <div>
           <label
             htmlFor="sched-cadence"
@@ -1410,11 +1453,12 @@ const CATALOG_TEMPLATES: CatalogTemplate[] = [
   },
 ];
 
-// ENH-063: opciones canónicas de período. El default 7 = 1 semana.
+// ENH-063 + ENH-122: opciones canónicas de período. Agrega "3 semanas".
 const PERIOD_OPTIONS = [
   { value: 1, label: "1 día" },
   { value: 7, label: "1 semana" },
   { value: 14, label: "2 semanas" },
+  { value: 21, label: "3 semanas" },
   { value: 30, label: "1 mes" },
   { value: 90, label: "3 meses" },
 ] as const;
@@ -1427,6 +1471,35 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
   const [periodByTemplate, setPeriodByTemplate] = useState<
     Record<string, number>
   >({ avance: 7, seguimiento: 7 });
+  // US-147: look-ahead independiente del PERIOD_OPTIONS — número + unidad.
+  const [lookAheadValue, setLookAheadValue] = useState<number>(2);
+  const [lookAheadUnit, setLookAheadUnit] = useState<LookAheadUnit>("weeks");
+  // ENH-121: lista de plantillas builder del proyecto.
+  const [builderTemplates, setBuilderTemplates] = useState<
+    ReportBuilderTemplate[]
+  >([]);
+  const [tplLoading, setTplLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    listBuilderTemplates({})
+      .then((all) => {
+        if (cancelled) return;
+        // Mostrar seeds + las propias del proyecto.
+        setBuilderTemplates(
+          all.filter(
+            (t) => t.is_seed || t.project_id === projectId || t.tenant_id !== null,
+          ),
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTplLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   async function run(
     template: CatalogTemplate,
@@ -1459,10 +1532,46 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
     }
   }
 
+  async function runLookAhead() {
+    setBusy("look_ahead-download");
+    setError(null);
+    try {
+      await generateLookAheadReport(projectId, lookAheadValue, lookAheadUnit);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error generando Look-ahead");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runBuilderTemplate(tpl: ReportBuilderTemplate) {
+    setBusy(`builder-${tpl.id}`);
+    setError(null);
+    try {
+      const blob = await exportBuilderPdf(tpl.id, {
+        project_id: projectId,
+        level: tpl.level,
+        window_days: 14,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${tpl.code}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error generando builder PDF");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
-    <section className="space-y-3">
+    <section className="space-y-5">
       {error ? <Banner variant="danger">{error}</Banner> : null}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+
+      {/* ENH-121: 3 paneles default — Avance / Seguimiento / Look-ahead */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         {CATALOG_TEMPLATES.map((t) => (
           <article
             key={t.id}
@@ -1481,7 +1590,6 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
                 </p>
               </div>
             </div>
-            {/* ENH-063: período antes de los botones. */}
             <label className="flex items-center gap-2 pt-1 text-xs text-[var(--color-secondary)]">
               <span className="font-medium">Período</span>
               <select
@@ -1525,7 +1633,125 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
             </div>
           </article>
         ))}
+
+        {/* US-147: Look-ahead card. Ventana hacia adelante (num + unidad). */}
+        <article
+          key="look_ahead"
+          className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
+              <FileText className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[var(--color-primary)]">
+                Look-ahead
+              </h3>
+              <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                Actividades que arrancan o terminan en la ventana definida desde
+                hoy. No incluye vencidas.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-1 text-xs text-[var(--color-secondary)]">
+            <span className="font-medium">Ventana</span>
+            <input
+              type="number"
+              min={1}
+              max={52}
+              value={lookAheadValue}
+              onChange={(e) => setLookAheadValue(Math.max(1, Number(e.target.value) || 1))}
+              disabled={busy !== null}
+              className="w-16 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-1 text-xs"
+            />
+            <select
+              value={lookAheadUnit}
+              onChange={(e) => setLookAheadUnit(e.target.value as LookAheadUnit)}
+              disabled={busy !== null}
+              className="rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-1 text-xs"
+            >
+              <option value="days">días</option>
+              <option value="weeks">semanas</option>
+              <option value="months">meses</option>
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void runLookAhead()}
+              loading={busy === "look_ahead-download"}
+              disabled={busy !== null && busy !== "look_ahead-download"}
+            >
+              <Download className="h-4 w-4" aria-hidden /> Descargar
+            </Button>
+          </div>
+        </article>
       </div>
+
+      {/* ENH-121: catálogo de plantillas builder guardadas para este proyecto */}
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+        <header className="mb-3 flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              Plantillas del Builder
+            </h3>
+            <p className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
+              Plantillas seed y custom guardadas. Click "Editar" para abrirla en
+              el Builder.
+            </p>
+          </div>
+          <Link href={`/pmo/projects/${projectId}/reports/builder`}>
+            <Button size="sm" variant="secondary">
+              <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Abrir Builder
+            </Button>
+          </Link>
+        </header>
+        {tplLoading ? (
+          <Skeleton className="h-12 w-full" />
+        ) : builderTemplates.length === 0 ? (
+          <p className="text-[12px] italic text-[var(--text-tertiary)]">
+            Aún no hay plantillas builder. Crea una desde "Abrir Builder".
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {builderTemplates.map((tpl) => (
+              <li
+                key={tpl.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                    {tpl.name}
+                    {tpl.is_seed ? (
+                      <Badge variant="neutral" className="ml-2 text-[10px]">seed</Badge>
+                    ) : null}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
+                    Nivel {tpl.level} · {tpl.section_codes.length} secciones · Modo {tpl.composition_mode}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void runBuilderTemplate(tpl)}
+                    loading={busy === `builder-${tpl.id}`}
+                    disabled={busy !== null && busy !== `builder-${tpl.id}`}
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden /> Generar
+                  </Button>
+                  <Link href={`/pmo/projects/${projectId}/reports/builder?template_id=${tpl.id}`}>
+                    <Button size="sm" variant="ghost">
+                      Editar
+                    </Button>
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </section>
   );
 }
@@ -1678,12 +1904,14 @@ function HistoryKPICard({
 type HistoryBucket = "all" | "avance" | "seguimiento" | "ai_custom";
 
 // BUG-055: label uniforme para todos los tipos de reporte que aparecen en
-// el historial. `ai_custom` es el tipo que persiste el endpoint
-// `/reports/ai-generate` cuando el usuario activa save_to_history.
+// el historial. `ai_custom` legacy (US-109) y `builder` (US-140) ambos
+// se muestran como "Builder" tras ENH-121 — la distinción técnica deja
+// de ser visible para el usuario.
 function reportTypeLabel(t: string): string {
   if (t === "avance") return "Avance";
   if (t === "seguimiento") return "Seguimiento";
-  if (t === "ai_custom") return "IA";
+  if (t === "look_ahead") return "Look-ahead";
+  if (t === "ai_custom" || t === "builder") return "Builder";
   return t;
 }
 
@@ -2673,5 +2901,198 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
       </section>
     </div>
     </div>
+  );
+}
+
+// ENH-114 — picker de plantillas del Report Builder para el form de
+// suscripciones (cuando report_type='custom').
+function BuilderTemplatePicker({
+  projectId,
+  value,
+  onChange,
+}: {
+  projectId: string;
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const [tpls, setTpls] = useState<ReportBuilderTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    listBuilderTemplates({})
+      .then((all) => {
+        if (cancelled) return;
+        // Mostrar seeds + propias + del proyecto activo.
+        setTpls(
+          all.filter(
+            (t) =>
+              t.is_seed ||
+              t.visibility === "private" ||
+              (t.visibility === "project" && t.project_id === projectId),
+          ),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  return (
+    <div>
+      <label
+        htmlFor="sched-builder-tpl"
+        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+      >
+        Plantilla del Builder
+      </label>
+      <Select
+        id="sched-builder-tpl"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        disabled={loading || tpls.length === 0}
+      >
+        <option value="">
+          {loading
+            ? "Cargando…"
+            : tpls.length === 0
+              ? "Sin plantillas disponibles"
+              : "Selecciona plantilla…"}
+        </option>
+        {tpls.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name} {t.is_seed ? "(seed)" : ""} · L{t.level}
+          </option>
+        ))}
+      </Select>
+      {!loading && tpls.length === 0 && (
+        <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+          Abre el Report Builder y guarda una plantilla antes de programar.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// US-141 — vista Builder: lista solo reportes generados desde el Report
+// Builder (generator='builder') con acción "Regenerar PDF" desde
+// snapshot (US-140).
+function ReportBuilderView({ projectId }: { projectId: string }) {
+  const [rows, setRows] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listReports(projectId)
+      .then((all) => {
+        if (cancelled) return;
+        setRows(all.filter((r) => r.generator === "builder"));
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(
+            err instanceof ApiError ? err.message : "Error al cargar reportes",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  async function regenerate(reportId: string) {
+    setRegeneratingId(reportId);
+    try {
+      const blob = await regenerateBuilderPdf(reportId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-${reportId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al regenerar PDF");
+    } finally {
+      setRegeneratingId(null);
+    }
+  }
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
+      <header className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            Reportes del Builder
+          </h2>
+          <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+            Cada export desde `/reports/builder` o cada ejecución de
+            una suscripción custom (US-131) queda registrado aquí. El
+            PDF se regenera desde el snapshot HTML — el contenido se
+            preserva aunque la data del proyecto cambie después.
+          </p>
+        </div>
+        <Link
+          href={`/pmo/projects/${projectId}/reports/builder`}
+          className="text-xs text-[var(--text-secondary)] hover:underline"
+        >
+          Abrir builder →
+        </Link>
+      </header>
+
+      {error && <Banner variant="danger">{error}</Banner>}
+
+      {loading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] p-6 text-center text-sm text-[var(--text-tertiary)]">
+          Sin reportes generados aún. Abre el Report Builder, configura
+          tu plantilla y descarga el PDF para que aparezca aquí.
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--border-subtle)]">
+          {rows.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center justify-between gap-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                  {r.title}
+                </p>
+                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                  <Badge variant="accent">Builder</Badge>
+                  <span>{r.cut_off_date ?? "—"}</span>
+                  <span>·</span>
+                  <span>{new Date(r.created_at).toLocaleString("es-MX")}</span>
+                  {r.status === "sent" && (
+                    <Badge variant="success">Enviado</Badge>
+                  )}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => regenerate(r.id)}
+                loading={regeneratingId === r.id}
+                disabled={!!regeneratingId}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" /> Regenerar PDF
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

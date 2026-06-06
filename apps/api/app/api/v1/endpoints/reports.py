@@ -26,9 +26,12 @@ from app.services.audit import write_audit
 from app.services.html_report_renderer import render_report_html
 from app.services.operational_reports import (
     build_avance_context,
+    build_look_ahead_context,
     build_seguimiento_context,
 )
 from app.services.pdf_renderer import render_pdf
+from app.services.reports.branding import load_report_branding
+from app.services.status_display import normalize_status, status_badge_html
 
 router = APIRouter(tags=["reports"])
 
@@ -119,6 +122,46 @@ async def list_reports(
         stmt = stmt.where(Report.period == period)
     rows = (await db.execute(stmt)).scalars().all()
     return [ReportRead.model_validate(r) for r in rows]
+
+
+@router.post("/reports/{report_id}/regenerate-pdf")
+async def regenerate_builder_pdf(
+    report_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-140 — regenera el PDF de un reporte builder desde su snapshot.
+
+    Para reports con `generator='builder'`, el HTML completo se guarda
+    en `html_content` al momento del export. Esta ruta lo lee y
+    convierte a PDF on-demand sin re-correr el motor, lo cual mantiene
+    fidelidad temporal (el reporte se ve igual aunque la data del
+    proyecto cambie después).
+    """
+    from fastapi import Response
+
+    from app.services.pdf_renderer import html_to_pdf
+
+    tenant_id = _tenant(cu)
+    rep = (
+        await db.execute(
+            select(Report).where(
+                Report.id == str(report_id),
+                Report.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if rep is None:
+        raise not_found("Reporte")
+    if rep.generator != "builder" or not rep.html_content:
+        from app.core.errors import business_rule
+
+        raise business_rule(
+            "Este reporte no fue generado por el Report Builder o no "
+            "tiene snapshot HTML"
+        )
+    pdf_bytes = html_to_pdf(rep.html_content)
+    return Response(content=pdf_bytes, media_type="application/pdf")
 
 
 @router.post(
@@ -233,6 +276,10 @@ class AvanceGenerate(BaseModel):
     # ENH-063: período canónico para filtrar contenido del reporte.
     # 1 / 7 / 14 / 30 / 90 días. Default 7 (1 semana).
     period_days: int | None = Field(default=None, ge=1, le=365)
+    # ENH-122: rango custom. Si ambos vienen, sobrescriben period_days y
+    # cut_off_date (cut_off = period_to, window = period_to - period_from).
+    period_from: date | None = None
+    period_to: date | None = None
 
 
 class SeguimientoGenerate(BaseModel):
@@ -240,6 +287,15 @@ class SeguimientoGenerate(BaseModel):
     window_days: int = Field(default=14, ge=1, le=90)
     # ENH-063: alias canónico que sobrescribe window_days si viene.
     period_days: int | None = Field(default=None, ge=1, le=365)
+    # ENH-122: rango custom (mismo comportamiento que AvanceGenerate).
+    period_from: date | None = None
+    period_to: date | None = None
+
+
+# US-147 — Look-ahead. Ventana hacia adelante (numero + unidad).
+class LookAheadGenerate(BaseModel):
+    window_value: int = Field(default=2, ge=1, le=52)
+    window_unit: str = Field(default="weeks", pattern="^(days|weeks|months)$")
 
 
 # ENH-063: ventana default cuando el caller no especifica.
@@ -286,6 +342,27 @@ async def _tenant_name(db: AsyncSession, tenant_id: UUID) -> str | None:
     ).scalar_one_or_none()
 
 
+async def _apply_report_branding(
+    ctx: dict,
+    db: AsyncSession,
+    tenant_id: UUID,
+    *,
+    project_id: str | UUID | None = None,
+    organization_id: str | UUID | None = None,
+) -> None:
+    """ENH-146 — inyecta tenant_name + logos (PMO/cliente) en el contexto
+    del reporte. Resuelve la organización desde el proyecto cuando solo
+    se pasa `project_id`."""
+    org_id = organization_id
+    if org_id is None and project_id is not None:
+        org_id = (
+            await db.execute(
+                select(Project.organization_id).where(Project.id == str(project_id))
+            )
+        ).scalar_one_or_none()
+    ctx.update(await load_report_branding(db, tenant_id, org_id))
+
+
 @router.post("/projects/{project_id}/reports/avance")
 async def generate_avance_report(
     project_id: UUID,
@@ -297,17 +374,24 @@ async def generate_avance_report(
     un row en `reports` con generator='avance' + snapshot del contexto."""
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
-    cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
-    # ENH-063: período → window_days. Default 7d (1 semana).
-    window_days = (
-        (body.period_days if body and body.period_days else None)
-        or _DEFAULT_PERIOD_DAYS
-    )
+    # ENH-122: si vienen ambos period_from + period_to, override de
+    # period_days y cut_off_date. Útil para reportes "ad hoc" con
+    # ventana arbitraria solicitados por owner.
+    if body and body.period_from and body.period_to:
+        cut_off = body.period_to
+        window_days = max(1, (body.period_to - body.period_from).days)
+    else:
+        cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
+        # ENH-063: período → window_days. Default 7d (1 semana).
+        window_days = (
+            (body.period_days if body and body.period_days else None)
+            or _DEFAULT_PERIOD_DAYS
+        )
 
     context = await build_avance_context(
         db, tenant_id, project.id, cut_off, window_days=window_days
     )
-    context["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(context, db, tenant_id, project_id=project.id)
 
     pdf = render_pdf("reports/avance.html", context)
 
@@ -353,6 +437,79 @@ async def generate_avance_report(
     return _pdf_response(pdf, filename)
 
 
+# US-147 — Reporte Look-ahead: solo actividades en ventana [hoy, hoy+ventana].
+@router.post("/projects/{project_id}/reports/look-ahead")
+async def generate_look_ahead_report(
+    project_id: UUID,
+    body: LookAheadGenerate | None = None,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Genera Reporte Look-ahead: actividades que arrancan o terminan
+    dentro de la ventana definida desde hoy. Excluye vencidas.
+
+    Persiste con `generator='look_ahead'` y `cut_off_date=hoy`.
+    """
+    tenant_id = _tenant(cu)
+    project = await _get_project(db, tenant_id, project_id)
+    payload = body or LookAheadGenerate()
+
+    context = await build_look_ahead_context(
+        db, tenant_id, project.id,
+        window_value=payload.window_value,
+        window_unit=payload.window_unit,
+    )
+    await _apply_report_branding(context, db, tenant_id, project_id=project.id)
+
+    pdf = render_pdf("reports/look_ahead.html", context)
+
+    today = datetime.now(UTC).date()
+    rep = Report(
+        tenant_id=str(tenant_id),
+        project_id=str(project.id),
+        title=(
+            f"Look-ahead — {project.folio} — "
+            f"{payload.window_value} {payload.window_unit}"
+        ),
+        period=f"{payload.window_value}{payload.window_unit[:1]}",
+        generator="look_ahead",
+        cut_off_date=today,
+        sections=context,
+        recipients=[],
+        status="draft",
+        generated_by_ai=False,
+        created_by=cu.id,
+    )
+    db.add(rep)
+    await db.flush()
+    db.add(
+        ReportHistory(
+            tenant_id=str(tenant_id),
+            project_id=str(project.id),
+            report_type="look_ahead",
+            generated_by_user_id=str(cu.id),
+            source_report_id=str(rep.id),
+            file_size_bytes=len(pdf) if pdf else None,
+        )
+    )
+    await write_audit(
+        db,
+        action="report.generate.look_ahead",
+        module="reports",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="report",
+        entity_id=str(rep.id),
+        details={
+            "window_value": payload.window_value,
+            "window_unit": payload.window_unit,
+        },
+    )
+    await db.commit()
+    filename = _report_filename("Look-ahead", project.name, datetime.now(UTC))
+    return _pdf_response(pdf, filename)
+
+
 @router.get("/reports/{report_id}/avance/download")
 async def download_avance_report(
     report_id: UUID,
@@ -376,7 +533,7 @@ async def download_avance_report(
     if rep is None:
         raise not_found("Reporte")
     ctx = dict(rep.sections or {})
-    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf("reports/avance.html", ctx)
     project = await _get_project(db, tenant_id, UUID(rep.project_id))
     stamp = rep.created_at if rep.created_at else datetime.now(UTC)
@@ -394,17 +551,22 @@ async def generate_seguimiento_report(
     """Reporte de Seguimiento (Python, sin IA). Ver US-039."""
     tenant_id = _tenant(cu)
     project = await _get_project(db, tenant_id, project_id)
-    cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
-    # ENH-063: period_days (canónico) > window_days (legacy) > default.
-    if body and body.period_days:
-        window_days = body.period_days
+    # ENH-122: rango custom (period_from + period_to) override igual que avance.
+    if body and body.period_from and body.period_to:
+        cut_off = body.period_to
+        window_days = max(1, (body.period_to - body.period_from).days)
     else:
-        window_days = (body.window_days if body else 14) or 14
+        cut_off = (body.cut_off_date if body else None) or datetime.now(UTC).date()
+        # ENH-063: period_days (canónico) > window_days (legacy) > default.
+        if body and body.period_days:
+            window_days = body.period_days
+        else:
+            window_days = (body.window_days if body else 14) or 14
 
     context = await build_seguimiento_context(
         db, tenant_id, project.id, cut_off, window_days=window_days,
     )
-    context["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(context, db, tenant_id, project_id=project.id)
     pdf = render_pdf("reports/seguimiento.html", context)
 
     rep = Report(
@@ -469,7 +631,7 @@ async def download_seguimiento_report(
     if rep is None:
         raise not_found("Reporte")
     ctx = dict(rep.sections or {})
-    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf("reports/seguimiento.html", ctx)
     project = await _get_project(db, tenant_id, UUID(rep.project_id))
     stamp = rep.created_at if rep.created_at else datetime.now(UTC)
@@ -691,7 +853,7 @@ async def download_report_history(
         "reports/avance.html" if h.report_type == "avance" else "reports/seguimiento.html"
     )
     ctx = dict(rep.sections or {})
-    ctx["tenant_name"] = await _tenant_name(db, tenant_id)
+    await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf(template, ctx)
     label = "Avance" if h.report_type == "avance" else "Seguimiento"
     filename = _report_filename(label, project.name, h.generated_at)
@@ -747,7 +909,7 @@ _AI_REPORT_SYSTEM_PROMPT = (
     # ENH-064: foco default en hitos / críticas / retrasadas.
     "Por defecto enfócate en (en este orden): (1) hitos del proyecto, "
     "(2) tareas con criticidad 'high' o 'critical', y (3) tareas retrasadas "
-    "(end_date < hoy y status != 'done'). No incluyas tareas de baja "
+    "(end_date < hoy y status != 'completed'). No incluyas tareas de baja "
     "prioridad ni completadas a menos que el usuario lo pida explícitamente "
     "en sus notas adicionales. Mantén el reporte breve (no más de 6-8 "
     "secciones cortas). "
@@ -1257,29 +1419,36 @@ def _project_render_data(
     risks_high = sum(
         1 for r in risks if (getattr(r, "severity", 0) or 0) >= 12
     )
-    on_time_total = max(1, project.tasks_total if hasattr(project, "tasks_total") else 0)
-    on_time_pct = max(0, 100 - round((delayed / on_time_total) * 100)) if on_time_total else 0
+    # ENH-146 — denominador real y consistente con la tabla del plan
+    # (antes usaba project.tasks_total que no existe en el ORM ⇒ el KPI
+    # saltaba a 0% o 100%). On-time = (total − retrasadas) / total.
+    tasks_total = (context.get("plan") or {}).get("total_tasks") or 0
+    on_time_pct = (
+        max(0, min(100, round((tasks_total - delayed) / tasks_total * 100)))
+        if tasks_total
+        else 0
+    )
     tasks_focus = context.get("focus_tasks") or []
 
     def _task_row(t):
         owner = getattr(t, "assignee_name", None) or getattr(t, "owner_name", None)
         end = getattr(t, "end_date", None)
-        status = getattr(t, "status", "") or ""
-        if status == "in_progress":
-            status = "En curso"
-        elif status == "done":
-            status = "Hecho"
-        elif status == "not_started":
-            status = "Pendiente"
+        raw_status = getattr(t, "status", "") or ""
         # ENH-064 — anota retraso como sufijo para que el filtro KPI
         # "retrasada" funcione (busca el texto en la fila).
         delayed_now = (
             end is not None
             and end < datetime.now(UTC).date()
-            and status != "Hecho"
+            and normalize_status(raw_status) != "completed"
         )
+        # ENH-150 — status en ES con color leve (badge HTML; la columna
+        # Estado se marca como raw en la tabla del renderer).
+        status = status_badge_html(raw_status)
         if delayed_now:
-            status += " (retrasada)"
+            status += (
+                ' <span style="color:#991b1b;font-weight:600;font-size:0.85em;">'
+                " (retrasada)</span>"
+            )
         return {
             "name": getattr(t, "name", "") or "",
             "owner": owner or "—",
@@ -1361,12 +1530,14 @@ async def render_report_html_endpoint(
     cut_off = rep.cut_off_date or datetime.now(UTC).date()
     context = await build_avance_context(db, tenant_id, project.id, cut_off)
     data = _project_render_data(project, context)
+    brand = await load_report_branding(db, tenant_id, project.organization_id)
     html = render_report_html(
         title=rep.title or f"Reporte — {project.folio}",
         project_name=project.name,
         project_folio=project.folio,
         generated_at=datetime.now(UTC),
         summary_html=str((rep.sections or {}).get("executive_summary") or ""),
+        **brand,
         **data,
     )
     rep.html_content = html
@@ -1389,11 +1560,13 @@ async def render_default_report_html(
     cut_off = datetime.now(UTC).date()
     context = await build_avance_context(db, tenant_id, project.id, cut_off)
     data = _project_render_data(project, context)
+    brand = await load_report_branding(db, tenant_id, project.organization_id)
     html = render_report_html(
         title=f"Reporte — {project.folio}",
         project_name=project.name,
         project_folio=project.folio,
         generated_at=datetime.now(UTC),
+        **brand,
         **data,
     )
     return Response(content=html, media_type="text/html; charset=utf-8")

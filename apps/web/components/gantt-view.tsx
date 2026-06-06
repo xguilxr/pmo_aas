@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { GanttData } from "@/lib/api/tasks";
 
@@ -50,7 +50,25 @@ function formatDay(d: Date, zoom: Zoom): string {
 
 export function GanttView({ data }: { data: GanttData }) {
   const [zoom, setZoom] = useState<Zoom>("week");
-  const pxPerDay = ZOOM_PX[zoom];
+
+  // El Gantt no aprovechaba el ancho disponible: el ancho se derivaba
+  // sólo del rango de fechas (totalDays × pxPerDay fijo por zoom), así
+  // que con rangos cortos quedaba un gran espacio vacío a la derecha.
+  // Medimos el viewport del contenedor scrollable y estiramos pxPerDay
+  // para llenar el espacio a cualquier nivel de zoom. Si el rango es
+  // más ancho que el viewport se respeta el zoom y aparece scroll.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(0);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setViewportWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [data.tasks.length]);
 
   const tasksWithDates = useMemo(() => {
     return data.tasks.map((t) => ({
@@ -78,6 +96,14 @@ export function GanttView({ data }: { data: GanttData }) {
       totalDays: Math.max(1, daysBetween(padded_min, padded_max)),
     };
   }, [tasksWithDates]);
+
+  // Estira el ancho por día para llenar el viewport cuando el rango de
+  // fechas es más angosto que el contenedor; nunca por debajo del zoom.
+  const fitPxPerDay =
+    viewportWidth > LEFT_COL && totalDays > 0
+      ? (viewportWidth - LEFT_COL) / totalDays
+      : 0;
+  const pxPerDay = Math.max(ZOOM_PX[zoom], fitPxPerDay);
 
   const taskById = useMemo(
     () => Object.fromEntries(tasksWithDates.map((t) => [t.id, t])),
@@ -124,7 +150,7 @@ export function GanttView({ data }: { data: GanttData }) {
           No hay tareas para graficar. Crea tareas o importa desde MS Project.
         </div>
       ) : (
-        <div className="overflow-auto">
+        <div ref={scrollRef} className="overflow-auto">
           <div
             className="relative"
             style={{

@@ -34,19 +34,35 @@ import {
  * `/approve-raid-suggestions` (creación bulk).
  */
 
+type BucketKey = "actions" | "risks" | "decisions" | "issues" | "lessons" | "changes";
+
 type SectionMeta = {
-  key: keyof MinuteRaidSuggestions;
+  key: BucketKey;
   label: string;
   ticketBase: string;
   emptyHint: string;
 };
 
+// BUG-063: 4 buckets canónicos A/R/D/I + 2 legacy (lessons/changes)
+// para retro-compat con minutas pre-refactor.
 const SECTION_META: SectionMeta[] = [
+  {
+    key: "actions",
+    label: "Acciones",
+    ticketBase: "raid",
+    emptyHint: "Sin acciones detectadas.",
+  },
   {
     key: "risks",
     label: "Riesgos",
     ticketBase: "raid",
     emptyHint: "Sin riesgos detectados.",
+  },
+  {
+    key: "decisions",
+    label: "Decisiones",
+    ticketBase: "raid",
+    emptyHint: "Sin decisiones detectadas.",
   },
   {
     key: "issues",
@@ -56,32 +72,41 @@ const SECTION_META: SectionMeta[] = [
   },
   {
     key: "lessons",
-    label: "Lecciones",
+    label: "Lecciones (legacy)",
     ticketBase: "lessons",
-    emptyHint: "Sin lecciones detectadas.",
+    emptyHint: "Sin lecciones.",
   },
   {
     key: "changes",
-    label: "Cambios",
+    label: "Cambios (legacy)",
     ticketBase: "changes",
-    emptyHint: "Sin cambios detectados.",
+    emptyHint: "Sin cambios.",
   },
 ];
 
-function emptySuggestions(): MinuteRaidSuggestions {
-  return { risks: [], issues: [], lessons: [], changes: [] };
+type ResolvedSuggestions = Required<
+  Pick<MinuteRaidSuggestions, "actions" | "risks" | "decisions" | "issues">
+> & {
+  lessons: MinuteRaidSuggestion[];
+  changes: MinuteRaidSuggestion[];
+};
+
+function emptySuggestions(): ResolvedSuggestions {
+  return { actions: [], risks: [], decisions: [], issues: [], lessons: [], changes: [] };
 }
 
 function sanitizeSuggestions(
   src: Partial<MinuteRaidSuggestions> | undefined,
-): MinuteRaidSuggestions {
+): ResolvedSuggestions {
   const base = emptySuggestions();
   if (!src) return base;
   for (const meta of SECTION_META) {
-    base[meta.key] = (src[meta.key] ?? []).map((s) => ({
+    const items = (src as Record<string, MinuteRaidSuggestion[] | undefined>)[meta.key] ?? [];
+    base[meta.key] = items.map((s) => ({
       short_desc: s.short_desc ?? "",
       suggested_owner_name: s.suggested_owner_name ?? null,
       suggested_priority: s.suggested_priority ?? null,
+      suggested_due_date: s.suggested_due_date ?? null,
       raw_quote: s.raw_quote ?? null,
       status: s.status ?? "pending",
       ticket_id: s.ticket_id ?? null,
@@ -97,9 +122,14 @@ function ticketHref(
   s: MinuteRaidSuggestion,
 ): string | null {
   if (!s.ticket_id) return null;
-  if (meta.key === "risks" || meta.key === "issues") {
-    const type = meta.key === "risks" ? "risk" : "incident";
-    return `/pmo/projects/${projectId}/raid/${s.ticket_id}?type=${type}`;
+  // BUG-063: Risk vive en `?type=risk`; Acción/Decisión/Issue son todos
+  // sub-tipos de `issues` con `type` en el ticket — uso `?type=incident`
+  // como fallback (la pantalla detail discrimina por ticket.type).
+  if (meta.key === "risks") {
+    return `/pmo/projects/${projectId}/raid/${s.ticket_id}?type=risk`;
+  }
+  if (meta.key === "actions" || meta.key === "decisions" || meta.key === "issues") {
+    return `/pmo/projects/${projectId}/raid/${s.ticket_id}?type=incident`;
   }
   if (meta.key === "lessons") {
     return `/pmo/projects/${projectId}/lessons/${s.ticket_id}`;
@@ -114,11 +144,11 @@ export function MinuteRaidSuggestionsEditor({
   minute: MeetingMinute;
   onMinuteChanged?: (next: MeetingMinute) => void;
 }) {
-  const [suggestions, setSuggestions] = useState<MinuteRaidSuggestions>(() =>
+  const [suggestions, setSuggestions] = useState<ResolvedSuggestions>(() =>
     sanitizeSuggestions(minute.raid_suggestions),
   );
   const [draft, setDraft] = useState<{
-    type: keyof MinuteRaidSuggestions;
+    type: BucketKey;
     index: number;
     short_desc: string;
     priority: string;
@@ -139,11 +169,11 @@ export function MinuteRaidSuggestionsEditor({
     return totals;
   }, [suggestions]);
 
-  function updateLocal(next: MinuteRaidSuggestions) {
+  function updateLocal(next: ResolvedSuggestions) {
     setSuggestions(next);
   }
 
-  async function persist(next: MinuteRaidSuggestions) {
+  async function persist(next: ResolvedSuggestions) {
     try {
       const updated = await updateMinute(minute.id, { raid_suggestions: next });
       onMinuteChanged?.(updated);
@@ -159,7 +189,7 @@ export function MinuteRaidSuggestionsEditor({
   }
 
   async function handleDiscard(
-    type: keyof MinuteRaidSuggestions,
+    type: BucketKey,
     index: number,
   ) {
     const next = sanitizeSuggestions(suggestions);
@@ -172,7 +202,7 @@ export function MinuteRaidSuggestionsEditor({
   }
 
   function startEdit(
-    type: keyof MinuteRaidSuggestions,
+    type: BucketKey,
     index: number,
     s: MinuteRaidSuggestion,
   ) {
@@ -242,7 +272,7 @@ export function MinuteRaidSuggestionsEditor({
   }
 
   async function approveOne(
-    type: keyof MinuteRaidSuggestions,
+    type: BucketKey,
     index: number,
   ) {
     setSaving("approve");
@@ -270,7 +300,9 @@ export function MinuteRaidSuggestionsEditor({
   }
 
   const total =
+    suggestions.actions.length +
     suggestions.risks.length +
+    suggestions.decisions.length +
     suggestions.issues.length +
     suggestions.lessons.length +
     suggestions.changes.length;
@@ -306,7 +338,7 @@ export function MinuteRaidSuggestionsEditor({
           disabled={counts.pending === 0}
           loading={saving === "approve"}
         >
-          Crear todos los aprobados ({counts.pending})
+          Crear items RAID pendientes ({counts.pending})
         </Button>
       </header>
 
@@ -392,8 +424,12 @@ export function MinuteRaidSuggestionsEditor({
                                 {s.suggested_priority ? (
                                   <span>⚑ P{s.suggested_priority}</span>
                                 ) : null}
+                                {/* ENH-119: "approved" = item RAID real ya
+                                    creado y linkeado. Label "Creado" para
+                                    diferenciar del concepto de "aprobación"
+                                    legacy. */}
                                 {s.status === "approved" ? (
-                                  <Badge variant="success">Aprobado</Badge>
+                                  <Badge variant="success">✓ Creado</Badge>
                                 ) : s.status === "discarded" ? (
                                   <Badge variant="neutral">Descartado</Badge>
                                 ) : (
@@ -405,7 +441,7 @@ export function MinuteRaidSuggestionsEditor({
                                     className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
                                   >
                                     <ExternalLink className="h-3 w-3" aria-hidden />
-                                    {s.ticket_type ?? "ticket"}
+                                    Abrir {s.ticket_type ?? "ticket"}
                                   </Link>
                                 ) : null}
                               </div>
@@ -449,7 +485,8 @@ export function MinuteRaidSuggestionsEditor({
                               <button
                                 type="button"
                                 onClick={() => approveOne(meta.key, idx)}
-                                aria-label="Aprobar"
+                                aria-label="Crear item RAID"
+                                title="Crear item RAID a partir de esta sugerencia"
                                 disabled={saving !== null}
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-success-fg)] hover:bg-[var(--color-success-bg)] disabled:opacity-50"
                               >
@@ -485,7 +522,9 @@ export function hasRaidSuggestions(
 ): boolean {
   if (!src) return false;
   return (
-    (src.risks?.length ?? 0) +
+    (src.actions?.length ?? 0) +
+      (src.risks?.length ?? 0) +
+      (src.decisions?.length ?? 0) +
       (src.issues?.length ?? 0) +
       (src.lessons?.length ?? 0) +
       (src.changes?.length ?? 0) >

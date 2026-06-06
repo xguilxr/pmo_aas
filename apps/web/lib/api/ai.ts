@@ -1,36 +1,54 @@
 import { apiFetch } from "@/lib/api";
 
-/** ENH-084: shape canónico de un item RAID sugerido (4 tipos comparten). */
+/** BUG-063: shape canónico de un item RAID sugerido (4 tipos comparten). */
 export type AIRaidSuggestion = {
   short_desc: string;
   suggested_owner_name?: string | null;
   suggested_priority?: number | null;
+  suggested_due_date?: string | null;
   raw_quote?: string | null;
 };
 
+/** BUG-063: 4 buckets canónicos A/R/D/I alineados con el modelo RAID. */
 export type AIRaidBlock = {
+  actions: AIRaidSuggestion[];
   risks: AIRaidSuggestion[];
+  decisions: AIRaidSuggestion[];
   issues: AIRaidSuggestion[];
-  lessons: AIRaidSuggestion[];
-  changes: AIRaidSuggestion[];
 };
 
 export const EMPTY_RAID_BLOCK: AIRaidBlock = {
+  actions: [],
   risks: [],
+  decisions: [],
   issues: [],
-  lessons: [],
-  changes: [],
+};
+
+export type AIParticipant = {
+  name: string;
+  role?: string | null;
+  area?: string | null;
+  attendance?: "attended" | "absent_justified" | "absent_unjustified";
+};
+
+export type AITopic = {
+  title: string;
+  bullets?: string[];
+  /** Legacy: minutas viejas usaban `notes`. */
+  notes?: string;
 };
 
 export type AIMinutePayload = {
+  header?: Record<string, unknown>;
   summary: string;
-  participants: { name: string; role?: string }[];
-  topics: { title: string; notes: string }[];
-  agreements: { description: string; owner?: string; due_date?: string }[];
-  decisions: { description: string; rationale?: string }[];
-  next_steps: { action: string; owner?: string; due_date?: string }[];
-  risks_blockers: { description: string }[];
-  /** ENH-084: 4 secciones RAID estandarizadas. */
+  participants: AIParticipant[];
+  topics: AITopic[];
+  /** Legacy: agregaciones del modelo viejo, sigue vacío en el nuevo flow. */
+  agreements?: unknown[];
+  free_notes?: string | null;
+  /** BUG-063: shape `raid_suggestions` con 4 buckets A/R/D/I. */
+  raid_suggestions?: AIRaidBlock;
+  /** Legacy alias — algunos consumers leen `raid` directo. */
   raid?: AIRaidBlock;
   minute_id?: string | null;
 };
@@ -42,19 +60,57 @@ export type DispatchResult = {
   status: AIJobStatus;
 };
 
+// US-143 — generador unificado: 3 source_types.
+// - `manual` retorna {minute_id, status:"saved", folio} sincrónico (no dispatch).
+// - `transcript|minute` retornan {job_id, status:"queued"} (dispatch async).
+export type MinuteSourceType = "transcript" | "minute" | "manual";
+
+export type ManualSaveResult = {
+  minute_id: string;
+  status: "saved";
+  folio: string;
+};
+
+export type ManualMinuteData = {
+  header?: {
+    title?: string | null;
+    date?: string | null;
+    time?: string | null;
+    duration?: string | null;
+    modality?: string | null;
+    location?: string | null;
+    facilitator?: string | null;
+  };
+  participants?: {
+    attendees?: { name: string; role?: string; area?: string }[];
+    absent_justified?: { name: string; role?: string; area?: string }[];
+    absent_unjustified?: { name: string; role?: string; area?: string }[];
+  };
+  summary?: string;
+  topics?: { title: string; bullets?: string[]; notes?: string }[];
+  agreements?: { description: string; owner?: string; due_date?: string }[];
+  raid?: unknown[];
+  free_notes?: string | null;
+};
+
 /**
- * US-051: dispatch a Celery. Devuelve 202 con {job_id, status}.
- * La UI debe hacer polling con `pollAIJob` (o el hook `useAIJobPolling`)
- * hasta status=succeeded|failed.
+ * US-051 + US-143: dispatch a Celery (transcript/minute) o persiste directo
+ * (manual). El frontend discrimina por `body.status`/`body.job_id` en la
+ * respuesta.
  */
 export function generateMinute(body: {
   project_id: string;
-  transcript: string;
+  source_type?: MinuteSourceType;
+  transcript?: string;
+  structured_data?: ManualMinuteData;
   language?: string;
   save_as_minute?: boolean;
   title?: string;
-}): Promise<DispatchResult> {
-  return apiFetch<DispatchResult>("/api/v1/ai/minutes", { method: "POST", body });
+}): Promise<DispatchResult | ManualSaveResult> {
+  return apiFetch<DispatchResult | ManualSaveResult>(
+    "/api/v1/ai/minutes",
+    { method: "POST", body },
+  );
 }
 
 export type AIJobRead = {

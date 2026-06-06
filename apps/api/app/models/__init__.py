@@ -2,12 +2,17 @@
 from app.models.ai import AIJob, Report  # noqa: F401
 from app.models.ai_report_template import AIReportTemplate  # noqa: F401
 from app.models.area import Actor, Area, AreaAssignment, Team  # noqa: F401
+from app.models.assistant import (  # noqa: F401
+    AssistantConversation,
+    AssistantMessage,
+)
 from app.models.audit import AuditLog  # noqa: F401
 from app.models.auth import PasswordResetToken, RefreshToken  # noqa: F401
 from app.models.change_approval import (  # noqa: F401
     ApprovalToken,
     ChangeApprover,
 )
+from app.models.metric_snapshot import MetricSnapshot  # noqa: F401
 from app.models.modules import (  # noqa: F401
     ChangeRequest,
     Document,
@@ -35,7 +40,9 @@ from app.models.project_member import ProjectMember  # noqa: F401
 from app.models.project_participation import ProjectParticipation  # noqa: F401
 from app.models.project_request import FolioSequence, ProjectRequest  # noqa: F401
 from app.models.project_role import ProjectRole  # noqa: F401
+from app.models.report_builder_template import ReportBuilderTemplate  # noqa: F401
 from app.models.report_history import ReportHistory  # noqa: F401
+from app.models.report_section import ReportSection  # noqa: F401
 from app.models.report_template import ReportTemplate  # noqa: F401
 from app.models.risk_action import RiskAction, RiskActionAssignee  # noqa: F401
 from app.models.role import Role, UserRole  # noqa: F401

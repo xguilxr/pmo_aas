@@ -1,0 +1,25 @@
+{# S-03 Semáforo RAG #}
+<section class="section section-s03">
+  <h2>Estado General</h2>
+  {% if data.empty %}
+    <p class="empty">—</p>
+  {% else %}
+  <p>
+    Semáforo:
+    {% set rag = (data.status_rag or 'amber')|lower %}
+    {% if rag == 'green' or rag == 'verde' %}
+      <span class="pill green">Verde</span>
+    {% elif rag == 'red' or rag == 'rojo' %}
+      <span class="pill red">Rojo</span>
+    {% else %}
+      <span class="pill yellow">Ámbar</span>
+    {% endif %}
+    {% if data.health_status %}
+      <span class="muted small">(salud: {{ data.health_status }})</span>
+    {% endif %}
+  </p>
+  {% if data.status_comment %}
+    <p>{{ data.status_comment }}</p>
+  {% endif %}
+  {% endif %}
+</section>

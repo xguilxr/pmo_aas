@@ -1,0 +1,28 @@
+{# Helper compartido — tabla de tareas para S-09/S-16/S-17/S-18 #}
+{% if data.rows %}
+<table>
+  <thead>
+    <tr>
+      <th>WBS</th><th>Tarea</th><th>Área</th>
+      <th class="right">Fin</th><th class="right">% Avance</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in data.rows %}
+    <tr>
+      <td class="small muted">{{ r.wbs or '' }}</td>
+      <td>
+        {{ r.name }}
+        {% if r.is_milestone %}<span class="pill gray">hito</span>{% endif %}
+        {% if r.is_critical %}<span class="pill red">crítica</span>{% endif %}
+      </td>
+      <td>{{ r.area_name }}</td>
+      <td class="right small">{{ r.end_date or '—' }}</td>
+      <td class="right nums">{{ r.progress }}%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">Sin items en este corte.</p>
+{% endif %}

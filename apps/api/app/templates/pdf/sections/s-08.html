@@ -1,0 +1,21 @@
+{# S-08 Avance por Área #}
+<section class="section section-s08">
+  <h2>Avance por Área</h2>
+  {% if data.rows %}
+  <table>
+    <thead><tr><th>Área</th><th class="right">Tareas</th><th class="right">Done</th><th class="right">Avg %</th></tr></thead>
+    <tbody>
+      {% for r in data.rows %}
+      <tr>
+        <td>{{ r.area_name }}</td>
+        <td class="right nums">{{ r.total }}</td>
+        <td class="right nums">{{ r.done }}</td>
+        <td class="right nums">{{ r.avg_progress }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="empty">Sin datos de tareas por área.</p>
+  {% endif %}
+</section>

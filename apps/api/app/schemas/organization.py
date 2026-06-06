@@ -3,6 +3,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+# BUG-068: los logos pueden ser una URL externa corta o un data-URL base64 de
+# un archivo subido (PNG/JPG/SVG/WEBP). Cap generoso (~3 MB de texto, suficiente
+# para una imagen de 2 MB codificada) para no rechazar uploads legítimos.
+_LOGO_MAX = 3_000_000
+
 
 class OrganizationCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
@@ -10,9 +15,9 @@ class OrganizationCreate(BaseModel):
     industry: str | None = None
     country: str | None = None
     contact_email: str | None = None
-    logo_url: str | None = Field(default=None, max_length=500)
+    logo_url: str | None = Field(default=None, max_length=_LOGO_MAX)
     # ENH-100: logo del cliente (consumido por EP020 Report Builder).
-    client_logo_url: str | None = Field(default=None, max_length=500)
+    client_logo_url: str | None = Field(default=None, max_length=_LOGO_MAX)
     is_active: bool = True
 
 
@@ -22,9 +27,9 @@ class OrganizationUpdate(BaseModel):
     industry: str | None = None
     country: str | None = None
     contact_email: str | None = None
-    logo_url: str | None = Field(default=None, max_length=500)
+    logo_url: str | None = Field(default=None, max_length=_LOGO_MAX)
     # ENH-100
-    client_logo_url: str | None = Field(default=None, max_length=500)
+    client_logo_url: str | None = Field(default=None, max_length=_LOGO_MAX)
     is_active: bool | None = None
 
 

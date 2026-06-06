@@ -15,7 +15,7 @@ Cerrar el catálogo de documentos vivos por proyecto. Hoy los usuarios pueden su
 
 1. **Project Charter** — auto-creado al crear proyecto, backfilleado para los existentes.
 2. **Plan** — un único archivo vivo (.mpp / .xlsx / .csv / plantilla); DB es fuente de verdad, archivo se regenera preservando formato origen.
-3. **RAIDs** — export Excel siempre actualizado, 4 sheets dedicados (Risks / Issues / Lessons / Changes) con todas sus propiedades.
+3. **RAIDs** — export Excel siempre actualizado, 4 hojas dedicadas en español (Riesgos / Acciones / Incidencias / Decisiones) con columnas legibles (Folio · Título · Descripción · Severidad/Prioridad · Estado · Responsable área · Responsable · Fecha creación). *(ENH-152, 2026-06-05: taxonomía RAID canónica + nombres resueltos a texto + filename `RAID-[Nombre Proyecto].xlsx`; mismo archivo para el botón de /raid y el de Documentos. Reemplaza Risks/Issues/Lessons/Changes.)*
 4. **Organigrama** — lista de recursos asignados al proyecto (depende del catálogo Áreas/Actores de EP017).
 
 ## Decisiones arquitectónicas asociadas (a registrar en DECISIONS.md)
@@ -26,14 +26,15 @@ Cerrar el catálogo de documentos vivos por proyecto. Hoy los usuarios pueden su
 
 ## US iniciales (Sprint 18)
 
-- **US-106** — Sistema de Artefactos por proyecto (whitelist + storage + UI tabs Charter/Plan/RAID/Organigrama). Tab Organigrama queda como placeholder UI; cableado funcional pendiente de redefinición Áreas/Recursos.
+- **US-106** — Sistema de Artefactos por proyecto (whitelist + storage + UI tabs Charter/Plan/RAID/Organigrama).
+- **US-150** (2026-05-26) — Organigrama cableado: `GET /projects/{id}/organigrama/export` genera un Excel con 4 hojas (Áreas, Equipos, Roles, Recursos) vía `app/services/organigrama_export.py` (openpyxl, mismo estilo que RAID export). El scope de áreas/recursos sigue la cascada de `area_assignments` (global/org/programa/proyecto); Roles es el catálogo tenant. El tab Organigrama deja de ser placeholder (`available=true`).
 - **ENH-080** — Plan vivo: sync DB ↔ archivo maestro preservando formato origen.
 - **ENH-081** — Charter: auto-creación al crear proyecto + backfill de existentes.
 
 ## US diferidas (post-redefinición Áreas/Recursos)
 
 - **US-105** — Import Plan/Excel: matching wizard a Actor existente o auto-crear (post-import, no bloquea carga). Postergada 2026-05-08: depende del shape final del catálogo Actores que salga de la redefinición pendiente.
-- **US-106 — Tab Organigrama (parte funcional)** — la lista de recursos asignados al proyecto se cablea cuando exista la nueva definición de Áreas/Recursos.
+- ~~**US-106 — Tab Organigrama (parte funcional)**~~ — entregado en US-150 (2026-05-26): export Excel de Áreas/Equipos/Roles/Recursos.
 
 ## Migraciones Alembic previstas
 
