@@ -21,6 +21,7 @@ exposed for smoke testing and for the project header.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -29,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
 from app.models.task import Task
+from app.services.plan_metadata import compute_plan_rollup_progress
 
 logger = logging.getLogger(__name__)
 
@@ -189,3 +191,42 @@ async def compute_progress(
     """
     result = await compute_progress_detailed(db, project_id, method=method)
     return result.value
+
+
+async def plan_rollup_map(
+    db: AsyncSession, project_ids: Iterable[UUID | str]
+) -> dict[str, float]:
+    """``{project_id: avance general derivado del plan (0..100)}`` para
+    los proyectos que tienen tareas.
+
+    Un solo ``SELECT ... WHERE project_id IN (...)`` (sin N+1). Los
+    proyectos sin tareas quedan fuera del dict; el caller usa el avance
+    manual (``Project.progress``) como fallback.
+    """
+    ids = [str(p) for p in project_ids]
+    if not ids:
+        return {}
+    rows = (
+        await db.execute(select(Task).where(Task.project_id.in_(ids)))
+    ).scalars().all()
+    by_project: dict[str, list[Task]] = {}
+    for t in rows:
+        by_project.setdefault(str(t.project_id), []).append(t)
+    out: dict[str, float] = {}
+    for pid, tasks in by_project.items():
+        value = compute_plan_rollup_progress(tasks)
+        if value is not None:
+            out[pid] = value
+    return out
+
+
+async def effective_progress_map(
+    db: AsyncSession, projects: list[Project]
+) -> dict[str, float]:
+    """``{project_id: avance efectivo}``: rollup del plan cuando el
+    proyecto tiene tareas; si no, su ``Project.progress`` manual."""
+    plan = await plan_rollup_map(db, [p.id for p in projects])
+    return {
+        str(p.id): plan.get(str(p.id), float(p.progress or 0))
+        for p in projects
+    }

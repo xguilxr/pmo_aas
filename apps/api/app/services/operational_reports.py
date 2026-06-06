@@ -20,6 +20,10 @@ from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.task import Task
 from app.models.user import User
+from app.services.plan_metadata import (
+    compute_plan_rollup_progress,
+    round_half_up,
+)
 from app.services.report_kpis import (
     compute_kpis,
     default_period_start,
@@ -151,10 +155,11 @@ async def build_avance_context(
     done = sum(1 for t in all_tasks if t.status == "done" or (t.progress or 0) >= 100)
     in_progress = sum(1 for t in all_tasks if t.status == "in_progress")
     not_started = sum(1 for t in all_tasks if t.status == "not_started")
+    # ENH-109 — avance derivado del plan (rollup WBS: padre = promedio de
+    # hijos, general = promedio de los WBS de nivel más alto).
+    _rollup_progress = compute_plan_rollup_progress(all_tasks)
     avg_progress = (
-        round(sum((t.progress or 0) for t in all_tasks) / total_tasks)
-        if total_tasks > 0
-        else 0
+        round_half_up(_rollup_progress) if _rollup_progress is not None else 0
     )
 
     # Hitos
@@ -349,7 +354,8 @@ async def build_avance_context(
             "end_date": project.end_date.isoformat() if project.end_date else None,
             "budget": float(project.budget or 0),
             "actual_budget": float(project.actual_budget or 0),
-            "progress": project.progress or 0,
+            # ENH-109 — avance derivado del plan; manual como fallback sin plan.
+            "progress": avg_progress if total_tasks > 0 else (project.progress or 0),
         },
         "plan": {
             "total_tasks": total_tasks,
