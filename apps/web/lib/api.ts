@@ -115,6 +115,31 @@ function extractErrorEnvelope(data: unknown, status: number): ErrorEnvelope {
   };
   if (!data || typeof data !== "object") return fallback;
   const outer = (data as { detail?: unknown }).detail;
+  // BUG-062: 422 nativo de FastAPI → `detail` es un array de
+  // {loc, msg, type}. Lo formateamos como "campo: mensaje" para que el
+  // usuario vea el error de validación real en vez de "Error 422" pelado
+  // (antes caía al fallback genérico al no ser el envelope custom).
+  if (Array.isArray(outer)) {
+    const fields: Record<string, unknown> = {};
+    const parts: string[] = [];
+    for (const item of outer) {
+      if (!item || typeof item !== "object") continue;
+      const e = item as { loc?: unknown; msg?: unknown };
+      const loc = Array.isArray(e.loc) ? e.loc : [];
+      // omite el primer segmento ("body"/"query"/"path") para legibilidad.
+      const field =
+        loc.slice(1).map(String).join(".") ||
+        (loc.length ? String(loc[0]) : "");
+      const msg = typeof e.msg === "string" ? e.msg : "valor inválido";
+      if (field) fields[field] = msg;
+      parts.push(field ? `${field}: ${msg}` : msg);
+    }
+    return {
+      detail: parts.length ? parts.join("; ") : fallback.detail,
+      code: "VALIDATION_ERROR",
+      fields,
+    };
+  }
   if (outer && typeof outer === "object") {
     const inner = outer as { detail?: unknown; code?: unknown; fields?: unknown };
     return {

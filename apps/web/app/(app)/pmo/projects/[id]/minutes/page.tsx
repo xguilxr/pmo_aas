@@ -134,6 +134,11 @@ export default function MinutesPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Título">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+              {title.trim().length === 1 && (
+                <p className="mt-1 text-[12px] text-red-600">
+                  El título debe tener al menos 2 caracteres.
+                </p>
+              )}
             </Field>
             <Field label="Fecha de reunión">
               <Input
@@ -241,7 +246,7 @@ export default function MinutesPage() {
           <Button
             onClick={submit}
             loading={submitting}
-            disabled={!title.trim() || !meetingDate}
+            disabled={title.trim().length < 2 || !meetingDate}
           >
             Registrar
           </Button>
