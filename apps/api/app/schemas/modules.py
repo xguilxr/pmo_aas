@@ -167,7 +167,8 @@ class ChangeRequestUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     impact: str | None = None
-    status: Literal["in_review", "approved", "rejected", "implemented"] | None = None
+    # ENH-112: `cancelled` agregado para el flujo de cancelación de cambios.
+    status: Literal["in_review", "approved", "rejected", "implemented", "cancelled"] | None = None
 
 
 class ChangeRequestRead(BaseModel):

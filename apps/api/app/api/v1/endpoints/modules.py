@@ -475,6 +475,12 @@ async def delete_risk(
     if r is None:
         raise not_found("Riesgo")
     r.deleted_at = datetime.now(UTC)
+    # ENH-112: audit del soft-delete (antes no se registraba; lo alineamos
+    # con issue/lesson/change para trazabilidad).
+    await write_audit(
+        db, action="risk.delete", module="risks", user_id=cu.id,
+        tenant_id=tenant_id, entity_type="risk", entity_id=str(r.id),
+    )
     await db.commit()
     from fastapi.responses import Response
 
@@ -656,6 +662,29 @@ async def update_issue(
     return IssueRead.model_validate(i)
 
 
+@issues_router.delete("/issues/{issue_id}", status_code=204)
+async def delete_issue(
+    issue_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-112: soft-delete de un incidente/acción/decisión (RAID). Cualquier
+    miembro del proyecto puede borrarlo. Las listas ya filtran deleted_at."""
+    from fastapi.responses import Response
+
+    tenant_id = _tenant(cu)
+    i = (await db.execute(select(Issue).where(Issue.id == str(issue_id), Issue.tenant_id == str(tenant_id), Issue.deleted_at.is_(None)))).scalar_one_or_none()
+    if i is None:
+        raise not_found("Incidencia")
+    i.deleted_at = datetime.now(UTC)
+    await write_audit(
+        db, action="issue.delete", module="issues", user_id=cu.id,
+        tenant_id=tenant_id, entity_type="issue", entity_id=str(i.id),
+    )
+    await db.commit()
+    return Response(status_code=204)
+
+
 # ========== CHANGE REQUESTS ==========
 chg_router = APIRouter(tags=["change_requests"])
 
@@ -810,6 +839,78 @@ async def reject_chg(
     await db.commit()
     await _attach_change_users(db, [c])
     return ChangeRequestRead.model_validate(c)
+
+
+async def _invalidate_change_tokens(db: AsyncSession, change_id: str) -> None:
+    """ENH-112: invalida los tokens de aprobación vivos (EP019) de un cambio
+    al cancelarlo/borrarlo, para que no queden links de aprobación activos
+    apuntando a un cambio terminado. Mismo patrón que post_approval_decision."""
+    from app.models.change_approval import ApprovalToken
+
+    live = (
+        await db.execute(
+            select(ApprovalToken).where(
+                ApprovalToken.change_id == change_id,
+                ApprovalToken.consumed_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    now = datetime.now(UTC)
+    for tk in live:
+        tk.consumed_at = now
+        tk.action_taken = "invalidated"
+
+
+@chg_router.post("/change-requests/{chg_id}/cancel", response_model=ChangeRequestRead)
+async def cancel_chg(
+    chg_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-112: cancela un cambio (status='cancelled'). A diferencia de
+    borrar, queda visible para trazabilidad de aprobaciones (EP019). Cualquier
+    miembro puede cancelar mientras el cambio no esté implementado/cancelado."""
+    tenant_id = _tenant(cu)
+    c = (await db.execute(select(ChangeRequest).where(ChangeRequest.id == str(chg_id), ChangeRequest.tenant_id == str(tenant_id), ChangeRequest.deleted_at.is_(None)))).scalar_one_or_none()
+    if c is None:
+        raise not_found("Change request")
+    if c.status in ("implemented", "cancelled"):
+        raise conflict("Transición inválida", code="STATE_TRANSITION")
+    c.status = "cancelled"
+    await _invalidate_change_tokens(db, str(c.id))
+    await write_audit(
+        db, action="change_request.cancel", module="change_requests",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="change_request",
+        entity_id=str(c.id),
+    )
+    await db.commit()
+    await _attach_change_users(db, [c])
+    return ChangeRequestRead.model_validate(c)
+
+
+@chg_router.delete("/change-requests/{chg_id}", status_code=204)
+async def delete_chg(
+    chg_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-112: soft-delete de un cambio. Para preservar la auditoría de
+    aprobaciones suele preferirse cancelar; borrar lo retira de la lista."""
+    from fastapi.responses import Response
+
+    tenant_id = _tenant(cu)
+    c = (await db.execute(select(ChangeRequest).where(ChangeRequest.id == str(chg_id), ChangeRequest.tenant_id == str(tenant_id), ChangeRequest.deleted_at.is_(None)))).scalar_one_or_none()
+    if c is None:
+        raise not_found("Change request")
+    c.deleted_at = datetime.now(UTC)
+    await _invalidate_change_tokens(db, str(c.id))
+    await write_audit(
+        db, action="change_request.delete", module="change_requests",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="change_request",
+        entity_id=str(c.id),
+    )
+    await db.commit()
+    return Response(status_code=204)
 
 
 # ========== DOCUMENTS ==========
@@ -1210,6 +1311,37 @@ async def update_lesson(
     )
     await db.commit()
     return LessonRead.model_validate(l)
+
+
+@lessons_router.delete("/lessons/{lesson_id}", status_code=204)
+async def delete_lesson(
+    lesson_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-112: soft-delete de una lección aprendida. Cualquier miembro del
+    proyecto puede borrarla; la lista ya filtra deleted_at."""
+    from fastapi.responses import Response
+
+    tenant_id = _tenant(cu)
+    l = (
+        await db.execute(
+            select(Lesson).where(
+                Lesson.id == str(lesson_id),
+                Lesson.tenant_id == str(tenant_id),
+                Lesson.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if l is None:
+        raise not_found("Lección")
+    l.deleted_at = datetime.now(UTC)
+    await write_audit(
+        db, action="lesson.delete", module="lessons",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="lesson", entity_id=str(l.id),
+    )
+    await db.commit()
+    return Response(status_code=204)
 
 
 @lessons_router.post("/projects/{project_id}/lessons", response_model=LessonRead, status_code=201)

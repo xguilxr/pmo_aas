@@ -1,19 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, GitPullRequest } from "lucide-react";
+import { ArrowLeft, Ban, GitPullRequest, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   CHANGE_STATUS_LABEL,
   CHANGE_TYPE_LABEL,
+  cancelChange,
+  deleteChange,
   getChange,
   updateChange,
   type ChangeRequest,
@@ -55,6 +59,7 @@ export function ChangeDetailPage({
   changeId: string;
   breadcrumb: React.ReactNode;
 }) {
+  const router = useRouter();
   const [change, setChange] = useState<ChangeRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +68,12 @@ export function ChangeDetailPage({
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // ENH-112: borrar / cancelar el cambio.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +162,40 @@ export function ChangeDetailPage({
     }
   }
 
+  async function handleCancel() {
+    if (!change || cancelling) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      const updated = await cancelChange(change.id);
+      setChange(updated);
+      setConfirmCancel(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo cancelar el cambio");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!change || deleting) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const projectId = change.project_id;
+      await deleteChange(change.id);
+      router.replace(`/pmo/projects/${projectId}/changes?deleted=1`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo borrar el cambio");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
+  // Se puede cancelar mientras no esté implementado ni ya cancelado.
+  const cancellable =
+    change.status !== "implemented" && change.status !== "cancelled";
+
   const statusLabel = CHANGE_STATUS_LABEL[change.status as ChangeStatus] ?? change.status;
   const statusVariant: "info" | "success" | "danger" | "neutral" =
     change.status === "approved"
@@ -174,17 +219,40 @@ export function ChangeDetailPage({
     <div className="mx-auto max-w-5xl space-y-3 p-6">
       <div className="flex items-center justify-between gap-2 px-0">
         <div className="min-w-0 flex-1">{breadcrumb}</div>
-        {editable ? (
+        <div className="flex flex-none items-center gap-2">
+          {editable ? (
+            <Button
+              type="button"
+              variant={editing ? "secondary" : "primary"}
+              size="sm"
+              onClick={() => (editing ? cancelEdit() : startEdit())}
+              disabled={saving}
+            >
+              {editing ? "Editando…" : "Editar"}
+            </Button>
+          ) : null}
+          {cancellable ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setConfirmCancel(true)}
+              disabled={saving}
+            >
+              <Ban className="h-3.5 w-3.5" aria-hidden /> Cancelar
+            </Button>
+          ) : null}
           <Button
             type="button"
-            variant={editing ? "secondary" : "primary"}
+            variant="ghost"
             size="sm"
-            onClick={() => (editing ? cancelEdit() : startEdit())}
+            onClick={() => setConfirmDelete(true)}
             disabled={saving}
+            aria-label="Borrar cambio"
           >
-            {editing ? "Editando…" : "Editar"}
+            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
           </Button>
-        ) : null}
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
@@ -346,6 +414,50 @@ export function ChangeDetailPage({
           registrado.
         </p>
       </DetailCard>
+
+      <Modal
+        open={confirmCancel}
+        onClose={() => !cancelling && setConfirmCancel(false)}
+        title="¿Cancelar cambio?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmCancel(false)} disabled={cancelling}>
+              Volver
+            </Button>
+            <Button variant="danger" onClick={handleCancel} loading={cancelling}>
+              <Ban className="h-3.5 w-3.5" aria-hidden /> Cancelar cambio
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-[var(--color-primary)]">
+          El cambio <strong>{change.folio}</strong> quedará con estado
+          “Cancelado”. Permanece visible para trazabilidad y se invalidan los
+          links de aprobación pendientes.
+        </p>
+      </Modal>
+
+      <Modal
+        open={confirmDelete}
+        onClose={() => !deleting && setConfirmDelete(false)}
+        title="¿Borrar cambio?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+              Volver
+            </Button>
+            <Button variant="danger" onClick={handleDelete} loading={deleting}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-[var(--color-primary)]">
+          ¿Borrar el cambio <strong>{change.folio}</strong>? Se retira de la
+          lista. Si querés conservar la trazabilidad de aprobaciones, usá
+          “Cancelar” en su lugar.
+        </p>
+      </Modal>
     </div>
   );
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   Scale,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 
@@ -14,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +25,8 @@ import { listUsers } from "@/lib/api/admin";
 import {
   addIssueComment,
   addRiskComment,
+  deleteIssue,
+  deleteRisk,
   ISSUE_STATUS_LABEL,
   ISSUE_TYPE_LABEL,
   RISK_STATUS_LABEL,
@@ -140,12 +145,17 @@ export function RaidDetailPage({
   itemId: string;
   breadcrumb: React.ReactNode;
 }) {
+  const router = useRouter();
   const isRisk = raidType === "risk";
   const [risk, setRisk] = useState<Risk | null>(null);
   const [issue, setIssue] = useState<Issue | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ENH-112: borrar el ítem RAID (riesgo o incidente/acción/decisión).
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // ENH-069: edit toggle global con draft transaccional.
   // US-100 fix (rework): el owner reportó que el botón Editar no
@@ -382,6 +392,24 @@ export function RaidDetailPage({
     }
   }
 
+  async function handleDelete() {
+    if (deleting) return;
+    const current = isRisk ? risk : issue;
+    if (!current) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const projectId = current.project_id;
+      if (isRisk) await deleteRisk(current.id);
+      else await deleteIssue(current.id);
+      router.replace(`/pmo/projects/${projectId}/raid?deleted=1`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo borrar el ítem");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
   const fmtDate = (iso: string | null | undefined) => {
     if (!iso) return null;
     if (iso.length === 10) return iso; // YYYY-MM-DD
@@ -398,17 +426,29 @@ export function RaidDetailPage({
       {/* Fila de navegación: breadcrumb + botón Editar global */}
       <div className="flex items-center justify-between gap-2 px-0">
         <div className="min-w-0 flex-1">{breadcrumb}</div>
-        {canEdit ? (
+        <div className="flex flex-none items-center gap-2">
+          {canEdit ? (
+            <Button
+              type="button"
+              variant={editing ? "secondary" : "primary"}
+              size="sm"
+              onClick={() => (editing ? cancelEdit() : startEdit())}
+              disabled={saving}
+            >
+              {editing ? "Editando…" : "Editar"}
+            </Button>
+          ) : null}
           <Button
             type="button"
-            variant={editing ? "secondary" : "primary"}
+            variant="ghost"
             size="sm"
-            onClick={() => (editing ? cancelEdit() : startEdit())}
+            onClick={() => setConfirmDelete(true)}
             disabled={saving}
+            aria-label="Borrar ítem"
           >
-            {editing ? "Editando…" : "Editar"}
+            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
           </Button>
-        ) : null}
+        </div>
       </div>
 
       {/* Header card: bloque superior (icono + ID/tipo/estado/sev + título)
@@ -881,6 +921,27 @@ export function RaidDetailPage({
           </div>
         </div>
       </section>
+
+      <Modal
+        open={confirmDelete}
+        onClose={() => !deleting && setConfirmDelete(false)}
+        title="¿Borrar ítem?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleDelete} loading={deleting}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-[var(--color-primary)]">
+          ¿Borrar <strong>{item.folio}</strong>? Esta acción lo retira de la
+          lista RAID y no se puede deshacer.
+        </p>
+      </Modal>
     </div>
   );
 }

@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Lightbulb } from "lucide-react";
+import { ArrowLeft, Lightbulb, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   LESSON_CATEGORY_LABEL,
+  deleteLesson,
   getLesson,
   updateLesson,
   type Lesson,
@@ -67,6 +70,7 @@ export function LessonDetailPage({
   lessonId: string;
   breadcrumb: React.ReactNode;
 }) {
+  const router = useRouter();
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +79,10 @@ export function LessonDetailPage({
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // ENH-112: borrar la lección.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -168,6 +176,21 @@ export function LessonDetailPage({
     }
   }
 
+  async function handleDelete() {
+    if (!lesson || deleting) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const projectId = lesson.project_id;
+      await deleteLesson(lesson.id);
+      router.replace(`/pmo/projects/${projectId}/lessons?deleted=1`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo borrar la lección");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
   const categoryLabel = lesson.category
     ? LESSON_CATEGORY_LABEL[lesson.category]
     : "—";
@@ -182,15 +205,27 @@ export function LessonDetailPage({
     <div className="mx-auto max-w-5xl space-y-3 p-6">
       <div className="flex items-center justify-between gap-2 px-0">
         <div className="min-w-0 flex-1">{breadcrumb}</div>
-        <Button
-          type="button"
-          variant={editing ? "secondary" : "primary"}
-          size="sm"
-          onClick={() => (editing ? cancelEdit() : startEdit())}
-          disabled={saving}
-        >
-          {editing ? "Editando…" : "Editar"}
-        </Button>
+        <div className="flex flex-none items-center gap-2">
+          <Button
+            type="button"
+            variant={editing ? "secondary" : "primary"}
+            size="sm"
+            onClick={() => (editing ? cancelEdit() : startEdit())}
+            disabled={saving}
+          >
+            {editing ? "Editando…" : "Editar"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfirmDelete(true)}
+            disabled={saving}
+            aria-label="Borrar lección"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+          </Button>
+        </div>
       </div>
 
       {/* Header card + strip */}
@@ -376,6 +411,27 @@ export function LessonDetailPage({
           registrado.
         </p>
       </DetailCard>
+
+      <Modal
+        open={confirmDelete}
+        onClose={() => !deleting && setConfirmDelete(false)}
+        title="¿Borrar lección?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleDelete} loading={deleting}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-[var(--color-primary)]">
+          ¿Borrar la lección <strong>{lesson.folio}</strong>? Esta acción la
+          retira de la lista y no se puede deshacer.
+        </p>
+      </Modal>
     </div>
   );
 }
