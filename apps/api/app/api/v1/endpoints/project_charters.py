@@ -272,6 +272,7 @@ async def download_charter(
     from app.services.charter_generator import (
         DOCX_CONTENT_TYPE,
         _render_charter_docx,
+        resolve_charter_logos,
     )
 
     fmt = (format or "docx").lower()
@@ -296,7 +297,8 @@ async def download_charter(
     safe_q = quote(filename)
 
     if fmt == "docx":
-        data = _render_charter_docx(charter, project)
+        logos = await resolve_charter_logos(db, _tenant(cu), project)
+        data = _render_charter_docx(charter, project, logos)
         return StreamingResponse(
             BytesIO(data),
             media_type=DOCX_CONTENT_TYPE,

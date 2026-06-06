@@ -182,7 +182,7 @@ def _stub_heavy_renderers(monkeypatch, request):
     def _stub_render_pdf(template_name, context):
         return _PDF_STUB_BYTES
 
-    def _stub_render_charter_docx(charter, project):
+    def _stub_render_charter_docx(charter, project, logos=None):
         return _DOCX_STUB_BYTES
 
     # Parchamos los simbolos que los endpoints importan directamente
