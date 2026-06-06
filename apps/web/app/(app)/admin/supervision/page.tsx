@@ -324,10 +324,21 @@ function HealthDot({ health }: { health: string }) {
         : health === "red"
           ? "bg-[var(--color-danger-fg)]"
           : "bg-[var(--color-muted)]";
+  // ENH-110: solo el color, sin la palabra; el estado va en title/aria-label.
+  const label =
+    health === "green"
+      ? "Verde"
+      : health === "yellow"
+        ? "Amarillo"
+        : health === "red"
+          ? "Rojo"
+          : health;
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)]">
-      <span className={cn("h-2 w-2 rounded-full shadow-[inset_0_-1px_2px_oklch(0%_0_0/0.12)]", color)} />
-      {health === "green" ? "Verde" : health === "yellow" ? "Amarillo" : health === "red" ? "Rojo" : health}
-    </span>
+    <span
+      title={label}
+      aria-label={label}
+      role="img"
+      className={cn("inline-block h-2.5 w-2.5 rounded-full shadow-[inset_0_-1px_2px_oklch(0%_0_0/0.12)]", color)}
+    />
   );
 }

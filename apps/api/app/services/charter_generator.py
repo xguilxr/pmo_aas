@@ -45,6 +45,22 @@ DOCX_CONTENT_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
 
+# ENH-110: salud como color, no como palabra. En el .docx la representamos
+# con un círculo "●" coloreado (font color RAG) en vez del texto.
+_RAG_RGB = {
+    "green": RGBColor(0x16, 0xA3, 0x4A),
+    "yellow": RGBColor(0xCA, 0x8A, 0x04),
+    "amber": RGBColor(0xCA, 0x8A, 0x04),
+    "red": RGBColor(0xDC, 0x26, 0x26),
+}
+
+
+class _RagDot:
+    """Marca un valor de tabla que debe renderizarse como ● de color."""
+
+    def __init__(self, status: str | None) -> None:
+        self.status = status
+
 
 def _looks_raster(data: bytes) -> bool:
     """True si los bytes parecen PNG o JPEG (firma mágica)."""
@@ -175,7 +191,14 @@ def _render_charter_docx(
             left.text = label
             for run in left.paragraphs[0].runs:
                 run.bold = True
-            right.text = "" if value is None else str(value)
+            if isinstance(value, _RagDot):
+                # ENH-110: ● coloreado según el estado, sin texto.
+                run = right.paragraphs[0].add_run("●")
+                color = _RAG_RGB.get((value.status or "").lower())
+                if color is not None:
+                    run.font.color.rgb = color
+            else:
+                right.text = "" if value is None else str(value)
 
     section(
         "1. Información general",
@@ -220,7 +243,7 @@ def _render_charter_docx(
         [
             ("Folio", project.folio),
             ("Fase", project.phase),
-            ("Salud", project.health_status),
+            ("Salud", _RagDot(project.health_status)),
             ("Inicio", project.start_date),
             ("Fin", project.end_date),
             ("Presupuesto", project.budget),

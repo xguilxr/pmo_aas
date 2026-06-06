@@ -47,7 +47,8 @@
   <dt>Fase</dt><dd>{{ project.phase or "—" }}</dd>
   <dt>Salud</dt><dd>
     {% set h = project.health_status %}
-    <span class="pill {{ h }}">{{ h or "—" }}</span>
+    {# ENH-110: solo el color, sin la palabra. title= para accesibilidad. #}
+    <span class="dot {{ h or 'gray' }}" title="{{ h or '—' }}"></span>
   </dd>
   <dt>PM</dt><dd>{{ project.pm_name or "—" }}{% if project.pm_email %} &lt;{{ project.pm_email }}&gt;{% endif %}</dd>
   <dt>Sponsor</dt><dd>{{ project.sponsor or "—" }}</dd>

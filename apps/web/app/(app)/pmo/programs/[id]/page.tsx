@@ -65,9 +65,22 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 
 function healthBadge(h: string | null) {
   if (!h) return null;
-  const variant =
-    h === "green" ? "success" : h === "yellow" ? "warning" : "danger";
-  return <Badge variant={variant}>{h}</Badge>;
+  // ENH-110: salud = solo el color (círculo), sin la palabra.
+  const color =
+    h === "green"
+      ? "bg-[var(--color-success-fg)]"
+      : h === "yellow"
+        ? "bg-[var(--color-warning-fg)]"
+        : "bg-[var(--color-danger-fg)]";
+  const label = h === "green" ? "Verde" : h === "yellow" ? "Amarillo" : h === "red" ? "Rojo" : h;
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      role="img"
+      className={`inline-block h-2.5 w-2.5 rounded-full ${color}`}
+    />
+  );
 }
 
 function money(n: number): string {
