@@ -41,7 +41,7 @@ RAID export 4/4 + EP006 20/20. Epics actualizadas: EP006, EP014, EP018.
 La branch está detrás de origin/main (main avanzó con otros merges, sin tocar
 estos archivos) → rebase al armar el PR si CI lo pide.
 
-Próximo libre: US-166, BUG-077, ENH-155.
+Próximo libre: US-166, BUG-078, ENH-159.
 ```
 
 ---
@@ -151,6 +151,34 @@ Próximo libre: US-166, BUG-077, ENH-155.
 
 > Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
 
+- **2026-06-06 (batch feedback owner — MERGED #549 a main 2026-06-07):**
+  branch `claude/owner-feedback-batch`, 5 commits atómicos, sin migraciones.
+  CI verde, tsc/ruff/lint limpios.
+  - **ENH-155** — avance derivado del plan (rollup WBS jerárquico): padre =
+    promedio de avance de hijos recursivo; general = promedio de nivel más
+    alto. Read-side en lista de tareas, resumen de proyectos, detalle,
+    dashboard (KPIs/charts/plan-vs-actual) y reporte de avance; manual como
+    fallback para proyectos sin plan. Helper `compute_wbs_rollup` +
+    `round_half_up` en `plan_metadata.py`.
+  - **ENH-156** — salud/semáforo solo-color (sin "Green"/"Verde"): reporte de
+    avance (`.dot`), charter `.docx` (● coloreado) y 5 vistas read-only del
+    front. No se tocaron los selectores interactivos.
+  - **ENH-157** — logos PMO+cliente en el `.docx` del charter
+    (`resolve_charter_logos`, disco + httpx, solo PNG/JPEG). Complementa
+    ENH-153, que cubrió el header HTML/PDF.
+  - **ENH-158** — borrar/cancelar tickets de RAID/Lecciones/Cambios:
+    soft-delete + audit; Cambios además cancela (status `cancelled`) e
+    invalida los ApprovalToken EP019. Cualquier miembro puede hacerlo.
+  - **BUG-077** — guardar minuta devolvía 422 (título < 2 chars): guard ≥2 +
+    parser del 422 nativo de FastAPI en `lib/api.ts`. Re-aplicado en
+    `minutes/new/page.tsx` tras el merge (el llenado manual se movió ahí).
+  ⚠️ **Nota de IDs:** los commits aterrizaron etiquetados `ENH-109/110/111/112`
+  y `BUG-062` — se eligieron contra una base desactualizada (`9c904a2`,
+  max ENH-108/BUG-061) antes de ver los 196 commits de main, que ya habían
+  consumido esos números (ENH-109/110 = #417/#418, ENH-111/112 = #430/#431,
+  BUG-062 = "click en minuta abre el detail"). Historia ya mergeada → **no se
+  reescribe**; los IDs **canónicos** de este batch son **ENH-155..158 /
+  BUG-077** (los labels de commit quedan como referencia histórica).
 - **2026-06-05 (batch gantt/áreas/reportes/RAID fixes):** branch
   `claude/gantt-areas-fixes`, 9 commits de trabajo, `status:fix-committed`,
   **sin PR aún**. Sesión previa: BUG-073/074/076 #538/539/542 +
