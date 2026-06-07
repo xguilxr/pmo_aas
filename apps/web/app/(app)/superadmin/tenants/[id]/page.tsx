@@ -317,9 +317,22 @@ export default function TenantDetailPage() {
                 </span>,
                 p.name,
                 <Badge key={`${p.id}-phase`}>{p.phase}</Badge>,
-                <span key={`${p.id}-h`} className="text-[12px]">
-                  {p.health_status}
-                </span>,
+                // ENH-110: salud = solo el color (círculo), sin la palabra.
+                <span
+                  key={`${p.id}-h`}
+                  title={p.health_status ?? "—"}
+                  aria-label={p.health_status ?? "—"}
+                  role="img"
+                  className={`inline-block h-2.5 w-2.5 rounded-full ${
+                    p.health_status === "green"
+                      ? "bg-[var(--color-success-fg)]"
+                      : p.health_status === "yellow"
+                        ? "bg-[var(--color-warning-fg)]"
+                        : p.health_status === "red"
+                          ? "bg-[var(--color-danger-fg)]"
+                          : "bg-[var(--color-tertiary)]"
+                  }`}
+                />,
               ])}
               empty="Sin proyectos."
             />

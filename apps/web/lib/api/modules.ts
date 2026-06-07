@@ -193,6 +193,11 @@ export function addIssueComment(id: string, body: { text: string }): Promise<Iss
   return apiFetch<Issue>(`/api/v1/issues/${id}/comments`, { method: "POST", body });
 }
 
+// ENH-112: soft-delete de un incidente/acción/decisión (RAID).
+export function deleteIssue(id: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/issues/${id}`, { method: "DELETE" });
+}
+
 // DEC-007: el tipo 'issue' en backend representa "Incidente" en UI (I de RAID).
 export const ISSUE_TYPE_LABEL: Record<IssueType, string> = {
   action: "Acción",
@@ -209,7 +214,13 @@ export const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
 
 /* ========== CHANGE REQUESTS ========== */
 export type ChangeType = "scope" | "time" | "cost" | "resource";
-export type ChangeStatus = "in_review" | "approved" | "rejected" | "implemented";
+// ENH-112: `cancelled` para el flujo de cancelación de cambios.
+export type ChangeStatus =
+  | "in_review"
+  | "approved"
+  | "rejected"
+  | "implemented"
+  | "cancelled";
 
 export type ChangeRequest = {
   id: string;
@@ -285,6 +296,20 @@ export function rejectChange(id: string, body: { comment: string }): Promise<Cha
   });
 }
 
+// ENH-112: cancela un cambio (status='cancelled'); queda visible para
+// trazabilidad de aprobaciones.
+export function cancelChange(id: string): Promise<ChangeRequest> {
+  return apiFetch<ChangeRequest>(`/api/v1/change-requests/${id}/cancel`, {
+    method: "POST",
+    body: {},
+  });
+}
+
+// ENH-112: soft-delete de un cambio (lo retira de la lista).
+export function deleteChange(id: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/change-requests/${id}`, { method: "DELETE" });
+}
+
 export const CHANGE_TYPE_LABEL: Record<ChangeType, string> = {
   scope: "Alcance",
   time: "Tiempo",
@@ -297,6 +322,7 @@ export const CHANGE_STATUS_LABEL: Record<ChangeStatus, string> = {
   approved: "Aprobado",
   rejected: "Rechazado",
   implemented: "Implementado",
+  cancelled: "Cancelado",
 };
 
 /* ========== DOCUMENTS ========== */
@@ -506,6 +532,11 @@ export type LessonUpdateBody = {
 
 export function updateLesson(lessonId: string, body: LessonUpdateBody): Promise<Lesson> {
   return apiFetch<Lesson>(`/api/v1/lessons/${lessonId}`, { method: "PATCH", body });
+}
+
+// ENH-112: soft-delete de una lección aprendida.
+export function deleteLesson(lessonId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/lessons/${lessonId}`, { method: "DELETE" });
 }
 
 export const LESSON_CATEGORY_LABEL: Record<LessonCategory, string> = {

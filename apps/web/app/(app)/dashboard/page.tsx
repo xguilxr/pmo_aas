@@ -790,34 +790,24 @@ function ProgressBar({ value, tone }: { value: number; tone?: "accent" }) {
 }
 
 function HealthDot({ health }: { health: string | null }) {
+  // ENH-110: semáforo de salud = solo el color (círculo), sin la palabra.
+  // El estado se preserva en title/aria-label para accesibilidad.
   if (!health) return <span className="text-xs text-[var(--color-tertiary)]">—</span>;
-  const style =
+  const dotColor =
     health === "green"
-      ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)] border-[var(--color-success-border)]"
+      ? "bg-[var(--color-success-fg)]"
       : health === "yellow"
-        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)] border-[var(--color-warning-border)]"
+        ? "bg-[var(--color-warning-fg)]"
         : health === "red"
-          ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)] border-[var(--color-danger-border)]"
-          : "bg-[var(--color-subtle)] text-[var(--color-secondary)] border-[var(--border-default)]";
+          ? "bg-[var(--color-danger-fg)]"
+          : "bg-[var(--color-tertiary)]";
+  const label = HEALTH_LABEL[health] ?? health;
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs font-medium",
-        style,
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "inline-block h-1.5 w-1.5 rounded-full",
-          health === "green"
-            ? "bg-[var(--color-success-fg)]"
-            : health === "yellow"
-              ? "bg-[var(--color-warning-fg)]"
-              : "bg-[var(--color-danger-fg)]",
-        )}
-      />
-      {HEALTH_LABEL[health] ?? health}
-    </span>
+      title={label}
+      aria-label={label}
+      role="img"
+      className={cn("inline-block h-2.5 w-2.5 rounded-full", dotColor)}
+    />
   );
 }

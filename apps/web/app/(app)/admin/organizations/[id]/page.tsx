@@ -64,9 +64,23 @@ function SectionCard({
 
 function healthBadge(health: string | null) {
   if (!health) return null;
-  const variant =
-    health === "green" ? "success" : health === "yellow" ? "warning" : "danger";
-  return <Badge variant={variant}>{health}</Badge>;
+  // ENH-110: salud = solo el color (círculo), sin la palabra.
+  const color =
+    health === "green"
+      ? "bg-[var(--color-success-fg)]"
+      : health === "yellow"
+        ? "bg-[var(--color-warning-fg)]"
+        : "bg-[var(--color-danger-fg)]";
+  const label =
+    health === "green" ? "Verde" : health === "yellow" ? "Amarillo" : health === "red" ? "Rojo" : health;
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      role="img"
+      className={`inline-block h-2.5 w-2.5 rounded-full ${color}`}
+    />
+  );
 }
 
 export default function OrganizationPanelPage() {

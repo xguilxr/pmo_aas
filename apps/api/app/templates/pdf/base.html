@@ -76,6 +76,17 @@
   .pill.red { background: #fee2e2; color: #991b1b; }
   .pill.gray { background: #f3f4f6; color: #374151; }
 
+  /* ENH-110: indicador de salud solo-color (círculo, sin texto). */
+  .dot {
+    display: inline-block; width: 11px; height: 11px;
+    border-radius: 999px; vertical-align: middle; background: #9ca3af;
+  }
+  .dot.green { background: #16a34a; }
+  .dot.yellow { background: #ca8a04; }
+  .dot.amber { background: #ca8a04; }
+  .dot.red { background: #dc2626; }
+  .dot.gray { background: #9ca3af; }
+
   .muted { color: var(--muted); }
   .small { font-size: 9pt; }
   .right { text-align: right; }

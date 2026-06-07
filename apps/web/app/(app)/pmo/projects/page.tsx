@@ -526,12 +526,14 @@ function HealthDot({
       />
     );
   }
+  // ENH-110: semáforo de salud = solo el color, sin la palabra (la dejamos
+  // en title/aria-label). Antes mostraba el dot + HEALTH_LABEL.
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)]">
-      <span
-        className={cn("h-2 w-2 rounded-full shadow-[inset_0_-1px_2px_oklch(0%_0_0/0.12)]", color)}
-      />
-      {HEALTH_LABEL[health]}
-    </span>
+    <span
+      title={HEALTH_LABEL[health]}
+      aria-label={HEALTH_LABEL[health]}
+      role="img"
+      className={cn("inline-block h-2.5 w-2.5 rounded-full shadow-[inset_0_-1px_2px_oklch(0%_0_0/0.12)]", color)}
+    />
   );
 }

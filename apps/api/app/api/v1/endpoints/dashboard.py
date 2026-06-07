@@ -25,6 +25,8 @@ from app.services.analytics.snapshots import (
     snapshot_tenant,
 )
 from app.services.pdf_renderer import render_pdf
+from app.services.plan_metadata import round_half_up
+from app.services.progress_calculator import effective_progress_map
 from app.services.reports.scoped_status import build_scope_status_context
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -199,18 +201,25 @@ async def kpis(
         budget_stmt = budget_stmt.where(Project.id.in_(role_ids or ["__none__"]))
     budget_total: Decimal | None = (await db.execute(budget_stmt)).scalar_one()
 
-    progress_stmt = select(func.coalesce(func.avg(Project.progress), 0)).where(
+    # ENH-109 — avance promedio derivado del plan (rollup WBS) con fallback
+    # al campo manual para proyectos sin tareas. Se carga el set de proyectos
+    # activos del scope y se promedia su avance efectivo en memoria.
+    active_proj_stmt = select(Project).where(
         Project.tenant_id == tenant_id,
         Project.phase.in_(active_phases),
         Project.deleted_at.is_(None),
     )
     if organization_id:
-        progress_stmt = progress_stmt.where(
+        active_proj_stmt = active_proj_stmt.where(
             Project.organization_id == str(organization_id)
         )
     if role_restricted:
-        progress_stmt = progress_stmt.where(Project.id.in_(role_ids or ["__none__"]))
-    progress_avg = (await db.execute(progress_stmt)).scalar_one()
+        active_proj_stmt = active_proj_stmt.where(
+            Project.id.in_(role_ids or ["__none__"])
+        )
+    active_proj_rows = (await db.execute(active_proj_stmt)).scalars().all()
+    eff = await effective_progress_map(db, list(active_proj_rows))
+    progress_avg = (sum(eff.values()) / len(eff)) if eff else 0
 
     return {
         "active_projects": active_projects,
@@ -250,14 +259,18 @@ async def charts(
     ).all()
     projects_by_phase = dict(rows)
 
-    rows = (
-        await db.execute(
-            select(Project.phase, func.coalesce(func.avg(Project.progress), 0))
-            .where(*scoped_where())
-            .group_by(Project.phase)
-        )
-    ).all()
-    progress_by_phase = {phase: float(avg) for phase, avg in rows}
+    # ENH-109 — avance por fase derivado del plan (rollup WBS) con fallback
+    # al campo manual. Promedio en memoria sobre los proyectos del scope.
+    proj_rows = (
+        await db.execute(select(Project).where(*scoped_where()))
+    ).scalars().all()
+    eff = await effective_progress_map(db, list(proj_rows))
+    phase_values: dict[str, list[float]] = {}
+    for p in proj_rows:
+        phase_values.setdefault(p.phase, []).append(eff[str(p.id)])
+    progress_by_phase = {
+        phase: (sum(vals) / len(vals)) for phase, vals in phase_values.items()
+    }
 
     rows = (
         await db.execute(
@@ -323,6 +336,11 @@ async def plan_vs_actual(
         ).all()
         pm_names = {str(i): n for i, n in rows}
 
+    # ENH-109 — progress_actual derivado del plan (rollup WBS) con fallback
+    # al campo manual. `progress_plan` sigue siendo el avance esperado por
+    # calendario (_plan_progress_for), que es otra cosa.
+    eff = await effective_progress_map(db, list(projects))
+
     out = []
     for p in projects:
         pm_id = str(p.pm_id) if p.pm_id else None
@@ -335,7 +353,7 @@ async def plan_vs_actual(
                 "budget_plan": float(p.budget or 0),
                 "budget_actual": float(p.actual_budget or 0),
                 "progress_plan": _plan_progress_for(p),
-                "progress_actual": int(p.progress or 0),
+                "progress_actual": round_half_up(eff[str(p.id)]),
                 "health": p.health_status,
                 "pm_id": pm_id,
                 "pm_name": pm_names.get(pm_id) if pm_id else None,

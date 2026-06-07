@@ -25,6 +25,8 @@ from app.schemas.project import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.plan_metadata import round_half_up
+from app.services.progress_calculator import plan_rollup_map
 from app.services.project_membership_sync import sync_member_to_participation
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -92,7 +94,18 @@ async def list_projects(
     rows = (
         await db.execute(stmt.order_by(Project.created_at.desc()).offset((page - 1) * limit).limit(limit))
     ).scalars().all()
-    return [ProjectRead.model_validate(p) for p in rows]
+    # ENH-109 — el avance del resumen se deriva del plan (promedio de los
+    # WBS de nivel más alto). El campo manual `Project.progress` queda como
+    # fallback para proyectos sin plan. Un solo SELECT de tasks por la página.
+    plan_map = await plan_rollup_map(db, [p.id for p in rows])
+    out: list[ProjectRead] = []
+    for p in rows:
+        r = ProjectRead.model_validate(p)
+        derived = plan_map.get(str(p.id))
+        if derived is not None:
+            r.progress = round_half_up(derived)
+        out.append(r)
+    return out
 
 
 @router.post("", response_model=ProjectRead, status_code=201)
@@ -318,6 +331,11 @@ async def get_project(
         pass
 
     out = ProjectRead.model_validate(p).model_dump()
+    # ENH-109 — avance derivado del plan también en el detalle.
+    plan_map = await plan_rollup_map(db, [p.id])
+    derived = plan_map.get(str(p.id))
+    if derived is not None:
+        out["progress"] = round_half_up(derived)
     out["members"] = members
     out["module_counts"] = counts
     out["task_kpis"] = task_kpis

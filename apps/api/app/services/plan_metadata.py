@@ -11,6 +11,7 @@ Helpers usados desde el endpoint de tasks:
 """
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable
 from datetime import date
 
@@ -154,3 +155,80 @@ def collect_by_wbs(tasks: Iterable[Task], exclude_id: str | None = None) -> dict
         if t.wbs:
             out[t.wbs] = t
     return out
+
+
+def round_half_up(value: float) -> int:
+    """Redondeo aritmético estándar (0.5 → arriba), distinto del banker's
+    rounding de `round()`. `92.5 → 93`, `61.67 → 62`. Lo usamos para que
+    los % de avance mostrados coincidan con el promedio esperado."""
+    return int(math.floor(value + 0.5))
+
+
+def parent_wbs(wbs: str | None) -> str | None:
+    """`'1.2.3'` → `'1.2'`; `'1'` → None (raíz); sin wbs → None."""
+    if not wbs:
+        return None
+    parts = [p for p in wbs.split(".") if p]
+    if len(parts) <= 1:
+        return None
+    return ".".join(parts[:-1])
+
+
+def compute_wbs_rollup(tasks: Iterable[Task]) -> dict[str, float]:
+    """Rollup jerárquico de avance por WBS.
+
+    El avance efectivo de una tarea CON hijos es el promedio simple del
+    avance efectivo de sus hijos directos (recursivo, nivel por nivel).
+    Una HOJA usa su `progress` almacenado (0..100). La jerarquía se
+    deriva del código WBS (padre de `1.2.3` = `1.2`). Las tareas sin
+    WBS, o cuyo WBS padre no existe en el conjunto, se tratan como hojas
+    raíz.
+
+    Devuelve ``{str(task.id): avance_efectivo}`` para TODAS las tareas.
+    """
+    items = list(tasks)
+    by_wbs: dict[str, Task] = {}
+    for t in items:
+        if t.wbs:
+            by_wbs[t.wbs] = t
+    children: dict[str, list[Task]] = {}
+    for t in items:
+        pw = parent_wbs(t.wbs)
+        if pw and pw in by_wbs:
+            children.setdefault(pw, []).append(t)
+
+    cache: dict[str, float] = {}
+
+    def effective(t: Task) -> float:
+        tid = str(t.id)
+        cached = cache.get(tid)
+        if cached is not None:
+            return cached
+        kids = children.get(t.wbs) if t.wbs else None
+        if kids:
+            value = sum(effective(k) for k in kids) / len(kids)
+        else:
+            value = float(t.progress or 0)
+        cache[tid] = value
+        return value
+
+    return {str(t.id): effective(t) for t in items}
+
+
+def compute_plan_rollup_progress(tasks: Iterable[Task]) -> float | None:
+    """Avance general del proyecto = promedio simple del avance efectivo
+    de los items de nivel más alto (raíces WBS).
+
+    ``None`` si no hay tareas. Reproduce el criterio del owner: el avance
+    general es el promedio de los WBS de nivel más alto, donde cada padre
+    es el promedio recursivo de sus hijos.
+    """
+    items = list(tasks)
+    if not items:
+        return None
+    rollup = compute_wbs_rollup(items)
+    wbs_set = {t.wbs for t in items if t.wbs}
+    roots = [t for t in items if parent_wbs(t.wbs) not in wbs_set]
+    if not roots:
+        return None
+    return sum(rollup[str(t.id)] for t in roots) / len(roots)

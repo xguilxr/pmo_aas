@@ -191,7 +191,9 @@ export default function NewMinutePage() {
       setError("El texto es demasiado corto");
       return;
     }
-    if (!effectiveTitle) {
+    if (effectiveTitle.length < 2) {
+      // BUG-062: el backend exige min_length=2; un título de 1 char debe
+      // abrir el modal (que valida ≥2) en vez de mandar y recibir un 422.
       setPendingSave("generate");
       setTitleModalOpen(true);
       return;
@@ -221,7 +223,9 @@ export default function NewMinutePage() {
   // Modo manual: persiste directo, redirect a detail.
   async function handleGenerateManual(titleOverride?: string) {
     const effectiveTitle = (titleOverride ?? title).trim();
-    if (!effectiveTitle) {
+    if (effectiveTitle.length < 2) {
+      // BUG-062: el backend exige min_length=2; un título de 1 char debe
+      // abrir el modal (que valida ≥2) en vez de mandar y recibir un 422.
       setPendingSave("manual");
       setTitleModalOpen(true);
       return;
@@ -273,7 +277,9 @@ export default function NewMinutePage() {
   // sección antes de pulsar "Guardar".
   async function savePreview(titleOverride?: string) {
     const effectiveTitle = (titleOverride ?? title).trim();
-    if (!effectiveTitle) {
+    if (effectiveTitle.length < 2) {
+      // BUG-062: el backend exige min_length=2; un título de 1 char debe
+      // abrir el modal (que valida ≥2) en vez de mandar y recibir un 422.
       setPendingSave("save");
       setTitleModalOpen(true);
       return;

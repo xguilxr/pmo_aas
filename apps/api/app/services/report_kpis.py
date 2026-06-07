@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
 from app.models.task import Task
+from app.services.plan_metadata import compute_plan_rollup_progress
 
 
 async def compute_kpis(
@@ -56,9 +57,11 @@ async def compute_kpis(
     progress_pct_real: float | None = None
     progress_pct_planned: float | None = None
     if tasks:
-        total = len(tasks)
-        progress_sum = sum((t.progress or 0) for t in tasks)
-        progress_pct_real = round(progress_sum / total, 1)
+        # ENH-109 — avance real = rollup jerárquico por WBS (promedio de los
+        # items de nivel más alto), no el promedio plano de todas las tareas
+        # (que mezclaba padres y hojas y subcontaba).
+        rollup = compute_plan_rollup_progress(tasks)
+        progress_pct_real = round(rollup, 1) if rollup is not None else None
         # planned: % de tareas cuyo end_date <= period_end y deberían
         # estar al 100%. Si ninguna tarea tiene end_date, no se puede.
         scoped = [t for t in tasks if t.end_date is not None]

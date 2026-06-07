@@ -37,8 +37,10 @@ from app.services.plan_metadata import (
     collect_by_wbs,
     compute_duration_days,
     compute_outline_level,
+    compute_wbs_rollup,
     ensure_duration_max_21,
     recompute_successors_for_project,
+    round_half_up,
     validate_predecessors,
     wbs_sort_key,
 )
@@ -284,7 +286,28 @@ async def list_tasks(
     rows_list = sorted(rows, key=lambda t: wbs_sort_key(t.wbs))
     await _attach_owners(db, rows_list)
     await _attach_milestones(db, rows_list)
-    return [TaskRead.model_validate(t) for t in rows_list]
+    # ENH-109 — avance jerárquico: una tarea con hijos muestra el promedio
+    # del avance de sus hijos (recursivo por nivel WBS). Las hojas mantienen
+    # su valor almacenado. Se calcula al serializar (read-side); no muta la
+    # columna `tasks.progress`. Si `area_id` filtra la lista, el rollup se
+    # computa sobre el plan COMPLETO del proyecto para que un padre fuera
+    # del filtro no quede mal promediado.
+    rollup_source = rows_list
+    if area_id is not None:
+        rollup_source = (
+            await db.execute(
+                select(Task).where(Task.project_id == str(project_id))
+            )
+        ).scalars().all()
+    rollup = compute_wbs_rollup(rollup_source)
+    out: list[TaskRead] = []
+    for t in rows_list:
+        r = TaskRead.model_validate(t)
+        eff = rollup.get(str(t.id))
+        if eff is not None:
+            r.progress = round_half_up(eff)
+        out.append(r)
+    return out
 
 
 @router.post("/projects/{project_id}/tasks", response_model=TaskRead, status_code=201)
@@ -1034,7 +1057,7 @@ async def import_confirm(
             await db.flush()
             created[pt.external_id] = t
 
-    # ENH-080: registrar el Plan vivo en `project_artifacts` con el
+    # ENH-109: registrar el Plan vivo en `project_artifacts` con el
     # source_format detectado, para que `GET /plan/download` regenere
     # en el formato origen. UNIQUE(project_id, type='plan') → upsert.
     plan_format = "mpp" if source == "mpp" else ("csv" if source == "csv" else "xlsx")
