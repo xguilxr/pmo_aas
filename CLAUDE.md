@@ -124,6 +124,14 @@ para evitar desincronización.
 - Los commits históricos del repo todavía referencian `US-NEW-###` y
   `US-BUG-###` (prefijos antiguos). No se reescribe historia; buscar
   con `git log --grep=042` funciona vía substring.
+- **Calcular el próximo libre contra `origin/main` ACTUALIZADO**, no contra
+  una base local vieja. Si tu branch arrancó de un `main` desfasado (otros
+  PRs mergeados en paralelo), hacé `git fetch origin main` y mirá su
+  `SPRINT.md` antes de elegir IDs. Lección del batch feedback-owner
+  (2026-06-06): se eligieron ENH-109..112/BUG-062 contra una base con 196
+  commits sin mergear; esos números ya estaban tomados y quedaron duplicados.
+  Los IDs canónicos de ese batch son **ENH-155..158 / BUG-077** (ver
+  `SPRINT.md` → Notas).
 
 ---
 
