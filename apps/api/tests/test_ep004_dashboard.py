@@ -235,7 +235,8 @@ async def test_us015_admin_sees_all(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us015_pm_sees_only_assigned_projects(client, db_session):
-    """Project Manager ve solo proyectos donde es pm_id o member."""
+    """Project Manager ve solo proyectos con UserScopeAssignment explícito."""
+    from app.models.user_scope_assignment import UserScopeAssignment
 
     t, _admin_auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)
@@ -246,8 +247,11 @@ async def test_us015_pm_sees_only_assigned_projects(client, db_session):
         email="pm@acme.example.com", password="Str0ng-Pm-1!",
         roles=[pm_role],
     )
-    # Asignar al PM sólo al primer proyecto (phase=planning → activo)
-    projects[0].pm_id = str(pm_user.id)
+    # Asignar al PM sólo al primer proyecto vía scope assignment
+    db_session.add(UserScopeAssignment(
+        tenant_id=t.id, user_id=pm_user.id,
+        scope_type="project", scope_id=str(projects[0].id),
+    ))
     await db_session.commit()
 
     auth = await login(client, "pmuser", "Str0ng-Pm-1!")
@@ -261,8 +265,8 @@ async def test_us015_pm_sees_only_assigned_projects(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us015_pm_sees_member_projects(client, db_session):
-    """Project Manager también ve proyectos donde es miembro, no sólo pm_id."""
-    from app.models.project_member import ProjectMember
+    """Project Manager ve proyectos con UserScopeAssignment explícito."""
+    from app.models.user_scope_assignment import UserScopeAssignment
 
     t, _admin_auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)
@@ -273,14 +277,11 @@ async def test_us015_pm_sees_member_projects(client, db_session):
         email="mem1@acme.example.com", password="Str0ng-M1-1!",
         roles=[pm_role],
     )
-    # Sólo como miembro del segundo proyecto (no pm)
-    db_session.add(
-        ProjectMember(
-            project_id=projects[1].id,
-            user_id=str(pm_user.id),
-            role_in_project="team",
-        )
-    )
+    # Asignar al PM el segundo proyecto vía scope assignment
+    db_session.add(UserScopeAssignment(
+        tenant_id=t.id, user_id=pm_user.id,
+        scope_type="project", scope_id=str(projects[1].id),
+    ))
     await db_session.commit()
     auth = await login(client, "member1", "Str0ng-M1-1!")
 
@@ -310,6 +311,8 @@ async def test_us015_pm_without_projects_sees_zero(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us015_charts_respect_role(client, db_session):
+    from app.models.user_scope_assignment import UserScopeAssignment
+
     t, _admin_auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)
 
@@ -319,7 +322,10 @@ async def test_us015_charts_respect_role(client, db_session):
         email="cpm@acme.example.com", password="Str0ng-Cpm-1!",
         roles=[pm_role],
     )
-    projects[0].pm_id = str(pm_user.id)
+    db_session.add(UserScopeAssignment(
+        tenant_id=t.id, user_id=pm_user.id,
+        scope_type="project", scope_id=str(projects[0].id),
+    ))
     await db_session.commit()
 
     auth = await login(client, "cpm", "Str0ng-Cpm-1!")
@@ -331,6 +337,8 @@ async def test_us015_charts_respect_role(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us015_plan_vs_actual_respects_role(client, db_session):
+    from app.models.user_scope_assignment import UserScopeAssignment
+
     t, _admin_auth, org_id = await _setup(client, db_session)
     projects = await _seed_projects(db_session, str(t.id), org_id)
 
@@ -340,7 +348,10 @@ async def test_us015_plan_vs_actual_respects_role(client, db_session):
         email="pva@acme.example.com", password="Str0ng-Pva-1!",
         roles=[pm_role],
     )
-    projects[0].pm_id = str(pm_user.id)
+    db_session.add(UserScopeAssignment(
+        tenant_id=t.id, user_id=pm_user.id,
+        scope_type="project", scope_id=str(projects[0].id),
+    ))
     await db_session.commit()
 
     auth = await login(client, "pvapm", "Str0ng-Pva-1!")

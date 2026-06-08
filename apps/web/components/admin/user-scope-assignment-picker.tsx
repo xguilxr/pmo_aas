@@ -346,7 +346,7 @@ export function UserScopeAssignmentPicker({
                             </div>
                           )}
 
-                          {progs.data.length === 0 && (!noProgs || noProgs.data.length === 0) && (
+                          {progs.data.length === 0 && (noProgs?.status !== "done" || noProgs.data.length === 0) && (
                             <p className="px-3 py-1.5 text-xs text-[var(--color-tertiary)]">Sin programas ni proyectos</p>
                           )}
                         </>

@@ -27,14 +27,17 @@ async def _setup(client, db_session):
         headers=auth["_authz"],
     )
     proj_id = r.json()["id"]
-    return t, auth, proj_id
+    return t, auth, proj_id, org_id
 
 
-async def _area(client, auth, proj_id, name):
+async def _area(client, auth, proj_id, name, org_id: str | None = None):
     """ENH-078: crea área en catálogo tenant + asigna al proyecto."""
+    area_body: dict = {"name": name}
+    if org_id:
+        area_body["organization_id"] = org_id
     r = await client.post(
         "/api/v1/areas",
-        json={"name": name},
+        json=area_body,
         headers=auth["_authz"],
     )
     aid = r.json()["id"]
@@ -49,7 +52,7 @@ async def _area(client, auth, proj_id, name):
 # TC-064.1 — POST /risks sin area_id → 422
 @pytest.mark.asyncio
 async def test_tc064_1_risk_requires_area_id(client, db_session):
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, org_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/risks",
         json={"title": "R sin área", "probability": 3, "impact": 3},
@@ -61,7 +64,7 @@ async def test_tc064_1_risk_requires_area_id(client, db_session):
 # TC-064.1b — POST /issues sin area_id → 422
 @pytest.mark.asyncio
 async def test_tc064_1b_issue_requires_area_id(client, db_session):
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, org_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/issues",
         json={"title": "I sin área", "type": "action"},
@@ -73,8 +76,8 @@ async def test_tc064_1b_issue_requires_area_id(client, db_session):
 # TC-064.2 — POST /risks con area_id válido → 201 + area embebida en Read
 @pytest.mark.asyncio
 async def test_tc064_2_risk_with_area_embeds(client, db_session):
-    _, auth, proj_id = await _setup(client, db_session)
-    area_id = await _area(client, auth, proj_id, "Finanzas")
+    _, auth, proj_id, org_id = await _setup(client, db_session)
+    area_id = await _area(client, auth, proj_id, "Finanzas", org_id)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/risks",
         json={
@@ -92,8 +95,8 @@ async def test_tc064_2_risk_with_area_embeds(client, db_session):
 # TC-035 — BUG-035: POST/GET /risks devuelve `owner` con full_name + email.
 @pytest.mark.asyncio
 async def test_bug035_risk_embeds_owner(client, db_session):
-    _, auth, proj_id = await _setup(client, db_session)
-    area_id = await _area(client, auth, proj_id, "Finanzas")
+    _, auth, proj_id, org_id = await _setup(client, db_session)
+    area_id = await _area(client, auth, proj_id, "Finanzas", org_id)
     me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
     me_id = me.json()["id"]
 
@@ -136,9 +139,9 @@ async def test_tc064_3_list_orders_by_area(client, db_session):
 
     from app.models.modules import Risk
 
-    t, auth, proj_id = await _setup(client, db_session)
-    a_z = await _area(client, auth, proj_id, "Zeta")
-    a_a = await _area(client, auth, proj_id, "Alpha")
+    t, auth, proj_id, org_id = await _setup(client, db_session)
+    a_z = await _area(client, auth, proj_id, "Zeta", org_id)
+    a_a = await _area(client, auth, proj_id, "Alpha", org_id)
     for a, title in [(a_z, "Z-1"), (a_a, "A-1")]:
         await client.post(
             f"/api/v1/projects/{proj_id}/risks",
@@ -175,8 +178,8 @@ async def test_tc064_4_patch_assigns_area(client, db_session):
     from app.models.modules import Risk
     from app.services.folio import next_folio
 
-    t, auth, proj_id = await _setup(client, db_session)
-    area_id = await _area(client, auth, proj_id, "RRHH")
+    t, auth, proj_id, org_id = await _setup(client, db_session)
+    area_id = await _area(client, auth, proj_id, "RRHH", org_id)
     folio = await next_folio(db_session, tenant_id=t.id, prefix="RIS")
     r = Risk(
         tenant_id=str(t.id), project_id=proj_id, folio=folio,
@@ -198,9 +201,9 @@ async def test_tc064_4_patch_assigns_area(client, db_session):
 # TC-064.5 — filtro ?area_id= retorna solo de esa área
 @pytest.mark.asyncio
 async def test_tc064_5_filter_area_id(client, db_session):
-    _, auth, proj_id = await _setup(client, db_session)
-    a1 = await _area(client, auth, proj_id, "A1")
-    a2 = await _area(client, auth, proj_id, "A2")
+    _, auth, proj_id, org_id = await _setup(client, db_session)
+    a1 = await _area(client, auth, proj_id, "A1", org_id)
+    a2 = await _area(client, auth, proj_id, "A2", org_id)
     for a, t in [(a1, "En A1"), (a2, "En A2"), (a1, "Otro A1")]:
         await client.post(
             f"/api/v1/projects/{proj_id}/risks",
@@ -222,7 +225,7 @@ async def test_tc064_5_filter_area_id(client, db_session):
 # TC-064.6 — area_id de otro proyecto → 422
 @pytest.mark.asyncio
 async def test_tc064_6_area_must_belong_to_project(client, db_session):
-    _, auth, proj_id = await _setup(client, db_session)
+    _, auth, proj_id, org_id = await _setup(client, db_session)
     # Crear un segundo proyecto + área ajena.
     r = await client.post(
         "/api/v1/organizations", json={"name": "Org2"}, headers=auth["_authz"]
@@ -237,7 +240,7 @@ async def test_tc064_6_area_must_belong_to_project(client, db_session):
         },
         headers=auth["_authz"],
     )
-    foreign_area = await _area(client, auth, p2.json()["id"], "Foreign")
+    foreign_area = await _area(client, auth, p2.json()["id"], "Foreign", org2)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/risks",
         json={
