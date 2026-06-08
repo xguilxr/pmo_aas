@@ -138,6 +138,34 @@ export function setExcludedOrganizations(
   );
 }
 
+// US-167/169 — Scope assignments para PM users.
+export type ScopeType = "organization" | "program" | "project";
+
+export type ScopeAssignmentItem = {
+  scope_type: ScopeType;
+  scope_id: string;
+};
+
+export type ScopeAssignmentsResponse = {
+  assignments: ScopeAssignmentItem[];
+};
+
+export function getScopeAssignments(userId: string): Promise<ScopeAssignmentsResponse> {
+  return apiFetch<ScopeAssignmentsResponse>(
+    `/api/v1/admin/users/${userId}/scope-assignments`
+  );
+}
+
+export function setScopeAssignments(
+  userId: string,
+  assignments: ScopeAssignmentItem[]
+): Promise<ScopeAssignmentsResponse> {
+  return apiFetch<ScopeAssignmentsResponse>(
+    `/api/v1/admin/users/${userId}/scope-assignments`,
+    { method: "PUT", body: { assignments } }
+  );
+}
+
 export type AdminRole = {
   id: string;
   name: string;

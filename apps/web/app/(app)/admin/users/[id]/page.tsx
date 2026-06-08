@@ -38,6 +38,7 @@ import {
   type RoleType,
 } from "@/lib/api/admin";
 import { HardDeleteButton } from "@/components/hard-delete-button";
+import { UserScopeAssignmentPicker } from "@/components/admin/user-scope-assignment-picker";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -516,6 +517,9 @@ function UserDetail() {
           </Button>
         </div>
       </form>
+
+      {/* US-169 — Asignación de scope para PM / Acceso total para admin y pm_sr */}
+      <UserScopeAssignmentPicker userId={userId} roleType={roleType} />
 
       <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
         <header>
