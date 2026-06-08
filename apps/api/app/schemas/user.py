@@ -47,6 +47,23 @@ class UserRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ScopeAssignmentItem(BaseModel):
+    scope_type: Literal["organization", "program", "project"]
+    scope_id: UUID
+
+    model_config = {"from_attributes": True}
+
+
+class ScopeAssignmentsBody(BaseModel):
+    """Reemplazo batch de asignaciones de visibilidad para un user PM."""
+
+    assignments: list[ScopeAssignmentItem] = []
+
+
+class ScopeAssignmentsRead(BaseModel):
+    assignments: list[ScopeAssignmentItem]
+
+
 class ExcludedOrganizationsBody(BaseModel):
     """Reemplazo batch del set de orgs excluidas para un user."""
 
