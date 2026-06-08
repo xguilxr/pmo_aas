@@ -12,7 +12,8 @@
 Batch "Roles + Visibilidad PM + Catálogo por Org + Nav Sin Programa" (2026-06-08)
 Branch: claude/friendly-bell-EYlVB
 
-US-170 #556 — EN CURSO: Catálogo de áreas por organización.
+Sprint 34 Bloque 1 COMPLETO — todos los issues en status:fix-committed.
+Pendiente PR y verificación del owner.
 ```
 
 ---
@@ -28,7 +29,7 @@ Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 - [x] **US-167 #553** — Modelo `UserScopeAssignment`: asignaciones de visibilidad para PM. `status:fix-committed`
 - [ ] **US-168 #554** — Filtrado de API y sidebar por visibilidad de PM. `status:in-progress`
 - [x] **US-169 #555** — UI: árbol de asignación Org→Prog→Proyecto en admin de usuarios. `status:fix-committed`
-- [ ] **US-170 #556** — Catálogo de áreas/equipos/actores a nivel organización. `status:in-progress`
+- [x] **US-170 #556** — Catálogo de áreas/equipos/actores a nivel organización. `status:fix-committed`
 
 ### Cross-cutting / sin sprint asignado
 - [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`. `status:ready` desde 2026-05-23 pero diferido al cierre del rediseño grande. Owner pasa a ready o reasigna sprint cuando lo prioriza.

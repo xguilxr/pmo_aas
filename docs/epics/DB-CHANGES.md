@@ -382,3 +382,32 @@ tenant se guarda como **data-URL base64 en `tenants.logo_url`** y renderiza
 directo. La columna pasa de `String(500)` a `Text`. El endpoint de serve se
 conserva por retro-compat de logos viejos en disco; las subidas nuevas ya no
 lo usan. Downgrade revierte a `String(500)`.
+
+---
+
+## US-114 — Chat asistente tenant (EP008, 2026-05-28)
+
+### Migración **0084** — `assistant_conversations` + `assistant_messages`
+
+Tablas para el historial persistente del chat IA por tenant/usuario:
+- `assistant_conversations`: id, tenant_id, user_id, title, created_at, updated_at
+- `assistant_messages`: id, conversation_id, role (user/assistant), content, created_at
+
+Índices en `tenant_id`, `user_id`, `conversation_id`.
+
+---
+
+## US-167 — UserScopeAssignment (EP001, 2026-06-08)
+
+### Migración **0085** — `user_scope_assignments`
+
+Tabla de asignaciones de visibilidad positivas para usuarios PM (`role_type='user'`):
+- `id` PK, `tenant_id` FK→tenants CASCADE, `user_id` FK→users CASCADE
+- `scope_type` VARCHAR(16): `'organization'` | `'program'` | `'project'`
+- `scope_id` VARCHAR(36): FK lógico (sin constraintDB) al recurso correspondiente
+- `created_at`, `created_by_user_id` FK→users SET NULL
+
+Unique constraint `(user_id, scope_type, scope_id)`.
+Índices en `tenant_id`, `user_id`, `scope_id`.
+Admin y pm_sr ignoran esta tabla (always-visible).
+Herencia: org → todos sus programas + proyectos; program → proyectos + org contexto; project → proyecto + org + program contexto.
