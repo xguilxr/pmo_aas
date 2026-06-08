@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
+from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.models.organization import Organization
 from app.models.project import Project
@@ -93,6 +94,14 @@ async def list_projects(
         stmt = stmt.join(ProjectMember, ProjectMember.project_id == Project.id).where(
             ProjectMember.user_id == cu.id
         )
+
+    # US-168: PM users see only projects from their scope assignments
+    if not cu.is_admin_equivalent:
+        visibility = await get_user_visibility(cu.user, db)
+        if not visibility.unrestricted:
+            if not visibility.project_ids:
+                return []
+            stmt = stmt.where(Project.id.in_(visibility.project_ids))
 
     rows = (
         await db.execute(stmt.order_by(Project.created_at.desc()).offset((page - 1) * limit).limit(limit))

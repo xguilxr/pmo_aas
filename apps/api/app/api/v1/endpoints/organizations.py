@@ -10,6 +10,7 @@ from app.api.deps import CurrentUser, get_current_user, require_authenticated, r
 from app.api.v1.endpoints.dashboard import scoped_project_ids
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
+from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.models.modules import Risk
 from app.models.organization import BusinessUnit, Department, Organization, Program
@@ -74,6 +75,12 @@ async def list_org_panels(
     """
     tenant_id = _ensure_tenant(cu)
     base = select(Organization).where(Organization.tenant_id == tenant_id)
+    if not cu.is_admin_equivalent:
+        visibility = await get_user_visibility(cu.user, db)
+        if not visibility.unrestricted:
+            if not visibility.org_ids:
+                return []
+            base = base.where(Organization.id.in_(visibility.org_ids))
     if q:
         base = base.where(func.lower(Organization.name).like(f"%{q.lower()}%"))
     if is_active is not None:
@@ -179,6 +186,12 @@ async def list_orgs(
 ):
     tenant_id = _ensure_tenant(cu)
     stmt = select(Organization).where(Organization.tenant_id == tenant_id)
+    if not cu.is_admin_equivalent:
+        visibility = await get_user_visibility(cu.user, db)
+        if not visibility.unrestricted:
+            if not visibility.org_ids:
+                return []
+            stmt = stmt.where(Organization.id.in_(visibility.org_ids))
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(func.lower(Organization.name).like(like))
@@ -279,14 +292,21 @@ async def get_org_panel(
     for d in depts_rows:
         depts_by_bu.setdefault(str(d.business_unit_id), []).append(d)
 
-    programs = (
-        await db.execute(
-            select(Program).where(
-                Program.tenant_id == tenant_id,
-                Program.organization_id == str(org_id),
-            ).order_by(Program.name)
-        )
-    ).scalars().all()
+    # US-168: visibility filter for PM users
+    panel_visibility = None
+    if not cu.is_admin_equivalent:
+        panel_visibility = await get_user_visibility(cu.user, db)
+
+    prog_stmt = select(Program).where(
+        Program.tenant_id == tenant_id,
+        Program.organization_id == str(org_id),
+    )
+    if panel_visibility and not panel_visibility.unrestricted:
+        if not panel_visibility.program_ids:
+            prog_stmt = prog_stmt.where(Program.id.is_(None))  # empty
+        else:
+            prog_stmt = prog_stmt.where(Program.id.in_(panel_visibility.program_ids))
+    programs = (await db.execute(prog_stmt.order_by(Program.name))).scalars().all()
     # Count active projects per program
     prog_ids = [p.id for p in programs]
     prog_proj_counts: dict[str, int] = {}
@@ -305,15 +325,17 @@ async def get_org_panel(
         ).all()
         prog_proj_counts = {str(pid): int(n) for pid, n in rows}
 
-    projects = (
-        await db.execute(
-            select(Project).where(
-                Project.tenant_id == tenant_id,
-                Project.organization_id == str(org_id),
-                Project.deleted_at.is_(None),
-            ).order_by(Project.name)
-        )
-    ).scalars().all()
+    proj_stmt = select(Project).where(
+        Project.tenant_id == tenant_id,
+        Project.organization_id == str(org_id),
+        Project.deleted_at.is_(None),
+    )
+    if panel_visibility and not panel_visibility.unrestricted:
+        if not panel_visibility.project_ids:
+            proj_stmt = proj_stmt.where(Project.id.is_(None))  # empty
+        else:
+            proj_stmt = proj_stmt.where(Project.id.in_(panel_visibility.project_ids))
+    projects = (await db.execute(proj_stmt.order_by(Project.name))).scalars().all()
     pm_ids = {p.pm_id for p in projects if p.pm_id}
     pm_rows = (
         await db.execute(
@@ -476,6 +498,12 @@ async def list_programs(
 ):
     tenant_id = _ensure_tenant(cu)
     stmt = select(Program).where(Program.tenant_id == tenant_id)
+    if not cu.is_admin_equivalent:
+        visibility = await get_user_visibility(cu.user, db)
+        if not visibility.unrestricted:
+            if not visibility.program_ids:
+                return []
+            stmt = stmt.where(Program.id.in_(visibility.program_ids))
     if organization_id:
         stmt = stmt.where(Program.organization_id == str(organization_id))
     if is_active is not None:
@@ -542,15 +570,19 @@ async def program_summary(
         )
     ).scalar_one_or_none()
 
-    projects = (
-        await db.execute(
-            select(Project).where(
-                Project.tenant_id == tenant_id,
-                Project.program_id == str(program_id),
-                Project.deleted_at.is_(None),
-            ).order_by(Project.name)
-        )
-    ).scalars().all()
+    sum_proj_stmt = select(Project).where(
+        Project.tenant_id == tenant_id,
+        Project.program_id == str(program_id),
+        Project.deleted_at.is_(None),
+    )
+    if not cu.is_admin_equivalent:
+        sum_visibility = await get_user_visibility(cu.user, db)
+        if not sum_visibility.unrestricted:
+            if not sum_visibility.project_ids:
+                sum_proj_stmt = sum_proj_stmt.where(Project.id.is_(None))  # empty
+            else:
+                sum_proj_stmt = sum_proj_stmt.where(Project.id.in_(sum_visibility.project_ids))
+    projects = (await db.execute(sum_proj_stmt.order_by(Project.name))).scalars().all()
     pm_ids = {p.pm_id for p in projects if p.pm_id}
     pm_rows = (
         await db.execute(
