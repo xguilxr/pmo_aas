@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import {
   Building2,
   ChevronRight,
+  Folder,
   FolderKanban,
   Layers,
 } from "lucide-react";
@@ -28,10 +29,11 @@ type LoadedRecord<T> = { state: LoadState; items: T[]; error?: string };
 type Maps = {
   programs: Record<string, LoadedRecord<Program>>; // by orgId
   projects: Record<string, LoadedRecord<Project>>; // by programId
+  noProgramProjects: Record<string, LoadedRecord<Project>>; // by orgId
 };
 
 function emptyMaps(): Maps {
-  return { programs: {}, projects: {} };
+  return { programs: {}, projects: {}, noProgramProjects: {} };
 }
 
 function loadExpanded(): Set<string> {
@@ -243,12 +245,37 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
     }
   }, []);
 
+  const ensureNoProgProjects = useCallback(async (orgId: string) => {
+    setMaps((m) => {
+      const cur = m.noProgramProjects[orgId];
+      if (cur && cur.state !== "idle") return m;
+      return {
+        ...m,
+        noProgramProjects: { ...m.noProgramProjects, [orgId]: { state: "loading", items: [] } },
+      };
+    });
+    try {
+      const items = await listProjects({ organization_id: orgId, no_program: true, limit: 100 });
+      setMaps((m) => ({
+        ...m,
+        noProgramProjects: { ...m.noProgramProjects, [orgId]: { state: "loaded", items } },
+      }));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Error";
+      setMaps((m) => ({
+        ...m,
+        noProgramProjects: { ...m.noProgramProjects, [orgId]: { state: "error", items: [], error: msg } },
+      }));
+    }
+  }, []);
+
   useEffect(() => {
     if (orgs.state !== "loaded") return;
     for (const org of orgs.items) {
       const orgKey = `org:${org.id}`;
-      if (expanded.has(orgKey) && !maps.programs[org.id]) {
-        void ensureProgramsByOrg(org.id);
+      if (expanded.has(orgKey)) {
+        if (!maps.programs[org.id]) void ensureProgramsByOrg(org.id);
+        if (!maps.noProgramProjects[org.id]) void ensureNoProgProjects(org.id);
       }
       const programs = maps.programs[org.id]?.items ?? [];
       for (const prog of programs) {
@@ -257,7 +284,7 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
         }
       }
     }
-  }, [expanded, orgs.state, orgs.items, maps, ensureProgramsByOrg, ensureProjects]);
+  }, [expanded, orgs.state, orgs.items, maps, ensureProgramsByOrg, ensureProjects, ensureNoProgProjects]);
 
   const isProjectActive = useMemo(
     () => (id: string) => pathname.startsWith(`/pmo/projects/${id}`),
@@ -312,6 +339,8 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
                 {orgOpen ? (
                   <ProgramsList
                     rec={progRec}
+                    noProgramRec={maps.noProgramProjects[org.id]}
+                    orgId={org.id}
                     depth={2}
                     expanded={expanded}
                     toggle={toggle}
@@ -331,6 +360,8 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
 
 function ProgramsList({
   rec,
+  noProgramRec,
+  orgId,
   depth,
   expanded,
   toggle,
@@ -339,6 +370,8 @@ function ProgramsList({
   onNavigate,
 }: {
   rec: LoadedRecord<Program> | undefined;
+  noProgramRec: LoadedRecord<Project> | undefined;
+  orgId: string;
   depth: number;
   expanded: Set<string>;
   toggle: (id: string) => void;
@@ -346,13 +379,18 @@ function ProgramsList({
   isProjectActive: (id: string) => boolean;
   onNavigate: () => void;
 }) {
+  const hasNoProgProjects =
+    noProgramRec?.state === "loaded" && noProgramRec.items.length > 0;
+  const noProgramKey = `no_prog:${orgId}`;
+  const noProgramOpen = expanded.has(noProgramKey);
+
   if (!rec || rec.state === "loading") {
     return <PlaceholderRow depth={depth} text="Cargando programas…" />;
   }
   if (rec.state === "error") {
     return <PlaceholderRow depth={depth} text={`Error: ${rec.error ?? ""}`} />;
   }
-  if (rec.items.length === 0) {
+  if (rec.items.length === 0 && !hasNoProgProjects) {
     return <PlaceholderRow depth={depth} text="Sin programas" />;
   }
   return (
@@ -407,6 +445,36 @@ function ProgramsList({
           </div>
         );
       })}
+      {hasNoProgProjects ? (
+        <div>
+          <NodeRow
+            depth={depth}
+            icon={<Folder className="h-3.5 w-3.5" aria-hidden />}
+            label="Sin Programa"
+            active={false}
+            hasChildren
+            isOpen={noProgramOpen}
+            onToggle={() => toggle(noProgramKey)}
+            onNavigate={onNavigate}
+          />
+          {noProgramOpen
+            ? noProgramRec!.items.map((p) => (
+                <NodeRow
+                  key={p.id}
+                  depth={depth + 1}
+                  icon={<FolderKanban className="h-3.5 w-3.5" aria-hidden />}
+                  label={p.name}
+                  href={`/pmo/projects/${p.id}`}
+                  active={isProjectActive(p.id)}
+                  hasChildren={false}
+                  isOpen={false}
+                  onToggle={() => undefined}
+                  onNavigate={onNavigate}
+                />
+              ))
+            : null}
+        </div>
+      ) : null}
     </>
   );
 }

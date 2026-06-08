@@ -1,6 +1,12 @@
 import { apiFetch } from "@/lib/api";
 
-export type RoleType = "admin" | "user";
+export type RoleType = "admin" | "pm_sr" | "user";
+
+export const ROLE_TYPE_LABEL: Record<RoleType, string> = {
+  admin: "Admin",
+  pm_sr: "PM Sr",
+  user: "PM",
+};
 
 export type AdminUser = {
   id: string;
@@ -129,6 +135,34 @@ export function setExcludedOrganizations(
   return apiFetch<ExcludedOrgsResponse>(
     `/api/v1/admin/users/${userId}/excluded-organizations`,
     { method: "PUT", body: { organization_ids: organizationIds } }
+  );
+}
+
+// US-167/169 — Scope assignments para PM users.
+export type ScopeType = "organization" | "program" | "project";
+
+export type ScopeAssignmentItem = {
+  scope_type: ScopeType;
+  scope_id: string;
+};
+
+export type ScopeAssignmentsResponse = {
+  assignments: ScopeAssignmentItem[];
+};
+
+export function getScopeAssignments(userId: string): Promise<ScopeAssignmentsResponse> {
+  return apiFetch<ScopeAssignmentsResponse>(
+    `/api/v1/admin/users/${userId}/scope-assignments`
+  );
+}
+
+export function setScopeAssignments(
+  userId: string,
+  assignments: ScopeAssignmentItem[]
+): Promise<ScopeAssignmentsResponse> {
+  return apiFetch<ScopeAssignmentsResponse>(
+    `/api/v1/admin/users/${userId}/scope-assignments`,
+    { method: "PUT", body: { assignments } }
   );
 }
 

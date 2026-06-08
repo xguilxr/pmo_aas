@@ -3,8 +3,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-# US-076 + DEC-024: vocabulario de role_type post-eliminación de viewer.
-RoleTypeIn = Literal["admin", "user"]
+# US-076 + DEC-024 + US-166: vocabulario de role_type.
+# pm_sr = acceso admin completo, múltiples por tenant permitidos.
+RoleTypeIn = Literal["admin", "pm_sr", "user"]
 
 
 class UserCreate(BaseModel):
@@ -44,6 +45,23 @@ class UserRead(BaseModel):
     role_type: str | None = None  # US-076 + DEC-024
 
     model_config = {"from_attributes": True}
+
+
+class ScopeAssignmentItem(BaseModel):
+    scope_type: Literal["organization", "program", "project"]
+    scope_id: UUID
+
+    model_config = {"from_attributes": True}
+
+
+class ScopeAssignmentsBody(BaseModel):
+    """Reemplazo batch de asignaciones de visibilidad para un user PM."""
+
+    assignments: list[ScopeAssignmentItem] = []
+
+
+class ScopeAssignmentsRead(BaseModel):
+    assignments: list[ScopeAssignmentItem]
 
 
 class ExcludedOrganizationsBody(BaseModel):

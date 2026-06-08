@@ -167,7 +167,11 @@ async def test_heatmap_scoped_to_pm_projects(client, db_session):
         db_session, tenant=t, username="pmx", email="pmx@acme.example.com",
         password="Str0ng-Pmx-1!", roles=[pm_role],
     )
-    projects[0].pm_id = str(pm.id)
+    from app.models.user_scope_assignment import UserScopeAssignment
+    db_session.add(UserScopeAssignment(
+        tenant_id=t.id, user_id=pm.id,
+        scope_type="project", scope_id=str(projects[0].id),
+    ))
     await db_session.commit()
 
     pauth = await login(client, "pmx", "Str0ng-Pmx-1!")

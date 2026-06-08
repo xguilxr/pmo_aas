@@ -43,7 +43,14 @@ type TeamModal = { kind: "team"; team: Team | null } | null;
 type RoleModal = { kind: "role"; role: ProjectRole | null } | null;
 type ActiveModal = AreaModal | TeamModal | RoleModal;
 
-export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
+export function AreasAndTeamsPanel({
+  projectId,
+  organizationId,
+}: {
+  projectId?: string;
+  /** US-170: si se pasa, filtra el catálogo a áreas de esta org. */
+  organizationId?: string;
+}) {
   const [areas, setAreas] = useState<Area[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [roles, setRoles] = useState<ProjectRole[]>([]);
@@ -63,7 +70,11 @@ export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
     setError(null);
     try {
       const [a, t, r] = await Promise.all([
-        listAreas(),
+        listAreas(
+          organizationId
+            ? { organization_id: organizationId, include_global: false }
+            : undefined
+        ),
         listTeams(),
         listProjectRoles(),
       ]);
@@ -117,7 +128,8 @@ export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
 
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId]);
 
   async function handleDelete(
     kind: "area" | "team" | "role",
@@ -236,6 +248,7 @@ export function AreasAndTeamsPanel({ projectId }: { projectId?: string }) {
         <AreaModalForm
           area={modal.area}
           projectId={projectId}
+          organizationId={organizationId}
           onClose={() => setModal(null)}
           onSaved={() => {
             setModal(null);
@@ -379,11 +392,14 @@ function Row({
 function AreaModalForm({
   area,
   projectId,
+  organizationId,
   onClose,
   onSaved,
 }: {
   area: Area | null;
   projectId?: string;
+  /** US-170: org a la que se asigna el área nueva. */
+  organizationId?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -415,6 +431,7 @@ function AreaModalForm({
           name: name.trim(),
           description: description.trim() || null,
           is_active: isActive,
+          organization_id: organizationId ?? null,
         });
         // Área creada dentro de un proyecto → se asigna a ese proyecto
         // para que aparezca en Recursos y en el Plan.

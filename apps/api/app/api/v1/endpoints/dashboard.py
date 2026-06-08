@@ -11,12 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden, validation_error
+from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
 from app.models.organization import Organization, Program
 from app.models.project import Project
-from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
 from app.models.user import User
 from app.services.analytics.snapshots import (
@@ -50,48 +50,35 @@ async def scoped_project_ids(
     tenant_id: UUID,
     organization_id: UUID | None = None,
 ) -> list[str] | None:
-    """Devuelve IDs de proyectos visibles al usuario según jerarquía de roles
-    (US-015). `None` significa "sin restricción" (admin-equivalente: ve
-    todo el tenant filtrable por org).
+    """Devuelve IDs de proyectos visibles al usuario (US-168).
 
-    Reglas:
-      - Admin-equivalente (is_admin_equivalent = True, incluye Administrador y
-        Senior PMO via DEC-005): ve todo el tenant. Aplica filtro por `org`
-        si se pasa.
-      - Project Manager / resto de roles: sólo proyectos donde es `pm_id`
-        o está en `project_members`.
+    `None` = sin restricción (admin/pm_sr/superadmin).
+    Lista (puede ser vacía) = sólo esos project_ids para rol PM (user).
+    Visibilidad derivada de UserScopeAssignment con herencia org→prog→proj.
     """
     if cu.is_admin_equivalent:
         return None  # sin restricción adicional
 
-    user_id = str(cu.id)
-    # Proyectos donde es PM asignado
-    pm_stmt = select(Project.id).where(
-        Project.tenant_id == tenant_id,
-        Project.deleted_at.is_(None),
-        Project.pm_id == user_id,
-    )
-    if organization_id:
-        pm_stmt = pm_stmt.where(Project.organization_id == str(organization_id))
-    pm_ids = (await db.execute(pm_stmt)).scalars().all()
+    visibility = await get_user_visibility(cu.user, db)
+    if visibility.unrestricted:
+        return None
 
-    # Proyectos donde es miembro (cualquier rol)
-    mem_stmt = (
-        select(Project.id)
-        .join(ProjectMember, ProjectMember.project_id == Project.id)
-        .where(
-            Project.tenant_id == tenant_id,
-            Project.deleted_at.is_(None),
-            ProjectMember.user_id == user_id,
-        )
-    )
+    ids = visibility.project_ids or set()
     if organization_id:
-        mem_stmt = mem_stmt.where(Project.organization_id == str(organization_id))
-    member_ids = (await db.execute(mem_stmt)).scalars().all()
+        # Intersectar: solo proyectos visibles en la org solicitada
+        org_projs = (
+            await db.execute(
+                select(Project.id).where(
+                    Project.tenant_id == tenant_id,
+                    Project.organization_id == str(organization_id),
+                    Project.deleted_at.is_(None),
+                    Project.id.in_(ids) if ids else Project.id.is_(None),
+                )
+            )
+        ).scalars().all()
+        return [str(i) for i in org_projs]
 
-    combined = {str(i) for i in pm_ids} | {str(i) for i in member_ids}
-    # Devolver lista; vacía = ningún proyecto visible
-    return list(combined)
+    return list(ids)
 
 
 @router.get("/kpis")

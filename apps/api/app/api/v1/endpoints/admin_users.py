@@ -18,11 +18,15 @@ from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
 from app.models.role import Role, UserRole
 from app.models.user import User
+from app.models.user_scope_assignment import UserScopeAssignment
 from app.schemas.hard_delete import HardDeletePreview
 from app.schemas.user import (
     ExcludedOrganizationsBody,
     ExcludedOrganizationsRead,
     PaginatedUsers,
+    ScopeAssignmentItem,
+    ScopeAssignmentsBody,
+    ScopeAssignmentsRead,
     UserCreate,
     UserRead,
     UserResetPasswordResponse,
@@ -489,6 +493,96 @@ async def replace_excluded_organizations(
     await db.commit()
     return ExcludedOrganizationsRead(
         organization_ids=[UUID(x) for x in target_ids]
+    )
+
+
+# =============================================================================
+# US-167 — Scope assignments (visibilidad para rol PM)
+# =============================================================================
+
+
+@router.get(
+    "/{user_id}/scope-assignments", response_model=ScopeAssignmentsRead
+)
+async def list_scope_assignments(
+    user_id: UUID,
+    cu: CurrentUser = Depends(require_capability("users.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retorna las asignaciones de visibilidad del user. Solo relevante
+    para role_type='user' (PM). Admin/pm_sr ven todo por defecto."""
+    u = (
+        await db.execute(select(User).where(User.id == str(user_id)))
+    ).scalar_one_or_none()
+    if u is None:
+        raise not_found("Usuario")
+    _ensure_same_tenant(cu, u.tenant_id)
+    rows = (
+        await db.execute(
+            select(UserScopeAssignment).where(
+                UserScopeAssignment.user_id == str(user_id)
+            )
+        )
+    ).scalars().all()
+    return ScopeAssignmentsRead(
+        assignments=[
+            ScopeAssignmentItem(scope_type=r.scope_type, scope_id=r.scope_id)
+            for r in rows
+        ]
+    )
+
+
+@router.put(
+    "/{user_id}/scope-assignments", response_model=ScopeAssignmentsRead
+)
+async def replace_scope_assignments(
+    user_id: UUID,
+    body: ScopeAssignmentsBody,
+    cu: CurrentUser = Depends(require_capability("users.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reemplaza atómicamente las asignaciones de visibilidad del user.
+    Idempotente: enviar `assignments: []` limpia todas (PM sin visibilidad)."""
+    u = (
+        await db.execute(select(User).where(User.id == str(user_id)))
+    ).scalar_one_or_none()
+    if u is None:
+        raise not_found("Usuario")
+    _ensure_same_tenant(cu, u.tenant_id)
+
+    await db.execute(
+        delete(UserScopeAssignment).where(
+            UserScopeAssignment.user_id == str(user_id)
+        )
+    )
+    seen: set[tuple[str, str]] = set()
+    for item in body.assignments:
+        key = (item.scope_type, str(item.scope_id))
+        if key in seen:
+            continue
+        seen.add(key)
+        db.add(
+            UserScopeAssignment(
+                tenant_id=str(u.tenant_id),
+                user_id=str(user_id),
+                scope_type=item.scope_type,
+                scope_id=str(item.scope_id),
+                created_by_user_id=str(cu.id),
+            )
+        )
+    await write_audit(
+        db,
+        action="user.scope_assignments_set",
+        module="admin.users",
+        user_id=cu.id,
+        tenant_id=u.tenant_id,
+        entity_type="user",
+        entity_id=str(user_id),
+        details={"count": len(seen)},
+    )
+    await db.commit()
+    return ScopeAssignmentsRead(
+        assignments=[ScopeAssignmentItem(scope_type=t, scope_id=s) for t, s in seen]
     )
 
 

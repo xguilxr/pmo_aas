@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-RoleType = Literal["admin", "user"]
+RoleType = Literal["admin", "pm_sr", "user"]
 
 # Set cerrado de capabilities del admin. Cualquier string no listado
 # aquí lanza error al construir `require_capability()` (fail-closed).
@@ -51,12 +51,16 @@ ADMIN_CAPABILITIES: frozenset[str] = frozenset(
     }
 )
 
+# Roles con acceso admin completo. pm_sr = owner funcional del PMO;
+# equivale a admin en capabilities pero sin el constraint de ser único.
+_ADMIN_EQUIVALENT_ROLES = frozenset({"admin", "pm_sr"})
+
 
 def capabilities_for(role_type: RoleType | str | None) -> frozenset[str]:
-    """Devuelve las capabilities del rol. Admin recibe todas, el resto
-    recibe el set vacío. `None`/valor inválido → `set()` (fail-safe).
+    """Devuelve las capabilities del rol. Admin y pm_sr reciben todas;
+    user recibe el set vacío. `None`/valor inválido → `set()` (fail-safe).
     """
-    if role_type == "admin":
+    if role_type in _ADMIN_EQUIVALENT_ROLES:
         return ADMIN_CAPABILITIES
     return frozenset()
 
@@ -157,7 +161,7 @@ def legacy_permissions_shim(role_type: RoleType | str | None) -> list[str]:
     out.add("programs:create")
     out.add("programs:update")
 
-    if role_type == "admin":
+    if role_type in _ADMIN_EQUIVALENT_ROLES:
         out.add("organizations:delete")
         out.add("programs:delete")
         for a in ("read", "create", "update", "delete"):

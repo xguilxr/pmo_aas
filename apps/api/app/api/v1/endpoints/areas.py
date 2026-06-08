@@ -90,6 +90,10 @@ async def create_area(
     name = body.name.strip()
     org_id = str(body.organization_id) if body.organization_id else None
 
+    # US-170: nuevas áreas deben pertenecer a una organización (no globales).
+    if org_id is None:
+        raise validation_error("organization_id es obligatorio para crear un área")
+
     # BUG-061: validar que la org pertenece al tenant si se pasó.
     if org_id is not None:
         from app.models.organization import Organization

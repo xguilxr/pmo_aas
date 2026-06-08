@@ -41,7 +41,7 @@ async def _setup(client, db_session):
     # ENH-078: catálogo tenant + assignment al proyecto.
     ra = await client.post(
         "/api/v1/areas",
-        json={"name": "Default Area"},
+        json={"name": "Default Area", "organization_id": org_id},
         headers=auth["_authz"],
     )
     aid = ra.json()["id"]

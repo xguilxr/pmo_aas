@@ -86,6 +86,7 @@ export type ListProjectsParams = {
   phase?: ProjectPhase[] | ProjectPhase;
   organization_id?: string;
   program_id?: string;
+  no_program?: boolean;
   type?: ProjectType[] | ProjectType;
   health?: ProjectHealth[] | ProjectHealth;
   priority_min?: number;

@@ -38,6 +38,7 @@ import {
   type RoleType,
 } from "@/lib/api/admin";
 import { HardDeleteButton } from "@/components/hard-delete-button";
+import { UserScopeAssignmentPicker } from "@/components/admin/user-scope-assignment-picker";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -440,8 +441,9 @@ function UserDetail() {
             disabled={saving}
             className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
           >
-            <option value="user">User — operación normal del tenant</option>
-            <option value="admin">Admin — metaconfig (5 capabilities adicionales)</option>
+            <option value="user">PM — operador del tenant (visibilidad por asignación)</option>
+            <option value="pm_sr">PM Sr — acceso admin completo al tenant</option>
+            <option value="admin">Admin — metaconfig + acceso admin completo</option>
           </select>
           <p className="mt-1 text-xs text-[var(--color-tertiary)]">
             <Link href="/admin/permissions" className="underline">
@@ -515,6 +517,9 @@ function UserDetail() {
           </Button>
         </div>
       </form>
+
+      {/* US-169 — Asignación de scope para PM / Acceso total para admin y pm_sr */}
+      <UserScopeAssignmentPicker userId={userId} roleType={roleType} />
 
       <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
         <header>

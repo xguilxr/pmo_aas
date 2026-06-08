@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import forbidden, unauthorized
 from app.core.permissions import (
+    _ADMIN_EQUIVALENT_ROLES,
     ADMIN_CAPABILITIES,
     capabilities_for,
     module_action_to_capability,
@@ -66,9 +67,8 @@ class CurrentUser:
 
     @property
     def role_type(self) -> str | None:
-        """US-059 + US-076 — rol fijo ∈ {admin, user}. viewer eliminado
-        por DEC-024 (migración 0028 normaliza cualquier residual a
-        'user'). None solo para users pre-migración aún sin role_type."""
+        """US-059 + US-076 + US-166 — rol fijo ∈ {admin, pm_sr, user}.
+        viewer eliminado por DEC-024. None solo para users pre-migración."""
         return getattr(self.user, "role_type", None)
 
     def has_capability(self, name: str) -> bool:
@@ -108,12 +108,11 @@ class CurrentUser:
 
     @property
     def is_admin_equivalent(self) -> bool:
-        """True si el user tiene role_type admin o es superadmin.
-        Post-DEC-024 ya no depende de roles legacy ni de strings
-        `admin.*` en el JSON permissions."""
+        """True si el user tiene acceso admin completo (admin, pm_sr, o superadmin).
+        US-166: pm_sr equivale a admin en capabilities."""
         if self.is_superadmin:
             return True
-        return self.role_type == "admin"
+        return self.role_type in _ADMIN_EQUIVALENT_ROLES
 
     @property
     def roles(self) -> list[str]:
@@ -122,7 +121,7 @@ class CurrentUser:
         propagar el claim al access_token. Borrar en US-081."""
         if self.is_superadmin:
             return ["superadmin"]
-        if self.role_type == "admin":
+        if self.role_type in _ADMIN_EQUIVALENT_ROLES:
             return ["Administrador"]
         return []
 

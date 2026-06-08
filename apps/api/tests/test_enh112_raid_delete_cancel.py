@@ -25,7 +25,7 @@ async def _setup(client, db_session):
         "organization_id": org_id, "pm_id": pm_id,
     }, headers=auth["_authz"])
     proj_id = r.json()["id"]
-    ra = await client.post("/api/v1/areas", json={"name": "Default Area"}, headers=auth["_authz"])
+    ra = await client.post("/api/v1/areas", json={"name": "Default Area", "organization_id": org_id}, headers=auth["_authz"])
     area_id = ra.json()["id"]
     await client.put(
         f"/api/v1/admin/areas/{area_id}/assignments",
