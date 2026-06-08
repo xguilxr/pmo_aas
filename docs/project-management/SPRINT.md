@@ -9,47 +9,33 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "gantt/áreas/reportes/RAID fixes" (2026-06-05) en branch
-claude/gantt-areas-fixes. status:fix-committed, esperando PR + MERGE + QA
-del owner. SIN PR creado aún. 9 commits de trabajo (6 sesión previa +
-3 esta sesión); ENH-149 no tuvo commit (ya estaba implementado).
+Batch "Roles + Visibilidad PM + Catálogo por Org + Nav Sin Programa" (2026-06-08)
+Branch: claude/friendly-bell-EYlVB
 
-Sesión previa (2026-06-05):
-- BUG-073 #538 (593cb48) — minuta: coerciona summary dict/list a str.
-- BUG-074 #539 (7f7c272) — sweep status 'done'→'completed' en servicios de
-  reporte. Causa raíz de "completadas vencidas" y "avance 0%".
-- ENH-150 #540 (c53edf2) — status de tarea en ES + color leve en reportes
-  (status_display.py + filtros Jinja).
-- ENH-151 #541 (8b7f28f) — Reporte de Avance: fusión secciones + presupuesto
-  condicional.
-- BUG-076 #542 (1461c51) — áreas project-scoped: toggle Asignar/Quitar.
-- ENH-153 #543 (a71e395) — logos PMO+cliente en header del Project Charter.
-
-Esta sesión (2026-06-05):
-- ENH-149 #544 (sin código) — Plan: editar end_date. Ya estaba implementado
-  end-to-end (input modal + PATCH + cierre de BUG-074); documentado + verificado.
-- BUG-075 #545 (aa5708c) — RAID: estado editable in-place (Select por tipo;
-  backend ya aceptaba status). Frontend-only.
-- ENH-154 #546 (02dd08a) — Seguimiento: sección "Acciones" (toda acción abierta)
-  separada de los buckets de Actividades; rescata acciones sin fecha.
-- ENH-152 #547 (482566f) — Export RAID: XLSX único 4 hojas ES (Riesgos/Acciones/
-  Incidencias/Decisiones), nombres resueltos, filename RAID-[Nombre].xlsx, mismo
-  archivo para botón /raid y Documentos.
-
-Sin migraciones nuevas. tsc verde · ruff limpio · pytest seguimiento 12/12 +
-RAID export 4/4 + EP006 20/20. Epics actualizadas: EP006, EP014, EP018.
-La branch está detrás de origin/main (main avanzó con otros merges, sin tocar
-estos archivos) → rebase al armar el PR si CI lo pide.
-
-Próximo libre: US-166, BUG-078, ENH-159.
+ENH-159 #551 — EN CURSO: Nav sidebar proyectos sin programa.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
 
+### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
+
+Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
+
+- [x] **ENH-159 #551** — Nav sidebar: proyectos sin programa bajo "Sin Programa". `status:in-progress`
+- [ ] **US-166 #552** — Rol `pm_sr`: nuevo role_type con acceso admin completo. `status:triage`
+- [ ] **US-167 #553** — Modelo `UserScopeAssignment`: asignaciones de visibilidad para PM. `status:triage`
+- [ ] **US-168 #554** — Filtrado de API y sidebar por visibilidad de PM. `status:triage`
+- [ ] **US-169 #555** — UI: árbol de asignación Org→Prog→Proyecto en admin de usuarios. `status:triage`
+- [ ] **US-170 #556** — Catálogo de áreas/equipos/actores a nivel organización. `status:triage`
+
 ### Cross-cutting / sin sprint asignado
 - [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`. `status:ready` desde 2026-05-23 pero diferido al cierre del rediseño grande. Owner pasa a ready o reasigna sprint cuando lo prioriza.
+
+### Batch previo pendiente de PR
+- `claude/gantt-areas-fixes` — `status:fix-committed`. Owner crea PR manualmente:
+  ENH-149 #544, BUG-075 #545, ENH-154 #546, ENH-152 #547.
 
 ---
 
@@ -151,6 +137,9 @@ Próximo libre: US-166, BUG-078, ENH-159.
 
 > Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
 
+- **2026-06-08 (batch Roles+Visibilidad+Recursos — branch claude/friendly-bell-EYlVB):**
+  6 issues creados: ENH-159 #551, US-166 #552, US-167 #553, US-168 #554, US-169 #555, US-170 #556.
+  Próximo libre: US-171, BUG-078, ENH-160.
 - **2026-06-06 (batch feedback owner — MERGED #549 a main 2026-06-07):**
   branch `claude/owner-feedback-batch`, 5 commits atómicos, sin migraciones.
   CI verde, tsc/ruff/lint limpios.

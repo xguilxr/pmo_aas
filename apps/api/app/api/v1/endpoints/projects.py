@@ -50,6 +50,7 @@ async def list_projects(
     phase: list[str] | None = Query(default=None),
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
+    no_program: bool = Query(default=False),
     type: list[str] | None = Query(default=None),
     health: list[str] | None = Query(default=None),
     priority_min: int | None = Query(default=None, ge=1, le=5),
@@ -69,6 +70,8 @@ async def list_projects(
         stmt = stmt.where(Project.organization_id == str(organization_id))
     if program_id:
         stmt = stmt.where(Project.program_id == str(program_id))
+    if no_program:
+        stmt = stmt.where(Project.program_id.is_(None))
     if type:
         stmt = stmt.where(Project.type.in_(type))
     if health:
