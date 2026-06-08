@@ -23,8 +23,8 @@ ENH-159 #551 — EN CURSO: Nav sidebar proyectos sin programa.
 
 Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 
-- [x] **ENH-159 #551** — Nav sidebar: proyectos sin programa bajo "Sin Programa". `status:in-progress`
-- [ ] **US-166 #552** — Rol `pm_sr`: nuevo role_type con acceso admin completo. `status:triage`
+- [x] **ENH-159 #551** — Nav sidebar: proyectos sin programa bajo "Sin Programa". `status:fix-committed`
+- [x] **US-166 #552** — Rol `pm_sr`: nuevo role_type con acceso admin completo. `status:in-progress`
 - [ ] **US-167 #553** — Modelo `UserScopeAssignment`: asignaciones de visibilidad para PM. `status:triage`
 - [ ] **US-168 #554** — Filtrado de API y sidebar por visibilidad de PM. `status:triage`
 - [ ] **US-169 #555** — UI: árbol de asignación Org→Prog→Proyecto en admin de usuarios. `status:triage`

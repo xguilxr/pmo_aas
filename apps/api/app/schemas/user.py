@@ -3,8 +3,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-# US-076 + DEC-024: vocabulario de role_type post-eliminación de viewer.
-RoleTypeIn = Literal["admin", "user"]
+# US-076 + DEC-024 + US-166: vocabulario de role_type.
+# pm_sr = acceso admin completo, múltiples por tenant permitidos.
+RoleTypeIn = Literal["admin", "pm_sr", "user"]
 
 
 class UserCreate(BaseModel):

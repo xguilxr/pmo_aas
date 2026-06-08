@@ -1,6 +1,12 @@
 import { apiFetch } from "@/lib/api";
 
-export type RoleType = "admin" | "user";
+export type RoleType = "admin" | "pm_sr" | "user";
+
+export const ROLE_TYPE_LABEL: Record<RoleType, string> = {
+  admin: "Admin",
+  pm_sr: "PM Sr",
+  user: "PM",
+};
 
 export type AdminUser = {
   id: string;

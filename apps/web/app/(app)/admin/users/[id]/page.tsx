@@ -440,8 +440,9 @@ function UserDetail() {
             disabled={saving}
             className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
           >
-            <option value="user">User — operación normal del tenant</option>
-            <option value="admin">Admin — metaconfig (5 capabilities adicionales)</option>
+            <option value="user">PM — operador del tenant (visibilidad por asignación)</option>
+            <option value="pm_sr">PM Sr — acceso admin completo al tenant</option>
+            <option value="admin">Admin — metaconfig + acceso admin completo</option>
           </select>
           <p className="mt-1 text-xs text-[var(--color-tertiary)]">
             <Link href="/admin/permissions" className="underline">

@@ -15,6 +15,7 @@ import { ApiError } from "@/lib/api";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import {
+  ROLE_TYPE_LABEL,
   listRoles,
   listUsers,
   type AdminRole,
@@ -219,15 +220,9 @@ export default function UsersListPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {u.roles.length ? (
-                        <div className="flex flex-wrap gap-1">
-                          {u.roles.map((r) => (
-                            <Badge key={r}>{r}</Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-[var(--color-tertiary)]">Sin rol</span>
-                      )}
+                      <Badge>
+                        {u.role_type ? ROLE_TYPE_LABEL[u.role_type as keyof typeof ROLE_TYPE_LABEL] ?? u.role_type : "PM"}
+                      </Badge>
                     </td>
                     <td className="px-4 py-3">
                       {u.is_active ? (
