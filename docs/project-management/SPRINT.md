@@ -33,6 +33,7 @@ Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 
 ### Cross-cutting / sin sprint asignado
 - [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`. `status:ready` desde 2026-05-23 pero diferido al cierre del rediseño grande. Owner pasa a ready o reasigna sprint cuando lo prioriza.
+- [x] **ENH-160 #558** — Inactividad: bloqueo con blur + re-login (en vez de logout duro). `status:fix-committed` · branch `claude/nice-thompson-omcizv` (ejecución directa por chat del owner 2026-06-25). Pendiente PR + verificación.
 
 ### Batch previo pendiente de PR
 - `claude/gantt-areas-fixes` — `status:fix-committed`. Owner crea PR manualmente:
@@ -137,6 +138,11 @@ Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 ## Notas y cambios recientes
 
 > Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
+
+- **2026-06-25 (ENH-160 #558 — branch claude/nice-thompson-omcizv):** inactividad
+  pasa de logout duro a bloqueo con blur + overlay de re-login (no se pierde
+  progreso). Commit `0b6811c`. tsc + next build verdes. Epic EP001 actualizado.
+  `status:fix-committed`, sin PR aún. Próximo libre: US-171, BUG-078, ENH-161.
 
 - **2026-06-08 (batch Roles+Visibilidad+Recursos — branch claude/friendly-bell-EYlVB):**
   6 issues creados: ENH-159 #551, US-166 #552, US-167 #553, US-168 #554, US-169 #555, US-170 #556.
