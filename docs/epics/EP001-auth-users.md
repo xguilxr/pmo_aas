@@ -296,6 +296,49 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 ---
 
+### Bloqueo por inactividad (ENH-160)
+
+**Como** usuario autenticado
+**Quiero** que tras un período de inactividad la app se bloquee y me pida
+re-iniciar sesión, en vez de cerrarme la sesión y mandarme a `/login`
+**Para** no perder el contexto ni el progreso en el que estaba trabajando.
+
+**Comportamiento:**
+- Tras **15 min sin actividad** (`mousedown`, `keydown`, `scroll`,
+  `touchstart`) en cualquier ruta autenticada, la app entra en estado
+  **bloqueado**.
+- El contenido autenticado se muestra con **blur** y queda no interactivo
+  (`pointer-events: none` + `inert`), y se monta un overlay **no descartable**
+  (sin `Esc`, sin click-fuera, sin botón de cierre) que pide re-autenticar.
+- El overlay **pre-rellena** la cuenta (email/username) de la sesión actual en
+  modo solo-lectura; el usuario solo ingresa su **contraseña**.
+- Al re-autenticar correctamente, el overlay se cierra y el usuario continúa
+  en **la misma ruta y con el mismo estado en memoria** — no hay redirect ni
+  reload, así que no se pierde progreso (p. ej. formularios sin guardar).
+- El **tenant activo** se preserva a través del re-login: si el contexto tenía
+  un tenant distinto al default del usuario y sigue siendo válido, se restaura.
+- Escape hatch: botón **"Cerrar sesión"** dentro del overlay que invoca
+  `POST /api/v1/auth/logout`, limpia `localStorage` y redirige a `/login`.
+- Mientras está bloqueado, la actividad del usuario **no** re-arma el timer; el
+  desbloqueo es exclusivamente vía re-login. Tras desbloquear, el timer de 15
+  min se re-arma.
+
+**Implementación:** `apps/web/hooks/use-inactivity-lock.ts` (timer + estado
+`locked`) + `apps/web/components/inactivity-lock.tsx` (blur + overlay de
+re-login), cableado en `components/require-auth.tsx`. Reemplaza al anterior
+`use-inactivity-logout.ts` (logout duro + redirect).
+
+**Test Cases:**
+- `TC-027` (E2E) — Tras 15 min idle, el contenido se ve con blur y aparece el
+  overlay de re-login (no hay redirect a `/login`).
+- `TC-028` (E2E) — Re-login correcto cierra el overlay sin cambiar de ruta ni
+  recargar.
+- `TC-029` (manual) — El tenant activo se conserva tras el re-login.
+
+_Actualizado 2026-06-25 (ENH-160)._
+
+---
+
 ## Notas técnicas
 
 ### Modelos de BD involucrados
