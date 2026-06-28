@@ -47,6 +47,7 @@ import {
   type Task,
   type TaskCriticality,
   type TaskStatus,
+  type TaskUpdateBody,
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
 
@@ -463,6 +464,7 @@ function AreaGroupedList({
   onDelete,
   onEdit,
   colVis,
+  onInlineUpdate,
 }: {
   tasks: Task[];
   areas: ProjectArea[];
@@ -470,6 +472,7 @@ function AreaGroupedList({
   onDelete?: (t: Task) => void;
   onEdit?: (t: Task) => void;
   colVis: ColVis;
+  onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
 }) {
   const grouped = useMemo(() => {
     const byArea = new Map<string, Task[]>();
@@ -521,6 +524,7 @@ function AreaGroupedList({
             onEdit={onEdit}
             colVis={colVis}
             areas={areas}
+            onInlineUpdate={onInlineUpdate}
           />
         </div>
       ))}
@@ -537,10 +541,61 @@ function AreaGroupedList({
             onEdit={onEdit}
             colVis={colVis}
             areas={areas}
+            onInlineUpdate={onInlineUpdate}
           />
         </div>
       ) : null}
     </div>
+  );
+}
+
+// US-173: celda de Avance editable con doble clic → input numérico.
+function InlineProgressCell({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (n: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        className="cursor-pointer tabular-nums hover:underline"
+        title="Doble clic para editar el avance"
+        onDoubleClick={() => setEditing(true)}
+      >
+        {value}%
+      </span>
+    );
+  }
+  const commit = () => {
+    setEditing(false);
+    const n = Math.max(0, Math.min(100, Math.round(Number(draft) || 0)));
+    if (n !== value) onCommit(n);
+  };
+  return (
+    <input
+      type="number"
+      min={0}
+      max={100}
+      autoFocus
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") {
+          setDraft(String(value));
+          setEditing(false);
+        }
+      }}
+      className="w-16 rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-1 py-0.5 text-xs tabular-nums"
+    />
   );
 }
 
@@ -554,12 +609,16 @@ function TaskList({
   onToggleCollapse,
   colVis = DEFAULT_COL_VIS,
   areas = [],
+  onInlineUpdate,
 }: {
   tasks: Task[];
   loading: boolean;
   onDelete?: (t: Task) => void;
   // US-095: abre modal de edición pre-poblado.
   onEdit?: (t: Task) => void;
+  // US-173: edición inline desde la celda (área/fechas/avance/estado/
+  // criticidad/hito) sin abrir el modal.
+  onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
   // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
   // y permite colapsar nodos padre.
   groupByWbs?: boolean;
@@ -721,10 +780,25 @@ function TaskList({
                   </span>
                 </div>
               </td>
+              {/* US-173: Área responsable editable inline (dropdown). */}
               <td className="px-3 py-2 text-xs">
-                {/* US-098 fix: muestra Área responsable. El owner queda
-                    visible en el form de edición. */}
-                {t.area_id && areaById.has(t.area_id) ? (
+                {onInlineUpdate ? (
+                  <select
+                    value={t.area_id ?? ""}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { area_id: e.target.value || null })
+                    }
+                    title="Área responsable"
+                    className="max-w-[11rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  >
+                    <option value="">— Sin asignar —</option>
+                    {areas.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : t.area_id && areaById.has(t.area_id) ? (
                   <span className="text-[var(--color-secondary)]">
                     {areaById.get(t.area_id)}
                   </span>
@@ -732,8 +806,21 @@ function TaskList({
                   <span className="text-[var(--color-tertiary)]">—</span>
                 )}
               </td>
+              {/* US-173: fechas editables inline (calendario nativo). */}
               <td className="px-3 py-2 text-[var(--color-secondary)]">
-                {fmtDate(t.start_date)}
+                {onInlineUpdate ? (
+                  <input
+                    type="date"
+                    value={t.start_date ?? ""}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { start_date: e.target.value || null })
+                    }
+                    title="Inicio"
+                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  />
+                ) : (
+                  fmtDate(t.start_date)
+                )}
               </td>
               <td
                 className={cn(
@@ -743,7 +830,19 @@ function TaskList({
                     : "text-[var(--color-secondary)]",
                 )}
               >
-                {fmtDate(t.end_date)}
+                {onInlineUpdate ? (
+                  <input
+                    type="date"
+                    value={t.end_date ?? ""}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { end_date: e.target.value || null })
+                    }
+                    title="Fin"
+                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  />
+                ) : (
+                  fmtDate(t.end_date)
+                )}
               </td>
               {colVis.duration ? (
                 <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
@@ -773,14 +872,51 @@ function TaskList({
                   {(t.successors ?? []).join(", ") || "—"}
                 </td>
               ) : null}
+              {/* US-173: Avance editable con doble clic. */}
               <td className="px-3 py-2 text-[var(--color-secondary)] tabular-nums">
-                {t.progress}%
+                {onInlineUpdate ? (
+                  <InlineProgressCell
+                    value={t.progress}
+                    onCommit={(n) => onInlineUpdate(t.id, { progress: n })}
+                  />
+                ) : (
+                  `${t.progress}%`
+                )}
               </td>
+              {/* US-173: Estado editable inline (dropdown). */}
               <td className="px-3 py-2">
-                <StatusBadge status={t.status} />
+                {onInlineUpdate ? (
+                  <select
+                    value={t.status}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { status: e.target.value as TaskStatus })
+                    }
+                    title="Estado"
+                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  >
+                    {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
+                      <option key={k} value={k}>
+                        {TASK_STATUS_LABEL[k]}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <StatusBadge status={t.status} />
+                )}
               </td>
+              {/* US-173: Criticidad como checkmark inline. */}
               <td className="px-3 py-2">
-                {isTaskCritical(t) ? (
+                {onInlineUpdate ? (
+                  <input
+                    type="checkbox"
+                    checked={isTaskCritical(t)}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { is_critical: e.target.checked })
+                    }
+                    title="Marcar crítica"
+                    aria-label={`Crítica: ${t.name}`}
+                  />
+                ) : isTaskCritical(t) ? (
                   <span className="inline-flex items-center rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]">
                     Sí
                   </span>
@@ -788,9 +924,19 @@ function TaskList({
                   <span className="text-[var(--color-tertiary)]">—</span>
                 )}
               </td>
-              {/* ENH-163: columna Hito junto a Criticidad. */}
+              {/* ENH-163 + US-173: Hito como checkmark inline. */}
               <td className="px-3 py-2">
-                {t.is_milestone ? (
+                {onInlineUpdate ? (
+                  <input
+                    type="checkbox"
+                    checked={t.is_milestone}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { is_milestone: e.target.checked })
+                    }
+                    title="Marcar hito"
+                    aria-label={`Hito: ${t.name}`}
+                  />
+                ) : t.is_milestone ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-info-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-info-fg)]">
                     🔷 Hito
                   </span>
@@ -1259,6 +1405,34 @@ function PlanInner() {
     }
   }
 
+  // US-173: aplica un cambio inline a una tarea y refresca estado local.
+  async function handleInlineUpdate(
+    taskId: string,
+    patch: Partial<TaskUpdateBody>,
+  ) {
+    try {
+      const updated = await updateTask(taskId, patch);
+      setTasks((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      // Cambios que afectan el Gantt → refrescar en background.
+      if (
+        "start_date" in patch ||
+        "end_date" in patch ||
+        "status" in patch ||
+        "progress" in patch ||
+        "is_milestone" in patch
+      ) {
+        void getGantt(id)
+          .then(setGantt)
+          .catch(() => {});
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo actualizar la tarea",
+      );
+      void loadTasksAndGantt();
+    }
+  }
+
   useEffect(() => {
     void loadTasksAndGantt();
     // ENH-028: nombre del proyecto para el filename del export. Falla silencioso
@@ -1515,6 +1689,7 @@ function PlanInner() {
             onDelete={handleDeleteTask}
             onEdit={openEditTask}
             colVis={colVis}
+            onInlineUpdate={handleInlineUpdate}
           />
         ) : (
           <TaskList
@@ -1527,6 +1702,7 @@ function PlanInner() {
             onToggleCollapse={toggleCollapsedWbs}
             colVis={colVis}
             areas={areas}
+            onInlineUpdate={handleInlineUpdate}
           />
         )}
       </section>
