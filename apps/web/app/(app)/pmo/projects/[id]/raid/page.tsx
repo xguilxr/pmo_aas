@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Download,
   Eye,
   GitCommit,
@@ -95,6 +96,17 @@ function RaidInner() {
     searchParams.get("view") === "board" ? "board" : "list",
   );
   const [kanbanBusyId, setKanbanBusyId] = useState<string | null>(null);
+  // ENH-171: menú "Exportar ▾" (agrupa export por tipo + 4 hojas).
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportEl, setExportEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!exportOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (exportEl && !exportEl.contains(e.target as Node)) setExportOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [exportOpen, exportEl]);
 
   function setViewAndUrl(v: "list" | "board") {
     setView(v);
@@ -400,27 +412,52 @@ function RaidInner() {
           >
             + {KIND_NEW_LABEL[tab]}
           </button>
-          {/* ENH-168: export individual del tipo activo (XLSX 1 hoja). */}
-          <button
-            type="button"
-            onClick={() => downloadRaid(tab)}
-            disabled={exporting}
-            title={`Exportar sólo ${TABS.find((t) => t.id === tab)?.label ?? "tipo"} (XLSX de 1 hoja)`}
-            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            Exportar {TABS.find((t) => t.id === tab)?.label ?? "tipo"}
-          </button>
-          <button
-            type="button"
-            onClick={() => downloadRaid()}
-            disabled={exporting}
-            title="Exportar los 4 tipos en un solo archivo (4 hojas)"
-            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            {exporting ? "Exportando…" : "Exportar RAID (4 hojas)"}
-          </button>
+          {/* ENH-168 + ENH-171: menú "Exportar ▾" (export por tipo + 4 hojas). */}
+          <div ref={setExportEl} className="relative">
+            <button
+              type="button"
+              onClick={() => setExportOpen((v) => !v)}
+              disabled={exporting}
+              aria-haspopup="menu"
+              aria-expanded={exportOpen}
+              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              {exporting ? "Exportando…" : "Exportar"}
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            {exportOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 z-20 mt-1 w-60 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-1 shadow-[var(--shadow-md)]"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setExportOpen(false);
+                    void downloadRaid(tab);
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  Sólo {TABS.find((t) => t.id === tab)?.label ?? "tipo"} (1 hoja)
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setExportOpen(false);
+                    void downloadRaid();
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  RAID completo (4 hojas)
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -575,12 +612,21 @@ function RaidInner() {
           ))}
         </div>
       ) : view === "board" ? (
-        <RaidKanban
-          columns={boardColumns}
-          items={boardItems}
-          onMove={handleBoardMove}
-          busyId={kanbanBusyId}
-        />
+        <div className="space-y-2">
+          {/* ENH-171: el board muestra todas las fases (ignora el toggle
+              "Mostrar finalizados", que sólo aplica a la vista Lista). */}
+          <p className="text-[11px] text-[var(--color-tertiary)]">
+            El tablero muestra <strong>todas las fases</strong> (incluye
+            finalizados). Arrastra una tarjeta entre columnas para cambiar su
+            estado.
+          </p>
+          <RaidKanban
+            columns={boardColumns}
+            items={boardItems}
+            onMove={handleBoardMove}
+            busyId={kanbanBusyId}
+          />
+        </div>
       ) : tab === "risks" ? (
         <RisksSection
           rows={filteredRisks}
