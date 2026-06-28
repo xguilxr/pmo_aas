@@ -45,8 +45,26 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint35.md`
 (mejoras, docs, styling, aprovechamiento de espacio, deuda/follow-ups).
 
-**Batch Sprint 35 COMPLETO** (14/14 items). Pendiente: PR + verificación del owner.
-Próximo libre tras este batch: US-176, BUG-081, ENH-170.
+**Batch Sprint 35 COMPLETO** (14/14 items). PR #560 abierto, **CI verde** (run #538).
+
+### Follow-ups post-análisis (UIUX-ANALYSIS-Sprint35.md) — branch claude/minutes-plans-upload-error-driwcd
+
+**Fase 1 — quick wins (sin decisión):**
+- [x] **ENH-170** — Ícono Diamond para Hito (consistencia DS). `status:fix-committed` (`bef532e`)
+- [x] **ENH-171** — RAID: menú "Exportar ▾" + hint del Kanban. `status:fix-committed` (`0cf014b`)
+- [x] **ENH-172** — Unificar label "Nota de cierre" en issues RAID. `status:fix-committed` (`a7ee838`)
+
+**Fase 2-3 — pendientes (sin decisión, próximas):**
+- [ ] Edición inline "on-click" + update optimista (Plan y RAID).
+- [ ] A11y del Kanban (teclado / botones ←→).
+
+**Fase 4 — requieren OK del owner (no arrancadas):**
+- [ ] Columna Responsable en listas RAID + resolución Actor en el read.
+- [ ] Severidad inline en riesgos (probability/impact).
+- [ ] `category` para issues (migración).
+- [ ] Auto-WBS columna `position` (migración; el más grande).
+
+Próximo libre tras este batch: US-176, BUG-081, ENH-173.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
 
