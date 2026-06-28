@@ -31,6 +31,25 @@ Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 - [x] **US-169 #555** — UI: árbol de asignación Org→Prog→Proyecto en admin de usuarios. `status:fix-committed`
 - [x] **US-170 #556** — Catálogo de áreas/equipos/actores a nivel organización. `status:fix-committed`
 
+### Hotfix — Error "No se pudo conectar" al subir minutas/planes (branch: claude/minutes-plans-upload-error-driwcd)
+
+Ejecución directa por chat del owner 2026-06-28. Reporte: usuario no podía
+subir minutas/planes ("No se pudo conectar con el servidor"); Railway mostraba
+`sqlalchemy.exc.MultipleResultsFound`. Auditoría (workflow) encontró 5 sitios
+`scalar_one_or_none` sobre cláusulas WHERE no únicas + el enmascaramiento CORS.
+
+- [x] **BUG-078** — `MultipleResultsFound` al subir planes/documentos: endurece
+  5 lookups (`tasks.py` import merge x2, `modules.py` document versioning x2,
+  `_validate_area` JOIN). Commit `2071b93`. `status:fix-committed`.
+- [x] **BUG-079** — los 500 no manejados ahora salen con headers CORS (handler
+  global en `main.py`), así el front muestra el error real en vez de "No se
+  pudo conectar". Commit `7d94012`. `status:fix-committed`.
+- [x] **BUG-080** — el export CSV de auditoría incluye la columna `details`
+  (contexto del job). Commit `ff33937`. `status:fix-committed`.
+
+Verificación: 5 TC nuevos + 83 TC de suites relacionadas verdes · ruff limpio.
+Pendiente PR + verificación del owner.
+
 ### Cross-cutting / sin sprint asignado
 - [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`. `status:ready` desde 2026-05-23 pero diferido al cierre del rediseño grande. Owner pasa a ready o reasigna sprint cuando lo prioriza.
 - [x] **ENH-160 #558** — Inactividad: bloqueo con blur + re-login (en vez de logout duro). `status:fix-committed` · branch `claude/nice-thompson-omcizv` (ejecución directa por chat del owner 2026-06-25). Pendiente PR + verificación.
@@ -138,6 +157,13 @@ Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 ## Notas y cambios recientes
 
 > Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
+
+- **2026-06-28 (hotfix subir minutas/planes — branch claude/minutes-plans-upload-error-driwcd):**
+  BUG-078 (`2071b93`) MultipleResultsFound en subir planes/documentos;
+  BUG-079 (`7d94012`) 500 no manejados sin CORS → "No se pudo conectar";
+  BUG-080 (`ff33937`) export CSV auditoría sin columna `details`. 5 TC nuevos +
+  83 TC relacionados verdes, ruff limpio. `status:fix-committed`, sin PR aún.
+  Próximo libre: US-171, BUG-081, ENH-161.
 
 - **2026-06-25 (ENH-160 #558 — branch claude/nice-thompson-omcizv):** inactividad
   pasa de logout duro a bloqueo con blur + overlay de re-login (no se pierde
