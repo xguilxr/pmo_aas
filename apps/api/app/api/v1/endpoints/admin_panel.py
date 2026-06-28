@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 from datetime import datetime
 from uuid import UUID
 
@@ -560,12 +561,23 @@ async def export_audit_logs(
     ).scalars().all()
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["occurred_at", "action", "module", "user_id", "entity_type", "entity_id", "ip"])
+    # BUG-080: incluye `details` (JSON con el contexto del evento: job_id,
+    # errores, conteos, etc.). Sin esta columna no se podía ver el detalle
+    # del job desde el CSV exportado.
+    w.writerow([
+        "occurred_at", "action", "module", "user_id",
+        "entity_type", "entity_id", "ip", "details",
+    ])
     for r in rows:
+        details = (
+            json.dumps(r.details, ensure_ascii=False, default=str)
+            if r.details else ""
+        )
         w.writerow([
             r.occurred_at.isoformat() if r.occurred_at else "",
             r.action, r.module or "", r.user_id or "",
             r.entity_type or "", r.entity_id or "", r.ip_address or "",
+            details,
         ])
     buf.seek(0)
     return StreamingResponse(
