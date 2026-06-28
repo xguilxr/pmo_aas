@@ -402,7 +402,7 @@ export function RaidEditFields(props:
               />
             </Field>
           </div>
-          <Field label="Resolución">
+          <Field label="Nota de cierre">
             <Textarea
               value={issueResolution}
               onChange={(e) => setIssueResolution(e.target.value)}

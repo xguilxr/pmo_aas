@@ -822,7 +822,7 @@ export function RaidDetailPage({
           {editing && !isRisk ? (
             <div className="mt-3">
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-                Resolución
+                Nota de cierre
               </label>
               <Textarea
                 value={draft.resolution}
@@ -833,7 +833,7 @@ export function RaidDetailPage({
           ) : !isRisk && (issue as Issue).resolution ? (
             <div className="mt-3">
               <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-                Resolución
+                Nota de cierre
               </h3>
               <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
                 {(issue as Issue).resolution}
