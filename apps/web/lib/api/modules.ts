@@ -212,6 +212,25 @@ export const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
   closed: "Cerrada",
 };
 
+// US-174 / ENH-166: orden de fases (columnas Kanban + orden de lista).
+export const RISK_STATUS_ORDER: RiskStatus[] = [
+  "identified",
+  "analyzing",
+  "mitigating",
+  "materialized",
+  "closed",
+];
+export const ISSUE_STATUS_ORDER: IssueStatus[] = [
+  "open",
+  "in_progress",
+  "resolved",
+  "closed",
+];
+// ENH-166: estados finalizados (ocultos por default en las listas; un toggle
+// "Mostrar finalizados" los vuelve a incluir).
+export const RISK_FINAL_STATUSES: RiskStatus[] = ["closed"];
+export const ISSUE_FINAL_STATUSES: IssueStatus[] = ["resolved", "closed"];
+
 /* ========== CHANGE REQUESTS ========== */
 export type ChangeType = "scope" | "time" | "cost" | "resource";
 // ENH-112: `cancelled` para el flujo de cancelación de cambios.

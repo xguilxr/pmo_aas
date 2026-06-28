@@ -14,6 +14,11 @@ import {
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
 import {
+  RaidKanban,
+  type KanbanColumn,
+  type KanbanItem,
+} from "@/components/raid-kanban";
+import {
   KIND_NEW_LABEL,
   RaidCreateModal,
   type RaidKind,
@@ -26,11 +31,17 @@ import { getAccessToken } from "@/lib/auth-storage";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import {
+  ISSUE_FINAL_STATUSES,
   ISSUE_STATUS_LABEL,
+  ISSUE_STATUS_ORDER,
   ISSUE_TYPE_LABEL,
+  RISK_FINAL_STATUSES,
   RISK_STATUS_LABEL,
+  RISK_STATUS_ORDER,
   listIssues,
   listRisks,
+  updateIssue,
+  updateRisk,
   type Issue,
   type IssueStatus,
   type IssueType,
@@ -75,6 +86,22 @@ function RaidInner() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [severityMin, setSeverityMin] = useState<number | "">("");
   const [priorityMin, setPriorityMin] = useState<number | "">("");
+  // ENH-166: por default sólo activos (oculta finalizados). Toggle global.
+  const [includeFinalized, setIncludeFinalized] = useState(false);
+  // ENH-167: filtro por área (id; "" = todas).
+  const [areaFilter, setAreaFilter] = useState<string>("");
+  // US-174: vista Lista vs Kanban (por tab). Persistida en la URL.
+  const [view, setView] = useState<"list" | "board">(
+    searchParams.get("view") === "board" ? "board" : "list",
+  );
+  const [kanbanBusyId, setKanbanBusyId] = useState<string | null>(null);
+
+  function setViewAndUrl(v: "list" | "board") {
+    setView(v);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", v);
+    router.replace(`/pmo/projects/${id}/raid?${params.toString()}`);
+  }
 
   // Reset filtros al cambiar de tab (los valores legales dependen del kind).
   function switchTab(next: Tab) {
@@ -126,37 +153,56 @@ function RaidInner() {
 
   // ENH-026: filtros avanzados aplicados al tab activo.
   const filteredRisks = useMemo(() => {
-    return risks.filter((r) => {
+    const out = risks.filter((r) => {
+      // ENH-166: oculta finalizados salvo toggle.
+      if (!includeFinalized && RISK_FINAL_STATUSES.includes(r.status)) return false;
       if (statusFilter && r.status !== statusFilter) return false;
       if (severityMin !== "" && (r.severity ?? 0) < Number(severityMin))
         return false;
+      if (areaFilter && r.area_id !== areaFilter) return false; // ENH-167
       return true;
     });
-  }, [risks, statusFilter, severityMin]);
+    // ENH-166: orden por fase de estado, luego severidad desc (no alfabético).
+    return out.sort((a, b) => {
+      const pa = RISK_STATUS_ORDER.indexOf(a.status);
+      const pb = RISK_STATUS_ORDER.indexOf(b.status);
+      if (pa !== pb) return pa - pb;
+      return (b.severity ?? 0) - (a.severity ?? 0);
+    });
+  }, [risks, statusFilter, severityMin, includeFinalized, areaFilter]);
 
   function filterIssues(list: Issue[]): Issue[] {
-    return list.filter((it) => {
+    const out = list.filter((it) => {
+      if (!includeFinalized && ISSUE_FINAL_STATUSES.includes(it.status)) return false;
       if (statusFilter && it.status !== statusFilter) return false;
       if (priorityMin !== "" && (it.priority ?? 0) < Number(priorityMin))
         return false;
+      if (areaFilter && it.area_id !== areaFilter) return false; // ENH-167
       return true;
+    });
+    // ENH-166: orden por fase de estado, luego prioridad desc.
+    return out.sort((a, b) => {
+      const pa = ISSUE_STATUS_ORDER.indexOf(a.status);
+      const pb = ISSUE_STATUS_ORDER.indexOf(b.status);
+      if (pa !== pb) return pa - pb;
+      return (b.priority ?? 0) - (a.priority ?? 0);
     });
   }
 
   const filteredActions = useMemo(
     () => filterIssues(actions),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [actions, statusFilter, priorityMin],
+    [actions, statusFilter, priorityMin, includeFinalized, areaFilter],
   );
   const filteredIncidents = useMemo(
     () => filterIssues(incidents),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [incidents, statusFilter, priorityMin],
+    [incidents, statusFilter, priorityMin, includeFinalized, areaFilter],
   );
   const filteredDecisions = useMemo(
     () => filterIssues(decisions),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [decisions, statusFilter, priorityMin],
+    [decisions, statusFilter, priorityMin, includeFinalized, areaFilter],
   );
 
   const counts: Record<Tab, number> = {
@@ -166,13 +212,116 @@ function RaidInner() {
     decisions: decisions.length,
   };
 
+  // ENH-167: áreas presentes en los items cargados (para el filtro de área).
+  const areaOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of risks) if (r.area_id && r.area?.name) m.set(r.area_id, r.area.name);
+    for (const it of issues) if (it.area_id && it.area?.name) m.set(it.area_id, it.area.name);
+    return Array.from(m, ([aid, name]) => ({ id: aid, name })).sort((a, b) =>
+      a.name.localeCompare(b.name, "es"),
+    );
+  }, [risks, issues]);
+
+  // US-174: columnas e items del Kanban para el tab activo. El board muestra
+  // TODAS las fases como columnas (ignora el toggle de finalizados y el filtro
+  // de estado), pero respeta severidad/prioridad y área.
+  const isRiskTab = tab === "risks";
+  const boardColumns: KanbanColumn[] = useMemo(
+    () =>
+      (isRiskTab ? RISK_STATUS_ORDER : ISSUE_STATUS_ORDER).map((s) => ({
+        id: s,
+        label: isRiskTab
+          ? RISK_STATUS_LABEL[s as RiskStatus]
+          : ISSUE_STATUS_LABEL[s as IssueStatus],
+      })),
+    [isRiskTab],
+  );
+  const boardItems: KanbanItem[] = useMemo(() => {
+    if (isRiskTab) {
+      return risks
+        .filter(
+          (r) =>
+            (severityMin === "" || (r.severity ?? 0) >= Number(severityMin)) &&
+            (!areaFilter || r.area_id === areaFilter),
+        )
+        .map((r) => ({
+          id: r.id,
+          status: r.status,
+          folio: r.folio,
+          title: r.title,
+          href: `/pmo/projects/${id}/raid/${r.id}?type=risk`,
+          accent: <SeverityBadge severity={r.severity} />,
+        }));
+    }
+    const src = tab === "actions" ? actions : tab === "incidents" ? incidents : decisions;
+    return src
+      .filter(
+        (it) =>
+          (priorityMin === "" || (it.priority ?? 0) >= Number(priorityMin)) &&
+          (!areaFilter || it.area_id === areaFilter),
+      )
+      .map((it) => ({
+        id: it.id,
+        status: it.status,
+        folio: it.folio,
+        title: it.title,
+        href: `/pmo/projects/${id}/raid/${it.id}?type=${it.type}`,
+        accent: it.priority ? (
+          <span className="rounded bg-[var(--color-subtle)] px-1 text-[10px] font-medium text-[var(--color-secondary)]">
+            P{it.priority}
+          </span>
+        ) : null,
+      }));
+  }, [isRiskTab, risks, actions, incidents, decisions, tab, severityMin, priorityMin, areaFilter, id]);
+
+  async function handleBoardMove(itemId: string, toStatus: string) {
+    setKanbanBusyId(itemId);
+    setError(null);
+    try {
+      if (isRiskTab) {
+        const patch: { status: RiskStatus; closure_note?: string } = {
+          status: toStatus as RiskStatus,
+        };
+        // Backend exige closure_note al cerrar/materializar un riesgo.
+        if (toStatus === "closed" || toStatus === "materialized") {
+          const note = window.prompt(
+            "Nota de cierre (obligatoria para cerrar/materializar un riesgo):",
+            "",
+          );
+          if (note === null || note.trim() === "") {
+            setKanbanBusyId(null);
+            return;
+          }
+          patch.closure_note = note.trim();
+        }
+        const updated = await updateRisk(itemId, patch);
+        setRisks((prev) =>
+          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+        );
+      } else {
+        const updated = await updateIssue(itemId, {
+          status: toStatus as IssueStatus,
+        });
+        setIssues((prev) =>
+          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
+      );
+    } finally {
+      setKanbanBusyId(null);
+    }
+  }
+
   // ENH-152: Export RAID = descarga autenticada del XLSX (4 hojas ES:
   // Riesgos/Acciones/Incidencias/Decisiones) del endpoint /raid/export — el
   // MISMO archivo que el botón del módulo Documentos. El filename
   // ('RAID-[Nombre Proyecto].xlsx') viene en el Content-Disposition.
   const [exporting, setExporting] = useState(false);
 
-  async function downloadRaid() {
+  async function downloadRaid(only?: Tab) {
     if (exporting) return;
     setExporting(true);
     setError(null);
@@ -182,11 +331,16 @@ function RaidInner() {
         Accept: "application/octet-stream",
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`${apiBase()}/api/v1/projects/${id}/raid/export`, {
-        method: "GET",
-        headers,
-        credentials: "include",
-      });
+      // ENH-168: `only` → XLSX de una sola hoja para el tipo actual.
+      const qs = only ? `?only=${only}` : "";
+      const res = await fetch(
+        `${apiBase()}/api/v1/projects/${id}/raid/export${qs}`,
+        {
+          method: "GET",
+          headers,
+          credentials: "include",
+        },
+      );
       if (!res.ok) {
         throw new ApiError(
           res.status,
@@ -246,14 +400,26 @@ function RaidInner() {
           >
             + {KIND_NEW_LABEL[tab]}
           </button>
+          {/* ENH-168: export individual del tipo activo (XLSX 1 hoja). */}
           <button
             type="button"
-            onClick={downloadRaid}
+            onClick={() => downloadRaid(tab)}
             disabled={exporting}
+            title={`Exportar sólo ${TABS.find((t) => t.id === tab)?.label ?? "tipo"} (XLSX de 1 hoja)`}
             className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" aria-hidden />
-            {exporting ? "Exportando…" : "Exportar RAID"}
+            Exportar {TABS.find((t) => t.id === tab)?.label ?? "tipo"}
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadRaid()}
+            disabled={exporting}
+            title="Exportar los 4 tipos en un solo archivo (4 hojas)"
+            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            {exporting ? "Exportando…" : "Exportar RAID (4 hojas)"}
           </button>
         </div>
       </header>
@@ -298,6 +464,26 @@ function RaidInner() {
             </button>
           );
         })}
+      </div>
+
+      {/* US-174: toggle Lista / Kanban (por tab). */}
+      <div className="flex w-fit items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5">
+        {(["list", "board"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setViewAndUrl(v)}
+            aria-pressed={view === v}
+            className={cn(
+              "rounded px-3 py-1 text-xs font-medium",
+              view === v
+                ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+            )}
+          >
+            {v === "list" ? "Lista" : "Kanban"}
+          </button>
+        ))}
       </div>
 
       {/* ENH-026: filtros avanzados (status + severity/priority)
@@ -355,6 +541,31 @@ function RaidInner() {
             <option value="4">P4+ (Baja)</option>
           </select>
         )}
+        {/* ENH-167: filtro por área. */}
+        {areaOptions.length > 0 ? (
+          <select
+            aria-label="Área"
+            value={areaFilter}
+            onChange={(e) => setAreaFilter(e.target.value)}
+            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+          >
+            <option value="">Todas las áreas</option>
+            {areaOptions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        {/* ENH-166: toggle para incluir finalizados (oculto por default). */}
+        <label className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-[var(--color-secondary)]">
+          <input
+            type="checkbox"
+            checked={includeFinalized}
+            onChange={(e) => setIncludeFinalized(e.target.checked)}
+          />
+          Mostrar finalizados
+        </label>
       </div>
 
       {loading ? (
@@ -363,6 +574,13 @@ function RaidInner() {
             <Skeleton key={i} className="h-14 w-full" />
           ))}
         </div>
+      ) : view === "board" ? (
+        <RaidKanban
+          columns={boardColumns}
+          items={boardItems}
+          onMove={handleBoardMove}
+          busyId={kanbanBusyId}
+        />
       ) : tab === "risks" ? (
         <RisksSection
           rows={filteredRisks}
@@ -372,6 +590,7 @@ function RaidInner() {
               prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
             )
           }
+          onStatusChange={handleBoardMove}
         />
       ) : (
         <IssuesSection
@@ -398,6 +617,7 @@ function RaidInner() {
               prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
             )
           }
+          onStatusChange={handleBoardMove}
         />
       )}
 
@@ -523,11 +743,16 @@ function RisksSection({
   rows,
   projectId,
   onRiskUpdate,
+  onStatusChange,
 }: {
   rows: Risk[];
   projectId: string;
   onRiskUpdate: (r: Partial<Risk> & { id: string }) => void;
+  // US-175: cambio de estado inline (reusa el handler de Kanban → maneja la
+  // nota de cierre para riesgos).
+  onStatusChange?: (id: string, status: string) => void;
 }) {
+  void onRiskUpdate;
   const [preview, setPreview] = useState<Risk | null>(null);
   // ENH-061: filtro por celda P×I de la matriz.
   const [cellFilter, setCellFilter] = useState<
@@ -640,8 +865,24 @@ function RisksSection({
                     <td className="px-3 py-2">
                       <SeverityBadge severity={r.severity} />
                     </td>
+                    {/* US-175: estado editable inline. */}
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {RISK_STATUS_LABEL[r.status] ?? r.status}
+                      {onStatusChange ? (
+                        <select
+                          value={r.status}
+                          onChange={(e) => onStatusChange(r.id, e.target.value)}
+                          title="Estado"
+                          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                        >
+                          {(Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map((s) => (
+                            <option key={s} value={s}>
+                              {RISK_STATUS_LABEL[s]}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        (RISK_STATUS_LABEL[r.status] ?? r.status)
+                      )}
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.identified_at ?? "—"}
@@ -695,13 +936,17 @@ function IssuesSection({
   sectionLabel,
   issueType,
   onIssueUpdate,
+  onStatusChange,
 }: {
   rows: Issue[];
   projectId: string;
   sectionLabel: string;
   issueType: IssueType;
   onIssueUpdate: (i: Partial<Issue> & { id: string }) => void;
+  // US-175: cambio de estado inline.
+  onStatusChange?: (id: string, status: string) => void;
 }) {
+  void onIssueUpdate;
   const [preview, setPreview] = useState<Issue | null>(null);
   const { sortedRows, ctrl: issueSortCtrl } = useSortableRows<Issue>(rows);
   void projectId;
@@ -782,8 +1027,24 @@ function IssuesSection({
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   <PriorityBadge priority={it.priority} />
                 </td>
+                {/* US-175: estado editable inline. */}
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.status}
+                  {onStatusChange ? (
+                    <select
+                      value={it.status}
+                      onChange={(e) => onStatusChange(it.id, e.target.value)}
+                      title="Estado"
+                      className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                    >
+                      {(Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map((s) => (
+                        <option key={s} value={s}>
+                          {ISSUE_STATUS_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    (ISSUE_STATUS_LABEL[it.status] ?? it.status)
+                  )}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.reported_at

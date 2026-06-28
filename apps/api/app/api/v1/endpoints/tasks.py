@@ -93,6 +93,8 @@ class TaskCreate(BaseModel):
     parent_id: UUID | None = None
     start_date: date | None = None
     end_date: date | None = None
+    # US-171: fecha de cierre real (editable).
+    closed_at: date | None = None
     duration_days: int | None = None
     progress: int = Field(default=0, ge=0, le=100)
     is_milestone: bool = False
@@ -118,6 +120,8 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    # US-171: PATCH de la fecha de cierre. Ausente = no tocar; None = limpiar.
+    closed_at: date | None = None
     progress: int | None = Field(default=None, ge=0, le=100)
     status: str | None = None
     owner_id: UUID | None = None
@@ -154,6 +158,8 @@ class TaskRead(BaseModel):
     name: str
     start_date: date | None
     end_date: date | None
+    # US-171: fecha de cierre real.
+    closed_at: date | None = None
     duration_days: int | None
     progress: int
     is_milestone: bool
@@ -330,6 +336,10 @@ async def create_task(
     auto_duration = compute_duration_days(body.start_date, body.end_date)
     final_duration = auto_duration if auto_duration is not None else body.duration_days
     ensure_duration_max_21(final_duration)
+    # US-171: al crear ya completada sin fecha de cierre explícita, default = hoy.
+    closed_at_value = body.closed_at
+    if closed_at_value is None and body.status == "completed":
+        closed_at_value = date.today()
     # US-090: predecessors validados contra el set actual de tasks del
     # proyecto + cycle check.
     cleaned_preds: list[str] = []
@@ -345,6 +355,7 @@ async def create_task(
         name=body.name, description=body.description, wbs=body.wbs,
         parent_id=str(body.parent_id) if body.parent_id else None,
         start_date=body.start_date, end_date=body.end_date,
+        closed_at=closed_at_value,
         duration_days=final_duration, progress=body.progress,
         is_milestone=body.is_milestone,
         owner_id=str(body.owner_id) if body.owner_id else None,
@@ -406,6 +417,10 @@ async def update_task(
         aid = data_full["area_id"]
         t.area_id = str(aid) if aid is not None else None
         data.pop("area_id", None)
+    # US-171: PATCH `closed_at` distingue ausente (no tocar) vs None (limpiar).
+    if "closed_at" in data_full:
+        t.closed_at = data_full["closed_at"]
+        data.pop("closed_at", None)
     if "related_milestone_id" in data_full:
         rid = data_full["related_milestone_id"]
         if rid is None:
@@ -434,6 +449,10 @@ async def update_task(
         if auto_d is not None:
             ensure_duration_max_21(auto_d)
             t.duration_days = auto_d
+    # US-171: al completar sin fecha de cierre explícita, default = hoy. Así la
+    # lógica de atraso (closed_at > end_date) tiene un dato con qué comparar.
+    if t.status == "completed" and t.closed_at is None:
+        t.closed_at = date.today()
     # Re-sync successors del proyecto entero (predecessors o wbs pueden haber cambiado).
     await recompute_successors_for_project(db, t.project_id)
     await db.commit()
@@ -468,6 +487,88 @@ async def delete_task(
     from fastapi.responses import Response
 
     return Response(status_code=204)
+
+
+def _natural_wbs_key(wbs: str | None) -> tuple:
+    """Orden jerárquico natural de un WBS: '1.10' va DESPUÉS de '1.2'.
+    Segmentos numéricos se comparan como int; los no numéricos van al final;
+    WBS vacío al final del todo."""
+    if not wbs:
+        return ((2, 0, ""),)
+    parts: list[tuple[int, int, str]] = []
+    for seg in str(wbs).split("."):
+        seg = seg.strip()
+        if seg.isdigit():
+            parts.append((0, int(seg), ""))
+        elif seg:
+            parts.append((1, 0, seg))
+    return tuple(parts) or ((2, 0, ""),)
+
+
+@router.post("/projects/{project_id}/tasks/renumber-wbs")
+async def renumber_wbs(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-172 — renumera el WBS de TODAS las tareas del proyecto de forma
+    jerárquica y ÚNICA (1, 1.1, 1.2, 2, 2.1, ...), preservando el orden
+    visual actual y la profundidad (outline_level / segmentos del WBS).
+    Resuelve WBS duplicados o vacíos. Remapea predecesoras al nuevo esquema
+    (best-effort, primera ocurrencia gana) y recomputa sucesoras.
+    """
+    tenant_id = _tenant(cu)
+    p = await _ensure_project(db, project_id, tenant_id)
+    if p.phase == "closed":
+        raise business_rule("Proyecto cerrado")
+
+    tasks = (
+        await db.execute(select(Task).where(Task.project_id == str(project_id)))
+    ).scalars().all()
+    # Orden visual: WBS natural, luego created_at para desempatar duplicados.
+    _floor = datetime.min.replace(tzinfo=UTC)
+    ordered = sorted(
+        tasks, key=lambda t: (_natural_wbs_key(t.wbs), t.created_at or _floor)
+    )
+
+    old_to_new: dict[str, str] = {}
+    counters: list[int] = []
+    for t in ordered:
+        raw = (
+            t.outline_level
+            if t.outline_level is not None
+            else max(0, len((t.wbs or "").split(".")) - 1)
+        )
+        depth = min(max(0, raw), len(counters))
+        if depth < len(counters):
+            del counters[depth + 1:]
+            counters[depth] += 1
+        else:
+            counters.append(1)
+        new_wbs = ".".join(str(c) for c in counters)
+        if t.wbs and t.wbs not in old_to_new:
+            old_to_new[t.wbs] = new_wbs  # primera ocurrencia gana
+        t.wbs = new_wbs
+        t.outline_level = depth
+
+    # Remapea predecesoras (tokens WBS) al nuevo esquema; descarta dangling.
+    for t in ordered:
+        if t.predecessors:
+            remapped: list[str] = []
+            for pre in t.predecessors:
+                nv = old_to_new.get(pre)
+                if nv and nv != t.wbs and nv not in remapped:
+                    remapped.append(nv)
+            t.predecessors = remapped
+
+    await recompute_successors_for_project(db, str(project_id))
+    await write_audit(
+        db, action="tasks.renumber_wbs", module="tasks", user_id=cu.id,
+        tenant_id=tenant_id, entity_type="project", entity_id=str(project_id),
+        details={"count": len(ordered)},
+    )
+    await db.commit()
+    return {"renumbered": len(ordered)}
 
 
 @router.post("/projects/{project_id}/tasks/import")
@@ -557,13 +658,20 @@ async def import_ms_project(
     for pt in parsed:
         existing = None
         if strategy == "merge":
+            # BUG-078: (project_id, external_id) no es único. Un plan con
+            # WBS repetidos —o un import previo— deja varias filas con el
+            # mismo external_id; scalar_one_or_none() reventaba con
+            # MultipleResultsFound (500 "no se pudo conectar" al subir).
+            # Tomamos la primera de forma determinista en vez de fallar.
             existing = (
                 await db.execute(
-                    select(Task).where(
+                    select(Task)
+                    .where(
                         Task.project_id == p.id, Task.external_id == pt.external_id
                     )
+                    .order_by(Task.id)
                 )
-            ).scalar_one_or_none()
+            ).scalars().first()
         if existing is not None:
             existing.name = pt.name
             existing.wbs = pt.wbs
@@ -1000,13 +1108,20 @@ async def import_confirm(
     for pt in parsed:
         existing = None
         if body.strategy == "merge":
+            # BUG-078: (project_id, external_id) no es único. Un plan con
+            # WBS repetidos —o un import previo— deja varias filas con el
+            # mismo external_id; scalar_one_or_none() reventaba con
+            # MultipleResultsFound (500 "no se pudo conectar" al subir).
+            # Tomamos la primera de forma determinista en vez de fallar.
             existing = (
                 await db.execute(
-                    select(Task).where(
+                    select(Task)
+                    .where(
                         Task.project_id == p.id, Task.external_id == pt.external_id
                     )
+                    .order_by(Task.id)
                 )
-            ).scalar_one_or_none()
+            ).scalars().first()
         if existing is not None:
             existing.name = pt.name
             existing.wbs = pt.wbs

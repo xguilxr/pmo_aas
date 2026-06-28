@@ -109,6 +109,11 @@ async def _validate_area(
     )
     if project.program_id:
         cond = or_(cond, AreaAssignment.program_id == str(project.program_id))
+    # BUG-078: el JOIN con AreaAssignment multiplica filas cuando un área
+    # tiene varias asignaciones que matchean la cascada (p.ej. is_global +
+    # project_id). Todas las filas son la MISMA área (Area.id está fijado),
+    # pero scalar_one_or_none() reventaba con MultipleResultsFound. Tomamos
+    # la primera: solo necesitamos confirmar que el área es válida.
     area = (
         await db.execute(
             select(Area)
@@ -120,7 +125,7 @@ async def _validate_area(
                 cond,
             )
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
     if area is None:
         raise business_rule("Área no válida para este proyecto")
     return area
@@ -936,8 +941,13 @@ async def upload_document(
 
         raise HTTPException(status_code=413, detail={"code": "PAYLOAD_TOO_LARGE"})
 
-    # Versionado: si existe mismo title + category, incrementa
-    existing = (
+    # Versionado: si existe mismo title + category, incrementa.
+    # BUG-078: (project_id, title, category, is_current) no es único — puede
+    # quedar >1 fila marcada is_current (carreras de subida / datos legacy) y
+    # scalar_one_or_none() reventaba con MultipleResultsFound (500 al subir).
+    # Traemos todas las vigentes, las desmarcamos y versionamos desde el
+    # máximo para dejar una sola is_current.
+    current_docs = (
         await db.execute(
             select(Document).where(
                 Document.project_id == str(project_id),
@@ -946,11 +956,12 @@ async def upload_document(
                 Document.is_current.is_(True),
             )
         )
-    ).scalar_one_or_none()
+    ).scalars().all()
     version = 1
-    if existing is not None:
-        version = existing.version + 1
-        existing.is_current = False
+    if current_docs:
+        version = max(d_old.version for d_old in current_docs) + 1
+        for d_old in current_docs:
+            d_old.is_current = False
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
     d = Document(
@@ -990,7 +1001,10 @@ async def upload_document_file(
 
     cat = category if category in DOCUMENT_CATEGORIES else "other"
 
-    existing = (
+    # BUG-078: ver upload_document — (project_id, title, category, is_current)
+    # no es único; tolerar duplicados en lugar de reventar con
+    # MultipleResultsFound.
+    current_docs = (
         await db.execute(
             select(Document).where(
                 Document.project_id == str(project_id),
@@ -999,11 +1013,12 @@ async def upload_document_file(
                 Document.is_current.is_(True),
             )
         )
-    ).scalar_one_or_none()
+    ).scalars().all()
     version = 1
-    if existing is not None:
-        version = existing.version + 1
-        existing.is_current = False
+    if current_docs:
+        version = max(d_old.version for d_old in current_docs) + 1
+        for d_old in current_docs:
+            d_old.is_current = False
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="DOC")
     d = Document(

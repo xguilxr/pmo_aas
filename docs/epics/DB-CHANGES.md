@@ -411,3 +411,19 @@ Unique constraint `(user_id, scope_type, scope_id)`.
 Índices en `tenant_id`, `user_id`, `scope_id`.
 Admin y pm_sr ignoran esta tabla (always-visible).
 Herencia: org → todos sus programas + proyectos; program → proyectos + org contexto; project → proyecto + org + program contexto.
+
+---
+
+## US-171 — tasks.closed_at (EP009, 2026-06-28)
+
+### Migración **0086** — `tasks.closed_at`
+
+Columna `closed_at DATE NULL` en `tasks`: fecha de cierre **real** de la
+actividad (editable por el PM). Lógica de atraso:
+- Tarea NO completada → retrasada si `end_date < hoy`.
+- Tarea completada → retrasada sólo si `closed_at > end_date` (cerró tarde).
+- Sin `closed_at`, una tarea completada no se considera retrasada.
+
+El endpoint auto-setea `closed_at = hoy` al pasar a `completed` sin fecha
+provista; el PATCH permite editarla (incluye `null` para limpiar). Nullable,
+sin backfill (las tareas completadas legacy quedan sin fecha → no retrasadas).

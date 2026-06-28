@@ -186,6 +186,7 @@ implementó.
   - Hitos como diamantes (♦).
   - Línea "hoy" marcada.
 - [ ] Colores por estado: azul (en progreso), verde (completada), rojo (retrasada vs plan), gris (no iniciada).
+- [ ] **US-171 — Atraso ("Retrasada", rojo + tag):** tarea NO completada → retrasada si `end_date < hoy`. Tarea completada → retrasada sólo si `closed_at > end_date` (cerró tarde). Sin `closed_at` una tarea completada no se considera retrasada. Esto permite registrar una actividad cerrada a tiempo aunque se capture en fecha posterior (ajustando `closed_at`).
 - [ ] Barra interna de avance (%).
 - [ ] Zoom: día / semana / mes / trimestre.
 - [ ] Tooltip al hover con todos los detalles.
@@ -212,9 +213,10 @@ implementó.
 |---|---|
 | `name` | ✅ |
 | `description` | |
-| `wbs` | auto-sugerido por jerarquía |
+| `wbs` | US-172: `POST /projects/{id}/tasks/renumber-wbs` renumera todo el proyecto jerárquico + único (1, 1.1, 1.2, 2, …), resuelve duplicados y remapea predecesoras |
 | `parent_id` | tarea padre |
-| `start_date`, `end_date` | |
+| `start_date`, `end_date` | fecha planeada |
+| `closed_at` | US-171: fecha de cierre **real** (editable). Auto = hoy al completar sin fecha. |
 | `duration_days` | calculado si hay fechas |
 | `progress` | 0-100 |
 | `is_milestone` | bool |

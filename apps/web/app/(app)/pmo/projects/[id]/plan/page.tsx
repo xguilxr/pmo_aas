@@ -8,9 +8,9 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  Columns3,
   Download,
   FileDown,
-  FileSpreadsheet,
   ListTree,
   Network,
   Pencil,
@@ -41,11 +41,13 @@ import {
   deleteTask,
   getGantt,
   listTasks,
+  renumberWbs,
   updateTask,
   type GanttData,
   type Task,
   type TaskCriticality,
   type TaskStatus,
+  type TaskUpdateBody,
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
 
@@ -121,11 +123,20 @@ function isTaskCritical(t: Task): boolean {
   return t.criticality === "high" || t.criticality === "critical";
 }
 
+// US-171: atraso. Tarea NO completada → retrasada si end_date < hoy. Tarea
+// completada → retrasada si se cerró tarde (closed_at > end_date). Sin
+// closed_at, una tarea completada no se considera retrasada.
 function isTaskDelayed(t: Task): boolean {
   if (!t.end_date) return false;
-  if (t.status === "completed") return false;
   const end = new Date(t.end_date);
   if (Number.isNaN(end.getTime())) return false;
+  const completed = t.status === "completed" || (t.progress ?? 0) >= 100;
+  if (completed) {
+    if (!t.closed_at) return false;
+    const closed = new Date(t.closed_at);
+    if (Number.isNaN(closed.getTime())) return false;
+    return closed.getTime() > end.getTime();
+  }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return end.getTime() < today.getTime();
@@ -332,6 +343,117 @@ function AreaFilterDropdown({
   );
 }
 
+// ENH-164: configurador de columnas (reemplaza el toggle "MSP"). Las
+// columnas obligatorias siempre se muestran; las opcionales se activan aquí.
+const OPTIONAL_COLS = [
+  { key: "outline", label: "Nivel (outline)" },
+  { key: "duration", label: "Duración" },
+  { key: "predecessors", label: "Predecesoras" },
+  { key: "successors", label: "Sucesoras" },
+] as const;
+type OptionalColKey = (typeof OPTIONAL_COLS)[number]["key"];
+type ColVis = Record<OptionalColKey, boolean>;
+const DEFAULT_COL_VIS: ColVis = {
+  outline: false,
+  duration: false,
+  predecessors: false,
+  successors: false,
+};
+const MANDATORY_COL_LABELS = [
+  "WBS",
+  "Tarea",
+  "Área responsable",
+  "Inicio",
+  "Fin",
+  "Avance",
+  "Estado",
+  "Criticidad",
+  "Hito",
+];
+
+function ColumnsDropdown({
+  value,
+  onChange,
+}: {
+  value: ColVis;
+  onChange: (next: ColVis) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [popoverEl, setPopoverEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (popoverEl && !popoverEl.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open, popoverEl]);
+  const extra = OPTIONAL_COLS.filter((c) => value[c.key]).length;
+  return (
+    <div ref={setPopoverEl} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title="Configurar columnas visibles"
+        className={cn(
+          "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+          extra > 0
+            ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+            : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+        )}
+      >
+        <Columns3 className="h-3.5 w-3.5" aria-hidden />
+        Columnas{extra > 0 ? ` (+${extra})` : ""}
+        <ChevronDown className="h-3 w-3" aria-hidden />
+      </button>
+      {open ? (
+        <div
+          role="listbox"
+          className="absolute left-0 z-20 mt-1 w-60 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-md)]"
+        >
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Siempre visibles
+          </p>
+          <ul className="mb-1.5 border-b border-[var(--border-subtle)] pb-1.5">
+            {MANDATORY_COL_LABELS.map((label) => (
+              <li key={label}>
+                <label className="flex items-center gap-2 rounded px-2 py-1 text-xs text-[var(--color-tertiary)]">
+                  <input type="checkbox" checked readOnly disabled />
+                  <span className="flex-1">{label}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Opcionales
+          </p>
+          <ul>
+            {OPTIONAL_COLS.map((c) => {
+              const checked = value[c.key];
+              return (
+                <li key={c.key}>
+                  <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-[var(--color-subtle)]">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onChange({ ...value, [c.key]: !checked })}
+                    />
+                    <span className="flex-1 text-[var(--color-primary)]">
+                      {c.label}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ENH-066 + ENH-077: agrupación por Área. Render header de grupo +
 // TaskList plana por área. Sólo se muestran áreas con al menos 1
 // fila visible (chips × área filter ya aplicados en filteredTasks).
@@ -341,14 +463,16 @@ function AreaGroupedList({
   loading,
   onDelete,
   onEdit,
-  showProjectCols,
+  colVis,
+  onInlineUpdate,
 }: {
   tasks: Task[];
   areas: ProjectArea[];
   loading: boolean;
   onDelete?: (t: Task) => void;
   onEdit?: (t: Task) => void;
-  showProjectCols: boolean;
+  colVis: ColVis;
+  onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
 }) {
   const grouped = useMemo(() => {
     const byArea = new Map<string, Task[]>();
@@ -398,8 +522,9 @@ function AreaGroupedList({
             loading={false}
             onDelete={onDelete}
             onEdit={onEdit}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
             areas={areas}
+            onInlineUpdate={onInlineUpdate}
           />
         </div>
       ))}
@@ -414,12 +539,63 @@ function AreaGroupedList({
             loading={false}
             onDelete={onDelete}
             onEdit={onEdit}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
             areas={areas}
+            onInlineUpdate={onInlineUpdate}
           />
         </div>
       ) : null}
     </div>
+  );
+}
+
+// US-173: celda de Avance editable con doble clic → input numérico.
+function InlineProgressCell({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (n: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        className="cursor-pointer tabular-nums hover:underline"
+        title="Doble clic para editar el avance"
+        onDoubleClick={() => setEditing(true)}
+      >
+        {value}%
+      </span>
+    );
+  }
+  const commit = () => {
+    setEditing(false);
+    const n = Math.max(0, Math.min(100, Math.round(Number(draft) || 0)));
+    if (n !== value) onCommit(n);
+  };
+  return (
+    <input
+      type="number"
+      min={0}
+      max={100}
+      autoFocus
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") {
+          setDraft(String(value));
+          setEditing(false);
+        }
+      }}
+      className="w-16 rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-1 py-0.5 text-xs tabular-nums"
+    />
   );
 }
 
@@ -431,21 +607,25 @@ function TaskList({
   groupByWbs = false,
   collapsed,
   onToggleCollapse,
-  showProjectCols = false,
+  colVis = DEFAULT_COL_VIS,
   areas = [],
+  onInlineUpdate,
 }: {
   tasks: Task[];
   loading: boolean;
   onDelete?: (t: Task) => void;
   // US-095: abre modal de edición pre-poblado.
   onEdit?: (t: Task) => void;
+  // US-173: edición inline desde la celda (área/fechas/avance/estado/
+  // criticidad/hito) sin abrir el modal.
+  onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
   // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
   // y permite colapsar nodos padre.
   groupByWbs?: boolean;
   collapsed?: Set<string>;
   onToggleCollapse?: (wbs: string) => void;
-  // US-090: cuando true, muestra columnas Outline/Duration/Pred/Succ.
-  showProjectCols?: boolean;
+  // ENH-164: columnas opcionales (Nivel/Duración/Predecesoras/Sucesoras).
+  colVis?: ColVis;
   // US-098 fix: áreas del proyecto para resolver `task.area_id` →
   // nombre en la columna 'Área responsable'.
   areas?: ProjectArea[];
@@ -504,7 +684,7 @@ function TaskList({
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
-            {showProjectCols ? (
+            {colVis.outline ? (
               <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
                 Nivel
               </th>
@@ -515,18 +695,21 @@ function TaskList({
             <th className="px-3 py-2 font-medium">Área responsable</th>
             <th className="px-3 py-2 font-medium">Inicio</th>
             <th className="px-3 py-2 font-medium">Fin</th>
-            {showProjectCols ? (
-              <>
-                <th className="w-16 px-3 py-2 font-medium" title="Duración (auto). Máximo recomendado 21d; macros mayores se permiten con warning.">
-                  Dur.
-                </th>
-                <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
-                <th className="w-24 px-3 py-2 font-medium">Sucesoras</th>
-              </>
+            {colVis.duration ? (
+              <th className="w-16 px-3 py-2 font-medium" title="Duración (auto). Máximo recomendado 21d; macros mayores se permiten con warning.">
+                Dur.
+              </th>
+            ) : null}
+            {colVis.predecessors ? (
+              <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
+            ) : null}
+            {colVis.successors ? (
+              <th className="w-24 px-3 py-2 font-medium">Sucesoras</th>
             ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
             <th className="px-3 py-2 font-medium">Criticidad</th>
+            <th className="px-3 py-2 font-medium">Hito</th>
             {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
@@ -548,7 +731,7 @@ function TaskList({
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
-              {showProjectCols ? (
+              {colVis.outline ? (
                 <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                   {t.outline_level ?? "—"}
                 </td>
@@ -597,10 +780,25 @@ function TaskList({
                   </span>
                 </div>
               </td>
+              {/* US-173: Área responsable editable inline (dropdown). */}
               <td className="px-3 py-2 text-xs">
-                {/* US-098 fix: muestra Área responsable. El owner queda
-                    visible en el form de edición. */}
-                {t.area_id && areaById.has(t.area_id) ? (
+                {onInlineUpdate ? (
+                  <select
+                    value={t.area_id ?? ""}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { area_id: e.target.value || null })
+                    }
+                    title="Área responsable"
+                    className="max-w-[11rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  >
+                    <option value="">— Sin asignar —</option>
+                    {areas.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : t.area_id && areaById.has(t.area_id) ? (
                   <span className="text-[var(--color-secondary)]">
                     {areaById.get(t.area_id)}
                   </span>
@@ -608,8 +806,21 @@ function TaskList({
                   <span className="text-[var(--color-tertiary)]">—</span>
                 )}
               </td>
+              {/* US-173: fechas editables inline (calendario nativo). */}
               <td className="px-3 py-2 text-[var(--color-secondary)]">
-                {fmtDate(t.start_date)}
+                {onInlineUpdate ? (
+                  <input
+                    type="date"
+                    value={t.start_date ?? ""}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { start_date: e.target.value || null })
+                    }
+                    title="Inicio"
+                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  />
+                ) : (
+                  fmtDate(t.start_date)
+                )}
               </td>
               <td
                 className={cn(
@@ -619,44 +830,115 @@ function TaskList({
                     : "text-[var(--color-secondary)]",
                 )}
               >
-                {fmtDate(t.end_date)}
+                {onInlineUpdate ? (
+                  <input
+                    type="date"
+                    value={t.end_date ?? ""}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { end_date: e.target.value || null })
+                    }
+                    title="Fin"
+                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  />
+                ) : (
+                  fmtDate(t.end_date)
+                )}
               </td>
-              {showProjectCols ? (
-                <>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
-                    {t.duration_days != null ? (
-                      t.duration_days > 21 ? (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 font-medium text-[var(--color-warning-fg)]"
-                          title="Duración mayor al máximo recomendado de 21 días. OK para actividades macro; considera dividir si es operativa."
-                        >
-                          ⚠ {t.duration_days}d
-                        </span>
-                      ) : (
-                        <span>{t.duration_days}d</span>
-                      )
+              {colVis.duration ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
+                  {t.duration_days != null ? (
+                    t.duration_days > 21 ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 font-medium text-[var(--color-warning-fg)]"
+                        title="Duración mayor al máximo recomendado de 21 días. OK para actividades macro; considera dividir si es operativa."
+                      >
+                        ⚠ {t.duration_days}d
+                      </span>
                     ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
-                    {(t.predecessors ?? []).join(", ") || "—"}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
-                    {(t.successors ?? []).join(", ") || "—"}
-                  </td>
-                </>
+                      <span>{t.duration_days}d</span>
+                    )
+                  ) : (
+                    "—"
+                  )}
+                </td>
               ) : null}
+              {colVis.predecessors ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                  {(t.predecessors ?? []).join(", ") || "—"}
+                </td>
+              ) : null}
+              {colVis.successors ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                  {(t.successors ?? []).join(", ") || "—"}
+                </td>
+              ) : null}
+              {/* US-173: Avance editable con doble clic. */}
               <td className="px-3 py-2 text-[var(--color-secondary)] tabular-nums">
-                {t.progress}%
+                {onInlineUpdate ? (
+                  <InlineProgressCell
+                    value={t.progress}
+                    onCommit={(n) => onInlineUpdate(t.id, { progress: n })}
+                  />
+                ) : (
+                  `${t.progress}%`
+                )}
               </td>
+              {/* US-173: Estado editable inline (dropdown). */}
               <td className="px-3 py-2">
-                <StatusBadge status={t.status} />
+                {onInlineUpdate ? (
+                  <select
+                    value={t.status}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { status: e.target.value as TaskStatus })
+                    }
+                    title="Estado"
+                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                  >
+                    {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
+                      <option key={k} value={k}>
+                        {TASK_STATUS_LABEL[k]}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <StatusBadge status={t.status} />
+                )}
               </td>
+              {/* US-173: Criticidad como checkmark inline. */}
               <td className="px-3 py-2">
-                {isTaskCritical(t) ? (
+                {onInlineUpdate ? (
+                  <input
+                    type="checkbox"
+                    checked={isTaskCritical(t)}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { is_critical: e.target.checked })
+                    }
+                    title="Marcar crítica"
+                    aria-label={`Crítica: ${t.name}`}
+                  />
+                ) : isTaskCritical(t) ? (
                   <span className="inline-flex items-center rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]">
                     Sí
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-tertiary)]">—</span>
+                )}
+              </td>
+              {/* ENH-163 + US-173: Hito como checkmark inline. */}
+              <td className="px-3 py-2">
+                {onInlineUpdate ? (
+                  <input
+                    type="checkbox"
+                    checked={t.is_milestone}
+                    onChange={(e) =>
+                      onInlineUpdate(t.id, { is_milestone: e.target.checked })
+                    }
+                    title="Marcar hito"
+                    aria-label={`Hito: ${t.name}`}
+                  />
+                ) : t.is_milestone ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-info-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-info-fg)]">
+                    🔷 Hito
                   </span>
                 ) : (
                   <span className="text-[var(--color-tertiary)]">—</span>
@@ -739,12 +1021,13 @@ function PlanInner() {
   // todos los WBS de profundidad N para que sólo se muestren niveles
   // ≤ N. Cualquier toggle manual del chevron cambia el modo a "manual"
   // automáticamente.
-  type WbsLevel = 1 | 2 | 3 | 4 | "manual";
+  // ENH-165: nivel 0 = colapsa todo y deja sólo las filas raíz (depth 0).
+  type WbsLevel = 0 | 1 | 2 | 3 | 4 | "manual";
   const [wbsLevel, setWbsLevel] = useState<WbsLevel>("manual");
 
   // US-090: toggle visibilidad de columnas MS Project (Outline / Duration
   // / Predecesoras / Sucesoras). Default OFF para no saturar el ancho.
-  const [showProjectCols, setShowProjectCols] = useState(false);
+  const [colVis, setColVis] = useState<ColVis>(DEFAULT_COL_VIS);
 
   // ENH-048: chips de filtro multi-select Hitos / Críticos / Retrasados.
   const [activeChips, setActiveChips] = useState<Set<ChipKey>>(new Set());
@@ -794,9 +1077,10 @@ function PlanInner() {
       // ENH-077 CA5: nivel WBS persistido.
       const lvlRaw = window.localStorage.getItem(`plan-wbs-level:${id}`);
       if (
-        lvlRaw === "1" || lvlRaw === "2" || lvlRaw === "3" || lvlRaw === "4"
+        lvlRaw === "0" || lvlRaw === "1" || lvlRaw === "2" ||
+        lvlRaw === "3" || lvlRaw === "4"
       ) {
-        setWbsLevel(Number(lvlRaw) as 1 | 2 | 3 | 4);
+        setWbsLevel(Number(lvlRaw) as 0 | 1 | 2 | 3 | 4);
       } else if (lvlRaw === "manual") {
         setWbsLevel("manual");
       }
@@ -804,6 +1088,16 @@ function PlanInner() {
       const af = window.localStorage.getItem(`plan-area-filter:${id}`);
       if (af)
         setAreaFilter(new Set(af.split(",").map((s) => s.trim()).filter(Boolean)));
+      // ENH-164: visibilidad de columnas opcionales persistida.
+      const colsRaw = window.localStorage.getItem(`plan-cols:${id}`);
+      if (colsRaw) {
+        try {
+          const parsed = JSON.parse(colsRaw) as Partial<ColVis>;
+          setColVis((prev) => ({ ...prev, ...parsed }));
+        } catch {
+          /* JSON inválido — ignoramos. */
+        }
+      }
     } catch {
       /* localStorage puede fallar (modo privado, quota) — ignoramos. */
     }
@@ -845,6 +1139,16 @@ function PlanInner() {
       /* ignore */
     }
   }, [areaFilter, id]);
+
+  // ENH-164: persiste la visibilidad de columnas opcionales.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(`plan-cols:${id}`, JSON.stringify(colVis));
+    } catch {
+      /* ignore */
+    }
+  }, [colVis, id]);
 
   // ENH-077: WBS y Área son mutex — sólo un agrupador a la vez.
   function persistGrouping(mode: "wbs" | "area" | null) {
@@ -937,6 +1241,8 @@ function PlanInner() {
     wbs: "",
     start_date: "",
     end_date: "",
+    // US-171: fecha de cierre real.
+    closed_at: "",
     duration_days: "",
     progress: "0",
     is_milestone: false,
@@ -961,6 +1267,7 @@ function PlanInner() {
       wbs: t.wbs ?? "",
       start_date: t.start_date ?? "",
       end_date: t.end_date ?? "",
+      closed_at: t.closed_at ?? "",
       duration_days: t.duration_days != null ? String(t.duration_days) : "",
       progress: String(t.progress ?? 0),
       area_id: t.area_id ?? "",
@@ -991,6 +1298,7 @@ function PlanInner() {
         wbs: editForm.wbs || null,
         start_date: editForm.start_date || null,
         end_date: editForm.end_date || null,
+        closed_at: editForm.closed_at || null,
         duration_days: editForm.duration_days ? Number(editForm.duration_days) : null,
         progress: Number(editForm.progress) || 0,
         is_milestone: editForm.is_milestone,
@@ -1070,6 +1378,59 @@ function PlanInner() {
     }
     // BUG-076: refrescar áreas tras cualquier reload de tareas.
     void loadAreas();
+  }
+
+  // US-172: renumera el WBS de todo el proyecto (jerárquico + único).
+  const [renumbering, setRenumbering] = useState(false);
+  async function handleRenumberWbs() {
+    if (renumbering) return;
+    if (
+      !window.confirm(
+        "Auto-numerar WBS reescribe el WBS de TODAS las tareas de forma " +
+          "jerárquica (1, 1.1, 1.2, 2, …), preservando el orden actual y " +
+          "resolviendo duplicados. ¿Continuar?",
+      )
+    )
+      return;
+    setRenumbering(true);
+    try {
+      await renumberWbs(id);
+      await loadTasksAndGantt();
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo renumerar el WBS",
+      );
+    } finally {
+      setRenumbering(false);
+    }
+  }
+
+  // US-173: aplica un cambio inline a una tarea y refresca estado local.
+  async function handleInlineUpdate(
+    taskId: string,
+    patch: Partial<TaskUpdateBody>,
+  ) {
+    try {
+      const updated = await updateTask(taskId, patch);
+      setTasks((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      // Cambios que afectan el Gantt → refrescar en background.
+      if (
+        "start_date" in patch ||
+        "end_date" in patch ||
+        "status" in patch ||
+        "progress" in patch ||
+        "is_milestone" in patch
+      ) {
+        void getGantt(id)
+          .then(setGantt)
+          .catch(() => {});
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo actualizar la tarea",
+      );
+      void loadTasksAndGantt();
+    }
   }
 
   useEffect(() => {
@@ -1156,67 +1517,12 @@ function PlanInner() {
 
   // ENH-028: filename "PLAN - {Proyecto} - {YYYY-MM-DD}". Sanitiza
   // caracteres ilegales en filesystems comunes (Windows, macOS).
-  function buildFilename(ext: "csv" | "xlsx"): string {
+  function buildFilename(ext: "xlsx"): string {
     const safeName = (projectName || "PROYECTO")
       .replace(/[\\/:*?"<>|]/g, "")
       .trim() || "PROYECTO";
     const today = new Date().toISOString().slice(0, 10);
     return `PLAN - ${safeName} - ${today}.${ext}`;
-  }
-
-  function exportToCSV() {
-    if (tasks.length === 0) {
-      alert("No hay tareas para exportar");
-      return;
-    }
-    // ENH-134: orden de columnas canónico (espeja la plantilla).
-    const areaName = (aid: string | null) =>
-      (aid && areas.find((a) => a.id === aid)?.name) || "";
-    const headers = [
-      "WBS",
-      "Tarea",
-      "Outline Level",
-      "Inicio",
-      "Fin",
-      "Duración (días)",
-      "Avance (%)",
-      "Estado",
-      "Área Responsable",
-      "Responsable",
-      "Criticidad",
-      "Es hito",
-      "Hito Relacionado",
-      "Predecessors",
-      "Successors",
-    ];
-    const rows = tasks.map((t) => [
-      t.wbs ?? "",
-      t.name,
-      t.outline_level ?? "",
-      t.start_date ?? "",
-      t.end_date ?? "",
-      t.duration_days ?? "",
-      t.progress ?? 0,
-      TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
-      areaName(t.area_id),
-      ownerLabel(t.owner),
-      isTaskCritical(t) ? "Sí" : "No",
-      t.is_milestone ? "Sí" : "No",
-      t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
-      (t.predecessors ?? []).join(", "),
-      (t.successors ?? []).join(", "),
-    ]);
-    const csv = [
-      headers.map((h) => `"${h}"`).join(","),
-      ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
-    ].join("\n");
-    // ENH-028: BOM UTF-8 (﻿) para que Excel lea acentos correctamente
-    // (antes: "DuraciÃ³n", "DiseÃ±o" → ahora: "Duración", "Diseño").
-    const blob = new Blob(["﻿", csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = buildFilename("csv");
-    link.click();
   }
 
   // ENH-028: Excel MPP-like (XLSX) — colores sutiles por estado, hitos
@@ -1363,94 +1669,11 @@ function PlanInner() {
   const listBlock = useMemo(
     () => (
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <ListTree className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
-            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
-              Lista de tareas
-            </h2>
-          </div>
-          {/* ENH-052: orden Plantilla → Descargar (Excel/CSV) → Importar
-              con colores distintos. Plantilla = gris secundario;
-              Descargar = azul; Importar = verde. CSV queda como variante
-              compacta junto a Excel para no perder funcionalidad
-              (ENH-028). Layout `flex-wrap` para apilar en móvil. */}
-          {/* US-098 fix toolbar refactor: WBS / Área / MSP / Vista
-              ahora viven en la toolbar top-level (fuera del panel
-              de lista). Aquí solo quedan: plantilla, descargar,
-              CSV, importar, nueva tarea. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              loading={downloadingTemplate}
-              onClick={async () => {
-                if (downloadingTemplate) return;
-                setDownloadingTemplate(true);
-                try {
-                  const { downloadEmptyTemplate } = await import(
-                    "@/lib/plan-template"
-                  );
-                  await downloadEmptyTemplate(projectName || "proyecto");
-                } catch (err) {
-                  alert(
-                    err instanceof Error
-                      ? err.message
-                      : "No se pudo generar la plantilla",
-                  );
-                } finally {
-                  setDownloadingTemplate(false);
-                }
-              }}
-              aria-label="Descargar plantilla vacía"
-              title="Descargar XLSX vacío con las columnas que el sistema espera"
-            >
-              <FileDown className="h-4 w-4" aria-hidden />
-              Plantilla
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={exportToExcel}
-              loading={exportingXlsx}
-              aria-label="Descargar plan en Excel"
-              className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              Descargar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={exportToCSV}
-              aria-label="Exportar a CSV"
-              title="Descargar como CSV"
-            >
-              <FileSpreadsheet className="h-4 w-4" aria-hidden />
-              CSV
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setWizardOpen(true)}
-              aria-label="Abrir wizard de import"
-              className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300"
-            >
-              <Upload className="h-4 w-4" aria-hidden />
-              Importar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setNewOpen(true)}
-              aria-label="Nueva tarea"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Nueva tarea
-            </Button>
-          </div>
+        <header className="flex items-center gap-2 border-b border-[var(--border-default)] px-4 py-3">
+          <ListTree className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+            Lista de tareas
+          </h2>
         </header>
         {/* ENH-048 (movido a la toolbar top-level): los chips Hitos /
             Críticos / Retrasados ahora viven junto a WBS/Área/MSP para
@@ -1465,7 +1688,8 @@ function PlanInner() {
             loading={loadingTasks}
             onDelete={handleDeleteTask}
             onEdit={openEditTask}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
+            onInlineUpdate={handleInlineUpdate}
           />
         ) : (
           <TaskList
@@ -1476,8 +1700,9 @@ function PlanInner() {
             groupByWbs={groupByWbs}
             collapsed={collapsedWbs}
             onToggleCollapse={toggleCollapsedWbs}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
             areas={areas}
+            onInlineUpdate={handleInlineUpdate}
           />
         )}
       </section>
@@ -1495,7 +1720,7 @@ function PlanInner() {
       collapsedWbs,
       activeChips,
       chipCounts,
-      showProjectCols,
+      colVis,
     ],
   );
 
@@ -1564,21 +1789,87 @@ function PlanInner() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <header>
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/projects" className="hover:underline">
-            Proyectos
-          </Link>
-          <span className="mx-1">/</span>
-          <Link href={`/pmo/projects/${id}`} className="hover:underline">
-            Detalle
-          </Link>
-          <span className="mx-1">/</span>
-          <span>Plan</span>
-        </nav>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-          Plan
-        </h1>
+      {/* ENH-162: acciones (Plantilla / Descargar / Importar / Nueva tarea)
+          al nivel del título + breadcrumbs, por encima de la barra de filtros
+          y agrupaciones. */}
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <nav className="text-[11px] text-[var(--text-tertiary)]">
+            <Link href="/pmo/projects" className="hover:underline">
+              Proyectos
+            </Link>
+            <span className="mx-1">/</span>
+            <Link href={`/pmo/projects/${id}`} className="hover:underline">
+              Detalle
+            </Link>
+            <span className="mx-1">/</span>
+            <span>Plan</span>
+          </nav>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            Plan
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            loading={downloadingTemplate}
+            onClick={async () => {
+              if (downloadingTemplate) return;
+              setDownloadingTemplate(true);
+              try {
+                const { downloadEmptyTemplate } = await import(
+                  "@/lib/plan-template"
+                );
+                await downloadEmptyTemplate(projectName || "proyecto");
+              } catch (err) {
+                alert(
+                  err instanceof Error
+                    ? err.message
+                    : "No se pudo generar la plantilla",
+                );
+              } finally {
+                setDownloadingTemplate(false);
+              }
+            }}
+            aria-label="Descargar plantilla vacía"
+            title="Descargar XLSX vacío con las columnas que el sistema espera"
+          >
+            <FileDown className="h-4 w-4" aria-hidden />
+            Plantilla
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={exportToExcel}
+            loading={exportingXlsx}
+            aria-label="Descargar plan en Excel"
+            className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Descargar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setWizardOpen(true)}
+            aria-label="Abrir wizard de import"
+            className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300"
+          >
+            <Upload className="h-4 w-4" aria-hidden />
+            Importar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setNewOpen(true)}
+            aria-label="Nueva tarea"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Nueva tarea
+          </Button>
+        </div>
       </header>
 
       {/* US-098 fix toolbar refactor: WBS / Área / MSP / Vista al mismo
@@ -1603,7 +1894,7 @@ function PlanInner() {
             WBS
           </button>
           {groupByWbs
-            ? ([1, 2, 3, 4, "manual"] as const).map((lvl) => {
+            ? ([0, 1, 2, 3, 4, "manual"] as const).map((lvl) => {
                 const active = wbsLevel === lvl;
                 return (
                   <button
@@ -1614,7 +1905,9 @@ function PlanInner() {
                     title={
                       lvl === "manual"
                         ? "Modo manual (chevrons)"
-                        : `Mostrar hasta nivel ${lvl}`
+                        : lvl === 0
+                          ? "Sólo nivel raíz (colapsa todo)"
+                          : `Mostrar hasta nivel ${lvl}`
                     }
                     className={cn(
                       "h-7 rounded px-2 text-[11px] font-medium",
@@ -1629,6 +1922,18 @@ function PlanInner() {
               })
             : null}
         </div>
+        {/* US-172: auto-numerar WBS (jerárquico + único). */}
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={handleRenumberWbs}
+          loading={renumbering}
+          title="Renumerar WBS de todo el proyecto: 1, 1.1, 1.2, 2, … (resuelve duplicados)"
+        >
+          <Network className="h-3.5 w-3.5" aria-hidden />
+          Auto-WBS
+        </Button>
         {/* Área dropdown checklist */}
         <AreaFilterDropdown
           areas={areas}
@@ -1637,21 +1942,8 @@ function PlanInner() {
           groupByArea={groupByArea}
           onToggleGroup={toggleGroupByArea}
         />
-        {/* MSP toggle */}
-        <button
-          type="button"
-          onClick={() => setShowProjectCols((v) => !v)}
-          aria-pressed={showProjectCols}
-          title="Outline level + Duración + Predecesoras + Sucesoras"
-          className={cn(
-            "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
-            showProjectCols
-              ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-              : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
-          )}
-        >
-          MSP
-        </button>
+        {/* ENH-164: configurador de columnas (reemplaza el toggle "MSP"). */}
+        <ColumnsDropdown value={colVis} onChange={setColVis} />
         {/* ENH-048 (movido): chips Hitos / Críticos / Retrasados. Antes
             vivían dentro del panel de lista y desaparecían en modo
             "solo Gantt"; ahora están al nivel de WBS/Área/MSP y filtran
@@ -1984,6 +2276,21 @@ function PlanInner() {
                 value={editForm.end_date}
                 onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
               />
+            </FormField>
+          </div>
+          {/* US-171: fecha de cierre real, base del cálculo de atraso. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Fecha de cierre">
+              <Input
+                type="date"
+                value={editForm.closed_at}
+                onChange={(e) => setEditForm({ ...editForm, closed_at: e.target.value })}
+              />
+              <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+                Fecha real en que se cerró la actividad. Si es posterior a la
+                fecha Fin, se marca como “Retrasada”. Al completar sin fecha,
+                se usa hoy.
+              </p>
             </FormField>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">

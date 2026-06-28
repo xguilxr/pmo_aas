@@ -32,11 +32,18 @@ from app.services.report_kpis import (
 
 
 def _is_delayed(t: Task, today: date) -> bool:
-    """ENH-064 — tarea retrasada: end_date < hoy y no completada."""
+    """ENH-064 + US-171 — tarea retrasada.
+
+    - No completada: retrasada si `end_date < hoy`.
+    - Completada: retrasada si se cerró tarde, es decir `closed_at > end_date`
+      (fecha de cierre real posterior a la planeada). Sin `closed_at` no hay
+      dato para afirmar atraso → no retrasada.
+    """
     if t.end_date is None:
         return False
     if t.status == "completed" or (t.progress or 0) >= 100:
-        return False
+        closed = getattr(t, "closed_at", None)
+        return closed is not None and closed > t.end_date
     return t.end_date < today
 
 

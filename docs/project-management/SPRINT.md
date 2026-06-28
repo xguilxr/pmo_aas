@@ -9,16 +9,44 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "Roles + Visibilidad PM + Catálogo por Org + Nav Sin Programa" (2026-06-08)
-Branch: claude/friendly-bell-EYlVB
+Batch "Plan page + RAID mejoras" (Sprint 35, 2026-06-28)
+Branch: claude/minutes-plans-upload-error-driwcd
 
-Sprint 34 Bloque 1 COMPLETO — todos los issues en status:fix-committed.
-Pendiente PR y verificación del owner.
+Ejecución directa end-to-end pedida por el owner. 14 items (5 US + 9 ENH).
+Ver bloque "Sprint 35" en INBOX abajo para el detalle y progreso por item.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Sprint 35 — Plan page + RAID mejoras (branch: claude/minutes-plans-upload-error-driwcd)
+
+Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principio a fin).
+
+**Plan page (`/pmo/projects/[id]/plan`):**
+- [x] **ENH-161** — Quitar botón CSV. `status:fix-committed` (`9b19b6b`)
+- [x] **ENH-162** — Mover Plantilla/Importar/Descargar al header (nivel título + breadcrumbs). `status:fix-committed`
+- [x] **ENH-163** — Columna HITO junto a CRITICIDAD en la lista. `status:fix-committed`
+- [x] **ENH-164** — Reemplazar botón MSP por configurador de columnas (obligatorias: WBS, TAREA, ÁREA, INICIO, FIN, AVANCE, ESTADO, CRITICIDAD, HITO). `status:fix-committed`
+- [x] **ENH-165** — Agrupación por WBS nivel 0 (colapsa todo, sólo raíces). `status:fix-committed`
+- [x] **US-171** — "Fecha de Cierre" editable + lógica de atraso para cerradas + tag "Retrasada" rojo (BE + migración 0086 + FE + docs). `status:fix-committed`
+- [x] **US-172** — Auto-WBS con niveles + anti-duplicados (BE endpoint renumber-wbs + botón FE). `status:fix-committed`
+- [x] **US-173** — Edición inline de tareas (área dropdown, fechas calendario, avance dblclick, estado dropdown, criticidad+hito checkmarks). `status:fix-committed`
+
+**RAID (`/pmo/projects/[id]/raid`):**
+- [x] **ENH-166** — Listas excluyen finalizados por default + orden por estado/severidad (+ toggle "Mostrar finalizados"). `status:fix-committed`
+- [x] **ENH-167** — Filtros de área en RAID. `status:fix-committed`
+- [x] **ENH-168** — Descarga individual por tipo (R/A/I/D) + mantener el de 4 hojas (BE `?only=` + FE). `status:fix-committed`
+- [x] **US-174** — Kanban con drag (avanzar/retroceder fase) + toggle Lista/Kanban por tipo. `status:fix-committed`
+- [x] **US-175** — Edición inline RAID (estado inline en listas R/A/I/D). `status:fix-committed`
+- [x] **ENH-169** — Alinear/complementar campos RAID: **análisis + recomendaciones entregados** en `UIUX-ANALYSIS-Sprint35.md`. Cambios de schema/campos (columna Responsable, category en issues, severidad inline) quedan **[requiere OK]** del owner antes de ejecutar. `status:fix-committed`
+
+Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint35.md`
+(mejoras, docs, styling, aprovechamiento de espacio, deuda/follow-ups).
+
+**Batch Sprint 35 COMPLETO** (14/14 items). Pendiente: PR + verificación del owner.
+Próximo libre tras este batch: US-176, BUG-081, ENH-170.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
 
@@ -30,6 +58,25 @@ Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 - [ ] **US-168 #554** — Filtrado de API y sidebar por visibilidad de PM. `status:in-progress`
 - [x] **US-169 #555** — UI: árbol de asignación Org→Prog→Proyecto en admin de usuarios. `status:fix-committed`
 - [x] **US-170 #556** — Catálogo de áreas/equipos/actores a nivel organización. `status:fix-committed`
+
+### Hotfix — Error "No se pudo conectar" al subir minutas/planes (branch: claude/minutes-plans-upload-error-driwcd)
+
+Ejecución directa por chat del owner 2026-06-28. Reporte: usuario no podía
+subir minutas/planes ("No se pudo conectar con el servidor"); Railway mostraba
+`sqlalchemy.exc.MultipleResultsFound`. Auditoría (workflow) encontró 5 sitios
+`scalar_one_or_none` sobre cláusulas WHERE no únicas + el enmascaramiento CORS.
+
+- [x] **BUG-078** — `MultipleResultsFound` al subir planes/documentos: endurece
+  5 lookups (`tasks.py` import merge x2, `modules.py` document versioning x2,
+  `_validate_area` JOIN). Commit `2071b93`. `status:fix-committed`.
+- [x] **BUG-079** — los 500 no manejados ahora salen con headers CORS (handler
+  global en `main.py`), así el front muestra el error real en vez de "No se
+  pudo conectar". Commit `7d94012`. `status:fix-committed`.
+- [x] **BUG-080** — el export CSV de auditoría incluye la columna `details`
+  (contexto del job). Commit `ff33937`. `status:fix-committed`.
+
+Verificación: 5 TC nuevos + 83 TC de suites relacionadas verdes · ruff limpio.
+Pendiente PR + verificación del owner.
 
 ### Cross-cutting / sin sprint asignado
 - [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`. `status:ready` desde 2026-05-23 pero diferido al cierre del rediseño grande. Owner pasa a ready o reasigna sprint cuando lo prioriza.
@@ -138,6 +185,13 @@ Aprobado por owner 2026-06-08 (plan + decisiones en sesión).
 ## Notas y cambios recientes
 
 > Histórico de sprints anteriores en `SPRINT-DONE-HISTORY.md`.
+
+- **2026-06-28 (hotfix subir minutas/planes — branch claude/minutes-plans-upload-error-driwcd):**
+  BUG-078 (`2071b93`) MultipleResultsFound en subir planes/documentos;
+  BUG-079 (`7d94012`) 500 no manejados sin CORS → "No se pudo conectar";
+  BUG-080 (`ff33937`) export CSV auditoría sin columna `details`. 5 TC nuevos +
+  83 TC relacionados verdes, ruff limpio. `status:fix-committed`, sin PR aún.
+  Próximo libre: US-171, BUG-081, ENH-161.
 
 - **2026-06-25 (ENH-160 #558 — branch claude/nice-thompson-omcizv):** inactividad
   pasa de logout duro a bloqueo con blur + overlay de re-login (no se pierde
