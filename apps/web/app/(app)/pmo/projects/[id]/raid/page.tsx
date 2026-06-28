@@ -26,11 +26,17 @@ import { getAccessToken } from "@/lib/auth-storage";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import {
+  ISSUE_FINAL_STATUSES,
   ISSUE_STATUS_LABEL,
+  ISSUE_STATUS_ORDER,
   ISSUE_TYPE_LABEL,
+  RISK_FINAL_STATUSES,
   RISK_STATUS_LABEL,
+  RISK_STATUS_ORDER,
   listIssues,
   listRisks,
+  updateIssue,
+  updateRisk,
   type Issue,
   type IssueStatus,
   type IssueType,
@@ -75,6 +81,10 @@ function RaidInner() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [severityMin, setSeverityMin] = useState<number | "">("");
   const [priorityMin, setPriorityMin] = useState<number | "">("");
+  // ENH-166: por default sólo activos (oculta finalizados). Toggle global.
+  const [includeFinalized, setIncludeFinalized] = useState(false);
+  // ENH-167: filtro por área (id; "" = todas).
+  const [areaFilter, setAreaFilter] = useState<string>("");
 
   // Reset filtros al cambiar de tab (los valores legales dependen del kind).
   function switchTab(next: Tab) {
@@ -126,37 +136,56 @@ function RaidInner() {
 
   // ENH-026: filtros avanzados aplicados al tab activo.
   const filteredRisks = useMemo(() => {
-    return risks.filter((r) => {
+    const out = risks.filter((r) => {
+      // ENH-166: oculta finalizados salvo toggle.
+      if (!includeFinalized && RISK_FINAL_STATUSES.includes(r.status)) return false;
       if (statusFilter && r.status !== statusFilter) return false;
       if (severityMin !== "" && (r.severity ?? 0) < Number(severityMin))
         return false;
+      if (areaFilter && r.area_id !== areaFilter) return false; // ENH-167
       return true;
     });
-  }, [risks, statusFilter, severityMin]);
+    // ENH-166: orden por fase de estado, luego severidad desc (no alfabético).
+    return out.sort((a, b) => {
+      const pa = RISK_STATUS_ORDER.indexOf(a.status);
+      const pb = RISK_STATUS_ORDER.indexOf(b.status);
+      if (pa !== pb) return pa - pb;
+      return (b.severity ?? 0) - (a.severity ?? 0);
+    });
+  }, [risks, statusFilter, severityMin, includeFinalized, areaFilter]);
 
   function filterIssues(list: Issue[]): Issue[] {
-    return list.filter((it) => {
+    const out = list.filter((it) => {
+      if (!includeFinalized && ISSUE_FINAL_STATUSES.includes(it.status)) return false;
       if (statusFilter && it.status !== statusFilter) return false;
       if (priorityMin !== "" && (it.priority ?? 0) < Number(priorityMin))
         return false;
+      if (areaFilter && it.area_id !== areaFilter) return false; // ENH-167
       return true;
+    });
+    // ENH-166: orden por fase de estado, luego prioridad desc.
+    return out.sort((a, b) => {
+      const pa = ISSUE_STATUS_ORDER.indexOf(a.status);
+      const pb = ISSUE_STATUS_ORDER.indexOf(b.status);
+      if (pa !== pb) return pa - pb;
+      return (b.priority ?? 0) - (a.priority ?? 0);
     });
   }
 
   const filteredActions = useMemo(
     () => filterIssues(actions),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [actions, statusFilter, priorityMin],
+    [actions, statusFilter, priorityMin, includeFinalized, areaFilter],
   );
   const filteredIncidents = useMemo(
     () => filterIssues(incidents),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [incidents, statusFilter, priorityMin],
+    [incidents, statusFilter, priorityMin, includeFinalized, areaFilter],
   );
   const filteredDecisions = useMemo(
     () => filterIssues(decisions),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [decisions, statusFilter, priorityMin],
+    [decisions, statusFilter, priorityMin, includeFinalized, areaFilter],
   );
 
   const counts: Record<Tab, number> = {
@@ -165,6 +194,16 @@ function RaidInner() {
     incidents: incidents.length,
     decisions: decisions.length,
   };
+
+  // ENH-167: áreas presentes en los items cargados (para el filtro de área).
+  const areaOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of risks) if (r.area_id && r.area?.name) m.set(r.area_id, r.area.name);
+    for (const it of issues) if (it.area_id && it.area?.name) m.set(it.area_id, it.area.name);
+    return Array.from(m, ([aid, name]) => ({ id: aid, name })).sort((a, b) =>
+      a.name.localeCompare(b.name, "es"),
+    );
+  }, [risks, issues]);
 
   // ENH-152: Export RAID = descarga autenticada del XLSX (4 hojas ES:
   // Riesgos/Acciones/Incidencias/Decisiones) del endpoint /raid/export — el
@@ -355,6 +394,31 @@ function RaidInner() {
             <option value="4">P4+ (Baja)</option>
           </select>
         )}
+        {/* ENH-167: filtro por área. */}
+        {areaOptions.length > 0 ? (
+          <select
+            aria-label="Área"
+            value={areaFilter}
+            onChange={(e) => setAreaFilter(e.target.value)}
+            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+          >
+            <option value="">Todas las áreas</option>
+            {areaOptions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        {/* ENH-166: toggle para incluir finalizados (oculto por default). */}
+        <label className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-[var(--color-secondary)]">
+          <input
+            type="checkbox"
+            checked={includeFinalized}
+            onChange={(e) => setIncludeFinalized(e.target.checked)}
+          />
+          Mostrar finalizados
+        </label>
       </div>
 
       {loading ? (
