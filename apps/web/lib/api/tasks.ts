@@ -20,6 +20,9 @@ export type Task = {
   name: string;
   start_date: string | null;
   end_date: string | null;
+  // US-171: fecha de cierre real (YYYY-MM-DD). Una tarea completada con
+  // closed_at > end_date se considera "Retrasada" (cerrada con retraso).
+  closed_at: string | null;
   duration_days: number | null;
   progress: number;
   is_milestone: boolean;
@@ -52,6 +55,8 @@ export type TaskCreateBody = {
   parent_id?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  // US-171: fecha de cierre real.
+  closed_at?: string | null;
   duration_days?: number | null;
   progress?: number;
   is_milestone?: boolean;

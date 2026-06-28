@@ -121,11 +121,20 @@ function isTaskCritical(t: Task): boolean {
   return t.criticality === "high" || t.criticality === "critical";
 }
 
+// US-171: atraso. Tarea NO completada → retrasada si end_date < hoy. Tarea
+// completada → retrasada si se cerró tarde (closed_at > end_date). Sin
+// closed_at, una tarea completada no se considera retrasada.
 function isTaskDelayed(t: Task): boolean {
   if (!t.end_date) return false;
-  if (t.status === "completed") return false;
   const end = new Date(t.end_date);
   if (Number.isNaN(end.getTime())) return false;
+  const completed = t.status === "completed" || (t.progress ?? 0) >= 100;
+  if (completed) {
+    if (!t.closed_at) return false;
+    const closed = new Date(t.closed_at);
+    if (Number.isNaN(closed.getTime())) return false;
+    return closed.getTime() > end.getTime();
+  }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return end.getTime() < today.getTime();
@@ -1085,6 +1094,8 @@ function PlanInner() {
     wbs: "",
     start_date: "",
     end_date: "",
+    // US-171: fecha de cierre real.
+    closed_at: "",
     duration_days: "",
     progress: "0",
     is_milestone: false,
@@ -1109,6 +1120,7 @@ function PlanInner() {
       wbs: t.wbs ?? "",
       start_date: t.start_date ?? "",
       end_date: t.end_date ?? "",
+      closed_at: t.closed_at ?? "",
       duration_days: t.duration_days != null ? String(t.duration_days) : "",
       progress: String(t.progress ?? 0),
       area_id: t.area_id ?? "",
@@ -1139,6 +1151,7 @@ function PlanInner() {
         wbs: editForm.wbs || null,
         start_date: editForm.start_date || null,
         end_date: editForm.end_date || null,
+        closed_at: editForm.closed_at || null,
         duration_days: editForm.duration_days ? Number(editForm.duration_days) : null,
         progress: Number(editForm.progress) || 0,
         is_milestone: editForm.is_milestone,
@@ -2049,6 +2062,21 @@ function PlanInner() {
                 value={editForm.end_date}
                 onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
               />
+            </FormField>
+          </div>
+          {/* US-171: fecha de cierre real, base del cálculo de atraso. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Fecha de cierre">
+              <Input
+                type="date"
+                value={editForm.closed_at}
+                onChange={(e) => setEditForm({ ...editForm, closed_at: e.target.value })}
+              />
+              <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+                Fecha real en que se cerró la actividad. Si es posterior a la
+                fecha Fin, se marca como “Retrasada”. Al completar sin fecha,
+                se usa hoy.
+              </p>
             </FormField>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
