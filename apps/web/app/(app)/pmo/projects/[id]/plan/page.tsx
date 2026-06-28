@@ -1307,83 +1307,11 @@ function PlanInner() {
   const listBlock = useMemo(
     () => (
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <ListTree className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
-            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
-              Lista de tareas
-            </h2>
-          </div>
-          {/* ENH-052: orden Plantilla → Descargar (Excel/CSV) → Importar
-              con colores distintos. Plantilla = gris secundario;
-              Descargar = azul; Importar = verde. CSV queda como variante
-              compacta junto a Excel para no perder funcionalidad
-              (ENH-028). Layout `flex-wrap` para apilar en móvil. */}
-          {/* US-098 fix toolbar refactor: WBS / Área / MSP / Vista
-              ahora viven en la toolbar top-level (fuera del panel
-              de lista). Aquí solo quedan: plantilla, descargar,
-              CSV, importar, nueva tarea. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              loading={downloadingTemplate}
-              onClick={async () => {
-                if (downloadingTemplate) return;
-                setDownloadingTemplate(true);
-                try {
-                  const { downloadEmptyTemplate } = await import(
-                    "@/lib/plan-template"
-                  );
-                  await downloadEmptyTemplate(projectName || "proyecto");
-                } catch (err) {
-                  alert(
-                    err instanceof Error
-                      ? err.message
-                      : "No se pudo generar la plantilla",
-                  );
-                } finally {
-                  setDownloadingTemplate(false);
-                }
-              }}
-              aria-label="Descargar plantilla vacía"
-              title="Descargar XLSX vacío con las columnas que el sistema espera"
-            >
-              <FileDown className="h-4 w-4" aria-hidden />
-              Plantilla
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={exportToExcel}
-              loading={exportingXlsx}
-              aria-label="Descargar plan en Excel"
-              className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              Descargar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setWizardOpen(true)}
-              aria-label="Abrir wizard de import"
-              className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300"
-            >
-              <Upload className="h-4 w-4" aria-hidden />
-              Importar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setNewOpen(true)}
-              aria-label="Nueva tarea"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Nueva tarea
-            </Button>
-          </div>
+        <header className="flex items-center gap-2 border-b border-[var(--border-default)] px-4 py-3">
+          <ListTree className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+            Lista de tareas
+          </h2>
         </header>
         {/* ENH-048 (movido a la toolbar top-level): los chips Hitos /
             Críticos / Retrasados ahora viven junto a WBS/Área/MSP para
@@ -1497,21 +1425,87 @@ function PlanInner() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <header>
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/projects" className="hover:underline">
-            Proyectos
-          </Link>
-          <span className="mx-1">/</span>
-          <Link href={`/pmo/projects/${id}`} className="hover:underline">
-            Detalle
-          </Link>
-          <span className="mx-1">/</span>
-          <span>Plan</span>
-        </nav>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-          Plan
-        </h1>
+      {/* ENH-162: acciones (Plantilla / Descargar / Importar / Nueva tarea)
+          al nivel del título + breadcrumbs, por encima de la barra de filtros
+          y agrupaciones. */}
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <nav className="text-[11px] text-[var(--text-tertiary)]">
+            <Link href="/pmo/projects" className="hover:underline">
+              Proyectos
+            </Link>
+            <span className="mx-1">/</span>
+            <Link href={`/pmo/projects/${id}`} className="hover:underline">
+              Detalle
+            </Link>
+            <span className="mx-1">/</span>
+            <span>Plan</span>
+          </nav>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            Plan
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            loading={downloadingTemplate}
+            onClick={async () => {
+              if (downloadingTemplate) return;
+              setDownloadingTemplate(true);
+              try {
+                const { downloadEmptyTemplate } = await import(
+                  "@/lib/plan-template"
+                );
+                await downloadEmptyTemplate(projectName || "proyecto");
+              } catch (err) {
+                alert(
+                  err instanceof Error
+                    ? err.message
+                    : "No se pudo generar la plantilla",
+                );
+              } finally {
+                setDownloadingTemplate(false);
+              }
+            }}
+            aria-label="Descargar plantilla vacía"
+            title="Descargar XLSX vacío con las columnas que el sistema espera"
+          >
+            <FileDown className="h-4 w-4" aria-hidden />
+            Plantilla
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={exportToExcel}
+            loading={exportingXlsx}
+            aria-label="Descargar plan en Excel"
+            className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Descargar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setWizardOpen(true)}
+            aria-label="Abrir wizard de import"
+            className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300"
+          >
+            <Upload className="h-4 w-4" aria-hidden />
+            Importar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setNewOpen(true)}
+            aria-label="Nueva tarea"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Nueva tarea
+          </Button>
+        </div>
       </header>
 
       {/* US-098 fix toolbar refactor: WBS / Área / MSP / Vista al mismo
