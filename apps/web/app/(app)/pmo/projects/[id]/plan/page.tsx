@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  Columns3,
   Download,
   FileDown,
   ListTree,
@@ -331,6 +332,117 @@ function AreaFilterDropdown({
   );
 }
 
+// ENH-164: configurador de columnas (reemplaza el toggle "MSP"). Las
+// columnas obligatorias siempre se muestran; las opcionales se activan aquí.
+const OPTIONAL_COLS = [
+  { key: "outline", label: "Nivel (outline)" },
+  { key: "duration", label: "Duración" },
+  { key: "predecessors", label: "Predecesoras" },
+  { key: "successors", label: "Sucesoras" },
+] as const;
+type OptionalColKey = (typeof OPTIONAL_COLS)[number]["key"];
+type ColVis = Record<OptionalColKey, boolean>;
+const DEFAULT_COL_VIS: ColVis = {
+  outline: false,
+  duration: false,
+  predecessors: false,
+  successors: false,
+};
+const MANDATORY_COL_LABELS = [
+  "WBS",
+  "Tarea",
+  "Área responsable",
+  "Inicio",
+  "Fin",
+  "Avance",
+  "Estado",
+  "Criticidad",
+  "Hito",
+];
+
+function ColumnsDropdown({
+  value,
+  onChange,
+}: {
+  value: ColVis;
+  onChange: (next: ColVis) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [popoverEl, setPopoverEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (popoverEl && !popoverEl.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open, popoverEl]);
+  const extra = OPTIONAL_COLS.filter((c) => value[c.key]).length;
+  return (
+    <div ref={setPopoverEl} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title="Configurar columnas visibles"
+        className={cn(
+          "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+          extra > 0
+            ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+            : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+        )}
+      >
+        <Columns3 className="h-3.5 w-3.5" aria-hidden />
+        Columnas{extra > 0 ? ` (+${extra})` : ""}
+        <ChevronDown className="h-3 w-3" aria-hidden />
+      </button>
+      {open ? (
+        <div
+          role="listbox"
+          className="absolute left-0 z-20 mt-1 w-60 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-md)]"
+        >
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Siempre visibles
+          </p>
+          <ul className="mb-1.5 border-b border-[var(--border-subtle)] pb-1.5">
+            {MANDATORY_COL_LABELS.map((label) => (
+              <li key={label}>
+                <label className="flex items-center gap-2 rounded px-2 py-1 text-xs text-[var(--color-tertiary)]">
+                  <input type="checkbox" checked readOnly disabled />
+                  <span className="flex-1">{label}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Opcionales
+          </p>
+          <ul>
+            {OPTIONAL_COLS.map((c) => {
+              const checked = value[c.key];
+              return (
+                <li key={c.key}>
+                  <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-[var(--color-subtle)]">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onChange({ ...value, [c.key]: !checked })}
+                    />
+                    <span className="flex-1 text-[var(--color-primary)]">
+                      {c.label}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ENH-066 + ENH-077: agrupación por Área. Render header de grupo +
 // TaskList plana por área. Sólo se muestran áreas con al menos 1
 // fila visible (chips × área filter ya aplicados en filteredTasks).
@@ -340,14 +452,14 @@ function AreaGroupedList({
   loading,
   onDelete,
   onEdit,
-  showProjectCols,
+  colVis,
 }: {
   tasks: Task[];
   areas: ProjectArea[];
   loading: boolean;
   onDelete?: (t: Task) => void;
   onEdit?: (t: Task) => void;
-  showProjectCols: boolean;
+  colVis: ColVis;
 }) {
   const grouped = useMemo(() => {
     const byArea = new Map<string, Task[]>();
@@ -397,7 +509,7 @@ function AreaGroupedList({
             loading={false}
             onDelete={onDelete}
             onEdit={onEdit}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
             areas={areas}
           />
         </div>
@@ -413,7 +525,7 @@ function AreaGroupedList({
             loading={false}
             onDelete={onDelete}
             onEdit={onEdit}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
             areas={areas}
           />
         </div>
@@ -430,7 +542,7 @@ function TaskList({
   groupByWbs = false,
   collapsed,
   onToggleCollapse,
-  showProjectCols = false,
+  colVis = DEFAULT_COL_VIS,
   areas = [],
 }: {
   tasks: Task[];
@@ -443,8 +555,8 @@ function TaskList({
   groupByWbs?: boolean;
   collapsed?: Set<string>;
   onToggleCollapse?: (wbs: string) => void;
-  // US-090: cuando true, muestra columnas Outline/Duration/Pred/Succ.
-  showProjectCols?: boolean;
+  // ENH-164: columnas opcionales (Nivel/Duración/Predecesoras/Sucesoras).
+  colVis?: ColVis;
   // US-098 fix: áreas del proyecto para resolver `task.area_id` →
   // nombre en la columna 'Área responsable'.
   areas?: ProjectArea[];
@@ -503,7 +615,7 @@ function TaskList({
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
-            {showProjectCols ? (
+            {colVis.outline ? (
               <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
                 Nivel
               </th>
@@ -514,14 +626,16 @@ function TaskList({
             <th className="px-3 py-2 font-medium">Área responsable</th>
             <th className="px-3 py-2 font-medium">Inicio</th>
             <th className="px-3 py-2 font-medium">Fin</th>
-            {showProjectCols ? (
-              <>
-                <th className="w-16 px-3 py-2 font-medium" title="Duración (auto). Máximo recomendado 21d; macros mayores se permiten con warning.">
-                  Dur.
-                </th>
-                <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
-                <th className="w-24 px-3 py-2 font-medium">Sucesoras</th>
-              </>
+            {colVis.duration ? (
+              <th className="w-16 px-3 py-2 font-medium" title="Duración (auto). Máximo recomendado 21d; macros mayores se permiten con warning.">
+                Dur.
+              </th>
+            ) : null}
+            {colVis.predecessors ? (
+              <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
+            ) : null}
+            {colVis.successors ? (
+              <th className="w-24 px-3 py-2 font-medium">Sucesoras</th>
             ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
@@ -548,7 +662,7 @@ function TaskList({
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
-              {showProjectCols ? (
+              {colVis.outline ? (
                 <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                   {t.outline_level ?? "—"}
                 </td>
@@ -621,31 +735,33 @@ function TaskList({
               >
                 {fmtDate(t.end_date)}
               </td>
-              {showProjectCols ? (
-                <>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
-                    {t.duration_days != null ? (
-                      t.duration_days > 21 ? (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 font-medium text-[var(--color-warning-fg)]"
-                          title="Duración mayor al máximo recomendado de 21 días. OK para actividades macro; considera dividir si es operativa."
-                        >
-                          ⚠ {t.duration_days}d
-                        </span>
-                      ) : (
-                        <span>{t.duration_days}d</span>
-                      )
+              {colVis.duration ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
+                  {t.duration_days != null ? (
+                    t.duration_days > 21 ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 font-medium text-[var(--color-warning-fg)]"
+                        title="Duración mayor al máximo recomendado de 21 días. OK para actividades macro; considera dividir si es operativa."
+                      >
+                        ⚠ {t.duration_days}d
+                      </span>
                     ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
-                    {(t.predecessors ?? []).join(", ") || "—"}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
-                    {(t.successors ?? []).join(", ") || "—"}
-                  </td>
-                </>
+                      <span>{t.duration_days}d</span>
+                    )
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              ) : null}
+              {colVis.predecessors ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                  {(t.predecessors ?? []).join(", ") || "—"}
+                </td>
+              ) : null}
+              {colVis.successors ? (
+                <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                  {(t.successors ?? []).join(", ") || "—"}
+                </td>
               ) : null}
               <td className="px-3 py-2 text-[var(--color-secondary)] tabular-nums">
                 {t.progress}%
@@ -754,7 +870,7 @@ function PlanInner() {
 
   // US-090: toggle visibilidad de columnas MS Project (Outline / Duration
   // / Predecesoras / Sucesoras). Default OFF para no saturar el ancho.
-  const [showProjectCols, setShowProjectCols] = useState(false);
+  const [colVis, setColVis] = useState<ColVis>(DEFAULT_COL_VIS);
 
   // ENH-048: chips de filtro multi-select Hitos / Críticos / Retrasados.
   const [activeChips, setActiveChips] = useState<Set<ChipKey>>(new Set());
@@ -814,6 +930,16 @@ function PlanInner() {
       const af = window.localStorage.getItem(`plan-area-filter:${id}`);
       if (af)
         setAreaFilter(new Set(af.split(",").map((s) => s.trim()).filter(Boolean)));
+      // ENH-164: visibilidad de columnas opcionales persistida.
+      const colsRaw = window.localStorage.getItem(`plan-cols:${id}`);
+      if (colsRaw) {
+        try {
+          const parsed = JSON.parse(colsRaw) as Partial<ColVis>;
+          setColVis((prev) => ({ ...prev, ...parsed }));
+        } catch {
+          /* JSON inválido — ignoramos. */
+        }
+      }
     } catch {
       /* localStorage puede fallar (modo privado, quota) — ignoramos. */
     }
@@ -855,6 +981,16 @@ function PlanInner() {
       /* ignore */
     }
   }, [areaFilter, id]);
+
+  // ENH-164: persiste la visibilidad de columnas opcionales.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(`plan-cols:${id}`, JSON.stringify(colVis));
+    } catch {
+      /* ignore */
+    }
+  }, [colVis, id]);
 
   // ENH-077: WBS y Área son mutex — sólo un agrupador a la vez.
   function persistGrouping(mode: "wbs" | "area" | null) {
@@ -1337,7 +1473,7 @@ function PlanInner() {
             loading={loadingTasks}
             onDelete={handleDeleteTask}
             onEdit={openEditTask}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
           />
         ) : (
           <TaskList
@@ -1348,7 +1484,7 @@ function PlanInner() {
             groupByWbs={groupByWbs}
             collapsed={collapsedWbs}
             onToggleCollapse={toggleCollapsedWbs}
-            showProjectCols={showProjectCols}
+            colVis={colVis}
             areas={areas}
           />
         )}
@@ -1367,7 +1503,7 @@ function PlanInner() {
       collapsedWbs,
       activeChips,
       chipCounts,
-      showProjectCols,
+      colVis,
     ],
   );
 
@@ -1575,21 +1711,8 @@ function PlanInner() {
           groupByArea={groupByArea}
           onToggleGroup={toggleGroupByArea}
         />
-        {/* MSP toggle */}
-        <button
-          type="button"
-          onClick={() => setShowProjectCols((v) => !v)}
-          aria-pressed={showProjectCols}
-          title="Outline level + Duración + Predecesoras + Sucesoras"
-          className={cn(
-            "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
-            showProjectCols
-              ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-              : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
-          )}
-        >
-          MSP
-        </button>
+        {/* ENH-164: configurador de columnas (reemplaza el toggle "MSP"). */}
+        <ColumnsDropdown value={colVis} onChange={setColVis} />
         {/* ENH-048 (movido): chips Hitos / Críticos / Retrasados. Antes
             vivían dentro del panel de lista y desaparecían en modo
             "solo Gantt"; ahora están al nivel de WBS/Área/MSP y filtran
