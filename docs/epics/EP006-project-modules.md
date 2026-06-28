@@ -267,6 +267,11 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
   default (riesgos: closed; issues: resolved/closed) con toggle "Mostrar
   finalizados"; orden por fase de estado y luego severidad/prioridad.
 - [x] **ENH-167 (Sprint 35):** filtro por área en la página RAID.
+- [x] **US-174 (Sprint 35):** vista **Kanban** por tipo (toggle Lista/Kanban,
+  persistido en `?view=`). Columnas = fases del estado (riesgos:
+  identified→…→closed; issues: open→…→closed). Drag & drop para avanzar/
+  retroceder de fase (PATCH status). Mover un riesgo a closed/materialized pide
+  la nota de cierre (regla de negocio existente).
 
 **Estado de integración:** DONE (US-019). Export XLSX nativo queda
 como follow-up; CSV cubre el caso de uso principal.

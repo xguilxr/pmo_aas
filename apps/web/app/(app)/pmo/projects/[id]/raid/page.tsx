@@ -14,6 +14,11 @@ import {
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
 import {
+  RaidKanban,
+  type KanbanColumn,
+  type KanbanItem,
+} from "@/components/raid-kanban";
+import {
   KIND_NEW_LABEL,
   RaidCreateModal,
   type RaidKind,
@@ -85,6 +90,18 @@ function RaidInner() {
   const [includeFinalized, setIncludeFinalized] = useState(false);
   // ENH-167: filtro por área (id; "" = todas).
   const [areaFilter, setAreaFilter] = useState<string>("");
+  // US-174: vista Lista vs Kanban (por tab). Persistida en la URL.
+  const [view, setView] = useState<"list" | "board">(
+    searchParams.get("view") === "board" ? "board" : "list",
+  );
+  const [kanbanBusyId, setKanbanBusyId] = useState<string | null>(null);
+
+  function setViewAndUrl(v: "list" | "board") {
+    setView(v);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", v);
+    router.replace(`/pmo/projects/${id}/raid?${params.toString()}`);
+  }
 
   // Reset filtros al cambiar de tab (los valores legales dependen del kind).
   function switchTab(next: Tab) {
@@ -204,6 +221,99 @@ function RaidInner() {
       a.name.localeCompare(b.name, "es"),
     );
   }, [risks, issues]);
+
+  // US-174: columnas e items del Kanban para el tab activo. El board muestra
+  // TODAS las fases como columnas (ignora el toggle de finalizados y el filtro
+  // de estado), pero respeta severidad/prioridad y área.
+  const isRiskTab = tab === "risks";
+  const boardColumns: KanbanColumn[] = useMemo(
+    () =>
+      (isRiskTab ? RISK_STATUS_ORDER : ISSUE_STATUS_ORDER).map((s) => ({
+        id: s,
+        label: isRiskTab
+          ? RISK_STATUS_LABEL[s as RiskStatus]
+          : ISSUE_STATUS_LABEL[s as IssueStatus],
+      })),
+    [isRiskTab],
+  );
+  const boardItems: KanbanItem[] = useMemo(() => {
+    if (isRiskTab) {
+      return risks
+        .filter(
+          (r) =>
+            (severityMin === "" || (r.severity ?? 0) >= Number(severityMin)) &&
+            (!areaFilter || r.area_id === areaFilter),
+        )
+        .map((r) => ({
+          id: r.id,
+          status: r.status,
+          folio: r.folio,
+          title: r.title,
+          href: `/pmo/projects/${id}/raid/${r.id}?type=risk`,
+          accent: <SeverityBadge severity={r.severity} />,
+        }));
+    }
+    const src = tab === "actions" ? actions : tab === "incidents" ? incidents : decisions;
+    return src
+      .filter(
+        (it) =>
+          (priorityMin === "" || (it.priority ?? 0) >= Number(priorityMin)) &&
+          (!areaFilter || it.area_id === areaFilter),
+      )
+      .map((it) => ({
+        id: it.id,
+        status: it.status,
+        folio: it.folio,
+        title: it.title,
+        href: `/pmo/projects/${id}/raid/${it.id}?type=${it.type}`,
+        accent: it.priority ? (
+          <span className="rounded bg-[var(--color-subtle)] px-1 text-[10px] font-medium text-[var(--color-secondary)]">
+            P{it.priority}
+          </span>
+        ) : null,
+      }));
+  }, [isRiskTab, risks, actions, incidents, decisions, tab, severityMin, priorityMin, areaFilter, id]);
+
+  async function handleBoardMove(itemId: string, toStatus: string) {
+    setKanbanBusyId(itemId);
+    setError(null);
+    try {
+      if (isRiskTab) {
+        const patch: { status: RiskStatus; closure_note?: string } = {
+          status: toStatus as RiskStatus,
+        };
+        // Backend exige closure_note al cerrar/materializar un riesgo.
+        if (toStatus === "closed" || toStatus === "materialized") {
+          const note = window.prompt(
+            "Nota de cierre (obligatoria para cerrar/materializar un riesgo):",
+            "",
+          );
+          if (note === null || note.trim() === "") {
+            setKanbanBusyId(null);
+            return;
+          }
+          patch.closure_note = note.trim();
+        }
+        const updated = await updateRisk(itemId, patch);
+        setRisks((prev) =>
+          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+        );
+      } else {
+        const updated = await updateIssue(itemId, {
+          status: toStatus as IssueStatus,
+        });
+        setIssues((prev) =>
+          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
+      );
+    } finally {
+      setKanbanBusyId(null);
+    }
+  }
 
   // ENH-152: Export RAID = descarga autenticada del XLSX (4 hojas ES:
   // Riesgos/Acciones/Incidencias/Decisiones) del endpoint /raid/export — el
@@ -356,6 +466,26 @@ function RaidInner() {
         })}
       </div>
 
+      {/* US-174: toggle Lista / Kanban (por tab). */}
+      <div className="flex w-fit items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5">
+        {(["list", "board"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setViewAndUrl(v)}
+            aria-pressed={view === v}
+            className={cn(
+              "rounded px-3 py-1 text-xs font-medium",
+              view === v
+                ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+            )}
+          >
+            {v === "list" ? "Lista" : "Kanban"}
+          </button>
+        ))}
+      </div>
+
       {/* ENH-026: filtros avanzados (status + severity/priority)
           consolidados — antes vivían en /risks y /issues. */}
       <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-[13px]">
@@ -444,6 +574,13 @@ function RaidInner() {
             <Skeleton key={i} className="h-14 w-full" />
           ))}
         </div>
+      ) : view === "board" ? (
+        <RaidKanban
+          columns={boardColumns}
+          items={boardItems}
+          onMove={handleBoardMove}
+          busyId={kanbanBusyId}
+        />
       ) : tab === "risks" ? (
         <RisksSection
           rows={filteredRisks}
