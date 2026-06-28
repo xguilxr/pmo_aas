@@ -40,9 +40,12 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 - [x] **ENH-168** — Descarga individual por tipo (R/A/I/D) + mantener el de 4 hojas (BE `?only=` + FE). `status:fix-committed`
 - [x] **US-174** — Kanban con drag (avanzar/retroceder fase) + toggle Lista/Kanban por tipo. `status:fix-committed`
 - [x] **US-175** — Edición inline RAID (estado inline en listas R/A/I/D). `status:fix-committed`
-- [ ] **ENH-169** — Alinear/complementar campos RAID (pasada final) + docs.
+- [x] **ENH-169** — Alinear/complementar campos RAID: **análisis + recomendaciones entregados** en `UIUX-ANALYSIS-Sprint35.md`. Cambios de schema/campos (columna Responsable, category en issues, severidad inline) quedan **[requiere OK]** del owner antes de ejecutar. `status:fix-committed`
 
-Al final: análisis UI/UX (mejoras, docs desactualizada, styling, aprovechamiento de espacio).
+Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint35.md`
+(mejoras, docs, styling, aprovechamiento de espacio, deuda/follow-ups).
+
+**Batch Sprint 35 COMPLETO** (14/14 items). Pendiente: PR + verificación del owner.
 Próximo libre tras este batch: US-176, BUG-081, ENH-170.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)

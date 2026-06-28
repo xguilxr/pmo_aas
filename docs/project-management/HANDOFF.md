@@ -13,21 +13,32 @@ Dos frentes en la MISMA branch `claude/minutes-plans-upload-error-driwcd`:
 1. **Hotfix subir minutas/planes** — COMPLETO (`status:fix-committed`): BUG-078
    (MultipleResultsFound), BUG-079 (500 sin CORS → "no se pudo conectar"),
    BUG-080 (CSV auditoría con `details`). Pendiente PR + verificación.
-2. **Sprint 35 — "Plan page + RAID mejoras"** — EN CURSO. Batch de 14 items
-   (5 US + 9 ENH) pedido por el owner para ejecutar de principio a fin.
-   El detalle y progreso por item vive en `SPRINT.md` → bloque "Sprint 35".
+2. **Sprint 35 — "Plan page + RAID mejoras"** — **COMPLETO (14/14)**. Todos
+   los items `status:fix-committed`. Detalle por item en `SPRINT.md` → "Sprint 35".
+   Falta: PR + verificación del owner. Migración **0086** (`tasks.closed_at`)
+   debe correrse en Railway (`alembic upgrade head`).
 
 ## 📍 Dónde retomar (próximo paso accionable)
 
-Seguir el bloque **Sprint 35** de `SPRINT.md` en orden. Los items marcados `[x]`
-ya están commiteados; retomar en el primer `[ ]`. Cada item es 1 commit con
-header `feat(web|api): <ID> — …`. Al terminar el batch: análisis UI/UX +
-actualizar epics (EP006/EP009) y `DB-CHANGES.md` si US-171/172 tocaron schema.
+1. **Crear PR** de `claude/minutes-plans-upload-error-driwcd` → `main` (cubre el
+   hotfix BUG-078/079/080 + todo el Sprint 35).
+2. Correr `alembic upgrade head` (migración 0086) tras el merge.
+3. Revisar `docs/project-management/UIUX-ANALYSIS-Sprint35.md`: tiene los
+   follow-ups y las decisiones de campos RAID marcadas **[requiere OK]**
+   (columna Responsable, category en issues, severidad inline). Confirmar
+   scope antes de abrir issues nuevos.
 
 ## ✅ Hecho en esta sesión (2026-06-28)
 
-- Hotfix BUG-078/079/080 (3 commits) + registro en SPRINT.
-- Sprint 35 abierto; progreso por item en SPRINT.md.
+- Hotfix BUG-078/079/080 (subir minutas/planes + CORS + audit CSV).
+- **Sprint 35 (14/14):** ENH-161..168, US-171..175, ENH-169.
+  - Plan: quitar CSV, mover acciones al header, columna Hito, configurador de
+    columnas (reemplaza MSP), WBS nivel 0, fecha de cierre + atraso (mig 0086),
+    auto-WBS (endpoint renumber-wbs), edición inline.
+  - RAID: ocultar finalizados + orden por fase, filtro de área, export por tipo,
+    Kanban con drag, estado inline, análisis de alineación de campos.
+- Tests nuevos: BUG-078/079/080, US-171, US-172, ENH-152 (single-sheet).
+- Verificación: `tsc` + `next build` verdes; pytest de las suites tocadas verdes.
 
 ## 🔄 PRs abiertos o en flight
 
