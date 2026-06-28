@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Columns3,
+  Diamond,
   Download,
   FileDown,
   ListTree,
@@ -758,7 +759,12 @@ function TaskList({
                     <span className="inline-block h-4 w-4" aria-hidden />
                   ) : null}
                   <span className={delayed ? "text-[var(--color-danger-fg)]" : undefined}>
-                    {t.is_milestone ? "🔷 " : ""}
+                    {t.is_milestone ? (
+                      <Diamond
+                        className="mr-1 inline h-3 w-3 text-[var(--color-info-fg)]"
+                        aria-hidden
+                      />
+                    ) : null}
                     {t.name}
                     {delayed ? (
                       <span
@@ -938,7 +944,7 @@ function TaskList({
                   />
                 ) : t.is_milestone ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-info-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-info-fg)]">
-                    🔷 Hito
+                    <Diamond className="h-3 w-3" aria-hidden /> Hito
                   </span>
                 ) : (
                   <span className="text-[var(--color-tertiary)]">—</span>
