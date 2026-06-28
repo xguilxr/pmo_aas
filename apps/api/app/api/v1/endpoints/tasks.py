@@ -557,13 +557,20 @@ async def import_ms_project(
     for pt in parsed:
         existing = None
         if strategy == "merge":
+            # BUG-078: (project_id, external_id) no es único. Un plan con
+            # WBS repetidos —o un import previo— deja varias filas con el
+            # mismo external_id; scalar_one_or_none() reventaba con
+            # MultipleResultsFound (500 "no se pudo conectar" al subir).
+            # Tomamos la primera de forma determinista en vez de fallar.
             existing = (
                 await db.execute(
-                    select(Task).where(
+                    select(Task)
+                    .where(
                         Task.project_id == p.id, Task.external_id == pt.external_id
                     )
+                    .order_by(Task.id)
                 )
-            ).scalar_one_or_none()
+            ).scalars().first()
         if existing is not None:
             existing.name = pt.name
             existing.wbs = pt.wbs
@@ -1000,13 +1007,20 @@ async def import_confirm(
     for pt in parsed:
         existing = None
         if body.strategy == "merge":
+            # BUG-078: (project_id, external_id) no es único. Un plan con
+            # WBS repetidos —o un import previo— deja varias filas con el
+            # mismo external_id; scalar_one_or_none() reventaba con
+            # MultipleResultsFound (500 "no se pudo conectar" al subir).
+            # Tomamos la primera de forma determinista en vez de fallar.
             existing = (
                 await db.execute(
-                    select(Task).where(
+                    select(Task)
+                    .where(
                         Task.project_id == p.id, Task.external_id == pt.external_id
                     )
+                    .order_by(Task.id)
                 )
-            ).scalar_one_or_none()
+            ).scalars().first()
         if existing is not None:
             existing.name = pt.name
             existing.wbs = pt.wbs
