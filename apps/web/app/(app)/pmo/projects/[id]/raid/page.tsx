@@ -590,6 +590,7 @@ function RaidInner() {
               prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
             )
           }
+          onStatusChange={handleBoardMove}
         />
       ) : (
         <IssuesSection
@@ -616,6 +617,7 @@ function RaidInner() {
               prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
             )
           }
+          onStatusChange={handleBoardMove}
         />
       )}
 
@@ -741,11 +743,16 @@ function RisksSection({
   rows,
   projectId,
   onRiskUpdate,
+  onStatusChange,
 }: {
   rows: Risk[];
   projectId: string;
   onRiskUpdate: (r: Partial<Risk> & { id: string }) => void;
+  // US-175: cambio de estado inline (reusa el handler de Kanban → maneja la
+  // nota de cierre para riesgos).
+  onStatusChange?: (id: string, status: string) => void;
 }) {
+  void onRiskUpdate;
   const [preview, setPreview] = useState<Risk | null>(null);
   // ENH-061: filtro por celda P×I de la matriz.
   const [cellFilter, setCellFilter] = useState<
@@ -858,8 +865,24 @@ function RisksSection({
                     <td className="px-3 py-2">
                       <SeverityBadge severity={r.severity} />
                     </td>
+                    {/* US-175: estado editable inline. */}
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {RISK_STATUS_LABEL[r.status] ?? r.status}
+                      {onStatusChange ? (
+                        <select
+                          value={r.status}
+                          onChange={(e) => onStatusChange(r.id, e.target.value)}
+                          title="Estado"
+                          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                        >
+                          {(Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map((s) => (
+                            <option key={s} value={s}>
+                              {RISK_STATUS_LABEL[s]}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        (RISK_STATUS_LABEL[r.status] ?? r.status)
+                      )}
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.identified_at ?? "—"}
@@ -913,13 +936,17 @@ function IssuesSection({
   sectionLabel,
   issueType,
   onIssueUpdate,
+  onStatusChange,
 }: {
   rows: Issue[];
   projectId: string;
   sectionLabel: string;
   issueType: IssueType;
   onIssueUpdate: (i: Partial<Issue> & { id: string }) => void;
+  // US-175: cambio de estado inline.
+  onStatusChange?: (id: string, status: string) => void;
 }) {
+  void onIssueUpdate;
   const [preview, setPreview] = useState<Issue | null>(null);
   const { sortedRows, ctrl: issueSortCtrl } = useSortableRows<Issue>(rows);
   void projectId;
@@ -1000,8 +1027,24 @@ function IssuesSection({
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   <PriorityBadge priority={it.priority} />
                 </td>
+                {/* US-175: estado editable inline. */}
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.status}
+                  {onStatusChange ? (
+                    <select
+                      value={it.status}
+                      onChange={(e) => onStatusChange(it.id, e.target.value)}
+                      title="Estado"
+                      className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                    >
+                      {(Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map((s) => (
+                        <option key={s} value={s}>
+                          {ISSUE_STATUS_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    (ISSUE_STATUS_LABEL[it.status] ?? it.status)
+                  )}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.reported_at

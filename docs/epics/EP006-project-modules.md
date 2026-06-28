@@ -272,6 +272,9 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
   identified→…→closed; issues: open→…→closed). Drag & drop para avanzar/
   retroceder de fase (PATCH status). Mover un riesgo a closed/materialized pide
   la nota de cierre (regla de negocio existente).
+- [x] **US-175 (Sprint 35):** **cambio de estado inline** en las listas R/A/I/D
+  (dropdown en la celda Estado → PATCH status, reusa el handler del Kanban con
+  la nota de cierre para riesgos).
 
 **Estado de integración:** DONE (US-019). Export XLSX nativo queda
 como follow-up; CSV cubre el caso de uso principal.

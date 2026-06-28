@@ -39,7 +39,7 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 - [x] **ENH-167** — Filtros de área en RAID. `status:fix-committed`
 - [x] **ENH-168** — Descarga individual por tipo (R/A/I/D) + mantener el de 4 hojas (BE `?only=` + FE). `status:fix-committed`
 - [x] **US-174** — Kanban con drag (avanzar/retroceder fase) + toggle Lista/Kanban por tipo. `status:fix-committed`
-- [ ] **US-175** — Edición inline RAID.
+- [x] **US-175** — Edición inline RAID (estado inline en listas R/A/I/D). `status:fix-committed`
 - [ ] **ENH-169** — Alinear/complementar campos RAID (pasada final) + docs.
 
 Al final: análisis UI/UX (mejoras, docs desactualizada, styling, aprovechamiento de espacio).
