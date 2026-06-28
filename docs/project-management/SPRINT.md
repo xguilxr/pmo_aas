@@ -27,7 +27,7 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 **Plan page (`/pmo/projects/[id]/plan`):**
 - [x] **ENH-161** — Quitar botón CSV. `status:fix-committed` (`9b19b6b`)
 - [x] **ENH-162** — Mover Plantilla/Importar/Descargar al header (nivel título + breadcrumbs). `status:fix-committed`
-- [ ] **ENH-163** — Columna HITO junto a CRITICIDAD en la lista.
+- [x] **ENH-163** — Columna HITO junto a CRITICIDAD en la lista. `status:fix-committed`
 - [ ] **ENH-164** — Reemplazar botón MSP por configurador de columnas (obligatorias: WBS, TAREA, ÁREA, INICIO, FIN, AVANCE, ESTADO, CRITICIDAD, HITO).
 - [ ] **ENH-165** — Agrupación por WBS nivel 0.
 - [ ] **US-171** — "Fecha de Cierre" editable + lógica de atraso para cerradas + tag "Retrasada" rojo (BE + migración + FE + docs).

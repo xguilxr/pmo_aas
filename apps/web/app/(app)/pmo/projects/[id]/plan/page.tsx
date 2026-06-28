@@ -526,6 +526,7 @@ function TaskList({
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
             <th className="px-3 py-2 font-medium">Criticidad</th>
+            <th className="px-3 py-2 font-medium">Hito</th>
             {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
@@ -656,6 +657,16 @@ function TaskList({
                 {isTaskCritical(t) ? (
                   <span className="inline-flex items-center rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]">
                     Sí
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-tertiary)]">—</span>
+                )}
+              </td>
+              {/* ENH-163: columna Hito junto a Criticidad. */}
+              <td className="px-3 py-2">
+                {t.is_milestone ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-info-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-info-fg)]">
+                    🔷 Hito
                   </span>
                 ) : (
                   <span className="text-[var(--color-tertiary)]">—</span>
