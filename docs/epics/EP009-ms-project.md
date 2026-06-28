@@ -213,7 +213,7 @@ implementó.
 |---|---|
 | `name` | ✅ |
 | `description` | |
-| `wbs` | auto-sugerido por jerarquía |
+| `wbs` | US-172: `POST /projects/{id}/tasks/renumber-wbs` renumera todo el proyecto jerárquico + único (1, 1.1, 1.2, 2, …), resuelve duplicados y remapea predecesoras |
 | `parent_id` | tarea padre |
 | `start_date`, `end_date` | fecha planeada |
 | `closed_at` | US-171: fecha de cierre **real** (editable). Auto = hoy al completar sin fecha. |

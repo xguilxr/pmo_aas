@@ -31,7 +31,7 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 - [x] **ENH-164** — Reemplazar botón MSP por configurador de columnas (obligatorias: WBS, TAREA, ÁREA, INICIO, FIN, AVANCE, ESTADO, CRITICIDAD, HITO). `status:fix-committed`
 - [x] **ENH-165** — Agrupación por WBS nivel 0 (colapsa todo, sólo raíces). `status:fix-committed`
 - [x] **US-171** — "Fecha de Cierre" editable + lógica de atraso para cerradas + tag "Retrasada" rojo (BE + migración 0086 + FE + docs). `status:fix-committed`
-- [ ] **US-172** — Auto-WBS con niveles + anti-duplicados (BE + FE).
+- [x] **US-172** — Auto-WBS con niveles + anti-duplicados (BE endpoint renumber-wbs + botón FE). `status:fix-committed`
 - [ ] **US-173** — Edición inline de tareas (área dropdown, fechas calendario, avance dblclick, estado dropdown, criticidad+hito checkmarks).
 
 **RAID (`/pmo/projects/[id]/raid`):**

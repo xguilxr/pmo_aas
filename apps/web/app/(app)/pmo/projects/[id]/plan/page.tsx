@@ -41,6 +41,7 @@ import {
   deleteTask,
   getGantt,
   listTasks,
+  renumberWbs,
   updateTask,
   type GanttData,
   type Task,
@@ -1233,6 +1234,31 @@ function PlanInner() {
     void loadAreas();
   }
 
+  // US-172: renumera el WBS de todo el proyecto (jerárquico + único).
+  const [renumbering, setRenumbering] = useState(false);
+  async function handleRenumberWbs() {
+    if (renumbering) return;
+    if (
+      !window.confirm(
+        "Auto-numerar WBS reescribe el WBS de TODAS las tareas de forma " +
+          "jerárquica (1, 1.1, 1.2, 2, …), preservando el orden actual y " +
+          "resolviendo duplicados. ¿Continuar?",
+      )
+    )
+      return;
+    setRenumbering(true);
+    try {
+      await renumberWbs(id);
+      await loadTasksAndGantt();
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo renumerar el WBS",
+      );
+    } finally {
+      setRenumbering(false);
+    }
+  }
+
   useEffect(() => {
     void loadTasksAndGantt();
     // ENH-028: nombre del proyecto para el filename del export. Falla silencioso
@@ -1720,6 +1746,18 @@ function PlanInner() {
               })
             : null}
         </div>
+        {/* US-172: auto-numerar WBS (jerárquico + único). */}
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={handleRenumberWbs}
+          loading={renumbering}
+          title="Renumerar WBS de todo el proyecto: 1, 1.1, 1.2, 2, … (resuelve duplicados)"
+        >
+          <Network className="h-3.5 w-3.5" aria-hidden />
+          Auto-WBS
+        </Button>
         {/* Área dropdown checklist */}
         <AreaFilterDropdown
           areas={areas}

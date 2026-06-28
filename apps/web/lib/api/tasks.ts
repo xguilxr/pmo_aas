@@ -134,6 +134,14 @@ export function getGantt(projectId: string): Promise<GanttData> {
   return apiFetch<GanttData>(`/api/v1/projects/${projectId}/gantt`);
 }
 
+// US-172: renumera el WBS de todo el proyecto (jerárquico + único).
+export function renumberWbs(projectId: string): Promise<{ renumbered: number }> {
+  return apiFetch<{ renumbered: number }>(
+    `/api/v1/projects/${projectId}/tasks/renumber-wbs`,
+    { method: "POST" },
+  );
+}
+
 export async function importMsProject(
   projectId: string,
   file: File,
