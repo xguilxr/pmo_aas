@@ -9,16 +9,41 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "Roles + Visibilidad PM + Catálogo por Org + Nav Sin Programa" (2026-06-08)
-Branch: claude/friendly-bell-EYlVB
+Batch "Plan page + RAID mejoras" (Sprint 35, 2026-06-28)
+Branch: claude/minutes-plans-upload-error-driwcd
 
-Sprint 34 Bloque 1 COMPLETO — todos los issues en status:fix-committed.
-Pendiente PR y verificación del owner.
+Ejecución directa end-to-end pedida por el owner. 14 items (5 US + 9 ENH).
+Ver bloque "Sprint 35" en INBOX abajo para el detalle y progreso por item.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Sprint 35 — Plan page + RAID mejoras (branch: claude/minutes-plans-upload-error-driwcd)
+
+Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principio a fin).
+
+**Plan page (`/pmo/projects/[id]/plan`):**
+- [ ] **ENH-161** — Quitar botón CSV.
+- [ ] **ENH-162** — Mover Plantilla/Importar/Descargar al header (nivel título + breadcrumbs).
+- [ ] **ENH-163** — Columna HITO junto a CRITICIDAD en la lista.
+- [ ] **ENH-164** — Reemplazar botón MSP por configurador de columnas (obligatorias: WBS, TAREA, ÁREA, INICIO, FIN, AVANCE, ESTADO, CRITICIDAD, HITO).
+- [ ] **ENH-165** — Agrupación por WBS nivel 0.
+- [ ] **US-171** — "Fecha de Cierre" editable + lógica de atraso para cerradas + tag "Retrasada" rojo (BE + migración + FE + docs).
+- [ ] **US-172** — Auto-WBS con niveles + anti-duplicados (BE + FE).
+- [ ] **US-173** — Edición inline de tareas (área dropdown, fechas calendario, avance dblclick, estado dropdown, criticidad+hito checkmarks).
+
+**RAID (`/pmo/projects/[id]/raid`):**
+- [ ] **ENH-166** — Listas excluyen finalizados por default + orden por estado/severidad.
+- [ ] **ENH-167** — Filtros de área.
+- [ ] **ENH-168** — Descarga individual por tipo (R/A/I/D) + mantener el de 4 hojas (BE + FE).
+- [ ] **US-174** — Kanban con drag (avanzar/retroceder fase) + toggle Lista/Kanban por tipo.
+- [ ] **US-175** — Edición inline RAID.
+- [ ] **ENH-169** — Alinear/complementar campos RAID (pasada final) + docs.
+
+Al final: análisis UI/UX (mejoras, docs desactualizada, styling, aprovechamiento de espacio).
+Próximo libre tras este batch: US-176, BUG-081, ENH-170.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
 
