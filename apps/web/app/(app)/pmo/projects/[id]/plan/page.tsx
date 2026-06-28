@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Download,
   FileDown,
-  FileSpreadsheet,
   ListTree,
   Network,
   Pencil,
@@ -1156,67 +1155,12 @@ function PlanInner() {
 
   // ENH-028: filename "PLAN - {Proyecto} - {YYYY-MM-DD}". Sanitiza
   // caracteres ilegales en filesystems comunes (Windows, macOS).
-  function buildFilename(ext: "csv" | "xlsx"): string {
+  function buildFilename(ext: "xlsx"): string {
     const safeName = (projectName || "PROYECTO")
       .replace(/[\\/:*?"<>|]/g, "")
       .trim() || "PROYECTO";
     const today = new Date().toISOString().slice(0, 10);
     return `PLAN - ${safeName} - ${today}.${ext}`;
-  }
-
-  function exportToCSV() {
-    if (tasks.length === 0) {
-      alert("No hay tareas para exportar");
-      return;
-    }
-    // ENH-134: orden de columnas canónico (espeja la plantilla).
-    const areaName = (aid: string | null) =>
-      (aid && areas.find((a) => a.id === aid)?.name) || "";
-    const headers = [
-      "WBS",
-      "Tarea",
-      "Outline Level",
-      "Inicio",
-      "Fin",
-      "Duración (días)",
-      "Avance (%)",
-      "Estado",
-      "Área Responsable",
-      "Responsable",
-      "Criticidad",
-      "Es hito",
-      "Hito Relacionado",
-      "Predecessors",
-      "Successors",
-    ];
-    const rows = tasks.map((t) => [
-      t.wbs ?? "",
-      t.name,
-      t.outline_level ?? "",
-      t.start_date ?? "",
-      t.end_date ?? "",
-      t.duration_days ?? "",
-      t.progress ?? 0,
-      TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ?? t.status,
-      areaName(t.area_id),
-      ownerLabel(t.owner),
-      isTaskCritical(t) ? "Sí" : "No",
-      t.is_milestone ? "Sí" : "No",
-      t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
-      (t.predecessors ?? []).join(", "),
-      (t.successors ?? []).join(", "),
-    ]);
-    const csv = [
-      headers.map((h) => `"${h}"`).join(","),
-      ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
-    ].join("\n");
-    // ENH-028: BOM UTF-8 (﻿) para que Excel lea acentos correctamente
-    // (antes: "DuraciÃ³n", "DiseÃ±o" → ahora: "Duración", "Diseño").
-    const blob = new Blob(["﻿", csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = buildFilename("csv");
-    link.click();
   }
 
   // ENH-028: Excel MPP-like (XLSX) — colores sutiles por estado, hitos
@@ -1419,17 +1363,6 @@ function PlanInner() {
             >
               <Download className="h-4 w-4" aria-hidden />
               Descargar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={exportToCSV}
-              aria-label="Exportar a CSV"
-              title="Descargar como CSV"
-            >
-              <FileSpreadsheet className="h-4 w-4" aria-hidden />
-              CSV
             </Button>
             <Button
               type="button"
