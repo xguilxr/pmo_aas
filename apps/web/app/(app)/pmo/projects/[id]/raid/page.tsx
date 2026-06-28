@@ -211,7 +211,7 @@ function RaidInner() {
   // ('RAID-[Nombre Proyecto].xlsx') viene en el Content-Disposition.
   const [exporting, setExporting] = useState(false);
 
-  async function downloadRaid() {
+  async function downloadRaid(only?: Tab) {
     if (exporting) return;
     setExporting(true);
     setError(null);
@@ -221,11 +221,16 @@ function RaidInner() {
         Accept: "application/octet-stream",
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`${apiBase()}/api/v1/projects/${id}/raid/export`, {
-        method: "GET",
-        headers,
-        credentials: "include",
-      });
+      // ENH-168: `only` → XLSX de una sola hoja para el tipo actual.
+      const qs = only ? `?only=${only}` : "";
+      const res = await fetch(
+        `${apiBase()}/api/v1/projects/${id}/raid/export${qs}`,
+        {
+          method: "GET",
+          headers,
+          credentials: "include",
+        },
+      );
       if (!res.ok) {
         throw new ApiError(
           res.status,
@@ -285,14 +290,26 @@ function RaidInner() {
           >
             + {KIND_NEW_LABEL[tab]}
           </button>
+          {/* ENH-168: export individual del tipo activo (XLSX 1 hoja). */}
           <button
             type="button"
-            onClick={downloadRaid}
+            onClick={() => downloadRaid(tab)}
             disabled={exporting}
+            title={`Exportar sólo ${TABS.find((t) => t.id === tab)?.label ?? "tipo"} (XLSX de 1 hoja)`}
             className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" aria-hidden />
-            {exporting ? "Exportando…" : "Exportar RAID"}
+            Exportar {TABS.find((t) => t.id === tab)?.label ?? "tipo"}
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadRaid()}
+            disabled={exporting}
+            title="Exportar los 4 tipos en un solo archivo (4 hojas)"
+            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            {exporting ? "Exportando…" : "Exportar RAID (4 hojas)"}
           </button>
         </div>
       </header>

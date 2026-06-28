@@ -37,7 +37,7 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 **RAID (`/pmo/projects/[id]/raid`):**
 - [x] **ENH-166** — Listas excluyen finalizados por default + orden por estado/severidad (+ toggle "Mostrar finalizados"). `status:fix-committed`
 - [x] **ENH-167** — Filtros de área en RAID. `status:fix-committed`
-- [ ] **ENH-168** — Descarga individual por tipo (R/A/I/D) + mantener el de 4 hojas (BE + FE).
+- [x] **ENH-168** — Descarga individual por tipo (R/A/I/D) + mantener el de 4 hojas (BE `?only=` + FE). `status:fix-committed`
 - [ ] **US-174** — Kanban con drag (avanzar/retroceder fase) + toggle Lista/Kanban por tipo.
 - [ ] **US-175** — Edición inline RAID.
 - [ ] **ENH-169** — Alinear/complementar campos RAID (pasada final) + docs.

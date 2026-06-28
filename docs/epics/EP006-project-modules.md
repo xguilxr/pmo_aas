@@ -258,6 +258,15 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
   "RAID" (los enlaces legacy siguen funcionando).
 - [x] `ISSUE_TYPE_LABEL['issue']` actualizado de "Incidencia" a
   "Incidente" (DEC-007).
+- [x] **ENH-168 (Sprint 35):** export individual por tipo —
+  `GET /projects/{id}/raid/export?only=risks|actions|incidents|decisions`
+  devuelve un XLSX de 1 hoja (`{proyecto}-{tipo}.xlsx`). Sin `only` sigue
+  devolviendo el combinado de 4 hojas. Botones "Exportar {tipo}" + "Exportar
+  RAID (4 hojas)" en la página `/raid`.
+- [x] **ENH-166 (Sprint 35):** las listas R/A/I/D ocultan finalizados por
+  default (riesgos: closed; issues: resolved/closed) con toggle "Mostrar
+  finalizados"; orden por fase de estado y luego severidad/prioridad.
+- [x] **ENH-167 (Sprint 35):** filtro por área en la página RAID.
 
 **Estado de integración:** DONE (US-019). Export XLSX nativo queda
 como follow-up; CSV cubre el caso de uso principal.

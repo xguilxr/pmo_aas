@@ -320,6 +320,7 @@ async def download_plan(
 @router.get("/{project_id}/raid/export")
 async def export_raid(
     project_id: UUID,
+    only: str | None = None,
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
@@ -327,9 +328,10 @@ async def export_raid(
     Incidencias / Decisiones — con columnas legibles (nombres de área y
     responsable resueltos a texto) y filename `RAID-[Nombre Proyecto].xlsx`.
 
-    Es el **mismo archivo** para el botón de `/raid` y el del módulo
-    Documentos (tab RAIDs). Los 4 tipos RAID son `Risk` + `Issue.type`
-    (action / issue / decision). Refleja el estado actual de DB.
+    ENH-168: con `?only=risks|actions|incidents|decisions` devuelve un XLSX de
+    una sola hoja para ese tipo (filename `{proyecto}-{tipo}.xlsx`). Sin `only`
+    devuelve el archivo combinado de 4 hojas (mismo que el módulo Documentos).
+    Los 4 tipos RAID son `Risk` + `Issue.type` (action / issue / decision).
     """
     from io import BytesIO
     from urllib.parse import quote
@@ -338,12 +340,15 @@ async def export_raid(
 
     from app.models.area import Actor, Area
     from app.models.user import User
-    from app.services.filename_slug import raid_display_filename
+    from app.services.filename_slug import artifact_filename, raid_display_filename
     from app.services.raid_export import (
+        AID_HEADERS,
+        RISK_HEADERS,
         XLSX_MIME,
         build_issue_rows,
         build_risk_rows,
         export_raid_xlsx,
+        export_single_sheet_xlsx,
     )
 
     tenant_id = _tenant(cu)
@@ -394,15 +399,32 @@ async def export_raid(
         for u in (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
     } if user_ids else {}
 
-    data = export_raid_xlsx(
-        risks_rows=build_risk_rows(list(risks), area_names, actor_names, user_names),
-        actions_rows=build_issue_rows(actions, area_names, actor_names, user_names),
-        incidents_rows=build_issue_rows(incidents, area_names, actor_names, user_names),
-        decisions_rows=build_issue_rows(decisions, area_names, actor_names, user_names),
-    )
+    risk_rows = build_risk_rows(list(risks), area_names, actor_names, user_names)
+    action_rows = build_issue_rows(actions, area_names, actor_names, user_names)
+    incident_rows = build_issue_rows(incidents, area_names, actor_names, user_names)
+    decision_rows = build_issue_rows(decisions, area_names, actor_names, user_names)
 
-    # ENH-152: filename legible `RAID-[Nombre Proyecto].xlsx`.
-    filename = raid_display_filename(project.name)
+    # ENH-168: export individual por tipo.
+    single = {
+        "risks": ("Riesgos", "riesgos", RISK_HEADERS, risk_rows),
+        "actions": ("Acciones", "acciones", AID_HEADERS, action_rows),
+        "incidents": ("Incidencias", "incidencias", AID_HEADERS, incident_rows),
+        "decisions": ("Decisiones", "decisiones", AID_HEADERS, decision_rows),
+    }
+    only_key = (only or "").strip().lower()
+    if only_key in single:
+        title, slug, hdrs, rows = single[only_key]
+        data = export_single_sheet_xlsx(title=title, headers=hdrs, rows=rows)
+        filename = artifact_filename(project.name, slug, "xlsx")
+    else:
+        # ENH-152: archivo combinado de 4 hojas. Filename `RAID-[Nombre].xlsx`.
+        data = export_raid_xlsx(
+            risks_rows=risk_rows,
+            actions_rows=action_rows,
+            incidents_rows=incident_rows,
+            decisions_rows=decision_rows,
+        )
+        filename = raid_display_filename(project.name)
     headers = {
         "Content-Disposition": (
             f'attachment; filename="{filename}"; '

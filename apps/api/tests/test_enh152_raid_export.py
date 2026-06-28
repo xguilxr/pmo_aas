@@ -18,11 +18,25 @@ from app.services.raid_export import (
     build_issue_rows,
     build_risk_rows,
     export_raid_xlsx,
+    export_single_sheet_xlsx,
 )
 
 
 def _load(data: bytes):
     return load_workbook(BytesIO(data))
+
+
+def test_export_single_sheet_has_one_sheet_with_headers():
+    # ENH-168: export individual por tipo = una sola hoja.
+    data = export_single_sheet_xlsx(
+        title="Riesgos",
+        headers=RISK_HEADERS,
+        rows=[["R-1", "Riesgo X", "d", 12, "Mitigando", "PMO", "Ana", date(2026, 1, 5)]],
+    )
+    wb = _load(data)
+    assert wb.sheetnames == ["Riesgos"]
+    assert [c.value for c in wb["Riesgos"][1]] == RISK_HEADERS
+    assert wb["Riesgos"]["B2"].value == "Riesgo X"
 
 
 def test_raid_export_has_four_spanish_sheets_with_headers():

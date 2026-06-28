@@ -162,6 +162,23 @@ def _write_sheet(wb, title: str, headers: list[str], rows: list[list[Any]]) -> N
     _autosize(ws, len(headers))
 
 
+def export_single_sheet_xlsx(
+    *, title: str, headers: list[str], rows: list[list[Any]]
+) -> bytes:
+    """ENH-168: XLSX de UNA sola hoja para export individual por tipo
+    (Riesgos / Acciones / Incidencias / Decisiones)."""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    default_ws = wb.active
+    if default_ws is not None:
+        wb.remove(default_ws)
+    _write_sheet(wb, title, headers, rows)
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def export_raid_xlsx(
     *,
     risks_rows: list[list[Any]],
