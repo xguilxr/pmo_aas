@@ -865,7 +865,8 @@ function PlanInner() {
   // todos los WBS de profundidad N para que sólo se muestren niveles
   // ≤ N. Cualquier toggle manual del chevron cambia el modo a "manual"
   // automáticamente.
-  type WbsLevel = 1 | 2 | 3 | 4 | "manual";
+  // ENH-165: nivel 0 = colapsa todo y deja sólo las filas raíz (depth 0).
+  type WbsLevel = 0 | 1 | 2 | 3 | 4 | "manual";
   const [wbsLevel, setWbsLevel] = useState<WbsLevel>("manual");
 
   // US-090: toggle visibilidad de columnas MS Project (Outline / Duration
@@ -920,9 +921,10 @@ function PlanInner() {
       // ENH-077 CA5: nivel WBS persistido.
       const lvlRaw = window.localStorage.getItem(`plan-wbs-level:${id}`);
       if (
-        lvlRaw === "1" || lvlRaw === "2" || lvlRaw === "3" || lvlRaw === "4"
+        lvlRaw === "0" || lvlRaw === "1" || lvlRaw === "2" ||
+        lvlRaw === "3" || lvlRaw === "4"
       ) {
-        setWbsLevel(Number(lvlRaw) as 1 | 2 | 3 | 4);
+        setWbsLevel(Number(lvlRaw) as 0 | 1 | 2 | 3 | 4);
       } else if (lvlRaw === "manual") {
         setWbsLevel("manual");
       }
@@ -1677,7 +1679,7 @@ function PlanInner() {
             WBS
           </button>
           {groupByWbs
-            ? ([1, 2, 3, 4, "manual"] as const).map((lvl) => {
+            ? ([0, 1, 2, 3, 4, "manual"] as const).map((lvl) => {
                 const active = wbsLevel === lvl;
                 return (
                   <button
@@ -1688,7 +1690,9 @@ function PlanInner() {
                     title={
                       lvl === "manual"
                         ? "Modo manual (chevrons)"
-                        : `Mostrar hasta nivel ${lvl}`
+                        : lvl === 0
+                          ? "Sólo nivel raíz (colapsa todo)"
+                          : `Mostrar hasta nivel ${lvl}`
                     }
                     className={cn(
                       "h-7 rounded px-2 text-[11px] font-medium",

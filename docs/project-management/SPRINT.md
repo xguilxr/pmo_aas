@@ -29,7 +29,7 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 - [x] **ENH-162** — Mover Plantilla/Importar/Descargar al header (nivel título + breadcrumbs). `status:fix-committed`
 - [x] **ENH-163** — Columna HITO junto a CRITICIDAD en la lista. `status:fix-committed`
 - [x] **ENH-164** — Reemplazar botón MSP por configurador de columnas (obligatorias: WBS, TAREA, ÁREA, INICIO, FIN, AVANCE, ESTADO, CRITICIDAD, HITO). `status:fix-committed`
-- [ ] **ENH-165** — Agrupación por WBS nivel 0.
+- [x] **ENH-165** — Agrupación por WBS nivel 0 (colapsa todo, sólo raíces). `status:fix-committed`
 - [ ] **US-171** — "Fecha de Cierre" editable + lógica de atraso para cerradas + tag "Retrasada" rojo (BE + migración + FE + docs).
 - [ ] **US-172** — Auto-WBS con niveles + anti-duplicados (BE + FE).
 - [ ] **US-173** — Edición inline de tareas (área dropdown, fechas calendario, avance dblclick, estado dropdown, criticidad+hito checkmarks).
