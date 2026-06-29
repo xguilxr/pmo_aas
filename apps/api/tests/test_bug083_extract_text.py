@@ -19,7 +19,7 @@ import httpx
 import pytest
 
 from app.services.document_text import (
-    UnsupportedDocument,
+    UnsupportedDocumentError,
     extract_text_from_upload,
 )
 from tests.factories import create_admin_role, create_tenant, create_user, login
@@ -59,12 +59,12 @@ def test_tc083_2_plain_and_unsupported():
     # sin extensión → se trata como texto plano.
     assert extract_text_from_upload("notas", b"plano") == "plano"
     # .doc legacy y formatos raros → error claro.
-    with pytest.raises(UnsupportedDocument):
+    with pytest.raises(UnsupportedDocumentError):
         extract_text_from_upload("viejo.doc", b"\xd0\xcf\x11\xe0")
-    with pytest.raises(UnsupportedDocument):
+    with pytest.raises(UnsupportedDocumentError):
         extract_text_from_upload("hoja.xlsx", b"PK\x03\x04")
     # un "docx" que no es un ZIP válido → error controlado, no crash.
-    with pytest.raises(UnsupportedDocument):
+    with pytest.raises(UnsupportedDocumentError):
         extract_text_from_upload("roto.docx", b"no soy un zip")
 
 

@@ -79,7 +79,7 @@ async def extract_text(
     from fastapi import HTTPException
 
     from app.services.document_text import (
-        UnsupportedDocument,
+        UnsupportedDocumentError,
         extract_text_from_upload,
     )
 
@@ -89,7 +89,7 @@ async def extract_text(
         raise HTTPException(status_code=413, detail={"code": "PAYLOAD_TOO_LARGE"})
     try:
         text = extract_text_from_upload(file.filename or "", data)
-    except UnsupportedDocument as exc:
+    except UnsupportedDocumentError as exc:
         raise validation_error(str(exc))
     if not text.strip():
         raise validation_error(

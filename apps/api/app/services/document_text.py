@@ -16,7 +16,7 @@ DOCX_EXT = ".docx"
 SUPPORTED_EXTS = PLAIN_TEXT_EXTS | {DOCX_EXT}
 
 
-class UnsupportedDocument(ValueError):
+class UnsupportedDocumentError(ValueError):
     """Extensión/contenido no soportado para extracción de texto."""
 
 
@@ -61,27 +61,27 @@ def _decode_plain(data: bytes) -> str:
 def extract_text_from_upload(filename: str, data: bytes) -> str:
     """Devuelve el texto plano de un archivo subido.
 
-    Lanza `UnsupportedDocument` si el formato no se soporta o si el .docx no
+    Lanza `UnsupportedDocumentError` si el formato no se soporta o si el .docx no
     se puede leer (corrupto / no es un ZIP válido)."""
     ext = file_ext(filename)
     if ext == DOCX_EXT:
         try:
             return extract_docx_text(data)
-        except UnsupportedDocument:
+        except UnsupportedDocumentError:
             raise
         except Exception as exc:  # docx corrupto / no es zip válido
-            raise UnsupportedDocument(
+            raise UnsupportedDocumentError(
                 f"No se pudo leer el .docx ({type(exc).__name__}). "
                 "Verifica que el archivo no esté dañado."
             ) from exc
     if ext in PLAIN_TEXT_EXTS or ext == "":
         return _decode_plain(data)
     if ext == ".doc":
-        raise UnsupportedDocument(
+        raise UnsupportedDocumentError(
             "El formato .doc (Word 97-2003) no se soporta. "
             "Guárdalo como .docx o pega el texto directamente."
         )
-    raise UnsupportedDocument(
+    raise UnsupportedDocumentError(
         f"Formato no soportado: {ext}. Usa .docx o texto plano "
         "(.txt, .md, .srt, .vtt), o pega el texto directamente."
     )
