@@ -54,9 +54,9 @@ Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint
 - [x] **ENH-171** — RAID: menú "Exportar ▾" + hint del Kanban. `status:fix-committed` (`0cf014b`)
 - [x] **ENH-172** — Unificar label "Nota de cierre" en issues RAID. `status:fix-committed` (`a7ee838`)
 
-**Fase 2-3 — pendientes (sin decisión, próximas):**
-- [ ] Edición inline "on-click" + update optimista (Plan y RAID).
-- [ ] A11y del Kanban (teclado / botones ←→).
+**Fase 2-3 — hechas:**
+- [x] **ENH-173** — Edición inline "on-click" (`InlineSelectCell`) + updates optimistas con revert (Plan y RAID). `status:fix-committed` (`4fb79fb`)
+- [x] **ENH-174** — A11y del Kanban: botones ←/→ por tarjeta (teclado). `status:fix-committed` (`2083113`)
 
 **Fase 4 — requieren OK del owner (no arrancadas):**
 - [ ] Columna Responsable en listas RAID + resolución Actor en el read.
@@ -64,7 +64,7 @@ Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint
 - [ ] `category` para issues (migración).
 - [ ] Auto-WBS columna `position` (migración; el más grande).
 
-Próximo libre tras este batch: US-176, BUG-081, ENH-173.
+Próximo libre tras este batch: US-176, BUG-081, ENH-175.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
 
