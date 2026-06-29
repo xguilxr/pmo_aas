@@ -145,3 +145,44 @@ async def test_snapshot_tenant_writes_all_levels_idempotent(db_session):
         )
     ).scalar_one()
     assert total2 == 7
+
+
+@pytest.mark.asyncio
+async def test_bug082_avg_progress_uses_wbs_rollup(db_session):
+    """BUG-082: el snapshot toma el avance *efectivo* (rollup WBS del plan),
+    no la columna `Project.progress` manual. Un proyecto con avance manual 0
+    pero tareas que promedian 75 debe registrar avg_progress=75, no 0."""
+    from app.models.task import Task
+
+    t = await create_tenant(db_session)
+    org = Organization(tenant_id=t.id, name="Org R")
+    db_session.add(org)
+    await db_session.flush()
+    proj = Project(
+        tenant_id=t.id,
+        organization_id=org.id,
+        folio="PRJ-2026-900",
+        name="Plan-driven",
+        phase="execution",
+        health_status="green",
+        progress=0,  # avance manual stale; el real viene del plan
+        type="transformation",
+    )
+    db_session.add(proj)
+    await db_session.flush()
+    # Dos raíces WBS → avance general = promedio (100 + 50) / 2 = 75.
+    for wbs, pr in [("1", 100), ("2", 50)]:
+        db_session.add(
+            Task(
+                tenant_id=t.id,
+                project_id=proj.id,
+                wbs=wbs,
+                name=f"Task {wbs}",
+                progress=pr,
+                status="in_progress",
+            )
+        )
+    await db_session.commit()
+
+    v = await compute_snapshot_values(db_session, str(t.id), "project", str(proj.id))
+    assert v["avg_progress"] == pytest.approx(75.0, abs=0.01)

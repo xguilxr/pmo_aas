@@ -22,6 +22,7 @@ from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.project_request import ProjectRequest
 from app.models.task import Task
+from app.services.progress_calculator import plan_rollup_map
 
 ACTIVE_PHASES = ["planning", "execution", "support"]
 SEVERE_THRESHOLD = 13
@@ -117,11 +118,20 @@ async def compute_snapshot_values(
     values["health_green"] = sum(1 for r in proj_rows if r.health_status == "green")
     values["health_yellow"] = sum(1 for r in proj_rows if r.health_status == "yellow")
     values["health_red"] = sum(1 for r in proj_rows if r.health_status == "red")
-    values["avg_progress"] = (
-        round(sum(int(r.progress or 0) for r in active) / len(active), 2)
-        if active
-        else 0
-    )
+    # BUG-082: el avance de la serie histórica debe ser el avance *efectivo*
+    # (rollup WBS del plan, ENH-155) — el mismo que muestra el dashboard en
+    # vivo. Antes se leía la columna `Project.progress` (manual), que queda en
+    # 0 para proyectos cuyo avance se deriva del plan, así que la "evolución de
+    # avance" salía en 0 aunque el proyecto tuviera progreso real. El rollup
+    # cubre proyectos con tareas; el resto cae al `progress` manual.
+    if active:
+        rollup = await plan_rollup_map(db, [str(r.id) for r in active])
+        prog_values = [
+            rollup.get(str(r.id), float(r.progress or 0)) for r in active
+        ]
+        values["avg_progress"] = round(sum(prog_values) / len(prog_values), 2)
+    else:
+        values["avg_progress"] = 0
     values["budget_plan"] = float(sum(float(r.budget or 0) for r in proj_rows))
     values["budget_actual"] = float(sum(float(r.actual_budget or 0) for r in proj_rows))
 
