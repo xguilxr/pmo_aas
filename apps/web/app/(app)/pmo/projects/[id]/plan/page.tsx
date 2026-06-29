@@ -718,8 +718,9 @@ function TaskList({
             ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
-            <th className="px-3 py-2 font-medium">Criticidad</th>
-            <th className="px-3 py-2 font-medium">Hito</th>
+            {/* ENH-182: Criticidad e Hito centrados (checkmark/badge). */}
+            <th className="px-3 py-2 text-center font-medium">Criticidad</th>
+            <th className="px-3 py-2 text-center font-medium">Hito</th>
             {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
@@ -926,8 +927,8 @@ function TaskList({
                   <StatusBadge status={t.status} />
                 )}
               </td>
-              {/* US-173: Criticidad como checkmark inline. */}
-              <td className="px-3 py-2">
+              {/* US-173: Criticidad como checkmark inline. ENH-182: centrado. */}
+              <td className="px-3 py-2 text-center">
                 {onInlineUpdate ? (
                   <input
                     type="checkbox"
@@ -946,8 +947,8 @@ function TaskList({
                   <span className="text-[var(--color-tertiary)]">—</span>
                 )}
               </td>
-              {/* ENH-163 + US-173: Hito como checkmark inline. */}
-              <td className="px-3 py-2">
+              {/* ENH-163 + US-173: Hito como checkmark inline. ENH-182: centrado. */}
+              <td className="px-3 py-2 text-center">
                 {onInlineUpdate ? (
                   <input
                     type="checkbox"
