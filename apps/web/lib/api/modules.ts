@@ -137,6 +137,7 @@ export type Issue = {
   title: string;
   description: string | null;
   type: IssueType;
+  category: string | null; // ENH-177
   priority: number | null;
   committed_date: string | null;
   resolution: string | null;
@@ -156,6 +157,7 @@ export type IssueCreateBody = {
   title: string;
   description?: string | null;
   type: IssueType;
+  category?: string | null; // ENH-177
   priority?: number | null;
   committed_date?: string | null;
   owner_id?: string | null;

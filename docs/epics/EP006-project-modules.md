@@ -275,6 +275,14 @@ En backend, mismo approach con un mixin `TenantScopedModel` + un router factory 
 - [x] **US-175 (Sprint 35):** **cambio de estado inline** en las listas R/A/I/D
   (dropdown en la celda Estado → PATCH status, reusa el handler del Kanban con
   la nota de cierre para riesgos).
+- [x] **ENH-175 (Sprint 35):** columna **Responsable** en las listas RAID;
+  `responsible_name` se resuelve en el read (Actor del catálogo con fallback a
+  Usuario, igual que el export).
+- [x] **ENH-176 (Sprint 35):** **severidad inline** en riesgos — P e I editables
+  en la celda (severity = P × I, recomputada por el backend).
+- [x] **ENH-177 (Sprint 35):** **`category` para issues** (acciones/incidencias/
+  decisiones), en paralelo a `risks.category` (migración 0087). Editable en el
+  detalle del item.
 
 **Estado de integración:** DONE (US-019). Export XLSX nativo queda
 como follow-up; CSV cubre el caso de uso principal.

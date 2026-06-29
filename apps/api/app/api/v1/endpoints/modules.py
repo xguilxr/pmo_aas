@@ -578,6 +578,7 @@ async def create_issue(
     i = Issue(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
         title=body.title, description=body.description, type=body.type,
+        category=body.category,
         priority=body.priority, committed_date=body.committed_date,
         owner_id=str(body.owner_id) if body.owner_id else None,
         owner_actor_id=str(body.owner_actor_id) if body.owner_actor_id else None,

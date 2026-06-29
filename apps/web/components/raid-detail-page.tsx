@@ -70,7 +70,7 @@ type EditDraft = {
   status: string; // BUG-075: común a risk/issue; se castea por tipo al guardar.
   area_id: string;
   owner_id: string;
-  category: string; // risk only
+  category: string; // ENH-177: risk + issues
   probability: number; // risk only
   impact: number; // risk only
   mitigation_strategy: string; // risk only
@@ -133,6 +133,7 @@ function draftFromIssue(i: Issue): EditDraft {
     area_id: i.area_id ?? "",
     owner_id: i.owner_id ?? "",
     type: i.type,
+    category: i.category ?? "", // ENH-177
     priority: i.priority ?? "",
     reported_at: i.reported_at
       ? new Date(i.reported_at).toISOString().slice(0, 10)
@@ -371,6 +372,7 @@ export function RaidDetailPage({
           description: draft.description.trim() || null,
           status: draft.status as IssueStatus,
           type: draft.type,
+          category: draft.category.trim() || null, // ENH-177
           area_id: draft.area_id || undefined,
           owner_id: draft.owner_id || null,
           priority: draft.priority === "" ? null : Number(draft.priority),
@@ -816,6 +818,27 @@ export function RaidDetailPage({
               </h3>
               <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
                 {(risk as Risk).mitigation_strategy}
+              </p>
+            </div>
+          ) : null}
+          {/* ENH-177: categoría para issues (action/issue/decision). */}
+          {editing && !isRisk ? (
+            <div className="mt-3">
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                Categoría
+              </label>
+              <Input
+                value={draft.category}
+                onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+              />
+            </div>
+          ) : !isRisk && (issue as Issue).category ? (
+            <div className="mt-3">
+              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                Categoría
+              </h3>
+              <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
+                {(issue as Issue).category}
               </p>
             </div>
           ) : null}

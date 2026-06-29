@@ -427,3 +427,13 @@ actividad (editable por el PM). Lógica de atraso:
 El endpoint auto-setea `closed_at = hoy` al pasar a `completed` sin fecha
 provista; el PATCH permite editarla (incluye `null` para limpiar). Nullable,
 sin backfill (las tareas completadas legacy quedan sin fecha → no retrasadas).
+
+---
+
+## ENH-177 — issues.category (EP006, 2026-06-28)
+
+### Migración **0087** — `issues.category`
+
+Columna `category VARCHAR(100) NULL` en `issues`, en paralelo a
+`risks.category` ya existente, para clasificar acciones / incidencias /
+decisiones (alineación de campos RAID). Nullable, sin backfill.

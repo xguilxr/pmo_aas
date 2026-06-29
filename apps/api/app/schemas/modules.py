@@ -108,6 +108,7 @@ class IssueCreate(BaseModel):
     title: TitleStr
     description: str | None = None
     type: Literal["action", "issue", "decision"]
+    category: str | None = None  # ENH-177
     priority: int | None = Field(default=None, ge=1, le=5)
     committed_date: date | None = None
     owner_id: UUID | None = None
@@ -121,6 +122,7 @@ class IssueUpdate(BaseModel):
     description: str | None = None
     # ENH-054: type editable (action / issue / decision) post-creación.
     type: Literal["action", "issue", "decision"] | None = None
+    category: str | None = None  # ENH-177
     priority: int | None = Field(default=None, ge=1, le=5)
     # ENH-054: reported_at editable post-creación (datetime).
     reported_at: datetime | None = None
@@ -139,6 +141,7 @@ class IssueRead(BaseModel):
     title: str
     description: str | None
     type: str
+    category: str | None = None  # ENH-177
     priority: int | None
     committed_date: date | None
     resolution: str | None
