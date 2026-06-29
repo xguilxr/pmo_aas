@@ -186,6 +186,9 @@ implementó.
   (header/footer fijos, nuevo size `xl`); los modales Nueva/Editar tarea usan
   size `lg`; en editar, las fechas Inicio | Fin | Cierre van en una fila de 3
   columnas.
+- **ENH-180** — se eliminó el reordenamiento por arrastre de filas (handle/drop-zones/endpoint move) y el botón Auto-WBS. La agrupación jerárquica por WBS es el mecanismo por default. Endpoints `/tasks/{id}/move` y `/tasks/renumber-wbs` siguen existiendo pero ya no se usan desde la UI del Plan.
+- **ENH-181** — WBS automatizable en los forms de nueva/editar tarea: selecciona padre → "Bajar nivel" → asigna siguiente número WBS disponible. Campo WBS sigue editable a mano.
+- **ENH-182** — columnas Criticidad e Hito (header + celdas) ahora se centran.
 
 ---
 
@@ -204,7 +207,10 @@ implementó.
   - Hitos como diamantes (♦).
   - Línea "hoy" marcada.
 - [ ] Colores por estado: azul (en progreso), verde (completada), rojo (retrasada vs plan), gris (no iniciada).
-- [ ] **US-171 — Atraso ("Retrasada", rojo + tag):** tarea NO completada → retrasada si `end_date < hoy`. Tarea completada → retrasada sólo si `closed_at > end_date` (cerró tarde). Sin `closed_at` una tarea completada no se considera retrasada. Esto permite registrar una actividad cerrada a tiempo aunque se capture en fecha posterior (ajustando `closed_at`).
+- [ ] **US-177 — Atraso (tags separados, 2026-06-29):** 
+  - **"Atrasada" (rojo)** — tarea NO completada con `end_date < hoy`.
+  - **"Completada con atraso" (amarillo)** — tarea completada con `closed_at > end_date`.
+  - Antes ambos casos usaban un único tag "Retrasada" (rojo). Se renombró "Retrasada"→"Atrasada" en toda la plataforma: badge y chip de filtro del Plan, KPI card y filtro de reportes, sección S-17 ("Tareas Atrasadas"), y avance.html. Backend: `_is_delayed` cuenta sólo no completadas vencidas; `_is_completed_late` marca completadas tarde. (Migración 0090 renombrò el catálogo de status.)
 - [ ] Barra interna de avance (%).
 - [ ] Zoom: día / semana / mes / trimestre.
 - [ ] Tooltip al hover con todos los detalles.
@@ -231,8 +237,8 @@ implementó.
 |---|---|
 | `name` | ✅ |
 | `description` | |
-| `wbs` | US-172: `POST /projects/{id}/tasks/renumber-wbs` renumera todo el proyecto jerárquico + único (1, 1.1, 1.2, 2, …), resuelve duplicados y remapea predecesoras |
-| `position` | US-176: orden manual del plan. `POST /projects/{id}/tasks/{id}/move {after_id}` reordena (drag por fila en vista plana). Si hay `position`, manda sobre el WBS en `list_tasks` y en `renumber-wbs`. Null = orden natural por WBS. |
+| `wbs` | **ENH-181 (2026-06-29):** WBS automatizable en el form de nueva/editar tarea — selecciona padre y "Bajar nivel" asigna el siguiente número WBS disponible. Reemplaza al Auto-WBS (removido). Campo sigue editable a mano. |
+| `position` | **ENH-180 (2026-06-29):** reordenamiento por arrastre (`POST /projects/{id}/tasks/{id}/move`) y botón Auto-WBS (`renumber-wbs`) fueron removidos de la UI. Endpoints siguen existiendo pero no se usan. Agrupación jerárquica por WBS (colapsar/expandir) es el mecanismo por default. |
 | `parent_id` | tarea padre |
 | `start_date`, `end_date` | fecha planeada |
 | `closed_at` | US-171: fecha de cierre **real** (editable). Auto = hoy al completar sin fecha. |
@@ -323,6 +329,8 @@ POST   /api/v1/tasks/{id}/dependencies
 DELETE /api/v1/task-dependencies/{id}
 POST   /api/v1/projects/{id}/tasks/recalculate
 GET    /api/v1/projects/{id}/tasks/export
+POST   /api/v1/projects/{id}/tasks/renumber-wbs          (no se usa en UI; ENH-180, 2026-06-29)
+POST   /api/v1/tasks/{id}/move                           (no se usa en UI; ENH-180, 2026-06-29)
 ```
 
 ---

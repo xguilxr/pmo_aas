@@ -15,8 +15,60 @@ function qs(params: Record<string, unknown>): string {
   return s ? `?${s}` : "";
 }
 
+/* ========== RAID STATUS (US-179) ========== */
+// Estados unificados a 4 para riesgos e incidencias. On-hold captura razón +
+// dependencia (área/responsable) + tiempo detenido.
+export type RaidStatus = "open" | "in_progress" | "on_hold" | "resolved";
+
+export const RAID_STATUS_LABEL: Record<RaidStatus, string> = {
+  open: "Abierto",
+  in_progress: "En Progreso",
+  on_hold: "On Hold / Detenido",
+  resolved: "Resuelto",
+};
+
+export const RAID_STATUS_ORDER: RaidStatus[] = [
+  "open",
+  "in_progress",
+  "on_hold",
+  "resolved",
+];
+
+// US-179: estado terminal unificado (oculto por default en listas).
+export const RAID_FINAL_STATUSES: RaidStatus[] = ["resolved"];
+
+// Tags de color (Tailwind con tokens del design system) para ver los
+// estados visualmente.
+export const RAID_STATUS_BADGE: Record<RaidStatus, string> = {
+  open: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
+  in_progress: "bg-[var(--color-accent-bg,var(--color-subtle))] text-[var(--color-accent)]",
+  on_hold: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+  resolved: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+};
+
+/** US-179: detención (on_hold) embebida en Risk/Issue. */
+export type OnHoldDependency = {
+  on_hold_reason: string | null;
+  on_hold_area_id: string | null;
+  on_hold_area: AreaMini | null;
+  on_hold_actor_id: string | null;
+  on_hold_actor_name: string | null;
+  on_hold_since: string | null;
+};
+
+/** Días detenido desde on_hold_since (>=0) o null si no aplica. */
+export function onHoldDays(since: string | null | undefined): number | null {
+  if (!since) return null;
+  const start = new Date(`${since}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const today = new Date();
+  const ms = today.getTime() - start.getTime();
+  return Math.max(0, Math.floor(ms / 86_400_000));
+}
+
 /* ========== RISKS ========== */
-export type RiskStatus = "identified" | "analyzing" | "mitigating" | "materialized" | "closed";
+// US-179: alias retro-compat → estados unificados.
+export type RiskStatus = RaidStatus;
 
 export type RiskComment = {
   text: string;
@@ -59,6 +111,13 @@ export type Risk = {
   due_date: string | null;
   status: RiskStatus;
   closure_note: string | null;
+  // US-179: detención.
+  on_hold_reason: string | null;
+  on_hold_area_id: string | null;
+  on_hold_area: AreaMini | null;
+  on_hold_actor_id: string | null;
+  on_hold_actor_name: string | null;
+  on_hold_since: string | null;
   comments: RiskComment[];
 };
 
@@ -75,6 +134,10 @@ export type RiskCreateBody = {
   identified_at?: string | null;
   due_date?: string | null;
   status?: RiskStatus;
+  // US-179: detención.
+  on_hold_reason?: string | null;
+  on_hold_area_id?: string | null;
+  on_hold_actor_id?: string | null;
 };
 
 export type RiskUpdateBody = Partial<RiskCreateBody> & { closure_note?: string | null };
@@ -112,17 +175,13 @@ export function addRiskComment(id: string, body: { text: string }): Promise<Risk
   });
 }
 
-export const RISK_STATUS_LABEL: Record<RiskStatus, string> = {
-  identified: "Identificado",
-  analyzing: "En análisis",
-  mitigating: "Mitigando",
-  materialized: "Materializado",
-  closed: "Cerrado",
-};
+// US-179: alias retro-compat → labels unificados.
+export const RISK_STATUS_LABEL = RAID_STATUS_LABEL;
 
 /* ========== ISSUES (AID) ========== */
 export type IssueType = "action" | "issue" | "decision";
-export type IssueStatus = "open" | "in_progress" | "resolved" | "closed";
+// US-179: estados unificados (mismo set que riesgos).
+export type IssueStatus = RaidStatus;
 
 export type IssueComment = {
   text: string;
@@ -150,6 +209,13 @@ export type Issue = {
   area_id: string | null;
   area: AreaMini | null;
   reported_at: string | null;
+  // US-179: detención.
+  on_hold_reason: string | null;
+  on_hold_area_id: string | null;
+  on_hold_area: AreaMini | null;
+  on_hold_actor_id: string | null;
+  on_hold_actor_name: string | null;
+  on_hold_since: string | null;
   comments: IssueComment[];
 };
 
@@ -160,10 +226,16 @@ export type IssueCreateBody = {
   category?: string | null; // ENH-177
   priority?: number | null;
   committed_date?: string | null;
+  // BUG-084: fecha de creación elegida en el form (si se omite, el server usa hoy).
+  reported_at?: string | null;
   owner_id?: string | null;
   owner_actor_id?: string | null;
   area_id: string; // US-064: obligatorio en creación.
   status?: IssueStatus;
+  // US-179: detención.
+  on_hold_reason?: string | null;
+  on_hold_area_id?: string | null;
+  on_hold_actor_id?: string | null;
 };
 
 // ENH-054: type + reported_at editables post-creación (no estaban en
@@ -211,31 +283,12 @@ export const ISSUE_TYPE_LABEL: Record<IssueType, string> = {
   decision: "Decisión",
 };
 
-export const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
-  open: "Abierta",
-  in_progress: "En progreso",
-  resolved: "Resuelta",
-  closed: "Cerrada",
-};
-
-// US-174 / ENH-166: orden de fases (columnas Kanban + orden de lista).
-export const RISK_STATUS_ORDER: RiskStatus[] = [
-  "identified",
-  "analyzing",
-  "mitigating",
-  "materialized",
-  "closed",
-];
-export const ISSUE_STATUS_ORDER: IssueStatus[] = [
-  "open",
-  "in_progress",
-  "resolved",
-  "closed",
-];
-// ENH-166: estados finalizados (ocultos por default en las listas; un toggle
-// "Mostrar finalizados" los vuelve a incluir).
-export const RISK_FINAL_STATUSES: RiskStatus[] = ["closed"];
-export const ISSUE_FINAL_STATUSES: IssueStatus[] = ["resolved", "closed"];
+// US-179: alias retro-compat → labels/orden/finales unificados.
+export const ISSUE_STATUS_LABEL = RAID_STATUS_LABEL;
+export const RISK_STATUS_ORDER = RAID_STATUS_ORDER;
+export const ISSUE_STATUS_ORDER = RAID_STATUS_ORDER;
+export const RISK_FINAL_STATUSES = RAID_FINAL_STATUSES;
+export const ISSUE_FINAL_STATUSES = RAID_FINAL_STATUSES;
 
 /* ========== CHANGE REQUESTS ========== */
 export type ChangeType = "scope" | "time" | "cost" | "resource";

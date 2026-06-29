@@ -35,6 +35,7 @@ import {
   type Issue,
   type IssueStatus,
   type IssueType,
+  type RaidStatus,
   type Risk,
   type RiskStatus,
 } from "@/lib/api/modules";
@@ -312,7 +313,7 @@ export function RaidDetailPage({
         (issue as Issue).type
       : "";
 
-  const statusVariant: "info" | "success" | "danger" | "neutral" = isRisk
+  const statusVariant: StatusVariant = isRisk
     ? raidStatusVariant((risk as Risk).status)
     : issueStatusVariant((issue as Issue).status);
 
@@ -332,19 +333,6 @@ export function RaidDetailPage({
     if (saving) return;
     if (draft.title.trim().length < 2) {
       setEditError("El título es obligatorio (mín. 2 caracteres).");
-      return;
-    }
-    // BUG-075: el backend exige closure_note al pasar un riesgo a
-    // Materializado o Cerrado (modules.py update_risk). Guard de UX
-    // para dar un mensaje claro en vez de un 400.
-    if (
-      isRisk &&
-      (draft.status === "materialized" || draft.status === "closed") &&
-      !draft.closure_note.trim()
-    ) {
-      setEditError(
-        "Para marcar el riesgo como Materializado o Cerrado, agregá una nota de cierre.",
-      );
       return;
     }
     setSaving(true);
@@ -1090,23 +1078,19 @@ function CommentList({
   );
 }
 
-function raidStatusVariant(
-  status: "identified" | "analyzing" | "mitigating" | "materialized" | "closed",
-): "info" | "success" | "danger" | "neutral" {
-  if (status === "identified" || status === "analyzing") return "info";
-  if (status === "mitigating") return "info";
-  if (status === "materialized") return "danger";
-  if (status === "closed") return "neutral";
+// US-179: variantes para los 4 estados unificados (riesgos e incidencias).
+type StatusVariant = "info" | "success" | "danger" | "neutral" | "warning";
+
+function raidStatusVariant(status: RaidStatus): StatusVariant {
+  if (status === "open") return "info";
+  if (status === "in_progress") return "info";
+  if (status === "on_hold") return "warning";
+  if (status === "resolved") return "success";
   return "neutral";
 }
 
-function issueStatusVariant(
-  status: "open" | "in_progress" | "resolved" | "closed",
-): "info" | "success" | "danger" | "neutral" {
-  if (status === "open" || status === "in_progress") return "info";
-  if (status === "resolved") return "success";
-  if (status === "closed") return "neutral";
-  return "neutral";
+function issueStatusVariant(status: RaidStatus): StatusVariant {
+  return raidStatusVariant(status);
 }
 
 export function BackLink({ href, label }: { href: string; label: string }) {

@@ -143,7 +143,7 @@ async def kpis(
         open_risks = await _count(
             db,
             scope_risks(
-                select(Risk.id).where(Risk.tenant_id == tenant_id, Risk.status != "closed")
+                select(Risk.id).where(Risk.tenant_id == tenant_id, Risk.status != "resolved")  # US-179
             ),
         )
         severe_risks = await _count(
@@ -151,7 +151,7 @@ async def kpis(
             scope_risks(
                 select(Risk.id).where(
                     Risk.tenant_id == tenant_id,
-                    Risk.status != "closed",
+                    Risk.status != "resolved",  # US-179
                     Risk.severity >= 13,
                 )
             ),
@@ -169,7 +169,7 @@ async def kpis(
 
         iss_stmt = select(Issue.id).where(
             Issue.tenant_id == tenant_id,
-            Issue.status.in_(["open", "in_progress"]),
+            Issue.status.in_(["open", "in_progress", "on_hold"]),  # US-179
         )
         if organization_id:
             iss_stmt = iss_stmt.where(Issue.project_id.in_(scoped_ids or ["__none__"]))
@@ -515,7 +515,7 @@ async def risk_matrix(
                 select(Risk.probability, Risk.impact, func.count(Risk.id))
                 .where(
                     Risk.project_id.in_(pids),
-                    Risk.status != "closed",
+                    Risk.status != "resolved",  # US-179
                     Risk.probability.is_not(None),
                     Risk.impact.is_not(None),
                 )

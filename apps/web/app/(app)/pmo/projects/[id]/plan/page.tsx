@@ -12,7 +12,6 @@ import {
   Diamond,
   Download,
   FileDown,
-  GripVertical,
   ListTree,
   Network,
   Pencil,
@@ -44,8 +43,6 @@ import {
   deleteTask,
   getGantt,
   listTasks,
-  moveTask,
-  renumberWbs,
   updateTask,
   type GanttData,
   type Task,
@@ -117,6 +114,82 @@ function wbsParent(wbs: string | null | undefined): string | null {
   return parts.slice(0, -1).join(".");
 }
 
+// ENH-181: siguiente WBS disponible bajo `parentWbs` (o raíz si null).
+// Toma el máximo del último segmento numérico de los hijos directos + 1.
+function nextWbsUnder(
+  parentWbs: string | null,
+  tasks: Task[],
+  excludeId?: string,
+): string {
+  const prefix = parentWbs ? `${parentWbs}.` : "";
+  const parentDepth = parentWbs
+    ? parentWbs.split(".").filter(Boolean).length
+    : 0;
+  let max = 0;
+  for (const t of tasks) {
+    if (excludeId && t.id === excludeId) continue;
+    const w = t.wbs;
+    if (!w) continue;
+    const parts = w.split(".").filter(Boolean);
+    // Hijo directo: profundidad parentDepth+1 y bajo el prefijo (o raíz).
+    if (parts.length !== parentDepth + 1) continue;
+    if (parentWbs && !w.startsWith(prefix)) continue;
+    const last = Number(parts[parts.length - 1]);
+    if (Number.isFinite(last) && last > max) max = last;
+  }
+  return `${prefix}${max + 1}`;
+}
+
+// ENH-181: línea de jerarquía WBS automatizable. Elegís la tarea padre (o
+// raíz) y "Bajar nivel" asigna el siguiente número disponible de ese
+// sub-nivel al campo WBS del form (que sigue editable a mano).
+function WbsHierarchyPicker({
+  tasks,
+  excludeId,
+  onPick,
+}: {
+  tasks: Task[];
+  excludeId?: string;
+  onPick: (wbs: string) => void;
+}) {
+  const [parent, setParent] = useState<string>("");
+  const options = useMemo(
+    () =>
+      [...tasks]
+        .filter((t) => t.id !== excludeId && t.wbs)
+        .sort((a, b) => compareWbs(a.wbs, b.wbs)),
+    [tasks, excludeId],
+  );
+  return (
+    <div className="flex items-end gap-2">
+      <div className="min-w-0 flex-1">
+        <Select
+          value={parent}
+          onChange={(e) => setParent(e.target.value)}
+          aria-label="Tarea padre"
+        >
+          <option value="">— Raíz (nivel 0) —</option>
+          {options.map((t) => (
+            <option key={t.id} value={t.wbs ?? ""}>
+              {t.wbs} — {t.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        onClick={() => onPick(nextWbsUnder(parent || null, tasks, excludeId))}
+        title="Asigna el siguiente WBS disponible bajo la tarea padre seleccionada"
+      >
+        <Network className="mr-1 h-3.5 w-3.5" aria-hidden />
+        Bajar nivel
+      </Button>
+    </div>
+  );
+}
+
 // ENH-048: predicados para los chips de filtro Hitos / Críticos / Retrasados.
 type ChipKey = "milestone" | "critical" | "delayed";
 
@@ -127,23 +200,31 @@ function isTaskCritical(t: Task): boolean {
   return t.criticality === "high" || t.criticality === "critical";
 }
 
-// US-171: atraso. Tarea NO completada → retrasada si end_date < hoy. Tarea
-// completada → retrasada si se cerró tarde (closed_at > end_date). Sin
-// closed_at, una tarea completada no se considera retrasada.
-function isTaskDelayed(t: Task): boolean {
-  if (!t.end_date) return false;
+// US-177: clasificación de atraso de una tarea.
+//  - 'atrasada' (rojo): NO completada y end_date < hoy.
+//  - 'completada_con_atraso' (amarillo): completada y closed_at > end_date.
+//  - null: en plazo / sin datos.
+type Lateness = "atrasada" | "completada_con_atraso" | null;
+
+function taskLateness(t: Task): Lateness {
+  if (!t.end_date) return null;
   const end = new Date(t.end_date);
-  if (Number.isNaN(end.getTime())) return false;
+  if (Number.isNaN(end.getTime())) return null;
   const completed = t.status === "completed" || (t.progress ?? 0) >= 100;
   if (completed) {
-    if (!t.closed_at) return false;
+    if (!t.closed_at) return null;
     const closed = new Date(t.closed_at);
-    if (Number.isNaN(closed.getTime())) return false;
-    return closed.getTime() > end.getTime();
+    if (Number.isNaN(closed.getTime())) return null;
+    return closed.getTime() > end.getTime() ? "completada_con_atraso" : null;
   }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return end.getTime() < today.getTime();
+  return end.getTime() < today.getTime() ? "atrasada" : null;
+}
+
+// El chip/filtro "Atrasados" cuenta sólo las accionables (no completadas).
+function isTaskDelayed(t: Task): boolean {
+  return taskLateness(t) === "atrasada";
 }
 
 function chipMatches(t: Task, chips: Set<ChipKey>): boolean {
@@ -614,7 +695,6 @@ function TaskList({
   colVis = DEFAULT_COL_VIS,
   areas = [],
   onInlineUpdate,
-  onReorder,
 }: {
   tasks: Task[];
   loading: boolean;
@@ -624,11 +704,9 @@ function TaskList({
   // US-173: edición inline desde la celda (área/fechas/avance/estado/
   // criticidad/hito) sin abrir el modal.
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
-  // US-176: reorden por fila (drag con handle). Coloca `dragId` antes de
-  // `targetId`. Sólo se provee en la vista plana sin filtros.
-  onReorder?: (dragId: string, targetId: string) => void;
   // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
-  // y permite colapsar nodos padre.
+  // y permite colapsar nodos padre. ENH-180: es el mecanismo de mostrar/
+  // esconder tareas (reemplaza el drag, eliminado).
   groupByWbs?: boolean;
   collapsed?: Set<string>;
   onToggleCollapse?: (wbs: string) => void;
@@ -644,8 +722,6 @@ function TaskList({
     return m;
   }, [areas]);
   const showActions = !!(onEdit || onDelete);
-  // US-176: id de la fila que se está arrastrando (reorder).
-  const [dragId, setDragId] = useState<string | null>(null);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
@@ -693,9 +769,6 @@ function TaskList({
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
-            {onReorder ? (
-              <th className="w-8 px-1 py-2" aria-label="Reordenar" />
-            ) : null}
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
             {colVis.outline ? (
               <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
@@ -721,8 +794,9 @@ function TaskList({
             ) : null}
             <th className="px-3 py-2 font-medium">Avance</th>
             <th className="px-3 py-2 font-medium">Estado</th>
-            <th className="px-3 py-2 font-medium">Criticidad</th>
-            <th className="px-3 py-2 font-medium">Hito</th>
+            {/* ENH-182: Criticidad e Hito centrados (checkmark/badge). */}
+            <th className="px-3 py-2 text-center font-medium">Criticidad</th>
+            <th className="px-3 py-2 text-center font-medium">Hito</th>
             {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
           </tr>
         </thead>
@@ -732,46 +806,18 @@ function TaskList({
             const wbsKey = t.wbs ?? "";
             const isParent = groupByWbs && wbsKey && hasChildren.has(wbsKey);
             const isCollapsed = !!(isParent && collapsed?.has(wbsKey));
-            const delayed = isTaskDelayed(t);
+            const lateness = taskLateness(t);
+            const delayed = lateness === "atrasada";
+            const completedLate = lateness === "completada_con_atraso";
             return (
             <tr
               key={t.id}
-              onDragOver={
-                onReorder
-                  ? (e) => {
-                      if (dragId && dragId !== t.id) e.preventDefault();
-                    }
-                  : undefined
-              }
-              onDrop={
-                onReorder
-                  ? () => {
-                      if (dragId && dragId !== t.id) onReorder(dragId, t.id);
-                      setDragId(null);
-                    }
-                  : undefined
-              }
               className={cn(
                 "border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]",
                 delayed && "bg-[var(--color-danger-bg)]/40",
-                dragId === t.id && "opacity-50",
+                completedLate && "bg-[var(--color-warning-bg)]/40",
               )}
             >
-              {/* US-176: handle de arrastre (sólo vista plana sin filtros). */}
-              {onReorder ? (
-                <td className="px-1 py-2 align-middle">
-                  <span
-                    draggable
-                    onDragStart={() => setDragId(t.id)}
-                    onDragEnd={() => setDragId(null)}
-                    title="Arrastra para reordenar"
-                    aria-label={`Reordenar ${t.name}`}
-                    className="flex h-6 w-6 cursor-grab items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)] active:cursor-grabbing"
-                  >
-                    <GripVertical className="h-4 w-4" aria-hidden />
-                  </span>
-                </td>
-              ) : null}
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
@@ -809,12 +855,22 @@ function TaskList({
                       />
                     ) : null}
                     {t.name}
+                    {/* US-177: tag rojo "Atrasada" (no completada y vencida). */}
                     {delayed ? (
                       <span
                         className="ml-2 inline-flex items-center rounded border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]"
-                        title="end_date < hoy y status != completado"
+                        title="No completada y con fecha Fin pasada"
                       >
-                        Retrasada
+                        Atrasada
+                      </span>
+                    ) : null}
+                    {/* US-177: tag amarillo "Completada con atraso" (cerró tarde). */}
+                    {completedLate ? (
+                      <span
+                        className="ml-2 inline-flex items-center rounded border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-fg)]"
+                        title="Completada después de la fecha Fin (fecha de cierre posterior)"
+                      >
+                        Completada con atraso
                       </span>
                     ) : null}
                     {/* ENH-050: tooltip con hito relacionado. */}
@@ -871,7 +927,9 @@ function TaskList({
                   "px-3 py-2",
                   delayed
                     ? "font-medium text-[var(--color-danger-fg)]"
-                    : "text-[var(--color-secondary)]",
+                    : completedLate
+                      ? "font-medium text-[var(--color-warning-fg)]"
+                      : "text-[var(--color-secondary)]",
                 )}
               >
                 {onInlineUpdate ? (
@@ -945,8 +1003,8 @@ function TaskList({
                   <StatusBadge status={t.status} />
                 )}
               </td>
-              {/* US-173: Criticidad como checkmark inline. */}
-              <td className="px-3 py-2">
+              {/* US-173: Criticidad como checkmark inline. ENH-182: centrado. */}
+              <td className="px-3 py-2 text-center">
                 {onInlineUpdate ? (
                   <input
                     type="checkbox"
@@ -965,8 +1023,8 @@ function TaskList({
                   <span className="text-[var(--color-tertiary)]">—</span>
                 )}
               </td>
-              {/* ENH-163 + US-173: Hito como checkmark inline. */}
-              <td className="px-3 py-2">
+              {/* ENH-163 + US-173: Hito como checkmark inline. ENH-182: centrado. */}
+              <td className="px-3 py-2 text-center">
                 {onInlineUpdate ? (
                   <input
                     type="checkbox"
@@ -1051,9 +1109,11 @@ function PlanInner() {
   // US-070: el wizard maneja su propio busy/strategy/mapping.
   const [wizardOpen, setWizardOpen] = useState(false);
 
-  // ENH-047: agrupación jerárquica por WBS. Default OFF para no romper
-  // la UX actual; persiste en localStorage por proyecto.
-  const [groupByWbs, setGroupByWbs] = useState(false);
+  // ENH-047 + ENH-180: agrupación jerárquica por WBS. Default ON — es el
+  // mecanismo para mostrar/esconder tareas (colapsar/expandir nodos), tras
+  // quitar el drag. Persiste en localStorage por proyecto ("none" = el
+  // usuario lo apagó explícitamente).
+  const [groupByWbs, setGroupByWbs] = useState(true);
   // ENH-066: agrupación por Área (mutex con WBS).
   const [groupByArea, setGroupByArea] = useState(false);
   const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
@@ -1104,9 +1164,15 @@ function PlanInner() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      // ENH-180: default = agrupado por WBS. "area" cambia al agrupador de
+      // área; "none" = el usuario apagó la agrupación explícitamente.
       const v = window.localStorage.getItem(`plan-grouping:${id}`);
-      if (v === "wbs") setGroupByWbs(true);
-      else if (v === "area") setGroupByArea(true);
+      if (v === "area") {
+        setGroupByWbs(false);
+        setGroupByArea(true);
+      } else if (v === "none") {
+        setGroupByWbs(false);
+      }
       // ENH-077 CA5: chips activos persistidos.
       const chipsRaw = window.localStorage.getItem(`plan-chips:${id}`);
       if (chipsRaw) {
@@ -1195,8 +1261,9 @@ function PlanInner() {
   function persistGrouping(mode: "wbs" | "area" | null) {
     if (typeof window === "undefined") return;
     try {
-      if (mode) window.localStorage.setItem(`plan-grouping:${id}`, mode);
-      else window.localStorage.removeItem(`plan-grouping:${id}`);
+      // ENH-180: persistimos "none" cuando se apaga (default es agrupado),
+      // así el apagado explícito sobrevive recargas.
+      window.localStorage.setItem(`plan-grouping:${id}`, mode ?? "none");
     } catch {
       /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
     }
@@ -1401,6 +1468,11 @@ function PlanInner() {
   async function loadTasksAndGantt() {
     setLoadingTasks(true);
     setLoadingGantt(true);
+    // BUG-087: las áreas se cargan EN PARALELO (no después del Gantt) para
+    // que la columna Área no aparezca vacía mientras se resuelve el Gantt.
+    // loadAreas sólo reemplaza en éxito (nunca limpia), así que en recargas
+    // las áreas se mantienen visibles durante el refetch.
+    void loadAreas();
     try {
       const rows = await listTasks(id);
       setTasks(rows);
@@ -1416,33 +1488,6 @@ function PlanInner() {
       /* el Gantt falla silencioso; el error del listado cubre el caso */
     } finally {
       setLoadingGantt(false);
-    }
-    // BUG-076: refrescar áreas tras cualquier reload de tareas.
-    void loadAreas();
-  }
-
-  // US-172: renumera el WBS de todo el proyecto (jerárquico + único).
-  const [renumbering, setRenumbering] = useState(false);
-  async function handleRenumberWbs() {
-    if (renumbering) return;
-    if (
-      !window.confirm(
-        "Auto-numerar WBS reescribe el WBS de TODAS las tareas de forma " +
-          "jerárquica (1, 1.1, 1.2, 2, …), preservando el orden actual y " +
-          "resolviendo duplicados. ¿Continuar?",
-      )
-    )
-      return;
-    setRenumbering(true);
-    try {
-      await renumberWbs(id);
-      await loadTasksAndGantt();
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "No se pudo renumerar el WBS",
-      );
-    } finally {
-      setRenumbering(false);
     }
   }
 
@@ -1482,29 +1527,6 @@ function PlanInner() {
         err instanceof ApiError ? err.message : "No se pudo actualizar la tarea",
       );
     }
-  }
-
-  // US-176: reorden por fila (drag). Coloca dragId ANTES de targetId.
-  // Optimista sobre `tasks` (sólo se habilita en vista plana sin filtros, así
-  // que `tasks` === orden mostrado). Recalcula after_id y persiste.
-  function handleReorderTask(dragId: string, targetId: string) {
-    if (dragId === targetId) return;
-    const arr = [...tasks];
-    const from = arr.findIndex((t) => t.id === dragId);
-    if (from < 0) return;
-    const [moved] = arr.splice(from, 1);
-    const insertAt = arr.findIndex((t) => t.id === targetId);
-    if (insertAt < 0) return;
-    arr.splice(insertAt, 0, moved); // insertar ANTES del target
-    const newIdx = arr.findIndex((t) => t.id === dragId);
-    const afterId = newIdx > 0 ? arr[newIdx - 1].id : null;
-    setTasks(arr); // optimista
-    void moveTask(id, dragId, afterId).catch((err) => {
-      setError(
-        err instanceof ApiError ? err.message : "No se pudo reordenar la tarea",
-      );
-      void loadTasksAndGantt(); // revert desde el server
-    });
   }
 
   useEffect(() => {
@@ -1777,12 +1799,6 @@ function PlanInner() {
             colVis={colVis}
             areas={areas}
             onInlineUpdate={handleInlineUpdate}
-            onReorder={
-              // US-176: reorden sólo en vista plana sin filtros (display === tasks).
-              !groupByWbs && activeChips.size === 0 && areaFilter.size === 0
-                ? handleReorderTask
-                : undefined
-            }
           />
         )}
       </section>
@@ -2003,18 +2019,9 @@ function PlanInner() {
               })
             : null}
         </div>
-        {/* US-172: auto-numerar WBS (jerárquico + único). */}
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={handleRenumberWbs}
-          loading={renumbering}
-          title="Renumerar WBS de todo el proyecto: 1, 1.1, 1.2, 2, … (resuelve duplicados)"
-        >
-          <Network className="h-3.5 w-3.5" aria-hidden />
-          Auto-WBS
-        </Button>
+        {/* ENH-180: el botón Auto-WBS se quitó (reescribía el WBS de todas
+            las tareas; demasiado peligroso). La numeración se controla con el
+            selector de padre + "bajar nivel" del form (ENH-181). */}
         {/* Área dropdown checklist */}
         <AreaFilterDropdown
           areas={areas}
@@ -2035,7 +2042,7 @@ function PlanInner() {
             [
               { key: "milestone" as const, label: "Hitos" },
               { key: "critical" as const, label: "Críticos" },
-              { key: "delayed" as const, label: "Retrasados" },
+              { key: "delayed" as const, label: "Atrasados" },
             ]
           ).map(({ key, label }) => {
             const active = activeChips.has(key);
@@ -2150,6 +2157,13 @@ function PlanInner() {
               </Banner>
             ) : null;
           })()}
+          {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
+          <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
+            <WbsHierarchyPicker
+              tasks={tasks}
+              onPick={(wbs) => setNewForm({ ...newForm, wbs })}
+            />
+          </FormField>
           {/* ENH-135: WBS (pequeño) | Nombre */}
           <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
             <FormField label="WBS">
@@ -2328,6 +2342,14 @@ function PlanInner() {
               </Banner>
             ) : null;
           })()}
+          {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
+          <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
+            <WbsHierarchyPicker
+              tasks={tasks}
+              excludeId={editingId ?? undefined}
+              onPick={(wbs) => setEditForm({ ...editForm, wbs })}
+            />
+          </FormField>
           {/* ENH-135: WBS (pequeño) | Nombre */}
           <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
             <FormField label="WBS">
@@ -2374,8 +2396,9 @@ function PlanInner() {
           </div>
           <p className="-mt-1 text-[11px] text-[var(--color-tertiary)]">
             <strong>Fecha de cierre:</strong> fecha real en que se cerró la
-            actividad. Si es posterior a la fecha Fin se marca “Retrasada”; al
-            completar sin fecha se usa hoy.
+            actividad. Si es posterior a la fecha Fin se marca “Completada con
+            atraso” (amarillo); una tarea no completada con fecha Fin pasada se
+            marca “Atrasada” (rojo). Al completar sin fecha se usa hoy.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Avance (0-100)">

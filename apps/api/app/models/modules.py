@@ -54,6 +54,18 @@ class Risk(Base, _ModuleBase, TimestampMixin):
     identified_at: Mapped[date | None] = mapped_column(Date)
     due_date: Mapped[date | None] = mapped_column(Date)
     closure_note: Mapped[str | None] = mapped_column(String(5000))
+    # US-179: campos de detención (status="on_hold"). Razón + dependencia
+    # (área y responsable que bloquean) + desde cuándo está detenido (para
+    # calcular el tiempo en pausa). on_hold_since lo setea el servidor al
+    # entrar a on_hold.
+    on_hold_reason: Mapped[str | None] = mapped_column(String(2000))
+    on_hold_area_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("areas.id", ondelete="SET NULL")
+    )
+    on_hold_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("actors.id", ondelete="SET NULL")
+    )
+    on_hold_since: Mapped[date | None] = mapped_column(Date)
     # US-058: comentarios tipo Jira (lista de {text, author_id, created_at}).
     comments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
@@ -79,6 +91,15 @@ class Issue(Base, _ModuleBase, TimestampMixin):
     area_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("areas.id", ondelete="SET NULL")
     )
+    # US-179: campos de detención (status="on_hold"), igual que Risk.
+    on_hold_reason: Mapped[str | None] = mapped_column(String(2000))
+    on_hold_area_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("areas.id", ondelete="SET NULL")
+    )
+    on_hold_actor_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("actors.id", ondelete="SET NULL")
+    )
+    on_hold_since: Mapped[date | None] = mapped_column(Date)
 
 
 class ChangeRequest(Base, _ModuleBase, TimestampMixin):

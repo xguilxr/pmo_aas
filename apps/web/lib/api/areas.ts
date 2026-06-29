@@ -127,6 +127,14 @@ export function createArea(body: {
   lead?: AreaLeadInput | null;
   /** BUG-061: si se omite o null el área queda tenant-global. */
   organization_id?: string | null;
+  /**
+   * BUG-085: scope de creación. Pasá `project_id` (o `program_id`) cuando
+   * creás el área desde un proyecto/programa: el backend deriva el
+   * organization_id del padre y crea el AreaAssignment del scope correcto
+   * (proyecto queda en el proyecto; programa/org propagan a los hijos).
+   */
+  project_id?: string | null;
+  program_id?: string | null;
 }): Promise<Area> {
   return apiFetch<Area>("/api/v1/areas", { method: "POST", body });
 }

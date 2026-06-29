@@ -58,8 +58,8 @@ project_participations (N por (project_id, actor_id))
 
 - **Bloque A — Schema (US-114).** Migración Alembic 0061: nuevas tablas, drops, backfill desde `actors.team_id`, `tasks/risks/issues.area_id`, `actors.is_lead`, `project_members`.
 - **Bloque B — API (US-115).** Endpoints de participations + project_roles; refactor `/actors`, `/teams`, `/areas`. Responses de tasks/risks/issues incluyen dimensiones derivadas.
-- **Bloque C — UI (US-116).** Rediseño `/pmo/projects/[id]/areas` con dos toggles (directorio del proyecto + 4 sub-tabs de catálogos); rediseño de `/admin/areas`.
-- **Bloque D — Asignación (US-117).** Dropdowns filtrados por participations en plan/RAID/cambios/lecciones/minutas. Botón "+ agregar al proyecto".
+- **Bloque C — UI (US-116).** Rediseño `/pmo/projects/[id]/areas` con dos toggles (directorio del proyecto + 4 sub-tabs de catálogos); rediseño de `/admin/areas`. **Actualizado 2026-06-29 (ENH-183):** el panel "Áreas y Equipos" lista solo áreas asignadas al proyecto (no catálogo completo); modal de área nueva permite crear nueva o traer existente del catálogo.
+- **Bloque D — Asignación (US-117).** Dropdowns filtrados por participations en plan/RAID/cambios/lecciones/minutas. Botón "+ agregar al proyecto". **Actualizado 2026-06-29 (BUG-086):** servicio `area_visibility` como fuente única de cascada de visibilidad; actores con `area_id` directo son asignables (antes heurística los excluía si no tenían team/user/is_lead).
 - **Bloque E — Consolidación legacy (US-118, post-MVP).** Migrar permisos RBAC de `project_members` a `project_participations` y dropear tabla legacy.
 
 ## Convergencia con sprint 13
@@ -108,6 +108,7 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 **Endpoints nuevos:**
 - `GET/POST/PATCH/DELETE /projects/{id}/participations` (+ `?include=actor,area,team,role`).
 - `GET/POST/PATCH/DELETE /project-roles`.
+- `POST /areas` — nuevo: acepta `project_id` o `program_id` (además de `organization_id`). Cuando se crea un área desde un proyecto, backend deriva `organization_id` y crea automáticamente `AreaAssignment` del scope correcto (proyecto → queda en ese proyecto; programa → se propaga a sus proyectos; organización → cascada de lectura). **Agregado 2026-06-29 (BUG-085).**
 
 **Endpoints refactor:**
 - `/actors`: nuevos campos `company`, `job_title`, `manager_actor_id`; quita `team_id`, `is_lead` del payload.
@@ -137,10 +138,10 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 **Para** gestionar personas, áreas, equipos, roles y participaciones desde un solo lugar.
 
 **Toggle 1 — Directorio del proyecto (default):**
-Tabla de actores participando: nombre, área funcional, equipo operativo (primary), rol proyecto (primary), líder área, ventana temporal, contacto. Acciones: + agregar persona del catálogo tenant, + crear nueva persona inline, editar participations (modal con N filas), desactivar.
+Tabla de actores participando: nombre, área funcional, equipo operativo (primary), rol proyecto (primary), líder área, ventana temporal, contacto. Acciones: + agregar persona del catálogo tenant, + crear nueva persona inline, editar participations (modal con N filas), desactivar. **Actualizado 2026-06-29 (ENH-183):** lista solo áreas asignadas al proyecto (y equipos cuya área está asignada), no catálogo completo.
 
 **Toggle 2 — Catálogos (4 sub-tabs):**
-- Áreas funcionales (CRUD `areas`)
+- Áreas funcionales (CRUD `areas` — nueva: modal de creación permite crear nueva o traer existente del catálogo; al traer, se asigna al proyecto vía `AreaAssignment`). **Actualizado 2026-06-29 (ENH-183).**
 - Equipos operativos (CRUD `teams` plano)
 - Roles de proyecto (CRUD `project_roles`)
 - Participaciones (vista plana auditoría + reasignación masiva)
@@ -151,6 +152,7 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 - [ ] Página `/pmo/projects/[id]/areas` con toggles funcional.
 - [ ] Página `/admin/areas` rediseñada (5 sub-tabs).
 - [ ] Modal "agregar persona" permite (a) seleccionar del catálogo tenant, (b) crear nueva inline con campos básicos.
+- [ ] Modal "nueva área" permite (a) crear nueva, (b) traer existente del catálogo (asigna al proyecto). **Actualizado 2026-06-29 (ENH-183).**
 - [ ] Modal de participation soporta múltiples filas por persona; flag `is_primary` resaltado.
 - [ ] Convergencia evaluada con US-097, US-098, US-103 (decidir absorción o coexistencia).
 
@@ -183,7 +185,7 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 - Todo derivado vía join con `actors` + `project_participations` (filtro por `is_primary` para grupo único, opción "expandir todos los roles" para mostrar tarea en N grupos).
 
 **Criterios de aceptación:**
-- [ ] Cada dropdown afectado lista solo personas con participation activa (`is_active=true`, fecha actual entre `start_date` y `end_date`).
+- [ ] Cada dropdown afectado lista solo personas con participation activa (`is_active=true`, fecha actual entre `start_date` y `end_date`). **Actualizado 2026-06-29 (BUG-086):** incluye actores con `area_id` directo a un área visible (vía servicio `area_visibility`), antes heurística los excluía.
 - [ ] Botón "+ agregar al proyecto" en cada dropdown abre modal del Toggle 1.
 - [ ] Filtros/agrupadores en Plan funcionan con las 6 dimensiones.
 - [ ] Performance: render de WBS con 500 tareas + 50 personas < 1s.
@@ -221,3 +223,4 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 
 - IDs de DEC-### a asignar al cierre, mirando el último libre en `DECISIONS.md`.
 - ADR potencial: "drop de `*_area_id` con snapshot a `legacy_area_id` para rollback de 1 sprint".
+- **2026-06-29 — Actualización batch:** BUG-085 (creación de áreas desde proyecto con propagación automática), BUG-086 (servicio `area_visibility` + actores asignables por área), ENH-183 (listar solo asignados + reuso de catálogo). Ver secciones Bloques B/C/D para detalles.

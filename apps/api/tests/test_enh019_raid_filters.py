@@ -54,12 +54,12 @@ async def test_enh019_tenant_risks_status_filter(client, db_session):
         [
             Risk(
                 tenant_id=str(t.id), project_id=p.id, folio="RIS-1",
-                title="Abierto alto", status="identified", severity=20,
+                title="Abierto alto", status="open", severity=20,
                 probability=5, impact=4,
             ),
             Risk(
                 tenant_id=str(t.id), project_id=p.id, folio="RIS-2",
-                title="Cerrado", status="closed", severity=10,
+                title="Cerrado", status="resolved", severity=10,
                 probability=2, impact=5,
             ),
         ]
@@ -71,7 +71,7 @@ async def test_enh019_tenant_risks_status_filter(client, db_session):
     assert len(r_all.json()) == 2
 
     r_open = await client.get(
-        "/api/v1/tenant/risks?status=identified", headers=auth["_authz"]
+        "/api/v1/tenant/risks?status=open", headers=auth["_authz"]
     )
     assert r_open.status_code == 200
     body = r_open.json()
@@ -87,17 +87,17 @@ async def test_enh019_tenant_risks_severity_min_filter(client, db_session):
         [
             Risk(
                 tenant_id=str(t.id), project_id=p.id, folio="RIS-H",
-                title="Alto", status="identified", severity=20,
+                title="Alto", status="open", severity=20,
                 probability=5, impact=4,
             ),
             Risk(
                 tenant_id=str(t.id), project_id=p.id, folio="RIS-M",
-                title="Medio", status="identified", severity=8,
+                title="Medio", status="open", severity=8,
                 probability=2, impact=4,
             ),
             Risk(
                 tenant_id=str(t.id), project_id=p.id, folio="RIS-L",
-                title="Bajo", status="identified", severity=3,
+                title="Bajo", status="open", severity=3,
                 probability=1, impact=3,
             ),
         ]
@@ -131,7 +131,7 @@ async def test_enh019_tenant_issues_status_and_priority(client, db_session):
             ),
             Issue(
                 tenant_id=str(t.id), project_id=p.id, folio="INC-3",
-                title="Acción alta cerrada", type="action", status="closed",
+                title="Acción alta cerrada", type="action", status="resolved",
                 priority=5, reported_at=datetime.now(UTC),
             ),
         ]

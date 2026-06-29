@@ -207,6 +207,97 @@ async def _attach_owners(db: AsyncSession, items: list) -> None:
         )
 
 
+async def _resolve_on_hold(
+    db: AsyncSession,
+    body,
+    *,
+    project_id: UUID,
+    tenant_id: UUID,
+    status: str | None,
+    require_reason: bool,
+) -> tuple[str | None, str | None]:
+    """US-179: valida la dependencia de detención (área + responsable).
+
+    El área de dependencia debe ser válida para el proyecto (misma cascada
+    que area_id). El responsable debe ser un Actor del tenant. Si
+    `require_reason` y el estado es on_hold, exige razón.
+    """
+    from app.models.area import Actor
+
+    if require_reason and status == "on_hold":
+        reason = getattr(body, "on_hold_reason", None)
+        if not (reason and reason.strip()):
+            raise business_rule(
+                "Razón de detención obligatoria al poner el ítem en On Hold"
+            )
+    oh_area_id = getattr(body, "on_hold_area_id", None)
+    oh_actor_id = getattr(body, "on_hold_actor_id", None)
+    area_str = None
+    if oh_area_id is not None:
+        await _validate_area(db, oh_area_id, project_id, tenant_id)
+        area_str = str(oh_area_id)
+    actor_str = None
+    if oh_actor_id is not None:
+        actor = (
+            await db.execute(
+                select(Actor).where(
+                    Actor.id == str(oh_actor_id),
+                    Actor.tenant_id == str(tenant_id),
+                    Actor.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if actor is None:
+            raise business_rule("Responsable de detención no válido")
+        actor_str = str(oh_actor_id)
+    return area_str, actor_str
+
+
+async def _attach_on_hold(db: AsyncSession, items: list) -> None:
+    """US-179: enriquece `on_hold_area` (AreaMini) y `on_hold_actor_name`
+    para que las listas/detalle muestren la dependencia de detención sin
+    joins extra en el frontend."""
+    from app.models.area import Actor
+
+    area_ids: set[str] = set()
+    actor_ids: set[str] = set()
+    for it in items:
+        aid = getattr(it, "on_hold_area_id", None)
+        if aid:
+            area_ids.add(str(aid))
+        acid = getattr(it, "on_hold_actor_id", None)
+        if acid:
+            actor_ids.add(str(acid))
+    areas = await _load_areas(db, list(area_ids))
+    actor_by_id: dict[str, Actor] = {}
+    if actor_ids:
+        rows = (
+            await db.execute(select(Actor).where(Actor.id.in_(actor_ids)))
+        ).scalars().all()
+        actor_by_id = {str(a.id): a for a in rows}
+    for it in items:
+        aid = getattr(it, "on_hold_area_id", None)
+        area = areas.get(str(aid)) if aid else None
+        it.on_hold_area = (  # type: ignore[attr-defined]
+            {"id": area.id, "name": area.name} if area else None
+        )
+        acid = getattr(it, "on_hold_actor_id", None)
+        actor = actor_by_id.get(str(acid)) if acid else None
+        it.on_hold_actor_name = actor.name if actor else None  # type: ignore[attr-defined]
+
+
+def _sync_on_hold_since(item, new_status: str | None) -> None:
+    """US-179: setea on_hold_since al entrar a on_hold (si no estaba) y lo
+    limpia al salir. `new_status` None = sin cambio de estado."""
+    if new_status is None:
+        return
+    if new_status == "on_hold":
+        if getattr(item, "on_hold_since", None) is None:
+            item.on_hold_since = date.today()
+    else:
+        item.on_hold_since = None
+
+
 async def _attach_change_users(db: AsyncSession, items: list) -> None:
     """ENH-039: enriquece `item.requester` y `item.approver` con
     `{id, full_name, email}` para que la UI de Cambios muestre los
@@ -322,6 +413,7 @@ async def list_risks(
     risks = [r for r, _ in rows]
     await _attach_comment_authors(db, risks)
     await _attach_owners(db, risks)
+    await _attach_on_hold(db, risks)
     out: list[RiskRead] = []
     for r, area in rows:
         _attach_area(r, area)
@@ -341,6 +433,11 @@ async def create_risk(
     _ensure_editable(p)
     # US-064: valida area antes de crear.
     area = await _validate_area(db, body.area_id, project_id, tenant_id)
+    # US-179: dependencia de detención (si nace on_hold).
+    oh_area_id, oh_actor_id = await _resolve_on_hold(
+        db, body, project_id=project_id, tenant_id=tenant_id,
+        status=body.status, require_reason=True,
+    )
     folio = await next_folio(db, tenant_id=tenant_id, prefix="RIS")
     severity = (body.probability or 0) * (body.impact or 0)
     r = Risk(
@@ -353,6 +450,9 @@ async def create_risk(
         area_id=str(body.area_id),
         identified_at=body.identified_at, due_date=body.due_date,
         status=body.status, created_by=cu.id,
+        on_hold_reason=body.on_hold_reason,
+        on_hold_area_id=oh_area_id, on_hold_actor_id=oh_actor_id,
+        on_hold_since=date.today() if body.status == "on_hold" else None,
     )
     db.add(r)
     await db.flush()
@@ -363,6 +463,7 @@ async def create_risk(
     await db.commit()
     _attach_area(r, area)
     await _attach_owners(db, [r])
+    await _attach_on_hold(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -391,6 +492,7 @@ async def get_risk(
     _attach_area(r, area)
     await _attach_comment_authors(db, [r])
     await _attach_owners(db, [r])
+    await _attach_on_hold(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -405,12 +507,24 @@ async def update_risk(
     r = (await db.execute(select(Risk).where(Risk.id == str(risk_id), Risk.tenant_id == str(tenant_id)))).scalar_one_or_none()
     if r is None:
         raise not_found("Riesgo")
-    data = body.model_dump(exclude_none=True)
+    # BUG-084: exclude_unset (no exclude_none) → permite limpiar fechas
+    # nullables (due_date, etc.) enviando null; los campos ausentes no se
+    # tocan. Antes exclude_none descartaba los null y no se podía limpiar.
+    data = body.model_dump(exclude_unset=True)
     new_status = data.get("status")
-    if new_status in {"closed", "materialized"}:
-        note = data.get("closure_note") or r.closure_note
-        if not note:
-            raise business_rule("closure_note obligatorio al cerrar/materializar")
+    # US-179: si pasa a on_hold, exige razón y valida la dependencia;
+    # on_hold_since se setea/limpia automáticamente. closure_note ya no es
+    # obligatorio (los estados terminales se unificaron en "resolved").
+    if new_status is not None or "on_hold_reason" in data or "on_hold_area_id" in data or "on_hold_actor_id" in data:
+        eff_status = new_status if new_status is not None else r.status
+        oh_area_id, oh_actor_id = await _resolve_on_hold(
+            db, body, project_id=UUID(r.project_id), tenant_id=tenant_id,
+            status=eff_status, require_reason=new_status == "on_hold",
+        )
+        if "on_hold_area_id" in data:
+            data["on_hold_area_id"] = oh_area_id
+        if "on_hold_actor_id" in data:
+            data["on_hold_actor_id"] = oh_actor_id
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
     if "owner_actor_id" in data and data["owner_actor_id"] is not None:
@@ -421,6 +535,7 @@ async def update_risk(
         data["area_id"] = str(data["area_id"])
     for k, v in data.items():
         setattr(r, k, v)
+    _sync_on_hold_since(r, new_status)
     if data.get("probability") or data.get("impact"):
         r.severity = (r.probability or 0) * (r.impact or 0)
     await write_audit(
@@ -438,6 +553,7 @@ async def update_risk(
     _attach_area(r, area)
     await _attach_comment_authors(db, [r])
     await _attach_owners(db, [r])
+    await _attach_on_hold(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -487,6 +603,7 @@ async def add_risk_comment(
     _attach_area(r, area)
     await _attach_comment_authors(db, [r])
     await _attach_owners(db, [r])
+    await _attach_on_hold(db, [r])
     return RiskRead.model_validate(r)
 
 
@@ -541,9 +658,10 @@ async def list_issues(
     if area_id is not None:
         stmt = stmt.where(Issue.area_id == str(area_id))
     if overdue:
+        # US-179: terminal unificado = "resolved".
         stmt = stmt.where(
             Issue.committed_date < date.today(),
-            Issue.status.notin_(["resolved", "closed"]),
+            Issue.status != "resolved",
         )
     stmt = stmt.order_by(
         case((Issue.area_id.is_(None), 1), else_=0),
@@ -555,6 +673,7 @@ async def list_issues(
     issues = [i for i, _ in rows]
     await _attach_comment_authors(db, issues)
     await _attach_owners(db, issues)
+    await _attach_on_hold(db, issues)
     out: list[IssueRead] = []
     for i, area in rows:
         _attach_area(i, area)
@@ -574,7 +693,15 @@ async def create_issue(
     _ensure_editable(p)
     # US-064: valida area antes de crear.
     area = await _validate_area(db, body.area_id, project_id, tenant_id)
+    # US-179: dependencia de detención (si nace on_hold).
+    oh_area_id, oh_actor_id = await _resolve_on_hold(
+        db, body, project_id=project_id, tenant_id=tenant_id,
+        status=body.status, require_reason=True,
+    )
     folio = await next_folio(db, tenant_id=tenant_id, prefix="INC")
+    # BUG-084: respeta la fecha de creación elegida en el form; si se omite,
+    # usa el instante actual.
+    reported_at = body.reported_at or datetime.now(UTC)
     i = Issue(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
         title=body.title, description=body.description, type=body.type,
@@ -583,7 +710,10 @@ async def create_issue(
         owner_id=str(body.owner_id) if body.owner_id else None,
         owner_actor_id=str(body.owner_actor_id) if body.owner_actor_id else None,
         area_id=str(body.area_id),
-        status=body.status, reported_at=datetime.now(UTC),
+        status=body.status, reported_at=reported_at,
+        on_hold_reason=body.on_hold_reason,
+        on_hold_area_id=oh_area_id, on_hold_actor_id=oh_actor_id,
+        on_hold_since=date.today() if body.status == "on_hold" else None,
         comments=[], created_by=cu.id,
     )
     db.add(i)
@@ -595,6 +725,7 @@ async def create_issue(
     await db.commit()
     _attach_area(i, area)
     await _attach_owners(db, [i])
+    await _attach_on_hold(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -623,6 +754,7 @@ async def get_issue(
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])
     await _attach_owners(db, [i])
+    await _attach_on_hold(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -652,6 +784,7 @@ async def add_issue_comment(
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])
     await _attach_owners(db, [i])
+    await _attach_on_hold(db, [i])
     return IssueRead.model_validate(i)
 
 
@@ -666,7 +799,22 @@ async def update_issue(
     i = (await db.execute(select(Issue).where(Issue.id == str(issue_id), Issue.tenant_id == str(tenant_id)))).scalar_one_or_none()
     if i is None:
         raise not_found("Incidencia")
-    data = body.model_dump(exclude_none=True)
+    # BUG-084: exclude_unset → la fecha compromiso (committed_date) se guarda
+    # cuando se setea y se limpia cuando se envía null; los campos ausentes
+    # no se tocan. Antes exclude_none impedía limpiarla.
+    data = body.model_dump(exclude_unset=True)
+    new_status = data.get("status")
+    # US-179: detención (on_hold) — exige razón + valida dependencia.
+    if new_status is not None or "on_hold_reason" in data or "on_hold_area_id" in data or "on_hold_actor_id" in data:
+        eff_status = new_status if new_status is not None else i.status
+        oh_area_id, oh_actor_id = await _resolve_on_hold(
+            db, body, project_id=UUID(i.project_id), tenant_id=tenant_id,
+            status=eff_status, require_reason=new_status == "on_hold",
+        )
+        if "on_hold_area_id" in data:
+            data["on_hold_area_id"] = oh_area_id
+        if "on_hold_actor_id" in data:
+            data["on_hold_actor_id"] = oh_actor_id
     if "owner_id" in data and data["owner_id"] is not None:
         data["owner_id"] = str(data["owner_id"])
     if "owner_actor_id" in data and data["owner_actor_id"] is not None:
@@ -677,6 +825,7 @@ async def update_issue(
         data["area_id"] = str(data["area_id"])
     for k, v in data.items():
         setattr(i, k, v)
+    _sync_on_hold_since(i, new_status)
     await db.commit()
     area = None
     if i.area_id:
@@ -686,6 +835,7 @@ async def update_issue(
     _attach_area(i, area)
     await _attach_comment_authors(db, [i])
     await _attach_owners(db, [i])
+    await _attach_on_hold(db, [i])
     return IssueRead.model_validate(i)
 
 

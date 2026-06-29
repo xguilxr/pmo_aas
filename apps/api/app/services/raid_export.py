@@ -30,20 +30,22 @@ AID_HEADERS: list[str] = [
     "Responsable área", "Responsable", "Fecha creación",
 ]
 
-# Labels ES de estado para que el export sea presentable.
-RISK_STATUS_ES: dict[str, str] = {
-    "identified": "Identificado",
-    "analyzing": "En análisis",
-    "mitigating": "Mitigando",
-    "materialized": "Materializado",
-    "closed": "Cerrado",
+# US-179: estados RAID unificados a 4. Labels ES para el export. Se
+# mantienen los alias legacy por si quedan filas pre-migración.
+RAID_STATUS_ES: dict[str, str] = {
+    "open": "Abierto",
+    "in_progress": "En Progreso",
+    "on_hold": "On Hold / Detenido",
+    "resolved": "Resuelto",
+    # alias legacy → 4 estados.
+    "identified": "Abierto",
+    "analyzing": "En Progreso",
+    "mitigating": "En Progreso",
+    "materialized": "Resuelto",
+    "closed": "Resuelto",
 }
-ISSUE_STATUS_ES: dict[str, str] = {
-    "open": "Abierta",
-    "in_progress": "En progreso",
-    "resolved": "Resuelta",
-    "closed": "Cerrada",
-}
+RISK_STATUS_ES = RAID_STATUS_ES
+ISSUE_STATUS_ES = RAID_STATUS_ES
 
 
 def _responsible(

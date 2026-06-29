@@ -156,7 +156,7 @@ async def test_tc064_3_list_orders_by_area(client, db_session):
     db_session.add(
         Risk(
             tenant_id=str(t.id), project_id=proj_id, folio=folio,
-            title="Legacy sin área", status="identified",
+            title="Legacy sin área", status="open",
             probability=2, impact=2, severity=4,
         )
     )
@@ -183,7 +183,7 @@ async def test_tc064_4_patch_assigns_area(client, db_session):
     folio = await next_folio(db_session, tenant_id=t.id, prefix="RIS")
     r = Risk(
         tenant_id=str(t.id), project_id=proj_id, folio=folio,
-        title="Legacy", status="identified",
+        title="Legacy", status="open",
         probability=2, impact=2, severity=4,
     )
     db_session.add(r)

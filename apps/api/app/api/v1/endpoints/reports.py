@@ -908,7 +908,7 @@ _AI_REPORT_SYSTEM_PROMPT = (
     "directo y orientado a decisiones. "
     # ENH-064: foco default en hitos / críticas / retrasadas.
     "Por defecto enfócate en (en este orden): (1) hitos del proyecto, "
-    "(2) tareas con criticidad 'high' o 'critical', y (3) tareas retrasadas "
+    "(2) tareas con criticidad 'high' o 'critical', y (3) tareas atrasadas "
     "(end_date < hoy y status != 'completed'). No incluyas tareas de baja "
     "prioridad ni completadas a menos que el usuario lo pida explícitamente "
     "en sus notas adicionales. Mantén el reporte breve (no más de 6-8 "
@@ -1435,7 +1435,7 @@ def _project_render_data(
         end = getattr(t, "end_date", None)
         raw_status = getattr(t, "status", "") or ""
         # ENH-064 — anota retraso como sufijo para que el filtro KPI
-        # "retrasada" funcione (busca el texto en la fila).
+        # "atrasada" funcione (busca el texto en la fila).
         delayed_now = (
             end is not None
             and end < datetime.now(UTC).date()
@@ -1447,7 +1447,7 @@ def _project_render_data(
         if delayed_now:
             status += (
                 ' <span style="color:#991b1b;font-weight:600;font-size:0.85em;">'
-                " (retrasada)</span>"
+                " (atrasada)</span>"
             )
         return {
             "name": getattr(t, "name", "") or "",

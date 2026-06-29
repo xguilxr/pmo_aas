@@ -52,7 +52,15 @@ export async function createOrAdoptAreaForProject(
   projectId: string,
 ): Promise<{ id: string; adopted: boolean; area?: Area }> {
   try {
-    const created = await createArea({ name, is_active: true });
+    // BUG-085: pasamos project_id → el backend deriva el organization_id
+    // del proyecto y crea el AreaAssignment del proyecto automáticamente.
+    const created = await createArea({
+      name,
+      is_active: true,
+      project_id: projectId,
+    });
+    // Idempotente: el backend ya asignó el proyecto, pero lo garantizamos
+    // por compat con backends previos.
     await ensureProjectAssignment(created.id, projectId);
     return { id: created.id, adopted: false, area: created };
   } catch (err) {

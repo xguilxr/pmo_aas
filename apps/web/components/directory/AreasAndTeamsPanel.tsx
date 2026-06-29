@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import {
   createArea,
   createTeam,
@@ -149,6 +150,20 @@ export function AreasAndTeamsPanel({
 
   const areaById = Object.fromEntries(areas.map((a) => [a.id, a]));
 
+  // ENH-183: en contexto de proyecto, la lista muestra SÓLO lo asignado.
+  // Las no asignadas se ofrecen al crear ("traer existente").
+  const visibleAreas = projectId
+    ? areas.filter((a) => assignedAreaIds.has(a.id))
+    : areas;
+  const unassignedAreas = projectId
+    ? areas.filter((a) => !assignedAreaIds.has(a.id))
+    : [];
+  // Un equipo "está en el proyecto" si su área está asignada (los equipos
+  // siguen la visibilidad de su área).
+  const visibleTeams = projectId
+    ? teams.filter((t) => assignedAreaIds.has(t.area_id))
+    : teams;
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -172,20 +187,27 @@ export function AreasAndTeamsPanel({
         title="Áreas funcionales"
         description={
           projectId
-            ? "Catálogo tenant de áreas. Asigná las que use este proyecto: solo las asignadas aparecen en tareas, RAID y el Plan."
+            ? "Áreas de este proyecto. «Nueva área» permite crear una o traer una existente del catálogo del tenant."
             : "Catálogo tenant de áreas. Las personas se asocian a un área en su perfil; en el proyecto, los líderes de área se marcan vía participación."
         }
         onAdd={() => setModal({ kind: "area", area: null })}
         addLabel="Nueva área"
-        empty={areas.length === 0 ? "Sin áreas en el catálogo." : null}
+        empty={
+          visibleAreas.length === 0
+            ? projectId
+              ? "Sin áreas en este proyecto. Usá «Nueva área» para crear o traer una."
+              : "Sin áreas en el catálogo."
+            : null
+        }
       >
-        {areas.map((a) => (
+        {visibleAreas.map((a) => (
           <Row
             key={a.id}
             title={a.name}
             subtitle={a.description ?? undefined}
             inactive={!a.is_active}
-            assigned={projectId ? assignedAreaIds.has(a.id) : undefined}
+            // ENH-183: en proyecto sólo se listan asignadas → la acción es Quitar.
+            assigned={projectId ? true : undefined}
             assignBusy={assigningId === a.id}
             onToggleAssign={
               projectId ? () => toggleAreaAssignment(a.id) : undefined
@@ -204,14 +226,14 @@ export function AreasAndTeamsPanel({
         addLabel="Nuevo equipo"
         addDisabled={areas.length === 0}
         empty={
-          teams.length === 0
+          visibleTeams.length === 0
             ? areas.length === 0
               ? "Crea primero un área para poder agregar equipos."
               : "Sin equipos operativos."
             : null
         }
       >
-        {teams.map((t) => (
+        {visibleTeams.map((t) => (
           <Row
             key={t.id}
             title={t.name}
@@ -249,6 +271,7 @@ export function AreasAndTeamsPanel({
           area={modal.area}
           projectId={projectId}
           organizationId={organizationId}
+          unassignedAreas={unassignedAreas}
           onClose={() => setModal(null)}
           onSaved={() => {
             setModal(null);
@@ -393,6 +416,7 @@ function AreaModalForm({
   area,
   projectId,
   organizationId,
+  unassignedAreas = [],
   onClose,
   onSaved,
 }: {
@@ -400,6 +424,8 @@ function AreaModalForm({
   projectId?: string;
   /** US-170: org a la que se asigna el área nueva. */
   organizationId?: string;
+  /** ENH-183: áreas del catálogo aún no asignadas (para "traer existente"). */
+  unassignedAreas?: Area[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -408,15 +434,30 @@ function AreaModalForm({
   const [isActive, setIsActive] = useState(area?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // ENH-183: al crear dentro de un proyecto, ofrecer traer una existente.
+  const canBring = !area && !!projectId && unassignedAreas.length > 0;
+  const [mode, setMode] = useState<"create" | "existing">("create");
+  const [bringId, setBringId] = useState<string>("");
 
   async function submit() {
-    if (!name.trim()) {
-      setErr("Nombre requerido");
-      return;
-    }
     setSaving(true);
     setErr(null);
     try {
+      if (mode === "existing" && canBring) {
+        if (!bringId) {
+          setErr("Seleccioná un área del catálogo");
+          setSaving(false);
+          return;
+        }
+        await ensureProjectAssignment(bringId, projectId!);
+        onSaved();
+        return;
+      }
+      if (!name.trim()) {
+        setErr("Nombre requerido");
+        setSaving(false);
+        return;
+      }
       if (area) {
         await updateArea(area.id, {
           name: name.trim(),
@@ -427,17 +468,17 @@ function AreaModalForm({
         // visible en este proyecto (recupera áreas creadas sin asignar).
         if (projectId) await ensureProjectAssignment(area.id, projectId);
       } else {
-        const created = await createArea({
+        // BUG-085: dentro de un proyecto el org_id es el del proyecto —
+        // pasamos project_id y el backend deriva el org + crea el
+        // AreaAssignment del proyecto. En contexto org (sin projectId) se
+        // pasa organization_id y el área se propaga a sus hijos.
+        await createArea({
           name: name.trim(),
           description: description.trim() || null,
           is_active: isActive,
-          organization_id: organizationId ?? null,
+          project_id: projectId ?? null,
+          organization_id: projectId ? null : organizationId ?? null,
         });
-        // Área creada dentro de un proyecto → se asigna a ese proyecto
-        // para que aparezca en Recursos y en el Plan.
-        if (projectId) {
-          await setAreaAssignments(created.id, [{ project_id: projectId }]);
-        }
       }
       onSaved();
     } catch (e) {
@@ -450,13 +491,54 @@ function AreaModalForm({
   return (
     <Modal open title={area ? "Editar área" : "Nueva área"} onClose={onClose}>
       <div className="space-y-3">
-        {projectId ? (
+        {canBring ? (
+          <div
+            role="radiogroup"
+            aria-label="Modo"
+            className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] p-0.5 text-xs"
+          >
+            {(
+              [
+                { v: "create", label: "Crear nueva" },
+                { v: "existing", label: "Traer existente" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setMode(opt.v)}
+                className={cn(
+                  "rounded-[var(--radius-sm)] px-3 py-1 font-medium",
+                  mode === opt.v
+                    ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : "text-[var(--text-secondary)]",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {projectId && mode === "create" ? (
           <p className="rounded bg-[var(--color-subtle)] px-2 py-1 text-xs text-[var(--color-tertiary)]">
             {area
               ? "Al guardar, esta área queda disponible en este proyecto."
               : "El área se agrega a este proyecto automáticamente."}
           </p>
         ) : null}
+        {mode === "existing" && canBring ? (
+          <FieldLabel label="Área del catálogo" required>
+            <Select value={bringId} onChange={(e) => setBringId(e.target.value)}>
+              <option value="">— Selecciona —</option>
+              {unassignedAreas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
+          </FieldLabel>
+        ) : (
+          <>
         <FieldLabel label="Nombre" required>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </FieldLabel>
@@ -475,6 +557,8 @@ function AreaModalForm({
           />
           <span>Activa</span>
         </label>
+          </>
+        )}
         {err ? <p className="text-sm text-red-600">{err}</p> : null}
         <ModalActions onCancel={onClose} onSave={submit} saving={saving} />
       </div>

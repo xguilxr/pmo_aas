@@ -35,8 +35,9 @@ class Task(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(String(5000))
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
-    # US-171: fecha de cierre real (editable). Una tarea completada con
-    # closed_at > end_date se considera "Retrasada" (cerrada con retraso).
+    # US-171 + US-177: fecha de cierre real (editable). Una tarea completada
+    # con closed_at > end_date se marca "Completada con atraso" (tag amarillo);
+    # una NO completada con end_date < hoy se marca "Atrasada" (tag rojo).
     closed_at: Mapped[date | None] = mapped_column(Date)
     duration_days: Mapped[int | None] = mapped_column(Integer)
     progress: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
