@@ -66,9 +66,10 @@ async def test_tc083_severity_filter(client, db_session):
     assert all(rr["severity"] >= 13 for rr in r.json())
 
 
-# TC-085 closure_note required
+# TC-085 (US-179) — estado terminal unificado "resolved"; closure_note ya
+# no es obligatorio, pero persiste cuando se envía.
 @pytest.mark.asyncio
-async def test_tc085_closure_note_required(client, db_session):
+async def test_tc085_resolve_risk(client, db_session):
     _, auth, proj_id, area_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/risks",
@@ -76,16 +77,25 @@ async def test_tc085_closure_note_required(client, db_session):
         headers=auth["_authz"],
     )
     rid = r.json()["id"]
+    # "closed" ya no es un estado válido → 422 (enum inválido).
     bad = await client.patch(
         f"/api/v1/risks/{rid}", json={"status": "closed"}, headers=auth["_authz"]
     )
     assert bad.status_code == 422
+    # Resolver sin nota funciona (sin fricción).
     ok = await client.patch(
+        f"/api/v1/risks/{rid}", json={"status": "resolved"}, headers=auth["_authz"]
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["status"] == "resolved"
+    # La nota de cierre persiste cuando se envía.
+    ok2 = await client.patch(
         f"/api/v1/risks/{rid}",
-        json={"status": "closed", "closure_note": "Mitigado"},
+        json={"status": "resolved", "closure_note": "Mitigado"},
         headers=auth["_authz"],
     )
-    assert ok.status_code == 200
+    assert ok2.status_code == 200
+    assert ok2.json()["closure_note"] == "Mitigado"
 
 
 # TC-086 overdue issues

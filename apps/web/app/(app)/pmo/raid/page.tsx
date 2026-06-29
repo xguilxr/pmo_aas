@@ -533,19 +533,19 @@ function IssueTable({
 // cuando se implemente, ver US-058 / EP006). Mantener coherencia con el
 // diseño del toggle de /pmo/projects (mismo look & feel).
 
+// US-179: estados unificados a 4 (mismo set para riesgos e incidencias).
 const RISK_STATUS_ORDER: RiskStatus[] = [
-  "identified",
-  "analyzing",
-  "mitigating",
-  "materialized",
-  "closed",
+  "open",
+  "in_progress",
+  "on_hold",
+  "resolved",
 ];
 
 const ISSUE_STATUS_ORDER: IssueStatus[] = [
   "open",
   "in_progress",
+  "on_hold",
   "resolved",
-  "closed",
 ];
 
 function BoardColumn({
@@ -579,13 +579,12 @@ function RiskBoard({
 }) {
   const byStatus = useMemo(() => {
     const groups: Record<RiskStatus, TenantRisk[]> = {
-      identified: [],
-      analyzing: [],
-      mitigating: [],
-      materialized: [],
-      closed: [],
+      open: [],
+      in_progress: [],
+      on_hold: [],
+      resolved: [],
     };
-    for (const r of rows) groups[r.status].push(r);
+    for (const r of rows) (groups[r.status] ?? groups.open).push(r);
     return groups;
   }, [rows]);
 
@@ -656,10 +655,10 @@ function IssueBoard({
     const groups: Record<IssueStatus, TenantIssue[]> = {
       open: [],
       in_progress: [],
+      on_hold: [],
       resolved: [],
-      closed: [],
     };
-    for (const r of rows) groups[r.status].push(r);
+    for (const r of rows) (groups[r.status] ?? groups.open).push(r);
     return groups;
   }, [rows]);
 

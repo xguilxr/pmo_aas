@@ -65,21 +65,21 @@ async def test_us034_summary_aggregates_correctly(client, db_session):
     db_session.add(
         Risk(
             tenant_id=str(t.id), project_id=created_projects[0].id,
-            folio="RIS-1", title="Riesgo alto", status="identified",
+            folio="RIS-1", title="Riesgo alto", status="open",
             severity=20, probability=4, impact=5,
         )
     )
     db_session.add(
         Risk(
             tenant_id=str(t.id), project_id=created_projects[0].id,
-            folio="RIS-2", title="Riesgo bajo", status="identified",
+            folio="RIS-2", title="Riesgo bajo", status="open",
             severity=5, probability=1, impact=5,
         )
     )
     db_session.add(
         Risk(
             tenant_id=str(t.id), project_id=created_projects[1].id,
-            folio="RIS-3", title="Riesgo cerrado", status="closed",
+            folio="RIS-3", title="Riesgo cerrado", status="resolved",
             severity=25, probability=5, impact=5,
         )
     )

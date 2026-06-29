@@ -615,7 +615,7 @@ async def program_summary(
                     Risk.deleted_at.is_(None),
                     Risk.severity.isnot(None),
                     Risk.severity >= 13,
-                    Risk.status.notin_(["closed", "materialized"]),
+                    Risk.status != "resolved",  # US-179: terminal unificado.
                 ).order_by(Risk.severity.desc()).limit(10)
             )
         ).scalars().all()

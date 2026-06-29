@@ -23,7 +23,7 @@ def _ctx(**kw) -> _RenderContext:
     return _RenderContext(**base)
 
 
-def _risk(p, i, status="identified"):
+def _risk(p, i, status="open"):
     return SimpleNamespace(probability=p, impact=i, status=status)
 
 
@@ -73,7 +73,7 @@ def test_s15_risk_matrix_counts_and_zones():
             _risk(5, 4),
             _risk(5, 4),
             _risk(1, 1),
-            _risk(3, 3, status="closed"),  # excluido
+            _risk(3, 3, status="resolved"),  # excluido
             _risk(None, 2),  # sin prob → no posicionado
         ]
     )

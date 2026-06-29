@@ -139,14 +139,14 @@ async def compute_snapshot_values(
         values["open_risks"] = await _count(
             db,
             select(func.count(Risk.id)).where(
-                Risk.project_id.in_(project_ids), Risk.status != "closed"
+                Risk.project_id.in_(project_ids), Risk.status != "resolved"  # US-179
             ),
         )
         values["severe_risks"] = await _count(
             db,
             select(func.count(Risk.id)).where(
                 Risk.project_id.in_(project_ids),
-                Risk.status != "closed",
+                Risk.status != "resolved",  # US-179
                 Risk.severity >= SEVERE_THRESHOLD,
             ),
         )
@@ -154,7 +154,7 @@ async def compute_snapshot_values(
             db,
             select(func.count(Issue.id)).where(
                 Issue.project_id.in_(project_ids),
-                Issue.status.in_(["open", "in_progress"]),
+                Issue.status.in_(["open", "in_progress", "on_hold"]),  # US-179
             ),
         )
         values["changes_in_review"] = await _count(

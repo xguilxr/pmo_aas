@@ -509,7 +509,7 @@ def _build_s18_upcoming(ctx, params, window):
 def _build_s11_risks(ctx, params, window):
     rows = []
     for r in ctx.risks:
-        if r.status in ("closed", "materialized"):
+        if r.status == "resolved":  # US-179: terminal unificado
             continue
         rows.append({
             "folio": r.folio,
@@ -724,7 +724,7 @@ def _build_s15_risk_matrix(ctx, params, window):
     grid: dict[tuple[int, int], int] = {}
     total = 0
     for r in ctx.risks:
-        if r.status in ("closed", "materialized"):
+        if r.status == "resolved":  # US-179: terminal unificado
             continue
         if r.probability and r.impact:
             key = (int(r.probability), int(r.impact))

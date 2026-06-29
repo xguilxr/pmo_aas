@@ -80,12 +80,12 @@ async def test_us038_generate_and_pdf(client, db_session):
     db_session.add_all([
         Risk(
             tenant_id=str(t.id), project_id=p.id, folio="RIS-1",
-            title="Riesgo alto", status="identified", severity=20,
+            title="Riesgo alto", status="open", severity=20,
             probability=4, impact=5,
         ),
         Risk(
             tenant_id=str(t.id), project_id=p.id, folio="RIS-2",
-            title="Riesgo cerrado", status="closed", severity=25,
+            title="Riesgo cerrado", status="resolved", severity=25,
             probability=5, impact=5,
         ),
     ])

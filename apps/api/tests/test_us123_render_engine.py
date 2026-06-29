@@ -150,7 +150,7 @@ async def _seed_world(db, slug="us123"):
             project_id=p.id,
             folio="R-002",
             title="Riesgo cerrado",
-            status="closed",
+            status="resolved",
             severity=4,
             area_id=area_beta.id,
         )
@@ -191,7 +191,7 @@ async def _seed_world(db, slug="us123"):
             folio="D-001",
             title="Decisión tomada",
             type="decision",
-            status="closed",
+            status="resolved",
             committed_date=overdue,
             reported_at=now,
             area_id=area_alpha.id,

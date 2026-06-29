@@ -115,7 +115,7 @@ async def _risk_pairs(db: AsyncSession, project_ids: list[str]) -> list[tuple[in
         await db.execute(
             select(Risk.probability, Risk.impact).where(
                 Risk.project_id.in_(project_ids),
-                Risk.status != "closed",
+                Risk.status != "resolved",  # US-179
                 Risk.probability.is_not(None),
                 Risk.impact.is_not(None),
             )

@@ -73,7 +73,7 @@ def test_raid_export_empty_sheets_have_headers_only():
 def test_build_risk_rows_resolves_names_status_and_business_date():
     r = SimpleNamespace(
         folio="R-1", title="Riesgo", description="d", severity=9,
-        status="materialized", area_id="area-1",
+        status="resolved", area_id="area-1",
         owner_actor_id="actor-1", owner_id="user-1",
         identified_at=date(2026, 3, 10),
     )
@@ -85,7 +85,7 @@ def test_build_risk_rows_resolves_names_status_and_business_date():
     )
     # Actor preferido; status en ES; fecha = identified_at.
     assert rows[0] == [
-        "R-1", "Riesgo", "d", 9, "Materializado",
+        "R-1", "Riesgo", "d", 9, "Resuelto",
         "Operaciones", "Carla Actor", date(2026, 3, 10),
     ]
 
@@ -105,6 +105,6 @@ def test_build_issue_rows_actor_fallback_to_user_and_reported_date():
     )
     # Sin actor → fallback a Usuario; reported_at → solo fecha; status en ES.
     assert rows[0] == [
-        "A-1", "Acción", "", 3, "En progreso",
+        "A-1", "Acción", "", 3, "En Progreso",
         "Ingeniería", "Usuario Login", date(2026, 4, 2),
     ]

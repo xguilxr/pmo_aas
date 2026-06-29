@@ -14,6 +14,11 @@ OptionalTitleStr = Annotated[
 ]
 
 
+# US-179: estados RAID unificados a 4 (riesgos + incidencias). On-hold
+# captura razón + dependencia (área/responsable) + desde cuándo (servidor).
+RaidStatus = Literal["open", "in_progress", "on_hold", "resolved"]
+
+
 # ---------- Area embed (US-064) ----------
 class AreaMini(BaseModel):
     """Shape minimo del área embebida en RiskRead/IssueRead para que la
@@ -38,7 +43,15 @@ class UserMini(BaseModel):
 
 
 # ---------- Risks ----------
-class RiskCreate(BaseModel):
+class OnHoldFields(BaseModel):
+    """US-179: campos de detención compartidos en create/update de RAID."""
+
+    on_hold_reason: str | None = Field(default=None, max_length=2000)
+    on_hold_area_id: UUID | None = None
+    on_hold_actor_id: UUID | None = None
+
+
+class RiskCreate(OnHoldFields):
     title: TitleStr
     description: str | None = None
     category: str | None = None
@@ -51,10 +64,11 @@ class RiskCreate(BaseModel):
     area_id: UUID
     identified_at: date | None = None
     due_date: date | None = None
-    status: Literal["identified", "analyzing", "mitigating", "materialized", "closed"] = "identified"
+    # US-179: 4 estados unificados.
+    status: RaidStatus = "open"
 
 
-class RiskUpdate(BaseModel):
+class RiskUpdate(OnHoldFields):
     title: OptionalTitleStr = None
     description: str | None = None
     category: str | None = None
@@ -67,7 +81,7 @@ class RiskUpdate(BaseModel):
     # ENH-054: identified_at editable post-creación.
     identified_at: date | None = None
     due_date: date | None = None
-    status: Literal["identified", "analyzing", "mitigating", "materialized", "closed"] | None = None
+    status: RaidStatus | None = None
     closure_note: str | None = None
 
 
@@ -94,6 +108,13 @@ class RiskRead(BaseModel):
     due_date: date | None
     status: str
     closure_note: str | None
+    # US-179: detención.
+    on_hold_reason: str | None = None
+    on_hold_area_id: UUID | None = None
+    on_hold_area: AreaMini | None = None
+    on_hold_actor_id: UUID | None = None
+    on_hold_actor_name: str | None = None
+    on_hold_since: date | None = None
     comments: list = []
 
     model_config = {"from_attributes": True}
@@ -104,20 +125,22 @@ class RiskComment(BaseModel):
 
 
 # ---------- Issues ----------
-class IssueCreate(BaseModel):
+class IssueCreate(OnHoldFields):
     title: TitleStr
     description: str | None = None
     type: Literal["action", "issue", "decision"]
     category: str | None = None  # ENH-177
     priority: int | None = Field(default=None, ge=1, le=5)
     committed_date: date | None = None
+    # BUG-084: fecha de creación elegible (si se omite, el servidor usa hoy).
+    reported_at: datetime | None = None
     owner_id: UUID | None = None
     owner_actor_id: UUID | None = None
     area_id: UUID  # US-064: obligatorio en creación.
-    status: Literal["open", "in_progress", "resolved", "closed"] = "open"
+    status: RaidStatus = "open"
 
 
-class IssueUpdate(BaseModel):
+class IssueUpdate(OnHoldFields):
     title: OptionalTitleStr = None
     description: str | None = None
     # ENH-054: type editable (action / issue / decision) post-creación.
@@ -130,7 +153,7 @@ class IssueUpdate(BaseModel):
     owner_id: UUID | None = None
     owner_actor_id: UUID | None = None
     area_id: UUID | None = None  # US-064: permite asignar a legacy.
-    status: Literal["open", "in_progress", "resolved", "closed"] | None = None
+    status: RaidStatus | None = None
     resolution: str | None = None
 
 
@@ -154,6 +177,13 @@ class IssueRead(BaseModel):
     area_id: UUID | None
     area: AreaMini | None = None
     reported_at: datetime | None = None
+    # US-179: detención.
+    on_hold_reason: str | None = None
+    on_hold_area_id: UUID | None = None
+    on_hold_area: AreaMini | None = None
+    on_hold_actor_id: UUID | None = None
+    on_hold_actor_name: str | None = None
+    on_hold_since: date | None = None
     comments: list = []
 
     model_config = {"from_attributes": True}

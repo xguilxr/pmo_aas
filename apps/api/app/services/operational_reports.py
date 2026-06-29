@@ -217,7 +217,7 @@ async def build_avance_context(
                 Risk.tenant_id == str(tenant_id),
                 Risk.project_id == str(project_id),
                 Risk.deleted_at.is_(None),
-                Risk.status.notin_(["closed", "materialized"]),
+                Risk.status != "resolved",  # US-179: terminal unificado.
             )
             .order_by(Risk.severity.desc().nullslast() if hasattr(Risk.severity, "nullslast") else Risk.severity.desc())
             .limit(5)
@@ -232,7 +232,7 @@ async def build_avance_context(
                 Issue.tenant_id == str(tenant_id),
                 Issue.project_id == str(project_id),
                 Issue.deleted_at.is_(None),
-                Issue.status.notin_(["resolved", "closed"]),
+                Issue.status != "resolved",  # US-179: terminal unificado.
             )
             .limit(15)
         )

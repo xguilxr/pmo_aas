@@ -11,8 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
+  RAID_STATUS_LABEL,
   type Issue,
   type IssueType,
+  type RaidStatus,
   type Risk,
   updateIssue,
   updateRisk,
@@ -68,6 +70,13 @@ export function RaidEditFields(props:
   const [areaId, setAreaId] = useState(item.area_id ?? "");
   const [ownerActorId, setOwnerActorId] = useState<string>(
     (item as { owner_actor_id?: string | null }).owner_actor_id ?? "",
+  );
+  // US-179: estado (4) + detención.
+  const [status, setStatus] = useState<RaidStatus>(item.status);
+  const [onHoldReason, setOnHoldReason] = useState(item.on_hold_reason ?? "");
+  const [onHoldAreaId, setOnHoldAreaId] = useState(item.on_hold_area_id ?? "");
+  const [onHoldActorId, setOnHoldActorId] = useState(
+    item.on_hold_actor_id ?? "",
   );
   const [riskProb, setRiskProb] = useState<number>(
     kind === "risk" ? item.probability ?? 1 : 1,
@@ -136,6 +145,10 @@ export function RaidEditFields(props:
     setOwnerActorId(
       (item as { owner_actor_id?: string | null }).owner_actor_id ?? "",
     );
+    setStatus(item.status);
+    setOnHoldReason(item.on_hold_reason ?? "");
+    setOnHoldAreaId(item.on_hold_area_id ?? "");
+    setOnHoldActorId(item.on_hold_actor_id ?? "");
     if (kind === "risk") {
       setRiskProb(item.probability ?? 1);
       setRiskImpact(item.impact ?? 1);
@@ -164,8 +177,18 @@ export function RaidEditFields(props:
       setError("El título es obligatorio (mín. 2 caracteres).");
       return;
     }
+    // US-179: si pasa a On Hold, la razón es obligatoria.
+    if (status === "on_hold" && !onHoldReason.trim()) {
+      setError("Razón de detención obligatoria para poner el ítem On Hold.");
+      return;
+    }
     setSaving(true);
     setError(null);
+    const onHold = {
+      on_hold_reason: status === "on_hold" ? onHoldReason.trim() || null : null,
+      on_hold_area_id: status === "on_hold" ? onHoldAreaId || null : null,
+      on_hold_actor_id: status === "on_hold" ? onHoldActorId || null : null,
+    };
     try {
       if (kind === "risk") {
         const body: Parameters<typeof updateRisk>[1] = {
@@ -174,12 +197,14 @@ export function RaidEditFields(props:
           category: riskCategory.trim() || null,
           area_id: areaId || undefined,
           owner_actor_id: ownerActorId || null,
+          status,
           probability: riskProb,
           impact: riskImpact,
           mitigation_strategy: riskMitigation.trim() || null,
           identified_at: riskIdentified || null,
           due_date: riskDue || null,
           closure_note: riskClosureNote.trim() || null,
+          ...onHold,
         };
         const updated = await updateRisk(item.id, body);
         onSaved(updated);
@@ -190,6 +215,7 @@ export function RaidEditFields(props:
           type: issueType,
           area_id: areaId || undefined,
           owner_actor_id: ownerActorId || null,
+          status,
           priority: issuePriority === "" ? null : Number(issuePriority),
           // ENH-054: reported_at viaja como ISO string si tiene fecha.
           reported_at: issueReported
@@ -197,6 +223,7 @@ export function RaidEditFields(props:
             : null,
           committed_date: issueCommitted || null,
           resolution: issueResolution.trim() || null,
+          ...onHold,
         };
         const updated = await updateIssue(item.id, body);
         onSaved(updated);
@@ -294,6 +321,61 @@ export function RaidEditFields(props:
           />
         </Field>
       </div>
+
+      {/* US-179: estado (4) + detención. */}
+      <Field label="Estado">
+        <Select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as RaidStatus)}
+        >
+          {(Object.keys(RAID_STATUS_LABEL) as RaidStatus[]).map((s) => (
+            <option key={s} value={s}>
+              {RAID_STATUS_LABEL[s]}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      {status === "on_hold" ? (
+        <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--color-warning-border,var(--border-default))] bg-[var(--color-warning-bg)]/40 p-3">
+          <p className="text-xs font-medium text-[var(--color-warning-fg)]">
+            Detención — indica por qué está detenido y de quién depende.
+          </p>
+          <Field label="Razón de detención *">
+            <Textarea
+              value={onHoldReason}
+              onChange={(e) => setOnHoldReason(e.target.value)}
+              rows={2}
+              placeholder="Ej.: Espera aprobación de presupuesto"
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Área de la que depende">
+              <ProjectAreaPicker
+                projectId={item.project_id}
+                value={onHoldAreaId || null}
+                onChange={(v) => setOnHoldAreaId(v ?? "")}
+                disabled={optsLoading}
+                placeholder="— sin dependencia —"
+              />
+            </Field>
+            <Field label="Responsable del que depende">
+              <PersonPicker
+                projectId={item.project_id}
+                value={onHoldActorId || null}
+                onChange={(v) => setOnHoldActorId(v ?? "")}
+                disabled={optsLoading}
+                placeholder="— sin dependencia —"
+              />
+            </Field>
+          </div>
+          {item.on_hold_since ? (
+            <p className="text-xs text-[var(--color-tertiary)]">
+              Detenido desde {item.on_hold_since}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {kind === "risk" ? (
         <>

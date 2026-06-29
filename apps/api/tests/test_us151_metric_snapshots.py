@@ -52,9 +52,9 @@ async def _seed(db_session):
 
     # Riesgos sobre P3 (el rojo): 2 abiertos (1 severo), 1 cerrado.
     for folio, status, sev in [
-        ("R-1", "identified", 15),
-        ("R-2", "mitigating", 8),
-        ("R-3", "closed", 20),
+        ("R-1", "open", 15),
+        ("R-2", "in_progress", 8),
+        ("R-3", "resolved", 20),
     ]:
         db_session.add(
             Risk(

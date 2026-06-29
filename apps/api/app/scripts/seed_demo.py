@@ -317,7 +317,7 @@ async def _seed_raid_for_project(
             folio=folio_r,
             title="Dependencia critica con proveedor externo",
             description="El proveedor X podria retrasar entregables clave.",
-            status="mitigating",
+            status="in_progress",  # US-179
             created_by=created_by.id,
             category="proveedor",
             probability=3,

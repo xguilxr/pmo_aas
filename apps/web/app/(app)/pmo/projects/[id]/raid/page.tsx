@@ -47,8 +47,10 @@ import {
   type Issue,
   type IssueStatus,
   type IssueType,
+  type IssueUpdateBody,
   type Risk,
   type RiskStatus,
+  type RiskUpdateBody,
 } from "@/lib/api/modules";
 import { cn } from "@/lib/cn";
 
@@ -291,19 +293,21 @@ function RaidInner() {
   // Aplica el nuevo estado local de inmediato; revierte si el PATCH falla.
   async function handleBoardMove(itemId: string, toStatus: string) {
     setError(null);
+    // US-179: al pasar a On Hold se exige una razón de detención. La
+    // dependencia (área + responsable) se completa en el form de edición.
+    let onHoldReason: string | undefined;
+    if (toStatus === "on_hold") {
+      const reason = window.prompt(
+        "Razón de detención (obligatoria para poner On Hold). " +
+          "La dependencia (área/responsable) se completa en Editar.",
+        "",
+      );
+      if (reason === null || reason.trim() === "") return;
+      onHoldReason = reason.trim();
+    }
     if (isRiskTab) {
-      const patch: { status: RiskStatus; closure_note?: string } = {
-        status: toStatus as RiskStatus,
-      };
-      // Backend exige closure_note al cerrar/materializar un riesgo.
-      if (toStatus === "closed" || toStatus === "materialized") {
-        const note = window.prompt(
-          "Nota de cierre (obligatoria para cerrar/materializar un riesgo):",
-          "",
-        );
-        if (note === null || note.trim() === "") return;
-        patch.closure_note = note.trim();
-      }
+      const patch: RiskUpdateBody = { status: toStatus as RiskStatus };
+      if (onHoldReason) patch.on_hold_reason = onHoldReason;
       const prev = risks.find((r) => r.id === itemId);
       setRisks((rows) =>
         rows.map((r) => (r.id === itemId ? { ...r, ...patch } : r)),
@@ -325,17 +329,15 @@ function RaidInner() {
         setKanbanBusyId(null);
       }
     } else {
+      const patch: IssueUpdateBody = { status: toStatus as IssueStatus };
+      if (onHoldReason) patch.on_hold_reason = onHoldReason;
       const prev = issues.find((i) => i.id === itemId);
       setIssues((rows) =>
-        rows.map((i) =>
-          i.id === itemId ? { ...i, status: toStatus as IssueStatus } : i,
-        ),
+        rows.map((i) => (i.id === itemId ? { ...i, ...patch } : i)),
       );
       setKanbanBusyId(itemId);
       try {
-        const updated = await updateIssue(itemId, {
-          status: toStatus as IssueStatus,
-        });
+        const updated = await updateIssue(itemId, patch);
         setIssues((rows) =>
           rows.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)),
         );

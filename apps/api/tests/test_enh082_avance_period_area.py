@@ -90,7 +90,7 @@ async def test_tc082_3_risk_includes_area_and_due_date(client, db_session):
     cut = date(2026, 5, 1)
     db_session.add(Risk(
         tenant_id=str(t.id), project_id=p.id, folio="RIS-082",
-        title="Riesgo área", status="identified", severity=15,
+        title="Riesgo área", status="open", severity=15,
         probability=3, impact=5,
         area_id=str(a.id), due_date=cut + timedelta(days=20),
     ))

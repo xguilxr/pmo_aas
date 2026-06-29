@@ -104,15 +104,17 @@ export function RiskDetailBody({
 
   async function applyStatusChange(
     next: RiskStatus,
-    closureNoteValue?: string,
+    onHoldReasonValue?: string,
   ) {
     setSavingStatus(true);
     setError(null);
     try {
-      const payload: { status: RiskStatus; closure_note?: string | null } = {
+      // US-179: al pasar a On Hold se envía la razón de detención.
+      const payload: { status: RiskStatus; on_hold_reason?: string | null } = {
         status: next,
       };
-      if (closureNoteValue) payload.closure_note = closureNoteValue;
+      if (next === "on_hold" && onHoldReasonValue)
+        payload.on_hold_reason = onHoldReasonValue;
       const updated = await updateRisk(risk.id, payload);
       setStatus(updated.status);
       setSavedFlash(true);
@@ -131,7 +133,8 @@ export function RiskDetailBody({
 
   function changeStatus(next: RiskStatus) {
     if (next === status) return;
-    if ((next === "closed" || next === "materialized") && !risk.closure_note) {
+    // US-179: On Hold requiere razón de detención (modal).
+    if (next === "on_hold") {
       setStatus(next);
       setClosureNote("");
       setClosureError(null);
@@ -152,7 +155,7 @@ export function RiskDetailBody({
     if (!closurePending) return;
     const trimmed = closureNote.trim();
     if (trimmed.length < 2) {
-      setClosureError("La nota de cierre es obligatoria (mín. 2 caracteres).");
+      setClosureError("La razón de detención es obligatoria (mín. 2 caracteres).");
       return;
     }
     const ok = await applyStatusChange(closurePending, trimmed);
@@ -222,12 +225,8 @@ export function RiskDetailBody({
       <Modal
         open={closurePending !== null}
         onClose={cancelClosure}
-        title="Nota de cierre"
-        description={
-          closurePending === "materialized"
-            ? "Documenta cómo se materializó el riesgo (mín. 2 caracteres)."
-            : "Documenta el motivo del cierre (mín. 2 caracteres)."
-        }
+        title="Razón de detención"
+        description="Documenta por qué el ítem queda On Hold (mín. 2 caracteres). La dependencia (área/responsable) se completa en el form de edición."
         footer={
           <>
             <Button

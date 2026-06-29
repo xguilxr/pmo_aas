@@ -50,10 +50,10 @@ async def _setup(client, db_session):
 
     # Riesgos abiertos en P3 con prob/impacto para la matriz.
     for folio, prob, imp, sev, status in [
-        ("R-1", 5, 4, 20, "identified"),
-        ("R-2", 5, 4, 20, "mitigating"),
-        ("R-3", 2, 2, 4, "identified"),
-        ("R-4", 3, 3, 9, "closed"),  # cerrado → excluido
+        ("R-1", 5, 4, 20, "open"),
+        ("R-2", 5, 4, 20, "in_progress"),
+        ("R-3", 2, 2, 4, "open"),
+        ("R-4", 3, 3, 9, "resolved"),  # cerrado → excluido
     ]:
         db_session.add(
             Risk(
