@@ -62,9 +62,9 @@ Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint
 - [x] **ENH-175** — Columna Responsable en listas RAID + resolución Actor en el read. `status:fix-committed`
 - [x] **ENH-176** — Severidad inline en riesgos (probability/impact, optimista). `status:fix-committed`
 - [x] **ENH-177** — `category` para issues (migración 0087 + UI detalle). `status:fix-committed`
-- [ ] Auto-WBS columna `position` — **en pausa**: el owner quiere revisar el plan antes de implementar (ver plan al final del chat).
+- [x] **US-176** — Auto-WBS / orden manual: **versión mínima** implementada (columna `tasks.position` mig 0088, endpoint `/tasks/{id}/move`, drag por fila con handle en vista plana sin filtros, `list_tasks`/`renumber-wbs` respetan `position`). Draft `docs/epics/drafts/auto-wbs-position.md` con lo diferido (drag de subárbol, orden por hermanos). `status:fix-committed`
 
-Próximo libre tras este batch: US-176, BUG-081, ENH-178.
+Próximo libre tras este batch: US-177, BUG-081, ENH-178.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
 

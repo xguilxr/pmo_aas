@@ -12,6 +12,7 @@ import {
   Diamond,
   Download,
   FileDown,
+  GripVertical,
   ListTree,
   Network,
   Pencil,
@@ -43,6 +44,7 @@ import {
   deleteTask,
   getGantt,
   listTasks,
+  moveTask,
   renumberWbs,
   updateTask,
   type GanttData,
@@ -612,6 +614,7 @@ function TaskList({
   colVis = DEFAULT_COL_VIS,
   areas = [],
   onInlineUpdate,
+  onReorder,
 }: {
   tasks: Task[];
   loading: boolean;
@@ -621,6 +624,9 @@ function TaskList({
   // US-173: edición inline desde la celda (área/fechas/avance/estado/
   // criticidad/hito) sin abrir el modal.
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
+  // US-176: reorden por fila (drag con handle). Coloca `dragId` antes de
+  // `targetId`. Sólo se provee en la vista plana sin filtros.
+  onReorder?: (dragId: string, targetId: string) => void;
   // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
   // y permite colapsar nodos padre.
   groupByWbs?: boolean;
@@ -638,6 +644,8 @@ function TaskList({
     return m;
   }, [areas]);
   const showActions = !!(onEdit || onDelete);
+  // US-176: id de la fila que se está arrastrando (reorder).
+  const [dragId, setDragId] = useState<string | null>(null);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
@@ -685,6 +693,9 @@ function TaskList({
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
+            {onReorder ? (
+              <th className="w-8 px-1 py-2" aria-label="Reordenar" />
+            ) : null}
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
             {colVis.outline ? (
               <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
@@ -725,11 +736,42 @@ function TaskList({
             return (
             <tr
               key={t.id}
+              onDragOver={
+                onReorder
+                  ? (e) => {
+                      if (dragId && dragId !== t.id) e.preventDefault();
+                    }
+                  : undefined
+              }
+              onDrop={
+                onReorder
+                  ? () => {
+                      if (dragId && dragId !== t.id) onReorder(dragId, t.id);
+                      setDragId(null);
+                    }
+                  : undefined
+              }
               className={cn(
                 "border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]",
                 delayed && "bg-[var(--color-danger-bg)]/40",
+                dragId === t.id && "opacity-50",
               )}
             >
+              {/* US-176: handle de arrastre (sólo vista plana sin filtros). */}
+              {onReorder ? (
+                <td className="px-1 py-2 align-middle">
+                  <span
+                    draggable
+                    onDragStart={() => setDragId(t.id)}
+                    onDragEnd={() => setDragId(null)}
+                    title="Arrastra para reordenar"
+                    aria-label={`Reordenar ${t.name}`}
+                    className="flex h-6 w-6 cursor-grab items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)] active:cursor-grabbing"
+                  >
+                    <GripVertical className="h-4 w-4" aria-hidden />
+                  </span>
+                </td>
+              ) : null}
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
@@ -1442,6 +1484,29 @@ function PlanInner() {
     }
   }
 
+  // US-176: reorden por fila (drag). Coloca dragId ANTES de targetId.
+  // Optimista sobre `tasks` (sólo se habilita en vista plana sin filtros, así
+  // que `tasks` === orden mostrado). Recalcula after_id y persiste.
+  function handleReorderTask(dragId: string, targetId: string) {
+    if (dragId === targetId) return;
+    const arr = [...tasks];
+    const from = arr.findIndex((t) => t.id === dragId);
+    if (from < 0) return;
+    const [moved] = arr.splice(from, 1);
+    const insertAt = arr.findIndex((t) => t.id === targetId);
+    if (insertAt < 0) return;
+    arr.splice(insertAt, 0, moved); // insertar ANTES del target
+    const newIdx = arr.findIndex((t) => t.id === dragId);
+    const afterId = newIdx > 0 ? arr[newIdx - 1].id : null;
+    setTasks(arr); // optimista
+    void moveTask(id, dragId, afterId).catch((err) => {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo reordenar la tarea",
+      );
+      void loadTasksAndGantt(); // revert desde el server
+    });
+  }
+
   useEffect(() => {
     void loadTasksAndGantt();
     // ENH-028: nombre del proyecto para el filename del export. Falla silencioso
@@ -1712,6 +1777,12 @@ function PlanInner() {
             colVis={colVis}
             areas={areas}
             onInlineUpdate={handleInlineUpdate}
+            onReorder={
+              // US-176: reorden sólo en vista plana sin filtros (display === tasks).
+              !groupByWbs && activeChips.size === 0 && areaFilter.size === 0
+                ? handleReorderTask
+                : undefined
+            }
           />
         )}
       </section>
@@ -1730,6 +1801,7 @@ function PlanInner() {
       activeChips,
       chipCounts,
       colVis,
+      areaFilter,
     ],
   );
 

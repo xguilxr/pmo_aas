@@ -1,8 +1,12 @@
 # Draft — Auto-WBS con orden manual estable (`tasks.position`)
 
-> **Estado:** propuesta para revisión del owner (no implementado).
+> **Estado:** **MVP implementado (US-176, 2026-06-28)** — versión mínima
+> aprobada por el owner: `position` **global**, **mover sólo la fila**, drag con
+> handle **sólo en vista plana sin filtros**. Migración 0088 + endpoint
+> `/tasks/{id}/move` + `list_tasks`/`renumber-wbs` respetan `position`.
+> **Diferido (v2, requiere nueva decisión):** drag de **subárbol** (hijos),
+> reorden **dentro de agrupaciones/filtros**, y `position` **por hermanos**.
 > Origen: Fase 4 del análisis Sprint 35 (UIUX-ANALYSIS-Sprint35.md, follow-up #4).
-> El owner pidió revisar el plan antes de implementar.
 
 ## 1. Problema
 

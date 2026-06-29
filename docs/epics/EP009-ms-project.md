@@ -214,6 +214,7 @@ implementó.
 | `name` | ✅ |
 | `description` | |
 | `wbs` | US-172: `POST /projects/{id}/tasks/renumber-wbs` renumera todo el proyecto jerárquico + único (1, 1.1, 1.2, 2, …), resuelve duplicados y remapea predecesoras |
+| `position` | US-176: orden manual del plan. `POST /projects/{id}/tasks/{id}/move {after_id}` reordena (drag por fila en vista plana). Si hay `position`, manda sobre el WBS en `list_tasks` y en `renumber-wbs`. Null = orden natural por WBS. |
 | `parent_id` | tarea padre |
 | `start_date`, `end_date` | fecha planeada |
 | `closed_at` | US-171: fecha de cierre **real** (editable). Auto = hoy al completar sin fecha. |

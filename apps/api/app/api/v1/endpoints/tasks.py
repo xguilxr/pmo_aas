@@ -288,8 +288,16 @@ async def list_tasks(
     if area_id is not None:
         stmt = stmt.where(Task.area_id == str(area_id))
     rows = (await db.execute(stmt)).scalars().all()
-    # BUG-049 — orden natural por WBS (1.2 < 1.10) post-fetch.
-    rows_list = sorted(rows, key=lambda t: wbs_sort_key(t.wbs))
+    # US-176: si el proyecto fue reordenado manualmente, `position` manda; el
+    # resto cae al orden natural por WBS (BUG-049: 1.2 < 1.10) post-fetch.
+    rows_list = sorted(
+        rows,
+        key=lambda t: (
+            t.position is None,
+            t.position if t.position is not None else 0,
+            wbs_sort_key(t.wbs),
+        ),
+    )
     await _attach_owners(db, rows_list)
     await _attach_milestones(db, rows_list)
     # ENH-109 — avance jerárquico: una tarea con hijos muestra el promedio
@@ -525,10 +533,17 @@ async def renumber_wbs(
     tasks = (
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
     ).scalars().all()
-    # Orden visual: WBS natural, luego created_at para desempatar duplicados.
+    # Orden visual: US-176 `position` manda si existe; luego WBS natural y
+    # created_at para desempatar duplicados.
     _floor = datetime.min.replace(tzinfo=UTC)
     ordered = sorted(
-        tasks, key=lambda t: (_natural_wbs_key(t.wbs), t.created_at or _floor)
+        tasks,
+        key=lambda t: (
+            t.position is None,
+            t.position if t.position is not None else 0,
+            _natural_wbs_key(t.wbs),
+            t.created_at or _floor,
+        ),
     )
 
     old_to_new: dict[str, str] = {}
@@ -569,6 +584,65 @@ async def renumber_wbs(
     )
     await db.commit()
     return {"renumbered": len(ordered)}
+
+
+class MoveTaskBody(BaseModel):
+    # US-176: reordena la tarea para que quede JUSTO DESPUÉS de `after_id`.
+    # `after_id=None` la manda al inicio del plan.
+    after_id: UUID | None = None
+
+
+@router.post("/projects/{project_id}/tasks/{task_id}/move")
+async def move_task(
+    project_id: UUID,
+    task_id: UUID,
+    body: MoveTaskBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-176 — reorden manual del plan. Reasigna `position` secuencial a TODAS
+    las tareas del proyecto colocando `task_id` justo después de `after_id`
+    (o al inicio si es None). Robusto ante vistas filtradas: normaliza el orden
+    completo. El indent (outline_level) no cambia."""
+    tenant_id = _tenant(cu)
+    p = await _ensure_project(db, project_id, tenant_id)
+    if p.phase == "closed":
+        raise business_rule("Proyecto cerrado, no se puede reordenar")
+
+    tasks = (
+        await db.execute(select(Task).where(Task.project_id == str(project_id)))
+    ).scalars().all()
+    # Orden actual (position manda; fallback WBS natural).
+    ordered = sorted(
+        tasks,
+        key=lambda t: (
+            t.position is None,
+            t.position if t.position is not None else 0,
+            wbs_sort_key(t.wbs),
+        ),
+    )
+    moved = next((t for t in ordered if str(t.id) == str(task_id)), None)
+    if moved is None:
+        raise not_found("Tarea")
+    ordered.remove(moved)
+    if body.after_id is None:
+        ordered.insert(0, moved)
+    else:
+        idx = next(
+            (i for i, t in enumerate(ordered) if str(t.id) == str(body.after_id)),
+            None,
+        )
+        # after_id inexistente (p.ej. fuera del proyecto) → al final.
+        ordered.insert(idx + 1 if idx is not None else len(ordered), moved)
+    for i, t in enumerate(ordered):
+        t.position = i
+    await write_audit(
+        db, action="tasks.move", module="tasks", user_id=cu.id,
+        tenant_id=tenant_id, entity_type="task", entity_id=str(task_id),
+        details={"after_id": str(body.after_id) if body.after_id else None},
+    )
+    await db.commit()
+    return {"reordered": len(ordered)}
 
 
 @router.post("/projects/{project_id}/tasks/import")
