@@ -114,6 +114,82 @@ function wbsParent(wbs: string | null | undefined): string | null {
   return parts.slice(0, -1).join(".");
 }
 
+// ENH-181: siguiente WBS disponible bajo `parentWbs` (o raíz si null).
+// Toma el máximo del último segmento numérico de los hijos directos + 1.
+function nextWbsUnder(
+  parentWbs: string | null,
+  tasks: Task[],
+  excludeId?: string,
+): string {
+  const prefix = parentWbs ? `${parentWbs}.` : "";
+  const parentDepth = parentWbs
+    ? parentWbs.split(".").filter(Boolean).length
+    : 0;
+  let max = 0;
+  for (const t of tasks) {
+    if (excludeId && t.id === excludeId) continue;
+    const w = t.wbs;
+    if (!w) continue;
+    const parts = w.split(".").filter(Boolean);
+    // Hijo directo: profundidad parentDepth+1 y bajo el prefijo (o raíz).
+    if (parts.length !== parentDepth + 1) continue;
+    if (parentWbs && !w.startsWith(prefix)) continue;
+    const last = Number(parts[parts.length - 1]);
+    if (Number.isFinite(last) && last > max) max = last;
+  }
+  return `${prefix}${max + 1}`;
+}
+
+// ENH-181: línea de jerarquía WBS automatizable. Elegís la tarea padre (o
+// raíz) y "Bajar nivel" asigna el siguiente número disponible de ese
+// sub-nivel al campo WBS del form (que sigue editable a mano).
+function WbsHierarchyPicker({
+  tasks,
+  excludeId,
+  onPick,
+}: {
+  tasks: Task[];
+  excludeId?: string;
+  onPick: (wbs: string) => void;
+}) {
+  const [parent, setParent] = useState<string>("");
+  const options = useMemo(
+    () =>
+      [...tasks]
+        .filter((t) => t.id !== excludeId && t.wbs)
+        .sort((a, b) => compareWbs(a.wbs, b.wbs)),
+    [tasks, excludeId],
+  );
+  return (
+    <div className="flex items-end gap-2">
+      <div className="min-w-0 flex-1">
+        <Select
+          value={parent}
+          onChange={(e) => setParent(e.target.value)}
+          aria-label="Tarea padre"
+        >
+          <option value="">— Raíz (nivel 0) —</option>
+          {options.map((t) => (
+            <option key={t.id} value={t.wbs ?? ""}>
+              {t.wbs} — {t.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        onClick={() => onPick(nextWbsUnder(parent || null, tasks, excludeId))}
+        title="Asigna el siguiente WBS disponible bajo la tarea padre seleccionada"
+      >
+        <Network className="mr-1 h-3.5 w-3.5" aria-hidden />
+        Bajar nivel
+      </Button>
+    </div>
+  );
+}
+
 // ENH-048: predicados para los chips de filtro Hitos / Críticos / Retrasados.
 type ChipKey = "milestone" | "critical" | "delayed";
 
@@ -2078,6 +2154,13 @@ function PlanInner() {
               </Banner>
             ) : null;
           })()}
+          {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
+          <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
+            <WbsHierarchyPicker
+              tasks={tasks}
+              onPick={(wbs) => setNewForm({ ...newForm, wbs })}
+            />
+          </FormField>
           {/* ENH-135: WBS (pequeño) | Nombre */}
           <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
             <FormField label="WBS">
@@ -2256,6 +2339,14 @@ function PlanInner() {
               </Banner>
             ) : null;
           })()}
+          {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
+          <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
+            <WbsHierarchyPicker
+              tasks={tasks}
+              excludeId={editingId ?? undefined}
+              onPick={(wbs) => setEditForm({ ...editForm, wbs })}
+            />
+          </FormField>
           {/* ENH-135: WBS (pequeño) | Nombre */}
           <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
             <FormField label="WBS">
