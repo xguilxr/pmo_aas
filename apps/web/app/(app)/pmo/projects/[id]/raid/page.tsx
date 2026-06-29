@@ -6,12 +6,14 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Download,
   Eye,
   GitCommit,
   TriangleAlert,
 } from "lucide-react";
 
+import { InlineSelectCell } from "@/components/inline-select-cell";
 import { ItemPreviewModal } from "@/components/item-preview-modal";
 import {
   RaidKanban,
@@ -95,6 +97,17 @@ function RaidInner() {
     searchParams.get("view") === "board" ? "board" : "list",
   );
   const [kanbanBusyId, setKanbanBusyId] = useState<string | null>(null);
+  // ENH-171: menú "Exportar ▾" (agrupa export por tipo + 4 hojas).
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportEl, setExportEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!exportOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (exportEl && !exportEl.contains(e.target as Node)) setExportOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [exportOpen, exportEl]);
 
   function setViewAndUrl(v: "list" | "board") {
     setView(v);
@@ -274,41 +287,99 @@ function RaidInner() {
       }));
   }, [isRiskTab, risks, actions, incidents, decisions, tab, severityMin, priorityMin, areaFilter, id]);
 
+  // Fase 2: cambio de estado OPTIMISTA (Kanban + estado inline en listas).
+  // Aplica el nuevo estado local de inmediato; revierte si el PATCH falla.
   async function handleBoardMove(itemId: string, toStatus: string) {
-    setKanbanBusyId(itemId);
     setError(null);
-    try {
-      if (isRiskTab) {
-        const patch: { status: RiskStatus; closure_note?: string } = {
-          status: toStatus as RiskStatus,
-        };
-        // Backend exige closure_note al cerrar/materializar un riesgo.
-        if (toStatus === "closed" || toStatus === "materialized") {
-          const note = window.prompt(
-            "Nota de cierre (obligatoria para cerrar/materializar un riesgo):",
-            "",
-          );
-          if (note === null || note.trim() === "") {
-            setKanbanBusyId(null);
-            return;
-          }
-          patch.closure_note = note.trim();
-        }
-        const updated = await updateRisk(itemId, patch);
-        setRisks((prev) =>
-          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+    if (isRiskTab) {
+      const patch: { status: RiskStatus; closure_note?: string } = {
+        status: toStatus as RiskStatus,
+      };
+      // Backend exige closure_note al cerrar/materializar un riesgo.
+      if (toStatus === "closed" || toStatus === "materialized") {
+        const note = window.prompt(
+          "Nota de cierre (obligatoria para cerrar/materializar un riesgo):",
+          "",
         );
-      } else {
+        if (note === null || note.trim() === "") return;
+        patch.closure_note = note.trim();
+      }
+      const prev = risks.find((r) => r.id === itemId);
+      setRisks((rows) =>
+        rows.map((r) => (r.id === itemId ? { ...r, ...patch } : r)),
+      );
+      setKanbanBusyId(itemId);
+      try {
+        const updated = await updateRisk(itemId, patch);
+        setRisks((rows) =>
+          rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+        );
+      } catch (err) {
+        if (prev) {
+          setRisks((rows) => rows.map((r) => (r.id === itemId ? prev : r)));
+        }
+        setError(
+          err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
+        );
+      } finally {
+        setKanbanBusyId(null);
+      }
+    } else {
+      const prev = issues.find((i) => i.id === itemId);
+      setIssues((rows) =>
+        rows.map((i) =>
+          i.id === itemId ? { ...i, status: toStatus as IssueStatus } : i,
+        ),
+      );
+      setKanbanBusyId(itemId);
+      try {
         const updated = await updateIssue(itemId, {
           status: toStatus as IssueStatus,
         });
-        setIssues((prev) =>
-          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+        setIssues((rows) =>
+          rows.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)),
         );
+      } catch (err) {
+        if (prev) {
+          setIssues((rows) => rows.map((i) => (i.id === itemId ? prev : i)));
+        }
+        setError(
+          err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
+        );
+      } finally {
+        setKanbanBusyId(null);
       }
+    }
+  }
+
+  // ENH-176: edición inline de probabilidad/impacto en riesgos (optimista).
+  // El backend recomputa severity = P × I; localmente la recomputamos para
+  // que el badge reaccione de inmediato.
+  async function handleRiskPatch(
+    id: string,
+    patch: { probability?: number; impact?: number },
+  ) {
+    setError(null);
+    const prev = risks.find((r) => r.id === id);
+    setRisks((rows) =>
+      rows.map((r) => {
+        if (r.id !== id) return r;
+        const merged = { ...r, ...patch };
+        merged.severity =
+          (merged.probability ?? 0) * (merged.impact ?? 0) || null;
+        return merged;
+      }),
+    );
+    setKanbanBusyId(id);
+    try {
+      const updated = await updateRisk(id, patch);
+      setRisks((rows) =>
+        rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+      );
     } catch (err) {
+      if (prev) setRisks((rows) => rows.map((r) => (r.id === id ? prev : r)));
       setError(
-        err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
+        err instanceof ApiError ? err.message : "No se pudo actualizar el riesgo",
       );
     } finally {
       setKanbanBusyId(null);
@@ -400,27 +471,52 @@ function RaidInner() {
           >
             + {KIND_NEW_LABEL[tab]}
           </button>
-          {/* ENH-168: export individual del tipo activo (XLSX 1 hoja). */}
-          <button
-            type="button"
-            onClick={() => downloadRaid(tab)}
-            disabled={exporting}
-            title={`Exportar sólo ${TABS.find((t) => t.id === tab)?.label ?? "tipo"} (XLSX de 1 hoja)`}
-            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            Exportar {TABS.find((t) => t.id === tab)?.label ?? "tipo"}
-          </button>
-          <button
-            type="button"
-            onClick={() => downloadRaid()}
-            disabled={exporting}
-            title="Exportar los 4 tipos en un solo archivo (4 hojas)"
-            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            {exporting ? "Exportando…" : "Exportar RAID (4 hojas)"}
-          </button>
+          {/* ENH-168 + ENH-171: menú "Exportar ▾" (export por tipo + 4 hojas). */}
+          <div ref={setExportEl} className="relative">
+            <button
+              type="button"
+              onClick={() => setExportOpen((v) => !v)}
+              disabled={exporting}
+              aria-haspopup="menu"
+              aria-expanded={exportOpen}
+              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              {exporting ? "Exportando…" : "Exportar"}
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            {exportOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 z-20 mt-1 w-60 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-1 shadow-[var(--shadow-md)]"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setExportOpen(false);
+                    void downloadRaid(tab);
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  Sólo {TABS.find((t) => t.id === tab)?.label ?? "tipo"} (1 hoja)
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setExportOpen(false);
+                    void downloadRaid();
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  RAID completo (4 hojas)
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -575,12 +671,21 @@ function RaidInner() {
           ))}
         </div>
       ) : view === "board" ? (
-        <RaidKanban
-          columns={boardColumns}
-          items={boardItems}
-          onMove={handleBoardMove}
-          busyId={kanbanBusyId}
-        />
+        <div className="space-y-2">
+          {/* ENH-171: el board muestra todas las fases (ignora el toggle
+              "Mostrar finalizados", que sólo aplica a la vista Lista). */}
+          <p className="text-[11px] text-[var(--color-tertiary)]">
+            El tablero muestra <strong>todas las fases</strong> (incluye
+            finalizados). Arrastra una tarjeta entre columnas para cambiar su
+            estado.
+          </p>
+          <RaidKanban
+            columns={boardColumns}
+            items={boardItems}
+            onMove={handleBoardMove}
+            busyId={kanbanBusyId}
+          />
+        </div>
       ) : tab === "risks" ? (
         <RisksSection
           rows={filteredRisks}
@@ -591,6 +696,7 @@ function RaidInner() {
             )
           }
           onStatusChange={handleBoardMove}
+          onRiskPatch={handleRiskPatch}
         />
       ) : (
         <IssuesSection
@@ -744,6 +850,7 @@ function RisksSection({
   projectId,
   onRiskUpdate,
   onStatusChange,
+  onRiskPatch,
 }: {
   rows: Risk[];
   projectId: string;
@@ -751,6 +858,8 @@ function RisksSection({
   // US-175: cambio de estado inline (reusa el handler de Kanban → maneja la
   // nota de cierre para riesgos).
   onStatusChange?: (id: string, status: string) => void;
+  // ENH-176: edición inline de probabilidad/impacto (severity = P × I).
+  onRiskPatch?: (id: string, patch: { probability?: number; impact?: number }) => void;
 }) {
   void onRiskUpdate;
   const [preview, setPreview] = useState<Risk | null>(null);
@@ -820,6 +929,7 @@ function RisksSection({
                   <SortableTh<Risk> sortKey="folio" getter={(r) => r.folio} ctrl={riskSortCtrl}>Folio</SortableTh>
                   <SortableTh<Risk> sortKey="title" getter={(r) => r.title} ctrl={riskSortCtrl}>Título</SortableTh>
                   <SortableTh<Risk> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={riskSortCtrl}>Área</SortableTh>
+                  <SortableTh<Risk> sortKey="responsible" getter={(r) => r.responsible_name ?? ""} ctrl={riskSortCtrl}>Responsable</SortableTh>
                   <SortableTh<Risk> sortKey="severity" getter={(r) => r.severity ?? 0} ctrl={riskSortCtrl}>Severidad</SortableTh>
                   <SortableTh<Risk> sortKey="status" getter={(r) => r.status} ctrl={riskSortCtrl}>Estado</SortableTh>
                   <SortableTh<Risk> sortKey="identified" getter={(r) => (r as any).identified_at ?? ""} ctrl={riskSortCtrl}>F. Creación</SortableTh>
@@ -862,24 +972,61 @@ function RisksSection({
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.area?.name ?? "—"}
                     </td>
-                    <td className="px-3 py-2">
-                      <SeverityBadge severity={r.severity} />
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {r.responsible_name ?? "—"}
                     </td>
-                    {/* US-175: estado editable inline. */}
+                    {/* ENH-176: severidad = P × I, editable inline (P/I). */}
+                    <td className="px-3 py-2">
+                      {onRiskPatch ? (
+                        <div className="flex items-center gap-1.5">
+                          <SeverityBadge severity={r.severity} />
+                          <span className="text-[10px] text-[var(--color-tertiary)]">
+                            P
+                          </span>
+                          <InlineSelectCell
+                            value={r.probability != null ? String(r.probability) : ""}
+                            options={[1, 2, 3, 4, 5].map((n) => ({
+                              value: String(n),
+                              label: String(n),
+                            }))}
+                            onChange={(v) =>
+                              onRiskPatch(r.id, { probability: Number(v) })
+                            }
+                            placeholder="?"
+                            title="Probabilidad"
+                            ariaLabel={`Probabilidad de ${r.title}`}
+                          />
+                          <span className="text-[10px] text-[var(--color-tertiary)]">
+                            I
+                          </span>
+                          <InlineSelectCell
+                            value={r.impact != null ? String(r.impact) : ""}
+                            options={[1, 2, 3, 4, 5].map((n) => ({
+                              value: String(n),
+                              label: String(n),
+                            }))}
+                            onChange={(v) => onRiskPatch(r.id, { impact: Number(v) })}
+                            placeholder="?"
+                            title="Impacto"
+                            ariaLabel={`Impacto de ${r.title}`}
+                          />
+                        </div>
+                      ) : (
+                        <SeverityBadge severity={r.severity} />
+                      )}
+                    </td>
+                    {/* US-175 + Fase 2: estado editable inline (on-click). */}
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {onStatusChange ? (
-                        <select
+                        <InlineSelectCell
                           value={r.status}
-                          onChange={(e) => onStatusChange(r.id, e.target.value)}
+                          options={(Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map(
+                            (s) => ({ value: s, label: RISK_STATUS_LABEL[s] }),
+                          )}
+                          onChange={(v) => onStatusChange(r.id, v)}
                           title="Estado"
-                          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                        >
-                          {(Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map((s) => (
-                            <option key={s} value={s}>
-                              {RISK_STATUS_LABEL[s]}
-                            </option>
-                          ))}
-                        </select>
+                          ariaLabel={`Estado de ${r.title}`}
+                        />
                       ) : (
                         (RISK_STATUS_LABEL[r.status] ?? r.status)
                       )}
@@ -978,6 +1125,7 @@ function IssuesSection({
               <SortableTh<Issue> sortKey="folio" getter={(r) => r.folio} ctrl={issueSortCtrl}>Folio</SortableTh>
               <SortableTh<Issue> sortKey="title" getter={(r) => r.title} ctrl={issueSortCtrl}>Título</SortableTh>
               <SortableTh<Issue> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={issueSortCtrl}>Área</SortableTh>
+              <SortableTh<Issue> sortKey="responsible" getter={(r) => r.responsible_name ?? ""} ctrl={issueSortCtrl}>Responsable</SortableTh>
               <SortableTh<Issue> sortKey="type" getter={(r) => (r as any).type ?? ""} ctrl={issueSortCtrl}>Tipo</SortableTh>
               <SortableTh<Issue> sortKey="priority" getter={(r) => (r as any).priority ?? 0} ctrl={issueSortCtrl}>Prioridad</SortableTh>
               <SortableTh<Issue> sortKey="status" getter={(r) => r.status} ctrl={issueSortCtrl}>Estado</SortableTh>
@@ -1022,6 +1170,9 @@ function IssuesSection({
                   {it.area?.name ?? "—"}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.responsible_name ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {displayLabel}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
@@ -1030,18 +1181,15 @@ function IssuesSection({
                 {/* US-175: estado editable inline. */}
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {onStatusChange ? (
-                    <select
+                    <InlineSelectCell
                       value={it.status}
-                      onChange={(e) => onStatusChange(it.id, e.target.value)}
+                      options={(Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map(
+                        (s) => ({ value: s, label: ISSUE_STATUS_LABEL[s] }),
+                      )}
+                      onChange={(v) => onStatusChange(it.id, v)}
                       title="Estado"
-                      className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                    >
-                      {(Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map((s) => (
-                        <option key={s} value={s}>
-                          {ISSUE_STATUS_LABEL[s]}
-                        </option>
-                      ))}
-                    </select>
+                      ariaLabel={`Estado de ${it.title}`}
+                    />
                   ) : (
                     (ISSUE_STATUS_LABEL[it.status] ?? it.status)
                   )}

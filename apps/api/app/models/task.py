@@ -27,6 +27,9 @@ class Task(Base, TimestampMixin):
         String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
     wbs: Mapped[str | None] = mapped_column(String(64))
+    # US-176: orden manual del plan (reorder por fila). Null = sin reordenar
+    # (cae al orden natural por WBS). Cuando se setea, manda sobre el WBS.
+    position: Mapped[int | None] = mapped_column(Integer, index=True)
     parent_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("tasks.id"))
     name: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(String(5000))

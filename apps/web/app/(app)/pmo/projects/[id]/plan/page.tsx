@@ -9,8 +9,10 @@ import {
   ChevronDown,
   ChevronRight,
   Columns3,
+  Diamond,
   Download,
   FileDown,
+  GripVertical,
   ListTree,
   Network,
   Pencil,
@@ -28,6 +30,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
+import { InlineSelectCell } from "@/components/inline-select-cell";
 import { PersonPicker } from "@/components/directory/PersonPicker";
 import { ProjectAreaPicker } from "@/components/directory/ProjectAreaPicker";
 import { ApiError } from "@/lib/api";
@@ -41,6 +44,7 @@ import {
   deleteTask,
   getGantt,
   listTasks,
+  moveTask,
   renumberWbs,
   updateTask,
   type GanttData,
@@ -610,6 +614,7 @@ function TaskList({
   colVis = DEFAULT_COL_VIS,
   areas = [],
   onInlineUpdate,
+  onReorder,
 }: {
   tasks: Task[];
   loading: boolean;
@@ -619,6 +624,9 @@ function TaskList({
   // US-173: edición inline desde la celda (área/fechas/avance/estado/
   // criticidad/hito) sin abrir el modal.
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
+  // US-176: reorden por fila (drag con handle). Coloca `dragId` antes de
+  // `targetId`. Sólo se provee en la vista plana sin filtros.
+  onReorder?: (dragId: string, targetId: string) => void;
   // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
   // y permite colapsar nodos padre.
   groupByWbs?: boolean;
@@ -636,6 +644,8 @@ function TaskList({
     return m;
   }, [areas]);
   const showActions = !!(onEdit || onDelete);
+  // US-176: id de la fila que se está arrastrando (reorder).
+  const [dragId, setDragId] = useState<string | null>(null);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
@@ -683,6 +693,9 @@ function TaskList({
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
+            {onReorder ? (
+              <th className="w-8 px-1 py-2" aria-label="Reordenar" />
+            ) : null}
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
             {colVis.outline ? (
               <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
@@ -723,11 +736,42 @@ function TaskList({
             return (
             <tr
               key={t.id}
+              onDragOver={
+                onReorder
+                  ? (e) => {
+                      if (dragId && dragId !== t.id) e.preventDefault();
+                    }
+                  : undefined
+              }
+              onDrop={
+                onReorder
+                  ? () => {
+                      if (dragId && dragId !== t.id) onReorder(dragId, t.id);
+                      setDragId(null);
+                    }
+                  : undefined
+              }
               className={cn(
                 "border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]",
                 delayed && "bg-[var(--color-danger-bg)]/40",
+                dragId === t.id && "opacity-50",
               )}
             >
+              {/* US-176: handle de arrastre (sólo vista plana sin filtros). */}
+              {onReorder ? (
+                <td className="px-1 py-2 align-middle">
+                  <span
+                    draggable
+                    onDragStart={() => setDragId(t.id)}
+                    onDragEnd={() => setDragId(null)}
+                    title="Arrastra para reordenar"
+                    aria-label={`Reordenar ${t.name}`}
+                    className="flex h-6 w-6 cursor-grab items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)] active:cursor-grabbing"
+                  >
+                    <GripVertical className="h-4 w-4" aria-hidden />
+                  </span>
+                </td>
+              ) : null}
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
@@ -758,7 +802,12 @@ function TaskList({
                     <span className="inline-block h-4 w-4" aria-hidden />
                   ) : null}
                   <span className={delayed ? "text-[var(--color-danger-fg)]" : undefined}>
-                    {t.is_milestone ? "🔷 " : ""}
+                    {t.is_milestone ? (
+                      <Diamond
+                        className="mr-1 inline h-3 w-3 text-[var(--color-info-fg)]"
+                        aria-hidden
+                      />
+                    ) : null}
                     {t.name}
                     {delayed ? (
                       <span
@@ -780,24 +829,19 @@ function TaskList({
                   </span>
                 </div>
               </td>
-              {/* US-173: Área responsable editable inline (dropdown). */}
-              <td className="px-3 py-2 text-xs">
+              {/* US-173 + Fase 2: Área responsable editable inline (on-click). */}
+              <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
                 {onInlineUpdate ? (
-                  <select
+                  <InlineSelectCell
                     value={t.area_id ?? ""}
-                    onChange={(e) =>
-                      onInlineUpdate(t.id, { area_id: e.target.value || null })
-                    }
+                    options={[
+                      { value: "", label: "— Sin asignar —" },
+                      ...areas.map((a) => ({ value: a.id, label: a.name })),
+                    ]}
+                    onChange={(v) => onInlineUpdate(t.id, { area_id: v || null })}
                     title="Área responsable"
-                    className="max-w-[11rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                  >
-                    <option value="">— Sin asignar —</option>
-                    {areas.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
+                    ariaLabel={`Área de ${t.name}`}
+                  />
                 ) : t.area_id && areaById.has(t.area_id) ? (
                   <span className="text-[var(--color-secondary)]">
                     {areaById.get(t.area_id)}
@@ -883,23 +927,20 @@ function TaskList({
                   `${t.progress}%`
                 )}
               </td>
-              {/* US-173: Estado editable inline (dropdown). */}
+              {/* US-173 + Fase 2: Estado editable inline (on-click). */}
               <td className="px-3 py-2">
                 {onInlineUpdate ? (
-                  <select
+                  <InlineSelectCell
                     value={t.status}
-                    onChange={(e) =>
-                      onInlineUpdate(t.id, { status: e.target.value as TaskStatus })
+                    options={(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map(
+                      (k) => ({ value: k, label: TASK_STATUS_LABEL[k] }),
+                    )}
+                    onChange={(v) =>
+                      onInlineUpdate(t.id, { status: v as TaskStatus })
                     }
                     title="Estado"
-                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                  >
-                    {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
-                      <option key={k} value={k}>
-                        {TASK_STATUS_LABEL[k]}
-                      </option>
-                    ))}
-                  </select>
+                    ariaLabel={`Estado de ${t.name}`}
+                  />
                 ) : (
                   <StatusBadge status={t.status} />
                 )}
@@ -938,7 +979,7 @@ function TaskList({
                   />
                 ) : t.is_milestone ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-info-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-info-fg)]">
-                    🔷 Hito
+                    <Diamond className="h-3 w-3" aria-hidden /> Hito
                   </span>
                 ) : (
                   <span className="text-[var(--color-tertiary)]">—</span>
@@ -1405,13 +1446,20 @@ function PlanInner() {
     }
   }
 
-  // US-173: aplica un cambio inline a una tarea y refresca estado local.
+  // US-173 + Fase 2: cambio inline OPTIMISTA — aplica el patch local de
+  // inmediato; si el PATCH falla, revierte a la fila previa y muestra el error.
   async function handleInlineUpdate(
     taskId: string,
     patch: Partial<TaskUpdateBody>,
   ) {
+    const prevTask = tasks.find((t) => t.id === taskId);
+    setTasks((prev) =>
+      prev.map((r) => (r.id === taskId ? ({ ...r, ...patch } as Task) : r)),
+    );
     try {
       const updated = await updateTask(taskId, patch);
+      // El server puede derivar campos (duration, closed_at en completed) →
+      // reemplazamos con la versión autoritativa.
       setTasks((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       // Cambios que afectan el Gantt → refrescar en background.
       if (
@@ -1426,11 +1474,37 @@ function PlanInner() {
           .catch(() => {});
       }
     } catch (err) {
+      // Revert optimista.
+      if (prevTask) {
+        setTasks((prev) => prev.map((r) => (r.id === taskId ? prevTask : r)));
+      }
       setError(
         err instanceof ApiError ? err.message : "No se pudo actualizar la tarea",
       );
-      void loadTasksAndGantt();
     }
+  }
+
+  // US-176: reorden por fila (drag). Coloca dragId ANTES de targetId.
+  // Optimista sobre `tasks` (sólo se habilita en vista plana sin filtros, así
+  // que `tasks` === orden mostrado). Recalcula after_id y persiste.
+  function handleReorderTask(dragId: string, targetId: string) {
+    if (dragId === targetId) return;
+    const arr = [...tasks];
+    const from = arr.findIndex((t) => t.id === dragId);
+    if (from < 0) return;
+    const [moved] = arr.splice(from, 1);
+    const insertAt = arr.findIndex((t) => t.id === targetId);
+    if (insertAt < 0) return;
+    arr.splice(insertAt, 0, moved); // insertar ANTES del target
+    const newIdx = arr.findIndex((t) => t.id === dragId);
+    const afterId = newIdx > 0 ? arr[newIdx - 1].id : null;
+    setTasks(arr); // optimista
+    void moveTask(id, dragId, afterId).catch((err) => {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo reordenar la tarea",
+      );
+      void loadTasksAndGantt(); // revert desde el server
+    });
   }
 
   useEffect(() => {
@@ -1703,6 +1777,12 @@ function PlanInner() {
             colVis={colVis}
             areas={areas}
             onInlineUpdate={handleInlineUpdate}
+            onReorder={
+              // US-176: reorden sólo en vista plana sin filtros (display === tasks).
+              !groupByWbs && activeChips.size === 0 && areaFilter.size === 0
+                ? handleReorderTask
+                : undefined
+            }
           />
         )}
       </section>
@@ -1721,6 +1801,7 @@ function PlanInner() {
       activeChips,
       chipCounts,
       colVis,
+      areaFilter,
     ],
   );
 

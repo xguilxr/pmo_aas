@@ -63,6 +63,8 @@ class Issue(Base, _ModuleBase, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "folio", name="uq_issues_tenant_folio"),)
 
     type: Mapped[str] = mapped_column(String(32), nullable=False)  # action/issue/decision
+    # ENH-177: categoría libre (alineación con Risk.category).
+    category: Mapped[str | None] = mapped_column(String(100))
     priority: Mapped[int | None] = mapped_column(SmallInteger)
     reported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     committed_date: Mapped[date | None] = mapped_column(Date)

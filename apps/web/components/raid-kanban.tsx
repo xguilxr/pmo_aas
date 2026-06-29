@@ -4,6 +4,7 @@
 // Decisiones). Drag & drop nativo (sin librería) para avanzar/retroceder de
 // fase. Las columnas son los estados del tipo; soltar una tarjeta en otra
 // columna dispara `onMove(id, nuevoEstado)`.
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
@@ -36,7 +37,7 @@ export function RaidKanban({
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      {columns.map((col) => {
+      {columns.map((col, ci) => {
         const colItems = items.filter((i) => i.status === col.id);
         return (
           <div
@@ -100,6 +101,41 @@ export function RaidKanban({
                       {it.title}
                     </span>
                   )}
+                  {/* Fase 3 (a11y): mover de fase con teclado/click, sin drag. */}
+                  <div className="mt-2 flex items-center justify-between">
+                    <button
+                      type="button"
+                      disabled={ci === 0 || busyId === it.id}
+                      onClick={() => onMove(it.id, columns[ci - 1].id)}
+                      title={ci > 0 ? `Mover a ${columns[ci - 1].label}` : undefined}
+                      aria-label={
+                        ci > 0
+                          ? `Mover "${it.title}" a ${columns[ci - 1].label}`
+                          : "Sin fase anterior"
+                      }
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)] disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={ci === columns.length - 1 || busyId === it.id}
+                      onClick={() => onMove(it.id, columns[ci + 1].id)}
+                      title={
+                        ci < columns.length - 1
+                          ? `Mover a ${columns[ci + 1].label}`
+                          : undefined
+                      }
+                      aria-label={
+                        ci < columns.length - 1
+                          ? `Mover "${it.title}" a ${columns[ci + 1].label}`
+                          : "Sin fase siguiente"
+                      }
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)] disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </div>
                 </div>
               ))}
               {colItems.length === 0 ? (

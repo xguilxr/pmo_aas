@@ -142,6 +142,19 @@ export function renumberWbs(projectId: string): Promise<{ renumbered: number }> 
   );
 }
 
+// US-176: reordena una tarea para que quede justo después de `afterId`
+// (null = al inicio). El backend normaliza `position` de todo el proyecto.
+export function moveTask(
+  projectId: string,
+  taskId: string,
+  afterId: string | null,
+): Promise<{ reordered: number }> {
+  return apiFetch<{ reordered: number }>(
+    `/api/v1/projects/${projectId}/tasks/${taskId}/move`,
+    { method: "POST", body: { after_id: afterId } },
+  );
+}
+
 export async function importMsProject(
   projectId: string,
   file: File,

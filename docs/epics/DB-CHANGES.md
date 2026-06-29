@@ -427,3 +427,26 @@ actividad (editable por el PM). Lógica de atraso:
 El endpoint auto-setea `closed_at = hoy` al pasar a `completed` sin fecha
 provista; el PATCH permite editarla (incluye `null` para limpiar). Nullable,
 sin backfill (las tareas completadas legacy quedan sin fecha → no retrasadas).
+
+---
+
+## ENH-177 — issues.category (EP006, 2026-06-28)
+
+### Migración **0087** — `issues.category`
+
+Columna `category VARCHAR(100) NULL` en `issues`, en paralelo a
+`risks.category` ya existente, para clasificar acciones / incidencias /
+decisiones (alineación de campos RAID). Nullable, sin backfill.
+
+---
+
+## US-176 — tasks.position (EP009, 2026-06-28)
+
+### Migración **0088** — `tasks.position`
+
+Columna `position INTEGER NULL` + index `ix_tasks_project_position
+(project_id, position)`. Orden manual del plan (drag por fila). Null = sin
+reordenar → orden natural por WBS (comportamiento actual). Cuando hay
+posiciones, mandan sobre el WBS tanto en `list_tasks` como en `renumber-wbs`.
+El endpoint `POST /projects/{id}/tasks/{id}/move {after_id}` normaliza
+`position` secuencial de todo el proyecto. Nullable, sin backfill.

@@ -51,6 +51,8 @@ export type Risk = {
   owner_id: string | null;
   owner_actor_id?: string | null;
   owner: UserMini | null;
+  // ENH-175: responsable resuelto (Actor con fallback a Usuario).
+  responsible_name: string | null;
   area_id: string | null;
   area: AreaMini | null;
   identified_at: string | null;
@@ -135,6 +137,7 @@ export type Issue = {
   title: string;
   description: string | null;
   type: IssueType;
+  category: string | null; // ENH-177
   priority: number | null;
   committed_date: string | null;
   resolution: string | null;
@@ -142,6 +145,8 @@ export type Issue = {
   owner_id: string | null;
   owner_actor_id?: string | null;
   owner: UserMini | null;
+  // ENH-175: responsable resuelto (Actor con fallback a Usuario).
+  responsible_name: string | null;
   area_id: string | null;
   area: AreaMini | null;
   reported_at: string | null;
@@ -152,6 +157,7 @@ export type IssueCreateBody = {
   title: string;
   description?: string | null;
   type: IssueType;
+  category?: string | null; // ENH-177
   priority?: number | null;
   committed_date?: string | null;
   owner_id?: string | null;

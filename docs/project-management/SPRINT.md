@@ -45,8 +45,26 @@ Ejecución directa por chat del owner 2026-06-28 (planear + ejecutar de principi
 Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint35.md`
 (mejoras, docs, styling, aprovechamiento de espacio, deuda/follow-ups).
 
-**Batch Sprint 35 COMPLETO** (14/14 items). Pendiente: PR + verificación del owner.
-Próximo libre tras este batch: US-176, BUG-081, ENH-170.
+**Batch Sprint 35 COMPLETO** (14/14 items). PR #560 abierto, **CI verde** (run #538).
+
+### Follow-ups post-análisis (UIUX-ANALYSIS-Sprint35.md) — branch claude/minutes-plans-upload-error-driwcd
+
+**Fase 1 — quick wins (sin decisión):**
+- [x] **ENH-170** — Ícono Diamond para Hito (consistencia DS). `status:fix-committed` (`bef532e`)
+- [x] **ENH-171** — RAID: menú "Exportar ▾" + hint del Kanban. `status:fix-committed` (`0cf014b`)
+- [x] **ENH-172** — Unificar label "Nota de cierre" en issues RAID. `status:fix-committed` (`a7ee838`)
+
+**Fase 2-3 — hechas:**
+- [x] **ENH-173** — Edición inline "on-click" (`InlineSelectCell`) + updates optimistas con revert (Plan y RAID). `status:fix-committed` (`4fb79fb`)
+- [x] **ENH-174** — A11y del Kanban: botones ←/→ por tarjeta (teclado). `status:fix-committed` (`2083113`)
+
+**Fase 4 — aprobada por owner excepto auto-WBS (2026-06-28):**
+- [x] **ENH-175** — Columna Responsable en listas RAID + resolución Actor en el read. `status:fix-committed`
+- [x] **ENH-176** — Severidad inline en riesgos (probability/impact, optimista). `status:fix-committed`
+- [x] **ENH-177** — `category` para issues (migración 0087 + UI detalle). `status:fix-committed`
+- [x] **US-176** — Auto-WBS / orden manual: **versión mínima** implementada (columna `tasks.position` mig 0088, endpoint `/tasks/{id}/move`, drag por fila con handle en vista plana sin filtros, `list_tasks`/`renumber-wbs` respetan `position`). Draft `docs/epics/drafts/auto-wbs-position.md` con lo diferido (drag de subárbol, orden por hermanos). `status:fix-committed`
+
+Próximo libre tras este batch: US-177, BUG-081, ENH-178.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
 
