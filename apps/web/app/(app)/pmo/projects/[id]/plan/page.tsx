@@ -127,23 +127,31 @@ function isTaskCritical(t: Task): boolean {
   return t.criticality === "high" || t.criticality === "critical";
 }
 
-// US-171: atraso. Tarea NO completada → retrasada si end_date < hoy. Tarea
-// completada → retrasada si se cerró tarde (closed_at > end_date). Sin
-// closed_at, una tarea completada no se considera retrasada.
-function isTaskDelayed(t: Task): boolean {
-  if (!t.end_date) return false;
+// US-177: clasificación de atraso de una tarea.
+//  - 'atrasada' (rojo): NO completada y end_date < hoy.
+//  - 'completada_con_atraso' (amarillo): completada y closed_at > end_date.
+//  - null: en plazo / sin datos.
+type Lateness = "atrasada" | "completada_con_atraso" | null;
+
+function taskLateness(t: Task): Lateness {
+  if (!t.end_date) return null;
   const end = new Date(t.end_date);
-  if (Number.isNaN(end.getTime())) return false;
+  if (Number.isNaN(end.getTime())) return null;
   const completed = t.status === "completed" || (t.progress ?? 0) >= 100;
   if (completed) {
-    if (!t.closed_at) return false;
+    if (!t.closed_at) return null;
     const closed = new Date(t.closed_at);
-    if (Number.isNaN(closed.getTime())) return false;
-    return closed.getTime() > end.getTime();
+    if (Number.isNaN(closed.getTime())) return null;
+    return closed.getTime() > end.getTime() ? "completada_con_atraso" : null;
   }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return end.getTime() < today.getTime();
+  return end.getTime() < today.getTime() ? "atrasada" : null;
+}
+
+// El chip/filtro "Atrasados" cuenta sólo las accionables (no completadas).
+function isTaskDelayed(t: Task): boolean {
+  return taskLateness(t) === "atrasada";
 }
 
 function chipMatches(t: Task, chips: Set<ChipKey>): boolean {
@@ -732,7 +740,9 @@ function TaskList({
             const wbsKey = t.wbs ?? "";
             const isParent = groupByWbs && wbsKey && hasChildren.has(wbsKey);
             const isCollapsed = !!(isParent && collapsed?.has(wbsKey));
-            const delayed = isTaskDelayed(t);
+            const lateness = taskLateness(t);
+            const delayed = lateness === "atrasada";
+            const completedLate = lateness === "completada_con_atraso";
             return (
             <tr
               key={t.id}
@@ -754,6 +764,7 @@ function TaskList({
               className={cn(
                 "border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]",
                 delayed && "bg-[var(--color-danger-bg)]/40",
+                completedLate && "bg-[var(--color-warning-bg)]/40",
                 dragId === t.id && "opacity-50",
               )}
             >
@@ -809,12 +820,22 @@ function TaskList({
                       />
                     ) : null}
                     {t.name}
+                    {/* US-177: tag rojo "Atrasada" (no completada y vencida). */}
                     {delayed ? (
                       <span
                         className="ml-2 inline-flex items-center rounded border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]"
-                        title="end_date < hoy y status != completado"
+                        title="No completada y con fecha Fin pasada"
                       >
-                        Retrasada
+                        Atrasada
+                      </span>
+                    ) : null}
+                    {/* US-177: tag amarillo "Completada con atraso" (cerró tarde). */}
+                    {completedLate ? (
+                      <span
+                        className="ml-2 inline-flex items-center rounded border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-fg)]"
+                        title="Completada después de la fecha Fin (fecha de cierre posterior)"
+                      >
+                        Completada con atraso
                       </span>
                     ) : null}
                     {/* ENH-050: tooltip con hito relacionado. */}
@@ -871,7 +892,9 @@ function TaskList({
                   "px-3 py-2",
                   delayed
                     ? "font-medium text-[var(--color-danger-fg)]"
-                    : "text-[var(--color-secondary)]",
+                    : completedLate
+                      ? "font-medium text-[var(--color-warning-fg)]"
+                      : "text-[var(--color-secondary)]",
                 )}
               >
                 {onInlineUpdate ? (
@@ -2035,7 +2058,7 @@ function PlanInner() {
             [
               { key: "milestone" as const, label: "Hitos" },
               { key: "critical" as const, label: "Críticos" },
-              { key: "delayed" as const, label: "Retrasados" },
+              { key: "delayed" as const, label: "Atrasados" },
             ]
           ).map(({ key, label }) => {
             const active = activeChips.has(key);
@@ -2374,8 +2397,9 @@ function PlanInner() {
           </div>
           <p className="-mt-1 text-[11px] text-[var(--color-tertiary)]">
             <strong>Fecha de cierre:</strong> fecha real en que se cerró la
-            actividad. Si es posterior a la fecha Fin se marca “Retrasada”; al
-            completar sin fecha se usa hoy.
+            actividad. Si es posterior a la fecha Fin se marca “Completada con
+            atraso” (amarillo); una tarea no completada con fecha Fin pasada se
+            marca “Atrasada” (rojo). Al completar sin fecha se usa hoy.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Avance (0-100)">

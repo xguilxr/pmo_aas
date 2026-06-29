@@ -246,7 +246,7 @@ def render_report_html(
         [
             _kpi_card("Avance %", f"{kpi_progress}%", "info"),
             _kpi_card("On-time %", f"{kpi_on_time}%", "success"),
-            _kpi_card("Retrasadas", str(kpi_delayed), "danger", filter_key="retrasada"),
+            _kpi_card("Atrasadas", str(kpi_delayed), "danger", filter_key="atrasada"),
             _kpi_card("Riesgos alta", str(kpi_risks), "warning", filter_key="alta"),
             _kpi_card("Hitos pendientes", str(kpi_milestones), "neutral"),
         ]

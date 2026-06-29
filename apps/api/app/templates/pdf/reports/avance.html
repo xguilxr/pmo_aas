@@ -88,7 +88,7 @@
       <td class="right">{{ m.end_date or "—" }}</td>
       <td class="small">
         {{ m.status | status_badge }}
-        {% if m.delayed %}<span class="pill red">retrasado</span>{% endif %}
+        {% if m.delayed %}<span class="pill red">atrasado</span>{% endif %}
       </td>
       <td class="nums right">{{ m.progress }}%</td>
     </tr>

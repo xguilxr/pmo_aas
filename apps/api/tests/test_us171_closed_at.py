@@ -12,7 +12,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.models.task import Task
-from app.services.operational_reports import _is_delayed
+from app.services.operational_reports import _is_completed_late, _is_delayed
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 
@@ -27,23 +27,28 @@ def test_is_delayed_open_task_past_end():
 
 def test_is_delayed_completed_on_time_not_delayed():
     today = date(2026, 6, 28)
-    # cerrada antes/igual a la fecha fin → NO retrasada aunque se registre tarde.
+    # cerrada antes/igual a la fecha fin → ni Atrasada ni Completada con atraso.
     t = _t(end_date=date(2026, 6, 20), status="completed", progress=100,
            closed_at=date(2026, 6, 18))
     assert _is_delayed(t, today) is False
+    assert _is_completed_late(t) is False
 
 
-def test_is_delayed_completed_late_is_delayed():
+def test_us177_completed_late_is_not_atrasada_but_completed_late():
+    # US-177: una completada que cerró tarde NO es "Atrasada" (rojo); es
+    # "Completada con atraso" (amarillo).
     today = date(2026, 6, 28)
     t = _t(end_date=date(2026, 6, 20), status="completed", progress=100,
            closed_at=date(2026, 6, 25))
-    assert _is_delayed(t, today) is True
+    assert _is_delayed(t, today) is False
+    assert _is_completed_late(t) is True
 
 
 def test_is_delayed_completed_without_closed_at_not_delayed():
     today = date(2026, 6, 28)
     t = _t(end_date=date(2026, 6, 1), status="completed", progress=100, closed_at=None)
     assert _is_delayed(t, today) is False
+    assert _is_completed_late(t) is False
 
 
 async def _setup(client, db_session):

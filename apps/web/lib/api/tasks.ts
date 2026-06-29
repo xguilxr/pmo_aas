@@ -20,8 +20,9 @@ export type Task = {
   name: string;
   start_date: string | null;
   end_date: string | null;
-  // US-171: fecha de cierre real (YYYY-MM-DD). Una tarea completada con
-  // closed_at > end_date se considera "Retrasada" (cerrada con retraso).
+  // US-171 + US-177: fecha de cierre real (YYYY-MM-DD). Completada con
+  // closed_at > end_date → "Completada con atraso" (amarillo); no completada
+  // con end_date < hoy → "Atrasada" (rojo).
   closed_at: string | null;
   duration_days: number | null;
   progress: number;

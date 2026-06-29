@@ -31,19 +31,28 @@ from app.services.report_kpis import (
 )
 
 
-def _is_delayed(t: Task, today: date) -> bool:
-    """ENH-064 + US-171 — tarea retrasada.
+def _is_completed(t: Task) -> bool:
+    return t.status == "completed" or (t.progress or 0) >= 100
 
-    - No completada: retrasada si `end_date < hoy`.
-    - Completada: retrasada si se cerró tarde, es decir `closed_at > end_date`
-      (fecha de cierre real posterior a la planeada). Sin `closed_at` no hay
-      dato para afirmar atraso → no retrasada.
-    """
-    if t.end_date is None:
+
+def _is_completed_late(t: Task) -> bool:
+    """US-177 — tarea COMPLETADA pero cerrada tarde (`closed_at > end_date`).
+    Tag amarillo "Completada con atraso". Sin `closed_at` no hay dato."""
+    if t.end_date is None or not _is_completed(t):
         return False
-    if t.status == "completed" or (t.progress or 0) >= 100:
-        closed = getattr(t, "closed_at", None)
-        return closed is not None and closed > t.end_date
+    closed = getattr(t, "closed_at", None)
+    return closed is not None and closed > t.end_date
+
+
+def _is_delayed(t: Task, today: date) -> bool:
+    """US-177 — tarea ATRASADA (rojo): NO completada y con `end_date < hoy`.
+
+    La distinción de US-177: una tarea ya completada que cerró tarde NO es
+    "Atrasada" (es "Completada con atraso", ver `_is_completed_late`); aquí
+    sólo cuentan las pendientes vencidas, que son las accionables.
+    """
+    if t.end_date is None or _is_completed(t):
+        return False
     return t.end_date < today
 
 
