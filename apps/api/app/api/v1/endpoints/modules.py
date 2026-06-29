@@ -158,20 +158,36 @@ async def _attach_owners(db: AsyncSession, items: list) -> None:
     que el sidebar de RAID detail muestre nombre del responsable en vez
     del UUID.
 
-    Mutates `item.owner` in-place. Items sin `owner_id` quedan con
-    owner=None. 1 SELECT batch del set único de owner_ids.
+    ENH-175: además setea `item.responsible_name` resolviendo el Actor del
+    catálogo (`owner_actor_id`) con fallback al Usuario (`owner_id`) — mismo
+    criterio que el export RAID — para que las listas muestren la columna
+    Responsable también en items asignados a un Actor.
+
+    Mutates in-place. 1 SELECT batch por cada set único (users, actors).
     """
+    from app.models.area import Actor
+
     owner_ids: set[str] = set()
+    actor_ids: set[str] = set()
     for it in items:
         oid = getattr(it, "owner_id", None)
         if oid:
             owner_ids.add(str(oid))
+        aid = getattr(it, "owner_actor_id", None)
+        if aid:
+            actor_ids.add(str(aid))
     by_id: dict[str, User] = {}
     if owner_ids:
         rows = (
             await db.execute(select(User).where(User.id.in_(owner_ids)))
         ).scalars().all()
         by_id = {str(u.id): u for u in rows}
+    actor_by_id: dict[str, Actor] = {}
+    if actor_ids:
+        arows = (
+            await db.execute(select(Actor).where(Actor.id.in_(actor_ids)))
+        ).scalars().all()
+        actor_by_id = {str(a.id): a for a in arows}
     for it in items:
         oid = getattr(it, "owner_id", None)
         user = by_id.get(str(oid)) if oid else None
@@ -183,6 +199,11 @@ async def _attach_owners(db: AsyncSession, items: list) -> None:
             }
             if user
             else None
+        )
+        aid = getattr(it, "owner_actor_id", None)
+        actor = actor_by_id.get(str(aid)) if aid else None
+        it.responsible_name = (  # type: ignore[attr-defined]
+            actor.name if actor else (user.full_name if user else None)
         )
 
 

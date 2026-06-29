@@ -58,13 +58,13 @@ Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint
 - [x] **ENH-173** — Edición inline "on-click" (`InlineSelectCell`) + updates optimistas con revert (Plan y RAID). `status:fix-committed` (`4fb79fb`)
 - [x] **ENH-174** — A11y del Kanban: botones ←/→ por tarjeta (teclado). `status:fix-committed` (`2083113`)
 
-**Fase 4 — requieren OK del owner (no arrancadas):**
-- [ ] Columna Responsable en listas RAID + resolución Actor en el read.
-- [ ] Severidad inline en riesgos (probability/impact).
-- [ ] `category` para issues (migración).
-- [ ] Auto-WBS columna `position` (migración; el más grande).
+**Fase 4 — aprobada por owner excepto auto-WBS (2026-06-28):**
+- [x] **ENH-175** — Columna Responsable en listas RAID + resolución Actor en el read. `status:fix-committed`
+- [ ] **ENH-176** — Severidad inline en riesgos (probability/impact).
+- [ ] **ENH-177** — `category` para issues (migración).
+- [ ] Auto-WBS columna `position` — **en pausa**: el owner quiere revisar el plan antes de implementar (ver plan al final del chat).
 
-Próximo libre tras este batch: US-176, BUG-081, ENH-175.
+Próximo libre tras este batch: US-176, BUG-081, ENH-178.
 
 ### Sprint 34 — Bloque 1 — Roles + Visibilidad + Recursos (branch: claude/friendly-bell-EYlVB)
 

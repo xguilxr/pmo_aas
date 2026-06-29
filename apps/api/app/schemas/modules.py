@@ -85,6 +85,9 @@ class RiskRead(BaseModel):
     owner_id: UUID | None
     owner_actor_id: UUID | None = None
     owner: UserMini | None = None  # BUG-035: nombre del responsable.
+    # ENH-175: responsable resuelto (Actor con fallback a Usuario) para la
+    # columna Responsable de las listas RAID.
+    responsible_name: str | None = None
     area_id: UUID | None
     area: AreaMini | None = None  # US-064: embebido por endpoint.
     identified_at: date | None
@@ -143,6 +146,8 @@ class IssueRead(BaseModel):
     owner_id: UUID | None
     owner_actor_id: UUID | None = None
     owner: UserMini | None = None  # BUG-035: nombre del responsable.
+    # ENH-175: responsable resuelto (Actor con fallback a Usuario).
+    responsible_name: str | None = None
     area_id: UUID | None
     area: AreaMini | None = None
     reported_at: datetime | None = None

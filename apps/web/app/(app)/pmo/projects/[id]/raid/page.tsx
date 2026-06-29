@@ -891,6 +891,7 @@ function RisksSection({
                   <SortableTh<Risk> sortKey="folio" getter={(r) => r.folio} ctrl={riskSortCtrl}>Folio</SortableTh>
                   <SortableTh<Risk> sortKey="title" getter={(r) => r.title} ctrl={riskSortCtrl}>Título</SortableTh>
                   <SortableTh<Risk> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={riskSortCtrl}>Área</SortableTh>
+                  <SortableTh<Risk> sortKey="responsible" getter={(r) => r.responsible_name ?? ""} ctrl={riskSortCtrl}>Responsable</SortableTh>
                   <SortableTh<Risk> sortKey="severity" getter={(r) => r.severity ?? 0} ctrl={riskSortCtrl}>Severidad</SortableTh>
                   <SortableTh<Risk> sortKey="status" getter={(r) => r.status} ctrl={riskSortCtrl}>Estado</SortableTh>
                   <SortableTh<Risk> sortKey="identified" getter={(r) => (r as any).identified_at ?? ""} ctrl={riskSortCtrl}>F. Creación</SortableTh>
@@ -932,6 +933,9 @@ function RisksSection({
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.area?.name ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-[var(--color-secondary)]">
+                      {r.responsible_name ?? "—"}
                     </td>
                     <td className="px-3 py-2">
                       <SeverityBadge severity={r.severity} />
@@ -1046,6 +1050,7 @@ function IssuesSection({
               <SortableTh<Issue> sortKey="folio" getter={(r) => r.folio} ctrl={issueSortCtrl}>Folio</SortableTh>
               <SortableTh<Issue> sortKey="title" getter={(r) => r.title} ctrl={issueSortCtrl}>Título</SortableTh>
               <SortableTh<Issue> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={issueSortCtrl}>Área</SortableTh>
+              <SortableTh<Issue> sortKey="responsible" getter={(r) => r.responsible_name ?? ""} ctrl={issueSortCtrl}>Responsable</SortableTh>
               <SortableTh<Issue> sortKey="type" getter={(r) => (r as any).type ?? ""} ctrl={issueSortCtrl}>Tipo</SortableTh>
               <SortableTh<Issue> sortKey="priority" getter={(r) => (r as any).priority ?? 0} ctrl={issueSortCtrl}>Prioridad</SortableTh>
               <SortableTh<Issue> sortKey="status" getter={(r) => r.status} ctrl={issueSortCtrl}>Estado</SortableTh>
@@ -1088,6 +1093,9 @@ function IssuesSection({
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {it.area?.name ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-secondary)]">
+                  {it.responsible_name ?? "—"}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {displayLabel}
