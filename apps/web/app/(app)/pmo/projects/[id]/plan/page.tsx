@@ -12,7 +12,6 @@ import {
   Diamond,
   Download,
   FileDown,
-  GripVertical,
   ListTree,
   Network,
   Pencil,
@@ -44,8 +43,6 @@ import {
   deleteTask,
   getGantt,
   listTasks,
-  moveTask,
-  renumberWbs,
   updateTask,
   type GanttData,
   type Task,
@@ -622,7 +619,6 @@ function TaskList({
   colVis = DEFAULT_COL_VIS,
   areas = [],
   onInlineUpdate,
-  onReorder,
 }: {
   tasks: Task[];
   loading: boolean;
@@ -632,11 +628,9 @@ function TaskList({
   // US-173: edición inline desde la celda (área/fechas/avance/estado/
   // criticidad/hito) sin abrir el modal.
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
-  // US-176: reorden por fila (drag con handle). Coloca `dragId` antes de
-  // `targetId`. Sólo se provee en la vista plana sin filtros.
-  onReorder?: (dragId: string, targetId: string) => void;
   // ENH-047: cuando true, ordena por WBS jerárquico + indenta por nivel
-  // y permite colapsar nodos padre.
+  // y permite colapsar nodos padre. ENH-180: es el mecanismo de mostrar/
+  // esconder tareas (reemplaza el drag, eliminado).
   groupByWbs?: boolean;
   collapsed?: Set<string>;
   onToggleCollapse?: (wbs: string) => void;
@@ -652,8 +646,6 @@ function TaskList({
     return m;
   }, [areas]);
   const showActions = !!(onEdit || onDelete);
-  // US-176: id de la fila que se está arrastrando (reorder).
-  const [dragId, setDragId] = useState<string | null>(null);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
@@ -701,9 +693,6 @@ function TaskList({
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
-            {onReorder ? (
-              <th className="w-8 px-1 py-2" aria-label="Reordenar" />
-            ) : null}
             <th className="w-16 px-3 py-2 font-medium">WBS</th>
             {colVis.outline ? (
               <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
@@ -746,43 +735,12 @@ function TaskList({
             return (
             <tr
               key={t.id}
-              onDragOver={
-                onReorder
-                  ? (e) => {
-                      if (dragId && dragId !== t.id) e.preventDefault();
-                    }
-                  : undefined
-              }
-              onDrop={
-                onReorder
-                  ? () => {
-                      if (dragId && dragId !== t.id) onReorder(dragId, t.id);
-                      setDragId(null);
-                    }
-                  : undefined
-              }
               className={cn(
                 "border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]",
                 delayed && "bg-[var(--color-danger-bg)]/40",
                 completedLate && "bg-[var(--color-warning-bg)]/40",
-                dragId === t.id && "opacity-50",
               )}
             >
-              {/* US-176: handle de arrastre (sólo vista plana sin filtros). */}
-              {onReorder ? (
-                <td className="px-1 py-2 align-middle">
-                  <span
-                    draggable
-                    onDragStart={() => setDragId(t.id)}
-                    onDragEnd={() => setDragId(null)}
-                    title="Arrastra para reordenar"
-                    aria-label={`Reordenar ${t.name}`}
-                    className="flex h-6 w-6 cursor-grab items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)] active:cursor-grabbing"
-                  >
-                    <GripVertical className="h-4 w-4" aria-hidden />
-                  </span>
-                </td>
-              ) : null}
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
                 {t.wbs ?? ""}
               </td>
@@ -1074,9 +1032,11 @@ function PlanInner() {
   // US-070: el wizard maneja su propio busy/strategy/mapping.
   const [wizardOpen, setWizardOpen] = useState(false);
 
-  // ENH-047: agrupación jerárquica por WBS. Default OFF para no romper
-  // la UX actual; persiste en localStorage por proyecto.
-  const [groupByWbs, setGroupByWbs] = useState(false);
+  // ENH-047 + ENH-180: agrupación jerárquica por WBS. Default ON — es el
+  // mecanismo para mostrar/esconder tareas (colapsar/expandir nodos), tras
+  // quitar el drag. Persiste en localStorage por proyecto ("none" = el
+  // usuario lo apagó explícitamente).
+  const [groupByWbs, setGroupByWbs] = useState(true);
   // ENH-066: agrupación por Área (mutex con WBS).
   const [groupByArea, setGroupByArea] = useState(false);
   const [collapsedWbs, setCollapsedWbs] = useState<Set<string>>(new Set());
@@ -1127,9 +1087,15 @@ function PlanInner() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      // ENH-180: default = agrupado por WBS. "area" cambia al agrupador de
+      // área; "none" = el usuario apagó la agrupación explícitamente.
       const v = window.localStorage.getItem(`plan-grouping:${id}`);
-      if (v === "wbs") setGroupByWbs(true);
-      else if (v === "area") setGroupByArea(true);
+      if (v === "area") {
+        setGroupByWbs(false);
+        setGroupByArea(true);
+      } else if (v === "none") {
+        setGroupByWbs(false);
+      }
       // ENH-077 CA5: chips activos persistidos.
       const chipsRaw = window.localStorage.getItem(`plan-chips:${id}`);
       if (chipsRaw) {
@@ -1218,8 +1184,9 @@ function PlanInner() {
   function persistGrouping(mode: "wbs" | "area" | null) {
     if (typeof window === "undefined") return;
     try {
-      if (mode) window.localStorage.setItem(`plan-grouping:${id}`, mode);
-      else window.localStorage.removeItem(`plan-grouping:${id}`);
+      // ENH-180: persistimos "none" cuando se apaga (default es agrupado),
+      // así el apagado explícito sobrevive recargas.
+      window.localStorage.setItem(`plan-grouping:${id}`, mode ?? "none");
     } catch {
       /* localStorage puede fallar — la preferencia se pierde, no es crítico. */
     }
@@ -1444,31 +1411,6 @@ function PlanInner() {
     void loadAreas();
   }
 
-  // US-172: renumera el WBS de todo el proyecto (jerárquico + único).
-  const [renumbering, setRenumbering] = useState(false);
-  async function handleRenumberWbs() {
-    if (renumbering) return;
-    if (
-      !window.confirm(
-        "Auto-numerar WBS reescribe el WBS de TODAS las tareas de forma " +
-          "jerárquica (1, 1.1, 1.2, 2, …), preservando el orden actual y " +
-          "resolviendo duplicados. ¿Continuar?",
-      )
-    )
-      return;
-    setRenumbering(true);
-    try {
-      await renumberWbs(id);
-      await loadTasksAndGantt();
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "No se pudo renumerar el WBS",
-      );
-    } finally {
-      setRenumbering(false);
-    }
-  }
-
   // US-173 + Fase 2: cambio inline OPTIMISTA — aplica el patch local de
   // inmediato; si el PATCH falla, revierte a la fila previa y muestra el error.
   async function handleInlineUpdate(
@@ -1505,29 +1447,6 @@ function PlanInner() {
         err instanceof ApiError ? err.message : "No se pudo actualizar la tarea",
       );
     }
-  }
-
-  // US-176: reorden por fila (drag). Coloca dragId ANTES de targetId.
-  // Optimista sobre `tasks` (sólo se habilita en vista plana sin filtros, así
-  // que `tasks` === orden mostrado). Recalcula after_id y persiste.
-  function handleReorderTask(dragId: string, targetId: string) {
-    if (dragId === targetId) return;
-    const arr = [...tasks];
-    const from = arr.findIndex((t) => t.id === dragId);
-    if (from < 0) return;
-    const [moved] = arr.splice(from, 1);
-    const insertAt = arr.findIndex((t) => t.id === targetId);
-    if (insertAt < 0) return;
-    arr.splice(insertAt, 0, moved); // insertar ANTES del target
-    const newIdx = arr.findIndex((t) => t.id === dragId);
-    const afterId = newIdx > 0 ? arr[newIdx - 1].id : null;
-    setTasks(arr); // optimista
-    void moveTask(id, dragId, afterId).catch((err) => {
-      setError(
-        err instanceof ApiError ? err.message : "No se pudo reordenar la tarea",
-      );
-      void loadTasksAndGantt(); // revert desde el server
-    });
   }
 
   useEffect(() => {
@@ -1800,12 +1719,6 @@ function PlanInner() {
             colVis={colVis}
             areas={areas}
             onInlineUpdate={handleInlineUpdate}
-            onReorder={
-              // US-176: reorden sólo en vista plana sin filtros (display === tasks).
-              !groupByWbs && activeChips.size === 0 && areaFilter.size === 0
-                ? handleReorderTask
-                : undefined
-            }
           />
         )}
       </section>
@@ -2026,18 +1939,9 @@ function PlanInner() {
               })
             : null}
         </div>
-        {/* US-172: auto-numerar WBS (jerárquico + único). */}
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={handleRenumberWbs}
-          loading={renumbering}
-          title="Renumerar WBS de todo el proyecto: 1, 1.1, 1.2, 2, … (resuelve duplicados)"
-        >
-          <Network className="h-3.5 w-3.5" aria-hidden />
-          Auto-WBS
-        </Button>
+        {/* ENH-180: el botón Auto-WBS se quitó (reescribía el WBS de todas
+            las tareas; demasiado peligroso). La numeración se controla con el
+            selector de padre + "bajar nivel" del form (ENH-181). */}
         {/* Área dropdown checklist */}
         <AreaFilterDropdown
           areas={areas}
