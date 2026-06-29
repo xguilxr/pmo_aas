@@ -29,6 +29,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
+import { InlineSelectCell } from "@/components/inline-select-cell";
 import { PersonPicker } from "@/components/directory/PersonPicker";
 import { ProjectAreaPicker } from "@/components/directory/ProjectAreaPicker";
 import { ApiError } from "@/lib/api";
@@ -786,24 +787,19 @@ function TaskList({
                   </span>
                 </div>
               </td>
-              {/* US-173: Área responsable editable inline (dropdown). */}
-              <td className="px-3 py-2 text-xs">
+              {/* US-173 + Fase 2: Área responsable editable inline (on-click). */}
+              <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
                 {onInlineUpdate ? (
-                  <select
+                  <InlineSelectCell
                     value={t.area_id ?? ""}
-                    onChange={(e) =>
-                      onInlineUpdate(t.id, { area_id: e.target.value || null })
-                    }
+                    options={[
+                      { value: "", label: "— Sin asignar —" },
+                      ...areas.map((a) => ({ value: a.id, label: a.name })),
+                    ]}
+                    onChange={(v) => onInlineUpdate(t.id, { area_id: v || null })}
                     title="Área responsable"
-                    className="max-w-[11rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                  >
-                    <option value="">— Sin asignar —</option>
-                    {areas.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
+                    ariaLabel={`Área de ${t.name}`}
+                  />
                 ) : t.area_id && areaById.has(t.area_id) ? (
                   <span className="text-[var(--color-secondary)]">
                     {areaById.get(t.area_id)}
@@ -889,23 +885,20 @@ function TaskList({
                   `${t.progress}%`
                 )}
               </td>
-              {/* US-173: Estado editable inline (dropdown). */}
+              {/* US-173 + Fase 2: Estado editable inline (on-click). */}
               <td className="px-3 py-2">
                 {onInlineUpdate ? (
-                  <select
+                  <InlineSelectCell
                     value={t.status}
-                    onChange={(e) =>
-                      onInlineUpdate(t.id, { status: e.target.value as TaskStatus })
+                    options={(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map(
+                      (k) => ({ value: k, label: TASK_STATUS_LABEL[k] }),
+                    )}
+                    onChange={(v) =>
+                      onInlineUpdate(t.id, { status: v as TaskStatus })
                     }
                     title="Estado"
-                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-[var(--color-secondary)] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                  >
-                    {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
-                      <option key={k} value={k}>
-                        {TASK_STATUS_LABEL[k]}
-                      </option>
-                    ))}
-                  </select>
+                    ariaLabel={`Estado de ${t.name}`}
+                  />
                 ) : (
                   <StatusBadge status={t.status} />
                 )}
@@ -1411,13 +1404,20 @@ function PlanInner() {
     }
   }
 
-  // US-173: aplica un cambio inline a una tarea y refresca estado local.
+  // US-173 + Fase 2: cambio inline OPTIMISTA — aplica el patch local de
+  // inmediato; si el PATCH falla, revierte a la fila previa y muestra el error.
   async function handleInlineUpdate(
     taskId: string,
     patch: Partial<TaskUpdateBody>,
   ) {
+    const prevTask = tasks.find((t) => t.id === taskId);
+    setTasks((prev) =>
+      prev.map((r) => (r.id === taskId ? ({ ...r, ...patch } as Task) : r)),
+    );
     try {
       const updated = await updateTask(taskId, patch);
+      // El server puede derivar campos (duration, closed_at en completed) →
+      // reemplazamos con la versión autoritativa.
       setTasks((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       // Cambios que afectan el Gantt → refrescar en background.
       if (
@@ -1432,10 +1432,13 @@ function PlanInner() {
           .catch(() => {});
       }
     } catch (err) {
+      // Revert optimista.
+      if (prevTask) {
+        setTasks((prev) => prev.map((r) => (r.id === taskId ? prevTask : r)));
+      }
       setError(
         err instanceof ApiError ? err.message : "No se pudo actualizar la tarea",
       );
-      void loadTasksAndGantt();
     }
   }
 

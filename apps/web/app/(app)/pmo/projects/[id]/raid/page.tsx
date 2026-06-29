@@ -13,6 +13,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
+import { InlineSelectCell } from "@/components/inline-select-cell";
 import { ItemPreviewModal } from "@/components/item-preview-modal";
 import {
   RaidKanban,
@@ -286,44 +287,68 @@ function RaidInner() {
       }));
   }, [isRiskTab, risks, actions, incidents, decisions, tab, severityMin, priorityMin, areaFilter, id]);
 
+  // Fase 2: cambio de estado OPTIMISTA (Kanban + estado inline en listas).
+  // Aplica el nuevo estado local de inmediato; revierte si el PATCH falla.
   async function handleBoardMove(itemId: string, toStatus: string) {
-    setKanbanBusyId(itemId);
     setError(null);
-    try {
-      if (isRiskTab) {
-        const patch: { status: RiskStatus; closure_note?: string } = {
-          status: toStatus as RiskStatus,
-        };
-        // Backend exige closure_note al cerrar/materializar un riesgo.
-        if (toStatus === "closed" || toStatus === "materialized") {
-          const note = window.prompt(
-            "Nota de cierre (obligatoria para cerrar/materializar un riesgo):",
-            "",
-          );
-          if (note === null || note.trim() === "") {
-            setKanbanBusyId(null);
-            return;
-          }
-          patch.closure_note = note.trim();
-        }
-        const updated = await updateRisk(itemId, patch);
-        setRisks((prev) =>
-          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+    if (isRiskTab) {
+      const patch: { status: RiskStatus; closure_note?: string } = {
+        status: toStatus as RiskStatus,
+      };
+      // Backend exige closure_note al cerrar/materializar un riesgo.
+      if (toStatus === "closed" || toStatus === "materialized") {
+        const note = window.prompt(
+          "Nota de cierre (obligatoria para cerrar/materializar un riesgo):",
+          "",
         );
-      } else {
+        if (note === null || note.trim() === "") return;
+        patch.closure_note = note.trim();
+      }
+      const prev = risks.find((r) => r.id === itemId);
+      setRisks((rows) =>
+        rows.map((r) => (r.id === itemId ? { ...r, ...patch } : r)),
+      );
+      setKanbanBusyId(itemId);
+      try {
+        const updated = await updateRisk(itemId, patch);
+        setRisks((rows) =>
+          rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+        );
+      } catch (err) {
+        if (prev) {
+          setRisks((rows) => rows.map((r) => (r.id === itemId ? prev : r)));
+        }
+        setError(
+          err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
+        );
+      } finally {
+        setKanbanBusyId(null);
+      }
+    } else {
+      const prev = issues.find((i) => i.id === itemId);
+      setIssues((rows) =>
+        rows.map((i) =>
+          i.id === itemId ? { ...i, status: toStatus as IssueStatus } : i,
+        ),
+      );
+      setKanbanBusyId(itemId);
+      try {
         const updated = await updateIssue(itemId, {
           status: toStatus as IssueStatus,
         });
-        setIssues((prev) =>
-          prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+        setIssues((rows) =>
+          rows.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)),
         );
+      } catch (err) {
+        if (prev) {
+          setIssues((rows) => rows.map((i) => (i.id === itemId ? prev : i)));
+        }
+        setError(
+          err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
+        );
+      } finally {
+        setKanbanBusyId(null);
       }
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "No se pudo mover la tarjeta",
-      );
-    } finally {
-      setKanbanBusyId(null);
     }
   }
 
@@ -911,21 +936,18 @@ function RisksSection({
                     <td className="px-3 py-2">
                       <SeverityBadge severity={r.severity} />
                     </td>
-                    {/* US-175: estado editable inline. */}
+                    {/* US-175 + Fase 2: estado editable inline (on-click). */}
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {onStatusChange ? (
-                        <select
+                        <InlineSelectCell
                           value={r.status}
-                          onChange={(e) => onStatusChange(r.id, e.target.value)}
+                          options={(Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map(
+                            (s) => ({ value: s, label: RISK_STATUS_LABEL[s] }),
+                          )}
+                          onChange={(v) => onStatusChange(r.id, v)}
                           title="Estado"
-                          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                        >
-                          {(Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map((s) => (
-                            <option key={s} value={s}>
-                              {RISK_STATUS_LABEL[s]}
-                            </option>
-                          ))}
-                        </select>
+                          ariaLabel={`Estado de ${r.title}`}
+                        />
                       ) : (
                         (RISK_STATUS_LABEL[r.status] ?? r.status)
                       )}
@@ -1076,18 +1098,15 @@ function IssuesSection({
                 {/* US-175: estado editable inline. */}
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {onStatusChange ? (
-                    <select
+                    <InlineSelectCell
                       value={it.status}
-                      onChange={(e) => onStatusChange(it.id, e.target.value)}
+                      options={(Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map(
+                        (s) => ({ value: s, label: ISSUE_STATUS_LABEL[s] }),
+                      )}
+                      onChange={(v) => onStatusChange(it.id, v)}
                       title="Estado"
-                      className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[12px] hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
-                    >
-                      {(Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map((s) => (
-                        <option key={s} value={s}>
-                          {ISSUE_STATUS_LABEL[s]}
-                        </option>
-                      ))}
-                    </select>
+                      ariaLabel={`Estado de ${it.title}`}
+                    />
                   ) : (
                     (ISSUE_STATUS_LABEL[it.status] ?? it.status)
                   )}
