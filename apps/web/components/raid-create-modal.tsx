@@ -20,6 +20,13 @@ import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
  */
 export type RaidKind = "risks" | "actions" | "incidents" | "decisions";
 
+/** BUG-084: fecha de HOY en zona local como "YYYY-MM-DD" (no UTC). */
+function localToday(): string {
+  const d = new Date();
+  const off = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 10);
+}
+
 const KIND_TITLE: Record<RaidKind, string> = {
   risks: "Registrar riesgo",
   actions: "Registrar acción",
@@ -72,9 +79,9 @@ export function RaidCreateModal({
   // US-064: área obligatoria + fecha de creación editable.
   const [areas, setAreas] = useState<ProjectArea[]>([]);
   const [areaId, setAreaId] = useState<string>("");
-  const [identifiedAt, setIdentifiedAt] = useState<string>(
-    () => new Date().toISOString().slice(0, 10),
-  );
+  // BUG-084: default = HOY local (no UTC) para no adelantar un día en husos
+  // detrás de UTC.
+  const [identifiedAt, setIdentifiedAt] = useState<string>(localToday);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +107,7 @@ export function RaidCreateModal({
     setPriority(3);
     setCommittedDate("");
     setAreaId("");
-    setIdentifiedAt(new Date().toISOString().slice(0, 10));
+    setIdentifiedAt(localToday());
     setError(null);
   }
 
@@ -131,6 +138,11 @@ export function RaidCreateModal({
           priority,
           area_id: areaId,
           committed_date: committedDate || null,
+          // BUG-084: respeta la fecha de creación elegida (antes se perdía
+          // y el server usaba la fecha actual → aparecía "hoy").
+          reported_at: identifiedAt
+            ? new Date(`${identifiedAt}T00:00:00Z`).toISOString()
+            : null,
         });
       }
       reset();

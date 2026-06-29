@@ -507,7 +507,10 @@ async def update_risk(
     r = (await db.execute(select(Risk).where(Risk.id == str(risk_id), Risk.tenant_id == str(tenant_id)))).scalar_one_or_none()
     if r is None:
         raise not_found("Riesgo")
-    data = body.model_dump(exclude_none=True)
+    # BUG-084: exclude_unset (no exclude_none) → permite limpiar fechas
+    # nullables (due_date, etc.) enviando null; los campos ausentes no se
+    # tocan. Antes exclude_none descartaba los null y no se podía limpiar.
+    data = body.model_dump(exclude_unset=True)
     new_status = data.get("status")
     # US-179: si pasa a on_hold, exige razón y valida la dependencia;
     # on_hold_since se setea/limpia automáticamente. closure_note ya no es
@@ -796,7 +799,10 @@ async def update_issue(
     i = (await db.execute(select(Issue).where(Issue.id == str(issue_id), Issue.tenant_id == str(tenant_id)))).scalar_one_or_none()
     if i is None:
         raise not_found("Incidencia")
-    data = body.model_dump(exclude_none=True)
+    # BUG-084: exclude_unset → la fecha compromiso (committed_date) se guarda
+    # cuando se setea y se limpia cuando se envía null; los campos ausentes
+    # no se tocan. Antes exclude_none impedía limpiarla.
+    data = body.model_dump(exclude_unset=True)
     new_status = data.get("status")
     # US-179: detención (on_hold) — exige razón + valida dependencia.
     if new_status is not None or "on_hold_reason" in data or "on_hold_area_id" in data or "on_hold_actor_id" in data:
