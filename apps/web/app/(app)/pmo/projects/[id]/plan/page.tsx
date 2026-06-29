@@ -1468,6 +1468,11 @@ function PlanInner() {
   async function loadTasksAndGantt() {
     setLoadingTasks(true);
     setLoadingGantt(true);
+    // BUG-087: las áreas se cargan EN PARALELO (no después del Gantt) para
+    // que la columna Área no aparezca vacía mientras se resuelve el Gantt.
+    // loadAreas sólo reemplaza en éxito (nunca limpia), así que en recargas
+    // las áreas se mantienen visibles durante el refetch.
+    void loadAreas();
     try {
       const rows = await listTasks(id);
       setTasks(rows);
@@ -1484,8 +1489,6 @@ function PlanInner() {
     } finally {
       setLoadingGantt(false);
     }
-    // BUG-076: refrescar áreas tras cualquier reload de tareas.
-    void loadAreas();
   }
 
   // US-173 + Fase 2: cambio inline OPTIMISTA — aplica el patch local de
