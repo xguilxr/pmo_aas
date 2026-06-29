@@ -13,8 +13,17 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
-import { InlineSelectCell } from "@/components/inline-select-cell";
+import {
+  InlineSelectCell,
+  InlineTextCell,
+  InlineDateCell,
+} from "@/components/inline-select-cell";
 import { ItemPreviewModal } from "@/components/item-preview-modal";
+import { RaidEditModal } from "@/components/raid-edit-modal";
+import { Trash2, Pencil } from "lucide-react";
+import { listAreasByProject } from "@/lib/api/areas";
+import { listEligibleActors } from "@/lib/api/project-directory";
+import type { InlineOption } from "@/components/inline-select-cell";
 import {
   RaidKanban,
   type KanbanColumn,
@@ -44,10 +53,16 @@ import {
   listRisks,
   updateIssue,
   updateRisk,
+  deleteIssue,
+  deleteRisk,
+  RAID_STATUS_BADGE,
+  RAID_STATUS_LABEL,
+  onHoldDays,
   type Issue,
   type IssueStatus,
   type IssueType,
   type IssueUpdateBody,
+  type RaidStatus,
   type Risk,
   type RiskStatus,
   type RiskUpdateBody,
@@ -388,6 +403,85 @@ function RaidInner() {
     }
   }
 
+  // US-178: edición inline genérica (cualquier campo) + borrar + modal editar.
+  const [editItem, setEditItem] = useState<
+    { kind: "risk"; item: Risk } | { kind: "issue"; item: Issue } | null
+  >(null);
+  // US-178: opciones para los dropdowns inline de Área y Responsable
+  // (cargadas una vez; BUG-086 las hace consistentes con la cascada).
+  const [areaOpts, setAreaOpts] = useState<InlineOption[]>([]);
+  const [actorOpts, setActorOpts] = useState<InlineOption[]>([]);
+  useEffect(() => {
+    listAreasByProject(id)
+      .then((rows) =>
+        setAreaOpts(rows.map((a) => ({ value: a.id, label: a.name }))),
+      )
+      .catch(() => setAreaOpts([]));
+    listEligibleActors(id)
+      .then((rows) =>
+        setActorOpts(rows.map((a) => ({ value: a.id, label: a.name }))),
+      )
+      .catch(() => setActorOpts([]));
+  }, [id]);
+
+  async function patchRiskFields(id: string, patch: RiskUpdateBody) {
+    setError(null);
+    const prev = risks.find((r) => r.id === id);
+    setRisks((rows) =>
+      rows.map((r) => (r.id === id ? ({ ...r, ...patch } as Risk) : r)),
+    );
+    try {
+      const updated = await updateRisk(id, patch);
+      setRisks((rows) =>
+        rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+      );
+    } catch (err) {
+      if (prev) setRisks((rows) => rows.map((r) => (r.id === id ? prev : r)));
+      setError(err instanceof ApiError ? err.message : "No se pudo actualizar");
+    }
+  }
+
+  async function patchIssueFields(id: string, patch: IssueUpdateBody) {
+    setError(null);
+    const prev = issues.find((i) => i.id === id);
+    setIssues((rows) =>
+      rows.map((i) => (i.id === id ? ({ ...i, ...patch } as Issue) : i)),
+    );
+    try {
+      const updated = await updateIssue(id, patch);
+      setIssues((rows) =>
+        rows.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)),
+      );
+    } catch (err) {
+      if (prev) setIssues((rows) => rows.map((i) => (i.id === id ? prev : i)));
+      setError(err instanceof ApiError ? err.message : "No se pudo actualizar");
+    }
+  }
+
+  async function removeRisk(id: string) {
+    if (!window.confirm("¿Eliminar este riesgo?")) return;
+    const prev = risks;
+    setRisks((rows) => rows.filter((r) => r.id !== id));
+    try {
+      await deleteRisk(id);
+    } catch (err) {
+      setRisks(prev);
+      setError(err instanceof ApiError ? err.message : "No se pudo eliminar");
+    }
+  }
+
+  async function removeIssue(id: string) {
+    if (!window.confirm("¿Eliminar este ítem?")) return;
+    const prev = issues;
+    setIssues((rows) => rows.filter((i) => i.id !== id));
+    try {
+      await deleteIssue(id);
+    } catch (err) {
+      setIssues(prev);
+      setError(err instanceof ApiError ? err.message : "No se pudo eliminar");
+    }
+  }
+
   // ENH-152: Export RAID = descarga autenticada del XLSX (4 hojas ES:
   // Riesgos/Acciones/Incidencias/Decisiones) del endpoint /raid/export — el
   // MISMO archivo que el botón del módulo Documentos. El filename
@@ -692,13 +786,13 @@ function RaidInner() {
         <RisksSection
           rows={filteredRisks}
           projectId={id}
-          onRiskUpdate={(updated) =>
-            setRisks((prev) =>
-              prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
-            )
-          }
+          areaOptions={areaOpts}
+          actorOptions={actorOpts}
           onStatusChange={handleBoardMove}
           onRiskPatch={handleRiskPatch}
+          onPatch={patchRiskFields}
+          onDelete={removeRisk}
+          onEdit={(r) => setEditItem({ kind: "risk", item: r })}
         />
       ) : (
         <IssuesSection
@@ -720,14 +814,40 @@ function RaidInner() {
           issueType={
             tab === "actions" ? "action" : tab === "incidents" ? "issue" : "decision"
           }
-          onIssueUpdate={(updated) =>
-            setIssues((prev) =>
-              prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
-            )
-          }
+          areaOptions={areaOpts}
+          actorOptions={actorOpts}
           onStatusChange={handleBoardMove}
+          onPatch={patchIssueFields}
+          onDelete={removeIssue}
+          onEdit={(i) => setEditItem({ kind: "issue", item: i })}
         />
       )}
+
+      {editItem ? (
+        editItem.kind === "risk" ? (
+          <RaidEditModal
+            kind="risk"
+            item={editItem.item}
+            onClose={() => setEditItem(null)}
+            onSaved={(updated) => {
+              setRisks((prev) =>
+                prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+              );
+            }}
+          />
+        ) : (
+          <RaidEditModal
+            kind="issue"
+            item={editItem.item}
+            onClose={() => setEditItem(null)}
+            onSaved={(updated) => {
+              setIssues((prev) =>
+                prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)),
+              );
+            }}
+          />
+        )
+      ) : null}
 
       <RaidCreateModal
         projectId={id}
@@ -748,6 +868,132 @@ function severityToneOf(sev: number | null): "danger" | "warning" | "success" | 
   if (sev >= 13) return "danger";
   if (sev >= 6) return "warning";
   return "success";
+}
+
+// US-179: tag de color del estado RAID.
+function RaidStatusBadge({ status }: { status: RaidStatus }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        RAID_STATUS_BADGE[status] ?? "bg-[var(--color-subtle)]",
+      )}
+    >
+      {RAID_STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
+// US-178/US-179: estado con tag de color, editable inline on-click. Para
+// On Hold delega al handler (que pide la razón).
+function StatusInlineCell({
+  status,
+  onChange,
+  ariaLabel,
+}: {
+  status: RaidStatus;
+  onChange: (s: string) => void;
+  ariaLabel?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        title="Estado (clic para editar)"
+        aria-label={ariaLabel}
+        className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+      >
+        <RaidStatusBadge status={status} />
+      </button>
+    );
+  }
+  return (
+    <select
+      autoFocus
+      value={status}
+      aria-label={ariaLabel}
+      onChange={(e) => {
+        onChange(e.target.value);
+        setEditing(false);
+      }}
+      onBlur={() => setEditing(false)}
+      className="rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-1 py-0.5 text-xs text-[var(--color-secondary)] focus:outline-none"
+    >
+      {(Object.keys(RAID_STATUS_LABEL) as RaidStatus[]).map((s) => (
+        <option key={s} value={s}>
+          {RAID_STATUS_LABEL[s]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// US-178: acciones por fila — vista rápida, editar (modal) y borrar.
+function RowActions({
+  onPreview,
+  onEdit,
+  onDelete,
+  label,
+}: {
+  onPreview: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <button
+        type="button"
+        onClick={onPreview}
+        aria-label={`Vista rápida ${label}`}
+        title="Vista rápida"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+      >
+        <Eye className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`Editar ${label}`}
+        title="Editar"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={`Eliminar ${label}`}
+        title="Eliminar"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+// US-179: indicador compacto de días detenido (On Hold).
+function OnHoldInfo({
+  status,
+  since,
+}: {
+  status: RaidStatus;
+  since: string | null;
+}) {
+  if (status !== "on_hold") return null;
+  const days = onHoldDays(since);
+  if (days === null) return null;
+  return (
+    <span
+      className="ml-1 rounded bg-[var(--color-warning-bg)] px-1 text-[10px] font-medium text-[var(--color-warning-fg)]"
+      title={`Detenido desde ${since}`}
+    >
+      {days}d
+    </span>
+  );
 }
 
 // ENH-007: matriz P×I inline en la pestaña Riesgos del RAID, para que
@@ -850,21 +1096,44 @@ function RiskMatrix({
 function RisksSection({
   rows,
   projectId,
-  onRiskUpdate,
+  areaOptions,
+  actorOptions,
   onStatusChange,
   onRiskPatch,
+  onPatch,
+  onDelete,
+  onEdit,
 }: {
   rows: Risk[];
   projectId: string;
-  onRiskUpdate: (r: Partial<Risk> & { id: string }) => void;
-  // US-175: cambio de estado inline (reusa el handler de Kanban → maneja la
-  // nota de cierre para riesgos).
+  areaOptions: InlineOption[];
+  actorOptions: InlineOption[];
+  // US-175: cambio de estado inline (reusa el handler de Kanban → pide la
+  // razón de detención al pasar a On Hold).
   onStatusChange?: (id: string, status: string) => void;
   // ENH-176: edición inline de probabilidad/impacto (severity = P × I).
   onRiskPatch?: (id: string, patch: { probability?: number; impact?: number }) => void;
+  // US-178: patch inline genérico + borrar + abrir form de edición.
+  onPatch: (id: string, patch: RiskUpdateBody) => void;
+  onDelete: (id: string) => void;
+  onEdit: (r: Risk) => void;
 }) {
-  void onRiskUpdate;
   const [preview, setPreview] = useState<Risk | null>(null);
+  const areaOpts = (r: Risk): InlineOption[] => {
+    const opts = [...areaOptions];
+    if (r.area_id && !opts.some((o) => o.value === r.area_id))
+      opts.unshift({ value: r.area_id, label: r.area?.name ?? "(área)" });
+    return [{ value: "", label: "— sin área —" }, ...opts];
+  };
+  const respOpts = (r: Risk): InlineOption[] => {
+    const opts = [...actorOptions];
+    if (r.owner_actor_id && !opts.some((o) => o.value === r.owner_actor_id))
+      opts.unshift({
+        value: r.owner_actor_id,
+        label: r.responsible_name ?? "(responsable)",
+      });
+    return [{ value: "", label: "— sin responsable —" }, ...opts];
+  };
   // ENH-061: filtro por celda P×I de la matriz.
   const [cellFilter, setCellFilter] = useState<
     { p: number; i: number } | null
@@ -927,7 +1196,6 @@ function RisksSection({
             <table className="w-full text-sm">
               <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
                 <tr>
-                  <th className="w-10 px-3 py-2" aria-label="Preview" />
                   <SortableTh<Risk> sortKey="folio" getter={(r) => r.folio} ctrl={riskSortCtrl}>Folio</SortableTh>
                   <SortableTh<Risk> sortKey="title" getter={(r) => r.title} ctrl={riskSortCtrl}>Título</SortableTh>
                   <SortableTh<Risk> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={riskSortCtrl}>Área</SortableTh>
@@ -936,6 +1204,7 @@ function RisksSection({
                   <SortableTh<Risk> sortKey="status" getter={(r) => r.status} ctrl={riskSortCtrl}>Estado</SortableTh>
                   <SortableTh<Risk> sortKey="identified" getter={(r) => (r as any).identified_at ?? ""} ctrl={riskSortCtrl}>F. Creación</SortableTh>
                   <SortableTh<Risk> sortKey="due" getter={(r) => r.due_date ?? ""} ctrl={riskSortCtrl}>F. Compromiso</SortableTh>
+                  <th className="px-3 py-2 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -944,17 +1213,7 @@ function RisksSection({
                     key={r.id}
                     className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
                   >
-                    <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => setPreview(r)}
-                        aria-label={`Preview ${r.title}`}
-                        title="Vista rápida"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
-                      >
-                        <Eye className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                    </td>
+                    {/* US-178: folio = único link que abre el ticket. */}
                     <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
                       <Link
                         href={`/pmo/projects/${projectId}/raid/${r.id}?type=risk`}
@@ -963,81 +1222,113 @@ function RisksSection({
                         {r.folio}
                       </Link>
                     </td>
-                    <td className="px-3 py-2">
-                      <Link
-                        href={`/pmo/projects/${projectId}/raid/${r.id}?type=risk`}
-                        className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
-                      >
-                        {r.title}
-                      </Link>
+                    {/* US-178: título editable inline. */}
+                    <td className="px-3 py-2 text-[var(--color-primary)]">
+                      <InlineTextCell
+                        value={r.title}
+                        onChange={(v) => onPatch(r.id, { title: v })}
+                        title="Título"
+                        ariaLabel={`Título de ${r.folio}`}
+                      />
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {r.area?.name ?? "—"}
+                      <InlineSelectCell
+                        value={r.area_id ?? ""}
+                        options={areaOpts(r)}
+                        onChange={(v) => onPatch(r.id, { area_id: v || undefined })}
+                        placeholder="—"
+                        title="Área"
+                        ariaLabel={`Área de ${r.folio}`}
+                      />
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {r.responsible_name ?? "—"}
+                      <InlineSelectCell
+                        value={r.owner_actor_id ?? ""}
+                        options={respOpts(r)}
+                        onChange={(v) =>
+                          onPatch(r.id, { owner_actor_id: v || null })
+                        }
+                        placeholder="—"
+                        title="Responsable"
+                        ariaLabel={`Responsable de ${r.folio}`}
+                      />
                     </td>
                     {/* ENH-176: severidad = P × I, editable inline (P/I). */}
                     <td className="px-3 py-2">
-                      {onRiskPatch ? (
-                        <div className="flex items-center gap-1.5">
-                          <SeverityBadge severity={r.severity} />
-                          <span className="text-[10px] text-[var(--color-tertiary)]">
-                            P
-                          </span>
-                          <InlineSelectCell
-                            value={r.probability != null ? String(r.probability) : ""}
-                            options={[1, 2, 3, 4, 5].map((n) => ({
-                              value: String(n),
-                              label: String(n),
-                            }))}
-                            onChange={(v) =>
-                              onRiskPatch(r.id, { probability: Number(v) })
-                            }
-                            placeholder="?"
-                            title="Probabilidad"
-                            ariaLabel={`Probabilidad de ${r.title}`}
-                          />
-                          <span className="text-[10px] text-[var(--color-tertiary)]">
-                            I
-                          </span>
-                          <InlineSelectCell
-                            value={r.impact != null ? String(r.impact) : ""}
-                            options={[1, 2, 3, 4, 5].map((n) => ({
-                              value: String(n),
-                              label: String(n),
-                            }))}
-                            onChange={(v) => onRiskPatch(r.id, { impact: Number(v) })}
-                            placeholder="?"
-                            title="Impacto"
-                            ariaLabel={`Impacto de ${r.title}`}
-                          />
-                        </div>
-                      ) : (
+                      <div className="flex items-center gap-1.5">
                         <SeverityBadge severity={r.severity} />
-                      )}
-                    </td>
-                    {/* US-175 + Fase 2: estado editable inline (on-click). */}
-                    <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {onStatusChange ? (
+                        <span className="text-[10px] text-[var(--color-tertiary)]">P</span>
                         <InlineSelectCell
-                          value={r.status}
-                          options={(Object.keys(RISK_STATUS_LABEL) as RiskStatus[]).map(
-                            (s) => ({ value: s, label: RISK_STATUS_LABEL[s] }),
-                          )}
-                          onChange={(v) => onStatusChange(r.id, v)}
-                          title="Estado"
-                          ariaLabel={`Estado de ${r.title}`}
+                          value={r.probability != null ? String(r.probability) : ""}
+                          options={[1, 2, 3, 4, 5].map((n) => ({
+                            value: String(n),
+                            label: String(n),
+                          }))}
+                          onChange={(v) =>
+                            (onRiskPatch ?? ((id, p) => onPatch(id, p)))(r.id, {
+                              probability: Number(v),
+                            })
+                          }
+                          placeholder="?"
+                          title="Probabilidad"
+                          ariaLabel={`Probabilidad de ${r.folio}`}
                         />
-                      ) : (
-                        (RISK_STATUS_LABEL[r.status] ?? r.status)
-                      )}
+                        <span className="text-[10px] text-[var(--color-tertiary)]">I</span>
+                        <InlineSelectCell
+                          value={r.impact != null ? String(r.impact) : ""}
+                          options={[1, 2, 3, 4, 5].map((n) => ({
+                            value: String(n),
+                            label: String(n),
+                          }))}
+                          onChange={(v) =>
+                            (onRiskPatch ?? ((id, p) => onPatch(id, p)))(r.id, {
+                              impact: Number(v),
+                            })
+                          }
+                          placeholder="?"
+                          title="Impacto"
+                          ariaLabel={`Impacto de ${r.folio}`}
+                        />
+                      </div>
+                    </td>
+                    {/* US-178/US-179: estado con tag de color, editable inline. */}
+                    <td className="px-3 py-2">
+                      <span className="inline-flex items-center">
+                        <StatusInlineCell
+                          status={r.status}
+                          onChange={(v) =>
+                            onStatusChange
+                              ? onStatusChange(r.id, v)
+                              : onPatch(r.id, { status: v as RaidStatus })
+                          }
+                          ariaLabel={`Estado de ${r.folio}`}
+                        />
+                        <OnHoldInfo status={r.status} since={r.on_hold_since} />
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {r.identified_at ?? "—"}
+                      <InlineDateCell
+                        value={r.identified_at}
+                        onChange={(v) => onPatch(r.id, { identified_at: v })}
+                        title="Fecha de creación"
+                        ariaLabel={`Fecha de creación de ${r.folio}`}
+                      />
                     </td>
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
-                      {r.due_date ?? "—"}
+                      <InlineDateCell
+                        value={r.due_date}
+                        onChange={(v) => onPatch(r.id, { due_date: v })}
+                        title="Fecha compromiso"
+                        ariaLabel={`Fecha compromiso de ${r.folio}`}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <RowActions
+                        onPreview={() => setPreview(r)}
+                        onEdit={() => onEdit(r)}
+                        onDelete={() => onDelete(r.id)}
+                        label={r.folio}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1084,21 +1375,43 @@ function IssuesSection({
   projectId,
   sectionLabel,
   issueType,
-  onIssueUpdate,
+  areaOptions,
+  actorOptions,
   onStatusChange,
+  onPatch,
+  onDelete,
+  onEdit,
 }: {
   rows: Issue[];
   projectId: string;
   sectionLabel: string;
   issueType: IssueType;
-  onIssueUpdate: (i: Partial<Issue> & { id: string }) => void;
+  areaOptions: InlineOption[];
+  actorOptions: InlineOption[];
   // US-175: cambio de estado inline.
   onStatusChange?: (id: string, status: string) => void;
+  // US-178: patch inline genérico + borrar + abrir form de edición.
+  onPatch: (id: string, patch: IssueUpdateBody) => void;
+  onDelete: (id: string) => void;
+  onEdit: (i: Issue) => void;
 }) {
-  void onIssueUpdate;
   const [preview, setPreview] = useState<Issue | null>(null);
   const { sortedRows, ctrl: issueSortCtrl } = useSortableRows<Issue>(rows);
-  void projectId;
+  const areaOpts = (it: Issue): InlineOption[] => {
+    const opts = [...areaOptions];
+    if (it.area_id && !opts.some((o) => o.value === it.area_id))
+      opts.unshift({ value: it.area_id, label: it.area?.name ?? "(área)" });
+    return [{ value: "", label: "— sin área —" }, ...opts];
+  };
+  const respOpts = (it: Issue): InlineOption[] => {
+    const opts = [...actorOptions];
+    if (it.owner_actor_id && !opts.some((o) => o.value === it.owner_actor_id))
+      opts.unshift({
+        value: it.owner_actor_id,
+        label: it.responsible_name ?? "(responsable)",
+      });
+    return [{ value: "", label: "— sin responsable —" }, ...opts];
+  };
   if (rows.length === 0) {
     return (
       <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
@@ -1123,7 +1436,6 @@ function IssuesSection({
         <table className="w-full text-sm">
           <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
             <tr>
-              <th className="w-10 px-3 py-2" aria-label="Preview" />
               <SortableTh<Issue> sortKey="folio" getter={(r) => r.folio} ctrl={issueSortCtrl}>Folio</SortableTh>
               <SortableTh<Issue> sortKey="title" getter={(r) => r.title} ctrl={issueSortCtrl}>Título</SortableTh>
               <SortableTh<Issue> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={issueSortCtrl}>Área</SortableTh>
@@ -1131,8 +1443,9 @@ function IssuesSection({
               <SortableTh<Issue> sortKey="type" getter={(r) => (r as any).type ?? ""} ctrl={issueSortCtrl}>Tipo</SortableTh>
               <SortableTh<Issue> sortKey="priority" getter={(r) => (r as any).priority ?? 0} ctrl={issueSortCtrl}>Prioridad</SortableTh>
               <SortableTh<Issue> sortKey="status" getter={(r) => r.status} ctrl={issueSortCtrl}>Estado</SortableTh>
-              <SortableTh<Issue> sortKey="identified" getter={(r) => (r as any).identified_at ?? (r as any).created_at ?? ""} ctrl={issueSortCtrl}>F. Creación</SortableTh>
+              <SortableTh<Issue> sortKey="identified" getter={(r) => (r as any).reported_at ?? ""} ctrl={issueSortCtrl}>F. Creación</SortableTh>
               <SortableTh<Issue> sortKey="committed" getter={(r) => (r as any).committed_date ?? ""} ctrl={issueSortCtrl}>F. Compromiso</SortableTh>
+              <th className="px-3 py-2 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -1141,17 +1454,7 @@ function IssuesSection({
                 key={it.id}
                 className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
               >
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreview(it)}
-                    aria-label={`Preview ${it.title}`}
-                    title="Vista rápida"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
-                  >
-                    <Eye className="h-3.5 w-3.5" aria-hidden />
-                  </button>
-                </td>
+                {/* US-178: folio = único link que abre el ticket. */}
                 <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
                   <Link
                     href={`/pmo/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
@@ -1160,49 +1463,95 @@ function IssuesSection({
                     {it.folio}
                   </Link>
                 </td>
-                <td className="px-3 py-2">
-                  <Link
-                    href={`/pmo/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
-                    className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
-                  >
-                    {it.title}
-                  </Link>
+                {/* US-178: título editable inline. */}
+                <td className="px-3 py-2 text-[var(--color-primary)]">
+                  <InlineTextCell
+                    value={it.title}
+                    onChange={(v) => onPatch(it.id, { title: v })}
+                    title="Título"
+                    ariaLabel={`Título de ${it.folio}`}
+                  />
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.area?.name ?? "—"}
+                  <InlineSelectCell
+                    value={it.area_id ?? ""}
+                    options={areaOpts(it)}
+                    onChange={(v) => onPatch(it.id, { area_id: v || undefined })}
+                    placeholder="—"
+                    title="Área"
+                    ariaLabel={`Área de ${it.folio}`}
+                  />
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.responsible_name ?? "—"}
+                  <InlineSelectCell
+                    value={it.owner_actor_id ?? ""}
+                    options={respOpts(it)}
+                    onChange={(v) => onPatch(it.id, { owner_actor_id: v || null })}
+                    placeholder="—"
+                    title="Responsable"
+                    ariaLabel={`Responsable de ${it.folio}`}
+                  />
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
                   {displayLabel}
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  <PriorityBadge priority={it.priority} />
+                  <InlineSelectCell
+                    value={it.priority != null ? String(it.priority) : ""}
+                    options={[1, 2, 3, 4, 5].map((n) => ({
+                      value: String(n),
+                      label: `P${n}`,
+                    }))}
+                    onChange={(v) =>
+                      onPatch(it.id, { priority: v ? Number(v) : null })
+                    }
+                    placeholder="—"
+                    title="Prioridad"
+                    ariaLabel={`Prioridad de ${it.folio}`}
+                  />
                 </td>
-                {/* US-175: estado editable inline. */}
-                <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {onStatusChange ? (
-                    <InlineSelectCell
-                      value={it.status}
-                      options={(Object.keys(ISSUE_STATUS_LABEL) as IssueStatus[]).map(
-                        (s) => ({ value: s, label: ISSUE_STATUS_LABEL[s] }),
-                      )}
-                      onChange={(v) => onStatusChange(it.id, v)}
-                      title="Estado"
-                      ariaLabel={`Estado de ${it.title}`}
+                {/* US-178/US-179: estado con tag de color, editable inline. */}
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center">
+                    <StatusInlineCell
+                      status={it.status}
+                      onChange={(v) =>
+                        onStatusChange
+                          ? onStatusChange(it.id, v)
+                          : onPatch(it.id, { status: v as RaidStatus })
+                      }
+                      ariaLabel={`Estado de ${it.folio}`}
                     />
-                  ) : (
-                    (ISSUE_STATUS_LABEL[it.status] ?? it.status)
-                  )}
+                    <OnHoldInfo status={it.status} since={it.on_hold_since} />
+                  </span>
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.reported_at
-                    ? new Date(it.reported_at).toISOString().slice(0, 10)
-                    : "—"}
+                  <InlineDateCell
+                    value={it.reported_at ? it.reported_at.slice(0, 10) : null}
+                    onChange={(v) =>
+                      onPatch(it.id, {
+                        reported_at: v ? `${v}T00:00:00Z` : null,
+                      })
+                    }
+                    title="Fecha de creación"
+                    ariaLabel={`Fecha de creación de ${it.folio}`}
+                  />
                 </td>
                 <td className="px-3 py-2 text-[var(--color-secondary)]">
-                  {it.committed_date ?? "—"}
+                  <InlineDateCell
+                    value={it.committed_date}
+                    onChange={(v) => onPatch(it.id, { committed_date: v })}
+                    title="Fecha compromiso"
+                    ariaLabel={`Fecha compromiso de ${it.folio}`}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <RowActions
+                    onPreview={() => setPreview(it)}
+                    onEdit={() => onEdit(it)}
+                    onDelete={() => onDelete(it.id)}
+                    label={it.folio}
+                  />
                 </td>
               </tr>
             ))}

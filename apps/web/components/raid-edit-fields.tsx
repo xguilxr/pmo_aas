@@ -46,18 +46,25 @@ export function RaidEditFields(props:
       kind: "risk";
       item: Risk;
       onSaved: SaveResult<Risk>;
+      /** US-178: arranca en modo edición (para uso en modal). */
+      defaultEditing?: boolean;
+      /** US-178: si se pasa, cancelar/guardar lo invoca (cierra el modal). */
+      onClose?: () => void;
     }
   | {
       kind: "issue";
       item: Issue;
       onSaved: SaveResult<Issue>;
+      defaultEditing?: boolean;
+      onClose?: () => void;
     },
 ) {
   const { kind, item, onSaved } = props;
+  const onClose = props.onClose;
   const { has } = useMyPermissions();
   const canEdit = has("raid:update") || has("raid:write");
 
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(Boolean(props.defaultEditing));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,7 +235,8 @@ export function RaidEditFields(props:
         const updated = await updateIssue(item.id, body);
         onSaved(updated);
       }
-      setEditing(false);
+      if (onClose) onClose();
+      else setEditing(false);
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -273,7 +281,8 @@ export function RaidEditFields(props:
           type="button"
           onClick={() => {
             reset();
-            setEditing(false);
+            if (onClose) onClose();
+            else setEditing(false);
           }}
           className="text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
           aria-label="Cancelar edición"
@@ -501,7 +510,8 @@ export function RaidEditFields(props:
           size="sm"
           onClick={() => {
             reset();
-            setEditing(false);
+            if (onClose) onClose();
+            else setEditing(false);
           }}
           disabled={saving}
         >
