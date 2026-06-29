@@ -166,18 +166,70 @@ def _coerce_int(v: object, default: int = 0) -> int:
         return default
 
 
-def _coerce_progress(v: object) -> int:
-    """Acepta 0-100, 0-1 (float) o texto '45%'."""
+def _coerce_progress(v: object, *, is_percent_format: bool = False) -> int:
+    """Acepta 0-100, 0-1 (fracción) o texto '45%'.
+
+    BUG-081: cuando la celda de Excel tiene `number_format` de porcentaje,
+    openpyxl entrega la *fracción* (1.0==100%, 0.3==30%, 0.5==50%). El
+    heurístico viejo escalaba ×100 solo si el string tenía ".", así que
+    100% (que openpyxl devuelve como el entero ``1``, sin decimales) se
+    quedaba en 1% — exactamente el síntoma reportado. Con
+    ``is_percent_format=True`` siempre escalamos ×100.
+    """
     if v is None or v == "":
         return 0
-    s = str(v).strip().replace("%", "")
+    s = str(v).strip()
+    had_pct_sign = "%" in s
+    s = s.replace("%", "").strip()
     try:
         n = float(s)
     except ValueError:
         return 0
-    if 0 <= n <= 1.0 and "." in s:
+    if is_percent_format:
+        # Celda %-formateada → openpyxl da la fracción 0..1 (incl. 1==100%).
+        n = n * 100
+    elif 0 < n < 1 and not had_pct_sign:
+        # Fracción literal sin formato (ej. CSV "0.45" == 45%).
         n = n * 100
     return max(0, min(100, round(n)))
+
+
+def _column_is_percent_format(
+    data: bytes, sheet_used: str, col_idx: int, scan: int = 30
+) -> bool:
+    """True si la columna `col_idx` (0-based) está formateada como % en Excel.
+
+    BUG-081: openpyxl con `data_only` entrega la fracción de las celdas
+    %-formateadas, pero el valor solo (1.0/1, 0.3, …) no permite distinguir
+    100% de 1%. Abrimos un segundo workbook read-only y escaneamos las
+    primeras filas de datos de esa columna buscando un `number_format` con
+    '%'. Devuelve False ante cualquier problema (degradación segura)."""
+    from openpyxl import load_workbook
+
+    try:
+        wb = load_workbook(BytesIO(data), read_only=True)
+    except Exception:
+        return False
+    try:
+        ws = wb[sheet_used] if sheet_used in wb.sheetnames else wb.active
+        if ws is None:
+            return False
+        for row in ws.iter_rows(
+            min_row=2, max_row=scan + 1, min_col=col_idx + 1, max_col=col_idx + 1
+        ):
+            if not row:
+                continue
+            fmt = row[0].number_format or ""
+            if "%" in fmt:
+                return True
+        return False
+    except Exception:
+        return False
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
 
 
 def _coerce_bool(v: object) -> bool:
@@ -264,6 +316,14 @@ def parse_xlsx(
                 break
         return result
 
+    # BUG-081: detectar si la columna de avance está %-formateada para
+    # escalar correctamente (openpyxl entrega fracciones para celdas %).
+    progress_is_pct = (
+        _column_is_percent_format(data, result.sheet_used, columns["progress"])
+        if "progress" in columns
+        else False
+    )
+
     for offset, row in enumerate(rows_iter, start=2):
         if row is None:
             continue
@@ -292,7 +352,9 @@ def parse_xlsx(
                 duration_days=_coerce_int(row[columns["duration_days"]], default=0)
                 if "duration_days" in columns and columns["duration_days"] < len(row)
                 else None,
-                progress=_coerce_progress(row[columns["progress"]])
+                progress=_coerce_progress(
+                    row[columns["progress"]], is_percent_format=progress_is_pct
+                )
                 if "progress" in columns and columns["progress"] < len(row)
                 else 0,
                 is_milestone=_coerce_bool(row[columns["is_milestone"]])

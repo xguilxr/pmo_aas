@@ -531,82 +531,134 @@ function PreviewStep({
         </Banner>
       ) : null}
 
-      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
-        <table className="min-w-full text-xs">
-          <thead className="bg-[var(--color-subtle)]">
-            <tr>
-              {headerLabels.map((label, idx) => (
-                <th
+      {/* ENH-179: el mapeo se separa de la vista previa y se acomoda en una
+          grilla de 2-3 columnas (antes era un dropdown alto por cada columna
+          dentro del header de la tabla, que se estiraba a lo ancho y alto).
+          Cada tarjeta muestra la columna, el campo destino y un valor de
+          ejemplo para mapear con contexto. */}
+      {needsMapping ? (
+        <div>
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Mapeo de columnas
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {headerLabels.map((label, idx) => {
+              const sample = sampleData.find((r) => r[idx] != null && r[idx] !== "")?.[idx];
+              const lowConf =
+                mapping[idx] &&
+                (confidence[idx] ?? 0) < 0.7 &&
+                (confidence[idx] ?? 0) > 0;
+              return (
+                <div
                   key={idx}
-                  className="border-b border-[var(--border-default)] px-2 py-2 text-left align-top"
+                  className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-subtle)] px-2.5 py-2"
                 >
-                  <div className="text-[11px] font-medium text-[var(--color-tertiary)]">
-                    {label ?? `Col ${idx + 1}`}
-                  </div>
-                  {needsMapping ? (
-                    <>
-                      <Select
-                        className="mt-1 w-full text-[11px]"
-                        value={mapping[idx] ?? ""}
-                        onChange={(e) =>
-                          onChangeMapping(idx, e.target.value as SystemField | "")
-                        }
-                        aria-label={`Mapeo de columna ${label ?? idx + 1}`}
-                      >
-                        <option value="">— ignorar —</option>
-                        {SYSTEM_FIELDS.map((f) => (
-                          <option
-                            key={f}
-                            value={f}
-                            disabled={
-                              mapping[idx] !== f && usedFields.has(f as SystemField)
-                            }
-                          >
-                            {SYSTEM_FIELD_LABELS[f]}
-                          </option>
-                        ))}
-                      </Select>
-                      {/* ENH-053: warning de match débil. */}
-                      {mapping[idx] && (confidence[idx] ?? 0) < 0.7 && (confidence[idx] ?? 0) > 0 ? (
-                        <p
-                          className="mt-1 text-[10px] text-amber-600"
-                          title="La sugerencia tiene baja confianza — verifica el mapeo."
-                        >
-                          ⚠ baja confianza
-                        </p>
-                      ) : null}
-                    </>
-                  ) : null}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sampleData.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={Math.max(1, headerLabels.length)}
-                  className="px-2 py-6 text-center text-[var(--color-tertiary)]"
-                >
-                  Sin filas de muestra (archivo vacío después del header).
-                </td>
-              </tr>
-            ) : (
-              sampleData.map((row, rIdx) => (
-                <tr key={rIdx} className="border-t border-[var(--border-subtle)]">
-                  {headerLabels.map((_h, cIdx) => (
-                    <td
-                      key={cIdx}
-                      className="px-2 py-1.5 text-[var(--color-secondary)]"
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="truncate text-[11px] font-medium text-[var(--color-secondary)]"
+                      title={label ?? `Col ${idx + 1}`}
                     >
-                      {row[cIdx] ?? <span className="text-[var(--color-tertiary)]">—</span>}
-                    </td>
-                  ))}
+                      {label ?? `Col ${idx + 1}`}
+                    </span>
+                    {lowConf ? (
+                      <span
+                        className="shrink-0 text-[10px] text-amber-600"
+                        title="La sugerencia tiene baja confianza — verifica el mapeo."
+                      >
+                        ⚠ baja confianza
+                      </span>
+                    ) : null}
+                  </div>
+                  <Select
+                    className="mt-1 w-full text-[11px]"
+                    value={mapping[idx] ?? ""}
+                    onChange={(e) =>
+                      onChangeMapping(idx, e.target.value as SystemField | "")
+                    }
+                    aria-label={`Mapeo de columna ${label ?? idx + 1}`}
+                  >
+                    <option value="">— ignorar —</option>
+                    {SYSTEM_FIELDS.map((f) => (
+                      <option
+                        key={f}
+                        value={f}
+                        disabled={
+                          mapping[idx] !== f && usedFields.has(f as SystemField)
+                        }
+                      >
+                        {SYSTEM_FIELD_LABELS[f]}
+                      </option>
+                    ))}
+                  </Select>
+                  <div
+                    className="mt-1 truncate text-[10px] text-[var(--color-tertiary)]"
+                    title={sample != null ? String(sample) : ""}
+                  >
+                    {sample != null && sample !== "" ? `ej: ${sample}` : "sin datos"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Vista previa de datos: tabla compacta; el header muestra el campo
+          destino asignado (si lo hay) en vez de repetir el dropdown. */}
+      <div>
+        {needsMapping ? (
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Vista previa
+          </div>
+        ) : null}
+        <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
+          <table className="min-w-full text-xs">
+            <thead className="bg-[var(--color-subtle)]">
+              <tr>
+                {headerLabels.map((label, idx) => (
+                  <th
+                    key={idx}
+                    className="border-b border-[var(--border-default)] px-2 py-1.5 text-left align-top"
+                  >
+                    <div className="text-[11px] font-medium text-[var(--color-tertiary)]">
+                      {label ?? `Col ${idx + 1}`}
+                    </div>
+                    {needsMapping && mapping[idx] ? (
+                      <div className="mt-0.5 text-[10px] font-medium text-[var(--color-secondary)]">
+                        → {SYSTEM_FIELD_LABELS[mapping[idx] as SystemField]}
+                      </div>
+                    ) : null}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sampleData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={Math.max(1, headerLabels.length)}
+                    className="px-2 py-6 text-center text-[var(--color-tertiary)]"
+                  >
+                    Sin filas de muestra (archivo vacío después del header).
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                sampleData.map((row, rIdx) => (
+                  <tr key={rIdx} className="border-t border-[var(--border-subtle)]">
+                    {headerLabels.map((_h, cIdx) => (
+                      <td
+                        key={cIdx}
+                        className="px-2 py-1.5 text-[var(--color-secondary)]"
+                      >
+                        {row[cIdx] ?? <span className="text-[var(--color-tertiary)]">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {preview.errors.length > 0 ? (

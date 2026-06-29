@@ -84,7 +84,8 @@ sequenceDiagram
 
 ### Criterios de aceptación (estado real)
 
-- [x] Input: **JSON body** con `{ project_id, transcript: str, language: "es"|"en", save_as_minute: bool, title?: str }`. El upload de `.txt`/`.docx`/`.srt` se hace **en cliente** (parse a string) antes de pegar el body.
+- [x] Input: **JSON body** con `{ project_id, transcript: str, language: "es"|"en", save_as_minute: bool, title?: str }`. El texto plano (`.txt`/`.srt`/`.md`/`.vtt`) se parsea **en cliente** (`file.text()`); los `.docx` se extraen **server-side** vía `POST /api/v1/ai/extract-text` (BUG-083, ver abajo) antes de pegar el body.
+- [x] **`POST /api/v1/ai/extract-text`** (BUG-083, 2026-06-29): multipart `file` → `{ text, filename, chars }`. Extrae texto de un `.docx` con `python-docx` (párrafos + celdas de tablas) o decodifica texto plano; `.doc`/formatos no soportados → `400 VALIDATION_ERROR`; vacío → `400`; > 5 MB → `413`. Reemplaza el `file.text()` del front sobre `.docx`, que mandaba el ZIP binario crudo y Groq lo rechazaba con `400`. Servicio: `app/services/document_text.py`. Hardening asociado: `GroqProvider` loguea el body del 4xx y `_call_ai_for_tenant` **no reintenta** en 4xx (≠429) — propaga la razón real del provider.
 - [x] Tamaño máximo: **5 MB** del campo `transcript` (`MAX_TRANSCRIPT_BYTES` en `ai.py`). Excedido → `413 PAYLOAD_TOO_LARGE`.
 - [x] Output estructurado (ENH-102 / ENH-105): 6 secciones — `header`, `participants` (attendees/absent_justified/absent_unjustified), `summary`, `topics` (con `bullets` factuales), `raid` (solo A/R/D/I, sin lecciones ni change requests), `free_notes`.
 - [x] `ai_jobs` registra: `model_used`, `provider`, `tokens_in`, `tokens_out`, `duration_ms`, `error`.

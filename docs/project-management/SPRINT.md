@@ -9,16 +9,41 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "Plan page + RAID mejoras" (Sprint 35, 2026-06-28)
-Branch: claude/minutes-plans-upload-error-driwcd
+Batch "Form de tarea / parsing import / minuta docx" (2026-06-29)
+Branch: claude/task-form-layout-parsing-amjjmj
 
-Ejecución directa end-to-end pedida por el owner. 14 items (5 US + 9 ENH).
-Ver bloque "Sprint 35" en INBOX abajo para el detalle y progreso por item.
+Ejecución directa end-to-end pedida por el owner. 5 items (3 BUG + 2 ENH),
+todos status:fix-committed. Ver bloque "Batch feedback owner 2026-06-29"
+en INBOX abajo. Pendiente: PR + verificación del owner.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Batch feedback owner 2026-06-29 (branch: claude/task-form-layout-parsing-amjjmj)
+
+Ejecución directa por chat del owner. Issues creados + fix-committed en el mismo batch.
+
+- [x] **BUG-081 #562** — Import lee 100% como 1%: `_coerce_progress`/`parse_xlsx`
+  detectan el `number_format` de la columna de avance y escalan las fracciones
+  %-formateadas ×100 (openpyxl da 1 para 100%). Commit `4f78e5a`. `status:fix-committed`
+- [x] **BUG-082 #563** — Evolución de avance en 0s: el snapshot (`avg_progress`)
+  usa el rollup WBS derivado (`plan_rollup_map`), no la columna `Project.progress`
+  stale. Commit `ac103df`. `status:fix-committed`
+- [x] **BUG-083 #564** — Subir minuta .docx daba 400 de Groq: endpoint backend
+  `/ai/extract-text` (python-docx) + front lo usa para .docx; hardening de
+  reintentos 4xx + log del body. Commits `f5ebca2` + `a202cea`. `status:fix-committed`
+- [x] **ENH-178 #565** — Form editar tarea compacto + Modal con scroll interno
+  (cap al viewport, size `xl`). Commit `2675d49`. `status:fix-committed`
+- [x] **ENH-179 #566** — Matching de columnas del import en grilla de tarjetas
+  (mapeo separado de la vista previa). Commit `07702de`. `status:fix-committed`
+
+Epics actualizadas: EP004 (snapshot avg_progress derivado), EP008 (extract-text),
+EP009 (parser %, modal, matching) — commit `e784a41`. Verificación: pytest de las
+suites tocadas verdes (56+ TC) · ruff limpio · tsc + next build verdes.
+
+Próximo libre tras este batch: US-177, BUG-084, ENH-180.
 
 ### Sprint 35 — Plan page + RAID mejoras (branch: claude/minutes-plans-upload-error-driwcd)
 

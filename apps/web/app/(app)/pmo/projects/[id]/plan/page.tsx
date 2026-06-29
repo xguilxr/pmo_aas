@@ -2122,6 +2122,7 @@ function PlanInner() {
         open={newOpen}
         onClose={() => setNewOpen(false)}
         title="Nueva tarea"
+        size="lg"
         footer={
           <>
             <Button variant="secondary" onClick={() => setNewOpen(false)} disabled={creating}>
@@ -2288,6 +2289,7 @@ function PlanInner() {
           setEditingId(null);
         }}
         title="Editar tarea"
+        size="lg"
         footer={
           <>
             <Button
@@ -2343,7 +2345,11 @@ function PlanInner() {
               />
             </FormField>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* ENH-178: fechas en una sola fila de 3 columnas (Inicio | Fin |
+              Cierre) en vez de una fila aparte para Cierre — aprovecha el
+              ancho del modal y baja la altura. US-171: la fecha de cierre es
+              base del cálculo de atraso. */}
+          <div className="grid gap-3 sm:grid-cols-3">
             <FormField label="Inicio">
               <Input
                 type="date"
@@ -2358,22 +2364,19 @@ function PlanInner() {
                 onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
               />
             </FormField>
-          </div>
-          {/* US-171: fecha de cierre real, base del cálculo de atraso. */}
-          <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Fecha de cierre">
               <Input
                 type="date"
                 value={editForm.closed_at}
                 onChange={(e) => setEditForm({ ...editForm, closed_at: e.target.value })}
               />
-              <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
-                Fecha real en que se cerró la actividad. Si es posterior a la
-                fecha Fin, se marca como “Retrasada”. Al completar sin fecha,
-                se usa hoy.
-              </p>
             </FormField>
           </div>
+          <p className="-mt-1 text-[11px] text-[var(--color-tertiary)]">
+            <strong>Fecha de cierre:</strong> fecha real en que se cerró la
+            actividad. Si es posterior a la fecha Fin se marca “Retrasada”; al
+            completar sin fecha se usa hoy.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Avance (0-100)">
               <Input

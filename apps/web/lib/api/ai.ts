@@ -1,4 +1,5 @@
-import { apiFetch } from "@/lib/api";
+import { apiBase, apiFetch, ApiError } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-storage";
 
 /** BUG-063: shape canónico de un item RAID sugerido (4 tipos comparten). */
 export type AIRaidSuggestion = {
@@ -111,6 +112,49 @@ export function generateMinute(body: {
     "/api/v1/ai/minutes",
     { method: "POST", body },
   );
+}
+
+/**
+ * BUG-083: extrae texto plano de un archivo subido (.docx / texto) server-side.
+ * El `file.text()` del navegador sobre un .docx (un ZIP binario) producía
+ * basura que la IA rechazaba con 400; ahora python-docx lo procesa en backend.
+ * Se usa `fetch` directo porque `apiFetch` siempre serializa JSON.
+ */
+export async function extractMinuteText(
+  file: File,
+): Promise<{ text: string; filename: string | null; chars: number }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const token = getAccessToken();
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase()}/api/v1/ai/extract-text`, {
+      method: "POST",
+      body: formData,
+      headers,
+      credentials: "include",
+    });
+  } catch {
+    throw new ApiError(0, "NETWORK_ERROR", "No se pudo conectar con el servidor");
+  }
+  const data = await res.json().catch(() => ({}) as Record<string, unknown>);
+  if (!res.ok) {
+    const detail = (data as Record<string, unknown>).detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : typeof detail === "object" && detail !== null
+          ? String(
+              (detail as Record<string, unknown>).message ??
+                (detail as Record<string, unknown>).detail ??
+                "No se pudo extraer el texto del archivo",
+            )
+          : "No se pudo extraer el texto del archivo";
+    throw new ApiError(res.status, "extract_failed", message);
+  }
+  return data as { text: string; filename: string | null; chars: number };
 }
 
 export type AIJobRead = {

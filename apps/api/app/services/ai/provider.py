@@ -214,7 +214,21 @@ class GroqProvider:
                 headers=headers,
                 json=body,
             )
-            r.raise_for_status()
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError:
+                # BUG-083: el cuerpo del 4xx de Groq trae la razón real
+                # (context_length_exceeded, model_decommissioned, json_validate
+                # _failed, …). Sin esto sólo se veía "HTTPStatusError".
+                try:
+                    err_body = (r.text or "")[:600]
+                except Exception:
+                    err_body = "<no body>"
+                logger.warning(
+                    "ai.groq http_error status=%s model=%s json_mode=%s body=%s",
+                    r.status_code, model, json_mode, err_body,
+                )
+                raise
             data = r.json()
             text = ""
             choices = data.get("choices") or []
