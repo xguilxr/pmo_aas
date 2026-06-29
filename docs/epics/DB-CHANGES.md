@@ -450,3 +450,38 @@ reordenar → orden natural por WBS (comportamiento actual). Cuando hay
 posiciones, mandan sobre el WBS tanto en `list_tasks` como en `renumber-wbs`.
 El endpoint `POST /projects/{id}/tasks/{id}/move {after_id}` normaliza
 `position` secuencial de todo el proyecto. Nullable, sin backfill.
+
+---
+
+## US-179 — RAID estados a 4 + detención (EP006, 2026-06-29)
+
+### Migración **0089** — `risks`/`issues` on_hold + remap de estados
+
+Agrega a `risks` e `issues`:
+- `on_hold_reason VARCHAR(2000) NULL` — razón de detención (obligatoria al
+  pasar a `on_hold`).
+- `on_hold_area_id VARCHAR(36) NULL` (FK `areas`, SET NULL) — área de la que
+  depende la detención.
+- `on_hold_actor_id VARCHAR(36) NULL` (FK `actors`, SET NULL) — responsable
+  de la dependencia.
+- `on_hold_since DATE NULL` — fecha desde la que está detenido (el server la
+  setea al entrar a `on_hold`, para calcular el tiempo detenido).
+
+**Data migration (remap de estados a los 4 canónicos** `open | in_progress |
+on_hold | resolved`**):**
+- Risks: `identified`→`open`; `analyzing`/`mitigating`→`in_progress`;
+  `materialized`/`closed`→`resolved`.
+- Issues: `closed`→`resolved` (`open`/`in_progress` ya válidos).
+
+El downgrade quita las columnas pero NO revierte el remap (es lossy:
+`materialized`/`closed` se fundieron en `resolved`).
+
+---
+
+## US-177 — rename sección S-17 Atrasadas (EP009, 2026-06-29)
+
+### Migración **0090** — `report_sections` S-17 rename
+
+`UPDATE report_sections SET name = 'Atrasadas' WHERE folio = 'S-17' AND name
+= 'Retrasadas'`. Alinea el catálogo del Report Builder con el renombre de
+terminología (Retrasada → Atrasada). Idempotente; downgrade revierte.

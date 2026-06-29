@@ -9,17 +9,62 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "Form de tarea / parsing import / minuta docx" (2026-06-29)
-Branch: claude/task-form-layout-parsing-amjjmj
+Batch "WBS + RAID + Áreas/Recursos" (2026-06-29)
+Branch: claude/task-wbs-raid-updates-9nq7ns
 
-Ejecución directa end-to-end pedida por el owner. 5 items (3 BUG + 2 ENH),
-todos status:fix-committed. Ver bloque "Batch feedback owner 2026-06-29"
-en INBOX abajo. Pendiente: PR + verificación del owner.
+Ejecución directa end-to-end pedida por el owner (planear + ejecutar +
+abrir PR). 11 items (3 US + 4 ENH + 4 BUG), todos status:fix-committed.
+Ver bloque "Batch WBS+RAID+Áreas 2026-06-29" en INBOX abajo.
+Verificación: tsc + next build verdes · 690 pytest + 1 skip · ruff limpio.
+Migraciones 0089 (RAID on_hold + remap estados) y 0090 (rename S-17).
+Pendiente: PR + verificación del owner.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Batch WBS+RAID+Áreas 2026-06-29 (branch: claude/task-wbs-raid-updates-9nq7ns)
+
+Ejecución directa por chat del owner. Issues no creados en GitHub (batch
+directo, 0.1 solucionar>documentar); IDs canónicos abajo.
+
+**Plan / WBS:**
+- [x] **US-177** — Tags de atraso separados: "Atrasada" (rojo, no completada +
+  vencida) y "Completada con atraso" (amarillo, cerró tarde). Rename
+  Retrasada→Atrasada en chips/filtros/KPIs/reportes/S-17 (mig 0090). `status:fix-committed` (`f05aa69`)
+- [x] **ENH-180** — Quitar drag de tareas + botón Auto-WBS; agrupado por WBS
+  como default para mostrar/esconder. `status:fix-committed` (`e959e30`)
+- [x] **ENH-181** — WBS automatizable: elegir tarea padre + "Bajar nivel"
+  (siguiente número disponible del sub-nivel) en form nueva/edición. `status:fix-committed` (`148e57f`)
+- [x] **ENH-182** — Centrar checkmarks de Criticidad e Hito. `status:fix-committed` (`312f44c`)
+
+**RAID:**
+- [x] **US-179** — Estados RAID unificados a 4 (Abierto/En Progreso/On Hold/
+  Resuelto) con tags de color + detención (razón, dependencia área+responsable,
+  tiempo detenido). Mig 0089. `status:fix-committed` (`97af0ca`)
+- [x] **US-178** — Edición inline de todos los campos de la lista RAID + botón
+  Editar (modal, vuelve a la lista) + Borrar; folio link, título inline. `status:fix-committed` (`2e26269`)
+- [x] **BUG-084** — Fecha de creación respetada (no "hoy") + fecha compromiso se
+  guarda/limpia (exclude_unset). `status:fix-committed` (`392a2ef`)
+
+**Áreas / Recursos:**
+- [x] **BUG-085** — Crear área desde un proyecto (deriva org del proyecto +
+  auto-assignment + propagación org→hijos / program→proyectos / proyecto→queda). `status:fix-committed` (`dc98be4`)
+- [x] **BUG-086** — Recursos/áreas asignados a un proyecto asignables en RAID
+  (servicio `area_visibility`; eligible-actors incluye actores de áreas visibles). `status:fix-committed` (`dc98be4`)
+- [x] **ENH-183** — En proyecto listar sólo asignados + "traer existente" al
+  crear (áreas; recursos ya soportado; equipos siguen su área; roles globales). `status:fix-committed` (`14a4037`)
+- [x] **BUG-087** — Las áreas de las tareas ya no desaparecen un instante en el
+  Plan (loadAreas en paralelo). `status:fix-committed` (`2ddc1bd`)
+
+Epics actualizadas: EP006 (RAID), EP009 (plan), EP017 (áreas) + DB-CHANGES.
+Próximo libre tras este batch: US-180, BUG-088, ENH-184.
+
+### Batch previo "Form de tarea / parsing import / minuta docx" (2026-06-29 — branch claude/task-form-layout-parsing-amjjmj)
+
+Ejecución directa end-to-end. 5 items (3 BUG + 2 ENH), `status:fix-committed`.
+Pendiente PR + verificación del owner.
 
 ### Batch feedback owner 2026-06-29 (branch: claude/task-form-layout-parsing-amjjmj)
 

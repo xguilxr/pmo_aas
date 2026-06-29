@@ -39,18 +39,24 @@ Los 6 módulos transversales son el **corazón operativo** del proyecto. Cada un
 | `severity` | generada `P × I` |
 | `mitigation_strategy` | texto |
 | `owner_id`, `due_date` | |
-| `status` | `identified`/`analyzing`/`mitigating`/`materialized`/`closed` |
+| `status` | `open` / `in_progress` / `on_hold` / `resolved` |
+| `on_hold_reason`, `on_hold_area_id`, `on_hold_actor_id`, `on_hold_since` | solo si `status='on_hold'` |
 
 **Criterios:**
 - [ ] Severidad color-coded: 1-5 verde, 6-12 amarillo, 13-25 rojo.
 - [ ] Vista alternativa: **Matriz 5×5 P×I** con conteo de riesgos por celda.
-- [ ] Cierre requiere comentario `closure_note` cuando `status='closed'` o `'materialized'`.
+- [ ] Estados unificados con riesgos e incidencias (US-179): `open` (Abierto), `in_progress` (En Progreso), `on_hold` (Detenido), `resolved` (Resuelto). On Hold es opcional, captura razón de detención + dependencia (área + responsable) + fecha de inicio de detención.
+- [ ] `closure_note` ya no es obligatorio al resolver (2026-06-29).
 
 **Test Cases:**
 - `TC-082` (unit) — Cálculo severidad correcto.
 - `TC-083` (integration) — Filtro `severity_min=13` solo lista rojos.
 - `TC-084` (E2E) — Matriz P×I navegable.
-- `TC-085` (integration) — Cerrar sin `closure_note` → 422.
+
+**Cambios recientes (2026-06-29):**
+- **US-179:** Estados unificados a 4. On Hold captura razón obligatoria + dependencia (área + responsable) + `on_hold_since` (fecha inicio detención, para visibilidad de tiempo detenido). `closure_note` ya no obligatorio al resolver.
+- **US-178:** Edición inline de P, I (severity recomputada), estado, prioridad, etc. en la lista.
+- **BUG-086:** Responsables asignables detectados via `eligible-actors` (área_id visible).
 
 ---
 
@@ -62,20 +68,29 @@ Los 6 módulos transversales son el **corazón operativo** del proyecto. Cada un
 |---|---|
 | `type` | `action`/`issue`/`decision` (AID) |
 | `priority` | 1-5 |
-| `reported_at` | auto |
-| `committed_date` | fecha compromiso |
-| `status` | `open`/`in_progress`/`resolved`/`closed` |
-| `resolution` | texto cuando `resolved`/`closed` |
+| `reported_at` | fecha elegida en el form de nuevo ítem, respetada al crear (US-178, BUG-084) |
+| `committed_date` | fecha compromiso, grabada y limpiable (PATCH con exclude_unset) |
+| `status` | `open` / `in_progress` / `on_hold` / `resolved` |
+| `on_hold_reason`, `on_hold_area_id`, `on_hold_actor_id`, `on_hold_since` | solo si `status='on_hold'` |
+| `resolution` | texto cuando `resolved` |
 | `comments` | array con timestamp y autor |
 
 **Criterios:**
-- [ ] Alerta visual (badge rojo) cuando `committed_date < today AND status NOT IN ('resolved','closed')`.
+- [ ] Alerta visual (badge rojo) cuando `committed_date < today AND status NOT IN ('on_hold','resolved')`.
 - [ ] AIDs `open`/`in_progress` alimentan KPI del dashboard.
 - [ ] Comentarios threaded: `POST /issues/{id}/comments`.
+- [ ] Estados unificados con riesgos (US-179): `open`, `in_progress`, `on_hold`, `resolved`. On Hold captura razón obligatoria + dependencia (área + responsable) + fecha de inicio de detención.
+- [ ] Edición inline de todos los campos en la lista (US-178): título, área, responsable, severidad (P/I), prioridad, estado, fechas de creación y compromiso.
 
 **Test Cases:**
 - `TC-086` (integration) — Query `issues?overdue=true` lista vencidas.
 - `TC-087` (E2E) — Badge vencido visible en listado.
+
+**Cambios recientes (2026-06-29):**
+- **US-179:** Estados RAID unificados a 4 (`open`/`in_progress`/`on_hold`/`resolved`). Migración 0089 agrega columnas `on_hold_*` a `issues` y `risks`. Mapeo legacy: `identified`/`analyzing`/`mitigating`→`in_progress`; `materialized`/`closed`→`resolved` (riesgos); `closed`→`resolved` (incidencias).
+- **US-178:** Edición inline de todos los campos en la lista RAID (título, área, responsable, severidad P/I, prioridad, estado con tag de color, fechas creación/compromiso). Folio es el único link que abre el ticket; título es editable. Acciones por fila: vista rápida, Editar (modal → vuelve a lista), Borrar.
+- **BUG-084:** `reported_at` (issues) respeta fecha elegida en form de nuevo ítem. `committed_date` (issues) / `due_date` (riesgos) se guardan y pueden limpiarse (PATCH con `exclude_unset`).
+- **BUG-086:** Actores con `area_id` directo a un área visible del proyecto son asignables como responsables en RAID (endpoint `eligible-actors` unifica participaciones + cascada de áreas vía `area_visibility`).
 
 ---
 
