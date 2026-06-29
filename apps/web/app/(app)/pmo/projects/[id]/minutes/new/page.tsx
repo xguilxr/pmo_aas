@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   cancelAIJob,
+  extractMinuteText,
   generateMinute,
   type AIMinutePayload,
   type ManualMinuteData,
@@ -70,6 +71,8 @@ export default function NewMinutePage() {
   const [language, setLanguage] = useState<"" | "es" | "en">("");
   const [textInput, setTextInput] = useState("");
   const [textSource, setTextSource] = useState<"upload" | "paste">("paste");
+  // BUG-083: extracción server-side de .docx en curso.
+  const [extracting, setExtracting] = useState(false);
 
   // Estado modo manual (form con 6 secciones).
   const [mHeaderDate, setMHeaderDate] = useState("");
@@ -161,11 +164,35 @@ export default function NewMinutePage() {
       setError("El archivo supera 5 MB");
       return;
     }
-    const text = await file.text();
-    setTextInput(text);
-    if (!titleTouched) {
-      const stem = file.name.replace(/\.[^.]+$/, "");
-      setTitle(stem);
+    setError(null);
+    // BUG-083: los .docx son ZIP binarios — `file.text()` devolvía basura
+    // que la IA rechazaba con 400. Texto plano se lee en el navegador; el
+    // resto (.docx) se extrae server-side con python-docx.
+    const lower = file.name.toLowerCase();
+    const PLAIN = [".txt", ".srt", ".md", ".markdown", ".vtt", ".csv", ".log"];
+    const isPlain = PLAIN.some((e) => lower.endsWith(e));
+    try {
+      let text: string;
+      if (isPlain) {
+        text = await file.text();
+      } else {
+        setExtracting(true);
+        const res = await extractMinuteText(file);
+        text = res.text;
+      }
+      setTextInput(text);
+      if (!titleTouched) {
+        const stem = file.name.replace(/\.[^.]+$/, "");
+        setTitle(stem);
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "No se pudo leer el archivo. Pega el texto directamente.",
+      );
+    } finally {
+      setExtracting(false);
     }
   }
 
@@ -566,14 +593,17 @@ export default function NewMinutePage() {
                   <Upload className="h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
                   <input
                     type="file"
-                    accept=".txt,.srt,.md,.vtt"
+                    accept=".txt,.srt,.md,.vtt,.docx"
                     className="hidden"
+                    disabled={extracting}
                     onChange={(e) => e.target.files && onFile(e.target.files[0])}
                   />
                   <span className="text-[12px] text-[var(--text-secondary)]">
-                    {textInput
-                      ? `Archivo cargado · ${textInput.length.toLocaleString("es-MX")} caracteres. Click para reemplazar.`
-                      : "Sube .txt, .srt, .md o .vtt (máx 5 MB)"}
+                    {extracting
+                      ? "Extrayendo texto del documento…"
+                      : textInput
+                        ? `Archivo cargado · ${textInput.length.toLocaleString("es-MX")} caracteres. Click para reemplazar.`
+                        : "Sube .docx, .txt, .srt, .md o .vtt (máx 5 MB)"}
                   </span>
                 </label>
               </Field>

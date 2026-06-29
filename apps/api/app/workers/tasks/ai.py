@@ -177,6 +177,18 @@ async def _call_ai_for_tenant(
             # BUG-061: rate limit (429) lo manejamos con backoff dedicado
             # honrando el header `Retry-After` cuando viene.
             is_429 = _is_rate_limit(exc)
+            # BUG-083: un 4xx (≠429) es un error de la *request* (prompt
+            # inválido, contexto excedido, modelo dado de baja), no algo
+            # transitorio — reintentar 3 veces no ayuda y oculta la causa.
+            # Cortamos de inmediato y propagamos la razón real.
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status is not None and 400 <= status < 500 and status != 429:
+                logger.error(
+                    "ai_call_client_error tenant=%s job=%s mode=%s status=%s body=%s",
+                    tenant_id, job_id, tenant_cfg.mode, status,
+                    _response_body(exc),
+                )
+                break
             retry_after = _retry_after_seconds(exc) if is_429 else None
             if retry_after is not None:
                 sleep_sec = retry_after
@@ -211,10 +223,25 @@ async def _call_ai_for_tenant(
             "la petición tras 3 reintentos. Espera 1-2 minutos y vuelve a "
             "intentar, o cambia a un proveedor BYO."
         )
+    body = _response_body(last_err)
     raise RuntimeError(
         f"ai_call_failed mode={tenant_cfg.mode} after {_AI_CALL_MAX_RETRIES}"
-        f" retries: {last_err}"
+        f" retries: {last_err}" + (f" | body={body}" if body else "")
     )
+
+
+def _response_body(exc: Exception | None) -> str:
+    """Cuerpo (truncado) de la respuesta HTTP del provider, si lo hay.
+
+    BUG-083: los 4xx de Groq traen la razón real en el body; sin esto el
+    error de cara al usuario/superadmin sólo decía 'HTTPStatusError'."""
+    resp = getattr(exc, "response", None)
+    if resp is None:
+        return ""
+    try:
+        return (resp.text or "")[:500]
+    except Exception:
+        return ""
 
 
 def _is_rate_limit(exc: Exception | None) -> bool:

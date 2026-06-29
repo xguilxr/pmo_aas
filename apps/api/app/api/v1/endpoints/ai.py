@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,6 +63,40 @@ def _tenant(cu: CurrentUser) -> UUID:
     if cu.effective_tenant_id is None:
         raise forbidden()
     return cu.effective_tenant_id
+
+
+@router.post("/extract-text")
+async def extract_text(
+    file: UploadFile = File(...),
+    cu: CurrentUser = Depends(require_authenticated()),
+):
+    """BUG-083: extrae texto plano de un archivo subido (.docx / texto plano)
+    para poblar el `transcript` de la minuta.
+
+    Reemplaza el `file.text()` del front, que sobre un .docx (un ZIP binario)
+    producía basura que la IA (Groq) rechazaba con 400. El .docx se procesa
+    server-side con python-docx (párrafos + tablas)."""
+    from fastapi import HTTPException
+
+    from app.services.document_text import (
+        UnsupportedDocument,
+        extract_text_from_upload,
+    )
+
+    _tenant(cu)  # exige tenant válido (mismo gate que el resto de IA)
+    data = await file.read()
+    if len(data) > MAX_TRANSCRIPT_BYTES:
+        raise HTTPException(status_code=413, detail={"code": "PAYLOAD_TOO_LARGE"})
+    try:
+        text = extract_text_from_upload(file.filename or "", data)
+    except UnsupportedDocument as exc:
+        raise validation_error(str(exc))
+    if not text.strip():
+        raise validation_error(
+            "El archivo no contiene texto extraíble. Revisa el documento "
+            "o pega el texto directamente."
+        )
+    return {"text": text, "filename": file.filename, "chars": len(text)}
 
 
 @router.post("/minutes", status_code=202)
