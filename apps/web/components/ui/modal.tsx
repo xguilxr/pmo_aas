@@ -11,13 +11,14 @@ type Props = {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 };
 
 const SIZES = {
   sm: "max-w-sm",
   md: "max-w-md",
   lg: "max-w-2xl",
+  xl: "max-w-4xl",
 };
 
 export function Modal({ open, onClose, title, description, children, footer, size = "md" }: Props) {
@@ -49,13 +50,17 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         onClick={onClose}
         className="absolute inset-0 bg-[oklch(0%_0_0_/_0.4)]"
       />
+      {/* ENH-178: el diálogo se limita al alto del viewport y el cuerpo
+          hace scroll interno; header y footer quedan fijos. Antes los
+          formularios largos (editar tarea, matching de columnas) se salían
+          de la pantalla sin forma de verlos completos. */}
       <div
         className={cn(
-          "relative z-10 w-full rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-lg)]",
+          "relative z-10 flex max-h-[calc(100dvh-2rem)] w-full flex-col rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-lg)]",
           SIZES[size],
         )}
       >
-        <div className="flex items-start justify-between border-b border-[var(--border-default)] px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between border-b border-[var(--border-default)] px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-[var(--color-primary)]">{title}</h2>
             {description ? (
@@ -66,14 +71,14 @@ export function Modal({ open, onClose, title, description, children, footer, siz
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer ? (
-          <div className="flex justify-end gap-2 border-t border-[var(--border-default)] px-5 py-3">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--border-default)] px-5 py-3">
             {footer}
           </div>
         ) : null}
