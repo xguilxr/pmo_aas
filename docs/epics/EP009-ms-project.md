@@ -154,8 +154,13 @@ implementó.
 - `apps/web/components/import-wizard.tsx` — modal `<Lg>` con 4
   pasos lógicos: Upload → Sheet (skip auto si CSV/MPP/XML o si
   Excel con 1 sola hoja) → Preview + mapping → Done.
-  - Mapping renderiza `<select>` por columna del archivo con
-    auto-detect pre-rellenado + opción `— ignorar —`.
+  - Mapping (ENH-179, 2026-06-29): grilla responsive de 2-3
+    columnas; cada tarjeta = columna del archivo + `<select>` al
+    campo destino (auto-detect pre-rellenado + `— ignorar —`) +
+    valor de ejemplo. La vista previa de datos queda en una tabla
+    compacta aparte que muestra el campo asignado (`→ Campo`) bajo
+    cada header. Antes era un `<select>` alto por columna dentro del
+    header de la tabla, que se estiraba a lo ancho/alto.
   - Validación inline: si no hay columna mapeada a `name` muestra
     Banner warning y deshabilita el botón Importar.
   - Selector de estrategia (merge/replace) integrado en el step de
@@ -168,6 +173,19 @@ implementó.
   `importStrategy` y `importPlanFile()` (toda la lógica vieja
   ~60 LoC eliminada). El callback `onImported` refresca la lista
   vía `loadTasksAndGantt()`.
+
+**Cambios recientes (2026-06-29):**
+- **BUG-081** — el parser XLSX (`_coerce_progress` / `parse_xlsx`) leía las
+  columnas de avance **formateadas como porcentaje** en Excel como fracciones:
+  openpyxl devuelve 0.3/0.5/0.7 para 30/50/70% y el entero `1` para 100%, así
+  que 100% quedaba en 1%. Ahora `parse_xlsx` detecta el `number_format` de la
+  columna de avance y escala las fracciones ×100 siempre; las columnas numéricas
+  planas (donde `1` == 1%) se respetan.
+- **ENH-178** — el modal de **editar tarea** del plan se salía de pantalla sin
+  scroll. El componente `Modal` limita el alto al viewport con scroll interno
+  (header/footer fijos, nuevo size `xl`); los modales Nueva/Editar tarea usan
+  size `lg`; en editar, las fechas Inicio | Fin | Cierre van en una fila de 3
+  columnas.
 
 ---
 

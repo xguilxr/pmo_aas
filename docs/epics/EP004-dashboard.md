@@ -249,6 +249,13 @@ interactiva; el reporte es el mismo contenido congelado a PDF).
   tendencias y desbloquea S-05/S-07 de EP020.
 - Servicio `services/analytics/snapshots.py` (cómputo + upsert idempotente);
   job `workers/tasks/snapshots.py`.
+- **BUG-082 (2026-06-29):** `avg_progress` del snapshot (base de la *evolución de
+  avance* en `/dashboard/trends`) ahora usa el **avance efectivo derivado del
+  rollup WBS del plan** (`plan_rollup_map`), igual que el dashboard en vivo. Antes
+  leía la columna `Project.progress` (manual), que queda en 0 desde ENH-155 para
+  proyectos cuyo avance se deriva del plan → la serie salía en 0. Los snapshots ya
+  escritos en 0 no se recalculan; recapturar (job semanal o `snapshots/capture`)
+  corrige de hoy en adelante.
 
 **US-152 — endpoints de analytics:** `trends`, `risk-matrix`, `heatmap`,
 `treemap`, `POST snapshots/capture` (ver bloque Endpoints). Authz: vistas
