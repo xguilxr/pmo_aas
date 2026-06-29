@@ -60,7 +60,7 @@ Análisis UI/UX final entregado en `docs/project-management/UIUX-ANALYSIS-Sprint
 
 **Fase 4 — aprobada por owner excepto auto-WBS (2026-06-28):**
 - [x] **ENH-175** — Columna Responsable en listas RAID + resolución Actor en el read. `status:fix-committed`
-- [ ] **ENH-176** — Severidad inline en riesgos (probability/impact).
+- [x] **ENH-176** — Severidad inline en riesgos (probability/impact, optimista). `status:fix-committed`
 - [ ] **ENH-177** — `category` para issues (migración).
 - [ ] Auto-WBS columna `position` — **en pausa**: el owner quiere revisar el plan antes de implementar (ver plan al final del chat).
 

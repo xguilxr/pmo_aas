@@ -352,6 +352,40 @@ function RaidInner() {
     }
   }
 
+  // ENH-176: edición inline de probabilidad/impacto en riesgos (optimista).
+  // El backend recomputa severity = P × I; localmente la recomputamos para
+  // que el badge reaccione de inmediato.
+  async function handleRiskPatch(
+    id: string,
+    patch: { probability?: number; impact?: number },
+  ) {
+    setError(null);
+    const prev = risks.find((r) => r.id === id);
+    setRisks((rows) =>
+      rows.map((r) => {
+        if (r.id !== id) return r;
+        const merged = { ...r, ...patch };
+        merged.severity =
+          (merged.probability ?? 0) * (merged.impact ?? 0) || null;
+        return merged;
+      }),
+    );
+    setKanbanBusyId(id);
+    try {
+      const updated = await updateRisk(id, patch);
+      setRisks((rows) =>
+        rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+      );
+    } catch (err) {
+      if (prev) setRisks((rows) => rows.map((r) => (r.id === id ? prev : r)));
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo actualizar el riesgo",
+      );
+    } finally {
+      setKanbanBusyId(null);
+    }
+  }
+
   // ENH-152: Export RAID = descarga autenticada del XLSX (4 hojas ES:
   // Riesgos/Acciones/Incidencias/Decisiones) del endpoint /raid/export — el
   // MISMO archivo que el botón del módulo Documentos. El filename
@@ -662,6 +696,7 @@ function RaidInner() {
             )
           }
           onStatusChange={handleBoardMove}
+          onRiskPatch={handleRiskPatch}
         />
       ) : (
         <IssuesSection
@@ -815,6 +850,7 @@ function RisksSection({
   projectId,
   onRiskUpdate,
   onStatusChange,
+  onRiskPatch,
 }: {
   rows: Risk[];
   projectId: string;
@@ -822,6 +858,8 @@ function RisksSection({
   // US-175: cambio de estado inline (reusa el handler de Kanban → maneja la
   // nota de cierre para riesgos).
   onStatusChange?: (id: string, status: string) => void;
+  // ENH-176: edición inline de probabilidad/impacto (severity = P × I).
+  onRiskPatch?: (id: string, patch: { probability?: number; impact?: number }) => void;
 }) {
   void onRiskUpdate;
   const [preview, setPreview] = useState<Risk | null>(null);
@@ -937,8 +975,45 @@ function RisksSection({
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
                       {r.responsible_name ?? "—"}
                     </td>
+                    {/* ENH-176: severidad = P × I, editable inline (P/I). */}
                     <td className="px-3 py-2">
-                      <SeverityBadge severity={r.severity} />
+                      {onRiskPatch ? (
+                        <div className="flex items-center gap-1.5">
+                          <SeverityBadge severity={r.severity} />
+                          <span className="text-[10px] text-[var(--color-tertiary)]">
+                            P
+                          </span>
+                          <InlineSelectCell
+                            value={r.probability != null ? String(r.probability) : ""}
+                            options={[1, 2, 3, 4, 5].map((n) => ({
+                              value: String(n),
+                              label: String(n),
+                            }))}
+                            onChange={(v) =>
+                              onRiskPatch(r.id, { probability: Number(v) })
+                            }
+                            placeholder="?"
+                            title="Probabilidad"
+                            ariaLabel={`Probabilidad de ${r.title}`}
+                          />
+                          <span className="text-[10px] text-[var(--color-tertiary)]">
+                            I
+                          </span>
+                          <InlineSelectCell
+                            value={r.impact != null ? String(r.impact) : ""}
+                            options={[1, 2, 3, 4, 5].map((n) => ({
+                              value: String(n),
+                              label: String(n),
+                            }))}
+                            onChange={(v) => onRiskPatch(r.id, { impact: Number(v) })}
+                            placeholder="?"
+                            title="Impacto"
+                            ariaLabel={`Impacto de ${r.title}`}
+                          />
+                        </div>
+                      ) : (
+                        <SeverityBadge severity={r.severity} />
+                      )}
                     </td>
                     {/* US-175 + Fase 2: estado editable inline (on-click). */}
                     <td className="px-3 py-2 text-[var(--color-secondary)]">
