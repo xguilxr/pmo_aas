@@ -482,6 +482,7 @@ El downgrade quita las columnas pero NO revierte el remap (es lossy:
 
 ### Migración **0090** — `report_sections` S-17 rename
 
-`UPDATE report_sections SET name = 'Atrasadas' WHERE folio = 'S-17' AND name
-= 'Retrasadas'`. Alinea el catálogo del Report Builder con el renombre de
-terminología (Retrasada → Atrasada). Idempotente; downgrade revierte.
+`UPDATE report_sections SET name = 'Atrasadas' WHERE code = 'S-17' AND name
+= 'Retrasadas'` (la tabla usa `code`, no `folio`). Alinea el catálogo del
+Report Builder con el renombre de terminología (Retrasada → Atrasada).
+Idempotente; downgrade revierte.

@@ -18,14 +18,15 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # report_sections usa `code` (slug "S-17"), no `folio`.
     op.execute(
         "UPDATE report_sections SET name = 'Atrasadas' "
-        "WHERE folio = 'S-17' AND name = 'Retrasadas'"
+        "WHERE code = 'S-17' AND name = 'Retrasadas'"
     )
 
 
 def downgrade() -> None:
     op.execute(
         "UPDATE report_sections SET name = 'Retrasadas' "
-        "WHERE folio = 'S-17' AND name = 'Atrasadas'"
+        "WHERE code = 'S-17' AND name = 'Atrasadas'"
     )
