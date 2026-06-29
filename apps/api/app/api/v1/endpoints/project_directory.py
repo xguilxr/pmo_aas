@@ -313,39 +313,30 @@ async def list_eligible_actors(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """Actores con participation activa en el proyecto.
+    """Actores asignables como responsables/owners en el proyecto.
 
-    Filtra por `is_active=true` y, si tienen ventana temporal,
-    `start_date <= today <= end_date` (cuando están definidos).
-    Pensado para alimentar dropdowns de assignee/owner en plan, RAID,
-    cambios, lecciones, minutas.
+    BUG-086: une dos fuentes para que ningún recurso "asignado al proyecto"
+    quede fuera de los dropdowns (plan, RAID, cambios, lecciones, minutas):
+    1. Actores con participación activa (respeta la ventana temporal
+       `start_date <= today <= end_date` cuando está definida).
+    2. Actores visibles por la cascada de áreas del proyecto (catálogo):
+       de equipos de áreas visibles o con `area_id` directo a un área
+       visible. Antes, un recurso cargado a un área del proyecto sin
+       participación no aparecía como asignable.
     """
     from datetime import date
 
+    from app.models.project import Project
+    from app.services.area_visibility import actors_visible_to_project
+
+    tenant_id = _tenant(cu)
     today = date.today()
-    rows = (
-        await db.execute(
-            select(ProjectParticipation, Actor)
-            .join(Actor, Actor.id == ProjectParticipation.actor_id)
-            .where(
-                and_(
-                    ProjectParticipation.tenant_id == str(_tenant(cu)),
-                    ProjectParticipation.project_id == str(project_id),
-                    ProjectParticipation.is_active.is_(True),
-                    Actor.is_active.is_(True),
-                )
-            )
-        )
-    ).all()
     seen: set[str] = set()
     out: list[ActorMini] = []
-    for part, actor in rows:
+
+    def _push(actor: Actor) -> None:
         if actor.id in seen:
-            continue
-        if part.start_date and part.start_date > today:
-            continue
-        if part.end_date and part.end_date < today:
-            continue
+            return
         seen.add(actor.id)
         out.append(
             ActorMini(
@@ -356,6 +347,43 @@ async def list_eligible_actors(
                 job_title=actor.job_title,
             )
         )
+
+    # (1) participaciones activas con ventana temporal respetada.
+    rows = (
+        await db.execute(
+            select(ProjectParticipation, Actor)
+            .join(Actor, Actor.id == ProjectParticipation.actor_id)
+            .where(
+                and_(
+                    ProjectParticipation.tenant_id == str(tenant_id),
+                    ProjectParticipation.project_id == str(project_id),
+                    ProjectParticipation.is_active.is_(True),
+                    Actor.is_active.is_(True),
+                )
+            )
+        )
+    ).all()
+    for part, actor in rows:
+        if part.start_date and part.start_date > today:
+            continue
+        if part.end_date and part.end_date < today:
+            continue
+        _push(actor)
+
+    # (2) actores visibles por la cascada de áreas del proyecto.
+    project = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if project is not None:
+        for actor in await actors_visible_to_project(db, tenant_id, project):
+            _push(actor)
+
+    out.sort(key=lambda a: (a.name or "").lower())
     return out
 
 

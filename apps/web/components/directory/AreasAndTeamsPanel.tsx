@@ -427,17 +427,17 @@ function AreaModalForm({
         // visible en este proyecto (recupera áreas creadas sin asignar).
         if (projectId) await ensureProjectAssignment(area.id, projectId);
       } else {
-        const created = await createArea({
+        // BUG-085: dentro de un proyecto el org_id es el del proyecto —
+        // pasamos project_id y el backend deriva el org + crea el
+        // AreaAssignment del proyecto. En contexto org (sin projectId) se
+        // pasa organization_id y el área se propaga a sus hijos.
+        await createArea({
           name: name.trim(),
           description: description.trim() || null,
           is_active: isActive,
-          organization_id: organizationId ?? null,
+          project_id: projectId ?? null,
+          organization_id: projectId ? null : organizationId ?? null,
         });
-        // Área creada dentro de un proyecto → se asigna a ese proyecto
-        // para que aparezca en Recursos y en el Plan.
-        if (projectId) {
-          await setAreaAssignments(created.id, [{ project_id: projectId }]);
-        }
       }
       onSaved();
     } catch (e) {

@@ -40,6 +40,51 @@ def _tenant(cu: CurrentUser) -> UUID:
     return cu.effective_tenant_id
 
 
+async def _ensure_area_assignment_for_scope(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    area_id: str,
+    scope: tuple[str, str] | None,
+    created_by: str | None,
+) -> None:
+    """BUG-085: garantiza que el área tenga un AreaAssignment para el scope
+    desde el que se creó (proyecto / programa / organización). Idempotente:
+    no duplica si ya existe una asignación equivalente. La cascada de lectura
+    (`list_areas_by_project`) se encarga de propagar hacia los hijos.
+    """
+    if scope is None:
+        return
+    kind, target = scope
+    col = {
+        "project": AreaAssignment.project_id,
+        "program": AreaAssignment.program_id,
+        "organization": AreaAssignment.organization_id,
+    }[kind]
+    existing = (
+        await db.execute(
+            select(AreaAssignment.id).where(
+                AreaAssignment.tenant_id == str(tenant_id),
+                AreaAssignment.area_id == area_id,
+                col == target,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return
+    db.add(
+        AreaAssignment(
+            tenant_id=str(tenant_id),
+            area_id=area_id,
+            organization_id=target if kind == "organization" else None,
+            program_id=target if kind == "program" else None,
+            project_id=target if kind == "project" else None,
+            is_global=False,
+            created_by=created_by,
+        )
+    )
+
+
 # =============================================================================
 # /areas — top-level
 # =============================================================================
@@ -90,24 +135,65 @@ async def create_area(
     name = body.name.strip()
     org_id = str(body.organization_id) if body.organization_id else None
 
-    # US-170: nuevas áreas deben pertenecer a una organización (no globales).
-    if org_id is None:
-        raise validation_error("organization_id es obligatorio para crear un área")
+    # BUG-085: scope de creación. Si el área se crea desde un proyecto o
+    # programa, derivamos la organización del padre y recordamos el scope
+    # para crear el AreaAssignment correcto al final (propagación):
+    #   - project_id → assignment al proyecto (queda en ese proyecto).
+    #   - program_id → assignment al programa (se propaga a sus proyectos).
+    #   - organization_id → assignment a la org (se propaga a programas/proyectos).
+    # Esto resuelve "no hay organization_id" al crear área dentro de un
+    # proyecto: dentro de un proyecto el org_id es el del proyecto.
+    from app.models.organization import Organization, Program
+    from app.models.project import Project
 
-    # BUG-061: validar que la org pertenece al tenant si se pasó.
-    if org_id is not None:
-        from app.models.organization import Organization
-
-        org_ok = (
+    scope: tuple[str, str] | None = None  # (kind, id) → org/program/project
+    if body.project_id is not None:
+        project = (
             await db.execute(
-                select(Organization.id).where(
-                    Organization.id == org_id,
-                    Organization.tenant_id == str(tenant_id),
+                select(Project).where(
+                    Project.id == str(body.project_id),
+                    Project.tenant_id == str(tenant_id),
                 )
             )
         ).scalar_one_or_none()
-        if org_ok is None:
-            raise validation_error("organization_id no existe en el tenant")
+        if project is None:
+            raise validation_error("project_id no existe en el tenant")
+        org_id = str(project.organization_id)
+        scope = ("project", str(body.project_id))
+    elif body.program_id is not None:
+        program = (
+            await db.execute(
+                select(Program).where(
+                    Program.id == str(body.program_id),
+                    Program.tenant_id == str(tenant_id),
+                )
+            )
+        ).scalar_one_or_none()
+        if program is None:
+            raise validation_error("program_id no existe en el tenant")
+        org_id = str(program.organization_id)
+        scope = ("program", str(body.program_id))
+    elif org_id is not None:
+        scope = ("organization", org_id)
+
+    # US-170: nuevas áreas deben pertenecer a una organización (no globales).
+    if org_id is None:
+        raise validation_error(
+            "Se requiere un alcance para crear un área "
+            "(project_id, program_id u organization_id)"
+        )
+
+    # BUG-061: validar que la org pertenece al tenant.
+    org_ok = (
+        await db.execute(
+            select(Organization.id).where(
+                Organization.id == org_id,
+                Organization.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if org_ok is None:
+        raise validation_error("organization_id no existe en el tenant")
 
     # BUG-060/061: pre-check del unique scoped al mismo organization_id
     # (NULL == NULL para esta lógica). Si existe inactivo → reactivar;
@@ -130,6 +216,11 @@ async def create_area(
         if not existing_area.is_active:
             existing_area.is_active = True
             existing_area.description = body.description or existing_area.description
+            # BUG-085: al reactivar, garantiza la asignación al scope actual.
+            await _ensure_area_assignment_for_scope(
+                db, tenant_id=tenant_id, area_id=str(existing_area.id),
+                scope=scope, created_by=str(cu.id),
+            )
             await db.commit()
             await db.refresh(existing_area)
             return AreaRead.model_validate(existing_area)
@@ -150,6 +241,13 @@ async def create_area(
     )
     db.add(a)
     await db.flush()  # obtain a.id
+
+    # BUG-085: crea el AreaAssignment del scope de creación (proyecto /
+    # programa / organización) para que el área quede visible y propague.
+    await _ensure_area_assignment_for_scope(
+        db, tenant_id=tenant_id, area_id=str(a.id),
+        scope=scope, created_by=str(cu.id),
+    )
 
     if body.lead is not None:
         lead_actor: Actor | None = None
@@ -1073,15 +1171,15 @@ async def list_actors_by_project(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """ENH-079: lista los Actores del catálogo asignables como
-    responsables/owners en un proyecto. Resolución por cascada de
-    `area_assignments` (org/program/project/global) → trae Actores
-    de los Equipos cuya Área esté visible para el proyecto, más
-    Actores huérfanos de esas Áreas.
-    """
-    from sqlalchemy import or_
-
+    """ENH-079 + BUG-086: lista los Actores del catálogo asignables como
+    responsables/owners en un proyecto. Usa la cascada centralizada
+    (`area_visibility.actors_visible_to_project`): actores de equipos cuya
+    área es visible, actores con ``area_id`` directo a un área visible, y
+    actores con participación activa. Antes, una heurística excluía a los
+    recursos cargados directo en un área (sin team, sin user, sin is_lead),
+    por lo que no aparecían como asignables en RAID/Plan."""
     from app.models.project import Project
+    from app.services.area_visibility import actors_visible_to_project
 
     tenant_id = _tenant(cu)
     project = (
@@ -1095,66 +1193,8 @@ async def list_actors_by_project(
     if project is None:
         raise not_found("Project")
 
-    cond = or_(
-        AreaAssignment.is_global == True,  # noqa: E712
-        AreaAssignment.project_id == str(project_id),
-        AreaAssignment.organization_id == str(project.organization_id),
-    )
-    if project.program_id:
-        cond = or_(cond, AreaAssignment.program_id == str(project.program_id))
-
-    visible_areas = (
-        await db.execute(
-            select(Area.id)
-            .join(AreaAssignment, AreaAssignment.area_id == Area.id)
-            .where(
-                Area.tenant_id == str(tenant_id),
-                Area.is_active == True,  # noqa: E712
-                cond,
-            )
-            .distinct()
-        )
-    ).scalars().all()
-    if not visible_areas:
-        return []
-
-    teams = (
-        await db.execute(
-            select(Team.id).where(
-                Team.tenant_id == str(tenant_id),
-                Team.area_id.in_(visible_areas),
-                Team.is_active.is_(True),
-            )
-        )
-    ).scalars().all()
-
-    actor_filter = or_(
-        Actor.team_id.in_(teams) if teams else False,
-        Actor.team_id.is_(None),
-    )
-    rows = (
-        await db.execute(
-            select(Actor)
-            .where(
-                Actor.tenant_id == str(tenant_id),
-                Actor.is_active == True,  # noqa: E712
-                Actor.deleted_at.is_(None),
-                actor_filter,
-            )
-            .order_by(Actor.name)
-        )
-    ).scalars().all()
-    # Filter orphan actors to only those whose original team's area was
-    # visible — para evitar listar TODOS los actores sin team del tenant.
-    # Heurística simple: si team_id es None, los listamos sólo si el
-    # actor tiene el flag is_lead (los líderes manuales suelen estar
-    # huérfanos de team) o si está enlazado a un user (PMO sync).
-    out: list[Actor] = []
-    for a in rows:
-        if a.team_id is None and not (a.is_lead or a.user_id is not None):
-            continue
-        out.append(a)
-    return [ActorRead.model_validate(a) for a in out]
+    actors = await actors_visible_to_project(db, tenant_id, project)
+    return [ActorRead.model_validate(a) for a in actors]
 
 
 @assignments_router.post("/pmo/sync-users")

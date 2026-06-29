@@ -28,6 +28,14 @@ class AreaCreate(BaseModel):
     # BUG-061: si se pasa, el área queda scoped a esa organización.
     # Si se omite/None, el área es tenant-global.
     organization_id: UUID | None = None
+    # BUG-085: scope de creación. Cuando un área se crea desde un proyecto
+    # (o programa), el backend deriva la organización del proyecto/programa
+    # y crea el AreaAssignment del scope correcto (proyecto/programa/org)
+    # para que el área quede visible y se propague hacia los hijos sin que
+    # el frontend tenga que conocer el organization_id. Exactamente uno de
+    # {project_id, program_id, organization_id} debe venir.
+    project_id: UUID | None = None
+    program_id: UUID | None = None
 
 
 class AreaUpdate(BaseModel):

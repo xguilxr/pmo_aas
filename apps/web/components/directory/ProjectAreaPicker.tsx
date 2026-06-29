@@ -8,12 +8,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import {
-  createArea,
-  listAreasByProject,
-  setAreaAssignments,
-  type Area,
-} from "@/lib/api/areas";
+import { listAreasByProject, type Area } from "@/lib/api/areas";
+import { createOrAdoptAreaForProject } from "@/lib/api/area-helpers";
 
 type Props = {
   projectId: string;
@@ -60,19 +56,14 @@ export function ProjectAreaPicker({
     setBusy(true);
     setErr(null);
     try {
-      const created = await createArea({
-        name: newName.trim(),
-        is_active: true,
-      });
-      try {
-        await setAreaAssignments(created.id, [{ project_id: projectId }]);
-      } catch {
-        setErr(
-          "Área creada, pero no se pudo asignar al proyecto. Refrescá e intentá de nuevo.",
-        );
-      }
+      // BUG-085: createOrAdoptAreaForProject deriva el org del proyecto,
+      // crea (o adopta si ya existe) el área y la asigna al proyecto.
+      const { id } = await createOrAdoptAreaForProject(
+        newName.trim(),
+        projectId,
+      );
       await refresh();
-      onChange(created.id);
+      onChange(id);
       setCreating(false);
       setNewName("");
     } catch (e: any) {
