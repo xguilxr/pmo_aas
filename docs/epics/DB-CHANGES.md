@@ -509,3 +509,23 @@ dualidad semáforo manual vs RAG declarado se unifica en UN solo semáforo).
 
 El downgrade re-crea `status_rag` solo para los overrides manuales
 (`yellow`→`amber`) y dropea las columnas nuevas (lossy en la razón).
+
+---
+
+## US-182 — Actors como pool de recursos con capacidad (EP017, 2026-07-08)
+
+### Migración **0092** — `actors` resource pool
+
+**Columnas nuevas en `actors`:** `organization_id` (FK organizations, SET
+NULL; NULL = tenant-global), `resource_type` (check: cliente_negocio |
+cliente_it | e4_pmo | e4_tecnologia | vendor_externo), `portfolio_function`
+(check: pm|pmo|arquitectura|infraestructura|aplicaciones|datos|seguridad|
+integraciones|negocio|change|testing|vendor), `seniority` (junior|mid|
+senior|lead), `scarcity_level` (alta|media|baja), `location`,
+`skills_tags JSON DEFAULT []`, `nominal_capacity_pct NUMERIC(5,2) DEFAULT
+100`, `project_capacity_pct NUMERIC(5,2) DEFAULT 100` (capacidad REAL para
+proyectos — base de la saturación), `is_key_resource BOOL DEFAULT false`,
+`is_shared_resource BOOL DEFAULT true`, `fte_cost_rate NUMERIC(10,2) NULL`.
+Índices: `(tenant_id, resource_type)` y `(tenant_id, organization_id)`.
+Sin backfill: actores existentes quedan "sin clasificar" (NULL) con
+capacidad 100/100.

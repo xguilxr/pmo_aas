@@ -24,6 +24,32 @@ export type Team = {
   created_at: string;
 };
 
+// US-182: pool de recursos con capacidad.
+export type ResourceType =
+  | "cliente_negocio"
+  | "cliente_it"
+  | "e4_pmo"
+  | "e4_tecnologia"
+  | "vendor_externo";
+
+export type PortfolioFunction =
+  | "pm"
+  | "pmo"
+  | "arquitectura"
+  | "infraestructura"
+  | "aplicaciones"
+  | "datos"
+  | "seguridad"
+  | "integraciones"
+  | "negocio"
+  | "change"
+  | "testing"
+  | "vendor";
+
+export type ActorSeniority = "junior" | "mid" | "senior" | "lead";
+
+export type ScarcityLevel = "alta" | "media" | "baja";
+
 export type Actor = {
   id: string;
   tenant_id: string;
@@ -39,6 +65,19 @@ export type Actor = {
   company?: string | null;
   job_title?: string | null;
   manager_actor_id?: string | null;
+  // US-182: pool de recursos con capacidad.
+  organization_id?: string | null;
+  resource_type?: ResourceType | null;
+  portfolio_function?: PortfolioFunction | null;
+  seniority?: ActorSeniority | null;
+  scarcity_level?: ScarcityLevel | null;
+  location?: string | null;
+  skills_tags?: string[];
+  nominal_capacity_pct?: number;
+  project_capacity_pct?: number;
+  is_key_resource?: boolean;
+  is_shared_resource?: boolean;
+  fte_cost_rate?: number | null;
   created_at: string;
 };
 
@@ -195,36 +234,62 @@ export function deleteTeam(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/teams/${id}`, { method: "DELETE" });
 }
 
+// US-182: campos del pool de recursos compartidos entre create/update.
+export type ActorResourceFields = {
+  organization_id?: string | null;
+  resource_type?: ResourceType | null;
+  portfolio_function?: PortfolioFunction | null;
+  seniority?: ActorSeniority | null;
+  scarcity_level?: ScarcityLevel | null;
+  location?: string | null;
+  skills_tags?: string[] | null;
+  nominal_capacity_pct?: number | null;
+  project_capacity_pct?: number | null;
+  is_key_resource?: boolean | null;
+  is_shared_resource?: boolean | null;
+  fte_cost_rate?: number | null;
+};
+
 // ---------- Actors ----------
 export function listActors(params?: {
   team_id?: string;
   area_id?: string;
   q?: string;
   is_active?: boolean;
+  // US-182: filtros del pool de recursos.
+  resource_type?: string;
+  portfolio_function?: string;
+  organization_id?: string;
 }): Promise<Actor[]> {
   const qs = new URLSearchParams();
   if (params?.team_id) qs.set("team_id", params.team_id);
   if (params?.area_id) qs.set("area_id", params.area_id);
   if (params?.q) qs.set("q", params.q);
   if (params?.is_active != null) qs.set("is_active", String(params.is_active));
+  if (params?.resource_type) qs.set("resource_type", params.resource_type);
+  if (params?.portfolio_function)
+    qs.set("portfolio_function", params.portfolio_function);
+  if (params?.organization_id) qs.set("organization_id", params.organization_id);
   const tail = qs.toString();
   return apiFetch<Actor[]>(`/api/v1/actors${tail ? `?${tail}` : ""}`);
 }
 
-export function createActor(body: {
-  team_id?: string | null;
-  area_id?: string | null;
-  user_id?: string | null;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-  is_active?: boolean;
-  is_lead?: boolean;
-  // US-114: enriquecimiento.
-  company?: string | null;
-  job_title?: string | null;
-  manager_actor_id?: string | null;
-}): Promise<Actor> {
+export function createActor(
+  body: {
+    team_id?: string | null;
+    area_id?: string | null;
+    user_id?: string | null;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    is_active?: boolean;
+    is_lead?: boolean;
+    // US-114: enriquecimiento.
+    company?: string | null;
+    job_title?: string | null;
+    manager_actor_id?: string | null;
+  } & ActorResourceFields,
+): Promise<Actor> {
   return apiFetch<Actor>("/api/v1/actors", { method: "POST", body });
 }
 
@@ -239,7 +304,7 @@ export function updateActor(
     phone?: string | null;
     is_active?: boolean;
     is_lead?: boolean;
-  },
+  } & ActorResourceFields,
 ): Promise<Actor> {
   return apiFetch<Actor>(`/api/v1/actors/${id}`, { method: "PATCH", body });
 }
