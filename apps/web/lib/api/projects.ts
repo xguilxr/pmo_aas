@@ -3,8 +3,9 @@ import { apiFetch } from "@/lib/api";
 export type ProjectPhase = "planning" | "execution" | "support" | "closed";
 export type ProjectType = "innovation" | "transformation" | "operation" | "bau";
 export type ProjectHealth = "green" | "yellow" | "red";
-// ENH-101: RAG declarativo del PM (override manual). null = sin override.
-export type ProjectStatusRag = "green" | "amber" | "red";
+// US-180: fuente del semáforo único — 'auto' (motor de reglas) o
+// 'manual' (declarado por el PM con razón).
+export type ProjectHealthSource = "auto" | "manual";
 export type ProjectMemberRole = "pm" | "team" | "viewer" | "stakeholder";
 
 export type Project = {
@@ -25,8 +26,9 @@ export type Project = {
   actual_budget: string | null;
   progress: number;
   health_status: ProjectHealth;
-  // ENH-101: RAG declarado por el PM. null = no override.
-  status_rag: ProjectStatusRag | null;
+  // US-180: salud única híbrida.
+  health_source: ProjectHealthSource;
+  health_reason: string | null;
   request_id: string | null;
   // US-084: { field: { edited_at, edited_by } } por agregado del plan
   // que el PM marcó como editado a mano (importadores deben respetar).
@@ -79,8 +81,71 @@ export type ProjectUpdateBody = Partial<{
   actual_budget: number | string | null;
   progress: number;
   health_status: ProjectHealth;
-  status_rag: ProjectStatusRag | null;
 }>;
+
+// ---- US-180: salud única híbrida ----
+
+export type HealthDimensionKey =
+  | "schedule"
+  | "budget"
+  | "risks"
+  | "decisions"
+  | "resources";
+
+export type HealthCause = {
+  type: string;
+  what: string;
+  owner: string | null;
+  due_date: string | null;
+  days: number | null;
+  severity?: number;
+};
+
+export type HealthDimension = {
+  key: HealthDimensionKey;
+  label: string;
+  // null = N/A (sin datos para esta dimensión).
+  color: ProjectHealth | null;
+  summary: string;
+  causes: HealthCause[];
+  metrics: Record<string, number>;
+};
+
+export type HealthFocusItem = {
+  dimension: HealthDimensionKey;
+  dimension_label: string;
+  color: ProjectHealth;
+  what: string;
+  type: string;
+  owner: string | null;
+  due_date: string | null;
+  days: number | null;
+  suggested_action: string;
+};
+
+export type HealthDetail = {
+  health_status: ProjectHealth;
+  health_source: ProjectHealthSource;
+  health_reason: string | null;
+  computed: ProjectHealth;
+  dimensions: HealthDimension[];
+  focus: HealthFocusItem[];
+};
+
+export function getHealthDetail(projectId: string): Promise<HealthDetail> {
+  return apiFetch<HealthDetail>(`/api/v1/projects/${projectId}/health-detail`);
+}
+
+// status=null → volver a fuente automática (recalcula de inmediato).
+export function declareHealth(
+  projectId: string,
+  body: { status: ProjectHealth | null; reason?: string | null },
+): Promise<Project> {
+  return apiFetch<Project>(`/api/v1/projects/${projectId}/health`, {
+    method: "PATCH",
+    body,
+  });
+}
 
 export type ListProjectsParams = {
   phase?: ProjectPhase[] | ProjectPhase;
@@ -199,13 +264,6 @@ export const TYPE_LABEL: Record<ProjectType, string> = {
 export const HEALTH_LABEL: Record<ProjectHealth, string> = {
   green: "Verde",
   yellow: "Amarillo",
-  red: "Rojo",
-};
-
-// ENH-101: labels para el RAG declarativo (override manual del PM).
-export const STATUS_RAG_LABEL: Record<ProjectStatusRag, string> = {
-  green: "Verde",
-  amber: "Ámbar",
   red: "Rojo",
 };
 

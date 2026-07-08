@@ -19,14 +19,21 @@ import { getOrganization, type Organization } from "@/lib/api/organizations";
 import { getProjectCharter, type ProjectCharter } from "@/lib/api/project-charters";
 import { listTasks, type Task } from "@/lib/api/tasks";
 import {
+  HealthDeclareModal,
+  HealthStatusCard,
+  HealthWhyPanel,
+} from "@/components/health-panel";
+import {
   HEALTH_LABEL,
   PHASE_LABEL,
   TYPE_LABEL,
   changePhase,
+  declareHealth,
+  getHealthDetail,
   getProject,
   getProjectActivity,
-  updateProject,
   type ActivityItem,
+  type HealthDetail,
   type ProjectDetail,
   type ProjectHealth,
   type ProjectPhase,
@@ -125,7 +132,10 @@ export default function ProjectDetailPage() {
     return rows;
   }, [charter]);
 
-  const [healthPending, setHealthPending] = useState<ProjectHealth | null>(null);
+  // US-181: salud única — detalle por dimensiones + modal de declaración.
+  const [healthPending, setHealthPending] = useState(false);
+  const [healthModal, setHealthModal] = useState(false);
+  const [healthDetail, setHealthDetail] = useState<HealthDetail | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -133,6 +143,23 @@ export default function ProjectDetailPage() {
     try {
       const p = await getProject(id);
       setProject(p);
+      // El health-detail refresca el semáforo auto server-side; se pide en
+      // paralelo y actualiza el proyecto si el color cambió.
+      void getHealthDetail(id)
+        .then((d) => {
+          setHealthDetail(d);
+          setProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  health_status: d.health_status,
+                  health_source: d.health_source,
+                  health_reason: d.health_reason,
+                }
+              : prev,
+          );
+        })
+        .catch(() => setHealthDetail(null));
       if (p.organization_id) {
         try {
           setOrg(await getOrganization(p.organization_id));
@@ -185,16 +212,22 @@ export default function ProjectDetailPage() {
     }
   }
 
-  async function setHealth(h: ProjectHealth) {
+  async function declareHealthStatus(status: ProjectHealth | null, reason?: string) {
     if (!project) return;
-    setHealthPending(h);
+    setHealthPending(true);
     try {
-      await updateProject(project.id, { health_status: h });
+      await declareHealth(project.id, { status, reason: reason ?? null });
+      setHealthModal(false);
+      setNotice(
+        status === null
+          ? "Salud regresada a cálculo automático"
+          : `Salud declarada: ${HEALTH_LABEL[status]}`,
+      );
       await reload();
     } catch (err) {
       setNotice(err instanceof ApiError ? err.message : "No se pudo actualizar la salud");
     } finally {
-      setHealthPending(null);
+      setHealthPending(false);
     }
   }
 
@@ -325,10 +358,12 @@ export default function ProjectDetailPage() {
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <AvanceCard progress={project.progress} kpis={project.task_kpis} />
-        <HealthCard
+        <HealthStatusCard
           value={project.health_status}
-          pending={healthPending}
-          onChange={setHealth}
+          source={project.health_source}
+          reason={project.health_reason}
+          detail={healthDetail}
+          onDeclare={() => setHealthModal(true)}
         />
         <MetricCard label="Fase" value={PHASE_LABEL[project.phase]} />
         <MetricCard
@@ -336,6 +371,22 @@ export default function ProjectDetailPage() {
           value={formatMxn(remainingBudget(project.budget, project.actual_budget))}
         />
       </section>
+
+      {/* US-181: drill-down "por qué" + foco PM. */}
+      {healthDetail ? <HealthWhyPanel detail={healthDetail} /> : null}
+
+      {healthModal && project ? (
+        <HealthDeclareModal
+          open={healthModal}
+          current={project.health_status}
+          source={project.health_source}
+          reason={project.health_reason}
+          pending={healthPending}
+          onClose={() => setHealthModal(false)}
+          onDeclare={(status, reason) => void declareHealthStatus(status, reason)}
+          onBackToAuto={() => void declareHealthStatus(null)}
+        />
+      ) : null}
 
       {/* ENH-130: tarjetas RAID (con link a detalle) + mini-Gantt nivel 1. */}
       <section aria-label="RAID y cronograma" className="grid gap-3 lg:grid-cols-[300px_1fr]">
@@ -468,6 +519,8 @@ const ACTION_LABEL: Record<string, string> = {
   "project.update": "Proyecto actualizado",
   "project.phase_change": "Cambio de fase",
   "project.status_rag.set": "RAG declarado actualizado",
+  // US-181: salud única híbrida.
+  "project.health.declared": "Salud declarada",
   "project.member.add": "Miembro agregado",
   "project.member.remove": "Miembro removido",
   "project.delete": "Proyecto eliminado",
@@ -677,54 +730,6 @@ function AvanceCard({
             </div>
           ))}
         </dl>
-      </div>
-    </article>
-  );
-}
-
-function HealthCard({
-  value,
-  pending,
-  onChange,
-}: {
-  value: ProjectHealth;
-  pending: ProjectHealth | null;
-  onChange: (h: ProjectHealth) => void;
-}) {
-  const HEALTHS: ProjectHealth[] = ["green", "yellow", "red"];
-  return (
-    <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
-        Salud
-      </p>
-      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-1">
-        {HEALTHS.map((h) => {
-          const active = value === h;
-          const tone =
-            h === "green"
-              ? "bg-[var(--color-success-fg)]"
-              : h === "yellow"
-                ? "bg-[var(--color-warning-fg)]"
-                : "bg-[var(--color-danger-fg)]";
-          return (
-            <button
-              key={h}
-              type="button"
-              onClick={() => onChange(h)}
-              aria-label={HEALTH_LABEL[h]}
-              disabled={pending !== null}
-              className={cn(
-                "inline-flex h-7 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium transition-colors",
-                active
-                  ? "bg-[var(--color-surface)] text-[var(--text-primary)] shadow-[var(--shadow-optical-sm)]"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-              )}
-            >
-              <span className={cn("h-2 w-2 rounded-full", tone)} />
-              {HEALTH_LABEL[h]}
-            </button>
-          );
-        })}
       </div>
     </article>
   );

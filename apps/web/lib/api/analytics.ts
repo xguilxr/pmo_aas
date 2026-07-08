@@ -55,6 +55,20 @@ export type TreemapProgram = { id: string; name: string; children: TreemapProjec
 export type TreemapOrg = { id: string; name: string; children: TreemapProgram[] };
 export type TreemapResponse = { tree: TreemapOrg[] };
 
+// US-181: matriz Proyecto × Dimensión de salud (salud única híbrida).
+export type HealthMatrixRow = {
+  project_id: string;
+  folio: string;
+  name: string;
+  organization_id: string;
+  organization_name: string | null;
+  health_status: "green" | "yellow" | "red";
+  health_source: "auto" | "manual";
+  priority: number | null;
+  dims: Record<string, "green" | "yellow" | "red" | null>;
+};
+export type HealthMatrixResponse = { rows: HealthMatrixRow[] };
+
 function qs(params: Record<string, unknown>): string {
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -77,6 +91,10 @@ export function getRiskMatrix(params: ScopeParams = {}): Promise<RiskMatrixRespo
 
 export function getHeatmap(): Promise<HeatmapResponse> {
   return apiFetch<HeatmapResponse>(`/api/v1/dashboard/heatmap`);
+}
+
+export function getHealthMatrix(): Promise<HealthMatrixResponse> {
+  return apiFetch<HealthMatrixResponse>(`/api/v1/dashboard/health-matrix`);
 }
 
 export function getTreemap(params: ScopeParams = {}): Promise<TreemapResponse> {

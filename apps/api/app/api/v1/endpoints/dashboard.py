@@ -582,6 +582,70 @@ async def heatmap(
     return {"rows": list(by_org.values())}
 
 
+@router.get("/health-matrix")
+async def health_matrix(
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-181 — matriz Proyecto × Dimensión de salud (heatmap ejecutivo).
+
+    Refresca el color auto (US-180) de los proyectos visibles antes de
+    responder. Solo proyectos activos (fase != closed). No-admin: solo
+    proyectos que el usuario ve.
+    """
+    from app.models.tenant import Tenant
+    from app.services.project_health import refresh_health_bulk
+
+    tenant_id = _tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+
+    conds = [
+        Project.tenant_id == str(tenant_id),
+        Project.deleted_at.is_(None),
+        Project.phase != "closed",
+    ]
+    if role_ids is not None:
+        conds.append(Project.id.in_(role_ids or ["__none__"]))
+    projects = (
+        await db.execute(select(Project).where(*conds).order_by(Project.name))
+    ).scalars().all()
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    health_map = await refresh_health_bulk(db, tenant, list(projects))
+    await db.commit()
+
+    org_names = {
+        str(oid): name
+        for oid, name in (
+            await db.execute(
+                select(Organization.id, Organization.name).where(
+                    Organization.tenant_id == str(tenant_id)
+                )
+            )
+        ).all()
+    }
+
+    rows = []
+    for p in projects:
+        entry = health_map.get(str(p.id), {})
+        rows.append(
+            {
+                "project_id": str(p.id),
+                "folio": p.folio,
+                "name": p.name,
+                "organization_id": str(p.organization_id),
+                "organization_name": org_names.get(str(p.organization_id)),
+                "health_status": p.health_status,
+                "health_source": p.health_source,
+                "priority": p.priority,
+                "dims": entry.get("dims", {}),
+            }
+        )
+    return {"rows": rows}
+
+
 @router.get("/treemap")
 async def treemap(
     scope: str = Query(default="tenant"),

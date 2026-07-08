@@ -12,14 +12,12 @@ import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { listOrganizations, listPrograms, type Organization, type Program } from "@/lib/api/organizations";
 import {
-  HEALTH_LABEL,
   PHASE_LABEL,
   TYPE_LABEL,
   createProject,
   updateProject,
   type Project,
   type ProjectCreateBody,
-  type ProjectHealth,
   type ProjectPhase,
   type ProjectType,
 } from "@/lib/api/projects";
@@ -47,7 +45,6 @@ export function ProjectForm({ mode, initial }: Props) {
   const [endDate, setEndDate] = useState(initial?.end_date ?? "");
   const [budget, setBudget] = useState(initial?.budget ?? "");
   // ENH-132: salud y presupuesto real editables (solo modo edición).
-  const [health, setHealth] = useState<ProjectHealth>(initial?.health_status ?? "green");
   const [actualBudget, setActualBudget] = useState(initial?.actual_budget ?? "");
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -115,7 +112,8 @@ export function ProjectForm({ mode, initial }: Props) {
           end_date: endDate || null,
           budget: budget ? Number(budget) : null,
           actual_budget: actualBudget ? Number(actualBudget) : null,
-          health_status: health,
+          // US-181: la salud ya no se edita desde el form — se declara en
+          // la tarjeta de Salud del detalle (razón obligatoria en 🟡/🔴).
         });
         setNotice({ kind: "success", message: "Proyecto actualizado" });
         router.refresh();
@@ -248,18 +246,6 @@ export function ProjectForm({ mode, initial }: Props) {
                 value={actualBudget}
                 onChange={(e) => setActualBudget(e.target.value)}
               />
-            </Field>
-            <Field label="Salud">
-              <Select
-                value={health}
-                onChange={(e) => setHealth(e.target.value as ProjectHealth)}
-              >
-                {(Object.keys(HEALTH_LABEL) as ProjectHealth[]).map((k) => (
-                  <option key={k} value={k}>
-                    {HEALTH_LABEL[k]}
-                  </option>
-                ))}
-              </Select>
             </Field>
           </>
         ) : null}
