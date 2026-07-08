@@ -177,9 +177,10 @@ automáticamente en cualquier subruta de `/pmo/projects/[id]/*`:
 `Resumen · Plan · RAID · Áreas · Documentos · Lecciones · Minutas · Reportes · Cambios`
 
 > **Nota:** las páginas `/tasks`, `/gantt`, `/ai-minutes/new`,
-> `/reports/builder`, `/reports/tweak`, `/charter` y `/edit` no tienen
-> tab dedicado: se alcanzan desde botones in-page o desde otras tabs
-> (ej. `Plan → Tasks → Gantt`, `Reportes → Builder → Tweak`).
+> `/reports/builder`, `/reports/tweak`, `/charter`, `/edit` y
+> `/ai-context` no tienen tab dedicado: se alcanzan desde botones
+> in-page o desde otras tabs (ej. `Plan → Tasks → Gantt`,
+> `Reportes → Builder → Tweak`, hub → link "Memoria IA").
 
 ### 2.3 Landing del admin (`/admin`)
 
@@ -194,7 +195,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **74 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08). Antes del cleanup eran 78; se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
+Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08). Antes del cleanup eran 78; se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
 
 ### 3.1 Rutas públicas (5)
 
@@ -243,6 +244,7 @@ Total: **74 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 
 | URL `/pmo/projects/[id]/...` | Propósito | Acceso |
 |---|---|---|
+| `/ai-context` | US-185: Memoria IA — contexto persistente (`context_md`, `instructions_md`, `auto_summary_md`) inyectado en toda generación IA (minutas/reportes) del proyecto. | Link "Memoria IA" en hub, junto a las tarjetas RAID |
 | `/charter` | Project charter editable + descarga. | Hub, documents, post-creación |
 | `/edit` | Edita metadata del proyecto. | Botón "Editar" en hub |
 | `/plan` | Plan de alto nivel. | Tab "Plan" |

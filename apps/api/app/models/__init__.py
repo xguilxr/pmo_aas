@@ -34,6 +34,7 @@ from app.models.organization_user_exclusion import (  # noqa: F401
 from app.models.permission_request import PermissionChangeRequest  # noqa: F401
 from app.models.platform_settings import PlatformAISettings  # noqa: F401
 from app.models.project import Project  # noqa: F401
+from app.models.project_ai_context import ProjectAIContext  # noqa: F401
 from app.models.project_artifact import ProjectArtifact  # noqa: F401
 from app.models.project_charter import ProjectCharter  # noqa: F401
 from app.models.project_member import ProjectMember  # noqa: F401

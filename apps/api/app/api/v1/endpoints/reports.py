@@ -1081,10 +1081,18 @@ async def ai_generate_report(
         )
     filters_summary_text = "\n".join(filter_lines) if filter_lines else "(sin filtros adicionales)"
 
+    # US-185: memoria del proyecto (contexto curado + instrucciones
+    # permanentes + resumen acumulado). Incluye también la descripción del
+    # proyecto, que antes no llegaba al LLM.
+    from app.services.ai.project_context import load_context_block
+
+    context_block = await load_context_block(db, str(tenant_id), str(project.id))
+
     user_prompt = (
         f"Proyecto: {project.name} ({project.folio}).\n"
         f"Período hasta {cut_off.isoformat()}.\n"
-        "\n<DATOS_DEL_PROYECTO>\n"
+        + (f"\n{context_block}\n" if context_block else "")
+        + "\n<DATOS_DEL_PROYECTO>\n"
         f"{json.dumps(filtered, ensure_ascii=False, default=str)[:6000]}\n"
         "</DATOS_DEL_PROYECTO>\n"
         "\n<FILTROS_APLICADOS>\n"

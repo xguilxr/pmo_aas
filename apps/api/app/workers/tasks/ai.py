@@ -339,6 +339,12 @@ async def _run_minute(
         async with db_session() as db:
             tenant_cfg = await load_tenant_ai(db, tenant_id)
             platform_groq = await resolve_groq_config(db)
+            # US-185: memoria de proyecto — bloque <CONTEXTO_DEL_PROYECTO>
+            # (contexto curado + instrucciones + resumen acumulado) que se
+            # antepone a cada chunk del transcript.
+            from app.services.ai.project_context import load_context_block
+
+            context_block = await load_context_block(db, tenant_id, project_id)
 
         if tenant_cfg.mode == "disabled":
             raise RuntimeError("ai_disabled_for_tenant")
@@ -363,9 +369,12 @@ async def _run_minute(
         }
         parse_failed_chunks = 0
         for ch in chunks:
+            # US-185: el contexto del proyecto acompaña a cada chunk (los
+            # chunks se procesan de forma independiente).
+            prompt_input = f"{context_block}\n\n{ch}" if context_block else ch
             # ENH-147 — json_mode fuerza salida estructurada por proveedor.
             res = await _call_ai_for_tenant(
-                ch,
+                prompt_input,
                 system=prompt_system,
                 tenant_cfg=tenant_cfg,
                 platform_groq_config=platform_groq,
@@ -382,7 +391,7 @@ async def _run_minute(
                 # de degradar a minuta vacía (antes se perdía todo el RAID
                 # silenciosamente en cada fallo de parseo).
                 repair = await _call_ai_for_tenant(
-                    ch + "\n\nTu respuesta anterior no fue JSON válido. "
+                    prompt_input + "\n\nTu respuesta anterior no fue JSON válido. "
                     "Devuelve EXCLUSIVAMENTE el objeto JSON pedido, sin texto "
                     "ni fences ni comentarios.",
                     system=prompt_system,
@@ -501,6 +510,14 @@ async def _run_minute(
             job.tokens_out = total_out
             job.duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
             job.completed_at = datetime.now(UTC)
+
+            # US-185: la minuta nueva alimenta la memoria del proyecto
+            # (resumen acumulativo). Best-effort: nunca falla el job.
+            if minute_id:
+                try:
+                    update_project_context_task.delay(tenant_id, project_id)
+                except Exception:  # pragma: no cover
+                    pass
 
             await write_audit(
                 db, action="ai.minute.generate", module="ai",
@@ -658,3 +675,96 @@ def draft_report_task(
 ) -> str:
     run_async(_run_report(job_id, tenant_id, project_id, recipients, requested_by))
     return job_id
+
+
+async def _run_context_summary(tenant_id: str, project_id: str) -> None:
+    """US-185 — actualiza el resumen acumulativo de la memoria del proyecto
+    con las minutas más recientes. Se dispara al guardar una minuta (IA o
+    manual). Si la IA del tenant está deshabilitada, no hace nada."""
+    from app.models.project_ai_context import ProjectAIContext
+    from app.services.ai.prompts import PROJECT_MEMORY_SYSTEM
+
+    async with db_session() as db:
+        tenant_cfg = await load_tenant_ai(db, tenant_id)
+        platform_groq = await resolve_groq_config(db)
+        if tenant_cfg.mode == "disabled":
+            return
+
+        minutes = (
+            await db.execute(
+                select(MeetingMinute)
+                .where(
+                    MeetingMinute.tenant_id == tenant_id,
+                    MeetingMinute.project_id == project_id,
+                    MeetingMinute.deleted_at.is_(None),
+                )
+                .order_by(desc(MeetingMinute.meeting_date))
+                .limit(5)
+            )
+        ).scalars().all()
+        if not minutes:
+            return
+        ctx = (
+            await db.execute(
+                select(ProjectAIContext).where(
+                    ProjectAIContext.tenant_id == tenant_id,
+                    ProjectAIContext.project_id == project_id,
+                )
+            )
+        ).scalar_one_or_none()
+        payload = {
+            "resumen_actual": (ctx.auto_summary_md if ctx else None) or "(vacío)",
+            "minutas_recientes": [
+                {
+                    "titulo": m.title,
+                    "fecha": m.meeting_date.date().isoformat() if m.meeting_date else None,
+                    "resumen": (m.description or "")[:1500],
+                    "temas": m.topics[:15] if isinstance(m.topics, list) else [],
+                    "acuerdos": m.agreements[:15] if isinstance(m.agreements, list) else [],
+                }
+                for m in minutes
+            ],
+        }
+
+    try:
+        res = await _call_ai_for_tenant(
+            json.dumps(payload, ensure_ascii=False),
+            system=PROJECT_MEMORY_SYSTEM,
+            tenant_cfg=tenant_cfg,
+            platform_groq_config=platform_groq,
+            tenant_id=tenant_id,
+            job_id=f"ctx-summary:{project_id}",
+            json_mode=False,
+        )
+    except Exception:
+        logger.exception("context summary failed project=%s", project_id)
+        return
+    summary_md = (res.text or "").strip()
+    if not summary_md:
+        return
+
+    async with db_session() as db:
+        ctx = (
+            await db.execute(
+                select(ProjectAIContext).where(
+                    ProjectAIContext.tenant_id == tenant_id,
+                    ProjectAIContext.project_id == project_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if ctx is None:
+            ctx = ProjectAIContext(tenant_id=tenant_id, project_id=project_id)
+            db.add(ctx)
+        ctx.auto_summary_md = summary_md[:20000]
+        ctx.auto_summary_updated_at = datetime.now(UTC)
+        await db.commit()
+        logger.info(
+            "context summary updated project=%s chars=%s model=%s",
+            project_id, len(summary_md), res.model,
+        )
+
+
+@celery_app.task(name="ai.update_project_context", acks_late=True)
+def update_project_context_task(tenant_id: str, project_id: str) -> str:
+    run_async(_run_context_summary(tenant_id, project_id))
+    return project_id

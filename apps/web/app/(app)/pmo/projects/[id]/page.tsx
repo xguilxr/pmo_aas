@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, ArrowRightLeft, Pencil } from "lucide-react";
+import { Activity, ArrowRightLeft, Brain, Pencil } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Gauge } from "@/components/dashboard-charts";
@@ -415,6 +415,14 @@ export default function ProjectDetailPage() {
             href={`/pmo/projects/${project.id}/raid?tab=decisions`}
             tone="success"
           />
+          {/* US-185: memoria de contexto persistente para IA (minutas/reportes). */}
+          <Link
+            href={`/pmo/projects/${project.id}/ai-context`}
+            className="group flex items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-4 py-3 text-[13px] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
+          >
+            <Brain className="h-4 w-4" aria-hidden />
+            Memoria IA
+          </Link>
         </div>
         <MiniGantt tasks={tasks} />
       </section>

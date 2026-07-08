@@ -273,3 +273,34 @@ export const MEMBER_ROLE_LABEL: Record<ProjectMemberRole, string> = {
   viewer: "Observador",
   stakeholder: "Stakeholder",
 };
+
+// US-185: memoria de proyecto para IA (contexto persistente inyectado en
+// toda generación de minutas/reportes del proyecto).
+export type ProjectAIContext = {
+  project_id: string;
+  context_md: string | null;
+  instructions_md: string | null;
+  auto_summary_md: string | null;
+  auto_summary_updated_at: string | null;
+  updated_at: string | null;
+};
+
+export type ProjectAIContextUpdateBody = Partial<{
+  context_md: string | null;
+  instructions_md: string | null;
+  auto_summary_md: string | null;
+}>;
+
+export function getProjectAIContext(id: string): Promise<ProjectAIContext> {
+  return apiFetch<ProjectAIContext>(`/api/v1/projects/${id}/ai-context`);
+}
+
+export function updateProjectAIContext(
+  id: string,
+  body: ProjectAIContextUpdateBody,
+): Promise<ProjectAIContext> {
+  return apiFetch<ProjectAIContext>(`/api/v1/projects/${id}/ai-context`, {
+    method: "PUT",
+    body,
+  });
+}

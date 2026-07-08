@@ -551,3 +551,18 @@ Umbrales por tenant: `settings.capacity_thresholds` (yellow_over=0,
 red_over=10 puntos). Endpoints: `/capacity/summary`, `/capacity/conflicts`,
 `/projects/{id}/resource-load`. Activa la dimensión "recursos" del
 semáforo (US-180).
+
+---
+
+## US-185 — Memoria de proyecto para IA (EP008, 2026-07-08)
+
+### Migración **0094** — tabla `project_ai_contexts`
+
+Tabla nueva 1:1 con `projects` (unique en project_id): `context_md`
+(contexto/glosario/reglas curado por el PM), `instructions_md`
+(instrucciones permanentes de generación), `auto_summary_md` (resumen
+acumulativo mantenido por IA al guardar minutas) +
+`auto_summary_updated_at`, `updated_by`, timestamps. FKs CASCADE a
+tenants/projects. Se inyecta como bloque `<CONTEXTO_DEL_PROYECTO>` en
+minutas (worker `_run_minute`) y reportes (`/reports/ai-generate`); el
+resumen lo actualiza la task Celery `ai.update_project_context`.
