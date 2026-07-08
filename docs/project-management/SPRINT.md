@@ -36,13 +36,13 @@ RAID (se quedan a nivel proyecto, export propio); Plan sin sort, solo
 chips de color de status.
 
 **Bloque Salud (primero):**
-- [ ] **US-180** — Salud única híbrida BE: servicio `project_health` (dimensiones
-  cronograma/presupuesto/riesgos/decisiones/recursos-N/A), migración 0091
-  (absorbe `status_rag` → override con razón), `GET health-detail` +
-  `PATCH health`, dims a `metric_snapshots.extras`.
-- [ ] **US-181** — Salud UI: HealthCard única (override + razón obligatoria en
-  amarillo/rojo + volver-a-auto), drill-down "por qué" + tarjeta foco PM,
-  heatmap proyectos×dimensiones en dashboard N1.
+- [x] **US-180** — Salud única híbrida BE: servicio `project_health`, migración
+  0091 (unifica status_rag → override con razón), `GET health-detail` +
+  `PATCH health`, dims a snapshots. `status:fix-committed` (`0f96dec`)
+- [x] **US-181** — Salud UI: HealthStatusCard + declarar con razón +
+  drill-down "¿por qué?" + foco PM + heatmap por dimensiones en N1
+  (`GET /dashboard/health-matrix`); form ya no edita salud.
+  `status:fix-committed` (`0c0ad7d`)
 **Bloque Tablas:**
 - [ ] **ENH-186** — Cambios (proyecto) hereda estructura RAID: sort, filtros,
   chips estado, edición inline, toggle finalizados, export propio.
