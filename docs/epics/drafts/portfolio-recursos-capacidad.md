@@ -406,7 +406,23 @@ que la API ya soporta (`priority_min/max`, `program_id`, `no_program`).
 
 ---
 
-## 9. Preguntas abiertas para el owner
+## 9. Preguntas abiertas para el owner — ✅ RESUELTAS (owner 2026-07-08)
+
+> 1. Solo `resource_type` (sin `resource_origin`). 2. Subárea = `teams`
+> existentes (no `parent_area_id`). 3. `functional_area_id` basta (sin
+> workstream). 4. Gobernanza de asignaciones diferida. 5. Salud primero;
+> los cambios posteriores que impacten salud deben considerarla. 6. Memoria
+> IA = extensión de EP008 + robustecer capacidades IA (menos prompts
+> hardcodeados). 7. Sí: persistir desglose de dimensiones en snapshots.
+> 8. Justificación al declarar SÍ, pero **UN solo semáforo** (unificar
+> `health_status`+`status_rag`; estilo avance derivado ENH-155). 9. Plan
+> sin sort, solo chips de color de status; Cambios y Lecciones heredan la
+> estructura RAID (nivel proyecto, export propio).
+>
+> Rename "Organizaciones"→"Portafolios": pendiente decisión owner
+> (recomendación: solo label de UI, no schema).
+
+### Preguntas originales (referencia)
 
 1. **¿`resource_type` + `resource_origin` como 2 campos o 1 enum?**
    Recomendación: solo `resource_type` (5 valores); origin derivable.
