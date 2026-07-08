@@ -351,6 +351,8 @@ export type ChangeRequestUpdateBody = {
   title?: string;
   description?: string | null;
   impact?: string | null;
+  // ENH-186: edición inline de tipo (mismo patrón US-178 de RAID).
+  type?: ChangeType;
 };
 
 export function updateChange(id: string, body: ChangeRequestUpdateBody): Promise<ChangeRequest> {
@@ -402,6 +404,20 @@ export const CHANGE_STATUS_LABEL: Record<ChangeStatus, string> = {
   implemented: "Implementado",
   cancelled: "Cancelado",
 };
+
+// ENH-186: chips de color por estado, mismo patrón que RAID_STATUS_BADGE.
+export const CHANGE_STATUS_BADGE: Record<ChangeStatus, string> = {
+  in_review: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+  approved: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+  rejected: "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]",
+  implemented: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+  cancelled: "bg-[var(--color-subtle)] text-[var(--color-tertiary)]",
+};
+
+// ENH-186: estados terminales — ocultos por default en la lista (toggle
+// "Mostrar finalizados" los revela). `implemented` queda visible por
+// default: sigue siendo relevante de seguimiento post-aprobación.
+export const CHANGE_FINAL_STATUSES: ChangeStatus[] = ["approved", "rejected", "cancelled"];
 
 /* ========== DOCUMENTS ========== */
 export type DocumentCategory =
