@@ -10,6 +10,7 @@ serie histórica midan lo mismo.
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 from uuid import UUID
 
@@ -328,6 +329,18 @@ async def snapshot_tenant(
     health_map = await refresh_health_bulk(
         db, tenant, list(tenant_projects), today=snapshot_date
     )
+
+    # US-184: sweep semanal de alertas de capacidad (dedupe 7 días). Nunca
+    # debe tumbar el snapshot.
+    if tenant is not None:
+        try:
+            from app.services.capacity_alerts import sweep_capacity_alerts
+
+            await sweep_capacity_alerts(db, tenant, today=snapshot_date)
+        except Exception:  # pragma: no cover
+            logging.getLogger("pmoaas.analytics").exception(
+                "capacity alerts sweep failed tenant=%s", tenant_id
+            )
 
     async def _do(scope_type: str, scope_id: str) -> None:
         nonlocal written

@@ -263,6 +263,21 @@ async def create_participation(
         await _ensure_unique_primary(
             db, str(project_id), str(body.actor_id), keep_id=part.id
         )
+    # US-184: fast-path — si con esta asignación el actor quedó
+    # sobreasignado, alerta a los PMs afectados. Nunca bloquea el write.
+    if body.allocation_pct is not None:
+        try:
+            from app.models.tenant import Tenant
+            from app.services.capacity_alerts import alert_actor_if_overloaded
+
+            tenant = (
+                await db.execute(
+                    select(Tenant).where(Tenant.id == str(_tenant(cu)))
+                )
+            ).scalar_one_or_none()
+            await alert_actor_if_overloaded(db, tenant, str(body.actor_id))
+        except Exception:  # pragma: no cover
+            pass
     await db.commit()
     await db.refresh(part)
     return _hydrate(part, actor)
@@ -300,6 +315,20 @@ async def update_participation(
         await _ensure_unique_primary(
             db, str(project_id), part.actor_id, keep_id=part.id
         )
+    # US-184: fast-path de alerta si cambió FTE/estado de la asignación.
+    if "allocation_pct" in data or "status" in data:
+        try:
+            from app.models.tenant import Tenant
+            from app.services.capacity_alerts import alert_actor_if_overloaded
+
+            tenant = (
+                await db.execute(
+                    select(Tenant).where(Tenant.id == str(_tenant(cu)))
+                )
+            ).scalar_one_or_none()
+            await alert_actor_if_overloaded(db, tenant, str(part.actor_id))
+        except Exception:  # pragma: no cover
+            pass
     await db.commit()
     await db.refresh(part)
     return _hydrate(part, None)
