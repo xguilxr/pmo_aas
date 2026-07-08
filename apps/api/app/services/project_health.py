@@ -286,11 +286,15 @@ async def _decisions_dimension(
             "causes": causes, "metrics": {"open": open_count, "stale": stale}}
 
 
-def _resources_dimension() -> dict[str, Any]:
-    # Hook US-183: se activa cuando exista allocation_pct en participations.
-    return {"key": "resources", "color": None,
-            "summary": "Sin datos de capacidad (se activa con FTE% en asignaciones)",
-            "causes": [], "metrics": {}}
+async def _resources_dimension(
+    db: AsyncSession, tenant: Tenant | None, project_id: str, today: date
+) -> dict[str, Any]:
+    # US-183: la dimensión vive en services/capacity.py (demanda total del
+    # recurso en TODOS sus proyectos vs project_capacity_pct). N/A si el
+    # proyecto no tiene asignaciones cuantificadas.
+    from app.services.capacity import project_resources_dimension
+
+    return await project_resources_dimension(db, tenant, project_id, today=today)
 
 
 _SUGGESTED_ACTIONS = {
@@ -299,6 +303,7 @@ _SUGGESTED_ACTIONS = {
     "pending_decision": "Escalar la decisión al sponsor/comité",
     "severe_risk": "Revisar/activar el plan de mitigación",
     "budget_burn": "Revisar forecast y solicitar control de cambio",
+    "resource_overloaded": "Revisar conflicto de capacidad (vista Recursos)",
 }
 
 
@@ -339,7 +344,7 @@ async def compute_project_health_detail(
         _budget_dimension(project, t["budget"]),
         await _risks_dimension(db, pid, t["risks"]),
         await _decisions_dimension(db, pid, t["decisions"], now),
-        _resources_dimension(),
+        await _resources_dimension(db, tenant, pid, today),
     ]
     for d in dimensions:
         d["label"] = DIMENSION_LABELS[d["key"]]

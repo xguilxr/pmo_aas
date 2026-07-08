@@ -18,6 +18,30 @@ export type ActorMini = {
   job_title: string | null;
 };
 
+// US-183: FTE% asignado + ciclo de vida de capacidad.
+export type AssignmentType =
+  | "directa"
+  | "advisory"
+  | "backup"
+  | "shared_service"
+  | "steerco_only";
+export type AssignmentStatus = "tentativa" | "activa" | "cerrada" | "cancelada";
+
+export const ASSIGNMENT_TYPE_LABEL: Record<AssignmentType, string> = {
+  directa: "Directa",
+  advisory: "Advisory",
+  backup: "Backup",
+  shared_service: "Servicio compartido",
+  steerco_only: "Solo SteerCo",
+};
+
+export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
+  tentativa: "Tentativa",
+  activa: "Activa",
+  cerrada: "Cerrada",
+  cancelada: "Cancelada",
+};
+
 export type Participation = {
   id: string;
   tenant_id: string;
@@ -31,6 +55,12 @@ export type Participation = {
   start_date: string | null;
   end_date: string | null;
   is_active: boolean;
+  // US-183.
+  allocation_pct: number | null;
+  assignment_type: AssignmentType;
+  status: AssignmentStatus;
+  is_critical: boolean;
+  phase: string | null;
   created_at: string;
   actor?: ActorMini | null;
 };
@@ -45,6 +75,12 @@ export type ParticipationCreate = {
   start_date?: string | null;
   end_date?: string | null;
   is_active?: boolean;
+  // US-183.
+  allocation_pct?: number | null;
+  assignment_type?: AssignmentType;
+  status?: AssignmentStatus;
+  is_critical?: boolean;
+  phase?: string | null;
 };
 
 export type ParticipationUpdate = Partial<ParticipationCreate>;

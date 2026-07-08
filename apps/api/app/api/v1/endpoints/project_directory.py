@@ -249,6 +249,12 @@ async def create_participation(
         start_date=body.start_date,
         end_date=body.end_date,
         is_active=body.is_active,
+        # US-183: FTE% + ciclo de vida de capacidad.
+        allocation_pct=body.allocation_pct,
+        assignment_type=body.assignment_type,
+        status=body.status,
+        is_critical=body.is_critical,
+        phase=body.phase,
         created_by=str(cu.user.id),
     )
     db.add(part)

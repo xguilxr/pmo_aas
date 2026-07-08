@@ -529,3 +529,25 @@ proyectos — base de la saturación), `is_key_resource BOOL DEFAULT false`,
 Índices: `(tenant_id, resource_type)` y `(tenant_id, organization_id)`.
 Sin backfill: actores existentes quedan "sin clasificar" (NULL) con
 capacidad 100/100.
+
+---
+
+## US-183 — Asignaciones con FTE% + motor de saturación (EP017, 2026-07-08)
+
+### Migración **0093** — `project_participations` allocation
+
+**Columnas nuevas en `project_participations`:** `allocation_pct
+NUMERIC(5,2) NULL` (FTE% asignado; NULL = sin cuantificar, no suma
+saturación), `assignment_type` (check: directa|advisory|backup|
+shared_service|steerco_only, default directa), `status` (check:
+tentativa|activa|cerrada|cancelada, default activa — solo 'activa' suma
+demanda), `is_critical BOOL DEFAULT false`, `phase VARCHAR(32) NULL`.
+**Backfill:** `status='cerrada'` donde `is_active=false`.
+
+La saturación se calcula en `services/capacity.py`: demanda = suma de
+allocation_pct de participations activas que intersectan la ventana
+(today/week/3weeks/month) vs `actors.project_capacity_pct` (US-182).
+Umbrales por tenant: `settings.capacity_thresholds` (yellow_over=0,
+red_over=10 puntos). Endpoints: `/capacity/summary`, `/capacity/conflicts`,
+`/projects/{id}/resource-load`. Activa la dimensión "recursos" del
+semáforo (US-180).

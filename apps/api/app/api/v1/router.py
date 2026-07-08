@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     assistant,
     auth,
     branding,
+    capacity,
     change_approvals,
     dashboard,
     entity_history,
@@ -62,6 +63,9 @@ api_router.include_router(areas.assignments_router)
 api_router.include_router(project_directory.roles_router)
 api_router.include_router(project_directory.participations_router)
 api_router.include_router(project_directory.eligible_router)
+# US-183: capacidad/saturación de recursos.
+api_router.include_router(capacity.router)
+api_router.include_router(capacity.project_load_router)
 api_router.include_router(reports.router)
 api_router.include_router(report_templates.router)
 api_router.include_router(report_sections.router)
