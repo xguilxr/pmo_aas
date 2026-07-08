@@ -49,10 +49,16 @@ class Project(Base, TimestampMixin):
     actual_budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     progress: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     health_status: Mapped[str] = mapped_column(String(16), nullable=False, default="green")
-    # ENH-101: RAG declarado por el PM (override manual). Si está
-    # seteado, prevalece sobre el cómputo automático para mostrar en
-    # UI. NULL = sin override.
-    status_rag: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # US-180: salud única híbrida. `health_status` es EL semáforo.
+    # `health_source`: 'auto' = lo mantiene el motor de reglas
+    # (services/project_health.py); 'manual' = declarado por el PM (con
+    # `health_reason`, obligatoria en amarillo/rojo) y el motor no lo
+    # sobreescribe hasta volver a 'auto'. Reemplaza a `status_rag`
+    # (ENH-101, absorbido en migración 0091).
+    health_source: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="auto", server_default="auto"
+    )
+    health_reason: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     request_id: Mapped[UUID | None] = mapped_column(String(36))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # US-084: dict por nombre de field con auditoría de edición manual.

@@ -486,3 +486,26 @@ El downgrade quita las columnas pero NO revierte el remap (es lossy:
 = 'Retrasadas'` (la tabla usa `code`, no `folio`). Alinea el catálogo del
 Report Builder con el renombre de terminología (Retrasada → Atrasada).
 Idempotente; downgrade revierte.
+
+---
+
+## US-180 — Salud única híbrida (EP004/EP005, 2026-07-08)
+
+### Migración **0091** — `projects` health unificado
+
+**Columnas nuevas en `projects`:**
+- `health_source VARCHAR(8) NOT NULL DEFAULT 'auto'` (check `auto|manual`) —
+  fuente del semáforo: `auto` lo mantiene el motor de reglas
+  (`services/project_health.py`); `manual` = declarado por el PM.
+- `health_reason VARCHAR(2000) NULL` — razón de la declaración manual
+  (obligatoria vía API al declarar amarillo/rojo).
+
+**Data migration:** donde `status_rag` estaba seteado (ENH-101) pasa a ser
+el semáforo efectivo: `health_status = status_rag` (con `amber`→`yellow`) y
+`health_source = 'manual'`.
+
+**Drop:** `projects.status_rag` + check `ck_projects_status_rag` (la
+dualidad semáforo manual vs RAG declarado se unifica en UN solo semáforo).
+
+El downgrade re-crea `status_rag` solo para los overrides manuales
+(`yellow`→`amber`) y dropea las columnas nuevas (lossy en la razón).

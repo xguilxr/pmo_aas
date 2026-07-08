@@ -13,9 +13,11 @@ from app.models.organization import Organization
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.project import (
     ActivityItem,
+    HealthDeclare,
     MemberCreate,
     PhaseChange,
     ProjectCreate,
@@ -28,6 +30,10 @@ from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
 from app.services.plan_metadata import round_half_up
 from app.services.progress_calculator import plan_rollup_map
+from app.services.project_health import (
+    apply_auto_health,
+    compute_project_health_detail,
+)
 from app.services.project_membership_sync import sync_member_to_participation
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -409,16 +415,10 @@ async def update_project(
     p = await _get_project(db, project_id, tenant_id)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no editable")
-    # ENH-101: status_rag necesita poder ser seteado a None (clear),
-    # por lo que usamos `exclude_unset` solo para ese campo: si el
-    # cliente lo envió (aun como null) lo incluimos.
-    fields_set = body.model_fields_set
     data = body.model_dump(exclude_none=True)
-    if "status_rag" in fields_set:
-        data["status_rag"] = body.status_rag  # puede ser None
     before = {k: getattr(p, k) for k in data}
-    status_rag_changed = (
-        "status_rag" in data and before.get("status_rag") != data["status_rag"]
+    health_changed = (
+        "health_status" in data and before.get("health_status") != data["health_status"]
     )
     for k, v in data.items():
         if k in ("program_id", "pm_id") and v is not None:
@@ -440,17 +440,96 @@ async def update_project(
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),
         details={"before": {k: str(v) for k, v in before.items()}, "after": {k: str(v) for k, v in data.items()}},
     )
-    # ENH-101: log dedicado cuando cambia el RAG declarativo, para
-    # que el Report Builder / auditoría pueda trackearlo aislado.
-    if status_rag_changed:
+    # US-180: tocar health_status por el PATCH genérico cuenta como
+    # declaración manual (sin razón). El flujo con razón vive en
+    # PATCH /projects/{id}/health.
+    if health_changed:
+        p.health_source = "manual"
         await write_audit(
-            db, action="project.status_rag.set", module="projects",
+            db, action="project.health.declared", module="projects",
             user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),
             details={
-                "before": str(before.get("status_rag")) if before.get("status_rag") is not None else None,
-                "after": data["status_rag"],
+                "before": str(before.get("health_status")),
+                "after": data["health_status"],
+                "source": "manual",
+                "reason": None,
             },
         )
+    await db.commit()
+    return ProjectRead.model_validate(p)
+
+
+@router.get("/{project_id}/health-detail")
+async def get_health_detail(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-180 — desglose de salud por dimensiones + causas + foco PM.
+
+    Si la fuente es 'auto', refresca el semáforo persistido con el color
+    calculado (mantiene honestos los agregados SQL de dashboards).
+    """
+    tenant_id = _tenant(cu)
+    p = await _get_project(db, project_id, tenant_id)
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    detail = await compute_project_health_detail(db, tenant, p)
+    if apply_auto_health(p, detail["computed"]):
+        await db.commit()
+    return {
+        "health_status": p.health_status,
+        "health_source": p.health_source,
+        "health_reason": p.health_reason,
+        "computed": detail["computed"],
+        "dimensions": detail["dimensions"],
+        "focus": detail["focus"],
+    }
+
+
+@router.patch("/{project_id}/health", response_model=ProjectRead)
+async def declare_health(
+    project_id: UUID,
+    body: HealthDeclare,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-180 — declarar el semáforo (con razón) o volver a 'auto'."""
+    tenant_id = _tenant(cu)
+    p = await _get_project(db, project_id, tenant_id)
+    if p.phase == "closed":
+        raise business_rule("Proyecto cerrado, no editable")
+
+    before = {"status": p.health_status, "source": p.health_source}
+    if body.status is None:
+        # Volver a fuente automática: recalcular de inmediato.
+        p.health_source = "auto"
+        p.health_reason = None
+        tenant = (
+            await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+        ).scalar_one_or_none()
+        detail = await compute_project_health_detail(db, tenant, p)
+        p.health_status = detail["computed"]
+    else:
+        reason = (body.reason or "").strip()
+        if body.status in ("yellow", "red") and len(reason) < 5:
+            raise validation_error(
+                "Declarar salud amarilla o roja requiere una razón (mínimo 5 caracteres)"
+            )
+        p.health_status = body.status
+        p.health_source = "manual"
+        p.health_reason = reason or None
+
+    await write_audit(
+        db, action="project.health.declared", module="projects",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),
+        details={
+            "before": f"{before['status']} ({before['source']})",
+            "after": f"{p.health_status} ({p.health_source})",
+            "reason": p.health_reason,
+        },
+    )
     await db.commit()
     return ProjectRead.model_validate(p)
 

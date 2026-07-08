@@ -309,11 +309,33 @@ async def snapshot_tenant(
     snapshot_date = snapshot_date or date.today()
     written = 0
 
+    # US-180: refrescar la salud auto de todos los proyectos del tenant
+    # antes de contar, y llevar el desglose por dimensiones al snapshot
+    # de scope proyecto (extras.health_dimensions) para tendencias.
+    from app.models.tenant import Tenant
+    from app.services.project_health import refresh_health_bulk
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    ).scalar_one_or_none()
+    tenant_projects = (
+        await db.execute(
+            select(Project).where(
+                Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+            )
+        )
+    ).scalars().all()
+    health_map = await refresh_health_bulk(
+        db, tenant, list(tenant_projects), today=snapshot_date
+    )
+
     async def _do(scope_type: str, scope_id: str) -> None:
         nonlocal written
         values = await compute_snapshot_values(
             db, tenant_id, scope_type, scope_id, ref_date=snapshot_date
         )
+        if scope_type == "project" and scope_id in health_map:
+            values.setdefault("extras", {})["health_dimensions"] = health_map[scope_id]["dims"]
         await upsert_snapshot(db, tenant_id, scope_type, scope_id, snapshot_date, values)
         written += 1
 

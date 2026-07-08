@@ -14,8 +14,8 @@
     {% else %}
       <span class="pill yellow">Ámbar</span>
     {% endif %}
-    {% if data.health_status %}
-      <span class="muted small">(salud: {{ data.health_status }})</span>
+    {% if data.health_source == 'manual' %}
+      <span class="muted small">(declarado por el PM)</span>
     {% endif %}
   </p>
   {% if data.status_comment %}
