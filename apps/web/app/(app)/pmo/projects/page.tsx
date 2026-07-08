@@ -13,7 +13,12 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
-import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import {
+  listOrganizations,
+  listPrograms,
+  type Organization,
+  type Program,
+} from "@/lib/api/organizations";
 import {
   HEALTH_LABEL,
   PHASE_LABEL,
@@ -75,6 +80,10 @@ export default function ProjectsListPage() {
   const [types, setTypes] = useState<ProjectType[]>(initialTypes);
   const [health, setHealth] = useState<ProjectHealth[]>(initialHealth);
   const [orgId, setOrgId] = useState(search.get("organization_id") ?? "");
+  // ENH-185: cascada de programa (depende de organización) + prioridad mínima.
+  const [programId, setProgramId] = useState(search.get("program_id") ?? "");
+  const [noProgram, setNoProgram] = useState(search.get("no_program") === "true");
+  const [priorityMin, setPriorityMin] = useState(search.get("priority_min") ?? "");
   const [q, setQ] = useState(search.get("q") ?? "");
   const [onlyMine, setOnlyMine] = useState(search.get("only_mine") === "true");
   const [view, setView] = useState<"list" | "board">(
@@ -84,6 +93,7 @@ export default function ProjectsListPage() {
   const debouncedQ = useDebounced(q, 300);
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [rows, setRows] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,18 +104,55 @@ export default function ProjectsListPage() {
       .catch(() => {});
   }, []);
 
+  // ENH-185: programas en cascada — dependen de la organización elegida.
+  useEffect(() => {
+    if (!orgId) {
+      setPrograms([]);
+      return;
+    }
+    let cancelled = false;
+    listPrograms({ organization_id: orgId, is_active: true })
+      .then((r) => {
+        if (!cancelled) setPrograms(r);
+      })
+      .catch(() => {
+        if (!cancelled) setPrograms([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
   const syncUrl = useCallback(() => {
     const usp = new URLSearchParams();
     for (const p of phases) usp.append("phase", p);
     for (const t of types) usp.append("type", t);
     for (const h of health) usp.append("health", h);
     if (orgId) usp.set("organization_id", orgId);
+    if (noProgram) {
+      usp.set("no_program", "true");
+    } else if (programId) {
+      usp.set("program_id", programId);
+    }
+    if (priorityMin) usp.set("priority_min", priorityMin);
     if (debouncedQ.trim()) usp.set("q", debouncedQ.trim());
     if (onlyMine) usp.set("only_mine", "true");
     if (view !== "list") usp.set("view", view);
     const s = usp.toString();
     router.replace(`/pmo/projects${s ? `?${s}` : ""}`, { scroll: false });
-  }, [phases, types, health, orgId, debouncedQ, onlyMine, view, router]);
+  }, [
+    phases,
+    types,
+    health,
+    orgId,
+    programId,
+    noProgram,
+    priorityMin,
+    debouncedQ,
+    onlyMine,
+    view,
+    router,
+  ]);
 
   useEffect(() => {
     syncUrl();
@@ -120,6 +167,9 @@ export default function ProjectsListPage() {
       type: types.length ? types : undefined,
       health: health.length ? health : undefined,
       organization_id: orgId || undefined,
+      program_id: !noProgram && programId ? programId : undefined,
+      no_program: noProgram || undefined,
+      priority_min: priorityMin ? Number(priorityMin) : undefined,
       q: debouncedQ.trim() || undefined,
       only_mine: onlyMine || undefined,
       limit: 60,
@@ -138,7 +188,7 @@ export default function ProjectsListPage() {
     return () => {
       cancelled = true;
     };
-  }, [phases, types, health, orgId, debouncedQ, onlyMine]);
+  }, [phases, types, health, orgId, programId, noProgram, priorityMin, debouncedQ, onlyMine]);
 
   function toggleIn<T extends string>(arr: T[], val: T, setter: (v: T[]) => void) {
     setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
@@ -152,7 +202,7 @@ export default function ProjectsListPage() {
             Proyectos
           </h1>
           <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-            Gestiona el portafolio: filtra por fase, organización, tipo, salud y prioridad.
+            Gestiona el portafolio: filtra por fase, organización, programa, tipo, salud y prioridad.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -195,7 +245,7 @@ export default function ProjectsListPage() {
       </header>
 
       <section className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
-        <div className="grid gap-3 border-b border-[var(--border-subtle)] p-4 sm:grid-cols-[1fr_200px_160px]">
+        <div className="grid gap-3 border-b border-[var(--border-subtle)] p-4 sm:grid-cols-[1fr_200px_200px_160px]">
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -210,13 +260,52 @@ export default function ProjectsListPage() {
               aria-label="Buscar proyectos"
             />
           </div>
-          <Select value={orgId} onChange={(e) => setOrgId(e.target.value)} aria-label="Organización">
+          <Select
+            value={orgId}
+            onChange={(e) => {
+              setOrgId(e.target.value);
+              // ENH-185: al cambiar de organización, el programa elegido
+              // (si lo había) deja de ser válido — resetea la cascada.
+              setProgramId("");
+              setNoProgram(false);
+            }}
+            aria-label="Organización"
+          >
             <option value="">Todas las organizaciones</option>
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
               </option>
             ))}
+          </Select>
+          <Select
+            value={noProgram ? "__no_program__" : programId}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "__no_program__") {
+                setNoProgram(true);
+                setProgramId("");
+              } else {
+                setNoProgram(false);
+                setProgramId(v);
+              }
+            }}
+            disabled={!orgId}
+            aria-label="Programa"
+          >
+            {orgId ? (
+              <>
+                <option value="">Todos los programas</option>
+                <option value="__no_program__">Sin programa</option>
+                {programs.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </>
+            ) : (
+              <option value="">Selecciona una organización</option>
+            )}
           </Select>
           <label className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--text-secondary)]">
             <input
@@ -259,6 +348,21 @@ export default function ProjectsListPage() {
                 {HEALTH_LABEL[h]}
               </Chip>
             ))}
+          </FilterGroup>
+          <FilterGroup label="Prioridad mínima">
+            <Select
+              value={priorityMin}
+              onChange={(e) => setPriorityMin(e.target.value)}
+              aria-label="Prioridad mínima"
+              className="h-7 w-auto rounded-full border-[var(--border-default)] bg-[var(--color-surface)] px-2.5 text-[12px] text-[var(--text-secondary)]"
+            >
+              <option value="">Cualquiera</option>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}+
+                </option>
+              ))}
+            </Select>
           </FilterGroup>
         </div>
 
