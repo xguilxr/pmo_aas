@@ -44,22 +44,22 @@ chips de color de status.
   (`GET /dashboard/health-matrix`); form ya no edita salud.
   `status:fix-committed` (`0c0ad7d`)
 **Bloque Tablas:**
-- [ ] **ENH-186** — Cambios (proyecto) hereda estructura RAID: sort, filtros,
-  chips estado, edición inline, toggle finalizados, export propio.
-- [ ] **ENH-187** — Lecciones (proyecto) hereda estructura RAID: ídem.
-- [ ] **ENH-188** — Plan: chips de color para estados (sin sort).
-- [ ] **ENH-185** — /pmo/projects expone filtros ya soportados por API
-  (priority, program_id, no_program).
+- [x] **ENH-186** — Cambios hereda RAID: sort, filtros, chips, inline
+  título/tipo, toggle finalizados, export XLSX propio. `status:fix-committed` (`acf8d46`)
+- [x] **ENH-187** — Lecciones hereda RAID: sort, filtros, chips inline,
+  responsable, export XLSX propio. `status:fix-committed` (`8114214`)
+- [x] **ENH-188** — Plan: chips de color para estados. `status:fix-committed` (`d735e76`)
+- [x] **ENH-185** — /pmo/projects: filtros programa/sin-programa/prioridad
+  mínima. `status:fix-committed` (`9bb3338`)
 **Bloque Recursos:**
-- [ ] **US-182** — Pool de recursos: migración `actors` (resource_type,
-  portfolio_function, seniority, scarcity_level, skills, capacidades
-  nominal/proyectos, flags key/shared) + API + admin UI.
-- [ ] **US-183** — Asignaciones FTE%: migración `project_participations`
-  (allocation_pct, assignment_type, status, is_critical) + servicio
-  `capacity` (saturación por ventana: hoy/semana/3sem/mes; por persona/
-  rol/área/equipo) + vistas Recursos + conflictos + activa dimensión
-  recursos del health.
-- [ ] **US-184** — Alertas de capacidad (sobre notificaciones existentes).
+- [x] **US-182** — Pool de recursos sobre `actors` (mig 0092: tipo, función,
+  seniority, escasez, skills, capacidades, flags) + API + admin UI.
+  `status:fix-committed` (`c3fdf7e`)
+- [x] **US-183** — FTE% + motor de saturación (mig 0093) + página
+  /pmo/resources + conflictos + dimensión recursos del health.
+  `status:fix-committed` (`4aec20c`)
+- [x] **US-184** — Alertas de capacidad: 3 reglas sobre EP011, sweep
+  semanal + fast-path, dedupe 7d. `status:fix-committed` (`595dc4f`)
 **Bloque IA (extensión EP008):**
 - [ ] **US-185** — Memoria de proyecto: tabla `project_ai_context` (contexto
   curado + resumen acumulativo + instrucciones permanentes), inyección en
