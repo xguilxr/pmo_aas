@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     gantt_snapshot,
     modules,
     notifications,
+    organigrama,
     organizations,
     permission_requests,
     project_artifacts,
@@ -69,6 +70,10 @@ api_router.include_router(capacity.router)
 api_router.include_router(capacity.project_load_router)
 # US-185: memoria de proyecto para IA.
 api_router.include_router(ai_context.router)
+# US-186: organigramas con utilización por scope.
+api_router.include_router(organigrama.programs_router)
+api_router.include_router(organigrama.orgs_router)
+api_router.include_router(organigrama.tenant_router)
 api_router.include_router(reports.router)
 api_router.include_router(report_templates.router)
 api_router.include_router(report_sections.router)

@@ -87,6 +87,7 @@ async def _load_assignments(
     *,
     actor_ids: list[str] | None = None,
     project_id: str | None = None,
+    project_ids: list[str] | None = None,
 ) -> list[Any]:
     """Participations activas/tentativas que intersectan la ventana, con
     actor y proyecto hidratados (filas planas)."""
@@ -117,7 +118,165 @@ async def _load_assignments(
         stmt = stmt.where(ProjectParticipation.actor_id.in_(actor_ids or ["__none__"]))
     if project_id is not None:
         stmt = stmt.where(ProjectParticipation.project_id == project_id)
+    if project_ids is not None:
+        stmt = stmt.where(
+            ProjectParticipation.project_id.in_(project_ids or ["__none__"])
+        )
     return (await db.execute(stmt)).all()
+
+
+# --- US-186: organigrama con utilización (matriz mensual) -------------------
+
+_MES = ("Ene", "Feb", "Mar", "Abr", "May", "Jun",
+        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+
+
+def _month_windows(months: int, today: date) -> list[tuple[str, date, date]]:
+    """[(label 'Jul 2026', primer día, último día)] empezando el mes actual."""
+    out = []
+    y, m = today.year, today.month
+    for _ in range(months):
+        start = date(y, m, 1)
+        ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+        end = date(ny, nm, 1) - timedelta(days=1)
+        out.append((f"{_MES[m - 1]} {y}", start, end))
+        y, m = ny, nm
+    return out
+
+
+async def scope_project_ids(
+    db: AsyncSession, tenant_id: str, scope_type: str, scope_id: str | None
+) -> list[str]:
+    """Proyectos activos (fase != closed) del scope project|program|
+    organization|tenant."""
+    conds = [
+        Project.tenant_id == tenant_id,
+        Project.deleted_at.is_(None),
+        Project.phase != "closed",
+    ]
+    if scope_type == "project":
+        conds.append(Project.id == scope_id)
+    elif scope_type == "program":
+        conds.append(Project.program_id == scope_id)
+    elif scope_type == "organization":
+        conds.append(Project.organization_id == scope_id)
+    rows = (await db.execute(select(Project.id).where(*conds))).scalars().all()
+    return [str(r) for r in rows]
+
+
+async def monthly_utilization(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    scope_type: str,
+    scope_id: str | None = None,
+    months: int = 12,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """US-186 — utilización mensual por recurso dentro de un scope.
+
+    Por cada recurso con asignaciones ACTIVAS en los proyectos del scope:
+    %FTE por mes (suma de allocation_pct de asignaciones que intersectan
+    el mes, solo proyectos del scope), %FTE total tenant del mes actual
+    (todos sus proyectos), y conteo de meses en alerta (>=80 amarillo,
+    >100 rojo según capacity_thresholds del reporte, fijos por diseño).
+    """
+    today = today or date.today()
+    tenant_id = str(tenant.id)
+    windows = _month_windows(months, today)
+    horizon_start, horizon_end = windows[0][1], windows[-1][2]
+
+    pids = await scope_project_ids(db, tenant_id, scope_type, scope_id)
+    if not pids:
+        return {"months": [w[0] for w in windows], "rows": []}
+
+    scope_rows = [
+        r
+        for r in await _load_assignments(
+            db, tenant_id, horizon_start, horizon_end, project_ids=pids
+        )
+        if r.status == "activa"
+    ]
+    actor_ids = sorted({str(r.actor_id) for r in scope_rows})
+    if not actor_ids:
+        return {"months": [w[0] for w in windows], "rows": []}
+
+    # Total tenant del mes actual (todos los proyectos del recurso).
+    cur_start, cur_end = windows[0][1], windows[0][2]
+    tenant_rows = [
+        r
+        for r in await _load_assignments(
+            db, tenant_id, cur_start, cur_end, actor_ids=actor_ids
+        )
+        if r.status == "activa"
+    ]
+
+    def _overlaps(r: Any, start: date, end: date) -> bool:
+        s_ok = r.start_date is None or r.start_date <= end
+        e_ok = r.end_date is None or r.end_date >= start
+        return s_ok and e_ok
+
+    actors = (
+        await db.execute(
+            select(Actor).where(Actor.id.in_(actor_ids)).order_by(Actor.name)
+        )
+    ).scalars().all()
+    area_names = {
+        str(i): n for i, n in (
+            await db.execute(select(Area.id, Area.name).where(Area.tenant_id == tenant_id))
+        ).all()
+    }
+    team_names = {
+        str(i): n for i, n in (
+            await db.execute(select(Team.id, Team.name).where(Team.tenant_id == tenant_id))
+        ).all()
+    }
+    actor_names = {str(a.id): a.name for a in actors}
+    by_actor_scope: dict[str, list[Any]] = {}
+    for r in scope_rows:
+        by_actor_scope.setdefault(str(r.actor_id), []).append(r)
+    total_current: dict[str, float] = {}
+    for r in tenant_rows:
+        if r.allocation_pct is not None:
+            aid = str(r.actor_id)
+            total_current[aid] = total_current.get(aid, 0.0) + float(r.allocation_pct)
+
+    rows: list[dict[str, Any]] = []
+    for a in actors:
+        aid = str(a.id)
+        mine = by_actor_scope.get(aid, [])
+        per_month: list[float] = []
+        for _, m_start, m_end in windows:
+            val = sum(
+                float(r.allocation_pct)
+                for r in mine
+                if r.allocation_pct is not None and _overlaps(r, m_start, m_end)
+            )
+            per_month.append(round(val, 1))
+        alert_months = sum(1 for v in per_month if v >= 80)
+        rows.append({
+            "actor_id": aid,
+            "name": a.name,
+            "portfolio_function": a.portfolio_function,
+            "job_title": a.job_title,
+            "resource_type": a.resource_type,
+            "area": area_names.get(str(a.area_id), "") if a.area_id else "",
+            "team": team_names.get(str(a.team_id), "") if a.team_id else "",
+            "manager": (
+                actor_names.get(str(a.manager_actor_id), "")
+                if a.manager_actor_id
+                else ""
+            ),
+            "capacity_pct": float(a.project_capacity_pct or 0),
+            "is_key_resource": bool(a.is_key_resource),
+            "scope_current_pct": per_month[0],
+            "tenant_current_pct": round(total_current.get(aid, 0.0), 1),
+            "projects_count": len({str(r.project_id) for r in mine}),
+            "per_month": per_month,
+            "alert_months": alert_months,
+        })
+    rows.sort(key=lambda r: (-r["alert_months"], -r["scope_current_pct"], r["name"]))
+    return {"months": [w[0] for w in windows], "rows": rows}
 
 
 def _summarize_actor(

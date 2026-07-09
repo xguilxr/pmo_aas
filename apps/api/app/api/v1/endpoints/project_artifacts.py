@@ -672,11 +672,25 @@ async def export_organigrama(
         for a in actors
     ]
 
+    # US-186: hojas "Recursos (FTE)" + "Uso mensual" con las participaciones
+    # activas del proyecto (alertas ≥80% amarillo / >100% rojo por mes).
+    from app.models.tenant import Tenant
+    from app.services.capacity import monthly_utilization
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    util = await monthly_utilization(
+        db, tenant, scope_type="project", scope_id=str(project_id)
+    )
+
     data = export_organigrama_xlsx(
         areas_rows=areas_rows,
         teams_rows=teams_rows,
         roles_rows=roles_rows,
         recursos_rows=recursos_rows,
+        utilization_months=util["months"],
+        utilization_rows=util["rows"],
     )
 
     filename = artifact_filename(project.name, "organigrama", "xlsx")
