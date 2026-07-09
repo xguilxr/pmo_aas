@@ -77,13 +77,14 @@ ruff limpio · tsc + next build verdes · PR #570.
 - [x] **ENH-190** — Label Organización/Portafolio configurable por tenant
   (`settings.org_label`, admin UI + branding + sweep de labels).
   `status:fix-committed` (`7eca69b`)
-- [ ] **US-186** — Organigrama con utilización: servicio multi-scope
-  (proyecto/programa/organización/tenant-global) + hoja "Uso mensual"
-  (Recurso × Mes, 12m rolling) con alertas fill 🟡 ≥80% / 🔴 >100% +
-  4 endpoints. `status:ready` (propuesta §10 del draft).
-- [ ] **US-187** — UX organigramas: botones por nivel (org/programa junto
-  al Status PDF, global en /pmo/resources), hoja FTE en el export de
-  proyecto existente. `status:ready`.
+- [x] **US-186** — Organigrama con utilización: monthly_utilization +
+  hojas Organigrama/Uso mensual con alertas 🟡 ≥80% / 🔴 >100% + 4
+  endpoints (proyecto extendido, programa, org, global).
+  `status:fix-committed` (`fa200bd`)
+- [x] **US-187** — Botones de descarga por nivel (org/programa/global en
+  /pmo/resources) + EP017. `status:fix-committed` (`42ed974`)
+
+**FASE 2 COMPLETA 3/3** (ENH-190, US-186, US-187).
 Próximo libre tras Fase 2: US-188, BUG-088, ENH-191.
 
 ### Batch WBS+RAID+Áreas 2026-06-29 (branch: claude/task-wbs-raid-updates-9nq7ns)
