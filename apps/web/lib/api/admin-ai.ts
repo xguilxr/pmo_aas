@@ -71,11 +71,16 @@ export type TenantAIProviderRead = {
   mode: TenantAIMode;
   byo: BYOConfigRead | null;
   byo_catalog: BYOProviderInfo[];
+  // ENH-189: instrucciones permanentes del tenant, se anexan a los system
+  // prompts de toda generación de IA (minutas y reportes).
+  instructions_md: string | null;
 };
 
 export type TenantAIProviderPatch = {
   mode: TenantAIMode;
   byo?: BYOConfigIn | null;
+  // ENH-189: omitir = sin cambio; "" o null = borrar. Max 2000 chars.
+  instructions_md?: string | null;
 };
 
 export function getTenantAIProvider(): Promise<TenantAIProviderRead> {

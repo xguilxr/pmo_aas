@@ -325,7 +325,7 @@ async def _run_minute(
     # US-143: source_type=`minute` usa `MINUTE_NORMALIZE_SYSTEM` que
     # preserva contenido literal en lugar de re-sintetizarlo. Default
     # `transcript` para retrocompatibilidad.
-    prompt_system = (
+    prompt_system_base = (
         MINUTE_NORMALIZE_SYSTEM if source_type == "minute" else MINUTE_SYSTEM
     )
     async with db_session() as db:
@@ -348,6 +348,13 @@ async def _run_minute(
 
         if tenant_cfg.mode == "disabled":
             raise RuntimeError("ai_disabled_for_tenant")
+
+        # ENH-189: system efectivo = base + instrucciones del tenant.
+        from app.services.ai.prompt_builder import build_system_prompt
+
+        prompt_system = build_system_prompt(
+            prompt_system_base, tenant_cfg.instructions_md
+        )
 
         logger.info(
             "minute task start job=%s tenant=%s mode=%s byo_provider=%s",

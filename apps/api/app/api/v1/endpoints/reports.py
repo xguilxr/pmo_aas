@@ -1111,9 +1111,14 @@ async def ai_generate_report(
     )
 
     try:
+        # ENH-189: system efectivo = base + instrucciones del tenant.
+        from app.services.ai.prompt_builder import build_system_prompt
+
         res = await generate_for_tenant(
             user_prompt,
-            system=_AI_REPORT_SYSTEM_PROMPT,
+            system=build_system_prompt(
+                _AI_REPORT_SYSTEM_PROMPT, tenant_cfg.instructions_md
+            ),
             tenant_ai_mode=tenant_cfg.mode,
             platform_groq_config=platform_groq,
             byo_config=tenant_cfg.byo,
