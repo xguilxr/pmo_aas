@@ -451,3 +451,46 @@ que la API ya soporta (`priority_min/max`, `program_id`, `no_program`).
 ---
 
 **Última actualización:** 2026-07-08 · Sesión branch `claude/pmo-portfolio-architecture-6hbuen`
+
+---
+
+## 10. Fase 2 — Organigramas con utilización de recursos (propuesta 2026-07-09)
+
+**Decisiones owner:** ENH-190 label Organización/Portafolio configurable
+por tenant (`settings.org_label`). Organigramas con %FTE en 3 niveles.
+
+### Diseño propuesto
+
+Un solo servicio `organigrama_export.py` parametrizado por scope
+(`project | program | organization | tenant`), reutilizando
+`capacity._load_assignments` con ventana mensual:
+
+- **Hoja 1 "Organigrama"** (todos los niveles): recursos ACTIVOS en el
+  scope — nombre, rol/función, área/equipo, manager, tipo de recurso,
+  %FTE sumado dentro del scope, %FTE total (todos sus proyectos del
+  tenant), capacidad para proyectos, flags clave/compartido.
+- **Hoja 2 "Uso mensual"** (programa, organización/portafolio y tenant;
+  opcional en proyecto): matriz Recurso × Mes (12 meses rolling) — % de
+  uso por mes = suma de allocation_pct de asignaciones activas que
+  intersectan el mes, sumado por los proyectos del scope + columna
+  "Total tenant". **Formato condicional: fill amarillo ≥80%, rojo
+  >100%** + columna "Meses en alerta".
+- **Tenants con org_label=portfolios**: los recursos son reutilizables a
+  nivel tenant → botón "Organigrama global" en /pmo/resources (scope
+  tenant) además del de cada portafolio.
+
+Endpoints: `GET /projects/{id}/organigrama/export` (extender el
+existente con FTE), `GET /programs/{id}/organigrama/export`,
+`GET /organizations/{id}/organigrama/export`, `GET /capacity/organigrama/export`
+(tenant/global).
+
+**Dónde viven (UX):** botón "Organigrama (XLSX)" junto al botón "Status
+(PDF)" existente en los headers de `/pmo/organizations/[id]` y
+`/pmo/programs/[id]`; en proyecto ya existe (gana la hoja FTE); global en
+`/pmo/resources`. Deuda propuesta: unificar en menú "Descargas ▾" por
+nivel.
+
+### IDs propuestos
+- **ENH-190** — label configurable (en ejecución).
+- **US-186** — BE: servicio organigrama multi-scope + uso mensual + alertas 80/100 + 4 endpoints.
+- **US-187** — UX: botones por nivel + organigrama global + hoja FTE en proyecto + navigation/epics.

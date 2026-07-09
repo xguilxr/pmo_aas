@@ -637,6 +637,20 @@ Agent({
 })
 ```
 
+#### Modelo de orquestación Revamp 1.0 (decisión owner 2026-07-08/09)
+
+**Fable = orquestador/adviser/summoner; modelos menores = ejecutores.**
+La sesión principal diseña la arquitectura, escribe el backend core
+(migraciones, servicios de cálculo, endpoints críticos), valida y
+**commitea** (1 ID = 1 commit, staging por paths). Los sub-agentes
+Sonnet ejecutan piezas auto-contenidas con spec precisa (páginas FE,
+revamps de tablas, forms, exploraciones, exports) y **NO commitean**:
+dejan el working tree y la sesión principal revisa/commitea. Excepción:
+la actualización de epics al cierre de bloque (§0.2) se delega con
+commit `docs(epics)` incluido. Regla anti-conflicto: nunca 2 agentes
+simultáneos sobre el mismo archivo; batches sobre archivos compartidos
+van secuenciales.
+
 #### Cuándo NO delegar
 
 - Decisiones que requieren contexto profundo de la sesión actual.

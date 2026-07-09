@@ -73,6 +73,19 @@ chips de color de status.
 **BATCH COMPLETO 11/11** · Verificación final: 728 pytest + 1 skip ·
 ruff limpio · tsc + next build verdes · PR #570.
 
+**Fase 2 (owner 2026-07-09) — mismo PR #570:**
+- [ ] **ENH-190** — Label Organización/Portafolio configurable por tenant
+  (`settings.org_label`, admin UI + branding + sweep de labels).
+  `status:in-progress` (agente ejecutando).
+- [ ] **US-186** — Organigrama con utilización: servicio multi-scope
+  (proyecto/programa/organización/tenant-global) + hoja "Uso mensual"
+  (Recurso × Mes, 12m rolling) con alertas fill 🟡 ≥80% / 🔴 >100% +
+  4 endpoints. `status:ready` (propuesta §10 del draft).
+- [ ] **US-187** — UX organigramas: botones por nivel (org/programa junto
+  al Status PDF, global en /pmo/resources), hoja FTE en el export de
+  proyecto existente. `status:ready`.
+Próximo libre tras Fase 2: US-188, BUG-088, ENH-191.
+
 ### Batch WBS+RAID+Áreas 2026-06-29 (branch: claude/task-wbs-raid-updates-9nq7ns)
 
 Ejecución directa por chat del owner. Issues no creados en GitHub (batch
