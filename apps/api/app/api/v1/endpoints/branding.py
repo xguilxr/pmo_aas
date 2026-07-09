@@ -22,6 +22,7 @@ from app.services.branding_storage import (
     find_logo_file,
     logo_to_data_url,
 )
+from app.services.tenant_settings import DEFAULT_ORG_LABEL, get_org_label
 
 router = APIRouter(tags=["branding"])
 
@@ -146,6 +147,8 @@ async def my_tenant_branding(
             "tenant_slug": None,
             "logo_url": None,
             "primary_color": None,
+            # ENH-190: default label when there is no active tenant.
+            "org_label": DEFAULT_ORG_LABEL,
         }
     t = (
         await db.execute(select(Tenant).where(Tenant.id == str(cu.effective_tenant_id)))
@@ -159,4 +162,7 @@ async def my_tenant_branding(
         "tenant_slug": t.slug,
         "logo_url": t.logo_url,
         "primary_color": primary_color,
+        # ENH-190: effective per-tenant UI label ("organizations" | "portfolios").
+        # UI-only — any user in the tenant can read it via this shared endpoint.
+        "org_label": get_org_label(t),
     }

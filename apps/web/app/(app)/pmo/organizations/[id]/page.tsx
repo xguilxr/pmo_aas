@@ -14,6 +14,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
+import { useOrgLabel } from "@/lib/org-label";
 import {
   downloadOrgStatusReport,
   getRiskMatrix,
@@ -60,6 +61,8 @@ export default function PmoOrganizationPage() {
   const [riskMatrix, setRiskMatrix] = useState<RiskMatrixResponse | null>(null);
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  // ENH-190: label configurable por tenant para "Organización(es)".
+  const orgLabel = useOrgLabel();
 
   async function handleDownloadReport() {
     setDownloadingReport(true);
@@ -110,9 +113,11 @@ export default function PmoOrganizationPage() {
           setError(
             err instanceof ApiError
               ? err.status === 404
-                ? "Esta organización no existe o no tienes permiso para verla."
+                ? orgLabel.singular === "Portafolio"
+                  ? "Este portafolio no existe o no tienes permiso para verlo."
+                  : "Esta organización no existe o no tienes permiso para verla."
                 : err.message
-              : "No se pudo cargar la organización",
+              : `No se pudo cargar ${orgLabel.singularArticled}`,
           );
         }
       })
@@ -229,7 +234,7 @@ export default function PmoOrganizationPage() {
               size="sm"
               onClick={handleDownloadReport}
               disabled={downloadingReport}
-              title="Genera el reporte de status de la organización en PDF"
+              title={`Genera el reporte de status ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"} en PDF`}
             >
               <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
               {downloadingReport ? "Generando…" : "Reporte de Status (PDF)"}
@@ -259,7 +264,10 @@ export default function PmoOrganizationPage() {
         />
       </section>
 
-      <section aria-label="Analítica de la organización" className="grid gap-4 lg:grid-cols-3">
+      <section
+        aria-label={`Analítica ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"}`}
+        className="grid gap-4 lg:grid-cols-3"
+      >
         <AnalyticsCard title="Salud de proyectos">
           <div className="flex items-center gap-4">
             <Pie data={healthData} ariaLabel="Salud de proyectos" size={140} />
@@ -270,7 +278,10 @@ export default function PmoOrganizationPage() {
         </AnalyticsCard>
         <AnalyticsCard title="Matriz de riesgos">
           {riskMatrix && riskMatrix.total > 0 ? (
-            <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos de la organización" />
+            <RiskMatrix
+              cells={riskMatrix.cells}
+              ariaLabel={`Matriz de riesgos ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"}`}
+            />
           ) : (
             <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
               Sin riesgos abiertos con probabilidad e impacto.
@@ -301,7 +312,9 @@ export default function PmoOrganizationPage() {
         </div>
         {panel.programs.length === 0 ? (
           <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
-            Esta organización no tiene programas registrados.
+            {orgLabel.singular === "Portafolio"
+              ? "Este portafolio no tiene programas registrados."
+              : "Esta organización no tiene programas registrados."}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -331,7 +344,9 @@ export default function PmoOrganizationPage() {
         </div>
         {panel.projects.length === 0 ? (
           <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
-            Sin proyectos registrados en esta organización.
+            {orgLabel.singular === "Portafolio"
+              ? "Sin proyectos registrados en este portafolio."
+              : "Sin proyectos registrados en esta organización."}
           </div>
         ) : (
           <div className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">

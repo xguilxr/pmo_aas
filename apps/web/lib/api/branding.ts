@@ -7,6 +7,9 @@ export type TenantBranding = {
   tenant_slug: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  // ENH-190: per-tenant UI label ("organizations" | "portfolios").
+  // UI-only — no schema/route/API change to the underlying entity.
+  org_label?: "organizations" | "portfolios" | null;
 };
 
 export function getMyTenantBranding(): Promise<TenantBranding> {

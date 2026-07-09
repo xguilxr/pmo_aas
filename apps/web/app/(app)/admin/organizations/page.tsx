@@ -25,6 +25,7 @@ import {
   listOrganizationPanels,
   type OrganizationPanel,
 } from "@/lib/api/organizations";
+import { useOrgLabel } from "@/lib/org-label";
 
 function useDebounced<T>(value: T, delayMs = 300): T {
   const [debounced, setDebounced] = useState(value);
@@ -175,6 +176,8 @@ export default function OrganizationsListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showProgramModal, setShowProgramModal] = useState(false);
+  // ENH-190: label configurable por tenant para "Organización(es)".
+  const orgLabel = useOrgLabel();
 
   useEffect(() => {
     let cancelled = false;
@@ -192,7 +195,9 @@ export default function OrganizationsListPage() {
           setError(
             err instanceof ApiError
               ? err.message
-              : "No se pudieron cargar las organizaciones",
+              : orgLabel.singular === "Portafolio"
+                ? "No se pudieron cargar los portafolios"
+                : "No se pudieron cargar las organizaciones",
           );
         }
       })
@@ -214,11 +219,11 @@ export default function OrganizationsListPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-            Organizaciones
+            {orgLabel.plural}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-            Vista de paneles. Click en una organización para ver su detalle,
-            programas y proyectos.
+            Vista de paneles. Click en {orgLabel.singularArticled} para ver su
+            detalle, programas y proyectos.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -232,7 +237,8 @@ export default function OrganizationsListPage() {
             <Link href="/admin/organizations/new">
               <Button>
                 <Plus className="h-4 w-4" aria-hidden />
-                Nueva organización
+                {orgLabel.singular === "Portafolio" ? "Nuevo" : "Nueva"}{" "}
+                {orgLabel.singular.toLowerCase()}
               </Button>
             </Link>
           ) : null}
@@ -252,7 +258,7 @@ export default function OrganizationsListPage() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre"
               className="pl-9"
-              aria-label="Buscar organizaciones"
+              aria-label={`Buscar ${orgLabel.plural.toLowerCase()}`}
             />
           </div>
           <Select
@@ -277,7 +283,7 @@ export default function OrganizationsListPage() {
         </div>
       ) : empty ? (
         <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
-          Aún no hay organizaciones. Crea la primera.
+          Aún no hay {orgLabel.plural.toLowerCase()}. Crea{orgLabel.singular === "Portafolio" ? " el" : " la"} primer{orgLabel.singular === "Portafolio" ? "o" : "a"}.
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
