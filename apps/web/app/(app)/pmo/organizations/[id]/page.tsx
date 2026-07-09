@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Download, FolderKanban, Layers, Plus } from "lucide-react";
+import { Building2, Download, FolderKanban, Layers, Plus, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -16,6 +16,7 @@ import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { useOrgLabel } from "@/lib/org-label";
 import {
+  downloadOrganizationOrganigrama,
   downloadOrgStatusReport,
   getRiskMatrix,
   getTrends,
@@ -64,6 +65,10 @@ export default function PmoOrganizationPage() {
   // ENH-190: label configurable por tenant para "Organización(es)".
   const orgLabel = useOrgLabel();
 
+  // US-187 — organigrama con utilización (XLSX), scope organización.
+  const [downloadingOrganigrama, setDownloadingOrganigrama] = useState(false);
+  const [organigramaError, setOrganigramaError] = useState<string | null>(null);
+
   async function handleDownloadReport() {
     setDownloadingReport(true);
     try {
@@ -72,6 +77,20 @@ export default function PmoOrganizationPage() {
       /* el banner global de error de página no aplica aquí; silencioso */
     } finally {
       setDownloadingReport(false);
+    }
+  }
+
+  async function handleDownloadOrganigrama() {
+    setDownloadingOrganigrama(true);
+    setOrganigramaError(null);
+    try {
+      await downloadOrganizationOrganigrama(id);
+    } catch (err) {
+      setOrganigramaError(
+        err instanceof ApiError ? err.message : "No se pudo generar el organigrama",
+      );
+    } finally {
+      setDownloadingOrganigrama(false);
     }
   }
 
@@ -240,6 +259,16 @@ export default function PmoOrganizationPage() {
               {downloadingReport ? "Generando…" : "Reporte de Status (PDF)"}
             </Button>
           ) : null}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDownloadOrganigrama}
+            disabled={downloadingOrganigrama}
+            title={`Descarga el organigrama con utilización ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"} en XLSX`}
+          >
+            <Users className="mr-1 h-3.5 w-3.5" aria-hidden />
+            {downloadingOrganigrama ? "Generando…" : "Organigrama (XLSX)"}
+          </Button>
           <Link
             href={`/admin/organizations/${panel.id}`}
             className="text-[12px] text-[var(--color-accent)] hover:underline"
@@ -248,6 +277,8 @@ export default function PmoOrganizationPage() {
           </Link>
         </div>
       </header>
+
+      {organigramaError ? <Banner variant="danger">{organigramaError}</Banner> : null}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiCard label="Business Units" value={buCount} />

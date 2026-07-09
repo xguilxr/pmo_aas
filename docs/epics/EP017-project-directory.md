@@ -317,6 +317,40 @@ email por default), en `services/capacity_alerts.py`:
 **Test Cases:** 5 TC nuevos (`test_us184_capacity_alerts.py`).
 **Estado de integración:** DONE (US-184).
 
+### US-186 / US-187 — Organigrama con utilización (XLSX) por scope (`fa200bd`, 2026-07-09)
+
+Export XLSX descargable del organigrama de recursos con su % de
+utilización, generado on-demand desde el mismo motor de saturación de
+US-183 (`services/capacity.py::monthly_utilization`). 2 hojas:
+
+- **"Organigrama"** — recursos activos del scope + %FTE en el scope +
+  %FTE total del tenant (un recurso puede participar en varios
+  proyectos/organizaciones; las participaciones se **suman** por
+  recurso a través de todos los proyectos del scope).
+- **"Uso mensual"** — matriz Recurso × Mes (12 meses rolling), con
+  fill condicional: **amarillo ≥80%**, **rojo >100%** de la capacidad
+  disponible para proyectos (`project_capacity_pct`, US-182).
+
+**Scopes y endpoints** (`services/organigrama_export.py` +
+`api/v1/endpoints/organigrama.py`), todos autenticados y con
+`Content-Disposition: attachment` (filename ya resuelto server-side
+vía `filename_slug.artifact_filename`):
+
+| Scope | Endpoint | Desde dónde se descarga |
+|---|---|---|
+| Programa | `GET /api/v1/programs/{id}/organigrama/export` | Botón "Organigrama (XLSX)" en el header de `/pmo/programs/[id]`, junto a "Status (PDF)" |
+| Organización/portafolio | `GET /api/v1/organizations/{id}/organigrama/export` | Botón "Organigrama (XLSX)" en el header de `/pmo/organizations/[id]`, junto a "Reporte de Status (PDF)" |
+| Tenant (global) | `GET /api/v1/capacity/organigrama/export` | Botón "Organigrama global (XLSX)" en el header de `/pmo/resources`, junto al selector de ventana |
+
+Frontend: helpers `downloadOrganizationOrganigrama` /
+`downloadProgramOrganigrama` / `downloadGlobalOrganigrama` en
+`lib/api/analytics.ts` (fetch autenticado + Blob, filename parseado
+del `Content-Disposition` en vez de fijo en cliente, a diferencia del
+PDF de status).
+
+**Test Cases:** `test_us186_organigrama_utilizacion.py` (backend).
+**Estado de integración:** DONE (US-186 backend + US-187 frontend).
+
 ---
 
 ## Notas
@@ -325,3 +359,4 @@ email por default), en `services/capacity_alerts.py`:
 - ADR potencial: "drop de `*_area_id` con snapshot a `legacy_area_id` para rollback de 1 sprint".
 - **2026-06-29 — Actualización batch:** BUG-085 (creación de áreas desde proyecto con propagación automática), BUG-086 (servicio `area_visibility` + actores asignables por área), ENH-183 (listar solo asignados + reuso de catálogo). Ver secciones Bloques B/C/D para detalles.
 - **2026-07-09 — Batch Revamp 1.0:** US-182 (`c3fdf7e`), US-183 (`4aec20c`), US-184 (`595dc4f`) — Bloque F nuevo: pool de recursos con capacidad sobre `actors`, motor de saturación sobre `project_participations` + página `/pmo/resources`, alertas de capacidad in-app. Ver sección "Bloque F" arriba.
+- **2026-07-09 — US-186/US-187:** organigrama con utilización (XLSX, 2 hojas: %FTE + uso mensual con alertas amarillo/rojo) descargable por scope programa/organización/tenant. Ver sub-sección "US-186 / US-187" en Bloque F arriba.

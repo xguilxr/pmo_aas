@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp } from "lucide-react";
+import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp, Users } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { KpiCard } from "@/components/kpi-card";
@@ -16,6 +16,7 @@ import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPan
 import { Gauge, Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
 import { ApiError } from "@/lib/api";
 import {
+  downloadProgramOrganigrama,
   downloadProgramStatusReport,
   getRiskMatrix,
   getTrends,
@@ -117,6 +118,10 @@ export default function ProgramSummaryPage() {
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [downloadingReport, setDownloadingReport] = useState(false);
 
+  // US-187 — organigrama con utilización (XLSX), scope programa.
+  const [downloadingOrganigrama, setDownloadingOrganigrama] = useState(false);
+  const [organigramaError, setOrganigramaError] = useState<string | null>(null);
+
   async function handleDownloadReport() {
     setDownloadingReport(true);
     try {
@@ -125,6 +130,20 @@ export default function ProgramSummaryPage() {
       /* silencioso */
     } finally {
       setDownloadingReport(false);
+    }
+  }
+
+  async function handleDownloadOrganigrama() {
+    setDownloadingOrganigrama(true);
+    setOrganigramaError(null);
+    try {
+      await downloadProgramOrganigrama(params.id);
+    } catch (err) {
+      setOrganigramaError(
+        err instanceof ApiError ? err.message : "No se pudo generar el organigrama",
+      );
+    } finally {
+      setDownloadingOrganigrama(false);
     }
   }
 
@@ -221,19 +240,33 @@ export default function ProgramSummaryPage() {
             ) : null}
           </div>
         </div>
-        {trends !== null ? (
+        <div className="flex items-center gap-2">
+          {trends !== null ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={downloadingReport}
+              title="Descarga el reporte de status del programa en PDF"
+            >
+              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+              {downloadingReport ? "Generando…" : "Status (PDF)"}
+            </Button>
+          ) : null}
           <Button
             variant="secondary"
             size="sm"
-            onClick={handleDownloadReport}
-            disabled={downloadingReport}
-            title="Descarga el reporte de status del programa en PDF"
+            onClick={handleDownloadOrganigrama}
+            disabled={downloadingOrganigrama}
+            title="Descarga el organigrama con utilización del programa en XLSX"
           >
-            <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
-            {downloadingReport ? "Generando…" : "Status (PDF)"}
+            <Users className="mr-1 h-3.5 w-3.5" aria-hidden />
+            {downloadingOrganigrama ? "Generando…" : "Organigrama (XLSX)"}
           </Button>
-        ) : null}
+        </div>
       </header>
+
+      {organigramaError ? <Banner variant="danger">{organigramaError}</Banner> : null}
 
       {/* US-137: tabs Resumen / Reportes */}
       <div
