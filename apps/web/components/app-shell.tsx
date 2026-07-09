@@ -41,6 +41,7 @@ import {
   type StoredUser,
 } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
+import { useOrgLabel } from "@/lib/org-label";
 
 const SIDEBAR_COLLAPSE_KEY = "pmoaas:sidebar-collapsed";
 
@@ -147,70 +148,75 @@ const TOP_NAV: NavItem[] = [
 // con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
 // El drill-down real (Organizaciones → Programas → Proyectos) vive en el
 // sidebar principal vía <OrgTreeNav />.
-const ADMIN_NAV: NavItem = {
-  id: "admin",
-  label: "Admin",
-  icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
-  href: "/admin",
-  match: (p) =>
-    p === "/admin" ||
-    p.startsWith("/admin/supervision") ||
-    p.startsWith("/admin/users") ||
-    p.startsWith("/admin/permissions") ||
-    p.startsWith("/admin/audit-logs") ||
-    p.startsWith("/admin/settings") ||
-    p.startsWith("/admin/tenant") ||
-    p.startsWith("/admin/ai") ||
-    p.startsWith("/admin/organizations"),
-  children: [
-    {
-      id: "tenant-mgmt",
-      label: "Tenant",
-      icon: <Building2 className="h-4 w-4" aria-hidden />,
-      href: "/admin/tenant",
-      match: (p) =>
-        p.startsWith("/admin/tenant") ||
-        p.startsWith("/admin/supervision") ||
-        p.startsWith("/admin/settings"),
-    },
-    {
-      id: "tenant-ai",
-      label: "IA",
-      icon: <Sparkles className="h-4 w-4" aria-hidden />,
-      href: "/admin/ai",
-      match: (p) => p.startsWith("/admin/ai"),
-    },
-    {
-      id: "orgs-mgmt",
-      label: "Organizaciones",
-      icon: <Building2 className="h-4 w-4" aria-hidden />,
-      href: "/admin/organizations",
-      match: (p) =>
-        p.startsWith("/admin/organizations") && !p.includes("/panel"),
-    },
-    {
-      id: "users",
-      label: "Usuarios",
-      icon: <Users className="h-4 w-4" aria-hidden />,
-      href: "/admin/users",
-      match: (p) => p.startsWith("/admin/users"),
-    },
-    {
-      id: "permissions",
-      label: "Permisos",
-      icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
-      href: "/admin/permissions",
-      match: (p) => p.startsWith("/admin/permissions"),
-    },
-    {
-      id: "audit",
-      label: "Auditoría",
-      icon: <ClipboardCheck className="h-4 w-4" aria-hidden />,
-      href: "/admin/audit-logs",
-      match: (p) => p.startsWith("/admin/audit-logs"),
-    },
-  ],
-};
+// ENH-190: el label "Organizaciones" del item `orgs-mgmt` es configurable
+// por tenant (ver `lib/org-label.ts`); por eso `ADMIN_NAV` es una función
+// que recibe el plural efectivo en vez de una constante estática.
+function buildAdminNav(orgLabelPlural: string): NavItem {
+  return {
+    id: "admin",
+    label: "Admin",
+    icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+    href: "/admin",
+    match: (p) =>
+      p === "/admin" ||
+      p.startsWith("/admin/supervision") ||
+      p.startsWith("/admin/users") ||
+      p.startsWith("/admin/permissions") ||
+      p.startsWith("/admin/audit-logs") ||
+      p.startsWith("/admin/settings") ||
+      p.startsWith("/admin/tenant") ||
+      p.startsWith("/admin/ai") ||
+      p.startsWith("/admin/organizations"),
+    children: [
+      {
+        id: "tenant-mgmt",
+        label: "Tenant",
+        icon: <Building2 className="h-4 w-4" aria-hidden />,
+        href: "/admin/tenant",
+        match: (p) =>
+          p.startsWith("/admin/tenant") ||
+          p.startsWith("/admin/supervision") ||
+          p.startsWith("/admin/settings"),
+      },
+      {
+        id: "tenant-ai",
+        label: "IA",
+        icon: <Sparkles className="h-4 w-4" aria-hidden />,
+        href: "/admin/ai",
+        match: (p) => p.startsWith("/admin/ai"),
+      },
+      {
+        id: "orgs-mgmt",
+        label: orgLabelPlural,
+        icon: <Building2 className="h-4 w-4" aria-hidden />,
+        href: "/admin/organizations",
+        match: (p) =>
+          p.startsWith("/admin/organizations") && !p.includes("/panel"),
+      },
+      {
+        id: "users",
+        label: "Usuarios",
+        icon: <Users className="h-4 w-4" aria-hidden />,
+        href: "/admin/users",
+        match: (p) => p.startsWith("/admin/users"),
+      },
+      {
+        id: "permissions",
+        label: "Permisos",
+        icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+        href: "/admin/permissions",
+        match: (p) => p.startsWith("/admin/permissions"),
+      },
+      {
+        id: "audit",
+        label: "Auditoría",
+        icon: <ClipboardCheck className="h-4 w-4" aria-hidden />,
+        href: "/admin/audit-logs",
+        match: (p) => p.startsWith("/admin/audit-logs"),
+      },
+    ],
+  };
+}
 
 // 4 ítems raíz, en este orden (US-041, issue #19).
 const SUPERADMIN_NAV: NavItem[] = [
@@ -482,15 +488,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const adminVisible =
     superadminJoinedTenant || (orgTreeVisible && roleType === "admin");
 
+  // ENH-190: label configurable por tenant para "Organización(es)".
+  const orgLabel = useOrgLabel();
+  const adminNav = useMemo(() => buildAdminNav(orgLabel.plural), [orgLabel.plural]);
+
   useEffect(() => {
     setExpanded((prev) => {
       const next = new Set(prev);
       collectExpandedIds(TOP_NAV, pathname, next);
-      if (adminVisible) collectExpandedIds([ADMIN_NAV], pathname, next);
+      if (adminVisible) collectExpandedIds([adminNav], pathname, next);
       collectExpandedIds(SUPERADMIN_NAV, pathname, next);
       return next;
     });
-  }, [pathname, adminVisible]);
+  }, [pathname, adminVisible, adminNav]);
 
   const toggle = (id: string) =>
     setExpanded((prev) => {
@@ -623,7 +633,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {adminVisible ? (
               <div className="mt-0.5">
                 <NavTree
-                  items={[ADMIN_NAV]}
+                  items={[adminNav]}
                   pathname={pathname}
                   onNavigate={close}
                   expanded={expanded}

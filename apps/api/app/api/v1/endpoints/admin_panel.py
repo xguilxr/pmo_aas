@@ -408,6 +408,10 @@ class TenantSettingsUpdate(BaseModel):
     # `settings.report_builder.task_load_thresholds`. Both keys
     # (green_max, amber_max) must be sent together.
     task_load_thresholds: dict[str, int] | None = None
+    # ENH-190: Per-tenant UI label for "Organización/Organizaciones".
+    # Stored top-level under `settings.org_label`. UI-only: no schema,
+    # route or API changes to the underlying entity.
+    org_label: str | None = None
 
 
 @router.get("/settings")
@@ -423,6 +427,7 @@ async def get_settings(
     # as top-level convenience fields while preserving the canonical
     # nested shape under `settings.report_builder`.
     from app.services.tenant_settings import (
+        get_org_label,
         get_progress_calculation_method,
         get_task_load_thresholds,
     )
@@ -430,6 +435,8 @@ async def get_settings(
     settings = dict(t.settings or {})
     settings["progress_calculation_method"] = get_progress_calculation_method(t)
     settings["task_load_thresholds"] = get_task_load_thresholds(t)
+    # ENH-190: expose effective org_label (with default) as well.
+    settings["org_label"] = get_org_label(t)
     return {"settings": settings}
 
 
@@ -440,9 +447,12 @@ async def patch_settings(
     db: AsyncSession = Depends(get_db),
 ):
     from app.services.tenant_settings import (
+        ORG_LABEL_VALUES,
         PROGRESS_CALC_METHODS,
+        get_org_label,
         get_progress_calculation_method,
         get_task_load_thresholds,
+        set_org_label,
         set_progress_calculation_method,
         set_task_load_thresholds,
     )
@@ -486,6 +496,14 @@ async def patch_settings(
                 code="INVALID_TASK_LOAD_THRESHOLDS",
             )
 
+    # ENH-190: validate org_label enum before persisting.
+    org_label_update = updates.pop("org_label", None)
+    if org_label_update is not None and org_label_update not in ORG_LABEL_VALUES:
+        raise business_rule(
+            f"org_label must be one of {list(ORG_LABEL_VALUES)}",
+            code="INVALID_ORG_LABEL",
+        )
+
     merged = dict(t.settings or {})
     merged.update(updates)
     t.settings = merged
@@ -497,6 +515,9 @@ async def patch_settings(
         assert green_max is not None and amber_max is not None
         set_task_load_thresholds(t, green_max, amber_max)
         audit_fields.append("task_load_thresholds")
+    if org_label_update is not None:
+        set_org_label(t, org_label_update)
+        audit_fields.append("org_label")
 
     await write_audit(
         db, action="tenant.settings.update", module="admin",
@@ -506,6 +527,7 @@ async def patch_settings(
     response_settings = dict(t.settings or {})
     response_settings["progress_calculation_method"] = get_progress_calculation_method(t)
     response_settings["task_load_thresholds"] = get_task_load_thresholds(t)
+    response_settings["org_label"] = get_org_label(t)
     return {"settings": response_settings}
 
 

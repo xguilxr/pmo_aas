@@ -144,3 +144,66 @@ export function downloadOrgStatusReport(orgId: string): Promise<void> {
 export function downloadProgramStatusReport(programId: string): Promise<void> {
   return _downloadPdf(`/api/v1/programs/${programId}/reports/status`, `status-programa-${_stamp()}.pdf`);
 }
+
+// US-187 — organigrama con utilización (XLSX) por scope. A diferencia de
+// `_downloadPdf` (nombre fijo generado en el cliente), estos endpoints GET
+// ya devuelven el filename listo vía `Content-Disposition` (US-186), así
+// que lo parseamos en vez de inventarlo.
+function _filenameFromDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      // cae al filename simple
+    }
+  }
+  const plainMatch = /filename="?([^";]+)"?/i.exec(header);
+  return plainMatch?.[1] ?? fallback;
+}
+
+const XLSX_ACCEPT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+async function _downloadXlsx(path: string, fallbackFilename: string): Promise<void> {
+  const token = getAccessToken();
+  const res = await fetch(`${apiBase()}${path}`, {
+    headers: {
+      Accept: XLSX_ACCEPT,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`No se pudo generar el organigrama (${res.status}): ${txt.slice(0, 200)}`);
+  }
+  const blob = await res.blob();
+  const filename = _filenameFromDisposition(res.headers.get("Content-Disposition"), fallbackFilename);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function downloadOrganizationOrganigrama(orgId: string): Promise<void> {
+  return _downloadXlsx(
+    `/api/v1/organizations/${orgId}/organigrama/export`,
+    `organigrama-org-${_stamp()}.xlsx`,
+  );
+}
+
+export function downloadProgramOrganigrama(programId: string): Promise<void> {
+  return _downloadXlsx(
+    `/api/v1/programs/${programId}/organigrama/export`,
+    `organigrama-programa-${_stamp()}.xlsx`,
+  );
+}
+
+export function downloadGlobalOrganigrama(): Promise<void> {
+  return _downloadXlsx(
+    `/api/v1/capacity/organigrama/export`,
+    `organigrama-global-${_stamp()}.xlsx`,
+  );
+}

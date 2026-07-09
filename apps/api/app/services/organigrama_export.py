@@ -50,12 +50,82 @@ def _write_sheet(wb, title: str, headers: list[str], rows: list[list[Any]]) -> N
     _autosize(ws, len(headers))
 
 
+# --- US-186: hojas de utilización (FTE + uso mensual con alertas) -----------
+
+FTE_HEADERS = [
+    "Recurso", "Función", "Puesto", "Área", "Equipo", "Manager", "Tipo",
+    "Clave", "Capacidad %", "% FTE en scope (mes actual)",
+    "% FTE total tenant (mes actual)", "Proyectos en scope",
+]
+
+# Alertas por diseño (owner 2026-07-09): ≥80% amarillo, >100% rojo.
+UTIL_YELLOW_FROM = 80
+UTIL_RED_FROM = 100
+
+
+def _util_row(r: dict[str, Any]) -> list[Any]:
+    return [
+        r["name"], r.get("portfolio_function") or "", r.get("job_title") or "",
+        r.get("area") or "", r.get("team") or "", r.get("manager") or "",
+        r.get("resource_type") or "", "Sí" if r.get("is_key_resource") else "",
+        r.get("capacity_pct"), r.get("scope_current_pct"),
+        r.get("tenant_current_pct"), r.get("projects_count"),
+    ]
+
+
+def _write_monthly_sheet(
+    wb, title: str, months: list[str], rows: list[dict[str, Any]]
+) -> None:
+    """Hoja "Uso mensual": Recurso × Mes. Fill amarillo si el mes ≥80%,
+    rojo si >100% + columna 'Meses en alerta'."""
+    from openpyxl.styles import Font, PatternFill
+
+    headers = ["Recurso", *months, "Meses en alerta"]
+    data_rows = [[r["name"], *r["per_month"], r["alert_months"]] for r in rows]
+    _write_sheet(wb, title, headers, data_rows)
+
+    ws = wb[title]
+    yellow = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+    red = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    red_font = Font(color="B91C1C", bold=True)
+    yellow_font = Font(color="92400E")
+    for i, r in enumerate(rows, start=2):  # fila 1 = header
+        for j, val in enumerate(r["per_month"], start=2):  # col 1 = nombre
+            cell = ws.cell(row=i, column=j)
+            if val > UTIL_RED_FROM:
+                cell.fill = red
+                cell.font = red_font
+            elif val >= UTIL_YELLOW_FROM:
+                cell.fill = yellow
+                cell.font = yellow_font
+
+
+def export_utilizacion_xlsx(
+    *, months: list[str], rows: list[dict[str, Any]]
+) -> bytes:
+    """US-186 — organigrama de utilización para programa/organización/
+    tenant: hoja "Organigrama" (recursos activos + FTE) + "Uso mensual"."""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    default_ws = wb.active
+    if default_ws is not None:
+        wb.remove(default_ws)
+    _write_sheet(wb, "Organigrama", FTE_HEADERS, [_util_row(r) for r in rows])
+    _write_monthly_sheet(wb, "Uso mensual", months, rows)
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def export_organigrama_xlsx(
     *,
     areas_rows: list[list[Any]],
     teams_rows: list[list[Any]],
     roles_rows: list[list[Any]],
     recursos_rows: list[list[Any]],
+    utilization_months: list[str] | None = None,
+    utilization_rows: list[dict[str, Any]] | None = None,
 ) -> bytes:
     """Devuelve bytes XLSX con 4 sheets (Áreas/Equipos/Roles/Recursos).
 
@@ -93,6 +163,15 @@ def export_organigrama_xlsx(
         ],
         recursos_rows,
     )
+
+    # US-186: hojas de utilización (FTE + uso mensual) si el caller las
+    # calculó (scope proyecto: participaciones activas con FTE%).
+    if utilization_months is not None and utilization_rows is not None:
+        _write_sheet(
+            wb, "Recursos (FTE)", FTE_HEADERS,
+            [_util_row(r) for r in utilization_rows],
+        )
+        _write_monthly_sheet(wb, "Uso mensual", utilization_months, utilization_rows)
 
     buf = BytesIO()
     wb.save(buf)

@@ -73,6 +73,20 @@ chips de color de status.
 **BATCH COMPLETO 11/11** · Verificación final: 728 pytest + 1 skip ·
 ruff limpio · tsc + next build verdes · PR #570.
 
+**Fase 2 (owner 2026-07-09) — mismo PR #570:**
+- [x] **ENH-190** — Label Organización/Portafolio configurable por tenant
+  (`settings.org_label`, admin UI + branding + sweep de labels).
+  `status:fix-committed` (`7eca69b`)
+- [x] **US-186** — Organigrama con utilización: monthly_utilization +
+  hojas Organigrama/Uso mensual con alertas 🟡 ≥80% / 🔴 >100% + 4
+  endpoints (proyecto extendido, programa, org, global).
+  `status:fix-committed` (`fa200bd`)
+- [x] **US-187** — Botones de descarga por nivel (org/programa/global en
+  /pmo/resources) + EP017. `status:fix-committed` (`42ed974`)
+
+**FASE 2 COMPLETA 3/3** (ENH-190, US-186, US-187).
+Próximo libre tras Fase 2: US-188, BUG-088, ENH-191.
+
 ### Batch WBS+RAID+Áreas 2026-06-29 (branch: claude/task-wbs-raid-updates-9nq7ns)
 
 Ejecución directa por chat del owner. Issues no creados en GitHub (batch

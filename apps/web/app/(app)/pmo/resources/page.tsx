@@ -6,14 +6,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Gauge, KeyRound } from "lucide-react";
+import { AlertTriangle, Gauge, KeyRound, Users } from "lucide-react";
 
 import { healthTone } from "@/components/health-panel";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { downloadGlobalOrganigrama } from "@/lib/api/analytics";
 import {
   getCapacityConflicts,
   getCapacitySummary,
@@ -79,6 +81,24 @@ export default function ResourcesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // US-187 — organigrama global con utilización (XLSX), scope tenant.
+  const [downloadingOrganigrama, setDownloadingOrganigrama] = useState(false);
+  const [organigramaError, setOrganigramaError] = useState<string | null>(null);
+
+  async function handleDownloadOrganigrama() {
+    setDownloadingOrganigrama(true);
+    setOrganigramaError(null);
+    try {
+      await downloadGlobalOrganigrama();
+    } catch (err) {
+      setOrganigramaError(
+        err instanceof ApiError ? err.message : "No se pudo generar el organigrama",
+      );
+    } finally {
+      setDownloadingOrganigrama(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -123,34 +143,47 @@ export default function ResourcesPage() {
         </p>
       </header>
 
-      <div
-        role="tablist"
-        aria-label="Ventana de tiempo"
-        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
-      >
-        {WINDOW_OPTIONS.map((opt) => {
-          const active = win === opt.v;
-          return (
-            <button
-              key={opt.v}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setWin(opt.v)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors",
-                active
-                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
-              )}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          role="tablist"
+          aria-label="Ventana de tiempo"
+          className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+        >
+          {WINDOW_OPTIONS.map((opt) => {
+            const active = win === opt.v;
+            return (
+              <button
+                key={opt.v}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setWin(opt.v)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors",
+                  active
+                    ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleDownloadOrganigrama}
+          disabled={downloadingOrganigrama}
+          title="Descarga el organigrama global con utilización (todo el tenant) en XLSX"
+        >
+          <Users className="mr-1 h-3.5 w-3.5" aria-hidden />
+          {downloadingOrganigrama ? "Generando…" : "Organigrama global (XLSX)"}
+        </Button>
       </div>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
+      {organigramaError ? <Banner variant="danger">{organigramaError}</Banner> : null}
 
       <div
         role="tablist"

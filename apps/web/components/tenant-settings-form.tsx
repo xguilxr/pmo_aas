@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { ApiError } from "@/lib/api";
 import {
   getSettings,
   updateSettings,
+  type OrgLabelSetting,
   type ProgressCalculationMethod,
   type TaskLoadThresholds,
   type TenantSettings,
@@ -29,6 +31,12 @@ const DEFAULT_TASK_LOAD_THRESHOLDS: TaskLoadThresholds = {
   green_max: 5,
   amber_max: 10,
 };
+
+// ENH-190: nomenclatura configurable de "Organización(es)" en la UI.
+const ORG_LABEL_OPTIONS: { value: OrgLabelSetting; label: string }[] = [
+  { value: "organizations", label: "Organizaciones (default)" },
+  { value: "portfolios", label: "Portafolios" },
+];
 
 const LOCALES = [
   { value: "es-MX", label: "Español (MX)" },
@@ -67,6 +75,9 @@ export function TenantSettingsForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // ENH-190: refrescar el branding cacheado (org_label) tras guardar,
+  // para que el sidebar/nav reflejen el cambio sin recargar la página.
+  const { refresh: refreshBranding } = useTenantBranding();
 
   useEffect(() => {
     getSettings()
@@ -106,6 +117,7 @@ export function TenantSettingsForm() {
       setInitial(r.settings);
       setForm(r.settings);
       setNotice("Configuración actualizada");
+      void refreshBranding();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo guardar");
     } finally {
@@ -303,6 +315,35 @@ export function TenantSettingsForm() {
               Verde debe ser estrictamente menor que ámbar y ambos &gt; 0.
             </p>
           )}
+        </div>
+
+        {/* ENH-190 — Nomenclatura de "Organización/Organizaciones" */}
+        <div className="border-t border-[var(--border-subtle)] pt-4">
+          <h3 className="mb-2 text-[13px] font-semibold text-[var(--text-primary)]">
+            Nomenclatura
+          </h3>
+          <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
+            Label mostrado en toda la UI (sidebar, PMO, filtros) para las
+            organizaciones del tenant. Puramente cosmético: no cambia el
+            schema ni las rutas.
+          </p>
+          <Field label="Organizaciones / Portafolios">
+            <Select
+              value={form.org_label ?? "organizations"}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  org_label: (e.target.value as OrgLabelSetting) || undefined,
+                })
+              }
+            >
+              {ORG_LABEL_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">

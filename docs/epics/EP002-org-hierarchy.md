@@ -8,7 +8,7 @@
 | **Módulo** | `organizations`, `business_units`, `departments`, `programs`, `superadmin.tenants` |
 | **Estado** | MVP |
 | **Versión objetivo** | v1.0 |
-| **Última actualización** | 2026-04-20 — jerarquía extendida BU + Depto |
+| **Última actualización** | 2026-07-09 — ENH-190: label "Organización/Portafolio" configurable por tenant (UI-only) |
 
 ## Objetivo de negocio
 
@@ -215,6 +215,39 @@ Ver detalle del shape en
 - [ ] Ruta `/programs` o equivalente no devuelve 404.
 - [ ] Listado de programas muestra todos los del tenant/org según permisos.
 - [ ] Fix incluye tests para evitar regresión.
+
+---
+
+### ENH-190 — Label de UI configurable por tenant ("Organización" / "Portafolio")
+
+**2026-07-09.** Algunos tenants (cliente gestionando su propio
+portafolio) prefieren ver "Portafolio/Portafolios" en vez de
+"Organización/Organizaciones" en toda la UI. Cambio **puramente
+cosmético**: no toca schema, rutas ni el shape de las APIs de
+`organizations` — la entidad sigue siendo "Organization" en DB, URLs
+(`/pmo/organizations/**`, `/admin/organizations/**`) y tipos.
+
+- **Setting:** `tenants.settings.org_label` = `"organizations"`
+  (default) | `"portfolios"`. Accessors `get_org_label(tenant)` /
+  `set_org_label(tenant, value)` en
+  `apps/api/app/services/tenant_settings.py`.
+- **Dónde se configura:** Admin → Tenant → pestaña de settings
+  (`TenantSettingsForm`, sección "Nomenclatura"), vía
+  `GET/PATCH /api/v1/admin/settings` (campo top-level `org_label`,
+  requiere capability `tenant.manage`).
+- **Cómo lo consume cualquier usuario del tenant:** el label efectivo
+  se expone en `GET /api/v1/me/tenant-branding` (campo `org_label`),
+  el mismo endpoint que ya alimenta el branding del topbar/sidebar vía
+  `<TenantBrandingProvider>`.
+- **Helper frontend:** `apps/web/lib/org-label.ts` — hook `useOrgLabel()`
+  devuelve `{ singular, plural, singularArticled }` según el valor
+  efectivo.
+- **Superficies afectadas** (solo texto visible, sin renombrar rutas
+  ni props): sidebar/nav (`components/app-shell.tsx`,
+  `components/org-tree-nav.tsx`), landing PMO (`app/(app)/pmo/page.tsx`),
+  detalle de organización/portafolio (`app/(app)/pmo/organizations/[id]/page.tsx`),
+  filtro de organización en `app/(app)/pmo/projects/page.tsx`, y el
+  admin de organizaciones (`app/(app)/admin/organizations/**`).
 
 ---
 

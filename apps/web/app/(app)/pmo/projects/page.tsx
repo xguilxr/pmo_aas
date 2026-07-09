@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
+import { useOrgLabel } from "@/lib/org-label";
 
 const ALL_PHASES: ProjectPhase[] = ["planning", "execution", "support", "closed"];
 const ALL_TYPES: ProjectType[] = ["innovation", "transformation", "operation", "bau"];
@@ -62,6 +63,8 @@ export default function ProjectsListPage() {
   const { canCreate } = useMyPermissions();
   const permsCanCreate = canCreate("projects");
   const search = useSearchParams();
+  // ENH-190: label configurable por tenant para "Organización(es)".
+  const orgLabel = useOrgLabel();
 
   const initialPhases = useMemo(() => {
     const v = search.getAll("phase").filter((p): p is ProjectPhase => (ALL_PHASES as string[]).includes(p));
@@ -202,7 +205,7 @@ export default function ProjectsListPage() {
             Proyectos
           </h1>
           <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-            Gestiona el portafolio: filtra por fase, organización, programa, tipo, salud y prioridad.
+            Gestiona el portafolio: filtra por fase, {orgLabel.singular.toLowerCase()}, programa, tipo, salud y prioridad.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -269,9 +272,12 @@ export default function ProjectsListPage() {
               setProgramId("");
               setNoProgram(false);
             }}
-            aria-label="Organización"
+            aria-label={orgLabel.singular}
           >
-            <option value="">Todas las organizaciones</option>
+            <option value="">
+              {orgLabel.singular === "Portafolio" ? "Todos los" : "Todas las"}{" "}
+              {orgLabel.plural.toLowerCase()}
+            </option>
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -304,7 +310,7 @@ export default function ProjectsListPage() {
                 ))}
               </>
             ) : (
-              <option value="">Selecciona una organización</option>
+              <option value="">Selecciona {orgLabel.singularArticled}</option>
             )}
           </Select>
           <label className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--text-secondary)]">
@@ -440,13 +446,15 @@ function ListView({
 }) {
   const orgsMap = useMemo(() => Object.fromEntries(orgs.map((o) => [o.id, o])), [orgs]);
   const { sortedRows, ctrl: sortCtrl } = useSortableRows<Project>(rows);
+  // ENH-190: label configurable por tenant para "Organización(es)".
+  const orgLabel = useOrgLabel();
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[13px]">
         <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
           <tr>
             <SortableTh<Project> sortKey="name" getter={(p) => p.name} ctrl={sortCtrl} className="h-10 px-4">Proyecto</SortableTh>
-            <SortableTh<Project> sortKey="org" getter={(p) => orgsMap[p.organization_id]?.name ?? ""} ctrl={sortCtrl} className="h-10 px-4">Organización</SortableTh>
+            <SortableTh<Project> sortKey="org" getter={(p) => orgsMap[p.organization_id]?.name ?? ""} ctrl={sortCtrl} className="h-10 px-4">{orgLabel.singular}</SortableTh>
             <SortableTh<Project> sortKey="phase" getter={(p) => p.phase ?? ""} ctrl={sortCtrl} className="h-10 px-4">Fase</SortableTh>
             <SortableTh<Project> sortKey="priority" getter={(p) => (p as any).priority ?? ""} ctrl={sortCtrl} className="h-10 px-4">Prioridad</SortableTh>
             <SortableTh<Project> sortKey="progress" getter={(p) => (p as any).progress_pct ?? 0} ctrl={sortCtrl} className="h-10 px-4">Avance</SortableTh>
