@@ -9,20 +9,69 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "WBS + RAID + Áreas/Recursos" (2026-06-29)
-Branch: claude/task-wbs-raid-updates-9nq7ns
+Batch "Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA" (2026-07-08)
+Branch: claude/pmo-portfolio-architecture-6hbuen · PR único para todo el batch
 
-Ejecución directa end-to-end pedida por el owner (planear + ejecutar +
-abrir PR). 11 items (3 US + 4 ENH + 4 BUG), todos status:fix-committed.
-Ver bloque "Batch WBS+RAID+Áreas 2026-06-29" en INBOX abajo.
-Verificación: tsc + next build verdes · 690 pytest + 1 skip · ruff limpio.
-Migraciones 0089 (RAID on_hold + remap estados) y 0090 (rename S-17).
-Pendiente: PR + verificación del owner.
+COMPLETO 11/11 (2026-07-09), todos status:fix-committed en PR #570.
+Diseño en docs/epics/drafts/portfolio-recursos-capacidad.md (f3fb83c).
+Migraciones nuevas: 0091 (salud unificada), 0092 (actors pool), 0093
+(participations FTE%), 0094 (project_ai_contexts) — correr `alembic
+upgrade head` en Railway tras el merge.
+Pendiente: verificación del owner + merge del PR #570.
+Próximo libre: US-186, BUG-088, ENH-190.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Batch Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA (2026-07-08, branch: claude/pmo-portfolio-architecture-6hbuen)
+
+Ejecución directa por chat (0.1 solucionar>documentar; issues GitHub no
+creados). Decisiones owner: solo `resource_type` (sin origin); subárea =
+`teams` (no parent_area_id); sin workstream; gobernanza de asignaciones
+diferida; UN solo semáforo de salud (unifica `health_status`+`status_rag`,
+override manual con razón, estilo avance ENH-155); memoria IA = extensión
+EP008 + reducir prompts hardcodeados; Cambios/Lecciones heredan estructura
+RAID (se quedan a nivel proyecto, export propio); Plan sin sort, solo
+chips de color de status.
+
+**Bloque Salud (primero):**
+- [x] **US-180** — Salud única híbrida BE: servicio `project_health`, migración
+  0091 (unifica status_rag → override con razón), `GET health-detail` +
+  `PATCH health`, dims a snapshots. `status:fix-committed` (`0f96dec`)
+- [x] **US-181** — Salud UI: HealthStatusCard + declarar con razón +
+  drill-down "¿por qué?" + foco PM + heatmap por dimensiones en N1
+  (`GET /dashboard/health-matrix`); form ya no edita salud.
+  `status:fix-committed` (`0c0ad7d`)
+**Bloque Tablas:**
+- [x] **ENH-186** — Cambios hereda RAID: sort, filtros, chips, inline
+  título/tipo, toggle finalizados, export XLSX propio. `status:fix-committed` (`acf8d46`)
+- [x] **ENH-187** — Lecciones hereda RAID: sort, filtros, chips inline,
+  responsable, export XLSX propio. `status:fix-committed` (`8114214`)
+- [x] **ENH-188** — Plan: chips de color para estados. `status:fix-committed` (`d735e76`)
+- [x] **ENH-185** — /pmo/projects: filtros programa/sin-programa/prioridad
+  mínima. `status:fix-committed` (`9bb3338`)
+**Bloque Recursos:**
+- [x] **US-182** — Pool de recursos sobre `actors` (mig 0092: tipo, función,
+  seniority, escasez, skills, capacidades, flags) + API + admin UI.
+  `status:fix-committed` (`c3fdf7e`)
+- [x] **US-183** — FTE% + motor de saturación (mig 0093) + página
+  /pmo/resources + conflictos + dimensión recursos del health.
+  `status:fix-committed` (`4aec20c`)
+- [x] **US-184** — Alertas de capacidad: 3 reglas sobre EP011, sweep
+  semanal + fast-path, dedupe 7d. `status:fix-committed` (`595dc4f`)
+**Bloque IA (extensión EP008):**
+- [x] **US-185** — Memoria de proyecto (mig 0094 `project_ai_contexts`):
+  contexto + instrucciones + resumen acumulativo IA, inyección en
+  minutas/reportes, página /pmo/projects/[id]/ai-context.
+  `status:fix-committed` (`9770161`)
+- [x] **ENH-189** — Prompts composables: instrucciones permanentes por
+  tenant (admin /admin/ai) + prompt_builder + fix prompts-catalog.
+  `status:fix-committed` (`a440efa`)
+
+**BATCH COMPLETO 11/11** · Verificación final: 728 pytest + 1 skip ·
+ruff limpio · tsc + next build verdes · PR #570.
 
 ### Batch WBS+RAID+Áreas 2026-06-29 (branch: claude/task-wbs-raid-updates-9nq7ns)
 

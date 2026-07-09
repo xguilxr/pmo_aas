@@ -434,6 +434,127 @@ async def export_raid(
     return StreamingResponse(BytesIO(data), media_type=XLSX_MIME, headers=headers)
 
 
+@router.get("/{project_id}/changes/export")
+async def export_changes(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-186: Excel de 1 hoja "Cambios" en español (folio, título, tipo,
+    estado, solicitado por, fecha solicitud, aprobado por, fecha aprobación,
+    impacto). Mismo patrón que `/raid/export` (ENH-152): servicio openpyxl +
+    descarga autenticada."""
+    from io import BytesIO
+    from urllib.parse import quote
+
+    from fastapi.responses import StreamingResponse
+
+    from app.models.modules import ChangeRequest
+    from app.models.user import User
+    from app.services.change_export import XLSX_MIME, build_change_rows, export_changes_xlsx
+    from app.services.filename_slug import artifact_filename
+
+    tenant_id = _tenant(cu)
+    project = await _ensure_project(db, project_id, tenant_id)
+
+    changes = (
+        await db.execute(
+            select(ChangeRequest)
+            .where(
+                ChangeRequest.project_id == str(project_id),
+                ChangeRequest.deleted_at.is_(None),
+            )
+            .order_by(ChangeRequest.requested_at.desc())
+        )
+    ).scalars().all()
+
+    user_ids = {str(c.requested_by) for c in changes if c.requested_by}
+    user_ids |= {str(c.approved_by) for c in changes if c.approved_by}
+    user_names = (
+        {
+            str(u.id): (u.full_name or u.email)
+            for u in (
+                await db.execute(select(User).where(User.id.in_(user_ids)))
+            ).scalars().all()
+        }
+        if user_ids
+        else {}
+    )
+
+    rows = build_change_rows(list(changes), user_names)
+    data = export_changes_xlsx(rows)
+    filename = artifact_filename(project.name, "cambios", "xlsx")
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="{filename}"; '
+            f"filename*=UTF-8''{quote(filename)}"
+        ),
+    }
+    return StreamingResponse(BytesIO(data), media_type=XLSX_MIME, headers=headers)
+
+
+@router.get("/{project_id}/lessons/export")
+async def export_lessons(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-187: Excel de 1 hoja "Lecciones" en español (folio, lección,
+    descripción, categoría, fase, responsable, recomendación, tags, estado).
+    Mismo patrón que `/changes/export` (ENH-186): servicio openpyxl +
+    descarga autenticada."""
+    from io import BytesIO
+    from urllib.parse import quote
+
+    from fastapi.responses import StreamingResponse
+
+    from app.models.area import Actor
+    from app.models.modules import Lesson
+    from app.services.filename_slug import artifact_filename
+    from app.services.lessons_export import (
+        XLSX_MIME,
+        build_lesson_rows,
+        export_lessons_xlsx,
+    )
+
+    tenant_id = _tenant(cu)
+    project = await _ensure_project(db, project_id, tenant_id)
+
+    lessons = (
+        await db.execute(
+            select(Lesson)
+            .where(
+                Lesson.project_id == str(project_id),
+                Lesson.deleted_at.is_(None),
+            )
+            .order_by(Lesson.created_at.desc())
+        )
+    ).scalars().all()
+
+    actor_ids = {str(l.owner_actor_id) for l in lessons if l.owner_actor_id}
+    actor_names = (
+        {
+            str(a.id): a.name
+            for a in (
+                await db.execute(select(Actor).where(Actor.id.in_(actor_ids)))
+            ).scalars().all()
+        }
+        if actor_ids
+        else {}
+    )
+
+    rows = build_lesson_rows(list(lessons), actor_names)
+    data = export_lessons_xlsx(rows)
+    filename = artifact_filename(project.name, "lecciones", "xlsx")
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="{filename}"; '
+            f"filename*=UTF-8''{quote(filename)}"
+        ),
+    }
+    return StreamingResponse(BytesIO(data), media_type=XLSX_MIME, headers=headers)
+
+
 @router.get("/{project_id}/organigrama/export")
 async def export_organigrama(
     project_id: UUID,

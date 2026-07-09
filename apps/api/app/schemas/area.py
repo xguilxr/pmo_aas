@@ -1,5 +1,6 @@
 """Schemas para Áreas → Equipos → Actores (catálogo tenant) — US-097."""
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -91,7 +92,37 @@ class TeamRead(BaseModel):
 
 
 # ---------- Actor ----------
-class ActorCreate(BaseModel):
+
+# US-182: clasificación del recurso (pool con capacidad).
+ResourceType = Literal[
+    "cliente_negocio", "cliente_it", "e4_pmo", "e4_tecnologia", "vendor_externo"
+]
+PortfolioFunction = Literal[
+    "pm", "pmo", "arquitectura", "infraestructura", "aplicaciones", "datos",
+    "seguridad", "integraciones", "negocio", "change", "testing", "vendor",
+]
+Seniority = Literal["junior", "mid", "senior", "lead"]
+ScarcityLevel = Literal["alta", "media", "baja"]
+
+
+class _ActorResourceFields(BaseModel):
+    """US-182 — campos del pool de recursos (compartidos create/update)."""
+
+    organization_id: UUID | None = None
+    resource_type: ResourceType | None = None
+    portfolio_function: PortfolioFunction | None = None
+    seniority: Seniority | None = None
+    scarcity_level: ScarcityLevel | None = None
+    location: str | None = Field(default=None, max_length=100)
+    skills_tags: list[str] | None = None
+    nominal_capacity_pct: float | None = Field(default=None, ge=0, le=100)
+    project_capacity_pct: float | None = Field(default=None, ge=0, le=100)
+    is_key_resource: bool | None = None
+    is_shared_resource: bool | None = None
+    fte_cost_rate: float | None = Field(default=None, ge=0)
+
+
+class ActorCreate(_ActorResourceFields):
     team_id: UUID | None = None
     # ENH-084 rework: área directa (sin team).
     area_id: UUID | None = None
@@ -107,7 +138,7 @@ class ActorCreate(BaseModel):
     manager_actor_id: UUID | None = None
 
 
-class ActorUpdate(BaseModel):
+class ActorUpdate(_ActorResourceFields):
     team_id: UUID | None = None
     area_id: UUID | None = None
     user_id: UUID | None = None
@@ -135,6 +166,19 @@ class ActorRead(BaseModel):
     company: str | None = None
     job_title: str | None = None
     manager_actor_id: UUID | None = None
+    # US-182: pool de recursos con capacidad.
+    organization_id: UUID | None = None
+    resource_type: str | None = None
+    portfolio_function: str | None = None
+    seniority: str | None = None
+    scarcity_level: str | None = None
+    location: str | None = None
+    skills_tags: list[str] = []
+    nominal_capacity_pct: float = 100
+    project_capacity_pct: float = 100
+    is_key_resource: bool = False
+    is_shared_resource: bool = True
+    fte_cost_rate: float | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

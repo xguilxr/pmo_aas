@@ -26,12 +26,16 @@ import {
 } from "@/lib/api/areas";
 import { createOrAdoptAreaForProject } from "@/lib/api/area-helpers";
 import {
+  ASSIGNMENT_STATUS_LABEL,
+  ASSIGNMENT_TYPE_LABEL,
   createParticipation,
   createProjectRole,
   deleteParticipation,
   listParticipations,
   listProjectRoles,
   updateParticipation,
+  type AssignmentStatus,
+  type AssignmentType,
   type Participation,
   type ProjectRole,
 } from "@/lib/api/project-directory";
@@ -180,6 +184,7 @@ export function DirectoryView({ projectId }: Props) {
                 <SortableTh<Row> sortKey="team" getter={(r) => r.participation.operational_team_id ? teamsById[r.participation.operational_team_id]?.name ?? "" : ""} ctrl={sortCtrl}>Equipo operativo</SortableTh>
                 <SortableTh<Row> sortKey="role" getter={(r) => r.participation.project_role_id ? rolesById[r.participation.project_role_id]?.name ?? "" : ""} ctrl={sortCtrl}>Rol</SortableTh>
                 <SortableTh<Row> sortKey="period" getter={(r) => r.participation.start_date ?? ""} ctrl={sortCtrl}>Periodo</SortableTh>
+                <SortableTh<Row> sortKey="allocation" getter={(r) => r.participation.allocation_pct ?? -1} ctrl={sortCtrl} align="right">FTE %</SortableTh>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -226,6 +231,9 @@ export function DirectoryView({ projectId }: Props) {
                   </td>
                   <td className="px-3 py-2 text-xs">
                     {p.start_date ?? "—"} → {p.end_date ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right text-xs">
+                    {p.allocation_pct ?? "—"}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Button
@@ -317,6 +325,11 @@ function AddPersonModal({
   const [roleId, setRoleId] = useState<string>("");
   const [isAreaLead, setIsAreaLead] = useState(false);
   const [isPrimary, setIsPrimary] = useState(true);
+  // US-183: FTE% + ciclo de vida de capacidad de la asignación.
+  const [allocationPct, setAllocationPct] = useState("");
+  const [assignmentType, setAssignmentType] = useState<AssignmentType>("directa");
+  const [status, setStatus] = useState<AssignmentStatus>("activa");
+  const [isCritical, setIsCritical] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -351,6 +364,10 @@ function AddPersonModal({
         is_area_lead: isAreaLead,
         is_primary: isPrimary,
         is_active: true,
+        allocation_pct: allocationPct.trim() === "" ? undefined : Number(allocationPct),
+        assignment_type: assignmentType,
+        status,
+        is_critical: isCritical,
       });
       onSaved();
     } catch (e: any) {
@@ -493,6 +510,51 @@ function AddPersonModal({
           />
         </div>
 
+        {/* US-183: FTE% + ciclo de vida de capacidad. */}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs">
+            FTE %
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Ej. 50"
+              value={allocationPct}
+              onChange={(e) => setAllocationPct(e.target.value)}
+            />
+            <span className="mt-0.5 block text-[11px] text-[var(--color-tertiary)]">
+              % de dedicación a este proyecto
+            </span>
+          </label>
+          <label className="text-xs">
+            Tipo de asignación
+            <Select
+              value={assignmentType}
+              onChange={(e) => setAssignmentType(e.target.value as AssignmentType)}
+            >
+              {(Object.keys(ASSIGNMENT_TYPE_LABEL) as AssignmentType[]).map((t) => (
+                <option key={t} value={t}>
+                  {ASSIGNMENT_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+
+        <label className="block text-xs">
+          Estado
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as AssignmentStatus)}
+          >
+            {(Object.keys(ASSIGNMENT_STATUS_LABEL) as AssignmentStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {ASSIGNMENT_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </Select>
+        </label>
+
         <div className="flex gap-4 text-xs">
           <label className="flex items-center gap-1">
             <input
@@ -509,6 +571,14 @@ function AddPersonModal({
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Participación primaria
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={isCritical}
+              onChange={(e) => setIsCritical(e.target.checked)}
+            />
+            Crítico para el proyecto
           </label>
         </div>
 
@@ -571,6 +641,19 @@ function EditParticipationModal({
   const [isPrimary, setIsPrimary] = useState(participation.is_primary);
   const [startDate, setStartDate] = useState(participation.start_date ?? "");
   const [endDate, setEndDate] = useState(participation.end_date ?? "");
+  // US-183: FTE% + ciclo de vida de capacidad.
+  const [allocationPct, setAllocationPct] = useState(
+    participation.allocation_pct !== null && participation.allocation_pct !== undefined
+      ? String(participation.allocation_pct)
+      : "",
+  );
+  const [assignmentType, setAssignmentType] = useState<AssignmentType>(
+    participation.assignment_type ?? "directa",
+  );
+  const [status, setStatus] = useState<AssignmentStatus>(
+    participation.status ?? "activa",
+  );
+  const [isCritical, setIsCritical] = useState(participation.is_critical ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -604,6 +687,10 @@ function EditParticipationModal({
         is_primary: isPrimary,
         start_date: startDate || null,
         end_date: endDate || null,
+        allocation_pct: allocationPct.trim() === "" ? null : Number(allocationPct),
+        assignment_type: assignmentType,
+        status,
+        is_critical: isCritical,
       });
       onSaved();
     } catch (e: any) {
@@ -740,6 +827,51 @@ function EditParticipationModal({
           </label>
         </div>
 
+        {/* US-183: FTE% + ciclo de vida de capacidad. */}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs">
+            FTE %
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Ej. 50"
+              value={allocationPct}
+              onChange={(e) => setAllocationPct(e.target.value)}
+            />
+            <span className="mt-0.5 block text-[11px] text-[var(--color-tertiary)]">
+              % de dedicación a este proyecto
+            </span>
+          </label>
+          <label className="text-xs">
+            Tipo de asignación
+            <Select
+              value={assignmentType}
+              onChange={(e) => setAssignmentType(e.target.value as AssignmentType)}
+            >
+              {(Object.keys(ASSIGNMENT_TYPE_LABEL) as AssignmentType[]).map((t) => (
+                <option key={t} value={t}>
+                  {ASSIGNMENT_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+
+        <label className="block text-xs">
+          Estado
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as AssignmentStatus)}
+          >
+            {(Object.keys(ASSIGNMENT_STATUS_LABEL) as AssignmentStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {ASSIGNMENT_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </Select>
+        </label>
+
         <div className="flex gap-4 text-xs">
           <label className="flex items-center gap-1">
             <input
@@ -756,6 +888,14 @@ function EditParticipationModal({
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Primaria
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={isCritical}
+              onChange={(e) => setIsCritical(e.target.checked)}
+            />
+            Crítico para el proyecto
           </label>
         </div>
 

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   FolderKanban,
+  Gauge,
   GitBranch,
   Inbox,
   KeyRound,
@@ -89,7 +90,8 @@ const TOP_NAV: NavItem[] = [
       p.startsWith("/pmo/raid") ||
       p.startsWith("/pmo/changes") ||
       p.startsWith("/pmo/minutes") ||
-      p.startsWith("/pmo/reports"),
+      p.startsWith("/pmo/reports") ||
+      p.startsWith("/pmo/resources"),
     children: [
       {
         id: "raid",
@@ -121,6 +123,15 @@ const TOP_NAV: NavItem[] = [
         icon: <BarChart3 className="h-4 w-4" aria-hidden />,
         href: "/pmo/reports",
         match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
+      },
+      {
+        // US-183: vista ejecutiva de capacidad/saturación de recursos
+        // (individual + rol/área/equipo + conflictos).
+        id: "resources",
+        label: "Recursos",
+        icon: <Gauge className="h-4 w-4" aria-hidden />,
+        href: "/pmo/resources",
+        match: (p) => p.startsWith("/pmo/resources"),
       },
     ],
   },

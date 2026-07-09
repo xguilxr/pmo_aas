@@ -314,6 +314,60 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ENH-188: estado con tag de color en la tabla del Plan, editable inline
+// on-click (mismo patrón visual que ya usa RAID en StatusInlineCell). En
+// modo lectura muestra el chip de color (StatusBadge); al hacer click se
+// convierte en <select> nativo, igual que antes con InlineSelectCell.
+function TaskStatusInlineCell({
+  status,
+  onChange,
+  ariaLabel,
+}: {
+  status: TaskStatus | string;
+  onChange: (value: string) => void;
+  ariaLabel?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        title="Estado (clic para editar)"
+        aria-label={ariaLabel}
+        className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+      >
+        <StatusBadge status={status} />
+      </button>
+    );
+  }
+  return (
+    <select
+      autoFocus
+      value={status}
+      aria-label={ariaLabel}
+      onChange={(e) => {
+        onChange(e.target.value);
+        setEditing(false);
+      }}
+      onBlur={() => setEditing(false)}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setEditing(false);
+        }
+      }}
+      className="rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-1 py-0.5 text-xs text-[var(--color-secondary)] focus:outline-none"
+    >
+      {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
+        <option key={k} value={k}>
+          {TASK_STATUS_LABEL[k]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // US-098 fix: dropdown checklist de Áreas para la toolbar top-level.
 // Popover simple con click-outside para cerrar. Multi-select via Set.
 // Toggle adicional "Agrupar" arriba del listado para que el botón de
@@ -985,18 +1039,15 @@ function TaskList({
                   `${t.progress}%`
                 )}
               </td>
-              {/* US-173 + Fase 2: Estado editable inline (on-click). */}
+              {/* US-173 + Fase 2 + ENH-188: Estado editable inline (on-click), */}
+              {/* mostrado siempre como tag de color (StatusBadge). */}
               <td className="px-3 py-2">
                 {onInlineUpdate ? (
-                  <InlineSelectCell
-                    value={t.status}
-                    options={(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map(
-                      (k) => ({ value: k, label: TASK_STATUS_LABEL[k] }),
-                    )}
+                  <TaskStatusInlineCell
+                    status={t.status}
                     onChange={(v) =>
                       onInlineUpdate(t.id, { status: v as TaskStatus })
                     }
-                    title="Estado"
                     ariaLabel={`Estado de ${t.name}`}
                   />
                 ) : (

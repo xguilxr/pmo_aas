@@ -51,6 +51,7 @@ flowchart TB
             MIN_X["/pmo/minutes (cross-project)"]:::app
             REP["/pmo/reports"]:::app
             REP_PF["/pmo/reports/portfolio<br/>(admin only)"]:::app
+            RES_X["/pmo/resources (cross-project)"]:::app
         end
 
         subgraph PRJ_TABS ["/pmo/projects/[id]/* — tabs"]
@@ -143,6 +144,7 @@ flowchart LR
         N4 --> N4c["Minutas<br/>/pmo/minutes"]
         N4 --> N4d["Reportes<br/>/pmo/reports"]
         N4 --> N4e["Portfolio<br/>/pmo/reports/portfolio<br/>(admin-only)"]
+        N4 --> N4f["Recursos<br/>/pmo/resources"]
     end
 
     subgraph ADMIN_NAV ["ADMIN_NAV - admin"]
@@ -175,9 +177,10 @@ automáticamente en cualquier subruta de `/pmo/projects/[id]/*`:
 `Resumen · Plan · RAID · Áreas · Documentos · Lecciones · Minutas · Reportes · Cambios`
 
 > **Nota:** las páginas `/tasks`, `/gantt`, `/ai-minutes/new`,
-> `/reports/builder`, `/reports/tweak`, `/charter` y `/edit` no tienen
-> tab dedicado: se alcanzan desde botones in-page o desde otras tabs
-> (ej. `Plan → Tasks → Gantt`, `Reportes → Builder → Tweak`).
+> `/reports/builder`, `/reports/tweak`, `/charter`, `/edit` y
+> `/ai-context` no tienen tab dedicado: se alcanzan desde botones
+> in-page o desde otras tabs (ej. `Plan → Tasks → Gantt`,
+> `Reportes → Builder → Tweak`, hub → link "Memoria IA").
 
 ### 2.3 Landing del admin (`/admin`)
 
@@ -192,7 +195,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **73 páginas** (`page.tsx`) post-cleanup 2026-05-23. Antes eran 78; se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
+Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08). Antes del cleanup eran 78; se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
 
 ### 3.1 Rutas públicas (5)
 
@@ -212,7 +215,7 @@ Total: **73 páginas** (`page.tsx`) post-cleanup 2026-05-23. Antes eran 78; se b
 | `/account` | Perfil, password, preferencias de notificación. |
 | `/notifications` | Centro de notificaciones (filtros por tipo). |
 
-### 3.3 `/pmo/**` — portal de proyectos (34)
+### 3.3 `/pmo/**` — portal de proyectos (35)
 
 **Navegación / listados**
 
@@ -235,11 +238,13 @@ Total: **73 páginas** (`page.tsx`) post-cleanup 2026-05-23. Antes eran 78; se b
 | `/pmo/minutes` | Minutas cross-project. |
 | `/pmo/reports` | Reportes operativos. |
 | `/pmo/reports/portfolio` | Constructor de reporte portfolio (admin). |
+| `/pmo/resources` | US-183: capacidad/saturación de recursos — vista Personas, Roles, Áreas y Equipos, Conflictos (sobreasignación con recomendación). Filtro de ventana (Hoy/Semana/3 semanas/Mes). |
 
 **Subrutas del proyecto** (montadas con `ProjectTabsBar`)
 
 | URL `/pmo/projects/[id]/...` | Propósito | Acceso |
 |---|---|---|
+| `/ai-context` | US-185: Memoria IA — contexto persistente (`context_md`, `instructions_md`, `auto_summary_md`) inyectado en toda generación IA (minutas/reportes) del proyecto. | Link "Memoria IA" en hub, junto a las tarjetas RAID |
 | `/charter` | Project charter editable + descarga. | Hub, documents, post-creación |
 | `/edit` | Edita metadata del proyecto. | Botón "Editar" en hub |
 | `/plan` | Plan de alto nivel. | Tab "Plan" |
@@ -377,7 +382,7 @@ flowchart LR
 
 | Item | Visible para |
 |---|---|
-| `TOP_NAV` (Dashboard, Proyectos, Requests, RAID, Cambios, Minutas, Reportes) | Cualquier usuario autenticado |
+| `TOP_NAV` (Dashboard, Proyectos, Requests, RAID, Cambios, Minutas, Reportes, Recursos) | Cualquier usuario autenticado |
 | `Reportes → Portfolio` | Admin (flag `adminOnly`) |
 | `ADMIN_NAV` + `/admin/**` | Admin del tenant (rol con permisos admin) |
 | `SUPERADMIN_NAV` + `/superadmin/**` | `is_superadmin === true` |

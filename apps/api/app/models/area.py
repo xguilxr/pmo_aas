@@ -11,9 +11,19 @@ Org/Programa/Proyecto en cascada. La tabla `project_areas` (US-091)
 se deprecó en migración 0048.
 """
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, new_uuid
@@ -208,3 +218,38 @@ class Actor(Base, TimestampMixin):
     created_by: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")
     )
+    # --- US-182: pool de recursos con capacidad (Revamp 1.0) ---
+    # El Actor ES el resource_pool del tenant. NULL en organization_id =
+    # recurso tenant-global (mismo patrón que areas.organization_id).
+    organization_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("organizations.id", ondelete="SET NULL")
+    )
+    # cliente_negocio | cliente_it | e4_pmo | e4_tecnologia | vendor_externo.
+    # NULL = sin clasificar (legacy). Check en migración 0092.
+    resource_type: Mapped[str | None] = mapped_column(String(24))
+    # Rol normalizado para saturación por función: pm | pmo | arquitectura |
+    # infraestructura | aplicaciones | datos | seguridad | integraciones |
+    # negocio | change | testing | vendor.
+    portfolio_function: Mapped[str | None] = mapped_column(String(24))
+    seniority: Mapped[str | None] = mapped_column(String(8))  # junior|mid|senior|lead
+    scarcity_level: Mapped[str | None] = mapped_column(String(8))  # alta|media|baja
+    location: Mapped[str | None] = mapped_column(String(100))
+    skills_tags: Mapped[list] = mapped_column(
+        JSON, nullable=False, default=list, server_default="[]"
+    )
+    # Capacidad consumible: nominal = jornada teórica; project = % real
+    # disponible para proyectos (BAU descontado). La saturación (US-183)
+    # compara asignaciones vs project_capacity_pct, NUNCA vs 100 fijo.
+    nominal_capacity_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, default=100, server_default="100"
+    )
+    project_capacity_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, default=100, server_default="100"
+    )
+    is_key_resource: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    is_shared_resource: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    fte_cost_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))

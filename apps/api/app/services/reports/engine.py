@@ -398,10 +398,15 @@ def _build_s03_rag(ctx, params, window):
     p = ctx.project
     if not p:
         return {"empty": True}
+    # US-180: salud única — el semáforo es health_status (el template
+    # habla en green/amber/red, mapeamos yellow→amber).
+    rag = {"green": "green", "yellow": "amber", "red": "red"}.get(
+        p.health_status, "amber"
+    )
     return {
-        "status_rag": getattr(p, "status_rag", None) or "amber",
-        "status_comment": getattr(p, "status_comment", None),
-        "health_status": p.health_status,
+        "status_rag": rag,
+        "status_comment": getattr(p, "health_reason", None),
+        "health_source": getattr(p, "health_source", "auto"),
     }
 
 

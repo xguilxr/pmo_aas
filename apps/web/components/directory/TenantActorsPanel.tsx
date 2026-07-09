@@ -23,10 +23,59 @@ import {
   listAreas,
   updateActor,
   type Actor,
+  type ActorSeniority,
   type Area,
+  type PortfolioFunction,
+  type ResourceType,
+  type ScarcityLevel,
 } from "@/lib/api/areas";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
+
+// US-182: labels ES del pool de recursos con capacidad.
+const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
+  cliente_negocio: "Cliente Negocio",
+  cliente_it: "Cliente IT",
+  e4_pmo: "E4 PMO",
+  e4_tecnologia: "E4 Tecnología",
+  vendor_externo: "Vendor Externo",
+};
+
+const PORTFOLIO_FUNCTION_LABELS: Record<PortfolioFunction, string> = {
+  pm: "PM",
+  pmo: "PMO",
+  arquitectura: "Arquitectura",
+  infraestructura: "Infraestructura",
+  aplicaciones: "Aplicaciones",
+  datos: "Datos",
+  seguridad: "Seguridad",
+  integraciones: "Integraciones",
+  negocio: "Negocio",
+  change: "Change",
+  testing: "Testing",
+  vendor: "Vendor",
+};
+
+const SENIORITY_LABELS: Record<ActorSeniority, string> = {
+  junior: "Junior",
+  mid: "Mid",
+  senior: "Senior",
+  lead: "Lead",
+};
+
+const SCARCITY_LABELS: Record<ScarcityLevel, string> = {
+  alta: "Alta",
+  media: "Media",
+  baja: "Baja",
+};
+
+function resourceTypeLabel(v?: ResourceType | null): string {
+  return v ? RESOURCE_TYPE_LABELS[v] ?? v : "—";
+}
+
+function portfolioFunctionLabel(v?: PortfolioFunction | null): string {
+  return v ? PORTFOLIO_FUNCTION_LABELS[v] ?? v : "—";
+}
 
 export function TenantActorsPanel() {
   const [actors, setActors] = useState<Actor[]>([]);
@@ -35,6 +84,9 @@ export function TenantActorsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
+  // US-182: filtros client-side por tipo de recurso / función de portafolio.
+  const [resourceTypeFilter, setResourceTypeFilter] = useState("");
+  const [portfolioFunctionFilter, setPortfolioFunctionFilter] = useState("");
   const [editing, setEditing] = useState<Actor | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -64,6 +116,12 @@ export function TenantActorsPanel() {
   const filtered = useMemo(() => {
     let rows = actors;
     if (areaFilter) rows = rows.filter((a) => a.area_id === areaFilter);
+    if (resourceTypeFilter)
+      rows = rows.filter((a) => a.resource_type === resourceTypeFilter);
+    if (portfolioFunctionFilter)
+      rows = rows.filter(
+        (a) => a.portfolio_function === portfolioFunctionFilter,
+      );
     const q = search.trim().toLowerCase();
     if (q) {
       rows = rows.filter(
@@ -75,7 +133,7 @@ export function TenantActorsPanel() {
       );
     }
     return rows;
-  }, [actors, areaFilter, search]);
+  }, [actors, areaFilter, resourceTypeFilter, portfolioFunctionFilter, search]);
 
   const { sortedRows, ctrl: sortCtrl } = useSortableRows<Actor>(filtered);
 
@@ -119,6 +177,32 @@ export function TenantActorsPanel() {
             </option>
           ))}
         </Select>
+        <Select
+          value={resourceTypeFilter}
+          onChange={(e) => setResourceTypeFilter(e.target.value)}
+          className="max-w-xs"
+        >
+          <option value="">Todos los tipos</option>
+          {(Object.keys(RESOURCE_TYPE_LABELS) as ResourceType[]).map((rt) => (
+            <option key={rt} value={rt}>
+              {RESOURCE_TYPE_LABELS[rt]}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={portfolioFunctionFilter}
+          onChange={(e) => setPortfolioFunctionFilter(e.target.value)}
+          className="max-w-xs"
+        >
+          <option value="">Todas las funciones</option>
+          {(Object.keys(PORTFOLIO_FUNCTION_LABELS) as PortfolioFunction[]).map(
+            (pf) => (
+              <option key={pf} value={pf}>
+                {PORTFOLIO_FUNCTION_LABELS[pf]}
+              </option>
+            ),
+          )}
+        </Select>
         <div className="ml-auto">
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="mr-1 h-4 w-4" /> Nueva persona
@@ -140,6 +224,10 @@ export function TenantActorsPanel() {
               <SortableTh<Actor> sortKey="email" getter={(a) => a.email ?? ""} ctrl={sortCtrl}>Email</SortableTh>
               <SortableTh<Actor> sortKey="company" getter={(a) => a.company ?? ""} ctrl={sortCtrl}>Empresa / Cargo</SortableTh>
               <SortableTh<Actor> sortKey="area" getter={(a) => a.area_id ? areaById[a.area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
+              <SortableTh<Actor> sortKey="resource_type" getter={(a) => resourceTypeLabel(a.resource_type)} ctrl={sortCtrl}>Tipo</SortableTh>
+              <SortableTh<Actor> sortKey="portfolio_function" getter={(a) => portfolioFunctionLabel(a.portfolio_function)} ctrl={sortCtrl}>Función</SortableTh>
+              <SortableTh<Actor> sortKey="project_capacity_pct" getter={(a) => a.project_capacity_pct ?? 100} ctrl={sortCtrl} align="right">Cap. proyectos %</SortableTh>
+              <SortableTh<Actor> sortKey="is_key_resource" getter={(a) => a.is_key_resource ?? false} ctrl={sortCtrl} align="center">🔑</SortableTh>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
@@ -147,7 +235,7 @@ export function TenantActorsPanel() {
             {sortedRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={9}
                   className="p-8 text-center text-xs text-[var(--color-tertiary)]"
                 >
                   {actors.length === 0
@@ -179,6 +267,20 @@ export function TenantActorsPanel() {
                   </td>
                   <td className="px-3 py-2 text-xs">
                     {a.area_id ? areaById[a.area_id]?.name ?? "—" : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    {resourceTypeLabel(a.resource_type)}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    {portfolioFunctionLabel(a.portfolio_function)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-xs">
+                    {a.project_capacity_pct ?? 100}%
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    {a.is_key_resource ? (
+                      <span title="Recurso clave">🔑</span>
+                    ) : null}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Button
@@ -249,6 +351,31 @@ function ActorModal({
   const [jobTitle, setJobTitle] = useState(actor?.job_title ?? "");
   const [areaId, setAreaId] = useState(actor?.area_id ?? "");
   const [isActive, setIsActive] = useState(actor?.is_active ?? true);
+  // US-182: pool de recursos con capacidad.
+  const [resourceType, setResourceType] = useState(actor?.resource_type ?? "");
+  const [portfolioFunction, setPortfolioFunction] = useState(
+    actor?.portfolio_function ?? "",
+  );
+  const [seniority, setSeniority] = useState(actor?.seniority ?? "");
+  const [scarcityLevel, setScarcityLevel] = useState(
+    actor?.scarcity_level ?? "",
+  );
+  const [location, setLocation] = useState(actor?.location ?? "");
+  const [skillsTags, setSkillsTags] = useState(
+    (actor?.skills_tags ?? []).join(", "),
+  );
+  const [nominalCapacityPct, setNominalCapacityPct] = useState(
+    String(actor?.nominal_capacity_pct ?? 100),
+  );
+  const [projectCapacityPct, setProjectCapacityPct] = useState(
+    String(actor?.project_capacity_pct ?? 100),
+  );
+  const [isKeyResource, setIsKeyResource] = useState(
+    actor?.is_key_resource ?? false,
+  );
+  const [isSharedResource, setIsSharedResource] = useState(
+    actor?.is_shared_resource ?? true,
+  );
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -268,6 +395,22 @@ function ActorModal({
         job_title: jobTitle.trim() || null,
         area_id: areaId || null,
         is_active: isActive,
+        // US-182: pool de recursos con capacidad.
+        resource_type: resourceType || null,
+        portfolio_function: portfolioFunction || null,
+        seniority: seniority || null,
+        scarcity_level: scarcityLevel || null,
+        location: location.trim() || null,
+        skills_tags: skillsTags
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        nominal_capacity_pct:
+          nominalCapacityPct.trim() === "" ? 100 : Number(nominalCapacityPct),
+        project_capacity_pct:
+          projectCapacityPct.trim() === "" ? 100 : Number(projectCapacityPct),
+        is_key_resource: isKeyResource,
+        is_shared_resource: isSharedResource,
       };
       if (actor) {
         await updateActor(actor.id, payload as any);
@@ -340,6 +483,140 @@ function ActorModal({
           />
           <span>Activa</span>
         </label>
+
+        {/* US-182: pool de recursos con capacidad. */}
+        <div className="space-y-3 border-t border-[var(--border-default)] pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Recurso y capacidad
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldLabel label="Tipo de recurso">
+              <Select
+                value={resourceType}
+                onChange={(e) =>
+                  setResourceType(e.target.value as ResourceType | "")
+                }
+              >
+                <option value="">Sin clasificar</option>
+                {(Object.keys(RESOURCE_TYPE_LABELS) as ResourceType[]).map(
+                  (rt) => (
+                    <option key={rt} value={rt}>
+                      {RESOURCE_TYPE_LABELS[rt]}
+                    </option>
+                  ),
+                )}
+              </Select>
+            </FieldLabel>
+            <FieldLabel label="Función de portafolio">
+              <Select
+                value={portfolioFunction}
+                onChange={(e) =>
+                  setPortfolioFunction(
+                    e.target.value as PortfolioFunction | "",
+                  )
+                }
+              >
+                <option value="">Sin clasificar</option>
+                {(
+                  Object.keys(PORTFOLIO_FUNCTION_LABELS) as PortfolioFunction[]
+                ).map((pf) => (
+                  <option key={pf} value={pf}>
+                    {PORTFOLIO_FUNCTION_LABELS[pf]}
+                  </option>
+                ))}
+              </Select>
+            </FieldLabel>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldLabel label="Seniority">
+              <Select
+                value={seniority}
+                onChange={(e) =>
+                  setSeniority(e.target.value as ActorSeniority | "")
+                }
+              >
+                <option value="">Sin clasificar</option>
+                {(Object.keys(SENIORITY_LABELS) as ActorSeniority[]).map(
+                  (s) => (
+                    <option key={s} value={s}>
+                      {SENIORITY_LABELS[s]}
+                    </option>
+                  ),
+                )}
+              </Select>
+            </FieldLabel>
+            <FieldLabel label="Escasez">
+              <Select
+                value={scarcityLevel}
+                onChange={(e) =>
+                  setScarcityLevel(e.target.value as ScarcityLevel | "")
+                }
+              >
+                <option value="">Sin clasificar</option>
+                {(Object.keys(SCARCITY_LABELS) as ScarcityLevel[]).map((s) => (
+                  <option key={s} value={s}>
+                    {SCARCITY_LABELS[s]}
+                  </option>
+                ))}
+              </Select>
+            </FieldLabel>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldLabel label="Capacidad nominal %">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={nominalCapacityPct}
+                onChange={(e) => setNominalCapacityPct(e.target.value)}
+              />
+            </FieldLabel>
+            <FieldLabel label="Capacidad para proyectos %">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={projectCapacityPct}
+                onChange={(e) => setProjectCapacityPct(e.target.value)}
+              />
+              <span className="text-[11px] text-[var(--color-tertiary)]">
+                % real disponible para proyectos, descontando BAU
+              </span>
+            </FieldLabel>
+          </div>
+          <FieldLabel label="Ubicación">
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </FieldLabel>
+          <FieldLabel label="Skills (separados por coma)">
+            <Input
+              value={skillsTags}
+              onChange={(e) => setSkillsTags(e.target.value)}
+              placeholder="ej. sap, scrum, azure"
+            />
+          </FieldLabel>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={isKeyResource}
+                onChange={(e) => setIsKeyResource(e.target.checked)}
+              />
+              <span>Recurso clave</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={isSharedResource}
+                onChange={(e) => setIsSharedResource(e.target.checked)}
+              />
+              <span>Recurso compartido</span>
+            </label>
+          </div>
+        </div>
+
         {err ? <p className="text-sm text-red-600">{err}</p> : null}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose} disabled={saving}>

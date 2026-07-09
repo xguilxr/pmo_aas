@@ -158,6 +158,28 @@ API keys de tenants en modo `byo` se cifran con **Fernet** (`services/ai_secrets
 - **No hay golden dataset** (`tests/ai/golden/`) ni runner de comparación semántica. Diferido.
 - Cambios pasan por PR con commit referenciando el ENH/BUG (ej. ENH-102, ENH-105 mencionados arriba).
 
+### Arquitectura de composición por capas (ENH-189 + US-185, 2026-07-08)
+
+Los prompts base siguen versionados en código, pero ahora se **componen**
+con dos capas configurables sin deploy:
+
+```
+system efectivo  = base (prompts.py)
+                 + <INSTRUCCIONES_DEL_TENANT>      ← tenants.settings.ai.instructions_md
+                                                     (admin UI /admin → IA; máx 2000 chars;
+                                                      services/ai/prompt_builder.py)
+prompt de usuario = <CONTEXTO_DEL_PROYECTO>        ← project_ai_contexts (US-185):
+                    (contexto curado + instrucciones   contexto/glosario/reglas del PM +
+                     del PM + resumen acumulativo)     resumen que la IA actualiza por minuta
+                  + payload de la tarea (transcript / datos del reporte)
+```
+
+Aplica a: minutas (`_run_minute`, cada chunk) y reportes
+(`/reports/ai-generate`). Las instrucciones nunca pueden cambiar el
+contrato de salida (regla de precedencia explícita en el builder).
+Prompt nuevo: `PROJECT_MEMORY_SYSTEM` (resumen acumulativo de proyecto,
+task Celery `ai.update_project_context`).
+
 ---
 
 ## 5. Guardrails reales
@@ -165,9 +187,9 @@ API keys de tenants en modo `byo` se cifran con **Fernet** (`services/ai_secrets
 - **Parseo JSON con retry implícito.** Si el JSON viene mal, el worker captura la excepción y marca el job `failed` con `error="ai_invalid_json"`. **No hay retry automático** hoy.
 - **Validación Pydantic:** los workers validan output contra schemas (`MinuteDraft`, `ReportDraft`, etc.) antes de persistir.
 - **Sin censura activa de PII en logs.** Los logs del worker pueden contener el prompt completo si `LOG_LEVEL=DEBUG`. En prod (`INFO`) solo se loguean `tenant_id`, `model`, `tokens_in/out` y `duration_ms`.
-- **Sin chunking.** No existe `app/ai/chunking.py`. Transcripciones largas se envían al provider tal cual; el provider falla con `context_too_long` y el job se marca `failed` (el usuario debe partir manualmente).
+- **Chunking: SÍ existe** (corrección ENH-189 — este doc decía lo contrario). `chunk_text` vive en `app/services/ai/provider.py` (~4 chars/token, `max_tokens=3000`, `overlap_tokens=200`) y `_run_minute` procesa cada chunk por separado (validator + merge en cascada). El bloque `<CONTEXTO_DEL_PROYECTO>` (US-185) se antepone a **cada** chunk.
 
-> Si quieres reintroducir retry automático, chunking, golden dataset o sanitización de PII, abrir issues — es deuda razonable.
+> Si quieres reintroducir retry automático, golden dataset o sanitización de PII, abrir issues — es deuda razonable.
 
 ---
 

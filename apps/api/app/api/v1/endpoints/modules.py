@@ -1674,6 +1674,14 @@ async def create_minute(
     )
     await db.commit()
     await db.refresh(m)
+    # US-185: la minuta nueva alimenta la memoria del proyecto (resumen
+    # acumulativo IA). Best-effort — sin Celery configurado no bloquea.
+    try:
+        from app.workers.tasks.ai import update_project_context_task
+
+        update_project_context_task.delay(str(tenant_id), str(m.project_id))
+    except Exception:  # pragma: no cover
+        pass
     return MeetingMinuteRead.model_validate(m)
 
 

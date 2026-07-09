@@ -11,14 +11,17 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heatmap, TrendLines, Treemap } from "@/components/dashboard-charts";
+import { HealthDimensionMatrix } from "@/components/health-panel";
 import { ProgramModal } from "@/components/program-modal";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
   downloadPortfolioStatusReport,
+  getHealthMatrix,
   getHeatmap,
   getTrends,
   getTreemap,
+  type HealthMatrixResponse,
   type HeatmapResponse,
   type TreemapResponse,
   type TrendsResponse,
@@ -87,6 +90,8 @@ export default function PmoHome() {
   // US-155 — analítica de portafolio (admin-equivalente; detección por capacidad).
   const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
   const [treemap, setTreemap] = useState<TreemapResponse | null>(null);
+  // US-181: matriz Proyecto × Dimensión de salud.
+  const [healthMatrix, setHealthMatrix] = useState<HealthMatrixResponse | null>(null);
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [isAdminView, setIsAdminView] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -148,6 +153,9 @@ export default function PmoHome() {
     getTreemap({ scope: "tenant" })
       .then((r) => !cancelled && setTreemap(r))
       .catch(() => !cancelled && setTreemap(null));
+    getHealthMatrix()
+      .then((r) => !cancelled && setHealthMatrix(r))
+      .catch(() => !cancelled && setHealthMatrix(null));
     getTrends({ scope: "tenant", weeks: 12 })
       .then((r) => !cancelled && setTrends(r))
       .catch(() => !cancelled && setTrends(null));
@@ -245,6 +253,12 @@ export default function PmoHome() {
               <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" />
             </PortfolioPanel>
           </div>
+          <PortfolioPanel title="Salud por dimensión (proyectos activos)">
+            <HealthDimensionMatrix
+              rows={healthMatrix?.rows ?? []}
+              onRowClick={(pid) => router.push(`/pmo/projects/${pid}`)}
+            />
+          </PortfolioPanel>
           <PortfolioPanel title="Tendencias del tenant (12 semanas)">
             {(trends?.series.length ?? 0) > 0 ? (
               <div className="grid gap-4 sm:grid-cols-3">

@@ -40,10 +40,11 @@ class ProjectUpdate(BaseModel):
     budget: Decimal | None = None
     actual_budget: Decimal | None = None
     progress: int | None = Field(default=None, ge=0, le=100)
+    # US-180: editar health_status por este PATCH genérico equivale a una
+    # declaración manual (health_source='manual', sin razón). El flujo
+    # recomendado es PATCH /projects/{id}/health (razón obligatoria en
+    # amarillo/rojo y opción de volver a 'auto').
     health_status: Literal["green", "yellow", "red"] | None = None
-    # ENH-101: declarative RAG override (PM manual). Use sentinel
-    # "__unset__" semantics: omit = no change; explicit null = clear.
-    status_rag: Literal["green", "amber", "red"] | None = None
 
 
 class ProjectRead(BaseModel):
@@ -64,8 +65,9 @@ class ProjectRead(BaseModel):
     actual_budget: Decimal | None
     progress: int
     health_status: str
-    # ENH-101: declarative RAG (override del PM). None = sin override.
-    status_rag: Literal["green", "amber", "red"] | None = None
+    # US-180: salud única híbrida — fuente del semáforo + razón declarada.
+    health_source: Literal["auto", "manual"] = "auto"
+    health_reason: str | None = None
     request_id: UUID | None = None
     # US-084: campos del plan agregados con prioridad manual.
     manually_edited_fields: dict = {}
@@ -97,6 +99,17 @@ class ActivityItem(BaseModel):
 class PhaseChange(BaseModel):
     new_phase: Literal["planning", "execution", "support", "closed"]
     comment: str | None = None
+
+
+class HealthDeclare(BaseModel):
+    """US-180 — declarar el semáforo (override manual) o volver a 'auto'.
+
+    `status=None` regresa la salud a fuente automática (el motor de reglas
+    recalcula de inmediato). En amarillo/rojo la razón es obligatoria.
+    """
+
+    status: Literal["green", "yellow", "red"] | None = None
+    reason: str | None = Field(default=None, max_length=2000)
 
 
 class MemberCreate(BaseModel):

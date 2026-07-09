@@ -41,6 +41,10 @@ class TenantAIConfig:
 
     mode: str  # "disabled" | "platform" | "byo"
     byo: dict[str, Any] | None = None  # api_key descifrada + provider + model/base_url
+    # ENH-189: instrucciones permanentes del tenant (settings.ai.
+    # instructions_md) — se componen sobre los system prompts base vía
+    # services/ai/prompt_builder.build_system_prompt.
+    instructions_md: str | None = None
 
     @property
     def enabled(self) -> bool:
@@ -58,6 +62,11 @@ async def load_tenant_ai(db: AsyncSession, tenant_id: UUID | str) -> TenantAICon
     mode = str(ai.get("mode") or "disabled").lower()
     if mode not in VALID_MODES:
         mode = "disabled"
+    # ENH-189: instrucciones permanentes del tenant.
+    instructions_raw = ai.get("instructions_md")
+    instructions_md = (
+        instructions_raw.strip() if isinstance(instructions_raw, str) else None
+    ) or None
 
     byo_effective: dict[str, Any] | None = None
     byo_raw = ai.get("byo")
@@ -83,4 +92,4 @@ async def load_tenant_ai(db: AsyncSession, tenant_id: UUID | str) -> TenantAICon
         # Limpiar Nones para que el factory use defaults del provider.
         byo_effective = {k: v for k, v in byo_effective.items() if v is not None}
 
-    return TenantAIConfig(mode=mode, byo=byo_effective)
+    return TenantAIConfig(mode=mode, byo=byo_effective, instructions_md=instructions_md)

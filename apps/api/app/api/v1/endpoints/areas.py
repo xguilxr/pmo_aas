@@ -670,6 +670,10 @@ async def list_actors(
     area_id: UUID | None = Query(default=None),
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
+    # US-182: filtros del pool de recursos.
+    resource_type: str | None = Query(default=None),
+    portfolio_function: str | None = Query(default=None),
+    organization_id: UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=100, ge=1, le=500),
     cu: CurrentUser = Depends(require_authenticated()),
@@ -679,6 +683,12 @@ async def list_actors(
     stmt = select(Actor).where(
         Actor.tenant_id == str(tenant_id), Actor.deleted_at.is_(None)
     )
+    if resource_type is not None:
+        stmt = stmt.where(Actor.resource_type == resource_type)
+    if portfolio_function is not None:
+        stmt = stmt.where(Actor.portfolio_function == portfolio_function)
+    if organization_id is not None:
+        stmt = stmt.where(Actor.organization_id == str(organization_id))
     if team_id is not None:
         stmt = stmt.where(Actor.team_id == str(team_id))
     if area_id is not None:
@@ -793,6 +803,38 @@ async def create_actor(
             str(body.manager_actor_id) if body.manager_actor_id else None
         ),
         created_by=str(cu.id),
+        # US-182: pool de recursos con capacidad. Los None caen a los
+        # defaults del modelo (100/100, no-clave, compartido).
+        organization_id=(
+            str(body.organization_id) if body.organization_id else None
+        ),
+        resource_type=body.resource_type,
+        portfolio_function=body.portfolio_function,
+        seniority=body.seniority,
+        scarcity_level=body.scarcity_level,
+        location=body.location,
+        skills_tags=body.skills_tags if body.skills_tags is not None else [],
+        **(
+            {"nominal_capacity_pct": body.nominal_capacity_pct}
+            if body.nominal_capacity_pct is not None
+            else {}
+        ),
+        **(
+            {"project_capacity_pct": body.project_capacity_pct}
+            if body.project_capacity_pct is not None
+            else {}
+        ),
+        **(
+            {"is_key_resource": body.is_key_resource}
+            if body.is_key_resource is not None
+            else {}
+        ),
+        **(
+            {"is_shared_resource": body.is_shared_resource}
+            if body.is_shared_resource is not None
+            else {}
+        ),
+        fte_cost_rate=body.fte_cost_rate,
     )
     db.add(a)
     await db.commit()

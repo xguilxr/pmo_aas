@@ -205,6 +205,8 @@ class ChangeRequestUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     impact: str | None = None
+    # ENH-186: edición inline de tipo (mismo patrón US-178 de RAID).
+    type: Literal["scope", "time", "cost", "resource"] | None = None
     # ENH-112: `cancelled` agregado para el flujo de cancelación de cambios.
     status: Literal["in_review", "approved", "rejected", "implemented", "cancelled"] | None = None
 

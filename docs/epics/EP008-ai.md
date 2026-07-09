@@ -6,9 +6,9 @@
 | **Prioridad** | Alta |
 | **Dependencias** | EP005, EP006 |
 | **Módulo backend** | `apps/api/app/services/ai/`, `apps/api/app/workers/tasks/ai.py`, `apps/api/app/api/v1/endpoints/{ai,admin_ai,superadmin_ai}.py` |
-| **Módulo frontend** | `/admin/ai`, `/superadmin/ai`, `/pmo/projects/[id]/ai-minutes/new`, `/pmo/projects/[id]/reports/*` |
+| **Módulo frontend** | `/admin/ai`, `/superadmin/ai`, `/pmo/projects/[id]/ai-minutes/new`, `/pmo/projects/[id]/reports/*`, `/pmo/projects/[id]/ai-context` |
 | **Estado** | Vivo en producción |
-| **Última verificación contra código** | 2026-05-23 |
+| **Última verificación contra código** | 2026-07-09 (US-185, ENH-189) |
 
 ## Objetivo de negocio
 
@@ -97,6 +97,81 @@ sequenceDiagram
 ### Cobertura de pruebas
 
 - Tests en `apps/api/tests/test_ai_minutes*.py` cubren validación, gate `disabled`, persistencia, mocks de provider.
+
+---
+
+## US-185 — Memoria de proyecto para IA (2026-07-09, `9770161`)
+
+**Como** PM
+**Quiero** que la IA recuerde contexto propio del proyecto (glosario,
+reglas, instrucciones permanentes) y acumule un resumen de lo tratado en
+minutas anteriores
+**Para** dejar de repetir contexto en cada minuta/reporte y que la
+descripción del proyecto llegue realmente al LLM.
+
+- **Tabla `project_ai_contexts`** (migración `20260708_0094_project_ai_context.py`,
+  1:1 con `projects`), con 3 campos de texto libre:
+  - `context_md` — glosario/reglas **curadas por el PM** (edición manual).
+  - `instructions_md` — instrucciones permanentes de generación (edición
+    manual; complementa al `instructions_md` de tenant de ENH-189, más
+    abajo).
+  - `auto_summary_md` — resumen acumulativo que **la IA actualiza sola**
+    al guardar cada minuta (task Celery `ai.update_project_context`,
+    disparada desde el worker de minutas IA y también desde el `POST`
+    manual). Prompt nuevo `PROJECT_MEMORY_SYSTEM`: resumen incremental,
+    máx. ~400 palabras, integra lo nuevo y poda lo viejo.
+- `services/ai/project_context.py`: arma el bloque
+  `<CONTEXTO_DEL_PROYECTO>` con presupuesto de caracteres (precedencia
+  instrucciones > contexto > resumen) e lo **inyecta en cada chunk de
+  minutas** (`_run_minute`) y en `/projects/{id}/reports/ai-generate` —
+  con esto la descripción del proyecto **por fin llega al LLM** (antes no
+  se inyectaba ningún contexto de proyecto en esos prompts).
+- **Endpoints:** `GET /api/v1/projects/{id}/ai-context` /
+  `PUT /api/v1/projects/{id}/ai-context` (con audit log).
+- **UI:** página `/pmo/projects/[id]/ai-context` ("Memoria IA") con 3
+  editores + contador de caracteres + fecha de última actualización IA;
+  link con ícono Brain desde el detalle del proyecto.
+
+**Test Cases:** 5 TC nuevos (`test_us185_project_memory.py`); suites
+minutas/reportes/IA (243 TC) verdes tras el cambio.
+
+**Estado de integración:** DONE (US-185).
+
+---
+
+## ENH-189 — Prompts composables: instrucciones permanentes por tenant (2026-07-09, `a440efa`)
+
+**Como** Admin del tenant
+**Quiero** definir instrucciones permanentes que se apliquen a **todas**
+las generaciones de IA del tenant (minutas y reportes)
+**Para** imponer un estilo/reglas corporativas sin depender de que cada
+PM las repita.
+
+**Arquitectura por capas** (menos hardcode de prompts):
+
+```
+system efectivo = prompt base (services/ai/prompts.py)
+                + <INSTRUCCIONES_DEL_TENANT>   (tenants.settings.ai.instructions_md, ENH-189)
+                + <CONTEXTO_DEL_PROYECTO>      (project_ai_contexts, US-185)
+```
+
+- `services/ai/prompt_builder.py` — compone las 3 capas. Las
+  instrucciones del tenant tienen una **regla de precedencia** que
+  protege el contrato de salida (no pueden romper el schema JSON
+  esperado por `MINUTE_SYSTEM`/`REPORT_SYSTEM`).
+- `TenantAIConfig.instructions_md` (`tenants.settings.ai.instructions_md`,
+  **máx. 2000 caracteres**).
+- Aplica a minutas (`_run_minute`) y a
+  `/projects/{id}/reports/ai-generate`.
+- **Admin:** `GET`/`PATCH /api/v1/admin/ai/provider` ahora exponen
+  `instructions_md`; nueva sección "Instrucciones permanentes de IA"
+  (textarea + contador) en `/admin/ai`.
+- `docs/ai/prompts-catalog.md` corregido: afirmaba que no había
+  chunking (sí existe) + documenta la arquitectura de capas nueva.
+
+**Test Cases:** 5 TC nuevos; suites `admin_ai`/`byo` (29 TC) verdes.
+
+**Estado de integración:** DONE (ENH-189).
 
 ---
 
@@ -232,9 +307,13 @@ POST   /api/v1/projects/{project_id}/reports/ai-generate     (sync, HTML directo
 POST   /api/v1/ai/reports/tweak-html                         (instruction → HTML editado)
 POST   /api/v1/ai/reports/{report_id}/send                   (Resend)
 
+# Memoria de proyecto (US-185, 2026-07-09)
+GET    /api/v1/projects/{project_id}/ai-context
+PUT    /api/v1/projects/{project_id}/ai-context
+
 # Admin tenant
 GET    /api/v1/admin/ai/provider
-PATCH  /api/v1/admin/ai/provider
+PATCH  /api/v1/admin/ai/provider          # incluye instructions_md (ENH-189, 2026-07-09)
 POST   /api/v1/admin/ai/provider/test
 
 # Superadmin
@@ -275,3 +354,9 @@ Reports (no específicos de IA pero relacionados) viven en `endpoints/reports.py
 - [ ] Listado de jobs IA en `/admin/ai` con filtros (pendiente).
 - [ ] Tool-calling nativo del provider + acciones de escritura en el
   asistente (diferido; v1 usa protocolo JSON-action de solo lectura).
+- [x] **Memoria de proyecto (US-185, 2026-07-09):** contexto curado +
+  instrucciones + resumen acumulativo por proyecto, inyectado en minutas
+  y reportes IA.
+- [x] **Prompts composables (ENH-189, 2026-07-09):** instrucciones
+  permanentes por tenant (`prompt_builder.py`), capa entre el prompt base
+  y el contexto de proyecto.

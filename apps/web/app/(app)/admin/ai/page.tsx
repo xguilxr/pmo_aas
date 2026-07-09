@@ -12,6 +12,7 @@ import {
   Check,
   CheckCircle2,
   ExternalLink,
+  FileText,
   KeyRound,
   Plug,
   Sparkles,
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   type BYOProvider,
@@ -41,6 +43,8 @@ const MODE_LABEL: Record<TenantAIMode, string> = {
   platform: "IA de la plataforma (Groq)",
   byo: "Conectar tu propio proveedor",
 };
+
+const MAX_INSTRUCTIONS_LEN = 2000;
 
 const MODE_DESCRIPTION: Record<TenantAIMode, string> = {
   disabled:
@@ -208,6 +212,14 @@ export default function TenantAdminAIPage() {
         />
       </section>
 
+      <PermanentInstructionsSection
+        mode={data.mode}
+        value={data.instructions_md ?? ""}
+        onSaved={(instructionsMd) =>
+          setData((prev) => (prev ? { ...prev, instructions_md: instructionsMd } : prev))
+        }
+      />
+
       {pendingMode === "byo" ? (
         <BYOSection
           data={data}
@@ -321,6 +333,98 @@ function ModeCard({
         </p>
       </div>
     </label>
+  );
+}
+
+/* ======================= PermanentInstructionsSection ======================= */
+
+function PermanentInstructionsSection({
+  mode,
+  value,
+  onSaved,
+}: {
+  mode: TenantAIMode;
+  value: string;
+  onSaved: (instructionsMd: string | null) => void;
+}) {
+  const [text, setText] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+
+  const dirty = text.trim() !== (value ?? "").trim();
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    setOk(null);
+    try {
+      const normalized = text.trim();
+      const updated = await updateTenantAIProvider({
+        mode,
+        // ENH-189: normaliza vacío → "" (nunca se omite desde este form,
+        // así el owner puede borrar las instrucciones guardando en blanco).
+        instructions_md: normalized,
+      });
+      setText(updated.instructions_md ?? "");
+      onSaved(updated.instructions_md ?? null);
+      setOk("Instrucciones guardadas.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Error al guardar las instrucciones.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <div className="flex items-center gap-2">
+        <FileText className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+        <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+          Instrucciones permanentes de IA
+        </h2>
+      </div>
+      <p className="text-[12px] text-[var(--color-tertiary)]">
+        Se aplican a toda generación de IA del tenant (minutas y reportes).
+        Ej.: &quot;Redacta siempre en español formal; las fechas en formato
+        DD/MMM.&quot;
+      </p>
+      <Textarea
+        rows={5}
+        maxLength={MAX_INSTRUCTIONS_LEN}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setOk(null);
+        }}
+        placeholder="Ej. Redacta siempre en español formal; las fechas en formato DD/MMM."
+      />
+      <p className="text-right text-[11px] text-[var(--color-tertiary)]">
+        {text.length.toLocaleString("es-MX")} /{" "}
+        {MAX_INSTRUCTIONS_LEN.toLocaleString("es-MX")}
+      </p>
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+      {ok ? <Banner variant="success">{ok}</Banner> : null}
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          size="sm"
+          onClick={save}
+          loading={saving}
+          disabled={!dirty}
+        >
+          Guardar instrucciones
+        </Button>
+      </div>
+    </section>
   );
 }
 

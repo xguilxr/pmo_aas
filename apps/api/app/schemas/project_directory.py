@@ -1,5 +1,6 @@
 """US-115 — schemas para project_participations + project_roles."""
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -26,6 +27,11 @@ class ProjectRoleRead(BaseModel):
     created_at: datetime
 
 
+# US-183: asignación con FTE% y ciclo de vida de capacidad.
+AssignmentType = Literal["directa", "advisory", "backup", "shared_service", "steerco_only"]
+AssignmentStatus = Literal["tentativa", "activa", "cerrada", "cancelada"]
+
+
 class ParticipationCreate(BaseModel):
     actor_id: UUID
     operational_team_id: UUID | None = None
@@ -36,6 +42,12 @@ class ParticipationCreate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     is_active: bool = True
+    # US-183: FTE% asignado (None = sin cuantificar, no suma saturación).
+    allocation_pct: float | None = Field(default=None, ge=0, le=100)
+    assignment_type: AssignmentType = "directa"
+    status: AssignmentStatus = "activa"
+    is_critical: bool = False
+    phase: str | None = Field(default=None, max_length=32)
 
 
 class ParticipationUpdate(BaseModel):
@@ -47,6 +59,12 @@ class ParticipationUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     is_active: bool | None = None
+    # US-183.
+    allocation_pct: float | None = Field(default=None, ge=0, le=100)
+    assignment_type: AssignmentType | None = None
+    status: AssignmentStatus | None = None
+    is_critical: bool | None = None
+    phase: str | None = Field(default=None, max_length=32)
 
 
 class ActorMini(BaseModel):
@@ -70,6 +88,12 @@ class ParticipationRead(BaseModel):
     start_date: date | None
     end_date: date | None
     is_active: bool
+    # US-183: FTE% y ciclo de vida de capacidad.
+    allocation_pct: float | None = None
+    assignment_type: str = "directa"
+    status: str = "activa"
+    is_critical: bool = False
+    phase: str | None = None
     created_at: datetime
     # Hidratado opcional (?include=actor).
     actor: ActorMini | None = None

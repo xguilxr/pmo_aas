@@ -113,11 +113,16 @@ class TenantAIProviderRead(BaseModel):
     mode: Literal["disabled", "platform", "byo"]
     byo: BYOConfigRead | None = None
     byo_catalog: list[dict] = []
+    # ENH-189: instrucciones permanentes del tenant (se anexan a los
+    # system prompts de minutas/reportes vía prompt_builder).
+    instructions_md: str | None = None
 
 
 class TenantAIProviderPatch(BaseModel):
     mode: Literal["disabled", "platform", "byo"]
     byo: BYOConfigIn | None = None
+    # ENH-189: omitir = no cambiar; "" o null = borrar.
+    instructions_md: str | None = Field(default=None, max_length=2000)
 
 
 def _build_byo_read(byo_raw: dict) -> BYOConfigRead:
@@ -163,6 +168,7 @@ async def get_provider_config(
         mode=mode,  # type: ignore[arg-type]
         byo=_build_byo_read(byo_raw) if byo_raw else None,
         byo_catalog=catalog_for_api(),
+        instructions_md=ai.get("instructions_md"),
     )
 
 
@@ -189,6 +195,11 @@ async def update_provider_config(
 
     merged = dict(t.settings or {})
     ai = dict(merged.get("ai") or {})
+
+    # ENH-189: instrucciones permanentes del tenant (independientes del
+    # modo/provider). Omitido en el PATCH = sin cambio; ""/null = borrar.
+    if "instructions_md" in body.model_fields_set:
+        ai["instructions_md"] = (body.instructions_md or "").strip() or None
 
     if body.mode == "byo":
         # BUG-060: si el tenant ya tiene una config BYO persistida, el

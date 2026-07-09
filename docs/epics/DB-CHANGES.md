@@ -486,3 +486,83 @@ El downgrade quita las columnas pero NO revierte el remap (es lossy:
 = 'Retrasadas'` (la tabla usa `code`, no `folio`). Alinea el catálogo del
 Report Builder con el renombre de terminología (Retrasada → Atrasada).
 Idempotente; downgrade revierte.
+
+---
+
+## US-180 — Salud única híbrida (EP004/EP005, 2026-07-08)
+
+### Migración **0091** — `projects` health unificado
+
+**Columnas nuevas en `projects`:**
+- `health_source VARCHAR(8) NOT NULL DEFAULT 'auto'` (check `auto|manual`) —
+  fuente del semáforo: `auto` lo mantiene el motor de reglas
+  (`services/project_health.py`); `manual` = declarado por el PM.
+- `health_reason VARCHAR(2000) NULL` — razón de la declaración manual
+  (obligatoria vía API al declarar amarillo/rojo).
+
+**Data migration:** donde `status_rag` estaba seteado (ENH-101) pasa a ser
+el semáforo efectivo: `health_status = status_rag` (con `amber`→`yellow`) y
+`health_source = 'manual'`.
+
+**Drop:** `projects.status_rag` + check `ck_projects_status_rag` (la
+dualidad semáforo manual vs RAG declarado se unifica en UN solo semáforo).
+
+El downgrade re-crea `status_rag` solo para los overrides manuales
+(`yellow`→`amber`) y dropea las columnas nuevas (lossy en la razón).
+
+---
+
+## US-182 — Actors como pool de recursos con capacidad (EP017, 2026-07-08)
+
+### Migración **0092** — `actors` resource pool
+
+**Columnas nuevas en `actors`:** `organization_id` (FK organizations, SET
+NULL; NULL = tenant-global), `resource_type` (check: cliente_negocio |
+cliente_it | e4_pmo | e4_tecnologia | vendor_externo), `portfolio_function`
+(check: pm|pmo|arquitectura|infraestructura|aplicaciones|datos|seguridad|
+integraciones|negocio|change|testing|vendor), `seniority` (junior|mid|
+senior|lead), `scarcity_level` (alta|media|baja), `location`,
+`skills_tags JSON DEFAULT []`, `nominal_capacity_pct NUMERIC(5,2) DEFAULT
+100`, `project_capacity_pct NUMERIC(5,2) DEFAULT 100` (capacidad REAL para
+proyectos — base de la saturación), `is_key_resource BOOL DEFAULT false`,
+`is_shared_resource BOOL DEFAULT true`, `fte_cost_rate NUMERIC(10,2) NULL`.
+Índices: `(tenant_id, resource_type)` y `(tenant_id, organization_id)`.
+Sin backfill: actores existentes quedan "sin clasificar" (NULL) con
+capacidad 100/100.
+
+---
+
+## US-183 — Asignaciones con FTE% + motor de saturación (EP017, 2026-07-08)
+
+### Migración **0093** — `project_participations` allocation
+
+**Columnas nuevas en `project_participations`:** `allocation_pct
+NUMERIC(5,2) NULL` (FTE% asignado; NULL = sin cuantificar, no suma
+saturación), `assignment_type` (check: directa|advisory|backup|
+shared_service|steerco_only, default directa), `status` (check:
+tentativa|activa|cerrada|cancelada, default activa — solo 'activa' suma
+demanda), `is_critical BOOL DEFAULT false`, `phase VARCHAR(32) NULL`.
+**Backfill:** `status='cerrada'` donde `is_active=false`.
+
+La saturación se calcula en `services/capacity.py`: demanda = suma de
+allocation_pct de participations activas que intersectan la ventana
+(today/week/3weeks/month) vs `actors.project_capacity_pct` (US-182).
+Umbrales por tenant: `settings.capacity_thresholds` (yellow_over=0,
+red_over=10 puntos). Endpoints: `/capacity/summary`, `/capacity/conflicts`,
+`/projects/{id}/resource-load`. Activa la dimensión "recursos" del
+semáforo (US-180).
+
+---
+
+## US-185 — Memoria de proyecto para IA (EP008, 2026-07-08)
+
+### Migración **0094** — tabla `project_ai_contexts`
+
+Tabla nueva 1:1 con `projects` (unique en project_id): `context_md`
+(contexto/glosario/reglas curado por el PM), `instructions_md`
+(instrucciones permanentes de generación), `auto_summary_md` (resumen
+acumulativo mantenido por IA al guardar minutas) +
+`auto_summary_updated_at`, `updated_by`, timestamps. FKs CASCADE a
+tenants/projects. Se inyecta como bloque `<CONTEXTO_DEL_PROYECTO>` en
+minutas (worker `_run_minute`) y reportes (`/reports/ai-generate`); el
+resumen lo actualiza la task Celery `ai.update_project_context`.

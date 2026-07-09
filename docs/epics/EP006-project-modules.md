@@ -116,6 +116,21 @@ Los 6 módulos transversales son el **corazón operativo** del proyecto. Cada un
 - `TC-088` (integration) — User sin permiso aprobar → 403.
 - `TC-089` (integration) — Transición `rejected → approved` → 409.
 
+**ENH-186 (2026-07-09, `acf8d46`) — hereda estructura RAID:**
+- La lista de Cambios pasa a tabla estilo RAID: sort por columna,
+  filtros de estado/tipo, chips de color por estado, toggle "Mostrar
+  finalizados" (oculta `approved`/`rejected`/`cancelled` por default).
+- Edición inline de título/tipo con update optimista. **El estado
+  conserva su flujo de aprobación de EP019** (no se edita inline, sigue
+  el mismo camino `in_review → approved/rejected → implemented`).
+- Folio pasa a ser el único link que abre el detalle del cambio.
+- Export propio: `GET /projects/{id}/changes/export` → XLSX de 1 hoja
+  ("Cambios", en español), `services/change_export.py` (mismo patrón que
+  `raid_export`).
+
+**Estado de integración:** DONE (ENH-186). 4 TC nuevos
+(`test_enh186_changes_export.py`).
+
 ---
 
 ## US-034 — Módulo de Documentos
@@ -166,6 +181,21 @@ Los 6 módulos transversales son el **corazón operativo** del proyecto. Cada un
 **Test Cases:**
 - `TC-093` (integration) — Busqueda fuzzy (`ILIKE`) encuentra lección por keyword.
 - `TC-094` (integration) — Cualquier user del tenant lee lecciones de todos los proyectos del tenant (el rol `viewer` fue eliminado; ya no aplica).
+
+**ENH-187 (2026-07-09, `8114214`) — hereda estructura RAID:**
+- La lista de Lecciones pasa a tabla estilo RAID: sort, filtros
+  categoría/fase/búsqueda, chips de color editables inline
+  (categoría/fase vía `ChipSelectCell`).
+- Responsable (`owner_actor`) editable inline vía `eligible-actors`
+  (mismo mecanismo de EP017 US-117 para el resto de módulos RAID).
+- Folio pasa a ser el único link que abre el detalle. Modal "+ Nueva
+  lección" se conserva sin cambios.
+- Export propio: `GET /projects/{id}/lessons/export` → XLSX de 1 hoja
+  ("Lecciones", en español), `services/lessons_export.py` (mismo patrón
+  que `raid_export` / ENH-186).
+
+**Estado de integración:** DONE (ENH-187). 4 TC nuevos
+(`test_enh187_lessons_export.py`).
 
 ---
 
@@ -219,6 +249,10 @@ POST /api/v1/issues/{id}/comments
 POST /api/v1/projects/{project_id}/documents         (multipart)
 GET  /api/v1/documents/{id}/download                 (URL firmada)
 POST /api/v1/meeting-minutes/{id}/convert-agreement  (→ issue)
+
+# 2026-07-09 — export XLSX propio por módulo (patrón RAID, ENH-186/ENH-187)
+GET  /api/v1/projects/{id}/changes/export
+GET  /api/v1/projects/{id}/lessons/export
 ```
 
 ---

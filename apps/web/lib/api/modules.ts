@@ -351,6 +351,8 @@ export type ChangeRequestUpdateBody = {
   title?: string;
   description?: string | null;
   impact?: string | null;
+  // ENH-186: edición inline de tipo (mismo patrón US-178 de RAID).
+  type?: ChangeType;
 };
 
 export function updateChange(id: string, body: ChangeRequestUpdateBody): Promise<ChangeRequest> {
@@ -402,6 +404,20 @@ export const CHANGE_STATUS_LABEL: Record<ChangeStatus, string> = {
   implemented: "Implementado",
   cancelled: "Cancelado",
 };
+
+// ENH-186: chips de color por estado, mismo patrón que RAID_STATUS_BADGE.
+export const CHANGE_STATUS_BADGE: Record<ChangeStatus, string> = {
+  in_review: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+  approved: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+  rejected: "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]",
+  implemented: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+  cancelled: "bg-[var(--color-subtle)] text-[var(--color-tertiary)]",
+};
+
+// ENH-186: estados terminales — ocultos por default en la lista (toggle
+// "Mostrar finalizados" los revela). `implemented` queda visible por
+// default: sigue siendo relevante de seguimiento post-aprobación.
+export const CHANGE_FINAL_STATUSES: ChangeStatus[] = ["approved", "rejected", "cancelled"];
 
 /* ========== DOCUMENTS ========== */
 export type DocumentCategory =
@@ -569,6 +585,9 @@ export type Lesson = {
   recommendation: string | null;
   tags: string[];
   status: string;
+  // ENH-187: dueño como Actor del catálogo (consistente con RAID). El
+  // backend ya lo devuelve en LessonRead; faltaba en el tipo del cliente.
+  owner_actor_id?: string | null;
 };
 
 export type LessonCreateBody = {
@@ -606,6 +625,8 @@ export type LessonUpdateBody = {
   phase?: string | null;
   recommendation?: string | null;
   tags?: string[];
+  // ENH-187: edición inline de responsable (mismo patrón US-178 de RAID).
+  owner_actor_id?: string | null;
 };
 
 export function updateLesson(lessonId: string, body: LessonUpdateBody): Promise<Lesson> {
@@ -621,6 +642,38 @@ export const LESSON_CATEGORY_LABEL: Record<LessonCategory, string> = {
   success: "Éxito",
   improvement: "Mejora",
   error: "Error",
+};
+
+// ENH-187: chips de color por categoría, mismo patrón que CHANGE_STATUS_BADGE.
+export const LESSON_CATEGORY_BADGE: Record<LessonCategory, string> = {
+  success: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+  improvement: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+  error: "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]",
+};
+
+// ENH-187: fase es texto libre en DB (el modal de creación sólo ofrece
+// estos 4 valores canónicos); labels ES para filtros/chips/export.
+export type LessonPhase = "planning" | "execution" | "support" | "closed";
+
+export const LESSON_PHASE_LABEL: Record<LessonPhase, string> = {
+  planning: "Planificación",
+  execution: "Ejecución",
+  support: "Soporte",
+  closed: "Cierre",
+};
+
+export const LESSON_PHASE_ORDER: LessonPhase[] = [
+  "planning",
+  "execution",
+  "support",
+  "closed",
+];
+
+export const LESSON_PHASE_BADGE: Record<LessonPhase, string> = {
+  planning: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
+  execution: "bg-[var(--color-accent-bg,var(--color-subtle))] text-[var(--color-accent)]",
+  support: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+  closed: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
 };
 
 /* ========== MEETING MINUTES ========== */
