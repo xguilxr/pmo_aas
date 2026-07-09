@@ -74,9 +74,9 @@ chips de color de status.
 ruff limpio · tsc + next build verdes · PR #570.
 
 **Fase 2 (owner 2026-07-09) — mismo PR #570:**
-- [ ] **ENH-190** — Label Organización/Portafolio configurable por tenant
+- [x] **ENH-190** — Label Organización/Portafolio configurable por tenant
   (`settings.org_label`, admin UI + branding + sweep de labels).
-  `status:in-progress` (agente ejecutando).
+  `status:fix-committed` (`7eca69b`)
 - [ ] **US-186** — Organigrama con utilización: servicio multi-scope
   (proyecto/programa/organización/tenant-global) + hoja "Uso mensual"
   (Recurso × Mes, 12m rolling) con alertas fill 🟡 ≥80% / 🔴 >100% +
