@@ -1,70 +1,85 @@
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-06-28
-**Branch activa:** `claude/minutes-plans-upload-error-driwcd`
-**Generado por:** sesión de ejecución directa (owner pidió end-to-end)
+**Última actualización:** 2026-07-09
+**Branch activa:** `claude/pmo-portfolio-architecture-6hbuen` · **PR #570** (abierto)
+**Generado por:** sesión Revamp 1.0 (retro socio + ejecución end-to-end)
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-Dos frentes en la MISMA branch `claude/minutes-plans-upload-error-driwcd`:
+**Batch "Revamp 1.0" COMPLETO (11/11)** en PR #570. Nace de la retro del
+socio (portafolio ejecutivo multi-proyecto + recursos/capacidad) + 9
+decisiones del owner en chat. Diseño completo en
+`docs/epics/drafts/portfolio-recursos-capacidad.md`.
 
-1. **Hotfix subir minutas/planes** — COMPLETO (`status:fix-committed`): BUG-078
-   (MultipleResultsFound), BUG-079 (500 sin CORS → "no se pudo conectar"),
-   BUG-080 (CSV auditoría con `details`). Pendiente PR + verificación.
-2. **Sprint 35 — "Plan page + RAID mejoras"** — **COMPLETO (14/14)**. Todos
-   los items `status:fix-committed`. Detalle por item en `SPRINT.md` → "Sprint 35".
-   Falta: PR + verificación del owner. Migración **0086** (`tasks.closed_at`)
-   debe correrse en Railway (`alembic upgrade head`).
+Qué cambió (por bloque):
+1. **Salud única híbrida** (US-180 `0f96dec` / US-181 `0c0ad7d`): UN solo
+   semáforo — motor de reglas por dimensión (cronograma/presupuesto/
+   riesgos/decisiones/recursos, `services/project_health.py`) + override
+   manual del PM con razón obligatoria en 🟡/🔴. `status_rag` absorbido y
+   dropeado (mig 0091). Drill-down "¿por qué?" + foco PM + heatmap
+   Proyecto×Dimensión en N1 (`/dashboard/health-matrix`).
+2. **Tablas** (ENH-185 `9bb3338`, ENH-186 `acf8d46`, ENH-187 `8114214`,
+   ENH-188 `d735e76`): Cambios y Lecciones heredan estructura RAID (sort,
+   filtros, chips, inline, export XLSX propio); Plan con chips de color
+   de estado; filtros programa/prioridad en /pmo/projects.
+3. **Recursos/capacidad** (US-182 `c3fdf7e` / US-183 `4aec20c` / US-184
+   `595dc4f`): `actors` = resource_pool (tipo/función/seniority/escasez/
+   capacidades, mig 0092); participations con FTE% + status (mig 0093);
+   motor de saturación por ventana (`services/capacity.py`) vs
+   `project_capacity_pct`; página nueva **/pmo/resources** (personas/
+   roles/áreas/conflictos); dimensión recursos del health activa; 3
+   alertas de capacidad (in-app, dedupe 7d, sweep semanal + fast-path).
+4. **IA** (US-185 `9770161` / ENH-189 `a440efa`): memoria de proyecto
+   (`project_ai_contexts`, mig 0094): contexto curado + instrucciones +
+   resumen acumulativo que la IA actualiza por minuta (task
+   `ai.update_project_context`); bloque `<CONTEXTO_DEL_PROYECTO>`
+   inyectado en minutas y reportes; instrucciones permanentes por tenant
+   (`/admin/ai`) compuestas vía `prompt_builder`.
+
+Verificación final del batch: **728 pytest + 1 skip · ruff limpio ·
+tsc + next build verdes**.
 
 ## 📍 Dónde retomar (próximo paso accionable)
 
-1. **Crear PR** de `claude/minutes-plans-upload-error-driwcd` → `main` (cubre el
-   hotfix BUG-078/079/080 + todo el Sprint 35).
-2. Correr `alembic upgrade head` (migración 0086) tras el merge.
-3. Revisar `docs/project-management/UIUX-ANALYSIS-Sprint35.md`: tiene los
-   follow-ups y las decisiones de campos RAID marcadas **[requiere OK]**
-   (columna Responsable, category en issues, severidad inline). Confirmar
-   scope antes de abrir issues nuevos.
-
-## ✅ Hecho en esta sesión (2026-06-28)
-
-- Hotfix BUG-078/079/080 (subir minutas/planes + CORS + audit CSV).
-- **Sprint 35 (14/14):** ENH-161..168, US-171..175, ENH-169.
-  - Plan: quitar CSV, mover acciones al header, columna Hito, configurador de
-    columnas (reemplaza MSP), WBS nivel 0, fecha de cierre + atraso (mig 0086),
-    auto-WBS (endpoint renumber-wbs), edición inline.
-  - RAID: ocultar finalizados + orden por fase, filtro de área, export por tipo,
-    Kanban con drag, estado inline, análisis de alineación de campos.
-- Tests nuevos: BUG-078/079/080, US-171, US-172, ENH-152 (single-sheet).
-- Verificación: `tsc` + `next build` verdes; pytest de las suites tocadas verdes.
-
-## 🔄 PRs abiertos o en flight
-
-| # | Branch | Estado | Acción |
-|---|---|---|---|
-| (ninguno) | `claude/minutes-plans-upload-error-driwcd` | sin PR | crear PR al cerrar el batch |
+1. **Owner verifica y mergea PR #570.**
+2. Tras merge: `alembic upgrade head` en Railway (migraciones **0091-0094**).
+3. Decisión pendiente del owner: **rename "Organizaciones" → "Portafolios"**
+   (recomendación: solo labels de UI, no schema — ver resumen de la sesión).
+4. Ideas futuras sin issue: import CSV del pool de recursos (onboarding
+   35 proyectos), persistir desglose salud en tendencias UI, evaluar
+   auto_summary también con actividades del plan (hoy solo minutas).
 
 ## ⚠️ Gotchas
 
-- **Web:** CI gatea con `tsc --noEmit` + `next build` (no hay eslint configurado).
-  Correr `cd apps/web && pnpm install --frozen-lockfile` en container fresco.
-- **API tests:** `cd apps/api && pip install -r requirements-dev.txt` (NO hay
-  `[project.dependencies]` en pyproject; usar los requirements*.txt). Correr
-  `python -m pytest`.
-- **Plan page** es un solo archivo gigante (`app/(app)/pmo/projects/[id]/plan/page.tsx`,
-  ~2100 líneas). Editar por regiones; no leer completo.
-- **US-171/172 tocan schema** → migración Alembic + `DB-CHANGES.md` + epic.
-- `_is_delayed` (lateness) vive en `apps/api/app/services/operational_reports.py`;
-  el frontend tiene su propio `isTaskDelayed` en la plan page.
+- **Container fresco**: API requiere Python **3.12** (`python3.12 -m pip
+  install --break-system-packages -r requirements-dev.txt`); 3.11 truena
+  con sintaxis PEP 695 en `app/workers/db.py`. Web: `pnpm install
+  --frozen-lockfile`.
+- Salud auto se recalcula en: detalle de proyecto, health-detail,
+  health-matrix y snapshot semanal — los agregados SQL pueden tener
+  staleness acotada entre recálculos (documentado en el draft §4).
+- La saturación solo considera participations `status='activa'` con
+  `allocation_pct` NOT NULL; las vistas muestran cobertura ("Sin FTE").
+- Las alertas de capacidad son in-app only (sin email) con dedupe de 7
+  días por (tipo, actor).
+- Editar salud desde el form de proyecto ya NO existe — solo la tarjeta
+  de Salud (declarar con razón / volver a auto).
 
 ## 📚 Estado de epics
 
-- EP009 (ms-project / plan) y EP006 (project-modules / RAID) se actualizan al
-  cierre de los items que cambian comportamiento (US-171, US-172, US-174, ENH-169).
+Actualización delegada a sub-agente al cierre de esta sesión (commit
+`docs(epics)` en la misma branch): EP004 (salud dimensiones + matrix),
+EP005 (salud única), EP006 (cambios/lecciones RAID + exports), EP008
+(memoria IA + prompts composables), EP009 (chips plan), EP017 (pool de
+recursos + FTE% + saturación + /pmo/resources + alertas). Si ese commit
+no aparece en la branch, re-lanzar la actualización.
 
 ## 🧹 Cleanup / acciones del owner
 
-- [ ] Crear PR de la branch → main y verificar hotfix + batch Sprint 35.
-- [ ] Si US-171/172 agregan migración: `alembic upgrade head` en Railway.
+- [ ] Verificar + mergear **PR #570**.
+- [ ] `alembic upgrade head` en Railway (0091-0094).
+- [ ] Decidir rename Organizaciones→Portafolios (labels UI).
+- [ ] Smoke visual de las vistas nuevas: /pmo/resources, heatmap N1,
+  Memoria IA, /admin/ai instrucciones, Cambios/Lecciones revamp.

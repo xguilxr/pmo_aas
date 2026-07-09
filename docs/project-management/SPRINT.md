@@ -12,11 +12,12 @@
 Batch "Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA" (2026-07-08)
 Branch: claude/pmo-portfolio-architecture-6hbuen · PR único para todo el batch
 
-Ejecución directa end-to-end (retro socio + 9 decisiones owner en chat).
-Diseño en docs/epics/drafts/portfolio-recursos-capacidad.md (commit f3fb83c).
-Ver bloque "Batch Revamp 1.0" en INBOX abajo con los 11 items.
-Orden: Salud (US-180/181) → tablas (ENH-186/187/188) → filtros (ENH-185)
-→ recursos (US-182/183) → alertas (US-184) → IA (US-185, ENH-189).
+COMPLETO 11/11 (2026-07-09), todos status:fix-committed en PR #570.
+Diseño en docs/epics/drafts/portfolio-recursos-capacidad.md (f3fb83c).
+Migraciones nuevas: 0091 (salud unificada), 0092 (actors pool), 0093
+(participations FTE%), 0094 (project_ai_contexts) — correr `alembic
+upgrade head` en Railway tras el merge.
+Pendiente: verificación del owner + merge del PR #570.
 Próximo libre: US-186, BUG-088, ENH-190.
 ```
 
@@ -61,12 +62,16 @@ chips de color de status.
 - [x] **US-184** — Alertas de capacidad: 3 reglas sobre EP011, sweep
   semanal + fast-path, dedupe 7d. `status:fix-committed` (`595dc4f`)
 **Bloque IA (extensión EP008):**
-- [ ] **US-185** — Memoria de proyecto: tabla `project_ai_context` (contexto
-  curado + resumen acumulativo + instrucciones permanentes), inyección en
-  minutas/reportes, UI edición, job de resumen incremental.
-- [ ] **ENH-189** — Arquitectura de prompts composable (system base +
-  instrucciones tenant/proyecto; fix `description` ausente en prompt de
-  reportes; corrige docs/ai/prompts-catalog.md).
+- [x] **US-185** — Memoria de proyecto (mig 0094 `project_ai_contexts`):
+  contexto + instrucciones + resumen acumulativo IA, inyección en
+  minutas/reportes, página /pmo/projects/[id]/ai-context.
+  `status:fix-committed` (`9770161`)
+- [x] **ENH-189** — Prompts composables: instrucciones permanentes por
+  tenant (admin /admin/ai) + prompt_builder + fix prompts-catalog.
+  `status:fix-committed` (`a440efa`)
+
+**BATCH COMPLETO 11/11** · Verificación final: 728 pytest + 1 skip ·
+ruff limpio · tsc + next build verdes · PR #570.
 
 ### Batch WBS+RAID+Áreas 2026-06-29 (branch: claude/task-wbs-raid-updates-9nq7ns)
 
