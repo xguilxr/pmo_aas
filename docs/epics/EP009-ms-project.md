@@ -189,6 +189,11 @@ implementó.
 - **ENH-180** — se eliminó el reordenamiento por arrastre de filas (handle/drop-zones/endpoint move) y el botón Auto-WBS. La agrupación jerárquica por WBS es el mecanismo por default. Endpoints `/tasks/{id}/move` y `/tasks/renumber-wbs` siguen existiendo pero ya no se usan desde la UI del Plan.
 - **ENH-181** — WBS automatizable en los forms de nueva/editar tarea: selecciona padre → "Bajar nivel" → asigna siguiente número WBS disponible. Campo WBS sigue editable a mano.
 - **ENH-182** — columnas Criticidad e Hito (header + celdas) ahora se centran.
+- **ENH-188 (2026-07-09, `d735e76`)** — la columna Estado del Plan pasa de
+  un `InlineSelectCell` plano a `TaskStatusInlineCell`: chip `StatusBadge`
+  con color (gris `not_started` / azul `in_progress` / verde `completed`)
+  clickeable, que abre un `<select>` nativo para editar inline (mismo
+  patrón `StatusInlineCell` que ya usan las listas RAID).
 
 ---
 

@@ -143,6 +143,7 @@ GET  /api/v1/dashboard/risk-matrix?scope=&id=             # conteo prob×impacto
 GET  /api/v1/dashboard/heatmap                            # Org×Salud (portafolio, admin)
 GET  /api/v1/dashboard/treemap?scope=&id=                 # Org→Programa→Proyecto
 POST /api/v1/dashboard/snapshots/capture                  # seed on-demand del snapshot de hoy
+GET  /api/v1/dashboard/health-matrix                      # US-181 (2026-07-09) — heatmap Proyecto×Dimensión
 ```
 
 ---
@@ -300,3 +301,45 @@ org y programa. Helper SVG en `reports/svg.py` (compartido con el motor).
 - **US-163** — **heatmap + treemap** embebidos en los PDF de status N1/N2.
 
 Único pendiente: verificación manual en navegador + revisión visual de los PDF.
+
+---
+
+### US-181 — Heatmap de salud por dimensión en dashboard N1 (2026-07-09)
+
+**Como** PM / PMO Manager
+**Quiero** ver un heatmap Proyecto × Dimensión de salud en el dashboard N1
+**Para** detectar de un vistazo qué proyectos están mal y en qué dimensión
+(cronograma, presupuesto, riesgos/issues, decisiones — ver US-180 en
+EP005).
+
+**Implementación (`0c0ad7d`):**
+- `GET /api/v1/dashboard/health-matrix` — antes de responder, refresca la
+  salud automática de los proyectos visibles **en bulk**
+  (`refresh_health_bulk`) y devuelve solo proyectos activos
+  (`phase != closed`). Respeta visibilidad de US-168 (no-admin ve solo
+  sus proyectos vía `scoped_project_ids`).
+- Sección "Salud por dimensión (proyectos activos)" en `/pmo` con
+  click-through al proyecto.
+- El snapshot semanal (`services/analytics/snapshots.py`) también
+  refresca la salud auto de **todos** los proyectos del tenant y persiste
+  el desglose de dimensiones en `metric_snapshots.extras.health_dimensions`
+  (scope proyecto), habilitando tendencias de salud por dimensión a
+  futuro.
+
+**Estado de integración:** DONE (US-181, ver también EP005).
+
+---
+
+### ENH-185 — Filtros de programa y prioridad mínima en `/pmo/projects` (2026-07-09)
+
+**Como** PMO Manager
+**Quiero** filtrar el listado de proyectos por programa (incluyendo "sin
+programa") y por prioridad mínima
+**Para** enfocarme en un subconjunto del portafolio.
+
+**Implementación (`9bb3338`):** el frontend expone filtros que la API ya
+soportaba — `program_id`, `no_program`, `priority_min` — con cascada
+Organización → Programa y sincronización a la URL (`/pmo/projects?...`).
+Sin cambios de contrato en backend (los query params ya existían).
+
+**Estado de integración:** DONE (ENH-185).

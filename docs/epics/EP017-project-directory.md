@@ -61,6 +61,7 @@ project_participations (N por (project_id, actor_id))
 - **Bloque C — UI (US-116).** Rediseño `/pmo/projects/[id]/areas` con dos toggles (directorio del proyecto + 4 sub-tabs de catálogos); rediseño de `/admin/areas`. **Actualizado 2026-06-29 (ENH-183):** el panel "Áreas y Equipos" lista solo áreas asignadas al proyecto (no catálogo completo); modal de área nueva permite crear nueva o traer existente del catálogo.
 - **Bloque D — Asignación (US-117).** Dropdowns filtrados por participations en plan/RAID/cambios/lecciones/minutas. Botón "+ agregar al proyecto". **Actualizado 2026-06-29 (BUG-086):** servicio `area_visibility` como fuente única de cascada de visibilidad; actores con `area_id` directo son asignables (antes heurística los excluía si no tenían team/user/is_lead).
 - **Bloque E — Consolidación legacy (US-118, post-MVP).** Migrar permisos RBAC de `project_members` a `project_participations` y dropear tabla legacy.
+- **Bloque F — Pool de recursos y capacidad (US-182/183/184, 2026-07-09, Revamp 1.0).** El `Actor` se extiende como el resource pool del tenant (clasificación + capacidad) y `project_participations` gana FTE% + ciclo de vida de asignación; motor de saturación + alertas in-app. Ver sección dedicada abajo.
 
 ## Convergencia con sprint 13
 
@@ -219,8 +220,108 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 
 ---
 
+## Bloque F — US-182 / US-183 / US-184 — Pool de recursos, motor de saturación y alertas (2026-07-09)
+
+> **Decisión de diseño (extender-no-duplicar):** en vez de crear una
+> tabla `resource_pool` nueva, **el `Actor` ES el resource pool del
+> tenant** — se extiende con clasificación y capacidad. La saturación no
+> vive en el actor sino en la **relación** actor↔proyecto
+> (`project_participations`), consistente con el modelo de este epic
+> (participación temporal ya vivía ahí).
+
+### US-182 — Actors como pool de recursos con capacidad (`c3fdf7e`)
+
+Migración `20260708_0092_actors_resource_pool.py` agrega a `actors`
+(sin backfill; actores existentes quedan "sin clasificar" con capacidad
+default 100/100):
+
+| Campo | Notas |
+|---|---|
+| `organization_id` | opcional; `NULL` = recurso tenant-global (no atado a una org) |
+| `resource_type` | `cliente_negocio`\|`cliente_it`\|`e4_pmo`\|`e4_tecnologia`\|`vendor_externo` |
+| `portfolio_function` | `pm`\|`pmo`\|`arquitectura`\|`infraestructura`\|`aplicaciones`\|`datos`\|`seguridad`\|`integraciones`\|`negocio`\|`change`\|`testing`\|`vendor` |
+| `seniority` | `junior`\|`mid`\|`senior`\|`lead` |
+| `scarcity_level` | `alta`\|`media`\|`baja` |
+| `location` | texto libre |
+| `skills_tags` | JSON array |
+| `nominal_capacity_pct` | capacidad nominal (default 100) |
+| `project_capacity_pct` | capacidad **disponible para proyectos** — base de todo el cálculo de saturación (US-183), nunca se compara contra 100 fijo |
+| `is_key_resource` | flag "recurso clave" (alimenta alertas US-184 y dimensión "recursos" del semáforo, US-180) |
+| `is_shared_resource` | default `true`; `false` = especialista dedicado/no compartido |
+| `fte_cost_rate` | costo opcional |
+
+- `/actors`: acepta y devuelve los campos nuevos; filtros
+  `resource_type` / `portfolio_function` / `organization_id` en el
+  listado.
+- Admin de actores (`TenantActorsPanel`): sección "Recurso y capacidad"
+  en el form + columnas Tipo/Función/Cap. proyectos/🔑 ordenables y
+  filtrables.
+
+**Test Cases:** `test_us182_resource_pool.py` (5 TC).
+**Estado de integración:** DONE (US-182).
+
+### US-183 — Participations con FTE% + motor de saturación (`4aec20c`)
+
+Migración `20260708_0093_participation_allocation.py` agrega a
+`project_participations`:
+
+| Campo | Notas |
+|---|---|
+| `allocation_pct` | FTE% de la asignación; `NULL` = sin cuantificar (no suma demanda) |
+| `assignment_type` | `directa`\|`advisory`\|`backup`\|`shared_service`\|`steerco_only` |
+| `status` | `tentativa`\|`activa`\|`cerrada`\|`cancelada` — **solo `activa` suma demanda**; backfill: `activa` si `is_active=true`, si no `cerrada` |
+| `is_critical` | flag de asignación crítica |
+| `phase` | fase del proyecto en la que aplica la asignación |
+
+- `services/capacity.py` — motor de saturación:
+  - Demanda por ventana (`hoy` / `semana` / `3 semanas` / `mes`) contra
+    `actors.project_capacity_pct` (nunca contra 100 fijo).
+  - Niveles de agregación: individual / rol / área / equipo.
+  - Vista de **conflictos**: proyectos en choque de un mismo recurso +
+    recomendación.
+  - Umbrales configurables por tenant (`tenants.settings.capacity_thresholds`).
+- **Activa la dimensión "recursos" del semáforo de salud** (US-180,
+  EP005): demanda TOTAL del recurso en todos sus proyectos; recurso
+  clave sobreasignado → rojo.
+- Endpoints nuevos:
+  - `GET /api/v1/capacity/summary`
+  - `GET /api/v1/capacity/conflicts`
+  - `GET /api/v1/projects/{id}/resource-load`
+- Frontend: página nueva `/pmo/resources` (tabs Personas / Roles /
+  Áreas-Equipos / Conflictos, selector de ventana, tablas ordenables) +
+  link "Recursos" en el sidebar; campos FTE% / tipo / estado / crítico
+  visibles en el directorio del proyecto (`/pmo/projects/{id}/areas`).
+
+**Test Cases:** 7 TC (incluye caso canónico "Eli 65/50 → rojo").
+**Estado de integración:** DONE (US-183).
+
+### US-184 — Alertas de capacidad (`595dc4f`)
+
+3 reglas sobre el sistema de notificaciones de EP011 (in-app, sin
+email por default), en `services/capacity_alerts.py`:
+
+| Alerta | Condición |
+|---|---|
+| `capacity_overload` | demanda > capacidad + umbral rojo en ventana de 30 días |
+| `capacity_key_resource_risk` | recurso clave (`is_key_resource`) con asignación activa en ≥3 proyectos 🟡/🔴 |
+| `capacity_solo_specialist` | recurso `is_shared_resource=false` con >1 proyecto activo |
+
+- Destinatarios: los PMs de los proyectos afectados. Link a
+  `/pmo/resources`.
+- Dedupe: no repite la misma alerta (tipo + actor) dentro de 7 días.
+- Triggers: sweep semanal desde el job de snapshot
+  (`analytics/snapshots.snapshot_tenant`, no tumba el snapshot si falla)
+  + fast-path al crear/editar una participation con FTE%
+  (`project_directory`).
+
+**Test Cases:** 5 TC nuevos (`test_us184_capacity_alerts.py`).
+**Estado de integración:** DONE (US-184).
+
+---
+
 ## Notas
 
 - IDs de DEC-### a asignar al cierre, mirando el último libre en `DECISIONS.md`.
 - ADR potencial: "drop de `*_area_id` con snapshot a `legacy_area_id` para rollback de 1 sprint".
 - **2026-06-29 — Actualización batch:** BUG-085 (creación de áreas desde proyecto con propagación automática), BUG-086 (servicio `area_visibility` + actores asignables por área), ENH-183 (listar solo asignados + reuso de catálogo). Ver secciones Bloques B/C/D para detalles.
+- **2026-07-09 — Batch Revamp 1.0:** US-182 (`c3fdf7e`), US-183 (`4aec20c`), US-184 (`595dc4f`) — Bloque F nuevo: pool de recursos con capacidad sobre `actors`, motor de saturación sobre `project_participations` + página `/pmo/resources`, alertas de capacidad in-app. Ver sección "Bloque F" arriba.

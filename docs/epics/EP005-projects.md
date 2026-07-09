@@ -122,10 +122,70 @@ Gestionar el ciclo de vida completo de un proyecto: creación (manual o desde so
 - [ ] Campos read-only después de crear: `folio`, `created_at`, `created_by`, `tenant_id`.
 - [ ] Cambiar `pm_id` dispara notificación al PM entrante y saliente.
 - [ ] Audita qué campos cambiaron (diff antes/después).
+- [ ] **(2026-07-09, US-181):** el form de edición **ya no edita salud**.
+  La salud tiene un único flujo de declaración (ver US-180/US-181 abajo);
+  `PATCH /projects/{id}` deja de aceptar `health_status`/`status_rag`.
 
 **Test Cases:**
 - `TC-074` (integration) — Editar `folio` → 400 (read-only).
 - `TC-075` (integration) — Diff en audit_log.
+
+---
+
+### US-180 / US-181 — Salud única híbrida por dimensiones (2026-07-09)
+
+**Como** PM / PMO Manager
+**Quiero** un solo semáforo de salud del proyecto, calculado por reglas pero
+declarable manualmente con razón
+**Para** dejar de mantener dos indicadores de salud paralelos y entender
+**por qué** un proyecto está en amarillo/rojo.
+
+**US-180 (`0f96dec`) — motor de reglas (backend):**
+- **Un solo campo** `health_status` (verde/amarillo/rojo). Se **elimina**
+  `status_rag` (ENH-101) — quedaba redundante con `health_status` y
+  confundía al PM sobre cuál era "la salud real". Migración `0091`
+  (`20260708_0091_health_unified.py`) agrega `health_source`
+  (`auto`|`manual`) + `health_reason`, absorbe `status_rag` como el caso
+  `health_source='manual'` y **dropea la columna** `status_rag`.
+- `services/project_health.py`: motor de reglas por **dimensión** —
+  cronograma, presupuesto, riesgos/issues, decisiones (recursos queda
+  como hook, activado después por US-183 en EP017). Umbrales
+  configurables **por tenant** (`tenants.settings.health_thresholds`).
+  El color global = la peor dimensión. Función bulk (`refresh_health_bulk`)
+  para recalcular en batch desde snapshots/dashboards sin N+1.
+- `health_source='auto'`: el color lo calcula el motor de reglas en cada
+  refresh. `health_source='manual'`: el PM hizo override y el color queda
+  fijo hasta que se vuelve a automático (recalcula al instante).
+- **Override manual del PM** (`PATCH /projects/{id}/health`): declarar
+  amarillo o rojo **requiere razón** (`health_reason` obligatorio en esos
+  dos colores). Volver a automático (`health_source=auto`) dispara
+  recálculo inmediato con el motor de reglas.
+- **`GET /projects/{id}/health-detail`**: desglose por dimensión + causas
+  detectadas por el motor + tarjetas "Foco PM" (qué atender, quién,
+  próxima acción).
+- Snapshot semanal (`services/analytics/snapshots.py`) refresca la salud
+  auto de **todos** los proyectos del tenant antes de contar, y persiste
+  el desglose de dimensiones en `metric_snapshots.extras.health_dimensions`
+  (scope `project`) para tendencias.
+
+**US-181 (`0c0ad7d`) — UI (frontend):**
+- `components/health-panel.tsx`: `HealthStatusCard` (semáforo + fuente +
+  mini-dots por dimensión), `HealthDeclareModal` (razón obligatoria en
+  amarillo/rojo + botón "volver a automática"), `HealthWhyPanel`
+  (dimensiones con causas + tarjetas Foco PM) y `HealthDimensionMatrix`
+  (heatmap Proyecto × Dimensión — ver también EP004).
+- Detalle del proyecto: la tarjeta de 3 pills vieja se reemplaza por
+  `HealthStatusCard` + panel "¿Por qué?"; `health-detail` refresca el
+  color auto al abrir la página. Actividad del proyecto muestra "Salud
+  declarada" cuando hay override manual.
+- **Form de edición del proyecto ya no tiene campo de salud** (ver nota
+  en US-027). `status_rag` / `STATUS_RAG_LABEL` eliminados del frontend.
+
+**Test Cases:**
+- `test_us180_project_health.py` — 9 TC del motor de reglas + override ✅
+- Suite dashboard (39 TC) verde tras el cambio de UI.
+
+**Estado de integración:** DONE (US-180/US-181).
 
 ---
 
@@ -207,6 +267,9 @@ GET    /api/v1/projects/{id}
 PATCH  /api/v1/projects/{id}
 DELETE /api/v1/projects/{id}                 (soft)
 POST   /api/v1/projects/{id}/phase/change
+
+GET    /api/v1/projects/{id}/health-detail   # US-180/US-181 (2026-07-09)
+PATCH  /api/v1/projects/{id}/health          # US-180/US-181 (2026-07-09)
 
 GET    /api/v1/projects/{id}/members
 POST   /api/v1/projects/{id}/members
