@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, FileSpreadsheet, Upload } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, Sparkles, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import {
   SYSTEM_FIELDS,
   SYSTEM_FIELD_LABELS,
   TASK_STATUS_LABEL,
+  importAiStructure,
   importConfirm,
   importPreview,
   importRepreview,
@@ -74,6 +75,9 @@ export function ImportWizard({
   const [parsedPreview, setParsedPreview] = useState<ParsedPreviewTask[]>([]);
   const [liveWarnings, setLiveWarnings] = useState<ImportWarning[]>([]);
   const [liveTaskCount, setLiveTaskCount] = useState(0);
+  // US-188 nivel 3: la vista previa actual es una propuesta de la IA;
+  // el confirm la persiste tal cual (ignora el mapeo de columnas).
+  const [aiStructure, setAiStructure] = useState(false);
   const repreviewSeq = useRef(0);
   const mappingTouched = useRef(false);
 
@@ -88,6 +92,7 @@ export function ImportWizard({
     setParsedPreview([]);
     setLiveWarnings([]);
     setLiveTaskCount(0);
+    setAiStructure(false);
     mappingTouched.current = false;
     setStrategy("merge");
     setBusy(false);
@@ -109,6 +114,7 @@ export function ImportWizard({
       setParsedPreview(result.parsed_preview ?? []);
       setLiveWarnings(result.warnings ?? []);
       setLiveTaskCount(result.task_count);
+      setAiStructure(false);
       mappingTouched.current = false;
       // Pre-llenar mapping con auto-detect.
       const initial: Record<number, SystemField | ""> = {};
@@ -125,7 +131,13 @@ export function ImportWizard({
       const headers = headerRow.filter(Boolean);
       if (headers.length > 0 && NEEDS_MAPPING.includes(result.source)) {
         try {
-          const sug = await suggestImportMapping(projectId, headers);
+          // US-188 nivel 1: mandar filas de muestra para que la IA
+          // mapee por contenido, no solo por nombre de header.
+          const sug = await suggestImportMapping(
+            projectId,
+            headers,
+            result.sample_rows.slice(1, 6),
+          );
           setAiUsed(sug.ai_used);
           const conf: Record<number, number> = {};
           headerRow.forEach((h, idx) => {
@@ -177,11 +189,56 @@ export function ImportWizard({
     await runPreview(file, name);
   }
 
+  // US-188 nivel 3: pedir a la IA que interprete el archivo completo.
+  async function aiInterpret() {
+    if (!preview || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await importAiStructure(projectId, preview.job_id);
+      setParsedPreview(r.parsed_preview);
+      setLiveWarnings(r.warnings);
+      setLiveTaskCount(r.task_count);
+      setAiStructure(true);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "La IA no pudo interpretar el archivo",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function confirm() {
     if (!preview) return;
     setBusy(true);
     setError(null);
     try {
+      // US-188: con propuesta IA activa el mapeo de columnas no aplica —
+      // se persiste exactamente lo que muestra la vista previa.
+      if (aiStructure) {
+        if (strategy === "replace") {
+          const ok = window.confirm(
+            "Estrategia REPLACE: se eliminarán todas las tareas actuales del proyecto antes de importar. ¿Continuar?",
+          );
+          if (!ok) {
+            setBusy(false);
+            return;
+          }
+        }
+        const result = await importConfirm(projectId, preview.job_id, {
+          mapping: null,
+          strategy,
+          use_ai_structure: true,
+        });
+        onImported(result.imported);
+        setStep("done");
+        return;
+      }
       const needsMapping = NEEDS_MAPPING.includes(preview.source);
       let mappingPayload: Partial<Record<SystemField, number>> | null = null;
       if (needsMapping) {
@@ -251,6 +308,8 @@ export function ImportWizard({
     if (!preview || step !== "preview" || !NEEDS_MAPPING.includes(preview.source)) {
       return;
     }
+    // US-188: con propuesta IA activa el mapeo no aplica.
+    if (aiStructure) return;
     if (!mappingTouched.current) return;
     const inverted: Partial<Record<SystemField, number>> = {};
     for (const [colIdxStr, field] of Object.entries(mapping)) {
@@ -275,7 +334,7 @@ export function ImportWizard({
     }, 400);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapping, preview, projectId, step]);
+  }, [mapping, preview, projectId, step, aiStructure]);
 
   return (
     <Modal
@@ -287,7 +346,7 @@ export function ImportWizard({
       footer={footerFor({
         step,
         busy,
-        canConfirm: !!preview && (!needsMapping || !missingName),
+        canConfirm: !!preview && (aiStructure || !needsMapping || !missingName),
         onClose,
         onBack: () => {
           if (step === "preview" && preview && preview.sheets.length > 1) {
@@ -335,6 +394,9 @@ export function ImportWizard({
           parsedPreview={parsedPreview}
           warnings={liveWarnings}
           taskCount={liveTaskCount}
+          aiStructure={aiStructure}
+          onAiInterpret={aiInterpret}
+          busy={busy}
         />
       ) : null}
 
@@ -526,6 +588,9 @@ function PreviewStep({
   parsedPreview = [],
   warnings = [],
   taskCount = 0,
+  aiStructure = false,
+  onAiInterpret,
+  busy = false,
 }: {
   preview: ImportPreviewResult;
   headerLabels: (string | null)[];
@@ -541,6 +606,9 @@ function PreviewStep({
   parsedPreview?: ParsedPreviewTask[];
   warnings?: ImportWarning[];
   taskCount?: number;
+  aiStructure?: boolean;
+  onAiInterpret?: () => void;
+  busy?: boolean;
 }) {
   const usedFields = new Set(
     Object.values(mapping).filter(Boolean) as SystemField[],
@@ -561,9 +629,16 @@ function PreviewStep({
             Tareas detectadas: <strong>{taskCount}</strong>
           </span>
           {/* ENH-053: badge cuando la IA refinó el mapeo. */}
-          {aiUsed ? (
+          {aiUsed && !aiStructure ? (
             <span className="ml-3 inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
               ✨ Mapeo asistido por IA
+            </span>
+          ) : null}
+          {/* US-188 nivel 3: la vista previa es una propuesta de la IA. */}
+          {aiStructure ? (
+            <span className="ml-3 inline-flex items-center gap-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+              <Sparkles className="h-3 w-3" aria-hidden />
+              Plan interpretado por IA — revisá antes de importar
             </span>
           ) : null}
         </div>
@@ -584,13 +659,31 @@ function PreviewStep({
         </div>
       </div>
 
-      {missingName && needsMapping ? (
+      {missingName && needsMapping && !aiStructure ? (
         <Banner variant="warning">
           <span className="inline-flex items-center gap-1.5">
             <AlertTriangle className="h-4 w-4" aria-hidden />
-            Asigná una columna al campo <strong>Nombre</strong> antes de confirmar.
+            Asigná una columna al campo <strong>Nombre</strong> antes de
+            confirmar, o dejá que la IA interprete el archivo.
           </span>
         </Banner>
+      ) : null}
+
+      {/* US-188 nivel 3: interpretación completa con IA — útil cuando el
+          archivo no tiene headers reconocibles o viene "sucio". */}
+      {needsMapping && onAiInterpret && !aiStructure ? (
+        <div>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={onAiInterpret}
+            disabled={busy}
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            {busy ? "Interpretando…" : "Interpretar archivo con IA"}
+          </Button>
+        </div>
       ) : null}
 
       {/* BUG-088 + ENH-192: avisos no bloqueantes en vivo (WBS numérico,
@@ -613,7 +706,7 @@ function PreviewStep({
           dentro del header de la tabla, que se estiraba a lo ancho y alto).
           Cada tarjeta muestra la columna, el campo destino y un valor de
           ejemplo para mapear con contexto. */}
-      {needsMapping ? (
+      {needsMapping && !aiStructure ? (
         <div>
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
             Mapeo de columnas

@@ -18,6 +18,12 @@ from app.schemas.modules import UserMini
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
+from app.services.import_ai import (
+    ai_match_resources,
+    ai_normalize_statuses,
+    ai_propose_structure,
+    extract_raw_rows,
+)
 from app.services.import_job_store import (
     JOB_TTL_SECONDS,
     create_job_id,
@@ -45,7 +51,12 @@ from app.services.plan_metadata import (
     validate_predecessors,
     wbs_sort_key,
 )
-from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
+from app.services.xlsx_task_parser import (
+    ParsedTask,
+    XlsxParseResult,
+    _coerce_date,
+    parse_xlsx,
+)
 
 # ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
 TaskCriticality = Literal["low", "medium", "high", "critical"]
@@ -1126,6 +1137,9 @@ class ImportConfirmBody(BaseModel):
         ),
     )
     strategy: str = Field(default="replace", pattern="^(replace|merge)$")
+    # US-188 nivel 3: persistir la propuesta de estructura generada por
+    # /ai-structure en lugar de re-parsear el archivo con mapping.
+    use_ai_structure: bool = False
 
 
 class RepreviewBody(BaseModel):
@@ -1197,6 +1211,96 @@ async def import_repreview(
     }
 
 
+@router.post("/projects/{project_id}/tasks/import/{job_id}/ai-structure")
+async def import_ai_structure(
+    project_id: UUID,
+    job_id: str,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-188 nivel 3 — la IA interpreta el archivo completo (headers
+    crípticos, secciones como filas, indentación sin WBS) y propone un
+    plan estructurado. La propuesta se guarda en el job de Redis; el
+    usuario la revisa en el preview y el confirm la persiste con
+    `use_ai_structure=true`. No toca la DB.
+    """
+    import base64
+    from dataclasses import asdict
+
+    from fastapi import HTTPException
+
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+
+    tenant_cfg = await load_tenant_ai(db, tenant_id)
+    if tenant_cfg.mode == "disabled":
+        raise business_rule(
+            "La interpretación con IA requiere IA habilitada para el tenant",
+            code="AI_DISABLED",
+        )
+
+    preview = load_preview(job_id)
+    if preview is None:
+        raise HTTPException(status_code=410, detail={"code": "PREVIEW_EXPIRED"})
+    if (
+        preview.get("tenant_id") != str(tenant_id)
+        or preview.get("project_id") != str(project_id)
+    ):
+        raise not_found("Preview job")
+    if preview.get("user_id") != str(cu.id):
+        raise forbidden()
+
+    source = preview["source"]
+    if source not in ("xlsx", "csv"):
+        raise business_rule(
+            "La interpretación IA aplica a XLSX/CSV (MPP/XML ya vienen "
+            "estructurados)",
+            code="AI_STRUCTURE_UNSUPPORTED_SOURCE",
+        )
+    try:
+        data = base64.b64decode(preview["file_b64"])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "PREVIEW_DECODE_FAILED", "hint": str(exc)[:200]},
+        )
+
+    rows = extract_raw_rows(source, data, sheet=preview.get("sheet"))
+    tasks = await ai_propose_structure(
+        rows, tenant_cfg=tenant_cfg, tenant_id=str(tenant_id)
+    )
+    if not tasks:
+        raise business_rule(
+            "La IA no pudo interpretar el archivo. Probá el mapeo manual "
+            "de columnas.",
+            code="AI_NO_PROPOSAL",
+        )
+
+    # Persistir la propuesta en el job (el confirm la usa tal cual —
+    # lo que el usuario ve en el preview es lo que se importa).
+    preview["ai_tasks"] = [asdict(t) for t in tasks]
+    save_preview(job_id, preview)
+
+    await write_audit(
+        db,
+        action="tasks.import_ai_structure",
+        module="tasks",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="project",
+        entity_id=str(project_id),
+        details={"job_id": job_id, "source": source, "proposed": len(tasks)},
+    )
+    await db.commit()
+
+    fake_result = XlsxParseResult(tasks=tasks)
+    return {
+        "task_count": len(tasks),
+        "warnings": _collect_import_warnings(fake_result),
+        "parsed_preview": _serialize_parsed_tasks(tasks),
+    }
+
+
 @router.post("/projects/{project_id}/tasks/import/{job_id}/confirm")
 async def import_confirm(
     project_id: UUID,
@@ -1246,26 +1350,58 @@ async def import_confirm(
     source = preview["source"]
     sheet = preview.get("sheet")
 
-    # Mapping override solo aplica a XLSX/CSV (MPP/XML ya vienen
-    # normalizados por sus parsers propios).
-    if body.mapping and source in ("xlsx", "csv"):
-        if "name" not in body.mapping:
-            # 422 (no 400) — el body es válido sintácticamente, lo que
-            # falla es la regla de negocio "name es obligatorio".
+    if body.use_ai_structure:
+        # US-188 nivel 3: la fuente de verdad es la propuesta IA que el
+        # usuario ya revisó en el preview, no el archivo re-parseado.
+        stored = preview.get("ai_tasks") or []
+        if not stored:
             raise business_rule(
-                "El mapping debe incluir el campo obligatorio 'name'",
-                code="MAPPING_MISSING_NAME",
+                "El job no tiene propuesta de IA — generála primero con "
+                "/import/{job_id}/ai-structure",
+                code="AI_STRUCTURE_MISSING",
             )
-        columns_override = body.mapping
-    else:
-        columns_override = None
-
-    try:
-        parse_result = _parse_for_preview(
-            source, data, sheet=sheet, columns_override=columns_override
+        parse_result = XlsxParseResult(
+            tasks=[
+                ParsedTask(
+                    row_number=int(d.get("row_number") or 0),
+                    name=str(d.get("name") or "").strip(),
+                    wbs=(str(d["wbs"]).strip() or None)
+                    if d.get("wbs") is not None
+                    else None,
+                    start_date=_coerce_date(d.get("start_date")),
+                    end_date=_coerce_date(d.get("end_date")),
+                    duration_days=d.get("duration_days"),
+                    progress=int(d.get("progress") or 0),
+                    status=d.get("status"),
+                    is_milestone=bool(d.get("is_milestone")),
+                )
+                for d in stored
+                if str(d.get("name") or "").strip()
+            ]
         )
-    except ValueError as exc:
-        raise business_rule(f"archivo {source.upper()} inválido al confirmar: {exc}")
+    else:
+        # Mapping override solo aplica a XLSX/CSV (MPP/XML ya vienen
+        # normalizados por sus parsers propios).
+        if body.mapping and source in ("xlsx", "csv"):
+            if "name" not in body.mapping:
+                # 422 (no 400) — el body es válido sintácticamente, lo que
+                # falla es la regla de negocio "name es obligatorio".
+                raise business_rule(
+                    "El mapping debe incluir el campo obligatorio 'name'",
+                    code="MAPPING_MISSING_NAME",
+                )
+            columns_override = body.mapping
+        else:
+            columns_override = None
+
+        try:
+            parse_result = _parse_for_preview(
+                source, data, sheet=sheet, columns_override=columns_override
+            )
+        except ValueError as exc:
+            raise business_rule(
+                f"archivo {source.upper()} inválido al confirmar: {exc}"
+            )
 
     errors = list(parse_result.errors)
 
@@ -1291,6 +1427,8 @@ async def import_confirm(
             self.predecessors_raw = getattr(pt, "predecessors_raw", None)
             # ENH-191: estado normalizado (None → default not_started).
             self.status = getattr(pt, "status", None)
+            # US-188: crudo para normalización IA de no reconocidos.
+            self.status_raw = getattr(pt, "status_raw", None)
             self.predecessors: list = []
 
     parsed = [_TaskShim(t) for t in parse_result.tasks]
@@ -1439,6 +1577,10 @@ async def import_confirm(
 
     preds_skipped: list[str] = []
     dep_count = 0
+    # US-188 nivel 2: valores que la heurística no resolvió — candidatos
+    # a normalización IA post-loop.
+    pending_status: list[tuple[str, Task]] = []
+    pending_resource: list[tuple[str, Task]] = []
     for pt in parsed:
         t = created.get(pt.external_id)
         if t is None:
@@ -1451,9 +1593,15 @@ async def import_confirm(
         ):
             t.end_date = t.start_date + timedelta(days=(t.duration_days or 1) - 1)
         # Responsable → actor del pool (assignee_actor_id, flujo ENH-079).
-        resolved_actor = _match_actor(getattr(pt, "resources_raw", None))
+        raw_resource = getattr(pt, "resources_raw", None)
+        resolved_actor = _match_actor(raw_resource)
         if resolved_actor is not None:
             t.assignee_actor_id = resolved_actor
+        elif raw_resource:
+            pending_resource.append((str(raw_resource).strip(), t))
+        # Estado presente pero no reconocido por la heurística.
+        if getattr(pt, "status", None) is None and getattr(pt, "status_raw", None):
+            pending_status.append((str(pt.status_raw), t))
         # Hito Relacionado → resolución por WBS (solo hitos reales).
         rel = getattr(pt, "related_milestone_wbs", None)
         if rel:
@@ -1521,6 +1669,42 @@ async def import_confirm(
             }
         )
 
+    # ------------------------------------------------------------------
+    # US-188 nivel 2 — normalización IA de lo que la heurística no
+    # resolvió. Best-effort: si la IA está deshabilitada o falla, los
+    # estados quedan en not_started y los responsables sin asignar.
+    # ------------------------------------------------------------------
+    ai_normalized = {"statuses": 0, "resources": 0}
+    if pending_status or pending_resource:
+        tenant_cfg = await load_tenant_ai(db, tenant_id)
+        if tenant_cfg.mode != "disabled":
+            if pending_status:
+                status_map = await ai_normalize_statuses(
+                    [raw for raw, _ in pending_status],
+                    tenant_cfg=tenant_cfg,
+                    tenant_id=str(tenant_id),
+                )
+                for raw, task in pending_status:
+                    mapped = status_map.get(raw)
+                    if mapped:
+                        task.status = mapped
+                        ai_normalized["statuses"] += 1
+            if pending_resource:
+                name_to_id = {
+                    a.name: str(a.id) for a in _actor_rows if a.name
+                }
+                resource_map = await ai_match_resources(
+                    [raw for raw, _ in pending_resource],
+                    list(name_to_id.keys()),
+                    tenant_cfg=tenant_cfg,
+                    tenant_id=str(tenant_id),
+                )
+                for raw, task in pending_resource:
+                    actor_id = name_to_id.get(resource_map.get(raw, ""))
+                    if actor_id:
+                        task.assignee_actor_id = actor_id
+                        ai_normalized["resources"] += 1
+
     # ENH-109: registrar el Plan vivo en `project_artifacts` con el
     # source_format detectado, para que `GET /plan/download` regenere
     # en el formato origen. UNIQUE(project_id, type='plan') → upsert.
@@ -1582,6 +1766,8 @@ async def import_confirm(
         # BUG-088: mismos avisos que el preview, re-computados sobre el
         # mapping definitivo (el override puede cambiar la columna WBS).
         "warnings": _collect_import_warnings(parse_result),
+        # US-188: cuántos valores normalizó la IA (0 si deshabilitada).
+        "ai_normalized": ai_normalized,
         "strategy": body.strategy,
         "source": source_label,
     }
@@ -1632,6 +1818,10 @@ async def gantt_view(
 # ENH-053 — Sugerencia de mapeo de columnas asistido por IA.
 class SuggestMappingBody(BaseModel):
     headers: list[str] = Field(min_length=1, max_length=50)
+    # US-188 nivel 1: filas de muestra para mapear por CONTENIDO.
+    sample_rows: list[list[str | None]] | None = Field(
+        default=None, max_length=5
+    )
 
 
 class SuggestMappingItem(BaseModel):
@@ -1671,6 +1861,7 @@ async def suggest_import_mapping(
         tenant_cfg=tenant_cfg,
         platform_groq_config=None,
         tenant_id=str(tenant_id),
+        sample_rows=body.sample_rows,
     )
     ai_used = any(s.get("source") == "ai" for s in suggestions.values())
     return SuggestMappingResponse(

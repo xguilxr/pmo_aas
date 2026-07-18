@@ -154,6 +154,9 @@ def parse_csv(
                 status=_coerce_status(row[columns["status"]])
                 if "status" in columns and columns["status"] < len(row)
                 else None,
+                status_raw=_text(row[columns["status"]])
+                if "status" in columns and columns["status"] < len(row)
+                else None,
                 criticality=(_norm(row[columns["criticality"]]) or None)
                 if "criticality" in columns and columns["criticality"] < len(row)
                 else None,

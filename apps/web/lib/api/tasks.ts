@@ -261,6 +261,8 @@ export type ImportConfirmResult = {
   dependencies_created: number;
   errors: unknown[];
   warnings?: ImportWarning[];
+  // US-188 nivel 2: valores normalizados por IA en el confirm.
+  ai_normalized?: { statuses: number; resources: number };
   strategy: string;
   source: string;
 };
@@ -349,10 +351,15 @@ export type SuggestMappingResponse = {
 export function suggestImportMapping(
   projectId: string,
   headers: string[],
+  sampleRows?: (string | null)[][],
 ): Promise<SuggestMappingResponse> {
   return apiFetch<SuggestMappingResponse>(
     `/api/v1/projects/${projectId}/tasks/import/suggest-mapping`,
-    { method: "POST", body: { headers } },
+    {
+      method: "POST",
+      // US-188 nivel 1: filas de muestra → la IA mapea por contenido.
+      body: { headers, sample_rows: sampleRows?.slice(0, 5) ?? null },
+    },
   );
 }
 
@@ -362,6 +369,8 @@ export async function importConfirm(
   body: {
     mapping?: Partial<Record<SystemField, number>> | null;
     strategy: "merge" | "replace";
+    // US-188 nivel 3: persistir la propuesta IA revisada en el preview.
+    use_ai_structure?: boolean;
   },
 ): Promise<ImportConfirmResult> {
   return apiFetch<ImportConfirmResult>(
@@ -380,6 +389,23 @@ export function importRepreview(
   return apiFetch<ImportRepreviewResult>(
     `/api/v1/projects/${projectId}/tasks/import/${jobId}/repreview`,
     { method: "POST", body: { mapping } },
+  );
+}
+
+// US-188 nivel 3: la IA propone el plan completo desde el archivo crudo.
+export type ImportAiStructureResult = {
+  task_count: number;
+  warnings: ImportWarning[];
+  parsed_preview: ParsedPreviewTask[];
+};
+
+export function importAiStructure(
+  projectId: string,
+  jobId: string,
+): Promise<ImportAiStructureResult> {
+  return apiFetch<ImportAiStructureResult>(
+    `/api/v1/projects/${projectId}/tasks/import/${jobId}/ai-structure`,
+    { method: "POST", body: {} },
   );
 }
 

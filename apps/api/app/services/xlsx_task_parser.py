@@ -97,6 +97,9 @@ class ParsedTask:
     # ENH-191: estado normalizado al enum canónico, o None si la columna
     # no está presente / el valor no se reconoce (caller usa default).
     status: str | None = None
+    # US-188: valor crudo de la celda Estado — insumo para que la IA
+    # normalice en confirm lo que la heurística no reconoció.
+    status_raw: str | None = None
     # US-096: criticidad + hito relacionado opcionales en plantilla.
     criticality: str | None = None
     # ENH-097: boolean explicito. None = no presente en plantilla (caller
@@ -534,6 +537,7 @@ def parse_xlsx(
                 if "is_milestone" in columns and columns["is_milestone"] < len(row)
                 else False,
                 status=status_value,
+                status_raw=_text(raw_status),
                 criticality=(_norm(row[columns["criticality"]]) or None)
                 if "criticality" in columns and columns["criticality"] < len(row)
                 else None,

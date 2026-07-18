@@ -83,7 +83,10 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
 _AI_SYSTEM_PROMPT = (
     "You are a column mapping assistant for a project management import "
     "wizard. Map each provided header to one of these system fields: "
-    f"{', '.join(SYSTEM_FIELDS)}. Reply ONLY with strict JSON of shape "
+    f"{', '.join(SYSTEM_FIELDS)}. When sample rows are provided, use the "
+    "VALUES to decide (a column full of '45%' is progress even if its "
+    "header is cryptic; dates → start/end by ordering; 'En curso' → "
+    "status). Reply ONLY with strict JSON of shape "
     '{"<header>": {"field": "<one of the system fields or null>", '
     '"confidence": <number 0..1>}}. Do not include any prose.'
 )
@@ -124,8 +127,14 @@ async def suggest_column_mapping(
     tenant_cfg: TenantAIConfig,
     platform_groq_config: dict | None = None,
     tenant_id: str | None = None,
+    sample_rows: list[list[str | None]] | None = None,
 ) -> dict[str, Suggestion]:
-    """Devuelve `{header: Suggestion}` con AI + heurística merged."""
+    """Devuelve `{header: Suggestion}` con AI + heurística merged.
+
+    US-188 nivel 1: `sample_rows` (hasta 5 filas de datos) se incluye
+    en el prompt para que la IA decida por contenido, no solo por
+    header — una columna '45%' es progress aunque el header sea
+    críptico."""
     out: dict[str, Suggestion] = {h: heuristic_suggestion(h) for h in headers}
 
     if tenant_cfg.mode == "disabled" or not headers:
@@ -133,7 +142,13 @@ async def suggest_column_mapping(
 
     # Llamada AI; si falla cae a heurística (no aborta el endpoint).
     try:
-        prompt = json.dumps({"headers": headers}, ensure_ascii=False)
+        payload: dict = {"headers": headers}
+        if sample_rows:
+            payload["sample_rows"] = [
+                [None if c is None else str(c)[:120] for c in r[:30]]
+                for r in sample_rows[:5]
+            ]
+        prompt = json.dumps(payload, ensure_ascii=False)
         res = await generate_for_tenant(
             prompt,
             system=_AI_SYSTEM_PROMPT,
