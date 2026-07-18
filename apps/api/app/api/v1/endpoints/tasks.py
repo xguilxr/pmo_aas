@@ -854,10 +854,40 @@ async def import_ms_project(
 # ------------------------------------------------------------------
 
 MAX_WIZARD_FILE_MB = 10
-SYSTEM_FIELDS: list[str] = [
-    "name", "wbs", "start_date", "end_date", "duration_days",
-    "progress", "is_milestone", "status", "predecessors", "resources",
-]
+# ENH-192: una sola fuente de verdad para los campos mapeables del
+# wizard — la lista completa del suggester/parser (antes el wizard solo
+# ofrecía 9 y area/criticidad/hito relacionado no se podían re-mapear).
+SYSTEM_FIELDS: list[str] = list(MAPPING_SYSTEM_FIELDS)
+
+# ENH-192: cuántas tareas interpretadas devuelve el preview del wizard.
+PARSED_PREVIEW_LIMIT = 10
+
+
+def _serialize_parsed_tasks(tasks: list[ParsedTask]) -> list[dict]:
+    """ENH-192: primeras N tareas YA interpretadas (WBS fiel, % escalado,
+    estado normalizado) para que el wizard muestre cómo quedará el plan
+    en vez de celdas crudas."""
+    out: list[dict] = []
+    for t in tasks[:PARSED_PREVIEW_LIMIT]:
+        out.append(
+            {
+                "row_number": t.row_number,
+                "wbs": t.wbs,
+                "name": t.name,
+                "start_date": t.start_date.isoformat() if t.start_date else None,
+                "end_date": t.end_date.isoformat() if t.end_date else None,
+                "duration_days": t.duration_days,
+                "progress": t.progress,
+                "status": t.status,
+                "is_milestone": t.is_milestone,
+                "is_critical": t.is_critical,
+                "area": t.area_raw,
+                "resources": t.resources_raw,
+                "related_milestone": t.related_milestone_wbs,
+                "predecessors": t.predecessors_raw,
+            }
+        )
+    return out
 
 
 def _detect_source(content_type: str, filename: str) -> str:
@@ -1079,6 +1109,8 @@ async def import_preview(
         "errors": parse_result.errors,
         # BUG-088: avisos no bloqueantes (WBS numérico, huérfanos).
         "warnings": _collect_import_warnings(parse_result),
+        # ENH-192: tareas interpretadas para el preview del wizard.
+        "parsed_preview": _serialize_parsed_tasks(parse_result.tasks),
         "ttl_seconds": JOB_TTL_SECONDS,
         "system_fields": SYSTEM_FIELDS,
     }
@@ -1094,6 +1126,75 @@ class ImportConfirmBody(BaseModel):
         ),
     )
     strategy: str = Field(default="replace", pattern="^(replace|merge)$")
+
+
+class RepreviewBody(BaseModel):
+    # ENH-192: mismo shape de mapping que el confirm.
+    mapping: dict[str, int] | None = None
+
+
+@router.post("/projects/{project_id}/tasks/import/{job_id}/repreview")
+async def import_repreview(
+    project_id: UUID,
+    job_id: str,
+    body: RepreviewBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-192 — re-interpreta el archivo del job con un mapping manual
+    SIN persistir nada. El wizard lo llama cuando el usuario re-mapea
+    columnas para refrescar la vista interpretada + warnings en vivo.
+    """
+    import base64
+
+    from fastapi import HTTPException
+
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+
+    preview = load_preview(job_id)
+    if preview is None:
+        raise HTTPException(
+            status_code=410,
+            detail={"code": "PREVIEW_EXPIRED"},
+        )
+    if (
+        preview.get("tenant_id") != str(tenant_id)
+        or preview.get("project_id") != str(project_id)
+    ):
+        raise not_found("Preview job")
+    if preview.get("user_id") != str(cu.id):
+        raise forbidden()
+
+    try:
+        data = base64.b64decode(preview["file_b64"])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "PREVIEW_DECODE_FAILED", "hint": str(exc)[:200]},
+        )
+    source = preview["source"]
+    columns_override = (
+        body.mapping if body.mapping and source in ("xlsx", "csv") else None
+    )
+    try:
+        parse_result = _parse_for_preview(
+            source,
+            data,
+            sheet=preview.get("sheet"),
+            columns_override=columns_override,
+            strict=False,
+        )
+    except ValueError as exc:
+        raise business_rule(f"archivo {source.upper()} inválido: {exc}")
+
+    return {
+        "task_count": len(parse_result.tasks),
+        "columns_detected": parse_result.columns_detected,
+        "errors": parse_result.errors,
+        "warnings": _collect_import_warnings(parse_result),
+        "parsed_preview": _serialize_parsed_tasks(parse_result.tasks),
+    }
 
 
 @router.post("/projects/{project_id}/tasks/import/{job_id}/confirm")

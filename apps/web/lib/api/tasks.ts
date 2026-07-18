@@ -206,6 +206,10 @@ function safeParse(text: string): unknown {
 
 // US-070 — Wizard de mapeo de columnas (preview + confirm).
 
+// ENH-192: lista COMPLETA de campos mapeables — espeja
+// `import_mapping_suggest.SYSTEM_FIELDS` del backend (antes el wizard
+// solo ofrecía 9 y área/criticidad/hito relacionado no se podían
+// re-mapear a mano).
 export const SYSTEM_FIELDS = [
   "name",
   "wbs",
@@ -216,7 +220,11 @@ export const SYSTEM_FIELDS = [
   "is_milestone",
   // ENH-191: estado importable.
   "status",
+  "criticality",
+  "is_critical",
+  "related_milestone",
   "predecessors",
+  "area",
   "resources",
 ] as const;
 
@@ -242,6 +250,8 @@ export type ImportPreviewResult = {
   task_count: number;
   errors: { row?: number; error?: string }[];
   warnings?: ImportWarning[];
+  // ENH-192: tareas interpretadas (primeras 10) para la vista previa.
+  parsed_preview?: ParsedPreviewTask[];
   ttl_seconds: number;
   system_fields: SystemField[];
 };
@@ -253,6 +263,33 @@ export type ImportConfirmResult = {
   warnings?: ImportWarning[];
   strategy: string;
   source: string;
+};
+
+// ENH-192: tarea YA interpretada por el parser (WBS fiel, % escalado,
+// estado normalizado) — la vista previa "como quedará el plan".
+export type ParsedPreviewTask = {
+  row_number: number;
+  wbs: string | null;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  duration_days: number | null;
+  progress: number;
+  status: string | null;
+  is_milestone: boolean;
+  is_critical: boolean | null;
+  area: string | null;
+  resources: string | null;
+  related_milestone: string | null;
+  predecessors: string | null;
+};
+
+export type ImportRepreviewResult = {
+  task_count: number;
+  columns_detected: Partial<Record<SystemField, number>>;
+  errors: { row?: number; error?: string }[];
+  warnings: ImportWarning[];
+  parsed_preview: ParsedPreviewTask[];
 };
 
 async function rawFetch(
@@ -333,6 +370,19 @@ export async function importConfirm(
   );
 }
 
+// ENH-192: re-interpreta el archivo con un mapping manual sin persistir
+// — refresca la vista interpretada + warnings al re-mapear columnas.
+export function importRepreview(
+  projectId: string,
+  jobId: string,
+  mapping: Partial<Record<SystemField, number>> | null,
+): Promise<ImportRepreviewResult> {
+  return apiFetch<ImportRepreviewResult>(
+    `/api/v1/projects/${projectId}/tasks/import/${jobId}/repreview`,
+    { method: "POST", body: { mapping } },
+  );
+}
+
 export const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
   name: "Nombre (obligatorio)",
   wbs: "WBS / EDT",
@@ -342,8 +392,12 @@ export const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
   progress: "% Avance",
   is_milestone: "Es hito",
   status: "Estado",
+  criticality: "Criticidad (baja/media/alta)",
+  is_critical: "Criticidad (Sí/No)",
+  related_milestone: "Hito relacionado (WBS)",
   predecessors: "Predecesoras",
-  resources: "Recursos",
+  area: "Área responsable",
+  resources: "Responsable / Recursos",
 };
 
 export const TASK_STATUS_LABEL: Record<string, string> = {

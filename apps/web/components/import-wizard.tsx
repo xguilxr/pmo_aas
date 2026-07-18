@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, FileSpreadsheet, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -12,11 +12,15 @@ import { ApiError } from "@/lib/api";
 import {
   type ImportPreviewResult,
   type ImportSource,
+  type ImportWarning,
+  type ParsedPreviewTask,
   type SystemField,
   SYSTEM_FIELDS,
   SYSTEM_FIELD_LABELS,
+  TASK_STATUS_LABEL,
   importConfirm,
   importPreview,
+  importRepreview,
   suggestImportMapping,
 } from "@/lib/api/tasks";
 
@@ -65,6 +69,13 @@ export function ImportWizard({
   // confidence < 0.7 muestra warning de "match débil" en la UI.
   const [confidence, setConfidence] = useState<Record<number, number>>({});
   const [aiUsed, setAiUsed] = useState(false);
+  // ENH-192: interpretación en vivo — tareas parseadas, warnings y count
+  // se refrescan vía /repreview cuando el usuario re-mapea columnas.
+  const [parsedPreview, setParsedPreview] = useState<ParsedPreviewTask[]>([]);
+  const [liveWarnings, setLiveWarnings] = useState<ImportWarning[]>([]);
+  const [liveTaskCount, setLiveTaskCount] = useState(0);
+  const repreviewSeq = useRef(0);
+  const mappingTouched = useRef(false);
 
   function reset() {
     setStep("upload");
@@ -74,6 +85,10 @@ export function ImportWizard({
     setMapping({});
     setConfidence({});
     setAiUsed(false);
+    setParsedPreview([]);
+    setLiveWarnings([]);
+    setLiveTaskCount(0);
+    mappingTouched.current = false;
     setStrategy("merge");
     setBusy(false);
     setError(null);
@@ -90,6 +105,11 @@ export function ImportWizard({
       const result = await importPreview(projectId, f, selectedSheet);
       setPreview(result);
       setSheet(result.sheet_used);
+      // ENH-192: estado inicial de la interpretación en vivo.
+      setParsedPreview(result.parsed_preview ?? []);
+      setLiveWarnings(result.warnings ?? []);
+      setLiveTaskCount(result.task_count);
+      mappingTouched.current = false;
       // Pre-llenar mapping con auto-detect.
       const initial: Record<number, SystemField | ""> = {};
       for (const [field, idx] of Object.entries(result.columns_detected)) {
@@ -225,6 +245,38 @@ export function ImportWizard({
   const missingName = preview && !usedFields.has("name");
   const needsMapping = preview ? NEEDS_MAPPING.includes(preview.source) : true;
 
+  // ENH-192: al re-mapear columnas, re-interpretar el archivo (debounce
+  // 400ms) para refrescar la tabla interpretada + warnings en vivo.
+  useEffect(() => {
+    if (!preview || step !== "preview" || !NEEDS_MAPPING.includes(preview.source)) {
+      return;
+    }
+    if (!mappingTouched.current) return;
+    const inverted: Partial<Record<SystemField, number>> = {};
+    for (const [colIdxStr, field] of Object.entries(mapping)) {
+      if (!field) continue;
+      inverted[field as SystemField] = Number(colIdxStr);
+    }
+    const seq = ++repreviewSeq.current;
+    const timer = window.setTimeout(async () => {
+      try {
+        const r = await importRepreview(
+          projectId,
+          preview.job_id,
+          Object.keys(inverted).length > 0 ? inverted : null,
+        );
+        if (seq !== repreviewSeq.current) return; // respuesta vieja
+        setParsedPreview(r.parsed_preview);
+        setLiveWarnings(r.warnings);
+        setLiveTaskCount(r.task_count);
+      } catch {
+        /* interpretación en vivo es best-effort; el confirm re-valida. */
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapping, preview, projectId, step]);
+
   return (
     <Modal
       open={open}
@@ -270,15 +322,19 @@ export function ImportWizard({
           headerLabels={headerLabels}
           sampleData={sampleData}
           mapping={mapping}
-          onChangeMapping={(idx, field) =>
-            setMapping((m) => ({ ...m, [idx]: field }))
-          }
+          onChangeMapping={(idx, field) => {
+            mappingTouched.current = true;
+            setMapping((m) => ({ ...m, [idx]: field }));
+          }}
           missingName={Boolean(missingName)}
           needsMapping={needsMapping}
           strategy={strategy}
           onChangeStrategy={setStrategy}
           confidence={confidence}
           aiUsed={aiUsed}
+          parsedPreview={parsedPreview}
+          warnings={liveWarnings}
+          taskCount={liveTaskCount}
         />
       ) : null}
 
@@ -467,6 +523,9 @@ function PreviewStep({
   onChangeStrategy,
   confidence = {},
   aiUsed = false,
+  parsedPreview = [],
+  warnings = [],
+  taskCount = 0,
 }: {
   preview: ImportPreviewResult;
   headerLabels: (string | null)[];
@@ -479,6 +538,9 @@ function PreviewStep({
   onChangeStrategy: (s: "merge" | "replace") => void;
   confidence?: Record<number, number>;
   aiUsed?: boolean;
+  parsedPreview?: ParsedPreviewTask[];
+  warnings?: ImportWarning[];
+  taskCount?: number;
 }) {
   const usedFields = new Set(
     Object.values(mapping).filter(Boolean) as SystemField[],
@@ -496,7 +558,7 @@ function PreviewStep({
             </span>
           ) : null}
           <span>
-            Tareas detectadas: <strong>{preview.task_count}</strong>
+            Tareas detectadas: <strong>{taskCount}</strong>
           </span>
           {/* ENH-053: badge cuando la IA refinó el mapeo. */}
           {aiUsed ? (
@@ -531,12 +593,12 @@ function PreviewStep({
         </Banner>
       ) : null}
 
-      {/* BUG-088: avisos no bloqueantes del parser (WBS numérico sin
-          formato texto, tareas que quedarían huérfanas, etc.). */}
-      {(preview.warnings ?? []).length > 0 ? (
+      {/* BUG-088 + ENH-192: avisos no bloqueantes en vivo (WBS numérico,
+          huérfanos, % dudoso, estados no reconocidos). */}
+      {warnings.length > 0 ? (
         <Banner variant="warning">
           <ul className="space-y-1">
-            {(preview.warnings ?? []).map((w) => (
+            {warnings.map((w) => (
               <li key={w.code} className="flex items-start gap-1.5">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                 <span>{w.message}</span>
@@ -618,15 +680,93 @@ function PreviewStep({
         </div>
       ) : null}
 
-      {/* Vista previa de datos: tabla compacta; el header muestra el campo
-          destino asignado (si lo hay) en vez de repetir el dropdown. */}
-      <div>
-        {needsMapping ? (
+      {/* ENH-192: vista previa INTERPRETADA — muestra cómo quedará el
+          plan (WBS fiel, % escalado, estado normalizado), no las celdas
+          crudas. Se refresca en vivo al re-mapear columnas. */}
+      {parsedPreview.length > 0 ? (
+        <div>
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-            Vista previa
+            Así se importará (primeras {parsedPreview.length})
           </div>
-        ) : null}
-        <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
+          <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
+            <table className="min-w-full text-xs">
+              <thead className="bg-[var(--color-subtle)]">
+                <tr>
+                  {[
+                    "WBS",
+                    "Tarea",
+                    "Inicio",
+                    "Fin",
+                    "%",
+                    "Estado",
+                    "Hito",
+                    "Área",
+                    "Responsable",
+                    "Predecesoras",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="border-b border-[var(--border-default)] px-2 py-1.5 text-left text-[11px] font-medium text-[var(--color-tertiary)]"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {parsedPreview.map((t) => (
+                  <tr
+                    key={t.row_number}
+                    className="border-t border-[var(--border-subtle)]"
+                  >
+                    <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
+                      {t.wbs ?? "—"}
+                    </td>
+                    <td className="max-w-[220px] truncate px-2 py-1.5 text-[var(--color-primary)]" title={t.name}>
+                      {t.name}
+                    </td>
+                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                      {t.start_date ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                      {t.end_date ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
+                      {t.progress}%
+                    </td>
+                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                      {t.status
+                        ? (TASK_STATUS_LABEL[t.status] ?? t.status)
+                        : "No iniciada"}
+                    </td>
+                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                      {t.is_milestone ? "◆" : ""}
+                    </td>
+                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                      {t.area ?? "—"}
+                    </td>
+                    <td className="max-w-[140px] truncate px-2 py-1.5 text-[var(--color-secondary)]" title={t.resources ?? ""}>
+                      {t.resources ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
+                      {t.predecessors ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Datos crudos del archivo — colapsados; útiles para re-mapear
+          columnas con contexto. Si no hay interpretación (mapping sin
+          'Nombre'), quedan como única vista. */}
+      <details open={parsedPreview.length === 0}>
+        <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+          Datos crudos del archivo
+        </summary>
+        <div className="mt-1.5 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
           <table className="min-w-full text-xs">
             <thead className="bg-[var(--color-subtle)]">
               <tr>
@@ -674,7 +814,7 @@ function PreviewStep({
             </tbody>
           </table>
         </div>
-      </div>
+      </details>
 
       {preview.errors.length > 0 ? (
         <Banner variant="warning">
