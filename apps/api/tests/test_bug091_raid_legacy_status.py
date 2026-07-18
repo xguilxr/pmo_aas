@@ -86,10 +86,12 @@ async def test_patch_risk_with_legacy_status_saves(client, db_session):
         status="identified", comments=[],
     )
     db_session.add(risk)
+    await db_session.flush()  # asigna el UUID default
+    risk_id = str(risk.id)  # antes del commit (expire_on_commit + async)
     await db_session.commit()
 
     r = await client.patch(
-        f"/api/v1/risks/{risk.id}",
+        f"/api/v1/risks/{risk_id}",
         json={"title": "Riesgo legacy editado", "status": "identified"},
         headers=auth["_authz"],
     )
@@ -97,7 +99,7 @@ async def test_patch_risk_with_legacy_status_saves(client, db_session):
     assert r.json()["status"] == "open"
     db_session.expire_all()  # el API escribe en otra sesión
     stored = (
-        await db_session.execute(select(Risk).where(Risk.id == str(risk.id)))
+        await db_session.execute(select(Risk).where(Risk.id == risk_id))
     ).scalar_one()
     assert stored.status == "open"
     assert stored.title == "Riesgo legacy editado"
