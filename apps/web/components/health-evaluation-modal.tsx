@@ -108,8 +108,9 @@ export function HealthEvaluationModal({
   projectName?: string;
   open: boolean;
   onClose: () => void;
-  /** Se llama tras guardar (para refrescar tarjeta/matriz). */
-  onSaved?: () => void;
+  /** Se llama tras guardar con la evaluación creada (para refrescar
+   * tarjeta/matriz o repintar el dot sin refetch). */
+  onSaved?: (ev: HealthEvaluation) => void;
 }) {
   const [evaluatedAt, setEvaluatedAt] = useState<string>(localToday);
   const [dims, setDims] = useState<Record<DimKey, ProjectHealth | "">>({
@@ -153,7 +154,7 @@ export function HealthEvaluationModal({
     setBusy(true);
     setError(null);
     try {
-      await createHealthEvaluation(projectId, {
+      const created = await createHealthEvaluation(projectId, {
         evaluated_at: evaluatedAt || null,
         schedule: dims.schedule || null,
         budget: dims.budget || null,
@@ -164,7 +165,7 @@ export function HealthEvaluationModal({
         note: note.trim() || null,
       });
       loadHistory();
-      onSaved?.();
+      onSaved?.(created);
       onClose();
     } catch (e) {
       setError(

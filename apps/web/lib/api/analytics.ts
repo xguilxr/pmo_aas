@@ -97,6 +97,28 @@ export function getHealthMatrix(): Promise<HealthMatrixResponse> {
   return apiFetch<HealthMatrixResponse>(`/api/v1/dashboard/health-matrix`);
 }
 
+// US-192 — evaluaciones recientes de todos los proyectos visibles
+// (insumo del reporte de salud del portafolio).
+export type PortfolioHealthEvaluation = {
+  project_id: string;
+  evaluated_at: string;
+  schedule: string | null;
+  budget: string | null;
+  risks: string | null;
+  decisions: string | null;
+  resources: string | null;
+  overall: string;
+  note: string | null;
+};
+
+export function getPortfolioHealthEvaluations(): Promise<{
+  rows: PortfolioHealthEvaluation[];
+}> {
+  return apiFetch<{ rows: PortfolioHealthEvaluation[] }>(
+    `/api/v1/dashboard/health-evaluations`,
+  );
+}
+
 export function getTreemap(params: ScopeParams = {}): Promise<TreemapResponse> {
   return apiFetch<TreemapResponse>(`/api/v1/dashboard/treemap${qs(params)}`);
 }

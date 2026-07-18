@@ -646,6 +646,65 @@ async def health_matrix(
     return {"rows": rows}
 
 
+@router.get("/health-evaluations")
+async def portfolio_health_evaluations(
+    limit_per_project: int = Query(default=8, ge=1, le=24),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-192 — evaluaciones de salud recientes de TODOS los proyectos
+    visibles (para el reporte de salud del portafolio). Misma visibilidad
+    que /health-matrix."""
+    from app.models.project import ProjectHealthEvaluation
+
+    tenant_id = _tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    conds = [
+        Project.tenant_id == str(tenant_id),
+        Project.deleted_at.is_(None),
+        Project.phase != "closed",
+    ]
+    if role_ids is not None:
+        conds.append(Project.id.in_(role_ids or ["__none__"]))
+    project_ids = [
+        str(r) for r in (await db.execute(select(Project.id).where(*conds))).scalars()
+    ]
+    if not project_ids:
+        return {"rows": []}
+    evals = (
+        await db.execute(
+            select(ProjectHealthEvaluation)
+            .where(ProjectHealthEvaluation.project_id.in_(project_ids))
+            .order_by(
+                ProjectHealthEvaluation.project_id,
+                ProjectHealthEvaluation.evaluated_at.desc(),
+                ProjectHealthEvaluation.created_at.desc(),
+            )
+        )
+    ).scalars().all()
+    rows: list[dict] = []
+    seen: dict[str, int] = {}
+    for e in evals:
+        pid = str(e.project_id)
+        if seen.get(pid, 0) >= limit_per_project:
+            continue
+        seen[pid] = seen.get(pid, 0) + 1
+        rows.append(
+            {
+                "project_id": pid,
+                "evaluated_at": e.evaluated_at.isoformat(),
+                "schedule": e.schedule,
+                "budget": e.budget,
+                "risks": e.risks,
+                "decisions": e.decisions,
+                "resources": e.resources,
+                "overall": e.overall,
+                "note": e.note,
+            }
+        )
+    return {"rows": rows}
+
+
 @router.get("/treemap")
 async def treemap(
     scope: str = Query(default="tenant"),

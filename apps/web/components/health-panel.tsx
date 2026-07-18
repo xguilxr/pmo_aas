@@ -209,6 +209,7 @@ const MATRIX_DIMS: { key: string; label: string }[] = [
 export function HealthDimensionMatrix({
   rows,
   onRowClick,
+  onEvaluate,
 }: {
   rows: {
     project_id: string;
@@ -220,6 +221,8 @@ export function HealthDimensionMatrix({
     dims: Record<string, ProjectHealth | null>;
   }[];
   onRowClick?: (projectId: string) => void;
+  /** US-192: evaluar salud 5+1 sin abrir el proyecto. */
+  onEvaluate?: (projectId: string, name: string) => void;
 }) {
   if (rows.length === 0) {
     return (
@@ -245,6 +248,7 @@ export function HealthDimensionMatrix({
                 {d.label}
               </th>
             ))}
+            {onEvaluate ? <th className="px-2 py-1.5" aria-label="Evaluar" /> : null}
           </tr>
         </thead>
         <tbody>
@@ -285,6 +289,21 @@ export function HealthDimensionMatrix({
                   />
                 </td>
               ))}
+              {onEvaluate ? (
+                <td className="px-2 py-1.5 text-right">
+                  {/* US-192: editar la salud 5+1 sin abrir el proyecto. */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEvaluate(r.project_id, r.name);
+                    }}
+                    className="rounded-[var(--radius-sm)] border border-[var(--border-default)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]"
+                  >
+                    Evaluar
+                  </button>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

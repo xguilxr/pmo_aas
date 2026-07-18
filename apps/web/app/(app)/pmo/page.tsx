@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heatmap, TrendLines, Treemap } from "@/components/dashboard-charts";
 import { HealthDimensionMatrix } from "@/components/health-panel";
+import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
 import { ProgramModal } from "@/components/program-modal";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
@@ -93,6 +94,97 @@ export default function PmoHome() {
   const [treemap, setTreemap] = useState<TreemapResponse | null>(null);
   // US-181: matriz Proyecto × Dimensión de salud.
   const [healthMatrix, setHealthMatrix] = useState<HealthMatrixResponse | null>(null);
+  // US-192: evaluación 5+1 desde el portafolio (sin abrir el proyecto).
+  const [evalTarget, setEvalTarget] = useState<{ id: string; name: string } | null>(null);
+  const [healthReportBusy, setHealthReportBusy] = useState(false);
+
+  async function downloadHealthReport() {
+    if (healthReportBusy || !healthMatrix) return;
+    setHealthReportBusy(true);
+    try {
+      const [{ getPortfolioHealthEvaluations }, ExcelJS] = await Promise.all([
+        import("@/lib/api/analytics"),
+        import("exceljs").then((m) => m.default),
+      ]);
+      const evals = await getPortfolioHealthEvaluations().catch(() => ({ rows: [] }));
+      const nameById = new Map(
+        healthMatrix.rows.map((r) => [r.project_id, `${r.folio} · ${r.name}`]),
+      );
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "PMO aaS";
+      const RAG = (v: string | null | undefined) =>
+        v === "green" ? "Verde" : v === "yellow" ? "Amarillo" : v === "red" ? "Rojo" : "—";
+      const ws = wb.addWorksheet("Salud del portafolio");
+      ws.columns = [
+        { header: "Proyecto", key: "p", width: 44 },
+        { header: "Organización", key: "o", width: 22 },
+        { header: "Salud", key: "h", width: 10 },
+        { header: "Fuente", key: "src", width: 12 },
+        { header: "Cronograma", key: "schedule", width: 12 },
+        { header: "Presupuesto", key: "budget", width: 12 },
+        { header: "Riesgos", key: "risks", width: 12 },
+        { header: "Decisiones", key: "decisions", width: 12 },
+        { header: "Recursos", key: "resources", width: 12 },
+      ];
+      ws.getRow(1).font = { bold: true };
+      for (const r of healthMatrix.rows) {
+        ws.addRow({
+          p: `${r.folio} · ${r.name}`,
+          o: r.organization_name ?? "",
+          h: RAG(r.health_status),
+          src: r.health_source === "manual" ? "PM" : "Auto",
+          schedule: RAG(r.dims["schedule"]),
+          budget: RAG(r.dims["budget"]),
+          risks: RAG(r.dims["risks"]),
+          decisions: RAG(r.dims["decisions"]),
+          resources: RAG(r.dims["resources"]),
+        });
+      }
+      const wh = wb.addWorksheet("Historial de evaluaciones");
+      wh.columns = [
+        { header: "Proyecto", key: "p", width: 44 },
+        { header: "Fecha", key: "d", width: 12 },
+        { header: "Global", key: "g", width: 10 },
+        { header: "Cronograma", key: "schedule", width: 12 },
+        { header: "Presupuesto", key: "budget", width: 12 },
+        { header: "Riesgos", key: "risks", width: 12 },
+        { header: "Decisiones", key: "decisions", width: 12 },
+        { header: "Recursos", key: "resources", width: 12 },
+        { header: "Nota", key: "n", width: 60 },
+      ];
+      wh.getRow(1).font = { bold: true };
+      for (const e of evals.rows) {
+        wh.addRow({
+          p: nameById.get(e.project_id) ?? e.project_id,
+          d: e.evaluated_at,
+          g: RAG(e.overall),
+          schedule: RAG(e.schedule),
+          budget: RAG(e.budget),
+          risks: RAG(e.risks),
+          decisions: RAG(e.decisions),
+          resources: RAG(e.resources),
+          n: e.note ?? "",
+        });
+      }
+      const buf = await wb.xlsx.writeBuffer();
+      const url = URL.createObjectURL(
+        new Blob([buf], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "reporte-salud-portafolio.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("No se pudo generar el reporte de salud");
+    } finally {
+      setHealthReportBusy(false);
+    }
+  }
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [isAdminView, setIsAdminView] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -260,11 +352,40 @@ export default function PmoHome() {
             </PortfolioPanel>
           </div>
           <PortfolioPanel title="Salud por dimensión (proyectos activos)">
+            {/* US-192: reporte de salud del portafolio + evaluación 5+1
+                por proyecto sin abrir cada uno. */}
+            <div className="mb-2 flex justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={downloadHealthReport}
+                disabled={healthReportBusy || !healthMatrix}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+                {healthReportBusy ? "Generando…" : "Reporte de salud (XLSX)"}
+              </Button>
+            </div>
             <HealthDimensionMatrix
               rows={healthMatrix?.rows ?? []}
               onRowClick={(pid) => router.push(`/pmo/projects/${pid}`)}
+              onEvaluate={(pid, name) => setEvalTarget({ id: pid, name })}
             />
           </PortfolioPanel>
+
+          {evalTarget ? (
+            <HealthEvaluationModal
+              projectId={evalTarget.id}
+              projectName={evalTarget.name}
+              open
+              onClose={() => setEvalTarget(null)}
+              onSaved={() => {
+                getHealthMatrix()
+                  .then((r) => setHealthMatrix(r))
+                  .catch(() => {});
+              }}
+            />
+          ) : null}
           <PortfolioPanel title="Tendencias del tenant (12 semanas)">
             {(trends?.series.length ?? 0) > 0 ? (
               <div className="grid gap-4 sm:grid-cols-3">

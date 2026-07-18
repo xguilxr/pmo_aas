@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
@@ -448,6 +449,12 @@ function ListView({
   const { sortedRows, ctrl: sortCtrl } = useSortableRows<Project>(rows);
   // ENH-190: label configurable por tenant para "Organización(es)".
   const orgLabel = useOrgLabel();
+  // US-192: evaluar la salud 5+1 desde el portafolio (click en el dot),
+  // sin abrir cada proyecto. El override repinta el dot sin refetch.
+  const [evalTarget, setEvalTarget] = useState<{ id: string; name: string } | null>(null);
+  const [healthOverride, setHealthOverride] = useState<
+    Record<string, Project["health_status"]>
+  >({});
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[13px]">
@@ -504,7 +511,19 @@ function ListView({
                   {formatMxn(p.budget)}
                 </td>
                 <td className="px-4">
-                  <HealthDot health={p.health_status} />
+                  {/* US-192: click = evaluar salud 5+1 sin abrir el proyecto. */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEvalTarget({ id: p.id, name: p.name });
+                    }}
+                    title="Evaluar salud (5 dimensiones + global)"
+                    aria-label={`Evaluar salud de ${p.name}`}
+                    className="rounded-full p-1 hover:bg-[var(--color-subtle)]"
+                  >
+                    <HealthDot health={healthOverride[p.id] ?? p.health_status} />
+                  </button>
                 </td>
               </tr>
             ))
@@ -517,6 +536,20 @@ function ListView({
           )}
         </tbody>
       </table>
+      {evalTarget ? (
+        <HealthEvaluationModal
+          projectId={evalTarget.id}
+          projectName={evalTarget.name}
+          open
+          onClose={() => setEvalTarget(null)}
+          onSaved={(ev) =>
+            setHealthOverride((m) => ({
+              ...m,
+              [ev.project_id]: ev.overall,
+            }))
+          }
+        />
+      ) : null}
     </div>
   );
 }
