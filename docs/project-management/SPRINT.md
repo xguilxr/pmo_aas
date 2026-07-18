@@ -9,50 +9,56 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "Plan Import Revamp — WBS/Estado/%/plantilla/IA" (2026-07-18)
-Branch: claude/plan-import-wbs-fixes-nwotng · PR único para el batch
+Sesión 2026-07-18 · Branch: claude/plan-import-wbs-fixes-nwotng
+DOS batches completos en la misma branch (PR único):
 
-Origen: feedback owner (import no jala campos con su propia plantilla,
-estado no importable, WBS 1.30→1.3 con hijos huérfanos, % mal
-escalados). Diseño + decisiones en
-docs/epics/drafts/plan-import-revamp.md (585e80e).
-Ejecución directa por chat (0.1 solucionar>documentar; issues GitHub
-no creados).
+1. "Plan Import Revamp" 9/9 — WBS fiel, estado/% importables, wizard
+   completo + IA 3 niveles, plantilla con Gantt, UX no-PM. Sin
+   migraciones. Diseño: drafts/plan-import-revamp.md (585e80e).
+2. "Feedback 16-jul" 8/8 — RAID fixes, jerarquía WBS, linter de plan,
+   salud 5+1 con historial, portafolio, recursos. Migraciones
+   0095-0096. Triage: drafts/feedback-16jul-mejoras.md.
 
-COMPLETO 9/9 (2026-07-18), todos status:fix-committed en la branch.
-Sin migraciones (schema intacto). Pendiente: verificación owner + PR.
-Próximo libre: US-190, BUG-091, ENH-195.
+Ejecución directa por chat (0.1 solucionar>documentar).
+Pendiente: verificación owner + PR + alembic upgrade head (0095-0096).
+Próximo libre: US-193, BUG-092, ENH-199.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
 
-### Feedback cliente 16-jul (PDF) — triage pendiente de OK (2026-07-18)
+### Batch Feedback 16-jul (2026-07-18) — COMPLETO 8/8
 
-Diseño/triage: `docs/epics/drafts/feedback-16jul-mejoras.md`. Items 1-2
-del PDF ya resueltos por el batch Plan Import Revamp (re-probar).
-IDs propuestos (esperan OK del owner):
+Triage: `docs/epics/drafts/feedback-16jul-mejoras.md`. OK del owner por
+chat (decisiones C/D delegadas: salud manual CONVIVE con motor auto,
+fecha libre por evaluación, edición desde heatmap Y lista). Items 1-2
+del PDF ya resueltos por el batch Plan Import Revamp.
 
-- [ ] **BUG-091** — RAID: editar riesgo no graba (status legacy pre-US-179
-  rechazado por el backend; diagnosticado). EP006. Bloque A.
-- [ ] **ENH-195** — RAID: campo Responsable en alta de acción (pool
-  completo) + vista resumen fiel. EP006. Bloque A.
-- [ ] **ENH-196** — RAID: lista sin scroll (2 líneas por item) + edición
-  directa. EP006. Bloque A.
-- [ ] **ENH-197** — Plan: jerarquía WBS visible/consistente (1.x hijos
-  de 1). EP009. Bloque B.
-- [ ] **US-190** — Revisión de calidad del plan (linter: WBS, hitos de
-  cierre, críticas, duraciones) al cargar + botón. EP009. Bloque B.
-- [ ] **US-191** — Salud 5+1: evaluación por dimensión + global con
-  fecha e historial (migración). EP004/EP005. Bloque C.
-- [ ] **US-192** — Salud editable desde portafolio + reporte de salud
-  del portafolio. Depende US-191. EP004/EP020. Bloque C.
-- [ ] **ENH-198** — Recursos: asignación teórica vs FTE real por
-  persona/área/sub-área + alertas (gap vs /pmo/resources). EP017.
-  Bloque D.
+- [x] **BUG-091** — RAID: riesgo con status legacy (minutas IA creaban
+  'identified') ineditable → fix origen + update tolerante + mig 0095
+  (data-only) + normalización FE. `status:fix-committed`
+  (`2859365`+`c662542`)
+- [x] **ENH-195** — RAID: campo Responsable en alta (pool completo) →
+  vista resumen fiel. `status:fix-committed` (`ce2cc28`)
+- [x] **ENH-196** — RAID: lista en 2 líneas por fila, 5 columnas
+  combinadas, sin scroll horizontal. `status:fix-committed` (`2f60c91`)
+- [x] **ENH-197** — Plan: jerarquía WBS por ancestro existente más
+  cercano (rollup + chevron). `status:fix-committed` (`80b9308`)
+- [x] **US-190** — Revisión de calidad del plan: 10 checks + score +
+  GET /plan/quality + botón/modal. `status:fix-committed` (`24e314c`)
+- [x] **US-191** — Salud 5+1 con historial: mig 0096
+  `project_health_evaluations` + POST/GET + modal con evolución.
+  `status:fix-committed` (`66971ba`)
+- [x] **US-192** — Portafolio: Evaluar por fila en heatmap + dot
+  clickeable en /pmo/projects + Reporte de salud XLSX +
+  GET /dashboard/health-evaluations. `status:fix-committed` (`e135a2b`)
+- [x] **ENH-198** — Recursos: % Uso (teórica vs FTE) + filtro
+  área/sub-área en Personas. `status:fix-committed` (`828774f`)
 
-Próximo libre tras este triage: US-193, BUG-092, ENH-199.
+Migraciones nuevas: **0095** (data-only RAID legacy), **0096**
+(health evaluations) — correr `alembic upgrade head` en Railway.
+Próximo libre: US-193, BUG-092, ENH-199.
 
 ### Batch Plan Import Revamp (2026-07-18, branch: claude/plan-import-wbs-fixes-nwotng)
 
