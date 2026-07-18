@@ -566,3 +566,16 @@ acumulativo mantenido por IA al guardar minutas) +
 tenants/projects. Se inyecta como bloque `<CONTEXTO_DEL_PROYECTO>` en
 minutas (worker `_run_minute`) y reportes (`/reports/ai-generate`); el
 resumen lo actualiza la task Celery `ai.update_project_context`.
+
+---
+
+## BUG-091 — Barrido de estados RAID legacy (EP006, 2026-07-18)
+
+### Migración **0095** — data-only, sin cambios de schema
+
+Re-aplica el remap de estados de la 0089 (US-179) de forma idempotente:
+el flujo de minutas IA siguió creando riesgos con `status='identified'`
+después del remap original y esos riesgos quedaban ineditables (422 al
+guardar). El fix de código corrige el origen (`modules.py` crea con
+`open`) + validator Pydantic tolerante a legacy en create/update; esta
+migración limpia las filas ya existentes.

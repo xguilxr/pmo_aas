@@ -1959,7 +1959,10 @@ async def _create_raid_ticket_from_suggestion(
             probability=int(priority_value) if priority_value else 3,
             impact=int(priority_value) if priority_value else 3,
             severity=(int(priority_value) ** 2) if priority_value else 9,
-            mitigation_strategy=None, status="identified",
+            # BUG-091: "identified" es legacy pre-US-179 — los riesgos
+            # creados desde minutas IA quedaban ineditables (el update
+            # valida el enum de 4 estados y rechazaba el valor viejo).
+            mitigation_strategy=None, status="open",
             identified_at=datetime.now(UTC).date(),
             due_date=None, closure_note=None, comments=[], created_by=cu.id,
         )

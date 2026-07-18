@@ -27,6 +27,24 @@ export const RAID_STATUS_LABEL: Record<RaidStatus, string> = {
   resolved: "Resuelto",
 };
 
+// BUG-091: items con status legacy pre-US-179 (ej. riesgos creados desde
+// minutas IA con 'identified') rompían el form de edición: el Select
+// mostraba "Abierto" pero el state re-enviaba el legacy y el backend lo
+// rechazaba con 422. Normalizar SIEMPRE al inicializar forms/vistas.
+const LEGACY_RAID_STATUS: Record<string, RaidStatus> = {
+  identified: "open",
+  analyzing: "in_progress",
+  mitigating: "in_progress",
+  materialized: "resolved",
+  closed: "resolved",
+};
+
+export function normalizeRaidStatus(status: string | null | undefined): RaidStatus {
+  if (!status) return "open";
+  if (status in RAID_STATUS_LABEL) return status as RaidStatus;
+  return LEGACY_RAID_STATUS[status] ?? "open";
+}
+
 export const RAID_STATUS_ORDER: RaidStatus[] = [
   "open",
   "in_progress",

@@ -16,6 +16,7 @@ import {
   type IssueType,
   type RaidStatus,
   type Risk,
+  normalizeRaidStatus,
   updateIssue,
   updateRisk,
 } from "@/lib/api/modules";
@@ -78,8 +79,12 @@ export function RaidEditFields(props:
   const [ownerActorId, setOwnerActorId] = useState<string>(
     (item as { owner_actor_id?: string | null }).owner_actor_id ?? "",
   );
-  // US-179: estado (4) + detención.
-  const [status, setStatus] = useState<RaidStatus>(item.status);
+  // US-179: estado (4) + detención. BUG-091: normaliza legacy — sin
+  // esto el Select mostraba "Abierto" pero el state re-enviaba el
+  // status viejo (ej. 'identified') y el backend rechazaba con 422.
+  const [status, setStatus] = useState<RaidStatus>(
+    normalizeRaidStatus(item.status),
+  );
   const [onHoldReason, setOnHoldReason] = useState(item.on_hold_reason ?? "");
   const [onHoldAreaId, setOnHoldAreaId] = useState(item.on_hold_area_id ?? "");
   const [onHoldActorId, setOnHoldActorId] = useState(
@@ -152,7 +157,7 @@ export function RaidEditFields(props:
     setOwnerActorId(
       (item as { owner_actor_id?: string | null }).owner_actor_id ?? "",
     );
-    setStatus(item.status);
+    setStatus(normalizeRaidStatus(item.status));
     setOnHoldReason(item.on_hold_reason ?? "");
     setOnHoldAreaId(item.on_hold_area_id ?? "");
     setOnHoldActorId(item.on_hold_actor_id ?? "");

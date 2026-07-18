@@ -77,11 +77,14 @@ async def test_tc085_resolve_risk(client, db_session):
         headers=auth["_authz"],
     )
     rid = r.json()["id"]
-    # "closed" ya no es un estado válido → 422 (enum inválido).
-    bad = await client.patch(
+    # BUG-091: en UPDATE los legacy se normalizan (editar data vieja no
+    # debe brickearse) — "closed" → "resolved". El CREATE sigue estricto
+    # (TC-179.4).
+    legacy = await client.patch(
         f"/api/v1/risks/{rid}", json={"status": "closed"}, headers=auth["_authz"]
     )
-    assert bad.status_code == 422
+    assert legacy.status_code == 200, legacy.text
+    assert legacy.json()["status"] == "resolved"
     # Resolver sin nota funciona (sin fricción).
     ok = await client.patch(
         f"/api/v1/risks/{rid}", json={"status": "resolved"}, headers=auth["_authz"]
