@@ -78,6 +78,12 @@ export function ImportWizard({
   // US-188 nivel 3: la vista previa actual es una propuesta de la IA;
   // el confirm la persiste tal cual (ignora el mapeo de columnas).
   const [aiStructure, setAiStructure] = useState(false);
+  // US-189: resumen del import para el paso final en lenguaje llano.
+  const [doneSummary, setDoneSummary] = useState<{
+    imported: number;
+    aiStatuses: number;
+    aiResources: number;
+  } | null>(null);
   const repreviewSeq = useRef(0);
   const mappingTouched = useRef(false);
 
@@ -93,6 +99,7 @@ export function ImportWizard({
     setLiveWarnings([]);
     setLiveTaskCount(0);
     setAiStructure(false);
+    setDoneSummary(null);
     mappingTouched.current = false;
     setStrategy("merge");
     setBusy(false);
@@ -235,6 +242,11 @@ export function ImportWizard({
           strategy,
           use_ai_structure: true,
         });
+        setDoneSummary({
+          imported: result.imported,
+          aiStatuses: result.ai_normalized?.statuses ?? 0,
+          aiResources: result.ai_normalized?.resources ?? 0,
+        });
         onImported(result.imported);
         setStep("done");
         return;
@@ -277,6 +289,11 @@ export function ImportWizard({
       const result = await importConfirm(projectId, preview.job_id, {
         mapping: mappingPayload,
         strategy,
+      });
+      setDoneSummary({
+        imported: result.imported,
+        aiStatuses: result.ai_normalized?.statuses ?? 0,
+        aiResources: result.ai_normalized?.resources ?? 0,
       });
       onImported(result.imported);
       setStep("done");
@@ -403,10 +420,17 @@ export function ImportWizard({
       {step === "done" ? (
         <div className="space-y-2 text-center">
           <p className="text-sm font-semibold text-[var(--color-success-fg)]">
-            ✓ Import completado
+            ✓ Listo — se importaron {doneSummary?.imported ?? 0} tareas
           </p>
+          {/* US-188 nivel 2: transparencia de lo que normalizó la IA. */}
+          {doneSummary && (doneSummary.aiStatuses > 0 || doneSummary.aiResources > 0) ? (
+            <p className="text-xs text-[var(--color-tertiary)]">
+              ✨ La IA normalizó {doneSummary.aiStatuses} estado(s) y
+              asignó {doneSummary.aiResources} responsable(s).
+            </p>
+          ) : null}
           <p className="text-sm text-[var(--color-secondary)]">
-            Cerrá esta ventana para ver las tareas en la lista.
+            Cerrá esta ventana para ver tu plan actualizado.
           </p>
         </div>
       ) : null}
@@ -414,13 +438,11 @@ export function ImportWizard({
   );
 }
 
-function titleFor(step: Step, source?: ImportSource): string {
-  if (step === "upload") return "Importar plan — paso 1 de 3";
-  if (step === "sheet") return "Importar plan — paso 2 de 3 · Hoja";
-  if (step === "preview") {
-    const total = source && NEEDS_MAPPING.includes(source) ? 3 : 2;
-    return `Importar plan — paso ${total} de ${total} · Confirmar`;
-  }
+// US-189: títulos y descripciones en lenguaje llano (sin jerga PM).
+function titleFor(step: Step, _source?: ImportSource): string {
+  if (step === "upload") return "Importar plan — subí tu archivo";
+  if (step === "sheet") return "Importar plan — elegí la hoja";
+  if (step === "preview") return "Importar plan — revisá y confirmá";
   return "Importar plan";
 }
 
@@ -429,16 +451,16 @@ function descriptionFor(
   preview: ImportPreviewResult | null,
 ): string | undefined {
   if (step === "upload") {
-    return "Acepta .xlsx, .csv, .mpp y .xml de MS Project. Máximo 10 MB.";
+    return "Subí el archivo con tu plan de trabajo. Máximo 10 MB.";
   }
   if (step === "sheet") {
-    return "Elegí qué hoja del libro contiene el plan a importar.";
+    return "El Excel tiene varias hojas — elegí la que contiene el plan.";
   }
   if (step === "preview") {
     if (preview && !NEEDS_MAPPING.includes(preview.source)) {
-      return "Este formato ya viene normalizado. Confirmá la estrategia y dale Importar.";
+      return "Este formato ya viene listo. Revisá el resumen y dale Importar.";
     }
-    return "Asigná cada columna del archivo al campo del sistema. La columna 'Nombre' es obligatoria.";
+    return "Así quedará tu plan. Si algo no cuadra, ajustá las columnas o dejá que la IA interprete el archivo.";
   }
   return undefined;
 }
@@ -500,19 +522,38 @@ function UploadStep({
   onFile: (f: File) => void | Promise<void>;
   busy: boolean;
 }) {
+  // US-189: drag & drop además del click — y copy en lenguaje llano
+  // para gente que no es PM.
+  const [dragging, setDragging] = useState(false);
   return (
     <label
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        if (busy) return;
+        const f = e.dataTransfer.files?.[0];
+        if (f) void onFile(f);
+      }}
       className={
-        "flex flex-col items-center gap-2 rounded-[var(--radius-xl)] border-2 border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] py-10 text-center cursor-pointer hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]" +
+        "flex flex-col items-center gap-2 rounded-[var(--radius-xl)] border-2 border-dashed py-10 text-center cursor-pointer hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]" +
+        (dragging
+          ? " border-[var(--color-accent)] bg-[var(--color-surface)]"
+          : " border-[var(--border-default)] bg-[var(--color-subtle)]") +
         (busy ? " pointer-events-none opacity-60" : "")
       }
     >
       <Upload className="h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
       <span className="text-sm font-medium text-[var(--color-primary)]">
-        {busy ? "Procesando…" : "Click para elegir archivo"}
+        {busy ? "Procesando…" : "Arrastrá tu archivo aquí o hacé click"}
       </span>
       <span className="text-xs text-[var(--color-tertiary)]">
-        .xlsx · .csv · .mpp · .xml
+        Sirve la plantilla del sistema o tu propio Excel — también .csv,
+        .mpp y .xml de MS Project.
       </span>
       <input
         type="file"
@@ -615,6 +656,32 @@ function PreviewStep({
   );
   return (
     <div className="space-y-3">
+      {/* US-189: resumen en lenguaje llano — lo primero que se lee. */}
+      <div
+        className={
+          "rounded-[var(--radius-md)] border px-3 py-2 text-sm font-medium " +
+          (taskCount > 0
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+            : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300")
+        }
+      >
+        {taskCount > 0 ? (
+          <>
+            Se importarán <strong>{taskCount}</strong> tareas
+            {warnings.length > 0
+              ? ` · ${warnings.length} aviso${warnings.length > 1 ? "s" : ""} para revisar`
+              : " · todo se ve bien"}
+          </>
+        ) : (
+          <>
+            No reconocimos las columnas de tu archivo. Probá
+            {" "}
+            <strong>Interpretar archivo con IA</strong> o ajustá las
+            columnas manualmente abajo.
+          </>
+        )}
+      </div>
+
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="text-xs text-[var(--color-tertiary)]">
           <span className="mr-3">
@@ -625,9 +692,6 @@ function PreviewStep({
               Hoja: <strong>{preview.sheet_used}</strong>
             </span>
           ) : null}
-          <span>
-            Tareas detectadas: <strong>{taskCount}</strong>
-          </span>
           {/* ENH-053: badge cuando la IA refinó el mapeo. */}
           {aiUsed && !aiStructure ? (
             <span className="ml-3 inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
@@ -644,7 +708,7 @@ function PreviewStep({
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-[var(--color-tertiary)]">
-            Estrategia
+            Al importar
           </label>
           <Select
             value={strategy}
@@ -653,8 +717,9 @@ function PreviewStep({
             }
             aria-label="Estrategia de import"
           >
-            <option value="merge">Merge por WBS</option>
-            <option value="replace">Replace (reemplaza todo)</option>
+            {/* US-189: opciones en lenguaje llano. */}
+            <option value="merge">Agregar y actualizar tareas</option>
+            <option value="replace">Reemplazar todo el plan</option>
           </Select>
         </div>
       </div>
@@ -706,12 +771,14 @@ function PreviewStep({
           dentro del header de la tabla, que se estiraba a lo ancho y alto).
           Cada tarjeta muestra la columna, el campo destino y un valor de
           ejemplo para mapear con contexto. */}
+      {/* US-189: el mapeo de columnas es detalle avanzado — colapsado
+          cuando el auto-detect funcionó, abierto si falta lo esencial. */}
       {needsMapping && !aiStructure ? (
-        <div>
-          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-            Mapeo de columnas
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <details open={missingName || taskCount === 0}>
+          <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            Ajustar columnas (avanzado)
+          </summary>
+          <div className="mt-1.5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {headerLabels.map((label, idx) => {
               const sample = sampleData.find((r) => r[idx] != null && r[idx] !== "")?.[idx];
               const lowConf =
@@ -770,7 +837,7 @@ function PreviewStep({
               );
             })}
           </div>
-        </div>
+        </details>
       ) : null}
 
       {/* ENH-192: vista previa INTERPRETADA — muestra cómo quedará el
