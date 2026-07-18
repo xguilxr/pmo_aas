@@ -38,12 +38,15 @@ export function HealthStatusCard({
   reason,
   detail,
   onDeclare,
+  onEvaluate,
 }: {
   value: ProjectHealth;
   source: ProjectHealthSource;
   reason: string | null;
   detail: HealthDetail | null;
   onDeclare: () => void;
+  /** US-191: abre la evaluación 5+1 con historial. */
+  onEvaluate?: () => void;
 }) {
   return (
     <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
@@ -80,7 +83,13 @@ export function HealthStatusCard({
           ))}
         </div>
       ) : null}
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap gap-2">
+        {/* US-191: evaluación 5+1 del período con historial. */}
+        {onEvaluate ? (
+          <Button size="sm" onClick={onEvaluate}>
+            Evaluar salud
+          </Button>
+        ) : null}
         <Button size="sm" variant="secondary" onClick={onDeclare}>
           Declarar salud
         </Button>

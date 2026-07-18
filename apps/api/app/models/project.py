@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -64,3 +64,42 @@ class Project(Base, TimestampMixin):
     # US-084: dict por nombre de field con auditoría de edición manual.
     # Forma: {field_name: {edited_at: ISO, edited_by: user_id}}.
     manually_edited_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class ProjectHealthEvaluation(Base):
+    """US-191 — evaluación periódica de salud del PM: 5 dimensiones +
+    la salud global (la "sexta"), con fecha de evaluación. Cada guardado
+    es un registro histórico — la evolución de la salud en el tiempo.
+
+    Convive con el motor automático (US-180): las dimensiones guardadas
+    son la lectura del PM en esa fecha; el overall se aplica al semáforo
+    del proyecto como declaración manual."""
+
+    __tablename__ = "project_health_evaluations"
+
+    id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    tenant_id: Mapped[UUID] = mapped_column(
+        String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    project_id: Mapped[UUID] = mapped_column(
+        String(36),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    evaluated_at: Mapped[date] = mapped_column(Date, nullable=False)
+    # Dimensiones (green|yellow|red); nullable = el PM no evaluó esa.
+    schedule: Mapped[str | None] = mapped_column(String(8))
+    budget: Mapped[str | None] = mapped_column(String(8))
+    risks: Mapped[str | None] = mapped_column(String(8))
+    decisions: Mapped[str | None] = mapped_column(String(8))
+    resources: Mapped[str | None] = mapped_column(String(8))
+    # La sexta: salud del proyecto como un todo (cuadro grande).
+    overall: Mapped[str] = mapped_column(String(8), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(2000))
+    created_by: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
