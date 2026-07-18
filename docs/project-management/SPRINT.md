@@ -17,8 +17,10 @@ estado no importable, WBS 1.30→1.3 con hijos huérfanos, % mal
 escalados). Diseño + decisiones en
 docs/epics/drafts/plan-import-revamp.md (585e80e).
 Ejecución directa por chat (0.1 solucionar>documentar; issues GitHub
-no creados). Orden: Bloque A (BUG-088/089/090) → B (ENH-191/192/193)
-→ C (ENH-194, US-188, US-189).
+no creados).
+
+COMPLETO 9/9 (2026-07-18), todos status:fix-committed en la branch.
+Sin migraciones (schema intacto). Pendiente: verificación owner + PR.
 Próximo libre: US-190, BUG-091, ENH-195.
 ```
 
@@ -31,30 +33,40 @@ Próximo libre: US-190, BUG-091, ENH-195.
 Epic: EP009. Diseño: `docs/epics/drafts/plan-import-revamp.md`.
 
 **Bloque A — fidelidad de datos:**
-- [ ] **BUG-088** — WBS fiel al archivo: parser respeta `number_format`
+- [x] **BUG-088** — WBS fiel al archivo: parser respeta `number_format`
   (1.30 ≠ 1.3), plantilla/export fuerzan texto en WBS, warnings de
   celdas irrecuperables + huérfanos en preview, fix `compareWbs` FE.
-- [ ] **BUG-089** — % avance robusto: detección de formato % por celda
+  `status:fix-committed` (`37c66ae`)
+- [x] **BUG-089** — % avance robusto: detección de formato % por celda
   (no por columna), sanity check anti-4500%, warnings por fila.
-- [ ] **BUG-090** — Confirm aplica lo que la plantilla promete:
-  Responsable (fuzzy vs usuarios), Hito Relacionado (por WBS),
-  Predecessors (Task.predecessors + successors), Fin desde duración.
+  `status:fix-committed` (`48b33c3`)
+- [x] **BUG-090** — Confirm aplica lo que la plantilla promete:
+  Responsable (fuzzy vs actors), Hito Relacionado (por WBS),
+  Predecessors (JSON + TaskDependency + successors), Fin desde
+  duración. `status:fix-committed` (`b11c932`)
 
 **Bloque B — contrato único + wizard:**
-- [ ] **ENH-191** — Estado importable end-to-end (alias + normalización
-  ES/EN + confirm aplica status).
-- [ ] **ENH-192** — Wizard re-mapea TODOS los campos (status, área,
-  criticidad, hito rel.) + preview interpretado con warnings.
-- [ ] **ENH-193** — Export/download backend = 15 columnas de la
+- [x] **ENH-191** — Estado importable end-to-end (alias + normalización
+  ES/EN + confirm aplica status). `status:fix-committed` (`a39b3dc`)
+- [x] **ENH-192** — Wizard re-mapea TODOS los campos + preview
+  interpretado en vivo (parsed_preview + POST /repreview).
+  `status:fix-committed` (`d86dbed`)
+- [x] **ENH-193** — Export/download backend = 15 columnas de la
   plantilla V1 + orden real del plan (no outline-first).
+  `status:fix-committed` (`63b34c2`)
 
 **Bloque C — plantilla inteligente + IA + UX:**
-- [ ] **ENH-194** — Plantilla pre-llenada con info del proyecto
-  (nombre, fechas, charter) + hoja Gantt en Excel (mini MS Project).
-- [ ] **US-188** — Import inteligente IA: mapeo por contenido,
-  normalización de valores, interpretación de estructura (3 niveles).
-- [ ] **US-189** — UX de import para no-PMs: wizard simplificado,
-  lenguaje llano, mapeo manual opcional.
+- [x] **ENH-194** — Plantilla con hoja Proyecto (charter) + hoja Gantt
+  en Excel (mini MS Project); export con Gantt de datos reales.
+  `status:fix-committed` (`d2e4624`)
+- [x] **US-188** — Import inteligente IA 3 niveles: mapeo por
+  contenido, normalización de valores en confirm, /ai-structure +
+  use_ai_structure. `status:fix-committed` (`eaaabce`)
+- [x] **US-189** — UX de import para no-PMs: drag & drop, resumen
+  llano, mapeo colapsado, estrategias en llano.
+  `status:fix-committed` (`7acfaab`)
+
+**BATCH COMPLETO 9/9** (2026-07-18) — pendiente verificación owner + PR.
 
 ### Batch Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA (2026-07-08, branch: claude/pmo-portfolio-architecture-6hbuen)
 
