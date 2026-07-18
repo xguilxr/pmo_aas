@@ -227,7 +227,8 @@ function _addInstructionsSheet(wb: Workbook) {
       type: "Email o nombre",
       format: "ej: juan.perez@empresa.com",
       notes:
-        "Al importar se hace fuzzy-match contra usuarios del tenant; si no hay match, queda como texto libre.",
+        "Al importar se hace fuzzy-match contra el pool de recursos " +
+        "(personas del organigrama); si no hay match, se ignora.",
     },
     {
       col: "Criticidad",

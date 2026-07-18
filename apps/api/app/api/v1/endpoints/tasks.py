@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
@@ -1183,6 +1183,11 @@ async def import_confirm(
             self.criticality = getattr(pt, "criticality", None)
             self.is_critical = getattr(pt, "is_critical", None)
             self.area_raw = getattr(pt, "area_raw", None)
+            # BUG-090: responsable, hito relacionado y predecesoras — la
+            # plantilla los promete y el confirm los descartaba.
+            self.resources_raw = getattr(pt, "resources_raw", None)
+            self.related_milestone_wbs = getattr(pt, "related_milestone_wbs", None)
+            self.predecessors_raw = getattr(pt, "predecessors_raw", None)
             self.predecessors: list = []
 
     parsed = [_TaskShim(t) for t in parse_result.tasks]
@@ -1282,6 +1287,132 @@ async def import_confirm(
             await db.flush()
             created[pt.external_id] = t
 
+    # ------------------------------------------------------------------
+    # BUG-090 — aplicar los campos que la hoja Instrucciones de la
+    # plantilla promete y el confirm descartaba silenciosamente.
+    # ------------------------------------------------------------------
+    from difflib import SequenceMatcher
+
+    from app.models.area import Actor as _Actor
+
+    _actor_rows = (
+        await db.execute(
+            select(_Actor).where(_Actor.tenant_id == str(tenant_id))
+        )
+    ).scalars().all()
+
+    def _match_actor(raw: object) -> str | None:
+        """Responsable → actor del pool por nombre/email: exacto
+        case-insensitive o fuzzy ≥ 0.85 (promesa de la plantilla)."""
+        if not raw:
+            return None
+        s = str(raw).strip().lower()
+        if not s:
+            return None
+        best: str | None = None
+        best_ratio = 0.0
+        for a in _actor_rows:
+            for cand in (a.name, a.email):
+                if not cand:
+                    continue
+                c = str(cand).strip().lower()
+                if c == s:
+                    return str(a.id)
+                ratio = SequenceMatcher(None, s, c).ratio()
+                if ratio > best_ratio:
+                    best, best_ratio = str(a.id), ratio
+        return best if best_ratio >= 0.85 else None
+
+    # Primera ocurrencia gana ante WBS duplicados (consistente con merge).
+    _by_wbs: dict[str, Task] = {}
+    for _t in created.values():
+        if _t.wbs and _t.wbs not in _by_wbs:
+            _by_wbs[_t.wbs] = _t
+
+    preds_skipped: list[str] = []
+    dep_count = 0
+    for pt in parsed:
+        t = created.get(pt.external_id)
+        if t is None:
+            continue
+        # Fin vacío + Inicio + Duración → Fin calculado (días inclusivos).
+        if (
+            t.end_date is None
+            and t.start_date is not None
+            and (t.duration_days or 0) > 0
+        ):
+            t.end_date = t.start_date + timedelta(days=(t.duration_days or 1) - 1)
+        # Responsable → actor del pool (assignee_actor_id, flujo ENH-079).
+        resolved_actor = _match_actor(getattr(pt, "resources_raw", None))
+        if resolved_actor is not None:
+            t.assignee_actor_id = resolved_actor
+        # Hito Relacionado → resolución por WBS (solo hitos reales).
+        rel = getattr(pt, "related_milestone_wbs", None)
+        if rel:
+            target = _by_wbs.get(str(rel).strip())
+            if target is not None and target.is_milestone and target.id != t.id:
+                t.related_milestone_id = str(target.id)
+        # Predecesoras: CSV de WBS → filtra existentes/self/dupes y valida
+        # ciclos con las ya asignadas. Best-effort: un ciclo no aborta el
+        # import, solo omite las predecesoras de esa tarea.
+        raw_preds = getattr(pt, "predecessors_raw", None)
+        if raw_preds and t.wbs:
+            tokens = [
+                tok.strip()
+                for tok in str(raw_preds).replace(";", ",").split(",")
+                if tok.strip()
+            ]
+            cleaned = []
+            for tok in tokens:
+                if tok != t.wbs and tok in _by_wbs and tok not in cleaned:
+                    cleaned.append(tok)
+            if cleaned:
+                try:
+                    t.predecessors = validate_predecessors(
+                        cleaned, _by_wbs, t.wbs
+                    )
+                except Exception:
+                    preds_skipped.append(t.wbs)
+                    continue
+                for tok in t.predecessors or []:
+                    pre = _by_wbs.get(tok)
+                    if pre is None:
+                        continue
+                    if body.strategy == "merge":
+                        # uq_task_dep: en merge la dependencia puede ya
+                        # existir de un import previo.
+                        dup = (
+                            await db.execute(
+                                select(TaskDependency).where(
+                                    TaskDependency.predecessor_id == pre.id,
+                                    TaskDependency.successor_id == t.id,
+                                )
+                            )
+                        ).scalar_one_or_none()
+                        if dup is not None:
+                            continue
+                    db.add(
+                        TaskDependency(
+                            predecessor_id=str(pre.id),
+                            successor_id=str(t.id),
+                            type="FS",
+                            lag_days=0,
+                        )
+                    )
+                    dep_count += 1
+
+    if any(t.predecessors for t in created.values()):
+        await recompute_successors_for_project(db, str(project_id))
+    if preds_skipped:
+        errors.append(
+            {
+                "error": (
+                    "Predecesoras omitidas por ciclo de dependencias en: "
+                    + ", ".join(preds_skipped[:10])
+                ),
+            }
+        )
+
     # ENH-109: registrar el Plan vivo en `project_artifacts` con el
     # source_format detectado, para que `GET /plan/download` regenere
     # en el formato origen. UNIQUE(project_id, type='plan') → upsert.
@@ -1336,7 +1467,9 @@ async def import_confirm(
 
     return {
         "imported": len(parsed),
-        "dependencies_created": 0,
+        # BUG-090: ahora las predecesoras de la plantilla SÍ crean
+        # dependencias (JSON predecessors + TaskDependency FS).
+        "dependencies_created": dep_count,
         "errors": errors,
         # BUG-088: mismos avisos que el preview, re-computados sobre el
         # mapping definitivo (el override puede cambiar la columna WBS).
