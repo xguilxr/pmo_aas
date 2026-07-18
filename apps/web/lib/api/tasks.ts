@@ -392,6 +392,27 @@ export function importRepreview(
   );
 }
 
+// US-190 — revisión de calidad del plan (linter).
+export type PlanQualityObservation = {
+  code: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  items: string[];
+  count: number;
+};
+
+export type PlanQualityResult = {
+  observations: PlanQualityObservation[];
+  score: number;
+  task_count: number;
+};
+
+export function getPlanQuality(projectId: string): Promise<PlanQualityResult> {
+  return apiFetch<PlanQualityResult>(
+    `/api/v1/projects/${projectId}/plan/quality`,
+  );
+}
+
 // US-188 nivel 3: la IA propone el plan completo desde el archivo crudo.
 export type ImportAiStructureResult = {
   task_count: number;

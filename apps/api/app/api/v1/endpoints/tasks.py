@@ -1773,6 +1773,32 @@ async def import_confirm(
     }
 
 
+@router.get("/projects/{project_id}/plan/quality")
+async def plan_quality(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-190 — revisión de calidad del plan ("linter"): estructura WBS,
+    hitos de cierre por sección, actividades críticas, duraciones,
+    fechas y responsables. Devuelve observaciones accionables + score
+    0-100. Read-only.
+    """
+    from app.services.plan_quality import plan_quality_score, review_plan
+
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+    tasks = (
+        await db.execute(select(Task).where(Task.project_id == str(project_id)))
+    ).scalars().all()
+    observations = review_plan(tasks)
+    return {
+        "observations": observations,
+        "score": plan_quality_score(observations),
+        "task_count": len(tasks),
+    }
+
+
 @router.get("/projects/{project_id}/gantt")
 async def gantt_view(
     project_id: UUID,

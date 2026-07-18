@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  ClipboardCheck,
   Columns3,
   Diamond,
   Download,
@@ -42,9 +43,11 @@ import {
   createTask,
   deleteTask,
   getGantt,
+  getPlanQuality,
   listTasks,
   updateTask,
   type GanttData,
+  type PlanQualityResult,
   type Task,
   type TaskCriticality,
   type TaskStatus,
@@ -1188,6 +1191,24 @@ function PlanInner() {
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   // US-070: el wizard maneja su propio busy/strategy/mapping.
   const [wizardOpen, setWizardOpen] = useState(false);
+  // US-190: revisión de calidad del plan (linter).
+  const [quality, setQuality] = useState<PlanQualityResult | null>(null);
+  const [qualityOpen, setQualityOpen] = useState(false);
+  const [qualityLoading, setQualityLoading] = useState(false);
+
+  async function runQualityReview() {
+    if (qualityLoading) return;
+    setQualityLoading(true);
+    try {
+      const q = await getPlanQuality(id);
+      setQuality(q);
+      setQualityOpen(true);
+    } catch {
+      alert("No se pudo revisar la calidad del plan");
+    } finally {
+      setQualityLoading(false);
+    }
+  }
 
   // ENH-047 + ENH-180: agrupación jerárquica por WBS. Default ON — es el
   // mecanismo para mostrar/esconder tareas (colapsar/expandir nodos), tras
@@ -2097,6 +2118,19 @@ function PlanInner() {
             <Upload className="h-4 w-4" aria-hidden />
             Importar
           </Button>
+          {/* US-190: linter de calidad del plan. */}
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            loading={qualityLoading}
+            onClick={runQualityReview}
+            aria-label="Revisar calidad del plan"
+            title="Revisa estructura WBS, hitos de cierre, críticas, duraciones y fechas"
+          >
+            <ClipboardCheck className="h-4 w-4" aria-hidden />
+            Revisar calidad
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -2652,6 +2686,79 @@ function PlanInner() {
           await loadTasksAndGantt();
         }}
       />
+      {/* US-190: resultado de la revisión de calidad del plan. */}
+      <Modal
+        open={qualityOpen}
+        onClose={() => setQualityOpen(false)}
+        title="Revisión de calidad del plan"
+        size="lg"
+      >
+        {quality ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  "inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold",
+                  quality.score >= 80
+                    ? "bg-emerald-100 text-emerald-700"
+                    : quality.score >= 50
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-red-100 text-red-700",
+                )}
+              >
+                {quality.score}
+              </span>
+              <div className="text-sm text-[var(--color-secondary)]">
+                <p className="font-medium text-[var(--color-primary)]">
+                  {quality.observations.length === 0
+                    ? "Plan sano — sin observaciones."
+                    : `${quality.observations.length} observación(es) sobre ${quality.task_count} tareas.`}
+                </p>
+                <p className="text-xs">
+                  Checks: estructura WBS · hitos de cierre por sección ·
+                  actividades críticas · duraciones · fechas · responsables.
+                </p>
+              </div>
+            </div>
+            <ul className="space-y-2">
+              {quality.observations.map((o) => (
+                <li
+                  key={o.code}
+                  className="rounded-[var(--radius-md)] border border-[var(--border-default)] p-2.5 text-sm"
+                >
+                  <div className="flex items-start gap-2">
+                    <span
+                      className={cn(
+                        "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                        o.severity === "error"
+                          ? "bg-red-100 text-red-700"
+                          : o.severity === "warning"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-slate-100 text-slate-600",
+                      )}
+                    >
+                      {o.severity === "error"
+                        ? "Error"
+                        : o.severity === "warning"
+                          ? "Aviso"
+                          : "Nota"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[var(--color-primary)]">{o.message}</p>
+                      {o.items.length > 0 ? (
+                        <p className="mt-0.5 truncate text-xs text-[var(--color-tertiary)]" title={o.items.join(", ")}>
+                          {o.items.slice(0, 6).join(" · ")}
+                          {o.count > 6 ? ` · +${o.count - 6} más` : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
