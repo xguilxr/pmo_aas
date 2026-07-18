@@ -1752,14 +1752,22 @@ function PlanInner() {
       };
       const LATE_PROGRESS_FILL = "FFFFF8C5"; // amarillo suave
 
+      // ENH-194: fechas como Date reales (no string ISO) para que las
+      // barras del Gantt (conditional formatting) puedan compararlas.
+      const localDate = (iso: string | null | undefined): Date | "" => {
+        if (!iso) return "";
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+        if (!m) return "";
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      };
       tasks.forEach((t, i) => {
         const rowNum = i + 2;
         const row = ws.addRow({
           wbs: t.wbs ?? "",
           name: t.name,
           outline: t.outline_level ?? "",
-          start: t.start_date ?? "",
-          end: t.end_date ?? "",
+          start: localDate(t.start_date),
+          end: localDate(t.end_date),
           duration: t.duration_days ?? "",
           progress: typeof t.progress === "number" ? t.progress / 100 : 0,
           status:
@@ -1778,6 +1786,9 @@ function PlanInner() {
         // BUG-088: WBS como texto — si el usuario edita la celda en
         // Excel, no se convierte a número (1.30 → 1.3).
         row.getCell("wbs").numFmt = "@";
+        // ENH-194: fechas legibles y comparables por el Gantt.
+        row.getCell("start").numFmt = "yyyy-mm-dd";
+        row.getCell("end").numFmt = "yyyy-mm-dd";
 
         // Color por estado (todas las filas no-hito).
         const statusFill = STATUS_FILL[t.status as string];
@@ -1816,6 +1827,31 @@ function PlanInner() {
           }
         }
       });
+
+      // ENH-194: hoja Gantt auto sobre los datos reales del plan —
+      // el "mini MS Project" descargable.
+      const starts = tasks
+        .map((t) => localDate(t.start_date))
+        .filter((d): d is Date => d instanceof Date);
+      const ends = tasks
+        .map((t) => localDate(t.end_date))
+        .filter((d): d is Date => d instanceof Date);
+      if (starts.length > 0) {
+        const anchor = new Date(Math.min(...starts.map((d) => d.getTime())));
+        const maxEnd =
+          ends.length > 0
+            ? new Date(Math.max(...ends.map((d) => d.getTime())))
+            : anchor;
+        const spanWeeks = Math.ceil(
+          (maxEnd.getTime() - anchor.getTime()) / (7 * 24 * 60 * 60 * 1000),
+        );
+        const { addGanttSheet } = await import("@/lib/plan-template");
+        addGanttSheet(wb, {
+          rows: tasks.length,
+          anchor,
+          weeks: Math.max(12, spanWeeks + 4),
+        });
+      }
 
       const buf = await wb.xlsx.writeBuffer();
       const blob = new Blob([buf], {
@@ -1991,7 +2027,28 @@ function PlanInner() {
                 const { downloadEmptyTemplate } = await import(
                   "@/lib/plan-template"
                 );
-                await downloadEmptyTemplate(projectName || "proyecto");
+                // ENH-194: pre-llenar la plantilla con contexto del
+                // charter (best-effort; sin charter cae al nombre solo).
+                let info: import("@/lib/plan-template").TemplateProjectInfo = {
+                  name: projectName || "proyecto",
+                };
+                try {
+                  const { getProjectCharter } = await import(
+                    "@/lib/api/project-charters"
+                  );
+                  const ch = await getProjectCharter(id);
+                  info = {
+                    name: ch.project_name || projectName || "proyecto",
+                    objective: ch.objective,
+                    scope: ch.scope,
+                    sponsor: ch.sponsor,
+                    startDate: ch.section_4?.start_date,
+                    endDate: ch.section_4?.estimated_end_date,
+                  };
+                } catch {
+                  /* sin charter la plantilla sale genérica */
+                }
+                await downloadEmptyTemplate(info);
               } catch (err) {
                 alert(
                   err instanceof Error

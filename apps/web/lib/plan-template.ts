@@ -15,6 +15,32 @@ import type { Workbook, Worksheet } from "exceljs";
 
 const SHEET_PLAN = "Plan";
 const SHEET_INSTRUCTIONS = "Instrucciones";
+const SHEET_PROJECT = "Proyecto";
+const SHEET_GANTT = "Gantt";
+
+// ENH-194: info del proyecto/charter para pre-llenar la plantilla.
+export type TemplateProjectInfo = {
+  name: string;
+  objective?: string | null;
+  scope?: string | null;
+  sponsor?: string | null;
+  pm?: string | null;
+  startDate?: string | null; // ISO yyyy-mm-dd
+  endDate?: string | null;
+};
+
+// ENH-194: filas del Gantt en la plantilla vacía (se mantiene liviano;
+// el export usa el nº real de tareas).
+const GANTT_TEMPLATE_ROWS = 300;
+const GANTT_DEFAULT_WEEKS = 52;
+
+/** Parsea "yyyy-mm-dd" a Date LOCAL (evita el shift UTC de new Date(iso)). */
+function _localDate(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
 
 // ENH-134: orden de columnas canónico V1. Outline Level y Duración son
 // auto-fórmula; Criticidad pasa a booleana (Sí/No) como Es hito; se agrega
@@ -152,6 +178,131 @@ function _attachConditionalFormatting(ws: Worksheet) {
   });
 }
 
+// ENH-194: hoja "Proyecto" con el contexto del charter — la plantilla
+// deja de ser genérica y llega con la información del proyecto.
+function _addProjectSheet(wb: Workbook, info: TemplateProjectInfo) {
+  const ws = wb.addWorksheet(SHEET_PROJECT);
+  ws.columns = [
+    { header: "", key: "k", width: 20 },
+    { header: "", key: "v", width: 80 },
+  ];
+  const rows: Array<[string, string]> = [
+    ["Proyecto", info.name],
+    ["Objetivo", info.objective || "—"],
+    ["Alcance", info.scope || "—"],
+    ["Sponsor", info.sponsor || "—"],
+    ["PM", info.pm || "—"],
+    ["Inicio", info.startDate || "—"],
+    ["Fin estimado", info.endDate || "—"],
+  ];
+  for (const [k, v] of rows) {
+    const row = ws.addRow({ k, v });
+    row.getCell("k").font = { bold: true, color: { argb: "FF000000" } };
+    row.alignment = { vertical: "top", wrapText: true };
+  }
+  ws.spliceRows(1, 1); // remueve el header vacío de ws.columns
+}
+
+/**
+ * ENH-194: hoja "Gantt" — mini MS Project en Excel. Columnas A-D
+ * referencian la hoja Plan con fórmulas; la línea de tiempo semanal
+ * (E en adelante) pinta barras vía conditional formatting comparando
+ * cada semana contra Inicio/Fin del Plan. Hitos (Plan!Es hito = Sí)
+ * se pintan en morado. Funciona en la plantilla vacía (se llena al
+ * escribir el Plan) y en el export con datos reales.
+ */
+export function addGanttSheet(
+  wb: Workbook,
+  opts: { rows: number; anchor: Date; weeks?: number },
+) {
+  const weeks = Math.max(8, Math.min(opts.weeks ?? GANTT_DEFAULT_WEEKS, 104));
+  const rows = Math.max(1, opts.rows);
+  const ws = wb.addWorksheet(SHEET_GANTT, {
+    views: [{ state: "frozen", xSplit: 4, ySplit: 1 }],
+  });
+  ws.getCell("A1").value = "WBS";
+  ws.getCell("B1").value = "Tarea";
+  ws.getCell("C1").value = "Inicio";
+  ws.getCell("D1").value = "Fin";
+  ws.getColumn(1).width = 9;
+  ws.getColumn(2).width = 34;
+  ws.getColumn(3).width = 11;
+  ws.getColumn(4).width = 11;
+
+  // Semana 0 = lunes de la semana del anchor.
+  const monday = new Date(opts.anchor);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  for (let w = 0; w < weeks; w++) {
+    const cell = ws.getCell(1, 5 + w);
+    const d = new Date(monday);
+    d.setDate(d.getDate() + w * 7);
+    cell.value = d;
+    cell.numFmt = "dd/mm";
+    ws.getColumn(5 + w).width = 4.2;
+  }
+  const header = ws.getRow(1);
+  header.font = { bold: true, color: { argb: "FF000000" }, size: 9 };
+  header.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE5E7EB" },
+  };
+  header.alignment = { vertical: "middle", horizontal: "center" };
+
+  for (let r = 2; r <= rows + 1; r++) {
+    ws.getCell(`A${r}`).value = {
+      formula: `IF(${SHEET_PLAN}!A${r}="","",${SHEET_PLAN}!A${r})`,
+    } as never;
+    ws.getCell(`B${r}`).value = {
+      formula: `IF(${SHEET_PLAN}!B${r}="","",${SHEET_PLAN}!B${r})`,
+    } as never;
+    ws.getCell(`C${r}`).value = {
+      formula: `IF(${SHEET_PLAN}!D${r}="","",${SHEET_PLAN}!D${r})`,
+    } as never;
+    ws.getCell(`D${r}`).value = {
+      formula: `IF(${SHEET_PLAN}!E${r}="","",${SHEET_PLAN}!E${r})`,
+    } as never;
+    ws.getCell(`C${r}`).numFmt = "yyyy-mm-dd";
+    ws.getCell(`D${r}`).numFmt = "yyyy-mm-dd";
+    ws.getCell(`B${r}`).font = { size: 9 };
+    ws.getCell(`A${r}`).font = { size: 9 };
+  }
+
+  // Barra: la semana (header + 6 días) se solapa con [Inicio, Fin].
+  const lastColLetter = ws.getColumn(4 + weeks).letter;
+  const range = `E2:${lastColLetter}${rows + 1}`;
+  const overlap = 'AND($C2<>"",$D2<>"",E$1<=$D2,E$1+6>=$C2)';
+  ws.addConditionalFormatting({
+    ref: range,
+    rules: [
+      {
+        type: "expression",
+        priority: 1,
+        formulae: [`AND(${SHEET_PLAN}!$L2="Sí",${overlap})`],
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FF8B5CF6" },
+          },
+        },
+      } as never,
+      {
+        type: "expression",
+        priority: 2,
+        formulae: [overlap],
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FF3B82F6" },
+          },
+        },
+      } as never,
+    ],
+  });
+}
+
 function _addInstructionsSheet(wb: Workbook) {
   const ws = wb.addWorksheet(SHEET_INSTRUCTIONS);
   ws.columns = [
@@ -278,12 +429,29 @@ function _addInstructionsSheet(wb: Workbook) {
       "Las 2 filas de ejemplo se sobreescriben al subir. El wizard de importación detecta las columnas automáticamente.",
   });
   note.font = { italic: true, color: { argb: "FF6B7280" } };
+  // ENH-194.
+  const note2 = ws.addRow({
+    col: "Hojas extra",
+    type: "—",
+    format: "'Proyecto' = contexto del charter. 'Gantt' = auto.",
+    notes:
+      "La hoja Gantt se pinta sola conforme llenás WBS/Tarea/Inicio/Fin en 'Plan' (barras azules; hitos en morado). No necesitás editarla y el import la ignora.",
+  });
+  note2.font = { italic: true, color: { argb: "FF6B7280" } };
 }
 
 /**
  * Construye el XLSX en memoria y devuelve un Blob listo para descargar.
+ *
+ * ENH-194: acepta la info del proyecto/charter — agrega hoja "Proyecto"
+ * con el contexto y hoja "Gantt" auto-calculada desde el Plan.
  */
-export async function buildEmptyTemplate(projectName: string): Promise<Blob> {
+export async function buildEmptyTemplate(
+  project: TemplateProjectInfo | string,
+): Promise<Blob> {
+  const info: TemplateProjectInfo =
+    typeof project === "string" ? { name: project } : project;
+  const projectName = info.name;
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   wb.creator = "PMO aaS";
@@ -334,6 +502,12 @@ export async function buildEmptyTemplate(projectName: string): Promise<Blob> {
   _attachAutoFormulas(ws);
   _attachDataValidation(ws);
   _attachConditionalFormatting(ws);
+  // ENH-194: contexto del proyecto + Gantt auto (mini MS Project).
+  _addProjectSheet(wb, info);
+  addGanttSheet(wb, {
+    rows: GANTT_TEMPLATE_ROWS,
+    anchor: _localDate(info.startDate) ?? new Date(),
+  });
   _addInstructionsSheet(wb);
 
   const buffer = await wb.xlsx.writeBuffer();
@@ -345,7 +519,10 @@ export async function buildEmptyTemplate(projectName: string): Promise<Blob> {
 /**
  * Helper de UI: descarga la plantilla con un nombre canónico.
  */
-export async function downloadEmptyTemplate(projectName: string) {
+export async function downloadEmptyTemplate(
+  project: TemplateProjectInfo | string,
+) {
+  const projectName = typeof project === "string" ? project : project.name;
   const slug = (projectName || "proyecto")
     .toLowerCase()
     .normalize("NFD")
@@ -353,7 +530,7 @@ export async function downloadEmptyTemplate(projectName: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 60);
-  const blob = await buildEmptyTemplate(projectName);
+  const blob = await buildEmptyTemplate(project);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
