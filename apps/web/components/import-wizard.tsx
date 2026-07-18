@@ -531,6 +531,21 @@ function PreviewStep({
         </Banner>
       ) : null}
 
+      {/* BUG-088: avisos no bloqueantes del parser (WBS numérico sin
+          formato texto, tareas que quedarían huérfanas, etc.). */}
+      {(preview.warnings ?? []).length > 0 ? (
+        <Banner variant="warning">
+          <ul className="space-y-1">
+            {(preview.warnings ?? []).map((w) => (
+              <li key={w.code} className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>{w.message}</span>
+              </li>
+            ))}
+          </ul>
+        </Banner>
+      ) : null}
+
       {/* ENH-179: el mapeo se separa de la vista previa y se acomoda en una
           grilla de 2-3 columnas (antes era un dropdown alto por cada columna
           dentro del header de la tabla, que se estiraba a lo ancho y alto).

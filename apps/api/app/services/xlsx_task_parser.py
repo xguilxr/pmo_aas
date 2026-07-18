@@ -16,6 +16,7 @@ se acumulan en `errors` con el número de fila y el detalle.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from io import BytesIO
@@ -108,6 +109,10 @@ class ParsedTask:
 class XlsxParseResult:
     tasks: list[ParsedTask] = field(default_factory=list)
     errors: list[dict] = field(default_factory=list)
+    # BUG-088: avisos no bloqueantes (ej. WBS numérico sin formato de
+    # texto). Shape: {code, message, count?, rows?}. El wizard los
+    # muestra en el preview; el import no se detiene por ellos.
+    warnings: list[dict] = field(default_factory=list)
     columns_detected: dict[str, int] = field(default_factory=dict)
     # US-070: hojas disponibles en el workbook. Vacío para CSV/MPP;
     # solo el parser XLSX lo puebla. El wizard lo usa en el step 2
@@ -127,6 +132,63 @@ def _norm(s: object) -> str:
     if s is None:
         return ""
     return str(s).strip().lower()
+
+
+def _text(v: object) -> str | None:
+    """Strip preservando mayúsculas (a diferencia de `_norm`). Para
+    campos donde el case importa: recursos/responsables, predecesoras."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s or None
+
+
+def _decimal_places(fmt: str | None) -> int | None:
+    """Decimales forzados por un `number_format` de Excel ('0.00' → 2).
+
+    None cuando el formato no fija decimales (General, texto '@', o
+    formato desconocido); 0 cuando es entero explícito ('0', '#,##0')."""
+    if not fmt:
+        return None
+    primary = re.sub(r"\[[^\]]*\]", "", fmt.split(";")[0]).strip()
+    if not primary or primary.lower() == "general" or primary == "@":
+        return None
+    if "." not in primary:
+        return 0
+    forced = 0
+    for ch in primary.split(".", 1)[1]:
+        if ch == "0":
+            forced += 1
+        elif ch in "#?":
+            continue
+        else:
+            break
+    return forced
+
+
+def _wbs_text(value: object, number_format: str | None = None) -> str | None:
+    """BUG-088 — texto fiel de un código WBS/EDT.
+
+    Excel guarda '1.30' tipeado en celda numérica como el float 1.3;
+    el str() directo colapsaba 1.30 → '1.3' (colisión con el 1.3 real
+    y sub-tareas 1.30.x huérfanas). Reglas:
+    - string → strip (sin lowercasing: '1.A' se preserva).
+    - float con formato decimal ('0.00') → respeta esos decimales
+      (1.3 + '0.00' → '1.30').
+    - float sin formato → representación mínima (1.3 → '1.3'); entero
+      exacto → sin '.0' (2.0 → '2').
+    """
+    if value is None:
+        return None
+    if isinstance(value, float) and not isinstance(value, bool):
+        decs = _decimal_places(number_format)
+        if decs is not None and decs > 0:
+            return f"{value:.{decs}f}"
+        if value.is_integer():
+            return str(int(value))
+        return repr(value)
+    s = str(value).strip()
+    return s or None
 
 
 def _detect_headers(header_row: list[object]) -> dict[str, int]:
@@ -232,6 +294,36 @@ def _column_is_percent_format(
             pass
 
 
+def _scan_column_formats(data: bytes, sheet_used: str, col_idx: int) -> dict[int, str]:
+    """BUG-088: `{row_number: number_format}` de la columna `col_idx`
+    (0-based). El workbook principal se abre con `values_only`, que no
+    expone formatos; este segundo pase read-only los recupera (mismo
+    patrón que `_column_is_percent_format` de BUG-081). Devuelve {}
+    ante cualquier problema (degradación segura)."""
+    from openpyxl import load_workbook
+
+    out: dict[int, str] = {}
+    try:
+        wb = load_workbook(BytesIO(data), read_only=True)
+    except Exception:
+        return out
+    try:
+        ws = wb[sheet_used] if sheet_used in wb.sheetnames else wb.active
+        if ws is None:
+            return out
+        for row in ws.iter_rows(min_row=2, min_col=col_idx + 1, max_col=col_idx + 1):
+            if row and row[0].number_format:
+                out[row[0].row] = row[0].number_format
+        return out
+    except Exception:
+        return out
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
+
+
 def _coerce_bool(v: object) -> bool:
     s = _norm(v)
     return s in {"sí", "si", "yes", "true", "1", "x", "✓"}
@@ -324,6 +416,15 @@ def parse_xlsx(
         else False
     )
 
+    # BUG-088: formatos de la columna WBS para reconstruir el texto fiel
+    # de celdas numéricas (1.30 con formato '0.00' ≠ float 1.3).
+    wbs_formats: dict[int, str] = (
+        _scan_column_formats(data, result.sheet_used, columns["wbs"])
+        if "wbs" in columns
+        else {}
+    )
+    wbs_general_rows: list[int] = []
+
     for offset, row in enumerate(rows_iter, start=2):
         if row is None:
             continue
@@ -336,13 +437,24 @@ def parse_xlsx(
         name = _norm(name_cell)
         if not name:
             continue
+        # BUG-088: celda WBS numérica con fracción y sin formato decimal
+        # explícito → los ceros finales son irrecuperables. Warning.
+        raw_wbs = (
+            row[columns["wbs"]]
+            if "wbs" in columns and columns["wbs"] < len(row)
+            else None
+        )
+        if (
+            isinstance(raw_wbs, float)
+            and not raw_wbs.is_integer()
+            and not _decimal_places(wbs_formats.get(offset))
+        ):
+            wbs_general_rows.append(offset)
         try:
             task = ParsedTask(
                 row_number=offset,
                 name=str(name_cell).strip(),
-                wbs=_norm(row[columns["wbs"]]) or None
-                if "wbs" in columns and columns["wbs"] < len(row)
-                else None,
+                wbs=_wbs_text(raw_wbs, wbs_formats.get(offset)),
                 start_date=_coerce_date(row[columns["start_date"]])
                 if "start_date" in columns and columns["start_date"] < len(row)
                 else None,
@@ -366,14 +478,14 @@ def parse_xlsx(
                 is_critical=_coerce_bool(row[columns["is_critical"]])
                 if "is_critical" in columns and columns["is_critical"] < len(row)
                 else None,
-                related_milestone_wbs=(_norm(row[columns["related_milestone"]]) or None)
+                related_milestone_wbs=_wbs_text(row[columns["related_milestone"]])
                 if "related_milestone" in columns
                 and columns["related_milestone"] < len(row)
                 else None,
-                predecessors_raw=_norm(row[columns["predecessors"]]) or None
+                predecessors_raw=_wbs_text(row[columns["predecessors"]])
                 if "predecessors" in columns and columns["predecessors"] < len(row)
                 else None,
-                resources_raw=_norm(row[columns["resources"]]) or None
+                resources_raw=_text(row[columns["resources"]])
                 if "resources" in columns and columns["resources"] < len(row)
                 else None,
                 area_raw=(str(row[columns["area"]]).strip() or None)
@@ -385,5 +497,20 @@ def parse_xlsx(
             result.tasks.append(task)
         except Exception as exc:
             result.errors.append({"row": offset, "error": str(exc)})
+
+    if wbs_general_rows:
+        result.warnings.append(
+            {
+                "code": "WBS_NUMERIC_GENERAL",
+                "count": len(wbs_general_rows),
+                "rows": wbs_general_rows[:20],
+                "message": (
+                    "La columna WBS tiene celdas numéricas sin formato de "
+                    "texto: Excel pierde los ceros finales (1.30 se lee "
+                    "como 1.3). Formateá la columna WBS como Texto para "
+                    "preservar la numeración."
+                ),
+            }
+        )
 
     return result

@@ -92,6 +92,10 @@ function _attachAutoFormulas(ws: Worksheet) {
 
 function _attachDataValidation(ws: Worksheet) {
   for (let r = 2; r <= LAST_DATA_ROW; r++) {
+    // BUG-088: WBS como TEXTO — col A. Sin esto Excel convierte lo
+    // tipeado a número y pierde los ceros finales (1.30 → 1.3), lo que
+    // rompe la jerarquía al importar (sub-tareas 1.30.x huérfanas).
+    ws.getCell(`A${r}`).numFmt = "@";
     // Avance (%) — col G.
     ws.getCell(`G${r}`).dataValidation = {
       type: "whole",
@@ -162,7 +166,10 @@ function _addInstructionsSheet(wb: Workbook) {
       col: "WBS",
       type: "Texto",
       format: "Ej: 1, 1.1, 1.1.1",
-      notes: "Identificador jerárquico. Opcional pero recomendado.",
+      notes:
+        "Identificador jerárquico. Opcional pero recomendado. La columna " +
+        "viene en formato Texto: no lo cambies a número o Excel pierde " +
+        "los ceros (1.30 se volvería 1.3).",
     },
     {
       col: "Tarea",

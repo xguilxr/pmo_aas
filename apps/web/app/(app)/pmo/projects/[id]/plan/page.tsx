@@ -89,15 +89,33 @@ function fmtDate(d: string | null | undefined): string {
   }
 }
 
-// ENH-047: ordena WBS como `1.2.10` > `1.2.2` (numérico, no lexicográfico).
+// ENH-047 + BUG-088: ordena WBS por segmento — numéricos como número
+// (1.2 < 1.10), alfanuméricos como texto después de los numéricos del
+// mismo nivel (antes colapsaban a 0), prefijo (padre) primero. Espeja
+// la semántica de `wbs_sort_key` del backend.
 function compareWbs(a: string | null | undefined, b: string | null | undefined): number {
-  const sa = (a ?? "").split(".").map((p) => Number.parseInt(p, 10));
-  const sb = (b ?? "").split(".").map((p) => Number.parseInt(p, 10));
+  const sa = (a ?? "").split(".").map((p) => p.trim());
+  const sb = (b ?? "").split(".").map((p) => p.trim());
   const len = Math.max(sa.length, sb.length);
   for (let i = 0; i < len; i += 1) {
-    const va = Number.isFinite(sa[i]) ? sa[i] : 0;
-    const vb = Number.isFinite(sb[i]) ? sb[i] : 0;
-    if (va !== vb) return va - vb;
+    const pa = sa[i];
+    const pb = sb[i];
+    const aEmpty = pa === undefined || pa === "";
+    const bEmpty = pb === undefined || pb === "";
+    if (aEmpty || bEmpty) {
+      if (aEmpty && bEmpty) continue;
+      return aEmpty ? -1 : 1;
+    }
+    const na = /^\d+$/.test(pa) ? Number.parseInt(pa, 10) : null;
+    const nb = /^\d+$/.test(pb) ? Number.parseInt(pb, 10) : null;
+    if (na !== null && nb !== null) {
+      if (na !== nb) return na - nb;
+    } else if (na === null && nb === null) {
+      const c = pa.localeCompare(pb);
+      if (c !== 0) return c;
+    } else {
+      return na === null ? 1 : -1;
+    }
   }
   return 0;
 }
@@ -1757,6 +1775,9 @@ function PlanInner() {
         });
         // Avance como porcentaje formateado.
         row.getCell("progress").numFmt = "0%";
+        // BUG-088: WBS como texto — si el usuario edita la celda en
+        // Excel, no se convierte a número (1.30 → 1.3).
+        row.getCell("wbs").numFmt = "@";
 
         // Color por estado (todas las filas no-hito).
         const statusFill = STATUS_FILL[t.status as string];

@@ -39,6 +39,7 @@ from app.services.plan_metadata import (
     compute_outline_level,
     compute_wbs_rollup,
     ensure_duration_max_21,
+    parent_wbs,
     recompute_successors_for_project,
     round_half_up,
     validate_predecessors,
@@ -881,6 +882,39 @@ def _detect_source(content_type: str, filename: str) -> str:
     raise HTTPException(status_code=415, detail={"code": "UNSUPPORTED_MEDIA_TYPE"})
 
 
+def _collect_import_warnings(parse_result: XlsxParseResult) -> list[dict]:
+    """BUG-088: warnings del parser + detección de huérfanos WBS.
+
+    Una tarea es huérfana cuando su WBS tiene padre implícito (`1.30.1`
+    → `1.30`) pero ese padre no existe en el archivo — la jerarquía
+    (rollup de avance, agrupado, Gantt) la dejaría suelta al importar.
+    Solo se flaggean WBS de ≥ 3 segmentos: los de 2 sin fila padre
+    ("1.1" sin "1") son un estilo de plan válido y serían puro ruido.
+    """
+    warnings = list(parse_result.warnings)
+    wbs_set = {t.wbs for t in parse_result.tasks if t.wbs}
+    orphans: list[str] = []
+    for t in parse_result.tasks:
+        pw = parent_wbs(t.wbs)
+        if pw and "." in pw and pw not in wbs_set:
+            orphans.append(t.wbs or "")
+    if orphans:
+        warnings.append(
+            {
+                "code": "WBS_ORPHANS",
+                "count": len(orphans),
+                "rows": orphans[:20],
+                "message": (
+                    f"{len(orphans)} tarea(s) quedarían huérfanas: su WBS "
+                    "padre no existe en el archivo (ej. "
+                    f"{', '.join(orphans[:3])}). Revisá la numeración WBS "
+                    "antes de confirmar."
+                ),
+            }
+        )
+    return warnings
+
+
 def _serialize_sample(rows: list[list[object]]) -> list[list[str | None]]:
     """Convierte celdas a string (o None) para serializar a JSON sin
     perder info. `datetime` se convierte a ISO; `None` se mantiene."""
@@ -1043,6 +1077,8 @@ async def import_preview(
         "sample_rows": _serialize_sample(parse_result.sample_rows),
         "task_count": len(parse_result.tasks),
         "errors": parse_result.errors,
+        # BUG-088: avisos no bloqueantes (WBS numérico, huérfanos).
+        "warnings": _collect_import_warnings(parse_result),
         "ttl_seconds": JOB_TTL_SECONDS,
         "system_fields": SYSTEM_FIELDS,
     }
@@ -1302,6 +1338,9 @@ async def import_confirm(
         "imported": len(parsed),
         "dependencies_created": 0,
         "errors": errors,
+        # BUG-088: mismos avisos que el preview, re-computados sobre el
+        # mapping definitivo (el override puede cambiar la columna WBS).
+        "warnings": _collect_import_warnings(parse_result),
         "strategy": body.strategy,
         "source": source_label,
     }

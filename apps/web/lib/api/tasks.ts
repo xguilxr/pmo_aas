@@ -222,6 +222,14 @@ export type SystemField = (typeof SYSTEM_FIELDS)[number];
 
 export type ImportSource = "xlsx" | "csv" | "mpp" | "xml";
 
+// BUG-088: aviso no bloqueante del parser (WBS numérico, huérfanos, …).
+export type ImportWarning = {
+  code: string;
+  message: string;
+  count?: number;
+  rows?: (number | string)[];
+};
+
 export type ImportPreviewResult = {
   job_id: string;
   source: ImportSource;
@@ -231,6 +239,7 @@ export type ImportPreviewResult = {
   sample_rows: (string | null)[][]; // header + hasta 10 data rows
   task_count: number;
   errors: { row?: number; error?: string }[];
+  warnings?: ImportWarning[];
   ttl_seconds: number;
   system_fields: SystemField[];
 };
@@ -239,6 +248,7 @@ export type ImportConfirmResult = {
   imported: number;
   dependencies_created: number;
   errors: unknown[];
+  warnings?: ImportWarning[];
   strategy: string;
   source: string;
 };

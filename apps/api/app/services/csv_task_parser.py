@@ -24,6 +24,8 @@ from app.services.xlsx_task_parser import (
     _coerce_progress,
     _detect_headers,
     _norm,
+    _text,
+    _wbs_text,
 )
 
 logger = logging.getLogger(__name__)
@@ -129,7 +131,7 @@ def parse_csv(
             task = ParsedTask(
                 row_number=offset,
                 name=str(name_cell).strip(),
-                wbs=_norm(row[columns["wbs"]]) or None
+                wbs=_wbs_text(row[columns["wbs"]])
                 if "wbs" in columns and columns["wbs"] < len(row)
                 else None,
                 start_date=_coerce_date(row[columns["start_date"]])
@@ -153,14 +155,14 @@ def parse_csv(
                 is_critical=_coerce_bool(row[columns["is_critical"]])
                 if "is_critical" in columns and columns["is_critical"] < len(row)
                 else None,
-                related_milestone_wbs=(_norm(row[columns["related_milestone"]]) or None)
+                related_milestone_wbs=_wbs_text(row[columns["related_milestone"]])
                 if "related_milestone" in columns
                 and columns["related_milestone"] < len(row)
                 else None,
-                predecessors_raw=_norm(row[columns["predecessors"]]) or None
+                predecessors_raw=_wbs_text(row[columns["predecessors"]])
                 if "predecessors" in columns and columns["predecessors"] < len(row)
                 else None,
-                resources_raw=_norm(row[columns["resources"]]) or None
+                resources_raw=_text(row[columns["resources"]])
                 if "resources" in columns and columns["resources"] < len(row)
                 else None,
             )
