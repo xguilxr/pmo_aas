@@ -28,6 +28,32 @@ Próximo libre: US-190, BUG-091, ENH-195.
 
 ## 📥 INBOX / TRIAGE
 
+### Feedback cliente 16-jul (PDF) — triage pendiente de OK (2026-07-18)
+
+Diseño/triage: `docs/epics/drafts/feedback-16jul-mejoras.md`. Items 1-2
+del PDF ya resueltos por el batch Plan Import Revamp (re-probar).
+IDs propuestos (esperan OK del owner):
+
+- [ ] **BUG-091** — RAID: editar riesgo no graba (status legacy pre-US-179
+  rechazado por el backend; diagnosticado). EP006. Bloque A.
+- [ ] **ENH-195** — RAID: campo Responsable en alta de acción (pool
+  completo) + vista resumen fiel. EP006. Bloque A.
+- [ ] **ENH-196** — RAID: lista sin scroll (2 líneas por item) + edición
+  directa. EP006. Bloque A.
+- [ ] **ENH-197** — Plan: jerarquía WBS visible/consistente (1.x hijos
+  de 1). EP009. Bloque B.
+- [ ] **US-190** — Revisión de calidad del plan (linter: WBS, hitos de
+  cierre, críticas, duraciones) al cargar + botón. EP009. Bloque B.
+- [ ] **US-191** — Salud 5+1: evaluación por dimensión + global con
+  fecha e historial (migración). EP004/EP005. Bloque C.
+- [ ] **US-192** — Salud editable desde portafolio + reporte de salud
+  del portafolio. Depende US-191. EP004/EP020. Bloque C.
+- [ ] **ENH-198** — Recursos: asignación teórica vs FTE real por
+  persona/área/sub-área + alertas (gap vs /pmo/resources). EP017.
+  Bloque D.
+
+Próximo libre tras este triage: US-193, BUG-092, ENH-199.
+
 ### Batch Plan Import Revamp (2026-07-18, branch: claude/plan-import-wbs-fixes-nwotng)
 
 Epic: EP009. Diseño: `docs/epics/drafts/plan-import-revamp.md`.
