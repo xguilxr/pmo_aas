@@ -208,6 +208,8 @@ implementó.
   patrón `StatusInlineCell` que ya usan las listas RAID).
 
 **Batch "Plan Import Revamp" (2026-07-18):**
+- **ENH-197** (`80b9308`, fix-committed) — **Jerarquía WBS por ancestro más cercano:** nueva función `nearest_ancestor_wbs()` en `plan_metadata.py` resuelve el padre de una tarea buscando el ancestro existente más próximo. Rollup de avance % y chevron del agrupado cuelgan la tarea en la posición jerárquica correcta aunque falten filas intermedias (ej., tarea `1.30.1` cuelga de `1` si `1.30` no existe).
+- **US-190** (`24e314c`, fix-committed) — **Revisión de calidad del plan:** servicio nuevo `services/plan_quality.py` con 10 checks automáticos: WBS sin código/duplicado/huérfano/huecos en numeración; plan sin hitos; secciones sin hito de cierre; sin tareas críticas; duraciones >21 días en hojas; sin fechas; sin responsable; tareas vencidas sin avance. Motor genera score 0-100. Endpoint `GET /projects/{id}/plan/quality` + botón "Revisar calidad" en `/plan` abre modal de observaciones con recomendaciones por check.
 - **BUG-090** (`b11c932`, fix-committed) — el `confirm` del wizard ahora aplica
   coerción inteligente de campos: (1) **Responsable** — fuzzy match ≥0.85 contra
   actors del tenant → `assignee_actor_id`; (2) **Hito Relacionado** — resolución

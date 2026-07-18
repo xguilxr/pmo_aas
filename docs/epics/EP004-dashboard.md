@@ -330,6 +330,40 @@ EP005).
 
 ---
 
+### US-191 — Evaluación de salud 5+1 con historial (2026-07-18)
+
+**Como** PM / PMO Manager
+**Quiero** declarar manualmente la salud del proyecto en 5 dimensiones + overall, con historial de evaluaciones anteriores
+**Para** auditar cambios de percepción y crear una bitácora de decisiones de salud.
+
+**Implementación (`66971ba`):**
+- Tabla nueva `project_health_evaluations` (migración 0096): 5 dimensiones nullable (cronograma/presupuesto/riesgos/issues/decisiones) + `overall` NOT NULL + `evaluated_at` timestamp + `note` texto (obligatorio si overall = amarillo/rojo).
+- Endpoints: `POST /projects/{id}/health-evaluations` (crear evaluación), `GET /projects/{id}/health-evaluations` (listar historial).
+- El `overall` se aplica al semáforo del proyecto como **declaración manual** (complementa/convive con motor automático US-180). Nota obligatoria en amarillo/rojo.
+- Frontend: `HealthEvaluationModal` (6 selects RAG para dimensiones + fecha + nota + tabla de evaluaciones anteriores) + botón "Evaluar salud" en la tarjeta de Salud del proyecto detail.
+
+**Estado de integración:** DONE (US-191).
+
+---
+
+### US-192 — Heatmap de salud por dimensión en portafolio + reporte XLSX (2026-07-18)
+
+**Como** PMO Manager
+**Quiero** desde el dashboard portafolio ver un heatmap de salud por dimensión con botones de evaluación masiva y exportar historial de evaluaciones
+**Para** gestionar la salud de todos los proyectos desde un solo lugar.
+
+**Implementación (`e135a2b`):**
+- Heatmap "Salud por dimensión" en `/pmo` (reutiliza `GET /dashboard/health-matrix`) con botón "Evaluar por fila" (abre `HealthEvaluationModal` para el proyecto).
+- Botón "Reporte de salud (XLSX)" descarga archivo de 2 hojas:
+  - **Matriz Actual:** estado de salud de cada proyecto por dimensión (hoy).
+  - **Historial de Evaluaciones:** todas las evaluaciones registradas (fecha, proyecto, dimensiones, nota).
+- Endpoint nuevo: `GET /dashboard/health-evaluations` con visibilidad respetada (health-matrix scoping).
+- En `/pmo/projects` el dot de Salud abre el modal de evaluación y se repinta tras guardar.
+
+**Estado de integración:** DONE (US-192).
+
+---
+
 ### ENH-185 — Filtros de programa y prioridad mínima en `/pmo/projects` (2026-07-09)
 
 **Como** PMO Manager
