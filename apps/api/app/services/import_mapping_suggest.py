@@ -35,6 +35,8 @@ SYSTEM_FIELDS: tuple[str, ...] = (
     "duration_days",
     "progress",
     "is_milestone",
+    # ENH-191: estado de la tarea.
+    "status",
     # US-096.
     "criticality",
     # ENH-097: boolean explicito de criticidad.
@@ -59,6 +61,8 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
     ),
     "progress": ("avance", "progreso", "progress", "%", "percent", "porcentaje"),
     "is_milestone": ("hito", "milestone", "es hito"),
+    # ENH-191.
+    "status": ("estado", "status", "estatus", "state"),
     # ENH-134: "Criticidad" (Sí/No) → is_critical booleano.
     "criticality": ("prioridad criticidad",),
     "is_critical": (

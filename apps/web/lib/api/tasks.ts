@@ -214,6 +214,8 @@ export const SYSTEM_FIELDS = [
   "duration_days",
   "progress",
   "is_milestone",
+  // ENH-191: estado importable.
+  "status",
   "predecessors",
   "resources",
 ] as const;
@@ -339,6 +341,7 @@ export const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
   duration_days: "Duración (días)",
   progress: "% Avance",
   is_milestone: "Es hito",
+  status: "Estado",
   predecessors: "Predecesoras",
   resources: "Recursos",
 };

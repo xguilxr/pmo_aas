@@ -856,7 +856,7 @@ async def import_ms_project(
 MAX_WIZARD_FILE_MB = 10
 SYSTEM_FIELDS: list[str] = [
     "name", "wbs", "start_date", "end_date", "duration_days",
-    "progress", "is_milestone", "predecessors", "resources",
+    "progress", "is_milestone", "status", "predecessors", "resources",
 ]
 
 
@@ -1188,6 +1188,8 @@ async def import_confirm(
             self.resources_raw = getattr(pt, "resources_raw", None)
             self.related_milestone_wbs = getattr(pt, "related_milestone_wbs", None)
             self.predecessors_raw = getattr(pt, "predecessors_raw", None)
+            # ENH-191: estado normalizado (None → default not_started).
+            self.status = getattr(pt, "status", None)
             self.predecessors: list = []
 
     parsed = [_TaskShim(t) for t in parse_result.tasks]
@@ -1247,6 +1249,9 @@ async def import_confirm(
             existing.is_milestone = pt.is_milestone
             existing.source = source_label
             existing.outline_level = compute_outline_level(pt.wbs)
+            # ENH-191: estado del archivo manda solo si vino reconocido.
+            if getattr(pt, "status", None):
+                existing.status = pt.status
             # US-096: criticidad opcional desde la plantilla.
             crit = _normalize_criticality(getattr(pt, "criticality", None))
             if crit:
@@ -1275,7 +1280,9 @@ async def import_confirm(
                 name=pt.name, wbs=pt.wbs,
                 start_date=pt.start_date, end_date=pt.end_date,
                 duration_days=pt.duration_days, progress=pt.progress,
-                is_milestone=pt.is_milestone, status="not_started",
+                is_milestone=pt.is_milestone,
+                # ENH-191: estado importado (default not_started).
+                status=getattr(pt, "status", None) or "not_started",
                 source=source_label, external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
                 outline_level=compute_outline_level(pt.wbs),

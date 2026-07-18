@@ -45,6 +45,8 @@ HEADER_ALIASES: dict[str, list[str]] = {
         "% avance",
     ],
     "is_milestone": ["hito", "milestone", "es hito"],
+    # ENH-191: estado de la tarea (columna "Estado" de la plantilla V1).
+    "status": ["estado", "status", "estatus", "state"],
     # ENH-134: la columna "Criticidad" de la plantilla V1 es booleana
     # (Sí/No) → mapea a is_critical. El enum legacy queda accesible solo
     # vía mapeo manual ("prioridad criticidad").
@@ -92,6 +94,9 @@ class ParsedTask:
     duration_days: int | None = None
     progress: int = 0
     is_milestone: bool = False
+    # ENH-191: estado normalizado al enum canónico, o None si la columna
+    # no está presente / el valor no se reconoce (caller usa default).
+    status: str | None = None
     # US-096: criticidad + hito relacionado opcionales en plantilla.
     criticality: str | None = None
     # ENH-097: boolean explicito. None = no presente en plantilla (caller
@@ -299,6 +304,66 @@ def _coerce_bool(v: object) -> bool:
     return s in {"sí", "si", "yes", "true", "1", "x", "✓"}
 
 
+# ENH-191: valores aceptados para la columna Estado → enum canónico.
+# Cubre el enum crudo (round-trip de la plantilla/export backend), las
+# etiquetas ES de la UI (export frontend) y sinónimos comunes.
+_STATUS_ALIASES: dict[str, str] = {
+    # not_started
+    "not_started": "not_started",
+    "not started": "not_started",
+    "no iniciado": "not_started",
+    "no iniciada": "not_started",
+    "sin iniciar": "not_started",
+    "por iniciar": "not_started",
+    "pendiente": "not_started",
+    # in_progress
+    "in_progress": "in_progress",
+    "in progress": "in_progress",
+    "en progreso": "in_progress",
+    "en curso": "in_progress",
+    "en proceso": "in_progress",
+    "iniciada": "in_progress",
+    "iniciado": "in_progress",
+    "activa": "in_progress",
+    # completed
+    "completed": "completed",
+    "complete": "completed",
+    "completado": "completed",
+    "completada": "completed",
+    "done": "completed",
+    "terminada": "completed",
+    "terminado": "completed",
+    "finalizada": "completed",
+    "finalizado": "completed",
+    "cerrada": "completed",
+    "cerrado": "completed",
+    # on_hold
+    "on_hold": "on_hold",
+    "on hold": "on_hold",
+    "en pausa": "on_hold",
+    "pausada": "on_hold",
+    "pausado": "on_hold",
+    "detenida": "on_hold",
+    "detenido": "on_hold",
+    "bloqueada": "on_hold",
+    "bloqueado": "on_hold",
+    # cancelled (compat, ver status_display)
+    "cancelled": "cancelled",
+    "canceled": "cancelled",
+    "cancelado": "cancelled",
+    "cancelada": "cancelled",
+}
+
+
+def _coerce_status(v: object) -> str | None:
+    """ENH-191: normaliza el Estado al enum canónico. None si vacío o
+    no reconocido (el caller decide default + warning)."""
+    s = _norm(v)
+    if not s:
+        return None
+    return _STATUS_ALIASES.get(s)
+
+
 SAMPLE_ROW_LIMIT = 10
 
 
@@ -397,6 +462,7 @@ def parse_xlsx(
         else {}
     )
     wbs_general_rows: list[int] = []
+    status_unknown: list[str] = []
 
     for offset, row in enumerate(rows_iter, start=2):
         if row is None:
@@ -438,6 +504,15 @@ def parse_xlsx(
             and 1 < float(raw_prog) <= 100
         ):
             progress_literal_rows.append(offset)
+        # ENH-191: estado — valor presente pero no reconocido → warning.
+        raw_status = (
+            row[columns["status"]]
+            if "status" in columns and columns["status"] < len(row)
+            else None
+        )
+        status_value = _coerce_status(raw_status)
+        if status_value is None and _norm(raw_status):
+            status_unknown.append(str(raw_status).strip())
         try:
             task = ParsedTask(
                 row_number=offset,
@@ -458,6 +533,7 @@ def parse_xlsx(
                 is_milestone=_coerce_bool(row[columns["is_milestone"]])
                 if "is_milestone" in columns and columns["is_milestone"] < len(row)
                 else False,
+                status=status_value,
                 criticality=(_norm(row[columns["criticality"]]) or None)
                 if "criticality" in columns and columns["criticality"] < len(row)
                 else None,
@@ -484,6 +560,21 @@ def parse_xlsx(
         except Exception as exc:
             result.errors.append({"row": offset, "error": str(exc)})
 
+    if status_unknown:
+        uniq = sorted(set(status_unknown))
+        result.warnings.append(
+            {
+                "code": "STATUS_UNRECOGNIZED",
+                "count": len(status_unknown),
+                "rows": uniq[:10],
+                "message": (
+                    "Valores de Estado no reconocidos (quedarán como 'No "
+                    f"Iniciado'): {', '.join(uniq[:5])}. Valores aceptados: "
+                    "not_started/in_progress/completed/on_hold o sus "
+                    "etiquetas en español."
+                ),
+            }
+        )
     if progress_literal_rows:
         result.warnings.append(
             {

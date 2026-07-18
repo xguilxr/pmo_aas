@@ -22,6 +22,7 @@ from app.services.xlsx_task_parser import (
     _coerce_date,
     _coerce_int,
     _coerce_progress,
+    _coerce_status,
     _detect_headers,
     _norm,
     _text,
@@ -149,6 +150,10 @@ def parse_csv(
                 is_milestone=_coerce_bool(row[columns["is_milestone"]])
                 if "is_milestone" in columns and columns["is_milestone"] < len(row)
                 else False,
+                # ENH-191: estado normalizado (None si no reconocido).
+                status=_coerce_status(row[columns["status"]])
+                if "status" in columns and columns["status"] < len(row)
+                else None,
                 criticality=(_norm(row[columns["criticality"]]) or None)
                 if "criticality" in columns and columns["criticality"] < len(row)
                 else None,
