@@ -6,6 +6,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  ChevronsUpDown,
+  ChevronUp,
   Download,
   Eye,
 } from "lucide-react";
@@ -37,7 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError, apiBase } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth-storage";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
-import { SortableTh } from "@/components/ui/sortable-th";
+import type { SortableCtrl } from "@/lib/hooks/use-sortable-rows";
 import {
   ISSUE_FINAL_STATUSES,
   ISSUE_STATUS_LABEL,
@@ -1204,70 +1206,87 @@ function RisksSection({
         </div>
       ) : (
         <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                <tr>
-                  <SortableTh<Risk> sortKey="folio" getter={(r) => r.folio} ctrl={riskSortCtrl}>Folio</SortableTh>
-                  <SortableTh<Risk> sortKey="title" getter={(r) => r.title} ctrl={riskSortCtrl}>Título</SortableTh>
-                  <SortableTh<Risk> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={riskSortCtrl}>Área</SortableTh>
-                  <SortableTh<Risk> sortKey="responsible" getter={(r) => r.responsible_name ?? ""} ctrl={riskSortCtrl}>Responsable</SortableTh>
-                  <SortableTh<Risk> sortKey="severity" getter={(r) => r.severity ?? 0} ctrl={riskSortCtrl}>Severidad</SortableTh>
-                  <SortableTh<Risk> sortKey="status" getter={(r) => r.status} ctrl={riskSortCtrl}>Estado</SortableTh>
-                  <SortableTh<Risk> sortKey="identified" getter={(r) => (r as any).identified_at ?? ""} ctrl={riskSortCtrl}>F. Creación</SortableTh>
-                  <SortableTh<Risk> sortKey="due" getter={(r) => r.due_date ?? ""} ctrl={riskSortCtrl}>F. Compromiso</SortableTh>
-                  <th className="px-2 py-1.5 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleRows.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
-                  >
-                    {/* US-178: folio = único link que abre el ticket. */}
-                    <td className="px-2 py-1.5 font-mono text-xs text-[var(--color-tertiary)]">
-                      <Link
-                        href={`/pmo/projects/${projectId}/raid/${r.id}?type=risk`}
-                        className="hover:text-[var(--color-accent)] hover:underline"
-                      >
-                        {r.folio}
-                      </Link>
-                    </td>
-                    {/* US-178: título editable inline. */}
-                    <td className="px-2 py-1.5 text-[var(--color-primary)]">
+          {/* ENH-196: layout de 2 líneas por fila — toda la info visible
+              sin scroll horizontal (feedback cliente 16-jul). Columnas
+              combinadas con sort por chip; edición inline intacta. */}
+          <table className="w-full table-fixed text-[13px]">
+            <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+              <tr>
+                <th className="w-[38%] px-3 py-2 font-medium">
+                  <span className="flex items-center gap-2">
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="folio" getter={(r) => r.folio}>Folio</SortChip>
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="title" getter={(r) => r.title}>Título</SortChip>
+                  </span>
+                </th>
+                <th className="w-[19%] px-2 py-2 font-medium">
+                  <span className="flex items-center gap-2">
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="area" getter={(r) => (r as any).area?.name ?? ""}>Área</SortChip>
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="responsible" getter={(r) => r.responsible_name ?? ""}>Resp.</SortChip>
+                  </span>
+                </th>
+                <th className="w-[17%] px-2 py-2 font-medium">
+                  <span className="flex items-center gap-2">
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="severity" getter={(r) => r.severity ?? 0}>Severidad</SortChip>
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="status" getter={(r) => r.status}>Estado</SortChip>
+                  </span>
+                </th>
+                <th className="w-[18%] px-2 py-2 font-medium">
+                  <span className="flex items-center gap-2">
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="identified" getter={(r) => (r as any).identified_at ?? ""}>Creación</SortChip>
+                    <SortChip<Risk> ctrl={riskSortCtrl} sortKey="due" getter={(r) => r.due_date ?? ""}>Compromiso</SortChip>
+                  </span>
+                </th>
+                <th className="w-[8%] px-2 py-2 text-right font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((r) => (
+                <tr
+                  key={r.id}
+                  className="border-b border-[var(--border-subtle)] align-top hover:bg-[var(--color-subtle)]"
+                >
+                  {/* Línea 1: folio (link) · Línea 2: título editable. */}
+                  <td className="px-3 py-2">
+                    <Link
+                      href={`/pmo/projects/${projectId}/raid/${r.id}?type=risk`}
+                      className="font-mono text-xs text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
+                    >
+                      {r.folio}
+                    </Link>
+                    <div className="text-[var(--color-primary)]">
                       <InlineTextCell
                         value={r.title}
                         onChange={(v) => onPatch(r.id, { title: v })}
                         title="Título"
                         ariaLabel={`Título de ${r.folio}`}
                       />
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                    </div>
+                  </td>
+                  <td className="px-2 py-2 text-[var(--color-secondary)]">
+                    <div className="grid gap-1">
                       <InlineSelectCell
                         value={r.area_id ?? ""}
                         options={areaOpts(r)}
                         onChange={(v) => onPatch(r.id, { area_id: v || undefined })}
-                        placeholder="—"
+                        placeholder="— área —"
                         title="Área"
                         ariaLabel={`Área de ${r.folio}`}
                       />
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
                       <InlineSelectCell
                         value={r.owner_actor_id ?? ""}
                         options={respOpts(r)}
                         onChange={(v) =>
                           onPatch(r.id, { owner_actor_id: v || null })
                         }
-                        placeholder="—"
+                        placeholder="— responsable —"
                         title="Responsable"
                         ariaLabel={`Responsable de ${r.folio}`}
                       />
-                    </td>
-                    {/* ENH-176: severidad = P × I, editable inline. Compacto:
-                        badge + P×I sin labels de texto (tooltips lo aclaran). */}
-                    <td className="px-2 py-1.5">
+                    </div>
+                  </td>
+                  <td className="px-2 py-2">
+                    <div className="grid gap-1">
+                      {/* ENH-176: severidad = P × I, editable inline. */}
                       <div className="flex items-center gap-0.5">
                         <SeverityBadge severity={r.severity} />
                         <InlineSelectCell
@@ -1302,9 +1321,6 @@ function RisksSection({
                           ariaLabel={`Impacto de ${r.folio}`}
                         />
                       </div>
-                    </td>
-                    {/* US-178/US-179: estado con tag de color, editable inline. */}
-                    <td className="px-2 py-1.5">
                       <span className="inline-flex items-center">
                         <StatusInlineCell
                           status={r.status}
@@ -1317,36 +1333,36 @@ function RisksSection({
                         />
                         <OnHoldInfo status={r.status} since={r.on_hold_since} />
                       </span>
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                    </div>
+                  </td>
+                  <td className="px-2 py-2 text-[var(--color-secondary)]">
+                    <div className="grid gap-1">
                       <InlineDateCell
                         value={r.identified_at}
                         onChange={(v) => onPatch(r.id, { identified_at: v })}
                         title="Fecha de creación"
                         ariaLabel={`Fecha de creación de ${r.folio}`}
                       />
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
                       <InlineDateCell
                         value={r.due_date}
                         onChange={(v) => onPatch(r.id, { due_date: v })}
                         title="Fecha compromiso"
                         ariaLabel={`Fecha compromiso de ${r.folio}`}
                       />
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <RowActions
-                        onPreview={() => setPreview(r)}
-                        onEdit={() => onEdit(r)}
-                        onDelete={() => onDelete(r.id)}
-                        label={r.folio}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </td>
+                  <td className="px-2 py-2">
+                    <RowActions
+                      onPreview={() => setPreview(r)}
+                      onEdit={() => onEdit(r)}
+                      onDelete={() => onDelete(r.id)}
+                      label={r.folio}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
       <ItemPreviewModal
@@ -1437,82 +1453,98 @@ function IssuesSection({
     issueType === "issue" ? INCIDENT_LABEL : ISSUE_TYPE_LABEL[issueType];
   return (
     <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-      <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
-          <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-            <tr>
-              <SortableTh<Issue> sortKey="folio" getter={(r) => r.folio} ctrl={issueSortCtrl}>Folio</SortableTh>
-              <SortableTh<Issue> sortKey="title" getter={(r) => r.title} ctrl={issueSortCtrl}>Título</SortableTh>
-              <SortableTh<Issue> sortKey="area" getter={(r) => (r as any).area?.name ?? ""} ctrl={issueSortCtrl}>Área</SortableTh>
-              <SortableTh<Issue> sortKey="responsible" getter={(r) => r.responsible_name ?? ""} ctrl={issueSortCtrl}>Responsable</SortableTh>
-              <SortableTh<Issue> sortKey="priority" getter={(r) => (r as any).priority ?? 0} ctrl={issueSortCtrl}>Prioridad</SortableTh>
-              <SortableTh<Issue> sortKey="status" getter={(r) => r.status} ctrl={issueSortCtrl}>Estado</SortableTh>
-              <SortableTh<Issue> sortKey="identified" getter={(r) => (r as any).reported_at ?? ""} ctrl={issueSortCtrl}>F. Creación</SortableTh>
-              <SortableTh<Issue> sortKey="committed" getter={(r) => (r as any).committed_date ?? ""} ctrl={issueSortCtrl}>F. Compromiso</SortableTh>
-              <th className="px-2 py-1.5 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRows.map((it) => (
-              <tr
-                key={it.id}
-                className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
-              >
-                {/* US-178: folio = único link que abre el ticket. */}
-                <td className="px-2 py-1.5 font-mono text-xs text-[var(--color-tertiary)]">
-                  <Link
-                    href={`/pmo/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
-                    className="hover:text-[var(--color-accent)] hover:underline"
-                  >
-                    {it.folio}
-                  </Link>
-                </td>
-                {/* US-178: título editable inline. */}
-                <td className="px-2 py-1.5 text-[var(--color-primary)]">
+      {/* ENH-196: 2 líneas por fila — sin scroll horizontal, edición
+          inline directa (feedback cliente 16-jul, pág. 6). */}
+      <table className="w-full table-fixed text-[13px]">
+        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <tr>
+            <th className="w-[38%] px-3 py-2 font-medium">
+              <span className="flex items-center gap-2">
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="folio" getter={(r) => r.folio}>Folio</SortChip>
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="title" getter={(r) => r.title}>Título</SortChip>
+              </span>
+            </th>
+            <th className="w-[19%] px-2 py-2 font-medium">
+              <span className="flex items-center gap-2">
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="area" getter={(r) => (r as any).area?.name ?? ""}>Área</SortChip>
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="responsible" getter={(r) => r.responsible_name ?? ""}>Resp.</SortChip>
+              </span>
+            </th>
+            <th className="w-[17%] px-2 py-2 font-medium">
+              <span className="flex items-center gap-2">
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="priority" getter={(r) => (r as any).priority ?? 0}>Prioridad</SortChip>
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="status" getter={(r) => r.status}>Estado</SortChip>
+              </span>
+            </th>
+            <th className="w-[18%] px-2 py-2 font-medium">
+              <span className="flex items-center gap-2">
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="identified" getter={(r) => (r as any).reported_at ?? ""}>Creación</SortChip>
+                <SortChip<Issue> ctrl={issueSortCtrl} sortKey="committed" getter={(r) => (r as any).committed_date ?? ""}>Compromiso</SortChip>
+              </span>
+            </th>
+            <th className="w-[8%] px-2 py-2 text-right font-medium">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedRows.map((it) => (
+            <tr
+              key={it.id}
+              className="border-b border-[var(--border-subtle)] align-top hover:bg-[var(--color-subtle)]"
+            >
+              {/* Línea 1: folio (link) · Línea 2: título editable. */}
+              <td className="px-3 py-2">
+                <Link
+                  href={`/pmo/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
+                  className="font-mono text-xs text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
+                >
+                  {it.folio}
+                </Link>
+                <div className="text-[var(--color-primary)]">
                   <InlineTextCell
                     value={it.title}
                     onChange={(v) => onPatch(it.id, { title: v })}
                     title="Título"
                     ariaLabel={`Título de ${it.folio}`}
                   />
-                </td>
-                <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                </div>
+              </td>
+              <td className="px-2 py-2 text-[var(--color-secondary)]">
+                <div className="grid gap-1">
                   <InlineSelectCell
                     value={it.area_id ?? ""}
                     options={areaOpts(it)}
                     onChange={(v) => onPatch(it.id, { area_id: v || undefined })}
-                    placeholder="—"
+                    placeholder="— área —"
                     title="Área"
                     ariaLabel={`Área de ${it.folio}`}
                   />
-                </td>
-                <td className="px-2 py-1.5 text-[var(--color-secondary)]">
                   <InlineSelectCell
                     value={it.owner_actor_id ?? ""}
                     options={respOpts(it)}
                     onChange={(v) => onPatch(it.id, { owner_actor_id: v || null })}
-                    placeholder="—"
+                    placeholder="— responsable —"
                     title="Responsable"
                     ariaLabel={`Responsable de ${it.folio}`}
                   />
-                </td>
-                <td className="px-2 py-1.5 text-[var(--color-secondary)]">
-                  <InlineSelectCell
-                    value={it.priority != null ? String(it.priority) : ""}
-                    options={[1, 2, 3, 4, 5].map((n) => ({
-                      value: String(n),
-                      label: `P${n}`,
-                    }))}
-                    onChange={(v) =>
-                      onPatch(it.id, { priority: v ? Number(v) : null })
-                    }
-                    placeholder="—"
-                    title="Prioridad"
-                    ariaLabel={`Prioridad de ${it.folio}`}
-                  />
-                </td>
-                {/* US-178/US-179: estado con tag de color, editable inline. */}
-                <td className="px-2 py-1.5">
+                </div>
+              </td>
+              <td className="px-2 py-2">
+                <div className="grid gap-1">
+                  <span className="text-[var(--color-secondary)]">
+                    <InlineSelectCell
+                      value={it.priority != null ? String(it.priority) : ""}
+                      options={[1, 2, 3, 4, 5].map((n) => ({
+                        value: String(n),
+                        label: `P${n}`,
+                      }))}
+                      onChange={(v) =>
+                        onPatch(it.id, { priority: v ? Number(v) : null })
+                      }
+                      placeholder="—"
+                      title="Prioridad"
+                      ariaLabel={`Prioridad de ${it.folio}`}
+                    />
+                  </span>
                   <span className="inline-flex items-center">
                     <StatusInlineCell
                       status={it.status}
@@ -1525,8 +1557,10 @@ function IssuesSection({
                     />
                     <OnHoldInfo status={it.status} since={it.on_hold_since} />
                   </span>
-                </td>
-                <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                </div>
+              </td>
+              <td className="px-2 py-2 text-[var(--color-secondary)]">
+                <div className="grid gap-1">
                   <InlineDateCell
                     value={it.reported_at ? it.reported_at.slice(0, 10) : null}
                     onChange={(v) =>
@@ -1537,28 +1571,26 @@ function IssuesSection({
                     title="Fecha de creación"
                     ariaLabel={`Fecha de creación de ${it.folio}`}
                   />
-                </td>
-                <td className="px-2 py-1.5 text-[var(--color-secondary)]">
                   <InlineDateCell
                     value={it.committed_date}
                     onChange={(v) => onPatch(it.id, { committed_date: v })}
                     title="Fecha compromiso"
                     ariaLabel={`Fecha compromiso de ${it.folio}`}
                   />
-                </td>
-                <td className="px-2 py-1.5">
-                  <RowActions
-                    onPreview={() => setPreview(it)}
-                    onEdit={() => onEdit(it)}
-                    onDelete={() => onDelete(it.id)}
-                    label={it.folio}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </td>
+              <td className="px-2 py-2">
+                <RowActions
+                  onPreview={() => setPreview(it)}
+                  onEdit={() => onEdit(it)}
+                  onDelete={() => onDelete(it.id)}
+                  label={it.folio}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       <ItemPreviewModal
         open={preview !== null}
         onClose={() => setPreview(null)}
@@ -1586,6 +1618,40 @@ function IssuesSection({
         }
       />
     </section>
+  );
+}
+
+// ENH-196: chip de sort para headers de columnas combinadas (layout de
+// 2 líneas por fila — reemplaza un SortableTh por columna simple).
+function SortChip<T>({
+  ctrl,
+  sortKey,
+  getter,
+  children,
+}: {
+  ctrl: SortableCtrl<T>;
+  sortKey: string;
+  getter: (r: T) => unknown;
+  children: React.ReactNode;
+}) {
+  const active = ctrl.sortKey === sortKey;
+  const Icon = active
+    ? ctrl.sortDir === "asc"
+      ? ChevronUp
+      : ChevronDown
+    : ChevronsUpDown;
+  return (
+    <button
+      type="button"
+      onClick={() => ctrl.toggle(sortKey, getter)}
+      className={cn(
+        "inline-flex items-center gap-0.5 hover:text-[var(--color-primary)]",
+        active && "text-[var(--color-primary)]",
+      )}
+    >
+      <span>{children}</span>
+      <Icon className="h-3 w-3 opacity-60" />
+    </button>
   );
 }
 
