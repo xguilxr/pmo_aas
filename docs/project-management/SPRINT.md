@@ -9,21 +9,52 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA" (2026-07-08)
-Branch: claude/pmo-portfolio-architecture-6hbuen · PR único para todo el batch
+Batch "Plan Import Revamp — WBS/Estado/%/plantilla/IA" (2026-07-18)
+Branch: claude/plan-import-wbs-fixes-nwotng · PR único para el batch
 
-COMPLETO 11/11 (2026-07-09), todos status:fix-committed en PR #570.
-Diseño en docs/epics/drafts/portfolio-recursos-capacidad.md (f3fb83c).
-Migraciones nuevas: 0091 (salud unificada), 0092 (actors pool), 0093
-(participations FTE%), 0094 (project_ai_contexts) — correr `alembic
-upgrade head` en Railway tras el merge.
-Pendiente: verificación del owner + merge del PR #570.
-Próximo libre: US-186, BUG-088, ENH-190.
+Origen: feedback owner (import no jala campos con su propia plantilla,
+estado no importable, WBS 1.30→1.3 con hijos huérfanos, % mal
+escalados). Diseño + decisiones en
+docs/epics/drafts/plan-import-revamp.md (585e80e).
+Ejecución directa por chat (0.1 solucionar>documentar; issues GitHub
+no creados). Orden: Bloque A (BUG-088/089/090) → B (ENH-191/192/193)
+→ C (ENH-194, US-188, US-189).
+Próximo libre: US-190, BUG-091, ENH-195.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Batch Plan Import Revamp (2026-07-18, branch: claude/plan-import-wbs-fixes-nwotng)
+
+Epic: EP009. Diseño: `docs/epics/drafts/plan-import-revamp.md`.
+
+**Bloque A — fidelidad de datos:**
+- [ ] **BUG-088** — WBS fiel al archivo: parser respeta `number_format`
+  (1.30 ≠ 1.3), plantilla/export fuerzan texto en WBS, warnings de
+  celdas irrecuperables + huérfanos en preview, fix `compareWbs` FE.
+- [ ] **BUG-089** — % avance robusto: detección de formato % por celda
+  (no por columna), sanity check anti-4500%, warnings por fila.
+- [ ] **BUG-090** — Confirm aplica lo que la plantilla promete:
+  Responsable (fuzzy vs usuarios), Hito Relacionado (por WBS),
+  Predecessors (Task.predecessors + successors), Fin desde duración.
+
+**Bloque B — contrato único + wizard:**
+- [ ] **ENH-191** — Estado importable end-to-end (alias + normalización
+  ES/EN + confirm aplica status).
+- [ ] **ENH-192** — Wizard re-mapea TODOS los campos (status, área,
+  criticidad, hito rel.) + preview interpretado con warnings.
+- [ ] **ENH-193** — Export/download backend = 15 columnas de la
+  plantilla V1 + orden real del plan (no outline-first).
+
+**Bloque C — plantilla inteligente + IA + UX:**
+- [ ] **ENH-194** — Plantilla pre-llenada con info del proyecto
+  (nombre, fechas, charter) + hoja Gantt en Excel (mini MS Project).
+- [ ] **US-188** — Import inteligente IA: mapeo por contenido,
+  normalización de valores, interpretación de estructura (3 niveles).
+- [ ] **US-189** — UX de import para no-PMs: wizard simplificado,
+  lenguaje llano, mapeo manual opcional.
 
 ### Batch Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA (2026-07-08, branch: claude/pmo-portfolio-architecture-6hbuen)
 

@@ -193,21 +193,32 @@ preview editable, nunca auto-commit):
 
 ---
 
-## 4. Preguntas abiertas para el owner
+## 4. Decisiones del owner (2026-07-18)
 
-1. **WBS sin formato:** si la celda es numérica en formato General
-   (Excel muestra "1.3" aunque hayan tipeado 1.30) no hay forma de
-   recuperar el cero — ¿basta con warning en preview + recomendación
-   de columna texto, o convertimos la columna a texto en la plantilla y
-   listo? (La plantilla forzará texto en ambos casos.)
-2. **Fin desde duración:** ¿implementarlo o quitar la promesa de la
-   hoja Instrucciones?
-3. **US-188 (IA):** ¿nivel 1-2 (mapeo + normalización) alcanza para la
-   primera iteración, dejando nivel 3 (estructura) como fase 2?
-4. **Prioridad:** ¿Bloque A completo primero, o metemos ENH-191
-   (estado) junto al Bloque A por ser el reclamo más directo del
-   feedback?
+1. **WBS sin formato:** la plantilla y el export fuerzan la columna
+   WBS a **texto** (`@`). El parser además respeta `number_format`
+   decimal y avisa en preview cuando una celda numérica en General es
+   irrecuperable.
+2. **Fin desde duración:** se implementa (Fin vacío + Inicio +
+   Duración → Fin calculado), coherente con la promesa de la hoja
+   Instrucciones. Barato y sin riesgo; owner puede vetar en review.
+3. **US-188 (IA):** van **los 3 niveles** (mapeo por contenido,
+   normalización de valores, estructura).
+4. **Prioridad:** se ataca **todo el concepto** como un batch para
+   robustecer el import end-to-end.
+
+### Scope adicional pedido por el owner
+
+- **ENH-194 — Plantilla inteligente por proyecto:** la plantilla se
+  genera con información del proyecto (nombre, fechas, contexto del
+  charter cuando existe) y una hoja **Gantt** en Excel (barras por
+  formato condicional sobre las fechas del Plan) — "un mini MS Project
+  en Excel" para quien no tiene MS Project.
+- **US-189 — UX de import para no-PMs:** el wizard debe ser usable por
+  gente que no es PM: drag & drop, auto-mapeo silencioso, resumen en
+  lenguaje llano ("Se importarán 45 tareas, 3 avisos"), mapeo manual
+  escondido detrás de "Ajustar columnas", advertencias entendibles.
 
 ---
 
-**Última actualización:** 2026-07-18 · sesión `claude/plan-import-wbs-fixes-nwotng`
+**Última actualización:** 2026-07-18 · sesión `claude/plan-import-wbs-fixes-nwotng` · batch en ejecución
