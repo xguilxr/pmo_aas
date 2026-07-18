@@ -809,13 +809,24 @@ function TaskList({
     });
   }, [tasks, groupByWbs, collapsed]);
 
-  // ENH-047: set de WBS que tienen al menos un hijo (para mostrar chevron).
+  // ENH-047 + ENH-197: set de WBS con al menos un descendiente (chevron).
+  // El hijo cuelga de su ancestro EXISTENTE más cercano, no solo del
+  // padre directo — '1.30.1' sin fila '1.30' sigue colgando de '1'.
   const hasChildren = useMemo(() => {
     if (!groupByWbs) return new Set<string>();
+    const existing = new Set(
+      tasks.map((t) => t.wbs).filter(Boolean) as string[],
+    );
     const out = new Set<string>();
     for (const t of tasks) {
-      const p = wbsParent(t.wbs);
-      if (p) out.add(p);
+      let p = wbsParent(t.wbs);
+      while (p) {
+        if (existing.has(p)) {
+          out.add(p);
+          break;
+        }
+        p = wbsParent(p);
+      }
     }
     return out;
   }, [tasks, groupByWbs]);
