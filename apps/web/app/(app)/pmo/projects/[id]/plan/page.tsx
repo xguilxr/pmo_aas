@@ -625,6 +625,7 @@ function AreaGroupedList({
   onEdit,
   colVis,
   onInlineUpdate,
+  onAddTask,
 }: {
   tasks: Task[];
   areas: ProjectArea[];
@@ -633,6 +634,7 @@ function AreaGroupedList({
   onEdit?: (t: Task) => void;
   colVis: ColVis;
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
+  onAddTask?: (t: Task, mode: "child" | "sibling") => void;
 }) {
   const grouped = useMemo(() => {
     const byArea = new Map<string, Task[]>();
@@ -685,6 +687,7 @@ function AreaGroupedList({
             colVis={colVis}
             areas={areas}
             onInlineUpdate={onInlineUpdate}
+            onAddTask={onAddTask}
           />
         </div>
       ))}
@@ -702,6 +705,7 @@ function AreaGroupedList({
             colVis={colVis}
             areas={areas}
             onInlineUpdate={onInlineUpdate}
+            onAddTask={onAddTask}
           />
         </div>
       ) : null}
@@ -770,12 +774,16 @@ function TaskList({
   colVis = DEFAULT_COL_VIS,
   areas = [],
   onInlineUpdate,
+  onAddTask,
 }: {
   tasks: Task[];
   loading: boolean;
   onDelete?: (t: Task) => void;
   // US-095: abre modal de edición pre-poblado.
   onEdit?: (t: Task) => void;
+  // ENH-200: agregar tarea desde la fila — sub-tarea (hijo) o al mismo
+  // nivel; el caller calcula el siguiente WBS y abre el form.
+  onAddTask?: (t: Task, mode: "child" | "sibling") => void;
   // US-173: edición inline desde la celda (área/fechas/avance/estado/
   // criticidad/hito) sin abrir el modal.
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
@@ -797,6 +805,8 @@ function TaskList({
     return m;
   }, [areas]);
   const showActions = !!(onEdit || onDelete);
+  // ENH-200: fila con el mini-menú "agregar" abierto (task id).
+  const [addMenuFor, setAddMenuFor] = useState<string | null>(null);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
@@ -1151,6 +1161,47 @@ function TaskList({
                         <Trash2 className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     ) : null}
+                    {/* ENH-200: agregar tarea relativa a esta fila. */}
+                    {onAddTask ? (
+                      <span className="relative">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAddMenuFor((v) => (v === t.id ? null : t.id))
+                          }
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+                          aria-label={`Agregar tarea relativa a ${t.name}`}
+                          aria-expanded={addMenuFor === t.id}
+                          title="Agregar tarea aquí"
+                        >
+                          <Plus className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                        {addMenuFor === t.id ? (
+                          <span className="absolute right-0 top-8 z-20 w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddMenuFor(null);
+                                onAddTask(t, "child");
+                              }}
+                              className="block w-full px-3 py-2 text-left text-xs text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                            >
+                              ↳ Sub-tarea{t.wbs ? ` de ${t.wbs}` : ""}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddMenuFor(null);
+                                onAddTask(t, "sibling");
+                              }}
+                              className="block w-full border-t border-[var(--border-subtle)] px-3 py-2 text-left text-xs text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                            >
+                              ＋ Al mismo nivel
+                            </button>
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
               ) : null}
@@ -1441,6 +1492,32 @@ function PlanInner() {
     assignee_actor_id: "" as string,
   });
   const [creating, setCreating] = useState(false);
+
+  // ENH-200: agregar tarea desde una fila — calcula el siguiente WBS
+  // del nivel elegido (hijo o hermano) y abre el form pre-llenado.
+  function handleAddTaskAt(t: Task, mode: "child" | "sibling") {
+    const wbs =
+      mode === "child"
+        ? nextWbsUnder(t.wbs ?? null, tasks)
+        : nextWbsUnder(wbsParent(t.wbs), tasks);
+    setNewForm({
+      name: "",
+      wbs,
+      start_date: "",
+      end_date: "",
+      duration_days: "",
+      progress: "0",
+      is_milestone: false,
+      status: "not_started" as TaskStatus,
+      criticality: "medium" as TaskCriticality,
+      is_critical: false,
+      related_milestone_id: "",
+      predecessors_csv: "",
+      area_id: t.area_id ?? "",
+      assignee_actor_id: "",
+    });
+    setNewOpen(true);
+  }
 
   // US-095: edición de tarea existente (mismo schema que newForm).
   const [editOpen, setEditOpen] = useState(false);
@@ -1926,6 +2003,7 @@ function PlanInner() {
             onEdit={openEditTask}
             colVis={colVis}
             onInlineUpdate={handleInlineUpdate}
+            onAddTask={handleAddTaskAt}
           />
         ) : (
           <TaskList
@@ -1939,6 +2017,7 @@ function PlanInner() {
             colVis={colVis}
             areas={areas}
             onInlineUpdate={handleInlineUpdate}
+            onAddTask={handleAddTaskAt}
           />
         )}
       </section>
