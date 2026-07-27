@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
@@ -18,6 +18,12 @@ from app.schemas.modules import UserMini
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
+from app.services.import_ai import (
+    ai_match_resources,
+    ai_normalize_statuses,
+    ai_propose_structure,
+    extract_raw_rows,
+)
 from app.services.import_job_store import (
     JOB_TTL_SECONDS,
     create_job_id,
@@ -39,12 +45,18 @@ from app.services.plan_metadata import (
     compute_outline_level,
     compute_wbs_rollup,
     ensure_duration_max_21,
+    parent_wbs,
     recompute_successors_for_project,
     round_half_up,
     validate_predecessors,
     wbs_sort_key,
 )
-from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult, parse_xlsx
+from app.services.xlsx_task_parser import (
+    ParsedTask,
+    XlsxParseResult,
+    _coerce_date,
+    parse_xlsx,
+)
 
 # ENH-051: enum literal compartido por TaskCreate / TaskUpdate / TaskRead.
 TaskCriticality = Literal["low", "medium", "high", "critical"]
@@ -853,10 +865,42 @@ async def import_ms_project(
 # ------------------------------------------------------------------
 
 MAX_WIZARD_FILE_MB = 10
-SYSTEM_FIELDS: list[str] = [
-    "name", "wbs", "start_date", "end_date", "duration_days",
-    "progress", "is_milestone", "predecessors", "resources",
-]
+# ENH-192: una sola fuente de verdad para los campos mapeables del
+# wizard — la lista completa del suggester/parser (antes el wizard solo
+# ofrecía 9 y area/criticidad/hito relacionado no se podían re-mapear).
+SYSTEM_FIELDS: list[str] = list(MAPPING_SYSTEM_FIELDS)
+
+# ENH-192: cuántas tareas interpretadas devuelve el preview del wizard.
+# ENH-199: 30 filas — suficiente para validar un plan real con scroll
+# en el modal sin inflar el payload del preview.
+PARSED_PREVIEW_LIMIT = 30
+
+
+def _serialize_parsed_tasks(tasks: list[ParsedTask]) -> list[dict]:
+    """ENH-192: primeras N tareas YA interpretadas (WBS fiel, % escalado,
+    estado normalizado) para que el wizard muestre cómo quedará el plan
+    en vez de celdas crudas."""
+    out: list[dict] = []
+    for t in tasks[:PARSED_PREVIEW_LIMIT]:
+        out.append(
+            {
+                "row_number": t.row_number,
+                "wbs": t.wbs,
+                "name": t.name,
+                "start_date": t.start_date.isoformat() if t.start_date else None,
+                "end_date": t.end_date.isoformat() if t.end_date else None,
+                "duration_days": t.duration_days,
+                "progress": t.progress,
+                "status": t.status,
+                "is_milestone": t.is_milestone,
+                "is_critical": t.is_critical,
+                "area": t.area_raw,
+                "resources": t.resources_raw,
+                "related_milestone": t.related_milestone_wbs,
+                "predecessors": t.predecessors_raw,
+            }
+        )
+    return out
 
 
 def _detect_source(content_type: str, filename: str) -> str:
@@ -879,6 +923,39 @@ def _detect_source(content_type: str, filename: str) -> str:
         return "xml"
     from fastapi import HTTPException
     raise HTTPException(status_code=415, detail={"code": "UNSUPPORTED_MEDIA_TYPE"})
+
+
+def _collect_import_warnings(parse_result: XlsxParseResult) -> list[dict]:
+    """BUG-088: warnings del parser + detección de huérfanos WBS.
+
+    Una tarea es huérfana cuando su WBS tiene padre implícito (`1.30.1`
+    → `1.30`) pero ese padre no existe en el archivo — la jerarquía
+    (rollup de avance, agrupado, Gantt) la dejaría suelta al importar.
+    Solo se flaggean WBS de ≥ 3 segmentos: los de 2 sin fila padre
+    ("1.1" sin "1") son un estilo de plan válido y serían puro ruido.
+    """
+    warnings = list(parse_result.warnings)
+    wbs_set = {t.wbs for t in parse_result.tasks if t.wbs}
+    orphans: list[str] = []
+    for t in parse_result.tasks:
+        pw = parent_wbs(t.wbs)
+        if pw and "." in pw and pw not in wbs_set:
+            orphans.append(t.wbs or "")
+    if orphans:
+        warnings.append(
+            {
+                "code": "WBS_ORPHANS",
+                "count": len(orphans),
+                "rows": orphans[:20],
+                "message": (
+                    f"{len(orphans)} tarea(s) quedarían huérfanas: su WBS "
+                    "padre no existe en el archivo (ej. "
+                    f"{', '.join(orphans[:3])}). Revisá la numeración WBS "
+                    "antes de confirmar."
+                ),
+            }
+        )
+    return warnings
 
 
 def _serialize_sample(rows: list[list[object]]) -> list[list[str | None]]:
@@ -1043,6 +1120,10 @@ async def import_preview(
         "sample_rows": _serialize_sample(parse_result.sample_rows),
         "task_count": len(parse_result.tasks),
         "errors": parse_result.errors,
+        # BUG-088: avisos no bloqueantes (WBS numérico, huérfanos).
+        "warnings": _collect_import_warnings(parse_result),
+        # ENH-192: tareas interpretadas para el preview del wizard.
+        "parsed_preview": _serialize_parsed_tasks(parse_result.tasks),
         "ttl_seconds": JOB_TTL_SECONDS,
         "system_fields": SYSTEM_FIELDS,
     }
@@ -1058,6 +1139,168 @@ class ImportConfirmBody(BaseModel):
         ),
     )
     strategy: str = Field(default="replace", pattern="^(replace|merge)$")
+    # US-188 nivel 3: persistir la propuesta de estructura generada por
+    # /ai-structure en lugar de re-parsear el archivo con mapping.
+    use_ai_structure: bool = False
+
+
+class RepreviewBody(BaseModel):
+    # ENH-192: mismo shape de mapping que el confirm.
+    mapping: dict[str, int] | None = None
+
+
+@router.post("/projects/{project_id}/tasks/import/{job_id}/repreview")
+async def import_repreview(
+    project_id: UUID,
+    job_id: str,
+    body: RepreviewBody,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """ENH-192 — re-interpreta el archivo del job con un mapping manual
+    SIN persistir nada. El wizard lo llama cuando el usuario re-mapea
+    columnas para refrescar la vista interpretada + warnings en vivo.
+    """
+    import base64
+
+    from fastapi import HTTPException
+
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+
+    preview = load_preview(job_id)
+    if preview is None:
+        raise HTTPException(
+            status_code=410,
+            detail={"code": "PREVIEW_EXPIRED"},
+        )
+    if (
+        preview.get("tenant_id") != str(tenant_id)
+        or preview.get("project_id") != str(project_id)
+    ):
+        raise not_found("Preview job")
+    if preview.get("user_id") != str(cu.id):
+        raise forbidden()
+
+    try:
+        data = base64.b64decode(preview["file_b64"])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "PREVIEW_DECODE_FAILED", "hint": str(exc)[:200]},
+        )
+    source = preview["source"]
+    columns_override = (
+        body.mapping if body.mapping and source in ("xlsx", "csv") else None
+    )
+    try:
+        parse_result = _parse_for_preview(
+            source,
+            data,
+            sheet=preview.get("sheet"),
+            columns_override=columns_override,
+            strict=False,
+        )
+    except ValueError as exc:
+        raise business_rule(f"archivo {source.upper()} inválido: {exc}")
+
+    return {
+        "task_count": len(parse_result.tasks),
+        "columns_detected": parse_result.columns_detected,
+        "errors": parse_result.errors,
+        "warnings": _collect_import_warnings(parse_result),
+        "parsed_preview": _serialize_parsed_tasks(parse_result.tasks),
+    }
+
+
+@router.post("/projects/{project_id}/tasks/import/{job_id}/ai-structure")
+async def import_ai_structure(
+    project_id: UUID,
+    job_id: str,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-188 nivel 3 — la IA interpreta el archivo completo (headers
+    crípticos, secciones como filas, indentación sin WBS) y propone un
+    plan estructurado. La propuesta se guarda en el job de Redis; el
+    usuario la revisa en el preview y el confirm la persiste con
+    `use_ai_structure=true`. No toca la DB.
+    """
+    import base64
+    from dataclasses import asdict
+
+    from fastapi import HTTPException
+
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+
+    tenant_cfg = await load_tenant_ai(db, tenant_id)
+    if tenant_cfg.mode == "disabled":
+        raise business_rule(
+            "La interpretación con IA requiere IA habilitada para el tenant",
+            code="AI_DISABLED",
+        )
+
+    preview = load_preview(job_id)
+    if preview is None:
+        raise HTTPException(status_code=410, detail={"code": "PREVIEW_EXPIRED"})
+    if (
+        preview.get("tenant_id") != str(tenant_id)
+        or preview.get("project_id") != str(project_id)
+    ):
+        raise not_found("Preview job")
+    if preview.get("user_id") != str(cu.id):
+        raise forbidden()
+
+    source = preview["source"]
+    if source not in ("xlsx", "csv"):
+        raise business_rule(
+            "La interpretación IA aplica a XLSX/CSV (MPP/XML ya vienen "
+            "estructurados)",
+            code="AI_STRUCTURE_UNSUPPORTED_SOURCE",
+        )
+    try:
+        data = base64.b64decode(preview["file_b64"])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "PREVIEW_DECODE_FAILED", "hint": str(exc)[:200]},
+        )
+
+    rows = extract_raw_rows(source, data, sheet=preview.get("sheet"))
+    tasks = await ai_propose_structure(
+        rows, tenant_cfg=tenant_cfg, tenant_id=str(tenant_id)
+    )
+    if not tasks:
+        raise business_rule(
+            "La IA no pudo interpretar el archivo. Probá el mapeo manual "
+            "de columnas.",
+            code="AI_NO_PROPOSAL",
+        )
+
+    # Persistir la propuesta en el job (el confirm la usa tal cual —
+    # lo que el usuario ve en el preview es lo que se importa).
+    preview["ai_tasks"] = [asdict(t) for t in tasks]
+    save_preview(job_id, preview)
+
+    await write_audit(
+        db,
+        action="tasks.import_ai_structure",
+        module="tasks",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="project",
+        entity_id=str(project_id),
+        details={"job_id": job_id, "source": source, "proposed": len(tasks)},
+    )
+    await db.commit()
+
+    fake_result = XlsxParseResult(tasks=tasks)
+    return {
+        "task_count": len(tasks),
+        "warnings": _collect_import_warnings(fake_result),
+        "parsed_preview": _serialize_parsed_tasks(tasks),
+    }
 
 
 @router.post("/projects/{project_id}/tasks/import/{job_id}/confirm")
@@ -1109,26 +1352,58 @@ async def import_confirm(
     source = preview["source"]
     sheet = preview.get("sheet")
 
-    # Mapping override solo aplica a XLSX/CSV (MPP/XML ya vienen
-    # normalizados por sus parsers propios).
-    if body.mapping and source in ("xlsx", "csv"):
-        if "name" not in body.mapping:
-            # 422 (no 400) — el body es válido sintácticamente, lo que
-            # falla es la regla de negocio "name es obligatorio".
+    if body.use_ai_structure:
+        # US-188 nivel 3: la fuente de verdad es la propuesta IA que el
+        # usuario ya revisó en el preview, no el archivo re-parseado.
+        stored = preview.get("ai_tasks") or []
+        if not stored:
             raise business_rule(
-                "El mapping debe incluir el campo obligatorio 'name'",
-                code="MAPPING_MISSING_NAME",
+                "El job no tiene propuesta de IA — generála primero con "
+                "/import/{job_id}/ai-structure",
+                code="AI_STRUCTURE_MISSING",
             )
-        columns_override = body.mapping
-    else:
-        columns_override = None
-
-    try:
-        parse_result = _parse_for_preview(
-            source, data, sheet=sheet, columns_override=columns_override
+        parse_result = XlsxParseResult(
+            tasks=[
+                ParsedTask(
+                    row_number=int(d.get("row_number") or 0),
+                    name=str(d.get("name") or "").strip(),
+                    wbs=(str(d["wbs"]).strip() or None)
+                    if d.get("wbs") is not None
+                    else None,
+                    start_date=_coerce_date(d.get("start_date")),
+                    end_date=_coerce_date(d.get("end_date")),
+                    duration_days=d.get("duration_days"),
+                    progress=int(d.get("progress") or 0),
+                    status=d.get("status"),
+                    is_milestone=bool(d.get("is_milestone")),
+                )
+                for d in stored
+                if str(d.get("name") or "").strip()
+            ]
         )
-    except ValueError as exc:
-        raise business_rule(f"archivo {source.upper()} inválido al confirmar: {exc}")
+    else:
+        # Mapping override solo aplica a XLSX/CSV (MPP/XML ya vienen
+        # normalizados por sus parsers propios).
+        if body.mapping and source in ("xlsx", "csv"):
+            if "name" not in body.mapping:
+                # 422 (no 400) — el body es válido sintácticamente, lo que
+                # falla es la regla de negocio "name es obligatorio".
+                raise business_rule(
+                    "El mapping debe incluir el campo obligatorio 'name'",
+                    code="MAPPING_MISSING_NAME",
+                )
+            columns_override = body.mapping
+        else:
+            columns_override = None
+
+        try:
+            parse_result = _parse_for_preview(
+                source, data, sheet=sheet, columns_override=columns_override
+            )
+        except ValueError as exc:
+            raise business_rule(
+                f"archivo {source.upper()} inválido al confirmar: {exc}"
+            )
 
     errors = list(parse_result.errors)
 
@@ -1147,6 +1422,15 @@ async def import_confirm(
             self.criticality = getattr(pt, "criticality", None)
             self.is_critical = getattr(pt, "is_critical", None)
             self.area_raw = getattr(pt, "area_raw", None)
+            # BUG-090: responsable, hito relacionado y predecesoras — la
+            # plantilla los promete y el confirm los descartaba.
+            self.resources_raw = getattr(pt, "resources_raw", None)
+            self.related_milestone_wbs = getattr(pt, "related_milestone_wbs", None)
+            self.predecessors_raw = getattr(pt, "predecessors_raw", None)
+            # ENH-191: estado normalizado (None → default not_started).
+            self.status = getattr(pt, "status", None)
+            # US-188: crudo para normalización IA de no reconocidos.
+            self.status_raw = getattr(pt, "status_raw", None)
             self.predecessors: list = []
 
     parsed = [_TaskShim(t) for t in parse_result.tasks]
@@ -1206,6 +1490,9 @@ async def import_confirm(
             existing.is_milestone = pt.is_milestone
             existing.source = source_label
             existing.outline_level = compute_outline_level(pt.wbs)
+            # ENH-191: estado del archivo manda solo si vino reconocido.
+            if getattr(pt, "status", None):
+                existing.status = pt.status
             # US-096: criticidad opcional desde la plantilla.
             crit = _normalize_criticality(getattr(pt, "criticality", None))
             if crit:
@@ -1234,7 +1521,9 @@ async def import_confirm(
                 name=pt.name, wbs=pt.wbs,
                 start_date=pt.start_date, end_date=pt.end_date,
                 duration_days=pt.duration_days, progress=pt.progress,
-                is_milestone=pt.is_milestone, status="not_started",
+                is_milestone=pt.is_milestone,
+                # ENH-191: estado importado (default not_started).
+                status=getattr(pt, "status", None) or "not_started",
                 source=source_label, external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
                 outline_level=compute_outline_level(pt.wbs),
@@ -1245,6 +1534,178 @@ async def import_confirm(
             db.add(t)
             await db.flush()
             created[pt.external_id] = t
+
+    # ------------------------------------------------------------------
+    # BUG-090 — aplicar los campos que la hoja Instrucciones de la
+    # plantilla promete y el confirm descartaba silenciosamente.
+    # ------------------------------------------------------------------
+    from difflib import SequenceMatcher
+
+    from app.models.area import Actor as _Actor
+
+    _actor_rows = (
+        await db.execute(
+            select(_Actor).where(_Actor.tenant_id == str(tenant_id))
+        )
+    ).scalars().all()
+
+    def _match_actor(raw: object) -> str | None:
+        """Responsable → actor del pool por nombre/email: exacto
+        case-insensitive o fuzzy ≥ 0.85 (promesa de la plantilla)."""
+        if not raw:
+            return None
+        s = str(raw).strip().lower()
+        if not s:
+            return None
+        best: str | None = None
+        best_ratio = 0.0
+        for a in _actor_rows:
+            for cand in (a.name, a.email):
+                if not cand:
+                    continue
+                c = str(cand).strip().lower()
+                if c == s:
+                    return str(a.id)
+                ratio = SequenceMatcher(None, s, c).ratio()
+                if ratio > best_ratio:
+                    best, best_ratio = str(a.id), ratio
+        return best if best_ratio >= 0.85 else None
+
+    # Primera ocurrencia gana ante WBS duplicados (consistente con merge).
+    _by_wbs: dict[str, Task] = {}
+    for _t in created.values():
+        if _t.wbs and _t.wbs not in _by_wbs:
+            _by_wbs[_t.wbs] = _t
+
+    preds_skipped: list[str] = []
+    dep_count = 0
+    # US-188 nivel 2: valores que la heurística no resolvió — candidatos
+    # a normalización IA post-loop.
+    pending_status: list[tuple[str, Task]] = []
+    pending_resource: list[tuple[str, Task]] = []
+    for pt in parsed:
+        t = created.get(pt.external_id)
+        if t is None:
+            continue
+        # Fin vacío + Inicio + Duración → Fin calculado (días inclusivos).
+        if (
+            t.end_date is None
+            and t.start_date is not None
+            and (t.duration_days or 0) > 0
+        ):
+            t.end_date = t.start_date + timedelta(days=(t.duration_days or 1) - 1)
+        # Responsable → actor del pool (assignee_actor_id, flujo ENH-079).
+        raw_resource = getattr(pt, "resources_raw", None)
+        resolved_actor = _match_actor(raw_resource)
+        if resolved_actor is not None:
+            t.assignee_actor_id = resolved_actor
+        elif raw_resource:
+            pending_resource.append((str(raw_resource).strip(), t))
+        # Estado presente pero no reconocido por la heurística.
+        if getattr(pt, "status", None) is None and getattr(pt, "status_raw", None):
+            pending_status.append((str(pt.status_raw), t))
+        # Hito Relacionado → resolución por WBS (solo hitos reales).
+        rel = getattr(pt, "related_milestone_wbs", None)
+        if rel:
+            target = _by_wbs.get(str(rel).strip())
+            if target is not None and target.is_milestone and target.id != t.id:
+                t.related_milestone_id = str(target.id)
+        # Predecesoras: CSV de WBS → filtra existentes/self/dupes y valida
+        # ciclos con las ya asignadas. Best-effort: un ciclo no aborta el
+        # import, solo omite las predecesoras de esa tarea.
+        raw_preds = getattr(pt, "predecessors_raw", None)
+        if raw_preds and t.wbs:
+            tokens = [
+                tok.strip()
+                for tok in str(raw_preds).replace(";", ",").split(",")
+                if tok.strip()
+            ]
+            cleaned = []
+            for tok in tokens:
+                if tok != t.wbs and tok in _by_wbs and tok not in cleaned:
+                    cleaned.append(tok)
+            if cleaned:
+                try:
+                    t.predecessors = validate_predecessors(
+                        cleaned, _by_wbs, t.wbs
+                    )
+                except Exception:
+                    preds_skipped.append(t.wbs)
+                    continue
+                for tok in t.predecessors or []:
+                    pre = _by_wbs.get(tok)
+                    if pre is None:
+                        continue
+                    if body.strategy == "merge":
+                        # uq_task_dep: en merge la dependencia puede ya
+                        # existir de un import previo.
+                        dup = (
+                            await db.execute(
+                                select(TaskDependency).where(
+                                    TaskDependency.predecessor_id == pre.id,
+                                    TaskDependency.successor_id == t.id,
+                                )
+                            )
+                        ).scalar_one_or_none()
+                        if dup is not None:
+                            continue
+                    db.add(
+                        TaskDependency(
+                            predecessor_id=str(pre.id),
+                            successor_id=str(t.id),
+                            type="FS",
+                            lag_days=0,
+                        )
+                    )
+                    dep_count += 1
+
+    if any(t.predecessors for t in created.values()):
+        await recompute_successors_for_project(db, str(project_id))
+    if preds_skipped:
+        errors.append(
+            {
+                "error": (
+                    "Predecesoras omitidas por ciclo de dependencias en: "
+                    + ", ".join(preds_skipped[:10])
+                ),
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # US-188 nivel 2 — normalización IA de lo que la heurística no
+    # resolvió. Best-effort: si la IA está deshabilitada o falla, los
+    # estados quedan en not_started y los responsables sin asignar.
+    # ------------------------------------------------------------------
+    ai_normalized = {"statuses": 0, "resources": 0}
+    if pending_status or pending_resource:
+        tenant_cfg = await load_tenant_ai(db, tenant_id)
+        if tenant_cfg.mode != "disabled":
+            if pending_status:
+                status_map = await ai_normalize_statuses(
+                    [raw for raw, _ in pending_status],
+                    tenant_cfg=tenant_cfg,
+                    tenant_id=str(tenant_id),
+                )
+                for raw, task in pending_status:
+                    mapped = status_map.get(raw)
+                    if mapped:
+                        task.status = mapped
+                        ai_normalized["statuses"] += 1
+            if pending_resource:
+                name_to_id = {
+                    a.name: str(a.id) for a in _actor_rows if a.name
+                }
+                resource_map = await ai_match_resources(
+                    [raw for raw, _ in pending_resource],
+                    list(name_to_id.keys()),
+                    tenant_cfg=tenant_cfg,
+                    tenant_id=str(tenant_id),
+                )
+                for raw, task in pending_resource:
+                    actor_id = name_to_id.get(resource_map.get(raw, ""))
+                    if actor_id:
+                        task.assignee_actor_id = actor_id
+                        ai_normalized["resources"] += 1
 
     # ENH-109: registrar el Plan vivo en `project_artifacts` con el
     # source_format detectado, para que `GET /plan/download` regenere
@@ -1300,10 +1761,43 @@ async def import_confirm(
 
     return {
         "imported": len(parsed),
-        "dependencies_created": 0,
+        # BUG-090: ahora las predecesoras de la plantilla SÍ crean
+        # dependencias (JSON predecessors + TaskDependency FS).
+        "dependencies_created": dep_count,
         "errors": errors,
+        # BUG-088: mismos avisos que el preview, re-computados sobre el
+        # mapping definitivo (el override puede cambiar la columna WBS).
+        "warnings": _collect_import_warnings(parse_result),
+        # US-188: cuántos valores normalizó la IA (0 si deshabilitada).
+        "ai_normalized": ai_normalized,
         "strategy": body.strategy,
         "source": source_label,
+    }
+
+
+@router.get("/projects/{project_id}/plan/quality")
+async def plan_quality(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-190 — revisión de calidad del plan ("linter"): estructura WBS,
+    hitos de cierre por sección, actividades críticas, duraciones,
+    fechas y responsables. Devuelve observaciones accionables + score
+    0-100. Read-only.
+    """
+    from app.services.plan_quality import plan_quality_score, review_plan
+
+    tenant_id = _tenant(cu)
+    await _ensure_project(db, project_id, tenant_id)
+    tasks = (
+        await db.execute(select(Task).where(Task.project_id == str(project_id)))
+    ).scalars().all()
+    observations = review_plan(tasks)
+    return {
+        "observations": observations,
+        "score": plan_quality_score(observations),
+        "task_count": len(tasks),
     }
 
 
@@ -1352,6 +1846,10 @@ async def gantt_view(
 # ENH-053 — Sugerencia de mapeo de columnas asistido por IA.
 class SuggestMappingBody(BaseModel):
     headers: list[str] = Field(min_length=1, max_length=50)
+    # US-188 nivel 1: filas de muestra para mapear por CONTENIDO.
+    sample_rows: list[list[str | None]] | None = Field(
+        default=None, max_length=5
+    )
 
 
 class SuggestMappingItem(BaseModel):
@@ -1391,6 +1889,7 @@ async def suggest_import_mapping(
         tenant_cfg=tenant_cfg,
         platform_groq_config=None,
         tenant_id=str(tenant_id),
+        sample_rows=body.sample_rows,
     )
     ai_used = any(s.get("source") == "ai" for s in suggestions.values())
     return SuggestMappingResponse(

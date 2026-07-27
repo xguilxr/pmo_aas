@@ -266,7 +266,10 @@ async def download_plan(
 
     from fastapi.responses import StreamingResponse
 
-    from app.services.plan_regenerator import regenerate_for_format
+    from app.services.plan_regenerator import (
+        PlanExportContext,
+        regenerate_for_format,
+    )
 
     tenant_id = _tenant(cu)
     project = await _ensure_project(db, project_id, tenant_id)
@@ -291,15 +294,34 @@ async def download_plan(
             {"format": format},
         )
 
+    # ENH-193: el orden lo resuelve el regenerator (position → WBS
+    # natural, igual que GET /tasks). Antes se ordenaba outline-first +
+    # WBS lexicográfico y el archivo salía agrupado por profundidad.
     tasks = (
-        await db.execute(
-            select(Task)
-            .where(Task.project_id == str(project_id))
-            .order_by(Task.outline_level.nullslast(), Task.wbs)
-        )
+        await db.execute(select(Task).where(Task.project_id == str(project_id)))
     ).scalars().all()
 
-    data, mime, ext, fallback = regenerate_for_format(fmt, list(tasks))
+    # ENH-193: contexto para resolver FKs a texto legible (área,
+    # responsable del pool, WBS del hito relacionado).
+    from app.models.area import Actor, Area
+
+    area_rows = (
+        await db.execute(
+            select(Area.id, Area.name).where(Area.tenant_id == str(tenant_id))
+        )
+    ).all()
+    actor_rows = (
+        await db.execute(
+            select(Actor.id, Actor.name).where(Actor.tenant_id == str(tenant_id))
+        )
+    ).all()
+    ctx = PlanExportContext(
+        area_names={str(r.id): r.name or "" for r in area_rows},
+        actor_names={str(r.id): r.name or "" for r in actor_rows},
+        milestone_wbs={str(t.id): t.wbs or "" for t in tasks if t.is_milestone},
+    )
+
+    data, mime, ext, fallback = regenerate_for_format(fmt, list(tasks), ctx)
 
     # ENH-092: filename canónico `{project-slug}-plan.{ext}`.
     from app.services.filename_slug import artifact_filename

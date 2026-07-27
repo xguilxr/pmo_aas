@@ -174,15 +174,29 @@ def parent_wbs(wbs: str | None) -> str | None:
     return ".".join(parts[:-1])
 
 
+def nearest_ancestor_wbs(wbs: str | None, wbs_set: set[str]) -> str | None:
+    """ENH-197 — ancestro EXISTENTE más cercano subiendo por prefijos.
+
+    `'1.30.1'` → `'1.30'` si existe; si no, `'1'`; si ningún prefijo
+    existe → None (raíz). Garantiza que "todo lo que empieza con 1.x
+    cuelga de 1" aunque falten niveles intermedios en el plan."""
+    pw = parent_wbs(wbs)
+    while pw:
+        if pw in wbs_set:
+            return pw
+        pw = parent_wbs(pw)
+    return None
+
+
 def compute_wbs_rollup(tasks: Iterable[Task]) -> dict[str, float]:
     """Rollup jerárquico de avance por WBS.
 
     El avance efectivo de una tarea CON hijos es el promedio simple del
-    avance efectivo de sus hijos directos (recursivo, nivel por nivel).
-    Una HOJA usa su `progress` almacenado (0..100). La jerarquía se
-    deriva del código WBS (padre de `1.2.3` = `1.2`). Las tareas sin
-    WBS, o cuyo WBS padre no existe en el conjunto, se tratan como hojas
-    raíz.
+    avance efectivo de sus hijos (recursivo, nivel por nivel). Una HOJA
+    usa su `progress` almacenado (0..100). La jerarquía se deriva del
+    código WBS: ENH-197 — cada tarea cuelga de su ancestro EXISTENTE
+    más cercano ('1.30.1' sin '1.30' cuelga de '1'), no solo del padre
+    directo. Tareas sin WBS o sin ningún ancestro → hojas raíz.
 
     Devuelve ``{str(task.id): avance_efectivo}`` para TODAS las tareas.
     """
@@ -191,11 +205,12 @@ def compute_wbs_rollup(tasks: Iterable[Task]) -> dict[str, float]:
     for t in items:
         if t.wbs:
             by_wbs[t.wbs] = t
+    wbs_set = set(by_wbs)
     children: dict[str, list[Task]] = {}
     for t in items:
-        pw = parent_wbs(t.wbs)
-        if pw and pw in by_wbs:
-            children.setdefault(pw, []).append(t)
+        anc = nearest_ancestor_wbs(t.wbs, wbs_set)
+        if anc and (t.wbs is None or anc != t.wbs):
+            children.setdefault(anc, []).append(t)
 
     cache: dict[str, float] = {}
 
@@ -228,7 +243,9 @@ def compute_plan_rollup_progress(tasks: Iterable[Task]) -> float | None:
         return None
     rollup = compute_wbs_rollup(items)
     wbs_set = {t.wbs for t in items if t.wbs}
-    roots = [t for t in items if parent_wbs(t.wbs) not in wbs_set]
+    # ENH-197: raíz = sin NINGÚN ancestro existente (consistente con el
+    # attach por ancestro más cercano del rollup).
+    roots = [t for t in items if nearest_ancestor_wbs(t.wbs, wbs_set) is None]
     if not roots:
         return None
     return sum(rollup[str(t.id)] for t in roots) / len(roots)

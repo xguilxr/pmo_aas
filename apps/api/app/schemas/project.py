@@ -112,6 +112,43 @@ class HealthDeclare(BaseModel):
     reason: str | None = Field(default=None, max_length=2000)
 
 
+# US-191 — evaluación periódica de salud (5 dimensiones + overall).
+RagColor = Literal["green", "yellow", "red"]
+
+
+class HealthEvaluationCreate(BaseModel):
+    """Cada guardado es un punto en la historia (fecha libre, default
+    hoy). Las dimensiones son opcionales; el overall (la "sexta") es
+    obligatorio y se aplica al semáforo del proyecto como declaración
+    manual — en amarillo/rojo la nota es obligatoria (regla US-180)."""
+
+    evaluated_at: date | None = None
+    schedule: RagColor | None = None
+    budget: RagColor | None = None
+    risks: RagColor | None = None
+    decisions: RagColor | None = None
+    resources: RagColor | None = None
+    overall: RagColor
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class HealthEvaluationRead(BaseModel):
+    id: UUID
+    project_id: UUID
+    evaluated_at: date
+    schedule: str | None
+    budget: str | None
+    risks: str | None
+    decisions: str | None
+    resources: str | None
+    overall: str
+    note: str | None
+    created_by: UUID | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class MemberCreate(BaseModel):
     user_id: UUID
     role_in_project: Literal["pm", "team", "viewer", "stakeholder"] = "team"

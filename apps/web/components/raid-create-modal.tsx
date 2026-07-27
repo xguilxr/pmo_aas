@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { createIssue, createRisk, type IssueType } from "@/lib/api/modules";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
+import { PersonPicker } from "@/components/directory/PersonPicker";
 
 /**
  * ENH-026: modal unificado para crear un ítem RAID (riesgo, acción,
@@ -79,6 +80,10 @@ export function RaidCreateModal({
   // US-064: área obligatoria + fecha de creación editable.
   const [areas, setAreas] = useState<ProjectArea[]>([]);
   const [areaId, setAreaId] = useState<string>("");
+  // ENH-195: responsable desde la creación (pool completo del proyecto,
+  // mismo picker que la edición — antes solo se podía asignar editando
+  // después y la vista resumen quedaba con "—").
+  const [ownerActorId, setOwnerActorId] = useState<string>("");
   // BUG-084: default = HOY local (no UTC) para no adelantar un día en husos
   // detrás de UTC.
   const [identifiedAt, setIdentifiedAt] = useState<string>(localToday);
@@ -107,6 +112,7 @@ export function RaidCreateModal({
     setPriority(3);
     setCommittedDate("");
     setAreaId("");
+    setOwnerActorId("");
     setIdentifiedAt(localToday());
     setError(null);
   }
@@ -127,6 +133,7 @@ export function RaidCreateModal({
           impact,
           mitigation_strategy: mitigation.trim() || null,
           area_id: areaId,
+          owner_actor_id: ownerActorId || null,
           identified_at: identifiedAt || null,
           due_date: dueDate || null,
         });
@@ -137,6 +144,7 @@ export function RaidCreateModal({
           type: KIND_TO_ISSUE_TYPE[kind],
           priority,
           area_id: areaId,
+          owner_actor_id: ownerActorId || null,
           committed_date: committedDate || null,
           // BUG-084: respeta la fecha de creación elegida (antes se perdía
           // y el server usaba la fecha actual → aparecía "hoy").
@@ -202,6 +210,15 @@ export function RaidCreateModal({
                 </option>
               ))}
             </Select>
+          </Field>
+          {/* ENH-195: responsable desde la creación. */}
+          <Field label="Responsable">
+            <PersonPicker
+              projectId={projectId}
+              value={ownerActorId || null}
+              onChange={(v) => setOwnerActorId(v ?? "")}
+              placeholder="— sin responsable —"
+            />
           </Field>
           <Field label="Fecha de creación">
             <Input

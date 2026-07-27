@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  ClipboardCheck,
   Columns3,
   Diamond,
   Download,
@@ -42,9 +43,11 @@ import {
   createTask,
   deleteTask,
   getGantt,
+  getPlanQuality,
   listTasks,
   updateTask,
   type GanttData,
+  type PlanQualityResult,
   type Task,
   type TaskCriticality,
   type TaskStatus,
@@ -89,15 +92,33 @@ function fmtDate(d: string | null | undefined): string {
   }
 }
 
-// ENH-047: ordena WBS como `1.2.10` > `1.2.2` (numérico, no lexicográfico).
+// ENH-047 + BUG-088: ordena WBS por segmento — numéricos como número
+// (1.2 < 1.10), alfanuméricos como texto después de los numéricos del
+// mismo nivel (antes colapsaban a 0), prefijo (padre) primero. Espeja
+// la semántica de `wbs_sort_key` del backend.
 function compareWbs(a: string | null | undefined, b: string | null | undefined): number {
-  const sa = (a ?? "").split(".").map((p) => Number.parseInt(p, 10));
-  const sb = (b ?? "").split(".").map((p) => Number.parseInt(p, 10));
+  const sa = (a ?? "").split(".").map((p) => p.trim());
+  const sb = (b ?? "").split(".").map((p) => p.trim());
   const len = Math.max(sa.length, sb.length);
   for (let i = 0; i < len; i += 1) {
-    const va = Number.isFinite(sa[i]) ? sa[i] : 0;
-    const vb = Number.isFinite(sb[i]) ? sb[i] : 0;
-    if (va !== vb) return va - vb;
+    const pa = sa[i];
+    const pb = sb[i];
+    const aEmpty = pa === undefined || pa === "";
+    const bEmpty = pb === undefined || pb === "";
+    if (aEmpty || bEmpty) {
+      if (aEmpty && bEmpty) continue;
+      return aEmpty ? -1 : 1;
+    }
+    const na = /^\d+$/.test(pa) ? Number.parseInt(pa, 10) : null;
+    const nb = /^\d+$/.test(pb) ? Number.parseInt(pb, 10) : null;
+    if (na !== null && nb !== null) {
+      if (na !== nb) return na - nb;
+    } else if (na === null && nb === null) {
+      const c = pa.localeCompare(pb);
+      if (c !== 0) return c;
+    } else {
+      return na === null ? 1 : -1;
+    }
   }
   return 0;
 }
@@ -277,12 +298,15 @@ function OwnerCell({ owner }: { owner: Task["owner"] }) {
 function FormField({
   label,
   children,
+  className,
 }: {
   label: string;
   children: React.ReactNode;
+  // ENH-201: ancho controlable para el layout de una línea.
+  className?: string;
 }) {
   return (
-    <label className="block">
+    <label className={cn("block", className)}>
       <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
         {label}
       </span>
@@ -604,6 +628,7 @@ function AreaGroupedList({
   onEdit,
   colVis,
   onInlineUpdate,
+  onAddTask,
 }: {
   tasks: Task[];
   areas: ProjectArea[];
@@ -612,6 +637,7 @@ function AreaGroupedList({
   onEdit?: (t: Task) => void;
   colVis: ColVis;
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
+  onAddTask?: (t: Task, mode: "child" | "sibling") => void;
 }) {
   const grouped = useMemo(() => {
     const byArea = new Map<string, Task[]>();
@@ -664,6 +690,7 @@ function AreaGroupedList({
             colVis={colVis}
             areas={areas}
             onInlineUpdate={onInlineUpdate}
+            onAddTask={onAddTask}
           />
         </div>
       ))}
@@ -681,6 +708,7 @@ function AreaGroupedList({
             colVis={colVis}
             areas={areas}
             onInlineUpdate={onInlineUpdate}
+            onAddTask={onAddTask}
           />
         </div>
       ) : null}
@@ -749,12 +777,16 @@ function TaskList({
   colVis = DEFAULT_COL_VIS,
   areas = [],
   onInlineUpdate,
+  onAddTask,
 }: {
   tasks: Task[];
   loading: boolean;
   onDelete?: (t: Task) => void;
   // US-095: abre modal de edición pre-poblado.
   onEdit?: (t: Task) => void;
+  // ENH-200: agregar tarea desde la fila — sub-tarea (hijo) o al mismo
+  // nivel; el caller calcula el siguiente WBS y abre el form.
+  onAddTask?: (t: Task, mode: "child" | "sibling") => void;
   // US-173: edición inline desde la celda (área/fechas/avance/estado/
   // criticidad/hito) sin abrir el modal.
   onInlineUpdate?: (taskId: string, patch: Partial<TaskUpdateBody>) => void;
@@ -776,6 +808,8 @@ function TaskList({
     return m;
   }, [areas]);
   const showActions = !!(onEdit || onDelete);
+  // ENH-200: fila con el mini-menú "agregar" abierto (task id).
+  const [addMenuFor, setAddMenuFor] = useState<string | null>(null);
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
@@ -791,13 +825,24 @@ function TaskList({
     });
   }, [tasks, groupByWbs, collapsed]);
 
-  // ENH-047: set de WBS que tienen al menos un hijo (para mostrar chevron).
+  // ENH-047 + ENH-197: set de WBS con al menos un descendiente (chevron).
+  // El hijo cuelga de su ancestro EXISTENTE más cercano, no solo del
+  // padre directo — '1.30.1' sin fila '1.30' sigue colgando de '1'.
   const hasChildren = useMemo(() => {
     if (!groupByWbs) return new Set<string>();
+    const existing = new Set(
+      tasks.map((t) => t.wbs).filter(Boolean) as string[],
+    );
     const out = new Set<string>();
     for (const t of tasks) {
-      const p = wbsParent(t.wbs);
-      if (p) out.add(p);
+      let p = wbsParent(t.wbs);
+      while (p) {
+        if (existing.has(p)) {
+          out.add(p);
+          break;
+        }
+        p = wbsParent(p);
+      }
     }
     return out;
   }, [tasks, groupByWbs]);
@@ -1119,6 +1164,47 @@ function TaskList({
                         <Trash2 className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     ) : null}
+                    {/* ENH-200: agregar tarea relativa a esta fila. */}
+                    {onAddTask ? (
+                      <span className="relative">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAddMenuFor((v) => (v === t.id ? null : t.id))
+                          }
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+                          aria-label={`Agregar tarea relativa a ${t.name}`}
+                          aria-expanded={addMenuFor === t.id}
+                          title="Agregar tarea aquí"
+                        >
+                          <Plus className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                        {addMenuFor === t.id ? (
+                          <span className="absolute right-0 top-8 z-20 w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddMenuFor(null);
+                                onAddTask(t, "child");
+                              }}
+                              className="block w-full px-3 py-2 text-left text-xs text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                            >
+                              ↳ Sub-tarea{t.wbs ? ` de ${t.wbs}` : ""}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddMenuFor(null);
+                                onAddTask(t, "sibling");
+                              }}
+                              className="block w-full border-t border-[var(--border-subtle)] px-3 py-2 text-left text-xs text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                            >
+                              ＋ Al mismo nivel
+                            </button>
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
               ) : null}
@@ -1159,6 +1245,24 @@ function PlanInner() {
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   // US-070: el wizard maneja su propio busy/strategy/mapping.
   const [wizardOpen, setWizardOpen] = useState(false);
+  // US-190: revisión de calidad del plan (linter).
+  const [quality, setQuality] = useState<PlanQualityResult | null>(null);
+  const [qualityOpen, setQualityOpen] = useState(false);
+  const [qualityLoading, setQualityLoading] = useState(false);
+
+  async function runQualityReview() {
+    if (qualityLoading) return;
+    setQualityLoading(true);
+    try {
+      const q = await getPlanQuality(id);
+      setQuality(q);
+      setQualityOpen(true);
+    } catch {
+      alert("No se pudo revisar la calidad del plan");
+    } finally {
+      setQualityLoading(false);
+    }
+  }
 
   // ENH-047 + ENH-180: agrupación jerárquica por WBS. Default ON — es el
   // mecanismo para mostrar/esconder tareas (colapsar/expandir nodos), tras
@@ -1391,6 +1495,32 @@ function PlanInner() {
     assignee_actor_id: "" as string,
   });
   const [creating, setCreating] = useState(false);
+
+  // ENH-200: agregar tarea desde una fila — calcula el siguiente WBS
+  // del nivel elegido (hijo o hermano) y abre el form pre-llenado.
+  function handleAddTaskAt(t: Task, mode: "child" | "sibling") {
+    const wbs =
+      mode === "child"
+        ? nextWbsUnder(t.wbs ?? null, tasks)
+        : nextWbsUnder(wbsParent(t.wbs), tasks);
+    setNewForm({
+      name: "",
+      wbs,
+      start_date: "",
+      end_date: "",
+      duration_days: "",
+      progress: "0",
+      is_milestone: false,
+      status: "not_started" as TaskStatus,
+      criticality: "medium" as TaskCriticality,
+      is_critical: false,
+      related_milestone_id: "",
+      predecessors_csv: "",
+      area_id: t.area_id ?? "",
+      assignee_actor_id: "",
+    });
+    setNewOpen(true);
+  }
 
   // US-095: edición de tarea existente (mismo schema que newForm).
   const [editOpen, setEditOpen] = useState(false);
@@ -1683,119 +1813,66 @@ function PlanInner() {
     }
     setExportingXlsx(true);
     try {
-      const ExcelJS = (await import("exceljs")).default;
-      const wb = new ExcelJS.Workbook();
-      wb.creator = "PMO aaS";
-      wb.created = new Date();
-      const ws = wb.addWorksheet("Plan", {
-        views: [{ state: "frozen", ySplit: 1 }],
-      });
-      // ENH-134: orden de columnas canónico (espeja la plantilla).
+      // US-193: workbook profesional compartido con la plantilla —
+      // encabezado del proyecto + KPIs vivos + tabla + Gantt vivo a la
+      // derecha, todo en Helvetica.
+      const { buildPlanWorkbook, localDateFromIso } = await import(
+        "@/lib/plan-template"
+      );
       const areaName = (aid: string | null) =>
         (aid && areas.find((a) => a.id === aid)?.name) || "";
-      ws.columns = [
-        { header: "WBS", key: "wbs", width: 10 },
-        { header: "Tarea", key: "name", width: 40 },
-        { header: "Outline Level", key: "outline", width: 12 },
-        { header: "Inicio", key: "start", width: 12 },
-        { header: "Fin", key: "end", width: 12 },
-        { header: "Duración (días)", key: "duration", width: 14 },
-        { header: "Avance (%)", key: "progress", width: 12 },
-        { header: "Estado", key: "status", width: 16 },
-        { header: "Área Responsable", key: "area", width: 22 },
-        { header: "Responsable", key: "owner", width: 18 },
-        { header: "Criticidad", key: "criticality", width: 12 },
-        { header: "Es hito", key: "milestone", width: 10 },
-        { header: "Hito Relacionado", key: "related_milestone", width: 18 },
-        { header: "Predecessors", key: "predecessors", width: 16 },
-        { header: "Successors", key: "successors", width: 16 },
-      ];
-      // Header bold + fill gris claro. ENH-134: font negro.
-      const header = ws.getRow(1);
-      header.font = { bold: true, color: { argb: "FF000000" } };
-      header.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFE5E7EB" },
-      };
-      header.alignment = { vertical: "middle", horizontal: "left" };
-      header.height = 20;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayMs = today.getTime();
-
-      // Colores sutiles MPP-like por estado (ARGB hex sin #).
-      const STATUS_FILL: Record<string, string> = {
-        completed: "FFE6F4EA",   // verde pálido
-        in_progress: "FFE3F0FF", // azul pálido
-        on_hold: "FFFFF4E5",     // ámbar pálido
-        not_started: "FFF3F4F6", // gris claro
-      };
-      const LATE_PROGRESS_FILL = "FFFFF8C5"; // amarillo suave
-
-      tasks.forEach((t, i) => {
-        const rowNum = i + 2;
-        const row = ws.addRow({
-          wbs: t.wbs ?? "",
-          name: t.name,
-          outline: t.outline_level ?? "",
-          start: t.start_date ?? "",
-          end: t.end_date ?? "",
-          duration: t.duration_days ?? "",
-          progress: typeof t.progress === "number" ? t.progress / 100 : 0,
-          status:
-            TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
-            t.status,
-          area: areaName(t.area_id),
-          owner: ownerLabel(t.owner),
-          criticality: isTaskCritical(t) ? "Sí" : "No",
-          milestone: t.is_milestone ? "Sí" : "No",
-          related_milestone: t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
-          predecessors: (t.predecessors ?? []).join(", "),
-          successors: (t.successors ?? []).join(", "),
-        });
-        // Avance como porcentaje formateado.
-        row.getCell("progress").numFmt = "0%";
-
-        // Color por estado (todas las filas no-hito).
-        const statusFill = STATUS_FILL[t.status as string];
-        if (statusFill && !t.is_milestone) {
-          row.eachCell({ includeEmpty: true }, (cell) => {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: statusFill },
-            };
-          });
-        }
-        // Hitos: fondo morado pálido + bold para que destaquen.
-        if (t.is_milestone) {
-          row.eachCell({ includeEmpty: true }, (cell) => {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFEDE9FE" },
-            };
-            cell.font = { bold: true, color: { argb: "FF5B21B6" } };
-          });
-        }
-
-        // Highlight retraso ligero: si end_date < hoy y avance < 100%,
-        // pintamos solo la celda de Avance en amarillo (no agresivo).
-        const endStr = t.end_date;
-        if (endStr && (t.progress ?? 0) < 100) {
-          const endMs = new Date(endStr).getTime();
-          if (!Number.isNaN(endMs) && endMs < todayMs) {
-            row.getCell("progress").fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: LATE_PROGRESS_FILL },
-            };
-          }
-        }
-      });
-
+      const rows = tasks.map((t) => ({
+        wbs: t.wbs ?? "",
+        name: t.name,
+        outline:
+          t.outline_level ??
+          (t.wbs ? t.wbs.split(".").filter(Boolean).length : null),
+        start: localDateFromIso(t.start_date),
+        end: localDateFromIso(t.end_date),
+        duration: t.duration_days ?? null,
+        progress: typeof t.progress === "number" ? t.progress / 100 : 0,
+        statusLabel:
+          TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
+          String(t.status),
+        area: areaName(t.area_id),
+        owner: ownerLabel(t.owner),
+        critical: isTaskCritical(t),
+        milestone: t.is_milestone,
+        relatedMilestone:
+          t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
+        predecessors: (t.predecessors ?? []).join(", "),
+        successors: (t.successors ?? []).join(", "),
+      }));
+      // Sponsor desde el charter (best-effort).
+      let sponsor: string | null = null;
+      try {
+        const { getProjectCharter } = await import(
+          "@/lib/api/project-charters"
+        );
+        sponsor = (await getProjectCharter(id)).sponsor;
+      } catch {
+        /* sin charter la cabecera queda con "—" */
+      }
+      const startIso =
+        tasks
+          .map((t) => t.start_date)
+          .filter((v): v is string => !!v)
+          .sort()[0] ?? null;
+      const endIso =
+        tasks
+          .map((t) => t.end_date)
+          .filter((v): v is string => !!v)
+          .sort()
+          .at(-1) ?? null;
+      const wb = await buildPlanWorkbook(
+        {
+          name: projectName || "Proyecto",
+          sponsor,
+          startDate: startIso,
+          endDate: endIso,
+        },
+        rows,
+      );
       const buf = await wb.xlsx.writeBuffer();
       const blob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1837,6 +1914,7 @@ function PlanInner() {
             onEdit={openEditTask}
             colVis={colVis}
             onInlineUpdate={handleInlineUpdate}
+            onAddTask={handleAddTaskAt}
           />
         ) : (
           <TaskList
@@ -1850,6 +1928,7 @@ function PlanInner() {
             colVis={colVis}
             areas={areas}
             onInlineUpdate={handleInlineUpdate}
+            onAddTask={handleAddTaskAt}
           />
         )}
       </section>
@@ -1970,7 +2049,28 @@ function PlanInner() {
                 const { downloadEmptyTemplate } = await import(
                   "@/lib/plan-template"
                 );
-                await downloadEmptyTemplate(projectName || "proyecto");
+                // ENH-194: pre-llenar la plantilla con contexto del
+                // charter (best-effort; sin charter cae al nombre solo).
+                let info: import("@/lib/plan-template").TemplateProjectInfo = {
+                  name: projectName || "proyecto",
+                };
+                try {
+                  const { getProjectCharter } = await import(
+                    "@/lib/api/project-charters"
+                  );
+                  const ch = await getProjectCharter(id);
+                  info = {
+                    name: ch.project_name || projectName || "proyecto",
+                    objective: ch.objective,
+                    scope: ch.scope,
+                    sponsor: ch.sponsor,
+                    startDate: ch.section_4?.start_date,
+                    endDate: ch.section_4?.estimated_end_date,
+                  };
+                } catch {
+                  /* sin charter la plantilla sale genérica */
+                }
+                await downloadEmptyTemplate(info);
               } catch (err) {
                 alert(
                   err instanceof Error
@@ -2007,6 +2107,19 @@ function PlanInner() {
           >
             <Upload className="h-4 w-4" aria-hidden />
             Importar
+          </Button>
+          {/* US-190: linter de calidad del plan. */}
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            loading={qualityLoading}
+            onClick={runQualityReview}
+            aria-label="Revisar calidad del plan"
+            title="Revisa estructura WBS, hitos de cierre, críticas, duraciones y fechas"
+          >
+            <ClipboardCheck className="h-4 w-4" aria-hidden />
+            Revisar calidad
           </Button>
           <Button
             type="button"
@@ -2208,48 +2321,57 @@ function PlanInner() {
               </Banner>
             ) : null;
           })()}
-          {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
-          <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
-            <WbsHierarchyPicker
-              tasks={tasks}
-              onPick={(wbs) => setNewForm({ ...newForm, wbs })}
-            />
-          </FormField>
-          {/* ENH-135: WBS (pequeño) | Nombre */}
-          <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
-            <FormField label="WBS">
+          {/* ENH-201: captura en UNA línea — mismo orden de columnas que
+              la tabla del plan y la plantilla (WBS · Tarea · Área ·
+              Responsable · Inicio · Fin · % · Estado · flags). Lo
+              avanzado vive colapsado en "Más opciones". */}
+          <div className="flex flex-wrap items-end gap-2">
+            <FormField label="WBS" className="w-24">
               <Input
                 value={newForm.wbs}
                 onChange={(e) => setNewForm({ ...newForm, wbs: e.target.value })}
                 placeholder="1.2.3"
               />
             </FormField>
-            <FormField label="Nombre *">
+            <FormField label="Tarea *" className="min-w-[200px] flex-1">
               <Input
                 value={newForm.name}
                 onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
                 required
+                autoFocus
               />
             </FormField>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Inicio">
+            <FormField label="Área" className="w-40">
+              <ProjectAreaPicker
+                projectId={id}
+                value={newForm.area_id || null}
+                onChange={(v) => setNewForm({ ...newForm, area_id: v ?? "" })}
+                placeholder="— Sin área —"
+              />
+            </FormField>
+            <FormField label="Responsable" className="w-44">
+              <PersonPicker
+                projectId={id}
+                value={newForm.assignee_actor_id || null}
+                onChange={(v) => setNewForm({ ...newForm, assignee_actor_id: v ?? "" })}
+                placeholder="— Sin responsable —"
+              />
+            </FormField>
+            <FormField label="Inicio" className="w-36">
               <Input
                 type="date"
                 value={newForm.start_date}
                 onChange={(e) => setNewForm({ ...newForm, start_date: e.target.value })}
               />
             </FormField>
-            <FormField label="Fin">
+            <FormField label="Fin" className="w-36">
               <Input
                 type="date"
                 value={newForm.end_date}
                 onChange={(e) => setNewForm({ ...newForm, end_date: e.target.value })}
               />
             </FormField>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Avance (0-100)">
+            <FormField label="%" className="w-20">
               <Input
                 type="number"
                 min={0}
@@ -2258,7 +2380,7 @@ function PlanInner() {
                 onChange={(e) => setNewForm({ ...newForm, progress: e.target.value })}
               />
             </FormField>
-            <FormField label="Estado">
+            <FormField label="Estado" className="w-36">
               <Select
                 value={newForm.status}
                 onChange={(e) =>
@@ -2273,34 +2395,14 @@ function PlanInner() {
               </Select>
             </FormField>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Área responsable">
-              <ProjectAreaPicker
-                projectId={id}
-                value={newForm.area_id || null}
-                onChange={(v) => setNewForm({ ...newForm, area_id: v ?? "" })}
-                placeholder="— Sin asignar —"
-              />
-            </FormField>
-            <FormField label="Responsable">
-              <PersonPicker
-                projectId={id}
-                value={newForm.assignee_actor_id || null}
-                onChange={(v) => setNewForm({ ...newForm, assignee_actor_id: v ?? "" })}
-                placeholder="— Sin responsable —"
-              />
-            </FormField>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-wrap items-center gap-4">
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={newForm.is_critical}
                 onChange={(e) => setNewForm({ ...newForm, is_critical: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">
-                Marcar como crítica
-              </span>
+              <span className="text-xs text-[var(--color-secondary)]">Crítica</span>
             </label>
             <label className="inline-flex items-center gap-2">
               <input
@@ -2308,41 +2410,52 @@ function PlanInner() {
                 checked={newForm.is_milestone}
                 onChange={(e) => setNewForm({ ...newForm, is_milestone: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">Marcar hito</span>
+              <span className="text-xs text-[var(--color-secondary)]">Hito ◆</span>
             </label>
           </div>
-          <FormField label="Hito relacionado (opcional)">
-            <Select
-              value={newForm.related_milestone_id}
-              onChange={(e) =>
-                setNewForm({ ...newForm, related_milestone_id: e.target.value })
-              }
-            >
-              <option value="">— Sin hito —</option>
-              {tasks
-                .filter((t) => t.is_milestone)
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.wbs ? `${t.wbs} · ` : ""}
-                    {t.name}
-                  </option>
-                ))}
-            </Select>
-          </FormField>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Predecesoras (WBS separadas por coma)">
-              <Input
-                value={newForm.predecessors_csv}
-                onChange={(e) =>
-                  setNewForm({ ...newForm, predecessors_csv: e.target.value })
-                }
-                placeholder="1.1, 1.2"
-              />
-            </FormField>
-            <FormField label="Sucesoras (auto)">
-              <Input value="" disabled placeholder="Se calculan automáticamente" />
-            </FormField>
-          </div>
+          <details>
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              Más opciones (jerarquía · hito relacionado · predecesoras)
+            </summary>
+            <div className="mt-2 space-y-3">
+              {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
+              <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
+                <WbsHierarchyPicker
+                  tasks={tasks}
+                  onPick={(wbs) => setNewForm({ ...newForm, wbs })}
+                />
+              </FormField>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField label="Hito relacionado (opcional)">
+                  <Select
+                    value={newForm.related_milestone_id}
+                    onChange={(e) =>
+                      setNewForm({ ...newForm, related_milestone_id: e.target.value })
+                    }
+                  >
+                    <option value="">— Sin hito —</option>
+                    {tasks
+                      .filter((t) => t.is_milestone)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.wbs ? `${t.wbs} · ` : ""}
+                          {t.name}
+                        </option>
+                      ))}
+                  </Select>
+                </FormField>
+                <FormField label="Predecesoras (WBS separadas por coma)">
+                  <Input
+                    value={newForm.predecessors_csv}
+                    onChange={(e) =>
+                      setNewForm({ ...newForm, predecessors_csv: e.target.value })
+                    }
+                    placeholder="1.1, 1.2"
+                  />
+                </FormField>
+              </div>
+            </div>
+          </details>
         </div>
       </Modal>
 
@@ -2563,6 +2676,79 @@ function PlanInner() {
           await loadTasksAndGantt();
         }}
       />
+      {/* US-190: resultado de la revisión de calidad del plan. */}
+      <Modal
+        open={qualityOpen}
+        onClose={() => setQualityOpen(false)}
+        title="Revisión de calidad del plan"
+        size="lg"
+      >
+        {quality ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  "inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold",
+                  quality.score >= 80
+                    ? "bg-emerald-100 text-emerald-700"
+                    : quality.score >= 50
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-red-100 text-red-700",
+                )}
+              >
+                {quality.score}
+              </span>
+              <div className="text-sm text-[var(--color-secondary)]">
+                <p className="font-medium text-[var(--color-primary)]">
+                  {quality.observations.length === 0
+                    ? "Plan sano — sin observaciones."
+                    : `${quality.observations.length} observación(es) sobre ${quality.task_count} tareas.`}
+                </p>
+                <p className="text-xs">
+                  Checks: estructura WBS · hitos de cierre por sección ·
+                  actividades críticas · duraciones · fechas · responsables.
+                </p>
+              </div>
+            </div>
+            <ul className="space-y-2">
+              {quality.observations.map((o) => (
+                <li
+                  key={o.code}
+                  className="rounded-[var(--radius-md)] border border-[var(--border-default)] p-2.5 text-sm"
+                >
+                  <div className="flex items-start gap-2">
+                    <span
+                      className={cn(
+                        "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                        o.severity === "error"
+                          ? "bg-red-100 text-red-700"
+                          : o.severity === "warning"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-slate-100 text-slate-600",
+                      )}
+                    >
+                      {o.severity === "error"
+                        ? "Error"
+                        : o.severity === "warning"
+                          ? "Aviso"
+                          : "Nota"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[var(--color-primary)]">{o.message}</p>
+                      {o.items.length > 0 ? (
+                        <p className="mt-0.5 truncate text-xs text-[var(--color-tertiary)]" title={o.items.join(", ")}>
+                          {o.items.slice(0, 6).join(" · ")}
+                          {o.count > 6 ? ` · +${o.count - 6} más` : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

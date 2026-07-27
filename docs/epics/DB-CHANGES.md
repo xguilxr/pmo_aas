@@ -566,3 +566,31 @@ acumulativo mantenido por IA al guardar minutas) +
 tenants/projects. Se inyecta como bloque `<CONTEXTO_DEL_PROYECTO>` en
 minutas (worker `_run_minute`) y reportes (`/reports/ai-generate`); el
 resumen lo actualiza la task Celery `ai.update_project_context`.
+
+---
+
+## BUG-091 — Barrido de estados RAID legacy (EP006, 2026-07-18)
+
+### Migración **0095** — data-only, sin cambios de schema
+
+Re-aplica el remap de estados de la 0089 (US-179) de forma idempotente:
+el flujo de minutas IA siguió creando riesgos con `status='identified'`
+después del remap original y esos riesgos quedaban ineditables (422 al
+guardar). El fix de código corrige el origen (`modules.py` crea con
+`open`) + validator Pydantic tolerante a legacy en create/update; esta
+migración limpia las filas ya existentes.
+
+---
+
+## US-191 — Evaluación de salud 5+1 con historial (EP004/EP005, 2026-07-18)
+
+### Migración **0096** — tabla `project_health_evaluations`
+
+Evaluación periódica del PM: 5 dimensiones (schedule/budget/risks/
+decisions/resources, nullable) + `overall` (la "sexta", obligatoria) con
+`evaluated_at` (fecha libre) y `note`. Cada guardado es un registro
+histórico — evolución de la salud en el tiempo. El overall se aplica al
+semáforo del proyecto (`health_status/source/reason`) como declaración
+manual US-180; convive con el motor automático. Índice
+(project_id, evaluated_at). FKs CASCADE a tenants/projects, SET NULL a
+users.

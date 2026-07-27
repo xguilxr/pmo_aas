@@ -9,21 +9,127 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Batch "Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA" (2026-07-08)
-Branch: claude/pmo-portfolio-architecture-6hbuen · PR único para todo el batch
+Sesión 2026-07-18 · Branch: claude/plan-import-wbs-fixes-nwotng
+DOS batches completos en la misma branch (PR único):
 
-COMPLETO 11/11 (2026-07-09), todos status:fix-committed en PR #570.
-Diseño en docs/epics/drafts/portfolio-recursos-capacidad.md (f3fb83c).
-Migraciones nuevas: 0091 (salud unificada), 0092 (actors pool), 0093
-(participations FTE%), 0094 (project_ai_contexts) — correr `alembic
-upgrade head` en Railway tras el merge.
-Pendiente: verificación del owner + merge del PR #570.
-Próximo libre: US-186, BUG-088, ENH-190.
+1. "Plan Import Revamp" 9/9 — WBS fiel, estado/% importables, wizard
+   completo + IA 3 niveles, plantilla con Gantt, UX no-PM. Sin
+   migraciones. Diseño: drafts/plan-import-revamp.md (585e80e).
+2. "Feedback 16-jul" 8/8 — RAID fixes, jerarquía WBS, linter de plan,
+   salud 5+1 con historial, portafolio, recursos. Migraciones
+   0095-0096. Triage: drafts/feedback-16jul-mejoras.md.
+
+Ejecución directa por chat (0.1 solucionar>documentar).
+Pendiente: verificación owner + PR + alembic upgrade head (0095-0096).
+Próximo libre: US-193, BUG-092, ENH-199.
 ```
 
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Batch Feedback 16-jul (2026-07-18) — COMPLETO 8/8
+
+Triage: `docs/epics/drafts/feedback-16jul-mejoras.md`. OK del owner por
+chat (decisiones C/D delegadas: salud manual CONVIVE con motor auto,
+fecha libre por evaluación, edición desde heatmap Y lista). Items 1-2
+del PDF ya resueltos por el batch Plan Import Revamp.
+
+- [x] **BUG-091** — RAID: riesgo con status legacy (minutas IA creaban
+  'identified') ineditable → fix origen + update tolerante + mig 0095
+  (data-only) + normalización FE. `status:fix-committed`
+  (`2859365`+`c662542`)
+- [x] **ENH-195** — RAID: campo Responsable en alta (pool completo) →
+  vista resumen fiel. `status:fix-committed` (`ce2cc28`)
+- [x] **ENH-196** — RAID: lista en 2 líneas por fila, 5 columnas
+  combinadas, sin scroll horizontal. `status:fix-committed` (`2f60c91`)
+- [x] **ENH-197** — Plan: jerarquía WBS por ancestro existente más
+  cercano (rollup + chevron). `status:fix-committed` (`80b9308`)
+- [x] **US-190** — Revisión de calidad del plan: 10 checks + score +
+  GET /plan/quality + botón/modal. `status:fix-committed` (`24e314c`)
+- [x] **US-191** — Salud 5+1 con historial: mig 0096
+  `project_health_evaluations` + POST/GET + modal con evolución.
+  `status:fix-committed` (`66971ba`)
+- [x] **US-192** — Portafolio: Evaluar por fila en heatmap + dot
+  clickeable en /pmo/projects + Reporte de salud XLSX +
+  GET /dashboard/health-evaluations. `status:fix-committed` (`e135a2b`)
+- [x] **ENH-198** — Recursos: % Uso (teórica vs FTE) + filtro
+  área/sub-área en Personas. `status:fix-committed` (`828774f`)
+
+Migraciones nuevas: **0095** (data-only RAID legacy), **0096**
+(health evaluations) — correr `alembic upgrade head` en Railway.
+
+### Mini-batch Plan UX (2026-07-18, owner por chat)
+
+- [x] **ENH-199** — Preview de import: 30 filas con scroll, jerarquía
+  indentada, chips de estado, hitos ◆ — "como se ve en sistema".
+  `status:fix-committed` (`05496f3`)
+- [x] **ENH-200** — Botón '+' por fila del plan con menú Sub-tarea /
+  Al mismo nivel; calcula el siguiente WBS y abre el form pre-llenado.
+  `status:fix-committed` (`34d4947`)
+- [x] **ENH-201** — Form de Nueva tarea en UNA línea (orden de columnas
+  del plan/plantilla; avanzado colapsado). `status:fix-committed`
+  (`44b8f08`)
+- [x] **US-193** — Plantilla/export del plan profesional (aprobada
+  sobre XLSX de muestra + ajuste Helvetica): una hoja estilo MS
+  Project — encabezado, KPIs vivos, actividades, Gantt vivo por
+  formato condicional; parser detecta la fila de headers
+  automáticamente. `status:fix-committed` (`5f683a4`)
+- [ ] **ENH-202** — Helvetica en TODOS los exports/reportes (cambio
+  masivo de fuente; el plan ya la usa vía US-193). Plan:
+  1. Backend XLSX (openpyxl): helper `export_fonts.py` con
+     FONT="Helvetica" aplicado en `raid_export.py`, `change_export.py`
+     (y export de Lecciones), `organigrama_export.py` (+ utilización
+     US-186) y `plan_regenerator.py`.
+  2. PDFs (WeasyPrint): `font-family: Helvetica, Arial, sans-serif`
+     en el CSS base de `templates/pdf/**` (reportes, minutas,
+     look-ahead, status PMO) y el renderer HTML inline.
+  3. DOCX charter (`charter_generator.py`): estilo Normal → Helvetica.
+  4. FE ExcelJS: reusar `XLSX_FONT` de plan-template en el reporte de
+     salud del portafolio (US-192) y cualquier export client-side.
+  Pendiente de arrancar (siguiente batch).
+
+Próximo libre: US-194, BUG-092, ENH-203.
+
+### Batch Plan Import Revamp (2026-07-18, branch: claude/plan-import-wbs-fixes-nwotng)
+
+Epic: EP009. Diseño: `docs/epics/drafts/plan-import-revamp.md`.
+
+**Bloque A — fidelidad de datos:**
+- [x] **BUG-088** — WBS fiel al archivo: parser respeta `number_format`
+  (1.30 ≠ 1.3), plantilla/export fuerzan texto en WBS, warnings de
+  celdas irrecuperables + huérfanos en preview, fix `compareWbs` FE.
+  `status:fix-committed` (`37c66ae`)
+- [x] **BUG-089** — % avance robusto: detección de formato % por celda
+  (no por columna), sanity check anti-4500%, warnings por fila.
+  `status:fix-committed` (`48b33c3`)
+- [x] **BUG-090** — Confirm aplica lo que la plantilla promete:
+  Responsable (fuzzy vs actors), Hito Relacionado (por WBS),
+  Predecessors (JSON + TaskDependency + successors), Fin desde
+  duración. `status:fix-committed` (`b11c932`)
+
+**Bloque B — contrato único + wizard:**
+- [x] **ENH-191** — Estado importable end-to-end (alias + normalización
+  ES/EN + confirm aplica status). `status:fix-committed` (`a39b3dc`)
+- [x] **ENH-192** — Wizard re-mapea TODOS los campos + preview
+  interpretado en vivo (parsed_preview + POST /repreview).
+  `status:fix-committed` (`d86dbed`)
+- [x] **ENH-193** — Export/download backend = 15 columnas de la
+  plantilla V1 + orden real del plan (no outline-first).
+  `status:fix-committed` (`63b34c2`)
+
+**Bloque C — plantilla inteligente + IA + UX:**
+- [x] **ENH-194** — Plantilla con hoja Proyecto (charter) + hoja Gantt
+  en Excel (mini MS Project); export con Gantt de datos reales.
+  `status:fix-committed` (`d2e4624`)
+- [x] **US-188** — Import inteligente IA 3 niveles: mapeo por
+  contenido, normalización de valores en confirm, /ai-structure +
+  use_ai_structure. `status:fix-committed` (`eaaabce`)
+- [x] **US-189** — UX de import para no-PMs: drag & drop, resumen
+  llano, mapeo colapsado, estrategias en llano.
+  `status:fix-committed` (`7acfaab`)
+
+**BATCH COMPLETO 9/9** (2026-07-18) — pendiente verificación owner + PR.
 
 ### Batch Revamp 1.0 — Portafolio/Salud/Recursos/Tablas/IA (2026-07-08, branch: claude/pmo-portfolio-architecture-6hbuen)
 

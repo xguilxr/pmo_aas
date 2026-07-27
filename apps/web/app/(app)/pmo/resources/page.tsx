@@ -5,13 +5,14 @@
 // conflictos de sobreasignación con recomendación de gobernanza.
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Gauge, KeyRound, Users } from "lucide-react";
 
 import { healthTone } from "@/components/health-panel";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
@@ -254,9 +255,80 @@ export default function ResourcesPage() {
 }
 
 function PeopleTable({ resources }: { resources: CapacityResource[] }) {
-  const { sortedRows, ctrl } = useSortableRows<CapacityResource>(resources);
+  // ENH-198: filtro por área y sub-área (equipo) sobre la lista de
+  // personas — "ver por área (ej. IT, o sub-área IT Arquitectura)".
+  const [areaFilter, setAreaFilter] = useState("");
+  const [teamFilter, setTeamFilter] = useState("");
+  const areas = useMemo(
+    () =>
+      Array.from(
+        new Set(resources.map((r) => r.area_name).filter(Boolean) as string[]),
+      ).sort(),
+    [resources],
+  );
+  const teams = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          resources
+            .filter((r) => !areaFilter || r.area_name === areaFilter)
+            .map((r) => r.team_name)
+            .filter(Boolean) as string[],
+        ),
+      ).sort(),
+    [resources, areaFilter],
+  );
+  const filtered = useMemo(
+    () =>
+      resources.filter(
+        (r) =>
+          (!areaFilter || r.area_name === areaFilter) &&
+          (!teamFilter || r.team_name === teamFilter),
+      ),
+    [resources, areaFilter, teamFilter],
+  );
+  const { sortedRows, ctrl } = useSortableRows<CapacityResource>(filtered);
   return (
     <div className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 text-xs">
+        <span className="font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+          Filtrar
+        </span>
+        <Select
+          value={areaFilter}
+          onChange={(e) => {
+            setAreaFilter(e.target.value);
+            setTeamFilter("");
+          }}
+          aria-label="Filtrar por área"
+          className="h-7 w-auto text-xs"
+        >
+          <option value="">Todas las áreas</option>
+          {areas.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={teamFilter}
+          onChange={(e) => setTeamFilter(e.target.value)}
+          aria-label="Filtrar por sub-área (equipo)"
+          className="h-7 w-auto text-xs"
+        >
+          <option value="">Todas las sub-áreas</option>
+          {teams.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </Select>
+        {areaFilter || teamFilter ? (
+          <span className="text-[var(--color-tertiary)]">
+            {filtered.length} de {resources.length} recursos
+          </span>
+        ) : null}
+      </div>
       <table className="w-full text-sm">
         <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
           <tr>
@@ -292,6 +364,15 @@ function PeopleTable({ resources }: { resources: CapacityResource[] }) {
               align="right"
             >
               Demanda %
+            </SortableTh>
+            {/* ENH-198: uso = FTE asignado / capacidad teórica. */}
+            <SortableTh<CapacityResource>
+              sortKey="usage"
+              getter={(r) => r.usage_pct ?? -1}
+              ctrl={ctrl}
+              align="right"
+            >
+              % Uso
             </SortableTh>
             <SortableTh<CapacityResource>
               sortKey="tentative"
@@ -357,6 +438,24 @@ function PeopleTable({ resources }: { resources: CapacityResource[] }) {
               </td>
               <td className="px-3 py-2 text-right text-[var(--color-secondary)]">
                 {fmtPct(r.demand_pct)}
+              </td>
+              <td className="px-3 py-2 text-right">
+                {r.usage_pct != null ? (
+                  <span
+                    className={cn(
+                      "font-medium tabular-nums",
+                      r.usage_pct > 100
+                        ? "text-[var(--color-danger-fg)]"
+                        : r.usage_pct >= 80
+                          ? "text-[var(--color-warning-fg)]"
+                          : "text-[var(--color-secondary)]",
+                    )}
+                  >
+                    {r.usage_pct}%
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-tertiary)]">—</span>
+                )}
               </td>
               <td className="px-3 py-2 text-right text-[var(--color-secondary)]">
                 {fmtPct(r.tentative_pct)}

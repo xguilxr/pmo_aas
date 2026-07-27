@@ -23,6 +23,7 @@ import {
   HealthStatusCard,
   HealthWhyPanel,
 } from "@/components/health-panel";
+import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
 import {
   HEALTH_LABEL,
   PHASE_LABEL,
@@ -135,6 +136,8 @@ export default function ProjectDetailPage() {
   // US-181: salud única — detalle por dimensiones + modal de declaración.
   const [healthPending, setHealthPending] = useState(false);
   const [healthModal, setHealthModal] = useState(false);
+  // US-191: modal de evaluación 5+1 con historial.
+  const [evalModal, setEvalModal] = useState(false);
   const [healthDetail, setHealthDetail] = useState<HealthDetail | null>(null);
 
   async function reload() {
@@ -364,6 +367,7 @@ export default function ProjectDetailPage() {
           reason={project.health_reason}
           detail={healthDetail}
           onDeclare={() => setHealthModal(true)}
+          onEvaluate={() => setEvalModal(true)}
         />
         <MetricCard label="Fase" value={PHASE_LABEL[project.phase]} />
         <MetricCard
@@ -374,6 +378,15 @@ export default function ProjectDetailPage() {
 
       {/* US-181: drill-down "por qué" + foco PM. */}
       {healthDetail ? <HealthWhyPanel detail={healthDetail} /> : null}
+
+      {/* US-191: evaluación 5+1 del período con historial. */}
+      <HealthEvaluationModal
+        projectId={project.id}
+        projectName={project.name}
+        open={evalModal}
+        onClose={() => setEvalModal(false)}
+        onSaved={() => void reload()}
+      />
 
       {healthModal && project ? (
         <HealthDeclareModal

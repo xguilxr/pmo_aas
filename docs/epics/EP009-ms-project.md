@@ -92,6 +92,18 @@ follow-up → promovido a **US-069** (#122) en Sprint 5.
 
 Ver `apps/api/app/services/xlsx_task_parser.py`.
 
+**Mejoras (2026-07-18):**
+- **BUG-088** (`37c66ae`, fix-committed) — WBS fiel al importar: el parser XLSX
+  respeta el `number_format` de celdas numéricas (`'0.00'` + `1.3` → `"1.30"`),
+  ya no colapsa `1.30→1.3`. Ahora también emite warnings en preview/confirm:
+  `WBS_NUMERIC_GENERAL` (celda sin formato específico) y `WBS_ORPHANS` (padre WBS
+  ausente). La plantilla y exports fuerzan formato texto (`@`) en la columna WBS
+  para evitar pérdida de dígitos.
+- **BUG-089** (`48b33c3`, fix-committed) — % de avance: detección de formato `%`
+  **POR CELDA** (no por columna entera). Enteros tipeados en celdas %-formateadas
+  se leen como `0-100` literal (ej. `100` en celda % = 100%, no 1%). Emite warning
+  `PROGRESS_PCT_AS_INTEGER` cuando hay duda.
+
 ---
 
 ## US-069 — Import MPP nativo vía MPXJ (Sprint 5)
@@ -194,6 +206,49 @@ implementó.
   con color (gris `not_started` / azul `in_progress` / verde `completed`)
   clickeable, que abre un `<select>` nativo para editar inline (mismo
   patrón `StatusInlineCell` que ya usan las listas RAID).
+
+**Batch "Plan Import Revamp" (2026-07-18):**
+- **ENH-197** (`80b9308`, fix-committed) — **Jerarquía WBS por ancestro más cercano:** nueva función `nearest_ancestor_wbs()` en `plan_metadata.py` resuelve el padre de una tarea buscando el ancestro existente más próximo. Rollup de avance % y chevron del agrupado cuelgan la tarea en la posición jerárquica correcta aunque falten filas intermedias (ej., tarea `1.30.1` cuelga de `1` si `1.30` no existe).
+- **US-190** (`24e314c`, fix-committed) — **Revisión de calidad del plan:** servicio nuevo `services/plan_quality.py` con 10 checks automáticos: WBS sin código/duplicado/huérfano/huecos en numeración; plan sin hitos; secciones sin hito de cierre; sin tareas críticas; duraciones >21 días en hojas; sin fechas; sin responsable; tareas vencidas sin avance. Motor genera score 0-100. Endpoint `GET /projects/{id}/plan/quality` + botón "Revisar calidad" en `/plan` abre modal de observaciones con recomendaciones por check.
+- **BUG-090** (`b11c932`, fix-committed) — el `confirm` del wizard ahora aplica
+  coerción inteligente de campos: (1) **Responsable** — fuzzy match ≥0.85 contra
+  actors del tenant → `assignee_actor_id`; (2) **Hito Relacionado** — resolución
+  por WBS; (3) **Predecessors** — mapeo a `Task.predecessors` JSON + creación de
+  `TaskDependency` FS; ciclos omitidos best-effort y successors recomputados;
+  (4) **Fin calculado** — cuando viene vacío pero hay Inicio + Duración.
+- **ENH-191** (`a39b3dc`, fix-committed) — **Estado importable end-to-end**: alias
+  `estado`/`status` (ES/EN), normalización de enum crudo + labels en ES con
+  sinónimos EN (`en_synonyms`). Default `not_started` si no se detecta; warning
+  `STATUS_UNRECOGNIZED` en preview cuando hay valor desconocido. Campo mapeable
+  en el wizard (select `→ Estado`).
+- **ENH-192** (`d86dbed`, fix-committed) — **Wizard re-mapea 14 campos**: una sola
+  lista `SYSTEM_FIELDS` compartida con el suggester (antes había hardcoding en
+  varias partes). **Preview interpretado**: nuevo campo `parsed_preview` con
+  primeras 10 tareas ya coercionadas al tipo target (no solo valores crudos).
+  Endpoint nuevo: `POST /projects/{id}/tasks/import/{job_id}/repreview` — re-interpreta
+  con mapping manual SIN persistir, para preview live mientras se ajusta.
+- **ENH-193** (`63b34c2`, fix-committed) — **GET `/plan/download`**: exporta todas
+  las tareas del plan en **15 columnas idénticas a la plantilla V1** (WBS, Tarea,
+  Outline Level, Inicio, Fin, Duración (días), Avance (%), Estado, Área Responsable,
+  Responsable, Criticidad, Es hito, Hito Relacionado, Predecessors, Successors).
+  Orden real del plan (según `position` → WBS natural). FKs resueltos a texto
+  legible (actor names, estado label, etc.).
+- **ENH-194** (`d2e4624`, fix-committed) — **Plantilla descargable extendida**:
+  nueva hoja "Proyecto" (contexto del charter: objetivo, alcance, sponsor, fechas
+  planeadas). Nueva hoja "Gantt" (timeline semanal con barras por conditional
+  formatting; hitos en morado). El export "Descargar" (`GET /plan/download`) también
+  genera la hoja Gantt con datos reales en la línea de tiempo.
+- **US-188** (`eaaabce`, fix-committed) — **Import inteligente IA** (3 niveles,
+  gateado por `tenant.ai_mode`, fallback heurístico): (1) `suggest-mapping` ahora
+  acepta `sample_rows` para mapear por contenido; (2) normalización IA en confirm
+  (estados no reconocidos + responsables sin match fuzzy → respuesta `ai_normalized`);
+  (3) `POST /import/{job_id}/ai-structure` — la IA propone el plan completo desde
+  un archivo sucio, el usuario lo revisa en preview, el confirm lo persiste con
+  `use_ai_structure=true`. Nuevo servicio: `apps/api/app/services/import_ai.py`.
+- **US-189** (`7acfaab`, fix-committed) — **Wizard UX para no-PMs**: drag & drop
+  nativo en upload step; resumen llano ("Se importarán N tareas · M avisos");
+  mapeo colapsado como avanzado (requiere expandir); estrategias en lenguaje plain
+  ("Agregar y actualizar" / "Reemplazar todo el plan" en lugar de merge/replace).
 
 ---
 
@@ -324,7 +379,10 @@ implementó.
 ### Endpoints
 ```
 POST   /api/v1/projects/{id}/tasks/import
+POST   /api/v1/projects/{id}/tasks/import/preview        (anterior endpoint, parte de US-070 wizard)
 POST   /api/v1/projects/{id}/tasks/import/{job_id}/confirm
+POST   /api/v1/projects/{id}/tasks/import/{job_id}/repreview    (ENH-192, 2026-07-18)
+POST   /api/v1/projects/{id}/tasks/import/{job_id}/ai-structure (US-188, 2026-07-18)
 GET    /api/v1/projects/{id}/tasks
 POST   /api/v1/projects/{id}/tasks
 GET    /api/v1/tasks/{id}
@@ -334,6 +392,7 @@ POST   /api/v1/tasks/{id}/dependencies
 DELETE /api/v1/task-dependencies/{id}
 POST   /api/v1/projects/{id}/tasks/recalculate
 GET    /api/v1/projects/{id}/tasks/export
+GET    /api/v1/projects/{id}/plan/download              (ENH-193, 2026-07-18)
 POST   /api/v1/projects/{id}/tasks/renumber-wbs          (no se usa en UI; ENH-180, 2026-06-29)
 POST   /api/v1/tasks/{id}/move                           (no se usa en UI; ENH-180, 2026-06-29)
 ```

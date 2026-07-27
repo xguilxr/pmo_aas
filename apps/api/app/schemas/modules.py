@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, BeforeValidator, Field, StringConstraints
 
 # BUG-048: strip + min_length para evitar títulos whitespace-only.
 TitleStr = Annotated[
@@ -17,6 +17,30 @@ OptionalTitleStr = Annotated[
 # US-179: estados RAID unificados a 4 (riesgos + incidencias). On-hold
 # captura razón + dependencia (área/responsable) + desde cuándo (servidor).
 RaidStatus = Literal["open", "in_progress", "on_hold", "resolved"]
+
+# BUG-091: valores legacy pre-US-179 → canónico. Riesgos creados desde
+# minutas IA (o data previa al remap 0089) quedaban ineditables: el form
+# re-enviaba el status legacy y el Literal lo rechazaba con 422. El
+# validator los acepta y normaliza en la frontera.
+_LEGACY_RAID_STATUS = {
+    "identified": "open",
+    "analyzing": "in_progress",
+    "mitigating": "in_progress",
+    "materialized": "resolved",
+    "closed": "resolved",
+}
+
+
+def _coerce_raid_status(v: object) -> object:
+    if isinstance(v, str):
+        return _LEGACY_RAID_STATUS.get(v.strip().lower(), v)
+    return v
+
+
+# Solo en los UPDATE de riesgos/incidencias: editar data legacy no debe
+# brickearse. Los CREATE quedan estrictos (contrato US-179 TC-179.4 —
+# una integración que siga mandando legacy debe fallar visible).
+CoercedRaidStatus = Annotated[RaidStatus, BeforeValidator(_coerce_raid_status)]
 
 
 # ---------- Area embed (US-064) ----------
@@ -81,7 +105,7 @@ class RiskUpdate(OnHoldFields):
     # ENH-054: identified_at editable post-creación.
     identified_at: date | None = None
     due_date: date | None = None
-    status: RaidStatus | None = None
+    status: CoercedRaidStatus | None = None
     closure_note: str | None = None
 
 
@@ -153,7 +177,7 @@ class IssueUpdate(OnHoldFields):
     owner_id: UUID | None = None
     owner_actor_id: UUID | None = None
     area_id: UUID | None = None  # US-064: permite asignar a legacy.
-    status: RaidStatus | None = None
+    status: CoercedRaidStatus | None = None
     resolution: str | None = None
 
 

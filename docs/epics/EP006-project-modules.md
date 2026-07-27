@@ -58,6 +58,11 @@ Los 6 módulos transversales son el **corazón operativo** del proyecto. Cada un
 - **US-178:** Edición inline de P, I (severity recomputada), estado, prioridad, etc. en la lista.
 - **BUG-086:** Responsables asignables detectados via `eligible-actors` (área_id visible).
 
+**Batch feedback 16-jul (2026-07-18):**
+- **BUG-091** (`2859365`) — Editar riesgo con status legacy (pre-US-179: `identified`, `analyzing`, `mitigating`, `materialized`, `closed`, creados por flujo de minutas IA) ya no falla con 422. Backend normaliza legacy→canónico en update (CoercedRaidStatus); create sigue estricto. Migración 0095 (data-only) re-aplica remap de 0089; form FE normaliza al inicializar.
+- **ENH-195** (`ce2cc28`) — Modal de alta de items RAID (riesgos + incidencias) ganó campo Responsable con PersonPicker (pool completo vía `eligible-actors` + inline-create). Vista resumen refleja área + responsable desde el alta.
+- **ENH-196** (`2f60c91`) — Lista consolidada RAID (riesgos e issues combinados) pasó de 9 columnas a layout compacto de 2 líneas por fila en 5 columnas: (línea 1) Folio+Título / (línea 2) Área+Responsable / Severidad|Prioridad+Estado / Fechas / Acciones. Sin scroll horizontal; sort por chip (SortChip); edición inline intacta.
+
 ---
 
 ## US-032 — Módulo de Incidencias (AID)

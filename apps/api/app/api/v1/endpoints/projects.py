@@ -18,6 +18,8 @@ from app.models.user import User
 from app.schemas.project import (
     ActivityItem,
     HealthDeclare,
+    HealthEvaluationCreate,
+    HealthEvaluationRead,
     MemberCreate,
     PhaseChange,
     ProjectCreate,
@@ -532,6 +534,105 @@ async def declare_health(
     )
     await db.commit()
     return ProjectRead.model_validate(p)
+
+
+@router.post(
+    "/{project_id}/health-evaluations",
+    response_model=HealthEvaluationRead,
+    status_code=201,
+)
+async def create_health_evaluation(
+    project_id: UUID,
+    body: HealthEvaluationCreate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-191 — evaluación de salud del período: 5 dimensiones + overall
+    (la "sexta") con fecha. Cada guardado es un registro histórico; el
+    overall se aplica al semáforo del proyecto como declaración manual
+    (nota obligatoria en amarillo/rojo, regla US-180)."""
+    from datetime import date as _date
+
+    from app.models.project import ProjectHealthEvaluation
+
+    tenant_id = _tenant(cu)
+    p = await _get_project(db, project_id, tenant_id)
+    if p.phase == "closed":
+        raise business_rule("Proyecto cerrado, no editable")
+
+    note = (body.note or "").strip()
+    if body.overall in ("yellow", "red") and len(note) < 5:
+        raise validation_error(
+            "Evaluar la salud global en amarillo o rojo requiere una nota "
+            "(mínimo 5 caracteres)"
+        )
+
+    ev = ProjectHealthEvaluation(
+        tenant_id=str(tenant_id),
+        project_id=str(project_id),
+        evaluated_at=body.evaluated_at or _date.today(),
+        schedule=body.schedule,
+        budget=body.budget,
+        risks=body.risks,
+        decisions=body.decisions,
+        resources=body.resources,
+        overall=body.overall,
+        note=note or None,
+        created_by=str(cu.id),
+    )
+    db.add(ev)
+
+    # La sexta evaluación ES el semáforo del proyecto (cuadro grande).
+    p.health_status = body.overall
+    p.health_source = "manual"
+    p.health_reason = note or f"Evaluación PM {ev.evaluated_at.isoformat()}"
+
+    await write_audit(
+        db, action="project.health.evaluated", module="projects",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="project",
+        entity_id=str(p.id),
+        details={
+            "evaluated_at": ev.evaluated_at.isoformat(),
+            "overall": body.overall,
+            "dimensions": {
+                k: getattr(body, k)
+                for k in ("schedule", "budget", "risks", "decisions", "resources")
+                if getattr(body, k)
+            },
+        },
+    )
+    await db.commit()
+    await db.refresh(ev)
+    return HealthEvaluationRead.model_validate(ev)
+
+
+@router.get(
+    "/{project_id}/health-evaluations",
+    response_model=list[HealthEvaluationRead],
+)
+async def list_health_evaluations(
+    project_id: UUID,
+    limit: int = Query(default=12, ge=1, le=100),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    """US-191 — historial de evaluaciones (más reciente primero)."""
+    from app.models.project import ProjectHealthEvaluation
+
+    tenant_id = _tenant(cu)
+    await _get_project(db, project_id, tenant_id)
+    rows = (
+        await db.execute(
+            select(ProjectHealthEvaluation)
+            .where(ProjectHealthEvaluation.project_id == str(project_id))
+            .order_by(
+                ProjectHealthEvaluation.evaluated_at.desc(),
+                ProjectHealthEvaluation.created_at.desc(),
+            )
+            .limit(limit)
+        )
+    ).scalars().all()
+    return [HealthEvaluationRead.model_validate(r) for r in rows]
 
 
 @router.post("/{project_id}/plan-aggregates/reset", response_model=ProjectRead)

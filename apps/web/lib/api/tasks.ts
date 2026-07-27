@@ -206,6 +206,10 @@ function safeParse(text: string): unknown {
 
 // US-070 — Wizard de mapeo de columnas (preview + confirm).
 
+// ENH-192: lista COMPLETA de campos mapeables — espeja
+// `import_mapping_suggest.SYSTEM_FIELDS` del backend (antes el wizard
+// solo ofrecía 9 y área/criticidad/hito relacionado no se podían
+// re-mapear a mano).
 export const SYSTEM_FIELDS = [
   "name",
   "wbs",
@@ -214,13 +218,27 @@ export const SYSTEM_FIELDS = [
   "duration_days",
   "progress",
   "is_milestone",
+  // ENH-191: estado importable.
+  "status",
+  "criticality",
+  "is_critical",
+  "related_milestone",
   "predecessors",
+  "area",
   "resources",
 ] as const;
 
 export type SystemField = (typeof SYSTEM_FIELDS)[number];
 
 export type ImportSource = "xlsx" | "csv" | "mpp" | "xml";
+
+// BUG-088: aviso no bloqueante del parser (WBS numérico, huérfanos, …).
+export type ImportWarning = {
+  code: string;
+  message: string;
+  count?: number;
+  rows?: (number | string)[];
+};
 
 export type ImportPreviewResult = {
   job_id: string;
@@ -231,6 +249,9 @@ export type ImportPreviewResult = {
   sample_rows: (string | null)[][]; // header + hasta 10 data rows
   task_count: number;
   errors: { row?: number; error?: string }[];
+  warnings?: ImportWarning[];
+  // ENH-192: tareas interpretadas (primeras 10) para la vista previa.
+  parsed_preview?: ParsedPreviewTask[];
   ttl_seconds: number;
   system_fields: SystemField[];
 };
@@ -239,8 +260,38 @@ export type ImportConfirmResult = {
   imported: number;
   dependencies_created: number;
   errors: unknown[];
+  warnings?: ImportWarning[];
+  // US-188 nivel 2: valores normalizados por IA en el confirm.
+  ai_normalized?: { statuses: number; resources: number };
   strategy: string;
   source: string;
+};
+
+// ENH-192: tarea YA interpretada por el parser (WBS fiel, % escalado,
+// estado normalizado) — la vista previa "como quedará el plan".
+export type ParsedPreviewTask = {
+  row_number: number;
+  wbs: string | null;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  duration_days: number | null;
+  progress: number;
+  status: string | null;
+  is_milestone: boolean;
+  is_critical: boolean | null;
+  area: string | null;
+  resources: string | null;
+  related_milestone: string | null;
+  predecessors: string | null;
+};
+
+export type ImportRepreviewResult = {
+  task_count: number;
+  columns_detected: Partial<Record<SystemField, number>>;
+  errors: { row?: number; error?: string }[];
+  warnings: ImportWarning[];
+  parsed_preview: ParsedPreviewTask[];
 };
 
 async function rawFetch(
@@ -300,10 +351,15 @@ export type SuggestMappingResponse = {
 export function suggestImportMapping(
   projectId: string,
   headers: string[],
+  sampleRows?: (string | null)[][],
 ): Promise<SuggestMappingResponse> {
   return apiFetch<SuggestMappingResponse>(
     `/api/v1/projects/${projectId}/tasks/import/suggest-mapping`,
-    { method: "POST", body: { headers } },
+    {
+      method: "POST",
+      // US-188 nivel 1: filas de muestra → la IA mapea por contenido.
+      body: { headers, sample_rows: sampleRows?.slice(0, 5) ?? null },
+    },
   );
 }
 
@@ -313,11 +369,64 @@ export async function importConfirm(
   body: {
     mapping?: Partial<Record<SystemField, number>> | null;
     strategy: "merge" | "replace";
+    // US-188 nivel 3: persistir la propuesta IA revisada en el preview.
+    use_ai_structure?: boolean;
   },
 ): Promise<ImportConfirmResult> {
   return apiFetch<ImportConfirmResult>(
     `/api/v1/projects/${projectId}/tasks/import/${jobId}/confirm`,
     { method: "POST", body },
+  );
+}
+
+// ENH-192: re-interpreta el archivo con un mapping manual sin persistir
+// — refresca la vista interpretada + warnings al re-mapear columnas.
+export function importRepreview(
+  projectId: string,
+  jobId: string,
+  mapping: Partial<Record<SystemField, number>> | null,
+): Promise<ImportRepreviewResult> {
+  return apiFetch<ImportRepreviewResult>(
+    `/api/v1/projects/${projectId}/tasks/import/${jobId}/repreview`,
+    { method: "POST", body: { mapping } },
+  );
+}
+
+// US-190 — revisión de calidad del plan (linter).
+export type PlanQualityObservation = {
+  code: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  items: string[];
+  count: number;
+};
+
+export type PlanQualityResult = {
+  observations: PlanQualityObservation[];
+  score: number;
+  task_count: number;
+};
+
+export function getPlanQuality(projectId: string): Promise<PlanQualityResult> {
+  return apiFetch<PlanQualityResult>(
+    `/api/v1/projects/${projectId}/plan/quality`,
+  );
+}
+
+// US-188 nivel 3: la IA propone el plan completo desde el archivo crudo.
+export type ImportAiStructureResult = {
+  task_count: number;
+  warnings: ImportWarning[];
+  parsed_preview: ParsedPreviewTask[];
+};
+
+export function importAiStructure(
+  projectId: string,
+  jobId: string,
+): Promise<ImportAiStructureResult> {
+  return apiFetch<ImportAiStructureResult>(
+    `/api/v1/projects/${projectId}/tasks/import/${jobId}/ai-structure`,
+    { method: "POST", body: {} },
   );
 }
 
@@ -329,8 +438,13 @@ export const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
   duration_days: "Duración (días)",
   progress: "% Avance",
   is_milestone: "Es hito",
+  status: "Estado",
+  criticality: "Criticidad (baja/media/alta)",
+  is_critical: "Criticidad (Sí/No)",
+  related_milestone: "Hito relacionado (WBS)",
   predecessors: "Predecesoras",
-  resources: "Recursos",
+  area: "Área responsable",
+  resources: "Responsable / Recursos",
 };
 
 export const TASK_STATUS_LABEL: Record<string, string> = {

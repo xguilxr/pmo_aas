@@ -405,6 +405,17 @@ async def resource_capacity_summary(
         b["name"] = area_names.get(b["area_id"], "—")
     for b in by_team:
         b["name"] = team_names.get(b["team_id"], "—")
+    # ENH-198: nombres de área/equipo también POR PERSONA — habilita el
+    # filtro por área/sub-área en la lista de personas y el % de uso
+    # (asignación teórica vs FTE) sin lookups extra en el cliente.
+    for r in resources:
+        r["area_name"] = area_names.get(r["area_id"] or "", None)
+        r["team_name"] = team_names.get(r["team_id"] or "", None)
+        r["usage_pct"] = (
+            round(r["demand_pct"] / r["capacity_pct"] * 100, 1)
+            if r["capacity_pct"] > 0
+            else None
+        )
 
     return {
         "window": window,

@@ -147,6 +147,52 @@ export function declareHealth(
   });
 }
 
+// US-191 — evaluación periódica de salud (5 dimensiones + overall).
+export type HealthEvaluation = {
+  id: string;
+  project_id: string;
+  evaluated_at: string;
+  schedule: ProjectHealth | null;
+  budget: ProjectHealth | null;
+  risks: ProjectHealth | null;
+  decisions: ProjectHealth | null;
+  resources: ProjectHealth | null;
+  overall: ProjectHealth;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type HealthEvaluationBody = {
+  evaluated_at?: string | null;
+  schedule?: ProjectHealth | null;
+  budget?: ProjectHealth | null;
+  risks?: ProjectHealth | null;
+  decisions?: ProjectHealth | null;
+  resources?: ProjectHealth | null;
+  overall: ProjectHealth;
+  note?: string | null;
+};
+
+export function createHealthEvaluation(
+  projectId: string,
+  body: HealthEvaluationBody,
+): Promise<HealthEvaluation> {
+  return apiFetch<HealthEvaluation>(
+    `/api/v1/projects/${projectId}/health-evaluations`,
+    { method: "POST", body },
+  );
+}
+
+export function listHealthEvaluations(
+  projectId: string,
+  limit = 12,
+): Promise<HealthEvaluation[]> {
+  return apiFetch<HealthEvaluation[]>(
+    `/api/v1/projects/${projectId}/health-evaluations?limit=${limit}`,
+  );
+}
+
 export type ListProjectsParams = {
   phase?: ProjectPhase[] | ProjectPhase;
   organization_id?: string;

@@ -34,6 +34,10 @@ export type CapacityResource = {
   projects_count: number;
   unquantified_count: number;
   color: CapacityColor;
+  // ENH-198: filtro por área/sub-área + % de uso (teórica vs FTE).
+  area_name?: string | null;
+  team_name?: string | null;
+  usage_pct?: number | null;
 };
 
 export type CapacityFunctionAgg = {

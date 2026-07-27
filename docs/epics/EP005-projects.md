@@ -187,6 +187,11 @@ declarable manualmente con razón
 
 **Estado de integración:** DONE (US-180/US-181).
 
+**Batch feedback 16-jul (2026-07-18):**
+Evaluaciones de salud manual con historial (US-191/US-192, ver también EP004):
+- Tabla `project_health_evaluations` (migración 0096) registra evaluaciones 5+1 (5 dimensiones + overall). Nota obligatoria en amarillo/rojo. Convive con motor automático sin reemplazarlo.
+- Modal `HealthEvaluationModal` en `/pmo/projects/[id]` detail + botón de evaluación masiva en heatmap del portafolio.
+
 ---
 
 ### US-028 — Cambiar fase del proyecto
