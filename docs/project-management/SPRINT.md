@@ -58,7 +58,24 @@ del PDF ya resueltos por el batch Plan Import Revamp.
 
 Migraciones nuevas: **0095** (data-only RAID legacy), **0096**
 (health evaluations) — correr `alembic upgrade head` en Railway.
-Próximo libre: US-193, BUG-092, ENH-199.
+
+### Mini-batch Plan UX (2026-07-18, owner por chat)
+
+- [x] **ENH-199** — Preview de import: 30 filas con scroll, jerarquía
+  indentada, chips de estado, hitos ◆ — "como se ve en sistema".
+  `status:fix-committed` (`05496f3`)
+- [x] **ENH-200** — Botón '+' por fila del plan con menú Sub-tarea /
+  Al mismo nivel; calcula el siguiente WBS y abre el form pre-llenado.
+  `status:fix-committed` (`34d4947`)
+- [x] **ENH-201** — Form de Nueva tarea en UNA línea (orden de columnas
+  del plan/plantilla; avanzado colapsado). `status:fix-committed`
+  (`44b8f08`)
+- [ ] **US-193** — Plantilla/export del plan "superprofesional":
+  encabezado con info del proyecto, KPIs vivos, actividades + Gantt
+  vivo a la derecha (una sola hoja estilo MS Project). **Propuesta
+  enviada al owner (XLSX de muestra) — espera aprobación.** EP009.
+
+Próximo libre: US-194, BUG-092, ENH-202.
 
 ### Batch Plan Import Revamp (2026-07-18, branch: claude/plan-import-wbs-fixes-nwotng)
 
