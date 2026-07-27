@@ -298,12 +298,15 @@ function OwnerCell({ owner }: { owner: Task["owner"] }) {
 function FormField({
   label,
   children,
+  className,
 }: {
   label: string;
   children: React.ReactNode;
+  // ENH-201: ancho controlable para el layout de una línea.
+  className?: string;
 }) {
   return (
-    <label className="block">
+    <label className={cn("block", className)}>
       <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
         {label}
       </span>
@@ -2410,48 +2413,57 @@ function PlanInner() {
               </Banner>
             ) : null;
           })()}
-          {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
-          <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
-            <WbsHierarchyPicker
-              tasks={tasks}
-              onPick={(wbs) => setNewForm({ ...newForm, wbs })}
-            />
-          </FormField>
-          {/* ENH-135: WBS (pequeño) | Nombre */}
-          <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
-            <FormField label="WBS">
+          {/* ENH-201: captura en UNA línea — mismo orden de columnas que
+              la tabla del plan y la plantilla (WBS · Tarea · Área ·
+              Responsable · Inicio · Fin · % · Estado · flags). Lo
+              avanzado vive colapsado en "Más opciones". */}
+          <div className="flex flex-wrap items-end gap-2">
+            <FormField label="WBS" className="w-24">
               <Input
                 value={newForm.wbs}
                 onChange={(e) => setNewForm({ ...newForm, wbs: e.target.value })}
                 placeholder="1.2.3"
               />
             </FormField>
-            <FormField label="Nombre *">
+            <FormField label="Tarea *" className="min-w-[200px] flex-1">
               <Input
                 value={newForm.name}
                 onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
                 required
+                autoFocus
               />
             </FormField>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Inicio">
+            <FormField label="Área" className="w-40">
+              <ProjectAreaPicker
+                projectId={id}
+                value={newForm.area_id || null}
+                onChange={(v) => setNewForm({ ...newForm, area_id: v ?? "" })}
+                placeholder="— Sin área —"
+              />
+            </FormField>
+            <FormField label="Responsable" className="w-44">
+              <PersonPicker
+                projectId={id}
+                value={newForm.assignee_actor_id || null}
+                onChange={(v) => setNewForm({ ...newForm, assignee_actor_id: v ?? "" })}
+                placeholder="— Sin responsable —"
+              />
+            </FormField>
+            <FormField label="Inicio" className="w-36">
               <Input
                 type="date"
                 value={newForm.start_date}
                 onChange={(e) => setNewForm({ ...newForm, start_date: e.target.value })}
               />
             </FormField>
-            <FormField label="Fin">
+            <FormField label="Fin" className="w-36">
               <Input
                 type="date"
                 value={newForm.end_date}
                 onChange={(e) => setNewForm({ ...newForm, end_date: e.target.value })}
               />
             </FormField>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Avance (0-100)">
+            <FormField label="%" className="w-20">
               <Input
                 type="number"
                 min={0}
@@ -2460,7 +2472,7 @@ function PlanInner() {
                 onChange={(e) => setNewForm({ ...newForm, progress: e.target.value })}
               />
             </FormField>
-            <FormField label="Estado">
+            <FormField label="Estado" className="w-36">
               <Select
                 value={newForm.status}
                 onChange={(e) =>
@@ -2475,34 +2487,14 @@ function PlanInner() {
               </Select>
             </FormField>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Área responsable">
-              <ProjectAreaPicker
-                projectId={id}
-                value={newForm.area_id || null}
-                onChange={(v) => setNewForm({ ...newForm, area_id: v ?? "" })}
-                placeholder="— Sin asignar —"
-              />
-            </FormField>
-            <FormField label="Responsable">
-              <PersonPicker
-                projectId={id}
-                value={newForm.assignee_actor_id || null}
-                onChange={(v) => setNewForm({ ...newForm, assignee_actor_id: v ?? "" })}
-                placeholder="— Sin responsable —"
-              />
-            </FormField>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-wrap items-center gap-4">
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={newForm.is_critical}
                 onChange={(e) => setNewForm({ ...newForm, is_critical: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">
-                Marcar como crítica
-              </span>
+              <span className="text-xs text-[var(--color-secondary)]">Crítica</span>
             </label>
             <label className="inline-flex items-center gap-2">
               <input
@@ -2510,41 +2502,52 @@ function PlanInner() {
                 checked={newForm.is_milestone}
                 onChange={(e) => setNewForm({ ...newForm, is_milestone: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">Marcar hito</span>
+              <span className="text-xs text-[var(--color-secondary)]">Hito ◆</span>
             </label>
           </div>
-          <FormField label="Hito relacionado (opcional)">
-            <Select
-              value={newForm.related_milestone_id}
-              onChange={(e) =>
-                setNewForm({ ...newForm, related_milestone_id: e.target.value })
-              }
-            >
-              <option value="">— Sin hito —</option>
-              {tasks
-                .filter((t) => t.is_milestone)
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.wbs ? `${t.wbs} · ` : ""}
-                    {t.name}
-                  </option>
-                ))}
-            </Select>
-          </FormField>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Predecesoras (WBS separadas por coma)">
-              <Input
-                value={newForm.predecessors_csv}
-                onChange={(e) =>
-                  setNewForm({ ...newForm, predecessors_csv: e.target.value })
-                }
-                placeholder="1.1, 1.2"
-              />
-            </FormField>
-            <FormField label="Sucesoras (auto)">
-              <Input value="" disabled placeholder="Se calculan automáticamente" />
-            </FormField>
-          </div>
+          <details>
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              Más opciones (jerarquía · hito relacionado · predecesoras)
+            </summary>
+            <div className="mt-2 space-y-3">
+              {/* ENH-181: jerarquía WBS automatizable (padre + bajar nivel). */}
+              <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
+                <WbsHierarchyPicker
+                  tasks={tasks}
+                  onPick={(wbs) => setNewForm({ ...newForm, wbs })}
+                />
+              </FormField>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField label="Hito relacionado (opcional)">
+                  <Select
+                    value={newForm.related_milestone_id}
+                    onChange={(e) =>
+                      setNewForm({ ...newForm, related_milestone_id: e.target.value })
+                    }
+                  >
+                    <option value="">— Sin hito —</option>
+                    {tasks
+                      .filter((t) => t.is_milestone)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.wbs ? `${t.wbs} · ` : ""}
+                          {t.name}
+                        </option>
+                      ))}
+                  </Select>
+                </FormField>
+                <FormField label="Predecesoras (WBS separadas por coma)">
+                  <Input
+                    value={newForm.predecessors_csv}
+                    onChange={(e) =>
+                      setNewForm({ ...newForm, predecessors_csv: e.target.value })
+                    }
+                    placeholder="1.1, 1.2"
+                  />
+                </FormField>
+              </div>
+            </div>
+          </details>
         </div>
       </Modal>
 
