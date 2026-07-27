@@ -840,17 +840,20 @@ function PreviewStep({
         </details>
       ) : null}
 
-      {/* ENH-192: vista previa INTERPRETADA — muestra cómo quedará el
-          plan (WBS fiel, % escalado, estado normalizado), no las celdas
-          crudas. Se refresca en vivo al re-mapear columnas. */}
+      {/* ENH-192 + ENH-199: vista previa INTERPRETADA con el look de la
+          tabla del plan — jerarquía indentada por WBS, chips de estado
+          con color, hitos ◆ — y scroll para ver varias líneas. */}
       {parsedPreview.length > 0 ? (
         <div>
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-            Así se importará (primeras {parsedPreview.length})
+            Así se verá en el sistema
+            {taskCount > parsedPreview.length
+              ? ` (primeras ${parsedPreview.length} de ${taskCount})`
+              : ` (${parsedPreview.length} tareas)`}
           </div>
-          <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
+          <div className="max-h-[340px] overflow-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
             <table className="min-w-full text-xs">
-              <thead className="bg-[var(--color-subtle)]">
+              <thead className="sticky top-0 z-10 bg-[var(--color-subtle)]">
                 <tr>
                   {[
                     "WBS",
@@ -859,10 +862,9 @@ function PreviewStep({
                     "Fin",
                     "%",
                     "Estado",
-                    "Hito",
                     "Área",
                     "Responsable",
-                    "Predecesoras",
+                    "Pred.",
                   ].map((h) => (
                     <th
                       key={h}
@@ -874,45 +876,68 @@ function PreviewStep({
                 </tr>
               </thead>
               <tbody>
-                {parsedPreview.map((t) => (
-                  <tr
-                    key={t.row_number}
-                    className="border-t border-[var(--border-subtle)]"
-                  >
-                    <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
-                      {t.wbs ?? "—"}
-                    </td>
-                    <td className="max-w-[220px] truncate px-2 py-1.5 text-[var(--color-primary)]" title={t.name}>
-                      {t.name}
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
-                      {t.start_date ?? "—"}
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
-                      {t.end_date ?? "—"}
-                    </td>
-                    <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
-                      {t.progress}%
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
-                      {t.status
-                        ? (TASK_STATUS_LABEL[t.status] ?? t.status)
-                        : "No iniciada"}
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
-                      {t.is_milestone ? "◆" : ""}
-                    </td>
-                    <td className="px-2 py-1.5 text-[var(--color-secondary)]">
-                      {t.area ?? "—"}
-                    </td>
-                    <td className="max-w-[140px] truncate px-2 py-1.5 text-[var(--color-secondary)]" title={t.resources ?? ""}>
-                      {t.resources ?? "—"}
-                    </td>
-                    <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
-                      {t.predecessors ?? "—"}
-                    </td>
-                  </tr>
-                ))}
+                {parsedPreview.map((t) => {
+                  const depth = t.wbs
+                    ? Math.max(0, t.wbs.split(".").filter(Boolean).length - 1)
+                    : 0;
+                  return (
+                    <tr
+                      key={t.row_number}
+                      className="border-t border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+                    >
+                      <td className="px-2 py-1.5 tabular-nums text-[var(--color-tertiary)]">
+                        {t.wbs ?? "—"}
+                      </td>
+                      <td
+                        className="max-w-[260px] truncate px-2 py-1.5 text-[var(--color-primary)]"
+                        style={{ paddingLeft: `${8 + depth * 16}px` }}
+                        title={t.name}
+                      >
+                        {t.is_milestone ? (
+                          <span className="mr-1 text-purple-600">◆</span>
+                        ) : null}
+                        {t.name}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-[var(--color-secondary)]">
+                        {t.start_date ?? "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-[var(--color-secondary)]">
+                        {t.end_date ?? "—"}
+                      </td>
+                      <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
+                        {t.progress}%
+                      </td>
+                      <td className="px-2 py-1.5">
+                        {/* ENH-199: chip de color como en el plan (ENH-188). */}
+                        <span
+                          className={
+                            "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                            (t.status === "completed"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : t.status === "in_progress"
+                                ? "bg-blue-100 text-blue-700"
+                                : t.status === "on_hold"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-slate-100 text-slate-600")
+                          }
+                        >
+                          {t.status
+                            ? (TASK_STATUS_LABEL[t.status] ?? t.status)
+                            : "No iniciada"}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-[var(--color-secondary)]">
+                        {t.area ?? "—"}
+                      </td>
+                      <td className="max-w-[140px] truncate px-2 py-1.5 text-[var(--color-secondary)]" title={t.resources ?? ""}>
+                        {t.resources ?? "—"}
+                      </td>
+                      <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
+                        {t.predecessors ?? "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

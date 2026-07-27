@@ -871,7 +871,9 @@ MAX_WIZARD_FILE_MB = 10
 SYSTEM_FIELDS: list[str] = list(MAPPING_SYSTEM_FIELDS)
 
 # ENH-192: cuántas tareas interpretadas devuelve el preview del wizard.
-PARSED_PREVIEW_LIMIT = 10
+# ENH-199: 30 filas — suficiente para validar un plan real con scroll
+# en el modal sin inflar el payload del preview.
+PARSED_PREVIEW_LIMIT = 30
 
 
 def _serialize_parsed_tasks(tasks: list[ParsedTask]) -> list[dict]:
