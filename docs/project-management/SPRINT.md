@@ -70,12 +70,26 @@ Migraciones nuevas: **0095** (data-only RAID legacy), **0096**
 - [x] **ENH-201** — Form de Nueva tarea en UNA línea (orden de columnas
   del plan/plantilla; avanzado colapsado). `status:fix-committed`
   (`44b8f08`)
-- [ ] **US-193** — Plantilla/export del plan "superprofesional":
-  encabezado con info del proyecto, KPIs vivos, actividades + Gantt
-  vivo a la derecha (una sola hoja estilo MS Project). **Propuesta
-  enviada al owner (XLSX de muestra) — espera aprobación.** EP009.
+- [x] **US-193** — Plantilla/export del plan profesional (aprobada
+  sobre XLSX de muestra + ajuste Helvetica): una hoja estilo MS
+  Project — encabezado, KPIs vivos, actividades, Gantt vivo por
+  formato condicional; parser detecta la fila de headers
+  automáticamente. `status:fix-committed` (`5f683a4`)
+- [ ] **ENH-202** — Helvetica en TODOS los exports/reportes (cambio
+  masivo de fuente; el plan ya la usa vía US-193). Plan:
+  1. Backend XLSX (openpyxl): helper `export_fonts.py` con
+     FONT="Helvetica" aplicado en `raid_export.py`, `change_export.py`
+     (y export de Lecciones), `organigrama_export.py` (+ utilización
+     US-186) y `plan_regenerator.py`.
+  2. PDFs (WeasyPrint): `font-family: Helvetica, Arial, sans-serif`
+     en el CSS base de `templates/pdf/**` (reportes, minutas,
+     look-ahead, status PMO) y el renderer HTML inline.
+  3. DOCX charter (`charter_generator.py`): estilo Normal → Helvetica.
+  4. FE ExcelJS: reusar `XLSX_FONT` de plan-template en el reporte de
+     salud del portafolio (US-192) y cualquier export client-side.
+  Pendiente de arrancar (siguiente batch).
 
-Próximo libre: US-194, BUG-092, ENH-202.
+Próximo libre: US-194, BUG-092, ENH-203.
 
 ### Batch Plan Import Revamp (2026-07-18, branch: claude/plan-import-wbs-fixes-nwotng)
 
