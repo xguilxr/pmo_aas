@@ -1813,158 +1813,66 @@ function PlanInner() {
     }
     setExportingXlsx(true);
     try {
-      const ExcelJS = (await import("exceljs")).default;
-      const wb = new ExcelJS.Workbook();
-      wb.creator = "PMO aaS";
-      wb.created = new Date();
-      const ws = wb.addWorksheet("Plan", {
-        views: [{ state: "frozen", ySplit: 1 }],
-      });
-      // ENH-134: orden de columnas canónico (espeja la plantilla).
+      // US-193: workbook profesional compartido con la plantilla —
+      // encabezado del proyecto + KPIs vivos + tabla + Gantt vivo a la
+      // derecha, todo en Helvetica.
+      const { buildPlanWorkbook, localDateFromIso } = await import(
+        "@/lib/plan-template"
+      );
       const areaName = (aid: string | null) =>
         (aid && areas.find((a) => a.id === aid)?.name) || "";
-      ws.columns = [
-        { header: "WBS", key: "wbs", width: 10 },
-        { header: "Tarea", key: "name", width: 40 },
-        { header: "Outline Level", key: "outline", width: 12 },
-        { header: "Inicio", key: "start", width: 12 },
-        { header: "Fin", key: "end", width: 12 },
-        { header: "Duración (días)", key: "duration", width: 14 },
-        { header: "Avance (%)", key: "progress", width: 12 },
-        { header: "Estado", key: "status", width: 16 },
-        { header: "Área Responsable", key: "area", width: 22 },
-        { header: "Responsable", key: "owner", width: 18 },
-        { header: "Criticidad", key: "criticality", width: 12 },
-        { header: "Es hito", key: "milestone", width: 10 },
-        { header: "Hito Relacionado", key: "related_milestone", width: 18 },
-        { header: "Predecessors", key: "predecessors", width: 16 },
-        { header: "Successors", key: "successors", width: 16 },
-      ];
-      // Header bold + fill gris claro. ENH-134: font negro.
-      const header = ws.getRow(1);
-      header.font = { bold: true, color: { argb: "FF000000" } };
-      header.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFE5E7EB" },
-      };
-      header.alignment = { vertical: "middle", horizontal: "left" };
-      header.height = 20;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayMs = today.getTime();
-
-      // Colores sutiles MPP-like por estado (ARGB hex sin #).
-      const STATUS_FILL: Record<string, string> = {
-        completed: "FFE6F4EA",   // verde pálido
-        in_progress: "FFE3F0FF", // azul pálido
-        on_hold: "FFFFF4E5",     // ámbar pálido
-        not_started: "FFF3F4F6", // gris claro
-      };
-      const LATE_PROGRESS_FILL = "FFFFF8C5"; // amarillo suave
-
-      // ENH-194: fechas como Date reales (no string ISO) para que las
-      // barras del Gantt (conditional formatting) puedan compararlas.
-      const localDate = (iso: string | null | undefined): Date | "" => {
-        if (!iso) return "";
-        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-        if (!m) return "";
-        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-      };
-      tasks.forEach((t, i) => {
-        const rowNum = i + 2;
-        const row = ws.addRow({
-          wbs: t.wbs ?? "",
-          name: t.name,
-          outline: t.outline_level ?? "",
-          start: localDate(t.start_date),
-          end: localDate(t.end_date),
-          duration: t.duration_days ?? "",
-          progress: typeof t.progress === "number" ? t.progress / 100 : 0,
-          status:
-            TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
-            t.status,
-          area: areaName(t.area_id),
-          owner: ownerLabel(t.owner),
-          criticality: isTaskCritical(t) ? "Sí" : "No",
-          milestone: t.is_milestone ? "Sí" : "No",
-          related_milestone: t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
-          predecessors: (t.predecessors ?? []).join(", "),
-          successors: (t.successors ?? []).join(", "),
-        });
-        // Avance como porcentaje formateado.
-        row.getCell("progress").numFmt = "0%";
-        // BUG-088: WBS como texto — si el usuario edita la celda en
-        // Excel, no se convierte a número (1.30 → 1.3).
-        row.getCell("wbs").numFmt = "@";
-        // ENH-194: fechas legibles y comparables por el Gantt.
-        row.getCell("start").numFmt = "yyyy-mm-dd";
-        row.getCell("end").numFmt = "yyyy-mm-dd";
-
-        // Color por estado (todas las filas no-hito).
-        const statusFill = STATUS_FILL[t.status as string];
-        if (statusFill && !t.is_milestone) {
-          row.eachCell({ includeEmpty: true }, (cell) => {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: statusFill },
-            };
-          });
-        }
-        // Hitos: fondo morado pálido + bold para que destaquen.
-        if (t.is_milestone) {
-          row.eachCell({ includeEmpty: true }, (cell) => {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFEDE9FE" },
-            };
-            cell.font = { bold: true, color: { argb: "FF5B21B6" } };
-          });
-        }
-
-        // Highlight retraso ligero: si end_date < hoy y avance < 100%,
-        // pintamos solo la celda de Avance en amarillo (no agresivo).
-        const endStr = t.end_date;
-        if (endStr && (t.progress ?? 0) < 100) {
-          const endMs = new Date(endStr).getTime();
-          if (!Number.isNaN(endMs) && endMs < todayMs) {
-            row.getCell("progress").fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: LATE_PROGRESS_FILL },
-            };
-          }
-        }
-      });
-
-      // ENH-194: hoja Gantt auto sobre los datos reales del plan —
-      // el "mini MS Project" descargable.
-      const starts = tasks
-        .map((t) => localDate(t.start_date))
-        .filter((d): d is Date => d instanceof Date);
-      const ends = tasks
-        .map((t) => localDate(t.end_date))
-        .filter((d): d is Date => d instanceof Date);
-      if (starts.length > 0) {
-        const anchor = new Date(Math.min(...starts.map((d) => d.getTime())));
-        const maxEnd =
-          ends.length > 0
-            ? new Date(Math.max(...ends.map((d) => d.getTime())))
-            : anchor;
-        const spanWeeks = Math.ceil(
-          (maxEnd.getTime() - anchor.getTime()) / (7 * 24 * 60 * 60 * 1000),
+      const rows = tasks.map((t) => ({
+        wbs: t.wbs ?? "",
+        name: t.name,
+        outline:
+          t.outline_level ??
+          (t.wbs ? t.wbs.split(".").filter(Boolean).length : null),
+        start: localDateFromIso(t.start_date),
+        end: localDateFromIso(t.end_date),
+        duration: t.duration_days ?? null,
+        progress: typeof t.progress === "number" ? t.progress / 100 : 0,
+        statusLabel:
+          TASK_STATUS_LABEL[t.status as keyof typeof TASK_STATUS_LABEL] ??
+          String(t.status),
+        area: areaName(t.area_id),
+        owner: ownerLabel(t.owner),
+        critical: isTaskCritical(t),
+        milestone: t.is_milestone,
+        relatedMilestone:
+          t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
+        predecessors: (t.predecessors ?? []).join(", "),
+        successors: (t.successors ?? []).join(", "),
+      }));
+      // Sponsor desde el charter (best-effort).
+      let sponsor: string | null = null;
+      try {
+        const { getProjectCharter } = await import(
+          "@/lib/api/project-charters"
         );
-        const { addGanttSheet } = await import("@/lib/plan-template");
-        addGanttSheet(wb, {
-          rows: tasks.length,
-          anchor,
-          weeks: Math.max(12, spanWeeks + 4),
-        });
+        sponsor = (await getProjectCharter(id)).sponsor;
+      } catch {
+        /* sin charter la cabecera queda con "—" */
       }
-
+      const startIso =
+        tasks
+          .map((t) => t.start_date)
+          .filter((v): v is string => !!v)
+          .sort()[0] ?? null;
+      const endIso =
+        tasks
+          .map((t) => t.end_date)
+          .filter((v): v is string => !!v)
+          .sort()
+          .at(-1) ?? null;
+      const wb = await buildPlanWorkbook(
+        {
+          name: projectName || "Proyecto",
+          sponsor,
+          startDate: startIso,
+          endDate: endIso,
+        },
+        rows,
+      );
       const buf = await wb.xlsx.writeBuffer();
       const blob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

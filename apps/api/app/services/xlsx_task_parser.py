@@ -134,6 +134,9 @@ class XlsxParseResult:
     # US-070: nombre de la hoja efectivamente parseada. En Excel con
     # varias hojas el caller puede elegir; en CSV/MPP queda None.
     sheet_used: str | None = None
+    # US-193: fila (1-based) donde se encontraron los headers — la
+    # plantilla profesional los trae debajo del encabezado del proyecto.
+    header_row: int = 1
 
 
 def _norm(s: object) -> str:
@@ -272,7 +275,9 @@ def _coerce_progress(v: object, *, is_percent_format: bool = False) -> int:
     return max(0, min(100, round(n)))
 
 
-def _scan_column_formats(data: bytes, sheet_used: str, col_idx: int) -> dict[int, str]:
+def _scan_column_formats(
+    data: bytes, sheet_used: str, col_idx: int, min_row: int = 2
+) -> dict[int, str]:
     """BUG-088: `{row_number: number_format}` de la columna `col_idx`
     (0-based). El workbook principal se abre con `values_only`, que no
     expone formatos; este segundo pase read-only los recupera (mismo
@@ -289,7 +294,9 @@ def _scan_column_formats(data: bytes, sheet_used: str, col_idx: int) -> dict[int
         ws = wb[sheet_used] if sheet_used in wb.sheetnames else wb.active
         if ws is None:
             return out
-        for row in ws.iter_rows(min_row=2, min_col=col_idx + 1, max_col=col_idx + 1):
+        for row in ws.iter_rows(
+            min_row=min_row, min_col=col_idx + 1, max_col=col_idx + 1
+        ):
             if row and row[0].number_format:
                 out[row[0].row] = row[0].number_format
         return out
@@ -369,6 +376,12 @@ def _coerce_status(v: object) -> str | None:
 
 SAMPLE_ROW_LIMIT = 10
 
+# US-193: la plantilla profesional trae un encabezado de proyecto + KPIs
+# arriba de la tabla — la fila de headers se busca en las primeras N
+# filas (la primera que contenga un alias de 'name') en vez de asumirse
+# la fila 1. Archivos planos siguen funcionando igual (header en fila 1).
+HEADER_SCAN_ROWS = 15
+
 
 def parse_xlsx(
     data: bytes,
@@ -412,10 +425,34 @@ def parse_xlsx(
     result.sheet_used = ws.title
 
     rows_iter = ws.iter_rows(values_only=True)
-    try:
-        header_row = list(next(rows_iter))
-    except StopIteration:
+
+    # US-193: localizar la fila de headers (primera con alias de 'name')
+    # dentro de las primeras HEADER_SCAN_ROWS filas. Lo que esté arriba
+    # (encabezado del proyecto, KPIs) se ignora. Fallback: fila 1.
+    from itertools import chain
+
+    head_buffer: list[tuple] = []
+    header_row_idx: int | None = None
+    for i, raw in enumerate(rows_iter, start=1):
+        head_buffer.append(raw)
+        if raw is not None and "name" in _detect_headers(list(raw)):
+            header_row_idx = i
+            break
+        if i >= HEADER_SCAN_ROWS:
+            break
+    if not head_buffer:
         return result
+    if header_row_idx is None:
+        # Sin headers reconocibles: comportamiento previo (fila 1 =
+        # header candidato; el wizard permite mapear a mano). Las filas
+        # ya consumidas vuelven al stream como data.
+        header_row_idx = 1
+        header_row = list(head_buffer[0] or [])
+        rows_iter = chain(iter(head_buffer[1:]), rows_iter)
+    else:
+        header_row = list(head_buffer[-1] or [])
+
+    result.header_row = header_row_idx
 
     # Sample para el wizard: header + hasta N data rows. Se guarda
     # antes de iterar el resto para no consumir el iterator.
@@ -451,7 +488,10 @@ def parse_xlsx(
     # detección por columna escalaba también celdas planas de columnas
     # con formatos mixtos → todo terminaba en 100%.
     progress_formats: dict[int, str] = (
-        _scan_column_formats(data, result.sheet_used, columns["progress"])
+        _scan_column_formats(
+            data, result.sheet_used, columns["progress"],
+            min_row=header_row_idx + 1,
+        )
         if "progress" in columns
         else {}
     )
@@ -460,14 +500,17 @@ def parse_xlsx(
     # BUG-088: formatos de la columna WBS para reconstruir el texto fiel
     # de celdas numéricas (1.30 con formato '0.00' ≠ float 1.3).
     wbs_formats: dict[int, str] = (
-        _scan_column_formats(data, result.sheet_used, columns["wbs"])
+        _scan_column_formats(
+            data, result.sheet_used, columns["wbs"],
+            min_row=header_row_idx + 1,
+        )
         if "wbs" in columns
         else {}
     )
     wbs_general_rows: list[int] = []
     status_unknown: list[str] = []
 
-    for offset, row in enumerate(rows_iter, start=2):
+    for offset, row in enumerate(rows_iter, start=header_row_idx + 1):
         if row is None:
             continue
         # US-070: acumulá sample rows hasta el límite — antes del
