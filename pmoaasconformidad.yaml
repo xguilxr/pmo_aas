@@ -1,0 +1,71 @@
+# conformidad.yaml — va en la RAÍZ de xguilxr/pmo-aas
+
+proyecto: pmo-aas
+responsable: propietario
+evaluado: null                    # sin auditar todavía
+
+marcos:
+  MCA: { objetivo: N2, alcanzado: null }
+  MCC: { objetivo: no_aplica, alcanzado: no_aplica }
+  MCS: { objetivo: N2, alcanzado: null }
+
+proxima_evaluacion: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POR QUÉ MCC NO APLICA
+#
+# AUDITORIA.md §1.3: sin encargo, MCC no aplica y se declara. Declararlo es el
+# requisito; saltarlo en silencio no lo es.
+# ─────────────────────────────────────────────────────────────────────────────
+
+mcc_no_aplica:
+  razon: producto propio, sin encargo de cliente ni contraparte contratante
+  revisar_si: aparece un cliente que financie o condicione el desarrollo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JUSTIFICACIÓN DEL NIVEL  (MCS-CORE §4.3)
+#
+# El propietario pidió «nivel alto». De acuerdo — al lanzar, no hoy.
+# ─────────────────────────────────────────────────────────────────────────────
+
+justificacion:
+
+  consecuencia_del_fallo: |
+    Hoy: producto propio sin usuarios externos. Un fallo cuesta tiempo del propietario.
+    Al lanzar: cambia por completo. De ahí la puerta, no un objetivo alto prematuro.
+
+  sensibilidad_de_los_datos: |
+    Hoy ninguna de terceros. Al lanzar, datos de proyecto de cada usuario.
+
+  por_que_N2_hoy_y_no_N3: |
+    AUDITORIA.md §2: el nivel se elige por consecuencia del fallo, NUNCA por aspiración.
+    Auditar hoy contra N3 un producto sin usuarios devuelve decenas de no conformidades
+    reales e irrelevantes, y consume la capacidad que hace falta para llegar a publicarlo.
+
+    N2 tampoco es N1: la intención de publicar ya está condicionando el diseño de
+    autenticación, aislamiento entre usuarios y manejo de datos. Retroajustar eso
+    después del lanzamiento cuesta mucho más que hacerlo bien ahora.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PUERTA DE LANZAMIENTO
+#
+# Aquí vive el «nivel alto». Es condición de publicar, no de trabajar.
+# ─────────────────────────────────────────────────────────────────────────────
+
+puertas:
+  - nombre: publicación al mundo con usuarios externos
+    exige:
+      MCA: N2
+      MCS: N3
+    y_ademas:
+      - Aislamiento entre usuarios con prueba automatizada que falla si desaparece
+      - Modelado de amenazas hecho, no pendiente
+      - Plan de respuesta ante incidente escrito y con responsable
+      - Restauración desde copia probada de verdad, no documentada
+    cuando_se_evalua: antes de abrir el registro público, no después
+    estado: NO EVALUADA
+
+  - nombre: revisión de objetivo
+    disparador: primer usuario externo, aunque sea uno solo en pruebas
+    accion: recalcular el objetivo MCS. Un usuario externo ya no es producto propio
+    estado: NO ALCANZADA
