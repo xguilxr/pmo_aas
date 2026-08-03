@@ -21,6 +21,7 @@ from decimal import Decimal
 
 from sqlalchemy import desc, select
 
+from app.core.config import settings
 from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
@@ -159,7 +160,26 @@ async def _call_ai_for_tenant(
 ) -> AIResult:
     """US-057: llama al provider del tenant con 3 reintentos. Sin
     fallback entre modos (disabled → caller debió chequear antes;
-    platform falla → alerta superadmin + error; byo falla → error)."""
+    platform falla → alerta superadmin + error; byo falla → error).
+
+    Auditoría MCS 2026-08-03 (IA-03): el límite de ITERACIONES ya existía
+    (`_AI_CALL_MAX_RETRIES`). Lo que faltaba era el límite de COSTE por
+    ejecución. Un proyecto con cientos de minutas produce un contexto que
+    crece sin techo, y con reintentos se multiplica por tres.
+
+    El tope se aplica ANTES de llamar, porque después el gasto ya ocurrió.
+    """
+    presupuesto = settings.AI_MAX_PROMPT_CHARS
+    if presupuesto and len(prompt) > presupuesto:
+        logger.error(
+            "ai_call_rechazada_por_coste tenant=%s job=%s chars=%d limite=%d",
+            tenant_id, job_id, len(prompt), presupuesto,
+        )
+        raise RuntimeError(
+            f"ai_prompt_demasiado_grande: {len(prompt)} caracteres supera el "
+            f"límite de {presupuesto} por ejecución (AI_MAX_PROMPT_CHARS)"
+        )
+
     last_err: Exception | None = None
     for attempt in range(_AI_CALL_MAX_RETRIES):
         try:
