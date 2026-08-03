@@ -7,21 +7,27 @@ sqlalchemy==2.0.35
 alembic==1.13.3
 asyncpg==0.29.0
 psycopg[binary]==3.2.3
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
-python-multipart==0.0.12
+python-multipart==0.0.31
+# Auditoría MCS 2026-08-03 (B314): el XML de MS Project lo sube el usuario.
+# xml.etree no resiste bombas de entidades; defusedxml sí, con la misma API.
+defusedxml==0.7.1
 httpx==0.27.2
 slowapi==0.1.9
 redis==5.1.1
 celery[redis]==5.4.0
 tenacity==9.0.0
 structlog==24.4.0
+# Auditoría MCS 2026-08-03 (OPS-02): captura de errores en producción.
+# Inerte sin SENTRY_DSN.
+sentry-sdk[fastapi]==2.19.2
 uuid7==0.1.0
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # PDF + plantillas (EP014 — US-037)
-jinja2==3.1.4
+jinja2==3.1.6
 weasyprint==68.1
 # Minuta .docx (EP014 — US-040)
 python-docx==1.2.0
