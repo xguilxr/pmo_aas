@@ -17,6 +17,7 @@ import json
 import logging
 import operator
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from sqlalchemy import desc, select
 
@@ -575,12 +576,35 @@ async def _run_report(
                     .limit(5)
                 )
             ).all()
+            # Auditoría MCS 2026-08-03 — IA-05 y DAT-03.
+            #
+            # Antes esto pasaba `float(p.budget)` y le pedía al modelo un
+            # `budget_status`. Dos problemas:
+            #   1. Dinero en coma flotante (DAT-03), justo en el camino a un
+            #      informe que alguien usa para decidir.
+            #   2. El modelo tenía que derivar la desviación él mismo, y un
+            #      modelo de lenguaje NO DEBE calcular cifras (IA-05).
+            #
+            # Ahora las cifras se calculan aquí, con Decimal, y viajan ya
+            # hechas y como cadena. El modelo redacta; no computa.
+            _plan = p.budget or Decimal(0)
+            _real = p.actual_budget or Decimal(0)
+            _desviacion = _real - _plan
+            _consumido = (
+                (_real / _plan * 100).quantize(Decimal("0.1"))
+                if _plan
+                else None
+            )
             context = {
                 "project": {
                     "name": p.name, "folio": p.folio, "phase": p.phase,
                     "progress": int(p.progress or 0),
-                    "budget_plan": float(p.budget or 0),
-                    "budget_actual": float(p.actual_budget or 0),
+                    "budget_plan": str(_plan),
+                    "budget_actual": str(_real),
+                    "budget_variance": str(_desviacion),
+                    "budget_consumed_pct": (
+                        str(_consumido) if _consumido is not None else None
+                    ),
                     "health": p.health_status,
                 },
                 "top_risks": [
