@@ -13,5 +13,24 @@
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
+  },
+  "_comentario_overrides": [
+    "Auditoría MCS 2026-08-03 (INT-02). `pnpm audit` encontró 43",
+    "vulnerabilidades en el árbol de producción, 1 crítica, invisibles porque",
+    "el CI no lo ejecutaba. `next` 15.0.7 -> 15.5.22 cerró la crítica y otras",
+    "tres. Estas cuatro son TRANSITIVAS, vía exceljs y el propio next, y no",
+    "se pueden subir desde su raíz: se fuerzan aquí.",
+    "Quedan 1 moderate (uuid 8.3.2 vía exceljs): subirlo cruza un mayor y",
+    "exceljs puede depender de la API v8. Está por debajo del umbral `high`",
+    "del gate. Revisar: 2026-09-15.",
+    "Si un override deja de hacer falta porque la raíz lo subió, se retira."
+  ],
+  "pnpm": {
+    "overrides": {
+      "brace-expansion": ">=2.1.4",
+      "postcss": ">=8.5.12",
+      "tmp": ">=0.2.6",
+      "sharp": ">=0.35.0"
+    }
   }
 }
