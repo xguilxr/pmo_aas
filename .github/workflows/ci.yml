@@ -55,6 +55,81 @@ jobs:
             workflows:
               - '.github/workflows/**'
 
+  # Auditoría MCA 2026-08-03 — cierra CTX-05 (el presupuesto de contexto
+  # permanente DEBE verificarse de forma automática) y FLU-03 (lo que deba
+  # ocurrir siempre DEBE automatizarse, no confiarse a una instrucción).
+  #
+  # Sin filtro de paths a propósito: el contexto permanente lo mueve casi
+  # cualquier cambio de docs, y el job tarda segundos.
+  contexto-permanente:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Presupuesto de contexto y límite de SPRINT.md
+        run: python scripts/check_contexto.py
+
+  # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
+  # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
+  # COMPLETO) e INT-02 (análisis estático de seguridad, dependencias vulnerables
+  # y detección de secretos).
+  #
+  # Antes de esto el CI no tenía ninguna de las tres. Un secreto commiteado
+  # llegaba a `main` sin que nada lo parase.
+  seguridad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks necesita el historial entero: un secreto borrado en un
+          # commit posterior sigue estando en el repositorio.
+          fetch-depth: 0
+
+      # CFG-02 — secretos, sobre todo el historial.
+      - name: Detección de secretos (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # INT-02 — análisis estático de seguridad del backend.
+      # Solo severidad media y alta: `-ll`. El ruido convierte un gate en algo
+      # que se desactiva.
+      - name: SAST Python (bandit)
+        run: |
+          pip install bandit==1.7.10
+          bandit -r apps/api/app -ll
+
+      # INT-02 — dependencias vulnerables de Python.
+      #
+      # Falla ante cualquier vulnerabilidad NUEVA. El pasivo conocido vive en
+      # `.pip-audit-ignore`, cada entrada con razón escrita y fecha objetivo:
+      # un gate rojo desde el primer PR se desactiva en dos días.
+      - name: Dependencias vulnerables (pip-audit)
+        run: |
+          pip install pip-audit==2.7.3
+          pip-audit -r apps/api/requirements.txt --strict \
+            $(grep -vE '^\s*#|^\s*$' apps/api/.pip-audit-ignore | sed 's/^/--ignore-vuln /')
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # INT-02 — dependencias vulnerables de JS. `--prod` porque una
+      # vulnerabilidad en una herramienta de desarrollo no llega a producción.
+      - name: Dependencias vulnerables (pnpm audit)
+        run: pnpm audit --prod --audit-level high
+
   # ENH-032: gate completo de ruff. Reglas seleccionadas en
   # apps/api/pyproject.toml (E,F,I,N,UP,B,A,C4,RUF) con `ignore`
   # documentado de las que se relajan post-cleanup masivo.
