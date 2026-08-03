@@ -12,18 +12,13 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sesión 2026-07-18 · Branch: claude/plan-import-wbs-fixes-nwotng
-DOS batches completos en la misma branch (PR único):
+Sesión 2026-08-03 · Branch: claude/auditoria-conformidad-mca-mcs · PR #573
+Auditoría de conformidad MCA/MCS + Tanda A y B1/B4 de remediación.
+CI verde. Pendiente: revisión y merge del owner.
 
-1. "Plan Import Revamp" 9/9 — WBS fiel, estado/% importables, wizard
-   completo + IA 3 niveles, plantilla con Gantt, UX no-PM. Sin
-   migraciones. Diseño: drafts/plan-import-revamp.md (585e80e).
-2. "Feedback 16-jul" 8/8 — RAID fixes, jerarquía WBS, linter de plan,
-   salud 5+1 con historial, portafolio, recursos. Migraciones
-   0095-0096. Triage: drafts/feedback-16jul-mejoras.md.
-
-Ejecución directa por chat (0.1 solucionar>documentar).
-Pendiente: verificación owner + PR + alembic upgrade head (0095-0096).
+Los batches del 2026-07-18 (Plan Import Revamp 9/9 y Feedback 16-jul 8/8)
+siguen en `claude/plan-import-wbs-fixes-nwotng` SIN PR. Migraciones 0095-0096
+pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -64,24 +59,26 @@ Pendiente: verificación owner + PR + alembic upgrade head (0095-0096).
 - `claude/gantt-areas-fixes` — `status:fix-committed`. Owner crea PR
   manualmente: ENH-149 #544, BUG-075 #545, ENH-154 #546, ENH-152 #547.
 
-### Conformidad MCA (auditoría 2026-08-03)
+### Conformidad (auditoría 2026-08-03)
 
-> Plan completo en `docs/conformidad/plan.md`. No consume IDs US/ENH/BUG:
-> son acciones de entorno, no de producto.
+> Plan completo y estado por requisito en `docs/conformidad/plan.md`. No consume
+> IDs US/ENH/BUG. **PR #573**, CI verde.
 
-- [x] Acciones 1-7 — `conformidad.yaml`, presupuesto de contexto, comandos de
-  verificación declarados y ejecutados, check automático en CI, limpieza de este
-  archivo (521 → 219 líneas), procedimientos de `CLAUDE.md` movidos a skills
-  (`triage`, `cerrar-item`, `delegar`, `resumen-ronda`) y contador de IDs
-  derivado con `scripts/proximo_id.py` en vez de escrito aquí.
-  Contexto permanente: **87.623 → 50.104 caracteres (−43 %)**.
-- [x] Acciones 8-9 — guard de irreversibles + reauditoría. **11/11 evaluados,
-  9 CONFORME.** Nivel: sigue **N0**.
-- [ ] Acción 10 — quitar 2 cifras vivas de `CLAUDE.md` §0.3 (CTX-03).
-- [ ] **Acción 11 (owner):** abrir `/hooks` o reiniciar y reconfirmar que el
-  guard intercepta (AUT-01). Con 10 y 11, el entorno alcanza **N2**.
-- [ ] **Decisión del owner:** el presupuesto (40.000) está excedido un 25 % y lo
-  propuso la auditoría, no vos. Ver `plan.md` Tanda 1b.
+Hecho: MCA acciones 1-10, MCS auditado, Tanda A (4/5) y B1/B4.
+
+**Pendiente de decisión del owner:**
+
+- [ ] Abrir Claude Code **con el repo como directorio de trabajo** y comprobar
+  que el guard de acciones irreversibles intercepta. `/hooks` no basta: es
+  config de proyecto. Con esto MCA llega a **N2**.
+- [ ] **Proteger `main`** — hoy cualquiera escribe directo en productiva.
+  Comando en `plan.md` → Tanda A. Acordado esperar a cerrar los PR abiertos.
+- [ ] Fijar el presupuesto de contexto: 40.000 declarado, ~51.000 real, y el
+  número lo propuso la auditoría.
+- [ ] Revisar `docs/dominio/02-GLOSARIO.md`. Bloquea la remediación de dominio.
+
+**Pendiente de ejecución:** Tanda B2 (minutas como dato no confiable, 2-3 d),
+B3 (evaluación de IA, depende de B2, 3-4 d), B5 (modelo de amenazas, 2 d).
 
 ---
 
@@ -189,16 +186,19 @@ Pendiente: verificación owner + PR + alembic upgrade head (0095-0096).
 
 > Histórico narrativo en `SPRINT-DONE-HISTORY.md`.
 
-- **2026-08-03 (auditoría MCA):** conformidad contra MCA/MCC/MCS
-  (`docs/conformidad/`). Acciones 1-10 del plan. Se declararon y ejecutaron los
-  comandos de verificación (`CLAUDE.md` §0.3), se automatizó el presupuesto de
-  contexto en CI, los procedimientos salieron a `.claude/skills/`, el contador
-  de IDs se derivó, y se añadió un guard de acciones irreversibles. De paso se
-  corrigió un defecto real: el stub de renderers del `conftest` cubría 3 de 6
-  módulos y no cubría `html_to_pdf`, lo que hacía fallar tests en cualquier
-  máquina sin GTK/Pango. **Contexto permanente: −43 %.** Nivel MCA: sigue N0,
-  a dos requisitos de N2 (ver `plan.md` Tanda 1b). Diagnóstico de dominio PMO
-  en `docs/dominio/`.
+- **2026-08-03 (auditoría de conformidad + remediación):** MCA y MCS auditados
+  (`docs/conformidad/`: cuatro informes + plan). **PR #573**, CI verde.
+
+  **MCA 10/11** — contexto permanente −43 %, comandos de verificación
+  ejecutables, tres controles nuevos en CI. **MCS 9/126**, no alcanza N1.
+
+  La Tanda A cerró tres de las cuatro exposiciones críticas. Los escáneres, en
+  su primer día: una vulnerabilidad real de XML en el importador (archivo del
+  usuario a un parser sin defensa), 10 de 23 CVE de Python cerradas —6 de
+  subida de archivos, 2 de JWT— y la crítica de Next.js. **B1**: suite de
+  aislamiento entre inquilinos, verificada por mutación.
+
+  Detalle completo en `docs/conformidad/plan.md` y en el PR.
 
 ---
 

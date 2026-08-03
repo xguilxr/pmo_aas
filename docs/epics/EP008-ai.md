@@ -200,6 +200,29 @@ system efectivo = prompt base (services/ai/prompts.py)
 }
 ```
 
+**El modelo NO calcula cifras** (auditoría MCS 2026-08-03, requisito IA-05).
+
+Antes recibía `budget_plan` y `budget_actual` y derivaba la desviación por su
+cuenta: un número producido por un modelo de lenguaje que acababa en un informe
+ejecutivo. Ahora el contexto llega con todo precalculado en Python y con
+`Decimal` —nunca coma flotante—, y el prompt prohíbe explícitamente calcular,
+estimar o redondear:
+
+| Campo del contexto | Origen |
+|---|---|
+| `budget_plan`, `budget_actual` | `projects.budget` / `actual_budget`, como cadena |
+| `budget_variance` | `actual − plan`, calculado en el worker |
+| `budget_consumed_pct` | `actual / plan × 100`, o `null` si el plan es 0 |
+| `progress` | Rollup WBS existente |
+
+Si al modelo le falta una cifra para afirmar algo, debe describir la situación
+en palabras y omitir el número.
+
+**Límite de coste por ejecución** (IA-03): `AI_MAX_PROMPT_CHARS`, 120.000 por
+defecto. Se comprueba **antes** de llamar al proveedor —después el gasto ya
+ocurrió— y acota el contexto de proyectos con mucho histórico, que con los 3
+reintentos de `_AI_CALL_MAX_RETRIES` se multiplicaría.
+
 ### Flujo del report builder visual
 
 Además del draft IA, hay un **Report Builder** con catálogo de secciones atómicas (US-101+):

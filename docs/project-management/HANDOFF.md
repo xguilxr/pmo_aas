@@ -1,101 +1,116 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-03
-**Branch activa:** ninguna — árbol local sobre `main`, **sin commitear**
-**Generado por:** sesión de auditoría de conformidad MCA
+**Branch activa:** `claude/auditoria-conformidad-mca-mcs` · **PR #573** (abierto, CI verde)
+**Generado por:** `/handoff` — sesión de auditoría de conformidad
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-Sesión **de entorno, no de producto**: auditoría contra los marcos MCA/MCC/MCS.
-No se tocó funcionalidad; sí se corrigió un defecto de tests que destapó.
+Sesión **de conformidad, no de producto**. Se auditó el repositorio contra MCA
+(entorno agéntico) y MCS (calidad de software), y se ejecutó la primera tanda de
+remediación. PR #573 con 18 commits, los ocho jobs de CI en verde.
 
-**MCA salió N0.** Sin presupuesto de contexto declarado, `MCA-P02` Etapa 1
-ordena N0 «sin más análisis». Por eso **MCS no se auditó**. MCC no aplica
-(producto propio) y está bien declarado.
+| Marco | Objetivo | Alcanzado | Evaluados |
+|---|---|---|---|
+| MCA | N2 | **N0** | 11/11 · 10 conformes |
+| MCS | N2 | **N0** | 126/126 · 9 conformes |
 
-Ejecutadas las **acciones 1-5** del plan (`docs/conformidad/plan.md`). Queda
-**una no conformidad abierta**: `CTX-02`, y solo porque el presupuesto de
-40.000 caracteres lo propuso la auditoría y necesita decisión del owner.
+**MCA está a un requisito de N2** y ese requisito no necesita código: solo que
+alguien verifique el guard desde una sesión abierta dentro del repo.
+
+**MCS no alcanza N1**: 43 requisitos lo bloquean. El producto está
+funcionalmente maduro y estructuralmente desprotegido — la calidad vive en el
+código y en la cabeza del owner, no en controles que sobrevivan a un mal día.
 
 ## 📍 Dónde retomar
 
-**Decidir `permanente_max_chars` en `conformidad.yaml`** (hoy 40.000). Cierra
-CTX-02 y el repo pasa de N0 a nivel medible. Después: acción 6 (mover
-procedimientos de `CLAUDE.md` a skills), que es la que más contexto libera.
+**Lo más barato y de mayor impacto son dos acciones del owner**, no de Claude:
+
+1. Abrir Claude Code con el repo como directorio de trabajo y comprobar que el
+   guard intercepta (`echo "prueba: git push --force"`). Cierra AUT-01 y MCA
+   llega a **N2**.
+2. Proteger `main` — hoy cualquiera escribe directo en productiva.
+
+Después, **Tanda B2**: las minutas que sube el usuario siguen llegando al modelo
+sin defensa contra inyección de instrucciones.
 
 ## ✅ Hecho en esta sesión
 
-Sin commits: todo en el árbol de trabajo.
+Todo en PR #573. Detalle por requisito en `docs/conformidad/plan.md`.
 
-- Auditoría en `docs/conformidad/` (informe MCA + plan consolidado).
-- `conformidad.yaml` en la raíz (renombrado desde `pmoaasconformidad.yaml`, que
-  el procedimiento no encontraba): presupuesto, límites y conformidades.
-- **`CLAUDE.md` §0.3**: stack, preparación del entorno, cinco comandos de
-  verificación **ejecutados** con su salida real, y rutas protegidas.
-- **Defecto de tests corregido** (`apps/api/tests/conftest.py`): el stub de
-  renderers parcheaba `render_pdf` en 3 módulos escritos a mano cuando los
-  importan 6, y `html_to_pdf` no se stubeaba. 4 tests ejercían WeasyPrint real
-  y fallaban sin GTK/Pango. Ahora barre `sys.modules`. La suite pasó de rojo a
-  **exit 0**; las cifras fechadas están en `conformidad.yaml` → `mediciones`.
-  Cobertura preservada: 2 casos heavy nuevos para `html_to_pdf`.
-- **`scripts/check_contexto.py`** + job `contexto-permanente` en CI. Probado en
-  ambos sentidos.
-- **`SPRINT.md` de 521 a 219 líneas**; lo cerrado se archivó íntegro en
-  `SPRINT-DONE-HISTORY.md`.
-- **Diagnóstico de dominio PMO** en `docs/dominio/`.
+**Entorno (MCA)** — contexto permanente de 87.623 a ~51.000 caracteres
+(**−43 %**): `SPRINT.md` de 521 a 227 líneas, procedimientos de `CLAUDE.md` a
+`.claude/skills/`, contador de IDs derivado en vez de almacenado. Tres controles
+nuevos en CI y comandos de verificación declarados **y ejecutados**.
 
-**Contexto permanente: de 87.623 a ~68.000 caracteres.**
+**Producto (MCS)** — Tanda A cerró tres de las cuatro críticas. Los escáneres,
+su primer día: vulnerabilidad real de XML en el importador (archivo del usuario
+a un parser sin defensa), 10 de 23 CVE de Python cerradas (6 de subida, 2 de
+JWT), la crítica de Next.js, y la IA que calculaba cifras para informes
+ejecutivos con `float()` en ruta monetaria.
 
-## 🔄 PRs en flight (sin cambios)
+**B1** — aislamiento entre inquilinos **verificado por mutación**: quitar un
+filtro `tenant_id` la hace fallar en lectura, modificación y borrado.
+
+También se corrigió el stub de renderers del `conftest`, que cubría 3 de 6
+módulos y hacía fallar 4 tests sin GTK/Pango.
+
+## 🔄 PRs en flight
 
 | PR / branch | Acción pendiente |
 |---|---|
-| #570 · `claude/pmo-portfolio-architecture-6hbuen` | verificar + mergear · `alembic upgrade head` (0091-0094) |
-| `claude/plan-import-wbs-fixes-nwotng` | verificación owner + PR · migs 0095-0096 |
-| `claude/gantt-areas-fixes` | owner crea PR (ENH-149/BUG-075/ENH-154/ENH-152) |
+| **#573** · `claude/auditoria-conformidad-mca-mcs` | Revisar y mergear. **CI verde** |
+| #570 · `claude/pmo-portfolio-architecture-6hbuen` | Verificar + mergear · `alembic upgrade head` (0091-0094) |
+| `claude/plan-import-wbs-fixes-nwotng` | Falta abrir PR · migs 0095-0096 |
+| `claude/gantt-areas-fixes` | Falta abrir PR (ENH-149/BUG-075/ENH-154/ENH-152) |
 
 ## ⚠️ Gotchas
 
-- **Los techos del CI son un trinquete, no el objetivo.** Están en el valor
-  actual + 1 %: fallan si el contexto **crece**. Cada vez que una acción lo
-  baje, **hay que bajar el techo detrás** — si no, es un número decorativo.
-  Ver `historial` en `conformidad.yaml`.
-- **Python 3.12 no es negociable**: `psycopg[binary]==3.2.3` no tiene wheel
-  para 3.13+. `uv venv --python 3.12`.
-- **Las cifras de contexto son caracteres, no bytes.** Manda el script.
-- Los 2 tests heavy nuevos no corrieron localmente (exigen GTK/Pango); corren
-  en `api-tests-heavy`.
+- **`main` no está protegida.** Verificado contra la API de GitHub. La regla de
+  `CLAUDE.md` §8 existe solo en prosa.
+- **Tres gates nuevos en CI** funcionan como **trinquete**: fallan ante
+  crecimiento nuevo, no por el pasivo heredado, que está documentado con fecha.
+  Frenaron seis intentos de engordar el contexto en esta misma sesión.
+- **No hay tests de frontend.** El salto de Next 15.0 a 15.5 lo respaldan solo
+  typecheck y build. Un smoke manual antes de mergear sería prudente.
+- **Python 3.12 no es negociable**: `psycopg[binary]` no tiene wheel para 3.13+.
+- Los requisitos que tocó la Tanda A **siguen figurando como NO CONFORME**:
+  arreglarlos no es medirlos, y eso exige reauditar.
 
 ## 📋 Lo que sigue
 
+- **Tanda B:** B2 (2-3 d) → B3 (3-4 d, depende de B2) → B5 (2 d).
 - **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch. US-168
   sigue `in-progress`.
-- **Entorno:** acciones 6-9 del plan.
-- **Dominio:** revisar `docs/dominio/02-GLOSARIO.md` término por término. El
-  plan de remediación no se escribe hasta que esté aprobado.
 
 ## 📚 Epics
 
-La sesión no cambió comportamiento de producto: `CLAUDE.md` §0.2 no aplica.
+EP008 actualizada (el modelo ya no calcula cifras, y hay tope de coste). El
+resto no cambió de comportamiento: la sesión fue de entorno y seguridad.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Decidir `permanente_max_chars`** (cierra CTX-02).
-- [ ] Decidir cómo commitear el árbol: `main` es productiva, va en branch.
-- [ ] Verificar + mergear PR #570 · `alembic upgrade head` (0091-0094).
-- [ ] Crear PR de `claude/plan-import-wbs-fixes-nwotng` (migs 0095-0096).
-- [ ] Crear PR de `claude/gantt-areas-fixes`.
-- [ ] Revisar `docs/dominio/02-GLOSARIO.md`.
+- [ ] Verificar el guard desde una sesión dentro del repo (cierra AUT-01 → N2).
+- [ ] Proteger `main` tras cerrar los PR abiertos.
+- [ ] Revisar y mergear **PR #573**.
+- [ ] Fijar `permanente_max_chars` en `conformidad.yaml`.
+- [ ] Revisar `docs/dominio/02-GLOSARIO.md` término por término.
+- [ ] Smoke manual de la web tras el salto de Next 15.0 → 15.5.
+- [ ] `SENTRY_DSN` en Railway para encender la captura de errores.
+- [ ] Los tres PR pendientes de las ramas anteriores.
 
 ## 🔮 Sin issue todavía
 
-- **Calidad de cronograma DCMA 14-point.** El importador de MS Project ya deja
-  `predecessors`, `successors`, `is_critical` y `outline_level`: es el insumo
-  exacto. No exige costos ni línea base. Ver `docs/dominio/01-DIAGNOSTICO.md` §4.
-- **Línea base.** Brecha keystone: sin ella no existe «desviación» ni EVM.
-- Import CSV del pool de recursos; persistir desglose de salud en tendencias.
+- **Calidad de cronograma DCMA 14-point.** El importador ya deja el insumo
+  exacto y no exige costos. Ver `docs/dominio/01-DIAGNOSTICO.md` §4.
+- **Línea base.** Brecha keystone: sin ella no existe «desviación».
+- **Migrar de `python-jose` a PyJWT** — cerraría 5 CVE bloqueadas hoy por su
+  restricción `pyasn1<0.5.0`.
+- **Re-medir INT-04**: `api-tests-smoke` tarda 3 m en el runner, no los 13 de
+  una máquina local. El requisito puede estar más cerca de conforme de lo que
+  estimó el informe.
 
 ---
 
