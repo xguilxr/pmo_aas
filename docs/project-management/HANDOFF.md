@@ -1,85 +1,107 @@
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-07-09
-**Branch activa:** `claude/pmo-portfolio-architecture-6hbuen` · **PR #570** (abierto)
-**Generado por:** sesión Revamp 1.0 (retro socio + ejecución end-to-end)
+**Última actualización:** 2026-08-03
+**Branch activa:** ninguna — árbol local sobre `main`, **sin commitear**
+**Generado por:** sesión de auditoría de conformidad MCA
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-**Batch "Revamp 1.0" COMPLETO (11/11)** en PR #570. Nace de la retro del
-socio (portafolio ejecutivo multi-proyecto + recursos/capacidad) + 9
-decisiones del owner en chat. Diseño completo en
-`docs/epics/drafts/portfolio-recursos-capacidad.md`.
+Sesión **de entorno, no de producto**: auditoría contra los marcos MCA/MCC/MCS.
+No se tocó funcionalidad; sí se corrigió un defecto de tests que destapó.
 
-Qué cambió (por bloque):
-1. **Salud única híbrida** (US-180 `0f96dec` / US-181 `0c0ad7d`): UN solo
-   semáforo — motor de reglas por dimensión (cronograma/presupuesto/
-   riesgos/decisiones/recursos, `services/project_health.py`) + override
-   manual del PM con razón obligatoria en 🟡/🔴. `status_rag` absorbido y
-   dropeado (mig 0091). Drill-down "¿por qué?" + foco PM + heatmap
-   Proyecto×Dimensión en N1 (`/dashboard/health-matrix`).
-2. **Tablas** (ENH-185 `9bb3338`, ENH-186 `acf8d46`, ENH-187 `8114214`,
-   ENH-188 `d735e76`): Cambios y Lecciones heredan estructura RAID (sort,
-   filtros, chips, inline, export XLSX propio); Plan con chips de color
-   de estado; filtros programa/prioridad en /pmo/projects.
-3. **Recursos/capacidad** (US-182 `c3fdf7e` / US-183 `4aec20c` / US-184
-   `595dc4f`): `actors` = resource_pool (tipo/función/seniority/escasez/
-   capacidades, mig 0092); participations con FTE% + status (mig 0093);
-   motor de saturación por ventana (`services/capacity.py`) vs
-   `project_capacity_pct`; página nueva **/pmo/resources** (personas/
-   roles/áreas/conflictos); dimensión recursos del health activa; 3
-   alertas de capacidad (in-app, dedupe 7d, sweep semanal + fast-path).
-4. **IA** (US-185 `9770161` / ENH-189 `a440efa`): memoria de proyecto
-   (`project_ai_contexts`, mig 0094): contexto curado + instrucciones +
-   resumen acumulativo que la IA actualiza por minuta (task
-   `ai.update_project_context`); bloque `<CONTEXTO_DEL_PROYECTO>`
-   inyectado en minutas y reportes; instrucciones permanentes por tenant
-   (`/admin/ai`) compuestas vía `prompt_builder`.
+**MCA salió N0.** Sin presupuesto de contexto declarado, `MCA-P02` Etapa 1
+ordena N0 «sin más análisis». Por eso **MCS no se auditó**. MCC no aplica
+(producto propio) y está bien declarado.
 
-Verificación final del batch: **728 pytest + 1 skip · ruff limpio ·
-tsc + next build verdes**.
+Ejecutadas las **acciones 1-5** del plan (`docs/conformidad/plan.md`). Queda
+**una no conformidad abierta**: `CTX-02`, y solo porque el presupuesto de
+40.000 caracteres lo propuso la auditoría y necesita decisión del owner.
 
-## 📍 Dónde retomar (próximo paso accionable)
+## 📍 Dónde retomar
 
-1. **Owner verifica y mergea PR #570.**
-2. Tras merge: `alembic upgrade head` en Railway (migraciones **0091-0094**).
-3. Decisión pendiente del owner: **rename "Organizaciones" → "Portafolios"**
-   (recomendación: solo labels de UI, no schema — ver resumen de la sesión).
-4. Ideas futuras sin issue: import CSV del pool de recursos (onboarding
-   35 proyectos), persistir desglose salud en tendencias UI, evaluar
-   auto_summary también con actividades del plan (hoy solo minutas).
+**Decidir `permanente_max_chars` en `conformidad.yaml`** (hoy 40.000). Cierra
+CTX-02 y el repo pasa de N0 a nivel medible. Después: acción 6 (mover
+procedimientos de `CLAUDE.md` a skills), que es la que más contexto libera.
+
+## ✅ Hecho en esta sesión
+
+Sin commits: todo en el árbol de trabajo.
+
+- Auditoría en `docs/conformidad/` (informe MCA + plan consolidado).
+- `conformidad.yaml` en la raíz (renombrado desde `pmoaasconformidad.yaml`, que
+  el procedimiento no encontraba): presupuesto, límites y conformidades.
+- **`CLAUDE.md` §0.3**: stack, preparación del entorno, cinco comandos de
+  verificación **ejecutados** con su salida real, y rutas protegidas.
+- **Defecto de tests corregido** (`apps/api/tests/conftest.py`): el stub de
+  renderers parcheaba `render_pdf` en 3 módulos escritos a mano cuando los
+  importan 6, y `html_to_pdf` no se stubeaba. 4 tests ejercían WeasyPrint real
+  y fallaban sin GTK/Pango. Ahora barre `sys.modules`. La suite pasó de rojo a
+  **exit 0**; las cifras fechadas están en `conformidad.yaml` → `mediciones`.
+  Cobertura preservada: 2 casos heavy nuevos para `html_to_pdf`.
+- **`scripts/check_contexto.py`** + job `contexto-permanente` en CI. Probado en
+  ambos sentidos.
+- **`SPRINT.md` de 521 a 219 líneas**; lo cerrado se archivó íntegro en
+  `SPRINT-DONE-HISTORY.md`.
+- **Diagnóstico de dominio PMO** en `docs/dominio/`.
+
+**Contexto permanente: de 87.623 a ~68.000 caracteres.**
+
+## 🔄 PRs en flight (sin cambios)
+
+| PR / branch | Acción pendiente |
+|---|---|
+| #570 · `claude/pmo-portfolio-architecture-6hbuen` | verificar + mergear · `alembic upgrade head` (0091-0094) |
+| `claude/plan-import-wbs-fixes-nwotng` | verificación owner + PR · migs 0095-0096 |
+| `claude/gantt-areas-fixes` | owner crea PR (ENH-149/BUG-075/ENH-154/ENH-152) |
 
 ## ⚠️ Gotchas
 
-- **Container fresco**: API requiere Python **3.12** (`python3.12 -m pip
-  install --break-system-packages -r requirements-dev.txt`); 3.11 truena
-  con sintaxis PEP 695 en `app/workers/db.py`. Web: `pnpm install
-  --frozen-lockfile`.
-- Salud auto se recalcula en: detalle de proyecto, health-detail,
-  health-matrix y snapshot semanal — los agregados SQL pueden tener
-  staleness acotada entre recálculos (documentado en el draft §4).
-- La saturación solo considera participations `status='activa'` con
-  `allocation_pct` NOT NULL; las vistas muestran cobertura ("Sin FTE").
-- Las alertas de capacidad son in-app only (sin email) con dedupe de 7
-  días por (tipo, actor).
-- Editar salud desde el form de proyecto ya NO existe — solo la tarjeta
-  de Salud (declarar con razón / volver a auto).
+- **Los techos del CI son un trinquete, no el objetivo.** Están en el valor
+  actual + 1 %: fallan si el contexto **crece**. Cada vez que una acción lo
+  baje, **hay que bajar el techo detrás** — si no, es un número decorativo.
+  Ver `historial` en `conformidad.yaml`.
+- **Python 3.12 no es negociable**: `psycopg[binary]==3.2.3` no tiene wheel
+  para 3.13+. `uv venv --python 3.12`.
+- **Las cifras de contexto son caracteres, no bytes.** Manda el script.
+- Los 2 tests heavy nuevos no corrieron localmente (exigen GTK/Pango); corren
+  en `api-tests-heavy`.
 
-## 📚 Estado de epics
+## 📋 Lo que sigue
 
-Actualización delegada a sub-agente al cierre de esta sesión (commit
-`docs(epics)` en la misma branch): EP004 (salud dimensiones + matrix),
-EP005 (salud única), EP006 (cambios/lecciones RAID + exports), EP008
-(memoria IA + prompts composables), EP009 (chips plan), EP017 (pool de
-recursos + FTE% + saturación + /pmo/resources + alertas). Si ese commit
-no aparece en la branch, re-lanzar la actualización.
+- **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch. US-168
+  sigue `in-progress`.
+- **Entorno:** acciones 6-9 del plan.
+- **Dominio:** revisar `docs/dominio/02-GLOSARIO.md` término por término. El
+  plan de remediación no se escribe hasta que esté aprobado.
 
-## 🧹 Cleanup / acciones del owner
+## 📚 Epics
 
-- [ ] Verificar + mergear **PR #570**.
-- [ ] `alembic upgrade head` en Railway (0091-0094).
-- [ ] Decidir rename Organizaciones→Portafolios (labels UI).
-- [ ] Smoke visual de las vistas nuevas: /pmo/resources, heatmap N1,
-  Memoria IA, /admin/ai instrucciones, Cambios/Lecciones revamp.
+La sesión no cambió comportamiento de producto: `CLAUDE.md` §0.2 no aplica.
+
+## 🧹 Acciones del owner
+
+- [ ] **Decidir `permanente_max_chars`** (cierra CTX-02).
+- [ ] Decidir cómo commitear el árbol: `main` es productiva, va en branch.
+- [ ] Verificar + mergear PR #570 · `alembic upgrade head` (0091-0094).
+- [ ] Crear PR de `claude/plan-import-wbs-fixes-nwotng` (migs 0095-0096).
+- [ ] Crear PR de `claude/gantt-areas-fixes`.
+- [ ] Revisar `docs/dominio/02-GLOSARIO.md`.
+
+## 🔮 Sin issue todavía
+
+- **Calidad de cronograma DCMA 14-point.** El importador de MS Project ya deja
+  `predecessors`, `successors`, `is_critical` y `outline_level`: es el insumo
+  exacto. No exige costos ni línea base. Ver `docs/dominio/01-DIAGNOSTICO.md` §4.
+- **Línea base.** Brecha keystone: sin ella no existe «desviación» ni EVM.
+- Import CSV del pool de recursos; persistir desglose de salud en tendencias.
+
+---
+
+## Cómo retomar
+
+1. Este archivo primero.
+2. Luego `CLAUDE.md` (§0.3 = comandos de verificación) + `SPRINT.md` + el epic
+   en flight.
+3. Continúa desde "Dónde retomar".
