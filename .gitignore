@@ -1,6 +1,10 @@
 node_modules/
 .claude/*
 !.claude/skills/
+# Compartido con el equipo y auditable (MCA AUT-01): permisos y hooks que
+# exigen confirmación ante acciones irreversibles. Lo personal va en
+# .claude/settings.local.json, que sigue ignorado por la regla de arriba.
+!.claude/settings.json
 .pnpm-store/
 .next/
 dist/
