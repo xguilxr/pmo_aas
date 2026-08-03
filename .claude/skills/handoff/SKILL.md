@@ -43,7 +43,57 @@ Si NO aplica → continúa al paso 2.
 
 ## Paso 2 — Limpieza obligatoria de SPRINT.md
 
-Antes de redactar el handoff:
+### Estructura esperada del archivo
+
+`docs/project-management/SPRINT.md`:
+
+```
+🔴 IN-PROGRESS    (la US/bloque que Claude está tocando ahora,
+                   o "Sin US activa" + próximo paso accionable)
+📥 INBOX / TRIAGE (issues recién creados + sprints planeados con
+                   sus bloques en orden de ejecución)
+⏸️ Deferred       (issues sin asignación de versión, esperan decisión)
+✅ DONE           (tabla resumen — detalle en SPRINT-DONE-HISTORY.md)
+📋 Backlog v2.0
+```
+
+**Separación de histórico:** `SPRINT.md` lleva solo el sprint actual + INBOX +
+Deferred + backlog v2.0. `SPRINT-DONE-HISTORY.md` lleva el detalle de los
+bloques cerrados.
+
+**Flujo de un item:** al crear issue → INBOX · al arrancar implementación →
+IN-PROGRESS · al cerrar bloque → DONE (tabla resumen), con el detalle a
+SPRINT-DONE-HISTORY.md.
+
+### Cuándo se actualiza SPRINT.md (decisión owner 2026-05-22)
+
+| Evento | ¿Actualizar? |
+|---|---|
+| Cada commit individual | NO (sobrecarga) |
+| Al crear ≥ 1 issue nuevo | SÍ (entra a INBOX) |
+| Al cerrar BLOQUE completo | SÍ (items pasan a DONE) |
+| Al cerrar SPRINT | SÍ + cleanup obligatorio |
+| Al cerrar SESIÓN (`/handoff`) | SÍ siempre — lo hace esta skill |
+
+> Cuanto más actualizado, mejor para que otra sesión lo retome sin sorpresas,
+> pero **no a costa de detenerse en cada commit**. El equilibrio: actualizar en
+> segmentos grandes (bloque, sprint, sesión).
+
+### Cleanup al cierre de sprint
+
+Cuando un sprint termina y el owner confirma el cierre, antes de arrancar el
+siguiente:
+
+1. **Mover** las secciones `🗂️ Sprint N (vX.Y) — CERRADO` y el contexto
+   IN-PROGRESS narrativo a `SPRINT-DONE-HISTORY.md`, preservando bloques, SHAs,
+   migraciones y diferidos.
+2. **Reemplazar** la sección DONE por una tabla resumen
+   `Sprint | Versión | Cerrado | Items`, una fila por sprint.
+3. **Limpiar** IN-PROGRESS para que apunte solo al sprint activo.
+4. **Truncar** «Notas y cambios» a las entradas del sprint actual + la del cierre.
+5. **Commit** `docs(sprint): cierre Sprint N — archiva a SPRINT-DONE-HISTORY.md`.
+
+### Antes de redactar el handoff
 
 1. Mueve a `docs/project-management/SPRINT-DONE-HISTORY.md` cualquier
    sprint / bloque completado que aún viva en `SPRINT.md`. Preserva
