@@ -1,15 +1,329 @@
-# conformidad.yaml — va en la RAÍZ de xguilxr/pmo-aas
+# conformidad.yaml — va en la RAÍZ de xguilxr/pmo_aas
 
-proyecto: pmo-aas
+proyecto: pmo_aas
 responsable: propietario
-evaluado: null                    # sin auditar todavía
+evaluado: 2026-08-03
 
 marcos:
-  MCA: { objetivo: N2, alcanzado: null }
+  # Reauditado 2026-08-03 tras las acciones 1-8 (2026-08-03-mca-seguimiento.md).
+  # Sigue N0: AUT-01 PARCIAL y CTX-03 NO CONFORME, ambos de N1, y un PARCIAL
+  # impide alcanzar su nivel (MCA-CORE §6.2). Los cinco requisitos de N2 ya
+  # están CONFORME, así que N1 y N2 caen juntos: distancia = 2 requisitos.
+  MCA: { objetivo: N2, alcanzado: N0, evaluados: "11/11", conformes: 10 }
   MCC: { objetivo: no_aplica, alcanzado: no_aplica }
-  MCS: { objetivo: N2, alcanzado: null }
+  # Auditado 2026-08-03 (2026-08-03-mcs.md): 9 de 126 requisitos N1+N2 CONFORME.
+  # No alcanza N1: 43 requisitos de N1 lo bloquean. 4 exposiciones CRÍTICAS.
+  MCS: { objetivo: N2, alcanzado: N0, evaluados: "126/126", conformes: 9 }
+  # Tanda A ejecutada el mismo día (plan.md). No re-auditado: los requisitos
+  # que toca (CFG-02, INT-02, SEG-03, IA-05, OPS-02) siguen figurando como
+  # NO CONFORME hasta que una reauditoría formal los mida. Lo que cambió:
+  #   - job `seguridad` en CI: gitleaks + bandit + pip-audit + pnpm audit
+  #   - B314 corregido: defusedxml en el parser de XML subido por el usuario
+  #   - 10 de 23 CVE cerradas (multipart 6, jose 2, jinja2 3, dotenv 1)
+  #   - cabeceras de seguridad + 5 pruebas
+  #   - IA-05: las cifras del informe se calculan con Decimal, no las deriva
+  #     el modelo. De paso, float() en ruta monetaria eliminado (DAT-03)
+  #   - captura de errores (sentry-sdk), inerte sin DSN
+  # PENDIENTE de owner: A1 proteger `main` (CFG-03) tras cerrar los PR.
 
-proxima_evaluacion: null
+proxima_evaluacion: 2026-11-03
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRESUPUESTO DE CONTEXTO PERMANENTE  (MCA CTX-02)
+#
+# Sin esta cifra el entorno es N0, sin más análisis (MCA-P02 Etapa 1).
+# `actual` es la medición del 2026-08-03; `max` es la meta de la Tanda 1.
+# Ver docs/conformidad/plan.md acciones 5, 6 y 7.
+# ─────────────────────────────────────────────────────────────────────────────
+
+presupuesto_contexto:
+  permanente_max_chars: 40000              # objetivo. Lo alcanzan plan.md 6-7
+  permanente_techo_ci_chars: 50400         # trinquete: actual + 1% de tolerancia
+  permanente_actual_chars: 50217
+  medido: 2026-08-03
+  estado: EXCEDIDO
+  historial:                               # el trinquete se aprieta, no decora
+    - { fecha: 2026-08-03, chars: 87623, techo: 88500, hito: "acción 4 — check en CI" }
+    - { fecha: 2026-08-03, chars: 68055, techo: 68500, hito: "acción 5 — SPRINT.md 521→219 líneas (-22%)" }
+    - { fecha: 2026-08-03, chars: 50036, techo: 50400, hito: "acción 6 — CLAUDE.md 36506→16853 a skills (-27%)" }
+    - { fecha: 2026-08-03, chars: 50104, techo: 50400, hito: "acción 7 — contador derivado, no almacenado (CTX-03)" }
+    - { fecha: 2026-08-03, chars: 50217, techo: 50400, hito: "acción 8 — guard de acciones irreversibles (AUT-01)" }
+  distancia_al_objetivo: |
+    10104 caracteres, con las acciones 5-7 ya hechas. Lo que queda pesado:
+      docs/epics/EP0XX (uno)   16006  CLAUDE.md §1.4 obliga a cargar uno ENTERO
+      CLAUDE.md                16781  ya comprimido -54%
+      SPRINT.md                10920  ya por debajo de su límite de 250 líneas
+    Ninguna acción pendiente del plan cierra esta brecha. Para llegar a 40000
+    habría que cargar la SECCIÓN relevante del epic en vez del epic completo,
+    y eso es cambiar CLAUDE.md §1.4 —una decisión de método—, no achicar
+    archivos. Alternativa igual de legítima: fijar el objetivo en ~50000, que
+    es lo que este entorno cuesta de verdad. Decisión del owner (CTX-02).
+  verificacion_automatica: scripts/check_contexto.py   # CTX-05 — acción 4
+  por_que_trinquete: |
+    Enchufar el objetivo (40000) como techo dejaría el CI en rojo en cada PR
+    hasta que terminen las acciones 5-7, y un control que bloquea todo se
+    desactiva en dos días. El techo va al valor de hoy: falla si el contexto
+    CRECE, que es el riesgo real, no el estado heredado. Baja conforme bajen
+    5-7, hasta igualar el objetivo.
+  por_que_1_por_ciento: |
+    El techo lleva 1% de tolerancia (~880 caracteres) por decisión, no por
+    descuido. A ras del valor actual el margen era de 21 caracteres: cualquier
+    retoque de documentación habría roto el CI, y la reacción natural habría
+    sido subir el techo cada vez, que es como un trinquete deja de serlo.
+    El 1% absorbe el ruido y sigue fallando ante una adición real —un
+    documento nuevo de lectura obligatoria pesa mucho más que eso.
+    Subirlo por encima de esa tolerancia exige razón escrita aquí.
+  nota: |
+    CARACTERES, no bytes. Las cifras de la auditoría del 2026-08-03 (88180 →
+    91501) se midieron con `wc -c`, que cuenta bytes; los acentos en UTF-8
+    ocupan dos. La medición correcta la produce scripts/check_contexto.py y
+    es la que manda, porque son los caracteres los que correlacionan con
+    tokens. La conclusión de la auditoría no cambia: el orden de magnitud es
+    el mismo y el hallazgo era la ausencia de presupuesto, no su valor.
+
+  incluye:                                 # medido 2026-08-03, en caracteres
+    - CLAUDE.md                            # 16891 — carga automática del arnés
+    - docs/project-management/SPRINT.md    # 10923 — CLAUDE.md §1.3 obligatorio
+    - docs/epics/EP0XX relevante           # 16006 — CLAUDE.md §1.4, mediana de 18
+    - docs/project-management/HANDOFF.md   #  4536 — CLAUDE.md §1.1 obligatorio
+    - catálogo de skills                   #  1861 — solo el frontmatter description
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MEDICIONES FECHADAS  (CTX-03)
+#
+# Viven aquí y NO en CLAUDE.md: derivan del contenido real y quedan obsoletas.
+# CLAUDE.md §0.3 declara el CRITERIO (exit 0), que no envejece.
+# ─────────────────────────────────────────────────────────────────────────────
+
+mediciones:
+  - fecha: 2026-08-03
+    comando: pytest -q -n auto -m "not heavy"
+    resultado: 778 passed, 1 skipped, exit 0
+    duracion: 13m12s
+    entorno: Windows 10, Python 3.12 (uv), sin librerías nativas GTK/Pango
+  - fecha: 2026-08-03
+    comando: ruff check .
+    resultado: All checks passed!, exit 0
+  - fecha: 2026-08-03
+    comando: tsc --noEmit
+    resultado: sin salida, exit 0
+  - fecha: 2026-08-03
+    auditoria: MCS-P01
+    resultado: "N0 · 9 de 126 requisitos N1+N2 CONFORME · 43 bloquean N1"
+    criticas:
+      - CFG-03 main sin protección de rama (verificado vía gh api)
+      - CFG-02 + INT-02 cero detección de secretos, SAST y deps vulnerables
+      - SEG-03 sin cabeceras de seguridad (solo CORS)
+      - SEG-08 aislamiento entre inquilinos sin prueba dedicada
+      - IA-11 contenido subido por usuarios al modelo sin defensa de inyección
+      - IA-05 sin verificar si el modelo calcula cifras de los informes
+      - OPS-02 sin captura de errores en producción
+      - INF-05 restauración de copias nunca probada
+  - fecha: 2026-08-03
+    inventario: apps/api/alembic/versions
+    valor: 97 archivos de migración
+    nota: derivar con `ls apps/api/alembic/versions | wc -l`, no confiar en esta cifra
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OTROS LÍMITES QUE CI HACE CUMPLIR  (mismo trinquete)
+# ─────────────────────────────────────────────────────────────────────────────
+
+limites:
+  # CLAUDE.md §6 y §12 lo declaran dos veces como «regla dura» y estaba en 521.
+  # Nadie lo ejecutaba: era una instrucción, no un control (MCA FLU-03).
+  sprint_md_max_lineas: 250              # objetivo — CLAUDE.md §6
+  sprint_md_techo_ci_lineas: 250         # alcanzado 2026-08-03: 218 líneas.
+                                         # Techo = objetivo. Ya no hay trinquete
+                                         # que aflojar aquí.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NO CONFORMIDADES ABIERTAS  (auditoría 2026-08-03)
+# ─────────────────────────────────────────────────────────────────────────────
+
+no_conformidades:
+  - requisito: AUT-01
+    marco: MCA
+    estado: parcial
+    gravedad: media
+    hallazgo: |
+      El control existe, está versionado y probado, pero NO se pudo demostrar
+      que se ejecute. MCA-CORE §6.1: un control que existe y no se ejecuta es
+      PARCIAL, nunca CONFORME.
+
+      Qué hay: .claude/settings.json (permissions deny/ask) + hook PreToolUse
+      sobre Bash que corre scripts/guard_irreversible.py. El guard mira el
+      comando COMPLETO con regex, no por prefijo como `permissions`: así atrapa
+      `git push origin main --force`, que una regla de prefijo deja pasar.
+
+      Probado por tubería en los dos sentidos, 15 casos:
+        git push --force (en cualquier posición)  -> deny
+        --no-verify                               -> deny
+        push a main (explícito o pelado en main)  -> deny
+        --force-with-lease, alembic upgrade/
+        downgrade, gh issue close, commit --amend,
+        reset --hard, rm -rf, DROP TABLE          -> ask
+        pytest, git status, push a branch propia  -> pasa
+      Falso positivo detectado y corregido: `git push origin claude/x` estando
+      en main ya no se bloquea; la regla del push pelado solo aplica cuando el
+      comando no nombra un ref.
+
+      Por qué PARCIAL: no se pudo demostrar que dispare, en dos intentos.
+
+      Primera hipótesis (2026-08-03, DESCARTADA): «el vigilante no toma un
+      settings creado a mitad de sesión». El owner abrió /hooks y el guard
+      siguió sin interceptar, así que la causa era otra.
+
+      Causa real: la sesión de auditoría tenía como directorio primario
+      C:/Users/David Aguilar, no el repositorio. `.claude/settings.json` es
+      configuración DEL PROYECTO y solo se carga en una sesión enraizada en él.
+      Desde una sesión externa no se aplica, se abra /hooks o no.
+
+      No es un defecto del control: es que no se puede verificar desde aquí.
+    plan: |
+      Prueba de aceptación: abrir Claude Code CON EL REPOSITORIO COMO DIRECTORIO
+      DE TRABAJO (`cd .../pmo_aas` y arrancar ahí), y ejecutar un comando
+      inofensivo que coincida con un patrón de bloqueo, p. ej.:
+        echo "prueba: git push --force"
+      Si queda interceptado, AUT-01 pasa a CONFORME sin tocar código.
+      La ruta del hook usa ${CLAUDE_PROJECT_DIR:-.}, probada con y sin la
+      variable definida, así que resuelve en cualquiera de los dos casos.
+    fecha_objetivo: 2026-08-31
+
+conformes_verificados:
+  - requisito: CTX-03
+    fecha: 2026-08-03
+    evidencia: |
+      Cero cifras vivas en el contexto permanente (CLAUDE.md, SPRINT.md,
+      HANDOFF.md). Se retiraron las dos que la propia remediación había
+      introducido: el conteo de tests y el de migraciones de CLAUDE.md §0.3.
+      Ahora la tabla declara el CRITERIO (`exit 0`), que no envejece, y las
+      mediciones fechadas viven en `mediciones` de este archivo.
+
+      Verificado automáticamente por scripts/check_contexto.py::cifras_vivas,
+      probado en cuatro escenarios:
+        estado actual                          -> exit 0
+        cifra en la tabla de CLAUDE.md §0.3    -> exit 1
+        cifra en viñeta sin fecha              -> exit 1
+        cifra en viñeta de changelog fechada   -> exit 0 (es registro, no estado)
+    nota: |
+      La primera versión del check tenía un punto ciego: buscaba una fecha en
+      las 25 líneas previas, y el encabezado de §0.3 lleva fecha, así que
+      amnistiaba toda esa tabla — justo donde el fallo había ocurrido. Se
+      detectó porque la prueba negativa NO falló. Corregido: una fila de tabla
+      nunca cuenta como registro, y fuera de tablas hay que encontrar la viñeta
+      que la contiene y esa viñeta debe llevar la fecha.
+
+  - requisito: CTX-02
+    fecha: 2026-08-03
+    evidencia: |
+      presupuesto_contexto.permanente_max_chars: 40000, declarado en este
+      archivo, en la raíz del repositorio y versionado. El requisito exige
+      DECLARAR el presupuesto; no exige que el entorno quepa en él.
+    salvedad: |
+      No leer esto como que el entorno cabe en su presupuesto:
+        declarado 40000 · real 50217 · excedido en 25%
+      Y el 40000 lo propuso la auditoría, no el owner. Ninguna acción pendiente
+      cierra la brecha: el epic mediano son 16006 caracteres y CLAUDE.md §1.4
+      obliga a cargar uno entero por sesión. O cambia el método de carga de
+      epics, o el objetivo se fija en lo que el entorno cuesta de verdad
+      (~50000). Decisión del owner. Ver 2026-08-03-mca-seguimiento.md H-3.
+
+  - requisito: FLU-02
+    fecha: 2026-08-03
+    evidencia: |
+      CLAUDE.md §0.3 línea 125 declara la definición de terminado: lint exit 0,
+      typecheck exit 0, tests API exit 0. El entorno la comprueba entera: un PR
+      no pasa sin los jobs `lint`, `api-tests-smoke` y `web-typecheck` verdes.
+      Salvedad: no hay un comando local único que devuelva un solo veredicto;
+      es comodidad, no conformidad, porque CI sí lo hace.
+
+  - requisito: CAP-01
+    fecha: 2026-08-03
+    evidencia: |
+      Los procedimientos repetibles salieron del contexto permanente a
+      artefactos invocables en .claude/skills/ (versionados: .gitignore
+      excluye .claude/* salvo skills/):
+        triage        — Fases A-B: discovery, plantilla de issue, labels
+        cerrar-item   — Fases C-D: commit, comment de cierre, DoD end-to-end
+        delegar       — cuándo y cómo delegar a sub-agentes
+        resumen-ronda — plantilla del resumen de cierre de turno
+        handoff       — cierre de sesión + estructura y cleanup de SPRINT.md
+      CLAUDE.md pasó de 36506 a 16853 caracteres (-54%) y conserva solo lo que
+      manda siempre: principios, comandos de verificación, convenciones de
+      commit, branch policy y punteros a cada skill.
+      Verificado que el contenido viajó por frases-ancla de cada sección
+      movida (30 de 31; la restante es una paráfrasis, no una omisión).
+
+  - requisito: CTX-04
+    fecha: 2026-08-03
+    evidencia: |
+      Las instrucciones de alcance temático ya no se cargan siempre. El
+      procedimiento de triage se carga al triagear, el de cierre al cerrar un
+      item, el de delegación al delegar. Coste en contexto permanente: solo la
+      `description` de cada skill (catálogo 319 -> 1861 caracteres), contra los
+      19653 que se retiraron. Saldo neto: -18111.
+
+  - requisito: CTX-05
+    fecha: 2026-08-03
+    evidencia: |
+      scripts/check_contexto.py, enchufado al job `contexto-permanente` de
+      .github/workflows/ci.yml (sin filtro de paths: corre en todo PR).
+      Lee los umbrales de este archivo, no los duplica (CTX-06).
+      Probado en los dos sentidos, que es lo que distingue un control de un
+      adorno:
+        estado actual                  -> exit 0
+        techo bajado a 50000           -> exit 1, "87,280 > techo 50,000"
+        techo SPRINT.md bajado a 300   -> exit 1, "521 líneas > techo 300"
+        --informe con fallo activo     -> exit 0
+    nota: |
+      El job NO se ha ejecutado todavía en GitHub Actions: no hay push. La
+      verificación es local, con el mismo Python 3.12 del runner.
+
+  - requisito: FLU-03
+    fecha: 2026-08-03
+    evidencia: |
+      El límite de 250 líneas de SPRINT.md, que CLAUDE.md §6 y §12 declaraban
+      dos veces como «regla dura» y confiaban a que alguien invocara /handoff,
+      ahora lo ejecuta CI. Era el ejemplo exacto del requisito: lo que debe
+      ocurrir siempre estaba en prosa, no automatizado. Estaba en 521.
+
+  - requisito: FLU-01
+    fecha: 2026-08-03
+    evidencia: |
+      Los tres comandos ejecutables corren sin intervención y con resultado
+      inequívoco en Windows limpio, sin librerías nativas de WeasyPrint:
+        ruff check .                     -> exit 0
+        pytest -q -n auto -m "not heavy" -> 778 passed, 1 skipped, exit 0 (12m57s)
+        tsc --noEmit                     -> exit 0
+      Antes: 774 passed / 4 failed / exit 1. Causa raíz corregida en
+      tests/conftest.py: el stub de renderers cubría `render_pdf` en una lista
+      de 3 módulos escrita a mano, y no cubría `html_to_pdf` en absoluto,
+      mientras que los renderers los importan 6 módulos. Sustituida por un
+      barrido de sys.modules, que no se desactualiza al añadir consumidores.
+      Cobertura de render real preservada: test_us037_pdf_renderer.py (heavy,
+      excluido del stub) más dos casos nuevos para html_to_pdf, que antes no
+      tenía ninguno.
+    nota: |
+      Los 2 casos heavy nuevos NO se ejecutaron localmente: exigen GTK/Pango.
+      Colectan (6 tests, exit 0) y corren en el job api-tests-heavy del CI.
+  - requisito: HER-01
+    evidencia: |
+      .gitignore cubre .env / .env.local / .env.*.local; solo .env.example
+      versionado. Barrido de AKIA…, sk-…, ghp_…, claves privadas y URIs
+      postgres:// con credenciales sobre archivos versionados: cero coincidencias.
+
+  - requisito: CTX-01
+    fecha: 2026-08-03
+    evidencia: |
+      CLAUDE.md §0.3 declara stack, preparación del entorno, cinco comandos de
+      verificación y tres rutas protegidas. Tres de los cinco ejecutados con
+      salida registrada:
+        ruff check .                    -> "All checks passed!" exit 0
+        pytest -q -n auto -m "not heavy" -> 774 passed / 4 failed / 1 skipped,
+                                            exit 1, 13m29s (fallos ambientales)
+        tsc --noEmit                    -> sin salida, exit 0
+      No ejecutados y declarados como tal: build web, migraciones Alembic
+      (exigen Postgres levantado).
 
 # ─────────────────────────────────────────────────────────────────────────────
 # POR QUÉ MCC NO APLICA

@@ -1,0 +1,232 @@
+# Plan de conformidad — pmo_aas
+
+| Campo | Valor |
+|---|---|
+| Última auditoría | 2026-08-03 · [inicial](2026-08-03-mca.md) · [seguimiento](2026-08-03-mca-seguimiento.md) |
+| Próxima evaluación | 2026-11-03 |
+
+| Marco | Objetivo | Alcanzado | Estado |
+|---|---|---|---|
+| MCA | N2 | **N0** | **10 de 11 CONFORME.** Solo AUT-01 sigue PARCIAL |
+| MCC | no_aplica | no_aplica | Producto propio, sin encargo (`AUDITORIA.md` §1.3) |
+| MCS | N2 | — | **No auditado.** Correcto mientras MCA no llegue a N2 |
+
+---
+
+## Tanda A — ejecutada 2026-08-03
+
+Cuatro de cinco hechas. La quinta (A1) queda a la espera por decisión del owner.
+
+| # | Acción | Estado |
+|---|---|---|
+| **A1** | Proteger `main` | **PENDIENTE — decisión del owner.** Esperar a cerrar #570 y abrir los dos PR que faltan. Comando abajo |
+| ~~A2~~ | Escáneres en CI | **HECHA** — job `seguridad`: gitleaks (historial completo), bandit, pip-audit, pnpm audit |
+| ~~A3~~ | Cabeceras de seguridad | **HECHA** — middleware en `main.py` + 5 pruebas |
+| ~~A4~~ | ¿La IA calcula cifras? | **HECHA — sí lo hacía.** Corregido |
+| ~~A5~~ | Captura de errores | **HECHA** — sentry-sdk, inerte sin `SENTRY_DSN` |
+
+### Lo que los escáneres encontraron el primer día
+
+Ninguno de estos hallazgos era visible antes, porque nada los buscaba.
+
+**bandit — B314, vulnerabilidad real.** `parse_ms_project_xml` recibía bytes de
+un archivo **subido por el usuario** y los pasaba a `xml.etree.ElementTree`, que
+no resiste bombas de entidades. Sustituido por `defusedxml`; comprobado que un
+XML válido sigue parseando y que una bomba se rechaza con un 400 limpio, sin
+revelar qué defensa saltó. Los 31 tests del importador siguen verdes.
+
+**pip-audit — 23 vulnerabilidades en 7 paquetes.** Cerradas **10** subiendo las
+directas, y no son menores:
+
+| Paquete | De → a | CVE | Por qué importa |
+|---|---|---|---|
+| `python-multipart` | 0.0.12 → 0.0.31 | 6 | Maneja la subida de minutas y planes |
+| `python-jose` | 3.3.0 → 3.4.0 | 2 | JWT: toda la autenticación |
+| `jinja2` | 3.1.4 → 3.1.6 | 3 | Render de los PDF |
+| `python-dotenv` | 1.0.1 → 1.2.2 | 1 | — |
+
+Suite completa tras el cambio: **778 passed · 1 skipped · exit 0**, sin
+regresiones. Efecto lateral: los avisos de deprecación bajaron de 2.312 a 698.
+
+Las 13 restantes están **bloqueadas, no ignoradas**, y cada una con su causa en
+`apps/api/.pip-audit-ignore`: `starlette` (7) exige subir FastAPI; `pyasn1` (4)
+tiene arreglo pero `python-jose` fija `<0.5.0` —comprobado: uv lo declara
+insatisfacible—; `ecdsa` y `weasyprint` no tienen versión con arreglo.
+
+> **El gate es un trinquete**, igual que el de contexto: falla ante cualquier
+> vulnerabilidad **nueva**. Probado en ambos sentidos, incluida una dependencia
+> vulnerable añadida a propósito.
+
+### A4 — la IA sí calculaba cifras, y había un segundo hallazgo
+
+`REPORT_SYSTEM` recibía `budget_plan` y `budget_actual` y le pedía al modelo un
+`budget_status`. El modelo derivaba la desviación por su cuenta: es exactamente
+lo que IA-05 prohíbe, y esa cifra iba a un informe ejecutivo.
+
+Y al mirarlo apareció algo que la auditoría no había visto: el contexto hacía
+`float(p.budget or 0)`. El modelo guarda `Decimal` —DAT-03 conforme— pero **se
+convertía a coma flotante justo en el camino al informe**.
+
+Corregido: la desviación y el porcentaje consumido se calculan en Python con
+`Decimal`, viajan como cadena, y el prompt lleva una regla innegociable de no
+calcular. El modelo redacta; no computa.
+
+### A1 — el comando, para cuando cierren los PR
+
+```bash
+gh api -X PUT repos/xguilxr/pmo_aas/branches/main/protection   -H "Accept: application/vnd.github+json"   -f "required_pull_request_reviews[required_approving_review_count]=0"   -F "enforce_admins=false"   -F "restrictions=null"   -f "required_status_checks[strict]=true"   -f "required_status_checks[contexts][]=lint"   -f "required_status_checks[contexts][]=api-tests-smoke"   -f "required_status_checks[contexts][]=web-typecheck"   -f "required_status_checks[contexts][]=web-build"
+```
+
+**Deja fuera `seguridad` y `contexto-permanente` a propósito:** GitHub no puede
+exigir un check que nunca ha corrido, y los PR quedarían esperando para siempre.
+Se añaden después del primer PR que los ejecute.
+
+---
+
+## Tanda 1b — lo único que separa al entorno de N2
+
+La Tanda 1 cerró **diez de once** requisitos y bajó el contexto permanente un
+43 % (87.623 → ~50.400 caracteres). Queda **uno**, y con él caen N1 y N2 juntos,
+porque los cinco de N2 ya están CONFORME.
+
+**Y es tuyo, no mío:** la auditoría corrió desde `C:/Users/David Aguilar`, no desde el
+repo, así que su `.claude/settings.json` nunca llegó a cargarse. Probado dos veces, la
+segunda tras abrir `/hooks`: el guard no intercepta desde fuera del proyecto.
+
+| # | Acción | Cierra | Esfuerzo | Quién |
+|---|---|---|---|---|
+| ~~10~~ | ~~Sacar las cifras vivas de `CLAUDE.md` §0.3~~ · **HECHA 2026-08-03** — criterio `exit 0` en la tabla, mediciones fechadas en `conformidad.yaml`. Además el check ahora **vigila CTX-03 automáticamente**, probado en 4 escenarios | **CTX-03** | — | — |
+| 11 | **Abrir Claude Code con `pmo_aas` como directorio de trabajo** y comprobar que el guard intercepta (`echo "prueba: git push --force"`). Abrir `/hooks` no basta: `.claude/settings.json` es config **del proyecto** y no se carga en una sesión enraizada fuera de él | **AUT-01** | 2 min | **Owner** |
+| 12 | Reejecutar `MCA-P02`. Con 10 y 11 hechas, el entorno alcanza **N2** | — | 20 min | Claude |
+
+> **La acción 10 corrige un error mío.** Escribí esas cifras en las acciones 3 y
+> 3b como evidencia de ejecución. Eran ciertas el día que las medí y dejan de
+> serlo sin que nadie lo note — que es exactamente lo que CTX-03 prohíbe.
+
+---
+
+## Por qué solo hay una tanda
+
+`AUDITORIA.md` §2.1 fija el orden de subida. El punto 1 —gravedad crítica— **no aplica**:
+no hay credenciales expuestas ni alcance externo suelto (HER-01 CONFORME, con evidencia en
+el informe §3). El punto 2 es *«MCA hasta N2, si no está»*, y no está: está en N0.
+
+MCS no entra en el plan porque todavía no se sabe qué le falta. Auditarlo hoy costaría de 2
+a 4 horas para producir hallazgos que este entorno no puede comprobar: sin comandos de
+verificación declarados, cualquier cobertura o resultado que MCS reporte no significa nada
+(`AUDITORIA.md` §1.1).
+
+**La Tanda 1 es una tarde.** Once requisitos, ninguna clase de fallo nueva (MCA-CORE §4.3),
+y desbloquea la auditoría de software.
+
+---
+
+## Tanda 1 — MCA de N0 a N2
+
+| # | Acción | Cierra | Esfuerzo | Qué riesgo elimina |
+|---|---|---|---|---|
+| ~~1~~ | ~~Renombrar `pmoaasconformidad.yaml` → `conformidad.yaml`~~ · **HECHA 2026-08-03** | H-5 | — | — |
+| ~~2~~ | ~~Declarar el presupuesto de contexto permanente~~ · **HECHA 2026-08-03** — `max: 40000`. Sigue EXCEDIDO y el máximo es propuesta mía, no tuya | **CTX-02** | — | — |
+| ~~3~~ | ~~Declarar y ejecutar los comandos de verificación~~ · **HECHA 2026-08-03** — `CLAUDE.md` §0.3. Tres de cinco ejecutados con salida registrada. **Abrió FLU-01 como PARCIAL:** ver 3b | **CTX-01** | — | — |
+| ~~3b~~ | ~~Arreglar los 4 tests de render que fallan en Windows~~ · **HECHA 2026-08-03** — no se marcaron `heavy` (habría perdido cobertura en PR): se corrigió la causa raíz en `tests/conftest.py`. **778 passed · 1 skipped · exit 0** | **FLU-01** | — | — |
+| ~~4~~ | ~~Comprobación en CI del presupuesto y del largo de `SPRINT.md`~~ · **HECHA 2026-08-03** — `scripts/check_contexto.py` + job `contexto-permanente`. Probado en ambos sentidos. **Techos como trinquete**, no como objetivo: ver nota abajo | **CTX-05**, **FLU-03**, H-3 | — | — |
+| ~~5~~ | ~~Ejecutar `/handoff` y bajar `SPRINT.md` a ≤250 líneas~~ · **HECHA 2026-08-03** — **521 → 219 líneas**, por debajo del objetivo. Lo cerrado se archivó íntegro en `SPRINT-DONE-HISTORY.md` (749 → 1.092 líneas). Contexto permanente **87.623 → 68.055 (−22,3 %)**. Techos apretados detrás | H-2, alimenta CTX-03 | — | — |
+| ~~6~~ | ~~Mover procedimientos de `CLAUDE.md` a skills invocables~~ · **HECHA 2026-08-03** — 4 skills nuevas (`triage`, `cerrar-item`, `delegar`, `resumen-ronda`) + §6 incorporada a `handoff`. `CLAUDE.md` **36.506 → 16.853 (−54 %)**. Contexto **68.055 → 49.944** | **CAP-01**, **CTX-04** | — | — |
+| ~~7~~ | ~~Sacar el contador «Próximo libre» del contexto permanente~~ · **HECHA 2026-08-03** — `scripts/proximo_id.py`. **No se derivó de `gh issue list` como decía el plan**: GitHub va por US-170 cuando el máximo real es US-193, porque muchos batches se ejecutaron sin crear issues. Une GitHub + `git log` + docs | **CTX-03** | — | — |
+| ~~8~~ | ~~Declarar qué acciones exigen confirmación humana~~ · **HECHA 2026-08-03, pero AUT-01 queda PARCIAL** — no se declaró: se *implementó* con `.claude/settings.json` + hook `PreToolUse` (`scripts/guard_irreversible.py`), probado en 15 casos. **Parcial porque no se pudo demostrar que dispare**: el vigilante de configuración no toma un settings creado a mitad de sesión | AUT-01 (parcial) | — | Ver 8b |
+| **8b** | Abrir `/hooks` o reiniciar sesión, y reconfirmar que el guard intercepta. Es acción del owner: no puedo abrir `/hooks` yo | **AUT-01** | 2 min | Que el control exista y no se ejecute — MCA-CORE §6.1 |
+| ~~9~~ | ~~Reejecutar `MCA-P02` y registrar el nivel alcanzado~~ · **HECHA 2026-08-03** — [informe de seguimiento](2026-08-03-mca-seguimiento.md). **11/11 evaluados: 9 CONFORME, AUT-01 PARCIAL, CTX-03 NO CONFORME.** Nivel: **sigue N0** | — | — | — |
+
+**Lo que bajó el contexto permanente:** acciones **5, 6 y 7**. Resultado real: de 87.623 a
+~50.400 caracteres (−43 %), sin perder ninguna capacidad. No se llegó a los 40.000 estimados:
+ver `conformidad.yaml` → `distancia_al_objetivo`.
+
+### Nota sobre los techos de la acción 4
+
+Los techos que CI hace cumplir **no son el objetivo**: son el valor actual más 1 % de
+tolerancia, y viven en `conformidad.yaml` con su `historial`. El control falla si el
+contexto **crece**, que es el riesgo real; no bloquea por el estado heredado.
+
+Poner el objetivo (40.000) como techo habría dejado el CI en rojo en cada PR, y un control
+que bloquea todo se desactiva en dos días.
+
+**Cada vez que una acción baje el contexto hay que bajar el techo detrás.** Se apretó tres
+veces (88.500 → 68.500 → 50.400) y el control frenó cuatro intentos míos de engordar el
+contexto. Un trinquete que no se aprieta es un número decorativo.
+
+### Medición: caracteres, no bytes
+
+Las cifras de la auditoría (88.180 → 91.501) se tomaron con `wc -c`, que cuenta **bytes**;
+en UTF-8 cada acento ocupa dos. La medición correcta la produce `scripts/check_contexto.py`
+y da **87.623 caracteres**. La conclusión de la auditoría no cambia —el orden de magnitud es
+el mismo y el hallazgo era la ausencia de presupuesto, no su valor— pero la cifra que manda
+de aquí en adelante es la del script.
+
+---
+
+## Tanda 2 — MCS, después de la Tanda 1
+
+Ejecutar `MCS-P01` contra **N2**, el objetivo de `conformidad.yaml`. Nunca contra N3.
+
+`conformidad.yaml` ya lo argumenta y el argumento es correcto: auditar hoy contra N3 un
+producto sin usuarios externos devuelve decenas de no conformidades reales e irrelevantes,
+y consume la capacidad que hace falta para publicarlo.
+
+Estimación: 2–4 h. Ya no está bloqueada por falta de comandos de verificación: existen,
+corren y dan exit 0. Arranca cuando MCA llegue a N2 (acción 11).
+
+---
+
+## Tanda 3 — Dominio PMO (frente nuevo, 2026-08-03)
+
+Fuera del alcance de MCA/MCC/MCS: ninguno de los tres marcos audita si la **semántica de
+gestión de proyectos** del producto es correcta. Abierto a pedido del owner.
+
+Diagnóstico entregado en `docs/dominio/`:
+
+| Documento | Qué es |
+|---|---|
+| `00-RUNDOWN-estandares.md` | Mapa de PMI, ISO, AXELOS e IPMA. **Para revisar, no compromete a nada** |
+| `01-DIAGNOSTICO.md` | Brecha medida entre el producto y el núcleo del dominio |
+| `02-GLOSARIO.md` | Glosario canónico. **Borrador: nada adoptado hasta aprobación** |
+
+**Hallazgo principal:** la brecha no es de cobertura sino de definición. El producto ya
+modela RAID, acta de constitución, interesados, control de cambios, programas y EDT. Lo que
+falta es que cada concepto tenga un término único y una regla de cálculo.
+
+| # | Acción | Cierra | Esfuerzo | Estado |
+|---|---|---|---|---|
+| D-1 | Owner revisa `02-GLOSARIO.md` término por término | — | 1–2 h | **Bloqueante del resto** |
+| D-2 | Decidir umbral de RAG (§2.4) y método de avance (§2.3) | B-3, B-5 | Criterio de negocio | Pendiente |
+| D-3 | Unificar las dos paletas de salud en una definición | B-3 | 1 h | Pendiente |
+| D-4 | Migrar `phase` a las cinco fases del ciclo de vida; retirar `support` | B-2 | 4–6 h | Pendiente |
+| D-5 | Normalizar `yellow` → `amber` y retirar literales en español del código | B-2, B-3 | 2 h | Pendiente |
+| D-6 | Introducir línea base | B-1 | 1–2 días | Pendiente |
+| D-7 | Decidir: EVM completo o calidad de cronograma DCMA 14-point | B-4 | Decisión | Pendiente |
+
+**El plan de remediación detallado no se escribe hasta que D-1 esté hecha.** Planificar
+sobre vocabulario que todavía puede cambiar es trabajo que se tira.
+
+**Recomendación sobre D-7:** calidad de cronograma, no EVM. DCMA 14-point se alimenta de
+`task_dependencies`, `predecessors`, `successors` e `is_critical`, que ya existen por el
+importador de MS Project. EVM exige antes línea base **y** costo por tarea, que no existe.
+Más barato y más diferenciador.
+
+---
+
+## Puerta de lanzamiento — sin cambios
+
+`conformidad.yaml` la declara y sigue **NO EVALUADA**. Exige MCA N2 + MCS N3, más
+aislamiento entre usuarios con prueba automatizada, modelado de amenazas hecho, plan de
+respuesta ante incidente y restauración probada.
+
+Se evalúa **antes** de abrir el registro público. Hoy, con MCA en N0, la puerta está a dos
+niveles de distancia en un marco y sin medir en el otro.
+
+---
+
+## Nota sobre MCC
+
+No aplica y está correctamente declarado, con razón y con disparador de revisión
+(*«aparece un cliente que financie o condicione el desarrollo»*). No es un hallazgo
+negativo: `AUDITORIA.md` §1.3 exige declararlo, y declararlo es el requisito.
