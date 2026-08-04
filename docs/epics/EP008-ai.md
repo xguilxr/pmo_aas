@@ -357,7 +357,7 @@ Además del draft IA, hay un **Report Builder** con catálogo de secciones atóm
 
 - `GET /api/v1/admin/ai/provider` — lee config actual (modo, provider, modelo enmascarado).
 - `PATCH /api/v1/admin/ai/provider` — actualiza modo + config. Requiere capability `ai.configure`.
-- `POST /api/v1/admin/ai/provider/test` — ejecuta un prompt mínimo contra el provider configurado y devuelve latencia + ok/error.
+- `POST /api/v1/admin/ai/provider/test` — ejecuta un prompt mínimo contra el provider configurado y devuelve latencia + ok/error. **Rechaza `base_url` que no apunte a un host público por HTTPS** (ver abajo).
 
 ### UI (`/admin/ai`)
 
@@ -369,6 +369,32 @@ Además del draft IA, hay un **Report Builder** con catálogo de secciones atóm
 - Cifrado Fernet (`AI_SECRETS_FERNET_KEY`) antes de persistir.
 
 > El doc viejo describía una **cascada drag-and-drop multi-provider** con fallback automático. **No existe.** El tenant elige UN provider activo por vez en modo `byo`. Cambiar de provider es un wizard, no un reorder.
+
+#### La `base_url` de `custom` y `azure` tiene forma obligatoria (2026-08-04)
+
+> **Modelo de amenazas AM-01.** Antes se aceptaba cualquier cadena de hasta 500
+> caracteres, y `provider/test` la usaba para hacer una petición desde dentro de
+> la red privada de Railway devolviendo estado, cuerpo y latencia — un escáner de
+> red en manos de cualquier administrador de inquilino.
+
+Lo que un administrador ve ahora al configurar `custom` o `azure`:
+
+| Se rechaza | Motivo que devuelve |
+|---|---|
+| `http://…` | Solo HTTPS. Un endpoint de IA recibe datos del proyecto |
+| IP privada, de bucle o de metadatos (`10.*`, `127.*`, `169.254.*`, `::1`) | No es alcanzable desde fuera |
+| `localhost`, `*.internal`, `*.local`, `*.svc.cluster.local` | Apunta a una red interna |
+| Un nombre que **resuelve** a un rango privado | Ídem, comprobado al resolver |
+
+Se aplica en las tres puertas: al guardar la configuración, al probar la
+conexión y **al ejecutar de verdad** — esta última protege a quien ya tuviera
+guardada una `base_url` interna. Implementación: `app/core/url_externa.py`.
+Cobertura: `tests/test_seg06_am01_ssrf_base_url.py`.
+
+**Lo que NO cierra:** la reasignación de DNS entre la comprobación y la
+petición. Y que el inquilino mande sus datos al proveedor público que quiera
+sigue siendo el propósito de BYO; lo que se cierra es que ese destino sea
+nuestra red.
 
 ---
 
