@@ -89,7 +89,7 @@ Se añaden después del primer PR que los ejecute.
 |---|---|---|---|
 | ~~B1~~ | Suite de aislamiento entre inquilinos | SEG-08, T-4 | **HECHA** — 8 casos, verificada por mutación |
 | ~~B2~~ | Contenido de minutas como dato no confiable | IA-11, T-5 | **HECHA** — ver abajo |
-| B3 | Conjunto de evaluación de IA en la canalización | IA-07, IA-08, IA-09 | Pendiente. Ya no está bloqueada: B2 está hecha |
+| ~~B3~~ | Conjunto de evaluación de IA en la canalización | IA-07, IA-08, IA-09 | **HECHA** — 45 casos, umbral eliminatorio, job propio en CI. Ver abajo |
 | ~~B4~~ | Límites de iteraciones y de coste por ejecución | IA-03 | **HECHA** — `AI_MAX_PROMPT_CHARS` |
 | B5 | Modelo de amenazas sobre la arquitectura | SEG-06 | Pendiente. Depende de B1, que está hecha |
 
@@ -141,6 +141,90 @@ estructural que no está declarada.
 > —el copiloto solo navega, las cifras se calculan en Python, ninguna salida
 > ejecuta nada—, y eso ya estaba. **B3 (conjunto de evaluación) es lo que
 > convertiría esto en algo medible**, y es la siguiente.
+
+### B3 — la pregunta que nadie estaba haciendo
+
+B2 comprueba que el contenido ajeno no llegue al modelo **como instrucción**.
+Nada comprobaba la otra mitad: *suponiendo que el modelo desobedezca de todas
+formas* —cosa que ninguna defensa de prompt puede impedir, y así lo dice el
+docstring de `untrusted.py`—, **qué sale por el otro lado**.
+
+Esa es la pregunta que el conjunto de evaluación hace, y por eso puede ser un
+gate: no mide al modelo, que exigiría un proveedor vivo, dinero por ejecución y
+un resultado distinto cada vez. Mide al sistema, y eso es determinista, tarda
+segundos y no necesita ni clave de API ni red. Cada caso es una salida de modelo
+ya rota que se hace pasar por el mismo código que corre en producción.
+
+**45 casos, cuatro superficies** —minuta, merge entre fragmentos, copiloto,
+mapeo de columnas del importador—, cada una llamando a funciones de producto de
+verdad. **Umbral: seguridad 100 % eliminatoria, calidad ≥ 90 %.** El umbral de
+calidad no es 100 % a propósito: IA-09 pide que un fallo de producción entre al
+conjunto **el día que se detecta**, no el día que se arregla.
+
+Lo que de verdad se mide no son las expectativas de cada caso sino los
+**invariantes de superficie**, que se aplican a todos los casos la enumere quien
+la enumere. Un caso nuevo hereda el contrato entero. El más útil rehace, sobre
+toda minuta, el viaje `summary` → memoria del proyecto → prompt de mañana: es
+el vector indirecto que B2 señaló como el peor, y ahora cada caso lo ejercita de
+paso.
+
+**Los fallos de producción ya conocidos entraron como casos permanentes.**
+BUG-063, BUG-068, BUG-069, BUG-070, BUG-073, ENH-102 y ENH-147 vivían dispersos
+en el arreglo que los cerró; ahora vive cada uno en el conjunto, con la salida de
+modelo que lo provocó. Una prueba de trinquete falla si alguno desaparece.
+
+#### Qué encontró el primer día
+
+Dos cosas que ninguna prueba miraba, ninguna reportada por un usuario:
+
+**Una navegación fuera del sitio desde el copiloto.** El guardia era «empieza por
+`/` y no por `//`». Cinco formas lo pasaban y resuelven a otro origen, porque el
+parser de URL del navegador trata `\` como `/` y **borra** tabuladores y saltos
+de línea antes de leer: `/\evil.example`, `/\/evil.example`, y las variantes con
+TAB, LF y CR entre las barras. El frontend hace `router.push(a.path)` sin
+comprobar nada más. La cadena completa existía: minuta envenenada → memoria del
+proyecto → contexto de página del copiloto → botón ofrecido al usuario
+autenticado. Verificado contra el parser de Node, no contra la especificación de
+memoria.
+
+**Un «no lo sé» del modelo borrando un acierto de la heurística.** En el mapeo de
+columnas, `field: null` con confianza 0,99 pisaba el `name` que la heurística
+resolvió con 0,8, y la columna llegaba sin asignar al asistente de importación.
+
+Las dos corregidas en commits propios, con su prueba de regresión.
+
+#### Verificado por mutación
+
+Un conjunto de evaluación que sigue verde con la defensa quitada no mide nada.
+
+| Mutación | Casos que caen |
+|---|---|
+| Un constructor de acciones ingenuo (el modelo manda) | **8** |
+| La heurística del mapeo deja de opinar | **6** |
+| El guardia de rutas acepta cualquier ruta | **5** |
+| El parser tolerante vuelve a `json.loads` a secas | **3** |
+| El validador acepta cualquier tipo de RAID | **2** |
+| El guardia de rutas vuelve al filtro anterior | **2** |
+| El envoltorio deja de neutralizar | **1** |
+| Sin mutar | **0** |
+
+#### Lo que NO cubre
+
+Escrito aquí para que no se lea como cobertura que no existe:
+
+- **El informe ejecutivo no tiene superficie.** Su contención es de otra
+  naturaleza —las cifras se calculan en Python antes de llamar (IA-05), así que
+  no hay salida que validar— y el ensamblado del contexto está en línea dentro
+  de `_run_report`, sin función a la que llamar. Sacarlo y evaluarlo queda
+  pendiente.
+- **La exfiltración del prompt de sistema no está contenida**, y no hay caso que
+  finja lo contrario. Si el modelo copia su mensaje de sistema en un `summary`,
+  sale. El daño está acotado porque el destino es el mismo usuario del mismo
+  inquilino que subió el archivo —no cruza la frontera que SEG-08 protege—, pero
+  un prompt no es un secreto y queda escrito que no lo tratamos como tal.
+- **El modelo mismo no se evalúa.** Un conjunto que ejerza al proveedor de verdad
+  es otra cosa y otra decisión: mediría el modelo, no el sistema, y no puede ser
+  un gate.
 
 ### Discrepancia: IA-12 no existe en el alcance evaluado
 

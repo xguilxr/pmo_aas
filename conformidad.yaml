@@ -37,6 +37,18 @@ marcos:
   #     (vector indirecto, se antepone a toda generación futura) y el importador
   #     de planes no estaban en el hallazgo. Verificada por mutación en tres
   #     puntos + dos trinquetes anti-caducidad. Detalle en plan.md.
+  #   - B3 (IA-07, IA-08, IA-09): conjunto de evaluación de IA, 45 casos sobre
+  #     cuatro superficies, umbral eliminatorio en seguridad y job propio en CI
+  #     (`evaluacion-ia`). Corre sin clave de API ni red: los casos son salidas
+  #     de modelo grabadas, así que puede ser un check obligatorio. Mide qué
+  #     hace el SISTEMA cuando el modelo falla, no si el modelo acierta — eso
+  #     último no puede condicionar un despliegue y no se finge que lo haga.
+  #     Verificado por mutación: quitar cada defensa tira entre 1 y 8 casos.
+  #     Encontró dos defectos el primer día, ninguno reportado por usuarios:
+  #     una navegación fuera del sitio desde el copiloto (el parser de URL trata
+  #     `\` como `/` y borra TAB/LF/CR) y un `field: null` del modelo borrando
+  #     un acierto de la heurística en el mapeo de columnas. Los dos corregidos.
+  #     Lo que NO cubre está escrito en apps/api/evaluacion/README.md.
   #   - B4 (IA-03): tope de coste por ejecución, AI_MAX_PROMPT_CHARS.
   # OJO con IA-12: la tabla de acciones del informe se la atribuye a B2, pero
   # el alcance evaluado solo tiene IA-01..IA-11. No se da por cerrado un

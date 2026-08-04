@@ -174,6 +174,41 @@ jobs:
       - name: Run smoke tests in parallel
         run: python -m pytest -q -n auto -m "not heavy"
 
+  # Auditoría MCS 2026-08-03, acción B3 — cierra IA-07 («ninguna funcionalidad
+  # de nivel agente DEBE desplegarse sin conjunto de evaluación previo») e IA-08
+  # («DEBE existir un conjunto de evaluación ejecutado en la canalización, con
+  # umbral que condicione el despliegue»).
+  #
+  # Job propio y no un test más dentro de `api-tests-smoke` por dos razones: el
+  # umbral tiene que ser un check nombrable para exigirlo en la protección de
+  # `main`, y su informe tiene que leerse solo, sin bucear en la salida de
+  # pytest. La suite igualmente lo corre (tests/test_ia0709_evaluacion.py), que
+  # es lo que hace que un invariante roto se vea en el mismo `pytest` local.
+  #
+  # Sin clave de API y sin red: los casos son salidas de modelo grabadas. Por
+  # eso puede ser obligatorio y tardar segundos. Qué mide y qué no, en
+  # apps/api/evaluacion/README.md.
+  evaluacion-ia:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: apps/api/requirements-dev.txt
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Conjunto de evaluación de IA (umbral en evaluacion/casos.yaml)
+        run: python -m evaluacion.runner
+
   # ENH-044: gate dedicado para migraciones contra Postgres efímero.
   # Caza regresiones tipo BUG-039 (SQLite acepta `sa.text("1")` como
   # boolean default; Postgres no). El workflow corre upgrade head →

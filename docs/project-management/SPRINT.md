@@ -12,9 +12,9 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sesión 2026-08-03 · Branch: claude/auditoria-conformidad-mca-mcs · PR #573
-Auditoría de conformidad MCA/MCS + Tanda A y B1/B2/B4 de remediación.
-Pendiente: revisión y merge del owner. Siguiente de la tanda: B3 y B5.
+Sesión 2026-08-04 · Branch: claude/auditoria-conformidad-mca-mcs · PR #573
+Auditoría de conformidad MCA/MCS + Tanda A y B1/B2/B3/B4 de remediación.
+Pendiente: revisión y merge del owner. Siguiente y última de la tanda: B5.
 
 Los batches del 2026-07-18 (Plan Import Revamp 9/9 y Feedback 16-jul 8/8)
 siguen en `claude/plan-import-wbs-fixes-nwotng` SIN PR. Migraciones 0095-0096
@@ -64,7 +64,7 @@ pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
 > Plan completo y estado por requisito en `docs/conformidad/plan.md`. No consume
 > IDs US/ENH/BUG. **PR #573**, CI verde.
 
-Hecho: MCA acciones 1-10, MCS auditado, Tanda A (4/5) y B1/B4.
+Hecho: MCA acciones 1-10, MCS auditado, Tanda A (4/5) y B1/B2/B3/B4.
 
 **Pendiente de decisión del owner:**
 
@@ -77,8 +77,10 @@ Hecho: MCA acciones 1-10, MCS auditado, Tanda A (4/5) y B1/B4.
   número lo propuso la auditoría.
 - [ ] Revisar `docs/dominio/02-GLOSARIO.md`. Bloquea la remediación de dominio.
 
-**Pendiente de ejecución:** Tanda B2 (minutas como dato no confiable, 2-3 d),
-B3 (evaluación de IA, depende de B2, 3-4 d), B5 (modelo de amenazas, 2 d).
+**Pendiente de ejecución:** solo **B5** (modelo de amenazas, 2 d).
+
+> B3 dejó el conjunto de evaluación de IA en `apps/api/evaluacion/`.
+> **Al proteger `main`, añadir `evaluacion-ia` a los checks requeridos.**
 
 ---
 

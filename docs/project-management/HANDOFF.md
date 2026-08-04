@@ -1,16 +1,16 @@
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-08-03
-**Branch activa:** `claude/auditoria-conformidad-mca-mcs` · **PR #573** (abierto, CI verde)
-**Generado por:** `/handoff` — sesión de auditoría de conformidad
+**Última actualización:** 2026-08-04
+**Branch activa:** `claude/auditoria-conformidad-mca-mcs` · **PR #573** (abierto)
+**Generado por:** sesión de conformidad — Tanda B, acción B3
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-Sesión **de conformidad, no de producto**. Se auditó el repositorio contra MCA
-(entorno agéntico) y MCS (calidad de software), y se ejecutó la primera tanda de
-remediación. PR #573 con 18 commits, los ocho jobs de CI en verde.
+Sesión **de conformidad, no de producto**. Se auditó el repo contra MCA (entorno
+agéntico) y MCS (calidad de software) y se ejecutó la remediación. De la Tanda B
+quedan B1, B2, B3 y B4 hechas; falta **B5**.
 
 | Marco | Objetivo | Alcanzado | Evaluados |
 |---|---|---|---|
@@ -20,9 +20,8 @@ remediación. PR #573 con 18 commits, los ocho jobs de CI en verde.
 **MCA está a un requisito de N2** y ese requisito no necesita código: solo que
 alguien verifique el guard desde una sesión abierta dentro del repo.
 
-**MCS no alcanza N1**: 43 requisitos lo bloquean. El producto está
-funcionalmente maduro y estructuralmente desprotegido — la calidad vive en el
-código y en la cabeza del owner, no en controles que sobrevivan a un mal día.
+Los requisitos que tocó la remediación **siguen figurando como NO CONFORME**:
+arreglarlos no es medirlos, y eso exige reauditar.
 
 ## 📍 Dónde retomar
 
@@ -33,41 +32,41 @@ código y en la cabeza del owner, no en controles que sobrevivan a un mal día.
    llega a **N2**.
 2. Proteger `main` — hoy cualquiera escribe directo en productiva.
 
-Después, **B3** (conjunto de evaluación de IA, dependía de B2) y **B5** (modelo
-de amenazas, dependía de B1). Las dos están desbloqueadas.
+Después, **B5** (modelo de amenazas, 2 d, desbloqueada por B1).
 
-## ✅ Hecho en esta sesión
+## ✅ Hecho en esta sesión — B3, conjunto de evaluación de IA
 
-Todo en PR #573. Detalle por requisito en `docs/conformidad/plan.md`.
+Cierra **IA-07, IA-08 e IA-09**. Vive en `apps/api/evaluacion/`; el detalle está
+en `docs/conformidad/plan.md` §B3 y el porqué en `evaluacion/README.md`.
 
-**Entorno (MCA)** — contexto permanente de 87.623 a ~51.000 caracteres
-(**−43 %**): `SPRINT.md` de 521 a 227 líneas, procedimientos de `CLAUDE.md` a
-`.claude/skills/`, contador de IDs derivado en vez de almacenado. Tres controles
-nuevos en CI y comandos de verificación declarados **y ejecutados**.
+B2 comprobaba que el contenido ajeno no llegue al modelo como instrucción. Nadie
+comprobaba la otra mitad: **si el modelo desobedece igualmente, qué sale**. Esa
+es la pregunta que el conjunto hace, y por eso puede ser un gate — mide al
+sistema, no al modelo: corre sin clave de API, sin red y en segundos, con job
+propio en CI (`evaluacion-ia`) y umbral eliminatorio en seguridad.
 
-**Producto (MCS)** — Tanda A cerró tres de las cuatro críticas. Los escáneres,
-su primer día: vulnerabilidad real de XML en el importador (archivo del usuario
-a un parser sin defensa), 10 de 23 CVE de Python cerradas (6 de subida, 2 de
-JWT), la crítica de Next.js, y la IA que calculaba cifras para informes
-ejecutivos con `float()` en ruta monetaria.
+Los fallos de IA que ya llegaron a un usuario (BUG-063/068/069/070/073,
+ENH-102, ENH-147) entraron como **casos permanentes**, con la salida de modelo
+que los provocó. Una prueba de trinquete falla si alguno desaparece.
 
-**B1** — aislamiento entre inquilinos **verificado por mutación**: quitar un
-filtro `tenant_id` la hace fallar en lectura, modificación y borrado.
+**Encontró dos defectos el primer día**, ninguno reportado por usuarios, los dos
+corregidos en commits propios:
 
-**B2** — el contenido de terceros ya no llega al modelo como instrucción. El
-informe nombraba las minutas; los puntos de entrada eran **diez**. Los dos que
-faltaban pesan más: la memoria del proyecto (un resumen envenenado se antepone
-a *toda* generación futura) y el importador de planes (decide el mapeo de
-columnas). Verificada por mutación en tres puntos.
+- **Navegación fuera del sitio desde el copiloto.** El guardia era «empieza por
+  `/` y no por `//`»; cinco formas lo pasaban porque el parser de URL del
+  navegador trata `\` como `/` y **borra** TAB/LF/CR. El frontend hace
+  `router.push(a.path)` sin comprobar nada más.
+- **Un `field: null` del modelo** con confianza alta borraba el mapeo que la
+  heurística había acertado, en el importador de planes.
 
-También se corrigió el stub de renderers del `conftest`, que cubría 3 de 6
-módulos y hacía fallar 4 tests sin GTK/Pango.
+Verificado por mutación: quitar cada defensa tira entre 1 y 8 casos; sin mutar,
+0.
 
 ## 🔄 PRs en flight
 
 | PR / branch | Acción pendiente |
 |---|---|
-| **#573** · `claude/auditoria-conformidad-mca-mcs` | Revisar y mergear. **CI verde** |
+| **#573** · `claude/auditoria-conformidad-mca-mcs` | Revisar y mergear |
 | #570 · `claude/pmo-portfolio-architecture-6hbuen` | Verificar + mergear · `alembic upgrade head` (0091-0094) |
 | `claude/plan-import-wbs-fixes-nwotng` | Falta abrir PR · migs 0095-0096 |
 | `claude/gantt-areas-fixes` | Falta abrir PR (ENH-149/BUG-075/ENH-154/ENH-152) |
@@ -75,31 +74,27 @@ módulos y hacía fallar 4 tests sin GTK/Pango.
 ## ⚠️ Gotchas
 
 - **`main` no está protegida.** Verificado contra la API de GitHub. La regla de
-  `CLAUDE.md` §8 existe solo en prosa.
-- **Tres gates nuevos en CI** funcionan como **trinquete**: fallan ante
-  crecimiento nuevo, no por el pasivo heredado, que está documentado con fecha.
-  Frenaron seis intentos de engordar el contexto en esta misma sesión.
+  `CLAUDE.md` §8 existe solo en prosa. Al protegerla, añadir `evaluacion-ia` a
+  los checks requeridos.
+- **Los gates de CI funcionan como trinquete:** fallan ante crecimiento nuevo, no
+  por el pasivo heredado. El de contexto frenó esta misma sesión y hubo que
+  recortar en vez de subir el techo — que es lo que debe pasar.
 - **No hay tests de frontend.** El salto de Next 15.0 a 15.5 lo respaldan solo
   typecheck y build. Un smoke manual antes de mergear sería prudente.
 - **Python 3.12 no es negociable**: `psycopg[binary]` no tiene wheel para 3.13+.
-- Los requisitos que tocó la Tanda A **siguen figurando como NO CONFORME**:
-  arreglarlos no es medirlos, y eso exige reauditar.
 
 ## 📋 Lo que sigue
 
-- **Tanda B:** B3 (3-4 d, ya desbloqueada) → B5 (2 d). B1, B2 y B4 hechas.
+- **Tanda B:** solo queda **B5** (modelo de amenazas, 2 d).
+- **Evaluación de IA:** falta superficie para el **informe ejecutivo** — hay que
+  sacar el ensamblado del contexto fuera de `_run_report` primero.
 - **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch. US-168
   sigue `in-progress`.
-
-## 📚 Epics
-
-EP008 actualizada (el modelo ya no calcula cifras, y hay tope de coste). El
-resto no cambió de comportamiento: la sesión fue de entorno y seguridad.
 
 ## 🧹 Acciones del owner
 
 - [ ] Verificar el guard desde una sesión dentro del repo (cierra AUT-01 → N2).
-- [ ] Proteger `main` tras cerrar los PR abiertos.
+- [ ] Proteger `main` tras cerrar los PR abiertos, con `evaluacion-ia` incluido.
 - [ ] Revisar y mergear **PR #573**.
 - [ ] Fijar `permanente_max_chars` en `conformidad.yaml`.
 - [ ] Revisar `docs/dominio/02-GLOSARIO.md` término por término.
@@ -109,14 +104,12 @@ resto no cambió de comportamiento: la sesión fue de entorno y seguridad.
 
 ## 🔮 Sin issue todavía
 
-- **Calidad de cronograma DCMA 14-point.** El importador ya deja el insumo
-  exacto y no exige costos. Ver `docs/dominio/01-DIAGNOSTICO.md` §4.
+- **Calidad de cronograma DCMA 14-point.** Ver `docs/dominio/01-DIAGNOSTICO.md` §4.
 - **Línea base.** Brecha keystone: sin ella no existe «desviación».
 - **Migrar de `python-jose` a PyJWT** — cerraría 5 CVE bloqueadas hoy por su
   restricción `pyasn1<0.5.0`.
-- **Re-medir INT-04**: `api-tests-smoke` tarda 3 m en el runner, no los 13 de
-  una máquina local. El requisito puede estar más cerca de conforme de lo que
-  estimó el informe.
+- **Re-medir INT-04**: `api-tests-smoke` tarda 3 m en el runner, no los 13 de una
+  máquina local. El requisito puede estar más cerca de conforme de lo estimado.
 
 ---
 
