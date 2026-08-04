@@ -52,14 +52,17 @@ Si NO aplica → continúa al paso 2.
                    o "Sin US activa" + próximo paso accionable)
 📥 INBOX / TRIAGE (issues recién creados + sprints planeados con
                    sus bloques en orden de ejecución)
-⏸️ Deferred       (issues sin asignación de versión, esperan decisión)
-✅ DONE           (tabla resumen — detalle en SPRINT-DONE-HISTORY.md)
-📋 Backlog v2.0
+📦 puntero a SPRINT-BACKLOG.md
 ```
 
-**Separación de histórico:** `SPRINT.md` lleva solo el sprint actual + INBOX +
-Deferred + backlog v2.0. `SPRINT-DONE-HISTORY.md` lleva el detalle de los
-bloques cerrados.
+**Separación por frecuencia de uso** (2026-08-04, presupuesto de contexto):
+`SPRINT.md` lleva solo lo que se mira cada día — sprint actual e INBOX.
+`SPRINT-BACKLOG.md` lleva Deferred, la tabla DONE y el backlog v2.0, que se
+abren **al planear, no al ejecutar**. `SPRINT-DONE-HISTORY.md` sigue llevando el
+detalle narrativo de los bloques cerrados.
+
+Al cerrar sesión, lo que se archiva va a `SPRINT-BACKLOG.md`, no a `SPRINT.md`:
+devolverlo ahí rompería el techo de contexto que el CI hace cumplir.
 
 **Flujo de un item:** al crear issue → INBOX · al arrancar implementación →
 IN-PROGRESS · al cerrar bloque → DONE (tabla resumen), con el detalle a

@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import statistics
 import sys
 from pathlib import Path
 
@@ -61,17 +60,26 @@ def _descripciones_de_skills() -> int:
     return total
 
 
-def _epic_mediana() -> tuple[int, str]:
-    """`CLAUDE.md` §1.4 obliga a cargar un epic por sesión, no todos.
+def _epics() -> tuple[int, str]:
+    """Desde 2026-08-04, `CLAUDE.md` §1 carga el ÍNDICE, no un epic entero.
 
-    La mediana es el representante honesto: la media la inflan dos o tres
-    epics grandes que rara vez se tocan.
+    Antes esto devolvía la mediana de los epics, porque §1.4 obligaba a leer
+    «el epic relevante» antes de empezar y la mediana es el representante
+    honesto de «uno cualquiera». Era la partida más grande del presupuesto: un
+    documento funcional completo cargado antes de saber si se iba a abrir.
+
+    El epic sigue leyéndose, pero **cuando se toca**, y eso ya no es contexto
+    permanente (MCA CTX-04). Si algún día §1 vuelve a exigirlo de arranque, esta
+    función tiene que volver a la mediana: el medidor y la política se mueven
+    juntos o la cifra miente.
     """
-    epics = sorted((RAIZ / "docs" / "epics").glob("EP*.md"))
-    if not epics:
-        return 0, "(sin epics)"
-    tamanos = sorted(_chars(e) for e in epics)
-    return int(statistics.median(tamanos)), f"mediana de {len(epics)}"
+    indice = RAIZ / "docs" / "epics" / "README.md"
+    if not indice.is_file():
+        raise SystemExit(
+            "falta docs/epics/README.md, que CLAUDE.md §1 declara de carga "
+            "obligatoria. Sin él la medición no corresponde a la política."
+        )
+    return _chars(indice), "índice; los epics van bajo demanda"
 
 
 def medir_contexto() -> tuple[int, list[tuple[str, int, str]]]:
@@ -81,19 +89,19 @@ def medir_contexto() -> tuple[int, list[tuple[str, int, str]]]:
     como contexto permanente conforme a MCA-CORE §3.2 aunque no los cargue
     el arnés.
     """
-    epic_chars, epic_nota = _epic_mediana()
+    epic_chars, epic_nota = _epics()
     partidas = [
         ("CLAUDE.md", _chars(RAIZ / "CLAUDE.md"), "carga automática del arnés"),
         (
             "docs/project-management/SPRINT.md",
             _chars(RAIZ / "docs/project-management/SPRINT.md"),
-            "CLAUDE.md §1.3",
+            "CLAUDE.md §1",
         ),
-        ("docs/epics/EP0XX (uno)", epic_chars, f"CLAUDE.md §1.4 · {epic_nota}"),
+        ("docs/epics/README.md", epic_chars, f"CLAUDE.md §1 · {epic_nota}"),
         (
             "docs/project-management/HANDOFF.md",
             _chars(RAIZ / "docs/project-management/HANDOFF.md"),
-            "CLAUDE.md §1.1",
+            "CLAUDE.md §1",
         ),
         ("catálogo de skills", _descripciones_de_skills(), "solo descriptions"),
     ]
@@ -205,8 +213,7 @@ def main() -> int:
     elif total > objetivo:
         print(
             f"\n  aviso: {total - objetivo:,} por encima del objetivo. "
-            f"No falla — el techo es el trinquete. Ver docs/conformidad/plan.md "
-            f"acciones 5-7."
+            f"No falla — el techo es el trinquete."
         )
 
     # SPRINT.md: la «regla dura» de CLAUDE.md §6 y §12, hasta hoy sin nadie
@@ -225,6 +232,23 @@ def main() -> int:
     elif lineas > objetivo_sprint:
         print(
             f"  aviso: {lineas - objetivo_sprint} líneas por encima del objetivo."
+        )
+
+    # HANDOFF.md: tope propio. El techo total ya lo acota, pero sin un límite
+    # suyo el puente entre sesiones se come el presupuesto de los demás — es el
+    # archivo que más crece, porque cada sesión quiere contarlo todo. El detalle
+    # va a docs/conformidad/plan.md, que no se carga siempre.
+    handoff = RAIZ / "docs/project-management/HANDOFF.md"
+    handoff_chars = _chars(handoff)
+    techo_handoff = limites["handoff_max_chars"]
+    print(
+        f"\nHANDOFF.md: {handoff_chars:,} caracteres (techo {techo_handoff:,})"
+    )
+    if handoff_chars > techo_handoff:
+        fallos.append(
+            f"HANDOFF.md {handoff_chars:,} > techo {techo_handoff:,}. "
+            f"Es un puente, no un archivo: el detalle va a docs/conformidad/ "
+            f"o al epic, que no se cargan siempre."
         )
 
     # CTX-03 — cifras vivas en el contexto permanente.

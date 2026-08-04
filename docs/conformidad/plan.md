@@ -335,6 +335,55 @@ segunda tras abrir `/hooks`: el guard no intercepta desde fuera del proyecto.
 > 3b como evidencia de ejecución. Eran ciertas el día que las medí y dejan de
 > serlo sin que nadie lo note — que es exactamente lo que CTX-03 prohíbe.
 
+### Acción 13 — el objetivo de contexto, alcanzado (2026-08-04)
+
+**De 51.298 a 31.552 caracteres: −39 %.** El objetivo de 40.000 estaba declarado
+desde la Tanda 1 y no se había alcanzado nunca.
+
+La medición anterior daba la brecha por cerrada de dos maneras posibles: cambiar
+el método, o subir el objetivo a ~50.000 «que es lo que este entorno cuesta de
+verdad». Se eligió lo primero, y resultó ser lo correcto por una razón que la
+medición ya insinuaba: **la partida más grande no era un archivo grande, era una
+regla.**
+
+`CLAUDE.md` §1.4 obligaba a leer «el epic relevante» antes de empezar. Eso metía
+un documento funcional completo en el contexto de cada sesión **antes de saber
+siquiera si se iba a abrir** — el 31 % del presupuesto, gastado en una apuesta.
+
+| Qué se movió | A dónde | Ahorro |
+|---|---|---|
+| El epic entero | `docs/epics/README.md`, que ya era el índice. El epic se abre **al tocarlo** | ~9.700 |
+| `CLAUDE.md` §0.3 | Skill `verificar`: stack, entorno, los siete comandos, gates, rutas protegidas | ~2.800 |
+| Deferred, DONE y backlog de `SPRINT.md` | `SPRINT-BACKLOG.md`, que se abre al planear y no al ejecutar | ~5.000 |
+
+> **Un tropiezo que vale la pena contar.** La primera versión creó un
+> `docs/epics/INDICE.md` nuevo… existiendo ya `docs/epics/README.md`, que **era
+> el índice de epics** y con más información (dependencias, epics canceladas).
+> Era un duplicado: exactamente el CTX-06 que este mismo trabajo hace cumplir en
+> otros. Se borró y se consolidó en el README, quitándole de paso la columna
+> «Cambios v2», un marcador de una migración de mayo que ya no ayuda a decidir
+> qué epic abrir. Cuesta ~3.400 caracteres más que el índice duplicado y no
+> tener dos versiones de la misma tabla los vale.
+
+**Lo que NO se movió, a propósito.** La numeración de identificadores (§2) y las
+convenciones de commit (§4) se usan en **cada** turno. Sacarlas bajaría la cifra
+y obligaría a cargar una skill por commit: más contexto, no menos. Reducir la
+medición sin reducir lo que se lee es falsear el control, no ejercerlo — y es la
+trampa evidente de este requisito, porque `check_contexto.py` mide **la política
+declarada en §1**, no lo que hay en disco.
+
+Por eso `medir_contexto()` se actualizó en el mismo cambio, y `_epics()` lleva
+escrito que si algún día §1 vuelve a exigir el epic de arranque, esta función
+tiene que volver a la mediana. El medidor y la política se mueven juntos o la
+cifra miente.
+
+**El techo bajó de 51.300 a 31.900** (actual + 1 %). Sin eso la ganancia se
+erosiona en silencio, que es exactamente lo que el trinquete existe para evitar.
+
+> El techo anterior había quedado saturado: el 2026-08-04 el margen era de **dos
+> caracteres**, y dos veces esa misma sesión obligó a recortar documentación en
+> vez de subirlo. Funcionó como debía, pero ya no dejaba escribir un handoff.
+
 ---
 
 ## Por qué solo hay una tanda

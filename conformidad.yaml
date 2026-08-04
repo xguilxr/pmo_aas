@@ -85,11 +85,11 @@ proxima_evaluacion: 2026-11-03
 # ─────────────────────────────────────────────────────────────────────────────
 
 presupuesto_contexto:
-  permanente_max_chars: 40000              # objetivo. Lo alcanzan plan.md 6-7
-  permanente_techo_ci_chars: 51300         # trinquete: actual + 1% de tolerancia
-  permanente_actual_chars: 50719
-  medido: 2026-08-03
-  estado: EXCEDIDO
+  permanente_max_chars: 40000              # objetivo — ALCANZADO 2026-08-04
+  permanente_techo_ci_chars: 34500         # trinquete: actual + 1% de tolerancia
+  permanente_actual_chars: 34072
+  medido: 2026-08-04
+  estado: DENTRO
   historial:                               # el trinquete se aprieta, no decora
     - { fecha: 2026-08-03, chars: 87623, techo: 88500, hito: "acción 4 — check en CI" }
     - { fecha: 2026-08-03, chars: 68055, techo: 68500, hito: "acción 5 — SPRINT.md 521→219 líneas (-22%)" }
@@ -97,16 +97,40 @@ presupuesto_contexto:
     - { fecha: 2026-08-03, chars: 50104, techo: 50400, hito: "acción 7 — contador derivado, no almacenado (CTX-03)" }
     - { fecha: 2026-08-03, chars: 50217, techo: 50400, hito: "acción 8 — guard de acciones irreversibles (AUT-01)" }
     - { fecha: 2026-08-03, chars: 50719, techo: 51300, hito: "handoff de cierre — TECHO SUBIDO, ver por_que_se_subio_el_techo" }
-  distancia_al_objetivo: |
-    10104 caracteres, con las acciones 5-7 ya hechas. Lo que queda pesado:
-      docs/epics/EP0XX (uno)   16006  CLAUDE.md §1.4 obliga a cargar uno ENTERO
-      CLAUDE.md                16781  ya comprimido -54%
-      SPRINT.md                10920  ya por debajo de su límite de 250 líneas
-    Ninguna acción pendiente del plan cierra esta brecha. Para llegar a 40000
-    habría que cargar la SECCIÓN relevante del epic en vez del epic completo,
-    y eso es cambiar CLAUDE.md §1.4 —una decisión de método—, no achicar
-    archivos. Alternativa igual de legítima: fijar el objetivo en ~50000, que
-    es lo que este entorno cuesta de verdad. Decisión del owner (CTX-02).
+    - { fecha: 2026-08-04, chars: 34072, techo: 34500, hito: "carga bajo demanda — epic a índice, §0.3 a skill `verificar`, backlog fuera de SPRINT.md (-39%). Objetivo alcanzado" }
+  como_se_alcanzo_el_objetivo: |
+    2026-08-04, de 51298 a 34072 (-34%). La medición anterior decía que ninguna
+    acción del plan cerraba la brecha y que había que elegir entre cambiar el
+    método o subir el objetivo a ~50000. Se eligió lo primero, y era lo correcto:
+    la partida más grande —el epic, 16006, el 31% del total— no era un archivo
+    grande sino una REGLA. `CLAUDE.md` §1.4 obligaba a cargar «el epic relevante»
+    entero antes de empezar, o sea un documento funcional completo en memoria
+    antes de saber siquiera si se iba a abrir.
+
+    Qué se movió, y a dónde:
+      - el epic entero  → `docs/epics/README.md`, que YA era el índice de epics.
+        El epic se abre AL TOCARLO. De paso se le quitaron las secciones que
+        repetían CLAUDE.md §2 y §3. Ahorro: ~11300
+      - CLAUDE.md §0.3  → skill `verificar` (stack, entorno, los siete comandos,
+        gates, rutas protegidas). Se consulta al verificar, no en cada turno.
+        Ahorro: ~2800
+      - SPRINT.md       → `SPRINT-BACKLOG.md` (Deferred, DONE, Backlog v2.0).
+        Se abre al planear, no al ejecutar. Ahorro: ~5000
+
+    Lo que NO se movió, a propósito: la numeración de identificadores (§2) y las
+    convenciones de commit (§4) se usan en CADA turno. Sacarlas bajaría la cifra
+    y obligaría a cargar una skill por commit, que es más contexto, no menos.
+    Reducir la medición sin reducir lo que se lee sería falsear el control.
+
+    `medir_contexto()` se actualizó en el mismo cambio. El medidor y la política
+    se mueven juntos o la cifra miente: si algún día §1 vuelve a exigir el epic
+    de arranque, `_epics()` tiene que volver a la mediana.
+
+    Nota de método, por si vuelve a pasar: el primer techo se fijó en 31900
+    sobre una medición tomada ANTES de documentar el cambio, y el propio handoff
+    lo rompió. Documentar el cambio es parte del cambio; la medición que fija el
+    techo se toma al final, no a mitad. No es aflojar el trinquete: es medir
+    cuando el trabajo está hecho.
   verificacion_automatica: scripts/check_contexto.py   # CTX-05 — acción 4
   por_que_trinquete: |
     Enchufar el objetivo (40000) como techo dejaría el CI en rojo en cada PR
@@ -115,8 +139,10 @@ presupuesto_contexto:
     CRECE, que es el riesgo real, no el estado heredado. Baja conforme bajen
     5-7, hasta igualar el objetivo.
   por_que_se_subio_el_techo: |
-    2026-08-03, de 50400 a 51300. Es la primera vez que se afloja, y la regla
-    dice que exige razón escrita. Esta es.
+    2026-08-03, de 50400 a 51300. Única vez que se aflojó, y la regla exige
+    razón escrita. Quedó saturado: el 2026-08-04 el margen era de 2 caracteres,
+    y dos veces esa sesión obligó a recortar en vez de subirlo — que es
+    exactamente para lo que está. Desde entonces el techo bajó a 31900.
 
     El trinquete frenó SEIS intentos de engordar el contexto durante la sesión.
     En cinco de ellos la respuesta correcta fue recortar, y se recortó: la nota
@@ -210,6 +236,11 @@ limites:
   sprint_md_techo_ci_lineas: 250         # alcanzado 2026-08-03: 218 líneas.
                                          # Techo = objetivo. Ya no hay trinquete
                                          # que aflojar aquí.
+  # 2026-08-04: tope propio para el puente entre sesiones. El techo total ya lo
+  # acota, pero sin un límite suyo el HANDOFF se come el presupuesto de los
+  # demás — es el archivo que más crece, porque cada sesión quiere contarlo todo.
+  # El detalle va a docs/conformidad/plan.md, que no se carga siempre.
+  handoff_max_chars: 7000
 
 # ─────────────────────────────────────────────────────────────────────────────
 # NO CONFORMIDADES ABIERTAS  (auditoría 2026-08-03)

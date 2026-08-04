@@ -2,7 +2,7 @@
 
 **Última actualización:** 2026-08-04
 **Branch activa:** `claude/auditoria-conformidad-mca-mcs` · **PR #573** (abierto)
-**Generado por:** sesión de conformidad — Tanda B
+**Generado por:** sesión de conformidad — Tanda B + presupuesto de contexto
 
 ---
 
@@ -30,7 +30,9 @@ arreglar no es medir, y eso exige reauditar.
    guard intercepta (`echo "prueba: git push --force"`). Cierra AUT-01 → **N2**.
 2. Proteger `main`. Es **AM-14** del modelo de amenazas.
 
-Después, **reauditar** (MCS-P01). No más remediación hasta medir.
+Después, **reauditar** (MCA-P02 y MCS-P01). No más remediación hasta medir:
+las Tandas A y B cerraron ~12 de los 43 bloqueantes de N1 y **ninguno está
+medido**, y el informe tiene al menos dos errores comprobados (ARQ-01, IA-12).
 
 ## ✅ Hecho en esta sesión
 
@@ -42,6 +44,14 @@ comprobaba la otra mitad: si el modelo desobedece igualmente, **qué sale**. Por
 eso puede ser un gate — mide el sistema, no el modelo: sin clave de API, sin red,
 job `evaluacion-ia` con umbral eliminatorio. Los fallos de IA que ya llegaron a
 un usuario (BUG-063/068/069/070/073, ENH-102, ENH-147) son casos permanentes.
+
+**Contexto permanente: −39 %**, y por primera vez bajo el objetivo de 40.000. La
+partida grande no era un archivo sino una regla: §1.4 obligaba a cargar «el epic
+relevante» entero antes de saber si se iba a abrir. Ahora se carga `docs/epics/README.md` —que ya era el índice—
+y el epic se abre **al tocarlo**; §0.3 se fue a la skill
+`verificar`; Deferred/DONE/backlog, a `SPRINT-BACKLOG.md`. El techo bajó con él
+—si no, la ganancia se erosiona sola— y `medir_contexto()` se actualizó en el
+mismo cambio: el medidor y la política van juntos o la cifra miente.
 
 **B5 — modelo de amenazas** (SEG-06), en `docs/architecture/modelo-amenazas.md`:
 ocho fronteras de confianza y catorce amenazas con control, evidencia, residual y
@@ -78,8 +88,9 @@ Todo verificado por mutación.
   diagramas de contexto ni de contenedores») **es falsa**: el README de
   `docs/architecture/` los tiene. Remirarlo al reauditar.
 - **Los gates de CI son trinquetes:** fallan ante crecimiento nuevo, no por el
-  pasivo heredado. El de contexto frenó esta sesión dos veces y hubo que recortar
-  en vez de subir el techo — que es lo que debe pasar.
+  pasivo heredado. El de contexto frenó tres veces esta sesión, incluida la
+  redacción de este archivo. Recortar es la respuesta; subir el techo exige
+  razón escrita en `conformidad.yaml`.
 - **No hay tests de frontend**, y **Python 3.12 no es negociable**
   (`psycopg[binary]` no publica wheel para 3.13+).
 
@@ -107,7 +118,6 @@ Todo verificado por mutación.
 - [ ] Verificar el guard desde una sesión dentro del repo (cierra AUT-01 → N2).
 - [ ] Proteger `main` tras cerrar los PR, con `evaluacion-ia` incluido (AM-14).
 - [ ] Revisar y mergear **PR #573**.
-- [ ] Fijar `permanente_max_chars` en `conformidad.yaml`.
 - [ ] Revisar `docs/dominio/02-GLOSARIO.md` término por término.
 - [ ] Smoke manual de la web tras el salto de Next 15.0 → 15.5.
 - [ ] `SENTRY_DSN` en Railway para encender la captura de errores.

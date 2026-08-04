@@ -1,7 +1,7 @@
 # CLAUDE.md — Reglas de trabajo para Claude Code
 
 > Este archivo define **cómo trabajo** en este repo. Se lee al inicio de
-> cada sesión junto con `docs/epics/SPRINT.md` y el epic relevante.
+> cada sesión junto con `SPRINT.md`, `HANDOFF.md` y el índice de epics.
 > Si algo aquí contradice otro doc, **este archivo gana** hasta que el
 > owner lo actualice.
 
@@ -77,70 +77,30 @@ al final del bloque, no en cada paso.
 
 ---
 
-## 0.3 Stack, comandos de verificación y rutas protegidas
+## 0.3 Verificación, contexto y acciones irreversibles
 
-> **MCA CTX-01.** Todo lo de abajo se ejecutó el **2026-08-03** y esta sección registra la
-> salida real. Si un comando deja de correr, se arregla el comando o se corrige esta
-> sección. Un comando declarado que no corre es peor que no declarar ninguno: el asistente
-> confía en él y da por terminado lo que no lo está.
+**Cómo se comprueba que algo funciona aquí: skill `verificar`.** Stack,
+preparación del entorno, los siete comandos con su criterio, los gates de CI y
+las rutas que no se editan a mano. Vive en una skill porque se consulta **al
+verificar**, no en cada turno.
 
-**Stack.** Monorepo pnpm 9.12 · `apps/api` FastAPI + SQLAlchemy + Alembic, Python **3.12**
-(fijado en `apps/api/runtime.txt`) · `apps/web` Next.js + TypeScript · `packages/sdk`
-escrito a mano · Postgres · Celery + Redis.
+**Definición de terminado (MCA FLU-02).** Lint, typecheck y tests de API en
+verde, criterio `exit 0` y nunca un conteo. Sin excepciones ni fallos
+«esperados». Si algo sale rojo, es tuyo. El DoD de `cerrar-item` se marca
+**después**, no en su lugar.
 
-**Preparar el entorno.** Python 3.12 no es opcional: `psycopg[binary]==3.2.3` no publica
-wheel para 3.13+ y la instalación falla entera.
-
-```bash
-uv venv --python 3.12 apps/api/.venv
-uv pip install --python apps/api/.venv/Scripts/python.exe -r apps/api/requirements-dev.txt
-pnpm install --frozen-lockfile
-```
-
-**Comandos de verificación.** Los mismos que corre `.github/workflows/ci.yml`; esa es la
-fuente de verdad y esta tabla la refleja.
-
-| Ámbito | Comando | Criterio | Dura |
-|---|---|---|---|
-| Lint API | `cd apps/api && .venv/Scripts/python.exe -m ruff check .` | exit 0 | segundos |
-| Tests API | `cd apps/api && .venv/Scripts/python.exe -m pytest -q -n auto -m "not heavy"` | exit 0 | ~13 min |
-| Typecheck web | `pnpm --filter @pmoaas/web exec tsc --noEmit` | exit 0 | ~1 min |
-| Contexto | `python scripts/check_contexto.py` | exit 0 | segundos |
-| Evaluación IA | `cd apps/api && .venv/Scripts/python.exe -m evaluacion.runner` | exit 0 | segundos |
-| Build web | `pnpm --filter @pmoaas/web build` | exit 0 | — |
-| Migraciones | `cd apps/api && alembic upgrade head && alembic downgrade base && alembic upgrade head` | exit 0 · exige Postgres levantado | — |
-
-> **El criterio es `exit 0`, nunca un conteo.** Aquí no se anota «N tests pasaron»: esa
-> cifra deriva del contenido real, queda obsoleta con el siguiente test y el contexto
-> permanente no debe contenerla (MCA CTX-03). Las mediciones fechadas de cada auditoría
-> viven en `conformidad.yaml`, que no se carga en cada sesión.
-
-**El smoke suite no necesita WeasyPrint.** `tests/conftest.py::_stub_heavy_renderers` stubea
-`render_pdf` y `html_to_pdf` —los dos símbolos que cargan las librerías nativas GTK/Pango— y
-propaga el stub a todo módulo de `app.` que los haya importado, barriendo `sys.modules` en
-vez de una lista escrita a mano. Por eso corre verde en Windows sin instalar nada más.
-
-> Si añadís un módulo que importe un renderer, **no hay que registrarlo en ningún sitio**: el
-> barrido lo cubre. La lista manual anterior se había quedado corta y hacía fallar 4 tests
-> (auditoría MCA 2026-08-03).
-
-El render real se ejerce a propósito en `tests/test_us037_pdf_renderer.py`, marcado `heavy`,
-que corre en el job `api-tests-heavy` del CI (solo push a `main`). **Ese archivo está excluido
-del stub**: si tocás `pdf_renderer.py`, es el que te cubre.
-
-**Definición de terminado (MCA FLU-02).** Los tres comandos ejecutables en verde: lint exit 0,
-typecheck exit 0, tests API exit 0. Sin excepciones ni fallos «esperados». Si algo sale rojo,
-es tuyo. El DoD (skill `cerrar-item`) se marca **después** de que estos pasen,
-no en su lugar.
-
-**El contexto permanente tiene techo y CI lo hace cumplir.** Si tu cambio engorda
-`CLAUDE.md` o `SPRINT.md`, `scripts/check_contexto.py` falla. Umbrales y razones en
-`conformidad.yaml`; no se suben sin escribir por qué.
+**El contexto permanente tiene techo y CI lo hace cumplir.** Si tu cambio
+engorda `CLAUDE.md`, `SPRINT.md` o `HANDOFF.md`, `scripts/check_contexto.py`
+falla. Umbrales y razones en `conformidad.yaml`; no se suben sin escribir por
+qué, y recortar es la respuesta por defecto.
 
 **Lo que el modelo devuelve pasa por un conjunto de evaluación con umbral** (MCS
-IA-07/08/09), que corre en el job `evaluacion-ia`. Un fallo de IA que llegue a un
-usuario entra al conjunto **antes** de arreglarse. Procedimiento y lo que no
-cubre: `apps/api/evaluacion/README.md`.
+IA-07/08/09), job `evaluacion-ia`. Un fallo de IA que llegue a un usuario entra
+al conjunto **antes** de arreglarse: `apps/api/evaluacion/README.md`.
+
+**Las amenazas y sus controles** viven en `docs/architecture/modelo-amenazas.md`.
+Una ruta sin autenticación o un destino externo nuevo rompen su trinquete a
+propósito: obligan a pasar por el modelo antes de declararlos.
 
 **Las acciones irreversibles piden confirmación, y no por convención** (MCA
 AUT-01): las bloquea `.claude/settings.json` vía `scripts/guard_irreversible.py`.
@@ -149,31 +109,38 @@ push a `main`. Se **pregunta** ante `--force-with-lease`, `alembic upgrade`/
 `downgrade`, `gh issue close`, `commit --amend`, `reset --hard`, `rm -rf` y
 `DROP TABLE`. Lista y motivos en el docstring del guard.
 
-**Rutas que no se modifican a mano:**
-
-| Ruta | Regla |
-|---|---|
-| `apps/api/alembic/versions/` | Solo vía `alembic revision`. Nunca editar una migración ya mergeada a `main` |
-| `pnpm-lock.yaml` · `apps/api/uv.lock` | Los regenera el gestor. No se editan |
-| `landing/` | Se despliega a mano a HostGator, no por Railway. Un cambio aquí no llega solo a producción (ver `docs/runbooks/infra/landing-hostgator.md`) |
-
 ---
 
-## 1. Archivos de contexto obligatorios
+## 1. Qué se carga siempre, y qué bajo demanda
 
-Antes de tocar código o crear issues, leer en este orden:
+**Siempre**, en este orden:
 
-1. `docs/project-management/HANDOFF.md` — bridge de la sesión anterior. Indica dónde retomar.
-2. `CLAUDE.md` (este archivo) — reglas y mecanismo.
-3. `docs/project-management/SPRINT.md` — tarea activa, QUEUE, INBOX y bloques.
-4. El o los archivos de epic relevantes en `docs/epics/EP0XX-*.md`.
-5. `docs/epics/DECISIONS.md` — solo si hay duda arquitectónica.
-6. `docs/epics/DB-CHANGES.md` — solo si la US toca schema.
+1. `docs/project-management/HANDOFF.md` — puente de la sesión anterior. Dice dónde retomar.
+2. `CLAUDE.md` (este archivo) — lo que manda en cada turno.
+3. `docs/project-management/SPRINT.md` — IN-PROGRESS e INBOX.
+4. `docs/epics/README.md` — índice de epics: qué cubre cada uno y de qué depende.
 
-**Nota (Sprint 2+):** Desde Sprint 2 (2026-04-22), `SPRINT.md` y `SPRINT-DONE-HISTORY.md` viven en `docs/project-management/` (ver sección 6 para estructura).
+**Bajo demanda**, cuando el trabajo lo pide y no antes:
 
-**No** leer código ni docs por exploración abierta si no están en la
-lista anterior. El contexto es finito.
+| Se abre | Cuándo |
+|---|---|
+| `docs/epics/EP0XX-*.md` | Al **tocar** ese epic. El índice basta para decidir cuál |
+| `docs/project-management/SPRINT-BACKLOG.md` | Al planear, no al ejecutar |
+| `docs/epics/DECISIONS.md` | Ante duda arquitectónica |
+| `docs/epics/DB-CHANGES.md` | Si el cambio toca esquema |
+| Skill `verificar` | Al comprobar que algo funciona |
+| `docs/architecture/modelo-amenazas.md` | Si el cambio cruza una frontera de confianza |
+
+> **Por qué el epic ya no se carga entero.** La regla anterior obligaba a leer
+> «el epic relevante» antes de empezar, y eso metía un documento funcional
+> completo en el contexto permanente antes de saber siquiera si se iba a abrir.
+> El índice cuesta una fracción y sirve para lo único que hacía falta al
+> arrancar: decidir cuál abrir. Es MCA CTX-04 — y bajar la cifra sin partir de
+> verdad el documento sería falsear la medición, no reducirla. Las mediciones
+> fechadas están en `conformidad.yaml`.
+
+**No** leer código ni docs por exploración abierta fuera de estas listas. El
+contexto es finito y el techo lo hace cumplir el CI.
 
 ---
 
@@ -187,7 +154,7 @@ lista anterior. El contexto es finito.
 | `EP0XX` | Épica (3 dígitos) | Asignado manualmente |
 | `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` |
 | `ADR-###` | Architecture Decision Record | Ver `docs/adr/` |
-| `TC-###` | Test case | Ver epic relevante |
+| `TC-###` | Test case | Ver el epic que lo cubre |
 
 **El próximo ID libre se deriva, no se almacena** (MCA CTX-03):
 

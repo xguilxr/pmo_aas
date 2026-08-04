@@ -68,7 +68,7 @@ feat(scope): US-051 — desc corta (refs #42)
 - Si toca schema: migración Alembic en el **mismo** commit + referencia en
   `DB-CHANGES.md`.
 - **Push inmediato** tras el commit. No acumular commits locales.
-- Verificación verde antes de commitear (comandos en `CLAUDE.md` §0.3).
+- Verificación verde antes de commitear (comandos en la skill `verificar`).
 
 ---
 
