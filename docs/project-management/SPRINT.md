@@ -13,9 +13,13 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sesión 2026-08-04 · Branch: claude/auditoria-conformidad-mca-mcs · PR #573
-Auditoría de conformidad MCA/MCS + Tanda A y B1/B2/B3/B4 de remediación.
-Pendiente: revisión y merge del owner. Siguiente y última de la tanda: B5.
+Sin sesión activa. PR #573 MERGEADO a main el 2026-08-04 (a725d10).
+
+Cerró: auditoría MCA/MCS, Tanda A (4/5), Tanda B entera (B1-B5),
+presupuesto de contexto (-61%) y la reauditoría de los dos marcos.
+
+Próximo paso — R1: evaluar los 13 requisitos MCS en NO VERIFICABLE.
+Es medición, no construcción. Rama nueva desde main.
 
 Los batches del 2026-07-18 (Plan Import Revamp 9/9 y Feedback 16-jul 8/8)
 siguen en `claude/plan-import-wbs-fixes-nwotng` SIN PR. Migraciones 0095-0096
@@ -66,8 +70,9 @@ pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
 > viven en `HANDOFF.md`**, no aquí: estaban en los dos sitios y una de las dos
 > copias iba a envejecer (CTX-06). No consume IDs US/ENH/BUG.
 
-Hecho: MCA acciones 1-10, MCS auditado, Tanda A (4/5) y **Tanda B entera**.
-Remediación cerrada; lo siguiente es **reauditar**, porque arreglar no es medir.
+Todo lo anterior está **mergeado** (#573). Niveles y distancia real, en los
+informes del 2026-08-04. **Siguiente: R1**, evaluar los 13 requisitos MCS en
+NO VERIFICABLE, antes de las Tandas C/D/E.
 
 ---
 

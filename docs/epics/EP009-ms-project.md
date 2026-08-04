@@ -245,6 +245,13 @@ implementó.
   (3) `POST /import/{job_id}/ai-structure` — la IA propone el plan completo desde
   un archivo sucio, el usuario lo revisa en preview, el confirm lo persiste con
   `use_ai_structure=true`. Nuevo servicio: `apps/api/app/services/import_ai.py`.
+- **2026-08-04** (`8908556`) — **La IA ya no puede desmapear una columna.** En
+  `suggest-mapping`, un `field: null` del modelo con confianza alta pisaba el
+  mapeo que la heurística había acertado, y la columna llegaba sin asignar al
+  wizard. La puerta de confianza arbitra entre dos respuestas; la ausencia de
+  respuesta ya no gana por ser confiada. Un valor que no es objeto se descarta
+  antes de mirar la confianza. Encontrado por el conjunto de evaluación de IA
+  (caso `EV-C-35`), no por un reporte de usuario.
 - **US-189** (`7acfaab`, fix-committed) — **Wizard UX para no-PMs**: drag & drop
   nativo en upload step; resumen llano ("Se importarán N tareas · M avisos");
   mapeo colapsado como avanzado (requiere expandir); estrategias en lenguaje plain

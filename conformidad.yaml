@@ -126,7 +126,7 @@ proxima_evaluacion: 2026-11-03
 presupuesto_contexto:
   permanente_max_chars: 40000              # objetivo — ALCANZADO 2026-08-04
   permanente_techo_ci_chars: 34500         # trinquete: actual + 1% de tolerancia
-  permanente_actual_chars: 34072
+  permanente_actual_chars: 33160
   medido: 2026-08-04
   estado: DENTRO
   historial:                               # el trinquete se aprieta, no decora
@@ -136,7 +136,7 @@ presupuesto_contexto:
     - { fecha: 2026-08-03, chars: 50104, techo: 50400, hito: "acción 7 — contador derivado, no almacenado (CTX-03)" }
     - { fecha: 2026-08-03, chars: 50217, techo: 50400, hito: "acción 8 — guard de acciones irreversibles (AUT-01)" }
     - { fecha: 2026-08-03, chars: 50719, techo: 51300, hito: "handoff de cierre — TECHO SUBIDO, ver por_que_se_subio_el_techo" }
-    - { fecha: 2026-08-04, chars: 34072, techo: 34500, hito: "carga bajo demanda — epic a índice, §0.3 a skill `verificar`, backlog fuera de SPRINT.md (-39%). Objetivo alcanzado" }
+    - { fecha: 2026-08-04, chars: 33160, techo: 34500, hito: "carga bajo demanda — epic a índice, §0.3 a skill `verificar`, backlog fuera de SPRINT.md (-39%). Objetivo alcanzado" }
   como_se_alcanzo_el_objetivo: |
     2026-08-04, de 51298 a 34072 (-34%). La medición anterior decía que ninguna
     acción del plan cerraba la brecha y que había que elegir entre cambiar el
@@ -170,6 +170,21 @@ presupuesto_contexto:
     lo rompió. Documentar el cambio es parte del cambio; la medición que fija el
     techo se toma al final, no a mitad. No es aflojar el trinquete: es medir
     cuando el trabajo está hecho.
+  por_que_el_techo_no_baja_a_33500: |
+    Al cierre del 2026-08-04 el actual quedó en 33160 y el techo se dejó en
+    34500, no en actual+1%. Es deliberado y esta es la razón, porque la regla
+    pide escribirla:
+
+    Apretar a 33500 dejaría 340 caracteres de margen y reproduciría exactamente
+    el problema que esta sesión diagnosticó — el techo anterior quedó saturado
+    en 2 caracteres y obligó a recortar documentación cuatro veces, incluida la
+    redacción del propio handoff. El HANDOFF ya tiene tope propio (7000), que es
+    el archivo volátil; el margen de ~1300 del total absorbe la variación normal
+    entre el cierre de una sesión y la apertura de la siguiente.
+
+    Si en dos mediciones consecutivas el actual se queda por debajo de 33000,
+    entonces sí: bajar el techo a actual+1%.
+
   verificacion_automatica: scripts/check_contexto.py   # CTX-05 — acción 4
   por_que_trinquete: |
     Enchufar el objetivo (40000) como techo dejaría el CI en rojo en cada PR
