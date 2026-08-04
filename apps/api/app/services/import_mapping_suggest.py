@@ -173,8 +173,16 @@ async def suggest_column_mapping(
     for h, ai_sug in parsed.items():
         if h not in out:
             continue
+        if not isinstance(ai_sug, dict):
+            continue
         field = ai_sug.get("field")
         if field is not None and field not in SYSTEM_FIELDS:
+            continue
+        # Un «no lo sé» del modelo no es información, por seguro que venga: si
+        # se le deja ganar, borra un mapeo que la heurística sí acertó y la
+        # columna llega sin asignar al asistente de importación. Encontrado por
+        # el conjunto de evaluación de IA (caso EV-C-35).
+        if field is None and out[h]["field"] is not None:
             continue
         try:
             conf = float(ai_sug.get("confidence", 0.0))
