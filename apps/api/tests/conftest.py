@@ -91,6 +91,12 @@ _AI_STUB_EXCLUDE_PREFIXES = (
     # el body enviado a Groq no contenga el campo `metadata`. No debe
     # stubbearse el provider, si no el httpx mock nunca se llama.
     "test_bug030_groq_no_metadata",
+    # B5 / SEG-06 AM-01: la suite comprueba que `_ping_byo_provider` RECHACE
+    # los destinos internos. El stub de abajo lo sustituye por uno que
+    # devuelve ok=True, así que con él puesto la suite mediría el stub y
+    # pasaría en verde con el agujero abierto. Es justo el caso en que
+    # stubbear invalida la prueba.
+    "test_seg06_am01_ssrf_base_url",
 )
 
 
