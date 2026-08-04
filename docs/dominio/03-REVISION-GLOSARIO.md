@@ -1,130 +1,143 @@
-# Revisión del glosario — hoja de decisiones del owner
+# Revisión del glosario — decisiones del owner
 
 | Campo | Valor |
 |---|---|
-| Estado | Pendiente de decisión. Nada de esto se implementa antes de aprobarse |
-| Fecha | 2026-08-04 |
-| Sustituye a | Leer `02-GLOSARIO.md` entero término por término |
+| Estado | **Resuelto el 2026-08-04.** Ocho decisiones tomadas, una abierta (D-4) |
 | Método | Cada término vetado del §6 del glosario, contrastado contra el código de hoy |
+| Efecto | `02-GLOSARIO.md` deja de ser borrador salvo en el umbral del semáforo |
 
 ---
 
 ## Por qué existe esta hoja
 
-`02-GLOSARIO.md` §7 pide «aprobación del owner, término por término». Son 282
-líneas y la mayoría **no necesita decisión**: o ya está bien, o el cambio es
-mecánico. Lo que sí la necesita son **nueve puntos**, y tres de ellos cuestan
-mucho más de lo que el glosario sugiere.
+`02-GLOSARIO.md` §7 pedía «aprobación del owner, término por término». Son 282
+líneas y la mayoría **no necesitaba decisión**: o ya estaba bien, o el cambio era
+mecánico. Quedaron nueve puntos.
 
-La tabla §6 del glosario contó coincidencias de texto. Al mirar dónde caen esas
-coincidencias, cambia el cuadro: **una parte son falsos positivos** —etiquetas de
-presentación en español, que el propio glosario permite— y **el más barato de la
-lista resulta ser el más caro**.
+La tabla §6 del glosario había contado coincidencias de texto. Al mirar **dónde
+caen** esas coincidencias cambió el cuadro: una parte eran falsos positivos
+—etiquetas de presentación en español, que el propio glosario permite— y el ítem
+descrito como más barato resultó ser el más caro.
+
+## Las decisiones
+
+| # | Qué | Decisión | Cuesta |
+|---|---|---|---|
+| D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
+| D-2 | `support` como fase | **Es hypercare, y es cierre**. Queda | Documentar + nombre a decidir |
+| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** | Migración + contrato + frontend |
+| D-4 | Umbral del semáforo | **Abierta** — ni siquiera está claro si es uno o varios | — |
+| D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
+| D-6 | Línea base | **Al roadmap** | Épica propia |
+| D-7 | Dos paletas de salud | **Unificar** | Bajo |
+| D-8 | `portfolio_function` | **Renombrar** | Medio — el parámetro es público |
+| D-9 | `is_milestone ⟹ duración 0` | **Validar** | Bajo |
 
 ---
 
-## Bloque 1 — decisiones que cuestan un contrato, no un renombrado
+## D-1. `yellow` — el glosario lo tenía al revés
 
-### D-1. `yellow` vs `amber` — el glosario tiene esto al revés
+**Decisión: `yellow` es el valor canónico.**
 
-**Qué dice el glosario:** «`amber` es el valor correcto; `yellow` es informal y
-hoy convive con él» (§2.4), 33 ocurrencias.
-
-**Qué dice el código:** `yellow` no es informal. Es **el valor canónico del
-contrato**, y se eligió a propósito:
+El glosario decía «`amber` es el valor correcto; `yellow` es informal» (§2.4).
+No lo es. `yellow` es **el contrato**, y se eligió a propósito:
 
 | Evidencia | Qué demuestra |
 |---|---|
-| `apps/api/app/schemas/project.py:47,111,116` | `Literal["green","yellow","red"]` y el alias `RagColor`. Es el contrato público de la API |
-| `apps/api/alembic/versions/20260708_0091_health_unified.py:37` | La migración **convierte `amber` → `yellow`** al unificar `status_rag` en `health_status`. El `downgrade` (:58) lo revierte |
-| `apps/api/app/services/analytics/snapshots.py:120` | Escribe la clave `health_yellow` en los snapshots de métricas. Los históricos ya guardados llevan ese nombre |
-| `apps/web/lib/api/projects.ts:5`, `analytics.ts:65,68`, `capacity.ts:5` | Los tipos del frontend replican `"green" \| "yellow" \| "red"` |
+| `apps/api/app/schemas/project.py:47,111,116` | `Literal["green","yellow","red"]` y el alias `RagColor` |
+| `alembic/versions/20260708_0091_health_unified.py:37` | La migración **convierte `amber` → `yellow`** al unificar `status_rag` en `health_status` |
+| `apps/api/app/services/analytics/snapshots.py:120` | Escribe la clave `health_yellow`. Los snapshots históricos ya la llevan |
+| `apps/web/lib/api/projects.ts:5`, `analytics.ts:65,68`, `capacity.ts:5` | Los tipos del frontend replican los tres valores |
 
-Adoptar `amber` no es renombrar 33 líneas: es **cambiar el contrato de la API,
-migrar los datos revirtiendo la 0091, migrar las claves de los snapshots
-históricos y tocar los tipos del frontend**. Adoptar `yellow` es corregir el
-glosario y limpiar tres restos de `amber`
-(`charter_generator.py:52-53` mapea los dos; `templates/pdf/sections/s-03.html:9`
-usa `'amber'` por defecto; el `CHECK` de la migración 0065 es histórico).
+Adoptar `amber` habría sido cambiar el contrato público, revertir la 0091 sobre
+datos productivos, migrar las claves de los snapshots y tocar el frontend. Se
+queda `yellow`, y el glosario registra que **se aparta a conciencia del
+vocabulario RAG de P3O/PRINCE2**: la UI ya dice «Amarillo», que es lo que ve el
+cliente.
 
-**Recomendación:** adoptar **`yellow`** como valor canónico y registrar en el
-glosario que se aparta a conciencia del vocabulario RAG de P3O/PRINCE2, con el
-motivo. La UI ya dice «Amarillo», que es lo que ve el cliente. Merece un ADR:
-es exactamente el tipo de decisión que dentro de un año nadie recordará por qué
-se tomó.
+**Pendiente mecánico:** limpiar los tres restos de `amber` —
+`charter_generator.py:52-53` mapea los dos, `templates/pdf/sections/s-03.html:9`
+usa `'amber'` por defecto, y el `CHECK` de la migración 0065 es histórico.
 
-- [ ] Adoptar `yellow` (recomendado) — [ ] Adoptar `amber` (asumiendo el costo)
+**Merece ADR:** es el tipo de decisión que dentro de un año nadie recuerda por
+qué se tomó.
 
-### D-2. `support` como fase
+## D-2. `support` es hypercare, y `closed` ya existe
 
-**En el código hay una sola ocurrencia**, y no es el enum del proyecto:
-`apps/api/app/services/analytics/snapshots.py:28` →
-`ACTIVE_PHASES = ["planning","execution","support"]`.
+**Decisión del owner:** *«`support` es un estado de hypercare antes del cierre
+formal del proyecto. Pero es una forma de closing.»* Y la pregunta que vino con
+ella —¿hay un `closed` para que se archiven?— tiene respuesta: **sí, ya existe.**
 
-El campo real es `apps/api/app/models/project.py:43` — `String(32)`, sin enum de
-base de datos, por defecto `planning`. Eso abarata mucho el cambio: **no hay tipo
-enum que migrar**, solo filas existentes y las opciones que ofrezca la UI.
+El vocabulario real de hoy son **cuatro fases**, no las tres que sugería el
+glosario:
 
-El glosario propone cinco fases (`initiation`, `planning`, `execution`,
-`closing`, `cancelled`). La decisión de fondo: **¿qué pasa con los proyectos que
-hoy están en `support`?** Son operación, no proyecto.
+| Evidencia | Qué demuestra |
+|---|---|
+| `apps/web/lib/api/projects.ts:3` | `ProjectPhase = "planning" \| "execution" \| "support" \| "closed"` |
+| `apps/web/app/(app)/pmo/projects/page.tsx:38,581` | La UI ofrece las cuatro como filtro |
+| `apps/api/app/services/analytics/snapshots.py:28` | `ACTIVE_PHASES = ["planning","execution","support"]` — «activo» ya significa «no cerrado» |
+| `apps/api/app/models/project.py:43` | `phase: String(32)`, sin enum de base de datos. Cambiar el vocabulario no exige migrar un tipo |
+| `apps/api/app/services/lessons_export.py:38-42` | Las lecciones usan el mismo vocabulario de cuatro |
 
-- [ ] Adoptar las cinco fases y migrar `support` → ___________
-- [ ] Dejarlo como está por ahora
+Así que el veto del glosario a `support` era **erróneo en el fondo**: el
+concepto es legítimo —la transición a operaciones existe en los estándares—, lo
+discutible es el nombre. `support` se lee como «mesa de ayuda»; `hypercare` es
+lo que el owner describe.
 
-### D-3. `tasks.wbs` → `wbs_code`
+**Lo que falta decidir es solo el nombre**, y dos huecos:
 
-`apps/api/app/models/task.py:29` — `wbs: Mapped[str | None]`. El propio código ya
-sabe que el nombre está mal: el comentario de la línea 90 dice «predecessors /
-successors como JSON array de **wbs_code**».
+- [ ] Renombrar `support` → `hypercare` (claro, cuesta migración de datos + tipos + UI)
+      · o dejar `support` y documentarlo como hypercare (gratis)
+- [ ] ¿Hace falta `initiation`? Hoy un proyecto nace en `planning`, aunque el acta
+      de constitución sea previa
+- [ ] ¿Hace falta `cancelled`? Un proyecto terminado anticipadamente hoy solo puede
+      quedar `closed`, indistinguible de uno que cumplió
+
+**No verificado:** si un proyecto en `closed` queda de solo lectura. Lo único
+comprobado es que sale de `ACTIVE_PHASES` y por tanto de los snapshots.
+
+## D-3. `tasks.wbs` → `wbs_code`
+
+**Decisión: renombrar.** El nombre correcto es `wbs_code`, porque el campo guarda
+el *código* (`1.2.3`), no la estructura — esa vive en `parent_id` y
+`outline_level`. El propio código ya lo sabe: `apps/api/app/models/task.py:90`
+documenta «predecessors / successors como JSON array de **wbs_code**» mientras la
+columna de la línea 29 se llama `wbs`.
 
 Cuesta migración de columna + campo de la API + frontend + el parser de import.
-Es correcto, pero es un renombrado que se ve en el contrato.
+Va con ADR y US propia.
 
-- [ ] Renombrar — [ ] Aceptar la ambigüedad y documentarla
+## D-4. Umbral del semáforo — abierta
 
----
+**Decisión del owner:** no se define hoy, y con razón: *«no sé si hay un solo
+umbral o deben haber más»*. Casi seguro son varios —no es lo mismo el umbral de
+un proyecto de tres meses que el de uno de dos años, ni el de cronograma que el
+de costo.
 
-## Bloque 2 — decisiones de negocio, no de estándar
+Es el único punto que deja `02-GLOSARIO.md` en borrador, y el único que ningún
+estándar resuelve. Mientras tanto, `health_source = 'manual'` con
+`health_reason` obligatoria es la salida honesta: el semáforo es un juicio
+declarado, no un cálculo.
 
-Estas tres no las resuelve ningún marco: dependen de cómo querés que el producto
-mida.
+## D-5. Método de avance
 
-### D-4. Umbral del semáforo (§2.4)
+**Decisión: la propuesta del glosario.** Avance de tarea **declarado**; avance de
+proyecto **ponderado por duración** de sus tareas hoja. Se declara en la UI junto
+al número, y debe ser reproducible desde las tareas: si no cuadra, es defecto.
 
-Sin fórmula, el estado de salud es «una opinión con color». El glosario propone
-verde / ámbar / rojo por desviación y riesgos. Falta **el número**: ¿qué es
-«desviación material»? ¿5 % del cronograma? ¿10 días?
+## D-6. Línea base — al roadmap
 
-- [ ] Umbral propuesto: ______________________
+Es la brecha B-1 y bloquea «desviación», «retraso» y «sobrecosto»: sin línea
+base esas tres palabras no tienen referente. También bloquea el DCMA 14-point del
+diagnóstico. Entra como épica propia.
 
-### D-5. Método de avance (§2.3)
+## D-7, D-8, D-9 — aprobadas, mecánicas
 
-Hoy `progress: int` sin método declarado. Los cuatro métodos dan números
-distintos y el cliente los va a comparar.
-
-- [ ] Tarea declarado + proyecto ponderado por duración (propuesta del glosario)
-- [ ] Otro: ______________________
-
-### D-6. Línea base (§2.1)
-
-No existe en el modelo. Es la brecha B-1 y bloquea «desviación», «retraso» y
-«sobrecosto»: sin línea base, esas tres palabras no tienen referente. También
-bloquea el DCMA 14-point del diagnóstico.
-
-- [ ] Entra al roadmap — [ ] Se difiere, y se retiran esos términos de los informes
-
----
-
-## Bloque 3 — mecánico, sin decisión de fondo
-
-Confirmá que estás de acuerdo y se ejecutan sin más discusión.
-
-| # | Qué | Dónde | Costo |
-|---|---|---|---|
-| D-7 | Unificar las dos paletas de salud en una | `apps/api/app/services/reports/scoped_status.py:30,33` — `_HEALTH_DONUT_COLOR` verde `#1F8A5B` vs `_HEALTH_HEX` verde `#16a34a` | Bajo |
-| D-8 | `portfolio_function` no es portafolio | `apps/api/app/models/area.py:233`, `endpoints/areas.py:675-689`, `L1-PORTAFOLIO` en `report_builder_template.py:11` | Medio — el parámetro es público |
-| D-9 | Validar `is_milestone ⟹ duration_days = 0` | Regla del §1.2, hoy sin validar | Bajo |
+| # | Qué | Dónde |
+|---|---|---|
+| D-7 | Unificar las dos paletas de salud | `apps/api/app/services/reports/scoped_status.py:30,33` — `_HEALTH_DONUT_COLOR` verde `#1F8A5B` vs `_HEALTH_HEX` verde `#16a34a` |
+| D-8 | `portfolio_function` no es portafolio | `apps/api/app/models/area.py:233`, `endpoints/areas.py:675-689`, `L1-PORTAFOLIO` en `report_builder_template.py:11` |
+| D-9 | Validar `is_milestone ⟹ duration_days = 0` | Regla del §1.2, hoy sin validar |
 
 ---
 
@@ -135,10 +148,9 @@ Contarlos como deuda infla la lista y hace que la revisión pese más de lo que 
 - **`Verde` / `Amarillo` / `Rojo`** en `scoped_status.py:340-341`,
   `pmo/page.tsx:116`, `programs/[id]/page.tsx:82`,
   `health-evaluation-modal.tsx:93` son **etiquetas de presentación**, y el
-  glosario §1.1 permite explícitamente español en la capa de presentación. No son
-  valores.
+  glosario §1.1 permite explícitamente español en esa capa. No son valores.
 - **`"Inicio"` / `"Ejecución"` / `"Cierre"`**: de las ocurrencias en `apps/api`,
-  `lessons_export.py:40,42` es un mapa de traducción, `charter_generator.py:247`
+  `lessons_export.py:38-42` es un mapa de traducción, `charter_generator.py:247`
   es la etiqueta de una fila de tabla y `xlsx_task_parser.py:6` son alias de
   encabezado para leer archivos del usuario — los tres son legítimos. **El único
   que amerita mirar es `plan_regenerator.py:37`**, donde «Inicio» parece un
@@ -146,12 +158,18 @@ Contarlos como deuda infla la lista y hace que la revisión pese más de lo que 
 
 ---
 
-## Cómo se sigue
+## Qué sigue
 
-1. Marcás las casillas de D-1 a D-9 (o las anotás al margen).
-2. Con eso se cierra `02-GLOSARIO.md` §7 puntos 1-3 y deja de estar en borrador.
-3. Recién entonces se escribe el plan de remediación, que el glosario condiciona
-   a su propia aprobación.
+El plan de remediación ya se puede escribir: el glosario estaba condicionado a
+esta aprobación. Orden sugerido, de menor a mayor riesgo:
 
-D-1, D-2 y D-3 tocan contrato: si alguna se aprueba, va con ADR y por su propia
-US, no dentro de otro batch.
+1. **Gratis y hoy** — corregir `02-GLOSARIO.md` (D-1, D-2, D-5) y limpiar los
+   tres restos de `amber`.
+2. **Mecánico** — D-7 y D-9.
+3. **Con ADR y US propia, una por una** — D-3 (`wbs_code`), D-8
+   (`portfolio_function`), y el nombre de `support` si se decide renombrar.
+   Las tres tocan contrato.
+4. **Épica** — D-6, línea base.
+
+D-4 se retoma cuando haya un proyecto real con desviación medible contra el que
+calibrar. Antes de eso, cualquier umbral sería inventado.

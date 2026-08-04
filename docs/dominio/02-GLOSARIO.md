@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **Borrador.** Ningún término está adoptado hasta que el owner lo apruebe |
-| Fecha | 2026-08-03 |
+| Estado | **Aprobado el 2026-08-04**, salvo el umbral del §2.4. Decisiones y evidencia en [`03-REVISION-GLOSARIO.md`](03-REVISION-GLOSARIO.md) |
+| Fecha | 2026-08-03 · revisado 2026-08-04 |
 | Alcance | El núcleo homogeneizable de `00-RUNDOWN-estandares.md` §3 |
 | Árbitro propuesto | ISO 21506 (vocabulario), sin adoptar la familia |
 
@@ -31,26 +31,28 @@ mismo número.
 
 Etapa del ciclo de vida del proyecto, delimitada por una decisión de continuidad.
 
-**Vocabulario propuesto** — cinco fases, alineadas con ISO 21502 y PMBOK, en inglés en el
-código y español en la UI:
+**Vocabulario vigente** — cuatro fases, en inglés en el código y español en la UI
+(`apps/web/lib/api/projects.ts:3`):
 
 | Código | UI | Qué la cierra |
 |---|---|---|
-| `initiation` | Inicio | Acta de constitución autorizada |
 | `planning` | Planeación | Línea base aprobada |
 | `execution` | Ejecución | Entregables aceptados |
-| `closing` | Cierre | Cierre formal y lecciones registradas |
-| `cancelled` | Cancelado | Decisión de terminación anticipada |
+| `support` | Soporte | Fin del hypercare y aceptación formal |
+| `closed` | Cierre | Cierre formal y lecciones registradas |
 
-**Vetado:** `support` / `Soporte` como fase. Operación no es fase de proyecto: empieza
-cuando el proyecto terminó. Si hay que representarlo, va como **estado posterior al cierre**
-o como servicio, no como fase.
+**`support` es hypercare, no mesa de ayuda** (D-2, 2026-08-04). Es el período de garantía
+posterior a la entrega y previo al cierre formal: **una forma de cierre**, no una fase de
+operación. El concepto se queda. Lo discutible es el nombre, porque `support` se lee como
+servicio permanente.
 
-**Vetado:** literales en español dentro del código (`"Inicio"`, `"Ejecución"`, `"Cierre"`).
-El código va en inglés; la traducción vive en la capa de presentación.
+**Abierto:** si hacen falta `initiation` —hoy el proyecto nace en `planning`, aunque el
+acta de constitución sea previa— y `cancelled` —hoy una terminación anticipada es
+indistinguible de un cierre cumplido.
 
-> **Brecha B-2.** Hoy: `PHASES = ["planning", "execution", "support"]`, más cinco
-> ocurrencias de `"Inicio"`/`"inicio"` y una de `"Ejecución"` y `"Cierre"` sueltas.
+**Vetado:** literales en español como *valor* dentro del código. Las etiquetas en español
+de la capa de presentación son correctas y no cuentan como deuda. El único caso por
+revisar es `plan_regenerator.py:37`.
 
 ### 1.2 Hito
 
@@ -104,8 +106,8 @@ los cuatro métodos dan números distintos:
 | Por entregables | Entregables aceptados sobre total |
 | Declarado | Lo que dice el responsable |
 
-**Regla propuesta:** avance de tarea **declarado**; avance de proyecto **ponderado por
-duración** de sus tareas hoja. Debe declararse en la UI, junto al número.
+**Regla adoptada** (D-5, 2026-08-04): avance de tarea **declarado**; avance de proyecto
+**ponderado por duración** de sus tareas hoja. Debe declararse en la UI, junto al número.
 
 **Regla de reconciliación:** el avance del proyecto debe ser reproducible a partir de sus
 tareas. Si no cuadra, es defecto.
@@ -115,11 +117,14 @@ tareas. Si no cuadra, es defecto.
 ### 2.4 Estado de salud (RAG)
 
 **Preferente:** `estado de salud` · **En código:** `health_status`
-**Valores:** `red` · `amber` · `green`
-**Vetado:** `yellow` (3 usos), `Verde`/`Amarillo`/`Rojo` (3 usos)
+**Valores:** `red` · `yellow` · `green`
+**Vetado:** `amber` como valor (3 restos), `status_rag` (absorbido en la migración 0091)
 
-RAG —*Red, Amber, Green*— es el término de P3O y PRINCE2. `amber` es el valor correcto;
-`yellow` es informal y hoy convive con él.
+RAG —*Red, Amber, Green*— es el término de P3O y PRINCE2, y este producto **se aparta de él
+a conciencia** (D-1, 2026-08-04). `yellow` es el contrato de la API
+(`schemas/project.py:116`), la migración 0091 convirtió `amber` → `yellow` a propósito, y
+los snapshots históricos ya guardan la clave `health_yellow`. La UI dice «Amarillo», que es
+lo que ve el cliente. Volver a `amber` costaría contrato, datos e históricos; no lo vale.
 
 **Regla — la pieza que falta.** Un semáforo sin fórmula es una opinión con color. Propuesta,
 a validar:
@@ -127,8 +132,15 @@ a validar:
 | Estado | Criterio |
 |---|---|
 | `green` | Sin desviación material y sin riesgos altos abiertos |
-| `amber` | Desviación dentro del umbral, o riesgo alto con plan de respuesta |
+| `yellow` | Desviación dentro del umbral, o riesgo alto con plan de respuesta |
 | `red` | Desviación fuera del umbral, o riesgo alto sin plan, o incidencia crítica abierta |
+
+> **El umbral sigue abierto** (D-4, 2026-08-04). Y no por descuido: casi seguro no es uno
+> solo —no es el mismo umbral el de un proyecto de tres meses que el de uno de dos años, ni
+> el de cronograma que el de costo—. Se calibra contra un proyecto real con desviación
+> medible; antes de eso, cualquier número sería inventado. Mientras tanto, `health_source =
+> 'manual'` con `health_reason` obligatoria es la salida honesta: el semáforo es un juicio
+> declarado, no un cálculo.
 
 `health_source` distingue **derivado** de **anulado manualmente**; si es manual,
 `health_reason` es obligatorio. Ese campo ya existe y hoy no se aprovecha.
@@ -256,27 +268,29 @@ estratégica**. No coincide con la estructura organizativa.
 
 ## 6. Términos vetados — resumen accionable
 
+> Revisado el 2026-08-04 contra el código. Dos filas se cayeron por falsas y una cambió de
+> dirección; la evidencia por línea está en `03-REVISION-GLOSARIO.md`.
+
 | Vetado | Preferente | Ocurrencias hoy | Dónde |
 |---|---|---|---|
-| `support` como fase | estado posterior al cierre | 1 enum | `PHASES` |
-| `"Inicio"`, `"Ejecución"`, `"Cierre"` en código | `initiation`, `execution`, `closing` | 7 | `apps/api/app/` |
-| `yellow` | `amber` | 33 + 3 | transversal |
-| `Verde`/`Amarillo`/`Rojo` en código | `green`/`amber`/`red` | 3 | transversal |
-| Dos paletas de salud | una definición única | 2 mapas | `HEALTH_DONUT_COLOR`, `HEALTH_HEX` |
+| `amber` como valor | `yellow` | 3 restos | `charter_generator.py:52-53`, `s-03.html:9` |
+| Dos paletas de salud | una definición única | 2 mapas | `scoped_status.py:30,33` |
 | `wbs` para el código de tarea | `wbs_code` | 1 campo | `tasks.wbs` |
-| `portafolio` para un área | — | 4 | `area.py` y otros |
+| `portafolio` para un área | — | 4 | `area.py:233`, `areas.py:675-689` |
 | `problema` / `bug` para incidencia de proyecto | `incidencia` | por revisar | — |
+| «Inicio» como nombre de fase generado | `planning` | 1 | `plan_regenerator.py:37` |
 
 ---
 
 ## 7. Qué falta para cerrar este glosario
 
-1. **Aprobación del owner**, término por término. Nada de esto está adoptado.
-2. **Decidir el umbral de RAG** de §2.4. Es la única regla que exige criterio de negocio, no
-   de estándar.
-3. **Confirmar el método de avance** de §2.3.
-4. Recién entonces: plan de remediación con los renombrados, la migración de `phase`, la
-   unificación de paletas y la introducción de línea base.
+1. ~~Aprobación del owner, término por término.~~ **Hecha el 2026-08-04.**
+2. **Decidir el umbral de RAG** de §2.4 — lo único que sigue abierto. Es la única regla que
+   exige criterio de negocio y no de estándar.
+3. ~~Confirmar el método de avance de §2.3.~~ **Adoptado.**
+4. Decidir el **nombre** de la fase de hypercare (`support` o renombrar), y si hacen falta
+   `initiation` y `cancelled`.
 
-El plan de remediación **no se escribe hasta que este documento esté aprobado**. Escribirlo
-antes sería planificar sobre vocabulario que todavía puede cambiar.
+El plan de remediación ya puede escribirse; el orden sugerido está al final de
+`03-REVISION-GLOSARIO.md`. Los tres cambios que tocan contrato —`wbs_code`,
+`portfolio_function` y el nombre de la fase— van con ADR y US propia, uno por uno.
