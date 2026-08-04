@@ -83,6 +83,78 @@ Se añaden después del primer PR que los ejecute.
 
 ---
 
+## Tanda B — ejecutada 2026-08-03
+
+| # | Acción | Cierra | Estado |
+|---|---|---|---|
+| ~~B1~~ | Suite de aislamiento entre inquilinos | SEG-08, T-4 | **HECHA** — 8 casos, verificada por mutación |
+| ~~B2~~ | Contenido de minutas como dato no confiable | IA-11, T-5 | **HECHA** — ver abajo |
+| B3 | Conjunto de evaluación de IA en la canalización | IA-07, IA-08, IA-09 | Pendiente. Ya no está bloqueada: B2 está hecha |
+| ~~B4~~ | Límites de iteraciones y de coste por ejecución | IA-03 | **HECHA** — `AI_MAX_PROMPT_CHARS` |
+| B5 | Modelo de amenazas sobre la arquitectura | SEG-06 | Pendiente. Depende de B1, que está hecha |
+
+### B2 — el informe nombraba las minutas; los vectores eran diez
+
+El informe describe IA-11 como «las minutas las sube el usuario y se procesan
+con IA». Es cierto y es el vector más visible, pero al recorrer **todas** las
+llamadas a `generate_for_tenant` aparecieron diez puntos por los que entra
+texto que no escribió la plataforma. Cerrar solo las minutas habría dejado el
+requisito marcado como conforme con el problema abierto en otros nueve sitios.
+
+Dos merecen mención aparte:
+
+- **La memoria del proyecto (`auto_summary_md`)** es el vector *indirecto*, y es
+  peor que el directo. Lo escribe el modelo resumiendo minutas de cualquiera, y
+  luego se antepone a **toda** generación posterior del proyecto. Una minuta
+  envenenada deja de ser un incidente y se vuelve una instrucción permanente.
+- **El importador de planes** (`import_ai.py`, `import_mapping_suggest.py`)
+  manda al modelo cabeceras, filas y estados de la hoja que sube el usuario. No
+  estaba en el informe. Y lo que el modelo devuelve ahí decide a qué campo se
+  mapea cada columna del plan importado.
+
+**La delimitación por sí sola no vale.** Si el contenido puede escribir la
+etiqueta de cierre, sale del bloque y lo que escriba detrás se lee con la
+autoridad de la plataforma. Por eso hay tres capas y las tres son obligatorias:
+neutralizar las etiquetas estructurales y los marcadores de rol, envolver con
+la procedencia, y la regla de precedencia en el mensaje de sistema.
+
+**Lo que NO se envuelve, a propósito:** las instrucciones permanentes del PM y
+del tenant, y las notas libres que el operador teclea en esa misma petición. Son
+canales de instrucción legítimos; degradarlos a dato rompería el producto sin
+cerrar nada. Se neutralizan igual, para que no puedan falsificar delimitadores.
+
+**Verificada por mutación**, en tres puntos distintos:
+
+| Mutación | Efecto |
+|---|---|
+| La envoltura deja de neutralizar | **11 pruebas** caen, en todos los puntos de entrada |
+| El system prompt pierde la regla de precedencia | **6 pruebas** caen |
+| Un solo punto de entrada deja de envolver | **1 prueba** cae, exactamente la suya |
+
+Y dos trinquetes que evitan que caduque: una prueba falla si aparece una llamada
+nueva al proveedor sin la regla, y otra si un prompt usa una etiqueta
+estructural que no está declarada.
+
+> **Lo que esto NO es.** No es una garantía: un modelo puede desobedecer, y
+> ninguna prueba unitaria puede afirmar lo contrario. Reduce la superficie. La
+> contención real la dan los límites de lo que el sistema deja hacer al modelo
+> —el copiloto solo navega, las cifras se calculan en Python, ninguna salida
+> ejecuta nada—, y eso ya estaba. **B3 (conjunto de evaluación) es lo que
+> convertiría esto en algo medible**, y es la siguiente.
+
+### Discrepancia: IA-12 no existe en el alcance evaluado
+
+La tabla de acciones del informe atribuye a B2 «IA-11, IA-12», y el resumen
+ejecutivo también cita las dos. Pero la evaluación detallada solo tiene **once**
+requisitos de IA (IA-01..IA-11) y el cuadro de mando declara «0 / 11». **IA-12
+no se evaluó**, muy probablemente porque es de N3 y el objetivo es N2.
+
+Se deja anotado sin inventar: B2 cierra **IA-11** y el hallazgo **T-5**. Si
+IA-12 existe en MCS-CORE y aplica a N2, hay que evaluarlo, no darlo por cerrado
+de rebote.
+
+---
+
 ## Tanda 1b — lo único que separa al entorno de N2
 
 La Tanda 1 cerró **diez de once** requisitos y bajó el contexto permanente un

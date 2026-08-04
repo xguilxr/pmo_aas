@@ -1,7 +1,10 @@
 """ENH-189 — Arquitectura de prompts composable.
 
 Cubre:
-- TC-189-1: build_system_prompt sin instrucciones = base intacto.
+- TC-189-1: build_system_prompt sin instrucciones deja el base intacto y solo
+  le anexa la regla de contenido no confiable (B2 / MCS IA-11 cambió esto: la
+  función devolvía `base` tal cual y ahora nunca lo hace; la cobertura de esa
+  regla vive en `test_ia11_inyeccion_prompt.py`).
 - TC-189-2: con instrucciones anexa el bloque con regla de precedencia.
 - TC-189-3: truncado a 2000 chars.
 - TC-189-4: load_tenant_ai lee settings.ai.instructions_md.
@@ -17,13 +20,18 @@ from app.services.ai.prompt_builder import (
     build_system_prompt,
 )
 from app.services.ai.tenant_ai import load_tenant_ai
+from app.services.ai.untrusted import REGLA_CONTENIDO_NO_CONFIABLE
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 
-def test_enh189_builder_no_instructions_returns_base():
+def test_enh189_builder_no_instructions_keeps_base_intact():
     base = "Eres un asistente. Devuelve SOLO JSON."
-    assert build_system_prompt(base, None) == base
-    assert build_system_prompt(base, "   ") == base
+    for sin_instrucciones in (None, "   "):
+        out = build_system_prompt(base, sin_instrucciones)
+        assert out.startswith(base)
+        assert "<INSTRUCCIONES_DEL_TENANT>" not in out
+        # Lo único que se anexa sin instrucciones es la defensa de IA-11.
+        assert out[len(base):].strip() == REGLA_CONTENIDO_NO_CONFIABLE
 
 
 def test_enh189_builder_appends_block():
@@ -37,7 +45,11 @@ def test_enh189_builder_appends_block():
 
 def test_enh189_builder_truncates():
     out = build_system_prompt("base", "X" * 5000)
-    block = out.split("<INSTRUCCIONES_DEL_TENANT>")[1]
+    # Se mide solo el bloque del tenant: detrás va la regla de IA-11, que es
+    # de la plataforma y no está sujeta a este tope.
+    block = out.split("<INSTRUCCIONES_DEL_TENANT>")[1].split(
+        "</INSTRUCCIONES_DEL_TENANT>"
+    )[0]
     assert len(block) < TENANT_INSTRUCTIONS_MAX_CHARS + 200
     assert "…" in out
 

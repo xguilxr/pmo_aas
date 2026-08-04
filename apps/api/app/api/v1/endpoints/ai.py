@@ -14,9 +14,11 @@ from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute
 from app.models.project import Project
 from app.services.ai.platform_config import resolve_groq_config
+from app.services.ai.prompt_builder import build_system_prompt
 from app.services.ai.prompts import HTML_TWEAK_SYSTEM
 from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import load_tenant_ai
+from app.services.ai.untrusted import envolver_no_confiable, neutralizar
 from app.services.audit import write_audit
 from app.services.folio import next_folio
 from app.workers.tasks.ai import draft_report_task, generate_minute_task
@@ -449,16 +451,25 @@ async def tweak_report_html(
 
     # Truncar input a 400KB para no inflar el prompt.
     current_html = body.current_html[:400_000]
+    # B2 (MCS IA-11): el HTML que llega puede venir de un reporte generado a
+    # partir de minutas — contenido de terceros. La `instruction` sí la teclea
+    # el operador en esta misma petición, así que es un canal de instrucción
+    # legítimo: se neutraliza para que no forje delimitadores, pero no se
+    # envuelve como dato. `neutralizar` solo toca las etiquetas reservadas de
+    # la plataforma y los tokens de rol, nunca el HTML del reporte.
     prompt = (
-        f"INSTRUCCIÓN DEL USUARIO:\n{body.instruction}\n\n"
-        f"HTML ACTUAL:\n{current_html}\n\n"
-        "Devuelve SOLO el HTML modificado completo."
+        f"INSTRUCCIÓN DEL USUARIO:\n{neutralizar(body.instruction)}\n\n"
+        "HTML ACTUAL:\n"
+        + envolver_no_confiable(
+            current_html, origen="HTML del reporte, con contenido de terceros"
+        )
+        + "\n\nDevuelve SOLO el HTML modificado completo."
     )
 
     try:
         res = await generate_for_tenant(
             prompt,
-            system=HTML_TWEAK_SYSTEM,
+            system=build_system_prompt(HTML_TWEAK_SYSTEM, None),
             tenant_ai_mode=cfg.mode,
             platform_groq_config=platform_groq,
             byo_config=cfg.byo,

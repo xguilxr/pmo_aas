@@ -25,6 +25,22 @@ marcos:
   #     el modelo. De paso, float() en ruta monetaria eliminado (DAT-03)
   #   - captura de errores (sentry-sdk), inerte sin DSN
   # PENDIENTE de owner: A1 proteger `main` (CFG-03) tras cerrar los PR.
+  #
+  # Tanda B: B1, B2 y B4 ejecutadas el mismo día. Tampoco re-auditadas — mismo
+  # criterio: arreglar no es medir.
+  #   - B1 (SEG-08, T-4): suite de aislamiento entre inquilinos, 8 casos,
+  #     verificada por mutación (quitar el filtro la hace fallar en lectura,
+  #     modificación y borrado). Cierra el primer punto de puerta_lanzamiento.
+  #   - B2 (IA-11, T-5): el contenido de terceros viaja envuelto y neutralizado,
+  #     y el system prompt lleva regla de precedencia. DIEZ puntos de entrada,
+  #     no solo las minutas que nombraba el informe: la memoria del proyecto
+  #     (vector indirecto, se antepone a toda generación futura) y el importador
+  #     de planes no estaban en el hallazgo. Verificada por mutación en tres
+  #     puntos + dos trinquetes anti-caducidad. Detalle en plan.md.
+  #   - B4 (IA-03): tope de coste por ejecución, AI_MAX_PROMPT_CHARS.
+  # OJO con IA-12: la tabla de acciones del informe se la atribuye a B2, pero
+  # el alcance evaluado solo tiene IA-01..IA-11. No se da por cerrado un
+  # requisito que nadie evaluó. Ver plan.md §«Discrepancia».
 
 proxima_evaluacion: 2026-11-03
 
@@ -399,7 +415,11 @@ puertas:
       MCA: N2
       MCS: N3
     y_ademas:
+      # HECHO 2026-08-03 (B1): tests/test_seg08_aislamiento_tenants.py, 8 casos.
+      # Verificado por mutación: al quitar el filtro por inquilino, falla en
+      # lectura, modificación y borrado.
       - Aislamiento entre usuarios con prueba automatizada que falla si desaparece
+      # Pendiente (B5). Ya no está bloqueado: dependía de B1.
       - Modelado de amenazas hecho, no pendiente
       - Plan de respuesta ante incidente escrito y con responsable
       - Restauración desde copia probada de verdad, no documentada

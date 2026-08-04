@@ -26,6 +26,7 @@ from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
 from app.services.ai.platform_config import resolve_groq_config
+from app.services.ai.prompt_builder import build_system_prompt
 from app.services.ai.prompts import (
     MINUTE_NORMALIZE_SYSTEM,
     MINUTE_SYSTEM,
@@ -37,6 +38,7 @@ from app.services.ai.provider import (
     generate_for_tenant,
 )
 from app.services.ai.tenant_ai import TenantAIConfig, load_tenant_ai
+from app.services.ai.untrusted import envolver_no_confiable
 from app.services.ai.validator import (
     dedupe_participants,
     merge_topics,
@@ -371,8 +373,8 @@ async def _run_minute(
             raise RuntimeError("ai_disabled_for_tenant")
 
         # ENH-189: system efectivo = base + instrucciones del tenant.
-        from app.services.ai.prompt_builder import build_system_prompt
-
+        # B2: `build_system_prompt` anexa además la regla de contenido no
+        # confiable, que es la contraparte del bloque que se arma abajo.
         prompt_system = build_system_prompt(
             prompt_system_base, tenant_cfg.instructions_md
         )
@@ -397,9 +399,24 @@ async def _run_minute(
         }
         parse_failed_chunks = 0
         for ch in chunks:
+            # B2 (MCS IA-11, T-5): el chunk ES el archivo que subió el
+            # usuario. Va envuelto y neutralizado ANTES de tocar el prompt.
+            # La instrucción de reparación de abajo se concatena DESPUÉS del
+            # cierre del bloque, y ese orden importa: es instrucción de la
+            # plataforma y tiene que quedar fuera del dato.
+            ch_envuelto = envolver_no_confiable(
+                ch,
+                origen=(
+                    "minuta redactada subida por el usuario"
+                    if source_type == "minute"
+                    else "transcripción de reunión subida por el usuario"
+                ),
+            )
             # US-185: el contexto del proyecto acompaña a cada chunk (los
             # chunks se procesan de forma independiente).
-            prompt_input = f"{context_block}\n\n{ch}" if context_block else ch
+            prompt_input = (
+                f"{context_block}\n\n{ch_envuelto}" if context_block else ch_envuelto
+            )
             # ENH-147 — json_mode fuerza salida estructurada por proveedor.
             res = await _call_ai_for_tenant(
                 prompt_input,
@@ -643,10 +660,17 @@ async def _run_report(
         if tenant_cfg.mode == "platform":
             raise RuntimeError("platform_mode_reports_out_of_scope")
 
-        prompt = json.dumps(context, ensure_ascii=False)
+        # B2 (MCS IA-11): el JSON lleva `project.name`, y los títulos y
+        # descripciones de los riesgos. Todo eso lo teclean usuarios. Que las
+        # CIFRAS ya vengan calculadas (IA-05) no hace confiable al texto que
+        # las acompaña.
+        prompt = envolver_no_confiable(
+            json.dumps(context, ensure_ascii=False),
+            origen="datos del proyecto redactados por usuarios",
+        )
         res = await _call_ai_for_tenant(
             prompt,
-            system=REPORT_SYSTEM,
+            system=build_system_prompt(REPORT_SYSTEM, None),
             tenant_cfg=tenant_cfg,
             platform_groq_config=platform_groq,
             tenant_id=tenant_id,
@@ -778,9 +802,16 @@ async def _run_context_summary(tenant_id: str, project_id: str) -> None:
         }
 
     try:
+        # B2 (MCS IA-11): la entrada son minutas enteras — títulos, temas y
+        # acuerdos que subió el usuario. Y la salida se guarda en
+        # `auto_summary_md`, que se antepone a cada generación futura del
+        # proyecto: si algo se cuela aquí, se vuelve permanente.
         res = await _call_ai_for_tenant(
-            json.dumps(payload, ensure_ascii=False),
-            system=PROJECT_MEMORY_SYSTEM,
+            envolver_no_confiable(
+                json.dumps(payload, ensure_ascii=False),
+                origen="minutas del proyecto subidas por usuarios",
+            ),
+            system=build_system_prompt(PROJECT_MEMORY_SYSTEM, None),
             tenant_cfg=tenant_cfg,
             platform_groq_config=platform_groq,
             tenant_id=tenant_id,

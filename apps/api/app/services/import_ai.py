@@ -25,8 +25,10 @@ import io
 import json
 import logging
 
+from app.services.ai.prompt_builder import build_system_prompt
 from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import TenantAIConfig
+from app.services.ai.untrusted import envolver_no_confiable
 from app.services.xlsx_task_parser import (
     ParsedTask,
     _coerce_date,
@@ -116,8 +118,11 @@ async def ai_normalize_statuses(
     )
     try:
         res = await generate_for_tenant(
-            json.dumps({"values": values}, ensure_ascii=False),
-            system=system,
+            envolver_no_confiable(
+                json.dumps({"values": values}, ensure_ascii=False),
+                origen="valores de estado del archivo subido por el usuario",
+            ),
+            system=build_system_prompt(system, None),
             tenant_ai_mode=tenant_cfg.mode,
             byo_config=tenant_cfg.byo,
             tenant_id=tenant_id,
@@ -158,8 +163,13 @@ async def ai_match_resources(
     )
     try:
         res = await generate_for_tenant(
-            json.dumps({"values": values, "pool": actor_names}, ensure_ascii=False),
-            system=system,
+            envolver_no_confiable(
+                json.dumps(
+                    {"values": values, "pool": actor_names}, ensure_ascii=False
+                ),
+                origen="nombres del archivo subido y del catálogo de recursos",
+            ),
+            system=build_system_prompt(system, None),
             tenant_ai_mode=tenant_cfg.mode,
             byo_config=tenant_cfg.byo,
             tenant_id=tenant_id,
@@ -212,8 +222,11 @@ async def ai_propose_structure(
     ]
     try:
         res = await generate_for_tenant(
-            json.dumps({"rows": trimmed}, ensure_ascii=False),
-            system=_STRUCTURE_SYSTEM,
+            envolver_no_confiable(
+                json.dumps({"rows": trimmed}, ensure_ascii=False),
+                origen="filas crudas del archivo subido por el usuario",
+            ),
+            system=build_system_prompt(_STRUCTURE_SYSTEM, None),
             tenant_ai_mode=tenant_cfg.mode,
             byo_config=tenant_cfg.byo,
             tenant_id=tenant_id,

@@ -13,8 +13,8 @@
 
 ```
 Sesión 2026-08-03 · Branch: claude/auditoria-conformidad-mca-mcs · PR #573
-Auditoría de conformidad MCA/MCS + Tanda A y B1/B4 de remediación.
-CI verde. Pendiente: revisión y merge del owner.
+Auditoría de conformidad MCA/MCS + Tanda A y B1/B2/B4 de remediación.
+Pendiente: revisión y merge del owner. Siguiente de la tanda: B3 y B5.
 
 Los batches del 2026-07-18 (Plan Import Revamp 9/9 y Feedback 16-jul 8/8)
 siguen en `claude/plan-import-wbs-fixes-nwotng` SIN PR. Migraciones 0095-0096

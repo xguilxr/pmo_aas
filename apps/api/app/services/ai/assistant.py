@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.ai.json_parse import parse_json_lenient
+from app.services.ai.untrusted import envolver_no_confiable, neutralizar
 
 # Acciones permitidas que el frontend sabe ejecutar. Todas son seguras
 # (no mutan datos); navegar es la única con efecto y es reversible.
@@ -59,17 +60,39 @@ def build_assistant_prompt(
     page_context: str | None,
     history: list[dict[str, str]],
 ) -> str:
-    """Arma el prompt de usuario con contexto de página + historial."""
+    """Arma el prompt de usuario con contexto de página + historial.
+
+    B2 (MCS IA-11): el `page_context` lo compone el frontend con los datos que
+    la pantalla está mostrando —nombres de proyecto, títulos de riesgo,
+    descripciones de RAID extraídas de minutas—, así que es contenido de
+    terceros y va envuelto. El `history` también: arrastra turnos previos del
+    modelo, que pudieron contaminarse con un contexto anterior.
+
+    El `user_message` lo teclea quien está usando el widget en ese momento: es
+    su petición y es a lo que el asistente debe responder. Se neutraliza, no se
+    envuelve.
+    """
     parts: list[str] = []
     if page_context:
-        parts.append(f"CONTEXTO DE LA PÁGINA ACTUAL:\n{page_context.strip()[:4000]}\n")
+        parts.append(
+            "CONTEXTO DE LA PÁGINA ACTUAL:\n"
+            + envolver_no_confiable(
+                page_context.strip()[:4000],
+                origen="datos que muestra la pantalla, redactados por usuarios",
+            )
+            + "\n"
+        )
     if history:
         hist = "\n".join(
             f"{m.get('role', 'user')}: {str(m.get('content', ''))[:500]}"
             for m in history[-10:]
         )
-        parts.append(f"HISTORIAL RECIENTE:\n{hist}\n")
-    parts.append(f"MENSAJE DEL USUARIO:\n{user_message.strip()}")
+        parts.append(
+            "HISTORIAL RECIENTE:\n"
+            + envolver_no_confiable(hist, origen="turnos previos de la conversación")
+            + "\n"
+        )
+    parts.append(f"MENSAJE DEL USUARIO:\n{neutralizar(user_message.strip())}")
     parts.append(
         "\nResponde SOLO con el objeto JSON {message, actions} indicado."
     )

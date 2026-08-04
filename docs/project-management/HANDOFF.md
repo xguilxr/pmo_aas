@@ -33,8 +33,8 @@ código y en la cabeza del owner, no en controles que sobrevivan a un mal día.
    llega a **N2**.
 2. Proteger `main` — hoy cualquiera escribe directo en productiva.
 
-Después, **Tanda B2**: las minutas que sube el usuario siguen llegando al modelo
-sin defensa contra inyección de instrucciones.
+Después, **B3** (conjunto de evaluación de IA, dependía de B2) y **B5** (modelo
+de amenazas, dependía de B1). Las dos están desbloqueadas.
 
 ## ✅ Hecho en esta sesión
 
@@ -53,6 +53,12 @@ ejecutivos con `float()` en ruta monetaria.
 
 **B1** — aislamiento entre inquilinos **verificado por mutación**: quitar un
 filtro `tenant_id` la hace fallar en lectura, modificación y borrado.
+
+**B2** — el contenido de terceros ya no llega al modelo como instrucción. El
+informe nombraba las minutas; los puntos de entrada eran **diez**. Los dos que
+faltaban pesan más: la memoria del proyecto (un resumen envenenado se antepone
+a *toda* generación futura) y el importador de planes (decide el mapeo de
+columnas). Verificada por mutación en tres puntos.
 
 También se corrigió el stub de renderers del `conftest`, que cubría 3 de 6
 módulos y hacía fallar 4 tests sin GTK/Pango.
@@ -81,7 +87,7 @@ módulos y hacía fallar 4 tests sin GTK/Pango.
 
 ## 📋 Lo que sigue
 
-- **Tanda B:** B2 (2-3 d) → B3 (3-4 d, depende de B2) → B5 (2 d).
+- **Tanda B:** B3 (3-4 d, ya desbloqueada) → B5 (2 d). B1, B2 y B4 hechas.
 - **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch. US-168
   sigue `in-progress`.
 

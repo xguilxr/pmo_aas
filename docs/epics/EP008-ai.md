@@ -8,7 +8,7 @@
 | **Módulo backend** | `apps/api/app/services/ai/`, `apps/api/app/workers/tasks/ai.py`, `apps/api/app/api/v1/endpoints/{ai,admin_ai,superadmin_ai}.py` |
 | **Módulo frontend** | `/admin/ai`, `/superadmin/ai`, `/pmo/projects/[id]/ai-minutes/new`, `/pmo/projects/[id]/reports/*`, `/pmo/projects/[id]/ai-context` |
 | **Estado** | Vivo en producción |
-| **Última verificación contra código** | 2026-07-09 (US-185, ENH-189) |
+| **Última verificación contra código** | 2026-08-03 (Tanda B2 — contenido no confiable) |
 
 ## Objetivo de negocio
 
@@ -222,6 +222,61 @@ en palabras y omitir el número.
 defecto. Se comprueba **antes** de llamar al proveedor —después el gasto ya
 ocurrió— y acota el contexto de proyectos con mucho histórico, que con los 3
 reintentos de `_AI_CALL_MAX_RETRIES` se multiplicaría.
+
+---
+
+## El contenido del usuario es dato, no instrucción
+
+> **Auditoría MCS 2026-08-03, requisito IA-11 y hallazgo T-5.** Implementado en
+> `apps/api/app/services/ai/untrusted.py`.
+
+Todo lo que la plataforma manda al modelo y no escribió ella —transcripciones,
+minutas, hojas de cálculo importadas, nombres de proyecto, títulos de riesgo,
+turnos previos de una conversación— viaja dentro de un bloque etiquetado con su
+procedencia:
+
+```
+<CONTENIDO_NO_CONFIABLE origen="transcripción de reunión subida por el usuario">
+… el texto tal cual lo escribió el tercero …
+</CONTENIDO_NO_CONFIABLE>
+```
+
+Y el mensaje de sistema lleva siempre una regla de precedencia que dice qué es
+ese bloque: dato que se procesa, no órdenes que se obedecen. La compone
+`build_system_prompt`, que es el único sitio donde se arma un system prompt.
+
+**Delimitar no basta por sí solo.** Si el contenido puede escribir la etiqueta
+de cierre, se sale del bloque y lo que venga detrás se lee con la autoridad de
+la plataforma. Por eso, antes de envolver, se neutralizan las etiquetas
+estructurales (`CONTENIDO_NO_CONFIABLE`, `CONTEXTO_DEL_PROYECTO`,
+`INSTRUCCIONES_DEL_TENANT`…) y los marcadores de rol de las plantillas de chat
+(`<|im_start|>`, `[INST]`, `<<SYS>>`), que en modelos de pesos abiertos son
+texto y abren turnos. El resto del contenido pasa **intacto carácter por
+carácter**: `/reports/tweak-html` recibe HTML y tiene que seguir funcionando.
+
+Qué se envuelve y qué no:
+
+| Entra al modelo | Trato | Por qué |
+|---|---|---|
+| Transcripción / minuta subida | Envuelta | Es el vector directo: archivo de un tercero |
+| Hoja de cálculo importada (cabeceras, filas, estados, nombres) | Envuelta | Mismo vector; además decide el mapeo de columnas |
+| `auto_summary_md` (memoria del proyecto) | Envuelta | Vector **indirecto** y el peor: se antepone a toda generación futura del proyecto, así que una minuta envenenada se vuelve permanente |
+| Nombre, descripción, folio del proyecto; títulos de tareas y riesgos | Envueltos | Los teclean usuarios, y aparecían en la prosa de la plataforma |
+| HTML del reporte en `tweak-html` | Envuelto | Puede proceder de un reporte generado desde minutas |
+| Contexto de pantalla e historial del copiloto | Envueltos | Datos de terceros y turnos previos del propio modelo |
+| `instructions_md` / `context_md` del PM | Neutralizados, **no** envueltos | Canal de instrucción deliberado del PM |
+| `free_notes` del reporte, mensaje del copiloto | Neutralizados, **no** envueltos | Los teclea el operador en esa misma petición |
+| Instrucciones permanentes del tenant | Neutralizadas, **no** envueltas | Las configura su administrador |
+
+**Esto reduce la superficie; no la elimina.** Un modelo de lenguaje puede
+desobedecer. La contención real la dan los límites de lo que el sistema le deja
+hacer: el copiloto solo navega (`ALLOWED_ACTION_TYPES`), las cifras de los
+informes se calculan en Python (IA-05), el chat del Report Builder solo produce
+acciones de un catálogo cerrado, y ninguna salida del modelo ejecuta nada.
+
+Cobertura: `tests/test_ia11_inyeccion_prompt.py`, con un corpus de 15 intentos
+de inyección y un trinquete que falla si aparece una llamada nueva al proveedor
+sin la regla, o una etiqueta estructural sin declarar.
 
 ### Flujo del report builder visual
 

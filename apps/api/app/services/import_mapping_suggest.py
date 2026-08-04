@@ -24,8 +24,10 @@ from __future__ import annotations
 import json
 from typing import TypedDict
 
+from app.services.ai.prompt_builder import build_system_prompt
 from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import TenantAIConfig
+from app.services.ai.untrusted import envolver_no_confiable
 
 SYSTEM_FIELDS: tuple[str, ...] = (
     "name",
@@ -148,10 +150,17 @@ async def suggest_column_mapping(
                 [None if c is None else str(c)[:120] for c in r[:30]]
                 for r in sample_rows[:5]
             ]
-        prompt = json.dumps(payload, ensure_ascii=False)
+        # B2 (MCS IA-11): las cabeceras y las filas de muestra salen de la
+        # hoja de cálculo que subió el usuario. Es el mismo vector que las
+        # minutas, con una consecuencia distinta: lo que el modelo devuelve
+        # aquí decide a qué campo se mapea cada columna del plan importado.
+        prompt = envolver_no_confiable(
+            json.dumps(payload, ensure_ascii=False),
+            origen="cabeceras y filas del archivo subido por el usuario",
+        )
         res = await generate_for_tenant(
             prompt,
-            system=_AI_SYSTEM_PROMPT,
+            system=build_system_prompt(_AI_SYSTEM_PROMPT, None),
             tenant_ai_mode=tenant_cfg.mode,
             platform_groq_config=platform_groq_config,
             byo_config=tenant_cfg.byo,
