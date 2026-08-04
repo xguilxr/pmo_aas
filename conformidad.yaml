@@ -50,6 +50,26 @@ marcos:
   #     un acierto de la heurística en el mapeo de columnas. Los dos corregidos.
   #     Lo que NO cubre está escrito en apps/api/evaluacion/README.md.
   #   - B4 (IA-03): tope de coste por ejecución, AI_MAX_PROMPT_CHARS.
+  #   - B5 (SEG-06): modelo de amenazas en docs/architecture/modelo-amenazas.md,
+  #     ocho fronteras de confianza y catorce amenazas con control, evidencia,
+  #     residual y estado. La mitad de «revisado ante cambios significativos» la
+  #     hace cumplir tests/test_seg06_modelo_amenazas.py contra el inventario de
+  #     docs/architecture/amenazas.yaml: falla si aparece una ruta sin
+  #     autenticación o un destino externo que el modelo no declara. Verificado
+  #     por mutación (endpoint abierto nuevo → 2 pruebas; destino nuevo → 1).
+  #     Encontró AM-01, corregida: la base_url del BYO permitía a cualquier
+  #     administrador de inquilino hacer peticiones a la red privada de Railway
+  #     y leer 120 caracteres de la respuesta. Deja SIN CONTROL y escritas
+  #     AM-08 (registro de auditoría modificable, del que depende AM-06),
+  #     AM-09 (/auth/login sin límite por IP), AM-10 (bloqueo de cuenta como
+  #     denegación de servicio) y AM-14 (`main` sin proteger).
+  #     OJO con el método: MCS-CORE §5.14 enuncia SEG-06 y NO trae procedimiento
+  #     —el identificador aparece una sola vez en todo `marcos/`—, así que el
+  #     método lo eligió Claude y el documento lo declara en su §0. La skill
+  #     `modelado-amenazas` enruta a un procedimiento que no existe: es un
+  #     defecto del kit, no del requisito.
+  #     ARQ-01 sigue NO CONFORME: el modelo derivó la arquitectura del código
+  #     para poder existir, pero eso no es el diagrama versionado que se pide.
   # OJO con IA-12: la tabla de acciones del informe se la atribuye a B2, pero
   # el alcance evaluado solo tiene IA-01..IA-11. No se da por cerrado un
   # requisito que nadie evaluó. Ver plan.md §«Discrepancia».
@@ -431,7 +451,13 @@ puertas:
       # Verificado por mutación: al quitar el filtro por inquilino, falla en
       # lectura, modificación y borrado.
       - Aislamiento entre usuarios con prueba automatizada que falla si desaparece
-      # Pendiente (B5). Ya no está bloqueado: dependía de B1.
+      # HECHO 2026-08-04 (B5): docs/architecture/modelo-amenazas.md, ocho
+      # fronteras y catorce amenazas. «Revisado ante cambios significativos» lo
+      # hace cumplir tests/test_seg06_modelo_amenazas.py, no la memoria de
+      # nadie. OJO: el modelo deja AM-08, AM-09, AM-10 y AM-14 SIN CONTROL. Que
+      # el modelado esté hecho NO significa que las amenazas estén cerradas, y
+      # esta puerta pide lo primero. Antes de cruzarla conviene releer si lo
+      # primero basta.
       - Modelado de amenazas hecho, no pendiente
       - Plan de respuesta ante incidente escrito y con responsable
       - Restauración desde copia probada de verdad, no documentada

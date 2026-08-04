@@ -61,26 +61,12 @@ pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
 
 ### Conformidad (auditoría 2026-08-03)
 
-> Plan completo y estado por requisito en `docs/conformidad/plan.md`. No consume
-> IDs US/ENH/BUG. **PR #573**, CI verde.
+> Estado por requisito en `docs/conformidad/plan.md`. **Las acciones del owner
+> viven en `HANDOFF.md`**, no aquí: estaban en los dos sitios y una de las dos
+> copias iba a envejecer (CTX-06). No consume IDs US/ENH/BUG.
 
-Hecho: MCA acciones 1-10, MCS auditado, Tanda A (4/5) y B1/B2/B3/B4.
-
-**Pendiente de decisión del owner:**
-
-- [ ] Abrir Claude Code **con el repo como directorio de trabajo** y comprobar
-  que el guard de acciones irreversibles intercepta. `/hooks` no basta: es
-  config de proyecto. Con esto MCA llega a **N2**.
-- [ ] **Proteger `main`** — hoy cualquiera escribe directo en productiva.
-  Comando en `plan.md` → Tanda A. Acordado esperar a cerrar los PR abiertos.
-- [ ] Fijar el presupuesto de contexto: 40.000 declarado, ~51.000 real, y el
-  número lo propuso la auditoría.
-- [ ] Revisar `docs/dominio/02-GLOSARIO.md`. Bloquea la remediación de dominio.
-
-**Pendiente de ejecución:** solo **B5** (modelo de amenazas, 2 d).
-
-> B3 dejó el conjunto de evaluación de IA en `apps/api/evaluacion/`.
-> **Al proteger `main`, añadir `evaluacion-ia` a los checks requeridos.**
+Hecho: MCA acciones 1-10, MCS auditado, Tanda A (4/5) y **Tanda B entera**.
+Remediación cerrada; lo siguiente es **reauditar**, porque arreglar no es medir.
 
 ---
 

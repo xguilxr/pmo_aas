@@ -2,65 +2,86 @@
 
 **Última actualización:** 2026-08-04
 **Branch activa:** `claude/auditoria-conformidad-mca-mcs` · **PR #573** (abierto)
-**Generado por:** sesión de conformidad — Tanda B, acción B3
+**Generado por:** sesión de conformidad — Tanda B
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-Sesión **de conformidad, no de producto**. Se auditó el repo contra MCA (entorno
-agéntico) y MCS (calidad de software) y se ejecutó la remediación. De la Tanda B
-quedan B1, B2, B3 y B4 hechas; falta **B5**.
+Sesión **de conformidad, no de producto**: se auditó el repo contra MCA (entorno
+agéntico) y MCS (software), y se remedió la Tanda A (4 de 5) y **la B entera**.
 
 | Marco | Objetivo | Alcanzado | Evaluados |
 |---|---|---|---|
 | MCA | N2 | **N0** | 11/11 · 10 conformes |
 | MCS | N2 | **N0** | 126/126 · 9 conformes |
 
-**MCA está a un requisito de N2** y ese requisito no necesita código: solo que
-alguien verifique el guard desde una sesión abierta dentro del repo.
+**MCA está a un requisito de N2**, y no necesita código: solo verificar el guard
+desde una sesión abierta dentro del repo.
 
 Los requisitos que tocó la remediación **siguen figurando como NO CONFORME**:
-arreglarlos no es medirlos, y eso exige reauditar.
+arreglar no es medir, y eso exige reauditar.
 
 ## 📍 Dónde retomar
 
-**Lo más barato y de mayor impacto son dos acciones del owner**, no de Claude:
+**Lo más barato son dos acciones del owner**, no de Claude:
 
 1. Abrir Claude Code con el repo como directorio de trabajo y comprobar que el
-   guard intercepta (`echo "prueba: git push --force"`). Cierra AUT-01 y MCA
-   llega a **N2**.
-2. Proteger `main` — hoy cualquiera escribe directo en productiva.
+   guard intercepta (`echo "prueba: git push --force"`). Cierra AUT-01 → **N2**.
+2. Proteger `main`. Es **AM-14** del modelo de amenazas.
 
-Después, **B5** (modelo de amenazas, 2 d, desbloqueada por B1).
+Después, **reauditar** (MCS-P01). No más remediación hasta medir.
 
-## ✅ Hecho en esta sesión — B3, conjunto de evaluación de IA
+## ✅ Hecho en esta sesión
 
-Cierra **IA-07, IA-08 e IA-09**. Vive en `apps/api/evaluacion/`; el detalle está
-en `docs/conformidad/plan.md` §B3 y el porqué en `evaluacion/README.md`.
+Detalle en `docs/conformidad/plan.md` §B3 y §B5.
 
-B2 comprobaba que el contenido ajeno no llegue al modelo como instrucción. Nadie
-comprobaba la otra mitad: **si el modelo desobedece igualmente, qué sale**. Esa
-es la pregunta que el conjunto hace, y por eso puede ser un gate — mide al
-sistema, no al modelo: corre sin clave de API, sin red y en segundos, con job
-propio en CI (`evaluacion-ia`) y umbral eliminatorio en seguridad.
+**B3 — conjunto de evaluación de IA** (IA-07/08/09), en `apps/api/evaluacion/`.
+B2 cerró que el contenido ajeno no llegue al modelo como instrucción; nadie
+comprobaba la otra mitad: si el modelo desobedece igualmente, **qué sale**. Por
+eso puede ser un gate — mide el sistema, no el modelo: sin clave de API, sin red,
+job `evaluacion-ia` con umbral eliminatorio. Los fallos de IA que ya llegaron a
+un usuario (BUG-063/068/069/070/073, ENH-102, ENH-147) son casos permanentes.
 
-Los fallos de IA que ya llegaron a un usuario (BUG-063/068/069/070/073,
-ENH-102, ENH-147) entraron como **casos permanentes**, con la salida de modelo
-que los provocó. Una prueba de trinquete falla si alguno desaparece.
+**B5 — modelo de amenazas** (SEG-06), en `docs/architecture/modelo-amenazas.md`:
+ocho fronteras de confianza y catorce amenazas con control, evidencia, residual y
+estado. La mitad de «revisado ante cambios significativos» la hace cumplir
+`tests/test_seg06_modelo_amenazas.py`, que falla si aparece una ruta sin
+autenticación o un destino externo que `amenazas.yaml` no declara.
 
-**Encontró dos defectos el primer día**, ninguno reportado por usuarios, los dos
-corregidos en commits propios:
+**Tres defectos encontrados y corregidos**, ninguno reportado por usuarios:
 
-- **Navegación fuera del sitio desde el copiloto.** El guardia era «empieza por
-  `/` y no por `//`»; cinco formas lo pasaban porque el parser de URL del
-  navegador trata `\` como `/` y **borra** TAB/LF/CR. El frontend hace
-  `router.push(a.path)` sin comprobar nada más.
-- **Un `field: null` del modelo** con confianza alta borraba el mapeo que la
+- El copiloto ofrecía navegaciones **fuera del sitio**: el parser de URL del
+  navegador trata `\` como `/` y borra TAB/LF/CR, así que `/\evil.example` pasaba
+  el filtro de «empieza por `/` y no por `//`». El frontend hace `router.push`
+  sin comprobar nada más.
+- **AM-01:** el modo BYO dejaba al administrador de un inquilino fijar
+  `base_url`, y `POST /admin/ai/provider/test` la usaba para pedir **desde dentro
+  de la red privada de Railway** devolviendo estado, 120 caracteres del cuerpo y
+  latencia. Un escáner de red para cualquier administrador de cliente.
+- Un `field: null` del modelo con confianza alta borraba el mapeo que la
   heurística había acertado, en el importador de planes.
 
-Verificado por mutación: quitar cada defensa tira entre 1 y 8 casos; sin mutar,
-0.
+Todo verificado por mutación.
+
+## ⚠️ Gotchas
+
+- **`main` no está protegida** (AM-14). Al hacerlo, añadir `evaluacion-ia` a los
+  checks requeridos.
+- **Cuatro amenazas quedan SIN CONTROL**, escritas en vez de ignoradas: AM-08 (el
+  registro de auditoría es una tabla ordinaria, y AM-06 se apoya en él como único
+  control), AM-09 (`/auth/login` sin límite por IP), AM-10 (el bloqueo por
+  usuario es a su vez una denegación de servicio) y AM-14.
+- **Dos avisos sobre B5**, ambos en `plan.md` §B5: `MCS-CORE §5.14` enuncia
+  SEG-06 y **no trae procedimiento**, así que el método lo eligió Claude y el
+  documento lo declara. Y la evidencia del informe para `ARQ-01` («no hay
+  diagramas de contexto ni de contenedores») **es falsa**: el README de
+  `docs/architecture/` los tiene. Remirarlo al reauditar.
+- **Los gates de CI son trinquetes:** fallan ante crecimiento nuevo, no por el
+  pasivo heredado. El de contexto frenó esta sesión dos veces y hubo que recortar
+  en vez de subir el techo — que es lo que debe pasar.
+- **No hay tests de frontend**, y **Python 3.12 no es negociable**
+  (`psycopg[binary]` no publica wheel para 3.13+).
 
 ## 🔄 PRs en flight
 
@@ -71,30 +92,20 @@ Verificado por mutación: quitar cada defensa tira entre 1 y 8 casos; sin mutar,
 | `claude/plan-import-wbs-fixes-nwotng` | Falta abrir PR · migs 0095-0096 |
 | `claude/gantt-areas-fixes` | Falta abrir PR (ENH-149/BUG-075/ENH-154/ENH-152) |
 
-## ⚠️ Gotchas
-
-- **`main` no está protegida.** Verificado contra la API de GitHub. La regla de
-  `CLAUDE.md` §8 existe solo en prosa. Al protegerla, añadir `evaluacion-ia` a
-  los checks requeridos.
-- **Los gates de CI funcionan como trinquete:** fallan ante crecimiento nuevo, no
-  por el pasivo heredado. El de contexto frenó esta misma sesión y hubo que
-  recortar en vez de subir el techo — que es lo que debe pasar.
-- **No hay tests de frontend.** El salto de Next 15.0 a 15.5 lo respaldan solo
-  typecheck y build. Un smoke manual antes de mergear sería prudente.
-- **Python 3.12 no es negociable**: `psycopg[binary]` no tiene wheel para 3.13+.
-
 ## 📋 Lo que sigue
 
-- **Tanda B:** solo queda **B5** (modelo de amenazas, 2 d).
-- **Evaluación de IA:** falta superficie para el **informe ejecutivo** — hay que
-  sacar el ensamblado del contexto fuera de `_run_report` primero.
-- **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch. US-168
-  sigue `in-progress`.
+- **Conformidad:** reauditar. La remediación está hecha; la medición no.
+- **Amenazas:** AM-08 es la más barata — un `REVOKE UPDATE, DELETE` al rol de la
+  aplicación, sin código. AM-09 es aplicar el limitador que ya existe.
+- **Evaluación de IA:** falta superficie para el informe ejecutivo; antes hay que
+  sacar el ensamblado del contexto fuera de `_run_report`.
+- **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch y se cruza
+  con AM-12. US-168 sigue `in-progress`.
 
 ## 🧹 Acciones del owner
 
 - [ ] Verificar el guard desde una sesión dentro del repo (cierra AUT-01 → N2).
-- [ ] Proteger `main` tras cerrar los PR abiertos, con `evaluacion-ia` incluido.
+- [ ] Proteger `main` tras cerrar los PR, con `evaluacion-ia` incluido (AM-14).
 - [ ] Revisar y mergear **PR #573**.
 - [ ] Fijar `permanente_max_chars` en `conformidad.yaml`.
 - [ ] Revisar `docs/dominio/02-GLOSARIO.md` término por término.
@@ -105,17 +116,12 @@ Verificado por mutación: quitar cada defensa tira entre 1 y 8 casos; sin mutar,
 ## 🔮 Sin issue todavía
 
 - **Calidad de cronograma DCMA 14-point.** Ver `docs/dominio/01-DIAGNOSTICO.md` §4.
-- **Línea base.** Brecha keystone: sin ella no existe «desviación».
-- **Migrar de `python-jose` a PyJWT** — cerraría 5 CVE bloqueadas hoy por su
+- **Línea base.** Sin ella no existe «desviación».
+- **Migrar de `python-jose` a PyJWT** — cerraría 5 CVE que hoy bloquea su
   restricción `pyasn1<0.5.0`.
-- **Re-medir INT-04**: `api-tests-smoke` tarda 3 m en el runner, no los 13 de una
-  máquina local. El requisito puede estar más cerca de conforme de lo estimado.
+- **Re-medir INT-04**: `api-tests-smoke` tarda 3 m en CI, no 13.
 
 ---
 
-## Cómo retomar
-
-1. Este archivo primero.
-2. Luego `CLAUDE.md` (§0.3 = comandos de verificación) + `SPRINT.md` + el epic
-   en flight.
-3. Continúa desde "Dónde retomar".
+El orden de lectura al abrir sesión lo fija `CLAUDE.md` §1; no se repite aquí.
+Continúa desde «Dónde retomar».

@@ -91,7 +91,7 @@ Se añaden después del primer PR que los ejecute.
 | ~~B2~~ | Contenido de minutas como dato no confiable | IA-11, T-5 | **HECHA** — ver abajo |
 | ~~B3~~ | Conjunto de evaluación de IA en la canalización | IA-07, IA-08, IA-09 | **HECHA** — 45 casos, umbral eliminatorio, job propio en CI. Ver abajo |
 | ~~B4~~ | Límites de iteraciones y de coste por ejecución | IA-03 | **HECHA** — `AI_MAX_PROMPT_CHARS` |
-| B5 | Modelo de amenazas sobre la arquitectura | SEG-06 | Pendiente. Depende de B1, que está hecha |
+| ~~B5~~ | Modelo de amenazas sobre la arquitectura | SEG-06 | **HECHA** — 14 amenazas, trinquete de revisión en la suite. Ver abajo |
 
 ### B2 — el informe nombraba las minutas; los vectores eran diez
 
@@ -225,6 +225,82 @@ Escrito aquí para que no se lea como cobertura que no existe:
 - **El modelo mismo no se evalúa.** Un conjunto que ejerza al proveedor de verdad
   es otra cosa y otra decisión: mediría el modelo, no el sistema, y no puede ser
   un gate.
+
+### B5 — el marco pide el modelo y no dice cómo hacerlo
+
+Primero, una advertencia sobre el método. `MCS-CORE.md §5.14` **enuncia SEG-06 y
+no trae procedimiento**: el identificador aparece una sola vez en todo `marcos/`,
+en la tabla de requisitos. La skill `modelado-amenazas` enruta a §5.14 esperando
+encontrar allí un procedimiento que no está. Su propia puerta de calidad dice
+que en ese caso hay que parar y decirlo en vez de reconstruirlo de memoria, así
+que queda dicho: **el método lo elegí yo** —descomposición por flujos, fronteras
+de confianza numeradas, STRIDE sobre cada una— y el documento lo declara en su
+§0 para que nadie lo lea como prescrito por el marco. Es un defecto de la skill,
+no del requisito, y merece issue en el repositorio del kit.
+
+El modelo vive en `docs/architecture/modelo-amenazas.md`: **ocho fronteras de
+confianza y catorce amenazas**, cada una con control actual, evidencia abrible,
+riesgo residual y estado.
+
+**Y de paso destapó un error de la propia auditoría.** SEG-06 pide un modelo
+«derivado de la arquitectura», así que lo primero fue buscarla. El informe deja
+`ARQ-01` en PARCIAL con la evidencia «no se encontraron diagramas de contexto ni
+de contenedores», y eso **no es exacto**: `docs/architecture/README.md` los
+tiene, en mermaid, y su propio índice los anuncia en la fila 7. El auditor listó
+`database.md`, `navigation.md` y `api-conventions.md` y no abrió el README.
+
+No cambio el estado de ARQ-01 por mi cuenta —arreglar no es medir, y esto ni
+siquiera es arreglar— pero queda anotado: **la razón escrita para ese PARCIAL no
+se sostiene**, y hay que volver a mirarlo en la reauditoría en vez de arrastrarlo.
+
+El modelo de amenazas no repite esos diagramas: aporta la vista que ellos no dan,
+que es la misma arquitectura mirada por dónde se cruza una frontera de confianza.
+
+#### Qué encontró
+
+**AM-01, corregida en commit propio.** El modo BYO deja al administrador de un
+inquilino fijar `base_url`, y `POST /admin/ai/provider/test` la usaba para hacer
+una petición **desde dentro de la red privada de Railway**, devolviendo estado,
+120 caracteres del cuerpo y latencia. Comprobado contra servidores locales antes
+de tocar nada: puerto abierto, puerto cerrado y nombre inexistente daban tres
+respuestas distinguibles. Era un oráculo de red completo en manos de cualquier
+administrador de cliente. Cerrada en las tres puertas y verificada por mutación.
+
+Y cuatro que **no** tenían control y ahora están escritas en vez de ignoradas:
+
+| ID | Amenaza | Por qué importa |
+|---|---|---|
+| AM-08 | El registro de auditoría es una tabla ordinaria | AM-06 se apoya en él como único control. Un control que se apoya en otro que no existe no es un control |
+| AM-09 | `/auth/login` no tiene límite por IP | El bloqueo por usuario para de adivinar una contraseña, no un intento por cuenta contra miles |
+| AM-10 | El bloqueo por usuario es a su vez una denegación de servicio | Con una lista de usuarios se bloquea al inquilino entero |
+| AM-14 | `main` sin proteger | Ya estaba en la lista del owner; ahora tiene ficha |
+
+Ninguna se arregla aquí: B5 es el modelo, no la remediación. AM-01 fue la
+excepción porque estaba viva y el arreglo cabía en un módulo.
+
+#### Cómo se revisa, que es la mitad que suele faltar
+
+SEG-06 pide «revisado ante cambios significativos», y eso ningún documento lo
+cumple solo. Lo cumple `tests/test_seg06_modelo_amenazas.py`, que recalcula desde
+el código dos cosas y falla si aparece algo que `amenazas.yaml` no declara:
+
+- **rutas que no exigen identidad** — hoy siete, cada una con su motivo escrito;
+- **destinos externos** en `app/`, separados en `egreso` y `referencia`.
+
+Verificado por mutación: publicar un endpoint sin autenticación tira 2 pruebas;
+añadir un destino externo sin declararlo, 1.
+
+Deliberadamente **no** se vigila una huella del código entero. Un gate que se
+pone rojo con cada edición se desactiva en dos días, y entonces no vigila nada.
+Por el mismo motivo la ventana de 12 meses **avisa y no falla**: que pase el
+tiempo no hace el código menos seguro hoy; superficie nueva sin evaluar, sí.
+
+> Contar las rutas abiertas costó dos intentos. El primero miraba solo el primer
+> nivel de dependencias y daba **37** rutas públicas, incluido el panel de
+> superadministrador — `get_superadmin` no es `get_current_user`, pero depende de
+> él. Las abiertas de verdad son **siete**. Queda anotado porque el susto es
+> instructivo: una comprobación de seguridad mal escrita asusta o tranquiliza,
+> y las dos cosas son igual de caras.
 
 ### Discrepancia: IA-12 no existe en el alcance evaluado
 

@@ -13,7 +13,8 @@
 | 4 | [`deployment-railway.md`](./deployment-railway.md) | 4 servicios Railway, variables, CI/CD |
 | 5 | [`api-conventions.md`](./api-conventions.md) | REST, paginación real, catálogo de errores |
 | 6 | [`navigation.md`](./navigation.md) | Árbol de páginas, flujos y huérfanas |
-| 7 | Este archivo | Vista C4 (contexto + contenedores + componentes) |
+| 7 | [`modelo-amenazas.md`](./modelo-amenazas.md) | Fronteras de confianza y catorce amenazas (MCS SEG-06) |
+| 8 | Este archivo | Vista C4 (contexto + contenedores + componentes) |
 
 ---
 

@@ -19,6 +19,10 @@
 - *DB-per-tenant* — coste de infra y backups.
 - *RLS Postgres* en MVP — costo de implementación; queda como deuda priorizable.
 
+> **Las amenazas y sus controles viven en [`modelo-amenazas.md`](./modelo-amenazas.md).**
+> Este documento describe cómo funciona el aislamiento; aquél, qué lo rompe y qué lo
+> sostiene. El riesgo de abajo es AM-02.
+
 > **Riesgo conocido:** un bug que omita el filtro `tenant_id` rompería el aislamiento. Mitigación: (a) los tests `TC-MT-*` validan el aislamiento end-to-end por endpoint; (b) code review obligatorio en toda ruta nueva.
 
 ---
