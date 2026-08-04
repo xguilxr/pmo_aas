@@ -12,6 +12,39 @@ logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s %(levelname)s 
 logger = logging.getLogger("pmoaas.api")
 
 
+def _iniciar_captura_de_errores() -> None:
+    """Notificación de errores en producción (MCS OPS-02).
+
+    Auditoría MCS 2026-08-03: no había ninguna. Un 500 en producción quedaba en
+    los registros de Railway y nadie se enteraba salvo que un usuario lo
+    reportase.
+
+    Sin `SENTRY_DSN` esto no hace nada: en local y en tests queda inerte, y se
+    enciende poniendo la variable en Railway. `send_default_pii=False` porque
+    este producto trata datos de proyecto de sus clientes y no hay motivo para
+    exportarlos a un tercero junto con la traza.
+    """
+    if not settings.SENTRY_DSN:
+        return
+    try:
+        import sentry_sdk
+    except ImportError:
+        logger.warning("SENTRY_DSN definido pero sentry-sdk no está instalado")
+        return
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.PYTHON_ENV,
+        release=settings.VERSION,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        send_default_pii=False,
+    )
+    logger.info("captura de errores activa env=%s", settings.PYTHON_ENV)
+
+
+_iniciar_captura_de_errores()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("starting api version=%s env=%s", settings.VERSION, settings.PYTHON_ENV)
@@ -46,6 +79,48 @@ app.add_middleware(
     # "reporte.pdf" en vez del nombre real construido por el backend.
     expose_headers=["Content-Disposition"],
 )
+
+
+@app.middleware("http")
+async def cabeceras_de_seguridad(request: Request, call_next):
+    """Cabeceras de seguridad en toda respuesta (MCS SEG-03).
+
+    Auditoría MCS 2026-08-03: la aplicación solo tenía `CORSMiddleware`. CORS
+    controla quién puede LEER la respuesta desde otro origen; no protege de
+    clickjacking, ni de degradación a HTTP, ni de adivinación de tipo MIME.
+
+    Notas de las decisiones:
+
+    * `Strict-Transport-Security` solo fuera de desarrollo: en local se sirve
+      por HTTP y esta cabecera dejaría el navegador fijado a HTTPS para
+      `localhost`, que es molesto de revertir.
+    * La `Content-Security-Policy` es la del **API**, no la del front. Esta
+      aplicación devuelve JSON y archivos; no ejecuta scripts propios. Por eso
+      puede ser restrictiva sin riesgo. `/docs` y `/redoc` (Swagger y ReDoc)
+      cargan JS y CSS desde CDN, así que se excluyen — son herramientas de
+      desarrollo, no superficie de producto.
+    """
+    respuesta = await call_next(request)
+
+    respuesta.headers.setdefault("X-Content-Type-Options", "nosniff")
+    respuesta.headers.setdefault("X-Frame-Options", "DENY")
+    respuesta.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    respuesta.headers.setdefault(
+        "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+    )
+
+    if settings.PYTHON_ENV != "development":
+        respuesta.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+
+    if not request.url.path.startswith(("/docs", "/redoc", "/openapi.json")):
+        respuesta.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        )
+
+    return respuesta
 
 
 def _error_cors_headers(request: Request) -> dict[str, str]:

@@ -33,6 +33,7 @@ from app.services.ai.assistant import (
     parse_assistant_reply,
 )
 from app.services.ai.platform_config import resolve_groq_config
+from app.services.ai.prompt_builder import build_system_prompt
 from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import load_tenant_ai
 
@@ -151,7 +152,10 @@ async def assistant_chat(
     try:
         result = await generate_for_tenant(
             prompt,
-            system=ASSISTANT_SYSTEM,
+            # B2: `build_system_prompt` anexa la regla de contenido no
+            # confiable, contraparte de los bloques que arma
+            # `build_assistant_prompt`.
+            system=build_system_prompt(ASSISTANT_SYSTEM, None),
             tenant_ai_mode=cfg.mode,
             platform_groq_config=platform_cfg,
             byo_config=cfg.byo,

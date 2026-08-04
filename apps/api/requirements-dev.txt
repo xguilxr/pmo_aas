@@ -8,3 +8,7 @@ aiosqlite==0.20.0
 ruff==0.6.9
 # US-066: mock S3 in tests (no need to hit real R2/B2).
 moto[s3]==5.0.18
+# B3 (MCS IA-08): el conjunto de evaluación lee su catálogo de `casos.yaml`.
+# Declarado aquí aunque hoy llegue como dependencia transitiva: un gate de
+# despliegue no puede depender del árbol de otro paquete.
+PyYAML==6.0.3

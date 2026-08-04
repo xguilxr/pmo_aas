@@ -1,14 +1,28 @@
 """Minimal MS Project XML parser.
 
 MS Project exporta XML según schema Project2003. Esta implementación lee los
-campos más relevantes usando stdlib ElementTree sin dependencias externas.
-Para `.mpp` binario se requiere MPXJ (Java) en worker — no incluido en MVP.
+campos más relevantes. Para `.mpp` binario se requiere MPXJ (Java) en worker —
+no incluido en MVP.
+
+Auditoría MCS 2026-08-03 (B314 / INT-02): el XML lo SUBE EL USUARIO
+(`endpoints/tasks.py` → `parse_ms_project_xml`), así que es entrada no confiable.
+`xml.etree.ElementTree` no es seguro frente a datos maliciosos: la expansión de
+entidades permite agotar memoria con un archivo de pocos kilobytes («billion
+laughs»). `defusedxml` devuelve la misma API y rechaza esas construcciones.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from xml.etree import ElementTree as ET
+
+# NO cambiar a `xml.etree` sin leer la nota de arriba: entrada no confiable.
+from xml.etree.ElementTree import ParseError
+
+# La regla N817 exime `xml.etree.ElementTree as ET` por ser idioma estándar,
+# pero no la variante de defusedxml. Se mantiene el alias `ET` para que el
+# cuerpo del parser no cambie y el diff sea revisable.
+from defusedxml import ElementTree as ET  # noqa: N817
+from defusedxml.common import DefusedXmlException
 
 # Namespace común en MS Project XML
 _NS = {"m": "http://schemas.microsoft.com/project"}
@@ -74,8 +88,14 @@ def parse_ms_project_xml(data: bytes) -> tuple[list[ParsedTask], list[str]]:
     errors: list[str] = []
     try:
         root = ET.fromstring(data)
-    except ET.ParseError as exc:
+    except ParseError as exc:
         raise ValueError(f"xml_invalid: {exc}") from exc
+    except DefusedXmlException as exc:
+        # Un XML con entidades o DTD externa no es un archivo mal formado: es un
+        # intento de agotar memoria o de leer archivos del servidor. Se rechaza
+        # con el mismo 400 que cualquier archivo inválido, sin detalle que
+        # confirme al remitente qué defensa saltó.
+        raise ValueError("xml_invalid: estructura XML no permitida") from exc
 
     # Detecta si usa namespace
     ns_match = root.tag.startswith("{")

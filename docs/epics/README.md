@@ -1,75 +1,55 @@
 # Épicas — PMO-aaS
 
-**ID:** `DOC-EPICS`  
-**Última actualización:** 2026-05-29  
+**ID:** `DOC-EPICS`
+**Última actualización:** 2026-08-04
 **Metodología:** 1 US = 1 commit = 1 sesión de trabajo
+
+> **Este archivo es lo único de `docs/epics/` que se carga en toda sesión**
+> (`CLAUDE.md` §1). El epic entero se abre **cuando se va a tocar**, no antes:
+> cargarlo «por si acaso» metía un documento funcional completo en el contexto
+> permanente antes de saber si se iba a usar. Aquí está lo que hace falta para
+> decidir cuál abrir, y nada más (MCA CTX-04).
 
 ---
 
 ## Índice de épicas
 
-| # | Épica | Estado | Cambios v2 | Dependencias |
-|---|---|---|---|---|
-| [EP001](./EP001-auth-users.md) | Login y gestión de usuarios | MVP | ⚠️ ACTUALIZADA | — |
-| [EP002](./EP002-org-hierarchy.md) | Jerarquía org/BU/depto/programa/proyecto | MVP | 🔴 CAMBIO MAYOR | EP001 |
-| [EP003](./EP003-project-requests.md) | Solicitud, aprobación y Project Charter | MVP | ⚠️ ACTUALIZADA | EP001, EP002 |
-| [EP004](./EP004-dashboard.md) | Dashboard y KPIs | MVP | ⚠️ ACTUALIZADA | EP001, EP002, EP005 |
-| [EP005](./EP005-projects.md) | Gestión de proyectos | MVP | ⚠️ ACTUALIZADA | EP001, EP002, EP003 |
-| [EP006](./EP006-project-modules.md) | Módulos del proyecto (RAID, Docs, Minutas, Reportes) | MVP | ⚠️ ACTUALIZADA | EP005 |
-| [EP007](./EP007-admin.md) | Panel de administración | MVP | ⚠️ ACTUALIZADA | EP001, EP002 |
-| [EP008](./EP008-ai.md) | IA: minutas y reportes | MVP | ✅ SIN CAMBIOS | EP005, EP006 |
-| [EP009](./EP009-ms-project.md) | Integración Microsoft Project | MVP | ✅ SIN CAMBIOS | EP005 |
-| [EP010](./EP010-superadmin-panel.md) | Panel Super Admin | MVP | ⚠️ ACTUALIZADA | EP001, EP002 |
-| [EP011](./EP011-notifications.md) | Sistema de notificaciones | POST-MVP | 🆕 NUEVA | EP001, EP003 |
-| ~~[EP012](./EP012-db-migration.md)~~ | ❌ **CANCELADA** — migración HostGator MySQL (DEC-013). Productivo corre 100% en Railway. | — | ❌ CANCELADA | — |
-| [EP013](./EP013-navigation-refactor.md) | Refactor de navegación (sidebar + admin + tabs inline) — issue #17 | v1.1 | ⚠️ ACTUALIZADA | EP001, EP002, EP005, EP006, EP007, EP010 |
-| [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 | ⚠️ ACTUALIZADA | EP005, EP006, EP008 |
-| [EP015](./EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 | 🆕 NUEVA | EP010 |
-| ~~[EP016](./EP016-local-ai-tunnel.md)~~ | ❌ **ARCHIVADA** — IA local (Ollama + Cloudflare/Tailscale). Superseded por DEC-017; código eliminado en BUG-053 (2026-05-08). | — | ❌ ARCHIVADA | — |
-| [EP017](./EP017-project-directory.md) | Directorio de proyecto (áreas, equipos, actores, participaciones) | v1.2 | 🆕 NUEVA | EP005, EP006 |
-| [EP018](./EP018-documents-artifacts.md) | Documentos y artefactos de proyecto | v1.3 | 🆕 NUEVA | EP005, EP006 |
-| [EP019](./EP019-changes-approval.md) | Gestión de cambios + flujo de aprobación | v1.4 | 🆕 NUEVA | EP005, EP006 |
-| [EP020](./EP020-report-builder.md) | Report Builder (Niveles 1, 2, 4) + catálogo 22 secciones | v1.5 | 🆕 NUEVA | EP005, EP006, EP007, EP008, EP014, EP018 |
+| # | Épica | Estado | Dependencias |
+|---|---|---|---|
+| [EP001](./EP001-auth-users.md) | Login y gestión de usuarios | MVP | — |
+| [EP002](./EP002-org-hierarchy.md) | Jerarquía org/BU/depto/programa/proyecto | MVP | EP001 |
+| [EP003](./EP003-project-requests.md) | Solicitud, aprobación y Project Charter | MVP | EP001, EP002 |
+| [EP004](./EP004-dashboard.md) | Dashboard y KPIs | MVP | EP001, EP002, EP005 |
+| [EP005](./EP005-projects.md) | Gestión de proyectos | MVP | EP001, EP002, EP003 |
+| [EP006](./EP006-project-modules.md) | Módulos del proyecto (RAID, Docs, Minutas, Reportes) | MVP | EP005 |
+| [EP007](./EP007-admin.md) | Panel de administración | MVP | EP001, EP002 |
+| [EP008](./EP008-ai.md) | IA: minutas y reportes | MVP | EP005, EP006 |
+| [EP009](./EP009-ms-project.md) | Integración Microsoft Project | MVP | EP005 |
+| [EP010](./EP010-superadmin-panel.md) | Panel Super Admin | MVP | EP001, EP002 |
+| [EP011](./EP011-notifications.md) | Sistema de notificaciones | POST-MVP | EP001, EP003 |
+| ~~[EP012](./EP012-db-migration.md)~~ | ❌ **CANCELADA** — migración HostGator MySQL (DEC-013). Productivo corre 100% en Railway. | — | — |
+| [EP013](./EP013-navigation-refactor.md) | Refactor de navegación (sidebar + admin + tabs inline) — issue #17 | v1.1 | EP001, EP002, EP005, EP006, EP007, EP010 |
+| [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 | EP005, EP006, EP008 |
+| [EP015](./EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 | EP010 |
+| ~~[EP016](./EP016-local-ai-tunnel.md)~~ | ❌ **ARCHIVADA** — IA local (Ollama + Cloudflare/Tailscale). Superseded por DEC-017; código eliminado en BUG-053 (2026-05-08). | — | — |
+| [EP017](./EP017-project-directory.md) | Directorio de proyecto (áreas, equipos, actores, participaciones) | v1.2 | EP005, EP006 |
+| [EP018](./EP018-documents-artifacts.md) | Documentos y artefactos de proyecto | v1.3 | EP005, EP006 |
+| [EP019](./EP019-changes-approval.md) | Gestión de cambios + flujo de aprobación | v1.4 | EP005, EP006 |
+| [EP020](./EP020-report-builder.md) | Report Builder (Niveles 1, 2, 4) + catálogo 22 secciones | v1.5 | EP005, EP006, EP007, EP008, EP014, EP018 |
 
 ---
 
-## Convenciones de identificación
+## Lo que no se repite aquí
 
-- **EP-XXX** — épica (3 dígitos).
-- **US-XXX** — user story global, única en todo el producto.
-- **TC-XXX** — test case, único global.
-- **TC-MT-XXX** — test case de multi-tenant isolation (transversal).
-- **# PENDING** — user story pendiente de implementar.
-- **# IN-PROGRESS** — user story en desarrollo activo.
-- **# DONE** — user story implementada y con tests verdes.
+| Tema | Dónde vive |
+|---|---|
+| Convenciones de identificación (`US-###`, `TC-###`, estados) | `CLAUDE.md` §2 |
+| Mecánica de ejecución y la regla 1 US = 1 commit | `CLAUDE.md` §3 y §7 |
+| Cómo se cierra un item | Skill `cerrar-item` |
+| Cómo se comprueba que funciona | Skill `verificar` |
 
----
-
-## Mecánica de ejecución (Claude Code)
-
-```
-1 US = 1 commit — luego continúa con la siguiente sin parar
-```
-
-**Prompt estándar para Claude Code:**
-```
-Lee SPRINT.md y los archivos de epic necesarios.
-Trabaja el backlog en orden. Por cada US:
-  1. Implementa la US completa.
-  2. Haz commit: "feat([módulo]): US-XXX — [título corto]"
-  3. Marca la US como DONE en SPRINT.md.
-  4. Mueve la siguiente a IN-PROGRESS.
-  5. Continúa con la siguiente US sin esperar.
-Sigue hasta que no queden US en QUEUE o llegues al límite de contexto.
-No acumules cambios de varias US en un solo commit.
-```
-
-**Reglas:**
-- Cada US tiene su propio commit antes de arrancar la siguiente.
-- Claude Code lee solo los archivos de epic relevantes + SPRINT.md.
-- Si una US requiere migración de BD, consultar DB-CHANGES.md primero.
-- Si hay duda de arquitectura, consultar DECISIONS.md antes de implementar.
-- Si el contexto se agota a mitad de una US, hacer commit del avance parcial con prefijo `wip:` y anotar en SPRINT.md dónde quedó.
+Lo tenía duplicado hasta 2026-08-04. Un hecho en dos sitios es un hecho que
+envejece en uno de los dos (MCA CTX-06).
 
 ---
 
@@ -80,23 +60,6 @@ No acumules cambios de varias US en un solo commit.
 | [SPRINT.md](./SPRINT.md) | Tarea activa + próximas 3 en cola |
 | [DB-CHANGES.md](./DB-CHANGES.md) | Cambios de schema agrupados por epic |
 | [DECISIONS.md](./DECISIONS.md) | Decisiones arquitectónicas y su rationale |
-
----
-
-## Resumen de gaps identificados (v1 → v2)
-
-### Cambios de BD requeridos (ver DB-CHANGES.md)
-- Nueva tabla `business_units` (EP002)
-- Nueva tabla `departments` (EP002)
-- `programs` ahora tiene FK a `department_id` (no directo a org)
-- `projects` puede tener FK a `department_id` además de `program_id`
-- `project_requests` nuevos campos: `requester_email`, `sponsor_email`, `key_people`, `if_not_done`, `observations`
-- `project_charter` nueva tabla (EP003)
-- `project_areas` nueva tabla (EP005)
-- `notifications` nueva tabla (EP011)
-
-### Rol Senior PMO
-`Admin` Y `Senior PMO` tienen permisos de administrador. Esto afecta middleware de rutas `/admin` en EP001 y EP007.
 
 ---
 

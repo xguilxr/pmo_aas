@@ -242,6 +242,16 @@ Dado el contexto JSON del proyecto, produce un reporte ejecutivo con secciones:
 - top_risks
 - budget_status
 Devuelve SOLO JSON válido con esas claves (valores string o lista de strings).
+
+REGLA INNEGOCIABLE SOBRE CIFRAS (MCS IA-05):
+NO calcules. NO estimes. NO redondees. NO derives ningún número.
+Todas las cifras que necesitas vienen ya calculadas en el contexto:
+`budget_plan`, `budget_actual`, `budget_variance`, `budget_consumed_pct`,
+`progress`. Cópialas TAL CUAL, con los mismos dígitos.
+Si te falta una cifra para afirmar algo, NO la deduzcas: describe la situación
+en palabras y omite el número.
+Un número inventado en un reporte de estado va directo a una decisión de
+gestión. Es peor que no decir nada.
 """
 
 # US-185 — Memoria de proyecto: resumen acumulativo. Recibe el resumen

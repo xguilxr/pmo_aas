@@ -8,7 +8,7 @@
 | **Módulo backend** | `apps/api/app/services/ai/`, `apps/api/app/workers/tasks/ai.py`, `apps/api/app/api/v1/endpoints/{ai,admin_ai,superadmin_ai}.py` |
 | **Módulo frontend** | `/admin/ai`, `/superadmin/ai`, `/pmo/projects/[id]/ai-minutes/new`, `/pmo/projects/[id]/reports/*`, `/pmo/projects/[id]/ai-context` |
 | **Estado** | Vivo en producción |
-| **Última verificación contra código** | 2026-07-09 (US-185, ENH-189) |
+| **Última verificación contra código** | 2026-08-04 (Tanda B3 — conjunto de evaluación) |
 
 ## Objetivo de negocio
 
@@ -199,6 +199,134 @@ system efectivo = prompt base (services/ai/prompts.py)
   "budget_status": "..."
 }
 ```
+
+**El modelo NO calcula cifras** (auditoría MCS 2026-08-03, requisito IA-05).
+
+Antes recibía `budget_plan` y `budget_actual` y derivaba la desviación por su
+cuenta: un número producido por un modelo de lenguaje que acababa en un informe
+ejecutivo. Ahora el contexto llega con todo precalculado en Python y con
+`Decimal` —nunca coma flotante—, y el prompt prohíbe explícitamente calcular,
+estimar o redondear:
+
+| Campo del contexto | Origen |
+|---|---|
+| `budget_plan`, `budget_actual` | `projects.budget` / `actual_budget`, como cadena |
+| `budget_variance` | `actual − plan`, calculado en el worker |
+| `budget_consumed_pct` | `actual / plan × 100`, o `null` si el plan es 0 |
+| `progress` | Rollup WBS existente |
+
+Si al modelo le falta una cifra para afirmar algo, debe describir la situación
+en palabras y omitir el número.
+
+**Límite de coste por ejecución** (IA-03): `AI_MAX_PROMPT_CHARS`, 120.000 por
+defecto. Se comprueba **antes** de llamar al proveedor —después el gasto ya
+ocurrió— y acota el contexto de proyectos con mucho histórico, que con los 3
+reintentos de `_AI_CALL_MAX_RETRIES` se multiplicaría.
+
+---
+
+## El contenido del usuario es dato, no instrucción
+
+> **Auditoría MCS 2026-08-03, requisito IA-11 y hallazgo T-5.** Implementado en
+> `apps/api/app/services/ai/untrusted.py`.
+
+Todo lo que la plataforma manda al modelo y no escribió ella —transcripciones,
+minutas, hojas de cálculo importadas, nombres de proyecto, títulos de riesgo,
+turnos previos de una conversación— viaja dentro de un bloque etiquetado con su
+procedencia:
+
+```
+<CONTENIDO_NO_CONFIABLE origen="transcripción de reunión subida por el usuario">
+… el texto tal cual lo escribió el tercero …
+</CONTENIDO_NO_CONFIABLE>
+```
+
+Y el mensaje de sistema lleva siempre una regla de precedencia que dice qué es
+ese bloque: dato que se procesa, no órdenes que se obedecen. La compone
+`build_system_prompt`, que es el único sitio donde se arma un system prompt.
+
+**Delimitar no basta por sí solo.** Si el contenido puede escribir la etiqueta
+de cierre, se sale del bloque y lo que venga detrás se lee con la autoridad de
+la plataforma. Por eso, antes de envolver, se neutralizan las etiquetas
+estructurales (`CONTENIDO_NO_CONFIABLE`, `CONTEXTO_DEL_PROYECTO`,
+`INSTRUCCIONES_DEL_TENANT`…) y los marcadores de rol de las plantillas de chat
+(`<|im_start|>`, `[INST]`, `<<SYS>>`), que en modelos de pesos abiertos son
+texto y abren turnos. El resto del contenido pasa **intacto carácter por
+carácter**: `/reports/tweak-html` recibe HTML y tiene que seguir funcionando.
+
+Qué se envuelve y qué no:
+
+| Entra al modelo | Trato | Por qué |
+|---|---|---|
+| Transcripción / minuta subida | Envuelta | Es el vector directo: archivo de un tercero |
+| Hoja de cálculo importada (cabeceras, filas, estados, nombres) | Envuelta | Mismo vector; además decide el mapeo de columnas |
+| `auto_summary_md` (memoria del proyecto) | Envuelta | Vector **indirecto** y el peor: se antepone a toda generación futura del proyecto, así que una minuta envenenada se vuelve permanente |
+| Nombre, descripción, folio del proyecto; títulos de tareas y riesgos | Envueltos | Los teclean usuarios, y aparecían en la prosa de la plataforma |
+| HTML del reporte en `tweak-html` | Envuelto | Puede proceder de un reporte generado desde minutas |
+| Contexto de pantalla e historial del copiloto | Envueltos | Datos de terceros y turnos previos del propio modelo |
+| `instructions_md` / `context_md` del PM | Neutralizados, **no** envueltos | Canal de instrucción deliberado del PM |
+| `free_notes` del reporte, mensaje del copiloto | Neutralizados, **no** envueltos | Los teclea el operador en esa misma petición |
+| Instrucciones permanentes del tenant | Neutralizadas, **no** envueltas | Las configura su administrador |
+
+**Esto reduce la superficie; no la elimina.** Un modelo de lenguaje puede
+desobedecer. La contención real la dan los límites de lo que el sistema le deja
+hacer: el copiloto solo navega (`ALLOWED_ACTION_TYPES`), las cifras de los
+informes se calculan en Python (IA-05), el chat del Report Builder solo produce
+acciones de un catálogo cerrado, y ninguna salida del modelo ejecuta nada.
+
+Cobertura: `tests/test_ia11_inyeccion_prompt.py`, con un corpus de intentos de
+inyección y un trinquete que falla si aparece una llamada nueva al proveedor sin
+la regla, o una etiqueta estructural sin declarar.
+
+## Y si el modelo desobedece: el conjunto de evaluación
+
+> **Auditoría MCS 2026-08-04, requisitos IA-07, IA-08 e IA-09.** Vive en
+> `apps/api/evaluacion/`; el porqué y el procedimiento, en su `README.md`.
+
+La sección anterior comprueba que el contenido ajeno no llegue al modelo **como
+instrucción**. Lo que ninguna prueba comprobaba es la otra mitad: *suponiendo
+que el modelo desobedezca de todas formas* —cosa que ninguna defensa de prompt
+puede impedir—, **qué llega al usuario**.
+
+Eso es lo que mide el conjunto de evaluación, y por eso puede condicionar un
+despliegue: no mide si el modelo acierta —eso exige un proveedor vivo, cuesta
+dinero por ejecución y da algo distinto cada vez—, mide qué hace el sistema
+cuando el modelo falla. Cada caso es una salida de modelo ya rota —inyectada,
+malformada, alucinada— que se hace pasar por el mismo código que corre en
+producción.
+
+| Superficie | Qué evalúa |
+|---|---|
+| `minuta` | un fragmento de transcripción → minuta normalizada |
+| `merge` | varios fragmentos fundidos en una sola minuta |
+| `asistente` | respuesta del copiloto → mensaje y acciones que el frontend ejecuta |
+| `mapeo` | qué columna del archivo importado va a qué campo |
+
+**Umbral: seguridad 100 % eliminatoria, calidad ≥ 90 %.** No se compensan entre
+sí. Corre en el job `evaluacion-ia` del CI y dentro de la suite normal, sin
+clave de API y sin red: los casos son salidas de modelo grabadas.
+
+Lo que de verdad se mide no son las expectativas de cada caso sino los
+**invariantes de superficie**, que se aplican a todos los casos los nombren o
+no. El más útil rehace, sobre toda minuta, el viaje `summary` → memoria del
+proyecto → prompt de mañana: es el vector indirecto de la tabla de arriba, ahora
+ejercitado por cada caso.
+
+**Los fallos de IA que ya llegaron a un usuario tienen caso permanente**
+(BUG-063, BUG-068, BUG-069, BUG-070, BUG-073, ENH-102, ENH-147), con la salida
+de modelo que los provocó. Un fallo nuevo entra al conjunto **antes** de
+arreglarse, y no se borra al corregirse.
+
+Al construirlo aparecieron dos defectos que nadie había reportado, los dos
+corregidos: el copiloto ofrecía navegaciones fuera del sitio —el parser de URL
+del navegador trata `\` como `/` y borra TAB/LF/CR, así que `/\evil.example`
+pasaba el filtro de «empieza por `/` y no por `//`»— y en el mapeo de columnas
+un `field: null` con confianza alta borraba lo que la heurística había acertado.
+
+**Lo que no cubre**, dicho sin adornos: el informe ejecutivo no tiene superficie
+todavía (su ensamblado de contexto está en línea dentro de `_run_report`), y la
+exfiltración del prompt de sistema no está contenida — el daño está acotado al
+mismo usuario del mismo inquilino, pero no lo tratamos como secreto.
 
 ### Flujo del report builder visual
 

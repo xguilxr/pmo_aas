@@ -6,6 +6,7 @@ todas las tablas en orden reverso de dependencias (milliseconds) en
 vez de drop_all+create_all (~6s). Suite pasa de ~3min a <60s.
 """
 import os
+import sys
 from collections.abc import AsyncIterator
 
 import pytest_asyncio
@@ -90,6 +91,12 @@ _AI_STUB_EXCLUDE_PREFIXES = (
     # el body enviado a Groq no contenga el campo `metadata`. No debe
     # stubbearse el provider, si no el httpx mock nunca se llama.
     "test_bug030_groq_no_metadata",
+    # B5 / SEG-06 AM-01: la suite comprueba que `_ping_byo_provider` RECHACE
+    # los destinos internos. El stub de abajo lo sustituye por uno que
+    # devuelve ok=True, así que con él puesto la suite mediría el stub y
+    # pasaría en verde con el agujero abierto. Es justo el caso en que
+    # stubbear invalida la prueba.
+    "test_seg06_am01_ssrf_base_url",
 )
 
 
@@ -182,35 +189,54 @@ def _stub_heavy_renderers(monkeypatch, request):
     def _stub_render_pdf(template_name, context):
         return _PDF_STUB_BYTES
 
+    def _stub_html_to_pdf(html_content):
+        return _PDF_STUB_BYTES
+
     def _stub_render_charter_docx(charter, project, logos=None):
         return _DOCX_STUB_BYTES
 
-    # Parchamos los simbolos que los endpoints importan directamente
-    # (from app.services.pdf_renderer import render_pdf), y también
-    # la función interna síncrona del charter que hace el python-docx
-    # real (_render_charter_docx). Esto evita tocar el envoltorio
-    # async `generate_charter_docx` que contiene la lógica de Document
-    # + storage, que sí queremos ejercitar.
+    # Parchamos los símbolos que tocan WeasyPrint, y también la función
+    # interna síncrona del charter que hace el python-docx real
+    # (_render_charter_docx). Esto evita tocar el envoltorio async
+    # `generate_charter_docx` que contiene la lógica de Document +
+    # storage, que sí queremos ejercitar.
+    #
+    # `render_html` y `html_to_text` NO se stubean: son Jinja2 puro y
+    # regex, no cargan librerías nativas, y los tests que dependen de su
+    # salida real deben seguir viéndola.
     import app.services.charter_generator as charter_mod
     import app.services.pdf_renderer as pdf_mod
 
-    monkeypatch.setattr(pdf_mod, "render_pdf", _stub_render_pdf)
     monkeypatch.setattr(
         charter_mod, "_render_charter_docx", _stub_render_charter_docx
     )
-    # Los endpoints importan `render_pdf` directamente al módulo:
-    # re-parchamos en los módulos consumidores para que el import
-    # anterior no se pierda (Python cachea el símbolo en el símbolo
-    # importador).
-    for consumer_path in (
-        "app.api.v1.endpoints.reports",
-        "app.api.v1.endpoints.dashboard",
-        "app.api.v1.endpoints.organizations",
-    ):
-        try:
-            consumer = __import__(consumer_path, fromlist=["render_pdf"])
-            if hasattr(consumer, "render_pdf"):
-                monkeypatch.setattr(consumer, "render_pdf", _stub_render_pdf)
-        except ImportError:
-            pass
+
+    stubs = {
+        "render_pdf": _stub_render_pdf,
+        "html_to_pdf": _stub_html_to_pdf,
+    }
+    originals = {name: getattr(pdf_mod, name) for name in stubs}
+    for name, stub in stubs.items():
+        monkeypatch.setattr(pdf_mod, name, stub)
+
+    # `from app.services.pdf_renderer import render_pdf` cachea el símbolo
+    # en el módulo importador, así que parchar solo `pdf_mod` no alcanza
+    # para los que ya importaron.
+    #
+    # Barremos `sys.modules` en vez de mantener una lista a mano. La lista
+    # anterior nombraba tres endpoints y se había quedado corta: los
+    # renderers los importan seis módulos, y `html_to_pdf` no se stubeaba
+    # en ninguno. Resultado: 4 tests ejercían WeasyPrint real y fallaban
+    # en cualquier máquina sin las librerías nativas GTK/Pango (auditoría
+    # MCA 2026-08-03, FLU-01). Una lista escrita a mano vuelve a quedarse
+    # corta con el próximo endpoint que importe un renderer; el barrido no.
+    #
+    # Los que importen DESPUÉS de este punto ya reciben el stub, porque
+    # `pdf_mod` queda parchado arriba.
+    for mod_name, module in list(sys.modules.items()):
+        if module is None or module is pdf_mod or not mod_name.startswith("app."):
+            continue
+        for name, stub in stubs.items():
+            if getattr(module, name, None) is originals[name]:
+                monkeypatch.setattr(module, name, stub)
     yield

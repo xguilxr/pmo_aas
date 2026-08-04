@@ -1,0 +1,164 @@
+# Inventario del modelo de amenazas — la parte que una máquina puede vigilar
+#
+# `modelo-amenazas.md` es para personas. Este fichero es el contrato que el CI
+# hace cumplir: MCS SEG-06 pide un modelo «revisado ante cambios
+# significativos», y un control confiado a que alguien se acuerde no es un
+# control (MCA-CORE §6.1).
+#
+# La prueba `apps/api/tests/test_seg06_modelo_amenazas.py` recalcula estas dos
+# listas desde el código y falla si aparece algo que no está declarado aquí.
+# Añadir una ruta abierta o un destino externo nuevo obliga entonces a pasar por
+# el modelo de amenazas, que es exactamente lo que significa «revisar ante un
+# cambio significativo».
+#
+# NO se vigila con una huella del código entero: un gate que se pone rojo con
+# cada edición se desactiva en dos días. Se vigila lo que de verdad amplía la
+# superficie de ataque.
+
+version: 1
+revisado: 2026-08-04
+revision_maxima_meses: 12
+
+# ---------------------------------------------------------------------------
+# Rutas que NO exigen identidad.
+#
+# Se calculan recorriendo el árbol de dependencias de cada ruta de FastAPI, no
+# el primer nivel: `get_superadmin` depende de `get_current_user`, y mirar solo
+# el primer nivel daría 37 rutas abiertas donde hay 7.
+#
+# Una ruta abierta nueva es el cambio más significativo que puede haber en la
+# frontera FC-1. Por eso están enumeradas una a una y con su motivo.
+# ---------------------------------------------------------------------------
+superficie_abierta:
+  - ruta: "GET /health"
+    motivo: sonda de vida de Railway. No toca base de datos ni revela estado
+  - ruta: "GET /api/v1/ping"
+    motivo: sonda de vida de la API
+  - ruta: "POST /api/v1/auth/login"
+    motivo: no puede exigir identidad; es donde se obtiene
+    amenazas: [AM-09, AM-10]
+  - ruta: "POST /api/v1/auth/forgot-password"
+    motivo: no puede exigir identidad. Responde 204 siempre, para no filtrar
+      qué correos existen
+    amenazas: [AM-11]
+  - ruta: "POST /api/v1/auth/reset-password"
+    motivo: la autoriza el token del correo, no una sesión
+    amenazas: [AM-11]
+  - ruta: "GET /api/v1/public/approve/{jwt_str}"
+    motivo: aprobación de cambios por enlace de correo. La autoriza el token
+    amenazas: [AM-07]
+  - ruta: "POST /api/v1/public/approve/{jwt_str}"
+    motivo: registra la decisión del aprobador. La autoriza el token
+    amenazas: [AM-07]
+
+# ---------------------------------------------------------------------------
+# Destinos externos que aparecen en `apps/api/app/`.
+#
+# `egreso` = le mandamos datos. `referencia` = solo aparece como texto (enlaces
+# de documentación del catálogo BYO, ejemplos de docstring, plantillas). La
+# distinción importa: un `egreso` nuevo saca datos del proyecto de nuestra
+# infraestructura y eso siempre exige releer el modelo.
+# ---------------------------------------------------------------------------
+destinos_externos:
+
+  # --- Egreso real: aquí salen datos ---
+  - host: api.groq.com
+    clase: egreso
+    dato: transcripciones, datos de proyecto y RAID (modo plataforma)
+    amenazas: [AM-03, AM-05]
+  - host: api.openai.com
+    clase: egreso
+    dato: ídem, modo BYO elegido por el inquilino
+    amenazas: [AM-01, AM-03, AM-05]
+  - host: api.anthropic.com
+    clase: egreso
+    dato: ídem, modo BYO
+    amenazas: [AM-01, AM-03, AM-05]
+  - host: api.perplexity.ai
+    clase: egreso
+    dato: ídem, modo BYO
+    amenazas: [AM-01, AM-03, AM-05]
+  - host: generativelanguage.googleapis.com
+    clase: egreso
+    dato: ídem, modo BYO (Gemini)
+    amenazas: [AM-01, AM-03, AM-05]
+  - host: api.resend.com
+    clase: egreso
+    dato: correos de notificación, invitación y restablecimiento de contraseña
+    amenazas: [AM-11]
+  - host: fonts.googleapis.com
+    clase: egreso
+    dato: ninguno propio, pero la petición sale al renderizar un PDF
+    amenazas: [AM-12]
+  - host: fonts.gstatic.com
+    clase: egreso
+    dato: ídem
+    amenazas: [AM-12]
+  - host: app.pmo-aas.com
+    clase: referencia
+    dato: base de los enlaces que van dentro de los correos
+  - host: pmo-aas.com
+    clase: referencia
+    dato: ídem
+
+  # --- Solo texto: catálogo BYO, docstrings, plantillas ---
+  - host: ai.google.dev
+    clase: referencia
+    dato: enlace de documentación del catálogo BYO
+  - host: aistudio.google.com
+    clase: referencia
+    dato: enlace de consola del catálogo BYO
+  - host: api.together.xyz
+    clase: referencia
+    dato: ejemplo de base_url en el catálogo BYO (proveedor OpenAI-compatible)
+  - host: console.anthropic.com
+    clase: referencia
+    dato: enlace de consola del catálogo BYO
+  - host: docs.anthropic.com
+    clase: referencia
+    dato: enlace de documentación del catálogo BYO
+  - host: docs.perplexity.ai
+    clase: referencia
+    dato: enlace de documentación del catálogo BYO
+  - host: learn.microsoft.com
+    clase: referencia
+    dato: enlace de documentación del catálogo BYO
+  - host: platform.openai.com
+    clase: referencia
+    dato: enlace de consola del catálogo BYO
+  - host: portal.azure.com
+    clase: referencia
+    dato: enlace de consola del catálogo BYO
+  - host: www.perplexity.ai
+    clase: referencia
+    dato: enlace del catálogo BYO
+  - host: my-resource.openai.azure.com
+    clase: referencia
+    dato: plantilla de endpoint Azure en el catálogo BYO
+  - host: my-resource
+    clase: referencia
+    dato: fragmento de la misma plantilla, partido por la expresión regular
+  - host: schemas.microsoft.com
+    clase: referencia
+    dato: espacio de nombres XML del importador de MS Project. No se resuelve
+  - host: www.w3.org
+    clase: referencia
+    dato: espacio de nombres XML/SVG. No se resuelve
+
+  # --- Aparecen en código de defensa o de ejemplo ---
+  - host: localhost
+    clase: referencia
+    dato: valores por omisión de desarrollo en config.py, y lista de bloqueo
+      de url_externa.py
+  - host: 127.0.0.1
+    clase: referencia
+    dato: ejemplo del docstring de url_externa.py (AM-01)
+  - host: evil.example
+    clase: referencia
+    dato: ejemplo del docstring de assistant.py (rutas que salen del sitio)
+  - host: no-existe.interno
+    clase: referencia
+    dato: ejemplo del docstring de url_externa.py (AM-01)
+  - host: example.local
+    clase: referencia
+    dato: correos de ejemplo en el sembrado de datos de demostración

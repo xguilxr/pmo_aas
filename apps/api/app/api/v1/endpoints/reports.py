@@ -1088,22 +1088,45 @@ async def ai_generate_report(
 
     context_block = await load_context_block(db, str(tenant_id), str(project.id))
 
+    # B2 (MCS IA-11): todo lo que en este prompt lo tecleó un usuario va dentro
+    # de un bloque de contenido no confiable — el nombre y folio del proyecto,
+    # el JSON de tareas y riesgos, y los nombres de área del resumen de
+    # filtros. Que estén en la prosa de la plataforma no los hace confiables:
+    # los hace más peligrosos, porque el modelo lee esa zona como si la
+    # hubiéramos escrito nosotros.
+    #
+    # `free_notes` es la excepción, y es deliberada: lo escribe el operador en
+    # esta misma petición y el prompt le da precedencia a propósito. Es un
+    # canal de instrucción legítimo, así que se neutraliza pero no se degrada
+    # a dato. Si algún día esas notas se pudieran guardar y reutilizar entre
+    # usuarios, dejaría de serlo y habría que envolverlas.
+    from app.services.ai.untrusted import envolver_no_confiable, neutralizar
+
     user_prompt = (
-        f"Proyecto: {project.name} ({project.folio}).\n"
-        f"Período hasta {cut_off.isoformat()}.\n"
+        "Proyecto de este informe:\n"
+        + envolver_no_confiable(
+            f"{project.name} ({project.folio})",
+            origen="nombre y folio del proyecto, capturados por usuarios",
+        )
+        + f"\nPeríodo hasta {cut_off.isoformat()}.\n"
         + (f"\n{context_block}\n" if context_block else "")
         + "\n<DATOS_DEL_PROYECTO>\n"
-        f"{json.dumps(filtered, ensure_ascii=False, default=str)[:6000]}\n"
-        "</DATOS_DEL_PROYECTO>\n"
+        + envolver_no_confiable(
+            json.dumps(filtered, ensure_ascii=False, default=str)[:6000],
+            origen="tareas, riesgos e incidencias redactados por usuarios",
+        )
+        + "\n</DATOS_DEL_PROYECTO>\n"
         "\n<FILTROS_APLICADOS>\n"
         "Los datos arriba YA están recortados según estos filtros. No "
         "menciones items que NO aparezcan en el JSON.\n"
-        f"{filters_summary_text}\n"
-        "</FILTROS_APLICADOS>\n"
+        + envolver_no_confiable(
+            filters_summary_text, origen="filtros elegidos, con nombres de área"
+        )
+        + "\n</FILTROS_APLICADOS>\n"
         "\n<INSTRUCCIONES_DEL_USUARIO>\n"
         "DEBES OBEDECER ESTAS INSTRUCCIONES POR ENCIMA DE LAS REGLAS GENERALES. "
         "Si no hay instrucciones, sigue las reglas del system prompt.\n"
-        f"{body.free_notes.strip() if body.free_notes else '(ninguna)'}\n"
+        f"{neutralizar(body.free_notes.strip()) if body.free_notes else '(ninguna)'}\n"
         "</INSTRUCCIONES_DEL_USUARIO>\n"
         "\n<FORMATO_DE_SALIDA>\n"
         "HTML limpio en español, sin <html>/<body>. Usa <h2>/<p>/<ul>.\n"

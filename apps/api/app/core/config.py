@@ -14,6 +14,19 @@ class Settings(BaseSettings):
 
     VERSION: str = "0.1.0"
     PYTHON_ENV: Literal["development", "production", "test"] = "development"
+
+    # MCS OPS-02 — captura y notificación de errores en producción.
+    # Vacío = desactivado, que es lo correcto en local y en tests. Al ponerle
+    # el DSN en Railway, la instrumentación se enciende sola.
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+
+    # MCS IA-03 — límite de coste por ejecución de IA.
+    # El límite de iteraciones ya vive en `_AI_CALL_MAX_RETRIES`; esto acota lo
+    # otro que puede dispararse: el tamaño del contexto. Un proyecto con
+    # cientos de minutas lo hace crecer sin techo, y los reintentos lo
+    # multiplican. 0 = sin límite (no recomendado en producción).
+    AI_MAX_PROMPT_CHARS: int = 120_000
     LOG_LEVEL: str = "INFO"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/pmoaas"
@@ -46,7 +59,10 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
-    STORAGE_PATH: str = "/tmp/pmo-uploads"
+    # Solo desarrollo local. En producción `STORAGE_BACKEND=s3` y este valor no
+    # se usa (ver US-066). bandit marca la ruta fija en /tmp por riesgo de
+    # enlace simbólico; se acepta porque nunca es la ruta de producción.
+    STORAGE_PATH: str = "/tmp/pmo-uploads"  # nosec B108
 
     # US-066: backend de storage para documentos uploaded por tenants y
     # PDFs generados por el worker. `local` usa filesystem (solo dev /

@@ -1,85 +1,139 @@
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-07-09
-**Branch activa:** `claude/pmo-portfolio-architecture-6hbuen` · **PR #570** (abierto)
-**Generado por:** sesión Revamp 1.0 (retro socio + ejecución end-to-end)
+**Última actualización:** 2026-08-04
+**Branch activa:** `claude/auditoria-conformidad-mca-mcs` · **PR #573** (abierto)
+**Generado por:** sesión de conformidad — Tanda B, contexto y **reauditoría**
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-**Batch "Revamp 1.0" COMPLETO (11/11)** en PR #570. Nace de la retro del
-socio (portafolio ejecutivo multi-proyecto + recursos/capacidad) + 9
-decisiones del owner en chat. Diseño completo en
-`docs/epics/drafts/portfolio-recursos-capacidad.md`.
+Sesión **de conformidad, no de producto**: se auditó el repo contra MCA (entorno
+agéntico) y MCS (software), y se remedió la Tanda A (4 de 5) y **la B entera**.
 
-Qué cambió (por bloque):
-1. **Salud única híbrida** (US-180 `0f96dec` / US-181 `0c0ad7d`): UN solo
-   semáforo — motor de reglas por dimensión (cronograma/presupuesto/
-   riesgos/decisiones/recursos, `services/project_health.py`) + override
-   manual del PM con razón obligatoria en 🟡/🔴. `status_rag` absorbido y
-   dropeado (mig 0091). Drill-down "¿por qué?" + foco PM + heatmap
-   Proyecto×Dimensión en N1 (`/dashboard/health-matrix`).
-2. **Tablas** (ENH-185 `9bb3338`, ENH-186 `acf8d46`, ENH-187 `8114214`,
-   ENH-188 `d735e76`): Cambios y Lecciones heredan estructura RAID (sort,
-   filtros, chips, inline, export XLSX propio); Plan con chips de color
-   de estado; filtros programa/prioridad en /pmo/projects.
-3. **Recursos/capacidad** (US-182 `c3fdf7e` / US-183 `4aec20c` / US-184
-   `595dc4f`): `actors` = resource_pool (tipo/función/seniority/escasez/
-   capacidades, mig 0092); participations con FTE% + status (mig 0093);
-   motor de saturación por ventana (`services/capacity.py`) vs
-   `project_capacity_pct`; página nueva **/pmo/resources** (personas/
-   roles/áreas/conflictos); dimensión recursos del health activa; 3
-   alertas de capacidad (in-app, dedupe 7d, sweep semanal + fast-path).
-4. **IA** (US-185 `9770161` / ENH-189 `a440efa`): memoria de proyecto
-   (`project_ai_contexts`, mig 0094): contexto curado + instrucciones +
-   resumen acumulativo que la IA actualiza por minuta (task
-   `ai.update_project_context`); bloque `<CONTEXTO_DEL_PROYECTO>`
-   inyectado en minutas y reportes; instrucciones permanentes por tenant
-   (`/admin/ai`) compuestas vía `prompt_builder`.
+**Reauditado el 2026-08-04** ([MCA](../conformidad/2026-08-04-mca.md) ·
+[MCS](../conformidad/2026-08-04-mcs.md)). Ya no hay estados sin medir.
 
-Verificación final del batch: **728 pytest + 1 skip · ruff limpio ·
-tsc + next build verdes**.
+| Marco | Objetivo | Alcanzado | Conformes | Bloquean |
+|---|---|---|---|---|
+| MCA | N2 | **N0** | 9 / 11 | AUT-01 (owner, 2 min) · CAP-01 (10 min) |
+| MCS | N2 | **N0** | 21 / 126 | 54 para N1 |
 
-## 📍 Dónde retomar (próximo paso accionable)
+**MCA está a dos requisitos de N2**, y uno es tuyo. **MCS sigue lejos**, y hay
+que corregir una expectativa: la distancia a N1 **nunca fue 43, era 60** — el
+informe anterior omitió los 14 requisitos en NO VERIFICABLE, que bloquean igual.
+Hoy son 54. Las Tandas A y B cerraron 6 bloqueantes de N1 y 6 de N2 porque
+apuntaban a **riesgo activo, no a nivel**.
 
-1. **Owner verifica y mergea PR #570.**
-2. Tras merge: `alembic upgrade head` en Railway (migraciones **0091-0094**).
-3. Decisión pendiente del owner: **rename "Organizaciones" → "Portafolios"**
-   (recomendación: solo labels de UI, no schema — ver resumen de la sesión).
-4. Ideas futuras sin issue: import CSV del pool de recursos (onboarding
-   35 proyectos), persistir desglose salud en tendencias UI, evaluar
-   auto_summary también con actividades del plan (hoy solo minutas).
+## 📍 Dónde retomar
+
+**Lo más barato son dos acciones del owner**, no de Claude:
+
+1. Abrir Claude Code con el repo como directorio de trabajo y comprobar que el
+   guard intercepta (`echo "prueba: git push --force"`). Cierra AUT-01 → **N2**.
+2. Proteger `main`. Es **AM-14** del modelo de amenazas.
+
+Después, **evaluar los 13 requisitos NO VERIFICABLE** (1-2 días). Es medición,
+no construcción: puede cerrar varios sin código y destapar riesgo. Precedente:
+IA-05 estaba NO VERIFICABLE, se verificó, y el modelo **sí** calculaba cifras que
+iban a informes ejecutivos. Hacerlo **antes** de comprometer las 6-9 semanas de
+las Tandas C/D/E.
+
+## ✅ Hecho en esta sesión
+
+Detalle en `docs/conformidad/plan.md` §B3 y §B5.
+
+**B3 — conjunto de evaluación de IA** (IA-07/08/09), en `apps/api/evaluacion/`.
+B2 cerró que el contenido ajeno no llegue al modelo como instrucción; nadie
+comprobaba la otra mitad: si el modelo desobedece igualmente, **qué sale**. Por
+eso puede ser un gate — mide el sistema, no el modelo: sin clave de API, sin red,
+job `evaluacion-ia` con umbral eliminatorio. Los fallos de IA que ya llegaron a
+un usuario (BUG-063/068/069/070/073, ENH-102, ENH-147) son casos permanentes.
+
+**Contexto permanente: −39 %**, y por primera vez bajo el objetivo de 40.000. La
+partida grande no era un archivo sino una regla: §1.4 obligaba a cargar «el epic
+relevante» entero antes de saber si se iba a abrir. Ahora se carga `docs/epics/README.md` —que ya era el índice—
+y el epic se abre **al tocarlo**; §0.3 se fue a la skill
+`verificar`; Deferred/DONE/backlog, a `SPRINT-BACKLOG.md`. El techo bajó con él
+—si no, la ganancia se erosiona sola— y `medir_contexto()` se actualizó en el
+mismo cambio: el medidor y la política van juntos o la cifra miente.
+
+**B5 — modelo de amenazas** (SEG-06), en `docs/architecture/modelo-amenazas.md`:
+ocho fronteras de confianza y catorce amenazas con control, evidencia, residual y
+estado. La mitad de «revisado ante cambios significativos» la hace cumplir
+`tests/test_seg06_modelo_amenazas.py`, que falla si aparece una ruta sin
+autenticación o un destino externo que `amenazas.yaml` no declara.
+
+**Tres defectos encontrados y corregidos**, ninguno reportado por usuarios, todos
+verificados por mutación:
+
+- El copiloto ofrecía navegaciones **fuera del sitio**: el parser de URL trata
+  `\` como `/` y borra TAB/LF/CR, así que `/\evil.example` pasaba el filtro de
+  «empieza por `/` y no por `//`», y el frontend hace `router.push` sin más.
+- **AM-01:** el BYO dejaba a un administrador de inquilino fijar `base_url`, y
+  `POST /admin/ai/provider/test` la usaba para pedir **desde dentro de la red
+  privada de Railway** devolviendo estado, cuerpo y latencia. Un escáner de red
+  para cualquier administrador de cliente.
+- Un `field: null` del modelo con confianza alta borraba el mapeo que la
+  heurística había acertado, en el importador.
 
 ## ⚠️ Gotchas
 
-- **Container fresco**: API requiere Python **3.12** (`python3.12 -m pip
-  install --break-system-packages -r requirements-dev.txt`); 3.11 truena
-  con sintaxis PEP 695 en `app/workers/db.py`. Web: `pnpm install
-  --frozen-lockfile`.
-- Salud auto se recalcula en: detalle de proyecto, health-detail,
-  health-matrix y snapshot semanal — los agregados SQL pueden tener
-  staleness acotada entre recálculos (documentado en el draft §4).
-- La saturación solo considera participations `status='activa'` con
-  `allocation_pct` NOT NULL; las vistas muestran cobertura ("Sin FTE").
-- Las alertas de capacidad son in-app only (sin email) con dedupe de 7
-  días por (tipo, actor).
-- Editar salud desde el form de proyecto ya NO existe — solo la tarjeta
-  de Salud (declarar con razón / volver a auto).
+- **`main` no está protegida** (AM-14). Al hacerlo, añadir `evaluacion-ia` a los
+  checks requeridos.
+- **Cuatro amenazas quedan SIN CONTROL**, escritas en vez de ignoradas: AM-08 (el
+  registro de auditoría es una tabla ordinaria, y AM-06 se apoya en él como único
+  control), AM-09 (`/auth/login` sin límite por IP), AM-10 (el bloqueo por
+  usuario es a su vez una denegación de servicio) y AM-14.
+- **`MCS-CORE §5.14` enuncia SEG-06 y no trae procedimiento**, así que el método
+  del modelo de amenazas lo eligió Claude y el documento lo declara (`plan.md`
+  §B5). Es un defecto del kit.
+- **El informe del 2026-08-03 tiene tres errores comprobados:** la distancia a
+  N1, la evidencia de ARQ-01 y IA-12 atribuido a B2. Sus estados no remedidos se
+  leen como indicativos, no como medidos.
+- **Los gates de CI son trinquetes:** fallan ante crecimiento nuevo, no por el
+  pasivo heredado. El de contexto frenó tres veces esta sesión, incluida la
+  redacción de este archivo. Recortar es la respuesta; subir el techo exige
+  razón escrita en `conformidad.yaml`.
+- **No hay tests de frontend**, y **Python 3.12 no es negociable**
+  (`psycopg[binary]` no publica wheel para 3.13+).
 
-## 📚 Estado de epics
+## 🔄 PRs en flight
 
-Actualización delegada a sub-agente al cierre de esta sesión (commit
-`docs(epics)` en la misma branch): EP004 (salud dimensiones + matrix),
-EP005 (salud única), EP006 (cambios/lecciones RAID + exports), EP008
-(memoria IA + prompts composables), EP009 (chips plan), EP017 (pool de
-recursos + FTE% + saturación + /pmo/resources + alertas). Si ese commit
-no aparece en la branch, re-lanzar la actualización.
+| PR / branch | Acción pendiente |
+|---|---|
+| **#573** · `claude/auditoria-conformidad-mca-mcs` | Revisar y mergear |
+| #570 · `claude/pmo-portfolio-architecture-6hbuen` | Verificar + mergear · `alembic upgrade head` (0091-0094) |
+| `claude/plan-import-wbs-fixes-nwotng` | Falta abrir PR · migs 0095-0096 |
+| `claude/gantt-areas-fixes` | Falta abrir PR (ENH-149/BUG-075/ENH-154/ENH-152) |
 
-## 🧹 Cleanup / acciones del owner
+## 📋 Lo que sigue
 
-- [ ] Verificar + mergear **PR #570**.
-- [ ] `alembic upgrade head` en Railway (0091-0094).
-- [ ] Decidir rename Organizaciones→Portafolios (labels UI).
-- [ ] Smoke visual de las vistas nuevas: /pmo/resources, heatmap N1,
-  Memoria IA, /admin/ai instrucciones, Cambios/Lecciones revamp.
+- **Conformidad:** R1 — evaluar los 13 NO VERIFICABLE. Luego Tandas C, D y E.
+- **Amenazas:** AM-08 es la más barata — un `REVOKE UPDATE, DELETE` al rol de la
+  aplicación, sin código. AM-09 es aplicar el limitador que ya existe.
+- **Evaluación de IA:** falta superficie para el informe ejecutivo; antes hay que
+  sacar el ensamblado del contexto fuera de `_run_report`.
+- **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch y se cruza
+  con AM-12. US-168 sigue `in-progress`.
+
+## 🧹 Acciones del owner
+
+- [ ] Verificar el guard desde una sesión dentro del repo (cierra AUT-01 → N2).
+- [ ] Proteger `main` tras cerrar los PR, con `evaluacion-ia` incluido (AM-14).
+- [ ] Revisar y mergear **PR #573**.
+- [ ] Revisar `docs/dominio/02-GLOSARIO.md` término por término.
+- [ ] Smoke manual de la web tras el salto de Next 15.0 → 15.5.
+- [ ] `SENTRY_DSN` en Railway — **es el requisito más barato del marco** (OPS-02).
+- [ ] Los tres PR pendientes de las ramas anteriores.
+
+## 🔮 Sin issue todavía
+
+- **Calidad de cronograma DCMA 14-point** (`docs/dominio/01-DIAGNOSTICO.md` §4) y
+  **línea base**, sin la cual no existe «desviación».
+- **Migrar de `python-jose` a PyJWT** — cerraría 5 CVE que bloquea `pyasn1<0.5.0`.
+
+---
+
+El orden de lectura al abrir sesión lo fija `CLAUDE.md` §1; no se repite aquí.
+Continúa desde «Dónde retomar».

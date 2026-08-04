@@ -1,0 +1,58 @@
+# Vulnerabilidades conocidas y aceptadas temporalmente — MCS INT-02
+#
+# Auditoría MCS 2026-08-03: `pip-audit` encontró 23 vulnerabilidades en 7
+# paquetes, invisibles hasta entonces porque el CI no lo ejecutaba.
+#
+# CERRADAS EN EL ACTO (10 de 23), subiendo las dependencias directas:
+#   python-multipart 0.0.12 -> 0.0.31  6 CVE · SUBIDA DE ARCHIVOS
+#   python-jose      3.3.0  -> 3.4.0   2 CVE · JWT / autenticación
+#   jinja2           3.1.4  -> 3.1.6   3 CVE · render de PDF
+#   python-dotenv    1.0.1  -> 1.2.2   1 CVE
+#   (python-multipart y python-jose son las que más importan: este producto
+#    acepta minutas y planes subidos por el usuario, y todo pasa por JWT)
+#
+# LAS 13 RESTANTES ESTÁN BLOQUEADAS, no ignoradas por comodidad. Cada bloque
+# de abajo dice por qué y hasta cuándo.
+#
+# POR QUÉ UNA LISTA Y NO UN GATE QUE FALLE DE ENTRADA:
+# el mismo razonamiento del trinquete de contexto (conformidad.yaml). Un gate
+# rojo desde el primer PR se desactiva en dos días. Este falla ante CUALQUIER
+# vulnerabilidad NUEVA, que es el riesgo real, mientras el pasivo conocido
+# tiene causa y fecha.
+#
+# CADA ID NUEVO EXIGE RAZÓN ESCRITA Y FECHA OBJETIVO.
+# Revisar: 2026-09-15
+
+# ── starlette 0.41.3 · 7 CVE ────────────────────────────────────────────────
+# Transitiva de `fastapi==0.115.4`, que la fija. Cerrarlas exige subir FastAPI
+# a una rama mayor, con su propio radio de impacto sobre 132 archivos de test.
+# Merece tanda propia, no un cambio de paso. Fecha objetivo: 2026-09-15.
+PYSEC-2026-161
+PYSEC-2026-249
+PYSEC-2026-248
+PYSEC-2026-1942
+PYSEC-2026-1941
+PYSEC-2026-2281
+PYSEC-2026-2280
+
+# ── pyasn1 0.4.8 · 4 CVE ────────────────────────────────────────────────────
+# Hay arreglo (0.6.4) pero NO se puede aplicar: `python-jose[cryptography]`
+# declara `pyasn1>=0.4.1,<0.5.0`. Intentado y comprobado el 2026-08-03: uv
+# resuelve a «requirements are unsatisfiable». Cierra cuando python-jose
+# relaje la restricción, o al migrar a otra librería JWT (p. ej. PyJWT).
+# Fecha objetivo: 2026-09-15 — decidir si se migra.
+PYSEC-2026-2263
+PYSEC-2026-3455
+PYSEC-2026-3456
+PYSEC-2026-3457
+
+# ── ecdsa 0.19.2 · 1 CVE ────────────────────────────────────────────────────
+# Transitiva de python-jose[cryptography]. Sin versión con arreglo publicada
+# al 2026-08-03. Misma decisión que pyasn1: se resuelve migrando de jose.
+PYSEC-2026-1325
+
+# ── weasyprint 68.1 · 1 CVE ─────────────────────────────────────────────────
+# Sin versión con arreglo al 2026-08-03. Genera PDF a partir de plantillas
+# propias, no de HTML arbitrario del usuario, lo que acota la exposición.
+# Revisar si aparece arreglo.
+PYSEC-2026-3412

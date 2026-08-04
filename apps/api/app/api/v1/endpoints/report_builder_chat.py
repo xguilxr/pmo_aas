@@ -35,8 +35,10 @@ from app.core.errors import AppError, forbidden
 from app.db.session import get_db
 from app.models.report_section import ReportSection
 from app.services.ai.platform_config import resolve_groq_config
+from app.services.ai.prompt_builder import build_system_prompt
 from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import load_tenant_ai
+from app.services.ai.untrusted import envolver_no_confiable, neutralizar
 
 logger = logging.getLogger(__name__)
 
@@ -171,11 +173,24 @@ async def chat_with_builder(
         [f"{m.role}: {m.content[:500]}" for m in payload.history[-10:]]
     )
 
+    # B2 (MCS IA-11): el historial arrastra turnos previos del modelo, que
+    # pudieron contaminarse con el contenido de un proyecto. El catálogo y el
+    # canvas son códigos de un catálogo cerrado de la plataforma, no texto
+    # libre. El `user_message` lo teclea el operador ahora mismo: es su
+    # petición y el asistente tiene que obedecerla.
     full_prompt = (
         f"Catálogo disponible:\n{catalog_text}\n\n"
         f"Canvas actual (modo {payload.composition_mode}):\n{canvas_repr}\n\n"
-        + (f"Historial reciente:\n{history_repr}\n\n" if history_repr else "")
-        + f"Usuario: {payload.user_message}\n\n"
+        + (
+            "Historial reciente:\n"
+            + envolver_no_confiable(
+                history_repr, origen="turnos previos de la conversación"
+            )
+            + "\n\n"
+            if history_repr
+            else ""
+        )
+        + f"Usuario: {neutralizar(payload.user_message)}\n\n"
         "Responde SOLO con JSON válido siguiendo el formato indicado."
     )
 
@@ -186,7 +201,7 @@ async def chat_with_builder(
     try:
         result = await generate_for_tenant(
             full_prompt,
-            system=SYSTEM_PROMPT,
+            system=build_system_prompt(SYSTEM_PROMPT, None),
             tenant_ai_mode=cfg.mode,
             platform_groq_config=platform_cfg,
             byo_config=cfg.byo,

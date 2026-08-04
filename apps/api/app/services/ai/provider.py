@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.core.config import settings
+from app.core.url_externa import asegurar_url_externa
 
 logger = logging.getLogger("pmoaas.ai")
 
@@ -509,6 +510,12 @@ async def generate_for_tenant(
         provider_name = cfg.get("provider")
         if provider_name not in BYO_PROVIDERS:
             raise RuntimeError(f"byo_provider_invalid: {provider_name!r}")
+        # Modelo de amenazas B5, AM-01. El punto de escritura ya rechaza los
+        # destinos internos, pero esto es lo que protege a los inquilinos que
+        # guardaron su `base_url` ANTES de que existiera aquella comprobación:
+        # sin esto, la defensa solo cubriría configuraciones nuevas.
+        if cfg.get("base_url"):
+            await asegurar_url_externa(cfg["base_url"])
         prov = _PROVIDERS[provider_name]
         override = dict(cfg)
         if tenant_id:

@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_capability
 from app.core.errors import forbidden, not_found
+from app.core.url_externa import asegurar_url_externa, motivo_url_insegura
 from app.db.session import get_db
 from app.models.tenant import Tenant
 from app.services.ai.byo_catalog import catalog_for_api
@@ -90,6 +91,14 @@ class BYOConfigIn(BaseModel):
                 raise ValueError(
                     "deployment_name requerido para provider=azure",
                 )
+        # Modelo de amenazas B5, AM-01: `base_url` la elige el administrador del
+        # inquilino y la petición sale desde dentro de nuestra red. Aquí se
+        # rechaza lo que se puede juzgar sin resolver el nombre; la resolución
+        # la hace `asegurar_url_externa` justo antes de cada petición.
+        if (self.base_url or "").strip():
+            motivo = motivo_url_insegura(self.base_url)
+            if motivo:
+                raise ValueError(motivo)
         return self
 
 
@@ -447,6 +456,16 @@ async def _ping_byo_provider(
     api_version: str | None = None,
 ) -> TestConnectionResult:
     import httpx
+
+    # Modelo de amenazas B5, AM-01. Esta función es la que convertía `base_url`
+    # en un oráculo de red: devuelve estado, cuerpo y latencia al que llama. La
+    # comprobación va ANTES de abrir el cliente, no dentro del `try`, para que
+    # un destino rechazado no se confunda con un proveedor caído.
+    if base_url:
+        try:
+            await asegurar_url_externa(base_url)
+        except ValueError as exc:
+            return TestConnectionResult(ok=False, error=str(exc), code="BASE_URL_NO_PERMITIDA")
 
     started = time.perf_counter()
     try:

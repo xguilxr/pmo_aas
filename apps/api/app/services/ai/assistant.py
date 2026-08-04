@@ -18,13 +18,46 @@ futura; reusamos el patrón "JSON-action" ya probado en el Report Builder
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.services.ai.json_parse import parse_json_lenient
+from app.services.ai.untrusted import envolver_no_confiable, neutralizar
 
 # Acciones permitidas que el frontend sabe ejecutar. Todas son seguras
 # (no mutan datos); navegar es la única con efecto y es reversible.
 ALLOWED_ACTION_TYPES: frozenset[str] = frozenset({"navigate", "none"})
+
+# Caracteres que convierten una ruta «interna» en una salida del sitio.
+#
+# `assistant-widget.tsx` hace `router.push(a.path)`, y el router resuelve con
+# `new URL(path, location)`. El parser de URL del navegador (WHATWG §4.4)
+# trata `\` como `/` en esquemas especiales y **borra** tabuladores y saltos
+# de línea ANTES de parsear. Comprobado contra el parser de Node:
+#
+#     "/\evil.example/x"    →  https://evil.example/x
+#     "/\t/evil.example/x"  →  https://evil.example/x
+#     "/\n/evil.example/x"  →  https://evil.example/x
+#     "/\r/evil.example/x"  →  https://evil.example/x
+#
+# Los cuatro empiezan por `/` y no por `//`, que era toda la comprobación que
+# había. Un modelo que obedece una instrucción inyectada en una minuta podía
+# devolver cualquiera de ellos y el copiloto ofrecía el botón. Encontrado al
+# construir el conjunto de evaluación (B3, MCS IA-07/08/09); los cuatro son
+# ahora casos permanentes suyos (S-02..S-05).
+_RE_RUTA_INSEGURA = re.compile(r"[\\\x00-\x1f\x7f]")
+
+
+def ruta_interna_segura(path: str) -> bool:
+    """¿Es `path` una ruta relativa a la raíz que no puede salir del sitio?
+
+    Lista blanca de forma, no lista negra de dominios: tiene que empezar por
+    una sola barra y no puede contener ningún carácter que el parser del
+    navegador reinterprete o descarte.
+    """
+    if not path.startswith("/") or path.startswith("//"):
+        return False
+    return not _RE_RUTA_INSEGURA.search(path)
 
 ASSISTANT_SYSTEM = """Eres el copiloto IA de PMO-aaS, una plataforma de
 gestión de portafolios, programas y proyectos (PMO). Ayudas a Project
@@ -59,17 +92,39 @@ def build_assistant_prompt(
     page_context: str | None,
     history: list[dict[str, str]],
 ) -> str:
-    """Arma el prompt de usuario con contexto de página + historial."""
+    """Arma el prompt de usuario con contexto de página + historial.
+
+    B2 (MCS IA-11): el `page_context` lo compone el frontend con los datos que
+    la pantalla está mostrando —nombres de proyecto, títulos de riesgo,
+    descripciones de RAID extraídas de minutas—, así que es contenido de
+    terceros y va envuelto. El `history` también: arrastra turnos previos del
+    modelo, que pudieron contaminarse con un contexto anterior.
+
+    El `user_message` lo teclea quien está usando el widget en ese momento: es
+    su petición y es a lo que el asistente debe responder. Se neutraliza, no se
+    envuelve.
+    """
     parts: list[str] = []
     if page_context:
-        parts.append(f"CONTEXTO DE LA PÁGINA ACTUAL:\n{page_context.strip()[:4000]}\n")
+        parts.append(
+            "CONTEXTO DE LA PÁGINA ACTUAL:\n"
+            + envolver_no_confiable(
+                page_context.strip()[:4000],
+                origen="datos que muestra la pantalla, redactados por usuarios",
+            )
+            + "\n"
+        )
     if history:
         hist = "\n".join(
             f"{m.get('role', 'user')}: {str(m.get('content', ''))[:500]}"
             for m in history[-10:]
         )
-        parts.append(f"HISTORIAL RECIENTE:\n{hist}\n")
-    parts.append(f"MENSAJE DEL USUARIO:\n{user_message.strip()}")
+        parts.append(
+            "HISTORIAL RECIENTE:\n"
+            + envolver_no_confiable(hist, origen="turnos previos de la conversación")
+            + "\n"
+        )
+    parts.append(f"MENSAJE DEL USUARIO:\n{neutralizar(user_message.strip())}")
     parts.append(
         "\nResponde SOLO con el objeto JSON {message, actions} indicado."
     )
@@ -97,7 +152,7 @@ def parse_assistant_reply(text: str) -> tuple[str, list[dict[str, Any]]]:
             if atype == "navigate":
                 path = str(a.get("path") or "").strip()
                 # Solo rutas internas relativas (seguridad: nada de URLs externas).
-                if not path.startswith("/") or path.startswith("//"):
+                if not ruta_interna_segura(path):
                     continue
                 actions.append(
                     {"type": "navigate", "path": path, "label": str(a.get("label") or "Ir")}
