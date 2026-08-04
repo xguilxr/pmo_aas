@@ -2,18 +2,57 @@
 
 proyecto: pmo_aas
 responsable: propietario
-evaluado: 2026-08-03
+evaluado: 2026-08-04
 
 marcos:
-  # Reauditado 2026-08-03 tras las acciones 1-8 (2026-08-03-mca-seguimiento.md).
-  # Sigue N0: AUT-01 PARCIAL y CTX-03 NO CONFORME, ambos de N1, y un PARCIAL
-  # impide alcanzar su nivel (MCA-CORE §6.2). Los cinco requisitos de N2 ya
-  # están CONFORME, así que N1 y N2 caen juntos: distancia = 2 requisitos.
-  MCA: { objetivo: N2, alcanzado: N0, evaluados: "11/11", conformes: 10 }
+  # Reauditado 2026-08-04 con MCA-P02 (2026-08-04-mca.md). Sigue N0, y la
+  # distancia sigue siendo 2 requisitos, pero NO los mismos:
+  #   - CTX-03 se CERRÓ (las cifras vivas se fueron con §0.3 a la skill).
+  #   - AUT-01 sigue PARCIAL. La lógica del guard funciona —invocado a mano
+  #     devuelve deny—, lo que no ocurre es la activación: las sesiones se
+  #     enraízan fuera del repo y .claude/settings.json es config del proyecto.
+  #     Comprobado por tercera vez, ahora separando las dos mitades.
+  #   - CAP-01 pasa a PARCIAL: CLAUDE.md §8 conserva un procedimiento de cuatro
+  #     pasos («Rebase + force-push») en contexto permanente. NO es regresión —
+  #     estaba antes y la auditoría anterior no lo vio. Es un fallo de aquella.
+  # Los cinco requisitos de N2 están CONFORME, así que N1 y N2 caen juntos:
+  # cerrando AUT-01 (owner, 2 min) y CAP-01 (10 min) el entorno pasa a N2.
+  # Contexto permanente: 87.623 → 34.080 (-61%). Objetivo de 40.000 alcanzado.
+  MCA: { objetivo: N2, alcanzado: N0, evaluados: "11/11", conformes: 9 }
   MCC: { objetivo: no_aplica, alcanzado: no_aplica }
-  # Auditado 2026-08-03 (2026-08-03-mcs.md): 9 de 126 requisitos N1+N2 CONFORME.
-  # No alcanza N1: 43 requisitos de N1 lo bloquean. 4 exposiciones CRÍTICAS.
-  MCS: { objetivo: N2, alcanzado: N0, evaluados: "126/126", conformes: 9 }
+  # Reauditado 2026-08-04 con MCS-P01, variante de seguimiento (2026-08-04-mcs.md).
+  # Sigue N0. Conformes: 9 -> 21 de 126. Cerraron doce requisitos.
+  #
+  # OJO — LA DISTANCIA A N1 NUNCA FUE 43, ERA 60. El informe del 2026-08-03
+  # omitió de su tabla de bloqueantes los 14 requisitos de N1 en NO VERIFICABLE.
+  # MCS-CORE §6.2 exige CONFORME **o** NO APLICABLE para alcanzar nivel, y
+  # NO VERIFICABLE no es ninguno de los dos. La misma tabla dice «43» y lista 46.
+  # Distancia real hoy: 54.
+  #
+  # Las Tandas A y B cerraron 6 bloqueantes de N1 (ARQ-01, CFG-02, IA-03, IA-05,
+  # INT-02, SEG-03) y 6 requisitos de N2 (SEG-06, SEG-08, IA-07/08/09, IA-11).
+  # Estaban apuntadas a RIESGO ACTIVO, no a nivel, y el propio informe anterior
+  # lo decía. Que el nivel no se moviera era lo esperable.
+  #
+  # ARQ-01 no lo cerró la remediación: nunca estuvo abierto. El informe anterior
+  # alegó que no había diagramas de contexto ni de contenedores, y
+  # docs/architecture/README.md §C4 los tiene desde antes. Tercer error del
+  # mismo informe en dos días (los otros: la distancia a N1, e IA-12 atribuido
+  # a B2 sin estar en el alcance evaluado).
+  #
+  # OPS-02 mejoró a PARCIAL y no cierra: sentry-sdk está cableado pero inerte
+  # sin SENTRY_DSN, que sigue sin ponerse en Railway. Es el requisito más barato
+  # que queda en todo el marco.
+  #
+  # Sin regresiones: los 9 que estaban CONFORME lo siguen estando. Comprobado
+  # en particular DEV-01, cuya evidencia citaba CLAUDE.md §0.3 — que se movió a
+  # la skill `verificar`. El requisito se sostiene; cambió la ruta de la prueba.
+  #
+  # SIGUIENTE PASO RECOMENDADO: evaluar los 13 NO VERIFICABLE que quedan (1-2
+  # días, es medición y no construcción) ANTES de comprometer las 6-9 semanas de
+  # las Tandas C/D/E. Precedente: IA-05 estaba NO VERIFICABLE, se verificó, y el
+  # modelo SÍ calculaba cifras que iban a informes ejecutivos.
+  MCS: { objetivo: N2, alcanzado: N0, evaluados: "126/126", conformes: 21 }
   # Tanda A ejecutada el mismo día (plan.md). No re-auditado: los requisitos
   # que toca (CFG-02, INT-02, SEG-03, IA-05, OPS-02) siguen figurando como
   # NO CONFORME hasta que una reauditoría formal los mida. Lo que cambió:

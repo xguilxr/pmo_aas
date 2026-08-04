@@ -2,14 +2,20 @@
 
 | Campo | Valor |
 |---|---|
-| Última auditoría | 2026-08-03 · [inicial](2026-08-03-mca.md) · [seguimiento](2026-08-03-mca-seguimiento.md) |
+| Última auditoría | **2026-08-04** · [MCA](2026-08-04-mca.md) · [MCS](2026-08-04-mcs.md) |
+| Anteriores | 2026-08-03 · [MCA](2026-08-03-mca.md) · [seguimiento](2026-08-03-mca-seguimiento.md) · [MCS](2026-08-03-mcs.md) |
 | Próxima evaluación | 2026-11-03 |
 
 | Marco | Objetivo | Alcanzado | Estado |
 |---|---|---|---|
-| MCA | N2 | **N0** | **10 de 11 CONFORME.** Solo AUT-01 sigue PARCIAL |
+| MCA | N2 | **N0** | 9 de 11 CONFORME. Bloquean **AUT-01** (owner, 2 min) y **CAP-01** (10 min) |
 | MCC | no_aplica | no_aplica | Producto propio, sin encargo (`AUDITORIA.md` §1.3) |
-| MCS | N2 | — | **No auditado.** Correcto mientras MCA no llegue a N2 |
+| MCS | N2 | **N0** | **21 de 126 CONFORME** (eran 9). Distancia a N1: **54** — no 43, ver abajo |
+
+> **La distancia a N1 nunca fue 43.** El informe del 2026-08-03 omitió de su
+> tabla de bloqueantes los 14 requisitos de N1 en NO VERIFICABLE, que bloquean
+> igual (`MCS-CORE` §6.2 exige CONFORME **o** NO APLICABLE). Era 60; hoy es 54.
+> Detalle en [2026-08-04-mcs.md](2026-08-04-mcs.md) §1.
 
 ---
 
