@@ -26,7 +26,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.services.ai.assistant import build_assistant_prompt
+from app.services.ai.assistant import build_assistant_prompt, parse_assistant_reply
 from app.services.ai.project_context import compose_context_block
 from app.services.ai.prompt_builder import build_system_prompt
 from app.services.ai.provider import AIResult
@@ -648,6 +648,53 @@ def test_ia11_el_mensaje_del_operador_sigue_siendo_una_instruccion():
     )
     assert ETIQUETA_NO_CONFIABLE not in prompt
     assert "Llévame al proyecto ERP" in prompt
+
+
+@pytest.mark.parametrize(
+    "ruta",
+    [
+        "/\\evil.example/x",       # `\` vale por `/` en esquemas especiales
+        "/\\/evil.example",
+        "/\t/evil.example/x",      # el parser BORRA tabuladores antes de leer
+        "/\n/evil.example/x",
+        "/\r/evil.example/x",
+        "//evil.example/x",        # el caso que sí estaba cubierto
+        "https://evil.example/x",
+        "javascript:fetch('https://evil.example')",
+    ],
+)
+def test_ia11_el_copiloto_no_ofrece_rutas_que_salen_del_sitio(ruta: str):
+    """El único guardia entre la salida del modelo y `router.push` es este.
+
+    La cadena completa existe: una minuta envenenada entra a la memoria del
+    proyecto, la memoria llega al contexto de página del copiloto, y el
+    copiloto devuelve la acción. Si la ruta sale del sitio, el botón lleva al
+    usuario autenticado a donde diga el atacante.
+
+    Las cinco primeras pasaban el filtro anterior (`empieza por / y no por //`)
+    y resuelven a `https://evil.example`. Verificado contra el parser de URL de
+    Node, no contra la especificación de memoria.
+    """
+    _msg, acciones = parse_assistant_reply(
+        json.dumps({"message": "Mira esto", "actions": [
+            {"type": "navigate", "path": ruta, "label": "Abrir"}
+        ]})
+    )
+    assert acciones == [], f"el copiloto ofrecería {ruta!r}, que sale del sitio"
+
+
+@pytest.mark.parametrize(
+    "ruta",
+    ["/pmo", "/pmo/projects/42", "/pmo/projects/42/raid?estado=abierto", "/a-b_c.d/1"],
+)
+def test_ia11_el_copiloto_sigue_ofreciendo_rutas_internas(ruta: str):
+    """Control negativo: un filtro que rechaza todo también rompe el copiloto."""
+    _msg, acciones = parse_assistant_reply(
+        json.dumps({"message": "Vamos", "actions": [
+            {"type": "navigate", "path": ruta, "label": "Abrir"}
+        ]})
+    )
+    assert acciones == [{"type": "navigate", "path": ruta, "label": "Abrir"}]
 
 
 def test_ia11_neutralizar_tolera_vacios():

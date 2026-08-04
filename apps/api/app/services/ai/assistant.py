@@ -18,6 +18,7 @@ futura; reusamos el patrón "JSON-action" ya probado en el Report Builder
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.services.ai.json_parse import parse_json_lenient
@@ -26,6 +27,37 @@ from app.services.ai.untrusted import envolver_no_confiable, neutralizar
 # Acciones permitidas que el frontend sabe ejecutar. Todas son seguras
 # (no mutan datos); navegar es la única con efecto y es reversible.
 ALLOWED_ACTION_TYPES: frozenset[str] = frozenset({"navigate", "none"})
+
+# Caracteres que convierten una ruta «interna» en una salida del sitio.
+#
+# `assistant-widget.tsx` hace `router.push(a.path)`, y el router resuelve con
+# `new URL(path, location)`. El parser de URL del navegador (WHATWG §4.4)
+# trata `\` como `/` en esquemas especiales y **borra** tabuladores y saltos
+# de línea ANTES de parsear. Comprobado contra el parser de Node:
+#
+#     "/\evil.example/x"    →  https://evil.example/x
+#     "/\t/evil.example/x"  →  https://evil.example/x
+#     "/\n/evil.example/x"  →  https://evil.example/x
+#     "/\r/evil.example/x"  →  https://evil.example/x
+#
+# Los cuatro empiezan por `/` y no por `//`, que era toda la comprobación que
+# había. Un modelo que obedece una instrucción inyectada en una minuta podía
+# devolver cualquiera de ellos y el copiloto ofrecía el botón. Encontrado al
+# construir el conjunto de evaluación (B3, MCS IA-07/08/09); los cuatro son
+# ahora casos permanentes suyos (S-02..S-05).
+_RE_RUTA_INSEGURA = re.compile(r"[\\\x00-\x1f\x7f]")
+
+
+def ruta_interna_segura(path: str) -> bool:
+    """¿Es `path` una ruta relativa a la raíz que no puede salir del sitio?
+
+    Lista blanca de forma, no lista negra de dominios: tiene que empezar por
+    una sola barra y no puede contener ningún carácter que el parser del
+    navegador reinterprete o descarte.
+    """
+    if not path.startswith("/") or path.startswith("//"):
+        return False
+    return not _RE_RUTA_INSEGURA.search(path)
 
 ASSISTANT_SYSTEM = """Eres el copiloto IA de PMO-aaS, una plataforma de
 gestión de portafolios, programas y proyectos (PMO). Ayudas a Project
@@ -120,7 +152,7 @@ def parse_assistant_reply(text: str) -> tuple[str, list[dict[str, Any]]]:
             if atype == "navigate":
                 path = str(a.get("path") or "").strip()
                 # Solo rutas internas relativas (seguridad: nada de URLs externas).
-                if not path.startswith("/") or path.startswith("//"):
+                if not ruta_interna_segura(path):
                     continue
                 actions.append(
                     {"type": "navigate", "path": path, "label": str(a.get("label") or "Ir")}
