@@ -877,8 +877,8 @@ function PreviewStep({
               </thead>
               <tbody>
                 {parsedPreview.map((t) => {
-                  const depth = t.wbs
-                    ? Math.max(0, t.wbs.split(".").filter(Boolean).length - 1)
+                  const depth = t.wbs_code
+                    ? Math.max(0, t.wbs_code.split(".").filter(Boolean).length - 1)
                     : 0;
                   return (
                     <tr
@@ -886,7 +886,7 @@ function PreviewStep({
                       className="border-t border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
                     >
                       <td className="px-2 py-1.5 tabular-nums text-[var(--color-tertiary)]">
-                        {t.wbs ?? "—"}
+                        {t.wbs_code ?? "—"}
                       </td>
                       <td
                         className="max-w-[260px] truncate px-2 py-1.5 text-[var(--color-primary)]"

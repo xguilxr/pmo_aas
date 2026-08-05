@@ -3,11 +3,12 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
+from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, forbidden, not_found, validation_error
 from app.db.session import get_db
 from app.models.project import Project
@@ -98,10 +99,30 @@ async def _ensure_project(db: AsyncSession, project_id: UUID, tenant_id: UUID) -
     return p
 
 
-class TaskCreate(BaseModel):
+class _VentanaWbs(BaseModel):
+    """D-3 / ADR-020 — el cuerpo puede traer todavía `wbs`.
+
+    `AliasChoices` acepta los dos nombres pero **no dice cuál llegó**, y sin ese
+    dato la ventana no se puede cerrar con criterio (`core/compatibilidad.py`).
+    Por eso se mira el cuerpo crudo, antes de validar.
+
+    La salida es siempre `wbs_code`: `validation_alias` solo afecta a la entrada.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _registrar_nombre_viejo(cls, datos):
+        if isinstance(datos, dict) and "wbs" in datos:
+            registrar_uso("wbs", donde="cuerpo de tarea")
+        return datos
+
+
+class TaskCreate(_VentanaWbs):
     name: str = Field(min_length=2, max_length=300)
     description: str | None = None
-    wbs: str | None = None
+    wbs_code: str | None = Field(
+        default=None, validation_alias=AliasChoices("wbs_code", "wbs")
+    )
     parent_id: UUID | None = None
     start_date: date | None = None
     end_date: date | None = None
@@ -127,7 +148,7 @@ class TaskCreate(BaseModel):
     area_id: UUID | None = None
 
 
-class TaskUpdate(BaseModel):
+class TaskUpdate(_VentanaWbs):
     name: str | None = None
     description: str | None = None
     start_date: date | None = None
@@ -149,7 +170,9 @@ class TaskUpdate(BaseModel):
     predecessors: list[str] | None = None
     # US-090: tras editar fechas, el backend recalcula duration_days
     # (auto). Si el cliente manda duration_days explícito, se ignora.
-    wbs: str | None = None
+    wbs_code: str | None = Field(
+        default=None, validation_alias=AliasChoices("wbs_code", "wbs")
+    )
 
 
 class TaskMini(BaseModel):
@@ -157,7 +180,7 @@ class TaskMini(BaseModel):
 
     id: UUID
     name: str
-    wbs: str | None = None
+    wbs_code: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -165,7 +188,7 @@ class TaskMini(BaseModel):
 class TaskRead(BaseModel):
     id: UUID
     project_id: UUID
-    wbs: str | None
+    wbs_code: str | None
     parent_id: UUID | None
     name: str
     start_date: date | None
@@ -220,7 +243,7 @@ async def _validate_related_milestone(
 
 
 async def _attach_milestones(db: AsyncSession, tasks: list[Task]) -> None:
-    """ENH-050: enriquece `task.related_milestone` con `{id, name, wbs}`."""
+    """ENH-050: enriquece `task.related_milestone` con `{id, name, wbs_code}`."""
     ids: set[str] = {str(t.related_milestone_id) for t in tasks if t.related_milestone_id}
     if not ids:
         for t in tasks:
@@ -233,7 +256,7 @@ async def _attach_milestones(db: AsyncSession, tasks: list[Task]) -> None:
     for t in tasks:
         m = by_id.get(str(t.related_milestone_id)) if t.related_milestone_id else None
         t.related_milestone = (  # type: ignore[attr-defined]
-            {"id": str(m.id), "name": m.name, "wbs": m.wbs} if m else None
+            {"id": str(m.id), "name": m.name, "wbs_code": m.wbs_code} if m else None
         )
 
 
@@ -307,7 +330,7 @@ async def list_tasks(
         key=lambda t: (
             t.position is None,
             t.position if t.position is not None else 0,
-            wbs_sort_key(t.wbs),
+            wbs_sort_key(t.wbs_code),
         ),
     )
     await _attach_owners(db, rows_list)
@@ -379,11 +402,11 @@ async def create_task(
             await db.execute(select(Task).where(Task.project_id == str(project_id)))
         ).scalars().all()
         cleaned_preds = validate_predecessors(
-            body.predecessors, collect_by_wbs(all_tasks), body.wbs
+            body.predecessors, collect_by_wbs(all_tasks), body.wbs_code
         )
     t = Task(
         tenant_id=str(tenant_id), project_id=str(project_id),
-        name=body.name, description=body.description, wbs=body.wbs,
+        name=body.name, description=body.description, wbs_code=body.wbs_code,
         parent_id=str(body.parent_id) if body.parent_id else None,
         start_date=body.start_date, end_date=body.end_date,
         closed_at=closed_at_value,
@@ -397,7 +420,7 @@ async def create_task(
         related_milestone_id=(
             str(body.related_milestone_id) if body.related_milestone_id else None
         ),
-        outline_level=compute_outline_level(body.wbs),
+        outline_level=compute_outline_level(body.wbs_code),
         predecessors=cleaned_preds,
         successors=[],
         area_id=str(body.area_id) if body.area_id else None,
@@ -467,14 +490,14 @@ async def update_task(
             await db.execute(select(Task).where(Task.project_id == t.project_id))
         ).scalars().all()
         t.predecessors = validate_predecessors(
-            new_preds, collect_by_wbs(all_tasks, exclude_id=str(t.id)), t.wbs
+            new_preds, collect_by_wbs(all_tasks, exclude_id=str(t.id)), t.wbs_code
         )
         data.pop("predecessors", None)
     for k, v in data.items():
         setattr(t, k, v)
-    # US-090: si tocaron wbs / start / end, recomputar outline + duration.
-    if "wbs" in data_full:
-        t.outline_level = compute_outline_level(t.wbs)
+    # US-090: si tocaron wbs_code / start / end, recomputar outline + duration.
+    if "wbs_code" in data_full:
+        t.outline_level = compute_outline_level(t.wbs_code)
     if {"start_date", "end_date"} & data_full.keys():
         auto_d = compute_duration_days(t.start_date, t.end_date)
         if auto_d is not None:
@@ -484,7 +507,7 @@ async def update_task(
     # lógica de atraso (closed_at > end_date) tiene un dato con qué comparar.
     if t.status == "completed" and t.closed_at is None:
         t.closed_at = date.today()
-    # Re-sync successors del proyecto entero (predecessors o wbs pueden haber cambiado).
+    # Re-sync successors del proyecto entero (predecessors o wbs_code pueden haber cambiado).
     await recompute_successors_for_project(db, t.project_id)
     await db.commit()
     await _attach_owners(db, [t])
@@ -520,14 +543,14 @@ async def delete_task(
     return Response(status_code=204)
 
 
-def _natural_wbs_key(wbs: str | None) -> tuple:
+def _natural_wbs_key(wbs_code: str | None) -> tuple:
     """Orden jerárquico natural de un WBS: '1.10' va DESPUÉS de '1.2'.
     Segmentos numéricos se comparan como int; los no numéricos van al final;
     WBS vacío al final del todo."""
-    if not wbs:
+    if not wbs_code:
         return ((2, 0, ""),)
     parts: list[tuple[int, int, str]] = []
-    for seg in str(wbs).split("."):
+    for seg in str(wbs_code).split("."):
         seg = seg.strip()
         if seg.isdigit():
             parts.append((0, int(seg), ""))
@@ -564,7 +587,7 @@ async def renumber_wbs(
         key=lambda t: (
             t.position is None,
             t.position if t.position is not None else 0,
-            _natural_wbs_key(t.wbs),
+            _natural_wbs_key(t.wbs_code),
             t.created_at or _floor,
         ),
     )
@@ -575,7 +598,7 @@ async def renumber_wbs(
         raw = (
             t.outline_level
             if t.outline_level is not None
-            else max(0, len((t.wbs or "").split(".")) - 1)
+            else max(0, len((t.wbs_code or "").split(".")) - 1)
         )
         depth = min(max(0, raw), len(counters))
         if depth < len(counters):
@@ -584,9 +607,9 @@ async def renumber_wbs(
         else:
             counters.append(1)
         new_wbs = ".".join(str(c) for c in counters)
-        if t.wbs and t.wbs not in old_to_new:
-            old_to_new[t.wbs] = new_wbs  # primera ocurrencia gana
-        t.wbs = new_wbs
+        if t.wbs_code and t.wbs_code not in old_to_new:
+            old_to_new[t.wbs_code] = new_wbs  # primera ocurrencia gana
+        t.wbs_code = new_wbs
         t.outline_level = depth
 
     # Remapea predecesoras (tokens WBS) al nuevo esquema; descarta dangling.
@@ -595,7 +618,7 @@ async def renumber_wbs(
             remapped: list[str] = []
             for pre in t.predecessors:
                 nv = old_to_new.get(pre)
-                if nv and nv != t.wbs and nv not in remapped:
+                if nv and nv != t.wbs_code and nv not in remapped:
                     remapped.append(nv)
             t.predecessors = remapped
 
@@ -641,7 +664,7 @@ async def move_task(
         key=lambda t: (
             t.position is None,
             t.position if t.position is not None else 0,
-            wbs_sort_key(t.wbs),
+            wbs_sort_key(t.wbs_code),
         ),
     )
     moved = next((t for t in ordered if str(t.id) == str(task_id)), None)
@@ -725,9 +748,9 @@ async def import_ms_project(
             def __init__(self, pt):
                 # external_id para merge: preferimos WBS si está, fallback a
                 # "row-{N}" para tener unicidad dentro del import.
-                self.external_id = pt.wbs or f"row-{pt.row_number}"
+                self.external_id = pt.wbs_code or f"row-{pt.row_number}"
                 self.name = pt.name
-                self.wbs = pt.wbs
+                self.wbs_code = pt.wbs_code
                 self.start_date = pt.start_date
                 self.end_date = pt.end_date
                 self.duration_days = pt.duration_days
@@ -771,24 +794,24 @@ async def import_ms_project(
             ).scalars().first()
         if existing is not None:
             existing.name = pt.name
-            existing.wbs = pt.wbs
+            existing.wbs_code = pt.wbs_code
             existing.start_date = pt.start_date
             existing.end_date = pt.end_date
             existing.duration_days = pt.duration_days
             existing.progress = pt.progress
             existing.is_milestone = pt.is_milestone
-            existing.outline_level = compute_outline_level(pt.wbs)
+            existing.outline_level = compute_outline_level(pt.wbs_code)
             created[pt.external_id] = existing
         else:
             t = Task(
                 tenant_id=str(tenant_id), project_id=str(p.id),
-                name=pt.name, wbs=pt.wbs,
+                name=pt.name, wbs_code=pt.wbs_code,
                 start_date=pt.start_date, end_date=pt.end_date,
                 duration_days=pt.duration_days, progress=pt.progress,
                 is_milestone=pt.is_milestone, status="not_started",
                 source="msproject", external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
-                outline_level=compute_outline_level(pt.wbs),
+                outline_level=compute_outline_level(pt.wbs_code),
             )
             db.add(t)
             await db.flush()
@@ -896,7 +919,7 @@ def _serialize_parsed_tasks(tasks: list[ParsedTask]) -> list[dict]:
         out.append(
             {
                 "row_number": t.row_number,
-                "wbs": t.wbs,
+                "wbs_code": t.wbs_code,
                 "name": t.name,
                 "start_date": t.start_date.isoformat() if t.start_date else None,
                 "end_date": t.end_date.isoformat() if t.end_date else None,
@@ -946,12 +969,12 @@ def _collect_import_warnings(parse_result: XlsxParseResult) -> list[dict]:
     ("1.1" sin "1") son un estilo de plan válido y serían puro ruido.
     """
     warnings = list(parse_result.warnings)
-    wbs_set = {t.wbs for t in parse_result.tasks if t.wbs}
+    wbs_set = {t.wbs_code for t in parse_result.tasks if t.wbs_code}
     orphans: list[str] = []
     for t in parse_result.tasks:
-        pw = parent_wbs(t.wbs)
+        pw = parent_wbs(t.wbs_code)
         if pw and "." in pw and pw not in wbs_set:
-            orphans.append(t.wbs or "")
+            orphans.append(t.wbs_code or "")
     if orphans:
         warnings.append(
             {
@@ -1023,7 +1046,7 @@ def _parse_for_preview(
                 ParsedTask(
                     row_number=int(t.external_id) if t.external_id.isdigit() else 0,
                     name=t.name,
-                    wbs=t.wbs,
+                    wbs_code=t.wbs_code,
                     start_date=t.start_date,
                     end_date=t.end_date,
                     duration_days=t.duration_days,
@@ -1378,8 +1401,8 @@ async def import_confirm(
                 ParsedTask(
                     row_number=int(d.get("row_number") or 0),
                     name=str(d.get("name") or "").strip(),
-                    wbs=(str(d["wbs"]).strip() or None)
-                    if d.get("wbs") is not None
+                    wbs_code=(str(d["wbs_code"]).strip() or None)
+                    if d.get("wbs_code") is not None
                     else None,
                     start_date=_coerce_date(d.get("start_date")),
                     end_date=_coerce_date(d.get("end_date")),
@@ -1420,9 +1443,9 @@ async def import_confirm(
 
     class _TaskShim:
         def __init__(self, pt: ParsedTask):
-            self.external_id = pt.wbs or f"row-{pt.row_number}"
+            self.external_id = pt.wbs_code or f"row-{pt.row_number}"
             self.name = pt.name
-            self.wbs = pt.wbs
+            self.wbs_code = pt.wbs_code
             self.start_date = pt.start_date
             self.end_date = pt.end_date
             self.duration_days = pt.duration_days
@@ -1493,14 +1516,14 @@ async def import_confirm(
             ).scalars().first()
         if existing is not None:
             existing.name = pt.name
-            existing.wbs = pt.wbs
+            existing.wbs_code = pt.wbs_code
             existing.start_date = pt.start_date
             existing.end_date = pt.end_date
             existing.duration_days = pt.duration_days
             existing.progress = pt.progress
             existing.is_milestone = pt.is_milestone
             existing.source = source_label
-            existing.outline_level = compute_outline_level(pt.wbs)
+            existing.outline_level = compute_outline_level(pt.wbs_code)
             # ENH-191: estado del archivo manda solo si vino reconocido.
             if getattr(pt, "status", None):
                 existing.status = pt.status
@@ -1529,7 +1552,7 @@ async def import_confirm(
                 ic_value = (crit or "medium") in ("high", "critical")
             t = Task(
                 tenant_id=str(tenant_id), project_id=str(p.id),
-                name=pt.name, wbs=pt.wbs,
+                name=pt.name, wbs_code=pt.wbs_code,
                 start_date=pt.start_date, end_date=pt.end_date,
                 duration_days=pt.duration_days, progress=pt.progress,
                 is_milestone=pt.is_milestone,
@@ -1537,7 +1560,7 @@ async def import_confirm(
                 status=getattr(pt, "status", None) or "not_started",
                 source=source_label, external_id=pt.external_id,
                 imported_at=datetime.now(UTC),
-                outline_level=compute_outline_level(pt.wbs),
+                outline_level=compute_outline_level(pt.wbs_code),
                 criticality=crit or "medium",
                 is_critical=ic_value,
                 area_id=_resolve_area(getattr(pt, "area_raw", None)),
@@ -1585,8 +1608,8 @@ async def import_confirm(
     # Primera ocurrencia gana ante WBS duplicados (consistente con merge).
     _by_wbs: dict[str, Task] = {}
     for _t in created.values():
-        if _t.wbs and _t.wbs not in _by_wbs:
-            _by_wbs[_t.wbs] = _t
+        if _t.wbs_code and _t.wbs_code not in _by_wbs:
+            _by_wbs[_t.wbs_code] = _t
 
     preds_skipped: list[str] = []
     dep_count = 0
@@ -1627,7 +1650,7 @@ async def import_confirm(
         # ciclos con las ya asignadas. Best-effort: un ciclo no aborta el
         # import, solo omite las predecesoras de esa tarea.
         raw_preds = getattr(pt, "predecessors_raw", None)
-        if raw_preds and t.wbs:
+        if raw_preds and t.wbs_code:
             tokens = [
                 tok.strip()
                 for tok in str(raw_preds).replace(";", ",").split(",")
@@ -1635,15 +1658,15 @@ async def import_confirm(
             ]
             cleaned = []
             for tok in tokens:
-                if tok != t.wbs and tok in _by_wbs and tok not in cleaned:
+                if tok != t.wbs_code and tok in _by_wbs and tok not in cleaned:
                     cleaned.append(tok)
             if cleaned:
                 try:
                     t.predecessors = validate_predecessors(
-                        cleaned, _by_wbs, t.wbs
+                        cleaned, _by_wbs, t.wbs_code
                     )
                 except Exception:
-                    preds_skipped.append(t.wbs)
+                    preds_skipped.append(t.wbs_code)
                     continue
                 for tok in t.predecessors or []:
                     pre = _by_wbs.get(tok)
@@ -1826,7 +1849,7 @@ async def gantt_view(
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
     ).scalars().all()
     # BUG-066: el Gantt debe respetar el orden WBS igual que list_tasks.
-    tasks = sorted(tasks, key=lambda t: wbs_sort_key(t.wbs))
+    tasks = sorted(tasks, key=lambda t: wbs_sort_key(t.wbs_code))
     deps = (
         await db.execute(
             select(TaskDependency).where(
@@ -1837,7 +1860,7 @@ async def gantt_view(
     return {
         "tasks": [
             {
-                "id": str(t.id), "name": t.name, "wbs": t.wbs,
+                "id": str(t.id), "name": t.name, "wbs_code": t.wbs_code,
                 "start": t.start_date.isoformat() if t.start_date else None,
                 "end": t.end_date.isoformat() if t.end_date else None,
                 "progress": t.progress, "is_milestone": t.is_milestone,

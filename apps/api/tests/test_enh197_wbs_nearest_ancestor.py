@@ -15,9 +15,9 @@ from app.services.plan_metadata import (
 )
 
 
-def _t(id_: str, wbs: str | None, progress: int = 0) -> Task:
+def _t(id_: str, wbs_code: str | None, progress: int = 0) -> Task:
     return Task(
-        id=id_, tenant_id="t", project_id="p", name=id_, wbs=wbs,
+        id=id_, tenant_id="t", project_id="p", name=id_, wbs_code=wbs_code,
         progress=progress, is_milestone=False, status="not_started",
     )
 

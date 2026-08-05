@@ -59,7 +59,7 @@ class PlanExportContext:
 
     area_names: dict[str, str] = field(default_factory=dict)  # area_id → nombre
     actor_names: dict[str, str] = field(default_factory=dict)  # actor_id → nombre
-    milestone_wbs: dict[str, str] = field(default_factory=dict)  # task_id → wbs
+    milestone_wbs: dict[str, str] = field(default_factory=dict)  # task_id → wbs_code
 
 
 def plan_order(tasks: list[Task]) -> list[Task]:
@@ -70,14 +70,14 @@ def plan_order(tasks: list[Task]) -> list[Task]:
         key=lambda t: (
             t.position is None,
             t.position if t.position is not None else 0,
-            wbs_sort_key(t.wbs),
+            wbs_sort_key(t.wbs_code),
         ),
     )
 
 
 def _row(task: Task, ctx: PlanExportContext) -> list[object]:
     return [
-        task.wbs or "",
+        task.wbs_code or "",
         task.name or "",
         task.outline_level if task.outline_level is not None else "",
         task.start_date.isoformat() if task.start_date else "",

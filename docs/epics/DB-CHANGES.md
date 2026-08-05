@@ -683,3 +683,40 @@ pasó de `by_function` a `by_discipline` para no reabrir el mismo desajuste.
 
 **Reversible**, ejercitada contra Postgres 16: sube, baja y los datos —incluidos
 los nulos— quedan intactos en los dos sentidos.
+
+---
+
+## Migración 0100 — `tasks.wbs` → `tasks.wbs_code` (D-3 / ADR-020)
+
+`ALTER TABLE tasks RENAME COLUMN wbs TO wbs_code`, vía `batch_alter_table` por
+la misma razón que 0099. **No toca datos**: `String(64)` sin `CHECK` ni índice.
+
+La columna guardaba el **código** de la EDT (`1.2.3`), no la estructura — esa
+vive en `parent_id` y `outline_level`. El propio modelo lo delataba: documentaba
+«predecessors / successors como JSON array de **wbs_code**» mientras la columna
+se llamaba `wbs`.
+
+**`predecessors` y `successors` no se migran.** Son listas JSON de códigos, no
+claves foráneas: su contenido es el mismo antes y después. Lo que sí se revisó
+—y va en el mismo commit— es todo el código que las cruzaba contra `task.wbs`.
+
+**La palabra «WBS» no se retira, y ahí está la parte delicada.** Siguen igual:
+
+- la cabecera `WBS` del Excel que descarga y sube el usuario (`plan-template.ts`);
+- los alias que el importador acepta como cabecera (`wbs`, `edt`, `código`…);
+- los códigos de diagnóstico `WBS_MISSING`, `WBS_DUPLICATED`, `WBS_ORPHAN_LEVELS`,
+  `WBS_GAPS`, `WBS_NUMERIC_GENERAL`;
+- el elemento `<WBS>` de MS Project y la clave `wbs` del JSON de MPXJ;
+- la ruta `POST /projects/{id}/tasks/renumber-wbs`;
+- la clave `plan-wbs-level:<id>` de `localStorage`, que guarda el nivel de
+  agrupación: renombrarla habría reseteado la preferencia de todo el mundo sin
+  un solo error.
+
+**Ventana de compatibilidad** en las dos puertas del cuerpo —`TaskCreate` y
+`TaskUpdate`— vía `AliasChoices`. La del PATCH importa más de lo que parece: sin
+alias, mandar `wbs` no fallaría, simplemente **no cambiaría nada**.
+
+La salida es siempre `wbs_code`. Se cuenta por `compat.nombre_viejo`.
+
+**Reversible**, ejercitada contra el esquema real de `Base.metadata`: sube, baja
+y el código sobrevive en los dos sentidos.

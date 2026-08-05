@@ -27,7 +27,7 @@ Gestionar el ciclo de vida completo de un proyecto: creación (manual o desde so
 
 | Filtro | Tipo |
 |---|---|
-| Fase (toggle chips) | `planning`/`execution`/`support`/`closed` multiselect |
+| Fase (toggle chips) | `planning`/`execution`/`hypercare`/`closed`/`cancelled` multiselect |
 | Organización | select |
 | Programa | select (depende de org) |
 | Tipo | multiselect |
@@ -148,10 +148,20 @@ declarable manualmente con razón
   (`auto`|`manual`) + `health_reason`, absorbe `status_rag` como el caso
   `health_source='manual'` y **dropea la columna** `status_rag`.
 - `services/project_health.py`: motor de reglas por **dimensión** —
-  cronograma, presupuesto, riesgos/issues, decisiones (recursos queda
-  como hook, activado después por US-183 en EP017). Umbrales
-  configurables **por tenant** (`tenants.settings.health_thresholds`).
-  El color global = la peor dimensión. Función bulk (`refresh_health_bulk`)
+  cronograma, presupuesto, riesgos/issues, decisiones y recursos (esta
+  última activada por US-183 en EP017). Umbrales configurables **por
+  tenant** (`tenants.settings.health_thresholds`), **las cinco desde la
+  misma llave** desde D-4: recursos se configuraba en
+  `capacity_thresholds` y dos de sus reglas estaban escritas a fuego.
+  El color global = la peor dimensión.
+- **El presupuesto se mide contra el avance, no contra sí mismo** (D-4,
+  2026-08-05). La dimensión calcula un **índice de consumo** —
+  `(gastado/presupuesto) ÷ (avance/100)`, el inverso del CPI de valor
+  ganado—: vale 1,0 cuando se gasta al ritmo que se avanza. Antes
+  comparaba el ratio crudo, y un proyecto con el **85 % del presupuesto
+  gastado y el 10 % de avance salía verde**. Sin avance la dimensión
+  queda **sin color**, igual que sin presupuesto configurado: dividir por
+  cero no es «rojo», es «todavía no se puede decir». Función bulk (`refresh_health_bulk`)
   para recalcular en batch desde snapshots/dashboards sin N+1.
 - `health_source='auto'`: el color lo calcula el motor de reglas en cada
   refresh. `health_source='manual'`: el PM hizo override y el color queda
@@ -203,10 +213,22 @@ Evaluaciones de salud manual con historial (US-191/US-192, ver también EP004):
 **Transiciones válidas:**
 
 ```
-planning → execution → support → closed
-planning → closed (cancelado)
-execution → closed (cancelado)
+planning → execution → hypercare → closed
+                    ↘         ↘
+       cualquiera de las tres → cancelled
 ```
+
+`hypercare` se llamaba `support` hasta el 2026-08-05 (D-2 / ADR-019); el API
+sigue aceptando el nombre viejo a la entrada y devuelve siempre el canónico.
+
+**`cancelled` es un final distinto de `closed`** (ADR-022, 2026-08-05). Antes,
+un proyecto cortado a mitad se registraba como `closed` —esta misma epic lo
+documentaba como «`closed` (cancelado)»— y quedaba indistinguible de uno que
+llegó al final: contaba como entregado en toda métrica de éxito y sus lecciones
+se mezclaban con las de los que cumplieron.
+
+Los dos son **terminales** y ninguno cuenta como fase activa. `closed` no lleva
+a `cancelled`: un proyecto que llegó al final ya tuvo su final.
 
 **Criterios de aceptación:**
 - [ ] `POST /api/v1/projects/{id}/phase/change` con `{new_phase, comment?}`.

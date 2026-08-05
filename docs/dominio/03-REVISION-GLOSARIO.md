@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **Resuelto.** Las nueve decididas; de D-4 falta calibrar valores, no decidir forma |
+| Estado | **Cerrado.** Las nueve decididas y ejecutadas; D-4 calibrada el 2026-08-05 |
 | Método | Cada término vetado del §6 del glosario, contrastado contra el código de hoy |
-| Efecto | `02-GLOSARIO.md` deja de ser borrador salvo en el umbral del semáforo |
+| Efecto | `02-GLOSARIO.md` deja de ser borrador |
 
 ---
 
@@ -25,8 +25,8 @@ descrito como más barato resultó ser el más caro.
 |---|---|---|---|
 | D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
 | D-2 | `support` como fase | **Renombrar a `hypercare`** (2026-08-05) — ADR-019 | Migración + contrato + UI |
-| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | 259 ocurrencias, 22 archivos |
-| D-4 | Umbral del semáforo | **Uno por dimensión** (2026-08-05). Los valores, pendientes | Los valores necesitan un proyecto real |
+| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | ✅ **hecha** 2026-08-05 — US-194, mig 0100 |
+| D-4 | Umbral del semáforo | **Uno por dimensión** + calibrado — ✅ hecho 2026-08-05 (US-196) | Medio — el presupuesto cambió de fórmula |
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
 | D-6 | Línea base | **Al roadmap** | Épica propia |
 | D-7 | Dos paletas de salud | **Unificar** — ✅ hecho 2026-08-05 | Bajo |
@@ -93,7 +93,11 @@ De los dos huecos que la decisión no cubría, el owner resolvió el 2026-08-05:
 
 - **`cancelled`: sí.** Hoy un proyecto cortado a mitad queda `closed`,
   indistinguible de uno que cumplió — ensucia cualquier métrica de éxito y las
-  lecciones aprendidas. Necesita ADR y US propias.
+  lecciones aprendidas. **Hecha el 2026-08-05** (ADR-022, US-195). Salió **sin
+  migración**: `phase` es `String(32)` sin `CHECK`, así que añadir un valor no
+  toca el esquema. De paso, `ACTIVE_PHASES` pasó a **derivarse** del vocabulario
+  en vez de repetirlo — era el sitio que en D-2 se quedó con el nombre viejo sin
+  fallar.
 - **`initiation`: no.** El proyecto nace en `planning` aunque el acta sea previa,
   y eso no ha causado ningún problema reportado.
 
@@ -111,7 +115,17 @@ columna de la línea 29 se llama `wbs`.
 Cuesta migración de columna + campo de la API + frontend + el parser de import.
 Va con ADR y US propia.
 
-## D-4. Umbral del semáforo — la forma decidida, los valores no
+**Hecha el 2026-08-05** — US-194, ADR-020, migración 0100. Lo que la ejecución
+enseñó y la medición no anticipaba: la parte cara no fueron las 259 ocurrencias
+—un `sed` sobre el identificador resuelve casi todas— sino los **siete sitios
+donde `wbs` no era nuestro campo**: la cabecera del Excel del usuario, los alias
+del importador, los cinco códigos `WBS_*` de diagnóstico, el elemento `<WBS>` de
+MS Project, la clave del JSON de MPXJ, la ruta `renumber-wbs` y la clave
+`plan-wbs-level:<id>` de `localStorage`. Esta última era la única capaz de
+romperse **en silencio**: habría reseteado el nivel de agrupación guardado de
+todos los usuarios sin producir un solo error.
+
+## D-4. Umbral del semáforo — forma y valores
 
 **La duda original del owner era si había uno o varios.** Resuelta el
 2026-08-05: **uno por dimensión**.
@@ -126,10 +140,26 @@ Y responde a la intuición que dio origen a la duda: **no es lo mismo el umbral
 de cronograma que el de costo**. Un 10 % de desviación en presupuesto y un 10 %
 en fechas no significan lo mismo para nadie.
 
-**Los valores siguen pendientes, y a propósito.** Necesitan un proyecto real con
-desviación medible contra el que calibrar; cualquier número escrito hoy sería
-inventado. Lo que se decidió es la **forma**, que es lo que se puede decidir sin
-datos y lo que bloqueaba diseñar la funcionalidad.
+**Calibrada el 2026-08-05** (US-196). Al ir a poner los valores aparecieron dos
+cosas que ningún número arreglaba:
+
+1. **El presupuesto no miraba el tiempo.** Comparaba `gastado / presupuesto` sin
+   avance ni fecha, así que un proyecto con el **85 % del presupuesto gastado y
+   el 10 % de avance salía verde**. Ahora usa un **índice de consumo**
+   —`(gastado/presupuesto) ÷ (avance/100)`, el inverso del CPI—, que en ese caso
+   da 8,5. Sin avance la dimensión queda sin color, no en rojo.
+2. **Casi todos los amarillos disparaban con el primer caso.** Cuatro de las
+   cinco dimensiones tenían el piso en 0 o 1 —un riesgo severo, una decisión
+   estancada, cualquier sobreasignación—, lo que en cartera real es amarillo
+   permanente. Un semáforo siempre amarillo dejó de informar.
+
+Más una de estructura: recursos se configuraba en `capacity_thresholds`, otra
+llave, con dos reglas escritas a fuego. Las cinco dimensiones se ajustan ahora
+desde `health_thresholds`.
+
+**Los valores son razonados, no medidos** — no había cartera real contra la cual
+contrastarlos. Por eso lo que importa es que sean settings por inquilino:
+calibrar de verdad no necesita tocar código.
 
 Mientras tanto, `health_source = 'manual'` con `health_reason` obligatoria sigue
 siendo la salida honesta: el semáforo es un juicio declarado, no un cálculo.

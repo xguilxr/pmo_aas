@@ -54,7 +54,7 @@ async def _setup(client, db_session, slug, n_tasks=5):
             Task(
                 tenant_id=str(t.id),
                 project_id=p.id,
-                wbs=f"{(i % 3) + 1}.{i // 3 + 1}",
+                wbs_code=f"{(i % 3) + 1}.{i // 3 + 1}",
                 name=f"Task {i}",
                 status="in_progress",
                 start_date=today - timedelta(days=10 - i),
@@ -117,7 +117,7 @@ async def test_tc236_placeholder_on_large_project(db_session):
             Task(
                 tenant_id=str(t.id),
                 project_id=p.id,
-                wbs=f"{i + 1}",  # cada uno único en WBS-1
+                wbs_code=f"{i + 1}",  # cada uno único en WBS-1
                 name=f"T{i}",
                 status="in_progress",
                 start_date=date(2026, 1, 1),

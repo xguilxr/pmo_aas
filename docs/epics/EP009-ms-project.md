@@ -48,10 +48,10 @@ Eliminar el ping-pong de archivos MS Project entre PMs: importar `.xml`, `.xlsx`
 - [ ] Formatos aceptados MVP: `application/xml` (MSP XML), `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 - [ ] Max 50 MB.
 - [ ] Response 202 + `job_id`.
-- [ ] Worker parsea y extrae: `name`, `wbs`, `start_date`, `end_date`, `duration_days`, `progress`, `is_milestone`, `predecessors` (con tipo FS/SS/FF/SF y lag), `resource_names`, `notes`.
+- [ ] Worker parsea y extrae: `name`, `wbs_code`, `start_date`, `end_date`, `duration_days`, `progress`, `is_milestone`, `predecessors` (con tipo FS/SS/FF/SF y lag), `resource_names`, `notes`.
 - [ ] **Vista previa** antes de confirmar: tabla con las tareas, checkboxes para excluir, alertas por errores.
 - [ ] `POST /api/v1/projects/{id}/tasks/import/{job_id}/confirm` aplica import con selección.
-- [ ] Re-import permitido: `--strategy=merge|replace`. `merge` matchea por `external_id` o `wbs`.
+- [ ] Re-import permitido: `--strategy=merge|replace`. `merge` matchea por `external_id` o `wbs_code`.
 - [ ] Mapeo de recursos → users del tenant por nombre (fuzzy match ≥ 0.85); UI permite corregir mapping.
 - [ ] Log: tareas importadas / ignoradas / errores, visible en detalle del job.
 
@@ -304,7 +304,7 @@ implementó.
 |---|---|
 | `name` | ✅ |
 | `description` | |
-| `wbs` | **ENH-181 (2026-06-29):** WBS automatizable en el form de nueva/editar tarea — selecciona padre y "Bajar nivel" asigna el siguiente número WBS disponible. Reemplaza al Auto-WBS (removido). Campo sigue editable a mano. |
+| `wbs_code` | **ENH-181 (2026-06-29):** WBS automatizable en el form de nueva/editar tarea — selecciona padre y "Bajar nivel" asigna el siguiente número WBS disponible. Reemplaza al Auto-WBS (removido). Campo sigue editable a mano. |
 | `position` | **ENH-180 (2026-06-29):** reordenamiento por arrastre (`POST /projects/{id}/tasks/{id}/move`) y botón Auto-WBS (`renumber-wbs`) fueron removidos de la UI. Endpoints siguen existiendo pero no se usan. Agrupación jerárquica por WBS (colapsar/expandir) es el mecanismo por default. |
 | `parent_id` | tarea padre |
 | `start_date`, `end_date` | fecha planeada |

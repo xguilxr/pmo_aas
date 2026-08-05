@@ -15,7 +15,7 @@ export type TaskOwnerMini = {
 export type Task = {
   id: string;
   project_id: string;
-  wbs: string | null;
+  wbs_code: string | null;
   parent_id: string | null;
   name: string;
   start_date: string | null;
@@ -40,7 +40,7 @@ export type Task = {
   is_critical?: boolean;
   // ENH-050: hito relacionado (FK self a otra task con is_milestone=true).
   related_milestone_id: string | null;
-  related_milestone: { id: string; name: string; wbs: string | null } | null;
+  related_milestone: { id: string; name: string; wbs_code: string | null } | null;
   // US-090: outline + predecessors / successors.
   outline_level: number | null;
   predecessors: string[] | null;
@@ -52,7 +52,7 @@ export type Task = {
 export type TaskCreateBody = {
   name: string;
   description?: string | null;
-  wbs?: string | null;
+  wbs_code?: string | null;
   parent_id?: string | null;
   start_date?: string | null;
   end_date?: string | null;
@@ -104,7 +104,7 @@ export type GanttData = {
   tasks: {
     id: string;
     name: string;
-    wbs: string | null;
+    wbs_code: string | null;
     start: string | null;
     end: string | null;
     progress: number;
@@ -212,7 +212,7 @@ function safeParse(text: string): unknown {
 // re-mapear a mano).
 export const SYSTEM_FIELDS = [
   "name",
-  "wbs",
+  "wbs_code",
   "start_date",
   "end_date",
   "duration_days",
@@ -271,7 +271,7 @@ export type ImportConfirmResult = {
 // estado normalizado) — la vista previa "como quedará el plan".
 export type ParsedPreviewTask = {
   row_number: number;
-  wbs: string | null;
+  wbs_code: string | null;
   name: string;
   start_date: string | null;
   end_date: string | null;
@@ -432,7 +432,7 @@ export function importAiStructure(
 
 export const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
   name: "Nombre (obligatorio)",
-  wbs: "WBS / EDT",
+  wbs_code: "WBS / EDT",
   start_date: "Fecha inicio",
   end_date: "Fecha fin",
   duration_days: "Duración (días)",

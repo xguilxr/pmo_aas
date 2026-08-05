@@ -14,10 +14,10 @@ from app.services.plan_metadata import (
 )
 
 
-def _t(wbs: str, progress: int) -> Task:
+def _t(wbs_code: str, progress: int) -> Task:
     """Task en memoria. `progress` de los padres se pone en 0 a propósito
     para demostrar que el rollup lo sobrescribe."""
-    return Task(id=wbs, wbs=wbs, progress=progress, name=f"T{wbs}")
+    return Task(id=wbs_code, wbs_code=wbs_code, progress=progress, name=f"T{wbs_code}")
 
 
 # Ejemplo literal del owner (los padres llevan progress=0 almacenado; el
@@ -106,11 +106,11 @@ def test_empty_plan_returns_none():
 
 def test_task_without_wbs_is_root_leaf():
     tasks = [_t("1", 0), _t("1.1", 40), _t("1.2", 60)]
-    no_wbs = Task(id="x", wbs=None, progress=20, name="suelta")
+    no_wbs = Task(id="x", wbs_code=None, progress=20, name="suelta")
     tasks.append(no_wbs)
     roll = compute_wbs_rollup(tasks)
     assert round_half_up(roll["1"]) == 50  # (40+60)/2
-    assert roll["x"] == 20.0  # hoja sin wbs conserva su valor
+    assert roll["x"] == 20.0  # hoja sin wbs_code conserva su valor
     # raíces = "1" (rollup 50) + "x" (20) → general (50+20)/2 = 35.
     assert round_half_up(compute_plan_rollup_progress(tasks)) == 35
 

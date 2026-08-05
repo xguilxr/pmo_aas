@@ -1090,3 +1090,50 @@ Branch `claude/laughing-carson-stUJu` (19 commits sobre `origin/main` con #511 y
 2. **S-07 Curva-S reactivada** (estaba "descartada"): el planeado se deriva lineal de `start_date`→`end_date`.
 3. **Reportes N1/N2 viven fuera del Report Builder** (que es project-only por migración 0078): generación on-demand vía endpoints dedicados, sin persistir `Report` rows (la persistencia L1/L2 sigue como backlog v2.0).
 4. **Vistas agregadas accesibles a PMs** scoped a sus proyectos (decisión owner 2026-05-26).
+
+---
+
+## Sesión 2026-08-05 — auditoría + producto (branch `claude/audit-continuation-fzrtko`)
+
+Dos PR: **#577** (remediación post-R1) y el que sigue. Todo verificado por
+mutación, un commit por item.
+
+### Conformidad
+
+- **SUM-02** contenedor sin privilegios · **DES-03** `/health` con `SELECT 1`
+  acotado y 503 · **DIS-02** 34/34 pares AA en los dos temas + job
+  `contraste-wcag` · **AM-09** límite por IP en el login · **AM-08/SEG-07**
+  `audit_log` de solo anexado · **SEG-01** PyJWT · **D-7** y **D-9**.
+- **AUT-01** cerró con evidencia observada: el guard interceptó dos comandos en
+  sesión real. Con CAP-01 (#576), **MCA alcanza N2**, su objetivo.
+- **OPS-02**: el worker no reportaba a Sentry — `sentry_sdk.init` vivía en
+  `main.py` y ese proceso arranca `celery` directo. La mitad de producción
+  quedaba muda, y era la que menos se ve.
+
+### Producto
+
+| Item | Qué | Migración |
+|---|---|---|
+| ENH-202 | Helvetica en los cuatro caminos de export; cerró AM-12 | — |
+| D-2 | `support` → `hypercare` (ADR-019) | 0098 |
+| D-8 | `portfolio_function` → `discipline` (ADR-021) | 0099 |
+| AM-10 | Bloqueo de cuenta → retardo creciente | — |
+| US-194 | `tasks.wbs` → `wbs_code` (D-3, ADR-020) | **0100** |
+| US-195 | Fase `cancelled` (ADR-022) | sin migración |
+| US-196 | D-4: índice de consumo + pisos de amarillo | — |
+| US-197 | Paleta de gráficos, arco frío (ADR-023) | — |
+
+### Hallazgos que la medición no podía ver
+
+1. **El `REVOKE` de AM-08 no habría funcionado** — la aplicación se conecta con
+   el rol dueño y en PostgreSQL el dueño conserva privilegios. Van disparadores.
+2. **Los informes llevaban meses saliendo en DejaVu Sans**: el CSS pedía DM Sans
+   y la imagen no instalaba ninguna de las fuentes declaradas.
+3. **PyJWT 2.10.1 traía 7 CVE propias** — la migración cambiaba cinco por siete.
+   Lo cazó `pip-audit` en el primer CI; se subió a 2.13.0.
+4. **La migración 0098 escribía en `lessons_learned`**, tabla inexistente, y su
+   prueba fijaba el literal del código fuente en vez de la propiedad.
+5. **El presupuesto del semáforo no miraba el tiempo**: 85 % gastado con 10 % de
+   avance salía verde.
+6. **`#dc2626` marcaba «ruta crítica» y el semáforo «en problemas»** en la misma
+   página.

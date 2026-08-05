@@ -26,7 +26,11 @@ class Task(Base, TimestampMixin):
     project_id: Mapped[UUID] = mapped_column(
         String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    wbs: Mapped[str | None] = mapped_column(String(64))
+    # D-3 / ADR-020: se llamaba `wbs`. Lo que guarda es el **código** de la EDT
+    # (`1.2.3`), no la estructura — esa vive en `parent_id` y `outline_level`.
+    # La estructura se sigue llamando WBS en la interfaz y en los archivos del
+    # usuario; lo que se renombra es solo el campo que guarda el código.
+    wbs_code: Mapped[str | None] = mapped_column(String(64))
     # US-176: orden manual del plan (reorder por fila). Null = sin reordenar
     # (cae al orden natural por WBS). Cuando se setea, manda sobre el WBS.
     position: Mapped[int | None] = mapped_column(Integer, index=True)
@@ -85,7 +89,7 @@ class Task(Base, TimestampMixin):
         ForeignKey("actors.id", ondelete="SET NULL"),
         index=True,
     )
-    # US-090: outline_level computado desde wbs.split('.').length.
+    # US-090: outline_level computado desde wbs_code.split('.').length.
     outline_level: Mapped[int | None] = mapped_column(SmallInteger)
     # US-090: predecessors / successors como JSON array de wbs_code.
     # `predecessors` es authoritative; `successors` es derivado en write

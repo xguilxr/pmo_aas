@@ -240,16 +240,48 @@ function EmptyCanvas({ size, label }: { size: number; label: string }) {
   );
 }
 
+/**
+ * ADR-023 — colores de serie. Espejo de `app/core/paleta.py` vía tokens.
+ *
+ * Este mapa ofrecía `success`, `warning` y `danger` como colores de SERIE, así
+ * que una serie cualquiera podía salir verde, amarilla o roja sin querer decir
+ * nada — al lado de un semáforo donde esos mismos colores sí significan algo.
+ * Ya no están: la salud tiene `HEALTH_FILL` y nadie más los usa.
+ *
+ * El orden de `series` es el mecanismo de seguridad para daltonismo. Se asignan
+ * en secuencia con `serieColor()` y no se reciclan.
+ */
 export const PALETTE = {
   accent: "var(--color-accent)",
   primary: "var(--color-primary)",
   secondary: "var(--color-secondary)",
-  success: "var(--color-success-fg)",
-  warning: "var(--color-warning-fg)",
-  danger: "var(--color-danger-fg)",
-  info: "var(--color-info-fg)",
-  neutral: "var(--color-muted)",
+  neutral: "var(--chart-neutral)",
+  neutralSoft: "var(--chart-neutral-soft)",
+  series: [
+    "var(--chart-cat-1)",
+    "var(--chart-cat-2)",
+    "var(--chart-cat-3)",
+    "var(--chart-cat-4)",
+  ],
+  /** Secuencia (fase, tramo, tamaño): un solo tono, claro → oscuro. */
+  scale: [
+    "var(--chart-ord-1)",
+    "var(--chart-ord-2)",
+    "var(--chart-ord-3)",
+    "var(--chart-ord-4)",
+    "var(--chart-ord-5)",
+  ],
 };
+
+/**
+ * Color de la serie `i` (0-based). Devuelve el neutro en vez de reciclar: una
+ * quinta serie con el color de la primera es un gráfico que miente sobre
+ * cuántas cosas distintas muestra. Si hacen falta más de cuatro, la respuesta
+ * es plegar el resto en «Otros» o partir en múltiplos pequeños.
+ */
+export function serieColor(i: number): string {
+  return PALETTE.series[i] ?? PALETTE.neutral;
+}
 
 // ===========================================================================
 // US-153 — Primitivos para dashboards N1/N2 (Gauge, TrendLines, RiskMatrix,
@@ -260,6 +292,19 @@ const HEALTH_FILL: Record<string, string> = {
   green: "var(--color-success-fg)",
   yellow: "var(--color-warning-fg)",
   red: "var(--color-danger-fg)",
+};
+
+/**
+ * ADR-023: el `tone` de un medidor es un ESTADO, no una serie — «este número
+ * está bien / mal»—, así que aquí el semáforo sí corresponde. Va en su propio
+ * mapa para que no vuelva a colarse entre los colores de serie de `PALETTE`.
+ */
+const GAUGE_TONE: Record<string, string> = {
+  accent: PALETTE.accent,
+  primary: PALETTE.primary,
+  success: "var(--color-success-fg)",
+  warning: "var(--color-warning-fg)",
+  danger: "var(--color-danger-fg)",
 };
 
 /** Dona de progreso/desviación con el valor al centro (0-100). */
@@ -282,7 +327,7 @@ export function Gauge({
   const cx = size / 2;
   const r = size / 2 - thickness / 2 - 2;
   const circ = TAU * r;
-  const stroke = PALETTE[tone] ?? PALETTE.accent;
+  const stroke = GAUGE_TONE[tone] ?? PALETTE.accent;
   return (
     <svg width={size} height={size} role="img" aria-label={ariaLabel}>
       <g transform={`rotate(-90 ${cx} ${cx})`}>

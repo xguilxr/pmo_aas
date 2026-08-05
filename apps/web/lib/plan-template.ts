@@ -77,7 +77,7 @@ export type TemplateProjectInfo = {
 };
 
 export type PlanExportRow = {
-  wbs: string;
+  wbs_code: string;
   name: string;
   outline: number | null;
   start: Date | null;
@@ -293,7 +293,7 @@ export async function buildPlanWorkbook(
     ws.getCell(r, 12).alignment = { horizontal: "center" };
 
     if (row) {
-      ws.getCell(r, 1).value = row.wbs;
+      ws.getCell(r, 1).value = row.wbs_code;
       ws.getCell(r, 2).value = row.name;
       ws.getCell(r, 3).value = row.outline ?? "";
       ws.getCell(r, 4).value = row.start ?? "";
@@ -453,9 +453,9 @@ export async function buildPlanWorkbook(
       ["1", "Preparación", today, in10, 0, STATUS_LABELS.not_started],
       ["1.1", "Kickoff del proyecto", today, in3, 0, STATUS_LABELS.not_started],
     ];
-    example.forEach(([wbs, name, st, en, prog, status], i) => {
+    example.forEach(([wbs_code, name, st, en, prog, status], i) => {
       const r = FIRST + i;
-      ws.getCell(r, 1).value = wbs;
+      ws.getCell(r, 1).value = wbs_code;
       const nc = ws.getCell(r, 2);
       nc.value = name;
       nc.font = { name: XLSX_FONT, size: 9, italic: true, color: { argb: DARK } };

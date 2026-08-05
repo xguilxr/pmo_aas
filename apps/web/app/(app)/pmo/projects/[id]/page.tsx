@@ -42,10 +42,11 @@ import {
 import { cn } from "@/lib/cn";
 
 const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
-  planning: ["execution", "closed"],
-  execution: ["hypercare", "closed"],
-  hypercare: ["closed"],
+  planning: ["execution", "closed", "cancelled"],
+  execution: ["hypercare", "closed", "cancelled"],
+  hypercare: ["closed", "cancelled"],
   closed: [],
+  cancelled: [],
 };
 
 function formatMxn(v: string | number | null): string {
@@ -494,11 +495,17 @@ export default function ProjectDetailPage() {
 }
 
 function PhaseBadge({ phase }: { phase: ProjectPhase }) {
-  const map: Record<ProjectPhase, "info" | "success" | "warning" | "neutral"> = {
+  const map: Record<
+    ProjectPhase,
+    "info" | "success" | "warning" | "neutral" | "danger"
+  > = {
     planning: "info",
     execution: "success",
     hypercare: "warning",
     closed: "neutral",
+    // Cancelado NO es `neutral` como cerrado: distinguirlos de un vistazo es
+    // la razón de ser de ADR-022.
+    cancelled: "danger",
   };
   return <Badge variant={map[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }
@@ -632,7 +639,7 @@ function RaidCard({
 // mes). Read-only; vista panorámica sin entrar al tab Plan.
 function MiniGantt({ tasks }: { tasks: Task[] }) {
   const level1 = tasks.filter((t) =>
-    t.outline_level != null ? t.outline_level === 1 : !!t.wbs && !t.wbs.includes("."),
+    t.outline_level != null ? t.outline_level === 1 : !!t.wbs_code && !t.wbs_code.includes("."),
   );
   const dated = level1.filter((t) => t.start_date && t.end_date);
   const months: Date[] = [];
@@ -692,7 +699,7 @@ function MiniGantt({ tasks }: { tasks: Task[] }) {
               return (
                 <li key={t.id}>
                   <div className="mb-0.5 truncate text-[12px] text-[var(--text-secondary)]">
-                    {t.wbs ? `${t.wbs} ` : ""}
+                    {t.wbs_code ? `${t.wbs_code} ` : ""}
                     {t.name}
                   </div>
                   <div className="relative h-2.5 rounded bg-[var(--color-muted)]">

@@ -23,7 +23,10 @@ from io import BytesIO
 
 HEADER_ALIASES: dict[str, list[str]] = {
     "name": ["nombre", "tarea", "task name", "name", "nombre de tarea"],
-    "wbs": ["wbs", "edt", "codigo", "código"],
+    # D-3: la clave es el campo del sistema (`wbs_code`); los valores son las
+    # cabeceras que escribe el usuario en SU archivo. «wbs» sigue primero: el
+    # renombrado es interno y nadie va a reescribir su Excel por él.
+    "wbs_code": ["wbs", "wbs_code", "edt", "codigo", "código"],
     "start_date": ["inicio", "start", "fecha inicio", "start date", "fecha de inicio"],
     "end_date": ["fin", "finish", "fecha fin", "finish date", "end date", "fecha de fin"],
     "duration_days": [
@@ -88,7 +91,7 @@ HEADER_ALIASES: dict[str, list[str]] = {
 class ParsedTask:
     row_number: int
     name: str
-    wbs: str | None = None
+    wbs_code: str | None = None
     start_date: date | None = None
     end_date: date | None = None
     duration_days: int | None = None
@@ -501,10 +504,10 @@ def parse_xlsx(
     # de celdas numéricas (1.30 con formato '0.00' ≠ float 1.3).
     wbs_formats: dict[int, str] = (
         _scan_column_formats(
-            data, result.sheet_used, columns["wbs"],
+            data, result.sheet_used, columns["wbs_code"],
             min_row=header_row_idx + 1,
         )
-        if "wbs" in columns
+        if "wbs_code" in columns
         else {}
     )
     wbs_general_rows: list[int] = []
@@ -525,8 +528,8 @@ def parse_xlsx(
         # BUG-088: celda WBS numérica con fracción y sin formato decimal
         # explícito → los ceros finales son irrecuperables. Warning.
         raw_wbs = (
-            row[columns["wbs"]]
-            if "wbs" in columns and columns["wbs"] < len(row)
+            row[columns["wbs_code"]]
+            if "wbs_code" in columns and columns["wbs_code"] < len(row)
             else None
         )
         if (
@@ -563,7 +566,7 @@ def parse_xlsx(
             task = ParsedTask(
                 row_number=offset,
                 name=str(name_cell).strip(),
-                wbs=_wbs_text(raw_wbs, wbs_formats.get(offset)),
+                wbs_code=_wbs_text(raw_wbs, wbs_formats.get(offset)),
                 start_date=_coerce_date(row[columns["start_date"]])
                 if "start_date" in columns and columns["start_date"] < len(row)
                 else None,

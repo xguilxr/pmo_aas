@@ -207,7 +207,7 @@ export function GanttView({ data }: { data: GanttData }) {
                     style={{ width: LEFT_COL, minWidth: LEFT_COL }}
                   >
                     <span className="font-mono text-[10px] text-[var(--text-tertiary)]">
-                      {t.wbs ?? "—"}
+                      {t.wbs_code ?? "—"}
                     </span>
                     <span className="truncate text-[var(--text-primary)]">{t.name}</span>
                     <span className="ml-auto tabular-nums text-[10px] text-[var(--text-tertiary)]">

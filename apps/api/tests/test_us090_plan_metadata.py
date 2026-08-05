@@ -1,10 +1,10 @@
 """US-090 — Plan: outline_level + duration auto + predecessors/successors.
 
 Cubre:
-- TC-090.1: wbs `1.2.3` → outline_level=3.
+- TC-090.1: wbs_code `1.2.3` → outline_level=3.
 - TC-090.2: start=01-01, end=01-05 → duration_days=5 (inclusivo).
 - TC-090.3: rango > 21 días → 422.
-- TC-090.4: A.predecessors=[B.wbs] → GET B.successors incluye A.wbs.
+- TC-090.4: A.predecessors=[B.wbs_code] → GET B.successors incluye A.wbs_code.
 - TC-090.5: A.predecessors=[B] + B.predecessors=[A] → 422 (cycle).
 - Predecessor inexistente → 422.
 """
@@ -49,7 +49,7 @@ async def test_tc090_1_outline_level_from_wbs(client, db_session):
     auth, proj = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj}/tasks",
-        json={"name": "T1", "wbs": "1.2.3"},
+        json={"name": "T1", "wbs_code": "1.2.3"},
         headers=auth["_authz"],
     )
     assert r.status_code == 201, r.text
@@ -63,7 +63,7 @@ async def test_tc090_2_duration_from_dates_inclusive(client, db_session):
         f"/api/v1/projects/{proj}/tasks",
         json={
             "name": "T1",
-            "wbs": "1",
+            "wbs_code": "1",
             "start_date": "2026-01-01",
             "end_date": "2026-01-05",
         },
@@ -107,18 +107,18 @@ async def test_tc090_4_successors_synced_from_predecessors(client, db_session):
     # B sin predecessors.
     b = await client.post(
         f"/api/v1/projects/{proj}/tasks",
-        json={"name": "Bee", "wbs": "1"},
+        json={"name": "Bee", "wbs_code": "1"},
         headers=auth["_authz"],
     )
     assert b.status_code == 201
     # A apunta a B.
     a = await client.post(
         f"/api/v1/projects/{proj}/tasks",
-        json={"name": "Alpha", "wbs": "2", "predecessors": ["1"]},
+        json={"name": "Alpha", "wbs_code": "2", "predecessors": ["1"]},
         headers=auth["_authz"],
     )
     assert a.status_code == 201, a.text
-    # GET list: B.successors debe contener "2" (wbs de A).
+    # GET list: B.successors debe contener "2" (wbs_code de A).
     lst = await client.get(
         f"/api/v1/projects/{proj}/tasks", headers=auth["_authz"]
     )
@@ -132,16 +132,16 @@ async def test_tc090_5_cycle_rejects(client, db_session):
     auth, proj = await _setup(client, db_session)
     a = await client.post(
         f"/api/v1/projects/{proj}/tasks",
-        json={"name": "Alpha", "wbs": "1"},
+        json={"name": "Alpha", "wbs_code": "1"},
         headers=auth["_authz"],
     )
     b = await client.post(
         f"/api/v1/projects/{proj}/tasks",
-        json={"name": "Bee", "wbs": "2", "predecessors": ["1"]},
+        json={"name": "Bee", "wbs_code": "2", "predecessors": ["1"]},
         headers=auth["_authz"],
     )
     assert b.status_code == 201, b.text
-    # Ahora intento cerrar el ciclo: A.predecessors=[B.wbs="2"].
+    # Ahora intento cerrar el ciclo: A.predecessors=[B.wbs_code="2"].
     a_id = a.json()["id"]
     r = await client.patch(
         f"/api/v1/tasks/{a_id}",
@@ -157,7 +157,7 @@ async def test_predecessor_unknown_wbs_rejects(client, db_session):
     auth, proj = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj}/tasks",
-        json={"name": "T1", "wbs": "1", "predecessors": ["999"]},
+        json={"name": "T1", "wbs_code": "1", "predecessors": ["999"]},
         headers=auth["_authz"],
     )
     assert r.status_code in (400, 422), r.text

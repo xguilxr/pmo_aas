@@ -12,7 +12,7 @@ Estrategia:
 Salida:
     {
       "<header original>": {
-        "field": "name|wbs|...|null",
+        "field": "name|wbs_code|...|null",
         "confidence": 0.0..1.0,
         "source": "ai|heuristic|none"
       },
@@ -31,7 +31,7 @@ from app.services.ai.untrusted import envolver_no_confiable
 
 SYSTEM_FIELDS: tuple[str, ...] = (
     "name",
-    "wbs",
+    "wbs_code",
     "start_date",
     "end_date",
     "duration_days",
@@ -53,7 +53,9 @@ SYSTEM_FIELDS: tuple[str, ...] = (
 # Sinónimos por field. Match case-insensitive contra el header.
 _SYNONYMS: dict[str, tuple[str, ...]] = {
     "name": ("tarea", "task", "title", "nombre", "actividad", "name"),
-    "wbs": ("wbs", "edt", "code", "código", "id"),
+    # D-3: clave = campo del sistema, valores = cabeceras del archivo del
+    # usuario. «wbs» no se retira de aquí; es lo que la gente tiene escrito.
+    "wbs_code": ("wbs", "wbs_code", "edt", "code", "código", "id"),
     "start_date": (
         "inicio", "start", "comienza", "fecha inicio", "start date",
     ),

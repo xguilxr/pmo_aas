@@ -107,7 +107,7 @@ async def test_bug078_merge_import_with_duplicate_external_id(client, db_session
     for i in range(2):
         db_session.add(Task(
             tenant_id=str(tenant_id), project_id=str(proj_id),
-            name=f"dup-{i}", wbs="1", external_id="1",
+            name=f"dup-{i}", wbs_code="1", external_id="1",
             status="not_started", source="manual",
         ))
     await db_session.commit()

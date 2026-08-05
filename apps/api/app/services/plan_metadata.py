@@ -1,11 +1,11 @@
 """US-090 — auto-computa metadata MS Project-like sobre `tasks`.
 
 Helpers usados desde el endpoint de tasks:
-- `compute_outline_level(wbs)` → smallint desde `wbs.split('.').length`.
+- `compute_outline_level(wbs_code)` → smallint desde `wbs_code.split('.').length`.
 - `compute_duration_days(start, end)` → días inclusivos.
 - `validate_duration_max_21(d)` → 422 si excede.
 - `validate_predecessors(predecessors, all_tasks_by_wbs, current_wbs)` →
-  cada wbs referenciado debe existir en el proyecto + DAG check.
+  cada wbs_code referenciado debe existir en el proyecto + DAG check.
 - `recompute_successors_for_project(db, project_id)` → barre todas las
   tasks del proyecto y reconstruye sus arrays `successors`.
 """
@@ -24,11 +24,11 @@ from app.models.task import Task
 DURATION_MAX_DAYS = 21
 
 
-def compute_outline_level(wbs: str | None) -> int | None:
-    """`wbs='1.2.3'` → 3. Sin wbs → None."""
-    if not wbs:
+def compute_outline_level(wbs_code: str | None) -> int | None:
+    """`wbs_code='1.2.3'` → 3. Sin wbs_code → None."""
+    if not wbs_code:
         return None
-    parts = [p for p in wbs.split(".") if p]
+    parts = [p for p in wbs_code.split(".") if p]
     return len(parts) or None
 
 
@@ -79,7 +79,7 @@ def validate_predecessors(
             continue
         if s not in by_wbs:
             raise validation_error(
-                f"predecessor wbs={s!r} no existe en el proyecto"
+                f"predecessor wbs_code={s!r} no existe en el proyecto"
             )
         cleaned.append(s)
         seen.add(s)
@@ -105,7 +105,7 @@ def validate_predecessors(
         for p in cleaned:
             if has_path_to_current(p):
                 raise validation_error(
-                    f"predecessors forma ciclo (vía wbs={p!r})"
+                    f"predecessors forma ciclo (vía wbs_code={p!r})"
                 )
     return cleaned
 
@@ -121,24 +121,24 @@ async def recompute_successors_for_project(
     succ_by_wbs: dict[str, list[str]] = {}
     for t in rows:
         for pred_wbs in (t.predecessors or []):
-            if not t.wbs:
+            if not t.wbs_code:
                 continue
-            succ_by_wbs.setdefault(pred_wbs, []).append(t.wbs)
+            succ_by_wbs.setdefault(pred_wbs, []).append(t.wbs_code)
     # Asigna ordenado, dedupe, lista vacía si no hay.
     for t in rows:
-        if t.wbs and t.wbs in succ_by_wbs:
-            t.successors = sorted(set(succ_by_wbs[t.wbs]), key=wbs_sort_key)
+        if t.wbs_code and t.wbs_code in succ_by_wbs:
+            t.successors = sorted(set(succ_by_wbs[t.wbs_code]), key=wbs_sort_key)
         else:
             t.successors = []
 
 
-def wbs_sort_key(wbs: str | None) -> tuple:
+def wbs_sort_key(wbs_code: str | None) -> tuple:
     """BUG-049 — natural sort por segmento. `1.10` > `1.2`. Segmentos no
     numéricos van al final (flag 1 vs 0) preservando orden lexicográfico."""
-    if not wbs:
+    if not wbs_code:
         return ((2,),)
     parts: list[tuple[int, int, str]] = []
-    for seg in wbs.split("."):
+    for seg in wbs_code.split("."):
         s = seg.strip()
         if s.isdigit():
             parts.append((0, int(s), ""))
@@ -152,8 +152,8 @@ def collect_by_wbs(tasks: Iterable[Task], exclude_id: str | None = None) -> dict
     for t in tasks:
         if exclude_id and str(t.id) == exclude_id:
             continue
-        if t.wbs:
-            out[t.wbs] = t
+        if t.wbs_code:
+            out[t.wbs_code] = t
     return out
 
 
@@ -164,23 +164,23 @@ def round_half_up(value: float) -> int:
     return int(math.floor(value + 0.5))
 
 
-def parent_wbs(wbs: str | None) -> str | None:
-    """`'1.2.3'` → `'1.2'`; `'1'` → None (raíz); sin wbs → None."""
-    if not wbs:
+def parent_wbs(wbs_code: str | None) -> str | None:
+    """`'1.2.3'` → `'1.2'`; `'1'` → None (raíz); sin wbs_code → None."""
+    if not wbs_code:
         return None
-    parts = [p for p in wbs.split(".") if p]
+    parts = [p for p in wbs_code.split(".") if p]
     if len(parts) <= 1:
         return None
     return ".".join(parts[:-1])
 
 
-def nearest_ancestor_wbs(wbs: str | None, wbs_set: set[str]) -> str | None:
+def nearest_ancestor_wbs(wbs_code: str | None, wbs_set: set[str]) -> str | None:
     """ENH-197 — ancestro EXISTENTE más cercano subiendo por prefijos.
 
     `'1.30.1'` → `'1.30'` si existe; si no, `'1'`; si ningún prefijo
     existe → None (raíz). Garantiza que "todo lo que empieza con 1.x
     cuelga de 1" aunque falten niveles intermedios en el plan."""
-    pw = parent_wbs(wbs)
+    pw = parent_wbs(wbs_code)
     while pw:
         if pw in wbs_set:
             return pw
@@ -203,13 +203,13 @@ def compute_wbs_rollup(tasks: Iterable[Task]) -> dict[str, float]:
     items = list(tasks)
     by_wbs: dict[str, Task] = {}
     for t in items:
-        if t.wbs:
-            by_wbs[t.wbs] = t
+        if t.wbs_code:
+            by_wbs[t.wbs_code] = t
     wbs_set = set(by_wbs)
     children: dict[str, list[Task]] = {}
     for t in items:
-        anc = nearest_ancestor_wbs(t.wbs, wbs_set)
-        if anc and (t.wbs is None or anc != t.wbs):
+        anc = nearest_ancestor_wbs(t.wbs_code, wbs_set)
+        if anc and (t.wbs_code is None or anc != t.wbs_code):
             children.setdefault(anc, []).append(t)
 
     cache: dict[str, float] = {}
@@ -219,7 +219,7 @@ def compute_wbs_rollup(tasks: Iterable[Task]) -> dict[str, float]:
         cached = cache.get(tid)
         if cached is not None:
             return cached
-        kids = children.get(t.wbs) if t.wbs else None
+        kids = children.get(t.wbs_code) if t.wbs_code else None
         if kids:
             value = sum(effective(k) for k in kids) / len(kids)
         else:
@@ -242,10 +242,10 @@ def compute_plan_rollup_progress(tasks: Iterable[Task]) -> float | None:
     if not items:
         return None
     rollup = compute_wbs_rollup(items)
-    wbs_set = {t.wbs for t in items if t.wbs}
+    wbs_set = {t.wbs_code for t in items if t.wbs_code}
     # ENH-197: raíz = sin NINGÚN ancestro existente (consistente con el
     # attach por ancestro más cercano del rollup).
-    roots = [t for t in items if nearest_ancestor_wbs(t.wbs, wbs_set) is None]
+    roots = [t for t in items if nearest_ancestor_wbs(t.wbs_code, wbs_set) is None]
     if not roots:
         return None
     return sum(rollup[str(t.id)] for t in roots) / len(roots)

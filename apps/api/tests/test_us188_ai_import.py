@@ -86,20 +86,20 @@ async def test_ai_propose_structure_validates(monkeypatch):
     _patch_llm(
         monkeypatch,
         """[
-          {"wbs": "1", "name": "Fase 1", "start_date": "2026-01-05",
+          {"wbs_code": "1", "name": "Fase 1", "start_date": "2026-01-05",
            "end_date": "2026-01-30", "progress": 0.45,
            "status": "in_progress", "is_milestone": false},
-          {"wbs": "1.30", "name": "Sub", "progress": 80, "status": "Completada"},
+          {"wbs_code": "1.30", "name": "Sub", "progress": 80, "status": "Completada"},
           {"name": ""},
           "basura"
         ]""",
     )
     tasks = await ai_propose_structure([["algo"]], tenant_cfg=_CFG)
     assert len(tasks) == 2
-    assert tasks[0].wbs == "1"
+    assert tasks[0].wbs_code == "1"
     assert tasks[0].progress == 45  # fracción 0.45 → 45
     assert tasks[0].status == "in_progress"
-    assert tasks[1].wbs == "1.30"  # WBS preservado como texto
+    assert tasks[1].wbs_code == "1.30"  # WBS preservado como texto
     assert tasks[1].progress == 80
     assert tasks[1].status == "completed"  # label ES normalizado
 
@@ -243,10 +243,10 @@ async def test_ai_structure_flow_and_confirm(client, db_session, monkeypatch):
     _patch_llm(
         monkeypatch,
         """[
-          {"wbs": "1", "name": "Preparación", "is_milestone": false},
-          {"wbs": "1.1", "name": "Kickoff", "start_date": "2026-01-05",
+          {"wbs_code": "1", "name": "Preparación", "is_milestone": false},
+          {"wbs_code": "1.1", "name": "Kickoff", "start_date": "2026-01-05",
            "status": "completed", "progress": 100},
-          {"wbs": "1.2", "name": "Análisis", "start_date": "2026-01-12",
+          {"wbs_code": "1.2", "name": "Análisis", "start_date": "2026-01-12",
            "status": "in_progress", "progress": 30}
         ]""",
     )
@@ -258,7 +258,7 @@ async def test_ai_structure_flow_and_confirm(client, db_session, monkeypatch):
     assert r_ai.status_code == 200, r_ai.text
     body = r_ai.json()
     assert body["task_count"] == 3
-    assert [t["wbs"] for t in body["parsed_preview"]] == ["1", "1.1", "1.2"]
+    assert [t["wbs_code"] for t in body["parsed_preview"]] == ["1", "1.1", "1.2"]
 
     # Confirm persistiendo la propuesta IA.
     r_conf = await client.post(
@@ -274,7 +274,7 @@ async def test_ai_structure_flow_and_confirm(client, db_session, monkeypatch):
         .scalars()
         .all()
     )
-    by_wbs = {t.wbs: t for t in tasks}
+    by_wbs = {t.wbs_code: t for t in tasks}
     assert by_wbs["1.1"].status == "completed"
     assert by_wbs["1.2"].progress == 30
     assert by_wbs["1.2"].outline_level == 2

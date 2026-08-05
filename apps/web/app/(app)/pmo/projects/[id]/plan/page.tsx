@@ -123,14 +123,14 @@ function compareWbs(a: string | null | undefined, b: string | null | undefined):
   return 0;
 }
 
-function wbsDepth(wbs: string | null | undefined): number {
-  if (!wbs) return 0;
-  return wbs.split(".").filter(Boolean).length - 1;
+function wbsDepth(wbs_code: string | null | undefined): number {
+  if (!wbs_code) return 0;
+  return wbs_code.split(".").filter(Boolean).length - 1;
 }
 
-function wbsParent(wbs: string | null | undefined): string | null {
-  if (!wbs) return null;
-  const parts = wbs.split(".").filter(Boolean);
+function wbsParent(wbs_code: string | null | undefined): string | null {
+  if (!wbs_code) return null;
+  const parts = wbs_code.split(".").filter(Boolean);
   if (parts.length <= 1) return null;
   return parts.slice(0, -1).join(".");
 }
@@ -149,7 +149,7 @@ function nextWbsUnder(
   let max = 0;
   for (const t of tasks) {
     if (excludeId && t.id === excludeId) continue;
-    const w = t.wbs;
+    const w = t.wbs_code;
     if (!w) continue;
     const parts = w.split(".").filter(Boolean);
     // Hijo directo: profundidad parentDepth+1 y bajo el prefijo (o raíz).
@@ -171,14 +171,14 @@ function WbsHierarchyPicker({
 }: {
   tasks: Task[];
   excludeId?: string;
-  onPick: (wbs: string) => void;
+  onPick: (wbs_code: string) => void;
 }) {
   const [parent, setParent] = useState<string>("");
   const options = useMemo(
     () =>
       [...tasks]
-        .filter((t) => t.id !== excludeId && t.wbs)
-        .sort((a, b) => compareWbs(a.wbs, b.wbs)),
+        .filter((t) => t.id !== excludeId && t.wbs_code)
+        .sort((a, b) => compareWbs(a.wbs_code, b.wbs_code)),
     [tasks, excludeId],
   );
   return (
@@ -191,8 +191,8 @@ function WbsHierarchyPicker({
         >
           <option value="">— Raíz (nivel 0) —</option>
           {options.map((t) => (
-            <option key={t.id} value={t.wbs ?? ""}>
-              {t.wbs} — {t.name}
+            <option key={t.id} value={t.wbs_code ?? ""}>
+              {t.wbs_code} — {t.name}
             </option>
           ))}
         </Select>
@@ -795,7 +795,7 @@ function TaskList({
   // esconder tareas (reemplaza el drag, eliminado).
   groupByWbs?: boolean;
   collapsed?: Set<string>;
-  onToggleCollapse?: (wbs: string) => void;
+  onToggleCollapse?: (wbs_code: string) => void;
   // ENH-164: columnas opcionales (Nivel/Duración/Predecesoras/Sucesoras).
   colVis?: ColVis;
   // US-098 fix: áreas del proyecto para resolver `task.area_id` →
@@ -813,10 +813,10 @@ function TaskList({
   // ENH-047: orden + visibilidad bajo grupo WBS.
   const display = useMemo(() => {
     if (!groupByWbs) return tasks;
-    const sorted = [...tasks].sort((a, b) => compareWbs(a.wbs, b.wbs));
+    const sorted = [...tasks].sort((a, b) => compareWbs(a.wbs_code, b.wbs_code));
     if (!collapsed || collapsed.size === 0) return sorted;
     return sorted.filter((t) => {
-      let p = wbsParent(t.wbs);
+      let p = wbsParent(t.wbs_code);
       while (p) {
         if (collapsed.has(p)) return false;
         p = wbsParent(p);
@@ -831,11 +831,11 @@ function TaskList({
   const hasChildren = useMemo(() => {
     if (!groupByWbs) return new Set<string>();
     const existing = new Set(
-      tasks.map((t) => t.wbs).filter(Boolean) as string[],
+      tasks.map((t) => t.wbs_code).filter(Boolean) as string[],
     );
     const out = new Set<string>();
     for (const t of tasks) {
-      let p = wbsParent(t.wbs);
+      let p = wbsParent(t.wbs_code);
       while (p) {
         if (existing.has(p)) {
           out.add(p);
@@ -901,8 +901,8 @@ function TaskList({
         </thead>
         <tbody>
           {display.map((t) => {
-            const depth = groupByWbs ? wbsDepth(t.wbs) : 0;
-            const wbsKey = t.wbs ?? "";
+            const depth = groupByWbs ? wbsDepth(t.wbs_code) : 0;
+            const wbsKey = t.wbs_code ?? "";
             const isParent = groupByWbs && wbsKey && hasChildren.has(wbsKey);
             const isCollapsed = !!(isParent && collapsed?.has(wbsKey));
             const lateness = taskLateness(t);
@@ -918,7 +918,7 @@ function TaskList({
               )}
             >
               <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
-                {t.wbs ?? ""}
+                {t.wbs_code ?? ""}
               </td>
               {colVis.outline ? (
                 <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
@@ -978,7 +978,7 @@ function TaskList({
                         className="ml-2 inline-flex items-center rounded bg-[var(--color-subtle)] px-1.5 py-0.5 text-[9px] text-[var(--color-tertiary)]"
                         title={`Hito relacionado: ${t.related_milestone.name}`}
                       >
-                        ↪ {t.related_milestone.wbs ?? t.related_milestone.name}
+                        ↪ {t.related_milestone.wbs_code ?? t.related_milestone.name}
                       </span>
                     ) : null}
                   </span>
@@ -1189,7 +1189,7 @@ function TaskList({
                               }}
                               className="block w-full px-3 py-2 text-left text-xs text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
                             >
-                              ↳ Sub-tarea{t.wbs ? ` de ${t.wbs}` : ""}
+                              ↳ Sub-tarea{t.wbs_code ? ` de ${t.wbs_code}` : ""}
                             </button>
                             <button
                               type="button"
@@ -1413,7 +1413,7 @@ function PlanInner() {
   }, [colVis, id]);
 
   // ENH-077: WBS y Área son mutex — sólo un agrupador a la vez.
-  function persistGrouping(mode: "wbs" | "area" | null) {
+  function persistGrouping(mode: "wbs_code" | "area" | null) {
     if (typeof window === "undefined") return;
     try {
       // ENH-180: persistimos "none" cuando se apaga (default es agrupado),
@@ -1428,7 +1428,7 @@ function PlanInner() {
     const next = !groupByWbs;
     setGroupByWbs(next);
     if (next) setGroupByArea(false); // mutex
-    persistGrouping(next ? "wbs" : null);
+    persistGrouping(next ? "wbs_code" : null);
   }
 
   function toggleGroupByArea() {
@@ -1445,11 +1445,11 @@ function PlanInner() {
     persistGrouping(next ? "area" : null);
   }
 
-  function toggleCollapsedWbs(wbs: string) {
+  function toggleCollapsedWbs(wbs_code: string) {
     setCollapsedWbs((prev) => {
       const next = new Set(prev);
-      if (next.has(wbs)) next.delete(wbs);
-      else next.add(wbs);
+      if (next.has(wbs_code)) next.delete(wbs_code);
+      else next.add(wbs_code);
       return next;
     });
     // ENH-067: cualquier toggle manual sale de los niveles rápidos.
@@ -1463,7 +1463,7 @@ function PlanInner() {
     if (level === "manual") return;
     const next = new Set<string>();
     for (const t of tasks) {
-      const w = t.wbs;
+      const w = t.wbs_code;
       if (!w) continue;
       if (wbsDepth(w) >= level) next.add(w);
     }
@@ -1475,7 +1475,7 @@ function PlanInner() {
   const [newOpen, setNewOpen] = useState(false);
   const [newForm, setNewForm] = useState({
     name: "",
-    wbs: "",
+    wbs_code: "",
     start_date: "",
     end_date: "",
     duration_days: "",
@@ -1488,7 +1488,7 @@ function PlanInner() {
     // ENH-050: hito relacionado, opcional.
     related_milestone_id: "" as string,
     // US-090: predecesoras como string CSV ("1.1, 1.2") por simplicidad
-    // del MVP — el backend valida cada wbs.
+    // del MVP — el backend valida cada wbs_code.
     predecessors_csv: "" as string,
     // ENH-135: área responsable + responsable también en Nueva tarea.
     area_id: "" as string,
@@ -1499,13 +1499,13 @@ function PlanInner() {
   // ENH-200: agregar tarea desde una fila — calcula el siguiente WBS
   // del nivel elegido (hijo o hermano) y abre el form pre-llenado.
   function handleAddTaskAt(t: Task, mode: "child" | "sibling") {
-    const wbs =
+    const wbs_code =
       mode === "child"
-        ? nextWbsUnder(t.wbs ?? null, tasks)
-        : nextWbsUnder(wbsParent(t.wbs), tasks);
+        ? nextWbsUnder(t.wbs_code ?? null, tasks)
+        : nextWbsUnder(wbsParent(t.wbs_code), tasks);
     setNewForm({
       name: "",
-      wbs,
+      wbs_code,
       start_date: "",
       end_date: "",
       duration_days: "",
@@ -1527,7 +1527,7 @@ function PlanInner() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
-    wbs: "",
+    wbs_code: "",
     start_date: "",
     end_date: "",
     // US-171: fecha de cierre real.
@@ -1553,7 +1553,7 @@ function PlanInner() {
     setEditingId(t.id);
     setEditForm({
       name: t.name,
-      wbs: t.wbs ?? "",
+      wbs_code: t.wbs_code ?? "",
       start_date: t.start_date ?? "",
       end_date: t.end_date ?? "",
       closed_at: t.closed_at ?? "",
@@ -1584,7 +1584,7 @@ function PlanInner() {
     try {
       const updated = await updateTask(editingId, {
         name: editForm.name,
-        wbs: editForm.wbs || null,
+        wbs_code: editForm.wbs_code || null,
         start_date: editForm.start_date || null,
         end_date: editForm.end_date || null,
         closed_at: editForm.closed_at || null,
@@ -1736,7 +1736,7 @@ function PlanInner() {
     try {
       await createTask(id, {
         name: newForm.name,
-        wbs: newForm.wbs || null,
+        wbs_code: newForm.wbs_code || null,
         start_date: newForm.start_date || null,
         end_date: newForm.end_date || null,
         duration_days: newForm.duration_days ? Number(newForm.duration_days) : null,
@@ -1760,7 +1760,7 @@ function PlanInner() {
       setNewOpen(false);
       setNewForm({
         name: "",
-        wbs: "",
+        wbs_code: "",
         start_date: "",
         end_date: "",
         duration_days: "",
@@ -1822,11 +1822,11 @@ function PlanInner() {
       const areaName = (aid: string | null) =>
         (aid && areas.find((a) => a.id === aid)?.name) || "";
       const rows = tasks.map((t) => ({
-        wbs: t.wbs ?? "",
+        wbs_code: t.wbs_code ?? "",
         name: t.name,
         outline:
           t.outline_level ??
-          (t.wbs ? t.wbs.split(".").filter(Boolean).length : null),
+          (t.wbs_code ? t.wbs_code.split(".").filter(Boolean).length : null),
         start: localDateFromIso(t.start_date),
         end: localDateFromIso(t.end_date),
         duration: t.duration_days ?? null,
@@ -1839,7 +1839,7 @@ function PlanInner() {
         critical: isTaskCritical(t),
         milestone: t.is_milestone,
         relatedMilestone:
-          t.related_milestone?.wbs ?? t.related_milestone?.name ?? "",
+          t.related_milestone?.wbs_code ?? t.related_milestone?.name ?? "",
         predecessors: (t.predecessors ?? []).join(", "),
         successors: (t.successors ?? []).join(", "),
       }));
@@ -1963,7 +1963,7 @@ function PlanInner() {
     const filteredById = new Set(filteredTasks.map((t) => t.id));
     for (const t of filteredTasks) {
       if (groupByWbs && collapsedWbs.size > 0) {
-        let p = wbsParent(t.wbs);
+        let p = wbsParent(t.wbs_code);
         let hidden = false;
         while (p) {
           if (collapsedWbs.has(p)) {
@@ -2328,8 +2328,8 @@ function PlanInner() {
           <div className="flex flex-wrap items-end gap-2">
             <FormField label="WBS" className="w-24">
               <Input
-                value={newForm.wbs}
-                onChange={(e) => setNewForm({ ...newForm, wbs: e.target.value })}
+                value={newForm.wbs_code}
+                onChange={(e) => setNewForm({ ...newForm, wbs_code: e.target.value })}
                 placeholder="1.2.3"
               />
             </FormField>
@@ -2422,7 +2422,7 @@ function PlanInner() {
               <FormField label="Jerarquía (elegí el padre y «Bajar nivel»)">
                 <WbsHierarchyPicker
                   tasks={tasks}
-                  onPick={(wbs) => setNewForm({ ...newForm, wbs })}
+                  onPick={(wbs_code) => setNewForm({ ...newForm, wbs_code })}
                 />
               </FormField>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -2438,7 +2438,7 @@ function PlanInner() {
                       .filter((t) => t.is_milestone)
                       .map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.wbs ? `${t.wbs} · ` : ""}
+                          {t.wbs_code ? `${t.wbs_code} · ` : ""}
                           {t.name}
                         </option>
                       ))}
@@ -2511,15 +2511,15 @@ function PlanInner() {
             <WbsHierarchyPicker
               tasks={tasks}
               excludeId={editingId ?? undefined}
-              onPick={(wbs) => setEditForm({ ...editForm, wbs })}
+              onPick={(wbs_code) => setEditForm({ ...editForm, wbs_code })}
             />
           </FormField>
           {/* ENH-135: WBS (pequeño) | Nombre */}
           <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
             <FormField label="WBS">
               <Input
-                value={editForm.wbs}
-                onChange={(e) => setEditForm({ ...editForm, wbs: e.target.value })}
+                value={editForm.wbs_code}
+                onChange={(e) => setEditForm({ ...editForm, wbs_code: e.target.value })}
                 placeholder="1.2.3"
               />
             </FormField>
@@ -2641,7 +2641,7 @@ function PlanInner() {
                 .filter((t) => t.is_milestone && t.id !== editingId)
                 .map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.wbs ? `${t.wbs} · ` : ""}
+                    {t.wbs_code ? `${t.wbs_code} · ` : ""}
                     {t.name}
                   </option>
                 ))}

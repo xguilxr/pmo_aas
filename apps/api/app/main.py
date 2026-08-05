@@ -10,42 +10,15 @@ from sqlalchemy import text
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.errors import texto_por_defecto
+from app.core.observabilidad import iniciar_captura_de_errores
 
 logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("pmoaas.api")
 
 
-def _iniciar_captura_de_errores() -> None:
-    """Notificación de errores en producción (MCS OPS-02).
-
-    Auditoría MCS 2026-08-03: no había ninguna. Un 500 en producción quedaba en
-    los registros de Railway y nadie se enteraba salvo que un usuario lo
-    reportase.
-
-    Sin `SENTRY_DSN` esto no hace nada: en local y en tests queda inerte, y se
-    enciende poniendo la variable en Railway. `send_default_pii=False` porque
-    este producto trata datos de proyecto de sus clientes y no hay motivo para
-    exportarlos a un tercero junto con la traza.
-    """
-    if not settings.SENTRY_DSN:
-        return
-    try:
-        import sentry_sdk
-    except ImportError:
-        logger.warning("SENTRY_DSN definido pero sentry-sdk no está instalado")
-        return
-
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        environment=settings.PYTHON_ENV,
-        release=settings.VERSION,
-        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
-        send_default_pii=False,
-    )
-    logger.info("captura de errores activa env=%s", settings.PYTHON_ENV)
-
-
-_iniciar_captura_de_errores()
+# MCS OPS-02. Vive en `core/observabilidad.py` porque el worker necesita lo
+# mismo y no importa este módulo: su servicio arranca `celery` directo.
+iniciar_captura_de_errores("api")
 
 
 @asynccontextmanager

@@ -5,6 +5,7 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.core.config import settings
+from app.core.observabilidad import iniciar_captura_de_errores
 
 logger = logging.getLogger("pmoaas.worker")
 
@@ -22,6 +23,12 @@ if not _broker:
     )
 
 logger.info("celery broker configured: %s", _broker.split("@")[-1])
+
+# MCS OPS-02 — el worker reporta igual que la API. Antes no: la
+# inicialización vivía en `main.py`, que este proceso nunca importa porque
+# su servicio arranca `celery` directo. Un fallo aquí no produce un 500 que
+# alguien vea; el informe simplemente no llega.
+iniciar_captura_de_errores("worker")
 
 celery_app = Celery(
     "pmoaas",

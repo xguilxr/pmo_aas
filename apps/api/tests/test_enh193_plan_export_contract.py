@@ -47,25 +47,25 @@ def test_plan_order_natural_wbs_not_outline_first():
     """Antes: outline-first agrupaba todos los nivel-1 y después los
     nivel-2. Ahora 1 < 1.2 < 1.10 < 2 (jerárquico natural)."""
     tasks = [
-        _task(id="a", wbs="1.10", outline_level=2),
-        _task(id="b", wbs="2", outline_level=1),
-        _task(id="c", wbs="1", outline_level=1),
-        _task(id="d", wbs="1.2", outline_level=2),
+        _task(id="a", wbs_code="1.10", outline_level=2),
+        _task(id="b", wbs_code="2", outline_level=1),
+        _task(id="c", wbs_code="1", outline_level=1),
+        _task(id="d", wbs_code="1.2", outline_level=2),
     ]
-    assert [t.wbs for t in plan_order(tasks)] == ["1", "1.2", "1.10", "2"]
+    assert [t.wbs_code for t in plan_order(tasks)] == ["1", "1.2", "1.10", "2"]
 
 
 def test_regenerate_xlsx_roundtrip():
     tasks = [
         _task(
-            id="m1", wbs="1", name="Hito final", is_milestone=True,
+            id="m1", wbs_code="1", name="Hito final", is_milestone=True,
             status="in_progress", progress=50, outline_level=1,
             start_date=date(2026, 1, 5), end_date=date(2026, 1, 9),
             duration_days=5, area_id="area-1", assignee_actor_id="act-1",
             is_critical=True, predecessors=["2"],
         ),
         _task(
-            id="t2", wbs="1.30", name="Sub", status="completed",
+            id="t2", wbs_code="1.30", name="Sub", status="completed",
             progress=100, outline_level=2, related_milestone_id="m1",
         ),
     ]
@@ -94,7 +94,7 @@ def test_regenerate_xlsx_roundtrip():
 
     # Round-trip: el import re-lee el archivo sin pérdida.
     parsed = parse_xlsx(data)
-    assert [t.wbs for t in parsed.tasks] == ["1", "1.30"]
+    assert [t.wbs_code for t in parsed.tasks] == ["1", "1.30"]
     assert [t.status for t in parsed.tasks] == ["in_progress", "completed"]
     assert [t.progress for t in parsed.tasks] == [50, 100]
     assert parsed.tasks[0].resources_raw == "Juan Pérez"

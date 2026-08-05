@@ -13,10 +13,10 @@ from app.services.plan_quality import plan_quality_score, review_plan
 TODAY = date(2026, 7, 18)
 
 
-def _t(id_: str, wbs: str | None, **kw) -> Task:
+def _t(id_: str, wbs_code: str | None, **kw) -> Task:
     base = {
         "id": id_, "tenant_id": "t", "project_id": "p", "name": f"Tarea {id_}",
-        "wbs": wbs, "progress": 0, "is_milestone": False,
+        "wbs_code": wbs_code, "progress": 0, "is_milestone": False,
         "status": "not_started", "is_critical": False,
     }
     base.update(kw)

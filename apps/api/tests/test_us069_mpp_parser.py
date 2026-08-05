@@ -109,7 +109,7 @@ def test_tc069_1_parses_tasks_from_cli_output(monkeypatch):
 
     t0, t1, t2 = result.tasks
     assert t0.name == "Analisis"
-    assert t0.wbs == "1"
+    assert t0.wbs_code == "1"
     assert t0.start_date == date(2026, 1, 1)
     assert t0.end_date == date(2026, 1, 10)
     assert t0.duration_days == 10
@@ -193,7 +193,7 @@ def test_tc069_5_same_shape_as_xlsx(monkeypatch):
         for attr in (
             "row_number",
             "name",
-            "wbs",
+            "wbs_code",
             "start_date",
             "end_date",
             "duration_days",

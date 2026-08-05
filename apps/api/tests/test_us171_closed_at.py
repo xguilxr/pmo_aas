@@ -76,7 +76,7 @@ async def test_complete_autosets_closed_at_and_editable(client, db_session):
     end = (date.today() - timedelta(days=5)).isoformat()
     r = await client.post(
         f"/api/v1/projects/{proj_id}/tasks",
-        json={"name": "Tarea", "wbs": "1", "end_date": end, "status": "not_started"},
+        json={"name": "Tarea", "wbs_code": "1", "end_date": end, "status": "not_started"},
         headers=auth["_authz"],
     )
     assert r.status_code == 201, r.text

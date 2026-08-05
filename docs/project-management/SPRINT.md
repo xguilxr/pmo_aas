@@ -13,22 +13,13 @@
 ## 🔴 IN-PROGRESS
 
 ```
-#575 y #576 MERGEADOS. **MCA está en N2**, su objetivo.
+Sin US activa. La sesión del 2026-08-05 cerró su branch; el owner mergea.
 
-Branch `claude/audit-continuation-fzrtko`. Remediación post-R1 completa:
-SUM-02, DES-03, DIS-02, SEG-07/AM-08, AM-09, SEG-01, D-7 y D-9. LEN-02 sigue
-PARCIAL, con cifra: 152 de 159 mensajes dicen solo qué pasó.
+LO SIGUIENTE ES LA REMEDIACIÓN POR OLAS — plan completo en
+`docs/conformidad/plan-remediacion.md`. Arrancar por la Ola 0.
 
-MCS en N0: 25/126 conformes; la distancia a N1 baja de 54 a 50.
-Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`. Todo en verde.
-
-**Decisiones del owner (2026-08-05), las cuatro ejecutadas:** volver al producto ·
-LEN-02 como norma · PyJWT · `support` → `hypercare`.
-
-Producto: **ENH-202**, **D-2**, **D-8** y **AM-10** cerradas. Solo queda **D-3**
-(ADR-020, medida y sin ejecutar). Ninguna amenaza sin control.
-
-**Espera al owner:** mergear el PR y correr las migraciones **0097-0099**.
+MCA: N2, su objetivo, 11/11. Nada pendiente.
+MCS: N0 · 29 cerrados de 126 · 47 bloquean N1 · 97 abiertos en total.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -39,58 +30,52 @@ Producto: **ENH-202**, **D-2**, **D-8** y **AM-10** cerradas. Solo queda **D-3**
 
 ## 📥 INBOX / TRIAGE
 
-> Solo lo **abierto**. Lo cerrado se archivó a `SPRINT-DONE-HISTORY.md`
-> el 2026-08-03.
+### 🌊 Las olas — orden de ejecución
 
-### Siguiente batch
+El plan completo, con el registro de los 97 abiertos y la evidencia por
+requisito, está en **`docs/conformidad/plan-remediacion.md`**. El estado se
+recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
 
-**ENH-202 cerrada el 2026-08-05**, los cuatro frentes; cerró AM-12 de paso.
+- [ ] **Ola 0 — recontar. Medio día, sin escribir código.** Es lo primero y no
+  se salta: el registro está desactualizado **en las dos direcciones**. A favor,
+  `ARQ-02` y `GOB-02` decían «cero ADR reales» y hay 24; `LEN-01` decía
+  «glosario borrador» y está aprobado. A la contra, `OPS-02` figuraba como
+  cerrado-casi y el worker no reportaba. Incluye los **seis nunca medidos**:
+  `CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`.
+- [ ] **Ola 1 — owner, dos minutos, cierra dos CRÍTICAS.** `CFG-03` e `INT-03`
+  son el mismo hecho: `main` no está protegida en GitHub. Los dos N1. El CI ya
+  está verde, así que exigirlo no bloquea nada.
+- [ ] **Ola 2 — 13 mecánicos, se pueden disparar solos**, uno por commit con
+  prueba y verificación por mutación: `DAT-12` (77 puntos), `DIS-03` (73 de 75
+  pantallas), `DIS-01` (25 literales), `DAT-04` (6 sitios), `DAT-02`, `DAT-11`,
+  `OPS-01`, `DEV-04`, `CFG-04`, `SEG-05`, `DOC-01`, `DOC-03`, `LEN-02`.
+- [ ] **Ola 3 — necesita postura del owner antes de tocar código.** Alcance de
+  competencia (`CON-01/03/05`), escenarios de calidad con medida (`REQ-02`),
+  inventario de datos personales (`REQ-03`), fichas de indicador
+  (`DAT-01/DAT-10`), almacén de secretos (`SEG-02`), estrategia de pruebas
+  (`DEV-02/03` — hoy **cero** en frontend), artefacto de canalización
+  (`SUM-01`), entornos y copias (`INF-02/03`, `DES-02`).
+  **Aparte: `SEG-04`**, CRÍTICA — autorización verificada en el punto de acceso
+  y no sobre el objeto. Es trabajo de seguridad, no una declaración.
+- [ ] **Ola 4 — de N1 a N2.** Sin planificar a propósito: se replanifica al
+  alcanzar N1, con el registro ya remedido. Estimación del expediente: 3-4
+  semanas persona a N1, 8-12 a N2.
 
-**D-8 cerrada el 2026-08-05** (ADR-021, migración 0099). **AM-10 cerrada**: el
-bloqueo de cuenta pasó a retardo creciente, y con ella el modelo de amenazas
-queda **sin ninguna amenaza sin control**.
+### Producto — abierto
 
-- [ ] **D-3** `tasks.wbs` → `wbs_code`. ADR-020: 259 ocurrencias, 22 archivos.
-  **Es lo primero al retomar.** No es un `sed` — los importadores usan «WBS»
-  como etiqueta que el usuario ve en su Excel.
-- [ ] **Fase `cancelled`** — owner 2026-08-05. Hoy un proyecto cortado queda
-  `closed`, indistinguible de uno que cumplió. ADR + US. `initiation`: no.
-- [ ] **Paleta de gráficos propia** — owner 2026-08-05. Ni la de marca ni la de
-  Tailwind: categórica, accesible y distinta del semáforo a propósito.
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
+  Tres abiertas: `phase=support`, `portfolio_function`, `wbs`.
+- [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los valores de
+  US-196 son razonados, no medidos; se ajustan en `settings`, sin tocar código.
+- [ ] **`design-system/tokens.md`** describe una paleta anterior a D-7 y
+  ADR-023. Declarado obsoleto, no corregido.
+- [ ] **Línea base** (D-6), sin la cual «desviación» no tiene referente, y
+  **DCMA 14-point**. Épica propia, sin abrir.
 
-### Remediación de R1 — hecha el 2026-08-05
-
-Detalle y residuales en `docs/conformidad/2026-08-05-mcs-remediacion.md`.
-**LEN-02 queda como norma, no como tanda** (owner): la convención está en
-`api-conventions.md` §7 y los 152 mensajes con texto propio se arreglan al tocar
-cada endpoint. Sigue PARCIAL, declarado. **Tandas C/D/E: no se abren.**
-
-### Glosario — implementación de las decisiones
-
-**D-2, D-7 y D-9 hechas el 2026-08-05.** D-2 con ventana de compatibilidad: el
-API sigue aceptando `support` y devuelve siempre `hypercare` (ADR-019, mig 0098).
-
-**D-4 decidida en su forma: uno por dimensión** (2026-08-05), apoyada en las
-cinco de US-191. Falta **calibrar los cinco valores** contra un proyecto real —
-eso es dato, no decisión, y es lo único que queda del glosario.
-
-> **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
-> ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch
-> `claude/gantt-areas-fixes` no existe en el remoto — sus cuatro issues
-> (#544-547) también están cerrados. Se quitan en vez de arrastrarlos.
-
-### Conformidad (auditoría 2026-08-03)
-
-> Estado por requisito en `docs/conformidad/plan.md`. **Las acciones del owner
-> viven en `HANDOFF.md`**, no aquí: estaban en los dos sitios y una de las dos
-> copias iba a envejecer (CTX-06). No consume IDs US/ENH/BUG.
-
-**R1 cerrada el 2026-08-04** — los 13 NO VERIFICABLE medidos
-(`docs/conformidad/2026-08-04-mcs-r1.md`). Cuatro no eran trabajo pendiente.
-
-**Siguiente:** nada de conformidad. Se volvió al producto por decisión del owner.
+> **El glosario no tiene ninguna decisión abierta.** Las nueve ejecutadas
+> (`docs/dominio/03-REVISION-GLOSARIO.md`). El modelo de amenazas tampoco tiene
+> ninguna sin control.
 
 ---
 
@@ -105,19 +90,16 @@ ejecutar. El historial narrativo sigue en `SPRINT-DONE-HISTORY.md`.
 
 > Histórico narrativo en `SPRINT-DONE-HISTORY.md`.
 
-- **2026-08-03 (auditoría de conformidad + remediación):** MCA y MCS auditados
-  (`docs/conformidad/`: cuatro informes + plan). **PR #573**, CI verde.
+- **2026-08-05 (auditoría + producto):** siete commits sobre
+  `claude/audit-continuation-fzrtko`, más los de #577. **MCA alcanza N2** con
+  AUT-01 cerrado por evidencia observada. En producto: `wbs_code`, fase
+  `cancelled`, umbrales de D-4 y paleta de gráficos (ADR-020 a ADR-023).
 
-  **MCA 10/11** — contexto permanente −43 %, comandos de verificación
-  ejecutables, tres controles nuevos en CI. **MCS 9/126**, no alcanza N1.
-
-  La Tanda A cerró tres de las cuatro exposiciones críticas. Los escáneres, en
-  su primer día: una vulnerabilidad real de XML en el importador (archivo del
-  usuario a un parser sin defensa), 10 de 23 CVE de Python cerradas —6 de
-  subida de archivos, 2 de JWT— y la crítica de Next.js. **B1**: suite de
-  aislamiento entre inquilinos, verificada por mutación.
-
-  Detalle completo en `docs/conformidad/plan.md` y en el PR.
+  Lo que la medición no veía: los informes salían en DejaVu Sans desde hacía
+  meses, PyJWT 2.10.1 cambiaba cinco CVE por siete, la migración 0098 escribía
+  en una tabla inexistente con una prueba que fijaba el literal del código, el
+  presupuesto del semáforo no miraba el tiempo, y el worker no reportaba a
+  Sentry. Detalle en `SPRINT-DONE-HISTORY.md`.
 
 ---
 

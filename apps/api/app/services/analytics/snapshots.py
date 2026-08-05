@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, timedelta
+from typing import get_args
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -23,9 +24,15 @@ from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.project_request import ProjectRequest
 from app.models.task import Task
+from app.schemas.project import FASES_TERMINALES, ProjectPhase
 from app.services.progress_calculator import plan_rollup_map
 
-ACTIVE_PHASES = ["planning", "execution", "hypercare"]
+# ADR-022: se deriva del vocabulario en vez de repetirlo. Cuando D-2 renombró
+# `support` → `hypercare`, esta lista era el sitio que se quedaba con el nombre
+# viejo **sin fallar** —los proyectos en hypercare habrían desaparecido de los
+# snapshots en silencio—, y por eso llevó prueba propia. Derivarla cierra la
+# clase entera: añadir una fase terminal la excluye de aquí sin tocar nada.
+ACTIVE_PHASES = [f for f in get_args(ProjectPhase) if f not in FASES_TERMINALES]
 SEVERE_THRESHOLD = 13
 
 # Métricas numéricas que componen el snapshot (todas las columnas escalares).

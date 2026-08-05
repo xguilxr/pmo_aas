@@ -1,126 +1,126 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — **25 commits, PR #577**
+**Branch activa:** `claude/audit-continuation-fzrtko` — 7 commits, **el owner mergea**
 **Generado por:** `/handoff`
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-**MCA está en N2**, su objetivo, desde el merge de #576. La lista de «lo barato
-de R1» que dejó la sesión anterior **está hecha entera**, más dos amenazas.
+**MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
+**MCS sigue en N0** — 29 cerrados de 126, **47 bloquean N1**, 97 abiertos.
 
-| Marco | Objetivo | Hoy | Falta |
-|---|---|---|---|
-| MCA (entorno) | N2 | **N2** | Nada del objetivo |
-| MCS (producto) | N2 | **N0** · 25/126 | 50 para N1 (eran 54) |
-
-## ✅ Hecho en esta sesión
-
-Nueve requisitos, **un commit cada uno**, todos verificados por mutación:
-
-- **SUM-02** el contenedor no corre como root · **DES-03** `/health` hace
-  `SELECT 1` acotado y devuelve 503 · **DIS-02** 34/34 pares AA en los dos temas
-  + job `contraste-wcag` · **AM-09** límite por IP en el login, contando fallos ·
-  **AM-08/SEG-07** `audit_log` de solo anexado · **SEG-01** PyJWT 2.13.0, 5 CVE
-  menos (2.10.1 traía 7 propias; lo cazó el CI) ·
-  **D-7** una sola paleta de salud · **D-9** `is_milestone ⟹ duración 0`.
-- **LEN-02** mejora pero **sigue PARCIAL**: el catálogo guarda qué/por qué/qué
-  hacer como datos, no como prosa.
-
-Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
-
-**Tres hallazgos que la medición no podía ver:**
-
-1. **El `REVOKE` que AM-08 proponía no habría funcionado.** La aplicación se
-   conecta con el rol **dueño** y en PostgreSQL el dueño conserva sus
-   privilegios. Comprobado contra Postgres 16; van disparadores.
-2. **`check_contraste.py` llevaba los valores copiados a mano** y el tema oscuro
-   nunca se había medido. Dos agujeros del propio instrumento.
-3. **El caso que incumplía D-9 era el corriente:** días inclusivos hacían que un
-   hito de un día durara 1.
+El plan de remediación está escrito y ordenado por olas:
+**`docs/conformidad/plan-remediacion.md`**. Se construyó sin `MCS-CORE` —no está
+en este entorno— reconstruyendo el registro desde los cuatro informes fechados.
 
 ## 📍 Dónde retomar
 
-**D-3** (`wbs_code`) — decidido por el owner, ADR-020 lo mide en 259 ocurrencias
-y 22 archivos. Es una ronda entera. Lo que espera al owner está más abajo, en su
-checklist, y no se repite aquí.
+**Ola 0 del plan: recontar.** Medio día, sin escribir código. No se salta y no
+es ceremonia: el registro está desactualizado **en las dos direcciones**.
 
-## ⚠️ Gotchas
+## ✅ Hecho en esta sesión
 
-- **Las migraciones 0097-0099 no las corre Alembic aquí** (guard). Su SQL se
+Siete commits, uno por item, todos verificados por mutación:
+
+| SHA | Qué |
+|---|---|
+| `3b6a37f` | **US-194** `tasks.wbs` → `wbs_code` (D-3, ADR-020, mig **0100**) |
+| `8029acf` | **US-195** fase `cancelled` (ADR-022, sin migración) |
+| `c1a30b5` | **US-196** D-4: índice de consumo + pisos de amarillo |
+| `15d0a7a` | **US-197** paleta de gráficos, arco frío (ADR-023) |
+| `7d021c8` | **AUT-01** cierra con evidencia observada → MCA a N2 |
+| `39386c7` | **OPS-02** el worker no reportaba a Sentry |
+| `8b57694` | Plan de remediación + `scripts/registro_conformidad.py` |
+
+Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
+
+## 🔄 PRs abiertos o en flight
+
+| # | Branch | Estado CI | Acción |
+|---|---|---|---|
+| — | `claude/audit-continuation-fzrtko` | **sin correr** | El owner abre PR y mergea |
+
+**Ojo:** el CI solo dispara en `pull_request` y en push a `main`. Con #577
+mergeado la branch se quedó sin PR, así que **estos siete commits no pasaron por
+CI**. Verificación local completa: suite 1230, ruff, `tsc`, contraste 34/34,
+evaluación de IA y presupuesto de contexto.
+
+## ⚠️ Gotchas y decisiones recientes
+
+- **El registro de conformidad envejece en las dos direcciones.** A favor:
+  `ARQ-02` y `GOB-02` decían «cero ADR reales» y hay 24. A la contra: `OPS-02`
+  figuraba como «lo más barato que queda» y el worker no reportaba nada.
+  **Remedir antes de construir** es la regla que ordena el plan.
+- **`MCS-CORE` no está en este entorno.** El plan no lo usa. Lo que falta por
+  eso es el criterio de aceptación por requisito: para los mecánicos el hueco
+  medido **es** la vara; para los de juicio se declara al cerrar.
+- **Las migraciones 0097-0100 no las corre Alembic aquí** (guard). Su SQL se
   ejercita contra el esquema de `Base.metadata`, **no contra tablas a mano**:
-  así se coló `UPDATE lessons_learned` en 0098 (la tabla es `lessons`).
-- **`RATE_LIMITED` pasó de 422 a 429.** Cambio de contrato pequeño, ya en
-  `api-conventions.md`. Afecta también a reseteo de contraseña.
-- **El presupuesto de contexto va al límite.** Correr `check_contexto.py` antes
-  de engordar `CLAUDE.md`, `SPRINT.md` o este archivo.
-- **El guard bloquea comandos que *mencionan* uno denegado**, aunque el patrón
-  aparezca en una ruta de archivo. Se reformula, no se relaja el patrón.
-- **La suite tarda ~2m45s** con `-n auto`. Correrla en segundo plano.
-- Sin tests de frontend. Python 3.12 no es negociable.
-- **El clon local se revirtió dos commits a mitad de sesión** y hubo que
-  rebasar sobre el remoto. Si el árbol no cuadra con lo que recordás, mirá
-  `git log origin/<branch>` antes de rehacer nada.
+  así se coló `UPDATE lessons_learned` en 0098.
+- **Una prueba que fija el literal del código fuente no puede fallar.** Pasó dos
+  veces esta sesión —D-2 y OPS-02—; las dos las cazó la verificación por
+  mutación, no la lectura.
+- **El guard bloquea comandos que *mencionan* un patrón denegado**, aunque sea
+  dentro de un texto. Se reformula, no se relaja.
+- **`RATE_LIMITED` pasó de 422 a 429**, ya en `api-conventions.md`.
+- La suite tarda ~2m50s con `-n auto`. Sin pruebas de frontend. Python 3.12 no
+  es negociable.
 
-## 📚 Epics docs
+## 📋 Lo que sigue
 
-Solo EP014 cambió (tipografía de los entregables). Al día también:
-`api-conventions.md`, `modelo-amenazas.md`, `amenazas.yaml`, `DB-CHANGES.md`,
-glosario, ADR y `design-system/tokens.md`.
+Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-## ✅ Decisiones del owner — 2026-08-05, primera tanda
+- **Ola 0** — recontar: los que nuestro trabajo pudo cerrar + los seis nunca
+  medidos (`CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`).
+- **Ola 1** — proteger `main` (owner): cierra `CFG-03` e `INT-03`, dos CRÍTICAS.
+- **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
+- **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
+- **Ola 4** — N1 → N2, se replanifica al llegar.
 
-| Decisión | Estado |
-|---|---|
-| **Volver al producto**; las Tandas C/D/E no se abren | Registrada |
-| **LEN-02 como norma**, no como tanda (`api-conventions.md` §7) | ✅ |
-| **Migrar a PyJWT** — 5 CVE | ✅ en `2.13.0` |
-| **`support` → `hypercare`** | ✅ ADR-019, mig 0098 |
+## 📚 Estado de las epics docs
 
-## 🛠️ Producto — después de las decisiones
+| Epic | Sincronizada | Notas |
+|---|---|---|
+| EP005 | sí | Fases (`cancelled`) e índice de consumo del semáforo |
+| EP009 | sí | `wbs_code` y el diagrama de transiciones |
+| EP014 | sí | Tipografía de los entregables (ENH-202) |
 
-- **ENH-202** — Helvetica en los cuatro caminos de export. Cerró **AM-12** y
-  destapó que los informes **llevaban meses saliendo en DejaVu Sans**: el CSS
-  pedía DM Sans y la imagen no instalaba ninguna de las fuentes declaradas.
-- **D-2** y **D-8** — con ventana: el API acepta el nombre viejo y devuelve el
-  canónico. La de D-8 tiene **dos puertas**, cuerpo y parámetro de consulta.
-- **AM-10** — el bloqueo de cuenta pasó a retardo creciente. Con AM-14 reflejada
-  —llevaba un día cerrada y la ficha decía lo contrario—, **el modelo de
-  amenazas no tiene ninguna sin control**.
-
-## 🗳️ Segunda tanda de decisiones — 2026-08-05
-
-| Decisión | Siguiente paso |
-|---|---|
-| **D-3: ejecutar en la próxima ronda** | **Es lo primero al retomar** |
-| **D-8: `portfolio_function` → `discipline`** | ✅ **hecha** (ADR-021, mig 0099) |
-| **Ventanas: cerrar con dato** | ✅ **hecha** — se cuentan por `compat.nombre_viejo` |
-| **AM-10: retardo creciente** | ✅ **hecha** — ninguna amenaza queda sin control |
-| **D-4: uno por dimensión** | ✅ forma decidida. Faltan los **cinco valores** |
-| **Fase `cancelled`: sí. `initiation`: no** | ADR + US propias, sin abrir |
-| **Paleta de gráficos: propia** | Ni marca ni Tailwind: categórica y distinta del semáforo |
-
-`discipline` se eligió porque «función» y «rol» ya significan otras cosas aquí
-—`by_function` era agregación de capacidad, «rol» es el de permisos—.
+Al día también: `DB-CHANGES.md` (0100), ADR-019 a ADR-023, glosario y su
+revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
+**Ninguna epic queda desactualizada.**
 
 ## 🧹 Acciones del owner
 
-- [ ] **Mergear el PR #577** (ya está abierto).
-- [ ] **Correr las migraciones `0097`, `0098` y `0099`** cuando el PR entre.
-- [ ] Smoke manual de la web: cambiaron seis tokens de color y la fase
-      `support` pasó a `hypercare` en filtros y etiquetas.
-- [ ] Calibrar los cinco valores del umbral (D-4) contra un proyecto real.
+- [ ] **Abrir PR de `claude/audit-continuation-fzrtko` y mergear.** Sin PR no
+      corre CI.
+- [ ] **Proteger `main`** en GitHub exigiendo verificaciones en verde. Es la
+      Ola 1 entera: cierra `CFG-03` e `INT-03`, las dos CRÍTICA y N1.
+- [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic.
+- [ ] **Confirmar Sentry en Railway:** tienen que salir **dos** líneas,
+      `captura de errores activa proceso=api` y `proceso=worker`, cada una en su
+      servicio. Con las dos, `OPS-02` cierra.
+- [ ] Smoke de la web: plan (`wbs_code`), fase `cancelled`, y los gráficos que
+      cambiaron de color (dashboard, Gantt, curva-S).
+- [ ] Contrastar los umbrales de D-4 contra cartera real.
 
-## 🔮 Sin issue todavía
+## 🔮 Para sesiones futuras (sin issue todavía)
 
-- **`design-system/tokens.md`** describe una paleta anterior; queda declarado
-  obsoleto, no corregido.
-- **DCMA 14-point** y **línea base** (D-6), sin la cual «desviación» no tiene
-  referente.
-- **`MCS-CORE §5.14` enuncia SEG-06 sin traer procedimiento** — defecto del kit.
+- **`docs/conformidad/plan.md`** tiene una tabla «Tanda 3» con numeración
+  D-1..D-7 **anterior** a la revisión del glosario (D-1..D-9), y lista como
+  pendientes cosas ya hechas. Induce a error a quien lo abra sin contexto;
+  merece una nota de superseded.
+- **`design-system/tokens.md`** describe una paleta anterior a D-7 y ADR-023.
+- **Línea base** (D-6) y **DCMA 14-point**: épica propia.
+- El owner tiene **cambios de diseño de producto** pendientes, a retomar cuando
+  la auditoría deje de ser el frente activo.
 
 ---
 
-El orden de lectura al abrir sesión lo fija `CLAUDE.md` §1; no se repite aquí.
+## Cómo retomar
+
+1. Lee este `HANDOFF.md` primero.
+2. Luego `CLAUDE.md` + `SPRINT.md` + `docs/conformidad/plan-remediacion.md`.
+3. Arranca por la **Ola 0**: `python scripts/registro_conformidad.py` da el
+   estado, y la Ola 0 lo corrige contra el código de hoy.

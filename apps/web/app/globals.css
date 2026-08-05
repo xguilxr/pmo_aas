@@ -59,6 +59,33 @@
   --color-info-border: oklch(82% 0.08 240);
   --color-info-fg: oklch(46% 0.12 240);
 
+  /* ADR-023 — colores de gráficos. Espejo de `app/core/paleta.py`, que es el
+     origen; `test_adr023_paleta_graficos.py` comprueba que no se separen.
+
+     La regla: el semáforo se queda el arco cálido y el verde, los gráficos el
+     arco frío. Antes `--color-danger-fg` marcaba «ruta crítica» y
+     `--color-success-fg` marcaba «lo real», mientras el semáforo usaba esos
+     mismos colores para «en problemas» y «sano».
+
+     El ORDEN de las cuatro ranuras es el mecanismo de seguridad para daltonismo,
+     no una preferencia: en otro orden, teal y rosa colapsan a ΔE 0,2 bajo
+     deuteranopía. Se asignan en secuencia y no se reciclan. */
+  --chart-cat-1: #294c9f;
+  --chart-cat-2: #008a9b;
+  --chart-cat-3: #7c34a7;
+  --chart-cat-4: #ca62a1;
+
+  /* Secuencia (fase, tramo, tamaño): un solo tono, claro → oscuro. */
+  --chart-ord-1: #c4d1ec;
+  --chart-ord-2: #94abd8;
+  --chart-ord-3: #6785c3;
+  --chart-ord-4: #3c5fad;
+  --chart-ord-5: #203d81;
+
+  /* Lo que no es una serie: plan contra real, referencia, «sin dato». */
+  --chart-neutral: #6F695A;
+  --chart-neutral-soft: #A39C8B;
+
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -169,6 +196,23 @@
   --color-info-bg: oklch(30% 0.05 240);
   --color-info-border: oklch(42% 0.10 240);
   --color-info-fg: oklch(82% 0.12 240);
+
+  /* Pasos PROPIOS del tema oscuro, no un volteo de los claros: la banda de
+     luminosidad válida es más estrecha sobre fondo oscuro y los claros se caen
+     de ella. Validados contra la superficie #212428. */
+  --chart-cat-1: #436ed1;
+  --chart-cat-2: #00ab9e;
+  --chart-cat-3: #8244ba;
+  --chart-cat-4: #d368a2;
+
+  --chart-ord-1: #2f4168;
+  --chart-ord-2: #405c96;
+  --chart-ord-3: #5277c7;
+  --chart-ord-4: #6b95ee;
+  --chart-ord-5: #9dbdff;
+
+  --chart-neutral: #A39C8B;
+  --chart-neutral-soft: #756F60;
 
   --material-thin: oklch(20% 0.006 80 / 0.72);
   --material-regular: oklch(18% 0.005 80 / 0.85);

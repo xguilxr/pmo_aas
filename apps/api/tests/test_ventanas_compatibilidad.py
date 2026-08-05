@@ -12,7 +12,7 @@ se quita la ventana; si no, se sabe quién la usa antes de romperle nada.
 
 Esta suite defiende las dos mitades de que eso funcione:
 
-1. **Que el rastro salga**, en las tres puertas abiertas hoy.
+1. **Que el rastro salga**, en las cuatro puertas abiertas hoy.
 2. **Que ninguna ventana quede sin declarar.** Una ventana que nadie anotó es
    exactamente la que nadie recuerda cerrar — el trinquete recorre el código
    buscando `registrar_uso` y exige su fila en `VENTANAS`.
@@ -65,7 +65,7 @@ def test_registrar_uso_nunca_lanza():
 
 
 # ---------------------------------------------------------------------------
-# Las tres puertas abiertas hoy
+# Las cuatro puertas abiertas hoy
 # ---------------------------------------------------------------------------
 
 
@@ -105,6 +105,43 @@ def test_el_cuerpo_con_el_nombre_nuevo_no_deja_rastro(caplog):
 
     with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
         ActorCreate(name="Beto", discipline="datos")
+
+    assert caplog.records == []
+
+
+def test_la_tarea_con_wbs_viejo_deja_rastro_y_se_normaliza(caplog):
+    """D-3 / ADR-020: el cliente que aún manda `wbs` sigue funcionando."""
+    from app.api.v1.endpoints.tasks import TaskCreate
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        tarea = TaskCreate(name="Analizar", wbs="1.2")
+
+    assert tarea.wbs_code == "1.2", "el nombre viejo tiene que llegar al campo nuevo"
+    assert any("donde=cuerpo de tarea" in r.getMessage() for r in caplog.records)
+
+
+def test_el_patch_de_tarea_tambien_acepta_el_wbs_viejo(caplog):
+    """La puerta del PATCH es distinta de la del POST y se olvida más.
+
+    `TaskUpdate` decide qué tocar con `exclude_unset`; si el alias no llegara,
+    mandar `wbs` no fallaría — simplemente **no cambiaría nada**, que es la
+    forma de romperse que ADR-020 señaló como la peligrosa.
+    """
+    from app.api.v1.endpoints.tasks import TaskUpdate
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        patch = TaskUpdate(wbs="2.1")
+
+    assert patch.wbs_code == "2.1"
+    assert "wbs_code" in patch.model_dump(exclude_unset=True)
+    assert any("donde=cuerpo de tarea" in r.getMessage() for r in caplog.records)
+
+
+def test_la_tarea_con_wbs_code_no_deja_rastro(caplog):
+    from app.api.v1.endpoints.tasks import TaskCreate
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        TaskCreate(name="Analizar", wbs_code="1.2")
 
     assert caplog.records == []
 

@@ -803,7 +803,7 @@ abierto y merece su propia ADR.
 
 ## ADR-020 — `tasks.wbs` se renombra a `wbs_code`
 
-**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (US-194, migración 0100)
 
 **Contexto:**
 La columna guarda el **código** de la EDT (`1.2.3`), no la estructura — esa vive
@@ -861,6 +861,25 @@ muy por encima del límite de 10 de `CLAUDE.md` §3, y el proceso del propio
 glosario pide «ADR y US propia, una por una». La ADR fija la decisión y el
 método; la ejecución es su propia ronda.
 
+**Ejecutada el 2026-08-05 (US-194).** Lo que la ronda corrigió de esta ADR:
+
+- **La medida asustaba de más y avisaba de menos.** Las 259 ocurrencias las
+  resuelve un `sed` sobre `\bwbs\b` —que no toca `wbs_sort_key` ni `parent_wbs`,
+  porque el guion bajo es carácter de palabra—. El trabajo real fueron los
+  **siete sitios donde `wbs` no era nuestro campo**, y esta ADR nombraba tres.
+  Los cuatro que faltaban: los cinco códigos de diagnóstico `WBS_*`, el elemento
+  `<WBS>` de MS Project, la clave `wbs` del JSON de MPXJ y —la peligrosa— la
+  clave `plan-wbs-level:<id>` de `localStorage`.
+- **`localStorage` era el único que rompía en silencio.** Guarda el nivel de
+  agrupación del plan. Renombrar la clave no habría dado ningún error: la
+  preferencia guardada de cada usuario simplemente habría dejado de encontrarse.
+  Es la forma de fallo que esta ADR señalaba como el riesgo real, en el sitio que
+  no miraba.
+- **La ruta `renumber-wbs` no se renombra.** El campo es lo que se decidió
+  renombrar; la ruta habla de la EDT, que sigue llamándose WBS.
+- **La ventana tiene dos puertas, no una.** `TaskCreate` y `TaskUpdate`. La del
+  PATCH importa más: sin alias, mandar `wbs` no falla, no cambia nada.
+
 ---
 
 ## ADR-021 — `portfolio_function` se renombra a `discipline`
@@ -912,6 +931,156 @@ frontend. Es la más pequeña de las tres del glosario que tocan contrato.
 - **`role_type` / `resource_role`.** Alinea con `resource_type` y `seniority`,
   sus vecinos de modelo. Se descarta porque «rol» es el de permisos y confundir
   los dos en un modelo multiinquilino es caro.
+
+---
+
+## ADR-022 — `cancelled` como quinta fase del proyecto
+
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (US-195, sin migración)
+
+**Contexto:**
+La revisión del glosario (D-2) dejó el hueco por escrito y el owner lo resolvió
+el 2026-08-05: **`cancelled` sí; `initiation` no.** Hoy un proyecto cortado a
+mitad —sin presupuesto, prioridad cambiada, patrocinador que se fue— termina en
+`closed`, **indistinguible de uno que llegó al final y entregó**.
+
+No es un problema cosmético. Con un solo final:
+
+- toda métrica de éxito cuenta el cancelado como entregado;
+- sus lecciones aprendidas se mezclan con las de los que cumplieron, que es
+  precisamente donde más importa separarlas;
+- «¿cuántos proyectos cancelamos este año?» no tiene respuesta, y es una
+  pregunta que una PMO se hace.
+
+**Decisión:**
+Añadir `cancelled` al vocabulario de `phase`. Se alcanza **desde cualquier fase
+viva** y es **terminal**, como `closed`.
+
+**No lleva migración, y conviene decir por qué.** `projects.phase` es
+`String(32)` **sin `CHECK` ni enum de base** (`models/project.py:43`), de modo
+que el valor nuevo no exige tocar el esquema — a diferencia de D-2 y D-8, que
+eran renombrados sobre datos existentes. Lo único que cambia es el vocabulario
+declarado en el código.
+
+**Consecuencias:**
+
+- **`ACTIVE_PHASES` pasa a derivarse del vocabulario** en vez de repetirlo:
+  `[f for f in get_args(ProjectPhase) if f not in FASES_TERMINALES]`. Es el
+  arreglo de una clase de error, no de un caso: cuando D-2 renombró `support`,
+  esta lista fue el sitio que se quedó con el nombre viejo **sin fallar**, y los
+  proyectos en hypercare habrían salido de los snapshots en silencio. Derivarla
+  hace que cualquier fase terminal futura quede excluida sola.
+- **Cancelado se pinta distinto de cerrado** (`danger` frente a `neutral`).
+  Distinguirlos de un vistazo es el punto entero de la decisión; dos insignias
+  grises habrían dejado el problema donde estaba.
+- **`closed` no lleva a `cancelled`.** Un proyecto que llegó al final ya tuvo su
+  final; permitir el paso sería reescribir la historia.
+- **No es cambio de contrato que rompa a nadie**: se añade un valor, no se
+  retira ninguno. No hace falta ventana de compatibilidad — al revés que D-2,
+  D-3 y D-8. Un cliente viejo que no conozca `cancelled` lo verá como fase
+  desconocida, que es lo que ya le pasaría con cualquier dato futuro.
+
+**Lo que esta ADR NO decide:**
+
+- **Si un proyecto cancelado queda de solo lectura.** Es la misma pregunta que
+  el glosario dejó abierta para `closed` («no verificado»), y merece resolverse
+  para los dos finales a la vez, no para uno.
+- **Si `cancelled` necesita motivo obligatorio.** Sería lo natural —cancelar sin
+  decir por qué desperdicia el dato más útil del final— pero es campo nuevo y
+  formulario nuevo. US propia.
+- **`initiation`: descartada por el owner.** El proyecto nace en `planning`
+  aunque el acta sea previa, y eso no ha causado ningún problema reportado.
+
+**Alternativas evaluadas:**
+
+- **Un booleano `was_cancelled` junto a `closed`.** Evita tocar el vocabulario.
+  Se descarta porque parte el estado en dos campos que hay que leer juntos: toda
+  consulta de fase tendría que acordarse del booleano, y la que se olvide vuelve
+  a contar cancelados como entregados — el mismo error, más escondido.
+- **Un `status` separado del `phase`.** Es el modelo más general y el que usan
+  las herramientas grandes. Se descarta por ahora: el producto ya tiene
+  `phase` haciendo de ciclo de vida, y añadir una segunda dimensión sin
+  necesidad demostrada es complejidad a cuenta del futuro.
+
+---
+
+## ADR-023 — El semáforo se queda el arco cálido; los gráficos, el frío
+
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (US-197)
+
+**Contexto:**
+El owner pidió una paleta de gráficos **propia**: ni la de marca ni la de
+Tailwind, categórica y distinta del semáforo a propósito. Al medir qué había,
+resultaron dos sistemas y ninguno decidido:
+
+- Los gráficos de la web ofrecían `success`, `warning` y `danger` como colores
+  de **serie**, así que una serie cualquiera podía salir verde, amarilla o roja
+  sin querer decir nada.
+- Los informes del servidor llevaban hexes de Tailwind escritos a mano
+  (`#2563eb`, `#dc2626`, `#7c3aed`, `#16a34a`, `#6b7280`, `#9ca3af`).
+
+El choque concreto: **`#dc2626` marcaba «ruta crítica» en el Gantt y `#16a34a`
+marcaba «lo real» en la curva-S**, mientras el semáforo de salud usaba esos
+mismos rojo y verde para «proyecto en problemas» y «proyecto sano». El mismo
+color decía dos cosas en la misma página.
+
+**Decisión:**
+Partir el espectro. **El semáforo se queda con el arco cálido y el verde; los
+gráficos se quedan con el arco frío.** Cuatro ranuras categóricas de orden fijo
+y una rampa ordinal de un solo tono, con origen único en `app/core/paleta.py` y
+espejo en los tokens `--chart-*`.
+
+| Trabajo | Qué codifica | Forma |
+|---|---|---|
+| Categórica | identidad (equipo, área, proyecto) | 4 ranuras, orden fijo, sin reciclar |
+| Ordinal | secuencia (fase, tramo, tamaño) | un tono, claro → oscuro |
+| Estado | salud | el semáforo, reservado |
+
+No es solo estética: hace **imposible por construcción** que una serie parezca
+un estado.
+
+**Consecuencias:**
+
+- **El orden de las ranuras es el mecanismo de seguridad, no una preferencia.**
+  Con los mismos cuatro tonos en otro orden, el teal y el rosa colapsan a
+  **ΔE 0,2** bajo deuteranopía —indistinguibles—; en el orden elegido el peor
+  par adyacente queda en 13,3. Por eso se asignan en secuencia y `serie()`
+  **lanza** en vez de reciclar: una quinta serie con el color de la primera es
+  un gráfico que miente sobre cuántas cosas distintas muestra.
+- **Cuatro ranuras y no ocho.** Es lo que deja el arco frío: un quinto tono frío
+  rompía el piso de visión normal, y uno cálido invadía el semáforo. Más de
+  cuatro series se pliegan en «Otros» o se parten en múltiplos pequeños.
+- **El tema oscuro tiene pasos propios**, no un volteo de los claros: la banda
+  de luminosidad válida es más estrecha sobre fondo oscuro. Un aviso conocido y
+  aceptado: el morado oscuro queda en 2,59:1, lo que obliga a etiqueta visible o
+  vista de tabla — que es lo que los gráficos llevan igual.
+- **La fase pasa a la rampa ordinal.** Planificación → ejecución → hypercare →
+  cerrado es una secuencia, y cambiarle el orden cambia el significado, así que
+  le toca un solo tono de claro a oscuro. Eso resolvió de paso el problema que
+  abrió ADR-022: la quinta fase no necesita un quinto color, porque `cancelled`
+  se sale de la secuencia y va al neutro.
+- **La ruta crítica del Gantt deja el rojo** y pasa a borde y peso. Un grupo con
+  tareas críticas no está en problemas, está en el camino largo: es énfasis
+  estructural, no un estado.
+- **La curva-S deja el verde.** Plan y real son dos versiones de la misma
+  medida, no dos categorías; el verde insinuaba «va bien» cuando podía ir
+  pésimo.
+- **Dos copias inevitables, y un trinquete.** Los informes se dibujan en Python
+  y la web en CSS. `test_adr023_paleta_graficos.py` comprueba que los tokens
+  espejen el módulo, que ninguna ranura se acerque a un color del semáforo y que
+  los hexes de Tailwind no vuelvan.
+
+**Alternativas evaluadas:**
+
+- **Extender la paleta de marca.** Gratis y coherente, pero el azul de marca es
+  uno solo: no da cuatro identidades distinguibles sin inventar tonos, que es
+  exactamente lo que el owner descartó.
+- **Una paleta categórica estándar** (Tableau 10, Okabe-Ito). Están validadas y
+  son buenas, pero las dos incluyen verde, ámbar y rojo — reintroducirían el
+  choque que esta ADR existe para eliminar.
+- **Dejar que el semáforo y las series compartan colores y desambiguar con
+  etiqueta.** Es lo que había. La etiqueta funciona cuando se lee; el color se
+  ve antes de leer, y ahí ya mintió.
 
 ---
 
