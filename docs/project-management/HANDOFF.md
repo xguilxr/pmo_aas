@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — 10 commits, **PR abierto**
+**Branch activa:** `claude/audit-continuation-fzrtko` — #578 **mergeado**, #579 abierto
 **Generado por:** `/handoff`
 
 ---
@@ -41,7 +41,8 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 
 | # | Branch | Estado CI | Acción |
 |---|---|---|---|
-| #579 | `claude/audit-continuation-fzrtko` | corriendo | Esperar verde y mergear |
+| #578 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — lo grueso |
+| #579 | `claude/audit-continuation-fzrtko` | verde | Mergear — cierre de la Ola 1 |
 
 **Una branch sin PR abierto no tiene CI**: solo dispara en `pull_request` y en
 push a `main`. `main` exige las **nueve** verificaciones, así que #579 no se
