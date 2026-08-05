@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — **22 commits, sin PR**
+**Branch activa:** `claude/audit-continuation-fzrtko` — **25 commits, PR #577**
 **Generado por:** `/handoff`
 
 ---
@@ -107,7 +107,7 @@ glosario, ADR y `design-system/tokens.md`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Abrir el PR de `claude/audit-continuation-fzrtko` y mergear.**
+- [ ] **Mergear el PR #577** (ya está abierto).
 - [ ] **Correr las migraciones `0097`, `0098` y `0099`** cuando el PR entre.
 - [ ] Smoke manual de la web: cambiaron seis tokens de color y la fase
       `support` pasó a `hypercare` en filtros y etiquetas.
