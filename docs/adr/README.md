@@ -751,16 +751,11 @@ Los dos beneficios que ARQ-03 persigue no están en el horizonte de este product
 
 ---
 
-<<<<<<< Updated upstream
 ## ADR-019 — `support` se renombra a `hypercare`
-=======
-## ADR-020 — `tasks.wbs` se renombra a `wbs_code`
->>>>>>> Stashed changes
 
-**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (migración 0098)
 
 **Contexto:**
-<<<<<<< Updated upstream
 La revisión del glosario (D-2) preguntó si `support` era una fase legítima. La
 respuesta del owner fue que **sí lo es** —«un estado de hypercare antes del
 cierre formal, pero es una forma de closing»— y que el problema era el nombre:
@@ -803,7 +798,14 @@ Renombrar `support` → `hypercare` en el modelo, la API y la UI.
 
 **Lo que esta ADR NO decide:** si hacen falta `initiation` y `cancelled`. Sigue
 abierto y merece su propia ADR.
-=======
+
+---
+
+## ADR-020 — `tasks.wbs` se renombra a `wbs_code`
+
+**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+
+**Contexto:**
 La columna guarda el **código** de la EDT (`1.2.3`), no la estructura — esa vive
 en `parent_id` y `outline_level`. El propio código ya lo sabe:
 `apps/api/app/models/task.py:90` documenta «predecessors / successors como JSON
@@ -858,7 +860,6 @@ No es un `sed`. Los sitios que hay que mirar uno a uno:
 muy por encima del límite de 10 de `CLAUDE.md` §3, y el proceso del propio
 glosario pide «ADR y US propia, una por una». La ADR fija la decisión y el
 método; la ejecución es su propia ronda.
->>>>>>> Stashed changes
 
 ---
 
