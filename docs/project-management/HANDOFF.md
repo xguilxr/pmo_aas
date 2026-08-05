@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — 7 commits, **el owner mergea**
+**Branch activa:** `claude/audit-continuation-fzrtko` — #578 **mergeado**, #579 abierto
 **Generado por:** `/handoff`
 
 ---
@@ -9,7 +9,8 @@
 ## 🎯 Dónde estamos parados
 
 **MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
-**MCS sigue en N0** — 29 cerrados de 126, **47 bloquean N1**, 97 abiertos.
+**MCS sigue en N0** — 31 cerrados de 126, **45 bloquean N1**, 95 abiertos.
+La **Ola 1 ya está hecha**: el owner protegió `main` el 2026-08-05.
 
 El plan de remediación está escrito y ordenado por olas:
 **`docs/conformidad/plan-remediacion.md`**. Se construyó sin `MCS-CORE` —no está
@@ -40,12 +41,12 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 
 | # | Branch | Estado CI | Acción |
 |---|---|---|---|
-| — | `claude/audit-continuation-fzrtko` | **sin correr** | El owner abre PR y mergea |
+| #578 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — lo grueso |
+| #579 | `claude/audit-continuation-fzrtko` | verde | Mergear — cierre de la Ola 1 |
 
-**Ojo:** el CI solo dispara en `pull_request` y en push a `main`. Con #577
-mergeado la branch se quedó sin PR, así que **estos siete commits no pasaron por
-CI**. Verificación local completa: suite 1230, ruff, `tsc`, contraste 34/34,
-evaluación de IA y presupuesto de contexto.
+**Una branch sin PR abierto no tiene CI**: solo dispara en `pull_request` y en
+push a `main`. `main` exige las **nueve** verificaciones, así que #579 no se
+puede integrar en rojo.
 
 ## ⚠️ Gotchas y decisiones recientes
 
@@ -74,7 +75,7 @@ Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
 - **Ola 0** — recontar: los que nuestro trabajo pudo cerrar + los seis nunca
   medidos (`CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`).
-- **Ola 1** — proteger `main` (owner): cierra `CFG-03` e `INT-03`, dos CRÍTICAS.
+- **Ola 1** — ✅ cerrada entera (`CFG-03`, `INT-03`, y `contraste-wcag` exigido).
 - **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
 - **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
 - **Ola 4** — N1 → N2, se replanifica al llegar.
@@ -93,10 +94,14 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Abrir PR de `claude/audit-continuation-fzrtko` y mergear.** Sin PR no
-      corre CI.
-- [ ] **Proteger `main`** en GitHub exigiendo verificaciones en verde. Es la
-      Ola 1 entera: cierra `CFG-03` e `INT-03`, las dos CRÍTICA y N1.
+- [ ] **Mergear #579** cuando el CI cierre en verde.
+- [x] ~~Proteger `main`~~ — hecho el 2026-08-05. `CFG-03` e `INT-03` cierran.
+- [x] ~~Añadir `contraste-wcag` a las exigidas~~ — hecho el 2026-08-05. Son
+      nueve; la **Ola 1 queda cerrada entera**.
+- [x] ~~Decidir `enforce_admins`~~ — **se queda en `false`** (owner,
+      2026-08-05). Residual aceptado y escrito: con un solo desarrollador, la
+      salida de emergencia vale más que el trinquete. Se revisa si entra alguien
+      más al repositorio.
 - [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic.
 - [ ] **Confirmar Sentry en Railway:** tienen que salir **dos** líneas,
       `captura de errores activa proceso=api` y `proceso=worker`, cada una en su
@@ -107,10 +112,6 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
-- **`docs/conformidad/plan.md`** tiene una tabla «Tanda 3» con numeración
-  D-1..D-7 **anterior** a la revisión del glosario (D-1..D-9), y lista como
-  pendientes cosas ya hechas. Induce a error a quien lo abra sin contexto;
-  merece una nota de superseded.
 - **`design-system/tokens.md`** describe una paleta anterior a D-7 y ADR-023.
 - **Línea base** (D-6) y **DCMA 14-point**: épica propia.
 - El owner tiene **cambios de diseño de producto** pendientes, a retomar cuando

@@ -19,7 +19,7 @@ LO SIGUIENTE ES LA REMEDIACIÓN POR OLAS — plan completo en
 `docs/conformidad/plan-remediacion.md`. Arrancar por la Ola 0.
 
 MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · 29 cerrados de 126 · 47 bloquean N1 · 97 abiertos en total.
+MCS: N0 · 31 cerrados de 126 · 45 bloquean N1 · 95 abiertos en total.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -42,9 +42,11 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   «glosario borrador» y está aprobado. A la contra, `OPS-02` figuraba como
   cerrado-casi y el worker no reportaba. Incluye los **seis nunca medidos**:
   `CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`.
-- [ ] **Ola 1 — owner, dos minutos, cierra dos CRÍTICAS.** `CFG-03` e `INT-03`
-  son el mismo hecho: `main` no está protegida en GitHub. Los dos N1. El CI ya
-  está verde, así que exigirlo no bloquea nada.
+- [x] **Ola 1 — hecha el 2026-08-05.** El owner protegió `main`: 8
+  verificaciones exigidas en `strict`, sin force-push ni borrado. `CFG-03` e
+  `INT-03` cierran; **la distancia a N1 baja de 47 a 45**. `contraste-wcag`
+  entró a las exigidas —son nueve— y `enforce_admins` **se queda en `false`**
+  por decisión del owner, con el residual escrito.
 - [ ] **Ola 2 — 13 mecánicos, se pueden disparar solos**, uno por commit con
   prueba y verificación por mutación: `DAT-12` (77 puntos), `DIS-03` (73 de 75
   pantallas), `DIS-01` (25 literales), `DAT-04` (6 sitios), `DAT-02`, `DAT-11`,
