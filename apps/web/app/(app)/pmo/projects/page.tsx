@@ -35,7 +35,7 @@ import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { useOrgLabel } from "@/lib/org-label";
 
-const ALL_PHASES: ProjectPhase[] = ["planning", "execution", "support", "closed"];
+const ALL_PHASES: ProjectPhase[] = ["planning", "execution", "hypercare", "closed"];
 const ALL_TYPES: ProjectType[] = ["innovation", "transformation", "operation", "bau"];
 const ALL_HEALTH: ProjectHealth[] = ["green", "yellow", "red"];
 
@@ -559,7 +559,7 @@ function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
     const out: Record<ProjectPhase, Project[]> = {
       planning: [],
       execution: [],
-      support: [],
+      hypercare: [],
       closed: [],
     };
     for (const r of rows) out[r.phase].push(r);
@@ -578,7 +578,7 @@ function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
 
   return (
     <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-      {(["planning", "execution", "support", "closed"] as ProjectPhase[]).map((phase) => (
+      {(["planning", "execution", "hypercare", "closed"] as ProjectPhase[]).map((phase) => (
         <section
           key={phase}
           className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40"
@@ -626,7 +626,7 @@ function PhasePill({ phase }: { phase: ProjectPhase }) {
   const tone: Record<ProjectPhase, "info" | "warning" | "neutral" | "success"> = {
     planning: "info",
     execution: "success",
-    support: "warning",
+    hypercare: "warning",
     closed: "neutral",
   };
   return <Badge variant={tone[phase]}>{PHASE_LABEL[phase]}</Badge>;

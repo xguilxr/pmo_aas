@@ -158,14 +158,48 @@ class ProjectRead(BaseModel):
 | 404 | `NOT_FOUND` | Recurso no existe (o el tenant no lo ve) |
 | 409 | `CONFLICT` | Duplicado (slug, folio, email) |
 | 422 | `BUSINESS_RULE` | Regla de dominio violada |
+| 429 | `RATE_LIMITED` | El llamador superó su cuota (AM-09: fallos de login por IP) |
 | 503 | `SERVICE_UNAVAILABLE` | Provider de IA caído u otra dependencia externa |
+
+### Cómo se escribe el texto de un error (MCS LEN-02)
+
+> **Norma para lo nuevo, decidida el 2026-08-05.** Los cinco defectos del
+> catálogo ya cumplen; los mensajes con texto propio se arreglan **al tocar el
+> endpoint**, no en una tanda. Medido ese día: de 159 mensajes con texto
+> explícito, 152 dicen solo qué pasó y 21 nombran campos internos. Cerrar eso de
+> golpe es trabajo uno por uno sin palanca común, y no compra nada que un
+> usuario note antes que el resto del roadmap.
+
+Todo mensaje nuevo dice **las tres cosas**, en este orden:
+
+| | Pregunta | Ejemplo |
+|---|---|---|
+| **Qué** | ¿Qué ocurrió? | «No pudimos verificar tu identidad.» |
+| **Por qué** | ¿Por qué ocurrió? | «El usuario o la contraseña no coinciden, o la sesión expiró.» |
+| **Qué hacer** | ¿Qué puede hacer quien lee? | «Vuelve a iniciar sesión; si no lo consigues, usa «¿Olvidaste tu contraseña?».» |
+
+Tres reglas que salen de los defectos que la auditoría encontró:
+
+1. **Nada de nombres de campo internos.** «cambia `pm_id` primero» no significa
+   nada para quien lo lee. Se nombra el concepto —«el responsable del
+   proyecto»—, no la columna.
+2. **El «qué hacer» lleva verbo.** Si no propone una acción que el usuario pueda
+   ejecutar, no es un «qué hacer»: es un lamento. Si de verdad no hay nada que
+   pueda hacer, se dice a quién acudir.
+3. **El cliente reacciona por `code`, nunca por el texto.** El texto se reescribe
+   sin avisar; el `code` es el contrato.
+
+Cuando el sitio **no** pasa texto propio, se aplica el defecto del catálogo
+(`app/core/errors.py`), donde las tres partes se guardan como campos separados
+—`que`, `porque`, `accion`— justamente para que no se puedan rellenar a medias.
+Lo vigila `tests/test_len02_mensajes_de_error.py`.
 
 Códigos adicionales que algunos endpoints emiten ad-hoc (no centralizados):
 
 - `ACCOUNT_LOCKED` (403) — login después de 5 fails.
 - Errores de IA específicos (`gemini_no_api_key`, `claude_connect_error`, `groq_no_api_key`, etc.) — generados por los providers, llegan como `code` granular.
 
-> **Códigos del doc viejo que NO están** en código: `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `STATE_TRANSITION`, `RATE_LIMITED`, `INTERNAL` formal. Si los necesitas, agregarlos al catálogo central.
+> **Códigos del doc viejo que NO están** en código: `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `STATE_TRANSITION`, `INTERNAL` formal. `RATE_LIMITED` sí está desde el 2026-08-05 (AM-09). Si los necesitas, agregarlos al catálogo central.
 
 ---
 
@@ -281,7 +315,7 @@ El `AppError` envuelve la información en `HTTPException.detail`, y FastAPI seri
 ```json
 {
   "detail": {
-    "detail": "Credenciales inválidas",
+    "detail": "No pudimos verificar tu identidad. El usuario o la contraseña no coinciden, o la sesión expiró. Vuelve a iniciar sesión; si no lo consigues, usa «¿Olvidaste tu contraseña?».",
     "code": "UNAUTHENTICATED",
     "fields": {}
   }
@@ -289,5 +323,13 @@ El `AppError` envuelve la información en `HTTPException.detail`, y FastAPI seri
 ```
 
 El frontend deshace el envelope al consumir errores (`apps/web/lib/api/*` mira `data.detail?.detail || data.detail`).
+
+> **El texto es largo a propósito** (MCS LEN-02, 2026-08-05). Antes decía
+> «Credenciales inválidas»: un qué sin un porqué y sin salida. Los cuatro
+> defectos del catálogo —`UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND` e
+> `INTERNAL_SERVER_ERROR`— viven en `app/core/errors.py` como tres campos
+> separados (`que`, `porque`, `accion`), no como una frase, para que no se
+> puedan rellenar a medias. **El cliente sigue reaccionando por `code`**; el
+> texto es para quien lo lee, y no debe usarse para bifurcar lógica.
 
 Si quieres aplanar a una forma `{ code, detail, fields }` plana, hay que registrar un `exception_handler` en `main.py` que normalice antes de devolver. Es deuda técnica baja-prioridad.

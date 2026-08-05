@@ -227,10 +227,12 @@ class Actor(Base, TimestampMixin):
     # cliente_negocio | cliente_it | e4_pmo | e4_tecnologia | vendor_externo.
     # NULL = sin clasificar (legacy). Check en migración 0092.
     resource_type: Mapped[str | None] = mapped_column(String(24))
-    # Rol normalizado para saturación por función: pm | pmo | arquitectura |
-    # infraestructura | aplicaciones | datos | seguridad | integraciones |
-    # negocio | change | testing | vendor.
-    portfolio_function: Mapped[str | None] = mapped_column(String(24))
+    # D-8 / ADR-021: se llamaba `portfolio_function`. El glosario veta
+    # «portafolio» para un área —la entidad no existe en el producto— y lo que
+    # esto guarda es la disciplina: pm | pmo | arquitectura | infraestructura |
+    # aplicaciones | datos | seguridad | integraciones | negocio | change |
+    # testing | vendor. Migración 0099.
+    discipline: Mapped[str | None] = mapped_column(String(24))
     seniority: Mapped[str | None] = mapped_column(String(8))  # junior|mid|senior|lead
     scarcity_level: Mapped[str | None] = mapped_column(String(8))  # alta|media|baja
     location: Mapped[str | None] = mapped_column(String(100))

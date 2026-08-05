@@ -1,6 +1,9 @@
 import { apiFetch } from "@/lib/api";
 
-export type ProjectPhase = "planning" | "execution" | "support" | "closed";
+// D-2 / ADR-019 (2026-08-05): `support` se renombró a `hypercare`. El API
+// acepta el nombre viejo a la entrada durante una ventana, pero siempre
+// devuelve el canónico, así que aquí solo existe el nuevo.
+export type ProjectPhase = "planning" | "execution" | "hypercare" | "closed";
 export type ProjectType = "innovation" | "transformation" | "operation" | "bau";
 export type ProjectHealth = "green" | "yellow" | "red";
 // US-180: fuente del semáforo único — 'auto' (motor de reglas) o
@@ -296,7 +299,7 @@ export function removeMember(id: string, userId: string): Promise<void> {
 export const PHASE_LABEL: Record<ProjectPhase, string> = {
   planning: "Planificación",
   execution: "Ejecución",
-  support: "Soporte",
+  hypercare: "Hypercare",
   closed: "Cerrado",
 };
 

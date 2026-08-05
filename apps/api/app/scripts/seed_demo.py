@@ -611,7 +611,7 @@ async def _seed_tenant(db: AsyncSession, slug: str) -> dict:
         ("Migracion a cloud", prog_1, org_a, "transformation", "execution", "yellow", 45),
         ("App movil empleados", prog_1, org_a, "innovation", "planning", "green", 5),
         ("Automatizacion de nomina", prog_2, org_b, "operation", "execution", "green", 60),
-        ("Dashboards de operacion", prog_2, org_b, "bau", "support", "green", 90),
+        ("Dashboards de operacion", prog_2, org_b, "bau", "hypercare", "green", 90),
         ("Integracion ERP-CRM", prog_2, org_b, "transformation", "execution", "red", 25),
         ("Iniciativa independiente", None, org_a, "innovation", "planning", "green", 0),
     ]

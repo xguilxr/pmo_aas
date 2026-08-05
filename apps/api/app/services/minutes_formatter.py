@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
+from app.core.tipografia import aplicar_a_docx
 from app.models.modules import MeetingMinute
 from app.models.project import Project
 from app.services.ai.validator import validate_minute_payload
@@ -375,6 +376,8 @@ def to_docx(view: MinuteView) -> bytes:
     from docx import Document
 
     doc = Document()
+    # ENH-202: Helvetica en el estilo `Normal` del documento.
+    aplicar_a_docx(doc)
     doc.add_heading(view.title, level=1)
 
     # 1. Encabezado

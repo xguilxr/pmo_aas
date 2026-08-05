@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **Resuelto el 2026-08-04.** Ocho decisiones tomadas, una abierta (D-4) |
+| Estado | **Resuelto.** Las nueve decididas; de D-4 falta calibrar valores, no decidir forma |
 | Método | Cada término vetado del §6 del glosario, contrastado contra el código de hoy |
 | Efecto | `02-GLOSARIO.md` deja de ser borrador salvo en el umbral del semáforo |
 
@@ -24,14 +24,14 @@ descrito como más barato resultó ser el más caro.
 | # | Qué | Decisión | Cuesta |
 |---|---|---|---|
 | D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
-| D-2 | `support` como fase | **Es hypercare, y es cierre**. Queda | Documentar + nombre a decidir |
-| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** | Migración + contrato + frontend |
-| D-4 | Umbral del semáforo | **Abierta** — ni siquiera está claro si es uno o varios | — |
+| D-2 | `support` como fase | **Renombrar a `hypercare`** (2026-08-05) — ADR-019 | Migración + contrato + UI |
+| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | 259 ocurrencias, 22 archivos |
+| D-4 | Umbral del semáforo | **Uno por dimensión** (2026-08-05). Los valores, pendientes | Los valores necesitan un proyecto real |
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
 | D-6 | Línea base | **Al roadmap** | Épica propia |
-| D-7 | Dos paletas de salud | **Unificar** | Bajo |
-| D-8 | `portfolio_function` | **Renombrar** | Medio — el parámetro es público |
-| D-9 | `is_milestone ⟹ duración 0` | **Validar** | Bajo |
+| D-7 | Dos paletas de salud | **Unificar** — ✅ hecho 2026-08-05 | Bajo |
+| D-8 | `portfolio_function` | **Renombrar a `discipline`** — ✅ hecho 2026-08-05 (ADR-021) | Medio — el parámetro es público |
+| D-9 | `is_milestone ⟹ duración 0` | **Validar** — ✅ hecho 2026-08-05 | Bajo |
 
 ---
 
@@ -84,14 +84,18 @@ concepto es legítimo —la transición a operaciones existe en los estándares�
 discutible es el nombre. `support` se lee como «mesa de ayuda»; `hypercare` es
 lo que el owner describe.
 
-**Lo que falta decidir es solo el nombre**, y dos huecos:
+**Renombrada a `hypercare` el 2026-08-05** (ADR-019, migración 0098). Va con
+ventana de compatibilidad —el API sigue aceptando `support` a la entrada y
+devuelve siempre el canónico—, la misma forma que se usó para `amber` → `yellow`
+en la 0091.
 
-- [ ] Renombrar `support` → `hypercare` (claro, cuesta migración de datos + tipos + UI)
-      · o dejar `support` y documentarlo como hypercare (gratis)
-- [ ] ¿Hace falta `initiation`? Hoy un proyecto nace en `planning`, aunque el acta
-      de constitución sea previa
-- [ ] ¿Hace falta `cancelled`? Un proyecto terminado anticipadamente hoy solo puede
-      quedar `closed`, indistinguible de uno que cumplió
+De los dos huecos que la decisión no cubría, el owner resolvió el 2026-08-05:
+
+- **`cancelled`: sí.** Hoy un proyecto cortado a mitad queda `closed`,
+  indistinguible de uno que cumplió — ensucia cualquier métrica de éxito y las
+  lecciones aprendidas. Necesita ADR y US propias.
+- **`initiation`: no.** El proyecto nace en `planning` aunque el acta sea previa,
+  y eso no ha causado ningún problema reportado.
 
 **No verificado:** si un proyecto en `closed` queda de solo lectura. Lo único
 comprobado es que sale de `ACTIVE_PHASES` y por tanto de los snapshots.
@@ -107,17 +111,31 @@ columna de la línea 29 se llama `wbs`.
 Cuesta migración de columna + campo de la API + frontend + el parser de import.
 Va con ADR y US propia.
 
-## D-4. Umbral del semáforo — abierta
+## D-4. Umbral del semáforo — la forma decidida, los valores no
 
-**Decisión del owner:** no se define hoy, y con razón: *«no sé si hay un solo
-umbral o deben haber más»*. Casi seguro son varios —no es lo mismo el umbral de
-un proyecto de tres meses que el de uno de dos años, ni el de cronograma que el
-de costo.
+**La duda original del owner era si había uno o varios.** Resuelta el
+2026-08-05: **uno por dimensión**.
 
-Es el único punto que deja `02-GLOSARIO.md` en borrador, y el único que ningún
-estándar resuelve. Mientras tanto, `health_source = 'manual'` con
-`health_reason` obligatoria es la salida honesta: el semáforo es un juicio
-declarado, no un cálculo.
+Encaja con lo que el producto ya hace. US-191 evalúa la salud en **cinco
+dimensiones** —cronograma, presupuesto, riesgos, decisiones, recursos— más la
+global, y `project_health_evaluations` ya las guarda por separado. Un umbral
+único tendría que promediarlas para volver a partirlas después; uno por
+dimensión se apoya en la estructura que existe.
+
+Y responde a la intuición que dio origen a la duda: **no es lo mismo el umbral
+de cronograma que el de costo**. Un 10 % de desviación en presupuesto y un 10 %
+en fechas no significan lo mismo para nadie.
+
+**Los valores siguen pendientes, y a propósito.** Necesitan un proyecto real con
+desviación medible contra el que calibrar; cualquier número escrito hoy sería
+inventado. Lo que se decidió es la **forma**, que es lo que se puede decidir sin
+datos y lo que bloqueaba diseñar la funcionalidad.
+
+Mientras tanto, `health_source = 'manual'` con `health_reason` obligatoria sigue
+siendo la salida honesta: el semáforo es un juicio declarado, no un cálculo.
+
+**Lo que falta para cerrarla del todo:** un proyecto con historia suficiente, y
+entonces cinco números. No antes.
 
 ## D-5. Método de avance
 
@@ -135,9 +153,46 @@ diagnóstico. Entra como épica propia.
 
 | # | Qué | Dónde |
 |---|---|---|
-| D-7 | Unificar las dos paletas de salud | `apps/api/app/services/reports/scoped_status.py:30,33` — `_HEALTH_DONUT_COLOR` verde `#1F8A5B` vs `_HEALTH_HEX` verde `#16a34a` |
-| D-8 | `portfolio_function` no es portafolio | `apps/api/app/models/area.py:233`, `endpoints/areas.py:675-689`, `L1-PORTAFOLIO` en `report_builder_template.py:11` |
-| D-9 | Validar `is_milestone ⟹ duration_days = 0` | Regla del §1.2, hoy sin validar |
+| D-7 | Unificar las dos paletas de salud | ✅ **Hecha el 2026-08-05.** Ver abajo |
+| D-8 | `portfolio_function` no es portafolio | ✅ **Hecha el 2026-08-05** (ADR-021, migración 0099). `discipline` porque «función» y «rol» ya significan otras cosas aquí. Ventana en dos puertas —cuerpo y parámetro de consulta— porque el nombre era público; `by_function` pasó a `by_discipline` para no reabrir el mismo desajuste |
+| D-9 | Validar `is_milestone ⟹ duration_days = 0` | ✅ **Hecha el 2026-08-05.** Normalización en el modelo (vale para los seis caminos de escritura) + rechazo del rango de varios días al crear. Resultó menos mecánica de lo previsto: la duración es un valor **derivado** —el endpoint ignora el que manda el cliente— así que un 422 sobre ella habría dejado al usuario sin forma de arreglarlo |
+
+### D-7, cerrada — y no eran dos paletas, eran cuatro
+
+La decisión nombraba dos, ambas en `scoped_status.py`: `_HEALTH_DONUT_COLOR`
+con los colores de marca y `_HEALTH_HEX` con los de Tailwind. Al ir a
+unificarlas aparecieron **otras dos** en las plantillas PDF —`base.html` y
+`reports/scope_status.html`—, cada una con su mezcla de las anteriores. El mismo
+proyecto en rojo salía `#C0392B` en el donut y `#dc2626` en el mapa de árbol de
+la página siguiente.
+
+Hoy hay una sola, `HEALTH_COLOR` en `scoped_status.py`:
+
+| Estado | Color | Token de `globals.css` |
+|---|---|---|
+| `green` | `#007A4C` | `--color-success-fg` |
+| `yellow` | `#9F5900` | `--color-warning-fg` |
+| `red` | `#BD3528` | `--color-danger-fg` |
+
+**Los valores no son los que la decisión suponía**, y ahí está lo que hizo que
+esto no fuera mecánico: el verde de marca `#1F8A5B` no alcanzaba WCAG 2.2 AA
+(MCS DIS-02). Unificar sin mirar el contraste habría consolidado el que no pasa,
+que era justo el del semáforo. Las dos decisiones se resolvieron juntas y el
+mismo día.
+
+De regalo cerró un defecto que nadie había reportado: el mapa de árbol del PDF
+pintaba texto blanco sobre `#eab308`, alrededor de 1.9:1 — ilegible.
+
+`tests/test_d7_paleta_de_salud.py` lee el hex de `globals.css` y lo compara con
+el del backend, así que la próxima vez que un token se retoque por contraste, el
+semáforo no se queda atrás en silencio.
+
+**Lo que queda fuera, dicho a propósito:** la paleta de *gráficos* —líneas de
+tendencia, barras del Gantt, `actual_color` de la curva-S— arrastra los mismos
+colores de Tailwind y también convendría unificar. No se tocó porque decidir si
+la línea de «avance promedio» lleva el verde del semáforo es una decisión de
+diseño, no la que D-7 tomó. Está nombrada en el propio test para que sea trabajo
+y no descuido.
 
 ---
 

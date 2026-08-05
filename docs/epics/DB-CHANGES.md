@@ -594,3 +594,92 @@ semáforo del proyecto (`health_status/source/reason`) como declaración
 manual US-180; convive con el motor automático. Índice
 (project_id, evaluated_at). FKs CASCADE a tenants/projects, SET NULL a
 users.
+
+---
+
+## AM-08 / MCS SEG-07 — `audit_log` de solo anexado (2026-08-05)
+
+### Migración **0097** — disparadores de inmutabilidad sobre `audit_log`
+
+**No cambia el schema**: no toca columnas, índices ni claves. Añade dos
+disparadores y una función, y revoca privilegios. Se indexa aquí porque cambia
+lo que se puede *hacer* con una tabla, que es lo que sorprende a quien escriba
+código contra ella.
+
+`audit_log` era una tabla ordinaria y **AM-06 se apoya en ella como único
+control**. Ahora rechaza `UPDATE`, `DELETE` y `TRUNCATE`.
+
+**Por qué disparadores y no solo `REVOKE`,** que es lo que proponía el modelo de
+amenazas: en Railway la aplicación se conecta con el rol dueño de las tablas, y
+en PostgreSQL el dueño conserva sus privilegios haga lo que haga el `REVOKE`.
+Comprobado contra Postgres 16: con `REVOKE UPDATE, DELETE` aplicado al dueño, el
+`UPDATE` pasa igual. Con el disparador puesto, no pasa ni siendo superusuario.
+
+El `REVOKE` a `PUBLIC` se aplica igualmente —cuesta una línea y empieza a sumar
+solo el día que la aplicación deje de conectarse como dueño, que es lo correcto—.
+
+**Lo que no detiene:** quien administra la base puede quitar el disparador. Es
+una defensa contra la aplicación, contra un fallo que permita ejecutar SQL con
+sus credenciales y contra el borrado accidental. Cerrar el resto pide
+encadenamiento por hash o envío a un almacén externo, y es otra decisión.
+
+**Reversible.** El `downgrade` deja la tabla como estaba; verificado contra
+Postgres real, no solo por lectura.
+
+**Fuera de PostgreSQL no hace nada** —la suite corre en SQLite— y ahí el control
+lo pone el guardián del ORM en `app/models/audit.py`, que cubre el camino de la
+aplicación pero no las sentencias masivas. Esa división está escrita en los dos
+sitios y comprobada en `tests/test_am08_auditoria_solo_anexa.py`.
+
+
+---
+
+## D-2 / ADR-019 — la fase `support` pasa a `hypercare` (2026-08-05)
+
+### Migración **0098** — renombrado de valor en `projects.phase` y `lessons_learned.phase`
+
+**Sin cambio de esquema.** Las dos columnas son `String(32)` sin `CHECK` ni enum,
+así que esto es una migración de datos: `UPDATE … SET phase='hypercare' WHERE
+phase='support'`. Es la razón por la que ADR-019 la clasificó de coste medio.
+
+**Dos tablas, y la segunda es la fácil de olvidar.** `lessons_learned.phase`
+comparte vocabulario con `projects.phase` (`LessonPhase` en el frontend).
+
+**La ventana de compatibilidad no está en la migración**, está en
+`schemas/project.py`: el API sigue aceptando `support` a la entrada y lo
+normaliza a `hypercare`, para que un cliente que no se haya actualizado —una
+pestaña abierta, un filtro guardado— no se rompa. La salida es siempre canónica.
+Hacen falta las dos mitades: una sin la otra deja medio producto hablando el
+idioma viejo.
+
+**Reversible, con una salvedad honesta.** Ejercitada contra Postgres 16: sube y
+baja sin tocar el resto de fases ni los nulos. Lo que la bajada no puede
+distinguir es una fila que ya fuera `hypercare` de una renombrada — antes del
+2026-08-05 ese valor no existía en el vocabulario, así que con datos reales no
+se da.
+
+
+---
+
+## D-8 / ADR-021 — `portfolio_function` pasa a `discipline` (2026-08-05)
+
+### Migración **0099** — renombrado de columna en `actors`
+
+`ALTER TABLE actors RENAME COLUMN portfolio_function TO discipline`, vía
+`batch_alter_table` para que SQLite —donde corre la suite— lo resuelva
+recreando la tabla. Los **valores no cambian**: `String(24)` sin `CHECK`.
+
+El glosario veta «portafolio» para un área (brecha B-6): un portafolio es un
+conjunto de proyectos y programas, y esa entidad no existe en el producto. Lo
+que la columna guarda es la disciplina del recurso.
+
+**Ventana de compatibilidad en dos puertas**, porque el nombre era público:
+
+- el cuerpo de creación acepta `portfolio_function` vía `AliasChoices`;
+- el parámetro de consulta de `GET /actors` lo acepta, marcado `deprecated`.
+
+La **salida es siempre `discipline`**, y la clave de agregación de capacidad
+pasó de `by_function` a `by_discipline` para no reabrir el mismo desajuste.
+
+**Reversible**, ejercitada contra Postgres 16: sube, baja y los datos —incluidos
+los nulos— quedan intactos en los dos sentidos.

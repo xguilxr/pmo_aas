@@ -27,6 +27,38 @@ El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA ed
 - **DEC-015** — WeasyPrint es el motor oficial de PDF (ya mencionado en US-030); se valida como infra compartida para todos los exports (charter, minutas, reportes).
 - **DEC-016** — Minuta IA devuelve siempre la misma estructura post-procesada (ver US-040) y expone endpoints de export `.docx` / `.md` / `.txt`.
 
+## Tipografía de los entregables (ENH-202, 2026-08-05)
+
+**Todo lo que el usuario se lleva sale en Helvetica** — XLSX, PDF, DOCX y el
+Excel del portafolio. Antes cada camino usaba la suya: Calibri en los Excel de
+backend, el defecto de Word en los DOCX y, en los PDF, **ni siquiera la que
+declaraban**.
+
+| Camino | Cómo se aplica |
+|---|---|
+| XLSX de backend (openpyxl) | `app.core.tipografia.aplicar_a_workbook(wb)` |
+| DOCX (charter, minutas) | `app.core.tipografia.aplicar_a_docx(doc)` |
+| PDF y HTML (WeasyPrint) | `PILA_CSS` — `Helvetica, "Nimbus Sans", Arial, sans-serif` |
+| XLSX del frontend (ExcelJS) | `XLSX_FONT` y `aplicarFuente(ws)` de `lib/plan-template.ts` |
+
+**Por qué Helvetica y no DM Sans**, que es la fuente de marca de la web: el
+cliente no la tiene instalada y Office la reemplazaría por cualquier cosa.
+Helvetica la sustituye Excel por Arial en Windows con las mismas métricas, así
+que el documento se ve igual en cualquier máquina. Es la razón que US-193 ya
+había dado al elegirla para el plan.
+
+**El PDF necesitaba algo más que declararla.** La imagen instalaba solo
+`fonts-dejavu-core`, así que `font-family: Helvetica` no existía y fontconfig
+caía a DejaVu Sans: los informes llevaban meses saliendo con una fuente que
+nadie eligió. El `Dockerfile` instala ahora `fonts-urw-base35` (Nimbus Sans).
+
+De paso **desaparecen las tipografías remotas**: los `<link>` a Google Fonts que
+traían DM Sans se retiraron, con lo que generar un PDF ya no depende de que
+Google responda (AM-12 del modelo de amenazas, cerrada).
+
+Lo vigila `tests/test_enh202_helvetica_en_exports.py`, que abre los archivos
+generados en vez de comprobar que se llamó al helper.
+
 ---
 
 ## # DONE — US-037 — Infra compartida de exportación a PDF

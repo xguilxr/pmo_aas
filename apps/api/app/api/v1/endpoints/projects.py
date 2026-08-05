@@ -42,8 +42,8 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 VALID_TRANSITIONS = {
     "planning": {"execution", "closed"},
-    "execution": {"support", "closed"},
-    "support": {"closed"},
+    "execution": {"hypercare", "closed"},
+    "hypercare": {"closed"},
     "closed": set(),
 }
 

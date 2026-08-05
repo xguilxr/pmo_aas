@@ -13,17 +13,22 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sin sesión activa. PR #575 MERGEADO el 2026-08-04. **PR #576 ABIERTO, CI verde,
-esperando merge del owner** (branch `claude/cap01-y-recuento`).
+#575 y #576 MERGEADOS. **MCA está en N2**, su objetivo.
 
-#575 cerró: R1 completa (13/13 medidos), guard AUT-01 con trinquete de 24 casos,
-glosario aprobado, ADR-018 (ARQ-03 excluido), IA-04 conforme, CON-04 mitigado.
-#576 cierra CAP-01 y corrige el recuento de R1. **Con su merge, MCA alcanza N2.**
+Branch `claude/audit-continuation-fzrtko`. Remediación post-R1 completa:
+SUM-02, DES-03, DIS-02, SEG-07/AM-08, AM-09, SEG-01, D-7 y D-9. LEN-02 sigue
+PARCIAL, con cifra: 152 de 159 mensajes dicen solo qué pasó.
 
-MCS sigue en N0: 22/126 conformes, **51 requisitos bloquean N1**.
+MCS en N0: 25/126 conformes; la distancia a N1 baja de 54 a 50.
+Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`. Todo en verde.
 
-Próximo paso — recorrer lo pendiente de una corrida, dejando las
-confirmaciones del owner para el final. Ver HANDOFF.md.
+**Decisiones del owner (2026-08-05), las cuatro ejecutadas:** volver al producto ·
+LEN-02 como norma · PyJWT · `support` → `hypercare`.
+
+Producto: **ENH-202**, **D-2**, **D-8** y **AM-10** cerradas. Solo queda **D-3**
+(ADR-020, medida y sin ejecutar). Ninguna amenaza sin control.
+
+**Espera al owner:** mergear el PR y correr las migraciones **0097-0099**.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -39,29 +44,37 @@ confirmaciones del owner para el final. Ver HANDOFF.md.
 
 ### Siguiente batch
 
-- [ ] **ENH-202** — Helvetica en TODOS los exports y reportes. Cuatro frentes:
-  XLSX de backend (openpyxl), PDFs (WeasyPrint, CSS base de `templates/pdf/**`),
-  DOCX del charter y ExcelJS del frontend. El plan ya la usa vía US-193, así que
-  hay de dónde copiar la convención.
+**ENH-202 cerrada el 2026-08-05**, los cuatro frentes; cerró AM-12 de paso.
 
-### Remediación barata de R1 (sin IDs; conformidad)
+**D-8 cerrada el 2026-08-05** (ADR-021, migración 0099). **AM-10 cerrada**: el
+bloqueo de cuenta pasó a retardo creciente, y con ella el modelo de amenazas
+queda **sin ninguna amenaza sin control**.
 
-- [ ] **SUM-02** — `USER` sin privilegios en `apps/api/Dockerfile`. 3 líneas.
-- [ ] **DES-03** — `SELECT 1` con tiempo límite en `/health`. 10 líneas.
-- [ ] **LEN-02** — los seis textos por defecto de `app/core/errors.py`.
-- [ ] **DIS-02 + D-7** — retocar 5 tokens de `globals.css` y unificar las dos
-  paletas de salud. **Son el mismo trabajo**: el verde que falla AA es el del
-  semáforo. Enganchar después `scripts/check_contraste.py` al CI.
-- [ ] **AM-09** — límite por IP en `/auth/login`. El limitador ya existe y se
-  aplica en recuperación y reseteo; falta en el login.
+- [ ] **D-3** `tasks.wbs` → `wbs_code`. ADR-020: 259 ocurrencias, 22 archivos.
+  **Es lo primero al retomar.** No es un `sed` — los importadores usan «WBS»
+  como etiqueta que el usuario ve en su Excel.
+- [ ] **Fase `cancelled`** — owner 2026-08-05. Hoy un proyecto cortado queda
+  `closed`, indistinguible de uno que cumplió. ADR + US. `initiation`: no.
+- [ ] **Paleta de gráficos propia** — owner 2026-08-05. Ni la de marca ni la de
+  Tailwind: categórica, accesible y distinta del semáforo a propósito.
+- [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
+  Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
 
-### Glosario — implementación de las decisiones (D-3, D-8, D-9)
+### Remediación de R1 — hecha el 2026-08-05
 
-- [ ] **D-3** `tasks.wbs` → `wbs_code` · **D-8** `portfolio_function` · ambas
-  tocan contrato: ADR + US propia, una por una.
-- [ ] **D-9** validar `is_milestone ⟹ duration_days = 0`.
-- [ ] **D-2** decidir el nombre de la fase de hypercare (`support` o renombrar) y
-  si hacen falta `initiation` y `cancelled`.
+Detalle y residuales en `docs/conformidad/2026-08-05-mcs-remediacion.md`.
+**LEN-02 queda como norma, no como tanda** (owner): la convención está en
+`api-conventions.md` §7 y los 152 mensajes con texto propio se arreglan al tocar
+cada endpoint. Sigue PARCIAL, declarado. **Tandas C/D/E: no se abren.**
+
+### Glosario — implementación de las decisiones
+
+**D-2, D-7 y D-9 hechas el 2026-08-05.** D-2 con ventana de compatibilidad: el
+API sigue aceptando `support` y devuelve siempre `hypercare` (ADR-019, mig 0098).
+
+**D-4 decidida en su forma: uno por dimensión** (2026-08-05), apoyada en las
+cinco de US-191. Falta **calibrar los cinco valores** contra un proyecto real —
+eso es dato, no decisión, y es lo único que queda del glosario.
 
 > **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
 > ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch
@@ -74,13 +87,10 @@ confirmaciones del owner para el final. Ver HANDOFF.md.
 > viven en `HANDOFF.md`**, no aquí: estaban en los dos sitios y una de las dos
 > copias iba a envejecer (CTX-06). No consume IDs US/ENH/BUG.
 
-**R1 cerrada el 2026-08-04** — los 13 NO VERIFICABLE medidos, ninguno queda sin
-estado (`docs/conformidad/2026-08-04-mcs-r1.md`). Cuatro de los trece no eran
-trabajo pendiente: IA-01 ya era NO APLICABLE, IA-04 y las decisiones CON-04 y
-ARQ-03 (excluido con ADR-018) se cerraron el mismo día. En **PR #575**.
+**R1 cerrada el 2026-08-04** — los 13 NO VERIFICABLE medidos
+(`docs/conformidad/2026-08-04-mcs-r1.md`). Cuatro no eran trabajo pendiente.
 
-**Siguiente:** lo barato de R1 —SUM-02, DES-03, LEN-02 y DIS-02, que se cruza
-con la decisión D-7 del glosario— antes de las Tandas C/D/E.
+**Siguiente:** nada de conformidad. Se volvió al producto por decisión del owner.
 
 ---
 

@@ -3,7 +3,9 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field, model_validator
+
+from app.core.compatibilidad import registrar_uso
 
 
 # ---------- Area ----------
@@ -97,7 +99,9 @@ class TeamRead(BaseModel):
 ResourceType = Literal[
     "cliente_negocio", "cliente_it", "e4_pmo", "e4_tecnologia", "vendor_externo"
 ]
-PortfolioFunction = Literal[
+#: D-8 / ADR-021 — la disciplina del recurso, para saturación por capacidad.
+#: Se llamaba `PortfolioFunction`; el glosario veta «portafolio» para un área.
+Discipline = Literal[
     "pm", "pmo", "arquitectura", "infraestructura", "aplicaciones", "datos",
     "seguridad", "integraciones", "negocio", "change", "testing", "vendor",
 ]
@@ -108,9 +112,28 @@ ScarcityLevel = Literal["alta", "media", "baja"]
 class _ActorResourceFields(BaseModel):
     """US-182 — campos del pool de recursos (compartidos create/update)."""
 
+    @model_validator(mode="before")
+    @classmethod
+    def _registrar_nombre_viejo(cls, datos):
+        """Deja rastro si el cuerpo trae `portfolio_function` (D-8, ADR-021).
+
+        `AliasChoices` acepta los dos nombres pero **no dice cuál llegó**, y sin
+        ese dato la ventana de compatibilidad no se puede cerrar con criterio.
+        Por eso se mira el cuerpo crudo, antes de validar.
+        """
+        if isinstance(datos, dict) and "portfolio_function" in datos:
+            registrar_uso("portfolio_function", donde="cuerpo de creación")
+        return datos
+
     organization_id: UUID | None = None
     resource_type: ResourceType | None = None
-    portfolio_function: PortfolioFunction | None = None
+    # La ventana de compatibilidad: `portfolio_function` era un nombre público
+    # y un cliente que aún lo mande sigue funcionando. La salida es siempre
+    # `discipline` — `AliasChoices` solo afecta a la entrada.
+    discipline: Discipline | None = Field(
+        default=None,
+        validation_alias=AliasChoices("discipline", "portfolio_function"),
+    )
     seniority: Seniority | None = None
     scarcity_level: ScarcityLevel | None = None
     location: str | None = Field(default=None, max_length=100)
@@ -169,7 +192,7 @@ class ActorRead(BaseModel):
     # US-182: pool de recursos con capacidad.
     organization_id: UUID | None = None
     resource_type: str | None = None
-    portfolio_function: str | None = None
+    discipline: str | None = None
     seniority: str | None = None
     scarcity_level: str | None = None
     location: str | None = None

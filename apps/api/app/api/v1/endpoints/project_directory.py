@@ -98,7 +98,7 @@ async def update_project_role(
         )
     ).scalar_one_or_none()
     if not role:
-        raise not_found("Project role not found")
+        raise not_found("Rol en el proyecto")
     data = body.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(role, k, v)
@@ -124,7 +124,7 @@ async def delete_project_role(
         )
     ).scalar_one_or_none()
     if not role:
-        raise not_found("Project role not found")
+        raise not_found("Rol en el proyecto")
     # Restrict si está en uso.
     in_use = (
         await db.execute(
@@ -233,7 +233,7 @@ async def create_participation(
         )
     ).scalar_one_or_none()
     if not actor:
-        raise not_found("Actor not found in tenant")
+        raise not_found("Actor en la organización")
 
     part = ProjectParticipation(
         tenant_id=str(_tenant(cu)),
@@ -303,7 +303,7 @@ async def update_participation(
         )
     ).scalar_one_or_none()
     if not part:
-        raise not_found("Participation not found")
+        raise not_found("Participación")
     data = body.model_dump(exclude_unset=True)
     for k, v in data.items():
         if k in {"operational_team_id", "project_role_id", "functional_area_id"}:
@@ -442,7 +442,7 @@ async def delete_participation(
         )
     ).scalar_one_or_none()
     if not part:
-        raise not_found("Participation not found")
+        raise not_found("Participación")
     part.is_active = False
     part.is_primary = False
     await db.commit()

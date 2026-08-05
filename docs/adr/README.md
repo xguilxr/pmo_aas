@@ -751,6 +751,170 @@ Los dos beneficios que ARQ-03 persigue no están en el horizonte de este product
 
 ---
 
+## ADR-019 — `support` se renombra a `hypercare`
+
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (migración 0098)
+
+**Contexto:**
+La revisión del glosario (D-2) preguntó si `support` era una fase legítima. La
+respuesta del owner fue que **sí lo es** —«un estado de hypercare antes del
+cierre formal, pero es una forma de closing»— y que el problema era el nombre:
+`support` se lee como «mesa de ayuda», que es una función permanente, no una
+fase de proyecto con principio y fin.
+
+El vocabulario real de hoy son cuatro fases: `planning`, `execution`, `support`,
+`closed`. `phase` es `String(32)` sin enum de base (`models/project.py:43`), así
+que el cambio no exige migrar un tipo, pero sí migrar los datos existentes y los
+tipos del frontend.
+
+**Decisión:**
+Renombrar `support` → `hypercare` en el modelo, la API y la UI.
+
+**Consecuencias:**
+
+- El nombre pasa a decir lo que la fase es: acompañamiento acotado tras la puesta
+  en marcha, no soporte perpetuo.
+- **Es cambio de contrato.** `apps/web/lib/api/projects.ts:3` declara el tipo,
+  la UI lo ofrece como filtro (`projects/page.tsx:38,581`) y
+  `ACTIVE_PHASES` lo lista (`analytics/snapshots.py:28`). Un cliente con un
+  filtro guardado deja de encontrarlo.
+- Necesita **migración de datos** sobre proyectos productivos, y la corre el
+  owner. Conviene aceptar los dos valores durante una ventana, como se hizo con
+  `amber` → `yellow` en la migración 0091.
+- Sin efecto en el semáforo ni en los informes: `support` no aparece en la
+  lógica de salud.
+
+**Alternativas evaluadas:**
+
+- **Dejar `support` y documentarlo como hypercare.** Gratis, y era la
+  recomendación. Se descarta porque el glosario existe justamente para que el
+  nombre en código y el concepto coincidan; documentar la discrepancia la
+  conserva.
+- **Renombrar y además añadir `initiation` y `cancelled`.** Cubre dos huecos
+  reales —hoy un proyecto nace en `planning` aunque el acta sea previa, y uno
+  cortado queda `closed`, indistinguible de uno que cumplió— pero es un cambio
+  de modelo mayor. Se separa: primero el renombrado, esos dos como decisión
+  propia.
+
+**Lo que esta ADR NO decide:** si hacen falta `initiation` y `cancelled`. Sigue
+abierto y merece su propia ADR.
+
+---
+
+## ADR-020 — `tasks.wbs` se renombra a `wbs_code`
+
+**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+
+**Contexto:**
+La columna guarda el **código** de la EDT (`1.2.3`), no la estructura — esa vive
+en `parent_id` y `outline_level`. El propio código ya lo sabe:
+`apps/api/app/models/task.py:90` documenta «predecessors / successors como JSON
+array de **wbs_code**» mientras la columna se llama `wbs`. La decisión D-3 del
+glosario aprobó el renombrado.
+
+**Decisión:**
+Renombrar la columna, el campo de la API y el del frontend a `wbs_code`.
+
+**Lo que cuesta, medido el 2026-08-05 y no estimado:**
+
+| | |
+|---|---|
+| Ocurrencias de `wbs` como identificador | **259** |
+| Archivos de backend | **16** |
+| Archivos de frontend | **6** |
+
+No es un `sed`. Los sitios que hay que mirar uno a uno:
+
+- **Los tres importadores** (CSV, XLSX, MS Project) y el sugeridor de mapeo de
+  columnas. Ahí `WBS` es además una **etiqueta que el usuario ve** en su propio
+  archivo, y esa **no** se renombra: el cliente sigue escribiendo «WBS» en su
+  Excel. Confundir el nombre del campo con el de la columna importada rompería
+  todas las importaciones existentes.
+- **`predecessors` y `successors` son JSON de códigos**, no claves foráneas. El
+  contenido no cambia, pero cualquier código que los cruce con `task.wbs` sí.
+- **La plantilla descargable del plan** (`lib/plan-template.ts`) escribe la
+  cabecera que luego el parser busca. Cambiar una sin la otra rompe el viaje de
+  ida y vuelta.
+
+**Consecuencias:**
+
+- Es **cambio de contrato**: el campo viaja en las respuestas de tareas y en el
+  cuerpo de creación. Va con la misma ventana de compatibilidad que D-2 —aceptar
+  `wbs` a la entrada y devolver siempre `wbs_code`— para no romper a un cliente
+  que no se haya actualizado.
+- La migración es un `ALTER TABLE … RENAME COLUMN`, barata y reversible.
+- El riesgo real no es la migración: es que un sitio se quede con el nombre
+  viejo y deje de cruzar datos **sin fallar**, que es lo que pasó con
+  `ACTIVE_PHASES` en D-2 y por lo que aquella llevó prueba propia.
+
+**Alternativas evaluadas:**
+
+- **Dejar `wbs` y documentar que significa el código.** Gratis. Se descarta por
+  lo mismo que D-2: el glosario existe para que el nombre en código y el
+  concepto coincidan, y aquí el propio comentario del modelo ya delata la
+  discrepancia.
+- **Renombrar solo en la API y no en la columna.** Deja una traducción
+  permanente en medio, que es deuda con apariencia de solución.
+
+**Por qué no se implementó junto a la ADR:** 259 ocurrencias en 22 archivos está
+muy por encima del límite de 10 de `CLAUDE.md` §3, y el proceso del propio
+glosario pide «ADR y US propia, una por una». La ADR fija la decisión y el
+método; la ejecución es su propia ronda.
+
+---
+
+## ADR-021 — `portfolio_function` se renombra a `discipline`
+
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (migración 0099)
+
+**Contexto:**
+El glosario veta «portafolio» para un área (**brecha B-6**): un portafolio es un
+conjunto de proyectos y programas agrupados para gestión estratégica, y esa
+entidad **no existe en el producto**. Mientras no exista, usar la palabra para
+otra cosa la gasta.
+
+Lo que el campo guarda es el rol normalizado para saturación por capacidad:
+`pm | pmo | arquitectura | infraestructura | aplicaciones | datos | seguridad |
+integraciones | negocio | change | testing | vendor` (`models/area.py:233`).
+
+La decisión D-8 aprobó renombrar, pero **el glosario dejaba la columna
+«Preferente» en «—»**: no había nombre destino, y por eso estuvo bloqueada.
+
+**Decisión (owner, 2026-08-05): `discipline`.**
+
+Se eligió sobre las dos alternativas por una razón de vocabulario: en este
+producto **«función» y «rol» ya significan otras cosas** —`by_function` es una
+agregación de capacidad, y «rol» es el de permisos (`roles`, `user_roles`)—.
+`discipline` es lo que la lista realmente enumera y no se pisa con nada.
+
+**Lo que cuesta, medido:** 18 ocurrencias en 5 archivos de backend y 4 de
+frontend. Es la más pequeña de las tres del glosario que tocan contrato.
+
+**Consecuencias:**
+
+- **Es cambio de contrato público:** `portfolio_function` es un parámetro de
+  consulta de `GET /areas/actors` (`areas.py:675`). Va con la misma ventana de
+  compatibilidad que D-2 y D-3 — aceptar el nombre viejo a la entrada y devolver
+  siempre el canónico.
+- Migración de columna (`ALTER TABLE … RENAME COLUMN`), barata y reversible.
+- **`by_function` → `by_discipline`.** Era la decisión pequeña que quedaba
+  dentro de la US, y se resolvió renombrando: dejar la clave de agregación con
+  el nombre viejo mientras el campo lleva el nuevo reintroduce exactamente el
+  desajuste que esta ADR existe para cerrar.
+- La ventana cubre **dos puertas**, no una: el cuerpo de creación
+  (`AliasChoices` en el esquema) y el parámetro de consulta, que va marcado
+  `deprecated=True` para que salga así en el OpenAPI.
+
+**Alternativas evaluadas:**
+
+- **`capacity_function`.** Conserva «función», que es como lo llama la
+  agregación. Se descarta porque arrastra la palabra que ya está sobrecargada.
+- **`role_type` / `resource_role`.** Alinea con `resource_type` y `seniority`,
+  sus vecinos de modelo. Se descarta porque «rol» es el de permisos y confundir
+  los dos en un modelo multiinquilino es caro.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown

@@ -23,8 +23,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
+import jwt
 from fastapi import APIRouter, Depends, Path
-from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -445,9 +445,9 @@ async def _resolve_token(
     secret = _approval_secret()
     try:
         payload = jwt.decode(jwt_str, secret, algorithms=["HS256"])
-    except ExpiredSignatureError as exc:
+    except jwt.ExpiredSignatureError as exc:
         raise conflict("Este enlace ya expiró.", code="TOKEN_EXPIRED") from exc
-    except JWTError as exc:
+    except jwt.PyJWTError as exc:
         raise not_found("Token inválido") from exc
     if payload.get("scope") != "change_approval":
         raise not_found("Token inválido")

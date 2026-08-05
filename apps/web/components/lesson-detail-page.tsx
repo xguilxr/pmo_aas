@@ -48,7 +48,7 @@ type EditDraft = {
 const PHASE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "planning", label: "Planificación" },
   { value: "execution", label: "Ejecución" },
-  { value: "support", label: "Soporte" },
+  { value: "hypercare", label: "Hypercare" },
   { value: "closed", label: "Cierre" },
 ];
 

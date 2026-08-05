@@ -3,7 +3,7 @@
 **ID:** `DOC-ARCH-AMENAZAS`
 **Responsable:** owner (xguilxr)
 **Estado:** vigente
-**Revisado:** 2026-08-04 · **Periodicidad:** 12 meses o ante cambio significativo
+**Revisado:** 2026-08-05 · **Periodicidad:** 12 meses o ante cambio significativo
 **Cierra:** MCS **SEG-06** — «DEBE existir un modelo de amenazas derivado de la
 arquitectura, revisado ante cambios significativos». Acción **B5** del plan de
 conformidad.
@@ -62,7 +62,6 @@ flowchart LR
         M[Resend<br/>correo]
         S[S3 / R2<br/>documentos]
         SE[Sentry]
-        F[Google Fonts]
     end
 
     W -->|FC-1 · FC-8| A
@@ -75,7 +74,6 @@ flowchart LR
     K -->|FC-5| M
     A -->|FC-5| S
     A -->|FC-5| SE
-    A -->|FC-5| F
 ```
 
 ### Fronteras de confianza
@@ -116,13 +114,13 @@ Resumen. El detalle de cada una, abajo.
 | AM-05 | FC-5 | Datos del proyecto que salen a terceros | **ACEPTADA** |
 | AM-06 | FC-4 | El superadministrador entra a un inquilino | **PARCIAL** |
 | AM-07 | FC-1 | Enlace de aprobación en la URL | **ACEPTADA** |
-| AM-08 | FC-2 | Manipulación del registro de auditoría | **SIN CONTROL** |
-| AM-09 | FC-1 | Relleno de credenciales | **PARCIAL** |
-| AM-10 | FC-1 | Bloqueo de cuenta ajena como denegación de servicio | **SIN CONTROL** |
+| AM-08 | FC-2 | Manipulación del registro de auditoría | **CONTROLADA** |
+| AM-09 | FC-1 | Relleno de credenciales | **CONTROLADA** |
+| AM-10 | FC-1 | Bloqueo de cuenta ajena como denegación de servicio | **CONTROLADA** |
 | AM-11 | FC-1 | Restablecimiento de contraseña | **CONTROLADA** |
-| AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **PARCIAL** |
+| AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **CERRADA** |
 | AM-13 | FC-8 | Robo del token desde el navegador | **PARCIAL** |
-| AM-14 | — | Escritura directa a producción | **SIN CONTROL** |
+| AM-14 | — | Escritura directa a producción | **CERRADA** |
 
 ### AM-01 — Peticiones a nuestra red desde la `base_url` del inquilino
 
@@ -251,43 +249,103 @@ ese cambio. El alcance es un cambio concreto, no la cuenta.
 
 ### AM-08 — Manipulación del registro de auditoría
 
-**FC-2 · STRIDE: repudio · Estado: SIN CONTROL**
+**FC-2 · STRIDE: repudio · Estado: CONTROLADA (2026-08-05)**
 
-`audit_log` es una tabla ordinaria. Nada impide un `UPDATE` o un `DELETE` desde
-la aplicación o desde una conexión con las credenciales de la aplicación.
-SEG-07 pide un registro «no modificable» y la auditoría lo dejó en PARCIAL
-diciendo justamente que la inmutabilidad no se verificó.
+`audit_log` era una tabla ordinaria: nada impedía un `UPDATE`, un `DELETE` o un
+`TRUNCATE` desde la aplicación o desde una conexión con sus credenciales.
 
 **Por qué importa aquí y no solo en SEG-07:** AM-06 se apoya en este registro
 como único control. Un control que se apoya en otro que no existe no es un
 control.
-**Acción:** encadenamiento por hash o `REVOKE UPDATE, DELETE` al rol de la
-aplicación. Lo segundo es barato y no requiere código.
+
+**Control:** la migración `0097` instala disparadores `BEFORE UPDATE OR DELETE`
+y `BEFORE TRUNCATE` que rechazan la operación, más `REVOKE ... FROM PUBLIC`.
+En la capa de la aplicación, `app/models/audit.py` lanza en la línea que lo
+intenta.
+
+**Por qué no bastaba el `REVOKE` que esta ficha proponía.** Decía «barato y no
+requiere código», y lo primero es cierto. Lo segundo también, y aun así no
+alcanza: en Railway la aplicación se conecta con el rol **dueño** de las tablas,
+y en PostgreSQL el dueño conserva sus privilegios haga lo que haga el `REVOKE`.
+Comprobado contra Postgres 16 antes de escribir esto —con `REVOKE UPDATE, DELETE`
+aplicado al dueño, el `UPDATE` pasa igual; con el disparador puesto no pasa ni
+siendo superusuario—. Habría sido un control declarado que no actúa, que es peor
+que ninguno porque cierra la ficha.
+
+**Residual, y no es menor:** quien administra la base puede quitar el
+disparador. Esto defiende contra la aplicación, contra un fallo que permita
+ejecutar SQL con sus credenciales y contra el borrado accidental; no contra un
+DBA. Cerrar eso pide encadenamiento por hash o envío a un almacén externo, y es
+una decisión propia —con coste propio— que no se toma aquí.
+
+**Segundo residual:** el guardián del ORM no ve las sentencias masivas
+(`session.execute(delete(AuditLog))`). En PostgreSQL las para el disparador; en
+SQLite —desarrollo local y suite— no las para nada. Está escrito en el código y
+comprobado a propósito en `tests/test_am08_auditoria_solo_anexa.py`.
 
 ### AM-09 — Relleno de credenciales
 
-**FC-1 · STRIDE: suplantación · Estado: PARCIAL**
+**FC-1 · STRIDE: suplantación · Estado: CONTROLADA (2026-08-05)**
 
-`POST /auth/login` no pasa por `check_and_increment`. La protección es el
-bloqueo por usuario (`MAX_FAILED_LOGIN_ATTEMPTS` → `locked_until`), que detiene
-adivinar la contraseña de **una** cuenta pero no un intento por cuenta contra
-miles de cuentas desde una IP.
+El bloqueo por usuario (`MAX_FAILED_LOGIN_ATTEMPTS` → `locked_until`) detiene a
+quien adivina la contraseña de **una** cuenta, y no hace nada contra el rociado:
+una contraseña probada contra miles de cuentas desde una IP no toca el umbral de
+ninguna.
 
-**Control:** bloqueo por usuario, contraseñas con `bcrypt` y política de
-complejidad.
-**Residual:** sin límite por IP en el inicio de sesión. **Acción:** aplicar
-`check_and_increment` por IP también en `/auth/login`.
+**Control:** `POST /auth/login` cuenta los **fallos** por IP —30 por hora,
+`_LOGIN_MAX_FAILS_PER_HOUR_IP`— y devuelve 429 al superarlos. Más el bloqueo por
+usuario, `bcrypt` y la política de complejidad.
+
+Tres decisiones que hacen falta para leer el control:
+
+- **Fallos, no intentos.** Con `check_and_increment` en la puerta se contarían
+  también los aciertos, y una oficina detrás de un NAT —decenas de personas
+  compartiendo IP— se quedaría fuera sin haber hecho nada. Por eso el limitador
+  tiene `excede()`, que consulta sin sumar.
+- **Sin `reset` al acertar.** Sería lo natural y abriría un desvío: quien tiene
+  una credencial válida limpiaría el contador entre tandas.
+- **La IP sale de `_client_ip`**, no del socket. Detrás del proxy de Railway el
+  socket es siempre el mismo y contar por él bloquearía a todo el mundo con el
+  primer atacante. A cambio se confía en `X-Forwarded-For`, que solo es fiable
+  porque nada llega al contenedor sin pasar por el proxy.
+
+**Residual:** el rociado lento —menos de 30 fallos por hora y por IP, o
+repartido entre muchas IP— sigue siendo posible. Cerrarlo pide detección por
+patrón, no un contador. **AM-10** (el bloqueo por cuenta como denegación de
+servicio) sigue sin control y no la toca este cambio.
+
+**Trinquete:** `tests/test_am09_login_limite_por_ip.py`, verificado por
+mutación: sin la comprobación de entrada, caen 2 casos.
 
 ### AM-10 — Bloqueo de cuenta ajena como denegación de servicio
 
-**FC-1 · STRIDE: denegación de servicio · Estado: SIN CONTROL**
+**FC-1 · STRIDE: denegación de servicio · Estado: CONTROLADA (2026-08-05)**
 
-El reverso de AM-09: quien conozca un nombre de usuario puede fallar N veces y
-dejar esa cuenta bloqueada durante `ACCOUNT_LOCK_MINUTES`. Con una lista de
-usuarios se bloquea al inquilino entero.
+El reverso de AM-09: quien conociera un nombre de usuario podía fallar cinco
+veces y dejar esa cuenta bloqueada un cuarto de hora. Con una lista de usuarios,
+al inquilino entero.
 
-**Acción:** que el bloqueo dependa también de la IP de origen, o retardo
-creciente en vez de bloqueo duro.
+**Control: retardo creciente en vez de bloqueo duro.** Pasado el umbral, cada
+intento espera el doble que el anterior, con tope. **La cuenta nunca queda
+fuera** — y ese matiz es la amenaza entera: quien tecleó mal espera segundos, y
+quien sufre un ataque espera, como mucho, `LOGIN_BACKOFF_MAX_SECONDS`. El
+`ACCOUNT_LOCK_MINUTES` de quince minutos desapareció.
+
+**Contra la adivinación protege igual o mejor:** con el tope por defecto son
+doce intentos por hora y por cuenta. El rociado —muchas cuentas desde una IP— lo
+corta AM-09. Las dos se complementan: una mira la cuenta, la otra la IP.
+
+`locked_until` se conserva como columna pero cambia de significado: pasa de
+«bloqueada hasta» a «no antes de». El registro de auditoría lo refleja con una
+acción nueva, `login_backoff`, en vez de `account_locked`.
+
+**Residual:** un atacante que sostenga el ataque mantiene a la víctima en el
+tope. Es una molestia acotada, no una expulsión, y cada intento suyo consume
+además su cuota de AM-09.
+
+**Trinquete:** `tests/test_am10_retardo_creciente.py`. Los dos casos que fijan
+el control son que **el tope existe** —sin él, el retardo creciente es el
+bloqueo duro con otro nombre— y que el ataque a una cuenta no alcanza a otra.
 
 ### AM-11 — Restablecimiento de contraseña
 
@@ -304,16 +362,28 @@ cliente de Redis sea `None`, para que fail-open sea visible y no silencioso.
 
 ### AM-12 — Tipografías remotas al renderizar PDF
 
-**FC-5 · STRIDE: denegación de servicio · Estado: PARCIAL**
+**FC-5 · STRIDE: denegación de servicio · Estado: CERRADA (2026-08-05)**
 
-El renderizador de informes referencia `fonts.googleapis.com` y
-`fonts.gstatic.com`, así que generar un PDF depende de una petición a Google en
-tiempo de render.
+El renderizador de informes referenciaba `fonts.googleapis.com` y
+`fonts.gstatic.com` para traer DM Sans, así que generar un PDF dependía de una
+petición a Google en tiempo de render.
 
-**Residual:** si el destino no responde, el render se degrada o tarda. No hay
-dato del proyecto en esa petición.
-**Acción:** empotrar las tipografías. Se cruza con ENH-202 (Helvetica en
-exports), que ya está en cola.
+**Control:** no hay tipografía remota. ENH-202 dejó todos los entregables en
+Helvetica, y la imagen instala `fonts-urw-base35` (Nimbus Sans), así que la
+fuente ya está dentro del contenedor. Los dos `<link>` se retiraron de
+`html_report_renderer.py` y de `reports.py`.
+
+**Lo que apareció al cerrarla, y es lo que importa:** el enlace remoto **no
+estaba funcionando**. `templates/pdf/base.html` pedía DM Sans y la imagen solo
+instalaba `fonts-dejavu-core`; WeasyPrint no ejecuta el `<link>` de la misma
+forma que un navegador, así que los PDF llevaban meses saliendo en DejaVu Sans
+—ni la fuente de marca ni Helvetica—. La amenaza era real igualmente (la
+petición salía desde el HTML servido en línea), pero el coste que se le
+atribuía, «el render se degrada», ya se estaba pagando en silencio.
+
+**Trinquete:** `tests/test_enh202_helvetica_en_exports.py` falla si vuelve a
+aparecer un `fonts.googleapis.com` o si una plantilla pide una fuente que la
+imagen no instala.
 
 ### AM-13 — Robo del token desde el navegador
 
@@ -331,13 +401,25 @@ nada automático. **No verificado**, y así queda anotado.
 
 ### AM-14 — Escritura directa a producción
 
-**FC-4 · STRIDE: manipulación · Estado: SIN CONTROL**
+**FC-4 · STRIDE: manipulación · Estado: CERRADA (2026-08-04)**
 
-`main` no está protegida: cualquiera con acceso al repositorio empuja directo a
-la rama de la que sale producción. La regla existe en `CLAUDE.md` §8, en prosa.
+`main` no estaba protegida: cualquiera con acceso al repositorio empujaba
+directo a la rama de la que sale producción, y la regla vivía solo en prosa en
+`CLAUDE.md` §8.
 
-**Acción (owner):** proteger `main` con los checks requeridos, incluidos
-`evaluacion-ia` y `api-tests-smoke`. Comando en `docs/conformidad/plan.md`.
+**Control:** el owner protegió `main` con los ocho checks requeridos. Del lado
+del asistente lo refuerza `scripts/guard_irreversible.py`, que **deniega** el
+empuje a `main` como acción irreversible (MCA AUT-01).
+
+**Se reflejó tarde.** La acción se completó el 2026-08-04 y esta ficha siguió
+diciendo SIN CONTROL hasta el 2026-08-05. Es el defecto que el propio método de
+este documento intenta evitar —«nada se da por controlado sin evidencia», y su
+reverso: nada se deja por controlar cuando ya lo está—.
+
+**Residual:** un check requerido que se **salta** no bloquea el merge. Verificado
+con el PR #576, de solo-docs: `MERGEABLE`/`CLEAN` con cinco jobs en *skipping*.
+Por eso los controles que deben valer siempre —`contexto-permanente`,
+`contraste-wcag`— corren sin filtro de rutas.
 
 ---
 

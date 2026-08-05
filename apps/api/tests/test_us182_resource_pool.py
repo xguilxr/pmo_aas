@@ -6,7 +6,7 @@ Cubre:
   compartido, no-clave, skills [].
 - TC-182-3: PATCH actualiza capacidades/clasificación.
 - TC-182-4: resource_type inválido → 422 (Literal).
-- TC-182-5: list /actors filtra por resource_type y portfolio_function.
+- TC-182-5: list /actors filtra por resource_type y discipline.
 """
 import pytest
 
@@ -32,7 +32,7 @@ async def test_us182_create_with_resource_fields(client, db_session):
             "name": "Carlos Mejia",
             "email": "carlos@cliente.example.com",
             "resource_type": "cliente_it",
-            "portfolio_function": "arquitectura",
+            "discipline": "arquitectura",
             "seniority": "senior",
             "scarcity_level": "alta",
             "location": "Monterrey",
@@ -47,7 +47,7 @@ async def test_us182_create_with_resource_fields(client, db_session):
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["resource_type"] == "cliente_it"
-    assert body["portfolio_function"] == "arquitectura"
+    assert body["discipline"] == "arquitectura"
     assert body["seniority"] == "senior"
     assert body["scarcity_level"] == "alta"
     assert body["skills_tags"] == ["SAP", "Integration"]
@@ -116,11 +116,11 @@ async def test_us182_list_filters(client, db_session):
     ):
         await client.post(
             "/api/v1/actors",
-            json={"name": name, "resource_type": rt, "portfolio_function": pf},
+            json={"name": name, "resource_type": rt, "discipline": pf},
             headers=auth["_authz"],
         )
     r = await client.get(
-        "/api/v1/actors?portfolio_function=arquitectura", headers=auth["_authz"]
+        "/api/v1/actors?discipline=arquitectura", headers=auth["_authz"]
     )
     assert {a["name"] for a in r.json()} == {"Arq Uno", "Arq Dos"}
     r = await client.get(

@@ -4,6 +4,19 @@
 
 Tokens expuestos vía `@theme` en Tailwind v4 y como CSS variables. Toda la UI debe consumir estos tokens — **nunca hardcodear colores o tamaños**.
 
+> ⚠️ **La fuente de verdad de los valores es `apps/web/app/globals.css`**, no
+> este documento. Los que aparecen abajo describen una paleta anterior y llevan
+> tiempo desincronizados (nombres, hues y tipografía distintos). Se anota en vez
+> de corregirse a medias: resincronizarlo entero es trabajo propio, y una tabla
+> de tokens medio actualizada engaña más que una declarada obsoleta.
+>
+> **Lo que sí está garantizado hoy** (MCS DIS-02, 2026-08-05): los pares
+> semánticos de texto y fondo de `globals.css` alcanzan WCAG 2.2 AA en tema
+> claro y oscuro, y lo vigila `scripts/check_contraste.py` en el CI (job
+> `contraste-wcag`). Si tocas un color de primer plano o de fondo, ese job te
+> dirá si lo rompiste. Los valores se leen del CSS, así que no hay copia que
+> mantener.
+
 ---
 
 ## Colores

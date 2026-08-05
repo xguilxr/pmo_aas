@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **Aprobado el 2026-08-04**, salvo el umbral del §2.4. Decisiones y evidencia en [`03-REVISION-GLOSARIO.md`](03-REVISION-GLOSARIO.md) |
+| Estado | **Aprobado.** Solo faltan los cinco valores del umbral del §2.4, que son dato y no decisión. Evidencia en [`03-REVISION-GLOSARIO.md`](03-REVISION-GLOSARIO.md) |
 | Fecha | 2026-08-03 · revisado 2026-08-04 |
 | Alcance | El núcleo homogeneizable de `00-RUNDOWN-estandares.md` §3 |
 | Árbitro propuesto | ISO 21506 (vocabulario), sin adoptar la familia |
@@ -38,16 +38,20 @@ Etapa del ciclo de vida del proyecto, delimitada por una decisión de continuida
 |---|---|---|
 | `planning` | Planeación | Línea base aprobada |
 | `execution` | Ejecución | Entregables aceptados |
-| `support` | Soporte | Fin del hypercare y aceptación formal |
+| `hypercare` | Hypercare | Fin del hypercare y aceptación formal |
 | `closed` | Cierre | Cierre formal y lecciones registradas |
 
-**`support` es hypercare, no mesa de ayuda** (D-2, 2026-08-04). Es el período de garantía
+**`hypercare` es la fase, no una mesa de ayuda** (D-2). Es el período de garantía
 posterior a la entrega y previo al cierre formal: **una forma de cierre**, no una fase de
-operación. El concepto se queda. Lo discutible es el nombre, porque `support` se lee como
-servicio permanente.
+operación. Se llamaba `support`, que se leía como servicio permanente — justo lo que la
+fase no es.
 
-**Abierto:** si hacen falta `initiation` —hoy el proyecto nace en `planning`, aunque el
-acta de constitución sea previa— y `cancelled` —hoy una terminación anticipada es
+**Renombrada el 2026-08-05** (ADR-019, migración 0098). El API **sigue aceptando
+`support` a la entrada** durante una ventana de compatibilidad —un cliente que no se haya
+actualizado no se rompe— pero devuelve siempre el nombre canónico, y en base ya no queda
+ninguno.
+
+**Decidido el 2026-08-05:** se añadirá **`cancelled`** —hoy una terminación anticipada es
 indistinguible de un cierre cumplido.
 
 **Vetado:** literales en español como *valor* dentro del código. Las etiquetas en español
@@ -62,7 +66,7 @@ Punto de control de **duración cero** que marca un evento significativo. No con
 recursos. Un entregable es un *producto*; un hito es una *fecha*. Un entregable puede tener
 un hito asociado, pero no son lo mismo.
 
-**Regla:** `is_milestone = true` ⟹ `duration_days = 0`. Hoy no está validado.
+**Regla:** `is_milestone = true` ⟹ `duration_days = 0`. **Validada desde el 2026-08-05** (decisión D-9), en dos mitades: la duración la normaliza el modelo (`normalizar_hito` en `app/models/task.py`, evento de guardado, así que vale para el alta manual, los tres importadores, el regenerador de plan y la semilla); y marcar un hito con un rango de varios días se rechaza al crearlo. El caso que la incumplía no era raro: la duración se cuenta en días inclusivos, así que un hito con la misma fecha de inicio y fin daba 1.
 
 ---
 
@@ -135,12 +139,14 @@ a validar:
 | `yellow` | Desviación dentro del umbral, o riesgo alto con plan de respuesta |
 | `red` | Desviación fuera del umbral, o riesgo alto sin plan, o incidencia crítica abierta |
 
-> **El umbral sigue abierto** (D-4, 2026-08-04). Y no por descuido: casi seguro no es uno
-> solo —no es el mismo umbral el de un proyecto de tres meses que el de uno de dos años, ni
-> el de cronograma que el de costo—. Se calibra contra un proyecto real con desviación
-> medible; antes de eso, cualquier número sería inventado. Mientras tanto, `health_source =
-> 'manual'` con `health_reason` obligatoria es la salida honesta: el semáforo es un juicio
-> declarado, no un cálculo.
+> **Umbral: uno por dimensión** (D-4, decidido el 2026-08-05). No uno global: el producto
+> ya evalúa la salud en cinco dimensiones —cronograma, presupuesto, riesgos, decisiones,
+> recursos— y no es lo mismo un 10 % de desviación en costo que en fechas.
+>
+> **Los valores siguen pendientes, y a propósito.** Se calibran contra un proyecto real con
+> desviación medible; antes de eso cualquier número sería inventado. Mientras tanto,
+> `health_source = 'manual'` con `health_reason` obligatoria es la salida honesta: el
+> semáforo es un juicio declarado, no un cálculo.
 
 `health_source` distingue **derivado** de **anulado manualmente**; si es manual,
 `health_reason` es obligatorio. Ese campo ya existe y hoy no se aprovecha.
@@ -276,7 +282,7 @@ estratégica**. No coincide con la estructura organizativa.
 | `amber` como valor | `yellow` | 3 restos | `charter_generator.py:52-53`, `s-03.html:9` |
 | Dos paletas de salud | una definición única | 2 mapas | `scoped_status.py:30,33` |
 | `wbs` para el código de tarea | `wbs_code` | 1 campo | `tasks.wbs` |
-| `portafolio` para un área | — | 4 | `area.py:233`, `areas.py:675-689` |
+| `portafolio` para un área | `discipline` — ✅ hecho 2026-08-05 | 0 | ADR-021, migración 0099 |
 | `problema` / `bug` para incidencia de proyecto | `incidencia` | por revisar | — |
 | «Inicio» como nombre de fase generado | `planning` | 1 | `plan_regenerator.py:37` |
 
@@ -285,11 +291,12 @@ estratégica**. No coincide con la estructura organizativa.
 ## 7. Qué falta para cerrar este glosario
 
 1. ~~Aprobación del owner, término por término.~~ **Hecha el 2026-08-04.**
-2. **Decidir el umbral de RAG** de §2.4 — lo único que sigue abierto. Es la única regla que
-   exige criterio de negocio y no de estándar.
+2. ~~Decidir la **forma** del umbral de RAG de §2.4.~~ **Uno por dimensión, 2026-08-05.**
+   Falta **calibrar los cinco valores** contra un proyecto real. Es lo único que queda, y es
+   dato, no decisión.
 3. ~~Confirmar el método de avance de §2.3.~~ **Adoptado.**
-4. Decidir el **nombre** de la fase de hypercare (`support` o renombrar), y si hacen falta
-   `initiation` y `cancelled`.
+4. ~~Decidir el **nombre** de la fase de hypercare.~~ **`hypercare`, hecho el 2026-08-05**
+   (ADR-019, migración 0098). Se añadirá **`cancelled`**; `initiation` no.
 
 El plan de remediación ya puede escribirse; el orden sugerido está al final de
 `03-REVISION-GLOSARIO.md`. Los tres cambios que tocan contrato —`wbs_code`,

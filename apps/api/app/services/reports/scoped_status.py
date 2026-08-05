@@ -27,18 +27,35 @@ from app.services.analytics.snapshots import (
 from app.services.reports.branding import load_report_branding
 from app.services.reports.svg import donut_svg, gauge_svg, sparkline_svg, treemap_svg
 
-_HEALTH_DONUT_COLOR = {"green": "#1F8A5B", "yellow": "#B26B12", "red": "#C0392B"}
+#: **Una sola paleta de salud** (decisión D-7 del glosario, 2026-08-05).
+#:
+#: Hasta hoy había dos: `_HEALTH_DONUT_COLOR` con los colores de marca y
+#: `_HEALTH_HEX` con los de Tailwind (`green-600`, `yellow-500`, `red-600`). El
+#: mismo proyecto en rojo salía `#C0392B` en el donut y `#dc2626` en el mapa de
+#: árbol del informe de al lado.
+#:
+#: Los valores son los de `globals.css` —`--color-success-fg`,
+#: `--color-warning-fg`, `--color-danger-fg`—, **retocados el mismo día para
+#: alcanzar WCAG 2.2 AA** (MCS DIS-02). Las dos decisiones eran una: unificar
+#: sin mirar el contraste habría consolidado el verde que no llegaba a AA, que
+#: era justo el del semáforo. `scripts/check_contraste.py` vigila el original;
+#: esta copia la vigila `tests/test_d7_paleta_de_salud.py`.
+HEALTH_COLOR = {"green": "#007A4C", "yellow": "#9F5900", "red": "#BD3528"}
+
+#: Alias histórico. Los dos nombres apuntaban a paletas distintas y ahora a la
+#: misma; se conservan para no tocar 30 sitios en el mismo cambio.
+_HEALTH_DONUT_COLOR = HEALTH_COLOR
+_HEALTH_HEX = HEALTH_COLOR
 
 _ZONE_BG = {"low": "#dcfce7", "mid": "#fef9c3", "high": "#fee2e2"}
-_HEALTH_HEX = {"green": "#16a34a", "yellow": "#eab308", "red": "#dc2626"}
 
 
 def _worst_health_color(row: dict) -> str:
     if row.get("red"):
-        return _HEALTH_HEX["red"]
+        return HEALTH_COLOR["red"]
     if row.get("yellow"):
-        return _HEALTH_HEX["yellow"]
-    return _HEALTH_HEX["green"]
+        return HEALTH_COLOR["yellow"]
+    return HEALTH_COLOR["green"]
 _TREND_COLOR = {"avg_progress": "#16a34a", "open_risks": "#d97706"}
 _TREND_LABEL = {"avg_progress": "Avance promedio (%)", "open_risks": "Riesgos abiertos"}
 

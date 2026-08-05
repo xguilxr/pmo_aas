@@ -23,7 +23,7 @@ import {
   type CapacityAreaAgg,
   type CapacityColor,
   type CapacityConflict,
-  type CapacityFunctionAgg,
+  type CapacityDisciplineAgg,
   type CapacityResource,
   type CapacityTeamAgg,
   type CapacityWindow,
@@ -75,7 +75,7 @@ export default function ResourcesPage() {
   const [win, setWin] = useState<CapacityWindow>("week");
   const [tab, setTab] = useState<Tab>("people");
   const [resources, setResources] = useState<CapacityResource[]>([]);
-  const [byFunction, setByFunction] = useState<CapacityFunctionAgg[]>([]);
+  const [byDiscipline, setByDiscipline] = useState<CapacityDisciplineAgg[]>([]);
   const [byArea, setByArea] = useState<CapacityAreaAgg[]>([]);
   const [byTeam, setByTeam] = useState<CapacityTeamAgg[]>([]);
   const [conflicts, setConflicts] = useState<CapacityConflict[]>([]);
@@ -108,7 +108,7 @@ export default function ResourcesPage() {
       .then(([summary, conflictsRes]) => {
         if (cancelled) return;
         setResources(summary.resources);
-        setByFunction(summary.by_function);
+        setByDiscipline(summary.by_discipline);
         setByArea(summary.by_area);
         setByTeam(summary.by_team);
         setConflicts(conflictsRes.conflicts);
@@ -228,8 +228,8 @@ export default function ResourcesPage() {
         <PeopleTable resources={resources} />
       ) : tab === "roles" ? (
         <AggTable
-          rows={byFunction}
-          labelKey="portfolio_function"
+          rows={byDiscipline}
+          labelKey="discipline"
           labelHeader="Función"
         />
       ) : tab === "areas" ? (
@@ -337,7 +337,7 @@ function PeopleTable({ resources }: { resources: CapacityResource[] }) {
             </SortableTh>
             <SortableTh<CapacityResource>
               sortKey="function"
-              getter={(r) => r.portfolio_function ?? ""}
+              getter={(r) => r.discipline ?? ""}
               ctrl={ctrl}
             >
               Función
@@ -428,7 +428,7 @@ function PeopleTable({ resources }: { resources: CapacityResource[] }) {
                 </div>
               </td>
               <td className="px-3 py-2 text-[var(--color-secondary)]">
-                {r.portfolio_function ?? "—"}
+                {r.discipline ?? "—"}
               </td>
               <td className="px-3 py-2 text-[var(--color-secondary)]">
                 {r.resource_type ?? "—"}
@@ -598,9 +598,9 @@ function ConflictsView({ conflicts }: { conflicts: CapacityConflict[] }) {
                   aria-label="Recurso clave"
                 />
               ) : null}
-              {c.portfolio_function ? (
+              {c.discipline ? (
                 <span className="text-xs text-[var(--color-tertiary)]">
-                  · {c.portfolio_function}
+                  · {c.discipline}
                 </span>
               ) : null}
             </div>

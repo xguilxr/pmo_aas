@@ -109,3 +109,41 @@ class TaskDependency(Base):
     )
     type: Mapped[str] = mapped_column(String(4), nullable=False, default="FS")  # FS/SS/FF/SF
     lag_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+# ---------------------------------------------------------------------------
+# D-9 — `is_milestone` ⟹ `duration_days = 0`
+# ---------------------------------------------------------------------------
+#
+# La regla es del glosario (§1.2): un hito es un punto de control de duración
+# cero. «Hoy no está validado», decía, y la revisión la aprobó como D-9.
+#
+# Vive aquí y no en el endpoint porque las tareas se escriben desde muchos
+# sitios —el alta manual, los tres importadores (CSV, XLSX, MS Project), el
+# regenerador de plan y la semilla de demostración— y una regla del dominio que
+# se aplica en uno de seis no es una regla, es una costumbre.
+#
+# **Normaliza en vez de rechazar**, y es deliberado: `duration_days` es un valor
+# **derivado**. El propio endpoint ignora el que manda el cliente y lo recalcula
+# de las fechas (US-090). Levantar un 422 sobre un campo que el usuario no
+# controla lo dejaría sin forma de arreglarlo. La contradicción que sí puede
+# arreglar —marcar un hito y darle un rango de varios días— se rechaza en la
+# frontera, en `TaskCreate`.
+#
+# Ojo con el cálculo de duración: `compute_duration_days` cuenta días
+# inclusivos, así que un hito con la misma fecha de inicio y fin daba 1, no 0.
+# Ese era el caso corriente que incumplía la regla — no hacía falta un dato raro.
+
+
+def normalizar_hito(task: "Task") -> None:
+    """Aplica la regla del glosario sobre una tarea antes de guardarla."""
+    if task.is_milestone:
+        task.duration_days = 0
+
+
+sa.event.listen(
+    Task, "before_insert", lambda _mapper, _conn, target: normalizar_hito(target)
+)
+sa.event.listen(
+    Task, "before_update", lambda _mapper, _conn, target: normalizar_hito(target)
+)

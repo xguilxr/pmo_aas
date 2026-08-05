@@ -43,8 +43,8 @@ import { cn } from "@/lib/cn";
 
 const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
   planning: ["execution", "closed"],
-  execution: ["support", "closed"],
-  support: ["closed"],
+  execution: ["hypercare", "closed"],
+  hypercare: ["closed"],
   closed: [],
 };
 
@@ -497,7 +497,7 @@ function PhaseBadge({ phase }: { phase: ProjectPhase }) {
   const map: Record<ProjectPhase, "info" | "success" | "warning" | "neutral"> = {
     planning: "info",
     execution: "success",
-    support: "warning",
+    hypercare: "warning",
     closed: "neutral",
   };
   return <Badge variant={map[phase]}>{PHASE_LABEL[phase]}</Badge>;

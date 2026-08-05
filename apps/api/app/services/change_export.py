@@ -12,6 +12,8 @@ from datetime import date, datetime
 from io import BytesIO
 from typing import Any
 
+from app.core.tipografia import FUENTE, aplicar_a_workbook
+
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 CHANGE_HEADERS: list[str] = [
@@ -110,7 +112,7 @@ def _write_sheet(wb, title: str, headers: list[str], rows: list[list[Any]]) -> N
     from openpyxl.styles import Alignment, Font, PatternFill
 
     ws = wb.create_sheet(title=title)
-    header_font = Font(bold=True, color="FFFFFF")
+    header_font = Font(name=FUENTE, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
     header_align = Alignment(vertical="center")
 
@@ -133,6 +135,10 @@ def export_changes_xlsx(rows: list[list[Any]]) -> bytes:
     from openpyxl import Workbook
 
     wb = Workbook()
+
+    # ENH-202: Helvetica en todas las celdas sin estilo propio.
+
+    aplicar_a_workbook(wb)
     default_ws = wb.active
     if default_ws is not None:
         wb.remove(default_ws)

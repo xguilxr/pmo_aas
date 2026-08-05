@@ -35,21 +35,14 @@ PYSEC-2026-1941
 PYSEC-2026-2281
 PYSEC-2026-2280
 
-# ── pyasn1 0.4.8 · 4 CVE ────────────────────────────────────────────────────
-# Hay arreglo (0.6.4) pero NO se puede aplicar: `python-jose[cryptography]`
-# declara `pyasn1>=0.4.1,<0.5.0`. Intentado y comprobado el 2026-08-03: uv
-# resuelve a «requirements are unsatisfiable». Cierra cuando python-jose
-# relaje la restricción, o al migrar a otra librería JWT (p. ej. PyJWT).
-# Fecha objetivo: 2026-09-15 — decidir si se migra.
-PYSEC-2026-2263
-PYSEC-2026-3455
-PYSEC-2026-3456
-PYSEC-2026-3457
-
-# ── ecdsa 0.19.2 · 1 CVE ────────────────────────────────────────────────────
-# Transitiva de python-jose[cryptography]. Sin versión con arreglo publicada
-# al 2026-08-03. Misma decisión que pyasn1: se resuelve migrando de jose.
-PYSEC-2026-1325
+# ── pyasn1 (4 CVE) y ecdsa (1 CVE) — CERRADAS el 2026-08-05 ─────────────────
+# Las cinco eran transitivas de `python-jose[cryptography]` y estaban bloqueadas
+# por su pin `pyasn1>=0.4.1,<0.5.0`. La salida que este archivo anotaba como
+# hipótesis —«se resuelve migrando de jose»— es la que se tomó: SEG-01 movió el
+# proyecto a PyJWT y los dos paquetes dejaron de estar en el árbol.
+#
+# Se borran los IDs en vez de dejarlos: un `--ignore-vuln` de algo que ya no se
+# instala no protege de nada y hace creer que el pasivo es mayor de lo que es.
 
 # ── weasyprint 68.1 · 1 CVE ─────────────────────────────────────────────────
 # Sin versión con arreglo al 2026-08-03. Genera PDF a partir de plantillas

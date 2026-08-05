@@ -74,6 +74,34 @@ jobs:
       - name: Presupuesto de contexto y límite de SPRINT.md
         run: python scripts/check_contexto.py
 
+  # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
+  # texto y fondo DEBE alcanzar WCAG 2.2 AA).
+  #
+  # El script existía desde la medición pero NO estaba enganchado, porque
+  # entonces fallaba: 8 de 19 pares por debajo del mínimo. Un trinquete que
+  # nace rojo se desactiva en dos días y deja de vigilar nada. Se engancha el
+  # 2026-08-05, con los tokens ya retocados, y desde entonces protege el
+  # arreglo — un contraste verificado a mano se rompe en el siguiente ajuste
+  # de marca.
+  #
+  # Lee los valores de `globals.css` en vez de llevar una copia, que era el
+  # otro agujero: un control que puede desincronizarse de lo que vigila no es
+  # un control.
+  #
+  # Sin filtro de paths, igual que `contexto-permanente` y por el mismo motivo:
+  # depende de dos archivos que caen en filtros distintos (`apps/web` y
+  # `scripts`), tarda segundos, y un check requerido que se salta no bloquea el
+  # merge — comprobado con el PR #576.
+  contraste-wcag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Contraste WCAG 2.2 AA de los tokens semánticos
+        run: python scripts/check_contraste.py
+
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
   # COMPLETO) e INT-02 (análisis estático de seguridad, dependencias vulnerables

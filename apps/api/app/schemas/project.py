@@ -3,7 +3,36 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.core.compatibilidad import registrar_uso
+
+#: D-2 / ADR-019 — las cuatro fases del proyecto.
+#:
+#: `hypercare` era `support` hasta el 2026-08-05. El nombre viejo se lee como
+#: «mesa de ayuda», que es una función permanente; la fase es acompañamiento
+#: acotado tras la puesta en marcha, y una forma de cierre.
+ProjectPhase = Literal["planning", "execution", "hypercare", "closed"]
+
+#: Ventana de compatibilidad. Un cliente que todavía mande `support` —una
+#: pestaña abierta desde antes del despliegue, un filtro guardado, un script—
+#: sigue funcionando y su valor se guarda ya como `hypercare`. Se quita cuando
+#: no queden clientes viejos; hasta entonces, romperlos sería cobrarle al
+#: usuario un cambio de vocabulario que no pidió.
+_FASES_RENOMBRADAS = {"support": "hypercare"}
+
+
+def normalizar_fase(valor: object) -> object:
+    """Traduce el nombre viejo de la fase al canónico. Lo demás pasa igual."""
+    if not isinstance(valor, str):
+        return valor
+    canonico = _FASES_RENOMBRADAS.get(valor)
+    if canonico is None:
+        return valor
+    # Se deja rastro para saber cuándo se puede cerrar la ventana con dato en
+    # vez de con corazonada. Ver `app/core/compatibilidad.py`.
+    registrar_uso("phase=support", donde="fase del proyecto")
+    return canonico
 
 
 class ProjectCreate(BaseModel):
@@ -13,7 +42,9 @@ class ProjectCreate(BaseModel):
     priority: int = Field(ge=1, le=5)
     organization_id: UUID
     program_id: UUID | None = None
-    phase: Literal["planning", "execution", "support", "closed"] = "planning"
+    phase: ProjectPhase = "planning"
+
+    _fase_compat = field_validator("phase", mode="before")(normalizar_fase)
     pm_id: UUID
     sponsor: str | None = None
     start_date: date | None = None
@@ -97,7 +128,9 @@ class ActivityItem(BaseModel):
 
 
 class PhaseChange(BaseModel):
-    new_phase: Literal["planning", "execution", "support", "closed"]
+    new_phase: ProjectPhase
+
+    _fase_compat = field_validator("new_phase", mode="before")(normalizar_fase)
     comment: str | None = None
 
 
