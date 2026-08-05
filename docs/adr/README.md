@@ -862,6 +862,54 @@ método; la ejecución es su propia ronda.
 
 ---
 
+## ADR-021 — `portfolio_function` se renombra a `discipline`
+
+**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+
+**Contexto:**
+El glosario veta «portafolio» para un área (**brecha B-6**): un portafolio es un
+conjunto de proyectos y programas agrupados para gestión estratégica, y esa
+entidad **no existe en el producto**. Mientras no exista, usar la palabra para
+otra cosa la gasta.
+
+Lo que el campo guarda es el rol normalizado para saturación por capacidad:
+`pm | pmo | arquitectura | infraestructura | aplicaciones | datos | seguridad |
+integraciones | negocio | change | testing | vendor` (`models/area.py:233`).
+
+La decisión D-8 aprobó renombrar, pero **el glosario dejaba la columna
+«Preferente» en «—»**: no había nombre destino, y por eso estuvo bloqueada.
+
+**Decisión (owner, 2026-08-05): `discipline`.**
+
+Se eligió sobre las dos alternativas por una razón de vocabulario: en este
+producto **«función» y «rol» ya significan otras cosas** —`by_function` es una
+agregación de capacidad, y «rol» es el de permisos (`roles`, `user_roles`)—.
+`discipline` es lo que la lista realmente enumera y no se pisa con nada.
+
+**Lo que cuesta, medido:** 18 ocurrencias en 5 archivos de backend y 4 de
+frontend. Es la más pequeña de las tres del glosario que tocan contrato.
+
+**Consecuencias:**
+
+- **Es cambio de contrato público:** `portfolio_function` es un parámetro de
+  consulta de `GET /areas/actors` (`areas.py:675`). Va con la misma ventana de
+  compatibilidad que D-2 y D-3 — aceptar el nombre viejo a la entrada y devolver
+  siempre el canónico.
+- Migración de columna (`ALTER TABLE … RENAME COLUMN`), barata y reversible.
+- Toca `capacity.py`, que agrega por este campo (`by_function`). Conviene mirar
+  si esa clave de salida también se renombra o si es vocabulario propio del
+  informe — es la decisión pequeña que queda dentro de la US.
+
+**Alternativas evaluadas:**
+
+- **`capacity_function`.** Conserva «función», que es como lo llama la
+  agregación. Se descarta porque arrastra la palabra que ya está sobrecargada.
+- **`role_type` / `resource_role`.** Alinea con `resource_type` y `seniority`,
+  sus vecinos de modelo. Se descarta porque «rol» es el de permisos y confundir
+  los dos en un modelo multiinquilino es caro.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown

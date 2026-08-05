@@ -51,8 +51,7 @@ fase no es.
 actualizado no se rompe— pero devuelve siempre el nombre canónico, y en base ya no queda
 ninguno.
 
-**Abierto:** si hacen falta `initiation` —hoy el proyecto nace en `planning`, aunque el
-acta de constitución sea previa— y `cancelled` —hoy una terminación anticipada es
+**Decidido el 2026-08-05:** se añadirá **`cancelled`** —hoy una terminación anticipada es
 indistinguible de un cierre cumplido.
 
 **Vetado:** literales en español como *valor* dentro del código. Las etiquetas en español
@@ -281,7 +280,7 @@ estratégica**. No coincide con la estructura organizativa.
 | `amber` como valor | `yellow` | 3 restos | `charter_generator.py:52-53`, `s-03.html:9` |
 | Dos paletas de salud | una definición única | 2 mapas | `scoped_status.py:30,33` |
 | `wbs` para el código de tarea | `wbs_code` | 1 campo | `tasks.wbs` |
-| `portafolio` para un área | — | 4 | `area.py:233`, `areas.py:675-689` |
+| `portafolio` para un área | `discipline` (ADR-021) | 18 | `area.py:233`, `areas.py:675-689` |
 | `problema` / `bug` para incidencia de proyecto | `incidencia` | por revisar | — |
 | «Inicio» como nombre de fase generado | `planning` | 1 | `plan_regenerator.py:37` |
 

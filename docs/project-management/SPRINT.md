@@ -15,21 +15,18 @@
 ```
 #575 y #576 MERGEADOS. **MCA está en N2**, su objetivo.
 
-Branch `claude/audit-continuation-fzrtko` — 9 commits, remediación post-R1
-completa. Cierran SUM-02, DES-03, DIS-02, SEG-07/AM-08, AM-09, D-7 y D-9.
-LEN-02 mejora pero sigue PARCIAL, y ahora con cifra: 152 de 159 mensajes con
-texto explícito dicen solo qué pasó.
+Branch `claude/audit-continuation-fzrtko`. Remediación post-R1 completa:
+SUM-02, DES-03, DIS-02, SEG-07/AM-08, AM-09, SEG-01, D-7 y D-9. LEN-02 sigue
+PARCIAL, con cifra: 152 de 159 mensajes dicen solo qué pasó.
 
-MCS sigue en N0: 25/126 conformes, la distancia a N1 baja de 54 a 50.
-Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
-
-Suite de API en verde (1094), lint y typecheck exit 0, contraste 34/34.
+MCS en N0: 25/126 conformes; la distancia a N1 baja de 54 a 50.
+Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`. Todo en verde.
 
 **Decisiones del owner (2026-08-05), las cuatro ejecutadas:** volver al producto ·
 LEN-02 como norma · PyJWT · `support` → `hypercare`.
 
-Después, producto: **ENH-202** y **D-2** cerradas. D-3 tiene ADR-020 con su
-medición; D-8 espera nombre destino.
+Producto: **ENH-202** y **D-2** cerradas. D-3 (ADR-020) y D-8 (ADR-021)
+decididas y medidas, sin ejecutar.
 
 **Espera al owner:** mergear el PR y correr las migraciones **0097 y 0098**.
 ```
@@ -49,11 +46,15 @@ medición; D-8 espera nombre destino.
 
 **ENH-202 cerrada el 2026-08-05**, los cuatro frentes; cerró AM-12 de paso.
 
-- [ ] **D-3** `tasks.wbs` → `wbs_code`. ADR-020 lo mide: 259 ocurrencias, 22
-  archivos. No es un `sed` — los importadores usan «WBS» como etiqueta que el
-  usuario ve en su Excel. Ronda propia.
-- [ ] **D-8** `portfolio_function`. **Bloqueada: falta el nombre destino**, y el
-  campo es parámetro público de consulta.
+- [ ] **D-3** `tasks.wbs` → `wbs_code`. ADR-020: 259 ocurrencias, 22 archivos.
+  **Owner: ejecutar en la próxima ronda.** No es un `sed` — los importadores
+  usan «WBS» como etiqueta que el usuario ve en su Excel.
+- [ ] **D-8** `portfolio_function` → **`discipline`** (ADR-021, desbloqueada
+  2026-08-05). 18 ocurrencias, 9 archivos. Parámetro público: con ventana.
+- [ ] **Fase `cancelled`** — owner 2026-08-05. Hoy un proyecto cortado queda
+  `closed`, indistinguible de uno que cumplió. ADR + US. `initiation`: no.
+- [ ] **Paleta de gráficos propia** — owner 2026-08-05. Ni la de marca ni la de
+  Tailwind: categórica, accesible y distinta del semáforo a propósito.
 
 ### Remediación de R1 — hecha el 2026-08-05
 
@@ -72,9 +73,8 @@ negocio.
 **D-2, D-7 y D-9 hechas el 2026-08-05.** D-2 con ventana de compatibilidad: el
 API sigue aceptando `support` y devuelve siempre `hypercare` (ADR-019, mig 0098).
 
-- [ ] Sigue abierto si hacen falta las fases `initiation` y `cancelled`.
-- [ ] **D-4**, umbral del semáforo. Necesita un proyecto real con desviación
-  medible; hasta entonces cualquier umbral sería inventado.
+- [ ] **D-4**, umbral del semáforo. La única abierta: necesita un proyecto real
+  con desviación medible contra el que calibrar.
 
 > **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
 > ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch
@@ -92,8 +92,7 @@ estado (`docs/conformidad/2026-08-04-mcs-r1.md`). Cuatro de los trece no eran
 trabajo pendiente: IA-01 ya era NO APLICABLE, IA-04 y las decisiones CON-04 y
 ARQ-03 (excluido con ADR-018) se cerraron el mismo día. En **PR #575**.
 
-**Siguiente:** lo barato de R1 —SUM-02, DES-03, LEN-02 y DIS-02, que se cruza
-con la decisión D-7 del glosario— antes de las Tandas C/D/E.
+**Siguiente:** nada de conformidad. Se volvió al producto por decisión del owner.
 
 ---
 

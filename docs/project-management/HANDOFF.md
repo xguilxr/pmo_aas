@@ -18,28 +18,23 @@ de R1» que dejó la sesión anterior **está hecha entera**, más dos amenazas.
 
 ## ✅ Hecho en esta sesión
 
-Ocho requisitos, **un commit cada uno**, todos con verificación por mutación:
+Nueve requisitos, **un commit cada uno**, todos verificados por mutación:
 
-| Qué | Estado |
-|---|---|
-| **SUM-02** | El contenedor deja de correr como root |
-| **DES-03** | `/health` hace `SELECT 1` acotado y devuelve 503 |
-| **LEN-02** | Catálogo con qué/por qué/qué hacer **como datos, no prosa**. Sigue PARCIAL |
-| **DIS-02** | 34/34 pares AA en los dos temas + job `contraste-wcag` |
-| **D-7** | Una sola paleta de salud (eran cuatro, no dos) |
-| **AM-09** | Límite por IP en el login, contando fallos |
-| **AM-08 / SEG-07** | `audit_log` de solo anexado |
-| **D-9** | `is_milestone ⟹ duration_days = 0` |
-| **SEG-01** | `python-jose` fuera, PyJWT dentro. 5 CVE menos |
+- **SUM-02** el contenedor no corre como root · **DES-03** `/health` hace
+  `SELECT 1` acotado y devuelve 503 · **DIS-02** 34/34 pares AA en los dos temas
+  + job `contraste-wcag` · **AM-09** límite por IP en el login, contando fallos ·
+  **AM-08/SEG-07** `audit_log` de solo anexado · **SEG-01** PyJWT, 5 CVE menos ·
+  **D-7** una sola paleta de salud · **D-9** `is_milestone ⟹ duración 0`.
+- **LEN-02** mejora pero **sigue PARCIAL**: el catálogo guarda qué/por qué/qué
+  hacer como datos, no como prosa.
 
 Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 **Tres hallazgos que la medición no podía ver:**
 
 1. **El `REVOKE` que AM-08 proponía no habría funcionado.** La aplicación se
-   conecta con el rol **dueño** de las tablas y en PostgreSQL el dueño conserva
-   sus privilegios. Habría sido un control declarado que no actúa. Comprobado
-   contra Postgres 16; van disparadores.
+   conecta con el rol **dueño** y en PostgreSQL el dueño conserva sus
+   privilegios. Comprobado contra Postgres 16; van disparadores.
 2. **`check_contraste.py` llevaba los valores copiados a mano** y el tema oscuro
    nunca se había medido. Dos agujeros del propio instrumento.
 3. **El caso que incumplía D-9 era el corriente:** días inclusivos hacían que un
@@ -58,19 +53,21 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
   un Postgres 16 real, `downgrade` incluido.
 - **`RATE_LIMITED` pasó de 422 a 429.** Cambio de contrato pequeño, ya en
   `api-conventions.md`. Afecta también a reseteo de contraseña.
-- **El presupuesto de contexto va justo.** Correr `python scripts/check_contexto.py`
-  antes de engordar `CLAUDE.md`, `SPRINT.md` o este archivo: el CI lo frena.
-- **El guard bloquea comandos que *mencionan* uno denegado**, aunque sea en una
-  ruta (`git stash push -- app/main.py` cayó por «push … main»). La salida es
-  reformular, no relajar el patrón.
+- **El presupuesto de contexto va al límite.** Correr `check_contexto.py` antes
+  de engordar `CLAUDE.md`, `SPRINT.md` o este archivo.
+- **El guard bloquea comandos que *mencionan* uno denegado**, aunque el patrón
+  aparezca en una ruta de archivo. Se reformula, no se relaja el patrón.
 - **La suite tarda ~2m45s** con `-n auto`. Correrla en segundo plano.
 - Sin tests de frontend. Python 3.12 no es negociable.
+- **El clon local se revirtió dos commits a mitad de sesión** y hubo que
+  rebasar sobre el remoto. Si el árbol no cuadra con lo que recordás, mirá
+  `git log origin/<branch>` antes de rehacer nada.
 
-## 📚 Estado de las epics docs
+## 📚 Epics docs
 
-Ninguna epic cambió de comportamiento. Sí cambiaron, y están al día:
+Solo EP014 cambió (tipografía de los entregables). Al día también:
 `api-conventions.md`, `modelo-amenazas.md`, `amenazas.yaml`, `DB-CHANGES.md`,
-`02-GLOSARIO.md`, `03-REVISION-GLOSARIO.md`, `design-system/tokens.md`.
+glosario, ADR y `design-system/tokens.md`.
 
 ## ✅ Decisiones del owner — 2026-08-05
 
@@ -81,23 +78,27 @@ Ninguna epic cambió de comportamiento. Sí cambiaron, y están al día:
 | SEG-01 | **Migrar a PyJWT.** Cierra 5 CVE | **Hecha** |
 | D-2 | **Renombrar `support` → `hypercare`** | **Hecha** (ADR-019, mig 0098) |
 
-## 🛠️ Producto — hecho después de las decisiones
+## 🛠️ Producto — después de las decisiones
 
-- **ENH-202** — Helvetica en los cuatro caminos de export. Cerró **AM-12** de
-  paso: ya no hay tipografías remotas al renderizar un PDF. Y destapó que los
-  informes **llevaban meses saliendo en DejaVu Sans**: el CSS pedía DM Sans y la
-  imagen no instalaba ninguna de las fuentes declaradas.
-- **D-2** — `support` → `hypercare`, con ventana de compatibilidad: el API sigue
-  aceptando el nombre viejo y devuelve siempre el canónico.
-- **D-3** — **ADR-020**, con la medición: 259 ocurrencias en 22 archivos. No es
-  un `sed`: los tres importadores usan «WBS» como etiqueta que el usuario ve en
-  su propio Excel, y esa no se renombra. Ronda propia.
-- **D-8** — **bloqueada.** Falta decidir el nombre destino: el glosario deja
-  «Preferente» en «—» y el campo es un parámetro público de consulta.
+- **ENH-202** — Helvetica en los cuatro caminos de export. Cerró **AM-12** y
+  destapó que los informes **llevaban meses saliendo en DejaVu Sans**: el CSS
+  pedía DM Sans y la imagen no instalaba ninguna de las fuentes declaradas.
+- **D-2** — con ventana: el API acepta `support` y devuelve `hypercare`.
 
-**Sigue abierta:** D-4, el umbral del semáforo. No se preguntó porque no tiene
-respuesta útil sin un proyecto real con desviación medible contra el que
-calibrar. También si hacen falta las fases `initiation` y `cancelled`.
+## 🗳️ Segunda tanda de decisiones — 2026-08-05
+
+| Decisión | Siguiente paso |
+|---|---|
+| **D-3: ejecutar en la próxima ronda** | Es lo primero al retomar |
+| **D-8: `portfolio_function` → `discipline`** | ADR-021 escrita. 18 ocurrencias, 9 archivos. Falta la US |
+| **Fase `cancelled`: sí. `initiation`: no** | ADR + US propias, sin abrir |
+| **Paleta de gráficos: propia** | Ni marca ni Tailwind: categórica y distinta del semáforo a propósito |
+
+`discipline` se eligió porque «función» y «rol» ya significan otras cosas aquí
+—`by_function` es agregación de capacidad, «rol» es el de permisos—.
+
+**Sigue abierta solo D-4**, el umbral del semáforo: no tiene respuesta útil sin
+un proyecto real con desviación medible contra el que calibrar.
 
 ## 🧹 Acciones del owner
 

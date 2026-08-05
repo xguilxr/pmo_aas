@@ -25,12 +25,12 @@ descrito como más barato resultó ser el más caro.
 |---|---|---|---|
 | D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
 | D-2 | `support` como fase | **Renombrar a `hypercare`** (2026-08-05) — ADR-019 | Migración + contrato + UI |
-| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** | Migración + contrato + frontend |
+| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | 259 ocurrencias, 22 archivos |
 | D-4 | Umbral del semáforo | **Abierta** — ni siquiera está claro si es uno o varios | — |
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
 | D-6 | Línea base | **Al roadmap** | Épica propia |
 | D-7 | Dos paletas de salud | **Unificar** — ✅ hecho 2026-08-05 | Bajo |
-| D-8 | `portfolio_function` | **Renombrar** | Medio — el parámetro es público |
+| D-8 | `portfolio_function` | **Renombrar a `discipline`** (2026-08-05) — ADR-021 | Medio — el parámetro es público |
 | D-9 | `is_milestone ⟹ duración 0` | **Validar** — ✅ hecho 2026-08-05 | Bajo |
 
 ---
@@ -84,17 +84,18 @@ concepto es legítimo —la transición a operaciones existe en los estándares�
 discutible es el nombre. `support` se lee como «mesa de ayuda»; `hypercare` es
 lo que el owner describe.
 
-**El nombre se decidió el 2026-08-05: `hypercare`.** Queda en **ADR-019**, con
-lo que cuesta y con la ventana de compatibilidad que conviene —aceptar los dos
-valores un tiempo, como se hizo con `amber` → `yellow` en la migración 0091—.
-La implementación es US propia, sin abrir: toca contrato y migración de datos
-sobre proyectos productivos.
+**Renombrada a `hypercare` el 2026-08-05** (ADR-019, migración 0098). Va con
+ventana de compatibilidad —el API sigue aceptando `support` a la entrada y
+devuelve siempre el canónico—, la misma forma que se usó para `amber` → `yellow`
+en la 0091.
 
-Siguen abiertos los dos huecos que la decisión **no** cubre:
-- [ ] ¿Hace falta `initiation`? Hoy un proyecto nace en `planning`, aunque el acta
-      de constitución sea previa
-- [ ] ¿Hace falta `cancelled`? Un proyecto terminado anticipadamente hoy solo puede
-      quedar `closed`, indistinguible de uno que cumplió
+De los dos huecos que la decisión no cubría, el owner resolvió el 2026-08-05:
+
+- **`cancelled`: sí.** Hoy un proyecto cortado a mitad queda `closed`,
+  indistinguible de uno que cumplió — ensucia cualquier métrica de éxito y las
+  lecciones aprendidas. Necesita ADR y US propias.
+- **`initiation`: no.** El proyecto nace en `planning` aunque el acta sea previa,
+  y eso no ha causado ningún problema reportado.
 
 **No verificado:** si un proyecto en `closed` queda de solo lectura. Lo único
 comprobado es que sale de `ACTIVE_PHASES` y por tanto de los snapshots.
@@ -139,7 +140,7 @@ diagnóstico. Entra como épica propia.
 | # | Qué | Dónde |
 |---|---|---|
 | D-7 | Unificar las dos paletas de salud | ✅ **Hecha el 2026-08-05.** Ver abajo |
-| D-8 | `portfolio_function` no es portafolio | `apps/api/app/models/area.py:233`, `endpoints/areas.py:675-689`, `L1-PORTAFOLIO` en `report_builder_template.py:11` |
+| D-8 | `portfolio_function` no es portafolio | **Nombre decidido el 2026-08-05: `discipline`** (ADR-021). «Función» y «rol» ya significan otras cosas aquí; `discipline` es lo que la lista enumera. 18 ocurrencias, 9 archivos |
 | D-9 | Validar `is_milestone ⟹ duration_days = 0` | ✅ **Hecha el 2026-08-05.** Normalización en el modelo (vale para los seis caminos de escritura) + rechazo del rango de varios días al crear. Resultó menos mecánica de lo previsto: la duración es un valor **derivado** —el endpoint ignora el que manda el cliente— así que un 422 sobre ella habría dejado al usuario sin forma de arreglarlo |
 
 ### D-7, cerrada — y no eran dos paletas, eran cuatro
