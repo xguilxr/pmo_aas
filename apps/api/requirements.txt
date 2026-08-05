@@ -7,7 +7,14 @@ sqlalchemy==2.0.35
 alembic==1.13.3
 asyncpg==0.29.0
 psycopg[binary]==3.2.3
-python-jose[cryptography]==3.4.0
+# SEG-01 (2026-08-05): era `python-jose[cryptography]==3.4.0`, con 5 CVE
+# abiertas que el pin de `pyasn1<0.5.0` impedía cerrar. Solo firmamos y
+# verificamos HS256 con secreto propio, así que PyJWT es sustitución directa.
+PyJWT==2.10.1
+# Explícita desde la migración anterior: `Fernet` se usa en `ai_secrets.py`
+# y hasta hoy entraba solo como dependencia transitiva del extra
+# `[cryptography]` de python-jose. Al quitarlo se habría ido con él.
+cryptography==50.0.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.31

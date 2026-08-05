@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
@@ -61,14 +61,14 @@ def create_refresh_token(*, subject: str | UUID, jti: str) -> str:
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
         return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-    except JWTError as exc:
+    except jwt.PyJWTError as exc:
         raise ValueError("invalid_token") from exc
 
 
 def decode_refresh_token(token: str) -> dict[str, Any]:
     try:
         return jwt.decode(token, settings.JWT_REFRESH_SECRET, algorithms=[settings.JWT_ALGORITHM])
-    except JWTError as exc:
+    except jwt.PyJWTError as exc:
         raise ValueError("invalid_refresh") from exc
 
 
