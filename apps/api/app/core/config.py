@@ -75,8 +75,20 @@ class Settings(BaseSettings):
     S3_SECRET_ACCESS_KEY: str = ""
     S3_REGION: str = "auto"  # "auto" para R2; región concreta para B2/AWS
 
+    # AM-10 (2026-08-05): a partir de este número de fallos, cada intento
+    # siguiente espera el doble que el anterior. **No hay bloqueo duro.**
+    #
+    # Antes eran 15 minutos fijos, y ese era el problema: quien conociera un
+    # nombre de usuario dejaba esa cuenta fuera un cuarto de hora, y con una
+    # lista de usuarios, al inquilino entero. El retardo creciente frena igual
+    # la adivinación —12 intentos por hora con el tope puesto— y **nunca deja a
+    # nadie fuera**: quien tecleó mal espera segundos, no minutos.
+    #
+    # `ACCOUNT_LOCK_MINUTES` desapareció. Si sigue puesta en el entorno, queda
+    # inerte: `extra="ignore"`.
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
-    ACCOUNT_LOCK_MINUTES: int = 15
+    LOGIN_BACKOFF_BASE_SECONDS: int = 2
+    LOGIN_BACKOFF_MAX_SECONDS: int = 300
 
     # US-028: email delivery via Resend. Sin API key el canal email
     # queda deshabilitado y las notificaciones viven solo in-app.

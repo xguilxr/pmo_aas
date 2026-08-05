@@ -116,7 +116,7 @@ Resumen. El detalle de cada una, abajo.
 | AM-07 | FC-1 | Enlace de aprobación en la URL | **ACEPTADA** |
 | AM-08 | FC-2 | Manipulación del registro de auditoría | **CONTROLADA** |
 | AM-09 | FC-1 | Relleno de credenciales | **CONTROLADA** |
-| AM-10 | FC-1 | Bloqueo de cuenta ajena como denegación de servicio | **SIN CONTROL** |
+| AM-10 | FC-1 | Bloqueo de cuenta ajena como denegación de servicio | **CONTROLADA** |
 | AM-11 | FC-1 | Restablecimiento de contraseña | **CONTROLADA** |
 | AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **CERRADA** |
 | AM-13 | FC-8 | Robo del token desde el navegador | **PARCIAL** |
@@ -319,14 +319,33 @@ mutación: sin la comprobación de entrada, caen 2 casos.
 
 ### AM-10 — Bloqueo de cuenta ajena como denegación de servicio
 
-**FC-1 · STRIDE: denegación de servicio · Estado: SIN CONTROL**
+**FC-1 · STRIDE: denegación de servicio · Estado: CONTROLADA (2026-08-05)**
 
-El reverso de AM-09: quien conozca un nombre de usuario puede fallar N veces y
-dejar esa cuenta bloqueada durante `ACCOUNT_LOCK_MINUTES`. Con una lista de
-usuarios se bloquea al inquilino entero.
+El reverso de AM-09: quien conociera un nombre de usuario podía fallar cinco
+veces y dejar esa cuenta bloqueada un cuarto de hora. Con una lista de usuarios,
+al inquilino entero.
 
-**Acción:** que el bloqueo dependa también de la IP de origen, o retardo
-creciente en vez de bloqueo duro.
+**Control: retardo creciente en vez de bloqueo duro.** Pasado el umbral, cada
+intento espera el doble que el anterior, con tope. **La cuenta nunca queda
+fuera** — y ese matiz es la amenaza entera: quien tecleó mal espera segundos, y
+quien sufre un ataque espera, como mucho, `LOGIN_BACKOFF_MAX_SECONDS`. El
+`ACCOUNT_LOCK_MINUTES` de quince minutos desapareció.
+
+**Contra la adivinación protege igual o mejor:** con el tope por defecto son
+doce intentos por hora y por cuenta. El rociado —muchas cuentas desde una IP— lo
+corta AM-09. Las dos se complementan: una mira la cuenta, la otra la IP.
+
+`locked_until` se conserva como columna pero cambia de significado: pasa de
+«bloqueada hasta» a «no antes de». El registro de auditoría lo refleja con una
+acción nueva, `login_backoff`, en vez de `account_locked`.
+
+**Residual:** un atacante que sostenga el ataque mantiene a la víctima en el
+tope. Es una molestia acotada, no una expulsión, y cada intento suyo consume
+además su cuota de AM-09.
+
+**Trinquete:** `tests/test_am10_retardo_creciente.py`. Los dos casos que fijan
+el control son que **el tope existe** —sin él, el retardo creciente es el
+bloqueo duro con otro nombre— y que el ataque a una cuenta no alcanza a otra.
 
 ### AM-11 — Restablecimiento de contraseña
 

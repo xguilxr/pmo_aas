@@ -115,20 +115,37 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         locked_until = locked_until.replace(tzinfo=UTC)
     if locked_until and locked_until > now:
         registrar_fallo()
+        restan = max(1, int((locked_until - now).total_seconds()))
         await write_audit(
             db, action="login_failed", module="auth", user_id=user.id, tenant_id=user.tenant_id,
-            details={"reason": "locked"}, ip_address=ip, user_agent=ua,
+            details={"reason": "backoff", "wait_seconds": restan},
+            ip_address=ip, user_agent=ua,
         )
-        raise forbidden(code="ACCOUNT_LOCKED", detail="Cuenta bloqueada, intenta más tarde")
+        # Se conserva `ACCOUNT_LOCKED` como `code` —el frontend lo trata— pero
+        # ya no significa «bloqueada»: significa «espera unos segundos». El
+        # texto lo dice, con el número, para que la espera no parezca infinita.
+        raise forbidden(
+            code="ACCOUNT_LOCKED",
+            detail=(
+                f"Por seguridad, tras varios intentos fallidos hay que esperar "
+                f"antes del siguiente. Vuelve a intentarlo en {restan} segundos; "
+                f"si no recuerdas tu contraseña, usa «¿Olvidaste tu contraseña?»."
+            ),
+        )
 
     if not verify_password(body.password, user.password_hash):
         registrar_fallo()
         user.failed_login_attempts += 1
-        if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
-            user.locked_until = now + timedelta(minutes=settings.ACCOUNT_LOCK_MINUTES)
+        espera = espera_tras_fallos(user.failed_login_attempts)
+        if espera:
+            # `locked_until` se conserva como columna, pero pasa a significar
+            # «no antes de» en vez de «bloqueada hasta» (AM-10).
+            user.locked_until = now + timedelta(seconds=espera)
             await write_audit(
-                db, action="account_locked", module="auth", user_id=user.id, tenant_id=user.tenant_id,
-                details={"attempts": user.failed_login_attempts}, ip_address=ip, user_agent=ua,
+                db, action="login_backoff", module="auth", user_id=user.id,
+                tenant_id=user.tenant_id,
+                details={"attempts": user.failed_login_attempts, "wait_seconds": espera},
+                ip_address=ip, user_agent=ua,
             )
         await write_audit(
             db, action="login_failed", module="auth", user_id=user.id, tenant_id=user.tenant_id,
@@ -362,6 +379,30 @@ _WINDOW_SEC = 3600
 #: grande con dedos torpes un lunes. Si un cliente real lo toca, este número es
 #: lo que hay que subir — no el que hay que quitar.
 _LOGIN_MAX_FAILS_PER_HOUR_IP = 30
+
+
+def espera_tras_fallos(fallos: int) -> int:
+    """Segundos que hay que esperar tras `fallos` intentos fallidos (AM-10).
+
+    Cero hasta el umbral; a partir de ahí el doble cada vez, con tope. **No es
+    un bloqueo**: la cuenta nunca queda fuera, solo se responde más despacio.
+
+    Ese matiz es la amenaza entera. Con bloqueo duro, quien conociera un nombre
+    de usuario dejaba esa cuenta inutilizable un cuarto de hora —y con una lista
+    de usuarios, al inquilino entero—. Con retardo creciente, el peor caso para
+    quien sufre el ataque es esperar `LOGIN_BACKOFF_MAX_SECONDS`, y quien tecleó
+    mal su contraseña espera segundos.
+
+    Contra la adivinación protege igual o mejor: con el tope por defecto son
+    doce intentos por hora y por cuenta, y el rociado lo corta AM-09 por IP.
+    """
+    exceso = fallos - settings.MAX_FAILED_LOGIN_ATTEMPTS
+    if exceso < 0:
+        return 0
+    return min(
+        settings.LOGIN_BACKOFF_BASE_SECONDS * (2**exceso),
+        settings.LOGIN_BACKOFF_MAX_SECONDS,
+    )
 
 
 def _client_ip(req: Request) -> str:
