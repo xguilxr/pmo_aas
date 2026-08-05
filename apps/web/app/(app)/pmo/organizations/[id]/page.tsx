@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
 import { KpiCard } from "@/components/kpi-card";
-import { Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
+import { Legend, PALETTE, Pie, RiskMatrix, serieColor, TrendLines } from "@/components/dashboard-charts";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { useOrgLabel } from "@/lib/org-label";
@@ -32,9 +32,9 @@ import {
 
 const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
 const HEALTH_FILL: Record<string, string> = {
-  green: PALETTE.success,
-  yellow: PALETTE.warning,
-  red: PALETTE.danger,
+  green: "var(--color-success-fg)",
+  yellow: "var(--color-warning-fg)",
+  red: "var(--color-danger-fg)",
 };
 
 /**
@@ -322,8 +322,8 @@ export default function PmoOrganizationPage() {
         <AnalyticsCard title="Tendencias (12 semanas)">
           {(trends?.series.length ?? 0) > 0 ? (
             <div className="space-y-3">
-              <OrgTrend label="Avance promedio" trends={trends} metric="avg_progress" color={PALETTE.success} fmt={(n) => `${Math.round(n)}%`} />
-              <OrgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={PALETTE.warning} />
+              <OrgTrend label="Avance promedio" trends={trends} metric="avg_progress" color={serieColor(0)} fmt={(n) => `${Math.round(n)}%`} />
+              <OrgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={serieColor(1)} />
             </div>
           ) : (
             <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">

@@ -43,10 +43,9 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 ## 📍 Dónde retomar
 
-**D-3** (US-194, mig 0100) y la **fase `cancelled`** (US-195, ADR-022) cerradas.
-El glosario no tiene ninguna decisión abierta. Lo siguiente sin dueño es la
-**paleta de gráficos**, con ADR por escribir. Lo que espera al owner está en su
-checklist, más abajo, y no se repite aquí.
+**Se cerró todo lo aprobado**: D-3 (US-194), fase `cancelled` (US-195), umbrales
+D-4 (US-196) y paleta de gráficos (US-197). **El glosario no tiene ninguna
+decisión abierta.** Lo que espera al owner está en su checklist, más abajo.
 
 ## ⚠️ Gotchas
 
@@ -68,47 +67,33 @@ Solo EP014 cambió (tipografía de los entregables). Al día también:
 `api-conventions.md`, `modelo-amenazas.md`, `amenazas.yaml`, `DB-CHANGES.md`,
 glosario, ADR y `design-system/tokens.md`.
 
-## ✅ Decisiones del owner — 2026-08-05, primera tanda
+## ✅ Decisiones del owner — 2026-08-05
 
-| Decisión | Estado |
-|---|---|
-| **Volver al producto**; las Tandas C/D/E no se abren | Registrada |
-| **LEN-02 como norma**, no como tanda (`api-conventions.md` §7) | ✅ |
-| **Migrar a PyJWT** — 5 CVE | ✅ en `2.13.0` |
-| **`support` → `hypercare`** | ✅ ADR-019, mig 0098 |
+**Las once, decididas y ejecutadas.** Primera tanda: volver al producto ·
+LEN-02 como norma · PyJWT · `support` → `hypercare`. Segunda: D-3 `wbs_code` ·
+D-8 `discipline` · ventanas que se cierran con dato · AM-10 retardo creciente ·
+D-4 calibrada · fase `cancelled` (`initiation` no) · paleta de gráficos propia.
 
-## 🛠️ Producto — después de las decisiones
+El detalle de cada una vive donde corresponde —ADR-019 a ADR-023,
+`03-REVISION-GLOSARIO.md`— y no se repite aquí.
 
-- **ENH-202** — Helvetica en los cuatro caminos de export. Cerró **AM-12** y
-  destapó que los informes **llevaban meses saliendo en DejaVu Sans**: el CSS
-  pedía DM Sans y la imagen no instalaba ninguna de las fuentes declaradas.
-- **D-2** y **D-8** — con ventana: el API acepta el nombre viejo y devuelve el
-  canónico. La de D-8 tiene **dos puertas**, cuerpo y parámetro de consulta.
-- **AM-10** — el bloqueo de cuenta pasó a retardo creciente. Con AM-14 reflejada
-  —llevaba un día cerrada y la ficha decía lo contrario—, **el modelo de
-  amenazas no tiene ninguna sin control**.
+**Lo que dejaron de camino, que no estaba en ninguna decisión:**
 
-## 🗳️ Segunda tanda de decisiones — 2026-08-05
-
-| Decisión | Siguiente paso |
-|---|---|
-| **D-3: ejecutar en la próxima ronda** | ✅ **hecha** (US-194, mig 0100) |
-| **D-8: `portfolio_function` → `discipline`** | ✅ **hecha** (ADR-021, mig 0099) |
-| **Ventanas: cerrar con dato** | ✅ **hecha** — se cuentan por `compat.nombre_viejo` |
-| **AM-10: retardo creciente** | ✅ **hecha** — ninguna amenaza queda sin control |
-| **D-4: uno por dimensión** | ✅ forma decidida. Faltan los **cinco valores** |
-| **Fase `cancelled`: sí. `initiation`: no** | ✅ **hecha** (US-195, ADR-022) |
-| **Paleta de gráficos: propia** | Ni marca ni Tailwind: categórica y distinta del semáforo |
-
-`discipline` se eligió porque «función» y «rol» ya significan otras cosas aquí
-—`by_function` era agregación de capacidad, «rol» es el de permisos—.
+- Los informes **llevaban meses saliendo en DejaVu Sans**: el CSS pedía DM Sans y
+  la imagen no instalaba ninguna de las fuentes declaradas (ENH-202).
+- El presupuesto del semáforo **no miraba el tiempo**: 85 % gastado con 10 % de
+  avance salía verde (US-196).
+- `#dc2626` marcaba «ruta crítica» y el semáforo «en problemas» **en la misma
+  página** (US-197).
+- Con AM-14 reflejada, **el modelo de amenazas no tiene ninguna sin control**.
 
 ## 🧹 Acciones del owner
 
 - [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic aún.
 - [ ] Smoke manual de la web: seis tokens de color, `support` → `hypercare` en
       filtros, y el plan (`wbs_code`) en alta, edición e importación.
-- [ ] Calibrar los cinco valores del umbral (D-4) contra un proyecto real.
+- [ ] **Contrastar los umbrales de D-4 contra tu cartera real.** Los valores son
+      razonados, no medidos; se ajustan en `settings`, sin tocar código.
 
 ## 🔮 Sin issue todavía
 

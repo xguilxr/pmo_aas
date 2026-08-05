@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
+from app.core.paleta import ACENTO, NEUTRO, NEUTRO_SUAVE, ORDINAL_CLARO, serie
 from app.models.project import Project
 from app.models.task import Task
 
@@ -144,10 +145,10 @@ def render_gantt_svg(
         f'<line x1="{LEFT_GUTTER}" y1="{TOP_PADDING}" x2="{LEFT_GUTTER + chart_width}" '
         f'y2="{TOP_PADDING}" stroke="#e5e7eb" stroke-width="1"/>',
         # Etiquetas inicio/fin
-        f'<text x="{LEFT_GUTTER}" y="{TOP_PADDING - 4}" font-size="8" fill="#6b7280">'
+        f'<text x="{LEFT_GUTTER}" y="{TOP_PADDING - 4}" font-size="8" fill="{NEUTRO}">'
         f'{window_start.isoformat()}</text>',
         f'<text x="{LEFT_GUTTER + chart_width}" y="{TOP_PADDING - 4}" '
-        f'font-size="8" fill="#6b7280" text-anchor="end">'
+        f'font-size="8" fill="{NEUTRO}" text-anchor="end">'
         f'{window_end.isoformat()}</text>',
     ]
 
@@ -157,28 +158,36 @@ def render_gantt_svg(
         # Label
         svg_parts.append(
             f'<text x="6" y="{y + 11}" font-size="9" fill="#374151">'
-            f'{_xml_escape(b["wbs_code"])} <tspan fill="#9ca3af">({b["count"]})</tspan>'
+            f'{_xml_escape(b["wbs_code"])} <tspan fill="{NEUTRO_SUAVE}">({b["count"]})</tspan>'
             f'</text>'
         )
         # Barra
         bx = x_for(b["start"])
         ex = x_for(b["end"])
         bw = max(2, ex - bx)
-        fill = "#2563eb"
-        if b["criticals"] > 0:
-            fill = "#dc2626"
-        elif b["milestones"] > 0:
-            fill = "#7c3aed"
+        # ADR-023: la ruta crítica deja el rojo. Era `#dc2626`, el mismo rojo
+        # con el que el semáforo dice «proyecto en problemas» — un grupo con
+        # tareas críticas no está en problemas, está en el camino largo. La
+        # criticidad es **énfasis estructural**, así que se marca con borde y
+        # peso, no robándole el color a un estado.
+        fill = serie(0)
+        if b["milestones"] > 0:
+            fill = serie(2)
+        critico = b["criticals"] > 0
+        borde = (
+            f' stroke="{ACENTO}" stroke-width="1.5"' if critico else ""
+        )
         svg_parts.append(
             f'<rect x="{bx}" y="{y + 3}" width="{bw}" height="10" '
-            f'fill="{fill}" rx="2"/>'
+            f'fill="{fill}"{borde} rx="2"/>'
         )
-        # Progreso overlay
+        # Progreso overlay. Era verde —el del semáforo—; el avance no es un
+        # estado, es la misma barra más oscura.
         pwidth = int(bw * (b["avg_progress"] / 100.0))
         if pwidth > 0:
             svg_parts.append(
                 f'<rect x="{bx}" y="{y + 3}" width="{pwidth}" height="10" '
-                f'fill="#16a34a" fill-opacity="0.55" rx="2"/>'
+                f'fill="{ORDINAL_CLARO[-1]}" fill-opacity="0.75" rx="2"/>'
             )
 
     svg_parts.append("</svg>")
@@ -191,7 +200,7 @@ def _empty_svg(project: Project, ws: date, we: date) -> str:
         '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="80">'
         '<rect width="600" height="80" fill="#fafafa"/>'
         f'<text x="20" y="30" font-size="12" fill="#374151">Gantt — {_xml_escape(project.folio)}</text>'
-        f'<text x="20" y="50" font-size="10" fill="#6b7280">{_xml_escape(msg)}</text>'
+        f'<text x="20" y="50" font-size="10" fill="{NEUTRO}">{_xml_escape(msg)}</text>'
         "</svg>"
     )
 

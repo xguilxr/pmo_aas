@@ -13,7 +13,7 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
-import { Gauge, Legend, PALETTE, Pie, RiskMatrix, TrendLines } from "@/components/dashboard-charts";
+import { Gauge, Legend, PALETTE, Pie, RiskMatrix, serieColor, TrendLines } from "@/components/dashboard-charts";
 import { ApiError } from "@/lib/api";
 import {
   downloadProgramOrganigrama,
@@ -31,9 +31,9 @@ type ProgramTab = "overview" | "reports";
 // verdes/amarillos/rojos) en vez de variables CSS inexistentes.
 const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
 const HEALTH_FILL: Record<string, string> = {
-  green: PALETTE.success,
-  yellow: PALETTE.warning,
-  red: PALETTE.danger,
+  green: "var(--color-success-fg)",
+  yellow: "var(--color-warning-fg)",
+  red: "var(--color-danger-fg)",
 };
 
 function healthToData(health: { green: number; yellow: number; red: number }) {
@@ -402,8 +402,8 @@ export default function ProgramSummaryPage() {
             <div className="space-y-3">
               {/* BUG-069: el avance ya se muestra como Gauge en "Indicadores";
                   aquí solo dejamos las series que NO se repiten en otra tarjeta. */}
-              <ProgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={PALETTE.warning} />
-              <ProgTrend label="Riesgos severos" trends={trends} metric="severe_risks" color={PALETTE.danger} />
+              <ProgTrend label="Riesgos abiertos" trends={trends} metric="open_risks" color={serieColor(0)} />
+              <ProgTrend label="Riesgos severos" trends={trends} metric="severe_risks" color={serieColor(1)} />
             </div>
           ) : (
             <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import math
 
+from app.core.paleta import ACENTO, NEUTRO, NEUTRO_SUAVE
+
 
 def treemap_svg(items: list[dict]) -> str:
     """Treemap 1-D (barra proporcional) sized por `value`, coloreado por
@@ -27,7 +29,7 @@ def treemap_svg(items: list[dict]) -> str:
         label = (i.get("label") or "")[:18]
         parts.append(
             f'<rect x="{x:.1f}" y="0" width="{max(0.5, seg - 1):.1f}" height="{h}" '
-            f'fill="{i.get("color", "#9ca3af")}" rx="1"/>'
+            f'fill="{i.get("color", NEUTRO_SUAVE)}" rx="1"/>'
         )
         if seg > 26:
             parts.append(
@@ -41,8 +43,11 @@ def treemap_svg(items: list[dict]) -> str:
 def curve_svg(
     actual: list[float],
     planned: list[float],
-    actual_color: str = "#16a34a",
-    planned_color: str = "#6b7280",
+    # ADR-023: real y plan son dos versiones de la misma medida, no dos
+    # categorías. El verde de antes insinuaba «va bien» cuando podía ir
+    # pésimo — el color no debe adelantar un juicio que el gráfico no hizo.
+    actual_color: str = ACENTO,
+    planned_color: str = NEUTRO,
 ) -> str:
     """Curva-S: dos líneas (real sólida, planeado punteado) en 0-100%. "" si
     no hay puntos. Asume `actual` y `planned` alineados por índice/fecha."""
@@ -78,7 +83,7 @@ def curve_svg(
     return "".join(parts)
 
 
-def sparkline_svg(values: list[float], color: str = "#182e4e") -> str:
+def sparkline_svg(values: list[float], color: str = ACENTO) -> str:
     """Línea de tendencia para una serie pequeña. "" si no hay puntos."""
     n = len(values)
     if n == 0:
@@ -138,7 +143,7 @@ def donut_svg(
         length = s["value"] / total * circ
         parts.append(
             f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.2f}" fill="none" '
-            f'stroke="{s.get("color", "#9ca3af")}" stroke-width="{thickness:.0f}" '
+            f'stroke="{s.get("color", NEUTRO_SUAVE)}" stroke-width="{thickness:.0f}" '
             f'stroke-dasharray="{length:.2f} {circ - length:.2f}" '
             f'stroke-dashoffset="{-offset:.2f}"/>'
         )
@@ -162,7 +167,7 @@ def donut_svg(
 
 def gauge_svg(
     percent: float,
-    color: str = "#2A4DA0",
+    color: str = ACENTO,
     size: float = 120.0,
     thickness: float = 14.0,
     suffix: str = "%",

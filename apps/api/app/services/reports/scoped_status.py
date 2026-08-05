@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
+from app.core.paleta import NEUTRO_SUAVE, serie
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
 from app.models.organization import Organization, Program
@@ -56,7 +57,10 @@ def _worst_health_color(row: dict) -> str:
     if row.get("yellow"):
         return HEALTH_COLOR["yellow"]
     return HEALTH_COLOR["green"]
-_TREND_COLOR = {"avg_progress": "#16a34a", "open_risks": "#d97706"}
+# ADR-023: son dos SERIES de una tendencia, no dos estados. El verde y el
+# ámbar de antes adelantaban un juicio —«el avance va bien, los riesgos
+# preocupan»— que el gráfico no había hecho.
+_TREND_COLOR = {"avg_progress": serie(0), "open_risks": serie(1)}
 _TREND_LABEL = {"avg_progress": "Avance promedio (%)", "open_risks": "Riesgos abiertos"}
 
 
@@ -327,7 +331,7 @@ async def build_scope_status_context(
     if rows_kind == "projects":
         treemap_items = [
             {"label": r["name"], "value": r.get("budget_plan", 0),
-             "color": _HEALTH_HEX.get(r.get("health"), "#9ca3af")}
+             "color": _HEALTH_HEX.get(r.get("health"), NEUTRO_SUAVE)}
             for r in rows
         ]
     else:

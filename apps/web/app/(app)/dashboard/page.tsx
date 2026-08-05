@@ -80,16 +80,24 @@ const HEALTH_LABEL: Record<string, string> = {
 };
 
 const HEALTH_COLOR: Record<string, string> = {
-  green: PALETTE.success,
-  yellow: PALETTE.warning,
-  red: PALETTE.danger,
+  green: "var(--color-success-fg)",
+  yellow: "var(--color-warning-fg)",
+  red: "var(--color-danger-fg)",
 };
 
+// ADR-023: la fase es ORDINAL —planificación → ejecución → hypercare → cerrado
+// es una secuencia—, así que va con la rampa de un solo tono, no con cuatro
+// colores sueltos. `cancelled` se sale de la secuencia y va al neutro, igual
+// que en su insignia.
+//
+// De paso: esta tabla seguía diciendo `support`, que D-2 renombró. No fallaba
+// —es una clave suelta— simplemente dejaba la fase sin color.
 const PHASE_COLOR: Record<string, string> = {
-  planning: PALETTE.info,
-  execution: PALETTE.accent,
-  support: PALETTE.warning,
-  closed: PALETTE.neutral,
+  planning: PALETTE.scale[0],
+  execution: PALETTE.scale[2],
+  hypercare: PALETTE.scale[3],
+  closed: PALETTE.scale[4],
+  cancelled: PALETTE.neutral,
 };
 
 function toEntries<T>(obj: Record<string, T>): [string, T][] {
@@ -515,14 +523,14 @@ function DashboardInner() {
                   label="Avance promedio"
                   trends={trends}
                   metric="avg_progress"
-                  color={PALETTE.success}
+                  color="var(--color-success-fg)"
                   valueFormat={(n) => `${Math.round(n)}%`}
                 />
                 <TrendMini
                   label="Riesgos abiertos"
                   trends={trends}
                   metric="open_risks"
-                  color={PALETTE.warning}
+                  color="var(--color-warning-fg)"
                 />
                 <TrendMini
                   label="Proyectos activos"

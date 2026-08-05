@@ -1004,6 +1004,86 @@ declarado en el código.
 
 ---
 
+## ADR-023 — El semáforo se queda el arco cálido; los gráficos, el frío
+
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (US-197)
+
+**Contexto:**
+El owner pidió una paleta de gráficos **propia**: ni la de marca ni la de
+Tailwind, categórica y distinta del semáforo a propósito. Al medir qué había,
+resultaron dos sistemas y ninguno decidido:
+
+- Los gráficos de la web ofrecían `success`, `warning` y `danger` como colores
+  de **serie**, así que una serie cualquiera podía salir verde, amarilla o roja
+  sin querer decir nada.
+- Los informes del servidor llevaban hexes de Tailwind escritos a mano
+  (`#2563eb`, `#dc2626`, `#7c3aed`, `#16a34a`, `#6b7280`, `#9ca3af`).
+
+El choque concreto: **`#dc2626` marcaba «ruta crítica» en el Gantt y `#16a34a`
+marcaba «lo real» en la curva-S**, mientras el semáforo de salud usaba esos
+mismos rojo y verde para «proyecto en problemas» y «proyecto sano». El mismo
+color decía dos cosas en la misma página.
+
+**Decisión:**
+Partir el espectro. **El semáforo se queda con el arco cálido y el verde; los
+gráficos se quedan con el arco frío.** Cuatro ranuras categóricas de orden fijo
+y una rampa ordinal de un solo tono, con origen único en `app/core/paleta.py` y
+espejo en los tokens `--chart-*`.
+
+| Trabajo | Qué codifica | Forma |
+|---|---|---|
+| Categórica | identidad (equipo, área, proyecto) | 4 ranuras, orden fijo, sin reciclar |
+| Ordinal | secuencia (fase, tramo, tamaño) | un tono, claro → oscuro |
+| Estado | salud | el semáforo, reservado |
+
+No es solo estética: hace **imposible por construcción** que una serie parezca
+un estado.
+
+**Consecuencias:**
+
+- **El orden de las ranuras es el mecanismo de seguridad, no una preferencia.**
+  Con los mismos cuatro tonos en otro orden, el teal y el rosa colapsan a
+  **ΔE 0,2** bajo deuteranopía —indistinguibles—; en el orden elegido el peor
+  par adyacente queda en 13,3. Por eso se asignan en secuencia y `serie()`
+  **lanza** en vez de reciclar: una quinta serie con el color de la primera es
+  un gráfico que miente sobre cuántas cosas distintas muestra.
+- **Cuatro ranuras y no ocho.** Es lo que deja el arco frío: un quinto tono frío
+  rompía el piso de visión normal, y uno cálido invadía el semáforo. Más de
+  cuatro series se pliegan en «Otros» o se parten en múltiplos pequeños.
+- **El tema oscuro tiene pasos propios**, no un volteo de los claros: la banda
+  de luminosidad válida es más estrecha sobre fondo oscuro. Un aviso conocido y
+  aceptado: el morado oscuro queda en 2,59:1, lo que obliga a etiqueta visible o
+  vista de tabla — que es lo que los gráficos llevan igual.
+- **La fase pasa a la rampa ordinal.** Planificación → ejecución → hypercare →
+  cerrado es una secuencia, y cambiarle el orden cambia el significado, así que
+  le toca un solo tono de claro a oscuro. Eso resolvió de paso el problema que
+  abrió ADR-022: la quinta fase no necesita un quinto color, porque `cancelled`
+  se sale de la secuencia y va al neutro.
+- **La ruta crítica del Gantt deja el rojo** y pasa a borde y peso. Un grupo con
+  tareas críticas no está en problemas, está en el camino largo: es énfasis
+  estructural, no un estado.
+- **La curva-S deja el verde.** Plan y real son dos versiones de la misma
+  medida, no dos categorías; el verde insinuaba «va bien» cuando podía ir
+  pésimo.
+- **Dos copias inevitables, y un trinquete.** Los informes se dibujan en Python
+  y la web en CSS. `test_adr023_paleta_graficos.py` comprueba que los tokens
+  espejen el módulo, que ninguna ranura se acerque a un color del semáforo y que
+  los hexes de Tailwind no vuelvan.
+
+**Alternativas evaluadas:**
+
+- **Extender la paleta de marca.** Gratis y coherente, pero el azul de marca es
+  uno solo: no da cuatro identidades distinguibles sin inventar tonos, que es
+  exactamente lo que el owner descartó.
+- **Una paleta categórica estándar** (Tableau 10, Okabe-Ito). Están validadas y
+  son buenas, pero las dos incluyen verde, ámbar y rojo — reintroducirían el
+  choque que esta ADR existe para eliminar.
+- **Dejar que el semáforo y las series compartan colores y desambiguar con
+  etiqueta.** Es lo que había. La etiqueta funciona cuando se lee; el color se
+  ve antes de leer, y ahí ya mintió.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown

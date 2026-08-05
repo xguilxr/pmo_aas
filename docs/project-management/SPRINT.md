@@ -57,8 +57,9 @@ queda **sin ninguna amenaza sin control**.
 - [x] **Fase `cancelled` hecha** 2026-08-05 — US-195, ADR-022, **sin
   migración** (`phase` es `String(32)` sin `CHECK`). `ACTIVE_PHASES` ahora se
   deriva del vocabulario. `initiation`: descartada por el owner.
-- [ ] **Paleta de gráficos propia** — owner 2026-08-05. Ni la de marca ni la de
-  Tailwind: categórica, accesible y distinta del semáforo a propósito.
+- [x] **Paleta de gráficos hecha** 2026-08-05 — US-197, ADR-023. El semáforo se
+  queda el arco cálido, los gráficos el frío. **El orden de las ranuras es el
+  mecanismo CVD**: en otro orden, teal y rosa colapsan a ΔE 0,2.
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
 
@@ -74,9 +75,10 @@ cada endpoint. Sigue PARCIAL, declarado. **Tandas C/D/E: no se abren.**
 **D-2, D-7 y D-9 hechas el 2026-08-05.** D-2 con ventana de compatibilidad: el
 API sigue aceptando `support` y devuelve siempre `hypercare` (ADR-019, mig 0098).
 
-**D-4 decidida en su forma: uno por dimensión** (2026-08-05), apoyada en las
-cinco de US-191. Falta **calibrar los cinco valores** contra un proyecto real —
-eso es dato, no decisión, y es lo único que queda del glosario.
+**D-4 cerrada el 2026-08-05** (US-196): forma y valores. Calibrarla destapó que
+el presupuesto **no miraba el tiempo** —85 % gastado con 10 % de avance salía
+verde— y que cuatro de cinco amarillos disparaban con el primer caso.
+**El glosario queda sin decisiones abiertas.**
 
 > **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
 > ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch
