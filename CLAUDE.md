@@ -287,20 +287,9 @@ Excepciones permitidas:
 - Cada sesión de Claude tiene asignada una branch específica; ver
   `SPRINT.md` → IN-PROGRESS para la activa.
 
-### Rebase + force-push
-
-Cuando una branch abierta queda atrás respecto a `main` (CI falla
-porque main agregó migraciones / cambios que la branch no tiene):
-
-1. `git fetch origin main`
-2. `git rebase origin/main` (sobre la branch local).
-3. Resolver conflictos si los hay.
-4. `git push --force-with-lease origin <branch>` — **siempre con
-   `--force-with-lease`, nunca con `--force` solo**. El flag protege
-   contra pisar trabajo del owner si modificó la branch remota.
-
-Esto aplica también cuando hay collisions de migraciones Alembic
-(revision IDs duplicados al mergear lanes paralelos a main).
+**Branch atrás de `main`** (el CI falla por algo que trajo `main`, o hay colisión
+de revisiones de Alembic): skill **`rebasear`**. Se abre al rebasear, que es una
+vez al mes; no se paga en cada turno (MCA CAP-01).
 
 ### Sesiones secuenciales > paralelas (decisión owner 2026-05-22)
 

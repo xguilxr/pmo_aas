@@ -13,17 +13,16 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sin sesión activa. PR #573 MERGEADO a main el 2026-08-04 (a725d10).
+Branch activa: `claude/cap01-y-recuento`. PR #575 MERGEADO el 2026-08-04.
 
-Cerró: auditoría MCA/MCS, Tanda A (4/5), Tanda B entera (B1-B5),
-presupuesto de contexto (-61%) y la reauditoría de los dos marcos.
+Cerró en #575: R1 completa (13/13 medidos), guard AUT-01 con trinquete,
+glosario aprobado, ADR-018 (ARQ-03 excluido), IA-04 conforme, CON-04 mitigado.
 
-Próximo paso — R1: evaluar los 13 requisitos MCS en NO VERIFICABLE.
-Es medición, no construcción. Rama nueva desde main.
+En curso: CAP-01 (procedimiento de rebase fuera del contexto permanente) y
+la corrección del recuento de R1. Con eso MCA queda en N2.
 
-Los batches del 2026-07-18 (Plan Import Revamp 9/9 y Feedback 16-jul 8/8)
-siguen en `claude/plan-import-wbs-fixes-nwotng` SIN PR. Migraciones 0095-0096
-pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
+MCS: 51 requisitos para N1. Siguiente, lo barato de R1 — SUM-02, DES-03,
+LEN-02 y DIS-02, que se cruza con la decisión D-7 del glosario.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
