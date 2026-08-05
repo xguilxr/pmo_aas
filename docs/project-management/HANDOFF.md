@@ -1,130 +1,104 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/cap01-y-recuento` — **PR #576 abierto, CI verde**
+**Branch activa:** `claude/audit-continuation-fzrtko` — **10 commits, sin PR**
 **Generado por:** `/handoff`
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-**La medición terminó; la remediación no.** Ya no queda un solo requisito sin
-estado en ninguno de los dos marcos. Con el merge de #576, **MCA alcanza su
-objetivo N2**. **MCS sigue en N0**: 22 de 126 conformes y **51 requisitos
-bloquean N1**.
+**MCA está en N2**, su objetivo, desde el merge de #576. La lista de «lo barato
+de R1» que dejó la sesión anterior **está hecha entera**, más dos amenazas.
 
 | Marco | Objetivo | Hoy | Falta |
 |---|---|---|---|
-| MCA (entorno) | N2 | **N2** al mergear #576 | Nada del objetivo. N3 no lo es |
-| MCS (producto) | N2 | **N0** | 51 para N1 · Tandas C/D/E, 6-9 semanas |
-
-## 📍 Dónde retomar
-
-> **Modo de trabajo pedido por el owner (2026-08-05):** recorrer **todo lo
-> pendiente de una corrida**, sin parar a preguntar. Las decisiones que necesiten
-> su confirmación se **acumulan y se preguntan al final**, juntas. No fragmentar
-> la sesión en idas y vueltas.
-
-Orden sugerido, de menor a mayor coste — todo esto **no necesita confirmación**:
-
-1. **SUM-02** — `USER` sin privilegios en `apps/api/Dockerfile`. 3 líneas. Cuidar
-   que el `CMD` corre migraciones y que MPXJ quede legible para ese usuario.
-2. **DES-03** — `SELECT 1` con tiempo límite en `/health`. 10 líneas.
-3. **LEN-02** — los seis textos por defecto de `app/core/errors.py`. Es la palanca:
-   los malos viven todos ahí.
-4. **DIS-02 + D-7** — cinco tokens de `globals.css` y unificar las dos paletas de
-   salud. **Son el mismo trabajo**: el verde que falla AA (`#1F8A5B`, 4.33:1) es
-   el del semáforo. Después enganchar `scripts/check_contraste.py` al CI.
-5. **AM-09** — límite por IP en `/auth/login`. El limitador ya existe
-   (`services/rate_limit.py`) y se aplica en recuperación y reseteo; falta ahí.
-6. **AM-08** — `REVOKE UPDATE, DELETE` al rol de la aplicación sobre `audit_log`.
-   Sin código.
-7. **D-9** — validar `is_milestone ⟹ duration_days = 0`.
-
-**Al final, preguntar en bloque** (§ «Confirmaciones pendientes»).
+| MCA (entorno) | N2 | **N2** | Nada del objetivo |
+| MCS (producto) | N2 | **N0** · 25/126 | 50 para N1 (eran 54) |
 
 ## ✅ Hecho en esta sesión
 
-**PR #575, mergeado** (`98fa3a2`) — 9 commits:
+Nueve requisitos, **un commit cada uno**, todos con verificación por mutación:
 
-- **R1 completa**: los 13 requisitos MCS en NO VERIFICABLE, medidos. Resultado:
-  1 no aplicable, 1 conforme, 1 excluido, 4 parciales, 6 no conformes.
-  `docs/conformidad/2026-08-04-mcs-r1.md`.
-- **AUT-01**: lo irreversible pasó de `ask` a `deny` + 24 casos de prueba.
-- **ADR-018**: ARQ-03 excluido con riesgo aceptado y revisión el 2027-02-04.
-- **IA-04 conforme** y **CON-04 mitigado** (código).
-- **Glosario aprobado**: 8 decisiones del owner, 1 abierta.
+| Qué | Estado |
+|---|---|
+| **SUM-02** | El contenedor deja de correr como root |
+| **DES-03** | `/health` hace `SELECT 1` acotado y devuelve 503 |
+| **LEN-02** | Catálogo con qué/por qué/qué hacer **como datos, no prosa**. Sigue PARCIAL |
+| **DIS-02** | 34/34 pares AA en los dos temas + job `contraste-wcag` |
+| **D-7** | Una sola paleta de salud (eran cuatro, no dos) |
+| **AM-09** | Límite por IP en el login, contando fallos |
+| **AM-08 / SEG-07** | `audit_log` de solo anexado |
+| **D-9** | `is_milestone ⟹ duration_days = 0` |
 
-**PR #576, abierto** (`852c19e`, `d8892b9`) — CAP-01 (skill `rebasear`) y la
-corrección del recuento de R1.
+Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
-**Acciones del owner cerradas:** `SENTRY_DSN` puesto, `main` protegida con los 8
-checks, migraciones verificadas en 0096.
+**Tres hallazgos que la medición no podía ver:**
 
-## 🔄 PRs en flight
+1. **El `REVOKE` que AM-08 proponía no habría funcionado.** La aplicación se
+   conecta con el rol **dueño** de las tablas y en PostgreSQL el dueño conserva
+   sus privilegios. Habría sido un control declarado que no actúa. Comprobado
+   contra Postgres 16; van disparadores.
+2. **`check_contraste.py` llevaba los valores copiados a mano** y el tema oscuro
+   nunca se había medido. Dos agujeros del propio instrumento.
+3. **El caso que incumplía D-9 era el corriente:** días inclusivos hacían que un
+   hito de un día durara 1.
 
-| # | Branch | CI | Acción |
-|---|---|---|---|
-| #576 | `claude/cap01-y-recuento` | **verde** (`MERGEABLE`/`CLEAN`) | **Mergear** |
+## 📍 Dónde retomar
+
+1. **Abrir el PR** de esta branch y mergear.
+2. **Correr la migración `0097`** (la deniega el guard; es del owner).
+3. Después: las cinco confirmaciones de abajo mandan sobre qué sigue.
 
 ## ⚠️ Gotchas
 
-- **Las migraciones las corre el owner.** El guard las deniega desde #575. Es el
-  precio acordado de que `deny` sobreviva a cualquier modo de permisos.
-- **El guard bloquea mensajes de commit que *mencionan* un comando denegado.**
-  Pasó dos veces. La salida es `git commit -F <archivo>`, no relajar el patrón.
-- **Un check requerido que se salta NO bloquea el merge** — verificado con #576,
-  que es de solo-docs: `MERGEABLE`/`CLEAN` con cinco jobs en *skipping*.
-- **`api-tests-heavy` nunca debe ser requerido:** solo corre en push a `main`.
-- **La suite de API tarda ~26 min en local** (3m21s en CI). Correrla en segundo
-  plano y seguir trabajando.
-- **Publiqué mal el recuento de R1** («3 parciales, 7 no conformes»). Son 4 y 6.
-  Corregido **con la corrección anotada** en el informe, no en silencio.
+- **La migración 0097 no se ejecutó por Alembic.** Su SQL sí se ejercitó contra
+  un Postgres 16 real, `downgrade` incluido.
+- **`RATE_LIMITED` pasó de 422 a 429.** Cambio de contrato pequeño, ya en
+  `api-conventions.md`. Afecta también a reseteo de contraseña.
+- **El presupuesto de contexto va al 98 %** (33.917 de 34.500). Cualquier cosa
+  que engorde `CLAUDE.md`, `SPRINT.md` o este archivo rompe el CI.
+- **El guard bloquea comandos que *mencionan* uno denegado**, aunque sea en una
+  ruta (`git stash push -- app/main.py` cayó por «push … main»). La salida es
+  reformular, no relajar el patrón.
+- **La suite tarda ~2m45s** con `-n auto`. Correrla en segundo plano.
 - Sin tests de frontend. Python 3.12 no es negociable.
-
-## 📋 Lo que sigue
-
-- **Conformidad:** la lista de «Dónde retomar». Después, Tandas C/D/E — pero eso
-  merece decisión de negocio, no inercia.
-- **Glosario:** D-3 (`wbs_code`) y D-8 (`portfolio_function`) tocan contrato: ADR
-  + US propia, una por una.
-- **Producto:** ENH-202 (Helvetica en todos los exports) es el batch que espera.
-- **Amenazas:** AM-14 cerrada al proteger `main`. Quedan AM-08, AM-09 y AM-10.
 
 ## 📚 Estado de las epics docs
 
-| Epic | Sincronizada | Notas |
-|---|---|---|
-| EP008 (IA) | **sí** | Actualizada esta sesión: contexto fechado (CON-04), aviso y escalada (IA-04), y por qué IA-01 es NO APLICABLE **hoy** |
+Ninguna epic cambió de comportamiento. Sí cambiaron, y están al día:
+`api-conventions.md`, `modelo-amenazas.md`, `amenazas.yaml`, `DB-CHANGES.md`,
+`02-GLOSARIO.md`, `03-REVISION-GLOSARIO.md`, `design-system/tokens.md`.
 
-Ninguna otra epic cambió de comportamiento.
+## ❓ Confirmaciones pendientes
 
-## ❓ Confirmaciones pendientes — preguntar AL FINAL de la próxima sesión
+Se le preguntaron al owner al cierre de la sesión. **Si no hay respuesta
+registrada abajo, siguen abiertas:**
 
-1. **¿Seguimos con las Tandas C/D/E de MCS o cortamos?** Son 6-9 semanas y 51
-   requisitos. Mi recomendación: cerrar lo barato y volver al producto; retomar
-   las tandas cuando haya motivo de negocio.
-2. **D-4, umbral del semáforo.** Sigue abierto y es lo único que deja el glosario
-   en borrador. ¿Uno o varios? Se calibra contra un proyecto real.
-3. **D-2, nombre de la fase de hypercare.** ¿`support` se queda o se renombra a
-   `hypercare`? ¿Hacen falta `initiation` y `cancelled`?
-4. **DAT-11 y DIS-03** son transversales y caros. ¿Norma para lo nuevo y arrastre
-   por tandas, o campaña dedicada?
+1. **¿Tandas C/D/E de MCS, o cortar?** 50 requisitos, 6-9 semanas.
+   Recomendación: volver al producto y retomarlas con motivo de negocio.
+2. **D-4, umbral del semáforo.** Lo único que deja el glosario en borrador.
+3. **D-2, nombre de la fase de hypercare.** ¿`support` o renombrar?
+4. **LEN-02, los 152 mensajes restantes.** ¿Norma para lo nuevo, o tanda?
 5. **Migrar `python-jose` a PyJWT** — cerraría 5 CVE que bloquea `pyasn1<0.5.0`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Mergear #576** — con eso MCA queda en N2.
-- [ ] Smoke manual de la web tras el salto de Next 15.0 → 15.5.
-- [ ] Correr las migraciones locales cuando una branch traiga alguna.
+- [ ] **Abrir el PR de `claude/audit-continuation-fzrtko` y mergear.**
+- [ ] **Correr la migración `0097`** cuando el PR entre.
+- [ ] Smoke manual de la web: cambiaron seis tokens de color.
+- [ ] Responder las cinco confirmaciones.
 
 ## 🔮 Sin issue todavía
 
-- **DCMA 14-point** (`docs/dominio/01-DIAGNOSTICO.md` §4) y **línea base** (D-6),
-  sin la cual «desviación» no tiene referente.
-- **MCA N3**: CAP-02 y APR-01 no existen. No es objetivo.
-- **`MCS-CORE §5.14` enuncia SEG-06 sin traer procedimiento** — defecto del kit,
-  merece issue.
+- **La paleta de gráficos** (tendencias, Gantt, curva-S) arrastra los colores de
+  Tailwind que D-7 retiró del semáforo.
+- **`design-system/tokens.md`** describe una paleta anterior; queda declarado
+  obsoleto, no corregido.
+- **AM-10** —bloqueo por cuenta como denegación de servicio— sigue sin control.
+- **DCMA 14-point** y **línea base** (D-6), sin la cual «desviación» no tiene
+  referente.
+- **`MCS-CORE §5.14` enuncia SEG-06 sin traer procedimiento** — defecto del kit.
 
 ---
 
