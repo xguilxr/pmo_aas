@@ -10,7 +10,17 @@ psycopg[binary]==3.2.3
 # SEG-01 (2026-08-05): era `python-jose[cryptography]==3.4.0`, con 5 CVE
 # abiertas que el pin de `pyasn1<0.5.0` impedía cerrar. Solo firmamos y
 # verificamos HS256 con secreto propio, así que PyJWT es sustitución directa.
-PyJWT==2.10.1
+#
+# 2.13.0 y no 2.10.1: la migración se hizo contra la versión que se tenía a
+# mano y 2.10.1 arrastraba SIETE vulnerabilidades propias —cambiar cinco por
+# siete—. Lo cazó `pip-audit` en CI, que es exactamente para lo que está.
+# 2.13.0 no tiene ninguna, así que ninguna entra a `.pip-audit-ignore`.
+#
+# Ninguna de las siete era alcanzable aquí (todas piden `PyJWKClient`, claves
+# `PyJWK`, JWS con `crit`, o mezclar HMAC con asimétricos; nosotros pasamos
+# `algorithms=["HS256"]` y un secreto). Se sube igual: «no alcanzable» es una
+# propiedad del código de hoy, y el pin sobrevive al código.
+PyJWT==2.13.0
 # Explícita desde la migración anterior: `Fernet` se usa en `ai_secrets.py`
 # y hasta hoy entraba solo como dependencia transitiva del extra
 # `[cryptography]` de python-jose. Al quitarlo se habría ido con él.
