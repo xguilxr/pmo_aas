@@ -65,6 +65,29 @@ marcos:
   # sin SENTRY_DSN, que sigue sin ponerse en Railway. Es el requisito más barato
   # que queda en todo el marco.
   #
+  # 2026-08-05 — CORRECCIÓN: «el más barato» era falso, y el diagnóstico
+  # también. La variable no era lo único que faltaba.
+  #
+  # `sentry_sdk.init` vivía dentro de `main.py`. El servicio `worker` arranca
+  # `celery` directo (worker.railway.toml → startCommand), así que en ESE
+  # proceso `main.py` nunca se importa y la inicialización nunca corría. Con
+  # SENTRY_DSN puesta —el owner la puso el 2026-08-05— la API reportaba y el
+  # worker no. La mitad de producción quedaba muda.
+  #
+  # Y era la peor mitad: en el worker corren las minutas e informes con IA, la
+  # importación de MS Project, los informes programados y los snapshots. Un
+  # fallo en la API produce un 500 que alguien ve; uno en una tarea de fondo no
+  # produce nada — el informe no llega y se entera el cliente.
+  #
+  # La inicialización se movió a `core/observabilidad.py` y la llaman los dos
+  # puntos de entrada, etiquetando el proceso. Trinquete:
+  # `tests/test_ops02_captura_de_errores.py`, que recorre los puntos de entrada
+  # conocidos y exige la llamada en cada uno.
+  #
+  # Queda PARCIAL hasta que el owner confirme en los registros de Railway las
+  # DOS líneas — `proceso=api` y `proceso=worker`—. El código ya no es el
+  # límite; la observación sí.
+  #
   # Sin regresiones: los 9 que estaban CONFORME lo siguen estando. Comprobado
   # en particular DEV-01, cuya evidencia citaba CLAUDE.md §0.3 — que se movió a
   # la skill `verificar`. El requisito se sostiene; cambió la ruta de la prueba.
