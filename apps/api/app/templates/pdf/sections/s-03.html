@@ -6,13 +6,19 @@
   {% else %}
   <p>
     Semáforo:
-    {% set rag = (data.status_rag or 'amber')|lower %}
-    {% if rag == 'green' or rag == 'verde' %}
+    {# DAT-06: el vocabulario es `green` / `yellow` / `red`, y la etiqueta que
+       ve el cliente dice «Amarillo». Decía «Ámbar», que es el término RAG de
+       PRINCE2 del que este producto se aparta a conciencia (D-1). Los alias en
+       español que había aquí traducían un valor que la migración 0091 ya no
+       produce: aceptarlos era mantener abierta una puerta a la que nadie
+       llama. #}
+    {% set rag = (data.status_rag or 'yellow')|lower %}
+    {% if rag == 'green' %}
       <span class="pill green">Verde</span>
-    {% elif rag == 'red' or rag == 'rojo' %}
+    {% elif rag == 'red' %}
       <span class="pill red">Rojo</span>
     {% else %}
-      <span class="pill yellow">Ámbar</span>
+      <span class="pill yellow">Amarillo</span>
     {% endif %}
     {% if data.health_source == 'manual' %}
       <span class="muted small">(declarado por el PM)</span>

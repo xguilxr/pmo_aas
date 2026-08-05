@@ -48,10 +48,14 @@ DOCX_CONTENT_TYPE = (
 
 # ENH-110: salud como color, no como palabra. En el .docx la representamos
 # con un círculo "●" coloreado (font color RAG) en vez del texto.
+# DAT-06 (2026-08-05): la clave `amber` salió. Era un alias del mismo color que
+# `yellow`, y el glosario veta el término: la migración 0091 convirtió los datos
+# a `yellow` a propósito, así que nada lo emite desde entonces. Un alias que
+# nadie usa no es tolerancia, es el sitio por donde el vocabulario retirado
+# vuelve la próxima vez que alguien copie este diccionario.
 _RAG_RGB = {
     "green": RGBColor(0x16, 0xA3, 0x4A),
     "yellow": RGBColor(0xCA, 0x8A, 0x04),
-    "amber": RGBColor(0xCA, 0x8A, 0x04),
     "red": RGBColor(0xDC, 0x26, 0x26),
 }
 

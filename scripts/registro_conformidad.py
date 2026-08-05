@@ -125,6 +125,15 @@ CIERRES = {
  "CFG-04":("CONFORME","Ola 2 — job `commits` valida el rango del PR + hook versionado en .githooks/; el hábito ya estaba (97,5% de 400), faltaba el control"),
  "DIS-01":("CONFORME","Ola 2 — cero literales de color y de espaciado en components/app/lib/hooks; el gate exige además que el token citado exista en la paleta base"),
  "CFG-14":("CONFORME","Ola 2 — mismo gate que DIS-01: los 25 literales hexadecimales ya no están y check_tokens.py impide el siguiente"),
+ # DAT-06 NO cierra, y es deliberado. Los cuatro restos EN CÓDIGO se fueron
+ # —la traducción del motor de informes, la etiqueta «Ámbar» del PDF, la clase
+ # CSS y el alias del generador DOCX— con trinquete que mira el árbol entero.
+ # Queda `tenant.settings.task_load_thresholds.amber_max`, que es una llave
+ # guardada en datos de inquilinos reales: renombrarla es cambio de contrato y
+ # necesita ventana, como `wbs`. Un PARCIAL impide alcanzar su nivel (§6.2), y
+ # así debe figurar: darlo por cerrado con el resto vivo sería repetir el error
+ # de medir contra la evidencia anotada en vez de contra el requisito.
+ "DAT-06":("PARCIAL","Ola 2 — 0 restos en código (trinquete test_dat06_vocabulario.py); queda `amber_max` en tenant.settings, Ola 3"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 
