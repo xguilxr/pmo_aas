@@ -35,12 +35,12 @@ TOP_PADDING = 30
 MAX_ROWS_DETAIL = 200  # Fallback a placeholder si excede.
 
 
-def _wbs_top_level(wbs: str | None, level: int) -> str:
+def _wbs_top_level(wbs_code: str | None, level: int) -> str:
     """Devuelve los primeros `level` segmentos del WBS (1, 1.2, 1.2.3...)."""
-    if not wbs:
+    if not wbs_code:
         return "(sin WBS)"
-    parts = wbs.split(".")
-    return ".".join(parts[:level]) if parts else wbs
+    parts = wbs_code.split(".")
+    return ".".join(parts[:level]) if parts else wbs_code
 
 
 def _aggregate_by_wbs(
@@ -56,11 +56,11 @@ def _aggregate_by_wbs(
         e = min(t.end_date, window_end)
         if e < s:
             continue
-        key = _wbs_top_level(t.wbs, level)
+        key = _wbs_top_level(t.wbs_code, level)
         b = buckets.setdefault(
             key,
             {
-                "wbs": key,
+                "wbs_code": key,
                 "start": s,
                 "end": e,
                 "progress_sum": 0.0,
@@ -157,7 +157,7 @@ def render_gantt_svg(
         # Label
         svg_parts.append(
             f'<text x="6" y="{y + 11}" font-size="9" fill="#374151">'
-            f'{_xml_escape(b["wbs"])} <tspan fill="#9ca3af">({b["count"]})</tspan>'
+            f'{_xml_escape(b["wbs_code"])} <tspan fill="#9ca3af">({b["count"]})</tspan>'
             f'</text>'
         )
         # Barra

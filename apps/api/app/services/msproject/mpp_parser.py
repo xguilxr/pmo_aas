@@ -64,7 +64,7 @@ def _row_to_task(row: dict) -> ParsedTask:
     return ParsedTask(
         row_number=int(row.get("row_number") or 0),
         name=str(row.get("name") or "").strip(),
-        wbs=(row.get("wbs") or None),
+        wbs_code=(row.get("wbs") or None),
         start_date=_parse_date(row.get("start_date")),
         end_date=_parse_date(row.get("end_date")),
         duration_days=(

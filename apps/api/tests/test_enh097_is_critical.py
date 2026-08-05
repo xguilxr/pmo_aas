@@ -56,7 +56,7 @@ async def test_tc097_2_post_is_critical_persists(client, db_session):
     auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/tasks",
-        json={"name": "T1", "wbs": "1", "is_critical": True},
+        json={"name": "T1", "wbs_code": "1", "is_critical": True},
         headers=auth["_authz"],
     )
     assert r.status_code == 201, r.text
@@ -71,7 +71,7 @@ async def test_tc097_2_post_default_false(client, db_session):
     auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/tasks",
-        json={"name": "T2", "wbs": "2"},
+        json={"name": "T2", "wbs_code": "2"},
         headers=auth["_authz"],
     )
     assert r.status_code == 201
@@ -83,7 +83,7 @@ async def test_tc097_3_patch_toggles(client, db_session):
     auth, proj_id = await _setup(client, db_session)
     r = await client.post(
         f"/api/v1/projects/{proj_id}/tasks",
-        json={"name": "T1", "wbs": "1"},
+        json={"name": "T1", "wbs_code": "1"},
         headers=auth["_authz"],
     )
     tid = r.json()["id"]

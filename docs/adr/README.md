@@ -803,7 +803,7 @@ abierto y merece su propia ADR.
 
 ## ADR-020 — `tasks.wbs` se renombra a `wbs_code`
 
-**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (US-194, migración 0100)
 
 **Contexto:**
 La columna guarda el **código** de la EDT (`1.2.3`), no la estructura — esa vive
@@ -860,6 +860,25 @@ No es un `sed`. Los sitios que hay que mirar uno a uno:
 muy por encima del límite de 10 de `CLAUDE.md` §3, y el proceso del propio
 glosario pide «ADR y US propia, una por una». La ADR fija la decisión y el
 método; la ejecución es su propia ronda.
+
+**Ejecutada el 2026-08-05 (US-194).** Lo que la ronda corrigió de esta ADR:
+
+- **La medida asustaba de más y avisaba de menos.** Las 259 ocurrencias las
+  resuelve un `sed` sobre `\bwbs\b` —que no toca `wbs_sort_key` ni `parent_wbs`,
+  porque el guion bajo es carácter de palabra—. El trabajo real fueron los
+  **siete sitios donde `wbs` no era nuestro campo**, y esta ADR nombraba tres.
+  Los cuatro que faltaban: los cinco códigos de diagnóstico `WBS_*`, el elemento
+  `<WBS>` de MS Project, la clave `wbs` del JSON de MPXJ y —la peligrosa— la
+  clave `plan-wbs-level:<id>` de `localStorage`.
+- **`localStorage` era el único que rompía en silencio.** Guarda el nivel de
+  agrupación del plan. Renombrar la clave no habría dado ningún error: la
+  preferencia guardada de cada usuario simplemente habría dejado de encontrarse.
+  Es la forma de fallo que esta ADR señalaba como el riesgo real, en el sitio que
+  no miraba.
+- **La ruta `renumber-wbs` no se renombra.** El campo es lo que se decidió
+  renombrar; la ruta habla de la EDT, que sigue llamándose WBS.
+- **La ventana tiene dos puertas, no una.** `TaskCreate` y `TaskUpdate`. La del
+  PATCH importa más: sin alias, mandar `wbs` no falla, no cambia nada.
 
 ---
 

@@ -8,7 +8,7 @@ habilitar un buen look-ahead.
 `review_plan(tasks)` es una función pura sobre las tareas del proyecto.
 Devuelve observaciones accionables:
 
-    {code, severity: error|warning|info, message, items: [wbs/nombre], count}
+    {code, severity: error|warning|info, message, items: [wbs_code/nombre], count}
 
 y `plan_quality_score(observations)` un resumen 0-100 para la UI.
 """
@@ -47,7 +47,7 @@ def _obs(
 
 
 def _label(t: Task) -> str:
-    return f"{t.wbs} · {t.name}" if t.wbs else t.name
+    return f"{t.wbs_code} · {t.name}" if t.wbs_code else t.name
 
 
 def review_plan(tasks: Iterable[Task], today: date | None = None) -> list[dict]:
@@ -65,18 +65,18 @@ def review_plan(tasks: Iterable[Task], today: date | None = None) -> list[dict]:
             )
         ]
 
-    with_wbs = [t for t in items if t.wbs]
-    wbs_set = {t.wbs for t in with_wbs}
+    with_wbs = [t for t in items if t.wbs_code]
+    wbs_set = {t.wbs_code for t in with_wbs}
     children: dict[str, list[Task]] = {}
     for t in with_wbs:
-        anc = nearest_ancestor_wbs(t.wbs, wbs_set)
+        anc = nearest_ancestor_wbs(t.wbs_code, wbs_set)
         if anc:
             children.setdefault(anc, []).append(t)
     parents = set(children)
-    leaves = [t for t in items if not t.wbs or t.wbs not in parents]
+    leaves = [t for t in items if not t.wbs_code or t.wbs_code not in parents]
 
     # --- Estructura WBS ---
-    no_wbs = [t.name for t in items if not t.wbs]
+    no_wbs = [t.name for t in items if not t.wbs_code]
     if no_wbs:
         out.append(
             _obs(
@@ -86,7 +86,7 @@ def review_plan(tasks: Iterable[Task], today: date | None = None) -> list[dict]:
                 no_wbs,
             )
         )
-    dups = [w for w, n in Counter(t.wbs for t in with_wbs).items() if n > 1]
+    dups = [w for w, n in Counter(t.wbs_code for t in with_wbs).items() if n > 1]
     if dups:
         out.append(
             _obs(
@@ -98,9 +98,9 @@ def review_plan(tasks: Iterable[Task], today: date | None = None) -> list[dict]:
         )
     orphans = sorted(
         {
-            t.wbs
+            t.wbs_code
             for t in with_wbs
-            if (pw := parent_wbs(t.wbs)) and pw not in wbs_set
+            if (pw := parent_wbs(t.wbs_code)) and pw not in wbs_set
         },
         key=wbs_sort_key,
     )
@@ -118,9 +118,9 @@ def review_plan(tasks: Iterable[Task], today: date | None = None) -> list[dict]:
     gaps: list[str] = []
     by_parent: dict[str | None, list[int]] = {}
     for t in with_wbs:
-        seg = str(t.wbs).split(".")[-1]
+        seg = str(t.wbs_code).split(".")[-1]
         if seg.isdigit():
-            by_parent.setdefault(parent_wbs(t.wbs), []).append(int(seg))
+            by_parent.setdefault(parent_wbs(t.wbs_code), []).append(int(seg))
     for parent, nums in by_parent.items():
         expected = set(range(1, max(nums) + 1))
         missing = sorted(expected - set(nums))
@@ -161,8 +161,8 @@ def review_plan(tasks: Iterable[Task], today: date | None = None) -> list[dict]:
                 cur = stack.pop()
                 for ch in children.get(cur, []):
                     acc.append(ch)
-                    if ch.wbs:
-                        stack.append(ch.wbs)
+                    if ch.wbs_code:
+                        stack.append(ch.wbs_code)
             return acc
 
         no_close = [

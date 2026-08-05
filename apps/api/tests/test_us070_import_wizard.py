@@ -241,13 +241,13 @@ async def test_tc070_3_manual_mapping_override(client, db_session):
     assert body["task_count"] == 0
     job_id = body["job_id"]
 
-    # Confirm con mapping explícito apuntando "name" a col 0, "wbs" a col 1.
+    # Confirm con mapping explícito apuntando "name" a col 0, "wbs_code" a col 1.
     r_conf = await client.post(
         f"/api/v1/projects/{proj_id}/tasks/import/{job_id}/confirm",
         json={
             "mapping": {
                 "name": 0,
-                "wbs": 1,
+                "wbs_code": 1,
                 "start_date": 2,
                 "end_date": 3,
                 "duration_days": 4,
@@ -283,7 +283,7 @@ async def test_tc070_4_confirm_missing_name_422(client, db_session):
 
     r_conf = await client.post(
         f"/api/v1/projects/{proj_id}/tasks/import/{job_id}/confirm",
-        json={"mapping": {"wbs": 1}, "strategy": "replace"},
+        json={"mapping": {"wbs_code": 1}, "strategy": "replace"},
         headers=auth["_authz"],
     )
     assert r_conf.status_code == 422
@@ -346,7 +346,7 @@ async def test_tc070_6_mpp_wizard_flow(client, db_session, monkeypatch):
                 {
                     "row_number": 2,
                     "name": "Hito MPP",
-                    "wbs": "1",
+                    "wbs_code": "1",
                     "start_date": "2026-01-01",
                     "end_date": "2026-01-01",
                     "duration_days": 0,

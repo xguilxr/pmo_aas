@@ -171,13 +171,13 @@ async def test_bug082_avg_progress_uses_wbs_rollup(db_session):
     db_session.add(proj)
     await db_session.flush()
     # Dos raíces WBS → avance general = promedio (100 + 50) / 2 = 75.
-    for wbs, pr in [("1", 100), ("2", 50)]:
+    for wbs_code, pr in [("1", 100), ("2", 50)]:
         db_session.add(
             Task(
                 tenant_id=t.id,
                 project_id=proj.id,
-                wbs=wbs,
-                name=f"Task {wbs}",
+                wbs_code=wbs_code,
+                name=f"Task {wbs_code}",
                 progress=pr,
                 status="in_progress",
             )

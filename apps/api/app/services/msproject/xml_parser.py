@@ -39,7 +39,7 @@ class ParsedDependency:
 class ParsedTask:
     external_id: str
     name: str
-    wbs: str | None = None
+    wbs_code: str | None = None
     start_date: date | None = None
     end_date: date | None = None
     duration_days: int | None = None
@@ -108,7 +108,7 @@ def parse_ms_project_xml(data: bytes) -> tuple[list[ParsedTask], list[str]]:
         if uid is None or uid == "0":
             continue
         name = _text(t, "m:Name" if ns_match else "Name", ns) or f"Task-{uid}"
-        wbs = _text(t, "m:WBS" if ns_match else "WBS", ns)
+        wbs_code = _text(t, "m:WBS" if ns_match else "WBS", ns)
         start = _parse_date(_text(t, "m:Start" if ns_match else "Start", ns))
         finish = _parse_date(_text(t, "m:Finish" if ns_match else "Finish", ns))
         duration = _duration_days_from_pt(
@@ -141,7 +141,7 @@ def parse_ms_project_xml(data: bytes) -> tuple[list[ParsedTask], list[str]]:
             ))
 
         parsed_tasks.append(ParsedTask(
-            external_id=uid, name=name, wbs=wbs,
+            external_id=uid, name=name, wbs_code=wbs_code,
             start_date=start, end_date=finish, duration_days=duration,
             progress=progress, is_milestone=is_milestone, predecessors=deps,
         ))

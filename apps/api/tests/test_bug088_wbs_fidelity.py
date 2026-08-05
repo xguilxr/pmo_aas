@@ -87,7 +87,7 @@ def test_parse_xlsx_wbs_decimal_format_preserved():
         wbs_formats={2: "0.00"},
     )
     res = parse_xlsx(data)
-    assert [t.wbs for t in res.tasks] == ["1.30", "1.30.1", "1.30.2"]
+    assert [t.wbs_code for t in res.tasks] == ["1.30", "1.30.1", "1.30.2"]
     assert res.warnings == []
 
 
@@ -102,7 +102,7 @@ def test_parse_xlsx_wbs_general_warns():
         ]
     )
     res = parse_xlsx(data)
-    assert [t.wbs for t in res.tasks] == ["1.3", "2"]
+    assert [t.wbs_code for t in res.tasks] == ["1.3", "2"]
     codes = [w["code"] for w in res.warnings]
     assert codes == ["WBS_NUMERIC_GENERAL"]
     assert res.warnings[0]["rows"] == [2]
@@ -111,13 +111,13 @@ def test_parse_xlsx_wbs_general_warns():
 def test_parse_xlsx_wbs_text_not_lowercased():
     data = _build_xlsx([["WBS", "Nombre"], ["1.A", "Alfanumérica"]])
     res = parse_xlsx(data)
-    assert res.tasks[0].wbs == "1.A"
+    assert res.tasks[0].wbs_code == "1.A"
 
 
 def test_parse_csv_wbs_preserved():
     csv_data = b"Nombre,WBS\nTarea,1.30\nSub,1.30.1\n"
     res = parse_csv(csv_data)
-    assert [t.wbs for t in res.tasks] == ["1.30", "1.30.1"]
+    assert [t.wbs_code for t in res.tasks] == ["1.30", "1.30.1"]
 
 
 # --- endpoint preview: warnings de huérfanos ---

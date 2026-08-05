@@ -62,7 +62,7 @@ def test_pro_layout_header_detection_and_roundtrip():
     res = parse_xlsx(_build_pro_layout())
     assert res.header_row == 7
     # El encabezado/KPIs de arriba NO se convierten en tareas.
-    assert [t.wbs for t in res.tasks] == ["1", "1.30", "1.30.1"]
+    assert [t.wbs_code for t in res.tasks] == ["1", "1.30", "1.30.1"]
     assert res.tasks[0].name == "Preparación"
     # % como fracción con formato % → 0-100; estados ES → enum.
     assert [t.progress for t in res.tasks] == [100, 45, 0]
@@ -84,4 +84,4 @@ def test_flat_layout_still_row1():
     wb.save(buf)
     res = parse_xlsx(buf.getvalue())
     assert res.header_row == 1
-    assert [t.wbs for t in res.tasks] == ["1"]
+    assert [t.wbs_code for t in res.tasks] == ["1"]

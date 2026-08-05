@@ -1,7 +1,7 @@
 """Las ventanas de compatibilidad abiertas, y cómo saber cuándo cerrarlas.
 
 Los renombrados de vocabulario del glosario —D-2 (`support` → `hypercare`), D-8
-(`portfolio_function` → `discipline`) y el que viene, D-3— salen con una
+(`portfolio_function` → `discipline`) y D-3 (`wbs` → `wbs_code`)— salen con una
 **ventana**: el API sigue aceptando el nombre viejo a la entrada para no romper
 una pestaña abierta desde antes del despliegue, un filtro guardado o el script
 de un cliente.
@@ -52,6 +52,10 @@ VENTANAS: dict[str, Ventana] = {
     "portfolio_function": Ventana(
         viejo="portfolio_function", nuevo="discipline",
         desde=date(2026, 8, 5), adr="ADR-021",
+    ),
+    "wbs": Ventana(
+        viejo="wbs", nuevo="wbs_code",
+        desde=date(2026, 8, 5), adr="ADR-020",
     ),
 }
 

@@ -172,7 +172,7 @@ async def test_wizard_confirm_persists_status(client, db_session):
         .scalars()
         .all()
     )
-    by_wbs = {t.wbs: t for t in tasks}
+    by_wbs = {t.wbs_code: t for t in tasks}
     assert by_wbs["1"].status == "completed"
     assert by_wbs["2"].status == "in_progress"
     # No reconocido → default.

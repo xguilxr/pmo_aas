@@ -46,10 +46,10 @@ async def test_renumber_resolves_duplicates_and_hierarchy(client, db_session):
         ("2", 0, "Fase B"),
         ("2.1", 1, "B.1"),
     ]
-    for i, (wbs, lvl, name) in enumerate(seeds):
+    for i, (wbs_code, lvl, name) in enumerate(seeds):
         db_session.add(Task(
             tenant_id=tenant_id, project_id=str(proj_id), name=name,
-            wbs=wbs, outline_level=lvl, status="not_started", source="manual",
+            wbs_code=wbs_code, outline_level=lvl, status="not_started", source="manual",
             created_at=base + timedelta(minutes=i),
         ))
     await db_session.commit()
@@ -61,7 +61,7 @@ async def test_renumber_resolves_duplicates_and_hierarchy(client, db_session):
     assert r.json()["renumbered"] == 5
 
     rows = await client.get(f"/api/v1/projects/{proj_id}/tasks", headers=auth["_authz"])
-    wbs_list = [t["wbs"] for t in rows.json()]
+    wbs_list = [t["wbs_code"] for t in rows.json()]
     # Todos únicos.
     assert len(wbs_list) == len(set(wbs_list))
     # Jerarquía esperada: 1, 1.1, 1.2, 2, 2.1.
@@ -71,15 +71,15 @@ async def test_renumber_resolves_duplicates_and_hierarchy(client, db_session):
 @pytest.mark.asyncio
 async def test_renumber_remaps_predecessors(client, db_session):
     auth, proj_id, tenant_id = await _setup(client, db_session)
-    # 'B' (wbs "5") depende de 'A' (wbs "3"); tras renumerar deben quedar
+    # 'B' (wbs_code "5") depende de 'A' (wbs_code "3"); tras renumerar deben quedar
     # consecutivos y la predecesora apuntar al nuevo WBS de A.
     db_session.add(Task(
         tenant_id=tenant_id, project_id=str(proj_id), name="A",
-        wbs="3", outline_level=0, status="not_started", source="manual",
+        wbs_code="3", outline_level=0, status="not_started", source="manual",
     ))
     db_session.add(Task(
         tenant_id=tenant_id, project_id=str(proj_id), name="B",
-        wbs="5", outline_level=0, status="not_started", source="manual",
+        wbs_code="5", outline_level=0, status="not_started", source="manual",
         predecessors=["3"],
     ))
     await db_session.commit()
@@ -93,7 +93,7 @@ async def test_renumber_remaps_predecessors(client, db_session):
         f"/api/v1/projects/{proj_id}/tasks", headers=auth["_authz"]
     )).json()
     by_name = {t["name"]: t for t in rows}
-    assert by_name["A"]["wbs"] == "1"
-    assert by_name["B"]["wbs"] == "2"
+    assert by_name["A"]["wbs_code"] == "1"
+    assert by_name["B"]["wbs_code"] == "2"
     # La predecesora de B se remapeó del viejo "3" al nuevo "1".
     assert by_name["B"]["predecessors"] == ["1"]

@@ -318,7 +318,7 @@ async def download_plan(
     ctx = PlanExportContext(
         area_names={str(r.id): r.name or "" for r in area_rows},
         actor_names={str(r.id): r.name or "" for r in actor_rows},
-        milestone_wbs={str(t.id): t.wbs or "" for t in tasks if t.is_milestone},
+        milestone_wbs={str(t.id): t.wbs_code or "" for t in tasks if t.is_milestone},
     )
 
     data, mime, ext, fallback = regenerate_for_format(fmt, list(tasks), ctx)

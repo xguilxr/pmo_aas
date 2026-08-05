@@ -352,7 +352,7 @@ def _is_delayed(t: Task, today: date) -> bool:
 def _task_to_row(ctx: _RenderContext, t: Task) -> dict[str, Any]:
     return {
         "id": str(t.id),
-        "wbs": t.wbs,
+        "wbs_code": t.wbs_code,
         "name": t.name,
         "status": t.status,
         "progress": t.progress or 0,

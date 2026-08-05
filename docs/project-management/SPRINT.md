@@ -25,8 +25,9 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`. Todo en verde.
 **Decisiones del owner (2026-08-05), las cuatro ejecutadas:** volver al producto ·
 LEN-02 como norma · PyJWT · `support` → `hypercare`.
 
-Producto: **ENH-202**, **D-2**, **D-8** y **AM-10** cerradas. Solo queda **D-3**
-(ADR-020, medida y sin ejecutar). Ninguna amenaza sin control.
+Producto: **ENH-202**, **D-2**, **D-8**, **AM-10** y **D-3** cerradas. Ninguna
+amenaza sin control y **el glosario sin decisiones abiertas** — de D-4 falta
+calibrar cinco valores, que es dato, no decisión.
 
 **Espera al owner:** mergear el PR y correr las migraciones **0097-0099**.
 ```
@@ -50,9 +51,9 @@ Producto: **ENH-202**, **D-2**, **D-8** y **AM-10** cerradas. Solo queda **D-3**
 bloqueo de cuenta pasó a retardo creciente, y con ella el modelo de amenazas
 queda **sin ninguna amenaza sin control**.
 
-- [ ] **D-3** `tasks.wbs` → `wbs_code`. ADR-020: 259 ocurrencias, 22 archivos.
-  **Es lo primero al retomar.** No es un `sed` — los importadores usan «WBS»
-  como etiqueta que el usuario ve en su Excel.
+- [x] **D-3 hecha** 2026-08-05 — US-194, ADR-020, mig **0100**. El `sed` sí
+  resolvió las 259; lo caro fueron los **siete sitios donde `wbs` no era nuestro
+  campo**, y uno (`plan-wbs-level` de `localStorage`) rompía **sin dar error**.
 - [ ] **Fase `cancelled`** — owner 2026-08-05. Hoy un proyecto cortado queda
   `closed`, indistinguible de uno que cumplió. ADR + US. `initiation`: no.
 - [ ] **Paleta de gráficos propia** — owner 2026-08-05. Ni la de marca ni la de

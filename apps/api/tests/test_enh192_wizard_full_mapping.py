@@ -154,7 +154,7 @@ async def test_repreview_with_manual_mapping(client, db_session):
 
     r_re = await client.post(
         f"/api/v1/projects/{proj_id}/tasks/import/{job_id}/repreview",
-        json={"mapping": {"name": 0, "wbs": 1, "status": 2}},
+        json={"mapping": {"name": 0, "wbs_code": 1, "status": 2}},
         headers=auth["_authz"],
     )
     assert r_re.status_code == 200, r_re.text
@@ -164,12 +164,12 @@ async def test_repreview_with_manual_mapping(client, db_session):
         "completed",
         "in_progress",
     ]
-    assert [t["wbs"] for t in body["parsed_preview"]] == ["1.1", "1.2"]
+    assert [t["wbs_code"] for t in body["parsed_preview"]] == ["1.1", "1.2"]
 
     # Mapping sin 'name' → sin tareas, sin error (preview-friendly).
     r_re2 = await client.post(
         f"/api/v1/projects/{proj_id}/tasks/import/{job_id}/repreview",
-        json={"mapping": {"wbs": 1}},
+        json={"mapping": {"wbs_code": 1}},
         headers=auth["_authz"],
     )
     assert r_re2.status_code == 200

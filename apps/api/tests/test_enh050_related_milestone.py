@@ -2,7 +2,7 @@
 
 Cubre:
 - TC-050.1: crear M1 (hito) + T1 con related_milestone_id=M1.id → GET T1
-  expone related_milestone={id, name, wbs}.
+  expone related_milestone={id, name, wbs_code}.
 - TC-050.2: borrar M1 → T1.related_milestone_id pasa a NULL.
 - Validación: related_milestone_id apuntando a una task no-hito → 422.
 - Validación: related_milestone_id apuntando a task de otro proyecto → 422.
@@ -50,7 +50,7 @@ async def test_tc050_1_related_milestone_attaches_in_get(client, db_session):
     # Crea hito M1.
     m = await client.post(
         f"/api/v1/projects/{proj_id}/tasks",
-        json={"name": "M1", "wbs": "1", "is_milestone": True},
+        json={"name": "M1", "wbs_code": "1", "is_milestone": True},
         headers=auth["_authz"],
     )
     assert m.status_code == 201, m.text
@@ -58,7 +58,7 @@ async def test_tc050_1_related_milestone_attaches_in_get(client, db_session):
     # Crea T1 vinculada a M1.
     t = await client.post(
         f"/api/v1/projects/{proj_id}/tasks",
-        json={"name": "T1", "wbs": "1.1", "related_milestone_id": m_id},
+        json={"name": "T1", "wbs_code": "1.1", "related_milestone_id": m_id},
         headers=auth["_authz"],
     )
     assert t.status_code == 201, t.text
@@ -66,12 +66,12 @@ async def test_tc050_1_related_milestone_attaches_in_get(client, db_session):
     assert body["related_milestone_id"] == m_id
     assert body["related_milestone"] is not None
     assert body["related_milestone"]["name"] == "M1"
-    # GET list expone related_milestone con name + wbs.
+    # GET list expone related_milestone con name + wbs_code.
     lst = await client.get(
         f"/api/v1/projects/{proj_id}/tasks", headers=auth["_authz"]
     )
     rows = {r["name"]: r for r in lst.json()}
-    assert rows["T1"]["related_milestone"]["wbs"] == "1"
+    assert rows["T1"]["related_milestone"]["wbs_code"] == "1"
 
 
 @pytest.mark.asyncio

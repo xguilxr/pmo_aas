@@ -132,8 +132,8 @@ def parse_csv(
             task = ParsedTask(
                 row_number=offset,
                 name=str(name_cell).strip(),
-                wbs=_wbs_text(row[columns["wbs"]])
-                if "wbs" in columns and columns["wbs"] < len(row)
+                wbs_code=_wbs_text(row[columns["wbs_code"]])
+                if "wbs_code" in columns and columns["wbs_code"] < len(row)
                 else None,
                 start_date=_coerce_date(row[columns["start_date"]])
                 if "start_date" in columns and columns["start_date"] < len(row)

@@ -193,7 +193,7 @@ _STRUCTURE_SYSTEM = (
     "You convert a raw spreadsheet (list of rows, possibly messy: section "
     "titles, indentation instead of WBS codes, headers anywhere or absent) "
     "into a project plan. Reply ONLY strict JSON: a list of tasks "
-    '[{"wbs": "1.2" or null, "name": str (required), '
+    '[{"wbs_code": "1.2" or null, "name": str (required), '
     '"start_date": "YYYY-MM-DD" or null, "end_date": "YYYY-MM-DD" or null, '
     '"progress": 0-100 or null, '
     '"status": "not_started|in_progress|completed|on_hold" or null, '
@@ -249,8 +249,8 @@ async def ai_propose_structure(
         name = str(item.get("name") or "").strip()
         if not name:
             continue
-        wbs_raw = item.get("wbs")
-        wbs = str(wbs_raw).strip() if wbs_raw not in (None, "") else None
+        wbs_raw = item.get("wbs_code")
+        wbs_code = str(wbs_raw).strip() if wbs_raw not in (None, "") else None
         prog_raw = item.get("progress")
         try:
             prog = float(prog_raw) if prog_raw is not None else 0.0
@@ -262,7 +262,7 @@ async def ai_propose_structure(
             ParsedTask(
                 row_number=i,
                 name=name[:300],
-                wbs=wbs,
+                wbs_code=wbs_code,
                 start_date=_coerce_date(item.get("start_date")),
                 end_date=_coerce_date(item.get("end_date")),
                 progress=max(0, min(100, round(prog))),

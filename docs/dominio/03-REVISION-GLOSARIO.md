@@ -25,7 +25,7 @@ descrito como más barato resultó ser el más caro.
 |---|---|---|---|
 | D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
 | D-2 | `support` como fase | **Renombrar a `hypercare`** (2026-08-05) — ADR-019 | Migración + contrato + UI |
-| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | 259 ocurrencias, 22 archivos |
+| D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | ✅ **hecha** 2026-08-05 — US-194, mig 0100 |
 | D-4 | Umbral del semáforo | **Uno por dimensión** (2026-08-05). Los valores, pendientes | Los valores necesitan un proyecto real |
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
 | D-6 | Línea base | **Al roadmap** | Épica propia |
@@ -110,6 +110,16 @@ columna de la línea 29 se llama `wbs`.
 
 Cuesta migración de columna + campo de la API + frontend + el parser de import.
 Va con ADR y US propia.
+
+**Hecha el 2026-08-05** — US-194, ADR-020, migración 0100. Lo que la ejecución
+enseñó y la medición no anticipaba: la parte cara no fueron las 259 ocurrencias
+—un `sed` sobre el identificador resuelve casi todas— sino los **siete sitios
+donde `wbs` no era nuestro campo**: la cabecera del Excel del usuario, los alias
+del importador, los cinco códigos `WBS_*` de diagnóstico, el elemento `<WBS>` de
+MS Project, la clave del JSON de MPXJ, la ruta `renumber-wbs` y la clave
+`plan-wbs-level:<id>` de `localStorage`. Esta última era la única capaz de
+romperse **en silencio**: habría reseteado el nivel de agrupación guardado de
+todos los usuarios sin producir un solo error.
 
 ## D-4. Umbral del semáforo — la forma decidida, los valores no
 

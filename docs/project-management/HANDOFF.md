@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — **25 commits, PR #577**
+**Branch activa:** `claude/audit-continuation-fzrtko` — #577 **mergeado**; reiniciada desde `main`
 **Generado por:** `/handoff`
 
 ---
@@ -43,13 +43,14 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 ## 📍 Dónde retomar
 
-**D-3** (`wbs_code`) — decidido por el owner, ADR-020 lo mide en 259 ocurrencias
-y 22 archivos. Es una ronda entera. Lo que espera al owner está más abajo, en su
-checklist, y no se repite aquí.
+**D-3 cerrada** (US-194, mig 0100): con ella **el glosario no tiene ninguna
+decisión abierta**. Lo siguiente sin dueño es la **fase `cancelled`** y la
+**paleta de gráficos**, las dos con ADR por escribir. Lo que espera al owner está
+en su checklist, más abajo, y no se repite aquí.
 
 ## ⚠️ Gotchas
 
-- **Las migraciones 0097-0099 no las corre Alembic aquí** (guard). Su SQL se
+- **Las migraciones 0097-0100 no las corre Alembic aquí** (guard). Su SQL se
   ejercita contra el esquema de `Base.metadata`, **no contra tablas a mano**:
   así se coló `UPDATE lessons_learned` en 0098 (la tabla es `lessons`).
 - **`RATE_LIMITED` pasó de 422 a 429.** Cambio de contrato pequeño, ya en
@@ -60,9 +61,6 @@ checklist, y no se repite aquí.
   aparezca en una ruta de archivo. Se reformula, no se relaja el patrón.
 - **La suite tarda ~2m45s** con `-n auto`. Correrla en segundo plano.
 - Sin tests de frontend. Python 3.12 no es negociable.
-- **El clon local se revirtió dos commits a mitad de sesión** y hubo que
-  rebasar sobre el remoto. Si el árbol no cuadra con lo que recordás, mirá
-  `git log origin/<branch>` antes de rehacer nada.
 
 ## 📚 Epics docs
 
@@ -94,7 +92,7 @@ glosario, ADR y `design-system/tokens.md`.
 
 | Decisión | Siguiente paso |
 |---|---|
-| **D-3: ejecutar en la próxima ronda** | **Es lo primero al retomar** |
+| **D-3: ejecutar en la próxima ronda** | ✅ **hecha** (US-194, mig 0100) |
 | **D-8: `portfolio_function` → `discipline`** | ✅ **hecha** (ADR-021, mig 0099) |
 | **Ventanas: cerrar con dato** | ✅ **hecha** — se cuentan por `compat.nombre_viejo` |
 | **AM-10: retardo creciente** | ✅ **hecha** — ninguna amenaza queda sin control |
@@ -107,10 +105,9 @@ glosario, ADR y `design-system/tokens.md`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Mergear el PR #577** (ya está abierto).
-- [ ] **Correr las migraciones `0097`, `0098` y `0099`** cuando el PR entre.
-- [ ] Smoke manual de la web: cambiaron seis tokens de color y la fase
-      `support` pasó a `hypercare` en filtros y etiquetas.
+- [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic aún.
+- [ ] Smoke manual de la web: seis tokens de color, `support` → `hypercare` en
+      filtros, y el plan (`wbs_code`) en alta, edición e importación.
 - [ ] Calibrar los cinco valores del umbral (D-4) contra un proyecto real.
 
 ## 🔮 Sin issue todavía

@@ -332,7 +332,7 @@ async def build_avance_context(
         "priority_summary": priority_summary,
         "focus_tasks": [
             {
-                "wbs": t.wbs,
+                "wbs_code": t.wbs_code,
                 "name": t.name,
                 "is_milestone": bool(t.is_milestone),
                 "criticality": getattr(t, "criticality", None),
@@ -514,7 +514,7 @@ async def build_seguimiento_context(
         due = t.end_date
         items.append({
             "source": "task",
-            "folio": t.wbs,
+            "folio": t.wbs_code,
             "title": t.name,
             "status": t.status,
             "due_date": due.isoformat() if due else None,
@@ -655,7 +655,7 @@ async def build_look_ahead_context(
             continue
         in_window.append({
             "id": str(t.id),
-            "wbs": t.wbs,
+            "wbs_code": t.wbs_code,
             "name": t.name,
             # Serializa fechas a ISO string para que `sections` (JSONB)
             # sea persistible sin custom encoder.

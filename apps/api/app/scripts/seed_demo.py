@@ -489,22 +489,22 @@ async def _seed_tasks_for_project(
         ("5", "Go-live", 1, True),
     ]
     offset = 0
-    for wbs, name, dur, milestone in base:
+    for wbs_code, name, dur, milestone in base:
         db.add(
             Task(
                 tenant_id=tenant_id,
                 project_id=project.id,
-                wbs=wbs,
+                wbs_code=wbs_code,
                 name=name,
                 description=f"Fase {name} del proyecto.",
                 start_date=start + timedelta(days=offset),
                 end_date=start + timedelta(days=offset + dur),
                 duration_days=dur,
-                progress=50 if wbs in ("1", "2") else 0,
+                progress=50 if wbs_code in ("1", "2") else 0,
                 is_milestone=milestone,
                 owner_id=owner.id,
                 priority=3,
-                status="in_progress" if wbs == "1" else "not_started",
+                status="in_progress" if wbs_code == "1" else "not_started",
                 source="manual",
             )
         )

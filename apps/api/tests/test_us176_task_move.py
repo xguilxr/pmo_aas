@@ -34,10 +34,10 @@ async def _names(client, auth, proj_id):
 async def test_move_reorders_plan(client, db_session):
     auth, proj_id = await _setup(client, db_session)
     ids = {}
-    for name, wbs in [("Tarea A", "1"), ("Tarea B", "2"), ("Tarea C", "3")]:
+    for name, wbs_code in [("Tarea A", "1"), ("Tarea B", "2"), ("Tarea C", "3")]:
         r = await client.post(
             f"/api/v1/projects/{proj_id}/tasks",
-            json={"name": name, "wbs": wbs},
+            json={"name": name, "wbs_code": wbs_code},
             headers=auth["_authz"],
         )
         assert r.status_code == 201, r.text

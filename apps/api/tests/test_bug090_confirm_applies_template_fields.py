@@ -146,7 +146,7 @@ async def test_confirm_applies_promised_fields(client, db_session):
         .scalars()
         .all()
     )
-    by_wbs = {t.wbs: t for t in tasks}
+    by_wbs = {t.wbs_code: t for t in tasks}
 
     # Fin desde duración: Inicio 2026-01-05 + 5 días inclusivos → 01-09.
     assert by_wbs["1"].end_date == date(2026, 1, 9)
