@@ -89,6 +89,12 @@ CIERRES = {
  # con un solo desarrollador la salida de emergencia vale más que el trinquete.
  # No es un pendiente: es una decisión, y se revisa si entra alguien más.
  "CFG-03":("CONFORME","owner 2026-08-05 — rama protegida, sin force-push ni borrado"),
+ # Ola 0 (2026-08-05) — remedidos contra el código de hoy, no contra la
+ # evidencia del 08-03. Los cierra el trabajo de producto, no una tanda.
+ "ARQ-02":("CONFORME","Ola 0 — 24 ADR en docs/adr/, eran cero"),
+ "GOB-02":("CONFORME","Ola 0 — 24 ADR y la exclusión de ARQ-03 registrada (ADR-018)"),
+ "LEN-01":("CONFORME","Ola 0 — glosario aprobado y completo, era borrador"),
+ "DAT-05":("CONFORME","Ola 0 — una sola paleta de salud y un solo vocabulario de fase"),
  "INT-03":("CONFORME","owner 2026-08-05 — 8 verificaciones exigidas, strict"),
  "ARQ-03":("EXCLUIDO","ADR-018, revisión 2027-02-04"),
 }

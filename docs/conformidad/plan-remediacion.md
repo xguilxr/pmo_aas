@@ -5,7 +5,7 @@
 | Fecha | 2026-08-05 |
 | Objetivo declarado | **N2** (`conformidad.yaml`) |
 | Nivel hoy | **N0** |
-| Distancia a N1 | **45 requisitos** (eran 47; la Ola 1 cerró dos) |
+| Distancia a N1 | **41 requisitos** (eran 47; las Olas 0 y 1 cerraron seis) |
 | Distancia a N2 | **95 requisitos** (todo lo abierto) |
 | Base | Registro reconciliado de los cuatro informes fechados |
 
@@ -57,7 +57,27 @@ Por eso la Ola 0 no construye nada.
 
 ---
 
-## Ola 0 — Recontar (medio día, sin escribir código)
+## Ola 0 — ✅ Hecha el 2026-08-05
+
+**Resultado: de 45 a 41 bloqueantes de N1**, sin escribir una línea de producto.
+Informe: [`2026-08-05-ola0-recuento.md`](2026-08-05-ola0-recuento.md).
+
+Cerraron `ARQ-02`, `GOB-02`, `LEN-01` y `DAT-05` — los cuatro estaban cerrados
+desde hacía horas o días y el registro no se había enterado. `DAT-06` y `DIS-01`
+siguen abiertos pero **acotados**, y `DAT-06` trajo una sorpresa que justifica
+sola la ola: parecía un `sed` sobre cuatro literales y esconde un **cambio de
+contrato** (`amber_max` es una llave guardada en `tenant.settings`).
+
+De los seis nunca medidos, cuatro quedaron medidos y **dos no se pudieron
+medir**: `DAT-08` y `DAT-16` llegan sin evidencia escrita, así que sin el
+catálogo no se sabe qué preguntarles. Se dejan declarados sin medir en vez de
+suponerles un estado — suponerlo es lo que produjo los cinco errores de recuento
+del expediente.
+
+<details>
+<summary>El planteo original de la ola</summary>
+
+### Lo que se midió
 
 Dos grupos, y ninguno es trabajo de construcción:
 
@@ -78,6 +98,10 @@ la pena: `IA-05` estaba sin medir, se midió, y el modelo **sí** calculaba cifr
 que iban a informes ejecutivos.
 
 **Salida de la ola:** la cifra de distancia a N1 deja de ser una estimación.
+
+---
+
+</details>
 
 ---
 
@@ -135,6 +159,7 @@ necesitan decisión, así que se pueden lanzar sin supervisión, uno por commit.
 | `DOC-03` | El ER se mantiene a mano pudiendo generarse | Un generador |
 | `LEN-02` | 152 de 159 mensajes dicen solo qué pasó | Ya es norma; se aplica al tocar cada endpoint |
 | `DAT-11` | Cada número indica periodo y actualización | Transversal — medir primero |
+| `DAT-06` | Retirar `amber`: 3 sitios mecánicos (motor de informes, plantilla, CSS) | **El cuarto no entra aquí** — ver Ola 3 |
 
 **Cómo dispararlos:** uno por commit, con prueba propia y verificación por
 mutación, igual que todo lo de esta sesión. `DAT-11` y `DIS-03` conviene
@@ -154,6 +179,7 @@ no la puede tomar quien implementa:
 | `REQ-03` | Inventario de datos personales — qué guarda el producto y con qué base |
 | `DAT-01`, `DAT-10` | Unidades canónicas y fichas de indicador: qué métricas se declaran y quién las firma |
 | `SEG-02` | Si los secretos siguen en variables de Railway o se adopta un almacén |
+| `DAT-06` (parte) | `task_load_thresholds.amber_max` es una **llave guardada en `tenant.settings`**: renombrarla es cambio de contrato sobre datos existentes y necesita ventana de compatibilidad, como `wbs` |
 | `DEV-02`, `DEV-03` | Estrategia de pruebas: Postgres en la suite, pruebas de frontend (hoy **cero**), extremo a extremo |
 | `SUM-01` | Si la canalización produce un artefacto en vez de que Railway construya desde la rama |
 | `INF-02`, `INF-03`, `DES-02` | Paridad de entornos, copias de seguridad declaradas y probadas, y procedimiento de reversión |

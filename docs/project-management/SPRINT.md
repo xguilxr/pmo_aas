@@ -15,11 +15,11 @@
 ```
 Sin US activa. La sesión del 2026-08-05 cerró su branch; el owner mergea.
 
-LO SIGUIENTE ES LA REMEDIACIÓN POR OLAS — plan completo en
-`docs/conformidad/plan-remediacion.md`. Arrancar por la Ola 0.
+REMEDIACIÓN POR OLAS — plan en `docs/conformidad/plan-remediacion.md`.
+Olas 0 y 1 cerradas. **Lo siguiente es la Ola 2**, mecánica y disparable sola.
 
 MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · 31 cerrados de 126 · 45 bloquean N1 · 95 abiertos en total.
+MCS: N0 · 32 cerrados de 126 · **41 bloquean N1** · 94 abiertos.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -36,12 +36,12 @@ El plan completo, con el registro de los 97 abiertos y la evidencia por
 requisito, está en **`docs/conformidad/plan-remediacion.md`**. El estado se
 recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
 
-- [ ] **Ola 0 — recontar. Medio día, sin escribir código.** Es lo primero y no
-  se salta: el registro está desactualizado **en las dos direcciones**. A favor,
-  `ARQ-02` y `GOB-02` decían «cero ADR reales» y hay 24; `LEN-01` decía
-  «glosario borrador» y está aprobado. A la contra, `OPS-02` figuraba como
-  cerrado-casi y el worker no reportaba. Incluye los **seis nunca medidos**:
-  `CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`.
+- [x] **Ola 0 — hecha el 2026-08-05.** De **45 a 41** bloqueantes de N1 sin
+  escribir una línea de producto: `ARQ-02`, `GOB-02`, `LEN-01` y `DAT-05`
+  estaban cerrados y el registro no se había enterado. `DAT-06` trajo la
+  sorpresa que justifica la ola: parecía un `sed` y esconde un **cambio de
+  contrato**. `DAT-08` y `DAT-16` **no se pudieron medir** — sin `MCS-CORE` no
+  se sabe qué preguntarles. Informe: `docs/conformidad/2026-08-05-ola0-recuento.md`.
 - [x] **Ola 1 — hecha el 2026-08-05.** El owner protegió `main`: 8
   verificaciones exigidas en `strict`, sin force-push ni borrado. `CFG-03` e
   `INT-03` cierran; **la distancia a N1 baja de 47 a 45**. `contraste-wcag`

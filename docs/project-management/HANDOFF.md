@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — #578 **mergeado**, #579 abierto
+**Branch activa:** `claude/audit-continuation-fzrtko` — reiniciada sobre `main`; #578 y #579 mergeados
 **Generado por:** `/handoff`
 
 ---
@@ -9,8 +9,8 @@
 ## 🎯 Dónde estamos parados
 
 **MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
-**MCS sigue en N0** — 31 cerrados de 126, **45 bloquean N1**, 95 abiertos.
-La **Ola 1 ya está hecha**: el owner protegió `main` el 2026-08-05.
+**MCS sigue en N0** — 32 cerrados de 126, **41 bloquean N1**, 94 abiertos.
+**Olas 0 y 1 cerradas** el 2026-08-05.
 
 El plan de remediación está escrito y ordenado por olas:
 **`docs/conformidad/plan-remediacion.md`**. Se construyó sin `MCS-CORE` —no está
@@ -18,8 +18,9 @@ en este entorno— reconstruyendo el registro desde los cuatro informes fechados
 
 ## 📍 Dónde retomar
 
-**Ola 0 del plan: recontar.** Medio día, sin escribir código. No se salta y no
-es ceremonia: el registro está desactualizado **en las dos direcciones**.
+**Ola 2 del plan: los mecánicos**, disparables sin supervisión, uno por commit.
+Empezar por los que tienen el hueco contado: `DAT-12` (77 puntos), `DIS-03` (73
+de 75 pantallas), `DIS-01` (25 literales), `DAT-04` (6 sitios).
 
 ## ✅ Hecho en esta sesión
 
@@ -42,7 +43,7 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 | # | Branch | Estado CI | Acción |
 |---|---|---|---|
 | #578 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — lo grueso |
-| #579 | `claude/audit-continuation-fzrtko` | verde | Mergear — cierre de la Ola 1 |
+| #579 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — Ola 1 |
 
 **Una branch sin PR abierto no tiene CI**: solo dispara en `pull_request` y en
 push a `main`. `main` exige las **nueve** verificaciones, así que #579 no se
@@ -73,8 +74,9 @@ puede integrar en rojo.
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Ola 0** — recontar: los que nuestro trabajo pudo cerrar + los seis nunca
-  medidos (`CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`).
+- **Ola 0** — ✅ cerrada: de 45 a 41 bloqueantes sin escribir producto.
+  `DAT-08` y `DAT-16` quedan **sin medir**, declarado: sin `MCS-CORE` no se
+  sabe qué preguntarles.
 - **Ola 1** — ✅ cerrada entera (`CFG-03`, `INT-03`, y `contraste-wcag` exigido).
 - **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
 - **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
