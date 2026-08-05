@@ -45,6 +45,7 @@ jobs:
           filters: |
             api:
               - 'apps/api/**'
+              - 'scripts/**'
               - '.github/workflows/**'
             web:
               - 'apps/web/**'
