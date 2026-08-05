@@ -25,11 +25,13 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 Suite de API en verde (1094), lint y typecheck exit 0, contraste 34/34.
 
-**Decisiones del owner (2026-08-05):** volver al producto en vez de las Tandas
-C/D/E · LEN-02 como norma para lo nuevo · migrar a PyJWT (hecho) ·
-renombrar `support` → `hypercare` (ADR-019, US sin abrir).
+**Decisiones del owner (2026-08-05), las cuatro ejecutadas:** volver al producto ·
+LEN-02 como norma · PyJWT · `support` → `hypercare`.
 
-**Espera al owner:** mergear el PR y correr la migración 0097.
+Después, producto: **ENH-202** y **D-2** cerradas. D-3 tiene ADR-020 con su
+medición; D-8 espera nombre destino.
+
+**Espera al owner:** mergear el PR y correr las migraciones **0097 y 0098**.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -45,10 +47,13 @@ renombrar `support` → `hypercare` (ADR-019, US sin abrir).
 
 ### Siguiente batch
 
-- [ ] **ENH-202** — Helvetica en TODOS los exports y reportes. Cuatro frentes:
-  XLSX de backend (openpyxl), PDFs (WeasyPrint, CSS base de `templates/pdf/**`),
-  DOCX del charter y ExcelJS del frontend. El plan ya la usa vía US-193, así que
-  hay de dónde copiar la convención.
+**ENH-202 cerrada el 2026-08-05**, los cuatro frentes; cerró AM-12 de paso.
+
+- [ ] **D-3** `tasks.wbs` → `wbs_code`. ADR-020 lo mide: 259 ocurrencias, 22
+  archivos. No es un `sed` — los importadores usan «WBS» como etiqueta que el
+  usuario ve en su Excel. Ronda propia.
+- [ ] **D-8** `portfolio_function`. **Bloqueada: falta el nombre destino**, y el
+  campo es parámetro público de consulta.
 
 ### Remediación de R1 — hecha el 2026-08-05
 
@@ -64,14 +69,12 @@ negocio.
 
 ### Glosario — implementación de las decisiones
 
-D-7 y D-9 hechas el 2026-08-05. D-2 decidida el mismo día (ADR-019).
+**D-2, D-7 y D-9 hechas el 2026-08-05.** D-2 con ventana de compatibilidad: el
+API sigue aceptando `support` y devuelve siempre `hypercare` (ADR-019, mig 0098).
 
-- [ ] **D-2** renombrar `support` → `hypercare`. ADR escrita; falta la US:
-  migración de datos + tipos del frontend + filtros de la UI. Conviene ventana
-  de compatibilidad, como `amber` → `yellow` en la 0091.
-- [ ] **D-3** `tasks.wbs` → `wbs_code` · **D-8** `portfolio_function` · ambas
-  tocan contrato: ADR + US propia, una por una.
 - [ ] Sigue abierto si hacen falta las fases `initiation` y `cancelled`.
+- [ ] **D-4**, umbral del semáforo. Necesita un proyecto real con desviación
+  medible; hasta entonces cualquier umbral sería inventado.
 
 > **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
 > ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch

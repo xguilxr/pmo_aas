@@ -751,11 +751,16 @@ Los dos beneficios que ARQ-03 persigue no están en el horizonte de este product
 
 ---
 
+<<<<<<< Updated upstream
 ## ADR-019 — `support` se renombra a `hypercare`
+=======
+## ADR-020 — `tasks.wbs` se renombra a `wbs_code`
+>>>>>>> Stashed changes
 
 **Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
 
 **Contexto:**
+<<<<<<< Updated upstream
 La revisión del glosario (D-2) preguntó si `support` era una fase legítima. La
 respuesta del owner fue que **sí lo es** —«un estado de hypercare antes del
 cierre formal, pero es una forma de closing»— y que el problema era el nombre:
@@ -798,6 +803,62 @@ Renombrar `support` → `hypercare` en el modelo, la API y la UI.
 
 **Lo que esta ADR NO decide:** si hacen falta `initiation` y `cancelled`. Sigue
 abierto y merece su propia ADR.
+=======
+La columna guarda el **código** de la EDT (`1.2.3`), no la estructura — esa vive
+en `parent_id` y `outline_level`. El propio código ya lo sabe:
+`apps/api/app/models/task.py:90` documenta «predecessors / successors como JSON
+array de **wbs_code**» mientras la columna se llama `wbs`. La decisión D-3 del
+glosario aprobó el renombrado.
+
+**Decisión:**
+Renombrar la columna, el campo de la API y el del frontend a `wbs_code`.
+
+**Lo que cuesta, medido el 2026-08-05 y no estimado:**
+
+| | |
+|---|---|
+| Ocurrencias de `wbs` como identificador | **259** |
+| Archivos de backend | **16** |
+| Archivos de frontend | **6** |
+
+No es un `sed`. Los sitios que hay que mirar uno a uno:
+
+- **Los tres importadores** (CSV, XLSX, MS Project) y el sugeridor de mapeo de
+  columnas. Ahí `WBS` es además una **etiqueta que el usuario ve** en su propio
+  archivo, y esa **no** se renombra: el cliente sigue escribiendo «WBS» en su
+  Excel. Confundir el nombre del campo con el de la columna importada rompería
+  todas las importaciones existentes.
+- **`predecessors` y `successors` son JSON de códigos**, no claves foráneas. El
+  contenido no cambia, pero cualquier código que los cruce con `task.wbs` sí.
+- **La plantilla descargable del plan** (`lib/plan-template.ts`) escribe la
+  cabecera que luego el parser busca. Cambiar una sin la otra rompe el viaje de
+  ida y vuelta.
+
+**Consecuencias:**
+
+- Es **cambio de contrato**: el campo viaja en las respuestas de tareas y en el
+  cuerpo de creación. Va con la misma ventana de compatibilidad que D-2 —aceptar
+  `wbs` a la entrada y devolver siempre `wbs_code`— para no romper a un cliente
+  que no se haya actualizado.
+- La migración es un `ALTER TABLE … RENAME COLUMN`, barata y reversible.
+- El riesgo real no es la migración: es que un sitio se quede con el nombre
+  viejo y deje de cruzar datos **sin fallar**, que es lo que pasó con
+  `ACTIVE_PHASES` en D-2 y por lo que aquella llevó prueba propia.
+
+**Alternativas evaluadas:**
+
+- **Dejar `wbs` y documentar que significa el código.** Gratis. Se descarta por
+  lo mismo que D-2: el glosario existe para que el nombre en código y el
+  concepto coincidan, y aquí el propio comentario del modelo ya delata la
+  discrepancia.
+- **Renombrar solo en la API y no en la columna.** Deja una traducción
+  permanente en medio, que es deuda con apariencia de solución.
+
+**Por qué no se implementó junto a la ADR:** 259 ocurrencias en 22 archivos está
+muy por encima del límite de 10 de `CLAUDE.md` §3, y el proceso del propio
+glosario pide «ADR y US propia, una por una». La ADR fija la decisión y el
+método; la ejecución es su propia ronda.
+>>>>>>> Stashed changes
 
 ---
 

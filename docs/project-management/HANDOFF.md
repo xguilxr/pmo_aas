@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — **13 commits, sin PR**
+**Branch activa:** `claude/audit-continuation-fzrtko` — **16 commits, sin PR**
 **Generado por:** `/handoff`
 
 ---
@@ -48,9 +48,9 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 ## 📍 Dónde retomar
 
 1. **Abrir el PR** de esta branch y mergear.
-2. **Correr la migración `0097`** (la deniega el guard; es del owner).
-3. Después: **ENH-202** (Helvetica en todos los exports). Las decisiones que
-   fijan el rumbo están más abajo, ya tomadas.
+2. **Correr las migraciones `0097` y `0098`** (las deniega el guard; son del owner).
+3. Después: **D-3** (`wbs_code`) si el owner da luz verde a la ronda — ADR-020 la
+   mide en 259 ocurrencias y 22 archivos. **D-8** está bloqueada por el nombre.
 
 ## ⚠️ Gotchas
 
@@ -79,12 +79,21 @@ Ninguna epic cambió de comportamiento. Sí cambiaron, y están al día:
 | Rumbo | **Volver al producto.** Las Tandas C/D/E no se abren; se retoman con motivo de negocio | Registrada |
 | LEN-02 | **Norma para lo nuevo.** Convención en `api-conventions.md` §7; los 152 se arreglan al tocar cada endpoint | **Hecha** |
 | SEG-01 | **Migrar a PyJWT.** Cierra 5 CVE | **Hecha** |
-| D-2 | **Renombrar `support` → `hypercare`** | **ADR-019 escrita; falta la US** |
+| D-2 | **Renombrar `support` → `hypercare`** | **Hecha** (ADR-019, mig 0098) |
 
-**Lo que sigue, en ese orden:** ENH-202 (Helvetica en todos los exports) es el
-batch que espera. La US de `hypercare` va aparte — toca contrato y migración de
-datos sobre proyectos productivos, así que conviene ventana de compatibilidad,
-como `amber` → `yellow` en la 0091.
+## 🛠️ Producto — hecho después de las decisiones
+
+- **ENH-202** — Helvetica en los cuatro caminos de export. Cerró **AM-12** de
+  paso: ya no hay tipografías remotas al renderizar un PDF. Y destapó que los
+  informes **llevaban meses saliendo en DejaVu Sans**: el CSS pedía DM Sans y la
+  imagen no instalaba ninguna de las fuentes declaradas.
+- **D-2** — `support` → `hypercare`, con ventana de compatibilidad: el API sigue
+  aceptando el nombre viejo y devuelve siempre el canónico.
+- **D-3** — **ADR-020**, con la medición: 259 ocurrencias en 22 archivos. No es
+  un `sed`: los tres importadores usan «WBS» como etiqueta que el usuario ve en
+  su propio Excel, y esa no se renombra. Ronda propia.
+- **D-8** — **bloqueada.** Falta decidir el nombre destino: el glosario deja
+  «Preferente» en «—» y el campo es un parámetro público de consulta.
 
 **Sigue abierta:** D-4, el umbral del semáforo. No se preguntó porque no tiene
 respuesta útil sin un proyecto real con desviación medible contra el que
@@ -93,9 +102,10 @@ calibrar. También si hacen falta las fases `initiation` y `cancelled`.
 ## 🧹 Acciones del owner
 
 - [ ] **Abrir el PR de `claude/audit-continuation-fzrtko` y mergear.**
-- [ ] **Correr la migración `0097`** cuando el PR entre.
-- [ ] Smoke manual de la web: cambiaron seis tokens de color.
-- [ ] Abrir la US del renombrado a `hypercare` cuando toque.
+- [ ] **Correr las migraciones `0097` y `0098`** cuando el PR entre.
+- [ ] Smoke manual de la web: cambiaron seis tokens de color y la fase
+      `support` pasó a `hypercare` en filtros y etiquetas.
+- [ ] Decidir el nombre destino de `portfolio_function` (D-8, bloqueada).
 
 ## 🔮 Sin issue todavía
 
