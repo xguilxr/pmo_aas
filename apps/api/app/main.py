@@ -1,9 +1,11 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -168,9 +170,63 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+HEALTH_DB_TIMEOUT_SECONDS = 3.0
+"""Tiempo máximo que `/health` espera a la base antes de darla por caída.
+
+Muy por debajo del `healthcheckTimeout = 60` de `railway.toml`: la
+comprobación tiene que **responder** «mal» dentro de la ventana de Railway, no
+agotarla. Una que se cuelga es indistinguible de una que nunca contestó, y
+Railway trata las dos igual — pero colgarse deja además la conexión ocupada.
+"""
+
+
+async def _base_de_datos_responde() -> bool:
+    """`SELECT 1` acotado en el tiempo. `False` si no contesta o falla.
+
+    Se resuelve `SessionLocal` en el momento de la llamada y no al importar:
+    `tests/conftest.py` sustituye ese atributo del módulo para apuntar al motor
+    de pruebas, y un `from ... import SessionLocal` congelaría el original.
+    """
+    from app.db import session as db_session
+
+    try:
+        async with asyncio.timeout(HEALTH_DB_TIMEOUT_SECONDS):
+            async with db_session.SessionLocal() as sesion:
+                await sesion.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        # A propósito se atrapa todo: un fallo de resolución de nombre, un
+        # motor mal configurado y un tiempo agotado significan lo mismo para
+        # quien decide si promover el despliegue.
+        logger.warning("health: la base de datos no respondió", exc_info=True)
+        return False
+
+
 @app.get("/health", tags=["meta"])
 async def health():
-    return {"status": "ok", "version": settings.VERSION, "env": settings.PYTHON_ENV}
+    """Salud del servicio (MCS DES-03).
+
+    Hasta la auditoría R1 devolvía una constante: atrapaba «el proceso no
+    arrancó» y ningún otro caso. Una API desplegada contra una base inalcanzable
+    respondía `ok` y Railway promovía el despliegue —el `healthcheckPath` de
+    `railway.toml` condicionaba la aceptación a una comprobación que no
+    comprobaba nada—.
+
+    **No dice por qué falló.** La ruta es pública (`test_permission_matrix.py`),
+    así que el detalle del error se queda en los registros: quien opera lo ve,
+    internet no.
+    """
+    cuerpo = {
+        "status": "ok",
+        "version": settings.VERSION,
+        "env": settings.PYTHON_ENV,
+        "checks": {"database": "ok"},
+    }
+    if not await _base_de_datos_responde():
+        cuerpo["status"] = "degraded"
+        cuerpo["checks"]["database"] = "unreachable"
+        return JSONResponse(status_code=503, content=cuerpo)
+    return cuerpo
 
 
 app.include_router(api_router, prefix="/api/v1")
