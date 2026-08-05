@@ -31,7 +31,12 @@ revision_maxima_meses: 12
 # ---------------------------------------------------------------------------
 superficie_abierta:
   - ruta: "GET /health"
-    motivo: sonda de vida de Railway. No toca base de datos ni revela estado
+    # Corregido el 2026-08-05: desde DES-03 SÍ toca la base. Devolvía una
+    # constante y por eso aceptaba despliegues contra una base inalcanzable.
+    # Hace un `SELECT 1` con tres segundos de tope y responde 503 si no llega.
+    # Sigue sin revelar estado: el motivo del fallo se queda en los registros,
+    # y hacia fuera solo viaja `database: unreachable`.
+    motivo: sonda de vida de Railway. Hace `SELECT 1` acotado; no revela estado
   - ruta: "GET /api/v1/ping"
     motivo: sonda de vida de la API
   - ruta: "POST /api/v1/auth/login"
