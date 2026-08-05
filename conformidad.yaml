@@ -18,7 +18,28 @@ marcos:
   # Los cinco requisitos de N2 están CONFORME, así que N1 y N2 caen juntos:
   # cerrando AUT-01 (owner, 2 min) y CAP-01 (10 min) el entorno pasa a N2.
   # Contexto permanente: 87.623 → 34.080 (-61%). Objetivo de 40.000 alcanzado.
-  MCA: { objetivo: N2, alcanzado: N0, evaluados: "11/11", conformes: 9 }
+  #
+  # 2026-08-05 — AUT-01 CIERRA, y con él el marco alcanza su objetivo.
+  # El informe de cierre dejó escrita la prueba de aceptación: «si queda
+  # interceptado, AUT-01 pasa a CONFORME y el entorno alcanza N2». Quedó
+  # interceptado. Evidencia de primera mano, no inferida: en la sesión del
+  # 2026-08-05, dentro del repositorio, dos comandos emitidos por Claude
+  # fueron **bloqueados** por el hook —uno de borrado de base y otro que solo
+  # *mencionaba* el patrón al redactar esta misma nota— y no llegaron a correr.
+  #
+  # H-5 decía «AUT-01 no es verificable desde esta sesión» porque aquella
+  # sesión se enraizaba fuera del repositorio. La activación depende de eso:
+  # `.claude/settings.json` es configuración de PROYECTO y engancha el guard
+  # con `${CLAUDE_PROJECT_DIR}`. Abriendo la sesión dentro, engancha.
+  #
+  # El segundo bloqueo es además la prueba de que el guard peca de celoso
+  # antes que de permisivo, que es el sesgo correcto para un control de lo
+  # irreversible. El coste está documentado como gotcha: se reformula el
+  # comando, no se relaja el patrón.
+  #
+  # CAP-01 cerró en #576 (el procedimiento de rebase salió a la skill).
+  # Trinquete: `tests/test_mca_aut01_guard.py`, 24 casos, verde.
+  MCA: { objetivo: N2, alcanzado: N2, evaluados: "11/11", conformes: 11 }
   MCC: { objetivo: no_aplica, alcanzado: no_aplica }
   # Reauditado 2026-08-04 con MCS-P01, variante de seguimiento (2026-08-04-mcs.md).
   # Sigue N0. Conformes: 9 -> 21 de 126. Cerraron doce requisitos.
@@ -65,8 +86,15 @@ marcos:
   # 152 siguen diciendo solo qué pasó. Declararlo conforme con esa cifra sería
   # repetir el error de recuento que este expediente ya cometió dos veces.
   #
-  # SEG-01 sigue PARCIAL: dos de sus tres huecos nombrados están cerrados
-  # (AM-09, AM-08); queda `python-jose` y el mapeo completo de ASVS L1.
+  # SEG-01 sigue PARCIAL, pero por otra razón que el 2026-08-05: sus TRES
+  # huecos nombrados están cerrados —AM-09, AM-08 y `python-jose`, que salió
+  # en favor de PyJWT—. Lo que queda es el mapeo completo de ASVS L1, que es
+  # el grueso del requisito y no un hueco puntual.
+  #
+  # Nota sobre la migración de JWT: se fijó en `PyJWT==2.10.1`, versión que
+  # arrastraba 7 vulnerabilidades propias — el saldo real era +2, no -5. Lo
+  # cazó `pip-audit` en el primer CI y se subió a 2.13.0, que no tiene
+  # ninguna. El pasivo de `.pip-audit-ignore` baja de 13 a 8 entradas.
   #
   # El nivel NO se mueve: MCS sigue en N0 y la distancia a N1 baja de 54 a 50.
   MCS: { objetivo: N2, alcanzado: N0, evaluados: "126/126", conformes: 25 }
