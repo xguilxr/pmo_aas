@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **Aprobado.** Solo faltan los cinco valores del umbral del §2.4, que son dato y no decisión. Evidencia en [`03-REVISION-GLOSARIO.md`](03-REVISION-GLOSARIO.md) |
+| Estado | **Aprobado y completo.** Las nueve decisiones ejecutadas; el umbral del §2.4 quedó calibrado el 2026-08-05 (US-196). Evidencia en [`03-REVISION-GLOSARIO.md`](03-REVISION-GLOSARIO.md) |
 | Fecha | 2026-08-03 · revisado 2026-08-04 |
 | Alcance | El núcleo homogeneizable de `00-RUNDOWN-estandares.md` §3 |
 | Árbitro propuesto | ISO 21506 (vocabulario), sin adoptar la familia |
@@ -292,11 +292,11 @@ estratégica**. No coincide con la estructura organizativa.
 
 1. ~~Aprobación del owner, término por término.~~ **Hecha el 2026-08-04.**
 2. ~~Decidir la **forma** del umbral de RAG de §2.4.~~ **Uno por dimensión, 2026-08-05.**
-   Falta **calibrar los cinco valores** contra un proyecto real. Es lo único que queda, y es
-   dato, no decisión.
+   ~~Calibrar los valores.~~ **Hecho el 2026-08-05** (US-196). Al calibrarlos apareció que
+   el presupuesto no miraba el tiempo: 85 % gastado con 10 % de avance salía verde.
 3. ~~Confirmar el método de avance de §2.3.~~ **Adoptado.**
 4. ~~Decidir el **nombre** de la fase de hypercare.~~ **`hypercare`, hecho el 2026-08-05**
-   (ADR-019, migración 0098). Se añadirá **`cancelled`**; `initiation` no.
+   (ADR-019, migración 0098). **`cancelled` añadida** (ADR-022); `initiation` no.
 
 El plan de remediación ya puede escribirse; el orden sugerido está al final de
 `03-REVISION-GLOSARIO.md`. Los tres cambios que tocan contrato —`wbs_code`,
