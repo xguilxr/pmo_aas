@@ -5,7 +5,7 @@
 | Fecha | 2026-08-05 |
 | Objetivo declarado | **N2** (`conformidad.yaml`) |
 | Nivel hoy | **N0** |
-| Distancia a N1 | **41 requisitos** (eran 47; las Olas 0 y 1 cerraron seis) |
+| Distancia a N1 | **44 requisitos** — ver la verificación contra `MCS-CORE` |
 | Distancia a N2 | **95 requisitos** (todo lo abierto) |
 | Base | Registro reconciliado de los cuatro informes fechados |
 
@@ -13,10 +13,12 @@
 
 ## Cómo se construyó, y qué le falta
 
-**`MCS-CORE` no está en este entorno** — ni como skill, ni como plugin, ni como
-archivo. Las sesiones que corrieron `MCS-P01` lo tenían en otro sitio. Este plan
-**no** lo usa: se reconstruyó el registro desde los informes fechados, que sí
-están versionados.
+**`MCS-CORE` llegó al repositorio el 2026-08-05** y vive en
+`marco/MCS-CORE.md`. Este plan se construyó **sin él**, reconstruyendo el
+registro desde los informes fechados; al llegar el marco se verificaron las dos
+primeras olas y **tres de seis cierres no se sostuvieron**
+([verificación](2026-08-05-verificacion-con-marco.md)). El resto del plan sigue
+en pie: lo que cambió son estados, no el orden del trabajo.
 
 Reconcilia. La tabla detallada del 2026-08-03 trae 117 filas con
 `ID · Estado · Evidencia · Gravedad`; el cuadro por dominio cuadra en 126 sobre

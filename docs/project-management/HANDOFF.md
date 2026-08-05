@@ -9,12 +9,12 @@
 ## 🎯 Dónde estamos parados
 
 **MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
-**MCS sigue en N0** — 32 cerrados de 126, **41 bloquean N1**, 94 abiertos.
-**Olas 0 y 1 cerradas** el 2026-08-05.
+**MCS sigue en N0** — 29 cerrados de 126, **44 bloquean N1**, 97 abiertos.
+**`MCS-CORE` llegó al repo**: al verificar contra él, tres de los seis cierres de
+las Olas 0 y 1 no se sostuvieron.
 
-El plan de remediación está escrito y ordenado por olas:
-**`docs/conformidad/plan-remediacion.md`**. Se construyó sin `MCS-CORE` —no está
-en este entorno— reconstruyendo el registro desde los cuatro informes fechados.
+Plan por olas en **`docs/conformidad/plan-remediacion.md`**; el marco, en
+`docs/conformidad/marco/MCS-CORE.md`.
 
 ## 📍 Dónde retomar
 
@@ -45,19 +45,18 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 | #578 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — lo grueso |
 | #579 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — Ola 1 |
 
-**Una branch sin PR abierto no tiene CI**: solo dispara en `pull_request` y en
-push a `main`. `main` exige las **nueve** verificaciones, así que #579 no se
-puede integrar en rojo.
+**Una branch sin PR abierto no tiene CI.** `main` exige nueve verificaciones.
 
 ## ⚠️ Gotchas y decisiones recientes
 
-- **El registro de conformidad envejece en las dos direcciones.** A favor:
-  `ARQ-02` y `GOB-02` decían «cero ADR reales» y hay 24. A la contra: `OPS-02`
-  figuraba como «lo más barato que queda» y el worker no reportaba nada.
-  **Remedir antes de construir** es la regla que ordena el plan.
-- **`MCS-CORE` no está en este entorno.** El plan no lo usa. Lo que falta por
-  eso es el criterio de aceptación por requisito: para los mecánicos el hueco
-  medido **es** la vara; para los de juicio se declara al cerrar.
+- **El registro envejece en las dos direcciones**, y remedir antes de construir
+  es la regla que ordena el plan.
+- **Medir contra la evidencia anotada, y no contra el requisito, produce
+  cierres que no aguantan.** Pasó con `CFG-03`, `INT-03` y `ARQ-02`. Ahora que
+  `MCS-CORE` está en el repo, se cierra leyendo el texto.
+- **`enforce_admins: false` mantiene `CFG-03` e `INT-03` abiertos**, los dos N1.
+  La decisión del owner sigue en pie; lo que cambió es que ahora se sabe que
+  **N1 no se alcanza sin ponerlo en `true`**.
 - **Las migraciones 0097-0100 no las corre Alembic aquí** (guard). Su SQL se
   ejercita contra el esquema de `Base.metadata`, **no contra tablas a mano**:
   así se coló `UPDATE lessons_learned` en 0098.
@@ -74,10 +73,9 @@ puede integrar en rojo.
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Ola 0** — ✅ cerrada: de 45 a 41 bloqueantes sin escribir producto.
-  `DAT-08` y `DAT-16` quedan **sin medir**, declarado: sin `MCS-CORE` no se
-  sabe qué preguntarles.
-- **Ola 1** — ✅ cerrada entera (`CFG-03`, `INT-03`, y `contraste-wcag` exigido).
+- **Olas 0 y 1** — cerraron **tres** requisitos (`GOB-02`, `LEN-01`, `DAT-05`),
+  no seis. `CFG-03`, `INT-03` y `ARQ-02` se revirtieron a PARCIAL al verificar
+  contra el marco: `2026-08-05-verificacion-con-marco.md`.
 - **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
 - **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
 - **Ola 4** — N1 → N2, se replanifica al llegar.
@@ -96,14 +94,10 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Mergear #579** cuando el CI cierre en verde.
-- [x] ~~Proteger `main`~~ — hecho el 2026-08-05. `CFG-03` e `INT-03` cierran.
-- [x] ~~Añadir `contraste-wcag` a las exigidas~~ — hecho el 2026-08-05. Son
-      nueve; la **Ola 1 queda cerrada entera**.
-- [x] ~~Decidir `enforce_admins`~~ — **se queda en `false`** (owner,
-      2026-08-05). Residual aceptado y escrito: con un solo desarrollador, la
-      salida de emergencia vale más que el trinquete. Se revisa si entra alguien
-      más al repositorio.
+- [ ] **Reconsiderar `enforce_admins`.** Se dejó en `false` entendiendo que era
+      un residual; con el marco en mano, mantiene `CFG-03` e `INT-03` abiertos y
+      **N1 no se alcanza así**. La decisión sigue siendo tuya, con el precio ya
+      conocido.
 - [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic.
 - [ ] **Confirmar Sentry en Railway:** tienen que salir **dos** líneas,
       `captura de errores activa proceso=api` y `proceso=worker`, cada una en su
@@ -125,5 +119,5 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 1. Lee este `HANDOFF.md` primero.
 2. Luego `CLAUDE.md` + `SPRINT.md` + `docs/conformidad/plan-remediacion.md`.
-3. Arranca por la **Ola 0**: `python scripts/registro_conformidad.py` da el
-   estado, y la Ola 0 lo corrige contra el código de hoy.
+3. `python scripts/registro_conformidad.py` da el estado. Arranca por la
+   **Ola 2**, que es mecánica.
