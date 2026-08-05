@@ -120,7 +120,7 @@ Resumen. El detalle de cada una, abajo.
 | AM-11 | FC-1 | Restablecimiento de contraseña | **CONTROLADA** |
 | AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **CERRADA** |
 | AM-13 | FC-8 | Robo del token desde el navegador | **PARCIAL** |
-| AM-14 | — | Escritura directa a producción | **SIN CONTROL** |
+| AM-14 | — | Escritura directa a producción | **CERRADA** |
 
 ### AM-01 — Peticiones a nuestra red desde la `base_url` del inquilino
 
@@ -401,13 +401,25 @@ nada automático. **No verificado**, y así queda anotado.
 
 ### AM-14 — Escritura directa a producción
 
-**FC-4 · STRIDE: manipulación · Estado: SIN CONTROL**
+**FC-4 · STRIDE: manipulación · Estado: CERRADA (2026-08-04)**
 
-`main` no está protegida: cualquiera con acceso al repositorio empuja directo a
-la rama de la que sale producción. La regla existe en `CLAUDE.md` §8, en prosa.
+`main` no estaba protegida: cualquiera con acceso al repositorio empujaba
+directo a la rama de la que sale producción, y la regla vivía solo en prosa en
+`CLAUDE.md` §8.
 
-**Acción (owner):** proteger `main` con los checks requeridos, incluidos
-`evaluacion-ia` y `api-tests-smoke`. Comando en `docs/conformidad/plan.md`.
+**Control:** el owner protegió `main` con los ocho checks requeridos. Del lado
+del asistente lo refuerza `scripts/guard_irreversible.py`, que **deniega** el
+empuje a `main` como acción irreversible (MCA AUT-01).
+
+**Se reflejó tarde.** La acción se completó el 2026-08-04 y esta ficha siguió
+diciendo SIN CONTROL hasta el 2026-08-05. Es el defecto que el propio método de
+este documento intenta evitar —«nada se da por controlado sin evidencia», y su
+reverso: nada se deja por controlar cuando ya lo está—.
+
+**Residual:** un check requerido que se **salta** no bloquea el merge. Verificado
+con el PR #576, de solo-docs: `MERGEABLE`/`CLEAN` con cinco jobs en *skipping*.
+Por eso los controles que deben valer siempre —`contexto-permanente`,
+`contraste-wcag`— corren sin filtro de rutas.
 
 ---
 

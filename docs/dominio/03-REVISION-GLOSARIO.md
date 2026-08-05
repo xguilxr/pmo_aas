@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **Resuelto el 2026-08-04.** Ocho decisiones tomadas, una abierta (D-4) |
+| Estado | **Resuelto.** Las nueve decididas; de D-4 falta calibrar valores, no decidir forma |
 | Método | Cada término vetado del §6 del glosario, contrastado contra el código de hoy |
 | Efecto | `02-GLOSARIO.md` deja de ser borrador salvo en el umbral del semáforo |
 
@@ -26,7 +26,7 @@ descrito como más barato resultó ser el más caro.
 | D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
 | D-2 | `support` como fase | **Renombrar a `hypercare`** (2026-08-05) — ADR-019 | Migración + contrato + UI |
 | D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | 259 ocurrencias, 22 archivos |
-| D-4 | Umbral del semáforo | **Abierta** — ni siquiera está claro si es uno o varios | — |
+| D-4 | Umbral del semáforo | **Uno por dimensión** (2026-08-05). Los valores, pendientes | Los valores necesitan un proyecto real |
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
 | D-6 | Línea base | **Al roadmap** | Épica propia |
 | D-7 | Dos paletas de salud | **Unificar** — ✅ hecho 2026-08-05 | Bajo |
@@ -111,17 +111,31 @@ columna de la línea 29 se llama `wbs`.
 Cuesta migración de columna + campo de la API + frontend + el parser de import.
 Va con ADR y US propia.
 
-## D-4. Umbral del semáforo — abierta
+## D-4. Umbral del semáforo — la forma decidida, los valores no
 
-**Decisión del owner:** no se define hoy, y con razón: *«no sé si hay un solo
-umbral o deben haber más»*. Casi seguro son varios —no es lo mismo el umbral de
-un proyecto de tres meses que el de uno de dos años, ni el de cronograma que el
-de costo.
+**La duda original del owner era si había uno o varios.** Resuelta el
+2026-08-05: **uno por dimensión**.
 
-Es el único punto que deja `02-GLOSARIO.md` en borrador, y el único que ningún
-estándar resuelve. Mientras tanto, `health_source = 'manual'` con
-`health_reason` obligatoria es la salida honesta: el semáforo es un juicio
-declarado, no un cálculo.
+Encaja con lo que el producto ya hace. US-191 evalúa la salud en **cinco
+dimensiones** —cronograma, presupuesto, riesgos, decisiones, recursos— más la
+global, y `project_health_evaluations` ya las guarda por separado. Un umbral
+único tendría que promediarlas para volver a partirlas después; uno por
+dimensión se apoya en la estructura que existe.
+
+Y responde a la intuición que dio origen a la duda: **no es lo mismo el umbral
+de cronograma que el de costo**. Un 10 % de desviación en presupuesto y un 10 %
+en fechas no significan lo mismo para nadie.
+
+**Los valores siguen pendientes, y a propósito.** Necesitan un proyecto real con
+desviación medible contra el que calibrar; cualquier número escrito hoy sería
+inventado. Lo que se decidió es la **forma**, que es lo que se puede decidir sin
+datos y lo que bloqueaba diseñar la funcionalidad.
+
+Mientras tanto, `health_source = 'manual'` con `health_reason` obligatoria sigue
+siendo la salida honesta: el semáforo es un juicio declarado, no un cálculo.
+
+**Lo que falta para cerrarla del todo:** un proyecto con historia suficiente, y
+entonces cinco números. No antes.
 
 ## D-5. Método de avance
 

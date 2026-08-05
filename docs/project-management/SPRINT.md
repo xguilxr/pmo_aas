@@ -25,10 +25,10 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`. Todo en verde.
 **Decisiones del owner (2026-08-05), las cuatro ejecutadas:** volver al producto ·
 LEN-02 como norma · PyJWT · `support` → `hypercare`.
 
-Producto: **ENH-202** y **D-2** cerradas. D-3 (ADR-020) y D-8 (ADR-021)
-decididas y medidas, sin ejecutar.
+Producto: **ENH-202**, **D-2**, **D-8** y **AM-10** cerradas. Solo queda **D-3**
+(ADR-020, medida y sin ejecutar). Ninguna amenaza sin control.
 
-**Espera al owner:** mergear el PR y correr las migraciones **0097 y 0098**.
+**Espera al owner:** mergear el PR y correr las migraciones **0097-0099**.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -46,35 +46,35 @@ decididas y medidas, sin ejecutar.
 
 **ENH-202 cerrada el 2026-08-05**, los cuatro frentes; cerró AM-12 de paso.
 
+**D-8 cerrada el 2026-08-05** (ADR-021, migración 0099). **AM-10 cerrada**: el
+bloqueo de cuenta pasó a retardo creciente, y con ella el modelo de amenazas
+queda **sin ninguna amenaza sin control**.
+
 - [ ] **D-3** `tasks.wbs` → `wbs_code`. ADR-020: 259 ocurrencias, 22 archivos.
-  **Owner: ejecutar en la próxima ronda.** No es un `sed` — los importadores
-  usan «WBS» como etiqueta que el usuario ve en su Excel.
-- [ ] **D-8** `portfolio_function` → **`discipline`** (ADR-021, desbloqueada
-  2026-08-05). 18 ocurrencias, 9 archivos. Parámetro público: con ventana.
+  **Es lo primero al retomar.** No es un `sed` — los importadores usan «WBS»
+  como etiqueta que el usuario ve en su Excel.
 - [ ] **Fase `cancelled`** — owner 2026-08-05. Hoy un proyecto cortado queda
   `closed`, indistinguible de uno que cumplió. ADR + US. `initiation`: no.
 - [ ] **Paleta de gráficos propia** — owner 2026-08-05. Ni la de marca ni la de
   Tailwind: categórica, accesible y distinta del semáforo a propósito.
+- [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
+  Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
 
 ### Remediación de R1 — hecha el 2026-08-05
 
-Cerradas: **SUM-02**, **DES-03**, **DIS-02**, **AM-08**/SEG-07, **AM-09**.
 Detalle y residuales en `docs/conformidad/2026-08-05-mcs-remediacion.md`.
-
-**LEN-02 queda como norma, no como tanda** (decisión del owner 2026-08-05): la
-convención está en `api-conventions.md` §7 y los 152 mensajes con texto propio
-se arreglan al tocar cada endpoint. El requisito sigue PARCIAL, declarado.
-
-**Tandas C/D/E: no se abren.** Se vuelve al producto; se retoman con motivo de
-negocio.
+**LEN-02 queda como norma, no como tanda** (owner): la convención está en
+`api-conventions.md` §7 y los 152 mensajes con texto propio se arreglan al tocar
+cada endpoint. Sigue PARCIAL, declarado. **Tandas C/D/E: no se abren.**
 
 ### Glosario — implementación de las decisiones
 
 **D-2, D-7 y D-9 hechas el 2026-08-05.** D-2 con ventana de compatibilidad: el
 API sigue aceptando `support` y devuelve siempre `hypercare` (ADR-019, mig 0098).
 
-- [ ] **D-4**, umbral del semáforo. La única abierta: necesita un proyecto real
-  con desviación medible contra el que calibrar.
+**D-4 decidida en su forma: uno por dimensión** (2026-08-05), apoyada en las
+cinco de US-191. Falta **calibrar los cinco valores** contra un proyecto real —
+eso es dato, no decisión, y es lo único que queda del glosario.
 
 > **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
 > ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch
@@ -87,10 +87,8 @@ API sigue aceptando `support` y devuelve siempre `hypercare` (ADR-019, mig 0098)
 > viven en `HANDOFF.md`**, no aquí: estaban en los dos sitios y una de las dos
 > copias iba a envejecer (CTX-06). No consume IDs US/ENH/BUG.
 
-**R1 cerrada el 2026-08-04** — los 13 NO VERIFICABLE medidos, ninguno queda sin
-estado (`docs/conformidad/2026-08-04-mcs-r1.md`). Cuatro de los trece no eran
-trabajo pendiente: IA-01 ya era NO APLICABLE, IA-04 y las decisiones CON-04 y
-ARQ-03 (excluido con ADR-018) se cerraron el mismo día. En **PR #575**.
+**R1 cerrada el 2026-08-04** — los 13 NO VERIFICABLE medidos
+(`docs/conformidad/2026-08-04-mcs-r1.md`). Cuatro no eran trabajo pendiente.
 
 **Siguiente:** nada de conformidad. Se volvió al producto por decisión del owner.
 

@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — **16 commits, sin PR**
+**Branch activa:** `claude/audit-continuation-fzrtko` — **22 commits, sin PR**
 **Generado por:** `/handoff`
 
 ---
@@ -43,14 +43,14 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 ## 📍 Dónde retomar
 
 1. **Abrir el PR** de esta branch y mergear.
-2. **Correr las migraciones `0097` y `0098`** (las deniega el guard; son del owner).
-3. Después: **D-3** (`wbs_code`) si el owner da luz verde a la ronda — ADR-020 la
-   mide en 259 ocurrencias y 22 archivos. **D-8** está bloqueada por el nombre.
+2. **Correr las migraciones `0097`-`0099`** (las deniega el guard; son del owner).
+3. **D-3** (`wbs_code`) — decidido por el owner, ADR-020 lo mide en 259
+   ocurrencias y 22 archivos. Es una ronda entera.
 
 ## ⚠️ Gotchas
 
-- **La migración 0097 no se ejecutó por Alembic.** Su SQL sí se ejercitó contra
-  un Postgres 16 real, `downgrade` incluido.
+- **Las migraciones 0097-0099 no se ejecutaron por Alembic.** Su SQL sí se
+  ejercitó contra un Postgres 16 real, `downgrade` incluido.
 - **`RATE_LIMITED` pasó de 422 a 429.** Cambio de contrato pequeño, ya en
   `api-conventions.md`. Afecta también a reseteo de contraseña.
 - **El presupuesto de contexto va al límite.** Correr `check_contexto.py` antes
@@ -69,44 +69,48 @@ Solo EP014 cambió (tipografía de los entregables). Al día también:
 `api-conventions.md`, `modelo-amenazas.md`, `amenazas.yaml`, `DB-CHANGES.md`,
 glosario, ADR y `design-system/tokens.md`.
 
-## ✅ Decisiones del owner — 2026-08-05
+## ✅ Decisiones del owner — 2026-08-05, primera tanda
 
-| # | Decisión | Estado |
-|---|---|---|
-| Rumbo | **Volver al producto.** Las Tandas C/D/E no se abren; se retoman con motivo de negocio | Registrada |
-| LEN-02 | **Norma para lo nuevo.** Convención en `api-conventions.md` §7; los 152 se arreglan al tocar cada endpoint | **Hecha** |
-| SEG-01 | **Migrar a PyJWT.** Cierra 5 CVE | **Hecha** |
-| D-2 | **Renombrar `support` → `hypercare`** | **Hecha** (ADR-019, mig 0098) |
+| Decisión | Estado |
+|---|---|
+| **Volver al producto**; las Tandas C/D/E no se abren | Registrada |
+| **LEN-02 como norma**, no como tanda (`api-conventions.md` §7) | ✅ |
+| **Migrar a PyJWT** — 5 CVE | ✅ |
+| **`support` → `hypercare`** | ✅ ADR-019, mig 0098 |
 
 ## 🛠️ Producto — después de las decisiones
 
 - **ENH-202** — Helvetica en los cuatro caminos de export. Cerró **AM-12** y
   destapó que los informes **llevaban meses saliendo en DejaVu Sans**: el CSS
   pedía DM Sans y la imagen no instalaba ninguna de las fuentes declaradas.
-- **D-2** — con ventana: el API acepta `support` y devuelve `hypercare`.
+- **D-2** y **D-8** — con ventana: el API acepta el nombre viejo y devuelve el
+  canónico. La de D-8 tiene **dos puertas**, cuerpo y parámetro de consulta.
+- **AM-10** — el bloqueo de cuenta pasó a retardo creciente. Con AM-14 reflejada
+  —llevaba un día cerrada y la ficha decía lo contrario—, **el modelo de
+  amenazas no tiene ninguna sin control**.
 
 ## 🗳️ Segunda tanda de decisiones — 2026-08-05
 
 | Decisión | Siguiente paso |
 |---|---|
-| **D-3: ejecutar en la próxima ronda** | Es lo primero al retomar |
-| **D-8: `portfolio_function` → `discipline`** | ADR-021 escrita. 18 ocurrencias, 9 archivos. Falta la US |
+| **D-3: ejecutar en la próxima ronda** | **Es lo primero al retomar** |
+| **D-8: `portfolio_function` → `discipline`** | ✅ **hecha** (ADR-021, mig 0099) |
+| **Ventanas: cerrar con dato** | ✅ **hecha** — se cuentan por `compat.nombre_viejo` |
+| **AM-10: retardo creciente** | ✅ **hecha** — ninguna amenaza queda sin control |
+| **D-4: uno por dimensión** | ✅ forma decidida. Faltan los **cinco valores** |
 | **Fase `cancelled`: sí. `initiation`: no** | ADR + US propias, sin abrir |
-| **Paleta de gráficos: propia** | Ni marca ni Tailwind: categórica y distinta del semáforo a propósito |
+| **Paleta de gráficos: propia** | Ni marca ni Tailwind: categórica y distinta del semáforo |
 
 `discipline` se eligió porque «función» y «rol» ya significan otras cosas aquí
-—`by_function` es agregación de capacidad, «rol» es el de permisos—.
-
-**Sigue abierta solo D-4**, el umbral del semáforo: no tiene respuesta útil sin
-un proyecto real con desviación medible contra el que calibrar.
+—`by_function` era agregación de capacidad, «rol» es el de permisos—.
 
 ## 🧹 Acciones del owner
 
 - [ ] **Abrir el PR de `claude/audit-continuation-fzrtko` y mergear.**
-- [ ] **Correr las migraciones `0097` y `0098`** cuando el PR entre.
+- [ ] **Correr las migraciones `0097`, `0098` y `0099`** cuando el PR entre.
 - [ ] Smoke manual de la web: cambiaron seis tokens de color y la fase
       `support` pasó a `hypercare` en filtros y etiquetas.
-- [ ] Decidir el nombre destino de `portfolio_function` (D-8, bloqueada).
+- [ ] Calibrar los cinco valores del umbral (D-4) contra un proyecto real.
 
 ## 🔮 Sin issue todavía
 
@@ -114,7 +118,6 @@ un proyecto real con desviación medible contra el que calibrar.
   Tailwind que D-7 retiró del semáforo.
 - **`design-system/tokens.md`** describe una paleta anterior; queda declarado
   obsoleto, no corregido.
-- **AM-10** —bloqueo por cuenta como denegación de servicio— sigue sin control.
 - **DCMA 14-point** y **línea base** (D-6), sin la cual «desviación» no tiene
   referente.
 - **`MCS-CORE §5.14` enuncia SEG-06 sin traer procedimiento** — defecto del kit.
