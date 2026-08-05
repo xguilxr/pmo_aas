@@ -1,5 +1,25 @@
 # Plan de conformidad — pmo_aas
 
+> **⚠️ Parcialmente superado — 2026-08-05.** Este documento es el plan de la
+> auditoría del 2026-08-03 y **se conserva como informe fechado**, no como plan
+> vigente. El plan activo es
+> [`plan-remediacion.md`](plan-remediacion.md).
+>
+> Lo que ya no vale de aquí:
+>
+> - **La tabla «Tanda 3» usa una numeración `D-1..D-7` anterior** a la revisión
+>   del glosario, que renumeró a `D-1..D-9` con otro contenido. Coinciden los
+>   identificadores y no los temas — leerla junto al glosario induce a error.
+>   Las nueve decisiones del glosario **están ejecutadas**
+>   (`docs/dominio/03-REVISION-GLOSARIO.md`).
+> - **«hoy, con MCA en N0»** (§Puerta de lanzamiento): MCA alcanzó **N2** el
+>   2026-08-05.
+> - Las Tandas C/D/E no se abrieron; la remediación se reordenó por olas.
+>
+> Lo que sigue valiendo: el relato de las Tandas A y B, los hallazgos de los
+> escáneres y el razonamiento de por qué se auditó contra N2 y no contra N3.
+
+
 | Campo | Valor |
 |---|---|
 | Última auditoría | **2026-08-04** · [MCA](2026-08-04-mca.md) · [MCS](2026-08-04-mcs.md) |
