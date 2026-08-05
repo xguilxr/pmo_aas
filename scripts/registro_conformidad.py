@@ -115,6 +115,14 @@ CIERRES = {
  # el conteo, así que cada uno cierra con su trinquete propio en la suite.
  "SEG-05":("CONFORME","Ola 2 — SECURITY.md con canal privado, plazos, alcance y puerto seguro; trinquete en test_seg05_divulgacion.py"),
  "OPS-01":("CONFORME","Ola 2 — structlog formatea el logging estándar: JSON a stdout en los DOS procesos, y celery ya no secuestra el raíz"),
+ # CRITERIO DECLARADO (el plan avisa de que para esto no hay vara escrita):
+ # se cuenta CONFORME porque `mypy --strict` se ejecuta ENTERO en CI y bloquea
+ # todo error nuevo. El pasivo del día del enchufe —1.163 errores, ocho de cada
+ # diez anotaciones que faltan— va nominal en `.mypy-baseline` y solo puede
+ # encoger. Mismo precedente que INT-02 con `.pip-audit-ignore`. Un auditor
+ # externo puede leer «modo estricto» como «cero errores» y discrepar: es el
+ # cierre de la Ola 2 con más margen de discusión, y por eso se escribe aquí.
+ "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 
 reg = {}

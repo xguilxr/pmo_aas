@@ -43,6 +43,7 @@ esta tabla la refleja.
 | Lint API | `cd apps/api && .venv/Scripts/python.exe -m ruff check .` | exit 0 | segundos |
 | Tests API | `cd apps/api && .venv/Scripts/python.exe -m pytest -q -n auto -m "not heavy"` | exit 0 | ~15 min |
 | Typecheck web | `pnpm --filter @pmoaas/web exec tsc --noEmit` | exit 0 | ~1 min |
+| Tipos API | `python scripts/check_tipos.py` | exit 0 | ~15 s |
 | Contexto | `python scripts/check_contexto.py` | exit 0 | segundos |
 | Evaluación IA | `cd apps/api && .venv/Scripts/python.exe -m evaluacion.runner` | exit 0 | segundos |
 | Build web | `pnpm --filter @pmoaas/web build` | exit 0 | — |

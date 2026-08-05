@@ -55,6 +55,43 @@ ignore = [
     "UP038",
 ]
 
+# MCS DEV-04 — «el análisis estático y la verificación de tipos DEBEN
+# ejecutarse en modo estricto». `ruff` cubría lo primero y `tsc --noEmit` lo
+# segundo en el frontend; en Python no había ni mypy ni pyright.
+#
+# `strict = true` y no una selección de reglas: el requisito dice estricto, y
+# elegir a mano qué partes de estricto se aplican es exactamente la forma de
+# declararlo cumplido sin cumplirlo. Lo estricto se ejecuta entero; el pasivo
+# heredado vive en `.mypy-baseline`, con fecha y con la regla de que solo puede
+# encoger (ver `scripts/check_tipos.py`).
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["app"]
+# Los errores se comparan contra la línea base por huella, y la huella no lleva
+# número de línea. Sin esto la ruta no siempre aparece y la huella se pierde.
+show_error_codes = true
+# Sin `exclude`, y es deliberado. `app/scripts/seed_demo.py` invita a quedar
+# fuera por ser código de apoyo, pero escribe en la base con las mismas
+# entidades que producción: un error de tipos ahí corrompe datos de demo que
+# luego se usan para probar. Lo que de verdad se genera —`alembic/versions`—
+# ya queda fuera porque `files` apunta solo a `app`.
+
+# Bibliotecas sin `py.typed` ni stubs publicados. Se enumeran una por una a
+# propósito: `ignore_missing_imports` global apagaría también el aviso cuando
+# entre la séptima, y meter una dependencia sin tipos debe ser una decisión.
+[[tool.mypy.overrides]]
+module = [
+    "boto3.*",
+    "botocore.*",
+    "celery.*",
+    "defusedxml.*",
+    "openpyxl.*",
+    "passlib.*",
+    "weasyprint.*",
+]
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",

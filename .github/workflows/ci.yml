@@ -181,6 +181,35 @@ jobs:
       - name: Ruff check
         run: ruff check .
 
+  # Auditoría MCS 2026-08-03 — cierra DEV-04 («el análisis estático y la
+  # verificación de tipos DEBEN ejecutarse en modo estricto»). `ruff` cubría lo
+  # primero y `tsc --noEmit` lo segundo en el frontend; en Python no había
+  # ninguna verificación de tipos.
+  #
+  # Job propio y no un paso de `lint` por la misma razón que `evaluacion-ia`:
+  # tiene que ser un check nombrable para exigirlo en la protección de `main`,
+  # y su salida —qué huella nueva apareció— se lee sola.
+  #
+  # `mypy --strict` entero, con el pasivo heredado en `apps/api/.mypy-baseline`.
+  # El porqué de la línea base está en el docstring de `check_tipos.py`.
+  tipos-python:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: apps/api/requirements-dev.txt
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r apps/api/requirements-dev.txt
+      - name: mypy --strict contra la línea base
+        run: python scripts/check_tipos.py
+
   # Smoke de tests: excluye `@pytest.mark.heavy` para PR path rápido.
   api-tests-smoke:
     needs: changes
