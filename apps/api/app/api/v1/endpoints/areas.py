@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
+from app.core.compatibilidad import registrar_uso
 from app.core.errors import conflict, not_found, validation_error
 from app.db.session import get_db
 from app.models.area import Actor, Area, AreaAssignment, Team
@@ -688,7 +689,10 @@ async def list_actors(
     )
     if resource_type is not None:
         stmt = stmt.where(Actor.resource_type == resource_type)
-    disciplina = discipline if discipline is not None else portfolio_function
+    disciplina = discipline
+    if disciplina is None and portfolio_function is not None:
+        registrar_uso("portfolio_function", donde="parámetro de consulta")
+        disciplina = portfolio_function
     if disciplina is not None:
         stmt = stmt.where(Actor.discipline == disciplina)
     if organization_id is not None:

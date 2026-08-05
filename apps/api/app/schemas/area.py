@@ -3,7 +3,9 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AliasChoices, BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field, model_validator
+
+from app.core.compatibilidad import registrar_uso
 
 
 # ---------- Area ----------
@@ -109,6 +111,19 @@ ScarcityLevel = Literal["alta", "media", "baja"]
 
 class _ActorResourceFields(BaseModel):
     """US-182 — campos del pool de recursos (compartidos create/update)."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _registrar_nombre_viejo(cls, datos):
+        """Deja rastro si el cuerpo trae `portfolio_function` (D-8, ADR-021).
+
+        `AliasChoices` acepta los dos nombres pero **no dice cuál llegó**, y sin
+        ese dato la ventana de compatibilidad no se puede cerrar con criterio.
+        Por eso se mira el cuerpo crudo, antes de validar.
+        """
+        if isinstance(datos, dict) and "portfolio_function" in datos:
+            registrar_uso("portfolio_function", donde="cuerpo de creación")
+        return datos
 
     organization_id: UUID | None = None
     resource_type: ResourceType | None = None

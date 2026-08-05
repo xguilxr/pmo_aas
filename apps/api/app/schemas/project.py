@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.core.compatibilidad import registrar_uso
+
 #: D-2 / ADR-019 — las cuatro fases del proyecto.
 #:
 #: `hypercare` era `support` hasta el 2026-08-05. El nombre viejo se lee como
@@ -22,7 +24,15 @@ _FASES_RENOMBRADAS = {"support": "hypercare"}
 
 def normalizar_fase(valor: object) -> object:
     """Traduce el nombre viejo de la fase al canónico. Lo demás pasa igual."""
-    return _FASES_RENOMBRADAS.get(valor, valor) if isinstance(valor, str) else valor
+    if not isinstance(valor, str):
+        return valor
+    canonico = _FASES_RENOMBRADAS.get(valor)
+    if canonico is None:
+        return valor
+    # Se deja rastro para saber cuándo se puede cerrar la ventana con dato en
+    # vez de con corazonada. Ver `app/core/compatibilidad.py`.
+    registrar_uso("phase=support", donde="fase del proyecto")
+    return canonico
 
 
 class ProjectCreate(BaseModel):
