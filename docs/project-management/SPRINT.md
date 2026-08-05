@@ -13,17 +13,17 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sin sesión activa. PR #573 MERGEADO a main el 2026-08-04 (a725d10).
+Sin sesión activa. PR #575 MERGEADO el 2026-08-04. **PR #576 ABIERTO, CI verde,
+esperando merge del owner** (branch `claude/cap01-y-recuento`).
 
-Cerró: auditoría MCA/MCS, Tanda A (4/5), Tanda B entera (B1-B5),
-presupuesto de contexto (-61%) y la reauditoría de los dos marcos.
+#575 cerró: R1 completa (13/13 medidos), guard AUT-01 con trinquete de 24 casos,
+glosario aprobado, ADR-018 (ARQ-03 excluido), IA-04 conforme, CON-04 mitigado.
+#576 cierra CAP-01 y corrige el recuento de R1. **Con su merge, MCA alcanza N2.**
 
-Próximo paso — R1: evaluar los 13 requisitos MCS en NO VERIFICABLE.
-Es medición, no construcción. Rama nueva desde main.
+MCS sigue en N0: 22/126 conformes, **51 requisitos bloquean N1**.
 
-Los batches del 2026-07-18 (Plan Import Revamp 9/9 y Feedback 16-jul 8/8)
-siguen en `claude/plan-import-wbs-fixes-nwotng` SIN PR. Migraciones 0095-0096
-pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
+Próximo paso — recorrer lo pendiente de una corrida, dejando las
+confirmaciones del owner para el final. Ver HANDOFF.md.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -39,30 +39,34 @@ pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
 
 ### Siguiente batch
 
-- [ ] **ENH-202** — Helvetica en TODOS los exports/reportes (cambio masivo de
-  fuente; el plan ya la usa vía US-193). Plan:
-  1. Backend XLSX (openpyxl): helper `export_fonts.py` con `FONT="Helvetica"`
-     aplicado en `raid_export.py`, `change_export.py` (y export de Lecciones),
-     `organigrama_export.py` (+ utilización US-186) y `plan_regenerator.py`.
-  2. PDFs (WeasyPrint): `font-family: Helvetica, Arial, sans-serif` en el CSS
-     base de `templates/pdf/**` (reportes, minutas, look-ahead, status PMO) y
-     el renderer HTML inline.
-  3. DOCX charter (`charter_generator.py`): estilo Normal → Helvetica.
-  4. FE ExcelJS: reusar `XLSX_FONT` de plan-template en el reporte de salud del
-     portafolio (US-192) y cualquier export client-side.
+- [ ] **ENH-202** — Helvetica en TODOS los exports y reportes. Cuatro frentes:
+  XLSX de backend (openpyxl), PDFs (WeasyPrint, CSS base de `templates/pdf/**`),
+  DOCX del charter y ExcelJS del frontend. El plan ya la usa vía US-193, así que
+  hay de dónde copiar la convención.
 
-### Abiertos de batches ya archivados
+### Remediación barata de R1 (sin IDs; conformidad)
 
-- [ ] **US-168 #554** — Filtrado de API y sidebar por visibilidad de PM.
-  `status:in-progress`. Único item abierto del Sprint 34 Bloque 1.
-- [ ] **ENH-115 #434** — Breadcrumbs consistentes en `/pmo/**/reports`.
-  `status:ready` desde 2026-05-23, diferido al cierre del rediseño grande.
-  Owner pasa a ready o reasigna sprint cuando lo prioriza.
+- [ ] **SUM-02** — `USER` sin privilegios en `apps/api/Dockerfile`. 3 líneas.
+- [ ] **DES-03** — `SELECT 1` con tiempo límite en `/health`. 10 líneas.
+- [ ] **LEN-02** — los seis textos por defecto de `app/core/errors.py`.
+- [ ] **DIS-02 + D-7** — retocar 5 tokens de `globals.css` y unificar las dos
+  paletas de salud. **Son el mismo trabajo**: el verde que falla AA es el del
+  semáforo. Enganchar después `scripts/check_contraste.py` al CI.
+- [ ] **AM-09** — límite por IP en `/auth/login`. El limitador ya existe y se
+  aplica en recuperación y reseteo; falta en el login.
 
-### Pendiente de PR (acción del owner)
+### Glosario — implementación de las decisiones (D-3, D-8, D-9)
 
-- `claude/gantt-areas-fixes` — `status:fix-committed`. Owner crea PR
-  manualmente: ENH-149 #544, BUG-075 #545, ENH-154 #546, ENH-152 #547.
+- [ ] **D-3** `tasks.wbs` → `wbs_code` · **D-8** `portfolio_function` · ambas
+  tocan contrato: ADR + US propia, una por una.
+- [ ] **D-9** validar `is_milestone ⟹ duration_days = 0`.
+- [ ] **D-2** decidir el nombre de la fase de hypercare (`support` o renombrar) y
+  si hacen falta `initiation` y `cancelled`.
+
+> **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
+> ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch
+> `claude/gantt-areas-fixes` no existe en el remoto — sus cuatro issues
+> (#544-547) también están cerrados. Se quitan en vez de arrastrarlos.
 
 ### Conformidad (auditoría 2026-08-03)
 
