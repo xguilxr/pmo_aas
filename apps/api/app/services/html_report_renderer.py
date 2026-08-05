@@ -87,11 +87,13 @@ def _kpi_card(label: str, value: str, tone: str = "neutral", filter_key: str | N
     `data-filter` que el JS embebido usa para filtrar la tabla asociada.
     """
     # ENH-146 — tonos alineados a la paleta semántica de marca (globals.css).
+    # DIS-02 (2026-08-05): los tres primeros planos se oscurecieron para
+    # alcanzar WCAG 2.2 AA. Sobre estos fondos quedan en 4.67, 4.80 y 4.87:1.
     tones = {
-        "danger": "background:#FBEAE7;border-color:#E4B7B0;color:#C0392B;",
-        "warning": "background:#FBF1DD;border-color:#E7CE97;color:#B26B12;",
+        "danger": "background:#FBEAE7;border-color:#E4B7B0;color:#BD3528;",
+        "warning": "background:#FBF1DD;border-color:#E7CE97;color:#9F5900;",
         "info": "background:#E8EDF8;border-color:#B6C4E6;color:#2A4DA0;",
-        "success": "background:#E3F2E9;border-color:#A9D7BC;color:#1F8A5B;",
+        "success": "background:#E3F2E9;border-color:#A9D7BC;color:#007A4C;",
         "neutral": "background:#fff;border-color:#e8e3d7;color:#1F1D17;",
     }
     style = tones.get(tone, tones["neutral"])

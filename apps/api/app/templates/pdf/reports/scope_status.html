@@ -19,9 +19,9 @@
     {{ health_donut_svg | safe }}
     <div class="small muted" style="margin-top:4px;">Salud del portafolio</div>
     <div class="small">
-      <span style="color:#1F8A5B;">●</span> {{ health.green }}&nbsp;&nbsp;
-      <span style="color:#B26B12;">●</span> {{ health.yellow }}&nbsp;&nbsp;
-      <span style="color:#C0392B;">●</span> {{ health.red }}
+      <span style="color:#007A4C;">●</span> {{ health.green }}&nbsp;&nbsp;
+      <span style="color:#9F5900;">●</span> {{ health.yellow }}&nbsp;&nbsp;
+      <span style="color:#BD3528;">●</span> {{ health.red }}
     </div>
   </div>
   {% endif %}
@@ -65,9 +65,9 @@
     {% for r in heatmap_rows %}
     <tr>
       <td style="padding:2px 6px;font-size:9.5pt;">{{ r.name }}</td>
-      <td style="background:#16a34a;color:#fff;text-align:center;width:42px;{% if not r.green %}opacity:.25;{% endif %}">{{ r.green or "" }}</td>
-      <td style="background:#eab308;color:#fff;text-align:center;width:42px;{% if not r.yellow %}opacity:.25;{% endif %}">{{ r.yellow or "" }}</td>
-      <td style="background:#dc2626;color:#fff;text-align:center;width:42px;{% if not r.red %}opacity:.25;{% endif %}">{{ r.red or "" }}</td>
+      <td style="background:#007A4C;color:#fff;text-align:center;width:42px;{% if not r.green %}opacity:.25;{% endif %}">{{ r.green or "" }}</td>
+      <td style="background:#9F5900;color:#fff;text-align:center;width:42px;{% if not r.yellow %}opacity:.25;{% endif %}">{{ r.yellow or "" }}</td>
+      <td style="background:#BD3528;color:#fff;text-align:center;width:42px;{% if not r.red %}opacity:.25;{% endif %}">{{ r.red or "" }}</td>
     </tr>
     {% endfor %}
   </tbody>

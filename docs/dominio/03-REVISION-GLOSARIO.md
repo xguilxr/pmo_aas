@@ -29,7 +29,7 @@ descrito como más barato resultó ser el más caro.
 | D-4 | Umbral del semáforo | **Abierta** — ni siquiera está claro si es uno o varios | — |
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
 | D-6 | Línea base | **Al roadmap** | Épica propia |
-| D-7 | Dos paletas de salud | **Unificar** | Bajo |
+| D-7 | Dos paletas de salud | **Unificar** — ✅ hecho 2026-08-05 | Bajo |
 | D-8 | `portfolio_function` | **Renombrar** | Medio — el parámetro es público |
 | D-9 | `is_milestone ⟹ duración 0` | **Validar** | Bajo |
 
@@ -135,9 +135,46 @@ diagnóstico. Entra como épica propia.
 
 | # | Qué | Dónde |
 |---|---|---|
-| D-7 | Unificar las dos paletas de salud | `apps/api/app/services/reports/scoped_status.py:30,33` — `_HEALTH_DONUT_COLOR` verde `#1F8A5B` vs `_HEALTH_HEX` verde `#16a34a` |
+| D-7 | Unificar las dos paletas de salud | ✅ **Hecha el 2026-08-05.** Ver abajo |
 | D-8 | `portfolio_function` no es portafolio | `apps/api/app/models/area.py:233`, `endpoints/areas.py:675-689`, `L1-PORTAFOLIO` en `report_builder_template.py:11` |
 | D-9 | Validar `is_milestone ⟹ duration_days = 0` | Regla del §1.2, hoy sin validar |
+
+### D-7, cerrada — y no eran dos paletas, eran cuatro
+
+La decisión nombraba dos, ambas en `scoped_status.py`: `_HEALTH_DONUT_COLOR`
+con los colores de marca y `_HEALTH_HEX` con los de Tailwind. Al ir a
+unificarlas aparecieron **otras dos** en las plantillas PDF —`base.html` y
+`reports/scope_status.html`—, cada una con su mezcla de las anteriores. El mismo
+proyecto en rojo salía `#C0392B` en el donut y `#dc2626` en el mapa de árbol de
+la página siguiente.
+
+Hoy hay una sola, `HEALTH_COLOR` en `scoped_status.py`:
+
+| Estado | Color | Token de `globals.css` |
+|---|---|---|
+| `green` | `#007A4C` | `--color-success-fg` |
+| `yellow` | `#9F5900` | `--color-warning-fg` |
+| `red` | `#BD3528` | `--color-danger-fg` |
+
+**Los valores no son los que la decisión suponía**, y ahí está lo que hizo que
+esto no fuera mecánico: el verde de marca `#1F8A5B` no alcanzaba WCAG 2.2 AA
+(MCS DIS-02). Unificar sin mirar el contraste habría consolidado el que no pasa,
+que era justo el del semáforo. Las dos decisiones se resolvieron juntas y el
+mismo día.
+
+De regalo cerró un defecto que nadie había reportado: el mapa de árbol del PDF
+pintaba texto blanco sobre `#eab308`, alrededor de 1.9:1 — ilegible.
+
+`tests/test_d7_paleta_de_salud.py` lee el hex de `globals.css` y lo compara con
+el del backend, así que la próxima vez que un token se retoque por contraste, el
+semáforo no se queda atrás en silencio.
+
+**Lo que queda fuera, dicho a propósito:** la paleta de *gráficos* —líneas de
+tendencia, barras del Gantt, `actual_color` de la curva-S— arrastra los mismos
+colores de Tailwind y también convendría unificar. No se tocó porque decidir si
+la línea de «avance promedio» lleva el verde del semáforo es una decisión de
+diseño, no la que D-7 tomó. Está nombrada en el propio test para que sea trabajo
+y no descuido.
 
 ---
 
