@@ -62,7 +62,7 @@ Punto de control de **duración cero** que marca un evento significativo. No con
 recursos. Un entregable es un *producto*; un hito es una *fecha*. Un entregable puede tener
 un hito asociado, pero no son lo mismo.
 
-**Regla:** `is_milestone = true` ⟹ `duration_days = 0`. Hoy no está validado.
+**Regla:** `is_milestone = true` ⟹ `duration_days = 0`. **Validada desde el 2026-08-05** (decisión D-9), en dos mitades: la duración la normaliza el modelo (`normalizar_hito` en `app/models/task.py`, evento de guardado, así que vale para el alta manual, los tres importadores, el regenerador de plan y la semilla); y marcar un hito con un rango de varios días se rechaza al crearlo. El caso que la incumplía no era raro: la duración se cuenta en días inclusivos, así que un hito con la misma fecha de inicio y fin daba 1.
 
 ---
 

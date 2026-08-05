@@ -349,6 +349,17 @@ async def create_task(
         raise business_rule("Proyecto cerrado")
     if body.start_date and body.end_date and body.end_date < body.start_date:
         raise validation_error("end_date debe ser >= start_date")
+    # D-9 · glosario §1.2 — un hito es un punto de control de duración cero.
+    # La duración en sí la normaliza el modelo (`normalizar_hito`), porque es un
+    # valor derivado que el usuario no controla. Esto es la otra mitad: la
+    # contradicción que sí puede arreglar, marcar un hito y darle un rango.
+    if body.is_milestone and body.start_date and body.end_date and body.start_date != body.end_date:
+        raise validation_error(
+            "Un hito marca una fecha, no un período, así que su inicio y su fin "
+            "tienen que coincidir. Deja las dos fechas iguales, o desmarca "
+            "«hito» si de verdad es una actividad con duración.",
+            {"start_date": str(body.start_date), "end_date": str(body.end_date)},
+        )
     if body.related_milestone_id is not None:
         await _validate_related_milestone(db, project_id, body.related_milestone_id)
     # US-090: duration auto-calculada desde fechas (override del client si
@@ -1588,12 +1599,14 @@ async def import_confirm(
         if t is None:
             continue
         # Fin vacío + Inicio + Duración → Fin calculado (días inclusivos).
-        if (
-            t.end_date is None
-            and t.start_date is not None
-            and (t.duration_days or 0) > 0
-        ):
-            t.end_date = t.start_date + timedelta(days=(t.duration_days or 1) - 1)
+        if t.end_date is None and t.start_date is not None:
+            if t.is_milestone:
+                # D-9: la duración de un hito es 0, así que la rama de abajo
+                # —que exige `> 0`— lo dejaba sin fecha de fin. Un hito es una
+                # fecha: el fin es el inicio.
+                t.end_date = t.start_date
+            elif (t.duration_days or 0) > 0:
+                t.end_date = t.start_date + timedelta(days=(t.duration_days or 1) - 1)
         # Responsable → actor del pool (assignee_actor_id, flujo ENH-079).
         raw_resource = getattr(pt, "resources_raw", None)
         resolved_actor = _match_actor(raw_resource)
