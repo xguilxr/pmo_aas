@@ -7,12 +7,22 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.compatibilidad import registrar_uso
 
-#: D-2 / ADR-019 — las cuatro fases del proyecto.
+#: D-2 / ADR-019 y ADR-022 — las cinco fases del proyecto.
 #:
 #: `hypercare` era `support` hasta el 2026-08-05. El nombre viejo se lee como
 #: «mesa de ayuda», que es una función permanente; la fase es acompañamiento
 #: acotado tras la puesta en marcha, y una forma de cierre.
-ProjectPhase = Literal["planning", "execution", "hypercare", "closed"]
+#:
+#: `cancelled` es de ADR-022. Hasta el 2026-08-05 un proyecto cortado a mitad
+#: terminaba en `closed`, **indistinguible de uno que cumplió**: contaba como
+#: entregado en cualquier métrica de éxito y sus lecciones se mezclaban con las
+#: de los proyectos que llegaron al final. Cerrar y cancelar son dos finales
+#: distintos y ahora se llaman distinto.
+ProjectPhase = Literal["planning", "execution", "hypercare", "closed", "cancelled"]
+
+#: Los dos finales. Ni uno ni otro admiten transición de salida, y ninguno
+#: cuenta como activo en `ACTIVE_PHASES`.
+FASES_TERMINALES: frozenset[str] = frozenset({"closed", "cancelled"})
 
 #: Ventana de compatibilidad. Un cliente que todavía mande `support` —una
 #: pestaña abierta desde antes del despliegue, un filtro guardado, un script—

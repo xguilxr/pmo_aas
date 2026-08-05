@@ -43,10 +43,10 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 ## 📍 Dónde retomar
 
-**D-3 cerrada** (US-194, mig 0100): con ella **el glosario no tiene ninguna
-decisión abierta**. Lo siguiente sin dueño es la **fase `cancelled`** y la
-**paleta de gráficos**, las dos con ADR por escribir. Lo que espera al owner está
-en su checklist, más abajo, y no se repite aquí.
+**D-3** (US-194, mig 0100) y la **fase `cancelled`** (US-195, ADR-022) cerradas.
+El glosario no tiene ninguna decisión abierta. Lo siguiente sin dueño es la
+**paleta de gráficos**, con ADR por escribir. Lo que espera al owner está en su
+checklist, más abajo, y no se repite aquí.
 
 ## ⚠️ Gotchas
 
@@ -97,7 +97,7 @@ glosario, ADR y `design-system/tokens.md`.
 | **Ventanas: cerrar con dato** | ✅ **hecha** — se cuentan por `compat.nombre_viejo` |
 | **AM-10: retardo creciente** | ✅ **hecha** — ninguna amenaza queda sin control |
 | **D-4: uno por dimensión** | ✅ forma decidida. Faltan los **cinco valores** |
-| **Fase `cancelled`: sí. `initiation`: no** | ADR + US propias, sin abrir |
+| **Fase `cancelled`: sí. `initiation`: no** | ✅ **hecha** (US-195, ADR-022) |
 | **Paleta de gráficos: propia** | Ni marca ni Tailwind: categórica y distinta del semáforo |
 
 `discipline` se eligió porque «función» y «rol» ya significan otras cosas aquí

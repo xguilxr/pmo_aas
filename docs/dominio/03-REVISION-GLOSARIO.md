@@ -93,7 +93,11 @@ De los dos huecos que la decisión no cubría, el owner resolvió el 2026-08-05:
 
 - **`cancelled`: sí.** Hoy un proyecto cortado a mitad queda `closed`,
   indistinguible de uno que cumplió — ensucia cualquier métrica de éxito y las
-  lecciones aprendidas. Necesita ADR y US propias.
+  lecciones aprendidas. **Hecha el 2026-08-05** (ADR-022, US-195). Salió **sin
+  migración**: `phase` es `String(32)` sin `CHECK`, así que añadir un valor no
+  toca el esquema. De paso, `ACTIVE_PHASES` pasó a **derivarse** del vocabulario
+  en vez de repetirlo — era el sitio que en D-2 se quedó con el nombre viejo sin
+  fallar.
 - **`initiation`: no.** El proyecto nace en `planning` aunque el acta sea previa,
   y eso no ha causado ningún problema reportado.
 

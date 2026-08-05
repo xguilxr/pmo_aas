@@ -40,11 +40,19 @@ from app.services.project_membership_sync import sync_member_to_participation
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
+# ADR-022: `cancelled` se alcanza desde cualquier fase viva. Cancelar no es un
+# paso más del ciclo —es interrumpirlo—, así que no depende de dónde estaba el
+# proyecto: se puede cortar un proyecto en planificación, en ejecución o en
+# hypercare, y en los tres casos el final es el mismo.
+#
+# `closed` NO lleva a `cancelled`: un proyecto que llegó al final ya tuvo su
+# final. Los dos son terminales, por la misma razón que `closed` lo era.
 VALID_TRANSITIONS = {
-    "planning": {"execution", "closed"},
-    "execution": {"hypercare", "closed"},
-    "hypercare": {"closed"},
+    "planning": {"execution", "closed", "cancelled"},
+    "execution": {"hypercare", "closed", "cancelled"},
+    "hypercare": {"closed", "cancelled"},
     "closed": set(),
+    "cancelled": set(),
 }
 
 

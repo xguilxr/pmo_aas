@@ -54,8 +54,9 @@ queda **sin ninguna amenaza sin control**.
 - [x] **D-3 hecha** 2026-08-05 — US-194, ADR-020, mig **0100**. El `sed` sí
   resolvió las 259; lo caro fueron los **siete sitios donde `wbs` no era nuestro
   campo**, y uno (`plan-wbs-level` de `localStorage`) rompía **sin dar error**.
-- [ ] **Fase `cancelled`** — owner 2026-08-05. Hoy un proyecto cortado queda
-  `closed`, indistinguible de uno que cumplió. ADR + US. `initiation`: no.
+- [x] **Fase `cancelled` hecha** 2026-08-05 — US-195, ADR-022, **sin
+  migración** (`phase` es `String(32)` sin `CHECK`). `ACTIVE_PHASES` ahora se
+  deriva del vocabulario. `initiation`: descartada por el owner.
 - [ ] **Paleta de gráficos propia** — owner 2026-08-05. Ni la de marca ni la de
   Tailwind: categórica, accesible y distinta del semáforo a propósito.
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.

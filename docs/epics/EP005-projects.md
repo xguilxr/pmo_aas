@@ -27,7 +27,7 @@ Gestionar el ciclo de vida completo de un proyecto: creación (manual o desde so
 
 | Filtro | Tipo |
 |---|---|
-| Fase (toggle chips) | `planning`/`execution`/`support`/`closed` multiselect |
+| Fase (toggle chips) | `planning`/`execution`/`hypercare`/`closed`/`cancelled` multiselect |
 | Organización | select |
 | Programa | select (depende de org) |
 | Tipo | multiselect |
@@ -203,10 +203,22 @@ Evaluaciones de salud manual con historial (US-191/US-192, ver también EP004):
 **Transiciones válidas:**
 
 ```
-planning → execution → support → closed
-planning → closed (cancelado)
-execution → closed (cancelado)
+planning → execution → hypercare → closed
+                    ↘         ↘
+       cualquiera de las tres → cancelled
 ```
+
+`hypercare` se llamaba `support` hasta el 2026-08-05 (D-2 / ADR-019); el API
+sigue aceptando el nombre viejo a la entrada y devuelve siempre el canónico.
+
+**`cancelled` es un final distinto de `closed`** (ADR-022, 2026-08-05). Antes,
+un proyecto cortado a mitad se registraba como `closed` —esta misma epic lo
+documentaba como «`closed` (cancelado)»— y quedaba indistinguible de uno que
+llegó al final: contaba como entregado en toda métrica de éxito y sus lecciones
+se mezclaban con las de los que cumplieron.
+
+Los dos son **terminales** y ninguno cuenta como fase activa. `closed` no lleva
+a `cancelled`: un proyecto que llegó al final ya tuvo su final.
 
 **Criterios de aceptación:**
 - [ ] `POST /api/v1/projects/{id}/phase/change` con `{new_phase, comment?}`.

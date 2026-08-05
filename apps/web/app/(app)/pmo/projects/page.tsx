@@ -35,7 +35,13 @@ import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { useOrgLabel } from "@/lib/org-label";
 
-const ALL_PHASES: ProjectPhase[] = ["planning", "execution", "hypercare", "closed"];
+const ALL_PHASES: ProjectPhase[] = [
+  "planning",
+  "execution",
+  "hypercare",
+  "closed",
+  "cancelled",
+];
 const ALL_TYPES: ProjectType[] = ["innovation", "transformation", "operation", "bau"];
 const ALL_HEALTH: ProjectHealth[] = ["green", "yellow", "red"];
 
@@ -561,6 +567,7 @@ function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
       execution: [],
       hypercare: [],
       closed: [],
+      cancelled: [],
     };
     for (const r of rows) out[r.phase].push(r);
     return out;
@@ -623,11 +630,17 @@ function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
 }
 
 function PhasePill({ phase }: { phase: ProjectPhase }) {
-  const tone: Record<ProjectPhase, "info" | "warning" | "neutral" | "success"> = {
+  const tone: Record<
+    ProjectPhase,
+    "info" | "warning" | "neutral" | "success" | "danger"
+  > = {
     planning: "info",
     execution: "success",
     hypercare: "warning",
     closed: "neutral",
+    // ADR-022: cancelado se distingue de cerrado a simple vista, que es el
+    // punto entero de la decisión.
+    cancelled: "danger",
   };
   return <Badge variant={tone[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }

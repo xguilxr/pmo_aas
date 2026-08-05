@@ -934,6 +934,76 @@ frontend. Es la más pequeña de las tres del glosario que tocan contrato.
 
 ---
 
+## ADR-022 — `cancelled` como quinta fase del proyecto
+
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (US-195, sin migración)
+
+**Contexto:**
+La revisión del glosario (D-2) dejó el hueco por escrito y el owner lo resolvió
+el 2026-08-05: **`cancelled` sí; `initiation` no.** Hoy un proyecto cortado a
+mitad —sin presupuesto, prioridad cambiada, patrocinador que se fue— termina en
+`closed`, **indistinguible de uno que llegó al final y entregó**.
+
+No es un problema cosmético. Con un solo final:
+
+- toda métrica de éxito cuenta el cancelado como entregado;
+- sus lecciones aprendidas se mezclan con las de los que cumplieron, que es
+  precisamente donde más importa separarlas;
+- «¿cuántos proyectos cancelamos este año?» no tiene respuesta, y es una
+  pregunta que una PMO se hace.
+
+**Decisión:**
+Añadir `cancelled` al vocabulario de `phase`. Se alcanza **desde cualquier fase
+viva** y es **terminal**, como `closed`.
+
+**No lleva migración, y conviene decir por qué.** `projects.phase` es
+`String(32)` **sin `CHECK` ni enum de base** (`models/project.py:43`), de modo
+que el valor nuevo no exige tocar el esquema — a diferencia de D-2 y D-8, que
+eran renombrados sobre datos existentes. Lo único que cambia es el vocabulario
+declarado en el código.
+
+**Consecuencias:**
+
+- **`ACTIVE_PHASES` pasa a derivarse del vocabulario** en vez de repetirlo:
+  `[f for f in get_args(ProjectPhase) if f not in FASES_TERMINALES]`. Es el
+  arreglo de una clase de error, no de un caso: cuando D-2 renombró `support`,
+  esta lista fue el sitio que se quedó con el nombre viejo **sin fallar**, y los
+  proyectos en hypercare habrían salido de los snapshots en silencio. Derivarla
+  hace que cualquier fase terminal futura quede excluida sola.
+- **Cancelado se pinta distinto de cerrado** (`danger` frente a `neutral`).
+  Distinguirlos de un vistazo es el punto entero de la decisión; dos insignias
+  grises habrían dejado el problema donde estaba.
+- **`closed` no lleva a `cancelled`.** Un proyecto que llegó al final ya tuvo su
+  final; permitir el paso sería reescribir la historia.
+- **No es cambio de contrato que rompa a nadie**: se añade un valor, no se
+  retira ninguno. No hace falta ventana de compatibilidad — al revés que D-2,
+  D-3 y D-8. Un cliente viejo que no conozca `cancelled` lo verá como fase
+  desconocida, que es lo que ya le pasaría con cualquier dato futuro.
+
+**Lo que esta ADR NO decide:**
+
+- **Si un proyecto cancelado queda de solo lectura.** Es la misma pregunta que
+  el glosario dejó abierta para `closed` («no verificado»), y merece resolverse
+  para los dos finales a la vez, no para uno.
+- **Si `cancelled` necesita motivo obligatorio.** Sería lo natural —cancelar sin
+  decir por qué desperdicia el dato más útil del final— pero es campo nuevo y
+  formulario nuevo. US propia.
+- **`initiation`: descartada por el owner.** El proyecto nace en `planning`
+  aunque el acta sea previa, y eso no ha causado ningún problema reportado.
+
+**Alternativas evaluadas:**
+
+- **Un booleano `was_cancelled` junto a `closed`.** Evita tocar el vocabulario.
+  Se descarta porque parte el estado en dos campos que hay que leer juntos: toda
+  consulta de fase tendría que acordarse del booleano, y la que se olvide vuelve
+  a contar cancelados como entregados — el mismo error, más escondido.
+- **Un `status` separado del `phase`.** Es el modelo más general y el que usan
+  las herramientas grandes. Se descarta por ahora: el producto ya tiene
+  `phase` haciendo de ciclo de vida, y añadir una segunda dimensión sin
+  necesidad demostrada es complejidad a cuenta del futuro.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown

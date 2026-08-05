@@ -42,10 +42,11 @@ import {
 import { cn } from "@/lib/cn";
 
 const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
-  planning: ["execution", "closed"],
-  execution: ["hypercare", "closed"],
-  hypercare: ["closed"],
+  planning: ["execution", "closed", "cancelled"],
+  execution: ["hypercare", "closed", "cancelled"],
+  hypercare: ["closed", "cancelled"],
   closed: [],
+  cancelled: [],
 };
 
 function formatMxn(v: string | number | null): string {
@@ -494,11 +495,17 @@ export default function ProjectDetailPage() {
 }
 
 function PhaseBadge({ phase }: { phase: ProjectPhase }) {
-  const map: Record<ProjectPhase, "info" | "success" | "warning" | "neutral"> = {
+  const map: Record<
+    ProjectPhase,
+    "info" | "success" | "warning" | "neutral" | "danger"
+  > = {
     planning: "info",
     execution: "success",
     hypercare: "warning",
     closed: "neutral",
+    // Cancelado NO es `neutral` como cerrado: distinguirlos de un vistazo es
+    // la razón de ser de ADR-022.
+    cancelled: "danger",
   };
   return <Badge variant={map[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }

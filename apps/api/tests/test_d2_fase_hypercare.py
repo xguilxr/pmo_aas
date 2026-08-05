@@ -30,17 +30,22 @@ from app.schemas.project import PhaseChange, ProjectCreate, normalizar_fase
 RAIZ_API = Path(__file__).resolve().parents[1]
 
 
-def test_el_vocabulario_canonico_son_cuatro_fases():
+def test_hypercare_esta_en_el_vocabulario_y_support_no():
+    """Lo que D-2 defiende es el **renombrado**, no cuántas fases hay.
+
+    Esta prueba se llamaba `..._son_cuatro_fases` y fijaba el conjunto exacto.
+    Al añadir `cancelled` (ADR-022) se puso roja sin que nada de D-2 se hubiera
+    roto: contaba fases, que no es lo suyo. Ahora afirma las dos cosas que sí
+    son de D-2 —que el nombre nuevo está y el viejo no— y deja el tamaño del
+    vocabulario a quien lo gobierne.
+    """
     from typing import get_args
 
     from app.schemas.project import ProjectPhase
 
-    assert set(get_args(ProjectPhase)) == {
-        "planning",
-        "execution",
-        "hypercare",
-        "closed",
-    }
+    fases = set(get_args(ProjectPhase))
+    assert "hypercare" in fases
+    assert "support" not in fases, "el nombre viejo no vuelve por la puerta de atrás"
 
 
 # ---------------------------------------------------------------------------
@@ -133,11 +138,18 @@ def test_hypercare_sigue_contando_como_fase_activa():
 
 
 def test_la_transicion_de_fases_conserva_la_forma():
-    """`execution → hypercare → closed`. Renombrar no reabre el grafo."""
+    """`execution → hypercare → closed`. Renombrar no reabre el grafo.
+
+    Se comprueba por **contención** y no por igualdad: ADR-022 añadió
+    `cancelled` como salida de toda fase viva, y exigir el conjunto exacto
+    convertía esta prueba en un obstáculo para cualquier fase futura sin
+    proteger nada más de D-2.
+    """
     from app.api.v1.endpoints.projects import VALID_TRANSITIONS
 
-    assert VALID_TRANSITIONS["execution"] == {"hypercare", "closed"}
-    assert VALID_TRANSITIONS["hypercare"] == {"closed"}
+    assert {"hypercare", "closed"} <= VALID_TRANSITIONS["execution"]
+    assert "closed" in VALID_TRANSITIONS["hypercare"]
+    assert "hypercare" not in VALID_TRANSITIONS["hypercare"], "no se vuelve a sí misma"
 
 
 def _sentencias_de_la_migracion() -> list[str]:
