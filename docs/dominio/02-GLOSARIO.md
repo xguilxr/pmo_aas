@@ -38,17 +38,18 @@ Etapa del ciclo de vida del proyecto, delimitada por una decisión de continuida
 |---|---|---|
 | `planning` | Planeación | Línea base aprobada |
 | `execution` | Ejecución | Entregables aceptados |
-| `support` | Soporte | Fin del hypercare y aceptación formal |
+| `hypercare` | Hypercare | Fin del hypercare y aceptación formal |
 | `closed` | Cierre | Cierre formal y lecciones registradas |
 
-**`support` es hypercare, no mesa de ayuda** (D-2, 2026-08-04). Es el período de garantía
+**`hypercare` es la fase, no una mesa de ayuda** (D-2). Es el período de garantía
 posterior a la entrega y previo al cierre formal: **una forma de cierre**, no una fase de
-operación. El concepto se queda.
+operación. Se llamaba `support`, que se leía como servicio permanente — justo lo que la
+fase no es.
 
-**El nombre se decidió el 2026-08-05: se renombra a `hypercare`** (ADR-019). `support` se
-lee como servicio permanente, que es justo lo que la fase no es. La implementación es US
-propia y sin abrir — toca contrato y migración de datos sobre proyectos productivos —, así
-que **hasta que entre, el valor en base sigue siendo `support`**.
+**Renombrada el 2026-08-05** (ADR-019, migración 0098). El API **sigue aceptando
+`support` a la entrada** durante una ventana de compatibilidad —un cliente que no se haya
+actualizado no se rompe— pero devuelve siempre el nombre canónico, y en base ya no queda
+ninguno.
 
 **Abierto:** si hacen falta `initiation` —hoy el proyecto nace en `planning`, aunque el
 acta de constitución sea previa— y `cancelled` —hoy una terminación anticipada es
@@ -292,8 +293,8 @@ estratégica**. No coincide con la estructura organizativa.
 2. **Decidir el umbral de RAG** de §2.4 — lo único que sigue abierto. Es la única regla que
    exige criterio de negocio y no de estándar.
 3. ~~Confirmar el método de avance de §2.3.~~ **Adoptado.**
-4. ~~Decidir el **nombre** de la fase de hypercare.~~ **`hypercare`, ADR-019 (2026-08-05).**
-   Sigue abierto si hacen falta `initiation` y `cancelled`.
+4. ~~Decidir el **nombre** de la fase de hypercare.~~ **`hypercare`, hecho el 2026-08-05**
+   (ADR-019, migración 0098). Sigue abierto si hacen falta `initiation` y `cancelled`.
 
 El plan de remediación ya puede escribirse; el orden sugerido está al final de
 `03-REVISION-GLOSARIO.md`. Los tres cambios que tocan contrato —`wbs_code`,

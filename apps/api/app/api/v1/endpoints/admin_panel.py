@@ -177,7 +177,7 @@ async def org_metrics(
             await db.execute(
                 select(func.count(Project.id)).where(
                     Project.organization_id == o.id, Project.deleted_at.is_(None),
-                    Project.phase.in_(["planning", "execution", "support"]),
+                    Project.phase.in_(["planning", "execution", "hypercare"]),
                 )
             )
         ).scalar_one()

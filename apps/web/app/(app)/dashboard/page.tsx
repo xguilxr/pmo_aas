@@ -61,7 +61,7 @@ import { SortableTh } from "@/components/ui/sortable-th";
 const PHASE_LABEL: Record<string, string> = {
   planning: "Planificación",
   execution: "Ejecución",
-  support: "Soporte",
+  hypercare: "Hypercare",
   closed: "Cerrado",
 };
 

@@ -671,26 +671,26 @@ export const LESSON_CATEGORY_BADGE: Record<LessonCategory, string> = {
 
 // ENH-187: fase es texto libre en DB (el modal de creación sólo ofrece
 // estos 4 valores canónicos); labels ES para filtros/chips/export.
-export type LessonPhase = "planning" | "execution" | "support" | "closed";
+export type LessonPhase = "planning" | "execution" | "hypercare" | "closed";
 
 export const LESSON_PHASE_LABEL: Record<LessonPhase, string> = {
   planning: "Planificación",
   execution: "Ejecución",
-  support: "Soporte",
+  hypercare: "Hypercare",
   closed: "Cierre",
 };
 
 export const LESSON_PHASE_ORDER: LessonPhase[] = [
   "planning",
   "execution",
-  "support",
+  "hypercare",
   "closed",
 ];
 
 export const LESSON_PHASE_BADGE: Record<LessonPhase, string> = {
   planning: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
   execution: "bg-[var(--color-accent-bg,var(--color-subtle))] text-[var(--color-accent)]",
-  support: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+  hypercare: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
   closed: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
 };
 

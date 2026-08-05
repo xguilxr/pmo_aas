@@ -40,7 +40,7 @@ LESSON_CATEGORY_ES: dict[str, str] = {
 LESSON_PHASE_ES: dict[str, str] = {
     "planning": "Planificación",
     "execution": "Ejecución",
-    "support": "Soporte",
+    "hypercare": "Hypercare",
     "closed": "Cierre",
 }
 

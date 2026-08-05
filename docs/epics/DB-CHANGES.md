@@ -630,3 +630,30 @@ Postgres real, no solo por lectura.
 lo pone el guardián del ORM en `app/models/audit.py`, que cubre el camino de la
 aplicación pero no las sentencias masivas. Esa división está escrita en los dos
 sitios y comprobada en `tests/test_am08_auditoria_solo_anexa.py`.
+
+
+---
+
+## D-2 / ADR-019 — la fase `support` pasa a `hypercare` (2026-08-05)
+
+### Migración **0098** — renombrado de valor en `projects.phase` y `lessons_learned.phase`
+
+**Sin cambio de esquema.** Las dos columnas son `String(32)` sin `CHECK` ni enum,
+así que esto es una migración de datos: `UPDATE … SET phase='hypercare' WHERE
+phase='support'`. Es la razón por la que ADR-019 la clasificó de coste medio.
+
+**Dos tablas, y la segunda es la fácil de olvidar.** `lessons_learned.phase`
+comparte vocabulario con `projects.phase` (`LessonPhase` en el frontend).
+
+**La ventana de compatibilidad no está en la migración**, está en
+`schemas/project.py`: el API sigue aceptando `support` a la entrada y lo
+normaliza a `hypercare`, para que un cliente que no se haya actualizado —una
+pestaña abierta, un filtro guardado— no se rompa. La salida es siempre canónica.
+Hacen falta las dos mitades: una sin la otra deja medio producto hablando el
+idioma viejo.
+
+**Reversible, con una salvedad honesta.** Ejercitada contra Postgres 16: sube y
+baja sin tocar el resto de fases ni los nulos. Lo que la bajada no puede
+distinguir es una fila que ya fuera `hypercare` de una renombrada — antes del
+2026-08-05 ese valor no existía en el vocabulario, así que con datos reales no
+se da.

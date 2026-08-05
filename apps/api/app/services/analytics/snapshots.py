@@ -25,7 +25,7 @@ from app.models.project_request import ProjectRequest
 from app.models.task import Task
 from app.services.progress_calculator import plan_rollup_map
 
-ACTIVE_PHASES = ["planning", "execution", "support"]
+ACTIVE_PHASES = ["planning", "execution", "hypercare"]
 SEVERE_THRESHOLD = 13
 
 # Métricas numéricas que componen el snapshot (todas las columnas escalares).

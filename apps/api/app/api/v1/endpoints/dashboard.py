@@ -88,7 +88,7 @@ async def kpis(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    active_phases = ["planning", "execution", "support"]
+    active_phases = ["planning", "execution", "hypercare"]
 
     # Scoping por jerarquía (US-015): None = sin restricción (admin),
     # lista = sólo esos project_ids. Lista vacía = ningún proyecto visible.
