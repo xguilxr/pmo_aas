@@ -181,6 +181,31 @@ jobs:
       - name: Ruff check
         run: ruff check .
 
+  # Auditoría MCS 2026-08-03 — cierra CFG-04 («los mensajes de commit DEBEN
+  # seguir Conventional Commits»). El hábito ya estaba —37 de los últimos 40
+  # cumplían— y el control no: `CLAUDE.md` §4 describe el formato, y una
+  # convención descrita es una instrucción, no un control (MCA FLU-03).
+  #
+  # Solo sobre los commits del PR. La historia ya integrada no se reescribe, y
+  # un gate que la revisara nacería rojo para siempre.
+  #
+  # Sin filtro de paths: los mensajes no dependen de qué archivos se tocaron.
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Hace falta la historia para poder comparar contra la rama base.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Conventional Commits en los commits del PR
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          python scripts/check_commits.py --rango "origin/${{ github.base_ref }}..HEAD"
+
   # Auditoría MCS 2026-08-03 — cierra DEV-04 («el análisis estático y la
   # verificación de tipos DEBEN ejecutarse en modo estricto»). `ruff` cubría lo
   # primero y `tsc --noEmit` lo segundo en el frontend; en Python no había

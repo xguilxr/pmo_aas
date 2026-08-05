@@ -122,6 +122,7 @@ CIERRES = {
  # encoger. Mismo precedente que INT-02 con `.pip-audit-ignore`. Un auditor
  # externo puede leer «modo estricto» como «cero errores» y discrepar: es el
  # cierre de la Ola 2 con más margen de discusión, y por eso se escribe aquí.
+ "CFG-04":("CONFORME","Ola 2 — job `commits` valida el rango del PR + hook versionado en .githooks/; el hábito ya estaba (97,5% de 400), faltaba el control"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 
