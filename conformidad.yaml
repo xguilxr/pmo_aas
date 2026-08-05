@@ -4,6 +4,36 @@ proyecto: pmo_aas
 responsable: propietario
 evaluado: 2026-08-04
 
+# Exclusiones aprobadas. MCS §1.3 y GOB-02 exigen que toda exclusión de un
+# requisito APLICABLE lleve ADR con justificación, riesgo aceptado y fecha de
+# revisión. Se declaran aquí además de en el ADR porque el Anexo B del marco
+# señala este archivo como el registro de conformidad del producto.
+#
+# OJO al leerlas: §6.2 concede el nivel a lo Conforme o No aplicable, y un
+# requisito EXCLUIDO no es lo mismo que uno que no aplica. Se cuentan como no
+# bloqueantes siguiendo el precedente de ADR-018, pero un auditor externo puede
+# discrepar — y con ADR-029, que excluye dos controles de integridad, es lo
+# primero que miraría.
+exclusiones:
+  - requisito: ARQ-03
+    justificacion: "El dominio seguirá hablando SQLAlchemy; refactor sin beneficio medible hoy"
+    adr: ADR-018
+    revisar: 2027-02-04
+  - requisito: CFG-03
+    alcance: "Parcial — solo la parte que impide la escritura directa al administrador"
+    justificacion: "Equipo de una persona: enforce_admins elimina la única vía de integración urgente"
+    riesgo_aceptado: "Un error del owner puede llegar a main sin pasar por el CI. El repositorio privado no lo reduce: el actor es interno"
+    adr: ADR-029
+    revisar: 2027-02-05
+    revisar_antes_si: "entra una segunda persona al repositorio"
+  - requisito: INT-03
+    alcance: "Parcial — un administrador puede integrar con verificaciones en rojo"
+    justificacion: "Misma que CFG-03; son el mismo hecho"
+    riesgo_aceptado: "Igual que CFG-03"
+    adr: ADR-029
+    revisar: 2027-02-05
+    revisar_antes_si: "entra una segunda persona al repositorio"
+
 marcos:
   # Reauditado 2026-08-04 con MCA-P02 (2026-08-04-mca.md). Sigue N0, y la
   # distancia sigue siendo 2 requisitos, pero NO los mismos:

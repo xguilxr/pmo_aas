@@ -9,7 +9,8 @@
 ## 🎯 Dónde estamos parados
 
 **MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
-**MCS sigue en N0** — 30 cerrados de 126, **43 bloquean N1**, 96 abiertos.
+**MCS sigue en N0** — **41 bloquean N1**. Tres exclusiones aprobadas y
+registradas (ADR-018, ADR-029).
 **`MCS-CORE` llegó al repo**: al verificar contra él, tres de los seis cierres de
 las Olas 0 y 1 no se sostuvieron.
 
@@ -54,9 +55,11 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 - **Medir contra la evidencia anotada, y no contra el requisito, produce
   cierres que no aguantan.** Pasó con `CFG-03`, `INT-03` y `ARQ-02`. Ahora que
   `MCS-CORE` está en el repo, se cierra leyendo el texto.
-- **`enforce_admins: false` mantiene `CFG-03` e `INT-03` abiertos**, los dos N1.
-  La decisión del owner sigue en pie; lo que cambió es que ahora se sabe que
-  **N1 no se alcanza sin ponerlo en `true`**.
+- **`CFG-03` e `INT-03` están EXCLUIDOS, no cerrados** (ADR-029). El marco
+  permite excluir un requisito aplicable, pero §6.2 solo concede el nivel a lo
+  Conforme o No aplicable: **un auditor externo puede negar N1** con dos
+  controles de integridad excluidos. Si N1 se presenta a un tercero, es lo
+  primero que va a mirar.
 - **Las migraciones 0097-0100 no las corre Alembic aquí** (guard). Su SQL se
   ejercita contra el esquema de `Base.metadata`, **no contra tablas a mano**:
   así se coló `UPDATE lessons_learned` en 0098.
@@ -73,9 +76,9 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Olas 0 y 1** — cuatro cerrados: `GOB-02`, `LEN-01`, `DAT-05` y `ARQ-02`
-  (este último tras promover 5 decisiones irreversibles a ADR-024..028).
-  `CFG-03` e `INT-03` **siguen PARCIAL**: los cierra `enforce_admins: true`.
+- **Olas 0 y 1 — cerradas.** Cuatro conformes (`GOB-02`, `LEN-01`, `DAT-05`,
+  `ARQ-02`) y `CFG-03`/`INT-03` **excluidos con ADR-029**, aprobado por el
+  owner, con riesgo escrito y revisión al entrar una segunda persona.
 - **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
 - **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
 - **Ola 4** — N1 → N2, se replanifica al llegar.
@@ -94,9 +97,9 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Poner `enforce_admins` en `true`** — decidido el 2026-08-05. Es lo
-      único que queda de las Olas 0 y 1, y cierra `CFG-03` e `INT-03`, ambos N1:
-      `gh api -X PUT repos/xguilxr/pmo_aas/branches/main/protection/enforce_admins`
+- [x] ~~`enforce_admins`~~ — **exclusión controlada**, ADR-029 (owner,
+      2026-08-05). El repositorio pasa a privado, lo que retira al actor
+      externo; el riesgo aceptado es el error propio, que sigue igual.
 - [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic.
 - [ ] **Confirmar Sentry en Railway:** tienen que salir **dos** líneas,
       `captura de errores activa proceso=api` y `proceso=worker`, cada una en su

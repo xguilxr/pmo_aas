@@ -1261,6 +1261,78 @@ que declare el inquilino.
 
 ---
 
+## ADR-029 — Exclusión parcial de MCS CFG-03 e INT-03: el administrador conserva la escritura directa
+
+**Estado:** ✅ Aceptada — 2026-08-05 · **Aprobada por:** el owner
+**Requisitos excluidos:** `CFG-03` e `INT-03`, **solo en la parte que aplica al
+administrador** · **Revisión:** 2027-02-05, o antes si entra alguien más al
+repositorio
+
+**Contexto:**
+`main` está protegida desde el 2026-08-05: exige solicitud de cambio, nueve
+verificaciones automáticas en modo estricto, y prohíbe el `force-push` y el
+borrado de rama. Lo que **no** está activado es `enforce_admins`, de modo que un
+administrador —hoy, la única persona que trabaja en el repositorio— puede
+escribir directo e integrar con verificaciones en rojo.
+
+`CFG-03` exige la rama protegida «**sin escritura directa**» e `INT-03` que la
+integración **no se permita** con verificaciones en fallo. Los dos son N1, y
+§6.2 dice que un estado Parcial impide alcanzar su nivel.
+
+El repositorio pasa además a **privado**, lo que retira del análisis a cualquier
+actor externo.
+
+**Opciones consideradas:**
+
+1. **`enforce_admins: true`** — cierra los dos requisitos con un comando y sin
+   coste de desarrollo. Se descarta porque elimina la única vía de integración
+   urgente que tiene un equipo de una persona: si el CI se rompe por causa
+   ajena —una acción de GitHub caída, un registro de paquetes inaccesible— no
+   hay segunda persona que apruebe una excepción.
+2. **Activarlo y desactivarlo puntualmente en la emergencia**
+   (`gh api -X DELETE …/enforce_admins`, actuar, reactivar). Mantiene el control
+   por defecto y deja rastro del momento en que se levantó, que es una postura
+   de riesgo distinta de «nunca activado». Se descarta por el owner: en la
+   práctica la emergencia llega cuando hay menos tiempo para ceremonias, y un
+   control que se desactiva a mano acaba desactivado.
+3. **Exclusión registrada** — la que se adopta.
+
+**Decisión:**
+`enforce_admins` se queda en `false`. Se excluye la parte de `CFG-03` e `INT-03`
+que exige impedir la escritura directa **al administrador**; el resto de ambos
+requisitos —solicitud de cambio obligatoria, verificaciones exigidas, sin
+`force-push` ni borrado de rama— se cumple y se mantiene.
+
+**Riesgo aceptado:**
+
+- **Un error del owner puede llegar a `main` sin pasar por el CI.** Es el riesgo
+  principal, y el repositorio privado **no lo reduce**: el actor es interno.
+- Una escritura directa a la rama principal por descuido no encuentra freno. Lo
+  mitiga en parte `guard_irreversible.py`, que la bloquea desde una sesión de
+  Claude —pero no desde una terminal del owner—.
+- **Lo que sí retira el repositorio privado** es el actor externo: nadie ajeno
+  puede intentar escribir. Eso reduce la superficie, no el riesgo aceptado.
+
+**Consecuencias:**
+
+- Los dos requisitos pasan a **EXCLUIDO**, el mismo tratamiento que `ARQ-03`
+  recibió en ADR-018.
+- **Salvedad que conviene no perder de vista.** El marco permite excluir un
+  requisito aplicable (§1.3) pero §6.2 solo concede el nivel a los requisitos
+  en estado *Conforme* o *No aplicable*, y un requisito excluido **no es lo
+  mismo que uno que no aplica**: `CFG-03` aplica a este producto, que tiene rama
+  principal y tiene CI. Se sigue el precedente de ADR-018 y se cuenta como no
+  bloqueante, pero **un auditor externo podría negarse a conceder N1 con dos
+  controles de integridad excluidos**, y estaría dentro de su derecho. Si N1 va
+  a presentarse a un tercero, esta exclusión es lo primero que va a mirar.
+- El disparador de revisión no es una fecha arbitraria: **el día que entre una
+  segunda persona al repositorio**, «administrador» deja de significar «el
+  owner» y la justificación de esta ADR desaparece entera.
+
+**Requisitos MCS afectados:** CFG-03, INT-03, GOB-02 (que exige este registro).
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown

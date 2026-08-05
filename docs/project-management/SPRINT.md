@@ -19,7 +19,7 @@ REMEDIACIÓN POR OLAS — plan en `docs/conformidad/plan-remediacion.md`.
 Olas 0 y 1 cerradas. **Lo siguiente es la Ola 2**, mecánica y disparable sola.
 
 MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · 30 cerrados de 126 · **43 bloquean N1** · 96 abiertos.
+MCS: N0 · **41 bloquean N1** · 3 exclusiones aprobadas (ADR-018, ADR-029).
 **`MCS-CORE` ya está en el repo** (`docs/conformidad/marco/`).
 ```
 

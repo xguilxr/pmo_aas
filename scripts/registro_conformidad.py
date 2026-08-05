@@ -94,7 +94,7 @@ CIERRES = {
  # fallo. Con `enforce_admins: false` un administrador puede las dos cosas, así
  # que se cumplen en parte del alcance: PARCIAL (§6.1), y un PARCIAL impide
  # alcanzar su nivel (§6.2). Los dos son N1.
- "CFG-03":("PARCIAL","rama protegida, pero enforce_admins=false permite escritura directa"),
+ "CFG-03":("EXCLUIDO","ADR-029 — exclusión parcial aprobada, revisión 2027-02-05"),
  # Ola 0 (2026-08-05) — remedidos contra el código de hoy, no contra la
  # evidencia del 08-03. Los cierra el trabajo de producto, no una tanda.
  # ARQ-02 exige que TODA decisión irreversible esté en un ADR. Pasar de cero a
@@ -109,7 +109,7 @@ CIERRES = {
  "DAT-08":("NO CONFORME","26 constantes de conversión inline en app/ (N2)"),
  "DAT-16":("NO CONFORME","el periodo en curso no se señala en analíticas ni gráficos (N2)"),
  "DAT-05":("CONFORME","Ola 0 — una sola paleta de salud y un solo vocabulario de fase"),
- "INT-03":("PARCIAL","verificaciones exigidas, pero un administrador puede saltarlas"),
+ "INT-03":("EXCLUIDO","ADR-029 — exclusión parcial aprobada, revisión 2027-02-05"),
  "ARQ-03":("EXCLUIDO","ADR-018, revisión 2027-02-04"),
 }
 
