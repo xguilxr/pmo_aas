@@ -1,7 +1,7 @@
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — **10 commits, sin PR**
+**Branch activa:** `claude/audit-continuation-fzrtko` — **13 commits, sin PR**
 **Generado por:** `/handoff`
 
 ---
@@ -18,7 +18,7 @@ de R1» que dejó la sesión anterior **está hecha entera**, más dos amenazas.
 
 ## ✅ Hecho en esta sesión
 
-Nueve requisitos, **un commit cada uno**, todos con verificación por mutación:
+Ocho requisitos, **un commit cada uno**, todos con verificación por mutación:
 
 | Qué | Estado |
 |---|---|
@@ -30,6 +30,7 @@ Nueve requisitos, **un commit cada uno**, todos con verificación por mutación:
 | **AM-09** | Límite por IP en el login, contando fallos |
 | **AM-08 / SEG-07** | `audit_log` de solo anexado |
 | **D-9** | `is_milestone ⟹ duration_days = 0` |
+| **SEG-01** | `python-jose` fuera, PyJWT dentro. 5 CVE menos |
 
 Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
@@ -48,7 +49,8 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 1. **Abrir el PR** de esta branch y mergear.
 2. **Correr la migración `0097`** (la deniega el guard; es del owner).
-3. Después: las cinco confirmaciones de abajo mandan sobre qué sigue.
+3. Después: **ENH-202** (Helvetica en todos los exports). Las decisiones que
+   fijan el rumbo están más abajo, ya tomadas.
 
 ## ⚠️ Gotchas
 
@@ -56,8 +58,8 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
   un Postgres 16 real, `downgrade` incluido.
 - **`RATE_LIMITED` pasó de 422 a 429.** Cambio de contrato pequeño, ya en
   `api-conventions.md`. Afecta también a reseteo de contraseña.
-- **El presupuesto de contexto va al 98 %** (33.917 de 34.500). Cualquier cosa
-  que engorde `CLAUDE.md`, `SPRINT.md` o este archivo rompe el CI.
+- **El presupuesto de contexto va justo.** Correr `python scripts/check_contexto.py`
+  antes de engordar `CLAUDE.md`, `SPRINT.md` o este archivo: el CI lo frena.
 - **El guard bloquea comandos que *mencionan* uno denegado**, aunque sea en una
   ruta (`git stash push -- app/main.py` cayó por «push … main»). La salida es
   reformular, no relajar el patrón.
@@ -70,24 +72,30 @@ Ninguna epic cambió de comportamiento. Sí cambiaron, y están al día:
 `api-conventions.md`, `modelo-amenazas.md`, `amenazas.yaml`, `DB-CHANGES.md`,
 `02-GLOSARIO.md`, `03-REVISION-GLOSARIO.md`, `design-system/tokens.md`.
 
-## ❓ Confirmaciones pendientes
+## ✅ Decisiones del owner — 2026-08-05
 
-Se le preguntaron al owner al cierre de la sesión. **Si no hay respuesta
-registrada abajo, siguen abiertas:**
+| # | Decisión | Estado |
+|---|---|---|
+| Rumbo | **Volver al producto.** Las Tandas C/D/E no se abren; se retoman con motivo de negocio | Registrada |
+| LEN-02 | **Norma para lo nuevo.** Convención en `api-conventions.md` §7; los 152 se arreglan al tocar cada endpoint | **Hecha** |
+| SEG-01 | **Migrar a PyJWT.** Cierra 5 CVE | **Hecha** |
+| D-2 | **Renombrar `support` → `hypercare`** | **ADR-019 escrita; falta la US** |
 
-1. **¿Tandas C/D/E de MCS, o cortar?** 50 requisitos, 6-9 semanas.
-   Recomendación: volver al producto y retomarlas con motivo de negocio.
-2. **D-4, umbral del semáforo.** Lo único que deja el glosario en borrador.
-3. **D-2, nombre de la fase de hypercare.** ¿`support` o renombrar?
-4. **LEN-02, los 152 mensajes restantes.** ¿Norma para lo nuevo, o tanda?
-5. **Migrar `python-jose` a PyJWT** — cerraría 5 CVE que bloquea `pyasn1<0.5.0`.
+**Lo que sigue, en ese orden:** ENH-202 (Helvetica en todos los exports) es el
+batch que espera. La US de `hypercare` va aparte — toca contrato y migración de
+datos sobre proyectos productivos, así que conviene ventana de compatibilidad,
+como `amber` → `yellow` en la 0091.
+
+**Sigue abierta:** D-4, el umbral del semáforo. No se preguntó porque no tiene
+respuesta útil sin un proyecto real con desviación medible contra el que
+calibrar. También si hacen falta las fases `initiation` y `cancelled`.
 
 ## 🧹 Acciones del owner
 
 - [ ] **Abrir el PR de `claude/audit-continuation-fzrtko` y mergear.**
 - [ ] **Correr la migración `0097`** cuando el PR entre.
 - [ ] Smoke manual de la web: cambiaron seis tokens de color.
-- [ ] Responder las cinco confirmaciones.
+- [ ] Abrir la US del renombrado a `hypercare` cuando toque.
 
 ## 🔮 Sin issue todavía
 

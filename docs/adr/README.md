@@ -751,6 +751,56 @@ Los dos beneficios que ARQ-03 persigue no están en el horizonte de este product
 
 ---
 
+## ADR-019 — `support` se renombra a `hypercare`
+
+**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+
+**Contexto:**
+La revisión del glosario (D-2) preguntó si `support` era una fase legítima. La
+respuesta del owner fue que **sí lo es** —«un estado de hypercare antes del
+cierre formal, pero es una forma de closing»— y que el problema era el nombre:
+`support` se lee como «mesa de ayuda», que es una función permanente, no una
+fase de proyecto con principio y fin.
+
+El vocabulario real de hoy son cuatro fases: `planning`, `execution`, `support`,
+`closed`. `phase` es `String(32)` sin enum de base (`models/project.py:43`), así
+que el cambio no exige migrar un tipo, pero sí migrar los datos existentes y los
+tipos del frontend.
+
+**Decisión:**
+Renombrar `support` → `hypercare` en el modelo, la API y la UI.
+
+**Consecuencias:**
+
+- El nombre pasa a decir lo que la fase es: acompañamiento acotado tras la puesta
+  en marcha, no soporte perpetuo.
+- **Es cambio de contrato.** `apps/web/lib/api/projects.ts:3` declara el tipo,
+  la UI lo ofrece como filtro (`projects/page.tsx:38,581`) y
+  `ACTIVE_PHASES` lo lista (`analytics/snapshots.py:28`). Un cliente con un
+  filtro guardado deja de encontrarlo.
+- Necesita **migración de datos** sobre proyectos productivos, y la corre el
+  owner. Conviene aceptar los dos valores durante una ventana, como se hizo con
+  `amber` → `yellow` en la migración 0091.
+- Sin efecto en el semáforo ni en los informes: `support` no aparece en la
+  lógica de salud.
+
+**Alternativas evaluadas:**
+
+- **Dejar `support` y documentarlo como hypercare.** Gratis, y era la
+  recomendación. Se descarta porque el glosario existe justamente para que el
+  nombre en código y el concepto coincidan; documentar la discrepancia la
+  conserva.
+- **Renombrar y además añadir `initiation` y `cancelled`.** Cubre dos huecos
+  reales —hoy un proyecto nace en `planning` aunque el acta sea previa, y uno
+  cortado queda `closed`, indistinguible de uno que cumplió— pero es un cambio
+  de modelo mayor. Se separa: primero el renombrado, esos dos como decisión
+  propia.
+
+**Lo que esta ADR NO decide:** si hacen falta `initiation` y `cancelled`. Sigue
+abierto y merece su propia ADR.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown

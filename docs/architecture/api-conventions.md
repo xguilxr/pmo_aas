@@ -161,6 +161,39 @@ class ProjectRead(BaseModel):
 | 429 | `RATE_LIMITED` | El llamador superó su cuota (AM-09: fallos de login por IP) |
 | 503 | `SERVICE_UNAVAILABLE` | Provider de IA caído u otra dependencia externa |
 
+### Cómo se escribe el texto de un error (MCS LEN-02)
+
+> **Norma para lo nuevo, decidida el 2026-08-05.** Los cinco defectos del
+> catálogo ya cumplen; los mensajes con texto propio se arreglan **al tocar el
+> endpoint**, no en una tanda. Medido ese día: de 159 mensajes con texto
+> explícito, 152 dicen solo qué pasó y 21 nombran campos internos. Cerrar eso de
+> golpe es trabajo uno por uno sin palanca común, y no compra nada que un
+> usuario note antes que el resto del roadmap.
+
+Todo mensaje nuevo dice **las tres cosas**, en este orden:
+
+| | Pregunta | Ejemplo |
+|---|---|---|
+| **Qué** | ¿Qué ocurrió? | «No pudimos verificar tu identidad.» |
+| **Por qué** | ¿Por qué ocurrió? | «El usuario o la contraseña no coinciden, o la sesión expiró.» |
+| **Qué hacer** | ¿Qué puede hacer quien lee? | «Vuelve a iniciar sesión; si no lo consigues, usa «¿Olvidaste tu contraseña?».» |
+
+Tres reglas que salen de los defectos que la auditoría encontró:
+
+1. **Nada de nombres de campo internos.** «cambia `pm_id` primero» no significa
+   nada para quien lo lee. Se nombra el concepto —«el responsable del
+   proyecto»—, no la columna.
+2. **El «qué hacer» lleva verbo.** Si no propone una acción que el usuario pueda
+   ejecutar, no es un «qué hacer»: es un lamento. Si de verdad no hay nada que
+   pueda hacer, se dice a quién acudir.
+3. **El cliente reacciona por `code`, nunca por el texto.** El texto se reescribe
+   sin avisar; el `code` es el contrato.
+
+Cuando el sitio **no** pasa texto propio, se aplica el defecto del catálogo
+(`app/core/errors.py`), donde las tres partes se guardan como campos separados
+—`que`, `porque`, `accion`— justamente para que no se puedan rellenar a medias.
+Lo vigila `tests/test_len02_mensajes_de_error.py`.
+
 Códigos adicionales que algunos endpoints emiten ad-hoc (no centralizados):
 
 - `ACCOUNT_LOCKED` (403) — login después de 5 fails.

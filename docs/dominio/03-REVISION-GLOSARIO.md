@@ -24,7 +24,7 @@ descrito como más barato resultó ser el más caro.
 | # | Qué | Decisión | Cuesta |
 |---|---|---|---|
 | D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
-| D-2 | `support` como fase | **Es hypercare, y es cierre**. Queda | Documentar + nombre a decidir |
+| D-2 | `support` como fase | **Renombrar a `hypercare`** (2026-08-05) — ADR-019 | Migración + contrato + UI |
 | D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** | Migración + contrato + frontend |
 | D-4 | Umbral del semáforo | **Abierta** — ni siquiera está claro si es uno o varios | — |
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
@@ -84,10 +84,13 @@ concepto es legítimo —la transición a operaciones existe en los estándares�
 discutible es el nombre. `support` se lee como «mesa de ayuda»; `hypercare` es
 lo que el owner describe.
 
-**Lo que falta decidir es solo el nombre**, y dos huecos:
+**El nombre se decidió el 2026-08-05: `hypercare`.** Queda en **ADR-019**, con
+lo que cuesta y con la ventana de compatibilidad que conviene —aceptar los dos
+valores un tiempo, como se hizo con `amber` → `yellow` en la migración 0091—.
+La implementación es US propia, sin abrir: toca contrato y migración de datos
+sobre proyectos productivos.
 
-- [ ] Renombrar `support` → `hypercare` (claro, cuesta migración de datos + tipos + UI)
-      · o dejar `support` y documentarlo como hypercare (gratis)
+Siguen abiertos los dos huecos que la decisión **no** cubre:
 - [ ] ¿Hace falta `initiation`? Hoy un proyecto nace en `planning`, aunque el acta
       de constitución sea previa
 - [ ] ¿Hace falta `cancelled`? Un proyecto terminado anticipadamente hoy solo puede

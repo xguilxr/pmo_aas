@@ -25,8 +25,11 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 Suite de API en verde (1094), lint y typecheck exit 0, contraste 34/34.
 
+**Decisiones del owner (2026-08-05):** volver al producto en vez de las Tandas
+C/D/E · LEN-02 como norma para lo nuevo · migrar a PyJWT (hecho) ·
+renombrar `support` → `hypercare` (ADR-019, US sin abrir).
+
 **Espera al owner:** mergear el PR y correr la migración 0097.
-Cinco confirmaciones abiertas — ver HANDOFF.md.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -52,18 +55,23 @@ Cinco confirmaciones abiertas — ver HANDOFF.md.
 Cerradas: **SUM-02**, **DES-03**, **DIS-02**, **AM-08**/SEG-07, **AM-09**.
 Detalle y residuales en `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
-- [ ] **LEN-02** — sigue PARCIAL. El catálogo ya dice qué, por qué y qué hacer;
-  faltan los 152 mensajes con texto propio que dicen solo qué pasó. Sin palanca
-  común: es trabajo de tanda, uno por uno.
+**LEN-02 queda como norma, no como tanda** (decisión del owner 2026-08-05): la
+convención está en `api-conventions.md` §7 y los 152 mensajes con texto propio
+se arreglan al tocar cada endpoint. El requisito sigue PARCIAL, declarado.
+
+**Tandas C/D/E: no se abren.** Se vuelve al producto; se retoman con motivo de
+negocio.
 
 ### Glosario — implementación de las decisiones
 
-D-7 y D-9 hechas el 2026-08-05.
+D-7 y D-9 hechas el 2026-08-05. D-2 decidida el mismo día (ADR-019).
 
+- [ ] **D-2** renombrar `support` → `hypercare`. ADR escrita; falta la US:
+  migración de datos + tipos del frontend + filtros de la UI. Conviene ventana
+  de compatibilidad, como `amber` → `yellow` en la 0091.
 - [ ] **D-3** `tasks.wbs` → `wbs_code` · **D-8** `portfolio_function` · ambas
   tocan contrato: ADR + US propia, una por una.
-- [ ] **D-2** decidir el nombre de la fase de hypercare (`support` o renombrar) y
-  si hacen falta `initiation` y `cancelled`.
+- [ ] Sigue abierto si hacen falta las fases `initiation` y `cancelled`.
 
 > **Verificado el 2026-08-04:** los items que esta sección listaba como abiertos
 > ya no lo estaban. US-168 #554 y ENH-115 #434 están **cerrados**, y la branch
