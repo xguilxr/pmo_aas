@@ -1,117 +1,130 @@
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-08-04
-**Branch activa:** ninguna. **PR #573 mergeado** (`a725d10`)
-**Generado por:** `/handoff` — cierre de la sesión de conformidad
+**Última actualización:** 2026-08-05
+**Branch activa:** `claude/cap01-y-recuento` — **PR #576 abierto, CI verde**
+**Generado por:** `/handoff`
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-La sesión de conformidad **cerró y está en `main`**: auditoría MCA/MCS, Tanda A
-(4 de 5), **Tanda B entera**, presupuesto de contexto y **reauditoría de los dos
-marcos**. Ya no hay estados sin medir.
+**La medición terminó; la remediación no.** Ya no queda un solo requisito sin
+estado en ninguno de los dos marcos. Con el merge de #576, **MCA alcanza su
+objetivo N2**. **MCS sigue en N0**: 22 de 126 conformes y **51 requisitos
+bloquean N1**.
 
-| Marco | Objetivo | Alcanzado | Conformes | Bloquean |
-|---|---|---|---|---|
-| MCA | N2 | **N0** | 9 / 11 | AUT-01 (owner, 2 min) · CAP-01 (10 min) |
-| MCS | N2 | **N0** | 21 / 126 | 54 para N1 |
-
-Informes: [MCA](../conformidad/2026-08-04-mca.md) ·
-[MCS](../conformidad/2026-08-04-mcs.md) · plan: [plan.md](../conformidad/plan.md).
-
-**Una expectativa que hay que corregir:** la distancia de MCS a N1 **nunca fue
-43, era 60**. El informe del 2026-08-03 omitió los 14 requisitos de N1 en
-NO VERIFICABLE, que bloquean igual (`MCS-CORE` §6.2 exige CONFORME **o** NO
-APLICABLE). Hoy son 54. Las Tandas A y B cerraron 6 bloqueantes de N1 y 6 de N2
-porque apuntaban a **riesgo activo, no a nivel**.
+| Marco | Objetivo | Hoy | Falta |
+|---|---|---|---|
+| MCA (entorno) | N2 | **N2** al mergear #576 | Nada del objetivo. N3 no lo es |
+| MCS (producto) | N2 | **N0** | 51 para N1 · Tandas C/D/E, 6-9 semanas |
 
 ## 📍 Dónde retomar
 
-**Rama nueva desde `main`.** La anterior está mergeada.
+> **Modo de trabajo pedido por el owner (2026-08-05):** recorrer **todo lo
+> pendiente de una corrida**, sin parar a preguntar. Las decisiones que necesiten
+> su confirmación se **acumulan y se preguntan al final**, juntas. No fragmentar
+> la sesión en idas y vueltas.
 
-**R1 — evaluar los 13 requisitos MCS en NO VERIFICABLE** (1-2 días):
-`ARQ-03`, `CON-04`, `DAT-04`, `DAT-11`, `DAT-12`, `DES-03`, `DIS-02`, `DIS-03`,
-`IA-01`, `IA-04`, `LEN-02`, `SEG-01`, `SUM-02`.
+Orden sugerido, de menor a mayor coste — todo esto **no necesita confirmación**:
 
-Es **medición, no construcción**: puede cerrar varios sin escribir código. Y el
-precedente pesa — IA-05 estaba NO VERIFICABLE, se verificó, y el modelo **sí**
-calculaba cifras que iban a informes ejecutivos. Hacerlo **antes** de comprometer
-las 6-9 semanas de las Tandas C/D/E, que hoy se planificarían contra un
-inventario que ya demostró dos veces estar mal contado.
+1. **SUM-02** — `USER` sin privilegios en `apps/api/Dockerfile`. 3 líneas. Cuidar
+   que el `CMD` corre migraciones y que MPXJ quede legible para ese usuario.
+2. **DES-03** — `SELECT 1` con tiempo límite en `/health`. 10 líneas.
+3. **LEN-02** — los seis textos por defecto de `app/core/errors.py`. Es la palanca:
+   los malos viven todos ahí.
+4. **DIS-02 + D-7** — cinco tokens de `globals.css` y unificar las dos paletas de
+   salud. **Son el mismo trabajo**: el verde que falla AA (`#1F8A5B`, 4.33:1) es
+   el del semáforo. Después enganchar `scripts/check_contraste.py` al CI.
+5. **AM-09** — límite por IP en `/auth/login`. El limitador ya existe
+   (`services/rate_limit.py`) y se aplica en recuperación y reseteo; falta ahí.
+6. **AM-08** — `REVOKE UPDATE, DELETE` al rol de la aplicación sobre `audit_log`.
+   Sin código.
+7. **D-9** — validar `is_milestone ⟹ duration_days = 0`.
 
-Después: **CAP-01** (10 min — sacar «Rebase + force-push» de `CLAUDE.md` §8 a un
-artefacto bajo demanda) y luego Tandas C, D y E.
+**Al final, preguntar en bloque** (§ «Confirmaciones pendientes»).
 
-## ✅ Qué dejó la sesión
+## ✅ Hecho en esta sesión
 
-Seis commits en `main`. Detalle en `plan.md` §B3 y §B5 y en los informes.
+**PR #575, mergeado** (`98fa3a2`) — 9 commits:
 
-- **B3** — conjunto de evaluación de IA (`apps/api/evaluacion/`), job
-  `evaluacion-ia` con umbral eliminatorio. Mide el sistema, no el modelo: sin
-  clave de API y sin red, así que puede ser gate.
-- **B5** — modelo de amenazas (`docs/architecture/modelo-amenazas.md`): ocho
-  fronteras, catorce amenazas. Su trinquete falla si aparece una ruta sin
-  autenticación o un destino externo sin declarar.
-- **Contexto permanente −61 %** (87.623 → 34.080). La partida grande no era un
-  archivo sino una regla: §1.4 cargaba el epic entero antes de saber si se iba a
-  abrir.
-- **Tres defectos de seguridad**, ninguno reportado por usuarios, los tres
-  verificados por mutación: navegación fuera del sitio desde el copiloto; **AM-01**
-  (la `base_url` del BYO permitía pedir desde dentro de la red privada de Railway
-  y leer la respuesta); y un `field: null` del modelo borrando el acierto de la
-  heurística en el importador.
+- **R1 completa**: los 13 requisitos MCS en NO VERIFICABLE, medidos. Resultado:
+  1 no aplicable, 1 conforme, 1 excluido, 4 parciales, 6 no conformes.
+  `docs/conformidad/2026-08-04-mcs-r1.md`.
+- **AUT-01**: lo irreversible pasó de `ask` a `deny` + 24 casos de prueba.
+- **ADR-018**: ARQ-03 excluido con riesgo aceptado y revisión el 2027-02-04.
+- **IA-04 conforme** y **CON-04 mitigado** (código).
+- **Glosario aprobado**: 8 decisiones del owner, 1 abierta.
 
-## ⚠️ Gotchas
+**PR #576, abierto** (`852c19e`, `d8892b9`) — CAP-01 (skill `rebasear`) y la
+corrección del recuento de R1.
 
-- **`main` no está protegida** (AM-14). Al hacerlo, añadir `evaluacion-ia`.
-- **Cuatro amenazas SIN CONTROL**, escritas en vez de ignoradas: AM-08 (registro
-  de auditoría modificable, y AM-06 se apoya en él como único control), AM-09
-  (`/auth/login` sin límite por IP), AM-10 (bloqueo de cuenta como DoS), AM-14.
-- **El informe del 2026-08-03 tiene tres errores comprobados** (distancia a N1,
-  evidencia de ARQ-01, IA-12 atribuido a B2). Sus estados no remedidos se leen
-  como indicativos, no como medidos.
-- **`MCS-CORE §5.14` enuncia SEG-06 sin traer procedimiento**, así que el método
-  del modelo de amenazas lo eligió Claude y el documento lo declara. Defecto del
-  kit, merece issue.
-- **Las skills del proyecto no cargan** si la sesión se enraíza fuera del repo —
-  `/handoff` falló por eso en esta misma sesión. Es la misma causa que AUT-01.
-- **Los gates de CI son trinquetes:** el de contexto frenó cuatro veces esta
-  sesión. Recortar es la respuesta; subir el techo exige razón escrita.
-- **No hay tests de frontend**, y **Python 3.12 no es negociable**.
+**Acciones del owner cerradas:** `SENTRY_DSN` puesto, `main` protegida con los 8
+checks, migraciones verificadas en 0096.
 
 ## 🔄 PRs en flight
 
-| PR / branch | Acción pendiente |
-|---|---|
-| #570 · `claude/pmo-portfolio-architecture-6hbuen` | Verificar + mergear · `alembic upgrade head` (0091-0094) |
-| `claude/plan-import-wbs-fixes-nwotng` | Falta abrir PR · migs 0095-0096 |
-| `claude/gantt-areas-fixes` | Falta abrir PR (ENH-149/BUG-075/ENH-154/ENH-152) |
+| # | Branch | CI | Acción |
+|---|---|---|---|
+| #576 | `claude/cap01-y-recuento` | **verde** (`MERGEABLE`/`CLEAN`) | **Mergear** |
+
+## ⚠️ Gotchas
+
+- **Las migraciones las corre el owner.** El guard las deniega desde #575. Es el
+  precio acordado de que `deny` sobreviva a cualquier modo de permisos.
+- **El guard bloquea mensajes de commit que *mencionan* un comando denegado.**
+  Pasó dos veces. La salida es `git commit -F <archivo>`, no relajar el patrón.
+- **Un check requerido que se salta NO bloquea el merge** — verificado con #576,
+  que es de solo-docs: `MERGEABLE`/`CLEAN` con cinco jobs en *skipping*.
+- **`api-tests-heavy` nunca debe ser requerido:** solo corre en push a `main`.
+- **La suite de API tarda ~26 min en local** (3m21s en CI). Correrla en segundo
+  plano y seguir trabajando.
+- **Publiqué mal el recuento de R1** («3 parciales, 7 no conformes»). Son 4 y 6.
+  Corregido **con la corrección anotada** en el informe, no en silencio.
+- Sin tests de frontend. Python 3.12 no es negociable.
 
 ## 📋 Lo que sigue
 
-- **Conformidad:** R1 (los 13 NO VERIFICABLE) → CAP-01 → Tandas C, D, E.
-- **Amenazas:** AM-08 es la más barata — `REVOKE UPDATE, DELETE` al rol de la
-  aplicación, sin código. AM-09 es aplicar el limitador que ya existe.
-- **Evaluación de IA:** falta superficie para el informe ejecutivo; antes hay que
-  sacar el ensamblado del contexto fuera de `_run_report`.
-- **Producto:** ENH-202 (Helvetica en exports) es el siguiente batch y se cruza
-  con AM-12. US-168 sigue `in-progress`.
+- **Conformidad:** la lista de «Dónde retomar». Después, Tandas C/D/E — pero eso
+  merece decisión de negocio, no inercia.
+- **Glosario:** D-3 (`wbs_code`) y D-8 (`portfolio_function`) tocan contrato: ADR
+  + US propia, una por una.
+- **Producto:** ENH-202 (Helvetica en todos los exports) es el batch que espera.
+- **Amenazas:** AM-14 cerrada al proteger `main`. Quedan AM-08, AM-09 y AM-10.
+
+## 📚 Estado de las epics docs
+
+| Epic | Sincronizada | Notas |
+|---|---|---|
+| EP008 (IA) | **sí** | Actualizada esta sesión: contexto fechado (CON-04), aviso y escalada (IA-04), y por qué IA-01 es NO APLICABLE **hoy** |
+
+Ninguna otra epic cambió de comportamiento.
+
+## ❓ Confirmaciones pendientes — preguntar AL FINAL de la próxima sesión
+
+1. **¿Seguimos con las Tandas C/D/E de MCS o cortamos?** Son 6-9 semanas y 51
+   requisitos. Mi recomendación: cerrar lo barato y volver al producto; retomar
+   las tandas cuando haya motivo de negocio.
+2. **D-4, umbral del semáforo.** Sigue abierto y es lo único que deja el glosario
+   en borrador. ¿Uno o varios? Se calibra contra un proyecto real.
+3. **D-2, nombre de la fase de hypercare.** ¿`support` se queda o se renombra a
+   `hypercare`? ¿Hacen falta `initiation` y `cancelled`?
+4. **DAT-11 y DIS-03** son transversales y caros. ¿Norma para lo nuevo y arrastre
+   por tandas, o campaña dedicada?
+5. **Migrar `python-jose` a PyJWT** — cerraría 5 CVE que bloquea `pyasn1<0.5.0`.
 
 ## 🧹 Acciones del owner
 
-- [ ] Verificar el guard desde una sesión **dentro** del repo (AUT-01 → N2).
-- [ ] `SENTRY_DSN` en Railway — el requisito más barato del marco (OPS-02).
-- [ ] Proteger `main` tras cerrar los PR, con `evaluacion-ia` incluido (AM-14).
-- [ ] Los tres PR pendientes de las ramas anteriores.
-- [ ] Revisar `docs/dominio/02-GLOSARIO.md` término por término.
+- [ ] **Mergear #576** — con eso MCA queda en N2.
 - [ ] Smoke manual de la web tras el salto de Next 15.0 → 15.5.
+- [ ] Correr las migraciones locales cuando una branch traiga alguna.
 
 ## 🔮 Sin issue todavía
 
-- **DCMA 14-point** (`docs/dominio/01-DIAGNOSTICO.md` §4) y **línea base**, sin la
-  cual no existe «desviación».
-- **Migrar `python-jose` a PyJWT** — cerraría 5 CVE que bloquea `pyasn1<0.5.0`.
+- **DCMA 14-point** (`docs/dominio/01-DIAGNOSTICO.md` §4) y **línea base** (D-6),
+  sin la cual «desviación» no tiene referente.
+- **MCA N3**: CAP-02 y APR-01 no existen. No es objetivo.
+- **`MCS-CORE §5.14` enuncia SEG-06 sin traer procedimiento** — defecto del kit,
+  merece issue.
 
 ---
 

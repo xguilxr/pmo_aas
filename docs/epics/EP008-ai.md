@@ -155,6 +155,15 @@ system efectivo = prompt base (services/ai/prompts.py)
                 + <CONTEXTO_DEL_PROYECTO>      (project_ai_contexts, US-185)
 ```
 
+**El contexto del proyecto viaja fechado** (MCS CON-04, 2026-08-04). Sus tres
+campos son texto libre y nada impide que un PM escriba una cifra —«vamos al
+40 %»— que luego se inyecta en cada consulta hasta que alguien la edite. El
+bloque abre avisando de que son textos guardados y no datos en vivo, y de que
+**ante una diferencia gana el dato calculado**; cada sección lleva la fecha en que
+se escribió, y el resumen automático lleva la suya propia porque lo reescribe el
+worker. El aviso **se descuenta** del presupuesto de `max_chars` en vez de
+sumarse encima: viaja en cada llamada, e IA-03 acota el prompt por coste.
+
 - `services/ai/prompt_builder.py` — compone las 3 capas. Las
   instrucciones del tenant tienen una **regla de precedencia** que
   protege el contrato de salida (no pueden romper el schema JSON
@@ -273,6 +282,25 @@ desobedecer. La contención real la dan los límites de lo que el sistema le dej
 hacer: el copiloto solo navega (`ALLOWED_ACTION_TYPES`), las cifras de los
 informes se calculan en Python (IA-05), el chat del Report Builder solo produce
 acciones de un catálogo cerrado, y ninguna salida del modelo ejecuta nada.
+
+> Esos mismos límites son lo que hace que **MCS IA-01 sea NO APLICABLE**: no hay
+> ninguna herramienta expuesta al modelo. El proveedor recibe `messages` y
+> devuelve texto; no hay `tools` ni `tool_use` en `services/ai/`. El día que el
+> copiloto pueda *hacer* algo —crear una tarea, mover una fecha— IA-01 vuelve a
+> aplicar, y con él la exigencia de que la herramienta corra bajo la identidad del
+> usuario. Conviene releerlo **antes** de esa US.
+
+### Aviso de IA y salida a un humano (MCS IA-04)
+
+El widget se anuncia como «Asistente IA» en su `aria-label` y su `title` —también
+para quien usa lector de pantalla, que es lo que hace que cuente— y el pie del
+panel dice «Respuestas generadas por IA: pueden equivocarse» junto a **«¿Necesitás
+a una persona?»**, que lleva a `/pmo/requests/new`.
+
+La escalada va al circuito humano que ya existía —la solicitud la atiende la PMO
+de la organización, que es quien conoce el proyecto— y no a un buzón nuestro: el
+producto es multiinquilino. El importador avisa aparte con «Plan interpretado por
+IA — revisá antes de importar».
 
 Cobertura: `tests/test_ia11_inyeccion_prompt.py`, con un corpus de intentos de
 inyección y un trinquete que falla si aparece una llamada nueva al proveedor sin
