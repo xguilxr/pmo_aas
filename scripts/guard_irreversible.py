@@ -16,9 +16,29 @@ Y por qué no basta escribirlo en CLAUDE.md: MCA-CORE §6.1 — «un control que
 existe pero no se ejecuta automáticamente es PARCIAL. La disciplina humana no
 es un control».
 
+**Por qué lo destructivo se deniega en vez de preguntarse (2026-08-04).** Al
+verificar el guard en vivo salió que `ask` no frena nada si la sesión corre con
+los permisos relajados: `alembic downgrade --help` y `git branch -D` se
+ejecutaron sin diálogo alguno, mientras que un `deny` sí bloqueó. O sea que
+`ask` depende de en qué modo abriste la sesión — y eso es disciplina humana,
+justo lo que MCA-CORE §6.1 no acepta como control. `deny` sobrevive a cualquier
+modo, así que lo irreversible de verdad vive ahí. El precio es que el owner
+corre a mano sus migraciones y sus borrados; se pagó a sabiendas.
+
+En `PREGUNTAR` queda solo lo reversible-con-esfuerzo: reescribir historia de una
+branch propia, enmendar un commit, cerrar un issue. Si algo de eso se cuela por
+un modo permisivo, se deshace.
+
+**Falso positivo conocido.** El guard mira la cadena completa del comando, así
+que un `git commit -m "...alembic upgrade..."` se bloquea aunque solo esté
+*hablando* de una migración. Pasó al commitear este mismo cambio. La salida es
+escribir el mensaje en un archivo y usar `git commit -F`, no relajar el patrón:
+distinguir «ejecuta» de «menciona» exigiría analizar el shell, y el precio de
+equivocarse hacia el lado permisivo es una base de datos.
+
 Decisiones:
-  deny  -> prohibido por CLAUDE.md; el humano puede autorizarlo aparte
-  ask   -> irreversible; se muestra y se pide confirmación explícita
+  deny  -> irreversible, o prohibido por CLAUDE.md; lo corre el humano aparte
+  ask   -> reversible con esfuerzo; se muestra y se pide confirmación
   (nada) -> el resto sigue el flujo normal de permisos
 """
 from __future__ import annotations
@@ -28,7 +48,7 @@ import re
 import subprocess
 import sys
 
-# ── Prohibido por CLAUDE.md ──────────────────────────────────────────────────
+# ── Irreversible o prohibido: se deniega ─────────────────────────────────────
 DENEGAR: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"\bgit\b.*\bpush\b.*(?<!-)--force(?!-with-lease)\b"),
@@ -43,18 +63,35 @@ DENEGAR: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"\bgit\b.*\bpush\b.*\b(origin\s+)?(HEAD:)?main\b"),
         "CLAUDE.md §8: `main` es productiva y no se pushea directo. Va por branch y PR.",
     ),
+    (
+        re.compile(r"\balembic\b.*\b(upgrade|downgrade)\b"),
+        "Migración de base de datos: altera el schema y puede perder datos. "
+        "La corre el owner, que es quien sabe contra qué entorno está apuntando.",
+    ),
+    (
+        re.compile(r"\b(DROP|TRUNCATE)\s+(TABLE|DATABASE|SCHEMA)\b", re.I),
+        "Destruye datos sin vuelta atrás. Si de verdad hace falta, lo corre el owner.",
+    ),
+    (
+        re.compile(r"\brm\b\s+(-[a-zA-Z]*[rf][a-zA-Z]*\s+)+"),
+        "Borrado recursivo o forzado. Borrá lo que sobre a mano, o pedí ruta por ruta.",
+    ),
+    (
+        re.compile(r"\bgit\b.*\b(reset\s+--hard|clean\s+-[a-z]*f)"),
+        "Descarta cambios del árbol de trabajo sin recuperación. "
+        "Si el árbol quedó sucio, se revisa qué hay antes de tirarlo.",
+    ),
+    (
+        re.compile(r"\bgit\b.*\bbranch\b.*\s-D\b"),
+        "Borra una branch sin comprobar que esté mergeada. Usá `-d`, que sí comprueba.",
+    ),
 ]
 
-# ── Irreversible: se pide confirmación ───────────────────────────────────────
+# ── Reversible con esfuerzo: se pide confirmación ────────────────────────────
 PREGUNTAR: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"\bgit\b.*\bpush\b.*--force-with-lease\b"),
         "Reescribe historia remota. Confirmá que la branch es tuya y que nadie más la tocó.",
-    ),
-    (
-        re.compile(r"\balembic\b.*\b(upgrade|downgrade)\b"),
-        "Migración de base de datos: altera el schema y puede perder datos. "
-        "Confirmá el entorno (local vs Railway) antes de correrla.",
     ),
     (
         re.compile(r"\bgh\b.*\bissue\b.*\bclose\b"),
@@ -63,22 +100,6 @@ PREGUNTAR: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"\bgit\b.*\bcommit\b.*--amend\b"),
         "CLAUDE.md §4: no se hace `--amend` sobre commits ya pusheados.",
-    ),
-    (
-        re.compile(r"\bgit\b.*\b(reset\s+--hard|clean\s+-[a-z]*f)"),
-        "Descarta cambios del árbol de trabajo sin recuperación.",
-    ),
-    (
-        re.compile(r"\brm\b\s+(-[a-zA-Z]*[rf][a-zA-Z]*\s+)+"),
-        "Borrado recursivo o forzado.",
-    ),
-    (
-        re.compile(r"\b(DROP|TRUNCATE)\s+(TABLE|DATABASE|SCHEMA)\b", re.I),
-        "Destruye datos de forma irreversible.",
-    ),
-    (
-        re.compile(r"\bgit\b.*\bbranch\b.*\s-D\b"),
-        "Borra una branch sin comprobar que esté mergeada.",
     ),
 ]
 

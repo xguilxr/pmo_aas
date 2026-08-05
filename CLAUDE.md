@@ -102,12 +102,14 @@ al conjunto **antes** de arreglarse: `apps/api/evaluacion/README.md`.
 Una ruta sin autenticación o un destino externo nuevo rompen su trinquete a
 propósito: obligan a pasar por el modelo antes de declararlos.
 
-**Las acciones irreversibles piden confirmación, y no por convención** (MCA
-AUT-01): las bloquea `.claude/settings.json` vía `scripts/guard_irreversible.py`.
-Se **bloquea** `git push --force` sin `--force-with-lease`, `--no-verify` y todo
-push a `main`. Se **pregunta** ante `--force-with-lease`, `alembic upgrade`/
-`downgrade`, `gh issue close`, `commit --amend`, `reset --hard`, `rm -rf` y
-`DROP TABLE`. Lista y motivos en el docstring del guard.
+**Lo irreversible se bloquea; preguntar no alcanzaba** (MCA AUT-01). Lo hace
+`scripts/guard_irreversible.py` como hook `PreToolUse`. Se **bloquea** `--force`
+sin lease, `--no-verify`, push a `main`, `alembic upgrade`/`downgrade`,
+`DROP`/`TRUNCATE`, `rm -rf`, `reset --hard`/`clean -f` y `branch -D`. Se
+**pregunta** solo ante `--force-with-lease`, `gh issue close` y `commit --amend`.
+Con los permisos de la sesión relajados, un `ask` no abre diálogo y el comando
+corre igual; `deny` frena en cualquier modo. Motivos en el docstring del guard,
+trinquete en `apps/api/tests/test_mca_aut01_guard.py`.
 
 ---
 

@@ -4,14 +4,15 @@
     "deny": [
       "Bash(git push --force *)",
       "Bash(git commit --no-verify *)",
-      "Bash(git push --no-verify *)"
-    ],
-    "ask": [
+      "Bash(git push --no-verify *)",
       "Bash(alembic upgrade *)",
       "Bash(alembic downgrade *)",
+      "Bash(git reset --hard *)",
+      "Bash(rm -rf *)"
+    ],
+    "ask": [
       "Bash(gh issue close *)",
       "Bash(git commit --amend *)",
-      "Bash(git reset --hard *)",
       "Edit(apps/api/alembic/versions/**)"
     ]
   },
