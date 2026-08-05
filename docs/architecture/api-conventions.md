@@ -158,6 +158,7 @@ class ProjectRead(BaseModel):
 | 404 | `NOT_FOUND` | Recurso no existe (o el tenant no lo ve) |
 | 409 | `CONFLICT` | Duplicado (slug, folio, email) |
 | 422 | `BUSINESS_RULE` | Regla de dominio violada |
+| 429 | `RATE_LIMITED` | El llamador superó su cuota (AM-09: fallos de login por IP) |
 | 503 | `SERVICE_UNAVAILABLE` | Provider de IA caído u otra dependencia externa |
 
 Códigos adicionales que algunos endpoints emiten ad-hoc (no centralizados):
@@ -165,7 +166,7 @@ Códigos adicionales que algunos endpoints emiten ad-hoc (no centralizados):
 - `ACCOUNT_LOCKED` (403) — login después de 5 fails.
 - Errores de IA específicos (`gemini_no_api_key`, `claude_connect_error`, `groq_no_api_key`, etc.) — generados por los providers, llegan como `code` granular.
 
-> **Códigos del doc viejo que NO están** en código: `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `STATE_TRANSITION`, `RATE_LIMITED`, `INTERNAL` formal. Si los necesitas, agregarlos al catálogo central.
+> **Códigos del doc viejo que NO están** en código: `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `STATE_TRANSITION`, `INTERNAL` formal. `RATE_LIMITED` sí está desde el 2026-08-05 (AM-09). Si los necesitas, agregarlos al catálogo central.
 
 ---
 

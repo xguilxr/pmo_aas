@@ -117,7 +117,7 @@ Resumen. El detalle de cada una, abajo.
 | AM-06 | FC-4 | El superadministrador entra a un inquilino | **PARCIAL** |
 | AM-07 | FC-1 | Enlace de aprobación en la URL | **ACEPTADA** |
 | AM-08 | FC-2 | Manipulación del registro de auditoría | **SIN CONTROL** |
-| AM-09 | FC-1 | Relleno de credenciales | **PARCIAL** |
+| AM-09 | FC-1 | Relleno de credenciales | **CONTROLADA** |
 | AM-10 | FC-1 | Bloqueo de cuenta ajena como denegación de servicio | **SIN CONTROL** |
 | AM-11 | FC-1 | Restablecimiento de contraseña | **CONTROLADA** |
 | AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **PARCIAL** |
@@ -266,17 +266,37 @@ aplicación. Lo segundo es barato y no requiere código.
 
 ### AM-09 — Relleno de credenciales
 
-**FC-1 · STRIDE: suplantación · Estado: PARCIAL**
+**FC-1 · STRIDE: suplantación · Estado: CONTROLADA (2026-08-05)**
 
-`POST /auth/login` no pasa por `check_and_increment`. La protección es el
-bloqueo por usuario (`MAX_FAILED_LOGIN_ATTEMPTS` → `locked_until`), que detiene
-adivinar la contraseña de **una** cuenta pero no un intento por cuenta contra
-miles de cuentas desde una IP.
+El bloqueo por usuario (`MAX_FAILED_LOGIN_ATTEMPTS` → `locked_until`) detiene a
+quien adivina la contraseña de **una** cuenta, y no hace nada contra el rociado:
+una contraseña probada contra miles de cuentas desde una IP no toca el umbral de
+ninguna.
 
-**Control:** bloqueo por usuario, contraseñas con `bcrypt` y política de
-complejidad.
-**Residual:** sin límite por IP en el inicio de sesión. **Acción:** aplicar
-`check_and_increment` por IP también en `/auth/login`.
+**Control:** `POST /auth/login` cuenta los **fallos** por IP —30 por hora,
+`_LOGIN_MAX_FAILS_PER_HOUR_IP`— y devuelve 429 al superarlos. Más el bloqueo por
+usuario, `bcrypt` y la política de complejidad.
+
+Tres decisiones que hacen falta para leer el control:
+
+- **Fallos, no intentos.** Con `check_and_increment` en la puerta se contarían
+  también los aciertos, y una oficina detrás de un NAT —decenas de personas
+  compartiendo IP— se quedaría fuera sin haber hecho nada. Por eso el limitador
+  tiene `excede()`, que consulta sin sumar.
+- **Sin `reset` al acertar.** Sería lo natural y abriría un desvío: quien tiene
+  una credencial válida limpiaría el contador entre tandas.
+- **La IP sale de `_client_ip`**, no del socket. Detrás del proxy de Railway el
+  socket es siempre el mismo y contar por él bloquearía a todo el mundo con el
+  primer atacante. A cambio se confía en `X-Forwarded-For`, que solo es fiable
+  porque nada llega al contenedor sin pasar por el proxy.
+
+**Residual:** el rociado lento —menos de 30 fallos por hora y por IP, o
+repartido entre muchas IP— sigue siendo posible. Cerrarlo pide detección por
+patrón, no un contador. **AM-10** (el bloqueo por cuenta como denegación de
+servicio) sigue sin control y no la toca este cambio.
+
+**Trinquete:** `tests/test_am09_login_limite_por_ip.py`, verificado por
+mutación: sin la comprobación de entrada, caen 2 casos.
 
 ### AM-10 — Bloqueo de cuenta ajena como denegación de servicio
 

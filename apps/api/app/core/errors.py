@@ -70,6 +70,14 @@ DEFECTOS: dict[str, MensajeDeError] = {
         porque="Puede que se haya eliminado, o que pertenezca a otra organización.",
         accion="Verifica el enlace o vuelve al listado.",
     ),
+    "RATE_LIMITED": MensajeDeError(
+        que="Bloqueamos temporalmente los intentos desde tu conexión.",
+        # Sin decir cuántos intentos quedan ni cuándo empezó la ventana: eso le
+        # da a quien prueba credenciales la información para ir justo por
+        # debajo del umbral.
+        porque="Se hicieron demasiados en poco tiempo.",
+        accion="Espera una hora y vuelve a intentarlo; si no fuiste tú, avisa al administrador de tu organización.",
+    ),
     "INTERNAL_SERVER_ERROR": MensajeDeError(
         que="La operación no se completó por un fallo de nuestro lado.",
         porque="El error quedó registrado con su detalle; no es algo que puedas corregir tú.",
@@ -109,6 +117,20 @@ def not_found(entity: str) -> AppError:
         status.HTTP_404_NOT_FOUND,
         "NOT_FOUND",
         texto_por_defecto("NOT_FOUND", entidad=entity),
+    )
+
+
+def rate_limited(detail: str | None = None) -> AppError:
+    """429 — el llamador superó su cuota (AM-09).
+
+    Es el código correcto y no lo había: `/auth/reset-password` devolvía un 422
+    con `code="RATE_LIMITED"`, que le dice a un cliente que su cuerpo está mal
+    cuando lo que pasa es que fue demasiado rápido.
+    """
+    return AppError(
+        status.HTTP_429_TOO_MANY_REQUESTS,
+        "RATE_LIMITED",
+        detail if detail is not None else texto_por_defecto("RATE_LIMITED"),
     )
 
 

@@ -9,7 +9,7 @@ Cubre:
 - /auth/reset-password: token válido cambia la password, invalida
   refresh tokens del user, limpia must_change_password, password
   inválida según política → 422, token inexistente → 400, rate-limit →
-  400 RATE_LIMITED.
+  429 RATE_LIMITED (era 422 hasta AM-09, 2026-08-05).
 - /auth/change-password: manda notif con send_email=True al terminar.
 
 Los tests monkeypatch el rate-limit para no depender de Redis real —
@@ -278,7 +278,11 @@ async def test_us063_reset_weak_password_rejected(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_us063_reset_rate_limited_returns_422(client, monkeypatch):
+async def test_us063_reset_rate_limited_returns_429(client, monkeypatch):
+    """AM-09 (2026-08-05): era un 422, que le decía al cliente que su cuerpo
+    estaba mal cuando lo que pasaba es que había ido demasiado rápido. Con
+    `RATE_LIMITED` ya en el catálogo, los dos sitios que lo emiten devuelven
+    429."""
     monkeypatch.setattr(
         "app.api.v1.endpoints.auth.check_and_increment",
         lambda *a, **kw: False,
@@ -290,7 +294,7 @@ async def test_us063_reset_rate_limited_returns_422(client, monkeypatch):
             "new_password": "N3wStr0ng-Pass1!",
         },
     )
-    assert r.status_code == 422
+    assert r.status_code == 429
     assert r.json()["detail"]["code"] == "RATE_LIMITED"
 
 

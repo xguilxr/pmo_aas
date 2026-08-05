@@ -59,6 +59,29 @@ def check_and_increment(
         return True
 
 
+def excede(key: str, *, max_attempts: int) -> bool:
+    """`True` si el contador **ya** superó el límite, sin tocarlo.
+
+    Existe para AM-09. El inicio de sesión no puede usar
+    `check_and_increment` en la puerta: contaría también los intentos que
+    salen bien, y una oficina detrás de un NAT —donde decenas de personas
+    comparten IP y aciertan la contraseña— se quedaría fuera. Lo que se cuenta
+    ahí son los **fallos**, así que hace falta consultar antes y sumar después.
+
+    Fail-open ante errores de Redis, por lo mismo que `check_and_increment`:
+    preferimos no poder contabilizar a dejar a todos sin iniciar sesión.
+    """
+    client = _get_client()
+    if client is None:
+        return False
+    try:
+        actual = client.get(key)
+        return actual is not None and int(actual) >= max_attempts
+    except Exception as exc:
+        log.warning("rate_limit peek failed key=%s: %s", key, exc)
+        return False
+
+
 def reset(key: str) -> None:
     """Limpia el contador. Se llama al tener un éxito definitivo
     (p. ej. reset-password exitoso → permitir reintento normal en el

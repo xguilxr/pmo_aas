@@ -8,7 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
 from app.core.config import settings
-from app.core.errors import business_rule, forbidden, unauthorized, validation_error
+from app.core.errors import (
+    business_rule,
+    forbidden,
+    rate_limited,
+    unauthorized,
+    validation_error,
+)
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -40,7 +46,7 @@ from app.services.password_reset import (
     consume_reset_token,
     issue_reset_token,
 )
-from app.services.rate_limit import check_and_increment
+from app.services.rate_limit import check_and_increment, excede
 from app.services.rate_limit import reset as rate_limit_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -68,6 +74,27 @@ async def _build_user_out(db: AsyncSession, user: User) -> UserOut:
 
 @router.post("/login", response_model=LoginResponse)
 async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    # AM-09 · límite por IP. El bloqueo por cuenta que ya había detiene a quien
+    # adivina la contraseña de **una** cuenta; no hace nada contra el rociado,
+    # que prueba una contraseña contra mil cuentas y no toca el umbral de
+    # ninguna. El limitador existía y se aplicaba en recuperación y reseteo:
+    # esto es aplicar lo que ya estaba escrito.
+    #
+    # Se usa `_client_ip` y no `request.client.host` a propósito: detrás del
+    # proxy de Railway el socket es siempre el mismo, así que contar por él
+    # bloquearía a todo el mundo con el primer atacante.
+    clave_limite = f"rl:login:ip:{_client_ip(request)}"
+    if excede(clave_limite, max_attempts=_LOGIN_MAX_FAILS_PER_HOUR_IP):
+        raise rate_limited()
+
+    def registrar_fallo() -> None:
+        """Suma uno al contador de la IP. El corte se hace arriba, en la puerta."""
+        check_and_increment(
+            clave_limite,
+            max_attempts=_LOGIN_MAX_FAILS_PER_HOUR_IP,
+            window_sec=_WINDOW_SEC,
+        )
+
     ident = body.identifier.strip().lower()
     stmt = select(User).where(or_(User.username == ident, User.email == ident))
     user = (await db.execute(stmt)).scalar_one_or_none()
@@ -75,6 +102,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     ua = request.headers.get("user-agent")
 
     if user is None:
+        registrar_fallo()
         await write_audit(
             db, action="login_failed", module="auth",
             details={"identifier": ident, "reason": "not_found"}, ip_address=ip, user_agent=ua,
@@ -86,6 +114,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     if locked_until is not None and locked_until.tzinfo is None:
         locked_until = locked_until.replace(tzinfo=UTC)
     if locked_until and locked_until > now:
+        registrar_fallo()
         await write_audit(
             db, action="login_failed", module="auth", user_id=user.id, tenant_id=user.tenant_id,
             details={"reason": "locked"}, ip_address=ip, user_agent=ua,
@@ -93,6 +122,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         raise forbidden(code="ACCOUNT_LOCKED", detail="Cuenta bloqueada, intenta más tarde")
 
     if not verify_password(body.password, user.password_hash):
+        registrar_fallo()
         user.failed_login_attempts += 1
         if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
             user.locked_until = now + timedelta(minutes=settings.ACCOUNT_LOCK_MINUTES)
@@ -109,6 +139,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         raise unauthorized()
 
     if not user.is_active:
+        registrar_fallo()
         await write_audit(
             db, action="login_failed", module="auth", user_id=user.id, tenant_id=user.tenant_id,
             details={"reason": "inactive"}, ip_address=ip, user_agent=ua,
@@ -318,6 +349,20 @@ _FORGOT_MAX_PER_HOUR_IP = 5
 _RESET_MAX_PER_HOUR_IP = 10
 _WINDOW_SEC = 3600
 
+#: AM-09 — **fallos** de inicio de sesión por IP y por hora.
+#:
+#: Se cuentan solo los fallos, no los intentos. Con `check_and_increment` en la
+#: puerta contaríamos también los aciertos, y una oficina detrás de un NAT
+#: —decenas de personas compartiendo IP, acertando la contraseña— se quedaría
+#: fuera sin haber hecho nada raro.
+#:
+#: 30 sale de mirar los dos lados: el bloqueo por cuenta ya corta a los 5
+#: fallos del mismo usuario, así que llegar aquí exige fallar contra **muchas**
+#: cuentas distintas, que es la firma del rociado. Y deja margen a una oficina
+#: grande con dedos torpes un lunes. Si un cliente real lo toca, este número es
+#: lo que hay que subir — no el que hay que quitar.
+_LOGIN_MAX_FAILS_PER_HOUR_IP = 30
+
 
 def _client_ip(req: Request) -> str:
     # Railway + la mayoría de PaaS ponen la IP del cliente en
@@ -424,10 +469,11 @@ async def reset_password(
         window_sec=_WINDOW_SEC,
     )
     if not ok_ip:
-        raise business_rule(
-            "Demasiados intentos. Intenta de nuevo en una hora.",
-            code="RATE_LIMITED",
-        )
+        # Antes era un 422 con este mismo `code`, que le dice al cliente que su
+        # cuerpo está mal cuando lo que pasa es que fue demasiado rápido. Con
+        # `RATE_LIMITED` ya en el catálogo (AM-09), los dos sitios que lo emiten
+        # devuelven el código que les corresponde.
+        raise rate_limited()
 
     policy_ok, policy_err = validate_password_policy(body.new_password)
     if not policy_ok:

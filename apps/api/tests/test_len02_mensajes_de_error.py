@@ -37,10 +37,12 @@ CODES_CON_DEFECTO = {
     "FORBIDDEN",
     "NOT_FOUND",
     "INTERNAL_SERVER_ERROR",
+    # Añadido con AM-09: el 429 nació ya con las tres partes.
+    "RATE_LIMITED",
 }
 
 
-def test_el_catalogo_cubre_los_cuatro_defectos():
+def test_el_catalogo_cubre_todos_los_defectos():
     assert set(DEFECTOS) == CODES_CON_DEFECTO
 
 
