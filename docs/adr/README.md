@@ -681,6 +681,76 @@ Adoptar el patrón **two-step delete** uniforme para las 6 entidades:
 
 ---
 
+## ADR-018 — Exclusión de MCS ARQ-03: el dominio seguirá hablando SQLAlchemy
+
+**Estado:** ✅ Aceptada — 2026-08-04
+**Fecha de revisión:** 2027-02-04, o antes si se dispara alguno de los gatillos de abajo
+
+**Contexto:**
+`MCS-CORE` ARQ-03 (N1) exige que «la lógica de dominio NO DEBE depender del
+framework web ni del mecanismo de persistencia». La medición de R1 (2026-08-04,
+`docs/conformidad/2026-08-04-mcs-r1.md`) dio el número: **54 de los 68 módulos de
+`apps/api/app/services/` importan SQLAlchemy**, y solo 2 importan FastAPI.
+
+O sea que el acoplamiento al framework web es leve —los servicios no saben de
+peticiones HTTP— y el que existe de verdad es a la persistencia: los servicios
+reciben `AsyncSession` y consultan el ORM directamente, sin puertos ni
+repositorios en medio.
+
+Cerrarlo es una reescritura arquitectónica: introducir una capa de repositorios
+sobre 68 módulos, con sus pruebas, son semanas durante las cuales el producto no
+avanza.
+
+**Decisión:**
+**Excluir ARQ-03** del alcance de conformidad MCS, con la justificación y el
+riesgo que siguen. `MCS-CORE` §1.3 y GOB-02 lo permiten siempre que quede
+registrado así.
+
+La exclusión es de **este requisito y este momento**, no una postura permanente
+sobre arquitectura hexagonal.
+
+**Justificación:**
+Los dos beneficios que ARQ-03 persigue no están en el horizonte de este producto:
+
+- **Cambiar de mecanismo de persistencia.** Postgres es una decisión asumida
+  desde ADR-001 (Railway, con su plugin de Postgres). No hay escenario planteado
+  en el que se migre de motor.
+- **Ejercitar el dominio sin base de datos.** Es el argumento más fuerte de
+  ARQ-03, y aquí ya está cubierto por otro camino: la suite corre contra una base
+  real y cubre la lógica de negocio de punta a punta (991 casos). La
+  independencia daría pruebas más rápidas, no más pruebas.
+
+**Riesgo aceptado:**
+
+1. **Migrar de SQLAlchemy o de motor tocaría 54 módulos.** Si algún día pasa, el
+   coste de esta exclusión se paga entero y de golpe.
+2. **Las pruebas del dominio necesitan base.** Hoy la suite de API tarda ~26
+   minutos en local. Ese número solo puede empeorar, y no hay atajo mientras el
+   dominio no sea aislable.
+3. **El dominio no es extraíble.** Si mañana hiciera falta un segundo consumidor
+   —un servicio aparte, un CLI, un trabajo por lotes— habría que arrastrar el
+   ORM entero o duplicar la lógica.
+
+**Gatillos que obligan a revisar antes de la fecha:**
+
+- Se decide soportar otro motor de base de datos.
+- La suite de API supera los 45 minutos.
+- Aparece un segundo consumidor de la lógica de dominio.
+
+**Alternativas evaluadas:**
+
+- **Refactor completo a puertos y adaptadores.** Cierra el requisito de verdad.
+  Descartada por coste: semanas con el roadmap congelado, para un beneficio que
+  hoy es teórico.
+- **Refactor parcial**, solo el núcleo de plan y salud. Tentadora, pero deja el
+  requisito igual de incumplido —ARQ-03 no admite grados— y además crea dos
+  estilos de acceso a datos conviviendo, que es peor que uno malo.
+- **Dejarlo NO CONFORME sin ADR.** Es lo que había. Bloquea N1 indefinidamente y
+  reaparece en cada auditoría sin que nadie decida nada, que es exactamente cómo
+  llegó a estar sin medir.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown
