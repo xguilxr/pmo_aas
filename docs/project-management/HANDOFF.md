@@ -41,15 +41,15 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 
 | # | Branch | Estado CI | Acción |
 |---|---|---|---|
-| #578 | `claude/audit-continuation-fzrtko` | corriendo | Esperar verde y mergear |
+| #579 | `claude/audit-continuation-fzrtko` | corriendo | Esperar verde y mergear |
 
 **El CI solo dispara en `pull_request` y en push a `main`.** Con #577 mergeado
-la branch se quedó sin PR y estos commits estuvieron sin CI hasta abrir #578 —
+la branch se quedó sin PR y estos commits estuvieron sin CI hasta abrir #579 —
 por eso el PR se abre antes de dar nada por verificado. Verificación local
 completa: suite 1230, ruff, `tsc`, contraste 34/34, evaluación de IA y
 presupuesto de contexto.
 
-**`main` ya exige las ocho verificaciones**, así que #578 no se puede integrar en
+**`main` ya exige las ocho verificaciones**, así que #579 no se puede integrar en
 rojo.
 
 ## ⚠️ Gotchas y decisiones recientes
@@ -99,7 +99,7 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Mergear #578** cuando el CI cierre en verde.
+- [ ] **Mergear #579** cuando el CI cierre en verde.
 - [x] ~~Proteger `main`~~ — hecho el 2026-08-05. `CFG-03` e `INT-03` cierran.
 - [ ] **Añadir `contraste-wcag` a las verificaciones exigidas.** Corre en cada
       PR y es el gate de `DIS-02`; hoy no está en la lista de ocho. El comando
