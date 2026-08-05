@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { ApiError } from "@/lib/api";
+import { COLOR_MARCA_POR_DEFECTO } from "@/lib/marca";
 import {
   getSettings,
   updateSettings,
@@ -196,7 +197,7 @@ export function TenantSettingsForm() {
           <div className="flex items-center gap-3">
             <input
               type="color"
-              value={form.primary_color ?? "#1f2937"}
+              value={form.primary_color ?? COLOR_MARCA_POR_DEFECTO}
               onChange={(e) => setForm({ ...form, primary_color: e.target.value })}
               className="h-10 w-16 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)]"
               aria-label="Color primario"
@@ -204,7 +205,7 @@ export function TenantSettingsForm() {
             <Input
               value={form.primary_color ?? ""}
               onChange={(e) => setForm({ ...form, primary_color: e.target.value || undefined })}
-              placeholder="#1f2937"
+              placeholder={COLOR_MARCA_POR_DEFECTO}
             />
             <span className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 text-[12px] text-[var(--text-secondary)]">
               <Palette className="h-3.5 w-3.5" aria-hidden />

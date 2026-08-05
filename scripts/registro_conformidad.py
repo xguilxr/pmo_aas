@@ -123,6 +123,8 @@ CIERRES = {
  # externo puede leer «modo estricto» como «cero errores» y discrepar: es el
  # cierre de la Ola 2 con más margen de discusión, y por eso se escribe aquí.
  "CFG-04":("CONFORME","Ola 2 — job `commits` valida el rango del PR + hook versionado en .githooks/; el hábito ya estaba (97,5% de 400), faltaba el control"),
+ "DIS-01":("CONFORME","Ola 2 — cero literales de color y de espaciado en components/app/lib/hooks; el gate exige además que el token citado exista en la paleta base"),
+ "CFG-14":("CONFORME","Ola 2 — mismo gate que DIS-01: los 25 literales hexadecimales ya no están y check_tokens.py impide el siguiente"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 

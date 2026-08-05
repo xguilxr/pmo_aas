@@ -351,7 +351,7 @@ export function RaidEditFields(props:
       </Field>
 
       {status === "on_hold" ? (
-        <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--color-warning-border,var(--border-default))] bg-[var(--color-warning-bg)]/40 p-3">
+        <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)]/40 p-3">
           <p className="text-xs font-medium text-[var(--color-warning-fg)]">
             Detención — indica por qué está detenido y de quién depende.
           </p>

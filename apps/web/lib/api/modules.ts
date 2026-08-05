@@ -59,7 +59,7 @@ export const RAID_FINAL_STATUSES: RaidStatus[] = ["resolved"];
 // estados visualmente.
 export const RAID_STATUS_BADGE: Record<RaidStatus, string> = {
   open: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
-  in_progress: "bg-[var(--color-accent-bg,var(--color-subtle))] text-[var(--color-accent)]",
+  in_progress: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
   on_hold: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
   resolved: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
 };
@@ -689,7 +689,7 @@ export const LESSON_PHASE_ORDER: LessonPhase[] = [
 
 export const LESSON_PHASE_BADGE: Record<LessonPhase, string> = {
   planning: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
-  execution: "bg-[var(--color-accent-bg,var(--color-subtle))] text-[var(--color-accent)]",
+  execution: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
   hypercare: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
   closed: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
 };

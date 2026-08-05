@@ -179,7 +179,7 @@ export default function DocumentosPage() {
         </Link>
       </header>
 
-      <div className="flex flex-wrap gap-1 border-b border-[var(--border)]">
+      <div className="flex flex-wrap gap-1 border-b border-[var(--border-default)]">
         {TAB_DEFS.map((tab) => {
           const meta = itemsByType.get(tab.key);
           const isActive = active === tab.key;
@@ -198,7 +198,7 @@ export default function DocumentosPage() {
               {tab.icon}
               <span>{tab.label}</span>
               {meta?.placeholder ? (
-                <span className="rounded bg-[var(--color-warning-soft,#fef3c7)] px-1 py-0.5 text-[10px] uppercase text-[var(--color-warning,#92400e)]">
+                <span className="rounded bg-[var(--color-warning-bg)] px-1 py-0.5 text-[10px] uppercase text-[var(--color-warning-fg)]">
                   Pendiente
                 </span>
               ) : null}
@@ -210,7 +210,7 @@ export default function DocumentosPage() {
       {loading ? (
         <div className="text-sm text-[var(--color-tertiary)]">Cargando…</div>
       ) : error ? (
-        <div className="rounded border border-[var(--color-danger,#dc2626)] bg-[var(--color-danger-soft,#fee2e2)] px-3 py-2 text-sm text-[var(--color-danger,#dc2626)]">
+        <div className="rounded border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]">
           {error}
         </div>
       ) : current ? (
@@ -238,7 +238,7 @@ function ArtifactPanel({
 }) {
   if (meta.placeholder) {
     return (
-      <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+      <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
         <div className="flex flex-col items-center gap-2 py-8 text-center">
           <Network className="h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
           <h3 className="text-base font-medium">Organigrama del proyecto</h3>
@@ -254,7 +254,7 @@ function ArtifactPanel({
   const detail = TAB_DEFS.find((t) => t.key === meta.type);
 
   return (
-    <div className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+    <div className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
       <div>
         <h2 className="flex items-center gap-2 text-base font-medium">
           {detail?.icon}

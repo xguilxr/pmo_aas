@@ -102,6 +102,16 @@ jobs:
       - name: Contraste WCAG 2.2 AA de los tokens semánticos
         run: python scripts/check_contraste.py
 
+      # Auditoría MCS 2026-08-03 — cierra DIS-01 y CFG-14 (los valores visuales
+      # como tokens, sin literales de color ni de espaciado en componentes).
+      #
+      # Va como paso de ESTE job y no como uno propio a propósito: los dos
+      # miran el mismo archivo por la misma razón —que la paleta esté en un
+      # solo sitio y se use— y una verificación requerida más cuesta una acción
+      # del owner en la protección de `main` sin añadir cobertura.
+      - name: Tokens de diseño sin literales (DIS-01)
+        run: python scripts/check_tokens.py
+
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
   # COMPLETO) e INT-02 (análisis estático de seguridad, dependencias vulnerables
