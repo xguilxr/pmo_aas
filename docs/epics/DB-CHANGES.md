@@ -594,3 +594,39 @@ semáforo del proyecto (`health_status/source/reason`) como declaración
 manual US-180; convive con el motor automático. Índice
 (project_id, evaluated_at). FKs CASCADE a tenants/projects, SET NULL a
 users.
+
+---
+
+## AM-08 / MCS SEG-07 — `audit_log` de solo anexado (2026-08-05)
+
+### Migración **0097** — disparadores de inmutabilidad sobre `audit_log`
+
+**No cambia el schema**: no toca columnas, índices ni claves. Añade dos
+disparadores y una función, y revoca privilegios. Se indexa aquí porque cambia
+lo que se puede *hacer* con una tabla, que es lo que sorprende a quien escriba
+código contra ella.
+
+`audit_log` era una tabla ordinaria y **AM-06 se apoya en ella como único
+control**. Ahora rechaza `UPDATE`, `DELETE` y `TRUNCATE`.
+
+**Por qué disparadores y no solo `REVOKE`,** que es lo que proponía el modelo de
+amenazas: en Railway la aplicación se conecta con el rol dueño de las tablas, y
+en PostgreSQL el dueño conserva sus privilegios haga lo que haga el `REVOKE`.
+Comprobado contra Postgres 16: con `REVOKE UPDATE, DELETE` aplicado al dueño, el
+`UPDATE` pasa igual. Con el disparador puesto, no pasa ni siendo superusuario.
+
+El `REVOKE` a `PUBLIC` se aplica igualmente —cuesta una línea y empieza a sumar
+solo el día que la aplicación deje de conectarse como dueño, que es lo correcto—.
+
+**Lo que no detiene:** quien administra la base puede quitar el disparador. Es
+una defensa contra la aplicación, contra un fallo que permita ejecutar SQL con
+sus credenciales y contra el borrado accidental. Cerrar el resto pide
+encadenamiento por hash o envío a un almacén externo, y es otra decisión.
+
+**Reversible.** El `downgrade` deja la tabla como estaba; verificado contra
+Postgres real, no solo por lectura.
+
+**Fuera de PostgreSQL no hace nada** —la suite corre en SQLite— y ahí el control
+lo pone el guardián del ORM en `app/models/audit.py`, que cubre el camino de la
+aplicación pero no las sentencias masivas. Esa división está escrita en los dos
+sitios y comprobada en `tests/test_am08_auditoria_solo_anexa.py`.

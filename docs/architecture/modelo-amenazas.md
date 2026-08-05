@@ -116,7 +116,7 @@ Resumen. El detalle de cada una, abajo.
 | AM-05 | FC-5 | Datos del proyecto que salen a terceros | **ACEPTADA** |
 | AM-06 | FC-4 | El superadministrador entra a un inquilino | **PARCIAL** |
 | AM-07 | FC-1 | Enlace de aprobación en la URL | **ACEPTADA** |
-| AM-08 | FC-2 | Manipulación del registro de auditoría | **SIN CONTROL** |
+| AM-08 | FC-2 | Manipulación del registro de auditoría | **CONTROLADA** |
 | AM-09 | FC-1 | Relleno de credenciales | **CONTROLADA** |
 | AM-10 | FC-1 | Bloqueo de cuenta ajena como denegación de servicio | **SIN CONTROL** |
 | AM-11 | FC-1 | Restablecimiento de contraseña | **CONTROLADA** |
@@ -251,18 +251,39 @@ ese cambio. El alcance es un cambio concreto, no la cuenta.
 
 ### AM-08 — Manipulación del registro de auditoría
 
-**FC-2 · STRIDE: repudio · Estado: SIN CONTROL**
+**FC-2 · STRIDE: repudio · Estado: CONTROLADA (2026-08-05)**
 
-`audit_log` es una tabla ordinaria. Nada impide un `UPDATE` o un `DELETE` desde
-la aplicación o desde una conexión con las credenciales de la aplicación.
-SEG-07 pide un registro «no modificable» y la auditoría lo dejó en PARCIAL
-diciendo justamente que la inmutabilidad no se verificó.
+`audit_log` era una tabla ordinaria: nada impedía un `UPDATE`, un `DELETE` o un
+`TRUNCATE` desde la aplicación o desde una conexión con sus credenciales.
 
 **Por qué importa aquí y no solo en SEG-07:** AM-06 se apoya en este registro
 como único control. Un control que se apoya en otro que no existe no es un
 control.
-**Acción:** encadenamiento por hash o `REVOKE UPDATE, DELETE` al rol de la
-aplicación. Lo segundo es barato y no requiere código.
+
+**Control:** la migración `0097` instala disparadores `BEFORE UPDATE OR DELETE`
+y `BEFORE TRUNCATE` que rechazan la operación, más `REVOKE ... FROM PUBLIC`.
+En la capa de la aplicación, `app/models/audit.py` lanza en la línea que lo
+intenta.
+
+**Por qué no bastaba el `REVOKE` que esta ficha proponía.** Decía «barato y no
+requiere código», y lo primero es cierto. Lo segundo también, y aun así no
+alcanza: en Railway la aplicación se conecta con el rol **dueño** de las tablas,
+y en PostgreSQL el dueño conserva sus privilegios haga lo que haga el `REVOKE`.
+Comprobado contra Postgres 16 antes de escribir esto —con `REVOKE UPDATE, DELETE`
+aplicado al dueño, el `UPDATE` pasa igual; con el disparador puesto no pasa ni
+siendo superusuario—. Habría sido un control declarado que no actúa, que es peor
+que ninguno porque cierra la ficha.
+
+**Residual, y no es menor:** quien administra la base puede quitar el
+disparador. Esto defiende contra la aplicación, contra un fallo que permita
+ejecutar SQL con sus credenciales y contra el borrado accidental; no contra un
+DBA. Cerrar eso pide encadenamiento por hash o envío a un almacén externo, y es
+una decisión propia —con coste propio— que no se toma aquí.
+
+**Segundo residual:** el guardián del ORM no ve las sentencias masivas
+(`session.execute(delete(AuditLog))`). En PostgreSQL las para el disparador; en
+SQLite —desarrollo local y suite— no las para nada. Está escrito en el código y
+comprobado a propósito en `tests/test_am08_auditoria_solo_anexa.py`.
 
 ### AM-09 — Relleno de credenciales
 
