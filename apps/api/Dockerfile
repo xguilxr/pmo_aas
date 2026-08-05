@@ -43,7 +43,8 @@ RUN curl -fsSL -o mpxj.zip \
 COPY app/services/msproject/mpxj_cli/MpxjCli.java /build/MpxjCli.java
 RUN mkdir -p /opt/mpxj/cli \
     && javac -cp "/opt/mpxj/lib/*" -d /opt/mpxj/cli /build/MpxjCli.java \
-    && ls /opt/mpxj/cli
+    && ls /opt/mpxj/cli \
+    && chmod -R a+rX /opt/mpxj
 
 # -------- Etapa 2: runtime API + worker --------
 # python:3.12-slim está en Debian Bookworm, que NO trae openjdk-21 en los
@@ -91,12 +92,46 @@ COPY --from=temurin-jre /opt/java/openjdk /opt/java/openjdk
 # Jars de MPXJ + wrapper MpxjCli compilado desde la etapa de build.
 COPY --from=mpxj-build /opt/mpxj /opt/mpxj
 
+# MCS SUM-02: el proceso no corre como root.
+#
+# `python:3.12-slim` deja `root` por defecto y ahí se quedaba: cualquier fallo
+# que permitiera ejecutar código dentro del contenedor lo hacía con UID 0, y con
+# él la capacidad de escribir sobre el propio código desplegado.
+#
+# Lo que hubo que cuidar, en orden de probabilidad de romperse:
+#
+# - **El `CMD` corre `alembic upgrade head`.** Solo lee `alembic/versions/` y
+#   escribe en Postgres, no en el sistema de archivos. No necesita privilegios.
+# - **MPXJ y el JRE.** Los jars se copian desde `mpxj-build`, que ahora les da
+#   lectura explícita (`chmod a+rX`) en vez de confiar en el umask del build;
+#   hacerlo allí y no aquí evita duplicar ~40 MB en una capa nueva. El JRE de
+#   Temurin ya viene con permisos de lectura para todos — esa imagen está
+#   pensada para correr sin privilegios.
+# - **`HOME` explícito.** Docker no deriva `HOME` de `/etc/passwd`: sin esto
+#   queda en `/` y fontconfig —que WeasyPrint carga en cada PDF— no puede
+#   escribir su caché y reconstruye la lista de fuentes en cada render.
+# - **El puerto.** 8000 y el `PORT` que inyecta Railway están por encima de
+#   1024, así que no hace falta capacidad para puertos privilegiados.
+# - **Las subidas** van a `STORAGE_PATH` (`/tmp/pmo-uploads` por defecto, S3 en
+#   producción). `/tmp` es escribible por cualquier usuario.
+#
+# El trinquete que impide que esto se revierta en silencio vive en
+# `tests/test_sum02_contenedor_sin_privilegios.py`.
+RUN useradd --system --create-home --home-dir /home/appuser \
+        --shell /usr/sbin/nologin appuser
+ENV HOME=/home/appuser
+
 WORKDIR /app
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app
+# El `--chown` va aquí y no en un `RUN chown -R` posterior: en overlayfs el
+# segundo duplicaría el árbol entero en una capa nueva. Exige que `appuser`
+# exista ya, que es por lo que el `useradd` está arriba y no junto al `USER`.
+COPY --chown=appuser:appuser . /app
+
+USER appuser
 
 # Default CMD sirve para el servicio `api`. El servicio `worker` lo
 # sobrescribe vía `worker.railway.toml` (startCommand).
