@@ -52,7 +52,24 @@ marcos:
   # días, es medición y no construcción) ANTES de comprometer las 6-9 semanas de
   # las Tandas C/D/E. Precedente: IA-05 estaba NO VERIFICABLE, se verificó, y el
   # modelo SÍ calculaba cifras que iban a informes ejecutivos.
-  MCS: { objetivo: N2, alcanzado: N0, evaluados: "126/126", conformes: 21 }
+  # REMEDIACIÓN 2026-08-05 (docs/conformidad/2026-08-05-mcs-remediacion.md).
+  # NO es una reauditoría: es lo ejecutado después de R1, con su evidencia.
+  # Cierran cuatro — SUM-02, DES-03, DIS-02 y SEG-07 — así que 21 -> 25.
+  #
+  # SEG-07 pasa por AM-08: la auditoría del 2026-08-03 lo dejó en PARCIAL
+  # diciendo «no se verificó la inmutabilidad» del registro. Ahora la hay, y
+  # con residual escrito: un DBA puede quitar el disparador.
+  #
+  # LEN-02 sigue PARCIAL A PROPÓSITO. Los cuatro textos por defecto ya dicen
+  # qué, por qué y qué hacer, pero de los 159 mensajes con texto explícito,
+  # 152 siguen diciendo solo qué pasó. Declararlo conforme con esa cifra sería
+  # repetir el error de recuento que este expediente ya cometió dos veces.
+  #
+  # SEG-01 sigue PARCIAL: dos de sus tres huecos nombrados están cerrados
+  # (AM-09, AM-08); queda `python-jose` y el mapeo completo de ASVS L1.
+  #
+  # El nivel NO se mueve: MCS sigue en N0 y la distancia a N1 baja de 54 a 50.
+  MCS: { objetivo: N2, alcanzado: N0, evaluados: "126/126", conformes: 25 }
   # Tanda A ejecutada el mismo día (plan.md). No re-auditado: los requisitos
   # que toca (CFG-02, INT-02, SEG-03, IA-05, OPS-02) siguen figurando como
   # NO CONFORME hasta que una reauditoría formal los mida. Lo que cambió:
@@ -539,10 +556,12 @@ puertas:
       # HECHO 2026-08-04 (B5): docs/architecture/modelo-amenazas.md, ocho
       # fronteras y catorce amenazas. «Revisado ante cambios significativos» lo
       # hace cumplir tests/test_seg06_modelo_amenazas.py, no la memoria de
-      # nadie. OJO: el modelo deja AM-08, AM-09, AM-10 y AM-14 SIN CONTROL. Que
-      # el modelado esté hecho NO significa que las amenazas estén cerradas, y
-      # esta puerta pide lo primero. Antes de cruzarla conviene releer si lo
-      # primero basta.
+      # nadie. OJO: el modelado hecho NO significa que las amenazas estén
+      # cerradas, y esta puerta pide lo primero. Antes de cruzarla conviene
+      # releer si lo primero basta.
+      # Al 2026-08-05: AM-08 y AM-09 CONTROLADAS, AM-14 cerrada al proteger
+      # `main`. Queda AM-10 —el bloqueo por cuenta como denegación de
+      # servicio— sin control.
       - Modelado de amenazas hecho, no pendiente
       - Plan de respuesta ante incidente escrito y con responsable
       - Restauración desde copia probada de verdad, no documentada

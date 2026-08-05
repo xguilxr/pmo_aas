@@ -13,17 +13,20 @@
 ## 🔴 IN-PROGRESS
 
 ```
-Sin sesión activa. PR #575 MERGEADO el 2026-08-04. **PR #576 ABIERTO, CI verde,
-esperando merge del owner** (branch `claude/cap01-y-recuento`).
+#575 y #576 MERGEADOS. **MCA está en N2**, su objetivo.
 
-#575 cerró: R1 completa (13/13 medidos), guard AUT-01 con trinquete de 24 casos,
-glosario aprobado, ADR-018 (ARQ-03 excluido), IA-04 conforme, CON-04 mitigado.
-#576 cierra CAP-01 y corrige el recuento de R1. **Con su merge, MCA alcanza N2.**
+Branch `claude/audit-continuation-fzrtko` — 9 commits, remediación post-R1
+completa. Cierran SUM-02, DES-03, DIS-02, SEG-07/AM-08, AM-09, D-7 y D-9.
+LEN-02 mejora pero sigue PARCIAL, y ahora con cifra: 152 de 159 mensajes con
+texto explícito dicen solo qué pasó.
 
-MCS sigue en N0: 22/126 conformes, **51 requisitos bloquean N1**.
+MCS sigue en N0: 25/126 conformes, la distancia a N1 baja de 54 a 50.
+Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
-Próximo paso — recorrer lo pendiente de una corrida, dejando las
-confirmaciones del owner para el final. Ver HANDOFF.md.
+Suite de API en verde (1094), lint y typecheck exit 0, contraste 34/34.
+
+**Espera al owner:** mergear el PR y correr la migración 0097.
+Cinco confirmaciones abiertas — ver HANDOFF.md.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -44,22 +47,21 @@ confirmaciones del owner para el final. Ver HANDOFF.md.
   DOCX del charter y ExcelJS del frontend. El plan ya la usa vía US-193, así que
   hay de dónde copiar la convención.
 
-### Remediación barata de R1 (sin IDs; conformidad)
+### Remediación de R1 — hecha el 2026-08-05
 
-- [ ] **SUM-02** — `USER` sin privilegios en `apps/api/Dockerfile`. 3 líneas.
-- [ ] **DES-03** — `SELECT 1` con tiempo límite en `/health`. 10 líneas.
-- [ ] **LEN-02** — los seis textos por defecto de `app/core/errors.py`.
-- [ ] **DIS-02 + D-7** — retocar 5 tokens de `globals.css` y unificar las dos
-  paletas de salud. **Son el mismo trabajo**: el verde que falla AA es el del
-  semáforo. Enganchar después `scripts/check_contraste.py` al CI.
-- [ ] **AM-09** — límite por IP en `/auth/login`. El limitador ya existe y se
-  aplica en recuperación y reseteo; falta en el login.
+Cerradas: **SUM-02**, **DES-03**, **DIS-02**, **AM-08**/SEG-07, **AM-09**.
+Detalle y residuales en `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
-### Glosario — implementación de las decisiones (D-3, D-8, D-9)
+- [ ] **LEN-02** — sigue PARCIAL. El catálogo ya dice qué, por qué y qué hacer;
+  faltan los 152 mensajes con texto propio que dicen solo qué pasó. Sin palanca
+  común: es trabajo de tanda, uno por uno.
+
+### Glosario — implementación de las decisiones
+
+D-7 y D-9 hechas el 2026-08-05.
 
 - [ ] **D-3** `tasks.wbs` → `wbs_code` · **D-8** `portfolio_function` · ambas
   tocan contrato: ADR + US propia, una por una.
-- [ ] **D-9** validar `is_milestone ⟹ duration_days = 0`.
 - [ ] **D-2** decidir el nombre de la fase de hypercare (`support` o renombrar) y
   si hacen falta `initiation` y `cancelled`.
 
