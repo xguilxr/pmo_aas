@@ -148,10 +148,20 @@ declarable manualmente con razón
   (`auto`|`manual`) + `health_reason`, absorbe `status_rag` como el caso
   `health_source='manual'` y **dropea la columna** `status_rag`.
 - `services/project_health.py`: motor de reglas por **dimensión** —
-  cronograma, presupuesto, riesgos/issues, decisiones (recursos queda
-  como hook, activado después por US-183 en EP017). Umbrales
-  configurables **por tenant** (`tenants.settings.health_thresholds`).
-  El color global = la peor dimensión. Función bulk (`refresh_health_bulk`)
+  cronograma, presupuesto, riesgos/issues, decisiones y recursos (esta
+  última activada por US-183 en EP017). Umbrales configurables **por
+  tenant** (`tenants.settings.health_thresholds`), **las cinco desde la
+  misma llave** desde D-4: recursos se configuraba en
+  `capacity_thresholds` y dos de sus reglas estaban escritas a fuego.
+  El color global = la peor dimensión.
+- **El presupuesto se mide contra el avance, no contra sí mismo** (D-4,
+  2026-08-05). La dimensión calcula un **índice de consumo** —
+  `(gastado/presupuesto) ÷ (avance/100)`, el inverso del CPI de valor
+  ganado—: vale 1,0 cuando se gasta al ritmo que se avanza. Antes
+  comparaba el ratio crudo, y un proyecto con el **85 % del presupuesto
+  gastado y el 10 % de avance salía verde**. Sin avance la dimensión
+  queda **sin color**, igual que sin presupuesto configurado: dividir por
+  cero no es «rojo», es «todavía no se puede decir». Función bulk (`refresh_health_bulk`)
   para recalcular en batch desde snapshots/dashboards sin N+1.
 - `health_source='auto'`: el color lo calcula el motor de reglas en cada
   refresh. `health_source='manual'`: el PM hizo override y el color queda

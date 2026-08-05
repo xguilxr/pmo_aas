@@ -187,15 +187,36 @@ async def test_us180_manual_override_not_overwritten(client, db_session):
 
 @pytest.mark.asyncio
 async def test_us180_stale_decision_yellow(client, db_session):
+    """D-4 (2026-08-05): el piso subió de 1 a 2 decisiones estancadas.
+
+    Una decisión esperando es la operación normal de un proyecto vivo. Con el
+    piso en 1, cualquier proyecto con una pendiente quedaba amarillo de forma
+    permanente, y un semáforo que siempre está amarillo dejó de informar.
+    """
     auth, pid, tid = await _setup_project(client, db_session)
+    viejo = datetime.now(UTC) - timedelta(days=30)
     db_session.add(
         Issue(
             tenant_id=tid, project_id=pid, folio="AID-0001",
             title="Definir estrategia de rollout", status="open", type="decision",
-            reported_at=datetime.now(UTC) - timedelta(days=30),
+            reported_at=viejo,
         )
     )
     await db_session.commit()
+
+    r = await client.get(f"/api/v1/projects/{pid}/health-detail", headers=auth["_authz"])
+    decisions = next(d for d in r.json()["dimensions"] if d["key"] == "decisions")
+    assert decisions["color"] == "green", "una sola estancada ya no pinta amarillo"
+
+    db_session.add(
+        Issue(
+            tenant_id=tid, project_id=pid, folio="AID-0002",
+            title="Elegir proveedor de mensajería", status="open", type="decision",
+            reported_at=viejo,
+        )
+    )
+    await db_session.commit()
+
     r = await client.get(f"/api/v1/projects/{pid}/health-detail", headers=auth["_authz"])
     body = r.json()
     decisions = next(d for d in body["dimensions"] if d["key"] == "decisions")
@@ -214,17 +235,26 @@ async def test_us180_severe_risk_budget_and_focus(client, db_session):
             probability=4, impact=4, severity=16,
         )
     )
+    db_session.add(
+        Risk(
+            tenant_id=tid, project_id=pid, folio="R-0002",
+            title="Proveedor único de firma electrónica", status="open",
+            probability=4, impact=4, severity=16,
+        )
+    )
     await db_session.commit()
+    # D-4: el presupuesto se mide contra el avance, así que hace falta avance.
+    # 60 % gastado con 50 % de avance → índice 1,20 → amarillo.
     await client.patch(
         f"/api/v1/projects/{pid}",
-        json={"budget": "100000", "actual_budget": "95000"},
+        json={"budget": "100000", "actual_budget": "60000", "progress": 50},
         headers=auth["_authz"],
     )
     r = await client.get(f"/api/v1/projects/{pid}/health-detail", headers=auth["_authz"])
     body = r.json()
     risks = next(d for d in body["dimensions"] if d["key"] == "risks")
-    assert risks["color"] == "yellow"
-    assert risks["metrics"]["severe_risks"] == 1
+    assert risks["color"] == "yellow", "D-4: el piso son 2 riesgos severos"
+    assert risks["metrics"]["severe_risks"] == 2
     budget = next(d for d in body["dimensions"] if d["key"] == "budget")
     assert budget["color"] == "yellow"
     # Foco PM: al menos el riesgo severo con acción sugerida.

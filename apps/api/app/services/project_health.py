@@ -55,21 +55,56 @@ DIMENSION_LABELS: dict[str, str] = {
     "resources": "Recursos",
 }
 
+#: Calibración del owner, 2026-08-05 (D-4). Dos criterios detrás de los números:
+#:
+#: 1. **El amarillo no puede dispararse con el primer caso.** Cuatro de las cinco
+#:    dimensiones ponían el piso en 0 o 1 —un riesgo severo, una decisión
+#:    estancada, cualquier sobreasignación mayor que cero—, y en una cartera real
+#:    eso deja casi todo en amarillo permanente. Un semáforo que siempre está
+#:    amarillo dejó de informar, que es peor que no tenerlo.
+#: 2. **Los rojos se mueven poco.** El rojo ya discriminaba; lo que no
+#:    discriminaba era el amarillo.
+#:
+#: Son un punto de partida razonado, **no medido contra una cartera real**. Por
+#: eso son configurables por inquilino (`tenant.settings.health_thresholds`): si
+#: los datos dicen otra cosa, se ajustan sin tocar código.
 DEFAULT_HEALTH_THRESHOLDS: dict[str, dict[str, float]] = {
     "schedule": {
         "yellow_overdue_pct": 10,
         "red_overdue_pct": 25,
         "yellow_overdue_milestones": 1,
-        "red_overdue_milestones": 3,
+        # 3 → 2: tres hitos perdidos es enterarse tarde.
+        "red_overdue_milestones": 2,
     },
-    "budget": {"yellow_ratio": 0.9, "red_ratio": 1.0},
+    # El presupuesto ya no se mide contra sí mismo, sino contra el avance.
+    # Ver `_budget_dimension`.
+    "budget": {"yellow_burn_index": 1.15, "red_burn_index": 1.30},
     "risks": {
-        "yellow_severe": 1,
+        # 1 → 2: un riesgo severo (P×I ≥ 13) es la operación normal de un
+        # proyecto vivo, no una señal.
+        "yellow_severe": 2,
         "red_severe": 3,
         "yellow_open_issues": 8,
         "red_open_issues": 15,
     },
-    "decisions": {"stale_days": 14, "yellow_stale": 1, "red_stale": 3},
+    # 1 → 2: una decisión esperando no vuelve amarillo un proyecto entero.
+    "decisions": {"stale_days": 14, "yellow_stale": 2, "red_stale": 3},
+    # Antes vivían en `tenant.settings.capacity_thresholds`, otra llave, y las
+    # dos cuentas estaban escritas a fuego en `capacity.py`. Un administrador
+    # que quisiera ajustar la salud tenía que saber que una de las cinco
+    # dimensiones se configuraba en otro sitio, y eso no lo adivina nadie.
+    #
+    # `capacity_thresholds` sigue existiendo para la **vista de capacidad**, que
+    # responde otra pregunta: allí se colorea a una *persona*, aquí a un
+    # *proyecto*. Que el proyecto sea más tolerante (5 pp) que la vista de
+    # personas (0 pp) es deliberado: alguien 3 pp por encima merece salir en la
+    # pantalla de capacidad, no volver amarillo el proyecto.
+    "resources": {
+        "yellow_over": 5,
+        "red_over": 15,
+        "yellow_overloaded_count": 3,
+        "red_key_overloaded": 1,
+    },
 }
 
 
@@ -102,10 +137,10 @@ def _schedule_color(t: dict[str, float], overdue_pct: float, overdue_ms: int) ->
     return "green"
 
 
-def _budget_color(t: dict[str, float], ratio: float) -> str:
-    if ratio > t["red_ratio"]:
+def _budget_color(t: dict[str, float], burn_index: float) -> str:
+    if burn_index >= t["red_burn_index"]:
         return "red"
-    if ratio >= t["yellow_ratio"]:
+    if burn_index >= t["yellow_burn_index"]:
         return "yellow"
     return "green"
 
@@ -179,21 +214,51 @@ async def _schedule_dimension(
 
 
 def _budget_dimension(project: Project, t: dict[str, float]) -> dict[str, Any]:
+    """Consumo **contra el avance**, no contra sí mismo (D-4, 2026-08-05).
+
+    Antes esta dimensión comparaba `gastado / presupuesto` y coloreaba contra
+    eso, sin mirar el tiempo ni el avance. El caso que dejaba pasar no es
+    rebuscado, es el que más caro sale: **un proyecto con el 85 % del
+    presupuesto gastado y el 10 % de avance salía VERDE**. Va camino de costar
+    ocho veces lo planeado y el semáforo no decía nada, porque 0,85 < 0,90.
+
+    El índice de consumo es `(gastado/presupuesto) ÷ (avance/100)` — el inverso
+    del CPI de valor ganado. Vale 1,0 cuando se gasta al ritmo que se avanza;
+    por encima, se gasta más rápido de lo que se produce. Con ese caso da 8,5.
+
+    **Sin avance no hay color**, igual que sin presupuesto: dividir por cero no
+    es «rojo», es «todavía no se puede decir». Un proyecto recién arrancado con
+    gasto inicial y 0 % de avance no está en problemas por eso.
+    """
     budget = float(project.budget or 0)
     if budget <= 0:
         return {"key": "budget", "color": None, "summary": "Sin presupuesto configurado",
                 "causes": [], "metrics": {}}
     actual = float(project.actual_budget or 0)
     ratio = actual / budget
-    color = _budget_color(t, ratio)
     pct = round(ratio * 100, 1)
+    progress = float(project.progress or 0)
+    if progress <= 0:
+        return {"key": "budget", "color": None,
+                "summary": f"Consumido {pct}% — sin avance todavía, no es medible",
+                "causes": [], "metrics": {"ratio": round(ratio, 3), "pct": pct}}
+
+    burn_index = ratio / (progress / 100)
+    color = _budget_color(t, burn_index)
     causes = []
     if color != "green":
-        causes.append({"type": "budget_burn", "what": f"Consumo {pct}% del presupuesto",
-                       "owner": None, "due_date": None, "days": None})
+        causes.append({
+            "type": "budget_burn",
+            "what": f"Consumo {pct}% con {progress:.0f}% de avance "
+                    f"(índice {burn_index:.2f})",
+            "owner": None, "due_date": None, "days": None,
+        })
     return {"key": "budget", "color": color,
-            "summary": f"Consumido {pct}% (real {actual:,.0f} / plan {budget:,.0f})",
-            "causes": causes, "metrics": {"ratio": round(ratio, 3), "pct": pct}}
+            "summary": f"Consumido {pct}% con {progress:.0f}% de avance "
+                       f"(real {actual:,.0f} / plan {budget:,.0f})",
+            "causes": causes,
+            "metrics": {"ratio": round(ratio, 3), "pct": pct,
+                        "progress": progress, "burn_index": round(burn_index, 3)}}
 
 
 async def _risks_dimension(
@@ -287,14 +352,21 @@ async def _decisions_dimension(
 
 
 async def _resources_dimension(
-    db: AsyncSession, tenant: Tenant | None, project_id: str, today: date
+    db: AsyncSession, tenant: Tenant | None, project_id: str, today: date,
+    t: dict[str, float],
 ) -> dict[str, Any]:
     # US-183: la dimensión vive en services/capacity.py (demanda total del
     # recurso en TODOS sus proyectos vs project_capacity_pct). N/A si el
     # proyecto no tiene asignaciones cuantificadas.
+    #
+    # D-4: los umbrales se le pasan desde `health_thresholds`. Antes los leía
+    # por su cuenta de `capacity_thresholds`, que es la llave de la vista de
+    # capacidad — la salud quedaba configurándose en dos sitios.
     from app.services.capacity import project_resources_dimension
 
-    return await project_resources_dimension(db, tenant, project_id, today=today)
+    return await project_resources_dimension(
+        db, tenant, project_id, today=today, umbrales=t
+    )
 
 
 _SUGGESTED_ACTIONS = {
@@ -344,7 +416,7 @@ async def compute_project_health_detail(
         _budget_dimension(project, t["budget"]),
         await _risks_dimension(db, pid, t["risks"]),
         await _decisions_dimension(db, pid, t["decisions"], now),
-        await _resources_dimension(db, tenant, pid, today),
+        await _resources_dimension(db, tenant, pid, today, t["resources"]),
     ]
     for d in dimensions:
         d["label"] = DIMENSION_LABELS[d["key"]]

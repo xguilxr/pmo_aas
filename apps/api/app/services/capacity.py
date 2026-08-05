@@ -510,14 +510,23 @@ async def project_resources_dimension(
     project_id: str,
     *,
     today: date | None = None,
+    umbrales: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Dimensión "recursos" del semáforo de salud (hook US-180 → US-183).
 
-    Rojo: ≥1 recurso CLAVE del proyecto sobreasignado (>red_over) o ≥3
-    recursos sobreasignados. Amarillo: ≥1 sobreasignado. N/A: el proyecto
-    no tiene asignaciones cuantificadas.
+    Rojo: `red_key_overloaded` recursos CLAVE sobreasignados (>`red_over`) o
+    `yellow_overloaded_count` sobreasignados en total. Amarillo: alguno
+    sobreasignado. N/A: el proyecto no tiene asignaciones cuantificadas.
+
+    **D-4 (2026-08-05): los umbrales llegan de fuera.** Antes esta función los
+    leía de `capacity_thresholds` y las dos cuentas —un recurso clave, tres en
+    total— estaban escritas a fuego aquí, de modo que la única de las cinco
+    dimensiones de salud que no se podía ajustar era esta. `umbrales` viene de
+    `health_thresholds["resources"]`; sin él se cae a `capacity_thresholds`,
+    que es lo que usa la **vista de capacidad** —otra pregunta: allí se colorea
+    a una persona, aquí a un proyecto—.
     """
-    t = get_capacity_thresholds(tenant)
+    t = umbrales or get_capacity_thresholds(tenant)
     start, end = window_range("3weeks", today)
     tenant_id = str(tenant.id) if tenant else None
 
@@ -549,7 +558,10 @@ async def project_resources_dimension(
             if s["is_key_resource"]:
                 key_overloaded += 1
 
-    if key_overloaded >= 1 or len(overloaded) >= 3:
+    if (
+        key_overloaded >= t.get("red_key_overloaded", 1)
+        or len(overloaded) >= t.get("yellow_overloaded_count", 3)
+    ):
         color = "red"
     elif overloaded:
         color = "yellow"
