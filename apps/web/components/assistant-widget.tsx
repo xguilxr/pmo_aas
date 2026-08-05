@@ -247,6 +247,27 @@ export function AssistantWidget() {
                 <Send className="h-4 w-4" />
               </Button>
             </div>
+            {/*
+              MCS IA-04 — ruta de escalada a atención humana. El aviso de que
+              esto es IA ya estaba (el botón y el panel lo dicen en su
+              `aria-label`); lo que faltaba era la salida. Va a la intención de
+              solicitud, que es el circuito humano que ya existe: la atiende la
+              PMO de la organización, que es quien conoce el proyecto. No somos
+              nosotros: el producto es multiinquilino.
+            */}
+            <p className="mt-2 px-1 text-[11px] text-[var(--color-tertiary)]">
+              Respuestas generadas por IA: pueden equivocarse.{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push("/pmo/requests/new");
+                }}
+                className="underline underline-offset-2 hover:text-[var(--color-accent)]"
+              >
+                ¿Necesitás a una persona?
+              </button>
+            </p>
           </div>
         </div>
       ) : null}
