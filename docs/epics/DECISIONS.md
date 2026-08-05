@@ -2,6 +2,15 @@
 
 > Claude Code: antes de proponer soluciones alternativas, verifica que no contradiga una decisión aquí registrada. Si necesitas contradecirla, documenta el cambio con fecha y rationale.
 
+> **Dónde vive cada cosa (2026-08-05).** MCS `ARQ-02` exige que **toda decisión
+> irreversible** esté en un ADR, así que las cinco de esta lista que lo eran
+> —DEC-003, DEC-007, DEC-008, DEC-022 y DEC-024— se promovieron a `ADR-024` a
+> `ADR-028` y conservan aquí su enlace.
+>
+> La regla para lo que venga: **si deshacerla exige migrar datos productivos o
+> rompe un contrato público, va a `docs/adr/`**. Si cuesta una decisión y no una
+> migración —proceso, presentación, alcance de sprint— se queda aquí.
+
 ---
 
 ## DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD
@@ -17,6 +26,11 @@
 **Estado actual:** EP012 queda CANCELADO. Productivo v1.0 corre en Railway Postgres sin plan de migrar. El archivo original del epic se conserva en `docs/archive/cancelled-epics/EP012-db-migration.md`.
 
 ## DEC-003 — Jerarquía org con tablas separadas (no JSONB)
+
+> **Promovida a [ADR-024](../adr/README.md#adr-024) el 2026-08-05.** Es
+> irreversible —deshacerla exige migrar datos productivos o rompe un contrato
+> público—, y MCS `ARQ-02` exige que toda decisión irreversible viva en un ADR.
+> Esta entrada se conserva por la relación bidireccional que pide `CFG-18`.
 **Fecha:** 2026-04-20  
 **Decisión:** `business_units` y `departments` son tablas con FK reales, no campos JSONB en organizations.  
 **Rationale:** Permite FK desde programs/projects, filtros eficientes, y RLS por nivel.  
@@ -40,12 +54,22 @@
 **Afecta:** `docs/design-system/style.md`, variable CSS `--chrome-bg`.
 
 ## DEC-007 — RAID no es una tabla nueva, es una vista de risks + issues
+
+> **Promovida a [ADR-025](../adr/README.md#adr-025) el 2026-08-05.** Es
+> irreversible —deshacerla exige migrar datos productivos o rompe un contrato
+> público—, y MCS `ARQ-02` exige que toda decisión irreversible viva en un ADR.
+> Esta entrada se conserva por la relación bidireccional que pide `CFG-18`.
 **Fecha:** 2026-04-20  
 **Decisión:** RAID = tabla `risks` (R) + tabla `issues` con types: action(A), incident(I), decision(D).  
 **No se crea** una tabla `raid` nueva. Solo se agrega UI que agrupe las 4 fuentes bajo el tab RAID.  
 **Rationale:** Schema existente ya soporta los 4 tipos, evita duplicación de datos.
 
 ## DEC-008 — Project Charter es una tabla separada (no documento PDF guardado)
+
+> **Promovida a [ADR-026](../adr/README.md#adr-026) el 2026-08-05.** Es
+> irreversible —deshacerla exige migrar datos productivos o rompe un contrato
+> público—, y MCS `ARQ-02` exige que toda decisión irreversible viva en un ADR.
+> Esta entrada se conserva por la relación bidireccional que pide `CFG-18`.
 **Fecha:** 2026-04-20  
 **Decisión:** `project_charters` es una tabla estructurada cuyos datos de "Gestión" se sincronizan dinámicamente desde `projects`.  
 **Rationale:** Permite editar campos, generar PDF on-demand, y actualizar datos de gestión sin regenerar documento.  
@@ -454,6 +478,11 @@ es necesario). El gate efectivo aplica overrides en
 
 ## DEC-022 — Namespaces de rutas: `/pmo` (negocio) vs `/admin` (sistema)
 
+> **Promovida a [ADR-027](../adr/README.md#adr-027) el 2026-08-05.** Es
+> irreversible —deshacerla exige migrar datos productivos o rompe un contrato
+> público—, y MCS `ARQ-02` exige que toda decisión irreversible viva en un ADR.
+> Esta entrada se conserva por la relación bidireccional que pide `CFG-18`.
+
 **Contexto:** el admin panel mezcla recursos de negocio (proyectos,
 solicitudes, RAID, minutas, reportes, organigrama informativo) con
 gestión del sistema (usuarios, roles, tenant config, AI settings,
@@ -493,6 +522,11 @@ Registrada 2026-04-24 tras BUG-031 + inspección de navegación As-Is.
 ---
 
 ## DEC-024 — Modelo capability-based para permisos del admin (reemplaza matriz CRUD)
+
+> **Promovida a [ADR-028](../adr/README.md#adr-028) el 2026-08-05.** Es
+> irreversible —deshacerla exige migrar datos productivos o rompe un contrato
+> público—, y MCS `ARQ-02` exige que toda decisión irreversible viva en un ADR.
+> Esta entrada se conserva por la relación bidireccional que pide `CFG-18`.
 
 **Contexto (2026-04-25, Sprint 6 kickoff):** DEC-020 simplificó el
 modelo a 3 `role_type` estáticos, pero el mapping quedó expresado

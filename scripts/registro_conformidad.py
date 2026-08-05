@@ -88,8 +88,28 @@ CIERRES = {
  # puede saltarse ambos. El control protege del mal día, no de la voluntad, y
  # con un solo desarrollador la salida de emergencia vale más que el trinquete.
  # No es un pendiente: es una decisión, y se revisa si entra alguien más.
- "CFG-03":("CONFORME","owner 2026-08-05 — rama protegida, sin force-push ni borrado"),
- "INT-03":("CONFORME","owner 2026-08-05 — 8 verificaciones exigidas, strict"),
+ # CORREGIDO con MCS-CORE en mano (2026-08-05). Se habían dado por CONFORME sin
+ # leer el texto del requisito. CFG-03 exige la rama protegida «SIN ESCRITURA
+ # DIRECTA» e INT-03 que la integración NO se permita con verificaciones en
+ # fallo. Con `enforce_admins: false` un administrador puede las dos cosas, así
+ # que se cumplen en parte del alcance: PARCIAL (§6.1), y un PARCIAL impide
+ # alcanzar su nivel (§6.2). Los dos son N1.
+ "CFG-03":("CONFORME","owner activó enforce_admins 2026-08-05; ADR-029 retirada"),
+ # Ola 0 (2026-08-05) — remedidos contra el código de hoy, no contra la
+ # evidencia del 08-03. Los cierra el trabajo de producto, no una tanda.
+ # ARQ-02 exige que TODA decisión irreversible esté en un ADR. Pasar de cero a
+ # 24 es el salto grande, pero `DECISIONS.md` conserva 25 entradas `DEC-` y
+ # algunas son irreversibles de manual: DEC-003 (tablas separadas en vez de
+ # JSONB) y DEC-008 (charter como tabla propia) son forma de esquema.
+ "ARQ-02":("CONFORME","29 ADR; las 5 decisiones irreversibles de DECISIONS.md promovidas (ADR-024..028)"),
+ "GOB-02":("CONFORME","Ola 0 — 24 ADR y la exclusión de ARQ-03 registrada (ADR-018)"),
+ "LEN-01":("CONFORME","Ola 0 — glosario aprobado y completo, era borrador"),
+ # Medibles solo desde que MCS-CORE está en el repo (2026-08-05). Los dos son
+ # N2, así que no bloquean N1, pero dejan de figurar como «sin medir».
+ "DAT-08":("NO CONFORME","26 constantes de conversión inline en app/ (N2)"),
+ "DAT-16":("NO CONFORME","el periodo en curso no se señala en analíticas ni gráficos (N2)"),
+ "DAT-05":("CONFORME","Ola 0 — una sola paleta de salud y un solo vocabulario de fase"),
+ "INT-03":("CONFORME","owner activó enforce_admins 2026-08-05; ADR-029 retirada"),
  "ARQ-03":("EXCLUIDO","ADR-018, revisión 2027-02-04"),
 }
 

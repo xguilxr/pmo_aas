@@ -4,6 +4,25 @@ proyecto: pmo_aas
 responsable: propietario
 evaluado: 2026-08-04
 
+# Exclusiones aprobadas. MCS §1.3 y GOB-02 exigen que toda exclusión de un
+# requisito APLICABLE lleve ADR con justificación, riesgo aceptado y fecha de
+# revisión. Se declaran aquí además de en el ADR porque el Anexo B del marco
+# señala este archivo como el registro de conformidad del producto.
+#
+# OJO al leerlas: §6.2 concede el nivel a lo Conforme o No aplicable, y un
+# requisito EXCLUIDO no es lo mismo que uno que no aplica. Se cuentan como no
+# bloqueantes siguiendo el precedente de ADR-018, pero un auditor externo puede
+# discrepar.
+#
+# ADR-029 excluía además CFG-03 e INT-03 y se RETIRÓ el mismo día: el owner
+# activó `enforce_admins` y los dos pasaron a CONFORME. Queda una sola exclusión
+# viva, y ninguna sobre un control de integridad.
+exclusiones:
+  - requisito: ARQ-03
+    justificacion: "El dominio seguirá hablando SQLAlchemy; refactor sin beneficio medible hoy"
+    adr: ADR-018
+    revisar: 2027-02-04
+
 marcos:
   # Reauditado 2026-08-04 con MCA-P02 (2026-08-04-mca.md). Sigue N0, y la
   # distancia sigue siendo 2 requisitos, pero NO los mismos:
