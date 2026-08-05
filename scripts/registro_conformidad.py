@@ -82,6 +82,12 @@ CIERRES = {
  "DIS-02":("CONFORME","remediación 2026-08-05 — 34/34 pares AA + job en CI"),
  "SEG-07":("CONFORME","remediación 2026-08-05 — audit_log de solo anexado"),
  "IA-01":("NO APLICABLE","R1 — cuenta para el nivel"),
+ # 2026-08-05 — el owner protegió `main`. Los dos eran el mismo hecho.
+ # Residual escrito, al modo de AM-08: `enforce_admins: false`, así que un
+ # administrador —hoy, el único que trabaja en el repo— puede saltarse ambos.
+ # El control protege del mal día, no de la voluntad.
+ "CFG-03":("CONFORME","owner 2026-08-05 — rama protegida, sin force-push ni borrado"),
+ "INT-03":("CONFORME","owner 2026-08-05 — 8 verificaciones exigidas, strict"),
  "ARQ-03":("EXCLUIDO","ADR-018, revisión 2027-02-04"),
 }
 

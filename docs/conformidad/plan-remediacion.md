@@ -5,8 +5,8 @@
 | Fecha | 2026-08-05 |
 | Objetivo declarado | **N2** (`conformidad.yaml`) |
 | Nivel hoy | **N0** |
-| Distancia a N1 | **47 requisitos** |
-| Distancia a N2 | **97 requisitos** (todo lo abierto) |
+| Distancia a N1 | **45 requisitos** (eran 47; la Ola 1 cerró dos) |
+| Distancia a N2 | **95 requisitos** (todo lo abierto) |
 | Base | Registro reconciliado de los cuatro informes fechados |
 
 ---
@@ -22,7 +22,7 @@ Reconcilia. La tabla detallada del 2026-08-03 trae 117 filas con
 `ID · Estado · Evidencia · Gravedad`; el cuadro por dominio cuadra en 126 sobre
 17 dominios; el §5 enumera los bloqueantes de N1 uno a uno; y los informes del
 08-04, R1 y la remediación del 08-05 aportan los cambios de estado. Aplicados
-todos, salen **126 requisitos, 29 cerrados, 97 abiertos, 47 bloqueando N1** —
+todos, salen **126 requisitos, 31 cerrados, 95 abiertos, 45 bloqueando N1** —
 contra los «50» del ledger, diferencia explicada por lo cerrado el 2026-08-05.
 
 **Lo único que la reconstrucción no da es el criterio de aceptación por
@@ -81,15 +81,32 @@ que iban a informes ejecutivos.
 
 ---
 
-## Ola 1 — Lo que cierra dos CRÍTICAS en dos minutos (owner)
+## Ola 1 — ✅ Hecha el 2026-08-05
 
-`CFG-03` y `INT-03` son **el mismo hecho**: `main` no está protegida en GitHub.
-Los dos son N1, los dos son **CRÍTICA**, y los cierra una pantalla de
-configuración del repositorio — proteger la rama y exigir que las
-verificaciones pasen antes de integrar.
+`CFG-03` y `INT-03` eran **el mismo hecho**: `main` no estaba protegida. El
+owner la protegió: 8 verificaciones exigidas en modo `strict`, sin `force-push`
+ni borrado de rama. Los dos cierran, y con ellos **la distancia a N1 baja de 47
+a 45**.
 
-Es, por mucho, el mejor rendimiento por minuto de todo el plan. Va primero
-porque además **el CI ya está verde**: exigirlo no bloquea nada hoy.
+**Residual, escrito al modo de AM-08:** `enforce_admins: false`. Un
+administrador —hoy, el único que trabaja en el repo— puede saltarse las dos
+cosas. El control protege del mal día, no de la voluntad. Ponerlo en `true` es
+un cambio de una línea y cierra el residual; queda a criterio del owner, porque
+también significa que él mismo deja de poder forzar una integración urgente.
+
+**Un hueco que sí conviene tapar:** de los diez trabajos reales del CI, la lista
+de exigidos tiene ocho. Falta **`contraste-wcag`**, que corre en cada PR y es el
+gate de `DIS-02` —cerrado esta misma sesión—, así que hoy una regresión de
+contraste puede integrarse. (`api-tests-heavy` queda fuera con razón: solo corre
+en push a `main`, nunca en un PR, y exigirlo bloquearía todas las
+integraciones.)
+
+    gh api -X PATCH repos/xguilxr/pmo_aas/branches/main/protection/required_status_checks \
+      -f 'contexts[]=contexto-permanente' -f 'contexts[]=seguridad' \
+      -f 'contexts[]=lint' -f 'contexts[]=api-tests-smoke' \
+      -f 'contexts[]=evaluacion-ia' -f 'contexts[]=api-migrations-postgres' \
+      -f 'contexts[]=web-typecheck' -f 'contexts[]=web-build' \
+      -f 'contexts[]=contraste-wcag'
 
 ---
 
