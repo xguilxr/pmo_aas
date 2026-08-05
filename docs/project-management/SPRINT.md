@@ -70,9 +70,13 @@ pendientes de `alembic upgrade head`. Ver «PRs en flight» en HANDOFF.md.
 > viven en `HANDOFF.md`**, no aquí: estaban en los dos sitios y una de las dos
 > copias iba a envejecer (CTX-06). No consume IDs US/ENH/BUG.
 
-Todo lo anterior está **mergeado** (#573). Niveles y distancia real, en los
-informes del 2026-08-04. **Siguiente: R1**, evaluar los 13 requisitos MCS en
-NO VERIFICABLE, antes de las Tandas C/D/E.
+**R1 cerrada el 2026-08-04** — los 13 NO VERIFICABLE medidos, ninguno queda sin
+estado (`docs/conformidad/2026-08-04-mcs-r1.md`). Cuatro de los trece no eran
+trabajo pendiente: IA-01 ya era NO APLICABLE, IA-04 y las decisiones CON-04 y
+ARQ-03 (excluido con ADR-018) se cerraron el mismo día. En **PR #575**.
+
+**Siguiente:** lo barato de R1 —SUM-02, DES-03, LEN-02 y DIS-02, que se cruza
+con la decisión D-7 del glosario— antes de las Tandas C/D/E.
 
 ---
 
