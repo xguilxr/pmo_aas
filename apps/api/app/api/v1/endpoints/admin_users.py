@@ -126,7 +126,9 @@ async def create_user(
                 "antes de crear usuarios."
             )
             if cu.is_superadmin
-            else "Acceso denegado",
+            # LEN-02: `None` toma el texto del catálogo, que ya dice por qué
+            # y qué hacer. La copia literal de aquí decía solo qué pasó.
+            else None,
         )
 
     username = body.username.strip().lower()

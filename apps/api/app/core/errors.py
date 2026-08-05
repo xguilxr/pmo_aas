@@ -1,4 +1,86 @@
+"""Catálogo de errores de la API.
+
+**MCS LEN-02** — «Todo mensaje de error DEBE indicar qué ocurrió, por qué y qué
+acción tomar.» La auditoría R1 lo dejó en PARCIAL: el envoltorio
+—`{detail, code, fields}`— y los constructores estaban bien, y se usan en 75
+sitios; lo que fallaba era el texto. Los valores por defecto decían solo qué
+pasó: «Credenciales inválidas», «Acceso denegado», «{entidad} no encontrado».
+
+Por eso las tres partes viven aquí como **datos y no como prosa**. Un texto
+corrido cumple el requisito el día que se escribe y deja de cumplirlo en la
+primera edición, sin que nada avise. Un `MensajeDeError` con tres campos no se
+puede rellenar a medias: falta uno y `tests/test_len02_mensajes_de_error.py`
+falla. Es la diferencia entre redactar bien una vez y que siga bien dentro de un
+año.
+
+Los constructores que **exigen** `detail` (`conflict`, `validation_error`,
+`business_rule`, `service_unavailable`) no llevan defecto a propósito: un texto
+genérico para una regla de negocio sería peor que ninguno, porque el sitio que
+la lanza es el único que sabe qué se violó.
+"""
+from dataclasses import dataclass
+
 from fastapi import HTTPException, status
+
+
+@dataclass(frozen=True)
+class MensajeDeError:
+    """Las tres partes que LEN-02 exige, por separado.
+
+    Se guardan sueltas y se unen al usarse. Guardar la frase ya montada
+    ahorraría cuatro líneas y perdería lo único que hace verificable el
+    requisito: poder mirar cada parte y comprobar que está.
+    """
+
+    que: str
+    porque: str
+    accion: str
+
+    def texto(self, **campos: object) -> str:
+        return " ".join(
+            parte.format(**campos) for parte in (self.que, self.porque, self.accion)
+        )
+
+
+#: Los defectos del catálogo, indexados por el `code` que viaja al cliente.
+#: El cliente reacciona por `code`; el texto es para quien lo lee.
+DEFECTOS: dict[str, MensajeDeError] = {
+    "UNAUTHENTICATED": MensajeDeError(
+        que="No pudimos verificar tu identidad.",
+        # Sin distinguir «usuario inexistente» de «contraseña incorrecta»: esa
+        # distinción le confirma a quien prueba credenciales qué cuentas
+        # existen.
+        porque="El usuario o la contraseña no coinciden, o la sesión expiró.",
+        accion="Vuelve a iniciar sesión; si no lo consigues, usa «¿Olvidaste tu contraseña?».",
+    ),
+    "FORBIDDEN": MensajeDeError(
+        que="Tu cuenta no tiene permiso para esta acción.",
+        porque="El acceso depende del rol que tengas asignado en la organización.",
+        accion="Si necesitas hacerlo, pídeselo al administrador de tu organización.",
+    ),
+    "NOT_FOUND": MensajeDeError(
+        # Dos puntos y no «No encontramos {entidad}»: los 25 sitios que llaman
+        # a `not_found` pasan el nombre en mayúscula y sin artículo
+        # («Documento», «Minuta»). Con esta forma leen bien tal como están, en
+        # vez de exigir tocarlos todos para que concuerde el género.
+        que="No encontramos: {entidad}.",
+        # El aislamiento entre inquilinos devuelve 404 —no 403— ante algo de
+        # otra organización, así que ese caso también cae aquí y conviene que
+        # el texto lo contemple.
+        porque="Puede que se haya eliminado, o que pertenezca a otra organización.",
+        accion="Verifica el enlace o vuelve al listado.",
+    ),
+    "INTERNAL_SERVER_ERROR": MensajeDeError(
+        que="La operación no se completó por un fallo de nuestro lado.",
+        porque="El error quedó registrado con su detalle; no es algo que puedas corregir tú.",
+        accion="Vuelve a intentarlo en unos minutos; si sigue igual, avísanos indicando la hora.",
+    ),
+}
+
+
+def texto_por_defecto(code: str, **campos: object) -> str:
+    """Texto de catálogo para `code`, con sus huecos rellenos."""
+    return DEFECTOS[code].texto(**campos)
 
 
 class AppError(HTTPException):
@@ -6,16 +88,28 @@ class AppError(HTTPException):
         super().__init__(status_code=status_code, detail={"detail": detail, "code": code, "fields": fields or {}})
 
 
-def unauthorized(code: str = "UNAUTHENTICATED", detail: str = "Credenciales inválidas") -> AppError:
-    return AppError(status.HTTP_401_UNAUTHORIZED, code, detail)
+def unauthorized(code: str = "UNAUTHENTICATED", detail: str | None = None) -> AppError:
+    return AppError(
+        status.HTTP_401_UNAUTHORIZED,
+        code,
+        detail if detail is not None else texto_por_defecto("UNAUTHENTICATED"),
+    )
 
 
-def forbidden(code: str = "FORBIDDEN", detail: str = "Acceso denegado") -> AppError:
-    return AppError(status.HTTP_403_FORBIDDEN, code, detail)
+def forbidden(code: str = "FORBIDDEN", detail: str | None = None) -> AppError:
+    return AppError(
+        status.HTTP_403_FORBIDDEN,
+        code,
+        detail if detail is not None else texto_por_defecto("FORBIDDEN"),
+    )
 
 
 def not_found(entity: str) -> AppError:
-    return AppError(status.HTTP_404_NOT_FOUND, "NOT_FOUND", f"{entity} no encontrado")
+    return AppError(
+        status.HTTP_404_NOT_FOUND,
+        "NOT_FOUND",
+        texto_por_defecto("NOT_FOUND", entidad=entity),
+    )
 
 
 def conflict(

@@ -281,7 +281,7 @@ El `AppError` envuelve la información en `HTTPException.detail`, y FastAPI seri
 ```json
 {
   "detail": {
-    "detail": "Credenciales inválidas",
+    "detail": "No pudimos verificar tu identidad. El usuario o la contraseña no coinciden, o la sesión expiró. Vuelve a iniciar sesión; si no lo consigues, usa «¿Olvidaste tu contraseña?».",
     "code": "UNAUTHENTICATED",
     "fields": {}
   }
@@ -289,5 +289,13 @@ El `AppError` envuelve la información en `HTTPException.detail`, y FastAPI seri
 ```
 
 El frontend deshace el envelope al consumir errores (`apps/web/lib/api/*` mira `data.detail?.detail || data.detail`).
+
+> **El texto es largo a propósito** (MCS LEN-02, 2026-08-05). Antes decía
+> «Credenciales inválidas»: un qué sin un porqué y sin salida. Los cuatro
+> defectos del catálogo —`UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND` e
+> `INTERNAL_SERVER_ERROR`— viven en `app/core/errors.py` como tres campos
+> separados (`que`, `porque`, `accion`), no como una frase, para que no se
+> puedan rellenar a medias. **El cliente sigue reaccionando por `code`**; el
+> texto es para quien lo lee, y no debe usarse para bifurcar lógica.
 
 Si quieres aplanar a una forma `{ code, detail, fields }` plana, hay que registrar un `exception_handler` en `main.py` que normalice antes de devolver. Es deuda técnica baja-prioridad.

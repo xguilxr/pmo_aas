@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.errors import texto_por_defecto
 
 logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("pmoaas.api")
@@ -162,7 +163,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
-            "detail": "Error interno del servidor",
+            # LEN-02: el texto sale del catálogo de `core.errors` y no de un
+            # literal aquí. Era la única copia del mensaje que vivía fuera del
+            # catálogo, y por eso la única que se iba a quedar atrás.
+            "detail": texto_por_defecto("INTERNAL_SERVER_ERROR"),
             "code": "INTERNAL_SERVER_ERROR",
             "fields": {},
         },
