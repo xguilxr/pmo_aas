@@ -101,7 +101,7 @@ CIERRES = {
  # 24 es el salto grande, pero `DECISIONS.md` conserva 25 entradas `DEC-` y
  # algunas son irreversibles de manual: DEC-003 (tablas separadas en vez de
  # JSONB) y DEC-008 (charter como tabla propia) son forma de esquema.
- "ARQ-02":("PARCIAL","24 ADR, pero hay decisiones irreversibles como DEC- fuera de docs/adr/"),
+ "ARQ-02":("CONFORME","29 ADR; las 5 decisiones irreversibles de DECISIONS.md promovidas (ADR-024..028)"),
  "GOB-02":("CONFORME","Ola 0 — 24 ADR y la exclusión de ARQ-03 registrada (ADR-018)"),
  "LEN-01":("CONFORME","Ola 0 — glosario aprobado y completo, era borrador"),
  # Medibles solo desde que MCS-CORE está en el repo (2026-08-05). Los dos son

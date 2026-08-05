@@ -9,7 +9,7 @@
 ## 🎯 Dónde estamos parados
 
 **MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
-**MCS sigue en N0** — 29 cerrados de 126, **44 bloquean N1**, 97 abiertos.
+**MCS sigue en N0** — 30 cerrados de 126, **43 bloquean N1**, 96 abiertos.
 **`MCS-CORE` llegó al repo**: al verificar contra él, tres de los seis cierres de
 las Olas 0 y 1 no se sostuvieron.
 
@@ -73,9 +73,9 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Olas 0 y 1** — cerraron **tres** requisitos (`GOB-02`, `LEN-01`, `DAT-05`),
-  no seis. `CFG-03`, `INT-03` y `ARQ-02` se revirtieron a PARCIAL al verificar
-  contra el marco: `2026-08-05-verificacion-con-marco.md`.
+- **Olas 0 y 1** — cuatro cerrados: `GOB-02`, `LEN-01`, `DAT-05` y `ARQ-02`
+  (este último tras promover 5 decisiones irreversibles a ADR-024..028).
+  `CFG-03` e `INT-03` **siguen PARCIAL**: los cierra `enforce_admins: true`.
 - **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
 - **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
 - **Ola 4** — N1 → N2, se replanifica al llegar.
@@ -94,10 +94,9 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 ## 🧹 Acciones del owner
 
-- [ ] **Reconsiderar `enforce_admins`.** Se dejó en `false` entendiendo que era
-      un residual; con el marco en mano, mantiene `CFG-03` e `INT-03` abiertos y
-      **N1 no se alcanza así**. La decisión sigue siendo tuya, con el precio ya
-      conocido.
+- [ ] **Poner `enforce_admins` en `true`** — decidido el 2026-08-05. Es lo
+      único que queda de las Olas 0 y 1, y cierra `CFG-03` e `INT-03`, ambos N1:
+      `gh api -X PUT repos/xguilxr/pmo_aas/branches/main/protection/enforce_admins`
 - [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic.
 - [ ] **Confirmar Sentry en Railway:** tienen que salir **dos** líneas,
       `captura de errores activa proceso=api` y `proceso=worker`, cada una en su

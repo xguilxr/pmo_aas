@@ -1084,6 +1084,183 @@ un estado.
 
 ---
 
+> **ADR-024 a ADR-028 — registro retroactivo, 2026-08-05.** MCS `ARQ-02` exige
+> que **toda** decisión irreversible esté en un ADR. Cinco de las 25 entradas de
+> `docs/epics/DECISIONS.md` lo son —deshacerlas exige migrar datos productivos o
+> rompe un contrato público— y vivían solo allí.
+>
+> Se promueven con su contenido original, añadiendo lo que el formato pide y el
+> registro `DEC-` no tenía: consecuencias y requisitos MCS afectados. Las
+> entradas `DEC-` **no se borran**: quedan con enlace al ADR, porque la relación
+> de reemplazo es bidireccional (`CFG-18`, `DOC-08`).
+>
+> Las otras veinte se quedan como `DEC-`: son de proceso (1 US = 1 commit), de
+> presentación (color del chrome) o de alcance de sprint. Revertirlas cuesta
+> una decisión, no una migración.
+
+## ADR-024 — La jerarquía organizativa vive en tablas, no en JSONB
+
+**Estado:** ✅ Aceptada — 2026-04-20 · **Promueve:** DEC-003
+
+**Contexto:**
+La jerarquía del inquilino —unidades de negocio y departamentos— podía modelarse
+embebida en `organizations.settings` como JSONB, o como tablas propias.
+
+**Opciones consideradas:**
+
+1. **JSONB embebido en `organizations`** — una tabla menos y esquema flexible.
+   No admite clave foránea desde `programs` ni `projects`, obliga a filtrar por
+   contenido del documento y deja el aislamiento por nivel sin punto de anclaje.
+2. **Tablas `business_units` y `departments` con FK reales** — más tablas, y
+   cada nivel nuevo es una migración.
+
+**Decisión:**
+Tablas con claves foráneas reales.
+
+**Consecuencias:**
+
+- `programs` y `projects` pueden apuntar al nivel exacto, y los filtros por
+  jerarquía son índices en vez de recorridos de documento.
+- **Irreversible en la práctica:** volver a JSONB exige migrar datos de todos
+  los inquilinos y reescribir cada consulta que hoy usa la clave foránea.
+
+**Requisitos MCS afectados:** ARQ-02, CFG-11.
+
+---
+
+## ADR-025 — RAID es una vista sobre `risks` e `issues`, no una tabla
+
+**Estado:** ✅ Aceptada — 2026-04-20 · **Promueve:** DEC-007
+
+**Contexto:**
+RAID agrupa cuatro conceptos —riesgo, acción, incidencia y decisión— que el
+esquema ya cubría con `risks` y con `issues` tipado.
+
+**Opciones consideradas:**
+
+1. **Tabla `raid` propia** — un solo sitio donde mirar. Duplica datos que ya
+   existen y obliga a mantener dos verdades sincronizadas.
+2. **Agrupar en la interfaz sobre las tablas existentes** — sin duplicación,
+   pero la agrupación vive en el código de presentación.
+
+**Decisión:**
+RAID = `risks` más `issues` con tipos `action`, `incident` y `decision`. No se
+crea tabla nueva; la agrupación es de interfaz.
+
+**Consecuencias:**
+
+- No hay dos verdades que puedan divergir, que es el modo de fallo que este tipo
+  de tabla-resumen produce siempre.
+- **Irreversible en la práctica:** crear la tabla después exigiría migrar y
+  decidir cuál de las dos manda durante la transición.
+
+**Requisitos MCS afectados:** ARQ-02, DAT-05.
+
+---
+
+## ADR-026 — El acta de constitución es una tabla, no un PDF guardado
+
+**Estado:** ✅ Aceptada — 2026-04-20 · **Promueve:** DEC-008
+
+**Contexto:**
+El acta puede guardarse como documento generado —un PDF en almacenamiento— o
+como datos estructurados de los que el PDF se deriva al pedirlo.
+
+**Opciones consideradas:**
+
+1. **PDF guardado** — fiel al momento de la firma y barato de servir. Queda
+   congelado: cualquier cambio en los datos de gestión obliga a regenerarlo, y
+   mientras tanto el documento miente.
+2. **Tabla estructurada con generación bajo demanda** — el PDF siempre refleja
+   el estado actual, a cambio de generarlo cada vez.
+
+**Decisión:**
+`project_charters` es una tabla; sus campos de gestión se sincronizan desde
+`projects` y el PDF se genera bajo demanda.
+
+**Consecuencias:**
+
+- Los campos se editan sin regenerar nada, y el acta no puede quedar
+  desactualizada respecto al proyecto.
+- **Pendiente que esta decisión no resuelve:** si alguna vez hace falta el acta
+  *tal como se firmó*, hará falta una línea base — que es justamente lo que D-6
+  tiene abierto.
+- **Irreversible en la práctica:** los datos estructurados no se reconstruyen
+  desde PDF.
+
+**Requisitos MCS afectados:** ARQ-02, DAT-05.
+
+---
+
+## ADR-027 — Dos espacios de rutas: `/pmo` para negocio, `/admin` para sistema
+
+**Estado:** ✅ Aceptada — 2026-04-25 · **Promueve:** DEC-022
+
+**Contexto:**
+El panel de administración mezclaba recursos de negocio —proyectos, solicitudes,
+RAID, minutas, informes— con gestión del sistema —usuarios, roles, configuración
+del inquilino, IA, auditoría— todo bajo `/admin/*`. Eso confundía la navegación,
+duplicaba entradas en la barra lateral y exponía rutas de edición a quien solo
+necesitaba consultar.
+
+**Opciones consideradas:**
+
+1. **Mantener `/admin/*` y resolver por permisos** — cero migración de rutas.
+   Deja la ruta diciendo «administración» a un usuario que solo mira su
+   proyecto, y el problema de navegación intacto.
+2. **Separar los espacios de nombres** — la ruta comunica a quién pertenece el
+   recurso, a cambio de cambiar URL que la gente ya tiene guardadas.
+
+**Decisión:**
+`/pmo/*` para recursos de negocio, `/admin/*` para gestión del sistema.
+
+**Consecuencias:**
+
+- La ruta se vuelve información: se sabe de qué tipo es un recurso antes de
+  cargarlo.
+- **Es cambio de contrato público.** Un enlace guardado a la ruta vieja deja de
+  funcionar, y a diferencia de un campo de API, un marcador no tiene ventana de
+  compatibilidad que lo salve.
+
+**Requisitos MCS afectados:** ARQ-02, CFG-10.
+
+---
+
+## ADR-028 — Los permisos del administrador son capacidades, no una matriz CRUD
+
+**Estado:** ✅ Aceptada — 2026-04-25 · **Promueve:** DEC-024
+
+**Contexto:**
+DEC-020 dejó tres tipos de rol estáticos, pero el mapeo se expresó como matriz
+`(rol × módulo × acción CRUD)` que nunca casó con los puntos de acceso reales.
+Producción quedó con tres capas desalineadas y el resultado era que nadie podía
+responder «¿qué puede hacer exactamente un administrador?» sin leer código.
+
+**Opciones consideradas:**
+
+1. **Arreglar la matriz** — familiar y sin cambio de modelo. El desajuste no era
+   de datos sino de forma: las acciones CRUD no corresponden a lo que los
+   puntos de acceso hacen, así que la matriz se volvía a desalinear.
+2. **Capacidades nombradas** — se pierde la regularidad tabular, y hay que
+   enumerar cada capacidad a mano.
+
+**Decisión:**
+Modelo basado en capacidades. `Admin` tiene exactamente cinco:
+`tenant.manage`, `ai.configure`, `users.manage`, `organizations.delete` y las
+que declare el inquilino.
+
+**Consecuencias:**
+
+- La pregunta «¿qué puede hacer un administrador?» se responde leyendo cinco
+  nombres, y cada uno dice qué autoriza.
+- **Irreversible en la práctica:** `tenant_permissions` guarda capacidades por
+  inquilino; volver a la matriz exige traducir datos existentes con una
+  correspondencia que no es uno a uno.
+
+**Requisitos MCS afectados:** ARQ-02, SEG-04.
+
+---
+
 ## Template para nuevas ADRs
 
 ```markdown
