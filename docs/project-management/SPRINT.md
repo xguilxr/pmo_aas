@@ -44,10 +44,9 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   `CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`.
 - [x] **Ola 1 — hecha el 2026-08-05.** El owner protegió `main`: 8
   verificaciones exigidas en `strict`, sin force-push ni borrado. `CFG-03` e
-  `INT-03` cierran; **la distancia a N1 baja de 47 a 45**. Quedan dos ajustes,
-  en el checklist del owner: falta **`contraste-wcag`** entre las exigidas —es
-  el gate de `DIS-02`—; `enforce_admins` **se queda en `false`** por decisión
-  del owner, con el residual escrito.
+  `INT-03` cierran; **la distancia a N1 baja de 47 a 45**. `contraste-wcag`
+  entró a las exigidas —son nueve— y `enforce_admins` **se queda en `false`**
+  por decisión del owner, con el residual escrito.
 - [ ] **Ola 2 — 13 mecánicos, se pueden disparar solos**, uno por commit con
   prueba y verificación por mutación: `DAT-12` (77 puntos), `DIS-03` (73 de 75
   pantallas), `DIS-01` (25 literales), `DAT-04` (6 sitios), `DAT-02`, `DAT-11`,

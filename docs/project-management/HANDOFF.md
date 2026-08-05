@@ -43,14 +43,9 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 |---|---|---|---|
 | #579 | `claude/audit-continuation-fzrtko` | corriendo | Esperar verde y mergear |
 
-**El CI solo dispara en `pull_request` y en push a `main`.** Con #577 mergeado
-la branch se quedó sin PR y estos commits estuvieron sin CI hasta abrir #579 —
-por eso el PR se abre antes de dar nada por verificado. Verificación local
-completa: suite 1230, ruff, `tsc`, contraste 34/34, evaluación de IA y
-presupuesto de contexto.
-
-**`main` ya exige las ocho verificaciones**, así que #579 no se puede integrar en
-rojo.
+**Una branch sin PR abierto no tiene CI**: solo dispara en `pull_request` y en
+push a `main`. `main` exige las **nueve** verificaciones, así que #579 no se
+puede integrar en rojo.
 
 ## ⚠️ Gotchas y decisiones recientes
 
@@ -79,8 +74,7 @@ Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
 - **Ola 0** — recontar: los que nuestro trabajo pudo cerrar + los seis nunca
   medidos (`CON-04`, `DAT-08`, `DAT-16`, `DES-04`, `DIS-05`, `DIS-06`).
-- **Ola 1** — ✅ hecha. Queda un hueco: `contraste-wcag` no está entre las
-  verificaciones exigidas, así que una regresión de contraste puede integrarse.
+- **Ola 1** — ✅ cerrada entera (`CFG-03`, `INT-03`, y `contraste-wcag` exigido).
 - **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
 - **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
 - **Ola 4** — N1 → N2, se replanifica al llegar.
@@ -101,9 +95,8 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 - [ ] **Mergear #579** cuando el CI cierre en verde.
 - [x] ~~Proteger `main`~~ — hecho el 2026-08-05. `CFG-03` e `INT-03` cierran.
-- [ ] **Añadir `contraste-wcag` a las verificaciones exigidas.** Corre en cada
-      PR y es el gate de `DIS-02`; hoy no está en la lista de ocho. El comando
-      está en `plan-remediacion.md` → Ola 1.
+- [x] ~~Añadir `contraste-wcag` a las exigidas~~ — hecho el 2026-08-05. Son
+      nueve; la **Ola 1 queda cerrada entera**.
 - [x] ~~Decidir `enforce_admins`~~ — **se queda en `false`** (owner,
       2026-08-05). Residual aceptado y escrito: con un solo desarrollador, la
       salida de emergencia vale más que el trinquete. Se revisa si entra alguien

@@ -81,7 +81,7 @@ que iban a informes ejecutivos.
 
 ---
 
-## Ola 1 — ✅ Hecha el 2026-08-05
+## Ola 1 — ✅ Cerrada entera el 2026-08-05
 
 `CFG-03` y `INT-03` eran **el mismo hecho**: `main` no estaba protegida. El
 owner la protegió: 8 verificaciones exigidas en modo `strict`, sin `force-push`
@@ -98,12 +98,13 @@ principal, que es proteger del mal día y no de la voluntad.
 entre alguien más al repositorio, que es el momento en que «administrador» deja
 de significar «el owner».
 
-**Un hueco que sí conviene tapar:** de los diez trabajos reales del CI, la lista
-de exigidos tiene ocho. Falta **`contraste-wcag`**, que corre en cada PR y es el
-gate de `DIS-02` —cerrado esta misma sesión—, así que hoy una regresión de
-contraste puede integrarse. (`api-tests-heavy` queda fuera con razón: solo corre
-en push a `main`, nunca en un PR, y exigirlo bloquearía todas las
-integraciones.)
+**El hueco de `contraste-wcag` quedó tapado el 2026-08-05.** La lista de
+exigidos tenía ocho de los diez trabajos reales del CI, y el que faltaba era el
+gate de `DIS-02` —cerrado esta misma sesión—, así que una regresión de contraste
+podía integrarse: el control existía, corría, y no bloqueaba. Ahora son nueve.
+
+(`api-tests-heavy` queda fuera con razón y no por olvido: solo corre en push a
+`main`, nunca en un PR, y exigirlo bloquearía todas las integraciones.)
 
     gh api -X PATCH repos/xguilxr/pmo_aas/branches/main/protection/required_status_checks \
       -f 'contexts[]=contexto-permanente' -f 'contexts[]=seguridad' \
