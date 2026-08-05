@@ -9,10 +9,10 @@
 ## 🎯 Dónde estamos parados
 
 **MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
-**MCS sigue en N0** — **41 bloquean N1**. Tres exclusiones aprobadas y
-registradas (ADR-018, ADR-029).
-**`MCS-CORE` llegó al repo**: al verificar contra él, tres de los seis cierres de
-las Olas 0 y 1 no se sostuvieron.
+**MCS sigue en N0** — **41 bloquean N1**, con una sola exclusión viva
+(`ARQ-03`) y ninguna sobre un control de integridad.
+**`MCS-CORE` llegó al repo** y con él se verificaron las dos primeras olas: tres
+cierres no se sostenían, y los tres quedaron resueltos el mismo día.
 
 Plan por olas en **`docs/conformidad/plan-remediacion.md`**; el marco, en
 `docs/conformidad/marco/MCS-CORE.md`.
@@ -25,7 +25,7 @@ de 75 pantallas), `DIS-01` (25 literales), `DAT-04` (6 sitios).
 
 ## ✅ Hecho en esta sesión
 
-Siete commits, uno por item, todos verificados por mutación:
+Los de #578, uno por item y verificados por mutación (el resto, en `git log`):
 
 | SHA | Qué |
 |---|---|
@@ -55,11 +55,10 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 - **Medir contra la evidencia anotada, y no contra el requisito, produce
   cierres que no aguantan.** Pasó con `CFG-03`, `INT-03` y `ARQ-02`. Ahora que
   `MCS-CORE` está en el repo, se cierra leyendo el texto.
-- **`CFG-03` e `INT-03` están EXCLUIDOS, no cerrados** (ADR-029). El marco
-  permite excluir un requisito aplicable, pero §6.2 solo concede el nivel a lo
-  Conforme o No aplicable: **un auditor externo puede negar N1** con dos
-  controles de integridad excluidos. Si N1 se presenta a un tercero, es lo
-  primero que va a mirar.
+- **Una exclusión apoyada en un obstáculo no verificado no hacía falta.**
+  ADR-029 excluyó `CFG-03` e `INT-03` porque activar `enforce_admins` parecía
+  costoso; el intento devolvió 404 por llevar `PUT` en vez de `POST`. Con el
+  método correcto fue un comando, y la ADR duró horas.
 - **Las migraciones 0097-0100 no las corre Alembic aquí** (guard). Su SQL se
   ejercita contra el esquema de `Base.metadata`, **no contra tablas a mano**:
   así se coló `UPDATE lessons_learned` en 0098.
@@ -76,9 +75,8 @@ Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Olas 0 y 1 — cerradas.** Cuatro conformes (`GOB-02`, `LEN-01`, `DAT-05`,
-  `ARQ-02`) y `CFG-03`/`INT-03` **excluidos con ADR-029**, aprobado por el
-  owner, con riesgo escrito y revisión al entrar una segunda persona.
+- **Olas 0 y 1 — cerradas**, y sin exclusiones: `GOB-02`, `LEN-01`, `DAT-05`,
+  `ARQ-02`, `CFG-03` e `INT-03` conformes. ADR-029 se retiró el mismo día.
 - **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
 - **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
 - **Ola 4** — N1 → N2, se replanifica al llegar.
@@ -97,9 +95,8 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 ## 🧹 Acciones del owner
 
-- [x] ~~`enforce_admins`~~ — **exclusión controlada**, ADR-029 (owner,
-      2026-08-05). El repositorio pasa a privado, lo que retira al actor
-      externo; el riesgo aceptado es el error propio, que sigue igual.
+- [x] ~~`enforce_admins`~~ — **activado** (owner, 2026-08-05). `CFG-03` e
+      `INT-03` cierran; ADR-029 retirada. El repositorio se queda público.
 - [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic.
 - [ ] **Confirmar Sentry en Railway:** tienen que salir **dos** líneas,
       `captura de errores activa proceso=api` y `proceso=worker`, cada una en su

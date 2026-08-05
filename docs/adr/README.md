@@ -1263,10 +1263,34 @@ que declare el inquilino.
 
 ## ADR-029 — Exclusión parcial de MCS CFG-03 e INT-03: el administrador conserva la escritura directa
 
-**Estado:** ✅ Aceptada — 2026-08-05 · **Aprobada por:** el owner
-**Requisitos excluidos:** `CFG-03` e `INT-03`, **solo en la parte que aplica al
-administrador** · **Revisión:** 2027-02-05, o antes si entra alguien más al
-repositorio
+**Estado:** ❌ **RETIRADA el 2026-08-05, el mismo día que se aceptó.** El owner
+activó `enforce_admins`, así que los dos requisitos se cumplen y no hay nada que
+excluir. Se conserva el texto porque la relación de reemplazo es bidireccional
+(`DOC-08`, `CFG-18`) y porque el razonamiento descartado sigue siendo útil: si
+algún día vuelve la necesidad de una vía de integración urgente, aquí están las
+opciones ya pesadas.
+
+**Por qué se retiró tan rápido, que es lo interesante.** Esta ADR se apoyaba en
+dos premisas y las dos cayeron en horas:
+
+1. **Que el repositorio pasaría a privado**, lo que «retira del análisis a
+   cualquier actor externo». El owner lo reconsideró al ver que los forks
+   existentes **siguen públicos y se desvinculan**: hacer privado el repositorio
+   no retira el código ya forkeado, así que el beneficio era menor que el
+   anunciado.
+2. **Que activar `enforce_admins` era costoso.** El intento inicial devolvió un
+   404 —el comando llevaba `PUT` y ese subrecurso solo admite `POST`— y el error
+   se leyó como una barrera que no existía. Con el método correcto fue un
+   comando.
+
+La lección no es sobre GitHub: **una exclusión que se acepta apoyada en un
+obstáculo no verificado es una exclusión que no hacía falta.** El coste de
+comprobar el obstáculo era un comando; el de excluir, dos requisitos N1 y un
+flanco frente a cualquier auditor externo.
+
+**Estado original (2026-08-05, vigente durante unas horas):** ✅ Aceptada ·
+**Aprobada por:** el owner · **Requisitos excluidos:** `CFG-03` e `INT-03`,
+solo en la parte que aplica al administrador · **Revisión:** 2027-02-05
 
 **Contexto:**
 `main` está protegida desde el 2026-08-05: exige solicitud de cambio, nueve
