@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     AI_MAX_PROMPT_CHARS: int = 120_000
     LOG_LEVEL: str = "INFO"
 
+    # MCS OPS-01 — los registros DEBEN ser estructurados y salir por la salida
+    # estándar. `json` es el default y el único valor que vale en producción:
+    # `consola` es una comodidad de desarrollo (una línea coloreada y legible)
+    # y `configurar_registro` la ignora si `PYTHON_ENV == "production"`.
+    # Dejar que una variable de entorno apague el formato estructurado en
+    # producción convertiría el requisito en una recomendación.
+    LOG_FORMAT: Literal["json", "consola"] = "json"
+
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/pmoaas"
     REDIS_URL: str = "redis://localhost:6379/0"
 

@@ -82,6 +82,7 @@ Crear en Railway como **Shared Variables** — se copian a todos los servicios a
 | `STORAGE_BACKEND` | **Sí** | `s3` (prod) / `local` (dev) | Backend de storage (ver §4). |
 | `S3_*` | **Sí prod** | ver §4 | 5 variables R2/B2 (ver runbook `infra/uploads-storage.md`). |
 | `LOG_LEVEL` | No | `INFO` | debug, info, warning, error. |
+| `LOG_FORMAT` | No | `json` | Registros estructurados a `stdout` (MCS OPS-01). `consola` es legible pero solo aplica fuera de `production`. |
 
 **Cómo generar `JWT_SECRET` y `JWT_REFRESH_SECRET`:**
 

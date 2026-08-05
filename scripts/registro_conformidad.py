@@ -114,6 +114,7 @@ CIERRES = {
  # Ola 2 (2026-08-05) — los mecánicos. El hueco estaba medido y el criterio es
  # el conteo, así que cada uno cierra con su trinquete propio en la suite.
  "SEG-05":("CONFORME","Ola 2 — SECURITY.md con canal privado, plazos, alcance y puerto seguro; trinquete en test_seg05_divulgacion.py"),
+ "OPS-01":("CONFORME","Ola 2 — structlog formatea el logging estándar: JSON a stdout en los DOS procesos, y celery ya no secuestra el raíz"),
 }
 
 reg = {}
