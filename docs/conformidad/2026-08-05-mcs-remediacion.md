@@ -31,7 +31,7 @@ la próxima reauditoría; aquí solo se declara lo que cambió y cómo se compro
 | ID | Estado | Lo que falta, medido |
 |---|---|---|
 | **LEN-02** | Sigue **PARCIAL** | Ver abajo |
-| **SEG-01** | Sigue **PARCIAL** | Dos de los tres huecos nombrados están cerrados (AM-09, AM-08). Queda `python-jose`, y sigue faltando el mapeo completo de ASVS L1 |
+| **SEG-01** | Sigue **PARCIAL** | Los tres huecos nombrados están cerrados (AM-09, AM-08 y `python-jose`, que salió en favor de PyJWT). Sigue faltando el mapeo completo de ASVS L1, que es el grueso del requisito |
 
 ---
 
@@ -75,6 +75,72 @@ reportado: el mapa de árbol pintaba texto blanco sobre `#eab308`, ~1.9:1.
 `compute_duration_days` cuenta días inclusivos, así que un hito con la misma
 fecha de inicio y fin daba **1**, no 0. No hacía falta un dato raro para
 contradecir la regla: bastaba crear un hito de la forma corriente.
+
+### Migrar por CVE sin auditar la versión de destino cambia cinco por siete
+
+SEG-01 sacó `python-jose` porque arrastraba **5 CVE** que su pin de `pyasn1`
+impedía cerrar. La sustituta se fijó en `PyJWT==2.10.1` —la versión que estaba a
+mano— y esa versión traía **7 vulnerabilidades propias**. El saldo de la
+migración, tal como se commiteó, era **+2**, y el informe la anotó como «5 CVE
+menos». Lo cazó `pip-audit` en el primer CI, que es exactamente su trabajo; el
+arreglo fue subir a `2.13.0`, que no tiene ninguna, y no hizo falta añadir nada
+a `.pip-audit-ignore`.
+
+Lo que hay que llevarse no es «revisar la versión» —eso es obvio a toro
+pasado—, sino que **el paso que cierra un hallazgo de seguridad es el que menos
+se audita**, porque llega con la sensación de estar mejorando. La versión de
+destino de una migración de seguridad merece el mismo escáner que la de origen,
+y el momento de pasárselo es antes del commit, no en el CI.
+
+Un segundo efecto, este favorable: al irse `python-jose` se fueron `pyasn1` y
+`ecdsa`, y con ellos **5 de las 13 entradas** de `.pip-audit-ignore`. El pasivo
+conocido baja a 8 —7 de `starlette`, 1 de `weasyprint`— sin haber tocado ninguna
+de las dos. Se borraron los IDs en vez de dejarlos por si acaso: un
+`--ignore-vuln` de algo que ya no se instala no protege de nada y engorda la
+cifra que el propio archivo usa para medirse.
+
+### El SQL de una migración se ejercita contra el esquema real o no se ejercita
+
+La migración 0098 hacía `UPDATE lessons_learned`. La tabla se llama `lessons`;
+`lessons_learned` es el nombre del concepto de dominio. Falló en
+`api-migrations-postgres` con `relation ... does not exist`.
+
+No lo detectó antes una verificación que decía «ejercitada contra Postgres 16»,
+y lo estaba: contra tablas **creadas a mano para la ocasión**, que reproducían
+la columna que interesaba y por tanto no podían discrepar en el nombre. Una
+verificación que construye su propio sujeto comprueba que el SQL es SQL válido,
+no que se refiera a algo que existe. Ahora el esquema sale de `Base.metadata`
+—56 tablas— y las tres afirmaciones interesantes se comprueban juntas: que las
+tablas existen, que suben y bajan, y que una fila con otra fase queda intacta.
+
+De paso salió el bucle con `f-string` que recorría `_TABLAS`: con dos tablas no
+ahorraba nada y escondía el nombre mal puesto dentro de una interpolación.
+Cuatro sentencias literales se leen y se buscan con `grep`.
+
+### Y la prueba que lo cubría fijaba el código fuente, no la propiedad
+
+Esto es lo más incómodo de la ronda, porque había una prueba dedicada —
+`test_la_migracion_cubre_las_dos_tablas`— y estaba verde. Decía:
+
+```python
+assert '_TABLAS = ("projects", "lessons_learned")' in migracion
+```
+
+Y era cierto: el literal estaba, palabra por palabra. La prueba leía el archivo
+de la migración y comprobaba que contuviera **el texto que ella misma
+esperaba**. Una prueba así no puede contradecir a su implementación; solo
+confirma que sigue escrita igual que cuando se escribió. Copió el error y lo
+selló.
+
+La versión que sí sirve resuelve cada nombre contra `Base.metadata`, que es una
+fuente independiente del archivo que se está probando. Con el nombre malo
+restaurado fallan dos de las tres pruebas nuevas; la anterior pasaba.
+
+Es el mismo defecto que la verificación contra tablas hechas a mano, en otra
+capa: **si el sujeto de la comprobación lo fabrica quien comprueba, la
+comprobación no puede fallar por el motivo que importa.** Vale la pena buscar
+las demás pruebas que afirman `<literal> in <archivo>`; no se hizo en esta
+ronda, y queda anotado.
 
 ---
 

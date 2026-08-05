@@ -23,7 +23,8 @@ Nueve requisitos, **un commit cada uno**, todos verificados por mutación:
 - **SUM-02** el contenedor no corre como root · **DES-03** `/health` hace
   `SELECT 1` acotado y devuelve 503 · **DIS-02** 34/34 pares AA en los dos temas
   + job `contraste-wcag` · **AM-09** límite por IP en el login, contando fallos ·
-  **AM-08/SEG-07** `audit_log` de solo anexado · **SEG-01** PyJWT, 5 CVE menos ·
+  **AM-08/SEG-07** `audit_log` de solo anexado · **SEG-01** PyJWT 2.13.0, 5 CVE
+  menos (2.10.1 traía 7 propias; lo cazó el CI) ·
   **D-7** una sola paleta de salud · **D-9** `is_milestone ⟹ duración 0`.
 - **LEN-02** mejora pero **sigue PARCIAL**: el catálogo guarda qué/por qué/qué
   hacer como datos, no como prosa.
@@ -42,15 +43,15 @@ Informe: `docs/conformidad/2026-08-05-mcs-remediacion.md`.
 
 ## 📍 Dónde retomar
 
-1. **Abrir el PR** de esta branch y mergear.
-2. **Correr las migraciones `0097`-`0099`** (las deniega el guard; son del owner).
-3. **D-3** (`wbs_code`) — decidido por el owner, ADR-020 lo mide en 259
-   ocurrencias y 22 archivos. Es una ronda entera.
+**D-3** (`wbs_code`) — decidido por el owner, ADR-020 lo mide en 259 ocurrencias
+y 22 archivos. Es una ronda entera. Lo que espera al owner está más abajo, en su
+checklist, y no se repite aquí.
 
 ## ⚠️ Gotchas
 
-- **Las migraciones 0097-0099 no se ejecutaron por Alembic.** Su SQL sí se
-  ejercitó contra un Postgres 16 real, `downgrade` incluido.
+- **Las migraciones 0097-0099 no las corre Alembic aquí** (guard). Su SQL se
+  ejercita contra el esquema de `Base.metadata`, **no contra tablas a mano**:
+  así se coló `UPDATE lessons_learned` en 0098 (la tabla es `lessons`).
 - **`RATE_LIMITED` pasó de 422 a 429.** Cambio de contrato pequeño, ya en
   `api-conventions.md`. Afecta también a reseteo de contraseña.
 - **El presupuesto de contexto va al límite.** Correr `check_contexto.py` antes
@@ -75,7 +76,7 @@ glosario, ADR y `design-system/tokens.md`.
 |---|---|
 | **Volver al producto**; las Tandas C/D/E no se abren | Registrada |
 | **LEN-02 como norma**, no como tanda (`api-conventions.md` §7) | ✅ |
-| **Migrar a PyJWT** — 5 CVE | ✅ |
+| **Migrar a PyJWT** — 5 CVE | ✅ en `2.13.0` |
 | **`support` → `hypercare`** | ✅ ADR-019, mig 0098 |
 
 ## 🛠️ Producto — después de las decisiones
@@ -114,8 +115,6 @@ glosario, ADR y `design-system/tokens.md`.
 
 ## 🔮 Sin issue todavía
 
-- **La paleta de gráficos** (tendencias, Gantt, curva-S) arrastra los colores de
-  Tailwind que D-7 retiró del semáforo.
 - **`design-system/tokens.md`** describe una paleta anterior; queda declarado
   obsoleto, no corregido.
 - **DCMA 14-point** y **línea base** (D-6), sin la cual «desviación» no tiene
