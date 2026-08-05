@@ -3,7 +3,7 @@
 **ID:** `DOC-ARCH-AMENAZAS`
 **Responsable:** owner (xguilxr)
 **Estado:** vigente
-**Revisado:** 2026-08-04 · **Periodicidad:** 12 meses o ante cambio significativo
+**Revisado:** 2026-08-05 · **Periodicidad:** 12 meses o ante cambio significativo
 **Cierra:** MCS **SEG-06** — «DEBE existir un modelo de amenazas derivado de la
 arquitectura, revisado ante cambios significativos». Acción **B5** del plan de
 conformidad.
@@ -62,7 +62,6 @@ flowchart LR
         M[Resend<br/>correo]
         S[S3 / R2<br/>documentos]
         SE[Sentry]
-        F[Google Fonts]
     end
 
     W -->|FC-1 · FC-8| A
@@ -75,7 +74,6 @@ flowchart LR
     K -->|FC-5| M
     A -->|FC-5| S
     A -->|FC-5| SE
-    A -->|FC-5| F
 ```
 
 ### Fronteras de confianza
@@ -120,7 +118,7 @@ Resumen. El detalle de cada una, abajo.
 | AM-09 | FC-1 | Relleno de credenciales | **CONTROLADA** |
 | AM-10 | FC-1 | Bloqueo de cuenta ajena como denegación de servicio | **SIN CONTROL** |
 | AM-11 | FC-1 | Restablecimiento de contraseña | **CONTROLADA** |
-| AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **PARCIAL** |
+| AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **CERRADA** |
 | AM-13 | FC-8 | Robo del token desde el navegador | **PARCIAL** |
 | AM-14 | — | Escritura directa a producción | **SIN CONTROL** |
 
@@ -345,16 +343,28 @@ cliente de Redis sea `None`, para que fail-open sea visible y no silencioso.
 
 ### AM-12 — Tipografías remotas al renderizar PDF
 
-**FC-5 · STRIDE: denegación de servicio · Estado: PARCIAL**
+**FC-5 · STRIDE: denegación de servicio · Estado: CERRADA (2026-08-05)**
 
-El renderizador de informes referencia `fonts.googleapis.com` y
-`fonts.gstatic.com`, así que generar un PDF depende de una petición a Google en
-tiempo de render.
+El renderizador de informes referenciaba `fonts.googleapis.com` y
+`fonts.gstatic.com` para traer DM Sans, así que generar un PDF dependía de una
+petición a Google en tiempo de render.
 
-**Residual:** si el destino no responde, el render se degrada o tarda. No hay
-dato del proyecto en esa petición.
-**Acción:** empotrar las tipografías. Se cruza con ENH-202 (Helvetica en
-exports), que ya está en cola.
+**Control:** no hay tipografía remota. ENH-202 dejó todos los entregables en
+Helvetica, y la imagen instala `fonts-urw-base35` (Nimbus Sans), así que la
+fuente ya está dentro del contenedor. Los dos `<link>` se retiraron de
+`html_report_renderer.py` y de `reports.py`.
+
+**Lo que apareció al cerrarla, y es lo que importa:** el enlace remoto **no
+estaba funcionando**. `templates/pdf/base.html` pedía DM Sans y la imagen solo
+instalaba `fonts-dejavu-core`; WeasyPrint no ejecuta el `<link>` de la misma
+forma que un navegador, así que los PDF llevaban meses saliendo en DejaVu Sans
+—ni la fuente de marca ni Helvetica—. La amenaza era real igualmente (la
+petición salía desde el HTML servido en línea), pero el coste que se le
+atribuía, «el render se degrada», ya se estaba pagando en silencio.
+
+**Trinquete:** `tests/test_enh202_helvetica_en_exports.py` falla si vuelve a
+aparecer un `fonts.googleapis.com` o si una plantilla pide una fuente que la
+imagen no instala.
 
 ### AM-13 — Robo del token desde el navegador
 

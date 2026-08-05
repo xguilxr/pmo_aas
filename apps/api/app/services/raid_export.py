@@ -18,6 +18,8 @@ from datetime import date, datetime
 from io import BytesIO
 from typing import Any
 
+from app.core.tipografia import FUENTE, aplicar_a_workbook
+
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 # Columnas por hoja (ENH-152). Riesgos usa "Severidad"; los AID, "Prioridad".
@@ -146,7 +148,7 @@ def _write_sheet(wb, title: str, headers: list[str], rows: list[list[Any]]) -> N
     from openpyxl.styles import Alignment, Font, PatternFill
 
     ws = wb.create_sheet(title=title)
-    header_font = Font(bold=True, color="FFFFFF")
+    header_font = Font(name=FUENTE, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
     header_align = Alignment(vertical="center")
 
@@ -172,6 +174,10 @@ def export_single_sheet_xlsx(
     from openpyxl import Workbook
 
     wb = Workbook()
+
+    # ENH-202: Helvetica en todas las celdas sin estilo propio.
+
+    aplicar_a_workbook(wb)
     default_ws = wb.active
     if default_ws is not None:
         wb.remove(default_ws)
@@ -193,6 +199,10 @@ def export_raid_xlsx(
     from openpyxl import Workbook
 
     wb = Workbook()
+
+    # ENH-202: Helvetica en todas las celdas sin estilo propio.
+
+    aplicar_a_workbook(wb)
     # Workbook trae 1 sheet default; lo eliminamos para controlar el orden.
     default_ws = wb.active
     if default_ws is not None:

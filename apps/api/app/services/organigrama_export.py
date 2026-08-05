@@ -11,6 +11,8 @@ from __future__ import annotations
 from io import BytesIO
 from typing import Any
 
+from app.core.tipografia import FUENTE, aplicar_a_workbook
+
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -33,7 +35,7 @@ def _write_sheet(wb, title: str, headers: list[str], rows: list[list[Any]]) -> N
     from openpyxl.styles import Alignment, Font, PatternFill
 
     ws = wb.create_sheet(title=title)
-    header_font = Font(bold=True, color="FFFFFF")
+    header_font = Font(name=FUENTE, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
     header_align = Alignment(vertical="center")
 
@@ -87,8 +89,8 @@ def _write_monthly_sheet(
     ws = wb[title]
     yellow = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
     red = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
-    red_font = Font(color="B91C1C", bold=True)
-    yellow_font = Font(color="92400E")
+    red_font = Font(name=FUENTE, color="B91C1C", bold=True)
+    yellow_font = Font(name=FUENTE, color="92400E")
     for i, r in enumerate(rows, start=2):  # fila 1 = header
         for j, val in enumerate(r["per_month"], start=2):  # col 1 = nombre
             cell = ws.cell(row=i, column=j)
@@ -108,6 +110,10 @@ def export_utilizacion_xlsx(
     from openpyxl import Workbook
 
     wb = Workbook()
+
+    # ENH-202: Helvetica en todas las celdas sin estilo propio.
+
+    aplicar_a_workbook(wb)
     default_ws = wb.active
     if default_ws is not None:
         wb.remove(default_ws)
@@ -136,6 +142,10 @@ def export_organigrama_xlsx(
     from openpyxl import Workbook
 
     wb = Workbook()
+
+    # ENH-202: Helvetica en todas las celdas sin estilo propio.
+
+    aplicar_a_workbook(wb)
     default_ws = wb.active
     if default_ws is not None:
         wb.remove(default_ws)

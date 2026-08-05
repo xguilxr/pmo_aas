@@ -66,6 +66,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Dependencias runtime + WeasyPrint native libs (BUG-007).
 # - curl + ca-certificates: wheels pip + health checks externos.
+# - fonts-urw-base35 (ENH-202): trae Nimbus Sans, el clon de Helvetica.
+#   Sin él, el `font-family: Helvetica` de las plantillas PDF no existía en
+#   la imagen y fontconfig caía a DejaVu Sans — los informes salían con una
+#   fuente que nadie había elegido. Medido con WeasyPrint 68.1: con solo
+#   DejaVu, `fc-match Helvetica` devuelve DejaVuSans; con este paquete, el
+#   PDF incrusta NimbusSans. Añade ~11 MB.
 # - libpango/libcairo/libgdk-pixbuf/libharfbuzz/fonts-dejavu: WeasyPrint
 #   carga estas libs nativas via cffi en runtime. Sin ellas, el import
 #   falla con `OSError: cannot load library 'libgobject-2.0-0'` y el
@@ -82,6 +88,7 @@ RUN apt-get update \
         libcairo2 \
         libgdk-pixbuf-2.0-0 \
         fonts-dejavu-core \
+        fonts-urw-base35 \
         shared-mime-info \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

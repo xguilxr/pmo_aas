@@ -17,6 +17,7 @@ import { ProgramModal } from "@/components/program-modal";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { useOrgLabel } from "@/lib/org-label";
+import { aplicarFuente, XLSX_FONT } from "@/lib/plan-template";
 import {
   downloadPortfolioStatusReport,
   getHealthMatrix,
@@ -126,7 +127,7 @@ export default function PmoHome() {
         { header: "Decisiones", key: "decisions", width: 12 },
         { header: "Recursos", key: "resources", width: 12 },
       ];
-      ws.getRow(1).font = { bold: true };
+      ws.getRow(1).font = { name: XLSX_FONT, bold: true };
       for (const r of healthMatrix.rows) {
         ws.addRow({
           p: `${r.folio} · ${r.name}`,
@@ -152,7 +153,7 @@ export default function PmoHome() {
         { header: "Recursos", key: "resources", width: 12 },
         { header: "Nota", key: "n", width: 60 },
       ];
-      wh.getRow(1).font = { bold: true };
+      wh.getRow(1).font = { name: XLSX_FONT, bold: true };
       for (const e of evals.rows) {
         wh.addRow({
           p: nameById.get(e.project_id) ?? e.project_id,
@@ -166,6 +167,10 @@ export default function PmoHome() {
           n: e.note ?? "",
         });
       }
+      // ENH-202: las filas de datos no llevan `font` propia y saldrían en
+      // Calibri; el barrido las deja en Helvetica como las cabeceras.
+      aplicarFuente(ws);
+      aplicarFuente(wh);
       const buf = await wb.xlsx.writeBuffer();
       const url = URL.createObjectURL(
         new Blob([buf], {

@@ -28,6 +28,7 @@ from docx.shared import Inches, Pt, RGBColor
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tipografia import aplicar_a_docx
 from app.models.modules import Document
 from app.models.organization import Organization
 from app.models.project import Project
@@ -154,6 +155,8 @@ def _render_charter_docx(
     arriba del título. Resueltos por `resolve_charter_logos`.
     """
     doc = DocxDocument()
+    # ENH-202: Helvetica en el estilo `Normal` del documento.
+    aplicar_a_docx(doc)
 
     # ENH-111: portada con logo(s) arriba del título. Tolerante a imágenes
     # corruptas: si add_picture falla, se salta ese logo sin romper el docx.

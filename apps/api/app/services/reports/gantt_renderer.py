@@ -136,7 +136,7 @@ def render_gantt_svg(
         f'height="{height}" viewBox="0 0 {width} {height}">',
         f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
         # Header
-        f'<text x="10" y="20" font-family="DM Sans, Helvetica, Arial, sans-serif" '
+        f'<text x="10" y="20" font-family="Helvetica, Nimbus Sans, Arial, sans-serif" '
         f'font-size="12" font-weight="700" fill="#111827">'
         f"Gantt — {_xml_escape(project.folio)} · {_xml_escape(project.name)[:40]}"
         f"</text>",

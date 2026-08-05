@@ -32,6 +32,24 @@ const SHEET_INSTRUCTIONS = "Instrucciones";
 // US-193: fuente única de todos los Excel del sistema.
 export const XLSX_FONT = "Helvetica";
 
+/**
+ * ENH-202 — deja `XLSX_FONT` en todas las filas de la hoja.
+ *
+ * ExcelJS no expone una fuente por defecto del libro: lo que no lleva `font`
+ * sale en Calibri. Poner la cabecera en Helvetica y dejar los datos en Calibri
+ * es peor que no tocar nada, porque el archivo sale con dos tipografías.
+ *
+ * Se llama **después** de poblar la hoja, y conserva lo que cada celda ya
+ * traía —negritas, colores— cambiando solo el nombre.
+ */
+export function aplicarFuente(ws: Worksheet): void {
+  ws.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      cell.font = { ...(cell.font ?? {}), name: XLSX_FONT };
+    });
+  });
+}
+
 // Paleta.
 const DARK = "FF1F2937";
 const GRAY = "FF6B7280";

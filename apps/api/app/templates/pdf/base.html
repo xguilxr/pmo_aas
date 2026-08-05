@@ -43,7 +43,10 @@
   }
 
   html, body {
-    font-family: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    /* ENH-202: Helvetica primero. La imagen instala `fonts-urw-base35`
+       (Nimbus Sans); sin él fontconfig caía a DejaVu y el PDF salía con
+       una fuente que nadie había elegido. */
+    font-family: Helvetica, "Nimbus Sans", Arial, sans-serif;
     font-size: 10.5pt;
     color: #111827;
     line-height: 1.45;

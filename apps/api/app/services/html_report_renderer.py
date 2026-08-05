@@ -28,19 +28,19 @@ def _esc(value: Any) -> str:
     return html.escape(str(value))
 
 
-# ENH-146 — branding on-brand para el HTML interactivo (DM Sans + paleta de
-# marca de globals.css). Se comparte entre reporte y minuta para que el PDF
-# (vía WeasyPrint) y el navegador rendericen idéntico.
-_FONT_LINK = (
-    "<link rel='preconnect' href='https://fonts.googleapis.com'>"
-    "<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>"
-    "<link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&"
-    "display=swap' rel='stylesheet'>"
-)
+# ENH-146 — branding on-brand para el HTML interactivo (paleta de marca de
+# globals.css). Se comparte entre reporte y minuta para que el PDF (vía
+# WeasyPrint) y el navegador rendericen idéntico.
+#
+# ENH-202 + AM-12 (2026-08-05): aquí había un `<link>` a `fonts.googleapis.com`
+# para traer DM Sans. Se retira. Con Helvetica —que la imagen sí instala, vía
+# `fonts-urw-base35`— no hacía falta, y era lo que ataba generar un PDF a que
+# Google respondiera. El modelo de amenazas pedía exactamente esto: «empotrar
+# las tipografías. Se cruza con ENH-202».
 
 _BRAND_CSS = """
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+    body{font-family:Helvetica,'Nimbus Sans',Arial,sans-serif;
       background:#F4F6FA;color:#1F1D17;line-height:1.5;padding:32px;
       -webkit-font-smoothing:antialiased;}
     .container{max-width:1100px;margin:0 auto;}
@@ -327,7 +327,6 @@ def render_report_html(
   <meta charset="utf-8">
   <title>{_esc(title)} — {_esc(project_folio)}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {_FONT_LINK}
   <style>{_BRAND_CSS}</style>
 </head>
 <body>
@@ -446,7 +445,6 @@ def render_minute_html(
   <meta charset="utf-8">
   <title>{_esc(title)} — {_esc(project_folio)}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {_FONT_LINK}
   <style>{_BRAND_CSS}</style>
 </head>
 <body>

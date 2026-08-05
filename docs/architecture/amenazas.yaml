@@ -16,7 +16,7 @@
 # superficie de ataque.
 
 version: 1
-revisado: 2026-08-04
+revisado: 2026-08-05
 revision_maxima_meses: 12
 
 # ---------------------------------------------------------------------------
@@ -91,14 +91,9 @@ destinos_externos:
     clase: egreso
     dato: correos de notificación, invitación y restablecimiento de contraseña
     amenazas: [AM-11]
-  - host: fonts.googleapis.com
-    clase: egreso
-    dato: ninguno propio, pero la petición sale al renderizar un PDF
-    amenazas: [AM-12]
-  - host: fonts.gstatic.com
-    clase: egreso
-    dato: ídem
-    amenazas: [AM-12]
+  # ENH-202 (2026-08-05): `fonts.googleapis.com` y `fonts.gstatic.com` salieron
+  # del inventario. Los informes ya no piden tipografías remotas — Helvetica va
+  # dentro de la imagen (`fonts-urw-base35`). AM-12, cerrada.
   - host: app.pmo-aas.com
     clase: referencia
     dato: base de los enlaces que van dentro de los correos
