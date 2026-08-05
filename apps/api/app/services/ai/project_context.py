@@ -18,8 +18,22 @@ como contenido no confiable, y todo lo demás se neutraliza.
 `instructions_md` y `context_md` los escribe el PM a propósito para dirigir al
 modelo: son un canal de instrucción legítimo y NO se envuelven. Se neutralizan
 igual, para que no puedan forjar el cierre del bloque.
+
+R1 (MCS CON-04) — «las cifras vivas NO DEBEN residir en el corpus». Aquí no se
+puede impedir: los tres campos son texto libre y nada evita que un PM escriba
+«vamos al 40 %». Ese texto se guarda una vez y se inyecta en cada consulta, así
+que a los seis meses el modelo sigue afirmando el 40 % con total confianza —y no
+miente: está leyendo lo que le dimos.
+
+Lo que sí se puede es **fechar el corpus y decirlo**. Cada sección viaja con la
+fecha en que se escribió y la cabecera avisa de que son textos guardados, no
+datos en vivo. El modelo puede entonces relativizar una cifra vieja en vez de
+presentarla como actual. No cierra CON-04 —las cifras siguen ahí— pero quita lo
+que lo hacía peligroso: que fueran indistinguibles de un dato calculado.
 """
 from __future__ import annotations
+
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +67,22 @@ def _clip(text: str | None, limit: int) -> str:
     return text[: max(limit - 1, 0)].rstrip() + "…"
 
 
+def _fechado(momento: datetime | None, verbo: str = "escrito") -> str:
+    """Sufijo con la fecha del texto. Vacío si no se sabe cuándo se escribió."""
+    if momento is None:
+        return ""
+    return f", {verbo} el {momento:%Y-%m-%d}"
+
+
+# CON-04: la cabecera es lo que convierte una cifra vieja en una cita fechada.
+_AVISO_CORPUS = (
+    "Lo que sigue son textos guardados por el equipo del proyecto, no datos en "
+    "vivo. Cualquier cifra que aparezca aquí es la que había cuando se escribió "
+    "y puede estar desactualizada; las cifras vigentes te llegan calculadas "
+    "aparte. Ante una diferencia, gana el dato calculado."
+)
+
+
 def compose_context_block(
     *,
     project_name: str | None = None,
@@ -60,6 +90,8 @@ def compose_context_block(
     context_md: str | None = None,
     instructions_md: str | None = None,
     auto_summary_md: str | None = None,
+    context_updated_at: datetime | None = None,
+    auto_summary_updated_at: datetime | None = None,
     max_chars: int = DEFAULT_MAX_CHARS,
 ) -> str | None:
     """Arma el bloque de contexto. None si no hay nada que inyectar."""
@@ -78,23 +110,32 @@ def compose_context_block(
             )
         )
     # Prioridad de presupuesto: instrucciones > contexto > resumen.
-    remaining = max_chars - sum(len(s) for s in sections)
+    # El aviso de CON-04 se descuenta del presupuesto en vez de sumarse encima:
+    # es texto que viaja en cada llamada y IA-03 acota el prompt por coste.
+    remaining = max_chars - len(_AVISO_CORPUS) - sum(len(s) for s in sections)
+    fecha_pm = _fechado(context_updated_at)
     if instructions_md and remaining > 200:
         block = _clip(instructions_md, min(remaining, 1500))
-        sections.append(f"Instrucciones permanentes del PM:\n{neutralizar(block)}")
+        sections.append(
+            f"Instrucciones permanentes del PM{fecha_pm}:\n{neutralizar(block)}"
+        )
         remaining -= len(block)
     if context_md and remaining > 200:
         block = _clip(context_md, min(remaining, 3000))
         sections.append(
-            f"Contexto y reglas de negocio del proyecto:\n{neutralizar(block)}"
+            f"Contexto y reglas de negocio del proyecto{fecha_pm}:"
+            f"\n{neutralizar(block)}"
         )
         remaining -= len(block)
     if auto_summary_md and remaining > 200:
         # El único de los tres que NO lo escribió una persona autorizada: sale
         # del modelo resumiendo minutas subidas por cualquiera. Va envuelto.
         block = _clip(auto_summary_md, remaining)
+        fecha_resumen = (
+            _fechado(auto_summary_updated_at, "actualizado") or ", sin fecha"
+        )
         sections.append(
-            "Resumen acumulado del proyecto (minutas previas):\n"
+            f"Resumen acumulado del proyecto (minutas previas{fecha_resumen}):\n"
             + envolver_no_confiable(
                 block, origen="resumen derivado de minutas subidas por usuarios"
             )
@@ -104,7 +145,7 @@ def compose_context_block(
     if not has_memory and not project_description:
         return None
     body = "\n\n".join(sections)
-    return f"<CONTEXTO_DEL_PROYECTO>\n{body}\n</CONTEXTO_DEL_PROYECTO>"
+    return f"<CONTEXTO_DEL_PROYECTO>\n{_AVISO_CORPUS}\n\n{body}\n</CONTEXTO_DEL_PROYECTO>"
 
 
 async def load_context_block(
@@ -129,5 +170,9 @@ async def load_context_block(
         context_md=ctx.context_md if ctx else None,
         instructions_md=ctx.instructions_md if ctx else None,
         auto_summary_md=ctx.auto_summary_md if ctx else None,
+        # CON-04: `updated_at` cubre las dos secciones que teclea el PM; el
+        # resumen tiene marca propia porque lo reescribe el worker por su cuenta.
+        context_updated_at=ctx.updated_at if ctx else None,
+        auto_summary_updated_at=ctx.auto_summary_updated_at if ctx else None,
         max_chars=max_chars,
     )
