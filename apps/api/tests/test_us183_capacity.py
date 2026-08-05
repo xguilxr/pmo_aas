@@ -82,7 +82,7 @@ async def test_us183_eli_case_overallocated_red(client, db_session):
     auth, _, projects = await _setup(client, db_session)
     eli = await _mk_actor(
         client, auth, "Eli Gomora", 50,
-        resource_type="cliente_negocio", portfolio_function="negocio",
+        resource_type="cliente_negocio", discipline="negocio",
         is_key_resource=True, scarcity_level="alta",
     )
     for pid, pct in zip(projects, (25, 15, 25), strict=False):
@@ -133,7 +133,7 @@ async def test_us183_tentative_reported_apart(client, db_session):
 @pytest.mark.asyncio
 async def test_us183_conflicts_with_recommendation(client, db_session):
     auth, _, projects = await _setup(client, db_session)
-    a = await _mk_actor(client, auth, "Carlos Mejia", 60, portfolio_function="arquitectura")
+    a = await _mk_actor(client, auth, "Carlos Mejia", 60, discipline="arquitectura")
     for pid, pct, crit in zip(projects, (40, 35, 30), (True, False, False), strict=False):
         await _assign(client, auth, pid, a, pct, is_critical=crit)
 
@@ -166,15 +166,15 @@ async def test_us183_health_resources_dimension_activates(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_us183_by_function_aggregation(client, db_session):
+async def test_us183_by_discipline_aggregation(client, db_session):
     auth, _, projects = await _setup(client, db_session, n_projects=1)
-    a1 = await _mk_actor(client, auth, "Arq Uno", 50, portfolio_function="arquitectura")
-    a2 = await _mk_actor(client, auth, "Arq Dos", 50, portfolio_function="arquitectura")
+    a1 = await _mk_actor(client, auth, "Arq Uno", 50, discipline="arquitectura")
+    a2 = await _mk_actor(client, auth, "Arq Dos", 50, discipline="arquitectura")
     await _assign(client, auth, projects[0], a1, 60)
     await _assign(client, auth, projects[0], a2, 20)
     r = await client.get("/api/v1/capacity/summary?window=week", headers=auth["_authz"])
     fn = next(
-        x for x in r.json()["by_function"] if x["portfolio_function"] == "arquitectura"
+        x for x in r.json()["by_discipline"] if x["discipline"] == "arquitectura"
     )
     assert fn["capacity_pct"] == 100
     assert fn["demand_pct"] == 80

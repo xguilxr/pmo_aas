@@ -257,7 +257,7 @@ async def monthly_utilization(
         rows.append({
             "actor_id": aid,
             "name": a.name,
-            "portfolio_function": a.portfolio_function,
+            "discipline": a.discipline,
             "job_title": a.job_title,
             "resource_type": a.resource_type,
             "area": area_names.get(str(a.area_id), "") if a.area_id else "",
@@ -295,7 +295,7 @@ def _summarize_actor(
     return {
         "actor_id": str(actor.id),
         "name": actor.name,
-        "portfolio_function": actor.portfolio_function,
+        "discipline": actor.discipline,
         "resource_type": actor.resource_type,
         "seniority": actor.seniority,
         "scarcity_level": actor.scarcity_level,
@@ -340,7 +340,7 @@ async def resource_capacity_summary(
     actors = (await db.execute(actor_stmt)).scalars().all()
     if not actors:
         return {"window": window, "start": start.isoformat(), "end": end.isoformat(),
-                "resources": [], "by_function": [], "by_area": [], "by_team": []}
+                "resources": [], "by_discipline": [], "by_area": [], "by_team": []}
 
     rows = await _load_assignments(
         db, tenant_id, start, end, actor_ids=[str(a.id) for a in actors]
@@ -357,7 +357,7 @@ async def resource_capacity_summary(
     resources = [
         r for r in resources
         if r["projects_count"] > 0 or r["unquantified_count"] > 0
-        or r["tentative_pct"] > 0 or r["portfolio_function"] or r["resource_type"]
+        or r["tentative_pct"] > 0 or r["discipline"] or r["resource_type"]
     ]
     resources.sort(key=lambda r: r["gap_pct"])
 
@@ -423,7 +423,10 @@ async def resource_capacity_summary(
         "end": end.isoformat(),
         "thresholds": t,
         "resources": resources,
-        "by_function": _aggregate("portfolio_function"),
+        # D-8: la clave de salida sigue al campo. Dejar `by_function`
+        # con el campo ya renombrado reintroduce el desajuste que ADR-021
+        # existe para cerrar.
+        "by_discipline": _aggregate("discipline"),
         "by_area": by_area,
         "by_team": by_team,
     }

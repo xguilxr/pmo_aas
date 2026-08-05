@@ -280,7 +280,7 @@ estratégica**. No coincide con la estructura organizativa.
 | `amber` como valor | `yellow` | 3 restos | `charter_generator.py:52-53`, `s-03.html:9` |
 | Dos paletas de salud | una definición única | 2 mapas | `scoped_status.py:30,33` |
 | `wbs` para el código de tarea | `wbs_code` | 1 campo | `tasks.wbs` |
-| `portafolio` para un área | `discipline` (ADR-021) | 18 | `area.py:233`, `areas.py:675-689` |
+| `portafolio` para un área | `discipline` — ✅ hecho 2026-08-05 | 0 | ADR-021, migración 0099 |
 | `problema` / `bug` para incidencia de proyecto | `incidencia` | por revisar | — |
 | «Inicio» como nombre de fase generado | `planning` | 1 | `plan_regenerator.py:37` |
 

@@ -32,7 +32,7 @@ export type ResourceType =
   | "e4_tecnologia"
   | "vendor_externo";
 
-export type PortfolioFunction =
+export type Discipline =
   | "pm"
   | "pmo"
   | "arquitectura"
@@ -68,7 +68,7 @@ export type Actor = {
   // US-182: pool de recursos con capacidad.
   organization_id?: string | null;
   resource_type?: ResourceType | null;
-  portfolio_function?: PortfolioFunction | null;
+  discipline?: Discipline | null;
   seniority?: ActorSeniority | null;
   scarcity_level?: ScarcityLevel | null;
   location?: string | null;
@@ -238,7 +238,7 @@ export function deleteTeam(id: string): Promise<void> {
 export type ActorResourceFields = {
   organization_id?: string | null;
   resource_type?: ResourceType | null;
-  portfolio_function?: PortfolioFunction | null;
+  discipline?: Discipline | null;
   seniority?: ActorSeniority | null;
   scarcity_level?: ScarcityLevel | null;
   location?: string | null;
@@ -258,7 +258,7 @@ export function listActors(params?: {
   is_active?: boolean;
   // US-182: filtros del pool de recursos.
   resource_type?: string;
-  portfolio_function?: string;
+  discipline?: string;
   organization_id?: string;
 }): Promise<Actor[]> {
   const qs = new URLSearchParams();
@@ -267,8 +267,8 @@ export function listActors(params?: {
   if (params?.q) qs.set("q", params.q);
   if (params?.is_active != null) qs.set("is_active", String(params.is_active));
   if (params?.resource_type) qs.set("resource_type", params.resource_type);
-  if (params?.portfolio_function)
-    qs.set("portfolio_function", params.portfolio_function);
+  if (params?.discipline)
+    qs.set("discipline", params.discipline);
   if (params?.organization_id) qs.set("organization_id", params.organization_id);
   const tail = qs.toString();
   return apiFetch<Actor[]>(`/api/v1/actors${tail ? `?${tail}` : ""}`);

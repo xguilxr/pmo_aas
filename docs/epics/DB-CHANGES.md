@@ -657,3 +657,29 @@ baja sin tocar el resto de fases ni los nulos. Lo que la bajada no puede
 distinguir es una fila que ya fuera `hypercare` de una renombrada — antes del
 2026-08-05 ese valor no existía en el vocabulario, así que con datos reales no
 se da.
+
+
+---
+
+## D-8 / ADR-021 — `portfolio_function` pasa a `discipline` (2026-08-05)
+
+### Migración **0099** — renombrado de columna en `actors`
+
+`ALTER TABLE actors RENAME COLUMN portfolio_function TO discipline`, vía
+`batch_alter_table` para que SQLite —donde corre la suite— lo resuelva
+recreando la tabla. Los **valores no cambian**: `String(24)` sin `CHECK`.
+
+El glosario veta «portafolio» para un área (brecha B-6): un portafolio es un
+conjunto de proyectos y programas, y esa entidad no existe en el producto. Lo
+que la columna guarda es la disciplina del recurso.
+
+**Ventana de compatibilidad en dos puertas**, porque el nombre era público:
+
+- el cuerpo de creación acepta `portfolio_function` vía `AliasChoices`;
+- el parámetro de consulta de `GET /actors` lo acepta, marcado `deprecated`.
+
+La **salida es siempre `discipline`**, y la clave de agregación de capacidad
+pasó de `by_function` a `by_discipline` para no reabrir el mismo desajuste.
+
+**Reversible**, ejercitada contra Postgres 16: sube, baja y los datos —incluidos
+los nulos— quedan intactos en los dos sentidos.

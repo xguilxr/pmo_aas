@@ -30,7 +30,7 @@ descrito como más barato resultó ser el más caro.
 | D-5 | Método de avance | **La propuesta del glosario** | Declararlo en la UI |
 | D-6 | Línea base | **Al roadmap** | Épica propia |
 | D-7 | Dos paletas de salud | **Unificar** — ✅ hecho 2026-08-05 | Bajo |
-| D-8 | `portfolio_function` | **Renombrar a `discipline`** (2026-08-05) — ADR-021 | Medio — el parámetro es público |
+| D-8 | `portfolio_function` | **Renombrar a `discipline`** — ✅ hecho 2026-08-05 (ADR-021) | Medio — el parámetro es público |
 | D-9 | `is_milestone ⟹ duración 0` | **Validar** — ✅ hecho 2026-08-05 | Bajo |
 
 ---
@@ -140,7 +140,7 @@ diagnóstico. Entra como épica propia.
 | # | Qué | Dónde |
 |---|---|---|
 | D-7 | Unificar las dos paletas de salud | ✅ **Hecha el 2026-08-05.** Ver abajo |
-| D-8 | `portfolio_function` no es portafolio | **Nombre decidido el 2026-08-05: `discipline`** (ADR-021). «Función» y «rol» ya significan otras cosas aquí; `discipline` es lo que la lista enumera. 18 ocurrencias, 9 archivos |
+| D-8 | `portfolio_function` no es portafolio | ✅ **Hecha el 2026-08-05** (ADR-021, migración 0099). `discipline` porque «función» y «rol» ya significan otras cosas aquí. Ventana en dos puertas —cuerpo y parámetro de consulta— porque el nombre era público; `by_function` pasó a `by_discipline` para no reabrir el mismo desajuste |
 | D-9 | Validar `is_milestone ⟹ duration_days = 0` | ✅ **Hecha el 2026-08-05.** Normalización en el modelo (vale para los seis caminos de escritura) + rechazo del rango de varios días al crear. Resultó menos mecánica de lo previsto: la duración es un valor **derivado** —el endpoint ignora el que manda el cliente— así que un 422 sobre ella habría dejado al usuario sin forma de arreglarlo |
 
 ### D-7, cerrada — y no eran dos paletas, eran cuatro

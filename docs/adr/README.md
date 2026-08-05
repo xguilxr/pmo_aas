@@ -864,7 +864,7 @@ método; la ejecución es su propia ronda.
 
 ## ADR-021 — `portfolio_function` se renombra a `discipline`
 
-**Estado:** ✅ Aceptada — 2026-08-05 · **Implementación:** US propia, sin abrir
+**Estado:** ✅ Aceptada e **implementada** — 2026-08-05 (migración 0099)
 
 **Contexto:**
 El glosario veta «portafolio» para un área (**brecha B-6**): un portafolio es un
@@ -896,9 +896,13 @@ frontend. Es la más pequeña de las tres del glosario que tocan contrato.
   compatibilidad que D-2 y D-3 — aceptar el nombre viejo a la entrada y devolver
   siempre el canónico.
 - Migración de columna (`ALTER TABLE … RENAME COLUMN`), barata y reversible.
-- Toca `capacity.py`, que agrega por este campo (`by_function`). Conviene mirar
-  si esa clave de salida también se renombra o si es vocabulario propio del
-  informe — es la decisión pequeña que queda dentro de la US.
+- **`by_function` → `by_discipline`.** Era la decisión pequeña que quedaba
+  dentro de la US, y se resolvió renombrando: dejar la clave de agregación con
+  el nombre viejo mientras el campo lleva el nuevo reintroduce exactamente el
+  desajuste que esta ADR existe para cerrar.
+- La ventana cubre **dos puertas**, no una: el cuerpo de creación
+  (`AliasChoices` en el esquema) y el parámetro de consulta, que va marcado
+  `deprecated=True` para que salga así en el OpenAPI.
 
 **Alternativas evaluadas:**
 

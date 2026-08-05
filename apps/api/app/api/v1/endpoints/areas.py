@@ -672,7 +672,10 @@ async def list_actors(
     is_active: bool | None = Query(default=None),
     # US-182: filtros del pool de recursos.
     resource_type: str | None = Query(default=None),
-    portfolio_function: str | None = Query(default=None),
+    discipline: str | None = Query(default=None),
+    # D-8 / ADR-021: nombre público anterior. Se acepta durante la ventana de
+    # compatibilidad para no romper un filtro guardado ni un script de cliente.
+    portfolio_function: str | None = Query(default=None, deprecated=True),
     organization_id: UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=100, ge=1, le=500),
@@ -685,8 +688,9 @@ async def list_actors(
     )
     if resource_type is not None:
         stmt = stmt.where(Actor.resource_type == resource_type)
-    if portfolio_function is not None:
-        stmt = stmt.where(Actor.portfolio_function == portfolio_function)
+    disciplina = discipline if discipline is not None else portfolio_function
+    if disciplina is not None:
+        stmt = stmt.where(Actor.discipline == disciplina)
     if organization_id is not None:
         stmt = stmt.where(Actor.organization_id == str(organization_id))
     if team_id is not None:
@@ -809,7 +813,7 @@ async def create_actor(
             str(body.organization_id) if body.organization_id else None
         ),
         resource_type=body.resource_type,
-        portfolio_function=body.portfolio_function,
+        discipline=body.discipline,
         seniority=body.seniority,
         scarcity_level=body.scarcity_level,
         location=body.location,

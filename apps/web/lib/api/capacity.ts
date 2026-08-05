@@ -17,7 +17,7 @@ export type CapacityThresholds = {
 export type CapacityResource = {
   actor_id: string;
   name: string;
-  portfolio_function: string | null;
+  discipline: string | null;
   resource_type: string | null;
   seniority: string | null;
   scarcity_level: string | null;
@@ -40,8 +40,8 @@ export type CapacityResource = {
   usage_pct?: number | null;
 };
 
-export type CapacityFunctionAgg = {
-  portfolio_function: string;
+export type CapacityDisciplineAgg = {
+  discipline: string;
   capacity_pct: number;
   demand_pct: number;
   gap_pct: number;
@@ -78,7 +78,7 @@ export type CapacitySummaryResponse = {
   end: string;
   thresholds?: CapacityThresholds;
   resources: CapacityResource[];
-  by_function: CapacityFunctionAgg[];
+  by_discipline: CapacityDisciplineAgg[];
   by_area: CapacityAreaAgg[];
   by_team: CapacityTeamAgg[];
 };

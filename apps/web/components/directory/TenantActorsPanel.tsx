@@ -25,7 +25,7 @@ import {
   type Actor,
   type ActorSeniority,
   type Area,
-  type PortfolioFunction,
+  type Discipline,
   type ResourceType,
   type ScarcityLevel,
 } from "@/lib/api/areas";
@@ -41,7 +41,7 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   vendor_externo: "Vendor Externo",
 };
 
-const PORTFOLIO_FUNCTION_LABELS: Record<PortfolioFunction, string> = {
+const DISCIPLINE_LABELS: Record<Discipline, string> = {
   pm: "PM",
   pmo: "PMO",
   arquitectura: "Arquitectura",
@@ -73,8 +73,8 @@ function resourceTypeLabel(v?: ResourceType | null): string {
   return v ? RESOURCE_TYPE_LABELS[v] ?? v : "—";
 }
 
-function portfolioFunctionLabel(v?: PortfolioFunction | null): string {
-  return v ? PORTFOLIO_FUNCTION_LABELS[v] ?? v : "—";
+function disciplineLabel(v?: Discipline | null): string {
+  return v ? DISCIPLINE_LABELS[v] ?? v : "—";
 }
 
 export function TenantActorsPanel() {
@@ -86,7 +86,7 @@ export function TenantActorsPanel() {
   const [areaFilter, setAreaFilter] = useState("");
   // US-182: filtros client-side por tipo de recurso / función de portafolio.
   const [resourceTypeFilter, setResourceTypeFilter] = useState("");
-  const [portfolioFunctionFilter, setPortfolioFunctionFilter] = useState("");
+  const [disciplineFilter, setDisciplineFilter] = useState("");
   const [editing, setEditing] = useState<Actor | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -118,9 +118,9 @@ export function TenantActorsPanel() {
     if (areaFilter) rows = rows.filter((a) => a.area_id === areaFilter);
     if (resourceTypeFilter)
       rows = rows.filter((a) => a.resource_type === resourceTypeFilter);
-    if (portfolioFunctionFilter)
+    if (disciplineFilter)
       rows = rows.filter(
-        (a) => a.portfolio_function === portfolioFunctionFilter,
+        (a) => a.discipline === disciplineFilter,
       );
     const q = search.trim().toLowerCase();
     if (q) {
@@ -133,7 +133,7 @@ export function TenantActorsPanel() {
       );
     }
     return rows;
-  }, [actors, areaFilter, resourceTypeFilter, portfolioFunctionFilter, search]);
+  }, [actors, areaFilter, resourceTypeFilter, disciplineFilter, search]);
 
   const { sortedRows, ctrl: sortCtrl } = useSortableRows<Actor>(filtered);
 
@@ -190,15 +190,15 @@ export function TenantActorsPanel() {
           ))}
         </Select>
         <Select
-          value={portfolioFunctionFilter}
-          onChange={(e) => setPortfolioFunctionFilter(e.target.value)}
+          value={disciplineFilter}
+          onChange={(e) => setDisciplineFilter(e.target.value)}
           className="max-w-xs"
         >
           <option value="">Todas las funciones</option>
-          {(Object.keys(PORTFOLIO_FUNCTION_LABELS) as PortfolioFunction[]).map(
+          {(Object.keys(DISCIPLINE_LABELS) as Discipline[]).map(
             (pf) => (
               <option key={pf} value={pf}>
-                {PORTFOLIO_FUNCTION_LABELS[pf]}
+                {DISCIPLINE_LABELS[pf]}
               </option>
             ),
           )}
@@ -225,7 +225,7 @@ export function TenantActorsPanel() {
               <SortableTh<Actor> sortKey="company" getter={(a) => a.company ?? ""} ctrl={sortCtrl}>Empresa / Cargo</SortableTh>
               <SortableTh<Actor> sortKey="area" getter={(a) => a.area_id ? areaById[a.area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
               <SortableTh<Actor> sortKey="resource_type" getter={(a) => resourceTypeLabel(a.resource_type)} ctrl={sortCtrl}>Tipo</SortableTh>
-              <SortableTh<Actor> sortKey="portfolio_function" getter={(a) => portfolioFunctionLabel(a.portfolio_function)} ctrl={sortCtrl}>Función</SortableTh>
+              <SortableTh<Actor> sortKey="discipline" getter={(a) => disciplineLabel(a.discipline)} ctrl={sortCtrl}>Función</SortableTh>
               <SortableTh<Actor> sortKey="project_capacity_pct" getter={(a) => a.project_capacity_pct ?? 100} ctrl={sortCtrl} align="right">Cap. proyectos %</SortableTh>
               <SortableTh<Actor> sortKey="is_key_resource" getter={(a) => a.is_key_resource ?? false} ctrl={sortCtrl} align="center">🔑</SortableTh>
               <th className="px-3 py-2"></th>
@@ -272,7 +272,7 @@ export function TenantActorsPanel() {
                     {resourceTypeLabel(a.resource_type)}
                   </td>
                   <td className="px-3 py-2 text-xs">
-                    {portfolioFunctionLabel(a.portfolio_function)}
+                    {disciplineLabel(a.discipline)}
                   </td>
                   <td className="px-3 py-2 text-right text-xs">
                     {a.project_capacity_pct ?? 100}%
@@ -353,8 +353,8 @@ function ActorModal({
   const [isActive, setIsActive] = useState(actor?.is_active ?? true);
   // US-182: pool de recursos con capacidad.
   const [resourceType, setResourceType] = useState(actor?.resource_type ?? "");
-  const [portfolioFunction, setPortfolioFunction] = useState(
-    actor?.portfolio_function ?? "",
+  const [discipline, setDiscipline] = useState(
+    actor?.discipline ?? "",
   );
   const [seniority, setSeniority] = useState(actor?.seniority ?? "");
   const [scarcityLevel, setScarcityLevel] = useState(
@@ -397,7 +397,7 @@ function ActorModal({
         is_active: isActive,
         // US-182: pool de recursos con capacidad.
         resource_type: resourceType || null,
-        portfolio_function: portfolioFunction || null,
+        discipline: discipline || null,
         seniority: seniority || null,
         scarcity_level: scarcityLevel || null,
         location: location.trim() || null,
@@ -509,19 +509,19 @@ function ActorModal({
             </FieldLabel>
             <FieldLabel label="Función de portafolio">
               <Select
-                value={portfolioFunction}
+                value={discipline}
                 onChange={(e) =>
-                  setPortfolioFunction(
-                    e.target.value as PortfolioFunction | "",
+                  setDiscipline(
+                    e.target.value as Discipline | "",
                   )
                 }
               >
                 <option value="">Sin clasificar</option>
                 {(
-                  Object.keys(PORTFOLIO_FUNCTION_LABELS) as PortfolioFunction[]
+                  Object.keys(DISCIPLINE_LABELS) as Discipline[]
                 ).map((pf) => (
                   <option key={pf} value={pf}>
-                    {PORTFOLIO_FUNCTION_LABELS[pf]}
+                    {DISCIPLINE_LABELS[pf]}
                   </option>
                 ))}
               </Select>

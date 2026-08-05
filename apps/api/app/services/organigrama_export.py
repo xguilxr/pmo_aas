@@ -67,7 +67,7 @@ UTIL_RED_FROM = 100
 
 def _util_row(r: dict[str, Any]) -> list[Any]:
     return [
-        r["name"], r.get("portfolio_function") or "", r.get("job_title") or "",
+        r["name"], r.get("discipline") or "", r.get("job_title") or "",
         r.get("area") or "", r.get("team") or "", r.get("manager") or "",
         r.get("resource_type") or "", "Sí" if r.get("is_key_resource") else "",
         r.get("capacity_pct"), r.get("scope_current_pct"),
