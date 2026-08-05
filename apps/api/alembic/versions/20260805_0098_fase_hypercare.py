@@ -6,8 +6,20 @@ el nombre: `support` se lee como «mesa de ayuda», que es una función permanen
 no una fase de proyecto con principio y fin.
 
 Toca dos tablas, y la segunda es fácil de olvidar: `projects.phase` y
-`lessons_learned.phase`, que comparte vocabulario (`LessonPhase` en el
-frontend).
+`lessons.phase`, que comparte vocabulario (`LessonPhase` en el frontend).
+
+**La tabla se llama `lessons`, no `lessons_learned`.** La primera versión de
+esta migración usó el nombre del concepto de dominio —«lecciones aprendidas»— en
+lugar del que tiene el esquema, y falló en `api-migrations-postgres` con
+`relation "lessons_learned" does not exist`. No lo detectó antes porque el SQL
+se había ejercitado contra tablas creadas a mano para la ocasión: reproducían la
+columna, no el nombre. Ejercitar SQL de migración exige el esquema real.
+
+**Hay una tercera columna `phase` que queda fuera a propósito:**
+`project_participations.phase` es texto libre —«la fase en la que este recurso
+consume capacidad»—, no el vocabulario controlado; ni la API ni la UI la
+alimentan desde `ProjectPhase`. Renombrar ahí sería editar lo que escribió un
+usuario.
 
 **No hay `CHECK` ni enum que migrar.** Las dos columnas son `String(32)`, así
 que esto es una migración de datos y nada más — es la razón por la que ADR-019
@@ -37,18 +49,13 @@ down_revision: str | None = "20260805_0097"
 branch_labels = None
 depends_on = None
 
-_TABLAS = ("projects", "lessons_learned")
-
-
 def upgrade() -> None:
-    for tabla in _TABLAS:
-        op.execute(
-            sa.text(f"UPDATE {tabla} SET phase = 'hypercare' WHERE phase = 'support'")
-        )
+    # Escritas una por una, sin bucle ni f-string: el nombre de tabla mal puesto
+    # que rompió esto era invisible dentro de una interpolación.
+    op.execute(sa.text("UPDATE projects SET phase = 'hypercare' WHERE phase = 'support'"))
+    op.execute(sa.text("UPDATE lessons SET phase = 'hypercare' WHERE phase = 'support'"))
 
 
 def downgrade() -> None:
-    for tabla in _TABLAS:
-        op.execute(
-            sa.text(f"UPDATE {tabla} SET phase = 'support' WHERE phase = 'hypercare'")
-        )
+    op.execute(sa.text("UPDATE projects SET phase = 'support' WHERE phase = 'hypercare'"))
+    op.execute(sa.text("UPDATE lessons SET phase = 'support' WHERE phase = 'hypercare'"))

@@ -20,6 +20,7 @@ Lo que estas pruebas defienden, en orden de importancia:
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -139,11 +140,51 @@ def test_la_transicion_de_fases_conserva_la_forma():
     assert VALID_TRANSITIONS["hypercare"] == {"closed"}
 
 
-def test_la_migracion_cubre_las_dos_tablas():
-    """`lessons_learned.phase` comparte vocabulario y es la fácil de olvidar."""
+def _sentencias_de_la_migracion() -> list[str]:
     migracion = (
         RAIZ_API / "alembic" / "versions" / "20260805_0098_fase_hypercare.py"
     ).read_text(encoding="utf-8")
+    return re.findall(r'sa\.text\("([^"]+)"\)', migracion)
 
-    assert '_TABLAS = ("projects", "lessons_learned")' in migracion
-    assert "def downgrade" in migracion and "'support'" in migracion.split("def downgrade")[1]
+
+def test_las_tablas_que_toca_la_migracion_existen():
+    """La versión anterior de esta prueba fijaba el literal del código fuente.
+
+    Decía `assert '_TABLAS = ("projects", "lessons_learned")' in migracion`, y
+    pasaba: el literal estaba, palabra por palabra. Lo que no había es una tabla
+    `lessons_learned` —se llama `lessons`, «lecciones aprendidas» es el nombre
+    del concepto, no el del esquema—, así que la migración fallaba en Postgres
+    mientras la prueba seguía verde. Una prueba que copia la implementación no
+    puede contradecirla; solo confirma que sigue escrita igual.
+
+    Lo que se comprueba ahora es la propiedad: que cada tabla nombrada exista de
+    verdad y tenga la columna. Eso sí distingue `lessons` de `lessons_learned`.
+    """
+    import app.models  # noqa: F401  — puebla el metadata
+    from app.db.base import Base
+
+    tablas = {re.search(r"UPDATE (\w+)", s).group(1) for s in _sentencias_de_la_migracion()}
+    assert tablas, "no se encontró ninguna sentencia en la migración"
+
+    for tabla in tablas:
+        assert tabla in Base.metadata.tables, f"la migración escribe en `{tabla}`, que no existe"
+        assert "phase" in Base.metadata.tables[tabla].columns, f"`{tabla}` no tiene `phase`"
+
+
+def test_la_migracion_cubre_las_dos_tablas_con_vocabulario_de_fase():
+    """`lessons.phase` comparte vocabulario y es la fácil de olvidar.
+
+    `project_participations.phase` queda fuera a propósito: es texto libre sobre
+    en qué fase consume capacidad un recurso, no el vocabulario controlado.
+    """
+    tablas = {re.search(r"UPDATE (\w+)", s).group(1) for s in _sentencias_de_la_migracion()}
+
+    assert tablas == {"projects", "lessons"}
+
+
+def test_la_migracion_baja_lo_que_sube():
+    sentencias = _sentencias_de_la_migracion()
+    sube = [s for s in sentencias if "= 'hypercare'" in s and "= 'support'" in s.split("WHERE")[1]]
+    baja = [s for s in sentencias if "= 'support'" in s and "= 'hypercare'" in s.split("WHERE")[1]]
+
+    assert len(sube) == len(baja) == 2, "cada tabla necesita su subida y su bajada"
