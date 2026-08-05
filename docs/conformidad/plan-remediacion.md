@@ -88,11 +88,15 @@ owner la protegió: 8 verificaciones exigidas en modo `strict`, sin `force-push`
 ni borrado de rama. Los dos cierran, y con ellos **la distancia a N1 baja de 47
 a 45**.
 
-**Residual, escrito al modo de AM-08:** `enforce_admins: false`. Un
-administrador —hoy, el único que trabaja en el repo— puede saltarse las dos
-cosas. El control protege del mal día, no de la voluntad. Ponerlo en `true` es
-un cambio de una línea y cierra el residual; queda a criterio del owner, porque
-también significa que él mismo deja de poder forzar una integración urgente.
+**Residual aceptado por el owner (2026-08-05):** `enforce_admins` se queda en
+`false`. Un administrador —hoy, el único que trabaja en el repo— puede saltarse
+las dos cosas. Se decidió a sabiendas: con un solo desarrollador, la salida de
+emergencia vale más que el trinquete, y el control sigue cumpliendo su función
+principal, que es proteger del mal día y no de la voluntad.
+
+**No es un pendiente, es una decisión** — y por eso se escribe. Se revisa cuando
+entre alguien más al repositorio, que es el momento en que «administrador» deja
+de significar «el owner».
 
 **Un hueco que sí conviene tapar:** de los diez trabajos reales del CI, la lista
 de exigidos tiene ocho. Falta **`contraste-wcag`**, que corre en cada PR y es el
