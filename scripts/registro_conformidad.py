@@ -111,6 +111,9 @@ CIERRES = {
  "DAT-05":("CONFORME","Ola 0 — una sola paleta de salud y un solo vocabulario de fase"),
  "INT-03":("CONFORME","owner activó enforce_admins 2026-08-05; ADR-029 retirada"),
  "ARQ-03":("EXCLUIDO","ADR-018, revisión 2027-02-04"),
+ # Ola 2 (2026-08-05) — los mecánicos. El hueco estaba medido y el criterio es
+ # el conteo, así que cada uno cierra con su trinquete propio en la suite.
+ "SEG-05":("CONFORME","Ola 2 — SECURITY.md con canal privado, plazos, alcance y puerto seguro; trinquete en test_seg05_divulgacion.py"),
 }
 
 reg = {}
