@@ -22,6 +22,24 @@ class AuditLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     tenant_id: Mapped[UUID | None] = mapped_column(String(36))
     user_id: Mapped[UUID | None] = mapped_column(String(36))
+    #: MCS IA-02 — «toda acción ejecutada por un componente de IA DEBE
+    #: registrarse en el registro de auditoría, **distinguible de una acción
+    #: humana**».
+    #:
+    #: Antes no se podía distinguir, y no por falta de registro: la IA sí
+    #: escribía en `audit_log`. Lo que faltaba era el dato. `module="ai"`
+    #: significa «el módulo de IA», no «lo hizo la IA» —`report.send` es una
+    #: persona pulsando enviar y también lo lleva—, y el prefijo `ai.` en el
+    #: nombre de la acción era inconsistente: `report.draft` lo genera el modelo
+    #: y no lo llevaba.
+    #:
+    #: `user_id` tampoco servía: en una acción de IA guarda **quién la pidió**,
+    #: que es justo la persona a la que no hay que atribuírsela.
+    #:
+    #: Por defecto `humano`: son 144 sitios de escritura y casi todos lo son.
+    #: Lo que impide que una ruta de IA nueva se registre como humana no es el
+    #: valor por defecto, es el trinquete de `test_ia02_auditoria_ia.py`.
+    actor_type: Mapped[str] = mapped_column(String(16), nullable=False, default="humano")
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     module: Mapped[str | None] = mapped_column(String(50))
     entity_type: Mapped[str | None] = mapped_column(String(50))
