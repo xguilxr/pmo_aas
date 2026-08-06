@@ -23,10 +23,11 @@ revisar_cada: 30d
 Sin US activa. Branch `claude/remediacion-ola-2-2kg36x` — el owner abre el PR.
 
 REMEDIACIÓN POR OLAS — plan en `docs/conformidad/plan-remediacion.md`.
-Olas 0, 1 y **2 cerradas**. Lo siguiente necesita postura del owner (Ola 3).
+Olas 0, 1 y **2 cerradas**, más `SEG-04` y `DAT-06` de la Ola 3.
+Lo que queda de Ola 3 necesita postura del owner — otra sesión.
 
 MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · **32 bloquean N1** (eran 41) · una sola exclusión viva (ARQ-03).
+MCS: N0 · **30 bloquean N1** (eran 41) · una sola exclusión viva (ARQ-03).
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -59,9 +60,10 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   datos personales (`REQ-03`), fichas de indicador (`DAT-01/10`), almacén de
   secretos (`SEG-02`), estrategia de pruebas (`DEV-02/03` — hoy **cero** en
   frontend), artefacto de canalización (`SUM-01`), entornos y copias
-  (`INF-02/03`, `DES-02`). **Aparte: `SEG-04`**, CRÍTICA — autorización sobre
-  el objeto y no solo sobre el punto de acceso. Se le suman de la Ola 2:
-  `DAT-02` (renombres con migración), `DIS-03` y `DAT-11` (épica de producto).
+  (`INF-02/03`, `DES-02`). Se le suman de la Ola 2: `DAT-02` (renombres con
+  migración), `DIS-03` y `DAT-11` (épica de producto).
+  **Hechos ya:** `SEG-04` —la única CRÍTICA, autorización sobre el objeto— y
+  `DAT-06` (`amber_max` → `yellow_max`, ADR-030 y migración 0101).
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto
@@ -93,7 +95,11 @@ ejecutar. El historial narrativo sigue en `SPRINT-DONE-HISTORY.md`.
 
 > Histórico narrativo en `SPRINT-DONE-HISTORY.md`.
 
-- **2026-08-06 (Ola 2):** once commits. Lo que la medición no veía: el acta en
+- **2026-08-06 (Ola 2 + SEG-04):** quince commits. `SEG-04` era la única
+  CRÍTICA y el hueco era explotable: un PM asignado a un proyecto podía abrir
+  cualquier otro de su inquilino con solo tener el identificador — nueve copias
+  del resolvedor de proyecto y solo una comprobaba el alcance.
+ Lo que la medición no veía: el acta en
   `.docx` se firmaba con la paleta anterior a DIS-02; once citas a tokens
   inexistentes hacían que la página de documentos pintara tema claro en modo
   oscuro y que la tabla de permisos saliera sin fondo; el gate de tipos daba
@@ -101,16 +107,7 @@ ejecutar. El historial narrativo sigue en `SPRINT-DONE-HISTORY.md`.
   llevaba por delante. Cuatro hallazgos, ninguno de leer código: los cuatro
   salieron de medir contra el texto del requisito.
 
-- **2026-08-05 (auditoría + producto):** siete commits sobre
-  `claude/audit-continuation-fzrtko`, más los de #577. **MCA alcanza N2** con
-  AUT-01 cerrado por evidencia observada. En producto: `wbs_code`, fase
-  `cancelled`, umbrales de D-4 y paleta de gráficos (ADR-020 a ADR-023).
-
-  Lo que la medición no veía: los informes salían en DejaVu Sans desde hacía
-  meses, PyJWT 2.10.1 cambiaba cinco CVE por siete, la migración 0098 escribía
-  en una tabla inexistente con una prueba que fijaba el literal del código, el
-  presupuesto del semáforo no miraba el tiempo, y el worker no reportaba a
-  Sentry. Detalle en `SPRINT-DONE-HISTORY.md`.
+  El detalle de la sesión del 2026-08-05 está en `SPRINT-DONE-HISTORY.md`.
 
 ---
 

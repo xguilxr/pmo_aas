@@ -7,82 +7,78 @@ revisar_cada: 30d
 
 # HANDOFF.md — Estado para la próxima sesión
 
-**Branch activa:** `claude/remediacion-ola-2-2kg36x` — 12 commits, sin PR todavía
+**Branch activa:** `claude/remediacion-ola-2-2kg36x` — 15 commits, PR abierto por el owner
 **Generado por:** `/handoff`
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-**La Ola 2 está ejecutada: de 41 a 32 bloqueantes de N1.** Once requisitos
-cerrados y dos que bajan de cifra sin cerrar, uno por commit, todos con prueba
-propia y verificación por mutación.
+**Ola 2 entera más `SEG-04` y el cierre de `DAT-06`: de 41 a 30 bloqueantes de
+N1.** Uno por commit, todos con prueba propia y verificación por mutación.
+
+`SEG-04` era la única CRÍTICA viva y el hueco era explotable: la autorización
+de objeto se aplicaba al listado y a ningún detalle.
 
 MCA sigue en **N2**, su objetivo. MCS sigue en **N0** — el nivel no se mueve
-hasta que caigan los 32, y los que quedan **no son mecánicos**.
+hasta que caigan los 30, y lo que queda necesita postura del owner.
 
 ## 📍 Dónde retomar
 
-**Abrir el PR y esperar CI.** Dos verificaciones nuevas necesitan que el owner
-las añada a las exigidas de `main` (ver Cleanup).
+**Mergear el PR y añadir las dos verificaciones nuevas a las exigidas de
+`main`** (ver Cleanup). Hay que hacerlo DESPUÉS del merge: GitHub no deja
+exigir un check que nunca ha reportado.
 
-Después: la Ola 3 **necesita postura del owner antes de tocar código**. Las
-preguntas están al final del resumen de la sesión; las tres primeras —alcance
-de competencia, escenarios de calidad, inventario de datos personales—
-desbloquean nueve requisitos entre ellas.
+Después: **Ola 3**, que el owner dejó para otra sesión. Las tres primeras
+—alcance de competencia (`CON-01/03/05`), escenarios de calidad con medida
+(`REQ-02`) e inventario de datos personales (`REQ-03`)— desbloquean nueve
+requisitos entre ellas, y las tres necesitan una decisión antes de tocar
+código.
 
 ## ✅ Hecho en esta sesión
 
-| SHA | Requisito | Qué |
-|---|---|---|
-| `9e21f61` | `SEG-05` | `SECURITY.md`: canal privado, plazos, alcance, puerto seguro |
-| `3fb5835` | `OPS-01` | structlog formatea el `logging` estándar → JSON a `stdout`, los dos procesos |
-| `b876e79` | `DEV-04` | `mypy --strict` en CI con línea base de 1.163 que solo encoge |
-| `0c7b329` | `CFG-04` | job `commits` sobre el rango del PR + hook en `.githooks/` |
-| `528209f` | `DIS-01`·`CFG-14` | cero literales de color y espaciado; el token citado tiene que existir |
-| `b1fcc15` | `DAT-06` | 0 restos de `amber` en código (PARCIAL: queda `amber_max`) |
-| `b2febff` | `DAT-05` | quinta paleta de salud, en el acta que se firma |
-| `25e7a81` | `DOC-01` | 127 documentos con encabezado |
-| `5f0fe1a` | `DOC-03` | el ER se genera de `Base.metadata` |
-| `65494af` | `DAT-04`·`DAT-08` | 26 conversiones a `core/unidades.py` |
-| `d657b1b` | `LEN-02` | `errors.mensaje()` hace estructural el requisito; 177→169 |
-| `058dfef` | `DAT-12` | 17 sitios de presentación distinguen el hueco del cero |
+Quince commits, uno por requisito. **Cierran** `SEG-05`, `OPS-01`, `DEV-04`,
+`CFG-04`, `DIS-01`+`CFG-14`, `DOC-01`, `DOC-03`, `DAT-04`+`DAT-08`, `DAT-12`,
+**`SEG-04`** y **`DAT-06`**; `DAT-05` vuelve a cerrar. `LEN-02` baja de 177 a
+166 sin cerrar. `git log --oneline origin/main..HEAD` los tiene con su porqué.
 
 ## 🔄 PRs abiertos o en flight
 
-Ninguno. La branch está pusheada y **sin PR: una branch sin PR no tiene CI**.
+El owner abrió el PR de esta branch y lo mergea al cerrar la ronda.
 
 ## ⚠️ Gotchas y decisiones recientes
 
 - **Medir contra el texto del requisito destapa lo que la evidencia anotada
-  esconde.** Cuatro hallazgos así: el acta `.docx` se firmaba con la paleta
-  anterior a DIS-02; once citas a tokens inexistentes hacían que la página de
-  documentos pintara tema claro en modo oscuro y la tabla de permisos saliera
-  sin fondo; el gate de tipos daba verde sin analizar nada; el worker no
-  configuraba su registro y Celery se lo llevaba por delante.
-- **Un control que da verde cuando no corre es peor que no tenerlo.** Sustituye
-  una ausencia visible por una garantía falsa. Pasó con `check_tipos.py`: sin
-  mypy instalado el proceso devuelve 1, igual que «encontré errores».
-- **Una lista escrita a mano no puede probar «uno solo».** Prueba «uno solo
-  entre los que me acordé de listar». Los trinquetes nuevos **derivan** del
-  árbol y lo que se declara son las excepciones, con razón escrita.
-- **La mutación cazó cuatro pruebas que no podían fallar**, y ninguna se veía
-  leyendo el código: una derivaba su caso de la constante que vigilaba, otra
-  comprobaba `set(X) <= rutas` con `X` vacío, otra buscaba dos cadenas por
-  separado en vez de una dentro de la otra.
-- **El trinquete de contexto disparó al actualizar `SPRINT.md`**, y se recortó
-  en vez de subir el techo — que es la regla.
+  esconde.** Seis hallazgos así: el acta `.docx` se firmaba con la paleta
+  anterior a DIS-02; once citas a tokens inexistentes pintaban tema claro en
+  modo oscuro; el gate de tipos daba verde sin analizar nada; el worker no
+  configuraba su registro; nueve copias del resolvedor de proyecto dejaban
+  entrar a proyectos ajenos; y la etiqueta de ajustes decía «Ámbar».
+- **Un control que da verde cuando no corre es peor que no tenerlo**, y **una
+  lista escrita a mano no puede probar «uno solo»** — prueba «uno solo entre
+  los que me acordé de listar». Los trinquetes nuevos derivan del árbol.
+- **La mutación cazó seis pruebas que no podían fallar.** Ninguna se veía
+  leyendo el código. Dos fueron fronteras de palabra: `\bamber\b` no casa con
+  `amber_max`.
+- **`SEG-04` cambió comportamiento:** un usuario `role_type='user'` **sin
+  ninguna asignación** deja de alcanzar cualquier proyecto. Es lo que
+  `user_scope_assignments` dice desde que se escribió y lo que el listado ya
+  hacía; se cerró la puerta de la URL directa.
+- **Una migración sobre JSON no se escribe con `sa.text`** y el diccionario ya
+  serializado: funciona en SQLite y falla en Postgres. Forma de BUG-039.
 
 ## 📋 Lo que sigue
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Ola 3** — necesita postura del owner. Se le suman tres de la Ola 2 que
-  resultaron no ser mecánicas: `DAT-02` (8 renombres con migración y ventana,
-  como `wbs`), `DIS-03` y `DAT-11` (épica de producto).
-- **`SEG-04`** aparte: CRÍTICA, autorización sobre el objeto.
-- **`DAT-06` y `LEN-02`** cierran sin decisión: el primero con la ventana de
-  `amber_max`, el segundo escribiendo las tres partes al tocar cada endpoint.
+- **Ola 3** — necesita postura del owner, y el owner la dejó para otra sesión.
+  Se le suman tres de la Ola 2 que resultaron no ser mecánicas: `DAT-02` (8
+  renombres con migración y ventana, como `wbs`), `DIS-03` y `DAT-11`.
+- **`LEN-02`** es el único que cierra sin decisión: 166 mensajes con texto
+  suelto, y el mecanismo ya obliga a las tres partes al tocar cada endpoint.
+- **Cuatro ventanas de compatibilidad abiertas** (`phase=support`,
+  `portfolio_function`, `wbs`, `amber_max`). Se cierran con dato: a los dos
+  meses se mira `compat.nombre_viejo`.
 
 ## 📚 Estado de las epics docs
 
@@ -90,6 +86,9 @@ Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 |---|---|---|
 | EP004 | sí | US-020: el hueco se ve distinto del cero (DAT-12) |
 | EP014 · EP020 | sin cambios | no describen el vocabulario del semáforo; lo hace el glosario, ya al día |
+
+`ADR-030` y `DB-CHANGES.md` (0101) al día. El modelo de amenazas suma **AM-15**
+—acceso a un proyecto ajeno dentro del mismo inquilino—, hermana de AM-02.
 
 Al día también: glosario (`amber` a 0 restos), `plan-remediacion.md`,
 `design-system/tokens.md` (declarado **reemplazado**, con aviso en el cuerpo),
@@ -100,11 +99,13 @@ Al día también: glosario (`amber` a 0 restos), `plan-remediacion.md`,
 - [ ] **Añadir `tipos-python` y `commits` a las verificaciones exigidas de
       `main`.** Sin eso, los gates existen y no bloquean.
 - [ ] **Activar el hook local**: `git config core.hooksPath .githooks`.
-- [ ] **Correr las migraciones `0097`-`0100`.** Sigue pendiente de antes.
+- [ ] **Correr las migraciones `0097`-`0101`.** Las cuatro primeras venían de
+      antes; la `0101` renombra una llave dentro de `tenants.settings`.
 - [ ] **Confirmar Sentry en Railway:** dos líneas, `proceso=api` y
       `proceso=worker`. Con las dos, `OPS-02` cierra.
-- [ ] Smoke de la web: tablero (KPI sin dato → «—»), detalle de proyecto, y la
-      página de documentos en **tema oscuro** (llevaba meses mal).
+- [ ] Smoke de la web: tablero (KPI sin dato → «—»), detalle de proyecto, la
+      página de documentos en **tema oscuro** (llevaba meses mal) y los
+      umbrales de carga en ajustes («Amarillo hasta», antes «Ámbar»).
 - [ ] Contrastar los umbrales de D-4 contra cartera real.
 
 ## 🔮 Para sesiones futuras (sin issue todavía)

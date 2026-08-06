@@ -209,7 +209,21 @@ por superficie. Los dos merecen épica propia.
 
 ---
 
-## Ola 3 — Necesitan una decisión tuya antes de tocar código
+## Ola 3 — parcialmente arrancada
+
+**Dos hechos el 2026-08-06**, por decisión del owner en la misma ronda:
+
+| ID | Qué |
+|---|---|
+| `SEG-04` | ✅ La única CRÍTICA viva. El alcance por asignación se aplicaba al listado y a ningún detalle: un PM podía abrir cualquier proyecto de su inquilino con solo tener el identificador. Nueve copias del resolvedor de proyecto, dos órdenes de argumentos y dos sin filtrar `deleted_at`. Ahora una sola comprobación, y un trinquete que impide la décima copia. AM-15 en el modelo de amenazas |
+| `DAT-06` | ✅ Cierra entero: `amber_max` → `yellow_max` con el molde de `wbs` (ADR-030, migración 0101). De paso salió que la etiqueta del formulario de ajustes también decía «Ámbar» |
+
+**El resto sigue necesitando una decisión antes de tocar código**, y el owner lo
+dejó para otra sesión.
+
+---
+
+## Ola 3 — lo que sigue necesitando una decisión tuya
 
 No son caros por volumen sino porque **fijan una postura del producto**, y esa
 no la puede tomar quien implementa:
@@ -221,14 +235,17 @@ no la puede tomar quien implementa:
 | `REQ-03` | Inventario de datos personales — qué guarda el producto y con qué base |
 | `DAT-01`, `DAT-10` | Unidades canónicas y fichas de indicador: qué métricas se declaran y quién las firma |
 | `SEG-02` | Si los secretos siguen en variables de Railway o se adopta un almacén |
-| `DAT-06` (parte) | `task_load_thresholds.amber_max` es una **llave guardada en `tenant.settings`**: renombrarla es cambio de contrato sobre datos existentes y necesita ventana de compatibilidad, como `wbs` |
 | `DEV-02`, `DEV-03` | Estrategia de pruebas: Postgres en la suite, pruebas de frontend (hoy **cero**), extremo a extremo |
 | `SUM-01` | Si la canalización produce un artefacto en vez de que Railway construya desde la rama |
 | `INF-02`, `INF-03`, `DES-02` | Paridad de entornos, copias de seguridad declaradas y probadas, y procedimiento de reversión |
 
-**`SEG-04` es aparte y merece atención:** CRÍTICA, N1, y el hueco es
-autorización verificada en el punto de acceso y no sobre el objeto. Es trabajo
-real de seguridad, no una declaración.
+~~**`SEG-04` es aparte y merece atención**~~ — hecho el 2026-08-06. El hueco
+era real y explotable dentro del mismo inquilino; el detalle, arriba.
+
+**Se le suman tres de la Ola 2** que resultaron no ser mecánicas y ahora están
+medidas: `DAT-02` (8 campos, ~100 sitios, ADR + migración + ventana por cada
+uno), `DIS-03` (3 de 75 pantallas con los cuatro estados) y `DAT-11` (10 de 87
+superficies con marca de actualización).
 
 ---
 
