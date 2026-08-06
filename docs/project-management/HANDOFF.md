@@ -7,7 +7,8 @@ revisar_cada: 30d
 
 # HANDOFF.md — Estado para la próxima sesión
 
-**Branch activa:** `claude/remediacion-ola-2-2kg36x` — 15 commits, PR abierto por el owner
+**Branch activa:** `claude/remediacion-ola-2-2kg36x` — **rebasada sobre `main`**; #581
+mergeó los 13 primeros commits y quedan **4 fuera**, que necesitan PR nuevo
 **Generado por:** `/handoff`
 
 ---
@@ -25,9 +26,12 @@ hasta que caigan los 30, y lo que queda necesita postura del owner.
 
 ## 📍 Dónde retomar
 
-**Mergear el PR y añadir las dos verificaciones nuevas a las exigidas de
-`main`** (ver Cleanup). Hay que hacerlo DESPUÉS del merge: GitHub no deja
-exigir un check que nunca ha reportado.
+**Abrir un PR nuevo con los cuatro commits que quedaron fuera de #581** — entre
+ellos `SEG-04`, que es la única CRÍTICA y **todavía no está en `main`**.
+
+Después, añadir las dos verificaciones nuevas a las exigidas de `main` (ver
+Cleanup): eso sí va tras el merge, porque GitHub no deja exigir un check que
+nunca ha reportado.
 
 Después: **Ola 3**, que el owner dejó para otra sesión. Las tres primeras
 —alcance de competencia (`CON-01/03/05`), escenarios de calidad con medida
@@ -44,7 +48,19 @@ Quince commits, uno por requisito. **Cierran** `SEG-05`, `OPS-01`, `DEV-04`,
 
 ## 🔄 PRs abiertos o en flight
 
-El owner abrió el PR de esta branch y lo mergea al cerrar la ronda.
+**#581 — MERGEADO**, con los 13 primeros commits (hasta `47eb7b8`).
+
+**Quedan cuatro fuera y necesitan PR nuevo.** El merge cayó justo en el handoff
+que cerraba la Ola 2, y `SEG-04` y `DAT-06` se hicieron después. Un PR mergeado
+no puede seguir rastreando trabajo, así que la rama se **rebasó sobre `main`** y
+lleva solo esos cuatro:
+
+| SHA | Qué |
+|---|---|
+| `32b56b7` | **`SEG-04`** — la única CRÍTICA. **No está en `main`** |
+| `18c30f1` | `DAT-06` — `amber_max` → `yellow_max` (ADR-030, migración **0101**) |
+| `4671227` | Este puente + el plan |
+| `61770ef` | El hook `commit-msg` suponía `python3`; en Windows no existe |
 
 ## ⚠️ Gotchas y decisiones recientes
 
@@ -54,12 +70,6 @@ El owner abrió el PR de esta branch y lo mergea al cerrar la ronda.
   modo oscuro; el gate de tipos daba verde sin analizar nada; el worker no
   configuraba su registro; nueve copias del resolvedor de proyecto dejaban
   entrar a proyectos ajenos; y la etiqueta de ajustes decía «Ámbar».
-- **Un control que da verde cuando no corre es peor que no tenerlo**, y **una
-  lista escrita a mano no puede probar «uno solo»** — prueba «uno solo entre
-  los que me acordé de listar». Los trinquetes nuevos derivan del árbol.
-- **La mutación cazó seis pruebas que no podían fallar.** Ninguna se veía
-  leyendo el código. Dos fueron fronteras de palabra: `\bamber\b` no casa con
-  `amber_max`.
 - **`SEG-04` cambió comportamiento:** un usuario `role_type='user'` **sin
   ninguna asignación** deja de alcanzar cualquier proyecto. Es lo que
   `user_scope_assignments` dice desde que se escribió y lo que el listado ya
