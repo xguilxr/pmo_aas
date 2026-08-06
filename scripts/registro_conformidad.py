@@ -149,6 +149,13 @@ CIERRES = {
  # Eran 26, en tres familias. Con las fronteras nombradas cierran los dos.
  "DAT-04":("CONFORME","Ola 2 — app/core/unidades.py concentra las 3 familias (pct, mebibytes, ms); trinquete que mira el árbol"),
  "DAT-08":("CONFORME","Ola 2 — las 26 constantes en línea pasaron a la frontera nombrada (N2)"),
+ # LEN-02 sigue PARCIAL, con la cifra medida y bajando. Los cinco textos por
+ # defecto ya dicen qué, por qué y qué hacer; de los 201 mensajes explícitos,
+ # 184 no sugerían ninguna acción. Reescribir 184 de un tirón produciría 184
+ # textos plausibles y ninguno pensado: escribir el porqué de una regla de
+ # negocio exige saber qué regla es. Lo que faltaba era el mecanismo, y ahora
+ # está: `mensaje()` con tres argumentos sin defecto + línea base que encoge.
+ "LEN-02":("PARCIAL","Ola 2 — 177→169 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 

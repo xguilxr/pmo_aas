@@ -255,6 +255,13 @@ jobs:
       - name: mypy --strict contra la línea base
         run: python scripts/check_tipos.py
 
+      # Auditoría MCS R1 — LEN-02. Los cinco textos por defecto ya dicen qué,
+      # por qué y qué hacer; los 169 explícitos que quedan van por línea base y
+      # se arreglan al tocar cada endpoint, que es lo que el plan preveía.
+      # Va aquí y no en un job propio porque no necesita más que Python 3.12.
+      - name: Mensajes de error con las tres partes (LEN-02)
+        run: python scripts/check_mensajes.py
+
   # Smoke de tests: excluye `@pytest.mark.heavy` para PR path rápido.
   api-tests-smoke:
     needs: changes

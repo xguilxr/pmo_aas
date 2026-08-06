@@ -91,6 +91,26 @@ def texto_por_defecto(code: str, **campos: object) -> str:
     return DEFECTOS[code].texto(**campos)
 
 
+def mensaje(*, que: str, porque: str, accion: str) -> str:
+    """Las tres partes de LEN-02, escritas donde se sabe qué pasó.
+
+    Los defectos de `DEFECTOS` cubren los cinco casos genéricos. Los **201
+    mensajes explícitos** del código son otra cosa: una regla de negocio la
+    conoce el sitio que la viola, y un catálogo central acabaría con 201
+    entradas que nadie encuentra.
+
+    Esto da la misma garantía sin el catálogo: **son tres argumentos con
+    nombre y ninguno tiene defecto**, así que no se puede rellenar dos de tres.
+    Un `f"No puedes borrar un super admin"` cumple el requisito a medias y
+    nada avisa; esto no compila si falta el porqué.
+
+    `scripts/check_mensajes.py` vigila lo otro — que un sitio nuevo no vuelva a
+    pasar una cadena suelta. El pasivo heredado va en su línea base, y solo
+    puede encoger.
+    """
+    return " ".join((que, porque, accion))
+
+
 class AppError(HTTPException):
     def __init__(self, status_code: int, code: str, detail: str, fields: dict | None = None):
         super().__init__(status_code=status_code, detail={"detail": detail, "code": code, "fields": fields or {}})

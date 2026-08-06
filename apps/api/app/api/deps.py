@@ -4,7 +4,7 @@ from fastapi import Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import forbidden, unauthorized
+from app.core.errors import forbidden, mensaje, unauthorized
 from app.core.permissions import (
     _ADMIN_EQUIVALENT_ROLES,
     ADMIN_CAPABILITIES,
@@ -146,7 +146,16 @@ async def get_current_user(
 
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None or not user.is_active:
-        raise unauthorized(code="USER_INACTIVE", detail="Usuario inactivo")
+        raise unauthorized(
+            code="USER_INACTIVE",
+            detail=mensaje(
+                que="Tu cuenta está desactivada.",
+                porque="Un administrador de tu organización la dio de baja, o se "
+                "desactivó al retirarte el acceso.",
+                accion="Pídele a un administrador de tu organización que la "
+                "reactive.",
+            ),
+        )
 
     tenant_ids_raw = payload.get("tenant_ids", []) or []
     active_raw = payload.get("active_tenant_id")
@@ -198,7 +207,16 @@ def require_capability(name: str):
 
     async def _checker(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if not cu.has_capability(name):
-            raise forbidden(code="FORBIDDEN", detail=f"Falta capability {name}")
+            raise forbidden(
+                code="FORBIDDEN",
+                detail=mensaje(
+                    que="Tu rol no incluye el permiso necesario para esta acción.",
+                    porque=f"Requiere «{name}», y los permisos se asignan por rol "
+                    "dentro de la organización.",
+                    accion="Pídele a un administrador de tu organización que te "
+                    "asigne un rol con ese permiso.",
+                ),
+            )
         return cu
 
     # US-079: marca para que `test_permission_matrix.py` clasifique este
@@ -219,7 +237,16 @@ def require_authenticated():
 
 async def get_superadmin(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     if not cu.is_superadmin:
-        raise forbidden(code="FORBIDDEN", detail="Solo super admin")
+        raise forbidden(
+            code="FORBIDDEN",
+            detail=mensaje(
+                que="Esta sección es de administración de la plataforma.",
+                porque="Solo las cuentas de superadministrador la ven, y la tuya "
+                "pertenece a una organización.",
+                accion="Si crees que deberías tener acceso, escríbele a quien "
+                "administra la plataforma.",
+            ),
+        )
     return cu
 
 
