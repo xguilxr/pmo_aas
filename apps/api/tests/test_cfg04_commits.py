@@ -134,6 +134,29 @@ def test_el_hook_esta_versionado_y_es_ejecutable() -> None:
     )
 
 
+def test_el_hook_no_supone_el_interprete() -> None:
+    """El entorno de desarrollo de este repositorio es **Windows**.
+
+    La primera versión del hook llamaba a `python3` directo, que en Windows no
+    existe: los instaladores dan `python.exe` y el lanzador `py`. Un hook que
+    solo corre en Linux es un hook que no corre — y encima falla en silencio,
+    porque git no distingue «el hook dijo que no» de «el hook reventó».
+
+    Lo detectó el owner al activarlo, no la suite. Por eso hay caso.
+    """
+    fuente = (RAIZ / ".githooks" / "commit-msg").read_text(encoding="utf-8")
+    assert "for interprete in" in fuente, (
+        "El hook volvió a suponer un intérprete concreto. Tiene que buscarlo: "
+        "`python3` en Linux y CI, `python` o `py` en Windows."
+    )
+    for candidato in ("python3", "python", "py"):
+        assert candidato in fuente, f"El hook dejó de probar `{candidato}`."
+    assert "exit 0" in fuente, (
+        "El hook tiene que fallar ABIERTO si no encuentra Python: un aviso que "
+        "no se puede dar no debería impedir commitear. El control es el CI."
+    )
+
+
 def test_el_gate_corre_de_verdad_sobre_un_mensaje() -> None:
     """De extremo a extremo: el script, invocado como lo invoca el hook.
 
