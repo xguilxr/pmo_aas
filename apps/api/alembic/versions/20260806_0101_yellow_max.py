@@ -29,11 +29,18 @@ correr en un motor se descubre en producción. Se leen las filas, se reescribe
 el diccionario y se actualiza.
 
 Y la actualización va por una **tabla tipada de SQLAlchemy**, no por `sa.text`
-con el diccionario ya serializado. Esa versión funcionaba en SQLite y habría
-fallado en Postgres —«column settings is of type json but expression is of type
-text»—, que es exactamente la forma de BUG-039: SQLite acepta lo que Postgres
-rechaza, y el gate que lo caza corre después. Con la tabla tipada, cada dialecto
-serializa a su manera.
+con el diccionario ya serializado, para que cada dialecto adapte el valor a su
+manera en vez de depender de que el motor acepte una cadena donde espera JSON.
+
+**Corrección (2026-08-06).** Este párrafo afirmaba que la versión con `sa.text`
+«habría fallado en Postgres» con «column settings is of type json but expression
+is of type text». Se comprobó contra Postgres 16 + psycopg3 y **no falla**: el
+parámetro viaja como `unknown` y Postgres lo convierte a `json` solito. La
+mutación se corrió con la suite nueva puesta y **sobrevivió**. La tabla tipada
+se queda porque es la forma correcta —no serializa a mano y aguanta que la
+columna pase a `jsonb`—, pero no por el motivo que decía aquí. Se deja escrito
+porque una justificación falsa en un encabezado es peor que ninguna: la
+siguiente persona la cita.
 
 Ejercitada contra el esquema real de `Base.metadata`, que es la lección que
 dejó 0098 — aquella escribía en una tabla inexistente y pasaba la verificación
