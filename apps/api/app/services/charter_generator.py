@@ -36,6 +36,7 @@ from app.models.project_charter import ProjectCharter
 from app.services.branding_storage import find_logo_file
 from app.services.document_storage import save_document_bytes
 from app.services.folio import next_folio
+from app.services.reports.scoped_status import HEALTH_COLOR
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +54,20 @@ DOCX_CONTENT_TYPE = (
 # a `yellow` a propósito, así que nada lo emite desde entonces. Un alias que
 # nadie usa no es tolerancia, es el sitio por donde el vocabulario retirado
 # vuelve la próxima vez que alguien copie este diccionario.
+#
+# DAT-05 (2026-08-05): y los colores eran los RETIRADOS. `#16a34a` y `#dc2626`
+# están literalmente en la lista de retirados de `test_d7_paleta_de_salud.py`,
+# que no los veía porque este archivo no figuraba entre los que pintan salud.
+# O sea: D-7 unificó cuatro sitios y quedó un quinto, y el registro daba DAT-05
+# por CONFORME. El acta de constitución en .docx —el documento que más se
+# imprime y se firma— salía con la paleta anterior a DIS-02, la del verde que
+# no llegaba a AA.
+#
+# Se derivan de `HEALTH_COLOR`, que es el origen, en vez de copiarse: una copia
+# es lo que produjo las cinco.
 _RAG_RGB = {
-    "green": RGBColor(0x16, 0xA3, 0x4A),
-    "yellow": RGBColor(0xCA, 0x8A, 0x04),
-    "red": RGBColor(0xDC, 0x26, 0x26),
+    estado: RGBColor.from_string(hex_color.lstrip("#").upper())
+    for estado, hex_color in HEALTH_COLOR.items()
 }
 
 

@@ -108,7 +108,15 @@ CIERRES = {
  # N2, así que no bloquean N1, pero dejan de figurar como «sin medir».
  "DAT-08":("NO CONFORME","26 constantes de conversión inline en app/ (N2)"),
  "DAT-16":("NO CONFORME","el periodo en curso no se señala en analíticas ni gráficos (N2)"),
- "DAT-05":("CONFORME","Ola 0 — una sola paleta de salud y un solo vocabulario de fase"),
+ # REABIERTO Y VUELTO A CERRAR el 2026-08-05. Estaba CONFORME sobre una lista
+ # escrita a mano de cuatro sitios «que pintan salud», y había un QUINTO:
+ # `charter_generator._RAG_RGB` usaba `#16a34a` y `#dc2626`, dos de los
+ # colores que la propia prueba de D-7 lista como retirados. El acta en .docx
+ # —el documento que más se imprime y se firma— salía con la paleta anterior a
+ # DIS-02. También los `.pill` del PDF, que en el mismo archivo llevaban un
+ # color distinto que los `.dot`. Ahora la comprobación DERIVA los sitios del
+ # código y lo que se declara son las excepciones, con razón escrita.
+ "DAT-05":("CONFORME","Ola 2 — quinto sitio corregido (acta .docx) y la prueba deriva los sitios en vez de enumerarlos"),
  "INT-03":("CONFORME","owner activó enforce_admins 2026-08-05; ADR-029 retirada"),
  "ARQ-03":("EXCLUIDO","ADR-018, revisión 2027-02-04"),
  # Ola 2 (2026-08-05) — los mecánicos. El hueco estaba medido y el criterio es

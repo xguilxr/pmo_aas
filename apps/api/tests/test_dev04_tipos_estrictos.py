@@ -23,6 +23,7 @@ degrada solo:
 """
 from __future__ import annotations
 
+import subprocess
 import sys
 import tomllib
 from collections import Counter
@@ -172,3 +173,36 @@ def test_la_linea_base_no_menciona_archivos_que_ya_no_existen() -> None:
         f"La línea base cita archivos inexistentes: {fantasmas}. Regenerá con "
         "`python scripts/check_tipos.py --regenerar`."
     )
+
+
+def test_el_gate_no_da_verde_cuando_mypy_no_corre() -> None:
+    """El defecto que este mismo gate tuvo el día que se escribió.
+
+    Un intérprete sin mypy instalado devuelve **1**, igual que «encontré
+    errores», y escribe `No module named mypy` en la salida de error. El
+    verificador leía cero errores, los comparaba con una línea base de 1.163 y
+    anunciaba «sin regresiones»: verde, sin haber analizado nada. Se vio al
+    invocarlo con el intérprete del sistema; en CI habría bastado con que
+    cambiara el paso de instalación.
+
+    Un control que da verde cuando no corre es peor que no tenerlo: sustituye
+    una ausencia visible por una garantía falsa.
+    """
+    guion = RAIZ / "scripts" / "check_tipos.py"
+    # `sys.executable` dentro de la suite ES el del entorno, que sí tiene mypy.
+    # Se busca a propósito un intérprete que no lo tenga.
+    ajeno = "/usr/bin/python3"
+    if not Path(ajeno).exists():
+        pytest.skip("no hay un intérprete sin mypy con el que probarlo")
+    sondeo = subprocess.run(
+        [ajeno, "-c", "import mypy"], capture_output=True
+    )
+    if sondeo.returncode == 0:
+        pytest.skip(f"{ajeno} también tiene mypy: no sirve de contraejemplo")
+
+    resultado = subprocess.run([ajeno, str(guion)], capture_output=True, text=True)
+    assert resultado.returncode == 1, (
+        "El gate dio verde con un intérprete sin mypy. Vuelve a ser una "
+        "garantía falsa."
+    )
+    assert "no analizó" in resultado.stderr or "no analizó" in resultado.stdout

@@ -92,6 +92,21 @@ def _ejecutar_mypy() -> list[str]:
             "mypy no llegó a analizar. Con código distinto de 0/1 el fallo es de "
             "configuración o de instalación, no de tipos: revisá la salida."
         )
+    # Un intérprete sin mypy instalado devuelve **1**, igual que «encontré
+    # errores», y escribe `No module named mypy` en la salida de error. Sin esta
+    # comprobación el gate leía cero errores, los comparaba con una línea base
+    # de 1.163 y anunciaba «sin regresiones» — verde, y sin haber analizado
+    # nada. Pasó al invocarlo con el intérprete del sistema en vez del del
+    # entorno; en CI habría bastado con que el paso de instalación cambiara.
+    #
+    # Un control que da verde cuando no corre es peor que no tenerlo: sustituye
+    # una ausencia visible por una garantía falsa.
+    if proceso.stderr.strip():
+        print(proceso.stderr, file=sys.stderr)
+        raise SystemExit(
+            "mypy escribió en la salida de error, así que no analizó lo que "
+            "debía. Con el entorno de `apps/api/.venv` esto no ocurre."
+        )
     return proceso.stdout.splitlines()
 
 
@@ -165,6 +180,19 @@ def main() -> int:
     args = parser.parse_args()
 
     observado = _huellas(_ejecutar_mypy())
+
+    # Segunda red, por si mypy algún día falla en silencio. La línea base es la
+    # medida de lo que ESTE repositorio produce hoy: bajar de golpe a cero no
+    # es un logro de 1.163 arreglos, es que no se analizó nada.
+    base_previa = _leer_linea_base()
+    if base_previa and not observado and not args.regenerar:
+        print(
+            f"mypy devolvió CERO errores contra una línea base de "
+            f"{sum(base_previa.values())}. Eso no es un arreglo, es que no "
+            f"analizó: revisá que el entorno tenga mypy instalado.",
+            file=sys.stderr,
+        )
+        return 1
 
     if args.regenerar:
         anterior = sum(_leer_linea_base().values())
