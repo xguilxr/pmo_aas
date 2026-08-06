@@ -8,24 +8,3 @@
 # La frontera es `apps/web/lib/confirmar.ts`, que obliga a nombrar el objeto,
 # decir la consecuencia y declarar si la acción es recuperable o definitiva.
 # Migrar una fila de aquí es escribir esas tres cosas para ese caso.
-components/directory/AreasAndTeamsPanel.tsx::if (!confirm(`¿Eliminar ${kind} "${name}"?`)) return;
-components/directory/DirectoryView.tsx::if (!confirm(`¿Quitar a "${actorName ?? "esta persona"}" del proyecto?`)) {
-components/directory/DirectoryView.tsx::if (!confirm("¿Quitar persona del proyecto?")) return;
-components/directory/TenantActorsPanel.tsx::if (!confirm(`¿Eliminar persona "${actor.name}"?`)) return;
-components/import-wizard.tsx::async function confirm() {
-components/import-wizard.tsx::const ok = window.confirm(
-components/import-wizard.tsx::const ok = window.confirm(
-components/import-wizard.tsx::const ok = window.confirm(
-components/risk-actions-card.tsx::if (!window.confirm(`¿Borrar la acción "${a.short_desc}"?`)) return;
-app/(app)/pmo/projects/[id]/plan/page.tsx::if (!window.confirm(`Eliminar tarea "${t.name}"?`)) return;
-app/(app)/pmo/projects/[id]/reports/builder/page.tsx::if (!window.confirm(`¿Borrar "${tpl.name}"?`)) return;
-app/(app)/pmo/projects/[id]/reports/builder/page.tsx::if (isDirty && !window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar la plantilla?")) {
-app/(app)/pmo/projects/[id]/reports/page.tsx::!window.confirm(
-app/(app)/pmo/requests/[id]/page.tsx::!window.confirm(
-app/(app)/superadmin/me/page.tsx::!window.confirm(
-app/(app)/superadmin/permission-requests/page.tsx::!window.confirm(
-app/(app)/superadmin/tenants/[id]/page.tsx::if (!window.confirm(`Cambiar role_type de ${label} → ${next}?`)) return;
-app/(app)/superadmin/tenants/[id]/permissions/page.tsx::!window.confirm(
-app/(app)/superadmin/tenants/[id]/users/page.tsx::!window.confirm(
-app/(app)/superadmin/users/page.tsx::async function confirm() {
-app/(app)/superadmin/users/page.tsx::onClick={() => void confirm()}

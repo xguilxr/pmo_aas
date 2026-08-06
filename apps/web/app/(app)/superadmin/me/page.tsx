@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   getSuperadminMe,
   updateSuperadminMe,
@@ -150,9 +151,12 @@ export default function SuperadminMePage() {
   async function handleTakeoverEmail() {
     if (saving) return;
     if (
-      !window.confirm(
-        `Confirmar take-over: el usuario ${emailClash?.username} (${emailClash?.email}) será renombrado a "released.<ts>.<email>" para liberar el email. Esto NO borra al usuario, pero deberá actualizar su email para volver a iniciar sesión. ¿Continuar?`,
-      )
+      !confirmarDestructivo({
+        objeto: `el correo de ${emailClash?.username} (${emailClash?.email})`,
+        consecuencia:
+          'Se le renombra a "released.<ts>.<email>" para liberar la dirección. No se borra al usuario, pero no podrá iniciar sesión hasta que actualice su correo.',
+        reversibilidad: "definitiva",
+      })
     ) {
       return;
     }

@@ -31,6 +31,7 @@ import {
   type Team,
 } from "@/lib/api/areas";
 import { ensureProjectAssignment } from "@/lib/api/area-helpers";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   createProjectRole,
   deleteProjectRole,
@@ -137,7 +138,14 @@ export function AreasAndTeamsPanel({
     id: string,
     name: string,
   ) {
-    if (!confirm(`¿Eliminar ${kind} "${name}"?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `${kind} «${name}»`,
+        consecuencia: "Las personas asignadas dejan de estar agrupadas ahí; no se borra a nadie.",
+        reversibilidad: "definitiva",
+      })
+    )
+      return;
     try {
       if (kind === "area") await deleteArea(id);
       else if (kind === "team") await deleteTeam(id);

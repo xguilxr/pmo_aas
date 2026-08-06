@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   approvePermissionRequest,
   listPermissionRequests,
@@ -74,9 +75,13 @@ export default function SuperadminPermissionRequestsPage() {
 
   async function approve(req: PermissionRequest) {
     if (
-      !window.confirm(
-        `Aprobar ticket: ${req.requested_grant ? "otorgar" : "revocar"} ${req.module}.${req.action} a ${req.target_user?.email}?`,
-      )
+      !confirmarDestructivo({
+        objeto: `el permiso ${req.module}.${req.action} de ${req.target_user?.email}`,
+        consecuencia: req.requested_grant
+          ? "Se le otorga: pasa a poder ejecutar esa acción."
+          : "Se le revoca: deja de poder ejecutar esa acción de inmediato.",
+        reversibilidad: "definitiva",
+      })
     ) {
       return;
     }

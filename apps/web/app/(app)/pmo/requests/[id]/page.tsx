@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { getOrganization, type Organization } from "@/lib/api/organizations";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   createProjectFromRequest,
   getRequest,
@@ -187,9 +188,11 @@ export default function RequestDetailPage() {
   async function handleReopen() {
     if (!request) return;
     if (
-      !window.confirm(
-        "¿Reabrir esta solicitud? Volverá a 'En revisión' y perderá el comentario del revisor.",
-      )
+      !confirmarDestructivo({
+        objeto: "el comentario del revisor de esta solicitud",
+        consecuencia: "Al reabrirla vuelve a «En revisión» y ese comentario se pierde.",
+        reversibilidad: "definitiva",
+      })
     ) {
       return;
     }

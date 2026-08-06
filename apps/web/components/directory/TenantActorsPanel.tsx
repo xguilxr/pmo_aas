@@ -31,6 +31,7 @@ import {
 } from "@/lib/api/areas";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
+import { confirmarDestructivo } from "@/lib/confirmar";
 
 // US-182: labels ES del pool de recursos con capacidad.
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
@@ -138,7 +139,14 @@ export function TenantActorsPanel() {
   const { sortedRows, ctrl: sortCtrl } = useSortableRows<Actor>(filtered);
 
   async function handleDelete(actor: Actor) {
-    if (!confirm(`¿Eliminar persona "${actor.name}"?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `a «${actor.name}» del directorio`,
+        consecuencia: "Se retira de todos los proyectos donde estuviera asignada.",
+        reversibilidad: "definitiva",
+      })
+    )
+      return;
     try {
       await deleteActor(actor.id);
       await refresh();

@@ -17,18 +17,22 @@ La frontera es `apps/web/lib/confirmar.ts`. Exige las tres partes **sin valor
 por defecto**, igual que `errors.mensaje(que=, porque=, accion=)` en el backend:
 un parámetro con defecto es un parámetro que nadie rellena.
 
-## Por qué línea base y no barrido completo
+## El pasivo está a cero
 
-Quedaban 16 archivos con avisos crudos, y `CLAUDE.md` §3 para a validar con el
-owner por encima de diez. Así que se aplica el molde que este repositorio ya usa
-para pasivos grandes (`.mypy-baseline`, `.len02-baseline`): el control **falla
-ante uno nuevo** y tolera los declarados, que solo pueden encoger.
+Se enchufó con 21 avisos crudos en línea base, porque eran 16 archivos y
+`CLAUDE.md` §3 para a validar con el owner por encima de diez. **El owner
+autorizó el barrido el mismo día** y quedaron en cero: la base existe vacía, y
+su papel ahora es que un aviso nuevo se **migre** en vez de declararse.
 
-Un barrido de 16 archivos en una tacada, además, produciría dieciséis
-consecuencias escritas a ojo. Cada una necesita saber si el borrado es blando o
-duro —conviven los dos: la mayoría marcan `deleted_at` y hay 52 sitios en el API
-que borran de verdad— y decir «no se puede deshacer» sobre un borrado blando es
-mentir.
+De aquellos 21, tres eran falsos positivos —una función local llamada
+`confirm`—, dieciséis se migraron, y dos se declararon fuera de alcance con su
+motivo (`NO_DESTRUCTIVO`): una guarda de navegación por edición sin guardar, y
+el envío de un informe por correo. Ninguna de las dos destruye nada.
+
+Cada consecuencia se escribió mirando **si el borrado es blando o duro**:
+conviven los dos —la mayoría marcan `deleted_at` y hay 52 sitios en el API que
+borran de verdad—, y decir «no se puede deshacer» sobre un borrado blando es
+mentir tanto como lo contrario.
 
 Uso:
 
@@ -55,6 +59,36 @@ ZONAS = ("components", "app")
 #: `confirmarDestructivo(` y cualquier otro identificador acabado en «confirm».
 CRUDO = re.compile(r"\bwindow\.confirm\s*\(|(?<![.\w])confirm\s*\(")
 
+#: Un archivo puede declarar SU PROPIA función `confirm`, y entonces un
+#: `confirm(...)` de ese archivo no es el diálogo del navegador.
+#:
+#: Pasó de verdad: la primera versión del control marcó tres llamadas de
+#: `import-wizard.tsx` y `superadmin/users/page.tsx` que son a una función
+#: local. Un trinquete con falsos positivos se desactiva — y peor: habría
+#: hecho «migrar» algo que no era un aviso destructivo.
+PROPIA = re.compile(r"\b(?:async\s+)?function\s+confirm\s*\(|const\s+confirm\s*=")
+
+#: Avisos que NO son acciones destructivas, declarados con su motivo.
+#:
+#: DIS-04 habla de destruir algo: «nombrar el objeto afectado y su
+#: consecuencia». Estos dos no destruyen nada, y forzarlos por la frontera
+#: produciría avisos que mienten sobre lo que hacen — que es peor que dejarlos
+#: como están.
+#:
+#: Se declaran aquí y no en la línea base porque son cosas distintas: la base
+#: es pasivo pendiente de migrar, esto es alcance decidido. Mezclarlos haría
+#: que la base nunca llegara a cero y perdiera su sentido.
+NO_DESTRUCTIVO: dict[str, str] = {
+    "app/(app)/pmo/projects/[id]/reports/builder/page.tsx::if (isDirty && !window.confirm(\"Tienes cambios sin guardar. ¿Salir sin guardar la plantilla?\")) {":
+        "guarda de navegación, no destrucción: avisa de que hay edición sin "
+        "guardar al salir. No hay objeto que nombrar ni consecuencia sobre "
+        "datos ya guardados.",
+    "app/(app)/pmo/projects/[id]/reports/page.tsx::!window.confirm(":
+        "envío inmediato de un informe por correo. Es irreversible hacia "
+        "fuera —no se puede des-enviar— pero no destruye nada: DIS-04 pide "
+        "confirmación para lo destructivo, y esto ya la tiene.",
+}
+
 CABECERA = """\
 # Línea base de DIS-04 — avisos destructivos que aún no pasan por la frontera
 #
@@ -80,11 +114,15 @@ def crudos() -> list[str]:
     filas = []
     for zona in ZONAS:
         for archivo in sorted((WEB / zona).rglob("*.tsx")):
-            for linea in archivo.read_text(encoding="utf-8").splitlines():
+            texto = archivo.read_text(encoding="utf-8")
+            # Si el archivo trae su propia `confirm`, solo cuenta el
+            # `window.confirm` explícito: el resto son llamadas suyas.
+            patron = re.compile(r"\bwindow\.confirm\s*\(") if PROPIA.search(texto) else CRUDO
+            for linea in texto.splitlines():
                 desnuda = linea.lstrip()
                 if desnuda.startswith(("//", "*", "/*")):
                     continue
-                if CRUDO.search(linea):
+                if patron.search(linea):
                     filas.append(
                         f"{archivo.relative_to(WEB).as_posix()}::{desnuda[:100]}"
                     )
@@ -121,6 +159,7 @@ def main() -> int:
         return 0
 
     conocidos = tolerados()
+    observados = [f for f in observados if f not in NO_DESTRUCTIVO]
     vistos = Counter(observados)
     nuevos = [f for f, n in vistos.items() for _ in range(n - conocidos.get(f, 0))]
 

@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   deletePermissionOverride,
   getTenantDetail,
@@ -105,9 +106,11 @@ export default function SuperadminTenantPermissionsPage() {
 
   async function handleDelete(o: PermissionOverride) {
     if (
-      !window.confirm(
-        `Eliminar override (${o.role_type} · ${o.module} · ${o.action})? Volverá al default del mapping.`,
-      )
+      !confirmarDestructivo({
+        objeto: `el override de ${o.role_type} sobre ${o.module}.${o.action}`,
+        consecuencia: "El permiso vuelve al valor por defecto del mapeo de roles.",
+        reversibilidad: "definitiva",
+      })
     ) {
       return;
     }

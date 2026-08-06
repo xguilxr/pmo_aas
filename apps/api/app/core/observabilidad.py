@@ -60,12 +60,14 @@ separe los dos flujos.
 """
 from __future__ import annotations
 
+import functools
+import inspect
 import logging
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, ParamSpec, TypeVar, cast
 
 import structlog
 
@@ -77,6 +79,12 @@ logger = logging.getLogger("pmoaas.observabilidad")
 #: Registro aparte para la medición. Se separa de `pmoaas.observabilidad` para
 #: que se pueda subir o bajar su nivel sin tocar el de los errores.
 medidor = logging.getLogger("pmoaas.medicion")
+
+#: Para que `medido` conserve la firma de lo que decora. Sin esto el decorador
+#: devuelve `Any` y apaga la comprobación de tipos de todo el que llama a la
+#: función decorada — en silencio.
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 #: Nombre del proceso, fijado por `configurar_registro`. Se emite en cada
 #: registro para poder separar la API del worker sin adivinar por el módulo:
@@ -264,7 +272,9 @@ def medir(operacion: str, **etiquetas: Any) -> Iterator[dict[str, Any]]:
         )
 
 
-def medido(operacion: str, **etiquetas: Any) -> Any:
+def medido(
+    operacion: str, **etiquetas: Any
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """Decorador para medir una función entera. Sirve para `async` y para `def`.
 
     `medir` como gestor de contexto obliga a tocar el cuerpo de la función; en
@@ -276,22 +286,33 @@ def medido(operacion: str, **etiquetas: Any) -> Any:
     síncrono devolvería la corrutina sin esperarla y mediría **cero
     milisegundos siempre** — un fallo que se lee como un informe instantáneo y
     no como un error.
-    """
-    import functools
-    import inspect
 
-    def envolver(funcion: Any) -> Any:
+    **Tipado con `ParamSpec`, y no es cosmética.** La primera versión devolvía
+    `Any`, y mypy avisó de lo que eso significa: «untyped decorator makes
+    function untyped». Las cuatro funciones decoradas **perdieron su firma**, y
+    con ella la comprobación de tipos de todo el que las llama.
+
+    Se vio en el propio gate: al enchufarlo desaparecieron **cinco huellas de
+    la línea base** de `reports.py` —errores reales de tipo que mypy dejó de
+    ver porque ya no sabía qué recibía `render_report_html`—. Un decorador sin
+    tipar no es un detalle de estilo: apaga el análisis aguas abajo y lo hace
+    en silencio.
+    """
+
+    def envolver(funcion: Callable[_P, _R]) -> Callable[_P, _R]:
         if inspect.iscoroutinefunction(funcion):
 
             @functools.wraps(funcion)
-            async def asincrona(*args: Any, **kwargs: Any) -> Any:
+            async def asincrona(*args: _P.args, **kwargs: _P.kwargs) -> Any:
                 with medir(operacion, **etiquetas):
                     return await funcion(*args, **kwargs)
 
-            return asincrona
+            # `cast` porque el envoltorio asíncrono devuelve la corrutina ya
+            # esperada: para quien llama, la firma es la misma.
+            return cast(Callable[_P, _R], asincrona)
 
         @functools.wraps(funcion)
-        def sincrona(*args: Any, **kwargs: Any) -> Any:
+        def sincrona(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             with medir(operacion, **etiquetas):
                 return funcion(*args, **kwargs)
 

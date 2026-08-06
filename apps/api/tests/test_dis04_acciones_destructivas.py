@@ -21,7 +21,7 @@ RAIZ = Path(__file__).resolve().parents[3]
 FRONTERA = RAIZ / "apps" / "web" / "lib" / "confirmar.ts"
 
 sys.path.insert(0, str(RAIZ / "scripts"))
-from check_confirmaciones import crudos, tolerados  # noqa: E402
+from check_confirmaciones import NO_DESTRUCTIVO, crudos, tolerados  # noqa: E402
 
 
 def test_la_frontera_exige_las_tres_partes() -> None:
@@ -85,7 +85,7 @@ def test_ningun_aviso_crudo_nuevo() -> None:
     """
     from collections import Counter
 
-    observados = Counter(crudos())
+    observados = Counter(f for f in crudos() if f not in NO_DESTRUCTIVO)
     conocidos = tolerados()
     nuevos = [f for f, n in observados.items() if n > conocidos.get(f, 0)]
     assert not nuevos, (
@@ -94,17 +94,30 @@ def test_ningun_aviso_crudo_nuevo() -> None:
     )
 
 
-def test_la_base_solo_encoge() -> None:
-    """Sin esto, `--regenerar` sería una forma cómoda de perdonar lo nuevo.
+def test_no_queda_pasivo() -> None:
+    """El pasivo llegó a **cero** el 2026-08-06, con el owner autorizando el
+    barrido de los 16 archivos.
 
-    El número está escrito a mano y no derivado de la base: derivarlo de lo que
-    vigila haría que subirlo pasara desapercibido — el defecto que ya apareció
-    con `MAX_ASUNTO` y con `CAMPOS` en esta misma sesión.
+    El cero está escrito y no derivado de la base: derivarlo de lo que vigila
+    haría que subirlo pasara desapercibido — el defecto que ya apareció con
+    `MAX_ASUNTO` y con `CAMPOS` en esta misma sesión.
     """
-    assert sum(tolerados().values()) <= 21, (
-        "La línea base de DIS-04 creció. Es el pasivo del día en que se enchufó "
-        "el control, no una lista de excepciones: solo puede encoger."
+    assert sum(tolerados().values()) == 0, (
+        "Reapareció pasivo en la línea base de DIS-04. Ya estaba a cero: un "
+        "aviso nuevo se migra, no se declara."
     )
+
+
+def test_lo_que_queda_fuera_dice_por_que() -> None:
+    """Dos avisos no son destrucción y están declarados, no tolerados.
+
+    La distinción no es cosmética: la línea base es pasivo pendiente y el
+    alcance decidido es otra cosa. Mezclarlos haría que la base nunca llegara a
+    cero y perdiera su sentido — que es justo lo que acaba de pasar hoy.
+    """
+    assert len(NO_DESTRUCTIVO) == 2
+    for aviso, motivo in NO_DESTRUCTIVO.items():
+        assert len(motivo) > 60, f"«{aviso[:40]}…» no explica por qué queda fuera."
 
 
 def test_los_avisos_migrados_de_verdad_pasan_por_la_frontera() -> None:
@@ -121,6 +134,15 @@ def test_los_avisos_migrados_de_verdad_pasan_por_la_frontera() -> None:
     assert "¿Eliminar este riesgo?" not in raid
     assert "¿Eliminar este ítem?" not in raid
     assert raid.count("confirmarDestructivo({") == 2
+
+    # El más caro del producto: la importación con estrategia REPLACE borra
+    # TODAS las tareas del proyecto. Era el único aviso que ya decía su
+    # consecuencia, y no decía que fuera irreversible.
+    asistente = (RAIZ / "apps" / "web" / "components" / "import-wizard.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert asistente.count("confirmarDestructivo({") == 3
+    assert "TODAS las tareas actuales" in asistente
 
     assert "¿Eliminar esta programación?" not in informes
     assert 'reversibilidad: "definitiva"' in informes, (

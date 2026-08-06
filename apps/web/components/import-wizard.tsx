@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import { esSinDato } from "@/lib/sin-dato";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   type ImportPreviewResult,
   type ImportSource,
@@ -230,9 +231,12 @@ export function ImportWizard({
       // se persiste exactamente lo que muestra la vista previa.
       if (aiStructure) {
         if (strategy === "replace") {
-          const ok = window.confirm(
-            "Estrategia REPLACE: se eliminarán todas las tareas actuales del proyecto antes de importar. ¿Continuar?",
-          );
+          const ok = confirmarDestructivo({
+            objeto: "TODAS las tareas actuales del proyecto",
+            consecuencia:
+              "La estrategia REPLACE las borra antes de importar las nuevas. Se pierden avances, dependencias y asignaciones.",
+            reversibilidad: "definitiva",
+          });
           if (!ok) {
             setBusy(false);
             return;
@@ -269,9 +273,12 @@ export function ImportWizard({
           return;
         }
         if (strategy === "replace") {
-          const ok = window.confirm(
-            "Estrategia REPLACE: se eliminarán todas las tareas actuales del proyecto antes de importar. ¿Continuar?",
-          );
+          const ok = confirmarDestructivo({
+            objeto: "TODAS las tareas actuales del proyecto",
+            consecuencia:
+              "La estrategia REPLACE las borra antes de importar las nuevas. Se pierden avances, dependencias y asignaciones.",
+            reversibilidad: "definitiva",
+          });
           if (!ok) {
             setBusy(false);
             return;
@@ -279,9 +286,12 @@ export function ImportWizard({
         }
         mappingPayload = inverted;
       } else if (strategy === "replace") {
-        const ok = window.confirm(
-          "Estrategia REPLACE: se eliminarán todas las tareas actuales del proyecto antes de importar. ¿Continuar?",
-        );
+        const ok = confirmarDestructivo({
+          objeto: "TODAS las tareas actuales del proyecto",
+          consecuencia:
+            "La estrategia REPLACE las borra antes de importar las nuevas. Se pierden avances, dependencias y asignaciones.",
+          reversibilidad: "definitiva",
+        });
         if (!ok) {
           setBusy(false);
           return;
