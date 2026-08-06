@@ -143,6 +143,7 @@ CIERRES = {
  # de medir contra la evidencia anotada en vez de contra el requisito.
  "DAT-06":("PARCIAL","Ola 2 — 0 restos en código (trinquete test_dat06_vocabulario.py); queda `amber_max` en tenant.settings, Ola 3"),
  "DOC-01":("CONFORME","Ola 2 — 127 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
+ "DOC-03":("CONFORME","Ola 2 — el ER se genera de Base.metadata (scripts/generar_er.py) y la suite falla si se desfasa; database.md decía 49 tablas con 56 en el modelo"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 
