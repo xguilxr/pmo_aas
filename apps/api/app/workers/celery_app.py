@@ -1,5 +1,4 @@
 import logging
-import os
 
 from celery import Celery
 from celery.schedules import crontab
@@ -18,8 +17,8 @@ logger = logging.getLogger("pmoaas.worker")
 # override explícito; si no, caemos a REDIS_URL. Si ninguno está configurado
 # (o viene vacío) fallamos ruidosamente — sin esto Celery usa su default
 # amqp://guest@localhost:5672// y el worker se queda reintentando para siempre.
-_broker = (os.getenv("CELERY_BROKER_URL") or settings.REDIS_URL or "").strip()
-_backend = (os.getenv("CELERY_RESULT_BACKEND") or settings.REDIS_URL or "").strip()
+_broker = (settings.CELERY_BROKER_URL or settings.REDIS_URL or "").strip()
+_backend = (settings.CELERY_RESULT_BACKEND or settings.REDIS_URL or "").strip()
 
 if not _broker:
     raise RuntimeError(

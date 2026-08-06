@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -113,6 +114,58 @@ class Settings(BaseSettings):
     # En producción DEBE setearse con `python -c "from cryptography.fernet
     # import Fernet; print(Fernet.generate_key().decode())"`.
     AI_SECRETS_FERNET_KEY: str = "dev-ai-secrets-fernet-key-change-me-0000="
+
+    # ARQ-04 — configuración en el entorno, y **toda** en esta clase.
+    #
+    # Las cinco de abajo se leían con `os.environ` sueltas por el código. No es
+    # cosmético: `Settings` lee además de `.env`, así que un valor puesto solo
+    # en el fichero llegaba a unos sitios y a otros no.
+    #
+    # El caso feo era `APPROVAL_TOKEN_SECRET`: `change_approvals.py` resolvía el
+    # secreto con `os.environ.get("JWT_SECRET")` y, si no estaba en el entorno
+    # del proceso, caía a un literal de desarrollo. Con el secreto declarado
+    # solo en `.env`, los tokens de aprobación se habrían firmado con la cadena
+    # pública mientras la autenticación usaba la real — el mismo secreto
+    # resuelto de dos maneras.
+    APPROVAL_TOKEN_SECRET: str = ""  # vacío = usa JWT_SECRET, que sí está aquí
+    MPXJ_CLI_CP: str = "/opt/mpxj/lib/*:/opt/mpxj/cli"
+    MPP_PARSE_TIMEOUT_SECONDS: int = 60
+    CELERY_BROKER_URL: str = ""  # vacío = usa REDIS_URL
+    CELERY_RESULT_BACKEND: str = ""  # vacío = usa REDIS_URL
+    # Los dos nombres con los que se venía resolviendo la URL pública. Se
+    # aceptan por compatibilidad; el valor efectivo cae a `APP_BASE_URL`, que
+    # ya traía el dominio de producción. El fallback anterior era
+    # `http://localhost:3000`, así que sin ninguna de las dos puestas los
+    # correos de aprobación salían con enlaces a la máquina de quien los leía.
+    APP_PUBLIC_URL: str = ""
+    NEXT_PUBLIC_BASE_URL: str = ""
+
+    @model_validator(mode="after")
+    def _produccion_sin_estado_local(self) -> "Settings":
+        """MCS ARQ-04 — «procesos sin estado». Se comprueba al arrancar.
+
+        `STORAGE_BACKEND` vale `local` por defecto, que es lo correcto en
+        desarrollo y **rompe los doce factores en producción**: los archivos
+        caen en `/tmp` del contenedor, así que se pierden en cada despliegue y
+        una segunda réplica no ve lo que subió la primera.
+
+        Y falla de la peor manera: sin ruido. La subida devuelve 200, el
+        documento aparece en la lista, y desaparece cuando Railway recicla el
+        proceso. Nadie asocia lo segundo con lo primero.
+
+        Es la misma forma que OPS-01 —el código lee conforme y producción
+        puede estar mal en silencio porque falta una variable—, y se cierra
+        igual: haciendo que **no arranque**. Un despliegue que no levanta se
+        arregla en cinco minutos; documentos que se evaporan se descubren
+        cuando alguien busca el que necesitaba.
+        """
+        if self.PYTHON_ENV == "production" and self.STORAGE_BACKEND == "local":
+            raise ValueError(
+                "STORAGE_BACKEND='local' en producción: los archivos irían al "
+                "disco del contenedor y se perderían en cada despliegue. "
+                "Definí STORAGE_BACKEND=s3 con las variables S3_*."
+            )
+        return self
 
     @property
     def cors_origins(self) -> list[str]:
