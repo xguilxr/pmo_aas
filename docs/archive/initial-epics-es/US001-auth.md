@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # US001 — Autenticación y gestión de sesión
 
 Épica origen: [EP001 — Login usuarios](../../epics/EP001-login-usuarios.md)

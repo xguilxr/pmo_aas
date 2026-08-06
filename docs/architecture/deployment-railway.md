@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 180d
+---
+
 # Despliegue en Railway
 
 **ID:** `DOC-ARCH-DEPLOY`

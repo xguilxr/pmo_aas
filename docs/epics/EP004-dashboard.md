@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-07-18
+revisar_cada: 90d
+---
+
 # EP004 — Dashboard del Project Manager
 
 | Campo | Valor |

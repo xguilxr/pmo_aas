@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # EP016 — Modelo IA local (Ollama + Tailscale) — **SUPERSEDED**
 
 > ## ⚠️ Archivada — SUPERSEDED por DEC-017 + US-057

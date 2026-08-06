@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # EP-002: Jerarquía de Clientes/Proyectos
 
 **Prioridad:** Alta

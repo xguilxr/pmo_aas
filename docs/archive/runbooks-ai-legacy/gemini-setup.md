@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Setup de Google Gemini (2.º proveedor — free tier)
 
 **ID:** `DOC-AI-GEMINI`

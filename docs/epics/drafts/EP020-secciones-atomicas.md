@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-22
+revisar_cada: 90d
+---
+
 # EP020 — Catálogo de Secciones Atómicas (DRAFT / WIP)
 
 > **Estado:** Draft de diseño. NO es epic oficial todavía. Vive en

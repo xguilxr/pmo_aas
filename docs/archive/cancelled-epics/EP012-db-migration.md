@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # EP012 — Instalación productivo en Hostgator MySQL (code-compat + fresh install)
 
 > **⚠️ EPIC CANCELADO — 2026-04-21 (ver DEC-013).**

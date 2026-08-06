@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-07-18
+revisar_cada: 90d
+---
+
 # EP017 — Directorio de Proyecto (áreas funcionales, equipos operativos, roles, participaciones)
 
 | Campo | Valor |

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 30d
+---
+
 # SPRINT.md — Tarea activa
 
 > **Regla:** este archivo es lo que se mira cada día. El epic se abre al tocarlo

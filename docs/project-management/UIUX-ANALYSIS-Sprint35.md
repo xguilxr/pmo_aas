@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-06-28
+revisar_cada: 30d
+---
+
 # Análisis UI/UX + alineación de campos RAID — Sprint 35 (2026-06-28)
 
 > Entregable de cierre del batch "Plan page + RAID mejoras". Cubre el análisis

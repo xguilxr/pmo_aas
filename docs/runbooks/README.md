@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 180d
+---
+
 # Runbooks — Guías de Setup
 
 **Última actualización:** 2026-04-23 (post-v1.1, BUG-027)

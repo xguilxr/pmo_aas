@@ -1,6 +1,12 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 30d
+---
+
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-08-05
 **Branch activa:** `claude/audit-continuation-fzrtko` — reiniciada sobre `main`; #578 y #579 mergeados
 **Generado por:** `/handoff`
 

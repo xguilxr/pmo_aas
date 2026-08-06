@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Railway — Arquitectura, CI/CD y Migraciones
 
 **ID:** `DOC-RAILWAY-DEPLOYMENT`

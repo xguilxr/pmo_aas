@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 180d
+---
+
 # Setup en Railway (sin local, sin Linux)
 
 Guía optimizada con **Shared Variables** para minimizar el esfuerzo de configuración.

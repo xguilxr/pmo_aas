@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-04
+revisar_cada: 90d
+---
+
 # CLAUDE.md — Reglas de trabajo para Claude Code
 
 > Este archivo define **cómo trabajo** en este repo. Se lee al inicio de
@@ -362,10 +369,3 @@ Procedimiento completo en la skill **`handoff`**.
 
 El checklist por capa, las anclas concretas (qué obliga a qué) y el DoD viven en
 la skill **`cerrar-item`**. Se cargan al cerrar un item, que es cuando se usan.
-
----
-
-**Última actualización:** 2026-08-03 — auditoría MCA acción 6: los procedimientos
-repetibles salieron a `.claude/skills/` (`triage`, `cerrar-item`, `delegar`,
-`resumen-ronda`, `handoff`). Este archivo queda con lo que manda siempre.
-**Responsable:** Claude Code (owner: xguilxr)

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: historico
+revisado: 2026-08-05
+revisar_cada: nunca
+---
+
 # Verificación de las Olas 0 y 1 contra `MCS-CORE`
 
 | Campo | Valor |

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Testing — cobertura 100% de la app
 
 Esta carpeta es la **fuente de verdad** de qué funcionalidad cubre la app y

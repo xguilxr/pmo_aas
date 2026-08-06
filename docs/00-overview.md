@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-29
+revisar_cada: 180d
+---
+
 # Visión general del producto
 
 **ID:** `DOC-OVERVIEW`

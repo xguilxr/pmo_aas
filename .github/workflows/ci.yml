@@ -74,6 +74,16 @@ jobs:
       - name: Presupuesto de contexto y límite de SPRINT.md
         run: python scripts/check_contexto.py
 
+      # Auditoría MCS 2026-08-03 — cierra DOC-01 («todo documento DEBE declarar
+      # responsable, estado, fecha de revisión y periodicidad»). Eran 0 de 64.
+      #
+      # Va en este job por lo mismo que `check_tokens` fue a `contraste-wcag`:
+      # los dos miran documentación, tardan segundos y no dependen de qué
+      # código cambió. Una verificación requerida más cuesta una acción del
+      # owner sin añadir cobertura.
+      - name: Encabezado documental (DOC-01)
+        run: python scripts/check_docs.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #

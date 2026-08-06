@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-06-05
+revisar_cada: 30d
+---
+
 # Handoff — pmo_aas — 2026-06-05
 
 > Foco de este handoff: **los 4 temas restantes** del batch de bugs/ENH que pidió

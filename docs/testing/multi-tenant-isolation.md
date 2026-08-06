@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Multi-Tenant Isolation — Tests bloqueantes
 
 **ID:** `DOC-TEST-MT`

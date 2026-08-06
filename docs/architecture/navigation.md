@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-07-08
+revisar_cada: 180d
+---
+
 # Navegación de la web app
 
 **ID:** `DOC-ARCH-NAV`

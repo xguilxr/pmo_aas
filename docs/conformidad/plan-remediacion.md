@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: historico
+revisado: 2026-08-05
+revisar_cada: nunca
+---
+
 # Plan de remediación de conformidad — MCS
 
 | Campo | Valor |

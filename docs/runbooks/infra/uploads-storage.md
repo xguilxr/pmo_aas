@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Runbook · Storage de uploads (documentos + PDFs generados)
 
 > **Scope:** configurar storage persistente para documentos subidos

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Docs IA — Archivo legacy (pre-DEC-017)
 
 **Archivados:** 2026-04-23 como parte de ENH-022 (follow-up de BUG-027).

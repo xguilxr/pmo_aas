@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Capa de IA — PMO-aaS
 
 **ID:** `DOC-AI`

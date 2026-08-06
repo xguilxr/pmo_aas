@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Modelo de datos — PostgreSQL 16
 
 **ID:** `DOC-ARCH-DB`

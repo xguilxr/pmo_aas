@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-03
+revisar_cada: 90d
+---
+
 # Rundown — estándares y certificaciones de Project Management y PMO
 
 | Campo | Valor |

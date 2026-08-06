@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Super Admin — guía funcional y técnica
 
 Este documento describe la experiencia y la arquitectura de la vista

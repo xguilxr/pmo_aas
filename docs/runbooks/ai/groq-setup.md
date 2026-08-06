@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Runbook · Habilitar Groq como IA base de la plataforma (US-057)
 
 > Aplica a **Sprint 2 v1.1+** (vigente al 2026-05-23).

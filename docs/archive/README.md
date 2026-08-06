@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # docs/archive — documentación histórica
 
 Contenido que ya **no es la fuente de verdad** pero se conserva en git

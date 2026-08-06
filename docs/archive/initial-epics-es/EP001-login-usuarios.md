@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # EP-001: Login y Manejo de Usuarios
 
 **Prioridad:** Alta

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 90d
+---
+
 # Glosario canónico del dominio PMO
 
 | Campo | Valor |

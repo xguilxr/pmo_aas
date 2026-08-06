@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: historico
+revisado: 2026-08-05
+revisar_cada: nunca
+---
+
 # Remediación posterior a R1 — MCS
 
 | Campo | Valor |

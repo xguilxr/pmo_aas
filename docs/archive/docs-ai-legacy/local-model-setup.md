@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Setup del modelo de IA local (Ollama)
 
 **ID:** `DOC-AI-LOCAL`
