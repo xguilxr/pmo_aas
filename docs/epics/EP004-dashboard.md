@@ -48,6 +48,13 @@ Dar a Project Managers y PMO Managers una vista en un solo lugar del estado del 
 - [ ] Caché Redis 5 min por `(tenant_id, user_id)` (porque respeta permisos).
 - [ ] Respeta filtro por proyectos asignados: user con rol `Viewer` solo ve KPIs de proyectos donde es miembro.
 - [ ] Cada tarjeta tiene `link_to` → navega a vista filtrada.
+- [x] **La ausencia de dato se ve distinta del cero** (MCS DAT-12, 2026-08-06).
+      Un KPI sin dato —presupuesto no cargado, o el indicador todavía
+      cargando— muestra «—» atenuado y con etiqueta accesible «sin dato», no
+      un `0`. La distinción no es cosmética: un proyecto sin presupuesto
+      cargado y uno con presupuesto cero piden acciones distintas, y «0
+      riesgos abiertos» puede ser un proyecto sano o uno al que nadie le
+      registró riesgos. La convención vive en `apps/web/lib/sin-dato.ts`.
 - [ ] Skeleton mientras carga; números animan de 0 al valor final (Framer Motion).
 
 **Test Cases:**

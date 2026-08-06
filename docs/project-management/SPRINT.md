@@ -20,14 +20,13 @@ revisar_cada: 30d
 ## 🔴 IN-PROGRESS
 
 ```
-Sin US activa. La sesión del 2026-08-05 cerró su branch; el owner mergea.
+Sin US activa. Branch `claude/remediacion-ola-2-2kg36x` — el owner abre el PR.
 
 REMEDIACIÓN POR OLAS — plan en `docs/conformidad/plan-remediacion.md`.
-Olas 0 y 1 cerradas. **Lo siguiente es la Ola 2**, mecánica y disparable sola.
+Olas 0, 1 y **2 cerradas**. Lo siguiente necesita postura del owner (Ola 3).
 
 MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · **41 bloquean N1** · una sola exclusión viva (ARQ-03, ADR-018).
-**`MCS-CORE` ya está en el repo** (`docs/conformidad/marco/`).
+MCS: N0 · **32 bloquean N1** (eran 41) · una sola exclusión viva (ARQ-03).
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -44,32 +43,26 @@ El plan completo, con el registro de los 97 abiertos y la evidencia por
 requisito, está en **`docs/conformidad/plan-remediacion.md`**. El estado se
 recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
 
-- [x] **Ola 0 — hecha el 2026-08-05.** De **45 a 41** bloqueantes de N1 sin
-  escribir una línea de producto: `ARQ-02`, `GOB-02`, `LEN-01` y `DAT-05`
-  estaban cerrados y el registro no se había enterado. `DAT-06` trajo la
-  sorpresa que justifica la ola: parecía un `sed` y esconde un **cambio de
-  contrato**. `DAT-08` y `DAT-16` **no se pudieron medir** — sin `MCS-CORE` no
-  se sabe qué preguntarles. Informe: `docs/conformidad/2026-08-05-ola0-recuento.md`.
-- [x] **Ola 1 — hecha el 2026-08-05.** El owner protegió `main`: 8
-  verificaciones exigidas en `strict`, sin force-push ni borrado. `CFG-03` e
-  `INT-03` cierran; **la distancia a N1 baja de 47 a 45**. `contraste-wcag`
-  entró a las exigidas —son nueve— y `enforce_admins` **se queda en `false`**
-  por decisión del owner, con el residual escrito.
-- [ ] **Ola 2 — 13 mecánicos, se pueden disparar solos**, uno por commit con
-  prueba y verificación por mutación: `DAT-12` (77 puntos), `DIS-03` (73 de 75
-  pantallas), `DIS-01` (25 literales), `DAT-04` (6 sitios), `DAT-02`, `DAT-11`,
-  `OPS-01`, `DEV-04`, `CFG-04`, `SEG-05`, `DOC-01`, `DOC-03`, `LEN-02`.
-- [ ] **Ola 3 — necesita postura del owner antes de tocar código.** Alcance de
-  competencia (`CON-01/03/05`), escenarios de calidad con medida (`REQ-02`),
-  inventario de datos personales (`REQ-03`), fichas de indicador
-  (`DAT-01/DAT-10`), almacén de secretos (`SEG-02`), estrategia de pruebas
-  (`DEV-02/03` — hoy **cero** en frontend), artefacto de canalización
-  (`SUM-01`), entornos y copias (`INF-02/03`, `DES-02`).
-  **Aparte: `SEG-04`**, CRÍTICA — autorización verificada en el punto de acceso
-  y no sobre el objeto. Es trabajo de seguridad, no una declaración.
-- [ ] **Ola 4 — de N1 a N2.** Sin planificar a propósito: se replanifica al
-  alcanzar N1, con el registro ya remedido. Estimación del expediente: 3-4
-  semanas persona a N1, 8-12 a N2.
+- [x] **Olas 0 y 1 — hechas el 2026-08-05.** De 45 a 41 sin escribir producto
+  (el registro no se había enterado de cuatro cierres), y `main` protegida.
+  Detalle en `plan-remediacion.md` y en los informes fechados.
+- [x] **Ola 2 — hecha el 2026-08-06.** De **41 a 32** bloqueantes, once commits
+  con prueba y verificación por mutación. Cierran `SEG-05`, `OPS-01`, `DEV-04`,
+  `CFG-04`, `DIS-01`+`CFG-14`, `DOC-01`, `DOC-03`, `DAT-04`+`DAT-08`, `DAT-12`,
+  y `DAT-05` **vuelve a cerrar** — estaba CONFORME sobre una lista escrita a
+  mano y quedaba una quinta paleta, en el acta que se firma. Siguen PARCIAL
+  `DAT-06` (queda `amber_max`, es contrato) y `LEN-02` (177→169, con el
+  mecanismo ya puesto). **`DAT-02`, `DIS-03` y `DAT-11` se reclasifican**: no
+  son mecánicos, y ahora están medidos. Detalle en `plan-remediacion.md`.
+- [ ] **Ola 3 — necesita postura del owner.** Alcance de competencia
+  (`CON-01/03/05`), escenarios de calidad con medida (`REQ-02`), inventario de
+  datos personales (`REQ-03`), fichas de indicador (`DAT-01/10`), almacén de
+  secretos (`SEG-02`), estrategia de pruebas (`DEV-02/03` — hoy **cero** en
+  frontend), artefacto de canalización (`SUM-01`), entornos y copias
+  (`INF-02/03`, `DES-02`). **Aparte: `SEG-04`**, CRÍTICA — autorización sobre
+  el objeto y no solo sobre el punto de acceso. Se le suman de la Ola 2:
+  `DAT-02` (renombres con migración), `DIS-03` y `DAT-11` (épica de producto).
+- [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto
 
@@ -99,6 +92,14 @@ ejecutar. El historial narrativo sigue en `SPRINT-DONE-HISTORY.md`.
 ## Notas y cambios recientes
 
 > Histórico narrativo en `SPRINT-DONE-HISTORY.md`.
+
+- **2026-08-06 (Ola 2):** once commits. Lo que la medición no veía: el acta en
+  `.docx` se firmaba con la paleta anterior a DIS-02; once citas a tokens
+  inexistentes hacían que la página de documentos pintara tema claro en modo
+  oscuro y que la tabla de permisos saliera sin fondo; el gate de tipos daba
+  verde sin analizar nada; el worker no configuraba su registro y Celery se lo
+  llevaba por delante. Cuatro hallazgos, ninguno de leer código: los cuatro
+  salieron de medir contra el texto del requisito.
 
 - **2026-08-05 (auditoría + producto):** siete commits sobre
   `claude/audit-continuation-fzrtko`, más los de #577. **MCA alcanza N2** con
