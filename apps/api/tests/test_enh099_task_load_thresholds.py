@@ -44,9 +44,9 @@ def test_get_task_load_thresholds_reads_nested_value():
     t = Tenant(
         slug="x",
         name="x",
-        settings={"report_builder": {"task_load_thresholds": {"green_max": 3, "amber_max": 7}}},
+        settings={"report_builder": {"task_load_thresholds": {"green_max": 3, "yellow_max": 7}}},
     )
-    assert get_task_load_thresholds(t) == {"green_max": 3, "amber_max": 7}
+    assert get_task_load_thresholds(t) == {"green_max": 3, "yellow_max": 7}
 
 
 def test_validate_task_load_thresholds_rejects_invalid():
@@ -76,7 +76,7 @@ def test_set_task_load_thresholds_persists_and_preserves_siblings():
     set_task_load_thresholds(t, 4, 8)
     assert t.settings["report_builder"]["task_load_thresholds"] == {
         "green_max": 4,
-        "amber_max": 8,
+        "yellow_max": 8,
     }
     # Sibling key untouched.
     assert (
@@ -100,16 +100,16 @@ async def test_patch_thresholds_persists(client, db_session):
     _, auth = await _admin(client, db_session)
     r = await client.patch(
         "/api/v1/admin/settings",
-        json={"task_load_thresholds": {"green_max": 3, "amber_max": 8}},
+        json={"task_load_thresholds": {"green_max": 3, "yellow_max": 8}},
         headers=auth["_authz"],
     )
     assert r.status_code == 200, r.text
-    assert r.json()["settings"]["task_load_thresholds"] == {"green_max": 3, "amber_max": 8}
+    assert r.json()["settings"]["task_load_thresholds"] == {"green_max": 3, "yellow_max": 8}
 
     # Round-trip via GET.
     g = await client.get("/api/v1/admin/settings", headers=auth["_authz"])
     assert g.status_code == 200
-    assert g.json()["settings"]["task_load_thresholds"] == {"green_max": 3, "amber_max": 8}
+    assert g.json()["settings"]["task_load_thresholds"] == {"green_max": 3, "yellow_max": 8}
 
 
 @pytest.mark.asyncio
@@ -117,7 +117,7 @@ async def test_patch_thresholds_rejects_negative(client, db_session):
     _, auth = await _admin(client, db_session)
     r = await client.patch(
         "/api/v1/admin/settings",
-        json={"task_load_thresholds": {"green_max": -1, "amber_max": 10}},
+        json={"task_load_thresholds": {"green_max": -1, "yellow_max": 10}},
         headers=auth["_authz"],
     )
     assert r.status_code == 422
@@ -128,14 +128,14 @@ async def test_patch_thresholds_rejects_non_monotonic(client, db_session):
     _, auth = await _admin(client, db_session)
     r = await client.patch(
         "/api/v1/admin/settings",
-        json={"task_load_thresholds": {"green_max": 10, "amber_max": 5}},
+        json={"task_load_thresholds": {"green_max": 10, "yellow_max": 5}},
         headers=auth["_authz"],
     )
     assert r.status_code == 422
     # equal is also rejected.
     r2 = await client.patch(
         "/api/v1/admin/settings",
-        json={"task_load_thresholds": {"green_max": 5, "amber_max": 5}},
+        json={"task_load_thresholds": {"green_max": 5, "yellow_max": 5}},
         headers=auth["_authz"],
     )
     assert r2.status_code == 422
@@ -164,10 +164,10 @@ async def test_patch_thresholds_preserves_other_settings(client, db_session):
     # Then thresholds.
     r = await client.patch(
         "/api/v1/admin/settings",
-        json={"task_load_thresholds": {"green_max": 2, "amber_max": 6}},
+        json={"task_load_thresholds": {"green_max": 2, "yellow_max": 6}},
         headers=auth["_authz"],
     )
     assert r.status_code == 200
     body = r.json()["settings"]
     assert body["locale"] == "en-US"
-    assert body["task_load_thresholds"] == {"green_max": 2, "amber_max": 6}
+    assert body["task_load_thresholds"] == {"green_max": 2, "yellow_max": 6}

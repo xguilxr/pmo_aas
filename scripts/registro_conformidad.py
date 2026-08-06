@@ -141,7 +141,11 @@ CIERRES = {
  # necesita ventana, como `wbs`. Un PARCIAL impide alcanzar su nivel (§6.2), y
  # así debe figurar: darlo por cerrado con el resto vivo sería repetir el error
  # de medir contra la evidencia anotada en vez de contra el requisito.
- "DAT-06":("PARCIAL","Ola 2 — 0 restos en código (trinquete test_dat06_vocabulario.py); queda `amber_max` en tenant.settings, Ola 3"),
+ # CIERRA el 2026-08-06 con ADR-030. El quinto resto era de contrato —una llave
+ # en `tenant.settings` de inquilinos reales— y fue con el molde de wbs→wbs_code:
+ # migración 0101 sobre los datos + ventana de compatibilidad. De paso salió que
+ # la etiqueta del formulario de ajustes también decía «Ámbar».
+ "DAT-06":("CONFORME","Ola 3 — amber_max→yellow_max (ADR-030, migración 0101); 0 restos en código, datos e interfaz"),
  "DOC-01":("CONFORME","Ola 2 — 127 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
  "DOC-03":("CONFORME","Ola 2 — el ER se genera de Base.metadata (scripts/generar_er.py) y la suite falla si se desfasa; database.md decía 49 tablas con 56 en el modelo"),
  # DAT-04 y DAT-08 miraban el mismo hecho desde lados distintos: la auditoría

@@ -1385,3 +1385,63 @@ Positivas y negativas. Mitigaciones de las negativas.
 - Opción A: razón por la que no.
 - Opción B: razón por la que no.
 ```
+
+---
+
+## ADR-030 — `task_load_thresholds.amber_max` pasa a `yellow_max`
+
+**Estado:** ✅ Aceptada — 2026-08-06 (owner)
+**Requisitos MCS afectados:** DAT-06
+
+**Contexto:**
+El último resto de `amber` en el producto. El glosario veta el término desde
+D-1 y la migración 0091 convirtió los **valores** de salud (`amber` → `yellow`);
+lo que sobrevivió fue esta **llave**, dentro de `settings.report_builder` de la
+tabla `tenants`, describiendo el mismo concepto con la palabra retirada.
+
+No era cosmético. El umbral colorea la carga de recursos con el vocabulario del
+semáforo, así que el valor vivía en `yellow` y su corte en `amber_max`: quien
+leyera el código de colorización tenía que traducir mentalmente en cada paso, y
+ahí es donde se cuelan los errores de asignación de color. Es además el motivo
+por el que `DAT-06` no cerró con la Ola 2 — el plan lo dejó anotado como
+«cambio de contrato», no como olvido.
+
+La dificultad es que **vive en datos de inquilinos reales**, no en una columna:
+renombrarlo es un cambio de contrato, no un `sed`.
+
+**Decisión:**
+Renombrar a `yellow_max` con el mismo molde que `wbs` → `wbs_code` (ADR-020),
+que es el precedente aprobado para esta clase de cambio:
+
+1. **Migración 0101** reescribe la llave en los datos existentes. Opera sobre el
+   JSON en Python y con SQL portable, no con los operadores de Postgres: la
+   suite corre sobre SQLite, y una migración que solo sabe correr en un motor se
+   descubre en producción.
+2. **Ventana de compatibilidad** en `core/compatibilidad.py`. El API sigue
+   aceptando `amber_max` a la entrada **y a la lectura** —un inquilino
+   restaurado de una copia anterior al despliegue lo traería—, y cada uso deja
+   rastro en `compat.nombre_viejo`.
+3. **Lo que se guarda es siempre `yellow_max`.** Si al guardar volviera a
+   escribir el nombre viejo, la migración se desharía sola con el primer cambio
+   de ajustes.
+4. La **etiqueta de la interfaz** deja de decir «Ámbar». El sinónimo no estaba
+   solo en una variable: estaba en el formulario de ajustes y en un `aria-label`
+   del panel de organizaciones.
+
+**Consecuencias positivas:**
+- `DAT-06` cierra: cero `amber` en código, con trinquete que mira el árbol.
+- Un vocabulario y no dos para el mismo corte del semáforo.
+
+**Consecuencias negativas:**
+- Una ventana más que cerrar. Son cuatro (`phase=support`,
+  `portfolio_function`, `wbs`, `amber_max`), y se cierran con dato: a los dos
+  meses se mira el contador.
+- La migración toca filas de `tenants`. Solo las que tienen el bloque — una
+  migración de datos que reescribe filas que no le incumben ensucia el
+  `updated_at` de medio producto.
+
+**Alternativas consideradas:**
+- **Dejarlo.** Es lo que el plan proponía hasta que el owner decidió lo
+  contrario. Coste: `DAT-06` sigue PARCIAL y bloquea N1 por una sola llave.
+- **Aceptar los dos nombres para siempre**, sin migrar. Convierte la ventana en
+  permanente, que es deuda con apariencia de solución.

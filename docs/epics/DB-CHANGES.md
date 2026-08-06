@@ -727,3 +727,28 @@ La salida es siempre `wbs_code`. Se cuenta por `compat.nombre_viejo`.
 
 **Reversible**, ejercitada contra el esquema real de `Base.metadata`: sube, baja
 y el código sobrevive en los dos sentidos.
+
+---
+
+## 0101 — `task_load_thresholds.amber_max` → `yellow_max` (DAT-06 / ADR-030)
+
+**No es una columna.** Es una llave dentro del JSON de `tenants.settings`, en el
+bloque `report_builder`, así que la migración lee las filas, reescribe el
+diccionario en Python y actualiza. **SQL portable a propósito:** la suite corre
+sobre SQLite y `jsonb_set` solo existe en Postgres — una migración que solo sabe
+correr en un motor se descubre en producción.
+
+Toca **solo** las filas que tienen el bloque. Reescribir las demás ensuciaría el
+`updated_at` de medio producto sin cambiarles nada.
+
+**Ventana de compatibilidad** en `core/compatibilidad.py`, y con una diferencia
+respecto a las tres anteriores: cubre la **lectura** además de la entrada. Un
+inquilino restaurado de una copia anterior al despliegue traería la llave vieja,
+y perder su umbral en silencio sería peor que aceptarlo — el semáforo de carga
+caería a los valores por defecto y nadie lo notaría hasta ver un informe con los
+colores cambiados.
+
+Lo que se **guarda** es siempre `yellow_max`. Si el guardado volviera a escribir
+el nombre viejo, la migración se desharía sola con el primer cambio de ajustes.
+
+**Reversible**: `downgrade` hace el camino inverso sobre los mismos datos.
