@@ -1,4 +1,5 @@
 ---
+tipo: guia
 responsable: propietario
 estado: vigente
 revisado: 2026-08-05

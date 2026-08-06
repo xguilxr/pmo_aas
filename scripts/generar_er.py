@@ -55,6 +55,7 @@ DESTINO = RAIZ / "docs" / "architecture" / "er-generado.md"
 
 CABECERA = """\
 ---
+tipo: referencia
 responsable: propietario
 estado: vigente
 revisado: {fecha}

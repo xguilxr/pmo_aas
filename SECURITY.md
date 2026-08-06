@@ -1,4 +1,5 @@
 ---
+tipo: guia
 id: SECURITY
 titulo: Política de divulgación responsable
 estado: vigente

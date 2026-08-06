@@ -1,4 +1,5 @@
 ---
+tipo: plan
 responsable: propietario
 estado: vigente
 revisado: 2026-08-06

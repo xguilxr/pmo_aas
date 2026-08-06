@@ -1,4 +1,5 @@
 ---
+tipo: marco
 id: MCS-CORE
 titulo: Marco de Calidad de Software — Documento normativo
 marco: MCS

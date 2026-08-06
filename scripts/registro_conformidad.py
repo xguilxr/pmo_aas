@@ -1,8 +1,11 @@
 """Deriva el registro de conformidad MCS desde los informes fechados.
 
-`MCS-CORE` —el catálogo de los 126 requisitos— **no está en este repositorio**:
-las sesiones que corrieron `MCS-P01` lo tenían en otro entorno. Lo que sí está
-versionado son los informes, y traen lo suficiente para reconstruir el estado:
+`MCS-CORE` —el catálogo de los 126 requisitos— **llegó al repositorio el
+2026-08-05** y vive en `docs/conformidad/marco/MCS-CORE.md`. Este derivador se
+escribió antes, cuando no estaba, reconstruyendo el estado desde los informes;
+por eso sigue leyéndolos y no al catálogo. Se mantiene así a propósito: los
+informes son los que traen el **estado medido**, y el catálogo trae el texto
+normativo, que es otra cosa. Las fuentes son:
 
 - `2026-08-03-mcs.md` — tabla detallada, 117 filas `ID · Estado · Evidencia ·
   Gravedad`, más el §5 que enumera los bloqueantes de N1 uno a uno.
@@ -146,7 +149,8 @@ CIERRES = {
  # migración 0101 sobre los datos + ventana de compatibilidad. De paso salió que
  # la etiqueta del formulario de ajustes también decía «Ámbar».
  "DAT-06":("CONFORME","Ola 3 — amber_max→yellow_max (ADR-030, migración 0101); 0 restos en código, datos e interfaz"),
- "DOC-01":("CONFORME","Ola 2 — 127 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
+ "DOC-01":("CONFORME","Ola 2 — 130 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
+ "DOC-02":("CONFORME","2026-08-06 — `tipo` exigido contra un esquema de 10 clases derivado del árbol, cada una con su propósito escrito (`TIPOS` en check_docs.py); 130 documentos declarados y barrido que impide el 131 sin tipo"),
  "DOC-03":("CONFORME","Ola 2 — el ER se genera de Base.metadata (scripts/generar_er.py) y la suite falla si se desfasa; database.md decía 49 tablas con 56 en el modelo"),
  # DAT-04 y DAT-08 miraban el mismo hecho desde lados distintos: la auditoría
  # contó «6 sitios» de conversión y DAT-08 anotó «26 constantes en línea».
@@ -159,7 +163,7 @@ CIERRES = {
  # textos plausibles y ninguno pensado: escribir el porqué de una regla de
  # negocio exige saber qué regla es. Lo que faltaba era el mecanismo, y ahora
  # está: `mensaje()` con tres argumentos sin defecto + línea base que encoge.
- "LEN-02":("PARCIAL","Ola 2 — 177→169 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
+ "LEN-02":("PARCIAL","Ola 2 — 177→166 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
  # DAT-12: la auditoría midió «77 puntos» y el conteo bruto de `?? 0` daba 84,
  # pero 67 de esos eran de CÁLCULO —`map.get(k) ?? 0` al sumar es correcto—.
  # Los de PRESENTACIÓN eran 17, y quedaron en cero. El producto ya usaba «—»

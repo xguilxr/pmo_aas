@@ -1,4 +1,5 @@
 ---
+tipo: runbook
 responsable: propietario
 estado: vigente
 revisado: 2026-05-23

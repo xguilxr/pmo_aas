@@ -1,4 +1,5 @@
 ---
+tipo: referencia
 responsable: propietario
 estado: vigente
 revisado: 2026-05-08

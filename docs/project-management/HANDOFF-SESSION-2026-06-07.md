@@ -1,4 +1,5 @@
 ---
+tipo: gestion
 responsable: propietario
 estado: historico
 revisado: 2026-06-07

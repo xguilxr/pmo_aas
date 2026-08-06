@@ -1,4 +1,5 @@
 ---
+tipo: gestion
 responsable: propietario
 estado: vigente
 revisado: 2026-08-06
@@ -88,8 +89,8 @@ ronda; un PR mergeado no rastrea trabajo nuevo, así que la rama se rebasó.
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Ola 3** — necesita postura del owner. Se le suman `DAT-02` (8 renombres con
-  migración y ventana, como `wbs`), `DIS-03` y `DAT-11`.
+- **Ola 3** — necesita postura del owner. Se le suman `DAT-02` (8 renombres,
+  ADR + migración por campo), `DIS-03` y `DAT-11`.
 - **`LEN-02`** es el único que cierra sin decisión: 166 mensajes con texto
   suelto, y el mecanismo ya obliga a las tres partes al tocar cada endpoint.
 - **Cuatro ventanas de compatibilidad abiertas** (`phase=support`,
@@ -134,8 +135,8 @@ expediente, y el índice explica por qué no se editan.
   fallar ya no arrastra pasivo.
 - **`DAT-07`** — tipos propios de magnitud. Hoy nada impide pasar un porcentaje
   donde se espera una fracción.
-- Línea base (D-6) y DCMA 14-point: épica propia.
-- El owner tiene cambios de diseño de producto pendientes.
+- Línea base (D-6) y DCMA: épica propia. El owner tiene además cambios de
+  diseño de producto pendientes.
 
 ---
 
