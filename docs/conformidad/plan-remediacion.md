@@ -1,20 +1,36 @@
 ---
 responsable: propietario
-estado: historico
-revisado: 2026-08-05
-revisar_cada: nunca
+estado: vigente
+revisado: 2026-08-06
+revisar_cada: 30d
 ---
 
 # Plan de remediación de conformidad — MCS
 
+> **Este es el plan activo.** Los informes fechados de `docs/conformidad/` son
+> el expediente y no se editan; este documento es el que se mueve. Índice de
+> todo el expediente: [`README.md`](README.md).
+>
+> Hasta el 2026-08-06 el encabezado decía `estado: historico` y
+> `revisar_cada: nunca`, heredado de la plantilla de los informes. Era falso:
+> `HANDOFF.md` y `CLAUDE.md` mandan a leerlo para retomar. Un plan vigente
+> marcado como histórico es un plan que nadie actualiza.
+
 | Campo | Valor |
 |---|---|
-| Fecha | 2026-08-05 |
+| Última medición | **2026-08-06**, tras la Ola 2 |
 | Objetivo declarado | **N2** (`conformidad.yaml`) |
 | Nivel hoy | **N0** |
-| Distancia a N1 | **44 requisitos** — ver la verificación contra `MCS-CORE` |
-| Distancia a N2 | **95 requisitos** (todo lo abierto) |
-| Base | Registro reconciliado de los cuatro informes fechados |
+| Distancia a N1 | **30 requisitos** (eran 44 el 2026-08-05, y 41 al abrir la Ola 2) |
+| Distancia a N2 | **81 requisitos** (todo lo abierto) |
+| Fuente de la cifra | `python scripts/registro_conformidad.py` — no se transcribe a mano |
+
+**Reparto de los 126 en el registro:** 45 conformes · 24 parciales · 48 no
+conformes · 6 no verificables · 2 no aplicables · 1 excluido.
+
+> El número de arriba se **deriva**, no se almacena. Si esta tabla y el script
+> discrepan, gana el script: el expediente ya acumula cinco errores de recuento
+> por transcribir cifras a mano.
 
 ---
 
@@ -150,8 +166,10 @@ podía integrarse: el control existía, corría, y no bloqueaba. Ahora son nueve
 
 ## Ola 2 — ✅ Ejecutada el 2026-08-06
 
-**De 41 a 32 bloqueantes de N1.** Once commits, uno por requisito, todos con
-prueba propia y verificación por mutación.
+**De 41 a 32 bloqueantes de N1** con la ola en sí; **a 30** contando las dos de
+la Ola 3 que el owner autorizó en la misma ronda (`SEG-04` y el cierre de
+`DAT-06`). Un commit por requisito, todos con prueba propia y verificación por
+mutación.
 
 | ID | Estado | Qué se hizo |
 |---|---|---|
@@ -165,8 +183,8 @@ prueba propia y verificación por mutación.
 | `DAT-04`, `DAT-08` | ✅ CONFORME | 26 conversiones a `core/unidades.py` |
 | `DAT-12` | ✅ CONFORME | 17 sitios de presentación distinguen el hueco del cero |
 | `DAT-05` | ✅ **re**CONFORME | quedaba una quinta paleta, en el acta que se firma |
-| `DAT-06` | 🟡 PARCIAL | 0 restos en código; queda `amber_max` en `tenant.settings` |
-| `LEN-02` | 🟡 PARCIAL | 177 → 169; el mecanismo ya obliga a las tres partes |
+| `DAT-06` | ✅ CONFORME | cerró entero en la Ola 3 el mismo día: `amber_max` → `yellow_max` |
+| `LEN-02` | 🟡 PARCIAL | 177 → **166**; el mecanismo ya obliga a las tres partes |
 | `DAT-02` | ⏭ reclasificado | no es mecánico — ver abajo |
 | `DAT-11` | ⏭ medido | 10 de 87 superficies llevan marca de actualización |
 | `DIS-03` | ⏭ medido | 3 de 75 pantallas tienen los cuatro estados detectables |
@@ -175,7 +193,9 @@ prueba propia y verificación por mutación.
 
 Cuatro de los once cierres destaparon algo que ninguna auditoría había visto,
 y en los cuatro casos porque se midió contra el **texto del requisito** y no
-contra la evidencia anotada:
+contra la evidencia anotada. Los dos ítems de la Ola 3 hechos ese mismo día
+añadieron otros dos —las nueve copias del resolvedor de proyecto y la etiqueta
+«Ámbar» del formulario de ajustes—, así que **seis en total** en la ronda:
 
 - **`DAT-05` estaba CONFORME y no lo estaba.** La prueba que lo sostenía mira
   una lista escrita a mano de cuatro archivos «que pintan salud», y había un
