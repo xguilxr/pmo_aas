@@ -8,11 +8,11 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
+from app.core.autorizacion import proyecto_autorizado
 from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, forbidden, not_found, validation_error
 from app.core.unidades import mebibytes
 from app.db.session import get_db
-from app.models.project import Project
 from app.models.project_artifact import ProjectArtifact
 from app.models.task import Task, TaskDependency
 from app.models.user import User
@@ -85,19 +85,6 @@ def _tenant(cu: CurrentUser) -> UUID:
         raise forbidden()
     return cu.effective_tenant_id
 
-
-async def _ensure_project(db: AsyncSession, project_id: UUID, tenant_id: UUID) -> Project:
-    p = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id), Project.tenant_id == tenant_id,
-                Project.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if p is None:
-        raise not_found("Proyecto")
-    return p
 
 
 class _VentanaWbs(BaseModel):
@@ -318,8 +305,7 @@ async def list_tasks(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     stmt = select(Task).where(Task.project_id == str(project_id))
     if area_id is not None:
         stmt = stmt.where(Task.area_id == str(area_id))
@@ -368,7 +354,7 @@ async def create_task(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _ensure_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado")
     if body.start_date and body.end_date and body.end_date < body.start_date:
@@ -573,7 +559,7 @@ async def renumber_wbs(
     (best-effort, primera ocurrencia gana) y recomputa sucesoras.
     """
     tenant_id = _tenant(cu)
-    p = await _ensure_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado")
 
@@ -652,7 +638,7 @@ async def move_task(
     (o al inicio si es None). Robusto ante vistas filtradas: normaliza el orden
     completo. El indent (outline_level) no cambia."""
     tenant_id = _tenant(cu)
-    p = await _ensure_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no se puede reordenar")
 
@@ -701,7 +687,7 @@ async def import_ms_project(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _ensure_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no se puede importar")
 
@@ -1081,7 +1067,7 @@ async def import_preview(
     from fastapi import HTTPException
 
     tenant_id = _tenant(cu)
-    p = await _ensure_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no se puede importar")
 
@@ -1201,7 +1187,7 @@ async def import_repreview(
     from fastapi import HTTPException
 
     tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
 
     preview = load_preview(job_id)
     if preview is None:
@@ -1267,7 +1253,7 @@ async def import_ai_structure(
     from fastapi import HTTPException
 
     tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
 
     tenant_cfg = await load_tenant_ai(db, tenant_id)
     if tenant_cfg.mode == "disabled":
@@ -1352,7 +1338,7 @@ async def import_confirm(
     from fastapi import HTTPException
 
     tenant_id = _tenant(cu)
-    p = await _ensure_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no se puede importar")
 
@@ -1825,8 +1811,7 @@ async def plan_quality(
     """
     from app.services.plan_quality import plan_quality_score, review_plan
 
-    tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     tasks = (
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
     ).scalars().all()
@@ -1844,8 +1829,7 @@ async def gantt_view(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     tasks = (
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
     ).scalars().all()
@@ -1919,7 +1903,7 @@ async def suggest_import_mapping(
       refinar; si la IA falla la heurística queda como fallback.
     """
     tenant_id = _tenant(cu)
-    await _ensure_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     tenant_cfg = await load_tenant_ai(db, tenant_id)
     suggestions = await suggest_column_mapping(
         body.headers,

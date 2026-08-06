@@ -13,7 +13,6 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import not_found
 from app.models.area import Area
 from app.models.modules import ChangeRequest, Issue, Risk
 from app.models.organization import Organization, Program
@@ -105,20 +104,6 @@ def _period_label(days: int) -> str:
     return f"{days} días"
 
 
-async def _get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
-    row = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id),
-                Project.tenant_id == str(tenant_id),
-                Project.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        raise not_found("Proyecto")
-    return row
-
 
 async def _user(db: AsyncSession, user_id: UUID | None) -> dict[str, str | None] | None:
     if user_id is None:
@@ -136,7 +121,7 @@ async def _user(db: AsyncSession, user_id: UUID | None) -> dict[str, str | None]
 async def build_avance_context(
     db: AsyncSession,
     tenant_id: UUID,
-    project_id: UUID,
+    proyecto: Project,
     cut_off_date: date,
     window_days: int = 14,
 ) -> dict[str, Any]:
@@ -145,7 +130,11 @@ async def build_avance_context(
     `window_days` (ENH-063) define el rango hacia atrás para hitos
     cerrados y eventos del período. Default 14d para back-compat.
     """
-    project = await _get_project(db, tenant_id, project_id)
+    # SEG-04: llega autorizado desde la frontera. Antes este servicio hacía
+    # su propia búsqueda por inquilino —la novena copia— y con ella se saltaba
+    # el alcance del usuario.
+    project = proyecto
+    project_id = UUID(str(project.id))
 
     org = (
         await db.execute(
@@ -441,7 +430,7 @@ async def build_avance_context(
 async def build_seguimiento_context(
     db: AsyncSession,
     tenant_id: UUID,
-    project_id: UUID,
+    proyecto: Project,
     cut_off_date: date,
     window_days: int = 14,
 ) -> dict[str, Any]:
@@ -453,7 +442,11 @@ async def build_seguimiento_context(
     en esos buckets; se listan completas en su propia sección "Acciones"
     (`groups_actions`). Dentro de cada bloque agrupa por área.
     """
-    project = await _get_project(db, tenant_id, project_id)
+    # SEG-04: llega autorizado desde la frontera. Antes este servicio hacía
+    # su propia búsqueda por inquilino —la novena copia— y con ella se saltaba
+    # el alcance del usuario.
+    project = proyecto
+    project_id = UUID(str(project.id))
     window_end = cut_off_date + timedelta(days=window_days)
     window_start = cut_off_date - timedelta(days=window_days)
 
@@ -608,7 +601,7 @@ async def build_seguimiento_context(
 async def build_look_ahead_context(
     db: AsyncSession,
     tenant_id: UUID,
-    project_id: UUID,
+    proyecto: Project,
     window_value: int,
     window_unit: str,
 ) -> dict[str, Any]:
@@ -623,7 +616,11 @@ async def build_look_ahead_context(
         window_value: número de unidades de ventana hacia adelante.
         window_unit: "days" | "weeks" | "months".
     """
-    project = await _get_project(db, tenant_id, project_id)
+    # SEG-04: llega autorizado desde la frontera. Antes este servicio hacía
+    # su propia búsqueda por inquilino —la novena copia— y con ella se saltaba
+    # el alcance del usuario.
+    project = proyecto
+    project_id = UUID(str(project.id))
     today = datetime.now(UTC).date()
     multipliers = {"days": 1, "weeks": 7, "months": 30}
     if window_unit not in multipliers:

@@ -56,7 +56,7 @@ async def test_tc083_1_two_areas_produce_two_blocks(client, db_session):
     ])
     await db_session.commit()
 
-    ctx = await build_seguimiento_context(db_session, t.id, p.id, cut, window_days=14)
+    ctx = await build_seguimiento_context(db_session, t.id, p, cut, window_days=14)
     blocks = ctx["groups_upcoming"]
     names = [g["area_name"] for g in blocks]
     assert "Operaciones" in names
@@ -82,7 +82,7 @@ async def test_tc083_2_item_without_area_falls_into_unassigned_block(client, db_
         ),
     ])
     await db_session.commit()
-    ctx = await build_seguimiento_context(db_session, t.id, p.id, cut, window_days=14)
+    ctx = await build_seguimiento_context(db_session, t.id, p, cut, window_days=14)
     blocks = ctx["groups_upcoming"]
     names = [g["area_name"] for g in blocks]
     # Bloque "Sin área asignada" siempre al final.
@@ -110,7 +110,7 @@ async def test_tc083_3_items_within_block_sorted_by_date(client, db_session):
         ),
     ])
     await db_session.commit()
-    ctx = await build_seguimiento_context(db_session, t.id, p.id, cut, window_days=30)
+    ctx = await build_seguimiento_context(db_session, t.id, p, cut, window_days=30)
     # ENH-154: las acciones ahora viven en su propia sección "Acciones"
     # (groups_actions), ya no mezcladas en los buckets de Actividades.
     block = next(g for g in ctx["groups_actions"] if g["area_name"] == "Operaciones")

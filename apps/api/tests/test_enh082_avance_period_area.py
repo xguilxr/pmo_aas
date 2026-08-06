@@ -57,7 +57,7 @@ async def test_tc082_1_milestone_outside_window_is_excluded(client, db_session):
     await db_session.commit()
 
     ctx = await build_avance_context(
-        db_session, t.id, p.id, cut, window_days=30
+        db_session, t.id, p, cut, window_days=30
     )
     names = [m["name"] for m in ctx["milestones_upcoming"]]
     assert "Hito dentro" in names
@@ -76,7 +76,7 @@ async def test_tc082_2_milestone_includes_area_and_delayed(client, db_session):
     ))
     await db_session.commit()
     ctx = await build_avance_context(
-        db_session, t.id, p.id, cut, window_days=30
+        db_session, t.id, p, cut, window_days=30
     )
     m = next(m for m in ctx["milestones_upcoming"] if m["name"] == "Hito alfa")
     assert m["area_name"] == "Operaciones"
@@ -96,7 +96,7 @@ async def test_tc082_3_risk_includes_area_and_due_date(client, db_session):
     ))
     await db_session.commit()
     ctx = await build_avance_context(
-        db_session, t.id, p.id, cut, window_days=30
+        db_session, t.id, p, cut, window_days=30
     )
     r = next(r for r in ctx["top_risks"] if r["folio"] == "RIS-082")
     assert r["area_name"] == "Operaciones"
@@ -115,7 +115,7 @@ async def test_tc082_4_issue_falls_back_to_area_when_no_owner(client, db_session
     ))
     await db_session.commit()
     ctx = await build_avance_context(
-        db_session, t.id, p.id, cut, window_days=30
+        db_session, t.id, p, cut, window_days=30
     )
     i = next(i for i in ctx["open_aids"] if i["folio"] == "ISS-082")
     assert i["owner_name"] == "—"  # sin owner

@@ -14,7 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden, not_found
+from app.core.autorizacion import proyecto_autorizado
+from app.core.errors import forbidden
 from app.db.session import get_db
 from app.models.organization import BusinessUnit, Department
 from app.models.project import Project
@@ -38,23 +39,20 @@ def _tenant(cu: CurrentUser) -> UUID:
     return cu.effective_tenant_id
 
 
-async def _get_project_and_charter(
-    db: AsyncSession, tenant_id: UUID, project_id: UUID
+async def _charter_de(
+    db: AsyncSession, project_id: UUID, cu: CurrentUser
 ) -> tuple[Project, ProjectCharter]:
     """US-083: si el charter no existe (project legacy o pre-migración
     0030), lo crea on-the-fly con `project.name` como project_name.
     Garantiza que GET /charter nunca devuelve 404 para projects válidos.
+
+    SEG-04 (2026-08-06): era la séptima copia del resolvedor de proyecto, y
+    comprobaba solo el inquilino. El acta de constitución lleva presupuesto,
+    patrocinador y alcance — o sea lo que menos conviene que lea alguien de
+    otro proyecto. Ahora delega en `proyecto_autorizado`.
     """
-    project = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id),
-                Project.tenant_id == tenant_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if project is None:
-        raise not_found("Proyecto")
+    project = await proyecto_autorizado(db, project_id, cu)
+    tenant_id = cu.effective_tenant_id
     charter = (
         await db.execute(
             select(ProjectCharter).where(ProjectCharter.project_id == project.id)
@@ -151,7 +149,7 @@ async def get_charter(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    project, charter = await _get_project_and_charter(db, _tenant(cu), project_id)
+    project, charter = await _charter_de(db, project_id, cu)
     return _read(charter, project)
 
 
@@ -163,7 +161,7 @@ async def update_charter(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    project, charter = await _get_project_and_charter(db, tenant_id, project_id)
+    project, charter = await _charter_de(db, project_id, cu)
 
     # Validar FKs BU/Depto si cambian
     data = body.model_dump(exclude_unset=True)
@@ -284,9 +282,7 @@ async def download_charter(
             code="INVALID_FORMAT",
         )
 
-    project, charter = await _get_project_and_charter(
-        db, _tenant(cu), project_id
-    )
+    project, charter = await _charter_de(db, project_id, cu)
 
     # ENH-092: filename canónico `{project-slug}-charter.{ext}`.
     from app.services.filename_slug import artifact_filename
@@ -477,7 +473,7 @@ async def charter_printable(
     obtener el PDF on-demand."""
     from app.services.reports.branding import load_report_branding
 
-    project, charter = await _get_project_and_charter(db, _tenant(cu), project_id)
+    project, charter = await _charter_de(db, project_id, cu)
     branding = await load_report_branding(
         db, _tenant(cu), project.organization_id
     )

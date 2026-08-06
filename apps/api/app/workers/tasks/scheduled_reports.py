@@ -111,14 +111,14 @@ async def _send(scheduled_id: str) -> dict:
         builder_snapshot: dict | None = None  # US-140: snapshot del motor para reports.sections
         if sched.report_type == "avance":
             context = await build_avance_context(
-                db, tenant_id, project_id, cut_off
+                db, tenant_id, project, cut_off
             )
             template = "reports/avance.html"
             titulo = "Reporte de Avance"
             generator = "avance"
         elif sched.report_type == "seguimiento":
             context = await build_seguimiento_context(
-                db, tenant_id, project_id, cut_off, window_days=14
+                db, tenant_id, project, cut_off, window_days=14
             )
             template = "reports/seguimiento.html"
             titulo = "Reporte de Seguimiento"

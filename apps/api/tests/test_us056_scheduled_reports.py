@@ -190,16 +190,35 @@ async def test_us056_cross_tenant_404(client, db_session):
 @pytest.mark.asyncio
 async def test_us056_non_admin_cannot_create(client, db_session):
     """Post-DEC-024: cualquier user autenticado del tenant puede
-    programar reportes; el gate admin-only desapareció."""
+    programar reportes; el gate admin-only desapareció.
+
+    SEG-04 (2026-08-06): el usuario recibe además una asignación de alcance
+    sobre el proyecto. No es un retoque del montaje — es la consecuencia de
+    cerrar SEG-04, y conviene que quede escrita aquí.
+
+    DEC-024 dice que cualquier usuario autenticado del inquilino puede hacer
+    casi todo. Eso sigue siendo cierto, y es la capa de CAPACIDADES. Encima
+    hay otra, la de OBJETO (`user_scope_assignments`, US-167/168), cuya regla
+    es «un PM no ve nada hasta que se le asigna». Antes esa capa solo filtraba
+    listados: el usuario veía cero proyectos y podía operar sobre cualquiera
+    escribiendo su identificador. Ahora las dos se aplican, así que «puede
+    programar informes» significa «de los proyectos que tiene asignados».
+    """
+    from app.models.user_scope_assignment import UserScopeAssignment
+
     t, _auth = await _admin(client, db_session, slug="sched-viewer")
     p = await _seed_project(db_session, t, folio="P-0504")
-    await create_user(
+    u = await create_user(
         db_session,
         tenant=t,
         username="viewer_sched",
         email="viewer@sched-viewer.example.com",
         password="Str0ng-User-1!",
     )
+    db_session.add(UserScopeAssignment(
+        tenant_id=t.id, user_id=u.id, scope_type="project", scope_id=str(p.id),
+    ))
+    await db_session.commit()
     viewer = await login(client, "viewer_sched", "Str0ng-User-1!")
 
     r = await client.post(

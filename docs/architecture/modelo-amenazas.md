@@ -128,6 +128,7 @@ Resumen. El detalle de cada una, abajo.
 | AM-12 | FC-5 | Tipografías remotas al renderizar PDF | **CERRADA** |
 | AM-13 | FC-8 | Robo del token desde el navegador | **PARCIAL** |
 | AM-14 | — | Escritura directa a producción | **CERRADA** |
+| AM-15 | FC-2 | Acceso a un proyecto ajeno DENTRO del mismo inquilino | **CONTROLADA** |
 
 ### AM-01 — Peticiones a nuestra red desde la `base_url` del inquilino
 
@@ -180,6 +181,35 @@ hace fallar en lectura, modificación y borrado.
 **Residual:** la suite cubre los recursos que enumera. Un recurso nuevo sin caso
 propio no está cubierto, y ningún trinquete lo detecta hoy. **Acción:** extender
 el patrón del trinquete de B2 (fallar si aparece un recurso sin caso).
+
+### AM-15 — Acceso a un proyecto ajeno dentro del mismo inquilino
+
+**FC-2 · STRIDE: divulgación · Estado: CONTROLADA**
+
+Hermana de AM-02 y la que no estaba: AM-02 mira la frontera **entre**
+inquilinos y esta la de **dentro**. El producto tiene dos capas de
+autorización —capacidades por rol y alcance por asignación
+(`user_scope_assignments`)— y la segunda se aplicaba solo al listado de
+proyectos. Un PM asignado al proyecto A veía únicamente A en la lista y podía
+abrir el detalle de B y **todos** sus módulos —riesgos, incidencias,
+documentos, minutas, tareas, informes, acta de constitución, contexto de IA—
+con solo tener el identificador, que sale de un enlace compartido o de la barra
+de direcciones de un compañero.
+
+La causa no fue una decisión: `_get_project` estaba **copiado en nueve
+sitios**, con dos órdenes de argumentos y dos copias sin filtrar `deleted_at`.
+Se actualizó una.
+
+**Control:** una sola comprobación, `core/autorizacion.proyecto_autorizado`, que
+resuelve existencia, inquilino y alcance juntos y **no se pueden llamar por
+separado**. Devuelve 404 y no 403: un 403 confirma que el proyecto existe, y eso
+ya sirve para enumerar la cartera contando identificadores.
+**Evidencia:** `tests/test_seg04_autorizacion_objeto.py`, 18 casos, verificada
+por mutación. Incluye el trinquete que impide escribir el décimo resolvedor.
+**Residual:** cubre la autorización de **alcance**, o sea si el objeto es
+alcanzable. Quién puede escribir qué **dentro** de un proyecto al que sí se
+tiene acceso lo responde el modelo de capacidades, que es más grueso: cualquier
+usuario autenticado del inquilino puede casi todo (DEC-024).
 
 ### AM-03 — Instrucciones inyectadas en contenido subido
 

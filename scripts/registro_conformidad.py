@@ -162,6 +162,11 @@ CIERRES = {
  # para huecos de texto en 43 archivos: lo que faltaba era no taparlo con un
  # cero en los números.
  "DAT-12":("CONFORME","Ola 2 — 17 sitios de presentación a `@/lib/sin-dato`, con etiqueta accesible; gate en check_tokens.py"),
+ # SEG-04 era la única CRÍTICA viva, y el hueco era explotable dentro del
+ # mismo inquilino: el alcance por asignación se aplicaba al listado y a
+ # ningún detalle. Nueve copias del resolvedor de proyecto, dos órdenes de
+ # argumentos y dos sin filtrar `deleted_at`. Ahora una sola comprobación.
+ "SEG-04":("CONFORME","Ola 3 — core/autorizacion.proyecto_autorizado; 18 casos verificados por mutación; AM-15 en el modelo de amenazas"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 
