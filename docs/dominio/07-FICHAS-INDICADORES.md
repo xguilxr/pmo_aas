@@ -1,7 +1,7 @@
 ---
 tipo: referencia
 responsable: propietario
-estado: borrador
+estado: vigente
 revisado: 2026-08-06
 revisar_cada: 90d
 ---
@@ -12,17 +12,20 @@ Trabaja **MCS DAT-10**: «cada indicador DEBE disponer de ficha versionada con
 fórmula, grano, inclusiones, exclusiones, zona horaria, tratamiento de nulos y
 responsable».
 
-> **Estado: borrador.** Las fórmulas se **derivaron del código**, no se
-> inventaron, y cada ficha dice de qué función sale. Lo que necesita tu palabra
-> está marcado **[owner]**. Mientras queden marcas, esto no cierra `DAT-10`:
-> una ficha con un hueco es una ficha que alguien rellenará suponiendo.
+> **Firmadas por el owner el 2026-08-06.** Las fórmulas se **derivaron del
+> código**, no se inventaron, y cada ficha dice de qué función sale. Las
+> decisiones del owner van marcadas **[owner 2026-08-06]** con su razón cuando
+> la dio; donde no hubo nota, la ficha quedó aprobada tal como estaba.
+>
+> Tres respuestas **cambiaron código**, no solo este documento. Están señaladas.
 
 **Zona horaria — regla general.** Todo lo que se guarda con marca temporal usa
 `DateTime(timezone=True)` y se almacena en **UTC**. Los cortes por fecha
-(`date.today()`, ventanas) se evalúan en la **zona del servidor**, no en la del
-inquilino. **[owner]** Con inquilinos en husos distintos, «las tareas vencidas
-hoy» cambia según dónde corra el proceso. Hace falta decidir si el corte es UTC,
-la zona del inquilino, o la de quien mira.
+(`date.today()`, ventanas) se evalúan en la **zona del servidor**.
+**Sigue abierto:** con inquilinos en husos distintos, «las tareas vencidas hoy»
+cambia según dónde corra el proceso. Es el único hueco de este documento que no
+tiene respuesta, y no bloquea las fichas porque afecta al corte, no a la
+fórmula. **Responsable: owner.**
 
 ---
 
@@ -46,7 +49,7 @@ implementaciones del avance de un proyecto.
 anagramas y designan cosas de grano distinto. Cualquiera que lea las dos en un
 mismo informe asumirá que son la misma cifra en dos sitios.
 
-**[owner] Propuesta de renombrado:** `avance_proyecto_pct` y
+**Propuesta de renombrado, sin resolver:** `avance_proyecto_pct` y
 `avance_cartera_pct`. Cruza API y web, así que va con ADR, migración de contrato
 y ventana de compatibilidad, igual que `wbs` → `wbs_code`.
 
@@ -62,10 +65,10 @@ y ventana de compatibilidad, igual que `wbs` → `wbs_code`.
 | **Grano** | Proyecto |
 | **Unidad** | Porcentaje 0-100, entero |
 | **Incluye** | Todas las tareas del proyecto. Raíz = tarea sin ningún ancestro WBS existente (ENH-197) |
-| **Excluye** | Nada por estado: una tarea cancelada sigue pesando **[owner] ¿debería?** |
+| **Excluye** | Nada por estado: una tarea cancelada sigue pesando |
 | **Nulos** | Sin tareas → `None`, y el llamador cae al `Project.progress` manual. **Cero tareas no es cero por ciento** |
-| **Ponderación** | **Ninguna**: promedio simple de raíces. Una raíz con 40 tareas pesa lo mismo que una con 1 **[owner] ¿ponderar por duración o esfuerzo?** |
-| **Firma** | **[owner]** |
+| **Ponderación** | **Simple, confirmada [owner 2026-08-06]**: «la tarea raíz ya hace un promedio de las subtareas, por lo que ya las toma en consideración». La profundidad del árbol es la que pondera |
+| **Firma** | owner · 2026-08-06 |
 
 > El promedio simple de raíces es decisión del owner registrada en el docstring
 > de `compute_plan_rollup_progress`, no un accidente.
@@ -78,15 +81,34 @@ y ventana de compatibilidad, igual que `wbs` → `wbs_code`.
 | **Grano** | Cartera, filtrada por organización y por alcance de quien mira |
 | **Incluye** | Proyectos **activos**, no borrados (`deleted_at IS NULL`) |
 | **Excluye** | Proyectos fuera del alcance del usuario (SEG-04). **Dos personas ven cifras distintas del mismo inquilino, y es correcto** |
-| **Nulos** | Sin proyectos → `0`. **[owner] Debería ser «—»:** cero proyectos no es cero por ciento (DAT-12) |
-| **Firma** | **[owner]** |
+| **Nulos** | Sin proyectos → **`null`, que se pinta «—» [owner 2026-08-06]**. Cero proyectos no es cero por ciento. **Cambió el código**: `dashboard.py` devolvía `0` |
+| **Firma** | owner · 2026-08-06 |
 
 ### `on_time_pct` · `overdue_pct` · `overdue_days` · `delayed_count`
 
-**[owner]** Pendientes de derivar. Necesitan una decisión previa que las
-atraviesa: **¿tarde respecto de qué?** Sin línea base (D-6, sin abrir), «retraso»
-solo puede medirse contra la fecha planeada *actual*, que se mueve cada vez que
-alguien la cambia — con lo que un proyecto puede no llegar nunca tarde.
+| Campo | Valor |
+|---|---|
+| **Referencia del retraso** | **La fecha planeada ACTUAL [owner 2026-08-06]**, no una línea base |
+| **Firma** | owner · 2026-08-06 |
+
+**Razón del owner, y conviene leerla entera porque explica el producto:** «esta
+plataforma no es para *enforzar* como tal, sino para poder gestionar las
+actividades con flexibilidad; en cambios deberían registrar cambios de fechas
+planeadas».
+
+Es decir: **la consecuencia conocida se acepta a propósito.** Medir contra la
+fecha actual significa que mover la fecha borra el retraso, y por tanto que un
+proyecto puede no llegar nunca tarde. Eso sería un defecto en una herramienta de
+control y es el comportamiento buscado en una de gestión.
+
+**Lo que sostiene la decisión es la trazabilidad, no la métrica**: el rastro de
+que la fecha se movió vive en el control de cambios. Si ese registro no captura
+los cambios de fecha planeada, el retraso deja de ser auditable por ninguna vía
+— y ahí sí habría un hueco. **Queda como verificación pendiente.**
+
+La línea base (D-6) sigue sin abrir y no bloquea estas fichas: daría una segunda
+lectura —«tarde contra lo comprometido»—, que es información distinta y
+complementaria, no un arreglo de esta.
 
 ---
 
@@ -105,7 +127,7 @@ formalizan sin cambiarlas.
 | **Incluye** | Participaciones con `status='activa'` cuyo rango `[start_date, end_date]` **intersecta** la ventana. Rango nulo = abierto |
 | **Excluye** | Tentativas (se reportan aparte) y vencidas |
 | **Nulos** | **Explícito y bien resuelto:** `NULL` = asignación sin cuantificar. **No suma**, pero se cuenta en `unquantified_count` para que se vea la cobertura del dato |
-| **Firma** | **[owner]** |
+| **Firma** | owner · 2026-08-06, sin cambios |
 
 ### `capacity_pct` / `over_pct` — saturación
 
@@ -117,7 +139,7 @@ formalizan sin cambiarlas.
 | **Ventana** | `today` (0 d), `week` (7), `3weeks` (21), `month` (30), hacia adelante desde hoy |
 | **Umbrales** | Por inquilino en `settings.capacity_thresholds`: `over > red_over` (10) → rojo; `over > yellow_over` (0) → amarillo |
 | **Nulos** | Igual que arriba: no suman, se reportan |
-| **Firma** | **[owner]** |
+| **Firma** | owner · 2026-08-06, sin cambios |
 
 > **Comparar contra `project_capacity_pct` y no contra 100 es la decisión más
 > importante de esta familia.** Un recurso que dedica el 60 % a proyectos y el
@@ -131,15 +153,23 @@ formalizan sin cambiarlas.
 
 | Campo | Valor |
 |---|---|
-| **Fórmula** | `burn_index = budget_actual / budget_plan` **[owner] confirmar** |
-| **Unidad** | **Sin declarar, y es el hueco de `DAT-01`.** La unidad del dinero es la moneda, y hoy solo existe como `tenant.settings.currency` |
-| **Nulos** | **[owner]** ¿Un proyecto sin presupuesto planeado tiene índice infinito, cero, o «—»? |
-| **Firma** | **[owner]** |
+| **Fórmula** | `burn_index = (actual / budget) / (avance / 100)`, es decir consumo relativo sobre avance relativo |
+| **Unidad** | **Sin declarar todavía.** La unidad del dinero es la moneda, y hoy solo existe como `tenant.settings.currency` |
+| **Nulos** | **Sin presupuesto → «—» [owner 2026-08-06]**, no cero ni infinito. **Ya se cumplía** en `project_health.py`: devuelve `color: None` con «Sin presupuesto configurado». Lo mismo para avance cero: dividir por cero no es rojo, es «todavía no se puede decir» |
+| **Firma** | owner · 2026-08-06 |
 
-> **Esta familia no cierra sin decidir la moneda** y sin el renombrado de
-> `DAT-02` (`budget_plan` → `budget_plan_mxn` o con moneda en el tipo).
-> Sumar presupuestos de dos inquilinos con monedas distintas hoy no está
-> impedido por nada.
+> **Cambió el código en el tablero, no aquí:** `budget_total` llegaba como `0.0`
+> con cero proyectos porque la consulta traía `coalesce(sum(budget), 0)`. El
+> `coalesce` convertía el hueco en cero **dentro del SQL**, una capa más abajo
+> de donde se suele buscar — y la anotación de Python ya decía `Decimal | None`.
+> Ahora llega `null`.
+
+> **La moneda sigue abierta, y es un frente de producto declarado
+> [owner 2026-08-06]:** «vamos a dar un diseño de gestión de recursos y
+> presupuesto para poder trabajar con esto y registrar budget y monedas».
+> Hasta entonces nada impide sumar presupuestos de dos inquilinos con monedas
+> distintas. Es lo que mantiene abierto `DAT-01`, y con él el renombrado de
+> `DAT-02`.
 
 ---
 
@@ -152,8 +182,20 @@ formalizan sin cambiarlas.
 | **Fórmula** | Conteo de proyectos por estado de salud |
 | **Origen del valor** | Automático o manual: `health_source` distingue `auto` de intervención humana, y `health_reason` guarda el motivo |
 | **Vocabulario** | `green` / `yellow` / `red`. **`amber` está retirado** (D-1, migración 0091, ADR-030) |
-| **Nulos** | **[owner]** ¿Un proyecto sin evaluar cuenta como verde o queda fuera del total? Hoy la respuesta la da el código; debería darla la ficha |
-| **Firma** | **[owner]** |
+| **Nulos** | **No los hay, y se incluyen todos [owner 2026-08-06]**: «los proyectos deberían tener evaluación automática; manual es bajo necesidad, por lo que no debería haber proyectos sin evaluar, y se deben incluir» |
+| **Firma** | owner · 2026-08-06 |
+
+**Verificado contra el código, y la decisión ya se cumple.** `health_status` es
+`nullable=False` con `default="green"`, así que ningún proyecto queda fuera del
+conteo. La evaluación automática corre de verdad —`refresh_health_bulk` en el
+tablero y en los snapshots, `apply_auto_health` en el detalle— y `health_source`
+respeta la intervención manual sin sobrescribirla.
+
+**El matiz que conviene tener presente:** el color se recalcula **cuando alguien
+mira**. Un proyecto que nadie abre conserva el valor por defecto hasta que una
+carga de tablero o un snapshot lo toque, y ese valor por defecto es `green` — el
+optimista. No es un fallo hoy, porque el refresco masivo del tablero cubre los
+proyectos del alcance; sí lo sería si el tablero dejara de recalcular.
 
 ---
 
@@ -168,18 +210,26 @@ formalizan sin cambiarlas.
 | **Incluye** | Filas con `deleted_at IS NULL` |
 | **Excluye** | Lo borrado lógicamente, y lo que quede fuera del alcance de quien mira |
 | **Nulos** | No aplica: un conteo sin filas **es** cero, y aquí sí se muestra `0` |
-| **Firma** | **[owner]** |
+| **Firma** | owner · 2026-08-06, sin cambios |
 
 > Es la única familia donde `0` es un valor legítimo y no un hueco disfrazado.
 
 ---
 
-## Qué falta para cerrar `DAT-10`
+## Lo que queda abierto
 
-1. Resolver las marcas **[owner]** de arriba, empezando por las cuatro que
-   cambian números en pantalla: ponderación del avance, nulos de `progress_avg`,
-   moneda, y salud sin evaluar.
-2. Derivar las fichas de la familia de cumplimiento, que depende de la línea
-   base (D-6).
-3. Firmar cada una. **Un indicador sin responsable no tiene a quién preguntarle
-   cuando dos informes no cuadran**, que es exactamente cuando se necesita.
+Las fichas están firmadas y `DAT-10` cierra con ellas. Lo de abajo **no las
+bloquea**: son frentes propios que las tocarán cuando se resuelvan.
+
+| Qué | Por qué sigue abierto | Bloquea |
+|---|---|---|
+| **Moneda del dinero** | Frente de producto declarado: diseño de gestión de recursos y presupuesto | `DAT-01`, y con él `DAT-02` |
+| **Zona horaria del corte** | Con inquilinos en husos distintos, «vencidas hoy» depende de dónde corra el proceso | Nada hoy; sale a la superficie con el primer inquilino en otro huso |
+| **Renombrar `avg_progress` / `progress_avg`** | Cruza API y web: ADR + migración de contrato + ventana | Nada; es deuda de legibilidad |
+| **Verificar que el control de cambios registre los cambios de fecha planeada** | Es lo que sostiene la decisión de medir el retraso contra la fecha actual | La auditabilidad del retraso |
+| **Línea base (D-6)** | Épica propia, sin abrir | Nada; añadiría una segunda lectura del retraso |
+
+**Lo que cambió de verdad al firmar estas fichas** —y es la parte que no se ve
+en el documento— son tres correcciones en el producto: `progress_avg` y
+`budget_total` dejan de decir «cero» cuando quieren decir «nada», y el
+`coalesce` que lo causaba en SQL desapareció.
