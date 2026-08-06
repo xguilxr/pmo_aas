@@ -354,7 +354,21 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      # Va ANTES de los tres pasos de esquema, y a propósito: necesita una base
+      # sin las tablas que dependen de `tenants` por clave foránea, y se limpia
+      # sola al terminar.
+      #
+      # Por qué existe este paso: un `upgrade head` sobre base limpia construye
+      # el ESQUEMA, no ejerce las migraciones de DATOS — no hay filas que migrar.
+      # El bucle de la 0101 recorría cero filas aquí, así que la primera versión
+      # de esa migración (con `sa.text`, que Postgres rechaza y SQLite acepta)
+      # habría pasado este job en verde. Esta suite siembra las filas que la base
+      # limpia no tiene.
+      - name: Migraciones de datos contra Postgres (con filas)
+        env:
+          DATABASE_URL_POSTGRES: postgresql+psycopg://pmo:pmo@localhost:5432/pmo_test
+        run: pytest tests/test_dat06_migracion_0101.py -q
       - name: alembic upgrade head (Postgres limpio)
         env:
           DATABASE_URL: postgresql+psycopg://pmo:pmo@localhost:5432/pmo_test
