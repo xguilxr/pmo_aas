@@ -1446,3 +1446,64 @@ que es el precedente aprobado para esta clase de cambio:
   contrario. Coste: `DAT-06` sigue PARCIAL y bloquea N1 por una sola llave.
 - **Aceptar los dos nombres para siempre**, sin migrar. Convierte la ventana en
   permanente, que es deuda con apariencia de solución.
+
+---
+
+## ADR-031 — Postura de infraestructura: secretos, construcción y alcance de pruebas
+
+**Estado:** ✅ Aceptada — 2026-08-06
+**Contexto:**
+Tres requisitos de MCS —`SEG-02` (almacén de secretos), `SUM-01` (dónde se
+construye el artefacto) y `DEV-02`/`DEV-03` (estrategia de pruebas)— estaban
+abiertos no por falta de trabajo sino por falta de postura declarada. El marco
+no exige una solución concreta; exige que la elegida esté escrita. Sin eso, la
+misma configuración se lee como conforme o como carencia según quién audite.
+
+**Decisión:**
+
+**Secretos: variables de entorno de Railway.** No se adopta un almacén dedicado
+adicional (Vault, Secrets Manager). El almacén de variables de Railway es un
+almacén dedicado: vive fuera del repositorio, tiene control de acceso propio y
+no se versiona. Lo que `SEG-02` prohíbe es el secreto **en el repositorio**, y
+eso lo verifica `gitleaks` sobre el historial completo en cada PR —478 commits
+al declarar esto, sin fugas—.
+
+**Construcción: Railway desde la rama.** No se produce un artefacto en la
+canalización de CI para desplegarlo después. `SUM-01` exige que lo desplegado se
+construya en la canalización automática y **nunca en equipos locales**; Railway
+construyendo desde la rama es canalización automática. Nadie despliega desde su
+máquina, y esa es la propiedad que el requisito protege.
+
+**Pruebas: alcance reducido, declarado.** Se sostiene la suite de API —unitaria
+y de integración, sobre SQLite en memoria— y **no** se abre frente de pruebas de
+frontend ni de extremo a extremo. Hoy hay **cero** pruebas de web y se acepta a
+sabiendas.
+
+**Consecuencias:**
+
+- Un compromiso de la cuenta de Railway expone todos los secretos a la vez. No
+  hay rotación automática ni registro de acceso por secreto. Se acepta con un
+  solo operador; se reevalúa al entrar la segunda persona.
+- Sin artefacto inmutable, un despliegue no es reproducible bit a bit: dos
+  construcciones del mismo commit pueden diferir si cambian las dependencias
+  base. Mitigado por los ficheros de bloqueo, no eliminado.
+- **Un fallo de frontend llega a producción sin que nada lo detenga.** Es la
+  consecuencia más cara de las tres y la más fácil de olvidar: la suite verde
+  no dice nada sobre la web. Los gates que sí cubren frontend son `web-build`,
+  `web-typecheck`, `contraste-wcag` y el de tokens — ninguno ejecuta la interfaz.
+- `DEV-03` pide pruebas separadas por nivel. Con alcance reducido, los niveles
+  declarados son **unitaria** y **de integración**; el de extremo a extremo se
+  declara ausente en vez de fingirse.
+
+**Alternativas:**
+
+- *Almacén dedicado externo:* correcto a mayor escala; hoy añade una dependencia
+  y un modo de fallo para un equipo de una persona.
+- *Artefacto en CI + despliegue de imagen:* la forma canónica, y la que habrá
+  que adoptar si el despliegue deja de ser de un solo servicio. Cuesta
+  reescribir la canalización y añade registro de imágenes.
+- *Abrir pruebas de frontend ahora:* es el frente correcto a medio plazo, pero
+  compite con 24 requisitos abiertos y no es el más barato.
+
+**Revisión:** al entrar una segunda persona al repositorio, o al primer
+incidente de producción originado en el frontend.
