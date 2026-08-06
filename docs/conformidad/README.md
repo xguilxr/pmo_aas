@@ -8,7 +8,7 @@ revisar_cada: 90d
 
 # Conformidad — índice del expediente
 
-Trece documentos y ninguna forma de saber cuál está vivo. Este índice existe
+Quince documentos y ninguna forma de saber cuál está vivo. Este índice existe
 para eso, y para una regla que se aplica a todo el directorio:
 
 > **Los informes fechados no se editan.** Son el expediente: lo que se midió, el
@@ -25,9 +25,15 @@ encabezado, y no es descuido.
 
 | Documento | Para qué |
 |---|---|
-| [`plan-remediacion.md`](plan-remediacion.md) | **El plan activo.** Olas, qué falta y qué necesita decisión del owner |
+| [`runbook-cierre-n1.md`](runbook-cierre-n1.md) | **Por dónde se empieza.** Qué bloquea N1 hoy, en fases, separando lo que necesita decisión del owner de lo que es solo trabajo |
+| [`plan-remediacion.md`](plan-remediacion.md) | **El plan activo.** Olas, qué falta y por qué se ordenó así |
 | [`marco/MCS-CORE.md`](marco/MCS-CORE.md) | El catálogo normativo: 126 requisitos, y §6.2 con la regla de nivel |
 | [`marco/`](marco/) | Los marcos tal como se recibieron. No se editan aquí |
+
+> **§6.2 conviene leerlo antes que nada:** el nivel es el mayor N donde **todos**
+> los DEBE están Conforme o No aplicable. Un solo PARCIAL bloquea el nivel
+> entero, así que «quedan 29» no es una barra de progreso — es una lista que se
+> vacía o no sirve.
 
 **El estado real no está en ningún documento**, y es a propósito:
 
@@ -70,6 +76,12 @@ Se lee de arriba abajo como la historia de qué se supo y cuándo.
 | [`2026-08-05-ola0-recuento.md`](2026-08-05-ola0-recuento.md) | Ola 0: remedir antes de construir |
 | [`2026-08-05-verificacion-con-marco.md`](2026-08-05-verificacion-con-marco.md) | **El más importante de leer.** Con `MCS-CORE` en mano, **tres de seis cierres no se sostuvieron** |
 | [`plan.md`](plan.md) | El plan del 08-03. **Superado** por `plan-remediacion.md`; se conserva fechado |
+
+### 2026-08-06 — la Ola 2 y lo que destapó verificar a mano
+
+| Documento | Qué aporta |
+|---|---|
+| [`2026-08-06-verificacion-local.md`](2026-08-06-verificacion-local.md) | Los cuatro trabajos de CI corridos a mano durante la caída de Actions. **Dos hallazgos, los dos en el aparato de verificación**: un trabajo que daba verde sobre un sujeto vacío, y una justificación falsa en el encabezado de una migración |
 
 ---
 
