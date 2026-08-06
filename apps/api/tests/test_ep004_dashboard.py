@@ -126,7 +126,15 @@ async def test_dashboard_tenant_isolation(client, db_session):
     rk = await client.get("/api/v1/dashboard/kpis", headers=auth_b["_authz"])
     assert rk.status_code == 200
     assert rk.json()["active_projects"] == 0
-    assert rk.json()["budget_total"] == 0.0
+    # DAT-12 / ficha de indicador (owner 2026-08-06). Este caso afirmaba
+    # `budget_total == 0.0`, que era describir el defecto en vez de el
+    # requisito: un inquilino sin proyectos no tiene un presupuesto de cero,
+    # no tiene presupuesto. `SUM` sobre cero filas devuelve NULL y eso es lo
+    # que debe llegar, para que el tablero pinte «—».
+    assert rk.json()["budget_total"] is None
+    assert rk.json()["progress_avg"] is None
+    # El conteo sí es cero de verdad: cero proyectos ES cero proyectos.
+    assert rk.json()["active_projects"] == 0
 
 
 # ============================================================================
@@ -291,7 +299,7 @@ async def test_us015_pm_sees_member_projects(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_us015_pm_without_projects_sees_zero(client, db_session):
+async def test_us015_pm_without_projects_sees_nothing(client, db_session):
     """Un PM sin proyectos asignados ve ceros."""
     t, _admin_auth, org_id = await _setup(client, db_session)
     await _seed_projects(db_session, str(t.id), org_id)
@@ -305,8 +313,15 @@ async def test_us015_pm_without_projects_sees_zero(client, db_session):
     auth = await login(client, "orphan", "Str0ng-Or-1!")
     r = await client.get("/api/v1/dashboard/kpis", headers=auth["_authz"])
     assert r.status_code == 200
+    # Lo que US-015 protege es el AISLAMIENTO: un PM sin asignaciones no ve la
+    # cartera del inquilino. Eso sigue igual.
     assert r.json()["active_projects"] == 0
-    assert r.json()["budget_total"] == 0.0
+    # Lo que cambió es cómo se representa la ausencia (DAT-12, ficha de
+    # indicador del owner 2026-08-06): sin proyectos alcanzables no hay
+    # presupuesto que sumar, así que llega `null` y el tablero pinta «—».
+    # Antes llegaba `0.0`, que le decía a un PM recién incorporado que su
+    # cartera vale cero en vez de que todavía no tiene ninguna.
+    assert r.json()["budget_total"] is None
 
 
 @pytest.mark.asyncio

@@ -178,7 +178,13 @@ async def kpis(
     except Exception:
         pass
 
-    budget_stmt = select(func.coalesce(func.sum(Project.budget), 0)).where(
+    # Sin `coalesce`: `SUM` sobre cero filas devuelve NULL, y eso es
+    # exactamente el dato —«no hay presupuesto que sumar»—. El `coalesce(…, 0)`
+    # que había aquí convertía el hueco en un cero dentro de la propia consulta,
+    # que es el defecto de DAT-12 una capa más abajo de donde se suele buscar.
+    # La anotación de abajo ya decía `Decimal | None`; era el SQL el que lo
+    # hacía imposible.
+    budget_stmt = select(func.sum(Project.budget)).where(
         Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
     )
     if organization_id:
@@ -207,7 +213,10 @@ async def kpis(
         )
     active_proj_rows = (await db.execute(active_proj_stmt)).scalars().all()
     eff = await effective_progress_map(db, list(active_proj_rows))
-    progress_avg = (sum(eff.values()) / len(eff)) if eff else 0
+    # DAT-12 / ficha de indicador (owner 2026-08-06): sin proyectos NO es cero
+    # por ciento, es que no hay nada que promediar. Devolver 0 pintaba un
+    # tablero recién estrenado como una cartera parada en seco.
+    progress_avg = (sum(eff.values()) / len(eff)) if eff else None
 
     return {
         "active_projects": active_projects,
@@ -216,8 +225,11 @@ async def kpis(
         "severe_risks": severe_risks,
         "change_requests_in_review": change_requests_in_review,
         "open_issues": open_issues,
-        "budget_total": float(budget_total or 0),
-        "progress_avg": float(progress_avg or 0),
+        # `SUM` sobre cero filas devuelve NULL, que significa «no hay nada que
+        # sumar» y no «suman cero». Un presupuesto de 0 declarado sí llega como
+        # 0 y se muestra como 0: la distinción es justo la de DAT-12.
+        "budget_total": float(budget_total) if budget_total is not None else None,
+        "progress_avg": float(progress_avg) if progress_avg is not None else None,
     }
 
 
