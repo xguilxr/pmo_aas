@@ -15,14 +15,16 @@ revisar_cada: 30d
 
 ## 🎯 Dónde estamos parados
 
-**Ola 2 entera más `SEG-04` y el cierre de `DAT-06`: de 41 a 30 bloqueantes de
+**Ola 2 entera, más `SEG-04`, `DAT-06` y `DOC-02`: de 41 a 29 bloqueantes de
 N1.** Uno por commit, todos con prueba propia y verificación por mutación.
 
 `SEG-04` era la única CRÍTICA viva y el hueco era explotable: la autorización
 de objeto se aplicaba al listado y a ningún detalle.
 
-MCA sigue en **N2**, su objetivo. MCS sigue en **N0** — el nivel no se mueve
-hasta que caigan los 30, y lo que queda necesita postura del owner.
+MCA sigue en **N2**, su objetivo. MCS sigue en **N0**: MCS-CORE §6.2 no da
+crédito parcial —un solo PARCIAL bloquea el nivel—, así que el número no se
+mueve hasta que caigan los 29. Orden de ataque en
+[`runbook-cierre-n1.md`](../conformidad/runbook-cierre-n1.md).
 
 ## 📍 Dónde retomar
 
@@ -35,12 +37,8 @@ se corrieron a mano el 2026-08-06 y están en verde. Aun así, al mergear convie
 dejar que el CI corra de verdad: **la verificación local no sustituye al
 trinquete**, lo suple mientras está caído.
 
-Después, añadir las dos verificaciones nuevas a las exigidas de `main` (ver
-Acciones): va tras el merge, porque GitHub no deja exigir un check que nunca ha
-reportado. Luego, **Ola 3**, que el owner dejó para otra sesión. Las tres primeras
-—alcance de competencia (`CON-01/03/05`), escenarios de calidad con medida
-(`REQ-02`) e inventario de datos personales (`REQ-03`)— desbloquean nueve
-requisitos entre ellas, y las tres necesitan una decisión antes de tocar código.
+Después, el **runbook** manda: fases, qué necesita postura tuya y qué es solo
+trabajo.
 
 ## ✅ Hecho en esta sesión
 
@@ -91,8 +89,8 @@ Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
 - **Ola 3** — necesita postura del owner. Se le suman `DAT-02` (8 renombres,
   ADR + migración por campo), `DIS-03` y `DAT-11`.
-- **`LEN-02`** es el único que cierra sin decisión: 166 mensajes con texto
-  suelto, y el mecanismo ya obliga a las tres partes al tocar cada endpoint.
+- **`LEN-02`**: 166 mensajes con texto suelto; el mecanismo ya obliga a las
+  tres partes al tocar cada endpoint.
 - **Cuatro ventanas de compatibilidad abiertas** (`phase=support`,
   `portfolio_function`, `wbs`, `amber_max`). Se cierran con dato a los dos meses.
 

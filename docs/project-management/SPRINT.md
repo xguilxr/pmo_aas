@@ -28,7 +28,7 @@ Olas 0, 1 y **2 cerradas**, más `SEG-04` y `DAT-06` de la Ola 3.
 Lo que queda de Ola 3 necesita postura del owner — otra sesión.
 
 MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · **30 bloquean N1** (eran 41) · una sola exclusión viva (ARQ-03).
+MCS: N0 · **29 bloquean N1** (eran 41) · runbook de cierre en docs/conformidad/ · una sola exclusión viva (ARQ-03).
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
