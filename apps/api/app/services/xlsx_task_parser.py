@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from io import BytesIO
 
+from app.core.unidades import fraccion_a_pct
+
 HEADER_ALIASES: dict[str, list[str]] = {
     "name": ["nombre", "tarea", "task name", "name", "nombre de tarea"],
     # D-3: la clave es el campo del sistema (`wbs_code`); los valores son las
@@ -263,7 +265,10 @@ def _coerce_progress(v: object, *, is_percent_format: bool = False) -> int:
         return 0
     if is_percent_format:
         # Celda %-formateada → openpyxl da la fracción 0..1 (incl. 1==100%).
-        scaled = n * 100
+        # DAT-04: esta función ES la frontera del importador, y la conversión
+        # va nombrada. Escrita `n * 100` no decía de qué a qué, que es justo lo
+        # que hubo que reconstruir para entender BUG-081 y BUG-089.
+        scaled = fraccion_a_pct(n)
         if scaled > 100 and 0 <= n <= 100:
             # BUG-089: celda con formato % pero valor entero tipeado
             # (45 → Excel muestra 4500%). Escalar daba 4500 → clamp 100
@@ -274,7 +279,7 @@ def _coerce_progress(v: object, *, is_percent_format: bool = False) -> int:
             n = scaled
     elif 0 < n < 1 and not had_pct_sign:
         # Fracción literal sin formato (ej. CSV "0.45" == 45%).
-        n = n * 100
+        n = fraccion_a_pct(n)
     return max(0, min(100, round(n)))
 
 

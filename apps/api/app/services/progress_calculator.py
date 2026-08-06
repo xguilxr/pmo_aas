@@ -28,6 +28,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.unidades import razon_a_pct
 from app.models.project import Project
 from app.models.task import Task
 from app.services.plan_metadata import compute_plan_rollup_progress
@@ -76,7 +77,7 @@ def _task_duration(task: Task) -> float:
 def _percent(numerator: float, denominator: float) -> float:
     if denominator <= 0:
         return 0.0
-    pct = (numerator / denominator) * 100.0
+    pct = razon_a_pct(numerator, denominator, decimales=6)
     if pct < 0.0:
         return 0.0
     if pct > 100.0:

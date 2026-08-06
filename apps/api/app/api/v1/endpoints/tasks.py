@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, forbidden, not_found, validation_error
+from app.core.unidades import mebibytes
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.project_artifact import ProjectArtifact
@@ -724,7 +725,7 @@ async def import_ms_project(
         raise HTTPException(status_code=415, detail={"code": "UNSUPPORTED_MEDIA_TYPE"})
 
     data = await file.read()
-    if len(data) > 50 * 1024 * 1024:
+    if len(data) > mebibytes(50):
         from fastapi import HTTPException
 
         raise HTTPException(status_code=413, detail={"code": "PAYLOAD_TOO_LARGE"})
@@ -1090,7 +1091,7 @@ async def import_preview(
     data = await file.read()
     if not data:
         raise business_rule("archivo vacío")
-    if len(data) > MAX_WIZARD_FILE_MB * 1024 * 1024:
+    if len(data) > mebibytes(MAX_WIZARD_FILE_MB):
         raise HTTPException(
             status_code=413,
             detail={

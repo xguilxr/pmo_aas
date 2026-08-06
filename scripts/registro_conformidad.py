@@ -144,6 +144,11 @@ CIERRES = {
  "DAT-06":("PARCIAL","Ola 2 — 0 restos en código (trinquete test_dat06_vocabulario.py); queda `amber_max` en tenant.settings, Ola 3"),
  "DOC-01":("CONFORME","Ola 2 — 127 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
  "DOC-03":("CONFORME","Ola 2 — el ER se genera de Base.metadata (scripts/generar_er.py) y la suite falla si se desfasa; database.md decía 49 tablas con 56 en el modelo"),
+ # DAT-04 y DAT-08 miraban el mismo hecho desde lados distintos: la auditoría
+ # contó «6 sitios» de conversión y DAT-08 anotó «26 constantes en línea».
+ # Eran 26, en tres familias. Con las fronteras nombradas cierran los dos.
+ "DAT-04":("CONFORME","Ola 2 — app/core/unidades.py concentra las 3 familias (pct, mebibytes, ms); trinquete que mira el árbol"),
+ "DAT-08":("CONFORME","Ola 2 — las 26 constantes en línea pasaron a la frontera nombrada (N2)"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 
 from app.core.paleta import ACENTO, NEUTRO, NEUTRO_SUAVE
+from app.core.unidades import pct_a_fraccion
 
 
 def treemap_svg(items: list[dict]) -> str:
@@ -60,7 +61,7 @@ def curve_svg(
         return w / 2 if n == 1 else pad + i * (w - 2 * pad) / (n - 1)
 
     def y_at(v: float) -> float:
-        return h - pad - (max(0.0, min(100.0, v)) / 100.0) * (h - 2 * pad)
+        return h - pad - pct_a_fraccion(max(0.0, min(100.0, v))) * (h - 2 * pad)
 
     def poly(vals: list[float]) -> str:
         return " ".join(f"{x_at(i):.1f},{y_at(v):.1f}" for i, v in enumerate(vals))
@@ -177,7 +178,7 @@ def gauge_svg(
     cx = cy = size / 2
     r = size / 2 - thickness / 2 - 2
     circ = 2 * math.pi * r
-    filled = pct / 100 * circ
+    filled = pct_a_fraccion(pct) * circ
     return (
         f'<svg viewBox="0 0 {size:.0f} {size:.0f}" width="{size:.0f}" '
         f'height="{size:.0f}" role="img" aria-label="Avance {pct:.0f}%">'

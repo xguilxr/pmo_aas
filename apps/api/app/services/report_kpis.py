@@ -14,6 +14,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.unidades import razon_a_pct
 from app.models.project import Project
 from app.models.task import Task
 from app.services.plan_metadata import compute_plan_rollup_progress
@@ -67,7 +68,7 @@ async def compute_kpis(
         scoped = [t for t in tasks if t.end_date is not None]
         if scoped:
             should_be_done = sum(1 for t in scoped if t.end_date <= period_end)
-            progress_pct_planned = round((should_be_done / len(scoped)) * 100, 1)
+            progress_pct_planned = razon_a_pct(should_be_done, len(scoped))
 
     cost_planned = (
         float(project.budget) if project and project.budget and project.budget > 0 else None

@@ -22,6 +22,7 @@ from decimal import Decimal
 from sqlalchemy import desc, select
 
 from app.core.config import settings
+from app.core.unidades import razon_a_pct_decimal, segundos_a_ms
 from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
 from app.models.project import Project
@@ -553,7 +554,7 @@ async def _run_minute(
             job.provider = _provider_from_model(model_used, tenant_cfg)
             job.tokens_in = total_in
             job.tokens_out = total_out
-            job.duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+            job.duration_ms = segundos_a_ms((datetime.now(UTC) - started).total_seconds())
             job.completed_at = datetime.now(UTC)
 
             # US-185: la minuta nueva alimenta la memoria del proyecto
@@ -628,7 +629,7 @@ async def _run_report(
             _real = p.actual_budget or Decimal(0)
             _desviacion = _real - _plan
             _consumido = (
-                (_real / _plan * 100).quantize(Decimal("0.1"))
+                razon_a_pct_decimal(_real, _plan)
                 if _plan
                 else None
             )
@@ -704,7 +705,7 @@ async def _run_report(
             job.provider = _provider_from_model(res.model, tenant_cfg)
             job.tokens_in = res.tokens_in
             job.tokens_out = res.tokens_out
-            job.duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+            job.duration_ms = segundos_a_ms((datetime.now(UTC) - started).total_seconds())
             job.completed_at = datetime.now(UTC)
 
             await write_audit(

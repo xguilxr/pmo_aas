@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden, not_found
+from app.core.unidades import razon_a_pct
 from app.db.session import get_db
 from app.models.ai import Report
 from app.models.ai_report_template import AIReportTemplate
@@ -1456,7 +1457,7 @@ def _project_render_data(
     # saltaba a 0% o 100%). On-time = (total − retrasadas) / total.
     tasks_total = (context.get("plan") or {}).get("total_tasks") or 0
     on_time_pct = (
-        max(0, min(100, round((tasks_total - delayed) / tasks_total * 100)))
+        max(0, min(100, round(razon_a_pct(tasks_total - delayed, tasks_total))))
         if tasks_total
         else 0
     )
