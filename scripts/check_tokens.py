@@ -77,6 +77,16 @@ ESPACIADO = re.compile(
     r"\b(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)"
     r"-\[[0-9.]+(?:px|rem|em)\]"
 )
+#: DAT-12 — un `?? 0` en **posición de renderizado**: dentro de `{…}` de JSX,
+#: o como valor de una prop que se pinta. No se mira el `?? 0` de cálculo —
+#: `map.get(k) ?? 0` al sumar es correcto—, solo el que tapa un hueco justo
+#: antes de mostrarlo. La distinción es la que hace usable el control: sin
+#: ella salían 84 avisos y 67 eran legítimos.
+RENDER_CERO = re.compile(
+    r"(?:value|count|total|amount)=\{[^}]*\?\?\s*0\}"
+    r"|\{\s*[A-Za-z_][\w.?]*\s*\?\?\s*0\s*\}"
+)
+
 #: `var(--x, respaldo)` — el segundo grupo solo existe si hay respaldo.
 VAR = re.compile(r"var\(\s*(--[a-z0-9-]+)\s*(,)?")
 #: Definición de una propiedad personalizada en el CSS.
@@ -122,6 +132,12 @@ def revisar(ruta_relativa: str, contenido: str, definidos: set[str]) -> list[str
         problemas.append(
             f"espaciado literal `{literal}`: queda fuera de la escala y el "
             f"siguiente ajuste de densidad lo deja atrás"
+        )
+    for literal in sorted(set(RENDER_CERO.findall(contenido))):
+        problemas.append(
+            f"`{literal}` pinta un cero donde no hay dato (DAT-12): un proyecto "
+            f"sin presupuesto cargado y uno con presupuesto cero piden acciones "
+            f"distintas. Usá `SIN_DATO` de `@/lib/sin-dato`"
         )
     for token, respaldo in sorted(set(VAR.findall(contenido))):
         if token not in definidos:

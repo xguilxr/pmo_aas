@@ -20,6 +20,7 @@ verificador puede ser correcto y estar apuntando a un directorio que se movió.
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -139,3 +140,76 @@ def test_el_arbol_real_no_tiene_literales() -> None:
 
     assert revisados > 100, f"Solo {revisados} archivos revisados: el ámbito dejó de resolver."
     assert not fallos, f"Valores visuales fuera del sistema: {fallos}"
+
+
+# ---------------------------------------------------------------------------
+# DAT-12 — la ausencia de dato se distingue del cero
+# ---------------------------------------------------------------------------
+
+def test_rechaza_pintar_un_cero_donde_no_hay_dato() -> None:
+    """Un proyecto sin presupuesto cargado y uno con presupuesto cero son
+    estados distintos y piden acciones distintas: al primero le falta un dato,
+    el segundo está mal planificado. Con `?? 0` los dos salían «$0».
+    """
+    for fragmento in (
+        "<KpiCard value={kpis?.budget_total ?? 0} />",
+        "<RaidCard count={project.module_counts.risks ?? 0} />",
+        "<p>{kpis.overdue ?? 0}</p>",
+    ):
+        motivos = revisar("components/x.tsx", fragmento, DEFINIDOS)
+        assert any("DAT-12" in m for m in motivos), (fragmento, motivos)
+
+
+def test_no_estorba_al_cero_de_calculo() -> None:
+    """`map.get(k) ?? 0` al sumar es correcto y frecuente.
+
+    La distinción entre calcular y pintar es lo que hace usable el control: sin
+    ella salían 84 avisos y 67 eran legítimos, y un gate con 80% de ruido se
+    desactiva la primera semana.
+    """
+    for fragmento in (
+        "const count = map.get(`${p}:${im}`) ?? 0;",
+        "const total = (src.risks?.length ?? 0) + (src.issues?.length ?? 0);",
+        "if ((confidence[idx] ?? 0) < 0.7) return;",
+    ):
+        assert revisar("components/x.tsx", fragmento, DEFINIDOS) == [], fragmento
+
+
+def test_el_hueco_tiene_etiqueta_accesible() -> None:
+    """El guion largo lo lee un lector de pantalla como una pausa, o no lo lee.
+
+    Sin la etiqueta, «Presupuesto —» suena a «Presupuesto» y el hueco
+    desaparece justo para quien menos puede inferirlo del contexto visual.
+    """
+    kpi = (RAIZ / "apps" / "web" / "components" / "kpi-card.tsx").read_text(encoding="utf-8")
+    # Que la etiqueta esté EN el `aria-label`, no solo en el archivo: la
+    # primera versión comprobaba las dos cadenas por separado y sobrevivía a
+    # vaciar el atributo, porque la constante seguía importada más arriba.
+    assert re.search(r"aria-label=\{[^}]*SIN_DATO_ETIQUETA", kpi), (
+        "El hueco del KPI perdió su etiqueta accesible: un lector de pantalla "
+        "lee «Presupuesto» y el hueco desaparece."
+    )
+
+
+def test_la_convencion_del_hueco_esta_declarada() -> None:
+    """El guion largo ya era la convención — en 43 archivos, para huecos de
+    TEXTO. Lo que faltaba era aplicarla a los números.
+
+    Ese es el hallazgo que reencuadra el requisito: no había que enseñarle al
+    producto a decir «no hay dato», había que dejar de taparlo con un cero.
+    Por eso esta prueba NO exige que los 43 importen la constante —migrarlos
+    sería una campaña sin más valor que el que ya tienen—, sino que exista un
+    solo sitio donde cambiar la convención y que las superficies numéricas
+    convertidas lo usen.
+    """
+    modulo = RAIZ / "apps" / "web" / "lib" / "sin-dato.ts"
+    assert modulo.is_file(), "Se fue `@/lib/sin-dato`, que es donde vive la convención."
+    fuente = modulo.read_text(encoding="utf-8")
+    assert 'SIN_DATO = "—"' in fuente
+
+    for componente in ("components/kpi-card.tsx", "app/(app)/pmo/projects/[id]/page.tsx"):
+        texto = (RAIZ / "apps" / "web" / componente).read_text(encoding="utf-8")
+        assert "@/lib/sin-dato" in texto, (
+            f"`{componente}` dejó de usar la convención central y volvió a "
+            f"decidir por su cuenta qué se ve cuando no hay dato."
+        )

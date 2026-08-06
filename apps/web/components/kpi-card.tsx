@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { esSinDato, SIN_DATO, SIN_DATO_ETIQUETA } from "@/lib/sin-dato";
 
 /** US-153 — variación vs. periodo anterior para la píldora de tendencia. */
 export type KpiTrend = {
@@ -18,7 +19,13 @@ export type KpiTrend = {
 
 type Props = {
   label: string;
-  value: number;
+  /**
+   * DAT-12: `null` es «no hay dato» y se pinta distinto del cero. Antes el
+   * tipo era `number` a secas, así que cada sitio ponía su `?? 0` y un
+   * proyecto sin presupuesto cargado salía «$0» — indistinguible de uno con
+   * presupuesto cero, que es otro problema y pide otra acción.
+   */
+  value: number | null | undefined;
   href?: string;
   icon?: ReactNode;
   format?: "number" | "currency-mxn" | "percent";
@@ -105,7 +112,8 @@ function TrendPill({ trend }: { trend: KpiTrend }) {
 }
 
 export function KpiCard({ label, value, href, icon, format = "number", tone = "neutral", loading, trend, hint }: Props) {
-  const animated = useCountUp(Number.isFinite(value) ? value : 0);
+  const vacio = esSinDato(value);
+  const animated = useCountUp(vacio ? 0 : (value as number));
 
   const body = (
     <div className="group flex h-full flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)]">
@@ -119,12 +127,17 @@ export function KpiCard({ label, value, href, icon, format = "number", tone = "n
         className={cn(
           "text-2xl font-semibold tabular-nums",
           TONES[tone],
-          loading ? "opacity-50" : "",
+          loading || vacio ? "opacity-50" : "",
         )}
+        // DAT-12: el guion largo lo lee un lector de pantalla como una pausa,
+        // o no lo lee. Sin la etiqueta, «Presupuesto —» suena a «Presupuesto»
+        // y el hueco desaparece justo para quien menos puede inferirlo.
+        aria-label={loading ? "cargando" : vacio ? SIN_DATO_ETIQUETA : undefined}
+        title={vacio && !loading ? SIN_DATO_ETIQUETA : undefined}
       >
-        {loading ? "—" : formatValue(animated, format)}
+        {loading || vacio ? SIN_DATO : formatValue(animated, format)}
       </span>
-      {!loading && trend ? <TrendPill trend={trend} /> : null}
+      {!loading && !vacio && trend ? <TrendPill trend={trend} /> : null}
       {hint ? <span className="text-[11px] text-[var(--color-tertiary)]">{hint}</span> : null}
       {href ? (
         <span className="text-xs text-[var(--color-tertiary)] group-hover:text-[var(--color-secondary)]">

@@ -156,6 +156,12 @@ CIERRES = {
  # negocio exige saber qué regla es. Lo que faltaba era el mecanismo, y ahora
  # está: `mensaje()` con tres argumentos sin defecto + línea base que encoge.
  "LEN-02":("PARCIAL","Ola 2 — 177→169 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
+ # DAT-12: la auditoría midió «77 puntos» y el conteo bruto de `?? 0` daba 84,
+ # pero 67 de esos eran de CÁLCULO —`map.get(k) ?? 0` al sumar es correcto—.
+ # Los de PRESENTACIÓN eran 17, y quedaron en cero. El producto ya usaba «—»
+ # para huecos de texto en 43 archivos: lo que faltaba era no taparlo con un
+ # cero en los números.
+ "DAT-12":("CONFORME","Ola 2 — 17 sitios de presentación a `@/lib/sin-dato`, con etiqueta accesible; gate en check_tokens.py"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 

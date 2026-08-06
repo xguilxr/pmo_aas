@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { esSinDato } from "@/lib/sin-dato";
 import {
   type ImportPreviewResult,
   type ImportSource,
@@ -420,7 +421,12 @@ export function ImportWizard({
       {step === "done" ? (
         <div className="space-y-2 text-center">
           <p className="text-sm font-semibold text-[var(--color-success-fg)]">
-            ✓ Listo — se importaron {doneSummary?.imported ?? 0} tareas
+            {/* DAT-12: sin el resumen, «se importaron 0 tareas» dice que la
+                importación no trajo nada, cuando lo que pasa es que no sabemos
+                cuántas trajo. Son dos cosas distintas y la primera alarma. */}
+            {esSinDato(doneSummary?.imported)
+              ? "✓ Listo — la importación terminó"
+              : `✓ Listo — se importaron ${doneSummary?.imported} tareas`}
           </p>
           {/* US-188 nivel 2: transparencia de lo que normalizó la IA. */}
           {doneSummary && (doneSummary.aiStatuses > 0 || doneSummary.aiResources > 0) ? (

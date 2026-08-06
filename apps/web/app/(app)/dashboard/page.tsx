@@ -394,7 +394,7 @@ function DashboardInner() {
       <section aria-label="Indicadores" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Proyectos activos"
-          value={kpis?.active_projects ?? 0}
+          value={kpis?.active_projects}
           loading={loadingKpis}
           icon={<Briefcase className="h-4 w-4" aria-hidden />}
           tone="accent"
@@ -402,14 +402,14 @@ function DashboardInner() {
         />
         <KpiCard
           label="Solicitudes en revisión"
-          value={kpis?.requests_in_review ?? 0}
+          value={kpis?.requests_in_review}
           loading={loadingKpis}
           icon={<ClipboardList className="h-4 w-4" aria-hidden />}
           href="/pmo/requests"
         />
         <KpiCard
           label="Riesgos abiertos"
-          value={kpis?.open_risks ?? 0}
+          value={kpis?.open_risks}
           loading={loadingKpis}
           icon={<AlertTriangle className="h-4 w-4" aria-hidden />}
           tone="warning"
@@ -417,7 +417,7 @@ function DashboardInner() {
         />
         <KpiCard
           label="Riesgos severos"
-          value={kpis?.severe_risks ?? 0}
+          value={kpis?.severe_risks}
           loading={loadingKpis}
           icon={<AlertOctagon className="h-4 w-4" aria-hidden />}
           tone="danger"
@@ -425,28 +425,28 @@ function DashboardInner() {
         />
         <KpiCard
           label="Cambios en revisión"
-          value={kpis?.change_requests_in_review ?? 0}
+          value={kpis?.change_requests_in_review}
           loading={loadingKpis}
           icon={<GitPullRequest className="h-4 w-4" aria-hidden />}
           href="/pmo/changes?status=in_review"
         />
         <KpiCard
           label="AIDs abiertos"
-          value={kpis?.open_issues ?? 0}
+          value={kpis?.open_issues}
           loading={loadingKpis}
           icon={<FileWarning className="h-4 w-4" aria-hidden />}
           href="/pmo/raid?kind=issues"
         />
         <KpiCard
           label="Presupuesto total"
-          value={kpis?.budget_total ?? 0}
+          value={kpis?.budget_total}
           loading={loadingKpis}
           format="currency-mxn"
           icon={<CircleDollarSign className="h-4 w-4" aria-hidden />}
         />
         <KpiCard
           label="Avance promedio"
-          value={kpis?.progress_avg ?? 0}
+          value={kpis?.progress_avg}
           loading={loadingKpis}
           format="percent"
           icon={<TrendingUp className="h-4 w-4" aria-hidden />}

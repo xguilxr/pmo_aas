@@ -40,6 +40,7 @@ import {
   type ProjectPhase,
 } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
+import { esSinDato, SIN_DATO, SIN_DATO_ETIQUETA } from "@/lib/sin-dato";
 
 const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
   planning: ["execution", "closed", "cancelled"],
@@ -407,25 +408,25 @@ export default function ProjectDetailPage() {
         <div className="grid gap-3">
           <RaidCard
             label="Riesgos"
-            count={project.module_counts.risks ?? 0}
+            count={project.module_counts.risks}
             href={`/pmo/projects/${project.id}/raid?tab=risks`}
             tone="danger"
           />
           <RaidCard
             label="Acciones"
-            count={project.module_counts.actions ?? 0}
+            count={project.module_counts.actions}
             href={`/pmo/projects/${project.id}/raid?tab=actions`}
             tone="info"
           />
           <RaidCard
             label="Incidentes"
-            count={project.module_counts.incidents ?? 0}
+            count={project.module_counts.incidents}
             href={`/pmo/projects/${project.id}/raid?tab=incidents`}
             tone="warning"
           />
           <RaidCard
             label="Decisiones"
-            count={project.module_counts.decisions ?? 0}
+            count={project.module_counts.decisions}
             href={`/pmo/projects/${project.id}/raid?tab=decisions`}
             tone="success"
           />
@@ -602,6 +603,12 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
 }
 
 // ENH-130: tarjeta RAID con count y link al detalle del módulo.
+/** DAT-12 — `hechos/total`, con guion cuando falta cualquiera de los dos. */
+function razon(hechos: number | null | undefined, total: number | null | undefined): string {
+  if (esSinDato(hechos) || esSinDato(total)) return SIN_DATO;
+  return `${hechos}/${total}`;
+}
+
 function RaidCard({
   label,
   count,
@@ -609,7 +616,8 @@ function RaidCard({
   tone,
 }: {
   label: string;
-  count: number;
+  /** DAT-12: `null` es «el módulo no reportó», que no es «cero». */
+  count: number | null | undefined;
   href: string;
   tone: "danger" | "info" | "warning" | "success";
 }) {
@@ -628,8 +636,15 @@ function RaidCard({
         <span className={cn("h-2 w-2 rounded-full", dot)} />
         <span className="text-[13px] font-medium text-[var(--text-primary)]">{label}</span>
       </span>
-      <span className="text-[18px] font-semibold tabular-nums text-[var(--text-primary)]">
-        {count}
+      <span
+        className={cn(
+          "text-[18px] font-semibold tabular-nums text-[var(--text-primary)]",
+          esSinDato(count) ? "opacity-50" : "",
+        )}
+        aria-label={esSinDato(count) ? SIN_DATO_ETIQUETA : undefined}
+        title={esSinDato(count) ? SIN_DATO_ETIQUETA : undefined}
+      >
+        {esSinDato(count) ? SIN_DATO : count}
       </span>
     </Link>
   );
@@ -732,8 +747,10 @@ function AvanceCard({
 }) {
   const overdue = kpis.overdue ?? 0;
   const lines: { label: string; value: string; danger?: boolean }[] = [
-    { label: "Hitos", value: `${kpis.milestones_done ?? 0}/${kpis.milestones_total ?? 0}` },
-    { label: "Críticos", value: `${kpis.critical_done ?? 0}/${kpis.critical_total ?? 0}` },
+    // DAT-12: `0/0` no distingue «no hay hitos» de «el plan no se ha
+    // cargado». Con el guion, el segundo caso se ve.
+    { label: "Hitos", value: razon(kpis.milestones_done, kpis.milestones_total) },
+    { label: "Críticos", value: razon(kpis.critical_done, kpis.critical_total) },
     { label: "Atrasados", value: String(overdue), danger: overdue > 0 },
   ];
   return (
