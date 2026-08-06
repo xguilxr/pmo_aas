@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 180d
+---
+
 # Despliegue en Railway
 
 **ID:** `DOC-ARCH-DEPLOY`
@@ -136,6 +143,7 @@ restartPolicyMaxRetries = 10
 | `REDIS_URL` | Plugin redis | API + Worker |
 | `PYTHON_ENV` | `production` / `staging` / `development` | API + Worker |
 | `LOG_LEVEL` | `INFO` (default) | API + Worker |
+| `LOG_FORMAT` | `json` (default) | API + Worker |
 
 ### API + Worker (`apps/api/app/core/config.py`)
 

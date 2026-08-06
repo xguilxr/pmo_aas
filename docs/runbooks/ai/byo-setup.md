@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Runbook · Conectar un proveedor BYO de IA
 
 > Verificado contra `apps/api/app/services/ai/byo_catalog.py` (2026-05-23).

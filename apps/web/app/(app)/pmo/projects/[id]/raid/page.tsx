@@ -562,7 +562,7 @@ function RaidInner() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-inverse)] shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-hover,var(--color-primary))]"
+            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-inverse)] shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-hover)]"
           >
             + {KIND_NEW_LABEL[tab]}
           </button>
@@ -1183,7 +1183,7 @@ function RisksSection({
       {cellFilter ? (
         <div className="flex items-center gap-2 text-xs">
           <span className="text-[var(--color-tertiary)]">Filtro:</span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent-bg,var(--color-subtle))] px-2 py-0.5 text-[var(--color-accent)]">
+          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-accent)] bg-[var(--color-info-bg)] px-2 py-0.5 text-[var(--color-accent)]">
             P={cellFilter.p}, I={cellFilter.i}
             <button
               type="button"

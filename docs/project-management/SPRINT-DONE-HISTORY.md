@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 30d
+---
+
 # SPRINT-DONE-HISTORY.md — Histórico de bloques completados (Sprint 1 v1.0 MVP)
 
 > **Propósito:** Archivo de referencia histórica. Los bloques completados se mueven aquí desde SPRINT.md cuando se cierra un sprint. Permite que SPRINT.md mantenga solo lo pendiente para el sprint activo.

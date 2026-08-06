@@ -30,6 +30,7 @@ from typing import Any
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.unidades import razon_a_pct
 from app.models.area import Actor, Area, Team
 from app.models.project import Project
 from app.models.project_participation import ProjectParticipation
@@ -412,7 +413,7 @@ async def resource_capacity_summary(
         r["area_name"] = area_names.get(r["area_id"] or "", None)
         r["team_name"] = team_names.get(r["team_id"] or "", None)
         r["usage_pct"] = (
-            round(r["demand_pct"] / r["capacity_pct"] * 100, 1)
+            razon_a_pct(r["demand_pct"], r["capacity_pct"])
             if r["capacity_pct"] > 0
             else None
         )

@@ -127,3 +127,89 @@ def test_ningun_defecto_filtra_nombres_de_campo_internos(code):
     assert not internos, (
         f"El texto por defecto de {code} nombra campos internos: {internos}"
     )
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-06 — el mecanismo que hace que los 177 restantes se arreglen solos
+# ---------------------------------------------------------------------------
+
+def test_las_tres_partes_no_se_pueden_rellenar_a_medias() -> None:
+    """`mensaje()` son tres argumentos con nombre y ninguno tiene defecto.
+
+    Ahí está toda la garantía. Un `f"No puedes borrar un super admin"` cumple
+    el requisito a medias y nada avisa; esto ni siquiera se puede llamar sin
+    el porqué.
+    """
+    from app.core.errors import mensaje
+
+    with pytest.raises(TypeError):
+        mensaje(que="Pasó algo.")  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        mensaje(que="Pasó algo.", porque="Por esto.")  # type: ignore[call-arg]
+
+    texto = mensaje(que="Pasó algo.", porque="Por esto.", accion="Hacé aquello.")
+    assert texto == "Pasó algo. Por esto. Hacé aquello."
+
+
+def test_las_tres_partes_son_solo_por_nombre() -> None:
+    """Posicional invitaría a `mensaje(a, b)` y a discutir cuál falta.
+
+    Con `*` delante, el error de llamada nombra el argumento que falta, que es
+    lo que hace que la corrección sea obvia sin abrir esta prueba.
+    """
+    from app.core.errors import mensaje
+
+    with pytest.raises(TypeError):
+        mensaje("qué", "por qué", "acción")  # type: ignore[misc]
+
+
+def test_el_trinquete_ve_los_mensajes_con_texto_suelto() -> None:
+    """El verificador, contra entradas sintéticas.
+
+    Se prueba la FORMA y no la prosa: se intentó primero con una heurística
+    —buscar un verbo en imperativo— y acierta a medias en los dos sentidos. Un
+    gate que discute la redacción con quien escribe se desactiva.
+    """
+    import ast
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+    from check_mensajes import _texto_literal
+
+    def _llamada(codigo: str):
+        return next(
+            n for n in ast.walk(ast.parse(codigo)) if isinstance(n, ast.Call)
+        )
+
+    assert _texto_literal(_llamada('conflict("ya existe")')) == "ya existe"
+    assert _texto_literal(_llamada('business_rule(f"falta {x}")')) == "falta {}"
+    # Lo construido no se juzga: es justo lo que se quiere fomentar.
+    assert _texto_literal(_llamada("conflict(mensaje(que=a, porque=b, accion=c))")) is None
+    assert _texto_literal(_llamada("conflict(texto_por_defecto('X'))")) is None
+
+
+def test_la_linea_base_solo_puede_encoger() -> None:
+    """El pasivo declarado tiene que corresponderse con el árbol de hoy.
+
+    Si crece, alguien añadió un mensaje con texto suelto y regeneró la línea
+    base en vez de escribir las tres partes — que es la forma de aflojar un
+    trinquete sin que se note.
+    """
+    import sys
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parents[3]
+    sys.path.insert(0, str(raiz / "scripts"))
+    from check_mensajes import LINEA_BASE, _clave, sitios
+
+    declarados = {
+        x
+        for x in LINEA_BASE.read_text(encoding="utf-8").splitlines()
+        if x.strip() and not x.startswith("#")
+    }
+    observados = {_clave(s) for s in sitios()}
+    assert observados <= declarados, (
+        f"Mensajes con texto suelto fuera de la línea base: "
+        f"{sorted(observados - declarados)}"
+    )

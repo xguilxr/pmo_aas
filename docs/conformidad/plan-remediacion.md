@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: historico
+revisado: 2026-08-05
+revisar_cada: nunca
+---
+
 # Plan de remediación de conformidad — MCS
 
 | Campo | Valor |
@@ -141,31 +148,64 @@ podía integrarse: el control existía, corría, y no bloqueaba. Ahora son nueve
 
 ---
 
-## Ola 2 — Mecánicos, y se pueden disparar solos
+## Ola 2 — ✅ Ejecutada el 2026-08-06
 
-Tienen el hueco medido y verificable por prueba: el criterio es el conteo. No
-necesitan decisión, así que se pueden lanzar sin supervisión, uno por commit.
+**De 41 a 32 bloqueantes de N1.** Once commits, uno por requisito, todos con
+prueba propia y verificación por mutación.
 
-| ID | Trabajo | Tamaño medido |
+| ID | Estado | Qué se hizo |
 |---|---|---|
-| `DAT-12` | Distinguir «sin dato» de cero | 77 puntos |
-| `DIS-03` | Cinco estados por pantalla | 73 de 75 pantallas |
-| `DIS-01` | Literales de color a tokens | 25 literales |
-| `DAT-04` | Conversión de unidades solo en fronteras | 6 sitios |
-| `DAT-02` | Unidad en el nombre del campo | `budget` y los que aparezcan |
-| `OPS-01` | `structlog` está declarado y no se importa en ningún sitio | Cablearlo |
-| `DEV-04` | Sin verificación de tipos en Python | Añadir `mypy` al gate |
-| `CFG-04` | Sin `commitlint` ni hook | 37 de 40 commits ya cumplen |
-| `SEG-05` | No existe `SECURITY.md` | Un archivo |
-| `DOC-01` | 0 de 64 documentos declaran responsable, estado y revisión | 64 encabezados |
-| `DOC-03` | El ER se mantiene a mano pudiendo generarse | Un generador |
-| `LEN-02` | 152 de 159 mensajes dicen solo qué pasó | Ya es norma; se aplica al tocar cada endpoint |
-| `DAT-11` | Cada número indica periodo y actualización | Transversal — medir primero |
-| `DAT-06` | Retirar `amber`: 3 sitios mecánicos (motor de informes, plantilla, CSS) | **El cuarto no entra aquí** — ver Ola 3 |
+| `SEG-05` | ✅ CONFORME | `SECURITY.md` con canal privado, plazos, alcance y puerto seguro |
+| `OPS-01` | ✅ CONFORME | structlog formatea el `logging` estándar: JSON a `stdout` en los dos procesos |
+| `DEV-04` | ✅ CONFORME | `mypy --strict` en CI con línea base que solo encoge |
+| `CFG-04` | ✅ CONFORME | job `commits` sobre el rango del PR + hook versionado |
+| `DIS-01`, `CFG-14` | ✅ CONFORME | cero literales de color y de espaciado; el gate exige que el token citado exista |
+| `DOC-01` | ✅ CONFORME | 127 documentos con encabezado |
+| `DOC-03` | ✅ CONFORME | el ER se genera de `Base.metadata` |
+| `DAT-04`, `DAT-08` | ✅ CONFORME | 26 conversiones a `core/unidades.py` |
+| `DAT-12` | ✅ CONFORME | 17 sitios de presentación distinguen el hueco del cero |
+| `DAT-05` | ✅ **re**CONFORME | quedaba una quinta paleta, en el acta que se firma |
+| `DAT-06` | 🟡 PARCIAL | 0 restos en código; queda `amber_max` en `tenant.settings` |
+| `LEN-02` | 🟡 PARCIAL | 177 → 169; el mecanismo ya obliga a las tres partes |
+| `DAT-02` | ⏭ reclasificado | no es mecánico — ver abajo |
+| `DAT-11` | ⏭ medido | 10 de 87 superficies llevan marca de actualización |
+| `DIS-03` | ⏭ medido | 3 de 75 pantallas tienen los cuatro estados detectables |
 
-**Cómo dispararlos:** uno por commit, con prueba propia y verificación por
-mutación, igual que todo lo de esta sesión. `DAT-11` y `DIS-03` conviene
-acotarlos con una medición previa antes de lanzarlos enteros.
+### Lo que la ola encontró y no estaba en el plan
+
+Cuatro de los once cierres destaparon algo que ninguna auditoría había visto,
+y en los cuatro casos porque se midió contra el **texto del requisito** y no
+contra la evidencia anotada:
+
+- **`DAT-05` estaba CONFORME y no lo estaba.** La prueba que lo sostenía mira
+  una lista escrita a mano de cuatro archivos «que pintan salud», y había un
+  quinto: el acta de constitución en `.docx` —el documento que más se imprime y
+  se firma— usaba dos colores que esa misma prueba lista como *retirados*.
+- **Once citas a tokens que no existen** en el frontend. La página de documentos
+  del proyecto llevaba meses pintando ámbar y rojo de tema claro en modo
+  oscuro; la tabla de permisos se renderizaba sin fondo ni borde.
+- **El gate de tipos daba verde sin analizar nada.** Un intérprete sin mypy
+  devuelve 1, igual que «encontré errores».
+- **El worker no configuraba su registro** y Celery se llevaba por delante lo
+  que se configurara.
+
+### Reclasificaciones
+
+**`DAT-02` no es mecánico.** Medido: 8 campos con unidad realmente ausente
+—`progress`/`avg_progress` (porcentaje) y `budget`/`actual_budget`/
+`budget_plan`/`budget_actual`/`fte_cost_rate` (dinero)—. Los otros 39 sin
+sufijo son cuentas y escalas ordinales, donde el nombre ya dice qué se cuenta.
+Renombrarlos cruza base de datos, API y web (~100 sitios) y necesita ADR,
+migración y ventana de compatibilidad, exactamente como `wbs` → `wbs_code`
+(ADR-020). Es una US por campo, no un `sed`. **Y la mitad monetaria depende de
+`DAT-01`**: la unidad del dinero es la moneda, y hoy solo existe como
+`tenant.settings.currency`.
+
+**`DIS-03` y `DAT-11` son frentes de producto, no barridos.** Con la medición
+en la mano: `DIS-03` pide diseñar los estados vacío/error/sin-permiso de ~70
+pantallas, y hacerlo mecánicamente produciría 70 estados malos. `DAT-11` pide
+decidir qué periodo declara cada superficie, que es una decisión de producto
+por superficie. Los dos merecen épica propia.
 
 ---
 

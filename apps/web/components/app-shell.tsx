@@ -579,7 +579,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <aside
           className={cn(
             "fixed inset-y-0 left-0 z-40 flex h-full w-60 flex-col rounded-r-[14px] bg-[var(--chrome-bg)] shadow-[var(--sb-shadow)] transition-transform",
-            "lg:static lg:z-auto lg:h-auto lg:translate-x-0 lg:mb-[12px] lg:ml-[12px] lg:mt-[6px] lg:rounded-[14px]",
+            "lg:static lg:z-auto lg:h-auto lg:translate-x-0 lg:mb-3 lg:ml-3 lg:mt-1.5 lg:rounded-[14px]",
             collapsed ? "lg:w-[76px]" : "lg:w-60",
             open ? "translate-x-0" : "-translate-x-full",
           )}

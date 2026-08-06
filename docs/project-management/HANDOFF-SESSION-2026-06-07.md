@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-06-07
+revisar_cada: 30d
+---
+
 # Handoff — pmo_aas — 2026-06-07
 
 ## Estado

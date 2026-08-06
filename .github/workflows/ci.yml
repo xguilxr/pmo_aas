@@ -74,6 +74,16 @@ jobs:
       - name: Presupuesto de contexto y límite de SPRINT.md
         run: python scripts/check_contexto.py
 
+      # Auditoría MCS 2026-08-03 — cierra DOC-01 («todo documento DEBE declarar
+      # responsable, estado, fecha de revisión y periodicidad»). Eran 0 de 64.
+      #
+      # Va en este job por lo mismo que `check_tokens` fue a `contraste-wcag`:
+      # los dos miran documentación, tardan segundos y no dependen de qué
+      # código cambió. Una verificación requerida más cuesta una acción del
+      # owner sin añadir cobertura.
+      - name: Encabezado documental (DOC-01)
+        run: python scripts/check_docs.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #
@@ -101,6 +111,16 @@ jobs:
           python-version: "3.12"
       - name: Contraste WCAG 2.2 AA de los tokens semánticos
         run: python scripts/check_contraste.py
+
+      # Auditoría MCS 2026-08-03 — cierra DIS-01 y CFG-14 (los valores visuales
+      # como tokens, sin literales de color ni de espaciado en componentes).
+      #
+      # Va como paso de ESTE job y no como uno propio a propósito: los dos
+      # miran el mismo archivo por la misma razón —que la paleta esté en un
+      # solo sitio y se use— y una verificación requerida más cuesta una acción
+      # del owner en la protección de `main` sin añadir cobertura.
+      - name: Tokens de diseño sin literales (DIS-01)
+        run: python scripts/check_tokens.py
 
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
@@ -180,6 +200,67 @@ jobs:
         run: pip install ruff==0.6.9
       - name: Ruff check
         run: ruff check .
+
+  # Auditoría MCS 2026-08-03 — cierra CFG-04 («los mensajes de commit DEBEN
+  # seguir Conventional Commits»). El hábito ya estaba —37 de los últimos 40
+  # cumplían— y el control no: `CLAUDE.md` §4 describe el formato, y una
+  # convención descrita es una instrucción, no un control (MCA FLU-03).
+  #
+  # Solo sobre los commits del PR. La historia ya integrada no se reescribe, y
+  # un gate que la revisara nacería rojo para siempre.
+  #
+  # Sin filtro de paths: los mensajes no dependen de qué archivos se tocaron.
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Hace falta la historia para poder comparar contra la rama base.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Conventional Commits en los commits del PR
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          python scripts/check_commits.py --rango "origin/${{ github.base_ref }}..HEAD"
+
+  # Auditoría MCS 2026-08-03 — cierra DEV-04 («el análisis estático y la
+  # verificación de tipos DEBEN ejecutarse en modo estricto»). `ruff` cubría lo
+  # primero y `tsc --noEmit` lo segundo en el frontend; en Python no había
+  # ninguna verificación de tipos.
+  #
+  # Job propio y no un paso de `lint` por la misma razón que `evaluacion-ia`:
+  # tiene que ser un check nombrable para exigirlo en la protección de `main`,
+  # y su salida —qué huella nueva apareció— se lee sola.
+  #
+  # `mypy --strict` entero, con el pasivo heredado en `apps/api/.mypy-baseline`.
+  # El porqué de la línea base está en el docstring de `check_tipos.py`.
+  tipos-python:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: apps/api/requirements-dev.txt
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r apps/api/requirements-dev.txt
+      - name: mypy --strict contra la línea base
+        run: python scripts/check_tipos.py
+
+      # Auditoría MCS R1 — LEN-02. Los cinco textos por defecto ya dicen qué,
+      # por qué y qué hacer; los 169 explícitos que quedan van por línea base y
+      # se arreglan al tocar cada endpoint, que es lo que el plan preveía.
+      # Va aquí y no en un job propio porque no necesita más que Python 3.12.
+      - name: Mensajes de error con las tres partes (LEN-02)
+        run: python scripts/check_mensajes.py
 
   # Smoke de tests: excluye `@pytest.mark.heavy` para PR path rápido.
   api-tests-smoke:

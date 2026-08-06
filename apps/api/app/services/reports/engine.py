@@ -398,11 +398,15 @@ def _build_s03_rag(ctx, params, window):
     p = ctx.project
     if not p:
         return {"empty": True}
-    # US-180: salud única — el semáforo es health_status (el template
-    # habla en green/amber/red, mapeamos yellow→amber).
-    rag = {"green": "green", "yellow": "amber", "red": "red"}.get(
-        p.health_status, "amber"
-    )
+    # US-180: salud única — el semáforo es `health_status`.
+    #
+    # DAT-06 (2026-08-05): aquí había una traducción `yellow` → `amber` para
+    # hablarle a la plantilla, y era la que mantenía vivo el sinónimo vetado.
+    # El glosario es explícito: el valor es `yellow`, `amber` está vetado, y la
+    # migración 0091 convirtió los datos a propósito. La plantilla se corrigió
+    # en el mismo cambio; traducir en el borde es lo que hace que un vocabulario
+    # retirado sobreviva para siempre en la mitad que nadie mira.
+    rag = p.health_status if p.health_status in ("green", "yellow", "red") else "yellow"
     return {
         "status_rag": rag,
         "status_comment": getattr(p, "health_reason", None),

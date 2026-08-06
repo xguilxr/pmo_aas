@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # PENDING-ADDITIONS.md — Adiciones pendientes a épicas existentes
 
 > Este archivo documenta las user stories `# PENDING` que se deben agregar a cada épica existente.

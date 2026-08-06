@@ -42,6 +42,13 @@
   --color-accent: #2A4DA0;     /* azul del sidebar / acento */
   --color-accent-hover: #233F85;
   --color-accent-fg: #FFFFFF;
+  /* DIS-01 (2026-08-05). El botón primario citaba `--color-primary-hover`,
+     que no existía, así que se renderizaba el respaldo — el mismo color de
+     reposo— y el botón no tenía hover. Se crea el token en vez de reescribir la
+     citas — el diseño lo pedía, faltaba declararlo. Su par entra a
+     `scripts/check_contraste.py`: un par semántico nuevo sin garantía de
+     contraste es el agujero que DIS-02 cerró. */
+  --color-primary-hover: #343026;
 
   --color-success-bg: oklch(94% 0.05 155);
   --color-success-border: oklch(82% 0.09 155);
@@ -196,6 +203,9 @@
   --color-info-bg: oklch(30% 0.05 240);
   --color-info-border: oklch(42% 0.10 240);
   --color-info-fg: oklch(82% 0.12 240);
+
+  /* DIS-01 — paso propio del tema oscuro, no un volteo del claro. */
+  --color-primary-hover: oklch(88% 0.004 250);
 
   /* Pasos PROPIOS del tema oscuro, no un volteo de los claros: la banda de
      luminosidad válida es más estrecha sobre fondo oscuro y los claros se caen

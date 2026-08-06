@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 180d
+---
+
 # Runbook: Resend para emails transaccionales (US-028)
 
 > Checklist operativo para habilitar el canal email de notificaciones

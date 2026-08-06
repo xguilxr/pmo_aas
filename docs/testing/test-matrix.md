@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Matriz de Trazabilidad Épica ↔ US ↔ TC
 
 **ID:** `DOC-TEST-MATRIX`

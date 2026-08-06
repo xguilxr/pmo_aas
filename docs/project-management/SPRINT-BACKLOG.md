@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-04
+revisar_cada: 30d
+---
+
 # SPRINT-BACKLOG.md — Lo que no se ejecuta hoy
 
 **Bajo demanda** (`CLAUDE.md` §1): se abre al planear, no al ejecutar. Salió de

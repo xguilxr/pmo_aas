@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 90d
+---
+
 # EP011 — Sistema de Notificaciones
 
 | Campo | Valor |

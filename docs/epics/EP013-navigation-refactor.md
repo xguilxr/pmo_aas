@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-26
+revisar_cada: 90d
+---
+
 # EP013 — Refactor de navegación (sidebar + admin + tabs inline)
 
 | Campo | Valor |

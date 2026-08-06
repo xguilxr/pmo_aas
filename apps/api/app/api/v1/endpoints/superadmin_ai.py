@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_superadmin
 from app.core.config import settings
+from app.core.unidades import segundos_a_ms
 from app.db.session import get_db
 from app.models.platform_settings import PLATFORM_SETTINGS_ID, PlatformAISettings
 from app.services.audit import write_audit
@@ -376,7 +377,7 @@ async def ping_groq(
                     "max_tokens": 4,
                 },
             )
-        latency = int((time.perf_counter() - started) * 1000)
+        latency = segundos_a_ms(time.perf_counter() - started)
         if r.status_code >= 300:
             return GroqPingResult(
                 ok=False, latency_ms=latency,

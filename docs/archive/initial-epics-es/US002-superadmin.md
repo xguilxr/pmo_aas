@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # US002 — Super Admin (quick-onboarding de tenants)
 
 Épica origen: [EP002 — Jerarquía clientes](../../epics/EP002-jerarquia-clientes.md)

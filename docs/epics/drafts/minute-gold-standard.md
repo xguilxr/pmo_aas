@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-22
+revisar_cada: 90d
+---
+
 # Minuta — Gold Standard de referencia (Sprint 26 Bloque 0)
 
 > **Propósito:** caso real proporcionado por el owner como referencia

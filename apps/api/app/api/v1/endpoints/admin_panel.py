@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated, require_capability
-from app.core.errors import business_rule, forbidden, not_found
+from app.core.errors import business_rule, forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.audit import AuditLog
 from app.models.organization import Organization
@@ -91,7 +91,15 @@ async def bulk_deactivate(
     affected = 0
     for uid in body.user_ids:
         if str(uid) == str(cu.id):
-            raise business_rule("No puedes desactivar tu propia cuenta")
+            raise business_rule(
+                mensaje(
+                    que="No puedes desactivar tu propia cuenta.",
+                    porque="Quedarías sin acceso al panel y nadie podría "
+                    "revertirlo desde tu sesión.",
+                    accion="Pídele a otro administrador de tu organización que lo "
+                    "haga.",
+                )
+            )
         user = (
             await db.execute(
                 select(User).where(User.id == str(uid), User.tenant_id == tenant_id)

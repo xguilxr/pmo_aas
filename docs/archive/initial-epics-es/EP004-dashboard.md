@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # EP-004: Dashboard - Panel del Project Manager
 
 **Prioridad:** Alta

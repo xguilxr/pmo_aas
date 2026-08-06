@@ -1,3 +1,18 @@
+---
+responsable: propietario
+estado: reemplazado
+revisado: 2026-08-05
+revisar_cada: nunca
+---
+
+> **Reemplazado (2026-08-06).** Este documento describe la paleta **anterior** a
+> D-7 y a ADR-023. La paleta viva está en `apps/web/app/globals.css` —que es el
+> origen— y en `apps/api/app/core/paleta.py` para los gráficos; el contraste lo
+> vigila `scripts/check_contraste.py` y los literales, `scripts/check_tokens.py`.
+>
+> Hasta hoy esto solo constaba en `SPRINT.md`, o sea en otro archivo: quien
+> abriera este no tenía forma de saberlo. Es el caso que justifica DOC-01.
+
 # Design Tokens
 
 **ID:** `DOC-DS-TOKENS`

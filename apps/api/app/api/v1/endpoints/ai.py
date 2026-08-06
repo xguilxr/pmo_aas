@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import conflict, forbidden, not_found, validation_error
+from app.core.unidades import mebibytes
 from app.db.session import get_db
 from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute
@@ -25,7 +26,7 @@ from app.workers.tasks.ai import draft_report_task, generate_minute_task
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-MAX_TRANSCRIPT_BYTES = 5 * 1024 * 1024
+MAX_TRANSCRIPT_BYTES = mebibytes(5)
 
 
 # US-143 — 3 modos de generación de minuta:

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-06-29
+revisar_cada: 90d
+---
+
 # Draft — Auto-WBS con orden manual estable (`tasks.position`)
 
 > **Estado:** **MVP implementado (US-176, 2026-06-28)** — versión mínima

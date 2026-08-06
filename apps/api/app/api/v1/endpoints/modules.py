@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, conflict, forbidden, not_found
+from app.core.unidades import mebibytes
 from app.db.session import get_db
 from app.models.area import Area, AreaAssignment
 from app.models.modules import (
@@ -56,7 +57,7 @@ ALLOWED_DOC_MIME = {
     "image/jpeg",
     "text/csv",
 }
-MAX_DOC_SIZE = 25 * 1024 * 1024
+MAX_DOC_SIZE = mebibytes(25)
 
 
 def _tenant(cu: CurrentUser) -> UUID:

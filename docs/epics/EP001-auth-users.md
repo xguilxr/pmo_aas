@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-06-25
+revisar_cada: 90d
+---
+
 # EP001 — Login y Gestión de Usuarios
 
 | Campo | Valor |

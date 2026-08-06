@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Capa de IA — PMO·aaS
 
 **Actualizado:** 2026-05-23 (post-BUG-053; Ollama removido del todo).

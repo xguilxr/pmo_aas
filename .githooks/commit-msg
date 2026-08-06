@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# CFG-04 — avisa de un mensaje mal formado cuando arreglarlo todavía es gratis.
+#
+# NO es el control: un hook local se salta con `--no-verify` y hay que activarlo
+# a mano. El control es el job `commits` del CI, que mira el rango del PR.
+#
+# Se activa una vez por clon:
+#
+#     git config core.hooksPath .githooks
+#
+# Va versionado —y no en `.git/hooks/`, que no se versiona— justamente para que
+# activarlo sea un comando y no un procedimiento.
+exec python3 "$(git rev-parse --show-toplevel)/scripts/check_commits.py" --archivo "$1"

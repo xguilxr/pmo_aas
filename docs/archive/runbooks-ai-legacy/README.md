@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Runbooks IA — Archivo legacy (pre-DEC-017)
 
 **Archivados:** 2026-04-23 como parte de BUG-027 (follow-up DEC-019).

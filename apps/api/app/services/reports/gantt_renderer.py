@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
 from app.core.paleta import ACENTO, NEUTRO, NEUTRO_SUAVE, ORDINAL_CLARO, serie
+from app.core.unidades import pct_a_fraccion
 from app.models.project import Project
 from app.models.task import Task
 
@@ -183,7 +184,7 @@ def render_gantt_svg(
         )
         # Progreso overlay. Era verde —el del semáforo—; el avance no es un
         # estado, es la misma barra más oscura.
-        pwidth = int(bw * (b["avg_progress"] / 100.0))
+        pwidth = int(bw * pct_a_fraccion(b["avg_progress"]))
         if pwidth > 0:
             svg_parts.append(
                 f'<rect x="{bx}" y="{y + 3}" width="{pwidth}" height="10" '

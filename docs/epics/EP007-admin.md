@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 90d
+---
+
 # EP007 — Panel de Administración
 
 | Campo | Valor |

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: historico
+revisado: 2026-08-05
+revisar_cada: nunca
+---
+
 # Ola 0 — recuento contra el código de hoy
 
 | Campo | Valor |

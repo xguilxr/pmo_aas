@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 180d
+---
+
 # Runbook — Scheduled Reports troubleshooting (BUG-036)
 
 > Cuándo usar: el owner programa un reporte automático en

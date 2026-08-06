@@ -5,7 +5,12 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.core.config import settings
-from app.core.observabilidad import iniciar_captura_de_errores
+from app.core.observabilidad import configurar_registro, iniciar_captura_de_errores
+
+# MCS OPS-01 — el worker no configuraba el registro en absoluto: heredaba lo
+# que Celery decidiera. Se llama ANTES del primer `logger.info` de este módulo,
+# que es el del broker, para que ese también salga estructurado.
+configurar_registro("worker")
 
 logger = logging.getLogger("pmoaas.worker")
 
@@ -47,6 +52,22 @@ celery_app.conf.result_serializer = "json"
 celery_app.conf.accept_content = ["json"]
 celery_app.conf.timezone = "UTC"
 celery_app.conf.broker_connection_retry_on_startup = True
+
+# MCS OPS-01 — sin esto el cableado de arriba no sobrevive al arranque.
+#
+# Celery reemplaza los manejadores del registrador raíz al levantar el worker
+# (`worker_hijack_root_logger`, por defecto `True`) y los sustituye por los
+# suyos, de texto plano. `configurar_registro` corre al importar el módulo, o
+# sea ANTES: el secuestro ocurre después y se lo lleva por delante. El resultado
+# sería el peor de los posibles — el requisito parece cumplido leyendo el
+# código, y en producción el worker sigue emitiendo texto.
+celery_app.conf.worker_hijack_root_logger = False
+
+# Y esto es el resto del mismo problema: Celery redirige `stdout`/`stderr` de
+# las tareas a un registrador propio con `WARNING` como nivel, así que un
+# `print` de depuración aparecía como advertencia. Con el registro ya
+# estructurado, se deja de redirigir y lo que se imprime va a `stdout` tal cual.
+celery_app.conf.worker_redirect_stdouts = False
 
 # Beat schedule (US-056): dispatch de reportes programados cada 5 min.
 # El beat process se lanza con `celery -A app.workers.celery_app beat`.

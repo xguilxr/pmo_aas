@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Runbook — Tailscale + Ollama local → Railway worker — **ARCHIVADO**
 
 > ## ⚠️ Runbook archivado (ENH-023, 2026-04-23)

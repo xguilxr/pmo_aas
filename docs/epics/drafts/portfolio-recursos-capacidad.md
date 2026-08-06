@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-07-09
+revisar_cada: 90d
+---
+
 # Draft — Portafolio ejecutivo, recursos compartidos y capacidad (retro socio 2026-07-08)
 
 > **Fase A — doc vivo.** Interpretación de la retro del socio + gap analysis

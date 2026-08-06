@@ -10,9 +10,13 @@ from sqlalchemy import text
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.errors import texto_por_defecto
-from app.core.observabilidad import iniciar_captura_de_errores
+from app.core.observabilidad import configurar_registro, iniciar_captura_de_errores
 
-logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+# MCS OPS-01. Antes había aquí un `logging.basicConfig` con formato de texto
+# plano — y solo aquí: el worker no configuraba nada. Ahora los dos llaman a lo
+# mismo y el resultado es JSON por `stdout`, incluidos los registros de uvicorn
+# y de los 31 sitios que usan `logging.getLogger` sin saber de structlog.
+configurar_registro("api")
 logger = logging.getLogger("pmoaas.api")
 
 

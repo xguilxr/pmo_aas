@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: historico
+revisado: 2026-08-03
+revisar_cada: nunca
+---
+
 # Auditoría MCA — seguimiento tras las acciones 1-8
 
 | Campo | Valor |

@@ -105,10 +105,10 @@ export default function PermissionsPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] shadow-sm">
+      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--color-bg-surface)] shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-muted)]">
+            <tr className="border-b border-[var(--border-default)] bg-[var(--color-bg-muted)]">
               <th className="px-4 py-3 text-left font-medium text-[var(--color-secondary)]">
                 Capability
               </th>
@@ -124,7 +124,7 @@ export default function PermissionsPage() {
             {ROWS.map((row) => (
               <tr
                 key={row.capability}
-                className="border-b border-[var(--color-border)] last:border-0"
+                className="border-b border-[var(--border-default)] last:border-0"
               >
                 <td className="px-4 py-3">
                   <div className="font-medium text-[var(--color-primary)]">
@@ -151,7 +151,7 @@ export default function PermissionsPage() {
         </table>
       </div>
 
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-muted)] p-4 text-sm text-[var(--color-secondary)]">
+      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--color-bg-muted)] p-4 text-sm text-[var(--color-secondary)]">
         <p>
           <strong>¿Necesitas una excepción puntual?</strong> Las capabilities son
           fijas a nivel de plataforma (DEC-024). Si tu tenant necesita un

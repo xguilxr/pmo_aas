@@ -108,9 +108,61 @@ CIERRES = {
  # N2, así que no bloquean N1, pero dejan de figurar como «sin medir».
  "DAT-08":("NO CONFORME","26 constantes de conversión inline en app/ (N2)"),
  "DAT-16":("NO CONFORME","el periodo en curso no se señala en analíticas ni gráficos (N2)"),
- "DAT-05":("CONFORME","Ola 0 — una sola paleta de salud y un solo vocabulario de fase"),
+ # REABIERTO Y VUELTO A CERRAR el 2026-08-05. Estaba CONFORME sobre una lista
+ # escrita a mano de cuatro sitios «que pintan salud», y había un QUINTO:
+ # `charter_generator._RAG_RGB` usaba `#16a34a` y `#dc2626`, dos de los
+ # colores que la propia prueba de D-7 lista como retirados. El acta en .docx
+ # —el documento que más se imprime y se firma— salía con la paleta anterior a
+ # DIS-02. También los `.pill` del PDF, que en el mismo archivo llevaban un
+ # color distinto que los `.dot`. Ahora la comprobación DERIVA los sitios del
+ # código y lo que se declara son las excepciones, con razón escrita.
+ "DAT-05":("CONFORME","Ola 2 — quinto sitio corregido (acta .docx) y la prueba deriva los sitios en vez de enumerarlos"),
  "INT-03":("CONFORME","owner activó enforce_admins 2026-08-05; ADR-029 retirada"),
  "ARQ-03":("EXCLUIDO","ADR-018, revisión 2027-02-04"),
+ # Ola 2 (2026-08-05) — los mecánicos. El hueco estaba medido y el criterio es
+ # el conteo, así que cada uno cierra con su trinquete propio en la suite.
+ "SEG-05":("CONFORME","Ola 2 — SECURITY.md con canal privado, plazos, alcance y puerto seguro; trinquete en test_seg05_divulgacion.py"),
+ "OPS-01":("CONFORME","Ola 2 — structlog formatea el logging estándar: JSON a stdout en los DOS procesos, y celery ya no secuestra el raíz"),
+ # CRITERIO DECLARADO (el plan avisa de que para esto no hay vara escrita):
+ # se cuenta CONFORME porque `mypy --strict` se ejecuta ENTERO en CI y bloquea
+ # todo error nuevo. El pasivo del día del enchufe —1.163 errores, ocho de cada
+ # diez anotaciones que faltan— va nominal en `.mypy-baseline` y solo puede
+ # encoger. Mismo precedente que INT-02 con `.pip-audit-ignore`. Un auditor
+ # externo puede leer «modo estricto» como «cero errores» y discrepar: es el
+ # cierre de la Ola 2 con más margen de discusión, y por eso se escribe aquí.
+ "CFG-04":("CONFORME","Ola 2 — job `commits` valida el rango del PR + hook versionado en .githooks/; el hábito ya estaba (97,5% de 400), faltaba el control"),
+ "DIS-01":("CONFORME","Ola 2 — cero literales de color y de espaciado en components/app/lib/hooks; el gate exige además que el token citado exista en la paleta base"),
+ "CFG-14":("CONFORME","Ola 2 — mismo gate que DIS-01: los 25 literales hexadecimales ya no están y check_tokens.py impide el siguiente"),
+ # DAT-06 NO cierra, y es deliberado. Los cuatro restos EN CÓDIGO se fueron
+ # —la traducción del motor de informes, la etiqueta «Ámbar» del PDF, la clase
+ # CSS y el alias del generador DOCX— con trinquete que mira el árbol entero.
+ # Queda `tenant.settings.task_load_thresholds.amber_max`, que es una llave
+ # guardada en datos de inquilinos reales: renombrarla es cambio de contrato y
+ # necesita ventana, como `wbs`. Un PARCIAL impide alcanzar su nivel (§6.2), y
+ # así debe figurar: darlo por cerrado con el resto vivo sería repetir el error
+ # de medir contra la evidencia anotada en vez de contra el requisito.
+ "DAT-06":("PARCIAL","Ola 2 — 0 restos en código (trinquete test_dat06_vocabulario.py); queda `amber_max` en tenant.settings, Ola 3"),
+ "DOC-01":("CONFORME","Ola 2 — 127 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
+ "DOC-03":("CONFORME","Ola 2 — el ER se genera de Base.metadata (scripts/generar_er.py) y la suite falla si se desfasa; database.md decía 49 tablas con 56 en el modelo"),
+ # DAT-04 y DAT-08 miraban el mismo hecho desde lados distintos: la auditoría
+ # contó «6 sitios» de conversión y DAT-08 anotó «26 constantes en línea».
+ # Eran 26, en tres familias. Con las fronteras nombradas cierran los dos.
+ "DAT-04":("CONFORME","Ola 2 — app/core/unidades.py concentra las 3 familias (pct, mebibytes, ms); trinquete que mira el árbol"),
+ "DAT-08":("CONFORME","Ola 2 — las 26 constantes en línea pasaron a la frontera nombrada (N2)"),
+ # LEN-02 sigue PARCIAL, con la cifra medida y bajando. Los cinco textos por
+ # defecto ya dicen qué, por qué y qué hacer; de los 201 mensajes explícitos,
+ # 184 no sugerían ninguna acción. Reescribir 184 de un tirón produciría 184
+ # textos plausibles y ninguno pensado: escribir el porqué de una regla de
+ # negocio exige saber qué regla es. Lo que faltaba era el mecanismo, y ahora
+ # está: `mensaje()` con tres argumentos sin defecto + línea base que encoge.
+ "LEN-02":("PARCIAL","Ola 2 — 177→169 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
+ # DAT-12: la auditoría midió «77 puntos» y el conteo bruto de `?? 0` daba 84,
+ # pero 67 de esos eran de CÁLCULO —`map.get(k) ?? 0` al sumar es correcto—.
+ # Los de PRESENTACIÓN eran 17, y quedaron en cero. El producto ya usaba «—»
+ # para huecos de texto en 43 archivos: lo que faltaba era no taparlo con un
+ # cero en los números.
+ "DAT-12":("CONFORME","Ola 2 — 17 sitios de presentación a `@/lib/sin-dato`, con etiqueta accesible; gate en check_tokens.py"),
+ "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 
 reg = {}

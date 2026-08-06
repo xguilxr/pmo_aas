@@ -1,116 +1,120 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-06
+revisar_cada: 30d
+---
+
 # HANDOFF.md — Estado para la próxima sesión
 
-**Última actualización:** 2026-08-05
-**Branch activa:** `claude/audit-continuation-fzrtko` — reiniciada sobre `main`; #578 y #579 mergeados
+**Branch activa:** `claude/remediacion-ola-2-2kg36x` — 12 commits, sin PR todavía
 **Generado por:** `/handoff`
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-**MCA alcanzó N2**, su objetivo: 11 de 11 CONFORME. Nada pendiente en ese marco.
-**MCS sigue en N0** — **41 bloquean N1**, con una sola exclusión viva
-(`ARQ-03`) y ninguna sobre un control de integridad.
-**`MCS-CORE` llegó al repo** y con él se verificaron las dos primeras olas: tres
-cierres no se sostenían, y los tres quedaron resueltos el mismo día.
+**La Ola 2 está ejecutada: de 41 a 32 bloqueantes de N1.** Once requisitos
+cerrados y dos que bajan de cifra sin cerrar, uno por commit, todos con prueba
+propia y verificación por mutación.
 
-Plan por olas en **`docs/conformidad/plan-remediacion.md`**; el marco, en
-`docs/conformidad/marco/MCS-CORE.md`.
+MCA sigue en **N2**, su objetivo. MCS sigue en **N0** — el nivel no se mueve
+hasta que caigan los 32, y los que quedan **no son mecánicos**.
 
 ## 📍 Dónde retomar
 
-**Ola 2 del plan: los mecánicos**, disparables sin supervisión, uno por commit.
-Empezar por los que tienen el hueco contado: `DAT-12` (77 puntos), `DIS-03` (73
-de 75 pantallas), `DIS-01` (25 literales), `DAT-04` (6 sitios).
+**Abrir el PR y esperar CI.** Dos verificaciones nuevas necesitan que el owner
+las añada a las exigidas de `main` (ver Cleanup).
+
+Después: la Ola 3 **necesita postura del owner antes de tocar código**. Las
+preguntas están al final del resumen de la sesión; las tres primeras —alcance
+de competencia, escenarios de calidad, inventario de datos personales—
+desbloquean nueve requisitos entre ellas.
 
 ## ✅ Hecho en esta sesión
 
-Los de #578, uno por item y verificados por mutación (el resto, en `git log`):
-
-| SHA | Qué |
-|---|---|
-| `3b6a37f` | **US-194** `tasks.wbs` → `wbs_code` (D-3, ADR-020, mig **0100**) |
-| `8029acf` | **US-195** fase `cancelled` (ADR-022, sin migración) |
-| `c1a30b5` | **US-196** D-4: índice de consumo + pisos de amarillo |
-| `15d0a7a` | **US-197** paleta de gráficos, arco frío (ADR-023) |
-| `7d021c8` | **AUT-01** cierra con evidencia observada → MCA a N2 |
-| `39386c7` | **OPS-02** el worker no reportaba a Sentry |
-| `8b57694` | Plan de remediación + `scripts/registro_conformidad.py` |
-
-Detalle narrativo archivado en `SPRINT-DONE-HISTORY.md`.
+| SHA | Requisito | Qué |
+|---|---|---|
+| `9e21f61` | `SEG-05` | `SECURITY.md`: canal privado, plazos, alcance, puerto seguro |
+| `3fb5835` | `OPS-01` | structlog formatea el `logging` estándar → JSON a `stdout`, los dos procesos |
+| `b876e79` | `DEV-04` | `mypy --strict` en CI con línea base de 1.163 que solo encoge |
+| `0c7b329` | `CFG-04` | job `commits` sobre el rango del PR + hook en `.githooks/` |
+| `528209f` | `DIS-01`·`CFG-14` | cero literales de color y espaciado; el token citado tiene que existir |
+| `b1fcc15` | `DAT-06` | 0 restos de `amber` en código (PARCIAL: queda `amber_max`) |
+| `b2febff` | `DAT-05` | quinta paleta de salud, en el acta que se firma |
+| `25e7a81` | `DOC-01` | 127 documentos con encabezado |
+| `5f0fe1a` | `DOC-03` | el ER se genera de `Base.metadata` |
+| `65494af` | `DAT-04`·`DAT-08` | 26 conversiones a `core/unidades.py` |
+| `d657b1b` | `LEN-02` | `errors.mensaje()` hace estructural el requisito; 177→169 |
+| `058dfef` | `DAT-12` | 17 sitios de presentación distinguen el hueco del cero |
 
 ## 🔄 PRs abiertos o en flight
 
-| # | Branch | Estado CI | Acción |
-|---|---|---|---|
-| #578 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — lo grueso |
-| #579 | `claude/audit-continuation-fzrtko` | verde | ✅ **mergeado** — Ola 1 |
-
-**Una branch sin PR abierto no tiene CI.** `main` exige nueve verificaciones.
+Ninguno. La branch está pusheada y **sin PR: una branch sin PR no tiene CI**.
 
 ## ⚠️ Gotchas y decisiones recientes
 
-- **El registro envejece en las dos direcciones**, y remedir antes de construir
-  es la regla que ordena el plan.
-- **Medir contra la evidencia anotada, y no contra el requisito, produce
-  cierres que no aguantan.** Pasó con `CFG-03`, `INT-03` y `ARQ-02`. Ahora que
-  `MCS-CORE` está en el repo, se cierra leyendo el texto.
-- **Una exclusión apoyada en un obstáculo no verificado no hacía falta.**
-  ADR-029 excluyó `CFG-03` e `INT-03` porque activar `enforce_admins` parecía
-  costoso; el intento devolvió 404 por llevar `PUT` en vez de `POST`. Con el
-  método correcto fue un comando, y la ADR duró horas.
-- **Las migraciones 0097-0100 no las corre Alembic aquí** (guard). Su SQL se
-  ejercita contra el esquema de `Base.metadata`, **no contra tablas a mano**:
-  así se coló `UPDATE lessons_learned` en 0098.
-- **Una prueba que fija el literal del código fuente no puede fallar.** Pasó dos
-  veces esta sesión —D-2 y OPS-02—; las dos las cazó la verificación por
-  mutación, no la lectura.
-- **El guard bloquea comandos que *mencionan* un patrón denegado**, aunque sea
-  dentro de un texto. Se reformula, no se relaja.
-- **`RATE_LIMITED` pasó de 422 a 429**, ya en `api-conventions.md`.
-- La suite tarda ~2m50s con `-n auto`. Sin pruebas de frontend. Python 3.12 no
-  es negociable.
+- **Medir contra el texto del requisito destapa lo que la evidencia anotada
+  esconde.** Cuatro hallazgos así: el acta `.docx` se firmaba con la paleta
+  anterior a DIS-02; once citas a tokens inexistentes hacían que la página de
+  documentos pintara tema claro en modo oscuro y la tabla de permisos saliera
+  sin fondo; el gate de tipos daba verde sin analizar nada; el worker no
+  configuraba su registro y Celery se lo llevaba por delante.
+- **Un control que da verde cuando no corre es peor que no tenerlo.** Sustituye
+  una ausencia visible por una garantía falsa. Pasó con `check_tipos.py`: sin
+  mypy instalado el proceso devuelve 1, igual que «encontré errores».
+- **Una lista escrita a mano no puede probar «uno solo».** Prueba «uno solo
+  entre los que me acordé de listar». Los trinquetes nuevos **derivan** del
+  árbol y lo que se declara son las excepciones, con razón escrita.
+- **La mutación cazó cuatro pruebas que no podían fallar**, y ninguna se veía
+  leyendo el código: una derivaba su caso de la constante que vigilaba, otra
+  comprobaba `set(X) <= rutas` con `X` vacío, otra buscaba dos cadenas por
+  separado en vez de una dentro de la otra.
+- **El trinquete de contexto disparó al actualizar `SPRINT.md`**, y se recortó
+  en vez de subir el techo — que es la regla.
 
 ## 📋 Lo que sigue
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Olas 0 y 1 — cerradas**, y sin exclusiones: `GOB-02`, `LEN-01`, `DAT-05`,
-  `ARQ-02`, `CFG-03` e `INT-03` conformes. ADR-029 se retiró el mismo día.
-- **Ola 2** — 13 mecánicos, disparables sin supervisión, uno por commit.
-- **Ola 3** — 8 grupos que necesitan postura del owner; aparte `SEG-04`.
-- **Ola 4** — N1 → N2, se replanifica al llegar.
+- **Ola 3** — necesita postura del owner. Se le suman tres de la Ola 2 que
+  resultaron no ser mecánicas: `DAT-02` (8 renombres con migración y ventana,
+  como `wbs`), `DIS-03` y `DAT-11` (épica de producto).
+- **`SEG-04`** aparte: CRÍTICA, autorización sobre el objeto.
+- **`DAT-06` y `LEN-02`** cierran sin decisión: el primero con la ventana de
+  `amber_max`, el segundo escribiendo las tres partes al tocar cada endpoint.
 
 ## 📚 Estado de las epics docs
 
 | Epic | Sincronizada | Notas |
 |---|---|---|
-| EP005 | sí | Fases (`cancelled`) e índice de consumo del semáforo |
-| EP009 | sí | `wbs_code` y el diagrama de transiciones |
-| EP014 | sí | Tipografía de los entregables (ENH-202) |
+| EP004 | sí | US-020: el hueco se ve distinto del cero (DAT-12) |
+| EP014 · EP020 | sin cambios | no describen el vocabulario del semáforo; lo hace el glosario, ya al día |
 
-Al día también: `DB-CHANGES.md` (0100), ADR-019 a ADR-023, glosario y su
-revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
-**Ninguna epic queda desactualizada.**
+Al día también: glosario (`amber` a 0 restos), `plan-remediacion.md`,
+`design-system/tokens.md` (declarado **reemplazado**, con aviso en el cuerpo),
+`database.md` y el nuevo `er-generado.md`.
 
 ## 🧹 Acciones del owner
 
-- [x] ~~`enforce_admins`~~ — **activado** (owner, 2026-08-05). `CFG-03` e
-      `INT-03` cierran; ADR-029 retirada. El repositorio se queda público.
-- [ ] **Correr las migraciones `0097`-`0100`.** Ninguna las corrió Alembic.
-- [ ] **Confirmar Sentry en Railway:** tienen que salir **dos** líneas,
-      `captura de errores activa proceso=api` y `proceso=worker`, cada una en su
-      servicio. Con las dos, `OPS-02` cierra.
-- [ ] Smoke de la web: plan (`wbs_code`), fase `cancelled`, y los gráficos que
-      cambiaron de color (dashboard, Gantt, curva-S).
+- [ ] **Añadir `tipos-python` y `commits` a las verificaciones exigidas de
+      `main`.** Sin eso, los gates existen y no bloquean.
+- [ ] **Activar el hook local**: `git config core.hooksPath .githooks`.
+- [ ] **Correr las migraciones `0097`-`0100`.** Sigue pendiente de antes.
+- [ ] **Confirmar Sentry en Railway:** dos líneas, `proceso=api` y
+      `proceso=worker`. Con las dos, `OPS-02` cierra.
+- [ ] Smoke de la web: tablero (KPI sin dato → «—»), detalle de proyecto, y la
+      página de documentos en **tema oscuro** (llevaba meses mal).
 - [ ] Contrastar los umbrales de D-4 contra cartera real.
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
-- **`design-system/tokens.md`** describe una paleta anterior a D-7 y ADR-023.
-- **Línea base** (D-6) y **DCMA 14-point**: épica propia.
-- El owner tiene **cambios de diseño de producto** pendientes, a retomar cuando
-  la auditoría deje de ser el frente activo.
+- **`DOC-07`** — tres documentos con la revisión vencida; el gate solo informa.
+  Hacerlo fallar exige decidir qué pasa con lo que nadie va a revisar.
+- **`DAT-07`** — tipos propios de magnitud. Hoy nada impide pasar un porcentaje
+  donde se espera una fracción.
+- Línea base (D-6) y DCMA 14-point: épica propia.
+- El owner tiene cambios de diseño de producto pendientes.
 
 ---
 
@@ -118,5 +122,4 @@ revisión, `api-conventions.md`, `modelo-amenazas.md`, `conformidad.yaml`.
 
 1. Lee este `HANDOFF.md` primero.
 2. Luego `CLAUDE.md` + `SPRINT.md` + `docs/conformidad/plan-remediacion.md`.
-3. `python scripts/registro_conformidad.py` da el estado. Arranca por la
-   **Ola 2**, que es mecánica.
+3. `python scripts/registro_conformidad.py` da el estado real.

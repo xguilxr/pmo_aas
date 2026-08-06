@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_capability
 from app.core.errors import forbidden, not_found
+from app.core.unidades import segundos_a_ms
 from app.core.url_externa import asegurar_url_externa, motivo_url_insegura
 from app.db.session import get_db
 from app.models.tenant import Tenant
@@ -480,7 +481,7 @@ async def _ping_byo_provider(
             url = f"{root}/models"
             async with httpx.AsyncClient(timeout=10.0) as c:
                 r = await c.get(url, headers={"Authorization": f"Bearer {api_key}"})
-            latency = int((time.perf_counter() - started) * 1000)
+            latency = segundos_a_ms(time.perf_counter() - started)
             # US-104: muchos servers OpenAI-compatible no exponen GET /models;
             # si vemos 404/405 caemos a un POST mínimo a /chat/completions.
             if r.status_code in (404, 405) and provider == "custom":
@@ -494,7 +495,7 @@ async def _ping_byo_provider(
                             "max_tokens": 4,
                         },
                     )
-                latency = int((time.perf_counter() - started) * 1000)
+                latency = segundos_a_ms(time.perf_counter() - started)
                 if r2.status_code >= 300:
                     return TestConnectionResult(
                         ok=False, latency_ms=latency,
@@ -527,7 +528,7 @@ async def _ping_byo_provider(
                         "messages": [{"role": "user", "content": "ping"}],
                     },
                 )
-            latency = int((time.perf_counter() - started) * 1000)
+            latency = segundos_a_ms(time.perf_counter() - started)
             if r.status_code >= 300:
                 return TestConnectionResult(
                     ok=False, latency_ms=latency,
@@ -549,7 +550,7 @@ async def _ping_byo_provider(
                         "max_tokens": 4,
                     },
                 )
-            latency = int((time.perf_counter() - started) * 1000)
+            latency = segundos_a_ms(time.perf_counter() - started)
             if r.status_code >= 300:
                 return TestConnectionResult(
                     ok=False, latency_ms=latency,
@@ -567,7 +568,7 @@ async def _ping_byo_provider(
             )
             async with httpx.AsyncClient(timeout=10.0) as c:
                 r = await c.get(url)
-            latency = int((time.perf_counter() - started) * 1000)
+            latency = segundos_a_ms(time.perf_counter() - started)
             if r.status_code >= 300:
                 return TestConnectionResult(
                     ok=False, latency_ms=latency,
@@ -603,7 +604,7 @@ async def _ping_byo_provider(
                         "max_tokens": 4,
                     },
                 )
-            latency = int((time.perf_counter() - started) * 1000)
+            latency = segundos_a_ms(time.perf_counter() - started)
             if r.status_code >= 300:
                 return TestConnectionResult(
                     ok=False, latency_ms=latency,

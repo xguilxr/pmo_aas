@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 90d
+---
+
 # EP003 — Solicitud y Aprobación de Proyectos
 
 | Campo | Valor |

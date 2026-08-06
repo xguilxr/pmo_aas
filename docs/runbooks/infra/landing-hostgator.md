@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 180d
+---
+
 # Landing estático en HostGator
 
 **ID:** `DOC-INFRA-LANDING`

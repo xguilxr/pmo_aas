@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-07-09
+revisar_cada: 90d
+---
+
 # EP002 — Jerarquía de Clientes/Proyectos
 
 | Campo | Valor |

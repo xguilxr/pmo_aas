@@ -44,6 +44,18 @@ PINTAN_SALUD = [
     "app/services/html_report_renderer.py",
     "app/templates/pdf/base.html",
     "app/templates/pdf/reports/scope_status.html",
+    # Añadido el 2026-08-05 (DAT-05). Faltaba, y con él se escapó un quinto
+    # juego de colores: `_RAG_RGB` pintaba el punto de salud del acta en .docx
+    # con `#16a34a` y `#dc2626`, dos de los RETIRADOS de arriba. D-7 unificó
+    # cuatro sitios, el registro dio DAT-05 por CONFORME, y el documento que
+    # más se imprime y se firma seguía saliendo con la paleta anterior a
+    # DIS-02 — la del verde que no llegaba a AA.
+    #
+    # La lección no es que faltara un archivo: es que una lista escrita a mano
+    # no puede probar «una sola paleta». Por eso se añade además
+    # `test_ningun_sitio_de_salud_copia_la_paleta`, que deriva los sitios del
+    # código en vez de enumerarlos.
+    "app/services/charter_generator.py",
 ]
 
 #: **Fuera de D-7, y declarado en vez de silenciado.** Estos símbolos comparten
@@ -117,3 +129,72 @@ def test_no_queda_ninguna_copia_de_las_paletas_viejas(ruta, retirado):
         f"{ruta} sigue usando {retirado} en las líneas {vivas}. D-7 dejó una "
         f"sola paleta: `HEALTH_COLOR` en `scoped_status.py`."
     )
+
+
+# ---------------------------------------------------------------------------
+# DAT-05 (2026-08-05) — la comprobación que no depende de una lista escrita
+# ---------------------------------------------------------------------------
+
+#: Fondos suaves de distintivo. **No son un segundo semáforo**: son la forma
+#: del `pill` —texto oscuro sobre fondo claro del mismo tono—, y el texto sí
+#: sale de la paleta única. Se declaran con su razón en vez de silenciarse.
+FONDOS_DE_DISTINTIVO = {
+    "#dcfce7": "fondo suave del pill verde en los PDF",
+    "#fef9c3": "fondo suave del pill amarillo en los PDF",
+    "#fee2e2": "fondo suave del pill rojo en los PDF",
+}
+
+#: Un color en la misma línea que una clave de salud.
+_CLAVE_DE_SALUD = re.compile(r"""(?:['".])(green|yellow|red)(?:['"]|\b)""")
+_HEX = re.compile(r"#[0-9a-fA-F]{6}\b")
+
+
+def test_ningun_sitio_de_salud_copia_la_paleta() -> None:
+    """Deriva los sitios del código en vez de enumerarlos.
+
+    `PINTAN_SALUD` es una lista escrita a mano, y una lista escrita a mano no
+    puede probar «una sola paleta»: prueba «una sola paleta entre los que me
+    acordé de listar». Lo demostró `charter_generator.py`, que pintaba el punto
+    de salud del acta con dos de los colores RETIRADOS y no estaba en la lista.
+    D-7 unificó cuatro sitios, el registro dio DAT-05 por CONFORME, y el
+    documento que más se imprime seguía saliendo con la paleta anterior.
+
+    Esta comprobación invierte el defecto: **todo** archivo entra, y lo que se
+    declara son las excepciones, con su razón.
+    """
+    canonicos = {v.lower() for v in HEALTH_COLOR.values()}
+    permitidos = canonicos | {k.lower() for k in FONDOS_DE_DISTINTIVO} | {"#fff", "#ffffff"}
+
+    intrusos = []
+    for patron in ("*.py", "*.html"):
+        for archivo in (RAIZ_API / "app").rglob(patron):
+            for n, linea in enumerate(archivo.read_text(encoding="utf-8").splitlines(), 1):
+                if not _CLAVE_DE_SALUD.search(linea):
+                    continue
+                for color in _HEX.findall(linea):
+                    if color.lower() not in permitidos:
+                        intrusos.append(
+                            f"{archivo.relative_to(RAIZ_API)}:{n}: {color} — {linea.strip()[:70]}"
+                        )
+
+    assert not intrusos, (
+        "Colores de salud fuera de la paleta única. El origen es "
+        "`HEALTH_COLOR`; si de verdad hace falta otro valor, va a "
+        "`FONDOS_DE_DISTINTIVO` con su razón.\n" + "\n".join(intrusos)
+    )
+
+
+def test_el_acta_en_docx_usa_la_paleta_unica() -> None:
+    """El caso concreto que se escapó, con el valor comprobado y no el texto.
+
+    `_RAG_RGB` se deriva de `HEALTH_COLOR` en vez de copiarlo — una copia es lo
+    que produjo las cinco paletas—, y esto lo comprueba mirando los bytes que
+    acaban en el documento.
+    """
+    from app.services.charter_generator import _RAG_RGB
+
+    for estado, esperado in HEALTH_COLOR.items():
+        assert str(_RAG_RGB[estado]) == esperado.lstrip("#").upper(), (
+            f"El punto de salud «{estado}» del acta en .docx sale {_RAG_RGB[estado]} "
+            f"y la paleta única dice {esperado}."
+        )

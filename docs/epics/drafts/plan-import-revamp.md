@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-07-18
+revisar_cada: 90d
+---
+
 # Draft — Retrabajo del import/export de Plan (WBS, Estado, %, IA)
 
 > **Fase A — draft vivo.** Origen: feedback del owner 2026-07-18

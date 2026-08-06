@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Seed de datos demo (`seed_demo.py`)
 
 Script para poblar los tenants existentes (`acme`, `globex`) con datos dummy

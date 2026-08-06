@@ -47,11 +47,11 @@ const EMPTY_DRAFT: EditDraft = {
 };
 
 const STATUS_BADGE_CLASS: Record<RiskActionStatus, string> = {
-  open: "bg-[var(--color-info-bg,#dbeafe)] text-[var(--color-info-fg,#1e40af)]",
+  open: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
   in_progress:
-    "bg-[var(--color-warning-bg,#fef3c7)] text-[var(--color-warning-fg,#92400e)]",
-  done: "bg-[var(--color-success-bg,#dcfce7)] text-[var(--color-success-fg,#166534)]",
-  blocked: "bg-[var(--color-danger-bg,#fee2e2)] text-[var(--color-danger-fg,#991b1b)]",
+    "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+  done: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+  blocked: "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]",
 };
 
 export function RiskActionsCard({ riskId }: { riskId: string }) {
@@ -187,7 +187,7 @@ export function RiskActionsCard({ riskId }: { riskId: string }) {
 
       <div className="space-y-2 px-4 py-3">
         {error ? (
-          <div className="rounded border border-[var(--color-danger-border,#fca5a5)] bg-[var(--color-danger-bg,#fee2e2)] px-2 py-1 text-[12px] text-[var(--color-danger-fg,#991b1b)]">
+          <div className="rounded border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-2 py-1 text-[12px] text-[var(--color-danger-fg)]">
             {error}
           </div>
         ) : null}
@@ -398,7 +398,7 @@ function ActionRow({
         <button
           type="button"
           onClick={onDelete}
-          className="rounded p-1 text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg,#fee2e2)] hover:text-[var(--color-danger-fg,#991b1b)]"
+          className="rounded p-1 text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
           aria-label="Borrar acción"
         >
           <Trash2 className="h-4 w-4" aria-hidden />

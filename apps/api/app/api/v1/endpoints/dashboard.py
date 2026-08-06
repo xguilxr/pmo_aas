@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import forbidden, validation_error
+from app.core.unidades import razon_a_pct
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.models.metric_snapshot import MetricSnapshot
@@ -361,7 +362,7 @@ def _plan_progress_for(p: Project) -> int:
         return 100
     total = (p.end_date - p.start_date).days or 1
     elapsed = (today - p.start_date).days
-    return max(0, min(100, int(elapsed * 100 / total)))
+    return max(0, min(100, int(razon_a_pct(elapsed, total, decimales=0))))
 
 
 @router.get("/plan-vs-actual/export.csv")

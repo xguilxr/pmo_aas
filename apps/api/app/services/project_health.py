@@ -32,6 +32,7 @@ from typing import Any
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.unidades import fraccion_a_pct, pct_a_fraccion, razon_a_pct
 from app.models.area import Actor
 from app.models.modules import Issue, Risk
 from app.models.project import Project
@@ -178,7 +179,7 @@ async def _schedule_dimension(
         )
     ).one()
     open_tasks, overdue, overdue_ms = int(row[0]), int(row[1]), int(row[2])
-    overdue_pct = round(overdue * 100 / open_tasks, 1) if open_tasks else 0.0
+    overdue_pct = razon_a_pct(overdue, open_tasks)
     color = _schedule_color(t, overdue_pct, overdue_ms)
 
     causes: list[dict[str, Any]] = []
@@ -236,14 +237,14 @@ def _budget_dimension(project: Project, t: dict[str, float]) -> dict[str, Any]:
                 "causes": [], "metrics": {}}
     actual = float(project.actual_budget or 0)
     ratio = actual / budget
-    pct = round(ratio * 100, 1)
+    pct = fraccion_a_pct(ratio)
     progress = float(project.progress or 0)
     if progress <= 0:
         return {"key": "budget", "color": None,
                 "summary": f"Consumido {pct}% — sin avance todavía, no es medible",
                 "causes": [], "metrics": {"ratio": round(ratio, 3), "pct": pct}}
 
-    burn_index = ratio / (progress / 100)
+    burn_index = ratio / pct_a_fraccion(progress)
     color = _budget_color(t, burn_index)
     causes = []
     if color != "green":
@@ -516,7 +517,7 @@ async def refresh_health_bulk(
     for p in projects:
         pid = str(p.id)
         open_tasks, overdue, overdue_ms = tasks_by_pid.get(pid, (0, 0, 0))
-        overdue_pct = round(overdue * 100 / open_tasks, 1) if open_tasks else 0.0
+        overdue_pct = razon_a_pct(overdue, open_tasks)
         budget = float(p.budget or 0)
         dims = {
             "schedule": _schedule_color(t["schedule"], overdue_pct, overdue_ms),

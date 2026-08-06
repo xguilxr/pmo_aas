@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 90d
+---
+
 # DECISIONS.md — Decisiones arquitectónicas
 
 > Claude Code: antes de proponer soluciones alternativas, verifica que no contradiga una decisión aquí registrada. Si necesitas contradecirla, documenta el cambio con fecha y rationale.

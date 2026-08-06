@@ -6,6 +6,10 @@ pytest-xdist==3.6.1
 httpx==0.27.2
 aiosqlite==0.20.0
 ruff==0.6.9
+# MCS DEV-04 — verificación de tipos en modo estricto. Fijada como ruff: una
+# versión nueva de mypy encuentra errores nuevos, y eso pondría el gate en rojo
+# sin que nadie haya tocado el código.
+mypy==1.13.0
 # US-066: mock S3 in tests (no need to hit real R2/B2).
 moto[s3]==5.0.18
 # B3 (MCS IA-08): el conjunto de evaluación lee su catálogo de `casos.yaml`.

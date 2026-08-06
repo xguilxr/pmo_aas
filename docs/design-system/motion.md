@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 90d
+---
+
 # Motion — Movimiento y transiciones
 
 **ID:** `DOC-DS-MOTION`

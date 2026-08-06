@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-04
+revisar_cada: 90d
+---
+
 # Épicas — PMO-aaS
 
 **ID:** `DOC-EPICS`

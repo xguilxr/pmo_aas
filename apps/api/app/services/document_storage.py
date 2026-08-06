@@ -22,11 +22,16 @@ from fastapi import UploadFile, status
 
 from app.core.config import settings
 from app.core.errors import AppError, validation_error
+from app.core.unidades import a_mebibytes, mebibytes
 
 # BUG-040: límite reducido a 1 MB. La plataforma no es un drive
 # corporativo; documentos grandes deben vivir en SharePoint/Drive y
 # enlazarse desde el comentario.
-MAX_DOC_BYTES = 1 * 1024 * 1024  # 1 MB
+MAX_DOC_BYTES = mebibytes(1)
+
+#: Cuánto se lee de golpe al copiar un archivo. No es un límite de negocio;
+#: se nombra porque estaba escrito dos veces con el mismo `64 * 1024`.
+TROZO_BYTES = 64 * 1024
 
 # MIME -> extensión canónica (whitelist: PDF, XLSX, DOCX, PPTX, PNG, JPG, CSV,
 # + formatos legacy XLS/DOC/PPT). BUG-029 agrega los legacy porque algunos
@@ -109,7 +114,7 @@ def _validate_size(data: bytes) -> None:
         raise AppError(
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             "PAYLOAD_TOO_LARGE",
-            f"El documento excede {MAX_DOC_BYTES // (1024 * 1024)} MB",
+            f"El documento excede {a_mebibytes(MAX_DOC_BYTES):.0f} MB",
             {"max_bytes": MAX_DOC_BYTES, "size": len(data)},
         )
 
@@ -153,7 +158,7 @@ def _stream_local(
         if candidate.is_file():
             def _gen(path: Path = candidate) -> Iterator[bytes]:
                 with path.open("rb") as fh:
-                    while chunk := fh.read(64 * 1024):
+                    while chunk := fh.read(TROZO_BYTES):
                         yield chunk
 
             return _gen(), ext
@@ -253,7 +258,7 @@ def _stream_s3(
 
         def _gen(stream: IO[bytes] = body) -> Iterator[bytes]:
             try:
-                while chunk := stream.read(64 * 1024):
+                while chunk := stream.read(TROZO_BYTES):
                     yield chunk
             finally:
                 stream.close()

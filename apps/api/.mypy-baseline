@@ -1,0 +1,409 @@
+# Línea base de `mypy --strict` — MCS DEV-04
+#
+# NO se edita a mano: la reescribe `python scripts/check_tipos.py --regenerar`.
+#
+# Cada fila es `veces · ruta · código · mensaje`, sin número de línea (cambia al
+# insertar cualquier cosa en el archivo y volvería inútil la comparación).
+#
+# Es el pasivo heredado del día en que se enchufó la verificación de tipos, no
+# una lista de excepciones aprobadas. Solo puede encoger. Que aparezca una
+# huella nueva significa que se está aflojando el trinquete, y eso necesita
+# razón escrita — la misma regla que el techo de contexto de `conformidad.yaml`.
+#
+# Generada: 2026-08-05
+# Errores tolerados: 1163 en 114 archivos
+2	app/api/deps.py	no-untyped-def	Function is missing a return type annotation
+3	app/api/v1/endpoints/admin_ai.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/admin_ai.py	return-value	Incompatible return value type (got "str", expected "UUID")
+3	app/api/v1/endpoints/admin_ai.py	type-arg	Missing type parameters for generic type "dict"
+13	app/api/v1/endpoints/admin_ai.py	union-attr	Item "None" of "Any | dict[Any, Any] | None" has no attribute "get"
+2	app/api/v1/endpoints/admin_ai.py	unused-ignore	Unused "type: ignore" comment
+3	app/api/v1/endpoints/admin_panel.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+13	app/api/v1/endpoints/admin_panel.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/admin_panel.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/admin_panel.py	unused-ignore	Unused "type: ignore" comment
+2	app/api/v1/endpoints/admin_users.py	arg-type	Argument "scope_id" to "ScopeAssignmentItem" has incompatible type "str"; expected "UUID"
+2	app/api/v1/endpoints/admin_users.py	arg-type	Argument "scope_type" to "ScopeAssignmentItem" has incompatible type "str"; expected "Literal['organization', 'program', 'project']"
+1	app/api/v1/endpoints/admin_users.py	arg-type	Argument "tenant_id" to "_send_welcome_email" has incompatible type "str"; expected "UUID | None"
+1	app/api/v1/endpoints/admin_users.py	arg-type	Argument "tenant_id" to "write_audit" has incompatible type "str"; expected "UUID | None"
+1	app/api/v1/endpoints/admin_users.py	arg-type	Argument 2 to "confirm_slug" has incompatible type "str | UUID"; expected "str"
+14	app/api/v1/endpoints/admin_users.py	no-untyped-def	Function is missing a return type annotation
+2	app/api/v1/endpoints/ai.py	call-arg	Unexpected keyword argument "code" for "validation_error"
+7	app/api/v1/endpoints/ai.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+7	app/api/v1/endpoints/ai.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/ai.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/ai.py	var-annotated	Need type annotation for "raid_suggestions_empty"
+1	app/api/v1/endpoints/ai_context.py	assignment	Incompatible types in assignment (expression has type "str", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+2	app/api/v1/endpoints/ai_context.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+2	app/api/v1/endpoints/ai_context.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/ai_context.py	return-value	Incompatible return value type (got "str", expected "UUID")
+3	app/api/v1/endpoints/areas.py	assignment	Incompatible types in assignment (expression has type "str | UUID | None", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+5	app/api/v1/endpoints/areas.py	assignment	Incompatible types in assignment (expression has type "str", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+22	app/api/v1/endpoints/areas.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+22	app/api/v1/endpoints/areas.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/areas.py	return-value	Incompatible return value type (got "str | None", expected "UUID")
+4	app/api/v1/endpoints/assistant.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+1	app/api/v1/endpoints/assistant.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/assistant.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/assistant.py	type-arg	Missing type parameters for generic type "list"
+1	app/api/v1/endpoints/auth.py	no-any-return	Returning Any from function declared to return "int"
+8	app/api/v1/endpoints/auth.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/auth.py	type-arg	Missing type parameters for generic type "list"
+4	app/api/v1/endpoints/branding.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/branding.py	return-value	Incompatible return value type (got "str", expected "UUID")
+2	app/api/v1/endpoints/capacity.py	arg-type	Argument 2 to "resource_capacity_summary" has incompatible type "Tenant | None"; expected "Tenant"
+1	app/api/v1/endpoints/capacity.py	arg-type	Argument 2 to "resource_conflicts" has incompatible type "Tenant | None"; expected "Tenant"
+3	app/api/v1/endpoints/capacity.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+3	app/api/v1/endpoints/capacity.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/capacity.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/capacity.py	var-annotated	Need type annotation for "alloc_here" (hint: "alloc_here: dict[<type>, <type>] = ...")
+1	app/api/v1/endpoints/change_approvals.py	arg-type	Argument 1 to "append" of "list" has incompatible type "tuple[ChangeApprover, str]"; expected "tuple[ApproverRead, str]"
+2	app/api/v1/endpoints/change_approvals.py	assignment	Incompatible types in assignment (expression has type "ApproverRead", variable has type "ChangeApprover")
+3	app/api/v1/endpoints/change_approvals.py	attr-defined	"ChangeApprover" has no attribute "actor_email"
+1	app/api/v1/endpoints/change_approvals.py	attr-defined	"ChangeApprover" has no attribute "actor_name"
+4	app/api/v1/endpoints/change_approvals.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+6	app/api/v1/endpoints/change_approvals.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/change_approvals.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/change_approvals.py	type-arg	Missing type parameters for generic type "dict"
+2	app/api/v1/endpoints/change_approvals.py	unused-ignore	Unused "type: ignore" comment
+2	app/api/v1/endpoints/dashboard.py	arg-type	Argument 1 to "dict" has incompatible type "Sequence[Row[tuple[str, int]]]"; expected "Iterable[tuple[Never, Never]]"
+1	app/api/v1/endpoints/dashboard.py	assignment	Incompatible types in assignment (expression has type "Sequence[Row[tuple[str | None, Decimal | None]]]", variable has type "Sequence[Row[tuple[str, int]]]")
+1	app/api/v1/endpoints/dashboard.py	attr-defined	"Sequence[Project]" has no attribute "sort"
+12	app/api/v1/endpoints/dashboard.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+2	app/api/v1/endpoints/dashboard.py	no-untyped-call	Call to untyped function "scope_risks" in typed context
+2	app/api/v1/endpoints/dashboard.py	no-untyped-call	Call to untyped function "scoped_projects" in typed context
+4	app/api/v1/endpoints/dashboard.py	no-untyped-call	Call to untyped function "scoped_where" in typed context
+14	app/api/v1/endpoints/dashboard.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/dashboard.py	no-untyped-def	Function is missing a type annotation
+1	app/api/v1/endpoints/dashboard.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/api/v1/endpoints/dashboard.py	return-value	Incompatible return value type (got "str", expected "UUID")
+3	app/api/v1/endpoints/dashboard.py	type-arg	Missing type parameters for generic type "dict"
+1	app/api/v1/endpoints/dashboard.py	type-arg	Missing type parameters for generic type "list"
+1	app/api/v1/endpoints/dashboard.py	unused-ignore	Unused "type: ignore" comment
+1	app/api/v1/endpoints/dashboard.py	var-annotated	Need type annotation for "portfolio_health" (hint: "portfolio_health: dict[<type>, <type>] = ...")
+1	app/api/v1/endpoints/dashboard.py	var-annotated	Need type annotation for "projects_by_phase" (hint: "projects_by_phase: dict[<type>, <type>] = ...")
+1	app/api/v1/endpoints/entity_history.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+1	app/api/v1/endpoints/entity_history.py	type-arg	Missing type parameters for generic type "dict"
+1	app/api/v1/endpoints/gantt_snapshot.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+1	app/api/v1/endpoints/gantt_snapshot.py	no-untyped-def	Function is missing a return type annotation
+4	app/api/v1/endpoints/modules.py	arg-type	Argument 1 to "UUID" has incompatible type "UUID"; expected "str | None"
+1	app/api/v1/endpoints/modules.py	arg-type	Argument 2 to "_attach_change_users" has incompatible type "Sequence[ChangeRequest]"; expected "list[Any]"
+1	app/api/v1/endpoints/modules.py	assignment	Incompatible types in assignment (expression has type "dict[str, str]", target has type "list[Any]")
+2	app/api/v1/endpoints/modules.py	no-untyped-call	Call to untyped function "_mini" in typed context
+40	app/api/v1/endpoints/modules.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+40	app/api/v1/endpoints/modules.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/modules.py	no-untyped-def	Function is missing a type annotation
+3	app/api/v1/endpoints/modules.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/api/v1/endpoints/modules.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/modules.py	type-arg	Missing type parameters for generic type "dict"
+4	app/api/v1/endpoints/modules.py	type-arg	Missing type parameters for generic type "list"
+7	app/api/v1/endpoints/modules.py	unused-ignore	Unused "type: ignore" comment
+7	app/api/v1/endpoints/notifications.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/organigrama.py	arg-type	Argument 2 to "monthly_utilization" has incompatible type "Tenant | None"; expected "Tenant"
+3	app/api/v1/endpoints/organigrama.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+3	app/api/v1/endpoints/organigrama.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/organigrama.py	return-value	Incompatible return value type (got "str", expected "UUID")
+2	app/api/v1/endpoints/organizations.py	arg-type	Argument 3 to "_project_count_for_program" has incompatible type "UUID"; expected "str"
+1	app/api/v1/endpoints/organizations.py	assignment	Incompatible types in assignment (expression has type "Sequence[Row[tuple[UUID, str, str]]]", variable has type "Sequence[Row[tuple[UUID | None, int]]]")
+1	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "_bu_active_filter" in typed context
+2	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "_get_bu_or_404" in typed context
+2	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "_get_org_or_404" in typed context
+18	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+32	app/api/v1/endpoints/organizations.py	no-untyped-def	Function is missing a return type annotation
+3	app/api/v1/endpoints/organizations.py	no-untyped-def	Function is missing a type annotation
+2	app/api/v1/endpoints/organizations.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/api/v1/endpoints/organizations.py	return-value	Incompatible return value type (got "str", expected "UUID")
+2	app/api/v1/endpoints/permission_requests.py	assignment	Incompatible types in assignment (expression has type "str", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+3	app/api/v1/endpoints/permission_requests.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+5	app/api/v1/endpoints/permission_requests.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/permission_requests.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/project_artifacts.py	arg-type	Argument 2 to "monthly_utilization" has incompatible type "Tenant | None"; expected "Tenant"
+1	app/api/v1/endpoints/project_artifacts.py	attr-defined	"Base" has no attribute "area_id"
+1	app/api/v1/endpoints/project_artifacts.py	attr-defined	"Base" has no attribute "owner_actor_id"
+1	app/api/v1/endpoints/project_artifacts.py	attr-defined	"Base" has no attribute "owner_id"
+7	app/api/v1/endpoints/project_artifacts.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+7	app/api/v1/endpoints/project_artifacts.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/project_artifacts.py	return-value	Incompatible return value type (got "str", expected "UUID")
+4	app/api/v1/endpoints/project_charters.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+4	app/api/v1/endpoints/project_charters.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/project_charters.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/api/v1/endpoints/project_charters.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/project_charters.py	unused-ignore	Unused "type: ignore" comment
+2	app/api/v1/endpoints/project_directory.py	arg-type	Argument "keep_id" to "_ensure_unique_primary" has incompatible type "UUID"; expected "str | None"
+1	app/api/v1/endpoints/project_directory.py	arg-type	Argument 1 to "add" of "set" has incompatible type "UUID"; expected "str"
+1	app/api/v1/endpoints/project_directory.py	arg-type	Argument 3 to "_ensure_unique_primary" has incompatible type "UUID"; expected "str"
+1	app/api/v1/endpoints/project_directory.py	call-overload	No overload variant of "get" of "dict" matches argument type "UUID"
+1	app/api/v1/endpoints/project_directory.py	misc	Key expression in dictionary comprehension has incompatible type "UUID"; expected type "str"
+9	app/api/v1/endpoints/project_directory.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+9	app/api/v1/endpoints/project_directory.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/project_directory.py	return-value	Incompatible return value type (got "str | None", expected "UUID")
+1	app/api/v1/endpoints/project_requests.py	assignment	Incompatible types in assignment (expression has type "Organization | None", variable has type "Organization")
+8	app/api/v1/endpoints/project_requests.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+8	app/api/v1/endpoints/project_requests.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/project_requests.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/projects.py	arg-type	Argument 2 to "sync_member_to_participation" has incompatible type "UUID"; expected "str"
+1	app/api/v1/endpoints/projects.py	arg-type	Argument 3 to "sync_member_to_participation" has incompatible type "UUID"; expected "str"
+1	app/api/v1/endpoints/projects.py	attr-defined	"type[Base]" has no attribute "id"
+1	app/api/v1/endpoints/projects.py	attr-defined	"type[Base]" has no attribute "project_id"
+17	app/api/v1/endpoints/projects.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+17	app/api/v1/endpoints/projects.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/projects.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/projects.py	type-arg	Missing type parameters for generic type "dict"
+2	app/api/v1/endpoints/projects.py	unused-ignore	Unused "type: ignore" comment
+1	app/api/v1/endpoints/report_builder_chat.py	arg-type	Argument 1 to "_format_catalog" has incompatible type "Sequence[ReportSection]"; expected "list[ReportSection]"
+1	app/api/v1/endpoints/report_builder_chat.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+3	app/api/v1/endpoints/report_builder_render.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+4	app/api/v1/endpoints/report_builder_render.py	no-untyped-def	Function is missing a return type annotation
+3	app/api/v1/endpoints/report_builder_templates.py	arg-type	Argument 1 to "append" of "list" has incompatible type "ColumnElement[bool]"; expected "BinaryExpression[bool]"
+1	app/api/v1/endpoints/report_builder_templates.py	no-any-return	Returning Any from function declared to return "ReportBuilderTemplate"
+4	app/api/v1/endpoints/report_builder_templates.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+1	app/api/v1/endpoints/report_builder_templates.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/report_builder_templates.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+3	app/api/v1/endpoints/report_builder_templates.py	type-arg	Missing type parameters for generic type "dict"
+1	app/api/v1/endpoints/report_sections.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+2	app/api/v1/endpoints/report_sections.py	type-arg	Missing type parameters for generic type "dict"
+5	app/api/v1/endpoints/report_templates.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+5	app/api/v1/endpoints/report_templates.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/report_templates.py	return-value	Incompatible return value type (got "str", expected "UUID")
+3	app/api/v1/endpoints/reports.py	arg-type	Argument 1 to "UUID" has incompatible type "UUID"; expected "str | None"
+1	app/api/v1/endpoints/reports.py	arg-type	Argument 5 to "render_report_html" has incompatible type "**dict[str, str | None]"; expected "dict[str, Any]"
+1	app/api/v1/endpoints/reports.py	arg-type	Argument 5 to "render_report_html" has incompatible type "**dict[str, str | None]"; expected "list[dict[str, Any]]"
+1	app/api/v1/endpoints/reports.py	arg-type	Argument 5 to "render_report_html" has incompatible type "**dict[str, str | None]"; expected "str"
+1	app/api/v1/endpoints/reports.py	arg-type	Argument 6 to "render_report_html" has incompatible type "**dict[str, str | None]"; expected "dict[str, Any]"
+1	app/api/v1/endpoints/reports.py	arg-type	Argument 6 to "render_report_html" has incompatible type "**dict[str, str | None]"; expected "list[dict[str, Any]]"
+1	app/api/v1/endpoints/reports.py	no-untyped-call	Call to untyped function "_task_row" in typed context
+21	app/api/v1/endpoints/reports.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+21	app/api/v1/endpoints/reports.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/reports.py	no-untyped-def	Function is missing a type annotation
+1	app/api/v1/endpoints/reports.py	return-value	Incompatible return value type (got "str", expected "UUID")
+9	app/api/v1/endpoints/reports.py	type-arg	Missing type parameters for generic type "dict"
+4	app/api/v1/endpoints/risk_actions.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+4	app/api/v1/endpoints/risk_actions.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/risk_actions.py	return-value	Incompatible return value type (got "str", expected "UUID")
+1	app/api/v1/endpoints/scheduled_minutes.py	attr-defined	Module "app.services.scheduled_minutes" does not explicitly export attribute "CADENCES"
+1	app/api/v1/endpoints/scheduled_minutes.py	attr-defined	Module "app.services.scheduled_minutes" does not explicitly export attribute "Cadence"
+1	app/api/v1/endpoints/scheduled_minutes.py	attr-defined	Module "app.services.scheduled_minutes" does not explicitly export attribute "compute_next_run"
+4	app/api/v1/endpoints/scheduled_minutes.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+5	app/api/v1/endpoints/scheduled_minutes.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/scheduled_minutes.py	return-value	Incompatible return value type (got "str", expected "UUID")
+5	app/api/v1/endpoints/scheduled_reports.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+6	app/api/v1/endpoints/scheduled_reports.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/scheduled_reports.py	return-value	Incompatible return value type (got "str", expected "UUID")
+7	app/api/v1/endpoints/stakeholders.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+7	app/api/v1/endpoints/stakeholders.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/stakeholders.py	return-value	Incompatible return value type (got "str | None", expected "UUID")
+2	app/api/v1/endpoints/superadmin.py	arg-type	Argument "tenant_id" to "write_audit" has incompatible type "str"; expected "UUID | None"
+4	app/api/v1/endpoints/superadmin.py	no-untyped-call	Call to untyped function "grouped" in typed context
+13	app/api/v1/endpoints/superadmin.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/superadmin.py	no-untyped-def	Function is missing a type annotation
+2	app/api/v1/endpoints/superadmin.py	type-arg	Missing type parameters for generic type "dict"
+1	app/api/v1/endpoints/superadmin.py	union-attr	Item "None" of "Role | None" has no attribute "id"
+4	app/api/v1/endpoints/superadmin_ai.py	index	Value of type "Row[Any] | None" is not indexable
+2	app/api/v1/endpoints/superadmin_ai.py	index	Value of type "Row[tuple[int, int | None, int | None]] | None" is not indexable
+5	app/api/v1/endpoints/superadmin_ai.py	no-untyped-def	Function is missing a return type annotation
+10	app/api/v1/endpoints/superadmin_panel.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/superadmin_panel.py	type-arg	Missing type parameters for generic type "dict"
+1	app/api/v1/endpoints/superadmin_panel.py	union-attr	Item "None" of "datetime | None" has no attribute "isoformat"
+1	app/api/v1/endpoints/tasks.py	arg-type	Argument 2 to "recompute_successors_for_project" has incompatible type "UUID"; expected "str"
+1	app/api/v1/endpoints/tasks.py	assignment	Incompatible types in assignment (expression has type "Any | None", variable has type "SQLCoreOperations[str] | str")
+1	app/api/v1/endpoints/tasks.py	assignment	Incompatible types in assignment (expression has type "Sequence[Task]", variable has type "list[Task]")
+1	app/api/v1/endpoints/tasks.py	assignment	Incompatible types in assignment (expression has type "Sequence[User]", variable has type "Sequence[Actor]")
+1	app/api/v1/endpoints/tasks.py	assignment	Incompatible types in assignment (expression has type "Task | None", variable has type "Task")
+1	app/api/v1/endpoints/tasks.py	assignment	Incompatible types in assignment (expression has type "list[str]", variable has type "list[dict[Any, Any]]")
+2	app/api/v1/endpoints/tasks.py	assignment	Incompatible types in assignment (expression has type "str | None", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+5	app/api/v1/endpoints/tasks.py	assignment	Incompatible types in assignment (expression has type "str", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+1	app/api/v1/endpoints/tasks.py	misc	Value expression in dictionary comprehension has incompatible type "Actor"; expected type "User"
+1	app/api/v1/endpoints/tasks.py	no-untyped-call	Call to untyped function "_TaskShim" in typed context
+14	app/api/v1/endpoints/tasks.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+14	app/api/v1/endpoints/tasks.py	no-untyped-def	Function is missing a return type annotation
+2	app/api/v1/endpoints/tasks.py	no-untyped-def	Function is missing a type annotation
+1	app/api/v1/endpoints/tasks.py	return-value	Incompatible return value type (got "str", expected "UUID")
+4	app/api/v1/endpoints/tasks.py	type-arg	Missing type parameters for generic type "dict"
+3	app/api/v1/endpoints/tasks.py	type-arg	Missing type parameters for generic type "list"
+1	app/api/v1/endpoints/tasks.py	type-arg	Missing type parameters for generic type "tuple"
+1	app/api/v1/endpoints/tenant_cross.py	no-any-return	Returning Any from function declared to return "dict[Any, Any]"
+5	app/api/v1/endpoints/tenant_cross.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+1	app/api/v1/endpoints/tenant_cross.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/tenant_cross.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/api/v1/endpoints/tenant_cross.py	return-value	Incompatible return value type (got "str", expected "UUID")
+9	app/api/v1/endpoints/tenant_cross.py	type-arg	Missing type parameters for generic type "dict"
+2	app/api/v1/endpoints/tenant_cross.py	unused-ignore	Unused "type: ignore" comment
+1	app/api/v1/endpoints/users.py	arg-type	Argument "theme" to "PreferencesOut" has incompatible type "Any | str | None"; expected "Literal['dark', 'light', 'system']"
+4	app/api/v1/endpoints/users.py	no-untyped-def	Function is missing a return type annotation
+1	app/api/v1/endpoints/users.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/api/v1/endpoints/users.py	type-arg	Missing type parameters for generic type "dict"
+1	app/api/v1/router.py	no-untyped-def	Function is missing a return type annotation
+3	app/core/errors.py	type-arg	Missing type parameters for generic type "dict"
+2	app/core/hard_delete.py	type-arg	Missing type parameters for generic type "dict"
+1	app/core/security.py	no-any-return	Returning Any from function declared to return "bool"
+1	app/core/security.py	no-any-return	Returning Any from function declared to return "str"
+4	app/core/visibility.py	assignment	Incompatible types in assignment (expression has type "Project", variable has type "Program")
+2	app/core/visibility.py	attr-defined	"Program" has no attribute "program_id"
+1	app/db/session.py	no-untyped-def	Function is missing a return type annotation
+1	app/db/session.py	type-arg	Missing type parameters for generic type "dict"
+1	app/main.py	index	Unsupported target for indexed assignment ("Collection[str]")
+4	app/main.py	no-untyped-def	Function is missing a return type annotation
+1	app/main.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+3	app/models/ai.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/ai.py	type-arg	Missing type parameters for generic type "list"
+1	app/models/ai_report_template.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/area.py	type-arg	Missing type parameters for generic type "list"
+1	app/models/assistant.py	type-arg	Missing type parameters for generic type "list"
+1	app/models/audit.py	no-untyped-def	Function is missing a return type annotation
+1	app/models/audit.py	no-untyped-def	Function is missing a type annotation
+1	app/models/audit.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/metric_snapshot.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/modules.py	type-arg	Missing type parameters for generic type "dict"
+7	app/models/modules.py	type-arg	Missing type parameters for generic type "list"
+1	app/models/notification.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/project.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/project_request.py	type-arg	Missing type parameters for generic type "list"
+1	app/models/report_builder_template.py	type-arg	Missing type parameters for generic type "dict"
+2	app/models/report_section.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/role.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/scheduled_minute.py	type-arg	Missing type parameters for generic type "list"
+1	app/models/scheduled_report.py	type-arg	Missing type parameters for generic type "list"
+2	app/models/task.py	type-arg	Missing type parameters for generic type "list"
+1	app/models/tenant.py	type-arg	Missing type parameters for generic type "dict"
+1	app/models/user.py	type-arg	Missing type parameters for generic type "dict"
+1	app/schemas/area.py	no-untyped-def	Function is missing a type annotation
+10	app/schemas/modules.py	type-arg	Missing type parameters for generic type "dict"
+6	app/schemas/modules.py	type-arg	Missing type parameters for generic type "list"
+1	app/schemas/project.py	no-untyped-def	Function is missing a return type annotation
+3	app/schemas/project.py	type-arg	Missing type parameters for generic type "dict"
+2	app/scripts/seed_demo.py	arg-type	Argument "organization_id" to "_ensure_program" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "organization_id" to "_ensure_project" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "organization_id" to "_ensure_request" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "pm_id" to "_ensure_project" has incompatible type "UUID"; expected "str | None"
+1	app/scripts/seed_demo.py	arg-type	Argument "program_id" to "_ensure_project" has incompatible type "UUID | None"; expected "str | None"
+1	app/scripts/seed_demo.py	arg-type	Argument "requested_by" to "_ensure_request" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "reviewed_by" to "_ensure_request" has incompatible type "UUID"; expected "str | None"
+2	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "_ensure_org" has incompatible type "UUID"; expected "str"
+2	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "_ensure_program" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "_ensure_project" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "_ensure_request" has incompatible type "UUID"; expected "str"
+3	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "_ensure_user" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "_seed_raid_for_project" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "_seed_tasks_for_project" has incompatible type "UUID"; expected "str"
+10	app/scripts/seed_demo.py	arg-type	Argument "tenant_id" to "next_folio" has incompatible type "str"; expected "UUID"
+1	app/scripts/seed_demo.py	arg-type	Argument 2 to "_get_roles" has incompatible type "UUID"; expected "str"
+1	app/scripts/seed_demo.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/ai/byo_catalog.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/ai/json_parse.py	type-arg	Missing type parameters for generic type "dict"
+2	app/services/ai/provider.py	call-arg	Unexpected keyword argument "override" for "generate" of "AIProvider"
+15	app/services/ai/provider.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/ai/validator.py	union-attr	Item "None" of "Any | list[Any] | None" has no attribute "__iter__" (not iterable)
+1	app/services/analytics/snapshots.py	no-untyped-def	Function is missing a return type annotation
+1	app/services/analytics/snapshots.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+4	app/services/analytics/snapshots.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/analytics/snapshots.py	type-arg	Missing type parameters for generic type "list"
+1	app/services/area_visibility.py	no-untyped-def	Function is missing a return type annotation
+1	app/services/audit.py	type-arg	Missing type parameters for generic type "dict"
+2	app/services/capacity.py	arg-type	Argument 2 to "_load_assignments" has incompatible type "str | None"; expected "str"
+1	app/services/capacity.py	assignment	Incompatible types in assignment (expression has type "int | float", target has type "int")
+1	app/services/capacity.py	no-untyped-def	Function is missing a return type annotation
+1	app/services/capacity.py	return-value	Incompatible return value type (got "Sequence[Row[Any]]", expected "list[Any]")
+1	app/services/capacity.py	return-value	Incompatible return value type (got "dict[str, int]", expected "dict[str, float]")
+1	app/services/capacity_alerts.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/capacity_alerts.py	type-arg	Missing type parameters for generic type "list"
+2	app/services/change_export.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/services/charter_generator.py	arg-type	Argument "tenant_id" to "next_folio" has incompatible type "str"; expected "UUID"
+1	app/services/charter_generator.py	assignment	Incompatible types in assignment (expression has type "str", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+1	app/services/csv_task_parser.py	arg-type	Argument 1 to "_detect_headers" has incompatible type "list[str]"; expected "list[object]"
+1	app/services/csv_task_parser.py	return-value	Incompatible return value type (got "type[Dialect]", expected "Dialect")
+2	app/services/derived_assignment.py	arg-type	Argument "functional_area_id" to "DerivedAssignment" has incompatible type "UUID | None"; expected "str | None"
+1	app/services/derived_assignment.py	arg-type	Argument "functional_area_id" to "DerivedAssignment" has incompatible type "UUID"; expected "str | None"
+3	app/services/derived_assignment.py	arg-type	Argument "operational_team_id" to "DerivedAssignment" has incompatible type "UUID | None"; expected "str | None"
+2	app/services/derived_assignment.py	arg-type	Argument "project_role_id" to "DerivedAssignment" has incompatible type "UUID | None"; expected "str | None"
+1	app/services/derived_assignment.py	arg-type	Argument 1 to "add" of "set" has incompatible type "UUID"; expected "str"
+1	app/services/derived_assignment.py	index	Invalid index type "tuple[UUID, str]" for "dict[tuple[str, str], DerivedAssignment]"; expected type "tuple[str, str]"
+1	app/services/derived_assignment.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/document_storage.py	no-any-return	Returning Any from function declared to return "str | None"
+5	app/services/document_storage.py	no-untyped-call	Call to untyped function "_get_s3_client" in typed context
+1	app/services/document_storage.py	no-untyped-def	Function is missing a return type annotation
+1	app/services/document_storage.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/email.py	no-any-return	Returning Any from function declared to return "dict[str, Any] | None"
+1	app/services/import_ai.py	no-any-return	Returning Any from function declared to return "dict[Any, Any] | list[Any] | None"
+1	app/services/import_ai.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/import_ai.py	type-arg	Missing type parameters for generic type "list"
+1	app/services/import_job_store.py	arg-type	Argument 1 to "loads" has incompatible type "Awaitable[Any] | Any"; expected "str | bytes | bytearray"
+1	app/services/import_job_store.py	no-any-return	Returning Any from function declared to return "Redis"
+1	app/services/import_job_store.py	no-any-return	Returning Any from function declared to return "dict[Any, Any] | None"
+1	app/services/import_job_store.py	no-untyped-call	Call to untyped function "from_url" in typed context
+2	app/services/import_job_store.py	type-arg	Missing type parameters for generic type "dict"
+3	app/services/import_mapping_suggest.py	type-arg	Missing type parameters for generic type "dict"
+2	app/services/lessons_export.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/services/msproject/mpp_parser.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/msproject/xml_parser.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+1	app/services/notifications.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/operational_reports.py	arg-type	Argument 1 to "prioritize_tasks" has incompatible type "Sequence[Task]"; expected "list[Task]"
+4	app/services/operational_reports.py	no-untyped-call	Call to untyped function "_push" in typed context
+1	app/services/operational_reports.py	no-untyped-def	Function is missing a type annotation
+2	app/services/operational_reports.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+3	app/services/operational_reports.py	type-arg	Missing type parameters for generic type "set"
+3	app/services/organigrama_export.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+2	app/services/pdf_renderer.py	no-any-return	Returning Any from function declared to return "bytes"
+1	app/services/plan_metadata.py	type-arg	Missing type parameters for generic type "tuple"
+1	app/services/plan_quality.py	arg-type	Argument 1 to "sorted" has incompatible type "list[str | None]"; expected "Iterable[str]"
+2	app/services/plan_quality.py	arg-type	Argument 2 to "nearest_ancestor_wbs" has incompatible type "set[str | None]"; expected "set[str]"
+4	app/services/plan_quality.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/progress_calculator.py	misc	Generator has incompatible item type "float"; expected "bool"
+1	app/services/project_membership_sync.py	assignment	Incompatible types in assignment (expression has type "str | None", variable has type "SQLCoreOperations[UUID | None] | UUID | None")
+1	app/services/project_membership_sync.py	return-value	Incompatible return value type (got "UUID | None", expected "str | None")
+2	app/services/raid_export.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+2	app/services/rate_limit.py	arg-type	Argument 1 to "int" has incompatible type "Awaitable[Any] | Any"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"
+1	app/services/rate_limit.py	no-any-return	Returning Any from function declared to return "Redis | None"
+1	app/services/rate_limit.py	no-untyped-call	Call to untyped function "from_url" in typed context
+1	app/services/report_kpis.py	misc	Generator has incompatible item type "int"; expected "bool"
+1	app/services/report_kpis.py	operator	Unsupported operand types for >= ("date" and "None")
+1	app/services/reports/engine.py	assignment	Incompatible types in assignment (expression has type "Sequence[Issue]", variable has type "list[Issue]")
+1	app/services/reports/engine.py	assignment	Incompatible types in assignment (expression has type "Sequence[Risk]", variable has type "list[Risk]")
+1	app/services/reports/engine.py	assignment	Incompatible types in assignment (expression has type "Sequence[Task]", variable has type "list[Task]")
+1	app/services/reports/engine.py	no-untyped-call	Call to untyped function "_sev_key" in typed context
+1	app/services/reports/engine.py	no-untyped-def	Function is missing a return type annotation
+23	app/services/reports/engine.py	no-untyped-def	Function is missing a type annotation
+4	app/services/reports/engine.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/reports/engine.py	type-arg	Missing type parameters for generic type "set"
+1	app/services/reports/gantt_renderer.py	arg-type	Argument 2 to "render_gantt_svg" has incompatible type "Sequence[Task]"; expected "list[Task]"
+2	app/services/reports/gantt_renderer.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/reports/scoped_status.py	arg-type	Argument 1 to "get" of "dict" has incompatible type "Any | None"; expected "str"
+1	app/services/reports/scoped_status.py	no-untyped-def	Function is missing a return type annotation
+2	app/services/reports/scoped_status.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+7	app/services/reports/scoped_status.py	type-arg	Missing type parameters for generic type "dict"
+3	app/services/reports/scoped_status.py	type-arg	Missing type parameters for generic type "list"
+2	app/services/reports/svg.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/seed.py	arg-type	Argument "name" to "_ensure_tenant" has incompatible type "Collection[str]"; expected "str"
+1	app/services/seed.py	arg-type	Argument "settings" to "_ensure_tenant" has incompatible type "Collection[str]"; expected "dict[Any, Any]"
+1	app/services/seed.py	arg-type	Argument "slug" to "_ensure_tenant" has incompatible type "Collection[str]"; expected "str"
+3	app/services/seed.py	index	Invalid index type "Collection[str]" for "dict[str, Role]"; expected type "str"
+3	app/services/seed.py	index	Value of type "Collection[str]" is not indexable
+1	app/services/seed.py	type-arg	Missing type parameters for generic type "dict"
+2	app/services/xlsx_task_parser.py	arg-type	Argument 2 to "_scan_column_formats" has incompatible type "str | None"; expected "str"
+2	app/services/xlsx_task_parser.py	type-arg	Missing type parameters for generic type "dict"
+1	app/services/xlsx_task_parser.py	type-arg	Missing type parameters for generic type "tuple"
+1	app/workers/db.py	type-arg	Missing type parameters for generic type "ContextVar"
+1	app/workers/tasks/ai.py	arg-type	Argument "tenant_id" to "next_folio" has incompatible type "str"; expected "UUID"
+2	app/workers/tasks/ai.py	arg-type	Argument "tenant_id" to "write_audit" has incompatible type "str"; expected "UUID | None"
+2	app/workers/tasks/ai.py	arg-type	Argument "user_id" to "write_audit" has incompatible type "str | None"; expected "UUID | None"
+1	app/workers/tasks/ai.py	arg-type	Argument 1 to "dict" has incompatible type "list[dict[str, Any]] | str | Any | dict[Any, Any] | None"; expected "SupportsKeysAndGetItem[Any, Any]"
+1	app/workers/tasks/ai.py	misc	List comprehension has incompatible type List[Any | None]; expected List[dict[Any, Any]]
+1	app/workers/tasks/ai.py	misc	Untyped decorator makes function "draft_report_task" untyped
+1	app/workers/tasks/ai.py	misc	Untyped decorator makes function "generate_minute_task" untyped
+1	app/workers/tasks/ai.py	misc	Untyped decorator makes function "update_project_context_task" untyped
+1	app/workers/tasks/ai.py	no-any-return	Returning Any from function declared to return "AIJob | None"
+2	app/workers/tasks/ai.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+6	app/workers/tasks/ai.py	type-arg	Missing type parameters for generic type "dict"
+1	app/workers/tasks/notifications.py	misc	Untyped decorator makes function "send_notification_email" untyped
+1	app/workers/tasks/notifications.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+2	app/workers/tasks/notifications.py	type-arg	Missing type parameters for generic type "dict"
+1	app/workers/tasks/scheduled_minutes.py	misc	Untyped decorator makes function "dispatch_due_scheduled_minutes" untyped
+1	app/workers/tasks/scheduled_minutes.py	misc	Untyped decorator makes function "send_scheduled_minute" untyped
+2	app/workers/tasks/scheduled_minutes.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+4	app/workers/tasks/scheduled_minutes.py	type-arg	Missing type parameters for generic type "dict"
+1	app/workers/tasks/scheduled_reports.py	misc	Untyped decorator makes function "dispatch_due_scheduled_reports" untyped
+1	app/workers/tasks/scheduled_reports.py	misc	Untyped decorator makes function "send_scheduled_report" untyped
+2	app/workers/tasks/scheduled_reports.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+5	app/workers/tasks/scheduled_reports.py	type-arg	Missing type parameters for generic type "dict"
+1	app/workers/tasks/snapshots.py	misc	Untyped decorator makes function "capture_weekly_snapshots" untyped
+1	app/workers/tasks/snapshots.py	no-untyped-def	Function is missing a type annotation for one or more arguments
+2	app/workers/tasks/snapshots.py	type-arg	Missing type parameters for generic type "dict"

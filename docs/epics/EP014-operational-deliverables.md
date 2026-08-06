@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 90d
+---
+
 # EP014 — Entregables operativos (reportes Python + formato estandarizado de minuta)
 
 | Campo | Valor |

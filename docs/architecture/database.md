@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # Modelo de datos — PostgreSQL 16
 
 **ID:** `DOC-ARCH-DB`
@@ -30,60 +37,26 @@
 
 ---
 
-## Diagrama ER (alto nivel)
+## Diagrama ER
 
-```mermaid
-erDiagram
-    TENANTS ||--o{ USERS : has
-    TENANTS ||--o{ ROLES : has
-    TENANTS ||--o{ ORGANIZATIONS : has
-    TENANTS ||--o{ PLATFORM_AI_SETTINGS : ""
+**El diagrama se genera del modelo** (MCS DOC-03): vive en
+[`er-generado.md`](er-generado.md) y lo produce `scripts/generar_er.py` desde
+`Base.metadata`, el mismo origen del que Alembic saca las migraciones.
 
-    USERS }o--o{ ROLES : "user_roles"
-    USERS ||--o{ REFRESH_TOKENS : has
-    USERS ||--o{ PASSWORD_RESET_TOKENS : has
+Aquí había uno dibujado a mano, y el encabezado de la sección siguiente decía
+«las 49 reales» cuando eran **56**. Siete de más, y nadie lo notó: un diagrama a
+mano no falla, envejece. `tests/test_doc03_er_generado.py` falla si el generado
+se queda atrás del modelo.
 
-    ORGANIZATIONS ||--o{ BUSINESS_UNITS : has
-    BUSINESS_UNITS ||--o{ DEPARTMENTS : has
-    ORGANIZATIONS ||--o{ PROGRAMS : contains
-    ORGANIZATIONS ||--o{ PROJECTS : contains
-    PROGRAMS ||--o{ PROJECTS : groups
-
-    PROJECT_REQUESTS ||--o| PROJECTS : becomes
-    PROJECTS ||--o{ PROJECT_MEMBERS : has
-    PROJECTS ||--o{ PROJECT_PARTICIPATIONS : has
-    PROJECTS ||--|| PROJECT_CHARTERS : has
-    PROJECTS ||--o{ PROJECT_ARTIFACTS : has
-    PROJECTS ||--o{ RISKS : has
-    PROJECTS ||--o{ ISSUES : has
-    PROJECTS ||--o{ RISK_ACTIONS : has
-    PROJECTS ||--o{ CHANGE_REQUESTS : has
-    PROJECTS ||--o{ DOCUMENTS : has
-    PROJECTS ||--o{ LESSONS : has
-    PROJECTS ||--o{ MEETING_MINUTES : has
-    PROJECTS ||--o{ TASKS : has
-    PROJECTS ||--o{ REPORTS : has
-    PROJECTS ||--o{ SCHEDULED_REPORTS : ""
-    PROJECTS ||--o{ SCHEDULED_MINUTES : ""
-
-    TASKS ||--o{ TASK_DEPENDENCIES : from_to
-
-    TENANTS ||--o{ AREAS : has
-    AREAS ||--o{ TEAMS : has
-    TEAMS ||--o{ ACTORS : has
-    AREAS ||--o{ AREA_ASSIGNMENTS : ""
-
-    AI_JOBS }o--|| PROJECTS : for
-    REPORTS ||--o{ REPORT_HISTORY : versions
-    REPORTS ||--o{ REPORT_SECTIONS : ""
-
-    AUDIT_LOG }o--o| TENANTS : scoped
-    NOTIFICATIONS }o--|| USERS : for
-```
+Lo que **no** se genera —y por eso sigue abajo, escrito por personas— es para
+qué sirve cada tabla y qué invariantes tiene. Eso no está en el modelo.
 
 ---
 
-## Tabla de tablas (las 49 reales)
+## Tabla de tablas
+
+> El conteo vive en [`er-generado.md`](er-generado.md), que lo deriva. Escribirlo
+> aquí es cómo llegó a decir 49 con 56 tablas en el modelo.
 
 Agrupadas por dominio. Todas heredan `TimestampMixin` salvo `audit_log` y tablas con timestamp ad-hoc.
 

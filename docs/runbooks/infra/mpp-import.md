@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-08
+revisar_cada: 180d
+---
+
 # Runbook · Import MPP nativo (MPXJ + OpenJDK 21)
 
 > **Scope:** correr, verificar y reversar el soporte de import `.mpp`

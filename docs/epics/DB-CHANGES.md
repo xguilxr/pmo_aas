@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 90d
+---
+
 # DB-CHANGES.md — Cambios de schema por epic
 
 > **Política activa (2026-04-21):**

@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Agentes y Skills — PMO-aaS
 
 **ID:** `DOC-AGENTS-SKILLS`

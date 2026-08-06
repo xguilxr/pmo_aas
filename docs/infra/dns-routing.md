@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-23
+revisar_cada: 180d
+---
+
 # DNS routing productivo — `pmo-aas.com`
 
 > ⚠️ **Este archivo es una copia legacy.** La versión canónica vive en

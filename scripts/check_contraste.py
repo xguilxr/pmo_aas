@@ -148,6 +148,12 @@ PARES = [
     ("color-tertiary", "color-app", 4.5, ("claro", "oscuro")),
     ("color-tertiary", "color-muted", 4.5, ("claro", "oscuro")),
     ("color-accent-fg", "color-accent", 4.5, ("claro", "oscuro")),
+    # DIS-01 (2026-08-05). `--color-primary-hover` no existía y el botón
+    # primario lo citaba, así que se renderizaba el respaldo —el mismo color de
+    # reposo— y el botón no tenía hover. Al crearlo entra aquí en el mismo
+    # cambio: un par semántico nuevo sin garantía de contraste es exactamente
+    # el agujero que DIS-02 cerró, y lo abriría por la puerta de al lado.
+    ("color-inverse", "color-primary-hover", 4.5, ("claro", "oscuro")),
     ("color-success-fg", "color-success-bg", 4.5, ("claro", "oscuro")),
     ("color-success-fg", "color-surface", 4.5, ("claro", "oscuro")),
     ("color-warning-fg", "color-warning-bg", 4.5, ("claro", "oscuro")),

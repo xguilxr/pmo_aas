@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-07-18
+revisar_cada: 90d
+---
+
 # Draft — Plan de mejoras: feedback cliente 16-jul-2026
 
 > **Fase A/B — triage del PDF** `PMO_AAS_feedback_16jul.pdf` (8 págs,

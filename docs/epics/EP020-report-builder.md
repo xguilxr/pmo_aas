@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-26
+revisar_cada: 90d
+---
+
 # EP020 — Report Builder (Niveles 1, 2 y 4) + Catálogo de secciones atómicas
 
 | Campo | Valor |

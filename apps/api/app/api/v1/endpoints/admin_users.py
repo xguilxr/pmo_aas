@@ -7,7 +7,14 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_capability
-from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
+from app.core.errors import (
+    business_rule,
+    conflict,
+    forbidden,
+    mensaje,
+    not_found,
+    validation_error,
+)
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.core.security import hash_password, validate_password_policy
 from app.db.session import get_db
@@ -113,7 +120,15 @@ async def create_user(
 ):
     ok, err = validate_password_policy(body.password)
     if not ok:
-        raise validation_error("Contraseña no cumple política", {"code": err})
+        raise validation_error(
+            mensaje(
+                que="La contraseña no cumple la política de la plataforma.",
+                porque="Se exige una longitud mínima y una mezcla de mayúsculas, "
+                "minúsculas, números y símbolos, y que no sea una contraseña común.",
+                accion="Elige otra que cumpla los criterios y vuelve a guardar.",
+            ),
+            {"code": err},
+        )
 
     # BUG-055: el superadmin que hizo `joinAsAdmin` tiene
     # `user.tenant_id=None` pero un `active_tenant_id` en el JWT — usar
@@ -142,7 +157,14 @@ async def create_user(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise conflict("username o email duplicado")
+        raise conflict(
+            mensaje(
+                que="Ya existe una cuenta con ese usuario o ese correo.",
+                porque="Los dos son únicos dentro de la organización.",
+                accion="Usa otro, o busca la cuenta existente en el listado para "
+                "editarla.",
+            )
+        )
 
     if body.role_ids:
         valid_roles = (
@@ -151,7 +173,14 @@ async def create_user(
             )
         ).scalars().all()
         if len(valid_roles) != len(body.role_ids):
-            raise validation_error("Uno o más role_ids inválidos")
+            raise validation_error(
+                mensaje(
+                    que="Uno o más de los roles seleccionados no existen.",
+                    porque="Puede que se hayan eliminado mientras tenías el "
+                    "formulario abierto.",
+                    accion="Recarga la página y vuelve a elegir los roles.",
+                )
+            )
 
     user = User(
         tenant_id=tenant_id,
@@ -466,7 +495,13 @@ async def replace_excluded_organizations(
         ).scalars().all()
         if len(valid) != len(target_ids):
             raise validation_error(
-                "Una o más organization_ids no pertenecen al tenant del usuario"
+                mensaje(
+                    que="Una o más de las organizaciones seleccionadas no "
+                    "pertenecen a esta cuenta.",
+                    porque="Solo se puede dar acceso a organizaciones de la misma "
+                    "organización matriz.",
+                    accion="Quita las que no correspondan y vuelve a guardar.",
+                )
             )
 
     await db.execute(

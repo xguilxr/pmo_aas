@@ -465,7 +465,7 @@ export function RaidDetailPage({
       {/* Header card: bloque superior (icono + ID/tipo/estado/sev + título)
           + strip de metadatos (6 columnas) */}
       <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <header className="flex flex-col gap-2 px-[18px] py-[14px]">
+        <header className="flex flex-col gap-2 px-4.5 py-3.5">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 flex-none items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)]">
               <Icon className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
@@ -478,7 +478,7 @@ export function RaidDetailPage({
                   </span>
                   <span className="text-[var(--color-tertiary)]">·</span>
                   <span
-                    className="rounded border border-[var(--chrome-soft-border,_var(--border-default))] bg-[var(--chrome-soft-bg,_var(--color-subtle))] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--chrome-soft-text,_var(--color-tertiary))]"
+                    className="rounded border border-[var(--chrome-soft-border)] bg-[var(--chrome-soft-bg)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--chrome-soft-text)]"
                   >
                     {typeLabel}
                   </span>
@@ -541,7 +541,7 @@ export function RaidDetailPage({
         </header>
 
         {/* Strip 6 columnas con borde superior + fondo soft. */}
-        <div className="grid gap-4 border-t border-[var(--border-default)] bg-[var(--chrome-soft-bg,_var(--color-subtle))] px-[18px] py-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-4 border-t border-[var(--border-default)] bg-[var(--chrome-soft-bg)] px-4.5 py-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {/* Área */}
           <StripCell label="Área">
             {editing ? (
@@ -739,8 +739,8 @@ export function RaidDetailPage({
 
       {/* ENH-069: banner modo edición + Cancelar/Guardar */}
       {editing ? (
-        <section className="flex items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--info-border,_var(--border-default))] bg-[var(--info-bg,_var(--color-subtle))] px-[18px] py-2.5">
-          <p className="text-[13px] text-[var(--info-fg,_var(--color-primary))]">
+        <section className="flex items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--color-info-border)] bg-[var(--color-info-bg)] px-4.5 py-2.5">
+          <p className="text-[13px] text-[var(--color-info-fg)]">
             Modo edición activo.
           </p>
           <div className="flex items-center gap-2">

@@ -126,7 +126,7 @@ export function NotificationBell() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-[360px] overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-lg,0_10px_30px_rgba(0,0,0,0.1))]"
+          className="absolute right-0 z-50 mt-2 w-[360px] overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-lg)]"
         >
           <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
             <h3 className="text-sm font-semibold text-[var(--color-primary)]">

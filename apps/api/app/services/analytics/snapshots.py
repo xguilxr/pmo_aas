@@ -18,6 +18,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.unidades import razon_a_pct
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import ChangeRequest, Issue, Risk
 from app.models.organization import Organization, Program
@@ -69,7 +70,7 @@ def _planned_progress(start: date | None, end: date | None, ref_date: date) -> f
         return 100.0
     total = (end - start).days or 1
     elapsed = (ref_date - start).days
-    return max(0.0, min(100.0, round(elapsed * 100 / total, 2)))
+    return max(0.0, min(100.0, razon_a_pct(elapsed, total, decimales=2)))
 
 
 def _project_conditions(tenant_id: str, scope_type: str, scope_id: str) -> list:

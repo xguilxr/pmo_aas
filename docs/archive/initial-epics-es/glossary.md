@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Glosario / Glossary
 
 | Término (ES)                | Term (EN)                 | Descripción                                                                 |

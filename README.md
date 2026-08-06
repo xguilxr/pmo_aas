@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-05-29
+revisar_cada: 180d
+---
+
 # PMO-aaS — Project Management Office as a Service
 
 > Plataforma SaaS multi-tenant para gestionar portafolios, programas y proyectos. Construida sobre **Railway** con un stack limpio, fluido y rápido, con estética inspirada en macOS/iPadOS.

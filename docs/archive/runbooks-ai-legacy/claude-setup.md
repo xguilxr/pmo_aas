@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Setup de Claude (3.º proveedor — fallback premium)
 
 **ID:** `DOC-AI-CLAUDE`

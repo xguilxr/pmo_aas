@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # Test Matrix — trazabilidad épica → historia → test
 
 Leyenda de estado:

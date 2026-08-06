@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: archivado
+revisado: 2026-05-08
+revisar_cada: nunca
+---
+
 # EP-008: Inteligencia Artificial - Minutas y Reportes
 
 **Prioridad:** Alta

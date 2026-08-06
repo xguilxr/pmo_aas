@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-06-05
+revisar_cada: 90d
+---
+
 # EP018 — Documentos / Artefactos por proyecto
 
 | Campo | Valor |

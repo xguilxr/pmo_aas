@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 90d
+---
+
 # Revisión del glosario — decisiones del owner
 
 | Campo | Valor |

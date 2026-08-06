@@ -1,3 +1,10 @@
+---
+responsable: propietario
+estado: vigente
+revisado: 2026-08-05
+revisar_cada: 180d
+---
+
 # Setup en Railway (sin local, sin Linux)
 
 Guía optimizada con **Shared Variables** para minimizar el esfuerzo de configuración.
@@ -87,6 +94,7 @@ Railway al importar el repo creó un servicio default. Bórralo y crea estos 3 d
 | `BCRYPT_ROUNDS` | `12` | |
 | `PYTHON_ENV` | `production` | |
 | `LOG_LEVEL` | `INFO` | |
+| `LOG_FORMAT` | `json` | MCS OPS-01. `consola` solo sirve en local: en `production` se ignora. |
 | `AI_MODE` | `platform` | `disabled` \| `platform` \| `byo`. Default = `platform` (Groq). |
 | `GROQ_API_KEY` | `gsk_…` | Key de la cuenta Groq de plataforma. En prod además se persiste cifrada en `platform_ai_settings`. |
 | `GROQ_MODEL` | `llama-3.3-70b-versatile` | Modelo default del modo platform. |
