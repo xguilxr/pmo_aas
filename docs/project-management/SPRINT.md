@@ -1,7 +1,7 @@
 ---
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-06
 revisar_cada: 30d
 ---
 
@@ -51,8 +51,8 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   con prueba y verificación por mutación. Cierran `SEG-05`, `OPS-01`, `DEV-04`,
   `CFG-04`, `DIS-01`+`CFG-14`, `DOC-01`, `DOC-03`, `DAT-04`+`DAT-08`, `DAT-12`,
   y `DAT-05` **vuelve a cerrar** — estaba CONFORME sobre una lista escrita a
-  mano y quedaba una quinta paleta, en el acta que se firma. Siguen PARCIAL
-  `DAT-06` (queda `amber_max`, es contrato) y `LEN-02` (177→169, con el
+  mano y quedaba una quinta paleta, en el acta que se firma. `DAT-06` cerró
+  entero el mismo día (ver Ola 3); sigue PARCIAL `LEN-02` (177→**166**, con el
   mecanismo ya puesto). **`DAT-02`, `DIS-03` y `DAT-11` se reclasifican**: no
   son mecánicos, y ahora están medidos. Detalle en `plan-remediacion.md`.
 - [ ] **Ola 3 — necesita postura del owner.** Alcance de competencia
@@ -70,11 +70,13 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
 
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
-  Tres abiertas: `phase=support`, `portfolio_function`, `wbs`.
+  **Cuatro abiertas:** `phase=support`, `portfolio_function`, `wbs` y
+  `amber_max` (esta desde el 2026-08-06; se mira el contador a los dos meses).
 - [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los valores de
   US-196 son razonados, no medidos; se ajustan en `settings`, sin tocar código.
 - [ ] **`design-system/tokens.md`** describe una paleta anterior a D-7 y
-  ADR-023. Declarado obsoleto, no corregido.
+  ADR-023. Marcado `reemplazado` con aviso en el cuerpo el 2026-08-06; queda
+  reescribirlo contra la paleta vigente, que es trabajo de diseño.
 - [ ] **Línea base** (D-6), sin la cual «desviación» no tiene referente, y
   **DCMA 14-point**. Épica propia, sin abrir.
 
@@ -93,39 +95,19 @@ ejecutar. El historial narrativo sigue en `SPRINT-DONE-HISTORY.md`.
 
 ## Notas y cambios recientes
 
-> Histórico narrativo en `SPRINT-DONE-HISTORY.md`.
-
-- **2026-08-06 (Ola 2 + SEG-04):** quince commits. `SEG-04` era la única
-  CRÍTICA y el hueco era explotable: un PM asignado a un proyecto podía abrir
-  cualquier otro de su inquilino con solo tener el identificador — nueve copias
-  del resolvedor de proyecto y solo una comprobaba el alcance.
- Lo que la medición no veía: el acta en
-  `.docx` se firmaba con la paleta anterior a DIS-02; once citas a tokens
-  inexistentes hacían que la página de documentos pintara tema claro en modo
-  oscuro y que la tabla de permisos saliera sin fondo; el gate de tipos daba
-  verde sin analizar nada; el worker no configuraba su registro y Celery se lo
-  llevaba por delante. Cuatro hallazgos, ninguno de leer código: los cuatro
-  salieron de medir contra el texto del requisito.
-
-  El detalle de la sesión del 2026-08-05 está en `SPRINT-DONE-HISTORY.md`.
+> Histórico narrativo en `SPRINT-DONE-HISTORY.md`, incluida la ronda del
+> 2026-08-06 (Ola 2 + `SEG-04` + la verificación local por la caída de Actions).
 
 ---
 
 ## Instrucción para Claude Code
 
-Cuando arranques una sesión nueva:
+El procedimiento **no vive aquí**: se duplicaba palabra por palabra con
+`CLAUDE.md`, y dos copias de una regla son una regla que se contradice sola.
 
-1. Lee `docs/project-management/HANDOFF.md` PRIMERO.
-2. Luego `CLAUDE.md` + este archivo + el epic referenciado en IN-PROGRESS.
-3. Mueve la siguiente US/ENH/BUG de **INBOX** (marcada `status:ready`) a **IN-PROGRESS** antes de empezar.
-4. Cambia label del issue: `status:ready` → `status:in-progress`.
-5. Implementa con tests verdes + typecheck (comandos en la skill `verificar`).
-6. Commit con header `<tipo>(<scope>): <ID> — <desc> (refs #<issue>)` y push.
-7. Cambia label → `status:fix-committed` + comment con template CLAUDE.md §3 paso 6.
-8. Mueve item a DONE en este archivo o a la tabla histórica si cierra sprint.
-9. Resumen de ronda al owner siguiendo CLAUDE.md §11.
-10. Al cierre de sesión: invocar `/handoff` para limpiar este archivo y dejar bridge.
-
-**Regla sagrada:** 1 US = 1 commit. No mezclar varios IDs en el mismo commit.
-
-**Regla post-Sprint 26 (decisión owner 2026-05-22):** desarrollo secuencial puro. 1 sesión activa, 1 lane, 1 branch. Migraciones consecutivas sin paralelización.
+- Qué se carga y en qué orden → `CLAUDE.md` §1
+- Ciclo de trabajo, labels y comment de cierre → §3 y skills `triage` /
+  `cerrar-item`
+- Cómo se comprueba que algo funciona → skill `verificar`
+- **1 US = 1 commit** → §7 · Branch y sesiones secuenciales → §8
+- Resumen de ronda → §11 · Cierre de sesión → `/handoff` (§12)

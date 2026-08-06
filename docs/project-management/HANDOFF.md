@@ -7,8 +7,7 @@ revisar_cada: 30d
 
 # HANDOFF.md — Estado para la próxima sesión
 
-**Branch activa:** `claude/remediacion-ola-2-2kg36x` — **rebasada sobre `main`**; #581
-mergeó los 13 primeros commits y quedan **4 fuera**, que necesitan PR nuevo
+**Branch activa:** `claude/remediacion-ola-2-2kg36x`, rebasada sobre `main` · **PR #582 abierto**
 **Generado por:** `/handoff`
 
 ---
@@ -26,18 +25,21 @@ hasta que caigan los 30, y lo que queda necesita postura del owner.
 
 ## 📍 Dónde retomar
 
-**Abrir un PR nuevo con los cuatro commits que quedaron fuera de #581** — entre
-ellos `SEG-04`, que es la única CRÍTICA y **todavía no está en `main`**.
+**Mergear #582.** Lleva `SEG-04` —la única CRÍTICA— y `DAT-06`, y ninguno de los
+dos está en `main`.
+
+Su CI **no reportó**, y no es el código: GitHub Actions tuvo una caída y cuatro
+de los cinco trabajos murieron en «Set up job» con 0 ms facturables. Los cuatro
+se corrieron a mano el 2026-08-06 y están en verde. Aun así, al mergear conviene
+dejar que el CI corra de verdad: **la verificación local no sustituye al
+trinquete**, lo suple mientras está caído.
 
 Después, añadir las dos verificaciones nuevas a las exigidas de `main` (ver
-Cleanup): eso sí va tras el merge, porque GitHub no deja exigir un check que
-nunca ha reportado.
-
-Después: **Ola 3**, que el owner dejó para otra sesión. Las tres primeras
+Acciones): va tras el merge, porque GitHub no deja exigir un check que nunca ha
+reportado. Luego, **Ola 3**, que el owner dejó para otra sesión. Las tres primeras
 —alcance de competencia (`CON-01/03/05`), escenarios de calidad con medida
 (`REQ-02`) e inventario de datos personales (`REQ-03`)— desbloquean nueve
-requisitos entre ellas, y las tres necesitan una decisión antes de tocar
-código.
+requisitos entre ellas, y las tres necesitan una decisión antes de tocar código.
 
 ## ✅ Hecho en esta sesión
 
@@ -46,21 +48,20 @@ Quince commits, uno por requisito. **Cierran** `SEG-05`, `OPS-01`, `DEV-04`,
 **`SEG-04`** y **`DAT-06`**; `DAT-05` vuelve a cerrar. `LEN-02` baja de 177 a
 166 sin cerrar. `git log --oneline origin/main..HEAD` los tiene con su porqué.
 
-## 🔄 PRs abiertos o en flight
+**Verificación local de los cuatro trabajos caídos: todo verde** — suite 1377,
+build de web, bandit, pip-audit, pnpm audit, gitleaks sobre 478 commits, y la
+0101 contra Postgres real. Salieron **dos correcciones que el CI no habría
+dado**, las dos en el aparato de verificación y ninguna en el producto (Gotchas).
+Informe:
+[`2026-08-06-verificacion-local.md`](../conformidad/2026-08-06-verificacion-local.md).
 
-**#581 — MERGEADO**, con los 13 primeros commits (hasta `47eb7b8`).
+## 🔄 PRs
 
-**Quedan cuatro fuera y necesitan PR nuevo.** El merge cayó justo en el handoff
-que cerraba la Ola 2, y `SEG-04` y `DAT-06` se hicieron después. Un PR mergeado
-no puede seguir rastreando trabajo, así que la rama se **rebasó sobre `main`** y
-lleva solo esos cuatro:
-
-| SHA | Qué |
-|---|---|
-| `32b56b7` | **`SEG-04`** — la única CRÍTICA. **No está en `main`** |
-| `18c30f1` | `DAT-06` — `amber_max` → `yellow_max` (ADR-030, migración **0101**) |
-| `4671227` | Este puente + el plan |
-| `61770ef` | El hook `commit-msg` suponía `python3`; en Windows no existe |
+**#581 — MERGEADO** (13 commits, hasta `47eb7b8`). **#582 — ABIERTO** con el
+resto: `SEG-04` (`32b56b7`), `DAT-06` (`18c30f1`), la portabilidad del hook
+`commit-msg` (`61770ef`), los puentes y —nuevo— la suite de la 0101 contra
+Postgres más la limpieza del expediente. El merge de #581 cayó a mitad de la
+ronda; un PR mergeado no rastrea trabajo nuevo, así que la rama se rebasó.
 
 ## ⚠️ Gotchas y decisiones recientes
 
@@ -70,39 +71,47 @@ lleva solo esos cuatro:
   modo oscuro; el gate de tipos daba verde sin analizar nada; el worker no
   configuraba su registro; nueve copias del resolvedor de proyecto dejaban
   entrar a proyectos ajenos; y la etiqueta de ajustes decía «Ámbar».
+- **Un trabajo verde sobre un sujeto vacío es un trabajo verde sobre nada.**
+  `api-migrations-postgres` corre sobre base limpia y ninguna migración inserta
+  inquilinos: el bucle de la 0101 recorría cero filas, así que habría pasado con
+  la migración rota. Remediado con `test_dat06_migracion_0101.py`.
+- **Corrección: `sa.text` sobre JSON *no* falla en Postgres.** El puente anterior
+  afirmaba lo contrario. Se mutó la 0101 de vuelta a esa versión y **pasó**: el
+  parámetro viaja como `unknown` y Postgres lo convierte. La tabla tipada se
+  queda por ser lo correcto, no por aquel motivo.
 - **`SEG-04` cambió comportamiento:** un usuario `role_type='user'` **sin
   ninguna asignación** deja de alcanzar cualquier proyecto. Es lo que
   `user_scope_assignments` dice desde que se escribió y lo que el listado ya
   hacía; se cerró la puerta de la URL directa.
-- **Una migración sobre JSON no se escribe con `sa.text`** y el diccionario ya
-  serializado: funciona en SQLite y falla en Postgres. Forma de BUG-039.
 
 ## 📋 Lo que sigue
 
 Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
 
-- **Ola 3** — necesita postura del owner, y el owner la dejó para otra sesión.
-  Se le suman tres de la Ola 2 que resultaron no ser mecánicas: `DAT-02` (8
-  renombres con migración y ventana, como `wbs`), `DIS-03` y `DAT-11`.
+- **Ola 3** — necesita postura del owner. Se le suman `DAT-02` (8 renombres con
+  migración y ventana, como `wbs`), `DIS-03` y `DAT-11`.
 - **`LEN-02`** es el único que cierra sin decisión: 166 mensajes con texto
   suelto, y el mecanismo ya obliga a las tres partes al tocar cada endpoint.
 - **Cuatro ventanas de compatibilidad abiertas** (`phase=support`,
-  `portfolio_function`, `wbs`, `amber_max`). Se cierran con dato: a los dos
-  meses se mira `compat.nombre_viejo`.
+  `portfolio_function`, `wbs`, `amber_max`). Se cierran con dato a los dos meses.
 
-## 📚 Estado de las epics docs
+## 📚 Estado de las docs
 
-| Epic | Sincronizada | Notas |
-|---|---|---|
-| EP004 | sí | US-020: el hueco se ve distinto del cero (DAT-12) |
-| EP014 · EP020 | sin cambios | no describen el vocabulario del semáforo; lo hace el glosario, ya al día |
+**EP004** sincronizada (US-020: el hueco se ve distinto del cero). **EP014** y
+**EP020** sin cambios: no describen el vocabulario del semáforo, lo hace el
+glosario.
 
 `ADR-030` y `DB-CHANGES.md` (0101) al día. El modelo de amenazas suma **AM-15**
-—acceso a un proyecto ajeno dentro del mismo inquilino—, hermana de AM-02.
-
-Al día también: glosario (`amber` a 0 restos), `plan-remediacion.md`,
-`design-system/tokens.md` (declarado **reemplazado**, con aviso en el cuerpo),
+—acceso a un proyecto ajeno dentro del mismo inquilino—, hermana de AM-02. Al
+día también: glosario, `design-system/tokens.md` (declarado **reemplazado**),
 `database.md` y el nuevo `er-generado.md`.
+
+**Expediente de conformidad limpiado.** `plan-remediacion.md` se declaraba
+`historico`/`nunca` siendo el plan **activo**; ahora es `vigente` y trae las
+cifras de hoy. `docs/conformidad/` estrena
+[`README.md`](../conformidad/README.md) — eran trece documentos sin forma de
+saber cuál estaba vivo. Los informes fechados **no se tocaron**: son el
+expediente, y el índice explica por qué no se editan.
 
 ## 🧹 Acciones del owner
 
@@ -120,8 +129,9 @@ Al día también: glosario (`amber` a 0 restos), `plan-remediacion.md`,
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
-- **`DOC-07`** — tres documentos con la revisión vencida; el gate solo informa.
-  Hacerlo fallar exige decidir qué pasa con lo que nadie va a revisar.
+- **`DOC-07`** — el gate solo informa, y hoy hay **cero vencidos**: los tres que
+  había eran registro marcado como vigente, ya corregidos a `historico`. Hacerlo
+  fallar ya no arrastra pasivo.
 - **`DAT-07`** — tipos propios de magnitud. Hoy nada impide pasar un porcentaje
   donde se espera una fracción.
 - Línea base (D-6) y DCMA 14-point: épica propia.

@@ -1,11 +1,14 @@
 ---
 responsable: propietario
-estado: vigente
+estado: historico
 revisado: 2026-06-07
-revisar_cada: 30d
+revisar_cada: nunca
 ---
 
 # Handoff — pmo_aas — 2026-06-07
+
+> **Histórico.** Puente de la sesión del 2026-06-07, cuyo PR #549 ya mergeó.
+> El puente vivo es siempre [`HANDOFF.md`](HANDOFF.md).
 
 ## Estado
 - Branch: `claude/owner-feedback-batch` · Base: `main` · PR: **#549 — MERGED** (https://github.com/xguilxr/pmo_aas/pull/549)

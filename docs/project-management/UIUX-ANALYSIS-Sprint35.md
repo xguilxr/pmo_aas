@@ -1,11 +1,15 @@
 ---
 responsable: propietario
-estado: vigente
+estado: historico
 revisado: 2026-06-28
-revisar_cada: 30d
+revisar_cada: nunca
 ---
 
 # Análisis UI/UX + alineación de campos RAID — Sprint 35 (2026-06-28)
+
+> **Histórico.** Entregable del Sprint 35 (2026-06-28), conservado como
+> registro del análisis. Lo que de aquí sigue pendiente vive en
+> [`SPRINT-BACKLOG.md`](SPRINT-BACKLOG.md), no en este documento.
 
 > Entregable de cierre del batch "Plan page + RAID mejoras". Cubre el análisis
 > UI/UX pedido por el owner y **ENH-169** (alinear/complementar campos RAID).

@@ -1,13 +1,42 @@
 ---
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-06
 revisar_cada: 30d
 ---
 
 # SPRINT-DONE-HISTORY.md — Histórico de bloques completados (Sprint 1 v1.0 MVP)
 
 > **Propósito:** Archivo de referencia histórica. Los bloques completados se mueven aquí desde SPRINT.md cuando se cierra un sprint. Permite que SPRINT.md mantenga solo lo pendiente para el sprint activo.
+
+---
+
+## Ronda 2026-08-06 — Ola 2, `SEG-04` y verificación local
+
+- **2026-08-06 (Ola 2 + SEG-04):** quince commits. `SEG-04` era la única
+  CRÍTICA y el hueco era explotable: un PM asignado a un proyecto podía abrir
+  cualquier otro de su inquilino con solo tener el identificador — nueve copias
+  del resolvedor de proyecto y solo una comprobaba el alcance.
+  Lo que la medición no veía: el acta en
+  `.docx` se firmaba con la paleta anterior a DIS-02; once citas a tokens
+  inexistentes hacían que la página de documentos pintara tema claro en modo
+  oscuro y que la tabla de permisos saliera sin fondo; el gate de tipos daba
+  verde sin analizar nada; el worker no configuraba su registro y Celery se lo
+  llevaba por delante; y la etiqueta del formulario de ajustes seguía diciendo
+  «Ámbar». **Seis hallazgos**, ninguno de leer código: los seis salieron de
+  medir contra el texto del requisito.
+
+- **2026-08-06 (verificación local por caída de Actions):** con GitHub Actions
+  caído se corrieron a mano los cuatro trabajos que no reportaron. Todos en
+  verde. De ahí salieron dos correcciones que el CI no habría dado:
+  `api-migrations-postgres` **no ejercía** la migración 0101 —corre sobre base
+  limpia y ninguna migración inserta inquilinos, así que el bucle recorría cero
+  filas—, y la justificación escrita en el encabezado de esa migración era
+  **falsa**: la versión con `sa.text` que se creía rota pasa contra Postgres.
+  Se comprobó mutándola. Suite nueva `test_dat06_migracion_0101.py` y paso
+  nuevo en el trabajo del CI.
+
+  El detalle de la sesión del 2026-08-05 está en `SPRINT-DONE-HISTORY.md`.
 
 ---
 
