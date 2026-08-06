@@ -122,6 +122,12 @@ jobs:
       - name: Tokens de diseño sin literales (DIS-01)
         run: python scripts/check_tokens.py
 
+      # DIS-04 — un aviso destructivo nombra el objeto y dice su consecuencia.
+      # Va en `contraste-wcag` porque es el job que ya mira `apps/web` sin
+      # necesitar Node: el gate solo lee ficheros.
+      - name: Avisos destructivos por la frontera (DIS-04)
+        run: python scripts/check_confirmaciones.py
+
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
   # COMPLETO) e INT-02 (análisis estático de seguridad, dependencias vulnerables

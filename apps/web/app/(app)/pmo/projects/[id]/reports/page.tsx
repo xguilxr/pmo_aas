@@ -78,6 +78,7 @@ import {
   type ReportBuilderTemplate,
 } from "@/lib/api/report-builder";
 import { cn } from "@/lib/cn";
+import { confirmarDestructivo } from "@/lib/confirmar";
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -338,7 +339,17 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
   }
 
   async function remove(row: ScheduledReport) {
-    if (!window.confirm("¿Eliminar esta programación?")) return;
+    if (
+      !confirmarDestructivo({
+        // Una programación no tiene nombre propio: lo que la identifica en
+        // pantalla es su tipo y su cadencia, y es lo que se le devuelve.
+        objeto: `la programación de ${REPORT_TYPE_LABEL[row.report_type]} (${CADENCE_LABEL[row.cadence]})`,
+        consecuencia: "Los informes que ya se enviaron no se tocan; deja de generarse a partir de ahora.",
+        // `db.delete` en el API: esta NO marca `deleted_at`.
+        reversibilidad: "definitiva",
+      })
+    )
+      return;
     try {
       await deleteScheduledReport(row.id);
       await refresh();
