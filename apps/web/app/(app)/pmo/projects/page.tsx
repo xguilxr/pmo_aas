@@ -285,6 +285,12 @@ export default function ProjectsListPage() {
               {orgLabel.singular === "Portafolio" ? "Todos los" : "Todas las"}{" "}
               {orgLabel.plural.toLowerCase()}
             </option>
+            {/* DIS-03: un inquilino recién creado no tiene organizaciones. */}
+            {orgs.length === 0 ? (
+              <option value="" disabled>
+                (aún no hay organizaciones)
+              </option>
+            ) : null}
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -310,6 +316,12 @@ export default function ProjectsListPage() {
               <>
                 <option value="">Todos los programas</option>
                 <option value="__no_program__">Sin programa</option>
+                {/* DIS-03: la organización elegida puede no tener programas. */}
+                {programs.length === 0 ? (
+                  <option value="" disabled>
+                    (esta organización no tiene programas)
+                  </option>
+                ) : null}
                 {programs.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}

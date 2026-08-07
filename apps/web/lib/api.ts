@@ -86,6 +86,16 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestOptions =
         window.dispatchEvent(new CustomEvent("pmoaas:unauthorized"));
       }
     }
+    // MCS DIS-03 — el 403 se anuncia igual que el 401, y por el mismo motivo:
+    // una respuesta de la API no puede pintar una pantalla desde aquí, pero sí
+    // avisar a quien sepa hacerlo. Lo recoge `<FronteraDePermiso>`.
+    //
+    // **No es lo mismo que el 401**, y confundirlos es el fallo que manda a
+    // alguien a iniciar sesión otra vez con la sesión ya iniciada. Aquí la
+    // sesión vale; lo que falta es el permiso.
+    if (res.status === 403 && auth && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pmoaas:forbidden"));
+    }
     const envelope = extractErrorEnvelope(data, res.status);
     throw new ApiError(res.status, envelope.code, envelope.detail, envelope.fields);
   }

@@ -151,6 +151,13 @@ export default function UsersListPage() {
             aria-label="Filtrar por rol"
           >
             <option value="">Todos los roles</option>
+            {/* DIS-03: sin roles cargados el filtro queda con una sola opción.
+                Se dice, en vez de dejar un desplegable que no despliega nada. */}
+            {roles.length === 0 ? (
+              <option value="" disabled>
+                (aún no hay roles definidos)
+              </option>
+            ) : null}
             {roles.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}

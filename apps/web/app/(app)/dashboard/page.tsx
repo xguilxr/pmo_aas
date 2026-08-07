@@ -360,6 +360,12 @@ function DashboardInner() {
             aria-label="Filtrar por organización"
             className="min-w-[220px]"
           >
+            {/* DIS-03: un inquilino recién creado no tiene organizaciones. */}
+            {orgs.length === 0 ? (
+              <option value="" disabled>
+                (aún no hay organizaciones)
+              </option>
+            ) : null}
             <option value="">Todas las organizaciones</option>
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
@@ -709,6 +715,17 @@ function DashboardInner() {
           </tr>
         </thead>
         <tbody>
+          {/* DIS-03: la tabla vacía no es un fallo — es una cartera sin
+              proyectos que casen con el filtro. Sin esto salían las cabeceras
+              solas, que se lee como «se rompió». */}
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={7} className="px-3 py-8 text-center text-sm text-[var(--text-tertiary)]">
+                Ningún proyecto coincide con los filtros. Quita alguno para ver
+                la comparación entre lo planeado y lo real.
+              </td>
+            </tr>
+          ) : null}
           {rows.map((r) => (
             <tr key={`sr-${r.project_id}`}>
               <td>{r.name}</td>

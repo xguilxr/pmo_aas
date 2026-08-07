@@ -145,6 +145,11 @@ jobs:
       - name: Periodo y marca de actualización (DAT-11)
         run: python scripts/check_frescura.py
 
+      # MCS DIS-03 — las tres fronteras de estado siguen enganchadas y ninguna
+      # pantalla recorre una colección de la API sin tratar el caso vacío.
+      - name: Los cinco estados por pantalla (DIS-03)
+        run: python scripts/check_estados.py
+
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
   # COMPLETO) e INT-02 (análisis estático de seguridad, dependencias vulnerables
