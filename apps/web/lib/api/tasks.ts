@@ -1,5 +1,4 @@
 import { apiFetch, ApiError } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 export type TaskStatus = "not_started" | "in_progress" | "completed" | "on_hold";
 
@@ -167,14 +166,12 @@ export async function importMsProject(
   strategy: string;
 }> {
   const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
-  const token = getAccessToken();
   const form = new FormData();
   form.append("file", file);
   const url = `${base}/api/v1/projects/${projectId}/tasks/import?strategy=${strategy}`;
   const res = await fetch(url, {
     method: "POST",
     body: form,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
   });
   const text = await res.text();
@@ -298,9 +295,7 @@ async function rawFetch(
   url: string,
   init: RequestInit,
 ): Promise<Response> {
-  const token = getAccessToken();
   const headers = new Headers(init.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
   return fetch(url, { ...init, headers, credentials: "include" });
 }
 

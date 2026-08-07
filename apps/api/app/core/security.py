@@ -6,6 +6,8 @@ import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.core.contrasenas_filtradas import esta_filtrada
+from app.core.errors import mensaje
 
 # MCS SEG-01 / ASVS 2.1.3 — bcrypt **trunca a 72 bytes en silencio**, así que
 # antes de esto dos contraseñas distintas de 103 y 108 caracteres que
@@ -112,7 +114,16 @@ PASSWORD_POLICY_MAX_LEN = 128
 
 
 def validate_password_policy(password: str) -> tuple[bool, str | None]:
-    """Return (ok, error_code). Policy: 8..128 chars, 1 upper, 1 digit, 1 symbol."""
+    """Return (ok, error_code). Policy: 8..128 chars, 1 upper, 1 digit, 1 symbol,
+    y que no esté en el conjunto de contraseñas filtradas (ASVS 2.1.7).
+
+    El contraste contra las filtradas va **aquí dentro** y no en cada endpoint a
+    propósito: hay seis sitios que fijan una contraseña —cambio, restablecimiento,
+    alta por administrador, alta de inquilino, y dos del superadministrador— y un
+    control que hay que acordarse de llamar seis veces es un control que va a
+    faltar en el séptimo. Va el último de los cinco porque es el único que
+    cuesta una búsqueda en un conjunto de 23.000 entradas.
+    """
     if len(password) < PASSWORD_POLICY_MIN_LEN:
         return False, "password_too_short"
     if len(password) > PASSWORD_POLICY_MAX_LEN:
@@ -124,4 +135,48 @@ def validate_password_policy(password: str) -> tuple[bool, str | None]:
     symbols = set("!@#$%^&*()-_=+[]{};:,.<>/?|`~'\"\\")
     if not any(c in symbols for c in password):
         return False, "password_missing_symbol"
+    if esta_filtrada(password):
+        return False, "password_breached"
     return True, None
+
+
+def mensaje_de_politica(codigo: str | None) -> str:
+    """Las tres partes de LEN-02 para cada motivo de rechazo.
+
+    Existe porque `password_breached` no se puede explicar con el texto que
+    había. Los seis sitios decían variantes de «no cumple la política… usa
+    mayúsculas, números y símbolos», y a quien escribió `Password1!` —que las
+    lleva todas— ese texto le dice que haga exactamente lo que ya hizo.
+
+    De paso arregla una evidencia que no era cierta: el alta de usuario ya
+    prometía «y que no sea una contraseña común» antes de que nada lo
+    comprobara.
+    """
+    if codigo == "password_breached":
+        return mensaje(
+            que="Esa contraseña aparece en filtraciones públicas conocidas.",
+            porque=(
+                "Cumple las reglas, pero es de las que un atacante prueba primero: "
+                "casi todo el mundo satisface «mayúscula, número y símbolo» de la "
+                "misma forma, y esa contraseña es una de las que salen."
+            ),
+            accion=(
+                "Elige una que no derive de una palabra común. Tres o cuatro "
+                "palabras sin relación entre sí son más seguras y más fáciles de "
+                "recordar que sustituir letras por símbolos."
+            ),
+        )
+    if codigo == "password_too_long":
+        return mensaje(
+            que=f"La contraseña pasa de {PASSWORD_POLICY_MAX_LEN} caracteres.",
+            porque="Es el máximo declarado por la plataforma.",
+            accion=f"Recórtala a {PASSWORD_POLICY_MAX_LEN} caracteres o menos.",
+        )
+    return mensaje(
+        que="La contraseña no cumple la política de la plataforma.",
+        porque=(
+            f"Se exigen al menos {PASSWORD_POLICY_MIN_LEN} caracteres con una "
+            f"mayúscula, un número y un símbolo. Es lo que encarece adivinarla."
+        ),
+        accion="Añade lo que falte y vuelve a guardar.",
+    )

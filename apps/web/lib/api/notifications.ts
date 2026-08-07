@@ -92,4 +92,9 @@ export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
   change_pending: "Cambio en revisión",
   minute_generated: "Minuta IA generada",
   report_sent: "Reporte enviado",
+  // ASVS 2.2.3 / 2.5.5 — avisos de cambio en los datos de acceso. Sin rótulo,
+  // la campana mostraba el identificador crudo (`password_changed`).
+  password_reset_requested: "Recuperación de contraseña solicitada",
+  password_changed: "Contraseña cambiada",
+  credential_changed: "Datos de acceso cambiados",
 };

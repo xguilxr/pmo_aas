@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 from pathlib import Path
 
 from fastapi import UploadFile, status
@@ -9,6 +10,10 @@ from fastapi import UploadFile, status
 from app.core.config import settings
 from app.core.errors import AppError, mensaje, validation_error
 from app.core.unidades import mebibytes
+from app.services.svg_seguro import SvgInseguroError
+from app.services.svg_seguro import sanea as sanea_svg
+
+log = logging.getLogger(__name__)
 
 MAX_LOGO_BYTES = mebibytes(2)  # criterio US-031
 
@@ -57,6 +62,37 @@ async def logo_to_data_url(upload: UploadFile) -> str:
             "El logo excede 2 MB",
             {"max_bytes": MAX_LOGO_BYTES, "size": len(data)},
         )
+
+    # MCS SEG-01 · ASVS 5.2.7 — un SVG no es una imagen: es un documento XML que
+    # admite `<script>`, `onload=` y `<foreignObject>` con HTML dentro. Se sanea
+    # **aquí**, que es el único sitio por donde entra, y no en cada sitio donde
+    # se pinta: hoy son cuatro (web, correo, PDF y el endpoint que lo sirve) y
+    # el quinto no se acordaría. El porqué, en `services/svg_seguro.py`.
+    if content_type == "image/svg+xml":
+        try:
+            data, quitado = sanea_svg(data)
+        except SvgInseguroError as exc:
+            raise validation_error(
+                mensaje(
+                    que="Ese SVG trae contenido que no es dibujo.",
+                    porque=(
+                        "Un SVG puede llevar guiones, HTML incrustado o referencias "
+                        "a otros servidores, y el logotipo se muestra dentro de la "
+                        f"aplicación y de los PDF que genera. Detalle: {exc}"
+                    ),
+                    accion=(
+                        "Expórtalo otra vez desde tu editor como SVG plano, sin "
+                        "guiones ni imágenes enlazadas, o súbelo en PNG."
+                    ),
+                ),
+                fields={"motivo": str(exc)},
+            ) from exc
+        if quitado:
+            log.info(
+                "ASVS 5.2.7 — SVG saneado, %d elementos o atributos retirados: %s",
+                len(quitado), ", ".join(quitado[:10]),
+            )
+
     mime = _CANONICAL_MIME.get(content_type, content_type)
     b64 = base64.b64encode(data).decode("ascii")
     return f"data:{mime};base64,{b64}"

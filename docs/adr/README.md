@@ -1565,3 +1565,257 @@ sonaba generoso mientras por detrás había uno de 72 sin avisar.
 **Revisión:** ante el primer incidente de credenciales, o si entra
 autenticación de segundo factor (`4.3.1`), que cambia el peso de la contraseña
 en el conjunto.
+
+---
+
+## ADR-033 — Los tokens de sesión viven en cookies `__Host-`, no en `localStorage`
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** El mapeo ASVS L1 (SEG-01) dejó tres huecos sobre el mismo asunto
+—dónde guarda el navegador la sesión— y conviene decidirlos juntos porque una
+respuesta parcial no cierra ninguno:
+
+- `3.2.3` — los tokens de sesión se guardan «using secure methods». El de
+  acceso vivía en `localStorage`.
+- `8.2.2` — nada sensible en `localStorage`/`sessionStorage`. Ahí vivían el
+  token de acceso **y** el perfil del usuario.
+- `3.4.4` — las cookies de sesión usan el prefijo `__Host-`. La de refresco no
+  lo usaba.
+
+Lo que hacen `3.2.3` y `8.2.2` es cerrar la puerta al robo de sesión por
+script: cualquier XSS —propio o de una dependencia— lee `localStorage` con una
+línea. `HttpOnly` no hace mejor al token, hace que el script no pueda leerlo.
+
+`3.4.4` cierra otra puerta distinta y con frecuencia olvidada: sin el prefijo,
+**un subdominio puede sobrescribir la cookie del dominio padre**. Un panel de un
+proveedor colgado de `*.pmo-aas.com`, o un blog, bastan para plantar una cookie
+de sesión ajena. El prefijo lo impide porque lo impone el navegador, no
+nosotros.
+
+**Decisión.**
+
+1. El token de acceso deja `localStorage` y pasa a cookie `HttpOnly`,
+   `SameSite=Strict`, `Secure`, `Path=/`, sin `Domain`.
+2. Las dos cookies de sesión —acceso y refresco— llevan prefijo `__Host-` allí
+   donde puede emitirse `Secure`, es decir en producción. En desarrollo se
+   sirve por HTTP y una cookie `__Host-` **no se guardaría**: el nombre sigue la
+   misma condición que ya gobernaba `secure=`.
+3. El perfil del usuario deja de persistirse en `localStorage`. Se pide a
+   `/auth/me` al cargar y vive en memoria.
+4. Queda en `localStorage` lo que no es sensible ni autoriza nada: el tema
+   claro/oscuro, el idioma y el inquilino activo de un superadministrador —que
+   el servidor vuelve a comprobar en cada petición y por tanto no es una
+   credencial—.
+
+**Consecuencias.**
+
+- **Todas las sesiones vivas se cierran al desplegar.** El token de acceso que
+  el navegador tiene en `localStorage` deja de enviarse, y no hay cookie hasta
+  el siguiente inicio de sesión. Es coste de una vez y no hay forma de evitarlo:
+  migrarlo «en caliente» exigiría que el servidor leyera el token del sitio
+  inseguro para reemitirlo, que es justo lo que se está quitando.
+- Con `SameSite=Strict` el API deja de ser consumible desde otro origen por el
+  navegador. Es lo que se quiere; la web y el API se sirven bajo el mismo sitio.
+- La cabecera `Authorization` **se sigue aceptando** para el SDK y las
+  integraciones servidor a servidor, que no son un navegador y no tienen el
+  problema que esto resuelve.
+- Al no poder leer el token, el cliente web no puede inspeccionar su expiración:
+  la sesión caducada se descubre con un 401, que es como debía descubrirse.
+
+**Alternativas:**
+
+- *Dejar el token en `localStorage` y confiar en no tener XSS.* Es la postura
+  de hoy. El coste de equivocarse es la sesión completa de cada usuario, y la
+  superficie incluye toda dependencia de npm que entre en el paquete.
+- *`sessionStorage` en vez de `localStorage`.* Reduce la ventana a la pestaña,
+  no la cierra: un script inyectado la lee igual. `8.2.2` nombra las dos.
+- *Cookie sin prefijo `__Host-`.* Es lo que había. Deja abierta la
+  sobrescritura desde un subdominio, que es un ataque que ninguna comprobación
+  del servidor puede detectar — la cookie que llega es sintácticamente
+  perfecta.
+
+**Ventana de compatibilidad.** Al desplegar, los navegadores con sesión previa
+traen la cookie de refresco vieja (sin prefijo, `Path=/api/v1/auth`). Se acepta
+a la lectura y se anota (`compat.nombre_viejo`, clave `cookie:refresh_token`);
+al cerrar sesión se borran todas las formas, porque una cookie solo se borra
+desde el `Path` con que se creó. Se cierra con dato a los dos meses, como las
+demás.
+
+**Revisión:** si el API pasa a servirse desde un sitio distinto al de la web,
+`SameSite=Strict` deja de ser viable y hay que rehacer la decisión entera.
+
+---
+
+## ADR-034 — La supresión de datos personales anonimiza; no borra
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** `8.3.2` del mapeo ASVS pide «a method to remove **or** export
+their data on demand», y `05-DATOS-PERSONALES.md` §5 ya declaraba la falta de
+procedimiento como «la carencia más seria de este inventario». Al ir a
+construirlo aparece el choque: **borrar de verdad a una persona rompe dos cosas
+que este producto necesita**.
+
+- `audit_log` es de **solo anexado por diseño** (AM-08, con trinquete propio).
+  Es lo que permite reconstruir qué pasó ante un error o una disputa, y un
+  registro que se puede borrar por partes deja de servir para eso.
+- El historial de un proyecto es **dato del inquilino, no de la persona**. Quién
+  aprobó un cambio de alcance en marzo es información de la organización que
+  paga por la herramienta. Borrarla deja huecos en la trazabilidad de un tercero
+  que no ha pedido nada.
+
+**Decisión.** Se **anonimiza**: las filas se quedan y dejan de apuntar a nadie.
+Nombre, correo, usuario y preferencias se sustituyen por un seudónimo estable y
+no reversible, la cuenta queda inactiva, y el hash de contraseña se descarta. La
+exportación va **antes** en la pantalla, porque una vez anonimizado no hay forma
+de recuperar la copia.
+
+Es lo estándar en SaaS B2B y no un atajo: el RGPD (considerando 26) sostiene que
+un dato que ya no identifica a nadie deja de ser dato personal, y su art. 17.3
+reconoce que el derecho de supresión cede ante obligaciones de conservación. Es
+lo que hacen Atlassian, GitLab y Notion.
+
+**Consecuencias.**
+
+- El derecho se atiende sin romper la trazabilidad del inquilino, que es lo que
+  hacía irreconciliables las dos exigencias.
+- **El texto libre no se toca, y va escrito.** Una minuta que dice «lo comenta
+  Ana en la reunión» sigue diciéndolo. Barrerlo exigiría recorrer todo el
+  contenido de la plataforma con coincidencia difusa y decidir a mano cada
+  acierto. Se declara como límite —en el propio archivo exportado y en
+  `05-DATOS-PERSONALES.md`— en vez de fingir que no existe.
+- El seudónimo es **estable**: dos filas del mismo usuario anonimizado siguen
+  siendo del mismo, o el historial de un proyecto se vuelve incoherente. Y **no
+  reversible**: si se pudiera deshacer no sería anonimización sino ofuscación, y
+  el dato seguiría siendo personal. Por eso es un resumen y no el `user_id`, que
+  aparece en otras tablas y permitiría volver a cruzar.
+- Es irreversible, así que exige re-teclear el correo — el mismo patrón que el
+  borrado permanente de entidades.
+
+**Alternativas:**
+
+- *Borrado físico en cascada.* Lo que la palabra «suprimir» sugiere. Choca de
+  frente con `audit_log` y deja al inquilino con un historial roto que nadie le
+  pidió romper.
+- *Marcar la cuenta como inactiva y nada más.* Es lo que ya hacía el producto, y
+  no es supresión: el correo y el nombre siguen ahí.
+- *Exportación sola.* El control dice «remove **or** export», así que
+  técnicamente bastaría. Deja abierta la carencia que `05-DATOS-PERSONALES.md`
+  declaró como la más seria, que era justamente la de supresión.
+
+**Revisión:** si entra un requisito contractual de borrado físico, o si el
+inventario de datos personales suma una tabla que este procedimiento no cubra.
+
+---
+
+## ADR-035 — El segundo factor de administración es un código por correo
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** `4.3.1` del mapeo ASVS pide segundo factor para las interfaces de
+administración, y el producto no tenía ninguno. Las opciones reales eran TOTP
+—`cryptography` ya lo trae, así que tampoco costaba una dependencia— o un código
+por correo con la infraestructura de Resend que ya existe.
+
+**Decisión.** **Código de seis dígitos por correo.** Lo pide el owner por dos
+motivos prácticos: no hay que enrolar a nadie ni pedirle que instale una
+aplicación, y reutiliza un canal que el producto ya usa para avisos de
+seguridad.
+
+Se exige a superadministradores y a cuentas con rol equivalente a administrador.
+A un usuario normal no se le pide: no alcanza ninguna interfaz de administración
+y sería fricción a cambio de nada. El interruptor `ADMIN_MFA_REQUIRED` viene
+**encendido** — un control cuyo defecto es «apagado» está apagado en producción
+el día que a alguien se le olvida encenderlo.
+
+**Lo que esto cierra.** `4.3.1`, y de paso cuatro controles que estaban como NO
+APLICA porque no había factor fuera de banda: `2.2.2` (el correo se usa como
+verificación **secundaria**, nunca en lugar de la contraseña), `2.7.2` (caduca a
+los diez minutos, literal), `2.7.3` (un solo uso y atado al desafío que lo pidió)
+y `2.7.4` (canal independiente del navegador).
+
+**Lo que esto NO cierra, y por eso `2.7.1` queda ACEPTADO.** El correo es un
+factor **débil**: NIST 800-63B §5.1.3.1 dice que no debe usarse para
+autenticación fuera de banda porque no demuestra posesión de un dispositivo —
+quien controle el buzón, o el proveedor de correo, completa el segundo paso.
+`2.7.1` pide ofrecer primero una alternativa más fuerte, y aquí no hay ninguna
+que ofrecer.
+
+Figura **ACEPTADO** y no CUMPLE, igual que se hizo con la política de
+contraseñas en ADR-032. Lo que se acepta en concreto: si alguien tiene la
+contraseña **y** acceso al correo de la persona, el segundo factor no lo
+detiene. Lo que sí detiene —y es la amenaza realista— es una contraseña
+reutilizada que aparece en una filtración: el atacante necesita además la cuenta
+de correo, que casi nunca tiene.
+
+**Consecuencias.**
+
+- Entrar al panel pasa a ser dos pasos para ti y para cualquier administrador.
+  El desbloqueo por inactividad de una cuenta de administración también manda a
+  `/login`: si se saltara el factor, bastaría con esperar a que un administrador
+  dejara la sesión bloqueada para entrar solo con la contraseña.
+- **Si Resend está caído, un administrador no puede entrar.** Es la consecuencia
+  incómoda de que el factor viaje por correo, y es preferible a la alternativa —
+  dejar pasar sin segundo factor porque el correo no salió sería un control que
+  se desactiva solo justo cuando algo va mal.
+- Los intentos por desafío están acotados a cinco. Seis dígitos son un millón de
+  combinaciones y sin freno se prueban enteras en minutos: el límite no es un
+  detalle, es lo que hace que el factor valga algo.
+
+**Alternativas:**
+
+- *TOTP.* Más fuerte, cierra `2.7.1` sin residual y no depende de que el correo
+  llegue. Cuesta enrolamiento con QR, códigos de recuperación y una pantalla
+  más — y deja fuera a quien pierde el teléfono hasta que alguien le ayude.
+- *Ambos, ofreciendo TOTP primero.* Es lo que `2.7.1` pide literalmente y la
+  respuesta correcta a medio plazo. Se descarta ahora por alcance, no por
+  postura.
+
+### §Ventana — el código se pide una vez por equipo, no en cada entrada
+
+**Decisión del owner, 2026-08-07**, tras probar la primera versión: pedir el
+código en **cada** inicio de sesión es insoportable, y un control insoportable
+acaba desactivado. Se recuerda el equipo **treinta días**.
+
+Treinta es el techo de lo razonable y coincide con lo que ofrecen Google y
+GitHub. Lo que sostiene ese número no es el número: son las tres garantías de
+abajo. Sin ellas, treinta días sería demasiado; con ellas, **la ventana la
+cierra la propia persona el día que sospecha**, cambiando su contraseña.
+
+Es lo que hacen Google, GitHub y Microsoft, y no es una concesión: es lo que
+mantiene el segundo factor encendido.
+
+**Dentro de la ventana siguen siendo dos factores.** La cookie
+`__Host-dispositivo` es un secreto de 256 bits que solo tiene ese navegador,
+`HttpOnly` para que ningún guion lo lea — «algo que tienes»—, y la contraseña
+sigue haciendo falta. Cambia el **soporte** del segundo factor, no su
+existencia. Por eso `4.3.1` sigue CUMPLE.
+
+Tres cosas sostienen que eso sea cierto, y las tres tienen prueba propia:
+
+1. **La cookie está atada a la cuenta.** La comprobación exige que el resumen
+   **y** el `user_id` coincidan. Sin lo segundo, un administrador con equipo
+   recordado se saltaría el segundo factor de *cualquier otra* cuenta desde ese
+   navegador — y el flujo seguiría funcionando igual, así que nadie lo vería.
+2. **Cambiar la contraseña revoca todos los equipos.** Es la acción de «creo que
+   me han entrado»; si la confianza sobreviviera, quien hubiera entrado una vez
+   seguiría entrando con la contraseña nueva y sin código.
+3. **Recordar un equipo nuevo manda un correo.** Si llega y no fuiste tú,
+   alguien tiene tu contraseña *y* tu correo y acaba de conseguir un mes de
+   entradas sin código. Es lo primero que hay que saber, y por eso este aviso
+   es la garantía que más pesa cuanto más larga es la ventana.
+
+La casilla viene **marcada** —es el comportamiento que se pidió— y se puede
+desmarcar en un equipo prestado, donde recordar sería peor que la molestia que
+ahorra.
+
+**Lo que se acepta a cambio, y va escrito:** quien tenga acceso físico a un
+equipo recordado y sepa la contraseña entra sin pasar por el correo durante los
+treinta días. Contra eso están el bloqueo por inactividad, la revocación al cambiar
+la contraseña y el aviso del equipo nuevo. Y en la auditoría queda anotado con
+qué se entró (`mfa: dispositivo_confiable` frente a `mfa: email_otp`): sin ese
+detalle, una entrada con segundo factor y una sin él serían la misma línea.
+
+**Revisión:** al primer incidente de correo comprometido, o cuando el número de
+administradores haga que enrolar TOTP salga a cuenta.

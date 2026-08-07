@@ -1,7 +1,7 @@
 import { apiFetch } from "./api";
 import {
   clearSession,
-  setAccessToken,
+  marcarSesionAbierta,
   setActiveTenantId,
   setStoredUser,
   type StoredUser,
@@ -15,13 +15,38 @@ export type LoginResponse = {
   active_tenant_id: string | null;
 };
 
-export async function login(identifier: string, password: string): Promise<LoginResponse> {
-  const res = await apiFetch<LoginResponse>("/api/v1/auth/login", {
+/**
+ * ASVS 4.3.1 — respuesta del primer paso cuando la cuenta llega a una interfaz
+ * de administración: todavía no hay sesión, hay un desafío.
+ */
+export type DesafioMfa = {
+  mfa_required: true;
+  desafio: string;
+  detalle: string;
+  /** Cuántos días se recuerda el equipo. Lo dice el servidor, que es quien lo
+   *  configura: escribirlo también aquí garantizaría que un día discrepen. */
+  dias_recordado: number;
+};
+
+export function esDesafio(res: LoginResponse | DesafioMfa): res is DesafioMfa {
+  return (res as DesafioMfa).mfa_required === true;
+}
+
+export async function login(
+  identifier: string,
+  password: string,
+): Promise<LoginResponse | DesafioMfa> {
+  const res = await apiFetch<LoginResponse | DesafioMfa>("/api/v1/auth/login", {
     method: "POST",
     body: { identifier, password },
     auth: false,
   });
-  setAccessToken(res.access_token);
+  // Sin sesión todavía: el segundo paso es `verificarCodigo`.
+  if (esDesafio(res)) return res;
+  // ASVS 3.2.3 / 8.2.2 — el token viene además en el cuerpo, para el SDK, pero
+  // el navegador no lo guarda: su copia es la cookie `HttpOnly` que el API
+  // acaba de emitir. Aquí solo queda constancia de que hay sesión abierta.
+  marcarSesionAbierta();
   setStoredUser(res.user);
   setActiveTenantId(res.active_tenant_id);
   return res;
@@ -35,6 +60,23 @@ export async function logout(): Promise<void> {
   } finally {
     clearSession();
   }
+}
+
+/** ASVS 4.3.1 — segundo paso: canjea el código del correo por una sesión. */
+export async function verificarCodigo(
+  desafio: string,
+  codigo: string,
+  recordarEquipo: boolean,
+): Promise<LoginResponse> {
+  const res = await apiFetch<LoginResponse>("/api/v1/auth/verificar-codigo", {
+    method: "POST",
+    body: { desafio, codigo, recordar_equipo: recordarEquipo },
+    auth: false,
+  });
+  marcarSesionAbierta();
+  setStoredUser(res.user);
+  setActiveTenantId(res.active_tenant_id);
+  return res;
 }
 
 export async function fetchMe(): Promise<StoredUser> {

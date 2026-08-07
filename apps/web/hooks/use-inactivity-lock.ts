@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getAccessToken } from "@/lib/auth-storage";
+
+import { hasSession } from "@/lib/auth-storage";
 
 const INACTIVITY_TIMEOUT_MIN = 15;
 
@@ -32,7 +33,7 @@ export function useInactivityLock() {
     clearTimer();
     // No re-armar si ya está bloqueado o no hay sesión.
     if (lockedRef.current) return;
-    if (!getAccessToken()) return;
+    if (!hasSession()) return;
 
     timeoutRef.current = setTimeout(() => {
       lockedRef.current = true;
@@ -47,7 +48,7 @@ export function useInactivityLock() {
   }, [scheduleLock]);
 
   useEffect(() => {
-    if (!getAccessToken()) return;
+    if (!hasSession()) return;
 
     scheduleLock();
 

@@ -6,6 +6,7 @@ import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
@@ -241,15 +242,13 @@ export default function SuperadminMePage() {
             <legend className="px-1 text-xs font-semibold uppercase text-[var(--color-tertiary)]">
               Cambiar contraseña (opcional)
             </legend>
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="Nueva contraseña"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
             />
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="Confirmar nueva contraseña"
               value={newPasswordConfirm}
               onChange={(e) => setNewPasswordConfirm(e.target.value)}
@@ -262,8 +261,7 @@ export default function SuperadminMePage() {
             <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
               Contraseña actual (obligatoria para guardar)
             </label>
-            <Input
-              type="password"
+            <PasswordInput
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               autoComplete="current-password"

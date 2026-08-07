@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInactivityLock } from "@/hooks/use-inactivity-lock";
 import { ApiError } from "@/lib/api";
-import { login, logout } from "@/lib/auth";
+import { esDesafio, login, logout } from "@/lib/auth";
 import { getActiveTenantId, getStoredUser, setActiveTenantId } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 
@@ -71,6 +71,18 @@ function ReauthOverlay({ onUnlock }: { onUnlock: () => void }) {
     const prevTenant = getActiveTenantId();
     try {
       const res = await login(identifier, password);
+      // ASVS 4.3.1 — si la cuenta administra, el desbloqueo también pasa por el
+      // segundo factor. Aquí no se puede pedir el código sin convertir el panel
+      // de bloqueo en una pantalla de inicio de sesión completa, así que se
+      // manda a `/login`, que ya lo sabe hacer.
+      //
+      // Es más fricción de la que tenía y es lo correcto: si el desbloqueo se
+      // saltara el segundo factor, bastaría con esperar a que un administrador
+      // dejara la sesión bloqueada para entrar solo con la contraseña.
+      if (esDesafio(res)) {
+        window.location.href = "/login";
+        return;
+      }
       if (prevTenant && prevTenant !== res.active_tenant_id && res.tenants.includes(prevTenant)) {
         setActiveTenantId(prevTenant);
       }

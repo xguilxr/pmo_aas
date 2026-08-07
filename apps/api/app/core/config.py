@@ -44,6 +44,36 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "dev_change_me_dev_change_me_dev_"
     JWT_REFRESH_SECRET: str = "dev_refresh_change_me_dev_refresh"
     JWT_ALGORITHM: str = "HS256"
+    # MCS SEG-01 · ASVS 12.4.2 — motor antivirus para lo que se sube.
+    # Vacío = no hay motor: la verificación de firma sigue corriendo (no
+    # necesita motor) y lo demás se anota según `POLITICA_SIN_MOTOR`.
+    # Formato: `tcp://host:3310` — protocolo INSTREAM de clamd.
+    CLAMAV_URL: str = ""
+
+    # MCS SEG-01 · ASVS 4.3.1 — segundo factor por correo para las interfaces de
+    # administración. Interruptor y no constante porque las pruebas necesitan
+    # poder apagarlo: con él encendido, cada inicio de sesión de administración
+    # de la suite tendría que pasar por un buzón.
+    #
+    # **Por defecto encendido.** Un control de seguridad cuyo valor por defecto
+    # es «apagado» está apagado en producción el día que a alguien se le olvida
+    # encenderlo, que es siempre.
+    ADMIN_MFA_REQUIRED: bool = True
+
+    # ASVS 4.3.1 · ADR-035 — cuántos días se recuerda un equipo antes de volver
+    # a pedir el código. Decisión del owner: **treinta días**.
+    #
+    # Pedirlo en cada entrada es lo que hace que la gente desactive el segundo
+    # factor o busque cómo saltárselo, así que la ventana no es una concesión:
+    # es lo que mantiene el control encendido.
+    #
+    # Treinta es el techo de lo razonable y coincide con lo que ofrecen Google y
+    # GitHub. Lo que lo sostiene no es el número sino las tres cosas que van con
+    # él: la cookie atada a la cuenta, la revocación al cambiar la contraseña y
+    # el aviso al recordar un equipo. Sin ellas, treinta días sería demasiado;
+    # con ellas, la ventana la cierra la persona el día que sospecha.
+    DISPOSITIVO_CONFIABLE_DIAS: int = 30
+
     ACCESS_TOKEN_TTL_SEC: int = 3600
     REFRESH_TOKEN_TTL_SEC: int = 2592000
     BCRYPT_ROUNDS: int = 12

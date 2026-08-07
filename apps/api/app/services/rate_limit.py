@@ -93,3 +93,32 @@ def reset(key: str) -> None:
         client.delete(key)
     except Exception as exc:
         log.warning("rate_limit reset failed key=%s: %s", key, exc)
+
+
+#: ASVS 11.1.4 — peticiones por cuenta y por minuto.
+#:
+#: El número sale de contar contra el uso real, no de una corazonada: la carga
+#: del tablero es la pantalla que más pide de toda la aplicación, y son decenas
+#: de peticiones, no cientos. 600/min deja **veinte veces** ese margen y sigue
+#: cortando lo que el control persigue: recorrer la cartera entera a máxima
+#: velocidad, que con páginas de 100 son 60.000 filas por minuto sin freno.
+#:
+#: Generoso a propósito. Un límite que corta a alguien trabajando se sube al
+#: día siguiente hasta que deja de servir; uno que nadie legítimo alcanza
+#: sobrevive, y es el que sigue ahí cuando hace falta.
+PRESUPUESTO_POR_MINUTO = 600
+_VENTANA_PRESUPUESTO_SEC = 60
+
+
+def verifica_presupuesto(user_id: str) -> bool:
+    """`True` si esta petición cabe en el presupuesto de la cuenta.
+
+    Fail-open ante Redis caído, como todo lo demás de este módulo: dejar a
+    todos los inquilinos sin API porque el limitador no puede contar sería un
+    daño mayor y más probable que el que este control evita.
+    """
+    return check_and_increment(
+        f"rl:api:user:{user_id}",
+        max_attempts=PRESUPUESTO_POR_MINUTO,
+        window_sec=_VENTANA_PRESUPUESTO_SEC,
+    )

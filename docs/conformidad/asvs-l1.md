@@ -16,8 +16,8 @@ nivel 1 aplicables».
 | **Catálogo** | OWASP ASVS 4.0.3, nivel 1 — **127 controles**, en [`marco/asvs-4.0.3-L1.csv`](marco/asvs-4.0.3-L1.csv) |
 | **Mapeo** | [`asvs-l1.yaml`](asvs-l1.yaml), uno por control |
 | **Barrido** | `scripts/check_asvs.py` — falla si falta uno, si un estado no tiene evidencia o si los huecos crecen |
-| **Medición** | 2026-08-07 · **97 CUMPLE · 13 NO APLICA · 2 ACEPTADO · 15 HUECO** |
-| **Estado del requisito** | **PARCIAL**, y honestamente parcial |
+| **Medición** | 2026-08-07 · **116 CUMPLE · 8 NO APLICA · 3 ACEPTADO · 0 HUECO** |
+| **Estado del requisito** | **PARCIAL** — cero huecos, tres residuales aceptados |
 
 > El catálogo se incorpora del proyecto OWASP ASVS, bajo licencia
 > [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Se versiona
@@ -26,43 +26,71 @@ nivel 1 aplicables».
 
 ---
 
-## Por qué esto no cierra SEG-01, y por qué aun así es el avance
+## Cero huecos, y aun así PARCIAL
 
 La auditoría del 2026-08-03 lo dejó **NO VERIFICABLE** («sin evaluación ASVS»).
-La R1 lo bajó a **PARCIAL** con un muestreo declarado y tres huecos nombrados —y
-los tres se cerraron después: límite por IP en el inicio de sesión, `audit_log`
-de solo anexado, y `python-jose` sustituido por PyJWT—. Pero el propio informe
-avisaba de que «con los tres cerrados seguiría haciendo falta el mapeo completo».
+La R1 lo bajó a **PARCIAL** con un muestreo declarado y tres huecos nombrados.
+El mapeo completo llegó el 2026-08-07 y sacó **quince**. Ese mismo día se
+cerraron los quince.
 
-El mapeo completo ya está. Y lo que enseña es que **quedan quince
-controles L1 sin cumplir y dos aceptados por decisión**, la mayoría concentrados en dos sitios: la política
-de contraseñas y el almacenamiento del token en el navegador.
+**No se declara CONFORME**, y el motivo cabe en una frase: quedan **tres
+controles ACEPTADO**, y un residual aceptado no es un control cumplido.
 
-Declararlo CONFORME con quince huecos abiertos sería la conformidad de papel
-que este expediente lleva seis recuentos evitando. Se declara PARCIAL, con la
-lista delante.
+| Control | Qué pide | Qué se aceptó, y quién lo decidió |
+|---|---|---|
+| `2.1.1` | Mínimo de 12 caracteres | 8 con reglas de composición. Owner, ADR-032 |
+| `2.1.9` | Ninguna regla de composición | Se conservan. Va en el mismo paquete que 2.1.1: para NIST son la misma medida |
+| `2.7.1` | Que un autenticador débil no se ofrezca por defecto, y que haya una alternativa más fuerte primero | El segundo factor es un código por **correo**, que NIST 800-63B §5.1.3.1 desaconseja para fuera de banda. No hay TOTP que ofrecer antes. Owner, ADR-035 |
+
+Los tres tienen una decisión escrita detrás y ninguno está escondido: el barrido
+`check_asvs.py` **rechaza** un `ACEPTADO` que no cite su ADR. Es la misma
+distinción que este expediente lleva seis recuentos defendiendo — un auditor
+tiene derecho a ver la diferencia entre «lo hacemos» y «decidimos no hacerlo»
+sin preguntar.
+
+El tope de huecos del barrido queda en **cero**: a partir de aquí, cualquier
+control que se degrade rompe el CI.
 
 ---
 
-## Los quince huecos
+## Lo que enseñó cerrar los quince
 
-| Control | Qué pide | Qué pasa hoy |
-|---|---|---|
-| `2.1.7` | Verify that passwords submitted during account registration, login, and password change are checked again… | No se contrasta contra ningún conjunto de contraseñas filtradas. |
-| `2.1.12` | Verify that the user can choose to either temporarily view the entire masked password, or temporarily vie… | No hay control para revelar temporalmente la contraseña escrita. |
-| `2.2.3` | Verify that secure notifications are sent to users after updates to authentication details, such as crede… | No se notifica al usuario un cambio de credenciales ni un inicio de sesión desde equipo nuevo. |
-| `2.5.5` | Verify that if an authentication factor is changed or replaced, that the user is notified of this event. | Mismo hueco que 2.2.3: no hay notificación al cambiar el factor. |
-| `3.2.3` | Verify the application only stores session tokens in the browser using secure methods such as appropriate… | El token de acceso se guarda en `localStorage` (`apps/web/lib/auth- storage.ts`). El de refresco sí va en cookie `HttpOnly`. |
-| `3.4.4` | Verify that cookie-based session tokens use the "__Host-" prefix so cookies are only sent to the host tha… | La cookie de refresco no usa el prefijo `__Host-`. |
-| `4.3.1` | Verify administrative interfaces use appropriate multi-factor authentication to prevent unauthorized use. | No hay segundo factor para las interfaces de administración. |
-| `5.2.7` | Verify that the application sanitizes, disables, or sandboxes user-supplied Scalable Vector Graphics (SVG… | Se admite SVG como logotipo de marca y no se sanea su contenido activo. |
-| `8.2.1` | Verify the application sets sufficient anti-caching headers so that sensitive data is not cached in moder… | No se emiten cabeceras anti-caché en las respuestas con datos de inquilino. |
-| `8.2.2` | Verify that data stored in browser storage (such as localStorage, sessionStorage, IndexedDB, or cookies) … | El token de acceso y el perfil del usuario viven en `localStorage`. |
-| `8.3.2` | Verify that users have a method to remove or export their data on demand. | No hay exportación ni borrado de datos personales a petición; queda anotado en 05-DATOS-PERSONALES.md §carencias. |
-| `8.3.3` | Verify that users are provided clear language regarding collection and use of supplied personal informati… | No hay texto de consentimiento ni aceptación explícita en el alta. |
-| `10.3.2` | Verify that the application employs integrity protections, such as code signing or subresource integrity.… | No se declara integridad de subrecursos; hoy no se cargan recursos externos, pero nada lo impide. |
-| `11.1.4` | Verify that the application has anti-automation controls to protect against excessive calls such as mass … | No hay límite de peticiones sobre los listados: una cuenta válida puede paginar la cartera entera sin freno. |
-| `12.4.2` | Verify that files obtained from untrusted sources are scanned by antivirus scanners to prevent upload and… | No hay análisis antivirus de lo que se sube. |
+Tres controles no eran lo que su evidencia decía, y eso es lo que más vale de
+haber medido contra el texto en vez de contra el recuerdo:
+
+- **`10.3.2` decía «hoy no se cargan recursos externos».** Cargaba tres: la hoja
+  de estilo de Google Fonts, sin `integrity`, con permiso para decidir de dónde
+  bajar los tipos. No se arregla con `integrity` —Google devuelve un CSS distinto
+  según el navegador— sino sirviéndolos desde nuestro origen.
+- **`2.1.7` no se puede cerrar con «las 10.000 más usadas».** De las 59.186 de
+  `rockyou-75`, las que pasan la política del producto son **ocho**: las demás
+  ya las rechazan las reglas de composición. Lo que amenaza a este producto es lo
+  que su propia política produce —la familia de `Password1!`—, que es
+  exactamente el residual que ADR-032 aceptó, ahora medido.
+- **`12.4.2` tenía dos mitades y solo una necesita antivirus.** El tipo del
+  archivo salía de la cabecera del navegador y de la extensión del nombre, las
+  dos escritas por quien sube: un ejecutable renombrado a `.pdf` se guardaba como
+  `.pdf` y se servía con ese `Content-Type`. Eso se cierra mirando los bytes.
+
+Y dos donde el control existía, pero no donde hacía falta:
+
+- **`2.2.3` / `2.5.5`** avisaban en **uno** de los seis sitios que tocan una
+  credencial — el cambio hecho por el propio usuario. Faltaban justo los cinco
+  donde el cambio **no** lo hace el dueño de la cuenta, que es el único caso en
+  que el aviso sirve para algo.
+- **`2.1.12`** estaba copiado a mano en dos pantallas y faltaba en las nueve
+  donde se **elige** contraseña nueva.
+
+**Cerrar un control abre otros.** El segundo factor de `4.3.1` hizo que cuatro
+NO APLICA dejaran de no aplicar (`2.2.2`, `2.7.2`, `2.7.3`, `2.7.4` — los tres
+últimos con requisitos concretos: diez minutos, un solo uso atado a su desafío,
+canal independiente) y convirtió `2.7.1` en el tercer residual aceptado. Un
+mapeo no es una lista que solo encoge.
+
+**Dos cambios se notan al desplegar.** El token de sesión pasó a cookie
+`HttpOnly` (`3.2.3`/`8.2.2`), así que **se cierran todas las sesiones vivas**; y
+entrar al panel de administración pasa a ser dos pasos.
+
 ---
 
 ## Cómo se agrupan, y qué decisión pide cada grupo
@@ -86,29 +114,38 @@ retirado, así que los hashes existentes verifican y se reescriben en el
 siguiente inicio de sesión. Y el máximo pasa a ser 128 **declarado**: «sin
 máximo» sonaba generoso mientras por detrás había uno de 72 sin avisar.
 
-*Siguen abiertos* `2.1.7` (contraseñas filtradas) y `2.1.12` (revelar
-temporalmente lo escrito), que no dependían de esa decisión.
+*También cerrados* `2.1.7` (contraseñas filtradas) y `2.1.12` (revelar
+temporalmente lo escrito), que no dependían de esa decisión. El primero, con un
+conjunto derivado de la familia predecible que **estas mismas reglas de
+composición producen**: es el residual de ADR-032, medido en vez de supuesto.
 
-**Token en el navegador (`3.2.3`, `8.2.2`).** El token de acceso vive en
-`localStorage`, que es legible por cualquier script inyectado. El de refresco sí
-va en cookie `HttpOnly`, que es la mitad buena. Moverlo entero a cookies es un
-cambio del flujo de autenticación con impacto en las sesiones vivas: se hace con
-ventana, no al final de una ronda.
+**Token en el navegador (`3.2.3`, `8.2.2`) — cerrado el 2026-08-07 (ADR-033).**
+El token de acceso pasó de `localStorage` a una cookie `HttpOnly` con prefijo
+`__Host-`; el perfil dejó de persistirse y se repone desde `/auth/me`.
+`Authorization` se sigue aceptando para el SDK y las integraciones de servidor a
+servidor. **Cierra todas las sesiones vivas al desplegar**, y no hay forma de
+evitarlo: migrarlas en caliente exigiría que el servidor leyera el token del
+sitio inseguro para reemitirlo, que es justo lo que se quita.
 
-**Derechos de las personas (`8.3.2`, `8.3.3`).** Exportación y borrado a
-petición, y consentimiento explícito en el alta. Ya estaban anotados como
-carencia abierta en `05-DATOS-PERSONALES.md` cuando se cerró REQ-03; aquí
-aparecen otra vez, desde otro marco, que es lo que pasa cuando una carencia es
-real.
+**Derechos de las personas (`8.3.2`, `8.3.3`) — cerrados (ADR-034).** Exportación
+en JSON y supresión por **anonimización**: las filas se quedan y dejan de apuntar
+a nadie, porque el borrado físico choca con `audit_log` —de solo anexado— y con
+el historial del proyecto, que es dato del inquilino y no de la persona. El
+consentimiento va en el primer inicio de sesión, versionado, y vuelve a pedirse
+si el aviso cambia. Cierra lo que `05-DATOS-PERSONALES.md` §5 llamaba «la
+carencia más seria de este inventario».
 
-**Notificación de cambios de credencial (`2.2.3`, `2.5.5`).** Un correo al
-cambiar contraseña o dirección. Barato, y necesita decidir el texto y el canal.
+**Notificación de cambios de credencial (`2.2.3`, `2.5.5`) — cerrado.** El aviso
+existía en uno de los seis sitios que tocan una credencial. Ahora está en los
+seis, incluido el correo a la **dirección que se abandona** cuando alguien
+cambia el correo de una cuenta — sin eso, quien se apodera de una cuenta
+consigue que su dueño no se entere nunca.
 
-**El resto** (`3.4.4` prefijo `__Host-`, `4.3.1` segundo factor para
-administración, `5.2.7` saneado de SVG, `8.2.1` cabeceras anti-caché, `10.3.2`
-integridad de subrecursos, `11.1.4` límite sobre los listados, `12.4.2` antivirus
-en las subidas) son piezas independientes. `8.2.1` y `10.3.2` son las dos más
-baratas y no tocan comportamiento visible.
+**El resto — cerrado.** `3.4.4` (prefijo `__Host-`), `5.2.7` (saneado de SVG),
+`8.2.1` (cabeceras anti-caché), `10.3.2` (integridad de subrecursos), `11.1.4`
+(límite sobre los listados), `12.4.2` (análisis de las subidas) y `4.3.1`
+(segundo factor de administración), que era el único de este grupo que no era
+una pieza sino producto.
 
 ---
 

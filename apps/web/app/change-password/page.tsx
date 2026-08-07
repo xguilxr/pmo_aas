@@ -5,7 +5,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Check, KeyRound, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { RequireAuth } from "@/components/require-auth";
 import { ApiError } from "@/lib/api";
 import { clearSession, getStoredUser } from "@/lib/auth-storage";
@@ -86,9 +86,8 @@ function ChangePasswordForm() {
               <label htmlFor="current" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
                 Contraseña actual
               </label>
-              <Input
+              <PasswordInput
                 id="current"
-                type="password"
                 autoComplete="current-password"
                 required
                 disabled={submitting}
@@ -101,9 +100,8 @@ function ChangePasswordForm() {
               <label htmlFor="next" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
                 Nueva contraseña
               </label>
-              <Input
+              <PasswordInput
                 id="next"
-                type="password"
                 autoComplete="new-password"
                 required
                 disabled={submitting}
@@ -135,9 +133,8 @@ function ChangePasswordForm() {
               <label htmlFor="confirm" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
                 Confirmar nueva contraseña
               </label>
-              <Input
+              <PasswordInput
                 id="confirm"
-                type="password"
                 autoComplete="new-password"
                 required
                 disabled={submitting}

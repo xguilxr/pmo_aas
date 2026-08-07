@@ -101,6 +101,27 @@ _AI_STUB_EXCLUDE_PREFIXES = (
 
 
 @pytest.fixture(autouse=True)
+def _sin_segundo_factor(monkeypatch, request):
+    """ASVS 4.3.1 — el segundo factor por correo, apagado salvo donde se prueba.
+
+    Con él encendido, **cada** inicio de sesión de administración de la suite
+    tendría que pasar por un buzón: `factories.login` recibiría un 202 con un
+    desafío en vez de una sesión, y doscientas pruebas que no van de esto
+    fallarían por algo que no están mirando.
+
+    Lo enciende a propósito `test_seg01_asvs431_segundo_factor.py`, que es quien
+    comprueba que funciona. El valor por defecto del producto sigue siendo
+    **encendido** (`config.ADMIN_MFA_REQUIRED`); lo que se apaga es el entorno de
+    pruebas, y solo aquí.
+    """
+    if request.node.get_closest_marker("con_segundo_factor"):
+        return
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "ADMIN_MFA_REQUIRED", False)
+
+
+@pytest.fixture(autouse=True)
 def _stub_ai_providers(monkeypatch, request):
     modname = request.module.__name__.rsplit(".", 1)[-1]
     if modname.startswith(_AI_STUB_EXCLUDE_PREFIXES):

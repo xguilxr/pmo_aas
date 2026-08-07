@@ -23,6 +23,7 @@ from fastapi import UploadFile, status
 from app.core.config import settings
 from app.core.errors import AppError, mensaje, validation_error
 from app.core.unidades import a_mebibytes, mebibytes
+from app.services.analisis_archivos import ArchivoRechazadoError, analiza
 
 # BUG-040: límite reducido a 1 MB. La plataforma no es un drive
 # corporativo; documentos grandes deben vivir en SharePoint/Drive y
@@ -127,6 +128,39 @@ def _validate_size(data: bytes) -> None:
         )
 
 
+def _analiza(data: bytes, ext: str) -> None:
+    """MCS SEG-01 · ASVS 12.4.2 — análisis antes de guardar.
+
+    Va en las tres rutas de guardado (`_save_local`, `_save_s3` y
+    `save_document_bytes`) y no en el endpoint, porque son las tres las que
+    escriben y el endpoint es solo una de las puertas.
+
+    El motivo por el que hace falta aquí en concreto: `_resolve_mime` toma el
+    tipo de la cabecera del navegador, con respaldo en la extensión del nombre,
+    y las dos las escribe quien sube el archivo. Sin mirar los bytes, un
+    ejecutable renombrado a `.pdf` se guardaba con extensión `.pdf` y se servía
+    después con `Content-Type: application/pdf`.
+    """
+    try:
+        analiza(data, ext)
+    except ArchivoRechazadoError as exc:
+        raise validation_error(
+            mensaje(
+                que="Ese archivo no se puede guardar.",
+                porque=(
+                    f"Su contenido no corresponde con lo que dice ser, o el "
+                    f"análisis lo marcó como peligroso. Detalle: {exc}"
+                ),
+                accion=(
+                    "Comprueba que subes el archivo correcto y que no está "
+                    "dañado. Si lo exportaste de otra herramienta, vuelve a "
+                    "exportarlo."
+                ),
+            ),
+            fields={"motivo": str(exc)},
+        ) from exc
+
+
 def _doc_key(tenant_id: str, project_id: str, document_id: str, ext: str) -> str:
     """Object key (S3) o sufijo de path (local) — formato consistente."""
     return f"documents/{tenant_id}/{project_id}/{document_id}.{ext}"
@@ -147,6 +181,7 @@ async def _save_local(
     content_type, ext = _resolve_mime(upload)
     data = await upload.read()
     _validate_size(data)
+    _analiza(data, ext)
 
     key = _doc_key(tenant_id, project_id, document_id, ext)
     target = _local_full_path(key)
@@ -233,6 +268,7 @@ async def _save_s3(
     content_type, ext = _resolve_mime(upload)
     data = await upload.read()
     _validate_size(data)
+    _analiza(data, ext)
 
     key = _doc_key(tenant_id, project_id, document_id, ext)
     client = _get_s3_client()
@@ -337,6 +373,7 @@ def save_document_bytes(
             ),
             fields={"ext": ext},
         )
+    _analiza(data, ext)
     key = _doc_key(tenant_id, project_id, document_id, ext)
     if settings.STORAGE_BACKEND == "s3":
         client = _get_s3_client()

@@ -1,13 +1,17 @@
 import secrets
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
+from app.core import cookies
 from app.core.config import settings
+from app.core.contrasenas_filtradas import esta_filtrada
 from app.core.errors import (
     business_rule,
     forbidden,
@@ -20,6 +24,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
+    mensaje_de_politica,
     necesita_rehash,
     validate_password_policy,
     verify_password,
@@ -36,11 +41,14 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     SwitchTenantRequest,
     UserOut,
+    VerificarCodigoRequest,
 )
 from app.services.audit import write_audit
+from app.services.aviso_privacidad import VERSION as VERSION_AVISO
+from app.services.aviso_privacidad import acepto_lo_vigente, como_json
 from app.services.notifications import (
-    PASSWORD_CHANGED,
     PASSWORD_RESET_REQUESTED,
+    avisa_cambio_de_credencial,
     enqueue_notification,
 )
 from app.services.password_reset import (
@@ -50,6 +58,17 @@ from app.services.password_reset import (
 )
 from app.services.rate_limit import check_and_increment, excede
 from app.services.rate_limit import reset as rate_limit_reset
+from app.services.segundo_factor import VIDA_MINUTOS as VIDA_OTP_MINUTOS
+from app.services.segundo_factor import (
+    avisa_dispositivo_nuevo,
+    emite,
+    envia_codigo,
+    es_dispositivo_de_confianza,
+    necesita_segundo_factor,
+    recuerda_dispositivo,
+    revoca_dispositivos,
+    verifica,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -70,12 +89,15 @@ async def _build_user_out(db: AsyncSession, user: User) -> UserOut:
             "is_superadmin": user.is_superadmin,
             "must_change_password": user.must_change_password,
             "roles": list(role_names),
+            "debe_aceptar_privacidad": not acepto_lo_vigente(user.privacy_version),
         }
     )
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
     # AM-09 · límite por IP. El bloqueo por cuenta que ya había detiene a quien
     # adivina la contraseña de **una** cuenta; no hace nada contra el rociado,
     # que prueba una contraseña contra mil cuentas y no toca el umbral de
@@ -185,12 +207,98 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     if necesita_rehash(user.password_hash):
         user.password_hash = hash_password(body.password)
 
+    # MCS SEG-01 / ASVS 2.1.7 — el control nombra tres momentos: alta, **inicio
+    # de sesión** y cambio. Los otros dos los cubre `validate_password_policy`,
+    # que rechaza. Aquí no se puede rechazar: la contraseña es correcta, y dejar
+    # a alguien fuera de su cuenta porque su contraseña apareció en una
+    # filtración es convertir el aviso en una denegación de servicio.
+    #
+    # Lo que se hace es forzar el cambio en la siguiente pantalla. Es el mismo
+    # mecanismo del alta por administrador, así que la web ya lo sabe llevar.
+    if not user.must_change_password and esta_filtrada(body.password):
+        user.must_change_password = True
+        await write_audit(
+            db, action="password_breached_detected", module="auth", user_id=user.id,
+            tenant_id=user.tenant_id, details={"forced_change": True},
+            ip_address=ip, user_agent=ua,
+        )
+
     role_names = (
         await db.execute(
             select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user.id)
         )
     ).scalars().all()
 
+    # ASVS 4.3.1 — si la cuenta llega a una interfaz de administración, la
+    # contraseña correcta **no** basta: no se emite sesión todavía, se manda un
+    # código al correo y se devuelve el desafío. La sesión la emite
+    # `/verificar-codigo` si el código es el bueno.
+    if settings.ADMIN_MFA_REQUIRED and necesita_segundo_factor(user):
+        # ADR-035 §Ventana — si este equipo ya demostró el segundo factor, no se
+        # vuelve a pedir durante la ventana. Sigue habiendo dos factores: la
+        # cookie es un secreto de 256 bits que solo tiene este navegador, y la
+        # contraseña acaba de comprobarse arriba.
+        de_confianza = await es_dispositivo_de_confianza(
+            db, user=user, token=cookies.leer(request, cookies.DISPOSITIVO)
+        )
+        if de_confianza:
+            await write_audit(
+                db, action="login_success", module="auth", user_id=user.id,
+                tenant_id=user.tenant_id,
+                # Queda anotado que se **saltó** el código. Sin este detalle, una
+                # entrada con segundo factor y una sin él son la misma línea.
+                details={"mfa": "dispositivo_confiable"},
+                ip_address=ip, user_agent=ua,
+            )
+            return await _emite_sesion(
+                db, user=user, now=now, ip=ip, ua=ua, role_names=role_names
+            )
+
+        desafio, codigo = await emite(db, user=user)
+        await write_audit(
+            db, action="mfa_challenge_sent", module="auth", user_id=user.id,
+            tenant_id=user.tenant_id, ip_address=ip, user_agent=ua,
+        )
+        await db.commit()
+        envia_codigo(user.email, codigo)
+        return JSONResponse(
+            status_code=202,
+            content={
+                "mfa_required": True,
+                "desafio": desafio,
+                "detalle": (
+                    "Te enviamos un código a tu correo. Caduca en "
+                    f"{VIDA_OTP_MINUTOS} minutos."
+                ),
+                # La pantalla lo rotula («durante N días»). Va aquí y no escrito
+                # a mano en la web: si estuviera en los dos sitios, cambiar el
+                # ajuste dejaría a la pantalla diciendo un número que ya no es.
+                "dias_recordado": settings.DISPOSITIVO_CONFIABLE_DIAS,
+            },
+        )
+
+    await write_audit(
+        db, action="login_success", module="auth", user_id=user.id, tenant_id=user.tenant_id,
+        ip_address=ip, user_agent=ua,
+    )
+    return await _emite_sesion(db, user=user, now=now, ip=ip, ua=ua, role_names=role_names)
+
+
+async def _emite_sesion(
+    db: AsyncSession,
+    *,
+    user: User,
+    now: datetime,
+    ip: str | None,
+    ua: str | None,
+    role_names: Sequence[str],
+) -> JSONResponse:
+    """Emite el par de tokens, sus cookies y la respuesta de sesión.
+
+    Sale de `login` porque ahora hay **dos** caminos que llegan aquí —el directo
+    y el que pasa por el segundo factor— y tener dos copias de la emisión de
+    sesión es cómo se acaba con una cookie puesta en un camino y no en el otro.
+    """
     tenant_ids: list = []
     if user.tenant_id:
         tenant_ids.append(user.tenant_id)
@@ -212,10 +320,6 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
             expires_at=now + timedelta(seconds=settings.REFRESH_TOKEN_TTL_SEC),
         )
     )
-    await write_audit(
-        db, action="login_success", module="auth", user_id=user.id, tenant_id=user.tenant_id,
-        ip_address=ip, user_agent=ua,
-    )
     await db.commit()
 
     user_out = await _build_user_out(db, user)
@@ -229,10 +333,91 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     from fastapi.responses import JSONResponse
 
     resp = JSONResponse(content=response.model_dump(mode="json"))
-    resp.set_cookie(
-        "refresh_token", refresh, httponly=True, secure=settings.PYTHON_ENV == "production",
-        samesite="strict", max_age=settings.REFRESH_TOKEN_TTL_SEC, path="/api/v1/auth",
+    # ASVS 3.4.4 — nombre, `Path` y `Secure` los decide `core/cookies.py`: el
+    # prefijo `__Host-` solo vale si van los tres juntos, y repartir esa regla
+    # por los endpoints es cómo se acaba emitiendo una cookie que el navegador
+    # tira sin decir nada.
+    cookies.fijar(resp, cookies.REFRESCO, refresh, max_age=settings.REFRESH_TOKEN_TTL_SEC)
+    # ASVS 3.2.3 / 8.2.2 — el token de acceso sale por cookie `HttpOnly`. Se
+    # sigue devolviendo en el cuerpo para el SDK y las integraciones de
+    # servidor a servidor; lo que cambia es que el navegador ya no necesita
+    # guardarlo, y por tanto ya no lo guarda.
+    cookies.fijar(resp, cookies.ACCESO, access, max_age=settings.ACCESS_TOKEN_TTL_SEC)
+    return resp
+
+
+@router.post("/verificar-codigo", response_model=LoginResponse)
+async def verificar_codigo(
+    body: VerificarCodigoRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+    """Segundo paso del inicio de sesión de administración (ASVS 4.3.1).
+
+    El límite por IP es el mismo que el del primer paso y por el mismo motivo:
+    sin él, seis dígitos son un millón de combinaciones que se prueban enteras en
+    minutos. El contador por desafío (`INTENTOS_MAXIMOS`) acota un desafío
+    concreto; este acota a quien los pide en serie.
+
+    Todos los fallos responden igual: distinguir «código incorrecto» de «desafío
+    caducado» le diría a quien prueba si va por buen camino.
+    """
+    clave_limite = f"rl:mfa:ip:{_client_ip(request)}"
+    if excede(clave_limite, max_attempts=_LOGIN_MAX_FAILS_PER_HOUR_IP):
+        raise rate_limited()
+
+    user = await verifica(db, desafio=body.desafio, codigo=body.codigo)
+    if user is None or not user.is_active:
+        check_and_increment(
+            clave_limite,
+            max_attempts=_LOGIN_MAX_FAILS_PER_HOUR_IP,
+            window_sec=_WINDOW_SEC,
+        )
+        await write_audit(
+            db, action="mfa_failed", module="auth",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        await db.commit()
+        raise unauthorized()
+
+    role_names = (
+        await db.execute(
+            select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user.id)
+        )
+    ).scalars().all()
+    await write_audit(
+        db, action="login_success", module="auth", user_id=user.id,
+        tenant_id=user.tenant_id, details={"mfa": "email_otp"},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
     )
+    resp = await _emite_sesion(
+        db, user=user, now=datetime.now(UTC),
+        ip=request.client.host if request.client else None,
+        ua=request.headers.get("user-agent"), role_names=role_names,
+    )
+
+    # ADR-035 §Ventana. Va **después** de verificar el código y solo si se pide:
+    # en un equipo prestado, recordar sería peor que la molestia que evita.
+    if body.recordar_equipo:
+        token = await recuerda_dispositivo(
+            db, user=user, descripcion=request.headers.get("user-agent")
+        )
+        await write_audit(
+            db, action="dispositivo_recordado", module="auth", user_id=user.id,
+            tenant_id=user.tenant_id,
+            details={"dias": settings.DISPOSITIVO_CONFIABLE_DIAS},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        await db.commit()
+        cookies.fijar(
+            resp, cookies.DISPOSITIVO, token,
+            max_age=settings.DISPOSITIVO_CONFIABLE_DIAS * 24 * 3600,
+        )
+        # El aviso es lo que hace aceptable la ventana: si llega y no fuiste tú,
+        # alguien tiene tu contraseña Y tu correo, y acaba de conseguir una
+        # semana de entradas sin código.
+        avisa_dispositivo_nuevo(user.email, request.headers.get("user-agent"))
     return resp
 
 
@@ -242,7 +427,7 @@ async def logout(
     cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    refresh = request.cookies.get("refresh_token")
+    refresh = cookies.leer(request, cookies.REFRESCO)
     if refresh:
         from app.core.security import decode_refresh_token
 
@@ -260,7 +445,8 @@ async def logout(
     from fastapi.responses import Response
 
     r = Response(status_code=204)
-    r.delete_cookie("refresh_token", path="/api/v1/auth")
+    cookies.borrar(r, cookies.REFRESCO)
+    cookies.borrar(r, cookies.ACCESO)
     return r
 
 
@@ -280,37 +466,60 @@ async def change_password(
         ))
     ok, err = validate_password_policy(body.new_password)
     if not ok:
-        raise validation_error(mensaje(
-            que="Contraseña no cumple política",
-            porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
-            accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
-        ), {"code": err})
+        raise validation_error(mensaje_de_politica(err), {"code": err})
     cu.user.password_hash = hash_password(body.new_password)
     cu.user.must_change_password = False
     # invalidar todos los refresh tokens del usuario
     await db.execute(update(RefreshToken).where(RefreshToken.user_id == cu.id).values(revoked=True))
     await write_audit(db, action="password_change", module="auth", user_id=cu.id, tenant_id=cu.user.tenant_id)
-    # US-063: confirmación al user ("si no fuiste tú, avisa al admin").
-    if cu.user.tenant_id is not None:
-        await enqueue_notification(
-            db,
-            tenant_id=cu.user.tenant_id,
-            user_id=cu.id,
-            type=PASSWORD_CHANGED,
-            title="Tu contraseña fue cambiada",
-            body=(
-                "Acabas de cambiar tu contraseña. Si no fuiste tú, "
-                "avisa inmediatamente al administrador del tenant."
-            ),
-            entity_type="user",
-            entity_id=str(cu.id),
-            link="/account",
-            send_email=True,
-        )
+    # ASVS 2.2.3 / 2.5.5. Antes esto llevaba el guardia `if tenant_id is not
+    # None`, así que un superadministrador —la cuenta con más permisos de la
+    # plataforma— era la única que cambiaba su contraseña sin recibir aviso.
+    # ADR-035 — cambiar la contraseña es la acción de «creo que me han entrado».
+    # Si la confianza de los equipos sobreviviera, quien hubiera entrado una vez
+    # seguiría entrando con la contraseña nueva y sin código, que es justo lo
+    # contrario de lo que esa persona pretendía al cambiarla.
+    await revoca_dispositivos(db, user_id=cu.id)
+    await avisa_cambio_de_credencial(db, usuario=cu.user, motivo="password")
     await db.commit()
     from fastapi.responses import Response
 
     return Response(status_code=204)
+
+
+@router.get("/aviso-privacidad")
+async def aviso_privacidad() -> dict[str, object]:
+    """El texto del aviso. **Sin autenticar a propósito.**
+
+    La pantalla que lo muestra sale antes de que la persona haya aceptado nada,
+    y quien quiera leer qué se recoge sobre él antes de entrar tiene derecho a
+    hacerlo sin una cuenta. No hay nada de ningún inquilino aquí: es el mismo
+    texto para todo el mundo y cambia con el código.
+    """
+    return como_json()
+
+
+@router.post("/aceptar-privacidad", response_model=UserOut)
+async def aceptar_privacidad(
+    cu: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> UserOut:
+    """Registra el consentimiento de la versión vigente (ASVS 8.3.3).
+
+    Se guarda la versión que está en vigor **en el servidor**, no la que diga el
+    cliente: si la mandara el cliente, bastaría con enviar una versión antigua
+    para que la pantalla dejara de aparecer sin haber leído lo nuevo.
+
+    Queda en la auditoría porque un consentimiento es exactamente el tipo de
+    hecho que alguien puede tener que demostrar después.
+    """
+    cu.user.privacy_accepted_at = datetime.now(UTC)
+    cu.user.privacy_version = VERSION_AVISO
+    await write_audit(
+        db, action="privacy_accepted", module="auth", user_id=cu.id,
+        tenant_id=cu.user.tenant_id, details={"version": VERSION_AVISO},
+    )
+    await db.commit()
+    return await _build_user_out(db, cu.user)
 
 
 @router.get("/me", response_model=UserOut)
@@ -368,9 +577,17 @@ async def switch_tenant(
         roles=cu.roles,
     )
     user_out = await _build_user_out(db, cu.user)
-    return LoginResponse(
+    cuerpo = LoginResponse(
         access_token=access, user=user_out, tenants=cu.tenant_ids, active_tenant_id=body.tenant_id
     )
+    # El token cambia de inquilino activo, así que la cookie tiene que cambiar
+    # con él. Sin esto, el navegador seguiría mandando el token del inquilino
+    # anterior y el cambio no surtiría efecto en la siguiente petición.
+    from fastapi.responses import JSONResponse
+
+    resp = JSONResponse(content=cuerpo.model_dump(mode="json"))
+    cookies.fijar(resp, cookies.ACCESO, access, max_age=settings.ACCESS_TOKEN_TTL_SEC)
+    return resp
 
 
 def _random_password(length: int = 16) -> str:
@@ -544,13 +761,7 @@ async def reset_password(
 
     policy_ok, policy_err = validate_password_policy(body.new_password)
     if not policy_ok:
-        raise validation_error(
-            mensaje(
-                que="Contraseña no cumple política",
-                porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
-                accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
-            ), {"code": policy_err}
-        )
+        raise validation_error(mensaje_de_politica(policy_err), {"code": policy_err})
 
     token_row = await consume_reset_token(db, plain=body.token)
     if token_row is None:
@@ -586,22 +797,8 @@ async def reset_password(
         .values(revoked=True)
     )
 
-    if user.tenant_id is not None:
-        await enqueue_notification(
-            db,
-            tenant_id=user.tenant_id,
-            user_id=user.id,
-            type=PASSWORD_CHANGED,
-            title="Tu contraseña fue restablecida",
-            body=(
-                "Acabas de restablecer tu contraseña. Si no fuiste tú, "
-                "avisa inmediatamente al administrador del tenant."
-            ),
-            entity_type="user",
-            entity_id=str(user.id),
-            link="/login",
-            send_email=True,
-        )
+    await revoca_dispositivos(db, user_id=user.id)
+    await avisa_cambio_de_credencial(db, usuario=user, motivo="password_reset")
 
     await write_audit(
         db,

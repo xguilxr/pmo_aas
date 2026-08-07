@@ -66,6 +66,18 @@ VENTANAS: dict[str, Ventana] = {
         viejo="task_load_thresholds.amber_max", nuevo="task_load_thresholds.yellow_max",
         desde=date(2026, 8, 6), adr="ADR-030",
     ),
+    # ASVS 3.4.4 — la única ventana que no viene de un renombrado del glosario.
+    # Al desplegar el prefijo `__Host-`, el navegador de quien ya tenía sesión
+    # sigue trayendo la cookie vieja: sin prefijo y con `Path=/api/v1/auth`. Se
+    # acepta a la lectura para poder revocar su fila al cerrar sesión.
+    #
+    # Esta se cierra sola: nadie puede volver a **crear** una cookie con el
+    # nombre viejo —solo lo hacía el servidor, y ya no—, así que el contador
+    # baja a cero por caducidad de las que quedan (30 días, `REFRESH_TOKEN_TTL_SEC`).
+    "cookie:refresh_token": Ventana(
+        viejo="refresh_token", nuevo="__Host-refresh_token",
+        desde=date(2026, 8, 7), adr="ADR-033",
+    ),
 }
 
 

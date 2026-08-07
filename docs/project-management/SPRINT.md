@@ -54,11 +54,15 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   mecánicos— y hoy están medidos.
 - [x] **Ola 3 — cerrada el 2026-08-07.** De 32 bloqueantes de N1 a **1**; 31
   cierres con prueba y verificación por mutación. Detalle en el registro.
-  **Queda `SEG-01`, PARCIAL a propósito:** el mapeo ASVS L1 completo (127
-  controles) salió con **19 huecos**. Seis son una sola decisión de producto
-  —ASVS pide contraseñas de 12 sin reglas de composición; el producto pide 8 con
-  ellas— y dos son el token en `localStorage`. Lista en
-  `docs/conformidad/asvs-l1.md`. **Necesita al owner.**
+- [x] **Los quince huecos ASVS — los quince cerrados el 2026-08-07**, uno por
+  commit, con prueba y verificación por mutación. Tope de `check_asvs.py` en
+  **0**. **`SEG-01` sigue PARCIAL** por tres residuales ACEPTADO con ADR
+  detrás: `2.1.1` y `2.1.9` (contraseñas, ADR-032) y `2.7.1` (el correo como
+  segundo factor, ADR-035). Un residual aceptado no es un control cumplido.
+- [ ] **Al desplegar:** ADR-033 cierra **todas las sesiones vivas**, y entrar al
+  panel pasa a ser dos pasos (ADR-035). Migraciones 0105 y 0106.
+- [ ] **Si Resend se cae, ningún administrador entra.** Es la consecuencia de
+  que el segundo factor viaje por correo; está escrita en ADR-035.
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto

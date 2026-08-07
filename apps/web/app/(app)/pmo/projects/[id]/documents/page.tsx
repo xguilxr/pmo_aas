@@ -24,7 +24,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { ApiError, apiBase, apiFetch } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 type ArtifactType = "charter" | "plan" | "raid" | "organigrama";
 
@@ -85,9 +84,7 @@ function formatSize(bytes: number | null): string {
 }
 
 async function downloadAuthed(path: string, fallbackName: string) {
-  const token = getAccessToken();
   const headers: Record<string, string> = { Accept: "application/octet-stream" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${apiBase()}${path}`, {
     method: "GET",
     headers,

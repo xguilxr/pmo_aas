@@ -16,7 +16,11 @@ from app.core.errors import (
     validation_error,
 )
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
-from app.core.security import hash_password, validate_password_policy
+from app.core.security import (
+    hash_password,
+    mensaje_de_politica,
+    validate_password_policy,
+)
 from app.db.session import get_db
 from app.models.organization import Organization
 from app.models.organization_user_exclusion import OrganizationUserExclusion
@@ -40,6 +44,7 @@ from app.schemas.user import (
     UserUpdate,
 )
 from app.services.audit import write_audit
+from app.services.notifications import avisa_cambio_de_credencial
 
 router = APIRouter(prefix="/admin/users", tags=["admin.users"])
 
@@ -120,15 +125,7 @@ async def create_user(
 ):
     ok, err = validate_password_policy(body.password)
     if not ok:
-        raise validation_error(
-            mensaje(
-                que="La contraseña no cumple la política de la plataforma.",
-                porque="Se exige una longitud mínima y una mezcla de mayúsculas, "
-                    "minúsculas, números y símbolos, y que no sea una contraseña común.",
-                accion="Elige otra que cumpla los criterios y vuelve a guardar.",
-            ),
-            {"code": err},
-        )
+        raise validation_error(mensaje_de_politica(err), {"code": err})
 
     # BUG-055: el superadmin que hizo `joinAsAdmin` tiene
     # `user.tenant_id=None` pero un `active_tenant_id` en el JWT — usar
@@ -318,7 +315,13 @@ async def update_user(
 
     if body.full_name is not None:
         u.full_name = body.full_name
-    if body.email is not None:
+    correo_anterior = None
+    if body.email is not None and body.email.lower() != u.email:
+        # ASVS 2.2.3 — se guarda para avisar TAMBIÉN a la dirección que se
+        # abandona. Sin eso, quien se apodera de una cuenta y le cambia el
+        # correo consigue que el dueño no se entere nunca: todos los avisos
+        # posteriores van al atacante.
+        correo_anterior = u.email
         u.email = body.email.lower()
     if body.is_active is not None:
         u.is_active = body.is_active
@@ -338,6 +341,10 @@ async def update_user(
         db, action="user.update", module="admin.users", user_id=cu.id, tenant_id=u.tenant_id,
         entity_type="user", entity_id=str(u.id),
     )
+    if correo_anterior is not None:
+        await avisa_cambio_de_credencial(
+            db, usuario=u, motivo="email", correo_anterior=correo_anterior
+        )
     await db.commit()
     return await _serialize(db, u)
 
@@ -388,6 +395,10 @@ async def reset_password(
         db, action="password_reset_by_admin", module="admin.users",
         user_id=cu.id, tenant_id=u.tenant_id, entity_type="user", entity_id=str(u.id),
     )
+    # ASVS 2.5.5 — el dueño de la cuenta se entera de que otra persona le
+    # cambió la contraseña. Es el caso donde el aviso más falta hace: aquí el
+    # cambio no lo hizo él, así que es el único que puede detectar un abuso.
+    await avisa_cambio_de_credencial(db, usuario=u, motivo="password_admin")
     await db.commit()
     return UserResetPasswordResponse(temp_password=temp)
 

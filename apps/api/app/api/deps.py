@@ -4,7 +4,8 @@ from fastapi import Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import forbidden, mensaje, unauthorized
+from app.core import cookies
+from app.core.errors import forbidden, mensaje, rate_limited, unauthorized
 from app.core.permissions import (
     _ADMIN_EQUIVALENT_ROLES,
     ADMIN_CAPABILITIES,
@@ -15,6 +16,7 @@ from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.tenant_permission import TenantRolePermissionOverride
 from app.models.user import User
+from app.services.rate_limit import verifica_presupuesto
 
 
 class CurrentUser:
@@ -131,9 +133,21 @@ async def get_current_user(
     authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> CurrentUser:
-    if not authorization or not authorization.lower().startswith("bearer "):
+    # ASVS 3.2.3 / 8.2.2 (ADR-033) — el token llega por cookie `HttpOnly` desde
+    # el navegador, o por `Authorization` desde el SDK y las integraciones de
+    # servidor a servidor, que no son un navegador y no tienen el problema que
+    # esto resuelve.
+    #
+    # La cabecera va **primero**: quien la manda a propósito está diciendo con
+    # qué identidad quiere operar, y si el navegador arrastrase además una
+    # cookie de otra sesión, ganar la cookie sería sorprendente.
+    token = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+    else:
+        token = cookies.leer(request, cookies.ACCESO) or ""
+    if not token:
         raise unauthorized()
-    token = authorization.split(" ", 1)[1].strip()
     try:
         payload = decode_access_token(token)
     except ValueError:
@@ -143,6 +157,26 @@ async def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise unauthorized()
+
+    # MCS SEG-01 · ASVS 11.1.4 — presupuesto de peticiones por cuenta.
+    #
+    # El tamaño de página ya estaba topado en 100 en los cincuenta listados que
+    # lo declaran; lo que no estaba topado era **cuántas veces** se pide. Una
+    # cuenta válida podía recorrer la cartera entera del inquilino, página a
+    # página, tan rápido como aguantara la red: el tope por página no frena una
+    # exfiltración, solo decide en cuántos trozos se lleva.
+    #
+    # Va aquí, después de saber quién es y antes de tocar la base, porque es el
+    # único punto por el que pasan **todas** las peticiones autenticadas. Un
+    # límite que hay que acordarse de poner endpoint por endpoint es un límite
+    # que falta en el endpoint nuevo.
+    #
+    # La clave es la cuenta y no la IP: contra una IP no protege —un cliente
+    # legítimo detrás de un NAT comparte la de toda su oficina— y quien exfiltra
+    # con credenciales válidas puede cambiarla y no puede cambiar de cuenta sin
+    # volver a autenticarse, que es donde le espera AM-09.
+    if not verifica_presupuesto(str(user_id)):
+        raise rate_limited()
 
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None or not user.is_active:

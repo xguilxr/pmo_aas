@@ -43,7 +43,6 @@ import {
   type TenantFullDetail,
 } from "@/lib/api/superadmin-panel";
 import {
-  setAccessToken,
   setActiveTenantId,
   getStoredUser,
   setStoredUser,
@@ -154,7 +153,8 @@ export default function TenantDetailPage() {
     setJoining(true);
     try {
       const res = await joinAsAdmin(data.tenant.id);
-      setAccessToken(res.access_token);
+      // ASVS 3.2.3 — el token nuevo llega en la cookie que `switch-tenant`
+      // acaba de emitir; el navegador ya no guarda ninguna copia.
       setActiveTenantId(res.active_tenant_id);
       const user = getStoredUser();
       if (user && !user.roles.includes("Administrador")) {

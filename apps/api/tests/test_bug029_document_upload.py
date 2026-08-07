@@ -64,8 +64,14 @@ async def test_bug029_save_document_accepts_xls_with_fallback(tmp_path):
         fake_upload = MagicMock()
         fake_upload.content_type = ""  # browser no mandó MIME
         fake_upload.filename = "reporte_ligero.xls"
-        fake_upload.read = AsyncMock(return_value=b"BM\x00" * 100)  # 300 bytes fake
-        fake_upload.size = 300
+        # ASVS 12.4.2: el contenido tiene que corresponder con la extensión.
+        # Antes esto era `b"BM\x00" * 100` —la firma de un BMP— y pasaba, que
+        # es exactamente el agujero que el análisis de firma cerró: el tipo
+        # salía de la cabecera y del nombre, nunca de los bytes. Se usa la
+        # firma OLE2 real de un Excel 97-2003.
+        contenido = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 292
+        fake_upload.read = AsyncMock(return_value=contenido)
+        fake_upload.size = len(contenido)
 
         file_url, mime = await storage_module.save_document(
             "tenant-a", "project-b", fake_upload, "doc-123"

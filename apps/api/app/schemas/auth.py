@@ -32,6 +32,11 @@ class UserOut(BaseModel):
     is_superadmin: bool
     must_change_password: bool = False
     roles: list[str] = []
+    # ASVS 8.3.3 — `True` mientras la persona no haya aceptado la versión
+    # **vigente** del aviso. Se manda calculado y no como fecha cruda para que
+    # la web no tenga que conocer la versión en curso: si la conociera, habría
+    # dos sitios que saber cuál es y acabarían discrepando.
+    debe_aceptar_privacidad: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -51,3 +56,20 @@ class ChangePasswordRequest(BaseModel):
 
 class SwitchTenantRequest(BaseModel):
     tenant_id: UUID
+
+
+class VerificarCodigoRequest(BaseModel):
+    """Segundo paso del inicio de sesión de administración (ASVS 4.3.1).
+
+    `desafio` ata el código a la petición que lo pidió: sin él, un código pedido
+    en una pestaña serviría para completar el inicio de sesión que otra persona
+    empezó en otra parte (ASVS 2.7.3).
+    """
+
+    desafio: str = Field(min_length=1, max_length=64)
+    codigo: str = Field(min_length=4, max_length=12)
+    #: ADR-035 §Ventana — «no volver a pedirme el código en este equipo».
+    #: Por defecto **sí**, que es lo que el owner pidió y lo que hace que el
+    #: segundo factor no se vuelva insoportable; se puede desmarcar en un equipo
+    #: prestado, donde recordar sería peor que la molestia que evita.
+    recordar_equipo: bool = True

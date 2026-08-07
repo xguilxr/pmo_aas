@@ -42,6 +42,12 @@ superficie_abierta:
   - ruta: "POST /api/v1/auth/login"
     motivo: no puede exigir identidad; es donde se obtiene
     amenazas: [AM-09, AM-10]
+  - ruta: "POST /api/v1/auth/verificar-codigo"
+    motivo: segundo paso del inicio de sesion de administracion (ASVS 4.3.1). No
+      puede exigir identidad porque es donde se termina de obtener; la autoriza
+      el desafio que `login` creo tras verificar la contrasena, no una sesion.
+      Acotada por intentos y por el mismo limite por IP que el primer paso
+    amenazas: [AM-09, AM-10]
   - ruta: "POST /api/v1/auth/forgot-password"
     motivo: no puede exigir identidad. Responde 204 siempre, para no filtrar
       qué correos existen
@@ -49,6 +55,13 @@ superficie_abierta:
   - ruta: "POST /api/v1/auth/reset-password"
     motivo: la autoriza el token del correo, no una sesión
     amenazas: [AM-11]
+  - ruta: "GET /api/v1/auth/aviso-privacidad"
+    motivo: el texto del aviso de privacidad (ASVS 8.3.3). Sale antes de que
+      nadie haya aceptado nada, y quien quiera leer qué se recoge sobre él
+      antes de tener cuenta tiene derecho a hacerlo. No lleva dato de ningún
+      inquilino ni de ninguna persona - es el mismo texto para todo el mundo y
+      cambia con el codigo, no con la base
+    amenazas: []
   - ruta: "GET /api/v1/public/approve/{jwt_str}"
     motivo: aprobación de cambios por enlace de correo. La autoriza el token
     amenazas: [AM-07]
