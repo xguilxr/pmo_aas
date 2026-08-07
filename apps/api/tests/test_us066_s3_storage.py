@@ -78,8 +78,12 @@ def _make_upload(content: bytes, filename: str, content_type: str) -> MagicMock:
 async def test_us066_s3_save_puts_object_with_correct_key(s3_backend):
     """save_document() en backend s3 hace put_object al bucket con
     la key `documents/{tenant}/{project}/{doc}.xlsx`."""
+    # ASVS 12.4.2: un `.xlsx` es un ZIP, así que empieza por `PK\x03\x04`. El
+    # contenido de relleno anterior no pasaba de ser texto suelto con nombre de
+    # hoja de cálculo — justo lo que el análisis de firma rechaza ahora.
+    xlsx = b"PK\x03\x04" + b"fake xlsx bytes"
     upload = _make_upload(
-        b"fake xlsx bytes",
+        xlsx,
         "reporte.xlsx",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
@@ -96,7 +100,7 @@ async def test_us066_s3_save_puts_object_with_correct_key(s3_backend):
         Bucket="pmo-test-bucket",
         Key="documents/tenant-a/project-b/doc-001.xlsx",
     )
-    assert obj["Body"].read() == b"fake xlsx bytes"
+    assert obj["Body"].read() == xlsx
     assert obj["ContentType"].startswith("application/vnd.openxmlformats")
 
 

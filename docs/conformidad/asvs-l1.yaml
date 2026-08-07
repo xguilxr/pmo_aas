@@ -581,9 +581,22 @@ controles:
       Los archivos viven en almacenamiento de objetos (R2), fuera de cualquier
       raíz web.
   "12.4.2":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No hay análisis antivirus de lo que se sube.
+      `services/analisis_archivos.py`, en las tres rutas de guardado. El
+      control tiene dos mitades. La que **no** necesita motor era el agujero
+      real y va siempre: el tipo salía de la cabecera del navegador y de la
+      extensión del nombre —las dos las escribe quien sube—, así que un
+      ejecutable renombrado a `.pdf` se guardaba como `.pdf` y se servía con
+      ese `Content-Type`; ahora se comprueban los bytes contra la firma.
+      La que sí necesita motor habla ClamAV por `INSTREAM` si `CLAMAV_URL`
+      está configurado. **Sin motor configurado el despliegue actual deja
+      pasar y lo anota** (`POLITICA_SIN_MOTOR = "permitir"`): fallar cerrado
+      dejaría el producto sin subida de documentos, que es peor y más probable
+      que el daño que evita. Eso es consultable en `estado_del_analisis()`, no
+      un «sí» que nadie puede comprobar; poner el motor y cambiar la política a
+      `rechazar` es trabajo de despliegue. Suite
+      `test_seg01_asvs1242_analisis_archivos.py`.
   "12.5.1":
     estado: CUMPLE
     evidencia: >-

@@ -68,11 +68,11 @@ def test_asvs217_toda_entrada_del_conjunto_pasaria_la_politica():
     lo que la política rechaza no hace falta tenerlo aquí, y tenerlo da una
     falsa sensación de cobertura.
     """
-    from app.core.contrasenas_filtradas import _conjunto
-
     # Se comprueba sobre una muestra: el conjunto está en minúsculas, así que
     # el criterio de mayúscula se evalúa sobre la forma original del archivo.
     import pathlib
+
+    from app.core.contrasenas_filtradas import _conjunto
 
     archivo = (
         pathlib.Path(__import__("app.core.contrasenas_filtradas", fromlist=["x"]).__file__).parent

@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "dev_change_me_dev_change_me_dev_"
     JWT_REFRESH_SECRET: str = "dev_refresh_change_me_dev_refresh"
     JWT_ALGORITHM: str = "HS256"
+    # MCS SEG-01 · ASVS 12.4.2 — motor antivirus para lo que se sube.
+    # Vacío = no hay motor: la verificación de firma sigue corriendo (no
+    # necesita motor) y lo demás se anota según `POLITICA_SIN_MOTOR`.
+    # Formato: `tcp://host:3310` — protocolo INSTREAM de clamd.
+    CLAMAV_URL: str = ""
+
     ACCESS_TOKEN_TTL_SEC: int = 3600
     REFRESH_TOKEN_TTL_SEC: int = 2592000
     BCRYPT_ROUNDS: int = 12
