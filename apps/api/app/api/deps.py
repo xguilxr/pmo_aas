@@ -4,7 +4,7 @@ from fastapi import Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import forbidden, mensaje, unauthorized
+from app.core.errors import forbidden, mensaje, rate_limited, unauthorized
 from app.core.permissions import (
     _ADMIN_EQUIVALENT_ROLES,
     ADMIN_CAPABILITIES,
@@ -15,6 +15,7 @@ from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.tenant_permission import TenantRolePermissionOverride
 from app.models.user import User
+from app.services.rate_limit import verifica_presupuesto
 
 
 class CurrentUser:
@@ -143,6 +144,26 @@ async def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise unauthorized()
+
+    # MCS SEG-01 · ASVS 11.1.4 — presupuesto de peticiones por cuenta.
+    #
+    # El tamaño de página ya estaba topado en 100 en los cincuenta listados que
+    # lo declaran; lo que no estaba topado era **cuántas veces** se pide. Una
+    # cuenta válida podía recorrer la cartera entera del inquilino, página a
+    # página, tan rápido como aguantara la red: el tope por página no frena una
+    # exfiltración, solo decide en cuántos trozos se lleva.
+    #
+    # Va aquí, después de saber quién es y antes de tocar la base, porque es el
+    # único punto por el que pasan **todas** las peticiones autenticadas. Un
+    # límite que hay que acordarse de poner endpoint por endpoint es un límite
+    # que falta en el endpoint nuevo.
+    #
+    # La clave es la cuenta y no la IP: contra una IP no protege —un cliente
+    # legítimo detrás de un NAT comparte la de toda su oficina— y quien exfiltra
+    # con credenciales válidas puede cambiarla y no puede cambiar de cuenta sin
+    # volver a autenticarse, que es donde le espera AM-09.
+    if not verifica_presupuesto(str(user_id)):
+        raise rate_limited()
 
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None or not user.is_active:

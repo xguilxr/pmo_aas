@@ -504,10 +504,20 @@ controles:
       Límites por acción: tamaño de archivo, longitud de texto para IA,
       destinatarios de un envío.
   "11.1.4":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No hay límite de peticiones sobre los listados: una cuenta válida puede
-      paginar la cartera entera sin freno.
+      Presupuesto de 600 peticiones por minuto y por cuenta
+      (`rate_limit.verifica_presupuesto`), aplicado dentro de
+      `get_current_user`, que es el único punto por el que pasan todas las
+      peticiones autenticadas — un límite endpoint por endpoint falta en el
+      endpoint nuevo. El tamaño de página ya estaba topado en 100; lo que no lo
+      estaba era cuántas veces se pide, y un tope por página no frena una
+      exfiltración: solo decide en cuántos trozos se lleva el dato. Por cuenta y
+      no por IP, porque un cliente legítimo detrás de un NAT comparte la de toda
+      su oficina. Fail-open ante Redis caído, como el resto del módulo. Suite
+      `test_seg01_asvs1114_antiautomatizacion.py`, que fija además la holgura
+      sobre el uso real: un límite que corta a quien trabaja se sube hasta que
+      deja de servir.
   "11.1.5":
     estado: CUMPLE
     evidencia: >-
