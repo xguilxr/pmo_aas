@@ -36,6 +36,9 @@ class ProjectRequest(Base, TimestampMixin):
     sponsor: Mapped[str] = mapped_column(String(200), nullable=False)
     sponsor_email: Mapped[str | None] = mapped_column(String(200))
     benefits: Mapped[str] = mapped_column(String(5000), nullable=False)
+    # BUG-092 — la solicitud precede al proyecto, así que su importe tiene
+    # que llegar con su moneda o el proyecto nacería con la unidad perdida.
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     budget: Mapped[Importe | None] = mapped_column(Numeric(14, 2), nullable=True)
     scope: Mapped[str] = mapped_column(String(5000), nullable=False)
     entregables: Mapped[str | None] = mapped_column(String(5000))

@@ -354,7 +354,7 @@ catálogo.
 
 | Magnitud | Unidad canónica | Rango | Cómo se reconoce en el código |
 |---|---|---|---|
-| **Importe** | peso mexicano (MXN) | ≥ 0, dos decimales | `Mapped[Importe]` · `Numeric(14, 2)` |
+| **Importe** | la moneda del proyecto | ≥ 0, dos decimales | `Mapped[Importe]` · `Numeric(14, 2)` + `projects.currency` |
 | **Porcentaje** | por ciento | 0 a 100, hasta dos decimales | sufijo `_pct`, o `Mapped[Porcentaje]` |
 | **Fracción** | parte de uno | 0 a 1 | solo variable interna; **nunca** una columna |
 | **Días** | día natural | entero; negativo en los desfases | sufijo `_days` |

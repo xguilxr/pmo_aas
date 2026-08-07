@@ -21,6 +21,12 @@ export type ProjectMemberRole = "pm" | "team" | "viewer" | "stakeholder";
 export type Project = {
   id: string;
   folio: string;
+  /**
+   * BUG-092 — la moneda del presupuesto, **ya resuelta** por la API: nunca
+   * llega vacía. El frontend no aplica la regla «nulo = la del inquilino»,
+   * porque esa regla vive en el backend y dos sitios decidiéndola divergen.
+   */
+  currency: string;
   name: string;
   description: string | null;
   type: ProjectType | null;
@@ -64,6 +70,8 @@ export type ProjectDetail = Project & {
 
 export type ProjectCreateBody = {
   name: string;
+  /** BUG-092 — `null` deja que aplique la preferida del inquilino. */
+  currency?: string | null;
   description: string;
   type: ProjectType;
   priority: number;
@@ -78,6 +86,8 @@ export type ProjectCreateBody = {
 };
 
 export type ProjectUpdateBody = Partial<{
+  /** BUG-092 — `null` devuelve el proyecto a la preferida del inquilino. */
+  currency: string | null;
   name: string;
   description: string;
   type: ProjectType;

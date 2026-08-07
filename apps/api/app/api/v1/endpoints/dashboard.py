@@ -1,7 +1,6 @@
 import csv
 import io
 from datetime import date, timedelta
-from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -14,6 +13,8 @@ from app.core.errors import forbidden, mensaje, validation_error
 from app.core.unidades import razon_a_pct
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
+from app.dominio.moneda import agregar as agregar_por_moneda
+from app.dominio.moneda import resolver as resolver_moneda
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
 from app.models.organization import Organization, Program
@@ -26,6 +27,7 @@ from app.services.analytics.snapshots import (
     snapshot_tenant,
 )
 from app.services.indicadores import avance_de_cartera
+from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
 from app.services.plan_metadata import round_half_up
 from app.services.progress_calculator import effective_progress_map
@@ -185,16 +187,25 @@ async def kpis(
     # que es el defecto de DAT-12 una capa más abajo de donde se suele buscar.
     # La anotación de abajo ya decía `Decimal | None`; era el SQL el que lo
     # hacía imposible.
-    budget_stmt = select(func.sum(Project.budget)).where(
+    #
+    # BUG-092 — y se agrupa POR MONEDA. Una cartera con un proyecto en pesos y
+    # otro en euros no tiene un presupuesto total: sumar 1.000 y 1.000 para
+    # escribir «2.000» es inventar un número que no existe en ninguna parte.
+    # `dominio.moneda.agregar` no ofrece la forma de hacerlo mal.
+    budget_stmt = select(Project.currency, func.sum(Project.budget)).where(
         Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
-    )
+    ).group_by(Project.currency)
     if organization_id:
         budget_stmt = budget_stmt.where(
             Project.organization_id == str(organization_id)
         )
     if role_restricted:
         budget_stmt = budget_stmt.where(Project.id.in_(role_ids or ["__none__"]))
-    budget_total: Decimal | None = (await db.execute(budget_stmt)).scalar_one()
+    preferida = await moneda_preferida(db, tenant_id)
+    budget_por_moneda = agregar_por_moneda(
+        (resolver_moneda(codigo, preferida), importe)
+        for codigo, importe in (await db.execute(budget_stmt)).all()
+    )
 
     # ENH-109 — avance promedio derivado del plan (rollup WBS) con fallback
     # al campo manual para proyectos sin tareas. Se carga el set de proyectos
@@ -229,7 +240,19 @@ async def kpis(
         # `SUM` sobre cero filas devuelve NULL, que significa «no hay nada que
         # sumar» y no «suman cero». Un presupuesto de 0 declarado sí llega como
         # 0 y se muestra como 0: la distinción es justo la de DAT-12.
-        "budget_total": float(budget_total) if budget_total is not None else None,
+        # BUG-092 — un importe por moneda, y `null` cuando no hay ninguno.
+        # La forma del dato es la que impide volver a sumar peras con manzanas
+        # aguas abajo: no hay un total al que caerse.
+        "budget_by_currency": {m: float(v) for m, v in budget_por_moneda.items()},
+        # Se conserva mientras haya una sola moneda en juego, que es el caso de
+        # todos los inquilinos de hoy. Con varias vale `null`, y la pantalla
+        # pinta el desglose. Ventana de compatibilidad, no duplicidad
+        # permanente: se retira cuando ningún consumidor lo lea.
+        "budget_total": (
+            float(next(iter(budget_por_moneda.values())))
+            if len(budget_por_moneda) == 1
+            else None
+        ),
         "progress_avg": float(progress_avg) if progress_avg is not None else None,
     }
 
@@ -341,6 +364,7 @@ async def plan_vs_actual(
     # al campo manual. `progress_plan` sigue siendo el avance esperado por
     # calendario (_plan_progress_for), que es otra cosa.
     eff = await effective_progress_map(db, list(projects))
+    preferida_pva = await moneda_preferida(db, tenant_id)
 
     out = []
     for p in projects:
@@ -350,6 +374,9 @@ async def plan_vs_actual(
                 "project_id": str(p.id),
                 "folio": p.folio,
                 "name": p.name,
+                # BUG-092 — cada fila lleva su moneda, ya resuelta. Sin ella la
+                # tabla vuelve a rotular todo con la misma, que es el bug.
+                "currency": resolver_moneda(p.currency, preferida_pva),
                 "end_date": p.end_date.isoformat() if p.end_date else None,
                 "budget_plan": float(p.budget or 0),
                 "budget_actual": float(p.actual_budget or 0),

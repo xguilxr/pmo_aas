@@ -249,6 +249,11 @@ class ProgramSummary(BaseModel):
     health: OrganizationPanelHealth = Field(default_factory=OrganizationPanelHealth)
     budget_planned: float = 0
     budget_actual: float = 0
+    # BUG-092 — el desglose por moneda. Los dos escalares de arriba valen 0
+    # cuando el programa mezcla monedas, porque ahí no hay un total que dar; el
+    # desglose siempre está y es el que la pantalla pinta.
+    budget_planned_by_currency: dict[str, float] = {}
+    budget_actual_by_currency: dict[str, float] = {}
     projects: list[ProgramSummaryProject] = Field(default_factory=list)
     top_risks: list[ProgramSummaryRisk] = Field(default_factory=list)
 

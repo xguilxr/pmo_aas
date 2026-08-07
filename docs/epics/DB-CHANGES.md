@@ -830,3 +830,35 @@ siendo ambiguos y así se quedan.
 vuelve a `NOT NULL`. No pierde filas, pero **sí pierde la distinción**: los «no
 hay proyectos» vuelven a ser ceros indistinguibles. Está escrito en el
 `downgrade()` porque el runbook de DES-02 §3.3 manda leerlo antes de bajar.
+
+---
+
+## `20260807_0104` — `currency` en proyectos y solicitudes (BUG-092)
+
+`ADD COLUMN currency VARCHAR(3) NULL` en `projects` y en `project_requests`.
+Sin datos que convertir, sin índices y sin restricción de valores.
+
+**Por qué.** `tenant.settings.currency` ofrecía MXN, USD y EUR y **el
+formulario que la guardaba era el único sitio que la leía**. Las diez
+superficies que muestran dinero traían `currency: "MXN"` escrito, así que un
+inquilino en dólares —el propio sembrado crea uno— veía sus importes rotulados
+en pesos. El número no estaba mal; la unidad era mentira, que en un importe es
+lo mismo que estar mal.
+
+Decisión del owner (2026-08-07): la preferida se queda a nivel de inquilino
+como **valor inicial**, y la moneda efectiva la elige cada **proyecto**. La
+solicitud la lleva también, porque su importe precede al proyecto.
+
+**Nulable, y el nulo significa algo:** no es «sin moneda», es «la que diga el
+inquilino». Rellenar las filas existentes con `MXN` habría congelado la
+respuesta de hoy y roto justo lo que se viene a arreglar — quien cambie su
+preferida espera que sus proyectos sin elección la sigan.
+
+**Sin `CHECK` de valores.** La lista admitida vive en `app/dominio/moneda.py`;
+una restricción de columna obligaría a una migración para añadir la cuarta
+moneda, y el conjunto lo valida el esquema Pydantic en la frontera.
+
+**Reversible, con pérdida declarada.** `downgrade` quita la columna: no pierde
+filas, pero **sí la elección** — los proyectos que hubieran escogido una moneda
+distinta de la preferida vuelven a mostrarse con la del inquilino. Está escrito
+en el `downgrade()` porque el runbook de DES-02 §3.3 manda leerlo antes de bajar.

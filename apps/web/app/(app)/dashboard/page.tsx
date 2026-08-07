@@ -58,6 +58,8 @@ import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
+import { formatearDesglose, formatearImporte, monedaUnica } from "@/lib/moneda";
+import { useMonedaPreferida } from "@/lib/moneda-tenant";
 
 const PHASE_LABEL: Record<string, string> = {
   planning: "Planificación",
@@ -127,6 +129,9 @@ function DashboardSkeleton() {
 }
 
 function DashboardInner() {
+  // BUG-092 — para lo que NO cuelga de un proyecto: gráficos de cartera y
+  // filas agregadas. Un importe de proyecto trae la suya, ya resuelta.
+  const monedaDeCartera = useMonedaPreferida();
   const user = getStoredUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -447,11 +452,20 @@ function DashboardInner() {
           icon={<FileWarning className="h-4 w-4" aria-hidden />}
           href="/pmo/raid?kind=issues"
         />
+        {/* BUG-092 — con una sola moneda se pinta la tarjeta de siempre. Con
+            varias NO hay un total, así que se pinta el desglose: sumar pesos y
+            euros para dar un número redondo es inventarlo. */}
         <KpiCard
           label="Presupuesto total"
           value={kpis?.budget_total}
           loading={loadingKpis}
-          format="currency-mxn"
+          format="currency"
+          moneda={monedaUnica(kpis?.budget_by_currency ?? {}) ?? undefined}
+          hint={
+            monedaUnica(kpis?.budget_by_currency ?? {})
+              ? undefined
+              : formatearDesglose(kpis?.budget_by_currency ?? {})
+          }
           icon={<CircleDollarSign className="h-4 w-4" aria-hidden />}
         />
         <KpiCard
@@ -492,13 +506,7 @@ function DashboardInner() {
           <Bars
             data={budgetData}
             ariaLabel="Presupuesto por tipo"
-            valueFormat={(n) =>
-              new Intl.NumberFormat("es-MX", {
-                style: "currency",
-                currency: "MXN",
-                maximumFractionDigits: 0,
-              }).format(n)
-            }
+            valueFormat={(n) => formatearImporte(n, monedaDeCartera)}
           />
         </ChartCard>
       </section>
@@ -557,7 +565,7 @@ function DashboardInner() {
             )}
           </ChartCard>
           <ChartCard title="Portafolio (presupuesto × salud)">
-            <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" />
+            <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" moneda={monedaDeCartera} />
           </ChartCard>
         </section>
       ) : null}
@@ -666,18 +674,10 @@ function DashboardInner() {
                       {r.end_date ? new Date(r.end_date).toLocaleDateString("es-MX") : "—"}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)] tabular-nums">
-                      {new Intl.NumberFormat("es-MX", {
-                        style: "currency",
-                        currency: "MXN",
-                        maximumFractionDigits: 0,
-                      }).format(r.budget_plan)}
+                      {formatearImporte(r.budget_plan, r.currency ?? monedaDeCartera)}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)] tabular-nums">
-                      {new Intl.NumberFormat("es-MX", {
-                        style: "currency",
-                        currency: "MXN",
-                        maximumFractionDigits: 0,
-                      }).format(r.budget_actual)}
+                      {formatearImporte(r.budget_actual, r.currency ?? monedaDeCartera)}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)]">
                       <ProgressBar value={r.progress_plan} />

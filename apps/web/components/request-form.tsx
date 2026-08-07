@@ -24,6 +24,8 @@ import {
   type RequestAttachment,
 } from "@/lib/api/requests";
 import { cn } from "@/lib/cn";
+import { formatearImporte, MONEDAS } from "@/lib/moneda";
+import { useMonedaPreferida } from "@/lib/moneda-tenant";
 
 type Draft = {
   title: string;
@@ -38,6 +40,8 @@ type Draft = {
   sponsor_email: string;
   benefits: string;
   budget: string;
+  /** BUG-092 — la moneda del importe. Vacío = la preferida del inquilino. */
+  currency: string;
   scope: string;
   entregables: string;
   key_people: string;
@@ -62,6 +66,7 @@ const EMPTY: Draft = {
   sponsor_email: "",
   benefits: "",
   budget: "",
+  currency: "",
   scope: "",
   entregables: "",
   key_people: "",
@@ -85,10 +90,11 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]["id"];
 
-function currency(v: string): string {
+// BUG-092 — recibe la moneda; no la asume. Antes traía `"MXN"` escrito.
+function currency(v: string, moneda: string): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
+  return formatearImporte(n, moneda);
 }
 
 function loadDraft(): Draft | null {
@@ -113,6 +119,7 @@ function clearDraft() {
 }
 
 export function RequestForm() {
+  const preferida = useMonedaPreferida();
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [step, setStep] = useState<StepId>("basics");
@@ -287,6 +294,7 @@ export function RequestForm() {
         sponsor_email: draft.sponsor_email.trim(),
         benefits: draft.benefits.trim(),
         budget: draft.budget.trim() ? Number(draft.budget) : null,
+        currency: draft.currency || null,
         scope: draft.scope.trim(),
         entregables: draft.entregables.trim() || null,
         key_people: draft.key_people.trim() || null,
@@ -535,12 +543,12 @@ export function RequestForm() {
             />
           </Field>
           <Field
-            label="Presupuesto (MXN)"
+            label={`Presupuesto (${draft.currency || preferida})`}
             htmlFor="budget"
             error={fieldErrors.budget}
             help={
               draft.budget
-                ? currency(draft.budget)
+                ? currency(draft.budget, draft.currency || preferida)
                 : "Opcional — si tienes estimado grueso (ej: 1250000.00)"
             }
           >
@@ -553,6 +561,28 @@ export function RequestForm() {
               value={draft.budget}
               onChange={(e) => setField("budget", e.target.value)}
             />
+          </Field>
+          {/* BUG-092 — la moneda del importe se elige aquí. Vacío significa «la
+              preferida del inquilino», y así el proyecto que nazca de esta
+              solicitud sigue heredándola si el inquilino la cambia después. */}
+          <Field
+            label="Moneda del presupuesto"
+            htmlFor="currency"
+            help={`Vacío usa la del inquilino (${preferida})`}
+          >
+            <select
+              id="currency"
+              className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+              value={draft.currency}
+              onChange={(e) => setField("currency", e.target.value)}
+            >
+              <option value="">Usar la del inquilino ({preferida})</option>
+              {MONEDAS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field
             label="Fecha de restricción de entrega"
@@ -872,6 +902,7 @@ function ReviewPane({
   orgs: Organization[];
   onEdit: (step: StepId) => void;
 }) {
+  const monedaPreferida = useMonedaPreferida();
   const orgName = orgs.find((o) => o.id === draft.organization_id)?.name ?? "—";
   return (
     <div className="space-y-4">
@@ -884,7 +915,7 @@ function ReviewPane({
         <Row k="Organización" v={orgName} />
         <Row k="Unidad de negocio" v={draft.business_unit} />
         <Row k="Departamento" v={draft.department} />
-        <Row k="Presupuesto" v={draft.budget ? currency(draft.budget) : "—"} />
+        <Row k="Presupuesto" v={draft.budget ? currency(draft.budget, draft.currency || monedaPreferida) : "—"} />
         <Row k="Descripción" v={draft.description} multiline />
         <Row k="Objetivo" v={draft.objective} multiline />
       </Section>

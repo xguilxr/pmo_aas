@@ -577,12 +577,22 @@ type TreeProgram = { id: string; name: string; children: TreeProject[] };
 type TreeOrg = { id: string; name: string; children: TreeProgram[] };
 
 /** Treemap proporcional Organización → Programa → Proyecto (valor=presupuesto). */
-export function Treemap({ tree, ariaLabel }: { tree: TreeOrg[]; ariaLabel: string }) {
+export function Treemap({
+  tree,
+  ariaLabel,
+  moneda,
+}: {
+  tree: TreeOrg[];
+  ariaLabel: string;
+  /** BUG-092 — sin defecto: el treemap agrega cartera, así que la moneda la
+   *  aporta la pantalla (la preferida del inquilino). */
+  moneda: string;
+}) {
   if (tree.length === 0) return <EmptyCanvas size={120} label="Sin proyectos" />;
   const fmt = (n: number) =>
     new Intl.NumberFormat("es-MX", {
       style: "currency",
-      currency: "MXN",
+      currency: moneda,
       maximumFractionDigits: 0,
       notation: "compact",
     }).format(n);

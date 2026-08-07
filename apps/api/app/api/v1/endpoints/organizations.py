@@ -12,6 +12,8 @@ from app.core.errors import business_rule, conflict, forbidden, mensaje, not_fou
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
+from app.dominio.moneda import agregar as agregar_por_moneda
+from app.dominio.moneda import resolver as resolver_moneda
 from app.models.modules import Risk
 from app.models.organization import BusinessUnit, Department, Organization, Program
 from app.models.project import Project
@@ -46,6 +48,7 @@ from app.schemas.organization import (
     ProgramUpdate,
 )
 from app.services.audit import write_audit
+from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
 from app.services.reports.scoped_status import build_scope_status_context
 
@@ -613,8 +616,23 @@ async def program_summary(
             continue
         if p.health_status in health_counts:
             health_counts[p.health_status] += 1
-    budget_planned = float(sum((p.budget or 0) for p in projects))
-    budget_actual = float(sum((p.actual_budget or 0) for p in projects))
+    # BUG-092 — por moneda. Un programa con proyectos en monedas distintas no
+    # tiene un presupuesto único, y el número que salía antes era la suma de
+    # cantidades que no comparten unidad.
+    preferida = await moneda_preferida(db, tenant_id)
+    monedas_del_programa = {resolver_moneda(p.currency, preferida) for p in projects}
+    planeado_por_moneda = agregar_por_moneda(
+        (resolver_moneda(p.currency, preferida), p.budget) for p in projects
+    )
+    real_por_moneda = agregar_por_moneda(
+        (resolver_moneda(p.currency, preferida), p.actual_budget) for p in projects
+    )
+    # Los campos escalares sobreviven mientras el programa sea de una sola
+    # moneda —el caso de todos los inquilinos de hoy— y valen 0 con varias,
+    # acompañados del desglose. La pantalla decide qué pintar.
+    una_sola = len(monedas_del_programa) <= 1
+    budget_planned = float(sum(planeado_por_moneda.values())) if una_sola else 0.0
+    budget_actual = float(sum(real_por_moneda.values())) if una_sola else 0.0
 
     project_ids = [p.id for p in projects]
     top_risks: list[ProgramSummaryRisk] = []
@@ -661,6 +679,8 @@ async def program_summary(
         health=OrganizationPanelHealth(**health_counts),
         budget_planned=budget_planned,
         budget_actual=budget_actual,
+        budget_planned_by_currency={m: float(v) for m, v in planeado_por_moneda.items()},
+        budget_actual_by_currency={m: float(v) for m, v in real_por_moneda.items()},
         projects=[
             ProgramSummaryProject(
                 id=p.id,

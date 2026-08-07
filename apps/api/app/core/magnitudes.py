@@ -61,16 +61,17 @@ class Magnitud:
 CATALOGO: dict[str, Magnitud] = {
     "importe": Magnitud(
         clave="importe",
-        unidad="peso mexicano (MXN)",
+        unidad="la moneda del proyecto",
         rango="≥ 0, dos decimales",
         porque=(
-            "Es la única moneda que el producto sabe presentar hoy: las diez "
-            "superficies que muestran dinero la traen escrita. `settings.currency` "
-            "ofrece USD y EUR y NADIE la lee fuera del formulario que la guarda, "
-            "así que un inquilino en dólares ve sus importes rotulados en pesos. "
-            "Se declara MXN porque es lo que el producto hace, no lo que el "
-            "formulario promete; el disparador que invalida esta declaración es "
-            "que la moneda del inquilino llegue a la presentación."
+            "Cada proyecto declara la suya (`projects.currency`); el inquilino "
+            "declara una preferida que se aplica a los que no eligen. Hasta el "
+            "2026-08-07 esto decía «peso mexicano», porque las diez superficies "
+            "que muestran dinero traían MXN escrito y un inquilino en dólares "
+            "veía sus importes rotulados en pesos. Era el disparador declarado "
+            "aquí mismo, y se cumplió: BUG-092. Los agregados de cartera NO "
+            "suman monedas distintas — `dominio.moneda.agregar` devuelve un "
+            "importe por moneda y no ofrece la forma de hacerlo mal."
         ),
     ),
     "porcentaje": Magnitud(

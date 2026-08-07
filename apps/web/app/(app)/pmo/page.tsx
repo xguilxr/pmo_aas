@@ -19,6 +19,7 @@ import { ApiError } from "@/lib/api";
 import { useOrgLabel } from "@/lib/org-label";
 import { aplicarFuente, XLSX_FONT } from "@/lib/plan-template";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
+import { useMonedaPreferida } from "@/lib/moneda-tenant";
 import {
   downloadPortfolioStatusReport,
   getHealthMatrix,
@@ -86,6 +87,8 @@ function MiniTrend({
  * Es el contraparte "info" del `/admin/organizations` (gestión CRUD).
  */
 export default function PmoHome() {
+  // BUG-092 — el treemap agrega cartera: la moneda es la del inquilino.
+  const monedaDeCartera = useMonedaPreferida();
   const router = useRouter();
   const [panels, setPanels] = useState<OrganizationPanel[]>([]);
   // DAT-11: cuándo cambió lo que se está mostrando.
@@ -357,7 +360,7 @@ export default function PmoHome() {
               />
             </PortfolioPanel>
             <PortfolioPanel title="Portafolio (presupuesto × salud)">
-              <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" />
+              <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" moneda={monedaDeCartera} />
             </PortfolioPanel>
           </div>
           <PortfolioPanel title="Salud por dimensión (proyectos activos)">

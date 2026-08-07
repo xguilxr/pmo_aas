@@ -3,7 +3,11 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ValidationInfo, model_validator
+
+from app.dominio.moneda import resolver as resolver_moneda
+
+Moneda = Literal["MXN", "USD", "EUR"]
 
 
 class Attachment(BaseModel):
@@ -32,6 +36,9 @@ class ProjectRequestCreate(BaseModel):
     benefits: str = Field(min_length=3)
     # ENH-040: presupuesto opcional. Si se llena debe ser >= 0.
     budget: Decimal | None = Field(default=None, ge=Decimal("0"))
+    # BUG-092 — la solicitud lleva la moneda de su importe: el proyecto que
+    # nazca de ella la hereda, en vez de adivinarla.
+    currency: Moneda | None = None
     scope: str = Field(min_length=3)
     entregables: str | None = None
     key_people: str | None = None
@@ -55,6 +62,7 @@ class ProjectRequestUpdate(BaseModel):
     sponsor_email: EmailStr | None = None
     benefits: str | None = None
     budget: Decimal | None = None
+    currency: Moneda | None = None
     scope: str | None = None
     entregables: str | None = None
     key_people: str | None = None
@@ -80,6 +88,10 @@ class ProjectRequestRead(BaseModel):
     sponsor_email: str | None = None
     benefits: str
     budget: Decimal | None = None
+    # BUG-092 — resuelta antes de salir, igual que en `ProjectRead`. Opcional
+    # porque la columna lo es; el validador de abajo garantiza que nunca sale
+    # vacía, que es lo que un importe necesita para significar algo.
+    currency: str | None = None
     scope: str
     entregables: str | None = None
     key_people: str | None = None
@@ -99,6 +111,13 @@ class ProjectRequestRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+    @model_validator(mode="after")
+    def _resolver_moneda(self, info: ValidationInfo) -> "ProjectRequestRead":
+        """`context={"moneda_preferida": …}` lo pone quien serializa."""
+        preferida = (info.context or {}).get("moneda_preferida")
+        self.currency = resolver_moneda(self.currency, preferida)
+        return self
 
 class ReviewRequest(BaseModel):
     decision: Literal["approve", "reject", "needs_info"]

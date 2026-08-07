@@ -54,13 +54,14 @@ function useDebounced<T>(value: T, delayMs = 300): T {
   return d;
 }
 
-function formatMxn(n: string | number | null): string {
+// BUG-092 — cada fila lleva la moneda de su proyecto.
+function formatImporte(n: string | number | null, moneda: string): string {
   if (n === null) return "—";
   const v = typeof n === "string" ? Number(n) : n;
   if (!Number.isFinite(v)) return "—";
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
-    currency: "MXN",
+    currency: moneda,
     maximumFractionDigits: 0,
   }).format(v);
 }
@@ -526,7 +527,7 @@ function ListView({
                   <ProgressBar value={p.progress} />
                 </td>
                 <td className="px-4 tabular-nums text-[var(--text-secondary)]">
-                  {formatMxn(p.budget)}
+                  {formatImporte(p.budget, p.currency)}
                 </td>
                 <td className="px-4">
                   {/* US-192: click = evaluar salud 5+1 sin abrir el proyecto. */}

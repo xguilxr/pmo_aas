@@ -63,17 +63,10 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
 
 ### Producto — abierto
 
-- [ ] **BUG-092 — la moneda del inquilino no llega a la presentación.**
-  `tenant.settings.currency` ofrece MXN, USD y EUR; el formulario que la guarda
-  es el único sitio que la lee. Las **diez** superficies que muestran dinero
-  traen `currency: "MXN"` escrito (`kpi-card`, `dashboard`, `request-form`,
-  `pmo/projects`, `pmo/requests`, `programs`, `dashboard-charts`), y dos
-  rótulos dicen «Presupuesto (MXN)» en duro. Un inquilino en dólares —el propio
-  `seed.py` crea uno— ve sus importes rotulados en pesos. Salió al medir
-  DAT-02; el arreglo es una frontera nombrada (`lib/moneda.ts`) alimentada por
-  `/me/tenant-branding`, como `org_label`. **Es decisión de producto** si se
-  cablea o se retira el ajuste, así que no se toca sin OK. Mientras tanto,
-  DAT-01 declara MXN como unidad canónica con el disparador escrito.
+- [x] **BUG-092 — hecho el 2026-08-07.** La moneda va sobre el **proyecto**,
+  con una preferida por inquilino como valor inicial (decisión del owner). Los
+  agregados de cartera **no suman monedas distintas**: devuelven un importe por
+  moneda. Migración 0104; trinquete `check_moneda.py`.
 
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.

@@ -50,13 +50,15 @@ const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
   cancelled: [],
 };
 
-function formatMxn(v: string | number | null): string {
+// BUG-092 — el nombre decía la moneda y por eso la traía dentro. Ahora la
+// recibe: la del proyecto, que llega resuelta desde la API.
+function formatImporte(v: string | number | null, moneda: string): string {
   if (v === null) return "—";
   const n = typeof v === "string" ? Number(v) : v;
   if (!Number.isFinite(n)) return "—";
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
-    currency: "MXN",
+    currency: moneda,
     maximumFractionDigits: 0,
   }).format(n);
 }
@@ -374,7 +376,7 @@ export default function ProjectDetailPage() {
         <MetricCard label="Fase" value={PHASE_LABEL[project.phase]} />
         <MetricCard
           label="Presupuesto restante"
-          value={formatMxn(remainingBudget(project.budget, project.actual_budget))}
+          value={formatImporte(remainingBudget(project.budget, project.actual_budget), project.currency)}
         />
       </section>
 

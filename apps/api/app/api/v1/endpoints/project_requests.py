@@ -20,6 +20,7 @@ from app.schemas.project_request import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.moneda_tenant import preferida as moneda_preferida
 
 router = APIRouter(prefix="/project-requests", tags=["project_requests"])
 
@@ -36,6 +37,8 @@ async def create_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     # US-085: si el solicitante eligió "Otra…", crear org inactiva.
     new_org_created = False
@@ -211,7 +214,7 @@ async def create_request(
                 meta={"created_via": "project_request", "request_id": str(pr.id)},
             )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.get("", response_model=list[ProjectRequestRead])
@@ -224,6 +227,8 @@ async def list_requests(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     stmt = select(ProjectRequest).where(ProjectRequest.tenant_id == tenant_id)
     if status:
@@ -236,7 +241,7 @@ async def list_requests(
     rows = (
         await db.execute(stmt.order_by(ProjectRequest.requested_at.desc()).offset((page - 1) * limit).limit(limit))
     ).scalars().all()
-    return [ProjectRequestRead.model_validate(r) for r in rows]
+    return [ProjectRequestRead.model_validate(r, context=ctx_moneda) for r in rows]
 
 
 @router.get("/{request_id}", response_model=ProjectRequestRead)
@@ -245,6 +250,8 @@ async def get_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -255,7 +262,7 @@ async def get_request(
     ).scalar_one_or_none()
     if pr is None:
         raise not_found("Solicitud")
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.patch("/{request_id}", response_model=ProjectRequestRead)
@@ -265,6 +272,8 @@ async def update_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -288,7 +297,7 @@ async def update_request(
         user_id=cu.id, tenant_id=tenant_id, entity_type="project_request", entity_id=str(pr.id),
     )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/review", response_model=ProjectRequestRead)
@@ -298,6 +307,8 @@ async def review_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -362,7 +373,7 @@ async def review_request(
         )
 
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/resubmit", response_model=ProjectRequestRead)
@@ -371,6 +382,8 @@ async def resubmit_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -393,7 +406,7 @@ async def resubmit_request(
         user_id=cu.id, tenant_id=tenant_id, entity_type="project_request", entity_id=str(pr.id),
     )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/reopen", response_model=ProjectRequestRead)
@@ -404,6 +417,8 @@ async def reopen_request(
 ):
     """ENH-016: reabrir una solicitud aprobada sólo si todavía no se
     materializó un proyecto. Devuelve la solicitud a `in_review`."""
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -446,7 +461,7 @@ async def reopen_request(
         entity_id=str(pr.id),
     )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/create-project")
@@ -491,6 +506,10 @@ async def create_project_from_request(
         description=pr.description,
         sponsor=pr.sponsor,
         budget=pr.budget,
+        # BUG-092 — el proyecto hereda la moneda de la solicitud. Si la
+        # solicitud no eligió, se queda en nulo y aplica la preferida del
+        # inquilino: copiarla resuelta aquí congelaría la de hoy.
+        currency=pr.currency,
         phase="planning",
         pm_id=str(body.pm_id),
         request_id=pr.id,

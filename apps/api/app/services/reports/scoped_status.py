@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
 from app.core.paleta import NEUTRO_SUAVE, serie
+from app.dominio.moneda import POR_DEFECTO as MONEDA_POR_DEFECTO
+from app.dominio.moneda import resolver as resolver_moneda
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
 from app.models.organization import Organization, Program
@@ -25,6 +27,7 @@ from app.services.analytics.snapshots import (
     aggregate_project_trends,
     compute_snapshot_values,
 )
+from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.reports.branding import load_report_branding
 from app.services.reports.svg import donut_svg, gauge_svg, sparkline_svg, treemap_svg
 
@@ -145,8 +148,21 @@ async def _risk_pairs(db: AsyncSession, project_ids: list[str]) -> list[tuple[in
     return [(int(p), int(i)) for p, i in rows]
 
 
-def _money(n: float) -> str:
-    return f"${n:,.0f}"
+#: Símbolo por código. BUG-092 — antes era un `$` fijo, así que un informe de
+#: un proyecto en euros salía con el símbolo del peso. Los tres que el producto
+#: admite; el resto cae al propio código, que es feo y correcto.
+_SIMBOLO = {"MXN": "$", "USD": "US$", "EUR": "€"}
+
+
+def _money(n: float, moneda: str) -> str:
+    """Un importe con el símbolo de SU moneda.
+
+    Recibe el código y no lo asume: es el mismo cambio que en el frontend, y
+    por el mismo motivo — un `$` fijo convierte cualquier informe en una
+    afirmación falsa sobre la unidad.
+    """
+    simbolo = _SIMBOLO.get(moneda, f"{moneda} ")
+    return f"{simbolo}{n:,.0f}"
 
 
 async def _health_rows_by(
@@ -154,6 +170,9 @@ async def _health_rows_by(
 ) -> list[dict]:
     """Agrupa proyectos por `group_col` (org_id o program_id) → conteos de salud
     + presupuesto. `name_map` resuelve id→nombre."""
+    # BUG-092 — la moneda del informe: la preferida del inquilino para los
+    # agregados; cada proyecto aporta la suya donde tiene una propia.
+    moneda_informe = await moneda_preferida(db, tenant_id) or MONEDA_POR_DEFECTO
     rows = (
         await db.execute(
             select(
@@ -181,8 +200,8 @@ async def _health_rows_by(
         e["budget_plan"] += float(bplan or 0)
         e["budget_actual"] += float(bactual or 0)
     for e in agg.values():
-        e["budget_plan_fmt"] = _money(e["budget_plan"])
-        e["budget_actual_fmt"] = _money(e["budget_actual"])
+        e["budget_plan_fmt"] = _money(e["budget_plan"], moneda_informe)
+        e["budget_actual_fmt"] = _money(e["budget_actual"], moneda_informe)
     return sorted(agg.values(), key=lambda r: (-r["red"], -r["total"]))
 
 
@@ -198,6 +217,9 @@ async def build_scope_status_context(
 
     `restrict_project_ids` (no-admin): limita KPIs, riesgos, tablas y
     tendencias a los proyectos visibles del usuario; `None` = sin restricción."""
+    # BUG-092 — la moneda del informe: la preferida del inquilino para los
+    # agregados; cada proyecto aporta la suya donde tiene una propia.
+    moneda_informe = await moneda_preferida(db, tenant_id) or MONEDA_POR_DEFECTO
     tenant_id = str(tenant_id)
     if scope_type == "tenant":
         scope_id = tenant_id
@@ -312,8 +334,8 @@ async def build_scope_status_context(
                 "health": p.health_status, "progress": int(p.progress or 0),
                 "pm_name": pm_names.get(str(p.pm_id)) if p.pm_id else None,
                 "budget_plan": float(p.budget or 0),
-                "budget_plan_fmt": _money(float(p.budget or 0)),
-                "budget_actual_fmt": _money(float(p.actual_budget or 0)),
+                "budget_plan_fmt": _money(float(p.budget or 0), resolver_moneda(p.currency, moneda_informe)),
+                "budget_actual_fmt": _money(float(p.actual_budget or 0), resolver_moneda(p.currency, moneda_informe)),
             }
             for p in prj
         ]
@@ -369,8 +391,8 @@ async def build_scope_status_context(
             size=132,
         ),
         "progress_gauge_svg": gauge_svg(kpis.get("avg_progress") or 0),
-        "budget_plan_fmt": _money(kpis["budget_plan"]),
-        "budget_actual_fmt": _money(kpis["budget_actual"]),
+        "budget_plan_fmt": _money(kpis["budget_plan"], moneda_informe),
+        "budget_actual_fmt": _money(kpis["budget_actual"], moneda_informe),
         "trends": trends,
         "risk_matrix": risk_matrix,
         "rows": rows,

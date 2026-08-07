@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import { listOrganizations, listPrograms, type Organization, type Program } from "@/lib/api/organizations";
+import { MONEDAS } from "@/lib/moneda";
+import { useMonedaPreferida } from "@/lib/moneda-tenant";
 import {
   PHASE_LABEL,
   TYPE_LABEL,
@@ -44,6 +46,10 @@ export function ProjectForm({ mode, initial }: Props) {
   const [startDate, setStartDate] = useState(initial?.start_date ?? "");
   const [endDate, setEndDate] = useState(initial?.end_date ?? "");
   const [budget, setBudget] = useState(initial?.budget ?? "");
+  // BUG-092 — la moneda del proyecto. Vacío = la preferida del inquilino.
+  const [currency, setCurrency] = useState(initial?.currency ?? "");
+  const monedaPreferida = useMonedaPreferida();
+  const moneda = currency || monedaPreferida;
   // ENH-132: salud y presupuesto real editables (solo modo edición).
   const [actualBudget, setActualBudget] = useState(initial?.actual_budget ?? "");
 
@@ -92,6 +98,7 @@ export function ProjectForm({ mode, initial }: Props) {
           start_date: startDate || null,
           end_date: endDate || null,
           budget: budget ? Number(budget) : null,
+          currency: currency || null,
         };
         const p = await createProject(body);
         // BUG-018: el nuevo proyecto ya tiene charter; mandamos al form
@@ -111,6 +118,7 @@ export function ProjectForm({ mode, initial }: Props) {
           start_date: startDate || null,
           end_date: endDate || null,
           budget: budget ? Number(budget) : null,
+          currency: currency || null,
           actual_budget: actualBudget ? Number(actualBudget) : null,
           // US-181: la salud ya no se edita desde el form — se declara en
           // la tarjeta de Salud del detalle (razón obligatoria en 🟡/🔴).
@@ -227,7 +235,7 @@ export function ProjectForm({ mode, initial }: Props) {
         <Field label="Sponsor">
           <Input value={sponsor} onChange={(e) => setSponsor(e.target.value)} />
         </Field>
-        <Field label="Presupuesto (MXN)">
+        <Field label={`Presupuesto (${moneda})`}>
           <Input
             type="number"
             min={0}
@@ -236,9 +244,26 @@ export function ProjectForm({ mode, initial }: Props) {
             onChange={(e) => setBudget(e.target.value)}
           />
         </Field>
+        {/* BUG-092 — la moneda la elige el proyecto. Vacío hereda la del
+            inquilino, así que cambiar la preferida arrastra a los que no
+            eligieron, que es lo que espera quien la cambia. */}
+        <Field label="Moneda">
+          <select
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          >
+            <option value="">Usar la del inquilino ({monedaPreferida})</option>
+            {MONEDAS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </Field>
         {mode === "edit" ? (
           <>
-            <Field label="Presupuesto real / consumido (MXN)">
+            <Field label={`Presupuesto real / consumido (${moneda})`}>
               <Input
                 type="number"
                 min={0}

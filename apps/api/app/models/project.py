@@ -45,6 +45,9 @@ class Project(Base, TimestampMixin):
     sponsor: Mapped[str | None] = mapped_column(String(200))
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
+    # BUG-092 — la moneda del importe, elegida por proyecto. Nulo NO es
+    # «sin moneda»: es «la preferida del inquilino» (`dominio.moneda.resolver`).
+    currency: Mapped[str | None] = mapped_column(String(3))
     budget: Mapped[Importe | None] = mapped_column(Numeric(14, 2))
     actual_budget: Mapped[Importe | None] = mapped_column(Numeric(14, 2))
     progress: Mapped[Porcentaje] = mapped_column(SmallInteger, nullable=False, default=0)
