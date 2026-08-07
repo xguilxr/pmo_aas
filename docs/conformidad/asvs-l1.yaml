@@ -313,9 +313,20 @@ controles:
       `core/url_externa.py` valida los destinos salientes; el modelo de
       amenazas lo cubre.
   "5.2.7":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      Se admite SVG como logotipo de marca y no se sanea su contenido activo.
+      `services/svg_seguro.py` sanea por **lista blanca** en `logo_to_data_url`,
+      que es el único sitio por donde entra un SVG: se conserva lo que dibuja y
+      cae todo lo demás —`<script>`, `<foreignObject>`, `<handler>`, la familia
+      `animate`/`set`, y cualquier elemento futuro que no esté en la lista—,
+      más todo atributo `on*`. Las referencias solo pueden apuntar al propio
+      documento o a `data:`; una externa se rechaza con motivo en vez de
+      limpiarse en silencio, porque quitarla devolvería un logotipo distinto
+      del que se eligió. Eso cierra además que WeasyPrint pida una URL de
+      terceros desde la red de Railway en cada exportación de PDF (AM-01 por
+      otra puerta). Analiza `defusedxml`; serializa la estándar. Suite
+      `test_seg01_asvs527_svg.py`, con un logotipo realista que debe sobrevivir
+      intacto.
   "5.2.8":
     estado: CUMPLE
     evidencia: >-
