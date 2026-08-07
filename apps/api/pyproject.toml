@@ -19,6 +19,7 @@ markers = [
     "legacy: tests de comportamiento deprecado que se conservan como referencia (ver US-047)",
     "heavy: tests que ejercen render real (weasyprint / python-docx) o hashing completo; job separado en CI (ENH-030)",
     "permissions: tests de matriz role × endpoint (US-079, gate de regresión post-DEC-024)",
+    "con_segundo_factor: enciende el MFA de administración, que la suite apaga por defecto (ASVS 4.3.1)",
 ]
 
 [tool.ruff]

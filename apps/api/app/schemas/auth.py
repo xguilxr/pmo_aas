@@ -56,3 +56,15 @@ class ChangePasswordRequest(BaseModel):
 
 class SwitchTenantRequest(BaseModel):
     tenant_id: UUID
+
+
+class VerificarCodigoRequest(BaseModel):
+    """Segundo paso del inicio de sesión de administración (ASVS 4.3.1).
+
+    `desafio` ata el código a la petición que lo pidió: sin él, un código pedido
+    en una pestaña serviría para completar el inicio de sesión que otra persona
+    empezó en otra parte (ASVS 2.7.3).
+    """
+
+    desafio: str = Field(min_length=1, max_length=64)
+    codigo: str = Field(min_length=4, max_length=12)

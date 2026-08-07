@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     # Formato: `tcp://host:3310` — protocolo INSTREAM de clamd.
     CLAMAV_URL: str = ""
 
+    # MCS SEG-01 · ASVS 4.3.1 — segundo factor por correo para las interfaces de
+    # administración. Interruptor y no constante porque las pruebas necesitan
+    # poder apagarlo: con él encendido, cada inicio de sesión de administración
+    # de la suite tendría que pasar por un buzón.
+    #
+    # **Por defecto encendido.** Un control de seguridad cuyo valor por defecto
+    # es «apagado» está apagado en producción el día que a alguien se le olvida
+    # encenderlo, que es siempre.
+    ADMIN_MFA_REQUIRED: bool = True
+
     ACCESS_TOKEN_TTL_SEC: int = 3600
     REFRESH_TOKEN_TTL_SEC: int = 2592000
     BCRYPT_ROUNDS: int = 12

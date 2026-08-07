@@ -6,6 +6,7 @@ US-009: perfil personal (full_name) + preferencias.
 from typing import Literal
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -138,7 +139,7 @@ async def update_my_preferences(
 @router.get("/me/datos-personales")
 async def exportar_mis_datos(
     cu: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+) -> JSONResponse:
     """Descarga en JSON de todo lo que la plataforma guarda sobre quien pide.
 
     Va **antes** que la supresión y no por casualidad: una vez anonimizado no
@@ -156,8 +157,6 @@ async def exportar_mis_datos(
         details={"registros": len(contenido.get("actividad", []))},
     )
     await db.commit()
-
-    from fastapi.responses import JSONResponse
 
     return JSONResponse(
         content=contenido,
@@ -185,7 +184,7 @@ async def suprimir_mis_datos(
     body: SupresionRequest,
     cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     """Anonimiza los datos personales de quien lo pide (ASVS 8.3.2, ADR-034).
 
     **No borra filas.** Sustituye los identificadores por un seudónimo estable y
@@ -222,8 +221,6 @@ async def suprimir_mis_datos(
         update(RefreshToken).where(RefreshToken.user_id == cu.id).values(revoked=True)
     )
     await db.commit()
-
-    from fastapi.responses import JSONResponse
 
     resp = JSONResponse(content={"anonimizado": True, "filas": tocadas})
     cookies.borrar(resp, cookies.ACCESO)

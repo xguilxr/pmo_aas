@@ -28,7 +28,6 @@ import pytest
 
 from app.services import aviso_privacidad as aviso
 
-
 # ---------------------------------------------------------------------------
 # §1 — Nadie consiente por omisión
 # ---------------------------------------------------------------------------

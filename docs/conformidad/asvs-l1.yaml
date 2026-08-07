@@ -102,10 +102,12 @@ controles:
       Retardo creciente por cuenta desde el intento 5 y 30 fallos/hora por IP
       (`auth.py`, escenario E-4).
   "2.2.2":
-    estado: NO APLICA
+    estado: CUMPLE
     evidencia: >-
-      No hay segundo factor por SMS ni por correo: el producto es de un solo
-      factor.
+      El código por correo es verificación **secundaria**: se emite después de
+      comprobar la contraseña y nunca en su lugar —no hay puerta que acepte un
+      código sin contraseña previa, y su suite lo fija leyendo el orden dentro
+      de `login`—. A un usuario normal no se le pide. ADR-035.
   "2.2.3":
     estado: CUMPLE
     evidencia: >-
@@ -168,29 +170,46 @@ controles:
       Recuperación por token de un solo uso con caducidad
       (`password_reset_tokens`).
   "2.7.1":
-    estado: NO APLICA
+    estado: ACEPTADO
     evidencia: >-
-      No se ofrece autenticación fuera de banda.
+      El correo es un factor **débil**: NIST 800-63B §5.1.3.1 dice que no debe
+      usarse para autenticación fuera de banda porque no demuestra posesión de
+      un dispositivo. Este control pide ofrecer primero una alternativa más
+      fuerte, y no hay ninguna que ofrecer. Decisión del owner 2026-08-07,
+      ADR-035, con el contraste delante. Lo que se acepta: si alguien tiene la
+      contraseña Y el correo, el factor no lo detiene. Lo que sí detiene, que
+      es la amenaza realista, es una contraseña reutilizada que aparece en una
+      filtración.
   "2.7.2":
-    estado: NO APLICA
+    estado: CUMPLE
     evidencia: >-
-      No hay autenticación fuera de banda: no hay código que caduque a los
-      diez minutos porque no se emite ninguno.
+      `VIDA_MINUTOS = 10`, literal y no configurable: subirlo es exactamente lo
+      que alguien haría para que dejara de molestar. Fijado en su suite, con un
+      caso que caduca el código y comprueba que no entra.
   "2.7.3":
-    estado: NO APLICA
+    estado: CUMPLE
     evidencia: >-
-      Mismo motivo que 2.7.2. El único secreto de un solo uso del producto es
-      el de recuperación de contraseña, y ese sí lo es (2.5.6).
+      Un solo uso (`used_at`) y atado a **su** desafío: el código de un inicio
+      de sesión no vale para otro, y su suite lo comprueba con dos desafíos
+      simultáneos. Sin eso, un código pedido en una pestaña completaría el
+      inicio de sesión que otra persona empezó en otra parte.
   "2.7.4":
-    estado: NO APLICA
+    estado: CUMPLE
     evidencia: >-
-      No hay segundo canal que asegurar: la autenticación ocurre entera sobre
-      HTTPS contra el mismo servicio.
+      El código sale por HTTPS a Resend y llega al buzón de la persona, que es
+      un canal distinto del navegador donde escribió la contraseña. Se emite
+      por la tarea de avisos de seguridad, que no pasa por las preferencias de
+      notificación — un segundo factor que se apaga desde los ajustes no es un
+      segundo factor.
   "2.8.1":
     estado: NO APLICA
     evidencia: >-
-      No se emiten OTP basados en tiempo. Si entra el segundo factor de 4.3.1,
-      este control deja de no aplicar y hay que declarar su vida útil.
+      Sigue sin aplicar, y el motivo cambió: el segundo factor de 4.3.1 ya
+      existe, pero es un código enviado por correo y no un OTP **basado en
+      tiempo** — no se deriva de un secreto compartido más un reloj, así que no
+      hay ventana TOTP que declarar. Su vida útil, que sí existe, la cubre
+      2.7.2 (diez minutos). Si algún día entra TOTP, este control deja de no
+      aplicar.
   "3.1.1":
     estado: CUMPLE
     evidencia: >-
@@ -285,9 +304,17 @@ controles:
       El API se autentica por cabecera `Authorization`, no por cookie de
       sesión, así que no hay CSRF sobre las rutas de escritura.
   "4.3.1":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No hay segundo factor para las interfaces de administración.
+      Código de seis dígitos por correo para superadministradores y cuentas con
+      rol equivalente a administrador (`services/segundo_factor.py`, ADR-035).
+      La contraseña correcta devuelve 202 con un desafío, no una sesión: los
+      tokens y sus cookies los emite `/auth/verificar-codigo`. Cinco intentos
+      por desafío —seis dígitos son un millón de combinaciones y sin freno se
+      prueban enteras en minutos—, y todos los fallos responden igual.
+      `ADMIN_MFA_REQUIRED` viene encendido. El desbloqueo por inactividad de
+      una cuenta de administración también pasa por aquí. Suite
+      `test_seg01_asvs431_segundo_factor.py`.
   "4.3.2":
     estado: CUMPLE
     evidencia: >-

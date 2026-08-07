@@ -42,6 +42,12 @@ superficie_abierta:
   - ruta: "POST /api/v1/auth/login"
     motivo: no puede exigir identidad; es donde se obtiene
     amenazas: [AM-09, AM-10]
+  - ruta: "POST /api/v1/auth/verificar-codigo"
+    motivo: segundo paso del inicio de sesion de administracion (ASVS 4.3.1). No
+      puede exigir identidad porque es donde se termina de obtener; la autoriza
+      el desafio que `login` creo tras verificar la contrasena, no una sesion.
+      Acotada por intentos y por el mismo limite por IP que el primer paso
+    amenazas: [AM-09, AM-10]
   - ruta: "POST /api/v1/auth/forgot-password"
     motivo: no puede exigir identidad. Responde 204 siempre, para no filtrar
       qué correos existen

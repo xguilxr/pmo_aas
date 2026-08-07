@@ -1,8 +1,10 @@
 import secrets
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +41,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     SwitchTenantRequest,
     UserOut,
+    VerificarCodigoRequest,
 )
 from app.services.audit import write_audit
 from app.services.aviso_privacidad import VERSION as VERSION_AVISO
@@ -55,6 +58,13 @@ from app.services.password_reset import (
 )
 from app.services.rate_limit import check_and_increment, excede
 from app.services.rate_limit import reset as rate_limit_reset
+from app.services.segundo_factor import VIDA_MINUTOS as VIDA_OTP_MINUTOS
+from app.services.segundo_factor import (
+    emite,
+    envia_codigo,
+    necesita_segundo_factor,
+    verifica,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -81,7 +91,9 @@ async def _build_user_out(db: AsyncSession, user: User) -> UserOut:
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
     # AM-09 · límite por IP. El bloqueo por cuenta que ya había detiene a quien
     # adivina la contraseña de **una** cuenta; no hace nada contra el rociado,
     # que prueba una contraseña contra mil cuentas y no toca el umbral de
@@ -213,6 +225,52 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         )
     ).scalars().all()
 
+    # ASVS 4.3.1 — si la cuenta llega a una interfaz de administración, la
+    # contraseña correcta **no** basta: no se emite sesión todavía, se manda un
+    # código al correo y se devuelve el desafío. La sesión la emite
+    # `/verificar-codigo` si el código es el bueno.
+    if settings.ADMIN_MFA_REQUIRED and necesita_segundo_factor(user):
+        desafio, codigo = await emite(db, user=user)
+        await write_audit(
+            db, action="mfa_challenge_sent", module="auth", user_id=user.id,
+            tenant_id=user.tenant_id, ip_address=ip, user_agent=ua,
+        )
+        await db.commit()
+        envia_codigo(user.email, codigo)
+        return JSONResponse(
+            status_code=202,
+            content={
+                "mfa_required": True,
+                "desafio": desafio,
+                "detalle": (
+                    "Te enviamos un código a tu correo. Caduca en "
+                    f"{VIDA_OTP_MINUTOS} minutos."
+                ),
+            },
+        )
+
+    await write_audit(
+        db, action="login_success", module="auth", user_id=user.id, tenant_id=user.tenant_id,
+        ip_address=ip, user_agent=ua,
+    )
+    return await _emite_sesion(db, user=user, now=now, ip=ip, ua=ua, role_names=role_names)
+
+
+async def _emite_sesion(
+    db: AsyncSession,
+    *,
+    user: User,
+    now: datetime,
+    ip: str | None,
+    ua: str | None,
+    role_names: Sequence[str],
+) -> JSONResponse:
+    """Emite el par de tokens, sus cookies y la respuesta de sesión.
+
+    Sale de `login` porque ahora hay **dos** caminos que llegan aquí —el directo
+    y el que pasa por el segundo factor— y tener dos copias de la emisión de
+    sesión es cómo se acaba con una cookie puesta en un camino y no en el otro.
+    """
     tenant_ids: list = []
     if user.tenant_id:
         tenant_ids.append(user.tenant_id)
@@ -233,10 +291,6 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
             jti=jti,
             expires_at=now + timedelta(seconds=settings.REFRESH_TOKEN_TTL_SEC),
         )
-    )
-    await write_audit(
-        db, action="login_success", module="auth", user_id=user.id, tenant_id=user.tenant_id,
-        ip_address=ip, user_agent=ua,
     )
     await db.commit()
 
@@ -262,6 +316,57 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     # guardarlo, y por tanto ya no lo guarda.
     cookies.fijar(resp, cookies.ACCESO, access, max_age=settings.ACCESS_TOKEN_TTL_SEC)
     return resp
+
+
+@router.post("/verificar-codigo", response_model=LoginResponse)
+async def verificar_codigo(
+    body: VerificarCodigoRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+    """Segundo paso del inicio de sesión de administración (ASVS 4.3.1).
+
+    El límite por IP es el mismo que el del primer paso y por el mismo motivo:
+    sin él, seis dígitos son un millón de combinaciones que se prueban enteras en
+    minutos. El contador por desafío (`INTENTOS_MAXIMOS`) acota un desafío
+    concreto; este acota a quien los pide en serie.
+
+    Todos los fallos responden igual: distinguir «código incorrecto» de «desafío
+    caducado» le diría a quien prueba si va por buen camino.
+    """
+    clave_limite = f"rl:mfa:ip:{_client_ip(request)}"
+    if excede(clave_limite, max_attempts=_LOGIN_MAX_FAILS_PER_HOUR_IP):
+        raise rate_limited()
+
+    user = await verifica(db, desafio=body.desafio, codigo=body.codigo)
+    if user is None or not user.is_active:
+        check_and_increment(
+            clave_limite,
+            max_attempts=_LOGIN_MAX_FAILS_PER_HOUR_IP,
+            window_sec=_WINDOW_SEC,
+        )
+        await write_audit(
+            db, action="mfa_failed", module="auth",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        await db.commit()
+        raise unauthorized()
+
+    role_names = (
+        await db.execute(
+            select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user.id)
+        )
+    ).scalars().all()
+    await write_audit(
+        db, action="login_success", module="auth", user_id=user.id,
+        tenant_id=user.tenant_id, details={"mfa": "email_otp"},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return await _emite_sesion(
+        db, user=user, now=datetime.now(UTC),
+        ip=request.client.host if request.client else None,
+        ua=request.headers.get("user-agent"), role_names=role_names,
+    )
 
 
 @router.post("/logout", status_code=204)
@@ -326,7 +431,7 @@ async def change_password(
 
 
 @router.get("/aviso-privacidad")
-async def aviso_privacidad():
+async def aviso_privacidad() -> dict[str, object]:
     """El texto del aviso. **Sin autenticar a propósito.**
 
     La pantalla que lo muestra sale antes de que la persona haya aceptado nada,
@@ -340,7 +445,7 @@ async def aviso_privacidad():
 @router.post("/aceptar-privacidad", response_model=UserOut)
 async def aceptar_privacidad(
     cu: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+) -> UserOut:
     """Registra el consentimiento de la versión vigente (ASVS 8.3.3).
 
     Se guarda la versión que está en vigor **en el servidor**, no la que diga el

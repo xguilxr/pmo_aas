@@ -246,8 +246,8 @@ async def test_asvs832_hay_que_estar_autenticado(client):
 @pytest.mark.asyncio
 async def test_asvs832_el_servicio_no_deja_notificaciones_con_el_nombre(db_session):
     """El cuerpo de una notificación puede llevar el nombre («Hola Ana…»)."""
-    from tests.factories import create_tenant, create_user
     from app.services.notifications import enqueue_notification
+    from tests.factories import create_tenant, create_user
 
     tenant = await create_tenant(db_session, slug="dp9", name="Dp9")
     u = await create_user(

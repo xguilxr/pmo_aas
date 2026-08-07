@@ -1706,3 +1706,71 @@ lo que hacen Atlassian, GitLab y Notion.
 
 **Revisión:** si entra un requisito contractual de borrado físico, o si el
 inventario de datos personales suma una tabla que este procedimiento no cubra.
+
+---
+
+## ADR-035 — El segundo factor de administración es un código por correo
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** `4.3.1` del mapeo ASVS pide segundo factor para las interfaces de
+administración, y el producto no tenía ninguno. Las opciones reales eran TOTP
+—`cryptography` ya lo trae, así que tampoco costaba una dependencia— o un código
+por correo con la infraestructura de Resend que ya existe.
+
+**Decisión.** **Código de seis dígitos por correo.** Lo pide el owner por dos
+motivos prácticos: no hay que enrolar a nadie ni pedirle que instale una
+aplicación, y reutiliza un canal que el producto ya usa para avisos de
+seguridad.
+
+Se exige a superadministradores y a cuentas con rol equivalente a administrador.
+A un usuario normal no se le pide: no alcanza ninguna interfaz de administración
+y sería fricción a cambio de nada. El interruptor `ADMIN_MFA_REQUIRED` viene
+**encendido** — un control cuyo defecto es «apagado» está apagado en producción
+el día que a alguien se le olvida encenderlo.
+
+**Lo que esto cierra.** `4.3.1`, y de paso cuatro controles que estaban como NO
+APLICA porque no había factor fuera de banda: `2.2.2` (el correo se usa como
+verificación **secundaria**, nunca en lugar de la contraseña), `2.7.2` (caduca a
+los diez minutos, literal), `2.7.3` (un solo uso y atado al desafío que lo pidió)
+y `2.7.4` (canal independiente del navegador).
+
+**Lo que esto NO cierra, y por eso `2.7.1` queda ACEPTADO.** El correo es un
+factor **débil**: NIST 800-63B §5.1.3.1 dice que no debe usarse para
+autenticación fuera de banda porque no demuestra posesión de un dispositivo —
+quien controle el buzón, o el proveedor de correo, completa el segundo paso.
+`2.7.1` pide ofrecer primero una alternativa más fuerte, y aquí no hay ninguna
+que ofrecer.
+
+Figura **ACEPTADO** y no CUMPLE, igual que se hizo con la política de
+contraseñas en ADR-032. Lo que se acepta en concreto: si alguien tiene la
+contraseña **y** acceso al correo de la persona, el segundo factor no lo
+detiene. Lo que sí detiene —y es la amenaza realista— es una contraseña
+reutilizada que aparece en una filtración: el atacante necesita además la cuenta
+de correo, que casi nunca tiene.
+
+**Consecuencias.**
+
+- Entrar al panel pasa a ser dos pasos para ti y para cualquier administrador.
+  El desbloqueo por inactividad de una cuenta de administración también manda a
+  `/login`: si se saltara el factor, bastaría con esperar a que un administrador
+  dejara la sesión bloqueada para entrar solo con la contraseña.
+- **Si Resend está caído, un administrador no puede entrar.** Es la consecuencia
+  incómoda de que el factor viaje por correo, y es preferible a la alternativa —
+  dejar pasar sin segundo factor porque el correo no salió sería un control que
+  se desactiva solo justo cuando algo va mal.
+- Los intentos por desafío están acotados a cinco. Seis dígitos son un millón de
+  combinaciones y sin freno se prueban enteras en minutos: el límite no es un
+  detalle, es lo que hace que el factor valga algo.
+
+**Alternativas:**
+
+- *TOTP.* Más fuerte, cierra `2.7.1` sin residual y no depende de que el correo
+  llegue. Cuesta enrolamiento con QR, códigos de recuperación y una pantalla
+  más — y deja fuera a quien pierde el teléfono hasta que alguien le ayude.
+- *Ambos, ofreciendo TOTP primero.* Es lo que `2.7.1` pide literalmente y la
+  respuesta correcta a medio plazo. Se descarta ahora por alcance, no por
+  postura.
+
+**Revisión:** al primer incidente de correo comprometido, o cuando el número de
+administradores haga que enrolar TOTP salga a cuenta.
