@@ -191,6 +191,14 @@ CIERRES = {
  # argumentos y dos sin filtrar `deleted_at`. Ahora una sola comprobación.
  "SEG-04":("CONFORME","Ola 3 — core/autorizacion.proyecto_autorizado; 18 casos verificados por mutación; AM-15 en el modelo de amenazas"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
+ # Los entornos existían; lo que no existía era la paridad DECLARADA, y sin
+ # declaración «paridad» no se puede afirmar ni desmentir. La suposición estaba
+ # mal: la base local era Postgres 16 contra el 15 del CI, con la migración
+ # 0101 en juego —que se reescribió por miedo a una diferencia entre motores—.
+ "INF-02":("CONFORME","2026-08-06 — servicios-datos.yml declara Postgres 15 y Redis 7 con razón escrita; check_entornos.py lo verifica contra el workflow en cada PR. Lo que corre en Railway no es medible desde el repositorio y se declara con fecha en el runbook en vez de fingirse. Owner confirma que la copia de desarrollo existe y hoy no se usa: INF-02 pide que existan separados, no tráfico en los dos"),
+ # DES-02 pedía «documentado Y EJECUTABLE». Lo segundo no lo puede garantizar
+ # un documento sobre sí mismo: son dos hechos del código.
+ "DES-02":("CONFORME","2026-08-06 — runbook entornos-y-reversion.md con las tres capas (despliegue por Redeploy, migración bajando una revisión, datos por restauración) y el aviso de que revertir el despliegue NO deshace la migración. La parte ejecutable con trinquete: /health publica las comprobaciones que el runbook manda mirar, y toda migración con vuelta atrás vacía dice por qué —las 9 de datos por irreversibles, las 2 de fusión exentas derivando del árbol, no de una lista—"),
 }
 
 reg = {}

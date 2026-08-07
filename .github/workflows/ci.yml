@@ -84,6 +84,17 @@ jobs:
       - name: Encabezado documental (DOC-01)
         run: python scripts/check_docs.py
 
+      # MCS INF-02 — la paridad de versiones declarada se respeta de verdad.
+      #
+      # Va aquí y no en un trabajo propio porque lee dos archivos de texto y
+      # tarda milisegundos; una verificación requerida más cuesta una acción
+      # del owner sin añadir cobertura. Mismo criterio que DOC-01.
+      #
+      # Sin filtro de paths a propósito: depende de `servicios-datos.yml` (raíz),
+      # de este workflow y de `scripts/`, que caen en filtros distintos.
+      - name: Paridad de versiones de los servicios de datos (INF-02)
+        run: python scripts/check_entornos.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #

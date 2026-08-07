@@ -129,6 +129,8 @@ Ollama tailnet, Gemini como fallback, Claude como fallback premium.
 | **Railway** | [`railway/DEPLOYMENT.md`](./railway/DEPLOYMENT.md) | ✅ |
 | **Cloudflare DNS** | [`infra/dns-routing.md`](./infra/dns-routing.md) | ✅ |
 | **Storage uploads (R2)** | [`infra/uploads-storage.md`](./infra/uploads-storage.md) | ✅ |
+| **Copias y restauración (INF-03)** | [`infra/respaldo-restauracion.md`](./infra/respaldo-restauracion.md) | ✅ |
+| **Entornos y reversión (INF-02 · DES-02)** | [`infra/entornos-y-reversion.md`](./infra/entornos-y-reversion.md) | ✅ |
 | **HostGator Landing** | [`infra/landing-hostgator.md`](./infra/landing-hostgator.md) | 📝 |
 | **Groq (IA plataforma)** | [`ai/groq-setup.md`](./ai/groq-setup.md) | ✅ |
 | **BYO (IA del tenant)** | [`ai/byo-setup.md`](./ai/byo-setup.md) | ✅ |

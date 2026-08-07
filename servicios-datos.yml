@@ -1,0 +1,53 @@
+# MCS INF-02 — versiones de los servicios de datos, declaradas en UN sitio.
+#
+# «DEBEN existir entornos separados para desarrollo y producción, **con paridad
+# en las versiones de los servicios de datos**».
+#
+# Los entornos existen (ver `docs/runbooks/infra/entornos-y-reversion.md`). Lo que no
+# existía era la paridad *declarada*: nada decía qué versión debía correr en
+# cada sitio, así que «paridad» no se podía afirmar ni desmentir — solo suponer.
+#
+# Y la suposición estaba mal. El 2026-08-06, verificando a mano lo que el CI no
+# podía correr, la base local resultó ser **Postgres 16** contra el **15** del
+# workflow. Nadie lo había puesto ahí a propósito: era el que traía el sistema.
+# Con la migración 0101 en juego —que se reescribió por miedo a una diferencia
+# entre motores— esa divergencia era exactamente la que no debía existir.
+#
+# Este archivo es la fuente. `scripts/check_entornos.py` comprueba que el CI lo
+# respeta, y el runbook dice cómo alinear cada entorno.
+
+postgres:
+  # Serie mayor. Se fija la mayor y no el parche: los parches los aplica el
+  # proveedor y forzarlos aquí produciría un gate rojo cada vez que Railway
+  # actualiza — y un gate que se pone rojo solo se desactiva.
+  version_mayor: 15
+  # Lo que el workflow debe levantar. Se comprueba literalmente.
+  imagen_ci: "postgres:15-alpine"
+  razon: >-
+    15 es la serie que corre en Railway. El CI la iguala para que un
+    comportamiento que dependa del motor —tipos JSON, conversiones implícitas—
+    se descubra en la canalización y no en producción.
+
+redis:
+  version_mayor: 7
+  razon: >-
+    Se usa como cola de Celery y caché de previsualizaciones. No hay
+    comportamiento del producto que dependa de la versión, así que la paridad
+    aquí es higiene y no un riesgo declarado.
+
+# Entornos donde esto aplica. Ver el runbook para qué es cada uno.
+entornos:
+  - nombre: produccion
+    proveedor: Railway
+    notas: El que atiende a los clientes.
+  - nombre: desarrollo
+    proveedor: Railway
+    notas: >-
+      Copia del entorno productivo, creada y hoy sin uso (owner, 2026-08-06).
+      Existe, que es lo que INF-02 exige; ponerla en uso es una decisión aparte.
+  - nombre: local
+    proveedor: máquina de quien desarrolla
+    notas: >-
+      No es un entorno del producto y no cuenta para INF-02. Se lista porque es
+      donde apareció la divergencia de versión, y para que quien lo monte sepa
+      contra qué alinearse.
