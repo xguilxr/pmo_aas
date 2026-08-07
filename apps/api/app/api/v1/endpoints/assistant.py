@@ -30,7 +30,7 @@ from app.models.assistant import AssistantConversation, AssistantMessage
 from app.services.ai.assistant import (
     ASSISTANT_SYSTEM,
     build_assistant_prompt,
-    parse_assistant_reply,
+    responder,
 )
 from app.services.ai.platform_config import resolve_groq_config
 from app.services.ai.prompt_builder import build_system_prompt
@@ -170,7 +170,9 @@ async def assistant_chat(
             {"error": str(exc)[:200]},
         ) from exc
 
-    message, actions = parse_assistant_reply(result.text or "")
+    # MCS CON-05: la frontera se aplica sobre la consulta de quien pregunta,
+    # no sobre lo que el modelo haya decidido responder.
+    message, actions = responder(result.text or "", body.message)
 
     # Persiste ambos turnos.
     db.add(

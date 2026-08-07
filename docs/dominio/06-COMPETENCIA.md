@@ -90,21 +90,43 @@ exceda la frontera declarada.
 de recibir una pregunta abierta. El resto de la plataforma son formularios e
 informes: no hay dónde preguntar algo fuera de alcance.
 
-**Estado hoy: no implementado.** Nada impide que alguien le pregunte al
-asistente si puede despedir a un colaborador por bajo desempeño, y nada
-garantiza que la respuesta derive en vez de opinar.
+**Estado: implementado el 2026-08-06.** Antes de esa fecha nada impedía que
+alguien le preguntara al asistente si puede despedir a un colaborador por bajo
+desempeño, y nada garantizaba que la respuesta derivara en vez de opinar. Ese
+caso literal es hoy una prueba (`test_el_ejemplo_del_documento`).
 
-Lo que hace falta, declarado como trabajo pendiente y no como excepción:
+Los tres pasos que este apartado pedía, y dónde están:
 
-1. Que la instrucción del asistente **declare la frontera de este documento**.
-2. Que ante una consulta fuera de alcance **derive explícitamente** —«esto
-   excede lo que esta herramienta cubre; conviene consultarlo con …»— en vez de
-   responder.
-3. Que la derivación esté **en el conjunto de evaluación** (MCS IA-07/08/09), o
-   no hay forma de saber si sigue funcionando tras cambiar el modelo.
+1. **La instrucción declara la frontera.** Se genera desde
+   [`app/services/ai/frontera.py`](../../apps/api/app/services/ai/frontera.py),
+   que refleja la tabla del §3; escribirla a mano permitiría que el prompt
+   dijera algo que este documento no dice.
+2. **El sistema deriva, y no le pide permiso al modelo.** `aplicar_frontera`
+   corre **después** de la respuesta, sobre la consulta de quien pregunta: si
+   el modelo se saltó la instrucción y opinó igualmente, el aviso va delante de
+   su opinión. Un prompt es una petición, no una garantía.
+3. **La derivación está en el conjunto de evaluación**: `EV-S-10` a `EV-S-15`,
+   una por exclusión, con el modelo opinando alegremente en las seis. Y
+   `EV-C-37` mide la otra mitad — que una consulta de dentro de alcance **no**
+   se derive, porque derivar siempre cumpliría el requisito por vacuidad.
 
 El paso 3 no es adorno: una frontera que solo vive en el texto de un prompt se
 erosiona con cada cambio de modelo y nadie se entera.
+
+### El residual, escrito
+
+La detección es **por señales léxicas**, así que tiene falsos negativos: una
+consulta jurídica formulada sin ninguna de las palabras declaradas pasa de
+largo. No se afirma «detecta todas las consultas fuera de alcance».
+
+Lo que sí se afirma, y es lo que el requisito pide de un sistema: cuando la
+consulta cruza la frontera de forma reconocible, la derivación **ocurre por
+construcción**. Misma postura que `ruta_interna_segura` con las rutas de
+navegación: lista blanca de forma y el residual por escrito.
+
+Que las señales cubran lo que deben es lo que se revisa cuando alguien reporta
+una consulta que se coló — y ese reporte entra al conjunto de evaluación antes
+de arreglarse, como cualquier otro fallo de IA.
 
 ---
 

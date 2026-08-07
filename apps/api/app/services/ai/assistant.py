@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.services.ai.frontera import aplicar_frontera, bloque_para_prompt
 from app.services.ai.json_parse import parse_json_lenient
 from app.services.ai.untrusted import envolver_no_confiable, neutralizar
 
@@ -84,7 +85,19 @@ Reglas:
 - NO escribas texto fuera del JSON. NO uses bloques de código ni comentarios.
 - Si no sabes algo o no está en el contexto, dilo con honestidad y sugiere
   a dónde ir para encontrarlo.
+
+{{FRONTERA}}
 """
+
+# MCS CON-05 — la frontera se GENERA desde `frontera.py`, que refleja
+# `06-COMPETENCIA.md` §3. Escribirla aquí permitiría que la instrucción dijera
+# algo que el documento no dice.
+#
+# Y decírselo al modelo es el paso 1 de tres: el propio documento avisa de que
+# «una frontera que solo vive en el texto de un prompt se erosiona con cada
+# cambio de modelo y nadie se entera». El paso 2 —`aplicar_frontera`— corre
+# DESPUÉS y no le pide permiso al modelo.
+ASSISTANT_SYSTEM = ASSISTANT_SYSTEM.replace("{{FRONTERA}}", bloque_para_prompt())
 
 
 def build_assistant_prompt(
@@ -162,3 +175,16 @@ def parse_assistant_reply(text: str) -> tuple[str, list[dict[str, Any]]]:
     if not message:
         message = "Listo."
     return message, actions
+
+
+def responder(salida_modelo: str, consulta: str) -> tuple[str, list[dict[str, Any]]]:
+    """La respuesta que llega al usuario: se interpreta y se aplica la frontera.
+
+    **Es la puerta que deben usar el punto de acceso y el evaluador**, no
+    `parse_assistant_reply` a secas. Existe como función propia por eso: con
+    dos consumidores llamando cada uno a lo que le parezca, la comprobación de
+    CON-05 se cae del camino sin que nadie lo note — que es la forma en que un
+    control desaparece.
+    """
+    mensaje, acciones = parse_assistant_reply(salida_modelo)
+    return aplicar_frontera(mensaje, consulta), acciones
