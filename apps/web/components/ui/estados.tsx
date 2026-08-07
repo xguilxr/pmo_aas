@@ -52,7 +52,7 @@ function Caja({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-lg border border-[var(--color-border)] px-6 py-12 text-center",
+        "flex flex-col items-center justify-center gap-3 rounded-lg border border-[var(--border-default)] px-6 py-12 text-center",
         className,
       )}
       role="status"
@@ -129,7 +129,7 @@ export function ErrorDeCarga({
           <button
             type="button"
             onClick={reintentar}
-            className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--color-bg-muted)]"
+            className="rounded-md border border-[var(--border-default)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--color-bg-muted)]"
           >
             Reintentar
           </button>
@@ -162,7 +162,7 @@ export function SinPermiso({ detalle }: { detalle?: string }) {
       accion={
         <Link
           href="/dashboard"
-          className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--color-bg-muted)]"
+          className="rounded-md border border-[var(--border-default)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--color-bg-muted)]"
         >
           Volver al tablero
         </Link>
