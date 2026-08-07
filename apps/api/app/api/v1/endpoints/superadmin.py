@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_superadmin
-from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found, validation_error
 from app.core.security import (
     create_access_token,
     hash_password,
@@ -48,7 +48,11 @@ async def provision_tenant(
     slug = body.slug.lower()
     existing = (await db.execute(select(Tenant).where(Tenant.slug == slug))).scalar_one_or_none()
     if existing is not None:
-        raise conflict("slug de tenant duplicado", code="SLUG_DUPLICATE")
+        raise conflict(mensaje(
+            que="slug de tenant duplicado",
+            porque="El identificador va en la URL y tiene que ser único.",
+            accion="Elige otro identificador.",
+        ), code="SLUG_DUPLICATE")
 
     tenant = Tenant(slug=slug, name=body.name, is_active=True, settings={})
     db.add(tenant)
@@ -68,7 +72,11 @@ async def provision_tenant(
     pwd = body.admin_password or _random_password()
     ok, err = validate_password_policy(pwd)
     if not ok:
-        raise validation_error("admin_password débil", {"code": err})
+        raise validation_error(mensaje(
+            que="admin_password débil",
+            porque="Es la cuenta con más permisos de la organización y una contraseña corta la deja expuesta.",
+            accion="Usa una más larga, con mayúsculas, números y símbolos.",
+        ), {"code": err})
 
     username = (body.admin_username or body.admin_email.split("@")[0]).lower()
     user = User(
@@ -387,7 +395,11 @@ async def hard_delete_tenant(
     if t is None:
         raise not_found("Tenant")
     if confirm_slug != t.slug:
-        raise business_rule("confirm_slug no coincide con el slug del tenant")
+        raise business_rule(mensaje(
+            que="confirm_slug no coincide con el slug del tenant",
+            porque="La confirmación escrita a mano es lo único que separa esta acción de un clic accidental.",
+            accion="Escribe el identificador exacto del tenant tal como aparece en su ficha.",
+        ))
     await write_audit(
         db, action="tenant.hard_delete", module="superadmin", user_id=cu.id,
         entity_type="tenant", entity_id=str(t.id), details={"slug": t.slug},
@@ -415,7 +427,11 @@ async def join_as_admin(
         )
     ).scalar_one_or_none()
     if admin_role is None:
-        raise business_rule("Tenant no tiene rol Administrador; re-seed")
+        raise business_rule(mensaje(
+            que="Tenant no tiene rol Administrador; re-seed",
+            porque="La organización se creó sin su rol de administración y nadie podría gestionarla.",
+            accion="Vuelve a sembrar los roles del tenant desde el panel de plataforma.",
+        ))
 
     existing_ur = (
         await db.execute(
@@ -492,7 +508,11 @@ async def list_tenant_users(
         )
     if role_type:
         if role_type not in ("admin", "user", "viewer"):
-            raise validation_error("role_type debe ser admin|user|viewer")
+            raise validation_error(mensaje(
+                que="role_type debe ser admin|user|viewer",
+                porque="El tipo decide qué puede hacer la persona y solo hay esos tres.",
+                accion="Elige `admin`, `user` o `viewer`.",
+            ))
         stmt = stmt.where(User.role_type == role_type)
 
     rows = (await db.execute(stmt.order_by(User.email))).scalars().all()
@@ -618,7 +638,11 @@ async def superadmin_me_update(
         await db.execute(select(User).where(User.id == cu.id))
     ).scalar_one()
     if not verify_password(body.current_password, u.password_hash):
-        raise forbidden("current_password incorrecto")
+        raise forbidden(mensaje(
+            que="current_password incorrecto",
+            porque="Cambiar la contraseña exige demostrar que la sesión es de quien dice ser.",
+            accion="Vuelve a escribir tu contraseña actual.",
+        ))
 
     diff: dict = {}
 
@@ -642,7 +666,11 @@ async def superadmin_me_update(
                 # take-over si el owner reconoce el clash como suyo.
                 # `extra` viaja en `error.detail.extra` para el cliente.
                 raise conflict(
-                    "Email ya en uso por otro usuario",
+                    mensaje(
+                        que="Email ya en uso por otro usuario",
+                        porque="El correo identifica la cuenta y no puede repetirse.",
+                        accion="Usa otra dirección, o recupera la cuenta existente.",
+                    ),
                     code="EMAIL_TAKEN_OFFER_TAKEOVER",
                     fields={
                         "clashing_user_id": str(clash.id),
@@ -670,11 +698,19 @@ async def superadmin_me_update(
 
     if body.new_password is not None:
         if body.new_password == body.current_password:
-            raise business_rule("La nueva contraseña debe ser diferente")
+            raise business_rule(mensaje(
+                que="La nueva contraseña debe ser diferente",
+                porque="Repetir la anterior no cambia nada si alguien ya la conocía.",
+                accion="Elige una contraseña que no hayas usado antes.",
+            ))
         ok, err = validate_password_policy(body.new_password)
         if not ok:
             raise validation_error(
-                "Contraseña no cumple política", {"code": err}
+                mensaje(
+                    que="Contraseña no cumple política",
+                    porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
+                    accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
+                ), {"code": err}
             )
         u.password_hash = hash_password(body.new_password)
         diff["password"] = {"changed": True}

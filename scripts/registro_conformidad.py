@@ -178,7 +178,7 @@ CIERRES = {
  # textos plausibles y ninguno pensado: escribir el porqué de una regla de
  # negocio exige saber qué regla es. Lo que faltaba era el mecanismo, y ahora
  # está: `mensaje()` con tres argumentos sin defecto + línea base que encoge.
- "LEN-02":("PARCIAL","Ola 2 — 177→166 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
+ "LEN-02":("CONFORME","2026-08-07 — los 166 barridos: cada mensaje pasa por errors.mensaje(que=, porque=, accion=), tres argumentos con nombre y NINGUNO con defecto. El texto que ya existía es el «qué» y estaba bien; lo que faltaba era la regla violada y qué hacer. La línea base pasa de 166 a CERO, así que el trinquete deja de tolerar pasivo y solo puede quedarse en cero. Reescritos por transformación sobre el ÁRBOL (posiciones exactas del argumento), no por sustitución de texto, y cada uno con su porqué y su acción escritos a mano por familia de regla de negocio — un texto genérico habría producido 166 mensajes plausibles y ninguno pensado. mypy caza el que pierda una de las tres partes: `Missing named argument porque`"),
  # DAT-12: la auditoría midió «77 puntos» y el conteo bruto de `?? 0` daba 84,
  # pero 67 de esos eran de CÁLCULO —`map.get(k) ?? 0` al sumar es correcto—.
  # Los de PRESENTACIÓN eran 17, y quedaron en cero. El producto ya usaba «—»

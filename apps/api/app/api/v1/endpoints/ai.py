@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import conflict, forbidden, not_found, validation_error
+from app.core.errors import conflict, forbidden, mensaje, not_found, validation_error
 from app.core.unidades import mebibytes
 from app.db.session import get_db
 from app.models.ai import AIJob, Report
@@ -96,8 +96,12 @@ async def extract_text(
         raise validation_error(str(exc))
     if not text.strip():
         raise validation_error(
-            "El archivo no contiene texto extraíble. Revisa el documento "
-            "o pega el texto directamente."
+            mensaje(
+                que="El archivo no contiene texto extraíble. Revisa el documento "
+                    "o pega el texto directamente.",
+                porque="Un PDF escaneado es una imagen y no trae texto que leer.",
+                accion="Sube el documento original o pega el texto en el cuadro.",
+            )
         )
     return {"text": text, "filename": file.filename, "chars": len(text)}
 
@@ -141,8 +145,12 @@ async def generate_minute(
     cfg = await load_tenant_ai(db, tenant_id)
     if cfg.mode == "disabled":
         raise conflict(
-            "La IA está deshabilitada para este tenant. "
-            "Habilítala en /admin/ai (modo plataforma o BYO).",
+            mensaje(
+                que="La IA está deshabilitada para este tenant. "
+                    "Habilítala en /admin/ai (modo plataforma o BYO).",
+                porque="La IA está apagada en los ajustes de tu organización.",
+                accion="Un administrador puede encenderla en /admin/ai, en modo plataforma o con proveedor propio.",
+            ),
             code="AI_DISABLED",
         )
 
@@ -270,13 +278,21 @@ async def draft_report(
     cfg = await load_tenant_ai(db, tenant_id)
     if cfg.mode == "disabled":
         raise conflict(
-            "La IA está deshabilitada para este tenant.",
+            mensaje(
+                que="La IA está deshabilitada para este tenant.",
+                porque="La IA está apagada en los ajustes de tu organización.",
+                accion="Un administrador puede encenderla en /admin/ai.",
+            ),
             code="AI_DISABLED",
         )
     if cfg.mode == "platform":
         raise conflict(
-            "El modo 'plataforma' (Groq) está limitado a minutas. "
-            "Para generar reportes con IA, conecta tu propio proveedor en /admin/ai.",
+            mensaje(
+                que="El modo 'plataforma' (Groq) está limitado a minutas. "
+                    "Para generar reportes con IA, conecta tu propio proveedor en /admin/ai.",
+                porque="El modelo de la plataforma es compartido y su cuota se reserva para minutas.",
+                accion="Conecta tu propio proveedor en /admin/ai para desbloquear los informes.",
+            ),
             code="AI_PLATFORM_SCOPE_LIMITED",
         )
 
@@ -336,7 +352,11 @@ async def send_report(
     # Validar formato de emails
     for e in body.recipients:
         if "@" not in e or "." not in e.split("@", 1)[1]:
-            raise validation_error(f"email inválido: {e}")
+            raise validation_error(mensaje(
+                que=f"email inválido: {e}",
+                porque="La dirección no tiene forma de correo y el envío fallaría sin avisar.",
+                accion="Corrige la dirección y vuelve a enviar.",
+            ))
 
     # En dev/test no enviamos realmente. Producción: Resend via worker.
     r.status = "sent"
@@ -378,7 +398,11 @@ async def cancel_job(
         raise not_found("Job")
     if j.status not in {"queued", "running"}:
         raise conflict(
-            f"Job en estado `{j.status}` no se puede cancelar",
+            mensaje(
+                que=f"Job en estado `{j.status}` no se puede cancelar",
+                porque="Solo se cancela lo que aún no ha terminado.",
+                accion="Si ya terminó, descarta el resultado; si falló, vuelve a lanzarlo.",
+            ),
             code="STATE_TRANSITION",
         )
     j.status = "cancelled"
@@ -449,7 +473,11 @@ async def tweak_report_html(
     cfg = await load_tenant_ai(db, tenant_id)
     if cfg.mode == "disabled":
         raise conflict(
-            "IA deshabilitada para este tenant",
+            mensaje(
+                que="IA deshabilitada para este tenant",
+                porque="La IA está apagada en los ajustes de tu organización.",
+                accion="Un administrador puede encenderla en /admin/ai.",
+            ),
             code="AI_DISABLED",
         )
     platform_groq = await resolve_groq_config(db) if cfg.mode == "platform" else None
@@ -482,7 +510,11 @@ async def tweak_report_html(
         )
     except Exception as exc:
         raise validation_error(
-            f"Falló el tweak IA: {type(exc).__name__}",
+            mensaje(
+                que=f"Falló el tweak IA: {type(exc).__name__}",
+                porque="El proveedor de IA devolvió un error al aplicar el cambio.",
+                accion="Reintenta; si se repite, revisa la configuración en /admin/ai.",
+            ),
             code="AI_TWEAK_FAILED",
             fields={"detail": str(exc)[:500]},
         ) from exc
@@ -498,7 +530,11 @@ async def tweak_report_html(
     # reglas y devuelve el HTML original como fallback de seguridad.
     if "<html" not in html_out.lower():
         raise validation_error(
-            "El modelo no devolvió HTML válido. Reformula la instrucción.",
+            mensaje(
+                que="El modelo no devolvió HTML válido. Reformula la instrucción.",
+                porque="El modelo respondió algo que no se puede insertar en el informe sin romperlo.",
+                accion="Reformula la instrucción en una frase concreta y vuelve a intentarlo.",
+            ),
             code="AI_TWEAK_INVALID_OUTPUT",
         )
 

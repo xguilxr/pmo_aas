@@ -151,9 +151,9 @@ async def get_current_user(
             detail=mensaje(
                 que="Tu cuenta está desactivada.",
                 porque="Un administrador de tu organización la dio de baja, o se "
-                "desactivó al retirarte el acceso.",
+                    "desactivó al retirarte el acceso.",
                 accion="Pídele a un administrador de tu organización que la "
-                "reactive.",
+                    "reactive.",
             ),
         )
 
@@ -212,9 +212,9 @@ def require_capability(name: str):
                 detail=mensaje(
                     que="Tu rol no incluye el permiso necesario para esta acción.",
                     porque=f"Requiere «{name}», y los permisos se asignan por rol "
-                    "dentro de la organización.",
+                        "dentro de la organización.",
                     accion="Pídele a un administrador de tu organización que te "
-                    "asigne un rol con ese permiso.",
+                        "asigne un rol con ese permiso.",
                 ),
             )
         return cu
@@ -242,9 +242,9 @@ async def get_superadmin(cu: CurrentUser = Depends(get_current_user)) -> Current
             detail=mensaje(
                 que="Esta sección es de administración de la plataforma.",
                 porque="Solo las cuentas de superadministrador la ven, y la tuya "
-                "pertenece a una organización.",
+                    "pertenece a una organización.",
                 accion="Si crees que deberías tener acceso, escríbele a quien "
-                "administra la plataforma.",
+                    "administra la plataforma.",
             ),
         )
     return cu

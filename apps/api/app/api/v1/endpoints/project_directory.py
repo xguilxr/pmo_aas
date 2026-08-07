@@ -11,7 +11,7 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import conflict, not_found
+from app.core.errors import conflict, mensaje, not_found
 from app.db.session import get_db
 from app.models.area import Actor
 from app.models.project_participation import ProjectParticipation
@@ -67,7 +67,11 @@ async def create_project_role(
         )
     ).scalar_one_or_none()
     if existing:
-        raise conflict("Project role with this name already exists")
+        raise conflict(mensaje(
+            que="Project role with this name already exists",
+            porque="Dos roles con el mismo nombre serían indistinguibles al asignar.",
+            accion="Elige otro nombre, o edita el existente.",
+        ))
     role = ProjectRole(
         tenant_id=str(_tenant(cu)),
         name=body.name,
@@ -134,7 +138,11 @@ async def delete_project_role(
         )
     ).first()
     if in_use:
-        raise conflict("Project role in use, cannot delete")
+        raise conflict(mensaje(
+            que="Project role in use, cannot delete",
+            porque="Hay personas asignadas con ese rol y quedarían sin él.",
+            accion="Reasigna a esas personas y vuelve a intentarlo.",
+        ))
     await db.delete(role)
     await db.commit()
 

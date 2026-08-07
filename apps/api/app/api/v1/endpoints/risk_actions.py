@@ -15,7 +15,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden, not_found
+from app.core.errors import forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.area import Actor
 from app.models.modules import Risk
@@ -148,7 +148,11 @@ def _validate_status(value: str | None) -> str | None:
         from app.core.errors import business_rule
 
         raise business_rule(
-            f"Status inválido. Usa uno de: {', '.join(RISK_ACTION_STATUS)}.",
+            mensaje(
+                que=f"Status inválido. Usa uno de: {', '.join(RISK_ACTION_STATUS)}.",
+                porque="El seguimiento de una acción solo admite los estados declarados.",
+                accion="Elige uno de los estados de la lista.",
+            ),
             code="INVALID_STATUS",
         )
     return value

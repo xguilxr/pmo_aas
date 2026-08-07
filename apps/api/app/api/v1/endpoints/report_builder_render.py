@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden, validation_error
+from app.core.errors import forbidden, mensaje, validation_error
 from app.db.session import get_db
 from app.services.pdf_renderer import html_to_pdf
 from app.services.reports.engine import (
@@ -48,7 +48,11 @@ def _resolve_template_ref(payload: RenderRequest):
         )
     if not payload.template:
         raise validation_error(
-            "Se requiere `template` o `section_codes`",
+            mensaje(
+                que="Se requiere `template` o `section_codes`",
+                porque="Sin plantilla ni secciones, el informe saldría vacío.",
+                accion="Elige una plantilla, o indica qué secciones incluir.",
+            ),
             {"template": "required"},
         )
     return payload.template
@@ -98,11 +102,19 @@ async def render_report(
     """Renderiza una plantilla del Report Builder."""
     tenant_id = cu.effective_tenant_id
     if tenant_id is None:
-        raise forbidden("Sin tenant activo")
+        raise forbidden(mensaje(
+            que="Sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización concreta y esta vista es de una.",
+            accion="Elige una organización en el selector y vuelve a intentarlo.",
+        ))
 
     if payload.level == 3 and not payload.project_id:
         raise validation_error(
-            "project_id es obligatorio para reportes Nivel 3",
+            mensaje(
+                que="project_id es obligatorio para reportes Nivel 3",
+                porque="Un informe de nivel 3 baja al detalle de un proyecto concreto.",
+                accion="Indica el proyecto, o pide un informe de nivel superior.",
+            ),
             {"project_id": "required"},
         )
 
@@ -157,10 +169,18 @@ async def save_report(
     template guardado."""
     tenant_id = cu.effective_tenant_id
     if tenant_id is None:
-        raise forbidden("Sin tenant activo")
+        raise forbidden(mensaje(
+            que="Sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización concreta y esta vista es de una.",
+            accion="Elige una organización en el selector y vuelve a intentarlo.",
+        ))
     if not payload.project_id:
         raise validation_error(
-            "project_id es obligatorio para guardar el reporte al historial",
+            mensaje(
+                que="project_id es obligatorio para guardar el reporte al historial",
+                porque="El historial se guarda por proyecto; sin él no habría dónde encontrarlo.",
+                accion="Indica el proyecto, o genera el informe sin guardarlo.",
+            ),
             {"project_id": "required"},
         )
 
@@ -228,11 +248,19 @@ async def export_template_pdf(
     """
     tenant_id = cu.effective_tenant_id
     if tenant_id is None:
-        raise forbidden("Sin tenant activo")
+        raise forbidden(mensaje(
+            que="Sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización concreta y esta vista es de una.",
+            accion="Elige una organización en el selector y vuelve a intentarlo.",
+        ))
 
     if payload.level == 3 and not payload.project_id:
         raise validation_error(
-            "project_id es obligatorio para reportes Nivel 3",
+            mensaje(
+                que="project_id es obligatorio para reportes Nivel 3",
+                porque="Un informe de nivel 3 baja al detalle de un proyecto concreto.",
+                accion="Indica el proyecto, o pide un informe de nivel superior.",
+            ),
             {"project_id": "required"},
         )
 

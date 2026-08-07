@@ -96,9 +96,9 @@ async def bulk_deactivate(
                 mensaje(
                     que="No puedes desactivar tu propia cuenta.",
                     porque="Quedarías sin acceso al panel y nadie podría "
-                    "revertirlo desde tu sesión.",
+                        "revertirlo desde tu sesión.",
                     accion="Pídele a otro administrador de tu organización que lo "
-                    "haga.",
+                        "haga.",
                 )
             )
         user = (
@@ -478,7 +478,11 @@ async def patch_settings(
     progress_method = updates.pop("progress_calculation_method", None)
     if progress_method is not None and progress_method not in PROGRESS_CALC_METHODS:
         raise business_rule(
-            f"progress_calculation_method must be one of {list(PROGRESS_CALC_METHODS)}",
+            mensaje(
+                que=f"progress_calculation_method must be one of {list(PROGRESS_CALC_METHODS)}",
+                porque="El método decide cómo se calcula el avance de todos los proyectos y solo hay los declarados.",
+                accion="Elige uno de los métodos admitidos en los ajustes del tenant.",
+            ),
             code="INVALID_PROGRESS_CALC_METHOD",
         )
 
@@ -511,7 +515,7 @@ async def patch_settings(
                 mensaje(
                     que="Los umbrales de carga tienen que ser dos números enteros.",
                     porque="`green_max` y `yellow_max` definen los cortes del "
-                    "semáforo de carga y se guardan como enteros.",
+                        "semáforo de carga y se guardan como enteros.",
                     accion="Corrige los dos valores y vuelve a guardar.",
                 ),
                 code="INVALID_TASK_LOAD_THRESHOLDS",
@@ -521,9 +525,9 @@ async def patch_settings(
                 mensaje(
                     que="Los umbrales de carga no forman un rango válido.",
                     porque="Tienen que ser positivos y `green_max` menor que "
-                    "`yellow_max`: definen dos cortes en la misma escala.",
+                        "`yellow_max`: definen dos cortes en la misma escala.",
                     accion=f"Ajusta los valores (recibidos: green_max={green_max}, "
-                    f"yellow_max={yellow_max}) y vuelve a guardar.",
+                        f"yellow_max={yellow_max}) y vuelve a guardar.",
                 ),
                 code="INVALID_TASK_LOAD_THRESHOLDS",
             )
@@ -532,7 +536,11 @@ async def patch_settings(
     org_label_update = updates.pop("org_label", None)
     if org_label_update is not None and org_label_update not in ORG_LABEL_VALUES:
         raise business_rule(
-            f"org_label must be one of {list(ORG_LABEL_VALUES)}",
+            mensaje(
+                que=f"org_label must be one of {list(ORG_LABEL_VALUES)}",
+                porque="La etiqueta cambia cómo se nombra la entidad en toda la interfaz y solo hay dos formas admitidas.",
+                accion="Elige una de las opciones que devuelve el propio ajuste.",
+            ),
             code="INVALID_ORG_LABEL",
         )
 

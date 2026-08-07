@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden, not_found
+from app.core.errors import forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.report_template import ReportTemplate
 from app.services.audit import write_audit
@@ -155,7 +155,11 @@ async def get_template(
     if not t.is_shared and (
         not t.created_by or str(t.created_by) != str(cu.id)
     ) and not _is_admin(cu):
-        raise forbidden("Plantilla privada de otro usuario")
+        raise forbidden(mensaje(
+            que="Plantilla privada de otro usuario",
+            porque="Una plantilla privada solo la ve quien la creó.",
+            accion="Pídele que la comparta con la organización.",
+        ))
     # Marca de uso para ordenamiento futuro por "más usadas".
     t.last_used_at = datetime.now(UTC)
     await db.commit()
@@ -183,7 +187,11 @@ async def update_template(
         raise not_found("Plantilla")
     is_creator = bool(t.created_by) and str(t.created_by) == str(cu.id)
     if not (is_creator or _is_admin(cu)):
-        raise forbidden("Solo el creador o un admin puede editar")
+        raise forbidden(mensaje(
+            que="Solo el creador o un admin puede editar",
+            porque="Lo que alguien creó no lo modifica otra persona sin permiso.",
+            accion="Duplícala, o pídeselo a quien la creó.",
+        ))
     data = body.model_dump(exclude_none=True)
     for k, v in data.items():
         setattr(t, k, v)
@@ -216,7 +224,11 @@ async def delete_template(
         raise not_found("Plantilla")
     is_creator = bool(t.created_by) and str(t.created_by) == str(cu.id)
     if not (is_creator or _is_admin(cu)):
-        raise forbidden("Solo el creador o un admin puede borrar")
+        raise forbidden(mensaje(
+            que="Solo el creador o un admin puede borrar",
+            porque="Lo que alguien creó no lo retira otra persona sin permiso.",
+            accion="Pídeselo a quien la creó o a quien administre la organización.",
+        ))
     await write_audit(
         db, action="report_template.delete", module="reports",
         user_id=cu.id, tenant_id=tenant_id,

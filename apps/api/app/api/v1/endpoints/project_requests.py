@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found, validation_error
 from app.db.session import get_db
 from app.models.organization import BusinessUnit, Department, Organization
 from app.models.project_request import ProjectRequest
@@ -42,7 +42,11 @@ async def create_request(
     if body.organization_id is None:
         if not (body.organization_name_new and body.organization_name_new.strip()):
             raise business_rule(
-                "Selecciona una organización o captura una nueva (Otra…)"
+                mensaje(
+                    que="Selecciona una organización o captura una nueva (Otra…)",
+                    porque="Una solicitud sin organización no se puede encaminar a nadie.",
+                    accion="Elige una del desplegable, o escribe una nueva con la opción «Otra…».",
+                )
             )
         new_name = body.organization_name_new.strip()
         # 409 si ya existe una org con ese nombre (case-sensitive,
@@ -57,7 +61,11 @@ async def create_request(
         ).scalar_one_or_none()
         if existing is not None:
             raise conflict(
-                f"Ya existe una organización con el nombre '{new_name}'",
+                mensaje(
+                    que=f"Ya existe una organización con el nombre '{new_name}'",
+                    porque="El nombre identifica la organización y no puede repetirse.",
+                    accion="Elígela del desplegable en vez de crearla, o usa otro nombre.",
+                ),
                 code="ORG_NAME_DUPLICATE",
             )
         org = Organization(
@@ -76,7 +84,11 @@ async def create_request(
             )
         ).scalar_one_or_none()
         if org is None:
-            raise business_rule("La organización no existe en tu tenant")
+            raise business_rule(mensaje(
+                que="La organización no existe en tu tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige una organización de tu tenant.",
+            ))
 
     # Validar FKs BU/Depto si vienen (US-011).
     if body.business_unit_id is not None:
@@ -92,7 +104,11 @@ async def create_request(
         ).scalar_one_or_none()
         if bu is None:
             raise business_rule(
-                "La unidad de negocio no pertenece a la organización indicada"
+                mensaje(
+                    que="La unidad de negocio no pertenece a la organización indicada",
+                    porque="La estructura tiene que ser coherente: la unidad cuelga de su organización.",
+                    accion="Elige una unidad de esa organización, o cambia la organización.",
+                )
             )
     if body.department_id is not None:
         dept = (
@@ -105,13 +121,21 @@ async def create_request(
             )
         ).scalar_one_or_none()
         if dept is None:
-            raise business_rule("El departamento no existe o no pertenece al tenant")
+            raise business_rule(mensaje(
+                que="El departamento no existe o no pertenece al tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige un departamento de tu tenant.",
+            ))
         if (
             body.business_unit_id is not None
             and str(dept.business_unit_id) != str(body.business_unit_id)
         ):
             raise business_rule(
-                "El departamento no pertenece a la unidad de negocio indicada"
+                mensaje(
+                    que="El departamento no pertenece a la unidad de negocio indicada",
+                    porque="La estructura tiene que ser coherente: el departamento cuelga de su unidad.",
+                    accion="Elige un departamento de esa unidad, o cambia la unidad.",
+                )
             )
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="SOL")
@@ -252,7 +276,11 @@ async def update_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status not in {"in_review", "needs_info"}:
-        raise conflict("No editable en este estado", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="No editable en este estado",
+            porque="La solicitud ya salió de tus manos y editarla cambiaría lo que otros están revisando.",
+            accion="Pide que te la devuelvan como «necesita información» para poder corregirla.",
+        ), code="STATE_TRANSITION")
     for f, v in body.model_dump(exclude_none=True).items():
         setattr(pr, f, v)
     await write_audit(
@@ -281,9 +309,17 @@ async def review_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status not in {"in_review", "needs_info"}:
-        raise conflict("Transición de estado inválida", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="Transición de estado inválida",
+            porque="El flujo de la solicitud no permite pasar de un estado al otro directamente.",
+            accion="Llévala al estado intermedio que corresponda.",
+        ), code="STATE_TRANSITION")
     if body.decision in {"reject", "needs_info"} and not (body.comment and body.comment.strip()):
-        raise validation_error("comment obligatorio para reject/needs_info")
+        raise validation_error(mensaje(
+            que="comment obligatorio para reject/needs_info",
+            porque="Quien recibe la solicitud necesita saber qué corregir; sin motivo, la devolución no informa.",
+            accion="Escribe qué falta o por qué se rechaza.",
+        ))
 
     status_map = {"approve": "approved", "reject": "rejected", "needs_info": "needs_info"}
     pr.status = status_map[body.decision]
@@ -346,7 +382,11 @@ async def resubmit_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status != "needs_info":
-        raise conflict("Solo se puede re-someter si status=needs_info", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="Solo se puede re-someter si status=needs_info",
+            porque="Reenviar solo tiene sentido cuando te han pedido corregir algo.",
+            accion="Espera la revisión, o abre una solicitud nueva.",
+        ), code="STATE_TRANSITION")
     pr.status = "in_review"
     await write_audit(
         db, action="project_request.resubmit", module="project_requests",
@@ -377,12 +417,20 @@ async def reopen_request(
         raise not_found("Solicitud")
     if pr.status != "approved":
         raise conflict(
-            "Solo se puede reabrir una solicitud aprobada",
+            mensaje(
+                que="Solo se puede reabrir una solicitud aprobada",
+                porque="Reabrir revierte una aprobación, así que tiene que haber una.",
+                accion="Si fue rechazada, abre una solicitud nueva.",
+            ),
             code="STATE_TRANSITION",
         )
     if pr.project_id:
         raise business_rule(
-            "No se puede reabrir: ya existe un proyecto creado desde esta solicitud"
+            mensaje(
+                que="No se puede reabrir: ya existe un proyecto creado desde esta solicitud",
+                porque="La solicitud ya cumplió su función y el trabajo vive en el proyecto.",
+                accion="Trabaja sobre el proyecto, o abre una solicitud nueva.",
+            )
         )
     pr.status = "in_review"
     pr.reviewed_by = None
@@ -422,7 +470,11 @@ async def create_project_from_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status != "approved":
-        raise business_rule("Solo se puede crear proyecto desde una solicitud 'approved'")
+        raise business_rule(mensaje(
+            que="Solo se puede crear proyecto desde una solicitud 'approved'",
+            porque="Crear el proyecto es lo que ejecuta la aprobación, así que tiene que haberla.",
+            accion="Consigue la aprobación de la solicitud y vuelve a intentarlo.",
+        ))
 
     # Idempotencia
     if pr.project_id:

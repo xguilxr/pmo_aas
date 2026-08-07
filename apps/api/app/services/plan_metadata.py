@@ -18,7 +18,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import validation_error
+from app.core.errors import mensaje, validation_error
 from app.models.task import Task
 
 DURATION_MAX_DAYS = 21
@@ -79,7 +79,11 @@ def validate_predecessors(
             continue
         if s not in by_wbs:
             raise validation_error(
-                f"predecessor wbs_code={s!r} no existe en el proyecto"
+                mensaje(
+                    que=f"predecessor wbs_code={s!r} no existe en el proyecto",
+                    porque="La dependencia apunta a una tarea que no está en el plan.",
+                    accion="Corrige el código en el archivo, o importa antes la tarea que falta.",
+                )
             )
         cleaned.append(s)
         seen.add(s)
@@ -105,7 +109,11 @@ def validate_predecessors(
         for p in cleaned:
             if has_path_to_current(p):
                 raise validation_error(
-                    f"predecessors forma ciclo (vía wbs_code={p!r})"
+                    mensaje(
+                        que=f"predecessors forma ciclo (vía wbs_code={p!r})",
+                        porque="Un ciclo de dependencias no tiene orden posible y el cronograma no se puede calcular.",
+                        accion="Rompe el ciclo quitando una de las dependencias.",
+                    )
                 )
     return cleaned
 

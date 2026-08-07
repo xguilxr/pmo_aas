@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_authenticated, require_capability
 from app.api.v1.endpoints.dashboard import scoped_project_ids
-from app.core.errors import business_rule, conflict, forbidden, not_found
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
@@ -58,7 +58,11 @@ def _ensure_tenant(cu: CurrentUser) -> UUID:
     # efectivo para que las pantallas /admin/organizations funcionen.
     tid = cu.effective_tenant_id
     if tid is None:
-        raise forbidden(detail="Acción no disponible para super admin sin tenant activo")
+        raise forbidden(detail=mensaje(
+            que="Acción no disponible para super admin sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización y esta acción escribe en una.",
+            accion="Elige una organización en el selector y repítela.",
+        ))
     return tid
 
 
@@ -214,7 +218,11 @@ async def create_org(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise conflict("Organización con ese nombre ya existe")
+        raise conflict(mensaje(
+            que="Organización con ese nombre ya existe",
+            porque="El nombre identifica la organización en toda la interfaz y no puede repetirse.",
+            accion="Elige otro nombre, o edita la existente.",
+        ))
     org = Organization(tenant_id=tenant_id, **body.model_dump())
     db.add(org)
     await db.flush()
@@ -527,7 +535,11 @@ async def create_program(
         )
     ).scalar_one_or_none()
     if org is None:
-        raise business_rule("La organización no existe o no pertenece al tenant")
+        raise business_rule(mensaje(
+            que="La organización no existe o no pertenece al tenant",
+            porque="La referencia apunta fuera de tu organización y quedaría rota.",
+            accion="Elige una organización de tu tenant.",
+        ))
     payload = body.model_dump()
     payload["organization_id"] = str(payload["organization_id"])
     prog = Program(tenant_id=tenant_id, **payload)
@@ -763,7 +775,11 @@ async def create_business_unit(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise conflict("Unidad de negocio con ese nombre ya existe en la organización")
+        raise conflict(mensaje(
+            que="Unidad de negocio con ese nombre ya existe en la organización",
+            porque="Dos unidades con el mismo nombre serían indistinguibles al asignar.",
+            accion="Elige otro nombre, o edita la existente.",
+        ))
     bu = BusinessUnit(
         tenant_id=tenant_id,
         organization_id=str(org.id),
@@ -872,7 +888,11 @@ async def update_business_unit(
             )
         ).scalar_one_or_none()
         if clash is not None:
-            raise conflict("Unidad de negocio con ese nombre ya existe en la organización")
+            raise conflict(mensaje(
+                que="Unidad de negocio con ese nombre ya existe en la organización",
+                porque="Dos unidades con el mismo nombre serían indistinguibles al asignar.",
+                accion="Elige otro nombre, o edita la existente.",
+            ))
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(bu, field, value)
     await write_audit(
@@ -914,8 +934,12 @@ async def delete_business_unit(
     ).all()
     if active_depts and not force:
         raise business_rule(
-            "La unidad de negocio tiene departamentos activos. "
-            "Use force=true para soft-delete con cascada lógica.",
+            mensaje(
+                que="La unidad de negocio tiene departamentos activos. "
+                    "Use force=true para soft-delete con cascada lógica.",
+                porque="Retirar la unidad dejaría sus departamentos colgando de nada.",
+                accion="Mueve o cierra los departamentos, o repite con `force=true` para desactivarlos en cascada.",
+            ),
             code="BU_HAS_ACTIVE_DEPARTMENTS",
         )
     bu.is_active = False
@@ -983,7 +1007,11 @@ async def create_department(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise conflict("Departamento con ese nombre ya existe en la unidad de negocio")
+        raise conflict(mensaje(
+            que="Departamento con ese nombre ya existe en la unidad de negocio",
+            porque="Dos departamentos con el mismo nombre en la misma unidad serían indistinguibles al asignar.",
+            accion="Elige otro nombre, o edita el existente.",
+        ))
     dept = Department(
         tenant_id=tenant_id,
         business_unit_id=str(bu.id),
@@ -1093,7 +1121,11 @@ async def update_department(
             )
         ).scalar_one_or_none()
         if clash is not None:
-            raise conflict("Departamento con ese nombre ya existe en la unidad de negocio")
+            raise conflict(mensaje(
+                que="Departamento con ese nombre ya existe en la unidad de negocio",
+                porque="Dos departamentos con el mismo nombre en la misma unidad serían indistinguibles al asignar.",
+                accion="Elige otro nombre, o edita el existente.",
+            ))
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(dept, field, value)
     await write_audit(
@@ -1144,9 +1176,13 @@ async def delete_department(
     ).scalar_one()
     if (active_programs or active_projects) and not force:
         raise business_rule(
-            "El departamento tiene programas o proyectos activos. "
-            f"Programas: {active_programs}, Proyectos: {active_projects}. "
-            "Use force=true para soft-delete.",
+            mensaje(
+                que="El departamento tiene programas o proyectos activos. "
+                    f"Programas: {active_programs}, Proyectos: {active_projects}. "
+                    "Use force=true para soft-delete.",
+                porque="Retirar el departamento dejaría ese trabajo sin dueño en la estructura.",
+                accion="Mueve o cierra lo que cuelga de él, o repite con `force=true` para desactivarlo en cascada.",
+            ),
             code="DEPT_HAS_ACTIVE_CHILDREN",
         )
 

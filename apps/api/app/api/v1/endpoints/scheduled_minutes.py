@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
-from app.core.errors import business_rule, forbidden, not_found
+from app.core.errors import business_rule, forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.scheduled_minute import ScheduledMinute
 from app.services.audit import write_audit
@@ -99,7 +99,11 @@ class ScheduledMinuteRead(BaseModel):
 
 def _validate_enum(field: str, value: str, allowed: tuple[str, ...]) -> None:
     if value not in allowed:
-        raise business_rule(f"{field} inválido: {value}")
+        raise business_rule(mensaje(
+            que=f"{field} inválido: {value}",
+            porque="El valor está fuera del rango que admite ese campo.",
+            accion="Corrígelo al rango indicado y vuelve a guardar.",
+        ))
 
 
 @router.get(
@@ -210,7 +214,11 @@ async def update_scheduled_minute(
         _validate_enum("cadence", data["cadence"], CADENCES)
     if "recipients" in data and data["recipients"] is not None:
         if len(data["recipients"]) == 0:
-            raise business_rule("Debe haber al menos un destinatario")
+            raise business_rule(mensaje(
+                que="Debe haber al menos un destinatario",
+                porque="Un envío programado sin destinatarios no llega a nadie y consume la ejecución igual.",
+                accion="Añade al menos una dirección de correo.",
+            ))
         data["recipients"] = [str(e) for e in data["recipients"]]
     if "template_id" in data and data["template_id"] is not None:
         data["template_id"] = str(data["template_id"])
@@ -230,20 +238,36 @@ async def update_scheduled_minute(
     )
     if cadence_fields_touched:
         if sched.cadence == "once" and sched.run_at is None:
-            raise business_rule("cadence=once requiere run_at")
+            raise business_rule(mensaje(
+                que="cadence=once requiere run_at",
+                porque="Un envío de una sola vez necesita el momento exacto.",
+                accion="Indica la fecha y hora en `run_at`.",
+            ))
         if sched.cadence == "weekly" and (
             sched.day_of_week is None or sched.hour_of_day is None
         ):
             raise business_rule(
-                "cadence=weekly requiere day_of_week (0-6) y hour_of_day (0-23)"
+                mensaje(
+                    que="cadence=weekly requiere day_of_week (0-6) y hour_of_day (0-23)",
+                    porque="Sin día y hora, un envío semanal no sabe cuándo salir.",
+                    accion="Indica el día de la semana (0 a 6) y la hora (0 a 23).",
+                )
             )
         if sched.cadence == "daily" and sched.hour_of_day is None:
-            raise business_rule("cadence=daily requiere hour_of_day (0-23)")
+            raise business_rule(mensaje(
+                que="cadence=daily requiere hour_of_day (0-23)",
+                porque="Sin hora, un envío diario no sabe cuándo salir.",
+                accion="Indica la hora del día, de 0 a 23.",
+            ))
         if sched.cadence == "monthly" and (
             sched.day_of_month is None or sched.hour_of_day is None
         ):
             raise business_rule(
-                "cadence=monthly requiere day_of_month (1-31) y hour_of_day (0-23)"
+                mensaje(
+                    que="cadence=monthly requiere day_of_month (1-31) y hour_of_day (0-23)",
+                    porque="Sin día y hora, un envío mensual no sabe cuándo salir.",
+                    accion="Indica el día del mes (1 a 31) y la hora (0 a 23).",
+                )
             )
 
     inputs_changed = (

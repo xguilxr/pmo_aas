@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 
-from app.core.errors import conflict, validation_error
+from app.core.errors import conflict, mensaje, validation_error
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
@@ -38,8 +38,12 @@ def ensure_inactive(is_active: bool, label: str) -> None:
     """Bloquea hard delete si la entidad sigue activa (forzar soft primero)."""
     if is_active:
         raise conflict(
-            f"{label} debe estar desactivado antes de eliminarse permanentemente. "
-            "Usa el borrado normal primero (segunda confirmación).",
+            mensaje(
+                que=f"{label} debe estar desactivado antes de eliminarse permanentemente. "
+                    "Usa el borrado normal primero (segunda confirmación).",
+                porque="El borrado en dos pasos es lo que da tiempo a arrepentirse de algo irreversible.",
+                accion="Desactívalo primero y vuelve a intentar el borrado permanente.",
+            ),
             code="MUST_DEACTIVATE_FIRST",
         )
 
@@ -55,6 +59,10 @@ def ensure_confirm(provided: str, expected: str, preview: dict | None = None) ->
         if preview is not None:
             fields["preview"] = preview
         raise validation_error(
-            "confirm slug no coincide con el esperado",
+            mensaje(
+                que="confirm slug no coincide con el esperado",
+                porque="La confirmación escrita a mano es lo único que separa esta acción de un clic accidental.",
+                accion="Escribe el identificador exacto tal como aparece en la ficha.",
+            ),
             fields=fields,
         )

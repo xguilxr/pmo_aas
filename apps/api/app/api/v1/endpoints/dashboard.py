@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden, validation_error
+from app.core.errors import forbidden, mensaje, validation_error
 from app.core.unidades import razon_a_pct
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
@@ -414,11 +414,19 @@ async def plan_vs_actual_csv(
 
 def _resolve_scope(scope: str, scope_id: UUID | None, tenant_id: UUID) -> tuple[str, str]:
     if scope not in SCOPE_TYPES:
-        raise validation_error(f"scope inválido: {scope}")
+        raise validation_error(mensaje(
+            que=f"scope inválido: {scope}",
+            porque="El alcance decide qué se agrega y solo hay los declarados.",
+            accion="Usa uno de los alcances admitidos.",
+        ))
     if scope == "tenant":
         return "tenant", str(tenant_id)
     if scope_id is None:
-        raise validation_error(f"scope={scope} requiere el parámetro id")
+        raise validation_error(mensaje(
+            que=f"scope={scope} requiere el parámetro id",
+            porque="Sin identificador no se sabe de qué organización o programa se pide el dato.",
+            accion="Añade el `id` del alcance elegido.",
+        ))
     return scope, str(scope_id)
 
 
@@ -465,7 +473,11 @@ async def trends(
     tenant_id = _tenant(cu)
     scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
     if metric and metric not in METRIC_FIELDS:
-        raise validation_error(f"metric inválido: {metric}")
+        raise validation_error(mensaje(
+            que=f"metric inválido: {metric}",
+            porque="Solo se pueden graficar las métricas declaradas.",
+            accion="Elige una de las métricas que ofrece la pantalla.",
+        ))
 
     since = date.today() - timedelta(weeks=weeks)
     role_ids = await scoped_project_ids(cu, db, tenant_id)
@@ -806,7 +818,11 @@ async def capture_snapshots(
     punto inicial; el job semanal llena hacia adelante). Admin-equivalente."""
     tenant_id = _tenant(cu)
     if not cu.is_admin_equivalent:
-        raise forbidden(detail="Solo un admin puede capturar snapshots")
+        raise forbidden(detail=mensaje(
+            que="Solo un admin puede capturar snapshots",
+            porque="Una instantánea entra en la serie histórica de toda la organización.",
+            accion="Pídeselo a quien administre tu organización.",
+        ))
     written = await snapshot_tenant(db, str(tenant_id), date.today())
     return {"date": date.today().isoformat(), "rows": written}
 

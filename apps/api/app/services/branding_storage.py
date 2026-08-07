@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import UploadFile, status
 
 from app.core.config import settings
-from app.core.errors import AppError, validation_error
+from app.core.errors import AppError, mensaje, validation_error
 from app.core.unidades import mebibytes
 
 MAX_LOGO_BYTES = mebibytes(2)  # criterio US-031
@@ -36,12 +36,20 @@ async def logo_to_data_url(upload: UploadFile) -> str:
     content_type = (upload.content_type or "").lower()
     if content_type not in ALLOWED_LOGO_MIMES:
         raise validation_error(
-            "Formato no permitido. Usa PNG, JPG, SVG o WEBP.",
+            mensaje(
+                que="Formato no permitido. Usa PNG, JPG, SVG o WEBP.",
+                porque="Solo esos formatos se muestran bien en todos los navegadores y en los PDF exportados.",
+                accion="Convierte la imagen a PNG, JPG, SVG o WEBP.",
+            ),
             fields={"mime": content_type},
         )
     data = await upload.read()
     if len(data) == 0:
-        raise validation_error("Archivo vacío")
+        raise validation_error(mensaje(
+            que="Archivo vacío",
+            porque="No hay contenido que guardar.",
+            accion="Comprueba que subiste el archivo correcto y vuelve a intentarlo.",
+        ))
     if len(data) > MAX_LOGO_BYTES:
         raise AppError(
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,

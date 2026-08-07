@@ -124,7 +124,7 @@ async def create_user(
             mensaje(
                 que="La contraseña no cumple la política de la plataforma.",
                 porque="Se exige una longitud mínima y una mezcla de mayúsculas, "
-                "minúsculas, números y símbolos, y que no sea una contraseña común.",
+                    "minúsculas, números y símbolos, y que no sea una contraseña común.",
                 accion="Elige otra que cumpla los criterios y vuelve a guardar.",
             ),
             {"code": err},
@@ -162,7 +162,7 @@ async def create_user(
                 que="Ya existe una cuenta con ese usuario o ese correo.",
                 porque="Los dos son únicos dentro de la organización.",
                 accion="Usa otro, o busca la cuenta existente en el listado para "
-                "editarla.",
+                    "editarla.",
             )
         )
 
@@ -177,7 +177,7 @@ async def create_user(
                 mensaje(
                     que="Uno o más de los roles seleccionados no existen.",
                     porque="Puede que se hayan eliminado mientras tenías el "
-                    "formulario abierto.",
+                        "formulario abierto.",
                     accion="Recarga la página y vuelve a elegir los roles.",
                 )
             )
@@ -353,7 +353,11 @@ async def delete_user(
         raise not_found("Usuario")
     _ensure_same_tenant(cu, u.tenant_id)
     if u.is_superadmin:
-        raise business_rule("No se puede borrar un super admin desde el panel de tenant")
+        raise business_rule(mensaje(
+            que="No se puede borrar un super admin desde el panel de tenant",
+            porque="Una cuenta de plataforma no pertenece a una sola organización, así que ninguna puede retirarla.",
+            accion="Pídelo a quien administre la plataforma desde el panel de superadministración.",
+        ))
     u.is_active = False  # soft delete
     await write_audit(
         db, action="user.delete", module="admin.users", user_id=cu.id, tenant_id=u.tenant_id,
@@ -497,9 +501,9 @@ async def replace_excluded_organizations(
             raise validation_error(
                 mensaje(
                     que="Una o más de las organizaciones seleccionadas no "
-                    "pertenecen a esta cuenta.",
+                        "pertenecen a esta cuenta.",
                     porque="Solo se puede dar acceso a organizaciones de la misma "
-                    "organización matriz.",
+                        "organización matriz.",
                     accion="Quita las que no correspondan y vuelve a guardar.",
                 )
             )
@@ -673,7 +677,11 @@ async def preview_hard_delete_user(
         raise not_found("Usuario")
     _ensure_same_tenant(cu, u.tenant_id)
     if u.is_superadmin:
-        raise business_rule("No se puede borrar un super admin desde el panel de tenant")
+        raise business_rule(mensaje(
+            que="No se puede borrar un super admin desde el panel de tenant",
+            porque="Una cuenta de plataforma no pertenece a una sola organización, así que ninguna puede retirarla.",
+            accion="Pídelo a quien administre la plataforma desde el panel de superadministración.",
+        ))
     blockers_map = await _user_blockers(db, u)
     return HardDeletePreview(
         entity_type="user",
@@ -719,14 +727,22 @@ async def hard_delete_user(
         raise not_found("Usuario")
     _ensure_same_tenant(cu, u.tenant_id)
     if u.is_superadmin:
-        raise business_rule("No se puede borrar un super admin desde el panel de tenant")
+        raise business_rule(mensaje(
+            que="No se puede borrar un super admin desde el panel de tenant",
+            porque="Una cuenta de plataforma no pertenece a una sola organización, así que ninguna puede retirarla.",
+            accion="Pídelo a quien administre la plataforma desde el panel de superadministración.",
+        ))
     ensure_inactive(u.is_active, "Usuario")
 
     blockers_map = await _user_blockers(db, u)
     if blockers_map:
         raise conflict(
-            "No se puede eliminar permanentemente: el usuario tiene referencias "
-            "que requieren limpieza manual previa.",
+            mensaje(
+                que="No se puede eliminar permanentemente: el usuario tiene referencias "
+                    "que requieren limpieza manual previa.",
+                porque="Hay registros firmados o asignados a esa cuenta que quedarían huérfanos.",
+                accion="Reasigna o cierra esos registros y vuelve a intentarlo; el borrado normal (desactivar) sí está disponible.",
+            ),
             code="USER_HAS_BLOCKING_REFS",
             fields={"blockers": blockers_map},
         )

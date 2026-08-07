@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_capability
-from app.core.errors import forbidden, not_found
+from app.core.errors import forbidden, mensaje, not_found
 from app.core.unidades import segundos_a_ms
 from app.core.url_externa import asegurar_url_externa, motivo_url_insegura
 from app.db.session import get_db
@@ -224,7 +224,11 @@ async def update_provider_config(
                 from app.core.errors import business_rule
 
                 raise business_rule(
-                    "byo requerido cuando mode='byo' y no hay config previa",
+                    mensaje(
+                        que="byo requerido cuando mode='byo' y no hay config previa",
+                        porque="El modo «proveedor propio» necesita credenciales y no hay ninguna guardada de antes.",
+                        accion="Manda el bloque `byo` con el proveedor, el modelo y la clave.",
+                    ),
                 )
             # Solo se está re-confirmando mode=byo (o cambiando de
             # platform→byo manteniendo la config existente). No se toca
@@ -247,7 +251,11 @@ async def update_provider_config(
             from app.core.errors import business_rule
 
             raise business_rule(
-                f"Provider BYO inválido: {body.byo.provider}",
+                mensaje(
+                    que=f"Provider BYO inválido: {body.byo.provider}",
+                    porque="Solo se aceptan los proveedores del catálogo, porque cada uno necesita su forma de autenticación.",
+                    accion="Elige uno de la lista en /admin/ai.",
+                ),
                 code="BYO_PROVIDER_INVALID",
             )
         existing = ai.get("byo") if isinstance(ai.get("byo"), dict) else {}
@@ -263,9 +271,13 @@ async def update_provider_config(
 
                 raise business_rule(
                     (
-                        "Para conectar un proveedor custom debes confirmar "
-                        "que tu tenant es responsable de la seguridad y el "
-                        "cumplimiento del proveedor (acknowledge_security)."
+                        mensaje(
+                            que="Para conectar un proveedor custom debes confirmar "
+                                "que tu tenant es responsable de la seguridad y el "
+                                "cumplimiento del proveedor (acknowledge_security).",
+                            porque="Un proveedor propio manda tus datos fuera de la plataforma y el responsable de ese tratamiento es tu organización.",
+                            accion="Marca la casilla de responsabilidad en /admin/ai y vuelve a guardar.",
+                        )
                     ),
                     code="BYO_SECURITY_ACK_REQUIRED",
                 )

@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.config import settings
-from app.core.errors import business_rule, conflict, forbidden, not_found
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.area import Actor
 from app.models.change_approval import ApprovalToken, ChangeApprover
@@ -90,7 +90,11 @@ def _check_can_modify_approvers(change: ChangeRequest) -> None:
     """
     if change.status in {"pending_approval", "approved", "implemented"}:
         raise conflict(
-            f"No se puede modificar la lista de aprobadores en estado `{change.status}`",
+            mensaje(
+                que=f"No se puede modificar la lista de aprobadores en estado `{change.status}`",
+                porque="Cambiar quién decide con el proceso en marcha invalidaría las respuestas ya dadas.",
+                accion="Cancela la ronda de aprobación, ajusta la lista y vuelve a enviarla.",
+            ),
             code="STATE_TRANSITION",
         )
 
@@ -179,7 +183,11 @@ async def add_approver(
     # CA5: email es requerido para enviar el email de US-113.
     if not actor.email:
         raise business_rule(
-            "El Actor no tiene email registrado — agrégalo antes de asignar como aprobador.",
+            mensaje(
+                que="El Actor no tiene email registrado — agrégalo antes de asignar como aprobador.",
+                porque="La solicitud de aprobación viaja por correo y sin dirección no llega.",
+                accion="Registra su correo en el directorio y vuelve a asignarlo.",
+            ),
             code="ACTOR_EMAIL_MISSING",
         )
     # Idempotencia: si ya existe, devuélvelo en vez de duplicar.
@@ -341,14 +349,22 @@ async def submit_for_approval(
     change = await _get_change(db, change_id, tenant_id)
     if change.status not in {"in_review", "rejected", "draft"}:
         raise conflict(
-            f"No se puede enviar a aprobación desde estado `{change.status}`",
+            mensaje(
+                que=f"No se puede enviar a aprobación desde estado `{change.status}`",
+                porque="Solo se envía lo que está en borrador o pendiente de corrección.",
+                accion="Vuelve el cambio a borrador y envíalo desde ahí.",
+            ),
             code="STATE_TRANSITION",
         )
 
     approvers = await _list_approvers_with_actors(db, change_id)
     if not approvers:
         raise business_rule(
-            "Agrega al menos 1 aprobador antes de enviar a aprobación",
+            mensaje(
+                que="Agrega al menos 1 aprobador antes de enviar a aprobación",
+                porque="Un cambio sin aprobadores se quedaría esperando a nadie.",
+                accion="Añade al menos una persona a la lista y vuelve a enviar.",
+            ),
             code="NO_APPROVERS",
         )
 
@@ -452,7 +468,11 @@ async def _resolve_token(
     try:
         payload = jwt.decode(jwt_str, secret, algorithms=["HS256"])
     except jwt.ExpiredSignatureError as exc:
-        raise conflict("Este enlace ya expiró.", code="TOKEN_EXPIRED") from exc
+        raise conflict(mensaje(
+            que="Este enlace ya expiró.",
+            porque="Los enlaces de aprobación caducan para que uno reenviado no valga meses después.",
+            accion="Pide a quien lo envió que genere uno nuevo.",
+        ), code="TOKEN_EXPIRED") from exc
     except jwt.PyJWTError as exc:
         raise not_found("Token inválido") from exc
     if payload.get("scope") != "change_approval":
@@ -518,7 +538,11 @@ async def post_approval_decision(
     tk, _payload = await _resolve_token(db, jwt_str)
     if tk.consumed_at is not None:
         raise conflict(
-            f"Ya respondiste con `{tk.action_taken}`.", code="TOKEN_CONSUMED",
+            mensaje(
+                que=f"Ya respondiste con `{tk.action_taken}`.",
+                porque="Cada aprobador responde una vez para que el resultado no dependa del orden.",
+                accion="Si te equivocaste, pide a quien coordina el cambio que reabra tu respuesta.",
+            ), code="TOKEN_CONSUMED",
         )
 
     change = (
@@ -530,7 +554,11 @@ async def post_approval_decision(
         raise not_found("Cambio")
     if change.status != "pending_approval":
         raise conflict(
-            f"El Cambio está en estado `{change.status}`; ya no se aceptan respuestas.",
+            mensaje(
+                que=f"El Cambio está en estado `{change.status}`; ya no se aceptan respuestas.",
+                porque="La decisión ya está tomada y registrada.",
+                accion="Si hace falta revisarla, abre un cambio nuevo.",
+            ),
             code="STATE_TRANSITION",
         )
 
