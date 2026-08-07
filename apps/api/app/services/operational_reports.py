@@ -19,6 +19,7 @@ from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.task import Task
 from app.models.user import User
+from app.services.indicadores import dias_de_retraso
 from app.services.plan_metadata import (
     compute_plan_rollup_progress,
     round_half_up,
@@ -514,7 +515,7 @@ async def build_seguimiento_context(
             "owner_name": owner_map.get(str(t.owner_id), "—") if t.owner_id else "—",
             "area_name": _area_label(t.area_id),
             "progress": t.progress or 0,
-            "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
+            "overdue_days": dias_de_retraso(due, cut_off_date),  # DAT-09
         })
     # ENH-154: las acciones (AID type=action) dejan de mezclarse con las
     # tareas en los buckets de Actividades; van a su propia sección
@@ -531,7 +532,7 @@ async def build_seguimiento_context(
             "owner_name": owner_map.get(str(a.owner_id), "—") if a.owner_id else "—",
             "area_name": _area_label(a.area_id),
             "progress": None,
-            "overdue_days": (cut_off_date - due).days if due and due < cut_off_date else 0,
+            "overdue_days": dias_de_retraso(due, cut_off_date),  # DAT-09
         })
 
     overdue = [i for i in items if i["due_date"] and i["overdue_days"] > 0]

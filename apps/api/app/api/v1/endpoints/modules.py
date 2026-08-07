@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
-from app.core.errors import business_rule, conflict, forbidden, not_found
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found
 from app.core.unidades import mebibytes
 from app.db.session import get_db
 from app.models.area import Area, AreaAssignment
@@ -70,7 +70,11 @@ def _tenant(cu: CurrentUser) -> UUID:
 
 def _ensure_editable(p: Project, *, allow_after_closed: bool = False) -> None:
     if p.phase == "closed" and not allow_after_closed:
-        raise business_rule("Proyecto cerrado, no se puede escribir en este módulo")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no se puede escribir en este módulo",
+            porque="Un proyecto cerrado conserva su registro tal como quedó.",
+            accion="Reábrelo si de verdad hace falta seguir trabajando en él.",
+        ))
 
 
 async def _validate_area(
@@ -90,7 +94,11 @@ async def _validate_area(
         )
     ).scalar_one_or_none()
     if project is None:
-        raise business_rule("Proyecto no encontrado")
+        raise business_rule(mensaje(
+            que="Proyecto no encontrado",
+            porque="El proyecto no existe o no pertenece a tu organización.",
+            accion="Vuelve a la lista de proyectos y elige uno.",
+        ))
     cond = or_(
         AreaAssignment.is_global.is_(True),
         AreaAssignment.project_id == str(project_id),
@@ -116,7 +124,11 @@ async def _validate_area(
         )
     ).scalars().first()
     if area is None:
-        raise business_rule("Área no válida para este proyecto")
+        raise business_rule(mensaje(
+            que="Área no válida para este proyecto",
+            porque="El área tiene que estar en el alcance del proyecto para poder asignarle trabajo.",
+            accion="Elige un área del proyecto, o añádela primero a su alcance.",
+        ))
     return area
 
 
@@ -217,7 +229,11 @@ async def _resolve_on_hold(
         reason = getattr(body, "on_hold_reason", None)
         if not (reason and reason.strip()):
             raise business_rule(
-                "Razón de detención obligatoria al poner el ítem en On Hold"
+                mensaje(
+                    que="Razón de detención obligatoria al poner el ítem en On Hold",
+                    porque="Un elemento detenido sin motivo escrito no se puede retomar meses después.",
+                    accion="Escribe por qué se detiene y quién lo decide.",
+                )
             )
     oh_area_id = getattr(body, "on_hold_area_id", None)
     oh_actor_id = getattr(body, "on_hold_actor_id", None)
@@ -237,7 +253,11 @@ async def _resolve_on_hold(
             )
         ).scalar_one_or_none()
         if actor is None:
-            raise business_rule("Responsable de detención no válido")
+            raise business_rule(mensaje(
+                que="Responsable de detención no válido",
+                porque="Quien detiene un elemento tiene que ser alguien del directorio para poder darle seguimiento.",
+                accion="Elige un responsable de la lista.",
+            ))
         actor_str = str(oh_actor_id)
     return area_str, actor_str
 
@@ -975,7 +995,11 @@ async def approve_chg(
     if c is None:
         raise not_found("Change request")
     if c.status != "in_review":
-        raise conflict("Transición inválida", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="Transición inválida",
+            porque="El flujo del elemento no permite pasar de un estado al otro directamente.",
+            accion="Llévalo al estado intermedio que corresponda.",
+        ), code="STATE_TRANSITION")
     c.status = "approved"
     c.approved_by = cu.id
     c.approved_at = datetime.now(UTC)
@@ -995,7 +1019,11 @@ async def reject_chg(
     if c is None:
         raise not_found("Change request")
     if c.status != "in_review":
-        raise conflict("Transición inválida", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="Transición inválida",
+            porque="El flujo del elemento no permite pasar de un estado al otro directamente.",
+            accion="Llévalo al estado intermedio que corresponda.",
+        ), code="STATE_TRANSITION")
     c.status = "rejected"
     c.approved_by = cu.id
     c.approved_at = datetime.now(UTC)
@@ -1038,7 +1066,11 @@ async def cancel_chg(
     if c is None:
         raise not_found("Change request")
     if c.status in ("implemented", "cancelled"):
-        raise conflict("Transición inválida", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="Transición inválida",
+            porque="El flujo del elemento no permite pasar de un estado al otro directamente.",
+            accion="Llévalo al estado intermedio que corresponda.",
+        ), code="STATE_TRANSITION")
     c.status = "cancelled"
     await _invalidate_change_tokens(db, str(c.id))
     await write_audit(
@@ -1856,7 +1888,11 @@ async def convert_agreement_to_issue(
         raise not_found("Minuta")
     agreements = list(m.agreements or [])
     if agreement_index >= len(agreements):
-        raise business_rule("Indice de acuerdo inválido")
+        raise business_rule(mensaje(
+            que="Indice de acuerdo inválido",
+            porque="La posición apunta a un acuerdo que no está en la lista.",
+            accion="Recarga la minuta y vuelve a intentarlo.",
+        ))
     ag = agreements[agreement_index]
     folio = await next_folio(db, tenant_id=tenant_id, prefix="INC")
     issue = Issue(
@@ -1926,7 +1962,11 @@ async def _create_raid_ticket_from_suggestion(
     """
     short_desc = (override_short_desc or sugg.get("short_desc") or "").strip()
     if not short_desc:
-        raise business_rule(f"short_desc vacío en {kind}")
+        raise business_rule(mensaje(
+            que=f"short_desc vacío en {kind}",
+            porque="Sin descripción corta el elemento sale en blanco en los listados.",
+            accion="Escribe una línea que diga de qué se trata.",
+        ))
     title_value = short_desc[:200]
     description_value = (
         override_description or sugg.get("raw_quote") or sugg.get("short_desc") or None
@@ -2098,7 +2138,11 @@ async def delete_minute(
         getattr(cu, "is_superadmin", False)
     )
     if not (is_creator or is_admin):
-        raise forbidden("Solo el creador o un admin puede borrar la minuta")
+        raise forbidden(mensaje(
+            que="Solo el creador o un admin puede borrar la minuta",
+            porque="Una minuta es el registro de una sesión y su autoría importa.",
+            accion="Pídeselo a quien la creó o a quien administre la organización.",
+        ))
     await write_audit(
         db, action="meeting_minute.delete", module="minutes",
         user_id=cu.id, tenant_id=tenant_id, entity_type="meeting_minute",
@@ -2148,7 +2192,11 @@ async def approve_raid_suggestions(
         bucket = suggestions.get(it.type) or []
         if not (0 <= it.index < len(bucket)):
             raise business_rule(
-                f"Indice {it.index} inválido para {it.type}",
+                mensaje(
+                    que=f"Indice {it.index} inválido para {it.type}",
+                    porque="La posición apunta a un elemento que no está en la lista.",
+                    accion="Recarga la minuta y vuelve a intentarlo.",
+                ),
             )
         sugg = dict(bucket[it.index])
         if sugg.get("status") == "approved" and sugg.get("ticket_id"):

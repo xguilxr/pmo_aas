@@ -23,6 +23,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Importe, PorcentajeDecimal
 from app.db.base import Base, TimestampMixin, new_uuid
 
 
@@ -60,15 +61,19 @@ class MetricSnapshot(Base, TimestampMixin):
     health_red: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # --- Avance ---
-    avg_progress: Mapped[float] = mapped_column(
-        Numeric(5, 2), nullable=False, default=0
+    # Nulable desde la migración 0103: sin proyectos activos NO es cero por
+    # ciento, es que no hay nada que promediar (ficha firmada 2026-08-06). La
+    # instantánea escribía 0 en los dos casos y la gráfica de tendencia
+    # dibujaba una caída a cero en carteras recién creadas.
+    avg_progress: Mapped[PorcentajeDecimal | None] = mapped_column(
+        Numeric(5, 2), nullable=True
     )
 
     # --- Presupuesto ---
-    budget_plan: Mapped[float] = mapped_column(
+    budget_plan: Mapped[Importe] = mapped_column(
         Numeric(16, 2), nullable=False, default=0
     )
-    budget_actual: Mapped[float] = mapped_column(
+    budget_actual: Mapped[Importe] = mapped_column(
         Numeric(16, 2), nullable=False, default=0
     )
 

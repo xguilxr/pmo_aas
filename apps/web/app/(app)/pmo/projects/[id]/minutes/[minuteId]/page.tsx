@@ -438,6 +438,12 @@ function ParticipantsSection({
         )
       ) : (
         <div className="space-y-2">
+          {/* DIS-03: en modo edición la lista vacía es normal, no un fallo. */}
+          {draft.length === 0 ? (
+            <p className="px-1 py-3 text-xs text-[var(--text-tertiary)]">
+              Aún no hay participantes. Usa «Añadir» para registrar quién asistió.
+            </p>
+          ) : null}
           {draft.map((p, i) => (
             <div key={i} className="flex flex-wrap items-center gap-2">
               <Input
@@ -568,6 +574,12 @@ function TopicsSection({
         )
       ) : (
         <div className="space-y-3">
+          {/* DIS-03: en modo edición la lista vacía es normal, no un fallo. */}
+          {draft.length === 0 ? (
+            <p className="px-1 py-3 text-xs text-[var(--text-tertiary)]">
+              Aún no hay temas. Usa «Añadir» para registrar lo que se trató.
+            </p>
+          ) : null}
           {draft.map((t, i) => (
             <div
               key={i}
@@ -698,6 +710,12 @@ function AgreementsSection({
         )
       ) : (
         <div className="space-y-2">
+          {/* DIS-03: en modo edición la lista vacía es normal, no un fallo. */}
+          {draft.length === 0 ? (
+            <p className="px-1 py-3 text-xs text-[var(--text-tertiary)]">
+              Aún no hay acuerdos. Usa «Añadir» para registrar lo que se comprometió.
+            </p>
+          ) : null}
           {draft.map((a, i) => (
             <div
               key={i}

@@ -58,10 +58,11 @@ function formatDateOnly(iso: string | null | undefined): string {
   return dt.toLocaleDateString("es-MX", { dateStyle: "long" });
 }
 
-function formatMxn(n: string | number): string {
+// BUG-092 — la moneda de la solicitud, resuelta por la API.
+function formatImporte(n: string | number, moneda: string): string {
   const v = typeof n === "string" ? Number(n) : n;
   if (!Number.isFinite(v)) return "—";
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(v);
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: moneda }).format(v);
 }
 
 export default function RequestDetailPage() {
@@ -376,7 +377,7 @@ export default function RequestDetailPage() {
           <Row k="Unidad de negocio" v={request.business_unit} />
           <Row k="Departamento" v={request.department} />
           {request.budget !== null && request.budget !== undefined ? (
-            <Row k="Presupuesto" v={formatMxn(request.budget)} />
+            <Row k="Presupuesto" v={formatImporte(request.budget, request.currency)} />
           ) : null}
         </Card>
         <Card title="Seguimiento">

@@ -37,6 +37,7 @@ import {
   uploadTenantLogo,
 } from "@/lib/api/branding";
 import { cn } from "@/lib/cn";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 type TenantTab = "info" | "branding" | "config" | "stats";
 const TAB_KEYS: TenantTab[] = ["info", "branding", "config", "stats"];
@@ -93,6 +94,8 @@ function TenantAdminPageInner() {
   };
 
   const [info, setInfo] = useState<TenantInfo | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(info);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -192,6 +195,7 @@ function TenantAdminPageInner() {
         <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
           Tenant
         </h1>
+        {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
         <p className="mt-1 text-sm text-[var(--color-tertiary)]">
           Información, branding, configuración y uso del tenant en una sola vista.
         </p>

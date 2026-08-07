@@ -24,6 +24,8 @@ import {
   type TrendsResponse,
 } from "@/lib/api/analytics";
 import { getProgramSummary, type ProgramSummary } from "@/lib/api/organizations";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
+import { useMonedaPreferida } from "@/lib/moneda-tenant";
 
 type ProgramTab = "overview" | "reports";
 
@@ -90,15 +92,19 @@ function healthBadge(h: string | null) {
   );
 }
 
-function money(n: number): string {
+// BUG-092 — recibe la moneda. Antes traía `"MXN"` escrito y un programa en
+// euros salía rotulado en pesos.
+function money(n: number, moneda: string): string {
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
-    currency: "MXN",
+    currency: moneda,
     maximumFractionDigits: 0,
   }).format(n);
 }
 
 export default function ProgramSummaryPage() {
+  // BUG-092 — un programa agrega proyectos; la moneda es la del inquilino.
+  const monedaDelPrograma = useMonedaPreferida();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const ctx = searchParams.get("ctx") === "admin" ? "admin" : "pmo";
@@ -110,6 +116,8 @@ export default function ProgramSummaryPage() {
   const portfolioHref = ctx === "admin" ? "/admin" : "/pmo";
   const portfolioLabel = ctx === "admin" ? "Admin" : "Portafolio";
   const [data, setData] = useState<ProgramSummary | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(data);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,6 +237,7 @@ export default function ProgramSummaryPage() {
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
               {data.name}
             </h1>
+            {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
             <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-tertiary)]">
               {data.organization_name ?? ""}
               {!data.is_active ? <Badge variant="danger">Inactivo</Badge> : null}
@@ -339,13 +348,13 @@ export default function ProgramSummaryPage() {
             <div>
               <dt className="text-xs text-[var(--color-tertiary)]">Plan</dt>
               <dd className="text-xl font-semibold tabular-nums">
-                {money(data.budget_planned)}
+                {money(data.budget_planned, monedaDelPrograma)}
               </dd>
             </div>
             <div>
               <dt className="text-xs text-[var(--color-tertiary)]">Real</dt>
               <dd className="text-xl font-semibold tabular-nums">
-                {money(data.budget_actual)}
+                {money(data.budget_actual, monedaDelPrograma)}
               </dd>
             </div>
             <div className="col-span-2">
@@ -494,7 +503,7 @@ export default function ProgramSummaryPage() {
                   <td className="py-2">{p.pm_name ?? "—"}</td>
                   <td className="py-2 text-right tabular-nums">{p.progress}%</td>
                   <td className="py-2 text-right tabular-nums text-xs">
-                    {money(p.budget)} / {money(p.actual_budget)}
+                    {money(p.budget, monedaDelPrograma)} / {money(p.actual_budget, monedaDelPrograma)}
                   </td>
                 </tr>
               ))}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { formatearImporte } from "@/lib/moneda";
 import { esSinDato, SIN_DATO, SIN_DATO_ETIQUETA } from "@/lib/sin-dato";
 
 /** US-153 — variación vs. periodo anterior para la píldora de tendencia. */
@@ -14,7 +15,9 @@ export type KpiTrend = {
   /** Si subir es "bueno" (verde). Por defecto true; ponlo false para
    *  métricas donde subir es malo (riesgos, atrasos). */
   goodWhenUp?: boolean;
-  format?: "number" | "currency-mxn" | "percent";
+  format?: "number" | "currency" | "percent";
+  /** Obligatoria si `format="currency"`. Sin defecto: BUG-092. */
+  moneda?: string;
 };
 
 type Props = {
@@ -28,7 +31,13 @@ type Props = {
   value: number | null | undefined;
   href?: string;
   icon?: ReactNode;
-  format?: "number" | "currency-mxn" | "percent";
+  format?: "number" | "currency" | "percent";
+  /**
+   * BUG-092 — el código de moneda del importe, **sin valor por defecto**. Un
+   * defecto escondido aquí sería el mismo bug que el `currency: "MXN"` que
+   * había escrito a mano en diez sitios, solo que más difícil de encontrar.
+   */
+  moneda?: string;
   tone?: "neutral" | "accent" | "danger" | "warning" | "success";
   loading?: boolean;
   trend?: KpiTrend;
@@ -37,13 +46,11 @@ type Props = {
   hint?: string;
 };
 
-function formatValue(value: number, format: Props["format"]): string {
-  if (format === "currency-mxn") {
-    return new Intl.NumberFormat("es-MX", {
-      style: "currency",
-      currency: "MXN",
-      maximumFractionDigits: 0,
-    }).format(value);
+function formatValue(value: number, format: Props["format"], moneda?: string): string {
+  if (format === "currency") {
+    // Sin moneda no se inventa una: se muestra el número desnudo. Es feo a
+    // propósito — un importe sin unidad tiene que verse raro, no plausible.
+    return moneda ? formatearImporte(value, moneda) : new Intl.NumberFormat("es-MX").format(value);
   }
   if (format === "percent") {
     return `${Math.round(value)}%`;
@@ -104,14 +111,25 @@ function TrendPill({ trend }: { trend: KpiTrend }) {
       >
         <Icon className="h-3 w-3" aria-hidden />
         {sign}
-        {formatValue(Math.abs(delta), trend.format ?? "number")}
+        {formatValue(Math.abs(delta), trend.format ?? "number", trend.moneda)}
       </span>
       {label ? <span className="text-[11px] text-[var(--color-tertiary)]">{label}</span> : null}
     </span>
   );
 }
 
-export function KpiCard({ label, value, href, icon, format = "number", tone = "neutral", loading, trend, hint }: Props) {
+export function KpiCard({
+  label,
+  value,
+  href,
+  icon,
+  format = "number",
+  tone = "neutral",
+  loading,
+  trend,
+  hint,
+  moneda,
+}: Props) {
   const vacio = esSinDato(value);
   const animated = useCountUp(vacio ? 0 : (value as number));
 
@@ -135,7 +153,7 @@ export function KpiCard({ label, value, href, icon, format = "number", tone = "n
         aria-label={loading ? "cargando" : vacio ? SIN_DATO_ETIQUETA : undefined}
         title={vacio && !loading ? SIN_DATO_ETIQUETA : undefined}
       >
-        {loading || vacio ? SIN_DATO : formatValue(animated, format)}
+        {loading || vacio ? SIN_DATO : formatValue(animated, format, moneda)}
       </span>
       {!loading && !vacio && trend ? <TrendPill trend={trend} /> : null}
       {hint ? <span className="text-[11px] text-[var(--color-tertiary)]">{hint}</span> : null}

@@ -55,6 +55,7 @@ from app.models.report_section import ReportSection
 from app.models.task import Task
 from app.models.user import User
 from app.services.analytics.snapshots import METRIC_FIELDS
+from app.services.indicadores import promedio_de_avance
 from app.services.pdf_renderer import render_html
 from app.services.progress_calculator import compute_progress_detailed
 from app.services.reports.branding import load_report_branding
@@ -447,7 +448,9 @@ def _build_s08_progress_by_area(ctx, params, window):
             b["done"] += 1
     rows = []
     for label, b in sorted(buckets.items()):
-        avg = round(b["progress_sum"] / b["total"], 1) if b["total"] else 0.0
+        # `int()` porque el cubo lleva sus contadores como float —lo hace ya la
+        # línea de abajo—; el denominador de una media es un conteo.
+        avg = promedio_de_avance(b["progress_sum"], int(b["total"]))  # DAT-09
         rows.append({
             "area_name": label,
             "total": int(b["total"]),

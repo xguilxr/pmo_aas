@@ -223,7 +223,7 @@ bloquea**: son frentes propios que las tocarán cuando se resuelvan.
 
 | Qué | Por qué sigue abierto | Bloquea |
 |---|---|---|
-| **Moneda del dinero** | Frente de producto declarado: diseño de gestión de recursos y presupuesto | `DAT-01`, y con él `DAT-02` |
+| ~~**Moneda del dinero**~~ | **Resuelto el 2026-08-07 (BUG-092):** la moneda va sobre el proyecto, con una preferida por inquilino. Los agregados de cartera no suman monedas distintas: devuelven un importe por moneda | — |
 | **Zona horaria del corte** | Con inquilinos en husos distintos, «vencidas hoy» depende de dónde corra el proceso | Nada hoy; sale a la superficie con el primer inquilino en otro huso |
 | **Renombrar `avg_progress` / `progress_avg`** | Cruza API y web: ADR + migración de contrato + ventana | Nada; es deuda de legibilidad |
 | **Verificar que el control de cambios registre los cambios de fecha planeada** | Es lo que sostiene la decisión de medir el retraso contra la fecha actual | La auditabilidad del retraso |

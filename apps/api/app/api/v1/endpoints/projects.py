@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
-from app.core.errors import business_rule, conflict, forbidden, validation_error
+from app.core.errors import business_rule, conflict, forbidden, mensaje, validation_error
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.models.organization import Organization
@@ -31,6 +31,7 @@ from app.schemas.project import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.plan_metadata import round_half_up
 from app.services.progress_calculator import plan_rollup_map
 from app.services.project_health import (
@@ -80,6 +81,8 @@ async def list_projects(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     stmt = select(Project).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
     if phase:
@@ -129,7 +132,7 @@ async def list_projects(
     plan_map = await plan_rollup_map(db, [p.id for p in rows])
     out: list[ProjectRead] = []
     for p in rows:
-        r = ProjectRead.model_validate(p)
+        r = ProjectRead.model_validate(p, context=ctx_moneda)
         derived = plan_map.get(str(p.id))
         if derived is not None:
             r.progress = round_half_up(derived)
@@ -143,6 +146,8 @@ async def create_project(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     org = (
         await db.execute(
@@ -152,7 +157,11 @@ async def create_project(
         )
     ).scalar_one_or_none()
     if org is None:
-        raise business_rule("organization_id inválido")
+        raise business_rule(mensaje(
+            que="organization_id inválido",
+            porque="La referencia apunta fuera de tu organización y quedaría rota.",
+            accion="Elige una organización de tu tenant.",
+        ))
 
     pm = (
         await db.execute(
@@ -160,7 +169,11 @@ async def create_project(
         )
     ).scalar_one_or_none()
     if pm is None:
-        raise validation_error("pm_id inválido")
+        raise validation_error(mensaje(
+            que="pm_id inválido",
+            porque="La persona indicada no está en el directorio de tu organización.",
+            accion="Elige un responsable de la lista.",
+        ))
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="PRJ")
     data = body.model_dump()
@@ -235,7 +248,7 @@ async def create_project(
         )
 
     await db.commit()
-    return ProjectRead.model_validate(project)
+    return ProjectRead.model_validate(project, context=ctx_moneda)
 
 
 
@@ -245,6 +258,8 @@ async def get_project(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     p = await proyecto_autorizado(db, project_id, cu)
 
     members_rows = (
@@ -345,7 +360,7 @@ async def get_project(
     except Exception:
         pass
 
-    out = ProjectRead.model_validate(p).model_dump()
+    out = ProjectRead.model_validate(p, context=ctx_moneda).model_dump()
     # ENH-109 — avance derivado del plan también en el detalle.
     plan_map = await plan_rollup_map(db, [p.id])
     derived = plan_map.get(str(p.id))
@@ -407,10 +422,16 @@ async def update_project(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no editable")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no editable",
+            porque="Un proyecto cerrado conserva su registro tal como quedó.",
+            accion="Reábrelo si de verdad hace falta modificarlo.",
+        ))
     data = body.model_dump(exclude_none=True)
     before = {k: getattr(p, k) for k in data}
     health_changed = (
@@ -452,7 +473,7 @@ async def update_project(
             },
         )
     await db.commit()
-    return ProjectRead.model_validate(p)
+    return ProjectRead.model_validate(p, context=ctx_moneda)
 
 
 @router.get("/{project_id}/health-detail")
@@ -492,10 +513,16 @@ async def declare_health(
     db: AsyncSession = Depends(get_db),
 ):
     """US-180 — declarar el semáforo (con razón) o volver a 'auto'."""
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no editable")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no editable",
+            porque="Un proyecto cerrado conserva su registro tal como quedó.",
+            accion="Reábrelo si de verdad hace falta modificarlo.",
+        ))
 
     before = {"status": p.health_status, "source": p.health_source}
     if body.status is None:
@@ -511,7 +538,11 @@ async def declare_health(
         reason = (body.reason or "").strip()
         if body.status in ("yellow", "red") and len(reason) < 5:
             raise validation_error(
-                "Declarar salud amarilla o roja requiere una razón (mínimo 5 caracteres)"
+                mensaje(
+                    que="Declarar salud amarilla o roja requiere una razón (mínimo 5 caracteres)",
+                    porque="Una alarma sin motivo escrito no se puede atender ni cerrar.",
+                    accion="Escribe en una línea qué la provoca.",
+                )
             )
         p.health_status = body.status
         p.health_source = "manual"
@@ -527,7 +558,7 @@ async def declare_health(
         },
     )
     await db.commit()
-    return ProjectRead.model_validate(p)
+    return ProjectRead.model_validate(p, context=ctx_moneda)
 
 
 @router.post(
@@ -552,13 +583,21 @@ async def create_health_evaluation(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no editable")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no editable",
+            porque="Un proyecto cerrado conserva su registro tal como quedó.",
+            accion="Reábrelo si de verdad hace falta modificarlo.",
+        ))
 
     note = (body.note or "").strip()
     if body.overall in ("yellow", "red") and len(note) < 5:
         raise validation_error(
-            "Evaluar la salud global en amarillo o rojo requiere una nota "
-            "(mínimo 5 caracteres)"
+            mensaje(
+                que="Evaluar la salud global en amarillo o rojo requiere una nota "
+                    "(mínimo 5 caracteres)",
+                porque="Una alarma sin motivo escrito no se puede atender ni cerrar.",
+                accion="Escribe en una línea qué la provoca.",
+            )
         )
 
     ev = ProjectHealthEvaluation(
@@ -639,17 +678,27 @@ async def reset_plan_aggregate(
     plan. Body: `{"field": "start_date"}`. El valor actual del campo
     se preserva pero queda elegible para sobrescritura por importadores.
     """
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no editable")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no editable",
+            porque="Un proyecto cerrado conserva su registro tal como quedó.",
+            accion="Reábrelo si de verdad hace falta modificarlo.",
+        ))
     field = body.get("field")
     if field not in {"start_date", "end_date", "budget", "progress"}:
-        raise validation_error("field inválido")
+        raise validation_error(mensaje(
+            que="field inválido",
+            porque="Solo se pueden ordenar o filtrar los campos declarados.",
+            accion="Usa uno de los campos que ofrece la pantalla.",
+        ))
     edited = dict(p.manually_edited_fields or {})
     edited.pop(field, None)
     p.manually_edited_fields = edited
     await db.commit()
-    return ProjectRead.model_validate(p)
+    return ProjectRead.model_validate(p, context=ctx_moneda)
 
 
 @router.delete("/{project_id}", status_code=204)
@@ -679,14 +728,24 @@ async def change_phase(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if body.new_phase not in VALID_TRANSITIONS.get(p.phase, set()):
         raise conflict(
-            f"Transición inválida: {p.phase} → {body.new_phase}", code="STATE_TRANSITION"
+            mensaje(
+                que=f"Transición inválida: {p.phase} → {body.new_phase}",
+                porque="El ciclo de vida del proyecto no permite ese salto directo.",
+                accion="Pasa por la fase intermedia que corresponda.",
+            ), code="STATE_TRANSITION"
         )
     if body.new_phase == "execution" and p.start_date is None:
-        raise business_rule("start_date es obligatoria al pasar a execution")
+        raise business_rule(mensaje(
+            que="start_date es obligatoria al pasar a execution",
+            porque="Sin fecha de inicio no se puede calcular ningún avance ni ningún retraso.",
+            accion="Pon la fecha de inicio y vuelve a cambiar la fase.",
+        ))
     old = p.phase
     p.phase = body.new_phase
     await write_audit(
@@ -695,7 +754,7 @@ async def change_phase(
         details={"from": old, "to": body.new_phase, "comment": body.comment},
     )
     await db.commit()
-    return ProjectRead.model_validate(p)
+    return ProjectRead.model_validate(p, context=ctx_moneda)
 
 
 @router.get("/{project_id}/members")
@@ -737,7 +796,11 @@ async def add_member(
         )
     ).scalar_one_or_none()
     if exists is not None:
-        raise conflict("Miembro ya existe en el proyecto")
+        raise conflict(mensaje(
+            que="Miembro ya existe en el proyecto",
+            porque="Cada persona figura una vez para que su carga no se cuente doble.",
+            accion="Edita su participación en vez de añadirla otra vez.",
+        ))
     db.add(
         ProjectMember(
             project_id=str(project_id), user_id=str(body.user_id),
@@ -763,7 +826,11 @@ async def remove_member(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if str(user_id) == (str(p.pm_id) if p.pm_id else ""):
-        raise business_rule("No puedes remover al PM vigente; cambia pm_id primero")
+        raise business_rule(mensaje(
+            que="No puedes remover al PM vigente; cambia pm_id primero",
+            porque="Un proyecto sin responsable queda sin quien conteste por él.",
+            accion="Asigna otro PM en `pm_id` y después retira a esta persona.",
+        ))
     await db.execute(
         delete(ProjectMember).where(
             ProjectMember.project_id == str(project_id),
@@ -788,8 +855,10 @@ async def export_project(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     p = await proyecto_autorizado(db, project_id, cu)
-    payload = ProjectRead.model_validate(p).model_dump(mode="json")
+    payload = ProjectRead.model_validate(p, context=ctx_moneda).model_dump(mode="json")
     if format == "json":
         return payload
     # PDF MVP: texto plano devuelto como application/pdf minimal-ish.

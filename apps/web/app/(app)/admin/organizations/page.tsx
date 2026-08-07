@@ -26,6 +26,7 @@ import {
   type OrganizationPanel,
 } from "@/lib/api/organizations";
 import { useOrgLabel } from "@/lib/org-label";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 function useDebounced<T>(value: T, delayMs = 300): T {
   const [debounced, setDebounced] = useState(value);
@@ -173,6 +174,8 @@ export default function OrganizationsListPage() {
   const [activeFilter, setActiveFilter] = useState<string>("all");
 
   const [panels, setPanels] = useState<OrganizationPanel[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(panels);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showProgramModal, setShowProgramModal] = useState(false);
@@ -221,6 +224,7 @@ export default function OrganizationsListPage() {
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
             {orgLabel.plural}
           </h1>
+          {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             Vista de paneles. Click en {orgLabel.singularArticled} para ver su
             detalle, programas y proyectos.

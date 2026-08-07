@@ -10,6 +10,8 @@ export type RequestAttachment = {
 };
 
 export type ProjectRequest = {
+  /** BUG-092 — moneda del importe, ya resuelta por la API. */
+  currency: string;
   id: string;
   folio: string;
   title: string;
@@ -44,6 +46,8 @@ export type ProjectRequest = {
 
 export type ProjectRequestCreateBody = {
   title: string;
+  /** BUG-092 — moneda del presupuesto. `null` = la preferida del inquilino. */
+  currency?: string | null;
   description: string;
   objective: string;
   // US-085: si null + organization_name_new presente, backend crea la

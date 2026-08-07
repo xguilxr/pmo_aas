@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_current_user, require_capability
 from app.core.errors import forbidden, not_found
 from app.db.session import get_db
+from app.dominio.moneda import POR_DEFECTO as MONEDA_POR_DEFECTO
+from app.dominio.moneda import resolver as _resolver_moneda
 from app.models.tenant import Tenant
 from app.services.audit import write_audit
 from app.services.branding_storage import (
@@ -23,6 +25,12 @@ from app.services.branding_storage import (
     logo_to_data_url,
 )
 from app.services.tenant_settings import DEFAULT_ORG_LABEL, get_org_label
+
+
+def moneda_preferida_de(t: Tenant) -> str:
+    """La preferida del inquilino, ya resuelta a un código válido."""
+    return _resolver_moneda(None, (t.settings or {}).get("currency"))
+
 
 router = APIRouter(tags=["branding"])
 
@@ -149,6 +157,7 @@ async def my_tenant_branding(
             "primary_color": None,
             # ENH-190: default label when there is no active tenant.
             "org_label": DEFAULT_ORG_LABEL,
+            "preferred_currency": MONEDA_POR_DEFECTO,
         }
     t = (
         await db.execute(select(Tenant).where(Tenant.id == str(cu.effective_tenant_id)))
@@ -165,4 +174,9 @@ async def my_tenant_branding(
         # ENH-190: effective per-tenant UI label ("organizations" | "portfolios").
         # UI-only — any user in the tenant can read it via this shared endpoint.
         "org_label": get_org_label(t),
+        # BUG-092 — la moneda PREFERIDA del inquilino: el valor inicial de los
+        # proyectos que no eligen una propia. Viaja por aquí y no por un punto
+        # de acceso nuevo porque es el mismo caso que `org_label`: un dato de
+        # presentación que toda pantalla necesita y ninguna debería ir a pedir.
+        "preferred_currency": moneda_preferida_de(t),
     }

@@ -86,6 +86,11 @@ medidor = logging.getLogger("pmoaas.medicion")
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
+#: Si `iniciar_captura_de_errores` dejó la captura encendida. Lo publica
+#: `/health`: sin eso, la única forma de saberlo era leer los registros de
+#: arranque, y para eso hay que tener acceso y saber qué buscar.
+_CAPTURA_ACTIVA = False
+
 #: Nombre del proceso, fijado por `configurar_registro`. Se emite en cada
 #: registro para poder separar la API del worker sin adivinar por el módulo:
 #: los dos comparten casi todo el código y casi todos los nombres de registrador.
@@ -182,12 +187,26 @@ def iniciar_captura_de_errores(proceso: str) -> bool:
     `proceso` va como etiqueta para poder separar en Sentry un fallo de la API
     de uno del worker sin adivinar por la traza.
     """
+    global _CAPTURA_ACTIVA
     if not settings.SENTRY_DSN:
+        # **Se dice.** Antes devolvía False en silencio, y el docstring afirmaba
+        # lo contrario. Consecuencia real, reportada por el owner el
+        # 2026-08-06: en Railway se veían los registros estructurados de OPS-01
+        # y ninguna línea sobre Sentry — y no había forma de distinguir
+        # «apagado» de «encendido y callado». Un control que no se puede
+        # observar no se puede verificar, que es lo que OPS-02 pide.
+        logger.warning(
+            "captura de errores DESACTIVADA proceso=%s: falta SENTRY_DSN. "
+            "Un 500 en producción no avisará a nadie.",
+            proceso,
+        )
+        _CAPTURA_ACTIVA = False
         return False
     try:
         import sentry_sdk
     except ImportError:
         logger.warning("SENTRY_DSN definido pero sentry-sdk no está instalado")
+        _CAPTURA_ACTIVA = False
         return False
 
     sentry_sdk.init(
@@ -199,9 +218,21 @@ def iniciar_captura_de_errores(proceso: str) -> bool:
     )
     sentry_sdk.set_tag("proceso", proceso)
     logger.info(
-        "captura de errores activa proceso=%s env=%s", proceso, settings.PYTHON_ENV
+        "captura de errores ACTIVA proceso=%s env=%s", proceso, settings.PYTHON_ENV
     )
+    _CAPTURA_ACTIVA = True
     return True
+
+
+def captura_de_errores_activa() -> bool:
+    """Si la captura quedó encendida en ESTE proceso.
+
+    Existe para que `/health` lo publique. Leer registros para saber si un
+    control está encendido obliga a tener acceso a los registros y a saber qué
+    buscar; una respuesta JSON la mira cualquiera y se puede vigilar desde
+    fuera.
+    """
+    return _CAPTURA_ACTIVA
 
 
 @contextmanager

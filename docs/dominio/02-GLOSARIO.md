@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-06
 revisar_cada: 90d
 ---
 
@@ -185,6 +185,17 @@ a validar:
 
 El producto ya lo separa bien. Aquí se fija el vocabulario para que siga así.
 
+**Las cuatro categorías son A · R · D · I**, y es lo que el producto implementa
+(`validator.ALLOWED_RAID_TYPES`, `minutes_formatter.RAID_TYPE_ORDER`). La
+lección aprendida **no** es una de ellas: tiene registro propio y ritmo propio,
+y por eso está en §3.5 y no dentro del RAID.
+
+> **Corregido el 2026-08-06 (CON-02).** Este apartado definía riesgo,
+> incidencia, acción y lección, y **no mencionaba la decisión** — una de las
+> cuatro que el producto sí implementa y que el modelo sí recibe en su
+> instrucción. El artefacto de dominio y la implementación decían cosas
+> distintas, que es justo lo que CON-02 existe para impedir.
+
 ### 3.1 Riesgo
 
 **Preferente:** `riesgo` · **En código:** `risk`
@@ -213,7 +224,25 @@ responsable.
 Tarea de respuesta ante un riesgo o incidencia, con responsable y fecha comprometida. No es
 una tarea del cronograma: vive en el RAID.
 
-### 3.4 Lección aprendida
+### 3.4 Decisión
+
+**Preferente:** `decisión` · **En código:** `D` en el RAID de la minuta
+
+Elección tomada en la sesión que fija un curso de acción y **cierra una
+alternativa**.
+
+**Regla:** lo que la distingue de la acción es que no queda trabajo por hacer;
+queda un rumbo elegido. «Diego contactará a Paola» es acción; «se acordó
+mantener la flota» es decisión. Si de la decisión se desprende trabajo, el
+trabajo es una acción aparte.
+
+**Señales en un transcript:** «se acordó», «se decidió», «se confirma»,
+«decidimos», «queda pendiente decisión», «definición final». La lista viva
+—con las de las otras tres categorías— está en `app/services/ai/corpus.py`,
+que es de donde se genera la instrucción del modelo. Son criterio de dominio,
+no de formato: por eso se versionan aquí y no dentro de un prompt.
+
+### 3.5 Lección aprendida
 
 **Preferente:** `lección aprendida` · **En código:** `lesson`
 
@@ -311,7 +340,62 @@ estratégica**. No coincide con la estructura organizativa.
 
 ---
 
-## 7. Qué falta para cerrar este glosario
+## 7. Magnitudes y unidades canónicas
+
+Cierra **DAT-01** («cada magnitud del dominio DEBE tener una unidad canónica
+declarada en el glosario»). Un término del §1 al §6 dice *qué* es una cosa;
+esta tabla dice *en qué se mide*, que es la otra mitad de que dos personas
+obtengan el mismo número.
+
+**Esta tabla es la declaración normativa.** `apps/api/app/core/magnitudes.py`
+la refleja para que el código pueda citarla, y una prueba falla si las dos se
+separan: un catálogo que puede desincronizarse de su declaración no es un
+catálogo.
+
+| Magnitud | Unidad canónica | Rango | Cómo se reconoce en el código |
+|---|---|---|---|
+| **Importe** | la moneda del proyecto | ≥ 0, dos decimales | `Mapped[Importe]` · `Numeric(14, 2)` + `projects.currency` |
+| **Porcentaje** | por ciento | 0 a 100, hasta dos decimales | sufijo `_pct`, o `Mapped[Porcentaje]` |
+| **Fracción** | parte de uno | 0 a 1 | solo variable interna; **nunca** una columna |
+| **Días** | día natural | entero; negativo en los desfases | sufijo `_days` |
+| **Milisegundos** | milisegundo | entero ≥ 0 | sufijo `_ms` |
+| **Bytes** | byte | entero ≥ 0 | sufijo `_bytes` |
+| **Conteo** | la cosa contada, y va en el nombre | entero ≥ 0 | `projects_total`, `tokens_in`, `open_risks` |
+| **Escala** | punto de escala ordinal | 1 a 5 | `probability`, `impact`, `priority` · `Mapped[Escala]` |
+| **Severidad** | punto de severidad (probabilidad por impacto) | 1 a 25 | `severity` · `Mapped[Severidad]` |
+| **Ordinal** | posición dentro de un orden | entero; el origen se documenta en cada campo | `position`, `level`, `outline_level`, `version` |
+| **Calendario** | coordenada de calendario, en la zona del inquilino | día 0 a 6 · hora 0 a 23 · día del mes 1 a 31 | `day_of_week`, `hour_of_day`, `day_of_month` |
+
+### 7.1 Las tres que más se confunden
+
+**Porcentaje y fracción.** En `project_health.py` conviven un `ratio * 100` que
+produce porcentaje y un `progress / 100` que lo consume, a nueve líneas de
+distancia. Equivocarse no produce un error: produce un número plausible cien
+veces mayor o menor. La conversión tiene nombre (`unidades.fraccion_a_pct`) y
+la unidad, ahora, tipo.
+
+**Escala y severidad.** Un 4 de impacto no es el doble de un 2 — son juicios
+ordenados, no medidas —, y la severidad es su producto, así que **su rango no
+es 1 a 5 sino 1 a 25**. Leerla con la misma vara que sus factores es el error
+disponible.
+
+**Ordinal y conteo.** `outline_level` y `open_risks` son los dos enteros y no
+se parecen en nada: el primero ordena y el segundo mide. Promediar niveles no
+significa nada, y declararlo evita que alguien saque «el nivel medio».
+
+### 7.2 La moneda, declarada como está y no como se promete
+
+La unidad canónica del importe es **MXN**, y se declara así porque es lo que el
+producto hace: las superficies que muestran dinero la traen escrita. El ajuste
+`settings.currency` ofrece USD y EUR y ningún sitio de presentación lo lee, así
+que hoy un inquilino en dólares vería sus importes rotulados en pesos.
+
+Se declara la realidad y no la intención. **El disparador que invalida esta
+declaración** es que la moneda del inquilino llegue a la presentación: ese día
+la unidad canónica pasa a ser «la moneda del inquilino» y esta fila cambia.
+
+
+## 8. Qué falta para cerrar este glosario
 
 1. ~~Aprobación del owner, término por término.~~ **Hecha el 2026-08-04.**
 2. ~~Decidir la **forma** del umbral de RAG de §2.4.~~ **Uno por dimensión, 2026-08-05.**

@@ -36,11 +36,12 @@ function formatDate(iso: string): string {
   }
 }
 
-function formatMxn(n: string | number | null | undefined): string {
+// BUG-092 — cada solicitud lleva la moneda de su importe.
+function formatImporte(n: string | number | null | undefined, moneda: string): string {
   if (n === null || n === undefined || n === "") return "—";
   const v = typeof n === "string" ? Number(n) : n;
   if (!Number.isFinite(v)) return "—";
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(v);
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: moneda }).format(v);
 }
 
 function useDebounced<T>(value: T, delayMs = 300): T {
@@ -218,7 +219,7 @@ export default function RequestsListPage() {
                       {formatDate(r.requested_at)}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)]">
-                      {formatMxn(r.budget)}
+                      {formatImporte(r.budget, r.currency)}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={r.status} />

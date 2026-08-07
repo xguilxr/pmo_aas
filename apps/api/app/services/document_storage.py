@@ -21,7 +21,7 @@ from typing import IO
 from fastapi import UploadFile, status
 
 from app.core.config import settings
-from app.core.errors import AppError, validation_error
+from app.core.errors import AppError, mensaje, validation_error
 from app.core.unidades import a_mebibytes, mebibytes
 
 # BUG-040: límite reducido a 1 MB. La plataforma no es un drive
@@ -98,7 +98,11 @@ def _resolve_mime(upload: UploadFile) -> tuple[str, str]:
 
     if ext is None:
         raise validation_error(
-            "Formato no permitido. Usa PDF, XLSX, DOCX, PPTX, PNG, JPG, CSV o TXT.",
+            mensaje(
+                que="Formato no permitido. Usa PDF, XLSX, DOCX, PPTX, PNG, JPG, CSV o TXT.",
+                porque="Solo se aceptan los formatos declarados; el resto podría llevar contenido ejecutable.",
+                accion="Convierte el archivo a uno de los formatos admitidos.",
+            ),
             fields={
                 "mime": upload.content_type or "",
                 "filename": upload.filename or "",
@@ -109,7 +113,11 @@ def _resolve_mime(upload: UploadFile) -> tuple[str, str]:
 
 def _validate_size(data: bytes) -> None:
     if len(data) == 0:
-        raise validation_error("Archivo vacío")
+        raise validation_error(mensaje(
+            que="Archivo vacío",
+            porque="No hay contenido que guardar.",
+            accion="Comprueba que subiste el archivo correcto y vuelve a intentarlo.",
+        ))
     if len(data) > MAX_DOC_BYTES:
         raise AppError(
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -322,7 +330,11 @@ def save_document_bytes(
     _validate_size(data)
     if ext not in set(ALLOWED_DOC_MIMES.values()):
         raise validation_error(
-            f"Extensión no whitelisted para storage: {ext}",
+            mensaje(
+                que=f"Extensión no whitelisted para storage: {ext}",
+                porque="Solo se aceptan los formatos declarados; el resto podría llevar contenido ejecutable.",
+                accion="Convierte el archivo a uno de los formatos admitidos.",
+            ),
             fields={"ext": ext},
         )
     key = _doc_key(tenant_id, project_id, document_id, ext)

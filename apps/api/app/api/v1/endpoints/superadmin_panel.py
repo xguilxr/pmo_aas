@@ -6,7 +6,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_superadmin
-from app.core.errors import not_found
+from app.core.errors import mensaje, not_found
 from app.db.session import get_db
 from app.models.ai import AIJob
 from app.models.audit import AuditLog
@@ -411,7 +411,11 @@ def _protect_other_superadmin(target: User, actor: CurrentUser) -> None:
     if target.is_superadmin and str(target.id) != str(actor.id):
         raise forbidden(
             code="FORBIDDEN",
-            detail="No se puede modificar a otro super admin desde este panel",
+            detail=mensaje(
+                que="No se puede modificar a otro super admin desde este panel",
+                porque="Las cuentas de plataforma se administran entre iguales y no desde la vista de una organización.",
+                accion="Hazlo desde el panel de superadministración, o pídeselo a quien lo tenga.",
+            ),
         )
 
 
@@ -463,7 +467,11 @@ async def toggle_user_active(
     target = await _load_user(db, user_id)
     _protect_other_superadmin(target, cu)
     if str(target.id) == str(cu.id):
-        raise business_rule("No puedes desactivar tu propia cuenta")
+        raise business_rule(mensaje(
+            que="No puedes desactivar tu propia cuenta",
+            porque="Desactivarte te dejaría fuera y sin forma de volver a entrar a deshacerlo.",
+            accion="Pídeselo a otra persona con permiso de plataforma.",
+        ))
     target.is_active = not target.is_active
     await write_audit(
         db,

@@ -1,10 +1,10 @@
 from datetime import date, datetime
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Importe
 from app.db.base import Base, TimestampMixin, new_uuid
 
 
@@ -36,7 +36,10 @@ class ProjectRequest(Base, TimestampMixin):
     sponsor: Mapped[str] = mapped_column(String(200), nullable=False)
     sponsor_email: Mapped[str | None] = mapped_column(String(200))
     benefits: Mapped[str] = mapped_column(String(5000), nullable=False)
-    budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    # BUG-092 — la solicitud precede al proyecto, así que su importe tiene
+    # que llegar con su moneda o el proyecto nacería con la unidad perdida.
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    budget: Mapped[Importe | None] = mapped_column(Numeric(14, 2), nullable=True)
     scope: Mapped[str] = mapped_column(String(5000), nullable=False)
     entregables: Mapped[str | None] = mapped_column(String(5000))
     key_people: Mapped[str | None] = mapped_column(String(5000))

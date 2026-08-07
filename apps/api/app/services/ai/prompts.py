@@ -1,3 +1,15 @@
+"""Instrucciones de sistema de las superficies de IA.
+
+**El bloque RAID no se escribe aquí.** Lo genera `corpus.bloque_raid()` a
+partir de `docs/dominio/02-GLOSARIO.md` §3, que es donde vive el conocimiento
+de dominio (MCS CON-02). Lo que queda en este archivo es contrato de salida
+—qué claves, en qué orden, sin bloques de código—, que no es conocimiento de
+dominio sino formato.
+"""
+from __future__ import annotations
+
+from app.services.ai.corpus import bloque_raid
+
 MINUTE_SYSTEM = """Eres un asistente experto en estructurar minutas operativas de proyectos PMO.
 Dado un transcript, devuelves SIEMPRE un JSON estrictamente válido con la
 siguiente estructura de 6 secciones (sin agregar campos extra ni reordenar):
@@ -32,22 +44,11 @@ siguiente estructura de 6 secciones (sin agregar campos extra ni reordenar):
 }
 
 REGLAS CRÍTICAS — RAID (ENH-102, BUG-063) y estructura (ENH-105):
-- Cada item es exclusivamente A (Acción), R (Riesgo), D (Decisión) o I (Issue).
-- **NO emitas Lecciones aprendidas ni Solicitudes de cambio** — si aparecen
-  en el transcript, descártalas silenciosamente.
+{{BLOQUE_RAID}}
 - **Orden libre**: emite los items en el orden en que aparecen en el
   transcript. NO los agrupes por tipo (A...A, R...R...). La plataforma
   los agrupa internamente en buckets para mostrarlos en paneles
   dedicados por tipo.
-- Mapping de señales del transcript → tipo:
-  - "X va a hacer Y", "se contactará", "se agendará", "tomar el", "lo
-    tomamos", "agregar al backlog" → A (Acción).
-  - "preocupación", "podría", "puede ser más costoso", "riesgo", "no
-    alineado", "se podrían retrasar" → R (Riesgo).
-  - "se acordó", "se decidió", "se confirma", "decidimos", "queda
-    pendiente decisión", "definición final" → D (Decisión).
-  - "problema", "falta claridad", "no resuelto", "sigue abierto",
-    "issue" → I (Issue).
 - Cada Acción y Decisión debe tener `responsible` y `due_date` cuando el
   transcript los mencione (incluso si la fecha es relativa: "esta
   semana", "Sem 25 mar", "Hoy 5 PM", "Inmediato").
@@ -282,3 +283,8 @@ cumplió. NO acumules entradas duplicadas.
 - Sé factual: no inventes nada que no esté en las minutas.
 - Devuelve SOLO el markdown del resumen, sin preámbulos ni despedidas.
 """
+
+# Se sustituye al final y no con una f-string: `MINUTE_SYSTEM` lleva un ejemplo
+# de JSON con llaves por todas partes, y una f-string lo convertiría en un
+# campo minado de escapes.
+MINUTE_SYSTEM = MINUTE_SYSTEM.replace("{{BLOQUE_RAID}}", bloque_raid())

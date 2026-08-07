@@ -21,7 +21,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden, not_found, validation_error
+from app.core.errors import forbidden, mensaje, not_found, validation_error
 from app.db.session import get_db
 from app.models.report_builder_template import ReportBuilderTemplate
 
@@ -155,11 +155,19 @@ async def create_report_builder_template(
 ) -> ReportBuilderTemplateRead:
     """US-126 — crea plantilla custom (private o project visibility)."""
     if cu.effective_tenant_id is None:
-        raise forbidden("Sin tenant activo")
+        raise forbidden(mensaje(
+            que="Sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización concreta y esta vista es de una.",
+            accion="Elige una organización en el selector y vuelve a intentarlo.",
+        ))
 
     if payload.visibility == "project" and payload.project_id is None:
         raise validation_error(
-            "project_id es obligatorio cuando visibility='project'",
+            mensaje(
+                que="project_id es obligatorio cuando visibility='project'",
+                porque="Una plantilla de proyecto tiene que decir de qué proyecto es.",
+                accion="Indica el proyecto, o cambia la visibilidad a personal o de organización.",
+            ),
             {"project_id": "required"},
         )
 
@@ -194,9 +202,17 @@ async def _load_owned(db, cu, template_id) -> ReportBuilderTemplate:
     if row is None:
         raise not_found("Plantilla")
     if row.is_seed:
-        raise forbidden("Las plantillas seed son read-only")
+        raise forbidden(mensaje(
+            que="Las plantillas seed son read-only",
+            porque="Las plantillas de fábrica son la referencia común y cambiarlas afectaría a todos.",
+            accion="Duplícala y edita tu copia.",
+        ))
     if str(row.owner_id) != str(cu.id):
-        raise forbidden("Sólo el owner puede modificar la plantilla")
+        raise forbidden(mensaje(
+            que="Sólo el owner puede modificar la plantilla",
+            porque="Una plantilla privada pertenece a quien la creó.",
+            accion="Duplícala para tener tu propia versión.",
+        ))
     return row
 
 
@@ -215,7 +231,11 @@ async def update_report_builder_template(
         new_pid = data.get("project_id") or row.project_id
         if new_pid is None:
             raise validation_error(
-                "project_id es obligatorio para visibility='project'",
+                mensaje(
+                    que="project_id es obligatorio para visibility='project'",
+                    porque="Una plantilla de proyecto tiene que decir de qué proyecto es.",
+                    accion="Indica el proyecto, o cambia la visibilidad a personal o de organización.",
+                ),
                 {"project_id": "required"},
             )
     if "project_id" in data:

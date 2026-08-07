@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden
+from app.core.errors import forbidden, mensaje
 from app.db.session import get_db
 from app.services.reports.gantt_renderer import render_project_gantt
 
@@ -41,7 +41,11 @@ async def project_gantt_snapshot(
     """
     tenant_id = cu.effective_tenant_id
     if tenant_id is None:
-        raise forbidden("Sin tenant activo")
+        raise forbidden(mensaje(
+            que="Sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización concreta y esta vista es de una.",
+            accion="Elige una organización en el selector y vuelve a intentarlo.",
+        ))
 
     svg = await render_project_gantt(
         db,

@@ -22,6 +22,7 @@ import {
 } from "@/lib/api/superadmin-panel";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 function formatNumber(n: number): string {
   return new Intl.NumberFormat("es-MX").format(n);
@@ -30,6 +31,8 @@ function formatNumber(n: number): string {
 export default function SuperadminHomePage() {
   const user = getStoredUser();
   const [data, setData] = useState<PlatformDashboard | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(data);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +67,7 @@ export default function SuperadminHomePage() {
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
             Super Admin · Visión general
           </h1>
+          {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
           <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
             Estado de la plataforma completa. Auto-refresh cada 60 segundos.
           </p>

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.compatibilidad import registrar_uso
-from app.core.errors import conflict, not_found, validation_error
+from app.core.errors import conflict, mensaje, not_found, validation_error
 from app.db.session import get_db
 from app.models.area import Actor, Area, AreaAssignment, Team
 from app.schemas.area import (
@@ -158,7 +158,11 @@ async def create_area(
             )
         ).scalar_one_or_none()
         if project is None:
-            raise validation_error("project_id no existe en el tenant")
+            raise validation_error(mensaje(
+                que="project_id no existe en el tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige un proyecto de tu tenant.",
+            ))
         org_id = str(project.organization_id)
         scope = ("project", str(body.project_id))
     elif body.program_id is not None:
@@ -171,7 +175,11 @@ async def create_area(
             )
         ).scalar_one_or_none()
         if program is None:
-            raise validation_error("program_id no existe en el tenant")
+            raise validation_error(mensaje(
+                que="program_id no existe en el tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige un programa de tu tenant.",
+            ))
         org_id = str(program.organization_id)
         scope = ("program", str(body.program_id))
     elif org_id is not None:
@@ -180,8 +188,12 @@ async def create_area(
     # US-170: nuevas áreas deben pertenecer a una organización (no globales).
     if org_id is None:
         raise validation_error(
-            "Se requiere un alcance para crear un área "
-            "(project_id, program_id u organization_id)"
+            mensaje(
+                que="Se requiere un alcance para crear un área "
+                    "(project_id, program_id u organization_id)",
+                porque="Un área sin alcance no aparecería en ninguna pantalla.",
+                accion="Indica a qué proyecto, programa u organización pertenece.",
+            )
         )
 
     # BUG-061: validar que la org pertenece al tenant.
@@ -194,7 +206,11 @@ async def create_area(
         )
     ).scalar_one_or_none()
     if org_ok is None:
-        raise validation_error("organization_id no existe en el tenant")
+        raise validation_error(mensaje(
+            que="organization_id no existe en el tenant",
+            porque="La referencia apunta fuera de tu organización y quedaría rota.",
+            accion="Elige una organización de tu tenant.",
+        ))
 
     # BUG-060/061: pre-check del unique scoped al mismo organization_id
     # (NULL == NULL para esta lógica). Si existe inactivo → reactivar;
@@ -226,8 +242,12 @@ async def create_area(
             await db.refresh(existing_area)
             return AreaRead.model_validate(existing_area)
         raise conflict(
-            "Ya existe un área con ese nombre en este alcance "
-            "(misma organización o entre globales)",
+            mensaje(
+                que="Ya existe un área con ese nombre en este alcance "
+                    "(misma organización o entre globales)",
+                porque="Dos áreas con el mismo nombre en el mismo alcance serían indistinguibles al asignar.",
+                accion="Elige otro nombre, o crea el área en otro alcance.",
+            ),
             code="AREA_NAME_DUPLICATE",
             fields={"existing_area_id": str(existing_area.id)},
         )
@@ -432,7 +452,11 @@ async def update_area(
             )
         ).scalar_one_or_none()
         if org_ok is None:
-            raise validation_error("organization_id no existe en el tenant")
+            raise validation_error(mensaje(
+                que="organization_id no existe en el tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige una organización de tu tenant.",
+            ))
         data["organization_id"] = str(data["organization_id"])
 
     # BUG-060/061: rename / move-org con colisión devuelve 409 estructurado.
@@ -458,7 +482,11 @@ async def update_area(
         ).scalar_one_or_none()
         if clash is not None:
             raise conflict(
-                "Ya existe un área con ese nombre en este alcance",
+                mensaje(
+                    que="Ya existe un área con ese nombre en este alcance",
+                    porque="Dos áreas con el mismo nombre en el mismo alcance serían indistinguibles al asignar.",
+                    accion="Elige otro nombre, o edita el área existente.",
+                ),
                 code="AREA_NAME_DUPLICATE",
                 fields={"existing_area_id": str(clash.id)},
             )
@@ -532,7 +560,11 @@ async def create_team(
         )
     ).scalar_one_or_none()
     if parent is None:
-        raise validation_error("area_id no existe en el tenant")
+        raise validation_error(mensaje(
+            que="area_id no existe en el tenant",
+            porque="La referencia apunta fuera de tu organización y quedaría rota.",
+            accion="Elige un área de la lista de tu organización.",
+        ))
     name = body.name.strip()
     # BUG-060: pre-check del unique (tenant_id, area_id, name).
     existing_team = (
@@ -552,7 +584,11 @@ async def create_team(
             await db.refresh(existing_team)
             return TeamRead.model_validate(existing_team)
         raise conflict(
-            "Ya existe un equipo con ese nombre en esta área",
+            mensaje(
+                que="Ya existe un equipo con ese nombre en esta área",
+                porque="Dos equipos con el mismo nombre en la misma área serían indistinguibles al asignar.",
+                accion="Elige otro nombre, o edita el equipo existente.",
+            ),
             code="TEAM_NAME_DUPLICATE",
             fields={"existing_team_id": str(existing_team.id)},
         )
@@ -611,7 +647,11 @@ async def update_team(
             )
         ).scalar_one_or_none()
         if new_area is None:
-            raise validation_error("area_id no existe en el tenant")
+            raise validation_error(mensaje(
+                que="area_id no existe en el tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige un área de la lista de tu organización.",
+            ))
         data["area_id"] = str(data["area_id"])
     # BUG-060: rename / re-assign con colisión devuelve 409 en vez de 500.
     target_area_id = data.get("area_id", t.area_id)
@@ -629,7 +669,11 @@ async def update_team(
         ).scalar_one_or_none()
         if clash is not None:
             raise conflict(
-                "Ya existe un equipo con ese nombre en esta área",
+                mensaje(
+                    que="Ya existe un equipo con ese nombre en esta área",
+                    porque="Dos equipos con el mismo nombre en la misma área serían indistinguibles al asignar.",
+                    accion="Elige otro nombre, o edita el equipo existente.",
+                ),
                 code="TEAM_NAME_DUPLICATE",
                 fields={"existing_team_id": str(clash.id)},
             )
@@ -740,7 +784,11 @@ async def create_actor(
             )
         ).scalar_one_or_none()
         if parent_team is None:
-            raise validation_error("team_id no existe en el tenant")
+            raise validation_error(mensaje(
+                que="team_id no existe en el tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige un equipo de tu organización.",
+            ))
 
     # BUG-059: el unique (tenant_id, email) hacía que un POST con un
     # email ya registrado tirara 500. Para flujos de "carga de recursos
@@ -787,7 +835,11 @@ async def create_actor(
                 await db.commit()
                 return ActorRead.model_validate(existing)
             raise conflict(
-                "Ya existe un actor con ese email en el tenant",
+                mensaje(
+                    que="Ya existe un actor con ese email en el tenant",
+                    porque="El correo identifica a la persona dentro de la organización y no puede repetirse.",
+                    accion="Edita el actor existente en vez de crear otro.",
+                ),
                 code="ACTOR_EMAIL_DUPLICATE",
                 fields={"existing_actor_id": str(existing.id)},
             )
@@ -901,7 +953,11 @@ async def update_actor(
                 )
             ).scalar_one_or_none()
             if parent_team is None:
-                raise validation_error("team_id no existe en el tenant")
+                raise validation_error(mensaje(
+                    que="team_id no existe en el tenant",
+                    porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                    accion="Elige un equipo de tu organización.",
+                ))
             a.team_id = str(new_team_id)
             # ENH-084 rework: si el team se setea, area_id queda en
             # sync con team.area_id automáticamente para mantener
@@ -922,7 +978,11 @@ async def update_actor(
                 )
             ).scalar_one_or_none()
             if parent_area is None:
-                raise validation_error("area_id no existe en el tenant")
+                raise validation_error(mensaje(
+                    que="area_id no existe en el tenant",
+                    porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                    accion="Elige un área de la lista de tu organización.",
+                ))
             a.area_id = str(new_area_id)
         else:
             a.area_id = None
@@ -983,9 +1043,17 @@ async def reassign_actor(
         )
     ).scalar_one_or_none()
     if tgt is None:
-        raise validation_error("target_actor_id no existe en el tenant")
+        raise validation_error(mensaje(
+            que="target_actor_id no existe en el tenant",
+            porque="La referencia apunta fuera de tu organización y quedaría rota.",
+            accion="Elige una persona del directorio de tu organización.",
+        ))
     if str(tgt.id) == str(src.id):
-        raise validation_error("target_actor_id debe ser distinto del actor origen")
+        raise validation_error(mensaje(
+            que="target_actor_id debe ser distinto del actor origen",
+            porque="Fusionar una persona consigo misma no tiene efecto y borraría el origen.",
+            accion="Elige la persona que se queda, distinta de la que se absorbe.",
+        ))
 
     tasks_moved = 0
     if "tasks" in body.scopes:
@@ -1182,8 +1250,12 @@ async def set_area_assignments(
         )
         if targets != 1:
             raise validation_error(
-                "Cada scope debe especificar exactamente un destino "
-                "(organization_id, program_id, project_id o is_global)."
+                mensaje(
+                    que="Cada scope debe especificar exactamente un destino "
+                        "(organization_id, program_id, project_id o is_global).",
+                    porque="Un alcance con dos destinos no define a quién aplica, y con ninguno no aplica a nadie.",
+                    accion="Deja un solo destino por alcance.",
+                )
             )
 
     # Replace strategy: borra todo y reinserta. Simple para v1.

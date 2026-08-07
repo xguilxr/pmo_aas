@@ -11,6 +11,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Escala
 from app.db.base import Base, new_uuid
 
 
@@ -59,7 +60,7 @@ class ProjectCharter(Base):
 
     # Sección 3: Clasificación
     project_type: Mapped[str | None] = mapped_column(String(50))
-    priority: Mapped[int | None] = mapped_column(SmallInteger)
+    priority: Mapped[Escala | None] = mapped_column(SmallInteger)
     objective: Mapped[str | None] = mapped_column(String(5000))
     restrictions: Mapped[str | None] = mapped_column(String(5000))
     risks_summary: Mapped[str | None] = mapped_column(String(5000))

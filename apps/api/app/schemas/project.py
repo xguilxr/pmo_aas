@@ -3,9 +3,10 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from app.core.compatibilidad import registrar_uso
+from app.dominio.moneda import resolver as resolver_moneda
 
 #: D-2 / ADR-019 y ADR-022 — las cinco fases del proyecto.
 #:
@@ -45,6 +46,11 @@ def normalizar_fase(valor: object) -> object:
     return canonico
 
 
+#: Los códigos admitidos, atados a `dominio.moneda.MONEDAS` por una prueba:
+#: el desplegable, la validación y la presentación no pueden divergir.
+Moneda = Literal["MXN", "USD", "EUR"]
+
+
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     description: str = Field(min_length=1)
@@ -60,6 +66,9 @@ class ProjectCreate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     budget: Decimal | None = None
+    # BUG-092 — la moneda del presupuesto, por proyecto. Nulo = la preferida
+    # del inquilino; se resuelve en `dominio.moneda.resolver`, no aquí.
+    currency: Moneda | None = None
 
     @model_validator(mode="after")
     def _dates(self):
@@ -80,6 +89,7 @@ class ProjectUpdate(BaseModel):
     end_date: date | None = None
     budget: Decimal | None = None
     actual_budget: Decimal | None = None
+    currency: Moneda | None = None
     progress: int | None = Field(default=None, ge=0, le=100)
     # US-180: editar health_status por este PATCH genérico equivale a una
     # declaración manual (health_source='manual', sin razón). El flujo
@@ -104,6 +114,15 @@ class ProjectRead(BaseModel):
     end_date: date | None
     budget: Decimal | None
     actual_budget: Decimal | None
+    # **Resuelta**, no cruda: quien la lea no tiene que saber que el nulo
+    # significa «la del inquilino». Un importe que viaja sin unidad es la
+    # forma en que esto se rompió la primera vez.
+    #
+    # Se declara opcional porque la columna lo es, y el validador de abajo se
+    # encarga de que nunca salga vacía. La alternativa —resolverla en cada uno
+    # de los cinco sitios que serializan un proyecto— es la que garantiza que
+    # el sexto se olvide.
+    currency: str | None = None
     progress: int
     health_status: str
     # US-180: salud única híbrida — fuente del semáforo + razón declarada.
@@ -115,6 +134,19 @@ class ProjectRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+    @model_validator(mode="after")
+    def _resolver_moneda(self, info: ValidationInfo) -> "ProjectRead":
+        """La moneda efectiva del proyecto, resuelta antes de salir.
+
+        `context={"moneda_preferida": …}` lo pone quien serializa. Si no lo
+        pone, cae a la del producto en vez de devolver `null`: un importe sin
+        unidad es peor que uno con la unidad por defecto, y este campo existe
+        justamente porque antes salían sin ninguna.
+        """
+        preferida = (info.context or {}).get("moneda_preferida")
+        self.currency = resolver_moneda(self.currency, preferida)
+        return self
 
 class ProjectDetail(ProjectRead):
     members: list[dict] = []

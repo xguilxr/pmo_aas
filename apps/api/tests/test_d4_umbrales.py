@@ -19,8 +19,11 @@ from __future__ import annotations
 
 import pytest
 
+# MCS DEV-02 (2026-08-06): los umbrales y las reglas de color se fueron a
+# `app/dominio/salud.py`, que no puede importar SQLAlchemy. `project_health.py`
+# se quedó las consultas y conserva los alias con los nombres de siempre.
+from app.dominio.salud import DEFAULT_HEALTH_THRESHOLDS
 from app.services.project_health import (
-    DEFAULT_HEALTH_THRESHOLDS,
     DIMENSION_LABELS,
     _budget_color,
     _decisions_color,

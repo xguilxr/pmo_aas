@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found, validation_error
 from app.db.session import get_db
 from app.models.organization import BusinessUnit, Department, Organization
 from app.models.project_request import ProjectRequest
@@ -20,6 +20,7 @@ from app.schemas.project_request import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.moneda_tenant import preferida as moneda_preferida
 
 router = APIRouter(prefix="/project-requests", tags=["project_requests"])
 
@@ -36,13 +37,19 @@ async def create_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     # US-085: si el solicitante eligió "Otra…", crear org inactiva.
     new_org_created = False
     if body.organization_id is None:
         if not (body.organization_name_new and body.organization_name_new.strip()):
             raise business_rule(
-                "Selecciona una organización o captura una nueva (Otra…)"
+                mensaje(
+                    que="Selecciona una organización o captura una nueva (Otra…)",
+                    porque="Una solicitud sin organización no se puede encaminar a nadie.",
+                    accion="Elige una del desplegable, o escribe una nueva con la opción «Otra…».",
+                )
             )
         new_name = body.organization_name_new.strip()
         # 409 si ya existe una org con ese nombre (case-sensitive,
@@ -57,7 +64,11 @@ async def create_request(
         ).scalar_one_or_none()
         if existing is not None:
             raise conflict(
-                f"Ya existe una organización con el nombre '{new_name}'",
+                mensaje(
+                    que=f"Ya existe una organización con el nombre '{new_name}'",
+                    porque="El nombre identifica la organización y no puede repetirse.",
+                    accion="Elígela del desplegable en vez de crearla, o usa otro nombre.",
+                ),
                 code="ORG_NAME_DUPLICATE",
             )
         org = Organization(
@@ -76,7 +87,11 @@ async def create_request(
             )
         ).scalar_one_or_none()
         if org is None:
-            raise business_rule("La organización no existe en tu tenant")
+            raise business_rule(mensaje(
+                que="La organización no existe en tu tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige una organización de tu tenant.",
+            ))
 
     # Validar FKs BU/Depto si vienen (US-011).
     if body.business_unit_id is not None:
@@ -92,7 +107,11 @@ async def create_request(
         ).scalar_one_or_none()
         if bu is None:
             raise business_rule(
-                "La unidad de negocio no pertenece a la organización indicada"
+                mensaje(
+                    que="La unidad de negocio no pertenece a la organización indicada",
+                    porque="La estructura tiene que ser coherente: la unidad cuelga de su organización.",
+                    accion="Elige una unidad de esa organización, o cambia la organización.",
+                )
             )
     if body.department_id is not None:
         dept = (
@@ -105,13 +124,21 @@ async def create_request(
             )
         ).scalar_one_or_none()
         if dept is None:
-            raise business_rule("El departamento no existe o no pertenece al tenant")
+            raise business_rule(mensaje(
+                que="El departamento no existe o no pertenece al tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige un departamento de tu tenant.",
+            ))
         if (
             body.business_unit_id is not None
             and str(dept.business_unit_id) != str(body.business_unit_id)
         ):
             raise business_rule(
-                "El departamento no pertenece a la unidad de negocio indicada"
+                mensaje(
+                    que="El departamento no pertenece a la unidad de negocio indicada",
+                    porque="La estructura tiene que ser coherente: el departamento cuelga de su unidad.",
+                    accion="Elige un departamento de esa unidad, o cambia la unidad.",
+                )
             )
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="SOL")
@@ -187,7 +214,7 @@ async def create_request(
                 meta={"created_via": "project_request", "request_id": str(pr.id)},
             )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.get("", response_model=list[ProjectRequestRead])
@@ -200,6 +227,8 @@ async def list_requests(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     stmt = select(ProjectRequest).where(ProjectRequest.tenant_id == tenant_id)
     if status:
@@ -212,7 +241,7 @@ async def list_requests(
     rows = (
         await db.execute(stmt.order_by(ProjectRequest.requested_at.desc()).offset((page - 1) * limit).limit(limit))
     ).scalars().all()
-    return [ProjectRequestRead.model_validate(r) for r in rows]
+    return [ProjectRequestRead.model_validate(r, context=ctx_moneda) for r in rows]
 
 
 @router.get("/{request_id}", response_model=ProjectRequestRead)
@@ -221,6 +250,8 @@ async def get_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -231,7 +262,7 @@ async def get_request(
     ).scalar_one_or_none()
     if pr is None:
         raise not_found("Solicitud")
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.patch("/{request_id}", response_model=ProjectRequestRead)
@@ -241,6 +272,8 @@ async def update_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -252,7 +285,11 @@ async def update_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status not in {"in_review", "needs_info"}:
-        raise conflict("No editable en este estado", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="No editable en este estado",
+            porque="La solicitud ya salió de tus manos y editarla cambiaría lo que otros están revisando.",
+            accion="Pide que te la devuelvan como «necesita información» para poder corregirla.",
+        ), code="STATE_TRANSITION")
     for f, v in body.model_dump(exclude_none=True).items():
         setattr(pr, f, v)
     await write_audit(
@@ -260,7 +297,7 @@ async def update_request(
         user_id=cu.id, tenant_id=tenant_id, entity_type="project_request", entity_id=str(pr.id),
     )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/review", response_model=ProjectRequestRead)
@@ -270,6 +307,8 @@ async def review_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -281,9 +320,17 @@ async def review_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status not in {"in_review", "needs_info"}:
-        raise conflict("Transición de estado inválida", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="Transición de estado inválida",
+            porque="El flujo de la solicitud no permite pasar de un estado al otro directamente.",
+            accion="Llévala al estado intermedio que corresponda.",
+        ), code="STATE_TRANSITION")
     if body.decision in {"reject", "needs_info"} and not (body.comment and body.comment.strip()):
-        raise validation_error("comment obligatorio para reject/needs_info")
+        raise validation_error(mensaje(
+            que="comment obligatorio para reject/needs_info",
+            porque="Quien recibe la solicitud necesita saber qué corregir; sin motivo, la devolución no informa.",
+            accion="Escribe qué falta o por qué se rechaza.",
+        ))
 
     status_map = {"approve": "approved", "reject": "rejected", "needs_info": "needs_info"}
     pr.status = status_map[body.decision]
@@ -326,7 +373,7 @@ async def review_request(
         )
 
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/resubmit", response_model=ProjectRequestRead)
@@ -335,6 +382,8 @@ async def resubmit_request(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -346,14 +395,18 @@ async def resubmit_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status != "needs_info":
-        raise conflict("Solo se puede re-someter si status=needs_info", code="STATE_TRANSITION")
+        raise conflict(mensaje(
+            que="Solo se puede re-someter si status=needs_info",
+            porque="Reenviar solo tiene sentido cuando te han pedido corregir algo.",
+            accion="Espera la revisión, o abre una solicitud nueva.",
+        ), code="STATE_TRANSITION")
     pr.status = "in_review"
     await write_audit(
         db, action="project_request.resubmit", module="project_requests",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project_request", entity_id=str(pr.id),
     )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/reopen", response_model=ProjectRequestRead)
@@ -364,6 +417,8 @@ async def reopen_request(
 ):
     """ENH-016: reabrir una solicitud aprobada sólo si todavía no se
     materializó un proyecto. Devuelve la solicitud a `in_review`."""
+    # BUG-092 — una consulta por petición, no una por fila.
+    ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     pr = (
         await db.execute(
@@ -377,12 +432,20 @@ async def reopen_request(
         raise not_found("Solicitud")
     if pr.status != "approved":
         raise conflict(
-            "Solo se puede reabrir una solicitud aprobada",
+            mensaje(
+                que="Solo se puede reabrir una solicitud aprobada",
+                porque="Reabrir revierte una aprobación, así que tiene que haber una.",
+                accion="Si fue rechazada, abre una solicitud nueva.",
+            ),
             code="STATE_TRANSITION",
         )
     if pr.project_id:
         raise business_rule(
-            "No se puede reabrir: ya existe un proyecto creado desde esta solicitud"
+            mensaje(
+                que="No se puede reabrir: ya existe un proyecto creado desde esta solicitud",
+                porque="La solicitud ya cumplió su función y el trabajo vive en el proyecto.",
+                accion="Trabaja sobre el proyecto, o abre una solicitud nueva.",
+            )
         )
     pr.status = "in_review"
     pr.reviewed_by = None
@@ -398,7 +461,7 @@ async def reopen_request(
         entity_id=str(pr.id),
     )
     await db.commit()
-    return ProjectRequestRead.model_validate(pr)
+    return ProjectRequestRead.model_validate(pr, context=ctx_moneda)
 
 
 @router.post("/{request_id}/create-project")
@@ -422,7 +485,11 @@ async def create_project_from_request(
     if pr is None:
         raise not_found("Solicitud")
     if pr.status != "approved":
-        raise business_rule("Solo se puede crear proyecto desde una solicitud 'approved'")
+        raise business_rule(mensaje(
+            que="Solo se puede crear proyecto desde una solicitud 'approved'",
+            porque="Crear el proyecto es lo que ejecuta la aprobación, así que tiene que haberla.",
+            accion="Consigue la aprobación de la solicitud y vuelve a intentarlo.",
+        ))
 
     # Idempotencia
     if pr.project_id:
@@ -439,6 +506,10 @@ async def create_project_from_request(
         description=pr.description,
         sponsor=pr.sponsor,
         budget=pr.budget,
+        # BUG-092 — el proyecto hereda la moneda de la solicitud. Si la
+        # solicitud no eligió, se queda en nulo y aplica la preferida del
+        # inquilino: copiarla resuelta aquí congelaría la de hoy.
+        currency=pr.currency,
         phase="planning",
         pm_id=str(body.pm_id),
         request_id=pr.id,

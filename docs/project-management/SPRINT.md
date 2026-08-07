@@ -45,29 +45,28 @@ El plan completo, con el registro de los 97 abiertos y la evidencia por
 requisito, está en **`docs/conformidad/plan-remediacion.md`**. El estado se
 recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
 
-- [x] **Olas 0 y 1 — hechas el 2026-08-05.** De 45 a 41 sin escribir producto
-  (el registro no se había enterado de cuatro cierres), y `main` protegida.
-  Detalle en `plan-remediacion.md` y en los informes fechados.
-- [x] **Ola 2 — hecha el 2026-08-06.** De **41 a 32** bloqueantes, once commits
-  con prueba y verificación por mutación. Cierran `SEG-05`, `OPS-01`, `DEV-04`,
-  `CFG-04`, `DIS-01`+`CFG-14`, `DOC-01`, `DOC-03`, `DAT-04`+`DAT-08`, `DAT-12`,
-  y `DAT-05` **vuelve a cerrar** — estaba CONFORME sobre una lista escrita a
-  mano y quedaba una quinta paleta, en el acta que se firma. `DAT-06` cerró
-  entero el mismo día (ver Ola 3); sigue PARCIAL `LEN-02` (177→**166**, con el
-  mecanismo ya puesto). **`DAT-02`, `DIS-03` y `DAT-11` se reclasifican**: no
-  son mecánicos, y ahora están medidos. Detalle en `plan-remediacion.md`.
-- [ ] **Ola 3 — necesita postura del owner.** Alcance de competencia
-  (`CON-01/03/05`), escenarios de calidad con medida (`REQ-02`), inventario de
-  datos personales (`REQ-03`), fichas de indicador (`DAT-01/10`), almacén de
-  secretos (`SEG-02`), estrategia de pruebas (`DEV-02/03` — hoy **cero** en
-  frontend), artefacto de canalización (`SUM-01`), entornos y copias
-  (`INF-02/03`, `DES-02`). Se le suman de la Ola 2: `DAT-02` (renombres con
-  migración), `DIS-03` y `DAT-11` (épica de producto).
-  **Hechos ya:** `SEG-04` —la única CRÍTICA, autorización sobre el objeto— y
-  `DAT-06` (`amber_max` → `yellow_max`, ADR-030 y migración 0101).
+- [x] **Olas 0, 1 y 2 — 2026-08-05/06.** De 45 a 32 bloqueantes. Las dos
+  primeras sin escribir producto (el registro no se había enterado de cuatro
+  cierres) y `main` protegida; la tercera, once commits con prueba y
+  verificación por mutación. `DAT-05` **volvió a cerrar**: estaba CONFORME
+  sobre una lista escrita a mano y quedaba una quinta paleta, en el acta que se
+  firma. `DAT-02`, `DIS-03` y `DAT-11` se reclasificaron ahí —no eran
+  mecánicos— y hoy están medidos.
+- [x] **Ola 3 — cerrada el 2026-08-07.** De 32 bloqueantes de N1 a **1**; 31
+  cierres con prueba y verificación por mutación. Detalle en el registro.
+  **Queda `SEG-01`, PARCIAL a propósito:** el mapeo ASVS L1 completo (127
+  controles) salió con **19 huecos**. Seis son una sola decisión de producto
+  —ASVS pide contraseñas de 12 sin reglas de composición; el producto pide 8 con
+  ellas— y dos son el token en `localStorage`. Lista en
+  `docs/conformidad/asvs-l1.md`. **Necesita al owner.**
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto
+
+- [x] **BUG-092 — hecho el 2026-08-07.** La moneda va sobre el **proyecto**,
+  con una preferida por inquilino como valor inicial (decisión del owner). Los
+  agregados de cartera **no suman monedas distintas**: devuelven un importe por
+  moneda. Migración 0104; trinquete `check_moneda.py`.
 
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.

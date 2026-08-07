@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_authenticated, require_capability
 from app.api.v1.endpoints.dashboard import scoped_project_ids
-from app.core.errors import business_rule, conflict, forbidden, not_found
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
+from app.dominio.moneda import agregar as agregar_por_moneda
+from app.dominio.moneda import resolver as resolver_moneda
 from app.models.modules import Risk
 from app.models.organization import BusinessUnit, Department, Organization, Program
 from app.models.project import Project
@@ -46,6 +48,7 @@ from app.schemas.organization import (
     ProgramUpdate,
 )
 from app.services.audit import write_audit
+from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
 from app.services.reports.scoped_status import build_scope_status_context
 
@@ -58,7 +61,11 @@ def _ensure_tenant(cu: CurrentUser) -> UUID:
     # efectivo para que las pantallas /admin/organizations funcionen.
     tid = cu.effective_tenant_id
     if tid is None:
-        raise forbidden(detail="Acción no disponible para super admin sin tenant activo")
+        raise forbidden(detail=mensaje(
+            que="Acción no disponible para super admin sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización y esta acción escribe en una.",
+            accion="Elige una organización en el selector y repítela.",
+        ))
     return tid
 
 
@@ -214,7 +221,11 @@ async def create_org(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise conflict("Organización con ese nombre ya existe")
+        raise conflict(mensaje(
+            que="Organización con ese nombre ya existe",
+            porque="El nombre identifica la organización en toda la interfaz y no puede repetirse.",
+            accion="Elige otro nombre, o edita la existente.",
+        ))
     org = Organization(tenant_id=tenant_id, **body.model_dump())
     db.add(org)
     await db.flush()
@@ -527,7 +538,11 @@ async def create_program(
         )
     ).scalar_one_or_none()
     if org is None:
-        raise business_rule("La organización no existe o no pertenece al tenant")
+        raise business_rule(mensaje(
+            que="La organización no existe o no pertenece al tenant",
+            porque="La referencia apunta fuera de tu organización y quedaría rota.",
+            accion="Elige una organización de tu tenant.",
+        ))
     payload = body.model_dump()
     payload["organization_id"] = str(payload["organization_id"])
     prog = Program(tenant_id=tenant_id, **payload)
@@ -601,8 +616,23 @@ async def program_summary(
             continue
         if p.health_status in health_counts:
             health_counts[p.health_status] += 1
-    budget_planned = float(sum((p.budget or 0) for p in projects))
-    budget_actual = float(sum((p.actual_budget or 0) for p in projects))
+    # BUG-092 — por moneda. Un programa con proyectos en monedas distintas no
+    # tiene un presupuesto único, y el número que salía antes era la suma de
+    # cantidades que no comparten unidad.
+    preferida = await moneda_preferida(db, tenant_id)
+    monedas_del_programa = {resolver_moneda(p.currency, preferida) for p in projects}
+    planeado_por_moneda = agregar_por_moneda(
+        (resolver_moneda(p.currency, preferida), p.budget) for p in projects
+    )
+    real_por_moneda = agregar_por_moneda(
+        (resolver_moneda(p.currency, preferida), p.actual_budget) for p in projects
+    )
+    # Los campos escalares sobreviven mientras el programa sea de una sola
+    # moneda —el caso de todos los inquilinos de hoy— y valen 0 con varias,
+    # acompañados del desglose. La pantalla decide qué pintar.
+    una_sola = len(monedas_del_programa) <= 1
+    budget_planned = float(sum(planeado_por_moneda.values())) if una_sola else 0.0
+    budget_actual = float(sum(real_por_moneda.values())) if una_sola else 0.0
 
     project_ids = [p.id for p in projects]
     top_risks: list[ProgramSummaryRisk] = []
@@ -649,6 +679,8 @@ async def program_summary(
         health=OrganizationPanelHealth(**health_counts),
         budget_planned=budget_planned,
         budget_actual=budget_actual,
+        budget_planned_by_currency={m: float(v) for m, v in planeado_por_moneda.items()},
+        budget_actual_by_currency={m: float(v) for m, v in real_por_moneda.items()},
         projects=[
             ProgramSummaryProject(
                 id=p.id,
@@ -763,7 +795,11 @@ async def create_business_unit(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise conflict("Unidad de negocio con ese nombre ya existe en la organización")
+        raise conflict(mensaje(
+            que="Unidad de negocio con ese nombre ya existe en la organización",
+            porque="Dos unidades con el mismo nombre serían indistinguibles al asignar.",
+            accion="Elige otro nombre, o edita la existente.",
+        ))
     bu = BusinessUnit(
         tenant_id=tenant_id,
         organization_id=str(org.id),
@@ -872,7 +908,11 @@ async def update_business_unit(
             )
         ).scalar_one_or_none()
         if clash is not None:
-            raise conflict("Unidad de negocio con ese nombre ya existe en la organización")
+            raise conflict(mensaje(
+                que="Unidad de negocio con ese nombre ya existe en la organización",
+                porque="Dos unidades con el mismo nombre serían indistinguibles al asignar.",
+                accion="Elige otro nombre, o edita la existente.",
+            ))
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(bu, field, value)
     await write_audit(
@@ -914,8 +954,12 @@ async def delete_business_unit(
     ).all()
     if active_depts and not force:
         raise business_rule(
-            "La unidad de negocio tiene departamentos activos. "
-            "Use force=true para soft-delete con cascada lógica.",
+            mensaje(
+                que="La unidad de negocio tiene departamentos activos. "
+                    "Use force=true para soft-delete con cascada lógica.",
+                porque="Retirar la unidad dejaría sus departamentos colgando de nada.",
+                accion="Mueve o cierra los departamentos, o repite con `force=true` para desactivarlos en cascada.",
+            ),
             code="BU_HAS_ACTIVE_DEPARTMENTS",
         )
     bu.is_active = False
@@ -983,7 +1027,11 @@ async def create_department(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise conflict("Departamento con ese nombre ya existe en la unidad de negocio")
+        raise conflict(mensaje(
+            que="Departamento con ese nombre ya existe en la unidad de negocio",
+            porque="Dos departamentos con el mismo nombre en la misma unidad serían indistinguibles al asignar.",
+            accion="Elige otro nombre, o edita el existente.",
+        ))
     dept = Department(
         tenant_id=tenant_id,
         business_unit_id=str(bu.id),
@@ -1093,7 +1141,11 @@ async def update_department(
             )
         ).scalar_one_or_none()
         if clash is not None:
-            raise conflict("Departamento con ese nombre ya existe en la unidad de negocio")
+            raise conflict(mensaje(
+                que="Departamento con ese nombre ya existe en la unidad de negocio",
+                porque="Dos departamentos con el mismo nombre en la misma unidad serían indistinguibles al asignar.",
+                accion="Elige otro nombre, o edita el existente.",
+            ))
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(dept, field, value)
     await write_audit(
@@ -1144,9 +1196,13 @@ async def delete_department(
     ).scalar_one()
     if (active_programs or active_projects) and not force:
         raise business_rule(
-            "El departamento tiene programas o proyectos activos. "
-            f"Programas: {active_programs}, Proyectos: {active_projects}. "
-            "Use force=true para soft-delete.",
+            mensaje(
+                que="El departamento tiene programas o proyectos activos. "
+                    f"Programas: {active_programs}, Proyectos: {active_projects}. "
+                    "Use force=true para soft-delete.",
+                porque="Retirar el departamento dejaría ese trabajo sin dueño en la estructura.",
+                accion="Mueve o cierra lo que cuelga de él, o repite con `force=true` para desactivarlo en cascada.",
+            ),
             code="DEPT_HAS_ACTIVE_CHILDREN",
         )
 

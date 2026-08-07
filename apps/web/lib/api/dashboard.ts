@@ -11,7 +11,14 @@ export type DashboardKpis = {
   // `KpiCard` lo pinta «—». El tipo tiene que decirlo: con `number` a secas,
   // TypeScript dejaba pasar cualquier `?? 0` y el hueco volvía a leerse como
   // una cartera parada.
+  /**
+   * BUG-092 — `null` cuando la cartera mezcla monedas: ahí no hay un total.
+   * El dato bueno es `budget_by_currency`; esto se conserva mientras haya una
+   * sola moneda en juego y se retira cuando ningún consumidor lo lea.
+   */
   budget_total: number | null;
+  /** Un importe por moneda. Vacío cuando no hay presupuesto que sumar. */
+  budget_by_currency: Record<string, number>;
   progress_avg: number | null;
 };
 
@@ -25,6 +32,8 @@ export type DashboardCharts = {
 export type PlanVsActualRow = {
   project_id: string;
   folio: string;
+  /** BUG-092 — la moneda del proyecto, ya resuelta por la API. */
+  currency: string;
   name: string;
   end_date: string | null;
   budget_plan: number;

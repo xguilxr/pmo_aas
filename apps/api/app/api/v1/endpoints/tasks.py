@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
 from app.core.compatibilidad import registrar_uso
-from app.core.errors import business_rule, forbidden, not_found, validation_error
+from app.core.errors import business_rule, forbidden, mensaje, not_found, validation_error
 from app.core.unidades import mebibytes
 from app.db.session import get_db
 from app.models.project_artifact import ProjectArtifact
@@ -222,11 +222,23 @@ async def _validate_related_milestone(
         await db.execute(select(Task).where(Task.id == str(related_id)))
     ).scalar_one_or_none()
     if target is None:
-        raise validation_error("related_milestone_id no existe")
+        raise validation_error(mensaje(
+            que="related_milestone_id no existe",
+            porque="La referencia apunta a algo que no está en el plan.",
+            accion="Elige un hito de la lista.",
+        ))
     if str(target.project_id) != str(project_id):
-        raise validation_error("related_milestone_id no pertenece al proyecto")
+        raise validation_error(mensaje(
+            que="related_milestone_id no pertenece al proyecto",
+            porque="Un hito de otro proyecto no marca nada en este.",
+            accion="Elige un hito de este proyecto.",
+        ))
     if not target.is_milestone:
-        raise validation_error("related_milestone_id debe apuntar a un hito (is_milestone=true)")
+        raise validation_error(mensaje(
+            que="related_milestone_id debe apuntar a un hito (is_milestone=true)",
+            porque="Relacionar una tarea con otra tarea no marca ninguna entrega.",
+            accion="Elige un hito de la lista.",
+        ))
     return target
 
 
@@ -356,18 +368,30 @@ async def create_task(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado",
+            porque="Un proyecto cerrado conserva su registro tal como quedó.",
+            accion="Reábrelo si de verdad hace falta modificarlo.",
+        ))
     if body.start_date and body.end_date and body.end_date < body.start_date:
-        raise validation_error("end_date debe ser >= start_date")
+        raise validation_error(mensaje(
+            que="end_date debe ser >= start_date",
+            porque="Una tarea que termina antes de empezar rompe el cálculo de duración y de retraso.",
+            accion="Corrige las fechas para que el fin no sea anterior al inicio.",
+        ))
     # D-9 · glosario §1.2 — un hito es un punto de control de duración cero.
     # La duración en sí la normaliza el modelo (`normalizar_hito`), porque es un
     # valor derivado que el usuario no controla. Esto es la otra mitad: la
     # contradicción que sí puede arreglar, marcar un hito y darle un rango.
     if body.is_milestone and body.start_date and body.end_date and body.start_date != body.end_date:
         raise validation_error(
-            "Un hito marca una fecha, no un período, así que su inicio y su fin "
-            "tienen que coincidir. Deja las dos fechas iguales, o desmarca "
-            "«hito» si de verdad es una actividad con duración.",
+            mensaje(
+                que="Un hito marca una fecha, no un período, así que su inicio y su fin "
+                    "tienen que coincidir. Deja las dos fechas iguales, o desmarca "
+                    "«hito» si de verdad es una actividad con duración.",
+                porque="Un hito con duración distorsiona el cálculo de avance del plan.",
+                accion="Iguala las dos fechas, o desmarca «hito».",
+            ),
             {"start_date": str(body.start_date), "end_date": str(body.end_date)},
         )
     if body.related_milestone_id is not None:
@@ -561,7 +585,11 @@ async def renumber_wbs(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado",
+            porque="Un proyecto cerrado conserva su registro tal como quedó.",
+            accion="Reábrelo si de verdad hace falta modificarlo.",
+        ))
 
     tasks = (
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
@@ -640,7 +668,11 @@ async def move_task(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no se puede reordenar")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no se puede reordenar",
+            porque="Un proyecto cerrado conserva su plan tal como quedó.",
+            accion="Reábrelo si de verdad hace falta reorganizarlo.",
+        ))
 
     tasks = (
         await db.execute(select(Task).where(Task.project_id == str(project_id)))
@@ -689,7 +721,11 @@ async def import_ms_project(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no se puede importar")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no se puede importar",
+            porque="Un proyecto cerrado conserva su plan tal como quedó.",
+            accion="Reábrelo si de verdad hace falta cargar un plan nuevo.",
+        ))
 
     content_type = (file.content_type or "").lower()
     filename_lower = (file.filename or "").lower()
@@ -728,7 +764,11 @@ async def import_ms_project(
             xlsx_result = parse_mpp(data) if is_mpp else parse_xlsx(data)
         except ValueError as exc:
             label = "MPP" if is_mpp else "XLSX"
-            raise business_rule(f"archivo {label} inválido: {exc}")
+            raise business_rule(mensaje(
+                que=f"archivo {label} inválido: {exc}",
+                porque="El archivo no se pudo leer con el formato que anuncia su extensión.",
+                accion="Comprueba el formato, o expórtalo de nuevo desde su aplicación.",
+            ))
         errors = list(xlsx_result.errors)
 
         class _TaskShim:
@@ -750,7 +790,11 @@ async def import_ms_project(
         try:
             parsed, errors = parse_ms_project_xml(data)
         except ValueError as exc:
-            raise business_rule(f"archivo MSP inválido: {exc}")
+            raise business_rule(mensaje(
+                que=f"archivo MSP inválido: {exc}",
+                porque="El archivo no se pudo leer como plan de MS Project.",
+                accion="Vuelve a exportarlo desde MS Project, o impórtalo como XLSX.",
+            ))
 
     if strategy == "replace":
         await db.execute(delete(TaskDependency).where(
@@ -1069,14 +1113,22 @@ async def import_preview(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no se puede importar")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no se puede importar",
+            porque="Un proyecto cerrado conserva su plan tal como quedó.",
+            accion="Reábrelo si de verdad hace falta cargar un plan nuevo.",
+        ))
 
     filename = file.filename or ""
     source = _detect_source(file.content_type or "", filename)
 
     data = await file.read()
     if not data:
-        raise business_rule("archivo vacío")
+        raise business_rule(mensaje(
+            que="archivo vacío",
+            porque="No hay nada que importar.",
+            accion="Comprueba que subiste el archivo correcto y vuelve a intentarlo.",
+        ))
     if len(data) > mebibytes(MAX_WIZARD_FILE_MB):
         raise HTTPException(
             status_code=413,
@@ -1091,7 +1143,11 @@ async def import_preview(
     try:
         parse_result = _parse_for_preview(source, data, sheet=sheet, strict=False)
     except ValueError as exc:
-        raise business_rule(f"archivo {source.upper()} inválido: {exc}")
+        raise business_rule(mensaje(
+            que=f"archivo {source.upper()} inválido: {exc}",
+            porque="El archivo no se pudo leer con el formato que anuncia su extensión.",
+            accion="Comprueba el formato, o expórtalo de nuevo desde su aplicación.",
+        ))
 
     job_id = create_job_id()
     try:
@@ -1223,7 +1279,11 @@ async def import_repreview(
             strict=False,
         )
     except ValueError as exc:
-        raise business_rule(f"archivo {source.upper()} inválido: {exc}")
+        raise business_rule(mensaje(
+            que=f"archivo {source.upper()} inválido: {exc}",
+            porque="El archivo no se pudo leer con el formato que anuncia su extensión.",
+            accion="Comprueba el formato, o expórtalo de nuevo desde su aplicación.",
+        ))
 
     return {
         "task_count": len(parse_result.tasks),
@@ -1258,7 +1318,11 @@ async def import_ai_structure(
     tenant_cfg = await load_tenant_ai(db, tenant_id)
     if tenant_cfg.mode == "disabled":
         raise business_rule(
-            "La interpretación con IA requiere IA habilitada para el tenant",
+            mensaje(
+                que="La interpretación con IA requiere IA habilitada para el tenant",
+                porque="La IA está apagada en los ajustes de tu organización.",
+                accion="Enciéndela en /admin/ai, o usa el mapeo manual de columnas.",
+            ),
             code="AI_DISABLED",
         )
 
@@ -1276,8 +1340,12 @@ async def import_ai_structure(
     source = preview["source"]
     if source not in ("xlsx", "csv"):
         raise business_rule(
-            "La interpretación IA aplica a XLSX/CSV (MPP/XML ya vienen "
-            "estructurados)",
+            mensaje(
+                que="La interpretación IA aplica a XLSX/CSV (MPP/XML ya vienen "
+                    "estructurados)",
+                porque="Un archivo de MS Project ya trae la jerarquía y no hay nada que interpretar.",
+                accion="Impórtalo directamente, sin pasar por la interpretación con IA.",
+            ),
             code="AI_STRUCTURE_UNSUPPORTED_SOURCE",
         )
     try:
@@ -1294,8 +1362,12 @@ async def import_ai_structure(
     )
     if not tasks:
         raise business_rule(
-            "La IA no pudo interpretar el archivo. Probá el mapeo manual "
-            "de columnas.",
+            mensaje(
+                que="La IA no pudo interpretar el archivo. Probá el mapeo manual "
+                    "de columnas.",
+                porque="El archivo no tiene una estructura que el modelo reconozca.",
+                accion="Usa el mapeo manual de columnas, que no depende del modelo.",
+            ),
             code="AI_NO_PROPOSAL",
         )
 
@@ -1340,7 +1412,11 @@ async def import_confirm(
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
-        raise business_rule("Proyecto cerrado, no se puede importar")
+        raise business_rule(mensaje(
+            que="Proyecto cerrado, no se puede importar",
+            porque="Un proyecto cerrado conserva su plan tal como quedó.",
+            accion="Reábrelo si de verdad hace falta cargar un plan nuevo.",
+        ))
 
     preview = load_preview(job_id)
     if preview is None:
@@ -1379,8 +1455,12 @@ async def import_confirm(
         stored = preview.get("ai_tasks") or []
         if not stored:
             raise business_rule(
-                "El job no tiene propuesta de IA — generála primero con "
-                "/import/{job_id}/ai-structure",
+                mensaje(
+                    que="El job no tiene propuesta de IA — generála primero con "
+                        "/import/{job_id}/ai-structure",
+                    porque="Confirmar aplica una propuesta, así que tiene que existir una.",
+                    accion="Genera la interpretación con IA y después confirma.",
+                ),
                 code="AI_STRUCTURE_MISSING",
             )
         parse_result = XlsxParseResult(
@@ -1410,7 +1490,11 @@ async def import_confirm(
                 # 422 (no 400) — el body es válido sintácticamente, lo que
                 # falla es la regla de negocio "name es obligatorio".
                 raise business_rule(
-                    "El mapping debe incluir el campo obligatorio 'name'",
+                    mensaje(
+                        que="El mapping debe incluir el campo obligatorio 'name'",
+                        porque="Una tarea sin nombre no se puede mostrar ni buscar.",
+                        accion="Asigna la columna que trae el nombre de la tarea.",
+                    ),
                     code="MAPPING_MISSING_NAME",
                 )
             columns_override = body.mapping
@@ -1423,7 +1507,11 @@ async def import_confirm(
             )
         except ValueError as exc:
             raise business_rule(
-                f"archivo {source.upper()} inválido al confirmar: {exc}"
+                mensaje(
+                    que=f"archivo {source.upper()} inválido al confirmar: {exc}",
+                    porque="El archivo cambió o se corrompió entre la previsualización y la confirmación.",
+                    accion="Vuelve a subirlo y repite la importación.",
+                )
             )
 
     errors = list(parse_result.errors)

@@ -31,6 +31,7 @@ import {
 import type { ProjectHealth } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 const WINDOW_OPTIONS: { v: CapacityWindow; label: string }[] = [
   { v: "today", label: "Hoy" },
@@ -75,6 +76,8 @@ export default function ResourcesPage() {
   const [win, setWin] = useState<CapacityWindow>("week");
   const [tab, setTab] = useState<Tab>("people");
   const [resources, setResources] = useState<CapacityResource[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(resources);
   const [byDiscipline, setByDiscipline] = useState<CapacityDisciplineAgg[]>([]);
   const [byArea, setByArea] = useState<CapacityAreaAgg[]>([]);
   const [byTeam, setByTeam] = useState<CapacityTeamAgg[]>([]);
@@ -137,6 +140,7 @@ export default function ResourcesPage() {
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
             Recursos
           </h1>
+          {leido && <MarcaDeDatos periodo="ventana" detalle={`ventana de ${win}`} actualizado={leido} />}
         </div>
         <p className="text-sm text-[var(--color-tertiary)]">
           Saturación de capacidad por persona, rol, área y equipo — y los

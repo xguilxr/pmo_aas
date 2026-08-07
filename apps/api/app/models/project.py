@@ -1,5 +1,4 @@
 from datetime import UTC, date, datetime
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
@@ -14,6 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Escala, Importe, Porcentaje
 from app.db.base import Base, TimestampMixin, new_uuid
 
 
@@ -39,15 +39,18 @@ class Project(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(5000))
     type: Mapped[str | None] = mapped_column(String(50))
-    priority: Mapped[int | None] = mapped_column(SmallInteger)
+    priority: Mapped[Escala | None] = mapped_column(SmallInteger)
     phase: Mapped[str] = mapped_column(String(32), nullable=False, default="planning")
     pm_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
     sponsor: Mapped[str | None] = mapped_column(String(200))
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
-    budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
-    actual_budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
-    progress: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    # BUG-092 — la moneda del importe, elegida por proyecto. Nulo NO es
+    # «sin moneda»: es «la preferida del inquilino» (`dominio.moneda.resolver`).
+    currency: Mapped[str | None] = mapped_column(String(3))
+    budget: Mapped[Importe | None] = mapped_column(Numeric(14, 2))
+    actual_budget: Mapped[Importe | None] = mapped_column(Numeric(14, 2))
+    progress: Mapped[Porcentaje] = mapped_column(SmallInteger, nullable=False, default=0)
     health_status: Mapped[str] = mapped_column(String(16), nullable=False, default="green")
     # US-180: salud única híbrida. `health_status` es EL semáforo.
     # `health_source`: 'auto' = lo mantiene el motor de reglas

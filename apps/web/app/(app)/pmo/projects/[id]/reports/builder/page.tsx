@@ -420,6 +420,12 @@ export default function ReportBuilderPage() {
               title="Filtra el contenido del reporte a una sola área."
             >
               <option value="">Todas</option>
+              {/* DIS-03: el proyecto puede no tener áreas asignadas todavía. */}
+              {areas.length === 0 ? (
+                <option value="" disabled>
+                  (este proyecto aún no tiene áreas)
+                </option>
+              ) : null}
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}

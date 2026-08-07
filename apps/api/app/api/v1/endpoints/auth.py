@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.errors import (
     business_rule,
     forbidden,
+    mensaje,
     rate_limited,
     unauthorized,
     validation_error,
@@ -19,6 +20,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
+    necesita_rehash,
     validate_password_policy,
     verify_password,
 )
@@ -127,9 +129,13 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         raise forbidden(
             code="ACCOUNT_LOCKED",
             detail=(
-                f"Por seguridad, tras varios intentos fallidos hay que esperar "
-                f"antes del siguiente. Vuelve a intentarlo en {restan} segundos; "
-                f"si no recuerdas tu contraseña, usa «¿Olvidaste tu contraseña?»."
+                mensaje(
+                    que=f"Por seguridad, tras varios intentos fallidos hay que esperar "
+                        f"antes del siguiente. Vuelve a intentarlo en {restan} segundos; "
+                        f"si no recuerdas tu contraseña, usa «¿Olvidaste tu contraseña?».",
+                    porque="La espera es lo que impide probar contraseñas una tras otra.",
+                    accion="Espera el tiempo indicado, o usa «¿Olvidaste tu contraseña?».",
+                )
             ),
         )
 
@@ -161,11 +167,23 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
             db, action="login_failed", module="auth", user_id=user.id, tenant_id=user.tenant_id,
             details={"reason": "inactive"}, ip_address=ip, user_agent=ua,
         )
-        raise forbidden(code="USER_INACTIVE", detail="Usuario inactivo")
+        raise forbidden(code="USER_INACTIVE", detail=mensaje(
+            que="Usuario inactivo",
+            porque="La cuenta está desactivada y no puede iniciar sesión.",
+            accion="Pide su reactivación a quien administre tu organización.",
+        ))
 
     user.failed_login_attempts = 0
     user.locked_until = None
     user.last_login = now
+
+    # MCS SEG-01 / ASVS 2.1.3 — el único momento en que la contraseña en claro
+    # existe y se ha demostrado correcta. Si su hash sigue en el esquema viejo
+    # —bcrypt a secas, que trunca a 72 bytes— se reescribe al nuevo aquí. Una
+    # migración de esquema que no se cablea en el inicio de sesión no migra
+    # nunca: nadie va a pedirle la contraseña otra vez a nadie para esto.
+    if necesita_rehash(user.password_hash):
+        user.password_hash = hash_password(body.password)
 
     role_names = (
         await db.execute(
@@ -255,10 +273,18 @@ async def change_password(
     if not verify_password(body.current_password, cu.user.password_hash):
         raise unauthorized()
     if body.current_password == body.new_password:
-        raise business_rule("La nueva contraseña debe ser diferente")
+        raise business_rule(mensaje(
+            que="La nueva contraseña debe ser diferente",
+            porque="Repetir la anterior no cambia nada si alguien ya la conocía.",
+            accion="Elige una contraseña que no hayas usado antes.",
+        ))
     ok, err = validate_password_policy(body.new_password)
     if not ok:
-        raise validation_error("Contraseña no cumple política", {"code": err})
+        raise validation_error(mensaje(
+            que="Contraseña no cumple política",
+            porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
+            accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
+        ), {"code": err})
     cu.user.password_hash = hash_password(body.new_password)
     cu.user.must_change_password = False
     # invalidar todos los refresh tokens del usuario
@@ -519,14 +545,22 @@ async def reset_password(
     policy_ok, policy_err = validate_password_policy(body.new_password)
     if not policy_ok:
         raise validation_error(
-            "Contraseña no cumple política", {"code": policy_err}
+            mensaje(
+                que="Contraseña no cumple política",
+                porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
+                accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
+            ), {"code": policy_err}
         )
 
     token_row = await consume_reset_token(db, plain=body.token)
     if token_row is None:
         # Mensaje genérico: el atacante no debe saber si el token existió.
         raise business_rule(
-            "Token inválido o expirado", code="TOKEN_INVALID",
+            mensaje(
+                que="Token inválido o expirado",
+                porque="Los enlaces de recuperación caducan para que uno filtrado no sirva para siempre.",
+                accion="Pide un enlace nuevo desde «¿Olvidaste tu contraseña?».",
+            ), code="TOKEN_INVALID",
         )
 
     user = (
@@ -537,7 +571,11 @@ async def reset_password(
         )
     ).scalar_one_or_none()
     if user is None:
-        raise business_rule("Usuario inactivo", code="USER_INACTIVE")
+        raise business_rule(mensaje(
+            que="Usuario inactivo",
+            porque="La cuenta está desactivada y no puede iniciar sesión.",
+            accion="Pide su reactivación a quien administre tu organización.",
+        ), code="USER_INACTIVE")
 
     user.password_hash = hash_password(body.new_password)
     user.must_change_password = False

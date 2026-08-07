@@ -130,10 +130,21 @@ def superficie_merge(caso: dict[str, Any]) -> dict[str, Any]:
 
 
 def superficie_asistente(caso: dict[str, Any]) -> dict[str, Any]:
-    """El copiloto conversacional: mensaje + acciones que el frontend ejecuta."""
-    from app.services.ai.assistant import parse_assistant_reply
+    """El copiloto conversacional: mensaje + acciones que el frontend ejecuta.
 
-    mensaje, acciones = parse_assistant_reply(caso["salida_modelo"])
+    Se llama a `responder`, que es la puerta que usa el punto de acceso —no a
+    `parse_assistant_reply` a secas—. Si el evaluador entrara por otro sitio
+    mediría un camino que ningún usuario recorre.
+
+    `consulta` es lo que tecleó la persona. Los casos que no la declaran usan
+    una pregunta neutra: la frontera de CON-05 se decide sobre la CONSULTA, así
+    que sin ella todos los casos anteriores cruzarían o no por accidente.
+    """
+    from app.services.ai.assistant import responder
+
+    mensaje, acciones = responder(
+        caso["salida_modelo"], caso.get("consulta") or "¿cómo va el proyecto?"
+    )
     return {"message": mensaje, "actions": acciones}
 
 

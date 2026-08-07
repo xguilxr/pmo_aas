@@ -31,7 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import AppError, forbidden
+from app.core.errors import AppError, forbidden, mensaje
 from app.db.session import get_db
 from app.models.report_section import ReportSection
 from app.services.ai.platform_config import resolve_groq_config
@@ -147,7 +147,11 @@ async def chat_with_builder(
     """US-127 — chat conversacional + tool-call style."""
     tenant_id = cu.effective_tenant_id
     if tenant_id is None:
-        raise forbidden("Sin tenant activo")
+        raise forbidden(mensaje(
+            que="Sin tenant activo",
+            porque="La cuenta de plataforma no está mirando ninguna organización concreta y esta vista es de una.",
+            accion="Elige una organización en el selector y vuelve a intentarlo.",
+        ))
 
     cfg = await load_tenant_ai(db, tenant_id)
     if cfg.mode == "disabled":

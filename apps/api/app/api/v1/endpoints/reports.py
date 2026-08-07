@@ -17,8 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
-from app.core.errors import forbidden, not_found
-from app.core.unidades import razon_a_pct
+from app.core.errors import forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.ai import Report
 from app.models.ai_report_template import AIReportTemplate
@@ -26,6 +25,7 @@ from app.models.project import Project
 from app.models.report_history import ReportHistory
 from app.services.audit import write_audit
 from app.services.html_report_renderer import render_report_html
+from app.services.indicadores import porcentaje_a_tiempo
 from app.services.operational_reports import (
     build_avance_context,
     build_look_ahead_context,
@@ -147,8 +147,12 @@ async def regenerate_builder_pdf(
         from app.core.errors import business_rule
 
         raise business_rule(
-            "Este reporte no fue generado por el Report Builder o no "
-            "tiene snapshot HTML"
+            mensaje(
+                que="Este reporte no fue generado por el Report Builder o no "
+                    "tiene snapshot HTML",
+                porque="Solo se puede reeditar lo que quedó guardado con su HTML.",
+                accion="Genéralo de nuevo desde el Report Builder.",
+            )
         )
     pdf_bytes = html_to_pdf(rep.html_content)
     return Response(content=pdf_bytes, media_type="application/pdf")
@@ -240,7 +244,11 @@ async def update_report(
     if rep.status == "sent":
         from app.core.errors import business_rule
 
-        raise business_rule("Un reporte enviado no puede editarse")
+        raise business_rule(mensaje(
+            que="Un reporte enviado no puede editarse",
+            porque="Lo enviado ya lo recibió alguien, y cambiarlo dejaría dos versiones distintas circulando.",
+            accion="Duplica el informe y edita la copia.",
+        ))
     data = body.model_dump(exclude_unset=True)
     if "recipients" in data and data["recipients"] is not None:
         data["recipients"] = [str(e) for e in data["recipients"]]
@@ -648,7 +656,11 @@ async def delete_report(
     if rep.status == "sent":
         from app.core.errors import business_rule
 
-        raise business_rule("Un reporte enviado no puede eliminarse")
+        raise business_rule(mensaje(
+            que="Un reporte enviado no puede eliminarse",
+            porque="Lo enviado ya lo recibió alguien y su registro es la prueba de qué se comunicó.",
+            accion="Si ya no aplica, marca el proyecto o emite uno nuevo que lo corrija.",
+        ))
     await db.delete(rep)
     await write_audit(
         db,
@@ -942,7 +954,11 @@ async def ai_generate_report(
     tenant_cfg = await load_tenant_ai(db, tenant_id)
     if tenant_cfg.mode == "disabled":
         raise business_rule(
-            "El tenant no tiene IA configurada (ai_mode=disabled)"
+            mensaje(
+                que="El tenant no tiene IA configurada (ai_mode=disabled)",
+                porque="Generar un informe con IA necesita un proveedor conectado.",
+                accion="Un administrador puede configurarlo en /admin/ai.",
+            )
         )
 
     # US-101: unifica con el code path de minutas (workers/tasks/ai.py:252)
@@ -953,8 +969,12 @@ async def ai_generate_report(
         platform_groq = await resolve_groq_config(db)
         if platform_groq is None:
             raise service_unavailable(
-                "El proveedor de IA (Groq) no está disponible: falta la API "
-                "key en plataforma.",
+                mensaje(
+                    que="El proveedor de IA (Groq) no está disponible: falta la API "
+                        "key en plataforma.",
+                    porque="La plataforma no tiene credencial cargada, así que ninguna organización puede usar el modo compartido.",
+                    accion="Avisa a quien administre la plataforma; mientras tanto, conecta un proveedor propio en /admin/ai.",
+                ),
                 code="ai_provider_unavailable",
             )
 
@@ -1165,7 +1185,11 @@ async def ai_generate_report(
                 snippet = (body_text or "")[:240]
                 msg = f"{msg} [HTTP {status}] {snippet}".strip()
         raise business_rule(
-            f"La IA falló al generar el reporte ({type(exc).__name__}): {msg}"
+            mensaje(
+                que=f"La IA falló al generar el reporte ({type(exc).__name__}): {msg}",
+                porque="El proveedor devolvió un error y no hay informe que guardar.",
+                accion="Reintenta; si se repite, revisa la clave y la cuota del proveedor en /admin/ai.",
+            )
         ) from exc
 
     # ENH-085: bloque de "Filtros activos" en el header — transparencia
@@ -1447,11 +1471,10 @@ def _project_render_data(
     # (antes usaba project.tasks_total que no existe en el ORM ⇒ el KPI
     # saltaba a 0% o 100%). On-time = (total − retrasadas) / total.
     tasks_total = (context.get("plan") or {}).get("total_tasks") or 0
-    on_time_pct = (
-        max(0, min(100, round(razon_a_pct(tasks_total - delayed, tasks_total))))
-        if tasks_total
-        else 0
-    )
+    # DAT-09: el recorte a [0, 100] es parte de la definición y vive con ella.
+    # `delayed` puede venir de un conteo con otro filtro que `tasks_total`
+    # —ya pasó, ENH-146— y sin recorte el indicador sale fuera de rango.
+    on_time_pct = porcentaje_a_tiempo(tasks_total, delayed)
     tasks_focus = context.get("focus_tasks") or []
 
     def _task_row(t):

@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
-from app.core.errors import forbidden
+from app.core.errors import forbidden, mensaje
 from app.db.session import get_db
 from app.models.organization import BusinessUnit, Department
 from app.models.project import Project
@@ -181,7 +181,11 @@ async def update_charter(
         if bu is None:
             from app.core.errors import business_rule
 
-            raise business_rule("BU no pertenece a la organización del proyecto")
+            raise business_rule(mensaje(
+                que="BU no pertenece a la organización del proyecto",
+                porque="La unidad de negocio tiene que estar dentro de la organización del proyecto.",
+                accion="Elige una unidad de esa organización.",
+            ))
     if dept_id is not None:
         dept = (
             await db.execute(
@@ -195,7 +199,11 @@ async def update_charter(
         if dept is None:
             from app.core.errors import business_rule
 
-            raise business_rule("Departamento no pertenece al tenant")
+            raise business_rule(mensaje(
+                que="Departamento no pertenece al tenant",
+                porque="La referencia apunta fuera de tu organización y quedaría rota.",
+                accion="Elige un departamento de tu tenant.",
+            ))
 
     for field, value in data.items():
         # emails vienen como EmailStr; convertir a str para la BD
@@ -278,7 +286,11 @@ async def download_charter(
         from app.core.errors import business_rule
 
         raise business_rule(
-            f"format inválido: {fmt}. Usa 'docx' o 'pdf'.",
+            mensaje(
+                que=f"format inválido: {fmt}. Usa 'docx' o 'pdf'.",
+                porque="Solo se generan esos dos formatos de acta.",
+                accion="Pide el acta en `docx` o en `pdf`.",
+            ),
             code="INVALID_FORMAT",
         )
 

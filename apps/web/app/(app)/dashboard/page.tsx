@@ -57,6 +57,9 @@ import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
+import { formatearDesglose, formatearImporte, monedaUnica } from "@/lib/moneda";
+import { useMonedaPreferida } from "@/lib/moneda-tenant";
 
 const PHASE_LABEL: Record<string, string> = {
   planning: "Planificación",
@@ -126,12 +129,17 @@ function DashboardSkeleton() {
 }
 
 function DashboardInner() {
+  // BUG-092 — para lo que NO cuelga de un proyecto: gráficos de cartera y
+  // filas agregadas. Un importe de proyecto trae la suya, ya resuelta.
+  const monedaDeCartera = useMonedaPreferida();
   const user = getStoredUser();
   const router = useRouter();
   const searchParams = useSearchParams();
   const orgFromUrl = searchParams.get("org_id") ?? "";
 
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(kpis);
   const [charts, setCharts] = useState<ChartsData | null>(null);
   const [loadingKpis, setLoadingKpis] = useState(true);
   const [loadingCharts, setLoadingCharts] = useState(true);
@@ -335,6 +343,7 @@ function DashboardInner() {
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
             Tablero, {user?.full_name || user?.username || "usuario"}
           </h1>
+          {leido && <MarcaDeDatos periodo="vivo" detalle="las tendencias vienen de instantáneas diarias" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             KPIs, salud del portafolio y Plan vs Real.
             {orgFilter
@@ -356,6 +365,12 @@ function DashboardInner() {
             aria-label="Filtrar por organización"
             className="min-w-[220px]"
           >
+            {/* DIS-03: un inquilino recién creado no tiene organizaciones. */}
+            {orgs.length === 0 ? (
+              <option value="" disabled>
+                (aún no hay organizaciones)
+              </option>
+            ) : null}
             <option value="">Todas las organizaciones</option>
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
@@ -437,11 +452,20 @@ function DashboardInner() {
           icon={<FileWarning className="h-4 w-4" aria-hidden />}
           href="/pmo/raid?kind=issues"
         />
+        {/* BUG-092 — con una sola moneda se pinta la tarjeta de siempre. Con
+            varias NO hay un total, así que se pinta el desglose: sumar pesos y
+            euros para dar un número redondo es inventarlo. */}
         <KpiCard
           label="Presupuesto total"
           value={kpis?.budget_total}
           loading={loadingKpis}
-          format="currency-mxn"
+          format="currency"
+          moneda={monedaUnica(kpis?.budget_by_currency ?? {}) ?? undefined}
+          hint={
+            monedaUnica(kpis?.budget_by_currency ?? {})
+              ? undefined
+              : formatearDesglose(kpis?.budget_by_currency ?? {})
+          }
           icon={<CircleDollarSign className="h-4 w-4" aria-hidden />}
         />
         <KpiCard
@@ -482,13 +506,7 @@ function DashboardInner() {
           <Bars
             data={budgetData}
             ariaLabel="Presupuesto por tipo"
-            valueFormat={(n) =>
-              new Intl.NumberFormat("es-MX", {
-                style: "currency",
-                currency: "MXN",
-                maximumFractionDigits: 0,
-              }).format(n)
-            }
+            valueFormat={(n) => formatearImporte(n, monedaDeCartera)}
           />
         </ChartCard>
       </section>
@@ -547,7 +565,7 @@ function DashboardInner() {
             )}
           </ChartCard>
           <ChartCard title="Portafolio (presupuesto × salud)">
-            <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" />
+            <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" moneda={monedaDeCartera} />
           </ChartCard>
         </section>
       ) : null}
@@ -656,18 +674,10 @@ function DashboardInner() {
                       {r.end_date ? new Date(r.end_date).toLocaleDateString("es-MX") : "—"}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)] tabular-nums">
-                      {new Intl.NumberFormat("es-MX", {
-                        style: "currency",
-                        currency: "MXN",
-                        maximumFractionDigits: 0,
-                      }).format(r.budget_plan)}
+                      {formatearImporte(r.budget_plan, r.currency ?? monedaDeCartera)}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)] tabular-nums">
-                      {new Intl.NumberFormat("es-MX", {
-                        style: "currency",
-                        currency: "MXN",
-                        maximumFractionDigits: 0,
-                      }).format(r.budget_actual)}
+                      {formatearImporte(r.budget_actual, r.currency ?? monedaDeCartera)}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)]">
                       <ProgressBar value={r.progress_plan} />
@@ -705,6 +715,17 @@ function DashboardInner() {
           </tr>
         </thead>
         <tbody>
+          {/* DIS-03: la tabla vacía no es un fallo — es una cartera sin
+              proyectos que casen con el filtro. Sin esto salían las cabeceras
+              solas, que se lee como «se rompió». */}
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={7} className="px-3 py-8 text-center text-sm text-[var(--text-tertiary)]">
+                Ningún proyecto coincide con los filtros. Quita alguno para ver
+                la comparación entre lo planeado y lo real.
+              </td>
+            </tr>
+          ) : null}
           {rows.map((r) => (
             <tr key={`sr-${r.project_id}`}>
               <td>{r.name}</td>

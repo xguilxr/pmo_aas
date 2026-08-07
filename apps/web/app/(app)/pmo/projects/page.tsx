@@ -54,13 +54,14 @@ function useDebounced<T>(value: T, delayMs = 300): T {
   return d;
 }
 
-function formatMxn(n: string | number | null): string {
+// BUG-092 — cada fila lleva la moneda de su proyecto.
+function formatImporte(n: string | number | null, moneda: string): string {
   if (n === null) return "—";
   const v = typeof n === "string" ? Number(n) : n;
   if (!Number.isFinite(v)) return "—";
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
-    currency: "MXN",
+    currency: moneda,
     maximumFractionDigits: 0,
   }).format(v);
 }
@@ -285,6 +286,12 @@ export default function ProjectsListPage() {
               {orgLabel.singular === "Portafolio" ? "Todos los" : "Todas las"}{" "}
               {orgLabel.plural.toLowerCase()}
             </option>
+            {/* DIS-03: un inquilino recién creado no tiene organizaciones. */}
+            {orgs.length === 0 ? (
+              <option value="" disabled>
+                (aún no hay organizaciones)
+              </option>
+            ) : null}
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -310,6 +317,12 @@ export default function ProjectsListPage() {
               <>
                 <option value="">Todos los programas</option>
                 <option value="__no_program__">Sin programa</option>
+                {/* DIS-03: la organización elegida puede no tener programas. */}
+                {programs.length === 0 ? (
+                  <option value="" disabled>
+                    (esta organización no tiene programas)
+                  </option>
+                ) : null}
                 {programs.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -514,7 +527,7 @@ function ListView({
                   <ProgressBar value={p.progress} />
                 </td>
                 <td className="px-4 tabular-nums text-[var(--text-secondary)]">
-                  {formatMxn(p.budget)}
+                  {formatImporte(p.budget, p.currency)}
                 </td>
                 <td className="px-4">
                   {/* US-192: click = evaluar salud 5+1 sin abrir el proyecto. */}

@@ -84,6 +84,27 @@ jobs:
       - name: Encabezado documental (DOC-01)
         run: python scripts/check_docs.py
 
+      # MCS INF-02 — la paridad de versiones declarada se respeta de verdad.
+      #
+      # Va aquí y no en un trabajo propio porque lee dos archivos de texto y
+      # tarda milisegundos; una verificación requerida más cuesta una acción
+      # del owner sin añadir cobertura. Mismo criterio que DOC-01.
+      #
+      # Sin filtro de paths a propósito: depende de `servicios-datos.yml` (raíz),
+      # de este workflow y de `scripts/`, que caen en filtros distintos.
+      - name: Paridad de versiones de los servicios de datos (INF-02)
+        run: python scripts/check_entornos.py
+
+      # MCS REQ-01 — todo requisito cerrado tiene una prueba que lo nombra.
+      # La regla está en docs/project-management/CRITERIOS-DE-ACEPTACION.md.
+      - name: Criterio de aceptación verificable (REQ-01)
+        run: python scripts/check_criterios.py
+
+      # MCS SEG-01 — el mapeo contra ASVS L1 está completo y los huecos no
+      # crecen. Los 127 controles del catálogo, uno por uno.
+      - name: Mapeo OWASP ASVS nivel 1 (SEG-01)
+        run: python scripts/check_asvs.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #
@@ -127,6 +148,22 @@ jobs:
       # necesitar Node: el gate solo lee ficheros.
       - name: Avisos destructivos por la frontera (DIS-04)
         run: python scripts/check_confirmaciones.py
+
+      # MCS DAT-11 — todo número de indicador declara su periodo y su frescura.
+      # Va con los demás barridos de `apps/web`: lee archivos de texto y tarda
+      # milisegundos.
+      - name: Periodo y marca de actualización (DAT-11)
+        run: python scripts/check_frescura.py
+
+      # MCS DIS-03 — las tres fronteras de estado siguen enganchadas y ninguna
+      # pantalla recorre una colección de la API sin tratar el caso vacío.
+      - name: Los cinco estados por pantalla (DIS-03)
+        run: python scripts/check_estados.py
+
+      # BUG-092 — ningún importe se rotula con una moneda escrita a mano. La
+      # moneda vive en el proyecto y se formatea en `lib/moneda.ts`.
+      - name: La moneda no se escribe a mano (BUG-092)
+        run: python scripts/check_moneda.py
 
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL

@@ -1,0 +1,613 @@
+# MCS SEG-01 — mapeo del producto contra OWASP ASVS 4.0.3 nivel 1.
+#
+# Los 127 controles L1 del catálogo (`marco/asvs-4.0.3-L1.csv`), uno por uno.
+# NO es un muestreo: el barrido `scripts/check_asvs.py` falla si falta alguno.
+#
+# Estados:
+#   CUMPLE     — el producto lo hace, con la evidencia citada.
+#   NO APLICA  — el control supone una tecnología o un flujo que el producto no
+#                tiene. El motivo va escrito; «no aplica» sin motivo es un hueco
+#                con otro nombre.
+#   HUECO      — no se cumple. Sin excusas y sin reformular el control.
+#
+# Medición 2026-08-07: 97 CUMPLE · 13 NO APLICA · 2 ACEPTADO · 15 HUECO.
+#
+#   ACEPTADO   — no se cumple, y no se va a cumplir: hay una decisión escrita
+#                detrás (ADR). NO se pinta como CUMPLE, porque un auditor
+#                tiene derecho a ver la diferencia sin preguntar.
+
+controles:
+  "2.1.1":
+    estado: ACEPTADO
+    evidencia: >-
+      La política exige 8 caracteres y ASVS L1 pide 12. Decisión del owner
+      2026-08-07, ADR-032, con el contraste delante. Lo que contiene el riesgo
+      hoy es bcrypt con coste configurable más el retardo creciente del inicio
+      de sesión (escenario E-4), no la longitud.
+  "2.1.2":
+    estado: CUMPLE
+    evidencia: >-
+      Máximo declarado de 128 (`PASSWORD_POLICY_MAX_LEN`) y sin truncamiento
+      por debajo: `bcrypt_sha256` resume antes de hashear. Antes «sin máximo»
+      sonaba generoso mientras por detrás había uno de 72 bytes sin avisar.
+  "2.1.3":
+    estado: CUMPLE
+    evidencia: >-
+      `bcrypt_sha256` no trunca. Era un defecto real y comprobado: dos
+      contraseñas de 103 y 108 caracteres con los mismos 72 primeros abrían la
+      misma cuenta. `bcrypt` queda deprecado y no retirado, con re-escritura
+      del hash en el siguiente inicio de sesión.
+  "2.1.4":
+    estado: CUMPLE
+    evidencia: >-
+      La política no restringe el juego de caracteres: solo exige presencia de
+      mayúscula, dígito y símbolo.
+  "2.1.5":
+    estado: CUMPLE
+    evidencia: >-
+      `/auth/change-password` y la pantalla de cuenta.
+  "2.1.6":
+    estado: CUMPLE
+    evidencia: >-
+      `current_password` obligatorio; su ausencia o error devuelve 403.
+  "2.1.7":
+    estado: HUECO
+    evidencia: >-
+      No se contrasta contra ningún conjunto de contraseñas filtradas.
+  "2.1.8":
+    estado: CUMPLE
+    evidencia: >-
+      `apps/web/lib/password.ts` muestra la lista de reglas cumplidas en vivo.
+  "2.1.9":
+    estado: ACEPTADO
+    evidencia: >-
+      Se conservan las reglas de composición (mayúscula, dígito, símbolo) que
+      ASVS pide no tener. Decisión del owner 2026-08-07, ADR-032: va en el
+      mismo paquete que 2.1.1, porque la postura de NIST es que quitar las
+      reglas y subir la longitud son la misma medida.
+  "2.1.10":
+    estado: CUMPLE
+    evidencia: >-
+      No hay rotación periódica ni historial de contraseñas.
+  "2.1.11":
+    estado: CUMPLE
+    evidencia: >-
+      Campo `<input type=password>` estándar; nada bloquea pegar ni los
+      gestores.
+  "2.1.12":
+    estado: HUECO
+    evidencia: >-
+      No hay control para revelar temporalmente la contraseña escrita.
+  "2.2.1":
+    estado: CUMPLE
+    evidencia: >-
+      Retardo creciente por cuenta desde el intento 5 y 30 fallos/hora por IP
+      (`auth.py`, escenario E-4).
+  "2.2.2":
+    estado: NO APLICA
+    evidencia: >-
+      No hay segundo factor por SMS ni por correo: el producto es de un solo
+      factor.
+  "2.2.3":
+    estado: HUECO
+    evidencia: >-
+      No se notifica al usuario un cambio de credenciales ni un inicio de
+      sesión desde equipo nuevo.
+  "2.3.1":
+    estado: CUMPLE
+    evidencia: >-
+      `generatePassword` usa `crypto.getRandomValues` y 16 caracteres.
+  "2.5.1":
+    estado: CUMPLE
+    evidencia: >-
+      El enlace de recuperación lleva un token opaco; la contraseña la fija
+      quien lo recibe.
+  "2.5.2":
+    estado: CUMPLE
+    evidencia: >-
+      No hay preguntas secretas ni pistas de contraseña.
+  "2.5.3":
+    estado: CUMPLE
+    evidencia: >-
+      El hash es bcrypt: la contraseña actual no se puede revelar.
+  "2.5.4":
+    estado: CUMPLE
+    evidencia: >-
+      No hay cuentas compartidas ni por defecto; el sembrado crea el
+      administrador con contraseña propia.
+  "2.5.5":
+    estado: HUECO
+    evidencia: >-
+      Mismo hueco que 2.2.3: no hay notificación al cambiar el factor.
+  "2.5.6":
+    estado: CUMPLE
+    evidencia: >-
+      Recuperación por token de un solo uso con caducidad
+      (`password_reset_tokens`).
+  "2.7.1":
+    estado: NO APLICA
+    evidencia: >-
+      No se ofrece autenticación fuera de banda.
+  "2.7.2":
+    estado: NO APLICA
+    evidencia: >-
+      No hay autenticación fuera de banda: no hay código que caduque a los
+      diez minutos porque no se emite ninguno.
+  "2.7.3":
+    estado: NO APLICA
+    evidencia: >-
+      Mismo motivo que 2.7.2. El único secreto de un solo uso del producto es
+      el de recuperación de contraseña, y ese sí lo es (2.5.6).
+  "2.7.4":
+    estado: NO APLICA
+    evidencia: >-
+      No hay segundo canal que asegurar: la autenticación ocurre entera sobre
+      HTTPS contra el mismo servicio.
+  "2.8.1":
+    estado: NO APLICA
+    evidencia: >-
+      No se emiten OTP basados en tiempo. Si entra el segundo factor de 4.3.1,
+      este control deja de no aplicar y hay que declarar su vida útil.
+  "3.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      El token viaja en la cabecera `Authorization`, nunca en la URL.
+  "3.2.1":
+    estado: CUMPLE
+    evidencia: >-
+      `/auth/login` emite un par nuevo de acceso y refresco en cada
+      autenticación.
+  "3.2.2":
+    estado: CUMPLE
+    evidencia: >-
+      JWT firmado HS256 con secreto de al menos 256 bits; el `jti` de refresco
+      es un UUID4.
+  "3.2.3":
+    estado: HUECO
+    evidencia: >-
+      El token de acceso se guarda en `localStorage` (`apps/web/lib/auth-
+      storage.ts`). El de refresco sí va en cookie `HttpOnly`.
+  "3.3.1":
+    estado: CUMPLE
+    evidencia: >-
+      El cierre de sesión revoca el refresco en la base y borra el
+      almacenamiento del navegador.
+  "3.4.1":
+    estado: CUMPLE
+    evidencia: >-
+      La cookie de refresco lleva `secure` fuera de desarrollo.
+  "3.4.2":
+    estado: CUMPLE
+    evidencia: >-
+      `httponly=True` en la cookie de refresco.
+  "3.4.3":
+    estado: CUMPLE
+    evidencia: >-
+      `samesite` declarado en la cookie de refresco.
+  "3.4.4":
+    estado: HUECO
+    evidencia: >-
+      La cookie de refresco no usa el prefijo `__Host-`.
+  "3.4.5":
+    estado: NO APLICA
+    evidencia: >-
+      El dominio de la aplicación no aloja otras aplicaciones que fijen
+      cookies de sesión.
+  "3.7.1":
+    estado: CUMPLE
+    evidencia: >-
+      Toda ruta protegida exige sesión válida (`RequireAuth` +
+      `get_current_user`).
+  "4.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      Las reglas se aplican en el servidor (`api/deps.require_capability`); el
+      frontend solo oculta.
+  "4.1.2":
+    estado: CUMPLE
+    evidencia: >-
+      Los permisos salen de la base por rol; el cliente no manda atributos de
+      política.
+  "4.1.3":
+    estado: CUMPLE
+    evidencia: >-
+      Capacidades por rol, con `superadmin` separado del administrador de
+      inquilino.
+  "4.1.5":
+    estado: CUMPLE
+    evidencia: >-
+      El manejador de excepciones devuelve 500 sin conceder acceso;
+      `proyecto_autorizado` niega por defecto.
+  "4.2.1":
+    estado: CUMPLE
+    evidencia: >-
+      SEG-04: `core/autorizacion.proyecto_autorizado` comprueba el objeto en
+      las cuatro operaciones; 18 casos verificados por mutación.
+  "4.2.2":
+    estado: CUMPLE
+    evidencia: >-
+      El API se autentica por cabecera `Authorization`, no por cookie de
+      sesión, así que no hay CSRF sobre las rutas de escritura.
+  "4.3.1":
+    estado: HUECO
+    evidencia: >-
+      No hay segundo factor para las interfaces de administración.
+  "4.3.2":
+    estado: CUMPLE
+    evidencia: >-
+      El API no sirve directorios; los archivos salen por rutas firmadas del
+      almacenamiento de objetos.
+  "5.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      FastAPI y Pydantic resuelven cada parámetro por nombre y tipo declarado.
+  "5.1.2":
+    estado: CUMPLE
+    evidencia: >-
+      Los esquemas Pydantic son listas blancas de campos; lo no declarado se
+      descarta.
+  "5.1.3":
+    estado: CUMPLE
+    evidencia: >-
+      Toda entrada pasa por un esquema Pydantic en la frontera.
+  "5.1.4":
+    estado: CUMPLE
+    evidencia: >-
+      Tipos fuertes, `Field(ge=, le=, max_length=)` y enumeraciones.
+  "5.1.5":
+    estado: CUMPLE
+    evidencia: >-
+      `core/url_externa.py` y `assistant.ruta_interna_segura` restringen los
+      destinos a una lista blanca de forma.
+  "5.2.1":
+    estado: CUMPLE
+    evidencia: >-
+      El HTML del constructor de informes se sanea antes de guardarse; el
+      editor no acepta HTML libre del usuario.
+  "5.2.2":
+    estado: CUMPLE
+    evidencia: >-
+      Longitudes máximas declaradas en los esquemas.
+  "5.2.3":
+    estado: CUMPLE
+    evidencia: >-
+      El correo se compone con la API de Resend, no concatenando cabeceras.
+  "5.2.4":
+    estado: CUMPLE
+    evidencia: >-
+      No hay `eval` ni ejecución dinámica en `app/`.
+  "5.2.5":
+    estado: CUMPLE
+    evidencia: >-
+      Jinja2 con autoescape para los informes; el contenido del usuario no se
+      compila como plantilla.
+  "5.2.6":
+    estado: CUMPLE
+    evidencia: >-
+      `core/url_externa.py` valida los destinos salientes; el modelo de
+      amenazas lo cubre.
+  "5.2.7":
+    estado: HUECO
+    evidencia: >-
+      Se admite SVG como logotipo de marca y no se sanea su contenido activo.
+  "5.2.8":
+    estado: CUMPLE
+    evidencia: >-
+      El markdown de la memoria de proyecto se presenta como texto, no se
+      interpreta en el navegador.
+  "5.3.1":
+    estado: CUMPLE
+    evidencia: >-
+      React escapa por defecto; los informes se generan con Jinja2 con
+      autoescape.
+  "5.3.2":
+    estado: CUMPLE
+    evidencia: >-
+      UTF-8 de extremo a extremo; el locale no altera la codificación de
+      salida.
+  "5.3.3":
+    estado: CUMPLE
+    evidencia: >-
+      React sin `dangerouslySetInnerHTML` sobre contenido de usuario en las
+      rutas de la aplicación.
+  "5.3.4":
+    estado: CUMPLE
+    evidencia: >-
+      SQLAlchemy con parámetros ligados en todo el acceso a datos.
+  "5.3.5":
+    estado: CUMPLE
+    evidencia: >-
+      No hay construcción de consultas por concatenación.
+  "5.3.6":
+    estado: CUMPLE
+    evidencia: >-
+      `json_parse.parse_json_lenient` usa `json.loads`, nunca `eval`; caso EV
+      del conjunto de evaluación.
+  "5.3.7":
+    estado: NO APLICA
+    evidencia: >-
+      No se usa LDAP en ninguna parte: el directorio de personas es una tabla
+      propia y la autenticación es local contra `users`.
+  "5.3.8":
+    estado: CUMPLE
+    evidencia: >-
+      Las dos llamadas al sistema (`pg_dump`, `mpxj`) usan lista de
+      argumentos, sin `shell=True`.
+  "5.3.9":
+    estado: CUMPLE
+    evidencia: >-
+      No se incluyen archivos por ruta construida con entrada del usuario.
+  "5.3.10":
+    estado: CUMPLE
+    evidencia: >-
+      `defusedxml` en el importador de MS Project; XXE cerrado en la Tanda A.
+  "5.5.1":
+    estado: NO APLICA
+    evidencia: >-
+      No se serializan objetos de la aplicación hacia el cliente; solo JSON de
+      datos.
+  "5.5.2":
+    estado: CUMPLE
+    evidencia: >-
+      `defusedxml` rechaza entidades externas y expansión.
+  "5.5.3":
+    estado: CUMPLE
+    evidencia: >-
+      Solo se deserializa JSON con `json.loads` y YAML con `safe_load`.
+  "5.5.4":
+    estado: CUMPLE
+    evidencia: >-
+      El frontend usa `JSON.parse`; no hay `eval` en `apps/web`.
+  "6.2.1":
+    estado: CUMPLE
+    evidencia: >-
+      Fernet para las claves de proveedor y bcrypt para contraseñas: los dos
+      fallan cerrando, sin oráculo de relleno.
+  "7.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      El registro estructurado no emite contraseñas ni tokens; el envoltorio
+      de error no los propaga.
+  "7.1.2":
+    estado: CUMPLE
+    evidencia: >-
+      `docs/dominio/05-DATOS-PERSONALES.md` declara qué se guarda; los
+      registros no llevan contenido de minutas.
+  "7.4.1":
+    estado: CUMPLE
+    evidencia: >-
+      `errors.py` devuelve un mensaje genérico sin traza; el detalle va al
+      registro y a Sentry.
+  "8.2.1":
+    estado: HUECO
+    evidencia: >-
+      No se emiten cabeceras anti-caché en las respuestas con datos de
+      inquilino.
+  "8.2.2":
+    estado: HUECO
+    evidencia: >-
+      El token de acceso y el perfil del usuario viven en `localStorage`.
+  "8.2.3":
+    estado: CUMPLE
+    evidencia: >-
+      El cierre de sesión limpia `localStorage` (`clearAccessToken`,
+      `clearStoredUser`).
+  "8.3.1":
+    estado: CUMPLE
+    evidencia: >-
+      Las credenciales viajan en el cuerpo o en la cabecera; ningún dato
+      sensible en la cadena de consulta.
+  "8.3.2":
+    estado: HUECO
+    evidencia: >-
+      No hay exportación ni borrado de datos personales a petición; queda
+      anotado en 05-DATOS-PERSONALES.md §carencias.
+  "8.3.3":
+    estado: HUECO
+    evidencia: >-
+      No hay texto de consentimiento ni aceptación explícita en el alta.
+  "8.3.4":
+    estado: CUMPLE
+    evidencia: >-
+      `docs/dominio/05-DATOS-PERSONALES.md` identifica los datos y declara el
+      reparto de responsabilidad (REQ-03).
+  "9.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      Railway termina TLS y `Strict-Transport-Security` fuerza HTTPS fuera de
+      desarrollo.
+  "9.1.2":
+    estado: NO APLICA
+    evidencia: >-
+      Los conjuntos de cifrado los fija el proveedor; este repositorio no los
+      configura ni puede comprobarlos.
+  "9.1.3":
+    estado: NO APLICA
+    evidencia: >-
+      Ídem: la versión de TLS la fija Railway.
+  "10.3.1":
+    estado: NO APLICA
+    evidencia: >-
+      No hay cliente ni servidor con actualización automática: el despliegue
+      lo hace la canalización.
+  "10.3.2":
+    estado: HUECO
+    evidencia: >-
+      No se declara integridad de subrecursos; hoy no se cargan recursos
+      externos, pero nada lo impide.
+  "10.3.3":
+    estado: CUMPLE
+    evidencia: >-
+      Los subdominios se gestionan en Cloudflare y están documentados en
+      `infra/dns-routing.md`.
+  "11.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      Las transiciones de estado se validan en el servidor (solicitudes,
+      cambios, proyectos).
+  "11.1.2":
+    estado: CUMPLE
+    evidencia: >-
+      El retardo creciente del inicio de sesión y los límites de la cola
+      acotan el ritmo.
+  "11.1.3":
+    estado: CUMPLE
+    evidencia: >-
+      Límites por acción: tamaño de archivo, longitud de texto para IA,
+      destinatarios de un envío.
+  "11.1.4":
+    estado: HUECO
+    evidencia: >-
+      No hay límite de peticiones sobre los listados: una cuenta válida puede
+      paginar la cartera entera sin freno.
+  "11.1.5":
+    estado: CUMPLE
+    evidencia: >-
+      `docs/architecture/modelo-amenazas.md` deriva los límites de las
+      amenazas identificadas (SEG-06).
+  "12.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      `MAX_DOC_BYTES` acota cada subida y el almacenamiento rechaza lo que lo
+      supera.
+  "12.3.1":
+    estado: CUMPLE
+    evidencia: >-
+      `services/filename_slug.py` normaliza el nombre; la clave del objeto no
+      la elige el usuario.
+  "12.3.2":
+    estado: CUMPLE
+    evidencia: >-
+      Ídem: el nombre entregado no se usa como ruta.
+  "12.3.3":
+    estado: CUMPLE
+    evidencia: >-
+      Ídem.
+  "12.3.4":
+    estado: CUMPLE
+    evidencia: >-
+      Las descargas van con `Content-Disposition: attachment` y nombre
+      saneado.
+  "12.3.5":
+    estado: CUMPLE
+    evidencia: >-
+      El nombre nunca llega a una llamada al sistema.
+  "12.4.1":
+    estado: CUMPLE
+    evidencia: >-
+      Los archivos viven en almacenamiento de objetos (R2), fuera de cualquier
+      raíz web.
+  "12.4.2":
+    estado: HUECO
+    evidencia: >-
+      No hay análisis antivirus de lo que se sube.
+  "12.5.1":
+    estado: CUMPLE
+    evidencia: >-
+      Lista blanca de extensiones en `document_storage` y en
+      `branding_storage`.
+  "12.5.2":
+    estado: CUMPLE
+    evidencia: >-
+      El almacenamiento sirve con tipo declarado y `nosniff`; nada se ejecuta
+      como HTML.
+  "12.6.1":
+    estado: CUMPLE
+    evidencia: >-
+      `core/url_externa.py` restringe los destinos a los que el servidor puede
+      llamar.
+  "13.1.1":
+    estado: CUMPLE
+    evidencia: >-
+      Un solo analizador por capa: Starlette en el API y `fetch` en el
+      navegador.
+  "13.1.3":
+    estado: CUMPLE
+    evidencia: >-
+      Ninguna ruta lleva clave ni token en la URL.
+  "13.2.1":
+    estado: CUMPLE
+    evidencia: >-
+      Cada ruta declara su método y su capacidad; no hay verbo abierto.
+  "13.2.2":
+    estado: CUMPLE
+    evidencia: >-
+      Pydantic valida el cuerpo contra el esquema antes de tocar la lógica.
+  "13.2.3":
+    estado: CUMPLE
+    evidencia: >-
+      El API no autentica por cookie: la cookie de refresco solo sirve en
+      `/auth/refresh` y lleva `SameSite`.
+  "13.3.1":
+    estado: CUMPLE
+    evidencia: >-
+      El único XML que entra es el del importador de planes y pasa por
+      `defusedxml` más validación de campos.
+  "14.2.1":
+    estado: CUMPLE
+    evidencia: >-
+      `pip-audit`, `bandit` y `pnpm audit` en el trabajo `seguridad` (INT-02),
+      con pasivo declarado y fechado.
+  "14.2.2":
+    estado: CUMPLE
+    evidencia: >-
+      La imagen de producción no incluye herramientas de desarrollo ni datos
+      de ejemplo.
+  "14.2.3":
+    estado: CUMPLE
+    evidencia: >-
+      No se cargan recursos desde CDN externas: fuentes y estilos van en el
+      propio despliegue.
+  "14.3.2":
+    estado: CUMPLE
+    evidencia: >-
+      `PYTHON_ENV=production` desactiva la documentación interactiva y el modo
+      de depuración.
+  "14.3.3":
+    estado: CUMPLE
+    evidencia: >-
+      Las respuestas no exponen versión de servidor ni de marco.
+  "14.4.1":
+    estado: CUMPLE
+    evidencia: >-
+      FastAPI fija `Content-Type: application/json; charset=utf-8` en toda
+      respuesta.
+  "14.4.2":
+    estado: NO APLICA
+    evidencia: >-
+      El API sirve JSON que consume la propia aplicación; forzar `attachment`
+      en cada respuesta rompería el cliente. La descarga de archivos sí lo
+      lleva.
+  "14.4.3":
+    estado: CUMPLE
+    evidencia: >-
+      `Content-Security-Policy` del API en `main.py`.
+  "14.4.4":
+    estado: CUMPLE
+    evidencia: >-
+      `X-Content-Type-Options: nosniff`.
+  "14.4.5":
+    estado: CUMPLE
+    evidencia: >-
+      `Strict-Transport-Security` con `includeSubDomains` fuera de desarrollo.
+  "14.4.6":
+    estado: CUMPLE
+    evidencia: >-
+      `Referrer-Policy: strict-origin-when-cross-origin`.
+  "14.4.7":
+    estado: CUMPLE
+    evidencia: >-
+      `X-Frame-Options: DENY`.
+  "14.5.1":
+    estado: CUMPLE
+    evidencia: >-
+      Cada ruta declara sus métodos; el resto devuelve 405.
+  "14.5.2":
+    estado: CUMPLE
+    evidencia: >-
+      El origen no participa en ninguna decisión de autorización: esa la toma
+      el JWT.
+  "14.5.3":
+    estado: CUMPLE
+    evidencia: >-
+      `allow_origins=settings.cors_origins`, lista explícita sin comodín.

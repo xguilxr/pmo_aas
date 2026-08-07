@@ -28,7 +28,7 @@ from app.api.deps import (
     get_superadmin,
     require_authenticated,
 )
-from app.core.errors import business_rule, conflict, forbidden, not_found
+from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.notification import Notification
 from app.models.permission_request import PermissionChangeRequest
@@ -144,7 +144,11 @@ async def create_request(
     if not _is_admin_or_super(cu):
         raise forbidden(
             code="ADMIN_REQUIRED",
-            detail="Solo admin del tenant puede solicitar cambios de permiso",
+            detail=mensaje(
+                que="Solo admin del tenant puede solicitar cambios de permiso",
+                porque="Los permisos los concede quien responde por la organización.",
+                accion="Pídeselo a quien la administre.",
+            ),
         )
     tenant_id = _tenant(cu)
 
@@ -161,7 +165,11 @@ async def create_request(
         raise not_found("Target user")
     if target.is_superadmin:
         raise business_rule(
-            "No se pueden cambiar permisos del superadmin",
+            mensaje(
+                que="No se pueden cambiar permisos del superadmin",
+                porque="La cuenta de plataforma no obtiene sus permisos de ninguna organización.",
+                accion="Si hay que ajustarla, hazlo desde el panel de superadministración.",
+            ),
             code="SUPERADMIN_LOCKED",
         )
 
@@ -312,7 +320,11 @@ async def cancel_request(
         raise forbidden()
     if req.status != "pending":
         raise conflict(
-            "Solo se pueden cancelar tickets pendientes",
+            mensaje(
+                que="Solo se pueden cancelar tickets pendientes",
+                porque="Un ticket ya decidido es un registro de lo que se resolvió.",
+                accion="Si la decisión fue equivocada, abre una solicitud nueva.",
+            ),
             code="NOT_PENDING",
         )
     req.status = "cancelled"
@@ -357,7 +369,11 @@ async def approve_request(
     if req is None:
         raise not_found("Ticket")
     if req.status != "pending":
-        raise conflict("Ticket ya decidido", code="NOT_PENDING")
+        raise conflict(mensaje(
+            que="Ticket ya decidido",
+            porque="Cada solicitud se resuelve una vez para que el registro no cambie después.",
+            accion="Abre una solicitud nueva si hace falta revisarlo.",
+        ), code="NOT_PENDING")
 
     # Determinar el role_type del target.
     target = (
@@ -482,7 +498,11 @@ async def reject_request(
     if req is None:
         raise not_found("Ticket")
     if req.status != "pending":
-        raise conflict("Ticket ya decidido", code="NOT_PENDING")
+        raise conflict(mensaje(
+            que="Ticket ya decidido",
+            porque="Cada solicitud se resuelve una vez para que el registro no cambie después.",
+            accion="Abre una solicitud nueva si hace falta revisarlo.",
+        ), code="NOT_PENDING")
 
     req.status = "rejected"
     req.decided_by_superadmin_id = str(cu.id)
