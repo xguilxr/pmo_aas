@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_current_user
 from app.core import cookies
 from app.core.config import settings
+from app.core.contrasenas_filtradas import esta_filtrada
 from app.core.errors import (
     business_rule,
     forbidden,
@@ -21,6 +22,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
+    mensaje_de_politica,
     necesita_rehash,
     validate_password_policy,
     verify_password,
@@ -186,6 +188,22 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     if necesita_rehash(user.password_hash):
         user.password_hash = hash_password(body.password)
 
+    # MCS SEG-01 / ASVS 2.1.7 — el control nombra tres momentos: alta, **inicio
+    # de sesión** y cambio. Los otros dos los cubre `validate_password_policy`,
+    # que rechaza. Aquí no se puede rechazar: la contraseña es correcta, y dejar
+    # a alguien fuera de su cuenta porque su contraseña apareció en una
+    # filtración es convertir el aviso en una denegación de servicio.
+    #
+    # Lo que se hace es forzar el cambio en la siguiente pantalla. Es el mismo
+    # mecanismo del alta por administrador, así que la web ya lo sabe llevar.
+    if not user.must_change_password and esta_filtrada(body.password):
+        user.must_change_password = True
+        await write_audit(
+            db, action="password_breached_detected", module="auth", user_id=user.id,
+            tenant_id=user.tenant_id, details={"forced_change": True},
+            ip_address=ip, user_agent=ua,
+        )
+
     role_names = (
         await db.execute(
             select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user.id)
@@ -282,11 +300,7 @@ async def change_password(
         ))
     ok, err = validate_password_policy(body.new_password)
     if not ok:
-        raise validation_error(mensaje(
-            que="Contraseña no cumple política",
-            porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
-            accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
-        ), {"code": err})
+        raise validation_error(mensaje_de_politica(err), {"code": err})
     cu.user.password_hash = hash_password(body.new_password)
     cu.user.must_change_password = False
     # invalidar todos los refresh tokens del usuario
@@ -546,13 +560,7 @@ async def reset_password(
 
     policy_ok, policy_err = validate_password_policy(body.new_password)
     if not policy_ok:
-        raise validation_error(
-            mensaje(
-                que="Contraseña no cumple política",
-                porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
-                accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
-            ), {"code": policy_err}
-        )
+        raise validation_error(mensaje_de_politica(policy_err), {"code": policy_err})
 
     token_row = await consume_reset_token(db, plain=body.token)
     if token_row is None:

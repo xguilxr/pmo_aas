@@ -11,6 +11,7 @@ from app.core.errors import business_rule, conflict, forbidden, mensaje, not_fou
 from app.core.security import (
     create_access_token,
     hash_password,
+    mensaje_de_politica,
     validate_password_policy,
 )
 from app.db.session import get_db
@@ -72,11 +73,7 @@ async def provision_tenant(
     pwd = body.admin_password or _random_password()
     ok, err = validate_password_policy(pwd)
     if not ok:
-        raise validation_error(mensaje(
-            que="admin_password débil",
-            porque="Es la cuenta con más permisos de la organización y una contraseña corta la deja expuesta.",
-            accion="Usa una más larga, con mayúsculas, números y símbolos.",
-        ), {"code": err})
+        raise validation_error(mensaje_de_politica(err), {"code": err})
 
     username = (body.admin_username or body.admin_email.split("@")[0]).lower()
     user = User(
@@ -705,13 +702,7 @@ async def superadmin_me_update(
             ))
         ok, err = validate_password_policy(body.new_password)
         if not ok:
-            raise validation_error(
-                mensaje(
-                    que="Contraseña no cumple política",
-                    porque="Las reglas mínimas son lo que impide que una cuenta caiga por fuerza bruta.",
-                    accion="Usa al menos la longitud pedida, con mayúsculas, números y símbolos.",
-                ), {"code": err}
-            )
+            raise validation_error(mensaje_de_politica(err), {"code": err})
         u.password_hash = hash_password(body.new_password)
         diff["password"] = {"changed": True}
 

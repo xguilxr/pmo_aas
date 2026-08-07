@@ -51,9 +51,21 @@ controles:
     evidencia: >-
       `current_password` obligatorio; su ausencia o error devuelve 403.
   "2.1.7":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No se contrasta contra ningún conjunto de contraseñas filtradas.
+      Conjunto local de 37.970 contraseñas filtradas que **además pasan la
+      política**, consultado dentro de `validate_password_policy` para que
+      ninguno de los seis sitios que fijan contraseña pueda olvidarlo, y en el
+      inicio de sesión —donde no rechaza: fuerza el cambio, porque negar el
+      acceso con la contraseña correcta sería una denegación de servicio—.
+      Local y no API externa: no sale de aquí la contraseña de nadie, no
+      añade un destino al modelo de amenazas, y no hay tercero que al caerse
+      deje a nadie sin poder cambiarla. El conjunto NO es «las 10.000 más
+      usadas» (de rockyou-75 solo ocho pasan la política): es la familia
+      predecible que estas reglas de composición producen —`Password1!`—,
+      derivada del corpus versionado por
+      `scripts/genera_contrasenas_filtradas.py`. Suite
+      `test_seg01_asvs217_filtradas.py`.
   "2.1.8":
     estado: CUMPLE
     evidencia: >-

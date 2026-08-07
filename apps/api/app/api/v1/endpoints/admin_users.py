@@ -16,7 +16,11 @@ from app.core.errors import (
     validation_error,
 )
 from app.core.hard_delete import confirm_slug, ensure_confirm, ensure_inactive
-from app.core.security import hash_password, validate_password_policy
+from app.core.security import (
+    hash_password,
+    mensaje_de_politica,
+    validate_password_policy,
+)
 from app.db.session import get_db
 from app.models.organization import Organization
 from app.models.organization_user_exclusion import OrganizationUserExclusion
@@ -120,15 +124,7 @@ async def create_user(
 ):
     ok, err = validate_password_policy(body.password)
     if not ok:
-        raise validation_error(
-            mensaje(
-                que="La contraseña no cumple la política de la plataforma.",
-                porque="Se exige una longitud mínima y una mezcla de mayúsculas, "
-                    "minúsculas, números y símbolos, y que no sea una contraseña común.",
-                accion="Elige otra que cumpla los criterios y vuelve a guardar.",
-            ),
-            {"code": err},
-        )
+        raise validation_error(mensaje_de_politica(err), {"code": err})
 
     # BUG-055: el superadmin que hizo `joinAsAdmin` tiene
     # `user.tenant_id=None` pero un `active_tenant_id` en el JWT — usar
