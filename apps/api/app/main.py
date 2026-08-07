@@ -10,7 +10,11 @@ from sqlalchemy import text
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.errors import texto_por_defecto
-from app.core.observabilidad import configurar_registro, iniciar_captura_de_errores
+from app.core.observabilidad import (
+    captura_de_errores_activa,
+    configurar_registro,
+    iniciar_captura_de_errores,
+)
 
 # MCS OPS-01. Antes había aquí un `logging.basicConfig` con formato de texto
 # plano — y solo aquí: el worker no configuraba nada. Ahora los dos llaman a lo
@@ -201,7 +205,14 @@ async def health():
         "status": "ok",
         "version": settings.VERSION,
         "env": settings.PYTHON_ENV,
-        "checks": {"database": "ok"},
+        "checks": {
+            "database": "ok",
+            # MCS OPS-02 — que la captura de errores esté encendida es
+            # comprobable desde fuera, no leyendo registros de arranque.
+            # `degraded` y no `unreachable`: sin captura el servicio funciona,
+            # lo que se pierde es enterarse cuando deje de hacerlo.
+            "error_capture": "ok" if captura_de_errores_activa() else "disabled",
+        },
     }
     if not await _base_de_datos_responde():
         cuerpo["status"] = "degraded"
