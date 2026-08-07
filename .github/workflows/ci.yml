@@ -105,6 +105,12 @@ jobs:
       - name: Mapeo OWASP ASVS nivel 1 (SEG-01)
         run: python scripts/check_asvs.py
 
+      # ASVS 10.3.2 — el mapeo anotó «hoy no se cargan recursos externos» y
+      # había tres. La evidencia escrita a mano dijo «no hay» donde sí había;
+      # esto lo mira cada vez.
+      - name: Subrecursos externos con integridad (SEG-01 · ASVS 10.3.2)
+        run: python scripts/check_subrecursos.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #

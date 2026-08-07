@@ -436,10 +436,16 @@ controles:
       No hay cliente ni servidor con actualización automática: el despliegue
       lo hace la canalización.
   "10.3.2":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No se declara integridad de subrecursos; hoy no se cargan recursos
-      externos, pero nada lo impide.
+      Los tipos de letra se sirven desde nuestro propio origen vía
+      `next/font/google` (`app/layout.tsx`), así que en ejecución no queda
+      ningún subrecurso de un tercero que firmar — comprobado sobre la salida
+      del build: ocho `.woff2` propios y cero referencias a `fonts.googleapis`
+      o `fonts.gstatic`. La medición anterior decía «hoy no se cargan recursos
+      externos» y **cargaba tres**: la hoja de estilo de Google no llevaba
+      `integrity` y elegía de dónde bajar los tipos. Trinquete:
+      `scripts/check_subrecursos.py`, en el job `conformidad` del CI.
   "10.3.3":
     estado: CUMPLE
     evidencia: >-
