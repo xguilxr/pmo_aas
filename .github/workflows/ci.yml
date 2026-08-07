@@ -95,6 +95,11 @@ jobs:
       - name: Paridad de versiones de los servicios de datos (INF-02)
         run: python scripts/check_entornos.py
 
+      # MCS REQ-01 — todo requisito cerrado tiene una prueba que lo nombra.
+      # La regla está en docs/project-management/CRITERIOS-DE-ACEPTACION.md.
+      - name: Criterio de aceptación verificable (REQ-01)
+        run: python scripts/check_criterios.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #
