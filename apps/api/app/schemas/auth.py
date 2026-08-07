@@ -68,3 +68,8 @@ class VerificarCodigoRequest(BaseModel):
 
     desafio: str = Field(min_length=1, max_length=64)
     codigo: str = Field(min_length=4, max_length=12)
+    #: ADR-035 §Ventana — «no volver a pedirme el código en este equipo».
+    #: Por defecto **sí**, que es lo que el owner pidió y lo que hace que el
+    #: segundo factor no se vuelva insoportable; se puede desmarcar en un equipo
+    #: prestado, donde recordar sería peor que la molestia que evita.
+    recordar_equipo: bool = True

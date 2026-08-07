@@ -60,6 +60,14 @@ class Settings(BaseSettings):
     # encenderlo, que es siempre.
     ADMIN_MFA_REQUIRED: bool = True
 
+    # ASVS 4.3.1 · ADR-035 — cuántos días se recuerda un equipo antes de volver
+    # a pedir el código. Decisión del owner: **una semana**.
+    #
+    # Pedirlo en cada entrada es lo que hace que la gente desactive el segundo
+    # factor o busque cómo saltárselo, así que la ventana no es una concesión:
+    # es lo que mantiene el control encendido.
+    DISPOSITIVO_CONFIABLE_DIAS: int = 7
+
     ACCESS_TOKEN_TTL_SEC: int = 3600
     REFRESH_TOKEN_TTL_SEC: int = 2592000
     BCRYPT_ROUNDS: int = 12

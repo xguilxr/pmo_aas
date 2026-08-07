@@ -60,9 +60,13 @@ from app.services.rate_limit import check_and_increment, excede
 from app.services.rate_limit import reset as rate_limit_reset
 from app.services.segundo_factor import VIDA_MINUTOS as VIDA_OTP_MINUTOS
 from app.services.segundo_factor import (
+    avisa_dispositivo_nuevo,
     emite,
     envia_codigo,
+    es_dispositivo_de_confianza,
     necesita_segundo_factor,
+    recuerda_dispositivo,
+    revoca_dispositivos,
     verifica,
 )
 
@@ -230,6 +234,26 @@ async def login(
     # código al correo y se devuelve el desafío. La sesión la emite
     # `/verificar-codigo` si el código es el bueno.
     if settings.ADMIN_MFA_REQUIRED and necesita_segundo_factor(user):
+        # ADR-035 §Ventana — si este equipo ya demostró el segundo factor, no se
+        # vuelve a pedir durante la ventana. Sigue habiendo dos factores: la
+        # cookie es un secreto de 256 bits que solo tiene este navegador, y la
+        # contraseña acaba de comprobarse arriba.
+        de_confianza = await es_dispositivo_de_confianza(
+            db, user=user, token=cookies.leer(request, cookies.DISPOSITIVO)
+        )
+        if de_confianza:
+            await write_audit(
+                db, action="login_success", module="auth", user_id=user.id,
+                tenant_id=user.tenant_id,
+                # Queda anotado que se **saltó** el código. Sin este detalle, una
+                # entrada con segundo factor y una sin él son la misma línea.
+                details={"mfa": "dispositivo_confiable"},
+                ip_address=ip, user_agent=ua,
+            )
+            return await _emite_sesion(
+                db, user=user, now=now, ip=ip, ua=ua, role_names=role_names
+            )
+
         desafio, codigo = await emite(db, user=user)
         await write_audit(
             db, action="mfa_challenge_sent", module="auth", user_id=user.id,
@@ -362,11 +386,35 @@ async def verificar_codigo(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
-    return await _emite_sesion(
+    resp = await _emite_sesion(
         db, user=user, now=datetime.now(UTC),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"), role_names=role_names,
     )
+
+    # ADR-035 §Ventana. Va **después** de verificar el código y solo si se pide:
+    # en un equipo prestado, recordar sería peor que la molestia que evita.
+    if body.recordar_equipo:
+        token = await recuerda_dispositivo(
+            db, user=user, descripcion=request.headers.get("user-agent")
+        )
+        await write_audit(
+            db, action="dispositivo_recordado", module="auth", user_id=user.id,
+            tenant_id=user.tenant_id,
+            details={"dias": settings.DISPOSITIVO_CONFIABLE_DIAS},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        await db.commit()
+        cookies.fijar(
+            resp, cookies.DISPOSITIVO, token,
+            max_age=settings.DISPOSITIVO_CONFIABLE_DIAS * 24 * 3600,
+        )
+        # El aviso es lo que hace aceptable la ventana: si llega y no fuiste tú,
+        # alguien tiene tu contraseña Y tu correo, y acaba de conseguir una
+        # semana de entradas sin código.
+        avisa_dispositivo_nuevo(user.email, request.headers.get("user-agent"))
+    return resp
 
 
 @router.post("/logout", status_code=204)
@@ -423,6 +471,11 @@ async def change_password(
     # ASVS 2.2.3 / 2.5.5. Antes esto llevaba el guardia `if tenant_id is not
     # None`, así que un superadministrador —la cuenta con más permisos de la
     # plataforma— era la única que cambiaba su contraseña sin recibir aviso.
+    # ADR-035 — cambiar la contraseña es la acción de «creo que me han entrado».
+    # Si la confianza de los equipos sobreviviera, quien hubiera entrado una vez
+    # seguiría entrando con la contraseña nueva y sin código, que es justo lo
+    # contrario de lo que esa persona pretendía al cambiarla.
+    await revoca_dispositivos(db, user_id=cu.id)
     await avisa_cambio_de_credencial(db, usuario=cu.user, motivo="password")
     await db.commit()
     from fastapi.responses import Response
@@ -740,6 +793,7 @@ async def reset_password(
         .values(revoked=True)
     )
 
+    await revoca_dispositivos(db, user_id=user.id)
     await avisa_cambio_de_credencial(db, usuario=user, motivo="password_reset")
 
     await write_audit(

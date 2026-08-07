@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { LogIn, MailCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ApiError } from "@/lib/api";
@@ -41,6 +42,10 @@ function LoginForm() {
   // ASVS 4.3.1 — segundo paso. `null` = todavía estamos en el primero.
   const [desafio, setDesafio] = useState<string | null>(null);
   const [codigo, setCodigo] = useState("");
+  // ADR-035 §Ventana — marcado por defecto: es lo que evita que el segundo
+  // factor se vuelva insoportable y acabe desactivado. Se desmarca en un equipo
+  // prestado, donde recordar sería peor que la molestia que ahorra.
+  const [recordarEquipo, setRecordarEquipo] = useState(true);
 
   useEffect(() => {
     if (hasSession()) {
@@ -82,7 +87,7 @@ function LoginForm() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await verificarCodigo(desafio, codigo.trim());
+      const res = await verificarCodigo(desafio, codigo.trim(), recordarEquipo);
       const landing = res.user.must_change_password
         ? "/change-password"
         : explicitRedirect || (res.user.is_superadmin ? "/superadmin" : "/dashboard");
@@ -136,6 +141,21 @@ function LoginForm() {
                   className="text-center text-lg tracking-[0.4em]"
                 />
               </div>
+
+              <label className="flex items-start gap-2.5 text-sm text-[var(--color-secondary)]">
+                <Checkbox
+                  checked={recordarEquipo}
+                  disabled={submitting}
+                  onChange={(e) => setRecordarEquipo(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  No volver a pedirme el código en este equipo
+                  <span className="block text-xs text-[var(--color-tertiary)]">
+                    Durante 7 días. Desmárcalo si el equipo no es tuyo.
+                  </span>
+                </span>
+              </label>
 
               {error ? (
                 <div

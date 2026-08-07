@@ -371,3 +371,261 @@ def test_asvs431_el_interruptor_viene_encendido():
     from app.core.config import Settings
 
     assert Settings.model_fields["ADMIN_MFA_REQUIRED"].default is True
+
+
+# ---------------------------------------------------------------------------
+# §5 — Equipos de confianza: el código no se pide en cada entrada (ADR-035)
+# ---------------------------------------------------------------------------
+#
+# Decisión del owner: pedirlo siempre es lo que hace que la gente desactive el
+# segundo factor. Se recuerda el equipo una semana.
+#
+# Dentro de la ventana **siguen siendo dos factores**: la cookie es un secreto
+# de 256 bits que solo tiene ese navegador, y la contraseña sigue haciendo
+# falta. Lo que cambia es el soporte del segundo factor, no su existencia.
+#
+# Esta sección vigila las dos formas de romperlo en silencio: que la cookie de
+# una cuenta valga para otra (§5.2) y que sobreviva a un cambio de contraseña
+# (§5.3). Las dos dejarían el flujo funcionando igual.
+
+
+async def _completa(client, correos, sufijo: str, recordar: bool = True):
+    """Primer inicio de sesión completo, con código, hasta tener la cookie."""
+    r = await _entra(client, sufijo)
+    desafio = r.json()["desafio"]
+    codigo = correos[-1][1]
+    return await client.post(
+        "/api/v1/auth/verificar-codigo",
+        json={"desafio": desafio, "codigo": codigo, "recordar_equipo": recordar},
+    )
+
+
+@pytest.mark.asyncio
+async def test_adr035_la_segunda_entrada_no_pide_codigo(client, db_session, correos):
+    """Lo que el owner pidió: una vez por semana, no en cada entrada."""
+    await _admin(db_session, "20")
+    r = await _completa(client, correos, "20")
+    assert r.status_code == 200, r.text
+    assert len(correos) == 1
+
+    # Segunda entrada, mismo navegador (el cliente conserva la cookie).
+    r = await _entra(client, "20")
+    assert r.status_code == 200, (
+        f"Volvió a pedir el código: {r.status_code} {r.text}"
+    )
+    assert r.json()["access_token"]
+    assert len(correos) == 1, "Se mandó un código de más"
+
+
+@pytest.mark.asyncio
+async def test_adr035_sin_marcar_la_casilla_no_se_recuerda(client, db_session, correos):
+    """En un equipo prestado, recordar sería peor que la molestia que evita."""
+    await _admin(db_session, "21")
+    r = await _completa(client, correos, "21", recordar=False)
+    assert r.status_code == 200
+
+    r = await _entra(client, "21")
+    assert r.status_code == 202, "Se recordó el equipo sin pedirlo"
+
+
+@pytest.mark.asyncio
+async def test_adr035_se_avisa_al_recordar_un_equipo_nuevo(
+    client, db_session, correos, monkeypatch
+):
+    """Es el control que hace aceptable la ventana: si llega el aviso y no
+    fuiste tú, alguien tiene tu contraseña Y tu correo, y acaba de conseguir una
+    semana de entradas sin código."""
+    from app.api.v1.endpoints import auth as endpoint_auth
+
+    avisos: list[tuple[str, str | None]] = []
+    monkeypatch.setattr(
+        endpoint_auth, "avisa_dispositivo_nuevo",
+        lambda destino, desc: avisos.append((destino, desc)),
+    )
+    await _admin(db_session, "22")
+    await _completa(client, correos, "22")
+
+    assert avisos, "Se recordó un equipo sin avisar a su dueño"
+    assert avisos[0][0] == "mfa22@acme.example.com"
+
+
+@pytest.mark.asyncio
+async def test_adr035_saltarse_el_codigo_queda_anotado(client, db_session, correos):
+    """Sin este detalle, una entrada con segundo factor y una sin él son la
+    misma línea en la auditoría, y no se puede investigar nada."""
+    from sqlalchemy import select
+
+    from app.models.audit import AuditLog
+
+    await _admin(db_session, "23")
+    await _completa(client, correos, "23")
+    await _entra(client, "23")
+
+    filas = (
+        await db_session.execute(
+            select(AuditLog).where(AuditLog.action == "login_success")
+        )
+    ).scalars().all()
+    motivos = [f.details.get("mfa") for f in filas]
+    assert "dispositivo_confiable" in motivos, motivos
+    assert "email_otp" in motivos, motivos
+
+
+# ---- §5.2 — La cookie está atada a la cuenta -------------------------------
+
+
+@pytest.mark.asyncio
+async def test_adr035_la_cookie_de_una_cuenta_no_vale_para_otra(
+    client, db_session, correos
+):
+    """La mitad del control, y la que se rompe sin que nada se note.
+
+    Si la comprobación mirara solo el resumen del token y no la cuenta, un
+    administrador con equipo recordado podría saltarse el segundo factor de
+    **cualquier otra** cuenta desde ese navegador — y el flujo seguiría
+    funcionando igual, así que nadie lo vería.
+    """
+    await _admin(db_session, "24")
+    await _admin(db_session, "25")
+
+    # 24 recuerda este navegador…
+    r = await _completa(client, correos, "24")
+    assert r.status_code == 200
+
+    # …y 25 entra desde el mismo navegador: tiene que pedirle el código.
+    r = await _entra(client, "25")
+    assert r.status_code == 202, (
+        "La cookie de otra cuenta saltó el segundo factor"
+    )
+
+
+@pytest.mark.asyncio
+async def test_adr035_una_cookie_inventada_no_vale(client, db_session, correos):
+    await _admin(db_session, "26")
+    client.cookies.set("dispositivo", "me-lo-invento-entero")
+    try:
+        r = await _entra(client, "26")
+        assert r.status_code == 202
+    finally:
+        client.cookies.clear()
+
+
+@pytest.mark.asyncio
+async def test_adr035_un_equipo_caducado_vuelve_a_pedir(client, db_session, correos):
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select
+
+    from app.models.auth import DispositivoConfiable
+
+    await _admin(db_session, "27")
+    await _completa(client, correos, "27")
+
+    fila = (
+        await db_session.execute(select(DispositivoConfiable))
+    ).scalars().first()
+    fila.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+    await db_session.commit()
+
+    r = await _entra(client, "27")
+    assert r.status_code == 202, "Un equipo caducado siguió saltándose el código"
+
+
+# ---- §5.3 — El cambio de contraseña retira la confianza --------------------
+
+
+@pytest.mark.asyncio
+async def test_adr035_cambiar_la_contrasena_revoca_los_equipos(
+    client, db_session, correos
+):
+    """Cambiar la contraseña es la acción de «creo que me han entrado».
+
+    Si la confianza sobreviviera, quien hubiera entrado una vez seguiría
+    entrando con la contraseña **nueva** y sin código — justo lo contrario de lo
+    que esa persona pretendía al cambiarla.
+    """
+    await _admin(db_session, "28")
+    r = await _completa(client, correos, "28")
+    autorizacion = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    r = await client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": "Zx9-Correcta-Larga!",
+            "new_password": "Qw3-Otra-Bien-Distinta!",
+        },
+        headers=autorizacion,
+    )
+    assert r.status_code == 204, r.text
+
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "mfa28@acme.example.com", "password": "Qw3-Otra-Bien-Distinta!"},
+    )
+    assert r.status_code == 202, (
+        "El equipo siguió siendo de confianza después de cambiar la contraseña"
+    )
+
+
+@pytest.mark.asyncio
+async def test_adr035_revocar_no_borra_la_fila(db_session):
+    """Se marca `revocado` en vez de borrar: conviene poder ver después cuántos
+    equipos había y cuándo se usaron por última vez."""
+    from sqlalchemy import select
+
+    from app.models.auth import DispositivoConfiable
+
+    u = await _admin(db_session, "29")
+    await sf.recuerda_dispositivo(db_session, user=u, descripcion="un navegador")
+    await db_session.commit()
+
+    cuantos = await sf.revoca_dispositivos(db_session, user_id=u.id)
+    await db_session.commit()
+    assert cuantos == 1
+
+    filas = (
+        await db_session.execute(
+            select(DispositivoConfiable).where(DispositivoConfiable.user_id == str(u.id))
+        )
+    ).scalars().all()
+    assert len(filas) == 1
+    assert filas[0].revocado is True
+
+
+@pytest.mark.asyncio
+async def test_adr035_el_token_no_se_guarda_en_claro(db_session):
+    from sqlalchemy import select
+
+    from app.models.auth import DispositivoConfiable
+
+    u = await _admin(db_session, "30")
+    token = await sf.recuerda_dispositivo(db_session, user=u, descripcion=None)
+    await db_session.commit()
+
+    fila = (
+        await db_session.execute(
+            select(DispositivoConfiable).where(DispositivoConfiable.user_id == str(u.id))
+        )
+    ).scalar_one()
+    assert fila.token_hash != token
+    assert token not in fila.token_hash
+
+
+def test_adr035_la_ventana_es_de_dias_no_de_meses():
+    """La ventana es una concesión medida, no una puerta abierta. Una semana es
+    lo que el owner decidió; un mes ya sería otra decisión."""
+    assert 1 <= settings.DISPOSITIVO_CONFIABLE_DIAS <= 30
+
+
+def test_adr035_la_cookie_del_equipo_sobrevive_a_cerrar_sesion():
+    """Su razón de ser es sobrevivir a «salir»: es justo cuando el código
+    volvería a pedirse. `borrar` en el cierre de sesión NO puede tocarla."""
+    import inspect
+
+    from app.api.v1.endpoints import auth
+
+    fuente = inspect.getsource(auth.logout)
+    assert "cookies.DISPOSITIVO" not in fuente, (
+        "El cierre de sesión borra la cookie del equipo, así que el código se "
+        "volvería a pedir en la siguiente entrada"
+    )

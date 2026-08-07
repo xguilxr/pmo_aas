@@ -80,3 +80,40 @@ class AdminOtpCode(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
+
+
+class DispositivoConfiable(Base):
+    """Equipo donde ya se demostró el segundo factor (ASVS 4.3.1, ADR-035).
+
+    Es lo que hace que el código no se pida en **cada** inicio de sesión, sino
+    una vez por equipo y ventana. La cookie que lo respalda es el «algo que
+    tienes» durante esa ventana: un secreto de 256 bits que solo vive en ese
+    navegador, `HttpOnly` para que ningún guion lo lea.
+
+    Se guarda **solo el resumen**, como los códigos y como los tokens de
+    recuperación: un volcado de la base no puede entregar cookies utilizables.
+
+    `user_id` no es decoración — es la mitad del control. La comprobación exige
+    que el resumen **y** la cuenta coincidan; sin eso, la cookie de un equipo
+    de confianza de una cuenta saltaría el segundo factor de otra.
+    """
+
+    __tablename__ = "dispositivos_confiables"
+    __table_args__ = (
+        Index("idx_dispositivo_usuario_vivo", "user_id", "revocado"),
+    )
+
+    id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    #: Para que la persona reconozca el equipo en una lista y en el aviso. No
+    #: identifica: es la cadena que manda el navegador, recortada.
+    descripcion: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revocado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ultimo_uso: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )

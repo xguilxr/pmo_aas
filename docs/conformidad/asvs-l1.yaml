@@ -313,7 +313,16 @@ controles:
       por desafío —seis dígitos son un millón de combinaciones y sin freno se
       prueban enteras en minutos—, y todos los fallos responden igual.
       `ADMIN_MFA_REQUIRED` viene encendido. El desbloqueo por inactividad de
-      una cuenta de administración también pasa por aquí. Suite
+      una cuenta de administración también pasa por aquí.
+      **El código se pide una vez por equipo y semana, no en cada entrada**
+      (ADR-035 §Ventana): pedirlo siempre es lo que hace que un control acabe
+      desactivado. Dentro de la ventana siguen siendo dos factores — la cookie
+      `__Host-dispositivo` es un secreto de 256 bits que solo tiene ese
+      navegador, y la contraseña sigue haciendo falta. Lo sostienen tres cosas
+      con prueba propia: la cookie está atada a la **cuenta** (si no, la de un
+      administrador saltaría el factor de cualquier otra), cambiar la
+      contraseña revoca todos los equipos, y recordar uno nuevo manda un
+      correo. La auditoría distingue con qué se entró. Suite
       `test_seg01_asvs431_segundo_factor.py`.
   "4.3.2":
     estado: CUMPLE

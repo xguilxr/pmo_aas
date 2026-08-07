@@ -905,3 +905,24 @@ fuerza bruta — un millón de combinaciones se prueban enteras en minutos.
 
 Reversible sin pérdida de nada que importe: lo único que se tira son códigos con
 diez minutos de vida.
+
+## 0107 — Equipos de confianza para el segundo factor (ASVS 4.3.1)
+
+Tabla `dispositivos_confiables`. Decisión del owner en ADR-035 §Ventana: el
+código se pide una vez por equipo y semana, no en cada entrada. Pedirlo siempre
+es lo que hace que un control acabe desactivado.
+
+**Sigue habiendo dos factores dentro de la ventana.** La cookie es un secreto de
+256 bits que solo tiene ese navegador —«algo que tienes»— y la contraseña sigue
+haciendo falta. Cambia el soporte del segundo factor, no su existencia.
+
+Se guarda **solo el resumen** del token. `user_id` no es decoración: la
+comprobación exige que el resumen **y** la cuenta coincidan, o la cookie de un
+equipo de confianza de una cuenta saltaría el segundo factor de otra — y el
+flujo seguiría funcionando igual, así que nadie lo vería.
+
+`revocado` en vez de borrar la fila: el cambio de contraseña revoca todos los
+equipos, y conviene poder ver después cuántos había y cuándo se usaron.
+
+Al bajar, todo el mundo vuelve a pasar por el código en su siguiente entrada.
+Molesto y seguro, que es el lado correcto por el que equivocarse al revertir.

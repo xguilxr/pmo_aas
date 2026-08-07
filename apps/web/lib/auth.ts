@@ -63,10 +63,11 @@ export async function logout(): Promise<void> {
 export async function verificarCodigo(
   desafio: string,
   codigo: string,
+  recordarEquipo: boolean,
 ): Promise<LoginResponse> {
   const res = await apiFetch<LoginResponse>("/api/v1/auth/verificar-codigo", {
     method: "POST",
-    body: { desafio, codigo },
+    body: { desafio, codigo, recordar_equipo: recordarEquipo },
     auth: false,
   });
   marcarSesionAbierta();

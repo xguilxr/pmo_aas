@@ -1772,5 +1772,44 @@ de correo, que casi nunca tiene.
   respuesta correcta a medio plazo. Se descarta ahora por alcance, no por
   postura.
 
+### §Ventana — el código se pide una vez por equipo, no en cada entrada
+
+**Decisión del owner, 2026-08-07**, tras probar la primera versión: pedir el
+código en **cada** inicio de sesión es insoportable, y un control insoportable
+acaba desactivado. Se recuerda el equipo **siete días**.
+
+Es lo que hacen Google, GitHub y Microsoft, y no es una concesión: es lo que
+mantiene el segundo factor encendido.
+
+**Dentro de la ventana siguen siendo dos factores.** La cookie
+`__Host-dispositivo` es un secreto de 256 bits que solo tiene ese navegador,
+`HttpOnly` para que ningún guion lo lea — «algo que tienes»—, y la contraseña
+sigue haciendo falta. Cambia el **soporte** del segundo factor, no su
+existencia. Por eso `4.3.1` sigue CUMPLE.
+
+Tres cosas sostienen que eso sea cierto, y las tres tienen prueba propia:
+
+1. **La cookie está atada a la cuenta.** La comprobación exige que el resumen
+   **y** el `user_id` coincidan. Sin lo segundo, un administrador con equipo
+   recordado se saltaría el segundo factor de *cualquier otra* cuenta desde ese
+   navegador — y el flujo seguiría funcionando igual, así que nadie lo vería.
+2. **Cambiar la contraseña revoca todos los equipos.** Es la acción de «creo que
+   me han entrado»; si la confianza sobreviviera, quien hubiera entrado una vez
+   seguiría entrando con la contraseña nueva y sin código.
+3. **Recordar un equipo nuevo manda un correo.** Si llega y no fuiste tú,
+   alguien tiene tu contraseña *y* tu correo y acaba de conseguir una semana de
+   entradas sin código. Es lo primero que hay que saber.
+
+La casilla viene **marcada** —es el comportamiento que se pidió— y se puede
+desmarcar en un equipo prestado, donde recordar sería peor que la molestia que
+ahorra.
+
+**Lo que se acepta a cambio, y va escrito:** quien tenga acceso físico a un
+equipo recordado y sepa la contraseña entra sin pasar por el correo durante la
+ventana. Contra eso están el bloqueo por inactividad, la revocación al cambiar
+la contraseña y el aviso del equipo nuevo. Y en la auditoría queda anotado con
+qué se entró (`mfa: dispositivo_confiable` frente a `mfa: email_otp`): sin ese
+detalle, una entrada con segundo factor y una sin él serían la misma línea.
+
 **Revisión:** al primer incidente de correo comprometido, o cuando el número de
 administradores haga que enrolar TOTP salga a cuenta.

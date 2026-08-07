@@ -19,7 +19,7 @@ revisar_cada: nunca
 La descripción en prosa de cada tabla vive en
 [`database.md`](database.md): eso no está en el modelo y no se puede derivar.
 
-**57 tablas · 162 relaciones declaradas por clave foránea.**
+**58 tablas · 163 relaciones declaradas por clave foránea.**
 
 ```mermaid
 erDiagram
@@ -62,6 +62,7 @@ erDiagram
     BUSINESS_UNITS ||--o{ DEPARTMENTS : business_unit_id
     USERS |o--o{ DEPARTMENTS : created_by
     TENANTS ||--o{ DEPARTMENTS : tenant_id
+    USERS ||--o{ DISPOSITIVOS_CONFIABLES : user_id
     USERS |o--o{ DOCUMENTS : created_by
     PROJECTS ||--o{ DOCUMENTS : project_id
     USERS |o--o{ DOCUMENTS : uploaded_by

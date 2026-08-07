@@ -57,7 +57,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.auth import AdminOtpCode
+from app.core.config import settings
+from app.models.auth import AdminOtpCode, DispositivoConfiable
 from app.models.user import User
 
 log = logging.getLogger(__name__)
@@ -194,3 +195,132 @@ def envia_codigo(destino: str, codigo: str) -> None:
         log.exception("no se pudo encolar el código de segundo factor")
 
 
+
+
+# ---------------------------------------------------------------------------
+# Equipos de confianza — que el código no se pida en cada entrada (ADR-035)
+# ---------------------------------------------------------------------------
+#
+# Pedir el código en **cada** inicio de sesión es lo que hace que la gente
+# desactive el segundo factor, o busque cómo saltárselo. Es lo que hacen Google,
+# GitHub y Microsoft: se comprueba una vez por equipo y se recuerda una ventana.
+#
+# **Dentro de la ventana siguen siendo dos factores**, y es la parte que importa:
+# la cookie es un secreto de 256 bits que solo vive en ese navegador —«algo que
+# tienes»— y la contraseña sigue haciendo falta. Cambia el soporte del segundo
+# factor, no su existencia.
+#
+# Lo que se acepta a cambio, y va escrito: quien tenga acceso físico a un equipo
+# recordado y sepa la contraseña entra sin pasar por el correo, durante la
+# ventana. Contra eso están el bloqueo por inactividad, la revocación al cambiar
+# la contraseña, y el aviso cuando se recuerda un equipo nuevo.
+
+
+def _resumen_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+async def recuerda_dispositivo(
+    db: AsyncSession, *, user: User, descripcion: str | None
+) -> str:
+    """Marca este equipo como de confianza. Devuelve el token para la cookie.
+
+    256 bits de entropía: es un secreto portador que vale una semana, así que no
+    puede ser adivinable ni por asomo. El token en claro sale de aquí una vez;
+    en la base queda su resumen.
+    """
+    token = secrets.token_urlsafe(32)
+    db.add(
+        DispositivoConfiable(
+            token_hash=_resumen_token(token),
+            user_id=user.id,
+            descripcion=(descripcion or "")[:200] or None,
+            expires_at=datetime.now(UTC) + timedelta(days=settings.DISPOSITIVO_CONFIABLE_DIAS),
+        )
+    )
+    await db.flush()
+    return token
+
+
+async def es_dispositivo_de_confianza(
+    db: AsyncSession, *, user: User, token: str | None
+) -> bool:
+    """¿Este equipo ya demostró el segundo factor para **esta** cuenta?
+
+    La comprobación exige que el resumen y la cuenta coincidan. Sin lo segundo,
+    la cookie de un equipo de confianza de una cuenta saltaría el segundo factor
+    de otra — y es un fallo que no se nota, porque el flujo funciona igual.
+    """
+    if not token:
+        return False
+    fila = (
+        await db.execute(
+            select(DispositivoConfiable).where(
+                DispositivoConfiable.token_hash == _resumen_token(token),
+                DispositivoConfiable.user_id == str(user.id),
+                DispositivoConfiable.revocado.is_(False),
+            )
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        return False
+
+    caduca = fila.expires_at
+    if caduca is not None and caduca.tzinfo is None:
+        caduca = caduca.replace(tzinfo=UTC)
+    if caduca is None or caduca < datetime.now(UTC):
+        return False
+
+    fila.ultimo_uso = datetime.now(UTC)
+    return True
+
+
+async def revoca_dispositivos(db: AsyncSession, *, user_id: UUID | str) -> int:
+    """Retira la confianza de **todos** los equipos de una cuenta.
+
+    Se llama al cambiar o restablecer la contraseña, que es la acción de «creo
+    que me han entrado». Si la confianza sobreviviera a un cambio de contraseña,
+    quien hubiera entrado una vez seguiría entrando con la contraseña nueva sin
+    pasar por el correo, que es justo lo contrario de lo que esa persona
+    pretendía al cambiarla.
+
+    Se marca `revocado` en vez de borrar: conviene poder ver después cuántos
+    había y cuándo se usaron.
+    """
+    filas = (
+        await db.execute(
+            select(DispositivoConfiable).where(
+                DispositivoConfiable.user_id == str(user_id),
+                DispositivoConfiable.revocado.is_(False),
+            )
+        )
+    ).scalars().all()
+    for fila in filas:
+        fila.revocado = True
+    return len(filas)
+
+
+def avisa_dispositivo_nuevo(destino: str, descripcion: str | None) -> None:
+    """Correo al recordar un equipo nuevo. Nunca lanza.
+
+    Es el control que hace que la ventana sea aceptable: si llega este aviso y
+    no fuiste tú, alguien tiene tu contraseña **y** acceso a tu correo, y acaba
+    de conseguir una semana de entradas sin código. Es lo primero que hay que
+    saber.
+    """
+    equipo = (descripcion or "un equipo desconocido")[:120]
+    try:
+        from app.workers.tasks.notifications import send_security_email
+
+        send_security_email.delay(
+            destino,
+            "Se recordó un equipo nuevo en PMO·aaS",
+            (
+                f"A partir de ahora no te pediremos el código al entrar desde "
+                f"{equipo}, durante {settings.DISPOSITIVO_CONFIABLE_DIAS} días.\n\n"
+                f"Si no has sido tú, cambia tu contraseña ahora mismo: eso retira "
+                f"la confianza de todos los equipos, incluido ese."
+            ),
+        )
+    except Exception:
+        log.exception("no se pudo avisar del equipo recordado")
