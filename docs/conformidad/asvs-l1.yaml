@@ -107,10 +107,22 @@ controles:
       No hay segundo factor por SMS ni por correo: el producto es de un solo
       factor.
   "2.2.3":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No se notifica al usuario un cambio de credenciales ni un inicio de
-      sesión desde equipo nuevo.
+      `avisa_cambio_de_credencial` (`services/notifications.py`), llamada en
+      **los seis** sitios que tocan una credencial: cambio propio,
+      restablecimiento con enlace, restablecimiento por administrador, y los
+      cambios de correo y contraseña del superadministrador. Antes existía en
+      uno solo —el cambio propio—, o sea faltaba justo donde el cambio NO lo
+      hace el dueño de la cuenta, que es el único caso en que el aviso sirve.
+      Dos detalles que el control exige y son fáciles de perder: al cambiar el
+      correo se avisa **también a la dirección que se abandona** (sin eso,
+      quien se apodera de una cuenta y le cambia el correo consigue que el
+      dueño no se entere nunca), y el aviso no respeta las preferencias de
+      notificación —uno que se apaga desde los ajustes no es un control—. El
+      superadministrador, que no tiene inquilino y por tanto no puede tener
+      notificación in-app, recibe correo directo. Suite
+      `test_seg01_asvs223_aviso_credenciales.py`.
   "2.3.1":
     estado: CUMPLE
     evidencia: >-
@@ -134,9 +146,22 @@ controles:
       No hay cuentas compartidas ni por defecto; el sembrado crea el
       administrador con contraseña propia.
   "2.5.5":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      Mismo hueco que 2.2.3: no hay notificación al cambiar el factor.
+      `avisa_cambio_de_credencial` (`services/notifications.py`), llamada en
+      **los seis** sitios que tocan una credencial: cambio propio,
+      restablecimiento con enlace, restablecimiento por administrador, y los
+      cambios de correo y contraseña del superadministrador. Antes existía en
+      uno solo —el cambio propio—, o sea faltaba justo donde el cambio NO lo
+      hace el dueño de la cuenta, que es el único caso en que el aviso sirve.
+      Dos detalles que el control exige y son fáciles de perder: al cambiar el
+      correo se avisa **también a la dirección que se abandona** (sin eso,
+      quien se apodera de una cuenta y le cambia el correo consigue que el
+      dueño no se entere nunca), y el aviso no respeta las preferencias de
+      notificación —uno que se apaga desde los ajustes no es un control—. El
+      superadministrador, que no tiene inquilino y por tanto no puede tener
+      notificación in-app, recibe correo directo. Suite
+      `test_seg01_asvs223_aviso_credenciales.py`.
   "2.5.6":
     estado: CUMPLE
     evidencia: >-

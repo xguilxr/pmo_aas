@@ -42,8 +42,8 @@ from app.schemas.auth import (
 )
 from app.services.audit import write_audit
 from app.services.notifications import (
-    PASSWORD_CHANGED,
     PASSWORD_RESET_REQUESTED,
+    avisa_cambio_de_credencial,
     enqueue_notification,
 )
 from app.services.password_reset import (
@@ -306,23 +306,10 @@ async def change_password(
     # invalidar todos los refresh tokens del usuario
     await db.execute(update(RefreshToken).where(RefreshToken.user_id == cu.id).values(revoked=True))
     await write_audit(db, action="password_change", module="auth", user_id=cu.id, tenant_id=cu.user.tenant_id)
-    # US-063: confirmación al user ("si no fuiste tú, avisa al admin").
-    if cu.user.tenant_id is not None:
-        await enqueue_notification(
-            db,
-            tenant_id=cu.user.tenant_id,
-            user_id=cu.id,
-            type=PASSWORD_CHANGED,
-            title="Tu contraseña fue cambiada",
-            body=(
-                "Acabas de cambiar tu contraseña. Si no fuiste tú, "
-                "avisa inmediatamente al administrador del tenant."
-            ),
-            entity_type="user",
-            entity_id=str(cu.id),
-            link="/account",
-            send_email=True,
-        )
+    # ASVS 2.2.3 / 2.5.5. Antes esto llevaba el guardia `if tenant_id is not
+    # None`, así que un superadministrador —la cuenta con más permisos de la
+    # plataforma— era la única que cambiaba su contraseña sin recibir aviso.
+    await avisa_cambio_de_credencial(db, usuario=cu.user, motivo="password")
     await db.commit()
     from fastapi.responses import Response
 
@@ -596,22 +583,7 @@ async def reset_password(
         .values(revoked=True)
     )
 
-    if user.tenant_id is not None:
-        await enqueue_notification(
-            db,
-            tenant_id=user.tenant_id,
-            user_id=user.id,
-            type=PASSWORD_CHANGED,
-            title="Tu contraseña fue restablecida",
-            body=(
-                "Acabas de restablecer tu contraseña. Si no fuiste tú, "
-                "avisa inmediatamente al administrador del tenant."
-            ),
-            entity_type="user",
-            entity_id=str(user.id),
-            link="/login",
-            send_email=True,
-        )
+    await avisa_cambio_de_credencial(db, usuario=user, motivo="password_reset")
 
     await write_audit(
         db,

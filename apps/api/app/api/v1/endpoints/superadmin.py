@@ -25,6 +25,7 @@ from app.schemas.organization import (
     TenantRead,
 )
 from app.services.audit import write_audit
+from app.services.notifications import avisa_cambio_de_credencial
 from app.services.seed import SYSTEM_ROLES
 
 router = APIRouter(prefix="/superadmin", tags=["superadmin"])
@@ -642,6 +643,10 @@ async def superadmin_me_update(
         ))
 
     diff: dict = {}
+    #: Dirección que se abandona, si el correo cambia. Se inicializa aquí y no
+    #: dentro del `if`: solo con contraseña, la rama del correo no corre y
+    #: leerla más abajo sería un `UnboundLocalError` en producción.
+    correo_anterior: str | None = None
 
     if body.full_name is not None and body.full_name != u.full_name:
         diff["full_name"] = {"from": u.full_name, "to": body.full_name}
@@ -691,6 +696,8 @@ async def superadmin_me_update(
             }
             clash.email = released_email
         diff["email"] = {"from": u.email, "to": new_email}
+        # ASVS 2.2.3 — se avisa también a la dirección que se abandona.
+        correo_anterior = u.email
         u.email = new_email
 
     if body.new_password is not None:
@@ -705,6 +712,18 @@ async def superadmin_me_update(
             raise validation_error(mensaje_de_politica(err), {"code": err})
         u.password_hash = hash_password(body.new_password)
         diff["password"] = {"changed": True}
+
+    # ASVS 2.2.3 / 2.5.5 — un superadministrador no pertenece a ningún
+    # inquilino, así que no puede tener notificación in-app
+    # (`notifications.tenant_id` es NOT NULL) y hasta ahora no recibía ningún
+    # aviso. Es la cuenta con más permisos de la plataforma.
+    if diff.get("password") or diff.get("email"):
+        await avisa_cambio_de_credencial(
+            db,
+            usuario=u,
+            motivo="email" if diff.get("email") else "password",
+            correo_anterior=correo_anterior,
+        )
 
     if not diff:
         return _SuperadminMeRead(
