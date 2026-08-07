@@ -15,6 +15,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Escala, Porcentaje
 from app.db.base import Base, TimestampMixin, new_uuid
 
 
@@ -44,10 +45,10 @@ class Task(Base, TimestampMixin):
     # una NO completada con end_date < hoy se marca "Atrasada" (tag rojo).
     closed_at: Mapped[date | None] = mapped_column(Date)
     duration_days: Mapped[int | None] = mapped_column(Integer)
-    progress: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    progress: Mapped[Porcentaje] = mapped_column(SmallInteger, nullable=False, default=0)
     is_milestone: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     owner_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
-    priority: Mapped[int | None] = mapped_column(SmallInteger)
+    priority: Mapped[Escala | None] = mapped_column(SmallInteger)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_started")
     # ENH-051: criticidad separada del concepto general de priority. Valores:
     # low | medium | high | critical (default medium). Check constraint en

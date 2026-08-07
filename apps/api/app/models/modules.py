@@ -14,6 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Escala, Severidad
 from app.db.base import Base, TimestampMixin, new_uuid
 
 
@@ -36,9 +37,9 @@ class Risk(Base, _ModuleBase, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "folio", name="uq_risks_tenant_folio"),)
 
     category: Mapped[str | None] = mapped_column(String(100))
-    probability: Mapped[int | None] = mapped_column(SmallInteger)
-    impact: Mapped[int | None] = mapped_column(SmallInteger)
-    severity: Mapped[int | None] = mapped_column(Integer)  # computed client-side for SQLite compat
+    probability: Mapped[Escala | None] = mapped_column(SmallInteger)
+    impact: Mapped[Escala | None] = mapped_column(SmallInteger)
+    severity: Mapped[Severidad | None] = mapped_column(Integer)  # computed client-side for SQLite compat
     mitigation_strategy: Mapped[str | None] = mapped_column(String(5000))
     owner_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
     # ENH-079: owner como Actor del catálogo (FK actors). Coexiste con
@@ -77,7 +78,7 @@ class Issue(Base, _ModuleBase, TimestampMixin):
     type: Mapped[str] = mapped_column(String(32), nullable=False)  # action/issue/decision
     # ENH-177: categoría libre (alineación con Risk.category).
     category: Mapped[str | None] = mapped_column(String(100))
-    priority: Mapped[int | None] = mapped_column(SmallInteger)
+    priority: Mapped[Escala | None] = mapped_column(SmallInteger)
     reported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     committed_date: Mapped[date | None] = mapped_column(Date)
     resolution: Mapped[str | None] = mapped_column(String(5000))

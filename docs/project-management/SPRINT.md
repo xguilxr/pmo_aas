@@ -45,29 +45,33 @@ El plan completo, con el registro de los 97 abiertos y la evidencia por
 requisito, está en **`docs/conformidad/plan-remediacion.md`**. El estado se
 recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
 
-- [x] **Olas 0 y 1 — hechas el 2026-08-05.** De 45 a 41 sin escribir producto
-  (el registro no se había enterado de cuatro cierres), y `main` protegida.
-  Detalle en `plan-remediacion.md` y en los informes fechados.
-- [x] **Ola 2 — hecha el 2026-08-06.** De **41 a 32** bloqueantes, once commits
-  con prueba y verificación por mutación. Cierran `SEG-05`, `OPS-01`, `DEV-04`,
-  `CFG-04`, `DIS-01`+`CFG-14`, `DOC-01`, `DOC-03`, `DAT-04`+`DAT-08`, `DAT-12`,
-  y `DAT-05` **vuelve a cerrar** — estaba CONFORME sobre una lista escrita a
-  mano y quedaba una quinta paleta, en el acta que se firma. `DAT-06` cerró
-  entero el mismo día (ver Ola 3); sigue PARCIAL `LEN-02` (177→**166**, con el
-  mecanismo ya puesto). **`DAT-02`, `DIS-03` y `DAT-11` se reclasifican**: no
-  son mecánicos, y ahora están medidos. Detalle en `plan-remediacion.md`.
-- [ ] **Ola 3 — necesita postura del owner.** Alcance de competencia
-  (`CON-01/03/05`), escenarios de calidad con medida (`REQ-02`), inventario de
-  datos personales (`REQ-03`), fichas de indicador (`DAT-01/10`), almacén de
-  secretos (`SEG-02`), estrategia de pruebas (`DEV-02/03` — hoy **cero** en
-  frontend), artefacto de canalización (`SUM-01`), entornos y copias
-  (`INF-02/03`, `DES-02`). Se le suman de la Ola 2: `DAT-02` (renombres con
-  migración), `DIS-03` y `DAT-11` (épica de producto).
-  **Hechos ya:** `SEG-04` —la única CRÍTICA, autorización sobre el objeto— y
-  `DAT-06` (`amber_max` → `yellow_max`, ADR-030 y migración 0101).
+- [x] **Olas 0, 1 y 2 — 2026-08-05/06.** De 45 a 32 bloqueantes. Las dos
+  primeras sin escribir producto (el registro no se había enterado de cuatro
+  cierres) y `main` protegida; la tercera, once commits con prueba y
+  verificación por mutación. `DAT-05` **volvió a cerrar**: estaba CONFORME
+  sobre una lista escrita a mano y quedaba una quinta paleta, en el acta que se
+  firma. `DAT-02`, `DIS-03` y `DAT-11` se reclasificaron ahí —no eran
+  mecánicos— y hoy están medidos.
+- [ ] **Ola 3 — en curso (2026-08-06).** Cerradas: `SEG-04` (la única CRÍTICA),
+  `DAT-06`, `DAT-10`, `SEG-02`, `SUM-01`, `DEV-03`, `REQ-03`, `CON-01/03`,
+  `LEN-03`, `CFG-01/06`, `ARQ-04`, `IA-02`, `DIS-04`, `DOC-02`, `OPS-02`,
+  `INF-03`, `INF-02`, `DES-02`, `DAT-01`, `DAT-02`. Quedan las que el owner
+  pidió cerrar en el lote del 2026-08-06.
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto
+
+- [ ] **BUG-092 — la moneda del inquilino no llega a la presentación.**
+  `tenant.settings.currency` ofrece MXN, USD y EUR; el formulario que la guarda
+  es el único sitio que la lee. Las **diez** superficies que muestran dinero
+  traen `currency: "MXN"` escrito (`kpi-card`, `dashboard`, `request-form`,
+  `pmo/projects`, `pmo/requests`, `programs`, `dashboard-charts`), y dos
+  rótulos dicen «Presupuesto (MXN)» en duro. Un inquilino en dólares —el propio
+  `seed.py` crea uno— ve sus importes rotulados en pesos. Salió al medir
+  DAT-02; el arreglo es una frontera nombrada (`lib/moneda.ts`) alimentada por
+  `/me/tenant-branding`, como `org_label`. **Es decisión de producto** si se
+  cablea o se retira el ajuste, así que no se toca sin OK. Mientras tanto,
+  DAT-01 declara MXN como unidad canónica con el disparador escrito.
 
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.

@@ -26,6 +26,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Importe
 from app.db.base import Base, TimestampMixin, new_uuid
 
 
@@ -254,4 +255,4 @@ class Actor(Base, TimestampMixin):
     is_shared_resource: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
-    fte_cost_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    fte_cost_rate: Mapped[Importe | None] = mapped_column(Numeric(10, 2))

@@ -23,6 +23,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.magnitudes import Importe, PorcentajeDecimal
 from app.db.base import Base, TimestampMixin, new_uuid
 
 
@@ -60,15 +61,15 @@ class MetricSnapshot(Base, TimestampMixin):
     health_red: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # --- Avance ---
-    avg_progress: Mapped[float] = mapped_column(
+    avg_progress: Mapped[PorcentajeDecimal] = mapped_column(
         Numeric(5, 2), nullable=False, default=0
     )
 
     # --- Presupuesto ---
-    budget_plan: Mapped[float] = mapped_column(
+    budget_plan: Mapped[Importe] = mapped_column(
         Numeric(16, 2), nullable=False, default=0
     )
-    budget_actual: Mapped[float] = mapped_column(
+    budget_actual: Mapped[Importe] = mapped_column(
         Numeric(16, 2), nullable=False, default=0
     )
 
