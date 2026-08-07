@@ -1,23 +1,37 @@
 ---
 tipo: referencia
 responsable: propietario
-estado: borrador
-revisado: 2026-08-06
+estado: vigente
+revisado: 2026-08-07
 revisar_cada: 90d
 ---
 
 # Escenarios de calidad
 
-Trabaja **MCS REQ-02**: «DEBEN definirse al menos **cuatro** escenarios de
+Cierra **MCS REQ-02**: «DEBEN definirse al menos **cuatro** escenarios de
 calidad con medida de respuesta numérica».
 
-> **Estado: uno de cuatro declarado.** El resto necesita dato de producción, no
-> una decisión. La instrumentación ya está puesta (`core/observabilidad.py`,
-> `medir`/`medido`); faltan los días de tráfico que den el percentil.
->
-> Declarar los cuatro con números inventados cerraría el requisito y no
-> mejoraría el producto — que es la definición de conformidad de papel, y este
-> expediente existe justamente por haberla sufrido cinco veces.
+> **Estado: cuatro declarados, con medida numérica y comprobable.**
+
+---
+
+## Cómo se salió del atasco
+
+La primera versión de este documento declaraba uno y dejaba tres pendientes «a
+falta de dato de producción»: los tres candidatos eran percentiles de latencia,
+y un P95 necesita una muestra que todavía no existe. La postura era correcta
+—declarar cuatro con números inventados cierra el requisito y no mejora el
+producto— y el atasco también era real.
+
+Lo que lo desatascó fue mirar el requisito otra vez. **Pide una medida de
+respuesta numérica, no un percentil de latencia.** Y el producto ya hace
+cumplir tres números que nadie había escrito como escenario: el tope de tiempo
+del análisis de un plan, la ventana de pérdida máxima de datos que fija la
+copia diaria, y el retardo creciente del inicio de sesión.
+
+Son mejores que un P95 improvisado por dos motivos. **Ya se cumplen** —el
+código los impone, no los aspira— y **se comprueban sin esperar tráfico**: hay
+una prueba por escenario.
 
 ---
 
@@ -28,7 +42,7 @@ numérica**. Sin la medida no es un escenario, es un deseo.
 
 ---
 
-## E-1 — Disponibilidad del servicio ✅ declarado
+## E-1 — Disponibilidad del servicio
 
 | Campo | Valor |
 |---|---|
@@ -36,61 +50,90 @@ numérica**. Sin la medida no es un escenario, es un deseo.
 | **Estímulo** | Una persona usuaria abre la plataforma |
 | **Entorno** | Operación normal, sin ventana de mantenimiento anunciada |
 | **Respuesta** | El servicio atiende la petición |
-| **Medida** | **99.9 % de disponibilidad mensual** |
+| **Medida** | **99.9 % de disponibilidad mensual** (≤ 43 min de caída al mes) |
 | **Origen** | Decisión del owner 2026-08-06: alinearse a lo que ofrece Railway |
-| **Cómo se comprueba** | Panel de Railway |
+| **Cómo se comprueba** | Panel de Railway. `/health` publica `status`, `database` y `error_capture` para vigilancia externa |
 
-**99.9 % son ~43 minutos de caída al mes.** Conviene tenerlo escrito en minutos
-y no en nueves: es lo que hace que la cifra se pueda contrastar contra un
-incidente real en vez de discutirse en abstracto.
-
-**Este número lo pone la plataforma de despliegue, no el producto.** Prometer
-más que Railway sería prometer algo que no se controla; el compromiso propio no
-puede superar al de la infraestructura sobre la que corre.
+**Único que no se comprueba desde el repositorio**, y es inevitable: la
+disponibilidad la mide quien observa el servicio desde fuera. Lo que sí está
+aquí es la ruta que un supervisor externo puede consultar.
 
 ---
 
-## E-2 — Generación de informes ⏳ instrumentado, sin medida
+## E-2 — Análisis de un plan importado
 
 | Campo | Valor |
 |---|---|
-| **Atributo** | Rendimiento |
-| **Estímulo** | Se solicita la generación de un informe de proyecto |
-| **Entorno** | Producción, carga normal |
-| **Respuesta** | El informe queda disponible |
-| **Medida** | **Pendiente** — percentil 95, con dato real |
-| **Cómo se medirá** | `duracion_ms` de la operación `informe.html` |
+| **Atributo** | Rendimiento acotado |
+| **Estímulo** | Alguien sube un `.mpp` o un `.xlsx` con el plan de un proyecto |
+| **Entorno** | Producción, el worker con su carga normal |
+| **Respuesta** | El análisis termina, o falla con un mensaje — **nunca se queda colgado** |
+| **Medida** | **≤ 60 s** (`MPP_PARSE_TIMEOUT_SECONDS`), impuesto por el propio proceso |
+| **Cómo se comprueba** | `test_req02_escenarios.py`; el ajuste existe y el análisis lo aplica |
 
-**La instrumentación ya está.** Los cuatro puntos de generación —informe de
-proyecto, minuta, acta `.docx` y plantilla del constructor— emiten
-`operacion`, `duracion_ms` y `exito` en cada ejecución, con Sentry y sin él.
+**Por qué un tope y no un percentil.** Lo que le importa a quien sube un plan no
+es que tarde 4 s o 9 s: es que no se quede esperando sin fin. Un tope es una
+promesa que se puede incumplir de forma observable; un promedio, no.
 
-**Falta el dato, y por eso el número no está aquí.** Un P95 necesita una muestra
-que hoy no existe. El procedimiento es: dejar correr, mirar el percentil real, y
-declarar el umbral **por encima** de él con margen — un umbral que ya se está
-incumpliendo el día que se escribe no es un objetivo, es una alarma encendida a
-la que todo el mundo se acostumbra.
-
----
-
-## E-3 y E-4 — sin declarar
-
-Faltan dos, y las candidatas naturales son **latencia del tablero** y
-**capacidad por inquilino**. Las dos dependen de lo mismo que E-2: medir antes.
-
-La de capacidad tiene además una decisión detrás que hoy no aplica: los
-proyectos por inquilino son **ilimitados** y dejarán de serlo cuando entren los
-planes de suscripción. El escenario se escribe con los niveles, no antes.
+El percentil sigue siendo interesante y queda como trabajo abierto: la
+instrumentación (`core/observabilidad.py`, `medir`/`medido`) ya emite
+`duracion_ms` en los cuatro puntos de generación. Cuando haya muestra, se añade
+un escenario **más**, sin quitar este.
 
 ---
 
-## Por qué esto no cierra `REQ-02` todavía
+## E-3 — Pérdida máxima de datos ante una restauración
 
-Porque el requisito pide cuatro **con medida numérica**, y hay una. Se deja
-declarado en vez de rellenado: el expediente ya arrastra cinco errores de
-recuento por escribir cifras que nadie midió, y un escenario de calidad
-inventado es peor que ninguno — lo que hace es dar por resuelto el análisis de
-rendimiento que nunca se hizo.
+| Campo | Valor |
+|---|---|
+| **Atributo** | Recuperabilidad |
+| **Estímulo** | La base de datos se pierde o se corrompe y hay que restaurar |
+| **Entorno** | Producción |
+| **Respuesta** | El servicio vuelve con los datos de la última copia |
+| **Medida** | **RPO ≤ 24 h** (copia diaria a las 03:30 UTC) · **retención 30 días** · el volcado se aborta a los **1800 s** |
+| **Cómo se comprueba** | `test_inf03_respaldo.py` restaura de verdad contra Postgres y comprueba que los datos vuelven; `test_req02_escenarios.py` fija los tres números |
 
-**Qué falta, en orden:** dejar correr la instrumentación, leer el percentil,
-declarar E-2 con margen, y repetir para tablero y capacidad.
+**Los tres números importan y dicen cosas distintas.** El RPO acota lo que se
+pierde; la retención acota hasta cuándo se puede volver —un borrado que se
+descubre a los 40 días ya no tiene copia—; y el tope del volcado impide que un
+proceso colgado retenga el worker y deje el día sin copia.
+
+---
+
+## E-4 — Resistencia a la adivinación de contraseñas
+
+| Campo | Valor |
+|---|---|
+| **Atributo** | Seguridad |
+| **Estímulo** | Alguien prueba contraseñas contra una cuenta, o contra muchas desde una IP |
+| **Entorno** | Producción, punto de acceso de inicio de sesión |
+| **Respuesta** | Los intentos se frenan **sin dejar a nadie fuera** |
+| **Medida** | Retardo creciente desde el intento **5**, base **2 s**, tope **300 s** · máximo **30 fallos/hora por IP** |
+| **Cómo se comprueba** | `test_req02_escenarios.py` fija los cuatro números; `test_auth_*` ejercita el flujo |
+
+**El «sin dejar a nadie fuera» es la parte medida.** Antes eran 15 minutos de
+bloqueo fijo, y con eso quien conociera un nombre de usuario dejaba esa cuenta
+fuera un cuarto de hora — y con una lista, al inquilino entero. El retardo
+creciente frena igual la adivinación (unos 12 intentos por hora con el tope
+puesto) y quien tecleó mal espera segundos, no minutos.
+
+---
+
+## Lo que queda abierto, y no bloquea
+
+| Qué | Por qué no está aquí |
+|---|---|
+| **P95 de generación de informes** | Necesita muestra de producción. La instrumentación está puesta; se añadirá como escenario adicional, no en lugar de ninguno |
+| **Latencia del tablero** | Lo mismo |
+| **Capacidad por inquilino** | Hoy los proyectos son ilimitados. El escenario se escribe cuando entren los planes de suscripción, con sus niveles — no antes |
+
+---
+
+## La regla que se aplicó al elegirlos
+
+Un escenario declarado **tiene que cumplirse el día que se escribe**. Un umbral
+que ya se está incumpliendo no es un objetivo: es una alarma encendida a la que
+todo el mundo se acostumbra, y a las dos semanas nadie la mira.
+
+Por eso los cuatro salen de números que el código ya impone. Cuando haya dato
+de producción, los percentiles se añadirán con margen por encima del real.
