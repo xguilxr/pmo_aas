@@ -52,6 +52,7 @@ from __future__ import annotations
 import logging
 import subprocess
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from app.core.config import settings
 
@@ -72,6 +73,23 @@ TIEMPO_MAXIMO_SEGUNDOS = 1800
 
 class RespaldoError(RuntimeError):
     """La copia no se pudo producir o no se pudo guardar."""
+
+
+def _cliente_s3() -> Any:
+    """El cliente de objetos, en un solo sitio y con la excusa escrita.
+
+    `document_storage._get_s3_client` no está anotado —es pasivo de la línea
+    base de `mypy --strict`— y llamarlo desde código tipado da
+    `no-untyped-call`. Anotarlo allí obligaría a verificar el cuerpo de ese
+    módulo entero, que es otro trabajo; concentrar aquí la única excepción
+    deja las dos funciones de abajo limpias y la deuda visible en una línea.
+
+    La importación va dentro porque `document_storage` arrastra `boto3`, y el
+    proceso web no debería pagarlo por importar este módulo.
+    """
+    from app.services.document_storage import _get_s3_client
+
+    return _get_s3_client()  # type: ignore[no-untyped-call]
 
 
 def clave_del_dia(momento: datetime | None = None) -> str:
@@ -139,9 +157,7 @@ def volcar() -> bytes:
 
 def guardar(datos: bytes, clave: str) -> None:
     """Sube el volcado al almacenamiento de objetos."""
-    from app.services.document_storage import _get_s3_client
-
-    _get_s3_client().put_object(
+    _cliente_s3().put_object(
         Bucket=settings.S3_BUCKET,
         Key=clave,
         Body=datos,
@@ -156,9 +172,7 @@ def limpiar_antiguos(hoy: datetime | None = None) -> int:
     retención que vive en su propio programado es una retención que alguien
     apaga sin darse cuenta, y lo que se descubre después es la factura.
     """
-    from app.services.document_storage import _get_s3_client
-
-    cliente = _get_s3_client()
+    cliente = _cliente_s3()
     corte = (hoy or datetime.now(UTC)) - timedelta(days=RETENCION_DIAS)
     listado = cliente.list_objects_v2(Bucket=settings.S3_BUCKET, Prefix=PREFIJO)
     borradas = 0
