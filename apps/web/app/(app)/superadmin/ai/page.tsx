@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
@@ -183,8 +184,7 @@ export default function SuperadminAIPage() {
                     : "Pegar la API key generada en console.groq.com."
                 }
               >
-                <Input
-                  type="password"
+                <PasswordInput
                   value={groqKey}
                   onChange={(e) => {
                     setGroqKey(e.target.value);

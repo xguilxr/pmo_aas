@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, type FormEvent } from "react";
-import { CheckCircle2, Eye, EyeOff, KeyRound, XCircle } from "lucide-react";
+import { CheckCircle2, KeyRound, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ApiError } from "@/lib/api";
 import { resetPassword } from "@/lib/auth";
 import { checkPasswordPolicy, passwordPolicyOk } from "@/lib/password";
@@ -18,7 +18,6 @@ function ResetInner() {
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [show, setShow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,33 +90,16 @@ function ResetInner() {
             >
               Nueva contraseña
             </label>
-            <div className="relative">
-              <Input
-                id="password"
-                name="password"
-                type={show ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                autoFocus
-                disabled={submitting}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShow((v) => !v)}
-                disabled={submitting}
-                aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
-                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
-              >
-                {show ? (
-                  <EyeOff className="h-4 w-4" aria-hidden />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden />
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              id="password"
+              name="password"
+              autoComplete="new-password"
+              required
+              autoFocus
+              disabled={submitting}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
 
           <div>
@@ -127,10 +109,9 @@ function ResetInner() {
             >
               Confirmar contraseña
             </label>
-            <Input
+            <PasswordInput
               id="confirm"
               name="confirm"
-              type={show ? "text" : "password"}
               autoComplete="new-password"
               required
               disabled={submitting}

@@ -75,9 +75,15 @@ controles:
       Campo `<input type=password>` estándar; nada bloquea pegar ni los
       gestores.
   "2.1.12":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No hay control para revelar temporalmente la contraseña escrita.
+      `components/ui/password-input.tsx` revela lo escrito y vuelve a ocultarlo
+      al perder el foco, con `aria-pressed` para que un lector de pantalla
+      anuncie el estado y no solo la acción. Lo usan los **doce** campos
+      enmascarados del producto. Antes el control estaba copiado a mano en
+      `login` y `reset` y faltaba en los nueve de `change-password`, `account`
+      y `superadmin/me` — las pantallas donde se elige contraseña nueva.
+      Trinquete: `scripts/check_password_input.py`, en el CI.
   "2.2.1":
     estado: CUMPLE
     evidencia: >-

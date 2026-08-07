@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ApiError } from "@/lib/api";
 import { login } from "@/lib/auth";
 import { getAccessToken } from "@/lib/auth-storage";
@@ -35,7 +36,6 @@ function LoginForm() {
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,33 +109,16 @@ function LoginForm() {
               >
                 Contraseña
               </label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  disabled={submitting}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  disabled={submitting}
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" aria-hidden />
-                  ) : (
-                    <Eye className="h-4 w-4" aria-hidden />
-                  )}
-                </button>
-              </div>
+              <PasswordInput
+                id="password"
+                name="password"
+                autoComplete="current-password"
+                required
+                disabled={submitting}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
             </div>
 
             {error ? (

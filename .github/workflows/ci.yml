@@ -111,6 +111,12 @@ jobs:
       - name: Subrecursos externos con integridad (SEG-01 · ASVS 10.3.2)
         run: python scripts/check_subrecursos.py
 
+      # ASVS 2.1.12 — el control existía copiado a mano en dos pantallas y
+      # faltaba en las nueve donde se elige contraseña nueva. Una copia por
+      # pantalla es cómo se llega ahí.
+      - name: Campos de contraseña revelables (SEG-01 · ASVS 2.1.12)
+        run: python scripts/check_password_input.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #

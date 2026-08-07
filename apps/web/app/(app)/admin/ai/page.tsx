@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -744,9 +745,8 @@ function ActiveConnectionEditForm({
         >
           API key
         </label>
-        <Input
+        <PasswordInput
           id="edit-key"
-          type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={byo.api_key_mask ?? "Pega una nueva key"}
@@ -1109,9 +1109,8 @@ function WizardKey({
           <KeyRound className="h-3.5 w-3.5" aria-hidden />
           API key
         </label>
-        <Input
+        <PasswordInput
           id="wiz-key"
-          type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           autoComplete="off"

@@ -7,6 +7,7 @@ import { NotificationPreferencesSection } from "@/components/notification-prefer
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { setStoredUser, getStoredUser } from "@/lib/auth-storage";
@@ -195,9 +196,8 @@ function PasswordSection() {
           >
             Contraseña actual
           </label>
-          <Input
+          <PasswordInput
             id="current"
-            type="password"
             autoComplete="current-password"
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
@@ -213,9 +213,8 @@ function PasswordSection() {
           >
             Nueva contraseña
           </label>
-          <Input
+          <PasswordInput
             id="new"
-            type="password"
             autoComplete="new-password"
             value={next}
             onChange={(e) => setNext(e.target.value)}
@@ -250,9 +249,8 @@ function PasswordSection() {
           >
             Confirmar nueva contraseña
           </label>
-          <Input
+          <PasswordInput
             id="confirm"
-            type="password"
             autoComplete="new-password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
