@@ -494,9 +494,19 @@ controles:
       `05-DATOS-PERSONALES.md` §5 llamaba «la más seria de este inventario».
       Suite `test_seg01_asvs832_datos_personales.py`.
   "8.3.3":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No hay texto de consentimiento ni aceptación explícita en el alta.
+      Aviso de privacidad versionado (`services/aviso_privacidad.py`, seis
+      apartados derivados del inventario de `05-DATOS-PERSONALES.md`) y
+      aceptación explícita en el **primer inicio de sesión** — decisión del
+      owner: no hay alta por autoservicio donde poner una casilla, porque las
+      cuentas las crea un administrador. Se guarda fecha **y versión**: con
+      solo la fecha, «aceptó» dice cuándo y no qué, y al cambiar el aviso no
+      habría forma de saber a quién volver a preguntarle. Al subir la versión,
+      la pantalla vuelve a salir. La versión la fija el servidor, no el
+      cliente. Nulable a propósito: las cuentas anteriores al aviso no han
+      aceptado nada y rellenarlas habría fabricado un consentimiento. Migración
+      0105, suite `test_seg01_asvs833_consentimiento.py`.
   "8.3.4":
     estado: CUMPLE
     evidencia: >-
