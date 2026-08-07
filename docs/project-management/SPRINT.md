@@ -52,11 +52,16 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   sobre una lista escrita a mano y quedaba una quinta paleta, en el acta que se
   firma. `DAT-02`, `DIS-03` y `DAT-11` se reclasificaron ahí —no eran
   mecánicos— y hoy están medidos.
-- [ ] **Ola 3 — en curso (2026-08-06).** Cerradas: `SEG-04` (la única CRÍTICA),
-  `DAT-06`, `DAT-10`, `SEG-02`, `SUM-01`, `DEV-03`, `REQ-03`, `CON-01/03`,
-  `LEN-03`, `CFG-01/06`, `ARQ-04`, `IA-02`, `DIS-04`, `DOC-02`, `OPS-02`,
-  `INF-03`, `INF-02`, `DES-02`, `DAT-01`, `DAT-02`. Quedan las que el owner
-  pidió cerrar en el lote del 2026-08-06.
+- [x] **Ola 3 — cerrada el 2026-08-07.** De 32 bloqueantes de N1 a **1**.
+  Cierran `SEG-04`, `DAT-06`, `DAT-10`, `SEG-02`, `SUM-01`, `DEV-03`, `REQ-03`,
+  `CON-01/02/03/05`, `LEN-02` (166→**0**), `LEN-03`, `CFG-01/06`, `ARQ-04`,
+  `IA-02`, `DIS-04`, `DOC-02`, `OPS-02`, `INF-02/03`, `DES-02`, `DAT-01/02/09/11`,
+  `DIS-03`, `DEV-02`, `REQ-01/02`.
+  **Queda `SEG-01`, y sigue PARCIAL a propósito:** el mapeo ASVS L1 completo
+  (127 controles) se hizo el 2026-08-07 y salieron **19 huecos**. Seis son una
+  sola decisión de producto —política de contraseñas: ASVS pide 12 sin reglas de
+  composición, el producto pide 8 con ellas— y dos son el token en
+  `localStorage`. Lista en `docs/conformidad/asvs-l1.md`. **Necesita al owner.**
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto
