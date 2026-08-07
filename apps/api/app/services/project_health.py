@@ -33,6 +33,14 @@ from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.unidades import fraccion_a_pct, pct_a_fraccion, razon_a_pct
+from app.dominio.salud import (
+    color_de_cronograma,
+    color_de_decisiones,
+    color_de_presupuesto,
+    color_de_riesgos,
+    peor_color,
+    umbrales_efectivos,
+)
 from app.models.area import Actor
 from app.models.modules import Issue, Risk
 from app.models.project import Project
@@ -56,110 +64,25 @@ DIMENSION_LABELS: dict[str, str] = {
     "resources": "Recursos",
 }
 
-#: Calibración del owner, 2026-08-05 (D-4). Dos criterios detrás de los números:
-#:
-#: 1. **El amarillo no puede dispararse con el primer caso.** Cuatro de las cinco
-#:    dimensiones ponían el piso en 0 o 1 —un riesgo severo, una decisión
-#:    estancada, cualquier sobreasignación mayor que cero—, y en una cartera real
-#:    eso deja casi todo en amarillo permanente. Un semáforo que siempre está
-#:    amarillo dejó de informar, que es peor que no tenerlo.
-#: 2. **Los rojos se mueven poco.** El rojo ya discriminaba; lo que no
-#:    discriminaba era el amarillo.
-#:
-#: Son un punto de partida razonado, **no medido contra una cartera real**. Por
-#: eso son configurables por inquilino (`tenant.settings.health_thresholds`): si
-#: los datos dicen otra cosa, se ajustan sin tocar código.
-DEFAULT_HEALTH_THRESHOLDS: dict[str, dict[str, float]] = {
-    "schedule": {
-        "yellow_overdue_pct": 10,
-        "red_overdue_pct": 25,
-        "yellow_overdue_milestones": 1,
-        # 3 → 2: tres hitos perdidos es enterarse tarde.
-        "red_overdue_milestones": 2,
-    },
-    # El presupuesto ya no se mide contra sí mismo, sino contra el avance.
-    # Ver `_budget_dimension`.
-    "budget": {"yellow_burn_index": 1.15, "red_burn_index": 1.30},
-    "risks": {
-        # 1 → 2: un riesgo severo (P×I ≥ 13) es la operación normal de un
-        # proyecto vivo, no una señal.
-        "yellow_severe": 2,
-        "red_severe": 3,
-        "yellow_open_issues": 8,
-        "red_open_issues": 15,
-    },
-    # 1 → 2: una decisión esperando no vuelve amarillo un proyecto entero.
-    "decisions": {"stale_days": 14, "yellow_stale": 2, "red_stale": 3},
-    # Antes vivían en `tenant.settings.capacity_thresholds`, otra llave, y las
-    # dos cuentas estaban escritas a fuego en `capacity.py`. Un administrador
-    # que quisiera ajustar la salud tenía que saber que una de las cinco
-    # dimensiones se configuraba en otro sitio, y eso no lo adivina nadie.
-    #
-    # `capacity_thresholds` sigue existiendo para la **vista de capacidad**, que
-    # responde otra pregunta: allí se colorea a una *persona*, aquí a un
-    # *proyecto*. Que el proyecto sea más tolerante (5 pp) que la vista de
-    # personas (0 pp) es deliberado: alguien 3 pp por encima merece salir en la
-    # pantalla de capacidad, no volver amarillo el proyecto.
-    "resources": {
-        "yellow_over": 5,
-        "red_over": 15,
-        "yellow_overloaded_count": 3,
-        "red_key_overloaded": 1,
-    },
-}
-
-
-def get_health_thresholds(tenant: Tenant | None) -> dict[str, dict[str, float]]:
-    """Umbrales efectivos: defaults con override por tenant (deep-merge
-    tolerante — claves desconocidas o valores no numéricos se ignoran)."""
-    merged = {dim: dict(vals) for dim, vals in DEFAULT_HEALTH_THRESHOLDS.items()}
-    raw = ((tenant.settings or {}).get("health_thresholds")) if tenant else None
-    if isinstance(raw, dict):
-        for dim, vals in raw.items():
-            if dim in merged and isinstance(vals, dict):
-                for k, v in vals.items():
-                    if k in merged[dim] and isinstance(v, (int, float)) and not isinstance(v, bool):
-                        merged[dim][k] = v
-    return merged
+# MCS DEV-02 — las reglas del semáforo viven en `app/dominio/salud.py`, que no
+# puede importar SQLAlchemy ni los modelos. Aquí se quedan las CONSULTAS: contar
+# los vencidos, los riesgos severos y las decisiones estancadas. Los alias de
+# abajo conservan los nombres con los que el resto del código las llamaba.
+_schedule_color = color_de_cronograma
+_budget_color = color_de_presupuesto
+_risks_color = color_de_riesgos
+_decisions_color = color_de_decisiones
 
 
 def worst_color(colors: list[str | None]) -> str:
-    present = [c for c in colors if c in _COLOR_RANK]
-    if not present:
-        return "green"
-    return max(present, key=lambda c: _COLOR_RANK[c])
+    """Alias del dominio. Se conserva el nombre porque lo usan seis módulos."""
+    return peor_color(colors)
 
 
-def _schedule_color(t: dict[str, float], overdue_pct: float, overdue_ms: int) -> str:
-    if overdue_ms >= t["red_overdue_milestones"] or overdue_pct >= t["red_overdue_pct"]:
-        return "red"
-    if overdue_ms >= t["yellow_overdue_milestones"] or overdue_pct >= t["yellow_overdue_pct"]:
-        return "yellow"
-    return "green"
-
-
-def _budget_color(t: dict[str, float], burn_index: float) -> str:
-    if burn_index >= t["red_burn_index"]:
-        return "red"
-    if burn_index >= t["yellow_burn_index"]:
-        return "yellow"
-    return "green"
-
-
-def _risks_color(t: dict[str, float], severe: int, open_issues: int) -> str:
-    if severe >= t["red_severe"] or open_issues >= t["red_open_issues"]:
-        return "red"
-    if severe >= t["yellow_severe"] or open_issues >= t["yellow_open_issues"]:
-        return "yellow"
-    return "green"
-
-
-def _decisions_color(t: dict[str, float], stale: int) -> str:
-    if stale >= t["red_stale"]:
-        return "red"
-    if stale >= t["yellow_stale"]:
-        return "yellow"
-    return "green"
+def get_health_thresholds(tenant: Tenant | None) -> dict[str, dict[str, float]]:
+    """Umbrales efectivos del inquilino. La regla está en el dominio; lo que
+    esta función añade es sacar los ajustes de la fila."""
+    return umbrales_efectivos(tenant.settings if tenant else None)
 
 
 async def _schedule_dimension(
