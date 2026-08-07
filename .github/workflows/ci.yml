@@ -100,6 +100,11 @@ jobs:
       - name: Criterio de aceptación verificable (REQ-01)
         run: python scripts/check_criterios.py
 
+      # MCS SEG-01 — el mapeo contra ASVS L1 está completo y los huecos no
+      # crecen. Los 127 controles del catálogo, uno por uno.
+      - name: Mapeo OWASP ASVS nivel 1 (SEG-01)
+        run: python scripts/check_asvs.py
+
   # Auditoría MCS R1 2026-08-04 — cierra DIS-02 (toda combinación semántica de
   # texto y fondo DEBE alcanzar WCAG 2.2 AA).
   #
