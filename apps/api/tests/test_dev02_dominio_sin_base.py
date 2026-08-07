@@ -77,7 +77,7 @@ def test_el_dominio_no_importa_la_base() -> None:
     la decisión, que es el modo de fallo de un control validándose contra su
     propia documentación.
     """
-    PROHIBIDOS = ("sqlalchemy", "app.models", "app.db")
+    prohibidos = ("sqlalchemy", "app.models", "app.db")
     infractores: list[str] = []
 
     for archivo in sorted(DOMINIO.rglob("*.py")):
@@ -89,7 +89,7 @@ def test_el_dominio_no_importa_la_base() -> None:
             elif isinstance(nodo, ast.ImportFrom) and nodo.module:
                 modulos = [nodo.module]
             for modulo in modulos:
-                if any(modulo.startswith(p) for p in PROHIBIDOS):
+                if any(modulo.startswith(p) for p in prohibidos):
                     infractores.append(f"{archivo.name}: importa {modulo}")
 
     assert not infractores, (
