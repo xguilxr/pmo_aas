@@ -55,6 +55,7 @@ import {
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
 import { confirmarDestructivo } from "@/lib/confirmar";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 type Mode = "split" | "list" | "gantt";
 
@@ -2043,6 +2044,7 @@ function PlanInner() {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
             Plan
           </h1>
+          <MarcaDeDatos periodo="vivo" actualizado={new Date()} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button

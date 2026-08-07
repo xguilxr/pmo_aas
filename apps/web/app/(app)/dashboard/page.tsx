@@ -57,6 +57,7 @@ import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 const PHASE_LABEL: Record<string, string> = {
   planning: "Planificación",
@@ -132,6 +133,8 @@ function DashboardInner() {
   const orgFromUrl = searchParams.get("org_id") ?? "";
 
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(kpis);
   const [charts, setCharts] = useState<ChartsData | null>(null);
   const [loadingKpis, setLoadingKpis] = useState(true);
   const [loadingCharts, setLoadingCharts] = useState(true);
@@ -335,6 +338,7 @@ function DashboardInner() {
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
             Tablero, {user?.full_name || user?.username || "usuario"}
           </h1>
+          {leido && <MarcaDeDatos periodo="vivo" detalle="las tendencias vienen de instantáneas diarias" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             KPIs, salud del portafolio y Plan vs Real.
             {orgFilter

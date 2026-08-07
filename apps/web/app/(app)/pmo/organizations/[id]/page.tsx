@@ -15,6 +15,7 @@ import { Legend, PALETTE, Pie, RiskMatrix, serieColor, TrendLines } from "@/comp
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { useOrgLabel } from "@/lib/org-label";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import {
   downloadOrganizationOrganigrama,
   downloadOrgStatusReport,
@@ -53,6 +54,8 @@ export default function PmoOrganizationPage() {
   const { id } = useParams<{ id: string }>();
   const { canCreate, loading: permsLoading } = useMyPermissions();
   const [panel, setPanel] = useState<OrganizationPanelDetail | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(panel);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -219,6 +222,7 @@ export default function PmoOrganizationPage() {
           <h1 className="text-xl font-semibold text-[var(--color-primary)]">
             {panel.name}
           </h1>
+          {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             {[panel.industry, panel.country].filter(Boolean).join(" · ") ||
               "Sin datos de industria"}

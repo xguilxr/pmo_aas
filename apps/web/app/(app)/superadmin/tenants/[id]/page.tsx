@@ -27,6 +27,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { confirmarDestructivo } from "@/lib/confirmar";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import {
   getTenantDetail,
   hardDeleteTenant,
@@ -52,6 +53,8 @@ export default function TenantDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [data, setData] = useState<TenantDetail | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(data);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -198,6 +201,7 @@ export default function TenantDetailPage() {
           <ServerCog className="h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
           <div>
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">{tenant.name}</h1>
+            {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
             <div className="mt-0.5 flex items-center gap-2 text-xs">
               <span className="font-mono text-[var(--color-tertiary)]">{tenant.slug}</span>
               {!tenant.is_active ? <Badge variant="danger">Inactivo</Badge> : null}

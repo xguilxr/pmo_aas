@@ -139,6 +139,12 @@ jobs:
       - name: Avisos destructivos por la frontera (DIS-04)
         run: python scripts/check_confirmaciones.py
 
+      # MCS DAT-11 — todo número de indicador declara su periodo y su frescura.
+      # Va con los demás barridos de `apps/web`: lee archivos de texto y tarda
+      # milisegundos.
+      - name: Periodo y marca de actualización (DAT-11)
+        run: python scripts/check_frescura.py
+
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
   # COMPLETO) e INT-02 (análisis estático de seguridad, dependencias vulnerables

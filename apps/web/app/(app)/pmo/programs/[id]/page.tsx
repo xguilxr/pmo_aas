@@ -24,6 +24,7 @@ import {
   type TrendsResponse,
 } from "@/lib/api/analytics";
 import { getProgramSummary, type ProgramSummary } from "@/lib/api/organizations";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 type ProgramTab = "overview" | "reports";
 
@@ -110,6 +111,8 @@ export default function ProgramSummaryPage() {
   const portfolioHref = ctx === "admin" ? "/admin" : "/pmo";
   const portfolioLabel = ctx === "admin" ? "Admin" : "Portafolio";
   const [data, setData] = useState<ProgramSummary | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(data);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,6 +232,7 @@ export default function ProgramSummaryPage() {
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
               {data.name}
             </h1>
+            {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
             <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-tertiary)]">
               {data.organization_name ?? ""}
               {!data.is_active ? <Badge variant="danger">Inactivo</Badge> : null}

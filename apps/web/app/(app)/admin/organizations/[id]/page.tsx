@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
 import { useOrgLabel } from "@/lib/org-label";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import {
   getOrganizationPanel,
   type OrganizationPanelDetail,
@@ -87,6 +88,8 @@ function healthBadge(health: string | null) {
 export default function OrganizationPanelPage() {
   const params = useParams<{ id: string }>();
   const [data, setData] = useState<OrganizationPanelDetail | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(data);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const canEdit = userCanEdit();
@@ -162,6 +165,7 @@ export default function OrganizationPanelPage() {
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
               {data.name}
             </h1>
+            {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
             <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-tertiary)]">
               {[data.industry, data.country].filter(Boolean).join(" · ") ||
                 "Sin datos"}

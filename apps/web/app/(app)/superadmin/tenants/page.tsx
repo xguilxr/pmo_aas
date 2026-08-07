@@ -20,10 +20,13 @@ import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
 import { listTenants, type Tenant } from "@/lib/api/superadmin";
 import { cn } from "@/lib/cn";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 export default function TenantsListPage() {
   const user = getStoredUser();
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(tenants);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +65,7 @@ export default function TenantsListPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">Tenants</h1>
+          {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             Administra los clientes multi-tenant de la plataforma.
           </p>

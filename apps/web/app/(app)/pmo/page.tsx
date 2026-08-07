@@ -18,6 +18,7 @@ import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { useOrgLabel } from "@/lib/org-label";
 import { aplicarFuente, XLSX_FONT } from "@/lib/plan-template";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import {
   downloadPortfolioStatusReport,
   getHealthMatrix,
@@ -87,6 +88,8 @@ function MiniTrend({
 export default function PmoHome() {
   const router = useRouter();
   const [panels, setPanels] = useState<OrganizationPanel[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(panels);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -273,6 +276,7 @@ export default function PmoHome() {
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
             PMO
           </h1>
+          {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             Vista informativa del portafolio. Selecciona {orgLabel.singularArticled} para
             ver sus programas y proyectos. La gestión (CRUD) vive en{" "}
