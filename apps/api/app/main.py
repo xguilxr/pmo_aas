@@ -83,6 +83,23 @@ async def cabeceras_de_seguridad(request: Request, call_next):
       puede ser restrictiva sin riesgo. `/docs` y `/redoc` (Swagger y ReDoc)
       cargan JS y CSS desde CDN, así que se excluyen — son herramientas de
       desarrollo, no superficie de producto.
+    * `Cache-Control: no-store` en todo `/api/` (MCS SEG-01 · ASVS 8.2.1).
+      Antes no se emitía ninguna cabecera de caché, y sin ella la norma del
+      navegador es **heurística**: una respuesta sin `Cache-Control` ni
+      `Expires` puede guardarse en disco. Eso deja la cartera de un inquilino
+      —y su token en la URL de descarga— en el perfil del navegador después de
+      cerrar sesión, y en el disco de un equipo compartido.
+
+      `no-store` basta para los navegadores modernos, que es lo que pide el
+      control. No se añaden `Pragma: no-cache` ni `Expires: 0`: son para
+      intermediarios HTTP/1.0, aquí todo va por TLS a Railway, y una cabecera
+      que no protege de nada es ruido que el siguiente lector tiene que
+      descartar.
+
+      Va por `setdefault`, como las demás: el endpoint que quiera otra cosa la
+      declara en su propia respuesta y gana. Hoy hay **uno**, el logo del
+      inquilino (`branding.serve_tenant_logo`, `private, max-age=60`), y lo
+      fija su prueba.
     """
     respuesta = await call_next(request)
 
@@ -103,6 +120,9 @@ async def cabeceras_de_seguridad(request: Request, call_next):
             "Content-Security-Policy",
             "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
         )
+
+    if request.url.path.startswith("/api/"):
+        respuesta.headers.setdefault("Cache-Control", "no-store")
 
     return respuesta
 

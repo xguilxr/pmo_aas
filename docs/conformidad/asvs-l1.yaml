@@ -379,10 +379,15 @@ controles:
       `errors.py` devuelve un mensaje genérico sin traza; el detalle va al
       registro y a Sentry.
   "8.2.1":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No se emiten cabeceras anti-caché en las respuestas con datos de
-      inquilino.
+      `Cache-Control: no-store` en todo `/api/`, puesto por el middleware
+      `cabeceras_de_seguridad` (`app/main.py`). Sin cabecera de caché el
+      navegador decide por heurística y puede guardar la respuesta en disco.
+      Única excepción declarada: el logo del inquilino
+      (`branding.serve_tenant_logo`, `private, max-age=60`). Suite
+      `test_seg01_asvs821_anticache.py`, que además fija que la excepción siga
+      siendo una sola.
   "8.2.2":
     estado: HUECO
     evidencia: >-
