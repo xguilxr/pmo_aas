@@ -118,6 +118,39 @@ Parte está bien: el vocabulario está en [`02-GLOSARIO.md`](02-GLOSARIO.md), la
 semántica de estados y umbrales está en código y configuración, y las decisiones
 están en `docs/adr/`. Este documento añade la materia y la frontera.
 
-Lo que falta es el **contraste**: comprobar que lo que se le dice al modelo no
-contiene reglas de dominio que no existan en ningún otro sitio. Es una revisión
-de las instrucciones del asistente contra estos artefactos, y está pendiente.
+### El contraste, hecho el 2026-08-06
+
+Se revisaron las cuatro instrucciones de sistema (`MINUTE_SYSTEM`,
+`MINUTE_NORMALIZE_SYSTEM`, `REPORT_SYSTEM`, `ASSISTANT_SYSTEM`) contra el
+glosario, los modelos y los ADR. La mayor parte de su texto es **contrato de
+salida** —qué claves devolver, en qué orden, sin bloques de código— y eso no es
+conocimiento de dominio: es formato. Salieron dos cosas que sí lo eran.
+
+**1. La taxonomía RAID estaba versionada, y el glosario no la cubría.** Las
+cuatro categorías viven en `validator.ALLOWED_RAID_TYPES` y en
+`minutes_formatter.RAID_TYPE_ORDER`, así que en código estaban. Pero el §3 del
+glosario definía riesgo, incidencia, acción y lección aprendida — y **no
+mencionaba la decisión**, que es una de las cuatro que el producto implementa y
+que el modelo recibe en su instrucción. Dos artefactos versionados diciendo
+cosas distintas es la misma enfermedad con otra cara. Corregido: el glosario
+§3.4 la define, y una prueba mantiene unidos glosario, corpus y validador.
+
+**2. El mapa de señales existía solo en el prompt.** «se acordó» → Decisión,
+«preocupación» → Riesgo. Eso es criterio de dominio puro —la parte que un
+director de proyecto discutiría— y vivía únicamente dentro de una cadena de 180
+líneas. Es el caso exacto que el requisito nombra.
+
+Ahora vive en [`app/services/ai/corpus.py`](../../apps/api/app/services/ai/corpus.py),
+declarado en el glosario §3, y **la instrucción se genera desde ahí**. La
+diferencia práctica: cambiar una señal es cambiar un dato versionado con su
+historia en `git log`, no editar prosa dentro de un prompt. Un trinquete impide
+que la correspondencia vuelva a teclearse en `prompts.py`.
+
+### Lo que este contraste NO cubre
+
+No cubre el conocimiento que el modelo trae **de su propio entrenamiento**. Un
+modelo que sabe qué es un diagrama de Gantt lo sabe sin que este producto se lo
+diga, y eso no es implementable ni auditable desde aquí. Lo que CON-02 exige y
+lo que se cumple es que **el producto** no ponga reglas de dominio propias solo
+en el prompt; lo que el modelo aporte por su cuenta lo acota la frontera del §3
+y lo mide el conjunto de evaluación.

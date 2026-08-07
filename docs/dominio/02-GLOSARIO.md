@@ -185,6 +185,17 @@ a validar:
 
 El producto ya lo separa bien. Aquí se fija el vocabulario para que siga así.
 
+**Las cuatro categorías son A · R · D · I**, y es lo que el producto implementa
+(`validator.ALLOWED_RAID_TYPES`, `minutes_formatter.RAID_TYPE_ORDER`). La
+lección aprendida **no** es una de ellas: tiene registro propio y ritmo propio,
+y por eso está en §3.5 y no dentro del RAID.
+
+> **Corregido el 2026-08-06 (CON-02).** Este apartado definía riesgo,
+> incidencia, acción y lección, y **no mencionaba la decisión** — una de las
+> cuatro que el producto sí implementa y que el modelo sí recibe en su
+> instrucción. El artefacto de dominio y la implementación decían cosas
+> distintas, que es justo lo que CON-02 existe para impedir.
+
 ### 3.1 Riesgo
 
 **Preferente:** `riesgo` · **En código:** `risk`
@@ -213,7 +224,25 @@ responsable.
 Tarea de respuesta ante un riesgo o incidencia, con responsable y fecha comprometida. No es
 una tarea del cronograma: vive en el RAID.
 
-### 3.4 Lección aprendida
+### 3.4 Decisión
+
+**Preferente:** `decisión` · **En código:** `D` en el RAID de la minuta
+
+Elección tomada en la sesión que fija un curso de acción y **cierra una
+alternativa**.
+
+**Regla:** lo que la distingue de la acción es que no queda trabajo por hacer;
+queda un rumbo elegido. «Diego contactará a Paola» es acción; «se acordó
+mantener la flota» es decisión. Si de la decisión se desprende trabajo, el
+trabajo es una acción aparte.
+
+**Señales en un transcript:** «se acordó», «se decidió», «se confirma»,
+«decidimos», «queda pendiente decisión», «definición final». La lista viva
+—con las de las otras tres categorías— está en `app/services/ai/corpus.py`,
+que es de donde se genera la instrucción del modelo. Son criterio de dominio,
+no de formato: por eso se versionan aquí y no dentro de un prompt.
+
+### 3.5 Lección aprendida
 
 **Preferente:** `lección aprendida` · **En código:** `lesson`
 
