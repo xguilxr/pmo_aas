@@ -7,6 +7,7 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
+from app.core import cookies
 from app.core.config import settings
 from app.core.errors import (
     business_rule,
@@ -229,10 +230,11 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     from fastapi.responses import JSONResponse
 
     resp = JSONResponse(content=response.model_dump(mode="json"))
-    resp.set_cookie(
-        "refresh_token", refresh, httponly=True, secure=settings.PYTHON_ENV == "production",
-        samesite="strict", max_age=settings.REFRESH_TOKEN_TTL_SEC, path="/api/v1/auth",
-    )
+    # ASVS 3.4.4 — nombre, `Path` y `Secure` los decide `core/cookies.py`: el
+    # prefijo `__Host-` solo vale si van los tres juntos, y repartir esa regla
+    # por los endpoints es cómo se acaba emitiendo una cookie que el navegador
+    # tira sin decir nada.
+    cookies.fijar(resp, cookies.REFRESCO, refresh, max_age=settings.REFRESH_TOKEN_TTL_SEC)
     return resp
 
 
@@ -242,7 +244,7 @@ async def logout(
     cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    refresh = request.cookies.get("refresh_token")
+    refresh = cookies.leer(request, cookies.REFRESCO)
     if refresh:
         from app.core.security import decode_refresh_token
 
@@ -260,7 +262,7 @@ async def logout(
     from fastapi.responses import Response
 
     r = Response(status_code=204)
-    r.delete_cookie("refresh_token", path="/api/v1/auth")
+    cookies.borrar(r, cookies.REFRESCO)
     return r
 
 

@@ -185,9 +185,17 @@ controles:
     evidencia: >-
       `samesite` declarado en la cookie de refresco.
   "3.4.4":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      La cookie de refresco no usa el prefijo `__Host-`.
+      La cookie de refresco sale como `__Host-refresh_token` con las tres
+      condiciones que el prefijo exige —`Secure`, `Path=/`, sin `Domain`—,
+      puestas juntas en `app/core/cookies.py` para que no se puedan romper a
+      medias. El prefijo se emite donde puede emitirse `Secure` (producción);
+      en desarrollo se sirve por HTTP y una cookie `__Host-` no se guardaría.
+      Decisión: ADR-033. Ventana abierta para la cookie anterior
+      (`cookie:refresh_token`). Suite `test_seg01_asvs344_cookie_host.py`,
+      incluida la comprobación de que al cerrar sesión se borran las tres
+      formas posibles.
   "3.4.5":
     estado: NO APLICA
     evidencia: >-

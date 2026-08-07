@@ -1565,3 +1565,82 @@ sonaba generoso mientras por detrás había uno de 72 sin avisar.
 **Revisión:** ante el primer incidente de credenciales, o si entra
 autenticación de segundo factor (`4.3.1`), que cambia el peso de la contraseña
 en el conjunto.
+
+---
+
+## ADR-033 — Los tokens de sesión viven en cookies `__Host-`, no en `localStorage`
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** El mapeo ASVS L1 (SEG-01) dejó tres huecos sobre el mismo asunto
+—dónde guarda el navegador la sesión— y conviene decidirlos juntos porque una
+respuesta parcial no cierra ninguno:
+
+- `3.2.3` — los tokens de sesión se guardan «using secure methods». El de
+  acceso vivía en `localStorage`.
+- `8.2.2` — nada sensible en `localStorage`/`sessionStorage`. Ahí vivían el
+  token de acceso **y** el perfil del usuario.
+- `3.4.4` — las cookies de sesión usan el prefijo `__Host-`. La de refresco no
+  lo usaba.
+
+Lo que hacen `3.2.3` y `8.2.2` es cerrar la puerta al robo de sesión por
+script: cualquier XSS —propio o de una dependencia— lee `localStorage` con una
+línea. `HttpOnly` no hace mejor al token, hace que el script no pueda leerlo.
+
+`3.4.4` cierra otra puerta distinta y con frecuencia olvidada: sin el prefijo,
+**un subdominio puede sobrescribir la cookie del dominio padre**. Un panel de un
+proveedor colgado de `*.pmo-aas.com`, o un blog, bastan para plantar una cookie
+de sesión ajena. El prefijo lo impide porque lo impone el navegador, no
+nosotros.
+
+**Decisión.**
+
+1. El token de acceso deja `localStorage` y pasa a cookie `HttpOnly`,
+   `SameSite=Strict`, `Secure`, `Path=/`, sin `Domain`.
+2. Las dos cookies de sesión —acceso y refresco— llevan prefijo `__Host-` allí
+   donde puede emitirse `Secure`, es decir en producción. En desarrollo se
+   sirve por HTTP y una cookie `__Host-` **no se guardaría**: el nombre sigue la
+   misma condición que ya gobernaba `secure=`.
+3. El perfil del usuario deja de persistirse en `localStorage`. Se pide a
+   `/auth/me` al cargar y vive en memoria.
+4. Queda en `localStorage` lo que no es sensible ni autoriza nada: el tema
+   claro/oscuro, el idioma y el inquilino activo de un superadministrador —que
+   el servidor vuelve a comprobar en cada petición y por tanto no es una
+   credencial—.
+
+**Consecuencias.**
+
+- **Todas las sesiones vivas se cierran al desplegar.** El token de acceso que
+  el navegador tiene en `localStorage` deja de enviarse, y no hay cookie hasta
+  el siguiente inicio de sesión. Es coste de una vez y no hay forma de evitarlo:
+  migrarlo «en caliente» exigiría que el servidor leyera el token del sitio
+  inseguro para reemitirlo, que es justo lo que se está quitando.
+- Con `SameSite=Strict` el API deja de ser consumible desde otro origen por el
+  navegador. Es lo que se quiere; la web y el API se sirven bajo el mismo sitio.
+- La cabecera `Authorization` **se sigue aceptando** para el SDK y las
+  integraciones servidor a servidor, que no son un navegador y no tienen el
+  problema que esto resuelve.
+- Al no poder leer el token, el cliente web no puede inspeccionar su expiración:
+  la sesión caducada se descubre con un 401, que es como debía descubrirse.
+
+**Alternativas:**
+
+- *Dejar el token en `localStorage` y confiar en no tener XSS.* Es la postura
+  de hoy. El coste de equivocarse es la sesión completa de cada usuario, y la
+  superficie incluye toda dependencia de npm que entre en el paquete.
+- *`sessionStorage` en vez de `localStorage`.* Reduce la ventana a la pestaña,
+  no la cierra: un script inyectado la lee igual. `8.2.2` nombra las dos.
+- *Cookie sin prefijo `__Host-`.* Es lo que había. Deja abierta la
+  sobrescritura desde un subdominio, que es un ataque que ninguna comprobación
+  del servidor puede detectar — la cookie que llega es sintácticamente
+  perfecta.
+
+**Ventana de compatibilidad.** Al desplegar, los navegadores con sesión previa
+traen la cookie de refresco vieja (sin prefijo, `Path=/api/v1/auth`). Se acepta
+a la lectura y se anota (`compat.nombre_viejo`, clave `cookie:refresh_token`);
+al cerrar sesión se borran todas las formas, porque una cookie solo se borra
+desde el `Path` con que se creó. Se cierra con dato a los dos meses, como las
+demás.
+
+**Revisión:** si el API pasa a servirse desde un sitio distinto al de la web,
+`SameSite=Strict` deja de ser viable y hay que rehacer la decisión entera.
