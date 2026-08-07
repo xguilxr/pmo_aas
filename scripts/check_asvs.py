@@ -53,10 +53,18 @@ MAPEO = RAIZ / "docs" / "conformidad" / "asvs-l1.yaml"
 #: residuales aceptados del modelo de amenazas.
 ESTADOS = {"CUMPLE", "NO APLICA", "HUECO", "ACEPTADO"}
 
-#: Lo medido el 2026-08-07. El barrido falla si los huecos **crecen**; que
-#: encojan es el objetivo. Se fija aquí y no en el YAML para que bajarlo sea un
-#: cambio deliberado y no un efecto de reclasificar tres controles.
-HUECOS_MAXIMOS = 15
+#: Lo medido el 2026-08-07, **después** de cerrar doce de los quince que sacó el
+#: mapeo. El barrido falla si los huecos **crecen**; que encojan es el objetivo.
+#:
+#: Se fija aquí y no en el YAML para que bajarlo sea un cambio deliberado y no un
+#: efecto de reclasificar tres controles. Y se baja **al cerrar**, no antes: un
+#: tope por encima de la medición real deja sitio para que un hueco vuelva a
+#: aparecer sin que nada falle, que es la forma silenciosa de perder lo ganado.
+#:
+#: Los tres que quedan —`4.3.1` segundo factor de administración, `8.3.2`
+#: derechos de exportación y supresión, `8.3.3` consentimiento— son producto por
+#: construir, no configuración por ajustar. Están en `asvs-l1.md`.
+HUECOS_MAXIMOS = 3
 
 
 def main() -> int:

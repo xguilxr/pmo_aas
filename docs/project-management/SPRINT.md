@@ -54,11 +54,14 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   mecánicos— y hoy están medidos.
 - [x] **Ola 3 — cerrada el 2026-08-07.** De 32 bloqueantes de N1 a **1**; 31
   cierres con prueba y verificación por mutación. Detalle en el registro.
-  **Queda `SEG-01`, PARCIAL a propósito:** el mapeo ASVS L1 completo (127
-  controles) salió con **19 huecos**. Seis son una sola decisión de producto
-  —ASVS pide contraseñas de 12 sin reglas de composición; el producto pide 8 con
-  ellas— y dos son el token en `localStorage`. Lista en
-  `docs/conformidad/asvs-l1.md`. **Necesita al owner.**
+- [x] **Los quince huecos ASVS — doce cerrados el 2026-08-07**, uno por commit,
+  con prueba y verificación por mutación. El tope de `check_asvs.py` baja de 15
+  a 3. **`SEG-01` sigue PARCIAL**: quedan `4.3.1` (segundo factor de
+  administración), `8.3.2` (exportar/suprimir) y `8.3.3` (consentimiento), y los
+  tres son producto por construir con una decisión del owner delante. Detalle y
+  cuál es cada decisión, en `docs/conformidad/asvs-l1.md`.
+- [ ] **Al desplegar, ADR-033 cierra todas las sesiones vivas.** Coste de una
+  vez, inevitable.
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto

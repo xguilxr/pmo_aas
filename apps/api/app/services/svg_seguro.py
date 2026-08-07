@@ -159,7 +159,7 @@ def sanea(contenido: bytes) -> tuple[bytes, list[str]]:
     return ET.tostring(raiz, encoding="utf-8"), quitado
 
 
-def _limpia(nodo, quitado: list[str]) -> None:
+def _limpia(nodo: ET.Element, quitado: list[str]) -> None:
     for hijo in list(nodo):
         nombre = _local(hijo.tag)
         if nombre not in ELEMENTOS:

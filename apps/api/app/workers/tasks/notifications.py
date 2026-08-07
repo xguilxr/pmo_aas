@@ -102,8 +102,13 @@ async def _send(notification_id: str) -> dict:
         return {"sent": True, "provider_id": notif.email_provider_id}
 
 
-@celery_app.task(name="notifications.send_security_email", bind=True, max_retries=3)
-def send_security_email(self, to: str, subject: str, body: str) -> dict:
+# `celery_app.task` no está tipado, así que mypy da por no tipada a la función
+# que decora aunque lleve todas sus anotaciones. Es lo mismo que le pasa a
+# `send_notification_email`, que entró antes de que hubiera gate de tipos y por
+# eso vive en la línea base. Esta es nueva, así que se silencia el aviso del
+# decorador —y solo ese— en vez de sumarse al pasivo.
+@celery_app.task(name="notifications.send_security_email", bind=True, max_retries=3)  # type: ignore[misc]
+def send_security_email(self: object, to: str, subject: str, body: str) -> dict[str, object]:
     """Aviso de seguridad por correo, **sin** notificación in-app detrás.
 
     MCS SEG-01 · ASVS 2.2.3 y 2.5.5. Existe porque `send_notification_email`
@@ -124,7 +129,7 @@ def send_security_email(self, to: str, subject: str, body: str) -> dict:
     return run_async(_envia_aviso(to, subject, body))
 
 
-async def _envia_aviso(to: str, subject: str, body: str) -> dict:
+async def _envia_aviso(to: str, subject: str, body: str) -> dict[str, object]:
     html = build_email_html(title=subject, body=body, link=None)
     try:
         resp = await send_email_via_resend(to=to, subject=subject, html=html)
