@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getStoredUser, hasSession } from "@/lib/auth-storage";
 import { fetchMe } from "@/lib/auth";
 import { InactivityLock } from "@/components/inactivity-lock";
+import { AvisoPrivacidadGate } from "@/components/aviso-privacidad-gate";
 
 type Props = {
   children: ReactNode;
@@ -76,5 +77,9 @@ export function RequireAuth({ children, allowMustChangePassword = false }: Props
     );
   }
 
-  return <InactivityLock>{children}</InactivityLock>;
+  return (
+    <AvisoPrivacidadGate>
+      <InactivityLock>{children}</InactivityLock>
+    </AvisoPrivacidadGate>
+  );
 }

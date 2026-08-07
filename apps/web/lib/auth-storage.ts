@@ -49,6 +49,8 @@ export type StoredUser = {
   is_superadmin: boolean;
   must_change_password: boolean;
   roles: string[];
+  /** ASVS 8.3.3 — lo calcula el servidor contra la versión vigente del aviso. */
+  debe_aceptar_privacidad?: boolean;
 };
 
 function isBrowser(): boolean {

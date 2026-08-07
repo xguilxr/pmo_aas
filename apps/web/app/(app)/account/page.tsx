@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Check, KeyRound, UserCircle, X } from "lucide-react";
 
+import { MisDatosSection } from "@/components/mis-datos-section";
 import { NotificationPreferencesSection } from "@/components/notification-preferences-section";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -292,6 +293,7 @@ export default function AccountPage() {
       <ProfileSection />
       <PasswordSection />
       <NotificationPreferencesSection />
+      <MisDatosSection />
     </div>
   );
 }

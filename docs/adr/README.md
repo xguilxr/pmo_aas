@@ -1644,3 +1644,65 @@ demás.
 
 **Revisión:** si el API pasa a servirse desde un sitio distinto al de la web,
 `SameSite=Strict` deja de ser viable y hay que rehacer la decisión entera.
+
+---
+
+## ADR-034 — La supresión de datos personales anonimiza; no borra
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** `8.3.2` del mapeo ASVS pide «a method to remove **or** export
+their data on demand», y `05-DATOS-PERSONALES.md` §5 ya declaraba la falta de
+procedimiento como «la carencia más seria de este inventario». Al ir a
+construirlo aparece el choque: **borrar de verdad a una persona rompe dos cosas
+que este producto necesita**.
+
+- `audit_log` es de **solo anexado por diseño** (AM-08, con trinquete propio).
+  Es lo que permite reconstruir qué pasó ante un error o una disputa, y un
+  registro que se puede borrar por partes deja de servir para eso.
+- El historial de un proyecto es **dato del inquilino, no de la persona**. Quién
+  aprobó un cambio de alcance en marzo es información de la organización que
+  paga por la herramienta. Borrarla deja huecos en la trazabilidad de un tercero
+  que no ha pedido nada.
+
+**Decisión.** Se **anonimiza**: las filas se quedan y dejan de apuntar a nadie.
+Nombre, correo, usuario y preferencias se sustituyen por un seudónimo estable y
+no reversible, la cuenta queda inactiva, y el hash de contraseña se descarta. La
+exportación va **antes** en la pantalla, porque una vez anonimizado no hay forma
+de recuperar la copia.
+
+Es lo estándar en SaaS B2B y no un atajo: el RGPD (considerando 26) sostiene que
+un dato que ya no identifica a nadie deja de ser dato personal, y su art. 17.3
+reconoce que el derecho de supresión cede ante obligaciones de conservación. Es
+lo que hacen Atlassian, GitLab y Notion.
+
+**Consecuencias.**
+
+- El derecho se atiende sin romper la trazabilidad del inquilino, que es lo que
+  hacía irreconciliables las dos exigencias.
+- **El texto libre no se toca, y va escrito.** Una minuta que dice «lo comenta
+  Ana en la reunión» sigue diciéndolo. Barrerlo exigiría recorrer todo el
+  contenido de la plataforma con coincidencia difusa y decidir a mano cada
+  acierto. Se declara como límite —en el propio archivo exportado y en
+  `05-DATOS-PERSONALES.md`— en vez de fingir que no existe.
+- El seudónimo es **estable**: dos filas del mismo usuario anonimizado siguen
+  siendo del mismo, o el historial de un proyecto se vuelve incoherente. Y **no
+  reversible**: si se pudiera deshacer no sería anonimización sino ofuscación, y
+  el dato seguiría siendo personal. Por eso es un resumen y no el `user_id`, que
+  aparece en otras tablas y permitiría volver a cruzar.
+- Es irreversible, así que exige re-teclear el correo — el mismo patrón que el
+  borrado permanente de entidades.
+
+**Alternativas:**
+
+- *Borrado físico en cascada.* Lo que la palabra «suprimir» sugiere. Choca de
+  frente con `audit_log` y deja al inquilino con un historial roto que nadie le
+  pidió romper.
+- *Marcar la cuenta como inactiva y nada más.* Es lo que ya hacía el producto, y
+  no es supresión: el correo y el nombre siguen ahí.
+- *Exportación sola.* El control dice «remove **or** export», así que
+  técnicamente bastaría. Deja abierta la carencia que `05-DATOS-PERSONALES.md`
+  declaró como la más seria, que era justamente la de supresión.
+
+**Revisión:** si entra un requisito contractual de borrado físico, o si el
+inventario de datos personales suma una tabla que este procedimiento no cubra.

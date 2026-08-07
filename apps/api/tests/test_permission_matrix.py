@@ -47,6 +47,9 @@ PUBLIC_ENDPOINTS: set[tuple[str, str]] = {
     ("GET", "/health"),
     ("GET", "/api/v1/ping"),
     ("POST", "/api/v1/auth/login"),
+    # ASVS 8.3.3 — el aviso se lee sin cuenta a propósito; su porqué está
+    # declarado en `docs/architecture/amenazas.yaml`.
+    ("GET", "/api/v1/auth/aviso-privacidad"),
     ("POST", "/api/v1/auth/forgot-password"),  # US-063
     ("POST", "/api/v1/auth/reset-password"),  # US-063
     # US-113: landing pública de aprobación de cambios (token JWT en URL).

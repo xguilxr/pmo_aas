@@ -41,6 +41,8 @@ from app.schemas.auth import (
     UserOut,
 )
 from app.services.audit import write_audit
+from app.services.aviso_privacidad import VERSION as VERSION_AVISO
+from app.services.aviso_privacidad import acepto_lo_vigente, como_json
 from app.services.notifications import (
     PASSWORD_RESET_REQUESTED,
     avisa_cambio_de_credencial,
@@ -73,6 +75,7 @@ async def _build_user_out(db: AsyncSession, user: User) -> UserOut:
             "is_superadmin": user.is_superadmin,
             "must_change_password": user.must_change_password,
             "roles": list(role_names),
+            "debe_aceptar_privacidad": not acepto_lo_vigente(user.privacy_version),
         }
     )
 
@@ -320,6 +323,41 @@ async def change_password(
     from fastapi.responses import Response
 
     return Response(status_code=204)
+
+
+@router.get("/aviso-privacidad")
+async def aviso_privacidad():
+    """El texto del aviso. **Sin autenticar a propósito.**
+
+    La pantalla que lo muestra sale antes de que la persona haya aceptado nada,
+    y quien quiera leer qué se recoge sobre él antes de entrar tiene derecho a
+    hacerlo sin una cuenta. No hay nada de ningún inquilino aquí: es el mismo
+    texto para todo el mundo y cambia con el código.
+    """
+    return como_json()
+
+
+@router.post("/aceptar-privacidad", response_model=UserOut)
+async def aceptar_privacidad(
+    cu: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Registra el consentimiento de la versión vigente (ASVS 8.3.3).
+
+    Se guarda la versión que está en vigor **en el servidor**, no la que diga el
+    cliente: si la mandara el cliente, bastaría con enviar una versión antigua
+    para que la pantalla dejara de aparecer sin haber leído lo nuevo.
+
+    Queda en la auditoría porque un consentimiento es exactamente el tipo de
+    hecho que alguien puede tener que demostrar después.
+    """
+    cu.user.privacy_accepted_at = datetime.now(UTC)
+    cu.user.privacy_version = VERSION_AVISO
+    await write_audit(
+        db, action="privacy_accepted", module="auth", user_id=cu.id,
+        tenant_id=cu.user.tenant_id, details={"version": VERSION_AVISO},
+    )
+    await db.commit()
+    return await _build_user_out(db, cu.user)
 
 
 @router.get("/me", response_model=UserOut)

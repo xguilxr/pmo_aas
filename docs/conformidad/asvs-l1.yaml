@@ -480,10 +480,19 @@ controles:
       Las credenciales viajan en el cuerpo o en la cabecera; ningún dato
       sensible en la cadena de consulta.
   "8.3.2":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No hay exportación ni borrado de datos personales a petición; queda
-      anotado en 05-DATOS-PERSONALES.md §carencias.
+      Exportación en JSON (`GET /users/me/datos-personales`) y supresión por
+      **anonimización** (`POST /users/me/datos-personales/suprimir`), decisión
+      del owner en ADR-034: las filas se quedan y dejan de apuntar a nadie,
+      porque el borrado físico choca con `audit_log` —de solo anexado por
+      diseño, AM-08— y con el historial de los proyectos, que es dato del
+      inquilino y no de la persona. El seudónimo es estable y no reversible.
+      La supresión exige re-teclear el correo y cierra la sesión. Límite
+      declarado, no fingido: el texto libre que menciona a alguien por su
+      nombre no se barre. Cierra la carencia que
+      `05-DATOS-PERSONALES.md` §5 llamaba «la más seria de este inventario».
+      Suite `test_seg01_asvs832_datos_personales.py`.
   "8.3.3":
     estado: HUECO
     evidencia: >-
