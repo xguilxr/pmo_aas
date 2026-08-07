@@ -25,6 +25,7 @@ from app.services.analytics.snapshots import (
     aggregate_project_trends,
     snapshot_tenant,
 )
+from app.services.indicadores import avance_de_cartera
 from app.services.pdf_renderer import render_pdf
 from app.services.plan_metadata import round_half_up
 from app.services.progress_calculator import effective_progress_map
@@ -213,10 +214,10 @@ async def kpis(
         )
     active_proj_rows = (await db.execute(active_proj_stmt)).scalars().all()
     eff = await effective_progress_map(db, list(active_proj_rows))
-    # DAT-12 / ficha de indicador (owner 2026-08-06): sin proyectos NO es cero
-    # por ciento, es que no hay nada que promediar. Devolver 0 pintaba un
-    # tablero recién estrenado como una cartera parada en seco.
-    progress_avg = (sum(eff.values()) / len(eff)) if eff else None
+    # DAT-09: definición única en `indicadores.avance_de_cartera`. La regla
+    # —sin proyectos es «—» y no cero por ciento— vive ahí y no aquí, que es
+    # por lo que la instantánea diaria pudo quedarse sin ella.
+    progress_avg = avance_de_cartera(list(eff.values()))
 
     return {
         "active_projects": active_projects,

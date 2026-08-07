@@ -61,8 +61,12 @@ class MetricSnapshot(Base, TimestampMixin):
     health_red: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # --- Avance ---
-    avg_progress: Mapped[PorcentajeDecimal] = mapped_column(
-        Numeric(5, 2), nullable=False, default=0
+    # Nulable desde la migración 0103: sin proyectos activos NO es cero por
+    # ciento, es que no hay nada que promediar (ficha firmada 2026-08-06). La
+    # instantánea escribía 0 en los dos casos y la gráfica de tendencia
+    # dibujaba una caída a cero en carteras recién creadas.
+    avg_progress: Mapped[PorcentajeDecimal | None] = mapped_column(
+        Numeric(5, 2), nullable=True
     )
 
     # --- Presupuesto ---

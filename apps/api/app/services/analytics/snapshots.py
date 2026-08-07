@@ -26,6 +26,7 @@ from app.models.project import Project
 from app.models.project_request import ProjectRequest
 from app.models.task import Task
 from app.schemas.project import FASES_TERMINALES, ProjectPhase
+from app.services.indicadores import avance_de_cartera
 from app.services.progress_calculator import plan_rollup_map
 
 # ADR-022: se deriva del vocabulario en vez de repetirlo. Cuando D-2 renombró
@@ -133,14 +134,13 @@ async def compute_snapshot_values(
     # 0 para proyectos cuyo avance se deriva del plan, así que la "evolución de
     # avance" salía en 0 aunque el proyecto tuviera progreso real. El rollup
     # cubre proyectos con tareas; el resto cae al `progress` manual.
-    if active:
-        rollup = await plan_rollup_map(db, [str(r.id) for r in active])
-        prog_values = [
-            rollup.get(str(r.id), float(r.progress or 0)) for r in active
-        ]
-        values["avg_progress"] = round(sum(prog_values) / len(prog_values), 2)
-    else:
-        values["avg_progress"] = 0
+    # DAT-09: el promedio lo define `indicadores.avance_de_cartera`, no este
+    # archivo. Antes tenía su propia división y su propio `else 0`, y así es
+    # como la corrección de la ficha llegó al tablero y no aquí.
+    rollup = await plan_rollup_map(db, [str(r.id) for r in active]) if active else {}
+    values["avg_progress"] = avance_de_cartera(
+        [rollup.get(str(r.id), float(r.progress or 0)) for r in active]
+    )
     values["budget_plan"] = float(sum(float(r.budget or 0) for r in proj_rows))
     values["budget_actual"] = float(sum(float(r.actual_budget or 0) for r in proj_rows))
 

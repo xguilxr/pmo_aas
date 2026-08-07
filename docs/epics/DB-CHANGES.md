@@ -799,3 +799,34 @@ estaba.
 
 **Reversible**: `downgrade` quita índice y columna. Se pierde la distinción de
 lo registrado mientras estuvo, que es inevitable y no destruye ningún otro dato.
+
+---
+
+## `20260806_0103` — `metric_snapshots.avg_progress` admite nulo (MCS DAT-09)
+
+`ALTER COLUMN ... DROP NOT NULL` sobre una columna `NUMERIC(5,2)`. Sin datos que
+convertir y sin índices que tocar.
+
+**Por qué.** La columna era `NOT NULL DEFAULT 0`, así que el recolector diario
+no tenía dónde escribir «no hay proyectos activos»: guardaba `0`, el mismo
+valor que significa «la cartera está al 0 %».
+
+La ficha del indicador, firmada por el owner el 2026-08-06, dice lo contrario:
+«Sin proyectos → `null`, que se pinta «—». **Cero proyectos no es cero por
+ciento**». El tablero en vivo se corrigió ese día. La instantánea no, porque
+calculaba el mismo indicador con su propia división — el defecto que DAT-09
+describe. Consecuencia visible: la gráfica de tendencia de los informes lee
+instantáneas y **dibujaba una caída a cero** en carteras recién creadas.
+
+**Nulable y no centinela.** Un `-1` vuelve a ser un número que alguien promedia;
+`NULL` no se promedia por accidente.
+
+**Los ceros históricos NO se convierten.** Un `0` ya guardado puede significar
+las dos cosas y no hay forma de saber cuál. Reinterpretarlos hacia atrás sería
+inventar datos. Desde esta migración, los nuevos distinguen; los viejos siguen
+siendo ambiguos y así se quedan.
+
+**Reversible, con pérdida declarada.** `downgrade` rellena los nulos con `0` y
+vuelve a `NOT NULL`. No pierde filas, pero **sí pierde la distinción**: los «no
+hay proyectos» vuelven a ser ceros indistinguibles. Está escrito en el
+`downgrade()` porque el runbook de DES-02 §3.3 manda leerlo antes de bajar.

@@ -28,6 +28,7 @@ from app.core.paleta import ACENTO, NEUTRO, NEUTRO_SUAVE, ORDINAL_CLARO, serie
 from app.core.unidades import pct_a_fraccion
 from app.models.project import Project
 from app.models.task import Task
+from app.services.indicadores import promedio_de_avance
 
 # Layout
 ROW_HEIGHT = 18
@@ -82,7 +83,9 @@ def _aggregate_by_wbs(
     out = []
     for k in sorted(buckets):
         b = buckets[k]
-        b["avg_progress"] = round(b["progress_sum"] / b["count"], 1) if b["count"] else 0
+        # DAT-09: la media del cubo la define `indicadores.promedio_de_avance`.
+        # Esta división y la de `engine.py` eran la misma, escrita dos veces.
+        b["avg_progress"] = promedio_de_avance(b["progress_sum"], b["count"])
         out.append(b)
     return out
 

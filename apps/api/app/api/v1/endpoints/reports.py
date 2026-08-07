@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import forbidden, not_found
-from app.core.unidades import razon_a_pct
 from app.db.session import get_db
 from app.models.ai import Report
 from app.models.ai_report_template import AIReportTemplate
@@ -26,6 +25,7 @@ from app.models.project import Project
 from app.models.report_history import ReportHistory
 from app.services.audit import write_audit
 from app.services.html_report_renderer import render_report_html
+from app.services.indicadores import porcentaje_a_tiempo
 from app.services.operational_reports import (
     build_avance_context,
     build_look_ahead_context,
@@ -1447,11 +1447,10 @@ def _project_render_data(
     # (antes usaba project.tasks_total que no existe en el ORM ⇒ el KPI
     # saltaba a 0% o 100%). On-time = (total − retrasadas) / total.
     tasks_total = (context.get("plan") or {}).get("total_tasks") or 0
-    on_time_pct = (
-        max(0, min(100, round(razon_a_pct(tasks_total - delayed, tasks_total))))
-        if tasks_total
-        else 0
-    )
+    # DAT-09: el recorte a [0, 100] es parte de la definición y vive con ella.
+    # `delayed` puede venir de un conteo con otro filtro que `tasks_total`
+    # —ya pasó, ENH-146— y sin recorte el indicador sale fuera de rango.
+    on_time_pct = porcentaje_a_tiempo(tasks_total, delayed)
     tasks_focus = context.get("focus_tasks") or []
 
     def _task_row(t):
