@@ -23,6 +23,9 @@ export type DesafioMfa = {
   mfa_required: true;
   desafio: string;
   detalle: string;
+  /** Cuántos días se recuerda el equipo. Lo dice el servidor, que es quien lo
+   *  configura: escribirlo también aquí garantizaría que un día discrepen. */
+  dias_recordado: number;
 };
 
 export function esDesafio(res: LoginResponse | DesafioMfa): res is DesafioMfa {

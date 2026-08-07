@@ -3,7 +3,7 @@
 Decisión del owner (2026-08-07), ADR-035 §Ventana. Pedir el código en **cada**
 inicio de sesión es lo que hace que la gente desactive el segundo factor, o que
 se lo salte por otra vía. Es lo que hacen Google, GitHub y Microsoft: se
-comprueba una vez por equipo y se recuerda una ventana.
+comprueba una vez por equipo y se recuerda una ventana — aquí, treinta días.
 
 **Sigue siendo dos factores dentro de la ventana**, y esa es la parte que
 importa: la cookie es un secreto de 256 bits que solo tiene ese navegador —

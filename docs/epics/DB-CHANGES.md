@@ -909,7 +909,7 @@ diez minutos de vida.
 ## 0107 — Equipos de confianza para el segundo factor (ASVS 4.3.1)
 
 Tabla `dispositivos_confiables`. Decisión del owner en ADR-035 §Ventana: el
-código se pide una vez por equipo y semana, no en cada entrada. Pedirlo siempre
+código se pide una vez por equipo cada treinta días, no en cada entrada. Pedirlo siempre
 es lo que hace que un control acabe desactivado.
 
 **Sigue habiendo dos factores dentro de la ventana.** La cookie es un secreto de

@@ -225,7 +225,7 @@ async def recuerda_dispositivo(
 ) -> str:
     """Marca este equipo como de confianza. Devuelve el token para la cookie.
 
-    256 bits de entropía: es un secreto portador que vale una semana, así que no
+    256 bits de entropía: es un secreto portador que vale un mes, así que no
     puede ser adivinable ni por asomo. El token en claro sale de aquí una vez;
     en la base queda su resumen.
     """
@@ -305,7 +305,7 @@ def avisa_dispositivo_nuevo(destino: str, descripcion: str | None) -> None:
 
     Es el control que hace que la ventana sea aceptable: si llega este aviso y
     no fuiste tú, alguien tiene tu contraseña **y** acceso a tu correo, y acaba
-    de conseguir una semana de entradas sin código. Es lo primero que hay que
+    de conseguir un mes de entradas sin código. Es lo primero que hay que
     saber.
     """
     equipo = (descripcion or "un equipo desconocido")[:120]

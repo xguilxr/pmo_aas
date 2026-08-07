@@ -1776,7 +1776,12 @@ de correo, que casi nunca tiene.
 
 **Decisión del owner, 2026-08-07**, tras probar la primera versión: pedir el
 código en **cada** inicio de sesión es insoportable, y un control insoportable
-acaba desactivado. Se recuerda el equipo **siete días**.
+acaba desactivado. Se recuerda el equipo **treinta días**.
+
+Treinta es el techo de lo razonable y coincide con lo que ofrecen Google y
+GitHub. Lo que sostiene ese número no es el número: son las tres garantías de
+abajo. Sin ellas, treinta días sería demasiado; con ellas, **la ventana la
+cierra la propia persona el día que sospecha**, cambiando su contraseña.
 
 Es lo que hacen Google, GitHub y Microsoft, y no es una concesión: es lo que
 mantiene el segundo factor encendido.
@@ -1797,16 +1802,17 @@ Tres cosas sostienen que eso sea cierto, y las tres tienen prueba propia:
    me han entrado»; si la confianza sobreviviera, quien hubiera entrado una vez
    seguiría entrando con la contraseña nueva y sin código.
 3. **Recordar un equipo nuevo manda un correo.** Si llega y no fuiste tú,
-   alguien tiene tu contraseña *y* tu correo y acaba de conseguir una semana de
-   entradas sin código. Es lo primero que hay que saber.
+   alguien tiene tu contraseña *y* tu correo y acaba de conseguir un mes de
+   entradas sin código. Es lo primero que hay que saber, y por eso este aviso
+   es la garantía que más pesa cuanto más larga es la ventana.
 
 La casilla viene **marcada** —es el comportamiento que se pidió— y se puede
 desmarcar en un equipo prestado, donde recordar sería peor que la molestia que
 ahorra.
 
 **Lo que se acepta a cambio, y va escrito:** quien tenga acceso físico a un
-equipo recordado y sepa la contraseña entra sin pasar por el correo durante la
-ventana. Contra eso están el bloqueo por inactividad, la revocación al cambiar
+equipo recordado y sepa la contraseña entra sin pasar por el correo durante los
+treinta días. Contra eso están el bloqueo por inactividad, la revocación al cambiar
 la contraseña y el aviso del equipo nuevo. Y en la auditoría queda anotado con
 qué se entró (`mfa: dispositivo_confiable` frente a `mfa: email_otp`): sin ese
 detalle, una entrada con segundo factor y una sin él serían la misma línea.

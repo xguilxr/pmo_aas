@@ -378,7 +378,7 @@ def test_asvs431_el_interruptor_viene_encendido():
 # ---------------------------------------------------------------------------
 #
 # Decisión del owner: pedirlo siempre es lo que hace que la gente desactive el
-# segundo factor. Se recuerda el equipo una semana.
+# segundo factor. Se recuerda el equipo treinta días.
 #
 # Dentro de la ventana **siguen siendo dos factores**: la cookie es un secreto
 # de 256 bits que solo tiene ese navegador, y la contraseña sigue haciendo
@@ -611,10 +611,48 @@ async def test_adr035_el_token_no_se_guarda_en_claro(db_session):
     assert token not in fila.token_hash
 
 
-def test_adr035_la_ventana_es_de_dias_no_de_meses():
-    """La ventana es una concesión medida, no una puerta abierta. Una semana es
-    lo que el owner decidió; un mes ya sería otra decisión."""
+def test_adr035_la_ventana_tiene_techo():
+    """Treinta días es lo que el owner decidió, y es el techo de lo razonable.
+
+    El límite superior está aquí para que subirlo sea una decisión y no un
+    ajuste: noventa días ya no seria «recordar el equipo», seria no tener
+    segundo factor con un rodeo. Lo que sostiene los treinta no es el numero,
+    son las tres garantias de §5.2 y §5.3.
+    """
     assert 1 <= settings.DISPOSITIVO_CONFIABLE_DIAS <= 30
+
+
+@pytest.mark.asyncio
+async def test_adr035_la_pantalla_lee_la_ventana_del_servidor(
+    client, db_session, correos
+):
+    """El numero lo dice el servidor, que es quien lo configura.
+
+    Si la web lo tuviera escrito a mano, cambiar `DISPOSITIVO_CONFIABLE_DIAS`
+    dejaria la pantalla rotulando un numero que ya no es cierto — y nadie se
+    daria cuenta, porque nada falla.
+    """
+    await _admin(db_session, "31")
+    r = await _entra(client, "31")
+
+    assert r.json()["dias_recordado"] == settings.DISPOSITIVO_CONFIABLE_DIAS
+
+
+def test_adr035_la_web_no_escribe_la_ventana_a_mano():
+    """Trinquete sobre el codigo de la web: el numero no puede estar ahi."""
+    import pathlib as _pathlib
+    import re as _re
+
+    pantalla = (
+        _pathlib.Path(__file__).resolve().parents[3]
+        / "apps" / "web" / "app" / "login" / "page.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "dias_recordado" in pantalla, "La pantalla dejo de leer la ventana del API"
+    assert not _re.search(r"Durante \d+ d", pantalla), (
+        "La pantalla volvio a escribir los dias a mano; al cambiar el ajuste "
+        "diria un numero que ya no es cierto"
+    )
 
 
 def test_adr035_la_cookie_del_equipo_sobrevive_a_cerrar_sesion():

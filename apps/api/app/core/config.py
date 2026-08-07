@@ -61,12 +61,18 @@ class Settings(BaseSettings):
     ADMIN_MFA_REQUIRED: bool = True
 
     # ASVS 4.3.1 · ADR-035 — cuántos días se recuerda un equipo antes de volver
-    # a pedir el código. Decisión del owner: **una semana**.
+    # a pedir el código. Decisión del owner: **treinta días**.
     #
     # Pedirlo en cada entrada es lo que hace que la gente desactive el segundo
     # factor o busque cómo saltárselo, así que la ventana no es una concesión:
     # es lo que mantiene el control encendido.
-    DISPOSITIVO_CONFIABLE_DIAS: int = 7
+    #
+    # Treinta es el techo de lo razonable y coincide con lo que ofrecen Google y
+    # GitHub. Lo que lo sostiene no es el número sino las tres cosas que van con
+    # él: la cookie atada a la cuenta, la revocación al cambiar la contraseña y
+    # el aviso al recordar un equipo. Sin ellas, treinta días sería demasiado;
+    # con ellas, la ventana la cierra la persona el día que sospecha.
+    DISPOSITIVO_CONFIABLE_DIAS: int = 30
 
     ACCESS_TOKEN_TTL_SEC: int = 3600
     REFRESH_TOKEN_TTL_SEC: int = 2592000

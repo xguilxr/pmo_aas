@@ -41,6 +41,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   // ASVS 4.3.1 — segundo paso. `null` = todavía estamos en el primero.
   const [desafio, setDesafio] = useState<string | null>(null);
+  const [diasRecordado, setDiasRecordado] = useState(30);
   const [codigo, setCodigo] = useState("");
   // ADR-035 §Ventana — marcado por defecto: es lo que evita que el segundo
   // factor se vuelva insoportable y acabe desactivado. Se desmarca en un equipo
@@ -64,6 +65,7 @@ function LoginForm() {
       // el código del correo antes de que haya sesión.
       if (esDesafio(res)) {
         setDesafio(res.desafio);
+        setDiasRecordado(res.dias_recordado);
         setSubmitting(false);
         return;
       }
@@ -152,7 +154,8 @@ function LoginForm() {
                 <span>
                   No volver a pedirme el código en este equipo
                   <span className="block text-xs text-[var(--color-tertiary)]">
-                    Durante 7 días. Desmárcalo si el equipo no es tuyo.
+                    Durante {diasRecordado} días. Desmárcalo si el equipo no es
+                    tuyo.
                   </span>
                 </span>
               </label>

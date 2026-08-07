@@ -53,7 +53,7 @@ REFRESCO = "refresh_token"
 #: hace que el guion no pueda leerlo.
 ACCESO = "access_token"
 
-#: Equipo de confianza (ASVS 4.3.1, ADR-035). Dura una semana, no una sesión:
+#: Equipo de confianza (ASVS 4.3.1, ADR-035). Dura treinta días, no una sesión:
 #: su razón de ser es sobrevivir a cerrar sesión, que es cuando el código
 #: volvería a pedirse. Por eso `borrar` en el cierre de sesión NO la toca.
 DISPOSITIVO = "dispositivo"

@@ -270,6 +270,10 @@ async def login(
                     "Te enviamos un código a tu correo. Caduca en "
                     f"{VIDA_OTP_MINUTOS} minutos."
                 ),
+                # La pantalla lo rotula («durante N días»). Va aquí y no escrito
+                # a mano en la web: si estuviera en los dos sitios, cambiar el
+                # ajuste dejaría a la pantalla diciendo un número que ya no es.
+                "dias_recordado": settings.DISPOSITIVO_CONFIABLE_DIAS,
             },
         )
 

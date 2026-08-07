@@ -314,7 +314,7 @@ controles:
       prueban enteras en minutos—, y todos los fallos responden igual.
       `ADMIN_MFA_REQUIRED` viene encendido. El desbloqueo por inactividad de
       una cuenta de administración también pasa por aquí.
-      **El código se pide una vez por equipo y semana, no en cada entrada**
+      **El código se pide una vez por equipo cada 30 días, no en cada entrada**
       (ADR-035 §Ventana): pedirlo siempre es lo que hace que un control acabe
       desactivado. Dentro de la ventana siguen siendo dos factores — la cookie
       `__Host-dispositivo` es un secreto de 256 bits que solo tiene ese
