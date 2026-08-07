@@ -8,15 +8,15 @@ Shape canónico de ``tenants.settings.report_builder``::
             "by_task_count" | "by_duration" | "by_effort",
         "task_load_thresholds": {
             "green_max": int,  # tareas <= green_max  -> verde
-            "amber_max": int,  # green_max < tareas <= amber_max -> ámbar
-                               # tareas > amber_max  -> rojo
+            "yellow_max": int,  # green_max < tareas <= yellow_max -> amarillo
+                                # tareas > yellow_max  -> rojo
         }
       }
     }
 
 Defaults cuando la clave no existe:
 - ``progress_calculation_method`` → ``"by_task_count"``
-- ``task_load_thresholds`` → ``{"green_max": 5, "amber_max": 10}``
+- ``task_load_thresholds`` → ``{"green_max": 5, "yellow_max": 10}``
 
 Además, ``tenants.settings.org_label`` (top-level, ENH-190) controla el
 label de UI para "Organización/Organizaciones": ``"organizations"``
@@ -31,6 +31,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.compatibilidad import registrar_uso
 from app.models.tenant import Tenant
 
 # ---- progress_calculation_method (ENH-098) ----
@@ -44,7 +45,13 @@ DEFAULT_PROGRESS_CALC_METHOD: str = "by_task_count"
 
 # ---- task_load_thresholds (ENH-099) ----
 
-DEFAULT_TASK_LOAD_THRESHOLDS: dict[str, int] = {"green_max": 5, "amber_max": 10}
+# DAT-06 / ADR-030 (2026-08-06): la llave se llama `yellow_max`. El semáforo
+# habla `green`/`yellow`/`red` desde D-1 y la migración 0091; tener el valor en
+# `yellow` y su umbral en `amber_max` obligaba a traducir mentalmente cada vez
+# que se leía el código de colorización, que es como se cuelan los errores de
+# asignación de color. La migración 0101 reescribió los datos; la entrada sigue
+# aceptando el nombre viejo durante la ventana de compatibilidad.
+DEFAULT_TASK_LOAD_THRESHOLDS: dict[str, int] = {"green_max": 5, "yellow_max": 10}
 
 
 def _report_builder_block(tenant: Tenant) -> dict[str, Any]:
@@ -92,51 +99,63 @@ def get_task_load_thresholds(tenant: Tenant) -> dict[str, int]:
     """Resolve per-tenant resource-load colorization thresholds.
 
     Reads ``tenant.settings["report_builder"]["task_load_thresholds"]``
-    and returns a normalized ``{"green_max": int, "amber_max": int}``
+    and returns a normalized ``{"green_max": int, "yellow_max": int}``
     dict. Falls back to :data:`DEFAULT_TASK_LOAD_THRESHOLDS` when the
     block is absent or malformed. The returned dict is a fresh copy and
     safe for the caller to mutate.
+
+    DAT-06: acepta el nombre retirado ``amber_max`` a la LECTURA además de a la
+    entrada. La migración 0101 reescribió los datos, pero un inquilino que se
+    restaure de una copia anterior al despliegue lo traería, y perder su umbral
+    silenciosamente sería peor que aceptarlo con rastro.
     """
     rb = _report_builder_block(tenant)
     raw = rb.get("task_load_thresholds")
     if not isinstance(raw, dict):
         return dict(DEFAULT_TASK_LOAD_THRESHOLDS)
+    if "yellow_max" not in raw and "amber_max" in raw:
+        registrar_uso("amber_max", donde="settings del inquilino")
     try:
         green_max = int(raw.get("green_max", DEFAULT_TASK_LOAD_THRESHOLDS["green_max"]))
-        amber_max = int(raw.get("amber_max", DEFAULT_TASK_LOAD_THRESHOLDS["amber_max"]))
+        yellow_max = int(
+            raw.get(
+                "yellow_max",
+                raw.get("amber_max", DEFAULT_TASK_LOAD_THRESHOLDS["yellow_max"]),
+            )
+        )
     except (TypeError, ValueError):
         return dict(DEFAULT_TASK_LOAD_THRESHOLDS)
-    return {"green_max": green_max, "amber_max": amber_max}
+    return {"green_max": green_max, "yellow_max": yellow_max}
 
 
-def validate_task_load_thresholds(green_max: int, amber_max: int) -> None:
+def validate_task_load_thresholds(green_max: int, yellow_max: int) -> None:
     """Raise :class:`ValueError` if the threshold pair is invalid.
 
-    Both values must be positive ints and ``green_max < amber_max``.
+    Both values must be positive ints and ``green_max < yellow_max``.
     """
     if isinstance(green_max, bool) or not isinstance(green_max, int):
         raise ValueError("green_max debe ser un entero")
-    if isinstance(amber_max, bool) or not isinstance(amber_max, int):
-        raise ValueError("amber_max debe ser un entero")
-    if green_max <= 0 or amber_max <= 0:
+    if isinstance(yellow_max, bool) or not isinstance(yellow_max, int):
+        raise ValueError("yellow_max debe ser un entero")
+    if green_max <= 0 or yellow_max <= 0:
         raise ValueError("Los umbrales deben ser positivos")
-    if green_max >= amber_max:
-        raise ValueError("green_max debe ser menor que amber_max")
+    if green_max >= yellow_max:
+        raise ValueError("green_max debe ser menor que yellow_max")
 
 
 def set_task_load_thresholds(
-    tenant: Tenant, green_max: int, amber_max: int
+    tenant: Tenant, green_max: int, yellow_max: int
 ) -> dict[str, Any]:
     """Persist task-load thresholds on the tenant settings dict.
 
-    Validates the pair (positive ints with ``green_max < amber_max``) and
+    Validates the pair (positive ints with ``green_max < yellow_max``) and
     returns the merged ``tenant.settings`` (also assigned on the model).
     Raises :class:`ValueError` on invalid input.
     """
-    validate_task_load_thresholds(green_max, amber_max)
+    validate_task_load_thresholds(green_max, yellow_max)
     merged = dict(tenant.settings or {})
     rb = dict(merged.get("report_builder") or {})
-    rb["task_load_thresholds"] = {"green_max": green_max, "amber_max": amber_max}
+    rb["task_load_thresholds"] = {"green_max": green_max, "yellow_max": yellow_max}
     merged["report_builder"] = rb
     tenant.settings = merged
     return merged

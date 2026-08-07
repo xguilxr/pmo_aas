@@ -1,8 +1,9 @@
 #!/usr/bin/env sh
 # CFG-04 — avisa de un mensaje mal formado cuando arreglarlo todavía es gratis.
 #
-# NO es el control: un hook local se salta con `--no-verify` y hay que activarlo
-# a mano. El control es el job `commits` del CI, que mira el rango del PR.
+# NO es el control: un hook local se salta con la bandera que CLAUDE.md §4
+# prohíbe, y hay que activarlo a mano. El control es el job `commits` del CI,
+# que mira el rango del PR.
 #
 # Se activa una vez por clon:
 #
@@ -10,4 +11,24 @@
 #
 # Va versionado —y no en `.git/hooks/`, que no se versiona— justamente para que
 # activarlo sea un comando y no un procedimiento.
-exec python3 "$(git rev-parse --show-toplevel)/scripts/check_commits.py" --archivo "$1"
+#
+# **El intérprete se busca, no se supone.** La primera versión llamaba a
+# `python3` directo y en Windows eso no existe: los instaladores dan
+# `python.exe` y el lanzador `py`. El entorno de desarrollo de este repositorio
+# ES Windows —la skill `verificar` usa `.venv/Scripts/python.exe`—, así que un
+# hook que solo corre en Linux es un hook que no corre.
+#
+# Y falla ABIERTO si no encuentra ninguno: un aviso que no se puede dar no
+# debería impedirte commitear. El control es el CI; esto es la cortesía.
+set -e
+
+for interprete in python3 python py; do
+    if command -v "$interprete" >/dev/null 2>&1; then
+        exec "$interprete" "$(git rev-parse --show-toplevel)/scripts/check_commits.py" \
+            --archivo "$1"
+    fi
+done
+
+echo "commit-msg: no encontré Python; me salto la revisión del mensaje." >&2
+echo "            El job \`commits\` del CI la hará igual." >&2
+exit 0

@@ -26,6 +26,7 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   getTenantDetail,
   hardDeleteTenant,
@@ -578,7 +579,14 @@ function UsersInlineSection({
 
   async function save(uid: string, next: RoleType, label: string) {
     if (savingId) return;
-    if (!window.confirm(`Cambiar role_type de ${label} → ${next}?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `el rol de ${label} (→ ${next})`,
+        consecuencia: "Cambia lo que puede ver y hacer en toda la plataforma, de inmediato.",
+        reversibilidad: "definitiva",
+      })
+    )
+      return;
     setSavingId(uid);
     try {
       await updateUserRoleType(uid, next);

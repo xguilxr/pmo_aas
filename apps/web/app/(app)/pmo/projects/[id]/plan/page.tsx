@@ -54,6 +54,7 @@ import {
   type TaskUpdateBody,
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
+import { confirmarDestructivo } from "@/lib/confirmar";
 
 type Mode = "split" | "list" | "gantt";
 
@@ -1783,7 +1784,14 @@ function PlanInner() {
   }
 
   async function handleDeleteTask(t: Task) {
-    if (!window.confirm(`Eliminar tarea "${t.name}"?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `la tarea «${t.name}»`,
+        consecuencia: "Sus subtareas y dependencias se van con ella, y el avance del proyecto se recalcula.",
+        reversibilidad: "definitiva",
+      })
+    )
+      return;
     try {
       await deleteTask(t.id);
       await loadTasksAndGantt();

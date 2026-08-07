@@ -10,15 +10,12 @@
 # accion=…)` y regenerá.
 #
 # Generada: 2026-08-06
-# Mensajes con texto suelto: 169
+# Mensajes con texto suelto: 166
 app/api/v1/endpoints/admin_ai.py::business_rule::Para conectar un proveedor custom debes confirmar que tu tenant es responsable de la seguridad y el cumplimiento del proveedor (acknowledge_security).
 app/api/v1/endpoints/admin_ai.py::business_rule::Provider BYO inválido: {}
 app/api/v1/endpoints/admin_ai.py::business_rule::byo requerido cuando mode='byo' y no hay config previa
 app/api/v1/endpoints/admin_panel.py::business_rule::org_label must be one of {}
 app/api/v1/endpoints/admin_panel.py::business_rule::progress_calculation_method must be one of {}
-app/api/v1/endpoints/admin_panel.py::business_rule::task_load_thresholds must be an object with green_max/amber_max
-app/api/v1/endpoints/admin_panel.py::business_rule::task_load_thresholds requires integer green_max and amber_max
-app/api/v1/endpoints/admin_panel.py::business_rule::task_load_thresholds: green_max y amber_max deben ser positivos y green_max < amber_max
 app/api/v1/endpoints/admin_users.py::business_rule::No se puede borrar un super admin desde el panel de tenant
 app/api/v1/endpoints/admin_users.py::conflict::No se puede eliminar permanentemente: el usuario tiene referencias que requieren limpieza manual previa.
 app/api/v1/endpoints/ai.py::conflict::El modo 'plataforma' (Groq) está limitado a minutas. Para generar reportes con IA, conecta tu propio proveedor en /admin/ai.

@@ -1,4 +1,5 @@
 ---
+tipo: referencia
 responsable: propietario
 estado: vigente
 revisado: 2026-08-05
@@ -129,7 +130,7 @@ tareas. Si no cuadra, es defecto.
 
 **Preferente:** `estado de salud` · **En código:** `health_status`
 **Valores:** `red` · `yellow` · `green`
-**Vetado:** `amber` como valor — **0 restos en código desde el 2026-08-05** (DAT-06); `status_rag` (absorbido en la migración 0091)
+**Vetado:** `amber` como valor — **0 restos desde el 2026-08-06** (DAT-06, ADR-030); `status_rag` (absorbido en la migración 0091)
 
 RAG —*Red, Amber, Green*— es el término de P3O y PRINCE2, y este producto **se aparta de él
 a conciencia** (D-1, 2026-08-04). `yellow` es el contrato de la API
@@ -146,10 +147,11 @@ lo que ve el cliente. Volver a `amber` costaría contrato, datos e históricos; 
 > cuando alguien copia el diccionario. Trinquete: `tests/test_dat06_vocabulario.py`, que
 > mira el árbol y no una lista de sitios conocidos.
 >
-> **Queda uno, y es de contrato.** `task_load_thresholds.amber_max` es una llave guardada
-> en `tenant.settings` de inquilinos reales: renombrarla necesita ventana de
-> compatibilidad y migración, como `wbs` → `wbs_code` (ADR-020). Declarado en el plan de
-> remediación como trabajo de Ola 3, no como olvido.
+> **El quinto cerró el 2026-08-06** (ADR-030). `task_load_thresholds.amber_max` era una
+> llave guardada en `tenant.settings` de inquilinos reales, así que fue con el molde de
+> `wbs` → `wbs_code`: migración 0101 sobre los datos existentes y ventana de
+> compatibilidad a la entrada **y a la lectura**. La etiqueta del formulario de ajustes
+> también decía «Ámbar»; el sinónimo no estaba solo en una variable.
 
 **Regla — la pieza que falta.** Un semáforo sin fórmula es una opinión con color. Propuesta,
 a validar:
@@ -300,7 +302,7 @@ estratégica**. No coincide con la estructura organizativa.
 
 | Vetado | Preferente | Ocurrencias hoy | Dónde |
 |---|---|---|---|
-| `amber` como valor | `yellow` | **0 en código** (2026-08-05) · 1 en datos | queda `tenant.settings.task_load_thresholds.amber_max` — Ola 3, necesita ventana |
+| `amber` como valor | `yellow` | **0** (2026-08-06) | cerrado entero: código, datos (migración 0101) e interfaz. Ventana abierta en `compatibilidad.py` |
 | Dos paletas de salud | una definición única | 2 mapas | `scoped_status.py:30,33` |
 | `wbs` para el código de tarea | `wbs_code` | 1 campo | `tasks.wbs` |
 | `portafolio` para un área | `discipline` — ✅ hecho 2026-08-05 | 0 | ADR-021, migración 0099 |

@@ -57,6 +57,15 @@ VENTANAS: dict[str, Ventana] = {
         viejo="wbs", nuevo="wbs_code",
         desde=date(2026, 8, 5), adr="ADR-020",
     ),
+    # DAT-06 — el último resto de `amber`. A diferencia de las tres de arriba,
+    # esta no es un campo del API sino una LLAVE guardada en `tenant.settings`
+    # de inquilinos reales: la migración 0101 reescribió los datos y la ventana
+    # cubre lo que llegue de fuera —una pestaña abierta desde antes del
+    # despliegue, o una copia restaurada de antes—.
+    "amber_max": Ventana(
+        viejo="task_load_thresholds.amber_max", nuevo="task_load_thresholds.yellow_max",
+        desde=date(2026, 8, 6), adr="ADR-030",
+    ),
 }
 
 

@@ -20,7 +20,7 @@ from app.services.ai.prompts import HTML_TWEAK_SYSTEM
 from app.services.ai.provider import generate_for_tenant
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.ai.untrusted import envolver_no_confiable, neutralizar
-from app.services.audit import write_audit
+from app.services.audit import ACTOR_HUMANO, write_audit
 from app.services.folio import next_folio
 from app.workers.tasks.ai import draft_report_task, generate_minute_task
 
@@ -386,6 +386,10 @@ async def cancel_job(
     j.error = "Cancelado por el usuario"
     await write_audit(
         db, action="ai.job.cancel", module="ai",
+        # IA-02: la acción se llama `ai.*` pero la ejecuta una PERSONA que
+        # cancela un trabajo del modelo. Explícito, no por omisión: es la
+        # prueba de que el nombre de la acción no puede ser el criterio.
+        actor_type=ACTOR_HUMANO,
         user_id=cu.id, tenant_id=tenant_id,
         entity_type="ai_job", entity_id=str(j.id),
     )

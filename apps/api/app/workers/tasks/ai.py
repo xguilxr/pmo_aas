@@ -45,7 +45,7 @@ from app.services.ai.validator import (
     merge_topics,
     validate_minute_payload,
 )
-from app.services.audit import write_audit
+from app.services.audit import ACTOR_IA, write_audit
 from app.services.folio import next_folio
 from app.workers.celery_app import celery_app
 from app.workers.db import db_session, run_async
@@ -567,6 +567,9 @@ async def _run_minute(
 
             await write_audit(
                 db, action="ai.minute.generate", module="ai",
+                # IA-02: lo redacta el modelo. `user_id` es quien lo pidió, que
+                # es justo a quien NO hay que atribuirle el texto.
+                actor_type=ACTOR_IA,
                 user_id=requested_by, tenant_id=tenant_id,
                 entity_type="ai_job", entity_id=str(job.id),
                 details={"model": model_used, "duration_ms": job.duration_ms,
@@ -710,6 +713,10 @@ async def _run_report(
 
             await write_audit(
                 db, action="report.draft", module="ai",
+                # IA-02: el borrador lo escribe el modelo. Esta acción NO lleva
+                # el prefijo `ai.`, y era la prueba de que el nombre no puede
+                # ser el criterio.
+                actor_type=ACTOR_IA,
                 user_id=requested_by, tenant_id=tenant_id,
                 entity_type="report", entity_id=str(rep.id),
                 details={"model": res.model, "duration_ms": job.duration_ms,

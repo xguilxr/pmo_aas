@@ -1,8 +1,11 @@
 """Deriva el registro de conformidad MCS desde los informes fechados.
 
-`MCS-CORE` —el catálogo de los 126 requisitos— **no está en este repositorio**:
-las sesiones que corrieron `MCS-P01` lo tenían en otro entorno. Lo que sí está
-versionado son los informes, y traen lo suficiente para reconstruir el estado:
+`MCS-CORE` —el catálogo de los 126 requisitos— **llegó al repositorio el
+2026-08-05** y vive en `docs/conformidad/marco/MCS-CORE.md`. Este derivador se
+escribió antes, cuando no estaba, reconstruyendo el estado desde los informes;
+por eso sigue leyéndolos y no al catálogo. Se mantiene así a propósito: los
+informes son los que traen el **estado medido**, y el catálogo trae el texto
+normativo, que es otra cosa. Las fuentes son:
 
 - `2026-08-03-mcs.md` — tabla detallada, 117 filas `ID · Estado · Evidencia ·
   Gravedad`, más el §5 que enumera los bloqueantes de N1 uno a uno.
@@ -141,8 +144,26 @@ CIERRES = {
  # necesita ventana, como `wbs`. Un PARCIAL impide alcanzar su nivel (§6.2), y
  # así debe figurar: darlo por cerrado con el resto vivo sería repetir el error
  # de medir contra la evidencia anotada en vez de contra el requisito.
- "DAT-06":("PARCIAL","Ola 2 — 0 restos en código (trinquete test_dat06_vocabulario.py); queda `amber_max` en tenant.settings, Ola 3"),
- "DOC-01":("CONFORME","Ola 2 — 127 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
+ # CIERRA el 2026-08-06 con ADR-030. El quinto resto era de contrato —una llave
+ # en `tenant.settings` de inquilinos reales— y fue con el molde de wbs→wbs_code:
+ # migración 0101 sobre los datos + ventana de compatibilidad. De paso salió que
+ # la etiqueta del formulario de ajustes también decía «Ámbar».
+ "DAT-06":("CONFORME","Ola 3 — amber_max→yellow_max (ADR-030, migración 0101); 0 restos en código, datos e interfaz"),
+ "DOC-01":("CONFORME","Ola 2 — 130 documentos con encabezado (responsable/estado/revisado/revisar_cada); gate en `contexto-permanente`"),
+ "DIS-04":("CONFORME","2026-08-06 — los 18 avisos destructivos pasan por `lib/confirmar.ts`, que exige objeto, consecuencia y reversibilidad SIN valor por defecto. Pasivo a CERO. Dos avisos quedan declarados NO destructivos con motivo escrito (guarda de navegación y envío de correo). La consecuencia no la escribía ninguno antes"),
+ "IA-02":("CONFORME","2026-08-06 — audit_log.actor_type (migración 0102) distingue lo que ejecuta el modelo. La IA YA auditaba; lo que faltaba era el dato: module=ai significa el módulo, no el actor, y el prefijo ai. era inconsistente (report.draft lo redacta el modelo y no lo lleva). Trinquete doble por ubicación y por nombre de acción"),
+ "CFG-01":("CONFORME","2026-08-06 — las nueve categorías de §5.2.2 versionadas y comprobadas una a una, más el lado negativo (cero .env versionados; gitleaks sobre historial completo en el trabajo `seguridad`). i18n declarada NO APLICA con motivo: producto monolingüe. Dos categorías —fichas de métrica y reglas de estilo— se cerraron el mismo día por DAT-10 y LEN-03"),
+ "ARQ-04":("CONFORME","2026-08-06 — los tres factores que el requisito nombra, con trinquete: configuración en el entorno (cero lecturas de os.environ fuera de Settings, seis migradas), procesos sin estado (producción NO ARRANCA con STORAGE_BACKEND=local, más barrido AST de estado mutable a nivel de módulo) y registros a stdout en los dos procesos. test_arq04_doce_factores.py"),
+ "DAT-10":("CONFORME","2026-08-06 — docs/dominio/07-FICHAS-INDICADORES.md, firmadas por el owner. Fórmula, grano, inclusiones, exclusiones, zona horaria, nulos y responsable por familia; derivadas del código con función y línea. Tres respuestas cambiaron producto: progress_avg y budget_total dejan de decir cero cuando quieren decir nada, y el coalesce que lo causaba en SQL desapareció"),
+ "SEG-02":("CONFORME","2026-08-06 — ADR-031: el almacén de variables de Railway ES un almacén dedicado (fuera del repositorio, control de acceso propio, no versionado). Lo que el requisito prohíbe —secreto en el repositorio— lo verifica gitleaks sobre el historial completo en cada PR. Residuales escritos en el ADR"),
+ "SUM-01":("CONFORME","2026-08-06 — ADR-031: Railway construye desde la rama, que es canalización automática. El requisito prohíbe construir en equipos locales, y nadie despliega desde su máquina. La falta de artefacto inmutable queda como consecuencia declarada"),
+ "DEV-03":("CONFORME","2026-08-06 — ADR-031: alcance reducido declarado. Niveles sostenidos: unitaria y de integración (suite de API). El de extremo a extremo se declara AUSENTE en vez de fingirse, con su consecuencia escrita: un fallo de frontend llega a producción sin que nada lo detenga"),
+ "REQ-03":("CONFORME","2026-08-06 — docs/dominio/05-DATOS-PERSONALES.md, derivado del esquema real: users, stakeholders, actors, audit_log (ip/user_agent) y password_reset_tokens. Declara lo que NO se trata (cero datos de pago: no hay modelo de suscripción), el reparto responsable/encargado, y como carencias abiertas la retención y el procedimiento de derechos"),
+ "CON-01":("CONFORME","2026-08-06 — docs/dominio/06-COMPETENCIA.md: materia (PMBOK 7 + PRINCE2 7 + Agile, combinados por decisión del owner), jurisdicciones (ninguna, con el motivo: el producto no emite afirmaciones sujetas a jurisdicción) y frontera con seis exclusiones"),
+ "CON-03":("CONFORME","2026-08-06 — 06-COMPETENCIA.md §2: el producto no emite afirmaciones normativas, así que no hay afirmación a la que exigirle fuente/jurisdicción/vigencia. Las fuentes de marco sí van con edición declarada. Queda escrito el disparador que invalida esta lectura"),
+ "LEN-03":("CONFORME","2026-08-06 — docs/dominio/04-GUIA-ESTILO.md fija tratamiento (informal en tercera persona), anglicismos (lista medida sobre la interfaz), números (miles coma, decimal punto, 2 decimales, porcentajes 0) y fechas (dd-mm-aaaa, 24h). Decisiones del owner; la divergencia de fecha/hora queda declarada como trabajo, no como excepción"),
+ "CFG-06":("NO APLICABLE","2026-08-06 — decisión del owner: el producto es SaaS continuo y no publica versión. SemVer versiona una interfaz que se distribuye y se elige; aquí no hay artefacto que alguien instale ni versión que nadie pueda quedarse. Se reevalúa si se publica API pública o cliente descargable"),
+ "DOC-02":("CONFORME","2026-08-06 — `tipo` exigido contra un esquema de 10 clases derivado del árbol, cada una con su propósito escrito (`TIPOS` en check_docs.py); 130 documentos declarados y barrido que impide el 131 sin tipo"),
  "DOC-03":("CONFORME","Ola 2 — el ER se genera de Base.metadata (scripts/generar_er.py) y la suite falla si se desfasa; database.md decía 49 tablas con 56 en el modelo"),
  # DAT-04 y DAT-08 miraban el mismo hecho desde lados distintos: la auditoría
  # contó «6 sitios» de conversión y DAT-08 anotó «26 constantes en línea».
@@ -155,13 +176,18 @@ CIERRES = {
  # textos plausibles y ninguno pensado: escribir el porqué de una regla de
  # negocio exige saber qué regla es. Lo que faltaba era el mecanismo, y ahora
  # está: `mensaje()` con tres argumentos sin defecto + línea base que encoge.
- "LEN-02":("PARCIAL","Ola 2 — 177→169 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
+ "LEN-02":("PARCIAL","Ola 2 — 177→166 con texto suelto; `errors.mensaje()` hace estructural el requisito y `check_mensajes.py` impide el 170"),
  # DAT-12: la auditoría midió «77 puntos» y el conteo bruto de `?? 0` daba 84,
  # pero 67 de esos eran de CÁLCULO —`map.get(k) ?? 0` al sumar es correcto—.
  # Los de PRESENTACIÓN eran 17, y quedaron en cero. El producto ya usaba «—»
  # para huecos de texto en 43 archivos: lo que faltaba era no taparlo con un
  # cero en los números.
  "DAT-12":("CONFORME","Ola 2 — 17 sitios de presentación a `@/lib/sin-dato`, con etiqueta accesible; gate en check_tokens.py"),
+ # SEG-04 era la única CRÍTICA viva, y el hueco era explotable dentro del
+ # mismo inquilino: el alcance por asignación se aplicaba al listado y a
+ # ningún detalle. Nueve copias del resolvedor de proyecto, dos órdenes de
+ # argumentos y dos sin filtrar `deleted_at`. Ahora una sola comprobación.
+ "SEG-04":("CONFORME","Ola 3 — core/autorizacion.proyecto_autorizado; 18 casos verificados por mutación; AM-15 en el modelo de amenazas"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
 }
 

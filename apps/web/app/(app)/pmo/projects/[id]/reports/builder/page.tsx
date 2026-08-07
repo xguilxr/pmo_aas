@@ -38,6 +38,7 @@ import {
   type RenderRequest,
 } from "@/lib/api/report-builder";
 import { getStoredUser } from "@/lib/auth-storage";
+import { confirmarDestructivo } from "@/lib/confirmar";
 
 type DraftShape = {
   codes: string[];
@@ -259,7 +260,14 @@ export default function ReportBuilderPage() {
   }
 
   async function removeTemplate(tpl: ReportBuilderTemplate) {
-    if (!window.confirm(`¿Borrar "${tpl.name}"?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `la plantilla «${tpl.name}»`,
+        consecuencia: "Los informes ya generados con ella no se tocan; deja de poder usarse para nuevos.",
+        reversibilidad: "definitiva",
+      })
+    )
+      return;
     await deleteBuilderTemplate(tpl.id);
     if (loadedTemplateId === tpl.id) setLoadedTemplateId(null);
     await refreshTemplates();

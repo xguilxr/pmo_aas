@@ -13,9 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import forbidden, not_found
+from app.core.autorizacion import proyecto_autorizado
+from app.core.errors import forbidden
 from app.db.session import get_db
-from app.models.project import Project
 from app.models.project_ai_context import ProjectAIContext
 from app.services.audit import write_audit
 
@@ -47,20 +47,6 @@ def _tenant(cu: CurrentUser) -> UUID:
     return cu.effective_tenant_id
 
 
-async def _get_project(db: AsyncSession, project_id: UUID, tenant_id: UUID) -> Project:
-    p = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id),
-                Project.tenant_id == str(tenant_id),
-                Project.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if p is None:
-        raise not_found("Proyecto")
-    return p
-
 
 @router.get("", response_model=AIContextRead)
 async def get_ai_context(
@@ -69,7 +55,7 @@ async def get_ai_context(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     ctx = (
         await db.execute(
             select(ProjectAIContext).where(
@@ -91,7 +77,7 @@ async def upsert_ai_context(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     ctx = (
         await db.execute(
             select(ProjectAIContext).where(

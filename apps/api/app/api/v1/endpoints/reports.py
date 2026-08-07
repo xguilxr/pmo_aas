@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
+from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import forbidden, not_found
 from app.core.unidades import razon_a_pct
 from app.db.session import get_db
@@ -42,18 +43,6 @@ def _tenant(cu: CurrentUser) -> UUID:
         raise forbidden()
     return cu.effective_tenant_id
 
-
-async def _get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
-    p = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id), Project.tenant_id == tenant_id
-            )
-        )
-    ).scalar_one_or_none()
-    if p is None:
-        raise not_found("Proyecto")
-    return p
 
 
 ReportPeriod = Literal["daily", "weekly", "monthly"]
@@ -110,7 +99,7 @@ async def list_reports(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _get_project(db, tenant_id, project_id)
+    await proyecto_autorizado(db, project_id, cu)
     stmt = (
         select(Report)
         .where(Report.tenant_id == str(tenant_id), Report.project_id == str(project_id))
@@ -179,7 +168,7 @@ async def create_report(
     """Crea un reporte manual (borrador). Secciones pre-llenadas con las
     sugeridas en US-022 si no se envían."""
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
 
     default_title = (
         f"Reporte {project.folio} — "
@@ -374,7 +363,7 @@ async def generate_avance_report(
     """Genera Reporte de Avance (Python, sin IA). Devuelve el PDF y guarda
     un row en `reports` con generator='avance' + snapshot del contexto."""
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     # ENH-122: si vienen ambos period_from + period_to, override de
     # period_days y cut_off_date. Útil para reportes "ad hoc" con
     # ventana arbitraria solicitados por owner.
@@ -390,7 +379,7 @@ async def generate_avance_report(
         )
 
     context = await build_avance_context(
-        db, tenant_id, project.id, cut_off, window_days=window_days
+        db, tenant_id, project, cut_off, window_days=window_days
     )
     await _apply_report_branding(context, db, tenant_id, project_id=project.id)
 
@@ -452,11 +441,11 @@ async def generate_look_ahead_report(
     Persiste con `generator='look_ahead'` y `cut_off_date=hoy`.
     """
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     payload = body or LookAheadGenerate()
 
     context = await build_look_ahead_context(
-        db, tenant_id, project.id,
+        db, tenant_id, project,
         window_value=payload.window_value,
         window_unit=payload.window_unit,
     )
@@ -536,7 +525,7 @@ async def download_avance_report(
     ctx = dict(rep.sections or {})
     await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf("reports/avance.html", ctx)
-    project = await _get_project(db, tenant_id, UUID(rep.project_id))
+    project = await proyecto_autorizado(db, UUID(rep.project_id), cu)
     stamp = rep.created_at if rep.created_at else datetime.now(UTC)
     filename = _report_filename("Avance", project.name, stamp)
     return _pdf_response(pdf, filename, inline=inline)
@@ -551,7 +540,7 @@ async def generate_seguimiento_report(
 ):
     """Reporte de Seguimiento (Python, sin IA). Ver US-039."""
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     # ENH-122: rango custom (period_from + period_to) override igual que avance.
     if body and body.period_from and body.period_to:
         cut_off = body.period_to
@@ -565,7 +554,7 @@ async def generate_seguimiento_report(
             window_days = (body.window_days if body else 14) or 14
 
     context = await build_seguimiento_context(
-        db, tenant_id, project.id, cut_off, window_days=window_days,
+        db, tenant_id, project, cut_off, window_days=window_days,
     )
     await _apply_report_branding(context, db, tenant_id, project_id=project.id)
     pdf = render_pdf("reports/seguimiento.html", context)
@@ -634,7 +623,7 @@ async def download_seguimiento_report(
     ctx = dict(rep.sections or {})
     await _apply_report_branding(ctx, db, tenant_id, project_id=rep.project_id)
     pdf = render_pdf("reports/seguimiento.html", ctx)
-    project = await _get_project(db, tenant_id, UUID(rep.project_id))
+    project = await proyecto_autorizado(db, UUID(rep.project_id), cu)
     stamp = rep.created_at if rep.created_at else datetime.now(UTC)
     filename = _report_filename("Seguimiento", project.name, stamp)
     return _pdf_response(pdf, filename, inline=inline)
@@ -705,7 +694,7 @@ async def list_report_history(
 ):
     """US-092: lista paginada (50 por default) ordenada `generated_at DESC`."""
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     rows = (
         await db.execute(
             select(ReportHistory)
@@ -820,7 +809,7 @@ async def download_report_history(
     ).scalar_one_or_none()
     if rep is None:
         raise not_found("Reporte fuente")
-    project = await _get_project(db, tenant_id, UUID(h.project_id))
+    project = await proyecto_autorizado(db, UUID(h.project_id), cu)
     # BUG-055: AI reports guardan HTML en sections["_html"]; servir directo
     # (no usan los templates de Avance/Seguimiento).
     # BUG-059: si el reporte fue tweakeado (US-109), `rep.html_content`
@@ -948,7 +937,7 @@ async def ai_generate_report(
     from app.services.operational_reports import build_seguimiento_context
 
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
 
     tenant_cfg = await load_tenant_ai(db, tenant_id)
     if tenant_cfg.mode == "disabled":
@@ -971,9 +960,11 @@ async def ai_generate_report(
 
     cut_off = body.period_end or datetime.now(UTC).date()
     if body.base == "seguimiento":
-        context = await build_seguimiento_context(db, tenant_id, project.id, cut_off, 14)
+        context = await build_seguimiento_context(
+        db, tenant_id, project, cut_off, 14)
     else:
-        context = await build_avance_context(db, tenant_id, project.id, cut_off)
+        context = await build_avance_context(
+        db, tenant_id, project, cut_off)
 
     # ENH-071: filtros configurables sobre el listado del reporte.
     area_set = {str(a) for a in (body.area_ids or [])}
@@ -1343,7 +1334,7 @@ async def list_ai_report_templates(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     rows = (
         await db.execute(
             select(AIReportTemplate)
@@ -1369,7 +1360,7 @@ async def create_ai_report_template(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     tpl = AIReportTemplate(
         tenant_id=str(tenant_id),
         project_id=str(project.id),
@@ -1559,9 +1550,10 @@ async def render_report_html_endpoint(
             content=rep.html_content,
             media_type="text/html; charset=utf-8",
         )
-    project = await _get_project(db, tenant_id, UUID(str(rep.project_id)))
+    project = await proyecto_autorizado(db, UUID(str(rep.project_id)), cu)
     cut_off = rep.cut_off_date or datetime.now(UTC).date()
-    context = await build_avance_context(db, tenant_id, project.id, cut_off)
+    context = await build_avance_context(
+        db, tenant_id, project, cut_off)
     data = _project_render_data(project, context)
     brand = await load_report_branding(db, tenant_id, project.organization_id)
     html = render_report_html(
@@ -1589,9 +1581,10 @@ async def render_default_report_html(
     para que el render exista desde el inicio antes del tweak IA).
     """
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     cut_off = datetime.now(UTC).date()
-    context = await build_avance_context(db, tenant_id, project.id, cut_off)
+    context = await build_avance_context(
+        db, tenant_id, project, cut_off)
     data = _project_render_data(project, context)
     brand = await load_report_branding(db, tenant_id, project.organization_id)
     html = render_report_html(
@@ -1643,9 +1636,10 @@ async def export_report(
     # Si no hay HTML guardado, regenera vía US-111 endpoint.
     html_content = rep.html_content
     if not html_content:
-        project = await _get_project(db, tenant_id, UUID(str(rep.project_id)))
+        project = await proyecto_autorizado(db, UUID(str(rep.project_id)), cu)
         cut_off = rep.cut_off_date or datetime.now(UTC).date()
-        context = await build_avance_context(db, tenant_id, project.id, cut_off)
+        context = await build_avance_context(
+        db, tenant_id, project, cut_off)
         data = _project_render_data(project, context)
         html_content = render_report_html(
             title=rep.title or f"Reporte — {project.folio}",

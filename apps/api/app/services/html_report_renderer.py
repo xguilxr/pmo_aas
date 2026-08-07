@@ -20,6 +20,8 @@ import json
 from datetime import datetime
 from typing import Any
 
+from app.core.observabilidad import medido
+
 
 def _esc(value: Any) -> str:
     """HTML-escape preservando tipos no-string."""
@@ -215,6 +217,7 @@ _INLINE_JS = """
 """
 
 
+@medido("informe.html", tipo="proyecto")
 def render_report_html(
     *,
     title: str,
@@ -351,6 +354,7 @@ def render_report_html(
 </html>"""
 
 
+@medido("informe.minuta_html")
 def render_minute_html(
     *,
     title: str,

@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   getTenantDetail,
   listTenantUsers,
@@ -92,9 +93,11 @@ export default function SuperadminTenantUsersPage() {
   async function saveRoleType(user: SuperadminUserRow, next: RoleType) {
     if (savingId) return;
     if (
-      !window.confirm(
-        `Cambiar role_type de ${user.email}: ${user.role_type ?? "(none)"} → ${next}?`,
-      )
+      !confirmarDestructivo({
+        objeto: `el rol de ${user.email} (${user.role_type ?? "sin rol"} → ${next})`,
+        consecuencia: "Cambia lo que puede ver y hacer en toda la plataforma, de inmediato.",
+        reversibilidad: "definitiva",
+      })
     ) {
       return;
     }

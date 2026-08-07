@@ -18,9 +18,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
+from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import business_rule, forbidden, not_found
 from app.db.session import get_db
-from app.models.project import Project
 from app.models.scheduled_minute import ScheduledMinute
 from app.services.audit import write_audit
 from app.services.scheduled_minutes import CADENCES, Cadence, compute_next_run
@@ -33,18 +33,6 @@ def _tenant(cu: CurrentUser) -> UUID:
         raise forbidden()
     return cu.effective_tenant_id
 
-
-async def _get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
-    p = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id), Project.tenant_id == tenant_id
-            )
-        )
-    ).scalar_one_or_none()
-    if p is None:
-        raise not_found("Proyecto")
-    return p
 
 
 class ScheduledMinuteCreate(BaseModel):
@@ -124,7 +112,7 @@ async def list_scheduled_minutes(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _get_project(db, tenant_id, project_id)
+    await proyecto_autorizado(db, project_id, cu)
     rows = (
         await db.execute(
             select(ScheduledMinute)
@@ -150,7 +138,7 @@ async def create_scheduled_minute(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    project = await _get_project(db, tenant_id, project_id)
+    project = await proyecto_autorizado(db, project_id, cu)
     _validate_enum("cadence", body.cadence, CADENCES)
 
     sched = ScheduledMinute(

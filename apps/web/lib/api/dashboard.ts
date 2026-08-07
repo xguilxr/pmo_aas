@@ -7,8 +7,12 @@ export type DashboardKpis = {
   severe_risks: number;
   change_requests_in_review: number;
   open_issues: number;
-  budget_total: number;
-  progress_avg: number;
+  // `null` = no hay nada que promediar ni que sumar, y NO cero (DAT-12).
+  // `KpiCard` lo pinta «—». El tipo tiene que decirlo: con `number` a secas,
+  // TypeScript dejaba pasar cualquier `?? 0` y el hueco volvía a leerse como
+  // una cartera parada.
+  budget_total: number | null;
+  progress_avg: number | null;
 };
 
 export type DashboardCharts = {

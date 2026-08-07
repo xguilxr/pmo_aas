@@ -6,6 +6,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
+from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.core.unidades import mebibytes
 from app.db.session import get_db
@@ -65,19 +66,6 @@ def _tenant(cu: CurrentUser) -> UUID:
         raise forbidden()
     return cu.effective_tenant_id
 
-
-async def _get_project(db: AsyncSession, project_id: UUID, tenant_id: UUID) -> Project:
-    p = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id), Project.tenant_id == tenant_id,
-                Project.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if p is None:
-        raise not_found("Proyecto")
-    return p
 
 
 def _ensure_editable(p: Project, *, allow_after_closed: bool = False) -> None:
@@ -383,8 +371,7 @@ async def list_risks(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     # US-064: outer join con project_areas para ordering por nombre de
     # área (legacy NULL va al final con COALESCE a 'ZZZ').
     stmt = (
@@ -430,7 +417,7 @@ async def create_risk(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     _ensure_editable(p)
     # US-064: valida area antes de crear.
     area = await _validate_area(db, body.area_id, project_id, tenant_id)
@@ -645,8 +632,7 @@ async def list_issues(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     stmt = (
         select(Issue, Area)
         .outerjoin(Area, Area.id == Issue.area_id)
@@ -690,7 +676,7 @@ async def create_issue(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     _ensure_editable(p)
     # US-064: valida area antes de crear.
     area = await _validate_area(db, body.area_id, project_id, tenant_id)
@@ -874,8 +860,7 @@ async def list_chgs(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     stmt = select(ChangeRequest).where(
         ChangeRequest.project_id == str(project_id), ChangeRequest.deleted_at.is_(None)
     )
@@ -894,7 +879,7 @@ async def create_chg(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     _ensure_editable(p)
     folio = await next_folio(db, tenant_id=tenant_id, prefix="CHG")
     c = ChangeRequest(
@@ -1103,7 +1088,7 @@ async def upload_document(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     _ensure_editable(p, allow_after_closed=True)
     if body.mime_type not in ALLOWED_DOC_MIME:
         from fastapi import HTTPException
@@ -1169,7 +1154,7 @@ async def upload_document_file(
     from app.schemas.modules import DOCUMENT_CATEGORIES
 
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     _ensure_editable(p, allow_after_closed=True)
 
     cat = category if category in DOCUMENT_CATEGORIES else "other"
@@ -1228,8 +1213,7 @@ async def list_documents(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     stmt = select(Document).where(
         Document.project_id == str(project_id), Document.deleted_at.is_(None)
     )
@@ -1541,7 +1525,7 @@ async def create_lesson(
 ):
     tenant_id = _tenant(cu)
     # Lecciones se pueden crear incluso en proyecto cerrado
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     folio = await next_folio(db, tenant_id=tenant_id, prefix="LEC")
     l = Lesson(
         tenant_id=str(tenant_id), project_id=str(project_id), folio=folio,
@@ -1571,7 +1555,7 @@ async def create_minute(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     folio = await next_folio(db, tenant_id=tenant_id, prefix="MIN")
     # BUG-058 + BUG-063: sanitiza `raid_suggestions` al shape canónico
     # A/R/D/I (actions/risks/decisions/issues). Tolera el shape legacy
@@ -1692,8 +1676,7 @@ async def list_minutes(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     rows = (
         await db.execute(
             select(MeetingMinute)

@@ -67,6 +67,7 @@ import {
   type RiskUpdateBody,
 } from "@/lib/api/modules";
 import { cn } from "@/lib/cn";
+import { confirmarDestructivo } from "@/lib/confirmar";
 
 type Tab = RaidKind;
 
@@ -458,7 +459,15 @@ function RaidInner() {
   }
 
   async function removeRisk(id: string) {
-    if (!window.confirm("¿Eliminar este riesgo?")) return;
+    const riesgo = risks.find((r) => r.id === id);
+    if (
+      !confirmarDestructivo({
+        objeto: `el riesgo «${riesgo?.title ?? id}»`,
+        consecuencia: "Deja de contarse en el semáforo del proyecto.",
+        reversibilidad: "recuperable",
+      })
+    )
+      return;
     const prev = risks;
     setRisks((rows) => rows.filter((r) => r.id !== id));
     try {
@@ -470,7 +479,15 @@ function RaidInner() {
   }
 
   async function removeIssue(id: string) {
-    if (!window.confirm("¿Eliminar este ítem?")) return;
+    const asunto = issues.find((i) => i.id === id);
+    if (
+      !confirmarDestructivo({
+        objeto: `el issue «${asunto?.title ?? id}»`,
+        consecuencia: "Deja de contarse en los abiertos del proyecto.",
+        reversibilidad: "recuperable",
+      })
+    )
+      return;
     const prev = issues;
     setIssues((rows) => rows.filter((i) => i.id !== id));
     try {

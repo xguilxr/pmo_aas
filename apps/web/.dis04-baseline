@@ -1,0 +1,10 @@
+# Línea base de DIS-04 — avisos destructivos que aún no pasan por la frontera
+#
+# NO se edita a mano: la reescribe `python scripts/check_confirmaciones.py --regenerar`.
+#
+# Cada fila es la ruta y la línea. Es el pasivo del día en que se enchufó el
+# control, no una lista de excepciones aprobadas: **solo puede encoger**.
+#
+# La frontera es `apps/web/lib/confirmar.ts`, que obliga a nombrar el objeto,
+# decir la consecuencia y declarar si la acción es recuperable o definitiva.
+# Migrar una fila de aquí es escribir esas tres cosas para ese caso.

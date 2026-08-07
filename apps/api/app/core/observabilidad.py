@@ -60,15 +60,31 @@ separe los dos flujos.
 """
 from __future__ import annotations
 
+import functools
+import inspect
 import logging
 import sys
-from typing import Any
+import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from typing import Any, ParamSpec, TypeVar, cast
 
 import structlog
 
 from app.core.config import settings
+from app.core.unidades import segundos_a_ms
 
 logger = logging.getLogger("pmoaas.observabilidad")
+
+#: Registro aparte para la medición. Se separa de `pmoaas.observabilidad` para
+#: que se pueda subir o bajar su nivel sin tocar el de los errores.
+medidor = logging.getLogger("pmoaas.medicion")
+
+#: Para que `medido` conserve la firma de lo que decora. Sin esto el decorador
+#: devuelve `Any` y apaga la comprobación de tipos de todo el que llama a la
+#: función decorada — en silencio.
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 #: Nombre del proceso, fijado por `configurar_registro`. Se emite en cada
 #: registro para poder separar la API del worker sin adivinar por el módulo:
@@ -186,3 +202,120 @@ def iniciar_captura_de_errores(proceso: str) -> bool:
         "captura de errores activa proceso=%s env=%s", proceso, settings.PYTHON_ENV
     )
     return True
+
+
+@contextmanager
+def medir(operacion: str, **etiquetas: Any) -> Iterator[dict[str, Any]]:
+    """Mide cuánto tarda un bloque y lo reporta a Sentry y al registro.
+
+    Existe por MCS REQ-02: «DEBEN definirse al menos cuatro escenarios de
+    calidad con medida de respuesta numérica». Hoy hay **cero**, y no por
+    descuido: no se puede declarar «un informe se genera en menos de N
+    segundos» sin saber cuánto tarda. Inventar el número sería exactamente el
+    error que este expediente lleva cinco recuentos evitando.
+
+    Así que primero se mide y después se declara el escenario, con el
+    percentil 95 real de producción.
+
+    **Funciona sin Sentry.** En local y en las pruebas no hay DSN, y aun así la
+    duración sale por el registro estructurado —que desde OPS-01 es JSON a la
+    salida estándar—. Una medición que solo existe en producción no se puede
+    probar.
+
+    **Nunca cambia el resultado ni traga un error.** Si el bloque revienta, se
+    mide igual, se marca `exito=False` y la excepción sigue subiendo: una
+    instrumentación que se coma un fallo es peor que no tenerla.
+
+    El diccionario que entrega permite añadir etiquetas que solo se conocen
+    dentro del bloque (páginas, filas, tamaño), y que se emiten al cerrar:
+
+        with medir("informe.html", tipo="semanal") as m:
+            html = render(...)
+            m["bytes"] = len(html)
+    """
+    extra: dict[str, Any] = dict(etiquetas)
+    comienzo = time.perf_counter()
+    exito = True
+
+    span = None
+    try:  # pragma: no cover - depende de que sentry esté instalado y activo
+        import sentry_sdk
+
+        if sentry_sdk.get_client().is_active():
+            span = sentry_sdk.start_span(op="generacion", name=operacion)
+            span.__enter__()
+    except Exception:
+        span = None
+
+    try:
+        yield extra
+    except Exception:
+        exito = False
+        raise
+    finally:
+        ms = segundos_a_ms(time.perf_counter() - comienzo)
+        if span is not None:  # pragma: no cover
+            try:
+                for clave, valor in {**extra, "exito": exito}.items():
+                    span.set_data(clave, valor)
+                span.__exit__(None, None, None)
+            except Exception:
+                pass
+        medidor.info(
+            "generacion",
+            extra={
+                "operacion": operacion,
+                "duracion_ms": ms,
+                "exito": exito,
+                **extra,
+            },
+        )
+
+
+def medido(
+    operacion: str, **etiquetas: Any
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    """Decorador para medir una función entera. Sirve para `async` y para `def`.
+
+    `medir` como gestor de contexto obliga a tocar el cuerpo de la función; en
+    los puntos de generación, que son largos y con varios `return`, eso es
+    invitar a que una rama se quede sin medir. El decorador mide la función
+    completa por construcción.
+
+    Se elige por firma, no por bandera: envolver una corrutina con el envoltorio
+    síncrono devolvería la corrutina sin esperarla y mediría **cero
+    milisegundos siempre** — un fallo que se lee como un informe instantáneo y
+    no como un error.
+
+    **Tipado con `ParamSpec`, y no es cosmética.** La primera versión devolvía
+    `Any`, y mypy avisó de lo que eso significa: «untyped decorator makes
+    function untyped». Las cuatro funciones decoradas **perdieron su firma**, y
+    con ella la comprobación de tipos de todo el que las llama.
+
+    Se vio en el propio gate: al enchufarlo desaparecieron **cinco huellas de
+    la línea base** de `reports.py` —errores reales de tipo que mypy dejó de
+    ver porque ya no sabía qué recibía `render_report_html`—. Un decorador sin
+    tipar no es un detalle de estilo: apaga el análisis aguas abajo y lo hace
+    en silencio.
+    """
+
+    def envolver(funcion: Callable[_P, _R]) -> Callable[_P, _R]:
+        if inspect.iscoroutinefunction(funcion):
+
+            @functools.wraps(funcion)
+            async def asincrona(*args: _P.args, **kwargs: _P.kwargs) -> Any:
+                with medir(operacion, **etiquetas):
+                    return await funcion(*args, **kwargs)
+
+            # `cast` porque el envoltorio asíncrono devuelve la corrutina ya
+            # esperada: para quien llama, la firma es la misma.
+            return cast(Callable[_P, _R], asincrona)
+
+        @functools.wraps(funcion)
+        def sincrona(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+            with medir(operacion, **etiquetas):
+                return funcion(*args, **kwargs)
+
+        return sincrona
+
+    return envolver

@@ -1,4 +1,5 @@
 ---
+tipo: informe
 responsable: propietario
 estado: historico
 revisado: 2026-08-03

@@ -41,6 +41,7 @@ import {
 } from "@/lib/api/project-directory";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
+import { confirmarDestructivo } from "@/lib/confirmar";
 
 type Props = {
   projectId: string;
@@ -130,7 +131,13 @@ export function DirectoryView({ projectId }: Props) {
   const { sortedRows, ctrl: sortCtrl } = useSortableRows<Row>(rows);
 
   async function handleRemove(p: Participation, actorName: string | undefined) {
-    if (!confirm(`¿Quitar a "${actorName ?? "esta persona"}" del proyecto?`)) {
+    if (
+      !confirmarDestructivo({
+        objeto: `la asignación de «${actorName ?? "esta persona"}» a este proyecto`,
+        consecuencia: "Deja de contar en la carga del recurso y pierde el acceso al proyecto. La persona no se borra.",
+        reversibilidad: "definitiva",
+      })
+    ) {
       return;
     }
     try {
@@ -701,7 +708,14 @@ function EditParticipationModal({
   }
 
   async function removeFromProject() {
-    if (!confirm("¿Quitar persona del proyecto?")) return;
+    if (
+      !confirmarDestructivo({
+        objeto: "la asignación de esta persona al proyecto",
+        consecuencia: "Deja de contar en la carga del recurso y pierde el acceso al proyecto. La persona no se borra.",
+        reversibilidad: "definitiva",
+      })
+    )
+      return;
     setSaving(true);
     try {
       await deleteParticipation(projectId, participation.id);

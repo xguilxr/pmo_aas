@@ -20,13 +20,13 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import shutil
 import subprocess
 import tempfile
 from datetime import date, datetime
 from pathlib import Path
 
+from app.core.config import settings
 from app.services.xlsx_task_parser import ParsedTask, XlsxParseResult
 
 logger = logging.getLogger(__name__)
@@ -38,17 +38,19 @@ DEFAULT_TIMEOUT_SECONDS = 60
 
 
 def _classpath() -> str:
-    return os.environ.get("MPXJ_CLI_CP", DEFAULT_CLI_CP)
+    return settings.MPXJ_CLI_CP
 
 
 def _timeout() -> int:
-    raw = os.environ.get("MPP_PARSE_TIMEOUT_SECONDS")
-    if not raw:
-        return DEFAULT_TIMEOUT_SECONDS
-    try:
-        return max(5, int(raw))
-    except ValueError:
-        return DEFAULT_TIMEOUT_SECONDS
+    """El mínimo de 5 s se conserva: es una guarda contra un valor mal puesto
+    que dejaría el análisis sin tiempo de arrancar la JVM.
+
+    El `try/except ValueError` que había aquí desapareció porque ya no hace
+    falta: `Settings` declara el campo como `int` y Pydantic rechaza al
+    arrancar lo que no lo sea. Antes, un `MPP_PARSE_TIMEOUT_SECONDS=sesenta`
+    caía al valor por defecto **en silencio**.
+    """
+    return max(5, settings.MPP_PARSE_TIMEOUT_SECONDS)
 
 
 def _parse_date(v: object) -> date | None:

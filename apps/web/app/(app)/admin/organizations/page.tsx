@@ -82,7 +82,7 @@ function HealthStrip({ h }: { h: OrganizationPanel["portfolio_health"] }) {
           <span
             className="bg-amber-400"
             style={{ width: pct(h.yellow) }}
-            aria-label={`${h.yellow} ámbar`}
+            aria-label={`${h.yellow} amarillo`}
           />
         ) : null}
         {h.red > 0 ? (

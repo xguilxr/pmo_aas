@@ -44,6 +44,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import not_found
+from app.core.observabilidad import medido
 from app.models.area import Area
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Issue, Risk
@@ -956,6 +957,7 @@ def _section_by_area(
 # ---------------------------------------------------------------------------
 
 
+@medido("informe.plantilla")
 async def render_template(
     db: AsyncSession,
     template_ref: ReportBuilderTemplate | UUID | str,

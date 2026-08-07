@@ -1,11 +1,16 @@
 ---
+tipo: gestion
 responsable: propietario
-estado: vigente
+estado: historico
 revisado: 2026-06-05
-revisar_cada: 30d
+revisar_cada: nunca
 ---
 
 # Handoff — pmo_aas — 2026-06-05
+
+> **Histórico.** Puente de la sesión del 2026-06-05, conservado como registro.
+> El puente vivo es siempre [`HANDOFF.md`](HANDOFF.md); este ya no describe
+> dónde retomar.
 
 > Foco de este handoff: **los 4 temas restantes** del batch de bugs/ENH que pidió
 > el owner (2026-06-05). El bloque ya cerrado (6 temas) está al final como contexto.

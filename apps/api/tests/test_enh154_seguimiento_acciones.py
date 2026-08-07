@@ -69,7 +69,7 @@ async def test_enh154_open_actions_separated_from_activity_buckets(client, db_se
     ])
     await db_session.commit()
 
-    ctx = await build_seguimiento_context(db_session, t.id, p.id, cut, window_days=14)
+    ctx = await build_seguimiento_context(db_session, t.id, p, cut, window_days=14)
 
     # La acción está en su sección, no en los buckets de Actividades.
     assert "Acción con fecha" in _all_titles(ctx["groups_actions"])
@@ -101,7 +101,7 @@ async def test_enh154_action_without_committed_date_is_rescued(client, db_sessio
     )
     await db_session.commit()
 
-    ctx = await build_seguimiento_context(db_session, t.id, p.id, cut, window_days=14)
+    ctx = await build_seguimiento_context(db_session, t.id, p, cut, window_days=14)
     assert "Acción sin fecha" in _all_titles(ctx["groups_actions"])
 
 
@@ -121,5 +121,5 @@ async def test_enh154_resolved_action_excluded(client, db_session):
     )
     await db_session.commit()
 
-    ctx = await build_seguimiento_context(db_session, t.id, p.id, cut, window_days=14)
+    ctx = await build_seguimiento_context(db_session, t.id, p, cut, window_days=14)
     assert "Acción resuelta" not in _all_titles(ctx["groups_actions"])

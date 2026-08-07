@@ -20,7 +20,7 @@ export type ProgressCalculationMethod =
 // ENH-099: per-tenant resource-load colorization thresholds (Report Builder / EP020).
 export type TaskLoadThresholds = {
   green_max: number;
-  amber_max: number;
+  yellow_max: number;
 };
 
 // ENH-190: per-tenant UI label for "Organización/Organizaciones".

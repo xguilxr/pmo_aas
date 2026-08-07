@@ -6,7 +6,8 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import business_rule, conflict, forbidden, not_found, validation_error
+from app.core.autorizacion import proyecto_autorizado
+from app.core.errors import business_rule, conflict, forbidden, validation_error
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.models.organization import Organization
@@ -237,19 +238,6 @@ async def create_project(
     return ProjectRead.model_validate(project)
 
 
-async def _get_project(db: AsyncSession, project_id: UUID, tenant_id: UUID) -> Project:
-    p = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id), Project.tenant_id == tenant_id,
-                Project.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if p is None:
-        raise not_found("Proyecto")
-    return p
-
 
 @router.get("/{project_id}", response_model=ProjectDetail)
 async def get_project(
@@ -257,8 +245,7 @@ async def get_project(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
 
     members_rows = (
         await db.execute(
@@ -384,8 +371,7 @@ async def get_project_activity(
     """
     from app.models.audit import AuditLog
 
-    tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)  # valida acceso
+    p = await proyecto_autorizado(db, project_id, cu)  # valida acceso
 
     rows = (
         await db.execute(
@@ -422,7 +408,7 @@ async def update_project(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no editable")
     data = body.model_dump(exclude_none=True)
@@ -481,7 +467,7 @@ async def get_health_detail(
     calculado (mantiene honestos los agregados SQL de dashboards).
     """
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     tenant = (
         await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
     ).scalar_one_or_none()
@@ -507,7 +493,7 @@ async def declare_health(
 ):
     """US-180 — declarar el semáforo (con razón) o volver a 'auto'."""
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no editable")
 
@@ -564,7 +550,7 @@ async def create_health_evaluation(
     from app.models.project import ProjectHealthEvaluation
 
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no editable")
 
@@ -627,8 +613,7 @@ async def list_health_evaluations(
     """US-191 — historial de evaluaciones (más reciente primero)."""
     from app.models.project import ProjectHealthEvaluation
 
-    tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     rows = (
         await db.execute(
             select(ProjectHealthEvaluation)
@@ -654,8 +639,7 @@ async def reset_plan_aggregate(
     plan. Body: `{"field": "start_date"}`. El valor actual del campo
     se preserva pero queda elegible para sobrescritura por importadores.
     """
-    tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if p.phase == "closed":
         raise business_rule("Proyecto cerrado, no editable")
     field = body.get("field")
@@ -676,7 +660,7 @@ async def delete_project(
 ):
 
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     p.deleted_at = datetime.now(UTC)
     await write_audit(
         db, action="project.delete", module="projects",
@@ -696,7 +680,7 @@ async def change_phase(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if body.new_phase not in VALID_TRANSITIONS.get(p.phase, set()):
         raise conflict(
             f"Transición inválida: {p.phase} → {body.new_phase}", code="STATE_TRANSITION"
@@ -720,8 +704,7 @@ async def list_members(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     rows = (
         await db.execute(
             select(ProjectMember.user_id, ProjectMember.role_in_project, User.username, User.full_name)
@@ -744,7 +727,7 @@ async def add_member(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    await _get_project(db, project_id, tenant_id)
+    await proyecto_autorizado(db, project_id, cu)
     exists = (
         await db.execute(
             select(ProjectMember).where(
@@ -778,7 +761,7 @@ async def remove_member(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     if str(user_id) == (str(p.pm_id) if p.pm_id else ""):
         raise business_rule("No puedes remover al PM vigente; cambia pm_id primero")
     await db.execute(
@@ -805,8 +788,7 @@ async def export_project(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     payload = ProjectRead.model_validate(p).model_dump(mode="json")
     if format == "json":
         return payload
@@ -836,8 +818,7 @@ async def get_project_progress(
     """
     from app.services.progress_calculator import compute_progress_detailed
 
-    tenant_id = _tenant(cu)
-    p = await _get_project(db, project_id, tenant_id)
+    p = await proyecto_autorizado(db, project_id, cu)
     result = await compute_progress_detailed(db, p.id, method=method)
     payload: dict[str, object] = {
         "value": result.value,

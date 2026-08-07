@@ -1,4 +1,5 @@
 ---
+tipo: epica
 responsable: propietario
 estado: vigente
 revisado: 2026-06-29

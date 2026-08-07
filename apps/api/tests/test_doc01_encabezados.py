@@ -40,6 +40,7 @@ from check_docs import (  # noqa: E402
     CAMPOS,
     ESTADOS,
     RAIZ_INCLUIDOS,
+    TIPOS,
     documentos,
     encabezado,
     revisar,
@@ -47,7 +48,7 @@ from check_docs import (  # noqa: E402
 )
 
 HOY = dt.date(2026, 8, 6)
-BUENO = "---\nresponsable: propietario\nestado: vigente\nrevisado: 2026-08-01\nrevisar_cada: 90d\n---\n\n# Título\n"
+BUENO = "---\ntipo: guia\nresponsable: propietario\nestado: vigente\nrevisado: 2026-08-01\nrevisar_cada: 90d\n---\n\n# Título\n"
 
 
 def test_acepta_el_encabezado_completo() -> None:
@@ -61,9 +62,9 @@ def test_rechaza_el_documento_sin_encabezado() -> None:
 
 @pytest.mark.parametrize("campo", CAMPOS)
 def test_rechaza_cada_campo_que_falte(campo: str) -> None:
-    """Uno a uno, porque los cuatro los nombra el requisito por separado.
+    """Uno a uno, porque el requisito los nombra por separado.
 
-    Un encabezado con tres de cuatro es un encabezado que parece cumplir.
+    Un encabezado al que le falta uno es un encabezado que parece cumplir.
     """
     mutilado = "\n".join(x for x in BUENO.splitlines() if not x.startswith(f"{campo}:"))
     motivos = revisar("docs/x.md", mutilado + "\n", HOY)
@@ -162,4 +163,83 @@ def test_el_documento_reemplazado_lo_dice_en_su_cuerpo() -> None:
     assert "Reemplazado" in cuerpo, (
         "El documento se declara reemplazado en el encabezado pero no avisa en "
         "el cuerpo: quien lo abre y lee sigue sin enterarse."
+    )
+
+
+# ---------------------------------------------------------------------------
+# MCS DOC-02 — el tipo, y su propósito
+# ---------------------------------------------------------------------------
+#
+# DOC-01 pedía saber si un documento sigue vivo y a quién preguntarle. DOC-02
+# pide saber **qué se está leyendo**: no se lee igual una epica —viva, se
+# actualiza con el comportamiento— que un informe fechado, que es expediente y
+# no se corrige. Confundirlos es lo que llevó a que el plan activo se declarara
+# `historico` durante tres días.
+
+
+def test_rechaza_un_tipo_fuera_del_esquema() -> None:
+    """«Conforme a un esquema definido» es la mitad del requisito.
+
+    Sin esta comprobación, `tipo` sería texto libre y cada documento inventaría
+    su clase — que es exactamente lo que el requisito prohíbe.
+    """
+    malo = BUENO.replace("tipo: guia", "tipo: apuntes")
+    motivos = revisar("docs/x.md", malo, HOY)
+    assert any("no está en el esquema" in m for m in motivos), motivos
+
+
+def test_cada_tipo_declara_su_proposito() -> None:
+    """La otra mitad: «y respetar su propósito».
+
+    Un tipo sin propósito escrito no es un esquema, es una lista de palabras.
+    Que un documento lo respete lo juzga quien revisa; que el esquema lo
+    **declare** se comprueba aquí.
+    """
+    for nombre, proposito in TIPOS.items():
+        assert proposito.strip(), f"El tipo `{nombre}` no declara para qué sirve."
+        assert len(proposito) > 25, (
+            f"El propósito de `{nombre}` es demasiado corto para distinguirlo "
+            f"de otro tipo: «{proposito}»"
+        )
+
+
+def test_todo_el_arbol_declara_su_tipo() -> None:
+    """El barrido, que es lo que una lista escrita a mano no puede dar.
+
+    Es la lección de `DAT-05`: una prueba que mira los archivos que alguien se
+    acordó de listar demuestra «todos los que listé», no «todos».
+    """
+    sin_tipo = []
+    for archivo in documentos():
+        campos = encabezado(archivo.read_text(encoding="utf-8")) or {}
+        if campos.get("tipo") not in TIPOS:
+            sin_tipo.append(archivo.relative_to(RAIZ).as_posix())
+    assert not sin_tipo, (
+        f"{len(sin_tipo)} documento(s) sin tipo válido: {sin_tipo[:10]}. "
+        f"`python scripts/check_docs.py --sembrar` lo pone por zona."
+    )
+
+
+def test_el_esquema_distingue_lo_vivo_de_lo_fechado() -> None:
+    """Los dos tipos cuya confusión ya costó un error real.
+
+    El plan de remediación se declaró `historico` heredando la plantilla de los
+    informes, y estuvo tres días marcado como algo que nadie actualiza siendo
+    el documento que `CLAUDE.md` manda leer para retomar.
+    """
+    assert {"plan", "informe"} <= set(TIPOS)
+    assert TIPOS["plan"] != TIPOS["informe"]
+
+
+def test_el_tipo_es_un_campo_exigido() -> None:
+    """Escrito literal, porque el caso parametrizado no puede vigilarlo.
+
+    `test_rechaza_cada_campo_que_falte` se parametriza sobre `CAMPOS`: quitar
+    `tipo` de ahí no rompe el caso, lo **elimina**, y la suite queda verde con
+    el requisito desactivado. La mutación sobrevivió y por eso el nombre está
+    escrito a mano — mismo defecto que `MAX_ASUNTO` en CFG-04.
+    """
+    assert "tipo" in CAMPOS, (
+        "`tipo` salió de los campos exigidos: DOC-02 deja de comprobarse y "
+        "nada se pone rojo."
     )

@@ -1,4 +1,5 @@
 ---
+tipo: epica
 responsable: propietario
 estado: vigente
 revisado: 2026-08-05
@@ -727,3 +728,74 @@ La salida es siempre `wbs_code`. Se cuenta por `compat.nombre_viejo`.
 
 **Reversible**, ejercitada contra el esquema real de `Base.metadata`: sube, baja
 y el código sobrevive en los dos sentidos.
+
+---
+
+## 0101 — `task_load_thresholds.amber_max` → `yellow_max` (DAT-06 / ADR-030)
+
+**No es una columna.** Es una llave dentro del JSON de `tenants.settings`, en el
+bloque `report_builder`, así que la migración lee las filas, reescribe el
+diccionario en Python y actualiza. **SQL portable a propósito:** la suite corre
+sobre SQLite y `jsonb_set` solo existe en Postgres — una migración que solo sabe
+correr en un motor se descubre en producción.
+
+Toca **solo** las filas que tienen el bloque. Reescribir las demás ensuciaría el
+`updated_at` de medio producto sin cambiarles nada.
+
+**Ventana de compatibilidad** en `core/compatibilidad.py`, y con una diferencia
+respecto a las tres anteriores: cubre la **lectura** además de la entrada. Un
+inquilino restaurado de una copia anterior al despliegue traería la llave vieja,
+y perder su umbral en silencio sería peor que aceptarlo — el semáforo de carga
+caería a los valores por defecto y nadie lo notaría hasta ver un informe con los
+colores cambiados.
+
+Lo que se **guarda** es siempre `yellow_max`. Si el guardado volviera a escribir
+el nombre viejo, la migración se desharía sola con el primer cambio de ajustes.
+
+**Reversible**: `downgrade` hace el camino inverso sobre los mismos datos.
+
+---
+
+## `20260806_0102` — `audit_log.actor_type` (MCS IA-02)
+
+Columna nueva: `actor_type VARCHAR(16) NOT NULL DEFAULT 'humano'`, más el índice
+`idx_audit_actor_type_time (actor_type, occurred_at)`.
+
+**Qué problema resuelve.** IA-02 pide que una acción ejecutada por un componente
+de IA quede registrada **y sea distinguible de una acción humana**. Lo primero
+ya se cumplía —la IA sí escribía en `audit_log`—; lo segundo no, y los tres
+campos que parecían servir no servían:
+
+- `module="ai"` significa «el módulo de IA», no «lo hizo la IA»: `report.send`
+  es una persona pulsando enviar y también lo lleva.
+- El prefijo `ai.` en el nombre era inconsistente: `ai.minute.generate` lo tiene
+  y `report.draft` —que redacta el modelo— no.
+- `user_id`, en una acción de IA, guarda **quién la pidió**. Atribuirle el texto
+  generado a esa persona es justo lo que el requisito evita.
+
+**Las filas existentes quedan en `humano`, y es la lectura correcta**, no una
+comodidad: hasta esta migración el producto no tenía forma de que el modelo
+actuara sin que alguien lo pidiera. Lo que no se puede reconstruir hacia atrás
+es cuáles de esas peticiones acabaron en texto generado, y por eso la distinción
+se guarda desde ahora en vez de inferirse.
+
+**`server_default` y no `default`.** `audit_log` es de solo anexado desde la
+0097: hay disparadores que rechazan `UPDATE` y `DELETE`. Una migración que
+rellenara la columna fila a fila chocaría con ellos. El `server_default` lo
+resuelve en la definición de la columna, sin tocar una sola fila. Hay un caso
+que lo vigila (`test_ia02_auditoria_ia.py`).
+
+**El valor por defecto es seguro, pero no es el control.** Son 144 sitios de
+escritura y casi todos son humanos; lo que impide que una ruta de IA nueva se
+registre como humana es el trinquete, que barre por **ubicación** —cualquier
+`write_audit` en código que ejecuta el modelo— y por **nombre** —cualquier
+acción `ai.*`—. Las dos reglas juntas: la de ubicación caza `report.draft`, que
+no lleva el prefijo; la de nombre caza un `ai.*` en un módulo que nadie añadió a
+la lista.
+
+**Ejercitada contra Postgres real** con una fila de historia previa: queda en
+`humano` sin reescribirse, el índice se crea, y `downgrade` deja la tabla como
+estaba.
+
+**Reversible**: `downgrade` quita índice y columna. Se pierde la distinción de
+lo registrado mientras estuvo, que es inevitable y no destruye ningún otro dato.

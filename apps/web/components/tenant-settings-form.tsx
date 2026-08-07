@@ -30,7 +30,7 @@ const PROGRESS_CALC_METHODS: { value: ProgressCalculationMethod; label: string }
 // ENH-099: defaults shown when the tenant has no thresholds configured.
 const DEFAULT_TASK_LOAD_THRESHOLDS: TaskLoadThresholds = {
   green_max: 5,
-  amber_max: 10,
+  yellow_max: 10,
 };
 
 // ENH-190: nomenclatura configurable de "Organización(es)" en la UI.
@@ -96,7 +96,7 @@ export function TenantSettingsForm() {
   const thresholdsValid = (() => {
     const t = form.task_load_thresholds;
     if (!t) return true;
-    return t.green_max > 0 && t.amber_max > 0 && t.green_max < t.amber_max;
+    return t.green_max > 0 && t.yellow_max > 0 && t.green_max < t.yellow_max;
   })();
   // ENH-111: warning informativo si se elige by_effort (las tasks
   // todavía no tienen horas estimadas — fallback documentado).
@@ -259,9 +259,9 @@ export function TenantSettingsForm() {
           </h3>
           <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
             Define los cortes para colorear la carga de tareas por recurso en
-            los reportes: hasta <em>verde</em>, hasta <em>ámbar</em>, y por
+            los reportes: hasta <em>verde</em>, hasta <em>amarillo</em>, y por
             encima se marca en rojo. Ambos valores deben ser positivos y
-            <span className="whitespace-nowrap"> verde &lt; ámbar</span>.
+            <span className="whitespace-nowrap"> verde &lt; amarillo</span>.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Verde hasta">
@@ -281,20 +281,20 @@ export function TenantSettingsForm() {
                     ...form,
                     task_load_thresholds: {
                       green_max: Number.isFinite(next) ? next : current.green_max,
-                      amber_max: current.amber_max,
+                      yellow_max: current.yellow_max,
                     },
                   });
                 }}
               />
             </Field>
-            <Field label="Ámbar hasta">
+            <Field label="Amarillo hasta">
               <Input
                 type="number"
                 min={1}
                 step={1}
                 value={
-                  form.task_load_thresholds?.amber_max ??
-                  DEFAULT_TASK_LOAD_THRESHOLDS.amber_max
+                  form.task_load_thresholds?.yellow_max ??
+                  DEFAULT_TASK_LOAD_THRESHOLDS.yellow_max
                 }
                 onChange={(e) => {
                   const next = Number(e.target.value);
@@ -304,7 +304,7 @@ export function TenantSettingsForm() {
                     ...form,
                     task_load_thresholds: {
                       green_max: current.green_max,
-                      amber_max: Number.isFinite(next) ? next : current.amber_max,
+                      yellow_max: Number.isFinite(next) ? next : current.yellow_max,
                     },
                   });
                 }}
@@ -313,7 +313,7 @@ export function TenantSettingsForm() {
           </div>
           {!thresholdsValid && (
             <p className="mt-2 text-[12px] text-[var(--color-danger-fg)]">
-              Verde debe ser estrictamente menor que ámbar y ambos &gt; 0.
+              Verde debe ser estrictamente menor que amarillo y ambos &gt; 0.
             </p>
           )}
         </div>

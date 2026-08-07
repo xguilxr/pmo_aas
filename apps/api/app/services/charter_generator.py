@@ -28,6 +28,7 @@ from docx.shared import Inches, Pt, RGBColor
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.observabilidad import medido
 from app.core.tipografia import aplicar_a_docx
 from app.models.modules import Document
 from app.models.organization import Organization
@@ -274,6 +275,7 @@ def _render_charter_docx(
     return buf.getvalue()
 
 
+@medido("informe.acta_docx")
 async def generate_charter_docx(
     db: AsyncSession,
     *,

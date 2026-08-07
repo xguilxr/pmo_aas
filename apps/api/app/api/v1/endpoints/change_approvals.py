@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
@@ -30,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
+from app.core.config import settings
 from app.core.errors import business_rule, conflict, forbidden, not_found
 from app.db.session import get_db
 from app.models.area import Actor
@@ -55,11 +55,7 @@ def _approval_secret() -> str:
     JWT_SECRET (compartido con auth) — el scope del token es distinto
     así que la colisión no es problema.
     """
-    return (
-        os.environ.get("APPROVAL_TOKEN_SECRET")
-        or os.environ.get("JWT_SECRET")
-        or "dev-only-approval-secret-change-me"
-    )
+    return settings.APPROVAL_TOKEN_SECRET or settings.JWT_SECRET
 
 
 def _hash_token(jwt_str: str) -> str:
@@ -265,10 +261,20 @@ async def remove_approver(
 
 
 def _build_approval_url(token: str) -> str:
+    """URL del enlace de aprobación que viaja por correo.
+
+    Se resolvía con `os.environ` sobre dos nombres y caía a
+    `http://localhost:3000`. Con ninguna de las dos variables puesta, los
+    correos de aprobación salían con enlaces a la máquina de quien los
+    recibía — y el fallo no aparece en ningún registro: el correo se envía
+    bien, y es al hacer clic cuando no pasa nada.
+
+    Ahora sale de `Settings`, que ya declaraba `APP_BASE_URL` con el dominio de
+    producción por defecto. Los dos nombres viejos se siguen aceptando por si
+    algún despliegue los tiene puestos.
+    """
     base = (
-        os.environ.get("APP_PUBLIC_URL")
-        or os.environ.get("NEXT_PUBLIC_BASE_URL")
-        or "http://localhost:3000"
+        settings.APP_PUBLIC_URL or settings.NEXT_PUBLIC_BASE_URL or settings.APP_BASE_URL
     ).rstrip("/")
     return f"{base}/approve/{token}"
 

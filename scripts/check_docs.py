@@ -65,8 +65,32 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 
-#: Los cuatro campos del requisito.
-CAMPOS = ("responsable", "estado", "revisado", "revisar_cada")
+#: Los campos exigidos. Los cuatro primeros son DOC-01; `tipo` es DOC-02.
+CAMPOS = ("tipo", "responsable", "estado", "revisado", "revisar_cada")
+
+#: MCS DOC-02 — «todo documento DEBE declarar su tipo conforme a un esquema
+#: definido y respetar su propósito».
+#:
+#: El esquema **se derivó del árbol que ya existe**, no se inventó: son las
+#: clases de documento que el repositorio ya escribía, cada una con el propósito
+#: que de hecho cumple. Inventar una taxonomía y luego forzar 129 documentos
+#: dentro produce etiquetas que nadie respeta.
+#:
+#: El propósito no es adorno. Es la mitad del requisito que un campo libre no
+#: cubre: sin él, `tipo` sería una palabra y no un contrato. Que un documento lo
+#: respete lo juzga quien revisa; que lo **declare** lo exige este gate.
+TIPOS = {
+    "epica": "Qué hace el producto, en lenguaje funcional. Viva; se actualiza con el comportamiento",
+    "adr": "Una decisión arquitectónica y su porqué. Inmutable: se reemplaza, no se edita",
+    "informe": "Una medición con fecha. Es expediente: no se corrige a posteriori",
+    "plan": "Trabajo por hacer y en qué orden. Se mueve; queda obsoleto por diseño",
+    "guia": "Cómo se hace algo aquí. Procedimiento repetible",
+    "runbook": "Pasos ante una situación concreta de operación, ejecutables bajo presión",
+    "referencia": "Hechos consultables: glosario, esquema, catálogo de tokens",
+    "marco": "Documento normativo recibido de fuera. No se edita ni una coma",
+    "gestion": "Estado del trabajo: sprint, puente entre sesiones, backlog",
+    "archivo": "Retirado del uso. Se conserva por trazabilidad, no para leerse",
+}
 
 #: Estados admitidos. `historico` es para lo fechado —un informe de auditoría
 #: del 2026-08-03 no se revisa, se sustituye por el siguiente— y se distingue
@@ -83,16 +107,19 @@ RAIZ_INCLUIDOS = ("README.md", "CLAUDE.md", "SECURITY.md", "RAILWAY_SETUP.md")
 #: Régimen por defecto al sembrar, por zona. Es el punto de partida, no una
 #: verdad: quien conozca un documento ajusta el suyo.
 REGIMEN = (
-    ("docs/archive/", "archivado", "nunca"),
-    ("docs/adr/", "vigente", "nunca"),          # una ADR aceptada no se revisa: se reemplaza
-    ("docs/project-management/", "vigente", "30d"),
-    ("docs/epics/", "vigente", "90d"),
-    ("docs/dominio/", "vigente", "90d"),
-    ("docs/design-system/", "vigente", "90d"),
-    ("docs/conformidad/marco/", "vigente", "90d"),
-    ("docs/conformidad/", "historico", "nunca"),  # informes fechados
-    ("CLAUDE.md", "vigente", "90d"),              # se lee en cada turno
-    ("", "vigente", "180d"),                      # el resto
+    ("docs/archive/", "archivado", "nunca", "archivo"),
+    ("docs/adr/", "vigente", "nunca", "adr"),   # una ADR aceptada no se revisa: se reemplaza
+    ("docs/project-management/", "vigente", "30d", "gestion"),
+    ("docs/epics/", "vigente", "90d", "epica"),
+    ("docs/dominio/", "vigente", "90d", "referencia"),
+    ("docs/design-system/", "vigente", "90d", "referencia"),
+    ("docs/architecture/", "vigente", "180d", "referencia"),
+    ("docs/runbooks/", "vigente", "180d", "runbook"),
+    ("docs/conformidad/marco/", "vigente", "90d", "marco"),
+    ("docs/conformidad/plan", "vigente", "30d", "plan"),
+    ("docs/conformidad/", "historico", "nunca", "informe"),  # informes fechados
+    ("CLAUDE.md", "vigente", "90d", "guia"),                 # se lee en cada turno
+    ("", "vigente", "180d", "guia"),                         # el resto
 )
 
 _FRONT = re.compile(r"\A---\n(.*?)\n---\n", re.S)
@@ -125,6 +152,13 @@ def revisar(relativa: str, texto: str, hoy: dt.date) -> list[str]:
         if not campos.get(campo):
             problemas.append(f"no declara `{campo}`")
 
+    if (tipo := campos.get("tipo")) and tipo not in TIPOS:
+        problemas.append(
+            f"`tipo: {tipo}` no está en el esquema. Los definidos son "
+            f"{sorted(TIPOS)}; cada uno con su propósito en `TIPOS`. Si de "
+            f"verdad hace falta una clase nueva, se añade ahí con su propósito "
+            f"escrito — no se cuela como texto libre."
+        )
     if (estado := campos.get("estado")) and estado not in ESTADOS:
         problemas.append(f"`estado: {estado}` no es uno de {sorted(ESTADOS)}")
     if (periodo := campos.get("revisar_cada")) and periodo not in PERIODOS:
@@ -176,32 +210,54 @@ def _ultimo_toque(ruta: Path, respaldo: dt.date) -> dt.date:
         return respaldo
 
 
-def _regimen(relativa: str) -> tuple[str, str]:
-    for prefijo, estado, periodo in REGIMEN:
+def _regimen(relativa: str) -> tuple[str, str, str]:
+    for prefijo, estado, periodo, tipo in REGIMEN:
         if relativa.startswith(prefijo):
-            return estado, periodo
+            return estado, periodo, tipo
     raise AssertionError("REGIMEN debe terminar con una entrada comodín")
 
 
 def sembrar(hoy: dt.date) -> int:
-    sembrados = 0
+    """Añade el encabezado que falte, y completa el campo que falte al que ya lo tiene.
+
+    Lo segundo hizo falta al llegar DOC-02: los 129 documentos ya traían
+    encabezado de DOC-01, así que una siembra que solo mirara «¿tiene
+    encabezado?» no habría añadido `tipo` a ninguno. Sembrar campo a campo es lo
+    que hace que ampliar el esquema no sea una tarde de edición manual.
+    """
+    nuevos = completados = 0
     for archivo in documentos():
         texto = archivo.read_text(encoding="utf-8")
-        if encabezado(texto) is not None:
-            continue
         relativa = archivo.relative_to(RAIZ).as_posix()
-        estado, periodo = _regimen(relativa)
-        cabecera = (
-            "---\n"
-            "responsable: propietario\n"
-            f"estado: {estado}\n"
-            f"revisado: {_ultimo_toque(archivo, hoy)}\n"
-            f"revisar_cada: {periodo}\n"
-            "---\n\n"
+        estado, periodo, tipo = _regimen(relativa)
+        campos = encabezado(texto)
+
+        if campos is None:
+            cabecera = (
+                "---\n"
+                f"tipo: {tipo}\n"
+                "responsable: propietario\n"
+                f"estado: {estado}\n"
+                f"revisado: {_ultimo_toque(archivo, hoy)}\n"
+                f"revisar_cada: {periodo}\n"
+                "---\n\n"
+            )
+            archivo.write_text(cabecera + texto.lstrip("\n"), encoding="utf-8")
+            nuevos += 1
+            continue
+
+        faltan = [c for c in CAMPOS if not campos.get(c)]
+        if not faltan:
+            continue
+        # `tipo` va primero: es lo que dice qué se está leyendo.
+        añadir = "".join(
+            f"{c}: {tipo if c == 'tipo' else estado if c == 'estado' else periodo}\n"
+            for c in faltan
         )
-        archivo.write_text(cabecera + texto.lstrip("\n"), encoding="utf-8")
-        sembrados += 1
-    print(f"encabezados sembrados: {sembrados}")
+        archivo.write_text(texto.replace("---\n", "---\n" + añadir, 1), encoding="utf-8")
+        completados += 1
+
+    print(f"encabezados nuevos: {nuevos} · campos completados en: {completados}")
     return 0
 
 
@@ -245,7 +301,7 @@ def main() -> int:
         )
         return 1
 
-    print(f"OK — {len(documentos())} documentos declaran responsable, estado y revisión")
+    print(f"OK — {len(documentos())} documentos declaran tipo, responsable, estado y revisión")
     return 0
 
 

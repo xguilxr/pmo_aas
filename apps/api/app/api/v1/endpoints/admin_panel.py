@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated, require_capability
+from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.audit import AuditLog
@@ -414,7 +415,9 @@ class TenantSettingsUpdate(BaseModel):
     # ENH-099: Per-tenant task-load colorization thresholds for the
     # Report Builder (EP020). Canonical storage lives under
     # `settings.report_builder.task_load_thresholds`. Both keys
-    # (green_max, amber_max) must be sent together.
+    # (green_max, yellow_max) must be sent together.
+    # DAT-06 / ADR-030: `amber_max` se sigue aceptando durante la ventana de
+    # compatibilidad, con rastro en `compat.nombre_viejo`.
     task_load_thresholds: dict[str, int] | None = None
     # ENH-190: Per-tenant UI label for "Organización/Organizaciones".
     # Stored top-level under `settings.org_label`. UI-only: no schema,
@@ -482,25 +485,46 @@ async def patch_settings(
     # ENH-099: validate task_load_thresholds before persisting anything.
     thresholds_update = updates.pop("task_load_thresholds", None)
     green_max: int | None = None
-    amber_max: int | None = None
+    yellow_max: int | None = None
     if thresholds_update is not None:
         if not isinstance(thresholds_update, dict):
             raise business_rule(
-                "task_load_thresholds must be an object with green_max/amber_max",
+                mensaje(
+                    que="El bloque de umbrales de carga no tiene la forma esperada.",
+                    porque="Se espera un objeto con `green_max` y `yellow_max`.",
+                    accion="Envíalo como objeto con los dos enteros y vuelve a guardar.",
+                ),
                 code="INVALID_TASK_LOAD_THRESHOLDS",
             )
+        # DAT-06: ventana de compatibilidad. `amber_max` entra y deja rastro.
+        if "yellow_max" not in thresholds_update and "amber_max" in thresholds_update:
+            registrar_uso("amber_max", donde="cuerpo de ajustes del inquilino")
         try:
             green_max = int(thresholds_update["green_max"])
-            amber_max = int(thresholds_update["amber_max"])
+            yellow_max = int(
+                thresholds_update["yellow_max"]
+                if "yellow_max" in thresholds_update
+                else thresholds_update["amber_max"]
+            )
         except (KeyError, TypeError, ValueError) as exc:
             raise business_rule(
-                "task_load_thresholds requires integer green_max and amber_max",
+                mensaje(
+                    que="Los umbrales de carga tienen que ser dos números enteros.",
+                    porque="`green_max` y `yellow_max` definen los cortes del "
+                    "semáforo de carga y se guardan como enteros.",
+                    accion="Corrige los dos valores y vuelve a guardar.",
+                ),
                 code="INVALID_TASK_LOAD_THRESHOLDS",
             ) from exc
-        if green_max <= 0 or amber_max <= 0 or green_max >= amber_max:
+        if green_max <= 0 or yellow_max <= 0 or green_max >= yellow_max:
             raise business_rule(
-                "task_load_thresholds: green_max y amber_max deben ser positivos "
-                "y green_max < amber_max",
+                mensaje(
+                    que="Los umbrales de carga no forman un rango válido.",
+                    porque="Tienen que ser positivos y `green_max` menor que "
+                    "`yellow_max`: definen dos cortes en la misma escala.",
+                    accion=f"Ajusta los valores (recibidos: green_max={green_max}, "
+                    f"yellow_max={yellow_max}) y vuelve a guardar.",
+                ),
                 code="INVALID_TASK_LOAD_THRESHOLDS",
             )
 
@@ -520,8 +544,8 @@ async def patch_settings(
         set_progress_calculation_method(t, progress_method)
         audit_fields.append("progress_calculation_method")
     if thresholds_update is not None:
-        assert green_max is not None and amber_max is not None
-        set_task_load_thresholds(t, green_max, amber_max)
+        assert green_max is not None and yellow_max is not None
+        set_task_load_thresholds(t, green_max, yellow_max)
         audit_fields.append("task_load_thresholds")
     if org_label_update is not None:
         set_org_label(t, org_label_update)

@@ -1,4 +1,5 @@
 ---
+tipo: adr
 responsable: propietario
 estado: vigente
 revisado: 2026-08-05
@@ -1385,3 +1386,124 @@ Positivas y negativas. Mitigaciones de las negativas.
 - Opción A: razón por la que no.
 - Opción B: razón por la que no.
 ```
+
+---
+
+## ADR-030 — `task_load_thresholds.amber_max` pasa a `yellow_max`
+
+**Estado:** ✅ Aceptada — 2026-08-06 (owner)
+**Requisitos MCS afectados:** DAT-06
+
+**Contexto:**
+El último resto de `amber` en el producto. El glosario veta el término desde
+D-1 y la migración 0091 convirtió los **valores** de salud (`amber` → `yellow`);
+lo que sobrevivió fue esta **llave**, dentro de `settings.report_builder` de la
+tabla `tenants`, describiendo el mismo concepto con la palabra retirada.
+
+No era cosmético. El umbral colorea la carga de recursos con el vocabulario del
+semáforo, así que el valor vivía en `yellow` y su corte en `amber_max`: quien
+leyera el código de colorización tenía que traducir mentalmente en cada paso, y
+ahí es donde se cuelan los errores de asignación de color. Es además el motivo
+por el que `DAT-06` no cerró con la Ola 2 — el plan lo dejó anotado como
+«cambio de contrato», no como olvido.
+
+La dificultad es que **vive en datos de inquilinos reales**, no en una columna:
+renombrarlo es un cambio de contrato, no un `sed`.
+
+**Decisión:**
+Renombrar a `yellow_max` con el mismo molde que `wbs` → `wbs_code` (ADR-020),
+que es el precedente aprobado para esta clase de cambio:
+
+1. **Migración 0101** reescribe la llave en los datos existentes. Opera sobre el
+   JSON en Python y con SQL portable, no con los operadores de Postgres: la
+   suite corre sobre SQLite, y una migración que solo sabe correr en un motor se
+   descubre en producción.
+2. **Ventana de compatibilidad** en `core/compatibilidad.py`. El API sigue
+   aceptando `amber_max` a la entrada **y a la lectura** —un inquilino
+   restaurado de una copia anterior al despliegue lo traería—, y cada uso deja
+   rastro en `compat.nombre_viejo`.
+3. **Lo que se guarda es siempre `yellow_max`.** Si al guardar volviera a
+   escribir el nombre viejo, la migración se desharía sola con el primer cambio
+   de ajustes.
+4. La **etiqueta de la interfaz** deja de decir «Ámbar». El sinónimo no estaba
+   solo en una variable: estaba en el formulario de ajustes y en un `aria-label`
+   del panel de organizaciones.
+
+**Consecuencias positivas:**
+- `DAT-06` cierra: cero `amber` en código, con trinquete que mira el árbol.
+- Un vocabulario y no dos para el mismo corte del semáforo.
+
+**Consecuencias negativas:**
+- Una ventana más que cerrar. Son cuatro (`phase=support`,
+  `portfolio_function`, `wbs`, `amber_max`), y se cierran con dato: a los dos
+  meses se mira el contador.
+- La migración toca filas de `tenants`. Solo las que tienen el bloque — una
+  migración de datos que reescribe filas que no le incumben ensucia el
+  `updated_at` de medio producto.
+
+**Alternativas consideradas:**
+- **Dejarlo.** Es lo que el plan proponía hasta que el owner decidió lo
+  contrario. Coste: `DAT-06` sigue PARCIAL y bloquea N1 por una sola llave.
+- **Aceptar los dos nombres para siempre**, sin migrar. Convierte la ventana en
+  permanente, que es deuda con apariencia de solución.
+
+---
+
+## ADR-031 — Postura de infraestructura: secretos, construcción y alcance de pruebas
+
+**Estado:** ✅ Aceptada — 2026-08-06
+**Contexto:**
+Tres requisitos de MCS —`SEG-02` (almacén de secretos), `SUM-01` (dónde se
+construye el artefacto) y `DEV-02`/`DEV-03` (estrategia de pruebas)— estaban
+abiertos no por falta de trabajo sino por falta de postura declarada. El marco
+no exige una solución concreta; exige que la elegida esté escrita. Sin eso, la
+misma configuración se lee como conforme o como carencia según quién audite.
+
+**Decisión:**
+
+**Secretos: variables de entorno de Railway.** No se adopta un almacén dedicado
+adicional (Vault, Secrets Manager). El almacén de variables de Railway es un
+almacén dedicado: vive fuera del repositorio, tiene control de acceso propio y
+no se versiona. Lo que `SEG-02` prohíbe es el secreto **en el repositorio**, y
+eso lo verifica `gitleaks` sobre el historial completo en cada PR —478 commits
+al declarar esto, sin fugas—.
+
+**Construcción: Railway desde la rama.** No se produce un artefacto en la
+canalización de CI para desplegarlo después. `SUM-01` exige que lo desplegado se
+construya en la canalización automática y **nunca en equipos locales**; Railway
+construyendo desde la rama es canalización automática. Nadie despliega desde su
+máquina, y esa es la propiedad que el requisito protege.
+
+**Pruebas: alcance reducido, declarado.** Se sostiene la suite de API —unitaria
+y de integración, sobre SQLite en memoria— y **no** se abre frente de pruebas de
+frontend ni de extremo a extremo. Hoy hay **cero** pruebas de web y se acepta a
+sabiendas.
+
+**Consecuencias:**
+
+- Un compromiso de la cuenta de Railway expone todos los secretos a la vez. No
+  hay rotación automática ni registro de acceso por secreto. Se acepta con un
+  solo operador; se reevalúa al entrar la segunda persona.
+- Sin artefacto inmutable, un despliegue no es reproducible bit a bit: dos
+  construcciones del mismo commit pueden diferir si cambian las dependencias
+  base. Mitigado por los ficheros de bloqueo, no eliminado.
+- **Un fallo de frontend llega a producción sin que nada lo detenga.** Es la
+  consecuencia más cara de las tres y la más fácil de olvidar: la suite verde
+  no dice nada sobre la web. Los gates que sí cubren frontend son `web-build`,
+  `web-typecheck`, `contraste-wcag` y el de tokens — ninguno ejecuta la interfaz.
+- `DEV-03` pide pruebas separadas por nivel. Con alcance reducido, los niveles
+  declarados son **unitaria** y **de integración**; el de extremo a extremo se
+  declara ausente en vez de fingirse.
+
+**Alternativas:**
+
+- *Almacén dedicado externo:* correcto a mayor escala; hoy añade una dependencia
+  y un modo de fallo para un equipo de una persona.
+- *Artefacto en CI + despliegue de imagen:* la forma canónica, y la que habrá
+  que adoptar si el despliegue deja de ser de un solo servicio. Cuesta
+  reescribir la canalización y añade registro de imágenes.
+- *Abrir pruebas de frontend ahora:* es el frente correcto a medio plazo, pero
+  compite con 24 requisitos abiertos y no es el más barato.
+
+**Revisión:** al entrar una segunda persona al repositorio, o al primer
+incidente de producción originado en el frontend.

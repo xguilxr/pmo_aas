@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import type { Actor } from "@/lib/api/areas";
 import { listActors } from "@/lib/api/areas";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   RISK_ACTION_STATUS,
   RISK_ACTION_STATUS_LABEL,
@@ -146,7 +147,14 @@ export function RiskActionsCard({ riskId }: { riskId: string }) {
   }
 
   async function remove(a: RiskAction) {
-    if (!window.confirm(`¿Borrar la acción "${a.short_desc}"?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `la acción «${a.short_desc}»`,
+        consecuencia: "El riesgo se queda sin ese plan de mitigación.",
+        reversibilidad: "recuperable",
+      })
+    )
+      return;
     setBusy(true);
     setError(null);
     try {
