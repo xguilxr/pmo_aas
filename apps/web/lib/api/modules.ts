@@ -1,5 +1,4 @@
 import { ApiError, apiFetch } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 function qs(params: Record<string, unknown>): string {
   const usp = new URLSearchParams();
@@ -546,10 +545,7 @@ export async function openDocumentForDownload(
     // Backend local — el endpoint /download exige Bearer. Hacemos
     // fetch + blob para evitar el problema del <a href> sin auth.
     const { apiBase } = await import("@/lib/api");
-    const { getAccessToken } = await import("@/lib/auth-storage");
-    const token = getAccessToken();
     const res = await fetch(`${apiBase()}${info.url}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) {
       throw new Error(`Falló la descarga (HTTP ${res.status})`);
@@ -892,9 +888,7 @@ export async function exportMinute(
     throw new ApiError(0, "NETWORK_ERROR", "NEXT_PUBLIC_API_URL no está configurada");
   }
   const base = API_URL.replace(/\/+$/, "");
-  const token = getAccessToken();
   const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(
     `${base}/api/v1/meeting-minutes/${minuteId}/export?format=${format}`,
     { method: "GET", headers, credentials: "include" },

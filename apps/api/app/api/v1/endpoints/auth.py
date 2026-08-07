@@ -253,6 +253,11 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     # por los endpoints es cómo se acaba emitiendo una cookie que el navegador
     # tira sin decir nada.
     cookies.fijar(resp, cookies.REFRESCO, refresh, max_age=settings.REFRESH_TOKEN_TTL_SEC)
+    # ASVS 3.2.3 / 8.2.2 — el token de acceso sale por cookie `HttpOnly`. Se
+    # sigue devolviendo en el cuerpo para el SDK y las integraciones de
+    # servidor a servidor; lo que cambia es que el navegador ya no necesita
+    # guardarlo, y por tanto ya no lo guarda.
+    cookies.fijar(resp, cookies.ACCESO, access, max_age=settings.ACCESS_TOKEN_TTL_SEC)
     return resp
 
 
@@ -281,6 +286,7 @@ async def logout(
 
     r = Response(status_code=204)
     cookies.borrar(r, cookies.REFRESCO)
+    cookies.borrar(r, cookies.ACCESO)
     return r
 
 
@@ -371,9 +377,17 @@ async def switch_tenant(
         roles=cu.roles,
     )
     user_out = await _build_user_out(db, cu.user)
-    return LoginResponse(
+    cuerpo = LoginResponse(
         access_token=access, user=user_out, tenants=cu.tenant_ids, active_tenant_id=body.tenant_id
     )
+    # El token cambia de inquilino activo, así que la cookie tiene que cambiar
+    # con él. Sin esto, el navegador seguiría mandando el token del inquilino
+    # anterior y el cambio no surtiría efecto en la siguiente petición.
+    from fastapi.responses import JSONResponse
+
+    resp = JSONResponse(content=cuerpo.model_dump(mode="json"))
+    cookies.fijar(resp, cookies.ACCESO, access, max_age=settings.ACCESS_TOKEN_TTL_SEC)
+    return resp
 
 
 def _random_password(length: int = 16) -> str:

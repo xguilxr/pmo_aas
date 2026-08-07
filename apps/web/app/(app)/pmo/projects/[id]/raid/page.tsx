@@ -37,7 +37,6 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError, apiBase } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import type { SortableCtrl } from "@/lib/hooks/use-sortable-rows";
 import {
@@ -509,11 +508,9 @@ function RaidInner() {
     setExporting(true);
     setError(null);
     try {
-      const token = getAccessToken();
       const headers: Record<string, string> = {
         Accept: "application/octet-stream",
       };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
       // ENH-168: `only` → XLSX de una sola hoja para el tipo actual.
       const qs = only ? `?only=${only}` : "";
       const res = await fetch(

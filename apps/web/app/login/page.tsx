@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ApiError } from "@/lib/api";
 import { login } from "@/lib/auth";
-import { getAccessToken } from "@/lib/auth-storage";
+import { hasSession } from "@/lib/auth-storage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   UNAUTHENTICATED: "Credenciales inválidas. Verifica tu usuario y contraseña.",
@@ -40,7 +40,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (getAccessToken()) {
+    if (hasSession()) {
       router.replace(explicitRedirect || "/dashboard");
     }
   }, [router, explicitRedirect]);

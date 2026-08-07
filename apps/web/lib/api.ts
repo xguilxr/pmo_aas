@@ -1,4 +1,4 @@
-import { getAccessToken, clearAccessToken } from "./auth-storage";
+import { clearSession } from "./auth-storage";
 
 export type ApiErrorCode =
   | "UNAUTHENTICATED"
@@ -51,10 +51,11 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestOptions =
     ...headers,
   };
   if (body !== undefined) finalHeaders["Content-Type"] = "application/json";
-  if (auth) {
-    const token = getAccessToken();
-    if (token) finalHeaders["Authorization"] = `Bearer ${token}`;
-  }
+  // ASVS 3.2.3 / 8.2.2 (ADR-033) — la sesión viaja en una cookie `HttpOnly`
+  // que este código no puede leer y que el navegador manda sola gracias a
+  // `credentials: "include"`, unas líneas más abajo. `auth` se conserva porque
+  // las pantallas públicas (login, recuperación) lo pasan en `false`, y con él
+  // se decide si un 401 debe echar al usuario a `/login`.
 
   let res: Response;
   try {
@@ -81,7 +82,10 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestOptions =
 
   if (!res.ok) {
     if (res.status === 401 && auth) {
-      clearAccessToken();
+      // El servidor ya no reconoce la sesión: se borra lo que quedaba de ella
+      // en el navegador (el indicador y el perfil en memoria). La cookie la
+      // caduca el propio servidor.
+      clearSession();
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("pmoaas:unauthorized"));
       }

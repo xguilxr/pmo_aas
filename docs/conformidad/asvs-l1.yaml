@@ -206,10 +206,15 @@ controles:
       JWT firmado HS256 con secreto de al menos 256 bits; el `jti` de refresco
       es un UUID4.
   "3.2.3":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      El token de acceso se guarda en `localStorage` (`apps/web/lib/auth-
-      storage.ts`). El de refresco sí va en cookie `HttpOnly`.
+      El token de acceso sale en cookie `__Host-access_token`, `HttpOnly`,
+      `Secure`, `SameSite=Strict`, `Path=/` (ADR-033). `get_current_user` la
+      acepta, y sigue aceptando `Authorization` para el SDK y las
+      integraciones de servidor a servidor —que no son un navegador y no
+      tienen el problema que esto resuelve—; la cabecera gana si van las dos.
+      La cookie se reemite al cambiar de inquilino y se borra al cerrar
+      sesión. Suite `test_seg01_asvs323_token_en_cookie.py`.
   "3.3.1":
     estado: CUMPLE
     evidencia: >-
@@ -451,9 +456,19 @@ controles:
       `test_seg01_asvs821_anticache.py`, que además fija que la excepción siga
       siendo una sola.
   "8.2.2":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      El token de acceso y el perfil del usuario viven en `localStorage`.
+      En `localStorage` ya no queda nada sensible: el token vive en cookie
+      `HttpOnly` (3.2.3) y el perfil pasó a memoria, repuesto desde
+      `/auth/me` en cada carga —donde además está al día, cosa que el perfil
+      guardado no estaba—. Lo que queda ahí no autoriza nada: un indicador de
+      sesión abierta, el inquilino activo (que el servidor vuelve a comprobar
+      contra el token en cada petición), el tema y el idioma. `auth-storage.ts`
+      **borra al cargar** el token y el perfil de las sesiones anteriores: sin
+      eso el agujero se cerraría para las sesiones nuevas y seguiría abierto
+      justo para quien ya estaba. Trinquete en
+      `test_seg01_asvs323_token_en_cookie.py`, que lee el código de la web y
+      falla si vuelve a aparecer un token en el navegador.
   "8.2.3":
     estado: CUMPLE
     evidencia: >-

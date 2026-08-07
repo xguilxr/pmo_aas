@@ -12,7 +12,6 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ModuleShell } from "@/components/module-shell";
 import { ApiError, apiBase } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 import {
   DOC_CATEGORY_LABEL,
   createDocument,
@@ -105,9 +104,7 @@ export default function DocumentsPage() {
       // BUG-029: usar apiBase() + Authorization header (el fetch nativo
       // ignoraba el JWT y el backend respondía 401 → el frontend mostraba
       // el mensaje genérico "No se pudo subir el documento").
-      const token = getAccessToken();
       const headers: Record<string, string> = { Accept: "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const response = await fetch(
         `${apiBase()}/api/v1/projects/${id}/documents/upload?${params}`,

@@ -3,14 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
+import { getStoredUser, hasSession } from "@/lib/auth-storage";
 
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
+    if (!hasSession()) {
       router.replace("/login");
       return;
     }

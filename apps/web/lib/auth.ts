@@ -1,7 +1,7 @@
 import { apiFetch } from "./api";
 import {
   clearSession,
-  setAccessToken,
+  marcarSesionAbierta,
   setActiveTenantId,
   setStoredUser,
   type StoredUser,
@@ -21,7 +21,10 @@ export async function login(identifier: string, password: string): Promise<Login
     body: { identifier, password },
     auth: false,
   });
-  setAccessToken(res.access_token);
+  // ASVS 3.2.3 / 8.2.2 — el token viene además en el cuerpo, para el SDK, pero
+  // el navegador no lo guarda: su copia es la cookie `HttpOnly` que el API
+  // acaba de emitir. Aquí solo queda constancia de que hay sesión abierta.
+  marcarSesionAbierta();
   setStoredUser(res.user);
   setActiveTenantId(res.active_tenant_id);
   return res;

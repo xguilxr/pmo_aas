@@ -47,6 +47,12 @@ from app.core.config import settings
 #: Cookie de refresco. El nombre base; el prefijo lo pone `nombre`.
 REFRESCO = "refresh_token"
 
+#: Cookie de acceso (ASVS 3.2.3 / 8.2.2, ADR-033). Antes el token de acceso
+#: vivía en `localStorage`, donde cualquier guion inyectado —propio o de una
+#: dependencia de npm— lo lee con una línea. `HttpOnly` no hace mejor al token:
+#: hace que el guion no pueda leerlo.
+ACCESO = "access_token"
+
 #: `Path` con el que se creaba la cookie de refresco antes de ASVS 3.4.4.
 #: Se conserva **solo** para poder borrarla: `__Host-` obliga a `Path=/`.
 _PATH_LEGADO = "/api/v1/auth"

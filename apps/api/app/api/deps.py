@@ -4,6 +4,7 @@ from fastapi import Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cookies
 from app.core.errors import forbidden, mensaje, rate_limited, unauthorized
 from app.core.permissions import (
     _ADMIN_EQUIVALENT_ROLES,
@@ -132,9 +133,21 @@ async def get_current_user(
     authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> CurrentUser:
-    if not authorization or not authorization.lower().startswith("bearer "):
+    # ASVS 3.2.3 / 8.2.2 (ADR-033) — el token llega por cookie `HttpOnly` desde
+    # el navegador, o por `Authorization` desde el SDK y las integraciones de
+    # servidor a servidor, que no son un navegador y no tienen el problema que
+    # esto resuelve.
+    #
+    # La cabecera va **primero**: quien la manda a propósito está diciendo con
+    # qué identidad quiere operar, y si el navegador arrastrase además una
+    # cookie de otra sesión, ganar la cookie sería sorprendente.
+    token = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+    else:
+        token = cookies.leer(request, cookies.ACCESO) or ""
+    if not token:
         raise unauthorized()
-    token = authorization.split(" ", 1)[1].strip()
     try:
         payload = decode_access_token(token)
     except ValueError:

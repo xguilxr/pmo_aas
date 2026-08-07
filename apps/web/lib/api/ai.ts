@@ -1,5 +1,4 @@
 import { apiBase, apiFetch, ApiError } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 /** BUG-063: shape canónico de un item RAID sugerido (4 tipos comparten). */
 export type AIRaidSuggestion = {
@@ -125,9 +124,7 @@ export async function extractMinuteText(
 ): Promise<{ text: string; filename: string | null; chars: number }> {
   const formData = new FormData();
   formData.append("file", file);
-  const token = getAccessToken();
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
   let res: Response;
   try {
     res = await fetch(`${apiBase()}/api/v1/ai/extract-text`, {

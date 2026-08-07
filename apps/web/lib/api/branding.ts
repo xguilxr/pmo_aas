@@ -1,5 +1,4 @@
 import { ApiError, apiFetch } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 export type TenantBranding = {
   tenant_id: string | null;
@@ -45,10 +44,8 @@ export function resolveLogoUrl(logoUrl: string | null | undefined): string | nul
 export async function uploadTenantLogo(file: File): Promise<{ logo_url: string }> {
   const form = new FormData();
   form.append("file", file);
-  const token = getAccessToken();
   const res = await fetch(`${apiBase()}/api/v1/admin/tenant/logo`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: form,
     credentials: "include",
   });

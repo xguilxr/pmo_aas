@@ -20,7 +20,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, apiBase } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { cn } from "@/lib/cn";
 import {
@@ -146,9 +145,7 @@ export default function ChangesPage() {
     setExporting(true);
     setError(null);
     try {
-      const token = getAccessToken();
       const headers: Record<string, string> = { Accept: "application/octet-stream" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${apiBase()}/api/v1/projects/${id}/changes/export`, {
         method: "GET",
         headers,

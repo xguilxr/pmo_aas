@@ -125,11 +125,8 @@ export async function downloadCharter(
   format: "docx" | "pdf" = "docx",
 ): Promise<void> {
   const { apiBase } = await import("@/lib/api");
-  const { getAccessToken } = await import("@/lib/auth-storage");
-  const token = getAccessToken();
   const res = await fetch(
     `${apiBase()}/api/v1/projects/${projectId}/charter/download?format=${format}`,
-    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
   );
   if (!res.ok) {
     throw new Error(`Falló la descarga (HTTP ${res.status})`);

@@ -1,5 +1,4 @@
 import { ApiError, apiFetch } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 export type ReportPeriod = "daily" | "weekly" | "monthly";
 export type ReportStatus = "draft" | "sent";
@@ -117,9 +116,7 @@ async function fetchPdfFromEndpoint(
   body: unknown | undefined,
   method: "GET" | "POST",
 ): Promise<{ blob: Blob; filename: string }> {
-  const token = getAccessToken();
   const headers: Record<string, string> = { Accept: "application/pdf" };
-  if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
   const res = await fetch(`${apiBase()}${path}`, {
@@ -354,9 +351,7 @@ export function deleteReportHistory(historyId: string): Promise<void> {
 // una tab nueva. Requiere que el reporte tenga `html_content` o que
 // regenere on-the-fly (export endpoint hace ambos).
 export async function previewReportHtml(reportId: string): Promise<void> {
-  const token = getAccessToken();
   const headers: Record<string, string> = { Accept: "text/html" };
-  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(
     `${apiBase()}/api/v1/reports/${reportId}/export?format=html&inline=true`,
     {
@@ -468,14 +463,12 @@ export function deleteAIReportTemplate(templateId: string): Promise<void> {
  * Devuelve un blob para descarga directa (no JSON).
  */
 export async function regenerateBuilderPdf(reportId: string): Promise<Blob> {
-  const token = getAccessToken();
   const res = await fetch(
     `${apiBase()}/api/v1/reports/${reportId}/regenerate-pdf`,
     {
       method: "POST",
       headers: {
         Accept: "application/pdf",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     }
   );

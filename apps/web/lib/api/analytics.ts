@@ -1,5 +1,4 @@
 import { apiBase, apiFetch } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 // US-152 — cliente de los endpoints de analytics para dashboards N1/N2.
 
@@ -132,12 +131,10 @@ export function captureSnapshots(): Promise<{ date: string; rows: number }> {
 
 // US-160 — reportes de status N1/N2 (PDF, fuera del builder). Descarga binaria.
 async function _downloadPdf(path: string, filename: string): Promise<void> {
-  const token = getAccessToken();
   const res = await fetch(`${apiBase()}${path}`, {
     method: "POST",
     headers: {
       Accept: "application/pdf",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   if (!res.ok) {
@@ -188,11 +185,9 @@ function _filenameFromDisposition(header: string | null, fallback: string): stri
 const XLSX_ACCEPT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 async function _downloadXlsx(path: string, fallbackFilename: string): Promise<void> {
-  const token = getAccessToken();
   const res = await fetch(`${apiBase()}${path}`, {
     headers: {
       Accept: XLSX_ACCEPT,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   if (!res.ok) {

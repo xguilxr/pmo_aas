@@ -8,7 +8,6 @@
  * - `createBuilderTemplate` — guardar plantilla (US-126).
  */
 import { apiFetch, apiBase } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-storage";
 
 export type SectionCategory =
   | "HDR"
@@ -111,13 +110,11 @@ export function renderBuilder(body: RenderRequest, format: "json" | "pdf" = "jso
 
 /** ENH-139: PDF binario del preview real (canvas inline, sin persistir). */
 export async function renderBuilderPdf(body: RenderRequest): Promise<Blob> {
-  const token = getAccessToken();
   const res = await fetch(`${apiBase()}/api/v1/report-builder/render?format=pdf`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/pdf",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -140,7 +137,6 @@ export async function exportBuilderPdf(
   templateId: string,
   body: Omit<RenderRequest, "template">
 ): Promise<Blob> {
-  const token = getAccessToken();
   const res = await fetch(
     `${apiBase()}/api/v1/report-builder/templates/${templateId}/export?format=pdf`,
     {
@@ -148,7 +144,6 @@ export async function exportBuilderPdf(
       headers: {
         "Content-Type": "application/json",
         Accept: "application/pdf",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
     }
