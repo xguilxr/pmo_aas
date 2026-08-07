@@ -47,12 +47,16 @@ RAIZ = Path(__file__).resolve().parents[1]
 CATALOGO = RAIZ / "docs" / "conformidad" / "marco" / "asvs-4.0.3-L1.csv"
 MAPEO = RAIZ / "docs" / "conformidad" / "asvs-l1.yaml"
 
-ESTADOS = {"CUMPLE", "NO APLICA", "HUECO"}
+#: `ACEPTADO` no es un cuarto sabor de «cumple». Es «no se cumple y hay una
+#: decisión escrita detrás», y se separa de HUECO porque no está pendiente de
+#: nadie, y de CUMPLE porque el control no se satisface. Mismo patrón que los
+#: residuales aceptados del modelo de amenazas.
+ESTADOS = {"CUMPLE", "NO APLICA", "HUECO", "ACEPTADO"}
 
 #: Lo medido el 2026-08-07. El barrido falla si los huecos **crecen**; que
 #: encojan es el objetivo. Se fija aquí y no en el YAML para que bajarlo sea un
 #: cambio deliberado y no un efecto de reclasificar tres controles.
-HUECOS_MAXIMOS = 19
+HUECOS_MAXIMOS = 15
 
 
 def main() -> int:
@@ -97,6 +101,12 @@ def main() -> int:
             )
         if estado == "HUECO":
             huecos += 1
+        if estado == "ACEPTADO" and "ADR-" not in evidencia:
+            problemas.append(
+                f"{control}: «ACEPTADO» sin citar la decisión que lo acepta. "
+                f"Un residual sin ADR detrás es un hueco al que alguien le "
+                f"cambió la etiqueta."
+            )
 
     if huecos > HUECOS_MAXIMOS:
         problemas.append(
@@ -110,12 +120,11 @@ def main() -> int:
             print(f"  - {p}")
         return 1
 
-    cumple = sum(1 for d in mapeo.values() if d["estado"] == "CUMPLE")
-    na = sum(1 for d in mapeo.values() if d["estado"] == "NO APLICA")
+    cuenta = {e: sum(1 for d in mapeo.values() if d["estado"] == e) for e in sorted(ESTADOS)}
     print(
         f"OK — {len(mapeo)}/{len(catalogo)} controles ASVS L1 mapeados: "
-        f"{cumple} CUMPLE · {na} NO APLICA · {huecos} HUECO "
-        f"(tope {HUECOS_MAXIMOS})."
+        f"{cuenta['CUMPLE']} CUMPLE · {cuenta['NO APLICA']} NO APLICA · "
+        f"{cuenta['ACEPTADO']} ACEPTADO · {huecos} HUECO (tope {HUECOS_MAXIMOS})."
     )
     return 0
 

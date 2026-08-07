@@ -10,24 +10,33 @@
 #                con otro nombre.
 #   HUECO      — no se cumple. Sin excusas y sin reformular el control.
 #
-# Medición 2026-08-07: 95 CUMPLE · 13 NO APLICA · 19 HUECO.
+# Medición 2026-08-07: 97 CUMPLE · 13 NO APLICA · 2 ACEPTADO · 15 HUECO.
+#
+#   ACEPTADO   — no se cumple, y no se va a cumplir: hay una decisión escrita
+#                detrás (ADR). NO se pinta como CUMPLE, porque un auditor
+#                tiene derecho a ver la diferencia sin preguntar.
 
 controles:
   "2.1.1":
-    estado: HUECO
+    estado: ACEPTADO
     evidencia: >-
-      La política exige 8 caracteres (`security.PASSWORD_POLICY_MIN_LEN`);
-      ASVS L1 pide 12.
+      La política exige 8 caracteres y ASVS L1 pide 12. Decisión del owner
+      2026-08-07, ADR-032, con el contraste delante. Lo que contiene el riesgo
+      hoy es bcrypt con coste configurable más el retardo creciente del inicio
+      de sesión (escenario E-4), no la longitud.
   "2.1.2":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      No hay tope superior declarado ni mínimo de 64 admitidos; bcrypt trunca
-      a 72 bytes en silencio.
+      Máximo declarado de 128 (`PASSWORD_POLICY_MAX_LEN`) y sin truncamiento
+      por debajo: `bcrypt_sha256` resume antes de hashear. Antes «sin máximo»
+      sonaba generoso mientras por detrás había uno de 72 bytes sin avisar.
   "2.1.3":
-    estado: HUECO
+    estado: CUMPLE
     evidencia: >-
-      bcrypt trunca a 72 bytes y nada lo declara ni lo impide antes de
-      hashear.
+      `bcrypt_sha256` no trunca. Era un defecto real y comprobado: dos
+      contraseñas de 103 y 108 caracteres con los mismos 72 primeros abrían la
+      misma cuenta. `bcrypt` queda deprecado y no retirado, con re-escritura
+      del hash en el siguiente inicio de sesión.
   "2.1.4":
     estado: CUMPLE
     evidencia: >-
@@ -50,10 +59,12 @@ controles:
     evidencia: >-
       `apps/web/lib/password.ts` muestra la lista de reglas cumplidas en vivo.
   "2.1.9":
-    estado: HUECO
+    estado: ACEPTADO
     evidencia: >-
-      Hay reglas de composición (mayúscula, dígito, símbolo) que ASVS pide NO
-      tener.
+      Se conservan las reglas de composición (mayúscula, dígito, símbolo) que
+      ASVS pide no tener. Decisión del owner 2026-08-07, ADR-032: va en el
+      mismo paquete que 2.1.1, porque la postura de NIST es que quitar las
+      reglas y subir la longitud son la misma medida.
   "2.1.10":
     estado: CUMPLE
     evidencia: >-
@@ -125,18 +136,18 @@ controles:
   "2.7.3":
     estado: NO APLICA
     evidencia: >-
-      Mismo motivo que 2.7.2. El único secreto de un solo uso del producto
-      es el de recuperación de contraseña, y ese sí lo es (2.5.6).
+      Mismo motivo que 2.7.2. El único secreto de un solo uso del producto es
+      el de recuperación de contraseña, y ese sí lo es (2.5.6).
   "2.7.4":
     estado: NO APLICA
     evidencia: >-
-      No hay segundo canal que asegurar: la autenticación ocurre entera
-      sobre HTTPS contra el mismo servicio.
+      No hay segundo canal que asegurar: la autenticación ocurre entera sobre
+      HTTPS contra el mismo servicio.
   "2.8.1":
     estado: NO APLICA
     evidencia: >-
-      No se emiten OTP basados en tiempo. Si entra el segundo factor de
-      4.3.1, este control deja de no aplicar y hay que declarar su vida útil.
+      No se emiten OTP basados en tiempo. Si entra el segundo factor de 4.3.1,
+      este control deja de no aplicar y hay que declarar su vida útil.
   "3.1.1":
     estado: CUMPLE
     evidencia: >-
@@ -315,8 +326,8 @@ controles:
   "5.3.7":
     estado: NO APLICA
     evidencia: >-
-      No se usa LDAP en ninguna parte: el directorio de personas es una
-      tabla propia y la autenticación es local contra `users`.
+      No se usa LDAP en ninguna parte: el directorio de personas es una tabla
+      propia y la autenticación es local contra `users`.
   "5.3.8":
     estado: CUMPLE
     evidencia: >-

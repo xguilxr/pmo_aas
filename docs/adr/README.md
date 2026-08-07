@@ -1507,3 +1507,61 @@ sabiendas.
 
 **Revisión:** al entrar una segunda persona al repositorio, o al primer
 incidente de producción originado en el frontend.
+
+---
+
+## ADR-032 — Contraseñas: 8 caracteres con reglas de composición
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** El mapeo completo contra OWASP ASVS 4.0.3 L1 (SEG-01, 2026-08-07)
+sacó a la luz que la política de contraseñas del producto **contradice a ASVS en
+dos controles a la vez, y en direcciones opuestas**:
+
+- `2.1.1` pide un mínimo de **12** caracteres; el producto pide 8.
+- `2.1.9` pide que **NO haya reglas de composición**; el producto exige mayúscula,
+  dígito y símbolo.
+
+No es un descuido acumulado: las dos cosas van juntas en la postura de ASVS,
+que viene de NIST 800-63b. El argumento de NIST es que las reglas de
+composición producen contraseñas **predecibles** —«Password1!» las cumple
+todas— y que la longitud es lo que de verdad encarece adivinarlas. Por eso
+piden más longitud y ninguna regla.
+
+**Decisión.** Se mantiene **8 caracteres con las tres reglas**. Decisión
+explícita del owner el 2026-08-07, con el contraste de ASVS delante.
+
+**Consecuencia, escrita.** El producto **no cumple** `2.1.1` ni `2.1.9`, y así
+figura en `docs/conformidad/asvs-l1.yaml`: estado **ACEPTADO**, no CUMPLE. Un
+residual aceptado y un control cumplido no se pintan igual — es la misma
+distinción que se hizo con `enforce_admins` en su momento, y el motivo es que
+un auditor externo tiene derecho a ver la diferencia sin preguntar.
+
+Lo que se acepta en concreto: una contraseña de 8 caracteres es adivinable por
+fuerza bruta con recursos modestos si el atacante consigue los hashes. Lo que
+lo contiene hoy no es la política sino **bcrypt con coste configurable** y el
+**retardo creciente del inicio de sesión** (escenario E-4: desde el intento 5,
+base 2 s, tope 300 s, y 30 fallos por hora y por IP).
+
+**Lo que sí cambió a raíz del mismo análisis**, porque era defecto y no
+postura: `2.1.2` y `2.1.3`. bcrypt **trunca a 72 bytes en silencio**, así que
+dos contraseñas distintas de 103 y 108 caracteres que compartieran los primeros
+72 abrían la misma cuenta — comprobado, no supuesto. El esquema pasa a
+`bcrypt_sha256`, que resume antes de hashear y no tiene longitud que truncar;
+`bcrypt` se queda **deprecado y no retirado**, así que los hashes existentes
+siguen verificando y se reescriben al esquema nuevo la próxima vez que su dueño
+inicia sesión. Y se declara un máximo real de 128 caracteres: «sin máximo»
+sonaba generoso mientras por detrás había uno de 72 sin avisar.
+
+**Alternativas:**
+
+- *Adoptar la postura de ASVS (12 sin reglas):* es la recomendación vigente y
+  la mejor por evidencia. Cambia lo que se le pide a cada persona al
+  registrarse y a las que ya tienen cuenta; el owner decide no hacerlo ahora.
+- *Subir solo el mínimo a 12 y conservar las reglas:* la peor de las tres.
+  Suma la fricción de las reglas al coste de la longitud sin obtener la ventaja
+  que NIST atribuye a quitarlas.
+
+**Revisión:** ante el primer incidente de credenciales, o si entra
+autenticación de segundo factor (`4.3.1`), que cambia el peso de la contraseña
+en el conjunto.

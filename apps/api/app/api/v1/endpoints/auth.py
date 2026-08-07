@@ -20,6 +20,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
+    necesita_rehash,
     validate_password_policy,
     verify_password,
 )
@@ -175,6 +176,14 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     user.failed_login_attempts = 0
     user.locked_until = None
     user.last_login = now
+
+    # MCS SEG-01 / ASVS 2.1.3 — el único momento en que la contraseña en claro
+    # existe y se ha demostrado correcta. Si su hash sigue en el esquema viejo
+    # —bcrypt a secas, que trunca a 72 bytes— se reescribe al nuevo aquí. Una
+    # migración de esquema que no se cablea en el inicio de sesión no migra
+    # nunca: nadie va a pedirle la contraseña otra vez a nadie para esto.
+    if necesita_rehash(user.password_hash):
+        user.password_hash = hash_password(body.password)
 
     role_names = (
         await db.execute(

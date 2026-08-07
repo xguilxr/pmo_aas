@@ -16,7 +16,7 @@ nivel 1 aplicables».
 | **Catálogo** | OWASP ASVS 4.0.3, nivel 1 — **127 controles**, en [`marco/asvs-4.0.3-L1.csv`](marco/asvs-4.0.3-L1.csv) |
 | **Mapeo** | [`asvs-l1.yaml`](asvs-l1.yaml), uno por control |
 | **Barrido** | `scripts/check_asvs.py` — falla si falta uno, si un estado no tiene evidencia o si los huecos crecen |
-| **Medición** | 2026-08-07 · **95 CUMPLE · 13 NO APLICA · 19 HUECO** |
+| **Medición** | 2026-08-07 · **97 CUMPLE · 13 NO APLICA · 2 ACEPTADO · 15 HUECO** |
 | **Estado del requisito** | **PARCIAL**, y honestamente parcial |
 
 > El catálogo se incorpora del proyecto OWASP ASVS, bajo licencia
@@ -34,25 +34,21 @@ los tres se cerraron después: límite por IP en el inicio de sesión, `audit_lo
 de solo anexado, y `python-jose` sustituido por PyJWT—. Pero el propio informe
 avisaba de que «con los tres cerrados seguiría haciendo falta el mapeo completo».
 
-El mapeo completo ya está. Y lo que enseña es que **quedan diecinueve
-controles L1 sin cumplir**, la mayoría concentrados en dos sitios: la política
+El mapeo completo ya está. Y lo que enseña es que **quedan quince
+controles L1 sin cumplir y dos aceptados por decisión**, la mayoría concentrados en dos sitios: la política
 de contraseñas y el almacenamiento del token en el navegador.
 
-Declararlo CONFORME con diecinueve huecos abiertos sería la conformidad de papel
+Declararlo CONFORME con quince huecos abiertos sería la conformidad de papel
 que este expediente lleva seis recuentos evitando. Se declara PARCIAL, con la
 lista delante.
 
 ---
 
-## Los diecinueve huecos
+## Los quince huecos
 
 | Control | Qué pide | Qué pasa hoy |
 |---|---|---|
-| `2.1.1` | Verify that user set passwords are at least 12 characters in length (after multiple spaces are combined). | La política exige 8 caracteres (`security.PASSWORD_POLICY_MIN_LEN`); ASVS L1 pide 12. |
-| `2.1.2` | Verify that passwords of at least 64 characters are permitted, and that passwords of more than 128 charac… | No hay tope superior declarado ni mínimo de 64 admitidos; bcrypt trunca a 72 bytes en silencio. |
-| `2.1.3` | Verify that password truncation is not performed. However, consecutive multiple spaces may be replaced by… | bcrypt trunca a 72 bytes y nada lo declara ni lo impide antes de hashear. |
 | `2.1.7` | Verify that passwords submitted during account registration, login, and password change are checked again… | No se contrasta contra ningún conjunto de contraseñas filtradas. |
-| `2.1.9` | Verify that there are no password composition rules limiting the type of characters permitted. There shou… | Hay reglas de composición (mayúscula, dígito, símbolo) que ASVS pide NO tener. |
 | `2.1.12` | Verify that the user can choose to either temporarily view the entire masked password, or temporarily vie… | No hay control para revelar temporalmente la contraseña escrita. |
 | `2.2.3` | Verify that secure notifications are sent to users after updates to authentication details, such as crede… | No se notifica al usuario un cambio de credenciales ni un inicio de sesión desde equipo nuevo. |
 | `2.5.5` | Verify that if an authentication factor is changed or replaced, that the user is notified of this event. | Mismo hueco que 2.2.3: no hay notificación al cambiar el factor. |
@@ -71,18 +67,27 @@ lista delante.
 
 ## Cómo se agrupan, y qué decisión pide cada grupo
 
-**Política de contraseñas (`2.1.1`, `2.1.2`, `2.1.3`, `2.1.7`, `2.1.9`,
-`2.1.12`).** Seis de los diecinueve, y son **una sola decisión de producto**:
-ASVS pide mínimo de 12 caracteres y **ninguna regla de composición**; el
-producto pide 8 con mayúscula, dígito y símbolo. La postura de ASVS viene de
-NIST 800-63b —las reglas de composición producen contraseñas débiles y
-predecibles— y adoptarla cambia lo que se le pide a cada persona al registrarse.
-No es un cambio que Claude tome por su cuenta.
+**Política de contraseñas — resuelta el 2026-08-07 (ADR-032).** Era el grupo
+más grande de la primera medición: seis controles, y no todos eran lo mismo.
 
-Dentro del grupo hay uno que **sí es un defecto y no una postura**: `2.1.3`.
-bcrypt trunca a 72 bytes en silencio, así que hoy una contraseña de 80
-caracteres y otra de 200 con los mismos 72 primeros abren la misma cuenta.
-Cerrarlo es rechazar por encima de 128 y declararlo.
+*La postura,* `2.1.1` y `2.1.9`: ASVS pide mínimo de 12 caracteres y **ninguna
+regla de composición**, y los pide juntos porque para NIST 800-63b son la misma
+medida —las reglas producen contraseñas predecibles y la longitud es lo que
+encarece adivinarlas—. **El owner decidió quedarse en 8 con reglas**, con el
+contraste delante. Figuran **ACEPTADO**, no CUMPLE: el producto no los cumple, y
+hay una decisión escrita detrás. Un auditor tiene derecho a ver esa diferencia
+sin preguntar.
+
+*El defecto,* `2.1.2` y `2.1.3`: **cerrados**. bcrypt truncaba a 72 bytes en
+silencio, y estaba comprobado —una contraseña de 103 caracteres y otra de 108
+con los mismos 72 primeros abrían la misma cuenta—. El esquema pasa a
+`bcrypt_sha256`, que resume antes de hashear; `bcrypt` queda deprecado y no
+retirado, así que los hashes existentes verifican y se reescriben en el
+siguiente inicio de sesión. Y el máximo pasa a ser 128 **declarado**: «sin
+máximo» sonaba generoso mientras por detrás había uno de 72 sin avisar.
+
+*Siguen abiertos* `2.1.7` (contraseñas filtradas) y `2.1.12` (revelar
+temporalmente lo escrito), que no dependían de esa decisión.
 
 **Token en el navegador (`3.2.3`, `8.2.2`).** El token de acceso vive en
 `localStorage`, que es legible por cualquier script inyectado. El de refresco sí

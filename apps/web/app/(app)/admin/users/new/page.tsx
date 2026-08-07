@@ -17,6 +17,7 @@ import { checkPasswordPolicy, generatePassword, passwordPolicyOk } from "@/lib/p
 
 const POLICY_ERRORS: Record<string, string> = {
   password_too_short: "Contraseña: al menos 8 caracteres",
+  password_too_long: "Contraseña: máximo 128 caracteres",
   password_missing_uppercase: "Contraseña: incluye una mayúscula",
   password_missing_digit: "Contraseña: incluye un dígito",
   password_missing_symbol: "Contraseña: incluye un símbolo",
