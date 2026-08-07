@@ -90,6 +90,10 @@ RUN apt-get update \
         fonts-dejavu-core \
         fonts-urw-base35 \
         shared-mime-info \
+        # MCS INF-03 — `pg_dump` para la copia de seguridad diaria del worker.
+        # Sin esto la tarea falla el primer día con «no está en el contenedor»,
+        # y una copia que nunca corrió se descubre el día del incidente.
+        postgresql-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

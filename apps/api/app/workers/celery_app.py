@@ -41,6 +41,7 @@ celery_app = Celery(
     include=[
         "app.workers.tasks.ai",
         "app.workers.tasks.notifications",
+        "app.workers.tasks.respaldo",
         "app.workers.tasks.scheduled_minutes",
         "app.workers.tasks.scheduled_reports",
         "app.workers.tasks.snapshots",
@@ -85,5 +86,13 @@ celery_app.conf.beat_schedule = {
     "metric-snapshots-weekly": {
         "task": "metric_snapshots.weekly",
         "schedule": crontab(hour=2, minute=0, day_of_week=1),
+    },
+    # MCS INF-03 — copia de seguridad diaria, 03:30 UTC.
+    #
+    # Media hora después del snapshot semanal para no solaparse con él los
+    # lunes: los dos leen la base entera y competir por E/S alarga los dos.
+    "respaldo-diario": {
+        "task": "respaldo.diario",
+        "schedule": crontab(hour=3, minute=30),
     },
 }
