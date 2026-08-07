@@ -190,6 +190,7 @@ CIERRES = {
  # ningún detalle. Nueve copias del resolvedor de proyecto, dos órdenes de
  # argumentos y dos sin filtrar `deleted_at`. Ahora una sola comprobación.
  "SEG-04":("CONFORME","Ola 3 — core/autorizacion.proyecto_autorizado; 18 casos verificados por mutación; AM-15 en el modelo de amenazas"),
+ "DAT-01":("CONFORME","2026-08-06 — glosario §7: once magnitudes con unidad canónica, rango y el porqué de cada una. app/core/magnitudes.py la refleja y una prueba falla si se separan. El trinquete DERIVA los 56 campos numéricos del árbol de modelos: uno nuevo sin unidad no entra. El importe se declara MXN —lo que el producto hace— con el disparador escrito, no «la moneda del inquilino», que es lo que el formulario promete y ningún sitio de presentación lee"),
  "DEV-04":("CONFORME","Ola 2 — mypy --strict en CI (job tipos-python) con línea base que solo encoge; ruff ya cubría el análisis estático"),
  # Los entornos existían; lo que no existía era la paridad DECLARADA, y sin
  # declaración «paridad» no se puede afirmar ni desmentir. La suposición estaba
