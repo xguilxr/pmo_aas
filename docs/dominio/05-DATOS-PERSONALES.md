@@ -33,6 +33,8 @@ los habría escrito nadie de memoria, y son los más sensibles del conjunto.
 | `users` | `email` | obligatorio | Identificador de acceso y destino de notificaciones |
 | `users` | `full_name` | obligatorio | Atribución de acciones en la interfaz y en informes |
 | `users` | *hash* de contraseña | obligatorio | Autenticación. **No es la contraseña**: es un derivado irreversible |
+| `users` | `privacy_accepted_at`, `privacy_version` | opcional | Consentimiento del aviso de privacidad y a qué versión (ASVS 8.3.3). Nulos = no ha aceptado |
+| `admin_otp_codes` | *resumen* del código, `user_id` | efímero | Segundo factor de administración (ASVS 4.3.1). Caduca a los diez minutos; solo se guarda el resumen, nunca el código |
 
 ### Personas registradas *sobre* las que se guarda información
 
@@ -116,11 +118,24 @@ Queda anotado como pendiente, no resuelto.
 
 ## 5. Derechos de la persona interesada
 
-**Hoy no hay procedimiento.** Sin él, una solicitud de acceso o de supresión se
-atendería a mano y sin garantía de completitud — sobre todo por el texto libre
-de §1, que ninguna consulta por `user_id` alcanza.
+**Resuelto el 2026-08-07** (ASVS 8.3.2, ADR-034). Era la carencia más seria de
+este inventario y ya no lo es.
 
-Es la carencia más seria de este inventario y se declara como tal.
+- **Acceso:** `GET /api/v1/users/me/datos-personales` devuelve en JSON la cuenta,
+  las preferencias, el registro de actividad propio y las notificaciones.
+- **Supresión:** `POST /api/v1/users/me/datos-personales/suprimir` **anonimiza**
+  —no borra—. Las filas se quedan y dejan de apuntar a nadie, porque el borrado
+  físico choca con `audit_log`, que es de solo anexado por diseño, y con el
+  historial del proyecto, que es dato del inquilino. Exige re-teclear el correo
+  y cierra la sesión.
+
+**El límite de §1 sigue en pie y ahora va declarado en el propio archivo
+exportado:** el texto libre que menciona a alguien por su nombre no se barre.
+Buscarlo exigiría recorrer todo el contenido con coincidencia difusa y decidir a
+mano cada acierto. Se dice, en vez de fingir que la copia es completa.
+
+Las dos acciones quedan en la auditoría: una exportación de datos personales es
+una lectura masiva de datos personales, y tiene que dejar rastro.
 
 ---
 

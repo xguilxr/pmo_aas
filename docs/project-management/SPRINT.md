@@ -54,14 +54,15 @@ recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
   mecánicos— y hoy están medidos.
 - [x] **Ola 3 — cerrada el 2026-08-07.** De 32 bloqueantes de N1 a **1**; 31
   cierres con prueba y verificación por mutación. Detalle en el registro.
-- [x] **Los quince huecos ASVS — doce cerrados el 2026-08-07**, uno por commit,
-  con prueba y verificación por mutación. El tope de `check_asvs.py` baja de 15
-  a 3. **`SEG-01` sigue PARCIAL**: quedan `4.3.1` (segundo factor de
-  administración), `8.3.2` (exportar/suprimir) y `8.3.3` (consentimiento), y los
-  tres son producto por construir con una decisión del owner delante. Detalle y
-  cuál es cada decisión, en `docs/conformidad/asvs-l1.md`.
-- [ ] **Al desplegar, ADR-033 cierra todas las sesiones vivas.** Coste de una
-  vez, inevitable.
+- [x] **Los quince huecos ASVS — los quince cerrados el 2026-08-07**, uno por
+  commit, con prueba y verificación por mutación. Tope de `check_asvs.py` en
+  **0**. **`SEG-01` sigue PARCIAL** por tres residuales ACEPTADO con ADR
+  detrás: `2.1.1` y `2.1.9` (contraseñas, ADR-032) y `2.7.1` (el correo como
+  segundo factor, ADR-035). Un residual aceptado no es un control cumplido.
+- [ ] **Al desplegar:** ADR-033 cierra **todas las sesiones vivas**, y entrar al
+  panel pasa a ser dos pasos (ADR-035). Migraciones 0105 y 0106.
+- [ ] **Si Resend se cae, ningún administrador entra.** Es la consecuencia de
+  que el segundo factor viaje por correo; está escrita en ADR-035.
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
 ### Producto — abierto

@@ -862,3 +862,46 @@ moneda, y el conjunto lo valida el esquema Pydantic en la frontera.
 filas, pero **sí la elección** — los proyectos que hubieran escogido una moneda
 distinta de la preferida vuelven a mostrarse con la del inquilino. Está escrito
 en el `downgrade()` porque el runbook de DES-02 §3.3 manda leerlo antes de bajar.
+
+---
+
+## 0105 — Consentimiento del aviso de privacidad (ASVS 8.3.3)
+
+`users.privacy_accepted_at` y `users.privacy_version`, las dos nulables.
+
+**Dos columnas y no una.** Con solo la fecha, «aceptó» responde *cuándo* y no
+*qué*: el día que cambie lo que se recoge no habría forma de saber a quién hay
+que volver a preguntarle sin cruzar fechas a mano contra el historial del
+documento. Con la versión al lado, la pregunta se responde comparando contra
+`aviso_privacidad.VERSION`, y por eso la pantalla puede volver a salir sola
+cuando el aviso cambia — que es lo que el owner pidió.
+
+**El nulo significa algo.** Las cuentas anteriores al aviso no han aceptado
+nada. Rellenarlas con la fecha de la migración habría fabricado un
+consentimiento que nadie dio, que es exactamente lo que el control quiere
+impedir. Verán la pantalla al entrar, que es lo correcto.
+
+Al bajar se pierde el consentimiento registrado y todo el mundo volverá a verla.
+Es molesto y es lo correcto: conservarlo fuera de la columna para «restaurarlo»
+sería inventar un consentimiento a partir de algo que el esquema ya no modela.
+
+## 0106 — Códigos de segundo factor de administración (ASVS 4.3.1)
+
+Tabla `admin_otp_codes`. Decisión del owner en ADR-035.
+
+**Tabla propia y no columnas en `users`** porque un código es un hecho con vida
+corta, no un atributo de la persona: nace, caduca a los diez minutos y se
+consume. En `users` habría que limpiar a mano lo que aquí caduca solo.
+
+Se guarda el **resumen** del código, no el código. Seis dígitos no resisten una
+tabla precalculada, así que el resumen no protege de eso; protege de que un
+volcado de la base entregue códigos utilizables tal cual, que es el caso
+realista.
+
+`desafio` ata el código a **una** petición de inicio de sesión concreta (ASVS
+2.7.3): sin él, un código pedido en una pestaña serviría para completar el
+inicio de sesión que otra persona empezó en otra parte. `intentos` acota la
+fuerza bruta — un millón de combinaciones se prueban enteras en minutos.
+
+Reversible sin pérdida de nada que importe: lo único que se tira son códigos con
+diez minutos de vida.
