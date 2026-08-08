@@ -23,17 +23,23 @@ encabezado, y no es descuido.
 
 ## Lo que está vivo
 
+> **El programa de remediación está cerrado desde el 2026-08-07 (ADR-036).**
+> El owner aceptó los tres residuales de `SEG-01`; N1 no se persigue. Lo que
+> sigue vivo es el **aparato de medición**, no el plan.
+
 | Documento | Para qué |
 |---|---|
-| [`runbook-cierre-n1.md`](runbook-cierre-n1.md) | **Por dónde se empieza.** Qué bloquea N1 hoy, en fases, separando lo que necesita decisión del owner de lo que es solo trabajo |
-| [`plan-remediacion.md`](plan-remediacion.md) | **El plan activo.** Olas, qué falta y por qué se ordenó así |
+| [`asvs-l1.md`](asvs-l1.md) + [`asvs-l1.yaml`](asvs-l1.yaml) | **Lo único que se mantiene al día.** Los 127 controles L1 con evidencia por control; su barrido falla si un hueco reaparece |
 | [`marco/MCS-CORE.md`](marco/MCS-CORE.md) | El catálogo normativo: 126 requisitos, y §6.2 con la regla de nivel |
 | [`marco/`](marco/) | Los marcos tal como se recibieron. No se editan aquí |
+| [`plan-remediacion.md`](plan-remediacion.md) | **Histórico.** Cómo se llegó de 45 bloqueantes de N1 a uno aceptado |
+| [`runbook-cierre-n1.md`](runbook-cierre-n1.md) | **Histórico.** El orden de ataque mientras N1 era objetivo |
 
 > **§6.2 conviene leerlo antes que nada:** el nivel es el mayor N donde **todos**
 > los DEBE están Conforme o No aplicable. Un solo PARCIAL bloquea el nivel
-> entero, así que «quedan 29» no es una barra de progreso — es una lista que se
-> vacía o no sirve.
+> entero — no es una barra de progreso, es una lista que se vacía o no sirve.
+> Por eso `SEG-01`, con sus tres residuales aceptados, deja MCS en N0: la regla
+> no admite matices, y el matiz vive en ADR-036.
 
 **El estado real no está en ningún documento**, y es a propósito:
 

@@ -21,13 +21,14 @@ revisar_cada: 30d
 ## 🔴 IN-PROGRESS
 
 ```
-Sin US activa. Branch `claude/asvs-l1-quince-huecos-kgk2qz` — **PR #584 abierto,
-CI verde**. Mergear es el próximo paso.
+Sin US activa. **Vuelta al producto.**
 
-MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · **1 bloquea N1: `SEG-01`**, y sigue bloqueando pese a que sus quince
-huecos ASVS están cerrados — queda PARCIAL por TRES residuales ACEPTADO, y
-MCS-CORE §6.2 no da crédito parcial. Ver INBOX.
+CONFORMIDAD — cerrada. El programa de remediación terminó el 2026-08-07
+(ADR-036): quince huecos ASVS cerrados, tres residuales aceptados, N1 no se
+persigue. No hay nada que retomar aquí; lo que queda vivo son los trinquetes
+del CI, que siguen bloqueando solos.
+
+MCA: N2, su objetivo. MCS: N0 con un requisito en contra, a sabiendas.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -38,39 +39,27 @@ MCS-CORE §6.2 no da crédito parcial. Ver INBOX.
 
 ## 📥 INBOX / TRIAGE
 
-### 🌊 Conformidad — qué falta para N1
+### Conformidad — cerrada, no pendiente
 
-Plan activo en **`docs/conformidad/plan-remediacion.md`**. El estado se recalcula
-con `python scripts/registro_conformidad.py` (no se almacena: CTX-03). Las olas
-0-3 y el cierre de los quince huecos ASVS están archivados en
-`SPRINT-DONE-HISTORY.md`.
+Nada que hacer. El detalle vive en `docs/conformidad/asvs-l1.md` y la decisión
+en **ADR-036**. `python scripts/registro_conformidad.py` seguirá diciendo
+`BLOQUEAN N1: 1 ['SEG-01']` — es correcto: el derivador mide, no opina sobre si
+el nivel se persigue.
 
-- [ ] **`SEG-01` es el único bloqueante de N1, y cerrar los quince huecos NO lo
-  desbloqueó.** Sigue PARCIAL por tres residuales ACEPTADO, y MCS-CORE §6.2 no
-  da crédito parcial. Para llevarlo a CONFORME hay que **revertir una decisión
-  tuya, no escribir código**:
-  - `2.1.1` + `2.1.9` → contraseñas de 12 sin reglas de composición (revisa
-    ADR-032).
-  - `2.7.1` → TOTP ofrecido antes que el código por correo (revisa ADR-035).
-  Con esos tres, `SEG-01` cierra y **MCS pasa a N1**. Sin ellos se queda en N0
-  con un solo requisito en contra, que es una postura defendible pero hay que
-  elegirla a sabiendas.
-- [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
-
-### Despliegue de #584 — lo que se nota
-
-- [ ] **Se cierran todas las sesiones vivas** (ADR-033) y **entrar al panel pasa
-  a ser dos pasos** (ADR-035). Ten acceso a tu correo antes de desplegar.
-- [ ] **Migraciones 0105, 0106 y 0107.**
-- [ ] **Si Resend se cae, ningún administrador entra.** Consecuencia de que el
-  segundo factor viaje por correo; escrita en ADR-035.
+Vuelve a la mesa solo si aparece un cliente que exija certificación, si entra un
+requisito contractual, o ante el primer incidente de credenciales.
 
 ### Producto — abierto
 
+- [ ] **Desplegar lo mergeado (#584/#585).** Migraciones `0105`, `0106` y
+  `0107`. Al desplegar se cierran **todas las sesiones vivas** (ADR-033) y
+  entrar al panel pasa a ser dos pasos (ADR-035) — ten acceso a tu correo. Si
+  Resend se cae, ningún administrador entra.
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
   **Cuatro abiertas:** `phase=support`, `portfolio_function`, `wbs` y
-  `amber_max` (esta desde el 2026-08-06; se mira el contador a los dos meses).
+  `amber_max`, más `cookie:refresh_token` — esta última se cierra sola al
+  caducar las cookies anteriores a ADR-033.
 - [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los valores de
   US-196 son razonados, no medidos; se ajustan en `settings`, sin tocar código.
 - [ ] **`design-system/tokens.md`** describe una paleta anterior a D-7 y

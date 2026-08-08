@@ -1,12 +1,17 @@
 ---
 tipo: runbook
 responsable: propietario
-estado: vigente
+estado: historico
 revisado: 2026-08-06
-revisar_cada: 30d
+revisar_cada: nunca
 ---
 
 # Runbook — cerrar N1
+
+> **Histórico desde el 2026-08-07 (ADR-036).** El owner cerró el programa al
+> aceptar los tres residuales de `SEG-01`; N1 dejó de ser objetivo. Se conserva
+> porque el orden de ataque que describe sigue siendo bueno si algún día vuelve
+> a hacer falta.
 
 Qué falta para que MCS pase de **N0 a N1**, en orden de ejecución, separando lo
 que depende de una decisión tuya de lo que es solo trabajo.
