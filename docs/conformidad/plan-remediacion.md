@@ -244,6 +244,32 @@ dejó para otra sesión.
 
 ---
 
+## `SEG-01` — cerrado por dentro, y aun así bloqueando
+
+**2026-08-07.** Los quince huecos del mapeo ASVS L1 están cerrados (PR #584).
+Medición: **116 CUMPLE · 8 NO APLICA · 3 ACEPTADO · 0 HUECO**, con el tope de
+`check_asvs.py` bajado a cero.
+
+**`SEG-01` sigue siendo el único bloqueante de N1.** No por descuido: queda
+PARCIAL por **tres residuales ACEPTADO**, y MCS-CORE §6.2 no da crédito parcial.
+Lo que cambió es la naturaleza del problema — de quince cosas por construir a
+**una decisión por tomar**:
+
+| Control | Qué pide ASVS | Qué decidiste | Dónde |
+|---|---|---|---|
+| `2.1.1` | Mínimo de 12 caracteres | 8 con reglas de composición | ADR-032 |
+| `2.1.9` | Ninguna regla de composición | Se conservan | ADR-032 |
+| `2.7.1` | Que el autenticador débil no sea el único, y ofrecer antes uno fuerte | Código por correo, sin TOTP que ofrecer | ADR-035 |
+
+Los tres primeros van juntos: para NIST, quitar las reglas y subir la longitud
+son la misma medida. El tercero se cierra con TOTP.
+
+**Con esos tres, `SEG-01` cierra y MCS pasa a N1.** Sin ellos se queda en N0 con
+un solo requisito en contra — postura defendible, pero conviene elegirla a
+sabiendas y no descubrirla al recontar.
+
+---
+
 ## Ola 3 — lo que sigue necesitando una decisión tuya
 
 No son caros por volumen sino porque **fijan una postura del producto**, y esa

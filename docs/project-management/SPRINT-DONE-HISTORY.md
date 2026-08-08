@@ -1174,3 +1174,77 @@ mutación, un commit por item.
    avance salía verde.
 6. **`#dc2626` marcaba «ruta crítica» y el semáforo «en problemas»** en la misma
    página.
+
+---
+
+## Ronda 2026-08-07 — Los quince huecos ASVS L1, cerrados
+
+Branch `claude/asvs-l1-quince-huecos-kgk2qz`, **PR #584**, CI verde (12 de 13;
+`api-tests-heavy` se salta, solo corre en push a `main`).
+
+Dieciocho commits, uno por control, cada uno con suite propia y verificación por
+mutación. `SEG-01` pasa de **15 huecos a 0**, y el tope de `check_asvs.py` de 15
+a 0. Medición final: **116 CUMPLE · 8 NO APLICA · 3 ACEPTADO · 0 HUECO**.
+
+| Control | Commit | Qué se hizo |
+|---|---|---|
+| `8.2.1` | `7f0c63b` | `Cache-Control: no-store` en todo `/api/` |
+| `10.3.2` | `8235dae` | Tipos de letra self-hosted (`next/font`) + trinquete |
+| `3.4.4` | `56e24da` | Cookie de sesión con prefijo `__Host-` |
+| `2.1.12` | `bd8467a` | `PasswordInput` compartido en los 12 campos + trinquete |
+| `2.1.7` | `80a8f69` | Conjunto de 37.970 contraseñas filtradas |
+| `5.2.7` | `ff967d7` | Saneado de SVG por lista blanca |
+| `11.1.4` | `c2702b3` | Presupuesto de 600 peticiones/min por cuenta |
+| `2.2.3`+`2.5.5` | `ac57569` | Aviso en los seis sitios que tocan una credencial |
+| `12.4.2` | `428bbe1` | Verificación de firma + enganche ClamAV |
+| `3.2.3`+`8.2.2` | `60a220a` | Token de sesión a cookie `HttpOnly` (ADR-033) |
+| `8.3.2` | `46caade` | Exportar + anonimizar (ADR-034) |
+| `8.3.3` | `ea509e3` | Aviso de privacidad versionado con aceptación |
+| `4.3.1` | `24dcedb` | Segundo factor por correo (ADR-035) |
+| — | `b4793bf`, `ec965ca` | Ventana de equipo de confianza, 30 días |
+
+### Lo que enseñó cerrarlos
+
+**Tres controles no eran lo que su evidencia decía.** Es lo que más vale de
+haber medido contra el texto del control y no contra el recuerdo:
+
+1. **`10.3.2` decía «hoy no se cargan recursos externos». Cargaba tres** — la
+   hoja de estilo de Google Fonts, sin `integrity`, decidiendo de dónde bajar
+   los tipos. No se arregla con `integrity` (Google varía el CSS por
+   `User-Agent`); se arregla dejando de pedírselo a un tercero.
+2. **`2.1.7` no se cierra con «las 10.000 más usadas».** De las 59.186 de
+   `rockyou-75`, las que pasan la política del producto son **ocho**. Una lista
+   estándar habría sido un archivo grande, un control marcado y cero
+   contraseñas detenidas.
+3. **`12.4.2` tenía dos mitades y solo una necesita antivirus.** El tipo del
+   archivo salía de la cabecera del navegador y del nombre — las dos escritas
+   por quien sube—: un ejecutable renombrado a `.pdf` se guardaba y servía como
+   PDF.
+
+**Dos controles existían, pero no donde hacían falta.** `2.2.3`/`2.5.5` avisaban
+en uno de los seis sitios que tocan una credencial —justo el único donde el
+cambio lo hace el dueño de la cuenta, o sea donde el aviso no sirve—. `2.1.12`
+estaba copiado a mano en dos pantallas y faltaba en las nueve donde se **elige**
+contraseña nueva.
+
+**Cerrar uno abrió otros cuatro.** El segundo factor de `4.3.1` hizo que
+`2.2.2`, `2.7.2`, `2.7.3` y `2.7.4` dejaran de «no aplicar», con requisitos
+concretos (diez minutos, un solo uso atado a su desafío, canal independiente), y
+convirtió `2.7.1` en el tercer residual aceptado. **Un mapeo no es una lista que
+solo encoge.**
+
+### Un fallo propio que cazó una prueba ajena
+
+Al partir el inicio de sesión en dos caminos para el segundo factor, el camino
+directo perdió su registro `login_success`. Lo detectó la suite de exportación de
+datos personales, que esperaba encontrarlo en la actividad del usuario.
+
+### Migraciones
+
+`0105` (consentimiento), `0106` (códigos OTP), `0107` (equipos de confianza).
+
+### Trinquetes nuevos
+
+`check_subrecursos.py` (ASVS 10.3.2) y `check_password_input.py` (ASVS 2.1.12),
+los dos en el job `contexto-permanente`. Existen porque los dos fallos originales
+no fueron técnicos sino de **evidencia escrita a mano que se quedó atrás**.
