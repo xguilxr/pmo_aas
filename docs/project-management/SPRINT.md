@@ -21,14 +21,13 @@ revisar_cada: 30d
 ## 🔴 IN-PROGRESS
 
 ```
-Sin US activa. Branch `claude/remediacion-ola-2-2kg36x` — el owner abre el PR.
-
-REMEDIACIÓN POR OLAS — plan en `docs/conformidad/plan-remediacion.md`.
-Olas 0, 1 y **2 cerradas**, más `SEG-04` y `DAT-06` de la Ola 3.
-Lo que queda de Ola 3 necesita postura del owner — otra sesión.
+Sin US activa. Branch `claude/asvs-l1-quince-huecos-kgk2qz` — **PR #584 abierto,
+CI verde**. Mergear es el próximo paso.
 
 MCA: N2, su objetivo, 11/11. Nada pendiente.
-MCS: N0 · **29 bloquean N1** (eran 41) · runbook de cierre en docs/conformidad/ · una sola exclusión viva (ARQ-03).
+MCS: N0 · **1 bloquea N1: `SEG-01`**, y sigue bloqueando pese a que sus quince
+huecos ASVS están cerrados — queda PARCIAL por TRES residuales ACEPTADO, y
+MCS-CORE §6.2 no da crédito parcial. Ver INBOX.
 ```
 
 > **¿Próximo ID libre?** `python scripts/proximo_id.py`. Se deriva de GitHub +
@@ -39,38 +38,34 @@ MCS: N0 · **29 bloquean N1** (eran 41) · runbook de cierre en docs/conformidad
 
 ## 📥 INBOX / TRIAGE
 
-### 🌊 Las olas — orden de ejecución
+### 🌊 Conformidad — qué falta para N1
 
-El plan completo, con el registro de los 97 abiertos y la evidencia por
-requisito, está en **`docs/conformidad/plan-remediacion.md`**. El estado se
-recalcula con `python scripts/registro_conformidad.py` (no se almacena: CTX-03).
+Plan activo en **`docs/conformidad/plan-remediacion.md`**. El estado se recalcula
+con `python scripts/registro_conformidad.py` (no se almacena: CTX-03). Las olas
+0-3 y el cierre de los quince huecos ASVS están archivados en
+`SPRINT-DONE-HISTORY.md`.
 
-- [x] **Olas 0, 1 y 2 — 2026-08-05/06.** De 45 a 32 bloqueantes. Las dos
-  primeras sin escribir producto (el registro no se había enterado de cuatro
-  cierres) y `main` protegida; la tercera, once commits con prueba y
-  verificación por mutación. `DAT-05` **volvió a cerrar**: estaba CONFORME
-  sobre una lista escrita a mano y quedaba una quinta paleta, en el acta que se
-  firma. `DAT-02`, `DIS-03` y `DAT-11` se reclasificaron ahí —no eran
-  mecánicos— y hoy están medidos.
-- [x] **Ola 3 — cerrada el 2026-08-07.** De 32 bloqueantes de N1 a **1**; 31
-  cierres con prueba y verificación por mutación. Detalle en el registro.
-- [x] **Los quince huecos ASVS — los quince cerrados el 2026-08-07**, uno por
-  commit, con prueba y verificación por mutación. Tope de `check_asvs.py` en
-  **0**. **`SEG-01` sigue PARCIAL** por tres residuales ACEPTADO con ADR
-  detrás: `2.1.1` y `2.1.9` (contraseñas, ADR-032) y `2.7.1` (el correo como
-  segundo factor, ADR-035). Un residual aceptado no es un control cumplido.
-- [ ] **Al desplegar:** ADR-033 cierra **todas las sesiones vivas**, y entrar al
-  panel pasa a ser dos pasos (ADR-035). Migraciones 0105 y 0106.
-- [ ] **Si Resend se cae, ningún administrador entra.** Es la consecuencia de
-  que el segundo factor viaje por correo; está escrita en ADR-035.
+- [ ] **`SEG-01` es el único bloqueante de N1, y cerrar los quince huecos NO lo
+  desbloqueó.** Sigue PARCIAL por tres residuales ACEPTADO, y MCS-CORE §6.2 no
+  da crédito parcial. Para llevarlo a CONFORME hay que **revertir una decisión
+  tuya, no escribir código**:
+  - `2.1.1` + `2.1.9` → contraseñas de 12 sin reglas de composición (revisa
+    ADR-032).
+  - `2.7.1` → TOTP ofrecido antes que el código por correo (revisa ADR-035).
+  Con esos tres, `SEG-01` cierra y **MCS pasa a N1**. Sin ellos se queda en N0
+  con un solo requisito en contra, que es una postura defendible pero hay que
+  elegirla a sabiendas.
 - [ ] **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 
-### Producto — abierto
+### Despliegue de #584 — lo que se nota
 
-- [x] **BUG-092 — hecho el 2026-08-07.** La moneda va sobre el **proyecto**,
-  con una preferida por inquilino como valor inicial (decisión del owner). Los
-  agregados de cartera **no suman monedas distintas**: devuelven un importe por
-  moneda. Migración 0104; trinquete `check_moneda.py`.
+- [ ] **Se cierran todas las sesiones vivas** (ADR-033) y **entrar al panel pasa
+  a ser dos pasos** (ADR-035). Ten acceso a tu correo antes de desplegar.
+- [ ] **Migraciones 0105, 0106 y 0107.**
+- [ ] **Si Resend se cae, ningún administrador entra.** Consecuencia de que el
+  segundo factor viaje por correo; escrita en ADR-035.
+
+### Producto — abierto
 
 - [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
   Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
@@ -100,7 +95,7 @@ ejecutar. El historial narrativo sigue en `SPRINT-DONE-HISTORY.md`.
 ## Notas y cambios recientes
 
 > Histórico narrativo en `SPRINT-DONE-HISTORY.md`, incluida la ronda del
-> 2026-08-06 (Ola 2 + `SEG-04` + la verificación local por la caída de Actions).
+> 2026-08-07 (los quince huecos ASVS, con lo que enseñó cerrarlos).
 
 ---
 

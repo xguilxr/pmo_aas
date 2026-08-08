@@ -2,139 +2,141 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-06
+revisado: 2026-08-07
 revisar_cada: 30d
 ---
 
 # HANDOFF.md — Estado para la próxima sesión
 
-**Branch activa:** `claude/remediacion-ola-2-2kg36x`, rebasada sobre `main` · **PR #582 abierto**
+**Última actualización:** 2026-08-07
+**Branch activa:** `claude/asvs-l1-quince-huecos-kgk2qz` · **PR #584 abierto, CI verde**
 **Generado por:** `/handoff`
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-**Ola 2 entera, más `SEG-04`, `DAT-06` y `DOC-02`: de 41 a 29 bloqueantes de
-N1.** Uno por commit, todos con prueba propia y verificación por mutación.
+**Los quince huecos ASVS L1 de `SEG-01` están cerrados**, uno por commit, cada
+uno con suite propia y verificación por mutación. El mapeo pasa de 15 huecos a
+**0** y el tope de `check_asvs.py` de 15 a 0.
 
-`SEG-04` era la única CRÍTICA viva y el hueco era explotable: la autorización
-de objeto se aplicaba al listado y a ningún detalle.
+**Y aun así `SEG-01` sigue bloqueando N1.** No es un descuido: queda **PARCIAL**
+por tres residuales **ACEPTADO** —decisiones tuyas, con ADR— y MCS-CORE §6.2 no
+da crédito parcial. Cerrar los quince huecos redujo el problema de quince cosas
+por construir a **una decisión por tomar**.
 
-MCA sigue en **N2**, su objetivo. MCS sigue en **N0**: MCS-CORE §6.2 no da
-crédito parcial —un solo PARCIAL bloquea el nivel—, así que el número no se
-mueve hasta que caigan los 29. Orden de ataque en
-[`runbook-cierre-n1.md`](../conformidad/runbook-cierre-n1.md).
+MCA sigue en **N2**, su objetivo. MCS sigue en **N0**, con un solo requisito en
+contra.
 
 ## 📍 Dónde retomar
 
-**Mergear #582.** Lleva `SEG-04` —la única CRÍTICA— y `DAT-06`, y ninguno de los
-dos está en `main`.
+**Mergear #584.** El CI está verde; `api-tests-heavy` figura saltado a
+propósito, porque solo corre en push a `main`. Lleva tres migraciones y dos
+cambios que se notan al desplegar — están en «Cleanup técnico».
 
-Su CI **no reportó**, y no es el código: GitHub Actions tuvo una caída y cuatro
-de los cinco trabajos murieron en «Set up job» con 0 ms facturables. Los cuatro
-se corrieron a mano el 2026-08-06 y están en verde. Aun así, al mergear conviene
-dejar que el CI corra de verdad: **la verificación local no sustituye al
-trinquete**, lo suple mientras está caído.
-
-Después, el **runbook** manda: fases, qué necesita postura tuya y qué es solo
-trabajo.
+Después, la decisión de N1: ver el primer bullet de `SPRINT.md` → INBOX.
 
 ## ✅ Hecho en esta sesión
 
-Quince commits, uno por requisito. **Cierran** `SEG-05`, `OPS-01`, `DEV-04`,
-`CFG-04`, `DIS-01`+`CFG-14`, `DOC-01`, `DOC-03`, `DAT-04`+`DAT-08`, `DAT-12`,
-**`SEG-04`** y **`DAT-06`**; `DAT-05` vuelve a cerrar. `LEN-02` baja de 177 a
-166 sin cerrar. `git log --oneline origin/main..HEAD` los tiene con su porqué.
+Dieciocho commits en `claude/asvs-l1-quince-huecos-kgk2qz`. Detalle completo, con
+la tabla control → commit, en `SPRINT-DONE-HISTORY.md` § *Ronda 2026-08-07*.
 
-**Verificación local de los cuatro trabajos caídos: todo verde** — suite 1377,
-build de web, bandit, pip-audit, pnpm audit, gitleaks sobre 478 commits, y la
-0101 contra Postgres real. Salieron **dos correcciones que el CI no habría
-dado**, las dos en el aparato de verificación y ninguna en el producto (Gotchas).
-Informe:
-[`2026-08-06-verificacion-local.md`](../conformidad/2026-08-06-verificacion-local.md).
+- **Los quince controles**, de `7f0c63b` a `ec965ca`. Medición final: **116
+  CUMPLE · 8 NO APLICA · 3 ACEPTADO · 0 HUECO**.
+- **Tres ADR nuevos:** `ADR-033` (tokens de sesión en cookies `__Host-`),
+  `ADR-034` (supresión por anonimización), `ADR-035` (segundo factor por correo
+  + ventana de equipo de confianza).
+- **Tres migraciones:** `0105` consentimiento, `0106` códigos OTP, `0107`
+  equipos de confianza.
+- **Dos trinquetes nuevos** en el job `contexto-permanente`:
+  `check_subrecursos.py` y `check_password_input.py`.
+- `docs/dominio/05-DATOS-PERSONALES.md` §5 deja de declarar «la carencia más
+  seria de este inventario»: ya hay procedimiento de acceso y de supresión.
 
-## 🔄 PRs
+## 🔄 PRs abiertos o en flight
 
-**#581 — MERGEADO** (13 commits, hasta `47eb7b8`). **#582 — ABIERTO** con el
-resto: `SEG-04` (`32b56b7`), `DAT-06` (`18c30f1`), la portabilidad del hook
-`commit-msg` (`61770ef`), los puentes y —nuevo— la suite de la 0101 contra
-Postgres más la limpieza del expediente. El merge de #581 cayó a mitad de la
-ronda; un PR mergeado no rastrea trabajo nuevo, así que la rama se rebasó.
+| # | Branch | Estado CI | Acción pendiente |
+|---|---|---|---|
+| #584 | `claude/asvs-l1-quince-huecos-kgk2qz` | verde | **merge** |
 
 ## ⚠️ Gotchas y decisiones recientes
 
-- **Medir contra el texto del requisito destapa lo que la evidencia anotada
-  esconde.** Seis hallazgos así: el acta `.docx` se firmaba con la paleta
-  anterior a DIS-02; once citas a tokens inexistentes pintaban tema claro en
-  modo oscuro; el gate de tipos daba verde sin analizar nada; el worker no
-  configuraba su registro; nueve copias del resolvedor de proyecto dejaban
-  entrar a proyectos ajenos; y la etiqueta de ajustes decía «Ámbar».
-- **Un trabajo verde sobre un sujeto vacío es un trabajo verde sobre nada.**
-  `api-migrations-postgres` corre sobre base limpia y ninguna migración inserta
-  inquilinos: el bucle de la 0101 recorría cero filas, así que habría pasado con
-  la migración rota. Remediado con `test_dat06_migracion_0101.py`.
-- **Corrección: `sa.text` sobre JSON *no* falla en Postgres.** El puente anterior
-  afirmaba lo contrario. Se mutó la 0101 de vuelta a esa versión y **pasó**: el
-  parámetro viaja como `unknown` y Postgres lo convierte. La tabla tipada se
-  queda por ser lo correcto, no por aquel motivo.
-- **`SEG-04` cambió comportamiento:** un usuario `role_type='user'` **sin
-  ninguna asignación** deja de alcanzar cualquier proyecto. Es lo que
-  `user_scope_assignments` dice desde que se escribió y lo que el listado ya
-  hacía; se cerró la puerta de la URL directa.
+- **Medir contra el texto del control destapó tres evidencias que no eran
+  ciertas.** `10.3.2` decía «hoy no se cargan recursos externos» y cargaba tres
+  (Google Fonts, sin `integrity`). `2.1.7` no se puede cerrar con una lista
+  estándar: de las 59.186 de `rockyou-75`, las que pasan la política del
+  producto son **ocho** — una lista así habría sido un archivo grande, un
+  control marcado y cero contraseñas detenidas. `12.4.2` tenía dos mitades y
+  solo una necesitaba antivirus: el tipo del archivo salía de la cabecera del
+  navegador y del nombre, las dos escritas por quien sube.
+- **Dos controles existían pero no donde hacían falta.** `2.2.3`/`2.5.5`
+  avisaban en uno de los seis sitios que tocan una credencial — justo el único
+  donde el cambio lo hace el dueño de la cuenta, o sea donde el aviso no sirve.
+- **Cerrar un control abre otros.** El segundo factor hizo que cuatro `NO
+  APLICA` dejaran de no aplicar, y convirtió `2.7.1` en residual aceptado. Un
+  mapeo no es una lista que solo encoge; al cerrar hay que remedir los vecinos.
+- **Un fallo propio lo cazó una prueba ajena.** Al partir el inicio de sesión en
+  dos caminos para el segundo factor, el camino directo perdió su registro
+  `login_success`; lo detectó la suite de exportación de datos personales.
+- **`ACEPTADO` no es `CUMPLE`, y el barrido lo hace cumplir**: rechaza un
+  `ACEPTADO` que no cite su ADR. Es lo que impide que un residual se disfrace.
 
 ## 📋 Lo que sigue
 
-Detalle en `SPRINT.md` → INBOX y en `plan-remediacion.md`.
+Detalle en `SPRINT.md` → INBOX.
 
-- **Ola 3** — necesita postura del owner. Se le suman `DAT-02` (8 renombres,
-  ADR + migración por campo), `DIS-03` y `DAT-11`.
-- **`LEN-02`**: 166 mensajes con texto suelto; el mecanismo ya obliga a las
-  tres partes al tocar cada endpoint.
+- **La decisión de N1** (única): revertir `ADR-032` (contraseñas de 12 sin
+  reglas) y/o `ADR-035` (TOTP antes que correo) cierra `SEG-01` y lleva MCS a
+  N1. **No es código, es postura.**
+- **Ola 4 — de N1 a N2.** Se replanifica al alcanzar N1.
 - **Cuatro ventanas de compatibilidad abiertas** (`phase=support`,
-  `portfolio_function`, `wbs`, `amber_max`). Se cierran con dato a los dos meses.
+  `portfolio_function`, `wbs`, `amber_max`) más la nueva
+  `cookie:refresh_token`, que se cierra sola al caducar las cookies viejas.
+- **`design-system/tokens.md`** sigue describiendo una paleta anterior a D-7.
+- **Línea base (D-6) y DCMA 14-point.** Épica propia, sin abrir.
 
-## 📚 Estado de las docs
+## 📚 Estado de las epics docs
 
-**EP004** sincronizada (US-020: el hueco se ve distinto del cero). **EP014** y
-**EP020** sin cambios: no describen el vocabulario del semáforo, lo hace el
-glosario.
+Ninguna epic quedó desactualizada. Los quince controles son **seguridad
+transversal**, no funcionalidad descrita en una `EP0XX-*.md`: el documento vivo
+de este trabajo es `docs/conformidad/asvs-l1.md`, reescrito en `cd5f9cc`.
 
-`ADR-030` y `DB-CHANGES.md` (0101) al día. El modelo de amenazas suma **AM-15**
-—acceso a un proyecto ajeno dentro del mismo inquilino—, hermana de AM-02. Al
-día también: glosario, `design-system/tokens.md` (declarado **reemplazado**),
-`database.md` y el nuevo `er-generado.md`.
+| Epic | Sincronizada | Notas |
+|---|---|---|
+| — | N/A | Ninguna epic describe autenticación, cookies ni el mapeo ASVS |
+| `05-DATOS-PERSONALES.md` | sí | §5 actualizado: la carencia de supresión queda cerrada |
+| `DB-CHANGES.md` | sí | 0105, 0106 y 0107 documentadas con el porqué de cada forma |
+| `amenazas.yaml` | sí | Dos rutas abiertas nuevas declaradas con su motivo |
+| `er-generado.md` | sí | Regenerado tras las tres migraciones |
 
-**Expediente de conformidad limpiado.** `plan-remediacion.md` se declaraba
-`historico`/`nunca` siendo el plan **activo**; ahora es `vigente` y trae las
-cifras de hoy. `docs/conformidad/` estrena
-[`README.md`](../conformidad/README.md) — eran trece documentos sin forma de
-saber cuál estaba vivo. Los informes fechados **no se tocaron**: son el
-expediente, y el índice explica por qué no se editan.
+## 🧹 Cleanup técnico pendiente
 
-## 🧹 Acciones del owner
-
-- [ ] **Añadir `tipos-python` y `commits` a las verificaciones exigidas de
-      `main`.** Sin eso, los gates existen y no bloquean.
-- [ ] **Activar el hook local**: `git config core.hooksPath .githooks`.
-- [ ] **Correr las migraciones `0097`-`0101`.** Las cuatro primeras venían de
-      antes; la `0101` renombra una llave dentro de `tenants.settings`.
-- [ ] **Confirmar Sentry en Railway:** dos líneas, `proceso=api` y
-      `proceso=worker`. Con las dos, `OPS-02` cierra.
-- [ ] Smoke de la web: tablero (KPI sin dato → «—»), detalle de proyecto, la
-      página de documentos en **tema oscuro** (llevaba meses mal) y los
-      umbrales de carga en ajustes («Amarillo hasta», antes «Ámbar»).
-- [ ] Contrastar los umbrales de D-4 contra cartera real.
+- [ ] **Mergear #584.**
+- [ ] **Correr las migraciones `0105`, `0106` y `0107`.**
+- [ ] **Antes de desplegar, ten acceso a tu correo.** Se cierran **todas las
+      sesiones vivas** (ADR-033) y entrar al panel pasa a ser dos pasos
+      (ADR-035).
+- [ ] **Tres variables nuevas en Railway**, las tres opcionales y con valor por
+      defecto seguro: `CLAMAV_URL` (vacía), `ADMIN_MFA_REQUIRED` (`true`),
+      `DISPOSITIVO_CONFIABLE_DIAS` (`30`).
+- [ ] **Decidir sobre `SEG-01`** — es lo único que separa de N1.
+- [ ] Pendientes de antes: añadir `tipos-python` y `commits` a las
+      verificaciones exigidas de `main`; activar el hook local
+      (`git config core.hooksPath .githooks`); confirmar Sentry en Railway;
+      contrastar los umbrales de D-4 contra cartera real.
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
-- **`DOC-07`** — el gate solo informa, y hoy hay **cero vencidos**: los tres que
-  había eran registro marcado como vigente, ya corregidos a `historico`. Hacerlo
-  fallar ya no arrastra pasivo.
-- **`DAT-07`** — tipos propios de magnitud. Hoy nada impide pasar un porcentaje
-  donde se espera una fracción.
-- Línea base (D-6) y DCMA: épica propia. El owner tiene además cambios de
-  diseño de producto pendientes.
+- **TOTP como segundo factor primario.** Cierra `2.7.1`, quita la dependencia de
+  que el correo llegue, y elimina el «si Resend se cae nadie entra». Descartado
+  por alcance en ADR-035, no por postura.
+- **Poner `CLAMAV_URL` y cambiar `POLITICA_SIN_MOTOR` a `rechazar`.** Trabajo de
+  despliegue, no de código.
+- **Más evidencia del expediente que nadie vuelve a mirar.** `10.3.2` enseñó que
+  la evidencia escrita a mano se queda atrás; los dos trinquetes nuevos cubren
+  dos casos, y probablemente haya más.
+- **`DOC-07`** — el gate solo informa y hoy hay cero vencidos.
+- **`DAT-07`** — tipos propios de magnitud.
 
 ---
 
