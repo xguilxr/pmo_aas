@@ -10,8 +10,9 @@ revisar_cada: nunca
 
 > **⚠️ Parcialmente superado — 2026-08-05.** Este documento es el plan de la
 > auditoría del 2026-08-03 y **se conserva como informe fechado**, no como plan
-> vigente. El plan activo es
-> [`plan-remediacion.md`](plan-remediacion.md).
+> vigente. Le siguió [`plan-remediacion.md`](plan-remediacion.md), que a su vez
+> se cerró el 2026-08-07 (ADR-036): **ya no hay plan activo**, porque no hay
+> programa. Lo vivo es el mapeo de [`asvs-l1.md`](asvs-l1.md) y su barrido.
 >
 > Lo que ya no vale de aquí:
 >

@@ -3,7 +3,7 @@ tipo: informe
 responsable: propietario
 estado: vigente
 revisado: 2026-08-07
-revisar_cada: 90d
+revisar_cada: 180d
 ---
 
 # ASVS 4.0.3 nivel 1 — mapeo completo del producto
@@ -18,6 +18,7 @@ nivel 1 aplicables».
 | **Barrido** | `scripts/check_asvs.py` — falla si falta uno, si un estado no tiene evidencia o si los huecos crecen |
 | **Medición** | 2026-08-07 · **116 CUMPLE · 8 NO APLICA · 3 ACEPTADO · 0 HUECO** |
 | **Estado del requisito** | **PARCIAL** — cero huecos, tres residuales aceptados |
+| **Programa** | **Cerrado el 2026-08-07** por decisión del owner (ADR-036). No hay auditoría externa; N1 no se persigue |
 
 > El catálogo se incorpora del proyecto OWASP ASVS, bajo licencia
 > [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Se versiona
@@ -35,6 +36,17 @@ cerraron los quince.
 
 **No se declara CONFORME**, y el motivo cabe en una frase: quedan **tres
 controles ACEPTADO**, y un residual aceptado no es un control cumplido.
+
+> **El programa está cerrado (ADR-036).** El owner aceptó los tres residuales el
+> 2026-08-07. No hay auditoría externa: este trabajo se hizo para subir la
+> calidad de la plataforma, no para pasar una revisión. `SEG-01` se queda
+> PARCIAL y **no se toca** — marcarlo CONFORME sería la conformidad de papel que
+> este expediente lleva siete recuentos evitando.
+>
+> Lo que **no** se apaga al cerrar el programa son los trinquetes. Sin nadie
+> mirando desde fuera, son lo único que impide que esto se degrade — y esta
+> misma ronda demostró que hacen falta: tres de los quince controles tenían
+> evidencia escrita a mano que no era cierta.
 
 | Control | Qué pide | Qué se aceptó, y quién lo decidió |
 |---|---|---|

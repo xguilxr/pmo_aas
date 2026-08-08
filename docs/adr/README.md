@@ -1819,3 +1819,83 @@ detalle, una entrada con segundo factor y una sin él serían la misma línea.
 
 **Revisión:** al primer incidente de correo comprometido, o cuando el número de
 administradores haga que enrolar TOTP salga a cuenta.
+
+---
+
+## ADR-036 — Se cierra el programa ASVS L1 y se aceptan los tres residuales
+
+**Fecha:** 2026-08-07 · **Estado:** aceptada · **Decide:** owner
+
+**Contexto.** El mapeo ASVS 4.0.3 L1 se midió entero el 2026-08-07 y sacó quince
+huecos. Los quince se cerraron el mismo día (PR #584/#585). Queda:
+
+    116 CUMPLE · 8 NO APLICA · 3 ACEPTADO · 0 HUECO
+
+`SEG-01` sigue **PARCIAL** en el registro, porque tres controles L1 aplicables no
+se cumplen, y MCS-CORE §6.2 no da crédito parcial. Llevarlo a CONFORME no era
+trabajo pendiente: era **revertir dos decisiones ya tomadas**.
+
+**Y hay un dato que cambia el marco:** *no hay auditoría externa*. Nadie va a
+pedir este expediente. El trabajo se hizo para subir la calidad de la
+plataforma, no para pasar una revisión.
+
+**Decisión.** El owner **cierra el programa** y **acepta los tres residuales**.
+N1 deja de ser un objetivo perseguido. El expediente queda como está.
+
+**Qué se acepta, en concreto** — no «tres controles», sino esto:
+
+1. **`2.1.1` + `2.1.9` (ADR-032).** Una contraseña de 8 caracteres es adivinable
+   por fuerza bruta con recursos modestos **si alguien consigue los hashes**.
+   Lo que lo contiene no es la política sino `bcrypt_sha256` con coste
+   configurable, el retardo creciente del inicio de sesión, el límite por IP, y
+   —desde esta ronda— el contraste contra 37.970 contraseñas filtradas que
+   además pasan la política.
+2. **`2.7.1` (ADR-035).** Si alguien tiene la contraseña de un administrador
+   **y** acceso a su correo, el segundo factor no lo detiene. Lo que sí detiene,
+   que es la amenaza realista, es una contraseña reutilizada que aparece en una
+   filtración.
+
+**Consecuencias.**
+
+- **`SEG-01` se queda PARCIAL, y no se toca.** Marcarlo CONFORME sería la
+  conformidad de papel que este expediente lleva siete recuentos evitando. El
+  producto no cumple tres controles L1 aplicables; que la decisión sea
+  deliberada no lo convierte en cumplimiento.
+- **MCS se queda en N0**, con un solo requisito en contra. Es una postura, no un
+  descuido, y ahora está escrita.
+- `registro_conformidad.py` seguirá diciendo `BLOQUEAN N1 hoy: 1 ['SEG-01']`.
+  **Es correcto y se deja así**: el derivador mide, no opina sobre si el nivel
+  se persigue.
+
+**Lo que NO se apaga, y es lo que más importa de esta decisión.**
+
+Sin auditoría externa, la tentación es aflojar el aparato: los trinquetes, la
+distinción `ACEPTADO`/`CUMPLE`, el techo de contexto, la verificación por
+mutación. **Se quedan todos encendidos**, y el motivo es exactamente el que
+acaba de darse: si nadie mira desde fuera, lo único que impide que la calidad se
+degrade es que el CI lo haga desde dentro.
+
+De hecho esta ronda demostró que hacen falta más que antes: **tres de los quince
+controles tenían evidencia escrita a mano que no era cierta** —`10.3.2` decía
+que no se cargaban recursos externos y cargaba tres—, y eso solo se descubre
+cuando algo comprueba en vez de recordar.
+
+En concreto siguen en el CI, y siguen siendo bloqueantes:
+
+- `check_asvs.py` con tope de huecos en **0**.
+- `check_subrecursos.py` y `check_password_input.py`, nacidos de esta ronda.
+- El techo de contexto, el modelo de amenazas, la matriz de permisos, las
+  magnitudes, el ER generado y los mensajes de error.
+
+**Alternativas:**
+
+- *Perseguir N1.* Exige contraseñas de 12 sin reglas de composición y TOTP
+  ofrecido antes que el correo. Las dos son cambios que la gente nota, a cambio
+  de un nivel que nadie va a pedir. Se descarta por eso, no por dificultad.
+- *Declarar `SEG-01` CONFORME y cerrar el nivel.* Sería mentir en el propio
+  expediente, y el barrido lo impide: un `ACEPTADO` sin ADR no pasa.
+
+**Revisión:** si aparece un cliente que exija certificación, si entra un
+requisito contractual de seguridad, o ante el primer incidente de credenciales.
+Entonces esta decisión vuelve a la mesa con los tres residuales ya nombrados,
+que es exactamente el valor de haberlos escrito.

@@ -1,15 +1,24 @@
 ---
 tipo: plan
 responsable: propietario
-estado: vigente
+estado: historico
 revisado: 2026-08-06
-revisar_cada: 30d
+revisar_cada: nunca
 ---
 
 # Plan de remediación de conformidad — MCS
 
-> **Este es el plan activo.** Los informes fechados de `docs/conformidad/` son
-> el expediente y no se editan; este documento es el que se mueve. Índice de
+> **Cerrado el 2026-08-07 (ADR-036).** Fue el plan activo mientras hubo programa
+> de remediación; el owner lo cerró al aceptar los tres residuales de `SEG-01`.
+> Se conserva porque cuenta **cómo se llegó** de 45 bloqueantes de N1 a uno
+> aceptado, y porque si algún día vuelve a hacer falta, el trabajo de
+> identificarlos ya está hecho.
+>
+> **No se sigue moviendo.** El estado real se saca de
+> `python scripts/registro_conformidad.py`, que deriva y no opina.
+
+> Los informes fechados de `docs/conformidad/` son
+> el expediente y no se editan; este documento es el que se movía. Índice de
 > todo el expediente: [`README.md`](README.md).
 >
 > Hasta el 2026-08-06 el encabezado decía `estado: historico` y
@@ -264,9 +273,16 @@ Lo que cambió es la naturaleza del problema — de quince cosas por construir a
 Los tres primeros van juntos: para NIST, quitar las reglas y subir la longitud
 son la misma medida. El tercero se cierra con TOTP.
 
-**Con esos tres, `SEG-01` cierra y MCS pasa a N1.** Sin ellos se queda en N0 con
-un solo requisito en contra — postura defendible, pero conviene elegirla a
-sabiendas y no descubrirla al recontar.
+**Con esos tres, `SEG-01` cerraría y MCS pasaría a N1.**
+
+**El owner eligió no hacerlo** (2026-08-07, ADR-036): no hay auditoría externa,
+así que los dos cambios —contraseñas de 12 sin reglas, y TOTP antes que el
+correo— son fricción que la gente nota a cambio de un nivel que nadie va a
+pedir. Los tres residuales quedan aceptados y **el programa se cierra aquí**.
+
+MCS se queda en **N0 con un solo requisito en contra**. Es una postura, está
+escrita, y vuelve a la mesa si aparece un cliente que exija certificación o ante
+el primer incidente de credenciales.
 
 ---
 
