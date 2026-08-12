@@ -1,7 +1,7 @@
 ---
-tipo: gestion
+tipo: archivo
 responsable: propietario
-estado: historico
+estado: archivado
 revisado: 2026-06-05
 revisar_cada: nunca
 ---

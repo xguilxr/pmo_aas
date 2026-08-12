@@ -14,7 +14,7 @@ revisar_cada: 90d
 > `/tasks/{id}/move` + `list_tasks`/`renumber-wbs` respetan `position`.
 > **Diferido (v2, requiere nueva decisión):** drag de **subárbol** (hijos),
 > reorden **dentro de agrupaciones/filtros**, y `position` **por hermanos**.
-> Origen: Fase 4 del análisis Sprint 35 (UIUX-ANALYSIS-Sprint35.md, follow-up #4).
+> Origen: Fase 4 del análisis Sprint 35 (docs/archive/project-management/UIUX-ANALYSIS-Sprint35.md, follow-up #4).
 
 ## 1. Problema
 
