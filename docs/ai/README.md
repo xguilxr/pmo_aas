@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -17,8 +17,8 @@ Documentación técnica vigente de la IA generativa en la plataforma.
 - [`prompts-catalog.md`](./prompts-catalog.md) — prompts versionados
   (`minute.from_transcript.v2`, `report.progress_draft.v1`,
   `transcript.chunk_merge.v1`) con sus schemas Pydantic, few-shot y
-  reglas de guardrails. Es la **única doc técnica** que queda aquí —
-  los runbooks de operación viven en `docs/runbooks/ai/`.
+  reglas de guardrails. Es la **única doc técnica** que queda aquí.
+  Los runbooks de operación viven en `docs/runbooks/ai/`.
 
 ## Runbooks de operación
 
@@ -44,7 +44,7 @@ Desde US-057 + DEC-017 la IA funciona con **tres modos por-tenant**
 | `platform` | Groq (`llama-3.3-70b-versatile`) | sólo minutas | hosteado por plataforma, free tier |
 | `byo` | OpenAI / Claude / Gemini / Perplexity / Azure-Copilot M365 / Groq / custom | minutas + reportes | a cuenta del tenant |
 
-Ver `docs/epics/EP008-ai.md` para el modelo completo y
+Ver `docs/epics/EP008-ai.md` para el modelo completo. Ver
 `docs/epics/DECISIONS.md` para el historial de decisiones (DEC-017,
 DEC-019).
 

@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -210,7 +210,7 @@ El worker **valida siempre** que el `input_path` esté bajo el directorio del te
 
 ## Invariantes automáticos (property-based)
 
-Complementar con pruebas Hypothesis:
+Complementa con pruebas Hypothesis:
 
 ```python
 from hypothesis import given, strategies as st
@@ -238,7 +238,7 @@ Script: `scripts/canary/mt_isolation.py`.
 ## Checklist por PR (aparte de CI)
 
 - [ ] ¿Agregué un endpoint? → agregué test `TC-MT-XXX` correspondiente.
-- [ ] ¿Agregué una tabla? → tiene `tenant_id` indexado + cada query filtra por él + test `TC-MT-*`. *(No usamos RLS Postgres hoy; ver `architecture/database.md`.)*
+- [ ] ¿Agregué una tabla? → tiene `tenant_id` indexado + cada query filtra por él + test `TC-MT-*`. *(No usamos RLS Postgres hoy. Ver `architecture/database.md`.)*
 - [ ] ¿Worker lee archivos? → valida prefix del path.
 - [ ] ¿Cache por key compartida? → la key incluye `tenant_id`.
 - [ ] ¿Log/trace incluye `tenant_id`? → sí (para detección forense).

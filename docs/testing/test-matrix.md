@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -256,10 +256,10 @@ Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mante
 **Total TCs documentados:** 139 (EP001–EP009) + 27 (EP010) + 8 MT = ~174 (los 4 TCs de cascada IA quedaron N/A tras BUG-053).
 
 > **Nota 2026-05-23:** esta matriz lista los TCs planeados/documentados.
-> El estado real (verde/amarillo/rojo) no se está manteniendo en CI con
-> un dashboard formal — los tests reales viven en `apps/api/tests/` y
-> CI corre todos los que existen (`pytest -m "not heavy"` smoke +
-> `pytest -m "heavy"` en push a main). Si quieres una matriz viva,
-> abrir issue para generar reporte automático desde `pytest --collect-only`.
+> El estado real (verde/amarillo/rojo) no se mantiene en CI con un
+> dashboard formal. Los tests reales viven en `apps/api/tests/`. CI corre
+> todos los existentes: `pytest -m "not heavy"` (smoke) y `pytest -m
+> "heavy"` en push a main. Si quieres una matriz viva, abre issue para
+> generar reporte automático desde `pytest --collect-only`.
 
 Ver detalle de TC-MT-* en [`multi-tenant-isolation.md`](./multi-tenant-isolation.md).

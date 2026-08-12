@@ -2,16 +2,16 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
 # RAID — Vista detalle item (layout "Denso")
 
 > **Origen:** spec del owner 2026-05-06, mock en
-> `docs/design-system/Denso _ todo arriba_ comentarios al final.html`
-> (artefacto exportado del Claude Design Canvas — se archiva en
-> `docs/archive/` tras esta documentación, ver al final).
+> `docs/design-system/Denso _ todo arriba_ comentarios al final.html`.
+> Es un artefacto exportado del Claude Design Canvas. Se archiva en
+> `docs/archive/` tras esta documentación (ver al final).
 >
 > **Issue de implementación:** [US-100 #246](https://github.com/xguilxr/pmo_aas/issues/246).
 > Sub-issues: ENH-069 #247 (banner edición), ENH-070 #248 (card
@@ -24,11 +24,11 @@ revisar_cada: 90d
 
 ## 1. Objetivo
 
-Reemplazar la vista actual del detail RAID — que tiene la metadata
-clave (estado, severidad, área, responsable, fechas) enterrada en un
-sidebar vertical largo y el título separado de sus metadatos — por un
-layout **denso vertical** donde lo crítico vive en una sola card de
-header escaneable de un vistazo.
+Reemplazamos la vista actual del detail RAID por un layout **denso
+vertical**. Hoy la metadata clave (estado, severidad, área, responsable,
+fechas) queda enterrada en un sidebar vertical largo, con el título
+separado de sus metadatos. Lo crítico vive en una sola card de header,
+escaneable de un vistazo.
 
 Aplica a los 4 tipos de items RAID:
 
@@ -236,7 +236,7 @@ Una sola card con dos secciones internas separadas por gap (ENH-070):
 
 ## 7. Mock visual de referencia
 
-Mock exportado por el owner desde Claude Design Canvas:
+El owner exportó el mock desde Claude Design Canvas:
 **`docs/archive/raid-detail-denso-mock-2026-05-06.html`** (artefacto
-estático, ~1.8MB con fuentes/CSS embebido — se archiva por
-referencia histórica; este `.md` es la fuente canónica del spec).
+estático, ~1.8MB con fuentes/CSS embebido). Se archiva por referencia
+histórica. Este `.md` es la fuente canónica del spec.
