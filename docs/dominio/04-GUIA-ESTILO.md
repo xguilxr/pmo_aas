@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-06
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -152,3 +152,20 @@ Lo que esta guía añade es el registro: tercera persona, sin culpar a quien lee
 | Se escribe | No se escribe |
 |---|---|
 | «No se pudo guardar el proyecto porque falta el nombre. Completar el campo y reintentar.» | «Error al guardar. Ingresaste mal los datos.» |
+
+---
+
+## 7. Español claro en la documentación
+
+> **Decisión owner 2026-08-12.** Aplica a la prosa de `docs/**` y `CLAUDE.md`
+> (equivalente en español al ASD-STE100). No aplica al texto de interfaz
+> (secciones 1-6) ni a lo congelado: `docs/archive/`, informes fechados y
+> archivos generados.
+
+- Frases de 25 palabras o menos. Una instrucción por frase.
+- Voz activa y presente: «el CI falla si…», no «será rechazado cuando…».
+- Un término = un nombre. Sin sinónimos para el mismo concepto técnico.
+- Listas y tablas antes que párrafos. Sin metadiscurso («cabe mencionar que…»).
+- Se conservan verbatim: IDs (`US-###`, `ADR-###`, …), front matter, headings,
+  tablas normativas, bloques de código y mermaid, links, y las cadenas que un
+  test fija como ancla.
