@@ -14,7 +14,7 @@ revisar_cada: 90d
 | **Prioridad** | Alta — bloque 11 del sprint |
 | **Dependencias** | EP010 (SuperAdmin panel) completo |
 | **Módulo** | `web.nav`, `superadmin`, `api.superadmin` |
-| **Estado** | # PENDING |
+| **Estado** | Entregada (v1.1) — bloque original DONE (2026-05-23); ver índice |
 | **Versión objetivo** | v1.1 |
 | **Issue origen** | [#19 — SuperAdmin barra de navegación](https://github.com/xguilxr/pmo_aas/issues/19) |
 

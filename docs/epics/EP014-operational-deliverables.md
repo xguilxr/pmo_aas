@@ -14,7 +14,7 @@ revisar_cada: 90d
 | **Prioridad** | Alta — bloque 10 del sprint |
 | **Dependencias** | EP005, EP006 (reportes module), EP008 (IA minutas) completos |
 | **Módulo** | `reports.python`, `pdf`, `ai.minutes.format` |
-| **Estado** | # PENDING |
+| **Estado** | Entregada (v1.1) — bloque original DONE (2026-05-23); ver índice |
 | **Versión objetivo** | v1.1 |
 | **Issue origen** | [#18 — Formato de Reportes y Minutas](https://github.com/xguilxr/pmo_aas/issues/18) |
 

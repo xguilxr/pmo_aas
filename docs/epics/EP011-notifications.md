@@ -14,7 +14,7 @@ revisar_cada: 90d
 | **Prioridad** | POST-MVP |
 | **Dependencias** | EP001, EP003, EP005, EP006 |
 | **Módulo** | `notifications` |
-| **Estado** | # PENDING |
+| **Estado** | Entregada — como trabajo operativo (notifications.py, notification-bell.tsx); ver índice |
 | **Versión objetivo** | v1.1 |
 
 ## Objetivo de negocio
