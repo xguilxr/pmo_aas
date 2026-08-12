@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-06
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -13,12 +13,12 @@ tratados por el sistema».
 
 **Se derivó del esquema real** (`apps/api/app/models/`), no de lo que se
 recordaba guardar. Es la diferencia entre un inventario y una lista de buenas
-intenciones: los dos campos de `audit_log` y el de `password_reset_tokens` no
-los habría escrito nadie de memoria, y son los más sensibles del conjunto.
+intenciones. Los dos campos de `audit_log` y el de `password_reset_tokens` no
+los habría escrito nadie de memoria. Son los más sensibles del conjunto.
 
 > **Alcance declarado.** Este documento identifica **qué** dato personal se
 > trata, dónde vive y para qué. **No** es una política de privacidad ni un
-> registro de actividades de tratamiento del RGPD: eso requiere asesoría legal
+> registro de actividades de tratamiento del RGPD. Eso requiere asesoría legal
 > y excede la competencia declarada del producto
 > ([`06-COMPETENCIA.md`](06-COMPETENCIA.md)). Es el insumo para redactarlos.
 
@@ -73,7 +73,7 @@ Declarado con la misma seriedad que lo anterior, porque acota el riesgo:
 
 - **Ningún dato de pago.** No existe modelo de suscripción ni de cobro en el
   esquema — se verificó el 2026-08-06. Cuando entren los planes por niveles, el
-  medio de pago **debe delegarse a la pasarela** y no guardarse aquí; este
+  medio de pago **debe delegarse a la pasarela** y no guardarse aquí. Este
   documento se actualiza en ese momento.
 - **Ninguna categoría especial:** salud, biometría, origen étnico, afiliación
   sindical, orientación, convicciones. El producto no tiene campo para nada de
@@ -92,7 +92,7 @@ Declarado con la misma seriedad que lo anterior, porque acota el riesgo:
 
 Esta distinción no es formalismo: **la plataforma no elige qué datos entran**.
 Un inquilino que registra el teléfono de un interesado lo hace bajo su propia
-base legal, y quien debe poder responder a esa persona es él.
+base legal. Quien debe poder responder a esa persona es él.
 
 ---
 
@@ -124,13 +124,13 @@ este inventario y ya no lo es.
 - **Acceso:** `GET /api/v1/users/me/datos-personales` devuelve en JSON la cuenta,
   las preferencias, el registro de actividad propio y las notificaciones.
 - **Supresión:** `POST /api/v1/users/me/datos-personales/suprimir` **anonimiza**
-  —no borra—. Las filas se quedan y dejan de apuntar a nadie, porque el borrado
+  —no borra—. Las filas se quedan y dejan de apuntar a nadie. El borrado
   físico choca con `audit_log`, que es de solo anexado por diseño, y con el
   historial del proyecto, que es dato del inquilino. Exige re-teclear el correo
   y cierra la sesión.
 
 **El límite de §1 sigue en pie y ahora va declarado en el propio archivo
-exportado:** el texto libre que menciona a alguien por su nombre no se barre.
+exportado.** El texto libre que menciona a alguien por su nombre no se barre.
 Buscarlo exigiría recorrer todo el contenido con coincidencia difusa y decidir a
 mano cada acierto. Se dice, en vez de fingir que la copia es completa.
 

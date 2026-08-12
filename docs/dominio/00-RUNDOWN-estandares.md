@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-03
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -20,14 +20,13 @@ revisar_cada: 90d
 ## 0. Lo primero, porque ahorra tiempo
 
 **No existe una norma certificable de gestión de proyectos equivalente a ISO 9001.** Las
-familias ISO 21500 son *guías*, no requisitos: no se auditan ni se certifican a nivel
-organización. Lo que sí se certifica son **personas** (PMP, PRINCE2 Practitioner, IPMA) y,
-por otra vía, la **madurez** de la organización mediante modelos como P3M3.
+familias ISO 21500 son *guías*, no requisitos. No se auditan ni se certifican a nivel
+organización. Sí se certifican **personas** (PMP, PRINCE2 Practitioner, IPMA). Por otra vía
+se certifica la **madurez** de la organización, con modelos como P3M3.
 
-Consecuencia práctica para el producto: no vas a poder decir «cumple ISO 21502». Sí vas a
-poder decir, y es más defendible, **«el modelo de datos y los indicadores siguen la
-terminología y las fórmulas de X, y aquí está el mapeo»**. Eso es lo que un cliente con PMO
-madura te va a pedir.
+Consecuencia práctica para el producto: no puedes decir «cumple ISO 21502». Sí puedes decir
+algo más defendible: **«el modelo de datos y los indicadores siguen la terminología y las
+fórmulas de X, y aquí está el mapeo»**. Es lo que pide un cliente con PMO madura.
 
 ---
 
@@ -136,9 +135,9 @@ con ninguna y elimina la mayor parte de la ambigüedad actual.
 Ya importás MS Project (`EP009`, campos `predecessors`, `successors`, `is_critical`,
 `outline_level`, `wbs`). **Tenés el insumo exacto que necesita un chequeo DCMA 14-point.**
 
-Ningún competidor de gama media evalúa calidad de cronograma. Un informe que le diga al
-cliente *«tu cronograma tiene 34 tareas sin sucesor, 12 con restricción dura y holgura
-negativa de −18 días»* es defendible, automático, y es justo lo que una PMO seria compra.
+Ningún competidor de gama media evalúa calidad de cronograma. Un informe así es defendible y
+automático: *«tu cronograma tiene 34 tareas sin sucesor, 12 con restricción dura y holgura
+negativa de −18 días»*. Es justo lo que compra una PMO seria.
 Sale de datos que **ya tenés en la base**, sin necesidad de costos ni de EVM.
 
 Lo digo aquí y no en el diagnóstico porque es una decisión de producto, no una brecha.

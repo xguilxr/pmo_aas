@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -23,8 +23,8 @@ líneas y la mayoría **no necesitaba decisión**: o ya estaba bien, o el cambio
 mecánico. Quedaron nueve puntos.
 
 La tabla §6 del glosario había contado coincidencias de texto. Al mirar **dónde
-caen** esas coincidencias cambió el cuadro: una parte eran falsos positivos
-—etiquetas de presentación en español, que el propio glosario permite— y el ítem
+caen** esas coincidencias cambió el cuadro. Una parte eran falsos positivos
+—etiquetas de presentación en español, que el propio glosario permite—. El ítem
 descrito como más barato resultó ser el más caro.
 
 ## Las decisiones
@@ -60,12 +60,12 @@ No lo es. `yellow` es **el contrato**, y se eligió a propósito:
 Adoptar `amber` habría sido cambiar el contrato público, revertir la 0091 sobre
 datos productivos, migrar las claves de los snapshots y tocar el frontend. Se
 queda `yellow`, y el glosario registra que **se aparta a conciencia del
-vocabulario RAG de P3O/PRINCE2**: la UI ya dice «Amarillo», que es lo que ve el
+vocabulario RAG de P3O/PRINCE2**. La UI ya dice «Amarillo», que es lo que ve el
 cliente.
 
 **Pendiente mecánico:** limpiar los tres restos de `amber` —
-`charter_generator.py:52-53` mapea los dos, `templates/pdf/sections/s-03.html:9`
-usa `'amber'` por defecto, y el `CHECK` de la migración 0065 es histórico.
+`charter_generator.py:52-53` mapea los dos, y `templates/pdf/sections/s-03.html:9`
+usa `'amber'` por defecto. El `CHECK` de la migración 0065 es histórico.
 
 **Merece ADR:** es el tipo de decisión que dentro de un año nadie recuerda por
 qué se tomó.
@@ -87,14 +87,14 @@ glosario:
 | `apps/api/app/models/project.py:43` | `phase: String(32)`, sin enum de base de datos. Cambiar el vocabulario no exige migrar un tipo |
 | `apps/api/app/services/lessons_export.py:38-42` | Las lecciones usan el mismo vocabulario de cuatro |
 
-Así que el veto del glosario a `support` era **erróneo en el fondo**: el
-concepto es legítimo —la transición a operaciones existe en los estándares—, lo
+Así que el veto del glosario a `support` era **erróneo en el fondo**. El
+concepto es legítimo —la transición a operaciones existe en los estándares—, pero lo
 discutible es el nombre. `support` se lee como «mesa de ayuda»; `hypercare` es
 lo que el owner describe.
 
 **Renombrada a `hypercare` el 2026-08-05** (ADR-019, migración 0098). Va con
 ventana de compatibilidad —el API sigue aceptando `support` a la entrada y
-devuelve siempre el canónico—, la misma forma que se usó para `amber` → `yellow`
+devuelve siempre el canónico—. Es la misma forma que se usó para `amber` → `yellow`
 en la 0091.
 
 De los dos huecos que la decisión no cubría, el owner resolvió el 2026-08-05:
@@ -104,7 +104,7 @@ De los dos huecos que la decisión no cubría, el owner resolvió el 2026-08-05:
   lecciones aprendidas. **Hecha el 2026-08-05** (ADR-022, US-195). Salió **sin
   migración**: `phase` es `String(32)` sin `CHECK`, así que añadir un valor no
   toca el esquema. De paso, `ACTIVE_PHASES` pasó a **derivarse** del vocabulario
-  en vez de repetirlo — era el sitio que en D-2 se quedó con el nombre viejo sin
+  en vez de repetirlo. Era el sitio que en D-2 se quedó con el nombre viejo sin
   fallar.
 - **`initiation`: no.** El proyecto nace en `planning` aunque el acta sea previa,
   y eso no ha causado ningún problema reportado.
@@ -116,7 +116,7 @@ comprobado es que sale de `ACTIVE_PHASES` y por tanto de los snapshots.
 
 **Decisión: renombrar.** El nombre correcto es `wbs_code`, porque el campo guarda
 el *código* (`1.2.3`), no la estructura — esa vive en `parent_id` y
-`outline_level`. El propio código ya lo sabe: `apps/api/app/models/task.py:90`
+`outline_level`. El propio código ya lo sabe. `apps/api/app/models/task.py:90`
 documenta «predecessors / successors como JSON array de **wbs_code**» mientras la
 columna de la línea 29 se llama `wbs`.
 
@@ -124,13 +124,13 @@ Cuesta migración de columna + campo de la API + frontend + el parser de import.
 Va con ADR y US propia.
 
 **Hecha el 2026-08-05** — US-194, ADR-020, migración 0100. Lo que la ejecución
-enseñó y la medición no anticipaba: la parte cara no fueron las 259 ocurrencias
-—un `sed` sobre el identificador resuelve casi todas— sino los **siete sitios
+enseñó y la medición no anticipaba: la parte cara no fueron las 259 ocurrencias.
+Un `sed` sobre el identificador resuelve casi todas. Fueron los **siete sitios
 donde `wbs` no era nuestro campo**: la cabecera del Excel del usuario, los alias
 del importador, los cinco códigos `WBS_*` de diagnóstico, el elemento `<WBS>` de
 MS Project, la clave del JSON de MPXJ, la ruta `renumber-wbs` y la clave
 `plan-wbs-level:<id>` de `localStorage`. Esta última era la única capaz de
-romperse **en silencio**: habría reseteado el nivel de agrupación guardado de
+romperse **en silencio**. Habría reseteado el nivel de agrupación guardado de
 todos los usuarios sin producir un solo error.
 
 ## D-4. Umbral del semáforo — forma y valores
@@ -152,13 +152,13 @@ en fechas no significan lo mismo para nadie.
 cosas que ningún número arreglaba:
 
 1. **El presupuesto no miraba el tiempo.** Comparaba `gastado / presupuesto` sin
-   avance ni fecha, así que un proyecto con el **85 % del presupuesto gastado y
+   avance ni fecha. Un proyecto con el **85 % del presupuesto gastado y
    el 10 % de avance salía verde**. Ahora usa un **índice de consumo**
    —`(gastado/presupuesto) ÷ (avance/100)`, el inverso del CPI—, que en ese caso
    da 8,5. Sin avance la dimensión queda sin color, no en rojo.
 2. **Casi todos los amarillos disparaban con el primer caso.** Cuatro de las
    cinco dimensiones tenían el piso en 0 o 1 —un riesgo severo, una decisión
-   estancada, cualquier sobreasignación—, lo que en cartera real es amarillo
+   estancada, cualquier sobreasignación—. En cartera real, eso es amarillo
    permanente. Un semáforo siempre amarillo dejó de informar.
 
 Más una de estructura: recursos se configuraba en `capacity_thresholds`, otra
@@ -212,7 +212,7 @@ Hoy hay una sola, `HEALTH_COLOR` en `scoped_status.py`:
 | `yellow` | `#9F5900` | `--color-warning-fg` |
 | `red` | `#BD3528` | `--color-danger-fg` |
 
-**Los valores no son los que la decisión suponía**, y ahí está lo que hizo que
+**Los valores no son los que la decisión suponía**. Ahí está lo que hizo que
 esto no fuera mecánico: el verde de marca `#1F8A5B` no alcanzaba WCAG 2.2 AA
 (MCS DIS-02). Unificar sin mirar el contraste habría consolidado el que no pasa,
 que era justo el del semáforo. Las dos decisiones se resolvieron juntas y el
@@ -222,14 +222,14 @@ De regalo cerró un defecto que nadie había reportado: el mapa de árbol del PD
 pintaba texto blanco sobre `#eab308`, alrededor de 1.9:1 — ilegible.
 
 `tests/test_d7_paleta_de_salud.py` lee el hex de `globals.css` y lo compara con
-el del backend, así que la próxima vez que un token se retoque por contraste, el
+el del backend. Así, la próxima vez que un token se retoque por contraste, el
 semáforo no se queda atrás en silencio.
 
 **Lo que queda fuera, dicho a propósito:** la paleta de *gráficos* —líneas de
-tendencia, barras del Gantt, `actual_color` de la curva-S— arrastra los mismos
-colores de Tailwind y también convendría unificar. No se tocó porque decidir si
+tendencia, barras del Gantt, `actual_color` de la curva-S—. Arrastra los mismos
+colores de Tailwind, y también convendría unificarla. No se tocó porque decidir si
 la línea de «avance promedio» lleva el verde del semáforo es una decisión de
-diseño, no la que D-7 tomó. Está nombrada en el propio test para que sea trabajo
+diseño. No es la que D-7 tomó. Está nombrada en el propio test para que sea trabajo
 y no descuido.
 
 ---
@@ -243,9 +243,9 @@ Contarlos como deuda infla la lista y hace que la revisión pese más de lo que 
   `health-evaluation-modal.tsx:93` son **etiquetas de presentación**, y el
   glosario §1.1 permite explícitamente español en esa capa. No son valores.
 - **`"Inicio"` / `"Ejecución"` / `"Cierre"`**: de las ocurrencias en `apps/api`,
-  `lessons_export.py:38-42` es un mapa de traducción, `charter_generator.py:247`
-  es la etiqueta de una fila de tabla y `xlsx_task_parser.py:6` son alias de
-  encabezado para leer archivos del usuario — los tres son legítimos. **El único
+  `lessons_export.py:38-42` es un mapa de traducción. `charter_generator.py:247`
+  es la etiqueta de una fila de tabla. `xlsx_task_parser.py:6` son alias de
+  encabezado para leer archivos del usuario. Los tres son legítimos. **El único
   que amerita mirar es `plan_regenerator.py:37`**, donde «Inicio» parece un
   nombre de fase generado.
 
