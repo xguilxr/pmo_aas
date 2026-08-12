@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -18,7 +18,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Centralizar en un panel único la gestión de usuarios, roles, organizaciones y proyectos del tenant, con vistas optimizadas para operaciones rápidas (crear, editar, desactivar, resetear, etc.).
+Un panel único centraliza la gestión de usuarios, roles, organizaciones y proyectos del tenant, con vistas optimizadas para operaciones rápidas (crear, editar, desactivar, resetear, etc.).
 
 ---
 
@@ -161,7 +161,7 @@ Centralizar en un panel único la gestión de usuarios, roles, organizaciones y 
 >   `/admin/tenant?tab={config|stats}` (US-036).
 > - `/admin/roles` → redirect a `/admin/permissions`.
 >
-> El árbol descrito abajo refleja el diseño original; queda como
+> El árbol descrito abajo refleja el diseño original. Queda como
 > contexto histórico.
 
 **Como** usuario autenticado (cualquier rol)
@@ -289,6 +289,6 @@ GET    /api/v1/admin/audit-logs/export.csv
 
 **Notas:**
 - Modal de desactivar muestra el mensaje `BU_HAS_ACTIVE_DEPARTMENTS` o
-  `DEPT_HAS_ACTIVE_CHILDREN` cuando aplica, sugiriendo el toggle force.
+  `DEPT_HAS_ACTIVE_CHILDREN` cuando aplica, y sugiere el toggle force.
 
 **Estado de integración:** DONE (US-024).

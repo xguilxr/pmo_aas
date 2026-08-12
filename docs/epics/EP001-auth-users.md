@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-06-25
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,11 +19,11 @@ revisar_cada: 90d
 
 ## Modelo actual (post-Sprint 6 / DEC-024)
 
-> **Reescritura parcial 2026-04-25.** El modelo de permisos pasó de
+> **Reescritura parcial 2026-04-25.** El modelo de permisos cambió de
 > matriz `(role × module × action)` a **capability-based**. Las
-> secciones "User Stories" e "Implementación" abajo conservan el
-> diseño v1.0 como referencia histórica; el comportamiento real
-> productivo lo manda esta sección.
+> secciones "User Stories" e "Implementación" de abajo quedan como
+> referencia histórica del diseño v1.0. El comportamiento productivo
+> real lo define esta sección.
 
 ### Roles fijos (DEC-020 + DEC-024)
 
@@ -32,9 +32,9 @@ revisar_cada: 90d
 | `admin` | Tiene 5 capabilities adicionales sobre `user`. |
 | `user`  | Default. Hace casi todo en el tenant. |
 
-`viewer` fue **eliminado** en Sprint 6 (migración 0028). Cualquier
-registro residual se normalizó a `user`. La tabla `roles` y
-`user_roles` quedaron *deprecated* — borrado físico → US-081
+`viewer` se **eliminó** en Sprint 6 (migración 0028). Los registros
+residuales se normalizaron a `user`. Las tablas `roles` y
+`user_roles` quedaron *deprecated*; su borrado físico es US-081
 (Sprint 7).
 
 ### 5 capabilities del admin (DEC-024)
@@ -50,8 +50,8 @@ registro residual se normalizó a `user`. La tabla `roles` y
 **Todo lo demás** (proyectos, tareas, riesgos, issues, change_requests,
 documentos, minutas, lecciones, áreas, dashboard, IA generación,
 project_requests, charters, reports, scheduled reports, importación
-de planes, organizaciones crear/editar) → cualquier user autenticado
-del tenant. Sin granularidad CRUD por módulo.
+de planes, organizaciones crear/editar) es de cualquier user
+autenticado del tenant. No hay granularidad CRUD por módulo.
 
 ### Flujo del gate
 
@@ -79,18 +79,18 @@ Implementación: `app/core/permissions.py` (mapping estático),
 ### Test de regresión (US-079)
 
 `apps/api/tests/test_permission_matrix.py` clasifica cada APIRoute
-en una de 8 categorías y falla si aparece un endpoint con un gate no
+en una de 8 categorías. Falla si aparece un endpoint con un gate no
 reconocido. Esto previene la causa raíz de DEC-024 (strings huérfanos
-en el mapping). Marker `pytest -m permissions` para correr aislado.
+en el mapping). El marker `pytest -m permissions` corre aislado.
 
 ### UI
 
-- **`/admin/permissions`** — página informativa read-only que lista
-  las 5 capabilities. Footer apunta al superadmin para overrides
+- **`/admin/permissions`** — página informativa read-only con las
+  5 capabilities. El footer remite al superadmin para overrides
   (DEC-021).
 - **`/admin/users` + `/admin/users/[id]`** — CRUD de users con select
-  `role_type`, sección de "Acceso a organizaciones" (modelo opt-out,
-  default todas marcadas), y los 10 botones de acciones admin→user.
+  `role_type`, sección "Acceso a organizaciones" (modelo opt-out,
+  default todas marcadas) y los 10 botones de acciones admin→user.
 - **`/admin/roles`** y `role-editor.tsx` **eliminados en Sprint 6**.
   Redirect 301 → `/admin/permissions`.
 
@@ -98,16 +98,18 @@ en el mapping). Marker `pytest -m permissions` para correr aislado.
 
 - `users.role_type: VARCHAR(16)` ∈ {`admin`, `user`}.
 - `tenant_role_permission_overrides` (US-073, DEC-021): vocabulario
-  de overrides es ahora `capability` en `module` y `"grant"` en
+  de overrides ahora es `capability` en `module` y `"grant"` en
   `action`. Solo el superadmin escribe aquí.
-- `organization_user_exclusions` (US-078, opt-out membership): default
-  vacío → user accede a todas las orgs del tenant.
+- `organization_user_exclusions` (US-078, opt-out membership): vacío
+  por default: user accede a todas las orgs del tenant.
 
 ---
 
 ## Objetivo de negocio (v1.0, histórico)
 
-Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles con permisos granulares por módulo, y tener trazabilidad completa de quién hace qué.
+Los usuarios del tenant se autentican de forma segura. Los roles
+tienen permisos granulares por módulo. Cada acción queda trazada: se
+sabe quién hizo qué.
 
 ## Roles involucrados
 
@@ -123,15 +125,15 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 **Como** Administrador
 **Quiero** crear un usuario con username único, email válido y rol(es)
-**Para** que pueda acceder al sistema con las capacidades correctas.
+**Para** que acceda al sistema con las capacidades correctas.
 
 **Criterios de aceptación:**
 - [ ] Campos obligatorios: `full_name`, `username`, `email`, `password`, `role_ids[]`.
-- [ ] `username` y `email` deben ser únicos por tenant (`citext`).
-- [x] `password` cumple política (`core/security.py:validate_password_policy`): **min 8 chars**, 1 mayúscula, 1 dígito, 1 símbolo (set fijo). Sin requisito de lowercase ni blocklist de comunes (la política agresiva mencionada en docs viejos quedó como deuda).
+- [ ] `username` y `email` son únicos por tenant (`citext`).
+- [x] `password` cumple política (`core/security.py:validate_password_policy`): **min 8 chars**, 1 mayúscula, 1 dígito, 1 símbolo (set fijo). Sin requisito de lowercase ni blocklist de comunes (la política agresiva de docs viejos quedó como deuda).
 - [ ] Hash `bcrypt rounds=12` al guardar.
-- [ ] Response no expone `password_hash`.
-- [ ] Crear registro `audit_log` con `action='user.create'`.
+- [ ] La response no expone `password_hash`.
+- [ ] Crea registro `audit_log` con `action='user.create'`.
 - [ ] Endpoint: `POST /api/v1/admin/users` (capability `users.manage`, ver DEC-024).
 - [ ] Al crear, retorna `201 Created` con el `UserOut`.
 
@@ -139,7 +141,7 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 - `TC-001` (unit) — Política de password: cadenas débiles (`"password123"`, `"Aa1!"`) → `VALIDATION_ERROR`.
 - `TC-002` (integration) — POST con email duplicado → `409 CONFLICT`.
 - `TC-003` (integration) — Happy path → 201, hash correcto, audit log escrito.
-- `TC-004` (E2E) — Admin crea user → user puede hacer login inmediato.
+- `TC-004` (E2E) — Admin crea user → user hace login inmediato.
 
 ---
 
@@ -151,8 +153,8 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 **Criterios de aceptación:**
 - [ ] `POST /api/v1/auth/login` acepta `{identifier, password}` (identifier = username o email).
-- [ ] Si credenciales ok: retorna `{access_token, refresh_token (cookie), user, tenants[]}`.
-- [ ] Si credenciales mal: incrementa `failed_login_attempts`, audita, retorna `401 UNAUTHENTICATED`.
+- [ ] Credenciales válidas: retorna `{access_token, refresh_token (cookie), user, tenants[]}`.
+- [ ] Credenciales inválidas: incrementa `failed_login_attempts`, audita y retorna `401 UNAUTHENTICATED`.
 - [ ] Mensaje genérico "Credenciales inválidas" (no revela si user existe).
 - [ ] JWT incluye `sub`, `tenant_ids[]`, `active_tenant_id`, `is_superadmin`, `roles[]`.
 - [ ] Al éxito: `last_login = now()`, `failed_login_attempts = 0`.
@@ -163,7 +165,7 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 - `TC-006` (integration) — Login con email ok → 200.
 - `TC-007` (integration) — Password mal → 401, `failed_login_attempts` +1.
 - `TC-008` (integration) — User inactivo → 403 `FORBIDDEN`.
-- `TC-009` (E2E) — Login desde UI, navegación persiste.
+- `TC-009` (E2E) — Login desde UI, la navegación persiste.
 
 ---
 
@@ -175,7 +177,7 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 **Criterios de aceptación:**
 - [ ] 5º intento fallido: `locked_until = now() + 15min`.
-- [ ] Login posterior (aun con pwd correcto) → `403 ACCOUNT_LOCKED` mientras `locked_until > now()`.
+- [ ] Login posterior (aun con pwd correcto) da `403 ACCOUNT_LOCKED` mientras `locked_until > now()`.
 - [ ] Al expirar bloqueo, user puede intentar nuevamente.
 - [ ] Login exitoso resetea `failed_login_attempts = 0` y `locked_until = null`.
 - [ ] Audita `account_locked` con detalle.
@@ -198,7 +200,7 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 - [ ] `POST /api/v1/auth/change-password` con `{current_password, new_password}`.
 - [ ] Verifica `current_password`; si mal → `401`.
 - [ ] `new_password` distinto al actual, cumple política.
-- [ ] Invalida todos los refresh tokens vigentes (forzando re-login en otros dispositivos).
+- [ ] Invalida todos los refresh tokens vigentes (fuerza re-login en otros dispositivos).
 - [ ] Audita `password_change`.
 
 **Test Cases:**
@@ -212,10 +214,10 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 **Como** Administrador
 **Quiero** resetear la contraseña de cualquier user de mi tenant
-**Para** desbloquear a usuarios que olvidaron.
+**Para** desbloquear a usuarios que la olvidaron.
 
 **Criterios de aceptación:**
-- [ ] `POST /admin/users/{id}/reset-password` → genera password temporal, la devuelve en claro una sola vez en la response.
+- [ ] `POST /admin/users/{id}/reset-password` genera password temporal y la devuelve en claro una sola vez en la response.
 - [ ] Marca `must_change_password = true` en el user.
 - [ ] En el próximo login, redirige a pantalla forzada de cambio.
 - [ ] Admin de tenant A no puede resetear user de tenant B (`TC-MT-005`).
@@ -236,11 +238,11 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 **Criterios de aceptación:**
 - [ ] `POST /api/v1/admin/roles` con `{name, description, permissions}`.
-- [ ] `permissions` = objeto `{module: [actions…]}`.
+- [ ] `permissions` es objeto `{module: [actions…]}`.
 - [ ] Módulos válidos: `projects`, `risks`, `issues`, `change_requests`, `documents`, `lessons`, `minutes`, `admin.users`, `admin.roles`, `admin.organizations`, `admin.projects`, `ai.generate`.
 - [ ] Acciones válidas: `read`, `create`, `update`, `delete`, `approve`, `upload`, `minute`, `report`.
 - [ ] Roles sistema (`is_system=true`) no se pueden borrar.
-- [ ] Al modificar permisos, aplica inmediatamente a los users con ese rol.
+- [ ] Al modificar permisos, el cambio aplica de inmediato a los users con ese rol.
 - [ ] UI muestra preview "¿A quiénes afecta?" antes de guardar.
 
 **Test Cases:**
@@ -259,13 +261,13 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 
 **Criterios de aceptación:**
 - [ ] `GET /api/v1/admin/users?q=&role_id=&is_active=&page=&limit=`.
-- [ ] Busqueda fuzzy (`pg_trgm`) en `full_name`, `username`, `email`.
+- [ ] Búsqueda fuzzy (`pg_trgm`) en `full_name`, `username`, `email`.
 - [ ] Filtro `is_active=true|false`.
 - [ ] Paginación estándar.
 - [ ] Response incluye: id, full_name, username, email, roles[], is_active, last_login.
 
 **Test Cases:**
-- `TC-021` (integration) — Busqueda parcial "juan" encuentra "Juan Pérez".
+- `TC-021` (integration) — Búsqueda parcial "juan" encuentra "Juan Pérez".
 - `TC-022` (integration) — Filtro `is_active=false` solo lista desactivados.
 
 ---
@@ -279,7 +281,7 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 **Criterios de aceptación:**
 - [ ] El chrome (sidebar + topbar) usa el azul marino `#0E164F` definido en
       `docs/design-system/style.md`.
-- [ ] El sidebar **no** contiene footer con datos del usuario; su única
+- [ ] El sidebar **no** tiene footer con datos del usuario; su única
       función es navegación.
 - [ ] En la esquina superior derecha del topbar vive un componente
       `UserMenu`:
@@ -299,7 +301,7 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 - `TC-023` (E2E) — Click en avatar abre dropdown con nombre/email/roles.
 - `TC-024` (E2E) — Click en "Cerrar sesión" limpia token y redirige a `/login`.
 - `TC-025` (E2E) — `Esc` cierra el dropdown; click afuera lo cierra.
-- `TC-026` (unit) — Iniciales se calculan a partir de `full_name` (primeras
+- `TC-026` (unit) — Las iniciales se calculan de `full_name` (primeras
   dos palabras, en mayúsculas).
 
 ---
@@ -307,21 +309,21 @@ Permitir que usuarios del tenant se autentiquen de forma segura, gestionar roles
 ### Bloqueo por inactividad (ENH-160)
 
 **Como** usuario autenticado
-**Quiero** que tras un período de inactividad la app se bloquee y me pida
-re-iniciar sesión, en vez de cerrarme la sesión y mandarme a `/login`
-**Para** no perder el contexto ni el progreso en el que estaba trabajando.
+**Quiero** que tras un período de inactividad la app se bloquee y pida
+re-iniciar sesión, en vez de cerrarla y mandarme a `/login`
+**Para** no perder el contexto ni el progreso del trabajo en curso.
 
 **Comportamiento:**
 - Tras **15 min sin actividad** (`mousedown`, `keydown`, `scroll`,
   `touchstart`) en cualquier ruta autenticada, la app entra en estado
   **bloqueado**.
 - El contenido autenticado se muestra con **blur** y queda no interactivo
-  (`pointer-events: none` + `inert`), y se monta un overlay **no descartable**
+  (`pointer-events: none` + `inert`). Se monta un overlay **no descartable**
   (sin `Esc`, sin click-fuera, sin botón de cierre) que pide re-autenticar.
 - El overlay **pre-rellena** la cuenta (email/username) de la sesión actual en
   modo solo-lectura; el usuario solo ingresa su **contraseña**.
-- Al re-autenticar correctamente, el overlay se cierra y el usuario continúa
-  en **la misma ruta y con el mismo estado en memoria** — no hay redirect ni
+- Al re-autenticar correctamente, el overlay se cierra y el usuario sigue
+  en **la misma ruta y con el mismo estado en memoria**. No hay redirect ni
   reload, así que no se pierde progreso (p. ej. formularios sin guardar).
 - El **tenant activo** se preserva a través del re-login: si el contexto tenía
   un tenant distinto al default del usuario y sigue siendo válido, se restaura.
@@ -414,7 +416,7 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 - [x] Dropdown de usuario incluye radio group con 3 opciones (Claro / Oscuro / Sistema) + iconos Sun/Moon/Monitor.
 - [x] Default: `prefers-color-scheme` del sistema.
 - [x] Preferencia guardada en `users.preferences JSON → { "theme": "dark"|"light"|"system" }`.
-- [x] Cambio aplica inmediatamente sin reload, sin FOUT (script inline en `<head>`).
+- [x] Cambio aplica de inmediato, sin reload, sin FOUT (script inline en `<head>`).
 - [x] `GET /api/v1/users/me/preferences` y `PATCH /api/v1/users/me/preferences`.
 - [x] Cliente TS en `lib/api/users.ts` + `ThemeProvider`.
 
@@ -440,8 +442,8 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 - [x] Cliente: `LocaleProvider` con hook `useLocale()`.
 
 **Notas:**
-- La traducción visible del UI (strings) queda fuera del alcance de esta US;
-  esta US solo persiste la preferencia y la expone globalmente. El i18n
+- La traducción visible del UI (strings) queda fuera del alcance de esta US.
+  Esta US solo persiste la preferencia y la expone globalmente. El i18n
   routing completo (Next.js `[locale]` segments) es post-MVP.
 
 **Estado de integración:** DONE (US-008).
@@ -459,9 +461,9 @@ DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 - [x] Página con dos secciones:
   - **Detalles personales**: `full_name` editable, `email` readonly (cambio requiere verificación, post-MVP).
   - **Cambiar contraseña**: current + new + confirm (mismos criterios que US-004).
-- [x] `GET /api/v1/users/me` — obtener perfil.
-- [x] `PATCH /api/v1/users/me` — actualizar `full_name` (audit log).
-- [x] Al guardar, actualiza `StoredUser` en localStorage → topbar muestra nuevo nombre sin reload.
+- [x] `GET /api/v1/users/me` — obtiene perfil.
+- [x] `PATCH /api/v1/users/me` — actualiza `full_name` (audit log).
+- [x] Al guardar, actualiza `StoredUser` en localStorage; topbar muestra nuevo nombre sin reload.
 - [ ] Upload de avatar (PNG/JPG ≤ 2 MB): pospuesto a iteración siguiente (requiere infra de upload).
 - [ ] `phone` opcional: pospuesto (agregar columna a users).
 
@@ -487,7 +489,7 @@ de seguimiento.
   tiene `Administrador` (DEC-005).
 - [x] `CurrentUser.is_admin_equivalent` disponible como helper.
 - [x] Middleware existente (`require_permission`) sigue funcionando sin
-  cambios — Senior PMO pasa por tener los permisos `admin.*` en su rol.
+  cambios — Senior PMO tiene los permisos `admin.*` en su rol.
 
 **Test Cases:**
 - `TC-NEW-017` (E2E) — Chrome #182e4e visible en light y dark mode ✅ (CSS).

@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-07-18
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Dar a Project Managers y PMO Managers una vista en un solo lugar del estado del portafolio: KPIs accionables, gráficos de salud y una matriz Plan vs Real — todo respetando permisos del usuario.
+El dashboard da a Project Managers y PMO Managers una vista única del portafolio: KPIs accionables, gráficos de salud y una matriz Plan vs Real. Todo respeta los permisos del usuario.
 
 ---
 
@@ -50,12 +50,12 @@ Dar a Project Managers y PMO Managers una vista en un solo lugar del estado del 
 - [ ] Respeta filtro por proyectos asignados: user con rol `Viewer` solo ve KPIs de proyectos donde es miembro.
 - [ ] Cada tarjeta tiene `link_to` → navega a vista filtrada.
 - [x] **La ausencia de dato se ve distinta del cero** (MCS DAT-12, 2026-08-06).
-      Un KPI sin dato —presupuesto no cargado, o el indicador todavía
-      cargando— muestra «—» atenuado y con etiqueta accesible «sin dato», no
-      un `0`. La distinción no es cosmética: un proyecto sin presupuesto
-      cargado y uno con presupuesto cero piden acciones distintas, y «0
-      riesgos abiertos» puede ser un proyecto sano o uno al que nadie le
-      registró riesgos. La convención vive en `apps/web/lib/sin-dato.ts`.
+      Un KPI sin dato —presupuesto no cargado, o el indicador aún
+      cargando— muestra «—» atenuado con etiqueta accesible «sin dato», no
+      un `0`. La distinción importa: un proyecto sin presupuesto cargado y
+      uno con presupuesto cero piden acciones distintas. «0 riesgos
+      abiertos» puede ser un proyecto sano o uno sin riesgos registrados.
+      La convención vive en `apps/web/lib/sin-dato.ts`.
 - [ ] Skeleton mientras carga; números animan de 0 al valor final (Framer Motion).
 
 **Test Cases:**
@@ -227,8 +227,8 @@ una organización específica
 
 **Notas:**
 - La granularidad "Program Manager ve su programa + PMs bajo él" queda
-  pendiente para una US posterior (requiere modelar ownership de
-  programas, hoy no existe en el schema).
+  pendiente para una US posterior. Requiere modelar ownership de
+  programas; hoy no existe en el schema.
 
 **Estado de integración:** DONE (US-015).
 
@@ -255,9 +255,9 @@ una organización específica
 
 ### US-151 / US-152 — Fundación analítica + dashboards N1/N2 (2026-05-26)
 
-Dashboards Nivel 1 (PMO/Portafolio) y Nivel 2 (Organización/Programa) ricos,
-de los que se **derivan** los reportes N1/N2 (el dashboard es la vista
-interactiva; el reporte es el mismo contenido congelado a PDF).
+Los dashboards Nivel 1 (PMO/Portafolio) y Nivel 2 (Organización/Programa) son
+ricos y **derivan** los reportes N1/N2. El dashboard es la vista interactiva;
+el reporte es el mismo contenido congelado a PDF.
 
 **US-151 — fundación de datos (`metric_snapshots`):**
 - Tabla `metric_snapshots`: foto **semanal** (lunes 02:00 UTC, Celery beat) de
@@ -270,7 +270,7 @@ interactiva; el reporte es el mismo contenido congelado a PDF).
   rollup WBS del plan** (`plan_rollup_map`), igual que el dashboard en vivo. Antes
   leía la columna `Project.progress` (manual), que queda en 0 desde ENH-155 para
   proyectos cuyo avance se deriva del plan → la serie salía en 0. Los snapshots ya
-  escritos en 0 no se recalculan; recapturar (job semanal o `snapshots/capture`)
+  escritos en 0 no se recalculan. Recapturar (job semanal o `snapshots/capture`)
   corrige de hoy en adelante.
 
 **US-152 — endpoints de analytics:** `trends`, `risk-matrix`, `heatmap`,
@@ -338,7 +338,7 @@ EP005).
 - El snapshot semanal (`services/analytics/snapshots.py`) también
   refresca la salud auto de **todos** los proyectos del tenant y persiste
   el desglose de dimensiones en `metric_snapshots.extras.health_dimensions`
-  (scope proyecto), habilitando tendencias de salud por dimensión a
+  (scope proyecto). Esto habilita tendencias de salud por dimensión a
   futuro.
 
 **Estado de integración:** DONE (US-181, ver también EP005).

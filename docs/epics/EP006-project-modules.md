@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-07-18
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -272,13 +272,13 @@ GET  /api/v1/projects/{id}/lessons/export
 
 ## Implementación recomendada
 
-**Hacer un paquete compartido** `packages/modules-core` (frontend) con:
+**Un paquete compartido** `packages/modules-core` (frontend) agrupa:
 - `<ModuleShell>` componente que renderiza header + filtros + tabla + paginación.
 - `<ModuleDrawer>` para detalle.
 - Hooks `useModuleList(moduleName)` y `useModuleRecord(moduleName, id)`.
 - Configuración declarativa por módulo: columnas, filtros, schema Zod.
 
-Resultado: agregar un módulo nuevo son ~100 líneas de configuración.
+Resultado: agregar un módulo nuevo cuesta ~100 líneas de configuración.
 
 En backend, mismo approach con un mixin `TenantScopedModel` + un router factory `module_router(model, schemas)`.
 
