@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -77,9 +77,9 @@ Layout root:
 
 ### Sidebar (`components/app-shell.tsx` — modelo vigente US-138)
 
-El árbol "Organizaciones (dropdown) → Solicitudes / Programas / Proyectos →
-Módulos" del diseño original fue **reemplazado** por una topología plana de
-3 grupos. Detalle completo en `architecture/navigation.md` §2.
+**Reemplazamos** el árbol "Organizaciones (dropdown) → Solicitudes /
+Programas / Proyectos → Módulos" del diseño original por una topología
+plana de 3 grupos. Detalle completo en `architecture/navigation.md` §2.
 
 - **TOP_NAV** (siempre visible): `Dashboard`, `Solicitudes` (`/pmo/requests`),
   `Proyectos` (`/pmo/projects`), grupo "Módulos" (RAID / Cambios / Minutas /
@@ -89,12 +89,12 @@ Módulos" del diseño original fue **reemplazado** por una topología plana de
   `Usuarios`, `Permisos`, `Auditoría`. Items en `/admin/*`.
 - **SUPERADMIN_NAV** (solo `is_superadmin`): `Overview`, `Tenants`, `Users`, `IA`, `Logs`.
 - Las rutas legacy `/admin/projects`, `/admin/programs`, `/admin/raid`, etc.
-  redirigen 301 a `/pmo/*` (US-075 / DEC-022) — los bookmarks viejos no se
-  rompen pero el sidebar las saca del menú.
+  redirigen 301 a `/pmo/*` (US-075 / DEC-022). Los bookmarks viejos no se
+  rompen, pero el sidebar las saca del menú.
 - Módulos del proyecto (Plan / RAID / Áreas / Documentos / Lecciones /
-  Minutas / Reportes / Cambios) ahora viven como **tabs dentro de
-  `/pmo/projects/[id]/*`** (US-035, `components/project-tabs-bar.tsx`),
-  no como items del sidebar.
+  Minutas / Reportes / Cambios) ahora viven como **tabs**. Están dentro de
+  `/pmo/projects/[id]/*` (US-035, `components/project-tabs-bar.tsx`), no
+  como items del sidebar.
 - Item activo con pill de fondo (`--color-subtle`, `font-semibold`), sin border.
 - Cada nivel de anidación agrega `0.75rem` de indent al padding-left.
 - Acrylic/vibrancy background.
@@ -221,7 +221,7 @@ Grid 5×5 de celdas coloreadas (verde/amarillo/rojo según P×I). Hover muestra 
 
 ### GanttView
 
-Componente SVG propio en `apps/web/components/gantt-view.tsx`. No usa frappe-gantt ni dhtmlx-gantt (la versión vieja del doc los mencionaba; nunca se instalaron). Props: `tasks`, `dependencies`, `zoomLevel`, callbacks. Virtualiza por viewport.
+Componente SVG propio en `apps/web/components/gantt-view.tsx`. No usa frappe-gantt ni dhtmlx-gantt (la versión vieja del doc los mencionaba. Nunca se instalaron). Props: `tasks`, `dependencies`, `zoomLevel`, callbacks. Virtualiza por viewport.
 
 ### MoneyDisplay
 
@@ -241,7 +241,7 @@ Para reportes y comentarios largos. Librería: **Tiptap** (ProseMirror). Toolbar
 
 ### AIBadge
 
-Identifica contenido generado por IA: icono sparkle + tooltip con modelo usado. Distingue claramente lo humano de lo AI-generated.
+Identifica contenido generado por IA: icono sparkle + tooltip con modelo usado. Distingue lo humano de lo generado por IA.
 
 ### CopyableText
 

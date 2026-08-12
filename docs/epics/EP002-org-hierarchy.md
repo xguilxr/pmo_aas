@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-07-09
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -20,10 +20,10 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Modelar la realidad del PMO con jerarquía completa:
+El PMO modela su jerarquía completa:
 **PMO (tenant) → Organización → Unidad de Negocio → Departamento → Programa → Proyecto**
 
-La jerarquía es configurable por Admin del tenant o Senior PMO. BU y Departamento son opcionales (tenant puede operar con Org → Programa → Proyecto directamente).
+Admin del tenant o Senior PMO configuran la jerarquía. BU y Departamento son opcionales: el tenant puede operar con Org → Programa → Proyecto directamente.
 
 ## Roles involucrados
 
@@ -228,12 +228,13 @@ Ver detalle del shape en
 
 ### ENH-190 — Label de UI configurable por tenant ("Organización" / "Portafolio")
 
-**2026-07-09.** Algunos tenants (cliente gestionando su propio
+**2026-07-09.** Algunos tenants (cliente que gestiona su propio
 portafolio) prefieren ver "Portafolio/Portafolios" en vez de
-"Organización/Organizaciones" en toda la UI. Cambio **puramente
-cosmético**: no toca schema, rutas ni el shape de las APIs de
-`organizations` — la entidad sigue siendo "Organization" en DB, URLs
-(`/pmo/organizations/**`, `/admin/organizations/**`) y tipos.
+"Organización/Organizaciones" en toda la UI. El cambio es
+**puramente cosmético**: no toca schema, rutas ni el shape de las
+APIs de `organizations`. La entidad sigue siendo "Organization" en
+DB, URLs (`/pmo/organizations/**`, `/admin/organizations/**`) y
+tipos.
 
 - **Setting:** `tenants.settings.org_label` = `"organizations"`
   (default) | `"portfolios"`. Accessors `get_org_label(tenant)` /
@@ -244,8 +245,8 @@ cosmético**: no toca schema, rutas ni el shape de las APIs de
   `GET/PATCH /api/v1/admin/settings` (campo top-level `org_label`,
   requiere capability `tenant.manage`).
 - **Cómo lo consume cualquier usuario del tenant:** el label efectivo
-  se expone en `GET /api/v1/me/tenant-branding` (campo `org_label`),
-  el mismo endpoint que ya alimenta el branding del topbar/sidebar vía
+  se expone en `GET /api/v1/me/tenant-branding` (campo `org_label`).
+  Es el mismo endpoint que alimenta el branding del topbar/sidebar vía
   `<TenantBrandingProvider>`.
 - **Helper frontend:** `apps/web/lib/org-label.ts` — hook `useOrgLabel()`
   devuelve `{ singular, plural, singularArticled }` según el valor

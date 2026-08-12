@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-07-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -12,10 +12,10 @@ revisar_cada: 180d
 **Fecha:** 2026-05-23
 **Scope:** `apps/web` (Next.js 15, App Router)
 
-Este documento describe la estructura de navegación de la aplicación
-web: árbol de rutas, propósito de cada página, superficies de
-navegación (sidebar, tabs, breadcrumbs), flujos típicos y páginas
-huérfanas detectadas (sin entrada por UI).
+Este documento describe el árbol de rutas y el propósito de cada
+página. También cubre las superficies de navegación (sidebar, tabs,
+breadcrumbs), los flujos típicos y las páginas huérfanas detectadas
+(sin entrada por UI).
 
 ---
 
@@ -179,14 +179,14 @@ flowchart LR
 
 ### 2.2 Tabs de proyecto
 
-Los tabs viven en `project-tabs-bar.tsx` y se renderizan
+Los tabs viven en `project-tabs-bar.tsx`. Se renderizan
 automáticamente en cualquier subruta de `/pmo/projects/[id]/*`:
 
 `Resumen · Plan · RAID · Áreas · Documentos · Lecciones · Minutas · Reportes · Cambios`
 
-> **Nota:** las páginas `/tasks`, `/gantt`, `/ai-minutes/new`,
+> Las páginas `/tasks`, `/gantt`, `/ai-minutes/new`,
 > `/reports/builder`, `/reports/tweak`, `/charter`, `/edit` y
-> `/ai-context` no tienen tab dedicado: se alcanzan desde botones
+> `/ai-context` no tienen tab dedicado. Se alcanzan desde botones
 > in-page o desde otras tabs (ej. `Plan → Tasks → Gantt`,
 > `Reportes → Builder → Tweak`, hub → link "Memoria IA").
 
@@ -203,7 +203,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08). Antes del cleanup eran 78; se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
+Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
 
 ### 3.1 Rutas públicas (5)
 
@@ -434,13 +434,13 @@ muertos que el redirect cubría se **borraron** en este commit:
 El resto de las legacy URLs (`/admin/projects/**`, `/admin/programs/**`,
 `/admin/raid/**`, `/admin/requests/**`, `/admin/changes`,
 `/admin/minutes`, `/admin/reports`, `/admin/roles/**`) **nunca tuvieron
-`page.tsx`**: fueron rutas que se movieron a `/pmo/*` (US-075 / DEC-022)
-o se consolidaron en `/admin/permissions` (roles). El redirect es la
+`page.tsx`**. Eran rutas que se movieron a `/pmo/*` (US-075 / DEC-022),
+o que se consolidaron en `/admin/permissions` (roles). El redirect es la
 única definición que existe.
 
 ### 6.3 Páginas con acceso indirecto único
 
-No son huérfanas, pero su único punto de entrada es no-obvio:
+No son huérfanas. Su único punto de entrada es no-obvio:
 
 | Página | Único punto de entrada |
 |---|---|

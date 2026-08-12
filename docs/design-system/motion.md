@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -96,7 +96,7 @@ Duración 260ms, `ease: "easeInOut"`.
 <AnimatedNumber from={0} to={kpi.value} duration={600} ease="easeOut" />
 ```
 
-No animar en cada re-render — sólo primer mount o cuando cambia significativamente.
+No animes en cada re-render — sólo primer mount o cuando cambia significativamente.
 
 ### Sparkle (AI-generated)
 
@@ -161,11 +161,11 @@ transition={{ duration: shouldReduceMotion ? 0.08 : 0.22 }}
 
 ## Performance
 
-- `will-change` solo en elementos realmente animados — quitar tras terminar.
+- `will-change` solo en elementos realmente animados. Quítalo tras terminar.
 - Animar **transform** y **opacity** preferentemente (compositor GPU).
 - Evitar animar `top/left/width/height` (reflow costoso).
 - Para listas largas: `layout` sólo en items visibles.
-- Medir con DevTools Performance; objetivo 60fps siempre, 120fps cuando el display lo soporte.
+- Mide con DevTools Performance. Objetivo: 60fps siempre, 120fps cuando el display lo soporte.
 
 ---
 

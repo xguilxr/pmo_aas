@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-07-09
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -13,7 +13,7 @@ revisar_cada: 180d
 
 Inventario real de prompts del sistema, ubicación exacta en código, y reglas de cambio.
 
-> **Política:** cambiar un prompt en producción tiene blast radius alto (cambia output que el usuario edita). Va por PR como cualquier otro código. Cuando un prompt cambia, anotarlo abajo con commit/fecha.
+> **Política:** cambiar un prompt en producción tiene blast radius alto (cambia output que el usuario edita). Va por PR como cualquier otro código. Cuando un prompt cambia, anótalo abajo con commit/fecha.
 
 ---
 
@@ -60,9 +60,9 @@ Tres prompts viven en este archivo y se importan desde el worker o desde endpoin
 ```
 
 - **Reglas críticas** (codificadas en el system prompt):
-  - **ENH-102:** `raid` solo lleva A/R/D/I. **Sin** Lecciones aprendidas ni Solicitudes de cambio (si aparecen en el transcript, se descartan; un validador posterior también las filtra). Cada Acción debe llevar `responsible` y `due_date` si se mencionan.
-  - **ENH-105:** las 6 claves van exactas, en ese orden. `topics[*].bullets` son enunciados factuales, no prosa. "Próximos pasos calendarizados" sin responsable van a `free_notes`; con responsable y fecha van a `raid` como Acción.
-- **Few-shot anchor:** Highlander EAM-BNF (ver el system prompt para los números target — ~12 temas, 7 acciones, 4 riesgos, 4 decisiones, 1 issue en una sesión de 46 min).
+  - **ENH-102:** `raid` solo lleva A/R/D/I. **Sin** Lecciones aprendidas ni Solicitudes de cambio. Si aparecen en el transcript, se descartan. Un validador posterior también las filtra. Cada Acción debe llevar `responsible` y `due_date` si se mencionan.
+  - **ENH-105:** las 6 claves van exactas, en ese orden. `topics[*].bullets` son enunciados factuales, no prosa. "Próximos pasos calendarizados" sin responsable van a `free_notes`. Con responsable y fecha, van a `raid` como Acción.
+- **Few-shot anchor:** Highlander EAM-BNF. Ver el system prompt para los números target: ~12 temas, 7 acciones, 4 riesgos, 4 decisiones, 1 issue en una sesión de 46 min.
 
 ### 1.2 `REPORT_SYSTEM`
 
@@ -141,7 +141,7 @@ No están en `prompts.py` porque su template depende del estado del request.
 }
 ```
 
-- **Estrategia híbrida:** la heurística (`heuristic_suggestion`) corre primero; la IA es fallback / refinamiento.
+- **Estrategia híbrida:** la heurística (`heuristic_suggestion`) corre primero. La IA es fallback / refinamiento.
 
 ---
 
@@ -161,8 +161,8 @@ API keys de tenants en modo `byo` se cifran con **Fernet** (`services/ai_secrets
 
 ## 4. Versionado y cambios
 
-- **No hay sufijo `.v{N}`** en los identificadores hoy. Los prompts viven en `prompts.py` como constantes top-level y se cambian editando el archivo.
-- **No hay flag por tenant para A/B testing** de prompts (la versión vieja del doc lo sugería como ideal; no implementado).
+- **No hay sufijo `.v{N}`** en los identificadores hoy. Los prompts viven en `prompts.py` como constantes top-level. Se cambian editando el archivo.
+- **No hay flag por tenant para A/B testing** de prompts (la versión vieja del doc lo sugería como ideal. No implementado).
 - **No hay golden dataset** (`tests/ai/golden/`) ni runner de comparación semántica. Diferido.
 - Cambios pasan por PR con commit referenciando el ENH/BUG (ej. ENH-102, ENH-105 mencionados arriba).
 
@@ -195,9 +195,9 @@ task Celery `ai.update_project_context`).
 - **Parseo JSON con retry implícito.** Si el JSON viene mal, el worker captura la excepción y marca el job `failed` con `error="ai_invalid_json"`. **No hay retry automático** hoy.
 - **Validación Pydantic:** los workers validan output contra schemas (`MinuteDraft`, `ReportDraft`, etc.) antes de persistir.
 - **Sin censura activa de PII en logs.** Los logs del worker pueden contener el prompt completo si `LOG_LEVEL=DEBUG`. En prod (`INFO`) solo se loguean `tenant_id`, `model`, `tokens_in/out` y `duration_ms`.
-- **Chunking: SÍ existe** (corrección ENH-189 — este doc decía lo contrario). `chunk_text` vive en `app/services/ai/provider.py` (~4 chars/token, `max_tokens=3000`, `overlap_tokens=200`) y `_run_minute` procesa cada chunk por separado (validator + merge en cascada). El bloque `<CONTEXTO_DEL_PROYECTO>` (US-185) se antepone a **cada** chunk.
+- **Chunking: SÍ existe** (corrección ENH-189 — este doc decía lo contrario). `chunk_text` vive en `app/services/ai/provider.py` (~4 chars/token, `max_tokens=3000`, `overlap_tokens=200`). `_run_minute` procesa cada chunk por separado (validator + merge en cascada). El bloque `<CONTEXTO_DEL_PROYECTO>` (US-185) se antepone a **cada** chunk.
 
-> Si quieres reintroducir retry automático, golden dataset o sanitización de PII, abrir issues — es deuda razonable.
+> Si quieres reintroducir retry automático, golden dataset o sanitización de PII, abre issues. Es deuda razonable.
 
 ---
 

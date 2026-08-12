@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -43,7 +43,7 @@ revisar_cada: 180d
 ## Convenciones
 
 - **ID único global**: `TC-001` a `TC-999`. Los de multi-tenant usan prefijo `TC-MT-*`.
-- Un TC puede tener múltiples variantes (happy/error/edge); describirlas en el mismo test con `@pytest.mark.parametrize` o `describe.each`.
+- Un TC puede tener múltiples variantes (happy/error/edge). Descríbelas en el mismo test con `@pytest.mark.parametrize` o `describe.each`.
 - Cada PR que toca una US debe actualizar los TC asociados.
 - Tests **no flaky**: si un test falla aleatoriamente, se quarantina y se arregla en máx 48h.
 - **Fixtures compartidas** en `tests/fixtures/`:

@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -110,7 +110,7 @@ curl -I https://www.pmo-aas.com
 # Headers deben incluir: cert válido (no self-signed)
 ```
 
-Si falla, revisar que:
+Si falla, revisa que:
 - El dominio apunta correctamente a HostGator IP (ver Cloudflare).
 - DNS propagó (~5 min típico).
 
@@ -144,7 +144,7 @@ Si el landing necesita rewrite de URLs o redirects:
 
 ## 6. Caching (opcional pero recomendado)
 
-Cloudflare automáticamente cachea assets. Opcionalmente en HostGator:
+Cloudflare cachea los assets automáticamente. Opcional en HostGator:
 
 cPanel → **Optimize Website** (o similar):
 - Compression: ON

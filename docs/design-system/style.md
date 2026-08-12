@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -12,7 +12,7 @@ revisar_cada: 90d
 **Audiencia:** agentes de código (Claude Code, Cursor) y devs humanos.
 **Stack objetivo:** Next.js 15 + Tailwind CSS v4 + shadcn/ui + Radix.
 
-Esta guía define el lenguaje visual de la plataforma PMO. Es la **fuente de verdad** para tokens, componentes y patrones. Cualquier UI debe compilar contra estos tokens — no inventes colores, tamaños, radios o sombras fuera de esta lista.
+Esta guía define el lenguaje visual de la plataforma PMO. Es la **fuente de verdad** para tokens, componentes y patrones. Cualquier UI debe compilar contra estos tokens. No inventes colores, tamaños, radios o sombras fuera de esta lista.
 
 ---
 
@@ -227,7 +227,7 @@ Tamaños `sm` (h-8) · `md` (h-9) · `lg` (h-10).
   de cerrar sesión viven en el menú del topbar (ver abajo).
 
 ### Topbar
-- 56px, **mismo fondo chrome azul marino** que el sidebar; borde inferior
+- 56px, **mismo fondo chrome azul marino** que el sidebar. Borde inferior
   `chrome-border`.
 - Izquierda: botón hamburguesa (móvil) + marca.
 - Derecha: **UserMenu** (avatar con iniciales + nombre truncado + chevron) que

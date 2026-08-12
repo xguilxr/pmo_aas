@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -11,13 +11,13 @@ revisar_cada: 180d
 **ID:** `DOC-RAILWAY-DEPLOYMENT`
 
 Referencia técnica de la arquitectura de despliegue en Railway,
-CI/CD pipeline, y operaciones post-deploy.
+el pipeline de CI/CD y las operaciones post-deploy.
 
 ---
 
 ## 1. Servicios Railway
 
-El proyecto se despliega como **6 componentes** dentro de un mismo **Project**:
+El proyecto despliega **6 componentes** dentro de un mismo **Project**:
 
 ```mermaid
 flowchart LR
@@ -49,7 +49,7 @@ flowchart LR
 | `postgres` | Plugin | PostgreSQL 16 | No (persistente) | ✅ |
 | `redis` | Plugin | Redis 7 | No | ✅ |
 
-> **No hay** servicio `ollama` (BUG-053 eliminó OllamaProvider). **No hay** servicio `glitchtip` (sin observabilidad APM hoy).
+> **No hay** servicio `ollama`: BUG-053 eliminó OllamaProvider. **No hay** servicio `glitchtip`: hoy no hay observabilidad APM.
 
 ---
 
@@ -106,13 +106,13 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 ```
 
-El worker corre Celery + **beat embebido** (`--beat`, BUG-036) — procesa
+El worker corre Celery con **beat embebido** (`--beat`, BUG-036). Procesa
 tasks de IA (Groq platform o BYO cloud) y dispara las tareas periódicas
 (`scheduled_reports.send_due_reports`, `scheduled_minutes.send_due_minutes`).
-Si se escala a >1 replica, separar beat a un servicio dedicado.
+Si se escala a más de 1 réplica, separa beat a un servicio dedicado.
 
 Hasta ENH-023 (2026-04-23) tenía un wrapper `start-worker.sh` con
-sidecar Tailscale (US-048); DEC-017 lo eliminó.
+sidecar Tailscale (US-048). DEC-017 lo eliminó.
 
 ### 2.4 apps/web/railway.toml
 
@@ -173,8 +173,8 @@ git push origin hotfix/revert-migration-xxx
 # Railway redeploya automático
 ```
 
-**⚠️ Nota:** Rollback de datos (si la migración drop-ea columnas) no se revierte automático.
-Considerar backup antes de migración destructiva.
+**⚠️ Nota:** el rollback de datos no es automático si la migración elimina columnas.
+Considera un backup antes de una migración destructiva.
 
 ### 3.4 Migraciones largas
 
@@ -192,10 +192,10 @@ railway run --service api alembic upgrade head
 
 ## 4. Storage de uploads (object storage S3-compatible)
 
-> **Importante:** Railway Volumes no se pueden compartir entre
-> servicios, así que api + worker no pueden usar un volume montado.
+> **Importante:** Railway Volumes no se comparten entre
+> servicios, así que api y worker no pueden usar un volumen montado.
 > Se usa **Cloudflare R2** (S3-compatible, free tier 10 GB,
-> zero egress). Runbook completo:
+> cero egress). Runbook completo:
 > [`docs/runbooks/infra/uploads-storage.md`](../infra/uploads-storage.md).
 
 Estructura dentro del bucket `pmo-aas-uploads`:
@@ -210,8 +210,8 @@ s3://pmo-aas-uploads/
             └── {doc-uuid}.docx
 ```
 
-(Futuro US-066.x: namespace separado `reports/` para PDFs generados
-por el worker si se quiere rotación distinta de la de `documents/`.)
+(Futuro US-066.x: namespace separado `reports/` para PDFs del worker,
+si se quiere rotación distinta a la de `documents/`.)
 
 **Backup y durabilidad:**
 - R2 es multi-AZ nativo — Cloudflare garantiza durabilidad 99.999999999%.
@@ -367,7 +367,7 @@ Agregale:
 
 - **Múltiples regiones**: Railway multi-region deployments.
 - **Database read replicas**: Postgres read replica para queries pesadas.
-- **S3 storage ya en uso**: Cloudflare R2 es el backend desde US-066 (Sprint 4 v1.3). Si se quiere migrar a AWS S3 puro, cambiar `S3_ENDPOINT_URL` y `S3_REGION` — el código usa boto3 y es portable.
+- **S3 storage ya en uso**: Cloudflare R2 es el backend desde US-066 (Sprint 4 v1.3). Para migrar a AWS S3 puro, cambia `S3_ENDPOINT_URL` y `S3_REGION`. El código usa boto3 y es portable.
 - **Message queue**: Escalado de worker con separate Celery broker.
 
 ---

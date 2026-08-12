@@ -1,6 +1,6 @@
 ---
 name: cerrar-item
-description: Cierra una US, BUG o ENH ya implementada — commit, push, comment de cierre en el issue con la evidencia de que funciona, checklist end-to-end (backend, worker, DB, UX, UI, docs, tests) y actualización de labels y SPRINT.md. Úsala cuando termines de implementar algo y antes de decir que está hecho. NO la uses para crear issues (eso es triage) ni para cerrar la sesión entera (eso es handoff).
+description: Cierre de una US/BUG/ENH implementada — commit, push, comment de cierre con evidencia, checklist end-to-end y labels/SPRINT.md. Úsala al terminar de implementar. NO para crear issues (triage) ni cerrar la sesión (handoff).
 ---
 
 # Cerrar un item — de código escrito a fix entregado

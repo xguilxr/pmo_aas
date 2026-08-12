@@ -1,9 +1,9 @@
 ---
-tipo: epica
+tipo: archivo
 responsable: propietario
-estado: vigente
-revisado: 2026-08-05
-revisar_cada: 90d
+estado: archivado
+revisado: 2026-08-12
+revisar_cada: nunca
 ---
 
 # EP014 — Entregables operativos (reportes Python + formato estandarizado de minuta)
@@ -14,7 +14,7 @@ revisar_cada: 90d
 | **Prioridad** | Alta — bloque 10 del sprint |
 | **Dependencias** | EP005, EP006 (reportes module), EP008 (IA minutas) completos |
 | **Módulo** | `reports.python`, `pdf`, `ai.minutes.format` |
-| **Estado** | # PENDING |
+| **Estado** | Entregada (v1.1) — bloque original DONE (2026-05-23); ver índice |
 | **Versión objetivo** | v1.1 |
 | **Issue origen** | [#18 — Formato de Reportes y Minutas](https://github.com/xguilxr/pmo_aas/issues/18) |
 
@@ -22,12 +22,12 @@ revisar_cada: 90d
 
 El usuario pide **dos flujos operativos concretos** que hoy no existen:
 
-1. **Reportes ejecutables sin IA** — pura automatización con Python que lee la BD y genera HTML + PDF descargable. Dos tipos:
+1. **Reportes ejecutables sin IA** — automatización pura con Python que lee la BD y genera HTML + PDF descargable, en dos tipos:
    - Reporte de Avance de Proyecto
    - Reporte de Seguimiento de Actividades
-2. **Formato estandarizado de Minuta IA** — cuando la minuta se genera con IA (EP008), debe devolverse en un layout fijo y exportable a `.docx` / `.txt` / `.md`.
+2. **Formato estandarizado de Minuta IA** — cuando la minuta se genera con IA (EP008), vuelve en un layout fijo y exportable a `.docx` / `.txt` / `.md`.
 
-El módulo de Reportes existente (US-022) cubre el caso de reporte "manual/IA editable tipo Notion". Esta épica agrega un **segundo motor** de reportes (Python templated) para casos operativos recurrentes y un **postprocesamiento** de minuta IA para alinearla al formato corporativo.
+El módulo de Reportes existente (US-022) cubre el reporte "manual/IA editable tipo Notion". Esta épica agrega un **segundo motor** de reportes (Python templated) para casos operativos recurrentes, y un **postprocesamiento** de minuta IA que la alinea al formato corporativo.
 
 ## DEC a registrar en DECISIONS.md al cierre del bloque
 
@@ -49,19 +49,19 @@ declaraban**.
 | PDF y HTML (WeasyPrint) | `PILA_CSS` — `Helvetica, "Nimbus Sans", Arial, sans-serif` |
 | XLSX del frontend (ExcelJS) | `XLSX_FONT` y `aplicarFuente(ws)` de `lib/plan-template.ts` |
 
-**Por qué Helvetica y no DM Sans**, que es la fuente de marca de la web: el
-cliente no la tiene instalada y Office la reemplazaría por cualquier cosa.
-Helvetica la sustituye Excel por Arial en Windows con las mismas métricas, así
-que el documento se ve igual en cualquier máquina. Es la razón que US-193 ya
-había dado al elegirla para el plan.
+**Por qué Helvetica y no DM Sans**, la fuente de marca de la web: el cliente
+no la tiene instalada, y Office la reemplaza por cualquier cosa. Excel
+sustituye Helvetica por Arial en Windows con las mismas métricas, así que el
+documento se ve igual en cualquier máquina. Es la misma razón que dio
+US-193 al elegirla para el plan.
 
-**El PDF necesitaba algo más que declararla.** La imagen instalaba solo
+**El PDF necesitaba algo más que declararla.** La imagen solo instalaba
 `fonts-dejavu-core`, así que `font-family: Helvetica` no existía y fontconfig
-caía a DejaVu Sans: los informes llevaban meses saliendo con una fuente que
-nadie eligió. El `Dockerfile` instala ahora `fonts-urw-base35` (Nimbus Sans).
+caía a DejaVu Sans: los informes salían meses con una fuente que nadie
+eligió. El `Dockerfile` ahora instala `fonts-urw-base35` (Nimbus Sans).
 
-De paso **desaparecen las tipografías remotas**: los `<link>` a Google Fonts que
-traían DM Sans se retiraron, con lo que generar un PDF ya no depende de que
+De paso **desaparecen las tipografías remotas**: los `<link>` a Google Fonts
+que traían DM Sans se retiran, así que generar un PDF ya no depende de que
 Google responda (AM-12 del modelo de amenazas, cerrada).
 
 Lo vigila `tests/test_enh202_helvetica_en_exports.py`, que abre los archivos
@@ -240,7 +240,7 @@ Notas adicionales
 - Endpoint `GET /api/v1/meeting-minutes/{id}/export?format=pdf|docx|md|txt` con content-type y filename apropiados (rechaza formatos inválidos con 422; cross-tenant → 404).
 - `python-docx==1.2.0` añadido a requirements.
 
-**Nota sobre el prompt IA:** el criterio original pedía actualizar el prompt de EP008 US-043 para devolver el schema extendido (`title_short`, `session_number`, etc.). El formatter tolera tanto la forma actual (`title`, `participants`, `topics`, `agreements`) como variantes futuras; el refactor del prompt queda como follow-up de EP008 cuando se quiera habilitar session_number/duration automáticos.
+**Nota sobre el prompt IA:** el criterio original pedía actualizar el prompt de EP008 US-043 para devolver el schema extendido (`title_short`, `session_number`, etc.). El formatter tolera tanto la forma actual (`title`, `participants`, `topics`, `agreements`) como variantes futuras. El refactor del prompt queda como follow-up de EP008, para cuando se quiera habilitar session_number/duration automáticos.
 
 **Frontend:**
 - `lib/api/modules.ts::exportMinute(id, format)` usa `fetch` + Blob.

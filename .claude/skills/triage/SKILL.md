@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Convierte un comentario crudo del owner en issues de GitHub bien formados — clasifica cada punto como BUG/ENH/US, asigna epic e ID, propone bloque de sprint y crea los issues con labels. Úsala cuando el owner pegue feedback sin procesar, pida "crea un issue para X", o abras un frente nuevo que necesite diseño previo. NO la uses para implementar (eso es cerrar-item) ni para un cambio que el owner ya pidió ejecutar directo.
+description: Convierte feedback crudo del owner en issues bien formados — clasifica BUG/ENH/US, asigna epic e ID, propone bloque y crea los issues con labels. NO para implementar (cerrar-item) ni para lo que el owner pidió ejecutar directo.
 ---
 
 # Triage — de comentario crudo a issues

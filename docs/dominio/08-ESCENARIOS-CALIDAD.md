@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-07
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -18,16 +18,16 @@ calidad con medida de respuesta numérica».
 ## Cómo se salió del atasco
 
 La primera versión de este documento declaraba uno y dejaba tres pendientes «a
-falta de dato de producción»: los tres candidatos eran percentiles de latencia,
+falta de dato de producción». Los tres candidatos eran percentiles de latencia,
 y un P95 necesita una muestra que todavía no existe. La postura era correcta
 —declarar cuatro con números inventados cierra el requisito y no mejora el
 producto— y el atasco también era real.
 
 Lo que lo desatascó fue mirar el requisito otra vez. **Pide una medida de
-respuesta numérica, no un percentil de latencia.** Y el producto ya hace
-cumplir tres números que nadie había escrito como escenario: el tope de tiempo
-del análisis de un plan, la ventana de pérdida máxima de datos que fija la
-copia diaria, y el retardo creciente del inicio de sesión.
+respuesta numérica, no un percentil de latencia.** El producto ya hace
+cumplir tres números que nadie había escrito como escenario. Son el tope de
+tiempo del análisis de un plan, la ventana de pérdida máxima de datos que fija
+la copia diaria, y el retardo creciente del inicio de sesión.
 
 Son mejores que un P95 improvisado por dos motivos. **Ya se cumplen** —el
 código los impone, no los aspira— y **se comprueban sin esperar tráfico**: hay
@@ -72,7 +72,7 @@ aquí es la ruta que un supervisor externo puede consultar.
 | **Cómo se comprueba** | `test_req02_escenarios.py`; el ajuste existe y el análisis lo aplica |
 
 **Por qué un tope y no un percentil.** Lo que le importa a quien sube un plan no
-es que tarde 4 s o 9 s: es que no se quede esperando sin fin. Un tope es una
+es que tarde 4 s o 9 s. Es que no se quede esperando sin fin. Un tope es una
 promesa que se puede incumplir de forma observable; un promedio, no.
 
 El percentil sigue siendo interesante y queda como trabajo abierto: la
@@ -94,8 +94,8 @@ un escenario **más**, sin quitar este.
 | **Cómo se comprueba** | `test_inf03_respaldo.py` restaura de verdad contra Postgres y comprueba que los datos vuelven; `test_req02_escenarios.py` fija los tres números |
 
 **Los tres números importan y dicen cosas distintas.** El RPO acota lo que se
-pierde; la retención acota hasta cuándo se puede volver —un borrado que se
-descubre a los 40 días ya no tiene copia—; y el tope del volcado impide que un
+pierde. La retención acota hasta cuándo se puede volver —un borrado que se
+descubre a los 40 días ya no tiene copia—. El tope del volcado impide que un
 proceso colgado retenga el worker y deje el día sin copia.
 
 ---
@@ -112,8 +112,8 @@ proceso colgado retenga el worker y deje el día sin copia.
 | **Cómo se comprueba** | `test_req02_escenarios.py` fija los cuatro números; `test_auth_*` ejercita el flujo |
 
 **El «sin dejar a nadie fuera» es la parte medida.** Antes eran 15 minutos de
-bloqueo fijo, y con eso quien conociera un nombre de usuario dejaba esa cuenta
-fuera un cuarto de hora — y con una lista, al inquilino entero. El retardo
+bloqueo fijo. Quien conociera un nombre de usuario dejaba esa cuenta
+fuera un cuarto de hora, y con una lista, al inquilino entero. El retardo
 creciente frena igual la adivinación (unos 12 intentos por hora con el tope
 puesto) y quien tecleó mal espera segundos, no minutos.
 
@@ -132,7 +132,7 @@ puesto) y quien tecleó mal espera segundos, no minutos.
 ## La regla que se aplicó al elegirlos
 
 Un escenario declarado **tiene que cumplirse el día que se escribe**. Un umbral
-que ya se está incumpliendo no es un objetivo: es una alarma encendida a la que
+que ya se está incumpliendo no es un objetivo. Es una alarma encendida a la que
 todo el mundo se acostumbra, y a las dos semanas nadie la mira.
 
 Por eso los cuatro salen de números que el código ya impone. Cuando haya dato

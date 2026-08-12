@@ -1,6 +1,6 @@
 ---
 name: resumen-ronda
-description: Formato del resumen que se entrega al owner al terminar cada turno — qué se hizo, qué archivos cambiaron y qué acciones le quedan a él (crear PR, correr migración, cerrar issue). Úsala al cerrar cualquier ronda de trabajo, incluidas las que fueron solo discusión. NO la uses para el cierre de sesión completo, que es handoff.
+description: Formato del resumen al owner al cerrar cada turno — qué se hizo, qué archivos cambiaron y qué acciones externas le quedan. NO para el cierre de sesión completo (handoff).
 ---
 
 # Resumen de ronda

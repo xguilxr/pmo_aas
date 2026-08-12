@@ -1,6 +1,6 @@
 ---
 name: delegar
-description: Decide si una tarea va a un sub-agente y con qué modelo, para no quemar el contexto de la sesión principal en trabajo mecánico. Úsala antes de crear muchos issues, aplicar labels en lote, explorar el codebase, actualizar epic docs tras un commit, o repartir piezas de un batch grande. NO la uses para decisiones que necesiten el contexto de la sesión, commits de código, o el resumen final al owner.
+description: Cuándo delegar una tarea a un sub-agente y con qué modelo, para no quemar contexto en trabajo mecánico. NO para decisiones que necesitan el contexto de la sesión ni el resumen al owner.
 ---
 
 # Delegar a sub-agentes

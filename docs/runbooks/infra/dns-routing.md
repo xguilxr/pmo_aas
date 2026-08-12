@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -10,17 +10,17 @@ revisar_cada: 180d
 
 **ID:** `DOC-INFRA-DNS`
 **Alcance:** rutas productivas del dominio (app, api, landing).
-**Referencias:** DEC-012 (BD en Railway, landing en HostGator). DEC-011 (Tailscale para Ollama) ya **no aplica** — DEC-017 + BUG-053 eliminaron Ollama y el tailnet; los subdominios `ollama.*` que se hubieran creado pueden retirarse.
+**Referencias:** DEC-012 (BD en Railway, landing en HostGator). DEC-011 (Tailscale para Ollama) ya **no aplica**: DEC-017 y BUG-053 eliminaron Ollama y el tailnet. Los subdominios `ollama.*` que se hubieran creado pueden retirarse.
 
 Este runbook describe la configuración de DNS productiva del dominio
-`pmo-aas.com` en **Cloudflare**, combinando servicios hospedados en
-**Railway** (app + api) y el landing estático en **HostGator**. Es una
+`pmo-aas.com` en **Cloudflare**. Combina servicios hospedados en
+**Railway** (app + api) con el landing estático en **HostGator**. Es una
 referencia operativa: los cambios se ejecutan desde el dashboard de
 Cloudflare, no desde el repo.
 
 > **Pre-requisito:** el dominio `pmo-aas.com` ya fue trasladado a los
 > nameservers de Cloudflare (NS de Cloudflare Free tier). Si aún está en
-> el registrar, hacer el cambio ahí primero y esperar propagación
+> el registrar, haz el cambio ahí primero y espera la propagación
 > (~2–24 h) antes de seguir.
 
 ---
@@ -55,16 +55,15 @@ Cloudflare, no desde el repo.
 **Por qué cada proxy:**
 
 - `app.*` y `api.*` van **DNS only** (nube gris) porque Railway
-  termina el TLS con el cert que auto-provisiona cuando se agrega un
-  Custom Domain. Si se pone en proxy (naranja), Cloudflare intercepta
-  y requiere Full SSL + cert válido, pero además meter Cloudflare en
-  medio agrega ruleset AI-bot-blocking que puede tirar requests del
-  worker. Para una app autenticada, prefiere que el usuario llegue
-  directo a Railway.
-- `www.*` va **proxied** porque el landing es estático público; el
+  termina el TLS con el cert que auto-provisiona al agregar un
+  Custom Domain. En proxy (naranja), Cloudflare intercepta y exige
+  Full SSL con cert válido. Además, mete un ruleset de bloqueo de
+  bots IA que puede tirar requests del worker. Para una app
+  autenticada, el usuario debe llegar directo a Railway.
+- `www.*` va **proxied** porque el landing es estático público. El
   proxy de Cloudflare da CDN, caching y TLS terminator contra el
-  origen HostGator (que puede o no tener cert propio — Full SSL
-  soluciona cualquier caso).
+  origen HostGator. HostGator puede tener o no cert propio; Full SSL
+  cubre cualquier caso.
 
 ---
 
@@ -76,10 +75,10 @@ Por cada servicio:
 
 1. Railway UI → proyecto `pmo-aas` → servicio `web`.
 2. Settings → **Networking** → **+ Custom Domain**.
-3. Escribir `app.pmo-aas.com` → **Add**.
+3. Escribe `app.pmo-aas.com` → **Add**.
 4. Railway muestra un valor **CNAME** tipo `sg5x7h8p.up.railway.app`
-   (el ID cambia por servicio). **Copiarlo.**
-5. Repetir para el servicio `api` con `api.pmo-aas.com` → copiar su
+   (el ID cambia por servicio). **Cópialo.**
+5. Repite para el servicio `api` con `api.pmo-aas.com` → copia su
    CNAME.
 
 ### 2.2 Crear los CNAME en Cloudflare
@@ -107,20 +106,20 @@ curl -I https://api.pmo-aas.com/health
 ```
 
 Railway auto-provisiona el cert Let's Encrypt en ≤ 10 min tras agregar
-el Custom Domain. Si después de 30 min no resuelve, revisar que
-`Proxy status = DNS only` en Cloudflare (si está en naranja, Let's
-Encrypt ACME challenge falla).
+el Custom Domain. Si después de 30 min no resuelve, revisa que
+`Proxy status = DNS only` en Cloudflare. En naranja, el ACME challenge
+de Let's Encrypt falla.
 
 ### 2.4 Actualizar variables de Railway
 
-Una vez que los dominios responden, actualizar las variables de los
+Una vez que los dominios responden, actualiza las variables de los
 servicios para reflejarlos (ver [`docs/runbooks/railway/SETUP.md`](../railway/SETUP.md) §5):
 
 - `api` → `ALLOWED_ORIGINS` = `https://app.pmo-aas.com,https://www.pmo-aas.com`
 - `web` → `NEXT_PUBLIC_API_URL` = `https://api.pmo-aas.com`
 - `web` → `NEXTAUTH_URL` = `https://app.pmo-aas.com`
 
-Trigger redeploy de `api` + `web` al guardar.
+Dispara el redeploy de `api` y `web` al guardar.
 
 ---
 
@@ -130,7 +129,7 @@ Trigger redeploy de `api` + `web` al guardar.
 
 Desde cPanel de HostGator → sección **General Information**:
 
-- **Shared IP Address**: `192.xxx.yyy.zzz` (copiar).
+- **Shared IP Address**: `192.xxx.yyy.zzz` (cópiala).
 - Alternativa: `ping <tu-dominio-hostgator>.com` desde tu shell.
 
 ### 3.2 Crear registro en Cloudflare
@@ -154,11 +153,11 @@ Dashboard Cloudflare → zona → **SSL/TLS → Overview → Encryption mode**:
   **Full (strict)** — Cloudflare exige cert válido en origen.
 - Si HostGator sirve con cert self-signed o sin cert:
   **Full** (no strict) — Cloudflare acepta cert no verificado.
-- **Nunca** usar *Flexible* (HTTP al origen): el tráfico entre
-  Cloudflare y HostGator viaja en claro y es susceptible a MITM.
+- **Nunca** uses *Flexible* (HTTP al origen): el tráfico entre
+  Cloudflare y HostGator viaja en claro y es vulnerable a MITM.
 
-Recomendado: habilitar AutoSSL en HostGator cPanel (**Security → SSL/TLS
-Status**) y usar **Full (strict)**.
+Recomendado: habilita AutoSSL en HostGator cPanel (**Security → SSL/TLS
+Status**) y usa **Full (strict)**.
 
 ### 3.4 Verificar
 
@@ -174,8 +173,8 @@ curl -I https://www.pmo-aas.com
 
 ## 4. Email — registros Resend (SPF, DKIM)
 
-Para habilitar emails vía Resend, agregar los registros DNS que Resend provee.
-Ver [`docs/runbooks/email/resend-setup.md`](../email/resend-setup.md) para detalles.
+Para habilitar emails vía Resend, agrega los registros DNS que da Resend.
+Ver [`docs/runbooks/email/resend-setup.md`](../email/resend-setup.md) para más detalle.
 
 En Cloudflare:
 
@@ -221,8 +220,8 @@ Si la cuenta no tiene Redirect Rules disponibles (Free tier limita a 10):
 2. El apex ahora resuelve a la misma IP que `app.*` y sirve la app
    Next.js. **Peligro:** sin redirect 301 estricto, los robots indexan
    `pmo-aas.com/login` y `app.pmo-aas.com/login` como contenido
-   duplicado. Agregar un `<link rel="canonical">` a `app.*` en el
-   layout de Next.js si se usa esta opción.
+   duplicado. Agrega un `<link rel="canonical">` a `app.*` en el
+   layout de Next.js si usas esta opción.
 
 ### 5.3 Verificar
 
@@ -269,11 +268,11 @@ Si algún paso rompe producción:
 2. **CNAME en Cloudflare**: DNS → editar registro → cambiar target o
    borrar. Propagación suele tomar < 5 min con proxy, hasta 1 h sin.
 3. **Redirect rule apex**: Rules → Redirect Rules → toggle OFF.
-4. **Full downgrade**: si Cloudflare es el problema, pausar la zona
-   (**Overview → Advanced → Pause Cloudflare on site**). DNS sigue
-   respondiendo pero sin proxy ni rulesets.
+4. **Full downgrade**: si Cloudflare es el problema, pausa la zona
+   (**Overview → Advanced → Pause Cloudflare on site**). El DNS sigue
+   respondiendo, pero sin proxy ni rulesets.
 
-No tocar nameservers del registrar salvo emergencia — volver de
+No toques los nameservers del registrar salvo emergencia: volver de
 Cloudflare a un DNS externo toma 24–48 h de propagación.
 
 ---

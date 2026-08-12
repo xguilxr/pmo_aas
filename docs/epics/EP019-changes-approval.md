@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Convertir los **Cambios** (ChangeRequests dentro del módulo RAID) en un flujo de aprobación formal con responsables externos. Hoy se registran como ítems planos; queremos:
+Convierte los **Cambios** (ChangeRequests dentro del módulo RAID) en un flujo de aprobación formal con responsables externos. Hoy se registran como ítems planos; queremos:
 
 1. Registrar uno o más **responsables de aprobación** por cambio (usualmente externos a la plataforma — sponsors, business owners, comité).
 2. **Notificar por email** con la información del cambio + links firmados de "Aprobar" / "Rechazar".

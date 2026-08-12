@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -11,22 +11,22 @@ revisar_cada: 180d
 **Última actualización:** 2026-04-23 (post-v1.1, BUG-027)
 
 Este directorio centraliza los runbooks operativos para desplegar y operar
-**PMO·aaS** en producción. Cada runbook es autónomo: contiene el checklist
-de validación y troubleshooting necesario para ese servicio.
+**PMO·aaS** en producción. Cada runbook es autónomo. Incluye el checklist
+de validación y el troubleshooting de ese servicio.
 
 > **Desde v1.1 (DEC-017):** la IA ya no usa cascada global (Ollama → Gemini →
-> Claude). El modelo activo es **3 modos por-tenant** — `disabled`,
+> Claude). El modelo activo tiene **3 modos por tenant** — `disabled`,
 > `platform` (Groq hosteado por la plataforma), `byo` (proveedor del tenant:
-> OpenAI / Claude / Gemini / Perplexity). Los runbooks viejos de Ollama /
-> Gemini / Claude / local-model fueron archivados en
+> OpenAI / Claude / Gemini / Perplexity). Los runbooks viejos de Ollama,
+> Gemini, Claude y local-model están archivados en
 > [`docs/archive/runbooks-ai-legacy/`](../archive/runbooks-ai-legacy/).
 
 ---
 
 ## 📋 Checklist de Deploy v1.1 (mínimo requerido)
 
-Marca cada bloque conforme lo completes. **El producto está listo para
-producción cuando los 5 bloques estén ✅**.
+Marca cada bloque al completarlo. **El producto está listo para
+producción cuando los 5 bloques están ✅**.
 
 ### ✅ 1. Railway — servicios, env vars, plugins
 
@@ -225,5 +225,5 @@ Si algo no funciona tras seguir el runbook:
 - Epic IA: [`docs/epics/EP008-ai.md`](../epics/EP008-ai.md)
 - Epic deployment legacy: [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../archive/cancelled-epics/EP016-local-ai-tunnel.md) — archivada tras DEC-017 (ENH-022 + ENH-023)
 - Decisiones arquitectónicas: [`docs/epics/DECISIONS.md`](../epics/DECISIONS.md) — **DEC-017** IA multi-modo, **DEC-019** BYO sin Ollama + feature flag, DEC-011 Tailscale (legacy, sidecar retirado en ENH-023), DEC-012 Railway+HostGator
-- Dev local: [`docs/setup-dev.md`](../setup-dev.md)
+- Dev local: [`docs/setup-dev.md`](../archive/setup-dev.md)
 - API conventions: [`docs/architecture/api-conventions.md`](../architecture/api-conventions.md)

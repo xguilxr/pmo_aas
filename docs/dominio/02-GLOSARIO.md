@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-06
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -55,8 +55,8 @@ operación. Se llamaba `support`, que se leía como servicio permanente — just
 fase no es.
 
 **Renombrada el 2026-08-05** (ADR-019, migración 0098). El API **sigue aceptando
-`support` a la entrada** durante una ventana de compatibilidad —un cliente que no se haya
-actualizado no se rompe— pero devuelve siempre el nombre canónico, y en base ya no queda
+`support` a la entrada** durante una ventana de compatibilidad. Un cliente que no se haya
+actualizado no se rompe. Pero siempre devuelve el nombre canónico, y en base ya no queda
 ninguno.
 
 **Decidido el 2026-08-05:** se añadirá **`cancelled`** —hoy una terminación anticipada es
@@ -74,7 +74,12 @@ Punto de control de **duración cero** que marca un evento significativo. No con
 recursos. Un entregable es un *producto*; un hito es una *fecha*. Un entregable puede tener
 un hito asociado, pero no son lo mismo.
 
-**Regla:** `is_milestone = true` ⟹ `duration_days = 0`. **Validada desde el 2026-08-05** (decisión D-9), en dos mitades: la duración la normaliza el modelo (`normalizar_hito` en `app/models/task.py`, evento de guardado, así que vale para el alta manual, los tres importadores, el regenerador de plan y la semilla); y marcar un hito con un rango de varios días se rechaza al crearlo. El caso que la incumplía no era raro: la duración se cuenta en días inclusivos, así que un hito con la misma fecha de inicio y fin daba 1.
+**Regla:** `is_milestone = true` ⟹ `duration_days = 0`. **Validada desde el 2026-08-05**
+(decisión D-9), en dos mitades. La duración la normaliza el modelo (`normalizar_hito` en
+`app/models/task.py`, evento de guardado). Vale para el alta manual, los tres importadores,
+el regenerador de plan y la semilla. Marcar un hito con un rango de varios días se rechaza
+al crearlo. El caso que la incumplía no era raro. La duración se cuenta en días inclusivos,
+así que un hito con la misma fecha de inicio y fin daba 1.
 
 ---
 
@@ -134,24 +139,24 @@ tareas. Si no cuadra, es defecto.
 
 RAG —*Red, Amber, Green*— es el término de P3O y PRINCE2, y este producto **se aparta de él
 a conciencia** (D-1, 2026-08-04). `yellow` es el contrato de la API
-(`schemas/project.py:116`), la migración 0091 convirtió `amber` → `yellow` a propósito, y
-los snapshots históricos ya guardan la clave `health_yellow`. La UI dice «Amarillo», que es
+(`schemas/project.py:116`); la migración 0091 convirtió `amber` → `yellow` a propósito. Los
+snapshots históricos ya guardan la clave `health_yellow`. La UI dice «Amarillo», que es
 lo que ve el cliente. Volver a `amber` costaría contrato, datos e históricos; no lo vale.
 
 > **Cerrado el 2026-08-05 (DAT-06).** Los restos eran cuatro, no tres, y ninguno estaba
 > donde se busca. `reports/engine.py` **traducía `yellow` → `amber`** para hablarle a la
-> plantilla: mientras esa tabla existiera, retirar el término del dominio no lo retiraba
-> del producto, solo lo movía al borde. Y el PDF que se le manda al cliente decía
+> plantilla. Mientras esa tabla existiera, retirar el término del dominio no lo retiraba
+> del producto. Solo lo movía al borde. Y el PDF que se le manda al cliente decía
 > **«Ámbar»** en la etiqueta visible. Los otros dos —una clase CSS y una clave alias en
-> el generador DOCX— eran alias que nadie usaba, que es justo por donde el término vuelve
+> el generador DOCX— eran alias que nadie usaba. Es justo por donde el término vuelve
 > cuando alguien copia el diccionario. Trinquete: `tests/test_dat06_vocabulario.py`, que
 > mira el árbol y no una lista de sitios conocidos.
 >
 > **El quinto cerró el 2026-08-06** (ADR-030). `task_load_thresholds.amber_max` era una
-> llave guardada en `tenant.settings` de inquilinos reales, así que fue con el molde de
-> `wbs` → `wbs_code`: migración 0101 sobre los datos existentes y ventana de
+> llave guardada en `tenant.settings` de inquilinos reales. Fue con el molde de
+> `wbs` → `wbs_code`: migración 0101 sobre los datos existentes, y ventana de
 > compatibilidad a la entrada **y a la lectura**. La etiqueta del formulario de ajustes
-> también decía «Ámbar»; el sinónimo no estaba solo en una variable.
+> también decía «Ámbar». El sinónimo no estaba solo en una variable.
 
 **Regla — la pieza que falta.** Un semáforo sin fórmula es una opinión con color. Propuesta,
 a validar:
@@ -162,13 +167,13 @@ a validar:
 | `yellow` | Desviación dentro del umbral, o riesgo alto con plan de respuesta |
 | `red` | Desviación fuera del umbral, o riesgo alto sin plan, o incidencia crítica abierta |
 
-> **Umbral: uno por dimensión** (D-4, decidido el 2026-08-05). No uno global: el producto
+> **Umbral: uno por dimensión** (D-4, decidido el 2026-08-05). No uno global. El producto
 > ya evalúa la salud en cinco dimensiones —cronograma, presupuesto, riesgos, decisiones,
-> recursos— y no es lo mismo un 10 % de desviación en costo que en fechas.
+> recursos—. No es lo mismo un 10 % de desviación en costo que en fechas.
 >
 > **Los valores siguen pendientes, y a propósito.** Se calibran contra un proyecto real con
-> desviación medible; antes de eso cualquier número sería inventado. Mientras tanto,
-> `health_source = 'manual'` con `health_reason` obligatoria es la salida honesta: el
+> desviación medible. Antes de eso, cualquier número sería inventado. Mientras tanto,
+> `health_source = 'manual'` con `health_reason` obligatoria es la salida honesta. El
 > semáforo es un juicio declarado, no un cálculo.
 
 `health_source` distingue **derivado** de **anulado manualmente**; si es manual,
@@ -191,8 +196,8 @@ lección aprendida **no** es una de ellas: tiene registro propio y ritmo propio,
 y por eso está en §3.5 y no dentro del RAID.
 
 > **Corregido el 2026-08-06 (CON-02).** Este apartado definía riesgo,
-> incidencia, acción y lección, y **no mencionaba la decisión** — una de las
-> cuatro que el producto sí implementa y que el modelo sí recibe en su
+> incidencia, acción y lección, y **no mencionaba la decisión**. Es una de las
+> cuatro que el producto sí implementa, y que el modelo recibe en su
 > instrucción. El artefacto de dominio y la implementación decían cosas
 > distintas, que es justo lo que CON-02 existe para impedir.
 
@@ -343,14 +348,12 @@ estratégica**. No coincide con la estructura organizativa.
 ## 7. Magnitudes y unidades canónicas
 
 Cierra **DAT-01** («cada magnitud del dominio DEBE tener una unidad canónica
-declarada en el glosario»). Un término del §1 al §6 dice *qué* es una cosa;
-esta tabla dice *en qué se mide*, que es la otra mitad de que dos personas
-obtengan el mismo número.
+declarada en el glosario»). Un término del §1 al §6 dice *qué* es una cosa. Esta tabla dice
+*en qué se mide*, que es la otra mitad de que dos personas obtengan el mismo número.
 
-**Esta tabla es la declaración normativa.** `apps/api/app/core/magnitudes.py`
-la refleja para que el código pueda citarla, y una prueba falla si las dos se
-separan: un catálogo que puede desincronizarse de su declaración no es un
-catálogo.
+**Esta tabla es la declaración normativa.** `apps/api/app/core/magnitudes.py` la refleja
+para que el código pueda citarla. Una prueba falla si las dos se separan: un catálogo que
+puede desincronizarse de su declaración no es un catálogo.
 
 | Magnitud | Unidad canónica | Rango | Cómo se reconoce en el código |
 |---|---|---|---|
@@ -375,7 +378,7 @@ veces mayor o menor. La conversión tiene nombre (`unidades.fraccion_a_pct`) y
 la unidad, ahora, tipo.
 
 **Escala y severidad.** Un 4 de impacto no es el doble de un 2 — son juicios
-ordenados, no medidas —, y la severidad es su producto, así que **su rango no
+ordenados, no medidas. La severidad es su producto, así que **su rango no
 es 1 a 5 sino 1 a 25**. Leerla con la misma vara que sus factores es el error
 disponible.
 
@@ -385,13 +388,13 @@ significa nada, y declararlo evita que alguien saque «el nivel medio».
 
 ### 7.2 La moneda, declarada como está y no como se promete
 
-La unidad canónica del importe es **MXN**, y se declara así porque es lo que el
+La unidad canónica del importe es **MXN**. Se declara así porque es lo que el
 producto hace: las superficies que muestran dinero la traen escrita. El ajuste
-`settings.currency` ofrece USD y EUR y ningún sitio de presentación lo lee, así
-que hoy un inquilino en dólares vería sus importes rotulados en pesos.
+`settings.currency` ofrece USD y EUR, y ningún sitio de presentación lo lee. Hoy
+un inquilino en dólares vería sus importes rotulados en pesos.
 
 Se declara la realidad y no la intención. **El disparador que invalida esta
-declaración** es que la moneda del inquilino llegue a la presentación: ese día
+declaración** es que la moneda del inquilino llegue a la presentación. Ese día,
 la unidad canónica pasa a ser «la moneda del inquilino» y esta fila cambia.
 
 

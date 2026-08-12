@@ -2,21 +2,19 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-29
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
 # Visión general del producto
 
 **ID:** `DOC-OVERVIEW`
-**Estado:** Aprobado
-**Última revisión:** 2026-04-18
 
 ---
 
 ## 1. Misión
 
-Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-tenant, rápida y limpia** que centralice el ciclo de vida de proyectos: desde la solicitud inicial hasta el cierre, con trazabilidad total, IA para automatizar minutas y reportes, e integración con Microsoft Project.
+Ofrecemos a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-tenant, rápida y limpia**. Centraliza el ciclo de vida de los proyectos, de la solicitud inicial al cierre, con trazabilidad total. Suma IA para automatizar minutas y reportes, e integración con Microsoft Project.
 
 ## 2. Problemas que resolvemos
 
@@ -83,7 +81,7 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 2. **Velocidad percibida.** Skeletons, optimistic UI, RSC streaming. Nada de spinners en blanco.
 3. **Estética Apple.** Tipografía clara, jerarquía visual fuerte, materiales (vibrancy/blur), movimiento suave.
 4. **Multi-tenant by default.** Ningún endpoint olvida el `tenant_id`. Tests `TC-MT-*` bloquean merges.
-5. **IA asistida, humano decide.** La IA genera borradores; el usuario siempre revisa y aprueba antes de enviar/guardar.
+5. **IA asistida, humano decide.** La IA genera borradores. El usuario siempre revisa y aprueba antes de enviar/guardar.
 6. **Portabilidad del dato.** Todo exportable a CSV/Excel/JSON. Nada secuestrado por la plataforma.
 7. **Simplicidad de deploy.** Un `git push` despliega. Variables en Railway, no en código.
 
@@ -104,7 +102,7 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 
 ## 9. Glosario corto
 
-Ver [`glossary.md`](./glossary.md) para la lista completa. Términos clave:
+Ver [`glossary.md`](./archive/glossary.md) para la lista completa. Términos clave:
 
 - **Tenant** = cliente (organización que contrata el SaaS). Aísla datos.
 - **Organización** = entidad dentro de un tenant (ej. subsidiaria, filial).

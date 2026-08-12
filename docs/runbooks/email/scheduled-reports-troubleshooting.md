@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -13,10 +13,10 @@ revisar_cada: 180d
 
 ## Causa raíz típica
 
-El servicio Railway `worker` corría sólo `celery worker`, sin
+El servicio Railway `worker` corría solo `celery worker`, sin
 `celery beat`. Sin beat, el scheduler periódico no dispara la tarea
-`scheduled_reports.send_due_reports` y las filas en `scheduled_reports`
-se quedan con `next_run_at` en el pasado pero sin envío.
+`scheduled_reports.send_due_reports`. Las filas en `scheduled_reports`
+quedan con `next_run_at` en el pasado, sin envío.
 
 ## Fix aplicado en BUG-036
 
@@ -25,20 +25,20 @@ se quedan con `next_run_at` en el pasado pero sin envío.
    ```
    celery -A app.workers.celery_app worker --beat --loglevel=info --concurrency=2
    ```
-   El worker actúa como worker + beat scheduler. Suficiente para 1
-   replica (Railway free tier). Para >1 replica, mover beat a un
-   servicio Railway dedicado y quitar `--beat` del worker.
+   El worker actúa como worker y beat scheduler. Alcanza para 1
+   réplica (Railway free tier). Para >1 réplica, mueve beat a un
+   servicio Railway dedicado y quita `--beat` del worker.
 
 2. **Endpoint `POST /api/v1/scheduled-reports/{id}/run-now`** —
-   permite disparar el envío inmediato sin esperar la cadencia. Útil
+   dispara el envío inmediato sin esperar la cadencia. Sirve
    para validar end-to-end (PDF + email) desde la UI.
 
-3. **UI**: botón "Enviar ahora" agregado a cada row en
+3. **UI**: botón "Enviar ahora" agregado a cada fila en
    `/pmo/projects/[id]/reports`.
 
 ## Checklist de diagnóstico
 
-Cuando el owner reporte "no me llegó el correo", correr en orden:
+Cuando el owner reporta "no me llegó el correo", corre en orden:
 
 ### 1. ¿El worker está corriendo?
 
@@ -46,13 +46,13 @@ Cuando el owner reporte "no me llegó el correo", correr en orden:
 railway logs -s worker --tail 100 | grep -E "celery@|beat:"
 ```
 
-Buscar líneas como:
+Busca líneas como:
 - `celery@<host> ready.` → worker arrancó.
 - `beat: Starting...` → beat arrancó.
 - `Scheduler: Sending due task ...` → beat está disparando tasks.
 
-Si no aparece "beat:", el `--beat` no está activo. Verificar que el
-deploy del worker aplicó el cambio del `worker.railway.toml`.
+Si no aparece "beat:", el `--beat` no está activo. Verifica que el
+deploy del worker aplicó el cambio de `worker.railway.toml`.
 
 ### 2. ¿Hay filas pending en `scheduled_reports`?
 
@@ -77,20 +77,20 @@ echo $RESEND_FROM                    # ej. "PMO <noreply@pmo-aas.com>"
 ```
 
 En Railway dashboard → Variables. Si falta `RESEND_API_KEY`,
-configurar (ver `docs/runbooks/email/resend-setup.md`).
+configúrala (ver `docs/runbooks/email/resend-setup.md`).
 
 ### 4. ¿El dominio FROM está verificado en Resend?
 
 Resend rechaza envíos a destinatarios externos (gmail, etc.) si el
-dominio del FROM no está verificado. Login en
-[resend.com/domains](https://resend.com/domains) y confirmar que
+dominio del FROM no está verificado. Entra a
+[resend.com/domains](https://resend.com/domains) y confirma que
 `pmo-aas.com` aparece como `verified` (DNS records aplicados).
 
-Si NO está verificado:
-- Para test rápido: cambiar `RESEND_FROM` a
-  `onboarding@resend.dev` (sandbox de Resend, sólo va al email
+Si no está verificado:
+- Para test rápido: cambia `RESEND_FROM` a
+  `onboarding@resend.dev` (sandbox de Resend, solo va al email
   registrado en la cuenta Resend).
-- Para producción: verificar DNS según el runbook de Resend setup.
+- Para producción: verifica DNS según el runbook de Resend setup.
 
 ### 5. ¿Hay errores en `last_error` de `scheduled_reports`?
 
@@ -109,10 +109,10 @@ Errores comunes:
 
 ### 6. Trigger manual desde la UI
 
-Owner puede usar el botón "Enviar ahora" en cada row (BUG-036).
+Owner puede usar el botón "Enviar ahora" en cada fila (BUG-036).
 Internamente llama `POST /api/v1/scheduled-reports/{id}/run-now`
 que hace `send_scheduled_report.delay(id)` directo. Si el envío
-funciona desde aquí pero NO automáticamente, el problema es el
+funciona desde aquí pero no automáticamente, el problema es el
 beat scheduler (paso 1).
 
 ### 7. Verificar inbox + spam
@@ -130,14 +130,14 @@ beat scheduler (paso 1).
    logger.info("send_scheduled_report id=%s recipients=%s", sched_id, recipients)
    ```
 2. Re-deploy worker + dashboard logs.
-3. Revisar respuesta de Resend (status code + body) para entender
-   por qué el envío fue rechazado.
+3. Revisa la respuesta de Resend (status code + body) para entender
+   por qué se rechazó el envío.
 
 ## Costos esperados
 
-Resend free tier: **3000 emails/mes + 100/día**. Sobrado para PMO
-con cadencia diaria + 5-10 destinatarios por proyecto. Si excede,
-upgrade a Resend Pro ($20/mes para 50k/mes).
+Resend free tier: **3000 emails/mes + 100/día**. Alcanza para PMO
+con cadencia diaria y 5-10 destinatarios por proyecto. Si excede,
+sube a Resend Pro ($20/mes para 50k/mes).
 
 ## Referencias
 

@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-03
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -79,7 +79,7 @@ PHASES = ["planning", "execution", "support"]
 ```
 
 Faltan inicio y cierre. `"support"` no es una fase de ciclo de vida en PMBOK, ISO 21502 ni
-PRINCE2 — es operación, que por definición empieza **cuando el proyecto terminó**. Un
+PRINCE2. Es operación, que por definición empieza **cuando el proyecto terminó**. Un
 proyecto en fase `support` es un proyecto cerrado, y el modelo no puede distinguirlos.
 
 Y conviven con literales sueltos en español:
@@ -124,7 +124,7 @@ con color — y es el número que más mira un patrocinador.
 
 `planned_value`, `earned_value`, `actual_cost` → **0 modelos**. El presupuesto vive solo a
 nivel proyecto (`projects.budget`, `actual_budget`); **las tareas no tienen costo ni
-esfuerzo**. Sin costo por tarea y sin línea base no hay PV, ni EV, ni AC, y por tanto no hay
+esfuerzo**. Sin costo por tarea y sin línea base no hay PV, ni EV, ni AC. Por tanto no hay
 CPI, SPI, EAC, ETC ni VAC.
 
 El `KPI-09 CV/CPI` del borrador de EP020 no es implementable hoy. Conviene saberlo antes de
@@ -146,15 +146,15 @@ el avance del proyecto no es reconciliable con el de sus tareas.
 `tenant → organization → business_unit → department → program → project`.
 
 **No es necesariamente un defecto.** Esa jerarquía es organizacional y sirve. Solo conviene
-no llamarle portafolio a un área, porque en ISO 21504 y MoP portafolio es *un conjunto de
-componentes agrupado para gestión estratégica*, que no coincide con la estructura
+no llamarle portafolio a un área. En ISO 21504 y MoP, portafolio es *un conjunto de
+componentes agrupado para gestión estratégica*, y no coincide con la estructura
 organizativa.
 
 ### B-7 · Beneficios como texto libre — **BAJA**
 
 `benefits` aparece en `project_charter` y `project_request` como campo. No hay entidad,
 métrica ni seguimiento. La realización de beneficios es el eje de MSP y de la conversación
-con un patrocinador, pero es la brecha más cara de cerrar y la menos urgente.
+con un patrocinador. Es la brecha más cara de cerrar y la menos urgente.
 
 ---
 
@@ -168,10 +168,10 @@ En orden de impacto sobre esfuerzo:
 3. **Introducir línea base (B-1).** Es una migración y un cambio de escritura, no un módulo
    nuevo. Desbloquea todo lo demás.
 4. **Elegir entre EVM y calidad de cronograma.** Mi recomendación es **calidad de
-   cronograma tipo DCMA 14-point**: no exige costos por tarea, se alimenta de
+   cronograma tipo DCMA 14-point**. No exige costos por tarea. Se alimenta de
    `task_dependencies`, `predecessors`, `successors` e `is_critical` —que ya tenés por el
    importador de MS Project— y es un diferenciador real. EVM exige antes B-1 y costo por
-   tarea; es mucho más caro y no necesariamente más vendible.
+   tarea. Es mucho más caro y no necesariamente más vendible.
 5. **Beneficios y portafolio**, si un cliente los pide.
 
 Nada de esto exige adoptar una familia de estándares. Todo es compatible con adoptarla

@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Estandarizar el proceso de solicitud de nuevos proyectos: formulario con datos mínimos, revisión por PMO Manager, aprobación o rechazo con motivo, y **conversión automática a proyecto** con los datos pre-rellenados.
+El proceso de solicitud de nuevos proyectos se estandariza: formulario con datos mínimos, revisión por PMO Manager, aprobación o rechazo con motivo, y **conversión automática a proyecto** con datos pre-rellenados.
 
 ## Roles
 

@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Gestionar el ciclo de vida completo de un proyecto: creación (manual o desde solicitud), edición, cambio de fase, vista detalle rica con toolbar a módulos transversales, y listado con filtros potentes.
+El proyecto sigue un ciclo de vida completo: creación (manual o desde solicitud), edición, cambio de fase, vista detalle rica con toolbar a módulos transversales, y listado con filtros potentes.
 
 ---
 
@@ -150,7 +150,7 @@ declarable manualmente con razón
 
 **US-180 (`0f96dec`) — motor de reglas (backend):**
 - **Un solo campo** `health_status` (verde/amarillo/rojo). Se **elimina**
-  `status_rag` (ENH-101) — quedaba redundante con `health_status` y
+  `status_rag` (ENH-101): quedaba redundante con `health_status` y
   confundía al PM sobre cuál era "la salud real". Migración `0091`
   (`20260708_0091_health_unified.py`) agrega `health_source`
   (`auto`|`manual`) + `health_reason`, absorbe `status_rag` como el caso
@@ -163,14 +163,15 @@ declarable manualmente con razón
   `capacity_thresholds` y dos de sus reglas estaban escritas a fuego.
   El color global = la peor dimensión.
 - **El presupuesto se mide contra el avance, no contra sí mismo** (D-4,
-  2026-08-05). La dimensión calcula un **índice de consumo** —
+  2026-08-05). La dimensión calcula un **índice de consumo**:
   `(gastado/presupuesto) ÷ (avance/100)`, el inverso del CPI de valor
-  ganado—: vale 1,0 cuando se gasta al ritmo que se avanza. Antes
-  comparaba el ratio crudo, y un proyecto con el **85 % del presupuesto
+  ganado. Vale 1,0 cuando el gasto va al ritmo del avance. Antes
+  comparaba el ratio crudo: un proyecto con el **85 % del presupuesto
   gastado y el 10 % de avance salía verde**. Sin avance la dimensión
   queda **sin color**, igual que sin presupuesto configurado: dividir por
-  cero no es «rojo», es «todavía no se puede decir». Función bulk (`refresh_health_bulk`)
-  para recalcular en batch desde snapshots/dashboards sin N+1.
+  cero no es «rojo», es «todavía no se puede decir». La función bulk
+  (`refresh_health_bulk`) recalcula en batch desde snapshots/dashboards
+  sin N+1.
 - `health_source='auto'`: el color lo calcula el motor de reglas en cada
   refresh. `health_source='manual'`: el PM hizo override y el color queda
   fijo hasta que se vuelve a automático (recalcula al instante).
@@ -226,13 +227,13 @@ planning → execution → hypercare → closed
        cualquiera de las tres → cancelled
 ```
 
-`hypercare` se llamaba `support` hasta el 2026-08-05 (D-2 / ADR-019); el API
+`hypercare` se llamaba `support` hasta el 2026-08-05 (D-2 / ADR-019). El API
 sigue aceptando el nombre viejo a la entrada y devuelve siempre el canónico.
 
 **`cancelled` es un final distinto de `closed`** (ADR-022, 2026-08-05). Antes,
-un proyecto cortado a mitad se registraba como `closed` —esta misma epic lo
-documentaba como «`closed` (cancelado)»— y quedaba indistinguible de uno que
-llegó al final: contaba como entregado en toda métrica de éxito y sus lecciones
+un proyecto cortado a mitad se registraba como `closed` (esta misma epic lo
+documentaba como «`closed` (cancelado)»). Quedaba indistinguible de uno que
+llegó al final: contaba como entregado en toda métrica de éxito, y sus lecciones
 se mezclaban con las de los que cumplieron.
 
 Los dos son **terminales** y ninguno cuenta como fase activa. `closed` no lleva

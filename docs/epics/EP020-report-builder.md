@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-26
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -54,16 +54,16 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Habilitar **4 niveles de reportes** del PMOaaS:
+Habilita **4 niveles de reportes** del PMOaaS:
 
 1. **Nivel 1 PMO** — agregado interno de todos los proyectos del tenant (módulo nuevo `/pmo/reports/portfolio`).
 2. **Nivel 2 Organización / Programa** — agregado por org o programa, cliente-facing (tab nuevo en organización).
 3. **Nivel 3 Proyecto** — extiende Avance y Seguimiento (EP014) para que sean composiciones declarativas del catálogo de secciones atómicas.
 4. **Nivel 4 PM / Usuario** — canvas drag-and-drop con preview en vivo y modo IA conversacional, plantillas privadas con opción "publicar al proyecto".
 
-Las 22 secciones atómicas (catálogo cerrado en draft) son el ÚNICO bloque de composición. Los 4 niveles son combinaciones predefinidas o libres de las mismas secciones. Un solo motor de render, dos modos de composición (Avance "por sección" y Seguimiento "por área").
+Las 22 secciones atómicas (catálogo cerrado en draft) son el único bloque de composición. Los 4 niveles son combinaciones predefinidas o libres de las mismas secciones: un solo motor de render, dos modos de composición (Avance "por sección" y Seguimiento "por área").
 
-**Fuera de scope original (v1.0):** S-10 entregables formales; S-07 curva S (pendiente). **US-151 (2026-05-26) introdujo `metric_snapshots`** (foto semanal a 4 niveles), y **US-158 implementó S-05 (Tendencia)** —sparkline SVG server-side + tabla desde snapshots— y **S-15 (Matriz de riesgos 5x5)** como secciones del builder (project-level). Ambas seedeadas por migración 0080 y registradas en `SECTION_BUILDERS`. **US-161** implementó **S-07 (Curva-S)**: planeado (lineal `start_date`→`end_date`, capturado en `metric_snapshots.extras.avg_progress_plan`) vs real acumulado, como sección del builder con SVG dual server-side (migración 0081).
+**Fuera de scope original (v1.0):** S-10 entregables formales; S-07 curva S (pendiente). **US-151 (2026-05-26) agregó `metric_snapshots`** (foto semanal a 4 niveles). **US-158 implementó S-05 (Tendencia)** —sparkline SVG server-side + tabla desde snapshots— y **S-15 (Matriz de riesgos 5x5)** como secciones del builder (project-level); ambas seedeadas por migración 0080 y registradas en `SECTION_BUILDERS`. **US-161 implementó S-07 (Curva-S)**: planeado (lineal `start_date`→`end_date`, capturado en `metric_snapshots.extras.avg_progress_plan`) vs real acumulado, como sección del builder con SVG dual server-side (migración 0081).
 
 ## Decisiones arquitectónicas (registradas en DECISIONS.md)
 

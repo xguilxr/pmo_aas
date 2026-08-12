@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -11,7 +11,7 @@ revisar_cada: 90d
 > **Política activa (2026-04-21):**
 > - Productivo v1.0 corre en **Railway Postgres** (DEC-013). No hay plan
 >   de migrar a otro motor.
-> - Una migración Alembic por US; nunca combinar múltiples cambios
+> - Una migración Alembic por US. Nunca combina múltiples cambios
 >   estructurales en un solo archivo.
 > - Este archivo **no es la fuente de verdad del schema**. Solo indexa
 >   qué epic disparó qué migración y lo pendiente de BD para POST-MVP.
@@ -61,16 +61,16 @@ Migración **0009** (`20260420_0009_business_units_departments.py`):
 
 - Crea `business_units(id, tenant_id, organization_id, name, …)` y
   `departments(id, tenant_id, business_unit_id, name, …)`.
-- Agrega `programs.department_id` (nullable — un programa puede colgar
-  directo de la organización o de un departamento).
+- Agrega `programs.department_id` (nullable): un programa puede colgar
+  directo de la organización o de un departamento.
 - Agrega `projects.department_id` y `projects.business_unit_id`
-  (nullable — se llenan desde la cadena del programa cuando aplica).
+  (nullable): se llenan desde la cadena del programa cuando aplica.
 - Agrega `project_requests.business_unit_id` y
   `project_requests.department_id` como FK.
 
 Los campos legacy `project_requests.business_unit` y
-`project_requests.department` (texto libre) se conservaron por
-retro-compatibilidad; pueden dropearse cuando se valide que ningún
+`project_requests.department` (texto libre) se conservan por
+retro-compatibilidad. Pueden dropearse cuando se valide que ningún
 tenant productivo los lee.
 
 ## EP003 — Solicitudes y Project Charter
@@ -96,8 +96,8 @@ cuenta en la plataforma (DEC-009). Campo `type` acepta
 ## EP006 — RAID consolidado
 
 **Sin migración nueva.** RAID es una **vista** sobre `risks` + `issues`
-(DEC-007): Risks de la tabla `risks`, y Actions/Incidents/Decisions de
-la tabla `issues` discriminados por `issues.type ∈
+(DEC-007). Risks viene de la tabla `risks`. Actions/Incidents/Decisions
+vienen de la tabla `issues`, discriminados por `issues.type ∈
 {'action','incident','decision'}`. El validator se hace en el modelo,
 no en BD.
 
@@ -114,8 +114,8 @@ Schema cubierto por migración **0007** (`ai_jobs`, `reports`).
 ## EP010 — Super admin panel
 
 Sin schema nuevo. `users.is_superadmin` ya existe desde
-`20260101_0001_initial.py`; el panel reusa `tenants` + `users` + `audit_logs`
-cross-tenant.
+`20260101_0001_initial.py`. El panel reusa `tenants`, `users` y
+`audit_logs` cross-tenant.
 
 ## EP011 — Notificaciones (POST-MVP)
 
@@ -141,13 +141,13 @@ CREATE INDEX idx_notif_user_unread ON notifications(user_id, is_read, created_at
 CREATE INDEX idx_notif_tenant ON notifications(tenant_id, created_at DESC);
 ```
 
-US-028 (email via Resend) no requiere schema adicional; la cola sale
-del `notifications.type` leído por un worker Celery.
+US-028 (email via Resend) no requiere schema adicional. La cola sale de
+`notifications.type`, leída por un worker Celery.
 
 ## EP013 / EP015 — Refactor navegación
 
-Sin migraciones nuevas. `tenants.logo_url` ya existía; US-031 reusa
-el campo + el storage local.
+Sin migraciones nuevas. `tenants.logo_url` ya existía. US-031 reusa el
+campo y el storage local.
 
 ## EP014 — Entregables operativos
 
@@ -155,7 +155,7 @@ Migraciones **0014** (`reports_period`) + **0015**
 (`reports_generator_cut_off`): añaden `reports.generator` (`'manual' |
 'ai' | 'avance' | 'seguimiento'`) y `reports.cut_off_date` + columnas de
 período. US-040 (formato estandarizado de minuta IA) es
-post-procesamiento sobre `meeting_minutes`; no toca BD.
+post-procesamiento sobre `meeting_minutes`. No toca BD.
 
 Migración **0018** (`scheduled_reports`): tabla nueva para US-056
 (calendarización automática de envíos). Columnas: `id`, `tenant_id`,
@@ -168,14 +168,14 @@ next_run_at)` para el dispatch del beat.
 ## EP006 — RAID con área responsable (US-064)
 
 Migración **0024** (`raid_area_id`): agrega `area_id` a `risks` e
-`issues` como FK nullable a `project_areas.id` con
-`ON DELETE SET NULL`, más índice compuesto `(tenant_id, project_id,
+`issues`, como FK nullable a `project_areas.id` con
+`ON DELETE SET NULL`. Suma un índice compuesto `(tenant_id, project_id,
 area_id)` para el ordenamiento de las tablas RAID.
 
-Regla de legacy: ítems previos a la migración se quedan con
-`area_id = NULL`; la obligatoriedad en creación vive a nivel de
+Regla de legacy: los ítems previos a la migración quedan con
+`area_id = NULL`. La obligatoriedad en creación vive a nivel de
 schema Pydantic (`422` en POST si falta), NO en la DB. Los endpoints
-GET ordenan por `CASE WHEN area_id IS NULL THEN 1 ELSE 0 END` (legacy
+GET ordenan por: `CASE WHEN area_id IS NULL THEN 1 ELSE 0 END` (legacy
 al final) → `project_areas.name ASC` → `identified_at DESC` (risks) o
 `reported_at DESC` (issues) → `severity/priority DESC`. Nuevo filtro
 `?area_id=` en `/projects/{id}/risks`, `/projects/{id}/issues`,
@@ -183,11 +183,11 @@ al final) → `project_areas.name ASC` → `identified_at DESC` (risks) o
 
 ## EP016 — IA local (Ollama vía Tailscale) — ❌ ARCHIVADA
 
-Toda la epic quedó superseded por DEC-017 y eliminada en BUG-053
-(2026-05-08). `OllamaProvider` se quitó del runtime. Los datos
-legacy en `tenants.settings.ai.ollama` quedaron en BD por auditoría
-pero ya no se leen — el resolver de provider falla con
-`unsupported_provider` para `provider="ollama"`.
+Toda la epic queda superseded por DEC-017. Se elimina en BUG-053
+(2026-05-08). `OllamaProvider` se quita del runtime. Los datos legacy
+en `tenants.settings.ai.ollama` quedan en BD por auditoría, pero ya no
+se leen: el resolver de provider falla con `unsupported_provider`
+para `provider="ollama"`.
 
 Ver `docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`.
 
@@ -208,10 +208,10 @@ No hay trabajo de BD pendiente por esta épica.
 `UPDATE users SET role_type='user' WHERE role_type IS NULL` (backfill
 de cualquier registro legacy que no haya tocado la migración 0026).
 
-Sin cambio de schema; solo data normalization. `viewer` queda
-eliminado del vocabulario (DEC-024) — el endpoint `/auth/me/permissions`
-deja de aceptarlo y `capabilities_for("viewer")` retorna `set()` por
-fail-safe. `Literal[RoleType] = ["admin", "user"]`.
+Sin cambio de schema, solo data normalization. `viewer` queda
+eliminado del vocabulario (DEC-024): el endpoint
+`/auth/me/permissions` deja de aceptarlo, y `capabilities_for("viewer")`
+retorna `set()` por fail-safe. `Literal[RoleType] = ["admin", "user"]`.
 
 ### Migración **0029** — `organization_user_exclusions` (US-078)
 
@@ -227,20 +227,20 @@ Tabla nueva para membership opt-out user↔organización:
 
 Constraint `UNIQUE (user_id, organization_id)` (`uq_org_user_excl_pair`).
 
-Modelo opt-out: tabla vacía = user accede a TODAS las orgs del tenant.
-El admin agrega filas para excluir orgs puntuales desde
-`/admin/users/{id}`.
+Modelo opt-out: una tabla vacía significa que el user accede a TODAS
+las orgs del tenant. El admin agrega filas para excluir orgs puntuales
+desde `/admin/users/{id}`.
 
-**Pendiente (ENH separado):** filtrado efectivo en queries de
-proyectos/riesgos/minutas por orgs accesibles del user. Hoy solo se
+**Pendiente (ENH separado):** falta el filtrado efectivo en queries de
+proyectos, riesgos y minutas por orgs accesibles del user. Hoy solo se
 almacena el dato.
 
 ### Tablas deprecated (US-077, borrado físico → US-081 Sprint 7)
 
-`roles` y `user_roles` quedan presentes pero **sin UI editor** (la
-página `/admin/roles/*` y endpoints `admin_roles.py` se borraron en
-US-077). El gate ignora `Role.permissions` JSON desde US-076; las
-tablas viven solo por compat hasta validar Sprint 6 en producción.
+`roles` y `user_roles` quedan presentes, pero **sin UI editor**: la
+página `/admin/roles/*` y los endpoints de `admin_roles.py` se borran
+en US-077. El gate ignora el JSON `Role.permissions` desde US-076. Las
+tablas viven solo por compat, hasta validar Sprint 6 en producción.
 
 ### Migración futura prevista — **0030** (US-081, Sprint 7)
 
@@ -264,10 +264,12 @@ Columnas nuevas en `report_builder_templates`:
 | `visibility` | `VARCHAR(16)` NOT NULL DEFAULT `'private'` | `'private' \| 'project' \| 'tenant'` |
 
 Reglas:
-- `private` → sólo el `owner_id` puede ver/modificar.
-- `project` → todos los miembros del `project_id` la ven; sólo el owner publica/despublica.
-- `tenant` → reservado, no usado en v1.0.
-- Seeds (`is_seed=True`, `tenant_id=NULL`) siguen visibles para todos los users (no respetan visibility).
+- `private`: solo el `owner_id` puede ver/modificar.
+- `project`: todos los miembros del `project_id` la ven. Solo el owner
+  publica/despublica.
+- `tenant`: reservado, no usado en v1.0.
+- Seeds (`is_seed=True`, `tenant_id=NULL`) siguen visibles para todos
+  los users: no respetan visibility.
 
 ### Migración **0074** — `scheduled_reports.report_builder_template_id` (US-131)
 
@@ -275,7 +277,12 @@ Reglas:
 |---|---|---|
 | `report_builder_template_id` | `VARCHAR(36)` FK `report_builder_templates.id` `ON DELETE SET NULL` | indexed (`ix_scheduled_reports_builder_template`) |
 
-Cuando `scheduled_reports.report_type='custom'`, este campo apunta a la plantilla del Report Builder. El worker (`apps/api/app/workers/tasks/scheduled_reports.py`) invoca el motor de US-123 (`render_template`) sobre la plantilla y manda el HTML resultante por `html_to_pdf` antes de adjuntar al email via Resend. `REPORT_TYPES` se extiende a `("avance", "seguimiento", "custom")`.
+Cuando `scheduled_reports.report_type='custom'`, este campo apunta a
+la plantilla del Report Builder. El worker
+(`apps/api/app/workers/tasks/scheduled_reports.py`) invoca el motor
+de US-123 (`render_template`) sobre la plantilla. Manda el HTML
+resultante por `html_to_pdf`, antes de adjuntarlo al email vía Resend.
+`REPORT_TYPES` se extiende a `("avance", "seguimiento", "custom")`.
 
 ---
 
@@ -294,7 +301,7 @@ nuevo valor `'minute_ai'`. Sin cambio de tipo de columna.
 | `import_file` | importada desde archivo |
 | `import_paste` | pegada en bloque |
 
-Sin backfill (sólo abre el valor para futuras inserciones).
+Sin backfill: solo abre el valor para futuras inserciones.
 
 ---
 
@@ -302,15 +309,15 @@ Sin backfill (sólo abre el valor para futuras inserciones).
 
 ### Migración **0076** — re-seed `report_sections` si está vacío
 
-Owner reportó "el catálogo de secciones sigue vacío" en
-`/pmo/projects/[id]/reports/builder` tras el deploy del Sprint 26-32.
-La migración 0070 (US-120) creó la tabla y debía sembrar 22 secciones,
-pero las rows aparecen ausentes en su DB (posible reset post-deploy,
-o `bulk_insert` quedó sin commit).
+El owner reporta "el catálogo de secciones sigue vacío" en
+`/pmo/projects/[id]/reports/builder`, tras el deploy del Sprint 26-32.
+La migración 0070 (US-120) crea la tabla y debía sembrar 22 secciones,
+pero las rows aparecen ausentes en su DB (posible reset post-deploy, o
+`bulk_insert` sin commit).
 
 La migración 0076 es **idempotente**: si `report_sections` ya tiene
 rows, no hace nada. Si está vacía, inserta las 22 secciones canónicas
-EP020 con el mismo contenido que el seed original.
+de EP020, con el mismo contenido que el seed original.
 
 Sin cambio de schema, solo backfill de datos. Downgrade es no-op.
 
@@ -327,15 +334,15 @@ a:
 {actions, risks, decisions, issues, lessons?, changes?, _meta?: {free_notes}}
 ```
 
-- Buckets nuevos canónicos A/R/D/I alineados con el modelo RAID.
-- `lessons` y `changes` siguen aceptados para retro-compat con
-  minutas existentes (el LLM ya no los genera; validator descarta).
+- Buckets nuevos canónicos A/R/D/I, alineados con el modelo RAID.
+- `lessons` y `changes` siguen aceptados por retro-compat con minutas
+  existentes: el LLM ya no los genera, el validator los descarta.
 - `_meta.free_notes` persiste las notas libres opcionales del PM
-  (evita migración de columna).
+  (evita una migración de columna).
 
-Sin migración de schema (columna `raid_suggestions` es JSON). El
-formatter (`minutes_formatter.py`) lee los 6 buckets; el frontend
-y el endpoint endpoint aceptan ambos shapes en input.
+Sin migración de schema: la columna `raid_suggestions` es JSON. El
+formatter (`minutes_formatter.py`) lee los 6 buckets. El frontend y el
+endpoint aceptan ambos shapes en input.
 
 `meeting_minutes.description` se reutiliza para el resumen de 2-3
 oraciones (campo heredado de `_ModuleBase`, antes no usado por minute).
@@ -346,12 +353,13 @@ oraciones (campo heredado de `_ModuleBase`, antes no usado por minute).
 
 ### Migración **0079** — tabla `metric_snapshots`
 
-Foto periódica (cadencia **semanal**, lunes 02:00 UTC vía Celery beat) de
-las métricas de *stock* del portafolio a los 4 niveles de scope
-(`tenant` / `organization` / `program` / `project`). Sin historia persistida
-no hay líneas de tendencia en los dashboards ni en los reportes Nivel 1/2;
-esta tabla es esa historia y desbloquea las secciones S-05 (tendencia) y
-S-07 (curva-S) que EP020 había diferido por falta de datos.
+Foto periódica (cadencia **semanal**, lunes 02:00 UTC vía Celery beat)
+de las métricas de *stock* del portafolio, a los 4 niveles de scope
+(`tenant` / `organization` / `program` / `project`). Sin historia
+persistida no hay líneas de tendencia en los dashboards ni en los
+reportes Nivel 1/2. Esta tabla es esa historia: desbloquea las
+secciones S-05 (tendencia) y S-07 (curva-S), que EP020 había diferido
+por falta de datos.
 
 Columnas: `scope_type`, `scope_id`, `snapshot_date` + métricas escalares
 (`projects_total/active`, `health_green/yellow/red`, `avg_progress`,
@@ -362,8 +370,9 @@ futuras sin migración). `UNIQUE(tenant_id, scope_type, scope_id,
 snapshot_date)` garantiza idempotencia del job. FK `tenant_id` → `tenants`
 con `ON DELETE CASCADE`. Downgrade hace `drop_table`.
 
-Las métricas de *flujo* (cycle-time, throughput) NO viven aquí: se calculan
-on-the-fly desde timestamps existentes (`requested_at`/`approved_at`, etc.).
+Las métricas de *flujo* (cycle-time, throughput) NO viven aquí: se
+calculan on-the-fly desde timestamps existentes
+(`requested_at`/`approved_at`, etc.).
 
 ---
 
@@ -371,25 +380,27 @@ on-the-fly desde timestamps existentes (`requested_at`/`approved_at`, etc.).
 
 ### Migración **0082** — widen logo columns
 
-`organizations.logo_url` y `client_logo_url` pasan de `String(500)` a `Text`.
-Antes, subir un PNG (que se almacena como data-URL base64) excedía los 500
-caracteres y se truncaba/rechazaba — "subir PNG no se guarda bien"; las URLs
-externas cortas sí cabían. Ahora ambas columnas admiten data-URLs base64 de
-logos subidos directamente (PNG/JPG/SVG/WEBP) además de URLs externas. El cap
-de longitud vive en el schema Pydantic (`_LOGO_MAX = 3_000_000`, ~imagen de
-2 MB codificada). `alter_column` vía `batch_alter_table` (compat SQLite + PG).
-Downgrade revierte a `String(500)`.
+`organizations.logo_url` y `client_logo_url` pasan de `String(500)` a
+`Text`. Antes, subir un PNG (que se almacena como data-URL base64)
+excedía los 500 caracteres y se truncaba o rechazaba: "subir PNG no se
+guarda bien". Las URLs externas cortas sí cabían. Ahora ambas columnas
+admiten data-URLs base64 de logos subidos directamente
+(PNG/JPG/SVG/WEBP), además de URLs externas. El cap de longitud vive
+en el schema Pydantic (`_LOGO_MAX = 3_000_000`, ~imagen de 2 MB
+codificada). `alter_column` vía `batch_alter_table` (compat SQLite +
+PG). Downgrade revierte a `String(500)`.
 
 ### Migración **0083** — `tenants.logo_url` → TEXT
 
-Mismo problema en el logo del **tenant**: antes se guardaba en disco (efímero
-en Railway) y se servía por `GET /branding/tenants/{id}/logo`, un endpoint
-autenticado que un `<img src>` del navegador no puede consumir (mandaba 401 →
-el logo nunca se mostraba; con URLs externas sí funcionaba). Ahora el logo del
-tenant se guarda como **data-URL base64 en `tenants.logo_url`** y renderiza
-directo. La columna pasa de `String(500)` a `Text`. El endpoint de serve se
-conserva por retro-compat de logos viejos en disco; las subidas nuevas ya no
-lo usan. Downgrade revierte a `String(500)`.
+Mismo problema en el logo del **tenant**. Antes se guardaba en disco
+(efímero en Railway) y se servía por `GET /branding/tenants/{id}/logo`,
+un endpoint autenticado que un `<img src>` del navegador no puede
+consumir. Mandaba 401: el logo nunca se mostraba. Con URLs externas sí
+funcionaba. Ahora el logo del tenant se guarda como **data-URL base64
+en `tenants.logo_url`** y renderiza directo. La columna pasa de
+`String(500)` a `Text`. El endpoint de serve se conserva por
+retro-compat de logos viejos en disco. Las subidas nuevas ya no lo
+usan. Downgrade revierte a `String(500)`.
 
 ---
 
@@ -418,7 +429,8 @@ Tabla de asignaciones de visibilidad positivas para usuarios PM (`role_type='use
 Unique constraint `(user_id, scope_type, scope_id)`.
 Índices en `tenant_id`, `user_id`, `scope_id`.
 Admin y pm_sr ignoran esta tabla (always-visible).
-Herencia: org → todos sus programas + proyectos; program → proyectos + org contexto; project → proyecto + org + program contexto.
+Herencia: org → todos sus programas + proyectos. program → proyectos +
+org contexto. project → proyecto + org + program contexto.
 
 ---
 
@@ -432,9 +444,10 @@ actividad (editable por el PM). Lógica de atraso:
 - Tarea completada → retrasada sólo si `closed_at > end_date` (cerró tarde).
 - Sin `closed_at`, una tarea completada no se considera retrasada.
 
-El endpoint auto-setea `closed_at = hoy` al pasar a `completed` sin fecha
-provista; el PATCH permite editarla (incluye `null` para limpiar). Nullable,
-sin backfill (las tareas completadas legacy quedan sin fecha → no retrasadas).
+El endpoint auto-setea `closed_at = hoy` al pasar a `completed` sin
+fecha provista. El PATCH permite editarla (incluye `null` para
+limpiar). Nullable, sin backfill: las tareas completadas legacy
+quedan sin fecha, y no se consideran retrasadas.
 
 ---
 
@@ -481,8 +494,8 @@ on_hold | resolved`**):**
   `materialized`/`closed`→`resolved`.
 - Issues: `closed`→`resolved` (`open`/`in_progress` ya válidos).
 
-El downgrade quita las columnas pero NO revierte el remap (es lossy:
-`materialized`/`closed` se fundieron en `resolved`).
+El downgrade quita las columnas pero NO revierte el remap: hay
+pérdida de datos. `materialized` y `closed` se fundieron en `resolved`.
 
 ---
 
@@ -492,8 +505,8 @@ El downgrade quita las columnas pero NO revierte el remap (es lossy:
 
 `UPDATE report_sections SET name = 'Atrasadas' WHERE code = 'S-17' AND name
 = 'Retrasadas'` (la tabla usa `code`, no `folio`). Alinea el catálogo del
-Report Builder con el renombre de terminología (Retrasada → Atrasada).
-Idempotente; downgrade revierte.
+Report Builder con el renombre de terminología (Retrasada → Atrasada). Es
+idempotente. El downgrade revierte.
 
 ---
 
@@ -502,21 +515,22 @@ Idempotente; downgrade revierte.
 ### Migración **0091** — `projects` health unificado
 
 **Columnas nuevas en `projects`:**
-- `health_source VARCHAR(8) NOT NULL DEFAULT 'auto'` (check `auto|manual`) —
-  fuente del semáforo: `auto` lo mantiene el motor de reglas
-  (`services/project_health.py`); `manual` = declarado por el PM.
+- `health_source VARCHAR(8) NOT NULL DEFAULT 'auto'` (check `auto|manual`):
+  fuente del semáforo. `auto` lo mantiene el motor de reglas
+  (`services/project_health.py`). `manual` = declarado por el PM.
 - `health_reason VARCHAR(2000) NULL` — razón de la declaración manual
   (obligatoria vía API al declarar amarillo/rojo).
 
-**Data migration:** donde `status_rag` estaba seteado (ENH-101) pasa a ser
-el semáforo efectivo: `health_status = status_rag` (con `amber`→`yellow`) y
-`health_source = 'manual'`.
+**Data migration:** donde `status_rag` estaba seteado (ENH-101), pasa a
+ser el semáforo efectivo: `health_status = status_rag` (con
+`amber`→`yellow`) y `health_source = 'manual'`.
 
-**Drop:** `projects.status_rag` + check `ck_projects_status_rag` (la
-dualidad semáforo manual vs RAG declarado se unifica en UN solo semáforo).
+**Drop:** `projects.status_rag` + check `ck_projects_status_rag`. La
+dualidad semáforo manual vs RAG declarado se unifica en un solo
+semáforo.
 
 El downgrade re-crea `status_rag` solo para los overrides manuales
-(`yellow`→`amber`) y dropea las columnas nuevas (lossy en la razón).
+(`yellow`→`amber`), y dropea las columnas nuevas (pierde la razón).
 
 ---
 
@@ -552,13 +566,13 @@ tentativa|activa|cerrada|cancelada, default activa — solo 'activa' suma
 demanda), `is_critical BOOL DEFAULT false`, `phase VARCHAR(32) NULL`.
 **Backfill:** `status='cerrada'` donde `is_active=false`.
 
-La saturación se calcula en `services/capacity.py`: demanda = suma de
-allocation_pct de participations activas que intersectan la ventana
-(today/week/3weeks/month) vs `actors.project_capacity_pct` (US-182).
-Umbrales por tenant: `settings.capacity_thresholds` (yellow_over=0,
-red_over=10 puntos). Endpoints: `/capacity/summary`, `/capacity/conflicts`,
-`/projects/{id}/resource-load`. Activa la dimensión "recursos" del
-semáforo (US-180).
+La saturación se calcula en `services/capacity.py`: la demanda es la
+suma de `allocation_pct` de participations activas que intersectan la
+ventana (today/week/3weeks/month), contra `actors.project_capacity_pct`
+(US-182). Los umbrales por tenant viven en `settings.capacity_thresholds`
+(yellow_over=0, red_over=10 puntos). Endpoints: `/capacity/summary`,
+`/capacity/conflicts`, `/projects/{id}/resource-load`. Activa la
+dimensión "recursos" del semáforo (US-180).
 
 ---
 
@@ -572,8 +586,8 @@ Tabla nueva 1:1 con `projects` (unique en project_id): `context_md`
 acumulativo mantenido por IA al guardar minutas) +
 `auto_summary_updated_at`, `updated_by`, timestamps. FKs CASCADE a
 tenants/projects. Se inyecta como bloque `<CONTEXTO_DEL_PROYECTO>` en
-minutas (worker `_run_minute`) y reportes (`/reports/ai-generate`); el
-resumen lo actualiza la task Celery `ai.update_project_context`.
+minutas (worker `_run_minute`) y en reportes (`/reports/ai-generate`).
+El resumen lo actualiza la task Celery `ai.update_project_context`.
 
 ---
 
@@ -581,12 +595,13 @@ resumen lo actualiza la task Celery `ai.update_project_context`.
 
 ### Migración **0095** — data-only, sin cambios de schema
 
-Re-aplica el remap de estados de la 0089 (US-179) de forma idempotente:
-el flujo de minutas IA siguió creando riesgos con `status='identified'`
-después del remap original y esos riesgos quedaban ineditables (422 al
-guardar). El fix de código corrige el origen (`modules.py` crea con
-`open`) + validator Pydantic tolerante a legacy en create/update; esta
-migración limpia las filas ya existentes.
+Re-aplica el remap de estados de la 0089 (US-179), de forma
+idempotente. El flujo de minutas IA seguía creando riesgos con
+`status='identified'` después del remap original, y esos riesgos
+quedaban ineditables (422 al guardar). El fix de código corrige el
+origen: `modules.py` crea con `open`, y suma un validator Pydantic
+tolerante a legacy en create/update. Esta migración limpia las filas
+ya existentes.
 
 ---
 
@@ -595,13 +610,13 @@ migración limpia las filas ya existentes.
 ### Migración **0096** — tabla `project_health_evaluations`
 
 Evaluación periódica del PM: 5 dimensiones (schedule/budget/risks/
-decisions/resources, nullable) + `overall` (la "sexta", obligatoria) con
-`evaluated_at` (fecha libre) y `note`. Cada guardado es un registro
-histórico — evolución de la salud en el tiempo. El overall se aplica al
-semáforo del proyecto (`health_status/source/reason`) como declaración
-manual US-180; convive con el motor automático. Índice
-(project_id, evaluated_at). FKs CASCADE a tenants/projects, SET NULL a
-users.
+decisions/resources, nullable) más `overall` (la "sexta", obligatoria),
+con `evaluated_at` (fecha libre) y `note`. Cada guardado es un registro
+histórico: registra la evolución de la salud en el tiempo. El
+`overall` se aplica al semáforo del proyecto
+(`health_status/source/reason`) como declaración manual (US-180), y
+convive con el motor automático. Índice (project_id, evaluated_at).
+FKs CASCADE a tenants/projects, SET NULL a users.
 
 ---
 
@@ -609,35 +624,39 @@ users.
 
 ### Migración **0097** — disparadores de inmutabilidad sobre `audit_log`
 
-**No cambia el schema**: no toca columnas, índices ni claves. Añade dos
-disparadores y una función, y revoca privilegios. Se indexa aquí porque cambia
-lo que se puede *hacer* con una tabla, que es lo que sorprende a quien escriba
-código contra ella.
+**No cambia el schema.** No toca columnas, índices ni claves. Añade dos
+disparadores y una función, y revoca privilegios. Se indexa aquí porque
+cambia lo que se puede *hacer* con la tabla. Eso es lo que sorprende a
+quien escriba código contra ella.
 
-`audit_log` era una tabla ordinaria y **AM-06 se apoya en ella como único
-control**. Ahora rechaza `UPDATE`, `DELETE` y `TRUNCATE`.
+`audit_log` era una tabla ordinaria. **AM-06 se apoya en ella como
+único control.** Ahora rechaza `UPDATE`, `DELETE` y `TRUNCATE`.
 
-**Por qué disparadores y no solo `REVOKE`,** que es lo que proponía el modelo de
-amenazas: en Railway la aplicación se conecta con el rol dueño de las tablas, y
-en PostgreSQL el dueño conserva sus privilegios haga lo que haga el `REVOKE`.
-Comprobado contra Postgres 16: con `REVOKE UPDATE, DELETE` aplicado al dueño, el
-`UPDATE` pasa igual. Con el disparador puesto, no pasa ni siendo superusuario.
+**Por qué disparadores y no solo `REVOKE`**, que es lo que proponía el
+modelo de amenazas. En Railway, la aplicación se conecta con el rol
+dueño de las tablas. En PostgreSQL, el dueño conserva sus privilegios
+pase lo que pase con el `REVOKE`. Verificado contra Postgres 16: con
+`REVOKE UPDATE, DELETE` aplicado al dueño, el `UPDATE` pasa igual. Con
+el disparador puesto, no pasa ni siendo superusuario.
 
-El `REVOKE` a `PUBLIC` se aplica igualmente —cuesta una línea y empieza a sumar
-solo el día que la aplicación deje de conectarse como dueño, que es lo correcto—.
+El `REVOKE` a `PUBLIC` se aplica igual: cuesta una línea. Empieza a
+sumar valor el día que la aplicación deje de conectarse como dueño,
+que es lo correcto.
 
-**Lo que no detiene:** quien administra la base puede quitar el disparador. Es
-una defensa contra la aplicación, contra un fallo que permita ejecutar SQL con
-sus credenciales y contra el borrado accidental. Cerrar el resto pide
-encadenamiento por hash o envío a un almacén externo, y es otra decisión.
+**Lo que no detiene:** quien administra la base puede quitar el
+disparador. Es una defensa contra la aplicación: contra un fallo que
+permita ejecutar SQL con sus credenciales, y contra el borrado
+accidental. Cerrar el resto exige encadenamiento por hash o envío a un
+almacén externo. Es otra decisión.
 
-**Reversible.** El `downgrade` deja la tabla como estaba; verificado contra
-Postgres real, no solo por lectura.
+**Reversible.** El `downgrade` deja la tabla como estaba. Se verificó
+contra Postgres real, no solo por lectura.
 
-**Fuera de PostgreSQL no hace nada** —la suite corre en SQLite— y ahí el control
-lo pone el guardián del ORM en `app/models/audit.py`, que cubre el camino de la
-aplicación pero no las sentencias masivas. Esa división está escrita en los dos
-sitios y comprobada en `tests/test_am08_auditoria_solo_anexa.py`.
+**Fuera de PostgreSQL no hace nada.** La suite corre en SQLite, y ahí
+el control lo pone el guardián del ORM en `app/models/audit.py`. Cubre
+el camino de la aplicación, pero no las sentencias masivas. Esa
+división está escrita en los dos sitios, y comprobada en
+`tests/test_am08_auditoria_solo_anexa.py`.
 
 
 ---
@@ -646,25 +665,26 @@ sitios y comprobada en `tests/test_am08_auditoria_solo_anexa.py`.
 
 ### Migración **0098** — renombrado de valor en `projects.phase` y `lessons_learned.phase`
 
-**Sin cambio de esquema.** Las dos columnas son `String(32)` sin `CHECK` ni enum,
-así que esto es una migración de datos: `UPDATE … SET phase='hypercare' WHERE
-phase='support'`. Es la razón por la que ADR-019 la clasificó de coste medio.
+**Sin cambio de esquema.** Las dos columnas son `String(32)`, sin
+`CHECK` ni enum. Por eso esto es una migración de datos: `UPDATE … SET
+phase='hypercare' WHERE phase='support'`. Es la razón por la que
+ADR-019 la clasificó de coste medio.
 
-**Dos tablas, y la segunda es la fácil de olvidar.** `lessons_learned.phase`
+**Dos tablas, y la segunda es fácil de olvidar.** `lessons_learned.phase`
 comparte vocabulario con `projects.phase` (`LessonPhase` en el frontend).
 
 **La ventana de compatibilidad no está en la migración**, está en
-`schemas/project.py`: el API sigue aceptando `support` a la entrada y lo
-normaliza a `hypercare`, para que un cliente que no se haya actualizado —una
-pestaña abierta, un filtro guardado— no se rompa. La salida es siempre canónica.
-Hacen falta las dos mitades: una sin la otra deja medio producto hablando el
-idioma viejo.
+`schemas/project.py`. El API sigue aceptando `support` a la entrada, y
+lo normaliza a `hypercare`. Así, un cliente que no se haya
+actualizado —una pestaña abierta, un filtro guardado— no se rompe. La
+salida es siempre canónica. Hacen falta las dos mitades: una sin la
+otra deja medio producto hablando el idioma viejo.
 
-**Reversible, con una salvedad honesta.** Ejercitada contra Postgres 16: sube y
-baja sin tocar el resto de fases ni los nulos. Lo que la bajada no puede
-distinguir es una fila que ya fuera `hypercare` de una renombrada — antes del
-2026-08-05 ese valor no existía en el vocabulario, así que con datos reales no
-se da.
+**Reversible, con una salvedad honesta.** Ejercitada contra Postgres
+16: sube y baja sin tocar el resto de fases ni los nulos. Lo que la
+bajada no puede distinguir es una fila que ya fuera `hypercare` de una
+renombrada. Antes del 2026-08-05 ese valor no existía en el
+vocabulario, así que con datos reales no pasa.
 
 
 ---
@@ -674,83 +694,91 @@ se da.
 ### Migración **0099** — renombrado de columna en `actors`
 
 `ALTER TABLE actors RENAME COLUMN portfolio_function TO discipline`, vía
-`batch_alter_table` para que SQLite —donde corre la suite— lo resuelva
+`batch_alter_table`. Así SQLite —donde corre la suite— lo resuelve
 recreando la tabla. Los **valores no cambian**: `String(24)` sin `CHECK`.
 
-El glosario veta «portafolio» para un área (brecha B-6): un portafolio es un
-conjunto de proyectos y programas, y esa entidad no existe en el producto. Lo
-que la columna guarda es la disciplina del recurso.
+El glosario veta «portafolio» para un área (brecha B-6). Un portafolio
+es un conjunto de proyectos y programas: esa entidad no existe en el
+producto. Lo que la columna guarda es la disciplina del recurso.
 
 **Ventana de compatibilidad en dos puertas**, porque el nombre era público:
 
-- el cuerpo de creación acepta `portfolio_function` vía `AliasChoices`;
+- el cuerpo de creación acepta `portfolio_function` vía `AliasChoices`.
 - el parámetro de consulta de `GET /actors` lo acepta, marcado `deprecated`.
 
-La **salida es siempre `discipline`**, y la clave de agregación de capacidad
-pasó de `by_function` a `by_discipline` para no reabrir el mismo desajuste.
+La **salida es siempre `discipline`**. La clave de agregación de
+capacidad pasa de `by_function` a `by_discipline`, para no reabrir el
+mismo desajuste.
 
-**Reversible**, ejercitada contra Postgres 16: sube, baja y los datos —incluidos
-los nulos— quedan intactos en los dos sentidos.
+**Reversible**, ejercitada contra Postgres 16: sube, baja y los datos
+—incluidos los nulos— quedan intactos en los dos sentidos.
 
 ---
 
 ## Migración 0100 — `tasks.wbs` → `tasks.wbs_code` (D-3 / ADR-020)
 
-`ALTER TABLE tasks RENAME COLUMN wbs TO wbs_code`, vía `batch_alter_table` por
-la misma razón que 0099. **No toca datos**: `String(64)` sin `CHECK` ni índice.
+`ALTER TABLE tasks RENAME COLUMN wbs TO wbs_code`, vía `batch_alter_table`,
+por la misma razón que 0099. **No toca datos**: `String(64)` sin `CHECK`
+ni índice.
 
-La columna guardaba el **código** de la EDT (`1.2.3`), no la estructura — esa
-vive en `parent_id` y `outline_level`. El propio modelo lo delataba: documentaba
-«predecessors / successors como JSON array de **wbs_code**» mientras la columna
-se llamaba `wbs`.
+La columna guardaba el **código** de la EDT (`1.2.3`), no la
+estructura: esa vive en `parent_id` y `outline_level`. El propio
+modelo lo delataba: documentaba «predecessors / successors como JSON
+array de **wbs_code**», mientras la columna se llamaba `wbs`.
 
-**`predecessors` y `successors` no se migran.** Son listas JSON de códigos, no
-claves foráneas: su contenido es el mismo antes y después. Lo que sí se revisó
-—y va en el mismo commit— es todo el código que las cruzaba contra `task.wbs`.
+**`predecessors` y `successors` no se migran.** Son listas JSON de
+códigos, no claves foráneas: su contenido es el mismo antes y después.
+Lo que sí se revisó, en el mismo commit, es todo el código que las
+cruzaba contra `task.wbs`.
 
-**La palabra «WBS» no se retira, y ahí está la parte delicada.** Siguen igual:
+**La palabra «WBS» no se retira, y ahí está la parte delicada.** Sigue
+igual en:
 
-- la cabecera `WBS` del Excel que descarga y sube el usuario (`plan-template.ts`);
-- los alias que el importador acepta como cabecera (`wbs`, `edt`, `código`…);
+- la cabecera `WBS` del Excel que descarga y sube el usuario (`plan-template.ts`).
+- los alias que el importador acepta como cabecera (`wbs`, `edt`, `código`…).
 - los códigos de diagnóstico `WBS_MISSING`, `WBS_DUPLICATED`, `WBS_ORPHAN_LEVELS`,
-  `WBS_GAPS`, `WBS_NUMERIC_GENERAL`;
-- el elemento `<WBS>` de MS Project y la clave `wbs` del JSON de MPXJ;
-- la ruta `POST /projects/{id}/tasks/renumber-wbs`;
-- la clave `plan-wbs-level:<id>` de `localStorage`, que guarda el nivel de
-  agrupación: renombrarla habría reseteado la preferencia de todo el mundo sin
-  un solo error.
+  `WBS_GAPS`, `WBS_NUMERIC_GENERAL`.
+- el elemento `<WBS>` de MS Project y la clave `wbs` del JSON de MPXJ.
+- la ruta `POST /projects/{id}/tasks/renumber-wbs`.
+- la clave `plan-wbs-level:<id>` de `localStorage`: guarda el nivel de
+  agrupación. Renombrarla habría reseteado la preferencia de todo el
+  mundo, sin un solo error.
 
-**Ventana de compatibilidad** en las dos puertas del cuerpo —`TaskCreate` y
-`TaskUpdate`— vía `AliasChoices`. La del PATCH importa más de lo que parece: sin
-alias, mandar `wbs` no fallaría, simplemente **no cambiaría nada**.
+**Ventana de compatibilidad** en las dos puertas del cuerpo —`TaskCreate`
+y `TaskUpdate`— vía `AliasChoices`. La del PATCH importa más de lo que
+parece: sin alias, mandar `wbs` no fallaría. Simplemente **no cambiaría
+nada**.
 
 La salida es siempre `wbs_code`. Se cuenta por `compat.nombre_viejo`.
 
-**Reversible**, ejercitada contra el esquema real de `Base.metadata`: sube, baja
-y el código sobrevive en los dos sentidos.
+**Reversible**, ejercitada contra el esquema real de `Base.metadata`:
+sube, baja y el código sobrevive en los dos sentidos.
 
 ---
 
 ## 0101 — `task_load_thresholds.amber_max` → `yellow_max` (DAT-06 / ADR-030)
 
-**No es una columna.** Es una llave dentro del JSON de `tenants.settings`, en el
-bloque `report_builder`, así que la migración lee las filas, reescribe el
-diccionario en Python y actualiza. **SQL portable a propósito:** la suite corre
-sobre SQLite y `jsonb_set` solo existe en Postgres — una migración que solo sabe
-correr en un motor se descubre en producción.
+**No es una columna.** Es una llave dentro del JSON de
+`tenants.settings`, en el bloque `report_builder`. La migración lee
+las filas, reescribe el diccionario en Python y actualiza. **SQL
+portable a propósito:** la suite corre sobre SQLite, y `jsonb_set`
+solo existe en Postgres. Una migración que solo corre en un motor se
+descubre recién en producción.
 
-Toca **solo** las filas que tienen el bloque. Reescribir las demás ensuciaría el
-`updated_at` de medio producto sin cambiarles nada.
+Toca **solo** las filas que tienen el bloque. Reescribir las demás
+ensuciaría el `updated_at` de medio producto, sin cambiarles nada.
 
-**Ventana de compatibilidad** en `core/compatibilidad.py`, y con una diferencia
-respecto a las tres anteriores: cubre la **lectura** además de la entrada. Un
-inquilino restaurado de una copia anterior al despliegue traería la llave vieja,
-y perder su umbral en silencio sería peor que aceptarlo — el semáforo de carga
-caería a los valores por defecto y nadie lo notaría hasta ver un informe con los
-colores cambiados.
+**Ventana de compatibilidad** en `core/compatibilidad.py`, con una
+diferencia respecto a las tres anteriores: cubre la **lectura**,
+además de la entrada. Un inquilino restaurado de una copia anterior al
+despliegue traería la llave vieja. Perder su umbral en silencio sería
+peor que aceptarlo. El semáforo de carga caería a los valores por
+defecto. Nadie lo notaría hasta ver un informe con los colores
+cambiados.
 
-Lo que se **guarda** es siempre `yellow_max`. Si el guardado volviera a escribir
-el nombre viejo, la migración se desharía sola con el primer cambio de ajustes.
+Lo que se **guarda** es siempre `yellow_max`. Si el guardado volviera
+a escribir el nombre viejo, la migración se desharía sola con el
+primer cambio de ajustes.
 
 **Reversible**: `downgrade` hace el camino inverso sobre los mismos datos.
 
@@ -761,44 +789,47 @@ el nombre viejo, la migración se desharía sola con el primer cambio de ajustes
 Columna nueva: `actor_type VARCHAR(16) NOT NULL DEFAULT 'humano'`, más el índice
 `idx_audit_actor_type_time (actor_type, occurred_at)`.
 
-**Qué problema resuelve.** IA-02 pide que una acción ejecutada por un componente
-de IA quede registrada **y sea distinguible de una acción humana**. Lo primero
-ya se cumplía —la IA sí escribía en `audit_log`—; lo segundo no, y los tres
-campos que parecían servir no servían:
+**Qué problema resuelve.** IA-02 pide que una acción ejecutada por un
+componente de IA quede registrada, **y sea distinguible de una acción
+humana**. Lo primero ya se cumplía: la IA sí escribía en `audit_log`.
+Lo segundo no. Los tres campos que parecían servir no servían:
 
-- `module="ai"` significa «el módulo de IA», no «lo hizo la IA»: `report.send`
-  es una persona pulsando enviar y también lo lleva.
-- El prefijo `ai.` en el nombre era inconsistente: `ai.minute.generate` lo tiene
-  y `report.draft` —que redacta el modelo— no.
-- `user_id`, en una acción de IA, guarda **quién la pidió**. Atribuirle el texto
-  generado a esa persona es justo lo que el requisito evita.
+- `module="ai"` significa «el módulo de IA», no «lo hizo la IA».
+  `report.send` es una persona pulsando enviar, y también lo lleva.
+- El prefijo `ai.` en el nombre era inconsistente: `ai.minute.generate`
+  lo tiene, y `report.draft` —que redacta el modelo— no lo tiene.
+- `user_id`, en una acción de IA, guarda **quién la pidió**.
+  Atribuirle el texto generado a esa persona es justo lo que el
+  requisito evita.
 
-**Las filas existentes quedan en `humano`, y es la lectura correcta**, no una
-comodidad: hasta esta migración el producto no tenía forma de que el modelo
-actuara sin que alguien lo pidiera. Lo que no se puede reconstruir hacia atrás
-es cuáles de esas peticiones acabaron en texto generado, y por eso la distinción
-se guarda desde ahora en vez de inferirse.
+**Las filas existentes quedan en `humano`, y es la lectura correcta**,
+no una comodidad. Hasta esta migración, el producto no tenía forma de
+que el modelo actuara sin que alguien lo pidiera. Lo que no se puede
+reconstruir hacia atrás es cuáles de esas peticiones acabaron en texto
+generado. Por eso la distinción se guarda desde ahora, en vez de
+inferirse.
 
-**`server_default` y no `default`.** `audit_log` es de solo anexado desde la
-0097: hay disparadores que rechazan `UPDATE` y `DELETE`. Una migración que
-rellenara la columna fila a fila chocaría con ellos. El `server_default` lo
-resuelve en la definición de la columna, sin tocar una sola fila. Hay un caso
-que lo vigila (`test_ia02_auditoria_ia.py`).
+**`server_default` y no `default`.** `audit_log` es de solo anexado
+desde la 0097: hay disparadores que rechazan `UPDATE` y `DELETE`. Una
+migración que rellenara la columna fila a fila chocaría con ellos. El
+`server_default` lo resuelve en la definición de la columna, sin tocar
+una sola fila. Hay un caso que lo vigila (`test_ia02_auditoria_ia.py`).
 
-**El valor por defecto es seguro, pero no es el control.** Son 144 sitios de
-escritura y casi todos son humanos; lo que impide que una ruta de IA nueva se
-registre como humana es el trinquete, que barre por **ubicación** —cualquier
-`write_audit` en código que ejecuta el modelo— y por **nombre** —cualquier
-acción `ai.*`—. Las dos reglas juntas: la de ubicación caza `report.draft`, que
-no lleva el prefijo; la de nombre caza un `ai.*` en un módulo que nadie añadió a
-la lista.
+**El valor por defecto es seguro, pero no es el control.** Son 144
+sitios de escritura, y casi todos son humanos. Lo que impide que una
+ruta de IA nueva se registre como humana es el trinquete. Barre por
+**ubicación** —cualquier `write_audit` en código que ejecuta el
+modelo— y por **nombre** —cualquier acción `ai.*`—. Las dos reglas
+juntas: la de ubicación caza `report.draft`, que no lleva el prefijo.
+La de nombre caza un `ai.*` en un módulo que nadie añadió a la lista.
 
-**Ejercitada contra Postgres real** con una fila de historia previa: queda en
-`humano` sin reescribirse, el índice se crea, y `downgrade` deja la tabla como
-estaba.
+**Ejercitada contra Postgres real** con una fila de historia previa.
+Queda en `humano` sin reescribirse. El índice se crea. `downgrade`
+deja la tabla como estaba.
 
-**Reversible**: `downgrade` quita índice y columna. Se pierde la distinción de
-lo registrado mientras estuvo, que es inevitable y no destruye ningún otro dato.
+**Reversible**: `downgrade` quita índice y columna. Se pierde la
+distinción de lo registrado mientras estuvo. Es inevitable, y no
+destruye ningún otro dato.
 
 ---
 
@@ -807,29 +838,31 @@ lo registrado mientras estuvo, que es inevitable y no destruye ningún otro dato
 `ALTER COLUMN ... DROP NOT NULL` sobre una columna `NUMERIC(5,2)`. Sin datos que
 convertir y sin índices que tocar.
 
-**Por qué.** La columna era `NOT NULL DEFAULT 0`, así que el recolector diario
-no tenía dónde escribir «no hay proyectos activos»: guardaba `0`, el mismo
-valor que significa «la cartera está al 0 %».
+**Por qué.** La columna era `NOT NULL DEFAULT 0`. El recolector diario
+no tenía dónde escribir «no hay proyectos activos»: guardaba `0`, el
+mismo valor que significa «la cartera está al 0 %».
 
-La ficha del indicador, firmada por el owner el 2026-08-06, dice lo contrario:
-«Sin proyectos → `null`, que se pinta «—». **Cero proyectos no es cero por
-ciento**». El tablero en vivo se corrigió ese día. La instantánea no, porque
-calculaba el mismo indicador con su propia división — el defecto que DAT-09
-describe. Consecuencia visible: la gráfica de tendencia de los informes lee
-instantáneas y **dibujaba una caída a cero** en carteras recién creadas.
+La ficha del indicador, firmada por el owner el 2026-08-06, dice lo
+contrario: «Sin proyectos → `null`, que se pinta «—». **Cero
+proyectos no es cero por ciento**». El tablero en vivo se corrigió ese
+día. La instantánea no: calculaba el mismo indicador con su propia
+división, el defecto que DAT-09 describe. Consecuencia visible: la
+gráfica de tendencia de los informes lee instantáneas y **dibujaba
+una caída a cero** en carteras recién creadas.
 
-**Nulable y no centinela.** Un `-1` vuelve a ser un número que alguien promedia;
-`NULL` no se promedia por accidente.
+**Nulable y no centinela.** Un `-1` vuelve a ser un número que alguien
+promedia. `NULL` no se promedia por accidente.
 
-**Los ceros históricos NO se convierten.** Un `0` ya guardado puede significar
-las dos cosas y no hay forma de saber cuál. Reinterpretarlos hacia atrás sería
-inventar datos. Desde esta migración, los nuevos distinguen; los viejos siguen
-siendo ambiguos y así se quedan.
+**Los ceros históricos NO se convierten.** Un `0` ya guardado puede
+significar las dos cosas: no hay forma de saber cuál. Reinterpretarlos
+hacia atrás sería inventar datos. Desde esta migración, los nuevos
+distinguen. Los viejos siguen siendo ambiguos, y así se quedan.
 
-**Reversible, con pérdida declarada.** `downgrade` rellena los nulos con `0` y
-vuelve a `NOT NULL`. No pierde filas, pero **sí pierde la distinción**: los «no
-hay proyectos» vuelven a ser ceros indistinguibles. Está escrito en el
-`downgrade()` porque el runbook de DES-02 §3.3 manda leerlo antes de bajar.
+**Reversible, con pérdida declarada.** `downgrade` rellena los nulos
+con `0` y vuelve a `NOT NULL`. No pierde filas, pero **sí pierde la
+distinción**: los «no hay proyectos» vuelven a ser ceros
+indistinguibles. Está escrito en el `downgrade()`, porque el runbook
+de DES-02 §3.3 manda leerlo antes de bajar.
 
 ---
 
@@ -838,30 +871,34 @@ hay proyectos» vuelven a ser ceros indistinguibles. Está escrito en el
 `ADD COLUMN currency VARCHAR(3) NULL` en `projects` y en `project_requests`.
 Sin datos que convertir, sin índices y sin restricción de valores.
 
-**Por qué.** `tenant.settings.currency` ofrecía MXN, USD y EUR y **el
-formulario que la guardaba era el único sitio que la leía**. Las diez
-superficies que muestran dinero traían `currency: "MXN"` escrito, así que un
-inquilino en dólares —el propio sembrado crea uno— veía sus importes rotulados
-en pesos. El número no estaba mal; la unidad era mentira, que en un importe es
-lo mismo que estar mal.
+**Por qué.** `tenant.settings.currency` ofrecía MXN, USD y EUR, pero
+**el formulario que la guardaba era el único sitio que la leía**. Las
+diez superficies que muestran dinero traían `currency: "MXN"` escrito.
+Un inquilino en dólares —el propio sembrado crea uno— veía sus
+importes rotulados en pesos. El número no estaba mal. La unidad era
+mentira, y en un importe eso es lo mismo que estar mal.
 
-Decisión del owner (2026-08-07): la preferida se queda a nivel de inquilino
-como **valor inicial**, y la moneda efectiva la elige cada **proyecto**. La
-solicitud la lleva también, porque su importe precede al proyecto.
+Decisión del owner (2026-08-07): la preferida se queda a nivel de
+inquilino como **valor inicial**, y la moneda efectiva la elige cada
+**proyecto**. La solicitud también la lleva, porque su importe
+precede al proyecto.
 
-**Nulable, y el nulo significa algo:** no es «sin moneda», es «la que diga el
-inquilino». Rellenar las filas existentes con `MXN` habría congelado la
-respuesta de hoy y roto justo lo que se viene a arreglar — quien cambie su
-preferida espera que sus proyectos sin elección la sigan.
+**Nulable, y el nulo significa algo:** no es «sin moneda», es «la que
+diga el inquilino». Rellenar las filas existentes con `MXN` habría
+congelado la respuesta de hoy. Habría roto justo lo que se viene a
+arreglar: quien cambie su preferida espera que sus proyectos sin
+elección la sigan.
 
-**Sin `CHECK` de valores.** La lista admitida vive en `app/dominio/moneda.py`;
-una restricción de columna obligaría a una migración para añadir la cuarta
-moneda, y el conjunto lo valida el esquema Pydantic en la frontera.
+**Sin `CHECK` de valores.** La lista admitida vive en
+`app/dominio/moneda.py`. Una restricción de columna obligaría a una
+migración por cada moneda nueva. El conjunto lo valida el esquema
+Pydantic en la frontera.
 
-**Reversible, con pérdida declarada.** `downgrade` quita la columna: no pierde
-filas, pero **sí la elección** — los proyectos que hubieran escogido una moneda
-distinta de la preferida vuelven a mostrarse con la del inquilino. Está escrito
-en el `downgrade()` porque el runbook de DES-02 §3.3 manda leerlo antes de bajar.
+**Reversible, con pérdida declarada.** `downgrade` quita la columna:
+no pierde filas, pero **sí la elección**. Los proyectos que hubieran
+escogido una moneda distinta de la preferida vuelven a mostrarse con
+la del inquilino. Está escrito en el `downgrade()`, porque el runbook
+de DES-02 §3.3 manda leerlo antes de bajar.
 
 ---
 
@@ -869,60 +906,69 @@ en el `downgrade()` porque el runbook de DES-02 §3.3 manda leerlo antes de baja
 
 `users.privacy_accepted_at` y `users.privacy_version`, las dos nulables.
 
-**Dos columnas y no una.** Con solo la fecha, «aceptó» responde *cuándo* y no
-*qué*: el día que cambie lo que se recoge no habría forma de saber a quién hay
-que volver a preguntarle sin cruzar fechas a mano contra el historial del
-documento. Con la versión al lado, la pregunta se responde comparando contra
-`aviso_privacidad.VERSION`, y por eso la pantalla puede volver a salir sola
-cuando el aviso cambia — que es lo que el owner pidió.
+**Dos columnas y no una.** Con solo la fecha, «aceptó» responde
+*cuándo*, no *qué*. El día que cambie lo que se recoge, no habría
+forma de saber a quién preguntarle de nuevo sin cruzar fechas a mano
+contra el historial del documento. Con la versión al lado, la
+pregunta se responde comparando contra `aviso_privacidad.VERSION`. Por
+eso la pantalla puede volver a salir sola cuando el aviso cambia, que
+es lo que pidió el owner.
 
-**El nulo significa algo.** Las cuentas anteriores al aviso no han aceptado
-nada. Rellenarlas con la fecha de la migración habría fabricado un
-consentimiento que nadie dio, que es exactamente lo que el control quiere
-impedir. Verán la pantalla al entrar, que es lo correcto.
+**El nulo significa algo.** Las cuentas anteriores al aviso no
+aceptaron nada. Rellenarlas con la fecha de la migración habría
+fabricado un consentimiento que nadie dio: justo lo que el control
+quiere impedir. Verán la pantalla al entrar, que es lo correcto.
 
-Al bajar se pierde el consentimiento registrado y todo el mundo volverá a verla.
-Es molesto y es lo correcto: conservarlo fuera de la columna para «restaurarlo»
-sería inventar un consentimiento a partir de algo que el esquema ya no modela.
+Al bajar se pierde el consentimiento registrado, y todo el mundo
+vuelve a verla. Es molesto y es lo correcto: conservarlo fuera de la
+columna para «restaurarlo» sería inventar un consentimiento a partir
+de algo que el esquema ya no modela.
 
 ## 0106 — Códigos de segundo factor de administración (ASVS 4.3.1)
 
 Tabla `admin_otp_codes`. Decisión del owner en ADR-035.
 
-**Tabla propia y no columnas en `users`** porque un código es un hecho con vida
-corta, no un atributo de la persona: nace, caduca a los diez minutos y se
-consume. En `users` habría que limpiar a mano lo que aquí caduca solo.
+**Tabla propia y no columnas en `users`**, porque un código es un
+hecho con vida corta, no un atributo de la persona: nace, caduca a
+los diez minutos y se consume. En `users` habría que limpiar a mano lo
+que aquí caduca solo.
 
-Se guarda el **resumen** del código, no el código. Seis dígitos no resisten una
-tabla precalculada, así que el resumen no protege de eso; protege de que un
-volcado de la base entregue códigos utilizables tal cual, que es el caso
-realista.
+Se guarda el **resumen** del código, no el código. Seis dígitos no
+resisten una tabla precalculada: el resumen no protege de eso.
+Protege de que un volcado de la base entregue códigos utilizables tal
+cual, que es el caso realista.
 
-`desafio` ata el código a **una** petición de inicio de sesión concreta (ASVS
-2.7.3): sin él, un código pedido en una pestaña serviría para completar el
-inicio de sesión que otra persona empezó en otra parte. `intentos` acota la
-fuerza bruta — un millón de combinaciones se prueban enteras en minutos.
+`desafio` ata el código a **una** petición de inicio de sesión
+concreta (ASVS 2.7.3). Sin él, un código pedido en una pestaña
+serviría para completar el inicio de sesión que otra persona empezó
+en otra parte. `intentos` acota la fuerza bruta: un millón de
+combinaciones se prueban enteras en minutos.
 
-Reversible sin pérdida de nada que importe: lo único que se tira son códigos con
-diez minutos de vida.
+Reversible, sin pérdida de nada que importe: lo único que se tira son
+códigos con diez minutos de vida.
 
 ## 0107 — Equipos de confianza para el segundo factor (ASVS 4.3.1)
 
-Tabla `dispositivos_confiables`. Decisión del owner en ADR-035 §Ventana: el
-código se pide una vez por equipo cada treinta días, no en cada entrada. Pedirlo siempre
-es lo que hace que un control acabe desactivado.
+Tabla `dispositivos_confiables`. Decisión del owner en ADR-035
+§Ventana: el código se pide una vez por equipo cada treinta días, no
+en cada entrada. Pedirlo siempre es lo que hace que un control acabe
+desactivado.
 
-**Sigue habiendo dos factores dentro de la ventana.** La cookie es un secreto de
-256 bits que solo tiene ese navegador —«algo que tienes»— y la contraseña sigue
-haciendo falta. Cambia el soporte del segundo factor, no su existencia.
+**Sigue habiendo dos factores dentro de la ventana.** La cookie es un
+secreto de 256 bits que solo tiene ese navegador: «algo que tienes».
+La contraseña sigue haciendo falta. Cambia el soporte del segundo
+factor, no su existencia.
 
-Se guarda **solo el resumen** del token. `user_id` no es decoración: la
-comprobación exige que el resumen **y** la cuenta coincidan, o la cookie de un
-equipo de confianza de una cuenta saltaría el segundo factor de otra — y el
-flujo seguiría funcionando igual, así que nadie lo vería.
+Se guarda **solo el resumen** del token. `user_id` no es decoración:
+la comprobación exige que el resumen **y** la cuenta coincidan. Si no,
+la cookie de un equipo de confianza de una cuenta saltaría el segundo
+factor de otra. El flujo seguiría funcionando igual, así que nadie lo
+vería.
 
-`revocado` en vez de borrar la fila: el cambio de contraseña revoca todos los
-equipos, y conviene poder ver después cuántos había y cuándo se usaron.
+`revocado` en vez de borrar la fila: el cambio de contraseña revoca
+todos los equipos. Conviene poder ver después cuántos había y cuándo
+se usaron.
 
-Al bajar, todo el mundo vuelve a pasar por el código en su siguiente entrada.
-Molesto y seguro, que es el lado correcto por el que equivocarse al revertir.
+Al bajar, todo el mundo vuelve a pasar por el código en su siguiente
+entrada. Es molesto y seguro: el lado correcto por el que equivocarse
+al revertir.

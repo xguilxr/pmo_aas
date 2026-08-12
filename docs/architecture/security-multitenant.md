@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-04
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -19,19 +19,19 @@ revisar_cada: 180d
 
 - 1 base de datos Postgres para todos los tenants.
 - Cada tabla tenant-scoped tiene `tenant_id` (`String(36)` UUID, indexado, `NOT NULL` salvo `users` para superadmins y `audit_log` para eventos platform-wide).
-- **El aislamiento se enforce en la capa de aplicación**: cada endpoint declara `Depends(get_current_tenant_id)` y filtra `WHERE tenant_id = :tid` en cada query.
+- **El aislamiento se aplica en la capa de aplicación**: cada endpoint declara `Depends(get_current_tenant_id)` y filtra `WHERE tenant_id = :tid` en cada query.
 - **Sin RLS** en Postgres (ver `database.md` §"Lo que NO usamos"). Una migración a RLS está como deuda en `DECISIONS.md`.
 
 **Descartadas:**
 - *Schema-per-tenant* — coste de migraciones × N tenants.
 - *DB-per-tenant* — coste de infra y backups.
-- *RLS Postgres* en MVP — costo de implementación; queda como deuda priorizable.
+- *RLS Postgres* en MVP — costo de implementación. Queda como deuda priorizable.
 
 > **Las amenazas y sus controles viven en [`modelo-amenazas.md`](./modelo-amenazas.md).**
-> Este documento describe cómo funciona el aislamiento; aquél, qué lo rompe y qué lo
+> Este documento describe cómo funciona el aislamiento. Aquél describe qué lo rompe y qué lo
 > sostiene. El riesgo de abajo es AM-02.
 
-> **Riesgo conocido:** un bug que omita el filtro `tenant_id` rompería el aislamiento. Mitigación: (a) los tests `TC-MT-*` validan el aislamiento end-to-end por endpoint; (b) code review obligatorio en toda ruta nueva.
+> **Riesgo conocido:** un bug que omita el filtro `tenant_id` rompería el aislamiento. Mitigación: (a) los tests `TC-MT-*` validan el aislamiento end-to-end por endpoint. (b) code review obligatorio en toda ruta nueva.
 
 ---
 
@@ -82,12 +82,12 @@ Rate limiting de `/forgot-password` y `/reset` vía Redis (`services/rate_limit.
     "exp": 1713459600
   }
   ```
-  > **Nota:** los roles NO viajan en el JWT. Se consultan vía `/auth/me/permissions` o se materializan en `CurrentUser` en cada request desde DB.
+  > Los roles NO viajan en el JWT. Se consultan vía `/auth/me/permissions` o se materializan en `CurrentUser` en cada request desde DB.
 
 - **Refresh token** — JWT HS256, TTL `REFRESH_TOKEN_TTL_SEC` (default **2_592_000 s = 30 días**).
   - Cookie `HttpOnly; Secure; SameSite=Strict`.
   - **Persistido en tabla `refresh_tokens`** (`id`, `user_id`, `jti`, `expires_at`, `revoked: bool`).
-  - Rotación: cada refresh emite un nuevo par y marca el anterior `revoked=true`. No usamos Redis para la blacklist; está en Postgres.
+  - Rotación: cada refresh emite un nuevo par y marca el anterior `revoked=true`. No usamos Redis para la blacklist. Está en Postgres.
 
 ### 2.3 Cambio de tenant activo
 
@@ -122,7 +122,7 @@ PASSWORD_POLICY_MIN_LEN = 8
 - **No** hay blocklist de "20 contraseñas más comunes" (estaba en la versión vieja del doc, nunca se implementó).
 - **No** se valida "no reutilizar contraseña actual" automáticamente.
 
-> Si quieres subir a min 12 + blocklist + reuse check, abrir issue de hardening — la política actual cumple lo mínimo pero es relajada para un SaaS PMO.
+> Si quieres subir a min 12 + blocklist + reuse check, abre un issue de hardening. La política actual cumple lo mínimo, pero es relajada para un SaaS PMO.
 
 ### 2.6 Reset de contraseña
 
@@ -196,7 +196,7 @@ Un superadmin puede conceder o revocar capabilities específicas a roles dentro 
 - Acciones del superadmin sobre sí mismo van con `action="superadmin.self_update"` (auditabilidad explícita).
 - Hard delete de tenant requiere confirmación textual del slug.
 
-> **Pendiente verificar en código** si están enforced: "no desactivarse a sí mismo" y "no borrar el último superadmin". Si no están, abrir issue de hardening.
+> **Pendiente verificar en código** si se aplican: "no desactivarse a sí mismo" y "no borrar el último superadmin". Si no se aplican, abre un issue de hardening.
 
 > **NO existen** (a pesar de versiones viejas del doc):
 > - `POST /superadmin/users/{id}/anonymize` (derecho al olvido) — sin endpoint.
@@ -230,9 +230,9 @@ Estado real:
 
 - `apps/web/next.config.js` **no define `async headers()`** — solo `redirects`. No hay CSP, HSTS, X-Frame-Options, ni Permissions-Policy configurados a nivel framework.
 - Hay `poweredByHeader: false` (oculta `X-Powered-By: Next.js`).
-- Railway añade headers básicos por su edge, pero **CSP estricto y HSTS hay que configurarlos** si vamos a hacer hardening real.
+- Railway añade headers básicos por su edge. **CSP estricto y HSTS quedan por configurar** para hardening real.
 
-**Pendiente:** agregar `headers()` en `next.config.js` con CSP mínimo, HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`. Abrir issue de hardening.
+**Pendiente:** agrega `headers()` en `next.config.js` con CSP mínimo, HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`. Abre un issue de hardening.
 
 ---
 
@@ -255,14 +255,14 @@ Estado real:
 ## 8. Secretos y variables
 
 - Variables sensibles viven en Railway Variables. No en repo.
-- Secretos cifrados en DB: las API keys de providers BYO se cifran con **Fernet** (`services/ai_secrets.py`); la key Fernet vive en env.
+- Secretos cifrados en DB: las API keys de providers BYO se cifran con **Fernet** (`services/ai_secrets.py`). La key Fernet vive en env.
 - Rotación de `JWT_SECRET`, `JWT_REFRESH_SECRET`, `DB_PASSWORD` — sin proceso formal aún. **Pendiente** documentar runbook.
 
 ---
 
 ## 9. Compliance y privacidad — estado actual
 
-- **Audit log** (`audit_log`) con `ip_address` y `user_agent` para forense. Retención: **no hay política formal de purga** — los registros crecen indefinidamente. Si se necesita, abrir issue para job de purga / archivado.
+- **Audit log** (`audit_log`) con `ip_address` y `user_agent` para forense. Retención: **no hay política formal de purga** — los registros crecen indefinidamente. Si se necesita, abre un issue para el job de purga o archivado.
 - **Datos personales mínimos**: email, username, full_name, avatar opcional.
 - **Derecho al olvido**: sin endpoint dedicado (ver §4).
 - **Export de datos del tenant**: sin endpoint dedicado.

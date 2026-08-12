@@ -2,17 +2,17 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-06
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
 # Copias de seguridad y restauración
 
-Cierra **MCS INF-03** («DEBEN existir copias de seguridad automáticas») y da a
+Cierra **MCS INF-03** («DEBEN existir copias de seguridad automáticas») y le da a
 `DES-02` su procedimiento de vuelta atrás sobre datos.
 
 > **Lo único que convierte un fichero en una copia de seguridad es haberlo
-> restaurado.** El §4 de este documento es el que importa; el resto describe
+> restaurado.** El §4 de este documento es el que importa. El resto describe
 > una máquina que produce archivos.
 
 ---
@@ -28,8 +28,8 @@ Cierra **MCS INF-03** («DEBEN existir copias de seguridad automáticas») y da 
 | **Código** | `apps/api/app/services/respaldo.py` · tarea `respaldo.diario` |
 
 **Por qué no basta con las copias de Railway.** Son útiles y siguen ahí. No
-bastan porque viven **en el mismo proveedor que la base** —un problema de
-cuenta se lleva las dos a la vez— y porque este repositorio no puede
+bastan porque viven **en el mismo proveedor que la base**: un problema de
+cuenta se lleva las dos a la vez. Tampoco este repositorio puede
 verificarlas. Esta copia va a otro proveedor y sí se puede comprobar.
 
 **Media hora después del snapshot semanal** (02:00 UTC los lunes) para no
@@ -45,7 +45,7 @@ competir por E/S con él: los dos leen la base entera.
 | `S3_BUCKET`, `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Dónde se guarda |
 
 El binario `pg_dump` viene en la imagen (`postgresql-client` en el
-`Dockerfile`). **Si desaparece de ahí, la copia falla entera** y hay un caso que
+`Dockerfile`). **Si desaparece de ahí, la copia falla entera.** Hay un caso que
 lo vigila.
 
 ---
@@ -58,7 +58,7 @@ aws s3 ls s3://$S3_BUCKET/respaldos/postgres/ \
 ```
 
 Debe aparecer la fecha de hoy con un tamaño **parecido al de ayer**. Un archivo
-que encoge de golpe es la señal de alarma: puede ser un volcado parcial, y eso
+que encoge de golpe es la señal de alarma: puede ser un volcado parcial. Eso
 no lanza ningún error.
 
 El tamaño también sale en los registros del worker, en el evento
@@ -88,8 +88,8 @@ pg_restore --dbname "postgresql://USUARIO:CLAVE@HOST:5432/pmoaas_restauracion" \
 ```
 
 **La URL no puede llevar el dialecto de SQLAlchemy.** Si copias `DATABASE_URL`
-tal cual, trae `+psycopg` o `+asyncpg`, y `libpq` **no da error**: ignora lo que
-no entiende y se conecta al socket local, que falla hablando de un rol
+tal cual, trae `+psycopg` o `+asyncpg`. Y `libpq` **no da error**: ignora lo que
+no entiende y se conecta al socket local. Ahí falla, hablando de un rol
 inexistente. El mensaje no menciona la causa. Quita el sufijo.
 
 ### 4.3 Comprobar antes de apuntar nada a ella
@@ -105,14 +105,14 @@ pregunta real: no «¿se restauró?» sino «¿cuánto se perdió?».
 
 ### 4.4 Recién entonces, cambiar `DATABASE_URL`
 
-Y correr `alembic upgrade head`: la copia trae el esquema del día que se hizo,
+Y corre `alembic upgrade head`: la copia trae el esquema del día que se hizo
 y puede faltarle migraciones posteriores.
 
 ---
 
 ## 5. Restauración parcial — una sola tabla
 
-El formato custom permite sacar una tabla sin tocar el resto, que es lo que
+El formato custom permite sacar una tabla sin tocar el resto. Es lo que
 hace falta cuando el incidente es «alguien borró un proyecto», no «se cayó la
 base»:
 
@@ -141,6 +141,6 @@ rescate quirúrgico, restaurá a la base nueva y copiá las filas que hagan falt
 
 ## 7. Cuándo esto deja de valer
 
-Revisar este documento si cambia el proveedor de almacenamiento, si la base
+Revisa este documento si cambia el proveedor de almacenamiento, si la base
 crece hasta que el volcado supere los 30 minutos del tope, o si entra un
 segundo servicio con datos propios.

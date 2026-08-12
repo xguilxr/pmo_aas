@@ -23,7 +23,7 @@ from app.models.user import User
 
 log = logging.getLogger(__name__)
 
-# Tipos canónicos (ver EP011-notifications.md). Mantener sincronizado con
+# Tipos canónicos (ver docs/archive/epics/EP011-notifications.md). Mantener sincronizado con
 # el frontend `NOTIFICATION_TYPE_LABEL`.
 REQUEST_APPROVED = "request_approved"
 REQUEST_REJECTED = "request_rejected"

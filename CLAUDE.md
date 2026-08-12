@@ -2,221 +2,134 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-04
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
 # CLAUDE.md — Reglas de trabajo para Claude Code
 
-> Este archivo define **cómo trabajo** en este repo. Se lee al inicio de
-> cada sesión junto con `SPRINT.md`, `HANDOFF.md` y el índice de epics.
-> Si algo aquí contradice otro doc, **este archivo gana** hasta que el
-> owner lo actualice.
-
----
+> Define cómo se trabaja en este repo. Si contradice otro doc, este archivo
+> gana hasta que el owner lo actualice.
 
 ## 0. Principios rectores
 
-> **Decisión owner 2026-04-29 + 2026-05-22:** estos principios mandan sobre todo lo demás.
+### 0.1 Solucionar > documentar
 
-### 0.1 Solucionar > documentar (issues / tracking)
-
-El proceso de issue tracking, triage, bloques y SPRINT.md existe para
-**ordenar** el trabajo, no para reemplazarlo. Si una sesión gasta más
-ronda en mover items entre INBOX/Bloques que en escribir código,
-algo está mal. Más enfoque en solucionar, menos en documentar issues.
+El tracking (issues, bloques, SPRINT.md) ordena el trabajo; no lo reemplaza.
+Dedica la ronda a escribir código, no a mover items entre listas.
 
 ### 0.2 Documentación del producto pristina
 
-> **Nuevo 2026-05-22.** Co-principio que NO compite con 0.1.
+Las epics (`docs/epics/EP0XX-*.md`) describen la funcionalidad del producto,
+no el plan de trabajo. **Epic** = qué hace la plataforma (viva). **Issue** =
+instrucción técnica puntual. **SPRINT.md** = orden y estado del trabajo.
 
-Las **epics (`docs/epics/EP0XX-*.md`) describen la funcionalidad del
-producto**, no el plan de trabajo. Cuando un commit cambia el
-comportamiento descrito en una epic, **la epic debe actualizarse en el
-mismo bloque de trabajo**, no después.
+Si un commit cambia comportamiento, schema o endpoints descritos en una epic,
+actualiza la epic **en el mismo bloque**. Schema: además `DB-CHANGES.md`.
+Decisión arquitectónica: además `DECISIONS.md`. Redacta la edición con un
+sub-agente Haiku (skill `delegar`). Un cambio interno (refactor, typo) no
+actualiza nada.
 
-Distinción clave:
-- **Epic** = qué hace la plataforma, descripción funcional, viva.
-- **Issue** = instrucción técnica para implementar un cambio puntual.
-- **SPRINT.md** = orden y estado del trabajo en curso.
+Reglas blandas (no anulan 1 US = 1 commit ni la revisión del owner):
 
-Cuando una US/ENH/BUG modifica:
-- Comportamiento descrito en la epic → actualizar epic.
-- Schema descrito en la epic → actualizar epic (+ DB-CHANGES.md).
-- Endpoint nuevo / removido / renombrado → actualizar epic.
-- Decisión arquitectónica → además actualizar `DECISIONS.md`.
-
-Si el cambio NO afecta la descripción del producto (refactor interno,
-fix de typo, optimización transparente), no hay nada que actualizar.
-
-**Implementación práctica:** usa un sub-agente con modelo Haiku
-(rápido + barato) para redactar/refinar la edición del epic doc
-después del commit principal. El patrón está en la skill `delegar`.
-
-Reglas blandas (no son atajos para saltarse 1 US = 1 commit ni la
-revisión del owner, pero sí relajan el ceremonial):
-
-- **El gate `status:ready` se respeta**, pero una vez aprobado no
-  hay que volver a justificar el scope: implementar y demostrar que
-  funciona.
-- **Si un issue ya está implementado** en otro commit/branch →
-  cherry-pick + verificar + cerrar. No re-triagear ni re-asignar
-  bloque.
-- **Si el AC tiene scope grande** (>1 día), entregar el **MVP
-  funcional** + documentar el resto como "diferido (no bloqueante)"
-  en el comment de cierre. Mejor cerrar 80% que dejar abierto al 20%.
-- **Tests + typecheck verdes son la única condición** para considerar
-  un fix terminado. Si pasan, se commitea. Si no, se itera hasta que
-  pasen — sin batchear.
-- **El comment de cierre demuestra** que funciona (TC ejecutados +
-  verificación). No es opcional. Es la diferencia entre "fix
-  submitted" y "fix delivered".
-- **Council de 3 agentes (mini consejo):** se hace **internamente**
-  por default (3 perspectivas en el reasoning). Solo se delega a
-  sub-agents cuando la decisión arquitectónica lo amerita (>1 día de
-  ETA o blast radius alto).
-- **Saltarse las reglas de bloques** está permitido cuando el owner
-  pide ejecutar un batch de issues. La regla **1 issue = 1 commit**
-  no se salta.
-
-Si terminar una ronda implica saturar memoria/context con lectura de
-docs auxiliares, prefiere ejecutar y demostrar; el doc se actualiza
-al final del bloque, no en cada paso.
-
----
+- `status:ready` aprobado → implementar y demostrar, sin re-justificar scope.
+- Issue ya implementado en otro branch → cherry-pick + verificar + cerrar.
+- AC de más de 1 día → MVP + el resto «diferido (no bloqueante)» en el cierre.
+- Tests + typecheck verdes = terminado. Rojo → iterar, sin batchear.
+- El comment de cierre demuestra que funciona (TC ejecutados). No es opcional.
+- Council de 3 agentes: interno por default; sub-agentes solo si la decisión
+  lo amerita (>1 día de ETA o blast radius alto).
+- Un batch del owner salta reglas de bloques; 1 issue = 1 commit no se salta.
 
 ## 0.3 Verificación, contexto y acciones irreversibles
 
-**Cómo se comprueba que algo funciona aquí: skill `verificar`.** Stack,
-preparación del entorno, los siete comandos con su criterio, los gates de CI y
-las rutas que no se editan a mano. Vive en una skill porque se consulta **al
-verificar**, no en cada turno.
-
-**Definición de terminado (MCA FLU-02).** Lint, typecheck y tests de API en
-verde, criterio `exit 0` y nunca un conteo. Sin excepciones ni fallos
-«esperados». Si algo sale rojo, es tuyo. El DoD de `cerrar-item` se marca
-**después**, no en su lugar.
-
-**El contexto permanente tiene techo y CI lo hace cumplir.** Si tu cambio
-engorda `CLAUDE.md`, `SPRINT.md` o `HANDOFF.md`, `scripts/check_contexto.py`
-falla. Umbrales y razones en `conformidad.yaml`; no se suben sin escribir por
-qué, y recortar es la respuesta por defecto.
-
-**Lo que el modelo devuelve pasa por un conjunto de evaluación con umbral** (MCS
-IA-07/08/09), job `evaluacion-ia`. Un fallo de IA que llegue a un usuario entra
-al conjunto **antes** de arreglarse: `apps/api/evaluacion/README.md`.
-
-**Las amenazas y sus controles** viven en `docs/architecture/modelo-amenazas.md`.
-Una ruta sin autenticación o un destino externo nuevo rompen su trinquete a
-propósito: obligan a pasar por el modelo antes de declararlos.
-
-**Lo irreversible se bloquea; preguntar no alcanzaba** (MCA AUT-01). Lo hace
-`scripts/guard_irreversible.py` como hook `PreToolUse`. Se **bloquea** `--force`
-sin lease, `--no-verify`, push a `main`, `alembic upgrade`/`downgrade`,
-`DROP`/`TRUNCATE`, `rm -rf`, `reset --hard`/`clean -f` y `branch -D`. Se
-**pregunta** solo ante `--force-with-lease`, `gh issue close` y `commit --amend`.
-Con los permisos de la sesión relajados, un `ask` no abre diálogo y el comando
-corre igual; `deny` frena en cualquier modo. Motivos en el docstring del guard,
-trinquete en `apps/api/tests/test_mca_aut01_guard.py`.
-
----
+- **Cómo se verifica**: skill `verificar` (stack, entorno, comandos, gates de
+  CI, rutas que no se editan a mano).
+- **Terminado (MCA FLU-02)**: lint, typecheck y tests de API con `exit 0`,
+  nunca un conteo. Rojo = tuyo. El DoD de `cerrar-item` va después.
+- **El contexto permanente tiene techo**; `scripts/check_contexto.py` lo hace
+  cumplir en CI. Umbrales y razones en `conformidad.yaml`; no se suben sin
+  escribir por qué. Recortar es la respuesta por defecto.
+- **La salida del modelo pasa por el conjunto de evaluación** (MCS IA-07/08/09,
+  job `evaluacion-ia`). Un fallo que llegó a un usuario entra al conjunto antes
+  del fix: `apps/api/evaluacion/README.md`.
+- **Amenazas y controles**: `docs/architecture/modelo-amenazas.md`. Ruta sin
+  autenticación o destino externo nuevo → primero el modelo, después el código.
+- **Lo irreversible se bloquea** (MCA AUT-01): `scripts/guard_irreversible.py`,
+  hook `PreToolUse`. Bloquea `--force` sin lease, `--no-verify`, push a `main`,
+  `alembic upgrade`/`downgrade`, `DROP`/`TRUNCATE`, `rm -rf`,
+  `reset --hard`/`clean -f` y `branch -D`. Pregunta ante `--force-with-lease`,
+  `gh issue close` y `commit --amend`. Un `ask` no frena con permisos
+  relajados; un `deny` sí. Trinquete: `apps/api/tests/test_mca_aut01_guard.py`.
 
 ## 1. Qué se carga siempre, y qué bajo demanda
 
 **Siempre**, en este orden:
 
-1. `docs/project-management/HANDOFF.md` — puente de la sesión anterior. Dice dónde retomar.
-2. `CLAUDE.md` (este archivo) — lo que manda en cada turno.
+1. `docs/project-management/HANDOFF.md` — puente de la sesión anterior.
+2. `CLAUDE.md` (este archivo).
 3. `docs/project-management/SPRINT.md` — IN-PROGRESS e INBOX.
-4. `docs/epics/README.md` — índice de epics: qué cubre cada uno y de qué depende.
+4. `docs/epics/README.md` — índice de epics.
+5. `docs/project-management/LESSONS.md` — patrones aprendidos (§14).
 
 **Bajo demanda**, cuando el trabajo lo pide y no antes:
 
 | Se abre | Cuándo |
 |---|---|
-| `docs/epics/EP0XX-*.md` | Al **tocar** ese epic. El índice basta para decidir cuál |
+| `docs/epics/EP0XX-*.md` | Al tocar ese epic; el índice dice cuál |
 | `docs/project-management/SPRINT-BACKLOG.md` | Al planear, no al ejecutar |
 | `docs/epics/DECISIONS.md` | Ante duda arquitectónica |
 | `docs/epics/DB-CHANGES.md` | Si el cambio toca esquema |
 | Skill `verificar` | Al comprobar que algo funciona |
-| `docs/architecture/modelo-amenazas.md` | Si el cambio cruza una frontera de confianza |
+| `docs/architecture/modelo-amenazas.md` | Si se cruza una frontera de confianza |
 
-> **Por qué el epic ya no se carga entero.** La regla anterior obligaba a leer
-> «el epic relevante» antes de empezar, y eso metía un documento funcional
-> completo en el contexto permanente antes de saber siquiera si se iba a abrir.
-> El índice cuesta una fracción y sirve para lo único que hacía falta al
-> arrancar: decidir cuál abrir. Es MCA CTX-04 — y bajar la cifra sin partir de
-> verdad el documento sería falsear la medición, no reducirla. Las mediciones
-> fechadas están en `conformidad.yaml`.
-
-**No** leer código ni docs por exploración abierta fuera de estas listas. El
-contexto es finito y el techo lo hace cumplir el CI.
-
----
+No se explora fuera de estas listas: el contexto es finito y el CI hace cumplir
+el techo (MCA CTX-04; mediciones fechadas en `conformidad.yaml`).
 
 ## 2. Numeración de identificadores
 
 | Prefijo | Uso | Contador |
 |---|---|---|
-| `US-###` | Historia de usuario viva del diseño | Global, auto-incremento |
-| `BUG-###` | Bug reportado por el owner | Propio, auto-incremento |
-| `ENH-###` | Enhancement sobre US existente | Propio, auto-incremento |
-| `EP0XX` | Épica (3 dígitos) | Asignado manualmente |
-| `DEC-###` | Decisión arquitectónica | Ver `DECISIONS.md` |
-| `ADR-###` | Architecture Decision Record | Ver `docs/adr/` |
-| `TC-###` | Test case | Ver el epic que lo cubre |
+| `US-###` | Historia de usuario | Global, auto-incremento |
+| `BUG-###` | Bug del owner | Propio, auto-incremento |
+| `ENH-###` | Enhancement sobre US | Propio, auto-incremento |
+| `EP0XX` | Épica | Manual |
+| `DEC-###` | Decisión arquitectónica | `DECISIONS.md` |
+| `ADR-###` | Architecture Decision Record | `docs/adr/` |
+| `TC-###` | Test case | El epic que lo cubre |
 
-**El próximo ID libre se deriva, no se almacena** (MCA CTX-03):
+El próximo ID libre **se deriva, no se almacena** (MCA CTX-03):
 
 ```bash
-git fetch origin main            # SIEMPRE contra main actualizado
+git fetch origin main            # siempre contra main actualizado
 python scripts/proximo_id.py     # --detalle muestra el máximo por fuente
 ```
 
-Une GitHub, `git log` y los docs, y toma el máximo. **No basta `gh issue list`:**
-muchos batches se ejecutaron por chat sin crear issues. El porqué y el incidente
-de IDs duplicados de 2026-06-06 —cuyos IDs canónicos son **ENH-155..158 /
-BUG-077**— están en el docstring del script.
+Une GitHub, `git log` y los docs, y toma el máximo. `gh issue list` solo no
+basta: hubo batches por chat sin issue. Porqué: docstring del script.
 
-**Reglas:**
-- Si una US ya no aplica, queda tachada en el sprint pero **no** se reusa su
-  número.
-- Los **ENH no crean US nueva**: actualizan la US afectada y quedan como
-  referencia/lineage. Ej.: `ENH-003 (afecta US-042)` se documenta en el issue y
-  en `SPRINT.md` como enhancement a la US existente.
-- Los commits históricos todavía referencian `US-NEW-###` y `US-BUG-###`
-  (prefijos antiguos). No se reescribe historia; `git log --grep=042` funciona
-  vía substring.
-
----
+Reglas: un número de US retirada no se reusa. Un ENH no crea US nueva:
+actualiza la afectada y queda como lineage (`ENH-003 (afecta US-042)`). Los
+commits históricos usan prefijos viejos (`US-NEW-###`, `US-BUG-###`); no se
+reescribe historia.
 
 ## 3. Ciclo de trabajo
-
-De la idea al fix entregado, en cuatro fases:
 
 ```
 Fase A — Planeación / Diseño   →   Fase B — Triage e issues   →
 Fase C — Implementación        →   Fase D — Cierre (owner)
 ```
 
-| Fases | Qué cubren | Dónde vive el procedimiento |
-|---|---|---|
-| **A y B** | Discovery, draft en `docs/epics/drafts/`, clasificación BUG/ENH/US, plantilla de issue, labels, integración a SPRINT.md | skill **`triage`** |
-| **C y D** | Slice end-to-end, commit, comment de cierre con evidencia, DoD, cierre de bloque | skill **`cerrar-item`** |
+Fases A y B: skill **`triage`**. Fases C y D: skill **`cerrar-item`**.
 
-Lo que no se delega a una skill porque manda siempre:
+Manda siempre:
 
-- **1 US/BUG/ENH = 1 commit.** Sin excepciones (ver §7).
-- **Claude no arranca sin OK explícito del owner**, por label `status:ready` o
-  por chat.
+- **1 US/BUG/ENH = 1 commit** (§7).
+- Claude no arranca sin OK del owner: label `status:ready` o chat.
 - **Claude nunca cierra un issue.** Lo cierra el owner al verificar.
-- **El comment de cierre demuestra que funciona** (TC ejecutados +
-  verificación). Es la diferencia entre «fix submitted» y «fix delivered».
-- Si un fix toca **más de 10 archivos**, parar y validar con el owner.
-- Si la US toca schema sin migración clara, parar y consultar `DB-CHANGES.md` +
-  `DECISIONS.md`.
-
----
+- El comment de cierre demuestra que funciona (TC + verificación).
+- Fix de más de 10 archivos → parar y validar con el owner.
+- Schema sin migración clara → parar; `DB-CHANGES.md` + `DECISIONS.md`.
 
 ## 4. Convenciones de commit
 
@@ -224,149 +137,89 @@ Lo que no se delega a una skill porque manda siempre:
 <tipo>(<scope>): <ID> — <desc corta> (refs #<issue>)
 ```
 
-**Tipos:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `wip`.
+Tipos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `wip`.
+Scopes comunes: `api`, `web`, `worker`, `org`, `auth`, `dashboard`, `projects`,
+`admin`, `superadmin`, `requests`, `branding`, `ai`, `ops`, `infra`, `epics`,
+`sprint`, `landing`, `decisions`, `db`, `archive`, `rename`.
 
-**Scopes comunes:**
-- `api` — backend FastAPI
-- `web` — frontend Next.js
-- `worker` — worker Railway
-- `org`, `auth`, `dashboard`, `projects`, `admin`, `superadmin`,
-  `requests`, `branding`, `ai`, `ops`, `infra`, `epics`, `sprint`,
-  `landing`, `decisions`, `db`, `archive`, `rename`
+Ejemplo: `fix(web): BUG-006 — sidebar muestra items admin a usuarios plain (refs #42)`
 
-**Ejemplos:**
-```
-fix(web): BUG-006 — sidebar muestra items admin a usuarios plain (refs #42)
-feat(api): US-051 — endpoint /exports/minutes con filtro por período (refs #43)
-docs(sprint): mueve BUG-006 de INBOX a Bloque 18 (refs #42)
-```
-
-**Reglas de commit:**
-- Si el contexto se agota a mitad, `wip(scope): US-051 — avance parcial (refs #N)`
-  y anotar en `SPRINT.md` dónde quedó.
-- **No** hacer `--amend` a commits ya pusheados.
-- **No** usar `--no-verify` para saltar hooks.
-
----
+Reglas: contexto agotado a mitad → `wip(scope): US-051 — avance parcial` y
+anotar en `SPRINT.md` dónde quedó. **No** hacer `--amend` a commits ya
+pusheados. **No** usar `--no-verify` para saltar hooks.
 
 ## 5. Labels de GitHub
 
-Set de labels, colores y el diagrama de transición de status: skill **`triage`**.
-
-**Gate de arranque:** Claude **no** empieza una US/BUG/ENH sin `status:ready`, o
-sin un OK explícito del owner por chat. La transición `triage → ready` la hace
-el owner, nunca Claude.
-
----
+Set de labels y transiciones: skill **`triage`**. Sin `status:ready` (o OK del
+owner por chat) no se empieza. La transición `triage → ready` es del owner.
 
 ## 6. SPRINT.md
 
-Vive en `docs/project-management/SPRINT.md`. Secciones: IN-PROGRESS · INBOX /
-TRIAGE · Deferred · DONE (tabla resumen) · Backlog v2.0. El detalle de lo
-cerrado va a `SPRINT-DONE-HISTORY.md`.
-
-**No se actualiza en cada commit** — se actualiza al crear issues, al cerrar
-bloque, al cerrar sprint y al cerrar sesión.
-
-**Nunca pasa de 250 líneas.** Lo hace cumplir el CI (§0.3). La estructura
-completa, la tabla de frecuencia y el cleanup de cierre de sprint viven en la
-skill **`handoff`**, que es quien los ejecuta.
-
----
+Vive en `docs/project-management/SPRINT.md`. Secciones: IN-PROGRESS ·
+INBOX/TRIAGE · Deferred · DONE · Backlog v2.0. El detalle de lo cerrado va a
+`SPRINT-DONE-HISTORY.md`. Se actualiza al crear issues y al cerrar bloque,
+sprint o sesión — no en cada commit. Techo de líneas: §0.3. Estructura y
+cleanup: skill **`handoff`**.
 
 ## 7. Regla sagrada: 1 US = 1 commit
 
-No acumular cambios de varias US en un solo commit, nunca.
-
-Excepciones permitidas:
-- Commits de **docs puros** que tocan SPRINT.md y moviendo dos US al
-  mismo tiempo (ej.: cerrar bloque completo).
-- Commits de **housekeeping** (`docs(rename)`, `chore(cleanup)`) que no
-  están atados a una US específica.
-
----
+Nunca se acumulan cambios de varias US en un commit. Excepciones: docs puros
+que mueven varias US en `SPRINT.md` (cerrar bloque) y housekeeping
+(`docs(rename)`, `chore(cleanup)`) sin US específica.
 
 ## 8. Branch policy
 
 - `main` — productivo. No se pushea directo.
-- `claude/<tema>-<sufijo>` — branch de trabajo de Claude. Todas las US
-  se hacen aquí; el PR lo abre el owner o Claude (según quién esté
-  manejando la sesión).
-- Cada sesión de Claude tiene asignada una branch específica; ver
-  `SPRINT.md` → IN-PROGRESS para la activa.
+- `claude/<tema>-<sufijo>` — branch de trabajo de Claude. El PR lo abre el
+  owner o Claude. La branch activa está en `SPRINT.md` → IN-PROGRESS.
+- Branch atrás de `main` (CI rojo por cambios de `main`, colisión de revisiones
+  de Alembic): skill **`rebasear`**.
 
-**Branch atrás de `main`** (el CI falla por algo que trajo `main`, o hay colisión
-de revisiones de Alembic): skill **`rebasear`**. Se abre al rebasear, que es una
-vez al mes; no se paga en cada turno (MCA CAP-01).
-
-### Sesiones secuenciales > paralelas (decisión owner 2026-05-22)
-
-Tras múltiples collisions de migraciones por paralelizar lanes en el
-mismo sprint, la metodología por default es:
-
-- **1 sesión activa = 1 lane = 1 branch.**
-- Migraciones consecutivas, sin paralelización.
-- Esperar CI verde + merge antes de arrancar la siguiente US.
-- La paralelización solo se justifica si los lanes son completamente
-  independientes (sin migraciones, sin schemas compartidos).
-
----
+Sesiones secuenciales > paralelas (owner 2026-05-22): 1 sesión = 1 lane =
+1 branch; migraciones consecutivas; CI verde + merge antes de la siguiente US.
+Paralelizar solo lanes sin migraciones ni schemas compartidos.
 
 ## 9. Cuando dudar
 
-- Si un item no calza claramente en BUG/ENH/US → **preguntar**.
-- Si no hay Bloque activo razonable → **proponer** "Bloque X+1" y esperar.
-- Si la US requiere tocar schema sin migración clara → **parar** y
-  consultar `DB-CHANGES.md` + `DECISIONS.md`.
-- Si un fix toca más de 10 archivos → **parar** y validar con el owner
-  antes de seguir.
-
----
+- Item que no calza en BUG/ENH/US → **preguntar**.
+- Sin bloque activo razonable → **proponer** «Bloque X+1» y esperar.
+- Schema sin migración clara → **parar**; `DB-CHANGES.md` + `DECISIONS.md`.
+- Fix de más de 10 archivos → **parar** y validar con el owner.
 
 ## 10. Memoria y contexto
 
-- **No** leer archivos grandes completos cuando basta una sección.
-- Para rename/refactor masivo, preferir `sed` vía Bash (no carga contenido a
-  memoria) sobre `Edit` con `replace_all`.
-- Al abrir un archivo, anotar qué se necesita y descartarlo después.
-- Si el contexto se agota: commit `wip:` y documentar dónde quedó en
-  `SPRINT.md` (IN-PROGRESS) antes de terminar la sesión.
-- El contexto permanente tiene techo y lo hace cumplir el CI (§0.3).
-
-**Delegar a sub-agentes** es la forma principal de no quemar contexto en trabajo
-mecánico. Cuándo hacerlo, con qué modelo y el modelo de orquestación: skill
-**`delegar`**.
-
----
+- No leer archivos completos cuando basta una sección.
+- Rename/refactor masivo: `sed` vía Bash antes que `Edit` con `replace_all`.
+- Contexto agotado → commit `wip:` y anotar en `SPRINT.md` dónde quedó.
+- El techo del contexto permanente: §0.3.
+- Delegar trabajo mecánico a sub-agentes: skill **`delegar`**.
 
 ## 11. Resumen de ronda
 
-Al cerrar **cada turno** se entrega un resumen al owner: qué se hizo, qué
-archivos cambiaron y qué acciones externas le quedan. Nunca se omite el bloque
-de acciones externas: si no hay ninguna, se escribe «ninguna».
-
-Plantilla y reglas en la skill **`resumen-ronda`**.
-
----
+Cada turno cierra con un resumen al owner: qué se hizo, qué archivos cambiaron
+y qué acciones externas le quedan («ninguna» si no hay). Plantilla: skill
+**`resumen-ronda`**.
 
 ## 12. Handoff entre sesiones — `/handoff`
 
-- **Al abrir sesión:** leer `HANDOFF.md` **antes que `SPRINT.md`**. Es el puente
-  que dejó la sesión anterior. Si está vacío o desactualizado, pedírselo al
-  owner antes de retomar.
-- **Al cerrar sesión:** el owner invoca `/handoff`. Limpia `SPRINT.md`, archiva
-  lo cerrado y reescribe `HANDOFF.md`. Aunque la sesión no haya producido
-  commits, igual deja el puente.
-
-Procedimiento completo en la skill **`handoff`**.
-
----
+Al abrir: leer `HANDOFF.md` **antes** que `SPRINT.md`; si está vacío o viejo,
+pedirlo al owner. Al cerrar: el owner invoca `/handoff` (limpia `SPRINT.md`,
+archiva y reescribe `HANDOFF.md`), haya o no commits. Skill **`handoff`**.
 
 ## 13. Mentalidad end-to-end
 
-> **Decisión owner 2026-05-23.** Cada cambio de funcionalidad se piensa como
-> **slice completo** (backend → worker → DB → UX → UI → docs), no como rebanada
-> técnica suelta. Si la funcionalidad no es alcanzable desde la UI, no existe.
+Cada cambio es un slice completo: backend → worker → DB → UX → UI → docs
+(owner 2026-05-23). Si no es alcanzable desde la UI, no existe. Checklist y
+DoD: skill **`cerrar-item`**.
 
-El checklist por capa, las anclas concretas (qué obliga a qué) y el DoD viven en
-la skill **`cerrar-item`**. Se cargan al cerrar un item, que es cuando se usan.
+## 14. Flujo de trabajo
+
+- **Plan mode** para toda tarea no trivial (3+ pasos): plan corto, aprobación,
+  ejecución.
+- **Sub-agentes solo para research amplio** (explorar, buscar, inventariar).
+  Nunca para verificar trabajo propio: la verificación se ejecuta directo.
+- **Simplicidad primero**: el cambio más pequeño que resuelve, con impacto
+  mínimo sobre lo que ya funciona.
+- **Loop de auto-mejora**: tras cualquier corrección del owner, registrar el
+  patrón en `docs/project-management/LESSONS.md` (máx. 40 líneas; una lección
+  se poda al volverse regla o gate). Se lee al abrir ronda (§1).

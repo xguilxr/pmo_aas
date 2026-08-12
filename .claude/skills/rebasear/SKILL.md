@@ -1,6 +1,6 @@
 ---
 name: rebasear
-description: Poner al día una branch que quedó atrás respecto a main — fetch, rebase, resolución de conflictos y push con --force-with-lease—, incluidas las colisiones de revisiones de Alembic al mergear lanes en paralelo. Úsala cuando el CI de un PR falle por cambios que main tiene y la branch no, o cuando el merge aparezca bloqueado por conflicto. NO la uses para crear la branch ni para el cierre de un item (eso es cerrar-item).
+description: Branch atrás de main — fetch, rebase, conflictos (incluidas colisiones de revisiones de Alembic) y push --force-with-lease. Úsala con CI rojo por cambios de main o merge bloqueado. NO para cerrar un item (cerrar-item).
 ---
 
 # Rebasear una branch que quedó atrás

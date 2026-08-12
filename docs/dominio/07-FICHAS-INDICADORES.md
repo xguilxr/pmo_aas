@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-06
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -40,7 +40,7 @@ Preguntaste por ellas y la respuesta importa más que las dos fichas juntas.
 | **De dónde sale** | `operational_reports.py:166` | `dashboard.py:210` |
 | **Redondeo** | Entero (`round_half_up`) | Sin redondear |
 
-**La raíz de cálculo sí es única**, y eso es lo que salva a `DAT-09`: las dos
+**La raíz de cálculo sí es única**, y eso es lo que salva a `DAT-09`. Las dos
 terminan en `compute_plan_rollup_progress` (`plan_metadata.py:233`), la del
 tablero a través de `effective_progress_map` → `plan_rollup_map`. No hay dos
 implementaciones del avance de un proyecto.
@@ -91,7 +91,7 @@ y ventana de compatibilidad, igual que `wbs` → `wbs_code`.
 | **Referencia del retraso** | **La fecha planeada ACTUAL [owner 2026-08-06]**, no una línea base |
 | **Firma** | owner · 2026-08-06 |
 
-**Razón del owner, y conviene leerla entera porque explica el producto:** «esta
+**Razón del owner:** «esta
 plataforma no es para *enforzar* como tal, sino para poder gestionar las
 actividades con flexibilidad; en cambios deberían registrar cambios de fechas
 planeadas».
@@ -103,10 +103,10 @@ control y es el comportamiento buscado en una de gestión.
 
 **Lo que sostiene la decisión es la trazabilidad, no la métrica**: el rastro de
 que la fecha se movió vive en el control de cambios. Si ese registro no captura
-los cambios de fecha planeada, el retraso deja de ser auditable por ninguna vía
-— y ahí sí habría un hueco. **Queda como verificación pendiente.**
+los cambios de fecha planeada, el retraso deja de ser auditable por ninguna vía.
+Ahí sí habría un hueco. **Queda como verificación pendiente.**
 
-La línea base (D-6) sigue sin abrir y no bloquea estas fichas: daría una segunda
+La línea base (D-6) sigue sin abrir y no bloquea estas fichas. Daría una segunda
 lectura —«tarde contra lo comprometido»—, que es información distinta y
 complementaria, no un arreglo de esta.
 
@@ -161,7 +161,7 @@ formalizan sin cambiarlas.
 > **Cambió el código en el tablero, no aquí:** `budget_total` llegaba como `0.0`
 > con cero proyectos porque la consulta traía `coalesce(sum(budget), 0)`. El
 > `coalesce` convertía el hueco en cero **dentro del SQL**, una capa más abajo
-> de donde se suele buscar — y la anotación de Python ya decía `Decimal | None`.
+> de donde se suele buscar. La anotación de Python ya decía `Decimal | None`.
 > Ahora llega `null`.
 
 > **La moneda sigue abierta, y es un frente de producto declarado
@@ -188,12 +188,12 @@ formalizan sin cambiarlas.
 **Verificado contra el código, y la decisión ya se cumple.** `health_status` es
 `nullable=False` con `default="green"`, así que ningún proyecto queda fuera del
 conteo. La evaluación automática corre de verdad —`refresh_health_bulk` en el
-tablero y en los snapshots, `apply_auto_health` en el detalle— y `health_source`
+tablero y en los snapshots, `apply_auto_health` en el detalle—. `health_source`
 respeta la intervención manual sin sobrescribirla.
 
 **El matiz que conviene tener presente:** el color se recalcula **cuando alguien
 mira**. Un proyecto que nadie abre conserva el valor por defecto hasta que una
-carga de tablero o un snapshot lo toque, y ese valor por defecto es `green` — el
+carga de tablero o un snapshot lo toque. Ese valor por defecto es `green` — el
 optimista. No es un fallo hoy, porque el refresco masivo del tablero cubre los
 proyectos del alcance; sí lo sería si el tablero dejara de recalcular.
 
@@ -229,7 +229,7 @@ bloquea**: son frentes propios que las tocarán cuando se resuelvan.
 | **Verificar que el control de cambios registre los cambios de fecha planeada** | Es lo que sostiene la decisión de medir el retraso contra la fecha actual | La auditabilidad del retraso |
 | **Línea base (D-6)** | Épica propia, sin abrir | Nada; añadiría una segunda lectura del retraso |
 
-**Lo que cambió de verdad al firmar estas fichas** —y es la parte que no se ve
-en el documento— son tres correcciones en el producto: `progress_avg` y
-`budget_total` dejan de decir «cero» cuando quieren decir «nada», y el
+**Lo que cambió de verdad al firmar estas fichas** son tres correcciones en el
+producto —la parte que no se ve en el documento—. `progress_avg` y
+`budget_total` dejan de decir «cero» cuando quieren decir «nada». El
 `coalesce` que lo causaba en SQL desapareció.

@@ -1,6 +1,6 @@
 "use client";
 
-// Fase 2 (UIUX-ANALYSIS-Sprint35): celda con edición inline "on-click". Muestra
+// Fase 2 (docs/archive/project-management/UIUX-ANALYSIS-Sprint35.md): celda con edición inline "on-click". Muestra
 // el valor como texto y, al hacer click, se convierte en un <select> enfocado
 // (intenta abrir el dropdown donde el browser lo soporta). Reduce el ruido
 // visual de tener selects siempre-on en cada fila.

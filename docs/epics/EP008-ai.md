@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-04
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -20,7 +20,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Automatizar dos tareas que consumen horas de los PM:
+Dos tareas que consumen horas de los PM se automatizan:
 
 1. **Redactar minutas** desde transcripciones de reuniones (Zoom/Teams/Meet copy-paste).
 2. **Generar reportes de avance** periódicos con IA que luego el PM revisa y envía.
@@ -92,8 +92,8 @@ sequenceDiagram
 
 ### Criterios de aceptación (estado real)
 
-- [x] Input: **JSON body** con `{ project_id, transcript: str, language: "es"|"en", save_as_minute: bool, title?: str }`. El texto plano (`.txt`/`.srt`/`.md`/`.vtt`) se parsea **en cliente** (`file.text()`); los `.docx` se extraen **server-side** vía `POST /api/v1/ai/extract-text` (BUG-083, ver abajo) antes de pegar el body.
-- [x] **`POST /api/v1/ai/extract-text`** (BUG-083, 2026-06-29): multipart `file` → `{ text, filename, chars }`. Extrae texto de un `.docx` con `python-docx` (párrafos + celdas de tablas) o decodifica texto plano; `.doc`/formatos no soportados → `400 VALIDATION_ERROR`; vacío → `400`; > 5 MB → `413`. Reemplaza el `file.text()` del front sobre `.docx`, que mandaba el ZIP binario crudo y Groq lo rechazaba con `400`. Servicio: `app/services/document_text.py`. Hardening asociado: `GroqProvider` loguea el body del 4xx y `_call_ai_for_tenant` **no reintenta** en 4xx (≠429) — propaga la razón real del provider.
+- [x] Input: **JSON body** con `{ project_id, transcript: str, language: "es"|"en", save_as_minute: bool, title?: str }`. El texto plano (`.txt`/`.srt`/`.md`/`.vtt`) se parsea **en cliente** (`file.text()`). Los `.docx` se extraen **server-side** vía `POST /api/v1/ai/extract-text` (BUG-083, ver abajo) antes de pegar el body.
+- [x] **`POST /api/v1/ai/extract-text`** (BUG-083, 2026-06-29): multipart `file` → `{ text, filename, chars }`. Extrae texto de un `.docx` con `python-docx` (párrafos + celdas de tablas) o decodifica texto plano; `.doc`/formatos no soportados → `400 VALIDATION_ERROR`; vacío → `400`; > 5 MB → `413`. Reemplaza el `file.text()` del front sobre `.docx`: antes mandaba el ZIP binario crudo y Groq lo rechazaba con `400`. Servicio: `app/services/document_text.py`. Hardening asociado: `GroqProvider` loguea el body del 4xx. `_call_ai_for_tenant` **no reintenta** en 4xx (≠429): propaga la razón real del provider.
 - [x] Tamaño máximo: **5 MB** del campo `transcript` (`MAX_TRANSCRIPT_BYTES` en `ai.py`). Excedido → `413 PAYLOAD_TOO_LARGE`.
 - [x] Output estructurado (ENH-102 / ENH-105): 6 secciones — `header`, `participants` (attendees/absent_justified/absent_unjustified), `summary`, `topics` (con `bullets` factuales), `raid` (solo A/R/D/I, sin lecciones ni change requests), `free_notes`.
 - [x] `ai_jobs` registra: `model_used`, `provider`, `tokens_in`, `tokens_out`, `duration_ms`, `error`.
@@ -131,8 +131,8 @@ descripción del proyecto llegue realmente al LLM.
 - `services/ai/project_context.py`: arma el bloque
   `<CONTEXTO_DEL_PROYECTO>` con presupuesto de caracteres (precedencia
   instrucciones > contexto > resumen) e lo **inyecta en cada chunk de
-  minutas** (`_run_minute`) y en `/projects/{id}/reports/ai-generate` —
-  con esto la descripción del proyecto **por fin llega al LLM** (antes no
+  minutas** (`_run_minute`) y en `/projects/{id}/reports/ai-generate`.
+  Con esto, la descripción del proyecto **por fin llega al LLM** (antes no
   se inyectaba ningún contexto de proyecto en esos prompts).
 - **Endpoints:** `GET /api/v1/projects/{id}/ai-context` /
   `PUT /api/v1/projects/{id}/ai-context` (con audit log).
@@ -164,13 +164,13 @@ system efectivo = prompt base (services/ai/prompts.py)
 ```
 
 **El contexto del proyecto viaja fechado** (MCS CON-04, 2026-08-04). Sus tres
-campos son texto libre y nada impide que un PM escriba una cifra —«vamos al
-40 %»— que luego se inyecta en cada consulta hasta que alguien la edite. El
-bloque abre avisando de que son textos guardados y no datos en vivo, y de que
-**ante una diferencia gana el dato calculado**; cada sección lleva la fecha en que
-se escribió, y el resumen automático lleva la suya propia porque lo reescribe el
-worker. El aviso **se descuenta** del presupuesto de `max_chars` en vez de
-sumarse encima: viaja en cada llamada, e IA-03 acota el prompt por coste.
+campos son texto libre: nada impide que un PM escriba una cifra —«vamos al
+40 %»— que se inyecta en cada consulta hasta que alguien la edite. El
+bloque abre avisando que son textos guardados, no datos en vivo, y que
+**ante una diferencia gana el dato calculado**. Cada sección lleva la fecha en que
+se escribió; el resumen automático lleva la suya propia, porque el worker lo
+reescribe. El aviso **se descuenta** del presupuesto de `max_chars`, no se
+suma encima: viaja en cada llamada, e IA-03 acota el prompt por coste.
 
 - `services/ai/prompt_builder.py` — compone las 3 capas. Las
   instrucciones del tenant tienen una **regla de precedencia** que
@@ -220,10 +220,10 @@ sumarse encima: viaja en cada llamada, e IA-03 acota el prompt por coste.
 **El modelo NO calcula cifras** (auditoría MCS 2026-08-03, requisito IA-05).
 
 Antes recibía `budget_plan` y `budget_actual` y derivaba la desviación por su
-cuenta: un número producido por un modelo de lenguaje que acababa en un informe
-ejecutivo. Ahora el contexto llega con todo precalculado en Python y con
-`Decimal` —nunca coma flotante—, y el prompt prohíbe explícitamente calcular,
-estimar o redondear:
+cuenta. Era un número producido por un modelo de lenguaje que acababa en un
+informe ejecutivo. Ahora el contexto llega con todo precalculado en Python y
+con `Decimal` (nunca coma flotante), y el prompt prohíbe explícitamente
+calcular, estimar o redondear:
 
 | Campo del contexto | Origen |
 |---|---|
@@ -236,9 +236,9 @@ Si al modelo le falta una cifra para afirmar algo, debe describir la situación
 en palabras y omitir el número.
 
 **Límite de coste por ejecución** (IA-03): `AI_MAX_PROMPT_CHARS`, 120.000 por
-defecto. Se comprueba **antes** de llamar al proveedor —después el gasto ya
-ocurrió— y acota el contexto de proyectos con mucho histórico, que con los 3
-reintentos de `_AI_CALL_MAX_RETRIES` se multiplicaría.
+defecto. Se comprueba **antes** de llamar al proveedor (después el gasto ya
+ocurrió). Esto acota el contexto de proyectos con mucho histórico, que los 3
+reintentos de `_AI_CALL_MAX_RETRIES` multiplicarían.
 
 ---
 
@@ -291,24 +291,24 @@ hacer: el copiloto solo navega (`ALLOWED_ACTION_TYPES`), las cifras de los
 informes se calculan en Python (IA-05), el chat del Report Builder solo produce
 acciones de un catálogo cerrado, y ninguna salida del modelo ejecuta nada.
 
-> Esos mismos límites son lo que hace que **MCS IA-01 sea NO APLICABLE**: no hay
+> Esos mismos límites hacen que **MCS IA-01 sea NO APLICABLE**: no hay
 > ninguna herramienta expuesta al modelo. El proveedor recibe `messages` y
 > devuelve texto; no hay `tools` ni `tool_use` en `services/ai/`. El día que el
-> copiloto pueda *hacer* algo —crear una tarea, mover una fecha— IA-01 vuelve a
-> aplicar, y con él la exigencia de que la herramienta corra bajo la identidad del
-> usuario. Conviene releerlo **antes** de esa US.
+> copiloto pueda *hacer* algo (crear una tarea, mover una fecha), IA-01 vuelve a
+> aplicar, junto con la exigencia de que la herramienta corra bajo la identidad
+> del usuario. Conviene releerlo **antes** de esa US.
 
 ### Aviso de IA y salida a un humano (MCS IA-04)
 
-El widget se anuncia como «Asistente IA» en su `aria-label` y su `title` —también
-para quien usa lector de pantalla, que es lo que hace que cuente— y el pie del
-panel dice «Respuestas generadas por IA: pueden equivocarse» junto a **«¿Necesitás
-a una persona?»**, que lleva a `/pmo/requests/new`.
+El widget se anuncia como «Asistente IA» en su `aria-label` y su `title`,
+también para quien usa lector de pantalla: eso es lo que hace que cuente. El
+pie del panel dice «Respuestas generadas por IA: pueden equivocarse» junto a
+**«¿Necesitás a una persona?»**, que lleva a `/pmo/requests/new`.
 
-La escalada va al circuito humano que ya existía —la solicitud la atiende la PMO
-de la organización, que es quien conoce el proyecto— y no a un buzón nuestro: el
-producto es multiinquilino. El importador avisa aparte con «Plan interpretado por
-IA — revisá antes de importar».
+La escalada va al circuito humano que ya existía (la solicitud la atiende la
+PMO de la organización, que es quien conoce el proyecto), no a un buzón
+nuestro: el producto es multiinquilino. El importador avisa aparte con «Plan
+interpretado por IA — revisá antes de importar».
 
 Cobertura: `tests/test_ia11_inyeccion_prompt.py`, con un corpus de intentos de
 inyección y un trinquete que falla si aparece una llamada nueva al proveedor sin
@@ -321,14 +321,14 @@ la regla, o una etiqueta estructural sin declarar.
 
 La sección anterior comprueba que el contenido ajeno no llegue al modelo **como
 instrucción**. Lo que ninguna prueba comprobaba es la otra mitad: *suponiendo
-que el modelo desobedezca de todas formas* —cosa que ninguna defensa de prompt
-puede impedir—, **qué llega al usuario**.
+que el modelo desobedezca de todas formas* (cosa que ninguna defensa de prompt
+puede impedir), **qué llega al usuario**.
 
 Eso es lo que mide el conjunto de evaluación, y por eso puede condicionar un
-despliegue: no mide si el modelo acierta —eso exige un proveedor vivo, cuesta
-dinero por ejecución y da algo distinto cada vez—, mide qué hace el sistema
-cuando el modelo falla. Cada caso es una salida de modelo ya rota —inyectada,
-malformada, alucinada— que se hace pasar por el mismo código que corre en
+despliegue. No mide si el modelo acierta (eso exige un proveedor vivo, cuesta
+dinero por ejecución y da algo distinto cada vez): mide qué hace el sistema
+cuando el modelo falla. Cada caso es una salida de modelo ya rota (inyectada,
+malformada, alucinada) que se hace pasar por el mismo código que corre en
 producción.
 
 | Superficie | Qué evalúa |
@@ -353,15 +353,16 @@ ejercitado por cada caso.
 de modelo que los provocó. Un fallo nuevo entra al conjunto **antes** de
 arreglarse, y no se borra al corregirse.
 
-Al construirlo aparecieron dos defectos que nadie había reportado, los dos
-corregidos: el copiloto ofrecía navegaciones fuera del sitio —el parser de URL
+Al construirlo aparecieron dos defectos que nadie había reportado, los dos ya
+corregidos. El copiloto ofrecía navegaciones fuera del sitio: el parser de URL
 del navegador trata `\` como `/` y borra TAB/LF/CR, así que `/\evil.example`
-pasaba el filtro de «empieza por `/` y no por `//`»— y en el mapeo de columnas
-un `field: null` con confianza alta borraba lo que la heurística había acertado.
+pasaba el filtro de «empieza por `/` y no por `//`». Además, en el mapeo de
+columnas, un `field: null` con confianza alta borraba lo que la heurística
+había acertado.
 
 **Lo que no cubre**, dicho sin adornos: el informe ejecutivo no tiene superficie
-todavía (su ensamblado de contexto está en línea dentro de `_run_report`), y la
-exfiltración del prompt de sistema no está contenida — el daño está acotado al
+todavía (su ensamblado de contexto está en línea dentro de `_run_report`). La
+exfiltración del prompt de sistema no está contenida: el daño está acotado al
 mismo usuario del mismo inquilino, pero no lo tratamos como secreto.
 
 ### Flujo del report builder visual
@@ -409,9 +410,9 @@ Además del draft IA, hay un **Report Builder** con catálogo de secciones atóm
 #### La `base_url` de `custom` y `azure` tiene forma obligatoria (2026-08-04)
 
 > **Modelo de amenazas AM-01.** Antes se aceptaba cualquier cadena de hasta 500
-> caracteres, y `provider/test` la usaba para hacer una petición desde dentro de
-> la red privada de Railway devolviendo estado, cuerpo y latencia — un escáner de
-> red en manos de cualquier administrador de inquilino.
+> caracteres. `provider/test` la usaba para hacer una petición desde dentro de
+> la red privada de Railway, devolviendo estado, cuerpo y latencia: un escáner
+> de red en manos de cualquier administrador de inquilino.
 
 Lo que un administrador ve ahora al configurar `custom` o `azure`:
 
@@ -423,8 +424,8 @@ Lo que un administrador ve ahora al configurar `custom` o `azure`:
 | Un nombre que **resuelve** a un rango privado | Ídem, comprobado al resolver |
 
 Se aplica en las tres puertas: al guardar la configuración, al probar la
-conexión y **al ejecutar de verdad** — esta última protege a quien ya tuviera
-guardada una `base_url` interna. Implementación: `app/core/url_externa.py`.
+conexión y **al ejecutar de verdad** (esta última protege a quien ya tuviera
+guardada una `base_url` interna). Implementación: `app/core/url_externa.py`.
 Cobertura: `tests/test_seg06_am01_ssrf_base_url.py`.
 
 **Lo que NO cierra:** la reasignación de DNS entre la comprobación y la
