@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -11,7 +11,7 @@ revisar_cada: 180d
 **ID:** `DOC-ARCH-API`
 **Última verificación contra código:** 2026-05-23.
 
-Reglas reales que sigue `apps/api`. Donde una sección dice "ideal" o "pendiente" significa que es un objetivo pero el código actual todavía no lo cumple del todo.
+Reglas reales que sigue `apps/api`. Donde una sección dice "ideal" o "pendiente", describe un objetivo. El código actual todavía no lo cumple del todo.
 
 ---
 
@@ -41,12 +41,12 @@ El tenant **NO** viaja en un header dedicado. Se resuelve del JWT:
 
 Ver `apps/api/app/api/deps.py:CurrentUser.effective_tenant_id`.
 
-> **No usamos `X-Tenant-ID`.** Versiones viejas del doc lo listaban; no existe en código.
+> **No usamos `X-Tenant-ID`.** Versiones viejas del doc lo listaban. No existe en código.
 
 ### Lo que **NO** tenemos hoy
 
 - ❌ `Idempotency-Key` header — no implementado. Si dos POST `/projects` llegan con el mismo body, se crean dos proyectos. Diferido.
-- ❌ `Accept-Language` — los mensajes de error son en español codificado en `errors.py`. No hay negociación de idioma.
+- ❌ `Accept-Language` — los mensajes de error van en español, fijos en `errors.py`. No hay negociación de idioma.
 
 ---
 
@@ -80,7 +80,7 @@ Ver `apps/api/app/api/deps.py:CurrentUser.effective_tenant_id`.
 
 ### 5.1 Formato actual: array plano + page/limit
 
-La mayoría de los endpoints lista devuelve **un array bare**, no un envelope:
+La mayoría de los endpoints de listado devuelve **un array bare**, no un envelope:
 
 ```http
 GET /api/v1/projects?page=1&limit=15&phase=execution
@@ -154,7 +154,7 @@ class ProjectRead(BaseModel):
 }
 ```
 
-> Nota: el body real lleva un **doble `detail`** por la forma en que FastAPI envuelve `HTTPException.detail`. El frontend lo aplana al consumir. No hay `trace_id` (no hay APM ni tracing distribuido).
+> El body real lleva un **doble `detail`** por cómo FastAPI envuelve `HTTPException.detail`. El frontend lo aplana al consumir. No hay `trace_id` (no hay APM ni tracing distribuido).
 
 ### Catálogo de códigos reales (de `core/errors.py`)
 
@@ -172,10 +172,10 @@ class ProjectRead(BaseModel):
 ### Cómo se escribe el texto de un error (MCS LEN-02)
 
 > **Norma para lo nuevo, decidida el 2026-08-05.** Los cinco defectos del
-> catálogo ya cumplen; los mensajes con texto propio se arreglan **al tocar el
+> catálogo ya cumplen. Los mensajes con texto propio se arreglan **al tocar el
 > endpoint**, no en una tanda. Medido ese día: de 159 mensajes con texto
-> explícito, 152 dicen solo qué pasó y 21 nombran campos internos. Cerrar eso de
-> golpe es trabajo uno por uno sin palanca común, y no compra nada que un
+> explícito, 152 dicen solo qué pasó. 21 nombran campos internos. Cerrar eso de
+> golpe es trabajo uno por uno, sin palanca común. No compra nada que un
 > usuario note antes que el resto del roadmap.
 
 Todo mensaje nuevo dice **las tres cosas**, en este orden:
@@ -192,20 +192,20 @@ Tres reglas que salen de los defectos que la auditoría encontró:
    nada para quien lo lee. Se nombra el concepto —«el responsable del
    proyecto»—, no la columna.
 2. **El «qué hacer» lleva verbo.** Si no propone una acción que el usuario pueda
-   ejecutar, no es un «qué hacer»: es un lamento. Si de verdad no hay nada que
+   ejecutar, no es un «qué hacer». Es un lamento. Si de verdad no hay nada que
    pueda hacer, se dice a quién acudir.
 3. **El cliente reacciona por `code`, nunca por el texto.** El texto se reescribe
-   sin avisar; el `code` es el contrato.
+   sin avisar. El `code` es el contrato.
 
 Cuando el sitio **no** pasa texto propio, se aplica el defecto del catálogo
-(`app/core/errors.py`), donde las tres partes se guardan como campos separados
-—`que`, `porque`, `accion`— justamente para que no se puedan rellenar a medias.
+(`app/core/errors.py`). Las tres partes se guardan como campos separados
+—`que`, `porque`, `accion`—. Así no se pueden rellenar a medias.
 Lo vigila `tests/test_len02_mensajes_de_error.py`.
 
 Códigos adicionales que algunos endpoints emiten ad-hoc (no centralizados):
 
 - `ACCOUNT_LOCKED` (403) — login después de 5 fails.
-- Errores de IA específicos (`gemini_no_api_key`, `claude_connect_error`, `groq_no_api_key`, etc.) — generados por los providers, llegan como `code` granular.
+- Errores de IA específicos (`gemini_no_api_key`, `claude_connect_error`, `groq_no_api_key`, etc.) — los genera cada provider. Llegan como `code` granular.
 
 > **Códigos del doc viejo que NO están** en código: `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `STATE_TRANSITION`, `INTERNAL` formal. `RATE_LIMITED` sí está desde el 2026-08-05 (AM-09). Si los necesitas, agregarlos al catálogo central.
 
@@ -252,7 +252,7 @@ Cancelación: `POST /api/v1/ai/jobs/{job_id}/cancel`.
 - Multipart (`Content-Type: multipart/form-data`).
 - Storage según `STORAGE_BACKEND` (`local` Railway Volume o `s3` Cloudflare R2 — ver `stack.md`).
 - Límites configurados por endpoint (`/projects/{id}/documents`, `/project-artifacts`, etc.) — no hay límite global formal.
-- Validación de MIME caso por caso; no hay whitelist central.
+- Validación de MIME caso por caso. No hay whitelist central.
 
 Ejemplo:
 
@@ -298,7 +298,7 @@ Response típica:
 
 ### SDK
 
-`packages/sdk/` existe como package del workspace (`@pmoaas/sdk`) pero **es un placeholder** (solo `index.ts` + `package.json`). No hay generación automática vía `openapi-typescript`. El frontend consume el API con `fetch` envuelto en `apps/web/lib/api/*.ts` (un archivo por dominio: `projects.ts`, `risks.ts`, etc.).
+`packages/sdk/` existe como package del workspace (`@pmoaas/sdk`). Es un placeholder (solo `index.ts` + `package.json`). No hay generación automática vía `openapi-typescript`. El frontend consume el API con `fetch` envuelto en `apps/web/lib/api/*.ts` (un archivo por dominio: `projects.ts`, `risks.ts`, etc.).
 
 ---
 
@@ -312,13 +312,13 @@ Response típica:
 ## 13. Deprecación
 
 - Sin política formal de header `Deprecation`.
-- Cambios breaking se documentan en epic + commit con `BREAKING` y se anuncian al owner. Cuando consolidemos un CHANGELOG, este apartado se formalizará.
+- Cambios breaking se documentan en epic + commit con `BREAKING`. Se anuncian al owner. Cuando consolidemos un CHANGELOG, este apartado se formaliza.
 
 ---
 
 ## 14. Sobre el doble `detail`
 
-El `AppError` envuelve la información en `HTTPException.detail`, y FastAPI serializa esa key tal cual. Resultado en wire:
+El `AppError` envuelve la información en `HTTPException.detail`. FastAPI serializa esa key tal cual. Resultado en wire:
 
 ```json
 {
@@ -335,9 +335,9 @@ El frontend deshace el envelope al consumir errores (`apps/web/lib/api/*` mira `
 > **El texto es largo a propósito** (MCS LEN-02, 2026-08-05). Antes decía
 > «Credenciales inválidas»: un qué sin un porqué y sin salida. Los cuatro
 > defectos del catálogo —`UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND` e
-> `INTERNAL_SERVER_ERROR`— viven en `app/core/errors.py` como tres campos
-> separados (`que`, `porque`, `accion`), no como una frase, para que no se
-> puedan rellenar a medias. **El cliente sigue reaccionando por `code`**; el
-> texto es para quien lo lee, y no debe usarse para bifurcar lógica.
+> `INTERNAL_SERVER_ERROR`— viven en `app/core/errors.py`. Guardan tres campos
+> separados (`que`, `porque`, `accion`), no una frase. Así no se
+> pueden rellenar a medias. **El cliente sigue reaccionando por `code`**. El
+> texto es para quien lo lee. No debe usarse para bifurcar lógica.
 
-Si quieres aplanar a una forma `{ code, detail, fields }` plana, hay que registrar un `exception_handler` en `main.py` que normalice antes de devolver. Es deuda técnica baja-prioridad.
+Si quieres una forma `{ code, detail, fields }` plana, registra un `exception_handler` en `main.py` que normalice antes de devolver. Es deuda técnica baja-prioridad.

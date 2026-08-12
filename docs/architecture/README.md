@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-04
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -54,7 +54,7 @@ flowchart TB
     MSP --> PMO
 ```
 
-> **Ollama fue eliminado** (BUG-053). Si en docs viejos lo ves, ignorar.
+> **Ollama fue eliminado** (BUG-053). Ignóralo en docs viejos.
 
 ---
 
@@ -163,7 +163,7 @@ flowchart LR
     ROUTER --> SuperAdmin
 ```
 
-> El gating es **por dependencia FastAPI**, no por middleware: cada endpoint declara `Depends(require_authenticated())`, `Depends(require_capability("…"))` o `Depends(get_superadmin_user)`.
+> El gating es **por dependencia FastAPI**, no por middleware. Cada endpoint declara `Depends(require_authenticated())`, `Depends(require_capability("…"))` o `Depends(get_superadmin_user)`.
 
 ---
 
@@ -256,7 +256,7 @@ flowchart TB
 
 - **Monorepo** con `pnpm workspaces`. **Sin Turborepo** — los scripts corren `pnpm -r` directo.
 - **Migraciones Alembic**. Patrón en 2 pasos para `DROP COLUMN` (deprecar uso → drop en migración siguiente). Validadas en CI por `api-migrations-postgres` (upgrade → downgrade → upgrade).
-- **Multitenancy app-level** (no RLS). Cada endpoint filtra `tenant_id` explícito; tests `TC-MT-*` validan aislamiento. Migrar a RLS está como deuda.
+- **Multitenancy app-level** (no RLS). Cada endpoint filtra `tenant_id` explícito. Tests `TC-MT-*` validan aislamiento. Migrar a RLS está como deuda.
 - **Backups**: Railway daily de Postgres. Snapshot externo (R2/B2) pendiente formalizar.
 - **Rate limit**: solo `/auth/forgot-password` y `/auth/reset` (counter en Redis). El rate limit global por tenant/IP no está implementado.
 - **Idempotency-Key**: no implementado (los POST repetidos pueden duplicar). Diferido.

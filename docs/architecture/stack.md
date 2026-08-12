@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -11,7 +11,7 @@ revisar_cada: 180d
 **ID:** `DOC-ARCH-STACK`
 **Última verificación contra código:** 2026-05-23.
 
-Decisiones de tecnología por capa, con rationale explícito. Cada decisión debería tener un ADR en [`../adr/`](../adr/).
+Decisiones de tecnología por capa, con justificación explícita. Cada decisión debería tener un ADR en [`../adr/`](../adr/).
 
 > **Política:** este doc refleja lo que está realmente instalado en `apps/web/package.json` y `apps/api/requirements*.txt`. Si una herramienta aparece aquí, está en el repo. Si se evaluó y no se adoptó, va en "Qué evitamos" o como nota explícita.
 
@@ -54,11 +54,11 @@ Dependencias reales (`apps/web/package.json`):
 
 **Qué NO está en el repo (descartado o no necesario hasta ahora):**
 - ❌ TanStack Query / Redux / Zustand — la app usa `fetch` + RSC + `useState/useReducer` locales (`apps/web/lib/api/*` envuelve llamadas REST). No hay store global.
-- ❌ shadcn/ui formal — solo se reutilizan ideas (utility `cn`, primitivas Radix-like manuales en `components/ui/`); no hay registro shadcn ni dependencia `@radix-ui/*`.
+- ❌ shadcn/ui formal — solo se reutilizan ideas (utility `cn`, primitivas Radix-like manuales en `components/ui/`). No hay registro shadcn ni dependencia `@radix-ui/*`.
 - ❌ next-intl / i18next — la UI hoy es **solo en español**. Se difirió i18n.
 - ❌ react-hook-form / zod en cliente — los formularios usan estado controlado + validación inline.
 - ❌ recharts / chart.js — los gráficos están escritos a mano con SVG (ej. `gantt-view.tsx`).
-- ❌ frappe-gantt — no instalado; el Gantt es SVG propio en `components/gantt-view.tsx`.
+- ❌ frappe-gantt — no instalado. El Gantt es SVG propio en `components/gantt-view.tsx`.
 - ❌ framer-motion — animaciones con CSS / `transition` de Tailwind.
 - ❌ Storybook — no configurado.
 
@@ -110,8 +110,8 @@ openpyxl==3.1.5             # lectura .xlsx en imports
 - **boto3** → cliente S3 para Cloudflare R2 (object storage de uploads).
 
 **Qué NO está en el repo (decisión consciente):**
-- ❌ `google-generativeai`, `anthropic`, `openai` SDKs — se llaman las APIs vía `httpx` directo para evitar dependencia transitiva pesada y poder cubrirlas con un solo mocking layer en tests.
-- ❌ `sentry-sdk` — sin observabilidad APM hoy; logs centralizados vía Railway + structlog. Se evaluará reintroducir cuando haya tráfico que lo justifique.
+- ❌ `google-generativeai`, `anthropic`, `openai` SDKs — se llaman las APIs vía `httpx` directo. Evita dependencia transitiva pesada y permite cubrirlas con un solo mocking layer en tests.
+- ❌ `sentry-sdk` — sin observabilidad APM hoy. Logs centralizados vía Railway + structlog. Se evaluará reintroducir cuando haya tráfico que lo justifique.
 
 **Convenciones:**
 - Rutas tenant-scoped bajo `/api/v1/…` con dependencia `get_current_tenant`.
@@ -192,7 +192,7 @@ El admin del tenant configura uno o más providers desde `/admin/ai`. Catálogo 
 | `azure` | **Microsoft Copilot M365** (Azure OpenAI) | gpt-4o / gpt-4 / gpt-35-turbo; requiere endpoint + deployment |
 | `custom` | Otro provider compatible OpenAI | base_url + api_key + modelo |
 
-Adicionalmente el provider `groq` también está disponible en modo BYO si el tenant trae su propia key.
+El provider `groq` también está disponible en modo BYO si el tenant trae su propia key.
 
 El runtime (`provider.py:resolve_provider`) selecciona implementación por `cfg["provider"]`. Cada implementación es una clase `*Provider` con interfaz común (`AIProvider` Protocol).
 
@@ -205,7 +205,7 @@ El runtime (`provider.py:resolve_provider`) selecciona implementación por `cfg[
   ```
   java -cp "/opt/mpxj/lib/*:/opt/mpxj/cli" MpxjCli <input.mpp>
   ```
-- Wrapper Java en `apps/api/app/services/msproject/mpxj_cli/MpxjCli.java`; classpath configurado en el `Dockerfile` del servicio `api`/`worker`.
+- Wrapper Java en `apps/api/app/services/msproject/mpxj_cli/MpxjCli.java`. Classpath configurado en el `Dockerfile` del servicio `api`/`worker`.
 - Formatos aceptados por el import wizard (`apps/web/components/import-wizard.tsx`): `.xlsx`, `.csv`, `.mpp`, `.xml`, `.mpx`, `.mspdi`.
 - **Escritura `.mpp`** → no soportada (requiere MPXJ Pro comercial). Export sale como XLSX/CSV.
 - Visualización Gantt → SVG propio en `apps/web/components/gantt-view.tsx` (no `frappe-gantt`).
@@ -256,7 +256,7 @@ Estado real:
 - **Sin Renovate / Dependabot configurado en el repo**.
 - **Sin MkDocs** — la doc vive como markdown en `docs/`.
 
-Si alguna se introduce, actualizar esta sección y dejar nota en `DECISIONS.md`.
+Si alguna se introduce, actualiza esta sección y deja nota en `DECISIONS.md`.
 
 ---
 
@@ -275,4 +275,4 @@ Si alguna se introduce, actualizar esta sección y dejar nota en `DECISIONS.md`.
 | Resend (emails, 3k free) | 0–20 |
 | **Total** | **~$70–120** |
 
-Los providers BYO (OpenAI, Anthropic, Gemini, Azure/Copilot) los paga cada tenant con su propia API key — no entran al coste de plataforma.
+Los providers BYO (OpenAI, Anthropic, Gemini, Azure/Copilot) los paga cada tenant con su propia API key. No entran al coste de plataforma.

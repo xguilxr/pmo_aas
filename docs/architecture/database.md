@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -11,13 +11,13 @@ revisar_cada: 180d
 **ID:** `DOC-ARCH-DB`
 **Última verificación contra código:** 2026-05-23.
 
-> Refleja el estado real en `apps/api/app/models/` y `apps/api/alembic/versions/`. Hay **~49 tablas activas** (vs las ~17 que documentábamos antes) y la app es portable a SQLite para tests, lo que condiciona varias decisiones de tipos.
+> Refleja el estado real en `apps/api/app/models/` y `apps/api/alembic/versions/`. Hay **~49 tablas activas** (vs las ~17 que documentábamos antes). La app es portable a SQLite para tests. Eso condiciona varias decisiones de tipos.
 
 ---
 
 ## Principios reales
 
-1. **Todas las tablas tenant-scoped llevan `tenant_id` (UUID como `String(36)`) indexado.** La columna es `NOT NULL` salvo en casos puntuales (ej. `users.tenant_id` puede ser NULL para superadmins globales; `audit_log.tenant_id` puede ser NULL para eventos platform-wide).
+1. **Todas las tablas tenant-scoped llevan `tenant_id` (UUID como `String(36)`) indexado.** La columna es `NOT NULL` salvo en casos puntuales. `users.tenant_id` puede ser NULL para superadmins globales. `audit_log.tenant_id` puede ser NULL para eventos platform-wide.
 2. **PK = UUID v4 serializado como `String(36)`** (no v7). Cross-dialect: el helper `app/db/base.py:new_uuid()` devuelve `str(uuid4())`. Decisión: poder correr la suite de tests contra SQLite sin extensiones nativas de Postgres.
 3. **Mixin `TimestampMixin`** agrega `created_at` y `updated_at` (timestamptz). El campo `deleted_at` se declara explícitamente por tabla donde aplica (no global).
 4. **Soft delete** vía `deleted_at IS NULL` en los queries. No hay vista materializada ni filtro automático.
@@ -34,19 +34,19 @@ revisar_cada: 180d
 | Extensiones `pg_trgm`, `uuid-ossp`, `pgcrypto` | **No instaladas.** Ninguna migración tiene `CREATE EXTENSION`. Búsqueda fuzzy hoy es `ILIKE`. |
 | UUID v7 | UUID v4 (`uuid.uuid4()`). |
 
-> **Implicación:** la "defensa en profundidad" via RLS no existe. Un bug en una query que omita el filtro `tenant_id` rompería el aislamiento. Esto se mitiga con (a) los tests de aislamiento, (b) revisar cada endpoint nuevo en code review, y (c) el helper de queries que toma `tenant_id` como dependencia obligatoria. Migrar a RLS real está en `DECISIONS.md` como deuda técnica.
+> **Implicación:** la "defensa en profundidad" via RLS no existe. Un bug en una query que omita el filtro `tenant_id` rompería el aislamiento. Esto se mitiga con tres controles: (a) los tests de aislamiento; (b) revisar cada endpoint nuevo en code review; (c) el helper de queries toma `tenant_id` como dependencia obligatoria. Migrar a RLS real está en `DECISIONS.md` como deuda técnica.
 
 ---
 
 ## Diagrama ER
 
-**El diagrama se genera del modelo** (MCS DOC-03): vive en
-[`er-generado.md`](er-generado.md) y lo produce `scripts/generar_er.py` desde
+**El diagrama se genera del modelo** (MCS DOC-03). Vive en
+[`er-generado.md`](er-generado.md). Lo produce `scripts/generar_er.py` desde
 `Base.metadata`, el mismo origen del que Alembic saca las migraciones.
 
-Aquí había uno dibujado a mano, y el encabezado de la sección siguiente decía
-«las 49 reales» cuando eran **56**. Siete de más, y nadie lo notó: un diagrama a
-mano no falla, envejece. `tests/test_doc03_er_generado.py` falla si el generado
+Aquí había uno dibujado a mano. El encabezado de la sección siguiente decía
+«las 49 reales» cuando eran **56**. Siete de más. Nadie lo notó.
+Un diagrama a mano no falla: envejece. `tests/test_doc03_er_generado.py` falla si el generado
 se queda atrás del modelo.
 
 Lo que **no** se genera —y por eso sigue abajo, escrito por personas— es para
@@ -140,7 +140,7 @@ Agrupadas por dominio. Todas heredan `TimestampMixin` salvo `audit_log` y tablas
 
 ## Tablas centrales — schema real
 
-> Tipos según `sqlalchemy.orm` mapeados a Postgres. Donde dice `String(36)` es porque la app es portable a SQLite (tests); en Postgres es `varchar(36)`.
+> Tipos según `sqlalchemy.orm` mapeados a Postgres. Donde dice `String(36)` es porque la app es portable a SQLite (tests). En Postgres es `varchar(36)`.
 
 ### `projects` (real, con campos que el doc viejo omitía)
 
@@ -338,7 +338,7 @@ async def list_projects(
 
 **Tests bloqueantes:** los `TC-MT-*` en `docs/testing/multi-tenant-isolation.md` validan que un user del tenant A nunca pueda leer/escribir contra tenant B. Ver también `tests/test_tenant_isolation*`.
 
-**Superadmin:** los endpoints `/api/v1/superadmin/*` dependen de `get_superadmin_user` (chequea `user.is_superadmin == True`) y omiten el filtro `tenant_id` o reciben el `tenant_id` objetivo como query param explícito.
+**Superadmin:** los endpoints `/api/v1/superadmin/*` dependen de `get_superadmin_user` (chequea `user.is_superadmin == True`). Omiten el filtro `tenant_id`, o reciben el `tenant_id` objetivo como query param explícito.
 
 ---
 
@@ -347,7 +347,7 @@ async def list_projects(
 - Tool: **Alembic**. Convención: `YYYYMMDD_NNNN_slug.py` (74 migraciones al 2026-05-25; ver `apps/api/alembic/versions/`).
 - **1 PR = 1 migración** preferible. Migraciones grandes se dividen.
 - **`DROP COLUMN` en 2 pasos:** primero deprecar en código, luego drop en migración siguiente. Ver `DB-CHANGES.md` para el log.
-- `alembic downgrade` debe funcionar siempre; valida CI.
+- `alembic downgrade` debe funcionar siempre. Lo valida CI.
 - **No hay seeds en Alembic.** Los datos iniciales (roles sistema, tenant demo, superadmin) se crean por scripts dedicados o por endpoints del superadmin.
 
 ---

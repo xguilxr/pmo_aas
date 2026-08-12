@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -23,14 +23,14 @@ conformidad.
 
 ## 0. Método, y una advertencia sobre él
 
-El marco (`MCS-CORE.md §5.14`) enuncia SEG-06 como requisito y **no trae ningún
-procedimiento** para construir un modelo de amenazas: `SEG-06` aparece una sola
+El marco (`MCS-CORE.md §5.14`) enuncia SEG-06 como requisito. **No trae ningún
+procedimiento** para construir un modelo de amenazas. `SEG-06` aparece una sola
 vez en todo `marcos/`, en la tabla de requisitos. La skill `modelado-amenazas`
 enruta a §5.14 esperando encontrar allí un procedimiento que no existe.
 
-Así que el método de este documento **lo elegí yo, no lo prescribe el marco**, y
-conviene que se lea sabiéndolo: descomposición por flujos de datos, fronteras de
-confianza numeradas, y sobre cada frontera las categorías de STRIDE que
+Así que el método de este documento **lo elegí yo, no lo prescribe el marco**.
+Conviene leerlo sabiendo eso. Descompone por flujos de datos y por fronteras de
+confianza numeradas. Sobre cada frontera van las categorías de STRIDE que
 apliquen. Cada amenaza lleva control actual, evidencia comprobable, riesgo
 residual y estado.
 
@@ -45,8 +45,8 @@ Dos reglas que me impuse al escribirlo:
 La descomposición de abajo **no sustituye** a los diagramas C4 de contexto y
 contenedores, que ya existen en [`README.md`](README.md) §C4. Esta vista es otra
 cosa: la misma arquitectura mirada **por dónde se cruza una frontera de
-confianza**, que es lo que un modelo de amenazas necesita y un diagrama C4 no
-dice.
+confianza**. Es lo que un modelo de amenazas necesita, y lo que un diagrama C4
+no dice.
 
 > **Discrepancia con la auditoría.** El informe MCS deja `ARQ-01` en PARCIAL con
 > la evidencia «no se encontraron diagramas de contexto ni de contenedores».
@@ -238,8 +238,9 @@ acciones del copiloto, items de RAID, mapeo de columnas del importador.
 contra el código real, umbral eliminatorio en seguridad, job `evaluacion-ia`.
 **Evidencia:** `apps/api/evaluacion/`, `tests/test_ia0709_evaluacion.py`.
 **Residual:** el informe ejecutivo no tiene superficie evaluada todavía. La
-exfiltración del prompt de sistema no está contenida — acotada al mismo usuario
-del mismo inquilino, pero un prompt no es un secreto y no lo tratamos como tal.
+exfiltración del prompt de sistema no está contenida. Queda acotada al mismo
+usuario del mismo inquilino. Pero un prompt no es un secreto, y no lo tratamos
+como tal.
 
 ### AM-05 — Datos del proyecto que salen a terceros
 
@@ -278,9 +279,9 @@ Los aprobadores de un cambio reciben un enlace con un JWT en la ruta. Las URL se
 filtran: cabecera `Referer`, registros de servidores intermedios, historial del
 navegador, correos reenviados.
 
-**Control:** el token va firmado (HS256), con `scope` comprobado, buscado por
-hash en base de datos —así que es revocable—, con caducidad y de un solo uso, y
-autoriza exactamente una decisión sobre un cambio.
+**Control:** el token va firmado (HS256), con `scope` comprobado. Se busca por
+hash en base de datos —así que es revocable—. Tiene caducidad y es de un solo
+uso. Autoriza exactamente una decisión sobre un cambio.
 **Evidencia:** `app/api/v1/endpoints/change_approvals.py::_resolve_token`.
 **Residual aceptado:** quien obtenga la URL antes de que se use puede aprobar
 ese cambio. El alcance es un cambio concreto, no la cuenta.
@@ -302,12 +303,12 @@ En la capa de la aplicación, `app/models/audit.py` lanza en la línea que lo
 intenta.
 
 **Por qué no bastaba el `REVOKE` que esta ficha proponía.** Decía «barato y no
-requiere código», y lo primero es cierto. Lo segundo también, y aun así no
-alcanza: en Railway la aplicación se conecta con el rol **dueño** de las tablas,
-y en PostgreSQL el dueño conserva sus privilegios haga lo que haga el `REVOKE`.
-Comprobado contra Postgres 16 antes de escribir esto —con `REVOKE UPDATE, DELETE`
-aplicado al dueño, el `UPDATE` pasa igual; con el disparador puesto no pasa ni
-siendo superusuario—. Habría sido un control declarado que no actúa, que es peor
+requiere código», y lo primero es cierto. Lo segundo también. Aun así, no
+alcanza. En Railway, la aplicación se conecta con el rol **dueño** de las tablas.
+En PostgreSQL, el dueño conserva sus privilegios haga lo que haga el `REVOKE`.
+Comprobado contra Postgres 16 antes de escribir esto. Con `REVOKE UPDATE, DELETE`
+aplicado al dueño, el `UPDATE` pasa igual. Con el disparador puesto, no pasa ni
+siendo superusuario. Habría sido un control declarado que no actúa, que es peor
 que ninguno porque cierra la ficha.
 
 **Residual, y no es menor:** quien administra la base puede quitar el
@@ -326,7 +327,7 @@ comprobado a propósito en `tests/test_am08_auditoria_solo_anexa.py`.
 **FC-1 · STRIDE: suplantación · Estado: CONTROLADA (2026-08-05)**
 
 El bloqueo por usuario (`MAX_FAILED_LOGIN_ATTEMPTS` → `locked_until`) detiene a
-quien adivina la contraseña de **una** cuenta, y no hace nada contra el rociado:
+quien adivina la contraseña de **una** cuenta. No hace nada contra el rociado:
 una contraseña probada contra miles de cuentas desde una IP no toca el umbral de
 ninguna.
 
@@ -337,7 +338,7 @@ usuario, `bcrypt` y la política de complejidad.
 Tres decisiones que hacen falta para leer el control:
 
 - **Fallos, no intentos.** Con `check_and_increment` en la puerta se contarían
-  también los aciertos, y una oficina detrás de un NAT —decenas de personas
+  también los aciertos. Una oficina detrás de un NAT —decenas de personas
   compartiendo IP— se quedaría fuera sin haber hecho nada. Por eso el limitador
   tiene `excede()`, que consulta sin sumar.
 - **Sin `reset` al acertar.** Sería lo natural y abriría un desvío: quien tiene
@@ -365,8 +366,8 @@ al inquilino entero.
 
 **Control: retardo creciente en vez de bloqueo duro.** Pasado el umbral, cada
 intento espera el doble que el anterior, con tope. **La cuenta nunca queda
-fuera** — y ese matiz es la amenaza entera: quien tecleó mal espera segundos, y
-quien sufre un ataque espera, como mucho, `LOGIN_BACKOFF_MAX_SECONDS`. El
+fuera** —y ese matiz es la amenaza entera—. Quien tecleó mal espera segundos.
+Quien sufre un ataque espera, como mucho, `LOGIN_BACKOFF_MAX_SECONDS`. El
 `ACCOUNT_LOCK_MINUTES` de quince minutos desapareció.
 
 **Contra la adivinación protege igual o mejor:** con el tope por defecto son
@@ -382,15 +383,15 @@ tope. Es una molestia acotada, no una expulsión, y cada intento suyo consume
 además su cuota de AM-09.
 
 **Trinquete:** `tests/test_am10_retardo_creciente.py`. Los dos casos que fijan
-el control son que **el tope existe** —sin él, el retardo creciente es el
-bloqueo duro con otro nombre— y que el ataque a una cuenta no alcanza a otra.
+el control son estos: **el tope existe** —sin él, el retardo creciente es el
+bloqueo duro con otro nombre—. El ataque a una cuenta no alcanza a otra.
 
 ### AM-11 — Restablecimiento de contraseña
 
 **FC-1 · STRIDE: suplantación · Estado: CONTROLADA**
 
-**Control:** límite por IP en `/auth/forgot-password` y `/auth/reset-password`;
-respuesta 204 constante para no revelar qué correos existen; al restablecer se
+**Control:** límite por IP en `/auth/forgot-password` y `/auth/reset-password`.
+Respuesta 204 constante para no revelar qué correos existen. Al restablecer se
 invalidan **todos** los tokens de refresco del usuario.
 **Residual:** el límite es **fail-open** por decisión explícita —si Redis muere,
 `check_and_increment` devuelve `True`— y está documentado en `rate_limit.py`. Es
@@ -403,7 +404,7 @@ cliente de Redis sea `None`, para que fail-open sea visible y no silencioso.
 **FC-5 · STRIDE: denegación de servicio · Estado: CERRADA (2026-08-05)**
 
 El renderizador de informes referenciaba `fonts.googleapis.com` y
-`fonts.gstatic.com` para traer DM Sans, así que generar un PDF dependía de una
+`fonts.gstatic.com` para traer DM Sans. Generar un PDF dependía de una
 petición a Google en tiempo de render.
 
 **Control:** no hay tipografía remota. ENH-202 dejó todos los entregables en
@@ -412,11 +413,11 @@ fuente ya está dentro del contenedor. Los dos `<link>` se retiraron de
 `html_report_renderer.py` y de `reports.py`.
 
 **Lo que apareció al cerrarla, y es lo que importa:** el enlace remoto **no
-estaba funcionando**. `templates/pdf/base.html` pedía DM Sans y la imagen solo
-instalaba `fonts-dejavu-core`; WeasyPrint no ejecuta el `<link>` de la misma
-forma que un navegador, así que los PDF llevaban meses saliendo en DejaVu Sans
+estaba funcionando**. `templates/pdf/base.html` pedía DM Sans, y la imagen solo
+instalaba `fonts-dejavu-core`. WeasyPrint no ejecuta el `<link>` de la misma
+forma que un navegador. Por eso, los PDF llevaban meses saliendo en DejaVu Sans
 —ni la fuente de marca ni Helvetica—. La amenaza era real igualmente (la
-petición salía desde el HTML servido en línea), pero el coste que se le
+petición salía desde el HTML servido en línea). Pero el coste que se le
 atribuía, «el render se degrada», ya se estaba pagando en silencio.
 
 **Trinquete:** `tests/test_enh202_helvetica_en_exports.py` falla si vuelve a
@@ -431,7 +432,7 @@ El token de acceso vive en `localStorage`, alcanzable por cualquier JavaScript
 de la página. Un XSS lo lleva entero.
 
 **Control:** el token de **refresco** sí va en cookie `HttpOnly` con `secure` en
-producción, que es la parte que más dura (30 días frente a 1 hora). Cabeceras de
+producción. Es la parte que más dura (30 días frente a 1 hora). Cabeceras de
 seguridad —CSP, `X-Frame-Options`, `X-Content-Type-Options`, HSTS— desde la
 Tanda A. React escapa por omisión.
 **Residual:** sin pruebas de frontend, la ausencia de XSS no está verificada por
@@ -442,7 +443,7 @@ nada automático. **No verificado**, y así queda anotado.
 **FC-4 · STRIDE: manipulación · Estado: CERRADA (2026-08-04)**
 
 `main` no estaba protegida: cualquiera con acceso al repositorio empujaba
-directo a la rama de la que sale producción, y la regla vivía solo en prosa en
+directo a la rama de la que sale producción. La regla vivía solo en prosa en
 `CLAUDE.md` §8.
 
 **Control:** el owner protegió `main` con los ocho checks requeridos. Del lado
@@ -451,8 +452,8 @@ empuje a `main` como acción irreversible (MCA AUT-01).
 
 **Se reflejó tarde.** La acción se completó el 2026-08-04 y esta ficha siguió
 diciendo SIN CONTROL hasta el 2026-08-05. Es el defecto que el propio método de
-este documento intenta evitar —«nada se da por controlado sin evidencia», y su
-reverso: nada se deja por controlar cuando ya lo está—.
+este documento intenta evitar —«nada se da por controlado sin evidencia»—. Y es
+su reverso: nada se deja por controlar cuando ya lo está.
 
 **Residual:** un check requerido que se **salta** no bloquea el merge. Verificado
 con el PR #576, de solo-docs: `MERGEABLE`/`CLEAN` con cinco jobs en *skipping*.
@@ -474,14 +475,14 @@ cosas y falla si aparece algo que [`amenazas.yaml`](amenazas.yaml) no declara:
 | Destinos externos en `app/` | Un egreso nuevo saca datos de nuestra infraestructura |
 
 **No** se vigila una huella del código entero: un gate que se pone rojo con cada
-edición se desactiva en dos días, y entonces no vigila nada.
+edición se desactiva en dos días. Y entonces no vigila nada.
 
 Cuando la prueba falle, la respuesta correcta **no es añadir la línea que falta
 al YAML**. Es leer este documento, decidir qué amenaza introduce el cambio, y
 entonces declararla.
 
-Además, se relee entero ante: cambio del modelo de tenancy, del mecanismo de
-autenticación, de proveedor de infraestructura, o al pasar la puerta de
+Además, se relee entero ante un cambio: del modelo de tenancy, del mecanismo de
+autenticación, o de proveedor de infraestructura. También al pasar la puerta de
 lanzamiento («publicación al mundo con usuarios externos» en `conformidad.yaml`).
 
 La ventana de 12 meses se **avisa**, no se falla: que pase el tiempo no hace el

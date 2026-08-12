@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -48,7 +48,7 @@ flowchart LR
 
 > **No hay** servicio `glitchtip` (se descartó la observabilidad APM en MVP). **No hay** servicio `ollama` (BUG-053 eliminó Ollama). El sidecar Tailscale del worker se retiró en ENH-023.
 
-> **Desarrollo local:** ver `docs/setup-dev.md` (o el equivalente vigente; el archivo histórico está en `docs/archive/setup-dev.md` si no existe en raíz). Hoy basta `pnpm install` + `docker compose` opcional para Postgres/Redis.
+> **Desarrollo local:** ver `docs/setup-dev.md` (o el equivalente vigente). Si no existe en raíz, el archivo histórico está en `docs/archive/setup-dev.md`. Hoy basta `pnpm install` + `docker compose` opcional para Postgres/Redis.
 
 ---
 
@@ -67,7 +67,7 @@ flowchart LR
 }
 ```
 
-> Es **el config default del project**; cada servicio puede sobreescribirlo con su `railway.toml`.
+> Es **el config default del project**. Cada servicio puede sobreescribirlo con su `railway.toml`.
 
 ### `apps/api/railway.toml`
 
@@ -104,7 +104,7 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 ```
 
-> **`--beat` embebido (BUG-036).** El worker arranca también el scheduler de Celery Beat para ejecutar tareas periódicas (`scheduled_reports.send_due_reports`, `scheduled_minutes.send_due_minutes`). Hoy el worker corre con **1 replica**; si se escala >1 replica hay que mover `beat` a un servicio dedicado para evitar duplicar disparos.
+> **`--beat` embebido (BUG-036).** El worker arranca también el scheduler de Celery Beat para ejecutar tareas periódicas (`scheduled_reports.send_due_reports`, `scheduled_minutes.send_due_minutes`). Hoy el worker corre con **1 replica**. Si se escala a >1 réplica, mueve `beat` a un servicio dedicado para evitar duplicar disparos.
 
 **Tasks reales (`apps/api/app/workers/tasks/`):**
 
@@ -222,12 +222,12 @@ jobs:
 - **Ruff** con reglas `E,F,I,N,UP,B,A,C4,RUF` (ver `apps/api/pyproject.toml`).
 - **Migraciones** validan reversibilidad upgrade → downgrade → upgrade contra Postgres real (ENH-044, caza regresiones tipo BUG-039 — SQLite acepta cosas que Postgres no).
 - **No hay** jobs Playwright ni Schemathesis en CI hoy (diferidos).
-- **Concurrency:** runs previos del mismo PR se cancelan al pushear; en `main` no se cancela.
+- **Concurrency:** runs previos del mismo PR se cancelan al pushear. En `main` no se cancela.
 
 ### Railway auto-deploy
 
 - `main` → producción (auto a menos que se proteja la branch con review manual).
-- Branches `claude/**` → **no disparan CI** (se evita doble-run; el PR corre por el evento `pull_request`).
+- Branches `claude/**` → **no disparan CI**, para evitar doble-run. El PR corre por el evento `pull_request`.
 
 ---
 
@@ -237,9 +237,9 @@ jobs:
 |---|---|---|
 | Producción | `app.pmoaas.com` (ajustar según DNS real) | `api.pmoaas.com` |
 
-DNS gestionado en Cloudflare; TLS por Railway (Let's Encrypt).
+DNS gestionado en Cloudflare. TLS por Railway (Let's Encrypt).
 
-> Si tu setup actual usa subdominios distintos (ej. `pmo-aas.com`), actualizar esta tabla con los reales.
+> Si tu setup actual usa subdominios distintos (ej. `pmo-aas.com`), actualiza esta tabla con los reales.
 
 ---
 
@@ -253,7 +253,7 @@ DNS gestionado en Cloudflare; TLS por Railway (Let's Encrypt).
 railway run --service api alembic downgrade -1
 ```
 
-- Migraciones de larga duración: ejecutar manualmente fuera del deploy con un one-off para no bloquear el rolling.
+- Migraciones de larga duración: ejecútalas manualmente fuera del deploy, con un one-off, para no bloquear el rolling.
 
 ---
 
@@ -298,7 +298,7 @@ async def health():
     return {"status": "ok", "version": settings.VERSION, "env": settings.PYTHON_ENV}
 ```
 
-> El healthcheck actual **no** consulta DB ni Redis. Si quieres "liveness + readiness" diferenciado, abrir issue de hardening.
+> El healthcheck actual **no** consulta DB ni Redis. Si quieres "liveness + readiness" diferenciado, abre un issue de hardening.
 
 ### Web `/api/health` (`apps/web/app/api/health/route.ts`)
 
@@ -317,7 +317,7 @@ export async function GET() {
 }
 ```
 
-> Devuelve `ok: true` siempre que el handler corra (no aborta con 503 si la API falla). Si se quiere fallar el healthcheck cuando la API esté caída, cambiar el `status` retornado.
+> Devuelve `ok: true` siempre que el handler corra (no aborta con 503 si la API falla). Si quieres fallar el healthcheck cuando la API esté caída, cambia el `status` retornado.
 
 UptimeRobot u otro monitor externo: pendiente de wiring formal.
 
@@ -335,7 +335,7 @@ UptimeRobot u otro monitor externo: pendiente de wiring formal.
 | Resend (3k emails free) | 0–20 |
 | **Total** | **~$110–160** |
 
-Los providers BYO (OpenAI, Anthropic, Gemini, Azure/Copilot M365, Perplexity) los paga cada tenant con su propia API key — no entran en el coste de plataforma.
+Los providers BYO (OpenAI, Anthropic, Gemini, Azure/Copilot M365, Perplexity) los paga cada tenant con su propia API key. No entran en el coste de plataforma.
 
 ---
 
