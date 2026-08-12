@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Mantener a los usuarios informados sobre eventos relevantes sin que tengan que revisar activamente cada módulo. Notificaciones in-app (bell icon en topbar) + email via Resend.
+Mantiene a los usuarios informados sobre eventos relevantes sin que revisen cada módulo. Usa notificaciones in-app (bell icon en topbar) y email vía Resend.
 
 ## Tipos de notificación
 

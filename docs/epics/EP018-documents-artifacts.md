@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-06-05
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Cerrar el catálogo de documentos vivos por proyecto. Hoy los usuarios pueden subir cualquier cosa; queremos un set **estricto y curado** de artefactos con semántica clara y sincronización automática:
+Cierra el catálogo de documentos vivos por proyecto. Hoy los usuarios pueden subir cualquier cosa; queremos un set **estricto y curado** de artefactos con semántica clara y sincronización automática:
 
 1. **Project Charter** — auto-creado al crear proyecto, backfilleado para los existentes.
 2. **Plan** — un único archivo vivo (.mpp / .xlsx / .csv / plantilla); DB es fuente de verdad, archivo se regenera preservando formato origen.

@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -19,15 +19,15 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Consolidar en una **experiencia dedicada** todas las operaciones platform-wide
-que hace el Super Admin (dueño de la plataforma, no del tenant). Es la página
-principal de gestión de clientes del MVP. Cubre: visión agregada, provisión y
+Consolida en una **experiencia dedicada** todas las operaciones platform-wide
+del Super Admin (dueño de la plataforma, no del tenant). Es la página
+principal de gestión de clientes del MVP. Cubre visión agregada, provisión y
 baja de tenants, drill-down por cliente, logs y salud de infra, y
 configuración global.
 
-> EP002 contiene ya las APIs base de Super Admin (provisión, delete,
-> join-as-admin, etc.). EP010 añade la **UI de alto nivel** y los
-> **dashboards y herramientas** que faltaban como épica propia, además de
+> EP002 ya contiene las APIs base de Super Admin (provisión, delete,
+> join-as-admin, etc.). EP010 agrega la **UI de alto nivel** y los
+> **dashboards y herramientas** que faltaban como épica propia, más
 > algunas capacidades nuevas (health, configuración global, búsqueda
 > cross-tenant).
 
@@ -37,8 +37,8 @@ configuración global.
 
 ## Decisiones clave
 
-- El panel vive en `app.pmoaas.com/superadmin` con `middleware.ts` que
-  verifica `is_superadmin`. Si no, 404 (no mostramos que exista).
+- El panel vive en `app.pmoaas.com/superadmin`; `middleware.ts` verifica
+  `is_superadmin`. Si falla, devuelve 404 y no revela que la ruta existe.
 - El dominio puede mudarse post-MVP a un subdominio separado
   (`admin.pmoaas.com`) con auth reforzada (2FA obligatorio).
 - Todas las acciones de esta épica se **auditan en `audit_log` con
@@ -298,24 +298,24 @@ configuración global.
 ### Modelos involucrados
 
 El panel super admin entregado en v1.0 opera **solo con tablas
-existentes**: `tenants`, `users`, `roles`, `audit_logs`. No se crearon
-migraciones propias de EP010.
+existentes**: `tenants`, `users`, `roles`, `audit_logs`. EP010 no crea
+migraciones propias.
 
 Las tablas que el diseño original preveía como nuevas (`platform_settings`,
-`impersonation_sessions`, `tenant_delete_schedule`) quedaron **fuera de
-alcance** para v1.0:
+`impersonation_sessions`, `tenant_delete_schedule`) quedan **fuera de
+alcance** en v1.0:
 
-- **`platform_settings`**: los settings cross-tenant necesarios para el
-  MVP (logo del tenant, config IA) se guardan en `tenants.settings`
-  JSONB; no hubo demanda real de un store global.
+- **`platform_settings`**: los settings cross-tenant del MVP (logo del
+  tenant, config IA) se guardan en `tenants.settings` JSONB. No hay
+  demanda real de un store global.
 - **`impersonation_sessions`**: el super admin navega cross-tenant sin
-  "convertirse" en admin del otro tenant; el patrón join-as-admin no se
-  implementó para v1.0.
+  "convertirse" en admin del otro tenant. El patrón join-as-admin no se
+  implementa en v1.0.
 - **`tenant_delete_schedule`**: el soft-delete de tenant es inmediato
-  (`tenants.is_active = false`); no hay delayed-delete con
+  (`tenants.is_active = false`). No hay delayed-delete con
   confirmation_slug.
 
-Estas tablas se reabren si aparece necesidad real POST-MVP.
+Estas tablas se reabren si aparece necesidad real post-MVP.
 
 ### Endpoints nuevos (complementan los de EP002)
 ```
@@ -336,7 +336,7 @@ PATCH  /api/v1/superadmin/settings
 
 ### Seguridad adicional
 - Ruta `/superadmin` requiere sesión con `is_superadmin=true` y 2FA verificado
-  en últimos 30 min (post-MVP si ya tenemos 2FA implementado).
+  en los últimos 30 min (post-MVP, si el 2FA ya está implementado).
 - Rate limit especial: 300 requests/min por superadmin.
 - IP allowlist configurable en `platform_settings.key='superadmin.ip_allowlist'`.
 
@@ -359,7 +359,7 @@ PATCH  /api/v1/superadmin/settings
 ### US-025 — Iconos en paneles de tenant + indicador activo
 
 **Criterios de aceptación:**
-- [x] Backend `GET /superadmin/tenants` ahora devuelve 4 counts por
+- [x] Backend `GET /superadmin/tenants` devuelve 4 counts por
   tenant (`user_count`, `organization_count`, `program_count`,
   `project_count`) en un solo SELECT por recurso (batch).
 - [x] Backend `GET /superadmin/tenants/{id}/detail` incluye objeto
@@ -384,10 +384,10 @@ PATCH  /api/v1/superadmin/settings
 ### US-026 — Visión General = Tenants + Health unificados
 
 **Criterios de aceptación:**
-- [x] `/superadmin` (Visión general) ahora incluye, además de KPIs,
+- [x] `/superadmin` (Visión general) incluye, además de KPIs,
   Actividad reciente y Top tenants, una sección "Health de plataforma"
   con los cards de API, DB, Worker, Redis, IA providers, Storage.
-- [x] La sección Health auto-refresh cada 15s.
+- [x] La sección Health hace auto-refresh cada 15s.
 - [x] La ruta separada `/superadmin/health` queda como redirect
   permanente a `/superadmin` (preserva bookmarks).
 - [x] Entrada "Health" eliminada del sidebar super admin.

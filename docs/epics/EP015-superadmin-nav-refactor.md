@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -20,7 +20,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Hoy, cuando un super admin inicia sesión, el sidebar muestra también las entradas de la experiencia de tenant (Tablero, Solicitudes, Organizaciones, Admin) que no son útiles para su rol. El super admin **no usa esas páginas** — opera la plataforma, no ejecuta PM.
+Hoy, cuando un super admin inicia sesión, el sidebar muestra las entradas de la experiencia de tenant (Tablero, Solicitudes, Organizaciones, Admin), que no le sirven. El super admin **no usa esas páginas**: opera la plataforma, no ejecuta PM.
 
 Esta epic deja al super admin con **exactamente 4 ítems** en su sidebar, en este orden:
 

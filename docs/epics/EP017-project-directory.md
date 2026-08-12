@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-07-18
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -20,7 +20,7 @@ revisar_cada: 90d
 
 ## Objetivo de negocio
 
-Reemplazar la jerarquía actual `Area → Team → Actor` (que mezcla 3 dimensiones) por un modelo que separa explícitamente las 4 dimensiones del feedback:
+Reemplaza la jerarquía actual `Area → Team → Actor` (que mezcla 3 dimensiones) por un modelo que separa explícitamente las 4 dimensiones del feedback:
 
 | Dimensión | Hoy | Nuevo |
 |---|---|---|
@@ -29,7 +29,7 @@ Reemplazar la jerarquía actual `Area → Team → Actor` (que mezcla 3 dimensio
 | Rol proyecto | implícito en `project_members.role_in_project` | Catálogo editable `project_roles` (PM, SME, Key User…) |
 | Participación temporal | inexistente | `start_date` / `end_date` en participation |
 
-El sistema gana 4 ejes de reporte: por persona, por área funcional, por equipo operativo, por rol.
+El sistema gana 4 ejes de reporte: por persona, área funcional, equipo operativo y rol.
 
 ## Modelo conceptual
 
@@ -57,7 +57,7 @@ project_participations (N por (project_id, actor_id))
 
 ## DEC a registrar en DECISIONS.md al cierre del bloque
 
-- **DEC-XXX** — Área funcional vive en la persona (1 FK). Equipo operativo y rol viven en `project_participations`, una persona puede tener N participations en un proyecto (varios equipos/roles); una se marca `is_primary` para agrupadores.
+- **DEC-XXX** — Área funcional vive en la persona (1 FK). Equipo operativo y rol viven en `project_participations`. Una persona puede tener N participations en un proyecto (varios equipos/roles); una se marca `is_primary` para agrupadores.
 - **DEC-XXX** — Catálogo de equipos operativos (`teams`) queda **plano** (drop `teams.area_id`). Catálogo de roles de proyecto pasa a tabla editable `project_roles`.
 - **DEC-XXX** — Plan/RAID/Cambios usan **solo `*_actor_id`** como responsable. Drop de `tasks.area_id`, `risks.area_id`, `issues.area_id` (snapshot a `legacy_area_id` por rollback). Filtros y agrupadores derivan área/equipo/rol via join.
 - **DEC-XXX** — `project_members` legacy se mantiene en MVP; consolidación con `project_participations` queda como Bloque E post-MVP (ENH separado por blast radius en RBAC).
@@ -117,7 +117,7 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 **Endpoints nuevos:**
 - `GET/POST/PATCH/DELETE /projects/{id}/participations` (+ `?include=actor,area,team,role`).
 - `GET/POST/PATCH/DELETE /project-roles`.
-- `POST /areas` — nuevo: acepta `project_id` o `program_id` (además de `organization_id`). Cuando se crea un área desde un proyecto, backend deriva `organization_id` y crea automáticamente `AreaAssignment` del scope correcto (proyecto → queda en ese proyecto; programa → se propaga a sus proyectos; organización → cascada de lectura). **Agregado 2026-06-29 (BUG-085).**
+- `POST /areas` — nuevo: acepta `project_id` o `program_id` (además de `organization_id`). Cuando se crea un área desde un proyecto, el backend deriva `organization_id` y crea automáticamente el `AreaAssignment` del scope correcto: proyecto → queda en ese proyecto; programa → se propaga a sus proyectos; organización → cascada de lectura. **Agregado 2026-06-29 (BUG-085).**
 
 **Endpoints refactor:**
 - `/actors`: nuevos campos `company`, `job_title`, `manager_actor_id`; quita `team_id`, `is_lead` del payload.
@@ -232,10 +232,10 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 
 > **Decisión de diseño (extender-no-duplicar):** en vez de crear una
 > tabla `resource_pool` nueva, **el `Actor` ES el resource pool del
-> tenant** — se extiende con clasificación y capacidad. La saturación no
-> vive en el actor sino en la **relación** actor↔proyecto
-> (`project_participations`), consistente con el modelo de este epic
-> (participación temporal ya vivía ahí).
+> tenant**. Se extiende con clasificación y capacidad. La saturación no
+> vive en el actor, sino en la **relación** actor↔proyecto
+> (`project_participations`), consistente con el modelo de este epic:
+> la participación temporal ya vivía ahí.
 
 ### US-182 — Actors como pool de recursos con capacidad (`c3fdf7e`)
 
@@ -328,7 +328,7 @@ email por default), en `services/capacity_alerts.py`:
 ### US-186 / US-187 — Organigrama con utilización (XLSX) por scope (`fa200bd`, 2026-07-09)
 
 Export XLSX descargable del organigrama de recursos con su % de
-utilización, generado on-demand desde el mismo motor de saturación de
+utilización. Se genera on-demand desde el mismo motor de saturación de
 US-183 (`services/capacity.py::monthly_utilization`). 2 hojas:
 
 - **"Organigrama"** — recursos activos del scope + %FTE en el scope +

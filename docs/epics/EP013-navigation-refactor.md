@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-05-26
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
@@ -20,10 +20,10 @@ revisar_cada: 90d
 
 ## Actualización 2026-04-24 — TO-BE del owner (Sprint 5)
 
-Owner reabrió este epic tras detectar **2 "PMO" en el sidebar**
-(uno viejo en `OrgTreeNav` apuntando a `/admin/organizations`, otro
-nuevo de US-068 apuntando a `/pmo`) + el diagnóstico de navegación
-As-Is de Claude Code. Decisión consolidada:
+El owner reabre este epic tras detectar **2 "PMO" en el sidebar**
+(uno viejo en `OrgTreeNav`, que apunta a `/admin/organizations`, y
+otro nuevo de US-068, que apunta a `/pmo`) más el diagnóstico de
+navegación As-Is de Claude Code. Decisión consolidada:
 
 **DEC-022** — separar namespaces de rutas:
 - `/pmo/*` — recursos de **negocio** (proyectos, solicitudes, RAID,
@@ -33,8 +33,8 @@ As-Is de Claude Code. Decisión consolidada:
   AI settings, audit logs). Solo admin/superadmin.
 - `/superadmin/*` — solo `is_superadmin=True`.
 
-**DEC-023 (follow-up)** — evaluar `/{tenant_slug}/pmo/...` como
-prefijo URL. No bloquea DEC-022; se abre ADR separado.
+**DEC-023 (follow-up)** — evalúa `/{tenant_slug}/pmo/...` como
+prefijo URL. No bloquea DEC-022; abre un ADR separado.
 
 **US-075 (#128)** ejecuta el refactor:
 - Mover `page.tsx` de `/admin/{projects,requests,raid,changes,minutes,reports,programs/[id]}` → `/pmo/...`.
@@ -56,42 +56,42 @@ perms + docs. ETA 5-7 días. Owner puede partir en sub-US si conviene.
   `:path*` para sub-rutas y entradas literales para los listados).
 
 **Sub-bloque C — Sidebar + permisos** ✅ fix-committed
-- Item "PMO" standalone retirado del `TOP_NAV` (eliminado el
-  duplicado vs el header del `OrgTreeNav`).
-- `OrgTreeNav` header `PMO` ahora apunta a `/pmo` (antes
+- El item "PMO" standalone se retira del `TOP_NAV` (elimina el
+  duplicado con el header del `OrgTreeNav`).
+- El header `PMO` de `OrgTreeNav` ahora apunta a `/pmo` (antes
   `/admin/organizations`); cada org node apunta a
   `/pmo/organizations/${id}` (vista informativa, no editor).
-- `app-shell` separa visibility:
+- `app-shell` separa la visibilidad:
   - `OrgTreeNav` visible a cualquier user del tenant
     (`!user.is_superadmin`).
   - `ADMIN_NAV` visible solo si `role_type === "admin"`
-    (antes era a cualquier no-superadmin — bug de scope).
-- Permisos backend ya estaban alineados (verificado via inspect):
+    (antes era visible a cualquier no-superadmin — bug de scope).
+- Los permisos backend ya estaban alineados (verificado via inspect):
   `require_permission("organizations|projects", "read")` ya admite
-  user/viewer en sus mappings estáticos (DEC-020). No requirió cambios
+  user/viewer en sus mappings estáticos (DEC-020). No requiere cambios
   en endpoints.
 
 **Sub-bloque B — Páginas informativas** ✅ fix-committed
-- `/pmo/programs/page.tsx` reescrita como grid de cards informativos
-  (sin CRUD ni modal "Nuevo programa" — la creación queda en
-  `/admin/organizations/{id}`). Header breadcrumb `PMO / Programas`,
-  3 KPI cards (total/activos/inactivos) + filtros (search/org/estado).
-  Click en card → resumen `/pmo/programs/{id}` (US-034).
-- `/pmo/programs/[id]/page.tsx` — breadcrumbs + BackLink fallbacks
-  actualizados para apuntar a `/pmo/organizations/{id}` y `/pmo` en
-  vez de `/admin/organizations`. KPIs, donut y top risks ya estaban
+- `/pmo/programs/page.tsx` se reescribe como grid de cards informativos
+  (sin CRUD ni modal "Nuevo programa"; la creación queda en
+  `/admin/organizations/{id}`). Tiene header breadcrumb `PMO / Programas`,
+  3 KPI cards (total/activos/inactivos) y filtros (search/org/estado).
+  Click en card lleva al resumen `/pmo/programs/{id}` (US-034).
+- `/pmo/programs/[id]/page.tsx` — breadcrumbs y BackLink fallbacks
+  ahora apuntan a `/pmo/organizations/{id}` y `/pmo`, no a
+  `/admin/organizations`. KPIs, donut y top risks ya estaban
   completos (US-034).
-- `/pmo/organizations/[id]/page.tsx` — agregada fila de 4 KPI cards
+- `/pmo/organizations/[id]/page.tsx` — agrega una fila de 4 KPI cards
   arriba de la sección Programas: Business Units, Departamentos,
   Programas activos (hint con total), Proyectos activos (hint con
-  total). Derivados de `OrganizationPanelDetail` sin requerir
-  endpoint nuevo.
+  total). Se derivan de `OrganizationPanelDetail` sin endpoint
+  nuevo.
 
 ## Objetivo de negocio
 
-El sidebar hoy mezcla dos árboles de organización (jerarquía administrativa y drill-down real) y obliga a navegar a páginas separadas para cada módulo del proyecto. Esto confunde al usuario y rompe la expectativa de que "entrar a un proyecto" es una sola pantalla.
+El sidebar hoy mezcla dos árboles de organización (jerarquía administrativa y drill-down real) y obliga a navegar a páginas separadas para cada módulo del proyecto. Esto confunde al usuario y rompe la expectativa de que "entrar a un proyecto" sea una sola pantalla.
 
-La refactor consolida la navegación en:
+El refactor consolida la navegación en:
 
 - **Sidebar principal (todos los usuarios):** drill-down real Organización → Programa → Proyecto. Dentro del proyecto, los módulos son tabs, no entradas del sidebar.
 - **Sidebar Admin (admin / senior PMO):** un solo lugar para gestión de tenant, jerarquía org, usuarios/roles y auditoría. Sin página "Configuración" separada.
@@ -153,7 +153,7 @@ Se **elimina**:
 - [x] Endpoint `DELETE /api/v1/admin/tenant/logo` para quitar logo local.
 - [x] Endpoint `GET /api/v1/branding/tenants/{tenant_id}/logo` sirve el archivo (auth requerida; 404 si el user no es de ese tenant y no es superadmin).
 - [x] Endpoint `GET /api/v1/me/tenant-branding` devuelve `{tenant_id, tenant_name, tenant_slug, logo_url, primary_color}` — consumido por el topbar.
-- [x] `BrandMark` (frontend): cuando `logo_url` existe, muestra el logo **grande** en la zona izquierda del topbar (ancho fijo `w-[200px]`, alto `h-11`, `object-contain object-left`), ocupando aproximadamente el ancho de la sidebar. El tamaño es **independiente del estado de la sidebar** (collapsed/visible). A la derecha del logo aparece siempre el texto "PMO-aaS" (branding de la plataforma). Si no hay logo, fallback: se muestra el nombre del tenant en texto + "PMO-aaS".
+- [x] `BrandMark` (frontend): si `logo_url` existe, muestra el logo **grande** en la zona izquierda del topbar (ancho fijo `w-[200px]`, alto `h-11`, `object-contain object-left`), con un ancho similar al de la sidebar. El tamaño no depende del estado de la sidebar (collapsed/visible). A la derecha del logo va siempre el texto "PMO-aaS" (branding de la plataforma). Sin logo, el fallback muestra el nombre del tenant en texto + "PMO-aaS".
 - [x] `TenantBrandingProvider` con caché en `localStorage` + refresh explícito tras upload/edición en `/admin/tenant`.
 - [x] Click en el logo/home → navega a `/dashboard`.
 - [x] `/admin/tenant` acepta archivo (botón "Subir archivo") o URL externa — el cambio se refleja en el topbar sin reload completo via `refreshBranding()`.
@@ -170,7 +170,7 @@ Se **elimina**:
 
 **Commit:** `feat(branding): US-031 — upload y display del logo del tenant en chrome`.
 
-**Actualización 2026-05-26 — ENH-144:** Logo ahora se muestra **full-size en topbar** (no en cuadrito pequeño). Ancho `w-[200px]`, alto `h-11`, posición izquierda fija. Elimina el nombre del tenant en texto: ahora el logo es la identidad. Texto "PMO-aaS" siempre a la derecha. Tamaño no depende del colapso/visibilidad de sidebar. Fallback (sin logo): nombre tenant + "PMO-aaS".
+**Actualización 2026-05-26 — ENH-144:** el logo se muestra **full-size en topbar** (no en cuadrito pequeño). Ancho `w-[200px]`, alto `h-11`, posición izquierda fija. Elimina el nombre del tenant en texto: el logo pasa a ser la identidad. Texto "PMO-aaS" siempre a la derecha. Tamaño no depende del colapso/visibilidad de sidebar. Fallback (sin logo): nombre tenant + "PMO-aaS".
 
 ---
 
@@ -192,7 +192,7 @@ Se **elimina**:
 - [x] **Eliminada** la sección duplicada "Organizaciones (jerarquía administrativa)" del sidebar principal — BUs/Deptos sólo en `/admin/organizations`.
 - [x] **Eliminada** la sección "Módulos de proyecto" del sidebar (sus ítems serán tabs inline en US-035).
 - [x] Expansión persistida en `localStorage` (`pmoaas:sidebar:org-tree:expanded`).
-- [~] Endpoint `GET /api/v1/me/nav-tree?depth=3` **diferido**: la carga lazy con los endpoints existentes (`list{Organizations,Programs,Projects}`) cumple el caso de uso; un endpoint agregado se considerará si el number de nodos supera cientos. No bloqueante.
+- [~] Endpoint `GET /api/v1/me/nav-tree?depth=3` **diferido**: la carga lazy con los endpoints existentes (`list{Organizations,Programs,Projects}`) cumple el caso de uso. Un endpoint agregado se evalúa si el número de nodos supera cientos. No bloqueante.
 
 **Implementación:**
 - `OrgTreeNav` simplificado (sin BUs / Deptos) y promovido a entrada raíz del sidebar.
@@ -268,7 +268,7 @@ Se **elimina**:
 - [x] Rutas legacy `/plan`, `/raid`, `/areas`, `/documents`, etc. siguen funcionando como páginas individuales dentro del layout tabbed.
 - [x] La entrada "Módulos de proyecto" del sidebar principal fue eliminada en US-032.
 
-**Nota de diseño:** El criterio original pedía `?tab=<key>` con renderizado inline del contenido. La implementación usa sub-paths compartiendo layout — es equivalente UX-wise (Next.js no re-monta el layout al cambiar de sub-ruta) y mucho más barata de mantener porque no refactoriza las 8 páginas de módulos en componentes loadable. Si a futuro se requiere query-param puro, el refactor queda como follow-up.
+**Nota de diseño:** el criterio original pedía `?tab=<key>` con renderizado inline del contenido. La implementación usa sub-paths que comparten layout: es equivalente en UX (Next.js no re-monta el layout al cambiar de sub-ruta) y más barata de mantener, porque no refactoriza las 8 páginas de módulos en componentes loadable. Si a futuro se requiere query-param puro, el refactor queda como follow-up.
 
 **Commit:** `feat(web): US-035 — tabs inline en detalle de proyecto (supersede US-017)`.
 
@@ -293,7 +293,7 @@ Se **elimina**:
   - `/admin/supervision` → `/admin/tenant?tab=stats`.
   - `/admin/settings` → `/admin/tenant?tab=config`.
 - [x] DEC-005 respetada: el sidebar Admin sigue siendo visible a usuarios no-superadmin con rol `Administrador` o `PMO Manager`; las rutas validan `require_permission` en backend.
-- [x] `/admin/settings` ahora usa `<TenantSettingsForm />` (queda como handler legacy; el redirect Next-side se aplica antes de que se renderice la página en SSR, pero dejar la página mantiene dev tests si alguien navega directo vía dev server dynamic render).
+- [x] `/admin/settings` usa `<TenantSettingsForm />` y queda como handler legacy: el redirect Next-side actúa antes del render SSR, pero la página se mantiene para dev tests si alguien navega directo vía dev server dynamic render.
 
 **Commit:** `feat(web): US-036 — sidebar admin con 4 ítems raíz y /admin/tenant tabbed`.
 
@@ -318,8 +318,8 @@ GET    /api/v1/programs/{id}/summary                                [US-034]
 
 ## Cambios de schema
 
-Ninguno. US-031 (upload de logo) reusa `tenants.logo_url` + el
-storage local ya existente; no se agregó migración. Resto del refactor
+Ninguno. US-031 (upload de logo) reusa `tenants.logo_url` y el
+storage local ya existente; no agrega migración. El resto del refactor
 es puramente UI.
 
 ---
