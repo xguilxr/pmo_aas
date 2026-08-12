@@ -244,7 +244,7 @@ def main() -> int:
     # HANDOFF.md: tope propio. El techo total ya lo acota, pero sin un límite
     # suyo el puente entre sesiones se come el presupuesto de los demás — es el
     # archivo que más crece, porque cada sesión quiere contarlo todo. El detalle
-    # va a docs/conformidad/plan.md, que no se carga siempre.
+    # va a docs/archive/conformidad/plan.md, que no se carga siempre.
     handoff = RAIZ / "docs/project-management/HANDOFF.md"
     handoff_chars = _chars(handoff)
     techo_handoff = limites["handoff_max_chars"]

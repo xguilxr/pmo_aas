@@ -32,8 +32,8 @@ encabezado, y no es descuido.
 | [`asvs-l1.md`](asvs-l1.md) + [`asvs-l1.yaml`](asvs-l1.yaml) | **Lo único que se mantiene al día.** Los 127 controles L1 con evidencia por control; su barrido falla si un hueco reaparece |
 | [`marco/MCS-CORE.md`](marco/MCS-CORE.md) | El catálogo normativo: 126 requisitos, y §6.2 con la regla de nivel |
 | [`marco/`](marco/) | Los marcos tal como se recibieron. No se editan aquí |
-| [`plan-remediacion.md`](plan-remediacion.md) | **Histórico.** Cómo se llegó de 45 bloqueantes de N1 a uno aceptado |
-| [`runbook-cierre-n1.md`](runbook-cierre-n1.md) | **Histórico.** El orden de ataque mientras N1 era objetivo |
+| [`plan-remediacion.md`](../archive/conformidad/plan-remediacion.md) | **Histórico.** Cómo se llegó de 45 bloqueantes de N1 a uno aceptado |
+| [`runbook-cierre-n1.md`](../archive/conformidad/runbook-cierre-n1.md) | **Histórico.** El orden de ataque mientras N1 era objetivo |
 
 > **§6.2 conviene leerlo antes que nada:** el nivel es el mayor N donde **todos**
 > los DEBE están Conforme o No aplicable. Un solo PARCIAL bloquea el nivel
@@ -61,33 +61,33 @@ Se lee de arriba abajo como la historia de qué se supo y cuándo.
 
 | Documento | Qué aporta |
 |---|---|
-| [`2026-08-03-mca.md`](2026-08-03-mca.md) | Auditoría MCA inicial del entorno agéntico (commit `d79c31d`) |
-| [`2026-08-03-mca-seguimiento.md`](2026-08-03-mca-seguimiento.md) | Reauditoría tras las acciones 1-8 de esa misma jornada |
-| [`2026-08-03-mca-cierre.md`](2026-08-03-mca-cierre.md) | Cierre de la Tanda 1 |
-| [`2026-08-03-mcs.md`](2026-08-03-mcs.md) | Auditoría MCS inicial. **La tabla de 117 filas de la que sale el registro** |
+| [`2026-08-03-mca.md`](../archive/conformidad/2026-08-03-mca.md) | Auditoría MCA inicial del entorno agéntico (commit `d79c31d`) |
+| [`2026-08-03-mca-seguimiento.md`](../archive/conformidad/2026-08-03-mca-seguimiento.md) | Reauditoría tras las acciones 1-8 de esa misma jornada |
+| [`2026-08-03-mca-cierre.md`](../archive/conformidad/2026-08-03-mca-cierre.md) | Cierre de la Tanda 1 |
+| [`2026-08-03-mcs.md`](../archive/conformidad/2026-08-03-mcs.md) | Auditoría MCS inicial. **La tabla de 117 filas de la que sale el registro** |
 
 ### 2026-08-04 — seguimiento y lo no verificable
 
 | Documento | Qué aporta |
 |---|---|
-| [`2026-08-04-mca.md`](2026-08-04-mca.md) | Reauditoría MCA |
-| [`2026-08-04-mcs.md`](2026-08-04-mcs.md) | Reauditoría MCS de seguimiento |
-| [`2026-08-04-mcs-r1.md`](2026-08-04-mcs-r1.md) | **R1** — los 13 requisitos que la auditoría dejó en NO VERIFICABLE |
+| [`2026-08-04-mca.md`](../archive/conformidad/2026-08-04-mca.md) | Reauditoría MCA |
+| [`2026-08-04-mcs.md`](../archive/conformidad/2026-08-04-mcs.md) | Reauditoría MCS de seguimiento |
+| [`2026-08-04-mcs-r1.md`](../archive/conformidad/2026-08-04-mcs-r1.md) | **R1** — los 13 requisitos que la auditoría dejó en NO VERIFICABLE |
 
 ### 2026-08-05 — llega el marco y desmiente tres cierres
 
 | Documento | Qué aporta |
 |---|---|
-| [`2026-08-05-mcs-remediacion.md`](2026-08-05-mcs-remediacion.md) | Lo que R1 etiquetó como barato, más dos amenazas del modelo |
-| [`2026-08-05-ola0-recuento.md`](2026-08-05-ola0-recuento.md) | Ola 0: remedir antes de construir |
-| [`2026-08-05-verificacion-con-marco.md`](2026-08-05-verificacion-con-marco.md) | **El más importante de leer.** Con `MCS-CORE` en mano, **tres de seis cierres no se sostuvieron** |
-| [`plan.md`](plan.md) | El plan del 08-03. **Superado** por `plan-remediacion.md`; se conserva fechado |
+| [`2026-08-05-mcs-remediacion.md`](../archive/conformidad/2026-08-05-mcs-remediacion.md) | Lo que R1 etiquetó como barato, más dos amenazas del modelo |
+| [`2026-08-05-ola0-recuento.md`](../archive/conformidad/2026-08-05-ola0-recuento.md) | Ola 0: remedir antes de construir |
+| [`2026-08-05-verificacion-con-marco.md`](../archive/conformidad/2026-08-05-verificacion-con-marco.md) | **El más importante de leer.** Con `MCS-CORE` en mano, **tres de seis cierres no se sostuvieron** |
+| [`plan.md`](../archive/conformidad/plan.md) | El plan del 08-03. **Superado** por `plan-remediacion.md`; se conserva fechado |
 
 ### 2026-08-06 — la Ola 2 y lo que destapó verificar a mano
 
 | Documento | Qué aporta |
 |---|---|
-| [`2026-08-06-verificacion-local.md`](2026-08-06-verificacion-local.md) | Los cuatro trabajos de CI corridos a mano durante la caída de Actions. **Dos hallazgos, los dos en el aparato de verificación**: un trabajo que daba verde sobre un sujeto vacío, y una justificación falsa en el encabezado de una migración |
+| [`2026-08-06-verificacion-local.md`](../archive/conformidad/2026-08-06-verificacion-local.md) | Los cuatro trabajos de CI corridos a mano durante la caída de Actions. **Dos hallazgos, los dos en el aparato de verificación**: un trabajo que daba verde sobre un sujeto vacío, y una justificación falsa en el encabezado de una migración |
 
 ---
 

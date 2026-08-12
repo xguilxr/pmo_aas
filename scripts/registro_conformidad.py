@@ -32,7 +32,7 @@ es el precio de no tener el catálogo.
 
 import re, json, pathlib
 
-D = pathlib.Path(__file__).resolve().parents[1] / "docs" / "conformidad"
+D = pathlib.Path(__file__).resolve().parents[1] / "docs" / "archive" / "conformidad"
 FILA = re.compile(r"^\|\s*\*{0,2}([A-Z]{2,3}-\d{2})\*{0,2}\s*\|(.+)$")
 
 def limpiar(x): return re.sub(r"\*+", "", x).strip()

@@ -697,7 +697,7 @@ Adoptar el patrón **two-step delete** uniforme para las 6 entidades:
 **Contexto:**
 `MCS-CORE` ARQ-03 (N1) exige que «la lógica de dominio NO DEBE depender del
 framework web ni del mecanismo de persistencia». La medición de R1 (2026-08-04,
-`docs/conformidad/2026-08-04-mcs-r1.md`) dio el número: **54 de los 68 módulos de
+`docs/archive/conformidad/2026-08-04-mcs-r1.md`) dio el número: **54 de los 68 módulos de
 `apps/api/app/services/` importan SQLAlchemy**, y solo 2 importan FastAPI.
 
 O sea que el acoplamiento al framework web es leve —los servicios no saben de

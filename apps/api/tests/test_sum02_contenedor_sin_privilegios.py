@@ -2,7 +2,7 @@
 
 > «Las imágenes de contenedor DEBEN ejecutarse con usuario sin privilegios.»
 
-La auditoría R1 (`docs/conformidad/2026-08-04-mcs-r1.md`) encontró que
+La auditoría R1 (`docs/archive/conformidad/2026-08-04-mcs-r1.md`) encontró que
 `apps/api/Dockerfile` no tenía ninguna directiva `USER`: la imagen parte de
 `python:3.12-slim`, cuyo usuario por defecto es `root`, y ahí se quedaba.
 

@@ -21,6 +21,7 @@ para trazabilidad. Para el estado actual del producto usa `docs/epics/` +
 | `runbooks-ai-legacy/` | `docs/runbooks/ai/` y `networking/` | Runbooks de la misma era de IA local; mismo motivo. |
 | `project-management/` | `docs/project-management/` | Handoffs puntuales y análisis cerrados (detalle en su README). Archivado 2026-08-12. |
 | `epics/` | `docs/epics/` | Epics entregadas completas: EP011, EP013, EP014, EP015 (detalle en su README). Archivado 2026-08-12. |
+| `conformidad/` | `docs/conformidad/` | Expediente del programa cerrado por ADR-036: informes fechados + plan + runbook (detalle en su README). Archivado 2026-08-12. |
 | `PENDING-ADDITIONS.md` | `docs/epics/` | Análisis pre-implementación de adiciones al MVP; lo útil quedó como US. |
 | `glossary.md` · `setup-dev.md` · `seed-demo.md` | `docs/` raíz | Guías tempranas; lo vigente vive en `docs/dominio/` y los runbooks. |
 | `agents-skills-proposals.md` · `agents-skills-generic-proposals.md` | `docs/` raíz | Propuestas de skills ya ejecutadas o descartadas; las skills viven en `.claude/skills/`. |
