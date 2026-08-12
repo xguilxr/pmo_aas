@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-05
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -12,7 +12,7 @@ revisar_cada: 180d
 **Scope:** Proyecto `pmo-aas`, 3 servicios (api, worker, web) + 2 plugins (Postgres, Redis)
 
 Este runbook detalla cómo crear y configurar los 6 componentes del proyecto en
-Railway, incluyendo todas las variables de entorno necesarias para v1.0.
+Railway. Incluye todas las variables de entorno necesarias para v1.0.
 
 ---
 
@@ -62,7 +62,7 @@ pmo-aas/
 
 ### 3.1 Variables compartidas (Reference Variables)
 
-Crear en Railway como **Shared Variables** — se copian a todos los servicios automático.
+Crear en Railway como **Shared Variables**: se copian automáticamente a todos los servicios.
 
 | Variable | Fuente | Valor ejemplo | Notas |
 |---|---|---|---|
@@ -111,11 +111,10 @@ GROQ_API_KEY, etc.) más estas específicas:
 | `RESEND_FROM` | **Sí** | `PMO·aaS <no-reply@pmo-aas.com>` | Sender email (dominio verificado en Resend). |
 | `APP_BASE_URL` | **Sí** | `https://app.pmo-aas.com` | Base URL para links en emails. |
 
-> **Histórico:** hasta ENH-023 (2026-04-23) el worker requería
-> `TS_AUTHKEY` + `TS_HOSTNAME` para un sidecar Tailscale que hablaba
-> con Ollama (US-048). DEC-017 retiró ese flujo y ENH-023 borró el
-> `start-worker.sh`. Si esas env vars existen en Railway, pueden
-> eliminarse.
+> **Histórico:** hasta ENH-023 (2026-04-23), el worker requería
+> `TS_AUTHKEY` y `TS_HOSTNAME` para un sidecar Tailscale que hablaba
+> con Ollama (US-048). DEC-017 retiró ese flujo. ENH-023 borró
+> `start-worker.sh`. Si esas env vars existen en Railway, elimínalas.
 
 ### 3.4 Servicio `web` (Next.js)
 
@@ -125,24 +124,24 @@ Hereda `NODE_ENV` + estas específicas:
 |---|---|---|---|
 | `NEXT_PUBLIC_API_URL` | **Sí** | `https://api.pmo-aas.com` | URL del backend (public, accesible desde browser). |
 
-> **No usamos NextAuth.** El frontend habla directo con `/api/v1/auth/*` del backend. Si ves `NEXTAUTH_URL` / `NEXTAUTH_SECRET` en Railway, son legacy de versiones viejas del doc y pueden eliminarse.
+> **No usamos NextAuth.** El frontend habla directo con `/api/v1/auth/*` del backend. Si ves `NEXTAUTH_URL` o `NEXTAUTH_SECRET` en Railway, son legacy de versiones viejas del doc: elimínalas.
 >
-> **GlitchTip / Sentry**: `sentry-sdk` no está instalado en `apps/api/requirements.txt`. La variable `NEXT_PUBLIC_GLITCHTIP_DSN` (o equivalente) hoy no se usa. Si se reintegra observabilidad APM, agregar aquí.
+> **GlitchTip / Sentry**: `sentry-sdk` no está instalado en `apps/api/requirements.txt`. La variable `NEXT_PUBLIC_GLITCHTIP_DSN` (o equivalente) hoy no se usa. Agrégala aquí si se reintegra observabilidad APM.
 
 ---
 
 ## 4. Volúmenes y storage
 
-El servicio `api` y `worker` necesitan acceso al mismo storage para
-uploads (api sube docs, worker genera PDFs de reportes).
+Los servicios `api` y `worker` necesitan el mismo storage para
+uploads: `api` sube documentos, `worker` genera los PDFs de reportes.
 
 ### 4.1 Storage S3-compatible (Cloudflare R2)
 
-> **Nota importante:** Railway Volumes **NO se pueden compartir
-> entre servicios** — cada volumen se monta en un único contenedor.
-> Para el caso PMO·aaS (api + worker compartiendo archivos)
-> usamos **Cloudflare R2** (S3-compatible, 0 egress fees, 10 GB
-> free).
+> **Nota importante:** Railway Volumes **no se comparten
+> entre servicios**: cada volumen se monta en un único contenedor.
+> Para que api y worker compartan archivos en PMO·aaS,
+> usamos **Cloudflare R2** (S3-compatible, 0 costo de egress, 10 GB
+> gratis).
 >
 > **Runbook completo:** [`docs/runbooks/infra/uploads-storage.md`](../infra/uploads-storage.md).
 
@@ -189,7 +188,7 @@ Cada servicio tiene su archivo de configuración. Ya existen en el repo:
 - `apps/api/worker.railway.toml` → servicio `worker`
 - `apps/web/railway.toml` → servicio `web`
 
-Railway lee estos automáticos al detectar la app. **No necesitas editarlos manualmente**
+Railway los lee automáticamente al detectar la app. **No necesitas editarlos**
 para v1.0, pero revisa que `startCommand` y `healthcheckPath` sean correctos:
 
 ```toml
@@ -214,7 +213,7 @@ healthcheckPath = "/api/health"
 
 ## 6. Dominios custom en Railway
 
-Once DNS está listo (ver [`docs/runbooks/infra/dns-routing.md`](../infra/dns-routing.md)):
+Una vez que el DNS está listo (ver [`docs/runbooks/infra/dns-routing.md`](../infra/dns-routing.md)):
 
 1. Railway UI → Proyecto → Servicio `web` → **Networking** → **Custom Domain** → `app.pmo-aas.com`.
 2. Idem para servicio `api` → `api.pmo-aas.com`.
@@ -231,8 +230,8 @@ Railway UI → Proyecto → **Settings** → **Deploy**:
 - **Auto-deploy**: ON.
 - **Watch paths**: (ver `apps/*/railway.toml` en el repo para paths específicos).
 
-**Resultado**: cada `git push` a `main` triggerera redeploy automático de los
-servicios afectados. Para bloquear un servicio temporalmente, cambiar su
+**Resultado**: cada `git push` a `main` dispara el redeploy automático de los
+servicios afectados. Para bloquear un servicio temporalmente, cambia su
 `production_branch` a `disabled` en la UI.
 
 ---
@@ -270,8 +269,8 @@ marca el servicio como degradado.
 - **worker**: Sin healthcheck HTTP (servicio background, no expone puerto).
 - **web**: `GET /api/health` → proxea a backend + retorna salud combinada.
 
-Si uno falla, Railway auto-redeploy (si está habilitado) o alertas manuales
-(revisar settings).
+Si uno falla, Railway hace auto-redeploy (si está habilitado) o envía alertas
+manuales (revisa settings).
 
 ---
 

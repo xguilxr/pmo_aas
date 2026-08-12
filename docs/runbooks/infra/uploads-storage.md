@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-23
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -20,9 +20,9 @@ Tiempo estimado: **30–45 min** incluyendo smoke test.
 ## 0. Por qué NO usamos Railway Volumes
 
 Railway Volumes **no pueden compartirse entre servicios**. Se montan
-en un solo contenedor — el mount es exclusivo. Para PMO·aaS necesitamos
-que **api** (recibe uploads) y **worker** (genera PDFs de reportes)
-escriban en el mismo storage. Las opciones son:
+en un solo contenedor: el mount es exclusivo. Para PMO·aaS, **api**
+(recibe uploads) y **worker** (genera PDFs de reportes) necesitan
+escribir en el mismo storage. Las opciones son:
 
 | Opción | Compartido | Costo | Complejidad |
 |---|---|---|---|
@@ -77,18 +77,18 @@ queda descartado para este caso de uso.
    - **Secret Access Key** (larga)
    - **Endpoint URL** (formato: `https://<accountid>.r2.cloudflarestorage.com`)
 
-> ⚠️ Guardar inmediatamente en gestor de secretos (1Password / Bitwarden).
+> ⚠️ Guárdalo de inmediato en el gestor de secretos (1Password / Bitwarden).
 > Si se pierde el Secret Access Key, hay que generar otro token y
-> rotar env vars.
+> rotar las env vars.
 
 ---
 
 ## 4. Configurar env vars en Railway
 
 En Railway Dashboard → Proyecto `pmo-aas` → **Variables** (shared
-variables, al nivel del proyecto).
+variables, a nivel de proyecto).
 
-Agregar **4 variables compartidas** que heredarán api + worker:
+Agrega **4 variables compartidas** que heredarán api y worker:
 
 | Variable | Valor | Notas |
 |---|---|---|
@@ -104,7 +104,7 @@ Agregar **4 variables compartidas** que heredarán api + worker:
 - `S3_REGION` = tu región B2 (ej. `us-west-002`).
 - Resto igual.
 
-Click **Deploy** en cada servicio (`api` + `worker`) para que
+Click **Deploy** en cada servicio (`api` y `worker`) para que
 recarguen las env vars.
 
 ---
@@ -141,10 +141,10 @@ print('delete ok')
 ```
 
 Esperado: `upload ok`, `download ok: b'hello'`, `delete ok`. Si falla
-con `SignatureDoesNotMatch` → revisar que `S3_SECRET_ACCESS_KEY` no
+con `SignatureDoesNotMatch`, revisa que `S3_SECRET_ACCESS_KEY` no
 tenga espacios invisibles al pegar.
 
-Repetir el mismo comando desde la shell del servicio `worker` para
+Repite el mismo comando desde la shell del servicio `worker` para
 confirmar que también tiene acceso.
 
 ---
@@ -152,8 +152,8 @@ confirmar que también tiene acceso.
 ## 6. Cambios de código (scope de US-066)
 
 Estos cambios se implementan **después** de que el owner confirme
-el runbook + acceso funcional al bucket. Los hace Claude en commit
-separado.
+el runbook y el acceso funcional al bucket. Claude los hace en un
+commit separado.
 
 **`apps/api/app/services/document_storage.py`:**
 
@@ -180,7 +180,7 @@ separado.
 
 **`requirements.txt`:**
 
-- Agregar `boto3==1.35.*` (~10 MB, pin minor).
+- Agrega `boto3==1.35.*` (~10 MB, pin minor).
 
 **Tests:**
 
@@ -192,7 +192,7 @@ separado.
 ## 7. Migración de datos existentes (si aplica)
 
 Si en dev ya hay documentos en `STORAGE_PATH` local que quieres
-preservar en R2, correr **una sola vez** desde local:
+preservar en R2, corre esto **una sola vez** desde local:
 
 ```bash
 # Requiere S3_* en .env + STORAGE_PATH viejo.
@@ -224,8 +224,8 @@ for f in root.rglob('*'):
     print(f'uploaded {key}')
 ```
 
-En prod (Railway) no hay nada que migrar — los archivos se perdieron
-en redeploys previos. El owner sabe que hasta US-066 ejecutada, el
+En prod (Railway) no hay nada que migrar: los archivos se perdieron
+en redeploys previos. El owner sabe que, hasta ejecutar US-066, el
 storage es efímero.
 
 ---
@@ -242,8 +242,8 @@ storage es efímero.
 **Backup externo (opcional para producción):**
 - Cloudflare R2 ya es multi-AZ. No requiere backup cross-region para
   MVP.
-- Si se quiere extra seguridad, agendar `rclone sync` nocturno a un
-  bucket B2 secondary.
+- Si se quiere seguridad extra, agenda un `rclone sync` nocturno a un
+  bucket B2 secundario.
 
 ---
 
@@ -271,15 +271,15 @@ sola.
 
 Si algo se rompe tras mergear el código de US-066:
 
-1. Setear `STORAGE_BACKEND=local` en Railway → redeploy → vuelve al
+1. Define `STORAGE_BACKEND=local` en Railway y redeploy: vuelve al
    flujo filesystem local (pierde persistencia pero no crashea).
 2. Los archivos en R2 se mantienen.
-3. Investigar el bug offline, volver a `STORAGE_BACKEND=s3` cuando
+3. Investiga el bug offline. Vuelve a `STORAGE_BACKEND=s3` cuando
    se arregle.
 
 Si hace falta desactivar R2 por completo:
 - Cloudflare → R2 → token → **Revoke**.
-- Railway → eliminar `S3_*` env vars.
+- Railway → elimina las env vars `S3_*`.
 
 ---
 
@@ -288,7 +288,7 @@ Si hace falta desactivar R2 por completo:
 **P:** Al subir un documento desde `/pmo/projects/*/documents (legacy /admin/* redirige)`,
 error "No se pudo subir el documento" con status 500.
 
-**R:** Revisar logs del api en Railway. Causas típicas:
+**R:** Revisa los logs del api en Railway. Causas típicas:
 - `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` con espacios o mal
   copiados.
 - `S3_ENDPOINT_URL` sin `https://` al inicio.
@@ -298,18 +298,18 @@ error "No se pudo subir el documento" con status 500.
 
 **P:** Upload funciona pero `GET /documents/{id}/download` devuelve 404.
 
-**R:** Verificar que `worker` y `api` están usando el **mismo
+**R:** Verifica que `worker` y `api` usan el **mismo
 bucket**. Si el worker escribió el archivo y api lo busca, deben
-compartir `S3_BUCKET` exacto.
+compartir el mismo `S3_BUCKET`.
 
 ---
 
 **P:** Latencia alta en downloads (> 2 s para un PDF de 1 MB).
 
-**R:** R2 tiene CDN-global pero puede estar lejos del región Railway.
+**R:** R2 tiene CDN global, pero puede estar lejos de la región Railway.
 Opciones:
-1. Configurar un Custom Domain en R2 con Cloudflare CDN (gratis, 0
-   egress) → serve directo al browser sin pasar por api.
+1. Configura un Custom Domain en R2 con Cloudflare CDN (gratis, 0
+   egress) para servir directo al browser sin pasar por api.
 2. Firma URLs prefirmadas con expiración corta (ej. 1 hora) para que
    el frontend descargue directo del bucket.
 
@@ -319,8 +319,8 @@ Opciones:
 smoke test.
 
 **R:** El smoke test de §5 asume que el Dockerfile ya tiene boto3
-instalado (lo agregamos en US-066). Si todavía no se mergeó, correr
-el smoke localmente con `.env` del servidor.
+instalado (se agregó en US-066). Si todavía no se mergeó, corre
+el smoke localmente con el `.env` del servidor.
 
 ---
 

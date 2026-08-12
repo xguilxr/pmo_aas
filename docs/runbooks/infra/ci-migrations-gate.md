@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -17,7 +17,7 @@ revisar_cada: 180d
 ## Qué hace
 
 El job `api-migrations-postgres` en `.github/workflows/ci.yml` levanta
-un container `postgres:15-alpine` efímero y corre la secuencia:
+un container `postgres:15-alpine` efímero y corre esta secuencia:
 
 1. `alembic upgrade head` desde DB vacía → debe completar.
 2. `alembic downgrade base` → debe completar (smoke de reversibilidad).
@@ -28,22 +28,22 @@ Si cualquiera de los 3 pasos falla, el job falla y bloquea el merge.
 ## Por qué existe
 
 BUG-039 (#184) reveló un gap: la migración `20260425_0031` usaba
-`server_default=sa.text("1")` sobre columna BOOLEAN. SQLite (motor de
-la suite de tests) acepta `1` como booleano, **Postgres lo rechaza**
-con `DatatypeMismatch`. El merge a `main` pasó CI verde, el deploy
-a Railway crasheó en `alembic upgrade head`, y el API quedó caído ~3
+`server_default=sa.text("1")` sobre una columna BOOLEAN. SQLite (motor de
+la suite de tests) acepta `1` como booleano; **Postgres lo rechaza**
+con `DatatypeMismatch`. El merge a `main` pasó CI verde. El deploy
+a Railway crasheó en `alembic upgrade head` y el API quedó caído ~3
 días.
 
-Este patrón (SQLite-pasa-Postgres-falla) puede repetirse con
+Este patrón (SQLite pasa, Postgres falla) puede repetirse con
 `sa.text("0/1")`, JSONB vs TEXT, `gen_random_uuid()`, secuencias,
-exclusion constraints, etc. Este gate los caza antes del merge.
+exclusion constraints, etc. Este gate lo caza antes del merge.
 
 ## Costo
 
-~30-45s por PR que toque `apps/api/**`. PRs solo-frontend lo saltan
-gracias al filter `dorny/paths-filter@v3` (`needs.changes.outputs.api == 'true'`).
+~30-45s por PR que toque `apps/api/**`. Los PR solo de frontend lo saltan
+gracias al filtro `dorny/paths-filter@v3` (`needs.changes.outputs.api == 'true'`).
 
-Cazar 1 BUG-039-like al año ya paga la inversión.
+Cazar 1 bug como BUG-039 al año ya paga la inversión.
 
 ## Cómo debuggear si el job falla
 
@@ -53,15 +53,14 @@ Síntoma: `upgrade head` falla con `DatatypeMismatch`, `UndefinedFunction`,
 `DuplicateColumn`, etc.
 
 Acciones:
-1. Lee el traceback. Identifica la migración (revision id) que está
-   ejecutándose cuando falla.
+1. Lee el traceback. Identifica la migración (revision id) que falla.
 2. Revisa `apps/api/alembic/versions/<revision>.py`:
-   - `server_default=sa.text("0|1")` sobre BOOLEAN → cambiar a
+   - `server_default=sa.text("0|1")` sobre BOOLEAN → cambia a
      `sa.text("false|true")` o `sa.text("'false'|'true'")`.
    - `op.add_column(..., nullable=False)` sin default sobre tabla con
-     datos → agregar `server_default` para el backfill.
+     datos → agrega `server_default` para el backfill.
    - `op.alter_column(..., type_=...)` que no se traduce limpio en
-     Postgres → usar `op.execute("ALTER TABLE ... USING ...::nuevotipo")`.
+     Postgres → usa `op.execute("ALTER TABLE ... USING ...::nuevotipo")`.
 3. Reproduce localmente:
    ```bash
    docker run -d --name pg15 -p 5432:5432 \
@@ -76,16 +75,16 @@ Acciones:
 
 Síntoma: `upgrade head` pasa pero `downgrade base` rompe.
 
-Causa probable: `op.drop_column` en una columna que tiene FK que no
-fue droppeada antes; o `op.drop_table` sobre una tabla con
+Causa probable: `op.drop_column` en una columna con FK que no
+se eliminó antes; o `op.drop_table` sobre una tabla con
 dependencias circulares.
 
 Acciones:
 1. Verifica que la migración tenga `downgrade()` definido y simétrico
    al upgrade.
 2. Si es legacy y nunca se usó downgrade en prod, considera marcar
-   la migración como `downgrade = lambda: pass` con comentario
-   explicando, **pero esto rompe la idempotencia**: hablarlo con el
+   la migración como `downgrade = lambda: pass` con un comentario
+   que lo explique. **Esto rompe la idempotencia**: habla con el
    owner antes.
 
 ### Caso 3: upgrade head re-aplicado crashea
@@ -109,32 +108,31 @@ Síntoma: el job falla en setup con timeout esperando `pg_isready`.
 Acciones:
 1. Reintenta el workflow. Es raro pero ocurre con runners
    sobrecargados.
-2. Si persiste: revisar si la versión de Postgres en el workflow
-   (`postgres:15-alpine`) cambió de comportamiento. Pinear a tag
+2. Si persiste: revisa si la versión de Postgres en el workflow
+   (`postgres:15-alpine`) cambió de comportamiento. Fija un tag
    específico (ej. `postgres:15.6-alpine`).
 
 ## Convivencia con ENH-035 (#158)
 
 ENH-035 propone un análisis amplio para evaluar si Postgres reemplaza
 SQLite en la **suite completa de tests** (post-MVP/v2.0). Este gate
-es **complementario**: aunque ENH-035 termine con la decisión "no
-migrar la suite", este job sigue siendo útil como sanity check
-dedicado solo a migrations.
+es **complementario**: aunque ENH-035 decida no migrar la suite,
+este job sigue siendo útil como chequeo dedicado solo a migraciones.
 
-Si ENH-035 decide migrar la suite a Postgres, este gate puede
-absorberse en el job de tests (los tests ya correrían contra
-Postgres). Hasta entonces, este gate es independiente.
+Si ENH-035 migra la suite a Postgres, este gate puede absorberse en
+el job de tests, porque ya correrían contra Postgres. Hasta entonces,
+este gate es independiente.
 
 ## Mantenimiento
 
-- Si la versión de Postgres en Railway prod cambia, alinear
+- Si la versión de Postgres en Railway prod cambia, alinea
   `postgres:15-alpine` en el workflow.
-- Si una migración legacy se descubre con bug latente que SQLite
-  enmascara, el gate fallará al primer run después de modificar
-  cualquier archivo en `apps/api/**`. Decisión:
-  - Fixear la migración legacy in-place (preferido).
-  - Si el cambio es muy invasivo, marcar como `legacy fix-on-touch`
-    con DEC en `docs/decisions/` antes de mergear.
+- Si una migración legacy tiene un bug latente que SQLite
+  enmascara, el gate falla en el primer run tras modificar
+  cualquier archivo en `apps/api/**`. Decide:
+  - Arreglar la migración legacy in situ (preferido).
+  - Si el cambio es muy invasivo, marca `legacy fix-on-touch`
+    con un DEC en `docs/decisions/` antes de mergear.
 
 ## Referencias
 

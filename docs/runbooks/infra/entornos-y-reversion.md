@@ -2,15 +2,15 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-06
+revisado: 2026-08-12
 revisar_cada: 90d
 ---
 
 # Entornos y procedimiento de reversión
 
 Cierra **MCS INF-02** («entornos separados para desarrollo y producción, con
-paridad en las versiones de los servicios de datos») y **DES-02** («procedimiento
-de reversión documentado y ejecutable»).
+paridad en las versiones de los servicios de datos») y **DES-02**
+(«procedimiento de reversión documentado y ejecutable»).
 
 ---
 
@@ -23,23 +23,23 @@ de reversión documentado y ejecutable»).
 | local | máquina de quien desarrolla | No es entorno del producto; no cuenta para INF-02 |
 
 Que la copia de desarrollo esté sin usar no la descalifica: el requisito pide
-que los entornos **existan y estén separados**, no que haya tráfico en los dos.
-Lo que sí importa es lo de abajo.
+que los entornos **existan y estén separados**, no que haya tráfico en ambos.
+Lo que importa está abajo.
 
 ## 2. Paridad de versiones — la parte que se verifica
 
 Las versiones se declaran en **[`servicios-datos.yml`](../../../servicios-datos.yml)**,
-en la raíz, y `scripts/check_entornos.py` comprueba en cada PR que el CI las
+en la raíz. `scripts/check_entornos.py` comprueba en cada PR que el CI las
 respeta.
 
 **Por qué hacía falta un archivo para esto.** Sin un sitio que dijera qué
-versión toca, «paridad» no se puede afirmar ni desmentir — solo suponer. Y la
-suposición estaba mal: el 2026-08-06, corriendo a mano lo que el CI no podía,
-la base local resultó ser **Postgres 16** contra el **15** del workflow. Nadie
-lo eligió; era el que traía el sistema.
+versión toca, «paridad» no se puede afirmar ni desmentir: solo se puede
+suponer. Y la suposición estaba mal. El 2026-08-06, al correr a mano lo que
+el CI no podía, la base local resultó ser **Postgres 16** contra el **15**
+del workflow. Nadie lo eligió: era el que traía el sistema.
 
-Con la migración `0101` en juego —que se reescribió precisamente por miedo a una
-diferencia entre motores— esa era justo la divergencia que no debía existir.
+La migración `0101` se reescribió por miedo a una diferencia entre motores.
+Esa era justo la divergencia que no debía existir.
 
 **Lo que el gate no puede comprobar** es qué corre de verdad en Railway: este
 repositorio no tiene acceso. Se declara aquí, con fecha, en vez de fingir que se
@@ -82,7 +82,7 @@ un esquema nuevo que no conoce.
 
 En Railway → servicio → **Deployments** → el despliegue anterior → **Redeploy**.
 
-Railway conserva los despliegues anteriores, así que esto es un clic y no
+Railway conserva los despliegues anteriores: esto es un clic y no
 requiere reconstruir. **Comprobar después:**
 
 ```bash
@@ -103,9 +103,9 @@ alembic current
 alembic downgrade -1
 ```
 
-**Antes de bajar, leer el `downgrade()` de esa migración.** Las de esquema
-suelen revertir sin pérdida; **las de datos no**. La `0101` renombra una llave
-dentro de `tenants.settings` y su reversión es simétrica; una que hubiera
+**Antes de bajar, lee el `downgrade()` de esa migración.** Las de esquema
+suelen revertir sin pérdida; **las de datos, no**. La `0101` renombra una llave
+en `tenants.settings` y su reversión es simétrica. Una que hubiera
 borrado una columna no puede devolver lo que había.
 
 Si el `downgrade()` no puede devolver los datos, **la vía es la restauración**,
@@ -113,10 +113,10 @@ no la reversión.
 
 ### 3.4 Después, siempre
 
-1. Confirmar que `/health` responde `ok` en sus tres comprobaciones.
-2. Mirar Sentry: la reversión no borra los errores que ya se capturaron, y ahí
+1. Confirma que `/health` responde `ok` en sus tres comprobaciones.
+2. Mira Sentry: la reversión no borra los errores ya capturados, y ahí
    está la causa.
-3. Anotar qué pasó. Si la reversión fue por una migración, va a
+3. Anota qué pasó. Si la reversión fue por una migración, va a
    `docs/epics/DB-CHANGES.md` junto a la entrada de esa migración.
 
 ---
@@ -126,6 +126,6 @@ no la reversión.
 **Un procedimiento de reversión que nunca se ejecutó no es ejecutable**, que es
 lo que DES-02 pide. Lo mismo que con las copias.
 
-El ensayo barato: en el entorno de **desarrollo** —que existe justamente para
-esto— desplegar, revertir al anterior, y comprobar `/health`. Diez minutos, y
-la primera vez que se hace no es durante un incidente.
+El ensayo barato: en el entorno de **desarrollo** (existe justamente para
+esto), despliega, revierte al anterior y comprueba `/health`. Toma diez
+minutos, y la primera vez no debe ser durante un incidente.

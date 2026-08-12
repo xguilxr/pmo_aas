@@ -2,7 +2,7 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-04
+revisado: 2026-08-12
 revisar_cada: 30d
 ---
 
@@ -26,7 +26,7 @@ toda sesión para consultarse al cerrar un sprint.
 - [ ] ENH-075 #257 — Tool-use (crear tarea / RAID / nav)
 - [ ] ENH-076 #258 — Historial persistente + summary rolling
 
-**Decisión owner 2026-05-08:** posterga el chat global. Volver a evaluar necesidad post-EP020.
+**Decisión owner 2026-05-08:** posterga el chat global. Vuelve a evaluar necesidad post-EP020.
 
 ### Pendiente redefinición Áreas/Recursos (cubierto parcial por EP017 Sprint 25)
 - [ ] **US-105 #311** — Import Plan: wizard matching responsables → Actor.

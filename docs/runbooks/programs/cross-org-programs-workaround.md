@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -22,10 +22,10 @@ El modelo `programs` tiene **FK 1:1 a `organizations`**:
 programs (id, organization_id, name, ...)
 ```
 
-Esto significa que un programa vive en una sola organización. No hay
-soporte nativo para programas que agrupen proyectos de **varias
-empresas** del grupo (ej. un Programa Corporativo que cruce "Empresa A"
-y "Empresa B" del mismo holding).
+Un programa vive en una sola organización. No hay soporte nativo para
+programas que agrupen proyectos de **varias empresas** del grupo (ej.
+un Programa Corporativo que cruce "Empresa A" y "Empresa B" del mismo
+holding).
 
 Ampliar a N:M (tabla `program_organizations`) está **diferido** según
 ADR-016 hasta que se cumpla alguno de los triggers de demanda.
@@ -56,8 +56,8 @@ Nombre sugerido: `Corporativo Q3 2026`, `Cross-empresa Innovación`, etc.
 
 ### 3. Etiquetar los proyectos por empresa real
 
-Cada proyecto que entre al programa, aunque viva administrativamente
-bajo la org umbrella, **se etiqueta con la empresa real** usando uno
+Cada proyecto que entra al programa, aunque viva administrativamente
+bajo la org umbrella, **se etiqueta con la empresa real**. Usa uno
 de estos mecanismos:
 
 #### Opción A — usar el campo `business_unit` del Charter
@@ -76,9 +76,9 @@ participación por empresa.
 Prefijo `[Empresa A] Proyecto X`. Útil para listados rápidos pero
 limitante para reportes estructurados.
 
-**Recomendación owner:** Opción A para simplicidad; complementar con
-Opción B cuando el proyecto necesita stakeholders/áreas dedicados por
-empresa.
+**Recomendación owner:** usa la Opción A por simplicidad. Complementa con
+la Opción B cuando el proyecto necesita stakeholders o áreas dedicadas
+por empresa.
 
 ### 4. Reporte cross-empresa
 
@@ -99,7 +99,7 @@ del programa. Para desglosar por empresa:
    reales.
 2. **Permisos por org no se propagan**: si el PM de "Empresa A" no
    tiene permisos sobre la org umbrella, no verá el proyecto. Solución:
-   asignar membership directa al proyecto (US-074 user management).
+   asigna membership directa al proyecto (US-074 user management).
 3. **Reportes cross-empresa requieren filtro manual** por `business_unit`
    o Áreas; no hay un dashboard nativo "ver proyectos por empresa
    subordinada".
@@ -119,7 +119,7 @@ Trigger para retomar:
 - La tasa de "programas con un solo proyecto cuyo PM es de otra
   empresa" supera el 20% del total (proxy de uso forzado).
 
-Cuando se active el trigger: abrir US nueva con scope:
+Cuando se active el trigger, abre una US nueva con este scope:
 
 1. Tabla `program_organizations` (m2m) + migración data.
 2. Redesign de listados que filtran por `organization_id` único.
@@ -141,18 +141,18 @@ ETA estimado: 3-4 días + tests.
 
 **Ejecución:**
 
-1. Crear (si no existe) org `Grupo XYZ` desde `/admin/organizations`.
-2. Crear programa `Transformación Digital Q3 2026` en `Grupo XYZ`.
-3. Crear los 2 proyectos bajo `Grupo XYZ`:
+1. Crea (si no existe) la org `Grupo XYZ` desde `/admin/organizations`.
+2. Crea el programa `Transformación Digital Q3 2026` en `Grupo XYZ`.
+3. Crea los 2 proyectos bajo `Grupo XYZ`:
    - `ERP modernización` — `business_unit = "Empresa A"`.
    - `CRM upgrade` — `business_unit = "Empresa B"`.
-4. Asignar PMs y membership directa al proyecto.
-5. Para reporte cross-empresa: exportar listado del programa, agrupar
+4. Asigna PMs y membership directa al proyecto.
+5. Para el reporte cross-empresa: exporta el listado del programa y agrupa
    por `business_unit` en Excel/Sheets.
 
-**Limitación que el workaround NO resuelve:** Daniel y Mariana, si no
+**Limitación que el workaround NO resuelve:** si Daniel y Mariana no
 tienen rol global, no podrán navegar a `/pmo/organizations/Grupo XYZ`
-salvo que se les dé acceso explícito a esa org. El acceso al proyecto
+salvo que reciban acceso explícito a esa org. El acceso al proyecto
 se da vía membership.
 
 ---

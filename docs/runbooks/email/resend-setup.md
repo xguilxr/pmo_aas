@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-05-08
+revisado: 2026-08-12
 revisar_cada: 180d
 ---
 
@@ -12,7 +12,7 @@ revisar_cada: 180d
 
 > Checklist operativo para habilitar el canal email de notificaciones
 > de PMO·aaS. Si este runbook no está completo, el flujo in-app
-> (US-027) funciona de todos modos — solo no se mandan correos.
+> (US-027) igual funciona: solo no se mandan correos.
 
 ---
 
@@ -21,7 +21,7 @@ revisar_cada: 180d
 PMO·aaS usa [Resend](https://resend.com/) para los emails transaccionales
 de notificaciones (solicitud aprobada, PM asignado, AID vencida, etc.).
 El código en `apps/api/app/services/email.py` hace un `POST` directo al
-endpoint `https://api.resend.com/emails` usando una API key.
+endpoint `https://api.resend.com/emails` con una API key.
 
 ---
 
@@ -33,9 +33,9 @@ endpoint `https://api.resend.com/emails` usando una API key.
 | `RESEND_FROM` | **Sí** | `PMO·aaS <no-reply@pmo-aas.com>` | Debe usar un dominio **verificado** en Resend. El nombre humano es opcional. |
 | `APP_BASE_URL` | **Recomendada** | `https://app.pmo-aas.com` | Se inserta en el CTA "Ver en PMO·aaS" y en el link de preferencias. |
 
-Las 3 también pueden vivir en `api` si alguna ruta decide mandar email
-síncrono, pero hoy solo el worker dispatcha la task — con ponerlas en
-el servicio `worker` basta.
+Las 3 también pueden vivir en `api`, por si alguna ruta manda email
+síncrono. Hoy solo el worker despacha la task, así que basta con
+ponerlas en el servicio `worker`.
 
 Ver [`docs/runbooks/railway/SETUP.md`](../railway/SETUP.md) §3.3 para agregar variables.
 
@@ -53,11 +53,11 @@ Ver [`docs/runbooks/railway/SETUP.md`](../railway/SETUP.md) §3.3 para agregar v
 1. Dashboard Resend → **Domains** → **+ Add Domain** → `pmo-aas.com`.
 2. Resend te da 3 registros DNS (SPF, DKIM, DMARC-friendly).
 3. En Cloudflare (DNS productivo — ver [`docs/runbooks/infra/dns-routing.md`](../infra/dns-routing.md)):
-   - Agregar el `TXT` de SPF (`v=spf1 include:amazonses.com ~all` o el
-     que Resend provea).
-   - Agregar el `CNAME` de DKIM (`_resend._domainkey.pmo-aas.com →
-     ...amazonses.com`). **Importante**: proxy **DNS only** (nube
-     gris) — Cloudflare proxy rompe SMTP/DKIM.
+   - Agrega el `TXT` de SPF (`v=spf1 include:amazonses.com ~all` o el
+     que dé Resend).
+   - Agrega el `CNAME` de DKIM (`_resend._domainkey.pmo-aas.com →
+     ...amazonses.com`). **Importante**: usa proxy **DNS only** (nube
+     gris); el proxy de Cloudflare rompe SMTP/DKIM.
    - Opcional: un `TXT` DMARC `v=DMARC1; p=quarantine; rua=mailto:…`.
 4. En Resend dashboard → **Verify** el dominio.
 
@@ -93,7 +93,7 @@ Ver [`docs/runbooks/railway/SETUP.md`](../railway/SETUP.md) §3.3 para agregar v
 
 Si `RESEND_API_KEY` queda vacía, `send_email_via_resend` devuelve
 `None` y la task Celery termina con `{"skipped": "resend_not_configured"}`.
-La notificación in-app se crea igual. Útil en desarrollo local y para
+La notificación in-app se crea igual. Sirve en desarrollo local y para
 apagar el canal temporalmente sin tocar código.
 
 ---
@@ -107,16 +107,16 @@ tiene:
 - Un **switch por tipo** (Solicitud aprobada, PM asignado, etc.) que
   cambia entre "Email + in-app" y "Solo in-app".
 
-Las preferencias viven en `users.preferences.notifications` (JSON) y se
-consultan antes de dispatchear cada email (ver
+Las preferencias viven en `users.preferences.notifications` (JSON). Se
+consultan antes de despachar cada email (ver
 `services/notifications._user_wants_email`).
 
 ---
 
 ## 6. Supresión por lectura in-app
 
-Si el usuario ya leyó la notificación in-app dentro de las últimas 2 h
-(`EMAIL_SUPPRESS_IF_READ_WITHIN`), la task skip-ea el envío para evitar
+Si el usuario ya leyó la notificación in-app en las últimas 2 h
+(`EMAIL_SUPPRESS_IF_READ_WITHIN`), la task omite el envío para evitar
 spam duplicado. Logs: `{"skipped": "recently_read_inapp"}`.
 
 ---
@@ -127,8 +127,8 @@ spam duplicado. Logs: `{"skipped": "recently_read_inapp"}`.
 - **Pro**: $20/mes, 50 000 emails/mes, 50 msg/s.
 - Ver https://resend.com/pricing.
 
-Con el volumen esperado del MVP + primeros clientes (~200 emails/día
-máximo) el tier Free cubre. Upgrade a Pro cuando se habiliten reports
+Con el volumen esperado del MVP y primeros clientes (~200 emails/día
+máximo), el tier Free alcanza. Sube a Pro cuando se habiliten reportes
 programados (post-MVP).
 
 ---
