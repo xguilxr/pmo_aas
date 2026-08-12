@@ -212,9 +212,9 @@ proxima_evaluacion: 2026-11-03
 
 presupuesto_contexto:
   permanente_max_chars: 40000              # objetivo — ALCANZADO 2026-08-04
-  permanente_techo_ci_chars: 34500         # trinquete: actual + 1% de tolerancia
-  permanente_actual_chars: 33160
-  medido: 2026-08-04
+  permanente_techo_ci_chars: 23000         # trinquete: actual + ~10%, ver por_que_el_techo_baja_a_23000
+  permanente_actual_chars: 20914
+  medido: 2026-08-12
   estado: DENTRO
   historial:                               # el trinquete se aprieta, no decora
     - { fecha: 2026-08-03, chars: 87623, techo: 88500, hito: "acción 4 — check en CI" }
@@ -224,6 +224,7 @@ presupuesto_contexto:
     - { fecha: 2026-08-03, chars: 50217, techo: 50400, hito: "acción 8 — guard de acciones irreversibles (AUT-01)" }
     - { fecha: 2026-08-03, chars: 50719, techo: 51300, hito: "handoff de cierre — TECHO SUBIDO, ver por_que_se_subio_el_techo" }
     - { fecha: 2026-08-04, chars: 33160, techo: 34500, hito: "carga bajo demanda — epic a índice, §0.3 a skill `verificar`, backlog fuera de SPRINT.md (-39%). Objetivo alcanzado" }
+    - { fecha: 2026-08-12, chars: 20914, techo: 23000, hito: "debloat documental — CLAUDE.md 14954→9606 en español claro, HANDOFF/SPRINT/índice solo con lo abierto (-34%). LESSONS.md entra al medidor" }
   como_se_alcanzo_el_objetivo: |
     2026-08-04, de 51298 a 34072 (-34%). La medición anterior decía que ninguna
     acción del plan cerraba la brecha y que había que elegir entre cambiar el
@@ -257,20 +258,18 @@ presupuesto_contexto:
     lo rompió. Documentar el cambio es parte del cambio; la medición que fija el
     techo se toma al final, no a mitad. No es aflojar el trinquete: es medir
     cuando el trabajo está hecho.
-  por_que_el_techo_no_baja_a_33500: |
-    Al cierre del 2026-08-04 el actual quedó en 33160 y el techo se dejó en
-    34500, no en actual+1%. Es deliberado y esta es la razón, porque la regla
-    pide escribirla:
+  por_que_el_techo_baja_a_23000: |
+    2026-08-12: el debloat documental (batch aprobado por el owner) dejó el
+    actual en 20914 y el techo baja de 34500 a 23000 en el mismo cambio. No
+    aplica la regla del 2026-08-04 («dos mediciones consecutivas bajo 33000 →
+    actual+1%»): esa regla cubría la deriva natural entre sesiones, y esto fue
+    un recorte deliberado de una sola sesión. Dejar el techo en 34500 regalaría
+    ~13600 caracteres de regresión silenciosa.
 
-    Apretar a 33500 dejaría 340 caracteres de margen y reproduciría exactamente
-    el problema que esta sesión diagnosticó — el techo anterior quedó saturado
-    en 2 caracteres y obligó a recortar documentación cuatro veces, incluida la
-    redacción del propio handoff. El HANDOFF ya tiene tope propio (7000), que es
-    el archivo volátil; el margen de ~1300 del total absorbe la variación normal
-    entre el cierre de una sesión y la apertura de la siguiente.
-
-    Si en dos mediciones consecutivas el actual se queda por debajo de 33000,
-    entonces sí: bajar el techo a actual+1%.
+    El margen es ~10% (no 1%) por la lección del techo saturado en 2
+    caracteres: HANDOFF y SPRINT son volátiles entre sesiones y un handoff
+    grande pesa 2-3 mil caracteres más que uno mínimo. Si en dos mediciones
+    consecutivas el actual queda bajo 20000, bajar el techo a actual+5%.
 
   verificacion_automatica: scripts/check_contexto.py   # CTX-05 — acción 4
   por_que_trinquete: |
@@ -323,12 +322,13 @@ presupuesto_contexto:
     tokens. La conclusión de la auditoría no cambia: el orden de magnitud es
     el mismo y el hallazgo era la ausencia de presupuesto, no su valor.
 
-  incluye:                                 # medido 2026-08-03, en caracteres
-    - CLAUDE.md                            # 16891 — carga automática del arnés
-    - docs/project-management/SPRINT.md    # 10923 — CLAUDE.md §1.3 obligatorio
-    - docs/epics/EP0XX relevante           # 16006 — CLAUDE.md §1.4, mediana de 18
-    - docs/project-management/HANDOFF.md   #  4536 — CLAUDE.md §1.1 obligatorio
-    - catálogo de skills                   #  1861 — solo el frontmatter description
+  incluye:                                 # medido 2026-08-12, en caracteres
+    - CLAUDE.md                            # 9606 — carga automática del arnés
+    - docs/project-management/SPRINT.md    # 2210 — CLAUDE.md §1 obligatorio
+    - docs/epics/README.md                 # 3552 — índice; el epic se abre al tocarlo
+    - docs/project-management/HANDOFF.md   # 2284 — CLAUDE.md §1 obligatorio
+    - docs/project-management/LESSONS.md   #  507 — CLAUDE.md §1 y §14
+    - catálogo de skills                   # 2755 — solo el frontmatter description
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MEDICIONES FECHADAS  (CTX-03)

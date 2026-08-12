@@ -85,9 +85,10 @@ def _epics() -> tuple[int, str]:
 def medir_contexto() -> tuple[int, list[tuple[str, int, str]]]:
     """Lo que se carga en toda sesión sin que nadie lo solicite.
 
-    Puntos 1-4 son lectura obligatoria por `CLAUDE.md` §1, así que cuentan
+    Puntos 1-5 son lectura obligatoria por `CLAUDE.md` §1, así que cuentan
     como contexto permanente conforme a MCA-CORE §3.2 aunque no los cargue
-    el arnés.
+    el arnés. LESSONS.md entró el 2026-08-12 (CLAUDE.md §14): el medidor y la
+    política se mueven juntos o la cifra miente.
     """
     epic_chars, epic_nota = _epics()
     partidas = [
@@ -102,6 +103,11 @@ def medir_contexto() -> tuple[int, list[tuple[str, int, str]]]:
             "docs/project-management/HANDOFF.md",
             _chars(RAIZ / "docs/project-management/HANDOFF.md"),
             "CLAUDE.md §1",
+        ),
+        (
+            "docs/project-management/LESSONS.md",
+            _chars(RAIZ / "docs/project-management/LESSONS.md"),
+            "CLAUDE.md §1 · patrones aprendidos (§14)",
         ),
         ("catálogo de skills", _descripciones_de_skills(), "solo descriptions"),
     ]
@@ -145,6 +151,7 @@ def cifras_vivas() -> list[tuple[str, int, str]]:
         "CLAUDE.md",
         "docs/project-management/SPRINT.md",
         "docs/project-management/HANDOFF.md",
+        "docs/project-management/LESSONS.md",
     ):
         ruta = RAIZ / rel
         if not ruta.is_file():
