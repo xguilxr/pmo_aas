@@ -1,7 +1,7 @@
 """Notification model (US-027, EP011).
 
 Notificaciones in-app. Cada registro apunta a un user_id + tenant_id.
-El `type` referencia un evento (ver EP011-notifications.md tabla de
+El `type` referencia un evento (ver docs/archive/epics/EP011-notifications.md tabla de
 tipos). `entity_type` + `entity_id` permiten construir el link de
 navegación al objeto origen.
 """

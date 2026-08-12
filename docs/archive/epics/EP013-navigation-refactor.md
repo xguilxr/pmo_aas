@@ -1,9 +1,9 @@
 ---
-tipo: epica
+tipo: archivo
 responsable: propietario
-estado: vigente
+estado: archivado
 revisado: 2026-08-12
-revisar_cada: 90d
+revisar_cada: nunca
 ---
 
 # EP013 — Refactor de navegación (sidebar + admin + tabs inline)

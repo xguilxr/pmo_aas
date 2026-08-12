@@ -32,11 +32,11 @@ revisar_cada: 90d
 | [EP008](./EP008-ai.md) | IA: minutas y reportes | MVP | EP005, EP006 |
 | [EP009](./EP009-ms-project.md) | Integración Microsoft Project | MVP | EP005 |
 | [EP010](./EP010-superadmin-panel.md) | Panel Super Admin | MVP | EP001, EP002 |
-| [EP011](./EP011-notifications.md) | Sistema de notificaciones | Entregada — como trabajo operativo | EP001, EP003 |
+| [EP011](../archive/epics/EP011-notifications.md) | Sistema de notificaciones | Entregada — archivada 2026-08-12 | EP001, EP003 |
 | ~~[EP012](../archive/cancelled-epics/EP012-db-migration.md)~~ | ❌ **CANCELADA** — migración HostGator MySQL (DEC-013). Productivo corre 100% en Railway. | — | — |
-| [EP013](./EP013-navigation-refactor.md) | Refactor de navegación (sidebar + admin + tabs inline) — issue #17 | v1.1 — DONE | EP001, EP002, EP005, EP006, EP007, EP010 |
-| [EP014](./EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 — DONE | EP005, EP006, EP008 |
-| [EP015](./EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 — DONE | EP010 |
+| [EP013](../archive/epics/EP013-navigation-refactor.md) | Refactor de navegación (sidebar + admin + tabs inline) — issue #17 | v1.1 — DONE, archivada 2026-08-12 | EP001, EP002, EP005, EP006, EP007, EP010 |
+| [EP014](../archive/epics/EP014-operational-deliverables.md) | Entregables operativos (reportes Python sin IA + PDF + formato minuta) — issue #18 | v1.1 — DONE, archivada 2026-08-12 | EP005, EP006, EP008 |
+| [EP015](../archive/epics/EP015-superadmin-nav-refactor.md) | Refactor de navegación del SuperAdmin — issue #19 | v1.1 — DONE, archivada 2026-08-12 | EP010 |
 | ~~[EP016](../archive/cancelled-epics/EP016-local-ai-tunnel.md)~~ | ❌ **ARCHIVADA** — IA local (Ollama + Cloudflare/Tailscale). Superseded por DEC-017; código eliminado en BUG-053 (2026-05-08). | — | — |
 | [EP017](./EP017-project-directory.md) | Directorio de proyecto (áreas, equipos, actores, participaciones) | v1.2 | EP005, EP006 |
 | [EP018](./EP018-documents-artifacts.md) | Documentos y artefactos de proyecto | v1.3 | EP005, EP006 |
