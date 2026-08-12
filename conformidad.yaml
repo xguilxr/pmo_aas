@@ -213,7 +213,7 @@ proxima_evaluacion: 2026-11-03
 presupuesto_contexto:
   permanente_max_chars: 40000              # objetivo — ALCANZADO 2026-08-04
   permanente_techo_ci_chars: 23000         # trinquete: actual + ~10%, ver por_que_el_techo_baja_a_23000
-  permanente_actual_chars: 20914
+  permanente_actual_chars: 19661
   medido: 2026-08-12
   estado: DENTRO
   historial:                               # el trinquete se aprieta, no decora
@@ -225,6 +225,7 @@ presupuesto_contexto:
     - { fecha: 2026-08-03, chars: 50719, techo: 51300, hito: "handoff de cierre — TECHO SUBIDO, ver por_que_se_subio_el_techo" }
     - { fecha: 2026-08-04, chars: 33160, techo: 34500, hito: "carga bajo demanda — epic a índice, §0.3 a skill `verificar`, backlog fuera de SPRINT.md (-39%). Objetivo alcanzado" }
     - { fecha: 2026-08-12, chars: 20914, techo: 23000, hito: "debloat documental — CLAUDE.md 14954→9606 en español claro, HANDOFF/SPRINT/índice solo con lo abierto (-34%). LESSONS.md entra al medidor" }
+    - { fecha: 2026-08-12, chars: 19661, techo: 23000, hito: "descriptions de skills 2755→1378; el techo no baja aún (regla: dos mediciones bajo 20000)" }
   como_se_alcanzo_el_objetivo: |
     2026-08-04, de 51298 a 34072 (-34%). La medición anterior decía que ninguna
     acción del plan cerraba la brecha y que había que elegir entre cambiar el
@@ -325,10 +326,10 @@ presupuesto_contexto:
   incluye:                                 # medido 2026-08-12, en caracteres
     - CLAUDE.md                            # 9606 — carga automática del arnés
     - docs/project-management/SPRINT.md    # 2210 — CLAUDE.md §1 obligatorio
-    - docs/epics/README.md                 # 3552 — índice; el epic se abre al tocarlo
+    - docs/epics/README.md                 # 3676 — índice; el epic se abre al tocarlo
     - docs/project-management/HANDOFF.md   # 2284 — CLAUDE.md §1 obligatorio
     - docs/project-management/LESSONS.md   #  507 — CLAUDE.md §1 y §14
-    - catálogo de skills                   # 2755 — solo el frontmatter description
+    - catálogo de skills                   # 1378 — solo el frontmatter description
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MEDICIONES FECHADAS  (CTX-03)

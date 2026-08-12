@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Genera/actualiza docs/project-management/HANDOFF.md con el estado de la sesión actual (dónde quedamos, qué sigue, contexto para la próxima sesión), y de paso limpia SPRINT.md archivando lo completado a SPRINT-DONE-HISTORY.md. Úsalo al cierre de cualquier sesión donde quieras dejar un puente claro para retomar después.
+description: Reescribe HANDOFF.md con el estado de la sesión y limpia SPRINT.md archivando lo cerrado a SPRINT-DONE-HISTORY.md. Úsala al cerrar la sesión.
 ---
 
 # /handoff — Cierre de sesión + bridge para la próxima

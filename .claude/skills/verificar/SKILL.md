@@ -1,6 +1,6 @@
 ---
 name: verificar
-description: Stack, preparación del entorno y los comandos de verificación del repo — lint, tests de API, typecheck y build de web, migraciones, presupuesto de contexto y conjunto de evaluación de IA — con su criterio de aprobación y las rutas que no se editan a mano. Úsala antes de dar por terminado un cambio, al montar el entorno por primera vez, o cuando necesites saber cómo se comprueba algo en este repo. NO la uses para el ceremonial de cierre de un issue (eso es cerrar-item).
+description: Stack, preparación del entorno y los comandos de verificación del repo con su criterio (exit 0) y las rutas que no se editan a mano. Úsala antes de dar por terminado un cambio o al montar el entorno por primera vez.
 ---
 
 # Verificación — cómo se comprueba que algo funciona aquí
