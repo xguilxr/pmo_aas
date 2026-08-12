@@ -9,7 +9,7 @@ revisar_cada: 90d
 # RAID — Vista detalle item (layout "Denso")
 
 > **Origen:** spec del owner 2026-05-06, mock en
-> `docs/design-system/Denso _ todo arriba_ comentarios al final.html`.
+> `docs/archive/raid-detail-denso-mock-2026-05-06.html`.
 > Es un artefacto exportado del Claude Design Canvas. Se archiva en
 > `docs/archive/` tras esta documentación (ver al final).
 >
