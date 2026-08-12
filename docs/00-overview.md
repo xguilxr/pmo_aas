@@ -9,8 +9,6 @@ revisar_cada: 180d
 # Visión general del producto
 
 **ID:** `DOC-OVERVIEW`
-**Estado:** Aprobado
-**Última revisión:** 2026-04-18
 
 ---
 
@@ -104,7 +102,7 @@ Ofrecer a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-te
 
 ## 9. Glosario corto
 
-Ver [`glossary.md`](./glossary.md) para la lista completa. Términos clave:
+Ver [`glossary.md`](./archive/glossary.md) para la lista completa. Términos clave:
 
 - **Tenant** = cliente (organización que contrata el SaaS). Aísla datos.
 - **Organización** = entidad dentro de un tenant (ej. subsidiaria, filial).

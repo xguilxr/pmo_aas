@@ -225,5 +225,5 @@ Si algo no funciona tras seguir el runbook:
 - Epic IA: [`docs/epics/EP008-ai.md`](../epics/EP008-ai.md)
 - Epic deployment legacy: [`docs/archive/cancelled-epics/EP016-local-ai-tunnel.md`](../archive/cancelled-epics/EP016-local-ai-tunnel.md) — archivada tras DEC-017 (ENH-022 + ENH-023)
 - Decisiones arquitectónicas: [`docs/epics/DECISIONS.md`](../epics/DECISIONS.md) — **DEC-017** IA multi-modo, **DEC-019** BYO sin Ollama + feature flag, DEC-011 Tailscale (legacy, sidecar retirado en ENH-023), DEC-012 Railway+HostGator
-- Dev local: [`docs/setup-dev.md`](../setup-dev.md)
+- Dev local: [`docs/setup-dev.md`](../archive/setup-dev.md)
 - API conventions: [`docs/architecture/api-conventions.md`](../architecture/api-conventions.md)

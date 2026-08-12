@@ -41,7 +41,7 @@ O arrastra `index.html` al browser.
 ## Deploy a HostGator
 
 > Pre-requisito: el DNS ya debe apuntar `www.pmo-aas.com` a HostGator
-> con proxy Cloudflare (ver `docs/infra/dns-routing.md` §3).
+> con proxy Cloudflare (ver `docs/runbooks/infra/dns-routing.md` §3).
 
 ### Opción A — cPanel File Manager
 
