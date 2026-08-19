@@ -53,6 +53,13 @@ import {
   type TrendsResponse,
 } from "@/lib/api/analytics";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import {
+  PHASE_LABEL,
+  PHASE_ORDER,
+  TYPE_LABEL,
+  type ProjectPhase,
+  type ProjectType,
+} from "@/lib/api/projects";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
@@ -60,21 +67,6 @@ import { SortableTh } from "@/components/ui/sortable-th";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { formatearDesglose, formatearImporte, monedaUnica } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
-
-const PHASE_LABEL: Record<string, string> = {
-  planning: "Planificación",
-  execution: "Ejecución",
-  hypercare: "Hypercare",
-  closed: "Cerrado",
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  innovation: "Innovación",
-  transformation: "Transformación",
-  operation: "Operación",
-  bau: "BAU",
-  unspecified: "Sin especificar",
-};
 
 const HEALTH_LABEL: Record<string, string> = {
   green: "Verde",
@@ -88,23 +80,42 @@ const HEALTH_COLOR: Record<string, string> = {
   red: "var(--color-danger-fg)",
 };
 
-// ADR-023: la fase es ORDINAL —planificación → ejecución → hypercare → cerrado
+// ADR-023: la fase es ORDINAL —preparación → ejecución → hypercare → cerrado
 // es una secuencia—, así que va con la rampa de un solo tono, no con cuatro
-// colores sueltos. `cancelled` se sale de la secuencia y va al neutro, igual
+// colores sueltos. `cancelado` se sale de la secuencia y va al neutro, igual
 // que en su insignia.
 //
-// De paso: esta tabla seguía diciendo `support`, que D-2 renombró. No fallaba
-// —es una clave suelta— simplemente dejaba la fase sin color.
-const PHASE_COLOR: Record<string, string> = {
-  planning: PALETTE.scale[0],
-  execution: PALETTE.scale[2],
+// US-202 — la tabla se deriva de `PHASE_ORDER` en vez de repetir las claves:
+// esta y la de etiquetas se habían quedado en inglés (y una, en `support`, que
+// ADR-019 renombró hace dos semanas). Una clave que ya no existe no falla —
+// simplemente deja la fase sin color y con el valor crudo por nombre.
+const PHASE_COLOR: Record<ProjectPhase, string> = {
+  preparacion: PALETTE.scale[0],
+  ejecucion: PALETTE.scale[2],
   hypercare: PALETTE.scale[3],
-  closed: PALETTE.scale[4],
-  cancelled: PALETTE.neutral,
+  cerrado: PALETTE.scale[4],
+  cancelado: PALETTE.neutral,
 };
 
 function toEntries<T>(obj: Record<string, T>): [string, T][] {
   return Object.keys(obj).map((k) => [k, obj[k]]);
+}
+
+/** La fase en palabras. Devuelve el crudo si no la conoce: en un gráfico, un
+ *  valor fuera del catálogo es un dato que hay que **ver** para corregirlo. */
+function etiquetaFase(clave: string): string {
+  return PHASE_LABEL[clave as ProjectPhase] ?? clave;
+}
+
+function colorFase(clave: string): string {
+  return PHASE_COLOR[clave as ProjectPhase] ?? PALETTE.accent;
+}
+
+/** `budget_by_type` agrupa los proyectos sin tipo bajo `unspecified`, que no es
+ *  uno de los cuatro del enum: la API lo sintetiza para no perder el importe. */
+function etiquetaTipo(clave: string): string {
+  if (clave === "unspecified") return "Sin especificar";
+  return TYPE_LABEL[clave as ProjectType] ?? clave;
 }
 
 export default function DashboardPage() {
@@ -297,25 +308,25 @@ function DashboardInner() {
   const phasesData = useMemo(() => {
     const entries = charts ? toEntries(charts.projects_by_phase) : [];
     return entries.map(([k, v]) => ({
-      label: PHASE_LABEL[k] ?? k,
+      label: etiquetaFase(k),
       value: Number(v) || 0,
-      color: PHASE_COLOR[k] ?? PALETTE.accent,
+      color: colorFase(k),
     }));
   }, [charts]);
 
   const progressData = useMemo(() => {
     const entries = charts ? toEntries(charts.progress_by_phase) : [];
     return entries.map(([k, v]) => ({
-      label: PHASE_LABEL[k] ?? k,
+      label: etiquetaFase(k),
       value: Math.round(Number(v) || 0),
-      color: PHASE_COLOR[k] ?? PALETTE.accent,
+      color: colorFase(k),
     }));
   }, [charts]);
 
   const budgetData = useMemo(() => {
     const entries = charts ? toEntries(charts.budget_by_type) : [];
     return entries.map(([k, v]) => ({
-      label: TYPE_LABEL[k] ?? k,
+      label: etiquetaTipo(k),
       value: Number(v) || 0,
       color: PALETTE.accent,
     }));
@@ -413,7 +424,7 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<Briefcase className="h-4 w-4" aria-hidden />}
           tone="accent"
-          href="/pmo/projects?phase=planning&phase=execution&phase=support"
+          href="/pmo/projects?phase=preparacion&phase=ejecucion&phase=hypercare"
         />
         <KpiCard
           label="Solicitudes en revisión"
@@ -600,9 +611,9 @@ function DashboardInner() {
               className="h-9"
             >
               <option value="">Todas las fases</option>
-              {Object.entries(PHASE_LABEL).map(([k, v]) => (
+              {PHASE_ORDER.map((k) => (
                 <option key={k} value={k}>
-                  {v}
+                  {PHASE_LABEL[k]}
                 </option>
               ))}
             </Select>
