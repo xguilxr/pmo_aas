@@ -11,7 +11,7 @@ revisar_cada: 180d
 **ID:** `DOC-ARCH-DB`
 **Última verificación contra código:** 2026-05-23.
 
-> Refleja el estado real en `apps/api/app/models/` y `apps/api/alembic/versions/`. Hay **~49 tablas activas** (vs las ~17 que documentábamos antes). La app es portable a SQLite para tests. Eso condiciona varias decisiones de tipos.
+> Refleja el estado real en `apps/api/app/models/` y `apps/api/alembic/versions/`. El conteo de tablas no se escribe aquí: se deriva del modelo en [`er-generado.md`](er-generado.md) (MCA CTX-03). La app es portable a SQLite para tests. Eso condiciona varias decisiones de tipos.
 
 ---
 
@@ -82,8 +82,8 @@ Agrupadas por dominio. Todas heredan `TimestampMixin` salvo `audit_log` y tablas
 |---|---|
 | `organizations` | Empresas/clientes dentro del tenant. |
 | `portfolios` | Cartera de inversión de la organización: agrupa programas y proyectos por decisión, no por organigrama (US-198 / ADR-037). |
-| `business_units` | ⚠️ En retiro (ADR-037). BUs dentro de la organización; sin lectores nuevos, se dropea en W8. |
-| `departments` | ⚠️ En retiro (ADR-037). Departamentos dentro de la BU. |
+| `business_units` | ⚠️ Retirada (ADR-037 / US-199). Modelaba el organigrama del cliente, no la cartera de inversión. Sin routers ni lectores; las 7 columnas FK que la apuntaban se soltaron en la migración 0109. La tabla se dropea en W8: soltarla es irreversible y espera a que el contador de compat confirme que nadie la lee. |
+| `departments` | ⚠️ Retirada (ADR-037 / US-199). Departamentos dentro de la BU. Mismo estado que `business_units`: sin lectores, se dropea en W8. |
 | `programs` | Programas (agrupan proyectos) **dentro de un portafolio**: `portfolio_id` NOT NULL. |
 | `areas` | Áreas funcionales (catálogo del tenant). |
 | `teams` | Equipos dentro de un área. |
@@ -154,28 +154,64 @@ class Project(Base, TimestampMixin):
     tenant_id       String(36) NOT NULL INDEX
     organization_id String(36) NOT NULL FK organizations.id
     program_id      String(36)     FK programs.id
-    portfolio_id    String(36)     FK portfolios.id  # US-198; = program.portfolio_id si hay programa
-    business_unit_id String(36)    FK business_units.id   # en retiro (US-199)
-    department_id   String(36)     FK departments.id      # en retiro (US-199)
+    portfolio_id    String(36)     FK portfolios.id INDEX
+                                   # US-198; nullable: el proyecto puede colgar
+                                   # directo del portafolio o no estar
+                                   # clasificado. Con program_id puesto tiene
+                                   # que ser program.portfolio_id — lo valida
+                                   # services/jerarquia.py, no la base.
     folio           String(32) NOT NULL          # 'PRJ-2026-001'
     name            String(200) NOT NULL
     description     String(5000)
-    type            String(50)                   # innovation/transformation/operation/bau
+    type            String(50)                   # enum de la API (US-202): transformacion/operacion/innovacion/bau
     priority        SmallInt                     # 1..5
-    phase           String(32) NOT NULL default 'planning'
+    phase           String(32) NOT NULL default 'preparacion'
+                                   # US-202: preparacion/ejecucion/hypercare/cerrado/cancelado
     pm_id           String(36)     FK users.id
     sponsor         String(200)
     start_date      Date
     end_date        Date
+    currency        String(3)                    # BUG-092: NULL = la preferida del inquilino, no «sin moneda»
     budget          Numeric(14,2)
     actual_budget   Numeric(14,2)
     progress        SmallInt NOT NULL default 0  # 0..100
-    health_status   String(16) NOT NULL default 'green'   # computado
-    status_rag      String(8)                    # ENH-101: override manual del PM (gana sobre health_status)
+    health_status   String(16) NOT NULL default 'green'   # EL semáforo (US-180)
+    health_source   String(8) NOT NULL default 'auto'     # auto = motor de reglas; manual = lo declaró el PM
+    health_reason   String(2000)                 # obligatoria en amarillo/rojo cuando health_source='manual'
     request_id      String(36)                   # FK project_requests.id (sin constraint formal)
     deleted_at      DateTime(tz)
     manually_edited_fields  JSON NOT NULL default {}      # US-084: {field: {edited_at, edited_by}}
 ```
+
+### `portfolios`
+
+Agrupa por decisión de inversión, no por organigrama: es el nivel donde se
+elige qué se hace. No lleva métricas propias — salud, presupuesto y conteos se
+derivan de los proyectos, y una columna cacheada aquí quedaría vieja entre
+recálculos.
+
+```python
+class Portfolio(Base, TimestampMixin):
+    __tablename__ = "portfolios"
+    __table_args__ = (UniqueConstraint("tenant_id", "organization_id", "name"),)
+
+    id              String(36) PK  # uuid4
+    tenant_id       String(36) NOT NULL INDEX FK tenants.id ON DELETE CASCADE
+    organization_id String(36) NOT NULL INDEX FK organizations.id ON DELETE CASCADE
+    name            String(200) NOT NULL
+    code            String(32)                   # 'TRX-26'; opcional, para tablas estrechas
+    description     String(2000)
+    owner_actor_id  String(36) INDEX FK actors.id ON DELETE SET NULL
+                                   # actor del catálogo, no users.id: el sponsor
+                                   # ejecutivo del cliente rara vez tiene cuenta
+    is_active       Boolean NOT NULL default true
+    deleted_at      DateTime(tz)
+    created_by      String(36) FK users.id
+```
+
+Cada organización tiene un **«Portafolio General»** como destino por defecto
+(DEC-030): así el proyecto sin clasificar tiene dónde caer sin obligar a
+inventar una cartera para poder capturarlo.
 
 ### `users`
 

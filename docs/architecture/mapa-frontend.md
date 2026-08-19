@@ -40,16 +40,14 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 | `/pmo` | Panel portafolio del tenant (treemap/trends/heatmap, matriz salud, PDF status) |
 | `/pmo/projects` (+`/new`, `[id]/edit`) | Lista maestra + alta/edición (`project-form.tsx`) |
 | `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (recursos), `documents`, `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
-| `/pmo/organizations/[id]` (+`/reports`) | Panel org (tiene KPIs BU/depto†) |
+| `/pmo/organizations/[id]` (+`/reports`) | Panel org (KPIs «Portafolios» y «Programas» desde US-201) |
 | `/pmo/programs/[id]` (+`/reports`) | Panel programa |
 | `/pmo/raid`, `/changes`, `/minutes`, `/reports` | Vistas cross con `TenantCrossFilters` |
 | `/pmo/resources` | Capacidad/saturación (tabs personas/roles/áreas/conflictos) |
-| `/pmo/requests` (+`/new`, `[id]`) | Solicitudes (`request-form.tsx` tiene BU/depto†) |
+| `/pmo/requests` (+`/new`, `[id]`) | Solicitudes (`request-form.tsx` pide «Área que solicita» y «Equipo o sub-área»: texto libre, las palabras del solicitante — no la jerarquía) |
 | `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (`org-hierarchy-section.tsx`: **Portafolio ⊃ Programa** desde US-200), areas |
-| `/superadmin/*` | 8 pantallas plataforma |
+| `/superadmin/*` | Pantallas de plataforma (listado en `navigation.md` §3.5) |
 | `/login`, `/reset`, `/forgot-password`, `/approve/[token]`, `/notifications`, `/account` | auth y transversales |
-
-† = muere con la reestructura (W1 / US-199–201).
 
 ## Componentes reutilizables (components/)
 
@@ -97,7 +95,6 @@ report-builder, superadmin, project-charters, …). **Vocabulario del proyecto**
 lado y no en el otro deja el formulario mandando un valor que la API rechaza.
 `lib/auth-storage.ts`
 guarda tenant activo (→ el contexto org activo nuevo vive aquí + JWT).
-`lib/org-label.ts` (label configurable — precedente para renombrar niveles).
 `lib/cn.ts` (clsx+tailwind-merge).
 
 ## Reglas al escribir UI

@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-19
 revisar_cada: 180d
 ---
 
@@ -71,7 +71,7 @@ Ver `apps/api/app/api/deps.py:CurrentUser.effective_tenant_id`.
   - `POST /ai/jobs/{id}/cancel`
   - `POST /auth/switch-tenant`
   - `POST /superadmin/tenants/{id}/freeze`
-- Filtros en query string: `?phase=execution&health=red&page=2&limit=20`.
+- Filtros en query string: `?phase=ejecucion&health=red&page=2&limit=20`.
 - Search: `?q=consulta` (búsqueda LIKE case-insensitive; ver §5.2).
 
 ---
@@ -83,7 +83,7 @@ Ver `apps/api/app/api/deps.py:CurrentUser.effective_tenant_id`.
 La mayoría de los endpoints de listado devuelve **un array bare**, no un envelope:
 
 ```http
-GET /api/v1/projects?page=1&limit=15&phase=execution
+GET /api/v1/projects?page=1&limit=15&phase=ejecucion
 
 [
   { "id": "...", "folio": "PRJ-2026-001", "name": "...", ... },
@@ -95,7 +95,7 @@ GET /api/v1/projects?page=1&limit=15&phase=execution
 - `limit` default **15**, máximo 100. (No 20 como decía el doc viejo.)
 - Orden por default: `created_at DESC` (varía por endpoint).
 - Filtros: query params whitelisted por endpoint (ver OpenAPI).
-- Multi-valor: usar el query param repetido (`phase=planning&phase=execution`).
+- Multi-valor: usar el query param repetido (`phase=preparacion&phase=ejecucion`).
 
 ### 5.2 Búsqueda (`q`)
 
@@ -118,14 +118,20 @@ Hoy es `LOWER(field) LIKE %q%` server-side (sin `pg_trgm`, ver `database.md`). M
 
 ```python
 class ProjectCreate(BaseModel):
-    name: str = Field(min_length=3, max_length=200)
+    name: str = Field(min_length=2, max_length=200)
+    description: str = Field(min_length=1)
+    type: ProjectType                       # Literal["transformacion","operacion","innovacion","bau"]
+    _tipo_compat = field_validator("type", mode="before")(normalizar_tipo)
+    priority: int = Field(ge=1, le=5)
     organization_id: UUID
     program_id: UUID | None = None
-    type: Literal["innovation","transformation","operation","bau"] | None = None
-    priority: int | None = Field(default=None, ge=1, le=5)
+    portfolio_id: UUID | None = None        # autocompletado desde el programa si hay uno
+    phase: ProjectPhase = "preparacion"     # Literal[...5 fases en español]
+    _fase_compat = field_validator("phase", mode="before")(normalizar_fase)
+    pm_id: UUID
     start_date: date | None = None
     end_date: date | None = None
-    budget: Decimal | None = Field(default=None, ge=0)
+    budget: Decimal | None = None
 
 class ProjectRead(BaseModel):
     id: UUID
@@ -134,9 +140,18 @@ class ProjectRead(BaseModel):
     phase: str
     progress: int
     health_status: str
-    status_rag: str | None
-    created_at: datetime
+    health_source: Literal["auto", "manual"] = "auto"
+    health_reason: str | None = None
 ```
+
+`type` y `phase` son enums, no texto libre (US-202 / ADR-038), y el valor
+guardado está en español: la interfaz, el glosario y quien usa la plataforma
+también, y traducir en cada superficie que lo muestre nos dejó cuatro
+diccionarios desincronizados. Los nombres viejos (`planning`, `execution`,
+`transformation`, …) se siguen aceptando **a la entrada** durante la ventana de
+compatibilidad — los traduce `normalizar_fase`/`normalizar_tipo` y cada uso
+queda en el contador `compat.nombre_viejo` — pero la respuesta siempre trae el
+canónico. El catálogo vive en `app/dominio/proyecto.py`.
 
 ---
 
