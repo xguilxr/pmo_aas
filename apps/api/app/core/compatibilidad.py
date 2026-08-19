@@ -49,6 +49,33 @@ VENTANAS: dict[str, Ventana] = {
         viejo="phase=support", nuevo="phase=hypercare",
         desde=date(2026, 8, 5), adr="ADR-019",
     ),
+    # US-202 / ADR-038 — el vocabulario de fases pasa a español. Una ficha por
+    # nombre retirado y no una sola para las cuatro: el cliente que manda
+    # `planning` no es necesariamente el que manda `cancelled`, así que sus
+    # contadores llegan a cero en momentos distintos y se cierran por separado.
+    "phase=planning": Ventana(
+        viejo="phase=planning", nuevo="phase=preparacion",
+        desde=date(2026, 8, 19), adr="ADR-038",
+    ),
+    "phase=execution": Ventana(
+        viejo="phase=execution", nuevo="phase=ejecucion",
+        desde=date(2026, 8, 19), adr="ADR-038",
+    ),
+    "phase=closed": Ventana(
+        viejo="phase=closed", nuevo="phase=cerrado",
+        desde=date(2026, 8, 19), adr="ADR-038",
+    ),
+    "phase=cancelled": Ventana(
+        viejo="phase=cancelled", nuevo="phase=cancelado",
+        desde=date(2026, 8, 19), adr="ADR-038",
+    ),
+    # Los tres nombres en inglés del enum de tipo, con un contador compartido:
+    # salían del mismo enum, se actualizan juntos y se cierran juntos.
+    "project_type_libre": Ventana(
+        viejo="type=innovation|transformation|operation",
+        nuevo="type=innovacion|transformacion|operacion",
+        desde=date(2026, 8, 19), adr="ADR-038",
+    ),
     "portfolio_function": Ventana(
         viejo="portfolio_function", nuevo="discipline",
         desde=date(2026, 8, 5), adr="ADR-021",

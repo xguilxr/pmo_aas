@@ -41,7 +41,6 @@ import {
   type StoredUser,
 } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
-import { useOrgLabel } from "@/lib/org-label";
 
 const SIDEBAR_COLLAPSE_KEY = "pmoaas:sidebar-collapsed";
 
@@ -148,10 +147,10 @@ const TOP_NAV: NavItem[] = [
 // con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
 // El drill-down real (Organizaciones → Programas → Proyectos) vive en el
 // sidebar principal vía <OrgTreeNav />.
-// ENH-190: el label "Organizaciones" del item `orgs-mgmt` es configurable
-// por tenant (ver `lib/org-label.ts`); por eso `ADMIN_NAV` es una función
-// que recibe el plural efectivo en vez de una constante estática.
-function buildAdminNav(orgLabelPlural: string): NavItem {
+// Sigue siendo una función y no una constante porque el árbol lleva JSX de
+// iconos: construirlo en el módulo lo evaluaría antes del render.
+// (ENH-190 hacía configurable el label "Organizaciones"; se retiró en DEC-032.)
+function buildAdminNav(): NavItem {
   return {
     id: "admin",
     label: "Admin",
@@ -187,7 +186,7 @@ function buildAdminNav(orgLabelPlural: string): NavItem {
       },
       {
         id: "orgs-mgmt",
-        label: orgLabelPlural,
+        label: "Organizaciones",
         icon: <Building2 className="h-4 w-4" aria-hidden />,
         href: "/admin/organizations",
         match: (p) =>
@@ -489,8 +488,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     superadminJoinedTenant || (orgTreeVisible && roleType === "admin");
 
   // ENH-190: label configurable por tenant para "Organización(es)".
-  const orgLabel = useOrgLabel();
-  const adminNav = useMemo(() => buildAdminNav(orgLabel.plural), [orgLabel.plural]);
+  const adminNav = useMemo(() => buildAdminNav(), []);
 
   useEffect(() => {
     setExpanded((prev) => {

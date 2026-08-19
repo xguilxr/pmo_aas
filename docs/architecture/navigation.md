@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-19
 revisar_cada: 180d
 ---
 
@@ -174,7 +174,7 @@ flowchart LR
         S6["/superadmin/logs"]
     end
 
-    TREE["OrgTreeNav<br/>orgs → programas → proyectos"]
+    TREE["OrgTreeNav<br/>org → portafolio ⊃ programa → proyecto<br/>+ cajones «Sin programa» y «Sin clasificar»"]
 ```
 
 ### 2.2 Tabs de proyecto
@@ -274,7 +274,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/reports/builder` | Wizard de reporte. | Botón en `/reports` |
 | `/reports/tweak` | Ajustes finos del último reporte. | Botón en `/reports` |
 
-### 3.4 `/admin/**` — admin del tenant (11)
+### 3.4 `/admin/**` — admin del tenant (13)
 
 | URL | Propósito | Acceso |
 |---|---|---|
@@ -283,8 +283,8 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/admin/ai` | Provider de IA (modo `byo`). | Sidebar + panel |
 | `/admin/organizations` | CRUD organizaciones. | Sidebar + panel |
 | `/admin/organizations/new` | Nueva organización. | Botón |
-| `/admin/organizations/[id]` | Detalle org (BUs, departamentos). | Click en row |
-| `/admin/organizations/[id]/edit` | Editar organización. | Botón en detalle |
+| `/admin/organizations/[id]` | Panel de la org: portafolios, programas, proyectos y usuarios con rol. | Click en row |
+| `/admin/organizations/[id]/edit` | Editar organización + jerarquía Portafolio ⊃ Programa (`org-hierarchy-section.tsx`). | Botón en detalle |
 | `/admin/users` | CRUD usuarios. | Sidebar + panel |
 | `/admin/users/new` | Nuevo usuario. | Botón |
 | `/admin/users/[id]` | Detalle usuario, roles, reset pwd. | Click en row |
@@ -394,7 +394,7 @@ flowchart LR
 | `Reportes → Portfolio` | Admin (flag `adminOnly`) |
 | `ADMIN_NAV` + `/admin/**` | Admin del tenant (rol con permisos admin) |
 | `SUPERADMIN_NAV` + `/superadmin/**` | `is_superadmin === true` |
-| `OrgTreeNav` (orgs/programas/proyectos) | Cualquier usuario; el backend filtra por `tenant_id` y por exclusiones en `organization_user_exclusions` lo que el usuario puede ver. |
+| `OrgTreeNav` (org → portafolio ⊃ programa → proyecto, con los cajones «Sin programa» y «Sin clasificar») | Cualquier usuario; el backend filtra por `tenant_id` y por exclusiones en `organization_user_exclusions` lo que el usuario puede ver. |
 
 La decisión la toma `app-shell.tsx` usando el hook
 `useMyPermissions()` (devuelve `roleType: "admin" | "user"`) + el flag

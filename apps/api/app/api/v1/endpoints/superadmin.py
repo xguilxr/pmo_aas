@@ -308,24 +308,20 @@ async def tenant_detail(
     ).all()
     programs = (
         await db.execute(
-            select(Program.id, Program.name, Program.organization_id).where(Program.tenant_id == t.id)
+            select(
+                Program.id, Program.name, Program.organization_id, Program.portfolio_id
+            ).where(Program.tenant_id == t.id)
         )
     ).all()
-    # Jerarquía: counts globales por tenant (US-025).
-    from app.models.organization import BusinessUnit, Department
+    # Jerarquía: counts globales por tenant (US-025). US-199: portafolios en
+    # lugar de unidades de negocio y departamentos (ADR-037).
+    from app.models.organization import Portfolio
     from app.models.project import Project
 
-    bu_count = (
+    portfolio_count = (
         await db.execute(
-            select(func.count(BusinessUnit.id)).where(
-                BusinessUnit.tenant_id == t.id, BusinessUnit.deleted_at.is_(None)
-            )
-        )
-    ).scalar_one() or 0
-    dept_count = (
-        await db.execute(
-            select(func.count(Department.id)).where(
-                Department.tenant_id == t.id, Department.deleted_at.is_(None)
+            select(func.count(Portfolio.id)).where(
+                Portfolio.tenant_id == t.id, Portfolio.deleted_at.is_(None)
             )
         )
     ).scalar_one() or 0
@@ -351,11 +347,18 @@ async def tenant_detail(
             for r in users
         ],
         "organizations": [{"id": str(r.id), "name": r.name, "is_active": r.is_active} for r in orgs],
-        "programs": [{"id": str(r.id), "name": r.name, "organization_id": str(r.organization_id)} for r in programs],
+        "programs": [
+            {
+                "id": str(r.id),
+                "name": r.name,
+                "organization_id": str(r.organization_id),
+                "portfolio_id": str(r.portfolio_id),
+            }
+            for r in programs
+        ],
         "hierarchy": {
             "organization_count": len(orgs),
-            "business_unit_count": int(bu_count),
-            "department_count": int(dept_count),
+            "portfolio_count": int(portfolio_count),
             "program_count": len(programs),
             "project_count": int(project_count),
         },

@@ -31,7 +31,7 @@ async def _setup(client, db_session):
     me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
     p = await client.post(
         "/api/v1/projects",
-        json={"name": "PAI", "description": "d", "type": "innovation", "priority": 3,
+        json={"name": "PAI", "description": "d", "type": "innovacion", "priority": 3,
               "organization_id": org_id, "pm_id": me.json()["id"]},
         headers=auth["_authz"],
     )

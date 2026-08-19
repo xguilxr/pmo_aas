@@ -9,94 +9,99 @@ revisar_cada: 30d
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-19
-**Branch activa:** `claude/platform-restructure-concept-mapping-rjhzd7` (PR #593, docs puros, espera merge)
+**Branch activa:** `claude/handoff-development-2awr5v`
 **Generado por:** /handoff
 
 ---
 
 ## 🎯 Dónde estamos parados
 
-La planeación de la **reestructura de plataforma** está cerrada y aprobada
-por el owner: árbol de conceptos, inventario de reutilización, modelo de
-datos con oleadas W1–W8, navegación nueva y mockups/wireframes (canvas
-«Mockups Reestructura PMO»). El bloque W1 (US-198 #588 … US-202 #592) está
-en `status:ready`. Sigue pendiente de sesiones anteriores el despliegue de
-migraciones `0105`–`0107` ya mergeadas.
+Bloque **Reestructura-W1** terminado: la jerarquía es `organización → portafolio
+⊃ programa → proyecto` (ADR-037) y el vocabulario del proyecto está en español
+con el tipo como enum (ADR-038). Doce commits pusheados, **PR #594** abierto
+contra `main` y esperando verificación. Nada mergeado todavía; las migraciones
+`0105`–`0111` siguen sin desplegar.
 
-## 📍 Dónde retomar (próximo paso accionable)
+## 📍 Dónde retomar
 
-- Owner mergea PR **#593**; después, sesión nueva: **«Arranca US-198 #588
-  con la guía de sesiones de reestructura-plan.md»** (branch nueva, 1 US =
-  1 commit).
+Verificar el PR **#594** (CI y recorrido de UI), cerrar los issues **#588–#592**
+y desplegar. Después, **Reestructura-W2** con la «Guía de sesiones» de
+`docs/epics/drafts/reestructura-plan.md`.
 
-## ✅ Hecho en esta sesión (todo en `claude/platform-restructure-concept-mapping-rjhzd7`)
+## ✅ Hecho en esta sesión
 
-- `696ba9c` — mapa de conceptos + plan de reestructura (drafts).
-- `8830e42` — Fase 0: inventario docs/schema/API/UI con veredictos.
-- `12e7d84` — Fase 1: modelo de datos objetivo + migración W1–W8.
-- `8a101c2` — issues US-198…202 (#588–#592) creados; bloque W1 en INBOX.
-- `651eb7e` — Fase 2: mapa de navegación y especificación de vistas.
-- `6438b01` / `f667946` — W1 a ready; plan final; **mapas de componentes**
-  `docs/architecture/mapa-{backend,frontend}.md` + CLAUDE.md §1.
-- Canvas de diseño publicado y aprobado: mockups hi-fi (dashboard
-  ejecutivo, control tower, capacity, header con switchers) + wireframes de
-  todas las páginas.
+- **US-198** `27b6ae9` — tabla `portfolios`, `programs.portfolio_id` NOT NULL,
+  regla de consistencia en `services/jerarquia.py`. Mig. 0108.
+- **US-199** `c529085` — CRUD `/portfolios`; BU/departamentos fuera de la API.
+  Mig. 0109 (suelta 7 columnas FK).
+- **US-202** `3253338` + `0f2d167` — fases al español y `type` como enum, con
+  catálogo único y 5 ventanas de compat. Mig. 0110.
+- **US-200** `f3f1063` — UI de la jerarquía: acordeón, árbol de 5 niveles,
+  selects anidados.
+- **US-201** `3c066f6` — cascada org → portafolio → programa en el tablero, las
+  vistas cross y los snapshots.
+- **Limpieza** `ea5710b` `c36d208` `399fe0f` `0bdcf8c` `92c9882` `f155f40` —
+  ENH-190 retirada (DEC-032, mig. 0111), vocabulario duplicado unido, 675 líneas
+  huérfanas fuera, 20 documentos al día.
 
-## 🔄 PRs abiertos o en flight
+Detalle narrativo en `SPRINT-DONE-HISTORY.md` (ronda 2026-08-19).
+
+## 🔄 PRs abiertos
 
 | # | Branch | Estado CI | Acción pendiente |
 |---|---|---|---|
-| #593 | claude/platform-restructure-concept-mapping-rjhzd7 | pending al cierre | merge (owner) |
+| #594 | `claude/handoff-development-2awr5v` | recién abierto | verificar y mergear |
 
-## ⚠️ Gotchas y decisiones recientes
+## ⚠️ Gotchas y decisiones
 
-- **BU/Departamentos**: sin uso productivo (owner 2026-08-19) → Portafolio⊃
-  Programa los reemplaza directo, sin mapeo de datos; drop en W8 con ADR.
-- **No hay RLS real en Postgres** (ADR-003 nunca implementado): W3 lo
-  materializa; hasta entonces el aislamiento es solo filtrado ORM.
-- **Roles de agente IA ≠ RBAC de usuarios**: catálogo y permisos separados.
-- Los **mapas de componentes son contrato**: si contradicen el código, gana
-  el código y la sesión corrige el mapa en su mismo commit.
-- Modelos por sesión: tabla en `reestructura-plan.md` (Opus 5 default).
+- **El job `heavy` solo corre al pushear a `main`.** US-199 rompió un test heavy
+  y la suite normal no lo vio durante tres commits. Arreglado en `399fe0f`, pero
+  vale la pena decidir si ese job debe correr también en los PRs.
+- **El contador de compat tiene un hueco**: `GET /projects` no normaliza ni
+  registra `phase`/`type`, así que no ve a quien filtra con el nombre viejo.
+  Taparlo **antes** de cerrar esas ventanas.
+- Las tablas `business_units`/`departments` se quedan en el esquema hasta W8, a
+  propósito: un `drop` es irreversible y no se paga en la misma oleada.
+- Los campos de texto `business_unit`/`department` de la solicitud **no** son la
+  jerarquía y se conservan («Área que solicita», «Equipo o sub-área»).
 
-## 📋 Lo que sigue (resumen; detalle en SPRINT.md → INBOX)
+## 📋 Lo que sigue
 
-- **Bloque Reestructura-W1** (ready): US-198 → US-199 → {US-200, US-201} ·
-  US-202 tras 198. Migraciones secuenciales, CI verde + merge entre USs.
-- Luego oleadas W2+ según `reestructura-modelo-datos.md` §8 (cada una pasa
-  por `triage` cuando toque).
-- Pendientes previos: desplegar `0105`–`0107`, ventanas de compat, umbrales
-  D-4, `tokens.md`, línea base D-6 (ver SPRINT.md).
+Detalle en `SPRINT.md` → INBOX.
+
+- Desplegar `0105`–`0111` y verificar #594.
+- Los nueve follow-ups listados en #594 (superficie de API sin pantalla, cadena
+  de permisos muerta, rutas sin enlace).
+- **W3** RLS de Postgres · **W8** el `drop` de BU/departamentos.
 
 ## 📚 Estado de las epics docs
 
 | Epic | Sincronizada | Notas |
 |---|---|---|
-| (todas) | sí | Sesión de docs puros; ningún commit cambió comportamiento. El diseño vive en drafts a propósito; EP002 se reescribe al implementar W1 (parte del cierre de esas USs). |
+| EP002 | sí | jerarquía nueva; US-002/003/004 marcadas retiradas |
+| EP003 | sí | clasificación de la solicitud y del acta |
+| EP004 | sí | endpoints, US-201 y los 5 scopes de snapshot |
+| EP005 | sí | vocabulario US-202 |
+| EP007 | sí | US-024 marcada RETIRADA, la sustituye US-200 |
+| EP010 | sí | counts del detalle de inquilino |
 
-## 🧹 Cleanup técnico pendiente
+## 🧹 Cleanup técnico pendiente (owner)
 
-- [ ] Mergear PR #593 (docs de planeación).
-- [ ] Desplegar migraciones `0105`–`0107` (arrastrado; detalle y variables
-      Railway en SPRINT.md — cierra todas las sesiones vivas).
-- [ ] Heredados del debloat: exigir `tipos-python`/`commits` en main, hook
-      `core.hooksPath .githooks`, confirmar Sentry.
+- [ ] Verificar y mergear **#594**; cerrar **#588–#592**.
+- [ ] Desplegar `0105`–`0111`; leer el registro de `0110` y `0111`.
+- [ ] Decidir los nueve follow-ups de #594.
+- [ ] Decidir si el job `heavy` corre en los PRs.
 
-## 🔮 Para sesiones futuras (sin issue todavía)
+## 🔮 Para sesiones futuras (sin issue)
 
-- Lecciones generadas periódicamente por IA (evaluar, quedó anotado en el
-  mapa de conceptos).
-- Export a PowerPoint de reportes (pedido del cliente de 23 proyectos; hoy
-  solo PDF/XLSX).
-- Escenarios what-if de capacidad, forecast y priorización avanzada (P2).
-- TOTP como segundo factor primario (arrastrado).
+- Deduplicar la suite de tests: `_FakeRedis` ×7, `_build_xlsx` ×6 y el helper
+  `_admin(...)` reimplementado en 30 archivos.
+- Reescribir `design-system/tokens.md` contra la paleta vigente (D-7, ADR-023).
 
 ---
 
 ## Cómo retomar
 
-1. Lee este `HANDOFF.md` primero.
-2. Luego `CLAUDE.md` + `docs/project-management/SPRINT.md`.
-3. Para la reestructura: `docs/epics/drafts/reestructura-plan.md` (guía de
-   sesiones) y el mapa de componentes del lado que toques — no re-explores.
-4. Continúa desde el «próximo paso accionable» arriba.
+1. Lee este `HANDOFF.md`.
+2. Luego `CLAUDE.md` + `SPRINT.md` + el epic en flight.
+3. Continúa desde «Dónde retomar».

@@ -71,8 +71,8 @@ async def _dos_proyectos_y_un_pm(client, db_session):
         p = Project(
             tenant_id=t.id, organization_id=org_id,
             folio=f"PRJ-SEG04-{i:03d}", name=nombre,
-            phase="execution", health_status="green",
-            budget=Decimal("100000"), progress=10, type="innovation",
+            phase="ejecucion", health_status="green",
+            budget=Decimal("100000"), progress=10, type="innovacion",
         )
         db_session.add(p)
         proyectos.append(p)
@@ -208,8 +208,8 @@ async def test_el_administrador_sigue_viendo_todo(client, db_session):
     ).json()["id"]
     p = Project(
         tenant_id=t.id, organization_id=org_id, folio="PRJ-SEG04-B",
-        name="Sin asignar a nadie", phase="execution", health_status="green",
-        budget=Decimal("1"), progress=0, type="innovation",
+        name="Sin asignar a nadie", phase="ejecucion", health_status="green",
+        budget=Decimal("1"), progress=0, type="innovacion",
     )
     db_session.add(p)
     await db_session.commit()
@@ -265,8 +265,8 @@ async def test_un_pm_sin_ninguna_asignacion_no_alcanza_nada(client, db_session):
     ).json()["id"]
     p = Project(
         tenant_id=t.id, organization_id=org_id, folio="PRJ-SEG04-C",
-        name="De nadie", phase="execution", health_status="green",
-        budget=Decimal("1"), progress=0, type="innovation",
+        name="De nadie", phase="ejecucion", health_status="green",
+        budget=Decimal("1"), progress=0, type="innovacion",
     )
     db_session.add(p)
     await db_session.commit()
@@ -309,8 +309,8 @@ async def test_un_proyecto_borrado_deja_de_ser_alcanzable(client, db_session):
     ).json()["id"]
     p = Project(
         tenant_id=t.id, organization_id=org_id, folio="PRJ-SEG04-D",
-        name="Borrado", phase="execution", health_status="green",
-        budget=Decimal("1"), progress=0, type="innovation",
+        name="Borrado", phase="ejecucion", health_status="green",
+        budget=Decimal("1"), progress=0, type="innovacion",
         deleted_at=datetime.now(UTC),
     )
     db_session.add(p)

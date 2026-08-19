@@ -13,7 +13,9 @@ import { ApiError } from "@/lib/api";
 import {
   createProgram,
   listOrganizations,
+  listPortfolios,
   type Organization,
+  type Portfolio,
   type ProgramCreateBody,
 } from "@/lib/api/organizations";
 
@@ -27,6 +29,12 @@ type Props = {
 export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [orgId, setOrgId] = useState(initialOrgId ?? "");
+  // US-200 — el programa vive dentro de un portafolio. Vacío es válido: cae en
+  // el «Portafolio General» de su organización (DEC-030), que es lo que evita
+  // obligar a nadie a inventarse una taxonomía para registrar su primer
+  // programa.
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [portfolioId, setPortfolioId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [strategic, setStrategic] = useState("");
@@ -60,6 +68,24 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
     };
   }, [open, initialOrgId]);
 
+  useEffect(() => {
+    if (!open || !orgId) {
+      setPortfolios([]);
+      return;
+    }
+    let cancelled = false;
+    listPortfolios(orgId, { is_active: true })
+      .then((rows) => {
+        if (!cancelled) setPortfolios(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setPortfolios([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, orgId]);
+
   const canSubmit = name.trim().length >= 2 && orgId;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -71,6 +97,7 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
       const body: ProgramCreateBody = {
         name: name.trim(),
         organization_id: orgId,
+        portfolio_id: portfolioId || null,
         description: description.trim() || null,
         strategic_alignment: strategic.trim() || null,
         start_date: startDate || null,
@@ -79,6 +106,7 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
       };
       await createProgram(body);
       setName("");
+      setPortfolioId("");
       setDescription("");
       setStrategic("");
       setStartDate("");
@@ -107,7 +135,12 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
             <Select
               id="prog_org"
               value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
+              onChange={(e) => {
+                setOrgId(e.target.value);
+                // El portafolio pertenece a la organización: al cambiarla, el
+                // elegido deja de ser válido.
+                setPortfolioId("");
+              }}
               disabled={saving || loadingOrgs}
               required
             >
@@ -120,6 +153,31 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
             </Select>
           </div>
         ) : null}
+        <div>
+          <label
+            htmlFor="prog_portfolio"
+            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+          >
+            Portafolio
+          </label>
+          <Select
+            id="prog_portfolio"
+            value={portfolioId}
+            onChange={(e) => setPortfolioId(e.target.value)}
+            disabled={saving || !orgId}
+          >
+            <option value="">Portafolio General (por defecto)</option>
+            {portfolios.map((pf) => (
+              <option key={pf.id} value={pf.id}>
+                {pf.code ? `${pf.code} — ${pf.name}` : pf.name}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            Sin elegir, el programa cae en el «Portafolio General» de la
+            organización. Se puede mover después.
+          </p>
+        </div>
         <div>
           <label
             htmlFor="prog_name"

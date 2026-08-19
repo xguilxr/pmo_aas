@@ -10,8 +10,8 @@
 # huella nueva significa que se está aflojando el trinquete, y eso necesita
 # razón escrita — la misma regla que el techo de contexto de `conformidad.yaml`.
 #
-# Generada: 2026-08-05
-# Errores tolerados: 1163 en 114 archivos
+# Generada: 2026-08-19
+# Errores tolerados: 1142 en 114 archivos
 2	app/api/deps.py	no-untyped-def	Function is missing a return type annotation
 3	app/api/v1/endpoints/admin_ai.py	no-untyped-def	Function is missing a return type annotation
 1	app/api/v1/endpoints/admin_ai.py	return-value	Incompatible return value type (got "str", expected "UUID")
@@ -47,7 +47,7 @@
 1	app/api/v1/endpoints/assistant.py	return-value	Incompatible return value type (got "str", expected "UUID")
 1	app/api/v1/endpoints/assistant.py	type-arg	Missing type parameters for generic type "list"
 1	app/api/v1/endpoints/auth.py	no-any-return	Returning Any from function declared to return "int"
-8	app/api/v1/endpoints/auth.py	no-untyped-def	Function is missing a return type annotation
+7	app/api/v1/endpoints/auth.py	no-untyped-def	Function is missing a return type annotation
 1	app/api/v1/endpoints/auth.py	type-arg	Missing type parameters for generic type "list"
 4	app/api/v1/endpoints/branding.py	no-untyped-def	Function is missing a return type annotation
 1	app/api/v1/endpoints/branding.py	return-value	Incompatible return value type (got "str", expected "UUID")
@@ -68,7 +68,6 @@
 2	app/api/v1/endpoints/change_approvals.py	unused-ignore	Unused "type: ignore" comment
 2	app/api/v1/endpoints/dashboard.py	arg-type	Argument 1 to "dict" has incompatible type "Sequence[Row[tuple[str, int]]]"; expected "Iterable[tuple[Never, Never]]"
 1	app/api/v1/endpoints/dashboard.py	assignment	Incompatible types in assignment (expression has type "Sequence[Row[tuple[str | None, Decimal | None]]]", variable has type "Sequence[Row[tuple[str, int]]]")
-1	app/api/v1/endpoints/dashboard.py	attr-defined	"Sequence[Project]" has no attribute "sort"
 12	app/api/v1/endpoints/dashboard.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
 2	app/api/v1/endpoints/dashboard.py	no-untyped-call	Call to untyped function "scope_risks" in typed context
 2	app/api/v1/endpoints/dashboard.py	no-untyped-call	Call to untyped function "scoped_projects" in typed context
@@ -105,12 +104,8 @@
 1	app/api/v1/endpoints/organigrama.py	return-value	Incompatible return value type (got "str", expected "UUID")
 2	app/api/v1/endpoints/organizations.py	arg-type	Argument 3 to "_project_count_for_program" has incompatible type "UUID"; expected "str"
 1	app/api/v1/endpoints/organizations.py	assignment	Incompatible types in assignment (expression has type "Sequence[Row[tuple[UUID, str, str]]]", variable has type "Sequence[Row[tuple[UUID | None, int]]]")
-1	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "_bu_active_filter" in typed context
-2	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "_get_bu_or_404" in typed context
-2	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "_get_org_or_404" in typed context
-18	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
-32	app/api/v1/endpoints/organizations.py	no-untyped-def	Function is missing a return type annotation
-3	app/api/v1/endpoints/organizations.py	no-untyped-def	Function is missing a type annotation
+14	app/api/v1/endpoints/organizations.py	no-untyped-call	Call to untyped function "require_authenticated" in typed context
+25	app/api/v1/endpoints/organizations.py	no-untyped-def	Function is missing a return type annotation
 2	app/api/v1/endpoints/organizations.py	no-untyped-def	Function is missing a type annotation for one or more arguments
 1	app/api/v1/endpoints/organizations.py	return-value	Incompatible return value type (got "str", expected "UUID")
 2	app/api/v1/endpoints/permission_requests.py	assignment	Incompatible types in assignment (expression has type "str", variable has type "SQLCoreOperations[UUID | None] | UUID | None")

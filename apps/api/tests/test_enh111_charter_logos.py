@@ -37,8 +37,12 @@ class _FakeCharter:
     project_name = "Proyecto Demo"
     description = "desc"
     organization_id = None
-    business_unit_id = None
-    department_id = None
+    # US-199 — el doble sigue al modelo real: aquí estaban `business_unit_id` y
+    # `department_id`, que la migración 0109 soltó, y el acta pasó a llevar la
+    # clasificación nueva. El generador las lee las dos (`charter_generator.py`,
+    # sección «1. Información general»), así que faltarlas rompe el render.
+    portfolio_id = None
+    program_id = None
     sponsor = None
     sponsor_email = None
     business_leader = None
@@ -46,7 +50,7 @@ class _FakeCharter:
     tech_leader = None
     tech_leader_email = None
     pm_id = None
-    project_type = "innovation"
+    project_type = "innovacion"
     priority = 3
     objective = None
     restrictions = None
@@ -58,7 +62,7 @@ class _FakeCharter:
 
 class _FakeProject:
     folio = "PRJ-0001"
-    phase = "planning"
+    phase = "preparacion"
     health_status = "green"
     start_date = None
     end_date = None

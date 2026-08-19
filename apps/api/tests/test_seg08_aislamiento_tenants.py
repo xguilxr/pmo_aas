@@ -81,7 +81,7 @@ async def dos_tenants(db_session, client):
         json={
             "name": "Proyecto de B",
             "description": "Datos que el tenant A no debe alcanzar",
-            "type": "operation",
+            "type": "operacion",
             "priority": 3,
             "organization_id": org_b_id,
             "pm_id": str(ub.id),
@@ -230,7 +230,7 @@ async def test_seg08_no_crea_proyecto_dentro_de_organizacion_ajena(
         json={
             "name": "Infiltrado",
             "description": "Creado por A dentro de la organización de B",
-            "type": "operation",
+            "type": "operacion",
             "priority": 3,
             "organization_id": dos_tenants["org_b"],
             "pm_id": dos_tenants["pm_a"],

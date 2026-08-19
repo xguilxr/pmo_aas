@@ -42,7 +42,8 @@ revisar_cada: 90d
 **Fecha:** 2026-04-20  
 **Decisión:** `business_units` y `departments` son tablas con FK reales, no campos JSONB en organizations.  
 **Rationale:** Permite FK desde programs/projects, filtros eficientes, y RLS por nivel.  
-**Alternativa descartada:** `organizations.settings JSONB` con BU/Depto embebidos (no permite FK).
+**Alternativa descartada:** `organizations.settings JSONB` con BU/Depto embebidos (no permite FK).  
+**Qué sobrevive (nota del 2026-08-19):** el criterio, entero — los niveles de la jerarquía son tablas con FK reales y no JSONB, y `portfolios` nace siguiendo esta misma regla. Lo que cambió es **qué** niveles existen: ADR-037 retiró `business_units` y `departments` y puso el portafolio en su lugar. Las dos tablas quedan sin lectores y se dropean en W8.
 
 ## DEC-004 — 1 US = 1 commit = 1 sesión de Claude Code
 **Fecha:** 2026-04-20  
@@ -643,3 +644,26 @@ legacy en Sprint 7 (US-081).
 **Rationale:** Playwright en el worker agrega ~200MB a la imagen, más el manejo de un pool de browsers y el auth dance con el frontend. No garantiza render < 10s para proyectos grandes. El SVG Python rinde < 1s, es embebible en `<img>` e inlineable por WeasyPrint en el PDF. El contrato HTTP (`image/svg+xml`) queda estable para cuando se migre a screenshot real.
 **Implementación:** US-132. `format=png` devuelve 501 hasta que llegue la evolución headless.
 **Trigger para revisar:** dos PMs pidiendo "Gantt idéntico al de la app" o necesidad de exports a herramientas que no rendericen SVG (raro).
+
+## DEC-030 — El «Portafolio General» es el destino por defecto, no una categoría
+**Fecha:** 2026-08-19
+**Decisión:** Con `programs.portfolio_id` en NOT NULL (ADR-037), un programa que se da de alta sin decir su portafolio cae en el «Portafolio General» de su organización, que se crea al vuelo (`services/jerarquia.py::portafolio_general`). La migración 0108 usó exactamente la misma resolución para los programas que ya existían.
+**Rationale:** La alternativa era exigir el portafolio en el alta, y eso obliga a inventarse una taxonomía antes de poder registrar el primer programa — la clase de fricción que hace que la gente deje la jerarquía vacía, que es lo que le pasó a BU/departamentos. Se llama «General» y no «Sin clasificar» a propósito: el segundo nombre invita a dejarlo así para siempre.
+**Reversible:** sí, con un rename y una regla de validación distinta.
+**Implementación:** US-198. El portafolio explícito en el payload llega en US-199.
+
+## DEC-031 — ➡️ PROMOVIDA a `ADR-038` (vocabulario de fases y tipo de proyecto)
+**Fecha:** 2026-08-19
+**Decisión:** El vocabulario del proyecto pasa al español (`preparacion | ejecucion | hypercare | cerrado | cancelado`) y `projects.type` pasa de texto libre a enum (`transformacion | operacion | innovacion | bau`). Detalle, alternativas y consecuencias: [`ADR-038`](../adr/README.md).
+**Por qué no se queda aquí:** US-202 la mandó a este archivo por ser «reversible con renames», y el `UPDATE` inverso existe. Pero la regla del encabezado de este mismo archivo manda a `docs/adr/` lo que «exige migrar datos productivos o rompe un contrato público», y esto hace las dos: reescribe `projects.phase` y `lessons.phase` en todos los inquilinos y cambia los valores que la API acepta. El trinquete de `test_ventanas_compatibilidad.py` llega a la misma conclusión por su lado: exige un ADR por cada ventana de compatibilidad declarada.
+**Supersede en vocabulario:** ADR-019 (hypercare) y ADR-022 (cancelled) — sus decisiones siguen vigentes; cambia cómo se escriben los valores.
+
+## DEC-032 — Se retira el label configurable de organización (ENH-190)
+**Fecha:** 2026-08-19
+**Decisión:** `tenants.settings.org_label` desaparece. La organización se llama «Organización» para todos los inquilinos. Se van los accesores (`get_org_label`/`set_org_label`), el campo del branding compartido, el control de «Nomenclatura» del panel de administración y el helper `lib/org-label.ts` del frontend con sus once consumidores. La migración 0111 borra la clave y **cuenta** cuántos inquilinos la tenían y con qué valor.
+**Rationale:** ENH-190 permitía renombrar «Organización» a «Portafolio» y estaba bien pensada: hay clientes que gestionan su propia cartera y no reconocen la palabra «organización». ADR-037 la volvió inválida, no obsoleta — «Portafolio» pasó a ser una entidad **dentro** de la organización, así que un inquilino con el label puesto vería «Portafolio → Portafolio → Programa» en el árbol, en los filtros y en los desplegables. No es una etiqueta confusa: es una jerarquía ilegible. El inventario de la reestructura ya lo anticipaba (`drafts/reestructura-inventario.md` §ENH-190: «retirar»).
+**Por qué se retira el mecanismo y no solo la opción:** quedaría un ajuste con un único valor posible — un control que el usuario abre, mira y cierra, más el código de leerlo, propagarlo por el branding y ramificar el texto en once pantallas.
+**Por qué el `PATCH` lo rechaza en vez de ignorarlo:** el defecto de Pydantic ante un campo que no conoce es descartarlo, así que un cliente con el bundle viejo recibiría 200 y la etiqueta no se aplicaría. Un ajuste que se elige y no pasa nada es peor que un error: no hay nada que investigar. El rechazo (422 `ORG_LABEL_RETIRADO`) se va con el resto del residuo en W8.
+**Reversible:** sí en código; el valor que tuviera cada inquilino no se restaura. Para un dato de presentación con default, «ausente» y «puesto al default» son el mismo estado visible.
+**Implementación:** migración 0111 · trinquete en `tests/test_dec032_retiro_org_label.py` · ADR-037 (consecuencia).
+

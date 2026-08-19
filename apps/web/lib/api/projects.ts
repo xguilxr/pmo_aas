@@ -1,17 +1,22 @@
 import { apiFetch } from "@/lib/api";
 
-// D-2 / ADR-019 (2026-08-05): `support` se renombró a `hypercare`. El API
-// acepta el nombre viejo a la entrada durante una ventana, pero siempre
+// US-202 / ADR-038 (2026-08-19): el vocabulario pasa al español, que es el del
+// glosario, el de la interfaz y el de quien la usa. El API acepta los nombres
+// viejos a la entrada durante una ventana de compatibilidad, pero siempre
 // devuelve el canónico, así que aquí solo existe el nuevo.
-// ADR-022 (2026-08-05): `cancelled` es el quinto valor. Un proyecto cortado a
-// mitad terminaba en `closed`, indistinguible de uno que cumplió.
+// `hypercare` se queda: no tiene traducción que no sea peor, y ADR-019 ya lo
+// renombró una vez desde `support`.
+// ADR-022: `cancelado` es un final distinto de `cerrado`. Un proyecto cortado a
+// mitad terminaba antes en «cerrado», indistinguible de uno que cumplió.
 export type ProjectPhase =
-  | "planning"
-  | "execution"
+  | "preparacion"
+  | "ejecucion"
   | "hypercare"
-  | "closed"
-  | "cancelled";
-export type ProjectType = "innovation" | "transformation" | "operation" | "bau";
+  | "cerrado"
+  | "cancelado";
+// US-202: el tipo deja de ser texto libre. Cuatro valores, y `bau` se queda en
+// la sigla porque es como lo dice quien lo pide.
+export type ProjectType = "transformacion" | "operacion" | "innovacion" | "bau";
 export type ProjectHealth = "green" | "yellow" | "red";
 // US-180: fuente del semáforo único — 'auto' (motor de reglas) o
 // 'manual' (declarado por el PM con razón).
@@ -34,6 +39,8 @@ export type Project = {
   phase: ProjectPhase;
   organization_id: string;
   program_id: string | null;
+  /** US-199 — con programa, es el del programa (regla de consistencia). */
+  portfolio_id: string | null;
   pm_id: string | null;
   sponsor: string | null;
   start_date: string | null;
@@ -77,6 +84,8 @@ export type ProjectCreateBody = {
   priority: number;
   organization_id: string;
   program_id?: string | null;
+  /** US-199 — se autocompleta con el del programa si se manda programa. */
+  portfolio_id?: string | null;
   phase?: ProjectPhase;
   pm_id: string;
   sponsor?: string | null;
@@ -93,6 +102,7 @@ export type ProjectUpdateBody = Partial<{
   type: ProjectType;
   priority: number;
   program_id: string | null;
+  portfolio_id: string | null;
   pm_id: string;
   sponsor: string | null;
   start_date: string | null;
@@ -217,6 +227,11 @@ export type ListProjectsParams = {
   phase?: ProjectPhase[] | ProjectPhase;
   organization_id?: string;
   program_id?: string;
+  /** US-201 — filtro por portafolio (cascada Organización→Portafolio→Programa). */
+  portfolio_id?: string;
+  /** US-200 — los que todavía no están en ningún portafolio (importación
+   *  masiva, sobre todo): sin esto serían invisibles hasta clasificarlos. */
+  no_portfolio?: boolean;
   no_program?: boolean;
   type?: ProjectType[] | ProjectType;
   health?: ProjectHealth[] | ProjectHealth;
@@ -314,18 +329,49 @@ export function removeMember(id: string, userId: string): Promise<void> {
 }
 
 export const PHASE_LABEL: Record<ProjectPhase, string> = {
-  planning: "Planificación",
-  execution: "Ejecución",
+  preparacion: "Preparación",
+  ejecucion: "Ejecución",
   hypercare: "Hypercare",
-  closed: "Cerrado",
-  cancelled: "Cancelado",
+  cerrado: "Cerrado",
+  cancelado: "Cancelado",
+};
+
+// US-202: el orden del ciclo de vida, para desplegables y ejes de gráficos —
+// alfabético pondría «cancelado» primero, que no es por donde empieza nada.
+export const PHASE_ORDER: readonly ProjectPhase[] = [
+  "preparacion",
+  "ejecucion",
+  "hypercare",
+  "cerrado",
+  "cancelado",
+];
+
+/**
+ * El tono de la insignia de fase. Vive con el catálogo y no en las pantallas:
+ * estaba escrito dos veces —en la lista de proyectos y en el detalle— con las
+ * mismas cinco claves y los mismos cinco valores, y una fase nueva obligaba a
+ * recordar las dos copias.
+ *
+ * ADR-022: `cancelado` **no** comparte el tono de `cerrado`. Distinguir a
+ * simple vista un proyecto que cumplió de uno que se cortó es la razón de ser
+ * de esa decisión, y aquí es donde se hace visible.
+ */
+export const PHASE_BADGE_TONE: Record<
+  ProjectPhase,
+  "info" | "success" | "warning" | "neutral" | "danger"
+> = {
+  preparacion: "info",
+  ejecucion: "success",
+  hypercare: "warning",
+  cerrado: "neutral",
+  cancelado: "danger",
 };
 
 export const TYPE_LABEL: Record<ProjectType, string> = {
-  innovation: "Innovación",
-  transformation: "Transformación",
-  operation: "Operación",
-  bau: "BAU",
+  transformacion: "Transformación",
+  operacion: "Operación",
+  innovacion: "Innovación",
+  bau: "BAU (operación continua)",
 };
 
 export const HEALTH_LABEL: Record<ProjectHealth, string> = {
@@ -333,6 +379,17 @@ export const HEALTH_LABEL: Record<ProjectHealth, string> = {
   yellow: "Amarillo",
   red: "Rojo",
 };
+
+/**
+ * El semáforo en palabras. Existía cinco veces —tres bajo este mismo nombre,
+ * una como `RAG_LABEL`— porque la salud llega de la API como `string` y no
+ * como `ProjectHealth`: cada pantalla se hacía su propio `Record<string,
+ * string>` para poder indexarlo. Esta función es ese accesor, una vez.
+ */
+export function etiquetaSalud(valor: string | null | undefined): string {
+  if (!valor) return "—";
+  return HEALTH_LABEL[valor as ProjectHealth] ?? valor;
+}
 
 export const MEMBER_ROLE_LABEL: Record<ProjectMemberRole, string> = {
   pm: "Project Manager",

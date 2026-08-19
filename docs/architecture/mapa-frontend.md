@@ -36,20 +36,18 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 
 | Ruta | Qué es |
 |---|---|
-| `/dashboard` | KPIs+charts tenant-wide con filtro org (→ se consolida con /pmo en dashboard ejecutivo) |
+| `/dashboard` | KPIs+charts tenant-wide con cascada org → portafolio → programa en la URL (US-201; → se consolida con /pmo en dashboard ejecutivo) |
 | `/pmo` | Panel portafolio del tenant (treemap/trends/heatmap, matriz salud, PDF status) |
 | `/pmo/projects` (+`/new`, `[id]/edit`) | Lista maestra + alta/edición (`project-form.tsx`) |
 | `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (recursos), `documents`, `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
-| `/pmo/organizations/[id]` (+`/reports`) | Panel org (tiene KPIs BU/depto†) |
+| `/pmo/organizations/[id]` (+`/reports`) | Panel org (KPIs «Portafolios» y «Programas» desde US-201) |
 | `/pmo/programs/[id]` (+`/reports`) | Panel programa |
 | `/pmo/raid`, `/changes`, `/minutes`, `/reports` | Vistas cross con `TenantCrossFilters` |
 | `/pmo/resources` | Capacidad/saturación (tabs personas/roles/áreas/conflictos) |
-| `/pmo/requests` (+`/new`, `[id]`) | Solicitudes (`request-form.tsx` tiene BU/depto†) |
-| `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (BU/depto† en `org-hierarchy-section.tsx`), areas |
-| `/superadmin/*` | 8 pantallas plataforma |
+| `/pmo/requests` (+`/new`, `[id]`) | Solicitudes (`request-form.tsx` pide «Área que solicita» y «Equipo o sub-área»: texto libre, las palabras del solicitante — no la jerarquía) |
+| `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (`org-hierarchy-section.tsx`: **Portafolio ⊃ Programa** desde US-200), areas |
+| `/superadmin/*` | Pantallas de plataforma (listado en `navigation.md` §3.5) |
 | `/login`, `/reset`, `/forgot-password`, `/approve/[token]`, `/notifications`, `/account` | auth y transversales |
-
-† = muere con la reestructura (W1 / US-199–201).
 
 ## Componentes reutilizables (components/)
 
@@ -57,12 +55,15 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   header 60px sin switchers — el switcher tenant/org nuevo va aquí),
   `project-tabs-bar.tsx`, `module-shell.tsx` (lista+CRUD genérico por folio;
   ojo: `max-w-6xl` — soltar para vistas anchas), `org-tree-nav.tsx` (árbol
-  org→prog→proy; se retira del sidebar en la reestructura),
-  `frontera-de-permiso.tsx`.
+  org→portafolio→prog→proy, US-200; se retira del sidebar más adelante en la
+  reestructura),
+  `frontera-de-permiso.tsx`. `org-tree-nav.tsx` es Organización → Portafolio →
+  Programa → Proyecto desde US-200, con cajones «Sin programa» y «Sin
+  clasificar»; cada nivel carga al expandirse.
 - **Datos**: `ui/sortable-th.tsx` + `lib/hooks/use-sortable-rows.ts`,
-  `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (org/programa/
-  proyecto → sumar portafolio). No hay tabla virtualizada ni column-pinning
-  (la control tower lo necesitará).
+  `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (org → portafolio →
+  programa → proyecto desde US-201; cada nivel limpia los de abajo). No hay
+  tabla virtualizada ni column-pinning (la control tower lo necesitará).
 - **Gráficos**: `dashboard-charts.tsx` — exporta `Pie, Bars, Gauge,
   TrendLines, RiskMatrix, Heatmap, Treemap, Legend, PALETTE, serieColor`
   (SVG propio). `kpi-card.tsx`.
@@ -84,9 +85,16 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 ## API client (lib/)
 
 `lib/api/*.ts` por dominio (organizations, requests, analytics, reports,
-report-builder, superadmin, project-charters, …). `lib/auth-storage.ts`
+report-builder, superadmin, project-charters, …). **Vocabulario del proyecto**
+(US-202 / ADR-038): `lib/api/projects.ts` declara `ProjectPhase`
+(`preparacion|ejecucion|hypercare|cerrado|cancelado`), `ProjectType`
+(`transformacion|operacion|innovacion|bau`), `PHASE_LABEL`, `PHASE_ORDER` y
+`TYPE_LABEL`; `lib/api/modules.ts`, `LESSON_PHASE_*` (la fase `cerrado` se dice
+«Cierre» en una lección). Los dos tipos están atados al backend por
+`apps/api/tests/test_us202_vocabulario.py`, que lee este archivo: renombrar en un
+lado y no en el otro deja el formulario mandando un valor que la API rechaza.
+`lib/auth-storage.ts`
 guarda tenant activo (→ el contexto org activo nuevo vive aquí + JWT).
-`lib/org-label.ts` (label configurable — precedente para renombrar niveles).
 `lib/cn.ts` (clsx+tailwind-merge).
 
 ## Reglas al escribir UI

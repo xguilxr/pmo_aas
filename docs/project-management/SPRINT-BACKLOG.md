@@ -93,6 +93,7 @@ toda sesión para consultarse al cerrar un sprint.
 | Plan Import Revamp | — | 2026-07-18 | 9 |
 | Feedback 16-jul | — | 2026-07-18 | 8 (migs 0095-0096) |
 | Mini-batch Plan UX | — | 2026-07-18 | 4 de 5 (ENH-202 abierta) |
+| Bloque Reestructura-W1 | — | 2026-08-19 | 5 USs + limpieza (PR #594, migs 0108-0111, ADR-037/038, DEC-030/032) |
 
 ---
 

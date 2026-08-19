@@ -270,9 +270,22 @@ GET    /api/v1/admin/audit-logs/export.csv
 
 ---
 
-### US-024 — Gestión jerarquía org completa (BU + Depto) en Admin
+### US-024 — Gestión jerarquía org completa (BU + Depto) en Admin ⛔ RETIRADA (ADR-037)
 
-**Criterios de aceptación:**
+> **Entregada el 2026-05, retirada el 2026-08-19.** La pantalla existió y
+> funcionaba; lo que se retiró son los dos niveles que administraba. ADR-037
+> reemplazó unidad de negocio y departamento —que modelaban el organigrama del
+> cliente— por el portafolio, que agrupa por decisión de inversión. Los endpoints
+> que esta US reutilizaba (US-003/004) responden 404 desde US-199.
+>
+> **Lo que hace hoy esa pantalla:** la sección de jerarquía es
+> `org-hierarchy-section.tsx`, un acordeón **Portafolio ⊃ Programa** con alta,
+> edición, archivado con cascada opcional y papelera de dos pasos en los dos
+> niveles (**US-200**, ver EP002).
+>
+> Los AC de abajo se conservan como registro de lo que se entregó.
+
+**Criterios de aceptación (histórico):**
 - [x] En `/admin/organizations/{id}`, debajo del formulario de edición
   de la org, se muestra sección "Jerarquía: unidades de negocio y
   departamentos" con tree expandible.
@@ -291,4 +304,4 @@ GET    /api/v1/admin/audit-logs/export.csv
 - Modal de desactivar muestra el mensaje `BU_HAS_ACTIVE_DEPARTMENTS` o
   `DEPT_HAS_ACTIVE_CHILDREN` cuando aplica, y sugiere el toggle force.
 
-**Estado de integración:** DONE (US-024).
+**Estado de integración:** DONE (US-024) y luego RETIRADA (ADR-037 / US-199); la sustituye US-200.

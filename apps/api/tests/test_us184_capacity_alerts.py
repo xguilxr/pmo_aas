@@ -43,7 +43,7 @@ async def _setup(client, db_session, *, n_projects: int = 3):
             "/api/v1/projects",
             json={
                 "name": f"Proyecto {i + 1}", "description": "US-184",
-                "type": "transformation", "priority": 3,
+                "type": "transformacion", "priority": 3,
                 "organization_id": org_id, "pm_id": pm_id,
             },
             headers=auth["_authz"],

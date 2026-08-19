@@ -20,7 +20,7 @@ Ofrecemos a oficinas de gestión de proyectos (PMO) una plataforma SaaS **multi-
 
 | Problema | Dolor actual | Cómo lo resolvemos |
 |---|---|---|
-| Dispersión de información | Excel + correos + SharePoint | Sistema único con jerarquía PMO→Org→Programa→Proyecto |
+| Dispersión de información | Excel + correos + SharePoint | Sistema único con jerarquía PMO→Org→Portafolio⊃Programa→Proyecto |
 | Reportes manuales que consumen 4-6 h/semana | PM redacta en Word cada viernes | IA (Groq/BYO) genera reporte en <60 s, PM solo revisa |
 | Minutas sin estructura | Notas libres sin acuerdos trazables | IA extrae acuerdos, participantes, próximos pasos desde transcripción |
 | Visibilidad baja del portafolio | Dirección no ve estado real | Dashboard con KPIs, semáforo de salud, Plan vs Real |

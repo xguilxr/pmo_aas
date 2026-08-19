@@ -10,6 +10,7 @@ from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import business_rule, conflict, forbidden, mensaje, validation_error
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
+from app.dominio.proyecto import CERRADO, EJECUCION, TRANSICIONES
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
@@ -31,6 +32,10 @@ from app.schemas.project import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.jerarquia import (
+    resolver_portafolio,
+    validar_portafolio_de_organizacion,
+)
 from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.plan_metadata import round_half_up
 from app.services.progress_calculator import plan_rollup_map
@@ -49,13 +54,9 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 #
 # `closed` NO lleva a `cancelled`: un proyecto que llegó al final ya tuvo su
 # final. Los dos son terminales, por la misma razón que `closed` lo era.
-VALID_TRANSITIONS = {
-    "planning": {"execution", "closed", "cancelled"},
-    "execution": {"hypercare", "closed", "cancelled"},
-    "hypercare": {"closed", "cancelled"},
-    "closed": set(),
-    "cancelled": set(),
-}
+#: US-202 — el grafo del ciclo de vida vive en `dominio/proyecto.py`. Se
+#: reexporta con el nombre viejo porque es lo que importa el resto del módulo.
+VALID_TRANSITIONS = TRANSICIONES
 
 
 def _tenant(cu: CurrentUser) -> UUID:
@@ -70,6 +71,11 @@ async def list_projects(
     organization_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     no_program: bool = Query(default=False),
+    # US-200 — el árbol del sidebar y la lista necesitan «los proyectos de este
+    # portafolio» y «los que cuelgan de él sin programa». Los filtros de
+    # dashboard y vistas cross llegan en US-201.
+    portfolio_id: UUID | None = Query(default=None),
+    no_portfolio: bool = Query(default=False),
     type: list[str] | None = Query(default=None),
     health: list[str] | None = Query(default=None),
     priority_min: int | None = Query(default=None, ge=1, le=5),
@@ -93,6 +99,10 @@ async def list_projects(
         stmt = stmt.where(Project.program_id == str(program_id))
     if no_program:
         stmt = stmt.where(Project.program_id.is_(None))
+    if portfolio_id:
+        stmt = stmt.where(Project.portfolio_id == str(portfolio_id))
+    if no_portfolio:
+        stmt = stmt.where(Project.portfolio_id.is_(None))
     if type:
         stmt = stmt.where(Project.type.in_(type))
     if health:
@@ -177,7 +187,23 @@ async def create_project(
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="PRJ")
     data = body.model_dump()
-    for k in ("organization_id", "program_id", "pm_id"):
+    # US-199 — la regla de consistencia de la jerarquía, en el único sitio
+    # donde vive (`services/jerarquia.py`): con programa, el portafolio es el
+    # del programa; sin programa, el que venga, validado contra la organización.
+    data["portfolio_id"] = await resolver_portafolio(
+        db,
+        tenant_id=tenant_id,
+        program_id=data.get("program_id"),
+        portfolio_id=data.get("portfolio_id"),
+    )
+    if data.get("program_id") is None:
+        await validar_portafolio_de_organizacion(
+            db,
+            tenant_id=tenant_id,
+            organization_id=str(body.organization_id),
+            portfolio_id=data["portfolio_id"],
+        )
+    for k in ("organization_id", "program_id", "portfolio_id", "pm_id"):
         if data.get(k) is not None:
             data[k] = str(data[k])
     project = Project(tenant_id=tenant_id, folio=folio, **data)
@@ -426,19 +452,35 @@ async def update_project(
     ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
             accion="Reábrelo si de verdad hace falta modificarlo.",
         ))
     data = body.model_dump(exclude_none=True)
+    # US-199 — si el PATCH toca programa o portafolio, se recalcula el par
+    # completo. Aplicar solo el campo que llegó dejaría el otro apuntando a
+    # donde estaba, que es exactamente el par incoherente que la regla prohíbe.
+    if "program_id" in data or "portfolio_id" in data:
+        program_id = data.get("program_id", p.program_id)
+        portfolio_id = data.get("portfolio_id", p.portfolio_id)
+        data["portfolio_id"] = await resolver_portafolio(
+            db, tenant_id=tenant_id, program_id=program_id, portfolio_id=portfolio_id
+        )
+        if program_id is None:
+            await validar_portafolio_de_organizacion(
+                db,
+                tenant_id=tenant_id,
+                organization_id=p.organization_id,
+                portfolio_id=data["portfolio_id"],
+            )
     before = {k: getattr(p, k) for k in data}
     health_changed = (
         "health_status" in data and before.get("health_status") != data["health_status"]
     )
     for k, v in data.items():
-        if k in ("program_id", "pm_id") and v is not None:
+        if k in ("program_id", "portfolio_id", "pm_id") and v is not None:
             v = str(v)
         setattr(p, k, v)
     # US-084: campos agregados editados a mano. Marcamos en
@@ -517,7 +559,7 @@ async def declare_health(
     ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -582,7 +624,7 @@ async def create_health_evaluation(
 
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -681,7 +723,7 @@ async def reset_plan_aggregate(
     # BUG-092 — una consulta por petición, no una por fila.
     ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -740,9 +782,9 @@ async def change_phase(
                 accion="Pasa por la fase intermedia que corresponda.",
             ), code="STATE_TRANSITION"
         )
-    if body.new_phase == "execution" and p.start_date is None:
+    if body.new_phase == EJECUCION and p.start_date is None:
         raise business_rule(mensaje(
-            que="start_date es obligatoria al pasar a execution",
+            que="start_date es obligatoria al pasar a ejecución",
             porque="Sin fecha de inicio no se puede calcular ningún avance ni ningún retraso.",
             accion="Pon la fecha de inicio y vuelve a cambiar la fase.",
         ))

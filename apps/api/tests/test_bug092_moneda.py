@@ -140,7 +140,7 @@ async def test_el_proyecto_publica_su_moneda_resuelta(client, db_session) -> Non
     creado = await client.post(
         "/api/v1/projects",
         json={
-            "name": "Proyecto en euros", "description": "d", "type": "innovation",
+            "name": "Proyecto en euros", "description": "d", "type": "innovacion",
             "priority": 3, "organization_id": org.json()["id"],
             "pm_id": me.json()["id"], "budget": 1000, "currency": "EUR",
         },
@@ -155,7 +155,7 @@ async def test_el_proyecto_publica_su_moneda_resuelta(client, db_session) -> Non
     sin_elegir = await client.post(
         "/api/v1/projects",
         json={
-            "name": "Proyecto sin moneda", "description": "d", "type": "innovation",
+            "name": "Proyecto sin moneda", "description": "d", "type": "innovacion",
             "priority": 3, "organization_id": org.json()["id"],
             "pm_id": me.json()["id"], "budget": 500,
         },

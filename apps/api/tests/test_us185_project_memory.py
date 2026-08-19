@@ -34,7 +34,7 @@ async def _setup_project(client, db_session):
         "/api/v1/projects",
         json={
             "name": "Proyecto Memoria", "description": "Implementación ERP Wave 2",
-            "type": "transformation", "priority": 3,
+            "type": "transformacion", "priority": 3,
             "organization_id": org_id, "pm_id": me.json()["id"],
         },
         headers=auth["_authz"],

@@ -1,7 +1,13 @@
 """EP010 — Superadmin Panel tests."""
 import pytest
 
-from tests.factories import create_admin_role, create_tenant, create_user, login
+from tests.factories import (
+    create_admin_role,
+    create_program,
+    create_tenant,
+    create_user,
+    login,
+)
 
 
 async def _make_super(client, db_session):
@@ -133,7 +139,7 @@ import pytest as _pytest  # noqa: E402 — evitar colisión si ya importado
 async def test_us025_list_tenants_returns_full_counts(client, db_session):
     from decimal import Decimal
 
-    from app.models.organization import Organization, Program
+    from app.models.organization import Organization
     from app.models.project import Project
     from tests.factories import create_tenant, create_user
 
@@ -141,11 +147,11 @@ async def test_us025_list_tenants_returns_full_counts(client, db_session):
     org = Organization(tenant_id=t.id, name="Org A")
     db_session.add(org)
     await db_session.flush()
-    db_session.add(Program(tenant_id=t.id, organization_id=org.id, name="Prog 1"))
+    await create_program(db_session, tenant_id=t.id, organization_id=org.id, name="Prog 1")
     db_session.add(
         Project(
             tenant_id=t.id, organization_id=org.id, folio="PRJ25-1",
-            name="P1", phase="planning", budget=Decimal("100"),
+            name="P1", phase="preparacion", budget=Decimal("100"),
         )
     )
     await create_user(
@@ -166,17 +172,15 @@ async def test_us025_list_tenants_returns_full_counts(client, db_session):
 
 @_pytest.mark.asyncio
 async def test_us025_tenant_detail_has_hierarchy(client, db_session):
-    from app.models.organization import BusinessUnit, Department, Organization
+    from app.models.organization import Organization, Portfolio
     from tests.factories import create_tenant, create_user, login
 
     t = await create_tenant(db_session, slug="sa25b", name="SA25b")
     org = Organization(tenant_id=t.id, name="Org B")
     db_session.add(org)
     await db_session.flush()
-    bu = BusinessUnit(tenant_id=t.id, organization_id=org.id, name="BU B")
-    db_session.add(bu)
-    await db_session.flush()
-    db_session.add(Department(tenant_id=t.id, business_unit_id=bu.id, name="Dept B"))
+    # US-199 — la jerarquía del inquilino cuenta portafolios (ADR-037).
+    db_session.add(Portfolio(tenant_id=t.id, organization_id=org.id, name="Cartera B"))
     await db_session.commit()
 
     await create_user(
@@ -192,5 +196,5 @@ async def test_us025_tenant_detail_has_hierarchy(client, db_session):
     data = r.json()
     assert "hierarchy" in data
     assert data["hierarchy"]["organization_count"] == 1
-    assert data["hierarchy"]["business_unit_count"] == 1
-    assert data["hierarchy"]["department_count"] == 1
+    assert data["hierarchy"]["portfolio_count"] == 1
+    assert "business_unit_count" not in data["hierarchy"]

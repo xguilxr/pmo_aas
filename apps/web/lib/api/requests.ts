@@ -18,10 +18,13 @@ export type ProjectRequest = {
   description: string;
   objective: string;
   organization_id: string;
+  /** US-199 — texto libre, en las palabras del solicitante: «qué parte de mi
+   *  empresa pide esto». No es la jerarquía de la plataforma, que ahora se
+   *  elige con `portfolio_id`/`program_id`. */
   business_unit: string;
   department: string;
-  business_unit_id: string | null;
-  department_id: string | null;
+  portfolio_id: string | null;
+  program_id: string | null;
   sponsor: string;
   sponsor_email: string | null;
   benefits: string;
@@ -56,8 +59,11 @@ export type ProjectRequestCreateBody = {
   organization_name_new?: string | null;
   business_unit: string;
   department: string;
-  business_unit_id?: string | null;
-  department_id?: string | null;
+  /** US-199 — clasificación en la jerarquía. Opcionales: quien solicita no
+   *  siempre sabe en qué portafolio cae; con programa, el portafolio se
+   *  autocompleta en el servidor. */
+  portfolio_id?: string | null;
+  program_id?: string | null;
   sponsor: string;
   sponsor_email: string;
   benefits: string;

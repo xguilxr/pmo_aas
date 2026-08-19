@@ -4,9 +4,15 @@ from decimal import Decimal
 import pytest
 
 from app.models.modules import Risk
-from app.models.organization import Organization, Program
+from app.models.organization import Organization
 from app.models.project import Project
-from tests.factories import create_admin_role, create_tenant, create_user, login
+from tests.factories import (
+    create_admin_role,
+    create_program,
+    create_tenant,
+    create_user,
+    login,
+)
 
 
 async def _admin(client, db_session, slug):
@@ -29,17 +35,15 @@ async def test_us034_summary_aggregates_correctly(client, db_session):
     org = Organization(tenant_id=t.id, name="Org-A", is_active=True)
     db_session.add(org)
     await db_session.flush()
-    prog = Program(
-        tenant_id=t.id, organization_id=org.id, name="Prog-A", is_active=True
+    prog = await create_program(
+        db_session, tenant_id=t.id, organization_id=org.id, name="Prog-A", is_active=True
     )
-    db_session.add(prog)
-    await db_session.flush()
 
     # 3 proyectos: 1 green activo, 1 yellow activo, 1 red cerrado
     projects_data = [
-        ("P-100", "green", "execution", 10000, 3000, 40),
-        ("P-101", "yellow", "execution", 5000, 2000, 20),
-        ("P-102", "red", "closed", 20000, 20000, 100),
+        ("P-100", "green", "ejecucion", 10000, 3000, 40),
+        ("P-101", "yellow", "ejecucion", 5000, 2000, 20),
+        ("P-102", "red", "cerrado", 20000, 20000, 100),
     ]
     created_projects = []
     for folio, health, phase, budget, actual, progress in projects_data:
@@ -118,10 +122,9 @@ async def test_us034_summary_cross_tenant_404(client, db_session):
     org = Organization(tenant_id=t_a.id, name="Org-B", is_active=True)
     db_session.add(org)
     await db_session.flush()
-    prog = Program(
-        tenant_id=t_a.id, organization_id=org.id, name="Prog-B", is_active=True
+    prog = await create_program(
+        db_session, tenant_id=t_a.id, organization_id=org.id, name="Prog-B", is_active=True
     )
-    db_session.add(prog)
     await db_session.commit()
 
     r = await client.get(
@@ -136,10 +139,9 @@ async def test_us034_summary_empty_program(client, db_session):
     org = Organization(tenant_id=t.id, name="Org-D", is_active=True)
     db_session.add(org)
     await db_session.flush()
-    prog = Program(
-        tenant_id=t.id, organization_id=org.id, name="Prog-D", is_active=True
+    prog = await create_program(
+        db_session, tenant_id=t.id, organization_id=org.id, name="Prog-D", is_active=True
     )
-    db_session.add(prog)
     await db_session.commit()
 
     r = await client.get(

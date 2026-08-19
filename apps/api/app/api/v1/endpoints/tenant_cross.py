@@ -2,7 +2,8 @@
 
 Los endpoints existentes en `modules.py` y `reports.py` son project-scoped
 (`/projects/{id}/<recurso>`). Estas rutas agregan listado a nivel tenant
-con filtros por organization_id, program_id y project_id, para las
+con filtros por organization_id, portfolio_id (US-201), program_id y
+project_id, para las
 páginas `/admin/raid`, `/admin/changes`, `/admin/minutes` y
 `/admin/reports`.
 
@@ -52,15 +53,24 @@ def _project_scope(
     organization_id: UUID | None,
     program_id: UUID | None,
     project_id: UUID | None,
+    portfolio_id: UUID | None = None,
 ):
-    """Aplica filtros cruzados (tenant, org, programa, proyecto) +
+    """Aplica filtros cruzados (tenant, org, portafolio, programa, proyecto) +
     selecciona `Project.folio` y `Project.name` para enriquecer la
-    respuesta (ENH-010)."""
+    respuesta (ENH-010).
+
+    US-201 — `portfolio_id` va al final y con valor por defecto para no
+    reordenar las llamadas posicionales que ya existen: cinco superficies llaman
+    aquí y una firma reordenada las rompe todas a la vez, en silencio si los
+    tipos coinciden.
+    """
     stmt = stmt.add_columns(Project.folio, Project.name).join(
         Project, Project.id == project_model_rel
     ).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
     if organization_id is not None:
         stmt = stmt.where(Project.organization_id == str(organization_id))
+    if portfolio_id is not None:
+        stmt = stmt.where(Project.portfolio_id == str(portfolio_id))
     if program_id is not None:
         stmt = stmt.where(Project.program_id == str(program_id))
     if project_id is not None:
@@ -78,6 +88,7 @@ def _enrich(item_read: Any, folio: str, name: str) -> dict:
 @router.get("/risks")
 async def list_tenant_risks(
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     # ENH-019: filtros avanzados.
@@ -94,7 +105,13 @@ async def list_tenant_risks(
         ProjectArea, ProjectArea.id == Risk.area_id
     ).where(Risk.deleted_at.is_(None))
     stmt = _project_scope(
-        stmt, Risk.project_id, tenant_id, organization_id, program_id, project_id
+        stmt,
+        Risk.project_id,
+        tenant_id,
+        organization_id,
+        program_id,
+        project_id,
+        portfolio_id,
     )
     if status:
         stmt = stmt.where(Risk.status == status)
@@ -122,6 +139,7 @@ async def list_tenant_risks(
 async def list_tenant_issues(
     type: str | None = Query(default=None, description="action|issue|decision"),
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     # ENH-019: filtros avanzados.
@@ -137,7 +155,13 @@ async def list_tenant_issues(
         ProjectArea, ProjectArea.id == Issue.area_id
     ).where(Issue.deleted_at.is_(None))
     stmt = _project_scope(
-        stmt, Issue.project_id, tenant_id, organization_id, program_id, project_id
+        stmt,
+        Issue.project_id,
+        tenant_id,
+        organization_id,
+        program_id,
+        project_id,
+        portfolio_id,
     )
     if type:
         stmt = stmt.where(Issue.type == type)
@@ -167,6 +191,7 @@ async def list_tenant_issues(
 async def list_tenant_changes(
     status: str | None = Query(default=None),
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
@@ -181,6 +206,7 @@ async def list_tenant_changes(
         organization_id,
         program_id,
         project_id,
+        portfolio_id,
     )
     if status:
         stmt = stmt.where(ChangeRequest.status == status)
@@ -194,6 +220,7 @@ async def list_tenant_changes(
 @router.get("/meeting-minutes")
 async def list_tenant_minutes(
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
@@ -208,6 +235,7 @@ async def list_tenant_minutes(
         organization_id,
         program_id,
         project_id,
+        portfolio_id,
     )
     rows = (await db.execute(stmt.order_by(MeetingMinute.meeting_date.desc()))).all()
     return [
@@ -219,6 +247,7 @@ async def list_tenant_minutes(
 @router.get("/reports")
 async def list_tenant_reports(
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     project_id: UUID | None = Query(default=None),
     include_drafts: bool = Query(default=False),
@@ -237,7 +266,13 @@ async def list_tenant_reports(
     tenant_id = _tenant(cu)
     stmt = select(Report)
     stmt = _project_scope(
-        stmt, Report.project_id, tenant_id, organization_id, program_id, project_id
+        stmt,
+        Report.project_id,
+        tenant_id,
+        organization_id,
+        program_id,
+        project_id,
+        portfolio_id,
     )
     if not include_drafts:
         stmt = stmt.where(Report.status != "draft")

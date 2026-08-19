@@ -13,8 +13,8 @@ export type Tenant = {
 
 export type TenantHierarchy = {
   organization_count: number;
-  business_unit_count: number;
-  department_count: number;
+  /** US-199 — la jerarquía cuenta portafolios (ADR-037). */
+  portfolio_count: number;
   program_count: number;
   project_count: number;
 };

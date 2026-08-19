@@ -31,6 +31,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.unidades import razon_a_pct
+from app.dominio.proyecto import CERRADO
 from app.models.area import Actor, Area, Team
 from app.models.project import Project
 from app.models.project_participation import ProjectParticipation
@@ -111,7 +112,7 @@ async def _load_assignments(
             ProjectParticipation.tenant_id == tenant_id,
             ProjectParticipation.status.in_(("activa", "tentativa")),
             Project.deleted_at.is_(None),
-            Project.phase != "closed",
+            Project.phase != CERRADO,
             _window_overlap(start, end),
         )
     )
@@ -153,7 +154,7 @@ async def scope_project_ids(
     conds = [
         Project.tenant_id == tenant_id,
         Project.deleted_at.is_(None),
-        Project.phase != "closed",
+        Project.phase != CERRADO,
     ]
     if scope_type == "project":
         conds.append(Project.id == scope_id)

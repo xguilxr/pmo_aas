@@ -72,7 +72,22 @@ de cronograma, todo EVM y buena parte de un informe de estado dependen de esta p
 
 **Es la brecha keystone.** Las B-4 y B-5 no se pueden cerrar sin ella.
 
-### B-2 · Las fases no corresponden a ningún ciclo de vida — **ALTA**
+### B-2 · Las fases no corresponden a ningún ciclo de vida — **CERRADA** (era ALTA)
+
+> **Cerrada en tres pasos.** ADR-019 (2026-08-05, migración 0098) sacó `support` del ciclo
+> de vida y lo volvió `hypercare`, que es una forma de cierre y no de operación. ADR-022
+> (2026-08-05, US-195) añadió el final anticipado, que faltaba. ADR-038 (2026-08-19,
+> US-202) pasó el catálogo completo al español y lo dejó en un solo módulo,
+> `apps/api/app/dominio/proyecto.py`: `preparacion | ejecucion | hypercare | cerrado |
+> cancelado`, con `preparacion` como default y las tres primeras como fases activas. Los
+> nombres viejos solo entran por la ventana de compatibilidad
+> (`app/core/compatibilidad.py`) y la API siempre devuelve el canónico. El vocabulario
+> vigente vive en `02-GLOSARIO.md` §1.1.
+>
+> Ya no hay dos vocabularios porque ya no hay dos idiomas: el valor guardado **es** el
+> español, así que no queda ninguna tabla de traducción donde desincronizarse.
+
+*Enunciado original, 2026-08-03:*
 
 ```
 PHASES = ["planning", "execution", "support"]
@@ -84,7 +99,7 @@ proyecto en fase `support` es un proyecto cerrado, y el modelo no puede distingu
 
 Y conviven con literales sueltos en español:
 
-| Literal | Ocurrencias |
+| Literal | Ocurrencias (2026-08-03) |
 |---|---|
 | `"planning"` | 14 |
 | `"execution"` | 13 |
@@ -139,7 +154,22 @@ cuatro formas legítimas de calcularlo —por duración, por esfuerzo, por entre
 completados, o declarado por el responsable— y dan números distintos. Sin declarar cuál es,
 el avance del proyecto no es reconciliable con el de sus tareas.
 
-### B-6 · No hay capa de portafolio — **BAJA**
+### B-6 · No hay capa de portafolio — **CERRADA** (era BAJA)
+
+> **Cerrada el 2026-08-19** (ADR-037, US-198). El portafolio es una entidad: tabla
+> `portfolios`, una por organización, con `programs.portfolio_id` obligatorio y
+> `projects.portfolio_id` nulo solo mientras el proyecto no esté clasificado. La jerarquía
+> es `inquilino → organización → portafolio ⊃ programa → proyecto`, y los dos niveles que
+> el enunciado de abajo llamaba «la jerarquía real» —`business_units` y `departments`—
+> quedaron retirados: sus routers se borraron y la migración 0109 soltó las FKs que los
+> apuntaban.
+>
+> La etiqueta de función se resolvió antes, por separado: ADR-021 (2026-08-05, migración
+> 0099) la renombró a `discipline`, así que la palabra ya no nombraba un área cuando llegó
+> a nombrar la entidad. ADR-037 **levanta el veto** de ADR-021, que traía escrita su
+> condición de salida.
+
+*Enunciado original, 2026-08-03:*
 
 `portafolio` aparece como etiqueta de función de área (`portfolio_function`, constante
 `PORTAFOLIO`), no como entidad. La jerarquía real es

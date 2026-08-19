@@ -1,11 +1,12 @@
 import csv
 import io
 from datetime import date, timedelta
+from typing import Any, TypeVar
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response, StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
@@ -15,9 +16,10 @@ from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.dominio.moneda import agregar as agregar_por_moneda
 from app.dominio.moneda import resolver as resolver_moneda
+from app.dominio.proyecto import CERRADO, FASES_ACTIVAS
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
-from app.models.organization import Organization, Program
+from app.models.organization import Organization, Portfolio, Program
 from app.models.project import Project
 from app.models.project_request import ProjectRequest
 from app.models.user import User
@@ -35,7 +37,9 @@ from app.services.reports.scoped_status import build_scope_status_context
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
-SCOPE_TYPES = ("tenant", "organization", "program", "project")
+#: US-201 — `portfolio` entra entre organización y programa. El orden de la
+#: tupla es el de la jerarquía, no alfabético: lo consumen los desplegables.
+SCOPE_TYPES = ("tenant", "organization", "portfolio", "program", "project")
 
 
 def _tenant(cu: CurrentUser) -> UUID:
@@ -85,14 +89,74 @@ async def scoped_project_ids(
     return list(ids)
 
 
+def _condiciones_jerarquia(
+    *,
+    organization_id: UUID | None = None,
+    portfolio_id: UUID | None = None,
+    program_id: UUID | None = None,
+) -> list[Any]:
+    """Las condiciones de la cascada organización → portafolio → programa.
+
+    Un solo sitio para los tres niveles, y no un `if` por endpoint: el dashboard
+    tiene siete superficies que filtran igual, y la que se olvide de un nivel no
+    falla — devuelve **más** filas de las pedidas, que en un KPI se lee como un
+    número y no como un error. Es la misma clase de fallo silencioso que US-202
+    cerró con las constantes de fase.
+
+    Los tres niveles se acumulan, y una combinación incoherente
+    (`portfolio_id` + un `program_id` de otro portafolio) devuelve vacío en vez
+    de rechazar: un filtro no es una escritura, y quien cruza dos filtros que no
+    se tocan está explorando, no equivocándose.
+
+    Devuelve condiciones y no un `Select` porque la mitad de las superficies
+    construye su propia lista para reutilizarla en varias consultas
+    (`charts` hace cuatro con la misma base).
+    """
+    conds: list[Any] = []
+    if organization_id:
+        conds.append(Project.organization_id == str(organization_id))
+    if portfolio_id:
+        conds.append(Project.portfolio_id == str(portfolio_id))
+    if program_id:
+        conds.append(Project.program_id == str(program_id))
+    return conds
+
+
+#: `_filtro_jerarquia` devuelve **el mismo tipo** que recibe. Sin esto, un
+#: `select(Project)` que pasa por el helper sale como `Select[Any]` y el
+#: `Sequence[Project]` de la otra punta se vuelve `Sequence[Any]`: mypy deja de
+#: ver los atributos del proyecto y el helper apagaría el tipado de sus siete
+#: llamadores.
+_Consulta = TypeVar("_Consulta", bound=Select[Any])
+
+
+def _filtro_jerarquia(
+    stmt: _Consulta,
+    *,
+    organization_id: UUID | None = None,
+    portfolio_id: UUID | None = None,
+    program_id: UUID | None = None,
+) -> _Consulta:
+    """`_condiciones_jerarquia` aplicado a una consulta sobre `Project`."""
+    conds = _condiciones_jerarquia(
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
+    return stmt.where(*conds) if conds else stmt
+
+
 @router.get("/kpis")
 async def kpis(
     organization_id: UUID | None = Query(default=None),
+    # US-201 — la cascada del dashboard: organización → portafolio → programa.
+    portfolio_id: UUID | None = Query(default=None),
+    program_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    active_phases = ["planning", "execution", "hypercare"]
+    active_phases = list(FASES_ACTIVAS)
 
     # Scoping por jerarquía (US-015): None = sin restricción (admin),
     # lista = sólo esos project_ids. Lista vacía = ningún proyecto visible.
@@ -100,11 +164,14 @@ async def kpis(
     role_restricted = role_ids is not None
 
     def scoped_projects():
-        stmt = select(Project.id).where(
-            Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+        stmt = _filtro_jerarquia(
+            select(Project.id).where(
+                Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+            ),
+            organization_id=organization_id,
+            portfolio_id=portfolio_id,
+            program_id=program_id,
         )
-        if organization_id:
-            stmt = stmt.where(Project.organization_id == str(organization_id))
         if role_restricted:
             stmt = stmt.where(Project.id.in_(role_ids or ["__none__"]))
         return stmt
@@ -195,10 +262,12 @@ async def kpis(
     budget_stmt = select(Project.currency, func.sum(Project.budget)).where(
         Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
     ).group_by(Project.currency)
-    if organization_id:
-        budget_stmt = budget_stmt.where(
-            Project.organization_id == str(organization_id)
-        )
+    budget_stmt = _filtro_jerarquia(
+        budget_stmt,
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
     if role_restricted:
         budget_stmt = budget_stmt.where(Project.id.in_(role_ids or ["__none__"]))
     preferida = await moneda_preferida(db, tenant_id)
@@ -215,10 +284,12 @@ async def kpis(
         Project.phase.in_(active_phases),
         Project.deleted_at.is_(None),
     )
-    if organization_id:
-        active_proj_stmt = active_proj_stmt.where(
-            Project.organization_id == str(organization_id)
-        )
+    active_proj_stmt = _filtro_jerarquia(
+        active_proj_stmt,
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
     if role_restricted:
         active_proj_stmt = active_proj_stmt.where(
             Project.id.in_(role_ids or ["__none__"])
@@ -260,6 +331,8 @@ async def kpis(
 @router.get("/charts")
 async def charts(
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
+    program_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
@@ -268,8 +341,11 @@ async def charts(
 
     def scoped_where():
         base = [Project.tenant_id == tenant_id, Project.deleted_at.is_(None)]
-        if organization_id:
-            base.append(Project.organization_id == str(organization_id))
+        base += _condiciones_jerarquia(
+            organization_id=organization_id,
+            portfolio_id=portfolio_id,
+            program_id=program_id,
+        )
         if role_ids is not None:
             base.append(Project.id.in_(role_ids or ["__none__"]))
         return base
@@ -325,17 +401,19 @@ async def charts(
 @router.get("/plan-vs-actual")
 async def plan_vs_actual(
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     phase: str | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    stmt = select(Project).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
-    if organization_id:
-        stmt = stmt.where(Project.organization_id == str(organization_id))
-    if program_id:
-        stmt = stmt.where(Project.program_id == str(program_id))
+    stmt = _filtro_jerarquia(
+        select(Project).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None)),
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
     if phase:
         stmt = stmt.where(Project.phase == phase)
 
@@ -346,7 +424,7 @@ async def plan_vs_actual(
 
     # Orden: rojo primero
     health_order = {"red": 0, "yellow": 1, "green": 2}
-    projects = (await db.execute(stmt)).scalars().all()
+    projects = list((await db.execute(stmt)).scalars().all())
     projects.sort(key=lambda p: health_order.get(p.health_status, 99))
 
     # Pre-cargar nombres de PM (BUG-003: columna PM Asignado).
@@ -408,12 +486,17 @@ def _plan_progress_for(p: Project) -> int:
 @router.get("/plan-vs-actual/export.csv")
 async def plan_vs_actual_csv(
     organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
     phase: str | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    data = await plan_vs_actual(organization_id, program_id, phase, cu, db)
+    # El CSV es la misma tabla: se delega para que no puedan divergir — un
+    # export que filtra distinto de la pantalla es un informe que no cuadra.
+    data = await plan_vs_actual(
+        organization_id, portfolio_id, program_id, phase, cu, db
+    )
     buf = io.StringIO()
     writer = csv.DictWriter(
         buf,
@@ -477,6 +560,11 @@ def _scope_project_conditions(scope_type: str, scope_id: str, tenant_id: UUID) -
     conds = [Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None)]
     if scope_type == "organization":
         conds.append(Project.organization_id == scope_id)
+    elif scope_type == "portfolio":
+        # US-201 — el portafolio agrega **todos** sus proyectos: los de sus
+        # programas y los que cuelgan directo de él. Filtrar por los programas
+        # del portafolio dejaría fuera justo a los segundos.
+        conds.append(Project.portfolio_id == scope_id)
     elif scope_type == "program":
         conds.append(Project.program_id == scope_id)
     elif scope_type == "project":
@@ -585,13 +673,22 @@ async def risk_matrix(
 
 @router.get("/heatmap")
 async def heatmap(
+    organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
+    program_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Matriz Organización × Salud (conteo de proyectos). No-admin: solo cuenta
-    los proyectos que el usuario ve (US-162)."""
+    los proyectos que el usuario ve (US-162).
+
+    US-201 — acepta la cascada de la jerarquía. Con un portafolio elegido, las
+    filas siguen siendo organizaciones y casi siempre queda una: es correcto, un
+    portafolio pertenece a una organización, y la matriz sirve para confirmar
+    dónde está lo que se está mirando.
+    """
     tenant_id = _tenant(cu)
-    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
 
     orgs = (
         await db.execute(
@@ -601,6 +698,11 @@ async def heatmap(
         )
     ).all()
     count_conds = [Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None)]
+    count_conds += _condiciones_jerarquia(
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
     if role_ids is not None:
         count_conds.append(Project.id.in_(role_ids or ["__none__"]))
     counts = (
@@ -637,6 +739,9 @@ async def heatmap(
 
 @router.get("/health-matrix")
 async def health_matrix(
+    organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
+    program_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
@@ -650,13 +755,21 @@ async def health_matrix(
     from app.services.project_health import refresh_health_bulk
 
     tenant_id = _tenant(cu)
-    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
 
     conds = [
         Project.tenant_id == str(tenant_id),
         Project.deleted_at.is_(None),
-        Project.phase != "closed",
+        Project.phase != CERRADO,
     ]
+    # US-201 — la cascada. Importa más aquí que en otras superficies: esta matriz
+    # tiene una fila por proyecto, y sin filtro un inquilino con cien proyectos
+    # activos devuelve cien filas para que alguien busque tres.
+    conds += _condiciones_jerarquia(
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
     if role_ids is not None:
         conds.append(Project.id.in_(role_ids or ["__none__"]))
     projects = (
@@ -715,7 +828,7 @@ async def portfolio_health_evaluations(
     conds = [
         Project.tenant_id == str(tenant_id),
         Project.deleted_at.is_(None),
-        Project.phase != "closed",
+        Project.phase != CERRADO,
     ]
     if role_ids is not None:
         conds.append(Project.id.in_(role_ids or ["__none__"]))
@@ -765,7 +878,15 @@ async def treemap(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    """Árbol Organización → Programa → Proyecto (valor=presupuesto, color=salud)."""
+    """Árbol Organización → Portafolio → Programa → Proyecto (valor=presupuesto,
+    color=salud).
+
+    US-201 — el portafolio entra como nivel propio, no como etiqueta del
+    programa: un proyecto puede colgar del portafolio **sin** programa, y sin ese
+    nivel esos proyectos aparecían bajo «Sin programa» de la organización, al
+    lado de los que no están clasificados en nada. Eran dos situaciones distintas
+    dibujadas igual.
+    """
     tenant_id = _tenant(cu)
     scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
     conds = _scope_project_conditions(scope_type, scope_id, tenant_id)
@@ -779,6 +900,7 @@ async def treemap(
                 Project.name,
                 Project.folio,
                 Project.organization_id,
+                Project.portfolio_id,
                 Project.program_id,
                 Project.budget,
                 Project.health_status,
@@ -792,6 +914,16 @@ async def treemap(
             await db.execute(
                 select(Organization.id, Organization.name).where(
                     Organization.tenant_id == str(tenant_id)
+                )
+            )
+        ).all()
+    }
+    pf_names = {
+        str(i): n
+        for i, n in (
+            await db.execute(
+                select(Portfolio.id, Portfolio.name).where(
+                    Portfolio.tenant_id == str(tenant_id)
                 )
             )
         ).all()
@@ -810,12 +942,21 @@ async def treemap(
     tree: dict = {}
     for p in projects:
         oid = str(p.organization_id) if p.organization_id else "none"
+        pfid = str(p.portfolio_id) if p.portfolio_id else "none"
         pgid = str(p.program_id) if p.program_id else "none"
         org_node = tree.setdefault(
             oid,
             {"id": oid, "name": org_names.get(oid, "Sin organización"), "children": {}},
         )
-        prog_node = org_node["children"].setdefault(
+        pf_node = org_node["children"].setdefault(
+            pfid,
+            {
+                "id": pfid,
+                "name": pf_names.get(pfid, "Sin clasificar"),
+                "children": {},
+            },
+        )
+        prog_node = pf_node["children"].setdefault(
             pgid,
             {"id": pgid, "name": prog_names.get(pgid, "Sin programa"), "children": []},
         )
@@ -831,6 +972,8 @@ async def treemap(
 
     out = []
     for org_node in tree.values():
+        for pf_node in org_node["children"].values():
+            pf_node["children"] = list(pf_node["children"].values())
         org_node["children"] = list(org_node["children"].values())
         out.append(org_node)
     return {"tree": out}

@@ -37,7 +37,7 @@ async def _setup(client, db_session, slug):
         organization_id=str(org.id),
         folio="P-CUST",
         name="Proj custom",
-        phase="execution",
+        phase="ejecucion",
         health_status="green",
         budget=Decimal("0"),
         actual_budget=Decimal("0"),

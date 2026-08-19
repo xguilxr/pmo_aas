@@ -8,9 +8,14 @@ from decimal import Decimal
 
 import pytest
 
-from app.models.organization import Program
 from app.models.project import Project
-from tests.factories import create_admin_role, create_tenant, create_user, login
+from tests.factories import (
+    create_admin_role,
+    create_program,
+    create_tenant,
+    create_user,
+    login,
+)
 
 
 async def _setup(client, db_session):
@@ -25,19 +30,19 @@ async def _setup(client, db_session):
         "/api/v1/organizations", json={"name": "OrgA"}, headers=auth["_authz"]
     )
     org_id = r.json()["id"]
-    prog = Program(tenant_id=t.id, organization_id=org_id, name="Prog A")
-    db_session.add(prog)
-    await db_session.flush()
+    prog = await create_program(
+        db_session, tenant_id=t.id, organization_id=org_id, name="Prog A"
+    )
     for i, (phase, health, prog_id) in enumerate([
-        ("planning", "green", prog.id),
-        ("execution", "red", prog.id),
-        ("execution", "yellow", None),
+        ("preparacion", "green", prog.id),
+        ("ejecucion", "red", prog.id),
+        ("ejecucion", "yellow", None),
     ]):
         db_session.add(Project(
             tenant_id=t.id, organization_id=org_id, program_id=prog_id,
             folio=f"PRJ-{i+1:03d}", name=f"P{i+1}", phase=phase,
             health_status=health, budget=Decimal("100000"), progress=30,
-            type="transformation",
+            type="transformacion",
         ))
     await db_session.commit()
     return t, auth, org_id, str(prog.id)

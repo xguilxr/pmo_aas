@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
 import { KpiCard } from "@/components/kpi-card";
-import { Legend, PALETTE, Pie, RiskMatrix, serieColor, TrendLines } from "@/components/dashboard-charts";
+import { Legend, PALETTE, Pie, RiskMatrix, colorSalud, serieColor, TrendLines } from "@/components/dashboard-charts";
+import { etiquetaSalud } from "@/lib/api/projects";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
-import { useOrgLabel } from "@/lib/org-label";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import {
   downloadOrganizationOrganigrama,
@@ -30,13 +30,6 @@ import {
   type OrgPanelProgram,
   type OrgPanelProject,
 } from "@/lib/api/organizations";
-
-const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
-const HEALTH_FILL: Record<string, string> = {
-  green: "var(--color-success-fg)",
-  yellow: "var(--color-warning-fg)",
-  red: "var(--color-danger-fg)",
-};
 
 /**
  * US-068 — Página PMO de organización.
@@ -66,7 +59,6 @@ export default function PmoOrganizationPage() {
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [downloadingReport, setDownloadingReport] = useState(false);
   // ENH-190: label configurable por tenant para "Organización(es)".
-  const orgLabel = useOrgLabel();
 
   // US-187 — organigrama con utilización (XLSX), scope organización.
   const [downloadingOrganigrama, setDownloadingOrganigrama] = useState(false);
@@ -116,9 +108,9 @@ export default function PmoOrganizationPage() {
       if (pj.health_status && pj.health_status in counts) counts[pj.health_status] += 1;
     }
     return (["green", "yellow", "red"] as const).map((k) => ({
-      label: HEALTH_LABEL[k],
+      label: etiquetaSalud(k),
       value: counts[k],
-      color: HEALTH_FILL[k],
+      color: colorSalud(k),
     }));
   }, [panel]);
 
@@ -135,11 +127,9 @@ export default function PmoOrganizationPage() {
           setError(
             err instanceof ApiError
               ? err.status === 404
-                ? orgLabel.singular === "Portafolio"
-                  ? "Este portafolio no existe o no tienes permiso para verlo."
-                  : "Esta organización no existe o no tienes permiso para verla."
+                ? "Esta organización no existe o no tienes permiso para verla."
                 : err.message
-              : `No se pudo cargar ${orgLabel.singularArticled}`,
+              : "No se pudo cargar la organización",
           );
         }
       })
@@ -161,20 +151,15 @@ export default function PmoOrganizationPage() {
     return map;
   }, [panel]);
 
-  const buCount = panel?.business_units.length ?? 0;
-  const deptCount = useMemo(
-    () =>
-      panel?.business_units.reduce((acc, bu) => acc + bu.departments.length, 0) ??
-      0,
-    [panel],
-  );
+  // US-200 — la jerarquía es portafolio ⊃ programa (ADR-037).
+  const portfolioCount = panel?.portfolios.length ?? 0;
   const programsActive = useMemo(
     () => panel?.programs.filter((p) => p.is_active).length ?? 0,
     [panel],
   );
   const projectsActive = useMemo(
     () =>
-      panel?.projects.filter((p) => p.phase !== "closed").length ?? 0,
+      panel?.projects.filter((p) => p.phase !== "cerrado").length ?? 0,
     [panel],
   );
 
@@ -257,7 +242,7 @@ export default function PmoOrganizationPage() {
               size="sm"
               onClick={handleDownloadReport}
               disabled={downloadingReport}
-              title={`Genera el reporte de status ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"} en PDF`}
+              title="Genera el reporte de status de la organización en PDF"
             >
               <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
               {downloadingReport ? "Generando…" : "Reporte de Status (PDF)"}
@@ -268,7 +253,7 @@ export default function PmoOrganizationPage() {
             size="sm"
             onClick={handleDownloadOrganigrama}
             disabled={downloadingOrganigrama}
-            title={`Descarga el organigrama con utilización ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"} en XLSX`}
+            title="Descarga el organigrama con utilización de la organización en XLSX"
           >
             <Users className="mr-1 h-3.5 w-3.5" aria-hidden />
             {downloadingOrganigrama ? "Generando…" : "Organigrama (XLSX)"}
@@ -285,8 +270,7 @@ export default function PmoOrganizationPage() {
       {organigramaError ? <Banner variant="danger">{organigramaError}</Banner> : null}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard label="Business Units" value={buCount} />
-        <KpiCard label="Departamentos" value={deptCount} />
+        <KpiCard label="Portafolios" value={portfolioCount} />
         <KpiCard
           label="Programas"
           value={programsActive}
@@ -300,7 +284,7 @@ export default function PmoOrganizationPage() {
       </section>
 
       <section
-        aria-label={`Analítica ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"}`}
+        aria-label="Analítica de la organización"
         className="grid gap-4 lg:grid-cols-3"
       >
         <AnalyticsCard title="Salud de proyectos">
@@ -315,7 +299,7 @@ export default function PmoOrganizationPage() {
           {riskMatrix && riskMatrix.total > 0 ? (
             <RiskMatrix
               cells={riskMatrix.cells}
-              ariaLabel={`Matriz de riesgos ${orgLabel.singularArticled === "un portafolio" ? "del portafolio" : "de la organización"}`}
+              ariaLabel="Matriz de riesgos de la organización"
             />
           ) : (
             <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
@@ -347,9 +331,7 @@ export default function PmoOrganizationPage() {
         </div>
         {panel.programs.length === 0 ? (
           <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
-            {orgLabel.singular === "Portafolio"
-              ? "Este portafolio no tiene programas registrados."
-              : "Esta organización no tiene programas registrados."}
+            Esta organización no tiene programas registrados.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -379,9 +361,7 @@ export default function PmoOrganizationPage() {
         </div>
         {panel.projects.length === 0 ? (
           <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
-            {orgLabel.singular === "Portafolio"
-              ? "Sin proyectos registrados en este portafolio."
-              : "Sin proyectos registrados en esta organización."}
+            Sin proyectos registrados en esta organización.
           </div>
         ) : (
           <div className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">

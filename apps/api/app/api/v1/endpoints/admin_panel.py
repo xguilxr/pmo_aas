@@ -14,6 +14,7 @@ from app.api.deps import CurrentUser, require_authenticated, require_capability
 from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, forbidden, mensaje, not_found
 from app.db.session import get_db
+from app.dominio.proyecto import CERRADO, FASES_ACTIVAS
 from app.models.audit import AuditLog
 from app.models.organization import Organization
 from app.models.project import Project
@@ -186,7 +187,7 @@ async def org_metrics(
             await db.execute(
                 select(func.count(Project.id)).where(
                     Project.organization_id == o.id, Project.deleted_at.is_(None),
-                    Project.phase.in_(["planning", "execution", "hypercare"]),
+                    Project.phase.in_(FASES_ACTIVAS),
                 )
             )
         ).scalar_one()
@@ -254,7 +255,7 @@ async def admin_force_close(
     ).scalar_one_or_none()
     if p is None:
         raise not_found("Proyecto")
-    p.phase = "closed"
+    p.phase = CERRADO
     await write_audit(
         db, action="project.force_close", module="admin.projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),
@@ -419,9 +420,11 @@ class TenantSettingsUpdate(BaseModel):
     # DAT-06 / ADR-030: `amber_max` se sigue aceptando durante la ventana de
     # compatibilidad, con rastro en `compat.nombre_viejo`.
     task_load_thresholds: dict[str, int] | None = None
-    # ENH-190: Per-tenant UI label for "Organización/Organizaciones".
-    # Stored top-level under `settings.org_label`. UI-only: no schema,
-    # route or API changes to the underlying entity.
+    # ENH-190 retirada (DEC-032). El campo se sigue **declarando** —y se rechaza
+    # con una razón en el handler— porque el defecto de Pydantic es ignorar lo
+    # que no conoce: sin esto, un cliente con el bundle viejo guardaría la
+    # etiqueta, recibiría 200 y no pasaría nada. Un ajuste que se elige y no se
+    # aplica es peor que un error. Se va con el resto del residuo en W8.
     org_label: str | None = None
 
 
@@ -438,7 +441,6 @@ async def get_settings(
     # as top-level convenience fields while preserving the canonical
     # nested shape under `settings.report_builder`.
     from app.services.tenant_settings import (
-        get_org_label,
         get_progress_calculation_method,
         get_task_load_thresholds,
     )
@@ -446,8 +448,8 @@ async def get_settings(
     settings = dict(t.settings or {})
     settings["progress_calculation_method"] = get_progress_calculation_method(t)
     settings["task_load_thresholds"] = get_task_load_thresholds(t)
-    # ENH-190: expose effective org_label (with default) as well.
-    settings["org_label"] = get_org_label(t)
+    # DEC-032 — `org_label` ya no se expone. La migración 0111 borra la clave de
+    # los inquilinos que la tuvieran, así que tampoco sale por el `dict(t.settings)`.
     return {"settings": settings}
 
 
@@ -458,12 +460,9 @@ async def patch_settings(
     db: AsyncSession = Depends(get_db),
 ):
     from app.services.tenant_settings import (
-        ORG_LABEL_VALUES,
         PROGRESS_CALC_METHODS,
-        get_org_label,
         get_progress_calculation_method,
         get_task_load_thresholds,
-        set_org_label,
         set_progress_calculation_method,
         set_task_load_thresholds,
     )
@@ -532,16 +531,18 @@ async def patch_settings(
                 code="INVALID_TASK_LOAD_THRESHOLDS",
             )
 
-    # ENH-190: validate org_label enum before persisting.
-    org_label_update = updates.pop("org_label", None)
-    if org_label_update is not None and org_label_update not in ORG_LABEL_VALUES:
+    # ENH-190 retirada (DEC-032). Se rechaza explícitamente en vez de ignorarse.
+    if updates.pop("org_label", None) is not None:
         raise business_rule(
             mensaje(
-                que=f"org_label must be one of {list(ORG_LABEL_VALUES)}",
-                porque="La etiqueta cambia cómo se nombra la entidad en toda la interfaz y solo hay dos formas admitidas.",
-                accion="Elige una de las opciones que devuelve el propio ajuste.",
+                que="La etiqueta configurable de organización ya no existe.",
+                porque="«Portafolio» pasó a ser una entidad dentro de la "
+                    "organización (ADR-037); renombrar la organización con ese "
+                    "nombre dejaba dos niveles seguidos llamados igual.",
+                accion="Quita `org_label` de la petición. La organización se "
+                    "llama «Organización» para todos los inquilinos.",
             ),
-            code="INVALID_ORG_LABEL",
+            code="ORG_LABEL_RETIRADO",
         )
 
     merged = dict(t.settings or {})
@@ -555,10 +556,6 @@ async def patch_settings(
         assert green_max is not None and yellow_max is not None
         set_task_load_thresholds(t, green_max, yellow_max)
         audit_fields.append("task_load_thresholds")
-    if org_label_update is not None:
-        set_org_label(t, org_label_update)
-        audit_fields.append("org_label")
-
     await write_audit(
         db, action="tenant.settings.update", module="admin",
         user_id=cu.id, tenant_id=tenant_id, details={"fields": audit_fields},
@@ -567,7 +564,6 @@ async def patch_settings(
     response_settings = dict(t.settings or {})
     response_settings["progress_calculation_method"] = get_progress_calculation_method(t)
     response_settings["task_load_thresholds"] = get_task_load_thresholds(t)
-    response_settings["org_label"] = get_org_label(t)
     return {"settings": response_settings}
 
 

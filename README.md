@@ -39,7 +39,7 @@ For commercial or evaluation licensing inquiries, contact the owner via
 PMO-aaS es una herramienta para Project Management Offices que necesitan:
 
 - **Gestionar el ciclo de vida completo** de un proyecto: solicitud → aprobación → ejecución → cierre.
-- **Jerarquía organizacional clara**: PMO → Organización → Unidad de Negocio → Departamento → Programa → Proyecto.
+- **Jerarquía organizacional clara**: PMO → Organización → Portafolio ⊃ Programa → Proyecto. El portafolio agrupa por decisión de inversión, no por organigrama (ADR-037).
 - **6 módulos transversales** por proyecto: Riesgos, Incidencias, Cambios, Documentos, Lecciones, Minutas.
 - **Dashboard accionable** con KPIs, salud del portafolio y Plan vs Real.
 - **Charter editable** + sección RAID + áreas de proyecto + stakeholders catálogo.

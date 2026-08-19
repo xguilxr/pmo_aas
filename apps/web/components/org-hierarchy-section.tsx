@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  Briefcase,
   ChevronRight,
   ExternalLink,
   Pencil,
   Plus,
   PowerOff,
-  Users,
   Workflow,
 } from "lucide-react";
 
@@ -17,126 +17,148 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
-  createBusinessUnit,
-  createDepartment,
-  deleteBusinessUnit,
-  deleteDepartment,
-  hardDeleteBusinessUnit,
-  hardDeleteDepartment,
-  listBusinessUnits,
-  listDepartments,
-  previewHardDeleteBusinessUnit,
-  previewHardDeleteDepartment,
-  updateBusinessUnit,
-  updateDepartment,
-  type BusinessUnit,
-  type Department,
+  createPortfolio,
+  createProgram,
+  deletePortfolio,
+  deleteProgram,
+  hardDeletePortfolio,
+  hardDeleteProgram,
+  listPortfolios,
+  listPrograms,
+  previewHardDeletePortfolio,
+  previewHardDeleteProgram,
+  updatePortfolio,
+  updateProgram,
+  type Portfolio,
+  type Program,
 } from "@/lib/api/organizations";
 import { HardDeleteButton } from "@/components/hard-delete-button";
 import { cn } from "@/lib/cn";
 
-type DeptsByBu = Record<string, Department[] | "loading" | "error">;
+/**
+ * US-200 / ADR-037 — la jerarquía de la organización es Portafolio ⊃ Programa.
+ *
+ * Reemplaza a la sección de unidades de negocio y departamentos, que modelaba el
+ * organigrama del cliente y nunca se usó. El portafolio agrupa por **decisión de
+ * inversión**; el programa, por **coordinación**.
+ *
+ * Los programas se cargan al expandir y no todos de golpe: una organización con
+ * veinte portafolios pediría veinte listas para pintar una pantalla en la que
+ * casi todo está colapsado.
+ */
 
-function useBusAndDepts(orgId: string) {
-  const [bus, setBus] = useState<BusinessUnit[]>([]);
+type ProgramasPorPortafolio = Record<string, Program[] | "loading" | "error">;
+
+function usePortafolios(orgId: string) {
+  const [portafolios, setPortafolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [depts, setDepts] = useState<DeptsByBu>({});
+  const [programas, setProgramas] = useState<ProgramasPorPortafolio>({});
 
-  async function refreshBus() {
+  async function refrescarPortafolios() {
     setLoading(true);
     setError(null);
     try {
-      const rows = await listBusinessUnits(orgId);
-      setBus(rows);
+      setPortafolios(await listPortfolios(orgId));
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Error al cargar unidades de negocio",
-      );
+      setError(err instanceof ApiError ? err.message : "Error al cargar portafolios");
     } finally {
       setLoading(false);
     }
   }
 
-  async function refreshDepts(buId: string) {
-    setDepts((s) => ({ ...s, [buId]: "loading" }));
+  async function refrescarProgramas(portfolioId: string) {
+    setProgramas((s) => ({ ...s, [portfolioId]: "loading" }));
     try {
-      const rows = await listDepartments(buId);
-      setDepts((s) => ({ ...s, [buId]: rows }));
+      const filas = await listPrograms({
+        organization_id: orgId,
+        portfolio_id: portfolioId,
+      });
+      setProgramas((s) => ({ ...s, [portfolioId]: filas }));
     } catch {
-      setDepts((s) => ({ ...s, [buId]: "error" }));
+      setProgramas((s) => ({ ...s, [portfolioId]: "error" }));
     }
   }
 
   useEffect(() => {
-    void refreshBus();
+    void refrescarPortafolios();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
   return {
-    bus,
+    portafolios,
     loading,
     error,
-    depts,
-    refreshBus,
-    refreshDepts,
+    programas,
+    refrescarPortafolios,
+    refrescarProgramas,
   };
 }
 
-type NameDescState = { name: string; description: string };
+type EstadoFicha = { name: string; code: string; description: string };
 
-const EMPTY: NameDescState = { name: "", description: "" };
+const VACIO: EstadoFicha = { name: "", code: "", description: "" };
 
 export function OrgHierarchySection({ orgId }: { orgId: string }) {
   const {
-    bus,
+    portafolios,
     loading,
     error,
-    depts,
-    refreshBus,
-    refreshDepts,
-  } = useBusAndDepts(orgId);
+    programas,
+    refrescarPortafolios,
+    refrescarProgramas,
+  } = usePortafolios(orgId);
 
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
 
-  const [buModal, setBuModal] = useState<
-    { mode: "create" } | { mode: "edit"; bu: BusinessUnit } | null
+  const [modalPortafolio, setModalPortafolio] = useState<
+    { mode: "create" } | { mode: "edit"; portafolio: Portfolio } | null
   >(null);
-  const [deptModal, setDeptModal] = useState<
-    | { mode: "create"; buId: string }
-    | { mode: "edit"; dept: Department }
+  const [modalPrograma, setModalPrograma] = useState<
+    | { mode: "create"; portfolioId: string }
+    | { mode: "edit"; programa: Program }
     | null
   >(null);
-  const [confirmBu, setConfirmBu] = useState<BusinessUnit | null>(null);
-  const [confirmDept, setConfirmDept] = useState<Department | null>(null);
+  const [confirmarPortafolio, setConfirmarPortafolio] = useState<Portfolio | null>(null);
+  const [confirmarPrograma, setConfirmarPrograma] = useState<Program | null>(null);
 
-  function toggle(buId: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(buId)) {
-        next.delete(buId);
+  // MCS DAT-11 — los conteos de programas y proyectos son derivados, se
+  // calculan al leer. «Vivo» no es una excusa para no declararlo: es
+  // precisamente lo que hay que declarar, porque el número de esta pantalla
+  // envejece mientras alguien la deja abierta.
+  const leido = useLectura(portafolios);
+
+  function alternar(portfolioId: string) {
+    setAbiertos((prev) => {
+      const siguiente = new Set(prev);
+      if (siguiente.has(portfolioId)) {
+        siguiente.delete(portfolioId);
       } else {
-        next.add(buId);
-        if (!depts[buId]) void refreshDepts(buId);
+        siguiente.add(portfolioId);
+        if (!programas[portfolioId]) void refrescarProgramas(portfolioId);
       }
-      return next;
+      return siguiente;
     });
   }
 
-  async function removeBu(bu: BusinessUnit, force: boolean) {
-    await deleteBusinessUnit(bu.id, force);
-    setConfirmBu(null);
-    await refreshBus();
+  async function archivarPortafolio(portafolio: Portfolio, force: boolean) {
+    await deletePortfolio(portafolio.id, force);
+    setConfirmarPortafolio(null);
+    await refrescarPortafolios();
+    if (force) await refrescarProgramas(portafolio.id);
   }
 
-  async function removeDept(dept: Department, force: boolean) {
-    await deleteDepartment(dept.id, force);
-    setConfirmDept(null);
-    await refreshDepts(dept.business_unit_id);
+  async function archivarPrograma(programa: Program) {
+    await deleteProgram(programa.id);
+    setConfirmarPrograma(null);
+    await refrescarProgramas(programa.portfolio_id);
+    // El conteo de programas del portafolio es derivado: se recarga con él.
+    await refrescarPortafolios();
   }
 
   return (
@@ -144,11 +166,11 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-default)] px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold text-[var(--color-primary)]">
-            Jerarquía: unidades de negocio y departamentos
+            Jerarquía: portafolios y programas
           </h2>
           <p className="text-xs text-[var(--color-tertiary)]">
-            Estructura la organización en BUs → Departamentos para filtrar
-            programas y proyectos.
+            El portafolio agrupa por decisión de inversión; el programa, por
+            coordinación. Los proyectos cuelgan de uno, del otro, o de ninguno.
           </p>
         </div>
         <div className="flex gap-2">
@@ -158,10 +180,13 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
               Ver proyectos
             </Button>
           </Link>
-          <Button size="sm" onClick={() => setBuModal({ mode: "create" })}>
-            <Plus className="h-4 w-4" aria-hidden /> Nueva BU
+          <Button size="sm" onClick={() => setModalPortafolio({ mode: "create" })}>
+            <Plus className="h-4 w-4" aria-hidden /> Nuevo portafolio
           </Button>
         </div>
+        {leido ? (
+          <MarcaDeDatos periodo="vivo" actualizado={leido} className="basis-full" />
+        ) : null}
       </header>
 
       {error ? (
@@ -176,46 +201,59 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
-      ) : bus.length === 0 ? (
+      ) : portafolios.length === 0 ? (
         <div className="p-8 text-center text-sm text-[var(--color-tertiary)]">
-          Aún no hay unidades de negocio. Crea la primera con "Nueva BU".
+          Aún no hay portafolios. Crea el primero con «Nuevo portafolio».
         </div>
       ) : (
         <ul className="divide-y divide-[var(--border-subtle)]">
-          {bus.map((bu) => {
-            const isOpen = expanded.has(bu.id);
-            const bucketDepts = depts[bu.id];
+          {portafolios.map((portafolio) => {
+            const abierto = abiertos.has(portafolio.id);
+            const susProgramas = programas[portafolio.id];
             return (
-              <li key={bu.id}>
+              <li key={portafolio.id}>
                 <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-[var(--color-subtle)]">
                   <button
                     type="button"
-                    onClick={() => toggle(bu.id)}
-                    aria-expanded={isOpen}
-                    aria-label={isOpen ? "Colapsar" : "Expandir"}
+                    onClick={() => alternar(portafolio.id)}
+                    aria-expanded={abierto}
+                    aria-label={abierto ? "Colapsar" : "Expandir"}
                     className="inline-flex h-6 w-6 flex-none items-center justify-center text-[var(--color-tertiary)]"
                   >
                     <ChevronRight
-                      className={cn("h-4 w-4 transition-transform", isOpen && "rotate-90")}
+                      className={cn(
+                        "h-4 w-4 transition-transform",
+                        abierto && "rotate-90",
+                      )}
                       aria-hidden
                     />
                   </button>
-                  <Workflow
+                  <Briefcase
                     className="h-4 w-4 flex-none text-[var(--color-tertiary)]"
                     aria-hidden
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-medium text-[var(--color-primary)]">
-                        {bu.name}
+                        {portafolio.name}
                       </span>
-                      {!bu.is_active ? (
-                        <Badge variant="danger">Inactiva</Badge>
+                      {portafolio.code ? (
+                        <Badge variant="neutral">{portafolio.code}</Badge>
                       ) : null}
+                      {!portafolio.is_active ? (
+                        <Badge variant="danger">Inactivo</Badge>
+                      ) : null}
+                      <span className="text-xs text-[var(--color-tertiary)]">
+                        {portafolio.program_count} programa
+                        {portafolio.program_count === 1 ? "" : "s"} ·{" "}
+                        {portafolio.active_project_count} proyecto
+                        {portafolio.active_project_count === 1 ? "" : "s"} activo
+                        {portafolio.active_project_count === 1 ? "" : "s"}
+                      </span>
                     </div>
-                    {bu.description ? (
+                    {portafolio.description ? (
                       <div className="truncate text-xs text-[var(--color-tertiary)]">
-                        {bu.description}
+                        {portafolio.description}
                       </div>
                     ) : null}
                   </div>
@@ -224,36 +262,41 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                       size="sm"
                       variant="ghost"
                       onClick={() =>
-                        setDeptModal({ mode: "create", buId: bu.id })
+                        setModalPrograma({
+                          mode: "create",
+                          portfolioId: portafolio.id,
+                        })
                       }
-                      title="Nuevo departamento"
+                      title="Nuevo programa"
+                      aria-label={`Nuevo programa en ${portafolio.name}`}
                     >
                       <Plus className="h-4 w-4" aria-hidden />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setBuModal({ mode: "edit", bu })}
+                      onClick={() => setModalPortafolio({ mode: "edit", portafolio })}
                       title="Editar"
+                      aria-label={`Editar ${portafolio.name}`}
                     >
                       <Pencil className="h-4 w-4" aria-hidden />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setConfirmBu(bu)}
-                      title="Desactivar"
-                      aria-label={`Desactivar ${bu.name}`}
+                      onClick={() => setConfirmarPortafolio(portafolio)}
+                      title="Archivar"
+                      aria-label={`Archivar ${portafolio.name}`}
                     >
                       <PowerOff className="h-4 w-4" aria-hidden />
-                      <span className="ml-1 text-xs">Desactivar</span>
+                      <span className="ml-1 text-xs">Archivar</span>
                     </Button>
-                    {!bu.is_active ? (
+                    {!portafolio.is_active ? (
                       <HardDeleteButton
-                        preview={() => previewHardDeleteBusinessUnit(bu.id)}
-                        hardDelete={(slug) => hardDeleteBusinessUnit(bu.id, slug)}
-                        onDeleted={() => void refreshBus()}
-                        entityLabel="Unidad de negocio"
+                        preview={() => previewHardDeletePortfolio(portafolio.id)}
+                        hardDelete={(slug) => hardDeletePortfolio(portafolio.id, slug)}
+                        onDeleted={() => void refrescarPortafolios()}
+                        entityLabel="Portafolio"
                         triggerVariant="ghost"
                         triggerLabel="Eliminar"
                       />
@@ -261,42 +304,46 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                   </div>
                 </div>
 
-                {isOpen ? (
+                {abierto ? (
                   <ul className="divide-y divide-[var(--border-subtle)] bg-[var(--color-app)]">
-                    {bucketDepts === "loading" ? (
+                    {susProgramas === "loading" ? (
                       <li className="px-10 py-2 text-xs text-[var(--color-tertiary)]">
-                        Cargando departamentos…
+                        Cargando programas…
                       </li>
-                    ) : bucketDepts === "error" ? (
+                    ) : susProgramas === "error" ? (
                       <li className="px-10 py-2 text-xs text-[var(--color-danger-fg)]">
-                        Error al cargar departamentos.
+                        Error al cargar programas.
                       </li>
-                    ) : !bucketDepts || bucketDepts.length === 0 ? (
+                    ) : !susProgramas || susProgramas.length === 0 ? (
                       <li className="px-10 py-2 text-xs italic text-[var(--color-tertiary)]">
-                        Sin departamentos. Usa "+" para crear uno.
+                        Sin programas. Los proyectos pueden colgar directo del
+                        portafolio; usa «+» si quieres coordinarlos en uno.
                       </li>
                     ) : (
-                      bucketDepts.map((d) => (
+                      susProgramas.map((programa) => (
                         <li
-                          key={d.id}
+                          key={programa.id}
                           className="flex items-center gap-2 py-2 pl-10 pr-3 hover:bg-[var(--color-subtle)]"
                         >
-                          <Users
+                          <Workflow
                             className="h-4 w-4 flex-none text-[var(--color-tertiary)]"
                             aria-hidden
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="truncate text-sm text-[var(--color-primary)]">
-                                {d.name}
-                              </span>
-                              {!d.is_active ? (
+                              <Link
+                                href={`/pmo/programs/${programa.id}`}
+                                className="truncate text-sm text-[var(--color-primary)] hover:underline"
+                              >
+                                {programa.name}
+                              </Link>
+                              {!programa.is_active ? (
                                 <Badge variant="danger">Inactivo</Badge>
                               ) : null}
                             </div>
-                            {d.description ? (
+                            {programa.description ? (
                               <div className="truncate text-xs text-[var(--color-tertiary)]">
-                                {d.description}
+                                {programa.description}
                               </div>
                             ) : null}
                           </div>
@@ -304,31 +351,31 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
-                                setDeptModal({ mode: "edit", dept: d })
-                              }
+                              onClick={() => setModalPrograma({ mode: "edit", programa })}
                               title="Editar"
+                              aria-label={`Editar ${programa.name}`}
                             >
                               <Pencil className="h-4 w-4" aria-hidden />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setConfirmDept(d)}
-                              title="Desactivar"
-                              aria-label={`Desactivar ${d.name}`}
+                              onClick={() => setConfirmarPrograma(programa)}
+                              title="Archivar"
+                              aria-label={`Archivar ${programa.name}`}
                             >
                               <PowerOff className="h-4 w-4" aria-hidden />
-                              <span className="ml-1 text-xs">Desactivar</span>
+                              <span className="ml-1 text-xs">Archivar</span>
                             </Button>
-                            {!d.is_active ? (
+                            {!programa.is_active ? (
                               <HardDeleteButton
-                                preview={() => previewHardDeleteDepartment(d.id)}
-                                hardDelete={(slug) =>
-                                  hardDeleteDepartment(d.id, slug)
-                                }
-                                onDeleted={() => void refreshDepts(d.business_unit_id)}
-                                entityLabel="Departamento"
+                                preview={() => previewHardDeleteProgram(programa.id)}
+                                hardDelete={(slug) => hardDeleteProgram(programa.id, slug)}
+                                onDeleted={() => {
+                                  void refrescarProgramas(programa.portfolio_id);
+                                  void refrescarPortafolios();
+                                }}
+                                entityLabel="Programa"
                                 triggerVariant="ghost"
                                 triggerLabel="Eliminar"
                               />
@@ -345,158 +392,183 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
         </ul>
       )}
 
-      <NameDescModal
-        title={buModal?.mode === "edit" ? "Editar unidad de negocio" : "Nueva unidad de negocio"}
-        open={buModal !== null}
-        onClose={() => setBuModal(null)}
-        initial={
-          buModal?.mode === "edit"
-            ? { name: buModal.bu.name, description: buModal.bu.description ?? "" }
-            : EMPTY
-        }
-        onSubmit={async (state) => {
-          if (buModal?.mode === "edit") {
-            await updateBusinessUnit(buModal.bu.id, {
-              name: state.name,
-              description: state.description || null,
-            });
-          } else {
-            await createBusinessUnit(orgId, {
-              name: state.name,
-              description: state.description || null,
-            });
-          }
-          setBuModal(null);
-          await refreshBus();
-        }}
-      />
-
-      <NameDescModal
+      <FichaModal
         title={
-          deptModal?.mode === "edit" ? "Editar departamento" : "Nuevo departamento"
+          modalPortafolio?.mode === "edit" ? "Editar portafolio" : "Nuevo portafolio"
         }
-        open={deptModal !== null}
-        onClose={() => setDeptModal(null)}
+        conCodigo
+        open={modalPortafolio !== null}
+        onClose={() => setModalPortafolio(null)}
         initial={
-          deptModal?.mode === "edit"
+          modalPortafolio?.mode === "edit"
             ? {
-                name: deptModal.dept.name,
-                description: deptModal.dept.description ?? "",
+                name: modalPortafolio.portafolio.name,
+                code: modalPortafolio.portafolio.code ?? "",
+                description: modalPortafolio.portafolio.description ?? "",
               }
-            : EMPTY
+            : VACIO
         }
-        onSubmit={async (state) => {
-          if (deptModal?.mode === "edit") {
-            await updateDepartment(deptModal.dept.id, {
-              name: state.name,
-              description: state.description || null,
+        onSubmit={async (estado) => {
+          const cuerpo = {
+            name: estado.name,
+            code: estado.code || null,
+            description: estado.description || null,
+          };
+          if (modalPortafolio?.mode === "edit") {
+            await updatePortfolio(modalPortafolio.portafolio.id, cuerpo);
+          } else {
+            await createPortfolio(orgId, cuerpo);
+          }
+          setModalPortafolio(null);
+          await refrescarPortafolios();
+        }}
+      />
+
+      <FichaModal
+        title={modalPrograma?.mode === "edit" ? "Editar programa" : "Nuevo programa"}
+        open={modalPrograma !== null}
+        onClose={() => setModalPrograma(null)}
+        initial={
+          modalPrograma?.mode === "edit"
+            ? {
+                name: modalPrograma.programa.name,
+                code: "",
+                description: modalPrograma.programa.description ?? "",
+              }
+            : VACIO
+        }
+        onSubmit={async (estado) => {
+          if (modalPrograma?.mode === "edit") {
+            await updateProgram(modalPrograma.programa.id, {
+              name: estado.name,
+              description: estado.description || null,
             });
-            setDeptModal(null);
-            await refreshDepts(deptModal.dept.business_unit_id);
-          } else if (deptModal?.mode === "create") {
-            await createDepartment(deptModal.buId, {
-              name: state.name,
-              description: state.description || null,
+            const portfolioId = modalPrograma.programa.portfolio_id;
+            setModalPrograma(null);
+            await refrescarProgramas(portfolioId);
+          } else if (modalPrograma?.mode === "create") {
+            const portfolioId = modalPrograma.portfolioId;
+            await createProgram({
+              name: estado.name,
+              organization_id: orgId,
+              portfolio_id: portfolioId,
+              description: estado.description || null,
             });
-            const buId = deptModal.buId;
-            setDeptModal(null);
-            await refreshDepts(buId);
-            setExpanded((prev) => new Set(prev).add(buId));
+            setModalPrograma(null);
+            await refrescarProgramas(portfolioId);
+            await refrescarPortafolios();
+            setAbiertos((prev) => new Set(prev).add(portfolioId));
           }
         }}
       />
 
-      <ConfirmDeactivateModal
-        target={confirmBu}
-        label="unidad de negocio"
-        onClose={() => setConfirmBu(null)}
+      <ConfirmarArchivadoModal
+        target={confirmarPortafolio}
+        label="portafolio"
+        conCascada
+        onClose={() => setConfirmarPortafolio(null)}
         onConfirm={async (force) => {
-          if (confirmBu) await removeBu(confirmBu, force);
+          if (confirmarPortafolio) await archivarPortafolio(confirmarPortafolio, force);
         }}
       />
 
-      <ConfirmDeactivateModal
-        target={confirmDept}
-        label="departamento"
-        onClose={() => setConfirmDept(null)}
-        onConfirm={async (force) => {
-          if (confirmDept) await removeDept(confirmDept, force);
+      <ConfirmarArchivadoModal
+        target={confirmarPrograma}
+        label="programa"
+        onClose={() => setConfirmarPrograma(null)}
+        onConfirm={async () => {
+          if (confirmarPrograma) await archivarPrograma(confirmarPrograma);
         }}
       />
     </section>
   );
 }
 
-function NameDescModal({
+function FichaModal({
   open,
   onClose,
   title,
   initial,
+  conCodigo = false,
   onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
-  initial: NameDescState;
-  onSubmit: (state: NameDescState) => Promise<void>;
+  initial: EstadoFicha;
+  /** El código corto solo lo tiene el portafolio (para reportes y filtros). */
+  conCodigo?: boolean;
+  onSubmit: (estado: EstadoFicha) => Promise<void>;
 }) {
-  const [state, setState] = useState(initial);
-  const [saving, setSaving] = useState(false);
+  const [estado, setEstado] = useState(initial);
+  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setState(initial);
+      setEstado(initial);
       setError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (state.name.trim().length < 2) {
+    if (estado.name.trim().length < 2) {
       setError("El nombre es obligatorio (mínimo 2 caracteres)");
       return;
     }
-    setSaving(true);
+    setGuardando(true);
     setError(null);
     try {
       await onSubmit({
-        name: state.name.trim(),
-        description: state.description.trim(),
+        name: estado.name.trim(),
+        code: estado.code.trim(),
+        description: estado.description.trim(),
       });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
     } finally {
-      setSaving(false);
+      setGuardando(false);
     }
   }
 
   return (
     <Modal open={open} onClose={onClose} title={title}>
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={enviar} className="space-y-3">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
             Nombre
           </label>
           <Input
-            value={state.name}
-            onChange={(e) => setState({ ...state, name: e.target.value })}
+            value={estado.name}
+            onChange={(e) => setEstado({ ...estado, name: e.target.value })}
             minLength={2}
             maxLength={200}
             required
           />
         </div>
+        {conCodigo ? (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+              Código
+            </label>
+            <Input
+              value={estado.code}
+              onChange={(e) => setEstado({ ...estado, code: e.target.value })}
+              maxLength={32}
+              placeholder="Opcional — para reportes y tablas estrechas (ej. TRX26)"
+            />
+          </div>
+        ) : null}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
             Descripción
           </label>
           <Textarea
             rows={3}
-            value={state.description}
-            onChange={(e) =>
-              setState({ ...state, description: e.target.value })
-            }
+            value={estado.description}
+            onChange={(e) => setEstado({ ...estado, description: e.target.value })}
           />
         </div>
         {error ? <Banner variant="danger">{error}</Banner> : null}
@@ -504,7 +576,7 @@ function NameDescModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" loading={saving}>
+          <Button type="submit" loading={guardando}>
             Guardar
           </Button>
         </div>
@@ -513,18 +585,21 @@ function NameDescModal({
   );
 }
 
-function ConfirmDeactivateModal<T extends { name: string }>({
+function ConfirmarArchivadoModal<T extends { name: string }>({
   target,
   label,
+  conCascada = false,
   onClose,
   onConfirm,
 }: {
   target: T | null;
   label: string;
+  /** Solo el portafolio tiene hijos que archivar en cascada. */
+  conCascada?: boolean;
   onClose: () => void;
   onConfirm: (force: boolean) => Promise<void> | void;
 }) {
-  const [loading, setLoading] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const [force, setForce] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -535,41 +610,40 @@ function ConfirmDeactivateModal<T extends { name: string }>({
     }
   }, [target]);
 
-  async function go() {
+  async function ejecutar() {
     if (!target) return;
-    setLoading(true);
+    setCargando(true);
     setError(null);
     try {
       await onConfirm(force);
     } catch (err) {
       if (err instanceof ApiError && err.code === "BUSINESS_RULE") {
-        setError(`${err.message}. Activa "Forzar" para cascada.`);
+        setError(`${err.message} Marca «Forzar» para archivarlos en cascada.`);
       } else {
-        setError(err instanceof ApiError ? err.message : "Error al desactivar");
+        setError(err instanceof ApiError ? err.message : "Error al archivar");
       }
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
   }
 
   return (
-    <Modal
-      open={target !== null}
-      onClose={onClose}
-      title={`Desactivar ${label}`}
-    >
+    <Modal open={target !== null} onClose={onClose} title={`Archivar ${label}`}>
       <p className="text-sm text-[var(--color-secondary)]">
-        ¿Confirmas desactivar <strong>{target?.name}</strong>? Queda como
-        inactivo; sus hijos pueden impedir la acción a menos que uses force.
+        ¿Archivar <strong>{target?.name}</strong>? Queda inactivo y sale de las
+        listas; nada se borra. El borrado permanente es un segundo paso, y pide
+        escribir el nombre.
       </p>
-      <label className="mt-3 inline-flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={force}
-          onChange={(e) => setForce(e.target.checked)}
-        />
-        Forzar (desactiva en cascada)
-      </label>
+      {conCascada ? (
+        <label className="mt-3 inline-flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={force}
+            onChange={(e) => setForce(e.target.checked)}
+          />
+          Forzar (archiva también sus programas)
+        </label>
+      ) : null}
       {error ? (
         <div className="mt-3">
           <Banner variant="danger">{error}</Banner>
@@ -579,8 +653,8 @@ function ConfirmDeactivateModal<T extends { name: string }>({
         <Button variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
-        <Button variant="danger" loading={loading} onClick={go}>
-          Desactivar
+        <Button variant="danger" loading={cargando} onClick={ejecutar}>
+          Archivar
         </Button>
       </div>
     </Modal>

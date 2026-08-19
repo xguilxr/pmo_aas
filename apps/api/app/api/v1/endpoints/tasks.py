@@ -13,6 +13,7 @@ from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, forbidden, mensaje, not_found, validation_error
 from app.core.unidades import mebibytes
 from app.db.session import get_db
+from app.dominio.proyecto import CERRADO
 from app.models.project_artifact import ProjectArtifact
 from app.models.task import Task, TaskDependency
 from app.models.user import User
@@ -367,7 +368,7 @@ async def create_task(
 ):
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -584,7 +585,7 @@ async def renumber_wbs(
     """
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -667,7 +668,7 @@ async def move_task(
     completo. El indent (outline_level) no cambia."""
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no se puede reordenar",
             porque="Un proyecto cerrado conserva su plan tal como quedó.",
@@ -720,7 +721,7 @@ async def import_ms_project(
 ):
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no se puede importar",
             porque="Un proyecto cerrado conserva su plan tal como quedó.",
@@ -1112,7 +1113,7 @@ async def import_preview(
 
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no se puede importar",
             porque="Un proyecto cerrado conserva su plan tal como quedó.",
@@ -1411,7 +1412,7 @@ async def import_confirm(
 
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no se puede importar",
             porque="Un proyecto cerrado conserva su plan tal como quedó.",

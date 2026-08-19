@@ -58,7 +58,7 @@ def test_hypercare_esta_en_el_vocabulario_y_support_no():
     [
         ("support", "hypercare"),   # el nombre viejo, traducido
         ("hypercare", "hypercare"),  # el nuevo, intacto
-        ("planning", "planning"),    # el resto, sin tocar
+        ("preparacion", "preparacion"),    # el resto, sin tocar
         (None, None),                # no explota con lo que no es cadena
         (7, 7),
     ],
@@ -134,7 +134,7 @@ def test_hypercare_sigue_contando_como_fase_activa():
     from app.services.analytics.snapshots import ACTIVE_PHASES
 
     assert "hypercare" in ACTIVE_PHASES
-    assert "closed" not in ACTIVE_PHASES, "«activo» sigue significando «no cerrado»"
+    assert "cerrado" not in ACTIVE_PHASES, "«activo» sigue significando «no cerrado»"
 
 
 def test_la_transicion_de_fases_conserva_la_forma():
@@ -147,8 +147,8 @@ def test_la_transicion_de_fases_conserva_la_forma():
     """
     from app.api.v1.endpoints.projects import VALID_TRANSITIONS
 
-    assert {"hypercare", "closed"} <= VALID_TRANSITIONS["execution"]
-    assert "closed" in VALID_TRANSITIONS["hypercare"]
+    assert {"hypercare", "cerrado"} <= VALID_TRANSITIONS["ejecucion"]
+    assert "cerrado" in VALID_TRANSITIONS["hypercare"]
     assert "hypercare" not in VALID_TRANSITIONS["hypercare"], "no se vuelve a sí misma"
 
 

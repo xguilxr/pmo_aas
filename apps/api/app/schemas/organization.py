@@ -61,8 +61,9 @@ class OrganizationPanel(BaseModel):
     industry: str | None
     country: str | None
     is_active: bool
-    business_unit_count: int = 0
-    department_count: int = 0
+    # US-199 — la jerarquía nueva cuenta portafolios y programas. Los conteos
+    # de BU/departamento desaparecen con la entidad (ADR-037).
+    portfolio_count: int = 0
     program_count: int = 0
     active_project_count: int = 0
     portfolio_health: OrganizationPanelHealth = Field(
@@ -74,26 +75,30 @@ class OrganizationPanel(BaseModel):
 
 # ---- US-033: Detalle de recursos reales por organización ----
 
-class OrgPanelDepartment(BaseModel):
-    id: UUID
-    business_unit_id: UUID
-    name: str
-    is_active: bool
-
-
-class OrgPanelBusinessUnit(BaseModel):
-    id: UUID
-    name: str
-    description: str | None = None
-    is_active: bool
-    departments: list[OrgPanelDepartment] = Field(default_factory=list)
-
-
 class OrgPanelProgram(BaseModel):
     id: UUID
     name: str
     description: str | None = None
     is_active: bool
+    active_project_count: int = 0
+    # US-199 — el programa dice de qué portafolio es, para que la pantalla
+    # pueda anidarlo sin una segunda consulta.
+    portfolio_id: UUID | None = None
+
+
+class OrgPanelPortfolio(BaseModel):
+    """US-199 — un portafolio con sus programas dentro, como se pinta.
+
+    Reemplaza a `OrgPanelBusinessUnit`/`OrgPanelDepartment`: la sección de
+    jerarquía del panel de organización pasa a ser portafolio ⊃ programa.
+    """
+
+    id: UUID
+    name: str
+    code: str | None = None
+    description: str | None = None
+    is_active: bool
+    programs: list[OrgPanelProgram] = Field(default_factory=list)
     active_project_count: int = 0
 
 
@@ -126,52 +131,48 @@ class OrganizationPanelDetail(BaseModel):
     # ENH-100
     client_logo_url: str | None = None
     is_active: bool
-    business_units: list[OrgPanelBusinessUnit] = Field(default_factory=list)
+    portfolios: list[OrgPanelPortfolio] = Field(default_factory=list)
+    # Se conserva la lista plana de programas además del árbol: las pantallas
+    # que solo necesitan «los programas de esta organización» no tienen que
+    # recorrer los portafolios para juntarlos.
     programs: list[OrgPanelProgram] = Field(default_factory=list)
     projects: list[OrgPanelProject] = Field(default_factory=list)
     users: list[OrgPanelUser] = Field(default_factory=list)
 
 
-class BusinessUnitCreate(BaseModel):
+# ---- US-199: portafolios (reemplazan BU/departamentos, ADR-037) ----------
+
+
+class PortfolioCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
+    code: str | None = Field(default=None, max_length=32)
     description: str | None = None
+    #: El dueño ejecutivo es un actor del catálogo, no un usuario: el sponsor
+    #: del cliente casi nunca tiene cuenta en la plataforma.
+    owner_actor_id: UUID | None = None
     is_active: bool = True
 
 
-class BusinessUnitUpdate(BaseModel):
+class PortfolioUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=200)
+    code: str | None = Field(default=None, max_length=32)
     description: str | None = None
+    owner_actor_id: UUID | None = None
     is_active: bool | None = None
 
 
-class BusinessUnitRead(BaseModel):
+class PortfolioRead(BaseModel):
     id: UUID
     organization_id: UUID
     name: str
+    code: str | None
     description: str | None
+    owner_actor_id: UUID | None
     is_active: bool
-
-    model_config = {"from_attributes": True}
-
-
-class DepartmentCreate(BaseModel):
-    name: str = Field(min_length=2, max_length=200)
-    description: str | None = None
-    is_active: bool = True
-
-
-class DepartmentUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=2, max_length=200)
-    description: str | None = None
-    is_active: bool | None = None
-
-
-class DepartmentRead(BaseModel):
-    id: UUID
-    business_unit_id: UUID
-    name: str
-    description: str | None
-    is_active: bool
+    #: Derivados, no columnas: un portafolio no guarda métricas propias
+    #: (ADR-037). Los rellena el endpoint que los pide.
+    program_count: int = 0
+    active_project_count: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -179,6 +180,9 @@ class DepartmentRead(BaseModel):
 class ProgramCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     organization_id: UUID
+    #: Opcional a la entrada, obligatorio en la base: sin portafolio el
+    #: programa cae en el «Portafolio General» de su organización (DEC-030).
+    portfolio_id: UUID | None = None
     description: str | None = None
     strategic_alignment: str | None = None
     start_date: date | None = None
@@ -188,6 +192,9 @@ class ProgramCreate(BaseModel):
 
 class ProgramUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=200)
+    #: Mover el programa de portafolio. El destino tiene que ser de la misma
+    #: organización, y arrastra a los proyectos del programa (US-199).
+    portfolio_id: UUID | None = None
     description: str | None = None
     strategic_alignment: str | None = None
     start_date: date | None = None
@@ -199,6 +206,7 @@ class ProgramRead(BaseModel):
     id: UUID
     name: str
     organization_id: UUID
+    portfolio_id: UUID
     description: str | None
     strategic_alignment: str | None
     start_date: date | None
@@ -239,6 +247,8 @@ class ProgramSummary(BaseModel):
     description: str | None
     organization_id: UUID
     organization_name: str | None = None
+    portfolio_id: UUID | None = None
+    portfolio_name: str | None = None
     is_active: bool
     start_date: date | None
     end_date: date | None
@@ -281,6 +291,7 @@ class TenantRead(BaseModel):
     is_active: bool
     user_count: int = 0
     organization_count: int = 0
+    portfolio_count: int = 0
     program_count: int = 0
     project_count: int = 0
 

@@ -1,7 +1,8 @@
 """MetricSnapshot model (US-151, EP020 + dashboards N1/N2).
 
-Foto periódica (cadencia semanal) de las métricas de *stock* del portafolio
-a los 4 niveles de scope: tenant, organización, programa y proyecto. Sin
+Foto periódica (cadencia semanal) de las métricas de *stock* de la cartera a
+los 5 niveles de scope: tenant, organización, portafolio (US-201), programa y
+proyecto. Sin
 historia persistida no hay líneas de tendencia en los dashboards ni en los
 reportes Nivel 1/2; este modelo es esa historia.
 
@@ -45,7 +46,9 @@ class MetricSnapshot(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(
         String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
     )
-    # scope_type: "tenant" | "organization" | "program" | "project".
+    # scope_type: "tenant" | "organization" | "portfolio" | "program" |
+    # "project" (US-201 sumó `portfolio`). Es texto y no enum de base a
+    # propósito: añadir un nivel de agregación no debería ser una migración.
     # scope_id apunta a la entidad del scope (para "tenant" == tenant_id).
     scope_type: Mapped[str] = mapped_column(String(16), nullable=False)
     scope_id: Mapped[UUID] = mapped_column(String(36), nullable=False)

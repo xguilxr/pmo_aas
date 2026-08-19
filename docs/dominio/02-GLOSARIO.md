@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-19
 revisar_cada: 90d
 ---
 
@@ -39,15 +39,25 @@ mismo número.
 
 Etapa del ciclo de vida del proyecto, delimitada por una decisión de continuidad.
 
-**Vocabulario vigente** — cuatro fases, en inglés en el código y español en la UI
-(`apps/web/lib/api/projects.ts:3`):
+**Vocabulario vigente** — cinco fases, y el valor guardado está en español
+(ADR-038, US-202). El catálogo canónico vive en
+`apps/api/app/dominio/proyecto.py` y en `apps/web/lib/api/projects.ts`:
 
-| Código | UI | Qué la cierra |
+| Valor | UI | Qué la cierra |
 |---|---|---|
-| `planning` | Planeación | Línea base aprobada |
-| `execution` | Ejecución | Entregables aceptados |
+| `preparacion` | Preparación | Línea base aprobada |
+| `ejecucion` | Ejecución | Entregables aceptados |
 | `hypercare` | Hypercare | Fin del hypercare y aceptación formal |
-| `closed` | Cierre | Cierre formal y lecciones registradas |
+| `cerrado` | Cierre | Cierre formal y lecciones registradas |
+| `cancelado` | Cancelado | Terminación anticipada, antes de cumplir el alcance |
+
+Un proyecto **nace en `preparacion`** —es el default de `projects.phase`—. Las
+tres primeras son las fases activas; las dos últimas, los dos finales.
+
+Los nombres viejos —`planning`, `execution`, `closed`, `cancelled`— **solo se
+aceptan a la entrada**, durante una ventana de compatibilidad
+(`app/core/compatibilidad.py`, contador `compat.nombre_viejo`). La API siempre
+devuelve el canónico.
 
 **`hypercare` es la fase, no una mesa de ayuda** (D-2). Es el período de garantía
 posterior a la entrega y previo al cierre formal: **una forma de cierre**, no una fase de
@@ -59,12 +69,16 @@ fase no es.
 actualizado no se rompe. Pero siempre devuelve el nombre canónico, y en base ya no queda
 ninguno.
 
-**Decidido el 2026-08-05:** se añadirá **`cancelled`** —hoy una terminación anticipada es
-indistinguible de un cierre cumplido.
+**El final anticipado existe desde el 2026-08-05** (ADR-022, US-195), como `cancelled`
+hasta que ADR-038 lo pasó a **`cancelado`**. Antes, una terminación anticipada era
+indistinguible de un cierre cumplido: contaba como entregada en cualquier métrica de
+éxito y sus lecciones se mezclaban con las de los proyectos que llegaron al final.
 
-**Vetado:** literales en español como *valor* dentro del código. Las etiquetas en español
-de la capa de presentación son correctas y no cuentan como deuda. El único caso por
-revisar es `plan_regenerator.py:37`.
+**El valor guardado va en español, no en inglés** (ADR-038, que revirtió el veto anterior
+contra los literales en español como valor). El glosario, la interfaz y quien la usa están
+en español; un valor en inglés obliga a una tabla de traducción en cada superficie que lo
+muestre, y había cuatro, cada una con su propio diccionario. `hypercare` es la excepción
+declarada: no tiene traducción que no sea peor.
 
 ### 1.2 Hito
 
@@ -181,8 +195,13 @@ a validar:
 
 **Regla de color:** una sola definición de paleta.
 
-> **Brecha B-3.** Hoy hay dos: `HEALTH_DONUT_COLOR` (verde `#1F8A5B`) y `HEALTH_HEX`
-> (verde `#16a34a`). Mismo concepto, dos valores.
+> **Brecha B-3 — la mitad del color, cerrada el 2026-08-05** (decisión D-7). Había dos
+> mapas, `HEALTH_DONUT_COLOR` y `HEALTH_HEX`: el mismo proyecto en rojo salía de un color
+> en el donut y de otro en el mapa de árbol del informe de al lado. Hoy hay un solo
+> `HEALTH_COLOR` en `reports/scoped_status.py`, y los dos nombres viejos apuntan a él.
+> Los valores se retocaron el mismo día para alcanzar WCAG 2.2 AA (MCS DIS-02): unificar
+> sin mirar el contraste habría consolidado el verde que no llegaba a AA, que era justo
+> el del semáforo. Trinquete: `tests/test_d7_paleta_de_salud.py`.
 
 ---
 
@@ -304,9 +323,9 @@ Descomposición jerárquica del alcance total en paquetes de trabajo.
 **Regla del 100 %** (ISO 21511 / PMI): la suma de los hijos es exactamente el alcance del
 padre. Ni más, ni menos.
 
-> **Ambigüedad actual.** `tasks.wbs` guarda el *código* (`1.2.3`), no la estructura. La
-> estructura vive en `parent_id` y `outline_level`. Conviene renombrar el campo a
-> `wbs_code`, que es lo que es.
+> **Ambigüedad resuelta el 2026-08-05** (D-3, ADR-020). El campo guardaba el *código*
+> (`1.2.3`) y se llamaba `wbs`, como si guardara la estructura; la estructura vive en
+> `parent_id` y `outline_level`. Hoy el campo es `tasks.wbs_code`, que es lo que es.
 
 ### 5.2 Programa
 
@@ -324,8 +343,16 @@ simple carpeta.
 Conjunto de proyectos, programas y operaciones agrupados **para facilitar la gestión
 estratégica**. No coincide con la estructura organizativa.
 
-> **Brecha B-6.** Hoy `PORTAFOLIO` y `portfolio_function` son etiquetas de función de área.
-> Mientras no exista la entidad, conviene no usar la palabra.
+> **Brecha B-6, cerrada el 2026-08-19** (ADR-037, US-198). El portafolio es una entidad:
+> tabla `portfolios`, una por organización, entre la organización y el programa
+> (`programs.portfolio_id` es obligatorio; `projects.portfolio_id` admite nulo mientras el
+> proyecto no esté clasificado). ADR-037 **levanta el veto de ADR-021**: la palabra queda
+> libre porque ya nombra algo.
+>
+> No confundir la **entidad** con la **etiqueta de función**, que sigue existiendo y es
+> otra cosa: clasifica de qué disciplina es un recurso —`pm`, `pmo`, `arquitectura`,
+> `datos`…—, se llama `discipline` desde ADR-021 (migración 0099) y ya no usa la palabra
+> «portafolio» para nada.
 
 ---
 
@@ -337,11 +364,11 @@ estratégica**. No coincide con la estructura organizativa.
 | Vetado | Preferente | Ocurrencias hoy | Dónde |
 |---|---|---|---|
 | `amber` como valor | `yellow` | **0** (2026-08-06) | cerrado entero: código, datos (migración 0101) e interfaz. Ventana abierta en `compatibilidad.py` |
-| Dos paletas de salud | una definición única | 2 mapas | `scoped_status.py:30,33` |
-| `wbs` para el código de tarea | `wbs_code` | 1 campo | `tasks.wbs` |
+| Dos paletas de salud | una definición única — ✅ hecho 2026-08-05 | 0 | `HEALTH_COLOR` en `reports/scoped_status.py`; los dos nombres viejos quedan como alias del mismo mapa |
+| `wbs` para el código de tarea | `wbs_code` — ✅ hecho 2026-08-05 | 0 | ADR-020, `tasks.wbs_code` |
 | `portafolio` para un área | `discipline` — ✅ hecho 2026-08-05 | 0 | ADR-021, migración 0099 |
 | `problema` / `bug` para incidencia de proyecto | `incidencia` | por revisar | — |
-| «Inicio» como nombre de fase generado | `planning` | 1 | `plan_regenerator.py:37` |
+| ~~«Inicio» como nombre de fase generado~~ | — | 0, falso positivo | `plan_regenerator.py:37` es el encabezado de la columna de fecha de inicio del plan (contrato de 15 columnas, ENH-193), no una fase |
 
 ---
 
@@ -406,8 +433,10 @@ la unidad canónica pasa a ser «la moneda del inquilino» y esta fila cambia.
    el presupuesto no miraba el tiempo: 85 % gastado con 10 % de avance salía verde.
 3. ~~Confirmar el método de avance de §2.3.~~ **Adoptado.**
 4. ~~Decidir el **nombre** de la fase de hypercare.~~ **`hypercare`, hecho el 2026-08-05**
-   (ADR-019, migración 0098). **`cancelled` añadida** (ADR-022); `initiation` no.
+   (ADR-019, migración 0098). **`cancelado` añadida** (ADR-022, con el nombre que le dio
+   ADR-038); `initiation` no.
 
 El plan de remediación ya puede escribirse; el orden sugerido está al final de
-`03-REVISION-GLOSARIO.md`. Los tres cambios que tocan contrato —`wbs_code`,
-`portfolio_function` y el nombre de la fase— van con ADR y US propia, uno por uno.
+`03-REVISION-GLOSARIO.md`. Los tres cambios que tocan contrato salieron con ADR y US
+propia, uno por uno: `wbs_code` (ADR-020), `discipline` (ADR-021) y el nombre de la fase
+(ADR-019, y otra vez con ADR-038 al pasar el catálogo al español).

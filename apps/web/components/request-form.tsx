@@ -11,11 +11,12 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
-  createBusinessUnit,
-  listBusinessUnits,
   listOrganizations,
-  type BusinessUnit,
+  listPortfolios,
+  listPrograms,
   type Organization,
+  type Portfolio,
+  type Program,
 } from "@/lib/api/organizations";
 import {
   createRequest,
@@ -33,9 +34,12 @@ type Draft = {
   objective: string;
   organization_id: string;
   organization_name_new: string;
+  /** Texto libre, en las palabras del solicitante (US-199). */
   business_unit: string;
-  business_unit_id: string;
   department: string;
+  /** Clasificación en la jerarquía: opcional, la PMO la ajusta al revisar. */
+  portfolio_id: string;
+  program_id: string;
   sponsor: string;
   sponsor_email: string;
   benefits: string;
@@ -60,8 +64,9 @@ const EMPTY: Draft = {
   organization_id: "",
   organization_name_new: "",
   business_unit: "",
-  business_unit_id: "",
   department: "",
+  portfolio_id: "",
+  program_id: "",
   sponsor: "",
   sponsor_email: "",
   benefits: "",
@@ -125,9 +130,8 @@ export function RequestForm() {
   const [step, setStep] = useState<StepId>("basics");
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
-  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
-  const [buMode, setBuMode] = useState<"select" | "new">("select");
-  const [newBuName, setNewBuName] = useState("");
+  const [portafolios, setPortafolios] = useState<Portfolio[]>([]);
+  const [programas, setProgramas] = useState<Program[]>([]);
   const [saving, setSaving] = useState(false);
   const [autosavedAt, setAutosavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -156,22 +160,29 @@ export function RequestForm() {
     };
   }, []);
 
-  // ENH-041: refetch BUs cuando cambia la organización seleccionada.
-  // US-085: si la org es "__new__" no hay org real; obligamos a que
-  // el usuario use "Otra…" para BU.
+  // US-200 — portafolios y programas de la organización elegida. Con
+  // `__new__` no hay organización real todavía: la clasificación se queda
+  // vacía y la pone la PMO al revisar, que es cuando la organización existe.
   useEffect(() => {
     if (!draft.organization_id || draft.organization_id === "__new__") {
-      setBusinessUnits([]);
-      if (draft.organization_id === "__new__") setBuMode("new");
+      setPortafolios([]);
+      setProgramas([]);
       return;
     }
     let cancelled = false;
-    listBusinessUnits(draft.organization_id, { is_active: true })
-      .then((rows) => {
-        if (!cancelled) setBusinessUnits(rows);
+    Promise.all([
+      listPortfolios(draft.organization_id, { is_active: true }),
+      listPrograms({ organization_id: draft.organization_id, is_active: true }),
+    ])
+      .then(([pfs, progs]) => {
+        if (cancelled) return;
+        setPortafolios(pfs);
+        setProgramas(progs);
       })
       .catch(() => {
-        if (!cancelled) setBusinessUnits([]);
+        if (cancelled) return;
+        setPortafolios([]);
+        setProgramas([]);
       });
     return () => {
       cancelled = true;
@@ -251,45 +262,20 @@ export function RequestForm() {
     setSaving(true);
     setError(null);
     try {
-      // ENH-041: si el usuario eligió "Otra…" para BU sobre una org
-      // existente, crear la BU primero y obtener el FK antes de enviar.
-      // US-085: si la org es "__new__", la BU va como texto libre
-      // (sin FK) — se materializará luego cuando el admin active la
-      // org y configure sus BUs.
+      // US-200 — la clasificación va como FK cuando hay organización real. Con
+      // `__new__` no la hay todavía, así que se manda vacía: el proyecto la
+      // recibe al aprobarse, cuando la organización ya existe.
       const isNewOrg = draft.organization_id === "__new__";
-      let buId = isNewOrg ? "" : draft.business_unit_id;
-      let buName = isNewOrg ? newBuName.trim() : draft.business_unit.trim();
-      if (buMode === "new" && !isNewOrg && newBuName.trim()) {
-        try {
-          const created = await createBusinessUnit(draft.organization_id, {
-            name: newBuName.trim(),
-            is_active: true,
-          });
-          buId = created.id;
-          buName = created.name;
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 409) {
-            setError(
-              "Ya existe una Unidad de negocio con ese nombre en la organización seleccionada.",
-            );
-          } else {
-            setError(
-              err instanceof ApiError ? err.message : "No se pudo crear la nueva BU",
-            );
-          }
-          setSaving(false);
-          return;
-        }
-      }
       const body: ProjectRequestCreateBody = {
         title: draft.title.trim(),
         description: draft.description.trim(),
         objective: draft.objective.trim(),
         organization_id: isNewOrg ? null : draft.organization_id,
         organization_name_new: isNewOrg ? draft.organization_name_new.trim() : null,
-        business_unit: buName,
-        business_unit_id: buId || null,
+        business_unit: draft.business_unit.trim(),
         department: draft.department.trim(),
+        portfolio_id: isNewOrg ? null : draft.portfolio_id || null,
+        program_id: isNewOrg ? null : draft.program_id || null,
         sponsor: draft.sponsor.trim(),
         sponsor_email: draft.sponsor_email.trim(),
         benefits: draft.benefits.trim(),
@@ -455,11 +441,10 @@ export function RequestForm() {
                 const v = e.target.value;
                 setField("organization_id", v);
                 if (v !== "__new__") setField("organization_name_new", "");
-                // ENH-041: al cambiar la org, reset BU dependiente.
-                setField("business_unit_id", "");
-                setField("business_unit", "");
-                setBuMode("select");
-                setNewBuName("");
+                // US-200 — la clasificación depende de la organización: al
+                // cambiarla, un portafolio de la anterior dejaría de ser válido.
+                setField("portfolio_id", "");
+                setField("program_id", "");
               }}
               disabled={loadingOrgs}
               required
@@ -482,65 +467,100 @@ export function RequestForm() {
             ) : null}
           </Field>
           <Field
-            label="Unidad de negocio"
+            label="Área que solicita"
             htmlFor="bu"
             error={fieldErrors.business_unit}
             required
-            help={
-              !draft.organization_id
-                ? "Selecciona primero una organización"
-                : buMode === "new"
-                  ? "Se creará al enviar la solicitud"
-                  : undefined
-            }
+            help="En tus palabras — la parte de tu empresa que pide el trabajo."
           >
-            <Select
+            <Input
               id="bu"
-              value={buMode === "new" ? "__new__" : draft.business_unit_id}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "__new__") {
-                  setBuMode("new");
-                  setField("business_unit_id", "");
-                  setField("business_unit", newBuName.trim());
-                } else {
-                  setBuMode("select");
-                  setNewBuName("");
-                  setField("business_unit_id", v);
-                  const bu = businessUnits.find((b) => b.id === v);
-                  setField("business_unit", bu?.name ?? "");
-                }
-              }}
-              disabled={!draft.organization_id}
+              value={draft.business_unit}
+              onChange={(e) => setField("business_unit", e.target.value)}
               required
-            >
-              <option value="">Selecciona…</option>
-              {businessUnits.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-              <option value="__new__">Otra…</option>
-            </Select>
-            {buMode === "new" ? (
-              <Input
-                className="mt-2"
-                placeholder="Nombre de la nueva BU"
-                value={newBuName}
-                onChange={(e) => {
-                  setNewBuName(e.target.value);
-                  setField("business_unit", e.target.value);
-                }}
-              />
-            ) : null}
+            />
           </Field>
-          <Field label="Departamento" htmlFor="dept" error={fieldErrors.department} required>
+          <Field
+            label="Equipo o sub-área"
+            htmlFor="dept"
+            error={fieldErrors.department}
+            required
+          >
             <Input
               id="dept"
               value={draft.department}
               onChange={(e) => setField("department", e.target.value)}
               required
             />
+          </Field>
+          {/* US-200 — clasificación en la jerarquía, en cascada. Opcional a
+              propósito: quien solicita no siempre sabe en qué portafolio cae, y
+              obligarlo a adivinar produce una clasificación peor que ninguna.
+              La PMO la ajusta al revisar. */}
+          <Field
+            label="Portafolio"
+            htmlFor="portfolio"
+            help={
+              !draft.organization_id
+                ? "Selecciona primero una organización"
+                : draft.organization_id === "__new__"
+                  ? "Se clasifica al revisar la solicitud, cuando la organización exista"
+                  : "Opcional — la PMO puede ajustarlo al revisar"
+            }
+          >
+            <Select
+              id="portfolio"
+              value={draft.portfolio_id}
+              onChange={(e) => {
+                setField("portfolio_id", e.target.value);
+                // Cambiar de portafolio invalida el programa elegido: un
+                // programa pertenece a un portafolio y solo a uno.
+                setField("program_id", "");
+              }}
+              disabled={!draft.organization_id || draft.organization_id === "__new__"}
+            >
+              <option value="">Sin clasificar</option>
+              {portafolios.map((pf) => (
+                <option key={pf.id} value={pf.id}>
+                  {pf.code ? `${pf.code} — ${pf.name}` : pf.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="Programa"
+            htmlFor="program"
+            help={
+              draft.portfolio_id
+                ? "Solo los programas de ese portafolio"
+                : "Elegir un programa completa su portafolio solo"
+            }
+          >
+            <Select
+              id="program"
+              value={draft.program_id}
+              onChange={(e) => {
+                const v = e.target.value;
+                setField("program_id", v);
+                // Elegir programa autocompleta el portafolio: es lo que el
+                // servidor va a guardar de todos modos (regla de consistencia),
+                // así que la pantalla lo muestra en vez de dejarlo en blanco.
+                const prog = programas.find((pr) => pr.id === v);
+                if (prog) setField("portfolio_id", prog.portfolio_id);
+              }}
+              disabled={!draft.organization_id || draft.organization_id === "__new__"}
+            >
+              <option value="">Sin programa</option>
+              {programas
+                .filter(
+                  (pr) => !draft.portfolio_id || pr.portfolio_id === draft.portfolio_id,
+                )
+                .map((pr) => (
+                  <option key={pr.id} value={pr.id}>
+                    {pr.name}
+                  </option>
+                ))}
+            </Select>
           </Field>
           <Field
             label={`Presupuesto (${draft.currency || preferida})`}
@@ -793,8 +813,8 @@ function fieldsSummary(errors: Record<string, string>): string[] {
     description: "Descripción",
     objective: "Objetivo",
     organization_id: "Organización",
-    business_unit: "Unidad de negocio",
-    department: "Departamento",
+    business_unit: "Área que solicita",
+    department: "Equipo o sub-área",
     sponsor: "Sponsor",
     sponsor_email: "Email del sponsor",
     benefits: "Beneficios esperados",
@@ -913,8 +933,8 @@ function ReviewPane({
         <Row k="Solicitante" v={draft.requester_name || "(tu usuario)"} />
         <Row k="Email solicitante" v={draft.requester_email || "(tu correo)"} />
         <Row k="Organización" v={orgName} />
-        <Row k="Unidad de negocio" v={draft.business_unit} />
-        <Row k="Departamento" v={draft.department} />
+        <Row k="Área que solicita" v={draft.business_unit} />
+        <Row k="Equipo o sub-área" v={draft.department} />
         <Row k="Presupuesto" v={draft.budget ? currency(draft.budget, draft.currency || monedaPreferida) : "—"} />
         <Row k="Descripción" v={draft.description} multiline />
         <Row k="Objetivo" v={draft.objective} multiline />

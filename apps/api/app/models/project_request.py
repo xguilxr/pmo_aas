@@ -25,13 +25,17 @@ class ProjectRequest(Base, TimestampMixin):
     organization_id: Mapped[UUID] = mapped_column(
         String(36), ForeignKey("organizations.id"), nullable=False
     )
+    # US-199 — texto libre, en las palabras del solicitante: «qué parte de mi
+    # empresa pide esto». Sobrevive al retiro de BU/departamento (ADR-037)
+    # porque no es la jerarquía de la plataforma, es la descripción de quien
+    # pide. La clasificación de verdad son las dos columnas de abajo.
     business_unit: Mapped[str] = mapped_column(String(200), nullable=False)
     department: Mapped[str] = mapped_column(String(200), nullable=False)
-    business_unit_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("business_units.id")
+    portfolio_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("portfolios.id"), index=True
     )
-    department_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("departments.id")
+    program_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("programs.id"), index=True
     )
     sponsor: Mapped[str] = mapped_column(String(200), nullable=False)
     sponsor_email: Mapped[str | None] = mapped_column(String(200))

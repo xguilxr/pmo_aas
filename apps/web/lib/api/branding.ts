@@ -8,7 +8,6 @@ export type TenantBranding = {
   primary_color: string | null;
   // ENH-190: per-tenant UI label ("organizations" | "portfolios").
   // UI-only — no schema/route/API change to the underlying entity.
-  org_label?: "organizations" | "portfolios" | null;
   // BUG-092: la moneda PREFERIDA del inquilino — el valor inicial de los
   // proyectos que no eligen una propia. La efectiva de un importe la trae el
   // objeto que lo lleva, ya resuelta por la API.

@@ -694,8 +694,7 @@ function HierarchyOverview({ detail }: { detail: TenantDetail }) {
   const h = detail.hierarchy;
   const nodes = [
     { icon: <Building2 className="h-4 w-4" aria-hidden />, label: "Orgs", value: h.organization_count },
-    { icon: <Workflow className="h-4 w-4" aria-hidden />, label: "BUs", value: h.business_unit_count },
-    { icon: <Users className="h-4 w-4" aria-hidden />, label: "Deptos", value: h.department_count },
+    { icon: <Workflow className="h-4 w-4" aria-hidden />, label: "Portafolios", value: h.portfolio_count },
     { icon: <Network className="h-4 w-4" aria-hidden />, label: "Programas", value: h.program_count },
     { icon: <FolderKanban className="h-4 w-4" aria-hidden />, label: "Proyectos", value: h.project_count },
   ];

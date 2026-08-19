@@ -40,7 +40,7 @@ async def _setup_project(client, db_session) -> tuple[dict, str, str]:
     body = {
         "name": "Proyecto Salud",
         "description": "US-180",
-        "type": "innovation",
+        "type": "innovacion",
         "priority": 3,
         "organization_id": org_id,
         "pm_id": pm_id,

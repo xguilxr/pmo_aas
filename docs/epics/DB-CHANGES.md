@@ -104,8 +104,9 @@ no en BD.
 ## EP007 — Admin
 
 Sin schema nuevo. Toda la funcionalidad reutiliza tablas existentes
-(`tenants`, `users`, `roles`, `audit_logs`, `business_units`,
-`departments`).
+(`tenants`, `users`, `roles`, `audit_logs`, `organizations`, `portfolios`,
+`programs`). Hasta US-199 la sección de jerarquía del panel leía
+`business_units` y `departments`; ADR-037 las retiró.
 
 ## EP008 — IA
 
@@ -972,3 +973,154 @@ se usaron.
 Al bajar, todo el mundo vuelve a pasar por el código en su siguiente
 entrada. Es molesto y seguro: el lado correcto por el que equivocarse
 al revertir.
+
+## 0108 — `portfolios`, y los programas se mudan dentro (US-198)
+
+La jerarquía pasa de `organización → BU → departamento → programa →
+proyecto` a `organización → portafolio ⊃ programa → proyecto`
+(ADR-037). Tabla nueva `portfolios` por organización, más
+`programs.portfolio_id` (NOT NULL) y `projects.portfolio_id`
+(nullable).
+
+**No hay migración de datos desde BU/departamento**, y eso es un dato:
+el owner nunca los usó en producción. Un mapeo BU→portafolio habría
+inventado una taxonomía a partir de tablas vacías. La migración
+**cuenta** las referencias vivas de las siete columnas BU/departamento
+y deja el conteo en el registro, para que US-199 las suelte con la
+evidencia delante y no de memoria.
+
+`programs.portfolio_id` nace nullable, se rellena y se endurece a NOT
+NULL **en la misma migración**. Al revés no se puede: `SET NOT NULL`
+sobre una columna con nulos falla. Y dejar el endurecimiento para
+después es como se acumulan las columnas «temporalmente nullable» que
+nunca se endurecen.
+
+El relleno crea un **«Portafolio General» por organización que tenga
+programas** — no uno global, que rompería el aislamiento entre
+organizaciones, ni uno por organización, que sería basura en la
+pantalla de quien nunca usó programas.
+
+`projects.portfolio_id` se rellena **desde el programa**. Sin ese paso
+la regla de consistencia de `services/jerarquia.py` nacería violada por
+todos los proyectos existentes: tendrían programa y no tendrían su
+portafolio.
+
+Hay una rama por motor en el DDL. SQLite no sabe endurecer una columna
+existente ni añadirle una restricción, y emularlo recrea la tabla —en
+`projects`, reconstruir a mano su índice único y once claves ajenas—.
+Lo que la rama se salta es lo que en SQLite ya está puesto por otro
+camino (`create_all` la crea NOT NULL con su FK); lo que corre en los
+dos motores es el **relleno**, que es donde una migración de datos se
+equivoca.
+
+Al bajar desaparecen la tabla y las dos columnas, y con ellas la
+clasificación por portafolio que se hubiera capturado: el esquema
+anterior no tiene dónde guardarla. Es destructiva de información nueva,
+que es lo esperable en un `downgrade` que retira una entidad. Lo
+anterior queda intacto: `programs.department_id`,
+`projects.business_unit_id` y `projects.department_id` no se tocan
+aquí.
+
+## 0109 — se sueltan las columnas de BU/departamento (US-199)
+
+La 0108 creó lo nuevo y no tocó lo viejo a propósito. Esta va con el
+commit que retira sus lectores —los sub-routers de unidades de negocio
+y departamentos, y los campos BU/departamento de los payloads de
+solicitudes y actas—, así que aquí sí se sueltan.
+
+**Se van** siete columnas: `programs.department_id`,
+`projects.{business_unit_id, department_id}`,
+`project_requests.{business_unit_id, department_id}` y
+`project_charters.{business_unit_id, department_id}`.
+
+**Llegan** cuatro: `project_requests.{portfolio_id, program_id}` y
+`project_charters.{portfolio_id, program_id}`. La solicitud se clasifica
+antes de que el proyecto exista; sin estas columnas el proyecto aprobado
+nacería sin clasificación y habría que ponérsela otra vez a mano.
+
+**Se quedan** las tablas `business_units` y `departments`. Retirar una
+tabla entera es irreversible y va en W8, cuando el contador de compat
+confirme que nadie la lee. Lo que esta oleada quita son las referencias.
+
+La verificación de vacío no es ceremonia. «Nunca se usaron» es una
+afirmación sobre **una** instalación: la migración cuenta antes de
+soltar, y si encuentra filas **para**, con el conteo por columna en el
+mensaje y el residuo anotado en `audit_log` como
+`us199.residuo_bu_depto`. No borra ni convierte nada — una migración que
+descarta datos que no esperaba es peor que una que se niega a correr.
+El caso está ejercido en `tests/test_us199_portfolios_api.py`.
+
+Hay rama por motor en las cuatro columnas nuevas, por lo mismo que en la
+0108: SQLite no sabe añadir una restricción a una tabla existente, y en
+SQLite esas claves ajenas ya llegan puestas por `create_all`.
+
+La bajada devuelve las siete y quita las cuatro. **No devuelve los
+valores** —ninguno, si la subida corrió—, que es la razón por la que la
+subida se niega a correr con datos: después de soltar la columna ya no
+hay a dónde volver.
+
+## 0110 — el vocabulario de fases y tipos, al español (US-202)
+
+`planning → preparacion`, `execution → ejecucion`, `closed → cerrado`,
+`cancelled → cancelado` (ADR-038). **`hypercare` no se toca**: ADR-019 lo
+renombró hace dos semanas y no tiene traducción que no sea peor. Y
+`projects.type` deja el texto libre: `transformation → transformacion`,
+`operation → operacion`, `innovation → innovacion`; `bau` ya estaba bien.
+
+**Dos tablas con fase, no una.** `projects.phase` y `lessons.phase`
+comparten vocabulario —la fase de una lección es «en qué fase se aprendió
+esto»— y la segunda es la que se olvida: le pasó a la 0098, cuya primera
+versión tocaba solo `projects`. La tercera, `project_participations.phase`,
+queda fuera a propósito: es texto libre, no el vocabulario controlado, y
+renombrar ahí sería editar lo que escribió un usuario.
+
+**Los tipos que no están en el mapa se dejan como están**, con sus
+valores y su conteo en el registro del despliegue. No se convierten a la
+fuerza ni se vacían: adivinar que «Mejora continua» es `operacion` es
+inventarse la clasificación de un proyecto de alguien, y vaciarlo es
+perder el único dato que había. La columna sigue siendo texto, así que
+esos valores se **leen** igual; lo que ya no se puede es volver a
+escribirlos, porque el enum de la API los rechaza.
+
+Cada `UPDATE` va acotado por valor viejo y no como un `CASE` sobre todas
+las filas: reescribir filas que ya están bien les mueve el `updated_at`
+sin haber cambiado nada. Es la lección de la 0101, y se verifica
+contando sentencias (`tests/test_us202_vocabulario.py`).
+
+La bajada es exacta: renombrados uno a uno, sin colisión —ninguno de los
+nombres nuevos existía antes del 2026-08-19—. Lo único que no puede
+distinguir es una fila que **ya** dijera `preparacion` de una que lo diga
+por esta migración; el caso no se da con datos reales, pero conviene
+saberlo antes de volver a subir tras una bajada parcial.
+
+---
+
+## 0111 — se borra `tenants.settings.org_label` (DEC-032)
+
+No toca ninguna columna: la clave vive dentro del JSON de
+`tenants.settings`, y lo que hace la migración es sacarla de ahí.
+
+**Por qué hay migración para una clave de JSON.** Porque sin ella la clave
+se queda escrita y sin lectores, y un `"org_label": "portfolios"` en
+`settings` es una invitación a que alguien la vuelva a leer dentro de seis
+meses sin saber por qué se retiró.
+
+Y porque el conteo es la única forma de contestar la pregunta que importa:
+**¿alguien la estaba usando?** El registro del despliegue dice cuántos
+inquilinos la tenían y con qué valor. Si sale alguno con `"portfolios"`, ese
+cliente va a ver el cambio de nombre en su interfaz y hay que avisarle; si
+no sale ninguno, no hay nada que comunicar.
+
+**Lee y reescribe fila por fila** en vez de usar un operador de JSON del
+motor: los operadores de `jsonb` de Postgres (`settings - 'org_label'`) no
+existen en SQLite, y esta migración se ensaya en la suite. El precio es
+recorrer `tenants`, que es la tabla más pequeña del esquema.
+
+**La bajada no repone el valor.** No queda dónde haberlo guardado, y una
+tabla de residuo para una etiqueta de interfaz es peor que el problema. Lo
+que deja la bajada es la clave ausente, que es exactamente lo que el
+accesor viejo interpretaba como el default «organizations»: para un dato de
+presentación con default, «ausente» y «restaurado al default» son el mismo
+estado visible. Si hubiera que reponer un inquilino concreto a mano, el
+conteo de la subida está en el registro.
+

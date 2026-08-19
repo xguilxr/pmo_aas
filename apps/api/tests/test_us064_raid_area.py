@@ -21,7 +21,7 @@ async def _setup(client, db_session):
     r = await client.post(
         "/api/v1/projects",
         json={
-            "name": "P1", "description": "d", "type": "innovation",
+            "name": "P1", "description": "d", "type": "innovacion",
             "priority": 3, "organization_id": org_id, "pm_id": me.json()["id"],
         },
         headers=auth["_authz"],
@@ -235,7 +235,7 @@ async def test_tc064_6_area_must_belong_to_project(client, db_session):
     p2 = await client.post(
         "/api/v1/projects",
         json={
-            "name": "P2", "description": "x", "type": "innovation",
+            "name": "P2", "description": "x", "type": "innovacion",
             "priority": 3, "organization_id": org2, "pm_id": me.json()["id"],
         },
         headers=auth["_authz"],

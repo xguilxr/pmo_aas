@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   createHealthEvaluation,
+  etiquetaSalud,
   listHealthEvaluations,
   type HealthEvaluation,
   type ProjectHealth,
@@ -32,12 +33,6 @@ const DIMENSIONS: { key: DimKey; label: string }[] = [
 ];
 
 type DimKey = "schedule" | "budget" | "risks" | "decisions" | "resources";
-
-const RAG_LABEL: Record<ProjectHealth, string> = {
-  green: "Verde",
-  yellow: "Amarillo",
-  red: "Rojo",
-};
 
 function localToday(): string {
   const d = new Date();
@@ -62,8 +57,8 @@ export function RagDot({
         !color && "bg-[var(--border-default)]",
         className,
       )}
-      title={color ? RAG_LABEL[color] : "Sin evaluar"}
-      aria-label={color ? RAG_LABEL[color] : "Sin evaluar"}
+      title={color ? etiquetaSalud(color) : "Sin evaluar"}
+      aria-label={color ? etiquetaSalud(color) : "Sin evaluar"}
     />
   );
 }

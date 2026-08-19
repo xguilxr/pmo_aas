@@ -17,7 +17,6 @@ from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import forbidden, mensaje
 from app.db.session import get_db
-from app.models.organization import BusinessUnit, Department
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
 from app.schemas.project_charter import (
@@ -29,6 +28,10 @@ from app.schemas.project_charter import (
 )
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
+from app.services.jerarquia import (
+    resolver_portafolio,
+    validar_portafolio_de_organizacion,
+)
 
 router = APIRouter(prefix="/projects", tags=["project_charters"])
 
@@ -119,8 +122,8 @@ def _read(charter: ProjectCharter, project: Project) -> ProjectCharterRead:
         project_name=charter.project_name,
         description=charter.description,
         organization_id=charter.organization_id,
-        business_unit_id=charter.business_unit_id,
-        department_id=charter.department_id,
+        portfolio_id=charter.portfolio_id,
+        program_id=charter.program_id,
         sponsor=charter.sponsor,
         sponsor_email=charter.sponsor_email,
         business_leader=charter.business_leader,
@@ -163,47 +166,23 @@ async def update_charter(
     tenant_id = _tenant(cu)
     project, charter = await _charter_de(db, project_id, cu)
 
-    # Validar FKs BU/Depto si cambian
+    # US-199 — la clasificación del acta pasa por la misma regla que el
+    # proyecto: con programa, el portafolio es el del programa. El acta y su
+    # proyecto no pueden decir cosas distintas sobre dónde vive el trabajo.
     data = body.model_dump(exclude_unset=True)
-    bu_id = data.get("business_unit_id")
-    dept_id = data.get("department_id")
-    if bu_id is not None:
-        bu = (
-            await db.execute(
-                select(BusinessUnit).where(
-                    BusinessUnit.id == str(bu_id),
-                    BusinessUnit.tenant_id == tenant_id,
-                    BusinessUnit.organization_id == charter.organization_id,
-                    BusinessUnit.deleted_at.is_(None),
-                )
+    if "program_id" in data or "portfolio_id" in data:
+        program_id = data.get("program_id", charter.program_id)
+        portfolio_id = data.get("portfolio_id", charter.portfolio_id)
+        data["portfolio_id"] = await resolver_portafolio(
+            db, tenant_id=tenant_id, program_id=program_id, portfolio_id=portfolio_id
+        )
+        if program_id is None and charter.organization_id:
+            await validar_portafolio_de_organizacion(
+                db,
+                tenant_id=tenant_id,
+                organization_id=charter.organization_id,
+                portfolio_id=data["portfolio_id"],
             )
-        ).scalar_one_or_none()
-        if bu is None:
-            from app.core.errors import business_rule
-
-            raise business_rule(mensaje(
-                que="BU no pertenece a la organización del proyecto",
-                porque="La unidad de negocio tiene que estar dentro de la organización del proyecto.",
-                accion="Elige una unidad de esa organización.",
-            ))
-    if dept_id is not None:
-        dept = (
-            await db.execute(
-                select(Department).where(
-                    Department.id == str(dept_id),
-                    Department.tenant_id == tenant_id,
-                    Department.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
-        if dept is None:
-            from app.core.errors import business_rule
-
-            raise business_rule(mensaje(
-                que="Departamento no pertenece al tenant",
-                porque="La referencia apunta fuera de tu organización y quedaría rota.",
-                accion="Elige un departamento de tu tenant.",
-            ))
 
     for field, value in data.items():
         # emails vienen como EmailStr; convertir a str para la BD
@@ -433,8 +412,8 @@ def _build_printable_html(
     {row("Nombre", charter.project_name)}
     {row("Descripción", charter.description)}
     {row("Organización", charter.organization_id)}
-    {row("Unidad de negocio", charter.business_unit_id)}
-    {row("Departamento", charter.department_id)}
+    {row("Portafolio", charter.portfolio_id)}
+    {row("Programa", charter.program_id)}
   </table>
 
   <h2>2. Stakeholders</h2>

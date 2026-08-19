@@ -16,6 +16,7 @@ revisar_cada: 90d
 | **Módulo** | `projects` |
 | **Estado** | MVP |
 | **Versión objetivo** | v1.0 |
+| **Última actualización** | 2026-08-19 — US-202: vocabulario de fases en español y `type` como enum (ADR-038) |
 
 ## Objetivo de negocio
 
@@ -35,7 +36,7 @@ El proyecto sigue un ciclo de vida completo: creación (manual o desde solicitud
 
 | Filtro | Tipo |
 |---|---|
-| Fase (toggle chips) | `planning`/`execution`/`hypercare`/`closed`/`cancelled` multiselect |
+| Fase (toggle chips) | `preparacion`/`ejecucion`/`hypercare`/`cerrado`/`cancelado` multiselect |
 | Organización | select |
 | Programa | select (depende de org) |
 | Tipo | multiselect |
@@ -72,14 +73,14 @@ El proyecto sigue un ciclo de vida completo: creación (manual o desde solicitud
 |---|---|
 | `name` | ✅ |
 | `description` | ✅ |
-| `type` | ✅ |
+| `type` | ✅ — enum `transformacion \| operacion \| innovacion \| bau` (US-202) |
 | `priority` (1-5) | ✅ |
 | `organization_id` | ✅ |
 | `program_id` | opcional |
-| `phase` (default: planning) | ✅ |
+| `phase` (default: `preparacion`) | ✅ |
 | `pm_id` | ✅ |
 | `sponsor` | opcional |
-| `start_date`, `end_date` | opcional en planning |
+| `start_date`, `end_date` | opcional en preparación |
 | `budget` | opcional |
 
 **Criterios de aceptación:**
@@ -222,32 +223,43 @@ Evaluaciones de salud manual con historial (US-191/US-192, ver también EP004):
 **Transiciones válidas:**
 
 ```
-planning → execution → hypercare → closed
-                    ↘         ↘
-       cualquiera de las tres → cancelled
+preparacion → ejecucion → hypercare → cerrado
+                       ↘          ↘
+        cualquiera de las tres → cancelado
 ```
 
-`hypercare` se llamaba `support` hasta el 2026-08-05 (D-2 / ADR-019). El API
-sigue aceptando el nombre viejo a la entrada y devuelve siempre el canónico.
+El vocabulario está en español desde US-202 (**ADR-038**): `planning →
+preparacion`, `execution → ejecucion`, `closed → cerrado`, `cancelled →
+cancelado`. El API sigue aceptando los nombres viejos a la entrada durante una
+ventana de compatibilidad y devuelve siempre el canónico. El catálogo, el orden y
+este grafo viven en `app/dominio/proyecto.py` — un solo sitio.
 
-**`cancelled` es un final distinto de `closed`** (ADR-022, 2026-08-05). Antes,
-un proyecto cortado a mitad se registraba como `closed` (esta misma epic lo
-documentaba como «`closed` (cancelado)»). Quedaba indistinguible de uno que
+`hypercare` **no** se tradujo: no tiene traducción que no sea peor, y ADR-019 ya
+lo renombró una vez desde `support` (esa ventana sigue abierta, con su propio
+contador).
+
+**`cancelado` es un final distinto de `cerrado`** (ADR-022). Antes, un proyecto
+cortado a mitad se registraba como cerrado y quedaba indistinguible de uno que
 llegó al final: contaba como entregado en toda métrica de éxito, y sus lecciones
 se mezclaban con las de los que cumplieron.
 
-Los dos son **terminales** y ninguno cuenta como fase activa. `closed` no lleva
-a `cancelled`: un proyecto que llegó al final ya tuvo su final.
+Los dos son **terminales** y ninguno cuenta como fase activa. `cerrado` no lleva
+a `cancelado`: un proyecto que llegó al final ya tuvo su final.
+
+**«Solicitud» no es fase del proyecto** (US-202): vive en
+`project_requests.status`, y el proyecto nace en `preparacion`. Meterla como fase
+obligaría a que todo proyecto pasara por ella, incluido el que se captura directo
+o el que entra por importación masiva.
 
 **Criterios de aceptación:**
 - [ ] `POST /api/v1/projects/{id}/phase/change` con `{new_phase, comment?}`.
 - [ ] Transición inválida → 409 `STATE_TRANSITION`.
-- [ ] Al pasar a `execution`: `start_date` obligatoria si null.
-- [ ] Al pasar a `closed`: bloquea edición (readonly), excepto lecciones aprendidas.
+- [ ] Al pasar a `ejecucion`: `start_date` obligatoria si null.
+- [ ] Al pasar a `cerrado`: bloquea edición (readonly), excepto lecciones aprendidas.
 - [ ] Audita `project.phase_change` con from→to.
 
 **Test Cases:**
-- `TC-076` (integration) — Transición inválida `closed→execution` → 409.
+- `TC-076` (integration) — Transición inválida `cerrado→ejecucion` → 409.
 - `TC-077` (integration) — Cerrar proyecto: subsecuentes escrituras en módulos (salvo lessons) → 403.
 
 ---
@@ -286,6 +298,31 @@ a `cancelled`: un proyecto que llegó al final ya tuvo su final.
 **Test Cases:**
 - `TC-080` (integration) — JSON export válido (schema check).
 - `TC-081` (E2E) — PDF se descarga y abre.
+
+---
+
+### US-202 — Vocabulario de fases en español y tipo como enum ✅
+
+**Como** PMO
+**Quiero** que las fases y los tipos se llamen como los llamamos al hablar
+**Para** no tener que traducirlos en cada pantalla y poder agrupar la cartera por tipo.
+
+**Criterios de aceptación:**
+- [x] Fases: `preparacion | ejecucion | hypercare | cerrado | cancelado`. `hypercare` no se traduce (ADR-038).
+- [x] `type`: enum `transformacion | operacion | innovacion | bau`. Deja de ser texto libre, que es lo que impedía contestar «cuánto de mi cartera es transformación».
+- [x] Ventana de compatibilidad por nombre retirado: la API acepta el viejo, guarda el canónico y deja rastro (`compat.nombre_viejo`). Cinco ventanas para las fases —se cierran por separado— y una compartida para los tres tipos en inglés.
+- [x] El texto libre que ya había en `type` **se lee** (la columna sigue siendo texto) y no se vuelve a escribir. La migración no lo convierte ni lo vacía: lo anota.
+- [x] Catálogo, orden, transiciones y etiquetas en un solo sitio: `app/dominio/proyecto.py`. Antes, `"closed"` estaba escrito a mano en trece archivos.
+- [x] UI: selects, badges, tablero por fase y filtros del listado con el vocabulario nuevo.
+- [x] La fase `cerrado` se dice «Cierre» cuando etiqueta una **lección**: el proyecto *está* cerrado (estado), la lección se aprendió *en el cierre* (etapa).
+
+**Test Cases:**
+- `TC-202.1` (unit) — Un tipo legado (`innovation`) se lee, se guarda como `innovacion` y deja rastro; un tipo inventado se rechaza.
+- `TC-202.2` (integration) — La migración renombra `projects.phase` **y** `lessons.phase`, mapea los tres tipos, deja el tipo libre intacto y revierte.
+- `TC-202.3` (unit) — Transiciones `preparacion→ejecucion→hypercare→cerrado`; `cancelado` desde cualquier fase viva; los dos terminales sin salida.
+- `TC-202.4` (unit) — Las cinco copias del catálogo coinciden, incluido el tipo de TypeScript del frontend.
+
+**Decisiones:** ADR-038 (supersede en vocabulario a ADR-019 y ADR-022) · DEC-031 (puntero).
 
 ---
 

@@ -1,9 +1,10 @@
-from datetime import UTC
+from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
-from sqlalchemy import func, select
+from sqlalchemy import Result, Select, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_authenticated, require_capability
@@ -14,8 +15,10 @@ from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.dominio.moneda import agregar as agregar_por_moneda
 from app.dominio.moneda import resolver as resolver_moneda
+from app.dominio.proyecto import CERRADO
+from app.models.area import Actor
 from app.models.modules import Risk
-from app.models.organization import BusinessUnit, Department, Organization, Program
+from app.models.organization import Organization, Portfolio, Program
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
@@ -23,23 +26,19 @@ from app.models.project_request import ProjectRequest
 from app.models.user import User
 from app.schemas.hard_delete import HardDeletePreview
 from app.schemas.organization import (
-    BusinessUnitCreate,
-    BusinessUnitRead,
-    BusinessUnitUpdate,
-    DepartmentCreate,
-    DepartmentRead,
-    DepartmentUpdate,
     OrganizationCreate,
     OrganizationPanel,
     OrganizationPanelDetail,
     OrganizationPanelHealth,
     OrganizationRead,
     OrganizationUpdate,
-    OrgPanelBusinessUnit,
-    OrgPanelDepartment,
+    OrgPanelPortfolio,
     OrgPanelProgram,
     OrgPanelProject,
     OrgPanelUser,
+    PortfolioCreate,
+    PortfolioRead,
+    PortfolioUpdate,
     ProgramCreate,
     ProgramRead,
     ProgramSummary,
@@ -48,11 +47,29 @@ from app.schemas.organization import (
     ProgramUpdate,
 )
 from app.services.audit import write_audit
+from app.services.jerarquia import (
+    portafolio_general,
+    validar_portafolio_de_organizacion,
+)
 from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
 from app.services.reports.scoped_status import build_scope_status_context
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
+
+
+def _panel_program(prog: Program, conteos: dict[str, int]) -> OrgPanelProgram:
+    """El programa como lo pinta el panel. US-199: sale dos veces —dentro de su
+    portafolio y en la lista plana— y construirlo dos veces es cómo las dos
+    copias se desincronizan."""
+    return OrgPanelProgram(
+        id=prog.id,
+        name=prog.name,
+        description=prog.description,
+        is_active=prog.is_active,
+        active_project_count=conteos.get(str(prog.id), 0),
+        portfolio_id=prog.portfolio_id,
+    )
 
 
 def _ensure_tenant(cu: CurrentUser) -> UUID:
@@ -98,34 +115,20 @@ async def list_org_panels(
 
     org_ids = [o.id for o in orgs]
 
-    bu_counts_rows = (
+    # US-199 — la tarjeta cuenta portafolios, no unidades de negocio (ADR-037).
+    portfolio_counts_rows = (
         await db.execute(
-            select(BusinessUnit.organization_id, func.count(BusinessUnit.id))
+            select(Portfolio.organization_id, func.count(Portfolio.id))
             .where(
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.organization_id.in_(org_ids),
-                BusinessUnit.deleted_at.is_(None),
-                BusinessUnit.is_active.is_(True),
+                Portfolio.tenant_id == tenant_id,
+                Portfolio.organization_id.in_(org_ids),
+                Portfolio.deleted_at.is_(None),
+                Portfolio.is_active.is_(True),
             )
-            .group_by(BusinessUnit.organization_id)
+            .group_by(Portfolio.organization_id)
         )
     ).all()
-    bu_counts: dict[str, int] = {str(o): n for o, n in bu_counts_rows}
-
-    dept_counts_rows = (
-        await db.execute(
-            select(BusinessUnit.organization_id, func.count(Department.id))
-            .join(Department, Department.business_unit_id == BusinessUnit.id)
-            .where(
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.organization_id.in_(org_ids),
-                Department.deleted_at.is_(None),
-                Department.is_active.is_(True),
-            )
-            .group_by(BusinessUnit.organization_id)
-        )
-    ).all()
-    dept_counts: dict[str, int] = {str(o): n for o, n in dept_counts_rows}
+    portfolio_counts: dict[str, int] = {str(o): n for o, n in portfolio_counts_rows}
 
     prog_counts_rows = (
         await db.execute(
@@ -149,7 +152,7 @@ async def list_org_panels(
                 Project.tenant_id == tenant_id,
                 Project.organization_id.in_(org_ids),
                 Project.deleted_at.is_(None),
-                Project.phase != "closed",
+                Project.phase != CERRADO,
             )
             .group_by(Project.organization_id, Project.health_status)
         )
@@ -174,8 +177,7 @@ async def list_org_panels(
                 industry=o.industry,
                 country=o.country,
                 is_active=o.is_active,
-                business_unit_count=bu_counts.get(oid, 0),
-                department_count=dept_counts.get(oid, 0),
+                portfolio_count=portfolio_counts.get(oid, 0),
                 program_count=prog_counts.get(oid, 0),
                 active_project_count=active_projects.get(oid, 0),
                 portfolio_health=OrganizationPanelHealth(**health_map.get(oid, {})),
@@ -280,28 +282,16 @@ async def get_org_panel(
     if org is None:
         raise not_found("Organización")
 
-    bus = (
+    # US-199 — la jerarquía del panel es portafolio ⊃ programa (ADR-037).
+    portfolios = (
         await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.organization_id == str(org_id),
-                BusinessUnit.deleted_at.is_(None),
-            ).order_by(BusinessUnit.name)
+            select(Portfolio).where(
+                Portfolio.tenant_id == tenant_id,
+                Portfolio.organization_id == str(org_id),
+                Portfolio.deleted_at.is_(None),
+            ).order_by(Portfolio.name)
         )
     ).scalars().all()
-    bu_ids = [bu.id for bu in bus]
-    depts_rows = (
-        await db.execute(
-            select(Department).where(
-                Department.tenant_id == tenant_id,
-                Department.business_unit_id.in_(bu_ids) if bu_ids else Department.id.is_(None),
-                Department.deleted_at.is_(None),
-            ).order_by(Department.name)
-        )
-    ).scalars().all()
-    depts_by_bu: dict[str, list[Department]] = {}
-    for d in depts_rows:
-        depts_by_bu.setdefault(str(d.business_unit_id), []).append(d)
 
     # US-168: visibility filter for PM users
     panel_visibility = None
@@ -329,7 +319,7 @@ async def get_org_panel(
                     Project.tenant_id == tenant_id,
                     Project.program_id.in_(prog_ids),
                     Project.deleted_at.is_(None),
-                    Project.phase != "closed",
+                    Project.phase != CERRADO,
                 )
                 .group_by(Project.program_id)
             )
@@ -401,34 +391,36 @@ async def get_org_panel(
         logo_url=org.logo_url,
         client_logo_url=org.client_logo_url,
         is_active=org.is_active,
-        business_units=[
-            OrgPanelBusinessUnit(
-                id=bu.id,
-                name=bu.name,
-                description=bu.description,
-                is_active=bu.is_active,
-                departments=[
-                    OrgPanelDepartment(
-                        id=d.id,
-                        business_unit_id=d.business_unit_id,
-                        name=d.name,
-                        is_active=d.is_active,
-                    )
-                    for d in depts_by_bu.get(str(bu.id), [])
+        portfolios=[
+            OrgPanelPortfolio(
+                id=pf.id,
+                name=pf.name,
+                code=pf.code,
+                description=pf.description,
+                is_active=pf.is_active,
+                programs=[
+                    _panel_program(p, prog_proj_counts)
+                    for p in programs
+                    if str(p.portfolio_id) == str(pf.id)
                 ],
+                # El conteo del portafolio suma los proyectos de sus programas
+                # **y** los que cuelgan directo de él: si solo sumara los de
+                # los programas, un portafolio sin programas se vería vacío
+                # teniendo proyectos.
+                active_project_count=sum(
+                    prog_proj_counts.get(str(p.id), 0)
+                    for p in programs
+                    if str(p.portfolio_id) == str(pf.id)
+                )
+                + sum(
+                    1
+                    for pr in projects
+                    if pr.program_id is None and str(pr.portfolio_id) == str(pf.id)
+                ),
             )
-            for bu in bus
+            for pf in portfolios
         ],
-        programs=[
-            OrgPanelProgram(
-                id=p.id,
-                name=p.name,
-                description=p.description,
-                is_active=p.is_active,
-                active_project_count=prog_proj_counts.get(str(p.id), 0),
-            )
-            for p in programs
-        ],
+        programs=[_panel_program(p, prog_proj_counts) for p in programs],
         projects=[
             OrgPanelProject(
                 id=p.id,
@@ -503,6 +495,11 @@ programs_router = APIRouter(prefix="/programs", tags=["programs"])
 @programs_router.get("", response_model=list[ProgramRead])
 async def list_programs(
     organization_id: UUID | None = Query(default=None),
+    # US-201 — el segundo nivel de la cascada. Sin esto el desplegable de
+    # programa del tablero ofrecía los de toda la organización, incluidos los de
+    # otros portafolios: elegir uno producía una consulta que cruza dos filtros
+    # que no se tocan y devuelve vacío, que se lee como «no hay proyectos».
+    portfolio_id: UUID | None = Query(default=None),
     is_active: bool | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
@@ -517,6 +514,8 @@ async def list_programs(
             stmt = stmt.where(Program.id.in_(visibility.program_ids))
     if organization_id:
         stmt = stmt.where(Program.organization_id == str(organization_id))
+    if portfolio_id:
+        stmt = stmt.where(Program.portfolio_id == str(portfolio_id))
     if is_active is not None:
         stmt = stmt.where(Program.is_active == is_active)
     rows = (await db.execute(stmt.order_by(Program.name))).scalars().all()
@@ -545,13 +544,37 @@ async def create_program(
         ))
     payload = body.model_dump()
     payload["organization_id"] = str(payload["organization_id"])
-    prog = Program(tenant_id=tenant_id, **payload)
+    # US-199 — el portafolio llega en el payload; si no viene, el programa cae
+    # en el «Portafolio General» de su organización (DEC-030). Nadie tiene que
+    # inventarse una taxonomía para dar de alta su primer programa.
+    pedido = payload.pop("portfolio_id", None)
+    if pedido is not None:
+        await validar_portafolio_de_organizacion(
+            db,
+            tenant_id=tenant_id,
+            organization_id=payload["organization_id"],
+            portfolio_id=pedido,
+        )
+        portfolio_id = str(pedido)
+    else:
+        pf = await portafolio_general(
+            db,
+            tenant_id=tenant_id,
+            organization_id=payload["organization_id"],
+            created_by=cu.id,
+        )
+        portfolio_id = str(pf.id)
+    prog = Program(tenant_id=tenant_id, portfolio_id=portfolio_id, **payload)
     db.add(prog)
     await db.flush()
     await write_audit(
         db, action="program.create", module="organizations",
         user_id=cu.id, tenant_id=tenant_id, entity_type="program", entity_id=str(prog.id),
-        details={"name": body.name, "organization_id": str(body.organization_id)},
+        details={
+            "name": body.name,
+            "organization_id": str(body.organization_id),
+            "portfolio_id": portfolio_id,
+        },
     )
     await db.commit()
     return ProgramRead.model_validate(prog)
@@ -584,6 +607,13 @@ async def program_summary(
             select(Organization).where(Organization.id == prog.organization_id)
         )
     ).scalar_one_or_none()
+    # US-199 — el resumen dice de qué portafolio es el programa: es el dato con
+    # el que se sube un nivel desde esta pantalla.
+    portafolio = (
+        await db.execute(
+            select(Portfolio).where(Portfolio.id == prog.portfolio_id)
+        )
+    ).scalar_one_or_none()
 
     sum_proj_stmt = select(Project).where(
         Project.tenant_id == tenant_id,
@@ -607,12 +637,12 @@ async def program_summary(
     pm_map = {str(uid): name for uid, name in pm_rows}
 
     total = len(projects)
-    active = sum(1 for p in projects if p.phase != "closed")
-    closed = sum(1 for p in projects if p.phase == "closed")
-    at_risk = sum(1 for p in projects if p.health_status != "green" and p.phase != "closed")
+    active = sum(1 for p in projects if p.phase != CERRADO)
+    closed = sum(1 for p in projects if p.phase == CERRADO)
+    at_risk = sum(1 for p in projects if p.health_status != "green" and p.phase != CERRADO)
     health_counts = {"green": 0, "yellow": 0, "red": 0}
     for p in projects:
-        if p.phase == "closed":
+        if p.phase == CERRADO:
             continue
         if p.health_status in health_counts:
             health_counts[p.health_status] += 1
@@ -669,6 +699,8 @@ async def program_summary(
         description=prog.description,
         organization_id=prog.organization_id,
         organization_name=org.name if org else None,
+        portfolio_id=prog.portfolio_id,
+        portfolio_name=portafolio.name if portafolio else None,
         is_active=prog.is_active,
         start_date=prog.start_date,
         end_date=prog.end_date,
@@ -715,11 +747,33 @@ async def update_program(
     ).scalar_one_or_none()
     if prog is None:
         raise not_found("Programa")
-    for f, v in body.model_dump(exclude_none=True).items():
+    cambios = body.model_dump(exclude_none=True)
+    destino = cambios.pop("portfolio_id", None)
+    if destino is not None and str(destino) != str(prog.portfolio_id):
+        # US-199 — mover un programa de portafolio **arrastra sus proyectos**.
+        # Sin eso, los proyectos se quedarían apuntando al portafolio viejo y
+        # violarían la regla de consistencia en el instante siguiente: la
+        # vista del portafolio nuevo mostraría el programa sin sus proyectos.
+        await validar_portafolio_de_organizacion(
+            db,
+            tenant_id=tenant_id,
+            organization_id=prog.organization_id,
+            portfolio_id=destino,
+        )
+        # `Mapped[UUID]` sobre una columna `String(36)`: la convención del
+        # repo es guardar el texto (ver `db/base.py::type_annotation_map`).
+        prog.portfolio_id = cast(UUID, str(destino))
+        await db.execute(
+            update(Project)
+            .where(Project.tenant_id == tenant_id, Project.program_id == prog.id)
+            .values(portfolio_id=str(destino))
+        )
+    for f, v in cambios.items():
         setattr(prog, f, v)
     await write_audit(
         db, action="program.update", module="organizations",
         user_id=cu.id, tenant_id=tenant_id, entity_type="program", entity_id=str(prog.id),
+        details={"portfolio_id": str(destino)} if destino is not None else None,
     )
     await db.commit()
     return ProgramRead.model_validate(prog)
@@ -750,78 +804,183 @@ async def delete_program(
     return Response(status_code=204)
 
 
-# -- Business Units (US-003) ----
-business_units_router = APIRouter(tags=["business-units"])
+# -- Portafolios (US-199 / ADR-037) ----
+# Reemplazan a los sub-routers de unidades de negocio y departamentos, que
+# modelaban el organigrama del cliente y nunca se usaron en producción. Las
+# rutas viejas dejan de existir: responden 404, que es lo correcto — un 410 o
+# un redirect mantendría vivo un concepto retirado.
+portfolios_router = APIRouter(tags=["portfolios"])
 
 
-def _bu_active_filter(stmt):
-    return stmt.where(BusinessUnit.deleted_at.is_(None))
+def _portfolio_vivo(stmt: Select[tuple[Portfolio]]) -> Select[tuple[Portfolio]]:
+    return stmt.where(Portfolio.deleted_at.is_(None))
 
 
-def _get_org_or_404(db_result):
-    org = db_result.scalar_one_or_none()
+def _get_org_or_404(db_result: Result[tuple[Organization]]) -> Organization:
+    org: Organization | None = db_result.scalar_one_or_none()
     if org is None:
         raise not_found("Organización")
     return org
 
 
-@business_units_router.post(
-    "/organizations/{org_id}/business-units",
-    response_model=BusinessUnitRead,
-    status_code=201,
-)
-async def create_business_unit(
-    org_id: UUID,
-    body: BusinessUnitCreate,
-    cu: CurrentUser = Depends(require_authenticated()),
-    db: AsyncSession = Depends(get_db),
-):
-    tenant_id = _ensure_tenant(cu)
-    org = _get_org_or_404(
+async def _org_del_tenant(db: AsyncSession, tenant_id: UUID, org_id: UUID) -> Organization:
+    return _get_org_or_404(
         await db.execute(
             select(Organization).where(
                 Organization.id == str(org_id), Organization.tenant_id == tenant_id
             )
         )
     )
-    existing = (
+
+
+async def _portafolio_o_404(db: AsyncSession, tenant_id: UUID, portfolio_id: UUID) -> Portfolio:
+    pf: Portfolio | None = (
         await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.organization_id == org.id,
-                BusinessUnit.name == body.name,
-                BusinessUnit.deleted_at.is_(None),
+            _portfolio_vivo(
+                select(Portfolio).where(
+                    Portfolio.id == str(portfolio_id),
+                    Portfolio.tenant_id == tenant_id,
+                )
             )
         )
     ).scalar_one_or_none()
-    if existing is not None:
+    if pf is None:
+        raise not_found("Portafolio")
+    return pf
+
+
+async def _validar_actor_dueno(
+    db: AsyncSession, tenant_id: UUID, owner_actor_id: str | UUID | None
+) -> None:
+    """El dueño del portafolio tiene que ser un actor del propio inquilino.
+
+    Sin esta comprobación, el identificador de un actor ajeno se guardaría tal
+    cual y el nombre del sponsor de otra empresa aparecería en la ficha.
+    """
+    if owner_actor_id is None:
+        return
+    existe = (
+        await db.execute(
+            select(Actor.id).where(
+                Actor.id == str(owner_actor_id), Actor.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if existe is None:
+        raise business_rule(
+            mensaje(
+                que="La persona indicada como dueña del portafolio no está en tu catálogo",
+                porque="La referencia apunta fuera de tu inquilino y quedaría rota.",
+                accion="Elige a alguien del directorio de personas de tu inquilino.",
+            )
+        )
+
+
+async def _conteos_de_portafolios(
+    db: AsyncSession, tenant_id: UUID, portfolio_ids: list[str]
+) -> tuple[dict[str, int], dict[str, int]]:
+    """Programas y proyectos activos por portafolio.
+
+    Dos consultas agrupadas y no una por portafolio: el panel de una
+    organización con veinte portafolios haría cuarenta viajes a la base para
+    pintar dos números por fila.
+    """
+    if not portfolio_ids:
+        return {}, {}
+    filas_prog = (
+        await db.execute(
+            select(Program.portfolio_id, func.count(Program.id))
+            .where(
+                Program.tenant_id == tenant_id,
+                Program.portfolio_id.in_(portfolio_ids),
+                Program.is_active.is_(True),
+            )
+            .group_by(Program.portfolio_id)
+        )
+    ).all()
+    filas_proy = (
+        await db.execute(
+            select(Project.portfolio_id, func.count(Project.id))
+            .where(
+                Project.tenant_id == tenant_id,
+                Project.portfolio_id.in_(portfolio_ids),
+                Project.deleted_at.is_(None),
+                Project.phase != CERRADO,
+            )
+            .group_by(Project.portfolio_id)
+        )
+    ).all()
+    return (
+        {str(pid): int(n) for pid, n in filas_prog},
+        {str(pid): int(n) for pid, n in filas_proy},
+    )
+
+
+def _portfolio_read(
+    pf: Portfolio, progs: dict[str, int], proys: dict[str, int]
+) -> PortfolioRead:
+    leido = PortfolioRead.model_validate(pf)
+    leido.program_count = progs.get(str(pf.id), 0)
+    leido.active_project_count = proys.get(str(pf.id), 0)
+    return leido
+
+
+@portfolios_router.post(
+    "/organizations/{org_id}/portfolios",
+    response_model=PortfolioRead,
+    status_code=201,
+)
+async def create_portfolio(
+    org_id: UUID,
+    body: PortfolioCreate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+):
+    tenant_id = _ensure_tenant(cu)
+    org = await _org_del_tenant(db, tenant_id, org_id)
+    existente = (
+        await db.execute(
+            _portfolio_vivo(
+                select(Portfolio).where(
+                    Portfolio.tenant_id == tenant_id,
+                    Portfolio.organization_id == org.id,
+                    Portfolio.name == body.name,
+                )
+            )
+        )
+    ).scalar_one_or_none()
+    if existente is not None:
         raise conflict(mensaje(
-            que="Unidad de negocio con ese nombre ya existe en la organización",
-            porque="Dos unidades con el mismo nombre serían indistinguibles al asignar.",
-            accion="Elige otro nombre, o edita la existente.",
+            que="Ya hay un portafolio con ese nombre en la organización",
+            porque="Dos portafolios con el mismo nombre serían indistinguibles al clasificar.",
+            accion="Elige otro nombre, o edita el que ya existe.",
         ))
-    bu = BusinessUnit(
+    await _validar_actor_dueno(db, tenant_id, body.owner_actor_id)
+    datos = body.model_dump()
+    if datos.get("owner_actor_id") is not None:
+        datos["owner_actor_id"] = str(datos["owner_actor_id"])
+    pf = Portfolio(
         tenant_id=tenant_id,
         organization_id=str(org.id),
         created_by=str(cu.id),
-        **body.model_dump(),
+        **datos,
     )
-    db.add(bu)
+    db.add(pf)
     await db.flush()
     await write_audit(
-        db, action="business_unit.create", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit", entity_id=str(bu.id),
+        db, action="portfolio.create", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="portfolio", entity_id=str(pf.id),
         details={"name": body.name, "organization_id": str(org.id)},
     )
     await db.commit()
-    return BusinessUnitRead.model_validate(bu)
+    return _portfolio_read(pf, {}, {})
 
 
-@business_units_router.get(
-    "/organizations/{org_id}/business-units",
-    response_model=list[BusinessUnitRead],
+@portfolios_router.get(
+    "/organizations/{org_id}/portfolios",
+    response_model=list[PortfolioRead],
 )
-async def list_business_units(
+async def list_portfolios(
     org_id: UUID,
     q: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
@@ -829,404 +988,136 @@ async def list_business_units(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
-    _get_org_or_404(
-        await db.execute(
-            select(Organization).where(
-                Organization.id == str(org_id), Organization.tenant_id == tenant_id
-            )
-        )
-    )
-    stmt = _bu_active_filter(
-        select(BusinessUnit).where(
-            BusinessUnit.tenant_id == tenant_id,
-            BusinessUnit.organization_id == str(org_id),
+    await _org_del_tenant(db, tenant_id, org_id)
+    stmt = _portfolio_vivo(
+        select(Portfolio).where(
+            Portfolio.tenant_id == tenant_id,
+            Portfolio.organization_id == str(org_id),
         )
     )
     if q:
-        stmt = stmt.where(func.lower(BusinessUnit.name).like(f"%{q.lower()}%"))
+        stmt = stmt.where(func.lower(Portfolio.name).like(f"%{q.lower()}%"))
     if is_active is not None:
-        stmt = stmt.where(BusinessUnit.is_active == is_active)
-    rows = (await db.execute(stmt.order_by(BusinessUnit.name))).scalars().all()
-    return [BusinessUnitRead.model_validate(b) for b in rows]
+        stmt = stmt.where(Portfolio.is_active == is_active)
+    filas = (await db.execute(stmt.order_by(Portfolio.name))).scalars().all()
+    progs, proys = await _conteos_de_portafolios(
+        db, tenant_id, [str(pf.id) for pf in filas]
+    )
+    return [_portfolio_read(pf, progs, proys) for pf in filas]
 
 
-@business_units_router.get(
-    "/business-units/{bu_id}", response_model=BusinessUnitRead
-)
-async def get_business_unit(
-    bu_id: UUID,
+@portfolios_router.get("/portfolios/{portfolio_id}", response_model=PortfolioRead)
+async def get_portfolio(
+    portfolio_id: UUID,
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
-    bu = (
-        await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.id == str(bu_id),
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if bu is None:
-        raise not_found("Unidad de negocio")
-    return BusinessUnitRead.model_validate(bu)
+    pf = await _portafolio_o_404(db, tenant_id, portfolio_id)
+    progs, proys = await _conteos_de_portafolios(db, tenant_id, [str(pf.id)])
+    return _portfolio_read(pf, progs, proys)
 
 
-@business_units_router.patch(
-    "/business-units/{bu_id}", response_model=BusinessUnitRead
-)
-async def update_business_unit(
-    bu_id: UUID,
-    body: BusinessUnitUpdate,
+@portfolios_router.patch("/portfolios/{portfolio_id}", response_model=PortfolioRead)
+async def update_portfolio(
+    portfolio_id: UUID,
+    body: PortfolioUpdate,
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
-    bu = (
-        await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.id == str(bu_id),
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if bu is None:
-        raise not_found("Unidad de negocio")
-    new_name = body.name
-    if new_name and new_name != bu.name:
-        clash = (
+    pf = await _portafolio_o_404(db, tenant_id, portfolio_id)
+    if body.name and body.name != pf.name:
+        choque = (
             await db.execute(
-                select(BusinessUnit).where(
-                    BusinessUnit.tenant_id == tenant_id,
-                    BusinessUnit.organization_id == bu.organization_id,
-                    BusinessUnit.name == new_name,
-                    BusinessUnit.id != bu.id,
-                    BusinessUnit.deleted_at.is_(None),
+                _portfolio_vivo(
+                    select(Portfolio).where(
+                        Portfolio.tenant_id == tenant_id,
+                        Portfolio.organization_id == pf.organization_id,
+                        Portfolio.name == body.name,
+                        Portfolio.id != pf.id,
+                    )
                 )
             )
         ).scalar_one_or_none()
-        if clash is not None:
+        if choque is not None:
             raise conflict(mensaje(
-                que="Unidad de negocio con ese nombre ya existe en la organización",
-                porque="Dos unidades con el mismo nombre serían indistinguibles al asignar.",
-                accion="Elige otro nombre, o edita la existente.",
+                que="Ya hay un portafolio con ese nombre en la organización",
+                porque="Dos portafolios con el mismo nombre serían indistinguibles al clasificar.",
+                accion="Elige otro nombre, o edita el que ya existe.",
             ))
-    for field, value in body.model_dump(exclude_none=True).items():
-        setattr(bu, field, value)
+    if body.owner_actor_id is not None:
+        await _validar_actor_dueno(db, tenant_id, body.owner_actor_id)
+    for campo, valor in body.model_dump(exclude_none=True).items():
+        setattr(pf, campo, str(valor) if campo == "owner_actor_id" else valor)
     await write_audit(
-        db, action="business_unit.update", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit", entity_id=str(bu.id),
+        db, action="portfolio.update", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="portfolio", entity_id=str(pf.id),
     )
     await db.commit()
-    return BusinessUnitRead.model_validate(bu)
+    progs, proys = await _conteos_de_portafolios(db, tenant_id, [str(pf.id)])
+    return _portfolio_read(pf, progs, proys)
 
 
-@business_units_router.delete("/business-units/{bu_id}", status_code=204)
-async def delete_business_unit(
-    bu_id: UUID,
+@portfolios_router.delete("/portfolios/{portfolio_id}", status_code=204)
+async def delete_portfolio(
+    portfolio_id: UUID,
     force: bool = Query(default=False),
     cu: CurrentUser = Depends(require_capability("organizations.delete")),
     db: AsyncSession = Depends(get_db),
 ):
+    """Primer paso de la papelera (ADR-017): desactiva, no borra.
+
+    Con programas activos dentro exige `force=true`, igual que hacía la unidad
+    de negocio con sus departamentos: retirar el portafolio sin decirlo dejaría
+    sus programas colgando de algo que ninguna pantalla lista.
+    """
     tenant_id = _ensure_tenant(cu)
-    bu = (
+    pf = await _portafolio_o_404(db, tenant_id, portfolio_id)
+    programas_activos = (
         await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.id == str(bu_id),
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if bu is None:
-        raise not_found("Unidad de negocio")
-    active_depts = (
-        await db.execute(
-            select(Department.id, Department.name).where(
-                Department.tenant_id == tenant_id,
-                Department.business_unit_id == bu.id,
-                Department.deleted_at.is_(None),
-                Department.is_active.is_(True),
-            )
-        )
-    ).all()
-    if active_depts and not force:
-        raise business_rule(
-            mensaje(
-                que="La unidad de negocio tiene departamentos activos. "
-                    "Use force=true para soft-delete con cascada lógica.",
-                porque="Retirar la unidad dejaría sus departamentos colgando de nada.",
-                accion="Mueve o cierra los departamentos, o repite con `force=true` para desactivarlos en cascada.",
-            ),
-            code="BU_HAS_ACTIVE_DEPARTMENTS",
-        )
-    bu.is_active = False
-    from datetime import datetime
-
-    bu.deleted_at = datetime.now(UTC)
-    if force:
-        for dept_id, _ in active_depts:
-            dept = (
-                await db.execute(select(Department).where(Department.id == dept_id))
-            ).scalar_one()
-            dept.is_active = False
-            dept.deleted_at = bu.deleted_at
-    await write_audit(
-        db, action="business_unit.delete", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit", entity_id=str(bu.id),
-        details={"force": force, "cascaded_departments": [d for _, d in active_depts]},
-    )
-    await db.commit()
-    from fastapi.responses import Response
-
-    return Response(status_code=204)
-
-
-# -- Departments (US-004) ----
-departments_router = APIRouter(tags=["departments"])
-
-
-def _get_bu_or_404(db_result):
-    bu = db_result.scalar_one_or_none()
-    if bu is None:
-        raise not_found("Unidad de negocio")
-    return bu
-
-
-@departments_router.post(
-    "/business-units/{bu_id}/departments",
-    response_model=DepartmentRead,
-    status_code=201,
-)
-async def create_department(
-    bu_id: UUID,
-    body: DepartmentCreate,
-    cu: CurrentUser = Depends(require_authenticated()),
-    db: AsyncSession = Depends(get_db),
-):
-    tenant_id = _ensure_tenant(cu)
-    bu = _get_bu_or_404(
-        await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.id == str(bu_id),
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.deleted_at.is_(None),
-            )
-        )
-    )
-    existing = (
-        await db.execute(
-            select(Department).where(
-                Department.tenant_id == tenant_id,
-                Department.business_unit_id == bu.id,
-                Department.name == body.name,
-                Department.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if existing is not None:
-        raise conflict(mensaje(
-            que="Departamento con ese nombre ya existe en la unidad de negocio",
-            porque="Dos departamentos con el mismo nombre en la misma unidad serían indistinguibles al asignar.",
-            accion="Elige otro nombre, o edita el existente.",
-        ))
-    dept = Department(
-        tenant_id=tenant_id,
-        business_unit_id=str(bu.id),
-        created_by=str(cu.id),
-        **body.model_dump(),
-    )
-    db.add(dept)
-    await db.flush()
-    await write_audit(
-        db, action="department.create", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="department", entity_id=str(dept.id),
-        details={"name": body.name, "business_unit_id": str(bu.id)},
-    )
-    await db.commit()
-    return DepartmentRead.model_validate(dept)
-
-
-@departments_router.get(
-    "/business-units/{bu_id}/departments",
-    response_model=list[DepartmentRead],
-)
-async def list_departments(
-    bu_id: UUID,
-    q: str | None = Query(default=None),
-    is_active: bool | None = Query(default=None),
-    cu: CurrentUser = Depends(require_authenticated()),
-    db: AsyncSession = Depends(get_db),
-):
-    tenant_id = _ensure_tenant(cu)
-    _get_bu_or_404(
-        await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.id == str(bu_id),
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.deleted_at.is_(None),
-            )
-        )
-    )
-    stmt = select(Department).where(
-        Department.tenant_id == tenant_id,
-        Department.business_unit_id == str(bu_id),
-        Department.deleted_at.is_(None),
-    )
-    if q:
-        stmt = stmt.where(func.lower(Department.name).like(f"%{q.lower()}%"))
-    if is_active is not None:
-        stmt = stmt.where(Department.is_active == is_active)
-    rows = (await db.execute(stmt.order_by(Department.name))).scalars().all()
-    return [DepartmentRead.model_validate(d) for d in rows]
-
-
-@departments_router.get(
-    "/departments/{dept_id}", response_model=DepartmentRead
-)
-async def get_department(
-    dept_id: UUID,
-    cu: CurrentUser = Depends(require_authenticated()),
-    db: AsyncSession = Depends(get_db),
-):
-    tenant_id = _ensure_tenant(cu)
-    dept = (
-        await db.execute(
-            select(Department).where(
-                Department.id == str(dept_id),
-                Department.tenant_id == tenant_id,
-                Department.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if dept is None:
-        raise not_found("Departamento")
-    return DepartmentRead.model_validate(dept)
-
-
-@departments_router.patch(
-    "/departments/{dept_id}", response_model=DepartmentRead
-)
-async def update_department(
-    dept_id: UUID,
-    body: DepartmentUpdate,
-    cu: CurrentUser = Depends(require_authenticated()),
-    db: AsyncSession = Depends(get_db),
-):
-    tenant_id = _ensure_tenant(cu)
-    dept = (
-        await db.execute(
-            select(Department).where(
-                Department.id == str(dept_id),
-                Department.tenant_id == tenant_id,
-                Department.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if dept is None:
-        raise not_found("Departamento")
-    new_name = body.name
-    if new_name and new_name != dept.name:
-        clash = (
-            await db.execute(
-                select(Department).where(
-                    Department.tenant_id == tenant_id,
-                    Department.business_unit_id == dept.business_unit_id,
-                    Department.name == new_name,
-                    Department.id != dept.id,
-                    Department.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
-        if clash is not None:
-            raise conflict(mensaje(
-                que="Departamento con ese nombre ya existe en la unidad de negocio",
-                porque="Dos departamentos con el mismo nombre en la misma unidad serían indistinguibles al asignar.",
-                accion="Elige otro nombre, o edita el existente.",
-            ))
-    for field, value in body.model_dump(exclude_none=True).items():
-        setattr(dept, field, value)
-    await write_audit(
-        db, action="department.update", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="department", entity_id=str(dept.id),
-    )
-    await db.commit()
-    return DepartmentRead.model_validate(dept)
-
-
-@departments_router.delete("/departments/{dept_id}", status_code=204)
-async def delete_department(
-    dept_id: UUID,
-    force: bool = Query(default=False),
-    cu: CurrentUser = Depends(require_capability("organizations.delete")),
-    db: AsyncSession = Depends(get_db),
-):
-    tenant_id = _ensure_tenant(cu)
-    dept = (
-        await db.execute(
-            select(Department).where(
-                Department.id == str(dept_id),
-                Department.tenant_id == tenant_id,
-                Department.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one_or_none()
-    if dept is None:
-        raise not_found("Departamento")
-
-    active_programs = (
-        await db.execute(
-            select(func.count(Program.id)).where(
+            select(Program.id, Program.name).where(
                 Program.tenant_id == tenant_id,
-                Program.department_id == dept.id,
+                Program.portfolio_id == pf.id,
                 Program.is_active.is_(True),
             )
         )
-    ).scalar_one()
-    active_projects = (
-        await db.execute(
-            select(func.count(Project.id)).where(
-                Project.tenant_id == tenant_id,
-                Project.department_id == dept.id,
-                Project.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one()
-    if (active_programs or active_projects) and not force:
+    ).all()
+    if programas_activos and not force:
         raise business_rule(
             mensaje(
-                que="El departamento tiene programas o proyectos activos. "
-                    f"Programas: {active_programs}, Proyectos: {active_projects}. "
-                    "Use force=true para soft-delete.",
-                porque="Retirar el departamento dejaría ese trabajo sin dueño en la estructura.",
-                accion="Mueve o cierra lo que cuelga de él, o repite con `force=true` para desactivarlo en cascada.",
+                que=(
+                    f"El portafolio tiene {len(programas_activos)} programa(s) "
+                    "activo(s). Usa force=true para desactivarlos en cascada."
+                ),
+                porque="Retirar el portafolio dejaría sus programas colgando de nada.",
+                accion="Mueve o cierra los programas, o repite con `force=true`.",
             ),
-            code="DEPT_HAS_ACTIVE_CHILDREN",
+            code="PORTFOLIO_HAS_ACTIVE_PROGRAMS",
         )
-
-    from datetime import datetime
-
-    dept.is_active = False
-    dept.deleted_at = datetime.now(UTC)
+    ahora = datetime.now(UTC)
+    pf.is_active = False
+    pf.deleted_at = ahora
+    if force:
+        await db.execute(
+            update(Program)
+            .where(Program.tenant_id == tenant_id, Program.portfolio_id == pf.id)
+            .values(is_active=False)
+        )
     await write_audit(
-        db, action="department.delete", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="department", entity_id=str(dept.id),
+        db, action="portfolio.delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="portfolio", entity_id=str(pf.id),
         details={
             "force": force,
-            "active_programs": active_programs,
-            "active_projects": active_projects,
+            "cascaded_programs": [nombre for _, nombre in programas_activos],
         },
     )
     await db.commit()
-    from fastapi.responses import Response
-
     return Response(status_code=204)
 
 
 # =============================================================================
-# US-088 — Hard delete (segundo paso) para org/program/BU/dept
+# US-088 — Hard delete (segundo paso) para org/portafolio/programa
 # =============================================================================
 # Patrón: requiere is_active=False + ?confirm=<slug> exacto.
 # Cascada explícita por entidad (FK CASCADE no cubre todos los casos — ver
@@ -1243,6 +1134,47 @@ async def _project_count_for_program(db: AsyncSession, tenant_id, program_id: st
             )
         )
     ).scalar_one()
+
+
+async def _desreferenciar_clasificacion(
+    db: AsyncSession,
+    tenant_id: UUID,
+    *,
+    portfolio_ids: list[str] | None = None,
+    program_ids: list[str] | None = None,
+) -> None:
+    """Suelta las solicitudes y actas que apuntan a lo que está por borrarse.
+
+    `project_requests.{portfolio_id, program_id}` y las dos equivalentes de
+    `project_charters` son claves ajenas **sin** `ondelete`, así que borrar el
+    portafolio o el programa con una solicitud apuntándole revienta contra la
+    restricción — un 500 en la cara de quien confirmó el borrado.
+
+    Se desreferencian en vez de borrarse porque una solicitud es un registro
+    histórico de lo que alguien pidió: pierde su clasificación, no su
+    existencia. Las actas de proyectos que sí se borran caen por su propia
+    cascada; esta pasada cubre a las de los proyectos que sobreviven.
+    """
+    for modelo in (ProjectRequest, ProjectCharter):
+        if portfolio_ids:
+            await db.execute(
+                update(modelo)
+                .where(
+                    modelo.tenant_id == tenant_id,
+                    modelo.portfolio_id.in_(portfolio_ids),
+                )
+                .values(portfolio_id=None)
+            )
+        if program_ids:
+            await db.execute(
+                update(modelo)
+                .where(
+                    modelo.tenant_id == tenant_id,
+                    modelo.program_id.in_(program_ids),
+                )
+                .values(program_id=None)
+            )
+    await db.flush()
 
 
 async def _delete_projects_in(db: AsyncSession, tenant_id, where) -> int:
@@ -1317,6 +1249,9 @@ async def hard_delete_program(
     deleted_projects = await _delete_projects_in(
         db, tenant_id, Project.program_id == prog.id
     )
+    # US-199 — una solicitud puede apuntar a este programa sin haber llegado a
+    # proyecto. Sin soltarla, el borrado choca contra su clave ajena.
+    await _desreferenciar_clasificacion(db, tenant_id, program_ids=[str(prog.id)])
     await db.delete(prog)
     await write_audit(
         db, action="program.hard_delete", module="organizations",
@@ -1348,9 +1283,9 @@ async def preview_hard_delete_org(
     ).scalar_one_or_none()
     if org is None:
         raise not_found("Organización")
-    bu = (await db.execute(
-        select(func.count(BusinessUnit.id)).where(
-            BusinessUnit.tenant_id == tenant_id, BusinessUnit.organization_id == org.id
+    portafolios = (await db.execute(
+        select(func.count(Portfolio.id)).where(
+            Portfolio.tenant_id == tenant_id, Portfolio.organization_id == org.id
         )
     )).scalar_one()
     progs = (await db.execute(
@@ -1376,7 +1311,7 @@ async def preview_hard_delete_org(
         is_active=org.is_active,
         confirm_slug=confirm_slug("organization", org.name),
         cascades={
-            "business_units": bu,
+            "portfolios": portafolios,
             "programs": progs,
             "projects": projects,
             "project_requests": requests,
@@ -1404,10 +1339,10 @@ async def hard_delete_org(
     ensure_inactive(org.is_active, "Organización")
 
     cascades_preview = {
-        "business_units": (await db.execute(
-            select(func.count(BusinessUnit.id)).where(
-                BusinessUnit.tenant_id == tenant_id,
-                BusinessUnit.organization_id == org.id,
+        "portfolios": (await db.execute(
+            select(func.count(Portfolio.id)).where(
+                Portfolio.tenant_id == tenant_id,
+                Portfolio.organization_id == org.id,
             )
         )).scalar_one(),
         "programs": (await db.execute(
@@ -1449,8 +1384,9 @@ async def hard_delete_org(
     for r in requests:
         await db.delete(r)
     # Charter.organization_id es nullable y los charters ya fueron borrados
-    # vía cascade desde Project. El resto cae por FK CASCADE: BUs, programs,
-    # exclusions, notifications. Stakeholders.organization_id queda SET NULL.
+    # vía cascade desde Project. El resto cae por FK CASCADE: portafolios,
+    # programs, exclusions, notifications. Stakeholders.organization_id queda
+    # SET NULL.
     await db.flush()
     await db.delete(org)
     await write_audit(
@@ -1472,232 +1408,169 @@ async def hard_delete_org(
     return Response(status_code=204)
 
 
-@business_units_router.get(
-    "/business-units/{bu_id}/hard-delete-preview",
+@portfolios_router.get(
+    "/portfolios/{portfolio_id}/hard-delete-preview",
     response_model=HardDeletePreview,
 )
-async def preview_hard_delete_bu(
-    bu_id: UUID,
+async def preview_hard_delete_portfolio(
+    portfolio_id: UUID,
     cu: CurrentUser = Depends(require_capability("organizations.delete")),
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _ensure_tenant(cu)
-    bu = (
+    # Sin filtro de `deleted_at`: el segundo paso opera precisamente sobre lo
+    # que el primero mandó a la papelera.
+    pf = (
         await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.id == str(bu_id),
-                BusinessUnit.tenant_id == tenant_id,
+            select(Portfolio).where(
+                Portfolio.id == str(portfolio_id), Portfolio.tenant_id == tenant_id
             )
         )
     ).scalar_one_or_none()
-    if bu is None:
-        raise not_found("Unidad de negocio")
-    depts = (await db.execute(
-        select(func.count(Department.id)).where(
-            Department.tenant_id == tenant_id, Department.business_unit_id == bu.id
-        )
-    )).scalar_one()
-    proj_links = (await db.execute(
-        select(func.count(Project.id)).where(
-            Project.tenant_id == tenant_id, Project.business_unit_id == bu.id
-        )
-    )).scalar_one()
+    if pf is None:
+        raise not_found("Portafolio")
+    programas, proyectos_de_programa, proyectos_directos = await _cascada_de_portafolio(
+        db, tenant_id, pf
+    )
     return HardDeletePreview(
-        entity_type="business_unit",
-        entity_id=str(bu.id),
-        entity_name=bu.name,
-        # `is_active` puede estar en True aunque ya tenga `deleted_at`. Para
-        # el gate consideramos que un BU con deleted_at ya fue desactivado.
-        is_active=bu.is_active and bu.deleted_at is None,
-        confirm_slug=confirm_slug("business_unit", bu.name),
+        entity_type="portfolio",
+        entity_id=str(pf.id),
+        entity_name=pf.name,
+        # `is_active` puede seguir en True con `deleted_at` puesto. Para el
+        # gate, un portafolio con fecha de borrado ya fue desactivado.
+        is_active=pf.is_active and pf.deleted_at is None,
+        confirm_slug=confirm_slug("portfolio", pf.name),
         cascades={
-            "departments": depts,
-            "project_links_to_unset": proj_links,
+            "programs": programas,
+            "projects_in_programs": proyectos_de_programa,
+            "projects_direct": proyectos_directos,
         },
     )
 
 
-@business_units_router.delete(
-    "/business-units/{bu_id}/permanent", status_code=204
-)
-async def hard_delete_bu(
-    bu_id: UUID,
+async def _cascada_de_portafolio(
+    db: AsyncSession, tenant_id: UUID, pf: Portfolio
+) -> tuple[int, int, int]:
+    """Qué se lleva por delante el borrado permanente de un portafolio.
+
+    Tres números y no uno, porque son tres cosas distintas de aceptar:
+    programas, los proyectos que cuelgan de esos programas, y los proyectos que
+    cuelgan del portafolio sin programa. Un total agregado esconde justo lo que
+    hay que leer antes de escribir el nombre para confirmar.
+    """
+    programas = (
+        await db.execute(
+            select(Program.id).where(
+                Program.tenant_id == tenant_id, Program.portfolio_id == pf.id
+            )
+        )
+    ).scalars().all()
+    if programas:
+        en_programas = (
+            await db.execute(
+                select(func.count(Project.id)).where(
+                    Project.tenant_id == tenant_id, Project.program_id.in_(programas)
+                )
+            )
+        ).scalar_one()
+    else:
+        en_programas = 0
+    directos = (
+        await db.execute(
+            select(func.count(Project.id)).where(
+                Project.tenant_id == tenant_id,
+                Project.portfolio_id == pf.id,
+                Project.program_id.is_(None),
+            )
+        )
+    ).scalar_one()
+    return len(programas), int(en_programas), int(directos)
+
+
+@portfolios_router.delete("/portfolios/{portfolio_id}/permanent", status_code=204)
+async def hard_delete_portfolio(
+    portfolio_id: UUID,
     confirm: str = Query(...),
     cu: CurrentUser = Depends(require_capability("organizations.delete")),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import update
+    """Segundo paso: borrado físico, con su cascada explícita (ADR-017).
 
+    **Borra proyectos.** `programs.portfolio_id` es NOT NULL, así que no hay
+    forma de dejar un programa sin portafolio: o se mueve antes, o cae con él,
+    y con él caen sus proyectos. Es la misma cascada que ya tenía el borrado
+    permanente de un programa. Los proyectos que cuelgan directo del portafolio
+    **no** se borran: su `portfolio_id` admite nulo, así que se desreferencian
+    y siguen existiendo — borrar un proyecto por su clasificación sería
+    perderlo por un cambio de taxonomía.
+    """
     tenant_id = _ensure_tenant(cu)
-    bu = (
+    pf = (
         await db.execute(
-            select(BusinessUnit).where(
-                BusinessUnit.id == str(bu_id),
-                BusinessUnit.tenant_id == tenant_id,
+            select(Portfolio).where(
+                Portfolio.id == str(portfolio_id), Portfolio.tenant_id == tenant_id
             )
         )
     ).scalar_one_or_none()
-    if bu is None:
-        raise not_found("Unidad de negocio")
-    is_inactive_state = (not bu.is_active) or bu.deleted_at is not None
-    if not is_inactive_state:
-        ensure_inactive(True, "Unidad de negocio")  # lanza siempre
+    if pf is None:
+        raise not_found("Portafolio")
+    if pf.is_active and pf.deleted_at is None:
+        ensure_inactive(True, "Portafolio")  # lanza siempre
 
-    depts = (await db.execute(
-        select(func.count(Department.id)).where(
-            Department.tenant_id == tenant_id, Department.business_unit_id == bu.id
-        )
-    )).scalar_one()
-    proj_links = (await db.execute(
-        select(func.count(Project.id)).where(
-            Project.tenant_id == tenant_id, Project.business_unit_id == bu.id
-        )
-    )).scalar_one()
+    programas, en_programas, directos = await _cascada_de_portafolio(db, tenant_id, pf)
     ensure_confirm(
         confirm,
-        confirm_slug("business_unit", bu.name),
-        preview={"departments": depts, "project_links_to_unset": proj_links},
+        confirm_slug("portfolio", pf.name),
+        preview={
+            "programs": programas,
+            "projects_in_programs": en_programas,
+            "projects_direct": directos,
+        },
     )
 
-    # Desreferenciar tablas con FK nullable que no cascadea.
+    # Los proyectos que cuelgan directo se quedan; pierden la clasificación.
     await db.execute(
-        update(Project).where(Project.business_unit_id == bu.id).values(business_unit_id=None)
+        update(Project)
+        .where(
+            Project.tenant_id == tenant_id,
+            Project.portfolio_id == pf.id,
+            Project.program_id.is_(None),
+        )
+        .values(portfolio_id=None)
     )
-    await db.execute(
-        update(ProjectCharter).where(ProjectCharter.business_unit_id == bu.id).values(business_unit_id=None)
+    filas_programa = (
+        await db.execute(
+            select(Program).where(
+                Program.tenant_id == tenant_id, Program.portfolio_id == pf.id
+            )
+        )
+    ).scalars().all()
+    await _desreferenciar_clasificacion(
+        db,
+        tenant_id,
+        portfolio_ids=[str(pf.id)],
+        program_ids=[str(prog.id) for prog in filas_programa],
     )
-    await db.execute(
-        update(ProjectRequest).where(ProjectRequest.business_unit_id == bu.id).values(business_unit_id=None)
-    )
+    borrados = 0
+    for prog in filas_programa:
+        borrados += await _delete_projects_in(db, tenant_id, Project.program_id == prog.id)
+        await db.delete(prog)
     await db.flush()
-    # Departments cascadea por FK ondelete=CASCADE.
-    await db.delete(bu)
+    await db.delete(pf)
     await write_audit(
-        db, action="business_unit.hard_delete", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="business_unit",
-        entity_id=str(bu.id),
+        db, action="portfolio.hard_delete", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="portfolio",
+        entity_id=str(pf.id),
         details={
-            "name": bu.name,
-            "cascades": {"departments": depts, "project_links_unset": proj_links},
+            "name": pf.name,
+            "cascades": {
+                "programs": len(filas_programa),
+                "projects_deleted": borrados,
+                "projects_unset": directos,
+            },
         },
     )
     await db.commit()
-    from fastapi.responses import Response
-
-    return Response(status_code=204)
-
-
-@departments_router.get(
-    "/departments/{dept_id}/hard-delete-preview",
-    response_model=HardDeletePreview,
-)
-async def preview_hard_delete_dept(
-    dept_id: UUID,
-    cu: CurrentUser = Depends(require_capability("organizations.delete")),
-    db: AsyncSession = Depends(get_db),
-):
-    tenant_id = _ensure_tenant(cu)
-    dept = (
-        await db.execute(
-            select(Department).where(
-                Department.id == str(dept_id),
-                Department.tenant_id == tenant_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if dept is None:
-        raise not_found("Departamento")
-    progs = (await db.execute(
-        select(func.count(Program.id)).where(
-            Program.tenant_id == tenant_id, Program.department_id == dept.id
-        )
-    )).scalar_one()
-    projs = (await db.execute(
-        select(func.count(Project.id)).where(
-            Project.tenant_id == tenant_id, Project.department_id == dept.id
-        )
-    )).scalar_one()
-    return HardDeletePreview(
-        entity_type="department",
-        entity_id=str(dept.id),
-        entity_name=dept.name,
-        is_active=dept.is_active and dept.deleted_at is None,
-        confirm_slug=confirm_slug("department", dept.name),
-        cascades={
-            "program_links_to_unset": progs,
-            "project_links_to_unset": projs,
-        },
-    )
-
-
-@departments_router.delete(
-    "/departments/{dept_id}/permanent", status_code=204
-)
-async def hard_delete_dept(
-    dept_id: UUID,
-    confirm: str = Query(...),
-    cu: CurrentUser = Depends(require_capability("organizations.delete")),
-    db: AsyncSession = Depends(get_db),
-):
-    from sqlalchemy import update
-
-    tenant_id = _ensure_tenant(cu)
-    dept = (
-        await db.execute(
-            select(Department).where(
-                Department.id == str(dept_id),
-                Department.tenant_id == tenant_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if dept is None:
-        raise not_found("Departamento")
-    is_inactive_state = (not dept.is_active) or dept.deleted_at is not None
-    if not is_inactive_state:
-        ensure_inactive(True, "Departamento")
-
-    progs = (await db.execute(
-        select(func.count(Program.id)).where(
-            Program.tenant_id == tenant_id, Program.department_id == dept.id
-        )
-    )).scalar_one()
-    projs = (await db.execute(
-        select(func.count(Project.id)).where(
-            Project.tenant_id == tenant_id, Project.department_id == dept.id
-        )
-    )).scalar_one()
-    ensure_confirm(
-        confirm,
-        confirm_slug("department", dept.name),
-        preview={"program_links_to_unset": progs, "project_links_to_unset": projs},
-    )
-
-    await db.execute(
-        update(Program).where(Program.department_id == dept.id).values(department_id=None)
-    )
-    await db.execute(
-        update(Project).where(Project.department_id == dept.id).values(department_id=None)
-    )
-    await db.execute(
-        update(ProjectCharter).where(ProjectCharter.department_id == dept.id).values(department_id=None)
-    )
-    await db.execute(
-        update(ProjectRequest).where(ProjectRequest.department_id == dept.id).values(department_id=None)
-    )
-    await db.flush()
-    await db.delete(dept)
-    await write_audit(
-        db, action="department.hard_delete", module="organizations",
-        user_id=cu.id, tenant_id=tenant_id, entity_type="department",
-        entity_id=str(dept.id),
-        details={
-            "name": dept.name,
-            "cascades": {"program_links_unset": progs, "project_links_unset": projs},
-        },
-    )
-    await db.commit()
-    from fastapi.responses import Response
-
     return Response(status_code=204)
 
 

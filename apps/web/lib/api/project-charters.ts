@@ -23,8 +23,9 @@ export type ProjectCharter = {
   project_name: string;
   description: string | null;
   organization_id: string | null;
-  business_unit_id: string | null;
-  department_id: string | null;
+  /** US-199 — el acta hereda la clasificación del proyecto (ADR-037). */
+  portfolio_id: string | null;
+  program_id: string | null;
 
   // Sección 2
   sponsor: string | null;
@@ -79,8 +80,8 @@ export const CHARTER_FIELD_LABEL: Record<string, string> = {
 export type ProjectCharterUpdate = {
   project_name?: string;
   description?: string | null;
-  business_unit_id?: string | null;
-  department_id?: string | null;
+  portfolio_id?: string | null;
+  program_id?: string | null;
   sponsor?: string | null;
   sponsor_email?: string | null;
   business_leader?: string | null;

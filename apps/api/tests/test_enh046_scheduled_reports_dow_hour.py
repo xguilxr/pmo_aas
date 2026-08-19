@@ -51,9 +51,9 @@ async def _seed_project(db_session, tenant):
         folio="P-046",
         name="P046",
         description="t",
-        type="operation",
+        type="operacion",
         priority=3,
-        phase="execution",
+        phase="ejecucion",
         pm_id=me.id,
     )
     # organization_id NOT NULL FK → seed un org rápida.

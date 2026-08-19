@@ -225,8 +225,8 @@ def _render_charter_docx(
             ("Nombre", charter.project_name),
             ("Descripción", charter.description),
             ("Organización", charter.organization_id),
-            ("Unidad de negocio", charter.business_unit_id),
-            ("Departamento", charter.department_id),
+            ("Portafolio", charter.portfolio_id),
+            ("Programa", charter.program_id),
         ],
     )
 

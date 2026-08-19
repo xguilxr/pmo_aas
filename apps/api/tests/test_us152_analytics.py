@@ -4,11 +4,11 @@ from decimal import Decimal
 import pytest
 
 from app.models.modules import Risk
-from app.models.organization import Program
 from app.models.project import Project
 from app.models.role import Role
 from tests.factories import (
     create_admin_role,
+    create_program,
     create_tenant,
     create_user,
     login,
@@ -28,21 +28,26 @@ async def _setup(client, db_session):
     )
     org_id = r.json()["id"]
 
-    prog = Program(tenant_id=t.id, organization_id=org_id, name="Prog A")
-    db_session.add(prog)
-    await db_session.flush()
+    prog = await create_program(
+        db_session, tenant_id=t.id, organization_id=org_id, name="Prog A"
+    )
 
     specs = [
-        ("planning", "green", Decimal("100000"), prog.id),
-        ("execution", "yellow", Decimal("200000"), prog.id),
-        ("execution", "red", Decimal("500000"), None),
+        ("preparacion", "green", Decimal("100000"), prog.id),
+        ("ejecucion", "yellow", Decimal("200000"), prog.id),
+        ("ejecucion", "red", Decimal("500000"), None),
     ]
     projects = []
     for i, (phase, health, budget, program_id) in enumerate(specs):
         p = Project(
             tenant_id=t.id, organization_id=org_id, program_id=program_id,
+            # US-201 — con programa, el portafolio es el del programa (regla de
+            # consistencia de US-198). Un proyecto con programa y sin portafolio
+            # es un dato inválido, y aquí se notaba: desaparecía del filtro de
+            # portafolio sin que nada fallara.
+            portfolio_id=str(prog.portfolio_id) if program_id else None,
             folio=f"PRJ-2026-{i + 1:03d}", name=f"P{i + 1}", phase=phase,
-            health_status=health, budget=budget, progress=20, type="transformation",
+            health_status=health, budget=budget, progress=20, type="transformacion",
         )
         db_session.add(p)
         projects.append(p)
@@ -71,8 +76,10 @@ async def test_capture_then_trends(client, db_session):
 
     r = await client.post("/api/v1/dashboard/snapshots/capture", headers=auth["_authz"])
     assert r.status_code == 200
-    # 1 tenant + 1 org + 1 programa + 3 proyectos
-    assert r.json()["rows"] == 6
+    # 1 tenant + 1 org + 1 portafolio + 1 programa + 3 proyectos. El portafolio
+    # es el «Portafolio General» que `create_program` resuelve al vuelo (DEC-030):
+    # US-201 sumó ese nivel al recorrido del snapshot.
+    assert r.json()["rows"] == 7
 
     r = await client.get("/api/v1/dashboard/trends?scope=tenant", headers=auth["_authz"])
     assert r.status_code == 200
@@ -140,10 +147,21 @@ async def test_treemap_nesting(client, db_session):
     assert r.status_code == 200
     tree = r.json()["tree"]
     org_node = next(o for o in tree if o["id"] == org_id)
-    prog_ids = {c["id"] for c in org_node["children"]}
+    # US-201 — el árbol tiene cuatro niveles: el portafolio entra entre la
+    # organización y el programa. Los proyectos de `_setup` cuelgan del
+    # «Portafolio General» que resuelve `create_program`, y P3 —que no tiene
+    # programa— no tiene portafolio tampoco, así que cae en «Sin clasificar».
+    carteras = {c["name"]: c for c in org_node["children"]}
+    assert "Portafolio General" in carteras
+    assert "Sin clasificar" in carteras
+
+    prog_ids = {c["id"] for c in carteras["Portafolio General"]["children"]}
     assert str(prog.id) in prog_ids
-    assert "none" in prog_ids  # P3 sin programa
-    prog_node = next(c for c in org_node["children"] if c["id"] == str(prog.id))
+    assert {c["id"] for c in carteras["Sin clasificar"]["children"]} == {"none"}
+
+    prog_node = next(
+        c for c in carteras["Portafolio General"]["children"] if c["id"] == str(prog.id)
+    )
     assert len(prog_node["children"]) == 2  # P1 + P2
     assert all("value" in leaf and "health" in leaf for leaf in prog_node["children"])
 

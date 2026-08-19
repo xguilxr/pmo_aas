@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Briefcase,
   Building2,
   FolderKanban,
   Layers,
   Plus,
   Search,
-  Users,
-  Workflow,
 } from "lucide-react";
 
 import { ProgramModal } from "@/components/program-modal";
@@ -25,7 +24,6 @@ import {
   listOrganizationPanels,
   type OrganizationPanel,
 } from "@/lib/api/organizations";
-import { useOrgLabel } from "@/lib/org-label";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 function useDebounced<T>(value: T, delayMs = 300): T {
@@ -134,14 +132,9 @@ function OrgCard({ panel }: { panel: OrganizationPanel }) {
 
       <div className="grid grid-cols-2 gap-2">
         <MetricTile
-          icon={<Workflow className="h-4 w-4" aria-hidden />}
-          label="Unidades"
-          value={panel.business_unit_count}
-        />
-        <MetricTile
-          icon={<Users className="h-4 w-4" aria-hidden />}
-          label="Departamentos"
-          value={panel.department_count}
+          icon={<Briefcase className="h-4 w-4" aria-hidden />}
+          label="Portafolios"
+          value={panel.portfolio_count}
         />
         <MetricTile
           icon={<Layers className="h-4 w-4" aria-hidden />}
@@ -180,7 +173,6 @@ export default function OrganizationsListPage() {
   const [error, setError] = useState<string | null>(null);
   const [showProgramModal, setShowProgramModal] = useState(false);
   // ENH-190: label configurable por tenant para "Organización(es)".
-  const orgLabel = useOrgLabel();
 
   useEffect(() => {
     let cancelled = false;
@@ -198,9 +190,7 @@ export default function OrganizationsListPage() {
           setError(
             err instanceof ApiError
               ? err.message
-              : orgLabel.singular === "Portafolio"
-                ? "No se pudieron cargar los portafolios"
-                : "No se pudieron cargar las organizaciones",
+              : "No se pudieron cargar las organizaciones",
           );
         }
       })
@@ -222,11 +212,11 @@ export default function OrganizationsListPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-            {orgLabel.plural}
+            Organizaciones
           </h1>
           {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-            Vista de paneles. Click en {orgLabel.singularArticled} para ver su
+            Vista de paneles. Click en una organización para ver su
             detalle, programas y proyectos.
           </p>
         </div>
@@ -241,8 +231,7 @@ export default function OrganizationsListPage() {
             <Link href="/admin/organizations/new">
               <Button>
                 <Plus className="h-4 w-4" aria-hidden />
-                {orgLabel.singular === "Portafolio" ? "Nuevo" : "Nueva"}{" "}
-                {orgLabel.singular.toLowerCase()}
+                Nueva organización
               </Button>
             </Link>
           ) : null}
@@ -262,7 +251,7 @@ export default function OrganizationsListPage() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre"
               className="pl-9"
-              aria-label={`Buscar ${orgLabel.plural.toLowerCase()}`}
+              aria-label="Buscar organizaciones"
             />
           </div>
           <Select
@@ -287,7 +276,7 @@ export default function OrganizationsListPage() {
         </div>
       ) : empty ? (
         <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
-          Aún no hay {orgLabel.plural.toLowerCase()}. Crea{orgLabel.singular === "Portafolio" ? " el" : " la"} primer{orgLabel.singular === "Portafolio" ? "o" : "a"}.
+          Aún no hay organizaciones. Crea la primera.
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -10,7 +10,14 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
-import { listOrganizations, listPrograms, type Organization, type Program } from "@/lib/api/organizations";
+import {
+  listOrganizations,
+  listPortfolios,
+  listPrograms,
+  type Organization,
+  type Portfolio,
+  type Program,
+} from "@/lib/api/organizations";
 import { MONEDAS } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
 import {
@@ -36,10 +43,14 @@ export function ProjectForm({ mode, initial }: Props) {
 
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [type, setType] = useState<ProjectType>((initial?.type as ProjectType) ?? "transformation");
+  const [type, setType] = useState<ProjectType>((initial?.type as ProjectType) ?? "transformacion");
   const [priority, setPriority] = useState(String(initial?.priority ?? 3));
-  const [phase, setPhase] = useState<ProjectPhase>(initial?.phase ?? "planning");
+  const [phase, setPhase] = useState<ProjectPhase>(initial?.phase ?? "preparacion");
   const [organizationId, setOrganizationId] = useState(initial?.organization_id ?? "");
+  // US-200 — el portafolio del proyecto. Con programa se autocompleta con el
+  // suyo; sin programa, se elige directo (un proyecto puede colgar del
+  // portafolio sin que nadie lo coordine).
+  const [portfolioId, setPortfolioId] = useState<string>(initial?.portfolio_id ?? "");
   const [programId, setProgramId] = useState<string>(initial?.program_id ?? "");
   const [pmId, setPmId] = useState<string>(initial?.pm_id ?? "");
   const [sponsor, setSponsor] = useState(initial?.sponsor ?? "");
@@ -54,6 +65,7 @@ export function ProjectForm({ mode, initial }: Props) {
   const [actualBudget, setActualBudget] = useState(initial?.actual_budget ?? "");
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [pms, setPms] = useState<AdminUser[]>([]);
 
@@ -71,12 +83,28 @@ export function ProjectForm({ mode, initial }: Props) {
 
   useEffect(() => {
     if (!organizationId) {
+      setPortfolios([]);
       setPrograms([]);
       return;
     }
-    listPrograms({ organization_id: organizationId, is_active: true })
-      .then(setPrograms)
-      .catch(() => setPrograms([]));
+    let cancelado = false;
+    Promise.all([
+      listPortfolios(organizationId, { is_active: true }),
+      listPrograms({ organization_id: organizationId, is_active: true }),
+    ])
+      .then(([pfs, progs]) => {
+        if (cancelado) return;
+        setPortfolios(pfs);
+        setPrograms(progs);
+      })
+      .catch(() => {
+        if (cancelado) return;
+        setPortfolios([]);
+        setPrograms([]);
+      });
+    return () => {
+      cancelado = true;
+    };
   }, [organizationId]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -92,6 +120,7 @@ export function ProjectForm({ mode, initial }: Props) {
           priority: Number(priority) || 3,
           organization_id: organizationId,
           program_id: programId || null,
+          portfolio_id: portfolioId || null,
           phase,
           pm_id: pmId,
           sponsor: sponsor.trim() || null,
@@ -113,6 +142,7 @@ export function ProjectForm({ mode, initial }: Props) {
           type,
           priority: Number(priority) || 3,
           program_id: programId || null,
+          portfolio_id: portfolioId || null,
           pm_id: pmId,
           sponsor: sponsor.trim() || null,
           start_date: startDate || null,
@@ -186,6 +216,9 @@ export function ProjectForm({ mode, initial }: Props) {
             value={organizationId}
             onChange={(e) => {
               setOrganizationId(e.target.value);
+              // Portafolio y programa pertenecen a la organización: al
+              // cambiarla, los dos dejan de ser válidos.
+              setPortfolioId("");
               setProgramId("");
             }}
             disabled={mode === "edit"}
@@ -199,14 +232,47 @@ export function ProjectForm({ mode, initial }: Props) {
             ))}
           </Select>
         </Field>
-        <Field label="Programa (opcional)">
-          <Select value={programId} onChange={(e) => setProgramId(e.target.value)}>
-            <option value="">Sin programa</option>
-            {programs.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
+        <Field label="Portafolio (opcional)">
+          <Select
+            value={portfolioId}
+            onChange={(e) => {
+              setPortfolioId(e.target.value);
+              // Cambiar de portafolio invalida el programa: un programa
+              // pertenece a un portafolio y solo a uno.
+              setProgramId("");
+            }}
+            disabled={!organizationId}
+          >
+            <option value="">Sin clasificar</option>
+            {portfolios.map((pf) => (
+              <option key={pf.id} value={pf.id}>
+                {pf.code ? `${pf.code} — ${pf.name}` : pf.name}
               </option>
             ))}
+          </Select>
+        </Field>
+        <Field label="Programa (opcional)">
+          <Select
+            value={programId}
+            onChange={(e) => {
+              const v = e.target.value;
+              setProgramId(v);
+              // Elegir programa completa su portafolio: es lo que el servidor
+              // va a guardar de todos modos (regla de consistencia), así que la
+              // pantalla lo muestra en vez de dejarlo en blanco.
+              const prog = programs.find((pr) => pr.id === v);
+              if (prog) setPortfolioId(prog.portfolio_id);
+            }}
+            disabled={!organizationId}
+          >
+            <option value="">Sin programa</option>
+            {programs
+              .filter((pr) => !portfolioId || pr.portfolio_id === portfolioId)
+              .map((pr) => (
+                <option key={pr.id} value={pr.id}>
+                  {pr.name}
+                </option>
+              ))}
           </Select>
         </Field>
         <Field label="Fase">

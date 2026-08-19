@@ -29,7 +29,7 @@ async def _seed_minute(db_session, tenant, *, folio="MIN-0001", project_folio="P
     p = Project(
         tenant_id=str(tenant.id), organization_id=str(org.id),
         folio=project_folio, name="Proyecto de minuta",
-        phase="execution", health_status="green", budget=Decimal("1"),
+        phase="ejecucion", health_status="green", budget=Decimal("1"),
     )
     db_session.add(p)
     await db_session.flush()

@@ -46,7 +46,7 @@ async def _setup(client, db_session):
 
     async def mk_project(name, in_program=True):
         body = {
-            "name": name, "description": "US-186", "type": "transformation",
+            "name": name, "description": "US-186", "type": "transformacion",
             "priority": 3, "organization_id": org_id, "pm_id": pm_id,
         }
         if in_program:

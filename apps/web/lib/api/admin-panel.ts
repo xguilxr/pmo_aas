@@ -25,7 +25,6 @@ export type TaskLoadThresholds = {
 
 // ENH-190: per-tenant UI label for "Organización/Organizaciones".
 // UI-only — no schema/route/API change to the underlying entity.
-export type OrgLabelSetting = "organizations" | "portfolios";
 
 export type TenantSettings = {
   locale?: string;
@@ -40,9 +39,6 @@ export type TenantSettings = {
   // ENH-099: canonical storage under `settings.report_builder.task_load_thresholds`,
   // exposed by the API as a top-level convenience field.
   task_load_thresholds?: TaskLoadThresholds;
-  // ENH-190: canonical storage under `settings.org_label`, exposed by
-  // the API as a top-level convenience field.
-  org_label?: OrgLabelSetting;
 };
 
 export function getSettings(): Promise<{ settings: TenantSettings }> {

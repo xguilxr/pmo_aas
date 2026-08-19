@@ -53,8 +53,8 @@ class ProjectCharterUpdate(BaseModel):
     # Sección 1
     project_name: str | None = Field(default=None, min_length=3, max_length=200)
     description: str | None = None
-    business_unit_id: UUID | None = None
-    department_id: UUID | None = None
+    portfolio_id: UUID | None = None
+    program_id: UUID | None = None
     # Sección 2
     sponsor: str | None = None
     sponsor_email: EmailStr | None = None
@@ -82,8 +82,8 @@ class ProjectCharterRead(BaseModel):
     project_name: str
     description: str | None
     organization_id: UUID | None
-    business_unit_id: UUID | None
-    department_id: UUID | None
+    portfolio_id: UUID | None
+    program_id: UUID | None
 
     # Sección 2
     sponsor: str | None

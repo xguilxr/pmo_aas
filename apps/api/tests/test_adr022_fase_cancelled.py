@@ -32,7 +32,7 @@ from app.api.v1.endpoints.projects import VALID_TRANSITIONS
 from app.schemas.project import FASES_TERMINALES, PhaseChange, ProjectPhase
 from app.services.analytics.snapshots import ACTIVE_PHASES
 
-FASES_VIVAS = ("planning", "execution", "hypercare")
+FASES_VIVAS = ("preparacion", "ejecucion", "hypercare")
 
 
 # ---------------------------------------------------------------------------
@@ -42,16 +42,16 @@ FASES_VIVAS = ("planning", "execution", "hypercare")
 
 def test_cancelled_es_parte_del_vocabulario_canonico():
     assert set(get_args(ProjectPhase)) == {
-        "planning", "execution", "hypercare", "closed", "cancelled",
+        "preparacion", "ejecucion", "hypercare", "cerrado", "cancelado",
     }
 
 
 def test_los_dos_finales_estan_declarados():
-    assert FASES_TERMINALES == {"closed", "cancelled"}
+    assert FASES_TERMINALES == {"cerrado", "cancelado"}
 
 
 def test_el_esquema_acepta_cancelled_como_destino():
-    assert PhaseChange(new_phase="cancelled").new_phase == "cancelled"
+    assert PhaseChange(new_phase="cancelado").new_phase == "cancelado"
 
 
 def test_el_esquema_rechaza_una_fase_inventada():
@@ -70,7 +70,7 @@ def test_cancelled_no_cuenta_como_fase_activa():
     Un cancelado dentro de `ACTIVE_PHASES` seguiría sumando al portafolio vivo
     en cada snapshot semanal, sin error y sin pantalla que lo delate.
     """
-    assert "cancelled" not in ACTIVE_PHASES
+    assert "cancelado" not in ACTIVE_PHASES
 
 
 def test_ninguna_fase_terminal_cuenta_como_activa():
@@ -95,16 +95,16 @@ def test_las_activas_son_exactamente_las_no_terminales():
 @pytest.mark.parametrize("fase", FASES_VIVAS)
 def test_se_cancela_desde_cualquier_fase_viva(fase):
     """Cancelar interrumpe el ciclo; no depende de dónde estaba el proyecto."""
-    assert "cancelled" in VALID_TRANSITIONS[fase]
+    assert "cancelado" in VALID_TRANSITIONS[fase]
 
 
 def test_cancelled_es_terminal():
-    assert VALID_TRANSITIONS["cancelled"] == set()
+    assert VALID_TRANSITIONS["cancelado"] == set()
 
 
 def test_un_proyecto_cerrado_no_se_puede_cancelar():
     """Ya tuvo su final. Permitirlo sería reescribir la historia."""
-    assert "cancelled" not in VALID_TRANSITIONS["closed"]
+    assert "cancelado" not in VALID_TRANSITIONS["cerrado"]
 
 
 def test_toda_fase_del_vocabulario_tiene_transiciones_declaradas():

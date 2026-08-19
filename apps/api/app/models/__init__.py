@@ -26,6 +26,7 @@ from app.models.organization import (  # noqa: F401
     BusinessUnit,
     Department,
     Organization,
+    Portfolio,
     Program,
 )
 from app.models.organization_user_exclusion import (  # noqa: F401

@@ -374,8 +374,8 @@ export default function RequestDetailPage() {
         <Card title="Datos de negocio">
           <Row k="Sponsor" v={request.sponsor} />
           <Row k="Organización" v={org?.name ?? "—"} />
-          <Row k="Unidad de negocio" v={request.business_unit} />
-          <Row k="Departamento" v={request.department} />
+          <Row k="Área que solicita" v={request.business_unit} />
+          <Row k="Equipo o sub-área" v={request.department} />
           {request.budget !== null && request.budget !== undefined ? (
             <Row k="Presupuesto" v={formatImporte(request.budget, request.currency)} />
           ) : null}

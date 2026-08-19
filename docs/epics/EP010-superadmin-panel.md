@@ -363,15 +363,17 @@ PATCH  /api/v1/superadmin/settings
   tenant (`user_count`, `organization_count`, `program_count`,
   `project_count`) en un solo SELECT por recurso (batch).
 - [x] Backend `GET /superadmin/tenants/{id}/detail` incluye objeto
-  `hierarchy` con counts de organizations, business_units, departments,
-  programs y projects.
+  `hierarchy` con counts de `organization_count`, `portfolio_count`,
+  `program_count` y `project_count`. Hasta US-199 eran los de
+  `business_units` y `departments`, que ADR-037 retiró.
 - [x] Cards de tenant en lista muestran:
   - Icono `Building2` para Orgs, `Users` para Usuarios,
     `Network` para Programas, `FolderKanban` para Proyectos.
   - Indicador activo/inactivo: punto verde (activo) / rojo (inactivo)
     junto al nombre, + badge "Inactivo" cuando aplica.
-- [x] Drill-down del tenant muestra nueva sección "Jerarquía (overview)":
-  Orgs → BUs → Deptos → Programas → Proyectos con chevrons entre nodos.
+- [x] Drill-down del tenant muestra la sección "Jerarquía (overview)":
+  Orgs → Portafolios → Programas → Proyectos con chevrons entre nodos
+  (los dos niveles de BU/Depto salieron en US-199).
 
 **Test Cases:**
 - `test_usnew025_list_tenants_returns_full_counts` ✅

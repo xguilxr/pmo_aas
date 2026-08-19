@@ -22,21 +22,22 @@ apps/api/app/
   api/deps.py      ← auth/scoping: TODO pasa por aquí
   services/        ← lógica de negocio (project_health, msproject/, …)
   core/            ← permissions, compatibilidad, paleta, magnitudes
-  alembic/versions/  ← migraciones (última: 20260807_0107); 1 US = 1 migración
+  dominio/         ← vocabulario del negocio (moneda, salud, **proyecto**: fases/tipos)
+  alembic/versions/  ← migraciones (última: 20260819_0110); 1 US = 1 migración
 ```
 
 ## Modelos por dominio (archivo → tablas clave)
 
 | Archivo | Tablas | Notas para la reestructura |
 |---|---|---|
-| `tenant.py` | tenants (slug, settings JSON: BYOK en `settings.ai.byo`, org_label, report_builder) | plan_code (W7) va aquí |
-| `organization.py` | organizations, business_units†, departments†, programs | † a retirar (W1/W8); portfolios (W1) va aquí; programs gana portfolio_id |
+| `tenant.py` | tenants (slug, settings JSON: BYOK en `settings.ai.byo`, report_builder; `org_label` retirado en DEC-032) | plan_code (W7) va aquí |
+| `organization.py` | organizations, **portfolios** (US-198), business_units†, departments†, programs | portfolios: `name` único por org, `code`, `owner_actor_id`→actors, soft-delete. `programs.portfolio_id` **NOT NULL** (ya sin `department_id`, 0109). † tablas sin lectores; se retiran en W8 (ADR-037) |
 | `user.py` | users (tenant_id nullable, role_type, is_superadmin, lockout) | email único por tenant → global (W2); membresía nueva (W2) |
 | `user_scope_assignment.py` | user_scope_assignments (scope_type org/program/project, sin FK real) | base de visibilidad PM |
 | `auth.py` | refresh_tokens, password_reset_tokens, admin_otp_codes, dispositivos_confiables | JWT: claims tenant_ids, active_tenant_id (falta active_organization_id, W2) |
 | `tenant_permission.py` | tenant_role_permission_overrides | overrides capability×tenant (DEC-021) |
-| `project.py` | projects (portfolio pendiente W1; phase default "planning"; health_status/source/reason US-180; manually_edited_fields US-084), project_health_evaluations (US-191: 5+1 dimensiones, histórico) | quitar business_unit_id/department_id (W1) |
-| `project_request.py` / `project_charter.py` | project_requests, project_charters | limpiar BU/depto (W1); folios SOL- via folio_sequences |
+| `project.py` | projects (**portfolio_id nullable** US-198, sin business_unit_id/department_id desde 0109; **phase/type en español** US-202, default `preparacion`; health_status/source/reason US-180; manually_edited_fields US-084), project_health_evaluations (US-191: 5+1 dimensiones, histórico) | |
+| `project_request.py` / `project_charter.py` | project_requests (+**portfolio_id/program_id** 0109; `business_unit`/`department` siguen como texto libre del solicitante), project_charters (+portfolio_id/program_id) | folios SOL- via folio_sequences |
 | `task.py` | tasks (wbs_code, parent_id, is_milestone, position US-176, predecessors JSON), task_dependencies (FS/SS/FF/SF + lag) | baseline y hito clave: W6 |
 | `modules.py` | risks, issues (type action/issue/decision), change_requests, documents†, lessons, meeting_minutes (raid_suggestions JSON → flujo minuta→RAID ya existe) | † legacy, fusionar en project_artifacts (W8) |
 | `project_artifact.py` | project_artifacts | el "Artefactos" nuevo ya es esta tabla |
@@ -44,7 +45,7 @@ apps/api/app/
 | `project_participation.py` | project_participations (allocation_pct FTE, periodo, status ciclo de vida) | + cost_rate_snapshot (W4) |
 | `project_role.py` / `stakeholder.py` / `project_member.py` | project_roles; stakeholders†; project_members† | † duplicados de actors/participations, consolidar (W8) |
 | `report_*.py`, `scheduled_*.py` | reports, report_history/sections/templates, report_builder_templates, scheduled_reports/minutes (cadence weekly/monthly) | cadencia biweekly + scope portfolio (W5) |
-| `metric_snapshot.py` | metric_snapshots (US-151: scope tenant/org/program/project, extras JSON) | + scope portfolio + cadence (W5) |
+| `metric_snapshot.py` | metric_snapshots (US-151: scope tenant/org/**portfolio**/program/project — US-201 sumó el portafolio; extras JSON) | + cadence biweekly (W5) |
 | `ai.py`, `assistant.py`, `ai_report_template.py`, `project_ai_context.py`, `platform_settings.py` | ai_jobs, assistant_*, ai_report_templates, project_ai_contexts, platform_ai_settings (groq key Fernet) | catálogo skills/roles de agente: W7 |
 | `notification.py`, `audit.py`, `permission_request.py` | notifications, audit_log (actor_type humano/IA), permission_change_requests | estables |
 | `role.py` | roles, user_roles — **DEPRECATED** (DEC-024) | drop pendiente (US-081/W8) |
@@ -57,8 +58,8 @@ soft-delete `deleted_at` · **no hay RLS en Postgres** (solo filtrado ORM; W3).
 
 auth (login 2FA, switch-tenant, /me) · users (perfil/ARCO) · admin_users ·
 admin_panel (bulk, métricas, tenant settings, audit export) · admin_ai +
-superadmin_ai (BYOK) · organizations (CRUD orgs + programs + BU†/deptos†) ·
-project_requests (CRUD + review + create-project; BU en L97–157†) · projects
+superadmin_ai (BYOK) · organizations (CRUD orgs + programs + **portfolios**: CRUD anidado, papelera two-step y hard-delete con cascada; BU/deptos **retirados**, 404) ·
+project_requests (CRUD + review + create-project; clasifica con portfolio/program) · projects
 (CRUD, health, phase, export, papelera) · project_charters · project_artifacts
 (exports plan/raid/changes/lessons/organigrama) · modules (CRUD RAID/cambios/
 docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
@@ -89,7 +90,7 @@ permission_requests · gantt_snapshot · entity_history · notifications.
 
 ## Services clave
 
-`services/project_health.py` (motor semáforo US-180) · `services/msproject/`
+`dominio/proyecto.py` (US-202: fases `preparacion|ejecucion|hypercare|cerrado|cancelado`, tipos `transformacion|operacion|innovacion|bau`, `TRANSICIONES`, etiquetas — **único** sitio; los literales sueltos se retiraron) · `services/jerarquia.py` (US-198: «Portafolio General» por defecto + regla `program_id ⇒ portfolio_id = program.portfolio_id`; la aplica todo endpoint que acepte programa o portafolio) · `services/project_health.py` (motor semáforo US-180) · `services/msproject/`
 (parsers MPP/XML) · `core/compatibilidad.py` (ventanas de compat, contador
 por `compat.nombre_viejo`) · `core/paleta.py` (colores gráficos, espejo de
 globals.css, trinquete test_adr023) · `core/magnitudes.py` (tipos Escala/

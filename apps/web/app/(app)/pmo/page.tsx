@@ -16,7 +16,6 @@ import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
 import { ProgramModal } from "@/components/program-modal";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
-import { useOrgLabel } from "@/lib/org-label";
 import { aplicarFuente, XLSX_FONT } from "@/lib/plan-template";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
@@ -204,7 +203,6 @@ export default function PmoHome() {
   const { canCreate, loading: permsLoading } = useMyPermissions();
   const [showProgramModal, setShowProgramModal] = useState(false);
   // ENH-190: label configurable por tenant para "Organización(es)".
-  const orgLabel = useOrgLabel();
 
   async function handleDownloadReport() {
     setDownloading(true);
@@ -231,9 +229,7 @@ export default function PmoHome() {
           setError(
             err instanceof ApiError
               ? err.message
-              : `No se pudieron cargar ${
-                  orgLabel.singular === "Portafolio" ? "los portafolios" : "las organizaciones"
-                }`,
+              : "No se pudieron cargar las organizaciones",
           );
         }
       })
@@ -281,10 +277,10 @@ export default function PmoHome() {
           </h1>
           {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-            Vista informativa del portafolio. Selecciona {orgLabel.singularArticled} para
+            Vista informativa del portafolio. Selecciona una organización para
             ver sus programas y proyectos. La gestión (CRUD) vive en{" "}
             <Link href="/admin/organizations" className="text-[var(--color-accent)] hover:underline">
-              Admin → {orgLabel.plural}
+              Admin → Organizaciones
             </Link>
             .
           </p>
@@ -294,8 +290,7 @@ export default function PmoHome() {
             <Link href="/admin/organizations/new">
               <Button variant="secondary" size="sm">
                 <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
-                {orgLabel.singular === "Portafolio" ? "Nuevo" : "Nueva"}{" "}
-                {orgLabel.singular.toLowerCase()}
+                Nueva organización
               </Button>
             </Link>
           ) : null}
@@ -352,10 +347,10 @@ export default function PmoHome() {
             </Button>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <PortfolioPanel title={`Salud por ${orgLabel.singular.toLowerCase()}`}>
+            <PortfolioPanel title="Salud por organización">
               <Heatmap
                 rows={heatmap?.rows ?? []}
-                ariaLabel={`Mapa de calor de salud por ${orgLabel.singular.toLowerCase()}`}
+                ariaLabel="Mapa de calor de salud por organización"
                 onCellClick={(orgId) => router.push(`/pmo/organizations/${orgId}`)}
               />
             </PortfolioPanel>
@@ -439,15 +434,12 @@ export default function PmoHome() {
         </div>
       ) : panels.length === 0 ? (
         <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-tertiary)]">
-          No hay {orgLabel.plural.toLowerCase()}{" "}
-          {orgLabel.singular === "Portafolio" ? "activos" : "activas"}. Pide a
-          un admin que cree{orgLabel.singular === "Portafolio" ? "uno" : "una"}{" "}
-          en{" "}
+          No hay organizaciones activas. Pide a un admin que cree una en{" "}
           <Link
             href="/admin/organizations"
             className="text-[var(--color-accent)] hover:underline"
           >
-            Admin → {orgLabel.plural}
+            Admin → Organizaciones
           </Link>
           .
         </div>

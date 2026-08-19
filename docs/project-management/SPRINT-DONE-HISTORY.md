@@ -508,3 +508,73 @@ datos personales, que esperaba encontrarlo en la actividad del usuario.
 `check_subrecursos.py` (ASVS 10.3.2) y `check_password_input.py` (ASVS 2.1.12),
 los dos en el job `contexto-permanente`. Existen porque los dos fallos originales
 no fueron técnicos sino de **evidencia escrita a mano que se quedó atrás**.
+
+---
+
+## Ronda 2026-08-19 — Bloque Reestructura-W1: la jerarquía cambia de eje
+
+Doce commits en `claude/handoff-development-2awr5v`, PR **#594**. Las cinco USs
+del bloque quedaron implementadas y pendientes de verificación del owner: los
+issues **no** se cerraron.
+
+**El cambio de fondo.** La jerarquía era `organización → unidad de negocio →
+departamento → programa → proyecto`, y esos dos niveles del medio describían el
+**organigrama** del cliente. La PMO no contesta preguntas de organigrama:
+contesta qué se hace, con qué y qué se deja de hacer. El dato que lo cerró no
+fue un argumento de diseño — el owner nunca usó BU/departamentos en producción
+(2026-08-19): dos niveles con su CRUD, sus pantallas y sus columnas en cinco
+tablas, con cero filas. Queda `organización → portafolio ⊃ programa → proyecto`
+(**ADR-037**), y el veto de ADR-021 sobre la palabra «portafolio» se levanta
+porque la entidad ya existe.
+
+| US | Commit | Qué entró |
+|---|---|---|
+| **US-198** #588 | `27b6ae9` | Tabla `portfolios`, `programs.portfolio_id` NOT NULL, `projects.portfolio_id` nullable, regla de consistencia en `services/jerarquia.py`. Migración **0108** (aditiva, con backfill del «Portafolio General»). ADR-037 · DEC-030 |
+| **US-199** #589 | `c529085` | CRUD `/portfolios` (8 rutas, papelera de dos pasos), retiro de los routers de BU/departamentos, migración **0109** que suelta 7 columnas FK |
+| **US-202** #592 | `3253338` + `0f2d167` | Fases al español y `type` como enum, catálogo único en `app/dominio/proyecto.py`, 5 ventanas de compat, migración **0110**. ADR-038 (DEC-031 promovida) |
+| **US-200** #590 | `f3f1063` | Acordeón Portafolio ⊃ Programa en el admin, árbol de 5 niveles con los cajones «Sin programa» y «Sin clasificar», selects anidados en los tres formularios |
+| **US-201** #591 | `3c066f6` | Cascada org → portafolio → programa en las 7 superficies del tablero, las 5 vistas cross y `metric_snapshots` (scope `portfolio`); treemap de 4 niveles |
+
+**Y una limpieza que el bloque hizo necesaria** (`ea5710b`, `c36d208`,
+`399fe0f`, `0bdcf8c`, `92c9882`, `f155f40`):
+
+- **ENH-190 retirada** (**DEC-032**, migración **0111**). El label configurable
+  que renombraba «Organización» a «Portafolio» en la interfaz no quedó obsoleto:
+  quedó **inválido**. Con el portafolio como entidad hija, ese inquilino vería
+  «Portafolio → Portafolio → Programa». Se fue el mecanismo entero, y la
+  migración cuenta cuántos inquilinos lo tenían para saber a quién avisar.
+- Vocabulario duplicado en el frontend: cinco copias de la etiqueta de salud,
+  cuatro del color, dos del tono de la insignia de fase y una de las fases de
+  lección. Todas idénticas, todas a un cambio de desincronizarse.
+- 675 líneas de componentes huérfanos y residuo en tests y configuración.
+- **20 documentos** que describían como vigente lo retirado, incluido el
+  glosario del dominio y un runbook cuyo procedimiento recomendado apuntaba a un
+  campo que nunca existió.
+
+**Los tres fallos silenciosos que el bloque cerró.** Los tres de la misma
+familia — no fallan, devuelven un número equivocado:
+
+1. `"closed"` estaba escrito a mano en 13 archivos. Al renombrar, la comparación
+   que se olvide **no falla**: devuelve siempre falso, y un proyecto cerrado
+   cuenta como activo. Centralizarlo hace que olvidarse sea un `NameError`.
+2. Filtrar un portafolio por «los programas del portafolio» deja fuera
+   exactamente a los proyectos que cuelgan de él sin programa. El KPI sale más
+   chico y se lee como un dato.
+3. `test_enh111_charter_logos.py` lleva `@pytest.mark.heavy`, así que solo corre
+   al pushear a `main`. US-199 lo rompió —su doble del acta se quedó sin
+   `portfolio_id`— y la suite normal nunca lo vio. Sin el arreglo, la primera CI
+   de `main` tras el merge salía roja por un fallo sembrado tres commits antes.
+
+**Verificación del bloque:** ruff · mypy --strict sin regresiones (línea base
+apretada 1143 → 1142) · `tsc --noEmit` · `next build` · pytest 1826 passed +
+3 skipped (`not heavy`) y 9 passed (`heavy`) · evaluación IA 52/52 ·
+check_contexto / check_tokens / check_contraste / check_frescura ·
+`generar_er.py --verificar`. Todo `exit 0`.
+
+**Diferido a propósito:** las tablas `business_units` y `departments` siguen en
+el esquema, sin lectores, y se dropean en **W8** — un `drop` es irreversible y no
+se paga en la misma oleada que lo sustituye. Los campos de texto libre
+`business_unit`/`department` de la solicitud **se quedan**: son las palabras del
+solicitante, no la jerarquía (reetiquetados «Área que solicita» y «Equipo o
+sub-área»).
+

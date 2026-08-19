@@ -75,7 +75,7 @@ async def test_tc104_org_metrics(client, db_session):
     me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
     await client.post(
         "/api/v1/projects",
-        json={"name": "P1", "description": "d", "type": "innovation", "priority": 3,
+        json={"name": "P1", "description": "d", "type": "innovacion", "priority": 3,
               "organization_id": org_id, "pm_id": me.json()["id"], "budget": "10000"},
         headers=auth["_authz"],
     )
@@ -98,7 +98,7 @@ async def test_tc107_admin_sees_all(client, db_session):
     for i in range(3):
         await client.post(
             "/api/v1/projects",
-            json={"name": f"P{i}", "description": "d", "type": "innovation", "priority": 3,
+            json={"name": f"P{i}", "description": "d", "type": "innovacion", "priority": 3,
                   "organization_id": org_id, "pm_id": me.json()["id"]},
             headers=auth["_authz"],
         )
@@ -153,7 +153,7 @@ async def test_force_close_project(client, db_session):
         headers=auth["_authz"],
     )
     assert fc.status_code == 200
-    assert fc.json()["phase"] == "closed"
+    assert fc.json()["phase"] == "cerrado"
 
 
 # ============================================================================
@@ -180,7 +180,7 @@ async def test_us023_get_tenant_info_with_stats(client, db_session):
                 organization_id=org_id,
                 folio=f"P23-{i+1}",
                 name=f"P{i+1}",
-                phase="planning",
+                phase="preparacion",
                 budget=Decimal("100"),
             )
         )

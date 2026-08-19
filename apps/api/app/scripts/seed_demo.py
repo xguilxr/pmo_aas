@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
+from app.dominio.proyecto import EJECUCION, PREPARACION
 from app.models.modules import (
     ChangeRequest,
     Document,
@@ -55,6 +56,7 @@ from app.models.task import Task
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.folio import next_folio
+from app.services.jerarquia import portafolio_general, resolver_portafolio
 
 logger = logging.getLogger("pmoaas.seed_demo")
 
@@ -171,9 +173,14 @@ async def _ensure_program(
     ).scalar_one_or_none()
     if existing is not None:
         return existing
+    # US-198 — el programa vive dentro de un portafolio. El demo no modela
+    # portafolios propios todavía, así que usa el «Portafolio General» de la
+    # organización, igual que el endpoint de alta.
+    pf = await portafolio_general(db, tenant_id=tenant_id, organization_id=organization_id)
     p = Program(
         tenant_id=tenant_id,
         organization_id=organization_id,
+        portfolio_id=str(pf.id),
         name=name,
         description=description,
         strategic_alignment=alignment,
@@ -213,10 +220,19 @@ async def _ensure_project(
     if existing is not None:
         return existing
     folio = await next_folio(db, tenant_id=tenant_id, prefix="PROJ")
+    # US-201 — el proyecto lleva su portafolio, resuelto por la misma regla que
+    # el endpoint de alta: con programa, el del programa. Sin esto el demo
+    # generaba proyectos con programa y sin portafolio, que existen en el árbol
+    # pero desaparecen del filtro de portafolio del tablero — el bug más difícil
+    # de ver de esta reestructura, porque nada falla: falta una fila.
+    portfolio_id = await resolver_portafolio(
+        db, tenant_id=tenant_id, program_id=program_id, portfolio_id=None
+    )
     p = Project(
         tenant_id=tenant_id,
         organization_id=organization_id,
         program_id=program_id,
+        portfolio_id=portfolio_id,
         folio=folio,
         name=name,
         description=f"Proyecto demo '{name}' generado por seed_demo.",
@@ -438,7 +454,7 @@ async def _seed_raid_for_project(
             status="published",
             created_by=created_by.id,
             category="improvement",
-            phase="planning",
+            phase=PREPARACION,
             recommendation="Incluir representante de ops en todos los kickoffs.",
             tags=["stakeholders", "operaciones"],
         )
@@ -606,14 +622,14 @@ async def _seed_tenant(db: AsyncSession, slug: str) -> dict:
     # 4) Proyectos: 4 en prog_1, 3 en prog_2, 1 standalone
     project_specs = [
         # (name, program, org, type, phase, health, progress)
-        ("Portal de clientes v2", prog_1, org_a, "transformation", "execution", "green", 35),
-        ("Motor de recomendaciones IA", prog_1, org_a, "innovation", "planning", "yellow", 10),
-        ("Migracion a cloud", prog_1, org_a, "transformation", "execution", "yellow", 45),
-        ("App movil empleados", prog_1, org_a, "innovation", "planning", "green", 5),
-        ("Automatizacion de nomina", prog_2, org_b, "operation", "execution", "green", 60),
+        ("Portal de clientes v2", prog_1, org_a, "transformacion", EJECUCION, "green", 35),
+        ("Motor de recomendaciones IA", prog_1, org_a, "innovacion", PREPARACION, "yellow", 10),
+        ("Migracion a cloud", prog_1, org_a, "transformacion", EJECUCION, "yellow", 45),
+        ("App movil empleados", prog_1, org_a, "innovacion", PREPARACION, "green", 5),
+        ("Automatizacion de nomina", prog_2, org_b, "operacion", EJECUCION, "green", 60),
         ("Dashboards de operacion", prog_2, org_b, "bau", "hypercare", "green", 90),
-        ("Integracion ERP-CRM", prog_2, org_b, "transformation", "execution", "red", 25),
-        ("Iniciativa independiente", None, org_a, "innovation", "planning", "green", 0),
+        ("Integracion ERP-CRM", prog_2, org_b, "transformacion", EJECUCION, "red", 25),
+        ("Iniciativa independiente", None, org_a, "innovacion", PREPARACION, "green", 0),
     ]
     projects: list[Project] = []
     for (name, prog, org, ptype, phase, health, progress) in project_specs:

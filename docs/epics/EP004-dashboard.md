@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-19
 revisar_cada: 90d
 ---
 
@@ -35,7 +35,7 @@ El dashboard da a Project Managers y PMO Managers una vista única del portafoli
 
 | KPI | Fuente |
 |---|---|
-| Proyectos Activos | `count(projects WHERE phase IN ('planning','execution','support'))` |
+| Proyectos Activos | `count(projects WHERE phase IN ('preparacion','ejecucion','hypercare'))` — las tres no terminales, derivadas de `FASES_ACTIVAS` y no escritas a mano en el endpoint |
 | Solicitudes en Revisión | `count(project_requests WHERE status='in_review')` |
 | Riesgos Abiertos | `count(risks WHERE status NOT IN ('closed'))` |
 | Riesgos Severos | `count(risks WHERE severity >= 13 AND status NOT IN ('closed'))` |
@@ -72,9 +72,9 @@ El dashboard da a Project Managers y PMO Managers una vista única del portafoli
 **Para** detectar patrones.
 
 **Gráficos:**
-1. **Pie chart — Proyectos por fase**: Planificación / Ejecución / Soporte / Cerrado.
+1. **Pie chart — Proyectos por fase**: Preparación / Ejecución / Hypercare / Cerrado / Cancelado.
 2. **Bar chart — Avance promedio por fase**.
-3. **Bar chart — Presupuesto por tipo de proyecto** (innovation, transformation, operation, bau).
+3. **Bar chart — Presupuesto por tipo de proyecto** (`transformacion`, `operacion`, `innovacion`, `bau`). Los proyectos sin tipo se agrupan bajo `unspecified`, que la API sintetiza para no perder el importe.
 4. **Pie chart — Salud del portafolio**: Verde / Amarillo / Rojo.
 
 **Criterios de aceptación:**
@@ -147,19 +147,33 @@ El dashboard da a Project Managers y PMO Managers una vista única del portafoli
 - **Invalidación**: al crear/editar/borrar projects, risks, issues, changes → `DEL` de las keys del tenant (pattern delete).
 
 ### Endpoints
+
+US-201 partió las superficies en dos familias, y la diferencia importa al llamarlas:
+
+- **Las que filtran** aceptan la cascada `organization_id` + `portfolio_id` +
+  `program_id`, acumulativa. Los tres se suman; una combinación que no se cruza
+  (un programa de otro portafolio) devuelve vacío, no un error.
+- **Las que scopean** toman `scope=` + `id=`: un solo nivel, el que se pide.
+  `scope` admite `tenant | organization | portfolio | program | project`.
+
 ```
-GET  /api/v1/dashboard/kpis
-GET  /api/v1/dashboard/charts
-GET  /api/v1/dashboard/plan-vs-actual
-GET  /api/v1/dashboard/plan-vs-actual/export.csv
-# US-152 — analytics para dashboards N1/N2 (scope=tenant|organization|program|project, id=)
+GET  /api/v1/dashboard/kpis?organization_id=&portfolio_id=&program_id=
+GET  /api/v1/dashboard/charts?organization_id=&portfolio_id=&program_id=
+GET  /api/v1/dashboard/plan-vs-actual?organization_id=&portfolio_id=&program_id=&phase=
+GET  /api/v1/dashboard/plan-vs-actual/export.csv     # mismos filtros; delega en el anterior
+# US-152 — analytics para dashboards N1/N2 (scope=, id=)
 GET  /api/v1/dashboard/trends?scope=&id=&metric=&weeks=   # serie histórica (metric_snapshots)
 GET  /api/v1/dashboard/risk-matrix?scope=&id=             # conteo prob×impacto (en vivo)
-GET  /api/v1/dashboard/heatmap                            # Org×Salud (portafolio, admin)
-GET  /api/v1/dashboard/treemap?scope=&id=                 # Org→Programa→Proyecto
+GET  /api/v1/dashboard/heatmap?organization_id=&portfolio_id=&program_id=   # Org×Salud (admin)
+GET  /api/v1/dashboard/treemap?scope=&id=                 # Org→Portafolio→Programa→Proyecto
 POST /api/v1/dashboard/snapshots/capture                  # seed on-demand del snapshot de hoy
-GET  /api/v1/dashboard/health-matrix                      # US-181 (2026-07-09) — heatmap Proyecto×Dimensión
+GET  /api/v1/dashboard/health-matrix?organization_id=&portfolio_id=&program_id=  # US-181 — Proyecto×Dimensión
 ```
+
+**El portafolio agrega todo lo suyo**: los proyectos de sus programas **y** los
+que cuelgan directo de él. Filtrar por los programas del portafolio dejaría
+fuera exactamente a los segundos, y el resultado no falla — devuelve un número
+más chico.
 
 ---
 
@@ -261,8 +275,8 @@ el reporte es el mismo contenido congelado a PDF.
 
 **US-151 — fundación de datos (`metric_snapshots`):**
 - Tabla `metric_snapshots`: foto **semanal** (lunes 02:00 UTC, Celery beat) de
-  métricas de stock a 4 niveles de scope (tenant/org/programa/proyecto). Habilita
-  tendencias y desbloquea S-05/S-07 de EP020.
+  métricas de stock por scope: `tenant`, `organization`, `portfolio` (US-201),
+  `program` y `project`. Habilita tendencias y desbloquea S-05/S-07 de EP020.
 - Servicio `services/analytics/snapshots.py` (cómputo + upsert idempotente);
   job `workers/tasks/snapshots.py`.
 - **BUG-082 (2026-06-29):** `avg_progress` del snapshot (base de la *evolución de
@@ -331,8 +345,9 @@ EP005).
 - `GET /api/v1/dashboard/health-matrix` — antes de responder, refresca la
   salud automática de los proyectos visibles **en bulk**
   (`refresh_health_bulk`) y devuelve solo proyectos activos
-  (`phase != closed`). Respeta visibilidad de US-168 (no-admin ve solo
-  sus proyectos vía `scoped_project_ids`).
+  (`phase != cerrado`; en su momento se escribió `closed`, que US-202 renombró).
+  Respeta visibilidad de US-168 (no-admin ve solo sus proyectos vía
+  `scoped_project_ids`).
 - Sección "Salud por dimensión (proyectos activos)" en `/pmo` con
   click-through al proyecto.
 - El snapshot semanal (`services/analytics/snapshots.py`) también
@@ -392,3 +407,50 @@ Organización → Programa y sincronización a la URL (`/pmo/projects?...`).
 Sin cambios de contrato en backend (los query params ya existían).
 
 **Estado de integración:** DONE (ENH-185).
+
+---
+
+### US-201 — La cascada Organización → Portafolio → Programa ✅ (2026-08-19)
+
+**Como** PMO Manager / Administrador
+**Quiero** filtrar el tablero y las vistas cross por portafolio y por programa
+**Para** mirar la cartera de un cliente al nivel al que se decide sobre ella.
+
+**Criterios de aceptación:**
+- [x] Las siete superficies del tablero aceptan el nivel de portafolio: `kpis`,
+  `charts`, `plan-vs-actual` (+ CSV), `heatmap` y `health-matrix` por filtro;
+  `trends`, `risk-matrix` y `treemap` por `scope=portfolio`.
+- [x] `treemap` devuelve cuatro niveles: Organización → Portafolio → Programa →
+  Proyecto. El portafolio es un nivel propio y no una etiqueta del programa,
+  porque un proyecto puede colgar del portafolio **sin** programa. Antes esos
+  proyectos salían bajo el mismo «Sin programa» que los no clasificados: dos
+  situaciones distintas dibujadas igual.
+- [x] Las cinco vistas cross (`/tenant/risks`, `issues`, `change-requests`,
+  `meeting-minutes`, `reports`) aceptan `portfolio_id`.
+- [x] `metric_snapshots` gana el scope `portfolio`, y el recorrido semanal lo
+  escribe **antes** que los programas: si el snapshot falla a mitad, lo que
+  queda escrito es el nivel de arriba, que es el que se mira.
+- [x] `GET /programs` acepta `portfolio_id`. Es lo que impide que el
+  desplegable de programa ofrezca los de otro portafolio.
+- [x] `/dashboard` y `TenantCrossFilters`: cascada de tres (o cuatro) niveles
+  donde **cada cambio limpia los de abajo**, y los tres en la URL
+  (`?org_id=&portfolio_id=&program_id=`) para que un tablero filtrado se pueda
+  enviar por chat.
+
+**Test Cases:**
+- `TC-201.1` — Los KPIs de un portafolio suman sus programas **y** sus proyectos
+  directos (700k = 100k + 200k del programa + 400k directo, no 300k).
+- `TC-201.2` — Cruzar un portafolio con un programa ajeno devuelve vacío, no un
+  error; y `/programs?portfolio_id=` no ofrece ese programa.
+- `TC-201.3` — El snapshot con `scope=portfolio` se captura y se lee en
+  `trends`, con el mismo total que el KPI de hoy.
+- `TC-201.4` — Mover un programa de portafolio arrastra sus proyectos: los dos
+  KPIs cambian y siguen sumando el total.
+
+**Nota de diseño:** el filtro de organización que había duplicado en la cabecera
+de «Plan vs Real» se retiró. Con un nivel se puede repetir el mismo estado dos
+veces en la pantalla; con tres serían seis controles para tres filtros.
+
+**Decisiones:** ADR-037.
+
+**Estado de integración:** DONE (US-201).

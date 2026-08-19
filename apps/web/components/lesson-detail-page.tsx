@@ -16,11 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   LESSON_CATEGORY_LABEL,
+  LESSON_PHASE_LABEL,
+  LESSON_PHASE_ORDER,
   deleteLesson,
   getLesson,
   updateLesson,
   type Lesson,
   type LessonCategory,
+  type LessonPhase,
 } from "@/lib/api/modules";
 
 /**
@@ -44,13 +47,6 @@ type EditDraft = {
   recommendation: string;
   tags: string;
 };
-
-const PHASE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "planning", label: "Planificación" },
-  { value: "execution", label: "Ejecución" },
-  { value: "hypercare", label: "Hypercare" },
-  { value: "closed", label: "Cierre" },
-];
 
 function draftFromLesson(l: Lesson): EditDraft {
   return {
@@ -296,14 +292,14 @@ export function LessonDetailPage({
                 onChange={(e) => setDraft({ ...draft, phase: e.target.value })}
               >
                 <option value="">— sin fase —</option>
-                {PHASE_OPTIONS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
+                {LESSON_PHASE_ORDER.map((f) => (
+                  <option key={f} value={f}>
+                    {LESSON_PHASE_LABEL[f]}
                   </option>
                 ))}
               </Select>
             ) : lesson.phase ? (
-              PHASE_OPTIONS.find((p) => p.value === lesson.phase)?.label ?? lesson.phase
+              (LESSON_PHASE_LABEL[lesson.phase as LessonPhase] ?? lesson.phase)
             ) : (
               <Empty />
             )}

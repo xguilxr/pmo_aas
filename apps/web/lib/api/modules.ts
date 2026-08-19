@@ -667,27 +667,31 @@ export const LESSON_CATEGORY_BADGE: Record<LessonCategory, string> = {
 
 // ENH-187: fase es texto libre en DB (el modal de creación sólo ofrece
 // estos 4 valores canónicos); labels ES para filtros/chips/export.
-export type LessonPhase = "planning" | "execution" | "hypercare" | "closed";
+// US-202 / ADR-038 — la lección comparte el vocabulario de fases del
+// proyecto («en qué fase se aprendió»), menos `cancelado`: de un proyecto
+// cancelado se aprende, pero la lección se registra en la fase en la que
+// estaba cuando se cortó.
+export type LessonPhase = "preparacion" | "ejecucion" | "hypercare" | "cerrado";
 
 export const LESSON_PHASE_LABEL: Record<LessonPhase, string> = {
-  planning: "Planificación",
-  execution: "Ejecución",
+  preparacion: "Preparación",
+  ejecucion: "Ejecución",
   hypercare: "Hypercare",
-  closed: "Cierre",
+  cerrado: "Cierre",
 };
 
 export const LESSON_PHASE_ORDER: LessonPhase[] = [
-  "planning",
-  "execution",
+  "preparacion",
+  "ejecucion",
   "hypercare",
-  "closed",
+  "cerrado",
 ];
 
 export const LESSON_PHASE_BADGE: Record<LessonPhase, string> = {
-  planning: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
-  execution: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
+  preparacion: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
+  ejecucion: "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]",
   hypercare: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
-  closed: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
+  cerrado: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
 };
 
 /* ========== MEETING MINUTES ========== */

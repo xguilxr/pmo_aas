@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.magnitudes import Escala, Importe, Porcentaje
 from app.db.base import Base, TimestampMixin, new_uuid
+from app.dominio.proyecto import PREPARACION
 
 
 class Project(Base, TimestampMixin):
@@ -29,18 +30,25 @@ class Project(Base, TimestampMixin):
         String(36), ForeignKey("organizations.id"), nullable=False
     )
     program_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("programs.id"))
-    business_unit_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("business_units.id")
-    )
-    department_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("departments.id")
+    # US-198 — el portafolio del proyecto. Nullable a propósito: un proyecto
+    # puede colgar directo del portafolio (sin programa que lo coordine) y
+    # también puede no estar clasificado todavía, que es el estado real de un
+    # proyecto recién importado en masa. Lo que NO se acepta es un par
+    # incoherente: con `program_id` puesto, este campo tiene que ser el
+    # portafolio de ese programa (`services/jerarquia.py`).
+    portfolio_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("portfolios.id"), index=True
     )
     folio: Mapped[str] = mapped_column(String(32), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(5000))
     type: Mapped[str | None] = mapped_column(String(50))
     priority: Mapped[Escala | None] = mapped_column(SmallInteger)
-    phase: Mapped[str] = mapped_column(String(32), nullable=False, default="planning")
+    # US-202 — el proyecto nace en preparación. «Solicitud» no es fase del
+    # proyecto: vive en `project_requests.status` (ADR-038).
+    phase: Mapped[str] = mapped_column(
+        String(32), nullable=False, default=PREPARACION
+    )
     pm_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("users.id"))
     sponsor: Mapped[str | None] = mapped_column(String(200))
     start_date: Mapped[date | None] = mapped_column(Date)

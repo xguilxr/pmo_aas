@@ -29,6 +29,7 @@ import {
   RiskMatrix,
   TrendLines,
   Treemap,
+  colorSalud,
 } from "@/components/dashboard-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { ApiError } from "@/lib/api";
@@ -52,7 +53,22 @@ import {
   type TreemapResponse,
   type TrendsResponse,
 } from "@/lib/api/analytics";
-import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import {
+  listOrganizations,
+  listPortfolios,
+  listPrograms,
+  type Organization,
+  type Portfolio,
+  type Program,
+} from "@/lib/api/organizations";
+import {
+  PHASE_LABEL,
+  PHASE_ORDER,
+  TYPE_LABEL,
+  etiquetaSalud,
+  type ProjectPhase,
+  type ProjectType,
+} from "@/lib/api/projects";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
@@ -61,50 +77,42 @@ import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { formatearDesglose, formatearImporte, monedaUnica } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
 
-const PHASE_LABEL: Record<string, string> = {
-  planning: "Planificación",
-  execution: "Ejecución",
-  hypercare: "Hypercare",
-  closed: "Cerrado",
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  innovation: "Innovación",
-  transformation: "Transformación",
-  operation: "Operación",
-  bau: "BAU",
-  unspecified: "Sin especificar",
-};
-
-const HEALTH_LABEL: Record<string, string> = {
-  green: "Verde",
-  yellow: "Amarillo",
-  red: "Rojo",
-};
-
-const HEALTH_COLOR: Record<string, string> = {
-  green: "var(--color-success-fg)",
-  yellow: "var(--color-warning-fg)",
-  red: "var(--color-danger-fg)",
-};
-
-// ADR-023: la fase es ORDINAL —planificación → ejecución → hypercare → cerrado
+// ADR-023: la fase es ORDINAL —preparación → ejecución → hypercare → cerrado
 // es una secuencia—, así que va con la rampa de un solo tono, no con cuatro
-// colores sueltos. `cancelled` se sale de la secuencia y va al neutro, igual
+// colores sueltos. `cancelado` se sale de la secuencia y va al neutro, igual
 // que en su insignia.
 //
-// De paso: esta tabla seguía diciendo `support`, que D-2 renombró. No fallaba
-// —es una clave suelta— simplemente dejaba la fase sin color.
-const PHASE_COLOR: Record<string, string> = {
-  planning: PALETTE.scale[0],
-  execution: PALETTE.scale[2],
+// US-202 — la tabla se deriva de `PHASE_ORDER` en vez de repetir las claves:
+// esta y la de etiquetas se habían quedado en inglés (y una, en `support`, que
+// ADR-019 renombró hace dos semanas). Una clave que ya no existe no falla —
+// simplemente deja la fase sin color y con el valor crudo por nombre.
+const PHASE_COLOR: Record<ProjectPhase, string> = {
+  preparacion: PALETTE.scale[0],
+  ejecucion: PALETTE.scale[2],
   hypercare: PALETTE.scale[3],
-  closed: PALETTE.scale[4],
-  cancelled: PALETTE.neutral,
+  cerrado: PALETTE.scale[4],
+  cancelado: PALETTE.neutral,
 };
 
 function toEntries<T>(obj: Record<string, T>): [string, T][] {
   return Object.keys(obj).map((k) => [k, obj[k]]);
+}
+
+/** La fase en palabras. Devuelve el crudo si no la conoce: en un gráfico, un
+ *  valor fuera del catálogo es un dato que hay que **ver** para corregirlo. */
+function etiquetaFase(clave: string): string {
+  return PHASE_LABEL[clave as ProjectPhase] ?? clave;
+}
+
+function colorFase(clave: string): string {
+  return PHASE_COLOR[clave as ProjectPhase] ?? PALETTE.accent;
+}
+
+/** `budget_by_type` agrupa los proyectos sin tipo bajo `unspecified`, que no es
+ *  uno de los cuatro del enum: la API lo sintetiza para no perder el importe. */
+function etiquetaTipo(clave: string): string {
+  if (clave === "unspecified") return "Sin especificar";
+  return TYPE_LABEL[clave as ProjectType] ?? clave;
 }
 
 export default function DashboardPage() {
@@ -136,6 +144,11 @@ function DashboardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orgFromUrl = searchParams.get("org_id") ?? "";
+  // US-201 — los tres niveles viven en la URL, no solo la organización: un
+  // tablero filtrado que no se puede enviar por chat obliga a que el otro
+  // reproduzca los clics, y ahí es donde se miran números distintos.
+  const portfolioFromUrl = searchParams.get("portfolio_id") ?? "";
+  const programFromUrl = searchParams.get("program_id") ?? "";
 
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   // DAT-11: cuándo cambió lo que se está mostrando.
@@ -147,6 +160,10 @@ function DashboardInner() {
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [orgFilter, setOrgFilter] = useState(orgFromUrl);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [portfolioFilter, setPortfolioFilter] = useState(portfolioFromUrl);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [programFilter, setProgramFilter] = useState(programFromUrl);
   const [phaseFilter, setPhaseFilter] = useState("");
 
   const [rows, setRows] = useState<PlanVsActualRow[]>([]);
@@ -164,11 +181,30 @@ function DashboardInner() {
   const [capturing, setCapturing] = useState(false);
   const [captureMsg, setCaptureMsg] = useState<string | null>(null);
 
-  const analyticsScope = orgFilter ? ("organization" as const) : ("tenant" as const);
+  // US-201 — gana el nivel más específico. Los endpoints de analíticas toman un
+  // scope único (no una cascada), así que un programa elegido manda sobre su
+  // portafolio y este sobre su organización: es lo que el usuario acaba de
+  // pedir, y los de arriba ya están implícitos en la jerarquía.
+  const { scope: analyticsScope, id: analyticsId } = useMemo(() => {
+    if (programFilter) return { scope: "program" as const, id: programFilter };
+    if (portfolioFilter) return { scope: "portfolio" as const, id: portfolioFilter };
+    if (orgFilter) return { scope: "organization" as const, id: orgFilter };
+    return { scope: "tenant" as const, id: undefined };
+  }, [orgFilter, portfolioFilter, programFilter]);
+
+  // La cascada tal cual, para los endpoints que filtran en vez de scopear.
+  const jerarquia = useMemo(
+    () => ({
+      organization_id: orgFilter || undefined,
+      portfolio_id: portfolioFilter || undefined,
+      program_id: programFilter || undefined,
+    }),
+    [orgFilter, portfolioFilter, programFilter],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    const scopeParams = { scope: analyticsScope, id: orgFilter || undefined };
+    const scopeParams = { scope: analyticsScope, id: analyticsId };
 
     // Matriz de riesgos: disponible para todos los roles (scoped por proyecto).
     getRiskMatrix(scopeParams)
@@ -176,7 +212,7 @@ function DashboardInner() {
       .catch(() => !cancelled && setRiskMatrix(null));
 
     // Vistas agregadas (admin-equivalente).
-    getHeatmap()
+    getHeatmap(jerarquia)
       .then((r) => {
         if (cancelled) return;
         setHeatmap(r);
@@ -197,7 +233,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [orgFilter, analyticsScope]);
+  }, [analyticsScope, analyticsId, jerarquia]);
 
   async function handleCapture() {
     setCapturing(true);
@@ -207,7 +243,7 @@ function DashboardInner() {
       setCaptureMsg(`Snapshot capturado (${res.rows} filas).`);
       const refreshed = await getTrends({
         scope: analyticsScope,
-        id: orgFilter || undefined,
+        id: analyticsId,
         weeks: 12,
       });
       setTrends(refreshed);
@@ -221,13 +257,47 @@ function DashboardInner() {
   }
 
   // Sincronizar cambio de filtro con URL (US-014: estado del filtro en URL).
-  function changeOrgFilter(next: string) {
-    setOrgFilter(next);
+  //
+  // US-201 — un solo sitio para los tres niveles, y **cada cambio limpia los de
+  // abajo**. No es cosmética: dejar el programa de otro portafolio seleccionado
+  // produce una consulta que cruza dos filtros que no se tocan y devuelve vacío,
+  // que se lee como «no hay proyectos» y no como «el filtro no tiene sentido».
+  function changeJerarquia(next: {
+    org?: string;
+    portfolio?: string;
+    program?: string;
+  }) {
+    const org = next.org ?? orgFilter;
+    // Cambiar de organización tira portafolio y programa; cambiar de portafolio
+    // tira el programa. Lo de abajo solo sobrevive si no se tocó lo de arriba.
+    const portfolio =
+      next.org !== undefined ? "" : (next.portfolio ?? portfolioFilter);
+    const program =
+      next.org !== undefined || next.portfolio !== undefined
+        ? ""
+        : (next.program ?? programFilter);
+
+    setOrgFilter(org);
+    setPortfolioFilter(portfolio);
+    setProgramFilter(program);
+
     const params = new URLSearchParams(searchParams.toString());
-    if (next) params.set("org_id", next);
-    else params.delete("org_id");
+    for (const [clave, valor] of [
+      ["org_id", org],
+      ["portfolio_id", portfolio],
+      ["program_id", program],
+    ] as const) {
+      if (valor) params.set(clave, valor);
+      else params.delete(clave);
+    }
     const qs = params.toString();
     router.replace(qs ? `/dashboard?${qs}` : "/dashboard");
+  }
+
+  /** El heatmap enlaza a una organización: entra por la cascada como cualquier
+   *  otro cambio de nivel, así que arrastra el reset de los de abajo. */
+  function changeOrgFilter(next: string) {
+    changeJerarquia({ org: next });
   }
 
   useEffect(() => {
@@ -242,12 +312,58 @@ function DashboardInner() {
     };
   }, []);
 
+  // US-201 — los portafolios cuelgan de una organización, así que sin ella no
+  // hay lista que pedir: el desplegable queda deshabilitado en vez de ofrecer
+  // los de todas las organizaciones mezclados sin decir de quién es cada uno.
+  useEffect(() => {
+    let cancelled = false;
+    if (!orgFilter) {
+      setPortfolios([]);
+      return;
+    }
+    listPortfolios(orgFilter, { is_active: true })
+      .then((r) => {
+        if (!cancelled) setPortfolios(r);
+      })
+      .catch(() => {
+        if (!cancelled) setPortfolios([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgFilter]);
+
+  // Los programas se piden por organización y se recortan por portafolio si hay
+  // uno elegido: el endpoint acepta los dos y así el desplegable nunca ofrece un
+  // programa que el filtro de arriba ya excluyó.
+  useEffect(() => {
+    let cancelled = false;
+    if (!orgFilter) {
+      setPrograms([]);
+      return;
+    }
+    listPrograms({
+      organization_id: orgFilter,
+      portfolio_id: portfolioFilter || undefined,
+      is_active: true,
+    })
+      .then((r) => {
+        if (!cancelled) setPrograms(r);
+      })
+      .catch(() => {
+        if (!cancelled) setPrograms([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgFilter, portfolioFilter]);
+
   // KPIs + Charts se refetchean al cambiar el filtro de organización.
   useEffect(() => {
     let cancelled = false;
     setLoadingKpis(true);
     setLoadingCharts(true);
-    const filter = { organization_id: orgFilter || undefined };
+    const filter = jerarquia;
     getDashboardKpis(filter)
       .then((r) => {
         if (!cancelled) setKpis(r);
@@ -273,15 +389,12 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [orgFilter]);
+  }, [jerarquia]);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingRows(true);
-    getPlanVsActual({
-      organization_id: orgFilter || undefined,
-      phase: phaseFilter || undefined,
-    })
+    getPlanVsActual({ ...jerarquia, phase: phaseFilter || undefined })
       .then((r) => {
         if (!cancelled) setRows(r);
       })
@@ -292,30 +405,30 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [orgFilter, phaseFilter]);
+  }, [jerarquia, phaseFilter]);
 
   const phasesData = useMemo(() => {
     const entries = charts ? toEntries(charts.projects_by_phase) : [];
     return entries.map(([k, v]) => ({
-      label: PHASE_LABEL[k] ?? k,
+      label: etiquetaFase(k),
       value: Number(v) || 0,
-      color: PHASE_COLOR[k] ?? PALETTE.accent,
+      color: colorFase(k),
     }));
   }, [charts]);
 
   const progressData = useMemo(() => {
     const entries = charts ? toEntries(charts.progress_by_phase) : [];
     return entries.map(([k, v]) => ({
-      label: PHASE_LABEL[k] ?? k,
+      label: etiquetaFase(k),
       value: Math.round(Number(v) || 0),
-      color: PHASE_COLOR[k] ?? PALETTE.accent,
+      color: colorFase(k),
     }));
   }, [charts]);
 
   const budgetData = useMemo(() => {
     const entries = charts ? toEntries(charts.budget_by_type) : [];
     return entries.map(([k, v]) => ({
-      label: TYPE_LABEL[k] ?? k,
+      label: etiquetaTipo(k),
       value: Number(v) || 0,
       color: PALETTE.accent,
     }));
@@ -324,15 +437,32 @@ function DashboardInner() {
   const healthData = useMemo(() => {
     const entries = charts ? toEntries(charts.portfolio_health) : [];
     return entries.map(([k, v]) => ({
-      label: HEALTH_LABEL[k] ?? k,
+      label: etiquetaSalud(k),
       value: Number(v) || 0,
-      color: HEALTH_COLOR[k] ?? PALETTE.neutral,
+      color: colorSalud(k),
     }));
   }, [charts]);
 
+  // US-201 — el rastro de la cascada, para que la cabecera diga qué se está
+  // mirando. Se nombran los tres niveles y no solo el más específico: «Programa
+  // Alfa» a secas no dice de qué cartera es, y hay nombres repetidos entre
+  // organizaciones.
+  const rastro = useMemo(() => {
+    const partes = [
+      orgFilter ? (orgs.find((o) => o.id === orgFilter)?.name ?? "organización") : null,
+      portfolioFilter
+        ? (portfolios.find((pf) => pf.id === portfolioFilter)?.name ?? "portafolio")
+        : null,
+      programFilter
+        ? (programs.find((pg) => pg.id === programFilter)?.name ?? "programa")
+        : null,
+    ].filter(Boolean);
+    return partes.join(" › ");
+  }, [orgFilter, orgs, portfolioFilter, portfolios, programFilter, programs]);
+
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
   const csvHref = planVsActualCsvUrl(apiBase, {
-    organization_id: orgFilter || undefined,
+    ...jerarquia,
     phase: phaseFilter || undefined,
   });
 
@@ -346,12 +476,15 @@ function DashboardInner() {
           {leido && <MarcaDeDatos periodo="vivo" detalle="las tendencias vienen de instantáneas diarias" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             KPIs, salud del portafolio y Plan vs Real.
-            {orgFilter
-              ? ` · Filtrando por: ${orgs.find((o) => o.id === orgFilter)?.name ?? "organización"}`
-              : ""}
+            {rastro ? ` · Filtrando por: ${rastro}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* US-201 — la cascada organización → portafolio → programa. Los dos
+              de abajo se deshabilitan sin el de arriba: un desplegable con
+              opciones de todas las organizaciones a la vez no dice de quién es
+              cada portafolio, y hay clientes con un «Portafolio General» cada
+              uno. */}
           <label
             htmlFor="org-filter"
             className="text-xs font-medium text-[var(--color-tertiary)]"
@@ -361,9 +494,9 @@ function DashboardInner() {
           <Select
             id="org-filter"
             value={orgFilter}
-            onChange={(e) => changeOrgFilter(e.target.value)}
+            onChange={(e) => changeJerarquia({ org: e.target.value })}
             aria-label="Filtrar por organización"
-            className="min-w-[220px]"
+            className="min-w-[180px]"
           >
             {/* DIS-03: un inquilino recién creado no tiene organizaciones. */}
             {orgs.length === 0 ? (
@@ -378,12 +511,76 @@ function DashboardInner() {
               </option>
             ))}
           </Select>
-          {orgFilter ? (
+          <label
+            htmlFor="portfolio-filter"
+            className="text-xs font-medium text-[var(--color-tertiary)]"
+          >
+            Portafolio
+          </label>
+          <Select
+            id="portfolio-filter"
+            value={portfolioFilter}
+            onChange={(e) => changeJerarquia({ portfolio: e.target.value })}
+            aria-label="Filtrar por portafolio"
+            className="min-w-[180px]"
+            disabled={!orgFilter}
+          >
+            <option value="">
+              {orgFilter ? "Todos los portafolios" : "Elige una organización"}
+            </option>
+            {/* DIS-03 — tres estados, no dos: «elige una organización» y «esta
+                organización no tiene portafolios» son cosas distintas, y sin
+                distinguirlas el desplegable vacío se lee como que algo falló. */}
+            {orgFilter && portfolios.length === 0 ? (
+              <option value="" disabled>
+                (esta organización no tiene portafolios)
+              </option>
+            ) : null}
+            {portfolios.map((pf) => (
+              <option key={pf.id} value={pf.id}>
+                {pf.name}
+              </option>
+            ))}
+          </Select>
+          <label
+            htmlFor="program-filter"
+            className="text-xs font-medium text-[var(--color-tertiary)]"
+          >
+            Programa
+          </label>
+          <Select
+            id="program-filter"
+            value={programFilter}
+            onChange={(e) => changeJerarquia({ program: e.target.value })}
+            aria-label="Filtrar por programa"
+            className="min-w-[180px]"
+            disabled={!orgFilter}
+          >
+            <option value="">
+              {orgFilter ? "Todos los programas" : "Elige una organización"}
+            </option>
+            {/* Con portafolio elegido, la lista viene recortada a los suyos: hay
+                que decir cuál de los dos vacíos es, o parece que se perdieron
+                los programas de la organización. */}
+            {orgFilter && programs.length === 0 ? (
+              <option value="" disabled>
+                {portfolioFilter
+                  ? "(este portafolio no tiene programas)"
+                  : "(esta organización no tiene programas)"}
+              </option>
+            ) : null}
+            {programs.map((pg) => (
+              <option key={pg.id} value={pg.id}>
+                {pg.name}
+              </option>
+            ))}
+          </Select>
+          {orgFilter || portfolioFilter || programFilter ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => changeOrgFilter("")}
+              onClick={() => changeJerarquia({ org: "" })}
             >
               Limpiar
             </Button>
@@ -413,7 +610,7 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<Briefcase className="h-4 w-4" aria-hidden />}
           tone="accent"
-          href="/pmo/projects?phase=planning&phase=execution&phase=support"
+          href="/pmo/projects?phase=preparacion&phase=ejecucion&phase=hypercare"
         />
         <KpiCard
           label="Solicitudes en revisión"
@@ -580,19 +777,10 @@ function DashboardInner() {
             <h2 className="text-base font-semibold text-[var(--color-primary)]">Plan vs Real</h2>
           </div>
           <div className="flex flex-nowrap items-center gap-2">
-            <Select
-              aria-label="Filtrar por organización"
-              value={orgFilter}
-              onChange={(e) => changeOrgFilter(e.target.value)}
-              className="h-9"
-            >
-              <option value="">Todas las organizaciones</option>
-              {orgs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </Select>
+            {/* US-201 — la organización se elige una sola vez, en la cabecera.
+                Este segundo desplegable repetía el mismo estado dos veces en la
+                misma pantalla; con tres niveles serían seis controles para tres
+                filtros. Aquí queda solo lo propio de la tabla: la fase. */}
             <Select
               aria-label="Filtrar por fase"
               value={phaseFilter}
@@ -600,9 +788,9 @@ function DashboardInner() {
               className="h-9"
             >
               <option value="">Todas las fases</option>
-              {Object.entries(PHASE_LABEL).map(([k, v]) => (
+              {PHASE_ORDER.map((k) => (
                 <option key={k} value={k}>
-                  {v}
+                  {PHASE_LABEL[k]}
                 </option>
               ))}
             </Select>
@@ -830,7 +1018,7 @@ function HealthDot({ health }: { health: string | null }) {
         : health === "red"
           ? "bg-[var(--color-danger-fg)]"
           : "bg-[var(--color-tertiary)]";
-  const label = HEALTH_LABEL[health] ?? health;
+  const label = etiquetaSalud(health);
   return (
     <span
       title={label}

@@ -36,10 +36,11 @@ type Props = {
 
 const CASCADE_LABELS: Record<string, string> = {
   projects: "proyectos",
-  business_units: "unidades de negocio",
+  portfolios: "portafolios",
   programs: "programas",
   project_requests: "solicitudes de proyecto",
-  departments: "departamentos",
+  projects_in_programs: "proyectos dentro de esos programas",
+  projects_direct: "proyectos que cuelgan directo",
   project_links_to_unset: "proyectos quedan sin asignar",
   program_links_to_unset: "programas quedan sin asignar",
   memberships: "membresías de proyecto",
