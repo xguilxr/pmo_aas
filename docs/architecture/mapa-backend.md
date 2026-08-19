@@ -30,7 +30,7 @@ apps/api/app/
 
 | Archivo | Tablas | Notas para la reestructura |
 |---|---|---|
-| `tenant.py` | tenants (slug, settings JSON: BYOK en `settings.ai.byo`, org_label, report_builder) | plan_code (W7) va aquí |
+| `tenant.py` | tenants (slug, settings JSON: BYOK en `settings.ai.byo`, report_builder; `org_label` retirado en DEC-032) | plan_code (W7) va aquí |
 | `organization.py` | organizations, **portfolios** (US-198), business_units†, departments†, programs | portfolios: `name` único por org, `code`, `owner_actor_id`→actors, soft-delete. `programs.portfolio_id` **NOT NULL** (ya sin `department_id`, 0109). † tablas sin lectores; se retiran en W8 (ADR-037) |
 | `user.py` | users (tenant_id nullable, role_type, is_superadmin, lockout) | email único por tenant → global (W2); membresía nueva (W2) |
 | `user_scope_assignment.py` | user_scope_assignments (scope_type org/program/project, sin FK real) | base de visibilidad PM |

@@ -464,8 +464,9 @@ que la API ya soporta (`priority_min/max`, `program_id`, `no_program`).
 
 ## 10. Fase 2 — Organigramas con utilización de recursos (propuesta 2026-07-09)
 
-**Decisiones owner:** ENH-190 label Organización/Portafolio configurable
-por tenant (`settings.org_label`). Organigramas con %FTE en 3 niveles.
+**Decisiones owner:** organigramas con %FTE en 3 niveles. (Este apartado
+citaba también ENH-190 —label Organización/Portafolio configurable por tenant—,
+retirada en DEC-032: la organización se llama «Organización» para todos.)
 
 ### Diseño propuesto
 
@@ -483,9 +484,10 @@ Un solo servicio `organigrama_export.py` parametrizado por scope
   intersectan el mes, sumado por los proyectos del scope + columna
   "Total tenant". **Formato condicional: fill amarillo ≥80%, rojo
   >100%** + columna "Meses en alerta".
-- **Tenants con org_label=portfolios**: los recursos son reutilizables a
-  nivel tenant → botón "Organigrama global" en /pmo/resources (scope
-  tenant) además del de cada portafolio.
+- **Organigrama global**: los recursos son reutilizables a nivel inquilino →
+  botón "Organigrama global" en /pmo/resources (scope tenant) además del de cada
+  organización. (La condición era `org_label=portfolios`; con ENH-190 retirada
+  —DEC-032— el botón global aplica a todos los inquilinos.)
 
 Endpoints: `GET /projects/{id}/organigrama/export` (extender el
 existente con FTE), `GET /programs/{id}/organigrama/export`,
@@ -499,6 +501,6 @@ existente con FTE), `GET /programs/{id}/organigrama/export`,
 nivel.
 
 ### IDs propuestos
-- **ENH-190** — label configurable (en ejecución).
+- **ENH-190** — label configurable. ⛔ Retirada en DEC-032.
 - **US-186** — BE: servicio organigrama multi-scope + uso mensual + alertas 80/100 + 4 endpoints.
 - **US-187** — UX: botones por nivel + organigrama global + hoja FTE en proyecto + navigation/epics.

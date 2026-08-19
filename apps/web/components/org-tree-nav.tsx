@@ -23,7 +23,6 @@ import {
 import { type Project, listProjects } from "@/lib/api/projects";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { useOrgLabel } from "@/lib/org-label";
 
 const STORAGE_KEY = "pmoaas:sidebar:org-tree:expanded";
 
@@ -418,7 +417,6 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   );
 
   // ENH-190: label configurable por tenant para "Organización(es)".
-  const orgLabel = useOrgLabel();
 
   return (
     <div>
@@ -443,7 +441,7 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
             <PlaceholderRow depth={1} text={`Error: ${orgs.error ?? ""}`} />
           ) : null}
           {orgs.state === "loaded" && orgs.items.length === 0 ? (
-            <PlaceholderRow depth={1} text={`Sin ${orgLabel.plural.toLowerCase()}`} />
+            <PlaceholderRow depth={1} text="Sin organizaciones" />
           ) : null}
           {orgs.items.map((org) => {
             const orgKey = `org:${org.id}`;

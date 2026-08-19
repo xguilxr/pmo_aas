@@ -1906,7 +1906,8 @@ que es exactamente el valor de haberlos escrito.
 
 **Fecha:** 2026-08-19 · **Estado:** aceptada · **Decide:** owner
 **Supersede parcialmente:** ADR-024 (el nivel que las tablas modelan) ·
-**Reabre:** ADR-016 · **Levanta el veto de:** ADR-021 · **Implementa:** US-198
+**Invalida:** ENH-190 (ver `DEC-032`) · **Reabre:** ADR-016 ·
+**Levanta el veto de:** ADR-021 · **Implementa:** US-198
 
 **Contexto.** La jerarquía era `organización → unidad de negocio → departamento
 → programa → proyecto`. ADR-024 decidió —bien— que esos niveles vivieran en
@@ -1987,6 +1988,12 @@ trabajo de la API cobrado al usuario.
 - Se abre el «Portafolio General» por organización como destino por defecto. Se
   llama «General» y no «Sin clasificar» a propósito: el segundo nombre invita a
   dejarlo así para siempre.
+- **`ENH-190` queda inválida, no obsoleta** (añadido 2026-08-19, al implementar
+  US-201). Esa mejora permitía a un inquilino renombrar «Organización» a
+  «Portafolio» en la interfaz. Con el portafolio como entidad **hija**, ese
+  inquilino vería dos niveles seguidos llamados igual —«Portafolio → Portafolio
+  → Programa»— en el árbol, en los filtros y en los desplegables. No es una
+  etiqueta confusa: es una jerarquía ilegible. Se retira en `DEC-032`.
 
 **Alternativas evaluadas.**
 

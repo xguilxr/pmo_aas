@@ -76,7 +76,7 @@ FTE/costo y la base de IA/BYOK se reutilizan o adaptan.
 - **ADR-003**: RLS aceptado y no implementado — pasa de deuda a trabajo.
 - **DEC-018/020/024**: modelo de permisos — roles globales es el replanteo
   diferido; DEC-005 obsoleta.
-- **ENH-190**: label "Organización/Portafolio" cosmético — retirar.
+- **ENH-190**: label "Organización/Portafolio" cosmético — ✅ retirado (DEC-032, migración 0111).
 - **ADR-019/022**: vocabulario de fases — decisión de mapeo explícita.
 
 ## 2. Schema (59 tablas, migración actual 20260807_0107)

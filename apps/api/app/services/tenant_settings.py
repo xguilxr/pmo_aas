@@ -18,10 +18,11 @@ Defaults cuando la clave no existe:
 - ``progress_calculation_method`` → ``"by_task_count"``
 - ``task_load_thresholds`` → ``{"green_max": 5, "yellow_max": 10}``
 
-Además, ``tenants.settings.org_label`` (top-level, ENH-190) controla el
-label de UI para "Organización/Organizaciones": ``"organizations"``
-(default) o ``"portfolios"``. Es puramente cosmético — no cambia
-schema, rutas ni tipos de entidad.
+ENH-190 vivía aquí: ``tenants.settings.org_label`` permitía renombrar
+"Organización" a "Portafolio" en la interfaz. Se retiró en DEC-032 —
+Portafolio pasó a ser una entidad **hija** de la organización (ADR-037) y el
+label dejaba dos niveles adyacentes con el mismo nombre. La migración 0111
+borra la clave.
 
 Este módulo expone helpers puros (sin DB) que consultan/escriben sobre
 un objeto ``Tenant`` ya cargado. EP020 (Report Builder) consumirá estos
@@ -157,47 +158,5 @@ def set_task_load_thresholds(
     rb = dict(merged.get("report_builder") or {})
     rb["task_load_thresholds"] = {"green_max": green_max, "yellow_max": yellow_max}
     merged["report_builder"] = rb
-    tenant.settings = merged
-    return merged
-
-
-# ---- org_label (ENH-190) ----
-#
-# Shape canónico: ``tenants.settings.org_label`` (top-level, no anidado
-# bajo ``report_builder`` — es un label de UI, no una config del Report
-# Builder). Solo afecta textos visibles en el frontend; cero cambios de
-# schema/rutas/APIs (las entidades siguen siendo "organizations" en DB
-# y URLs).
-ORG_LABEL_VALUES: tuple[str, ...] = ("organizations", "portfolios")
-DEFAULT_ORG_LABEL: str = "organizations"
-
-
-def get_org_label(tenant: Tenant) -> str:
-    """Resolve the per-tenant UI label for "Organización/Organizaciones".
-
-    Returns the configured value if it is one of :data:`ORG_LABEL_VALUES`
-    ("organizations" | "portfolios"); otherwise returns
-    :data:`DEFAULT_ORG_LABEL`.
-    """
-    settings = tenant.settings or {}
-    val = settings.get("org_label")
-    if isinstance(val, str) and val in ORG_LABEL_VALUES:
-        return val
-    return DEFAULT_ORG_LABEL
-
-
-def set_org_label(tenant: Tenant, value: str) -> dict[str, Any]:
-    """Persist the org_label on the tenant settings dict.
-
-    Returns the merged ``tenant.settings`` (also assigned on the model).
-    Raises :class:`ValueError` if ``value`` is not in
-    :data:`ORG_LABEL_VALUES`.
-    """
-    if value not in ORG_LABEL_VALUES:
-        raise ValueError(
-            f"invalid org_label: {value!r}; expected one of {ORG_LABEL_VALUES}"
-        )
-    merged = dict(tenant.settings or {})
-    merged["org_label"] = value
     tenant.settings = merged
     return merged

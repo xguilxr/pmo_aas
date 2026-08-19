@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth-storage";
-import { useOrgLabel } from "@/lib/org-label";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import {
   getOrganizationPanel,
@@ -94,7 +93,6 @@ export default function OrganizationPanelPage() {
   const [error, setError] = useState<string | null>(null);
   const canEdit = userCanEdit();
   // ENH-190: label configurable por tenant para "Organización(es)".
-  const orgLabel = useOrgLabel();
 
   useEffect(() => {
     let cancelled = false;
@@ -144,7 +142,7 @@ export default function OrganizationPanelPage() {
         <BackLink fallbackHref="/admin/organizations" />
         <Breadcrumb
           items={[
-            { href: "/admin/organizations", label: orgLabel.plural },
+            { href: "/admin/organizations", label: "Organizaciones" },
             { label: data.name },
           ]}
         />
@@ -362,15 +360,13 @@ export default function OrganizationPanelPage() {
       </SectionCard>
 
       <SectionCard
-        title={`Usuarios con rol en ${orgLabel.singularArticled === "un portafolio" ? "el portafolio" : "la organización"}`}
+        title="Usuarios con rol en la organización"
         icon={<Users className="h-4 w-4" aria-hidden />}
         count={data.users.length}
       >
         {data.users.length === 0 ? (
           <p className="text-sm text-[var(--color-tertiary)]">
-            {orgLabel.singular === "Portafolio"
-              ? "Nadie asignado a proyectos de este portafolio todavía."
-              : "Nadie asignado a proyectos de esta organización todavía."}
+            Nadie asignado a proyectos de esta organización todavía.
           </p>
         ) : (
           <ul className="divide-y divide-[var(--border-subtle)]">

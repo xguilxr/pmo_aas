@@ -249,37 +249,27 @@ Ver detalle del shape en
 
 ---
 
-### ENH-190 — Label de UI configurable por tenant ("Organización" / "Portafolio")
+### ENH-190 — Label de UI configurable por tenant ⛔ RETIRADA (DEC-032)
 
-**2026-07-09.** Algunos tenants (cliente que gestiona su propio
-portafolio) prefieren ver "Portafolio/Portafolios" en vez de
-"Organización/Organizaciones" en toda la UI. El cambio es
-**puramente cosmético**: no toca schema, rutas ni el shape de las
-APIs de `organizations`. La entidad sigue siendo "Organization" en
-DB, URLs (`/pmo/organizations/**`, `/admin/organizations/**`) y
-tipos.
+**2026-07-09, retirada el 2026-08-19.** Permitía a un inquilino ver
+"Portafolio/Portafolios" en vez de "Organización/Organizaciones" en toda la
+interfaz: `tenants.settings.org_label`, propagado por
+`GET /api/v1/me/tenant-branding` y consumido por el hook `useOrgLabel()`.
 
-- **Setting:** `tenants.settings.org_label` = `"organizations"`
-  (default) | `"portfolios"`. Accessors `get_org_label(tenant)` /
-  `set_org_label(tenant, value)` en
-  `apps/api/app/services/tenant_settings.py`.
-- **Dónde se configura:** Admin → Tenant → pestaña de settings
-  (`TenantSettingsForm`, sección "Nomenclatura"), vía
-  `GET/PATCH /api/v1/admin/settings` (campo top-level `org_label`,
-  requiere capability `tenant.manage`).
-- **Cómo lo consume cualquier usuario del tenant:** el label efectivo
-  se expone en `GET /api/v1/me/tenant-branding` (campo `org_label`).
-  Es el mismo endpoint que alimenta el branding del topbar/sidebar vía
-  `<TenantBrandingProvider>`.
-- **Helper frontend:** `apps/web/lib/org-label.ts` — hook `useOrgLabel()`
-  devuelve `{ singular, plural, singularArticled }` según el valor
-  efectivo.
-- **Superficies afectadas** (solo texto visible, sin renombrar rutas
-  ni props): sidebar/nav (`components/app-shell.tsx`,
-  `components/org-tree-nav.tsx`), landing PMO (`app/(app)/pmo/page.tsx`),
-  detalle de organización/portafolio (`app/(app)/pmo/organizations/[id]/page.tsx`),
-  filtro de organización en `app/(app)/pmo/projects/page.tsx`, y el
-  admin de organizaciones (`app/(app)/admin/organizations/**`).
+**Por qué se retiró.** ADR-037 la volvió **inválida**, no obsoleta: «Portafolio»
+pasó a ser una entidad **dentro** de la organización, así que un inquilino con el
+label puesto vería «Portafolio → Portafolio → Programa» en el árbol del sidebar,
+en los filtros del tablero y en los desplegables de los formularios. No es una
+etiqueta confusa — es una jerarquía ilegible.
+
+Se fue el mecanismo entero y no solo la opción: con un único valor posible
+quedaba un control que se abre, se mira y se cierra, más el código de leerlo,
+propagarlo por el branding y ramificar el texto en once pantallas. La
+organización se llama «Organización» para todos los inquilinos.
+
+Detalle, alternativas y qué pasa con los inquilinos que la tenían puesta:
+[`DEC-032`](DECISIONS.md). Migración 0111 · trinquete
+`tests/test_dec032_retiro_org_label.py`.
 
 ---
 

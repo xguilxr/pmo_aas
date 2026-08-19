@@ -24,7 +24,6 @@ from app.services.branding_storage import (
     find_logo_file,
     logo_to_data_url,
 )
-from app.services.tenant_settings import DEFAULT_ORG_LABEL, get_org_label
 
 
 def moneda_preferida_de(t: Tenant) -> str:
@@ -155,8 +154,6 @@ async def my_tenant_branding(
             "tenant_slug": None,
             "logo_url": None,
             "primary_color": None,
-            # ENH-190: default label when there is no active tenant.
-            "org_label": DEFAULT_ORG_LABEL,
             "preferred_currency": MONEDA_POR_DEFECTO,
         }
     t = (
@@ -171,12 +168,10 @@ async def my_tenant_branding(
         "tenant_slug": t.slug,
         "logo_url": t.logo_url,
         "primary_color": primary_color,
-        # ENH-190: effective per-tenant UI label ("organizations" | "portfolios").
-        # UI-only — any user in the tenant can read it via this shared endpoint.
-        "org_label": get_org_label(t),
         # BUG-092 — la moneda PREFERIDA del inquilino: el valor inicial de los
-        # proyectos que no eligen una propia. Viaja por aquí y no por un punto
-        # de acceso nuevo porque es el mismo caso que `org_label`: un dato de
-        # presentación que toda pantalla necesita y ninguna debería ir a pedir.
+        # proyectos que no eligen una propia. Viaja por aquí y no por un punto de
+        # acceso nuevo porque es un dato de presentación que toda pantalla
+        # necesita y ninguna debería ir a pedir. (Aquí viajaba también el
+        # `org_label` de ENH-190, retirado en DEC-032.)
         "preferred_currency": moneda_preferida_de(t),
     }

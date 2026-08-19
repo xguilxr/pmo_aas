@@ -1091,3 +1091,35 @@ nombres nuevos existía antes del 2026-08-19—. Lo único que no puede
 distinguir es una fila que **ya** dijera `preparacion` de una que lo diga
 por esta migración; el caso no se da con datos reales, pero conviene
 saberlo antes de volver a subir tras una bajada parcial.
+
+---
+
+## 0111 — se borra `tenants.settings.org_label` (DEC-032)
+
+No toca ninguna columna: la clave vive dentro del JSON de
+`tenants.settings`, y lo que hace la migración es sacarla de ahí.
+
+**Por qué hay migración para una clave de JSON.** Porque sin ella la clave
+se queda escrita y sin lectores, y un `"org_label": "portfolios"` en
+`settings` es una invitación a que alguien la vuelva a leer dentro de seis
+meses sin saber por qué se retiró.
+
+Y porque el conteo es la única forma de contestar la pregunta que importa:
+**¿alguien la estaba usando?** El registro del despliegue dice cuántos
+inquilinos la tenían y con qué valor. Si sale alguno con `"portfolios"`, ese
+cliente va a ver el cambio de nombre en su interfaz y hay que avisarle; si
+no sale ninguno, no hay nada que comunicar.
+
+**Lee y reescribe fila por fila** en vez de usar un operador de JSON del
+motor: los operadores de `jsonb` de Postgres (`settings - 'org_label'`) no
+existen en SQLite, y esta migración se ensaya en la suite. El precio es
+recorrer `tenants`, que es la tabla más pequeña del esquema.
+
+**La bajada no repone el valor.** No queda dónde haberlo guardado, y una
+tabla de residuo para una etiqueta de interfaz es peor que el problema. Lo
+que deja la bajada es la clave ausente, que es exactamente lo que el
+accesor viejo interpretaba como el default «organizations»: para un dato de
+presentación con default, «ausente» y «restaurado al default» son el mismo
+estado visible. Si hubiera que reponer un inquilino concreto a mano, el
+conteo de la subida está en el registro.
+

@@ -26,9 +26,7 @@ revisar_cada: 30d
 - [x] **200** UI admin: Portafolio ⊃ Programa, formularios y árbol.
 - [x] **201** cascada org → portafolio → programa: tablero, cross, snapshots.
 
-Hallazgo para triage: ENH-190 permite renombrar «Organización» a «Portafolio»
-en la UI; con Portafolio como entidad hija, ese inquilino ve dos niveles
-llamados igual. Decisión del owner.
+- [x] **limpieza** ENH-190 retirada (DEC-032, 0111) + residuo de W1.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
