@@ -23,6 +23,8 @@
     "Quedan 1 moderate (uuid 8.3.2 vía exceljs): subirlo cruza un mayor y",
     "exceljs puede depender de la API v8. Está por debajo del umbral `high`",
     "del gate. Revisar: 2026-09-15.",
+    "2026-08-19: nanoid <3.3.18 (high, GHSA-2v37-7h3g-55p8, transitiva vía",
+    "postcss) — se fuerza >=3.3.18.",
     "Si un override deja de hacer falta porque la raíz lo subió, se retira."
   ],
   "pnpm": {
@@ -30,7 +32,8 @@
       "brace-expansion": ">=2.1.4",
       "postcss": ">=8.5.12",
       "tmp": ">=0.2.6",
-      "sharp": ">=0.35.0"
+      "sharp": ">=0.35.0",
+      "nanoid": ">=3.3.18"
     }
   }
 }

@@ -17,8 +17,11 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-Sin US activa. Branch de la sesión: `claude/docs-context-debloat-1j4o3b`
-(debloat documental, batch aprobado por el owner). Al terminar: producto.
+Sin US activa. Sesión de planeación de la **reestructura** cerrada:
+PR **#593** (`claude/platform-restructure-concept-mapping-rjhzd7`, docs
+puros) espera merge del owner. Siguiente sesión: **US-198 #588** en branch
+nueva, con la «Guía de sesiones» de
+`docs/epics/drafts/reestructura-plan.md`.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
@@ -26,6 +29,21 @@ Sin US activa. Branch de la sesión: `claude/docs-context-debloat-1j4o3b`
 ---
 
 ## 📥 INBOX / TRIAGE
+
+### Reestructura de plataforma — Bloque Reestructura-W1 (propuesto)
+
+Planeación en `docs/epics/drafts/reestructura-{conceptos,plan,inventario,modelo-datos}.md`.
+BU/Departamentos se reemplazan por Portafolio ⊃ Programa (owner 2026-08-19,
+sin datos productivos que mapear). `status:ready` y **wireframes aprobados**
+por el owner (2026-08-19) — la construcción arranca en sesiones nuevas con
+la «Guía de sesiones» de `reestructura-plan.md` (mapas:
+`docs/architecture/mapa-{backend,frontend}.md`). Orden: US-198 primero.
+
+- [ ] US-198 #588 — Modelo y migración: entidad Portfolio + re-parenting de Programs
+- [ ] US-199 #589 — API: CRUD de portafolios + retiro de BU/deptos (dep: US-198)
+- [ ] US-200 #590 — UI admin: jerarquía Portafolio ⊃ Programa (dep: US-199)
+- [ ] US-201 #591 — Filtros portafolio/programa en dashboard y cross (dep: US-199)
+- [ ] US-202 #592 — Enum de tipo + vocabulario de fases nuevo (dep: US-198)
 
 - 2026-08-07 — **Conformidad cerrada** (ADR-036); detalle en
   `docs/conformidad/asvs-l1.md`. Vuelve a la mesa solo con un cliente que exija
