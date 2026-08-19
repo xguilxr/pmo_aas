@@ -46,15 +46,10 @@ queda comprometido de las oleadas: **W3** RLS de Postgres, **W8** el `drop` de
   y `0111` cuántos inquilinos tenían `org_label`.
 - [ ] **Tapar un hueco antes de cerrar ventanas de compat.** `GET /projects`
   mete `phase` y `type` crudos en el `IN (...)` sin normalizar ni registrar: el
-  contador **no ve** a quien filtra con el nombre viejo, así que cerrar `phase=*`
-  fiándose de él rompería a ese cliente en silencio. Fichas en
-  `core/compatibilidad.py`; abiertas además `phase=support`,
-  `portfolio_function`, `wbs`, `amber_max` y `cookie:refresh_token`.
+  contador no ve a quien filtra con el nombre viejo. Fichas y ventanas abiertas
+  en `core/compatibilidad.py`.
 - [ ] **Decidir los nueve follow-ups del PR #594**, listados ahí con su
-  evidencia. Los de producto: la cadena de permisos muerta (`CurrentUser.has`),
-  `lib/api/report-templates.ts` (único cliente de un router vivo sin pantalla),
-  ~40 exports de `lib/api/*` sin consumidor, y
-  `/superadmin/tenants/[id]/permissions` sin enlace.
+  evidencia (superficie de API sin pantalla, permisos muertos, rutas sin enlace).
 - [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los valores de
   US-196 son razonados, no medidos; se ajustan en `settings`, sin tocar código.
 - [ ] **`design-system/tokens.md`** describe una paleta anterior a D-7 y

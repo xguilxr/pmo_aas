@@ -52,6 +52,26 @@ ningún sitio intermedio. Es lo mismo que hace cualquier `downgrade` que retira
 una columna, y la razón por la que la subida se niega a correr con datos:
 después de soltarla, ya no hay a dónde volver.
 
+**Y devuelve los cinco índices de la 0009.** Esto no es cosmético y no es
+opcional: en Postgres, `DROP COLUMN` se lleva **en silencio** todo índice que
+dependa de la columna. La 0009 había creado cinco sobre las columnas que esta
+migración suelta, así que tras la subida esos índices ya no existen. Si la
+bajada devolviera las columnas sin ellos, la cadena seguiría hacia atrás hasta
+la 0009 y su `downgrade` moriría en `DROP INDEX ix_req_dept_id` — «index does
+not exist» —, que es exactamente lo que rompió el job `api-migrations-postgres`
+la primera vez (2026-08-19).
+
+El contrato de una bajada es dejar la base como estaba antes de la subida, y
+«como estaba» incluía esos índices. Escribirlos aquí y no dejar que la 0009 los
+recree es la única opción: la 0009 está mergeada a `main` y no se edita.
+
+**Por qué no lo vio la suite local.** El test de esta migración corre contra
+SQLite, donde `drop_column` se emula recreando la tabla y el índice se
+comporta distinto. La cadena completa `upgrade → downgrade base → upgrade` solo
+se ejerce contra Postgres, en CI. El trinquete de
+`tests/test_us199_indices_de_bajada.py` cierra el hueco sin necesitar Postgres:
+lee las migraciones y compara.
+
 Revision ID: 20260819_0109
 Revises: 20260819_0108
 Create Date: 2026-08-19
@@ -173,3 +193,23 @@ def downgrade() -> None:
     for tabla, columna in reversed(A_SOLTAR):
         referencia = (sa.ForeignKey(f"{destino[columna]}.id"),) if con_fk else ()
         op.add_column(tabla, sa.Column(columna, sa.String(36), *referencia, nullable=True))
+
+    # Y los cinco índices que `DROP COLUMN` se llevó con las columnas, con el
+    # nombre exacto con el que la 0009 los creó — es el nombre por el que su
+    # `downgrade` los va a borrar. Va después del bucle de arriba y no dentro: no
+    # se puede indexar una columna que todavía no existe.
+    #
+    # Escritos uno por uno y no en un bucle sobre una constante, a propósito: el
+    # trinquete de `tests/test_us199_indices_de_bajada.py` los busca como
+    # llamadas literales, y una indirección lo dejaría ciego justo aquí. Es la
+    # misma lección que `_AVISAR_FASE` en US-202.
+    #
+    # `project_charters` no aparece: la 0012 creó sus dos columnas dentro de un
+    # `create_table` y solo indexó `tenant_id` y `project_id`. Reponer un índice
+    # que nunca existió deja un `CREATE INDEX` sin su `DROP INDEX`, y rompe la
+    # cadena en el otro sentido.
+    op.create_index("ix_programs_dept_id", "programs", ["department_id"])
+    op.create_index("ix_projects_bu_id", "projects", ["business_unit_id"])
+    op.create_index("ix_projects_dept_id", "projects", ["department_id"])
+    op.create_index("ix_req_bu_id", "project_requests", ["business_unit_id"])
+    op.create_index("ix_req_dept_id", "project_requests", ["department_id"])

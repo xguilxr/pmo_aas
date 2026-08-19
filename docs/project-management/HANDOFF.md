@@ -1,3 +1,11 @@
+---
+tipo: gestion
+responsable: propietario
+estado: vigente
+revisado: 2026-08-19
+revisar_cada: 30d
+---
+
 # HANDOFF.md — Estado para la próxima sesión
 
 **Última actualización:** 2026-08-19
