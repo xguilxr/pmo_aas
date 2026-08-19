@@ -1899,3 +1899,101 @@ En concreto siguen en el CI, y siguen siendo bloqueantes:
 requisito contractual de seguridad, o ante el primer incidente de credenciales.
 Entonces esta decisión vuelve a la mesa con los tres residuales ya nombrados,
 que es exactamente el valor de haberlos escrito.
+
+---
+
+## ADR-037 — La jerarquía es `organización → portafolio ⊃ programa → proyecto`
+
+**Fecha:** 2026-08-19 · **Estado:** aceptada · **Decide:** owner
+**Supersede parcialmente:** ADR-024 (el nivel que las tablas modelan) ·
+**Reabre:** ADR-016 · **Levanta el veto de:** ADR-021 · **Implementa:** US-198
+
+**Contexto.** La jerarquía era `organización → unidad de negocio → departamento
+→ programa → proyecto`. ADR-024 decidió —bien— que esos niveles vivieran en
+tablas con claves foráneas reales y no en JSONB. Lo que ADR-024 no cuestionó es
+**qué** modelaban esos niveles: unidad de negocio y departamento describen el
+**organigrama** del cliente.
+
+Y el organigrama no es la pregunta que una PMO contesta. La pregunta es *qué
+hacemos, con qué, y qué dejamos de hacer* — la cartera de inversión. El dato que
+lo confirma no es un argumento de diseño: **el owner nunca usó BU/departamentos
+en producción** (2026-08-19). Dos niveles de jerarquía, con su CRUD, sus
+pantallas y sus columnas en cinco tablas, con cero filas.
+
+Al mismo tiempo faltaba el nivel que sí hacía falta, y el glosario lo tenía
+**vetado**: ADR-021 prohibió la palabra «portafolio» para nombrar un área
+precisamente porque «un portafolio es un conjunto de proyectos y programas
+agrupados para gestión estratégica, y esa entidad **no existe en el producto**».
+El veto era correcto y su condición de salida estaba escrita: creado el
+portafolio, la palabra se libera.
+
+**Decisión.** La jerarquía queda en **cuatro** niveles:
+
+    inquilino → organización → portafolio ⊃ programa → proyecto
+
+- `portfolios` es tabla nueva, por organización. Agrupa por **decisión de
+  inversión**, no por estructura de mando.
+- `programs.portfolio_id` es **NOT NULL**: un programa fuera de un portafolio es
+  un programa que no aparece en ninguna vista ejecutiva, que es exactamente cómo
+  la jerarquía vieja se volvió invisible.
+- `projects.portfolio_id` es **nullable**, y no por indecisión: un proyecto puede
+  colgar directo del portafolio sin programa que lo coordine, y un proyecto
+  recién importado en masa todavía no está clasificado. Lo que no se acepta es un
+  par **incoherente** (ver abajo).
+- `business_units` y `departments` **no se migran**: se reemplazan. No hubo datos
+  que mapear, así que un mapeo BU→portafolio habría inventado una taxonomía a
+  partir de tablas vacías.
+
+**Qué es irreversible, y por eso esto es un ADR y no una entrada de
+`DECISIONS.md`.** El `NOT NULL` de `programs.portfolio_id` y la desaparición del
+camino BU→departamento son un cambio del contrato de datos: volver atrás exige
+migrar de nuevo y reescribir cada consulta que ya filtre por portafolio.
+
+**La regla de consistencia, y por qué vive en un servicio.**
+
+    program_id IS NOT NULL  ⇒  portfolio_id = program.portfolio_id
+
+Guardar los dos campos permite filtrar por portafolio sin join, incluido el
+proyecto sin programa. El precio es que pueden contradecirse, y un proyecto con
+el programa A y el portafolio de B no es un dato raro: es un dato **mentiroso**
+—la vista ejecutiva de B mostraría un proyecto que su programa no reporta—. Se
+aplica en `services/jerarquia.py` y no en la base porque exige **leer otra fila**
+(el programa), que es justo lo que un `CHECK` de columna no puede hacer. Un
+disparador podría, a cambio de poner lógica de negocio donde nadie la busca.
+
+Al asignar programa el portafolio **se autocompleta**; solo se rechaza el par
+explícitamente contradictorio. Exigir los dos y castigar la discrepancia sería
+trabajo de la API cobrado al usuario.
+
+**Consecuencias.**
+
+- **`ADR-021` queda satisfecho**, no contradicho: la palabra «portafolio» se
+  libera porque la entidad ya existe. `discipline` se queda como está.
+- **`ADR-016` (programas cross-empresa) vuelve a la mesa** con otra forma: el
+  agrupador cross ya no tendría que ser un programa N:M, sino un portafolio por
+  encima de la organización. No se decide aquí; se anota que la razón para
+  diferirlo cambió.
+- **`ADR-024` sigue vigente en su decisión** (tablas con FK, no JSONB); lo que
+  esta ADR reemplaza es **qué niveles** existen. `portfolios` nace con FK reales,
+  siguiendo la misma regla.
+- **Los `drop` no van aquí.** `business_units` y `departments` quedan en el
+  esquema sin lectores nuevos y se dropean en W8, cuando el contador de compat lo
+  confirme. Un `drop` es irreversible y no se paga en la misma oleada que lo
+  sustituye (`reestructura-modelo-datos.md` §8).
+- **El retiro de las columnas BU/departamento va con sus lectores** (US-199):
+  soltar `projects.business_unit_id` mientras el router de solicitudes todavía lo
+  escribe deja la API rota entre dos commits. Es la razón por la que US-198 es
+  puramente aditiva.
+- Se abre el «Portafolio General» por organización como destino por defecto. Se
+  llama «General» y no «Sin clasificar» a propósito: el segundo nombre invita a
+  dejarlo así para siempre.
+
+**Alternativas evaluadas.**
+
+1. **Conservar BU/departamento y añadir portafolio al lado** — cinco niveles, dos
+   de ellos sin usar. Descartada: la reestructura existía para simplificar.
+2. **Mapear BU→portafolio y departamento→programa** (opción B de
+   `reestructura-modelo-datos.md` §1.4). Descartada por el dato: no hay filas.
+3. **Portafolio como etiqueta en `projects.type` o en un JSON** — sin FK no hay
+   agregación fiable ni permisos por portafolio. Es la discusión que ADR-024 ya
+   cerró.

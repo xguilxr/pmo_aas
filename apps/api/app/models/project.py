@@ -29,6 +29,15 @@ class Project(Base, TimestampMixin):
         String(36), ForeignKey("organizations.id"), nullable=False
     )
     program_id: Mapped[UUID | None] = mapped_column(String(36), ForeignKey("programs.id"))
+    # US-198 — el portafolio del proyecto. Nullable a propósito: un proyecto
+    # puede colgar directo del portafolio (sin programa que lo coordine) y
+    # también puede no estar clasificado todavía, que es el estado real de un
+    # proyecto recién importado en masa. Lo que NO se acepta es un par
+    # incoherente: con `program_id` puesto, este campo tiene que ser el
+    # portafolio de ese programa (`services/jerarquia.py`).
+    portfolio_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("portfolios.id"), index=True
+    )
     business_unit_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("business_units.id")
     )

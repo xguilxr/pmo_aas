@@ -48,6 +48,7 @@ from app.schemas.organization import (
     ProgramUpdate,
 )
 from app.services.audit import write_audit
+from app.services.jerarquia import portafolio_general
 from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
 from app.services.reports.scoped_status import build_scope_status_context
@@ -545,7 +546,18 @@ async def create_program(
         ))
     payload = body.model_dump()
     payload["organization_id"] = str(payload["organization_id"])
-    prog = Program(tenant_id=tenant_id, **payload)
+    # US-198 — `portfolio_id` es NOT NULL. El payload todavía no lo trae (lo
+    # expone US-199), así que el programa cae en el «Portafolio General» de su
+    # organización, que se crea al vuelo si no existe. Es la misma regla que
+    # aplicó la migración 0108 a los programas que ya existían: nadie tiene que
+    # inventarse una taxonomía para poder dar de alta un programa.
+    pf = await portafolio_general(
+        db,
+        tenant_id=tenant_id,
+        organization_id=payload["organization_id"],
+        created_by=cu.id,
+    )
+    prog = Program(tenant_id=tenant_id, portfolio_id=str(pf.id), **payload)
     db.add(prog)
     await db.flush()
     await write_audit(

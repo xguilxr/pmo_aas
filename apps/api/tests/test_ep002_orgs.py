@@ -1,7 +1,13 @@
 """EP002 — Org Hierarchy tests."""
 import pytest
 
-from tests.factories import create_admin_role, create_tenant, create_user, login
+from tests.factories import (
+    create_admin_role,
+    create_program,
+    create_tenant,
+    create_user,
+    login,
+)
 
 
 async def _admin_setup(client, db_session, slug="acme"):
@@ -454,9 +460,6 @@ async def test_dept_update_and_rename_conflict(client, db_session):
 # TC-NEW-007: soft-delete depto con programa activo → 422
 @pytest.mark.asyncio
 async def test_tcnew007_dept_delete_with_active_program(client, db_session):
-    from app.db.base import new_uuid
-    from app.models.organization import Program
-
     t, auth = await _admin_setup(client, db_session)
     org_id = await _create_org(client, auth)
     bu_id = await _create_bu(client, auth, org_id, "BU")
@@ -468,15 +471,14 @@ async def test_tcnew007_dept_delete_with_active_program(client, db_session):
         )
     ).json()
 
-    prog = Program(
-        id=new_uuid(),
+    await create_program(
+        db_session,
         tenant_id=t.id,
         organization_id=org_id,
-        department_id=dept["id"],
         name="ProgDelDept",
+        department_id=dept["id"],
         is_active=True,
     )
-    db_session.add(prog)
     await db_session.commit()
 
     # Sin force → 422
@@ -500,7 +502,6 @@ async def test_tcnew007_dept_delete_with_active_program(client, db_session):
 @pytest.mark.asyncio
 async def test_tcnew010_org_panels_metrics(client, db_session):
     from app.db.base import new_uuid
-    from app.models.organization import Program
     from app.models.project import Project
 
     t, auth = await _admin_setup(client, db_session)
@@ -515,14 +516,9 @@ async def test_tcnew010_org_panels_metrics(client, db_session):
         headers=auth["_authz"],
     )
 
-    prog = Program(
-        id=new_uuid(),
-        tenant_id=t.id,
-        organization_id=org_id,
-        name="Prog-1",
-        is_active=True,
+    await create_program(
+        db_session, tenant_id=t.id, organization_id=org_id, name="Prog-1", is_active=True
     )
-    db_session.add(prog)
     p1 = Project(
         id=new_uuid(),
         tenant_id=t.id,

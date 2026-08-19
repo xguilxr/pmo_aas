@@ -4,9 +4,11 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
+from app.models.organization import Portfolio, Program
 from app.models.role import Role, UserRole
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.services.jerarquia import portafolio_general
 
 ADMIN_PERMS = {
     "users": ["read", "create", "update", "delete"],
@@ -119,3 +121,57 @@ async def enable_tenant_ai(
     tenant.settings = tenant_settings
     await db.flush()
     await db.commit()
+
+
+async def create_portfolio(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    organization_id: str,
+    name: str = "Portafolio A",
+    **campos: object,
+) -> Portfolio:
+    """US-198 — un portafolio de esa organización, para los tests que necesitan
+    más de uno (la regla de consistencia solo se puede probar con dos)."""
+    pf = Portfolio(
+        tenant_id=str(tenant_id),
+        organization_id=str(organization_id),
+        name=name,
+        **campos,
+    )
+    db.add(pf)
+    await db.flush()
+    return pf
+
+
+async def create_program(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    organization_id: str,
+    name: str = "Programa",
+    portfolio_id: str | None = None,
+    **campos: object,
+) -> Program:
+    """US-198 — un programa vive **dentro** de un portafolio (`NOT NULL`).
+
+    Sin `portfolio_id` cae en el «Portafolio General» de su organización, que se
+    crea al vuelo: es la misma resolución que hace el endpoint de alta, así que
+    un test que no le importe el portafolio no tiene que inventarse uno, y uno
+    que sí lo pasa explícito.
+    """
+    if portfolio_id is None:
+        pf = await portafolio_general(
+            db, tenant_id=str(tenant_id), organization_id=str(organization_id)
+        )
+        portfolio_id = str(pf.id)
+    prog = Program(
+        tenant_id=str(tenant_id),
+        organization_id=str(organization_id),
+        portfolio_id=portfolio_id,
+        name=name,
+        **campos,
+    )
+    db.add(prog)
+    await db.flush()
+    return prog

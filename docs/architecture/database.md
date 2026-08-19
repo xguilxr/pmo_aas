@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-19
 revisar_cada: 180d
 ---
 
@@ -81,9 +81,10 @@ Agrupadas por dominio. Todas heredan `TimestampMixin` salvo `audit_log` y tablas
 | Tabla | Propósito |
 |---|---|
 | `organizations` | Empresas/clientes dentro del tenant. |
-| `business_units` | BUs dentro de la organización. |
-| `departments` | Departamentos dentro de la BU. |
-| `programs` | Programas (agrupan proyectos). |
+| `portfolios` | Cartera de inversión de la organización: agrupa programas y proyectos por decisión, no por organigrama (US-198 / ADR-037). |
+| `business_units` | ⚠️ En retiro (ADR-037). BUs dentro de la organización; sin lectores nuevos, se dropea en W8. |
+| `departments` | ⚠️ En retiro (ADR-037). Departamentos dentro de la BU. |
+| `programs` | Programas (agrupan proyectos) **dentro de un portafolio**: `portfolio_id` NOT NULL. |
 | `areas` | Áreas funcionales (catálogo del tenant). |
 | `teams` | Equipos dentro de un área. |
 | `actors` | Personas/contactos del tenant (no necesariamente usuarios). |
@@ -153,8 +154,9 @@ class Project(Base, TimestampMixin):
     tenant_id       String(36) NOT NULL INDEX
     organization_id String(36) NOT NULL FK organizations.id
     program_id      String(36)     FK programs.id
-    business_unit_id String(36)    FK business_units.id
-    department_id   String(36)     FK departments.id
+    portfolio_id    String(36)     FK portfolios.id  # US-198; = program.portfolio_id si hay programa
+    business_unit_id String(36)    FK business_units.id   # en retiro (US-199)
+    department_id   String(36)     FK departments.id      # en retiro (US-199)
     folio           String(32) NOT NULL          # 'PRJ-2026-001'
     name            String(200) NOT NULL
     description     String(5000)

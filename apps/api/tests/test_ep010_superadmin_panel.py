@@ -1,7 +1,13 @@
 """EP010 — Superadmin Panel tests."""
 import pytest
 
-from tests.factories import create_admin_role, create_tenant, create_user, login
+from tests.factories import (
+    create_admin_role,
+    create_program,
+    create_tenant,
+    create_user,
+    login,
+)
 
 
 async def _make_super(client, db_session):
@@ -133,7 +139,7 @@ import pytest as _pytest  # noqa: E402 — evitar colisión si ya importado
 async def test_us025_list_tenants_returns_full_counts(client, db_session):
     from decimal import Decimal
 
-    from app.models.organization import Organization, Program
+    from app.models.organization import Organization
     from app.models.project import Project
     from tests.factories import create_tenant, create_user
 
@@ -141,7 +147,7 @@ async def test_us025_list_tenants_returns_full_counts(client, db_session):
     org = Organization(tenant_id=t.id, name="Org A")
     db_session.add(org)
     await db_session.flush()
-    db_session.add(Program(tenant_id=t.id, organization_id=org.id, name="Prog 1"))
+    await create_program(db_session, tenant_id=t.id, organization_id=org.id, name="Prog 1")
     db_session.add(
         Project(
             tenant_id=t.id, organization_id=org.id, folio="PRJ25-1",

@@ -643,3 +643,11 @@ legacy en Sprint 7 (US-081).
 **Rationale:** Playwright en el worker agrega ~200MB a la imagen, más el manejo de un pool de browsers y el auth dance con el frontend. No garantiza render < 10s para proyectos grandes. El SVG Python rinde < 1s, es embebible en `<img>` e inlineable por WeasyPrint en el PDF. El contrato HTTP (`image/svg+xml`) queda estable para cuando se migre a screenshot real.
 **Implementación:** US-132. `format=png` devuelve 501 hasta que llegue la evolución headless.
 **Trigger para revisar:** dos PMs pidiendo "Gantt idéntico al de la app" o necesidad de exports a herramientas que no rendericen SVG (raro).
+
+## DEC-030 — El «Portafolio General» es el destino por defecto, no una categoría
+**Fecha:** 2026-08-19
+**Decisión:** Con `programs.portfolio_id` en NOT NULL (ADR-037), un programa que se da de alta sin decir su portafolio cae en el «Portafolio General» de su organización, que se crea al vuelo (`services/jerarquia.py::portafolio_general`). La migración 0108 usó exactamente la misma resolución para los programas que ya existían.
+**Rationale:** La alternativa era exigir el portafolio en el alta, y eso obliga a inventarse una taxonomía antes de poder registrar el primer programa — la clase de fricción que hace que la gente deje la jerarquía vacía, que es lo que le pasó a BU/departamentos. Se llama «General» y no «Sin clasificar» a propósito: el segundo nombre invita a dejarlo así para siempre.
+**Reversible:** sí, con un rename y una regla de validación distinta.
+**Implementación:** US-198. El portafolio explícito en el payload llega en US-199.
+

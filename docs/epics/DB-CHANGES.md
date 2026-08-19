@@ -972,3 +972,50 @@ se usaron.
 Al bajar, todo el mundo vuelve a pasar por el código en su siguiente
 entrada. Es molesto y seguro: el lado correcto por el que equivocarse
 al revertir.
+
+## 0108 — `portfolios`, y los programas se mudan dentro (US-198)
+
+La jerarquía pasa de `organización → BU → departamento → programa →
+proyecto` a `organización → portafolio ⊃ programa → proyecto`
+(ADR-037). Tabla nueva `portfolios` por organización, más
+`programs.portfolio_id` (NOT NULL) y `projects.portfolio_id`
+(nullable).
+
+**No hay migración de datos desde BU/departamento**, y eso es un dato:
+el owner nunca los usó en producción. Un mapeo BU→portafolio habría
+inventado una taxonomía a partir de tablas vacías. La migración
+**cuenta** las referencias vivas de las siete columnas BU/departamento
+y deja el conteo en el registro, para que US-199 las suelte con la
+evidencia delante y no de memoria.
+
+`programs.portfolio_id` nace nullable, se rellena y se endurece a NOT
+NULL **en la misma migración**. Al revés no se puede: `SET NOT NULL`
+sobre una columna con nulos falla. Y dejar el endurecimiento para
+después es como se acumulan las columnas «temporalmente nullable» que
+nunca se endurecen.
+
+El relleno crea un **«Portafolio General» por organización que tenga
+programas** — no uno global, que rompería el aislamiento entre
+organizaciones, ni uno por organización, que sería basura en la
+pantalla de quien nunca usó programas.
+
+`projects.portfolio_id` se rellena **desde el programa**. Sin ese paso
+la regla de consistencia de `services/jerarquia.py` nacería violada por
+todos los proyectos existentes: tendrían programa y no tendrían su
+portafolio.
+
+Hay una rama por motor en el DDL. SQLite no sabe endurecer una columna
+existente ni añadirle una restricción, y emularlo recrea la tabla —en
+`projects`, reconstruir a mano su índice único y once claves ajenas—.
+Lo que la rama se salta es lo que en SQLite ya está puesto por otro
+camino (`create_all` la crea NOT NULL con su FK); lo que corre en los
+dos motores es el **relleno**, que es donde una migración de datos se
+equivoca.
+
+Al bajar desaparecen la tabla y las dos columnas, y con ellas la
+clasificación por portafolio que se hubiera capturado: el esquema
+anterior no tiene dónde guardarla. Es destructiva de información nueva,
+que es lo esperable en un `downgrade` que retira una entidad. Lo
+anterior queda intacto: `programs.department_id`,
+`projects.business_unit_id` y `projects.department_id` no se tocan
+aquí.

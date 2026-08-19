@@ -4,11 +4,11 @@ from decimal import Decimal
 import pytest
 
 from app.models.modules import Risk
-from app.models.organization import Program
 from app.models.project import Project
 from app.models.role import Role
 from tests.factories import (
     create_admin_role,
+    create_program,
     create_tenant,
     create_user,
     login,
@@ -28,9 +28,9 @@ async def _setup(client, db_session):
     )
     org_id = r.json()["id"]
 
-    prog = Program(tenant_id=t.id, organization_id=org_id, name="Prog A")
-    db_session.add(prog)
-    await db_session.flush()
+    prog = await create_program(
+        db_session, tenant_id=t.id, organization_id=org_id, name="Prog A"
+    )
 
     specs = [
         ("planning", "green", Decimal("100000"), prog.id),

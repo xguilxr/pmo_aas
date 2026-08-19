@@ -7,13 +7,13 @@ from sqlalchemy import func, select
 
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
-from app.models.organization import Organization, Program
+from app.models.organization import Organization
 from app.models.project import Project
 from app.services.analytics.snapshots import (
     compute_snapshot_values,
     snapshot_tenant,
 )
-from tests.factories import create_tenant
+from tests.factories import create_program, create_tenant
 
 
 async def _seed(db_session):
@@ -21,9 +21,9 @@ async def _seed(db_session):
     org = Organization(tenant_id=t.id, name="Org A")
     db_session.add(org)
     await db_session.flush()
-    prog = Program(tenant_id=t.id, organization_id=org.id, name="Prog A")
-    db_session.add(prog)
-    await db_session.flush()
+    prog = await create_program(
+        db_session, tenant_id=t.id, organization_id=org.id, name="Prog A"
+    )
 
     specs = [
         ("planning", "green", Decimal("100000"), Decimal("40000"), 10, prog.id),

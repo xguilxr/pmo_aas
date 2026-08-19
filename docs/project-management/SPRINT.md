@@ -17,11 +17,12 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-Sin US activa. Sesión de planeación de la **reestructura** cerrada:
-PR **#593** (`claude/platform-restructure-concept-mapping-rjhzd7`, docs
-puros) espera merge del owner. Siguiente sesión: **US-198 #588** en branch
-nueva, con la «Guía de sesiones» de
-`docs/epics/drafts/reestructura-plan.md`.
+**Bloque Reestructura-W1** en `claude/handoff-development-2awr5v`. Orden:
+198 → 199 → 202 → {200, 201}. Guía: `drafts/reestructura-plan.md`.
+
+- [x] **US-198 #588** — `portfolios`, `programs.portfolio_id` NOT NULL,
+      `projects.portfolio_id`, regla de consistencia (ADR-037, DEC-030,
+      migración 0108). Espera verificación del owner.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).

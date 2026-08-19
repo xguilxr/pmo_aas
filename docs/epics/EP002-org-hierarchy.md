@@ -13,17 +13,30 @@ revisar_cada: 90d
 | **ID** | EP002 |
 | **Prioridad** | Alta (BLOQUEANTE para EP003-EP007) |
 | **Dependencias** | EP001 |
-| **Módulo** | `organizations`, `business_units`, `departments`, `programs`, `superadmin.tenants` |
+| **Módulo** | `organizations`, `portfolios`, `programs`, `superadmin.tenants` (`business_units`/`departments`: en retiro, ADR-037) |
 | **Estado** | MVP |
 | **Versión objetivo** | v1.0 |
-| **Última actualización** | 2026-07-09 — ENH-190: label "Organización/Portafolio" configurable por tenant (UI-only) |
+| **Última actualización** | 2026-08-19 — US-198: entra `portfolios`; el programa vive dentro de un portafolio (ADR-037) |
 
 ## Objetivo de negocio
 
 El PMO modela su jerarquía completa:
-**PMO (tenant) → Organización → Unidad de Negocio → Departamento → Programa → Proyecto**
+**PMO (tenant) → Organización → Portafolio ⊃ Programa → Proyecto**
 
-Admin del tenant o Senior PMO configuran la jerarquía. BU y Departamento son opcionales: el tenant puede operar con Org → Programa → Proyecto directamente.
+El portafolio agrupa por **decisión de inversión** — qué se hace, con qué, y qué
+se deja de hacer— y es lo que mira un comité de dirección. El programa agrupa por
+**coordinación**: proyectos que comparten un objetivo y se gestionan juntos.
+
+Admin del tenant o Senior PMO configuran la jerarquía. El programa es opcional:
+un proyecto puede colgar directo de su portafolio. El portafolio del proyecto
+también es opcional —un proyecto recién importado todavía no está clasificado—,
+pero no puede contradecir a su programa (ver US-198).
+
+> **Unidad de Negocio y Departamento están en retiro** (ADR-037, 2026-08-19).
+> Modelaban el organigrama del cliente, no su cartera, y nunca se usaron en
+> producción. Portafolio y Programa los reemplazan directamente, sin mapeo de
+> datos. Sus tablas siguen en el esquema hasta W8 y sus endpoints se retiran en
+> US-199; las US-002/003/004 de más abajo quedan como registro histórico.
 
 ## Roles involucrados
 
@@ -59,21 +72,22 @@ Admin del tenant o Senior PMO configuran la jerarquía. BU y Departamento son op
 ---
 
 ### US-009 — CRUD de programas
-*(actualizado: programa puede colgar de departamento)*
+*(actualizado 2026-08-19: el programa vive dentro de un portafolio)*
 
 **Como** PMO Manager
 **Quiero** agrupar proyectos bajo programas
 **Para** alinear con objetivos estratégicos.
 
 **Criterios de aceptación:**
-- [ ] Campos: `name`, `description`, `strategic_alignment`, `organization_id`, `department_id` (opcional), `start_date`, `end_date`, `is_active`.
-- [ ] Un programa pertenece a una organización; opcionalmente a un departamento.
-- [ ] `GET /api/v1/programs?organization_id=&department_id=&is_active=`.
-- [ ] Al asignar programa a proyecto, valida que ambos estén en la misma organización.
+- [ ] Campos: `name`, `description`, `strategic_alignment`, `organization_id`, `portfolio_id` (**obligatorio**), `start_date`, `end_date`, `is_active`.
+- [ ] Un programa pertenece a una organización y a **un portafolio de esa misma organización**.
+- [ ] Un alta sin portafolio cae en el «Portafolio General» de la organización, que se crea al vuelo (DEC-030). Nadie tiene que inventarse una taxonomía para registrar su primer programa.
+- [ ] `GET /api/v1/programs?organization_id=&portfolio_id=&is_active=`.
+- [ ] Al asignar programa a proyecto, valida que ambos estén en la misma organización y **autocompleta el portafolio del proyecto** con el del programa (US-198).
 
 **Test Cases:**
 - `TC-027` (integration) — Asignar programa de org A a proyecto de org B → 422.
-- `TC-028` (integration) — Listar programas filtrados por org o por departamento.
+- `TC-028` (integration) — Listar programas filtrados por org o por portafolio.
 
 ---
 
@@ -108,7 +122,10 @@ Admin del tenant o Senior PMO configuran la jerarquía. BU y Departamento son op
 
 ## # PENDING — User Stories nuevas
 
-### US-002 — Migración BD: tablas business_units y departments ✅ DONE
+### US-002 — Migración BD: tablas business_units y departments ✅ DONE ⚠️ RETIRADA (ADR-037)
+
+> Registro histórico. Las dos tablas quedan sin lectores nuevos tras US-198 y se
+> dropean en W8. Lo vigente es US-198, más abajo.
 
 Implementada en la migración Alembic
 [`20260420_0009_business_units_departments.py`](../../apps/api/alembic/versions/20260420_0009_business_units_departments.py).
@@ -131,7 +148,10 @@ Ver detalle del shape en
 
 ---
 
-### US-003 — CRUD Business Units (API)
+### US-003 — CRUD Business Units (API) ⚠️ RETIRADA (ADR-037)
+
+> Se conserva como registro de lo que existió. Los endpoints se retiran en
+> US-199 y la tabla se dropea en W8. Lo sustituye US-198 (portafolios).
 
 **Como** Administrador / Senior PMO
 **Quiero** crear, editar y desactivar unidades de negocio dentro de una organización
@@ -153,7 +173,10 @@ Ver detalle del shape en
 
 ---
 
-### US-004 — CRUD Departments (API)
+### US-004 — CRUD Departments (API) ⚠️ RETIRADA (ADR-037)
+
+> Igual que US-003: registro histórico. La coordinación de proyectos la hace el
+> programa; el agrupador de inversión, el portafolio.
 
 **Como** Administrador / Senior PMO
 **Quiero** crear, editar y desactivar departamentos dentro de una unidad de negocio
@@ -260,10 +283,34 @@ tipos.
 
 ---
 
+### US-198 — El portafolio como agrupador de inversión ✅ (schema y regla)
+
+**Como** Administrador / Senior PMO
+**Quiero** agrupar programas y proyectos en portafolios
+**Para** decidir a nivel de cartera qué se hace, con qué y qué se deja de hacer.
+
+**Criterios de aceptación:**
+- [x] Entidad `portfolios` por organización: `name` (único por organización), `code`, `description`, `owner_actor_id` (el sponsor ejecutivo, que casi nunca tiene cuenta en la plataforma), `is_active`, soft-delete.
+- [x] Sin métricas propias: salud, presupuesto y conteos se **derivan** de los proyectos. Una columna calculada aquí sería un valor que se queda viejo entre cálculos.
+- [x] `programs.portfolio_id` obligatorio; `projects.portfolio_id` opcional (el proyecto puede colgar directo del portafolio, o no estar clasificado todavía).
+- [x] **Regla de consistencia**: con programa asignado, el portafolio del proyecto es el del programa. Al asignar programa se autocompleta; un par contradictorio se rechaza. Un proyecto que reportara al programa A contando en el portafolio B no es un dato raro, es un dato mentiroso: la vista ejecutiva de B mostraría un proyecto que su programa no reporta.
+- [x] Los programas que ya existían quedaron en el «Portafolio General» de su organización (migración 0108).
+- [ ] CRUD por API y UI → **US-199** y **US-200**.
+
+**Test Cases:**
+- `TC-198.1` (integration) — Portafolio → programa dentro → proyecto con ambos: consistente.
+- `TC-198.2` (integration) — Proyecto con programa de otro portafolio → rechazado.
+- `TC-198.3` (integration) — Migración con programas existentes: todos con «Portafolio General» de **su** organización; los proyectos heredan el portafolio de su programa; el proyecto sin programa se queda sin portafolio.
+
+**Decisiones:** ADR-037 (jerarquía nueva, irreversible) · DEC-030 («Portafolio General» como destino por defecto).
+
+---
+
 ## Definition of Done (EP002 completo)
 
-- [ ] Jerarquía 6 niveles completa: tenant → org → BU → depto → programa → proyecto.
-- [ ] CRUD completo para BU y Departamentos con permisos.
+- [ ] Jerarquía completa: tenant → org → portafolio ⊃ programa → proyecto.
+- [ ] CRUD completo de portafolios con permisos (US-199).
+- [ ] BU y Departamentos retirados de la superficie (US-199) y del esquema (W8).
 - [ ] Sidebar con árbol navegable.
 - [ ] Vista de organizaciones como paneles.
 - [ ] Breadcrumb adaptable a jerarquías incompletas.

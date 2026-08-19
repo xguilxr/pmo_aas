@@ -55,6 +55,7 @@ from app.models.task import Task
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.folio import next_folio
+from app.services.jerarquia import portafolio_general
 
 logger = logging.getLogger("pmoaas.seed_demo")
 
@@ -171,9 +172,14 @@ async def _ensure_program(
     ).scalar_one_or_none()
     if existing is not None:
         return existing
+    # US-198 — el programa vive dentro de un portafolio. El demo no modela
+    # portafolios propios todavía, así que usa el «Portafolio General» de la
+    # organización, igual que el endpoint de alta.
+    pf = await portafolio_general(db, tenant_id=tenant_id, organization_id=organization_id)
     p = Program(
         tenant_id=tenant_id,
         organization_id=organization_id,
+        portfolio_id=str(pf.id),
         name=name,
         description=description,
         strategic_alignment=alignment,
