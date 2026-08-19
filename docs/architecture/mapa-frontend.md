@@ -45,7 +45,7 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 | `/pmo/raid`, `/changes`, `/minutes`, `/reports` | Vistas cross con `TenantCrossFilters` |
 | `/pmo/resources` | Capacidad/saturación (tabs personas/roles/áreas/conflictos) |
 | `/pmo/requests` (+`/new`, `[id]`) | Solicitudes (`request-form.tsx` tiene BU/depto†) |
-| `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (`org-hierarchy-section.tsx`: **todavía llama a `/business-units`, retirado en US-199** — lo reescribe US-200), areas |
+| `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (`org-hierarchy-section.tsx`: **Portafolio ⊃ Programa** desde US-200), areas |
 | `/superadmin/*` | 8 pantallas plataforma |
 | `/login`, `/reset`, `/forgot-password`, `/approve/[token]`, `/notifications`, `/account` | auth y transversales |
 
@@ -57,8 +57,11 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   header 60px sin switchers — el switcher tenant/org nuevo va aquí),
   `project-tabs-bar.tsx`, `module-shell.tsx` (lista+CRUD genérico por folio;
   ojo: `max-w-6xl` — soltar para vistas anchas), `org-tree-nav.tsx` (árbol
-  org→prog→proy; se retira del sidebar en la reestructura),
-  `frontera-de-permiso.tsx`.
+  org→portafolio→prog→proy, US-200; se retira del sidebar más adelante en la
+  reestructura),
+  `frontera-de-permiso.tsx`. `org-tree-nav.tsx` es Organización → Portafolio →
+  Programa → Proyecto desde US-200, con cajones «Sin programa» y «Sin
+  clasificar»; cada nivel carga al expandirse.
 - **Datos**: `ui/sortable-th.tsx` + `lib/hooks/use-sortable-rows.ts`,
   `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (org/programa/
   proyecto → sumar portafolio). No hay tabla virtualizada ni column-pinning

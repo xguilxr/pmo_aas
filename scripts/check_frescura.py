@@ -52,7 +52,7 @@ INDICADORES = (
     "health_red|active_projects|open_risks|severe_risks|open_issues|"
     "requests_in_review|change_requests_in_review|tasks_total|tasks_done|"
     "project_count|program_count|organization_count|users_total|tenants_total|"
-    "task_count|business_unit_count|department_count|unquantified_count"
+    "task_count|portfolio_count|unquantified_count"
 )
 
 PRESENTA_NUMEROS = re.compile(rf"KpiCard|<(Bar|Line|Pie|Area|Radial)Chart|{INDICADORES}")

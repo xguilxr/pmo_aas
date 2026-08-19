@@ -59,8 +59,8 @@ export type OrganizationPanel = {
   industry: string | null;
   country: string | null;
   is_active: boolean;
-  business_unit_count: number;
-  department_count: number;
+  /** US-199 — la jerarquía nueva cuenta portafolios (ADR-037). */
+  portfolio_count: number;
   program_count: number;
   active_project_count: number;
   portfolio_health: OrganizationPanelHealth;
@@ -76,26 +76,25 @@ export function getOrganization(id: string): Promise<Organization> {
   return apiFetch<Organization>(`/api/v1/organizations/${id}`);
 }
 
-export type OrgPanelDepartment = {
-  id: string;
-  business_unit_id: string;
-  name: string;
-  is_active: boolean;
-};
-
-export type OrgPanelBusinessUnit = {
-  id: string;
-  name: string;
-  description: string | null;
-  is_active: boolean;
-  departments: OrgPanelDepartment[];
-};
-
 export type OrgPanelProgram = {
   id: string;
   name: string;
   description: string | null;
   is_active: boolean;
+  active_project_count: number;
+  /** US-199 — de qué portafolio es, para anidarlo sin otra consulta. */
+  portfolio_id: string | null;
+};
+
+/** US-199 — un portafolio con sus programas dentro (ADR-037). Reemplaza a
+ *  `OrgPanelBusinessUnit`/`OrgPanelDepartment`. */
+export type OrgPanelPortfolio = {
+  id: string;
+  name: string;
+  code: string | null;
+  description: string | null;
+  is_active: boolean;
+  programs: OrgPanelProgram[];
   active_project_count: number;
 };
 
@@ -128,7 +127,9 @@ export type OrganizationPanelDetail = {
   /** ENH-100 */
   client_logo_url: string | null;
   is_active: boolean;
-  business_units: OrgPanelBusinessUnit[];
+  portfolios: OrgPanelPortfolio[];
+  /** La lista plana, además del árbol: quien solo necesita «los programas de
+   *  esta organización» no tiene que recorrer los portafolios. */
   programs: OrgPanelProgram[];
   projects: OrgPanelProject[];
   users: OrgPanelUser[];
@@ -157,6 +158,8 @@ export type Program = {
   id: string;
   name: string;
   organization_id: string;
+  /** US-199 — obligatorio en la base; el alta lo resuelve si no se manda. */
+  portfolio_id: string;
   description: string | null;
   strategic_alignment: string | null;
   start_date: string | null;
@@ -167,6 +170,8 @@ export type Program = {
 export type ProgramCreateBody = {
   name: string;
   organization_id: string;
+  /** Opcional: sin él, el programa cae en el «Portafolio General» (DEC-030). */
+  portfolio_id?: string | null;
   description?: string | null;
   strategic_alignment?: string | null;
   start_date?: string | null;
@@ -176,6 +181,8 @@ export type ProgramCreateBody = {
 
 export type ProgramUpdateBody = {
   name?: string;
+  /** Mover el programa de portafolio arrastra sus proyectos (US-199). */
+  portfolio_id?: string | null;
   description?: string | null;
   strategic_alignment?: string | null;
   start_date?: string | null;
@@ -185,6 +192,7 @@ export type ProgramUpdateBody = {
 
 export type ListProgramsParams = {
   organization_id?: string;
+  portfolio_id?: string;
   is_active?: boolean;
 };
 
@@ -221,6 +229,8 @@ export type ProgramSummary = {
   description: string | null;
   organization_id: string;
   organization_name: string | null;
+  portfolio_id: string | null;
+  portfolio_name: string | null;
   is_active: boolean;
   start_date: string | null;
   end_date: string | null;
@@ -287,132 +297,79 @@ export function hardDeleteOrganization(id: string, confirm: string): Promise<voi
   );
 }
 
-export function previewHardDeleteBusinessUnit(
-  id: string,
-): Promise<HardDeletePreview> {
-  return apiFetch<HardDeletePreview>(`/api/v1/business-units/${id}/hard-delete-preview`);
+export function previewHardDeletePortfolio(id: string): Promise<HardDeletePreview> {
+  return apiFetch<HardDeletePreview>(`/api/v1/portfolios/${id}/hard-delete-preview`);
 }
 
-export function hardDeleteBusinessUnit(id: string, confirm: string): Promise<void> {
+export function hardDeletePortfolio(id: string, confirm: string): Promise<void> {
   return apiFetch<void>(
-    `/api/v1/business-units/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
+    `/api/v1/portfolios/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
     { method: "DELETE" },
   );
 }
 
-export function previewHardDeleteDepartment(
-  id: string,
-): Promise<HardDeletePreview> {
-  return apiFetch<HardDeletePreview>(`/api/v1/departments/${id}/hard-delete-preview`);
-}
+// -- Portafolios (US-199 / ADR-037) ----
+// Reemplazan a unidades de negocio y departamentos, cuyos endpoints se
+// retiraron: `/business-units` y `/departments` responden 404.
 
-export function hardDeleteDepartment(id: string, confirm: string): Promise<void> {
-  return apiFetch<void>(
-    `/api/v1/departments/${id}/permanent?confirm=${encodeURIComponent(confirm)}`,
-    { method: "DELETE" },
-  );
-}
-
-// -- Business Units ----
-
-export type BusinessUnit = {
+export type Portfolio = {
   id: string;
   organization_id: string;
   name: string;
+  code: string | null;
   description: string | null;
+  owner_actor_id: string | null;
   is_active: boolean;
+  /** Derivados: el portafolio no guarda métricas propias (ADR-037). */
+  program_count: number;
+  active_project_count: number;
 };
 
-export type BusinessUnitCreateBody = {
+export type PortfolioCreateBody = {
   name: string;
+  code?: string | null;
   description?: string | null;
+  /** El dueño ejecutivo es un actor del catálogo, no un usuario: el sponsor
+   *  del cliente casi nunca tiene cuenta en la plataforma. */
+  owner_actor_id?: string | null;
   is_active?: boolean;
 };
 
-export type BusinessUnitUpdateBody = Partial<BusinessUnitCreateBody>;
+export type PortfolioUpdateBody = Partial<PortfolioCreateBody>;
 
-export function listBusinessUnits(
+export function listPortfolios(
   organizationId: string,
   params: { q?: string; is_active?: boolean } = {},
-): Promise<BusinessUnit[]> {
-  return apiFetch<BusinessUnit[]>(
-    `/api/v1/organizations/${organizationId}/business-units${qs(params)}`,
+): Promise<Portfolio[]> {
+  return apiFetch<Portfolio[]>(
+    `/api/v1/organizations/${organizationId}/portfolios${qs(params)}`,
   );
 }
 
-export function createBusinessUnit(
+export function getPortfolio(id: string): Promise<Portfolio> {
+  return apiFetch<Portfolio>(`/api/v1/portfolios/${id}`);
+}
+
+export function createPortfolio(
   organizationId: string,
-  body: BusinessUnitCreateBody,
-): Promise<BusinessUnit> {
-  return apiFetch<BusinessUnit>(
-    `/api/v1/organizations/${organizationId}/business-units`,
-    { method: "POST", body },
-  );
-}
-
-export function updateBusinessUnit(
-  id: string,
-  body: BusinessUnitUpdateBody,
-): Promise<BusinessUnit> {
-  return apiFetch<BusinessUnit>(`/api/v1/business-units/${id}`, {
-    method: "PATCH",
+  body: PortfolioCreateBody,
+): Promise<Portfolio> {
+  return apiFetch<Portfolio>(`/api/v1/organizations/${organizationId}/portfolios`, {
+    method: "POST",
     body,
   });
 }
 
-export function deleteBusinessUnit(id: string, force = false): Promise<void> {
-  const tail = force ? "?force=true" : "";
-  return apiFetch<void>(`/api/v1/business-units/${id}${tail}`, { method: "DELETE" });
-}
-
-// -- Departments ----
-
-export type Department = {
-  id: string;
-  business_unit_id: string;
-  name: string;
-  description: string | null;
-  is_active: boolean;
-};
-
-export type DepartmentCreateBody = {
-  name: string;
-  description?: string | null;
-  is_active?: boolean;
-};
-
-export type DepartmentUpdateBody = Partial<DepartmentCreateBody>;
-
-export function listDepartments(
-  businessUnitId: string,
-  params: { q?: string; is_active?: boolean } = {},
-): Promise<Department[]> {
-  return apiFetch<Department[]>(
-    `/api/v1/business-units/${businessUnitId}/departments${qs(params)}`,
-  );
-}
-
-export function createDepartment(
-  businessUnitId: string,
-  body: DepartmentCreateBody,
-): Promise<Department> {
-  return apiFetch<Department>(
-    `/api/v1/business-units/${businessUnitId}/departments`,
-    { method: "POST", body },
-  );
-}
-
-export function updateDepartment(
+export function updatePortfolio(
   id: string,
-  body: DepartmentUpdateBody,
-): Promise<Department> {
-  return apiFetch<Department>(`/api/v1/departments/${id}`, {
-    method: "PATCH",
-    body,
-  });
+  body: PortfolioUpdateBody,
+): Promise<Portfolio> {
+  return apiFetch<Portfolio>(`/api/v1/portfolios/${id}`, { method: "PATCH", body });
 }
 
-export function deleteDepartment(id: string, force = false): Promise<void> {
+/** Primer paso de la papelera (ADR-017): desactiva. Con programas activos
+ *  dentro exige `force`, y entonces los desactiva en cascada. */
+export function deletePortfolio(id: string, force = false): Promise<void> {
   const tail = force ? "?force=true" : "";
-  return apiFetch<void>(`/api/v1/departments/${id}${tail}`, { method: "DELETE" });
+  return apiFetch<void>(`/api/v1/portfolios/${id}${tail}`, { method: "DELETE" });
 }

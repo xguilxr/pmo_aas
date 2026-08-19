@@ -449,6 +449,77 @@ async def test_tc_la_solicitud_clasificada_pasa_su_clasificacion_al_proyecto(
     )
 
 
+async def test_la_lista_de_proyectos_filtra_por_portafolio(client, db_session) -> None:
+    """US-200 — lo que necesita el árbol del sidebar y la lista.
+
+    Tres cubos y no dos: los del portafolio, los que cuelgan de él **sin
+    programa**, y los que no tienen portafolio todavía. El tercero es el que
+    importa de verdad: un proyecto recién importado sin clasificar sería
+    invisible en el árbol, y es justo cuando alguien necesita encontrarlo.
+    """
+    t, auth = await _admin(client, db_session, slug="pflista")
+    org_id = await _org(client, auth)
+    pf = (
+        await client.post(
+            f"/api/v1/organizations/{org_id}/portfolios",
+            json={"name": "Cartera con lista"},
+            headers=auth["_authz"],
+        )
+    ).json()
+    prog = (
+        await client.post(
+            "/api/v1/programs",
+            json={"name": "Prog", "organization_id": org_id, "portfolio_id": pf["id"]},
+            headers=auth["_authz"],
+        )
+    ).json()
+    db_session.add_all(
+        [
+            Project(
+                tenant_id=t.id,
+                organization_id=org_id,
+                portfolio_id=pf["id"],
+                program_id=prog["id"],
+                folio="L-1",
+                name="En el programa",
+                phase="ejecucion",
+            ),
+            Project(
+                tenant_id=t.id,
+                organization_id=org_id,
+                portfolio_id=pf["id"],
+                folio="L-2",
+                name="Directo al portafolio",
+                phase="ejecucion",
+            ),
+            Project(
+                tenant_id=t.id,
+                organization_id=org_id,
+                folio="L-3",
+                name="Sin clasificar",
+                phase="preparacion",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    async def folios(query: str) -> set[str]:
+        r = await client.get(f"/api/v1/projects?{query}", headers=auth["_authz"])
+        assert r.status_code == 200, r.text
+        return {p["folio"] for p in r.json()}
+
+    assert await folios(f"portfolio_id={pf['id']}") == {"L-1", "L-2"}
+    assert await folios(f"portfolio_id={pf['id']}&no_program=true") == {"L-2"}
+    assert await folios(f"organization_id={org_id}&no_portfolio=true") == {"L-3"}
+    # Y el `portfolio_id` viaja en la respuesta: la pantalla lo necesita para
+    # pintar en qué cartera está sin pedir el portafolio aparte.
+    r = await client.get(
+        f"/api/v1/projects?portfolio_id={pf['id']}&no_program=true",
+        headers=auth["_authz"],
+    )
+    assert r.json()[0]["portfolio_id"] == pf["id"]
+
+
 # --------------------------------------------------------------------------
 # 3. Papelera de dos pasos (ADR-017)
 # --------------------------------------------------------------------------

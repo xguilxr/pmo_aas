@@ -39,6 +39,8 @@ export type Project = {
   phase: ProjectPhase;
   organization_id: string;
   program_id: string | null;
+  /** US-199 — con programa, es el del programa (regla de consistencia). */
+  portfolio_id: string | null;
   pm_id: string | null;
   sponsor: string | null;
   start_date: string | null;
@@ -82,6 +84,8 @@ export type ProjectCreateBody = {
   priority: number;
   organization_id: string;
   program_id?: string | null;
+  /** US-199 — se autocompleta con el del programa si se manda programa. */
+  portfolio_id?: string | null;
   phase?: ProjectPhase;
   pm_id: string;
   sponsor?: string | null;
@@ -98,6 +102,7 @@ export type ProjectUpdateBody = Partial<{
   type: ProjectType;
   priority: number;
   program_id: string | null;
+  portfolio_id: string | null;
   pm_id: string;
   sponsor: string | null;
   start_date: string | null;
@@ -222,6 +227,11 @@ export type ListProjectsParams = {
   phase?: ProjectPhase[] | ProjectPhase;
   organization_id?: string;
   program_id?: string;
+  /** US-201 — filtro por portafolio (cascada Organización→Portafolio→Programa). */
+  portfolio_id?: string;
+  /** US-200 — los que todavía no están en ningún portafolio (importación
+   *  masiva, sobre todo): sin esto serían invisibles hasta clasificarlos. */
+  no_portfolio?: boolean;
   no_program?: boolean;
   type?: ProjectType[] | ProjectType;
   health?: ProjectHealth[] | ProjectHealth;

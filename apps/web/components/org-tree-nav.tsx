@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  Briefcase,
   Building2,
   ChevronRight,
   Folder,
@@ -13,8 +14,10 @@ import {
 
 import {
   type Organization,
+  type Portfolio,
   type Program,
   listOrganizations,
+  listPortfolios,
   listPrograms,
 } from "@/lib/api/organizations";
 import { type Project, listProjects } from "@/lib/api/projects";
@@ -27,14 +30,26 @@ const STORAGE_KEY = "pmoaas:sidebar:org-tree:expanded";
 type LoadState = "idle" | "loading" | "loaded" | "error";
 type LoadedRecord<T> = { state: LoadState; items: T[]; error?: string };
 
+// US-200 — el árbol gana un nivel: Organización → Portafolio → Programa →
+// Proyecto. Los proyectos aparecen en tres sitios distintos porque hay tres
+// formas legítimas de colgar: de un programa, del portafolio sin programa, y de
+// la organización sin clasificar (un proyecto recién importado, por ejemplo).
 type Maps = {
-  programs: Record<string, LoadedRecord<Program>>; // by orgId
-  projects: Record<string, LoadedRecord<Project>>; // by programId
-  noProgramProjects: Record<string, LoadedRecord<Project>>; // by orgId
+  portfolios: Record<string, LoadedRecord<Portfolio>>; // por orgId
+  programs: Record<string, LoadedRecord<Program>>; // por portfolioId
+  projects: Record<string, LoadedRecord<Project>>; // por programId
+  noProgramProjects: Record<string, LoadedRecord<Project>>; // por portfolioId
+  unclassifiedProjects: Record<string, LoadedRecord<Project>>; // por orgId
 };
 
 function emptyMaps(): Maps {
-  return { programs: {}, projects: {}, noProgramProjects: {} };
+  return {
+    portfolios: {},
+    programs: {},
+    projects: {},
+    noProgramProjects: {},
+    unclassifiedProjects: {},
+  };
 }
 
 function loadExpanded(): Set<string> {
@@ -144,9 +159,14 @@ function PlaceholderRow({ depth, text }: { depth: number; text: string }) {
 }
 
 /**
- * Drill-down real del tenant en el sidebar principal (US-032):
- * Organizaciones → Programas → Proyectos. La jerarquía administrativa
- * (BUs / Departamentos) vive sólo bajo `/admin/organizations`, no aquí.
+ * Drill-down del inquilino en el sidebar principal (US-032, ampliado en US-200):
+ * Organizaciones → Portafolios → Programas → Proyectos.
+ *
+ * Cada nivel se carga **al abrirlo**, no antes: un inquilino con diez
+ * organizaciones y cinco portafolios cada una pediría cincuenta listas para
+ * pintar un árbol que empieza colapsado.
+ *
+ * El CRUD de la jerarquía vive en `/admin/organizations`; aquí solo se navega.
  */
 export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
@@ -201,26 +221,63 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
     });
   }, []);
 
-  const ensureProgramsByOrg = useCallback(async (orgId: string) => {
+  const ensurePortfolios = useCallback(async (orgId: string) => {
     setMaps((m) => {
-      const cur = m.programs[orgId];
+      const cur = m.portfolios[orgId];
       if (cur && cur.state !== "idle") return m;
-      return { ...m, programs: { ...m.programs, [orgId]: { state: "loading", items: [] } } };
+      return {
+        ...m,
+        portfolios: { ...m.portfolios, [orgId]: { state: "loading", items: [] } },
+      };
     });
     try {
-      const items = await listPrograms({ organization_id: orgId, is_active: true });
+      const items = await listPortfolios(orgId, { is_active: true });
       setMaps((m) => ({
         ...m,
-        programs: { ...m.programs, [orgId]: { state: "loaded", items } },
+        portfolios: { ...m.portfolios, [orgId]: { state: "loaded", items } },
       }));
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Error";
       setMaps((m) => ({
         ...m,
-        programs: { ...m.programs, [orgId]: { state: "error", items: [], error: msg } },
+        portfolios: { ...m.portfolios, [orgId]: { state: "error", items: [], error: msg } },
       }));
     }
   }, []);
+
+  const ensurePrograms = useCallback(
+    async (orgId: string, portfolioId: string) => {
+      setMaps((m) => {
+        const cur = m.programs[portfolioId];
+        if (cur && cur.state !== "idle") return m;
+        return {
+          ...m,
+          programs: { ...m.programs, [portfolioId]: { state: "loading", items: [] } },
+        };
+      });
+      try {
+        const items = await listPrograms({
+          organization_id: orgId,
+          portfolio_id: portfolioId,
+          is_active: true,
+        });
+        setMaps((m) => ({
+          ...m,
+          programs: { ...m.programs, [portfolioId]: { state: "loaded", items } },
+        }));
+      } catch (e) {
+        const msg = e instanceof ApiError ? e.message : "Error";
+        setMaps((m) => ({
+          ...m,
+          programs: {
+            ...m.programs,
+            [portfolioId]: { state: "error", items: [], error: msg },
+          },
+        }));
+      }
+    },
+    [],
+  );
 
   const ensureProjects = useCallback(async (programId: string) => {
     setMaps((m) => {
@@ -246,26 +303,80 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
     }
   }, []);
 
-  const ensureNoProgProjects = useCallback(async (orgId: string) => {
+  /** Los proyectos que cuelgan del portafolio sin programa que los coordine. */
+  const ensureNoProgProjects = useCallback(async (portfolioId: string) => {
     setMaps((m) => {
-      const cur = m.noProgramProjects[orgId];
+      const cur = m.noProgramProjects[portfolioId];
       if (cur && cur.state !== "idle") return m;
       return {
         ...m,
-        noProgramProjects: { ...m.noProgramProjects, [orgId]: { state: "loading", items: [] } },
+        noProgramProjects: {
+          ...m.noProgramProjects,
+          [portfolioId]: { state: "loading", items: [] },
+        },
       };
     });
     try {
-      const items = await listProjects({ organization_id: orgId, no_program: true, limit: 100 });
+      const items = await listProjects({
+        portfolio_id: portfolioId,
+        no_program: true,
+        limit: 100,
+      });
       setMaps((m) => ({
         ...m,
-        noProgramProjects: { ...m.noProgramProjects, [orgId]: { state: "loaded", items } },
+        noProgramProjects: {
+          ...m.noProgramProjects,
+          [portfolioId]: { state: "loaded", items },
+        },
       }));
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Error";
       setMaps((m) => ({
         ...m,
-        noProgramProjects: { ...m.noProgramProjects, [orgId]: { state: "error", items: [], error: msg } },
+        noProgramProjects: {
+          ...m.noProgramProjects,
+          [portfolioId]: { state: "error", items: [], error: msg },
+        },
+      }));
+    }
+  }, []);
+
+  /** Los que no tienen portafolio todavía — importación masiva, sobre todo.
+   *  Si no aparecieran en el árbol serían invisibles hasta clasificarlos, que
+   *  es exactamente cuando alguien necesita encontrarlos. */
+  const ensureUnclassified = useCallback(async (orgId: string) => {
+    setMaps((m) => {
+      const cur = m.unclassifiedProjects[orgId];
+      if (cur && cur.state !== "idle") return m;
+      return {
+        ...m,
+        unclassifiedProjects: {
+          ...m.unclassifiedProjects,
+          [orgId]: { state: "loading", items: [] },
+        },
+      };
+    });
+    try {
+      const items = await listProjects({
+        organization_id: orgId,
+        no_portfolio: true,
+        limit: 100,
+      });
+      setMaps((m) => ({
+        ...m,
+        unclassifiedProjects: {
+          ...m.unclassifiedProjects,
+          [orgId]: { state: "loaded", items },
+        },
+      }));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Error";
+      setMaps((m) => ({
+        ...m,
+        unclassifiedProjects: {
+          ...m.unclassifiedProjects,
+          [orgId]: { state: "error", items: [], error: msg },
+        },
       }));
     }
   }, []);
@@ -273,19 +384,33 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   useEffect(() => {
     if (orgs.state !== "loaded") return;
     for (const org of orgs.items) {
-      const orgKey = `org:${org.id}`;
-      if (expanded.has(orgKey)) {
-        if (!maps.programs[org.id]) void ensureProgramsByOrg(org.id);
-        if (!maps.noProgramProjects[org.id]) void ensureNoProgProjects(org.id);
+      if (expanded.has(`org:${org.id}`)) {
+        if (!maps.portfolios[org.id]) void ensurePortfolios(org.id);
+        if (!maps.unclassifiedProjects[org.id]) void ensureUnclassified(org.id);
       }
-      const programs = maps.programs[org.id]?.items ?? [];
-      for (const prog of programs) {
-        if (expanded.has(`prog:${prog.id}`) && !maps.projects[prog.id]) {
-          void ensureProjects(prog.id);
+      for (const pf of maps.portfolios[org.id]?.items ?? []) {
+        if (expanded.has(`pf:${pf.id}`)) {
+          if (!maps.programs[pf.id]) void ensurePrograms(org.id, pf.id);
+          if (!maps.noProgramProjects[pf.id]) void ensureNoProgProjects(pf.id);
+        }
+        for (const prog of maps.programs[pf.id]?.items ?? []) {
+          if (expanded.has(`prog:${prog.id}`) && !maps.projects[prog.id]) {
+            void ensureProjects(prog.id);
+          }
         }
       }
     }
-  }, [expanded, orgs.state, orgs.items, maps, ensureProgramsByOrg, ensureProjects, ensureNoProgProjects]);
+  }, [
+    expanded,
+    orgs.state,
+    orgs.items,
+    maps,
+    ensurePortfolios,
+    ensurePrograms,
+    ensureProjects,
+    ensureNoProgProjects,
+    ensureUnclassified,
+  ]);
 
   const isProjectActive = useMemo(
     () => (id: string) => pathname.startsWith(`/pmo/projects/${id}`),
@@ -323,7 +448,6 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
           {orgs.items.map((org) => {
             const orgKey = `org:${org.id}`;
             const orgOpen = expanded.has(orgKey);
-            const progRec = maps.programs[org.id];
             return (
               <div key={org.id}>
                 <NodeRow
@@ -341,14 +465,14 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
                   onNavigate={onNavigate}
                 />
                 {orgOpen ? (
-                  <ProgramsList
-                    rec={progRec}
-                    noProgramRec={maps.noProgramProjects[org.id]}
+                  <PortfoliosList
                     orgId={org.id}
+                    rec={maps.portfolios[org.id]}
+                    unclassifiedRec={maps.unclassifiedProjects[org.id]}
+                    maps={maps}
                     depth={2}
                     expanded={expanded}
                     toggle={toggle}
-                    projectsMap={maps.projects}
                     isProjectActive={isProjectActive}
                     onNavigate={onNavigate}
                   />
@@ -362,10 +486,153 @@ export function OrgTreeNav({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
+function ProjectRows({
+  rec,
+  depth,
+  isProjectActive,
+  onNavigate,
+  vacio,
+}: {
+  rec: LoadedRecord<Project> | undefined;
+  depth: number;
+  isProjectActive: (id: string) => boolean;
+  onNavigate: () => void;
+  vacio: string;
+}) {
+  if (!rec || rec.state === "loading") {
+    return <PlaceholderRow depth={depth} text="Cargando proyectos…" />;
+  }
+  if (rec.state === "error") {
+    return <PlaceholderRow depth={depth} text={`Error: ${rec.error ?? ""}`} />;
+  }
+  if (rec.items.length === 0) {
+    return <PlaceholderRow depth={depth} text={vacio} />;
+  }
+  return (
+    <>
+      {rec.items.map((p) => (
+        <NodeRow
+          key={p.id}
+          depth={depth}
+          icon={<FolderKanban className="h-3.5 w-3.5" aria-hidden />}
+          label={p.name}
+          href={`/pmo/projects/${p.id}`}
+          active={isProjectActive(p.id)}
+          hasChildren={false}
+          isOpen={false}
+          onToggle={() => undefined}
+          onNavigate={onNavigate}
+        />
+      ))}
+    </>
+  );
+}
+
+/** US-200 — el nivel nuevo: los portafolios de una organización, y al final el
+ *  cajón de los proyectos que todavía no están en ninguno. */
+function PortfoliosList({
+  orgId,
+  rec,
+  unclassifiedRec,
+  maps,
+  depth,
+  expanded,
+  toggle,
+  isProjectActive,
+  onNavigate,
+}: {
+  orgId: string;
+  rec: LoadedRecord<Portfolio> | undefined;
+  unclassifiedRec: LoadedRecord<Project> | undefined;
+  maps: Maps;
+  depth: number;
+  expanded: Set<string>;
+  toggle: (id: string) => void;
+  isProjectActive: (id: string) => boolean;
+  onNavigate: () => void;
+}) {
+  const haySinClasificar =
+    unclassifiedRec?.state === "loaded" && unclassifiedRec.items.length > 0;
+  // La clave lleva el id de la organización y no se deduce del primer
+  // portafolio: una organización **sin** portafolios pero con proyectos sin
+  // clasificar no tiene primer portafolio, y la clave se compartiría con las
+  // demás — abrir una abriría todas.
+  const sinClasificarKey = `unclassified:${orgId}`;
+  const sinClasificarOpen = expanded.has(sinClasificarKey);
+
+  if (!rec || rec.state === "loading") {
+    return <PlaceholderRow depth={depth} text="Cargando portafolios…" />;
+  }
+  if (rec.state === "error") {
+    return <PlaceholderRow depth={depth} text={`Error: ${rec.error ?? ""}`} />;
+  }
+  if (rec.items.length === 0 && !haySinClasificar) {
+    return <PlaceholderRow depth={depth} text="Sin portafolios" />;
+  }
+  return (
+    <>
+      {rec.items.map((pf) => {
+        const pfKey = `pf:${pf.id}`;
+        const abierto = expanded.has(pfKey);
+        return (
+          <div key={pf.id}>
+            <NodeRow
+              depth={depth}
+              icon={<Briefcase className="h-3.5 w-3.5" aria-hidden />}
+              label={pf.code ? `${pf.code} — ${pf.name}` : pf.name}
+              active={false}
+              hasChildren
+              isOpen={abierto}
+              onToggle={() => toggle(pfKey)}
+              onNavigate={onNavigate}
+            />
+            {abierto ? (
+              <ProgramsList
+                rec={maps.programs[pf.id]}
+                noProgramRec={maps.noProgramProjects[pf.id]}
+                portfolioId={pf.id}
+                depth={depth + 1}
+                expanded={expanded}
+                toggle={toggle}
+                projectsMap={maps.projects}
+                isProjectActive={isProjectActive}
+                onNavigate={onNavigate}
+              />
+            ) : null}
+          </div>
+        );
+      })}
+      {haySinClasificar ? (
+        <div>
+          <NodeRow
+            depth={depth}
+            icon={<Folder className="h-3.5 w-3.5" aria-hidden />}
+            label="Sin clasificar"
+            active={false}
+            hasChildren
+            isOpen={sinClasificarOpen}
+            onToggle={() => toggle(sinClasificarKey)}
+            onNavigate={onNavigate}
+          />
+          {sinClasificarOpen ? (
+            <ProjectRows
+              rec={unclassifiedRec}
+              depth={depth + 1}
+              isProjectActive={isProjectActive}
+              onNavigate={onNavigate}
+              vacio="Sin proyectos"
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 function ProgramsList({
   rec,
   noProgramRec,
-  orgId,
+  portfolioId,
   depth,
   expanded,
   toggle,
@@ -375,7 +642,7 @@ function ProgramsList({
 }: {
   rec: LoadedRecord<Program> | undefined;
   noProgramRec: LoadedRecord<Project> | undefined;
-  orgId: string;
+  portfolioId: string;
   depth: number;
   expanded: Set<string>;
   toggle: (id: string) => void;
@@ -383,10 +650,10 @@ function ProgramsList({
   isProjectActive: (id: string) => boolean;
   onNavigate: () => void;
 }) {
-  const hasNoProgProjects =
+  const haySinPrograma =
     noProgramRec?.state === "loaded" && noProgramRec.items.length > 0;
-  const noProgramKey = `no_prog:${orgId}`;
-  const noProgramOpen = expanded.has(noProgramKey);
+  const sinProgramaKey = `no_prog:${portfolioId}`;
+  const sinProgramaOpen = expanded.has(sinProgramaKey);
 
   if (!rec || rec.state === "loading") {
     return <PlaceholderRow depth={depth} text="Cargando programas…" />;
@@ -394,15 +661,14 @@ function ProgramsList({
   if (rec.state === "error") {
     return <PlaceholderRow depth={depth} text={`Error: ${rec.error ?? ""}`} />;
   }
-  if (rec.items.length === 0 && !hasNoProgProjects) {
-    return <PlaceholderRow depth={depth} text="Sin programas" />;
+  if (rec.items.length === 0 && !haySinPrograma) {
+    return <PlaceholderRow depth={depth} text="Sin programas ni proyectos" />;
   }
   return (
     <>
       {rec.items.map((prog) => {
         const progKey = `prog:${prog.id}`;
-        const open = expanded.has(progKey);
-        const projects = projectsMap[prog.id];
+        const abierto = expanded.has(progKey);
         return (
           <div key={prog.id}>
             <NodeRow
@@ -412,71 +678,43 @@ function ProgramsList({
               href={`/pmo/programs/${prog.id}`}
               active={false}
               hasChildren
-              isOpen={open}
+              isOpen={abierto}
               onToggle={() => toggle(progKey)}
               onNavigate={onNavigate}
             />
-            {open ? (
-              <>
-                {projects?.state === "loading" ? (
-                  <PlaceholderRow depth={depth + 1} text="Cargando proyectos…" />
-                ) : null}
-                {projects?.state === "error" ? (
-                  <PlaceholderRow
-                    depth={depth + 1}
-                    text={`Error: ${projects.error ?? ""}`}
-                  />
-                ) : null}
-                {(projects?.items ?? []).map((p) => (
-                  <NodeRow
-                    key={p.id}
-                    depth={depth + 1}
-                    icon={<FolderKanban className="h-3.5 w-3.5" aria-hidden />}
-                    label={p.name}
-                    href={`/pmo/projects/${p.id}`}
-                    active={isProjectActive(p.id)}
-                    hasChildren={false}
-                    isOpen={false}
-                    onToggle={() => undefined}
-                    onNavigate={onNavigate}
-                  />
-                ))}
-                {projects?.state === "loaded" && projects.items.length === 0 ? (
-                  <PlaceholderRow depth={depth + 1} text="Sin proyectos" />
-                ) : null}
-              </>
+            {abierto ? (
+              <ProjectRows
+                rec={projectsMap[prog.id]}
+                depth={depth + 1}
+                isProjectActive={isProjectActive}
+                onNavigate={onNavigate}
+                vacio="Sin proyectos"
+              />
             ) : null}
           </div>
         );
       })}
-      {hasNoProgProjects ? (
+      {haySinPrograma ? (
         <div>
           <NodeRow
             depth={depth}
             icon={<Folder className="h-3.5 w-3.5" aria-hidden />}
-            label="Sin Programa"
+            label="Sin programa"
             active={false}
             hasChildren
-            isOpen={noProgramOpen}
-            onToggle={() => toggle(noProgramKey)}
+            isOpen={sinProgramaOpen}
+            onToggle={() => toggle(sinProgramaKey)}
             onNavigate={onNavigate}
           />
-          {noProgramOpen
-            ? noProgramRec!.items.map((p) => (
-                <NodeRow
-                  key={p.id}
-                  depth={depth + 1}
-                  icon={<FolderKanban className="h-3.5 w-3.5" aria-hidden />}
-                  label={p.name}
-                  href={`/pmo/projects/${p.id}`}
-                  active={isProjectActive(p.id)}
-                  hasChildren={false}
-                  isOpen={false}
-                  onToggle={() => undefined}
-                  onNavigate={onNavigate}
-                />
-              ))
-            : null}
+          {sinProgramaOpen ? (
+            <ProjectRows
+              rec={noProgramRec}
+              depth={depth + 1}
+              isProjectActive={isProjectActive}
+              onNavigate={onNavigate}
+              vacio="Sin proyectos"
+            />
+          ) : null}
         </div>
       ) : null}
     </>

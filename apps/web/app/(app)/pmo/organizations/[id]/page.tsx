@@ -161,13 +161,8 @@ export default function PmoOrganizationPage() {
     return map;
   }, [panel]);
 
-  const buCount = panel?.business_units.length ?? 0;
-  const deptCount = useMemo(
-    () =>
-      panel?.business_units.reduce((acc, bu) => acc + bu.departments.length, 0) ??
-      0,
-    [panel],
-  );
+  // US-200 — la jerarquía es portafolio ⊃ programa (ADR-037).
+  const portfolioCount = panel?.portfolios.length ?? 0;
   const programsActive = useMemo(
     () => panel?.programs.filter((p) => p.is_active).length ?? 0,
     [panel],
@@ -285,8 +280,7 @@ export default function PmoOrganizationPage() {
       {organigramaError ? <Banner variant="danger">{organigramaError}</Banner> : null}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard label="Business Units" value={buCount} />
-        <KpiCard label="Departamentos" value={deptCount} />
+        <KpiCard label="Portafolios" value={portfolioCount} />
         <KpiCard
           label="Programas"
           value={programsActive}

@@ -134,10 +134,9 @@ export default function OrganizationPanelPage() {
     );
   }
 
-  const totalDepts = data.business_units.reduce(
-    (n, bu) => n + bu.departments.length,
-    0,
-  );
+  // US-200 — el conteo de programas se deriva del árbol de portafolios, que es
+  // donde viven anidados; la lista plana `data.programs` trae los mismos.
+  const totalProgramas = data.programs.length;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -192,20 +191,14 @@ export default function OrganizationPanelPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4">
-          <div className="text-xs text-[var(--color-tertiary)]">BUs</div>
+          <div className="text-xs text-[var(--color-tertiary)]">Portafolios</div>
           <div className="text-2xl font-semibold tabular-nums">
-            {data.business_units.length}
+            {data.portfolios.length}
           </div>
-        </div>
-        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4">
-          <div className="text-xs text-[var(--color-tertiary)]">Departamentos</div>
-          <div className="text-2xl font-semibold tabular-nums">{totalDepts}</div>
         </div>
         <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4">
           <div className="text-xs text-[var(--color-tertiary)]">Programas</div>
-          <div className="text-2xl font-semibold tabular-nums">
-            {data.programs.length}
-          </div>
+          <div className="text-2xl font-semibold tabular-nums">{totalProgramas}</div>
         </div>
         <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4">
           <div className="text-xs text-[var(--color-tertiary)]">Proyectos</div>
@@ -216,40 +209,51 @@ export default function OrganizationPanelPage() {
       </div>
 
       <SectionCard
-        title="Unidades de Negocio"
+        title="Portafolios"
         icon={<Workflow className="h-4 w-4" aria-hidden />}
-        count={data.business_units.length}
+        count={data.portfolios.length}
       >
-        {data.business_units.length === 0 ? (
+        {data.portfolios.length === 0 ? (
           <p className="text-sm text-[var(--color-tertiary)]">
-            Sin unidades de negocio configuradas.
+            Sin portafolios configurados.
           </p>
         ) : (
           <ul className="space-y-3">
-            {data.business_units.map((bu) => (
-              <li key={bu.id} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
-                <div className="text-sm font-medium text-[var(--color-primary)]">
-                  {bu.name}
+            {data.portfolios.map((pf) => (
+              <li
+                key={pf.id}
+                className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-[var(--color-primary)]">
+                    {pf.name}
+                  </span>
+                  {pf.code ? <Badge variant="neutral">{pf.code}</Badge> : null}
+                  <span className="text-xs text-[var(--color-tertiary)]">
+                    {pf.active_project_count} proyecto
+                    {pf.active_project_count === 1 ? "" : "s"} activo
+                    {pf.active_project_count === 1 ? "" : "s"}
+                  </span>
                 </div>
-                {bu.description ? (
+                {pf.description ? (
                   <p className="mt-1 text-xs text-[var(--color-tertiary)]">
-                    {bu.description}
+                    {pf.description}
                   </p>
                 ) : null}
-                {bu.departments.length > 0 ? (
+                {pf.programs.length > 0 ? (
                   <ul className="mt-2 flex flex-wrap gap-1.5">
-                    {bu.departments.map((d) => (
+                    {pf.programs.map((prog) => (
                       <li
-                        key={d.id}
+                        key={prog.id}
                         className="rounded-full bg-[var(--color-subtle)] px-2 py-0.5 text-xs text-[var(--color-secondary)]"
                       >
-                        {d.name}
+                        {prog.name}
                       </li>
                     ))}
                   </ul>
                 ) : (
                   <p className="mt-2 text-xs italic text-[var(--color-tertiary)]">
-                    Sin departamentos.
+                    Sin programas — sus proyectos cuelgan directo del portafolio.
                   </p>
                 )}
               </li>

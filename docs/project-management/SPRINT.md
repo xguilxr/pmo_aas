@@ -23,7 +23,8 @@ revisar_cada: 30d
 - [x] **198** `portfolios` + FKs + consistencia (ADR-037, 0108).
 - [x] **199** CRUD `/portfolios`; BU/deptos fuera de la API (0109).
 - [x] **202** fases/tipo en español y compat (ADR-038, 0110).
-- [ ] **200** UI admin · **201** filtros de portafolio.
+- [x] **200** UI admin: Portafolio ⊃ Programa, formularios y árbol.
+- [ ] **201** filtros de portafolio en dashboard y cross.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
@@ -41,11 +42,7 @@ por el owner (2026-08-19) — la construcción arranca en sesiones nuevas con
 la «Guía de sesiones» de `reestructura-plan.md` (mapas:
 `docs/architecture/mapa-{backend,frontend}.md`). Orden: US-198 primero.
 
-- [ ] US-198 #588 — Modelo y migración: entidad Portfolio + re-parenting de Programs
-- [ ] US-199 #589 — API: CRUD de portafolios + retiro de BU/deptos (dep: US-198)
-- [ ] US-200 #590 — UI admin: jerarquía Portafolio ⊃ Programa (dep: US-199)
-- [ ] US-201 #591 — Filtros portafolio/programa en dashboard y cross (dep: US-199)
-- [ ] US-202 #592 — Enum de tipo + vocabulario de fases nuevo (dep: US-198)
+Estado de las cinco USs: arriba, en IN-PROGRESS. Issues #588 a #592.
 
 - 2026-08-07 — **Conformidad cerrada** (ADR-036); detalle en
   `docs/conformidad/asvs-l1.md`. Vuelve a la mesa solo con un cliente que exija

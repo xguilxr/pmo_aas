@@ -16,7 +16,7 @@ revisar_cada: 90d
 | **Módulo** | `organizations`, `portfolios`, `programs`, `superadmin.tenants` (`business_units`/`departments`: en retiro, ADR-037) |
 | **Estado** | MVP |
 | **Versión objetivo** | v1.0 |
-| **Última actualización** | 2026-08-19 — US-199: CRUD de portafolios en la API; BU/departamentos fuera de la superficie (ADR-037) |
+| **Última actualización** | 2026-08-19 — US-200: la UI administra Portafolio ⊃ Programa; BU/departamentos fuera de las pantallas (ADR-037) |
 
 ## Objetivo de negocio
 
@@ -334,6 +334,33 @@ decisión de vocabulario propia, no parte de este retiro.
 - `TC-199.2` (integration) — Solicitud con programa → portafolio autocompletado → proyecto y acta con los dos, consistentes.
 - `TC-199.3` (integration) — Rutas de BU/departamentos: 404 en los nueve verbos/rutas retirados.
 - `TC-199.4` (integration) — La migración 0109 se niega si queda una referencia viva, y no suelta nada.
+
+**Decisiones:** ADR-037 · DEC-030.
+
+---
+
+### US-200 — La UI de la jerarquía: Portafolio ⊃ Programa ✅
+
+**Como** Administrador / Senior PMO
+**Quiero** administrar portafolios y sus programas desde la pantalla
+**Para** no tener que llamar a la API a mano para estructurar la cartera.
+
+**Criterios de aceptación:**
+- [x] **Sección de jerarquía del admin de organización** reescrita: acordeón Portafolio ⊃ Programa con alta, edición, archivado (con cascada opcional) y papelera de dos pasos en los dos niveles. Los programas se cargan **al expandir**, no todos de golpe.
+- [x] **KPI cards**: «Portafolios» y «Programas» en lugar de «BUs» y «Departamentos», en el panel de organización (`/pmo` y `/admin`) y en el detalle de inquilino del Super Admin.
+- [x] **`project-form.tsx`**: selects anidados Portafolio → Programa. Elegir programa **autocompleta** su portafolio —es lo que el servidor va a guardar de todos modos— y elegir portafolio filtra los programas a los suyos.
+- [x] **`request-form.tsx`**: los mismos dos selects, **opcionales**. Quien solicita no siempre sabe en qué portafolio cae, y obligarlo a adivinar produce una clasificación peor que ninguna: la PMO la ajusta al revisar. Con organización nueva («Otra…») la clasificación se deja para la revisión, que es cuando la organización existe.
+- [x] **`org-tree-nav.tsx`**: árbol Organización → Portafolio → Programa → Proyecto, con dos cajones para lo que no encaja: «Sin programa» (cuelga del portafolio) y «Sin clasificar» (sin portafolio todavía — el caso de la importación masiva). Sin ellos, esos proyectos serían invisibles justo cuando alguien los busca.
+- [x] **`program-modal.tsx`**: selector de portafolio, con «Portafolio General (por defecto)» como primera opción (DEC-030).
+- [x] Estados vacío/cargando/error en cada nivel del árbol y de la sección; tokens del design system; `check_tokens` y `check_contraste` en verde.
+
+**Nota de vocabulario:** los campos de texto libre de la solicitud pasan a llamarse **«Área que solicita»** y **«Equipo o sub-área»**. Siguen siendo `business_unit` y `department` en el contrato —son las palabras del solicitante, no la jerarquía— pero sus etiquetas decían el nombre de una entidad retirada.
+
+**Test Cases:**
+- `TC-200.1` (integration) — La lista de proyectos filtra por portafolio, por «del portafolio sin programa» y por «sin portafolio», que es lo que el árbol necesita para sus tres cubos.
+- `TC-200.2` (manual) — Alta de portafolio y programa desde el admin, visibles en el árbol del sidebar.
+- `TC-200.3` (manual) — Crear proyecto eligiendo solo programa → portafolio autocompletado en el select.
+- `TC-200.4` (manual) — Usuario sin `organizations.delete` no ve acciones de archivado (el 403 de la API ya está cubierto en TC-199.1).
 
 **Decisiones:** ADR-037 · DEC-030.
 

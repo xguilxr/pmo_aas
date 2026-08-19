@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Briefcase,
   Building2,
   FolderKanban,
   Layers,
   Plus,
   Search,
-  Users,
-  Workflow,
 } from "lucide-react";
 
 import { ProgramModal } from "@/components/program-modal";
@@ -134,14 +133,9 @@ function OrgCard({ panel }: { panel: OrganizationPanel }) {
 
       <div className="grid grid-cols-2 gap-2">
         <MetricTile
-          icon={<Workflow className="h-4 w-4" aria-hidden />}
-          label="Unidades"
-          value={panel.business_unit_count}
-        />
-        <MetricTile
-          icon={<Users className="h-4 w-4" aria-hidden />}
-          label="Departamentos"
-          value={panel.department_count}
+          icon={<Briefcase className="h-4 w-4" aria-hidden />}
+          label="Portafolios"
+          value={panel.portfolio_count}
         />
         <MetricTile
           icon={<Layers className="h-4 w-4" aria-hidden />}
