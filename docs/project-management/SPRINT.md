@@ -17,8 +17,11 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-Sin US activa. Branch de la sesión: `claude/docs-context-debloat-1j4o3b`
-(debloat documental, batch aprobado por el owner). Al terminar: producto.
+Sin US activa. Sesión de planeación de la **reestructura** cerrada:
+PR **#593** (`claude/platform-restructure-concept-mapping-rjhzd7`, docs
+puros) espera merge del owner. Siguiente sesión: **US-198 #588** en branch
+nueva, con la «Guía de sesiones» de
+`docs/epics/drafts/reestructura-plan.md`.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
