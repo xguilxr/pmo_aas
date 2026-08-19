@@ -11,6 +11,8 @@ import type {
 
 export type TenantCrossFilter = {
   organization_id?: string;
+  /** US-201 — el nivel nuevo, entre organización y programa. */
+  portfolio_id?: string;
   program_id?: string;
   project_id?: string;
 };

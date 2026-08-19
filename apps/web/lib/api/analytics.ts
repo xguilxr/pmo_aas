@@ -2,11 +2,29 @@ import { apiBase, apiFetch } from "@/lib/api";
 
 // US-152 — cliente de los endpoints de analytics para dashboards N1/N2.
 
-export type ScopeType = "tenant" | "organization" | "program" | "project";
+// US-201 / ADR-037 — `portfolio` entra entre organización y programa. El orden
+// de la unión es el de la jerarquía: se lee como la cascada que es.
+export type ScopeType =
+  | "tenant"
+  | "organization"
+  | "portfolio"
+  | "program"
+  | "project";
 
 export type ScopeParams = {
   scope?: ScopeType;
   id?: string;
+};
+
+/**
+ * US-201 — la cascada, para los endpoints que filtran en vez de scopear.
+ * `heatmap` y `health-matrix` no toman `scope`/`id`: agregan sobre todo lo
+ * visible y recortan por filtro, que es lo que hace el tablero.
+ */
+export type HierarchyFilter = {
+  organization_id?: string;
+  portfolio_id?: string;
+  program_id?: string;
 };
 
 export type TrendPoint = {
@@ -51,7 +69,18 @@ export type TreemapProject = {
   health: string | null;
 };
 export type TreemapProgram = { id: string; name: string; children: TreemapProject[] };
-export type TreemapOrg = { id: string; name: string; children: TreemapProgram[] };
+/**
+ * US-201 — el portafolio es un nivel propio del árbol, no una etiqueta del
+ * programa: un proyecto puede colgar del portafolio **sin** programa, y sin este
+ * nivel esos proyectos salían bajo «Sin programa» de la organización, junto a
+ * los que no están clasificados en nada. Dos situaciones distintas, un dibujo.
+ */
+export type TreemapPortfolio = {
+  id: string;
+  name: string;
+  children: TreemapProgram[];
+};
+export type TreemapOrg = { id: string; name: string; children: TreemapPortfolio[] };
 export type TreemapResponse = { tree: TreemapOrg[] };
 
 // US-181: matriz Proyecto × Dimensión de salud (salud única híbrida).
@@ -88,12 +117,16 @@ export function getRiskMatrix(params: ScopeParams = {}): Promise<RiskMatrixRespo
   return apiFetch<RiskMatrixResponse>(`/api/v1/dashboard/risk-matrix${qs(params)}`);
 }
 
-export function getHeatmap(): Promise<HeatmapResponse> {
-  return apiFetch<HeatmapResponse>(`/api/v1/dashboard/heatmap`);
+export function getHeatmap(params: HierarchyFilter = {}): Promise<HeatmapResponse> {
+  return apiFetch<HeatmapResponse>(`/api/v1/dashboard/heatmap${qs(params)}`);
 }
 
-export function getHealthMatrix(): Promise<HealthMatrixResponse> {
-  return apiFetch<HealthMatrixResponse>(`/api/v1/dashboard/health-matrix`);
+export function getHealthMatrix(
+  params: HierarchyFilter = {},
+): Promise<HealthMatrixResponse> {
+  return apiFetch<HealthMatrixResponse>(
+    `/api/v1/dashboard/health-matrix${qs(params)}`,
+  );
 }
 
 // US-192 — evaluaciones recientes de todos los proyectos visibles

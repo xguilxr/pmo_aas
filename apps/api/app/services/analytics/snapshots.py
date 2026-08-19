@@ -1,7 +1,7 @@
 """Cómputo y persistencia de MetricSnapshot (US-151).
 
-Calcula las métricas de *stock* de un scope (tenant/organización/programa/
-proyecto) y las persiste de forma idempotente en `metric_snapshots`. El
+Calcula las métricas de *stock* de un scope (tenant/organización/**portafolio**/
+programa/proyecto) y las persiste de forma idempotente en `metric_snapshots`. El
 worker corre esto semanalmente; también se usa para el backfill on-demand.
 
 La lógica de agregación es intencionalmente similar a la de
@@ -21,7 +21,7 @@ from app.core.unidades import razon_a_pct
 from app.dominio.proyecto import FASES_ACTIVAS
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import ChangeRequest, Issue, Risk
-from app.models.organization import Organization, Program
+from app.models.organization import Organization, Portfolio, Program
 from app.models.project import Project
 from app.models.project_request import ProjectRequest
 from app.models.task import Task
@@ -77,6 +77,12 @@ def _project_conditions(tenant_id: str, scope_type: str, scope_id: str) -> list:
     conds = [Project.tenant_id == str(tenant_id), Project.deleted_at.is_(None)]
     if scope_type == "organization":
         conds.append(Project.organization_id == str(scope_id))
+    elif scope_type == "portfolio":
+        # US-201 — el portafolio agrega **todos** sus proyectos: los que cuelgan
+        # de un programa suyo y los que cuelgan directo de él. Por eso se filtra
+        # por `portfolio_id` y no por los programas del portafolio: la segunda
+        # forma dejaría fuera exactamente los proyectos sin programa.
+        conds.append(Project.portfolio_id == str(scope_id))
     elif scope_type == "program":
         conds.append(Project.program_id == str(scope_id))
     elif scope_type == "project":
@@ -368,6 +374,21 @@ async def snapshot_tenant(
     ).scalars().all()
     for oid in org_ids:
         await _do("organization", str(oid))
+
+    # US-201 — el portafolio va **antes** del programa, en orden de jerarquía:
+    # si el snapshot fallara a mitad, lo que quedaría escrito sería el nivel de
+    # arriba, que es el que mira quien decide.
+    # Un portafolio archivado no genera fila: la tendencia de algo que ya no se
+    # gestiona es ruido en el histórico, y las suyas ya están escritas.
+    pf_ids = (
+        await db.execute(
+            select(Portfolio.id).where(
+                Portfolio.tenant_id == tenant_id, Portfolio.deleted_at.is_(None)
+            )
+        )
+    ).scalars().all()
+    for pfid in pf_ids:
+        await _do("portfolio", str(pfid))
 
     prog_ids = (
         await db.execute(select(Program.id).where(Program.tenant_id == tenant_id))

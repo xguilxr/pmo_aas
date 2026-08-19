@@ -574,9 +574,25 @@ export function Heatmap({
 
 type TreeProject = { id: string; name: string; folio: string; value: number; health: string | null };
 type TreeProgram = { id: string; name: string; children: TreeProject[] };
-type TreeOrg = { id: string; name: string; children: TreeProgram[] };
+// US-201 — el portafolio entra como nivel propio entre organización y programa.
+type TreePortfolio = { id: string; name: string; children: TreeProgram[] };
+type TreeOrg = { id: string; name: string; children: TreePortfolio[] };
 
-/** Treemap proporcional Organización → Programa → Proyecto (valor=presupuesto). */
+/** El presupuesto de un portafolio: la suma de los proyectos de sus programas. */
+function totalDe(pf: TreePortfolio): number {
+  return pf.children.reduce(
+    (a, prog) => a + prog.children.reduce((b, p) => b + p.value, 0),
+    0,
+  );
+}
+
+/** Treemap proporcional Organización → Portafolio → Programa → Proyecto
+ *  (valor=presupuesto, color=salud).
+ *
+ *  US-201 — cuatro niveles y no tres. El portafolio no se pinta como una barra
+ *  propia: es una cabecera con su subtotal, y las barras siguen siendo las de
+ *  los programas. Meterlo como una cuarta barra anidada dejaba tiras de tres
+ *  píxeles que no se pueden ni señalar con el ratón. */
 export function Treemap({
   tree,
   ariaLabel,
@@ -599,46 +615,61 @@ export function Treemap({
   return (
     <div role="img" aria-label={ariaLabel} className="space-y-3">
       {tree.map((org) => {
-        const orgTotal = org.children.reduce(
-          (a, p) => a + p.children.reduce((b, c) => b + c.value, 0),
-          0,
-        );
+        const orgTotal = org.children.reduce((a, pf) => a + totalDe(pf), 0);
+        // Un portafolio sin importes no se dibuja: una cabecera con subtotal
+        // cero y ninguna barra debajo se lee como algo que se rompió.
+        const carteras = org.children.filter((pf) => totalDe(pf) > 0);
         return (
           <div key={org.id} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
             <div className="mb-1.5 flex items-center justify-between text-xs">
               <span className="truncate font-semibold text-[var(--color-primary)]">{org.name}</span>
               <span className="tabular-nums text-[var(--color-tertiary)]">{fmt(orgTotal)}</span>
             </div>
-            <div className="space-y-1">
-              {org.children.map((prog) => {
-                const projects = prog.children.filter((p) => p.value > 0);
-                const total = projects.reduce((a, p) => a + p.value, 0);
-                if (projects.length === 0) return null;
-                return (
-                  <div key={prog.id} className="flex items-center gap-2">
-                    <span className="w-24 shrink-0 truncate text-[10px] text-[var(--color-tertiary)]" title={prog.name}>
-                      {prog.name}
+            <div className="space-y-2">
+              {carteras.map((pf) => (
+                <div key={pf.id} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span
+                      className="truncate font-medium text-[var(--color-secondary)]"
+                      title={pf.name}
+                    >
+                      {pf.name}
                     </span>
-                    <div className="flex h-6 flex-1 overflow-hidden rounded-[var(--radius-sm)]">
-                      {projects.map((p) => (
-                        <div
-                          key={p.id}
-                          title={`${p.name} (${p.folio}) · ${fmt(p.value)}`}
-                          style={{
-                            flexGrow: p.value,
-                            flexBasis: 0,
-                            backgroundColor: HEALTH_FILL[p.health ?? ""] ?? "var(--color-muted)",
-                          }}
-                          className="min-w-[3px] border-r border-[var(--color-surface)] last:border-r-0"
-                        />
-                      ))}
-                    </div>
-                    <span className="w-14 shrink-0 text-right text-[10px] tabular-nums text-[var(--color-tertiary)]">
-                      {fmt(total)}
+                    <span className="shrink-0 tabular-nums text-[var(--color-tertiary)]">
+                      {fmt(totalDe(pf))}
                     </span>
                   </div>
-                );
-              })}
+                  {pf.children.map((prog) => {
+                    const projects = prog.children.filter((p) => p.value > 0);
+                    const total = projects.reduce((a, p) => a + p.value, 0);
+                    if (projects.length === 0) return null;
+                    return (
+                      <div key={prog.id} className="flex items-center gap-2 pl-2">
+                        <span className="w-24 shrink-0 truncate text-[10px] text-[var(--color-tertiary)]" title={prog.name}>
+                          {prog.name}
+                        </span>
+                        <div className="flex h-6 flex-1 overflow-hidden rounded-[var(--radius-sm)]">
+                          {projects.map((p) => (
+                            <div
+                              key={p.id}
+                              title={`${p.name} (${p.folio}) · ${fmt(p.value)}`}
+                              style={{
+                                flexGrow: p.value,
+                                flexBasis: 0,
+                                backgroundColor: HEALTH_FILL[p.health ?? ""] ?? "var(--color-muted)",
+                              }}
+                              className="min-w-[3px] border-r border-[var(--color-surface)] last:border-r-0"
+                            />
+                          ))}
+                        </div>
+                        <span className="w-14 shrink-0 text-right text-[10px] tabular-nums text-[var(--color-tertiary)]">
+                          {fmt(total)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         );

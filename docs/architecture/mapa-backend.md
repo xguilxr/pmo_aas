@@ -45,7 +45,7 @@ apps/api/app/
 | `project_participation.py` | project_participations (allocation_pct FTE, periodo, status ciclo de vida) | + cost_rate_snapshot (W4) |
 | `project_role.py` / `stakeholder.py` / `project_member.py` | project_roles; stakeholders†; project_members† | † duplicados de actors/participations, consolidar (W8) |
 | `report_*.py`, `scheduled_*.py` | reports, report_history/sections/templates, report_builder_templates, scheduled_reports/minutes (cadence weekly/monthly) | cadencia biweekly + scope portfolio (W5) |
-| `metric_snapshot.py` | metric_snapshots (US-151: scope tenant/org/program/project, extras JSON) | + scope portfolio + cadence (W5) |
+| `metric_snapshot.py` | metric_snapshots (US-151: scope tenant/org/**portfolio**/program/project — US-201 sumó el portafolio; extras JSON) | + cadence biweekly (W5) |
 | `ai.py`, `assistant.py`, `ai_report_template.py`, `project_ai_context.py`, `platform_settings.py` | ai_jobs, assistant_*, ai_report_templates, project_ai_contexts, platform_ai_settings (groq key Fernet) | catálogo skills/roles de agente: W7 |
 | `notification.py`, `audit.py`, `permission_request.py` | notifications, audit_log (actor_type humano/IA), permission_change_requests | estables |
 | `role.py` | roles, user_roles — **DEPRECATED** (DEC-024) | drop pendiente (US-081/W8) |

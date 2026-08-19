@@ -495,6 +495,11 @@ programs_router = APIRouter(prefix="/programs", tags=["programs"])
 @programs_router.get("", response_model=list[ProgramRead])
 async def list_programs(
     organization_id: UUID | None = Query(default=None),
+    # US-201 — el segundo nivel de la cascada. Sin esto el desplegable de
+    # programa del tablero ofrecía los de toda la organización, incluidos los de
+    # otros portafolios: elegir uno producía una consulta que cruza dos filtros
+    # que no se tocan y devuelve vacío, que se lee como «no hay proyectos».
+    portfolio_id: UUID | None = Query(default=None),
     is_active: bool | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
@@ -509,6 +514,8 @@ async def list_programs(
             stmt = stmt.where(Program.id.in_(visibility.program_ids))
     if organization_id:
         stmt = stmt.where(Program.organization_id == str(organization_id))
+    if portfolio_id:
+        stmt = stmt.where(Program.portfolio_id == str(portfolio_id))
     if is_active is not None:
         stmt = stmt.where(Program.is_active == is_active)
     rows = (await db.execute(stmt.order_by(Program.name))).scalars().all()

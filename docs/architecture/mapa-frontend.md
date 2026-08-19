@@ -36,7 +36,7 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 
 | Ruta | Qué es |
 |---|---|
-| `/dashboard` | KPIs+charts tenant-wide con filtro org (→ se consolida con /pmo en dashboard ejecutivo) |
+| `/dashboard` | KPIs+charts tenant-wide con cascada org → portafolio → programa en la URL (US-201; → se consolida con /pmo en dashboard ejecutivo) |
 | `/pmo` | Panel portafolio del tenant (treemap/trends/heatmap, matriz salud, PDF status) |
 | `/pmo/projects` (+`/new`, `[id]/edit`) | Lista maestra + alta/edición (`project-form.tsx`) |
 | `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (recursos), `documents`, `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
@@ -63,9 +63,9 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   Programa → Proyecto desde US-200, con cajones «Sin programa» y «Sin
   clasificar»; cada nivel carga al expandirse.
 - **Datos**: `ui/sortable-th.tsx` + `lib/hooks/use-sortable-rows.ts`,
-  `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (org/programa/
-  proyecto → sumar portafolio). No hay tabla virtualizada ni column-pinning
-  (la control tower lo necesitará).
+  `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (org → portafolio →
+  programa → proyecto desde US-201; cada nivel limpia los de abajo). No hay
+  tabla virtualizada ni column-pinning (la control tower lo necesitará).
 - **Gráficos**: `dashboard-charts.tsx` — exporta `Pie, Bars, Gauge,
   TrendLines, RiskMatrix, Heatmap, Treemap, Legend, PALETTE, serieColor`
   (SVG propio). `kpi-card.tsx`.

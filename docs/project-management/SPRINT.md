@@ -24,7 +24,11 @@ revisar_cada: 30d
 - [x] **199** CRUD `/portfolios`; BU/deptos fuera de la API (0109).
 - [x] **202** fases/tipo en español y compat (ADR-038, 0110).
 - [x] **200** UI admin: Portafolio ⊃ Programa, formularios y árbol.
-- [ ] **201** filtros de portafolio en dashboard y cross.
+- [x] **201** cascada org → portafolio → programa: tablero, cross, snapshots.
+
+Hallazgo para triage: ENH-190 permite renombrar «Organización» a «Portafolio»
+en la UI; con Portafolio como entidad hija, ese inquilino ve dos niveles
+llamados igual. Decisión del owner.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).

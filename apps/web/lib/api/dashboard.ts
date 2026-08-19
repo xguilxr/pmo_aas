@@ -47,6 +47,8 @@ export type PlanVsActualRow = {
 
 export type PlanVsActualParams = {
   organization_id?: string;
+  /** US-201 — el nivel nuevo de la cascada. */
+  portfolio_id?: string;
   program_id?: string;
   phase?: string;
 };
@@ -61,7 +63,14 @@ function qs(params: Record<string, unknown>): string {
   return s ? `?${s}` : "";
 }
 
-export type DashboardFilter = { organization_id?: string };
+/** US-201 — la cascada completa. Los tres se acumulan en el servidor: una
+ *  combinación que no se cruza devuelve vacío, no un error, porque quien
+ *  combina dos filtros ajenos está explorando. */
+export type DashboardFilter = {
+  organization_id?: string;
+  portfolio_id?: string;
+  program_id?: string;
+};
 
 export function getDashboardKpis(
   params: DashboardFilter = {},

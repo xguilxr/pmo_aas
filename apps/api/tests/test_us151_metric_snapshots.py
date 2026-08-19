@@ -111,8 +111,10 @@ async def test_snapshot_tenant_writes_all_levels_idempotent(db_session):
     today = date.today()
 
     written = await snapshot_tenant(db_session, str(t.id), today)
-    # 1 tenant + 1 org + 1 programa + 4 proyectos = 7
-    assert written == 7
+    # 1 tenant + 1 org + 1 portafolio + 1 programa + 4 proyectos = 8. El
+    # portafolio lo sumó US-201: es el «Portafolio General» donde vive el
+    # programa del seed (DEC-030).
+    assert written == 8
 
     total = (
         await db_session.execute(
@@ -121,7 +123,7 @@ async def test_snapshot_tenant_writes_all_levels_idempotent(db_session):
             )
         )
     ).scalar_one()
-    assert total == 7
+    assert total == 8
 
     tenant_snap = (
         await db_session.execute(
@@ -144,7 +146,7 @@ async def test_snapshot_tenant_writes_all_levels_idempotent(db_session):
             )
         )
     ).scalar_one()
-    assert total2 == 7
+    assert total2 == 8
 
 
 @pytest.mark.asyncio

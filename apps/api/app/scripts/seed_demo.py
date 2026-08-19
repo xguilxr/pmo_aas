@@ -56,7 +56,7 @@ from app.models.task import Task
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.folio import next_folio
-from app.services.jerarquia import portafolio_general
+from app.services.jerarquia import portafolio_general, resolver_portafolio
 
 logger = logging.getLogger("pmoaas.seed_demo")
 
@@ -220,10 +220,19 @@ async def _ensure_project(
     if existing is not None:
         return existing
     folio = await next_folio(db, tenant_id=tenant_id, prefix="PROJ")
+    # US-201 — el proyecto lleva su portafolio, resuelto por la misma regla que
+    # el endpoint de alta: con programa, el del programa. Sin esto el demo
+    # generaba proyectos con programa y sin portafolio, que existen en el árbol
+    # pero desaparecen del filtro de portafolio del tablero — el bug más difícil
+    # de ver de esta reestructura, porque nada falla: falta una fila.
+    portfolio_id = await resolver_portafolio(
+        db, tenant_id=tenant_id, program_id=program_id, portfolio_id=None
+    )
     p = Project(
         tenant_id=tenant_id,
         organization_id=organization_id,
         program_id=program_id,
+        portfolio_id=portfolio_id,
         folio=folio,
         name=name,
         description=f"Proyecto demo '{name}' generado por seed_demo.",

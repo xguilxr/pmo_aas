@@ -5,14 +5,18 @@ import { useEffect, useState } from "react";
 import { Select } from "@/components/ui/select";
 import {
   type Organization,
+  type Portfolio,
   type Program,
   listOrganizations,
+  listPortfolios,
   listPrograms,
 } from "@/lib/api/organizations";
 import { type Project, listProjects } from "@/lib/api/projects";
 
 export type TenantCrossFilterValue = {
   organization_id?: string;
+  /** US-201 — el nivel nuevo de la cascada, entre organización y programa. */
+  portfolio_id?: string;
   program_id?: string;
   project_id?: string;
 };
@@ -29,17 +33,22 @@ type Props = {
    */
   leading?: React.ReactNode;
   /**
-   * Invierte el orden visual de los tres selects a Proyecto → Programa
-   * → Organización (ENH-017). No cambia la cascada lógica (org sigue
-   * filtrando programas y proyectos cuando se selecciona).
+   * Invierte el orden visual de los selects (ENH-017). No cambia la cascada
+   * lógica (org sigue filtrando portafolios, programas y proyectos).
    */
   reverse?: boolean;
 };
 
 /**
- * Filtros de organización / programa / proyecto para vistas cross-tenant
- * (US-052). Los selects se encadenan: elegir org filtra programas;
- * programa + org filtran proyectos.
+ * Filtros de organización / portafolio / programa / proyecto para vistas
+ * cross-tenant (US-052, ampliado en US-201). Los selects se encadenan: elegir
+ * organización filtra portafolios; portafolio filtra programas; y los tres
+ * filtran proyectos.
+ *
+ * Cada nivel **limpia los de abajo** al cambiar. No es cosmética: dejar un
+ * programa de otro portafolio seleccionado produce una consulta que cruza dos
+ * filtros incompatibles y devuelve vacío, que se lee como «no hay datos» y no
+ * como «el filtro no tiene sentido».
  */
 export function TenantCrossFilters({
   value,
@@ -49,6 +58,7 @@ export function TenantCrossFilters({
   reverse = false,
 }: Props) {
   const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
 
@@ -60,22 +70,37 @@ export function TenantCrossFilters({
 
   useEffect(() => {
     if (!value.organization_id) {
+      setPortfolios([]);
+      return;
+    }
+    listPortfolios(value.organization_id, { is_active: true })
+      .then(setPortfolios)
+      .catch(() => setPortfolios([]));
+  }, [value.organization_id]);
+
+  useEffect(() => {
+    if (!value.organization_id) {
       setPrograms([]);
       return;
     }
-    listPrograms({ organization_id: value.organization_id, is_active: true })
+    listPrograms({
+      organization_id: value.organization_id,
+      portfolio_id: value.portfolio_id,
+      is_active: true,
+    })
       .then(setPrograms)
       .catch(() => setPrograms([]));
-  }, [value.organization_id]);
+  }, [value.organization_id, value.portfolio_id]);
 
   useEffect(() => {
     listProjects({
       organization_id: value.organization_id,
+      portfolio_id: value.portfolio_id,
       program_id: value.program_id,
     })
       .then(setProjects)
       .catch(() => setProjects([]));
-  }, [value.organization_id, value.program_id]);
+  }, [value.organization_id, value.portfolio_id, value.program_id]);
 
   const organizationSelect = (
     <Select
@@ -86,6 +111,7 @@ export function TenantCrossFilters({
       onChange={(e) =>
         onChange({
           organization_id: e.target.value || undefined,
+          portfolio_id: undefined,
           program_id: undefined,
           project_id: undefined,
         })
@@ -95,6 +121,30 @@ export function TenantCrossFilters({
       {orgs.map((o) => (
         <option key={o.id} value={o.id}>
           {o.name}
+        </option>
+      ))}
+    </Select>
+  );
+  const portfolioSelect = (
+    <Select
+      key="portfolio"
+      aria-label="Portafolio"
+      className="h-9 w-full min-w-0"
+      value={value.portfolio_id ?? ""}
+      onChange={(e) =>
+        onChange({
+          ...value,
+          portfolio_id: e.target.value || undefined,
+          program_id: undefined,
+          project_id: undefined,
+        })
+      }
+      disabled={!value.organization_id}
+    >
+      <option value="">Todos los portafolios</option>
+      {portfolios.map((pf) => (
+        <option key={pf.id} value={pf.id}>
+          {pf.code ? `${pf.code} — ${pf.name}` : pf.name}
         </option>
       ))}
     </Select>
@@ -142,8 +192,8 @@ export function TenantCrossFilters({
   );
 
   const selects = reverse
-    ? [projectSelect, programSelect, organizationSelect]
-    : [organizationSelect, programSelect, projectSelect];
+    ? [projectSelect, programSelect, portfolioSelect, organizationSelect]
+    : [organizationSelect, portfolioSelect, programSelect, projectSelect];
 
   // ENH-025 rework definitivo: mobile stackea verticalmente (cada select
   // en su fila), tablet hace grid 2×2, desktop (lg+) fuerza una sola

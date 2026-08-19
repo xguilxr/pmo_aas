@@ -16,7 +16,7 @@ revisar_cada: 90d
 | **Módulo** | `organizations`, `portfolios`, `programs`, `superadmin.tenants` (`business_units`/`departments`: en retiro, ADR-037) |
 | **Estado** | MVP |
 | **Versión objetivo** | v1.0 |
-| **Última actualización** | 2026-08-19 — US-200: la UI administra Portafolio ⊃ Programa; BU/departamentos fuera de las pantallas (ADR-037) |
+| **Última actualización** | 2026-08-19 — US-201: la cascada Organización → Portafolio → Programa filtra el tablero y las vistas cross (ADR-037) |
 
 ## Objetivo de negocio
 
@@ -322,7 +322,7 @@ tipos.
 - [x] Sub-routers `business-units` y `departments` retirados: sus rutas responden **404**. Ni 410 ni redirect — un concepto retirado no se mantiene vivo a medias.
 - [x] El panel de organización pasa a portafolio ⊃ programa (`portfolios` con sus programas anidados, más la lista plana de programas); las tarjetas cuentan portafolios en vez de BU/departamentos, y el detalle de inquilino del Super Admin igual.
 - [x] Migración 0109: suelta las siete columnas BU/departamento **verificando que estén vacías** y crea `portfolio_id`/`program_id` en solicitudes y actas.
-- [ ] UI de todo esto → **US-200** (admin y formularios) y **US-201** (filtros).
+- [x] UI de todo esto → **US-200** (admin y formularios) y **US-201** (filtros del tablero y las vistas cross, ver EP004).
 
 **Nota de vocabulario:** `project_requests.business_unit` y `.department` (texto
 libre) **se quedan**. No son la jerarquía de la plataforma: son las palabras del
