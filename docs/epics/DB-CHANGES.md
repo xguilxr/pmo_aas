@@ -1057,3 +1057,37 @@ La bajada devuelve las siete y quita las cuatro. **No devuelve los
 valores** —ninguno, si la subida corrió—, que es la razón por la que la
 subida se niega a correr con datos: después de soltar la columna ya no
 hay a dónde volver.
+
+## 0110 — el vocabulario de fases y tipos, al español (US-202)
+
+`planning → preparacion`, `execution → ejecucion`, `closed → cerrado`,
+`cancelled → cancelado` (ADR-038). **`hypercare` no se toca**: ADR-019 lo
+renombró hace dos semanas y no tiene traducción que no sea peor. Y
+`projects.type` deja el texto libre: `transformation → transformacion`,
+`operation → operacion`, `innovation → innovacion`; `bau` ya estaba bien.
+
+**Dos tablas con fase, no una.** `projects.phase` y `lessons.phase`
+comparten vocabulario —la fase de una lección es «en qué fase se aprendió
+esto»— y la segunda es la que se olvida: le pasó a la 0098, cuya primera
+versión tocaba solo `projects`. La tercera, `project_participations.phase`,
+queda fuera a propósito: es texto libre, no el vocabulario controlado, y
+renombrar ahí sería editar lo que escribió un usuario.
+
+**Los tipos que no están en el mapa se dejan como están**, con sus
+valores y su conteo en el registro del despliegue. No se convierten a la
+fuerza ni se vacían: adivinar que «Mejora continua» es `operacion` es
+inventarse la clasificación de un proyecto de alguien, y vaciarlo es
+perder el único dato que había. La columna sigue siendo texto, así que
+esos valores se **leen** igual; lo que ya no se puede es volver a
+escribirlos, porque el enum de la API los rechaza.
+
+Cada `UPDATE` va acotado por valor viejo y no como un `CASE` sobre todas
+las filas: reescribir filas que ya están bien les mueve el `updated_at`
+sin haber cambiado nada. Es la lección de la 0101, y se verifica
+contando sentencias (`tests/test_us202_vocabulario.py`).
+
+La bajada es exacta: renombrados uno a uno, sin colisión —ninguno de los
+nombres nuevos existía antes del 2026-08-19—. Lo único que no puede
+distinguir es una fila que **ya** dijera `preparacion` de una que lo diga
+por esta migración; el caso no se da con datos reales, pero conviene
+saberlo antes de volver a subir tras una bajada parcial.

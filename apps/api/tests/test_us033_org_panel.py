@@ -56,7 +56,7 @@ async def test_us033_panel_happy_path(client, db_session):
     proj = await client.post(
         "/api/v1/projects",
         json={
-            "name": "Proyecto-1", "description": "desc", "type": "innovation",
+            "name": "Proyecto-1", "description": "desc", "type": "innovacion",
             "priority": 3, "organization_id": org_id, "program_id": prog_id,
             "pm_id": me["id"], "budget": "1000",
         },

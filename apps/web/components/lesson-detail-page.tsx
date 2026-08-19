@@ -46,10 +46,10 @@ type EditDraft = {
 };
 
 const PHASE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "planning", label: "Planificación" },
-  { value: "execution", label: "Ejecución" },
+  { value: "preparacion", label: "Preparación" },
+  { value: "ejecucion", label: "Ejecución" },
   { value: "hypercare", label: "Hypercare" },
-  { value: "closed", label: "Cierre" },
+  { value: "cerrado", label: "Cierre" },
 ];
 
 function draftFromLesson(l: Lesson): EditDraft {

@@ -118,7 +118,7 @@ async def test_us088_program_happy_path_with_cascade(client, db_session):
         json={
             "name": "ProjHijo",
             "description": "child of program",
-            "type": "operation",
+            "type": "operacion",
             "priority": 3,
             "pm_id": pm_user["id"],
             "organization_id": org["id"],

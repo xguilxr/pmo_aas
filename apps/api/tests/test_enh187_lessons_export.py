@@ -59,7 +59,7 @@ def test_build_lesson_rows_resolves_category_phase_owner_and_tags():
         title="Lección de cierre",
         description="Lo que aprendimos",
         category="success",
-        phase="closed",
+        phase="cerrado",
         owner_actor_id="actor-1",
         recommendation="Repetir el patrón",
         tags=["onboarding", "comunicación"],

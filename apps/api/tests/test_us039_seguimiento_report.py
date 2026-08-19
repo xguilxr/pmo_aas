@@ -33,7 +33,7 @@ async def _seed_project(db_session, tenant, folio="SP-0001"):
         organization_id=str(org.id),
         folio=folio,
         name=f"Proyecto {folio}",
-        phase="execution",
+        phase="ejecucion",
         health_status="green",
         budget=Decimal("1000"),
     )

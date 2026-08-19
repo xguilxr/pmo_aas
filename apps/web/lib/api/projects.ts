@@ -1,17 +1,22 @@
 import { apiFetch } from "@/lib/api";
 
-// D-2 / ADR-019 (2026-08-05): `support` se renombró a `hypercare`. El API
-// acepta el nombre viejo a la entrada durante una ventana, pero siempre
+// US-202 / ADR-038 (2026-08-19): el vocabulario pasa al español, que es el del
+// glosario, el de la interfaz y el de quien la usa. El API acepta los nombres
+// viejos a la entrada durante una ventana de compatibilidad, pero siempre
 // devuelve el canónico, así que aquí solo existe el nuevo.
-// ADR-022 (2026-08-05): `cancelled` es el quinto valor. Un proyecto cortado a
-// mitad terminaba en `closed`, indistinguible de uno que cumplió.
+// `hypercare` se queda: no tiene traducción que no sea peor, y ADR-019 ya lo
+// renombró una vez desde `support`.
+// ADR-022: `cancelado` es un final distinto de `cerrado`. Un proyecto cortado a
+// mitad terminaba antes en «cerrado», indistinguible de uno que cumplió.
 export type ProjectPhase =
-  | "planning"
-  | "execution"
+  | "preparacion"
+  | "ejecucion"
   | "hypercare"
-  | "closed"
-  | "cancelled";
-export type ProjectType = "innovation" | "transformation" | "operation" | "bau";
+  | "cerrado"
+  | "cancelado";
+// US-202: el tipo deja de ser texto libre. Cuatro valores, y `bau` se queda en
+// la sigla porque es como lo dice quien lo pide.
+export type ProjectType = "transformacion" | "operacion" | "innovacion" | "bau";
 export type ProjectHealth = "green" | "yellow" | "red";
 // US-180: fuente del semáforo único — 'auto' (motor de reglas) o
 // 'manual' (declarado por el PM con razón).
@@ -314,18 +319,28 @@ export function removeMember(id: string, userId: string): Promise<void> {
 }
 
 export const PHASE_LABEL: Record<ProjectPhase, string> = {
-  planning: "Planificación",
-  execution: "Ejecución",
+  preparacion: "Preparación",
+  ejecucion: "Ejecución",
   hypercare: "Hypercare",
-  closed: "Cerrado",
-  cancelled: "Cancelado",
+  cerrado: "Cerrado",
+  cancelado: "Cancelado",
 };
 
+// US-202: el orden del ciclo de vida, para desplegables y ejes de gráficos —
+// alfabético pondría «cancelado» primero, que no es por donde empieza nada.
+export const PHASE_ORDER: readonly ProjectPhase[] = [
+  "preparacion",
+  "ejecucion",
+  "hypercare",
+  "cerrado",
+  "cancelado",
+];
+
 export const TYPE_LABEL: Record<ProjectType, string> = {
-  innovation: "Innovación",
-  transformation: "Transformación",
-  operation: "Operación",
-  bau: "BAU",
+  transformacion: "Transformación",
+  operacion: "Operación",
+  innovacion: "Innovación",
+  bau: "BAU (operación continua)",
 };
 
 export const HEALTH_LABEL: Record<ProjectHealth, string> = {

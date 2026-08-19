@@ -17,12 +17,13 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Bloque Reestructura-W1** en `claude/handoff-development-2awr5v`. Orden:
-198 → 199 → 202 → {200, 201}. Guía: `drafts/reestructura-plan.md`.
-Hechas, esperan verificación del owner (ADR-037, DEC-030):
+**Reestructura-W1** en `claude/handoff-development-2awr5v`. Guía:
+`drafts/reestructura-plan.md`. Esperan verificación del owner:
 
-- [x] **US-198 #588** — `portfolios` + FKs + regla de consistencia (0108).
-- [x] **US-199 #589** — CRUD `/portfolios`; BU/deptos fuera de la API (0109).
+- [x] **198** `portfolios` + FKs + consistencia (ADR-037, 0108).
+- [x] **199** CRUD `/portfolios`; BU/deptos fuera de la API (0109).
+- [x] **202** fases/tipo en español y compat (ADR-038, 0110).
+- [ ] **200** UI admin · **201** filtros de portafolio.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).

@@ -58,7 +58,7 @@ export default function LessonsPage() {
     title: "",
     description: "",
     category: "improvement",
-    phase: "execution",
+    phase: "ejecucion",
     recommendation: "",
     tags: "",
   });
@@ -116,7 +116,7 @@ export default function LessonsPage() {
         title: "",
         description: "",
         category: "improvement",
-        phase: "execution",
+        phase: "ejecucion",
         recommendation: "",
         tags: "",
       });

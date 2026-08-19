@@ -10,6 +10,7 @@ from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import business_rule, conflict, forbidden, mensaje, validation_error
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
+from app.dominio.proyecto import CERRADO, EJECUCION, TRANSICIONES
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
@@ -53,13 +54,9 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 #
 # `closed` NO lleva a `cancelled`: un proyecto que llegó al final ya tuvo su
 # final. Los dos son terminales, por la misma razón que `closed` lo era.
-VALID_TRANSITIONS = {
-    "planning": {"execution", "closed", "cancelled"},
-    "execution": {"hypercare", "closed", "cancelled"},
-    "hypercare": {"closed", "cancelled"},
-    "closed": set(),
-    "cancelled": set(),
-}
+#: US-202 — el grafo del ciclo de vida vive en `dominio/proyecto.py`. Se
+#: reexporta con el nombre viejo porque es lo que importa el resto del módulo.
+VALID_TRANSITIONS = TRANSICIONES
 
 
 def _tenant(cu: CurrentUser) -> UUID:
@@ -446,7 +443,7 @@ async def update_project(
     ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -553,7 +550,7 @@ async def declare_health(
     ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -618,7 +615,7 @@ async def create_health_evaluation(
 
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -717,7 +714,7 @@ async def reset_plan_aggregate(
     # BUG-092 — una consulta por petición, no una por fila.
     ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     p = await proyecto_autorizado(db, project_id, cu)
-    if p.phase == "closed":
+    if p.phase == CERRADO:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no editable",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",
@@ -776,9 +773,9 @@ async def change_phase(
                 accion="Pasa por la fase intermedia que corresponda.",
             ), code="STATE_TRANSITION"
         )
-    if body.new_phase == "execution" and p.start_date is None:
+    if body.new_phase == EJECUCION and p.start_date is None:
         raise business_rule(mensaje(
-            que="start_date es obligatoria al pasar a execution",
+            que="start_date es obligatoria al pasar a ejecución",
             porque="Sin fecha de inicio no se puede calcular ningún avance ni ningún retraso.",
             accion="Pon la fecha de inicio y vuelve a cambiar la fase.",
         ))

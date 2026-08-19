@@ -413,7 +413,7 @@ async def test_tcnew020_section4_derived_from_project(client, db_session):
     project = (
         await db_session.execute(select(Project).where(Project.id == pid))
     ).scalar_one()
-    project.phase = "execution"
+    project.phase = "ejecucion"
     project.health_status = "yellow"
     project.progress = 42
     project.start_date = date(2026, 5, 1)
@@ -421,7 +421,7 @@ async def test_tcnew020_section4_derived_from_project(client, db_session):
 
     r = await client.get(f"/api/v1/projects/{pid}/charter", headers=auth["_authz"])
     s4 = r.json()["section_4"]
-    assert s4["phase"] == "execution"
+    assert s4["phase"] == "ejecucion"
     assert s4["health_status"] == "yellow"
     assert s4["progress"] == 42
     assert s4["start_date"] == "2026-05-01"
@@ -459,7 +459,7 @@ async def test_charter_patch_edits_sections_1_to_3(client, db_session):
             "business_leader_email": "ana@acme.example.com",
             "tech_leader": "Luis Ruiz",
             "tech_leader_email": "luis@acme.example.com",
-            "project_type": "innovation",
+            "project_type": "innovacion",
             "priority": 2,
             "restrictions": "Plazo 6 meses",
             "risks_summary": "Top 3 riesgos",
@@ -470,7 +470,7 @@ async def test_charter_patch_edits_sections_1_to_3(client, db_session):
     data = r.json()
     assert data["business_leader"] == "Ana García"
     assert data["business_leader_email"] == "ana@acme.example.com"
-    assert data["project_type"] == "innovation"
+    assert data["project_type"] == "innovacion"
     assert data["priority"] == 2
     assert data["restrictions"] == "Plazo 6 meses"
 
@@ -489,7 +489,7 @@ async def test_charter_autocreated_when_missing(client, db_session):
         organization_id=org_id,
         folio="PRJ-ORPH",
         name="Sin charter",
-        phase="planning",
+        phase="preparacion",
     )
     db_session.add(orphan)
     await db_session.commit()

@@ -21,7 +21,7 @@ def _project_body(org_id: str, pm_id: str, **overrides) -> dict:
     base = {
         "name": "Proyecto Alfa",
         "description": "Desc",
-        "type": "innovation",
+        "type": "innovacion",
         "priority": 3,
         "organization_id": org_id,
         "pm_id": pm_id,
@@ -83,18 +83,18 @@ async def test_tc076_invalid_phase_transition(client, db_session):
     proj_id = r.json()["id"]
     # planning -> execution OK
     ok = await client.post(f"/api/v1/projects/{proj_id}/phase/change",
-                            json={"new_phase": "execution"}, headers=auth["_authz"])
+                            json={"new_phase": "ejecucion"}, headers=auth["_authz"])
     assert ok.status_code == 200
     # execution -> planning inválido
     bad = await client.post(f"/api/v1/projects/{proj_id}/phase/change",
-                             json={"new_phase": "planning"}, headers=auth["_authz"])
+                             json={"new_phase": "preparacion"}, headers=auth["_authz"])
     assert bad.status_code == 409
     # execution -> closed OK; closed -> execution inválido
     close = await client.post(f"/api/v1/projects/{proj_id}/phase/change",
-                               json={"new_phase": "closed"}, headers=auth["_authz"])
+                               json={"new_phase": "cerrado"}, headers=auth["_authz"])
     assert close.status_code == 200
     reopen = await client.post(f"/api/v1/projects/{proj_id}/phase/change",
-                                 json={"new_phase": "execution"}, headers=auth["_authz"])
+                                 json={"new_phase": "ejecucion"}, headers=auth["_authz"])
     assert reopen.status_code == 409
 
 
@@ -108,7 +108,7 @@ async def test_tc077_closed_readonly(client, db_session):
                           headers=auth["_authz"])
     proj_id = r.json()["id"]
     await client.post(f"/api/v1/projects/{proj_id}/phase/change",
-                       json={"new_phase": "closed"}, headers=auth["_authz"])
+                       json={"new_phase": "cerrado"}, headers=auth["_authz"])
     ed = await client.patch(f"/api/v1/projects/{proj_id}",
                              json={"description": "nuevo"}, headers=auth["_authz"])
     assert ed.status_code == 422
@@ -173,7 +173,7 @@ async def test_tc067_filters_combine(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
     me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
     pm_id = me.json()["id"]
-    for i, ptype in enumerate(["innovation", "transformation", "bau"]):
+    for i, ptype in enumerate(["innovacion", "transformacion", "bau"]):
         await client.post(
             "/api/v1/projects",
             json=_project_body(org_id, pm_id, name=f"P{i}", type=ptype, priority=(i % 5) + 1),
@@ -183,7 +183,7 @@ async def test_tc067_filters_combine(client, db_session):
         "/api/v1/projects?type=innovation&phase=planning", headers=auth["_authz"]
     )
     assert r.status_code == 200
-    assert all(p["type"] == "innovation" and p["phase"] == "planning" for p in r.json())
+    assert all(p["type"] == "innovacion" and p["phase"] == "preparacion" for p in r.json())
 
 
 # ============================================================================

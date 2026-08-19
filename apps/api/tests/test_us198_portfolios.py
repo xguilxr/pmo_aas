@@ -338,7 +338,7 @@ def _proyecto(**campos: object) -> dict[str, object]:
         "id": str(uuid4()),
         "folio": "PRJ-000",
         "name": "Proyecto",
-        "phase": "planning",
+        "phase": "preparacion",
         "progress": 0,
         "health_status": "green",
         "health_source": "auto",

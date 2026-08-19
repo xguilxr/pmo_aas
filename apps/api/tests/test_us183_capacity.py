@@ -39,7 +39,7 @@ async def _setup(client, db_session, *, n_projects: int = 3):
             json={
                 "name": f"Proyecto {i + 1}",
                 "description": "US-183",
-                "type": "transformation",
+                "type": "transformacion",
                 "priority": 3,
                 "organization_id": org_id,
                 "pm_id": pm_id,

@@ -84,7 +84,7 @@ def test_la_fase_nueva_no_deja_rastro(caplog):
 
     with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
         normalizar_fase("hypercare")
-        normalizar_fase("planning")
+        normalizar_fase("preparacion")
 
     assert caplog.records == []
 

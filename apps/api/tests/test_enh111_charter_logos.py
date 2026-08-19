@@ -46,7 +46,7 @@ class _FakeCharter:
     tech_leader = None
     tech_leader_email = None
     pm_id = None
-    project_type = "innovation"
+    project_type = "innovacion"
     priority = 3
     objective = None
     restrictions = None
@@ -58,7 +58,7 @@ class _FakeCharter:
 
 class _FakeProject:
     folio = "PRJ-0001"
-    phase = "planning"
+    phase = "preparacion"
     health_status = "green"
     start_date = None
     end_date = None

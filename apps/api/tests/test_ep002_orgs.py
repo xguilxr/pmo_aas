@@ -426,7 +426,7 @@ async def test_tcnew010_org_panels_metrics(client, db_session):
         organization_id=org_id,
         folio="PMO-000001",
         name="P1",
-        phase="execution",
+        phase="ejecucion",
         health_status="green",
     )
     p2 = Project(
@@ -435,7 +435,7 @@ async def test_tcnew010_org_panels_metrics(client, db_session):
         organization_id=org_id,
         folio="PMO-000002",
         name="P2",
-        phase="planning",
+        phase="preparacion",
         health_status="red",
     )
     db_session.add_all([p1, p2])
@@ -465,7 +465,7 @@ async def test_org_panels_exclude_closed(client, db_session):
         organization_id=org_id,
         folio="PMO-C1",
         name="Cerrado",
-        phase="closed",
+        phase="cerrado",
         health_status="green",
     )
     p_open = Project(
@@ -474,7 +474,7 @@ async def test_org_panels_exclude_closed(client, db_session):
         organization_id=org_id,
         folio="PMO-O1",
         name="Abierto",
-        phase="execution",
+        phase="ejecucion",
         health_status="yellow",
     )
     db_session.add_all([p_closed, p_open])

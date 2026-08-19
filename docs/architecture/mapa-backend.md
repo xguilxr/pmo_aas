@@ -22,7 +22,8 @@ apps/api/app/
   api/deps.py      ← auth/scoping: TODO pasa por aquí
   services/        ← lógica de negocio (project_health, msproject/, …)
   core/            ← permissions, compatibilidad, paleta, magnitudes
-  alembic/versions/  ← migraciones (última: 20260819_0109); 1 US = 1 migración
+  dominio/         ← vocabulario del negocio (moneda, salud, **proyecto**: fases/tipos)
+  alembic/versions/  ← migraciones (última: 20260819_0110); 1 US = 1 migración
 ```
 
 ## Modelos por dominio (archivo → tablas clave)
@@ -35,7 +36,7 @@ apps/api/app/
 | `user_scope_assignment.py` | user_scope_assignments (scope_type org/program/project, sin FK real) | base de visibilidad PM |
 | `auth.py` | refresh_tokens, password_reset_tokens, admin_otp_codes, dispositivos_confiables | JWT: claims tenant_ids, active_tenant_id (falta active_organization_id, W2) |
 | `tenant_permission.py` | tenant_role_permission_overrides | overrides capability×tenant (DEC-021) |
-| `project.py` | projects (**portfolio_id nullable** US-198, sin business_unit_id/department_id desde 0109; phase default "planning"; health_status/source/reason US-180; manually_edited_fields US-084), project_health_evaluations (US-191: 5+1 dimensiones, histórico) | |
+| `project.py` | projects (**portfolio_id nullable** US-198, sin business_unit_id/department_id desde 0109; **phase/type en español** US-202, default `preparacion`; health_status/source/reason US-180; manually_edited_fields US-084), project_health_evaluations (US-191: 5+1 dimensiones, histórico) | |
 | `project_request.py` / `project_charter.py` | project_requests (+**portfolio_id/program_id** 0109; `business_unit`/`department` siguen como texto libre del solicitante), project_charters (+portfolio_id/program_id) | folios SOL- via folio_sequences |
 | `task.py` | tasks (wbs_code, parent_id, is_milestone, position US-176, predecessors JSON), task_dependencies (FS/SS/FF/SF + lag) | baseline y hito clave: W6 |
 | `modules.py` | risks, issues (type action/issue/decision), change_requests, documents†, lessons, meeting_minutes (raid_suggestions JSON → flujo minuta→RAID ya existe) | † legacy, fusionar en project_artifacts (W8) |
@@ -89,7 +90,7 @@ permission_requests · gantt_snapshot · entity_history · notifications.
 
 ## Services clave
 
-`services/jerarquia.py` (US-198: «Portafolio General» por defecto + regla `program_id ⇒ portfolio_id = program.portfolio_id`; la aplica todo endpoint que acepte programa o portafolio) · `services/project_health.py` (motor semáforo US-180) · `services/msproject/`
+`dominio/proyecto.py` (US-202: fases `preparacion|ejecucion|hypercare|cerrado|cancelado`, tipos `transformacion|operacion|innovacion|bau`, `TRANSICIONES`, etiquetas — **único** sitio; los literales sueltos se retiraron) · `services/jerarquia.py` (US-198: «Portafolio General» por defecto + regla `program_id ⇒ portfolio_id = program.portfolio_id`; la aplica todo endpoint que acepte programa o portafolio) · `services/project_health.py` (motor semáforo US-180) · `services/msproject/`
 (parsers MPP/XML) · `core/compatibilidad.py` (ventanas de compat, contador
 por `compat.nombre_viejo`) · `core/paleta.py` (colores gráficos, espejo de
 globals.css, trinquete test_adr023) · `core/magnitudes.py` (tipos Escala/

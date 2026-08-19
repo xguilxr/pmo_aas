@@ -651,3 +651,9 @@ legacy en Sprint 7 (US-081).
 **Reversible:** sí, con un rename y una regla de validación distinta.
 **Implementación:** US-198. El portafolio explícito en el payload llega en US-199.
 
+## DEC-031 — ➡️ PROMOVIDA a `ADR-038` (vocabulario de fases y tipo de proyecto)
+**Fecha:** 2026-08-19
+**Decisión:** El vocabulario del proyecto pasa al español (`preparacion | ejecucion | hypercare | cerrado | cancelado`) y `projects.type` pasa de texto libre a enum (`transformacion | operacion | innovacion | bau`). Detalle, alternativas y consecuencias: [`ADR-038`](../adr/README.md).
+**Por qué no se queda aquí:** US-202 la mandó a este archivo por ser «reversible con renames», y el `UPDATE` inverso existe. Pero la regla del encabezado de este mismo archivo manda a `docs/adr/` lo que «exige migrar datos productivos o rompe un contrato público», y esto hace las dos: reescribe `projects.phase` y `lessons.phase` en todos los inquilinos y cambia los valores que la API acepta. El trinquete de `test_ventanas_compatibilidad.py` llega a la misma conclusión por su lado: exige un ADR por cada ventana de compatibilidad declarada.
+**Supersede en vocabulario:** ADR-019 (hypercare) y ADR-022 (cancelled) — sus decisiones siguen vigentes; cambia cómo se escriben los valores.
+

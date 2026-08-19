@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
@@ -7,42 +8,74 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_va
 
 from app.core.compatibilidad import registrar_uso
 from app.dominio.moneda import resolver as resolver_moneda
+from app.dominio.proyecto import FASES_RENOMBRADAS, TIPOS_RENOMBRADOS
+from app.dominio.proyecto import FASES_TERMINALES as FASES_TERMINALES_DOMINIO
 
-#: D-2 / ADR-019 y ADR-022 — las cinco fases del proyecto.
+#: US-202 / ADR-038 — las cinco fases, en el vocabulario del producto. El
+#: catálogo, el orden, las transiciones y las etiquetas viven en
+#: `dominio/proyecto.py`; aquí solo está la forma que valida Pydantic.
 #:
-#: `hypercare` era `support` hasta el 2026-08-05. El nombre viejo se lee como
-#: «mesa de ayuda», que es una función permanente; la fase es acompañamiento
-#: acotado tras la puesta en marcha, y una forma de cierre.
+#: Se escribe literal y no derivado de `FASES` porque `Literal` **exige**
+#: literales: `Literal[*FASES]` no es válido. Que las dos listas no se separen lo
+#: sostiene una prueba (`test_us202_vocabulario.py`), igual que hace `Moneda` con
+#: `dominio.moneda.MONEDAS`.
+ProjectPhase = Literal["preparacion", "ejecucion", "hypercare", "cerrado", "cancelado"]
+
+#: US-202 — el tipo deja de ser texto libre. Cuatro valores; el que necesita un
+#: quinto está describiendo otra cosa (ver `dominio/proyecto.py`).
+ProjectType = Literal["transformacion", "operacion", "innovacion", "bau"]
+
+#: Se reexporta para no romper a quien ya lo importaba de aquí. La definición
+#: está en el dominio.
+FASES_TERMINALES = FASES_TERMINALES_DOMINIO
+
+
+_DONDE_FASE = "fase del proyecto"
+
+#: Un `registrar_uso` **literal** por nombre retirado, y no un
+#: `registrar_uso(MAPA[valor])`. Cinco líneas en vez de una a propósito: el
+#: trinquete de `test_ventanas_compatibilidad.py` busca la clave literal en el
+#: código, y con razón — la pregunta que alguien se hace dentro de dos meses es
+#: «¿quién registra `phase=planning`?», y una indirección no la contesta.
 #:
-#: `cancelled` es de ADR-022. Hasta el 2026-08-05 un proyecto cortado a mitad
-#: terminaba en `closed`, **indistinguible de uno que cumplió**: contaba como
-#: entregado en cualquier métrica de éxito y sus lecciones se mezclaban con las
-#: de los proyectos que llegaron al final. Cerrar y cancelar son dos finales
-#: distintos y ahora se llaman distinto.
-ProjectPhase = Literal["planning", "execution", "hypercare", "closed", "cancelled"]
-
-#: Los dos finales. Ni uno ni otro admiten transición de salida, y ninguno
-#: cuenta como activo en `ACTIVE_PHASES`.
-FASES_TERMINALES: frozenset[str] = frozenset({"closed", "cancelled"})
-
-#: Ventana de compatibilidad. Un cliente que todavía mande `support` —una
-#: pestaña abierta desde antes del despliegue, un filtro guardado, un script—
-#: sigue funcionando y su valor se guarda ya como `hypercare`. Se quita cuando
-#: no queden clientes viejos; hasta entonces, romperlos sería cobrarle al
-#: usuario un cambio de vocabulario que no pidió.
-_FASES_RENOMBRADAS = {"support": "hypercare"}
+#: Cinco contadores y no uno: el cliente que manda `planning` no es
+#: necesariamente el que manda `cancelled`, así que sus ventanas llegan a cero en
+#: momentos distintos y se cierran por separado.
+_AVISAR_FASE: dict[str, Callable[[], None]] = {
+    "planning": lambda: registrar_uso("phase=planning", donde=_DONDE_FASE),
+    "execution": lambda: registrar_uso("phase=execution", donde=_DONDE_FASE),
+    "support": lambda: registrar_uso("phase=support", donde=_DONDE_FASE),
+    "closed": lambda: registrar_uso("phase=closed", donde=_DONDE_FASE),
+    "cancelled": lambda: registrar_uso("phase=cancelled", donde=_DONDE_FASE),
+}
 
 
 def normalizar_fase(valor: object) -> object:
     """Traduce el nombre viejo de la fase al canónico. Lo demás pasa igual."""
     if not isinstance(valor, str):
         return valor
-    canonico = _FASES_RENOMBRADAS.get(valor)
+    canonico = FASES_RENOMBRADAS.get(valor)
     if canonico is None:
         return valor
-    # Se deja rastro para saber cuándo se puede cerrar la ventana con dato en
-    # vez de con corazonada. Ver `app/core/compatibilidad.py`.
-    registrar_uso("phase=support", donde="fase del proyecto")
+    _AVISAR_FASE[valor]()
+    return canonico
+
+
+def normalizar_tipo(valor: object) -> object:
+    """Traduce el tipo en inglés al canónico. Lo demás pasa igual.
+
+    Un solo contador para los tres nombres (`project_type_libre`): salían del
+    mismo enum, así que se actualizan y se cierran juntos. Un valor que no esté
+    en el mapa **no** se traduce ni se registra aquí: lo rechaza el enum, que es
+    lo correcto — el texto libre de antes de US-202 se lee (la columna sigue
+    siendo texto) pero no se vuelve a escribir.
+    """
+    if not isinstance(valor, str):
+        return valor
+    canonico = TIPOS_RENOMBRADOS.get(valor)
+    if canonico is None:
+        return valor
+    registrar_uso("project_type_libre", donde="tipo del proyecto")
     return canonico
 
 
@@ -54,7 +87,8 @@ Moneda = Literal["MXN", "USD", "EUR"]
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     description: str = Field(min_length=1)
-    type: Literal["innovation", "transformation", "operation", "bau"]
+    type: ProjectType
+    _tipo_compat = field_validator("type", mode="before")(normalizar_tipo)
     priority: int = Field(ge=1, le=5)
     organization_id: UUID
     program_id: UUID | None = None
@@ -62,7 +96,7 @@ class ProjectCreate(BaseModel):
     #: autocompleta con el del programa y un valor contradictorio se rechaza
     #: (`services/jerarquia.py`).
     portfolio_id: UUID | None = None
-    phase: ProjectPhase = "planning"
+    phase: ProjectPhase = "preparacion"
 
     _fase_compat = field_validator("phase", mode="before")(normalizar_fase)
     pm_id: UUID
@@ -84,7 +118,8 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=200)
     description: str | None = None
-    type: Literal["innovation", "transformation", "operation", "bau"] | None = None
+    type: ProjectType | None = None
+    _tipo_compat = field_validator("type", mode="before")(normalizar_tipo)
     priority: int | None = Field(default=None, ge=1, le=5)
     program_id: UUID | None = None
     #: US-199 — mover el proyecto de portafolio. Si además cambia el programa,

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found, validation_error
 from app.db.session import get_db
+from app.dominio.proyecto import PREPARACION
 from app.models.organization import Organization
 from app.models.project_request import ProjectRequest
 from app.schemas.project_request import (
@@ -485,7 +486,7 @@ async def create_project_from_request(
         # solicitud no eligió, se queda en nulo y aplica la preferida del
         # inquilino: copiarla resuelta aquí congelaría la de hoy.
         currency=pr.currency,
-        phase="planning",
+        phase=PREPARACION,
         pm_id=str(body.pm_id),
         request_id=pr.id,
     )

@@ -51,7 +51,7 @@ async def _seed(client, db_session, slug):
         organization_id=str(org.id),
         folio="P-140",
         name="Persist",
-        phase="execution",
+        phase="ejecucion",
         health_status="green",
         budget=Decimal("0"),
         actual_budget=Decimal("0"),

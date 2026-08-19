@@ -36,9 +36,9 @@ export function ProjectForm({ mode, initial }: Props) {
 
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [type, setType] = useState<ProjectType>((initial?.type as ProjectType) ?? "transformation");
+  const [type, setType] = useState<ProjectType>((initial?.type as ProjectType) ?? "transformacion");
   const [priority, setPriority] = useState(String(initial?.priority ?? 3));
-  const [phase, setPhase] = useState<ProjectPhase>(initial?.phase ?? "planning");
+  const [phase, setPhase] = useState<ProjectPhase>(initial?.phase ?? "preparacion");
   const [organizationId, setOrganizationId] = useState(initial?.organization_id ?? "");
   const [programId, setProgramId] = useState<string>(initial?.program_id ?? "");
   const [pmId, setPmId] = useState<string>(initial?.pm_id ?? "");

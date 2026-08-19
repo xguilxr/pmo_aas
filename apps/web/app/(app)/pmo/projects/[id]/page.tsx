@@ -42,12 +42,14 @@ import {
 import { cn } from "@/lib/cn";
 import { esSinDato, SIN_DATO, SIN_DATO_ETIQUETA } from "@/lib/sin-dato";
 
+// US-202 — espejo de `dominio/proyecto.py::TRANSICIONES`. La API vuelve a
+// validarlo: esto es para no ofrecer un botón que va a devolver 409.
 const VALID_TRANSITIONS: Record<ProjectPhase, ProjectPhase[]> = {
-  planning: ["execution", "closed", "cancelled"],
-  execution: ["hypercare", "closed", "cancelled"],
-  hypercare: ["closed", "cancelled"],
-  closed: [],
-  cancelled: [],
+  preparacion: ["ejecucion", "cerrado", "cancelado"],
+  ejecucion: ["hypercare", "cerrado", "cancelado"],
+  hypercare: ["cerrado", "cancelado"],
+  cerrado: [],
+  cancelado: [],
 };
 
 // BUG-092 — el nombre decía la moneda y por eso la traía dentro. Ahora la
@@ -108,7 +110,7 @@ export default function ProjectDetailPage() {
   );
 
   const [phaseModal, setPhaseModal] = useState(false);
-  const [phaseTarget, setPhaseTarget] = useState<ProjectPhase>("execution");
+  const [phaseTarget, setPhaseTarget] = useState<ProjectPhase>("ejecucion");
   const [phaseComment, setPhaseComment] = useState("");
   const [phaseSubmitting, setPhaseSubmitting] = useState(false);
 
@@ -502,13 +504,13 @@ function PhaseBadge({ phase }: { phase: ProjectPhase }) {
     ProjectPhase,
     "info" | "success" | "warning" | "neutral" | "danger"
   > = {
-    planning: "info",
-    execution: "success",
+    preparacion: "info",
+    ejecucion: "success",
     hypercare: "warning",
-    closed: "neutral",
+    cerrado: "neutral",
     // Cancelado NO es `neutral` como cerrado: distinguirlos de un vistazo es
     // la razón de ser de ADR-022.
-    cancelled: "danger",
+    cancelado: "danger",
   };
   return <Badge variant={map[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }

@@ -164,7 +164,7 @@ async def test_los_conteos_del_portafolio_son_derivados(client, db_session) -> N
                 program_id=prog["id"],
                 folio="PRJ-A",
                 name="En el programa",
-                phase="execution",
+                phase="ejecucion",
             ),
             Project(
                 tenant_id=t.id,
@@ -172,7 +172,7 @@ async def test_los_conteos_del_portafolio_son_derivados(client, db_session) -> N
                 portfolio_id=pf["id"],
                 folio="PRJ-B",
                 name="Directo al portafolio",
-                phase="planning",
+                phase="preparacion",
             ),
             Project(
                 tenant_id=t.id,
@@ -180,7 +180,7 @@ async def test_los_conteos_del_portafolio_son_derivados(client, db_session) -> N
                 portfolio_id=pf["id"],
                 folio="PRJ-C",
                 name="Cerrado, no cuenta",
-                phase="closed",
+                phase="cerrado",
             ),
         ]
     )
@@ -257,7 +257,7 @@ async def test_mover_un_programa_de_portafolio_arrastra_sus_proyectos(
         program_id=prog["id"],
         folio="PRJ-MOV",
         name="Viaja con su programa",
-        phase="execution",
+        phase="ejecucion",
     )
     db_session.add(proyecto)
     await db_session.commit()
@@ -309,7 +309,7 @@ async def test_el_proyecto_hereda_el_portafolio_de_su_programa(
         json={
             "name": "Proyecto heredado",
             "description": "Nace clasificado",
-            "type": "transformation",
+            "type": "transformacion",
             "priority": 3,
             "organization_id": org_id,
             "program_id": prog["id"],
@@ -352,7 +352,7 @@ async def test_el_proyecto_con_par_incoherente_se_rechaza(client, db_session) ->
         json={
             "name": "Proyecto mentiroso",
             "description": "Dice dos cosas distintas",
-            "type": "operation",
+            "type": "operacion",
             "priority": 3,
             "organization_id": org_id,
             "program_id": prog_a["id"],
@@ -480,7 +480,7 @@ async def test_el_borrado_permanente_declara_lo_que_se_lleva(client, db_session)
         program_id=prog["id"],
         folio="PRJ-EN",
         name="Cae con su programa",
-        phase="execution",
+        phase="ejecucion",
     )
     directo = Project(
         tenant_id=t.id,
@@ -488,7 +488,7 @@ async def test_el_borrado_permanente_declara_lo_que_se_lleva(client, db_session)
         portfolio_id=pf["id"],
         folio="PRJ-DIR",
         name="Solo pierde la clasificación",
-        phase="execution",
+        phase="ejecucion",
     )
     db_session.add_all([en_programa, directo])
     await db_session.commit()
@@ -744,7 +744,7 @@ def test_tc_la_migracion_se_niega_si_queda_una_referencia_viva(tmp_path: Path) -
                         "business_unit_id": str(uuid4()),  # ← el residuo
                         "folio": "PRJ-RES",
                         "name": "Con unidad de negocio",
-                        "phase": "planning",
+                        "phase": "preparacion",
                         "progress": 0,
                         "health_status": "green",
                         "health_source": "auto",

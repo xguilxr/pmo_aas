@@ -33,16 +33,16 @@ async def _setup(client, db_session):
     )
 
     specs = [
-        ("planning", "green", Decimal("100000"), prog.id),
-        ("execution", "yellow", Decimal("200000"), prog.id),
-        ("execution", "red", Decimal("500000"), None),
+        ("preparacion", "green", Decimal("100000"), prog.id),
+        ("ejecucion", "yellow", Decimal("200000"), prog.id),
+        ("ejecucion", "red", Decimal("500000"), None),
     ]
     projects = []
     for i, (phase, health, budget, program_id) in enumerate(specs):
         p = Project(
             tenant_id=t.id, organization_id=org_id, program_id=program_id,
             folio=f"PRJ-2026-{i + 1:03d}", name=f"P{i + 1}", phase=phase,
-            health_status=health, budget=budget, progress=20, type="transformation",
+            health_status=health, budget=budget, progress=20, type="transformacion",
         )
         db_session.add(p)
         projects.append(p)

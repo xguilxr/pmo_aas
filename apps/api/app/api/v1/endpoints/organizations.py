@@ -15,6 +15,7 @@ from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.dominio.moneda import agregar as agregar_por_moneda
 from app.dominio.moneda import resolver as resolver_moneda
+from app.dominio.proyecto import CERRADO
 from app.models.area import Actor
 from app.models.modules import Risk
 from app.models.organization import Organization, Portfolio, Program
@@ -151,7 +152,7 @@ async def list_org_panels(
                 Project.tenant_id == tenant_id,
                 Project.organization_id.in_(org_ids),
                 Project.deleted_at.is_(None),
-                Project.phase != "closed",
+                Project.phase != CERRADO,
             )
             .group_by(Project.organization_id, Project.health_status)
         )
@@ -318,7 +319,7 @@ async def get_org_panel(
                     Project.tenant_id == tenant_id,
                     Project.program_id.in_(prog_ids),
                     Project.deleted_at.is_(None),
-                    Project.phase != "closed",
+                    Project.phase != CERRADO,
                 )
                 .group_by(Project.program_id)
             )
@@ -629,12 +630,12 @@ async def program_summary(
     pm_map = {str(uid): name for uid, name in pm_rows}
 
     total = len(projects)
-    active = sum(1 for p in projects if p.phase != "closed")
-    closed = sum(1 for p in projects if p.phase == "closed")
-    at_risk = sum(1 for p in projects if p.health_status != "green" and p.phase != "closed")
+    active = sum(1 for p in projects if p.phase != CERRADO)
+    closed = sum(1 for p in projects if p.phase == CERRADO)
+    at_risk = sum(1 for p in projects if p.health_status != "green" and p.phase != CERRADO)
     health_counts = {"green": 0, "yellow": 0, "red": 0}
     for p in projects:
-        if p.phase == "closed":
+        if p.phase == CERRADO:
             continue
         if p.health_status in health_counts:
             health_counts[p.health_status] += 1
@@ -897,7 +898,7 @@ async def _conteos_de_portafolios(
                 Project.tenant_id == tenant_id,
                 Project.portfolio_id.in_(portfolio_ids),
                 Project.deleted_at.is_(None),
-                Project.phase != "closed",
+                Project.phase != CERRADO,
             )
             .group_by(Project.portfolio_id)
         )

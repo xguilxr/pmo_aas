@@ -13,6 +13,7 @@ from io import BytesIO
 from typing import Any
 
 from app.core.tipografia import FUENTE, aplicar_a_workbook
+from app.dominio.proyecto import ETIQUETAS_FASE_LECCION
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -35,14 +36,11 @@ LESSON_CATEGORY_ES: dict[str, str] = {
     "error": "Error",
 }
 
-# Consistente con LESSON_PHASE_LABEL en apps/web/lib/api/modules.ts (valores
-# libres en DB; el modal de creación sólo ofrece estos 4).
-LESSON_PHASE_ES: dict[str, str] = {
-    "planning": "Planificación",
-    "execution": "Ejecución",
-    "hypercare": "Hypercare",
-    "closed": "Cierre",
-}
+# US-202 — una sola copia del mapeo, en `dominio/proyecto.py`. La lección
+# comparte el vocabulario de fases del proyecto (es «en qué fase se aprendió»),
+# y tener aquí un diccionario propio es cómo las dos copias se desincronizaban:
+# esta se quedó sin `cancelled` desde ADR-022.
+LESSON_PHASE_ES: dict[str, str] = dict(ETIQUETAS_FASE_LECCION)
 
 LESSON_STATUS_ES: dict[str, str] = {
     "published": "Publicada",

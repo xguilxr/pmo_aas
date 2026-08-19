@@ -15,6 +15,7 @@ from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.dominio.moneda import agregar as agregar_por_moneda
 from app.dominio.moneda import resolver as resolver_moneda
+from app.dominio.proyecto import CERRADO, FASES_ACTIVAS
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
 from app.models.organization import Organization, Program
@@ -92,7 +93,7 @@ async def kpis(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _tenant(cu)
-    active_phases = ["planning", "execution", "hypercare"]
+    active_phases = list(FASES_ACTIVAS)
 
     # Scoping por jerarquía (US-015): None = sin restricción (admin),
     # lista = sólo esos project_ids. Lista vacía = ningún proyecto visible.
@@ -655,7 +656,7 @@ async def health_matrix(
     conds = [
         Project.tenant_id == str(tenant_id),
         Project.deleted_at.is_(None),
-        Project.phase != "closed",
+        Project.phase != CERRADO,
     ]
     if role_ids is not None:
         conds.append(Project.id.in_(role_ids or ["__none__"]))
@@ -715,7 +716,7 @@ async def portfolio_health_evaluations(
     conds = [
         Project.tenant_id == str(tenant_id),
         Project.deleted_at.is_(None),
-        Project.phase != "closed",
+        Project.phase != CERRADO,
     ]
     if role_ids is not None:
         conds.append(Project.id.in_(role_ids or ["__none__"]))

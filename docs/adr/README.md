@@ -1997,3 +1997,99 @@ trabajo de la API cobrado al usuario.
 3. **Portafolio como etiqueta en `projects.type` o en un JSON** — sin FK no hay
    agregación fiable ni permisos por portafolio. Es la discusión que ADR-024 ya
    cerró.
+
+---
+
+## ADR-038 — El vocabulario del proyecto pasa al español, y el tipo deja de ser texto libre
+
+**Fecha:** 2026-08-19 · **Estado:** aceptada · **Decide:** owner
+**Supersede en vocabulario:** ADR-019, ADR-022 (las decisiones siguen; cambian los
+nombres) · **Implementa:** US-202
+
+**Contexto.** Las fases del proyecto se llamaban `planning | execution |
+hypercare | closed | cancelled` y `projects.type` era `String(50)` sin validar.
+
+Lo primero obliga a una tabla de traducción en **cada** superficie que muestre
+una fase, y había cuatro, cada una con su propio diccionario:
+`services/lessons_export.py`, los badges del frontend, los `<option>` de los
+formularios y el tablero por fase. Cuatro copias del mismo mapeo son cuatro
+sitios donde se desincroniza — y ya lo estaban: la de lecciones se quedó sin
+`cancelled` desde ADR-022.
+
+Lo segundo impide contestar la pregunta que el cliente de 23 proyectos hizo:
+«cuánto de mi cartera es transformación y cuánto es mantener las luces
+encendidas». Sobre texto libre, `BAU`, `bau`, `Bau` y `Business as usual` son
+cuatro categorías distintas para un `GROUP BY`.
+
+**Decisión.**
+
+1. **Fases:** `planning → preparacion`, `execution → ejecucion`,
+   `closed → cerrado`, `cancelled → cancelado`. **`hypercare` se queda.**
+2. **Tipo:** enum `transformacion | operacion | innovacion | bau`.
+3. El catálogo, el orden, las transiciones y las etiquetas viven en **un** sitio:
+   `app/dominio/proyecto.py`.
+4. Ventana de compatibilidad por nombre retirado: la API acepta el viejo a la
+   entrada, lo guarda canónico y **deja rastro** (`compat.nombre_viejo`).
+
+**Por qué esto es un ADR y no una entrada de `DECISIONS.md`.** La US pedía
+`DECISIONS.md` por ser «reversible con renames», y es verdad que el `UPDATE`
+inverso existe. Pero la regla escrita en `DECISIONS.md` dice que va a `docs/adr/`
+lo que «exige migrar datos productivos o rompe un contrato público», y esto hace
+las dos cosas: reescribe `projects.phase` y `lessons.phase` en todos los
+inquilinos, y cambia los valores que la API acepta. El trinquete de
+`test_ventanas_compatibilidad.py` lo pide por su lado —exige un ADR por ventana—,
+que es la misma conclusión llegando por otro camino.
+
+**Por qué `hypercare` no se traduce.** No tiene traducción que no sea peor:
+«acompañamiento» pierde el acotamiento temporal y «post-arranque» no es una fase,
+es un momento. Es el término que usa la operación. Y ADR-019 ya lo renombró desde
+`support` hace dos semanas: renombrarlo otra vez gastaría una segunda ventana de
+compatibilidad para empeorar el nombre.
+
+**Por qué el catálogo vive en un módulo.** Antes de US-202, `"closed"` estaba
+escrito a mano en trece archivos. Ninguno estaba mal, y ahí está el peligro: al
+renombrar, la comparación que se olvide **no falla** — sigue comparando contra un
+valor que ya no existe y devuelve siempre falso. Un proyecto cerrado contaría
+como activo en los KPIs y en los snapshots, y nadie vería un error. Con las
+constantes en el dominio, olvidarse es un `NameError` en el arranque.
+
+**Consecuencias.**
+
+- **Cinco copias del catálogo, atadas por pruebas.** El dominio, el `Literal` de
+  Pydantic (que no puede derivarse: `Literal[*FASES]` no es válido), el grafo de
+  transiciones, `ACTIVE_PHASES` y el tipo de TypeScript del frontend. Que digan
+  lo mismo lo sostiene `tests/test_us202_vocabulario.py`, incluida la de
+  TypeScript — leyendo el archivo, como hace `test_adr023_paleta` con
+  `globals.css`.
+- **Cinco ventanas de compat, no una.** El cliente que manda `planning` no es
+  necesariamente el que manda `cancelled`: sus contadores llegan a cero en
+  momentos distintos y se cierran por separado. Los tres tipos en inglés sí
+  comparten contador, porque salían del mismo enum.
+- **El texto libre que había en `type` se lee pero no se vuelve a escribir.** La
+  columna sigue siendo texto, así que un `Mejora continua` guardado antes se
+  muestra igual; el enum lo rechaza a la escritura. La migración lo **deja como
+  está** y anota los valores encontrados: adivinar que «Mejora continua» es
+  `operacion` sería inventarse la clasificación del proyecto de alguien, y
+  vaciarlo sería perder el único dato que había.
+- **Una etiqueta se separa a propósito:** la fase `cerrado` se dice «Cierre»
+  cuando etiqueta una lección. Un proyecto **está** cerrado —un estado—; una
+  lección se aprendió **en el cierre** —una etapa—. Es la única palabra que
+  cambia y se deriva del catálogo (`ETIQUETAS_FASE_LECCION`).
+- **`project_participations.phase` queda fuera.** Es texto libre —«en qué fase
+  consume capacidad este recurso»—, no el vocabulario controlado. Renombrar ahí
+  sería editar lo que escribió un usuario; la 0098 ya lo dejó escrito.
+- ADR-019 y ADR-022 **siguen vigentes en su decisión**: que hypercare es una fase
+  legítima, y que cerrar y cancelar son finales distintos. Lo que cambia es cómo
+  se escriben.
+
+**Alternativas evaluadas.**
+
+1. **Dejar los valores en inglés y traducir en la presentación** — es lo que
+   había, y produjo cuatro diccionarios desincronizados. La traducción en el
+   borde solo funciona si hay **un** borde.
+2. **Traducir también `hypercare`** — descartada arriba.
+3. **Enum de base de datos (`CHECK` o tipo `enum`) en vez de `String` validado en
+   la aplicación** — habría que migrar el tipo de la columna y cada valor nuevo
+   sería una migración. El enum de Pydantic ya rechaza a la entrada, y la columna
+   de texto es lo que permite **leer** el pasivo libre en vez de romperse al
+   leerlo.

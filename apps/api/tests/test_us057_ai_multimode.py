@@ -65,7 +65,7 @@ async def _project(client, auth, name="P US057"):
     p = await client.post(
         "/api/v1/projects",
         json={
-            "name": name, "description": "d", "type": "innovation",
+            "name": name, "description": "d", "type": "innovacion",
             "priority": 3, "organization_id": org.json()["id"],
             "pm_id": me.json()["id"],
         },

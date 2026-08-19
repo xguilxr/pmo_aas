@@ -45,7 +45,7 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 | `/pmo/raid`, `/changes`, `/minutes`, `/reports` | Vistas cross con `TenantCrossFilters` |
 | `/pmo/resources` | Capacidad/saturación (tabs personas/roles/áreas/conflictos) |
 | `/pmo/requests` (+`/new`, `[id]`) | Solicitudes (`request-form.tsx` tiene BU/depto†) |
-| `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (BU/depto† en `org-hierarchy-section.tsx`), areas |
+| `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (`org-hierarchy-section.tsx`: **todavía llama a `/business-units`, retirado en US-199** — lo reescribe US-200), areas |
 | `/superadmin/*` | 8 pantallas plataforma |
 | `/login`, `/reset`, `/forgot-password`, `/approve/[token]`, `/notifications`, `/account` | auth y transversales |
 
@@ -84,7 +84,15 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 ## API client (lib/)
 
 `lib/api/*.ts` por dominio (organizations, requests, analytics, reports,
-report-builder, superadmin, project-charters, …). `lib/auth-storage.ts`
+report-builder, superadmin, project-charters, …). **Vocabulario del proyecto**
+(US-202 / ADR-038): `lib/api/projects.ts` declara `ProjectPhase`
+(`preparacion|ejecucion|hypercare|cerrado|cancelado`), `ProjectType`
+(`transformacion|operacion|innovacion|bau`), `PHASE_LABEL`, `PHASE_ORDER` y
+`TYPE_LABEL`; `lib/api/modules.ts`, `LESSON_PHASE_*` (la fase `cerrado` se dice
+«Cierre» en una lección). Los dos tipos están atados al backend por
+`apps/api/tests/test_us202_vocabulario.py`, que lee este archivo: renombrar en un
+lado y no en el otro deja el formulario mandando un valor que la API rechaza.
+`lib/auth-storage.ts`
 guarda tenant activo (→ el contexto org activo nuevo vive aquí + JWT).
 `lib/org-label.ts` (label configurable — precedente para renombrar niveles).
 `lib/cn.ts` (clsx+tailwind-merge).

@@ -23,9 +23,9 @@ import {
 } from "@/lib/api/project-charters";
 
 const PROJECT_TYPES = [
-  { value: "innovation", label: "Innovación" },
-  { value: "transformation", label: "Transformación" },
-  { value: "operation", label: "Operación" },
+  { value: "transformacion", label: "Transformación" },
+  { value: "operacion", label: "Operación" },
+  { value: "innovacion", label: "Innovación" },
   { value: "bau", label: "BAU" },
 ] as const;
 

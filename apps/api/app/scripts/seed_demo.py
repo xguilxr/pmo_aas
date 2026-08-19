@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
+from app.dominio.proyecto import EJECUCION, PREPARACION
 from app.models.modules import (
     ChangeRequest,
     Document,
@@ -444,7 +445,7 @@ async def _seed_raid_for_project(
             status="published",
             created_by=created_by.id,
             category="improvement",
-            phase="planning",
+            phase=PREPARACION,
             recommendation="Incluir representante de ops en todos los kickoffs.",
             tags=["stakeholders", "operaciones"],
         )
@@ -612,14 +613,14 @@ async def _seed_tenant(db: AsyncSession, slug: str) -> dict:
     # 4) Proyectos: 4 en prog_1, 3 en prog_2, 1 standalone
     project_specs = [
         # (name, program, org, type, phase, health, progress)
-        ("Portal de clientes v2", prog_1, org_a, "transformation", "execution", "green", 35),
-        ("Motor de recomendaciones IA", prog_1, org_a, "innovation", "planning", "yellow", 10),
-        ("Migracion a cloud", prog_1, org_a, "transformation", "execution", "yellow", 45),
-        ("App movil empleados", prog_1, org_a, "innovation", "planning", "green", 5),
-        ("Automatizacion de nomina", prog_2, org_b, "operation", "execution", "green", 60),
+        ("Portal de clientes v2", prog_1, org_a, "transformacion", EJECUCION, "green", 35),
+        ("Motor de recomendaciones IA", prog_1, org_a, "innovacion", PREPARACION, "yellow", 10),
+        ("Migracion a cloud", prog_1, org_a, "transformacion", EJECUCION, "yellow", 45),
+        ("App movil empleados", prog_1, org_a, "innovacion", PREPARACION, "green", 5),
+        ("Automatizacion de nomina", prog_2, org_b, "operacion", EJECUCION, "green", 60),
         ("Dashboards de operacion", prog_2, org_b, "bau", "hypercare", "green", 90),
-        ("Integracion ERP-CRM", prog_2, org_b, "transformation", "execution", "red", 25),
-        ("Iniciativa independiente", None, org_a, "innovation", "planning", "green", 0),
+        ("Integracion ERP-CRM", prog_2, org_b, "transformacion", EJECUCION, "red", 25),
+        ("Iniciativa independiente", None, org_a, "innovacion", PREPARACION, "green", 0),
     ]
     projects: list[Project] = []
     for (name, prog, org, ptype, phase, health, progress) in project_specs:

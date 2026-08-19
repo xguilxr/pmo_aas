@@ -14,6 +14,7 @@ from app.api.deps import CurrentUser, require_authenticated, require_capability
 from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, forbidden, mensaje, not_found
 from app.db.session import get_db
+from app.dominio.proyecto import CERRADO, FASES_ACTIVAS
 from app.models.audit import AuditLog
 from app.models.organization import Organization
 from app.models.project import Project
@@ -186,7 +187,7 @@ async def org_metrics(
             await db.execute(
                 select(func.count(Project.id)).where(
                     Project.organization_id == o.id, Project.deleted_at.is_(None),
-                    Project.phase.in_(["planning", "execution", "hypercare"]),
+                    Project.phase.in_(FASES_ACTIVAS),
                 )
             )
         ).scalar_one()
@@ -254,7 +255,7 @@ async def admin_force_close(
     ).scalar_one_or_none()
     if p is None:
         raise not_found("Proyecto")
-    p.phase = "closed"
+    p.phase = CERRADO
     await write_audit(
         db, action="project.force_close", module="admin.projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(p.id),

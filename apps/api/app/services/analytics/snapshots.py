@@ -12,20 +12,19 @@ from __future__ import annotations
 
 import logging
 from datetime import date, timedelta
-from typing import get_args
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.unidades import razon_a_pct
+from app.dominio.proyecto import FASES_ACTIVAS
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import ChangeRequest, Issue, Risk
 from app.models.organization import Organization, Program
 from app.models.project import Project
 from app.models.project_request import ProjectRequest
 from app.models.task import Task
-from app.schemas.project import FASES_TERMINALES, ProjectPhase
 from app.services.indicadores import avance_de_cartera
 from app.services.progress_calculator import plan_rollup_map
 
@@ -34,7 +33,7 @@ from app.services.progress_calculator import plan_rollup_map
 # viejo **sin fallar** —los proyectos en hypercare habrían desaparecido de los
 # snapshots en silencio—, y por eso llevó prueba propia. Derivarla cierra la
 # clase entera: añadir una fase terminal la excluye de aquí sin tocar nada.
-ACTIVE_PHASES = [f for f in get_args(ProjectPhase) if f not in FASES_TERMINALES]
+ACTIVE_PHASES = list(FASES_ACTIVAS)
 SEVERE_THRESHOLD = 13
 
 # Métricas numéricas que componen el snapshot (todas las columnas escalares).

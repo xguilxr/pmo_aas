@@ -10,6 +10,7 @@ from app.core.autorizacion import proyecto_autorizado
 from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found
 from app.core.unidades import mebibytes
 from app.db.session import get_db
+from app.dominio.proyecto import CERRADO
 from app.models.area import Area, AreaAssignment
 from app.models.modules import (
     ChangeRequest,
@@ -69,7 +70,7 @@ def _tenant(cu: CurrentUser) -> UUID:
 
 
 def _ensure_editable(p: Project, *, allow_after_closed: bool = False) -> None:
-    if p.phase == "closed" and not allow_after_closed:
+    if p.phase == CERRADO and not allow_after_closed:
         raise business_rule(mensaje(
             que="Proyecto cerrado, no se puede escribir en este módulo",
             porque="Un proyecto cerrado conserva su registro tal como quedó.",

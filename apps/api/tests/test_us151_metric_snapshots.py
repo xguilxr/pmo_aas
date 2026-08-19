@@ -26,10 +26,10 @@ async def _seed(db_session):
     )
 
     specs = [
-        ("planning", "green", Decimal("100000"), Decimal("40000"), 10, prog.id),
-        ("execution", "yellow", Decimal("200000"), Decimal("100000"), 50, prog.id),
-        ("execution", "red", Decimal("500000"), Decimal("0"), 30, None),
-        ("closed", "green", Decimal("50000"), Decimal("0"), 100, None),
+        ("preparacion", "green", Decimal("100000"), Decimal("40000"), 10, prog.id),
+        ("ejecucion", "yellow", Decimal("200000"), Decimal("100000"), 50, prog.id),
+        ("ejecucion", "red", Decimal("500000"), Decimal("0"), 30, None),
+        ("cerrado", "green", Decimal("50000"), Decimal("0"), 100, None),
     ]
     projects = []
     for i, (phase, health, budget, actual, prog_, program_id) in enumerate(specs):
@@ -44,7 +44,7 @@ async def _seed(db_session):
             budget=budget,
             actual_budget=actual,
             progress=prog_,
-            type="transformation",
+            type="transformacion",
         )
         db_session.add(p)
         projects.append(p)
@@ -163,10 +163,10 @@ async def test_bug082_avg_progress_uses_wbs_rollup(db_session):
         organization_id=org.id,
         folio="PRJ-2026-900",
         name="Plan-driven",
-        phase="execution",
+        phase="ejecucion",
         health_status="green",
         progress=0,  # avance manual stale; el real viene del plan
-        type="transformation",
+        type="transformacion",
     )
     db_session.add(proj)
     await db_session.flush()

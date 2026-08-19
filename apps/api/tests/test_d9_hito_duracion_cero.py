@@ -45,7 +45,7 @@ async def proyecto(client, db_session):
     r = await client.post(
         "/api/v1/projects",
         json={
-            "name": "Proyecto D-9", "description": "d", "type": "innovation",
+            "name": "Proyecto D-9", "description": "d", "type": "innovacion",
             "priority": 3, "organization_id": org.json()["id"],
             "pm_id": yo.json()["id"],
         },

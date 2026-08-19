@@ -10,10 +10,10 @@ from tests.factories import create_admin_role, create_tenant, create_user, login
 async def _seed_projects(db_session, tenant_id: str, org_id: str) -> list[Project]:
     projects = []
     for i, (phase, health, budget, progress, ptype) in enumerate([
-        ("planning", "green", Decimal("100000"), 10, "innovation"),
-        ("execution", "yellow", Decimal("200000"), 45, "transformation"),
-        ("execution", "red", Decimal("500000"), 30, "transformation"),
-        ("closed", "green", Decimal("50000"), 100, "bau"),
+        ("preparacion", "green", Decimal("100000"), 10, "innovacion"),
+        ("ejecucion", "yellow", Decimal("200000"), 45, "transformacion"),
+        ("ejecucion", "red", Decimal("500000"), 30, "transformacion"),
+        ("cerrado", "green", Decimal("50000"), 100, "bau"),
     ]):
         p = Project(
             tenant_id=tenant_id,
@@ -65,8 +65,8 @@ async def test_charts_datasets(client, db_session):
     r = await client.get("/api/v1/dashboard/charts", headers=auth["_authz"])
     assert r.status_code == 200
     data = r.json()
-    assert data["projects_by_phase"]["execution"] == 2
-    assert data["projects_by_phase"]["planning"] == 1
+    assert data["projects_by_phase"]["ejecucion"] == 2
+    assert data["projects_by_phase"]["preparacion"] == 1
     assert data["portfolio_health"]["red"] == 1
     assert data["portfolio_health"]["yellow"] == 1
 
@@ -87,7 +87,7 @@ async def test_plan_vs_actual_filter_phase(client, db_session):
     t, auth, org_id = await _setup(client, db_session)
     await _seed_projects(db_session, str(t.id), org_id)
     r = await client.get(
-        "/api/v1/dashboard/plan-vs-actual?phase=execution", headers=auth["_authz"]
+        "/api/v1/dashboard/plan-vs-actual?phase=ejecucion", headers=auth["_authz"]
     )
     assert r.status_code == 200
     rows = r.json()
@@ -159,11 +159,11 @@ async def test_us014_kpis_filtered_by_org(client, db_session):
         organization_id=org_b,
         folio="PRJ-2026-099",
         name="Beta-1",
-        phase="execution",
+        phase="ejecucion",
         health_status="green",
         budget=Decimal("700000"),
         progress=20,
-        type="innovation",
+        type="innovacion",
     )
     db_session.add(other)
     await db_session.commit()
@@ -346,8 +346,8 @@ async def test_us015_charts_respect_role(client, db_session):
     auth = await login(client, "cpm", "Str0ng-Cpm-1!")
     r = await client.get("/api/v1/dashboard/charts", headers=auth["_authz"])
     data = r.json()
-    # Sólo 1 proyecto (phase=planning)
-    assert data["projects_by_phase"] == {"planning": 1}
+    # Sólo 1 proyecto (phase=preparacion)
+    assert data["projects_by_phase"] == {"preparacion": 1}
 
 
 @pytest.mark.asyncio

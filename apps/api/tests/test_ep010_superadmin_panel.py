@@ -151,7 +151,7 @@ async def test_us025_list_tenants_returns_full_counts(client, db_session):
     db_session.add(
         Project(
             tenant_id=t.id, organization_id=org.id, folio="PRJ25-1",
-            name="P1", phase="planning", budget=Decimal("100"),
+            name="P1", phase="preparacion", budget=Decimal("100"),
         )
     )
     await create_user(

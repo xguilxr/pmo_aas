@@ -41,9 +41,9 @@ async def test_us034_summary_aggregates_correctly(client, db_session):
 
     # 3 proyectos: 1 green activo, 1 yellow activo, 1 red cerrado
     projects_data = [
-        ("P-100", "green", "execution", 10000, 3000, 40),
-        ("P-101", "yellow", "execution", 5000, 2000, 20),
-        ("P-102", "red", "closed", 20000, 20000, 100),
+        ("P-100", "green", "ejecucion", 10000, 3000, 40),
+        ("P-101", "yellow", "ejecucion", 5000, 2000, 20),
+        ("P-102", "red", "cerrado", 20000, 20000, 100),
     ]
     created_projects = []
     for folio, health, phase, budget, actual, progress in projects_data:

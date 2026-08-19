@@ -174,7 +174,7 @@ export default function PmoOrganizationPage() {
   );
   const projectsActive = useMemo(
     () =>
-      panel?.projects.filter((p) => p.phase !== "closed").length ?? 0,
+      panel?.projects.filter((p) => p.phase !== "cerrado").length ?? 0,
     [panel],
   );
 

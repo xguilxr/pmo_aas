@@ -34,15 +34,15 @@ async def _setup(client, db_session):
         db_session, tenant_id=t.id, organization_id=org_id, name="Prog A"
     )
     for i, (phase, health, prog_id) in enumerate([
-        ("planning", "green", prog.id),
-        ("execution", "red", prog.id),
-        ("execution", "yellow", None),
+        ("preparacion", "green", prog.id),
+        ("ejecucion", "red", prog.id),
+        ("ejecucion", "yellow", None),
     ]):
         db_session.add(Project(
             tenant_id=t.id, organization_id=org_id, program_id=prog_id,
             folio=f"PRJ-{i+1:03d}", name=f"P{i+1}", phase=phase,
             health_status=health, budget=Decimal("100000"), progress=30,
-            type="transformation",
+            type="transformacion",
         ))
     await db_session.commit()
     return t, auth, org_id, str(prog.id)

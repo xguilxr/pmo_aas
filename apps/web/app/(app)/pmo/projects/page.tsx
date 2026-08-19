@@ -23,6 +23,7 @@ import {
 import {
   HEALTH_LABEL,
   PHASE_LABEL,
+  PHASE_ORDER,
   TYPE_LABEL,
   listProjects,
   type Project,
@@ -35,14 +36,9 @@ import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { useOrgLabel } from "@/lib/org-label";
 
-const ALL_PHASES: ProjectPhase[] = [
-  "planning",
-  "execution",
-  "hypercare",
-  "closed",
-  "cancelled",
-];
-const ALL_TYPES: ProjectType[] = ["innovation", "transformation", "operation", "bau"];
+// US-202 — el orden canónico vive en `lib/api/projects.ts::PHASE_ORDER`.
+const ALL_PHASES: ProjectPhase[] = [...PHASE_ORDER];
+const ALL_TYPES: ProjectType[] = ["transformacion", "operacion", "innovacion", "bau"];
 const ALL_HEALTH: ProjectHealth[] = ["green", "yellow", "red"];
 
 function useDebounced<T>(value: T, delayMs = 300): T {
@@ -576,11 +572,11 @@ function ListView({
 function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
   const grouped = useMemo(() => {
     const out: Record<ProjectPhase, Project[]> = {
-      planning: [],
-      execution: [],
+      preparacion: [],
+      ejecucion: [],
       hypercare: [],
-      closed: [],
-      cancelled: [],
+      cerrado: [],
+      cancelado: [],
     };
     for (const r of rows) out[r.phase].push(r);
     return out;
@@ -598,7 +594,8 @@ function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
 
   return (
     <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-      {(["planning", "execution", "hypercare", "closed"] as ProjectPhase[]).map((phase) => (
+      {// El tablero no pinta columna de cancelados: son proyectos que no siguen.
+      (PHASE_ORDER.filter((f) => f !== "cancelado") as ProjectPhase[]).map((phase) => (
         <section
           key={phase}
           className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]/40"
@@ -647,13 +644,13 @@ function PhasePill({ phase }: { phase: ProjectPhase }) {
     ProjectPhase,
     "info" | "warning" | "neutral" | "success" | "danger"
   > = {
-    planning: "info",
-    execution: "success",
+    preparacion: "info",
+    ejecucion: "success",
     hypercare: "warning",
-    closed: "neutral",
+    cerrado: "neutral",
     // ADR-022: cancelado se distingue de cerrado a simple vista, que es el
     // punto entero de la decisión.
-    cancelled: "danger",
+    cancelado: "danger",
   };
   return <Badge variant={tone[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }
