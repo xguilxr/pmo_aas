@@ -79,13 +79,10 @@ migraciones `0105`–`0107` ya mergeadas.
 ## 🧹 Cleanup técnico pendiente
 
 - [ ] Mergear PR #593 (docs de planeación).
-- [ ] Desplegar migraciones `0105`–`0107` (arrastrado; detalle en SPRINT.md
-      — al desplegar se cierran todas las sesiones vivas, ten acceso a tu
-      correo; variables Railway: `CLAMAV_URL` vacía, `ADMIN_MFA_REQUIRED`
-      true, `DISPOSITIVO_CONFIABLE_DIAS` 30).
-- [ ] Pendientes heredados del debloat: verificaciones `tipos-python` y
-      `commits` exigidas en main, hook local `core.hooksPath .githooks`,
-      confirmar Sentry en Railway.
+- [ ] Desplegar migraciones `0105`–`0107` (arrastrado; detalle y variables
+      Railway en SPRINT.md — cierra todas las sesiones vivas).
+- [ ] Heredados del debloat: exigir `tipos-python`/`commits` en main, hook
+      `core.hooksPath .githooks`, confirmar Sentry.
 
 ## 🔮 Para sesiones futuras (sin issue todavía)
 
