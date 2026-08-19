@@ -57,28 +57,22 @@ proyectos (igual que hoy hace el dashboard con orgs).
 - `sponsor` hoy es `String(200)`: se mantiene texto en esta fase; vincularlo
   a `actors` es candidato de oleada posterior (junto a consolidación §7).
 
-### 1.4 Migración de datos BU/Depto → decisión del owner (recomendación)
+### 1.4 Migración de datos BU/Depto — decidido (owner 2026-08-19)
 
-La jerarquía vieja `org → BU → depto` es estructuralmente paralela a la
-nueva `org → portafolio → programa`. Opciones:
+**BU/Departamentos no tienen uso en producción** (owner: «no he utilizado
+BU/Departamentos»), así que no hay datos que mapear: Portafolio/Programa los
+**reemplazan directamente**. La migración se simplifica:
 
-- **A (recomendada): mapeo estructural.** Cada `business_unit` activa se
-  convierte en un `portfolio` homónimo. Los `programs` existentes se
-  re-parentean: `program.department_id → department.business_unit_id →
-  portfolio` derivado; programas sin depto (o BU sin actividad) van a un
-  **«Portafolio General»** autocreado por organización. Los `departments`
-  no se convierten en programas (ya existen programas reales; convertir
-  deptos duplicaría) — quedan archivados como texto informativo en la
-  descripción del portafolio. Proyectos: `business_unit_id → portfolio_id`
-  por el mismo mapa; consistencia con su programa manda.
-- **B: borrón.** Todo proyecto/programa queda sin portafolio salvo el
-  «General» por org; BU/depto se archivan sin mapear. Más simple, pierde
-  la estructura que los tenants ya capturaron.
-
-En ambas: las tablas `business_units`/`departments` **no se dropean** en la
-misma oleada — quedan read-only tras la migración y se eliminan al cerrar la
-ventana de compatibilidad (patrón `core/compatibilidad.py`, contador por
-`compat.nombre_viejo`). El drop es lo irreversible → ADR propio.
+- W1 crea `portfolios` sin backfill desde BU; los programas existentes se
+  asignan a un **«Portafolio General»** autocreado por organización (para
+  poder endurecer `portfolio_id NOT NULL`).
+- `projects.business_unit_id/department_id` y las columnas de solicitudes/
+  charter se retiran directo (verificar en la migración que estén vacías;
+  si aparece algún dato residual, se vuelca a un JSON de auditoría antes de
+  soltar la FK).
+- Las tablas `business_units`/`departments` quedan sin lectores tras W1 y se
+  dropean en W8 (drop = irreversible → ADR; sin ventana de compat larga al
+  no haber datos).
 
 ## 2. Identidad multi-tenant
 

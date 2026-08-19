@@ -27,6 +27,18 @@ Sin US activa. Branch de la sesión: `claude/docs-context-debloat-1j4o3b`
 
 ## 📥 INBOX / TRIAGE
 
+### Reestructura de plataforma — Bloque Reestructura-W1 (propuesto)
+
+Planeación en `docs/epics/drafts/reestructura-{conceptos,plan,inventario,modelo-datos}.md`.
+BU/Departamentos se reemplazan por Portafolio ⊃ Programa (owner 2026-08-19,
+sin datos productivos que mapear). Pendiente `status:ready` del owner:
+
+- [ ] US-198 #588 — Modelo y migración: entidad Portfolio + re-parenting de Programs
+- [ ] US-199 #589 — API: CRUD de portafolios + retiro de BU/deptos (dep: US-198)
+- [ ] US-200 #590 — UI admin: jerarquía Portafolio ⊃ Programa (dep: US-199)
+- [ ] US-201 #591 — Filtros portafolio/programa en dashboard y cross (dep: US-199)
+- [ ] US-202 #592 — Enum de tipo + vocabulario de fases nuevo (dep: US-198)
+
 - 2026-08-07 — **Conformidad cerrada** (ADR-036); detalle en
   `docs/conformidad/asvs-l1.md`. Vuelve a la mesa solo con un cliente que exija
   certificación, un requisito contractual o un incidente de credenciales.
