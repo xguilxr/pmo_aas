@@ -303,13 +303,23 @@ def _cargar_migracion() -> ModuleType:
     return modulo
 
 
-def _tabla_previa(modelo: type, md: sa.MetaData, *, quitar: tuple[str, ...] = ()) -> sa.Table:
-    """La tabla del modelo, sin las columnas que 0108 añade y sin claves ajenas.
+def _tabla_previa(
+    modelo: type,
+    md: sa.MetaData,
+    *,
+    quitar: tuple[str, ...] = (),
+    sumar: tuple[str, ...] = (),
+) -> sa.Table:
+    """La tabla del modelo como estaba **antes** de la 0108, sin claves ajenas.
 
     Los nombres y los tipos se copian del modelo real —es lo que hace que la
     prueba siga al esquema— y las restricciones se dejan fuera a propósito: lo
     que se ejerce es un `UPDATE`, y arrastrar las claves ajenas obligaría a
     levantar media base para no probar nada más.
+
+    `quitar` saca lo que la 0108 añade. `sumar` devuelve lo que la **0109**
+    soltó después: la 0108 cuenta las referencias de BU/departamento, así que
+    cuando corrió esas columnas existían, y el modelo de hoy ya no las declara.
     """
     origen = modelo.__table__
     # `_copy()` y no el constructor de `Column`: hay que arrastrar también los
@@ -317,6 +327,7 @@ def _tabla_previa(modelo: type, md: sa.MetaData, *, quitar: tuple[str, ...] = ()
     # ya ligado a otra columna no se puede pasar al constructor. Es el mismo
     # mecanismo que usa SQLAlchemy internamente para reflejar una tabla.
     columnas = [c._copy() for c in origen.columns if c.name not in quitar]
+    columnas += [sa.Column(nombre, sa.String(36), nullable=True) for nombre in sumar]
     return sa.Table(origen.name, md, *columnas)
 
 
@@ -342,10 +353,22 @@ def test_tc_la_migracion_reagrupa_los_programas_existentes(tmp_path: Path) -> No
     de **su** organización, y los proyectos con el portafolio de su programa."""
     modulo = _cargar_migracion()
     md = sa.MetaData()
-    programs = _tabla_previa(Program, md, quitar=("portfolio_id",))
-    projects = _tabla_previa(Project, md, quitar=("portfolio_id",))
-    _tabla_previa(ProjectRequest, md)
-    _tabla_previa(ProjectCharter, md)
+    programs = _tabla_previa(Program, md, quitar=("portfolio_id",), sumar=("department_id",))
+    projects = _tabla_previa(
+        Project, md, quitar=("portfolio_id",), sumar=("business_unit_id", "department_id")
+    )
+    _tabla_previa(
+        ProjectRequest,
+        md,
+        quitar=("portfolio_id", "program_id"),
+        sumar=("business_unit_id", "department_id"),
+    )
+    _tabla_previa(
+        ProjectCharter,
+        md,
+        quitar=("portfolio_id", "program_id"),
+        sumar=("business_unit_id", "department_id"),
+    )
 
     t1, t2 = str(uuid4()), str(uuid4())
     org_a, org_b, org_c = str(uuid4()), str(uuid4()), str(uuid4())

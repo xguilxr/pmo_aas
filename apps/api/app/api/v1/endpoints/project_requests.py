@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.errors import business_rule, conflict, forbidden, mensaje, not_found, validation_error
 from app.db.session import get_db
-from app.models.organization import BusinessUnit, Department, Organization
+from app.models.organization import Organization
 from app.models.project_request import ProjectRequest
 from app.schemas.project_request import (
     CreateProjectFromRequest,
@@ -20,6 +20,10 @@ from app.schemas.project_request import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.jerarquia import (
+    resolver_portafolio,
+    validar_portafolio_de_organizacion,
+)
 from app.services.moneda_tenant import preferida as moneda_preferida
 
 router = APIRouter(prefix="/project-requests", tags=["project_requests"])
@@ -93,53 +97,23 @@ async def create_request(
                 accion="Elige una organización de tu tenant.",
             ))
 
-    # Validar FKs BU/Depto si vienen (US-011).
-    if body.business_unit_id is not None:
-        bu = (
-            await db.execute(
-                select(BusinessUnit).where(
-                    BusinessUnit.id == str(body.business_unit_id),
-                    BusinessUnit.tenant_id == tenant_id,
-                    BusinessUnit.organization_id == str(body.organization_id),
-                    BusinessUnit.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
-        if bu is None:
-            raise business_rule(
-                mensaje(
-                    que="La unidad de negocio no pertenece a la organización indicada",
-                    porque="La estructura tiene que ser coherente: la unidad cuelga de su organización.",
-                    accion="Elige una unidad de esa organización, o cambia la organización.",
-                )
-            )
-    if body.department_id is not None:
-        dept = (
-            await db.execute(
-                select(Department).where(
-                    Department.id == str(body.department_id),
-                    Department.tenant_id == tenant_id,
-                    Department.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
-        if dept is None:
-            raise business_rule(mensaje(
-                que="El departamento no existe o no pertenece al tenant",
-                porque="La referencia apunta fuera de tu organización y quedaría rota.",
-                accion="Elige un departamento de tu tenant.",
-            ))
-        if (
-            body.business_unit_id is not None
-            and str(dept.business_unit_id) != str(body.business_unit_id)
-        ):
-            raise business_rule(
-                mensaje(
-                    que="El departamento no pertenece a la unidad de negocio indicada",
-                    porque="La estructura tiene que ser coherente: el departamento cuelga de su unidad.",
-                    accion="Elige un departamento de esa unidad, o cambia la unidad.",
-                )
-            )
+    # US-199 — clasificación en la jerarquía nueva, con la misma regla de
+    # consistencia que el proyecto: con programa, el portafolio es el del
+    # programa. La solicitud se clasifica antes de que exista el proyecto, así
+    # que si no se validara aquí el proyecto nacería ya incoherente.
+    portfolio_id = await resolver_portafolio(
+        db,
+        tenant_id=tenant_id,
+        program_id=body.program_id,
+        portfolio_id=body.portfolio_id,
+    )
+    if body.program_id is None:
+        await validar_portafolio_de_organizacion(
+            db,
+            tenant_id=tenant_id,
+            organization_id=str(org.id),
+            portfolio_id=portfolio_id,
+        )
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="SOL")
     pr = ProjectRequest(
@@ -151,10 +125,8 @@ async def create_request(
         organization_id=str(org.id),
         business_unit=body.business_unit,
         department=body.department,
-        business_unit_id=(
-            str(body.business_unit_id) if body.business_unit_id else None
-        ),
-        department_id=str(body.department_id) if body.department_id else None,
+        portfolio_id=portfolio_id,
+        program_id=str(body.program_id) if body.program_id else None,
         sponsor=body.sponsor,
         sponsor_email=str(body.sponsor_email),
         benefits=body.benefits,
@@ -499,8 +471,11 @@ async def create_project_from_request(
     project = Project(
         tenant_id=tenant_id,
         organization_id=pr.organization_id,
-        business_unit_id=pr.business_unit_id,
-        department_id=pr.department_id,
+        # US-199 — el proyecto hereda la clasificación de su solicitud. Los dos
+        # campos, no uno: heredar solo el programa dejaría el portafolio vacío
+        # y la vista ejecutiva sin el proyecto recién aprobado.
+        portfolio_id=pr.portfolio_id,
+        program_id=pr.program_id,
         folio=folio,
         name=pr.title,
         description=pr.description,
@@ -527,8 +502,8 @@ async def create_project_from_request(
         project_name=project.name,
         description=pr.description,
         organization_id=pr.organization_id,
-        business_unit_id=pr.business_unit_id,
-        department_id=pr.department_id,
+        portfolio_id=pr.portfolio_id,
+        program_id=pr.program_id,
         sponsor=pr.sponsor,
         sponsor_email=pr.sponsor_email,
         pm_id=str(body.pm_id),

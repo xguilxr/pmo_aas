@@ -38,12 +38,6 @@ class Project(Base, TimestampMixin):
     portfolio_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("portfolios.id"), index=True
     )
-    business_unit_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("business_units.id")
-    )
-    department_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("departments.id")
-    )
     folio: Mapped[str] = mapped_column(String(32), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(5000))

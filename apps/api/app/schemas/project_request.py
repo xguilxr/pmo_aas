@@ -26,11 +26,17 @@ class ProjectRequestCreate(BaseModel):
     # la nueva organización (se creará con is_active=false).
     organization_id: UUID | None = None
     organization_name_new: str | None = Field(default=None, max_length=200)
+    # US-199 — texto libre, en las palabras del solicitante: «qué parte de mi
+    # empresa pide esto». No es la jerarquía de la plataforma, que ahora se
+    # elige con `portfolio_id`/`program_id` de abajo, y por eso sobrevive al
+    # retiro de BU/departamento (ADR-037).
     business_unit: str = Field(min_length=1, max_length=200)
     department: str = Field(min_length=1, max_length=200)
-    # FKs reales (US-011): opcionales hasta migrar datos legacy
-    business_unit_id: UUID | None = None
-    department_id: UUID | None = None
+    #: Clasificación en la jerarquía (US-199). Opcionales: quien solicita no
+    #: siempre sabe en qué portafolio cae; lo asigna la PMO al revisar. Con
+    #: programa, el portafolio se autocompleta con el suyo.
+    portfolio_id: UUID | None = None
+    program_id: UUID | None = None
     sponsor: str = Field(min_length=1, max_length=200)
     sponsor_email: EmailStr
     benefits: str = Field(min_length=3)
@@ -56,8 +62,8 @@ class ProjectRequestUpdate(BaseModel):
     objective: str | None = None
     business_unit: str | None = None
     department: str | None = None
-    business_unit_id: UUID | None = None
-    department_id: UUID | None = None
+    portfolio_id: UUID | None = None
+    program_id: UUID | None = None
     sponsor: str | None = None
     sponsor_email: EmailStr | None = None
     benefits: str | None = None
@@ -82,8 +88,8 @@ class ProjectRequestRead(BaseModel):
     organization_id: UUID
     business_unit: str
     department: str
-    business_unit_id: UUID | None = None
-    department_id: UUID | None = None
+    portfolio_id: UUID | None = None
+    program_id: UUID | None = None
     sponsor: str
     sponsor_email: str | None = None
     benefits: str

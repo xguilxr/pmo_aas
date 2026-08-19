@@ -42,11 +42,14 @@ class ProjectCharter(Base):
     organization_id: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("organizations.id")
     )
-    business_unit_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("business_units.id")
+    # US-199 — el acta hereda la clasificación del proyecto, que ahora es
+    # portafolio ⊃ programa. Las columnas de BU/departamento se retiran con sus
+    # lectores (ADR-037); el acta no las guardaba por sí misma, las copiaba.
+    portfolio_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("portfolios.id")
     )
-    department_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("departments.id")
+    program_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("programs.id")
     )
 
     # Sección 2: Stakeholders

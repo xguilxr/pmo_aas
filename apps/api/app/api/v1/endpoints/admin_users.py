@@ -727,7 +727,7 @@ async def hard_delete_user(
         MeetingMinute,
         Risk,
     )
-    from app.models.organization import BusinessUnit, Department
+    from app.models.organization import BusinessUnit, Department, Portfolio
     from app.models.project import Project
     from app.models.project_charter import ProjectCharter
     from app.models.stakeholder import Stakeholder
@@ -765,6 +765,11 @@ async def hard_delete_user(
         (ProjectCharter, "pm_id"),
         (ProjectCharter, "created_by"),
         (Stakeholder, "created_by"),
+        (Portfolio, "created_by"),
+        # US-199 — BU/departamento siguen aquí porque sus **tablas** siguen en
+        # el esquema hasta W8, con su clave ajena a `users`. Quitarlas de esta
+        # lista dejaría el borrado permanente de un usuario chocando contra una
+        # FK de una tabla que ya nadie lee.
         (BusinessUnit, "created_by"),
         (Department, "created_by"),
         (ProjectArea, "created_by"),

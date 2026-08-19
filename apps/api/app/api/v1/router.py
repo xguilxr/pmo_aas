@@ -52,8 +52,9 @@ api_router.include_router(admin_ai.router)
 api_router.include_router(branding.router)
 api_router.include_router(organizations.router)
 api_router.include_router(organizations.programs_router)
-api_router.include_router(organizations.business_units_router)
-api_router.include_router(organizations.departments_router)
+# US-199 — `business_units_router` y `departments_router` retirados (ADR-037).
+# Sus rutas responden 404: la entidad ya no existe.
+api_router.include_router(organizations.portfolios_router)
 api_router.include_router(project_requests.router)
 api_router.include_router(projects.router)
 api_router.include_router(project_charters.router)

@@ -58,6 +58,10 @@ class ProjectCreate(BaseModel):
     priority: int = Field(ge=1, le=5)
     organization_id: UUID
     program_id: UUID | None = None
+    #: US-199 — el portafolio del proyecto. Con `program_id` puesto se
+    #: autocompleta con el del programa y un valor contradictorio se rechaza
+    #: (`services/jerarquia.py`).
+    portfolio_id: UUID | None = None
     phase: ProjectPhase = "planning"
 
     _fase_compat = field_validator("phase", mode="before")(normalizar_fase)
@@ -83,6 +87,9 @@ class ProjectUpdate(BaseModel):
     type: Literal["innovation", "transformation", "operation", "bau"] | None = None
     priority: int | None = Field(default=None, ge=1, le=5)
     program_id: UUID | None = None
+    #: US-199 — mover el proyecto de portafolio. Si además cambia el programa,
+    #: los dos tienen que ser coherentes.
+    portfolio_id: UUID | None = None
     pm_id: UUID | None = None
     sponsor: str | None = None
     start_date: date | None = None
@@ -108,6 +115,7 @@ class ProjectRead(BaseModel):
     phase: str
     organization_id: UUID
     program_id: UUID | None
+    portfolio_id: UUID | None = None
     pm_id: UUID | None
     sponsor: str | None
     start_date: date | None

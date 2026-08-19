@@ -36,24 +36,17 @@ async def test_us033_panel_happy_path(client, db_session):
     assert org.status_code == 201, org.text
     org_id = org.json()["id"]
 
-    bu = await client.post(
-        f"/api/v1/organizations/{org_id}/business-units",
-        json={"name": "BU-1"},
+    pf = await client.post(
+        f"/api/v1/organizations/{org_id}/portfolios",
+        json={"name": "Cartera-1"},
         headers=auth["_authz"],
     )
-    assert bu.status_code == 201, bu.text
-    bu_id = bu.json()["id"]
-
-    dept = await client.post(
-        f"/api/v1/business-units/{bu_id}/departments",
-        json={"name": "Dept-1"},
-        headers=auth["_authz"],
-    )
-    assert dept.status_code == 201, dept.text
+    assert pf.status_code == 201, pf.text
+    pf_id = pf.json()["id"]
 
     prog = await client.post(
         "/api/v1/programs",
-        json={"name": "Prog-1", "organization_id": org_id},
+        json={"name": "Prog-1", "organization_id": org_id, "portfolio_id": pf_id},
         headers=auth["_authz"],
     )
     assert prog.status_code == 201, prog.text
@@ -79,10 +72,11 @@ async def test_us033_panel_happy_path(client, db_session):
     assert data["id"] == org_id
     assert data["name"] == "Org A"
     assert data["is_active"] is True
-    assert len(data["business_units"]) == 1
-    assert data["business_units"][0]["name"] == "BU-1"
-    assert len(data["business_units"][0]["departments"]) == 1
-    assert data["business_units"][0]["departments"][0]["name"] == "Dept-1"
+    # US-199 — la jerarquía del panel es portafolio ⊃ programa (ADR-037).
+    assert len(data["portfolios"]) == 1
+    assert data["portfolios"][0]["name"] == "Cartera-1"
+    assert [p["name"] for p in data["portfolios"][0]["programs"]] == ["Prog-1"]
+    assert data["portfolios"][0]["active_project_count"] == 1
     assert len(data["programs"]) == 1
     assert data["programs"][0]["name"] == "Prog-1"
     assert data["programs"][0]["active_project_count"] == 1
@@ -150,7 +144,7 @@ async def test_us033_panel_empty_org(client, db_session):
     )
     assert r.status_code == 200
     body = r.json()
-    assert body["business_units"] == []
+    assert body["portfolios"] == []
     assert body["programs"] == []
     assert body["projects"] == []
     assert body["users"] == []

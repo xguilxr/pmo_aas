@@ -16,7 +16,7 @@ revisar_cada: 90d
 | **Módulo** | `organizations`, `portfolios`, `programs`, `superadmin.tenants` (`business_units`/`departments`: en retiro, ADR-037) |
 | **Estado** | MVP |
 | **Versión objetivo** | v1.0 |
-| **Última actualización** | 2026-08-19 — US-198: entra `portfolios`; el programa vive dentro de un portafolio (ADR-037) |
+| **Última actualización** | 2026-08-19 — US-199: CRUD de portafolios en la API; BU/departamentos fuera de la superficie (ADR-037) |
 
 ## Objetivo de negocio
 
@@ -303,6 +303,39 @@ tipos.
 - `TC-198.3` (integration) — Migración con programas existentes: todos con «Portafolio General» de **su** organización; los proyectos heredan el portafolio de su programa; el proyecto sin programa se queda sin portafolio.
 
 **Decisiones:** ADR-037 (jerarquía nueva, irreversible) · DEC-030 («Portafolio General» como destino por defecto).
+
+---
+
+### US-199 — CRUD de portafolios y retiro de BU/departamentos ✅ (API)
+
+**Como** Administrador / Senior PMO
+**Quiero** administrar portafolios desde la API y clasificar proyectos y solicitudes en ellos
+**Para** que la cartera se pueda gestionar sin tocar la base de datos.
+
+**Criterios de aceptación:**
+- [x] CRUD anidado en organización: `POST|GET /organizations/{org_id}/portfolios`, `GET|PATCH|DELETE /portfolios/{id}`. Nombre único por organización; el dueño (`owner_actor_id`) tiene que ser una persona del catálogo del propio inquilino.
+- [x] `PortfolioRead` trae `program_count` y `active_project_count` **derivados** —el portafolio no guarda métricas (ADR-037)— y el conteo de proyectos suma los de sus programas más los que cuelgan directo, excluyendo cerrados.
+- [x] Papelera de dos pasos (ADR-017): `DELETE` desactiva; con programas activos dentro exige `force=true` y los desactiva en cascada. `GET /portfolios/{id}/hard-delete-preview` declara qué se lleva el borrado permanente, separado en tres números: programas, proyectos de esos programas, y proyectos directos. `DELETE /portfolios/{id}/permanent?confirm=<slug>` lo ejecuta.
+- [x] **El borrado permanente borra proyectos** de los programas que caen con el portafolio (`programs.portfolio_id` es NOT NULL: no hay forma de dejar un programa sin portafolio). Los proyectos que cuelgan **directo** no se borran: se desreferencian. Perder un proyecto por un cambio de taxonomía sería peor que perder la taxonomía.
+- [x] Programas: `portfolio_id` en el alta (opcional → «Portafolio General») y en la edición. **Mover un programa de portafolio arrastra sus proyectos**; si no, quedarían en el portafolio viejo violando la regla de consistencia en el instante siguiente.
+- [x] Proyectos y solicitudes aceptan `portfolio_id`/`program_id` con la regla de consistencia; la solicitud aprobada pasa los dos al proyecto y a su acta.
+- [x] Sub-routers `business-units` y `departments` retirados: sus rutas responden **404**. Ni 410 ni redirect — un concepto retirado no se mantiene vivo a medias.
+- [x] El panel de organización pasa a portafolio ⊃ programa (`portfolios` con sus programas anidados, más la lista plana de programas); las tarjetas cuentan portafolios en vez de BU/departamentos, y el detalle de inquilino del Super Admin igual.
+- [x] Migración 0109: suelta las siete columnas BU/departamento **verificando que estén vacías** y crea `portfolio_id`/`program_id` en solicitudes y actas.
+- [ ] UI de todo esto → **US-200** (admin y formularios) y **US-201** (filtros).
+
+**Nota de vocabulario:** `project_requests.business_unit` y `.department` (texto
+libre) **se quedan**. No son la jerarquía de la plataforma: son las palabras del
+solicitante sobre qué parte de su empresa pide el trabajo. Renombrarlos es una
+decisión de vocabulario propia, no parte de este retiro.
+
+**Test Cases:**
+- `TC-199.1` (integration) — CRUD completo con administrador y con usuario plano: el segundo crea, lee y edita, y **no** manda a la papelera (`organizations.delete` es de administrador).
+- `TC-199.2` (integration) — Solicitud con programa → portafolio autocompletado → proyecto y acta con los dos, consistentes.
+- `TC-199.3` (integration) — Rutas de BU/departamentos: 404 en los nueve verbos/rutas retirados.
+- `TC-199.4` (integration) — La migración 0109 se niega si queda una referencia viva, y no suelta nada.
+
+**Decisiones:** ADR-037 · DEC-030.
 
 ---
 

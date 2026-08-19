@@ -1019,3 +1019,41 @@ que es lo esperable en un `downgrade` que retira una entidad. Lo
 anterior queda intacto: `programs.department_id`,
 `projects.business_unit_id` y `projects.department_id` no se tocan
 aquí.
+
+## 0109 — se sueltan las columnas de BU/departamento (US-199)
+
+La 0108 creó lo nuevo y no tocó lo viejo a propósito. Esta va con el
+commit que retira sus lectores —los sub-routers de unidades de negocio
+y departamentos, y los campos BU/departamento de los payloads de
+solicitudes y actas—, así que aquí sí se sueltan.
+
+**Se van** siete columnas: `programs.department_id`,
+`projects.{business_unit_id, department_id}`,
+`project_requests.{business_unit_id, department_id}` y
+`project_charters.{business_unit_id, department_id}`.
+
+**Llegan** cuatro: `project_requests.{portfolio_id, program_id}` y
+`project_charters.{portfolio_id, program_id}`. La solicitud se clasifica
+antes de que el proyecto exista; sin estas columnas el proyecto aprobado
+nacería sin clasificación y habría que ponérsela otra vez a mano.
+
+**Se quedan** las tablas `business_units` y `departments`. Retirar una
+tabla entera es irreversible y va en W8, cuando el contador de compat
+confirme que nadie la lee. Lo que esta oleada quita son las referencias.
+
+La verificación de vacío no es ceremonia. «Nunca se usaron» es una
+afirmación sobre **una** instalación: la migración cuenta antes de
+soltar, y si encuentra filas **para**, con el conteo por columna en el
+mensaje y el residuo anotado en `audit_log` como
+`us199.residuo_bu_depto`. No borra ni convierte nada — una migración que
+descarta datos que no esperaba es peor que una que se niega a correr.
+El caso está ejercido en `tests/test_us199_portfolios_api.py`.
+
+Hay rama por motor en las cuatro columnas nuevas, por lo mismo que en la
+0108: SQLite no sabe añadir una restricción a una tabla existente, y en
+SQLite esas claves ajenas ya llegan puestas por `create_all`.
+
+La bajada devuelve las siete y quita las cuatro. **No devuelve los
+valores** —ninguno, si la subida corrió—, que es la razón por la que la
+subida se niega a correr con datos: después de soltar la columna ya no
+hay a dónde volver.

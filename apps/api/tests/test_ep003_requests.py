@@ -258,78 +258,83 @@ async def test_us011_requester_defaults(client, db_session):
     assert "@" in (data["requester_email"] or "")
 
 
-# FK business_unit_id inválida → 422 business_rule
+# US-199 — portafolio inexistente → 422
 @pytest.mark.asyncio
-async def test_us011_bu_fk_mismatch(client, db_session):
+async def test_us199_portafolio_inexistente(client, db_session):
     import uuid
 
     _, auth, org_id = await _setup(client, db_session)
-    body = _request_body(org_id, business_unit_id=str(uuid.uuid4()))
+    body = _request_body(org_id, portfolio_id=str(uuid.uuid4()))
     r = await client.post("/api/v1/project-requests", json=body, headers=auth["_authz"])
     assert r.status_code == 422
 
 
-# Depto no pertenece a la BU indicada → 422
+# US-199 — programa de un portafolio y portafolio de otro → 422
 @pytest.mark.asyncio
-async def test_us011_dept_in_wrong_bu(client, db_session):
+async def test_us199_par_portafolio_programa_incoherente(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
 
-    # Crear dos BUs y un depto en cada una
-    bu_a = (
+    pf_a = (
         await client.post(
-            f"/api/v1/organizations/{org_id}/business-units",
-            json={"name": "BU-A"},
+            f"/api/v1/organizations/{org_id}/portfolios",
+            json={"name": "Cartera A"},
             headers=auth["_authz"],
         )
     ).json()
-    bu_b = (
+    pf_b = (
         await client.post(
-            f"/api/v1/organizations/{org_id}/business-units",
-            json={"name": "BU-B"},
+            f"/api/v1/organizations/{org_id}/portfolios",
+            json={"name": "Cartera B"},
             headers=auth["_authz"],
         )
     ).json()
-    dept_a = (
+    prog_a = (
         await client.post(
-            f"/api/v1/business-units/{bu_a['id']}/departments",
-            json={"name": "DeptA"},
+            "/api/v1/programs",
+            json={
+                "name": "Prog de A",
+                "organization_id": org_id,
+                "portfolio_id": pf_a["id"],
+            },
             headers=auth["_authz"],
         )
     ).json()
 
-    body = _request_body(
-        org_id, business_unit_id=bu_b["id"], department_id=dept_a["id"]
-    )
+    body = _request_body(org_id, program_id=prog_a["id"], portfolio_id=pf_b["id"])
     r = await client.post("/api/v1/project-requests", json=body, headers=auth["_authz"])
     assert r.status_code == 422
 
 
-# FKs correctas → 201 + persistidas en el registro
+# US-199 — clasificación correcta → 201 y persistida, con el portafolio
+# autocompletado desde el programa
 @pytest.mark.asyncio
-async def test_us011_bu_dept_fk_happy_path(client, db_session):
+async def test_us199_clasificacion_de_la_solicitud(client, db_session):
     _, auth, org_id = await _setup(client, db_session)
 
-    bu = (
+    pf = (
         await client.post(
-            f"/api/v1/organizations/{org_id}/business-units",
+            f"/api/v1/organizations/{org_id}/portfolios",
             json={"name": "Comercial"},
             headers=auth["_authz"],
         )
     ).json()
-    dept = (
+    prog = (
         await client.post(
-            f"/api/v1/business-units/{bu['id']}/departments",
-            json={"name": "Ventas"},
+            "/api/v1/programs",
+            json={"name": "Ventas", "organization_id": org_id, "portfolio_id": pf["id"]},
             headers=auth["_authz"],
         )
     ).json()
 
-    body = _request_body(org_id, business_unit_id=bu["id"], department_id=dept["id"])
+    body = _request_body(org_id, program_id=prog["id"])
     r = await client.post("/api/v1/project-requests", json=body, headers=auth["_authz"])
     assert r.status_code == 201, r.text
     data = r.json()
-    assert data["business_unit_id"] == bu["id"]
-    assert data["department_id"] == dept["id"]
+    assert data["program_id"] == prog["id"]
+    assert data["portfolio_id"] == pf["id"], (
+        "Elegir programa tiene que autocompletar el portafolio: si no, la "
+        "solicitud queda fuera de la cartera a la que pertenece."
+    )
 
 
 # ============================================================================

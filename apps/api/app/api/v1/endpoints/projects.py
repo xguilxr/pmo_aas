@@ -31,6 +31,10 @@ from app.schemas.project import (
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
+from app.services.jerarquia import (
+    resolver_portafolio,
+    validar_portafolio_de_organizacion,
+)
 from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.plan_metadata import round_half_up
 from app.services.progress_calculator import plan_rollup_map
@@ -177,7 +181,23 @@ async def create_project(
 
     folio = await next_folio(db, tenant_id=tenant_id, prefix="PRJ")
     data = body.model_dump()
-    for k in ("organization_id", "program_id", "pm_id"):
+    # US-199 — la regla de consistencia de la jerarquía, en el único sitio
+    # donde vive (`services/jerarquia.py`): con programa, el portafolio es el
+    # del programa; sin programa, el que venga, validado contra la organización.
+    data["portfolio_id"] = await resolver_portafolio(
+        db,
+        tenant_id=tenant_id,
+        program_id=data.get("program_id"),
+        portfolio_id=data.get("portfolio_id"),
+    )
+    if data.get("program_id") is None:
+        await validar_portafolio_de_organizacion(
+            db,
+            tenant_id=tenant_id,
+            organization_id=str(body.organization_id),
+            portfolio_id=data["portfolio_id"],
+        )
+    for k in ("organization_id", "program_id", "portfolio_id", "pm_id"):
         if data.get(k) is not None:
             data[k] = str(data[k])
     project = Project(tenant_id=tenant_id, folio=folio, **data)
@@ -433,12 +453,28 @@ async def update_project(
             accion="Reábrelo si de verdad hace falta modificarlo.",
         ))
     data = body.model_dump(exclude_none=True)
+    # US-199 — si el PATCH toca programa o portafolio, se recalcula el par
+    # completo. Aplicar solo el campo que llegó dejaría el otro apuntando a
+    # donde estaba, que es exactamente el par incoherente que la regla prohíbe.
+    if "program_id" in data or "portfolio_id" in data:
+        program_id = data.get("program_id", p.program_id)
+        portfolio_id = data.get("portfolio_id", p.portfolio_id)
+        data["portfolio_id"] = await resolver_portafolio(
+            db, tenant_id=tenant_id, program_id=program_id, portfolio_id=portfolio_id
+        )
+        if program_id is None:
+            await validar_portafolio_de_organizacion(
+                db,
+                tenant_id=tenant_id,
+                organization_id=p.organization_id,
+                portfolio_id=data["portfolio_id"],
+            )
     before = {k: getattr(p, k) for k in data}
     health_changed = (
         "health_status" in data and before.get("health_status") != data["health_status"]
     )
     for k, v in data.items():
-        if k in ("program_id", "pm_id") and v is not None:
+        if k in ("program_id", "portfolio_id", "pm_id") and v is not None:
             v = str(v)
         setattr(p, k, v)
     # US-084: campos agregados editados a mano. Marcamos en

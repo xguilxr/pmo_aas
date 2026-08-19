@@ -1,8 +1,10 @@
 """US-088 — Hard delete (segundo paso) tests.
 
-Cobertura: las 6 entidades (program, organization, business_unit,
-department, user, stakeholder) con happy path + slug mismatch +
-active-blocked. Cascada validada con un proyecto-hijo en programa.
+Cobertura: las entidades con papelera (program, organization, portfolio,
+user, stakeholder) con happy path + slug mismatch + active-blocked. Cascada
+validada con un proyecto-hijo en programa. La cascada del portafolio —que borra
+programas y sus proyectos, y desreferencia los directos— tiene su propio caso en
+`test_us199_portfolios_api.py`, que es donde se puede leer entera.
 """
 import pytest
 
@@ -186,77 +188,35 @@ async def test_us088_org_happy_path(client, db_session):
 
 
 # ---------------------------------------------------------------------------
-# Business Units
+# Portafolios (US-199 — reemplazan BU/departamentos, ADR-037)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_us088_bu_happy_path(client, db_session):
+async def test_us088_portafolio_happy_path(client, db_session):
     _, auth = await _admin_setup(client, db_session, slug="us088e")
     org = (
         await client.post(
-            "/api/v1/organizations", json={"name": "OrgBU"}, headers=auth["_authz"]
+            "/api/v1/organizations", json={"name": "OrgPf"}, headers=auth["_authz"]
         )
     ).json()
-    bu = (
+    pf = (
         await client.post(
-            f"/api/v1/organizations/{org['id']}/business-units",
-            json={"name": "BUDelete"},
+            f"/api/v1/organizations/{org['id']}/portfolios",
+            json={"name": "CarteraDelete"},
             headers=auth["_authz"],
         )
     ).json()
-    # Soft delete (BU pasa a is_active=False + deleted_at).
-    await client.delete(
-        f"/api/v1/business-units/{bu['id']}", headers=auth["_authz"]
-    )
+    # Primer paso: papelera (is_active=False + deleted_at).
+    await client.delete(f"/api/v1/portfolios/{pf['id']}", headers=auth["_authz"])
     pr = await client.get(
-        f"/api/v1/business-units/{bu['id']}/hard-delete-preview",
+        f"/api/v1/portfolios/{pf['id']}/hard-delete-preview",
         headers=auth["_authz"],
     )
     assert pr.status_code == 200
     slug = pr.json()["confirm_slug"]
     hd = await client.delete(
-        f"/api/v1/business-units/{bu['id']}/permanent?confirm={slug}",
-        headers=auth["_authz"],
-    )
-    assert hd.status_code == 204, hd.text
-
-
-# ---------------------------------------------------------------------------
-# Departments
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_us088_dept_happy_path(client, db_session):
-    _, auth = await _admin_setup(client, db_session, slug="us088f")
-    org = (
-        await client.post(
-            "/api/v1/organizations", json={"name": "OrgDept"}, headers=auth["_authz"]
-        )
-    ).json()
-    bu = (
-        await client.post(
-            f"/api/v1/organizations/{org['id']}/business-units",
-            json={"name": "BUForDept"},
-            headers=auth["_authz"],
-        )
-    ).json()
-    dept = (
-        await client.post(
-            f"/api/v1/business-units/{bu['id']}/departments",
-            json={"name": "DeptKill"},
-            headers=auth["_authz"],
-        )
-    ).json()
-    await client.delete(f"/api/v1/departments/{dept['id']}", headers=auth["_authz"])
-    pr = await client.get(
-        f"/api/v1/departments/{dept['id']}/hard-delete-preview",
-        headers=auth["_authz"],
-    )
-    slug = pr.json()["confirm_slug"]
-    hd = await client.delete(
-        f"/api/v1/departments/{dept['id']}/permanent?confirm={slug}",
+        f"/api/v1/portfolios/{pf['id']}/permanent?confirm={slug}",
         headers=auth["_authz"],
     )
     assert hd.status_code == 204, hd.text

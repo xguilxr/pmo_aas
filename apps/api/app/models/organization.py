@@ -153,8 +153,8 @@ class Program(Base, TimestampMixin):
     ganar nada. La consistencia entre ambas la sostiene
     `services/jerarquia.py`, no un CHECK.
 
-    `department_id` queda sin lectores nuevos; se retira en US-199 junto con
-    los sub-routers de BU/departamentos.
+    `department_id` se retiró en US-199, junto con los sub-routers de
+    BU/departamentos que lo leían (migración 0109).
     """
 
     __tablename__ = "programs"
@@ -168,9 +168,6 @@ class Program(Base, TimestampMixin):
     )
     portfolio_id: Mapped[UUID] = mapped_column(
         String(36), ForeignKey("portfolios.id"), index=True, nullable=False
-    )
-    department_id: Mapped[UUID | None] = mapped_column(
-        String(36), ForeignKey("departments.id"), index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000))
