@@ -26,6 +26,7 @@ import {
 import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
 import {
   HEALTH_LABEL,
+  PHASE_BADGE_TONE,
   PHASE_LABEL,
   TYPE_LABEL,
   changePhase,
@@ -500,19 +501,7 @@ export default function ProjectDetailPage() {
 }
 
 function PhaseBadge({ phase }: { phase: ProjectPhase }) {
-  const map: Record<
-    ProjectPhase,
-    "info" | "success" | "warning" | "neutral" | "danger"
-  > = {
-    preparacion: "info",
-    ejecucion: "success",
-    hypercare: "warning",
-    cerrado: "neutral",
-    // Cancelado NO es `neutral` como cerrado: distinguirlos de un vistazo es
-    // la razón de ser de ADR-022.
-    cancelado: "danger",
-  };
-  return <Badge variant={map[phase]}>{PHASE_LABEL[phase]}</Badge>;
+  return <Badge variant={PHASE_BADGE_TONE[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }
 
 function MetricCard({

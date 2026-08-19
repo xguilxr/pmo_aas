@@ -346,6 +346,27 @@ export const PHASE_ORDER: readonly ProjectPhase[] = [
   "cancelado",
 ];
 
+/**
+ * El tono de la insignia de fase. Vive con el catálogo y no en las pantallas:
+ * estaba escrito dos veces —en la lista de proyectos y en el detalle— con las
+ * mismas cinco claves y los mismos cinco valores, y una fase nueva obligaba a
+ * recordar las dos copias.
+ *
+ * ADR-022: `cancelado` **no** comparte el tono de `cerrado`. Distinguir a
+ * simple vista un proyecto que cumplió de uno que se cortó es la razón de ser
+ * de esa decisión, y aquí es donde se hace visible.
+ */
+export const PHASE_BADGE_TONE: Record<
+  ProjectPhase,
+  "info" | "success" | "warning" | "neutral" | "danger"
+> = {
+  preparacion: "info",
+  ejecucion: "success",
+  hypercare: "warning",
+  cerrado: "neutral",
+  cancelado: "danger",
+};
+
 export const TYPE_LABEL: Record<ProjectType, string> = {
   transformacion: "Transformación",
   operacion: "Operación",
@@ -358,6 +379,17 @@ export const HEALTH_LABEL: Record<ProjectHealth, string> = {
   yellow: "Amarillo",
   red: "Rojo",
 };
+
+/**
+ * El semáforo en palabras. Existía cinco veces —tres bajo este mismo nombre,
+ * una como `RAG_LABEL`— porque la salud llega de la API como `string` y no
+ * como `ProjectHealth`: cada pantalla se hacía su propio `Record<string,
+ * string>` para poder indexarlo. Esta función es ese accesor, una vez.
+ */
+export function etiquetaSalud(valor: string | null | undefined): string {
+  if (!valor) return "—";
+  return HEALTH_LABEL[valor as ProjectHealth] ?? valor;
+}
 
 export const MEMBER_ROLE_LABEL: Record<ProjectMemberRole, string> = {
   pm: "Project Manager",

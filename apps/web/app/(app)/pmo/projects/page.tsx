@@ -22,6 +22,7 @@ import {
 } from "@/lib/api/organizations";
 import {
   HEALTH_LABEL,
+  PHASE_BADGE_TONE,
   PHASE_LABEL,
   PHASE_ORDER,
   TYPE_LABEL,
@@ -634,19 +635,7 @@ function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
 }
 
 function PhasePill({ phase }: { phase: ProjectPhase }) {
-  const tone: Record<
-    ProjectPhase,
-    "info" | "warning" | "neutral" | "success" | "danger"
-  > = {
-    preparacion: "info",
-    ejecucion: "success",
-    hypercare: "warning",
-    cerrado: "neutral",
-    // ADR-022: cancelado se distingue de cerrado a simple vista, que es el
-    // punto entero de la decisión.
-    cancelado: "danger",
-  };
-  return <Badge variant={tone[phase]}>{PHASE_LABEL[phase]}</Badge>;
+  return <Badge variant={PHASE_BADGE_TONE[phase]}>{PHASE_LABEL[phase]}</Badge>;
 }
 
 function ProgressBar({ value }: { value: number }) {

@@ -29,6 +29,7 @@ import {
   RiskMatrix,
   TrendLines,
   Treemap,
+  colorSalud,
 } from "@/components/dashboard-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { ApiError } from "@/lib/api";
@@ -64,6 +65,7 @@ import {
   PHASE_LABEL,
   PHASE_ORDER,
   TYPE_LABEL,
+  etiquetaSalud,
   type ProjectPhase,
   type ProjectType,
 } from "@/lib/api/projects";
@@ -74,18 +76,6 @@ import { SortableTh } from "@/components/ui/sortable-th";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { formatearDesglose, formatearImporte, monedaUnica } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
-
-const HEALTH_LABEL: Record<string, string> = {
-  green: "Verde",
-  yellow: "Amarillo",
-  red: "Rojo",
-};
-
-const HEALTH_COLOR: Record<string, string> = {
-  green: "var(--color-success-fg)",
-  yellow: "var(--color-warning-fg)",
-  red: "var(--color-danger-fg)",
-};
 
 // ADR-023: la fase es ORDINAL —preparación → ejecución → hypercare → cerrado
 // es una secuencia—, así que va con la rampa de un solo tono, no con cuatro
@@ -447,9 +437,9 @@ function DashboardInner() {
   const healthData = useMemo(() => {
     const entries = charts ? toEntries(charts.portfolio_health) : [];
     return entries.map(([k, v]) => ({
-      label: HEALTH_LABEL[k] ?? k,
+      label: etiquetaSalud(k),
       value: Number(v) || 0,
-      color: HEALTH_COLOR[k] ?? PALETTE.neutral,
+      color: colorSalud(k),
     }));
   }, [charts]);
 
@@ -1010,7 +1000,7 @@ function HealthDot({ health }: { health: string | null }) {
         : health === "red"
           ? "bg-[var(--color-danger-fg)]"
           : "bg-[var(--color-tertiary)]";
-  const label = HEALTH_LABEL[health] ?? health;
+  const label = etiquetaSalud(health);
   return (
     <span
       title={label}

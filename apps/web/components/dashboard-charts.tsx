@@ -288,11 +288,26 @@ export function serieColor(i: number): string {
 // Heatmap, Treemap). Todos render-only y consumen tokens del design-system.
 // ===========================================================================
 
-const HEALTH_FILL: Record<string, string> = {
+/**
+ * El semáforo, como color. Se exporta porque estaba escrito cuatro veces
+ * —aquí, en el tablero como `HEALTH_COLOR`, y en el detalle de organización y
+ * de programa como `HEALTH_FILL`— con los mismos tres pares. Cuatro copias del
+ * mismo diccionario es cuatro sitios donde el día que cambie el token del
+ * ámbar, tres se quedan atrás.
+ *
+ * Vive con `PALETTE` y no con las etiquetas de `lib/api/projects.ts` a
+ * propósito: el color es una decisión del gráfico; la palabra, del vocabulario.
+ */
+export const HEALTH_FILL: Record<string, string> = {
   green: "var(--color-success-fg)",
   yellow: "var(--color-warning-fg)",
   red: "var(--color-danger-fg)",
 };
+
+/** El color del semáforo, con el neutro para lo que no tiene salud declarada. */
+export function colorSalud(valor: string | null | undefined): string {
+  return HEALTH_FILL[valor ?? ""] ?? PALETTE.neutral;
+}
 
 /**
  * ADR-023: el `tone` de un medidor es un ESTADO, no una serie — «este número

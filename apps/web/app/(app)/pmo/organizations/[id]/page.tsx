@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
 import { KpiCard } from "@/components/kpi-card";
-import { Legend, PALETTE, Pie, RiskMatrix, serieColor, TrendLines } from "@/components/dashboard-charts";
+import { Legend, PALETTE, Pie, RiskMatrix, colorSalud, serieColor, TrendLines } from "@/components/dashboard-charts";
+import { etiquetaSalud } from "@/lib/api/projects";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
@@ -29,13 +30,6 @@ import {
   type OrgPanelProgram,
   type OrgPanelProject,
 } from "@/lib/api/organizations";
-
-const HEALTH_LABEL: Record<string, string> = { green: "Verde", yellow: "Amarillo", red: "Rojo" };
-const HEALTH_FILL: Record<string, string> = {
-  green: "var(--color-success-fg)",
-  yellow: "var(--color-warning-fg)",
-  red: "var(--color-danger-fg)",
-};
 
 /**
  * US-068 — Página PMO de organización.
@@ -114,9 +108,9 @@ export default function PmoOrganizationPage() {
       if (pj.health_status && pj.health_status in counts) counts[pj.health_status] += 1;
     }
     return (["green", "yellow", "red"] as const).map((k) => ({
-      label: HEALTH_LABEL[k],
+      label: etiquetaSalud(k),
       value: counts[k],
-      color: HEALTH_FILL[k],
+      color: colorSalud(k),
     }));
   }, [panel]);
 
