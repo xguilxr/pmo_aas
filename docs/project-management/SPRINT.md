@@ -2,7 +2,7 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-19
 revisar_cada: 30d
 ---
 
@@ -17,16 +17,11 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Reestructura-W1** en `claude/handoff-development-2awr5v`. Guía:
-`drafts/reestructura-plan.md`. Esperan verificación del owner:
+**Sin US activa.** Reestructura-W1 implementada y pusheada; el PR **#594**
+espera tu verificación. Detalle en `SPRINT-DONE-HISTORY.md` (ronda 2026-08-19).
 
-- [x] **198** `portfolios` + FKs + consistencia (ADR-037, 0108).
-- [x] **199** CRUD `/portfolios`; BU/deptos fuera de la API (0109).
-- [x] **202** fases/tipo en español y compat (ADR-038, 0110).
-- [x] **200** UI admin: Portafolio ⊃ Programa, formularios y árbol.
-- [x] **201** cascada org → portafolio → programa: tablero, cross, snapshots.
-
-- [x] **limpieza** ENH-190 retirada (DEC-032, 0111) + residuo de W1.
+Próximo paso: verificar #594, cerrar #588–#592, desplegar `0105`–`0111`. Después,
+**W2** según la «Guía de sesiones» de `drafts/reestructura-plan.md`.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
@@ -35,32 +30,31 @@ revisar_cada: 30d
 
 ## 📥 INBOX / TRIAGE
 
-### Reestructura de plataforma — Bloque Reestructura-W1 (propuesto)
+### Reestructura de plataforma — oleadas siguientes
 
-Planeación en `docs/epics/drafts/reestructura-{conceptos,plan,inventario,modelo-datos}.md`.
-BU/Departamentos se reemplazan por Portafolio ⊃ Programa (owner 2026-08-19,
-sin datos productivos que mapear). `status:ready` y **wireframes aprobados**
-por el owner (2026-08-19) — la construcción arranca en sesiones nuevas con
-la «Guía de sesiones» de `reestructura-plan.md` (mapas:
-`docs/architecture/mapa-{backend,frontend}.md`). Orden: US-198 primero.
-
-Estado de las cinco USs: arriba, en IN-PROGRESS. Issues #588 a #592.
-
-- 2026-08-07 — **Conformidad cerrada** (ADR-036); detalle en
-  `docs/conformidad/asvs-l1.md`. Vuelve a la mesa solo con un cliente que exija
-  certificación, un requisito contractual o un incidente de credenciales.
+Planeación en `docs/epics/drafts/reestructura-{conceptos,plan,inventario,modelo-datos}.md`
+(mapas: `docs/architecture/mapa-{backend,frontend}.md`). W1 cerrada. Lo que
+queda comprometido de las oleadas: **W3** RLS de Postgres, **W8** el `drop` de
+`business_units` y `departments` cuando el contador de compat lo confirme.
 
 ### Producto — abierto
 
-- [ ] **Desplegar lo mergeado (#584/#585).** Migraciones `0105`, `0106` y
-  `0107`. Al desplegar se cierran **todas las sesiones vivas** (ADR-033) y
-  entrar al panel pasa a ser dos pasos (ADR-035) — ten acceso a tu correo. Si
-  Resend se cae, ningún administrador entra.
-- [ ] **Cerrar las ventanas de compatibilidad** cuando el contador lo permita.
-  Se cuentan por `compat.nombre_viejo`; fichas en `core/compatibilidad.py`.
-  Abiertas: `phase=support`, `portfolio_function`, `wbs`, `amber_max` y
-  `cookie:refresh_token` — esta última se cierra sola al caducar las cookies
-  anteriores a ADR-033.
+- [ ] **Desplegar `0105`–`0111`** (#584/#585 y #594). `0105`–`0107` cierran
+  **todas las sesiones vivas** (ADR-033) y el panel pasa a dos pasos (ADR-035):
+  ten acceso a tu correo, y si Resend se cae ningún administrador entra. De W1,
+  mirar el registro del despliegue: `0110` lista los `projects.type` sin traducir
+  y `0111` cuántos inquilinos tenían `org_label`.
+- [ ] **Tapar un hueco antes de cerrar ventanas de compat.** `GET /projects`
+  mete `phase` y `type` crudos en el `IN (...)` sin normalizar ni registrar: el
+  contador **no ve** a quien filtra con el nombre viejo, así que cerrar `phase=*`
+  fiándose de él rompería a ese cliente en silencio. Fichas en
+  `core/compatibilidad.py`; abiertas además `phase=support`,
+  `portfolio_function`, `wbs`, `amber_max` y `cookie:refresh_token`.
+- [ ] **Decidir los nueve follow-ups del PR #594**, listados ahí con su
+  evidencia. Los de producto: la cadena de permisos muerta (`CurrentUser.has`),
+  `lib/api/report-templates.ts` (único cliente de un router vivo sin pantalla),
+  ~40 exports de `lib/api/*` sin consumidor, y
+  `/superadmin/tenants/[id]/permissions` sin enlace.
 - [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los valores de
   US-196 son razonados, no medidos; se ajustan en `settings`, sin tocar código.
 - [ ] **`design-system/tokens.md`** describe una paleta anterior a D-7 y
@@ -68,6 +62,10 @@ Estado de las cinco USs: arriba, en IN-PROGRESS. Issues #588 a #592.
   paleta vigente (trabajo de diseño).
 - [ ] **Línea base** (D-6), sin la cual «desviación» no tiene referente, y
   **DCMA 14-point**. Épica propia, sin abrir.
+
+- 2026-08-07 — **Conformidad cerrada** (ADR-036); detalle en
+  `docs/conformidad/asvs-l1.md`. Vuelve a la mesa solo con un cliente que exija
+  certificación, un requisito contractual o un incidente de credenciales.
 
 ---
 
