@@ -296,13 +296,10 @@ def test_tc_la_migracion_renombra_fases_y_tipos_y_revierte(tmp_path: Path) -> No
     projects = _tabla(Project, md)
     lessons = _tabla(Lesson, md)
 
+    # Sin listener de escrituras: el que comprueba que cada `UPDATE` va acotado
+    # es el test hermano, con su propia lista. Aquí se recolectaba y no se
+    # afirmaba nada, que es una instrumentación que solo cuesta leerla.
     motor = create_engine(f"sqlite:///{tmp_path / 'us202.db'}")
-    escrituras: list[str] = []
-
-    @sa.event.listens_for(motor, "before_cursor_execute")
-    def _anotar(conn, cursor, statement, parameters, context, executemany):
-        if statement.lstrip().upper().startswith("UPDATE"):
-            escrituras.append(statement)
 
     tenant = str(uuid4())
     try:
@@ -344,7 +341,6 @@ def test_tc_la_migracion_renombra_fases_y_tipos_y_revierte(tmp_path: Path) -> No
                 ],
             )
 
-        escrituras.clear()
         with motor.begin() as cx:
             with Operations.context(MigrationContext.configure(cx)):
                 modulo.upgrade()

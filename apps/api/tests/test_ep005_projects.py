@@ -191,14 +191,6 @@ async def test_tc067_filters_combine(client, db_session):
 # ============================================================================
 
 
-async def _create_project(client, auth, org_id, pm_id) -> str:
-    r = await client.post(
-        "/api/v1/projects", json=_project_body(org_id, pm_id), headers=auth["_authz"]
-    )
-    assert r.status_code == 201, r.text
-    return r.json()["id"]
-
-
 # Tests de project_areas eliminados (ENH-078): la feature se movió al
 # catálogo tenant `/api/v1/areas` + `area_assignments`. Ver
 # test_us064_raid_area.py para el helper actualizado y test_us097_*

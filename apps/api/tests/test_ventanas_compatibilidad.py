@@ -12,7 +12,9 @@ se quita la ventana; si no, se sabe quién la usa antes de romperle nada.
 
 Esta suite defiende las dos mitades de que eso funcione:
 
-1. **Que el rastro salga**, en las cuatro puertas abiertas hoy.
+1. **Que el rastro salga** por cada puerta instrumentada. Cuántas hay no se
+   escribe aquí: sale de contar los `registrar_uso` del código, y una cifra
+   guardada caduca con la siguiente ventana (MCA CTX-03).
 2. **Que ninguna ventana quede sin declarar.** Una ventana que nadie anotó es
    exactamente la que nadie recuerda cerrar — el trinquete recorre el código
    buscando `registrar_uso` y exige su fila en `VENTANAS`.
@@ -65,7 +67,7 @@ def test_registrar_uso_nunca_lanza():
 
 
 # ---------------------------------------------------------------------------
-# Las cuatro puertas abiertas hoy
+# Las puertas abiertas hoy
 # ---------------------------------------------------------------------------
 
 

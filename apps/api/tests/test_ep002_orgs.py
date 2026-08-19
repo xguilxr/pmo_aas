@@ -227,18 +227,12 @@ async def test_tcmt001_isolation_orgs(client, db_session):
     assert "OrgInA" not in names
 
 
-# ==============================================================================
-# US-003 — CRUD Business Units
-# ==============================================================================
-
-
 async def _create_org(client, auth, name="OrgRoot"):
     r = await client.post("/api/v1/organizations", json={"name": name}, headers=auth["_authz"])
     assert r.status_code == 201, r.text
     return r.json()["id"]
 
 
-# TC-NEW-003: nombre BU duplicado en misma org → 409
 # ==============================================================================
 # US-199 — CRUD de portafolios (reemplaza el de BU/departamentos, ADR-037)
 # ==============================================================================

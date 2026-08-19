@@ -1,5 +1,4 @@
 """Helpers para crear entidades en tests."""
-from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,10 +92,6 @@ async def login(client, identifier: str, password: str) -> dict:
     data = r.json()
     data["_authz"] = {"Authorization": f"Bearer {data['access_token']}"}
     return data
-
-
-def _password(ch: str = "a") -> str:
-    return f"Str0ng-Pass-{ch}{uuid4().hex[:4]}!"
 
 
 async def enable_tenant_ai(
