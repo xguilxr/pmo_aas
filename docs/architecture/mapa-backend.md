@@ -1,5 +1,5 @@
 ---
-tipo: arquitectura
+tipo: referencia
 responsable: propietario
 estado: vigente
 revisado: 2026-08-19
