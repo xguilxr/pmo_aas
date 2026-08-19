@@ -528,6 +528,14 @@ function DashboardInner() {
             <option value="">
               {orgFilter ? "Todos los portafolios" : "Elige una organización"}
             </option>
+            {/* DIS-03 — tres estados, no dos: «elige una organización» y «esta
+                organización no tiene portafolios» son cosas distintas, y sin
+                distinguirlas el desplegable vacío se lee como que algo falló. */}
+            {orgFilter && portfolios.length === 0 ? (
+              <option value="" disabled>
+                (esta organización no tiene portafolios)
+              </option>
+            ) : null}
             {portfolios.map((pf) => (
               <option key={pf.id} value={pf.id}>
                 {pf.name}
@@ -551,6 +559,16 @@ function DashboardInner() {
             <option value="">
               {orgFilter ? "Todos los programas" : "Elige una organización"}
             </option>
+            {/* Con portafolio elegido, la lista viene recortada a los suyos: hay
+                que decir cuál de los dos vacíos es, o parece que se perdieron
+                los programas de la organización. */}
+            {orgFilter && programs.length === 0 ? (
+              <option value="" disabled>
+                {portfolioFilter
+                  ? "(este portafolio no tiene programas)"
+                  : "(esta organización no tiene programas)"}
+              </option>
+            ) : null}
             {programs.map((pg) => (
               <option key={pg.id} value={pg.id}>
                 {pg.name}

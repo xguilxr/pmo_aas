@@ -141,7 +141,17 @@ export function TenantCrossFilters({
       }
       disabled={!value.organization_id}
     >
-      <option value="">Todos los portafolios</option>
+      <option value="">
+        {value.organization_id ? "Todos los portafolios" : "Elige una organización"}
+      </option>
+      {/* DIS-03 — «elige una organización» y «esta organización no tiene
+          portafolios» son dos vacíos distintos. Sin distinguirlos, un
+          desplegable con una sola opción se lee como que algo falló. */}
+      {value.organization_id && portfolios.length === 0 ? (
+        <option value="" disabled>
+          (esta organización no tiene portafolios)
+        </option>
+      ) : null}
       {portfolios.map((pf) => (
         <option key={pf.id} value={pf.id}>
           {pf.code ? `${pf.code} — ${pf.name}` : pf.name}
@@ -164,7 +174,18 @@ export function TenantCrossFilters({
       }
       disabled={!value.organization_id}
     >
-      <option value="">Todos los programas</option>
+      <option value="">
+        {value.organization_id ? "Todos los programas" : "Elige una organización"}
+      </option>
+      {/* Con portafolio elegido la lista viene recortada a los suyos, así que el
+          vacío tiene dos causas y hay que decir cuál. */}
+      {value.organization_id && programs.length === 0 ? (
+        <option value="" disabled>
+          {value.portfolio_id
+            ? "(este portafolio no tiene programas)"
+            : "(esta organización no tiene programas)"}
+        </option>
+      ) : null}
       {programs.map((p) => (
         <option key={p.id} value={p.id}>
           {p.name}
