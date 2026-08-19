@@ -82,6 +82,8 @@ Reglas blandas (no anulan 1 US = 1 commit ni la revisión del owner):
 | `docs/epics/DB-CHANGES.md` | Si el cambio toca esquema |
 | Skill `verificar` | Al comprobar que algo funciona |
 | `docs/architecture/modelo-amenazas.md` | Si se cruza una frontera de confianza |
+| `docs/architecture/mapa-backend.md` | Al tocar `apps/api` — tablas, routers, scoping, sin re-explorar |
+| `docs/architecture/mapa-frontend.md` | Al tocar `apps/web` — rutas, componentes, tokens, sin re-explorar |
 
 No se explora fuera de estas listas: el contexto es finito y el CI hace cumplir
 el techo (MCA CTX-04; mediciones fechadas en `conformidad.yaml`).

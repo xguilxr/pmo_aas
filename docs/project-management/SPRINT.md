@@ -31,10 +31,10 @@ Sin US activa. Branch de la sesión: `claude/docs-context-debloat-1j4o3b`
 
 Planeación en `docs/epics/drafts/reestructura-{conceptos,plan,inventario,modelo-datos}.md`.
 BU/Departamentos se reemplazan por Portafolio ⊃ Programa (owner 2026-08-19,
-sin datos productivos que mapear). `status:ready` puesto por el owner el
-2026-08-19; **no arrancar** hasta que apruebe los wireframes (canvas
-«Mockups Reestructura PMO»: hi-fi de 4 vistas + wireframes de todas las
-páginas):
+sin datos productivos que mapear). `status:ready` y **wireframes aprobados**
+por el owner (2026-08-19) — la construcción arranca en sesiones nuevas con
+la «Guía de sesiones» de `reestructura-plan.md` (mapas:
+`docs/architecture/mapa-{backend,frontend}.md`). Orden: US-198 primero.
 
 - [ ] US-198 #588 — Modelo y migración: entidad Portfolio + re-parenting de Programs
 - [ ] US-199 #589 — API: CRUD de portafolios + retiro de BU/deptos (dep: US-198)

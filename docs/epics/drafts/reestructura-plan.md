@@ -15,6 +15,17 @@ revisar_cada: 30d
 > navegación y se agregan las dos capas faltantes: gestión ejecutiva de
 > portafolio y capacity planning.
 
+## Estado (2026-08-19) — planeación CERRADA, lista para construir
+
+| Fase | Estado | Entregable |
+|---|---|---|
+| Fase 0 — Inventario | ✅ | `reestructura-inventario.md` |
+| Fase 1 — Modelo de datos | ✅ | `reestructura-modelo-datos.md` (BU/depto: reemplazo directo, sin datos que mapear) |
+| Fase 2 — Navegación y diseño | ✅ **wireframes aprobados por el owner** | `reestructura-navegacion.md` + canvas «Mockups Reestructura PMO» (hi-fi de 4 vistas + wireframes de todas las páginas) |
+| Fase 3+ — Construcción | ▶️ lista | Bloque Reestructura-W1: US-198 #588 … US-202 #592, todos `status:ready` |
+
+La construcción corre en sesiones nuevas: ver «Guía de sesiones» al final.
+
 ## Norte
 
 1. De seguimiento operativo «proyecto por proyecto» → herramienta de
@@ -126,7 +137,47 @@ lane), CI verde + merge antes de la siguiente US, fases A–D con `triage` y
 - **23 proyectos del prospecto**: la importación masiva (B5) conviene
   temprano para no capturar a mano al onboardear.
 
+## Guía de sesiones de desarrollo (eficiencia de contexto)
+
+Objetivo: que ninguna sesión re-explore lo que la planeación ya destiló.
+
+**Receta por sesión (1 sesión = 1 US):**
+
+1. Carga estándar de `CLAUDE.md` §1 (HANDOFF, SPRINT, índice de epics,
+   LESSONS) — nada más por default.
+2. Abrir el issue de la US (tiene AC, TC y archivos a tocar) y **solo** los
+   docs que nombra:
+   - Backend → `docs/architecture/mapa-backend.md` (tablas, routers,
+     scoping, services — sin re-leer modelos completos).
+   - Frontend → `docs/architecture/mapa-frontend.md` (rutas, componentes
+     reutilizables, tokens) + el mockup/wireframe de la pantalla en el
+     canvas «Mockups Reestructura PMO».
+   - Diseño de la oleada → la sección relevante de
+     `reestructura-modelo-datos.md` (no el archivo entero).
+3. Leer solo las secciones de código que la US toca (mapa → archivo →
+   sección); sub-agentes únicamente para research amplio (skill `delegar`).
+4. Cerrar con `cerrar-item` + actualizar la fila del mapa si el componente
+   cambió (mismo commit) + `handoff` al terminar la sesión.
+
+**Los mapas son contrato**: si un mapa contradice el código, gana el código
+y la sesión corrige el mapa en su commit. Así el costo de exploración se
+paga una vez.
+
+**Orden de arranque** (dependencias del bloque W1):
+US-198 → US-199 → {US-200, US-201 en paralelo solo si no comparten
+archivos} y US-202 tras US-198. Migraciones siempre secuenciales, CI verde
+y merge antes de la siguiente US (CLAUDE.md §8).
+
+**Modelo por tipo de sesión** (Claude Code):
+
+| Sesión | Modelo | Por qué |
+|---|---|---|
+| US con migración/diseño (US-198, W2, RLS) | Opus 5 (o Fable 5 si está disponible en el plan) | Decisiones irreversibles y razonamiento largo |
+| US de implementación estándar (US-199–202) | Opus 5 | Balance calidad/costo; effort `xhigh` (default de Claude Code) |
+| US mecánica acotada (renames, docs, UI simple) | Sonnet 5 | Suficiente y más barato |
+| Sub-agentes de research/inventario | Haiku 4.5 o Sonnet 5 | Trabajo mecánico (skill `delegar`) |
+
 ## Próximo paso inmediato
 
-Ejecutar **Fase 0** (inventario con sub-agentes) y traer la matriz
-`existente → destino` para decidir con el owner qué se reutiliza.
+Abrir sesión nueva y arrancar **US-198 #588** (modelo y migración de
+Portfolio) siguiendo la receta de arriba.
