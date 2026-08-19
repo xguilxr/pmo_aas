@@ -57,9 +57,7 @@ migraciones `0105`–`0107` ya mergeadas.
 - **Roles de agente IA ≠ RBAC de usuarios**: catálogo y permisos separados.
 - Los **mapas de componentes son contrato**: si contradicen el código, gana
   el código y la sesión corrige el mapa en su mismo commit.
-- Modelos por sesión: Opus 5 default de implementación; Fable 5 para
-  migraciones/arquitectura; Sonnet 5 mecánico; Haiku en sub-agentes
-  (tabla en `reestructura-plan.md`).
+- Modelos por sesión: tabla en `reestructura-plan.md` (Opus 5 default).
 
 ## 📋 Lo que sigue (resumen; detalle en SPRINT.md → INBOX)
 
