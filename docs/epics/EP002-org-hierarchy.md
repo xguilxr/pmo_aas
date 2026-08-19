@@ -41,7 +41,7 @@ pero no puede contradecir a su programa (ver US-198).
 ## Roles involucrados
 
 - Super Admin (gestiona tenants).
-- Administrador y PMO Manager Senior (gestionan organizaciones, BU, departamentos y programas).
+- Administrador y PMO Manager Senior (gestionan organizaciones, portafolios y programas).
 
 ---
 
@@ -92,21 +92,24 @@ pero no puede contradecir a su programa (ver US-198).
 ---
 
 ### US-010 — Jerarquía visual y navegación (breadcrumb)
-*(actualizado: incluye BU y Depto)*
+*(actualizado 2026-08-19: la jerarquía es la de ADR-037; BU y Depto salen)*
 
 **Como** Project Manager
-**Quiero** ver breadcrumb PMO > Org > [BU >] [Depto >] Programa > Proyecto
+**Quiero** ver breadcrumb PMO > Org > [Portafolio >] [Programa >] Proyecto
 **Para** orientarme siempre donde estoy.
 
 **Criterios de aceptación:**
 - [ ] Breadcrumb visible en todas las pantallas dentro de un proyecto.
 - [ ] Cada segmento clickeable navega al nivel correspondiente.
-- [ ] Si el proyecto no tiene BU/Depto/Programa, breadcrumb omite esos niveles.
-- [ ] Sidebar muestra árbol expandible de Org → BU → Depto → Programas → Proyectos.
+- [ ] Si el proyecto no tiene portafolio ni programa, el breadcrumb omite esos
+  niveles. Los dos casos existen y son distintos: un proyecto puede colgar del
+  portafolio sin programa, o no estar clasificado todavía.
+- [x] Sidebar muestra árbol expandible Org → Portafolio → Programa → Proyecto,
+  con los cajones «Sin programa» y «Sin clasificar» (lo cumplió **US-200**).
 - [ ] Árbol filtrable por `q`.
 
 **Test Cases:**
-- `TC-029` (E2E) — Breadcrumb con 4 niveles navegable.
+- `TC-029` (E2E) — Breadcrumb navegable en todos sus niveles.
 - `TC-030` (E2E) — Sidebar muestra solo proyectos asignados al user.
 
 ---
@@ -204,11 +207,12 @@ Ver detalle del shape en
 
 **Criterios de aceptación:**
 - [ ] Sidebar expande sección "Organizaciones" con lista de orgs del tenant.
-- [ ] Cada org expandible muestra sus BUs → Deptos → Programas → Proyectos.
+- [x] Cada org expandible muestra sus Portafolios → Programas → Proyectos
+  (**US-200**), más los proyectos que cuelgan del portafolio sin programa.
 - [ ] Click en org → navega a detalle de organización.
 - [ ] Click en programa → navega a listado de proyectos del programa.
 - [ ] Respeta permisos: user solo ve orgs/proyectos donde tiene acceso.
-- [ ] Árbol lazy-load: no carga BU/Depto/Programas hasta expandir.
+- [x] Árbol lazy-load: cada nivel se pide al expandirlo (**US-200**).
 - [ ] Estado expandido persiste en `localStorage` por sesión.
 
 **Test Cases:**
@@ -225,9 +229,11 @@ Ver detalle del shape en
 
 **Criterios de aceptación:**
 - [ ] Ruta `/organizations` muestra grid de cards por organización.
-- [ ] Cada card muestra: logo, nombre, `#BU`, `#Departamentos`, `#Programas`, `#Proyectos activos`, salud del portafolio.
+- [ ] Cada card muestra: logo, nombre, `#Portafolios`, `#Programas`,
+  `#Proyectos activos`, salud de la cartera. Los KPI de portafolios y programas
+  ya los pinta el panel (**US-199/US-201**).
 - [ ] Click en card → navega a `/organizations/{id}` con detalle de la org.
-- [ ] En el detalle: tabs con Programas, Proyectos, BUs/Deptos, Métricas.
+- [ ] En el detalle: tabs con Portafolios, Programas, Proyectos, Métricas.
 - [ ] Botón "Nueva Organización" visible para Admin/Senior PMO.
 
 **Test Cases:**

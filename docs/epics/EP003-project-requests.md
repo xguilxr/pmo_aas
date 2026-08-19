@@ -128,7 +128,7 @@ El proceso de solicitud de nuevos proyectos se estandariza: formulario con datos
   - `sponsor = request.sponsor`
   - `budget = request.budget`
   - `request_id = request.id` (traza)
-  - `phase = 'planning'`
+  - `phase = 'preparacion'` (el default del modelo desde US-202)
   - `pm_id` a elegir (body: `{pm_id}`).
 - [ ] Solo funciona si `request.status = 'approved'`.
 - [ ] Idempotente: si ya existe `project` con `request_id`, devuelve ese.
@@ -195,16 +195,20 @@ GET    /api/v1/project-requests/{id}/attachments/{attId}/download
 **Como** solicitante
 **Quiero** capturar contactos (sponsor_email, solicitante) y detalles extra
 (entregables, personas clave, if_not_done, observaciones)
-**Para** que los revisores tengan contexto completo y FK reales a BU/Depto.
+**Para** que los revisores tengan contexto completo y la solicitud quede clasificada.
 
 **Criterios de aceptación:**
 - [x] Migración Alembic `20260420_0011`: columnas `requester_name`,
   `requester_email`, `sponsor_email`, `key_people`, `if_not_done`,
   `observations`, `entregables`.
-- [x] `business_unit_id` y `department_id` validados contra tenant+org
-  (422 si no pertenecen o cruzan BU).
-- [x] Campos text legacy (`business_unit`, `department`) se mantienen en
-  paralelo hasta migración de datos (fase 2).
+- [x] ~~`business_unit_id` y `department_id` validados contra tenant+org~~
+  **Retirado en US-199** (migración 0109 soltó las dos columnas). Lo sustituye
+  la clasificación de ADR-037: `portfolio_id` y `program_id`, con la regla de
+  consistencia de `services/jerarquia.py` — con programa, el portafolio es el
+  del programa.
+- [x] Los campos de texto `business_unit` y `department` **se quedan**, y no
+  como legado: son las palabras del solicitante, no la jerarquía. US-200 los
+  reetiquetó «Área que solicita» y «Equipo o sub-área».
 - [x] `sponsor_email` obligatorio y validado como email.
 - [x] Defaults: si `requester_name`/`requester_email` no vienen, se toma
   `user.full_name` / `user.email`.
@@ -216,9 +220,10 @@ GET    /api/v1/project-requests/{id}/attachments/{attId}/download
 - `test_usnew011_full_payload` — crea con todos los campos ✅
 - `test_usnew011_sponsor_email_invalid` — 422 con email mal formado ✅
 - `test_usnew011_requester_defaults` — defaults al user autenticado ✅
-- `test_usnew011_bu_fk_mismatch` — BU fuera del tenant → 422 ✅
-- `test_usnew011_dept_in_wrong_bu` — depto no pertenece a BU → 422 ✅
-- `test_usnew011_bu_dept_fk_happy_path` — FKs correctas → 201 ✅
+- ~~`test_usnew011_bu_fk_mismatch`, `test_usnew011_dept_in_wrong_bu`,
+  `test_usnew011_bu_dept_fk_happy_path`~~ — se fueron con las columnas (US-199).
+  Lo que hoy cubre la clasificación de la solicitud es
+  `test_us199_portfolios_api.py`.
 
 **Estado de integración:** DONE (US-011). Charter (US-012) siguiente.
 
@@ -241,13 +246,17 @@ Project Charter
 - [x] Sección 4 (Gestión) se deriva dinámicamente desde `projects` al
   consultar (DEC-008).
 - [x] `GET /api/v1/projects/{id}/charter` devuelve el charter completo.
-- [x] `PATCH /api/v1/projects/{id}/charter` edita secciones 1-3 (valida
-  FKs BU/Depto).
+- [x] `PATCH /api/v1/projects/{id}/charter` edita secciones 1-3. Valida la
+  clasificación con la misma regla que el proyecto: con programa, el portafolio
+  es el del programa (US-199). Las FKs de BU/Depto que validaba antes ya no
+  existen.
 - [x] `GET /api/v1/projects/{id}/charter/pdf` devuelve HTML imprimible
   (generado on-demand). Renderer PDF nativo queda como follow-up; el
   navegador puede imprimir esta vista para obtener el PDF.
-- [x] El proyecto generado hereda `business_unit_id` y `department_id` de
-  la solicitud.
+- [x] El proyecto generado hereda la clasificación de la solicitud:
+  `portfolio_id` **y** `program_id`, los dos. Heredar solo el programa dejaría
+  el portafolio vacío y la vista ejecutiva sin el proyecto recién aprobado
+  (US-199). Antes heredaba `business_unit_id` y `department_id`.
 
 **Test Cases:**
 - `TC-NEW-019` — charter auto-creado con datos correctos ✅

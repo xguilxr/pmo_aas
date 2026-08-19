@@ -23,7 +23,7 @@ revisar_cada: 90d
 | # | Épica | Estado | Dependencias |
 |---|---|---|---|
 | [EP001](./EP001-auth-users.md) | Login y gestión de usuarios | MVP | — |
-| [EP002](./EP002-org-hierarchy.md) | Jerarquía org/BU/depto/programa/proyecto | MVP | EP001 |
+| [EP002](./EP002-org-hierarchy.md) | Jerarquía org → portafolio ⊃ programa → proyecto | MVP | EP001 |
 | [EP003](./EP003-project-requests.md) | Solicitud, aprobación y Project Charter | MVP | EP001, EP002 |
 | [EP004](./EP004-dashboard.md) | Dashboard y KPIs | MVP | EP001, EP002, EP005 |
 | [EP005](./EP005-projects.md) | Gestión de proyectos | MVP | EP001, EP002, EP003 |

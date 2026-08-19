@@ -104,8 +104,9 @@ no en BD.
 ## EP007 — Admin
 
 Sin schema nuevo. Toda la funcionalidad reutiliza tablas existentes
-(`tenants`, `users`, `roles`, `audit_logs`, `business_units`,
-`departments`).
+(`tenants`, `users`, `roles`, `audit_logs`, `organizations`, `portfolios`,
+`programs`). Hasta US-199 la sección de jerarquía del panel leía
+`business_units` y `departments`; ADR-037 las retiró.
 
 ## EP008 — IA
 

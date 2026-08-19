@@ -35,7 +35,7 @@ El dashboard da a Project Managers y PMO Managers una vista única del portafoli
 
 | KPI | Fuente |
 |---|---|
-| Proyectos Activos | `count(projects WHERE phase IN ('planning','execution','support'))` |
+| Proyectos Activos | `count(projects WHERE phase IN ('preparacion','ejecucion','hypercare'))` — las tres no terminales, derivadas de `FASES_ACTIVAS` y no escritas a mano en el endpoint |
 | Solicitudes en Revisión | `count(project_requests WHERE status='in_review')` |
 | Riesgos Abiertos | `count(risks WHERE status NOT IN ('closed'))` |
 | Riesgos Severos | `count(risks WHERE severity >= 13 AND status NOT IN ('closed'))` |
@@ -72,9 +72,9 @@ El dashboard da a Project Managers y PMO Managers una vista única del portafoli
 **Para** detectar patrones.
 
 **Gráficos:**
-1. **Pie chart — Proyectos por fase**: Planificación / Ejecución / Soporte / Cerrado.
+1. **Pie chart — Proyectos por fase**: Preparación / Ejecución / Hypercare / Cerrado / Cancelado.
 2. **Bar chart — Avance promedio por fase**.
-3. **Bar chart — Presupuesto por tipo de proyecto** (innovation, transformation, operation, bau).
+3. **Bar chart — Presupuesto por tipo de proyecto** (`transformacion`, `operacion`, `innovacion`, `bau`). Los proyectos sin tipo se agrupan bajo `unspecified`, que la API sintetiza para no perder el importe.
 4. **Pie chart — Salud del portafolio**: Verde / Amarillo / Rojo.
 
 **Criterios de aceptación:**
@@ -275,8 +275,8 @@ el reporte es el mismo contenido congelado a PDF.
 
 **US-151 — fundación de datos (`metric_snapshots`):**
 - Tabla `metric_snapshots`: foto **semanal** (lunes 02:00 UTC, Celery beat) de
-  métricas de stock a 4 niveles de scope (tenant/org/programa/proyecto). Habilita
-  tendencias y desbloquea S-05/S-07 de EP020.
+  métricas de stock por scope: `tenant`, `organization`, `portfolio` (US-201),
+  `program` y `project`. Habilita tendencias y desbloquea S-05/S-07 de EP020.
 - Servicio `services/analytics/snapshots.py` (cómputo + upsert idempotente);
   job `workers/tasks/snapshots.py`.
 - **BUG-082 (2026-06-29):** `avg_progress` del snapshot (base de la *evolución de
@@ -345,8 +345,9 @@ EP005).
 - `GET /api/v1/dashboard/health-matrix` — antes de responder, refresca la
   salud automática de los proyectos visibles **en bulk**
   (`refresh_health_bulk`) y devuelve solo proyectos activos
-  (`phase != closed`). Respeta visibilidad de US-168 (no-admin ve solo
-  sus proyectos vía `scoped_project_ids`).
+  (`phase != cerrado`; en su momento se escribió `closed`, que US-202 renombró).
+  Respeta visibilidad de US-168 (no-admin ve solo sus proyectos vía
+  `scoped_project_ids`).
 - Sección "Salud por dimensión (proyectos activos)" en `/pmo` con
   click-through al proyecto.
 - El snapshot semanal (`services/analytics/snapshots.py`) también

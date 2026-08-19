@@ -2,15 +2,22 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-19
 revisar_cada: 180d
 ---
 
 # Workaround: programas cross-empresa
 
 **ID:** `RUN-PROG-001`
-**Estado:** Vigente — 2026-04-29
-**Relacionado:** [ADR-016](../../adr/README.md#adr-016--programas-cross-empresa-diferir-hasta-criterio-de-demanda) · ENH-043 (#180)
+**Estado:** Vigente — reescrito el 2026-08-19 (ADR-037 dejó sin campo la Opción A)
+**Relacionado:** [ADR-016](../../adr/README.md#adr-016--programas-cross-empresa-diferir-hasta-criterio-de-demanda) · ENH-043 (#180) · ADR-037
+
+> **La solución estructural cambió de forma, no de estado.** ADR-016 difirió el
+> programa N:M por falta de demanda. ADR-037 anota que el agrupador cross ya no
+> tendría que ser un programa N:M: con el portafolio existiendo, sería **un
+> portafolio por encima de la organización**. Sigue diferido —hoy
+> `portfolios.organization_id` es obligatorio, así que un portafolio tampoco
+> cruza empresas— pero cuando se retome, se retoma por ahí.
 
 ---
 
@@ -60,35 +67,47 @@ Cada proyecto que entra al programa, aunque viva administrativamente
 bajo la org umbrella, **se etiqueta con la empresa real**. Usa uno
 de estos mecanismos:
 
-#### Opción A — usar el campo `business_unit` del Charter
+#### ~~Opción A — usar el campo `business_unit` del Charter~~ ⛔ nunca existió
 
-Captura la empresa real ahí (ej. `business_unit = "Empresa A"`). Es
-texto libre y permite filtrar luego en reportes.
+Esta opción era falsa desde que se escribió, y hay que decirlo porque es la que
+el runbook recomendaba: el acta **no tiene** ningún `business_unit` de texto
+libre. Tuvo un FK `business_unit_id` —que la migración 0109 soltó (US-199)— y ese
+apuntaba a una tabla de unidades de negocio, no a un nombre de empresa que se
+pudiera escribir. El único `business_unit` de texto libre del producto está en
+`project_requests`, es la **solicitud** y no el proyecto, y desde US-200 se
+llama «Área que solicita»: describe de dónde salió la petición, no a qué empresa
+pertenece el trabajo.
 
-#### Opción B — usar Áreas del proyecto (US-062)
+#### Opción A (era la B) — usar Áreas del proyecto (US-062) ← **la recomendada**
 
-Crea un Área por empresa (`Área: Empresa A`, `Área: Empresa B`) y
-asigna los miembros correspondientes. Esto te permite reportar
-participación por empresa.
+Crea un Área por empresa (`Empresa A`, `Empresa B`) y asigna los miembros
+correspondientes. Es la única de las tres que deja el dato en una entidad con la
+que después se puede consultar y reportar participación por empresa.
 
-#### Opción C — convención en el nombre del proyecto
+#### Opción B (era la C) — convención en el nombre del proyecto
 
-Prefijo `[Empresa A] Proyecto X`. Útil para listados rápidos pero
-limitante para reportes estructurados.
+Prefijo `[Empresa A] Proyecto X`. Sirve para encontrarlos con el buscador
+(`GET /projects?q=`), y para nada más: no hay forma de agrupar ni de sumar por
+un prefijo de texto.
 
-**Recomendación owner:** usa la Opción A por simplicidad. Complementa con
-la Opción B cuando el proyecto necesita stakeholders o áreas dedicadas
-por empresa.
+**Recomendación:** Áreas. Antes este runbook recomendaba la Opción A por
+simplicidad, y esa simplicidad era que el campo no existía.
 
 ### 4. Reporte cross-empresa
 
 El reporte ejecutivo del programa (US-038) muestra todos los proyectos
 del programa. Para desglosar por empresa:
 
-- En el listado de proyectos del programa, filtra por
-  `business_unit = "Empresa A"` (header de columna).
-- En reportes PDF, el bloque "Información general" del proyecto incluye
-  `business_unit`. Quedan agrupables manualmente.
+- **Por Área.** Es la vía que funciona: el organigrama del programa
+  (`GET /programs/{id}/organigrama/export`) sale por área, así que el desglose
+  por empresa cae solo si cada empresa es un Área.
+- **Por nombre**, si se usó el prefijo: `GET /projects?program_id=…&q=[Empresa A]`.
+- Lo que **no** existe: filtrar el listado por empresa. Los filtros de
+  `GET /projects` son `organization_id`, `portfolio_id`, `program_id`, `phase`,
+  `type`, `health`, prioridad y `q` — ninguno es «empresa subordinada», porque el
+  modelo no tiene ese concepto. El bloque «Información general» del acta en PDF
+  lista organización, portafolio y programa; `business_unit` no aparece ahí y
+  nunca apareció.
 
 ---
 
@@ -100,9 +119,9 @@ del programa. Para desglosar por empresa:
 2. **Permisos por org no se propagan**: si el PM de "Empresa A" no
    tiene permisos sobre la org umbrella, no verá el proyecto. Solución:
    asigna membership directa al proyecto (US-074 user management).
-3. **Reportes cross-empresa requieren filtro manual** por `business_unit`
-   o Áreas; no hay un dashboard nativo "ver proyectos por empresa
-   subordinada".
+3. **Reportes cross-empresa requieren Áreas.** No hay un dashboard nativo
+   «ver proyectos por empresa subordinada», y tampoco un campo de empresa en el
+   proyecto por el que filtrar.
 4. **Cuentas analíticas (presupuesto consolidado por empresa)**: no
    soportadas; cada proyecto reporta su presupuesto al programa
    umbrella sin atribución por empresa.
@@ -143,12 +162,14 @@ ETA estimado: 3-4 días + tests.
 
 1. Crea (si no existe) la org `Grupo XYZ` desde `/admin/organizations`.
 2. Crea el programa `Transformación Digital Q3 2026` en `Grupo XYZ`.
-3. Crea los 2 proyectos bajo `Grupo XYZ`:
-   - `ERP modernización` — `business_unit = "Empresa A"`.
-   - `CRM upgrade` — `business_unit = "Empresa B"`.
-4. Asigna PMs y membership directa al proyecto.
-5. Para el reporte cross-empresa: exporta el listado del programa y agrupa
-   por `business_unit` en Excel/Sheets.
+3. Crea un Área por empresa en el catálogo del inquilino: `Empresa A` y
+   `Empresa B`.
+4. Crea los 2 proyectos bajo `Grupo XYZ` y asígnale a cada uno su Área:
+   - `ERP modernización` → Área `Empresa A`.
+   - `CRM upgrade` → Área `Empresa B`.
+5. Asigna PMs y membership directa al proyecto.
+6. Para el reporte cross-empresa: exporta el organigrama del programa
+   (`GET /programs/{id}/organigrama/export`), que ya sale por área.
 
 **Limitación que el workaround NO resuelve:** si Daniel y Mariana no
 tienen rol global, no podrán navegar a `/pmo/organizations/Grupo XYZ`

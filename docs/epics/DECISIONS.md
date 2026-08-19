@@ -42,7 +42,8 @@ revisar_cada: 90d
 **Fecha:** 2026-04-20  
 **Decisión:** `business_units` y `departments` son tablas con FK reales, no campos JSONB en organizations.  
 **Rationale:** Permite FK desde programs/projects, filtros eficientes, y RLS por nivel.  
-**Alternativa descartada:** `organizations.settings JSONB` con BU/Depto embebidos (no permite FK).
+**Alternativa descartada:** `organizations.settings JSONB` con BU/Depto embebidos (no permite FK).  
+**Qué sobrevive (nota del 2026-08-19):** el criterio, entero — los niveles de la jerarquía son tablas con FK reales y no JSONB, y `portfolios` nace siguiendo esta misma regla. Lo que cambió es **qué** niveles existen: ADR-037 retiró `business_units` y `departments` y puso el portafolio en su lugar. Las dos tablas quedan sin lectores y se dropean en W8.
 
 ## DEC-004 — 1 US = 1 commit = 1 sesión de Claude Code
 **Fecha:** 2026-04-20  

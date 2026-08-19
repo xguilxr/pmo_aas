@@ -633,6 +633,14 @@ Las 6 entidades afectadas son: `Organization`, `Program`,
 contraparte con hard-delete previo era `superadmin.delete_tenant`
 (slug confirm, blast radius enorme, fuera del alcance del tenant).
 
+> **Nota del 2026-08-19 (no altera la decisión).** `BusinessUnit` y `Department`
+> se retiraron en ADR-037 / US-199, y `Portfolio` entró al patrón con sus dos
+> pasos, su `hard-delete-preview` y su cascada (US-199). Las listas de abajo
+> —las 6 entidades y la implementación per-entidad— describen el estado del
+> 2026-05-05: la parte de BU/Departamento ya no es ejecutable, porque las 7
+> columnas sobre las que hacía `SET NULL` las soltó la migración 0109. El patrón
+> en sí sigue vigente y sin cambios.
+
 **Decisión:**
 Adoptar el patrón **two-step delete** uniforme para las 6 entidades:
 

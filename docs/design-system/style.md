@@ -252,15 +252,24 @@ Tamaños `sm` (h-8) · `md` (h-9) · `lg` (h-10).
 
 ## 7. Patrones PMO
 
-### Estados de proyecto
-| Estado | Color |
+### Fase del proyecto
+
+La fase es lo que el producto llama «estado del proyecto», y son cinco (ADR-038).
+Esta tabla listaba seis valores en inglés —`Active`, `At risk`, `Blocked`…— que
+no correspondían a ninguna: mezclaban fase con salud.
+
+| Fase | Color |
 |---|---|
-| `Active` | success |
-| `At risk` | warning |
-| `Blocked` | danger |
-| `Planning` | info |
-| `On hold` | neutral |
-| `Completed` | neutral outline |
+| `preparacion` | info |
+| `ejecucion` | success |
+| `hypercare` | warning |
+| `cerrado` | neutral |
+| `cancelado` | danger |
+
+**La salud es otra escala** y no se mezcla con la fase: verde / amarillo / rojo,
+con sus propios tokens (`--color-success-fg`, `--color-warning-fg`,
+`--color-danger-fg`). Un proyecto en ejecución puede estar en rojo; son dos
+preguntas distintas y se pintan en dos sitios distintos.
 
 ### Deltas
 Positivo → verde, negativo → rojo. Siempre con `↑/↓` explícito.

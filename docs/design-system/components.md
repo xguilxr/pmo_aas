@@ -205,7 +205,19 @@ Números de página + botones prev/next + jump-to. En tablas densas, "Page X of 
 
 ### PhaseBadge
 
-Badge con color por fase: planning (azul claro), execution (verde), support (amarillo), closed (gris).
+Badge con tono por fase. Los cinco pares son los de
+`apps/web/lib/api/projects.ts::PHASE_BADGE_TONE`, que es la única copia:
+
+| Fase | Tono |
+|---|---|
+| `preparacion` | info |
+| `ejecucion` | success |
+| `hypercare` | warning |
+| `cerrado` | neutral |
+| `cancelado` | danger |
+
+`cancelado` **no** comparte el tono de `cerrado`: distinguir de un vistazo un
+proyecto que cumplió de uno que se cortó es la razón de ser de ADR-022.
 
 ### HealthIndicator
 
