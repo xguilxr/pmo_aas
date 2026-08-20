@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_capability
+from app.api.deps import CurrentUser, require_authenticated, require_capability
 from app.core.errors import forbidden, mensaje, not_found
 from app.core.unidades import segundos_a_ms
 from app.core.url_externa import asegurar_url_externa, motivo_url_insegura
@@ -31,6 +31,7 @@ from app.services.ai.provider import BYO_PROVIDERS_ALLOWED
 from app.services.ai.tenant_ai import VALID_MODES
 from app.services.ai_secrets import encrypt_secret, mask_secret
 from app.services.audit import write_audit
+from app.services.consumo_ia import resumen as resumen_de_consumo
 
 router = APIRouter(prefix="/admin/ai", tags=["admin_ai"])
 
@@ -636,3 +637,36 @@ async def _ping_byo_provider(
         return TestConnectionResult(
             ok=False, error=str(exc)[:200], code="UNKNOWN",
         )
+
+
+# ---------------------------------------------------------------------------
+# US-222 / EP021 — consumo de IA del inquilino
+# ---------------------------------------------------------------------------
+
+
+@router.get("/usage")
+async def ai_usage(
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-222 — cuánta IA consume este inquilino: trabajos, tokens y por modelo.
+
+    Del artboard «Admin — IA», fila «Consumo / alertas». Es la única de las cinco
+    filas de ese artboard que no depende de ninguna decisión pendiente —`AIJob` ya
+    guarda tokens, modelo y proveedor desde US-057— y por eso sale sin esperar a
+    EP021.
+
+    **No devuelve dinero.** La tarifa de cada modelo la fija su proveedor, cambia
+    cuando él la cambia y no vive en esta plataforma: un importe estimado con una
+    tarifa de hace seis meses se leería como el gasto y no lo sería. Se cuentan
+    tokens, que es el dato que sí es nuestro. Mismo criterio que
+    `dominio/moneda.py` con la conversión entre monedas.
+
+    Los trabajos **fallidos** van junto al total y no en otra llamada: «120
+    trabajos este mes» con treinta fallidos se lee como éxito y no lo es.
+    """
+    tenant_id = cu.effective_tenant_id
+    if tenant_id is None:
+        raise forbidden()
+    return await resumen_de_consumo(db, UUID(str(tenant_id)))
+

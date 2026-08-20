@@ -116,6 +116,11 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   sitio), `app/(app)/pmo/projects/[id]/board/page.tsx` (Project Board, US-219 —
   aquí **sí**, porque `tasks.status` lo declara una persona; el corte de la
   cadencia es una marca en la tarjeta, no una columna).
+- **IA**: `app/(app)/admin/ai/page.tsx` (proveedor BYOK) + `consumo-de-ia.tsx`
+  (US-222: trabajos y tokens por mes, reparto por modelo, fallidos junto al
+  total; **sin cifra en pesos**, y la pantalla dice por qué). El resto del
+  artboard de IA —skills, tools, prompts, workflows, roles de agente— está en
+  `EP021-catalogo-de-ia.md` con las preguntas que lo bloquean.
 - **Plan**: `app/(app)/admin/plan/page.tsx` (US-221: tier, topes y consumo; la
   pantalla **dice** que no se hace cumplir —si no, «3/1» con barra roja se lee
   como un bloqueo y genera una llamada de soporte por algo que no pasa—, y sin
