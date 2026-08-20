@@ -36,8 +36,8 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 
 | Ruta | Qué es |
 |---|---|
-| `/dashboard` | Tablero ejecutivo en 4 filas (US-206): 6 tarjetas · 3 listas «top» · 4 distribuciones · tendencia + semáforo consolidado. Cascada portafolio → programa en la URL (US-201); la organización viene del header (US-205). **No** se fusiona con `/pmo`: el mockup los mantiene separados |
-| `/pmo` | Panel portafolio del tenant (treemap/trends/heatmap, matriz salud, PDF status) |
+| `/dashboard` | Tablero ejecutivo en 4 filas (US-206): 6 tarjetas · 3 listas «top» · 4 distribuciones · tendencia + semáforo consolidado. Cascada portafolio → programa en la URL (US-201); la organización viene del header (US-205). **No** se fusiona con `/pmo`: el mockup los mantiene separados, y desde US-207 enlaza allí en vez de repetir su tabla |
+| `/pmo` | **Vista maestra** (US-207): tabla de ancho completo, 13 de las 16 columnas del mockup, header y primera columna fijos, columnas configurables (`localStorage`), XLSX de lo visible, 4 filtros en la URL, edición inline de salud y prioridad. Debajo: matriz salud × dimensión + status PDF + reporte de salud XLSX. El treemap/heatmap/trends se fueron al tablero con US-206 |
 | `/pmo/projects` (+`/new`, `[id]/edit`) | Lista maestra + alta/edición (`project-form.tsx`) |
 | `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (tab «Recursos»), `documents` (tab «Artefactos»), `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
 | `/pmo/organizations/[id]` (+`/reports`) | Panel org (KPIs «Portafolios» y «Programas» desde US-201) |
@@ -70,6 +70,10 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   proyecto desde US-201, con la organización heredada del header desde US-205;
   cada nivel limpia los de abajo). No hay tabla virtualizada ni column-pinning
   (la control tower lo necesitará).
+- **Vista maestra**: `vista-maestra.tsx` — la tabla del control tower.
+  Columnas declaradas como datos (`clave`/`etiqueta`/`orden`/`celda`/`texto`),
+  así que el XLSX exporta exactamente las visibles. Header y primera columna
+  `sticky`; la celda fija lleva fondo propio o se transparenta.
 - **Tablero ejecutivo**: `tablero-ejecutivo.tsx` — `TarjetaDeSalud` (3
   conteos + barra proporcional), `ListaTop` (las listas «qué mirar primero»),
   `SemaforoConsolidado` (5 dimensiones, cada una del peor color que aparece,

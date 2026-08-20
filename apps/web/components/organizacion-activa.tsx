@@ -63,8 +63,10 @@ export const TODAS = "";
  * Hay dos formas de agregar y las dos cuentan:
  *
  * - **Por filtro** — `/dashboard` manda `organization_id` y sin él suma todo.
- * - **Por construcción** — `/pmo` y `/admin/organizations` listan las
- *   organizaciones; no hay filtro que aplicarles, siempre muestran todas.
+ * - **Por construcción** — `/admin/organizations` lista las organizaciones, y
+ *   `/pmo` lleva en su tabla una columna de organización justamente para poder
+ *   mostrar varias a la vez (US-207). Ninguna de las dos tiene un filtro de
+ *   organización que aplicar.
  *
  * Las de construcción están aquí porque el switcher **se ve** en ellas. Si no
  * estuvieran, alguien que eligió «Todas» en el tablero llegaría a `/pmo` y

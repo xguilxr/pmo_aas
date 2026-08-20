@@ -159,8 +159,8 @@ muestra una organización concreta.
 
 `RUTAS_QUE_AGREGAN` declara dónde «todas» es válido. Agregan por filtro
 (`/dashboard`, que suma cuando no manda `organization_id`) o por construcción
-(`/pmo` y `/admin/organizations`, que enumeran organizaciones y no tienen filtro
-que aplicar).
+(`/admin/organizations`, que enumera organizaciones, y `/pmo`, cuya tabla lleva
+una columna de organización precisamente para poder mostrar varias a la vez).
 
 > **No es una frontera de seguridad.** El identificador viaja como
 > `organization_id` en la consulta, igual que cuando lo mandaba cada página; lo
@@ -185,7 +185,7 @@ quien las recibe.
 flowchart LR
     subgraph ORG ["ORGANIZACIÓN - todos"]
         N1["Dashboard<br/>/dashboard"]
-        N2["Portafolio<br/>/pmo"]
+        N2["Portafolio<br/>/pmo<br/>(vista maestra)"]
         N3["Proyectos<br/>/pmo/projects"]
         N4["Solicitudes<br/>/pmo/requests"]
         N5["Recursos<br/>/pmo/resources"]
@@ -285,7 +285,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 
 | URL | Propósito |
 |---|---|
-| `/pmo` | Landing con tarjetas de organizaciones. |
+| `/pmo` | Vista maestra del portafolio: una fila por proyecto, 13 columnas, header y primera columna fijos, columnas configurables y XLSX (US-207). |
 | `/pmo/organizations/[id]` | Detalle de organización: programas + proyectos + reportes. |
 | `/pmo/organizations/[id]/reports` | Reportes scope organización. |
 | `/pmo/programs/[id]` | Detalle de programa. |

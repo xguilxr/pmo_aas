@@ -622,6 +622,18 @@ async def plan_vs_actual(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
+    """Una fila por proyecto: la fila de la **vista maestra** (US-207).
+
+    El nombre es histórico. Empezó siendo la tabla «Plan vs Real» del tablero y
+    US-207 la convirtió en la fila del control tower: los mismos proyectos con
+    las dieciséis columnas del mockup en vez de seis. No se renombró la ruta
+    porque el CSV de exportación se comparte por enlace y renombrarla rompería
+    los que ya están guardados, a cambio de nada que el usuario note.
+
+    Trece de las dieciséis columnas del mockup salen de aquí. Las otras tres
+    —«Próximo hito», «Reporte» y «Completitud»— no existen como dato todavía:
+    son US-210 y US-211.
+    """
     tenant_id = _tenant(cu)
     stmt = _filtro_jerarquia(
         select(Project).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None)),
@@ -653,6 +665,94 @@ async def plan_vs_actual(
         ).all()
         pm_names = {str(i): n for i, n in rows}
 
+    # US-207 — los nombres de la jerarquía, en dos consultas y no una por fila.
+    # La tabla tiene veintitrés filas hoy y ninguna razón para no tener
+    # doscientas: una consulta por fila es el patrón que hace que una vista
+    # maestra tarde ocho segundos el día que el cliente crece.
+    pf_ids = sorted({p.portfolio_id for p in projects if p.portfolio_id})
+    pf_names: dict[str, str] = {}
+    if pf_ids:
+        pf_names = {
+            str(i): n
+            for i, n in (
+                await db.execute(
+                    select(Portfolio.id, Portfolio.name).where(Portfolio.id.in_(pf_ids))
+                )
+            ).all()
+        }
+    # La organización, porque `/pmo` puede estar en «todas» (US-205): sin este
+    # nombre, cuatro organizaciones dan filas indistinguibles y la tabla miente
+    # por omisión. El mockup no lleva la columna porque dibuja una organización
+    # concreta en el header.
+    org_ids = sorted({p.organization_id for p in projects if p.organization_id})
+    org_names: dict[str, str] = {}
+    if org_ids:
+        org_names = {
+            str(i): n
+            for i, n in (
+                await db.execute(
+                    select(Organization.id, Organization.name).where(
+                        Organization.id.in_(org_ids)
+                    )
+                )
+            ).all()
+        }
+
+    pg_ids = sorted({p.program_id for p in projects if p.program_id})
+    pg_names: dict[str, str] = {}
+    if pg_ids:
+        pg_names = {
+            str(i): n
+            for i, n in (
+                await db.execute(
+                    select(Program.id, Program.name).where(Program.id.in_(pg_ids))
+                )
+            ).all()
+        }
+
+    # Riesgos e issues abiertos por proyecto. Dos agrupaciones, no dos por fila.
+    #
+    # `try` porque los módulos son de EP006 y el resto del endpoint funciona sin
+    # ellos: una tabla que no existe deja las dos columnas en cero, que es lo
+    # que había antes de que existieran. Mismo criterio que en `/kpis`.
+    ids_visibles = [str(p.id) for p in projects]
+    riesgos_por_proyecto: dict[str, int] = {}
+    issues_por_proyecto: dict[str, int] = {}
+    if ids_visibles:
+        try:
+            from app.models.modules import Issue
+
+            riesgos_por_proyecto = {
+                str(pid): n
+                for pid, n in (
+                    await db.execute(
+                        select(Risk.project_id, func.count(Risk.id))
+                        .where(
+                            Risk.tenant_id == tenant_id,
+                            Risk.status != "resolved",  # US-179
+                            Risk.project_id.in_(ids_visibles),
+                        )
+                        .group_by(Risk.project_id)
+                    )
+                ).all()
+            }
+            issues_por_proyecto = {
+                str(pid): n
+                for pid, n in (
+                    await db.execute(
+                        select(Issue.project_id, func.count(Issue.id))
+                        .where(
+                            Issue.tenant_id == tenant_id,
+                            Issue.status.in_(["open", "in_progress", "on_hold"]),
+                            Issue.project_id.in_(ids_visibles),
+                        )
+                        .group_by(Issue.project_id)
+                    )
+                ).all()
+            }
+        except Exception:
+            pass
+
     # ENH-109 — progress_actual derivado del plan (rollup WBS) con fallback
     # al campo manual. `progress_plan` sigue siendo el avance esperado por
     # calendario (_plan_progress_for), que es otra cosa.
@@ -676,8 +776,34 @@ async def plan_vs_actual(
                 "progress_plan": _plan_progress_for(p),
                 "progress_actual": round_half_up(eff[str(p.id)]),
                 "health": p.health_status,
+                # US-207 — de dónde viene la salud. La columna es clicable y
+                # abre el desglose del cálculo, y para eso hay que saber si el
+                # color lo puso la regla o una persona (US-180/US-191).
+                "health_source": p.health_source,
                 "pm_id": pm_id,
                 "pm_name": pm_names.get(pm_id) if pm_id else None,
+                # --- US-207: las columnas de la vista maestra ---------------
+                "organization_id": str(p.organization_id) if p.organization_id else None,
+                "organization_name": (
+                    org_names.get(str(p.organization_id)) if p.organization_id else None
+                ),
+                "portfolio_id": str(p.portfolio_id) if p.portfolio_id else None,
+                "portfolio_name": (
+                    pf_names.get(str(p.portfolio_id)) if p.portfolio_id else None
+                ),
+                "program_id": str(p.program_id) if p.program_id else None,
+                "program_name": (
+                    pg_names.get(str(p.program_id)) if p.program_id else None
+                ),
+                "type": p.type,
+                "phase": p.phase,
+                "priority": p.priority,
+                "open_risks": riesgos_por_proyecto.get(str(p.id), 0),
+                "open_issues": issues_por_proyecto.get(str(p.id), 0),
+                # «Últ. act.» del mockup. Es cuándo cambió el **registro**, no
+                # cuándo alguien reportó: la distinción importa y la columna la
+                # dice así. El estatus de reporte es US-211.
+                "updated_at": p.updated_at.isoformat() if p.updated_at else None,
             }
         )
     return out

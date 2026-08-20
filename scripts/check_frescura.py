@@ -61,6 +61,12 @@ PRESENTA_NUMEROS = re.compile(rf"KpiCard|<(Bar|Line|Pie|Area|Radial)Chart|{INDIC
 #: con su motivo escrito: la diferencia entre «no aplica» y «se nos pasó» no se
 #: ve desde fuera, y es lo primero que preguntaría un auditor.
 FUERA_DE_ALCANCE: dict[str, str] = {
+    "components/vista-maestra.tsx": (
+        "Declara la frescura **por fila**, que es más preciso que un marcador "
+        "de pantalla: la columna «Últ. act.» dice cuándo cambió ese proyecto, "
+        "no cuándo se cargó la tabla. El periodo lo pone `/pmo` con su "
+        "`MarcaDeDatos`, y los números de la fila son lecturas vivas."
+    ),
     "components/tablero-ejecutivo.tsx": (
         "Son las piezas del tablero, no la pantalla: la misma tarjeta de salud "
         "sirve para un dato vivo y para uno de corte, igual que `KpiCard`. El "

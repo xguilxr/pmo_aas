@@ -539,3 +539,89 @@ mockup. `/pmo` sigue siendo la vista de portafolio; lo que absorbe sus tablas es
 la vista maestra de US-207.
 
 **Estado de integración:** DONE (US-206).
+
+---
+
+### US-207 — La vista maestra del portafolio (control tower) ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** una tabla de ancho completo con una fila por proyecto y el estado que
+se revisa en seguimiento
+**Para** contestar «¿qué pasa con ESTE proyecto?» de veintitrés proyectos a la
+vez, que es la pregunta de la reunión.
+
+De los mockups aprobados, artboard «Portafolio — Vista maestra». Vive en `/pmo`.
+
+**Trece de las dieciséis columnas.** Proyecto · Organización · Portafolio ·
+Programa · Tipo · Fase · Prio · Salud · Avance P/R · Presup. P/R · Fin ·
+Riesgos · Issues · Últ. act. Las tres que faltan —«Próximo hito», «Reporte» y
+«Completitud»— no existen como dato: son US-211 y US-210. El configurador de
+columnas las nombra como pendientes en vez de callarlas, porque quien conoce el
+mockup va a buscarlas y no encontrarlas sin explicación se lee como que se
+perdieron.
+
+**Criterios de aceptación:**
+- [x] **Header y primera columna fijos.** Con dieciséis columnas se hace scroll
+  horizontal siempre, y sin la columna del nombre pegada uno pierde de qué fila
+  estaba leyendo. Es el fallo que convierte una tabla ancha en inútil. La celda
+  fija lleva fondo propio: sin él se ve el texto de las columnas de debajo
+  pasando por detrás.
+- [x] **Columnas configurables, recordadas** en `localStorage`. Nadie mira las
+  dieciséis: el PMO de riesgos quiere seis y el de presupuesto, otras seis.
+  Volver a esconder cinco en cada visita es el motivo por el que alguien deja de
+  usar la vista. La selección guardada se filtra contra las columnas que existen
+  hoy, para que una renombrada no deje un hueco ni una casilla fantasma.
+- [x] **XLSX de lo que se ve**, no de las dieciséis: exportar columnas que no
+  están en pantalla entrega algo distinto de lo que se acordó mirar.
+- [x] **Cuatro filtros** —portafolio, programa, fase, salud— en la URL, para que
+  una vista filtrada se pueda enviar por chat. La organización no está: se elige
+  en el header (US-205) y aquí sería el mismo control dos veces.
+- [x] **La columna «Organización» solo cuando el header agrega.** `/pmo` está en
+  `RUTAS_QUE_AGREGAN`, así que puede mostrar cuatro organizaciones a la vez y sin
+  esa columna las filas son indistinguibles. Con una elegida repetiría el mismo
+  valor veintitrés veces. Se enciende por contexto y se puede apagar a mano: es
+  una preferencia de arranque, no un candado.
+- [x] **Edición inline** en salud declarada y prioridad, y el «?» de la columna
+  de salud abre el desglose del cálculo. Van como dos acciones separadas: si un
+  click hiciera las dos, consultar el porqué cambiaría el dato.
+- [x] El orden de la columna de fase sigue el ciclo de vida (`PHASE_ORDER`) y no
+  el alfabeto; el de «Avance P/R» ordena por la **desviación** y no por el
+  avance, porque la pregunta de la columna es «¿va atrasado?» y ordenar por el
+  real pone arriba al que acaba de empezar.
+- [x] `plan-vs-actual` devuelve las trece columnas. Los nombres de organización,
+  portafolio y programa y los conteos de riesgos e issues salen de cinco
+  consultas agrupadas, **no** de una por fila: la tabla tiene veintitrés filas
+  hoy y ninguna razón para no tener doscientas.
+- [x] La ruta **no** se renombró aunque el nombre quedó estrecho: el CSV de
+  exportación se comparte por enlace, y romper los guardados no compra nada que
+  el usuario note.
+
+**Lo que se retiró, y a dónde fue:**
+- La tabla «Plan vs Real» del tablero **es** esta vista: las mismas filas con
+  seis columnas, sin configurador ni export, y con el orden roto en la mitad de
+  sus cabeceras (los getters citaban `project_name` y `end_plan`, campos que el
+  contrato nunca tuvo). El tablero ahora enlaza aquí, con sus filtros puestos.
+- El heatmap, el treemap y las tendencias que `/pmo` dibujaba se fueron al
+  tablero con US-206. Dos pantallas dibujando el mismo treemap es cómo se llega
+  a que digan números distintos.
+- Las tarjetas de organización de `/pmo` se van: su trabajo era navegar, y
+  navegar ya no se hace ahí. No se pierde nada — `/admin/organizations` tiene las
+  mismas tarjetas con su franja de salud (`listOrganizationPanels`), y el
+  drill-down a `/pmo/organizations/[id]` sigue desde el heatmap del tablero.
+
+**Lo que se conservó a propósito:** el status PMO en PDF y el reporte de salud en
+XLSX son entregables que alguien manda por correo, y la matriz salud × dimensión
+con su evaluación 5+1 (US-192) es la única superficie donde se declara salud sin
+abrir cada proyecto. Van debajo de la tabla.
+
+**Test Cases:**
+- `TC-207.1` — La fila lleva los nombres de la jerarquía, y un proyecto sin
+  portafolio ni programa devuelve `null` **sin desaparecer** de la tabla: es lo
+  que un `JOIN` implícito se come sin fallar.
+- `TC-207.2` — Riesgos e issues abiertos por proyecto; `resolved` no cuenta, y
+  cero es `0` y no una clave ausente.
+- `TC-207.3` — Tipo, fase, prioridad, fuente de salud y `updated_at`.
+- `TC-207.4` — El scoping: filtrar por portafolio incluye los proyectos sin
+  programa (regla de TC-201.1) y los conteos de un proyecto no se cuelan en otro.
+
+**Estado de integración:** DONE (US-207).

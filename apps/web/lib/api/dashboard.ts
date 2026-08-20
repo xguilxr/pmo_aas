@@ -77,6 +77,14 @@ export type DashboardTops = {
   by_delay: TopPorAtraso[];
 };
 
+/**
+ * Una fila de la **vista maestra** (US-207).
+ *
+ * El nombre del tipo es histórico, como el de su endpoint: empezó siendo la
+ * tabla «Plan vs Real» del tablero y ahora es la fila del control tower. Trece
+ * de las dieciséis columnas del mockup salen de aquí; «Próximo hito»,
+ * «Reporte» y «Completitud» son US-210 y US-211.
+ */
 export type PlanVsActualRow = {
   project_id: string;
   folio: string;
@@ -89,8 +97,33 @@ export type PlanVsActualRow = {
   progress_plan: number;
   progress_actual: number;
   health: string | null;
+  /** `auto` = lo mantiene el motor de reglas; `manual` = lo declaró el PM. */
+  health_source: "auto" | "manual";
   pm_id: string | null;
   pm_name: string | null;
+  // --- US-207: las columnas de la vista maestra ---------------------------
+  /**
+   * `/pmo` puede estar en «todas las organizaciones» (US-205). Sin este nombre,
+   * cuatro organizaciones dan filas indistinguibles: la columna solo se muestra
+   * cuando el header agrega, que es cuando hace falta.
+   */
+  organization_id: string | null;
+  organization_name: string | null;
+  portfolio_id: string | null;
+  portfolio_name: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  type: string | null;
+  phase: string;
+  priority: number | null;
+  open_risks: number;
+  open_issues: number;
+  /**
+   * Cuándo cambió el **registro**, no cuándo alguien reportó. La distinción
+   * importa: un proyecto sin tocar en tres semanas puede estar bien reportado
+   * fuera del sistema. El estatus de reporte es US-211.
+   */
+  updated_at: string | null;
 };
 
 export type PlanVsActualParams = {
